@@ -1,0 +1,15 @@
+(library
+ ((name snarky)
+  (public_name snarky)
+  (libraries (core_kernel bignum camlsnark_c))
+  (c_library_flags (:standard -lstdc++ -lpthread))
+  (flags (:standard -safe-string))
+  (cxx_flags
+    (
+      (:standard "\\" -pedantic)
+      (-I re2_c/libre2)
+      ))
+  (preprocess (pps (ppx_jane ppx_deriving.enum ppx_driver.runner)))))
+
+(jbuild_version 1)
+
