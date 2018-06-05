@@ -1,4 +1,8 @@
-open Core
+open Core_kernel
+
+module Address = struct
+  type t = int
+end
 
 module Free_hash = struct
   type 'a t =
@@ -149,43 +153,43 @@ let insert hash compress t0 mask0 address x =
 ;;
 
 
+let ith_bit n i = (n lsr i) land 1 = 1
+
 let update ({ hash; compress; tree=tree0; depth } as t) addr0 x =
   let tree_hash = tree_hash ~default:(hash None) in
-  let rec go_non_empty tree addr =
-    match tree, addr with
-    | Leaf (_, _), [] -> Leaf (hash (Some x), x)
-    | Node (_, t_l, t_r), b :: bs ->
+  let rec go_non_empty tree i =
+    match tree with
+    | Leaf (_, _) ->
+      Leaf (hash (Some x), x)
+    | Node (_, t_l, t_r) ->
+      let b = ith_bit addr0 i in
       let t_l', t_r' =
         if b
-        then (t_l, go t_r bs)
-        else (go t_l bs, t_r)
+        then (t_l, go t_r (i - 1))
+        else (go t_l (i - 1), t_r)
       in
       Node (compress (tree_hash t_l') (tree_hash t_r'), t_l', t_r')
-    | _, _ -> failwith "Merkle_tree.update: Invalid address"
-  and go tree addr =
+  and go tree i =
     match tree with
-    | Non_empty tree -> Non_empty (go_non_empty tree addr)
+    | Non_empty tree -> Non_empty (go_non_empty tree i)
     | Empty -> failwith "Merkle_tree.update: Invalid address"
 in
-  { t with tree = go_non_empty tree0 (List.rev addr0) }
+  { t with tree = go_non_empty tree0 (depth - 1) }
 ;;
 
-let get { tree; _ } addr0 =
-  let rec get t addr =
+let get { tree; depth; _ } addr0 =
+  let rec get t i =
     match t with
     | Empty -> None
-    | Non_empty t -> get_non_empty t addr
-  and get_non_empty t addr =
-    match t, addr with
-    | Node (_, l, r), go_right :: bs ->
-      if go_right then get r bs else get l bs
-    | Leaf (_, x), [] -> Some x
-    | Node _, [] ->
-      failwith "Merkle_tree.get: Address was too short"
-    | Leaf _, _ :: _ ->
-      failwith "Merkle_tree.get: Address was too long"
+    | Non_empty t -> get_non_empty t i
+  and get_non_empty t i =
+    match t with
+    | Node (_, l, r) ->
+      let go_right = ith_bit addr0 i in
+      if go_right then get r (i - 1) else get l (i - 1)
+    | Leaf (_, x) -> Some x
   in
-  get_non_empty tree (List.rev addr0)
+  get_non_empty tree (depth - 1)
 ;;
 
 let get_exn t addr = Option.value_exn (get t addr)
@@ -300,39 +304,40 @@ let create ~hash ~compress x =
   }
 ;;
 
-let get_path { tree; hash; _ } addr0 =
+let get_path { tree; hash; depth; _ } addr0 =
   let default = hash None in
-  let rec go acc t addr =
-    match addr with
-    | [] -> acc
-    | go_right :: bs ->
+  let rec go acc t i =
+    if i < 0
+    then acc
+    else
+      let go_right = ith_bit addr0 i in
       if go_right
       then
         match t with
         | Leaf _ -> failwith "get_path"
         | Node (_h, _t_l, Empty) -> failwith "get_path"
         | Node (_h, t_l, Non_empty t_r) ->
-          go (tree_hash ~default t_l :: acc) t_r bs
+          go (tree_hash ~default t_l :: acc) t_r (i - 1)
       else
         match t with
         | Leaf _ -> failwith "get_path"
         | Node (_h, Empty, _t_r) -> failwith "get_path"
         | Node (_h, Non_empty t_l, t_r) ->
-          go (tree_hash ~default t_r :: acc) t_l bs
+          go (tree_hash ~default t_r :: acc) t_l (i - 1)
   in
-  go [] tree (List.rev addr0)
+  go [] tree (depth - 1)
 ;;
 
 let implied_root ~compress addr0 entry_hash path0 =
-  let rec go acc addr path =
-    match addr, path with
-    | [], [] -> acc
-    | b :: bs, h :: hs ->
-      go (if b then compress h acc else compress acc h) bs hs
-    | _, _ ->
-      failwith "Merkle_tree.implied_root"
+  let rec go acc i path =
+    match path with
+    | [] -> acc
+    | h :: hs ->
+      go
+        (if ith_bit addr0 i then compress h acc else compress acc h)
+        (i + 1) hs
   in
-  go entry_hash addr0 path0
+  go entry_hash 0 path0
 ;;
 
 let rec free_tree_hash = function
@@ -346,26 +351,27 @@ let rec free_tree_hash = function
 
 let free_root { tree; _ } = free_tree_hash (Non_empty tree)
 
-let get_free_path { tree; _ } addr0 =
-  let rec go acc t addr =
-    match addr with
-    | [] -> acc
-    | go_right :: bs ->
+let get_free_path { tree; depth; _ } addr0 =
+  let rec go acc t i =
+    if i < 0
+    then acc
+    else
+      let go_right = ith_bit addr0 i in
       if go_right
       then
         match t with
         | Leaf _ -> failwith "get_path"
         | Node (_h, _t_l, Empty) -> failwith "get_path"
         | Node (_h, t_l, Non_empty t_r) ->
-          go (free_tree_hash t_l :: acc) t_r bs
+          go (free_tree_hash t_l :: acc) t_r (i - 1)
       else
         match t with
         | Leaf _ -> failwith "get_path"
         | Node (_h, Empty, _t_r) -> failwith "get_path"
         | Node (_h, Non_empty t_l, t_r) ->
-          go (free_tree_hash t_r :: acc) t_l bs
+          go (free_tree_hash t_r :: acc) t_l (i - 1)
   in
-  go [] tree (List.rev addr0)
+  go [] tree (depth - 1)
 ;;
 
 let implied_free_root addr0 x path0 =
@@ -380,7 +386,7 @@ module Checked
        type var
        type value
        val typ : (var, value) Impl.Typ.t
-       val hash : var -> var -> (var, _) Impl.Checked.t
+       val hash : height:int -> var -> var -> (var, _) Impl.Checked.t
        val if_ : Impl.Boolean.var -> then_:var -> else_:var -> (var, _) Impl.Checked.t
        val assert_equal : var -> var -> (unit, _) Impl.Checked.t
      end)
@@ -394,17 +400,17 @@ module Checked
   open Impl
 
   module Address = struct
-    type 'a t = 'a list [@@deriving sexp]
+    type var = Boolean.var list
 
-    type var = Boolean.var t
-
-    type value = bool t [@@deriving sexp]
-
-    let value_of_int = address_of_int
+    type value = int
 
     let typ ~depth : (var, value) Typ.t =
-      Typ.list ~length:depth Boolean.typ
-    ;;
+      Typ.transport
+        (Typ.list ~length:depth Boolean.typ)
+        ~there:(address_of_int ~depth)
+        ~back:(
+          List.foldi ~init:0 ~f:(fun i acc b ->
+            if b then acc lor (1 lsl i) else acc))
   end
 
   module Path = struct
@@ -415,7 +421,7 @@ module Checked
   end
 
   let implied_root entry_hash addr0 path0 =
-    let rec go acc addr path =
+    let rec go height acc addr path =
       let open Let_syntax in
       match addr, path with
       | [], [] -> return acc
@@ -423,11 +429,69 @@ module Checked
         let%bind l = Hash.if_ b ~then_:h ~else_:acc
         and r = Hash.if_ b ~then_:acc ~else_:h
         in
-        let%bind acc' = Hash.hash l r in
-        go acc' bs hs
+        let%bind acc' = Hash.hash ~height l r in
+        go (height + 1) acc' bs hs
       | _, _ -> failwith "Merkle_tree.Checked.implied_root: address, path length mismatch"
     in
-    go entry_hash addr0 path0
+    go 0 entry_hash addr0 path0
+  ;;
+
+  type _ Request.t +=
+    | Get_element : Address.value -> (Elt.value * Path.value) Request.t
+    | Get_path : Address.value -> Path.value Request.t
+    | Set : Address.value * Elt.value -> unit Request.t
+
+  (* addr0 should have least significant bit first *)
+  let modify_req ~(depth : int) root addr0 ~f
+      : (Hash.var, 's) Checked.t
+    =
+    let open Let_syntax in
+    with_label "Merkle_tree.Checked.update_req" begin
+      let%bind (prev, prev_path) =
+        request_witness Typ.(Elt.typ * Path.typ ~depth)
+          As_prover.(map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a))
+      in
+      let%bind () =
+        let%bind prev_entry_hash = Elt.hash prev in
+        implied_root prev_entry_hash addr0 prev_path >>= Hash.assert_equal root
+      in
+      let%bind next = f prev in
+      let%bind next_entry_hash = Elt.hash next in
+      let%bind () =
+        perform As_prover.(Let_syntax.(
+          let%map addr = read (Address.typ ~depth) addr0
+          and next = read Elt.typ next
+          in
+          Set (addr, next)))
+      in
+      implied_root next_entry_hash addr0 prev_path
+    end
+  ;;
+
+  (* addr0 should have least significant bit first *)
+  let update_req ~(depth : int) ~root ~prev ~next addr0
+      : (Hash.var, _) Checked.t
+    =
+    let open Let_syntax in
+    with_label "Merkle_tree.Checked.update_req" begin
+      let%bind prev_entry_hash = Elt.hash prev
+      and next_entry_hash = Elt.hash next
+      and prev_path =
+        request_witness (Path.typ ~depth)
+          As_prover.(map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_path a))
+      in
+      let%bind () =
+        implied_root prev_entry_hash addr0 prev_path >>= Hash.assert_equal root
+      in
+      let%bind () =
+        perform As_prover.(Let_syntax.(
+          let%map addr = read (Address.typ ~depth) addr0
+          and next = read Elt.typ next
+          in
+          Set (addr, next)))
+      in
+      implied_root next_entry_hash addr0 prev_path
+    end
   ;;
 
   (* addr0 should have least significant bit first *)
