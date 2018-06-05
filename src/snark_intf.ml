@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 
 module type Basic = sig
   module R1CS_constraint_system : sig
@@ -97,6 +97,7 @@ module type Basic = sig
     val alloc : ('var, 'value) t -> 'var Alloc.t
     val check : ('var, 'value) t -> 'var -> (unit, _) Checked.t
 
+    val unit : (unit, unit) t
     val field  : (Cvar.t, field) t
     val tuple2 : ('var1, 'value1) t -> ('var2, 'value2) t -> ('var1 * 'var2, 'value1 * 'value2) t
     val tuple3
@@ -177,6 +178,8 @@ module type Basic = sig
       val any : var list -> (unit, _) Checked.t
 
       val all : var list -> (unit, _) Checked.t
+
+      val exactly_one : var list -> (unit, _) Checked.t
     end
   end
   and
@@ -217,6 +220,9 @@ module type Basic = sig
 
     val compare : bit_length:int -> Cvar.t -> Cvar.t -> (comparison_result, _) t
 
+    val equal_bitstrings
+      : Boolean.var list -> Boolean.var list -> (Boolean.var, _) t
+
     module Assert : sig
       val lte : bit_length:int -> Cvar.t -> Cvar.t -> (unit, _) t
       val gte : bit_length:int -> Cvar.t -> Cvar.t -> (unit, _) t
@@ -231,11 +237,6 @@ module type Basic = sig
       val not_equal : Cvar.t -> Cvar.t -> (unit, _) t
 
       val non_zero : Cvar.t -> (unit, _) t
-
-      (* Someday: Move these into Boolean *)
-      val any : Boolean.var list -> (unit, _) t
-
-      val exactly_one : Boolean.var list -> (unit, _) t
     end
   end
 
@@ -342,6 +343,8 @@ module type Basic = sig
     -> ('value Request.t, 's) As_prover.t
     -> ('var, 's) Checked.t
 
+  val perform : (unit Request.t, 's) As_prover.t -> (unit, 's) Checked.t
+
   (* TODO: Come up with a better name for this in relation to the above *)
   val request
     : ?such_that:('var -> (unit, 's) Checked.t)
@@ -364,7 +367,7 @@ module type Basic = sig
   val unhandled : response
   type request
     = Request.request
-    = With : { request :'a Request.t; respond : ('a -> response) } -> request
+    = With : { request :'a Request.t; respond : ('a Request.Response.t -> response) } -> request
 
   module Handler : sig
     type t = request -> response
@@ -398,7 +401,7 @@ module type Basic = sig
   val run_unchecked : ('a, 's) Checked.t -> 's -> 's * 'a
 
   val run_and_check
-    : (('a, 's) As_prover.t, 's) Checked.t -> 's -> 's * 'a * bool
+    : (('a, 's) As_prover.t, 's) Checked.t -> 's -> ('s * 'a) Or_error.t
 
   val check : ('a, 's) Checked.t -> 's -> bool
 end
