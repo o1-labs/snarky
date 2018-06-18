@@ -1386,7 +1386,7 @@ module Checked = struct
   ;;
 
   let unpack v ~length =
-    assert (length < Field.size_in_bits);
+    assert (length <= Field.size_in_bits);
     choose_preimage v ~length
   ;;
 
