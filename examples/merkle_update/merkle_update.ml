@@ -14,7 +14,7 @@ open Let_syntax
    one can later prove for a particular value that it was a member of that list.
 
    There is also a notion of "updating" a merkle tree at a particular index, or address.
-   This means replacing the value stored at that address  with a new value.
+   This means replacing the value stored at that address with a new value.
 
    In this tutorial, we would like to write a checked computation verifying the following:
 
@@ -80,7 +80,7 @@ let input () =
    ]
 
 (* Now, we write the computation that we want our snark to certify.
-   A [Checked] computation is paramterized by two types. [Checked.t] is
+   A [Checked] computation is parameterized by two types. [Checked.t] is
    a monad, which allows us to use overloaded [let] notation to write verified
    computations in a very natural style.
 *)
