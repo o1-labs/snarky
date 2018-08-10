@@ -12,13 +12,31 @@ be used in production systems.
 - Then, make sure you have [opam](https://opam.ocaml.org/doc/Install.html) installed.
 - Then, install `snarky` by running
 ```bash
-opam pin add snarky git@github.com:o1-labs/snarky.git
+opam pin add snarky https://github.com/o1-labs/snarky.git
 ```
 and answering yes to the prompts.
 
 The best place to get started learning how to use the library are the annotated examples.
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
 - [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
+
+
+## Docker
+
+- First install [Docker](https://docs.docker.com/install/)
+- Next clone this repo 
+- Then build the container by running
+```bash
+docker build . -t snarky
+```
+- Finally build and run the examples (the .exe is not windows specific in this case)
+```bash
+docker run -it snarky
+# cd snarky/examples/election
+# jbuilder build election_main.exe
+# ./_build/default/election_main.exe
+``` 
+
 
 ## Design
 
