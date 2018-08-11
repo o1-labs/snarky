@@ -17,6 +17,20 @@ docker build -t snarky .
 docker run -it snarky
 ```
 
+Now you should dropped into a shell with `snarky` installed as an opam library for use in other ocaml projects. You can also use `dune` to build the examples:
+
+```bash
+dune b examples/tutorial/tutorial.exe
+dune b examples/election/election_main.exe
+dune b examples/merkle_update/merkle_update.exe
+```
+
+You can execute them using `dune exec`.
+
+```bash
+dune exec examples/tutorial/tutorial.exe
+```
+
 The best place to get started learning how to use the library are the annotated examples.
 - [Tutorial](examples/tutorial/tutorial.ml): teaches you the basics
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
