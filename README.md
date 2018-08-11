@@ -36,6 +36,11 @@ The best place to get started learning how to use the library are the annotated 
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
 - [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
 
+The examples can be compiled like
+```bash
+snarky/examples/election$ jbuilder build election_main.exe
+```
+
 ## Design
 
 The intention of this library is to allow writing snarks by writing what look
