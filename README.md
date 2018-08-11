@@ -8,15 +8,17 @@ Disclaimer: This code has not been thoroughly audited and should not
 be used in production systems.
 
 ## Getting started
-- First install libsnark's dependencies as specified [here](https://github.com/scipr-lab/libsnark#dependencies)
-- Then, make sure you have [opam](https://opam.ocaml.org/doc/Install.html) installed.
-- Then, install `snarky` by running
+
+- Install [Docker](https://www.docker.com/)
+
 ```bash
-opam pin add snarky git@github.com:o1-labs/snarky.git
+docker build -t snarky .
+
+docker run -it snarky
 ```
-and answering yes to the prompts.
 
 The best place to get started learning how to use the library are the annotated examples.
+- [Tutorial](examples/tutorial/tutorial.ml): teaches you the basics
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
 - [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
 
