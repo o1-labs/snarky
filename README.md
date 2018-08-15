@@ -12,8 +12,11 @@ be used in production systems.
 - Install [Docker](https://www.docker.com/)
 
 ```bash
+# Build container image 
+# (this can easily take ~10m to finish)
 docker build -t snarky .
 
+# Start container
 docker run -it snarky
 ```
 
