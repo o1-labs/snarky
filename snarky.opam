@@ -16,6 +16,8 @@ depends: [
   "ppx_driver"
   "ppx_jane"
   "bignum"
+  "bitstring_lib"
+  "interval_union"
   "jbuilder"                {build & >= "1.0+beta12"}
 ]
 available: [ ocaml-version >= "4.04.1" ]
