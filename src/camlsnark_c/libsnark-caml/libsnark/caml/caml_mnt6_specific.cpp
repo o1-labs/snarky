@@ -139,60 +139,61 @@ camlsnark_mnt6_r1cs_se_ppzksnark_preprocessed_r1cs_se_ppzksnark_verification_key
 }
 
 // verifier
-r1cs_se_ppzksnark_verifier_gadget<ppT>*
-camlsnark_mnt6_r1cs_se_ppzksnark_verifier_gadget_create(
+r1cs_se_ppzksnark_accumulated_verifier_gadget<ppT>*
+camlsnark_mnt6_r1cs_se_ppzksnark_accumulated_verifier_gadget_create(
     protoboard<FieldT>* pb,
     r1cs_se_ppzksnark_verification_key_variable<ppT>* vk,
-    pb_variable_array<FieldT>* input,
-    int elt_size,
+    pb_variable<FieldT>* accX,
+    pb_variable<FieldT>* accY,
     r1cs_se_ppzksnark_proof_variable<ppT>* proof,
     pb_variable<FieldT>* result) {
-  return new r1cs_se_ppzksnark_verifier_gadget<ppT>(
-      *pb, *vk, *input, elt_size, *proof, *result,
+
+  return new r1cs_se_ppzksnark_accumulated_verifier_gadget<ppT>(
+      *pb, *vk, G1_variable<ppT>(*pb, *accX, *accY, "verifier acc"), *proof, *result,
       "se_verifier_gadget");
 }
 
-void camlsnark_mnt6_r1cs_se_ppzksnark_verifier_gadget_delete(
-    r1cs_se_ppzksnark_verifier_gadget<ppT>* g) {
+void camlsnark_mnt6_r1cs_se_ppzksnark_accumulated_verifier_gadget_delete(
+    r1cs_se_ppzksnark_accumulated_verifier_gadget<ppT>* g) {
   delete g;
 }
 
-void camlsnark_mnt6_r1cs_se_ppzksnark_verifier_gadget_generate_r1cs_constraints(
-    r1cs_se_ppzksnark_verifier_gadget<ppT>* g) {
+void camlsnark_mnt6_r1cs_se_ppzksnark_accumulated_verifier_gadget_generate_r1cs_constraints(
+    r1cs_se_ppzksnark_accumulated_verifier_gadget<ppT>* g) {
   g->generate_r1cs_constraints();
 }
 
-void camlsnark_mnt6_r1cs_se_ppzksnark_verifier_gadget_generate_r1cs_witness(
-    r1cs_se_ppzksnark_verifier_gadget<ppT>* g) {
+void camlsnark_mnt6_r1cs_se_ppzksnark_accumulated_verifier_gadget_generate_r1cs_witness(
+    r1cs_se_ppzksnark_accumulated_verifier_gadget<ppT>* g) {
   g->generate_r1cs_witness();
 }
 
 // online verifier
-r1cs_se_ppzksnark_online_verifier_gadget<ppT>*
-camlsnark_mnt6_r1cs_se_ppzksnark_online_verifier_gadget_create(
+r1cs_se_ppzksnark_accumulated_online_verifier_gadget<ppT>*
+camlsnark_mnt6_r1cs_se_ppzksnark_accumulated_online_verifier_gadget_create(
     protoboard<FieldT>* pb,
     r1cs_se_ppzksnark_preprocessed_r1cs_se_ppzksnark_verification_key_variable<ppT>* vk,
-    pb_variable_array<FieldT>* input,
-    int elt_size,
+    pb_variable<FieldT>* accX,
+    pb_variable<FieldT>* accY,
     r1cs_se_ppzksnark_proof_variable<ppT>* proof,
     pb_variable<FieldT>* result) {
-  return new r1cs_se_ppzksnark_online_verifier_gadget<ppT>(
-      *pb, *vk, *input, elt_size, *proof, *result,
+  return new r1cs_se_ppzksnark_accumulated_online_verifier_gadget<ppT>(
+      *pb, *vk, G1_variable<ppT>(*pb, *accX, *accY, "online verifier acc"), *proof, *result,
       "se_online_verifier_gadget");
 }
 
-void camlsnark_mnt6_r1cs_se_ppzksnark_online_verifier_gadget_delete(
-    r1cs_se_ppzksnark_online_verifier_gadget<ppT>* g) {
+void camlsnark_mnt6_r1cs_se_ppzksnark_accumulated_online_verifier_gadget_delete(
+    r1cs_se_ppzksnark_accumulated_online_verifier_gadget<ppT>* g) {
   delete g;
 }
 
-void camlsnark_mnt6_r1cs_se_ppzksnark_online_verifier_gadget_generate_r1cs_constraints(
-    r1cs_se_ppzksnark_online_verifier_gadget<ppT>* g) {
+void camlsnark_mnt6_r1cs_se_ppzksnark_accumulated_online_verifier_gadget_generate_r1cs_constraints(
+    r1cs_se_ppzksnark_accumulated_online_verifier_gadget<ppT>* g) {
   g->generate_r1cs_constraints();
 }
 
-void camlsnark_mnt6_r1cs_se_ppzksnark_online_verifier_gadget_generate_r1cs_witness(
-    r1cs_se_ppzksnark_online_verifier_gadget<ppT>* g) {
+void camlsnark_mnt6_r1cs_se_ppzksnark_accumulated_online_verifier_gadget_generate_r1cs_witness(
+    r1cs_se_ppzksnark_accumulated_online_verifier_gadget<ppT>* g) {
   g->generate_r1cs_witness();
 }
 
@@ -326,19 +327,28 @@ camlsnark_mnt6_r1cs_se_ppzksnark_verification_key_variable_sign_vars(
     return res;
 }
 
+std::vector< libff::G1<other_curve<ppT>> >*
+camlsnark_mnt6_gm_verification_key_other_query(
+    r1cs_se_ppzksnark_verification_key<other_curve<ppT>> *vk)
+{
+    return new std::vector<libff::G1<other_curve<ppT>>>(vk->query);
+}
+
 std::vector< FieldT >*
 camlsnark_mnt6_gm_verification_key_characterizing_elts_up_to_sign(
     r1cs_se_ppzksnark_verification_key<other_curve<ppT>> *vk)
 {
-    std::vector<libff::G1<other_curve<ppT>>> all_G1_elts = { vk->G_alpha, vk->G_gamma };
-    std::vector<libff::G2<other_curve<ppT>>> all_G2_elts = { vk->H, vk->H_beta, vk->H_gamma };
-    std::vector<libff::Fqk<other_curve<ppT>>> all_GT_elts = { vk->G_alpha_H_beta.unitary_inverse() };
-
+    std::vector<libff::G1<other_curve<ppT>>> all_G1_elts = {};
     all_G1_elts.emplace_back(vk->query[0]);
     size_t input_size = vk->query.size() - 1;
     for (size_t i = 0; i < input_size; ++i) {
         all_G1_elts.emplace_back(vk->query[i+1]);
     }
+    all_G1_elts.emplace_back(vk->G_alpha);
+    all_G1_elts.emplace_back(vk->G_gamma);
+
+    std::vector<libff::G2<other_curve<ppT>>> all_G2_elts = { vk->H, vk->H_beta, vk->H_gamma };
+    std::vector<libff::Fqk<other_curve<ppT>>> all_GT_elts = { vk->G_alpha_H_beta.unitary_inverse() };
 
     std::vector<FieldT>* res = new std::vector<FieldT>();
 
@@ -372,15 +382,17 @@ std::vector<FieldT>*
 camlsnark_mnt6_gm_verification_key_sign_elts(
     r1cs_se_ppzksnark_verification_key<other_curve<ppT>> *vk)
 {
-    std::vector<libff::G1<other_curve<ppT>>> all_G1_elts = { vk->G_alpha, vk->G_gamma };
-    std::vector<libff::G2<other_curve<ppT>>> all_G2_elts = { vk->H, vk->H_beta, vk->H_gamma };
-    std::vector<libff::Fqk<other_curve<ppT>>> all_GT_elts = { vk->G_alpha_H_beta.unitary_inverse() };
-
+    std::vector<libff::G1<other_curve<ppT>>> all_G1_elts = {};
     all_G1_elts.emplace_back(vk->query[0]);
     size_t input_size = vk->query.size() - 1;
     for (size_t i = 0; i < input_size; ++i) {
         all_G1_elts.emplace_back(vk->query[i+1]);
     }
+    all_G1_elts.emplace_back(vk->G_alpha);
+    all_G1_elts.emplace_back(vk->G_gamma);
+
+    std::vector<libff::G2<other_curve<ppT>>> all_G2_elts = { vk->H, vk->H_beta, vk->H_gamma };
+    std::vector<libff::Fqk<other_curve<ppT>>> all_GT_elts = { vk->G_alpha_H_beta.unitary_inverse() };
 
     std::vector<FieldT>* res = new std::vector<FieldT>();
 
@@ -399,6 +411,111 @@ camlsnark_mnt6_gm_verification_key_sign_elts(
     }
 
     return res;
+}
+
+// End GM code
+
+// Start g1 ops code
+
+libff::G1<ppT>* camlsnark_mnt6_g1_of_coords (libff::Fq<ppT>* x, libff::Fq<ppT>* y) {
+  return new libff::G1<ppT>(*x, *y);
+}
+
+libff::G1<ppT>* camlsnark_mnt6_g1_negate (libff::G1<ppT>* a) {
+  return new libff::G1<ppT>(- *a);
+}
+
+libff::G1<ppT>* camlsnark_mnt6_g1_double (libff::G1<ppT>* a) {
+  return new libff::G1<ppT>(a->dbl());
+}
+
+libff::G1<ppT>* camlsnark_mnt6_g1_add (libff::G1<ppT>* a, libff::G1<ppT>* b) {
+  return new libff::G1<ppT>((*a) + (*b));
+}
+
+libff::G1<ppT>* camlsnark_mnt6_g1_scale (libff::bigint<libff::mnt6_r_limbs> *a, libff::G1<ppT>* x) {
+  return new libff::G1<ppT>((*a) * (*x));
+}
+
+libff::G1<ppT>* camlsnark_mnt6_g1_scale_field (FieldT *a, libff::G1<ppT>* x) {
+  return new libff::G1<ppT>((*a) * (*x));
+}
+
+libff::G1<ppT>* camlsnark_mnt6_g1_zero () {
+  return new libff::G1<ppT>(libff::G1<ppT>::zero());
+}
+
+libff::G1<ppT>* camlsnark_mnt6_g1_one () {
+  return new libff::G1<ppT>(libff::G1<ppT>::one());
+}
+
+void camlsnark_mnt6_g1_print(libff::G1<ppT>* x) {
+  x->print();
+}
+
+bool camlsnark_mnt6_g1_equal(libff::G1<ppT>* a, libff::G1<ppT>* b) {
+  return *a == *b;
+}
+
+void camlsnark_mnt6_g1_delete(libff::G1<ppT>* a) {
+  delete a;
+}
+
+libff::G1<ppT>* camlsnark_mnt6_g1_random() {
+  return new libff::G1<ppT>(libff::G1<ppT>::random_element());
+}
+
+void camlsnark_mnt6_g1_to_affine_coordinates(libff::G1<ppT>* a) {
+  a->to_affine_coordinates();
+}
+
+libff::Fq<ppT>* camlsnark_mnt6_g1_x(libff::G1<ppT>* a) {
+  assert(a->Z() == libff::Fq<ppT>::one());
+  return new libff::Fq<ppT>(a->X());
+}
+
+libff::Fq<ppT>* camlsnark_mnt6_g1_y(libff::G1<ppT>* a) {
+  assert(a->Z() == libff::Fq<ppT>::one());
+  return new libff::Fq<ppT>(a->Y());
+}
+
+std::vector<libff::G1<ppT>>* camlsnark_mnt6_g1_vector_create() {
+  return new std::vector<libff::G1<ppT>>();
+}
+
+int camlsnark_mnt6_g1_vector_length(std::vector<libff::G1<ppT>> *v) {
+  return v->size();
+}
+
+void camlsnark_mnt6_g1_vector_emplace_back(std::vector<libff::G1<ppT>>* v, libff::G1<ppT>* x) {
+  v->emplace_back(*x);
+}
+
+libff::G1<ppT>* camlsnark_mnt6_g1_vector_get(std::vector<libff::G1<ppT>>* v, int i) {
+  libff::G1<ppT> res = (*v)[i];
+  return new libff::G1<ppT>(res);
+}
+
+void camlsnark_mnt6_g1_vector_delete(std::vector<libff::G1<ppT>>* v) {
+  delete v;
+}
+
+void camlsnark_mnt6_g2_delete(libff::G2<ppT>* a) {
+  delete a;
+}
+
+void camlsnark_mnt6_g2_to_affine_coordinates(libff::G2<ppT>* a) {
+  a->to_affine_coordinates();
+}
+
+std::vector<libff::Fq<ppT>>* camlsnark_mnt6_g2_x(libff::G2<ppT>* a) {
+  assert(a->Z() == libff::Fqe<ppT>::one());
+  return new std::vector< libff::Fq<ppT> >(a->X().all_base_field_elements());
+}
+
+std::vector<libff::Fq<ppT>>* camlsnark_mnt6_g2_y(libff::G2<ppT>* a) {
+  assert(a->Z() == libff::Fqe<ppT>::one());
+  return new std::vector< libff::Fq<ppT> >(a->Y().all_base_field_elements());
 }
 
 }

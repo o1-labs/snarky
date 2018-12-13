@@ -103,9 +103,9 @@ module Checked
   end
 
   type _ Request.t +=
-    | Get_element: Address.value -> (Elt.value * Path.value) Request.t
-    | Get_path: Address.value -> Path.value Request.t
-    | Set: Address.value * Elt.value -> unit Request.t
+    | Get_element : Address.value -> (Elt.value * Path.value) Request.t
+    | Get_path : Address.value -> Path.value Request.t
+    | Set : Address.value * Elt.value -> unit Request.t
 
   val implied_root :
     Hash.var -> Address.var -> Path.var -> (Hash.var, _) Checked.t
@@ -119,6 +119,8 @@ module Checked
     -> Address.var
     -> f:(Elt.var -> (Elt.var, 's) Checked.t)
     -> (Hash.var, 's) Checked.t
+
+  val get_req : depth:int -> Hash.var -> Address.var -> (Elt.var, 's) Checked.t
 
   (* TODO: Change [prev] to be [prev_hash : Hash.var] since there may be no need
     to certify that the hash of the element is a particular value. *)
