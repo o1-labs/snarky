@@ -16,6 +16,14 @@ Module Constraint.
   Definition t var := list (basic_with_annotation var).
 End Constraint.
 
+Module Cvar.
+  Inductive t f v :=
+  | Constant : f -> t f v
+  | Var : v -> t f v
+  | Add : t f v -> t f v -> t f v
+  | Scale : f -> t f v -> t f v.
+End Cvar.
+
 Module As_prover.
   Definition t f v s a := (v -> f) -> s -> s * a.
 End As_prover.
