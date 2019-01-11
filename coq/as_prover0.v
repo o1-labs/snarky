@@ -7,19 +7,19 @@ Section Instances.
 
   Variables f v s : Type.
 
-  Instance as_prover_map f v s : Map (t f v s) := {
+  Global Instance as_prover_map f v s : Map (t f v s) := {
     map := fun A B t f tbl s =>
       let (s', x) := t tbl s in
       (s', f x)
   }.
 
-  Instance as_prover_bind f v s : Bind (t f v s) := {
+  Global Instance as_prover_bind f v s : Bind (t f v s) := {
     bind := fun A B t f tbl s =>
       let (s', x) := t tbl s in
       f x tbl s'
   }.
 
-  Instance as_prover_ret f v s : Return (t f v s) := {
+  Global Instance as_prover_ret f v s : Return (t f v s) := {
     ret := fun A x _ s => (s, x)
   }.
 

@@ -44,24 +44,24 @@ Arguments all {M All A} _.
 Section Instances.
   Context {M : Type -> Type}.
 
-  Instance map_of_bind `{Bind M} `{Return M} : Map M | 0 := {
+  Global Instance map_of_bind `{Bind M} `{Return M} : Map M | 0 := {
     map := fun A B ma f => bind ma (fun a => ret (f a))
   }.
 
-  Instance both_ `{Bind M} `{Map M} : Both M := {
+  Global Instance both_ `{Bind M} `{Map M} : Both M := {
     both := fun A B ma mb =>
       bind ma (fun a => map mb (fun b => (a, b)))
   }.
 
-  Instance join_ `{Bind M} : Join M := {
+  Global Instance join_ `{Bind M} : Join M := {
     join := fun A mma => bind mma (fun ma => ma)
   }.
 
-  Instance ignore_m_ `{Map M} : Ignore_m M := {
+  Global Instance ignore_m_ `{Map M} : Ignore_m M := {
     ignore_m := fun A ma => map ma (fun ma => tt)
   }.
 
-  Instance all_ `{Bind M} `{Return M} : All M := {
+  Global Instance all_ `{Bind M} `{Return M} : All M := {
     all := fun A =>
       let all := fix all rev lma :=
         match lma with
