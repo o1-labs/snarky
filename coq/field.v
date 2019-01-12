@@ -21,11 +21,26 @@ Section Field.
 
   Class Sqrt := { sqrt : F -> F }.
 
-  Class Is_Square := { is_square : F -> bool }.
+  Class Is_square := { is_square : F -> bool }.
 
   Class Equal := { equal : F -> F -> bool }.
 
   Class Size_in_bits (F : Type) (A : Type) := { size_in_bits : A }.
+
+  Class Field (A : Type) := {
+    field_of_int :> Of_int A;
+    field_one :> One;
+    field_zero :> Zero;
+    field_add :> Add;
+    field_sub :> Sub;
+    field_mul :> Mul;
+    field_inv :> Inv;
+    field_square :> Square;
+    field_sqrt :> Sqrt;
+    field_is_square :> Is_square;
+    field_equal :> Equal;
+    field_size_in_bits :> Size_in_bits F A
+  }.
 
   Definition negate `{Sub} `{Zero} x := sub zero x.
 
@@ -40,7 +55,7 @@ Arguments mul {F Mul} _ _.
 Arguments inv {F Inv} _.
 Arguments square {F Square} _.
 Arguments sqrt {F Sqrt} _.
-Arguments is_square {F Is_Square} _.
+Arguments is_square {F Is_square} _.
 Arguments equal {F Equal} _ _.
 Arguments size_in_bits {F A Size_in_bits}.
 Arguments negate {F Sub Zero} _ : rename.
