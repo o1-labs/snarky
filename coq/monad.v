@@ -2,33 +2,33 @@ Require Import List.
 Import ListNotations.
 
 Section Monad.
-  Variable M : Type -> Type.
+  Polymorphic Variable M : Type -> Type.
 
-  Class Map : Type := {
+  Polymorphic Class Map : Type := {
     map : forall (A B : Type), M A -> (A -> B) -> M B
   }.
 
-  Class Bind : Type := {
+  Polymorphic Class Bind : Type := {
     bind : forall (A B : Type), M A -> (A -> M B) -> M B
   }.
 
-  Class Both : Type := {
+  Polymorphic Class Both : Type := {
     both : forall (A B : Type), M A -> M B -> M (A * B)
   }.
 
-  Class Return : Type := {
+  Polymorphic Class Return : Type := {
     ret : forall (A : Type), A -> M A
   }.
 
-  Class Join : Type := {
+  Polymorphic Class Join : Type := {
     join : forall (A : Type), M (M A) -> M A
   }.
 
-  Class Ignore_m : Type := {
+  Polymorphic Class Ignore_m : Type := {
     ignore_m : forall (A : Type), M A -> M unit
   }.
 
-  Class All : Type := {
+  Polymorphic Class All : Type := {
     all : forall (A : Type), list (M A) -> M (list A)
   }.
 End Monad.
