@@ -5,25 +5,41 @@ Definition t := As_prover.t.
 
 Section Instances.
 
-  Variables f v s : Type.
+  Polymorphic Variables f v s : Type.
 
-  Global Instance as_prover_map f v s : Map (t f v s) := {
+  Global Polymorphic Instance as_prover_map f v s : Map (t f v s) := {
     map := fun A B t f tbl s =>
       let (s', x) := t tbl s in
       (s', f x)
   }.
 
-  Global Instance as_prover_bind f v s : Bind (t f v s) := {
+  Global Polymorphic Instance as_prover_bind f v s : Bind (t f v s) := {
     bind := fun A B t f tbl s =>
       let (s', x) := t tbl s in
       f x tbl s'
   }.
 
-  Global Instance as_prover_ret f v s : Return (t f v s) := {
+  Global Polymorphic Instance as_prover_ret f v s : Return (t f v s) := {
     ret := fun A x _ s => (s, x)
   }.
 
 End Instances.
+
+Module Monad.
+  Section Monad.
+    Context {F V S A B : Type}.
+
+    Definition map : t F V S A -> (A -> B) -> t F V S B := map.
+    Definition bind : t F V S A -> (A -> t F V S B) -> t F V S B := bind.
+    Definition both : t F V S A -> t F V S B -> t F V S (A * B) := both.
+    Definition ret : A -> t F V S A := ret.
+    Definition join : t F V S (t F V S A) -> t F V S A := join.
+    Definition ignore_m : t F V S A -> t F V S unit := ignore_m.
+    Definition all : list (t F V S A) -> t F V S (list A) := all.
+  End Monad.
+End Monad.
+
+Include Monad.
 
 Module T.
 
@@ -55,4 +71,4 @@ Module T.
     
 End T.
 
-Export T.
+Include T.

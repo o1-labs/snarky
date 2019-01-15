@@ -44,7 +44,7 @@ Arguments all {M All A} _.
 Section Instances.
   Context {M : Type -> Type}.
 
-  Global Instance map_of_bind `{Bind M} `{Return M} : Map M | 0 := {
+  Global Instance map_of_bind `{Bind M} `{Return M} : Map M | 1 := {
     map := fun A B ma f => bind ma (fun a => ret (f a))
   }.
 
