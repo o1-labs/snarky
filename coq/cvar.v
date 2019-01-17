@@ -1,8 +1,9 @@
 Require Import List.
 Import List.ListNotations.
 Require Snarky.types.
-Export Snarky.types.Cvar.
 Require Snarky.field.
+
+Include Snarky.types.Cvar.
 
 Module Unsafe.
   Definition of_var {F V} (v : V) : t F V := Var v.

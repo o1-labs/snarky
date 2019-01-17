@@ -62,8 +62,8 @@ Module T.
     Definition read_var (v : V) : t F V S F :=
       fun tbl s => (s, tbl v).
 
-    Definition read {f v sys s var value : Type}
-      (typ : Snarky.types.Typ.t f v sys var value) (var : var)
+    Definition read {f v sys s var value : Type} {request : Type -> Type}
+      (typ : Snarky.types.Typ.t f v sys request var value) (var : var)
     : t f v s value :=
       fun tbl s => (s, typ_monads.Read.run (Typ.read typ var) tbl).
 

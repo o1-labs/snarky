@@ -50,10 +50,12 @@ Module Store.
   Polymorphic Definition store {F V} (x : F) : t F V V :=
     Free x (fun v => Pure v).
 
-  Polymorphic Fixpoint run {F V A} (t : t F V A) (f : F -> V) : A :=
+  Polymorphic Fixpoint run {F V S A} (t : t F V A) (f : S -> F -> S * V) (s : S) : S * A :=
     match t with
-    | Pure x => x
-    | Free x k => run (k (f x)) f
+    | Pure x => (s, x)
+    | Free x k =>
+      let (s, v) := f s x in
+      run (k v) f s
     end.
 
 End Store.
@@ -162,10 +164,12 @@ Module Alloc.
   Polymorphic Definition alloc {V} : t V V :=
     Free (fun v => Pure v).
 
-  Polymorphic Fixpoint run {V A} (t : t V A) (f : unit -> V) : A :=
+  Polymorphic Fixpoint run {V S A} (t : t V A) (f : S -> S * V) (s : S) : S * A :=
     match t with
-    | Pure x => x
-    | Free k => run (k (f tt)) f
+    | Pure x => (s, x)
+    | Free k =>
+      let (s, v) := f s in
+      run (k v) f s
     end.
 
 End Alloc.

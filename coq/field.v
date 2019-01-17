@@ -27,24 +27,27 @@ Section Field.
 
   Class Size_in_bits (F : Type) (A : Type) := { size_in_bits : A }.
 
-  Class Field (A : Type) := {
-    field_of_int :> Of_int A;
-    field_one :> One;
-    field_zero :> Zero;
-    field_add :> Add;
-    field_sub :> Sub;
-    field_mul :> Mul;
-    field_inv :> Inv;
-    field_square :> Square;
-    field_sqrt :> Sqrt;
-    field_is_square :> Is_square;
-    field_equal :> Equal;
-    field_size_in_bits :> Size_in_bits F A
-  }.
-
   Definition negate `{Sub} `{Zero} x := sub zero x.
 
 End Field.
+
+Module Class.
+  Class Field (F A : Type) := {
+    field_of_int :> Of_int F A;
+    field_one :> One F;
+    field_zero :> Zero F;
+    field_add :> Add F;
+    field_sub :> Sub F;
+    field_mul :> Mul F;
+    field_inv :> Inv F;
+    field_square :> Square F;
+    field_sqrt :> Sqrt F;
+    field_is_square :> Is_square F;
+    field_equal :> Equal F;
+    field_size_in_bits :> Size_in_bits F A
+  }.
+End Class.
+Include Class.
 
 Arguments of_int {F A Of_int} _.
 Arguments one {F One}.

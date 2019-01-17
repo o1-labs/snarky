@@ -1,6 +1,52 @@
 Require Import List.
 Import ListNotations.
 
+Module Type NoMapFunctor.
+  Parameter M : Type -> Type.
+
+  Parameter bind : forall {A B}, M A -> (A -> M B) -> M B.
+
+  Parameter ret : forall {A}, A -> M A.
+End NoMapFunctor.
+
+Module Type Functor.
+  Include NoMapFunctor.
+
+  Parameter map : forall {A B}, M A -> (A -> B) -> M B.
+End Functor.
+
+Module Make (F : Functor).
+  Import F.
+
+  Definition both {A B} (ma : M A) (mb : M B) : M (A * B) :=
+    bind ma (fun a => map mb (fun b => (a, b))).
+
+  Definition join {A} (mma : M (M A)) : M A :=
+    bind mma (fun ma => ma).
+
+  Definition ignore_m {A} (ma : M A) : M unit :=
+    map ma (fun a => tt).
+
+  Definition all {A} (l : list (M A)) : M (list A) :=
+    let fix all rev lma :=
+      match lma with
+      | [] => ret (List.rev rev)
+      | a :: lma => bind a (fun a => all (a :: rev) lma)
+      end
+    in all [] l.
+End Make.
+
+Module MakeNoMap (F : NoMapFunctor).
+  Module F'.
+    Include F.
+
+    Definition map {A B} (ma : M A) (f : A -> B) :=
+      bind ma (fun a => ret (f a)).
+  End F'.
+
+  Include Make(F').
+End MakeNoMap.
+
 Section Monad.
   Polymorphic Variable M : Type -> Type.
 
