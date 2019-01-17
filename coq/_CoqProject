@@ -1,6 +1,15 @@
 -R . Snarky
 as_prover.v
+backend.v
+bigint.v
+checked.v
+constraint.v
+cvar.v
 field.v
 monad.v
+provider.v
+R1CS_constraint_system.v
+request.v
 types.v
 typ_monads.v
+Util.v

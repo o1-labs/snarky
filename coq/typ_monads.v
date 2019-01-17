@@ -2,34 +2,34 @@ Require Import Snarky.monad.
 
 Module Store.
 
-  Polymorphic Inductive t (F V A : Type) : Type :=
+  Polymorphic
+Inductive t (F V A : Type) : Type :=
   | Pure : A -> t F V A
   | Free : F -> (V -> t F V A) -> t F V A.
 
-  Arguments Pure {F V A} _.
-  Arguments Free {F V A} _ _.
+  Arguments Pure {F} {V} {A} _.
+  Arguments Free {F} {V} {A} _ _.
 
-  Global Polymorphic Instance store_return F V : Return (t F V) := {
-    ret A a := Pure a
-  }.
+  Global Polymorphic
+Instance store_return  F V: (Return (t F V)) := { ret :=fun A a => Pure a}.
 
-  Global Polymorphic Instance store_bind F V : Bind (t F V) := {
-    bind A B t f :=
-      (fix bind' t :=
-        match t with
-        | Pure a => f a
-        | Free x k => Free x (fun v => bind' (k v))
-        end) t
-  }.
+  Global Polymorphic
+Instance store_bind  F V: (Bind (t F V)) := {
+ bind :=fun A B t f =>
+        (fix bind' t :=
+           match t with
+           | Pure a => f a
+           | Free x k => Free x (fun v => bind' (k v))
+           end) t}.
 
-  Global Polymorphic Instance store_map F V : Map (t F V) := {
-    map A B t f :=
-      (fix map' t :=
-        match t with
-        | Pure a => Pure (f a)
-        | Free x k => Free x (fun v => map' (k v))
-        end) t
-  }.
+  Global Polymorphic
+Instance store_map  F V: (Map (t F V)) := {
+ map :=fun A B t f =>
+       (fix map' t :=
+          match t with
+          | Pure a => Pure (f a)
+          | Free x k => Free x (fun v => map' (k v))
+          end) t}.
 
   Module Monad.
     Section Monad.
@@ -47,8 +47,8 @@ Module Store.
 
   Include Monad.
 
-  Polymorphic Definition store {F V} (x : F) : t F V V :=
-    Free x (fun v => Pure v).
+  Polymorphic
+Definition store {F} {V} (x : F) : t F V V := Free x (fun v => Pure v).
 
   Polymorphic Fixpoint run {F V S A} (t : t F V A) (f : S -> F -> S * V) (s : S) : S * A :=
     match t with
@@ -62,34 +62,34 @@ End Store.
 
 Module Read.
 
-  Polymorphic Inductive t (F V A : Type) : Type :=
+  Polymorphic
+Inductive t (F V A : Type) : Type :=
   | Pure : A -> t F V A
   | Free : V -> (F -> t F V A) -> t F V A.
 
-  Arguments Pure {F V A} _.
-  Arguments Free {F V A} _ _.
+  Arguments Pure {F} {V} {A} _.
+  Arguments Free {F} {V} {A} _ _.
 
-  Global Polymorphic Instance read_return F V : Return (t F V) := {
-    ret A a := Pure a
-  }.
+  Global Polymorphic
+Instance read_return  F V: (Return (t F V)) := { ret :=fun A a => Pure a}.
 
-  Global Polymorphic Instance read_bind F V : Bind (t F V) := {
-    bind A B t f :=
-      (fix bind' t :=
-        match t with
-        | Pure a => f a
-        | Free x k => Free x (fun v => bind' (k v))
-        end) t
-  }.
+  Global Polymorphic
+Instance read_bind  F V: (Bind (t F V)) := {
+ bind :=fun A B t f =>
+        (fix bind' t :=
+           match t with
+           | Pure a => f a
+           | Free x k => Free x (fun v => bind' (k v))
+           end) t}.
 
-  Global Polymorphic Instance read_map F V : Map (t F V) := {
-    map A B t f :=
-      (fix map' t :=
-        match t with
-        | Pure a => Pure (f a)
-        | Free x k => Free x (fun v => map' (k v))
-        end) t
-  }.
+  Global Polymorphic
+Instance read_map  F V: (Map (t F V)) := {
+ map :=fun A B t f =>
+       (fix map' t :=
+          match t with
+          | Pure a => Pure (f a)
+          | Free x k => Free x (fun v => map' (k v))
+          end) t}.
 
   Module Monad.
     Section Monad.
@@ -105,8 +105,7 @@ Module Read.
     End Monad.
   End Monad.
 
-  Polymorphic Definition read {F V} (x : V) : t F V F :=
-    Free x ret.
+  Polymorphic Definition read {F} {V} (x : V) : t F V F := Free x ret.
 
   Polymorphic Fixpoint run {F V A} (t : t F V A) (f : V -> F) : A :=
     match t with
@@ -118,34 +117,34 @@ End Read.
 
 Module Alloc.
 
-  Polymorphic Inductive t (V A : Type) : Type :=
+  Polymorphic
+Inductive t (V A : Type) : Type :=
   | Pure : A -> t V A
   | Free : (V -> t V A) -> t V A.
 
-  Arguments Pure {V A} _.
-  Arguments Free {V A} _.
+  Arguments Pure {V} {A} _.
+  Arguments Free {V} {A} _.
 
-  Global Polymorphic Instance alloc_return V : Return (t V) := {
-    ret A a := Pure a
-  }.
+  Global Polymorphic
+Instance alloc_return  V: (Return (t V)) := { ret :=fun A a => Pure a}.
 
-  Global Polymorphic Instance alloc_bind V : Bind (t V) := {
-    bind A B t f :=
-      (fix bind' t :=
-        match t with
-        | Pure a => f a
-        | Free k => Free (fun v => bind' (k v))
-        end) t
-  }.
+  Global Polymorphic
+Instance alloc_bind  V: (Bind (t V)) := {
+ bind :=fun A B t f =>
+        (fix bind' t :=
+           match t with
+           | Pure a => f a
+           | Free k => Free (fun v => bind' (k v))
+           end) t}.
 
-  Global Polymorphic Instance alloc_map V : Map (t V) := {
-    map A B t f :=
-      (fix map' t :=
-        match t with
-        | Pure a => Pure (f a)
-        | Free k => Free (fun v => map' (k v))
-        end) t
-  }.
+  Global Polymorphic
+Instance alloc_map  V: (Map (t V)) := {
+ map :=fun A B t f =>
+       (fix map' t :=
+          match t with
+          | Pure a => Pure (f a)
+          | Free k => Free (fun v => map' (k v))
+          end) t}.
 
   Module Monad.
     Section Monad.
@@ -161,8 +160,8 @@ Module Alloc.
     End Monad.
   End Monad.
 
-  Polymorphic Definition alloc {V} : t V V :=
-    Free (fun v => Pure v).
+  Polymorphic Definition alloc {V} : t V V := Free (fun v => Pure v).
+
 
   Polymorphic Fixpoint run {V S A} (t : t V A) (f : S -> S * V) (s : S) : S * A :=
     match t with

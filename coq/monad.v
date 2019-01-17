@@ -2,110 +2,99 @@ Require Import List.
 Import ListNotations.
 
 Module Type NoMapFunctor.
-  Parameter M : Type -> Type.
+  Parameter (M : Type -> Type).
 
-  Parameter bind : forall {A B}, M A -> (A -> M B) -> M B.
+  Parameter (bind : forall {A B}, M A -> (A -> M B) -> M B).
 
-  Parameter ret : forall {A}, A -> M A.
+  Parameter (ret : forall {A}, A -> M A).
 End NoMapFunctor.
 
 Module Type Functor.
   Include NoMapFunctor.
 
-  Parameter map : forall {A B}, M A -> (A -> B) -> M B.
+  Parameter (map : forall {A B}, M A -> (A -> B) -> M B).
 End Functor.
 
-Module Make (F : Functor).
+Module Make (F: Functor).
   Import F.
 
-  Definition both {A B} (ma : M A) (mb : M B) : M (A * B) :=
-    bind ma (fun a => map mb (fun b => (a, b))).
+  Definition both {A} {B} (ma : M A) (mb : M B) : M (A * B) :=
+  bind ma (fun a => map mb (fun b => (a, b))).
 
-  Definition join {A} (mma : M (M A)) : M A :=
-    bind mma (fun ma => ma).
+  Definition join {A} (mma : M (M A)) : M A := bind mma (fun ma => ma).
 
-  Definition ignore_m {A} (ma : M A) : M unit :=
-    map ma (fun a => tt).
+  Definition ignore_m {A} (ma : M A) : M unit := map ma (fun a => tt).
 
   Definition all {A} (l : list (M A)) : M (list A) :=
-    let fix all rev lma :=
+  let
+    fix all rev lma :=
       match lma with
       | [] => ret (List.rev rev)
       | a :: lma => bind a (fun a => all (a :: rev) lma)
-      end
-    in all [] l.
+      end in
+  all [] l.
 End Make.
 
-Module MakeNoMap (F : NoMapFunctor).
+Module MakeNoMap (F: NoMapFunctor).
   Module F'.
     Include F.
 
-    Definition map {A B} (ma : M A) (f : A -> B) :=
-      bind ma (fun a => ret (f a)).
+    Definition map {A} {B} (ma : M A) (f : A -> B) :=
+  bind ma (fun a => ret (f a)).
   End F'.
 
-  Include Make(F').
+  Include Make F'.
 End MakeNoMap.
 
 Section Monad.
-  Polymorphic Variable M : Type -> Type.
+  Polymorphic Variable (M : Type -> Type).
 
-  Polymorphic Class Map : Type := {
-    map : forall (A B : Type), M A -> (A -> B) -> M B
-  }.
+  Polymorphic
+Class Map : Type :={map : forall A B : Type, M A -> (A -> B) -> M B}.
 
-  Polymorphic Class Bind : Type := {
-    bind : forall (A B : Type), M A -> (A -> M B) -> M B
-  }.
+  Polymorphic
+Class Bind : Type :={bind : forall A B : Type, M A -> (A -> M B) -> M B}.
 
-  Polymorphic Class Both : Type := {
-    both : forall (A B : Type), M A -> M B -> M (A * B)
-  }.
+  Polymorphic
+Class Both : Type :={both : forall A B : Type, M A -> M B -> M (A * B)}.
 
-  Polymorphic Class Return : Type := {
-    ret : forall (A : Type), A -> M A
-  }.
+  Polymorphic Class Return : Type :={ret : forall A : Type, A -> M A}.
 
-  Polymorphic Class Join : Type := {
-    join : forall (A : Type), M (M A) -> M A
-  }.
+  Polymorphic Class Join : Type :={join : forall A : Type, M (M A) -> M A}.
 
-  Polymorphic Class Ignore_m : Type := {
-    ignore_m : forall (A : Type), M A -> M unit
-  }.
+  Polymorphic
+Class Ignore_m : Type :={ignore_m : forall A : Type, M A -> M unit}.
 
-  Polymorphic Class All : Type := {
-    all : forall (A : Type), list (M A) -> M (list A)
-  }.
+  Polymorphic
+Class All : Type :={all : forall A : Type, list (M A) -> M (list A)}.
 End Monad.
 
-Arguments map {M Map A B} _ _.
-Arguments bind {M Bind A B} _ _.
-Arguments both {M Both A B} _ _.
-Arguments ret {M Return A} _.
-Arguments join {M Join A} _.
-Arguments ignore_m {M Ignore_m A} _.
-Arguments all {M All A} _.
+Arguments map {M} {Map} {A} {B} _ _.
+Arguments bind {M} {Bind} {A} {B} _ _.
+Arguments both {M} {Both} {A} {B} _ _.
+Arguments ret {M} {Return} {A} _.
+Arguments join {M} {Join} {A} _.
+Arguments ignore_m {M} {Ignore_m} {A} _.
+Arguments all {M} {All} {A} _.
 
 Section Instances.
   Context {M : Type -> Type}.
 
-  Global Instance map_of_bind `{Bind M} `{Return M} : Map M | 1 := {
-    map := fun A B ma f => bind ma (fun a => ret (f a))
-  }.
+  Global
+Instance map_of_bind  `{Bind M} `{Return M}: (Map M) |1 := {
+ map :=fun A B ma f => bind ma (fun a => ret (f a))}.
 
-  Global Instance both_ `{Bind M} `{Map M} : Both M := {
-    both := fun A B ma mb =>
-      bind ma (fun a => map mb (fun b => (a, b)))
-  }.
+  Global
+Instance both_  `{Bind M} `{Map M}: (Both M) := {
+ both :=fun A B ma mb => bind ma (fun a => map mb (fun b => (a, b)))}.
 
-  Global Instance join_ `{Bind M} : Join M := {
-    join := fun A mma => bind mma (fun ma => ma)
-  }.
+  Global
+Instance join_  `{Bind M}: (Join M) := {
+ join :=fun A mma => bind mma (fun ma => ma)}.
 
-  Global Instance ignore_m_ `{Map M} : Ignore_m M := {
-    ignore_m := fun A ma => map ma (fun ma => tt)
-  }.
+  Global
+Instance ignore_m_  `{Map M}: (Ignore_m M) := {
+ ignore_m :=fun A ma => map ma (fun ma => tt)}.
 
   Global Instance all_ `{Bind M} `{Return M} : All M := {
     all := fun A =>
