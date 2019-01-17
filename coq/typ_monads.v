@@ -50,8 +50,8 @@ Instance store_map  F V: (Map (t F V)) := {
 
 Definition store {F} {V} (x : F) : t F V V := Free x (fun v => Pure v).
 
-  Polymorphic Fixpoint run {F V S A} (t : t F V A) (f : S -> F -> S * V) (s : S) : S * A :=
-    match t with
+  Fixpoint run {F V S A} (x : t F V A) (f : S -> F -> S * V) (s : S) : S * A :=
+    match x with
     | Pure x => (s, x)
     | Free x k =>
       let (s, v) := f s x in
@@ -106,7 +106,7 @@ Instance read_map  F V: (Map (t F V)) := {
 
   Definition read {F} {V} (x : V) : t F V F := Free x ret.
 
-  Polymorphic Fixpoint run {F V A} (t : t F V A) (f : V -> F) : A :=
+  Fixpoint run {F V A} (t : t F V A) (f : V -> F) : A :=
     match t with
     | Pure x => x
     | Free x k => run (k (f x)) f
@@ -161,7 +161,7 @@ Instance alloc_map  V: (Map (t V)) := {
   Definition alloc {V} : t V V := Free (fun v => Pure v).
 
 
-  Polymorphic Fixpoint run {V S A} (t : t V A) (f : S -> S * V) (s : S) : S * A :=
+  Fixpoint run {V S A} (t : t V A) (f : S -> S * V) (s : S) : S * A :=
     match t with
     | Pure x => (s, x)
     | Free k =>

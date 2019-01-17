@@ -22,8 +22,17 @@ Module Handler.
 
   Definition push {req} (t : t req) (single : single req) := (single :: t)%list.
 
-  Unknown constructor: Provide.
+  Fixpoint run {req A} (stack : t req) (request : req A) : option A :=
+  match stack with
+  | nil => None
+  | (handle :: stack)%list =>
+      match handle _ request with
+      | Response.Provide a => Some a
+      | Response.Delegate request => run stack request
+      | Response.Unhandled => run stack request
+      end
+  end.
 
   Definition create_single {req}
-  (handler : forall {A}, req A -> Response.t req A) : single req := handler.
+  (handler : forall {A}, req A -> Response.t req A) : single req := @handler.
 End Handler.
