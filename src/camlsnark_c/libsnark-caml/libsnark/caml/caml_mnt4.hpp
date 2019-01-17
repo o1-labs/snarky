@@ -1,5 +1,5 @@
 #include <libsnark/relations/variable.hpp>
-#include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
+#include <libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark/r1cs_se_ppzksnark.hpp>
 #include <libsnark/relations/constraint_satisfaction_problems/r1cs/r1cs.hpp>
 #include <libsnark/gadgetlib1/pb_variable.hpp>
@@ -13,6 +13,7 @@
 #include <libff/algebra/scalar_multiplication/wnaf.hpp>
 #include <gmp.h>
 #include <openssl/md5.h>
+#include <libsnark/gadgetlib1/gadgets/hashes/sha256/sha256_gadget.hpp>
 
 typedef libff::mnt4_pp ppT;
 typedef libff::mnt6_pp other_curve_ppT;

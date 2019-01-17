@@ -8,34 +8,15 @@ Disclaimer: This code has not been thoroughly audited and should not
 be used in production systems.
 
 ## Getting started
-
-- Install [Docker](https://www.docker.com/)
-
+- First install libsnark's dependencies as specified [here](https://github.com/scipr-lab/libsnark#dependencies)
+- Then, make sure you have [opam](https://opam.ocaml.org/doc/Install.html) installed.
+- Then, install `snarky` by running
 ```bash
-# Build container image 
-# (this can easily take ~10m to finish)
-docker build -t snarky .
-
-# Start container
-docker run -it snarky
+opam pin add snarky git@github.com:o1-labs/snarky.git
 ```
-
-Now you should dropped into a shell with `snarky` installed as an opam library for use in other ocaml projects. You can also use `dune` to build the examples:
-
-```bash
-dune b examples/tutorial/tutorial.exe
-dune b examples/election/election_main.exe
-dune b examples/merkle_update/merkle_update.exe
-```
-
-You can execute them using `dune exec`.
-
-```bash
-dune exec examples/tutorial/tutorial.exe
-```
+and answering yes to the prompts.
 
 The best place to get started learning how to use the library are the annotated examples.
-- [Tutorial](examples/tutorial/tutorial.ml): teaches you the basics
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
 - [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
 
@@ -49,7 +30,7 @@ certified by the snark. For example, we have a function
 ```ocaml
 mul : var -> var -> (var, _) Checked.t.
 ```
-Given `v1, v2 : var`, `mul v1 v2` is a variable containing the product of v1 and v2,
+Given `v1, v2 : var`, `mul v1 v2` is a variable containg the product of v1 and v2,
 and the snark will ensure that this is so.
 
 

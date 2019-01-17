@@ -6,6 +6,10 @@ module type S = sig
   include Container.S1 with type 'a t := 'a t
 
   val of_list : 'a list -> 'a t
+
+  val init : int -> f:(int -> 'a) -> 'a t
+
+  val map : 'a t -> f:('a -> 'b) -> 'b t
 end
 
 module T = struct
@@ -25,3 +29,12 @@ module Lsb_first = struct
 
   let of_msb_first = List.rev
 end
+
+let pad_to_triple_list ~default xs =
+  let rec go acc = function
+    | [] -> List.rev acc
+    | [x1] -> List.rev ((x1, default, default) :: acc)
+    | [x1; x2] -> List.rev ((x1, x2, default) :: acc)
+    | x1 :: x2 :: x3 :: xs -> go ((x1, x2, x3) :: acc) xs
+  in
+  go [] xs

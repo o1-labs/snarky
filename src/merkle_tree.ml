@@ -391,12 +391,12 @@ struct
     go 0 entry_hash addr0 path0
 
   type _ Request.t +=
-    | Get_element: Address.value -> (Elt.value * Path.value) Request.t
-    | Get_path: Address.value -> Path.value Request.t
-    | Set: Address.value * Elt.value -> unit Request.t
+    | Get_element : Address.value -> (Elt.value * Path.value) Request.t
+    | Get_path : Address.value -> Path.value Request.t
+    | Set : Address.value * Elt.value -> unit Request.t
 
   (* addr0 should have least significant bit first *)
-  let modify_req ~(depth: int) root addr0 ~f : (Hash.var, 's) Checked.t =
+  let modify_req ~(depth : int) root addr0 ~f : (Hash.var, 's) Checked.t =
     let open Let_syntax in
     with_label "Merkle_tree.Checked.update_req"
       (let%bind prev, prev_path =
@@ -423,7 +423,24 @@ struct
        implied_root next_entry_hash addr0 prev_path)
 
   (* addr0 should have least significant bit first *)
-  let update_req ~(depth: int) ~root ~prev ~next addr0 :
+  let get_req ~(depth : int) root addr0 : (Elt.var, 's) Checked.t =
+    let open Let_syntax in
+    with_label "Merkle_tree.Checked.update_req"
+      (let%bind prev, prev_path =
+         request_witness
+           Typ.(Elt.typ * Path.typ ~depth)
+           As_prover.(
+             map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a))
+       in
+       let%bind () =
+         let%bind prev_entry_hash = Elt.hash prev in
+         implied_root prev_entry_hash addr0 prev_path
+         >>= Hash.assert_equal root
+       in
+       return prev)
+
+  (* addr0 should have least significant bit first *)
+  let update_req ~(depth : int) ~root ~prev ~next addr0 :
       (Hash.var, _) Checked.t =
     let open Let_syntax in
     with_label "Merkle_tree.Checked.update_req"
@@ -449,16 +466,17 @@ struct
        implied_root next_entry_hash addr0 prev_path)
 
   (* addr0 should have least significant bit first *)
-  let update ~(depth: int) ~root ~prev ~next addr0 :
+  let update ~(depth : int) ~root ~prev ~next addr0 :
       (Hash.var, (Hash.value, Elt.value) merkle_tree) Checked.t =
     let open Let_syntax in
     with_label "Merkle_tree.Checked.update"
       (let%bind prev_entry_hash = Elt.hash prev
        and next_entry_hash = Elt.hash next
        and prev_path =
-         provide_witness (Path.typ ~depth)
-           As_prover.(
-             map2 ~f:get_path get_state (read (Address.typ ~depth) addr0))
+         exists (Path.typ ~depth)
+           ~compute:
+             As_prover.(
+               map2 ~f:get_path get_state (read (Address.typ ~depth) addr0))
        in
        let%bind prev_root_hash =
          implied_root prev_entry_hash addr0 prev_path

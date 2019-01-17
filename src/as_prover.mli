@@ -2,6 +2,8 @@ open Core_kernel
 
 include Monad.S3 with type ('a, 'e, 's) t = 'e -> 's -> 's * 'a
 
+val run : ('a, 'e, 's) t -> 'e -> 's -> 's * 'a
+
 module type S = sig
   type env
 
@@ -20,5 +22,4 @@ end
 
 module Make (Env : sig
   type t
-end) :
-  S with type env := Env.t
+end) : S with type env := Env.t
