@@ -1,4 +1,5 @@
 open Core_kernel
+open Bitstring_lib
 
 module Make (Impl : Snark_intf.S) = struct
   open Impl
@@ -33,8 +34,8 @@ module Make (Impl : Snark_intf.S) = struct
         List.init Field.size_in_bits ~f:(fun i -> Bigint.test_bit n i) )
 
   module Checked = struct
-    let hash_to_field ({dimension; max_input_length; coefficients}: t)
-        (vs: Boolean.var list) : (Field.Checked.t list, _) Checked.t =
+    let hash_to_field ({dimension; max_input_length; coefficients} : t)
+        (vs : Boolean.var list) : (Field.Checked.t list, _) Checked.t =
       let vs = (vs :> Field.Checked.t list) in
       let input_len = List.length vs in
       if input_len > max_input_length then
@@ -44,7 +45,7 @@ module Make (Impl : Snark_intf.S) = struct
             (map2_lax cs vs ~f:(fun c v -> (c, v))) )
       |> Checked.return
 
-    let hash_to_bits (t: t) (vs: Boolean.var list) :
+    let hash_to_bits (t : t) (vs : Boolean.var list) :
         (Boolean.var list, _) Checked.t =
       let open Let_syntax in
       let%bind xs = hash_to_field t vs in
@@ -76,14 +77,15 @@ module Make (Impl : Snark_intf.S) = struct
     (* res = (1 - b) * xs + b * ys
      res - xs = b * (ys - xs)
   *)
-    let if_ (b: Boolean.var) ~then_:ys ~else_:xs : (var, _) Impl.Checked.t =
+    let if_ (b : Boolean.var) ~then_:ys ~else_:xs : (var, _) Impl.Checked.t =
       let open Impl.Let_syntax in
       let%bind res =
-        provide_witness typ_unchecked
-          (let open As_prover.Let_syntax in
-          match%bind As_prover.read Boolean.typ b with
-          | false -> As_prover.read typ xs
-          | true -> As_prover.read typ ys)
+        exists typ_unchecked
+          ~compute:
+            (let open As_prover.Let_syntax in
+            match%bind As_prover.read Boolean.typ b with
+            | false -> As_prover.read typ xs
+            | true -> As_prover.read typ ys)
       in
       let%map () =
         let open Field.Checked.Infix in
@@ -99,7 +101,7 @@ module Make (Impl : Snark_intf.S) = struct
       in
       res
 
-    let hash (h1: var) (h2: var) =
+    let hash (h1 : var) (h2 : var) =
       with_label "Knapsack.hash" (Checked.hash_to_bits knapsack (h1 @ h2))
 
     let map2i_exn xs ys ~f =

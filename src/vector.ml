@@ -27,10 +27,10 @@ module Make (M : sig
 
   val typ : elt Ctypes.typ
 
+  val schedule_delete : elt -> unit
+
   val prefix : string
-end) :
-  S with type elt = M.elt =
-struct
+end) : S with type elt = M.elt = struct
   type elt = M.elt
 
   type t = unit ptr
@@ -47,7 +47,11 @@ struct
       let t = stub () in
       Caml.Gc.finalise delete t ; t
 
-  let get = foreign (func_name "get") (typ @-> int @-> returning M.typ)
+  let get =
+    let stub = foreign (func_name "get") (typ @-> int @-> returning M.typ) in
+    fun t i ->
+      let x = stub t i in
+      M.schedule_delete x ; x
 
   let length = foreign (func_name "length") (typ @-> returning int)
 
