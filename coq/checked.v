@@ -123,19 +123,6 @@ Module Run.
 
     Definition var := Cvar.t F nat.
 
-(*Definition run {F sys S A} `{field.Field F} (num_inputs : nat) (input : list F) (aux : list F) (system : option sys)
-  (eval_constraints : bool) (t0 : t F nat sys S A) (s0 : option s) :=
-  let next_auxiliary := 1 + num_inputs in
-  let eval_constraints := match s0 with
-    | Some _ => eval_constraints
-    | None => false
-    end in
-  let get_value := get_value num_inputs input in
-  let run_as_prover := run_as_prover num_inputs input in
-  let system := match system with
-    | Some system => Some (R1CS_constraint_system.set_primary_input_size system num_inputs)
-    | None => None in*)
-
     Definition set_next_auxiliary {S : Type} (next_auxiliary : nat) (run_state : run_state F sys' req S) :=
     {| num_inputs := num_inputs run_state
     ; input := input run_state
@@ -375,10 +362,9 @@ Module Run.
           end
       end
   end rstate.
-(** TODO: currently ignoring this. *)
 
-
-  Definition run {A S} (input : list F) (system : option sys) (eval_constraints : bool)
+  Definition run {A S} (num_inputs : nat) (input : list F)
+    (system : option sys) (eval_constraints : bool)
     (t : t F var sys req S A) (s : option S) :=
     let num_inputs := List.length input in
     let rstate := {|
@@ -393,5 +379,65 @@ Module Run.
     ; stack := []
     |} in
     run_aux rstate t.
+
+  Definition constraint_system {A S} (num_inputs : nat) (t : t F var sys req S A) :
+    sys + string :=
+    let input := []%list in
+    let system' := R1CS_constraint_system.create tt in
+    match run num_inputs input (Some system') false t None with
+    | inl (rstate, _) =>
+      match system rstate with
+      | Some system => inl system
+      | None => inr "Expected a constraints system, got None."%string
+      end
+    | inr err => inr err
+    end.
+
+  Definition auxiliary_input {A S} (t0 : t F var sys req S A) (s0 : S)
+    (num_inputs : nat) (input : list F) : list F + string :=
+    match run num_inputs input None false t0 (Some s0) with
+    | inl (rstate, _) => inl (aux rstate)
+    | inr err => inr err
+    end.
+
+  Definition run_and_check' {A S} (t0 : t F var sys req S A) (s0 : S) :=
+    let system' := R1CS_constraint_system.create tt in
+    match run 0 []%list (Some system') true t0 (Some s0) with
+    | inl (rstate, x) =>
+      match system rstate, state rstate with
+      | Some system, Some s =>
+        let system := R1CS_constraint_system.set_auxiliary_input_size system
+          (next_auxiliary rstate) in
+        if R1CS_constraint_system.is_satisfied system (input rstate) (aux rstate) then
+          inl (s, x, get_value rstate)
+        else
+          inr "Unknown constraint unsatisfied"%string
+      | _, _ => inr "Expected a value, got None."%string
+      end
+    | inr err => inr err
+    end.
+
+  Definition run_unchecked {A S} (t0 : t F var sys req S A) (s0 : S) :=
+    match run 0 []%list None false t0 (Some s0) with
+    | inl (rstate, x) =>
+      match state rstate with
+      | Some s => inl (s, x)
+      | None => inr "Expected a value from run, got None."%string
+      end
+    | inr err => inr err
+    end.
+
+  Definition run_and_check {A S} (t0 : t F var sys req S (As_prover.t F var S A)) (s0 : S) :=
+    match run_and_check' t0 s0 with
+    | inl (s, x, get_value) => inl (as_prover.run x get_value s)
+    | inr err => inr err
+    end.
+
+  Definition check {A S} (t0 : t F var sys req S A) (s0 : S) :=
+    match run_and_check' t0 s0 with
+    | inl _ => true
+    | inr _ => false
+    end.
+
 End Run_aux.
 End Run.

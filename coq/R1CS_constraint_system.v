@@ -43,7 +43,7 @@ Section R1CS_constraint_system.
 
   Definition get_primary_input_size := primary_input_size.
 
-  Definition set_secondary_input_size (x : t) (n : nat) :=
+  Definition set_auxiliary_input_size (x : t) (n : nat) :=
   {|
   primary_input_size := primary_input_size x;
   auxiliary_input_size := n;
@@ -58,7 +58,7 @@ Section R1CS_constraint_system.
   Class Is_satisfied_aux :={is_satisfied_aux :
                            sys -> list field -> list field -> bool}.
 
-  Definition is_satisfied `{Is_satisfied_aux} (x : t)
+  Definition is_satisfied `{Is_satisfied : Is_satisfied_aux} (x : t)
   (primary secondary : list field) :=
   is_satisfied_aux (constraints x) primary secondary.
 
@@ -68,7 +68,10 @@ Section R1CS_constraint_system.
 
 End R1CS_constraint_system.
 
+Arguments create {sys} {Create}.
 Arguments add_constraint_with_annotation {constraint} {sys} {H}.
+Arguments set_auxiliary_input_size {sys}.
+Arguments is_satisfied {field} {sys} {Is_satisfied}.
 
 Module Class.
   Class R1CS_constraint_system field constraint sys :={system_create :>
