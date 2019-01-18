@@ -3,7 +3,9 @@ open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
 
+(** The base interface to Snarky. *)
 module type Basic = sig
+  (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
   module Proving_key : sig
     type t [@@deriving bin_io]
 
@@ -16,6 +18,7 @@ module type Basic = sig
     val of_bigstring : Bigstring.t -> t
   end
 
+  (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
   module Verification_key : sig
     type t [@@deriving bin_io]
 
@@ -28,12 +31,16 @@ module type Basic = sig
     val of_bigstring : Bigstring.t -> t
   end
 
+  (** The rank-1 constraint system used by this instance. See
+      {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
     type t
 
     val digest : t -> Md5.t
   end
 
+  (** Managing and generating pairs of keys {!type:Proving_key.t} and
+      {!type:Verification_key.t}. *)
   module Keypair : sig
     type t [@@deriving bin_io]
 
@@ -46,12 +53,14 @@ module type Basic = sig
     val generate : R1CS_constraint_system.t -> t
   end
 
+  (** Variables in the R1CS. *)
   module Var : sig
     include Comparable.S
 
     val create : int -> t
   end
 
+  (** The finite field over which the R1CS operates. *)
   type field
 
   module Bigint : sig
@@ -62,6 +71,7 @@ module type Basic = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
+  (** Rank-1 constraints over {!type:Var.t}s. *)
   module rec Constraint : sig
     type t = Field.Checked.t Constraint0.t
 
@@ -78,7 +88,14 @@ module type Basic = sig
     val square : (Field.Checked.t -> Field.Checked.t -> t) with_constraint_args
   end
   
+  (** The data specification for checked computations. *)
   and Data_spec : sig
+    (** A list of {!type:Typ.t} values, describing the inputs to a checked computation.
+        The type [('r_var, 'r_value, 'k_var, 'k_value) t] represents
+        - ['k_value] is the OCaml type of the computation
+        - ['r_value] is the OCaml type of the result
+        - ['k_var] is the type of the computation within the R1CS
+        - ['k_value] is the type of the result within the R1CS. *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
       | ( :: ) :
           ('var, 'value) Typ.t * ('r_var, 'r_value, 'k_var, 'k_value) t
@@ -88,6 +105,7 @@ module type Basic = sig
     val size : (_, _, _, _) t -> int
   end
   
+  (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
       include
@@ -119,6 +137,8 @@ module type Basic = sig
       , R1CS_constraint_system.t )
       Types.Typ.t
 
+    (** Accessors for {!type:Types.Typ.t} fields: *)
+
     val store : ('var, 'value) t -> 'value -> 'var Store.t
 
     val read : ('var, 'value) t -> 'var -> 'value Read.t
@@ -127,14 +147,24 @@ module type Basic = sig
 
     val check : ('var, 'value) t -> 'var -> (unit, _) Checked.t
 
+    (** Basic instances: *)
+
     val unit : (unit, unit) t
 
     val field : (Field.Checked.t, field) t
+
+    (** Common constructors: *)
 
     val tuple2 :
          ('var1, 'value1) t
       -> ('var2, 'value2) t
       -> ('var1 * 'var2, 'value1 * 'value2) t
+
+    val ( * ) :
+         ('var1, 'value1) t
+      -> ('var2, 'value2) t
+      -> ('var1 * 'var2, 'value1 * 'value2) t
+    (** synonym for tuple2 *)
 
     val tuple3 :
          ('var1, 'value1) t
@@ -142,20 +172,18 @@ module type Basic = sig
       -> ('var3, 'value3) t
       -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
 
-    val hlist :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
-
     val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
 
     val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
 
-    (* synonym for tuple2 *)
+    val hlist :
+         (unit, unit, 'k_var, 'k_value) Data_spec.t
+      -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
+    (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
+        a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
 
-    val ( * ) :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var1 * 'var2, 'value1 * 'value2) t
+    (** Convert relationships over
+        {{:https://en.wikipedia.org/wiki/Isomorphism}isomorphic} types: *)
 
     val transport :
          ('var, 'value1) t
@@ -183,6 +211,11 @@ module type Basic = sig
     end
   end
   
+  (** Representation of booleans within a field.
+
+      This representation ties the value of [true] to {!val:Field.one} and
+      [false] to {!val:Field.zero}, adding a check in {!val:Boolean.typ} to
+      ensure that these are the only vales. *)
   and Boolean : sig
     type var = Field.Checked.t Boolean0.t
 
@@ -205,16 +238,22 @@ module type Basic = sig
     val all : var list -> (var, _) Checked.t
 
     val of_field : Field.Checked.t -> (var, _) Checked.t
+    (** Convert a value in a field to a boolean, adding checks to the R1CS that
+       it is a valid boolean value. *)
 
     val var_of_value : value -> var
 
     val typ : (var, value) Typ.t
+    (** The relationship between {!val:var} and {!val:value}, with a check that
+        the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)
 
     val typ_unchecked : (var, value) Typ.t
+    (** {!val:typ} without a validity check for the underlying field value. *)
 
     val equal : var -> var -> (var, _) Checked.t
 
     module Expr : sig
+      (** Expression trees. *)
       type t
 
       val ( ! ) : var -> t
@@ -230,6 +269,7 @@ module type Basic = sig
       val not : t -> t
 
       val eval : t -> (var, _) Checked.t
+      (** Evaluate the expression tree. *)
 
       val assert_ : t -> (unit, _) Checked.t
     end
@@ -251,7 +291,26 @@ module type Basic = sig
     end
   end
   
+  (** Checked computations.
+
+      These are the values used to generate an R1CS for a computation. *)
   and Checked : sig
+    (** [('ret, 'state) t] represents a computation ['state -> 'ret] that can
+        be compiled into an R1CS.
+
+        We form a
+        {{:https://en.wikipedia.org/wiki/Monad_(functional_programming)}monad}
+        over this type, which allows us to work inside the checked function to
+        do further checked computations. For example (using
+        {{:https://github.com/janestreet/ppx_let}monad let-syntax}):
+{[
+let multiply3 (x : Field.Checked.t) (y : Field.Checked.t) (z : Field.Checked.t)
+  : (Field.Checked.t, _) Checked.t =
+  open Checked.Let_syntax in
+  let%bind x_times_y = Field.Checked.mul x y in
+  Field.Checked.mul x_times_y z
+]}
+    *)
     include
       Monad.S2
       with type ('a, 's) t =
@@ -268,13 +327,21 @@ module type Basic = sig
        and type 'a t = 'a list
        and type boolean := Boolean.var
 
+    (** [Choose_preimage] is the request issued by
+        {!val:Field.Checked.choose_preimage_var} before falling back to its
+        default implementation. You can respond to this request to override the
+        default behaviour.
+        
+        See {!module:Request} for more information on requests. *)
     type _ Request.t += Choose_preimage : field * int -> bool list Request.t
   end
   
   and Field : sig
+    (** The finite field over which the R1CS operates. *)
     type t = field [@@deriving bin_io, sexp, hash, compare, eq]
 
     val gen : t Core_kernel.Quickcheck.Generator.t
+    (** A generator for Quickcheck tests. *)
 
     include Field_intf.Extended with type t := t
 
@@ -283,8 +350,10 @@ module type Basic = sig
     val size : Bignum_bigint.t
 
     val unpack : t -> bool list
+    (** Convert a field element into its constituent bits. *)
 
     val project : bool list -> t
+    (** Convert a list of bits into a field element. *)
 
     module Checked : sig
       type t = (field, Var.t) Cvar.t
@@ -295,6 +364,8 @@ module type Basic = sig
       val var_indices : t -> int list
 
       val to_constant_and_terms : t -> field option * (field * Var.t) list
+      (** Convert a {!type:t} value to its constituent constant and a list of
+          scaled R1CS variables. *)
 
       val constant : field -> t
 
@@ -400,11 +471,20 @@ module type Basic = sig
   end
 
   module As_prover : sig
+    (** An [('a, 'prover_state) t] value uses the current ['prover_state] to
+        generate a value of type ['a], and update the ['prover_state] as
+        necessary, within a checked computation.
+        
+        This type specialises the {!type:As_prover.t} type for the backend's
+        particular field and variable type. *)
     type ('a, 'prover_state) t
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 
+    (** Mutable references for use by the prover in a checked computation. *)
     module Ref : sig
+      (** A mutable reference to an ['a] value, which may be used in checked
+          computations. *)
       type 'a t
 
       val create :

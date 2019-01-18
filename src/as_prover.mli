@@ -1,5 +1,12 @@
 open Core_kernel
 
+(** {!type:t} is the type of functions that the prover can run during the
+    course of a checked computation.
+    
+    We form a {{: https://en.wikipedia.org/wiki/Monad_(functional_programming)}monad}
+    over {!type:t} so that we have a simple way to interact with values inside the type
+    (the value of type ['a] corresponding to our [('a, 'e, 's) t]).
+    *)
 include Monad.S3 with type ('a, 'e, 's) t = 'e -> 's -> 's * 'a
 
 val run : ('a, 'e, 's) t -> 'e -> 's -> 's * 'a

@@ -28,27 +28,27 @@ module type S = sig
 
   module Ref : sig
     type 'a t
- 
+
     val create :
          ('a, env, 'prover_state) As_prover0.t
       -> ('a t, 'prover_state, field, var, 'sys) Checked.t
- 
+
     val get : 'a t -> ('a, env, _) As_prover0.t
- 
+
     val set : 'a t -> 'a -> (unit, env, _) As_prover0.t
   end
 end
 
 module T = struct
   include As_prover0.T
- 
+
   let read ({read; _} : ('var, 'value, 'field, 'cvar, 'sys) Typ.t) (var : 'var)
       : ('value, 'cvar -> 'field, 'prover_state) t =
    fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
- 
+
   module Ref = struct
     type 'a t = 'a option ref
- 
+
     let create (x : ('a, 'cvar -> 'field, 's) As_prover0.t) :
         ('a t, 's, 'field, 'cvar, 'sys) Checked.t =
       let r = ref None in
@@ -57,9 +57,9 @@ module T = struct
         Checked.as_prover (As_prover0.map x ~f:(fun x -> r := Some x))
       in
       r
- 
+
     let get (r : 'a t) _tbl s = (s, Option.value_exn !r)
- 
+
     let set (r : 'a t) x _tbl s = (s, (r := Some x))
   end
 end
