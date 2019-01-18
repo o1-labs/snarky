@@ -5,6 +5,9 @@ all : docker googlecloud minikube
 build :
 	dune build --root=.
 
+ml-docs :
+	dune build --root=. @doc
+
 docker :
 	./rebuild-docker.sh ocaml-camlsnark
 
