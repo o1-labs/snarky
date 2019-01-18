@@ -2,3 +2,7 @@
 dune-project
 _build
 *.install
+.*.aux
+*.glob
+*.vo
+*~
