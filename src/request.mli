@@ -63,6 +63,6 @@ module Handler : sig
   val push : t -> single -> t
   (** Add a single handler. *)
 
-  val run : t -> 'a req -> 'a
+  val run : t -> string list -> 'a req -> 'a
   (** Run the handler on a request. Throws an error on failure. *)
 end

@@ -549,7 +549,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | Exists ({store; alloc; check; _}, p, k) -> (
           match s with
           | Some s ->
-              let s', value = Provider.run p get_value s handler in
+              let s', value = Provider.run p stack get_value s handler in
               let var = Typ.Store.run (store value) store_field_elt in
               (* TODO: Push a label onto the stack here *)
               let (_ : unit option), () =
