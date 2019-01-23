@@ -26,5 +26,5 @@ module Handler : sig
 
   val push : t -> single -> t
 
-  val run : t -> 'a req -> 'a
+  val run : t -> string list -> 'a req -> 'a
 end
