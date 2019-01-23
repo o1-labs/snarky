@@ -446,8 +446,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       end
     end
 
-    type var__ = Var.t
-
     val typ : (Var.t, t) Typ.t
   end
 

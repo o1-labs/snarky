@@ -1095,8 +1095,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
         Bignum_bigint.(gen_incl zero (size - one))
         ~f:(fun x -> Bigint.(to_field (of_bignum_bigint x)))
 
-    type var__ = Cvar.t
-
     let typ = Typ.field
 
     type var' = Var.t
