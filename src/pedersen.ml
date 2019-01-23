@@ -144,7 +144,7 @@ end = struct
 
       let typ : (var, t) Typ.t = Typ.list Boolean.typ ~length:length_in_bits
 
-      let project = Field.Checked.project
+      let project = Field.Var.project
 
       let constant = List.map ~f:Boolean.var_of_value
     end

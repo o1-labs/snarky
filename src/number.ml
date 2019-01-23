@@ -38,7 +38,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     assert (n < Field.size_in_bits) ;
     { upper_bound= Bignum_bigint.(pow2 n - one)
     ; lower_bound= Bignum_bigint.zero
-    ; var= Field.Checked.pack bs
+    ; var= Field.Var.pack bs
     ; bits= Some bs }
 
   let mul_pow_2 n (`Two_to_the k) =
@@ -50,7 +50,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     assert (Bignum_bigint.(upper_bound < Field.size)) ;
     { upper_bound
     ; lower_bound= Bignum_bigint.(n.lower_bound * pow (of_int 2) (of_int k))
-    ; var= Field.Checked.pack multiplied
+    ; var= Field.Var.pack multiplied
     ; bits= Some multiplied }
 
   let div_pow_2 n (`Two_to_the k) =
@@ -72,7 +72,7 @@ module Make (Impl : Snark_intf.Basic) = struct
        else
          let%bind bs = to_bits t in
          let bs' = List.take bs n in
-         let g = Field.Checked.project bs' in
+         let g = Field.Var.project bs' in
          let%bind fits = Field.Checked.equal t.var g in
          let%map r =
            Field.Checked.if_ fits ~then_:g

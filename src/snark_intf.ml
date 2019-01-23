@@ -379,6 +379,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       val sub : t -> t -> t
 
       val scale : t -> field -> t
+
+      val project : Boolean.var list -> t
+
+      val pack : Boolean.var list -> t
     end
 
     module Checked : sig
@@ -391,10 +395,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       val inv : Var.t -> (Var.t, _) Checked.t
 
       val equal : Var.t -> Var.t -> (Boolean.var, 's) Checked.t
-
-      val project : Boolean.var list -> Var.t
-
-      val pack : Boolean.var list -> Var.t
 
       val unpack : Var.t -> length:int -> (Boolean.var list, _) Checked.t
 
