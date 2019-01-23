@@ -4,6 +4,9 @@ all : docker googlecloud minikube
 build :
 	dune build --root=.
 
+ml-docs :
+	dune build --root=. @doc
+
 examples :
 	dune exec --root=. ./examples/election/election_main.exe
 	# TODO: Re-enable when fixed, see #41
