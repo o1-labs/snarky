@@ -424,10 +424,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
   module As_prover = struct
     include As_prover.Make (struct
       type var = Cvar.t
- 
+
       type field = Field.t
     end)
- 
+
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
   end
 

@@ -153,7 +153,7 @@ module T = struct
         ( map_concat_rev ~f:(fun c -> Constraint.override_label c label) cs
         , return () )
 
-    let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
+  let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
 end
 
 include T
