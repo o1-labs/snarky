@@ -22,7 +22,7 @@ module Ballot = struct
     (* An opened ballot is a nonce along with a vote. *)
     type t = Nonce.t * Vote.t
 
-    type var = Nonce.var * Vote.var
+    type var = Nonce.Var.t * Vote.var
 
     (* A [typ] is a kind of specification of a type of data which makes it possible
        to use values of that type inside checked computations. In a future version of

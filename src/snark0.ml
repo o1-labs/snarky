@@ -1095,16 +1095,20 @@ module Make_basic (Backend : Backend_intf.S) = struct
         Bignum_bigint.(gen_incl zero (size - one))
         ~f:(fun x -> Bigint.(to_field (of_bignum_bigint x)))
 
-    type var = Cvar.t
-
     let typ = Typ.field
+
+    type var' = Var.t
+
+    module Var = struct
+      include Cvar1
+
+      let to_constant : t -> Field0.t option = function
+        | Constant x -> Some x
+        | _ -> None
+    end
 
     module Checked = struct
       include Cvar1
-
-      let to_constant : var -> Field0.t option = function
-        | Constant x -> Some x
-        | _ -> None
 
       let equal = Checked.equal
 

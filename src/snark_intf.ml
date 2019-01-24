@@ -73,19 +73,18 @@ module type Basic = sig
 
   (** Rank-1 constraints over {!type:Var.t}s. *)
   module rec Constraint : sig
-    type t = Field.Checked.t Constraint0.t
+    type t = Field.Var.t Constraint0.t
 
     type 'k with_constraint_args = ?label:string -> 'k
 
-    val boolean : (Field.Checked.t -> t) with_constraint_args
+    val boolean : (Field.Var.t -> t) with_constraint_args
 
-    val equal : (Field.Checked.t -> Field.Checked.t -> t) with_constraint_args
+    val equal : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
 
     val r1cs :
-      (Field.Checked.t -> Field.Checked.t -> Field.Checked.t -> t)
-      with_constraint_args
+      (Field.Var.t -> Field.Var.t -> Field.Var.t -> t) with_constraint_args
 
-    val square : (Field.Checked.t -> Field.Checked.t -> t) with_constraint_args
+    val square : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
   end
   
   (** The data specification for checked computations. *)
@@ -109,31 +108,29 @@ module type Basic = sig
   and Typ : sig
     module Store : sig
       include
-        Monad.S
-        with type 'a t = ('a, Field.t, Field.Checked.t) Typ_monads.Store.t
+        Monad.S with type 'a t = ('a, Field.t, Field.Var.t) Typ_monads.Store.t
 
-      val store : field -> Field.Checked.t t
+      val store : field -> Field.Var.t t
     end
 
     module Alloc : sig
-      include Monad.S with type 'a t = ('a, Field.Checked.t) Typ_monads.Alloc.t
+      include Monad.S with type 'a t = ('a, Field.Var.t) Typ_monads.Alloc.t
 
-      val alloc : Field.Checked.t t
+      val alloc : Field.Var.t t
     end
 
     module Read : sig
       include
-        Monad.S
-        with type 'a t = ('a, Field.t, Field.Checked.t) Typ_monads.Read.t
+        Monad.S with type 'a t = ('a, Field.t, Field.Var.t) Typ_monads.Read.t
 
-      val read : Field.Checked.t -> field t
+      val read : Field.Var.t -> field t
     end
 
     type ('var, 'value) t =
       ( 'var
       , 'value
       , Field.t
-      , Field.Checked.t
+      , Field.Var.t
       , R1CS_constraint_system.t )
       Types.Typ.t
 
@@ -151,7 +148,7 @@ module type Basic = sig
 
     val unit : (unit, unit) t
 
-    val field : (Field.Checked.t, field) t
+    val field : (Field.Var.t, field) t
 
     (** Common constructors: *)
 
@@ -217,7 +214,7 @@ module type Basic = sig
       [false] to {!val:Field.zero}, adding a check in {!val:Boolean.typ} to
       ensure that these are the only vales. *)
   and Boolean : sig
-    type var = Field.Checked.t Boolean0.t
+    type var = Field.Var.t Boolean0.t
 
     type value = bool
 
@@ -237,7 +234,7 @@ module type Basic = sig
 
     val all : var list -> (var, _) Checked.t
 
-    val of_field : Field.Checked.t -> (var, _) Checked.t
+    val of_field : Field.Var.t -> (var, _) Checked.t
     (** Convert a value in a field to a boolean, adding checks to the R1CS that
        it is a valid boolean value. *)
 
@@ -275,7 +272,7 @@ module type Basic = sig
     end
 
     module Unsafe : sig
-      val of_cvar : Field.Checked.t -> var
+      val of_cvar : Field.Var.t -> var
     end
 
     module Assert : sig
@@ -304,8 +301,8 @@ module type Basic = sig
         do further checked computations. For example (using
         {{:https://github.com/janestreet/ppx_let}monad let-syntax}):
 {[
-let multiply3 (x : Field.Checked.t) (y : Field.Checked.t) (z : Field.Checked.t)
-  : (Field.Checked.t, _) Checked.t =
+let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
+  : (Field.Var.t, _) Checked.t =
   open Checked.Let_syntax in
   let%bind x_times_y = Field.Checked.mul x y in
   Field.Checked.mul x_times_y z
@@ -317,7 +314,7 @@ let multiply3 (x : Field.Checked.t) (y : Field.Checked.t) (z : Field.Checked.t)
                   ( 'a
                   , 's
                   , Field.t
-                  , Field.Checked.t
+                  , Field.Var.t
                   , R1CS_constraint_system.t )
                   Types.Checked.t
 
@@ -355,7 +352,9 @@ let multiply3 (x : Field.Checked.t) (y : Field.Checked.t) (z : Field.Checked.t)
     val project : bool list -> t
     (** Convert a list of bits into a field element. *)
 
-    module Checked : sig
+    type var' = Var.t
+
+    module Var : sig
       type t = (field, Var.t) Cvar.t
 
       val length : t -> int
@@ -381,72 +380,73 @@ let multiply3 (x : Field.Checked.t) (y : Field.Checked.t) (z : Field.Checked.t)
 
       val scale : t -> field -> t
 
-      val mul : t -> t -> (t, _) Checked.t
-
-      val square : t -> (t, _) Checked.t
-
-      val div : t -> t -> (t, _) Checked.t
-
-      val inv : t -> (t, _) Checked.t
-
-      val equal : t -> t -> (Boolean.var, 's) Checked.t
-
       val project : Boolean.var list -> t
 
       val pack : Boolean.var list -> t
+    end
 
-      val unpack : t -> length:int -> (Boolean.var list, _) Checked.t
+    module Checked : sig
+      val mul : Var.t -> Var.t -> (Var.t, _) Checked.t
+
+      val square : Var.t -> (Var.t, _) Checked.t
+
+      val div : Var.t -> Var.t -> (Var.t, _) Checked.t
+
+      val inv : Var.t -> (Var.t, _) Checked.t
+
+      val equal : Var.t -> Var.t -> (Boolean.var, 's) Checked.t
+
+      val unpack : Var.t -> length:int -> (Boolean.var list, _) Checked.t
 
       val unpack_flagged :
-           t
+           Var.t
         -> length:int
         -> (Boolean.var list * [`Success of Boolean.var], _) Checked.t
 
       val unpack_full :
-        t -> (Boolean.var Bitstring_lib.Bitstring.Lsb_first.t, _) Checked.t
+        Var.t -> (Boolean.var Bitstring_lib.Bitstring.Lsb_first.t, _) Checked.t
 
       val choose_preimage_var :
-        t -> length:int -> (Boolean.var list, _) Checked.t
+        Var.t -> length:int -> (Boolean.var list, _) Checked.t
 
       type comparison_result = {less: Boolean.var; less_or_equal: Boolean.var}
 
       val compare :
-        bit_length:int -> t -> t -> (comparison_result, _) Checked.t
+        bit_length:int -> Var.t -> Var.t -> (comparison_result, _) Checked.t
 
-      val if_ : Boolean.var -> then_:t -> else_:t -> (t, _) Checked.t
+      val if_ :
+        Boolean.var -> then_:Var.t -> else_:Var.t -> (Var.t, _) Checked.t
 
       module Infix : sig
-        val ( + ) : t -> t -> t
+        val ( + ) : Var.t -> Var.t -> Var.t
 
-        val ( - ) : t -> t -> t
+        val ( - ) : Var.t -> Var.t -> Var.t
 
-        val ( * ) : field -> t -> t
+        val ( * ) : field -> Var.t -> Var.t
       end
 
       module Unsafe : sig
-        val of_var : Var.t -> t
+        val of_var : var' -> Var.t
       end
 
       module Assert : sig
-        val lte : bit_length:int -> t -> t -> (unit, _) Checked.t
+        val lte : bit_length:int -> Var.t -> Var.t -> (unit, _) Checked.t
 
-        val gte : bit_length:int -> t -> t -> (unit, _) Checked.t
+        val gte : bit_length:int -> Var.t -> Var.t -> (unit, _) Checked.t
 
-        val lt : bit_length:int -> t -> t -> (unit, _) Checked.t
+        val lt : bit_length:int -> Var.t -> Var.t -> (unit, _) Checked.t
 
-        val gt : bit_length:int -> t -> t -> (unit, _) Checked.t
+        val gt : bit_length:int -> Var.t -> Var.t -> (unit, _) Checked.t
 
-        val not_equal : t -> t -> (unit, _) Checked.t
+        val not_equal : Var.t -> Var.t -> (unit, _) Checked.t
 
-        val equal : t -> t -> (unit, _) Checked.t
+        val equal : Var.t -> Var.t -> (unit, _) Checked.t
 
-        val non_zero : t -> (unit, _) Checked.t
+        val non_zero : Var.t -> (unit, _) Checked.t
       end
     end
 
-    type var = Checked.t
-
-    val typ : (var, t) Typ.t
+    val typ : (Var.t, t) Typ.t
   end
 
   include Monad.Syntax2 with type ('a, 's) t := ('a, 's) Checked.t
@@ -499,7 +499,7 @@ let multiply3 (x : Field.Checked.t) (y : Field.Checked.t) (z : Field.Checked.t)
 
     val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
 
-    val read_var : Field.Checked.t -> (field, 'prover_state) t
+    val read_var : Field.Var.t -> (field, 'prover_state) t
 
     val get_state : ('prover_state, 'prover_state) t
 
@@ -525,13 +525,13 @@ let multiply3 (x : Field.Checked.t) (y : Field.Checked.t) (z : Field.Checked.t)
 
   val assert_r1cs :
        ?label:string
-    -> Field.Checked.t
-    -> Field.Checked.t
-    -> Field.Checked.t
+    -> Field.Var.t
+    -> Field.Var.t
+    -> Field.Var.t
     -> (unit, _) Checked.t
 
   val assert_square :
-    ?label:string -> Field.Checked.t -> Field.Checked.t -> (unit, _) Checked.t
+    ?label:string -> Field.Var.t -> Field.Var.t -> (unit, _) Checked.t
 
   val as_prover : (unit, 's) As_prover.t -> (unit, 's) Checked.t
 
@@ -631,7 +631,7 @@ module type S = sig
     Number_intf.S
     with type ('a, 'b) checked := ('a, 'b) Checked.t
      and type field := field
-     and type field_var := Field.Checked.t
+     and type field_var := Field.Var.t
      and type bool_var := Boolean.var
 
   module Enumerable (M : sig
@@ -641,6 +641,6 @@ module type S = sig
     with type ('a, 'b) checked := ('a, 'b) Checked.t
      and type ('a, 'b) typ := ('a, 'b) Typ.t
      and type bool_var := Boolean.var
-     and type var = Field.var
+     and type var = Field.Var.t
      and type t := M.t
 end

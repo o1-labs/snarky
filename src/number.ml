@@ -17,7 +17,7 @@ module Make (Impl : Snark_intf.Basic) = struct
   type t =
     { upper_bound: Bignum_bigint.t
     ; lower_bound: Bignum_bigint.t
-    ; var: Field.Checked.t
+    ; var: Field.Var.t
     ; bits: Boolean.var list option }
 
   let two_to_the n =
@@ -38,7 +38,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     assert (n < Field.size_in_bits) ;
     { upper_bound= Bignum_bigint.(pow2 n - one)
     ; lower_bound= Bignum_bigint.zero
-    ; var= Field.Checked.pack bs
+    ; var= Field.Var.pack bs
     ; bits= Some bs }
 
   let mul_pow_2 n (`Two_to_the k) =
@@ -50,7 +50,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     assert (Bignum_bigint.(upper_bound < Field.size)) ;
     { upper_bound
     ; lower_bound= Bignum_bigint.(n.lower_bound * pow (of_int 2) (of_int k))
-    ; var= Field.Checked.pack multiplied
+    ; var= Field.Var.pack multiplied
     ; bits= Some multiplied }
 
   let div_pow_2 n (`Two_to_the k) =
@@ -72,11 +72,11 @@ module Make (Impl : Snark_intf.Basic) = struct
        else
          let%bind bs = to_bits t in
          let bs' = List.take bs n in
-         let g = Field.Checked.project bs' in
+         let g = Field.Var.project bs' in
          let%bind fits = Field.Checked.equal t.var g in
          let%map r =
            Field.Checked.if_ fits ~then_:g
-             ~else_:(Field.Checked.constant Field.(sub (two_to_the n) one))
+             ~else_:(Field.Var.constant Field.(sub (two_to_the n) one))
          in
          { upper_bound= Bignum_bigint.(k - one)
          ; lower_bound= t.lower_bound
@@ -140,7 +140,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     let n = Bigint.to_bignum_bigint tick_n in
     { upper_bound= n
     ; lower_bound= n
-    ; var= Field.Checked.constant x
+    ; var= Field.Var.constant x
     ; bits=
         Some
           (List.init (bigint_num_bits n) ~f:(fun i ->
@@ -166,7 +166,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     if upper_bound < Field.size then
       { upper_bound
       ; lower_bound= x.lower_bound + y.lower_bound
-      ; var= Field.Checked.add x.var y.var
+      ; var= Field.Var.add x.var y.var
       ; bits= None }
     else
       failwithf "Number.+: Potential overflow: (%s + %s > Field.size)"
@@ -178,7 +178,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     if x.lower_bound >= y.upper_bound then
       { upper_bound= x.upper_bound - y.lower_bound
       ; lower_bound= x.lower_bound - y.upper_bound
-      ; var= Field.Checked.sub x.var y.var
+      ; var= Field.Var.sub x.var y.var
       ; bits= None }
     else
       failwithf "Number.-: Potential underflow (%s < %s)"
