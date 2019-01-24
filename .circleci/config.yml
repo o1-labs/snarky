@@ -6,6 +6,9 @@ jobs:
         - image: codaprotocol/coda:toolchain-7df6b2b12bc316cb71592b12255d80e19396831e
         steps:
             - checkout
+            - run:
+                name: Lint
+                command: eval `opam config env` && make check-format
             - run: eval `opam config env` && make build
             - run: eval `opam config env` && make examples
 
