@@ -312,7 +312,7 @@ module Edwards = struct
           ()
       end
 
-      let%snarkydef add_known (x1, y1) (x2, y2) =
+      let%snarkydef_ add_known (x1, y1) (x2, y2) =
         let x1x2 = Field.Checked.scale x1 x2
         and y1y2 = Field.Checked.scale y1 y2
         and x1y2 = Field.Checked.scale x1 y2
@@ -328,7 +328,7 @@ module Edwards = struct
         (a, b)
 
       (* TODO: Optimize -- could probably shave off one constraint. *)
-      let%snarkydef add (x1, y1) (x2, y2) =
+      let%snarkydef_ add (x1, y1) (x2, y2) =
         let%bind x1x2 = Field.Checked.mul x1 x2
         and y1y2 = Field.Checked.mul y1 y2
         and x1y2 = Field.Checked.mul x1 y2
@@ -343,7 +343,7 @@ module Edwards = struct
         in
         (a, b)
 
-      let%snarkydef double (x, y) =
+      let%snarkydef_ double (x, y) =
         let%bind xy = Field.Checked.mul x y
         and xx = Field.Checked.mul x x
         and yy = Field.Checked.mul y y in
@@ -399,7 +399,7 @@ module Edwards = struct
              in
              r)
 
-      let%snarkydef scale t (c : Scalar.var) =
+      let%snarkydef_ scale t (c : Scalar.var) =
         let rec go i acc pt = function
           | [] -> return acc
           | b :: bs ->
@@ -418,7 +418,7 @@ module Edwards = struct
             go 1 acc pt bs
 
       (* TODO: Unit test *)
-      let%snarkydef cond_add ((x2, y2) : value) ~to_:((x1, y1) : var)
+      let%snarkydef_ cond_add ((x2, y2) : value) ~to_:((x1, y1) : var)
           ~if_:(b : Boolean.var) : (var, _) Checked.t =
         let one = Field.Checked.constant Field.one in
         let b = (b :> Field.Checked.t) in
@@ -446,7 +446,7 @@ module Edwards = struct
         let%map x_res = res x1 x3 and y_res = res y1 y3 in
         (x_res, y_res)
 
-      let%snarkydef scale_known (t : value) (c : Scalar.var) =
+      let%snarkydef_ scale_known (t : value) (c : Scalar.var) =
         let rec go i acc pt = function
           | b :: bs ->
               let%bind acc' =
@@ -614,7 +614,7 @@ module Make_weierstrass_checked
     let equal = assert_equal
   end
 
-  let%snarkydef add' ~div (ax, ay) (bx, by) =
+  let%snarkydef_ add' ~div (ax, ay) (bx, by) =
     let open Let_syntax in
     let%bind lambda =
       div (Field.Checked.sub by ay) (Field.Checked.sub bx ax)
@@ -758,7 +758,7 @@ module Make_weierstrass_checked
       (module M : S)
   end
 
-  let%snarkydef double (ax, ay) =
+  let%snarkydef_ double (ax, ay) =
     let open Let_syntax in
     let%bind x_squared = Field.Checked.square ax in
     let%bind lambda =
@@ -808,7 +808,7 @@ module Make_weierstrass_checked
     in
     (choose x1 x2, choose y1 y2)
 
-  let%snarkydef scale (type shifted)
+  let%snarkydef_ scale (type shifted)
       (module Shifted : Shifted.S with type t = shifted) t
       (c : Boolean.var Bitstring_lib.Bitstring.Lsb_first.t) ~(init : shifted) :
       (shifted, _) Checked.t =

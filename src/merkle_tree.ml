@@ -396,7 +396,7 @@ struct
     | Set : Address.value * Elt.value -> unit Request.t
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef modify_req ~(depth : int) root addr0 ~f :
+  let%snarkydef_ modify_req ~(depth : int) root addr0 ~f :
       (Hash.var, 's) Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
@@ -422,7 +422,7 @@ struct
     implied_root next_entry_hash addr0 prev_path
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef get_req ~(depth : int) root addr0 : (Elt.var, 's) Checked.t =
+  let%snarkydef_ get_req ~(depth : int) root addr0 : (Elt.var, 's) Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
       request_witness
@@ -437,7 +437,7 @@ struct
     return prev
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef update_req ~(depth : int) ~root ~prev ~next addr0 :
+  let%snarkydef_ update_req ~(depth : int) ~root ~prev ~next addr0 :
       (Hash.var, _) Checked.t =
     let open Let_syntax in
     let%bind prev_entry_hash = Elt.hash prev
@@ -461,7 +461,7 @@ struct
     implied_root next_entry_hash addr0 prev_path
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef update ~(depth : int) ~root ~prev ~next addr0 :
+  let%snarkydef_ update ~(depth : int) ~root ~prev ~next addr0 :
       (Hash.var, (Hash.value, Elt.value) merkle_tree) Checked.t =
     let open Let_syntax in
     let%bind prev_entry_hash = Elt.hash prev
