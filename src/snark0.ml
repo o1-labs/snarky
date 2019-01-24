@@ -577,14 +577,18 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
       let system = R1CS_constraint_system.create () in
-      ignore (run ~num_inputs ~input ~next_auxiliary ~aux ~system t None) ;
+      ignore
+        (run ~num_inputs ~input ~next_auxiliary ~aux ~system
+           ~eval_constraints:true t None) ;
       system
 
     let auxiliary_input (type s) ~num_inputs (t0 : (unit, s) t) (s0 : s)
         (input : Field.Vector.t) : Field.Vector.t =
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
-      ignore (run ~num_inputs ~input ~next_auxiliary ~aux t0 (Some s0)) ;
+      ignore
+        (run ~num_inputs ~input ~next_auxiliary ~aux ~eval_constraints:true t0
+           (Some s0)) ;
       aux
 
     let run_and_check' (type a s) (t0 : (a, s) t) (s0 : s) =
@@ -620,7 +624,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let input = Field.Vector.create () in
       let next_auxiliary = ref 1 in
       let aux = Field.Vector.create () in
-      match run ~num_inputs ~input ~next_auxiliary ~aux t0 (Some s0) with
+      match
+        run ~num_inputs ~input ~next_auxiliary ~aux ~eval_constraints:true t0
+          (Some s0)
+      with
       | Some s, x -> (s, x)
       | None, _ ->
           failwith "run_unchecked: Expected a value from run, got None."
