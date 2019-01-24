@@ -14,6 +14,12 @@ examples :
 	# tutorial.exe intentionally is unimplemented, but it should still compile
 	dune build --root=. ./examples/tutorial/tutorial.exe
 
+reformat:
+	dune exec --root=. app/reformat-snarky/reformat.exe -- -path .
+
+check-format:
+	dune exec --root=. app/reformat-snarky/reformat.exe -- -path . -check
+
 docker :
 	./rebuild-docker.sh ocaml-camlsnark
 
