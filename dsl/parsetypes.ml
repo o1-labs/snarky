@@ -7,7 +7,7 @@ type pattern =
 | PConstraint of pattern * typ
 
 type expression =
-  | Apply of expression * expression
+  | Apply of expression * expression list
   | Variable of str
   | Int of int
   | Fun of pattern * typ option * expression

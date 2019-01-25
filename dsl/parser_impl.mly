@@ -5,7 +5,8 @@ open Parsetypes
 let mkrhs rhs pos = mkloc rhs (rhs_loc pos)
 %}
 %token <int> INT
-%token <string> VAR
+%token <string> LIDENT
+%token <string> UIDENT
 %token FUN
 %token LET
 %token SEMI
@@ -40,8 +41,8 @@ structure_item:
   | LET x = pat EQUAL e = expr
     { Value (x, e) }
 
-expr:
-  | x = VAR
+simple_expr:
+  | x = LIDENT
     { Variable (mkrhs x 1) }
   | x = INT
     { Int x }
@@ -53,8 +54,18 @@ expr:
     { es }
   | LET x = pat EQUAL lhs = expr SEMI rhs = expr
     { Let (x, lhs, rhs) }
-  | f = expr x = expr
-    { Apply (f, x) }
+
+expr:
+  | x = simple_expr
+    { x }
+  | f = simple_expr xs = simple_expr_list
+    { Apply (f, List.rev xs) }
+
+simple_expr_list:
+  | x = simple_expr
+    { [x] }
+  | l = simple_expr_list x = simple_expr
+    { x :: l }
 
 function_from_args:
   | p = pat RBRACKET typ = opt_type_constraint EQUALGT LBRACE body = block RBRACE
@@ -85,13 +96,19 @@ pat:
     { p }
   | p = pat COLON typ = type_expr
     { PConstraint (p, typ) }
-  | x = VAR
+  | x = LIDENT
     { PVariable (mkrhs x 1) }
 
-type_expr:
+simple_type_expr:
   | UNDERSCORE
     { TAny }
-  | x = VAR
+  | x = LIDENT
     { TVariable (mkrhs x 1) }
-  | x = type_expr DASHGT y = type_expr
+  | LBRACKET x = type_expr RBRACKET
+    { x }
+
+type_expr:
+  | x = simple_type_expr
+    { x }
+  | x = simple_type_expr DASHGT y = type_expr
     { TArrow (x, y) }

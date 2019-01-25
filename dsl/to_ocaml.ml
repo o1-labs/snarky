@@ -16,7 +16,9 @@ let rec of_pattern = function
   | PConstraint (p, typ) -> Pat.constraint_ (of_pattern p) (of_typ typ)
 
 let rec of_expression = function
-  | Apply (f, x) -> Exp.apply (of_expression f) [(Nolabel, of_expression x)]
+  | Apply (f, xs) ->
+    let xs = List.map xs ~f:(fun x -> (Nolabel, of_expression x)) in
+    Exp.apply (of_expression f) xs
   | Variable name -> Exp.ident (mk_lid name)
   | Int i -> Exp.constant (Const.int i)
   | Fun (p, typ, body) ->
