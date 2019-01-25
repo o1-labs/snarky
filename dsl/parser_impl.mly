@@ -13,6 +13,7 @@ let mkrhs rhs pos = mkloc rhs (rhs_loc pos)
 %token RBRACE
 %token LBRACKET
 %token RBRACKET
+%token DASHGT
 %token EQUALGT
 %token EQUAL
 %token COLON
@@ -44,8 +45,8 @@ expr:
     { Variable (mkrhs x 1) }
   | x = INT
     { Int x }
-  | FUN LBRACKET x = args RBRACKET typ = opt_type_constraint EQUALGT LBRACE body = block RBRACE
-    { Fun (x, typ, body) }
+  | FUN LBRACKET pats = args RBRACKET typ = opt_type_constraint EQUALGT LBRACE body = block RBRACE
+    { Fun (pats, typ, body) }
   | LBRACKET es = exprs RBRACKET
     { es }
   | LBRACE es = block RBRACE
@@ -68,14 +69,10 @@ block:
     { Seq (e1, rest) }
 
 args: 
-  | x = arg
+  | x = pat
     { [x] }
-  | x = arg COMMA rest = args
+  | x = pat COMMA rest = args
     { (x :: rest) }
-
-arg:
-  | x = pat typ = opt_type_constraint
-    { (x, typ) }
 
 opt_type_constraint:
   /* empty */
@@ -84,6 +81,10 @@ opt_type_constraint:
   { Some typ }
 
 pat:
+  | LBRACKET p = pat RBRACKET
+    { p }
+  | p = pat COLON typ = type_expr
+    { PConstraint (p, typ) }
   | x = VAR
     { PVariable (mkrhs x 1) }
 
@@ -92,3 +93,5 @@ type_expr:
     { TAny }
   | x = VAR
     { TVariable (mkrhs x 1) }
+  | x = type_expr DASHGT y = type_expr
+    { TArrow (x, y) }
