@@ -29,4 +29,4 @@ let main =
   (*ignore @@ List.map asts ~f:Typechecker.check ;*)
   let ocaml_asts = List.map asts ~f:To_ocaml.of_file in
   ignore
-  @@ List.map ocaml_asts ~f:(Printast.implementation Format.std_formatter)
+  @@ List.map ocaml_asts ~f:(Pprintast.structure Format.std_formatter)

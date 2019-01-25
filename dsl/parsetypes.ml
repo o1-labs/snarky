@@ -10,7 +10,7 @@ type expression =
   | Apply of expression * expression
   | Variable of str
   | Int of int
-  | Fun of pattern list * typ option * expression
+  | Fun of pattern * typ option * expression
   | Seq of expression * expression
   | Let of pattern * expression * expression
 

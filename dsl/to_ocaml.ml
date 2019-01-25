@@ -19,19 +19,13 @@ let rec of_expression = function
   | Apply (f, x) -> Exp.apply (of_expression f) [(Nolabel, of_expression x)]
   | Variable name -> Exp.ident (mk_lid name)
   | Int i -> Exp.constant (Const.int i)
-  | Fun (args, typ, body) ->
-      let rec wrap_args args body =
-        match args with
-        | [] -> body
-        | p :: args ->
-          Exp.fun_ Nolabel None (of_pattern p) (wrap_args args body)
-      in
+  | Fun (p, typ, body) ->
       let body =
         match typ with
         | Some typ -> Exp.constraint_ (of_expression body) (of_typ typ)
         | None -> of_expression body
       in
-      wrap_args args body
+      Exp.fun_ Nolabel None (of_pattern p) body
   | Seq (e1, e2) -> Exp.sequence (of_expression e1) (of_expression e2)
   | Let (p, e_rhs, e) ->
       Exp.let_ Nonrecursive
