@@ -7,7 +7,7 @@ let print_position outx lexbuf =
 
 let parse_with_error parse lexbuf =
   try parse lexbuf with
-  | Parser.Error ->
+  | Parser_impl.Error ->
     fprintf stderr "%a: syntax error\n" print_position lexbuf;
     exit (-1)
 
@@ -24,9 +24,6 @@ let main =
   let files = ref [] in
   Arg.parse [] (fun filename -> files := filename :: !files) "";
   let files = List.rev !files in
-  let asts = List.map files ~f:(read_file (Parser.file Lexer.token)) in
-  ignore @@ List.map asts ~f:(fun ast ->
-    List.map ast ~f:(fun statement ->
-      Out_channel.output_string stdout
-        (Sexp.to_string (Parsetypes.sexp_of_statement statement));
-      Out_channel.newline stdout))
+  let asts = List.map files ~f:(read_file (Parser_impl.file Lexer_impl.token)) in
+  let ocaml_asts = List.map asts ~f:To_ocaml.of_file in
+  ignore @@ List.map ocaml_asts ~f:(Printast.implementation Format.std_formatter)

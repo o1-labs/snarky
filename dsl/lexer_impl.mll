@@ -1,5 +1,5 @@
 {
-open Parser
+open Parser_impl
 
 let new_line lexbuf =
   let pos = lexbuf.Lexing.lex_curr_p in

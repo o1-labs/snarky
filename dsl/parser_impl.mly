@@ -1,5 +1,8 @@
 %{
+open Location
 open Parsetypes
+
+let mkrhs rhs pos = mkloc rhs (rhs_loc pos)
 %}
 %token <int> INT
 %token <string> VAR
@@ -38,7 +41,7 @@ structure_item:
 
 expr:
   | x = VAR
-    { Variable x }
+    { Variable (mkrhs x 1) }
   | x = INT
     { Int x }
   | FUN LBRACKET x = args RBRACKET typ = opt_type_constraint EQUALGT LBRACE body = block RBRACE
@@ -82,10 +85,10 @@ opt_type_constraint:
 
 pat:
   | x = VAR
-    { PVariable x }
+    { PVariable (mkrhs x 1) }
 
 type_expr:
   | UNDERSCORE
     { TAny }
   | x = VAR
-    { TVariable x }
+    { TVariable (mkrhs x 1) }

@@ -1,12 +1,11 @@
 (executable
  (name meja)
- (libraries core_kernel)
- (preprocess (pps ppx_sexp_conv))
+ (libraries core_kernel ocaml-compiler-libs.common)
  (flags :standard -warn-error -39-21))
 
 (menhir
   (flags --explain)
-  (modules parser))
+  (modules parser_impl))
 
 (ocamllex
-  (modules lexer))
+  (modules lexer_impl))
