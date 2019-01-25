@@ -1,0 +1,32 @@
+open Core_kernel
+
+let print_position outx lexbuf =
+  let pos = lexbuf.Lexing.lex_curr_p in
+  fprintf outx "%s:%d:%d" pos.pos_fname
+    pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
+
+let parse_with_error parse lexbuf =
+  try parse lexbuf with
+  | Parser.Error ->
+    fprintf stderr "%a: syntax error\n" print_position lexbuf;
+    exit (-1)
+
+let read_file parse filename =
+  let file = In_channel.create filename in
+  let lex = Lexing.from_channel file in
+  (* Set filename in lex_curr_p. *)
+  lex.Lexing.lex_curr_p <- {lex.Lexing.lex_curr_p with Lexing.pos_fname = filename};
+  let ast = parse_with_error parse lex in
+  In_channel.close file;
+  ast
+
+let main =
+  let files = ref [] in
+  Arg.parse [] (fun filename -> files := filename :: !files) "";
+  let files = List.rev !files in
+  let asts = List.map files ~f:(read_file (Parser.file Lexer.token)) in
+  ignore @@ List.map asts ~f:(fun ast ->
+    List.map ast ~f:(fun statement ->
+      Out_channel.output_string stdout
+        (Sexp.to_string (Parsetypes.sexp_of_statement statement));
+      Out_channel.newline stdout))
