@@ -453,6 +453,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   module Proof : sig
     type t
+
+    include Stringable.S with type t := t
   end
 
   module Bitstring_checked : sig
