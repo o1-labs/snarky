@@ -5,11 +5,15 @@ open Parsetypes
 
 let mk_lid name = Location.mkloc (Longident.Lident name.txt) name.loc
 
-let of_pattern = function PVariable str -> Pat.var str
-
-let of_typ = function
+let rec of_typ = function
   | TAny -> Typ.any ()
   | TVariable name -> Typ.constr (mk_lid name) []
+  | TArrow (typ1, typ2) ->
+    Typ.arrow Nolabel (of_typ typ1) (of_typ typ2)
+
+let rec of_pattern = function
+  | PVariable str -> Pat.var str
+  | PConstraint (p, typ) -> Pat.constraint_ (of_pattern p) (of_typ typ)
 
 let rec of_expression = function
   | Apply (f, es) ->
@@ -21,13 +25,8 @@ let rec of_expression = function
       let rec wrap_args args body =
         match args with
         | [] -> body
-        | (p, typ) :: args ->
-            let pat =
-              match typ with
-              | Some typ -> Pat.constraint_ (of_pattern p) (of_typ typ)
-              | None -> of_pattern p
-            in
-            Exp.fun_ Nolabel None pat (wrap_args args body)
+        | p :: args ->
+          Exp.fun_ Nolabel None (of_pattern p) (wrap_args args body)
       in
       let body =
         match typ with

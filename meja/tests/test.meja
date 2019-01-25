@@ -18,3 +18,7 @@ let f =
   let f = fun (x) => { x; };
   let g = d (f, f);
   g (f, f) (f);
+
+let g =
+  let f : _ -> _ = fun (x) => { x; };
+  f;
