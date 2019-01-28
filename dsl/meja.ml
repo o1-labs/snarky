@@ -19,14 +19,52 @@ let read_file parse filename =
   let ast = parse_with_error parse lex in
   In_channel.close file ; ast
 
+let typecheck asts = ignore @@ List.map asts ~f:Typechecker.check
+
 let main =
-  let files = ref [] in
-  Arg.parse [] (fun filename -> files := filename :: !files) "" ;
-  let files = List.rev !files in
-  let asts =
-    List.map files ~f:(read_file (Parser_impl.file Lexer_impl.token))
+  let file = ref None in
+  let ocaml_file = ref None in
+  let ast_file = ref None in
+  let default = ref true in
+  Arg.parse
+    [ ( "ml"
+      , String
+          (fun name ->
+            default := false ;
+            ocaml_file := Some name )
+      , "output OCaml code" )
+    ; ( "ast"
+      , String
+          (fun name ->
+            default := false ;
+            ast_file := Some name )
+      , "output OCaml ast" ) ]
+    (fun filename -> file := Some filename)
+    "" ;
+  let file =
+    Option.value_exn !file
+      ~error:(Error.of_string "Please pass a file as an argument.")
   in
-  ignore @@ List.map asts ~f:Typechecker.check ;
-  let ocaml_asts = List.map asts ~f:To_ocaml.of_file in
-  ignore @@ List.map ocaml_asts ~f:(Pprintast.structure Format.std_formatter) ;
-  Out_channel.newline Pervasives.stdout
+  let ast = read_file (Parser_impl.file Lexer_impl.token) file in
+  ignore (Typechecker.check ast) ;
+  let ocaml_ast = To_ocaml.of_file ast in
+  let ocaml_formatter =
+    match (!ocaml_file, !default) with
+    | Some filename, _ ->
+        Some (Format.formatter_of_out_channel (Out_channel.create filename))
+    | None, true -> Some Format.std_formatter
+    | None, false -> None
+  in
+  ( match !ast_file with
+  | Some filename ->
+      let output =
+        Format.formatter_of_out_channel (Out_channel.create filename)
+      in
+      Printast.structure 2 output ocaml_ast ;
+      Format.pp_print_newline output ()
+  | None -> () ) ;
+  match ocaml_formatter with
+  | Some output ->
+      Pprintast.structure output ocaml_ast ;
+      Format.pp_print_newline output ()
+  | None -> ()
