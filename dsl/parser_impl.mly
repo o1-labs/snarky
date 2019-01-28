@@ -2,12 +2,14 @@
 open Location
 open Parsetypes
 
-let mkrhs rhs pos = mkloc rhs (rhs_loc pos)
+let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 
-let mktyp d = Type.mk ~loc:(symbol_rloc()) d
-let mkpat d = Pattern.mk ~loc:(symbol_rloc()) d
-let mkexp d = Expression.mk ~loc:(symbol_rloc()) d
-let mkstr d = Statement.mk ~loc:(symbol_rloc()) d
+let mkrhs rhs pos = mkloc rhs (mklocation pos)
+
+let mktyp ~pos d = Type.mk ~loc:(mklocation pos) d
+let mkpat ~pos d = Pattern.mk ~loc:(mklocation pos) d
+let mkexp ~pos d = Expression.mk ~loc:(mklocation pos) d
+let mkstr ~pos d = Statement.mk ~loc:(mklocation pos) d
 %}
 %token <int> INT
 %token <string> LIDENT
@@ -44,13 +46,13 @@ file:
 
 structure_item:
   | LET x = pat EQUAL e = expr
-    { mkstr (Value (x, e)) }
+    { mkstr ~pos:$loc (Value (x, e)) }
 
 simple_expr:
   | x = LIDENT
-    { mkexp (Variable (mkrhs x 1)) }
+    { mkexp ~pos:$loc (Variable (mkrhs x $loc(x))) }
   | x = INT
-    { mkexp (Int x) }
+    { mkexp ~pos:$loc (Int x) }
   | FUN LBRACKET f = function_from_args
     { f }
   | LBRACKET es = exprs RBRACKET
@@ -58,13 +60,13 @@ simple_expr:
   | LBRACE es = block RBRACE
     { es }
   | LET x = pat EQUAL lhs = expr SEMI rhs = expr
-    { mkexp (Let (x, lhs, rhs)) }
+    { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
 
 expr:
   | x = simple_expr
     { x }
   | f = simple_expr xs = simple_expr_list
-    { mkexp (Apply (f, List.rev xs)) }
+    { mkexp ~pos:$loc (Apply (f, List.rev xs)) }
 
 simple_expr_list:
   | x = simple_expr
@@ -74,37 +76,37 @@ simple_expr_list:
 
 function_from_args:
   | p = pat RBRACKET EQUALGT LBRACE body = block RBRACE
-    { mkexp (Fun (p, body)) }
+    { mkexp ~pos:$loc (Fun (p, body)) }
   | p = pat RBRACKET typ = type_expr EQUALGT LBRACE body = block RBRACE
-    { mkexp (Fun (p, mkexp (Constraint (body, typ)))) }
+    { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc (Constraint (body, typ)))) }
   | p = pat COMMA f = function_from_args
-    { mkexp (Fun (p, f)) }
+    { mkexp ~pos:$loc (Fun (p, f)) }
 
 exprs:
   | e = expr
     { e }
   | e1 = expr SEMI rest = exprs
-    { mkexp (Seq (e1, rest)) }
+    { mkexp ~pos:$loc (Seq (e1, rest)) }
 
 block:
   | e = expr SEMI
     { e }
   | e1 = expr SEMI rest = block
-    { mkexp (Seq (e1, rest)) }
+    { mkexp ~pos:$loc (Seq (e1, rest)) }
 
 pat:
   | LBRACKET p = pat RBRACKET
     { p }
   | p = pat COLON typ = type_expr
-    { mkpat (PConstraint (p, typ)) }
+    { mkpat ~pos:$loc (PConstraint (p, typ)) }
   | x = LIDENT
-    { mkpat (PVariable (mkrhs x 1)) }
+    { mkpat ~pos:$loc (PVariable (mkrhs x $loc(x))) }
 
 simple_type_expr:
   | UNDERSCORE
-    { mktyp (Tvar None) }
+    { mktyp ~pos:$loc (Tvar None) }
   | x = LIDENT
-    { mktyp (Tconstr (mkrhs x 1)) }
+    { mktyp ~pos:$loc (Tconstr (mkrhs x $loc(x))) }
   | LBRACKET x = type_expr RBRACKET
     { x }
 
@@ -112,4 +114,4 @@ type_expr:
   | x = simple_type_expr
     { x }
   | x = simple_type_expr DASHGT y = type_expr
-    { mktyp (Tarrow (x, y)) }
+    { mktyp ~pos:$loc (Tarrow (x, y)) }
