@@ -1,26 +1,35 @@
 type str = string Location.loc
 
-type type_expr = {mutable desc: type_desc; id: int}
+type type_expr = {mutable type_desc: type_desc; id: int; type_loc: Location.t}
 
 and type_desc =
-  | Tvar of str option
   (* A type variable. Name is None when not yet chosen. *)
+  | Tvar of str option
   | Tarrow of type_expr * type_expr
-  | Tconstr of str
   (* A type name. *)
+  | Tconstr of str
+  (* Internal, used to wrap a reference to a type. *)
   | Tdefer of type_expr
-
-(* Internal, used to wrap a reference to a type. *)
 
 module Type = struct
   let id = ref 0
 
-  let mk desc = incr id ; {desc; id= !id}
+  let mk ?(loc = Location.none) type_desc =
+    incr id ;
+    {type_desc; id= !id; type_loc= loc}
 end
 
-type pattern = PVariable of str | PConstraint of pattern * type_expr
+type pattern = {pat_desc: pat_desc; pat_loc: Location.t}
 
-type expression =
+and pat_desc = PVariable of str | PConstraint of pattern * type_expr
+
+module Pattern = struct
+  let mk ?(loc = Location.none) pat_desc = {pat_desc; pat_loc= loc}
+end
+
+type expression = {exp_desc: exp_desc; exp_loc: Location.t}
+
+and exp_desc =
   | Apply of expression * expression list
   | Variable of str
   | Int of int
@@ -29,4 +38,14 @@ type expression =
   | Let of pattern * expression * expression
   | Constraint of expression * type_expr
 
-type statement = Value of pattern * expression
+module Expression = struct
+  let mk ?(loc = Location.none) exp_desc = {exp_desc; exp_loc= loc}
+end
+
+type statement = {stmt_desc: stmt_desc; stmt_loc: Location.t}
+
+and stmt_desc = Value of pattern * expression
+
+module Statement = struct
+  let mk ?(loc = Location.none) stmt_desc = {stmt_desc; stmt_loc= loc}
+end
