@@ -376,10 +376,5 @@ let%test_module "sha256-test" =
   ( module struct
     module Backend = Backends.Mnt4.GM
     module Impl = Snark.Make (Backend)
-
-    include Make (struct
-                let prefix = Backend.prefix
-              end)
-              (Impl)
-              (Backends.Mnt4.GM)
+    include Make (Backend) (Impl) (Backend)
   end )
