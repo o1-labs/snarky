@@ -1315,6 +1315,7 @@ module Make (Backend : Backend_intf.S) = struct
   module Enumerable = Enumerable.Make (Basic)
 end
 
-let%test_module "snark0-test" = (module struct
-  include Make(Backends.Mnt4.GM)
-end)
+let%test_module "snark0-test" =
+  ( module struct
+    include Make (Backends.Mnt4.GM)
+  end )

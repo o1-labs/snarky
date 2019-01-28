@@ -372,9 +372,14 @@ end = struct
   end
 end
 
-let%test_module "sha256-test" = (module struct
-  module Backend = Backends.Mnt4.GM
-  module Impl = Snark.Make(Backend)
+let%test_module "sha256-test" =
+  ( module struct
+    module Backend = Backends.Mnt4.GM
+    module Impl = Snark.Make (Backend)
 
-  include Make(struct let prefix = Backend.prefix end)(Impl)(Backends.Mnt4.GM)
-end)
+    include Make (struct
+                let prefix = Backend.prefix
+              end)
+              (Impl)
+              (Backends.Mnt4.GM)
+  end )
