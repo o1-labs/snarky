@@ -68,10 +68,12 @@ simple_expr_list:
     { x :: l }
 
 function_from_args:
-  | p = pat RBRACKET typ = opt_type_constraint EQUALGT LBRACE body = block RBRACE
-    { Fun (p, typ, body) }
+  | p = pat RBRACKET EQUALGT LBRACE body = block RBRACE
+    { Fun (p, body) }
+  | p = pat RBRACKET typ = type_expr EQUALGT LBRACE body = block RBRACE
+    { Fun (p, Constraint (body, typ)) }
   | p = pat COMMA f = function_from_args
-    { Fun (p, None, f) }
+    { Fun (p, f) }
 
 exprs:
   | e = expr
@@ -85,12 +87,6 @@ block:
   | e1 = expr SEMI rest = block
     { Seq (e1, rest) }
 
-opt_type_constraint:
-  /* empty */
-  { None }
-  | COLON typ = type_expr
-  { Some typ }
-
 pat:
   | LBRACKET p = pat RBRACKET
     { p }
@@ -101,9 +97,9 @@ pat:
 
 simple_type_expr:
   | UNDERSCORE
-    { TAny }
+    { Type.mk (Tvar None) }
   | x = LIDENT
-    { TVariable (mkrhs x 1) }
+    { Type.mk (Tconstr (mkrhs x 1)) }
   | LBRACKET x = type_expr RBRACKET
     { x }
 
@@ -111,4 +107,4 @@ type_expr:
   | x = simple_type_expr
     { x }
   | x = simple_type_expr DASHGT y = type_expr
-    { TArrow (x, y) }
+    { Type.mk (Tarrow (x, y)) }
