@@ -28,3 +28,7 @@ let h : _ = fun (f : _ -> _) => {
   let j : _ = f i;
   j;
 };
+
+let i : 'a -> 'a = fun (f : 'b -> 'b) => {
+  f;
+}

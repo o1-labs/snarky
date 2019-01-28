@@ -26,6 +26,7 @@ let mkstr ~pos d = Statement.mk ~loc:(mklocation pos) d
 %token EQUAL
 %token COLON
 %token COMMA
+%token QUOT
 %token UNDERSCORE
 %token EOF
 
@@ -105,6 +106,8 @@ pat:
 simple_type_expr:
   | UNDERSCORE
     { mktyp ~pos:$loc (Tvar None) }
+  | QUOT x = LIDENT
+    { mktyp ~pos:$loc (Tvar (Some (mkrhs x $loc(x)))) }
   | x = LIDENT
     { mktyp ~pos:$loc (Tconstr (mkrhs x $loc(x))) }
   | LBRACKET x = type_expr RBRACKET
