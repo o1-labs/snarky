@@ -11,9 +11,9 @@ and type_desc =
   (* Internal, used to wrap a reference to a type. *)
   | Tdefer of type_expr
   (* Internal, used as a hint to copy before modifying. *)
-  | Tcopy of type_expr
+  | Tcopy of type_expr * int
   (* Internal, used as a hint to stop copying. *)
-  | Tnocopy of type_expr
+  | Tnocopy of type_expr * int
 [@@deriving sexp]
 
 module Type = struct

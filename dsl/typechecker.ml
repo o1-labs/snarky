@@ -3,31 +3,31 @@ open Parsetypes
 open Parsetypes.Type
 
 let type_print typ =
-  Out_channel.output_string stderr (Sexp.to_string (sexp_of_type_expr typ)) ;
-  Out_channel.newline stderr ;
   let typ = To_ocaml.of_typ typ in
   Pprintast.core_type Format.std_formatter typ ;
-  Out_channel.newline stderr
+  Format.pp_print_newline Format.std_formatter ()
 
-let rec copy_type typ =
+let rec copy_type depth typ =
   match typ.type_desc with
   | (Tvar _ | Tconstr _) as type_desc -> {typ with type_desc}
   | Tarrow (typ1, typ2) ->
-      {typ with type_desc= Tarrow (mk (Tcopy typ1), mk (Tcopy typ2))}
-  | Tdefer typ -> copy_type typ
-  | Tcopy typ -> copy_type typ
-  | Tnocopy _ -> typ
+      {typ with type_desc= Tarrow (mk (Tcopy (typ1, depth)), mk (Tcopy (typ2, depth)))}
+  | Tdefer typ -> copy_type depth typ
+  | Tcopy (typ, depth') ->
+    copy_type (min depth depth') typ
+  | Tnocopy (typ, depth') ->
+    if depth' < depth then typ else copy_type depth typ
 
 exception Check_failed of type_expr * type_expr
 
 let rec check_type_aux ~defer_as typ constr_typ =
   let check_type_aux = check_type_aux ~defer_as in
   match (typ.type_desc, constr_typ.type_desc) with
-  | Tcopy typ, _ -> check_type_aux (copy_type typ) constr_typ
-  | _, Tcopy constr_typ -> check_type_aux typ (copy_type constr_typ)
-  | _, Tnocopy constr_typ | _, Tdefer constr_typ ->
+  | Tcopy (typ, depth), _ -> check_type_aux (copy_type depth typ) constr_typ
+  | _, Tcopy (constr_typ, depth) -> check_type_aux typ (copy_type depth constr_typ)
+  | _, Tnocopy (constr_typ, _) | _, Tdefer constr_typ ->
       check_type_aux typ constr_typ
-  | Tnocopy typ, _ | Tdefer typ, _ -> check_type_aux typ constr_typ
+  | Tnocopy (typ, _), _ | Tdefer typ, _ -> check_type_aux typ constr_typ
   | Tvar _, Tvar _ ->
       typ.type_desc <- constr_typ.type_desc ;
       defer_as constr_typ typ
@@ -64,7 +64,7 @@ type state =
   ; typ_vars:
       (string, type_expr option, Base.String.comparator_witness) Base.Map.t
   ; vars_size: int
-  ; generation: int }
+  ; depth: int }
 
 let next_type_var i =
   if i < 25 then String.make 1 (Char.of_int_exn (Char.to_int 'a' + i))
@@ -95,10 +95,10 @@ let rec name_type_variables typ ({typ_vars; vars_size; _} as state) =
   | Tarrow (typ1, typ2) ->
       let state = name_type_variables typ1 state in
       name_type_variables typ2 state
-  | Tcopy _ ->
-      typ.type_desc <- (copy_type typ).type_desc ;
+  | Tcopy (_, depth) ->
+      typ.type_desc <- (copy_type depth typ).type_desc ;
       name_type_variables typ state
-  | Tdefer typ | Tnocopy typ -> name_type_variables typ state
+  | Tdefer typ | Tnocopy (typ, _) -> name_type_variables typ state
 
 let add_type {Location.txt= name; _} (typ : type_expr) state =
   {state with map= Map.update state.map name ~f:(fun _ -> typ)}
@@ -110,7 +110,11 @@ let get_name {Location.txt= name; _} {map; _} =
 
 let add_type_final name typ state =
   let state = name_type_variables typ state in
-  add_type name (mk (Tcopy typ)) state
+  add_type name (mk (Tcopy (typ, state.depth))) state
+
+let add_type_in_progress name typ state =
+  typ.type_desc <- Tnocopy (mk typ.type_desc, state.depth);
+  add_type name typ state
 
 let rec check_pattern ~add state typ pat =
   match pat.pat_desc with
@@ -138,10 +142,11 @@ let rec get_expression state exp =
   | Variable name -> get_name name state
   | Int _ -> mk (Tconstr {txt= "int"; loc= Location.none})
   | Fun (p, body) ->
-      let p_typ = mk (Tvar None) in
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instanciating the parameters. *)
-      let state = check_pattern ~add:add_type state p_typ p in
+      let state = {state with depth = state.depth + 1} in
+      let p_typ = mk (Tvar None) in
+      let state = check_pattern ~add:add_type_in_progress state p_typ p in
       let body_typ = get_expression state body in
       mk (Tarrow (p_typ, body_typ))
   | Seq (e1, e2) ->
@@ -167,5 +172,5 @@ let check (ast : statement list) =
       { map= Map.empty (module String)
       ; typ_vars= Map.empty (module String)
       ; vars_size= 0
-      ; generation= 0 }
+      ; depth= 0 }
     ~f:(fun state stmt -> check_statement state stmt)
