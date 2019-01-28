@@ -12,7 +12,7 @@ let rec of_typ typ =
   | Tvar (Some name) -> Typ.var ~loc name.txt
   | Tarrow (typ1, typ2) -> Typ.arrow ~loc Nolabel (of_typ typ1) (of_typ typ2)
   | Tconstr name -> Typ.constr ~loc (mk_lid name) []
-  | Tdefer typ -> of_typ typ
+  | Tdefer typ | Tcopy typ | Tnocopy typ -> of_typ typ
 
 let rec of_pattern pat =
   let loc = pat.pat_loc in

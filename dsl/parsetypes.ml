@@ -10,6 +10,11 @@ and type_desc =
   | Tconstr of str
   (* Internal, used to wrap a reference to a type. *)
   | Tdefer of type_expr
+  (* Internal, used as a hint to copy before modifying. *)
+  | Tcopy of type_expr
+  (* Internal, used as a hint to stop copying. *)
+  | Tnocopy of type_expr
+[@@deriving sexp]
 
 module Type = struct
   let id = ref 0

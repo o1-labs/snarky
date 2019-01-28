@@ -22,3 +22,9 @@ let f =
 let g : _ -> _ =
   let f : _ -> _ = fun (x) => { x; };
   f;
+
+let h : _ = fun (f : _ -> _) => {
+  let i : _ = f 15;
+  let j : _ = f i;
+  j;
+};
