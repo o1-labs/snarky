@@ -9,16 +9,16 @@ reformat:
 run: build
 	$(DUNE) dsl/meja.exe -- test.meja
 
-tests/%.ml: tests/%.meja
+tests/%.ml: tests/%.meja ../_build/default/dsl/meja.exe
 	$(DUNE) dsl/meja.exe -- --ml $@ $<
 
-tests/%.ast: tests/%.meja
+tests/%.ast: tests/%.meja ../_build/default/dsl/meja.exe
 	$(DUNE) dsl/meja.exe -- --ast $@ $<
 
-tests/%.struct: tests/%.meja
+tests/%.struct: tests/%.meja ../_build/default/dsl/meja.exe
 	$(DUNE) dsl/meja.exe -- --struct $@ $<
 
-tests/out/%.meja: tests/%.meja
+tests/out/%.meja: tests/%.meja ../_build/default/dsl/meja.exe
 	mkdir tests/out || true
 	cp $< $@
 
