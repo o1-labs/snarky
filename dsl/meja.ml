@@ -25,6 +25,7 @@ let main =
   let file = ref None in
   let ocaml_file = ref None in
   let ast_file = ref None in
+  let struct_file = ref None in
   let default = ref true in
   Arg.parse
     [ ( "--ml"
@@ -38,7 +39,13 @@ let main =
           (fun name ->
             default := false ;
             ast_file := Some name )
-      , "output OCaml ast" ) ]
+      , "output OCaml ast" )
+    ; ( "--struct"
+      , String
+          (fun name ->
+            default := false;
+            struct_file := Some name )
+      , "output internal ast" ) ]
     (fun filename -> file := Some filename)
     "" ;
   let file =
@@ -63,8 +70,18 @@ let main =
       Printast.structure 2 output ocaml_ast ;
       Format.pp_print_newline output ()
   | None -> () ) ;
-  match ocaml_formatter with
+  ( match ocaml_formatter with
   | Some output ->
       Pprintast.structure output ocaml_ast ;
       Format.pp_print_newline output ()
+  | None -> () ) ;
+  match !struct_file with
+  | Some filename ->
+      let output =
+        Format.formatter_of_out_channel (Out_channel.create filename)
+      in
+      List.iter ast ~f:(fun stri ->
+        Parsetypes.pp_statement output stri;
+        Format.pp_print_newline output ()
+      )
   | None -> ()

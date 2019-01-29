@@ -15,6 +15,9 @@ tests/%.ml: tests/%.meja
 tests/%.ast: tests/%.meja
 	$(DUNE) dsl/meja.exe -- --ast $@ $<
 
+tests/%.struct: tests/%.meja
+	$(DUNE) dsl/meja.exe -- --struct $@ $<
+
 tests/out/%.meja: tests/%.meja
 	mkdir tests/out || true
 	cp $< $@
