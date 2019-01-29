@@ -12,7 +12,11 @@ type 'a loc' = 'a Location.loc = {txt: 'a; loc: loc} [@@deriving show]
 
 type str = string loc' [@@deriving show]
 
-type type_expr = {mutable type_desc: type_desc; id: int; type_loc: loc}
+type type_expr =
+  { mutable type_desc: type_desc
+  ; id: int
+  ; type_loc: loc
+  }
 [@@deriving show]
 
 and type_desc =
@@ -37,11 +41,24 @@ module Type = struct
     {type_desc; id= !id; type_loc= loc}
 
   let mk_var ?loc ?(depth = -1) name = mk ?loc (Tvar {name; depth})
+
+  module T = struct
+    type t = type_expr
+
+    let compare {id= id1; _} {id= id2; _} = Int.compare id1 id2
+
+    let sexp_of_t _ = Sexp.List []
+  end
+
+  include T
+  include Comparator.Make (T)
 end
 
 type pattern = {pat_desc: pat_desc; pat_loc: loc} [@@deriving show]
 
-and pat_desc = PVariable of str | PConstraint of pattern * type_expr
+and pat_desc =
+  | PVariable of str
+  | PConstraint of {pcon_pat: pattern; mutable pcon_typ: type_expr}
 [@@deriving show]
 
 module Pattern = struct
@@ -57,7 +74,7 @@ and exp_desc =
   | Fun of pattern * expression
   | Seq of expression * expression
   | Let of pattern * expression * expression
-  | Constraint of expression * type_expr
+  | Constraint of {econ_exp: expression; mutable econ_typ: type_expr}
 [@@deriving show]
 
 module Expression = struct

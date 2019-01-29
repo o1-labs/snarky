@@ -26,12 +26,12 @@ run_test() {
       echo "PASSED: Got expected failure building from $1.mega"
       passes=passes+1
     else
-      echo "FAILED: Expected failure building from $1.mega; got success"
+      echo "FAILED: Building from $1.mega"
       fails=fails+1
     fi
   else
     if [ -e "tests/$1.fail" ]; then
-      echo "FAILED: Building from $1.mega"
+      echo "FAILED: Expected failure building from $1.mega; got success"
       fails=fails+1
     else
       echo "PASSED: Building from $1.mega"

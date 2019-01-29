@@ -18,7 +18,8 @@ let rec of_pattern pat =
   let loc = pat.pat_loc in
   match pat.pat_desc with
   | PVariable str -> Pat.var ~loc str
-  | PConstraint (p, typ) -> Pat.constraint_ ~loc (of_pattern p) (of_typ typ)
+  | PConstraint {pcon_pat= p; pcon_typ= typ} ->
+      Pat.constraint_ ~loc (of_pattern p) (of_typ typ)
 
 let rec of_expression exp =
   let loc = exp.exp_loc in
@@ -30,7 +31,8 @@ let rec of_expression exp =
   | Int i -> Exp.constant ~loc (Const.int i)
   | Fun (p, body) ->
       Exp.fun_ ~loc Nolabel None (of_pattern p) (of_expression body)
-  | Constraint (e, typ) -> Exp.constraint_ ~loc (of_expression e) (of_typ typ)
+  | Constraint {econ_exp= e; econ_typ= typ} ->
+      Exp.constraint_ ~loc (of_expression e) (of_typ typ)
   | Seq (e1, e2) -> Exp.sequence ~loc (of_expression e1) (of_expression e2)
   | Let (p, e_rhs, e) ->
       Exp.let_ ~loc Nonrecursive

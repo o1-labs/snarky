@@ -10,7 +10,7 @@ let type_print typ =
 let rec copy_type depth typ =
   let loc = typ.type_loc in
   match typ.type_desc with
-  | Tvar {depth= _depth'; _} -> mk ~loc typ.type_desc
+  | Tvar {depth= _depth'; name} -> mk_var ~loc ~depth name
   | Tconstr _ -> mk ~loc typ.type_desc
   | Tarrow (typ1, typ2) ->
       { typ with
@@ -88,6 +88,37 @@ type state =
   ; vars_size: int
   ; depth: int }
 
+let rec unify_after_parse' state typ =
+  match typ.type_desc with
+  | Tvar {name= Some name; _} -> (
+    Format.fprintf Format.err_formatter "\nFound name: %s\n" name.txt;
+    match Map.find state.typ_vars name.txt with
+    | Some (_, var) ->
+      Format.pp_print_string Format.err_formatter "Some\n";
+      (var, state, Base.Set.empty (module Type))
+    | None ->
+        let typ = mk_var ~loc:typ.type_loc ~depth:state.depth (Some name) in
+        let state =
+          { state with
+            typ_vars=
+              Map.add_exn state.typ_vars ~key:name.txt ~data:(`User, typ) }
+        in
+        (typ, state, Base.Set.singleton (module Type) typ) )
+  | Tvar {name= None; _} ->
+      let typ = mk_var ~loc:typ.type_loc ~depth:state.depth None in
+      (typ, state, Base.Set.singleton (module Type) typ)
+  | Tconstr _ -> (typ, state, Base.Set.empty (module Type))
+  | Tarrow (typ1, typ2) ->
+      let typ1, state, vars1 = unify_after_parse' state typ1 in
+      let typ2, state, vars2 = unify_after_parse' state typ2 in
+      typ.type_desc <- Tarrow (typ1, typ2) ;
+      (typ, state, Base.Set.union vars1 vars2)
+  | Tdefer typ | Tcopy (typ, _) | Tnocopy (typ, _) -> unify_after_parse' state typ
+
+let unify_after_parse state typ =
+  let (typ, state, _) = unify_after_parse' state typ in
+  (typ, state)
+
 let next_type_var i =
   if i < 25 then String.make 1 (Char.of_int_exn (Char.to_int 'a' + i))
   else Printf.sprintf "%d" (i - 24)
@@ -139,12 +170,14 @@ let add_type_in_progress name typ state =
   typ.type_desc <- Tnocopy (mk typ.type_desc, state.depth) ;
   add_type name typ state
 
-let rec check_pattern ~add state typ pat =
+let rec check_pattern ~add ~after_parse state typ pat =
   match pat.pat_desc with
   | PVariable str -> add str typ state
-  | PConstraint (p, constr_typ) ->
+  | PConstraint ({pcon_pat= p; pcon_typ= constr_typ} as data) ->
+      let (constr_typ, state) = after_parse state constr_typ in
+      data.pcon_typ <- constr_typ;
       let typ = check_type ~loc:pat.pat_loc typ constr_typ in
-      check_pattern ~add state typ p
+      check_pattern ~add ~after_parse state typ p
 
 let rec get_expression state exp =
   let loc = exp.exp_loc in
@@ -172,7 +205,7 @@ let rec get_expression state exp =
        them rather than instanciating the parameters. *)
       let state = {state with depth= state.depth + 1} in
       let p_typ = mk_var ~loc None in
-      let state = check_pattern ~add:add_type_in_progress state p_typ p in
+      let state = check_pattern ~add:add_type_in_progress ~after_parse:unify_after_parse state p_typ p in
       let body_typ = get_expression state body in
       mk (Tarrow (p_typ, body_typ))
   | Seq (e1, e2) ->
@@ -181,13 +214,13 @@ let rec get_expression state exp =
   | Let (p, e1, e2) ->
       let state = check_binding state p e1 in
       get_expression state e2
-  | Constraint (e, typ) ->
+  | Constraint {econ_exp= e; econ_typ= typ} ->
       let e_typ = get_expression state e in
       check_type ~loc e_typ typ
 
 and check_binding (state : 's) p e : 's =
   let e_type = get_expression state e in
-  check_pattern ~add:add_type_final state e_type p
+  check_pattern ~add:add_type_final ~after_parse:(fun s t -> (t, s)) state e_type p
 
 let check_statement state stmt =
   match stmt.stmt_desc with Value (p, e) -> check_binding state p e

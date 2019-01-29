@@ -80,7 +80,7 @@ function_from_args:
   | p = pat RBRACKET EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, body)) }
   | p = pat RBRACKET typ = type_expr EQUALGT LBRACE body = block RBRACE
-    { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc (Constraint (body, typ)))) }
+    { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc (Constraint {econ_exp= body; econ_typ= typ}))) }
   | p = pat COMMA f = function_from_args
     { mkexp ~pos:$loc (Fun (p, f)) }
 
@@ -100,7 +100,7 @@ pat:
   | LBRACKET p = pat RBRACKET
     { p }
   | p = pat COLON typ = type_expr
-    { mkpat ~pos:$loc (PConstraint (p, typ)) }
+    { mkpat ~pos:$loc (PConstraint {pcon_pat= p; pcon_typ= typ}) }
   | x = LIDENT
     { mkpat ~pos:$loc (PVariable (mkrhs x $loc(x))) }
 
