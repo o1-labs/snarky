@@ -43,7 +43,7 @@ let main =
     ; ( "--struct"
       , String
           (fun name ->
-            default := false;
+            default := false ;
             struct_file := Some name )
       , "output internal ast" ) ]
     (fun filename -> file := Some filename)
@@ -81,7 +81,6 @@ let main =
         Format.formatter_of_out_channel (Out_channel.create filename)
       in
       List.iter ast ~f:(fun stri ->
-        Parsetypes.pp_statement output stri;
-        Format.pp_print_newline output ()
-      )
+          Parsetypes.pp_statement output stri ;
+          Format.pp_print_newline output () )
   | None -> ()

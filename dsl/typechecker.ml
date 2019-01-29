@@ -13,12 +13,13 @@ let rec copy_type depth typ =
   | Tvar {depth= _depth'; _} -> mk ~loc typ.type_desc
   | Tconstr _ -> mk ~loc typ.type_desc
   | Tarrow (typ1, typ2) ->
-      {typ with type_desc= Tarrow (mk (Tcopy (typ1, depth)), mk (Tcopy (typ2, depth)))}
+      { typ with
+        type_desc= Tarrow (mk (Tcopy (typ1, depth)), mk (Tcopy (typ2, depth)))
+      }
   | Tdefer typ -> copy_type depth typ
-  | Tcopy (typ, depth') ->
-    copy_type (min depth depth') typ
+  | Tcopy (typ, depth') -> copy_type (min depth depth') typ
   | Tnocopy (typ, depth') ->
-    if depth' < depth then typ else copy_type depth typ
+      if depth' < depth then typ else copy_type depth typ
 
 exception Check_failed of type_expr * type_expr
 
@@ -26,7 +27,8 @@ let rec check_type_aux ~defer_as typ constr_typ =
   let check_type_aux = check_type_aux ~defer_as in
   match (typ.type_desc, constr_typ.type_desc) with
   | Tcopy (typ, depth), _ -> check_type_aux (copy_type depth typ) constr_typ
-  | _, Tcopy (constr_typ, depth) -> check_type_aux typ (copy_type depth constr_typ)
+  | _, Tcopy (constr_typ, depth) ->
+      check_type_aux typ (copy_type depth constr_typ)
   | _, Tnocopy (constr_typ, _) | _, Tdefer constr_typ ->
       check_type_aux typ constr_typ
   | Tnocopy (typ, _), _ | Tdefer typ, _ -> check_type_aux typ constr_typ
@@ -79,7 +81,10 @@ let check_type ~loc typ constr_typ =
 type state =
   { map: (string, type_expr, Base.String.comparator_witness) Base.Map.t
   ; typ_vars:
-      (string, type_expr option, Base.String.comparator_witness) Base.Map.t
+      ( string
+      , [`User | `Generated] * type_expr
+      , Base.String.comparator_witness )
+      Base.Map.t
   ; vars_size: int
   ; depth: int }
 
@@ -96,15 +101,16 @@ let rec name_type_variables typ ({typ_vars; vars_size; _} as state) =
   match typ.type_desc with
   | Tvar ({name= None; _} as data) ->
       let name, vars_size = find_next_free_var typ_vars vars_size in
-      typ.type_desc <- Tvar {data with name= Some (Location.mkloc name Location.none)} ;
-      let typ_vars = Map.add_exn typ_vars ~key:name ~data:(Some typ) in
+      typ.type_desc
+      <- Tvar {data with name= Some (Location.mkloc name Location.none)} ;
+      let typ_vars = Map.add_exn typ_vars ~key:name ~data:(`Generated, typ) in
       {state with vars_size; typ_vars}
   | Tvar {name= Some name; _} -> (
       let old = Map.find typ_vars name.txt in
-      let typ_vars = Map.update typ_vars name.txt ~f:(fun _ -> None) in
+      let typ_vars = Map.update typ_vars name.txt ~f:(fun _ -> `User, typ) in
       let state = {state with typ_vars} in
       match old with
-      | Some (Some ({type_desc= Tvar data; _} as typ)) ->
+      | Some (`Generated, ({type_desc= Tvar data; _} as typ)) ->
           typ.type_desc <- Tvar {data with name= None} ;
           name_type_variables typ state
       | _ -> state )
