@@ -27,13 +27,13 @@ let main =
   let ast_file = ref None in
   let default = ref true in
   Arg.parse
-    [ ( "ml"
+    [ ( "--ml"
       , String
           (fun name ->
             default := false ;
             ocaml_file := Some name )
       , "output OCaml code" )
-    ; ( "ast"
+    ; ( "--ast"
       , String
           (fun name ->
             default := false ;
