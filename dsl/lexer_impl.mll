@@ -1,12 +1,6 @@
 {
+open Lexing
 open Parser_impl
-
-let new_line lexbuf =
-  let pos = lexbuf.Lexing.lex_curr_p in
-  lexbuf.Lexing.lex_curr_p <- { pos with
-    pos_lnum = pos.pos_lnum + 1
-  ; pos_bol = pos.pos_cnum
-  }
 
 }
 
