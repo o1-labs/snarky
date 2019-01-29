@@ -225,7 +225,7 @@
                   Ptyp_arrow
                   Nolabel
                   core_type (tests/test1.meja[26,280+21]..[26,280+22])
-                    Ptyp_constr "int" (_none_[1,0+-1]..[1,0+-1]) ghost
+                    Ptyp_constr "int" (tests/test1.meja[27,314+16]..[27,314+18])
                     []
                   core_type (tests/test1.meja[26,280+26]..[26,280+27])
                     Ptyp_var f
@@ -243,7 +243,7 @@
                   Ptyp_arrow
                   Nolabel
                   core_type (tests/test1.meja[26,280+21]..[26,280+22])
-                    Ptyp_constr "int" (_none_[1,0+-1]..[1,0+-1]) ghost
+                    Ptyp_constr "int" (tests/test1.meja[27,314+16]..[27,314+18])
                     []
                   core_type (tests/test1.meja[26,280+26]..[26,280+27])
                     Ptyp_var f
