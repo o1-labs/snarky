@@ -1062,12 +1062,16 @@ module Make_basic (Backend : Backend_intf.S) = struct
      fun key t s k ->
       conv
         (fun c primary ->
+          Core.printf !"Before auxiliary_input checked\n%!" ;
           let auxiliary =
             Checked.auxiliary_input
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
-          Proof.create key ~primary ~auxiliary )
+          Core.printf !"Done with Checked.auxiliary, about to proof create\n%!" ;
+          let p = Proof.create key ~primary ~auxiliary in
+          Core.printf !"Proof create success\n%!" ;
+          p )
         t k
   end
 

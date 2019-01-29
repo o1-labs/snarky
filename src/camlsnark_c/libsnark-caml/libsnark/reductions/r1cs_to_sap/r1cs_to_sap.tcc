@@ -18,6 +18,11 @@
 #include <libff/common/utils.hpp>
 #include <libfqfft/evaluation_domain/get_evaluation_domain.hpp>
 
+#include <unistd.h>
+
+#include <execinfo.h>
+#include <stdio.h>
+
 namespace libsnark {
 
 /**
@@ -343,6 +348,17 @@ sap_witness<FieldT> r1cs_to_sap_witness_map(const r1cs_constraint_system<FieldT>
                                             const FieldT &d2)
 {
     libff::enter_block("Call to r1cs_to_sap_witness_map");
+
+    usleep(10000);
+
+   void* callstack[128];
+   int i, frames = backtrace(callstack, 128);
+   char** strs = backtrace_symbols(callstack, frames);
+   for (i = 0; i < frames; ++i) {
+       printf("%s\n", strs[i]);
+   }
+   fflush(stdout);
+   free(strs);
 
     /* sanity check */
     assert(cs.is_satisfied(primary_input, auxiliary_input));
