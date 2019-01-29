@@ -8,8 +8,10 @@ let type_print typ =
   Format.pp_print_newline Format.std_formatter ()
 
 let rec copy_type depth typ =
+  let loc = typ.type_loc in
   match typ.type_desc with
-  | (Tvar _ | Tconstr _) as type_desc -> {typ with type_desc}
+  | Tvar {depth= _depth'; _} -> mk ~loc typ.type_desc
+  | Tconstr _ -> mk ~loc typ.type_desc
   | Tarrow (typ1, typ2) ->
       {typ with type_desc= Tarrow (mk (Tcopy (typ1, depth)), mk (Tcopy (typ2, depth)))}
   | Tdefer typ -> copy_type depth typ
@@ -92,18 +94,18 @@ let rec find_next_free_var typ_vars vars_size =
 
 let rec name_type_variables typ ({typ_vars; vars_size; _} as state) =
   match typ.type_desc with
-  | Tvar None ->
+  | Tvar ({name= None; _} as data) ->
       let name, vars_size = find_next_free_var typ_vars vars_size in
-      typ.type_desc <- Tvar (Some (Location.mkloc name Location.none)) ;
+      typ.type_desc <- Tvar {data with name= Some (Location.mkloc name Location.none)} ;
       let typ_vars = Map.add_exn typ_vars ~key:name ~data:(Some typ) in
       {state with vars_size; typ_vars}
-  | Tvar (Some name) -> (
+  | Tvar {name= Some name; _} -> (
       let old = Map.find typ_vars name.txt in
       let typ_vars = Map.update typ_vars name.txt ~f:(fun _ -> None) in
       let state = {state with typ_vars} in
       match old with
-      | Some (Some typ) ->
-          typ.type_desc <- Tvar None ;
+      | Some (Some ({type_desc= Tvar data; _} as typ)) ->
+          typ.type_desc <- Tvar {data with name= None} ;
           name_type_variables typ state
       | _ -> state )
   | Tconstr _ -> state
@@ -150,7 +152,7 @@ let rec get_expression state exp =
             let x_typ = get_expression state x in
             match
               check_type ~loc f_typ
-                (mk ~loc (Tarrow (x_typ, mk ~loc (Tvar None))))
+                (mk ~loc (Tarrow (x_typ, mk_var ~loc None)))
             with
             | {type_desc= Tarrow (_, f_typ); _} -> apply_typ xs f_typ
             | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.."
@@ -163,7 +165,7 @@ let rec get_expression state exp =
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instanciating the parameters. *)
       let state = {state with depth= state.depth + 1} in
-      let p_typ = mk (Tvar None) in
+      let p_typ = mk_var ~loc None in
       let state = check_pattern ~add:add_type_in_progress state p_typ p in
       let body_typ = get_expression state body in
       mk (Tarrow (p_typ, body_typ))

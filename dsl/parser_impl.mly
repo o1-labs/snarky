@@ -7,6 +7,7 @@ let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 let mkrhs rhs pos = mkloc rhs (mklocation pos)
 
 let mktyp ~pos d = Type.mk ~loc:(mklocation pos) d
+let mktypvar ~pos d = Type.mk_var ~loc:(mklocation pos) d
 let mkpat ~pos d = Pattern.mk ~loc:(mklocation pos) d
 let mkexp ~pos d = Expression.mk ~loc:(mklocation pos) d
 let mkstr ~pos d = Statement.mk ~loc:(mklocation pos) d
@@ -105,9 +106,9 @@ pat:
 
 simple_type_expr:
   | UNDERSCORE
-    { mktyp ~pos:$loc (Tvar None) }
+    { mktypvar ~pos:$loc None }
   | QUOT x = LIDENT
-    { mktyp ~pos:$loc (Tvar (Some (mkrhs x $loc(x)))) }
+    { mktypvar ~pos:$loc (Some (mkrhs x $loc(x))) }
   | x = LIDENT
     { mktyp ~pos:$loc (Tconstr (mkrhs x $loc(x))) }
   | LBRACKET x = type_expr RBRACKET

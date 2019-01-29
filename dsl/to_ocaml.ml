@@ -8,8 +8,8 @@ let mk_lid name = Location.mkloc (Longident.Lident name.txt) name.loc
 let rec of_typ typ =
   let loc = typ.type_loc in
   match typ.type_desc with
-  | Tvar None -> Typ.any ~loc ()
-  | Tvar (Some name) -> Typ.var ~loc name.txt
+  | Tvar {name= None; _} -> Typ.any ~loc ()
+  | Tvar {name= Some name; _} -> Typ.var ~loc name.txt
   | Tarrow (typ1, typ2) -> Typ.arrow ~loc Nolabel (of_typ typ1) (of_typ typ2)
   | Tconstr name -> Typ.constr ~loc (mk_lid name) []
   | Tdefer typ | Tcopy (typ, _) | Tnocopy (typ, _) -> of_typ typ

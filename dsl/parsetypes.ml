@@ -17,7 +17,7 @@ type type_expr = {mutable type_desc: type_desc; id: int; type_loc: loc}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of str option
+  | Tvar of {name: str option; depth: int}
   | Tarrow of type_expr * type_expr
   (* A type name. *)
   | Tconstr of str
@@ -35,6 +35,8 @@ module Type = struct
   let mk ?(loc = Location.none) type_desc =
     incr id ;
     {type_desc; id= !id; type_loc= loc}
+
+  let mk_var ?loc ?(depth = -1) name = mk ?loc (Tvar {name; depth})
 end
 
 type pattern = {pat_desc: pat_desc; pat_loc: loc} [@@deriving show]

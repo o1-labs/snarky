@@ -221,7 +221,7 @@
               core_type (tests/test1.meja[26,280+8]..[26,280+9])
                 Ptyp_arrow
                 Nolabel
-                core_type (_none_[1,0+-1]..[1,0+-1]) ghost
+                core_type (tests/test1.meja[26,280+17]..[30,358+1])
                   Ptyp_arrow
                   Nolabel
                   core_type (tests/test1.meja[26,280+21]..[26,280+22])
