@@ -7,13 +7,13 @@ let c = x; y
 let d x = x
 let e = let e = let e = x in e in e
 let f = let f x = x in let g = (d f) f in g f f f
-let (g : '_a72 -> '_a73) = let (f : '_a64 -> '_a64) = fun x -> x in f
-let (h : (int -> '_a88) -> '_a103) =
-  fun (f : int -> '_a88) ->
-    let (i : '_a88) = f 15 in let (j : '_a88) = f i in j
+let (g : '_a77 -> '_a78) = let (f : '_a69 -> '_a69) = fun x -> x in f
+let (h : (int -> '_a93) -> '_a108) =
+  fun (f : int -> '_a93) ->
+    let (i : '_a93) = f 15 in let (j : '_a93) = f i in j
 let (i : ('b -> 'b) -> 'b -> 'b) = fun (f : 'b -> 'b) -> f
-let (j : '_a137) =
-  let (f : '_a117 -> '_a117) = fun (x : '_a117) -> x in f f f
+let (j : '_a142) =
+  let (f : '_a122 -> '_a122) = fun (x : '_a122) -> x in f f f
 let (k : (int -> int) -> int -> int) =
   fun (f : int -> int) -> fun (x : int) -> f 15; f x
 let l = (1, 2, 3)
@@ -33,3 +33,5 @@ let (o :
     ->
     let x = (1, 2, (1, 2, (1, 2, ()))) in
     let y = (3, 4, (3, 4, (3, 4, ()))) in let z = f x y in f x z
+type nonrec int' = int
+let (p : int -> int') = fun (x : int) -> x

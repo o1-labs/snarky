@@ -180,9 +180,9 @@
                 Ptyp_arrow
                 Nolabel
                 core_type (tests/test1.meja[23,236+10]..[23,236+16])
-                  Ptyp_var _a72
+                  Ptyp_var _a77
                 core_type (tests/test1.meja[23,236+10]..[23,236+16])
-                  Ptyp_var _a73
+                  Ptyp_var _a78
             expression (tests/test1.meja[23,236+2]..[24,274+3])
               Pexp_let Nonrec
               [
@@ -195,9 +195,9 @@
                       Ptyp_arrow
                       Nolabel
                       core_type (tests/test1.meja[23,236+24]..[23,236+36])
-                        Ptyp_var _a64
+                        Ptyp_var _a69
                       core_type (tests/test1.meja[23,236+24]..[23,236+36])
-                        Ptyp_var _a64
+                        Ptyp_var _a69
                   expression (tests/test1.meja[23,236+24]..[23,236+36])
                     Pexp_fun
                     Nolabel
@@ -228,9 +228,9 @@
                     Ptyp_constr "int" (tests/test1.meja[27,314+16]..[27,314+18])
                     []
                   core_type (tests/test1.meja[27,314+14]..[27,314+18])
-                    Ptyp_var _a88
+                    Ptyp_var _a93
                 core_type (tests/test1.meja[28,334+10]..[28,334+11])
-                  Ptyp_var _a103
+                  Ptyp_var _a108
             expression (tests/test1.meja[26,280+17]..[30,358+1])
               Pexp_fun
               Nolabel
@@ -246,7 +246,7 @@
                     Ptyp_constr "int" (tests/test1.meja[27,314+16]..[27,314+18])
                     []
                   core_type (tests/test1.meja[27,314+14]..[27,314+18])
-                    Ptyp_var _a88
+                    Ptyp_var _a93
               expression (tests/test1.meja[27,314+2]..[29,353+3])
                 Pexp_let Nonrec
                 [
@@ -256,7 +256,7 @@
                       pattern (tests/test1.meja[27,314+6]..[27,314+7])
                         Ppat_var "i" (tests/test1.meja[27,314+6]..[27,314+7])
                       core_type (tests/test1.meja[27,314+14]..[27,314+18])
-                        Ptyp_var _a88
+                        Ptyp_var _a93
                     expression (tests/test1.meja[27,314+14]..[27,314+18])
                       Pexp_apply
                       expression (tests/test1.meja[27,314+14]..[27,314+15])
@@ -277,7 +277,7 @@
                         pattern (tests/test1.meja[28,334+6]..[28,334+7])
                           Ppat_var "j" (tests/test1.meja[28,334+6]..[28,334+7])
                         core_type (tests/test1.meja[27,314+14]..[27,314+18])
-                          Ptyp_var _a88
+                          Ptyp_var _a93
                       expression (tests/test1.meja[28,334+14]..[28,334+17])
                         Pexp_apply
                         expression (tests/test1.meja[28,334+14]..[28,334+15])
@@ -344,7 +344,7 @@
               pattern (tests/test1.meja[36,414+4]..[36,414+5])
                 Ppat_var "j" (tests/test1.meja[36,414+4]..[36,414+5])
               core_type (tests/test1.meja[38,462+2]..[38,462+7])
-                Ptyp_var _a137
+                Ptyp_var _a142
             expression (tests/test1.meja[37,426+2]..[38,462+7])
               Pexp_let Nonrec
               [
@@ -357,9 +357,9 @@
                       Ptyp_arrow
                       Nolabel
                       core_type (tests/test1.meja[37,426+19]..[37,426+34])
-                        Ptyp_var _a117
+                        Ptyp_var _a122
                       core_type (tests/test1.meja[37,426+19]..[37,426+34])
-                        Ptyp_var _a117
+                        Ptyp_var _a122
                   expression (tests/test1.meja[37,426+19]..[37,426+34])
                     Pexp_fun
                     Nolabel
@@ -369,7 +369,7 @@
                       pattern (tests/test1.meja[37,426+19]..[37,426+20])
                         Ppat_var "x" (tests/test1.meja[37,426+19]..[37,426+20])
                       core_type (tests/test1.meja[37,426+19]..[37,426+34])
-                        Ptyp_var _a117
+                        Ptyp_var _a122
                     expression (tests/test1.meja[37,426+31]..[37,426+32])
                       Pexp_ident "x" (tests/test1.meja[37,426+31]..[37,426+32])
               ]
@@ -909,6 +909,54 @@
                           expression (tests/test1.meja[55,753+6]..[55,753+7])
                             Pexp_ident "z" (tests/test1.meja[55,753+6]..[55,753+7])
                       ]
+        ]
+      structure_item (tests/test1.meja[58,766+0]..[58,766+15])
+        Pstr_type Nonrec
+        [
+          type_declaration "int'" (tests/test1.meja[58,766+5]..[58,766+9]) (tests/test1.meja[58,766+10]..[58,766+15])
+            ptype_params =
+              []
+            ptype_cstrs =
+              []
+            ptype_kind =
+              Ptype_abstract
+            ptype_private = Public
+            ptype_manifest =
+              Some
+                core_type (tests/test1.meja[58,766+12]..[58,766+15])
+                  Ptyp_constr "int" (tests/test1.meja[58,766+12]..[58,766+15])
+                  []
+        ]
+      structure_item (tests/test1.meja[60,784+0]..[62,830+1])
+        Pstr_value Nonrec
+        [
+          <def>
+            pattern (tests/test1.meja[60,784+4]..[60,784+19])
+              Ppat_constraint
+              pattern (tests/test1.meja[60,784+4]..[60,784+5])
+                Ppat_var "p" (tests/test1.meja[60,784+4]..[60,784+5])
+              core_type (tests/test1.meja[60,784+8]..[60,784+19])
+                Ptyp_arrow
+                Nolabel
+                core_type (tests/test1.meja[60,784+8]..[60,784+11])
+                  Ptyp_constr "int" (tests/test1.meja[60,784+8]..[60,784+11])
+                  []
+                core_type (tests/test1.meja[60,784+15]..[60,784+19])
+                  Ptyp_constr "int'" (tests/test1.meja[60,784+15]..[60,784+19])
+                  []
+            expression (tests/test1.meja[60,784+27]..[62,830+1])
+              Pexp_fun
+              Nolabel
+              None
+              pattern (tests/test1.meja[60,784+27]..[60,784+34])
+                Ppat_constraint
+                pattern (tests/test1.meja[60,784+27]..[60,784+28])
+                  Ppat_var "x" (tests/test1.meja[60,784+27]..[60,784+28])
+                core_type (tests/test1.meja[60,784+31]..[60,784+34])
+                  Ptyp_constr "int" (tests/test1.meja[60,784+31]..[60,784+34])
+                  []
+              expression (tests/test1.meja[61,825+2]..[61,825+3])
+                Pexp_ident "x" (tests/test1.meja[61,825+2]..[61,825+3])
         ]
     ]
 

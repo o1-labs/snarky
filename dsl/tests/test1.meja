@@ -54,3 +54,9 @@ let o : _ = fun (f : 'a -> 'a -> 'a) => {
   let z = f x y;
   f x z;
 };
+
+type int' = int;
+
+let p : int -> int' = fun (x : int) => {
+  x;
+};
