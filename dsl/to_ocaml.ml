@@ -23,6 +23,7 @@ let rec of_typ typ =
   | Tvar {name= Some name; _} -> Typ.var ~loc name.txt
   | Tarrow (typ1, typ2) -> Typ.arrow ~loc Nolabel (of_typ typ1) (of_typ typ2)
   | Tconstr name -> Typ.constr ~loc (mk_lid name) []
+  | Ttuple typs -> Typ.tuple ~loc (List.map ~f:of_typ typs)
   | Tdefer typ -> of_typ typ
 
 let rec of_pattern pat =
@@ -49,6 +50,7 @@ let rec of_expression exp =
       Exp.let_ ~loc Nonrecursive
         [Vb.mk (of_pattern p) (of_expression e_rhs)]
         (of_expression e)
+  | Tuple es -> Exp.tuple ~loc (List.map ~f:of_expression es)
 
 let of_statement stmt =
   let loc = stmt.stmt_loc in

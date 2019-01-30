@@ -23,6 +23,8 @@ let rec copy_type depth typ =
   | Tconstr _ -> mk ~loc typ.type_desc
   | Tarrow (typ1, typ2) ->
       mk ~loc (Tarrow (copy_type depth typ1, copy_type depth typ2))
+  | Ttuple typs ->
+      mk ~loc (Ttuple (List.map ~f:(copy_type depth) typs))
 
 exception Check_failed of type_expr * type_expr
 
@@ -123,6 +125,14 @@ let rec unify_after_parse' env typ =
       let typ2, env, vars2 = unify_after_parse' env typ2 in
       typ.type_desc <- Tarrow (typ1, typ2) ;
       (typ, env, Base.Set.union vars1 vars2)
+  | Ttuple typs ->
+      let rev_typs, env, vars =
+        List.fold_left typs ~init:([], env, Base.Set.empty (module Type))
+          ~f:(fun (rev_typs, env, vars) typ ->
+            let (typ, env, vars') = unify_after_parse' env typ in
+            (typ :: rev_typs, env, Base.Set.union vars vars')) in
+      typ.type_desc <- Ttuple (List.rev rev_typs) ;
+      (typ, env, vars)
   | Tdefer typ ->
       unify_after_parse' env typ
 
@@ -132,6 +142,9 @@ let rec type_vars typ =
   | Tvar _ -> Base.Set.singleton (module Type) typ
   | Tconstr _ -> Base.Set.empty (module Type)
   | Tarrow (typ1, typ2) -> Base.Set.union (type_vars typ1) (type_vars typ2)
+  | Ttuple typs ->
+    List.fold_left typs ~init:(Base.Set.empty (module Type)) ~f:(fun vars typ ->
+      Base.Set.union vars (type_vars typ))
   | Tdefer typ -> type_vars typ
 
 let unify_after_parse env typ =
@@ -183,6 +196,9 @@ let capture_type_vars vars typ =
     | Tarrow (typ1, typ2) ->
         let vars = capture_type_vars depth typ1 vars removed_vars in
         capture_type_vars depth typ2 vars removed_vars
+    | Ttuple typs ->
+        List.fold_left typs ~init:(Set.empty (module Type)) ~f:(fun vars typ ->
+          capture_type_vars depth typ vars removed_vars)
   in
   let var_set = Set.singleton (module Type) typ in
   match typ.type_desc with
@@ -223,6 +239,8 @@ let rec name_type_variables typ ({typ_vars; vars_size; _} as env) =
   | Tarrow (typ1, typ2) ->
       let env = name_type_variables typ1 env in
       name_type_variables typ2 env
+  | Ttuple typs ->
+      List.fold_left typs ~init:env ~f:(fun env typ -> name_type_variables typ env)
   | Tdefer typ -> name_type_variables typ env
 
 let get_name name env =
@@ -290,6 +308,8 @@ let rec get_expression env exp =
   | Constraint {econ_exp= e; econ_typ= typ} ->
       let e_typ = get_expression env e in
       check_type ~loc e_typ typ
+  | Tuple es ->
+    mk ~loc (Ttuple (List.map es ~f:(fun e -> strip_polymorphism (get_expression env e))))
 
 and check_binding (env : 's) p e : 's =
   let e_type = get_expression env e in

@@ -33,6 +33,12 @@ let mkstr ~pos d = Statement.mk ~loc:(mklocation pos) d
 
 %token EOL
 
+%left SEMI
+%nonassoc below_COMMA
+%left COMMA
+%nonassoc below_EXP
+%nonassoc LIDENT LET LBRACKET LBRACE INT FUN
+
 %start file
 %type <Parsetypes.statement list> file
 
@@ -47,8 +53,9 @@ file:
     { s :: rest }
 
 structure_item:
-  | LET x = pat EQUAL e = expr
-    { mkstr ~pos:$loc (Value (x, e)) }
+  | bind = let_binding
+    { let (x, e) = bind in
+      mkstr ~pos:$loc (Value (x, e)) }
 
 simple_expr:
   | x = LIDENT
@@ -59,22 +66,37 @@ simple_expr:
     { f }
   | LBRACKET es = exprs RBRACKET
     { es }
+  | LBRACKET RBRACKET
+    { mkexp ~pos:$loc (Tuple []) }
   | LBRACE es = block RBRACE
     { es }
-  | LET x = pat EQUAL lhs = expr SEMI rhs = expr
-    { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
+  | bind = let_binding SEMI rhs = expr
+    { let (x, lhs) = bind in
+      mkexp ~pos:$loc (Let (x, lhs, rhs)) }
 
 expr:
-  | x = simple_expr
+  | x = simple_expr %prec below_EXP
     { x }
   | f = simple_expr xs = simple_expr_list
     { mkexp ~pos:$loc (Apply (f, List.rev xs)) }
+  | rev = expr_comma_list %prec below_COMMA
+    { mkexp ~pos:$loc (Tuple (List.rev rev)) }
+
+let_binding:
+  | LET x = pat EQUAL e = expr
+    { (x, e) }
 
 simple_expr_list:
   | x = simple_expr
     { [x] }
   | l = simple_expr_list x = simple_expr
     { x :: l }
+
+expr_comma_list:
+  | l = expr_comma_list COMMA e = expr
+    { e :: l }
+  | e1 = expr COMMA e2 = expr
+    { [e2; e1] }
 
 function_from_args:
   | p = pat RBRACKET EQUALGT LBRACE body = block RBRACE

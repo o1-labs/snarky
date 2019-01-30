@@ -16,3 +16,6 @@ let (j : '_a131) =
   let (f : '_a111 -> '_a111) = fun (x : '_a111) -> x in f f f
 let (k : (int -> int) -> int -> int) =
   fun (f : int -> int) -> fun (x : int) -> f 15; f x
+let l = (1, 2, 3)
+let m = ((1, 2, 3), 4, 5, (6, (7, 8)))
+let n = ((), (), ())

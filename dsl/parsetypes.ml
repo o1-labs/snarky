@@ -28,6 +28,7 @@ and type_desc =
   | Tarrow of type_expr * type_expr
   (* A type name. *)
   | Tconstr of str
+  | Ttuple of type_expr list
   (* Internal, used to wrap a reference to a type. *)
   | Tdefer of type_expr
 [@@deriving show]
@@ -92,6 +93,7 @@ and exp_desc =
   | Seq of expression * expression
   | Let of pattern * expression * expression
   | Constraint of {econ_exp: expression; mutable econ_typ: type_expr}
+  | Tuple of expression list
 [@@deriving show]
 
 module Expression = struct

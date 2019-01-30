@@ -468,5 +468,81 @@
                           Pexp_ident "x" (tests/test1.meja[42,525+4]..[42,525+5])
                     ]
         ]
+      structure_item (tests/test1.meja[45,536+0]..[45,536+15])
+        Pstr_value Nonrec
+        [
+          <def>
+            pattern (tests/test1.meja[45,536+4]..[45,536+5])
+              Ppat_var "l" (tests/test1.meja[45,536+4]..[45,536+5])
+            expression (tests/test1.meja[45,536+8]..[45,536+15])
+              Pexp_tuple
+              [
+                expression (tests/test1.meja[45,536+8]..[45,536+9])
+                  Pexp_constant PConst_int (1,None)
+                expression (tests/test1.meja[45,536+11]..[45,536+12])
+                  Pexp_constant PConst_int (2,None)
+                expression (tests/test1.meja[45,536+14]..[45,536+15])
+                  Pexp_constant PConst_int (3,None)
+              ]
+        ]
+      structure_item (tests/test1.meja[47,554+0]..[47,554+38])
+        Pstr_value Nonrec
+        [
+          <def>
+            pattern (tests/test1.meja[47,554+4]..[47,554+5])
+              Ppat_var "m" (tests/test1.meja[47,554+4]..[47,554+5])
+            expression (tests/test1.meja[47,554+9]..[47,554+37])
+              Pexp_tuple
+              [
+                expression (tests/test1.meja[47,554+10]..[47,554+17])
+                  Pexp_tuple
+                  [
+                    expression (tests/test1.meja[47,554+10]..[47,554+11])
+                      Pexp_constant PConst_int (1,None)
+                    expression (tests/test1.meja[47,554+13]..[47,554+14])
+                      Pexp_constant PConst_int (2,None)
+                    expression (tests/test1.meja[47,554+16]..[47,554+17])
+                      Pexp_constant PConst_int (3,None)
+                  ]
+                expression (tests/test1.meja[47,554+20]..[47,554+21])
+                  Pexp_constant PConst_int (4,None)
+                expression (tests/test1.meja[47,554+23]..[47,554+24])
+                  Pexp_constant PConst_int (5,None)
+                expression (tests/test1.meja[47,554+27]..[47,554+36])
+                  Pexp_tuple
+                  [
+                    expression (tests/test1.meja[47,554+27]..[47,554+28])
+                      Pexp_constant PConst_int (6,None)
+                    expression (tests/test1.meja[47,554+31]..[47,554+35])
+                      Pexp_tuple
+                      [
+                        expression (tests/test1.meja[47,554+31]..[47,554+32])
+                          Pexp_constant PConst_int (7,None)
+                        expression (tests/test1.meja[47,554+34]..[47,554+35])
+                          Pexp_constant PConst_int (8,None)
+                      ]
+                  ]
+              ]
+        ]
+      structure_item (tests/test1.meja[49,595+0]..[49,595+20])
+        Pstr_value Nonrec
+        [
+          <def>
+            pattern (tests/test1.meja[49,595+4]..[49,595+5])
+              Ppat_var "n" (tests/test1.meja[49,595+4]..[49,595+5])
+            expression (tests/test1.meja[49,595+9]..[49,595+19])
+              Pexp_tuple
+              [
+                expression (tests/test1.meja[49,595+9]..[49,595+11])
+                  Pexp_tuple
+                  []
+                expression (tests/test1.meja[49,595+13]..[49,595+15])
+                  Pexp_tuple
+                  []
+                expression (tests/test1.meja[49,595+17]..[49,595+19])
+                  Pexp_tuple
+                  []
+              ]
+        ]
     ]
 
