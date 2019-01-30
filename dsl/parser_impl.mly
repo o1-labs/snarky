@@ -103,6 +103,17 @@ simple_expr:
   | bind = let_binding SEMI rhs = expr
     { let (x, lhs) = bind in
       mkexp ~pos:$loc (Let (x, lhs, rhs)) }
+  | LBRACE r = exp_record_fields RBRACE
+    { let (fields, values) = List.fold_left (fun (fields, values) (id, e) ->
+      let field =
+        { field_ident= id
+        ; field_type= Type.mk_var ~loc:id.loc None
+        ; field_loc= id.loc }
+      in
+      (field :: fields, e :: values)) ([], []) r in
+      mkexp ~pos:$loc (Record_literal
+        { record_values= values
+        ; record_fields= fields }) }
 
 expr:
   | x = simple_expr %prec below_EXP
@@ -111,6 +122,16 @@ expr:
     { mkexp ~pos:$loc (Apply (f, List.rev xs)) }
   | rev = expr_comma_list %prec below_COMMA
     { mkexp ~pos:$loc (Tuple (List.rev rev)) }
+
+exp_record_field:
+  | id = LIDENT COLON e = simple_expr
+    { (mkrhs id $loc(id), e) }
+
+exp_record_fields:
+  | field = exp_record_field
+    { [field] }
+  | fields = exp_record_fields COMMA field = exp_record_field
+    { field :: fields }
 
 let_binding:
   | LET x = pat EQUAL e = expr

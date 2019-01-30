@@ -33,9 +33,12 @@ let of_type_decl name typ_dec =
   | Abstract -> Type.mk name ~loc
   | Alias typ -> Type.mk name ~loc ~manifest:(of_typ typ)
   | Record fields ->
-    Type.mk name ~loc ~kind:(Parsetree.Ptype_record (
-      List.map fields ~f:(fun decl ->
-        Type.field ~loc:decl.field_loc decl.field_ident (of_typ decl.field_type))))
+      Type.mk name ~loc
+        ~kind:
+          (Parsetree.Ptype_record
+             (List.map fields ~f:(fun decl ->
+                  Type.field ~loc:decl.field_loc decl.field_ident
+                    (of_typ decl.field_type) )))
 
 let rec of_pattern pat =
   let loc = pat.pat_loc in
@@ -62,13 +65,21 @@ let rec of_expression exp =
         [Vb.mk (of_pattern p) (of_expression e_rhs)]
         (of_expression e)
   | Tuple es -> Exp.tuple ~loc (List.map ~f:of_expression es)
+  | Record_literal {record_values; record_fields; _} ->
+      Exp.record ~loc
+        (List.zip_exn
+           (List.map
+              ~f:(fun {field_ident; _} -> mk_lid field_ident)
+              record_fields)
+           (List.map ~f:of_expression record_values))
+        None
 
 let of_statement stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
   | Value (p, e) ->
-    Str.value ~loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
+      Str.value ~loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
   | Type (name, typ_decl) ->
-    Str.type_ ~loc Nonrecursive [of_type_decl name typ_decl]
+      Str.type_ ~loc Nonrecursive [of_type_decl name typ_decl]
 
 let of_file = List.map ~f:of_statement

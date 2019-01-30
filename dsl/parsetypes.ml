@@ -18,7 +18,8 @@ type type_decl =
   { type_decl_desc: type_decl_desc
   ; type_decl_id: int
   ; type_decl_loc: loc
-  ; mutable type_decl_in_recursion: bool } [@@deriving show]
+  ; mutable type_decl_in_recursion: bool }
+[@@deriving show]
 
 and type_decl_desc =
   | Abstract
@@ -26,19 +27,19 @@ and type_decl_desc =
   | Record of field_decl list
 [@@deriving show]
 
-and field_decl = {
-  field_ident: str
+and field_decl =
+  { field_ident: str
   ; field_type: type_expr
-    [@printer fun fmt expr ->
-      if expr.in_recursion then
-        Format.pp_print_string fmt "Some <self-recursive>"
-      else
-        (expr.in_recursion <- true;
-        Format.pp_print_string fmt "Some";
-        pp_type_expr fmt expr;
-        expr.in_recursion <- false)]
-  ; field_loc: loc
-  }
+         [@printer
+           fun fmt expr ->
+             if expr.in_recursion then
+               Format.pp_print_string fmt "Some <self-recursive>"
+             else (
+               expr.in_recursion <- true ;
+               Format.pp_print_string fmt "Some" ;
+               pp_type_expr fmt expr ;
+               expr.in_recursion <- false )]
+  ; field_loc: loc }
 [@@deriving show]
 
 and type_expr =
@@ -61,34 +62,35 @@ and type_desc =
 [@@deriving show]
 
 and type_var =
-  {name: str option; depth: int;
-    mutable instance: type_expr option
-    [@printer fun fmt expr ->
-      match expr with
-      | Some expr ->
-        if expr.in_recursion then
-          Format.pp_print_string fmt "Some <self-recursive>"
-        else
-          (expr.in_recursion <- true;
-          Format.pp_print_string fmt "Some";
-          pp_type_expr fmt expr;
-          expr.in_recursion <- false)
-      | None -> Format.pp_print_string fmt "None"]
-  }
+  { name: str option
+  ; depth: int
+  ; mutable instance: type_expr option
+         [@printer
+           fun fmt expr ->
+             match expr with
+             | Some expr ->
+                 if expr.in_recursion then
+                   Format.pp_print_string fmt "Some <self-recursive>"
+                 else (
+                   expr.in_recursion <- true ;
+                   Format.pp_print_string fmt "Some" ;
+                   pp_type_expr fmt expr ;
+                   expr.in_recursion <- false )
+             | None -> Format.pp_print_string fmt "None"] }
 [@@deriving show]
 
 and type_constr =
   { constr_ident: str
-  ; mutable constr_type_decl : type_decl
-    [@printer fun fmt decl ->
-      if decl.type_decl_in_recursion then
-        Format.pp_print_string fmt "Some <self-recursive>"
-      else
-        (decl.type_decl_in_recursion <- true;
-        Format.pp_print_string fmt "Some";
-        pp_type_decl fmt decl;
-        decl.type_decl_in_recursion <- false)]
-  }
+  ; mutable constr_type_decl: type_decl
+         [@printer
+           fun fmt decl ->
+             if decl.type_decl_in_recursion then
+               Format.pp_print_string fmt "Some <self-recursive>"
+             else (
+               decl.type_decl_in_recursion <- true ;
+               Format.pp_print_string fmt "Some" ;
+               pp_type_decl fmt decl ;
+               decl.type_decl_in_recursion <- false )] }
 [@@deriving show]
 
 module TypeDecl = struct
@@ -152,7 +154,11 @@ and exp_desc =
   | Let of pattern * expression * expression
   | Constraint of {econ_exp: expression; mutable econ_typ: type_expr}
   | Tuple of expression list
+  | Record_literal of record_contents
 [@@deriving show]
+
+and record_contents =
+  {record_values: expression list; record_fields: field_decl list}
 
 module Expression = struct
   let mk ?(loc = Location.none) exp_desc = {exp_desc; exp_loc= loc}
@@ -160,9 +166,8 @@ end
 
 type statement = {stmt_desc: stmt_desc; stmt_loc: loc} [@@deriving show]
 
-and stmt_desc =
-  | Value of pattern * expression
-  | Type of str * type_decl [@@deriving show]
+and stmt_desc = Value of pattern * expression | Type of str * type_decl
+[@@deriving show]
 
 module Statement = struct
   let mk ?(loc = Location.none) stmt_desc = {stmt_desc; stmt_loc= loc}

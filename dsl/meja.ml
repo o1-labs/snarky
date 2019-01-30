@@ -68,7 +68,7 @@ let main =
           (fun name ->
             default := false ;
             ocaml_env_file := Some name )
-      , "output environment in OCaml format after evaluation" )]
+      , "output environment in OCaml format after evaluation" ) ]
     (fun filename -> file := Some filename)
     "" ;
   let file =
@@ -86,18 +86,16 @@ let main =
     | None, false -> None
   in
   do_output !ast_file (fun output ->
-    Printast.structure 2 output ocaml_ast ;
-    Format.pp_print_newline output ()) ;
+      Printast.structure 2 output ocaml_ast ;
+      Format.pp_print_newline output () ) ;
   ( match ocaml_formatter with
   | Some output ->
       Pprintast.structure output ocaml_ast ;
       Format.pp_print_newline output ()
   | None -> () ) ;
   do_output !struct_file (fun output ->
-    List.iter ast ~f:(fun stri ->
-        Parsetypes.pp_statement output stri ;
-        Format.pp_print_newline output () )) ;
-  do_output !env_file (fun output ->
-    Environ.pp output env);
-  do_output !ocaml_env_file (fun output ->
-    Environ.pp_ocaml output env)
+      List.iter ast ~f:(fun stri ->
+          Parsetypes.pp_statement output stri ;
+          Format.pp_print_newline output () ) ) ;
+  do_output !env_file (fun output -> Environ.pp output env) ;
+  do_output !ocaml_env_file (fun output -> Environ.pp_ocaml output env)

@@ -23,8 +23,7 @@ let rec copy_type depth typ =
   | Tconstr _ -> mk ~loc typ.type_desc
   | Tarrow (typ1, typ2) ->
       mk ~loc (Tarrow (copy_type depth typ1, copy_type depth typ2))
-  | Ttuple typs ->
-      mk ~loc (Ttuple (List.map ~f:(copy_type depth) typs))
+  | Ttuple typs -> mk ~loc (Ttuple (List.map ~f:(copy_type depth) typs))
 
 exception Check_failed of type_expr * type_expr
 
@@ -33,26 +32,27 @@ let rec check_type_aux typ constr_typ =
     match (typ.type_desc, constr_typ.type_desc) with
     | Tpoly (_, typ), _ -> check_type_aux typ constr_typ
     | _, Tpoly (_, constr_typ) -> check_type_aux typ constr_typ
-    | Tconstr {constr_type_decl= typ_decl; _},
-      Tconstr {constr_type_decl= constr_typ_decl; _} ->
-      if not (Int.equal typ_decl.type_decl_id constr_typ_decl.type_decl_id) then
-        (match typ_decl.type_decl_desc, constr_typ_decl.type_decl_desc with
-        | Alias typ, _ ->
-          typ_decl.type_decl_in_recursion <- true;
-          check_type_aux typ constr_typ;
-          typ_decl.type_decl_in_recursion <- false
-        | _, Alias constr_typ ->
-          constr_typ_decl.type_decl_in_recursion <- true;
-          check_type_aux typ constr_typ;
-          constr_typ_decl.type_decl_in_recursion <- false
-        | _, _ -> raise (Check_failed (typ, constr_typ)))
+    | ( Tconstr {constr_type_decl= typ_decl; _}
+      , Tconstr {constr_type_decl= constr_typ_decl; _} ) -> (
+        if not (Int.equal typ_decl.type_decl_id constr_typ_decl.type_decl_id)
+        then
+          match (typ_decl.type_decl_desc, constr_typ_decl.type_decl_desc) with
+          | Alias typ, _ ->
+              typ_decl.type_decl_in_recursion <- true ;
+              check_type_aux typ constr_typ ;
+              typ_decl.type_decl_in_recursion <- false
+          | _, Alias constr_typ ->
+              constr_typ_decl.type_decl_in_recursion <- true ;
+              check_type_aux typ constr_typ ;
+              constr_typ_decl.type_decl_in_recursion <- false
+          | _, _ -> raise (Check_failed (typ, constr_typ)) )
     | Tarrow (typ1, typ2), Tarrow (constr_typ1, constr_typ2) ->
         check_type_aux typ1 constr_typ1 ;
         check_type_aux typ2 constr_typ2
-    | Ttuple typs, Ttuple constr_typs ->
-      (match List.iter2 ~f:check_type_aux typs constr_typs with
+    | Ttuple typs, Ttuple constr_typs -> (
+      match List.iter2 ~f:check_type_aux typs constr_typs with
       | Ok _ -> ()
-      | Unequal_lengths -> raise (Check_failed (typ, constr_typ)))
+      | Unequal_lengths -> raise (Check_failed (typ, constr_typ)) )
     | Tdefer _, _ | _, Tdefer _ ->
         failwith "Unexpected Tdefer outside copy_type."
     | Tvar data, Tvar constr_data -> (
@@ -134,10 +134,12 @@ let rec unify_after_parse' env typ =
       let typ = mk_var ~loc:typ.type_loc ~depth:env.depth None in
       (typ, env, Base.Set.singleton (module Type) typ)
   | Tconstr data ->
-    (match Environ.find_type data.constr_ident env with
-    | Some type_decl -> data.constr_type_decl <- type_decl
-    | None -> failwithf "can't find type %s in environment" data.constr_ident.txt ());
-    (typ, env, Base.Set.empty (module Type))
+      ( match Environ.find_type data.constr_ident env with
+      | Some type_decl -> data.constr_type_decl <- type_decl
+      | None ->
+          failwithf "can't find type %s in environment" data.constr_ident.txt
+            () ) ;
+      (typ, env, Base.Set.empty (module Type))
   | Tarrow (typ1, typ2) ->
       let typ1, env, vars1 = unify_after_parse' env typ1 in
       let typ2, env, vars2 = unify_after_parse' env typ2 in
@@ -145,14 +147,15 @@ let rec unify_after_parse' env typ =
       (typ, env, Base.Set.union vars1 vars2)
   | Ttuple typs ->
       let rev_typs, env, vars =
-        List.fold_left typs ~init:([], env, Base.Set.empty (module Type))
+        List.fold_left typs
+          ~init:([], env, Base.Set.empty (module Type))
           ~f:(fun (rev_typs, env, vars) typ ->
-            let (typ, env, vars') = unify_after_parse' env typ in
-            (typ :: rev_typs, env, Base.Set.union vars vars')) in
+            let typ, env, vars' = unify_after_parse' env typ in
+            (typ :: rev_typs, env, Base.Set.union vars vars') )
+      in
       typ.type_desc <- Ttuple (List.rev rev_typs) ;
       (typ, env, vars)
-  | Tdefer typ ->
-      unify_after_parse' env typ
+  | Tdefer typ -> unify_after_parse' env typ
 
 let rec type_vars typ =
   match typ.type_desc with
@@ -161,8 +164,9 @@ let rec type_vars typ =
   | Tconstr _ -> Base.Set.empty (module Type)
   | Tarrow (typ1, typ2) -> Base.Set.union (type_vars typ1) (type_vars typ2)
   | Ttuple typs ->
-    List.fold_left typs ~init:(Base.Set.empty (module Type)) ~f:(fun vars typ ->
-      Base.Set.union vars (type_vars typ))
+      List.fold_left typs
+        ~init:(Base.Set.empty (module Type))
+        ~f:(fun vars typ -> Base.Set.union vars (type_vars typ))
   | Tdefer typ -> type_vars typ
 
 let unify_after_parse env typ =
@@ -215,8 +219,9 @@ let capture_type_vars vars typ =
         let vars = capture_type_vars depth typ1 vars removed_vars in
         capture_type_vars depth typ2 vars removed_vars
     | Ttuple typs ->
-        List.fold_left typs ~init:(Set.empty (module Type)) ~f:(fun vars typ ->
-          capture_type_vars depth typ vars removed_vars)
+        List.fold_left typs
+          ~init:(Set.empty (module Type))
+          ~f:(fun vars typ -> capture_type_vars depth typ vars removed_vars)
   in
   let var_set = Set.singleton (module Type) typ in
   match typ.type_desc with
@@ -258,7 +263,8 @@ let rec name_type_variables typ ({typ_vars; vars_size; _} as env) =
       let env = name_type_variables typ1 env in
       name_type_variables typ2 env
   | Ttuple typs ->
-      List.fold_left typs ~init:env ~f:(fun env typ -> name_type_variables typ env)
+      List.fold_left typs ~init:env ~f:(fun env typ ->
+          name_type_variables typ env )
   | Tdefer typ -> name_type_variables typ env
 
 let get_name name env =
@@ -327,7 +333,15 @@ let rec get_expression env exp =
       let e_typ = get_expression env e in
       check_type ~loc e_typ typ
   | Tuple es ->
-    mk ~loc (Ttuple (List.map es ~f:(fun e -> strip_polymorphism (get_expression env e))))
+      mk ~loc
+        (Ttuple
+           (List.map es ~f:(fun e -> strip_polymorphism (get_expression env e))))
+  | Record_literal {record_fields= {field_ident; _} :: _; _} -> (
+    match Environ.find_field_type field_ident env with
+    | Some typ -> typ
+    | None ->
+        failwithf "Could not find the record for field %s" field_ident.txt () )
+  | Record_literal _ -> failwith "Unexpected empty record expression."
 
 and check_binding (env : 's) p e : 's =
   let e_type = get_expression env e in
@@ -339,24 +353,25 @@ let rec type_decl_after_parse env type_decl =
   match type_decl.type_decl_desc with
   | Abstract -> type_decl
   | Alias typ ->
-    let (typ, _) = unify_after_parse env typ in
-    TypeDecl.mk ~loc (Alias typ)
+      let typ, _ = unify_after_parse env typ in
+      TypeDecl.mk ~loc (Alias typ)
   | Record fields ->
-    let fields = List.map ~f:(field_after_parse env) fields in
-    TypeDecl.mk ~loc (Record fields)
+      let fields = List.map ~f:(field_after_parse env) fields in
+      TypeDecl.mk ~loc (Record fields)
 
 and field_after_parse env field =
-  {field with
-   field_type=
-     let (typ, _) = unify_after_parse env field.field_type in typ}
+  { field with
+    field_type=
+      (let typ, _ = unify_after_parse env field.field_type in
+       typ) }
 
 let check_statement env stmt =
   match stmt.stmt_desc with
   | Value (p, e) -> check_binding env p e
   | Type (x, typ_decl) ->
-    let typ_decl = type_decl_after_parse env typ_decl in
-    Environ.register_type x typ_decl env
+      let typ_decl = type_decl_after_parse env typ_decl in
+      Environ.register_type x typ_decl env
 
 let check (ast : statement list) =
-  List.fold_left ast ~init:(Environ.Core.env) ~f:(fun env stmt ->
+  List.fold_left ast ~init:Environ.Core.env ~f:(fun env stmt ->
       check_statement env stmt )
