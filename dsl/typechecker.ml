@@ -33,9 +33,19 @@ let rec check_type_aux typ constr_typ =
     match (typ.type_desc, constr_typ.type_desc) with
     | Tpoly (_, typ), _ -> check_type_aux typ constr_typ
     | _, Tpoly (_, constr_typ) -> check_type_aux typ constr_typ
-    | Tconstr typ_data, Tconstr constr_typ_data
-      when String.equal typ_data.constr_ident.txt constr_typ_data.constr_ident.txt ->
-        ()
+    | Tconstr {constr_type_decl= typ_decl; _},
+      Tconstr {constr_type_decl= constr_typ_decl; _} ->
+      if not (Int.equal typ_decl.type_decl_id constr_typ_decl.type_decl_id) then
+        (match typ_decl.type_decl_desc, constr_typ_decl.type_decl_desc with
+        | Alias typ, _ ->
+          typ_decl.type_decl_in_recursion <- true;
+          check_type_aux typ constr_typ;
+          typ_decl.type_decl_in_recursion <- false
+        | _, Alias constr_typ ->
+          constr_typ_decl.type_decl_in_recursion <- true;
+          check_type_aux typ constr_typ;
+          constr_typ_decl.type_decl_in_recursion <- false
+        | _, _ -> raise (Check_failed (typ, constr_typ)))
     | Tarrow (typ1, typ2), Tarrow (constr_typ1, constr_typ2) ->
         check_type_aux typ1 constr_typ1 ;
         check_type_aux typ2 constr_typ2
@@ -123,7 +133,11 @@ let rec unify_after_parse' env typ =
   | Tvar {name= None; _} ->
       let typ = mk_var ~loc:typ.type_loc ~depth:env.depth None in
       (typ, env, Base.Set.singleton (module Type) typ)
-  | Tconstr _ -> (typ, env, Base.Set.empty (module Type))
+  | Tconstr data ->
+    (match Environ.find_type data.constr_ident env with
+    | Some type_decl -> data.constr_type_decl <- type_decl
+    | None -> failwithf "can't find type %s in environment" data.constr_ident.txt ());
+    (typ, env, Base.Set.empty (module Type))
   | Tarrow (typ1, typ2) ->
       let typ1, env, vars1 = unify_after_parse' env typ1 in
       let typ2, env, vars2 = unify_after_parse' env typ2 in
@@ -291,7 +305,7 @@ let rec get_expression env exp =
       in
       apply_typ xs f_typ
   | Variable name -> get_name name env
-  | Int _ -> mk_constr ~loc {txt= "int"; loc}
+  | Int _ -> mk_constr' ~loc ~decl:Environ.Core.int {txt= "int"; loc}
   | Fun (p, body) ->
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instanciating the parameters. *)
@@ -320,11 +334,29 @@ and check_binding (env : 's) p e : 's =
   check_pattern ~add:add_type_final
     ~after_parse:unify_and_polymorphise_after_parse env e_type p
 
+let rec type_decl_after_parse env type_decl =
+  let loc = type_decl.type_decl_loc in
+  match type_decl.type_decl_desc with
+  | Abstract -> type_decl
+  | Alias typ ->
+    let (typ, _) = unify_after_parse env typ in
+    TypeDecl.mk ~loc (Alias typ)
+  | Record fields ->
+    let fields = List.map ~f:(field_after_parse env) fields in
+    TypeDecl.mk ~loc (Record fields)
+
+and field_after_parse env field =
+  {field with
+   field_type=
+     let (typ, _) = unify_after_parse env field.field_type in typ}
+
 let check_statement env stmt =
   match stmt.stmt_desc with
   | Value (p, e) -> check_binding env p e
-  | Type (x, typ) -> Environ.register_type x typ env
+  | Type (x, typ_decl) ->
+    let typ_decl = type_decl_after_parse env typ_decl in
+    Environ.register_type x typ_decl env
 
 let check (ast : statement list) =
-  List.fold_left ast ~init:(Environ.empty ()) ~f:(fun env stmt ->
+  List.fold_left ast ~init:(Environ.Core.env) ~f:(fun env stmt ->
       check_statement env stmt )

@@ -112,8 +112,11 @@ module Type = struct
   let mk_var ?loc ?(depth = -1) name =
     mk ?loc (Tvar {name; depth; instance= None})
 
+  let mk_constr' ?loc ~decl constr_ident =
+    mk ?loc (Tconstr {constr_ident; constr_type_decl= decl})
+
   let mk_constr ?loc ?(decl = Abstract) constr_ident =
-    mk ?loc (Tconstr {constr_ident; constr_type_decl= TypeDecl.mk ?loc decl})
+    mk_constr' ?loc ~decl:(TypeDecl.mk ?loc decl) constr_ident
 
   module T = struct
     type t = type_expr

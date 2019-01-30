@@ -22,7 +22,7 @@ let pp_ocaml (output : Format.formatter) (env : t) =
   Map.iteri env.names ~f:(fun ~key ~data:(_, typ) ->
     Format.fprintf output "%s : %a\n" key Pprintast.core_type (To_ocaml.of_typ typ))
 
-let empty () =
+let empty =
   { names= empty_ident_table
   ; typ_vars= empty_ident_table
   ; types= empty_ident_table
@@ -44,3 +44,14 @@ let find_type_var name {typ_vars; _} = Map.find typ_vars name.txt
 
 let register_type name typ_decl env =
   {env with types= Map.update env.types name.txt ~f:(fun _ -> typ_decl)}
+
+let find_type name {types; _} = Map.find types name.txt
+
+module Core = struct
+  let int = TypeDecl.mk Abstract
+
+  let mkloc s = Location.(mkloc s none)
+
+  let env = empty
+    |> register_type (mkloc "int") int
+end
