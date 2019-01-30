@@ -1,6 +1,7 @@
 open Core_kernel
 open Parsetypes
 open Parsetypes.Type
+open Environ
 
 let type_print typ =
   let typ = To_ocaml.of_typ typ in
@@ -103,45 +104,31 @@ let check_type ~loc typ constr_typ =
       pp_print_newline err_formatter () ) ;
   constr_typ
 
-type state =
-  { map:
-      ( string
-      , [`Copy | `NoCopy] * type_expr
-      , Base.String.comparator_witness )
-      Base.Map.t
-  ; typ_vars:
-      ( string
-      , [`User | `Generated] * type_expr
-      , Base.String.comparator_witness )
-      Base.Map.t
-  ; vars_size: int
-  ; depth: int }
-
-let rec unify_after_parse' state typ =
+let rec unify_after_parse' env typ =
   match typ.type_desc with
-  | Tpoly (_, typ) -> unify_after_parse' state typ
+  | Tpoly (_, typ) -> unify_after_parse' env typ
   | Tvar {name= Some name; _} -> (
-    match Map.find state.typ_vars name.txt with
-    | Some (_, var) -> (var, state, Base.Set.empty (module Type))
+    match Map.find env.typ_vars name.txt with
+    | Some (_, var) -> (var, env, Base.Set.empty (module Type))
     | None ->
-        let typ = mk_var ~loc:typ.type_loc ~depth:state.depth (Some name) in
-        let state =
-          { state with
+        let typ = mk_var ~loc:typ.type_loc ~depth:env.depth (Some name) in
+        let env =
+          { env with
             typ_vars=
-              Map.add_exn state.typ_vars ~key:name.txt ~data:(`User, typ) }
+              Map.add_exn env.typ_vars ~key:name.txt ~data:(`User, typ) }
         in
-        (typ, state, Base.Set.singleton (module Type) typ) )
+        (typ, env, Base.Set.singleton (module Type) typ) )
   | Tvar {name= None; _} ->
-      let typ = mk_var ~loc:typ.type_loc ~depth:state.depth None in
-      (typ, state, Base.Set.singleton (module Type) typ)
-  | Tconstr _ -> (typ, state, Base.Set.empty (module Type))
+      let typ = mk_var ~loc:typ.type_loc ~depth:env.depth None in
+      (typ, env, Base.Set.singleton (module Type) typ)
+  | Tconstr _ -> (typ, env, Base.Set.empty (module Type))
   | Tarrow (typ1, typ2) ->
-      let typ1, state, vars1 = unify_after_parse' state typ1 in
-      let typ2, state, vars2 = unify_after_parse' state typ2 in
+      let typ1, env, vars1 = unify_after_parse' env typ1 in
+      let typ2, env, vars2 = unify_after_parse' env typ2 in
       typ.type_desc <- Tarrow (typ1, typ2) ;
-      (typ, state, Base.Set.union vars1 vars2)
+      (typ, env, Base.Set.union vars1 vars2)
   | Tdefer typ (*| Tcopy (typ, _) | Tnocopy (typ, _)*) ->
-      unify_after_parse' state typ
+      unify_after_parse' env typ
 
 let rec type_vars typ =
   match typ.type_desc with
@@ -151,9 +138,9 @@ let rec type_vars typ =
   | Tarrow (typ1, typ2) -> Base.Set.union (type_vars typ1) (type_vars typ2)
   | Tdefer typ (*| Tcopy (typ, _) | Tnocopy (typ, _)*) -> type_vars typ
 
-let unify_after_parse state typ =
-  let typ, state, _ = unify_after_parse' state typ in
-  (typ, state)
+let unify_after_parse env typ =
+  let typ, env, _ = unify_after_parse' env typ in
+  (typ, env)
 
 let polymorphise typ vars =
   let loc = typ.type_loc in
@@ -166,9 +153,9 @@ let rec strip_polymorphism typ =
   | Tpoly (_, typ) -> strip_polymorphism typ
   | _ -> typ
 
-let unify_and_polymorphise_after_parse state typ =
-  let typ, _, vars = unify_after_parse' state typ in
-  (polymorphise typ vars, state)
+let unify_and_polymorphise_after_parse env typ =
+  let typ, _, vars = unify_after_parse' env typ in
+  (polymorphise typ vars, env)
 
 let next_type_var i =
   if i < 25 then String.make 1 (Char.of_int_exn (Char.to_int 'a' + i))
@@ -219,7 +206,7 @@ let reduce_type_vars typ =
   in
   reduce_type_vars typ (Set.empty (module Type))
 
-let rec name_type_variables typ ({typ_vars; vars_size; _} as state) =
+let rec name_type_variables typ ({typ_vars; vars_size; _} as env) =
   if false then
     match typ.type_desc with
     | Tvar ({name= None; _} as data) ->
@@ -229,62 +216,59 @@ let rec name_type_variables typ ({typ_vars; vars_size; _} as state) =
         let typ_vars =
           Map.add_exn typ_vars ~key:name ~data:(`Generated, typ)
         in
-        {state with vars_size; typ_vars}
+        {env with vars_size; typ_vars}
     | Tvar {name= Some name; _} -> (
         let old = Map.find typ_vars name.txt in
         let typ_vars =
           Map.update typ_vars name.txt ~f:(fun _ -> (`User, typ))
         in
-        let state = {state with typ_vars} in
+        let env = {env with typ_vars} in
         match old with
         | Some (`Generated, ({type_desc= Tvar data; _} as typ)) ->
             typ.type_desc <- Tvar {data with name= None} ;
-            name_type_variables typ state
-        | _ -> state )
-    | Tpoly (_var, typ) -> name_type_variables typ state
-    | Tconstr _ -> state
+            name_type_variables typ env
+        | _ -> env )
+    | Tpoly (_var, typ) -> name_type_variables typ env
+    | Tconstr _ -> env
     | Tarrow (typ1, typ2) ->
-        let state = name_type_variables typ1 state in
-        name_type_variables typ2 state
-    | Tdefer typ -> name_type_variables typ state
-  else state
+        let env = name_type_variables typ1 env in
+        name_type_variables typ2 env
+    | Tdefer typ -> name_type_variables typ env
+  else env
 
-let add_type {Location.txt= name; _} typ state =
-  {state with map= Map.update state.map name ~f:(fun _ -> typ)}
-
-let get_name {Location.txt= name; _} {map; depth; _} =
-  match Map.find map name with
-  | Some (`Copy, typ) -> copy_type depth typ
+let get_name name env =
+  match Environ.find_name name env with
+  | Some (`Copy, typ) -> copy_type env.depth typ
   | Some (`NoCopy, typ) -> typ
-  | None -> failwithf "Could not find name %s." name ()
+  | None -> failwithf "Could not find name %s." name.txt ()
 
-let add_type_final name typ state =
+let add_type_final name typ env =
   let typ_vars = reduce_type_vars typ in
   let typ = polymorphise typ typ_vars in
-  let state = name_type_variables typ state in
-  add_type name (`Copy, typ) state
+  let env = name_type_variables typ env in
+  Environ.add_name name (`Copy, typ) env
 
-let add_type_in_progress name typ state = add_type name (`NoCopy, typ) state
+let add_type_in_progress name typ env = Environ.add_name name (`NoCopy, typ) env
 
-let rec check_pattern ~add ~after_parse state typ pat =
+let rec check_pattern ~add ~after_parse env typ pat =
   match pat.pat_desc with
-  | PVariable str -> add str typ state
+  | PVariable str -> add str typ env
   | PConstraint ({pcon_pat= p; pcon_typ= constr_typ} as data) ->
-      let constr_typ, state = after_parse state constr_typ in
+      let constr_typ, env = after_parse env constr_typ in
       data.pcon_typ <- constr_typ ;
       let typ = check_type ~loc:pat.pat_loc typ constr_typ in
-      check_pattern ~add ~after_parse state typ p
+      check_pattern ~add ~after_parse env typ p
 
-let rec get_expression state exp =
+let rec get_expression env exp =
   let loc = exp.exp_loc in
   match exp.exp_desc with
   | Apply (f, xs) ->
-      let f_typ = get_expression state f in
+      let f_typ = get_expression env f in
       let rec apply_typ xs f_typ =
         match xs with
         | [] -> f_typ
         | x :: xs -> (
-            let x_typ = get_expression state x in
+            let x_typ = get_expression env x in
             match
               check_type ~loc f_typ
                 (mk ~loc (Tarrow (x_typ, mk_var ~loc None)))
@@ -294,42 +278,38 @@ let rec get_expression state exp =
             )
       in
       apply_typ xs f_typ
-  | Variable name -> get_name name state
+  | Variable name -> get_name name env
   | Int _ -> mk (Tconstr {txt= "int"; loc})
   | Fun (p, body) ->
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instanciating the parameters. *)
-      let state = {state with depth= state.depth + 1} in
+      let env = {env with depth= env.depth + 1} in
       let p_typ = mk_var ~loc None in
-      let state =
+      let env =
         check_pattern ~add:add_type_in_progress ~after_parse:unify_after_parse
-          state p_typ p
+          env p_typ p
       in
-      let body_typ = get_expression state body in
+      let body_typ = get_expression env body in
       mk ~loc (Tarrow (p_typ, strip_polymorphism body_typ))
   | Seq (e1, e2) ->
-      let _ = get_expression state e1 in
-      get_expression state e2
+      let _ = get_expression env e1 in
+      get_expression env e2
   | Let (p, e1, e2) ->
-      let state = check_binding state p e1 in
-      get_expression state e2
+      let env = check_binding env p e1 in
+      get_expression env e2
   | Constraint {econ_exp= e; econ_typ= typ} ->
-      let e_typ = get_expression state e in
+      let e_typ = get_expression env e in
       check_type ~loc e_typ typ
 
-and check_binding (state : 's) p e : 's =
-  let e_type = get_expression state e in
+and check_binding (env : 's) p e : 's =
+  let e_type = get_expression env e in
   check_pattern ~add:add_type_final
-    ~after_parse:unify_and_polymorphise_after_parse state e_type p
+    ~after_parse:unify_and_polymorphise_after_parse env e_type p
 
-let check_statement state stmt =
-  match stmt.stmt_desc with Value (p, e) -> check_binding state p e
+let check_statement env stmt =
+  match stmt.stmt_desc with Value (p, e) -> check_binding env p e
 
 let check (ast : statement list) =
   List.fold_left ast
-    ~init:
-      { map= Map.empty (module String)
-      ; typ_vars= Map.empty (module String)
-      ; vars_size= 0
-      ; depth= 0 }
-    ~f:(fun state stmt -> check_statement state stmt)
+    ~init:(Environ.empty ())
+    ~f:(fun env stmt -> check_statement env stmt)
