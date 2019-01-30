@@ -155,6 +155,7 @@ and exp_desc =
   | Constraint of {econ_exp: expression; mutable econ_typ: type_expr}
   | Tuple of expression list
   | Record_literal of record_contents
+  | Field of expression * str
 [@@deriving show]
 
 and record_contents =

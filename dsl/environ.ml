@@ -28,8 +28,8 @@ let pp_ocaml (output : Format.formatter) (env : t) =
   Format.pp_print_string output "Types:\n" ;
   Map.iteri env.types ~f:(fun ~key ~data:type_decl ->
       Format.fprintf output "%a\n" Pprintast.structure
-        [Ast_helper.Str.type_ Nonrecursive
-           [To_ocaml.of_type_decl Location.(mkloc key none) type_decl]] ) ;
+        [ Ast_helper.Str.type_ Nonrecursive
+            [To_ocaml.of_type_decl Location.(mkloc key none) type_decl] ] ) ;
   Format.pp_print_string output "Names:\n" ;
   Map.iteri env.names ~f:(fun ~key ~data:(_, typ) ->
       Format.fprintf output "%s : %a\n" key Pprintast.core_type
@@ -71,8 +71,17 @@ let register_type name typ_decl env =
 
 let find_type name {types; _} = Map.find types name.txt
 
-let find_field_type name {fields; _} =
+let find_record_type name {fields; _} =
   Option.map ~f:fst (Map.find fields name.txt)
+
+let find_field_type name {fields; _} =
+  match Map.find fields name.txt with
+  | None -> None
+  | Some (typ, i) -> (
+    match typ.type_desc with
+    | Tconstr {constr_type_decl= {type_decl_desc= Record fields; _}; _} ->
+        Some (List.nth_exn fields i).field_type
+    | _ -> None )
 
 module Core = struct
   let int = TypeDecl.mk Abstract

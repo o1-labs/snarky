@@ -337,11 +337,34 @@ let rec get_expression env exp =
         (Ttuple
            (List.map es ~f:(fun e -> strip_polymorphism (get_expression env e))))
   | Record_literal {record_fields= {field_ident; _} :: _; _} -> (
-    match Environ.find_field_type field_ident env with
-    | Some typ -> typ
+    match Environ.find_record_type field_ident env with
+    | Some typ -> copy_type env.depth typ
     | None ->
         failwithf "Could not find the record for field %s" field_ident.txt () )
   | Record_literal _ -> failwith "Unexpected empty record expression."
+  | Field (e, field) -> (
+      let e_typ = get_expression env e in
+      let record_typ, field_typ =
+        match
+          ( Environ.find_record_type field env
+          , Environ.find_field_type field env )
+        with
+        | Some typ, Some field_type -> (typ, field_type)
+        | _, _ ->
+            failwithf "Could not find the record and field type for field %s"
+              field.txt ()
+      in
+      let record_typ = strip_polymorphism (copy_type env.depth record_typ) in
+      let field_type = strip_polymorphism (copy_type env.depth field_typ) in
+      (* Treat the field lookup as a function for the purposes of typechecking. *)
+      let field_arrow = mk ~loc (Tarrow (record_typ, field_type)) in
+      match
+        check_type ~loc
+          (mk ~loc (Tarrow (e_typ, mk_var ~loc None)))
+          field_arrow
+      with
+      | {type_desc= Tarrow (_, field_typ); _} -> field_typ
+      | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.." )
 
 and check_binding (env : 's) p e : 's =
   let e_type = get_expression env e in

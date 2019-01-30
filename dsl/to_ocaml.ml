@@ -73,6 +73,7 @@ let rec of_expression exp =
               record_fields)
            (List.map ~f:of_expression record_values))
         None
+  | Field (e, field) -> Exp.field ~loc (of_expression e) (mk_lid field)
 
 let of_statement stmt =
   let loc = stmt.stmt_loc in

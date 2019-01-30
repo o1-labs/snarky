@@ -35,6 +35,7 @@ let mkstr = pos_to_loc Statement.mk
 %token COMMA
 %token QUOT
 %token UNDERSCORE
+%token DOT
 %token EOF
 
 %token EOL
@@ -92,6 +93,8 @@ simple_expr:
     { mkexp ~pos:$loc (Variable (mkrhs x $loc(x))) }
   | x = INT
     { mkexp ~pos:$loc (Int x) }
+  | e = simple_expr DOT field = LIDENT
+    { mkexp ~pos:$loc (Field (e, mkrhs field $loc(field))) }
   | FUN LBRACKET f = function_from_args
     { f }
   | LBRACKET es = exprs RBRACKET
