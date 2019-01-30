@@ -39,6 +39,10 @@ let rec check_type_aux typ constr_typ =
     | Tarrow (typ1, typ2), Tarrow (constr_typ1, constr_typ2) ->
         check_type_aux typ1 constr_typ1 ;
         check_type_aux typ2 constr_typ2
+    | Ttuple typs, Ttuple constr_typs ->
+      (match List.iter2 ~f:check_type_aux typs constr_typs with
+      | Ok _ -> ()
+      | Unequal_lengths -> raise (Check_failed (typ, constr_typ)))
     | Tdefer _, _ | _, Tdefer _ ->
         failwith "Unexpected Tdefer outside copy_type."
     | Tvar data, Tvar constr_data -> (
