@@ -184,6 +184,20 @@ let rec strip_polymorphism typ =
   | Tpoly (_, typ) -> strip_polymorphism typ
   | _ -> typ
 
+let rec rev_polymorphic_vars typ =
+  match typ.type_desc with
+  | Tpoly (var, typ) -> var :: rev_polymorphic_vars typ
+  | _ -> []
+
+let rec add_rev_polymorphic_vars ~loc typ vars =
+  match vars with
+  | [] -> typ
+  | var :: vars ->
+      add_rev_polymorphic_vars ~loc (Type.mk ~loc (Tpoly (var, typ))) vars
+
+let copy_polymorphism ~loc source_typ typ =
+  add_rev_polymorphic_vars ~loc typ (rev_polymorphic_vars source_typ)
+
 let unify_and_polymorphise_after_parse env typ =
   let typ, _, vars = unify_after_parse' env typ in
   (polymorphise typ vars, env)
@@ -365,6 +379,30 @@ let rec get_expression env exp =
       with
       | {type_desc= Tarrow (_, field_typ); _} -> field_typ
       | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.." )
+  | Match (e, cases) ->
+      let e_typ = get_expression env e in
+      let depth = env.depth in
+      let env = {env with depth= depth + 1} in
+      let envs =
+        List.map cases ~f:(fun (p, _) ->
+            let e_typ = copy_type depth e_typ in
+            let env =
+              check_pattern env e_typ p
+                ~after_parse:unify_and_polymorphise_after_parse
+                ~add:add_type_final
+            in
+            Environ.push_match_instances (rev_polymorphic_vars e_typ) env )
+      in
+      List.fold2_exn envs cases ~init:(mk_var ~loc ~depth None)
+        ~f:(fun typ env (_, case_e) ->
+          let case_e_typ = get_expression env case_e in
+          let instances, _env = Environ.pop_match_instances env in
+          ignore
+            (List.map instances ~f:(fun var ->
+                 match var.type_desc with
+                 | Tvar data -> data.instance <- None
+                 | _ -> failwith "Expected a Tvar from env.match_instances" )) ;
+          check_type ~loc:case_e.exp_loc case_e_typ typ )
 
 and check_binding (env : 's) p e : 's =
   let e_type = get_expression env e in

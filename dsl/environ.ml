@@ -10,6 +10,7 @@ type t =
   ; typ_vars: ([`User | `Generated] * type_expr) ident_table
   ; types: type_decl ident_table
   ; fields: (type_expr * int) ident_table
+  ; match_instances: type_expr list list
   ; vars_size: int
   ; depth: int }
 
@@ -40,6 +41,7 @@ let empty =
   ; typ_vars= empty_ident_table
   ; types= empty_ident_table
   ; fields= empty_ident_table
+  ; match_instances= []
   ; vars_size= 0
   ; depth= 0 }
 
@@ -83,12 +85,23 @@ let find_field_type name {fields; _} =
         Some (List.nth_exn fields i).field_type
     | _ -> None )
 
+let push_match_instances instances env =
+  {env with match_instances= instances :: env.match_instances}
+
+let pop_match_instances env =
+  match env.match_instances with
+  | [] -> failwith "No match instances to pop!"
+  | instances :: match_instances -> (instances, {env with match_instances})
+
 module Core = struct
   let int = TypeDecl.mk Abstract
+
   let unit = TypeDecl.mk (Alias (Type.mk (Ttuple [])))
 
   let mkloc s = Location.(mkloc s none)
 
-  let env = empty |> register_type (mkloc "int") int
+  let env =
+    empty
+    |> register_type (mkloc "int") int
     |> register_type (mkloc "unit") unit
 end

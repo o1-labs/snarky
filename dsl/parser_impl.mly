@@ -23,6 +23,7 @@ let mkstr = pos_to_loc Statement.mk
 %token FUN
 %token LET
 %token TYPE
+%token SWITCH
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -36,6 +37,7 @@ let mkstr = pos_to_loc Statement.mk
 %token QUOT
 %token UNDERSCORE
 %token DOT
+%token BAR
 %token EOF
 
 %token EOL
@@ -44,6 +46,7 @@ let mkstr = pos_to_loc Statement.mk
 %nonassoc below_COMMA
 %left COMMA
 %nonassoc below_EXP
+%nonassoc DOT
 %nonassoc LIDENT LET LBRACKET LBRACE INT FUN
 
 %start file
@@ -125,6 +128,8 @@ expr:
     { mkexp ~pos:$loc (Apply (f, List.rev xs)) }
   | rev = expr_comma_list %prec below_COMMA
     { mkexp ~pos:$loc (Tuple (List.rev rev)) }
+  | SWITCH LBRACKET e = expr RBRACKET LBRACE rev_cases = match_cases RBRACE
+    { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
 
 exp_record_field:
   | id = LIDENT COLON e = simple_expr
@@ -135,6 +140,16 @@ exp_record_fields:
     { [field] }
   | fields = exp_record_fields COMMA field = exp_record_field
     { field :: fields }
+
+match_case:
+  | BAR p = match_pat EQUALGT e = expr
+    { (p, e) }
+
+match_cases:
+  | c = match_case
+    { [c] }
+  | cs = match_cases c = match_case
+    { c :: cs }
 
 let_binding:
   | LET x = pat EQUAL e = expr
@@ -179,6 +194,10 @@ pat:
     { mkpat ~pos:$loc (PConstraint {pcon_pat= p; pcon_typ= typ}) }
   | x = LIDENT
     { mkpat ~pos:$loc (PVariable (mkrhs x $loc(x))) }
+
+match_pat:
+  | p = pat
+    { p }
 
 simple_type_expr:
   | UNDERSCORE

@@ -156,6 +156,7 @@ and exp_desc =
   | Tuple of expression list
   | Record_literal of record_contents
   | Field of expression * str
+  | Match of expression * (pattern * expression) list
 [@@deriving show]
 
 and record_contents =
