@@ -108,15 +108,11 @@ let rec unify_after_parse' env typ =
   match typ.type_desc with
   | Tpoly (_, typ) -> unify_after_parse' env typ
   | Tvar {name= Some name; _} -> (
-    match Map.find env.typ_vars name.txt with
+    match Environ.find_type_var name env with
     | Some (_, var) -> (var, env, Base.Set.empty (module Type))
     | None ->
         let typ = mk_var ~loc:typ.type_loc ~depth:env.depth (Some name) in
-        let env =
-          { env with
-            typ_vars=
-              Map.add_exn env.typ_vars ~key:name.txt ~data:(`User, typ) }
-        in
+        let env = Environ.add_type_var ~user:true ~name typ env in
         (typ, env, Base.Set.singleton (module Type) typ) )
   | Tvar {name= None; _} ->
       let typ = mk_var ~loc:typ.type_loc ~depth:env.depth None in
@@ -127,7 +123,7 @@ let rec unify_after_parse' env typ =
       let typ2, env, vars2 = unify_after_parse' env typ2 in
       typ.type_desc <- Tarrow (typ1, typ2) ;
       (typ, env, Base.Set.union vars1 vars2)
-  | Tdefer typ (*| Tcopy (typ, _) | Tnocopy (typ, _)*) ->
+  | Tdefer typ ->
       unify_after_parse' env typ
 
 let rec type_vars typ =
@@ -136,7 +132,7 @@ let rec type_vars typ =
   | Tvar _ -> Base.Set.singleton (module Type) typ
   | Tconstr _ -> Base.Set.empty (module Type)
   | Tarrow (typ1, typ2) -> Base.Set.union (type_vars typ1) (type_vars typ2)
-  | Tdefer typ (*| Tcopy (typ, _) | Tnocopy (typ, _)*) -> type_vars typ
+  | Tdefer typ -> type_vars typ
 
 let unify_after_parse env typ =
   let typ, env, _ = unify_after_parse' env typ in
@@ -161,10 +157,10 @@ let next_type_var i =
   if i < 25 then String.make 1 (Char.of_int_exn (Char.to_int 'a' + i))
   else Printf.sprintf "%d" (i - 24)
 
-let rec find_next_free_var typ_vars vars_size =
+let rec find_next_free_var ~loc typ_vars vars_size =
   let var = next_type_var vars_size in
-  if Map.mem typ_vars var then find_next_free_var typ_vars (vars_size + 1)
-  else (var, vars_size)
+  if Map.mem typ_vars var then find_next_free_var ~loc typ_vars (vars_size + 1)
+  else (Location.mkloc var loc, vars_size)
 
 (** Accepts a [type_expr] of a [Tvar] as an argument.
     Capture the set of all the irreducible type variables that make up the
@@ -207,34 +203,27 @@ let reduce_type_vars typ =
   reduce_type_vars typ (Set.empty (module Type))
 
 let rec name_type_variables typ ({typ_vars; vars_size; _} as env) =
-  if false then
-    match typ.type_desc with
-    | Tvar ({name= None; _} as data) ->
-        let name, vars_size = find_next_free_var typ_vars vars_size in
-        typ.type_desc
-        <- Tvar {data with name= Some (Location.mkloc name Location.none)} ;
-        let typ_vars =
-          Map.add_exn typ_vars ~key:name ~data:(`Generated, typ)
-        in
-        {env with vars_size; typ_vars}
-    | Tvar {name= Some name; _} -> (
-        let old = Map.find typ_vars name.txt in
-        let typ_vars =
-          Map.update typ_vars name.txt ~f:(fun _ -> (`User, typ))
-        in
-        let env = {env with typ_vars} in
-        match old with
-        | Some (`Generated, ({type_desc= Tvar data; _} as typ)) ->
-            typ.type_desc <- Tvar {data with name= None} ;
-            name_type_variables typ env
-        | _ -> env )
-    | Tpoly (_var, typ) -> name_type_variables typ env
-    | Tconstr _ -> env
-    | Tarrow (typ1, typ2) ->
-        let env = name_type_variables typ1 env in
-        name_type_variables typ2 env
-    | Tdefer typ -> name_type_variables typ env
-  else env
+  let loc = typ.type_loc in
+  match typ.type_desc with
+  | Tvar ({name= None; _} as data) ->
+      let name, vars_size = find_next_free_var ~loc typ_vars vars_size in
+      typ.type_desc <- Tvar {data with name= Some name} ;
+      let env = Environ.add_type_var ~user:true ~name typ env in
+      {env with vars_size; typ_vars}
+  | Tvar {name= Some name; _} -> (
+      let old = Environ.find_type_var name env in
+      match old with
+      | Some (`Generated, ({type_desc= Tvar data; _} as old)) ->
+          old.type_desc <- Tvar {data with name= None} ;
+          let env = Environ.add_type_var ~user:true ~name typ env in
+          name_type_variables old env
+      | _ -> env )
+  | Tpoly (_var, typ) -> name_type_variables typ env
+  | Tconstr _ -> env
+  | Tarrow (typ1, typ2) ->
+      let env = name_type_variables typ1 env in
+      name_type_variables typ2 env
+  | Tdefer typ -> name_type_variables typ env
 
 let get_name name env =
   match Environ.find_name name env with
@@ -248,7 +237,8 @@ let add_type_final name typ env =
   let env = name_type_variables typ env in
   Environ.add_name name (`Copy, typ) env
 
-let add_type_in_progress name typ env = Environ.add_name name (`NoCopy, typ) env
+let add_type_in_progress name typ env =
+  Environ.add_name name (`NoCopy, typ) env
 
 let rec check_pattern ~add ~after_parse env typ pat =
   match pat.pat_desc with
@@ -310,6 +300,5 @@ let check_statement env stmt =
   match stmt.stmt_desc with Value (p, e) -> check_binding env p e
 
 let check (ast : statement list) =
-  List.fold_left ast
-    ~init:(Environ.empty ())
-    ~f:(fun env stmt -> check_statement env stmt)
+  List.fold_left ast ~init:(Environ.empty ()) ~f:(fun env stmt ->
+      check_statement env stmt )

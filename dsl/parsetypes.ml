@@ -23,13 +23,30 @@ type type_expr =
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of {name: str option; depth: int; mutable instance: type_expr option}
+  | Tvar of type_var
   | Tpoly of type_expr (* A [Tvar] *) * type_expr
   | Tarrow of type_expr * type_expr
   (* A type name. *)
   | Tconstr of str
   (* Internal, used to wrap a reference to a type. *)
   | Tdefer of type_expr
+[@@deriving show]
+
+and type_var =
+  {name: str option; depth: int;
+    mutable instance: type_expr option
+    [@printer fun fmt expr ->
+      match expr with
+      | Some expr ->
+        if expr.in_recursion then
+          Format.pp_print_string fmt "Some <self-recursive>"
+        else
+          (expr.in_recursion <- true;
+          Format.pp_print_string fmt "Some";
+          pp_type_expr fmt expr;
+          expr.in_recursion <- false)
+      | None -> Format.pp_print_string fmt "None"]
+  }
 [@@deriving show]
 
 module Type = struct

@@ -21,11 +21,22 @@ let read_file parse filename =
 
 let typecheck asts = ignore @@ List.map asts ~f:Typechecker.check
 
+let do_output filename f =
+  match filename with
+  | Some filename ->
+      let output =
+        Format.formatter_of_out_channel (Out_channel.create filename)
+      in
+      f output
+  | None -> ()
+
 let main =
   let file = ref None in
   let ocaml_file = ref None in
   let ast_file = ref None in
   let struct_file = ref None in
+  let env_file = ref None in
+  let ocaml_env_file = ref None in
   let default = ref true in
   Arg.parse
     [ ( "--ml"
@@ -45,7 +56,19 @@ let main =
           (fun name ->
             default := false ;
             struct_file := Some name )
-      , "output internal ast" ) ]
+      , "output internal ast" )
+    ; ( "--env"
+      , String
+          (fun name ->
+            default := false ;
+            env_file := Some name )
+      , "output environment after evaluation" )
+    ; ( "--ocaml-env"
+      , String
+          (fun name ->
+            default := false ;
+            ocaml_env_file := Some name )
+      , "output environment in OCaml format after evaluation" )]
     (fun filename -> file := Some filename)
     "" ;
   let file =
@@ -53,7 +76,7 @@ let main =
       ~error:(Error.of_string "Please pass a file as an argument.")
   in
   let ast = read_file (Parser_impl.file Lexer_impl.token) file in
-  ignore (Typechecker.check ast) ;
+  let env = Typechecker.check ast in
   let ocaml_ast = To_ocaml.of_file ast in
   let ocaml_formatter =
     match (!ocaml_file, !default) with
@@ -62,25 +85,19 @@ let main =
     | None, true -> Some Format.std_formatter
     | None, false -> None
   in
-  ( match !ast_file with
-  | Some filename ->
-      let output =
-        Format.formatter_of_out_channel (Out_channel.create filename)
-      in
-      Printast.structure 2 output ocaml_ast ;
-      Format.pp_print_newline output ()
-  | None -> () ) ;
+  do_output !ast_file (fun output ->
+    Printast.structure 2 output ocaml_ast ;
+    Format.pp_print_newline output ()) ;
   ( match ocaml_formatter with
   | Some output ->
       Pprintast.structure output ocaml_ast ;
       Format.pp_print_newline output ()
   | None -> () ) ;
-  match !struct_file with
-  | Some filename ->
-      let output =
-        Format.formatter_of_out_channel (Out_channel.create filename)
-      in
-      List.iter ast ~f:(fun stri ->
-          Parsetypes.pp_statement output stri ;
-          Format.pp_print_newline output () )
-  | None -> ()
+  do_output !struct_file (fun output ->
+    List.iter ast ~f:(fun stri ->
+        Parsetypes.pp_statement output stri ;
+        Format.pp_print_newline output () )) ;
+  do_output !env_file (fun output ->
+    Environ.pp output env);
+  do_output !ocaml_env_file (fun output ->
+    Environ.pp_ocaml output env)
