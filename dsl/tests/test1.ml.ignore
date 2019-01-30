@@ -1,0 +1,18 @@
+let x = 15
+let y = x
+let z = x
+let a = 15
+let b = x; y
+let c = x; y
+let d x = x
+let e = let e = let e = x in e in e
+let f = let f x = x in let g = (d f) f in g f f f
+let (g : '_a66 -> '_a67) = let (f : '_a58 -> '_a58) = fun x -> x in f
+let (h : (int -> '_a82) -> '_a97) =
+  fun (f : int -> '_a82) ->
+    let (i : '_a82) = f 15 in let (j : '_a82) = f i in j
+let (i : ('b -> 'b) -> 'b -> 'b) = fun (f : 'b -> 'b) -> f
+let (j : '_a131) =
+  let (f : '_a111 -> '_a111) = fun (x : '_a111) -> x in f f f
+let (k : (int -> int) -> int -> int) =
+  fun (f : int -> int) -> fun (x : int) -> f 15; f x

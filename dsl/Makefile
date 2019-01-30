@@ -6,10 +6,7 @@ build:
 reformat:
 	$(DUNE) app/reformat-snarky/reformat.exe -- -path .
 
-run: build
-	$(DUNE) dsl/meja.exe -- test.meja
-
-tests/%.ml: tests/%.meja ../_build/default/dsl/meja.exe
+tests/%.ml.ignore: tests/%.meja ../_build/default/dsl/meja.exe
 	$(DUNE) dsl/meja.exe -- --ml $@ $<
 
 tests/%.ast: tests/%.meja ../_build/default/dsl/meja.exe
