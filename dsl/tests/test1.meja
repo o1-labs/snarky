@@ -32,3 +32,12 @@ let h : _ = fun (f : _ -> _) => {
 let i : 'a -> 'a = fun (f : 'b -> 'b) => {
   f;
 };
+
+let j : _ =
+  let f : _ = fun (x : 'a) => {x;};
+  f f f;
+
+let k : _ = fun (f : 'b -> 'b, x : int) => {
+  f 15;
+  f x;
+};

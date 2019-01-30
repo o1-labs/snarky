@@ -2,11 +2,13 @@ open Core_kernel
 
 type position = Lexing.position =
   {pos_fname: string; pos_lnum: int; pos_bol: int; pos_cnum: int}
-[@@deriving show]
 
 type loc = Location.t =
   {loc_start: position; loc_end: position; loc_ghost: bool}
-[@@deriving show]
+
+let show_loc x = Format.asprintf "%a" Location.print_loc x
+
+let pp_loc f x = Format.pp_print_string f (show_loc x)
 
 type 'a loc' = 'a Location.loc = {txt: 'a; loc: loc} [@@deriving show]
 
@@ -16,21 +18,18 @@ type type_expr =
   { mutable type_desc: type_desc
   ; id: int
   ; type_loc: loc
-  }
+  ; mutable in_recursion: bool }
 [@@deriving show]
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of {name: str option; depth: int}
+  | Tvar of {name: str option; depth: int; mutable instance: type_expr option}
+  | Tpoly of type_expr (* A [Tvar] *) * type_expr
   | Tarrow of type_expr * type_expr
   (* A type name. *)
   | Tconstr of str
   (* Internal, used to wrap a reference to a type. *)
   | Tdefer of type_expr
-  (* Internal, used as a hint to copy before modifying. *)
-  | Tcopy of type_expr * int
-  (* Internal, used as a hint to stop copying. *)
-  | Tnocopy of type_expr * int
 [@@deriving show]
 
 module Type = struct
@@ -38,14 +37,15 @@ module Type = struct
 
   let mk ?(loc = Location.none) type_desc =
     incr id ;
-    {type_desc; id= !id; type_loc= loc}
+    {type_desc; id= !id; type_loc= loc; in_recursion= false}
 
-  let mk_var ?loc ?(depth = -1) name = mk ?loc (Tvar {name; depth})
+  let mk_var ?loc ?(depth = -1) name =
+    mk ?loc (Tvar {name; depth; instance= None})
 
   module T = struct
     type t = type_expr
 
-    let compare {id= id1; _} {id= id2; _} = Int.compare id1 id2
+    let compare {id= id1; _} {id= id2; _} = -Int.compare id1 id2
 
     let sexp_of_t _ = Sexp.List []
   end

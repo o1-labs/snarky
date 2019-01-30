@@ -8,11 +8,22 @@ let mk_lid name = Location.mkloc (Longident.Lident name.txt) name.loc
 let rec of_typ typ =
   let loc = typ.type_loc in
   match typ.type_desc with
-  | Tvar {name= None; _} -> Typ.any ~loc ()
+  | Tpoly (var, typ) ->
+      var.in_recursion <- true ;
+      let typ' = of_typ typ in
+      var.in_recursion <- false ;
+      typ'
+  | Tvar {instance= Some typ; _} when not typ.in_recursion ->
+      typ.in_recursion <- true ;
+      let typ' = of_typ typ in
+      typ.in_recursion <- false ;
+      typ'
+  | Tvar {name= None; _} ->
+      (*Typ.any ~loc ()*) Typ.var ~loc (sprintf "_a%d" typ.id)
   | Tvar {name= Some name; _} -> Typ.var ~loc name.txt
   | Tarrow (typ1, typ2) -> Typ.arrow ~loc Nolabel (of_typ typ1) (of_typ typ2)
   | Tconstr name -> Typ.constr ~loc (mk_lid name) []
-  | Tdefer typ | Tcopy (typ, _) | Tnocopy (typ, _) -> of_typ typ
+  | Tdefer typ -> of_typ typ
 
 let rec of_pattern pat =
   let loc = pat.pat_loc in
