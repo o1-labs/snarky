@@ -7,8 +7,15 @@ run_dune() {
 declare -i passes
 declare -i fails
 
+declare -i verbose
+verbose=0
+
 check_diff() {
-    diff "tests/$1" "tests/out/$1"
+    if [ $verbose -ne 0 ]; then
+      diff "tests/$1" "tests/out/$1"
+    else
+      diff "tests/$1" "tests/out/$1" > /dev/null
+    fi
     local STATUS=$?
     if [ $STATUS -ne 0 ]; then
       echo "FAILED: $1 does not match expected output"
@@ -38,7 +45,10 @@ run_test() {
       passes=passes+1
     fi
   fi
+  verbose_temp=$verbose
+  verbose=1
   check_diff $1.ml.ignore
+  verbose=$verbose_temp
   check_diff $1.ast
 }
 
@@ -57,4 +67,9 @@ run_tests() {
     echo "PASSED $passes/$total"
     return 0
   fi
+}
+
+run_tests_verbose() {
+  verbose=1
+  run_tests
 }

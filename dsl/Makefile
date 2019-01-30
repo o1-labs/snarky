@@ -23,4 +23,8 @@ test: SHELL := /bin/bash
 test:
 	source scripts/run-tests.sh; run_tests
 
+test-verbose: SHELL := /bin/bash
+test-verbose:
+	source scripts/run-tests.sh; run_tests_verbose
+
 .PHONY: build reformat run test
