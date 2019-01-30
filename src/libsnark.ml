@@ -246,6 +246,10 @@ struct
 
       val of_field : Field0.t -> t
 
+      val of_data : Bigstring.t -> bitcount:int -> t
+
+      val length_in_bytes : int
+
       val div : t -> t -> t
 
       val to_field : t -> Field0.t
@@ -363,6 +367,10 @@ struct
           let ptr = Ctypes.bigarray_start Ctypes.array1 s in
           let t = stub ptr in
           Caml.Gc.finalise delete t ; t
+
+      let of_data bs ~bitcount =
+        assert (bitcount <= length_in_bytes * 8) ;
+        of_bigstring bs
 
       include Binable.Of_binable
                 (Bigstring)
