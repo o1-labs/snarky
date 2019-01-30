@@ -352,6 +352,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val project : bool list -> t
     (** Convert a list of bits into a field element. *)
 
+    val project_reference : bool list -> t
+    (** [project], but slow. Exposed for benchmarks. *)
+
     type var' = Var.t
 
     module Var : sig
