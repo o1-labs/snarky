@@ -72,6 +72,20 @@ type_kind:
     { mktypdecl ~pos:$loc Abstract }
   | EQUAL t = type_expr
     { mktypdecl ~pos:$loc (Alias t) }
+  | EQUAL LBRACE rev_fields = record_fields RBRACE
+    { mktypdecl ~pos:$loc (Record (List.rev rev_fields)) }
+
+record_field:
+  | id = LIDENT COLON t = type_expr
+    { { field_ident= mkrhs id $loc(id);
+        field_type= t;
+        field_loc= mklocation $loc } }
+
+record_fields:
+  | field = record_field
+    { [field] }
+  | fields = record_fields COMMA field = record_field
+    { field :: fields }
 
 simple_expr:
   | x = LIDENT

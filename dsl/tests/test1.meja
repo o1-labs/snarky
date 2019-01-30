@@ -60,3 +60,5 @@ type int' = int;
 let p : int -> int' = fun (x : int) => {
   x;
 };
+
+type record = { one : int, two : int', three : int };
