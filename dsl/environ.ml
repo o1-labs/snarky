@@ -85,8 +85,10 @@ let find_field_type name {fields; _} =
 
 module Core = struct
   let int = TypeDecl.mk Abstract
+  let unit = TypeDecl.mk (Alias (Type.mk (Ttuple [])))
 
   let mkloc s = Location.(mkloc s none)
 
   let env = empty |> register_type (mkloc "int") int
+    |> register_type (mkloc "unit") unit
 end
