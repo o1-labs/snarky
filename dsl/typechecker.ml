@@ -33,8 +33,8 @@ let rec check_type_aux typ constr_typ =
     match (typ.type_desc, constr_typ.type_desc) with
     | Tpoly (_, typ), _ -> check_type_aux typ constr_typ
     | _, Tpoly (_, constr_typ) -> check_type_aux typ constr_typ
-    | Tconstr name, Tconstr constr_name
-      when String.equal name.txt constr_name.txt ->
+    | Tconstr typ_data, Tconstr constr_typ_data
+      when String.equal typ_data.constr_ident.txt constr_typ_data.constr_ident.txt ->
         ()
     | Tarrow (typ1, typ2), Tarrow (constr_typ1, constr_typ2) ->
         check_type_aux typ1 constr_typ1 ;
@@ -291,7 +291,7 @@ let rec get_expression env exp =
       in
       apply_typ xs f_typ
   | Variable name -> get_name name env
-  | Int _ -> mk (Tconstr {txt= "int"; loc})
+  | Int _ -> mk_constr ~loc {txt= "int"; loc}
   | Fun (p, body) ->
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instanciating the parameters. *)
@@ -321,7 +321,9 @@ and check_binding (env : 's) p e : 's =
     ~after_parse:unify_and_polymorphise_after_parse env e_type p
 
 let check_statement env stmt =
-  match stmt.stmt_desc with Value (p, e) -> check_binding env p e
+  match stmt.stmt_desc with
+  | Value (p, e) -> check_binding env p e
+  | Type (x, typ) -> Environ.register_type x typ env
 
 let check (ast : statement list) =
   List.fold_left ast ~init:(Environ.empty ()) ~f:(fun env stmt ->

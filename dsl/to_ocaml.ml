@@ -22,9 +22,20 @@ let rec of_typ typ =
       (*Typ.any ~loc ()*) Typ.var ~loc (sprintf "_a%d" typ.id)
   | Tvar {name= Some name; _} -> Typ.var ~loc name.txt
   | Tarrow (typ1, typ2) -> Typ.arrow ~loc Nolabel (of_typ typ1) (of_typ typ2)
-  | Tconstr name -> Typ.constr ~loc (mk_lid name) []
+  | Tconstr {constr_ident; _} -> Typ.constr ~loc (mk_lid constr_ident) []
   | Ttuple typs -> Typ.tuple ~loc (List.map ~f:of_typ typs)
   | Tdefer typ -> of_typ typ
+
+let of_type_decl name typ_dec =
+  let open Ast_helper in
+  let loc = typ_dec.type_decl_loc in
+  match typ_dec.type_decl_desc with
+  | Abstract -> Type.mk name ~loc
+  | Alias typ -> Type.mk name ~loc ~manifest:(of_typ typ)
+  | Record fields ->
+    Type.mk name ~loc ~kind:(Parsetree.Ptype_record (
+      List.map fields ~f:(fun decl ->
+        Type.field ~loc:decl.field_loc decl.field_ident (of_typ decl.field_type))))
 
 let rec of_pattern pat =
   let loc = pat.pat_loc in
@@ -54,7 +65,10 @@ let rec of_expression exp =
 
 let of_statement stmt =
   let loc = stmt.stmt_loc in
-  match stmt.stmt_desc with Value (p, e) ->
+  match stmt.stmt_desc with
+  | Value (p, e) ->
     Str.value ~loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
+  | Type (name, typ_decl) ->
+    Str.type_ ~loc Nonrecursive [of_type_decl name typ_decl]
 
 let of_file = List.map ~f:of_statement

@@ -6,17 +6,23 @@ let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 
 let mkrhs rhs pos = mkloc rhs (mklocation pos)
 
-let mktyp ~pos d = Type.mk ~loc:(mklocation pos) d
-let mktypvar ~pos d = Type.mk_var ~loc:(mklocation pos) d
-let mkpat ~pos d = Pattern.mk ~loc:(mklocation pos) d
-let mkexp ~pos d = Expression.mk ~loc:(mklocation pos) d
-let mkstr ~pos d = Statement.mk ~loc:(mklocation pos) d
+let pos_to_loc ~pos (f : ?loc:Location.t -> 'b) = f ~loc:(mklocation pos)
+
+let mktyp = pos_to_loc Type.mk
+let mktypvar = pos_to_loc Type.mk_var
+let mktypconstr = pos_to_loc Type.mk_constr
+
+let mktypdecl =pos_to_loc TypeDecl.mk
+let mkpat = pos_to_loc Pattern.mk
+let mkexp = pos_to_loc Expression.mk
+let mkstr = pos_to_loc Statement.mk
 %}
 %token <int> INT
 %token <string> LIDENT
 %token <string> UIDENT
 %token FUN
 %token LET
+%token TYPE
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -47,6 +53,8 @@ let mkstr ~pos d = Statement.mk ~loc:(mklocation pos) d
 file:
   | EOF (* Empty *)
     { [] }
+  | EOL rest = file
+    { rest }
   | s = structure_item EOF
     { [s] }
   | s = structure_item SEMI rest = file
@@ -56,6 +64,14 @@ structure_item:
   | bind = let_binding
     { let (x, e) = bind in
       mkstr ~pos:$loc (Value (x, e)) }
+  | TYPE x = LIDENT k = type_kind
+    { mkstr ~pos:$loc (Type (mkrhs x $loc(x), k)) }
+
+type_kind:
+  | (* empty *)
+    { mktypdecl ~pos:$loc Abstract }
+  | EQUAL t = type_expr
+    { mktypdecl ~pos:$loc (Alias t) }
 
 simple_expr:
   | x = LIDENT
@@ -132,7 +148,7 @@ simple_type_expr:
   | QUOT x = LIDENT
     { mktypvar ~pos:$loc (Some (mkrhs x $loc(x))) }
   | x = LIDENT
-    { mktyp ~pos:$loc (Tconstr (mkrhs x $loc(x))) }
+    { mktypconstr ~pos:$loc (mkrhs x $loc(x)) }
   | LBRACKET x = type_expr RBRACKET
     { x }
 

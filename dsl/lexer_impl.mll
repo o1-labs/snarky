@@ -20,6 +20,7 @@ rule token = parse
     { INT (int_of_string (Lexing.lexeme lexbuf)) }
   | "fun" { FUN }
   | "let" { LET }
+  | "type" { TYPE }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }

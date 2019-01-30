@@ -14,7 +14,34 @@ type 'a loc' = 'a Location.loc = {txt: 'a; loc: loc} [@@deriving show]
 
 type str = string loc' [@@deriving show]
 
-type type_expr =
+type type_decl =
+  { type_decl_desc: type_decl_desc
+  ; type_decl_id: int
+  ; type_decl_loc: loc
+  ; mutable type_decl_in_recursion: bool } [@@deriving show]
+
+and type_decl_desc =
+  | Abstract
+  | Alias of type_expr
+  | Record of field_decl list
+[@@deriving show]
+
+and field_decl = {
+  field_ident: str
+  ; field_type: type_expr
+    [@printer fun fmt expr ->
+      if expr.in_recursion then
+        Format.pp_print_string fmt "Some <self-recursive>"
+      else
+        (expr.in_recursion <- true;
+        Format.pp_print_string fmt "Some";
+        pp_type_expr fmt expr;
+        expr.in_recursion <- false)]
+  ; field_loc: loc
+  }
+[@@deriving show]
+
+and type_expr =
   { mutable type_desc: type_desc
   ; id: int
   ; type_loc: loc
@@ -27,7 +54,7 @@ and type_desc =
   | Tpoly of type_expr (* A [Tvar] *) * type_expr
   | Tarrow of type_expr * type_expr
   (* A type name. *)
-  | Tconstr of str
+  | Tconstr of type_constr
   | Ttuple of type_expr list
   (* Internal, used to wrap a reference to a type. *)
   | Tdefer of type_expr
@@ -50,6 +77,31 @@ and type_var =
   }
 [@@deriving show]
 
+and type_constr =
+  { constr_ident: str
+  ; mutable constr_type_decl : type_decl
+    [@printer fun fmt decl ->
+      if decl.type_decl_in_recursion then
+        Format.pp_print_string fmt "Some <self-recursive>"
+      else
+        (decl.type_decl_in_recursion <- true;
+        Format.pp_print_string fmt "Some";
+        pp_type_decl fmt decl;
+        decl.type_decl_in_recursion <- false)]
+  }
+[@@deriving show]
+
+module TypeDecl = struct
+  let id = ref 0
+
+  let mk ?(loc = Location.none) type_decl_desc =
+    incr id ;
+    { type_decl_desc
+    ; type_decl_id= !id
+    ; type_decl_loc= loc
+    ; type_decl_in_recursion= false }
+end
+
 module Type = struct
   let id = ref 0
 
@@ -59,6 +111,9 @@ module Type = struct
 
   let mk_var ?loc ?(depth = -1) name =
     mk ?loc (Tvar {name; depth; instance= None})
+
+  let mk_constr ?loc ?(decl = Abstract) constr_ident =
+    mk ?loc (Tconstr {constr_ident; constr_type_decl= TypeDecl.mk ?loc decl})
 
   module T = struct
     type t = type_expr
@@ -102,7 +157,9 @@ end
 
 type statement = {stmt_desc: stmt_desc; stmt_loc: loc} [@@deriving show]
 
-and stmt_desc = Value of pattern * expression [@@deriving show]
+and stmt_desc =
+  | Value of pattern * expression
+  | Type of str * type_decl [@@deriving show]
 
 module Statement = struct
   let mk ?(loc = Location.none) stmt_desc = {stmt_desc; stmt_loc= loc}
