@@ -7,15 +7,29 @@ let c = x; y
 let d x = x
 let e = let e = let e = x in e in e
 let f = let f x = x in let g = (d f) f in g f f f
-let (g : '_a66 -> '_a67) = let (f : '_a58 -> '_a58) = fun x -> x in f
-let (h : (int -> '_a82) -> '_a97) =
-  fun (f : int -> '_a82) ->
-    let (i : '_a82) = f 15 in let (j : '_a82) = f i in j
+let (g : '_a72 -> '_a73) = let (f : '_a64 -> '_a64) = fun x -> x in f
+let (h : (int -> '_a88) -> '_a103) =
+  fun (f : int -> '_a88) ->
+    let (i : '_a88) = f 15 in let (j : '_a88) = f i in j
 let (i : ('b -> 'b) -> 'b -> 'b) = fun (f : 'b -> 'b) -> f
-let (j : '_a131) =
-  let (f : '_a111 -> '_a111) = fun (x : '_a111) -> x in f f f
+let (j : '_a137) =
+  let (f : '_a117 -> '_a117) = fun (x : '_a117) -> x in f f f
 let (k : (int -> int) -> int -> int) =
   fun (f : int -> int) -> fun (x : int) -> f 15; f x
 let l = (1, 2, 3)
 let m = ((1, 2, 3), 4, 5, (6, (7, 8)))
 let n = ((), (), ())
+let (o :
+  ((int * int * (int * int * (int * int * ()))) ->
+     (int * int * (int * int * (int * int * ()))) ->
+       (int * int * (int * int * (int * int * ()))))
+    -> (int * int * (int * int * (int * int * ()))))
+  =
+  fun
+    (f :
+      (int * int * (int * int * (int * int * ()))) ->
+        (int * int * (int * int * (int * int * ()))) ->
+          (int * int * (int * int * (int * int * ()))))
+    ->
+    let x = (1, 2, (1, 2, (1, 2, ()))) in
+    let y = (3, 4, (3, 4, (3, 4, ()))) in let z = f x y in f x z
