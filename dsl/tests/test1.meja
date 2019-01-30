@@ -62,3 +62,5 @@ let p : int -> int' = fun (x : int) => {
 };
 
 type record = { one : int, two : int', three : int };
+
+let record : record = { one: 20, two: 25, three: 30 };
