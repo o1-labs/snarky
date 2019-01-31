@@ -28,7 +28,7 @@ let pp (output : Format.formatter) (env : t) =
 let pp_ocaml (output : Format.formatter) (env : t) =
   let types =
     Map.fold env.types ~init:[] ~f:(fun ~key ~data:type_decl types ->
-        Ast_helper.Sig.type_ Nonrecursive
+        Ast_helper.Sig.type_ Recursive
           [To_ocaml.of_type_decl Location.(mkloc key none) type_decl]
         :: types )
   in

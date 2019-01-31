@@ -1,13 +1,21 @@
-type nonrec char
-type nonrec float
-type nonrec int
-type nonrec int' = int
-type nonrec record = {
+type char
+type float
+type int
+type int' = int
+type record = {
   one: int ;
   two: int' ;
   three: int }
-type nonrec string
-type nonrec unit = unit
+type string
+type unit = unit
+type variant =
+  | A 
+  | B 
+  | C 
+type variant2 =
+  | A of int 
+  | B of unit * int 
+  | C of variant2 
 val a : int
 val b : int
 val c :
@@ -22,7 +30,7 @@ val d : unit
 val e : int
 val f : 'a
 val g : 'a -> 'a
-val h : (int -> '_a134) -> '_a140
+val h : (int -> '_a138) -> '_a144
 val i : ('b -> 'b) -> 'b -> 'b
 val j : 'a
 val k : (int -> int) -> int -> int
@@ -40,7 +48,7 @@ val q : int
 val r : record -> (int * int)
 val record : record
 val s : record -> record
-val t : (((int -> int -> '_a360) * record) * int) -> '_a360
+val t : (((int -> int -> '_a364) * record) * int) -> '_a364
 val two : (record -> record) -> record
 val x : int
 val y : int

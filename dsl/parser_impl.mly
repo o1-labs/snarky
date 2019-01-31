@@ -74,6 +74,8 @@ type_kind:
     { mktypdecl ~pos:$loc (Alias t) }
   | EQUAL LBRACE rev_fields = record_fields RBRACE
     { mktypdecl ~pos:$loc (Record (List.rev rev_fields)) }
+  | EQUAL ctors = variant_list
+    { mktypdecl ~pos:$loc (Variant (List.rev ctors)) }
 
 record_field:
   | id = LIDENT COLON t = type_expr
@@ -86,6 +88,33 @@ record_fields:
     { [field] }
   | fields = record_fields COMMA field = record_field
     { field :: fields }
+
+variant_args:
+  | (* empty *)
+    { Constr_tuple [] }
+  | LBRACKET rev_args = type_expr_list RBRACKET
+    { Constr_tuple (List.rev rev_args) }
+  | LBRACKET LBRACE fields = record_fields RBRACE RBRACKET
+    { Constr_record (List.rev fields) }
+
+variant_return_type:
+  | (* empty *)
+    { None }
+  | COLON t = type_expr
+    { Some t }
+
+variant:
+  | id = UIDENT args = variant_args return_typ = variant_return_type
+    { { constr_decl_ident= mkrhs id $loc(id)
+      ; constr_decl_args= args
+      ; constr_decl_return= return_typ
+      ; constr_decl_loc= mklocation $loc } }
+
+variant_list:
+  | x = variant
+    { [x] }
+  | xs = variant_list BAR x = variant
+    { x :: xs }
 
 simple_expr:
   | x = LIDENT
@@ -248,3 +277,9 @@ type_expr:
     { x }
   | x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y)) }
+
+type_expr_list:
+  | x = type_expr
+    { [x] }
+  | xs = type_expr_list COMMA x = type_expr
+    { x :: xs }

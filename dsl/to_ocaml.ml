@@ -28,19 +28,33 @@ let rec of_typ typ =
   | Ttuple typs -> Typ.tuple ~loc (List.map ~f:of_typ typs)
   | Tdefer typ -> of_typ typ
 
+let of_field_decl field =
+  let open Ast_helper in
+  Type.field ~loc:field.field_loc field.field_ident (of_typ field.field_type)
+
+let of_constr_args = function
+  | Constr_tuple args -> Parsetree.Pcstr_tuple (List.map ~f:of_typ args)
+  | Constr_record fields ->
+      Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
+
 let of_type_decl name typ_dec =
   let open Ast_helper in
   let loc = typ_dec.type_decl_loc in
   match typ_dec.type_decl_desc with
   | Abstract -> Type.mk name ~loc
   | Alias typ -> Type.mk name ~loc ~manifest:(of_typ typ)
-  | Record fields ->
+  | Record fields | VariantRecord fields ->
+      Type.mk name ~loc
+        ~kind:(Parsetree.Ptype_record (List.map ~f:of_field_decl fields))
+  | Variant ctors ->
       Type.mk name ~loc
         ~kind:
-          (Parsetree.Ptype_record
-             (List.map fields ~f:(fun decl ->
-                  Type.field ~loc:decl.field_loc decl.field_ident
-                    (of_typ decl.field_type) )))
+          (Parsetree.Ptype_variant
+             (List.map ctors ~f:(fun ctor ->
+                  Type.constructor ~loc
+                    ~args:(of_constr_args ctor.constr_decl_args)
+                    ?res:(Option.map ~f:of_typ ctor.constr_decl_return)
+                    ctor.constr_decl_ident )))
 
 let rec of_pattern pat =
   let loc = pat.pat_loc in
@@ -95,6 +109,6 @@ let of_statement stmt =
   | Value (p, e) ->
       Str.value ~loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
   | Type (name, typ_decl) ->
-      Str.type_ ~loc Nonrecursive [of_type_decl name typ_decl]
+      Str.type_ ~loc Recursive [of_type_decl name typ_decl]
 
 let of_file = List.map ~f:of_statement

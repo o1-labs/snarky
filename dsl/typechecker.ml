@@ -442,7 +442,39 @@ and check_binding (env : 's) p e : 's =
   check_pattern ~add:add_type_final
     ~after_parse:unify_and_polymorphise_after_parse env e_type p
 
-let rec type_decl_after_parse env type_decl =
+let field_after_parse env field =
+  { field with
+    field_type=
+      (let typ, _ = unify_after_parse env field.field_type in
+       typ) }
+
+let ctor_after_parse env type_decl ctor =
+  let constr_decl_args =
+    match ctor.constr_decl_args with
+    | Constr_tuple args ->
+        let args =
+          List.map args ~f:(fun arg ->
+              let typ, _ = unify_after_parse env arg in
+              typ )
+        in
+        Constr_tuple args
+    | Constr_record fields ->
+        let fields = List.map fields ~f:(field_after_parse env) in
+        Constr_record fields
+  in
+  let constr_decl_return =
+    Option.map ctor.constr_decl_return ~f:(fun type_ret ->
+        let decl_loc = type_decl.type_decl_loc in
+        let ctor_loc = ctor.constr_decl_loc in
+        let typ =
+          mk_constr' ~loc:decl_loc ~decl:type_decl
+            (Location.mkloc "<internal>" decl_loc)
+        in
+        check_type ~loc:ctor_loc type_ret typ )
+  in
+  {ctor with constr_decl_args; constr_decl_return}
+
+let type_decl_after_parse env name type_decl =
   let loc = type_decl.type_decl_loc in
   match type_decl.type_decl_desc with
   | Abstract -> type_decl
@@ -452,18 +484,19 @@ let rec type_decl_after_parse env type_decl =
   | Record fields ->
       let fields = List.map ~f:(field_after_parse env) fields in
       TypeDecl.mk ~loc (Record fields)
-
-and field_after_parse env field =
-  { field with
-    field_type=
-      (let typ, _ = unify_after_parse env field.field_type in
-       typ) }
+  | VariantRecord fields ->
+      let fields = List.map ~f:(field_after_parse env) fields in
+      TypeDecl.mk ~loc (VariantRecord fields)
+  | Variant ctors ->
+      let env' = Environ.register_type name type_decl env in
+      let ctors = List.map ~f:(ctor_after_parse env' type_decl) ctors in
+      TypeDecl.mk ~loc (Variant ctors)
 
 let check_statement env stmt =
   match stmt.stmt_desc with
   | Value (p, e) -> check_binding env p e
   | Type (x, typ_decl) ->
-      let typ_decl = type_decl_after_parse env typ_decl in
+      let typ_decl = type_decl_after_parse env x typ_decl in
       Environ.register_type x typ_decl env
 
 let check (ast : statement list) =

@@ -25,6 +25,8 @@ and type_decl_desc =
   | Abstract
   | Alias of type_expr
   | Record of field_decl list
+  | Variant of constr_decl list
+  | VariantRecord of field_decl list
 [@@deriving show]
 
 and field_decl =
@@ -40,6 +42,18 @@ and field_decl =
                pp_type_expr fmt expr ;
                expr.in_recursion <- false )]
   ; field_loc: loc }
+[@@deriving show]
+
+and constr_decl =
+  { constr_decl_ident: str
+  ; constr_decl_args: constr_args
+  ; constr_decl_return: type_expr option
+  ; constr_decl_loc: loc }
+[@@deriving show]
+
+and constr_args =
+  | Constr_tuple of type_expr list
+  | Constr_record of field_decl list
 [@@deriving show]
 
 and type_expr =

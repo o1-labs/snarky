@@ -110,3 +110,7 @@ let t : _ = fun (x) => {
   | (_, (_, f)) => f 94 84
   };
 };
+
+type variant = A | B | C;
+
+type variant2 = A(int) | B(unit, int) | C(variant2);

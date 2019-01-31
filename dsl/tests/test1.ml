@@ -26,20 +26,20 @@ let f =
   let g = (c f) f in
   g f f f
 
-let (g : '_a110 -> '_a111) =
-  let (f : '_a102 -> '_a102) = fun x -> x in
+let (g : '_a114 -> '_a115) =
+  let (f : '_a106 -> '_a106) = fun x -> x in
   f
 
-let (h : (int -> '_a125) -> '_a140) =
- fun (f : int -> '_a125) ->
-  let (i : '_a125) = f 15 in
-  let (j : '_a125) = f i in
+let (h : (int -> '_a129) -> '_a144) =
+ fun (f : int -> '_a129) ->
+  let (i : '_a129) = f 15 in
+  let (j : '_a129) = f i in
   j
 
 let (i : ('b -> 'b) -> 'b -> 'b) = fun (f : 'b -> 'b) -> f
 
-let (j : '_a176) =
-  let (f : '_a156 -> '_a156) = fun (x : '_a156) -> x in
+let (j : '_a180) =
+  let (f : '_a160 -> '_a160) = fun (x : '_a160) -> x in
   f f f
 
 let (k : (int -> int) -> int -> int) =
@@ -65,11 +65,11 @@ let (o :
   let z = f x y in
   f x z
 
-type nonrec int' = int
+type int' = int
 
 let (p : int -> int') = fun (x : int) -> x
 
-type nonrec record = {one: int; two: int'; three: int}
+type record = {one: int; two: int'; three: int}
 
 let (record : record) = {one= 20; two= 25; three= 30}
 
@@ -98,9 +98,13 @@ let (s : record -> record) =
   | {two= 2; three} -> {one= 1; two= 2; three}
   | _ -> {one= 1; two= 2; three= 3}
 
-let (t : ((int -> int -> '_a360) * record) * int -> '_a360) =
+let (t : ((int -> int -> '_a364) * record) * int -> '_a364) =
  fun x ->
   match x with
   | _, (1 | 2 | 3) -> 1
   | (f, ({one= 1; two} | {three= two})), x -> f two x
   | (f, _), _ -> f 94 84
+
+type variant = A | B | C
+
+type variant2 = A of int | B of unit * int | C of variant2
