@@ -27,7 +27,7 @@ check_diff() {
 }
 
 run_test() {
-  run_dune exec dsl/meja.exe -- --ml "tests/out/$1.ml.ignore" --ast "tests/out/$FILENAME.ast" "tests/$1.meja"
+  run_dune exec dsl/meja.exe -- --ml "tests/out/$1.ml" --ast "tests/out/$FILENAME.ast" "tests/$1.meja"
   if [ $? -ne 0 ]; then
     if [ -e "tests/$1.fail" ]; then
       echo "PASSED: Got expected failure building from $1.mega"
@@ -45,9 +45,11 @@ run_test() {
       passes=passes+1
     fi
   fi
+  ocamlformat tests/out/$1.ml > tests/out/$1.ml.reformat
+  mv tests/out/$1.ml.reformat tests/out/$1.ml
   verbose_temp=$verbose
   verbose=1
-  check_diff $1.ml.ignore
+  check_diff $1.ml
   verbose=$verbose_temp
   check_diff $1.ast
 }
