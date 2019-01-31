@@ -42,12 +42,8 @@ let mkstr = pos_to_loc Statement.mk
 
 %token EOL
 
-%left SEMI
 %nonassoc below_COMMA
 %left COMMA
-%nonassoc below_EXP
-%nonassoc DOT
-%nonassoc LIDENT LET LBRACKET LBRACE INT FUN
 
 %start file
 %type <Parsetypes.statement list> file
@@ -100,15 +96,12 @@ simple_expr:
     { mkexp ~pos:$loc (Field (e, mkrhs field $loc(field))) }
   | FUN LBRACKET f = function_from_args
     { f }
-  | LBRACKET es = exprs RBRACKET
+  | LBRACKET es = expr RBRACKET
     { es }
   | LBRACKET RBRACKET
     { mkexp ~pos:$loc (Tuple []) }
   | LBRACE es = block RBRACE
     { es }
-  | bind = let_binding SEMI rhs = expr
-    { let (x, lhs) = bind in
-      mkexp ~pos:$loc (Let (x, lhs, rhs)) }
   | LBRACE r = exp_record_fields RBRACE
     { let (fields, values) = List.fold_left (fun (fields, values) (id, e) ->
       let field =
@@ -122,7 +115,7 @@ simple_expr:
         ; record_fields= fields }) }
 
 expr:
-  | x = simple_expr %prec below_EXP
+  | x = simple_expr
     { x }
   | f = simple_expr xs = simple_expr_list
     { mkexp ~pos:$loc (Apply (f, List.rev xs)) }
@@ -130,6 +123,13 @@ expr:
     { mkexp ~pos:$loc (Tuple (List.rev rev)) }
   | SWITCH LBRACKET e = expr RBRACKET LBRACE rev_cases = match_cases RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
+
+expr_with_bind:
+  | x = expr
+    { x }
+  | bind = let_binding SEMI rhs = expr_with_bind
+    { let (x, lhs) = bind in
+      mkexp ~pos:$loc (Let (x, lhs, rhs)) }
 
 exp_record_field:
   | id = LIDENT COLON e = simple_expr
@@ -175,16 +175,19 @@ function_from_args:
   | p = pat COMMA f = function_from_args
     { mkexp ~pos:$loc (Fun (p, f)) }
 
-exprs:
-  | e = expr
-    { e }
-  | e1 = expr SEMI rest = exprs
-    { mkexp ~pos:$loc (Seq (e1, rest)) }
+opt_semi:
+  | (* empty *)
+    { }
+  | SEMI
+    { }
 
 block:
-  | e = expr SEMI
+  | e = expr_with_bind opt_semi
     { e }
-  | e1 = expr SEMI rest = block
+  | bind = let_binding opt_semi
+    { let (x, lhs) = bind in
+      mkexp ~pos:$loc (Let (x, lhs, mkexp ~pos:$loc (Tuple []))) }
+  | e1 = expr_with_bind SEMI rest = block
     { mkexp ~pos:$loc (Seq (e1, rest)) }
 
 pat_without_or:
