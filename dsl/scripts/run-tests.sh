@@ -7,15 +7,8 @@ run_dune() {
 declare -i passes
 declare -i fails
 
-declare -i verbose
-verbose=0
-
 check_diff() {
-    if [ $verbose -ne 0 ]; then
-      diff "tests/$1" "tests/out/$1"
-    else
-      diff "tests/$1" "tests/out/$1" > /dev/null
-    fi
+    diff "tests/$1" "tests/out/$1"
     local STATUS=$?
     if [ $STATUS -ne 0 ]; then
       echo "FAILED: $1 does not match expected output"
@@ -27,7 +20,7 @@ check_diff() {
 }
 
 run_test() {
-  run_dune exec dsl/meja.exe -- --ml "tests/out/$1.ml" --ast "tests/out/$FILENAME.ast" "tests/$1.meja"
+  run_dune exec dsl/meja.exe -- --ml "tests/out/$1.ml" --ocaml-env "tests/out/$FILENAME.ocaml-env" "tests/$1.meja"
   if [ $? -ne 0 ]; then
     if [ -e "tests/$1.fail" ]; then
       echo "PASSED: Got expected failure building from $1.mega"
@@ -47,11 +40,8 @@ run_test() {
   fi
   ocamlformat tests/out/$1.ml > tests/out/$1.ml.reformat
   mv tests/out/$1.ml.reformat tests/out/$1.ml
-  verbose_temp=$verbose
-  verbose=1
   check_diff $1.ml
-  verbose=$verbose_temp
-  check_diff $1.ast
+  check_diff $1.ocaml-env
 }
 
 run_tests() {
@@ -69,9 +59,4 @@ run_tests() {
     echo "PASSED $passes/$total"
     return 0
   fi
-}
-
-run_tests_verbose() {
-  verbose=1
-  run_tests
 }

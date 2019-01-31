@@ -6,11 +6,17 @@ build:
 reformat:
 	$(DUNE) app/reformat-snarky/reformat.exe -- -path .
 
-tests/%.ml: tests/%.meja ../_build/default/dsl/meja.exe
+%.ml: %.meja ../_build/default/dsl/meja.exe
 	$(DUNE) dsl/meja.exe -- --ml $@ $<
 
-tests/%.ast: tests/%.meja ../_build/default/dsl/meja.exe
+%.ast: %.meja ../_build/default/dsl/meja.exe
 	$(DUNE) dsl/meja.exe -- --ast $@ $<
+
+%.env: %.meja ../_build/default/dsl/meja.exe
+	$(DUNE) dsl/meja.exe -- --env $@ $<
+
+%.ocaml-env: %.meja ../_build/default/dsl/meja.exe
+	$(DUNE) dsl/meja.exe -- --ocaml-env $@ $<
 
 tests/%.struct: tests/%.meja ../_build/default/dsl/meja.exe
 	$(DUNE) dsl/meja.exe -- --struct $@ $<
@@ -22,9 +28,5 @@ tests/out/%.meja: tests/%.meja ../_build/default/dsl/meja.exe
 test: SHELL := /bin/bash
 test:
 	source scripts/run-tests.sh; run_tests
-
-test-verbose: SHELL := /bin/bash
-test-verbose:
-	source scripts/run-tests.sh; run_tests_verbose
 
 .PHONY: build reformat run test

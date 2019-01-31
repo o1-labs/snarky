@@ -26,15 +26,19 @@ let pp (output : Format.formatter) (env : t) =
       Format.fprintf output "%s : %a\n" key pp_type_expr typ )
 
 let pp_ocaml (output : Format.formatter) (env : t) =
-  Format.pp_print_string output "Types:\n" ;
-  Map.iteri env.types ~f:(fun ~key ~data:type_decl ->
-      Format.fprintf output "%a\n" Pprintast.structure
-        [ Ast_helper.Str.type_ Nonrecursive
-            [To_ocaml.of_type_decl Location.(mkloc key none) type_decl] ] ) ;
-  Format.pp_print_string output "Names:\n" ;
-  Map.iteri env.names ~f:(fun ~key ~data:(_, typ) ->
-      Format.fprintf output "%s : %a\n" key Pprintast.core_type
-        (To_ocaml.of_typ typ) )
+  let types =
+    Map.fold env.types ~init:[] ~f:(fun ~key ~data:type_decl types ->
+        Ast_helper.Sig.type_ Nonrecursive
+          [To_ocaml.of_type_decl Location.(mkloc key none) type_decl]
+        :: types )
+  in
+  let values =
+    Map.fold env.names ~init:[] ~f:(fun ~key ~data:(_, typ) names ->
+        Ast_helper.(
+          Sig.value (Val.mk Location.(mkloc key none) (To_ocaml.of_typ typ)))
+        :: names )
+  in
+  Pprintast.signature output (List.rev types @ List.rev values)
 
 let empty =
   { names= empty_ident_table
