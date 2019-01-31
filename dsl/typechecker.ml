@@ -281,11 +281,38 @@ let rec name_type_variables typ ({typ_vars; vars_size; _} as env) =
           name_type_variables typ env )
   | Tdefer typ -> name_type_variables typ env
 
+let mk_arrow ~loc typ1 typ2 =
+  let rev_vars1 = rev_polymorphic_vars typ1 in
+  let typ1 = strip_polymorphism typ1 in
+  let rev_vars2 = rev_polymorphic_vars typ2 in
+  let typ2 = strip_polymorphism typ2 in
+  let typ = mk ~loc (Tarrow (typ1, typ2)) in
+  let typ = add_rev_polymorphic_vars ~loc typ rev_vars2 in
+  add_rev_polymorphic_vars ~loc typ rev_vars1
+
 let get_name name env =
   match Environ.find_name name env with
   | Some (`Copy, typ) -> copy_type env.depth typ
   | Some (`NoCopy, typ) -> typ
   | None -> failwithf "Could not find name %s." name.txt ()
+
+let get_field_type ~loc field typ env =
+  let record_typ, field_typ =
+    match
+      (Environ.find_record_type field env, Environ.find_field_type field env)
+    with
+    | Some typ, Some field_type -> (typ, field_type)
+    | _, _ ->
+        failwithf "Could not find the record and field type for field %s"
+          field.txt ()
+  in
+  let field_arrow = mk_arrow ~loc record_typ field_typ in
+  let field_arrow = copy_type env.depth field_arrow in
+  match
+    check_type ~loc field_arrow (mk ~loc (Tarrow (typ, mk_var ~loc None)))
+  with
+  | {type_desc= Tarrow (_, field_typ); _} -> field_typ
+  | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.."
 
 let add_type_final name typ env =
   let typ_vars = reduce_type_vars typ in
@@ -296,18 +323,46 @@ let add_type_final name typ env =
 let add_type_in_progress name typ env =
   Environ.add_name name (`NoCopy, typ) env
 
+let constant_type c =
+  match c with
+  | Pconst_integer _ -> Environ.Core.Type.int
+  | Pconst_char _ -> Environ.Core.Type.char
+  | Pconst_string _ -> Environ.Core.Type.string
+  | Pconst_float _ -> Environ.Core.Type.float
+
 let rec check_pattern ~add ~after_parse env typ pat =
+  let loc = pat.pat_loc in
   match pat.pat_desc with
+  | PAny -> env
+  | PConstant c ->
+      let _typ = check_type ~loc typ (constant_type c) in
+      env
   | PVariable str -> add str typ env
   | PConstraint ({pcon_pat= p; pcon_typ= constr_typ} as data) ->
       let constr_typ, env = after_parse env constr_typ in
       data.pcon_typ <- constr_typ ;
-      let typ = check_type ~loc:pat.pat_loc typ constr_typ in
+      let typ = check_type ~loc typ constr_typ in
       check_pattern ~add ~after_parse env typ p
+  | PRecord (fields, _) ->
+      List.fold_left fields ~init:env ~f:(fun env (ident, p) ->
+          let typ = get_field_type ~loc ident typ env in
+          check_pattern ~add ~after_parse env typ p )
+  | POr (p1, p2) ->
+      let env = check_pattern ~add ~after_parse env typ p1 in
+      check_pattern ~add ~after_parse env typ p2
+  | PTuple ps ->
+      let types =
+        List.map ps ~f:(fun _ -> mk_var ~loc ~depth:env.depth None)
+      in
+      let tuple_typ = mk ~loc (Ttuple types) in
+      let _tuple_typ = check_type ~loc typ tuple_typ in
+      List.fold2_exn ~init:env types ps ~f:(check_pattern ~add ~after_parse)
 
 let rec get_expression env exp =
   let loc = exp.exp_loc in
   match exp.exp_desc with
+  | Constant c -> constant_type c
+  | Variable name -> get_name name env
   | Apply (f, xs) ->
       let f_typ = get_expression env f in
       let rec apply_typ xs f_typ =
@@ -324,8 +379,6 @@ let rec get_expression env exp =
             )
       in
       apply_typ xs f_typ
-  | Variable name -> get_name name env
-  | Int _ -> mk_constr' ~loc ~decl:Environ.Core.int {txt= "int"; loc}
   | Fun (p, body) ->
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instanciating the parameters. *)
@@ -336,7 +389,7 @@ let rec get_expression env exp =
           env p_typ p
       in
       let body_typ = get_expression env body in
-      mk ~loc (Tarrow (p_typ, strip_polymorphism body_typ))
+      mk_arrow ~loc p_typ body_typ
   | Seq (e1, e2) ->
       let _ = get_expression env e1 in
       get_expression env e2
@@ -356,29 +409,9 @@ let rec get_expression env exp =
     | None ->
         failwithf "Could not find the record for field %s" field_ident.txt () )
   | Record_literal _ -> failwith "Unexpected empty record expression."
-  | Field (e, field) -> (
+  | Field (e, field) ->
       let e_typ = get_expression env e in
-      let record_typ, field_typ =
-        match
-          ( Environ.find_record_type field env
-          , Environ.find_field_type field env )
-        with
-        | Some typ, Some field_type -> (typ, field_type)
-        | _, _ ->
-            failwithf "Could not find the record and field type for field %s"
-              field.txt ()
-      in
-      let record_typ = strip_polymorphism (copy_type env.depth record_typ) in
-      let field_type = strip_polymorphism (copy_type env.depth field_typ) in
-      (* Treat the field lookup as a function for the purposes of typechecking. *)
-      let field_arrow = mk ~loc (Tarrow (record_typ, field_type)) in
-      match
-        check_type ~loc
-          (mk ~loc (Tarrow (e_typ, mk_var ~loc None)))
-          field_arrow
-      with
-      | {type_desc= Tarrow (_, field_typ); _} -> field_typ
-      | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.." )
+      get_field_type ~loc field e_typ env
   | Match (e, cases) ->
       let e_typ = get_expression env e in
       let depth = env.depth in

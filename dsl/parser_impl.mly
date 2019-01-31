@@ -17,7 +17,7 @@ let mkpat = pos_to_loc Pattern.mk
 let mkexp = pos_to_loc Expression.mk
 let mkstr = pos_to_loc Statement.mk
 %}
-%token <int> INT
+%token <string> INT
 %token <string> LIDENT
 %token <string> UIDENT
 %token FUN
@@ -95,7 +95,7 @@ simple_expr:
   | x = LIDENT
     { mkexp ~pos:$loc (Variable (mkrhs x $loc(x))) }
   | x = INT
-    { mkexp ~pos:$loc (Int x) }
+    { mkexp ~pos:$loc (Constant (Pconst_integer (x, None))) }
   | e = simple_expr DOT field = LIDENT
     { mkexp ~pos:$loc (Field (e, mkrhs field $loc(field))) }
   | FUN LBRACKET f = function_from_args
@@ -142,7 +142,7 @@ exp_record_fields:
     { field :: fields }
 
 match_case:
-  | BAR p = match_pat EQUALGT e = expr
+  | BAR p = pat EQUALGT e = expr
     { (p, e) }
 
 match_cases:
@@ -187,17 +187,48 @@ block:
   | e1 = expr SEMI rest = block
     { mkexp ~pos:$loc (Seq (e1, rest)) }
 
-pat:
+pat_without_or:
+  | UNDERSCORE
+    { mkpat ~pos:$loc PAny }
+  | x = INT
+    { mkpat ~pos:$loc (PConstant (Pconst_integer (x, None))) }
   | LBRACKET p = pat RBRACKET
     { p }
-  | p = pat COLON typ = type_expr
+  | p = pat_without_or COLON typ = type_expr
     { mkpat ~pos:$loc (PConstraint {pcon_pat= p; pcon_typ= typ}) }
   | x = LIDENT
     { mkpat ~pos:$loc (PVariable (mkrhs x $loc(x))) }
+  | LBRACE p = field_pats RBRACE
+    { let (fields, closed) = p in
+      mkpat ~pos:$loc (PRecord (fields, closed)) }
+  | LBRACKET ps = pat_comma_list RBRACKET
+    { mkpat ~pos:$loc (PTuple (List.rev ps)) }
 
-match_pat:
-  | p = pat
+pat:
+  | p = pat_without_or
     { p }
+  | p1 = pat_without_or BAR p2 = pat
+    { mkpat ~pos:$loc (POr (p1, p2)) }
+
+pat_comma_list:
+  | ps = pat_comma_list COMMA p = pat
+    {p :: ps }
+  | p1 = pat COMMA p2 = pat
+    { [p1; p2] }
+
+field_pat:
+  | label = LIDENT COLON p = pat
+    { (mkrhs label $loc(label), p) }
+  | label = LIDENT
+    { (mkrhs label $loc(label), mkpat ~pos:$loc (PVariable (mkrhs label $loc(label)))) }
+
+field_pats:
+  | p = field_pat
+    { ([p], Asttypes.Closed) }
+  | p = field_pat SEMI UNDERSCORE
+    { ([p], Asttypes.Open) }
+  | p = field_pat SEMI ps = field_pats
+    { let (fields, closed) = ps in (p :: fields, closed) }
 
 simple_type_expr:
   | UNDERSCORE

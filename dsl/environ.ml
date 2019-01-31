@@ -98,10 +98,31 @@ module Core = struct
 
   let unit = TypeDecl.mk (Alias (Type.mk (Ttuple [])))
 
+  let char = TypeDecl.mk Abstract
+
+  let string = TypeDecl.mk Abstract
+
+  let float = TypeDecl.mk Abstract
+
   let mkloc s = Location.(mkloc s none)
+
+  module Type = struct
+    let int = Type.mk_constr' ~decl:int (mkloc "int")
+
+    let unit = Type.mk_constr' ~decl:unit (mkloc "unit")
+
+    let char = Type.mk_constr' ~decl:char (mkloc "char")
+
+    let string = Type.mk_constr' ~decl:string (mkloc "string")
+
+    let float = Type.mk_constr' ~decl:float (mkloc "float")
+  end
 
   let env =
     empty
     |> register_type (mkloc "int") int
     |> register_type (mkloc "unit") unit
+    |> register_type (mkloc "char") char
+    |> register_type (mkloc "string") string
+    |> register_type (mkloc "float") float
 end

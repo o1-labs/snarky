@@ -17,7 +17,7 @@ rule token = parse
   | newline
     { new_line lexbuf; token lexbuf }
   | number
-    { INT (int_of_string (Lexing.lexeme lexbuf)) }
+    { INT (Lexing.lexeme lexbuf) }
   | "fun" { FUN }
   | "let" { LET }
   | "type" { TYPE }

@@ -132,11 +132,25 @@ module Type = struct
   include Comparator.Make (T)
 end
 
+type constant = Parsetree.constant =
+  | Pconst_integer of string * char option
+  | Pconst_char of char
+  | Pconst_string of string * string option
+  | Pconst_float of string * char option
+[@@deriving show]
+
+type closed_flag = Asttypes.closed_flag = Closed | Open [@@deriving show]
+
 type pattern = {pat_desc: pat_desc; pat_loc: loc} [@@deriving show]
 
 and pat_desc =
+  | PAny
+  | PConstant of constant
   | PVariable of str
   | PConstraint of {pcon_pat: pattern; mutable pcon_typ: type_expr}
+  | PRecord of (str * pattern) list * closed_flag
+  | POr of pattern * pattern
+  | PTuple of pattern list
 [@@deriving show]
 
 module Pattern = struct
@@ -148,7 +162,7 @@ type expression = {exp_desc: exp_desc; exp_loc: loc} [@@deriving show]
 and exp_desc =
   | Apply of expression * expression list
   | Variable of str
-  | Int of int
+  | Constant of constant
   | Fun of pattern * expression
   | Seq of expression * expression
   | Let of pattern * expression * expression

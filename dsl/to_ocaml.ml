@@ -23,6 +23,8 @@ let rec of_typ typ =
   | Tvar {name= Some name; _} -> Typ.var ~loc name.txt
   | Tarrow (typ1, typ2) -> Typ.arrow ~loc Nolabel (of_typ typ1) (of_typ typ2)
   | Tconstr {constr_ident; _} -> Typ.constr ~loc (mk_lid constr_ident) []
+  | Ttuple [] ->
+      Typ.constr ~loc Location.(mkloc (Longident.Lident "unit") none) []
   | Ttuple typs -> Typ.tuple ~loc (List.map ~f:of_typ typs)
   | Tdefer typ -> of_typ typ
 
@@ -43,18 +45,26 @@ let of_type_decl name typ_dec =
 let rec of_pattern pat =
   let loc = pat.pat_loc in
   match pat.pat_desc with
+  | PAny -> Pat.any ~loc ()
+  | PConstant c -> Pat.constant ~loc c
   | PVariable str -> Pat.var ~loc str
   | PConstraint {pcon_pat= p; pcon_typ= typ} ->
       Pat.constraint_ ~loc (of_pattern p) (of_typ typ)
+  | PRecord (fields, closed_flag) ->
+      Pat.record ~loc
+        (List.map fields ~f:(fun (ident, p) -> (mk_lid ident, of_pattern p)))
+        closed_flag
+  | POr (p1, p2) -> Pat.or_ ~loc (of_pattern p1) (of_pattern p2)
+  | PTuple ps -> Pat.tuple ~loc (List.map ~f:of_pattern ps)
 
 let rec of_expression exp =
   let loc = exp.exp_loc in
   match exp.exp_desc with
+  | Constant c -> Exp.constant ~loc c
+  | Variable name -> Exp.ident ~loc (mk_lid name)
   | Apply (f, xs) ->
       let xs = List.map xs ~f:(fun x -> (Nolabel, of_expression x)) in
       Exp.apply ~loc (of_expression f) xs
-  | Variable name -> Exp.ident ~loc (mk_lid name)
-  | Int i -> Exp.constant ~loc (Const.int i)
   | Fun (p, body) ->
       Exp.fun_ ~loc Nolabel None (of_pattern p) (of_expression body)
   | Constraint {econ_exp= e; econ_typ= typ} ->
