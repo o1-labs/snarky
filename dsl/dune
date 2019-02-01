@@ -2,7 +2,7 @@
  (name meja)
  (libraries core_kernel ocaml-compiler-libs.common)
  (flags :standard -warn-error -39-21)
- (preprocess (pps ppx_deriving.show)))
+ (preprocess (pps ppx_deriving.show ppx_jane)))
 
 (menhir
   (flags --explain)
