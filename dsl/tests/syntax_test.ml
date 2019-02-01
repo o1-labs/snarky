@@ -26,7 +26,7 @@ let f =
   f
 
 let (g : '_a37 -> '_a38) =
-  let (f : '_a29 -> '_a29) = fun x -> x in
+  let (f : 'a -> 'a) = fun x -> x in
   f
 
 let h = c b
