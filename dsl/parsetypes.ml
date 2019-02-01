@@ -131,8 +131,7 @@ module Type = struct
     incr id ;
     {type_desc; id= !id; type_loc= loc; in_recursion= false}
 
-  let mk_var ?loc ?(depth = -1) name =
-    mk ?loc (Tvar {name; depth; instance= None})
+  let mk_var ?loc ~depth name = mk ?loc (Tvar {name; depth; instance= None})
 
   let mk_constr' ?loc ~decl constr_ident =
     mk ?loc (Tconstr {constr_ident; constr_type_decl= decl})

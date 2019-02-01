@@ -9,7 +9,7 @@ let mkrhs rhs pos = mkloc rhs (mklocation pos)
 let pos_to_loc ~pos (f : ?loc:Location.t -> 'b) = f ~loc:(mklocation pos)
 
 let mktyp = pos_to_loc Type.mk
-let mktypvar = pos_to_loc Type.mk_var
+let mktypvar = pos_to_loc (Type.mk_var ~depth:0)
 let mktypconstr = pos_to_loc Type.mk_constr
 
 let mktypdecl =pos_to_loc TypeDecl.mk
@@ -145,7 +145,7 @@ simple_expr:
     { let (fields, values) = List.fold_left (fun (fields, values) (id, e) ->
       let field =
         { field_ident= id
-        ; field_type= Type.mk_var ~loc:id.loc None
+        ; field_type= Type.mk_var ~loc:id.loc ~depth:0 None
         ; field_loc= id.loc }
       in
       (field :: fields, e :: values)) ([], []) r in

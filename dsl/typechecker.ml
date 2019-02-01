@@ -304,7 +304,8 @@ let get_field_type ~loc field typ env =
   let field_arrow = mk_arrow ~loc record_typ field_typ in
   let field_arrow = copy_type env.depth field_arrow in
   match
-    check_type ~loc field_arrow (mk ~loc (Tarrow (typ, mk_var ~loc None)))
+    check_type ~loc field_arrow
+      (mk ~loc (Tarrow (typ, mk_var ~loc ~depth:env.depth None)))
   with
   | {type_desc= Tarrow (_, field_typ); _} -> field_typ
   | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.."
@@ -355,6 +356,7 @@ let rec check_pattern ~add ~after_parse env typ pat =
 
 let rec get_expression env exp =
   let loc = exp.exp_loc in
+  let depth = env.depth in
   match exp.exp_desc with
   | Constant c -> constant_type c
   | Variable name -> get_name name env
@@ -365,9 +367,10 @@ let rec get_expression env exp =
         | [] -> f_typ
         | x :: xs -> (
             let x_typ = get_expression env x in
+            let return_var = mk_var ~depth:(-1) ~loc None in
             match
               check_type ~loc f_typ
-                (mk ~loc (Tarrow (x_typ, mk_var ~loc None)))
+                (mk ~loc (Tarrow (x_typ, return_var)))
             with
             | {type_desc= Tarrow (_, f_typ); _} -> apply_typ xs f_typ
             | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.."
@@ -377,8 +380,8 @@ let rec get_expression env exp =
   | Fun (p, body) ->
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instanciating the parameters. *)
-      let env = {env with depth= env.depth + 1} in
-      let p_typ = mk_var ~loc None in
+      let env = {env with depth= depth + 1} in
+      let p_typ = mk_var ~depth:env.depth ~loc None in
       let env =
         check_pattern ~add:add_type_in_progress ~after_parse:unify_after_parse
           env p_typ p
@@ -408,7 +411,6 @@ let rec get_expression env exp =
       get_field_type ~loc field e_typ env
   | Match (e, cases) ->
       let e_typ = get_expression env e in
-      let depth = env.depth in
       let env = {env with depth= depth + 1} in
       let envs =
         List.map cases ~f:(fun (p, _) ->
