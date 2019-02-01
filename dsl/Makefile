@@ -29,4 +29,8 @@ test: SHELL := /bin/bash
 test:
 	source scripts/run-tests.sh; run_tests
 
+test-output: SHELL := /bin/bash
+test-output:
+	source scripts/run-tests.sh; update_test_output
+
 .PHONY: build reformat run test
