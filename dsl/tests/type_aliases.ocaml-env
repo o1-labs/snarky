@@ -1,0 +1,8 @@
+type char
+type float
+type int
+type int' = int
+type string
+type unit = unit
+val a : int -> int'
+val b : int' -> int

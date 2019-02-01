@@ -68,7 +68,13 @@ let main =
           (fun name ->
             default := false ;
             ocaml_env_file := Some name )
-      , "output environment in OCaml format after evaluation" ) ]
+      , "output environment in OCaml format after evaluation" )
+    ; ( "--stderr"
+      , String
+          (fun name ->
+            Format.pp_set_formatter_out_channel Format.err_formatter
+              (Out_channel.create name) )
+      , "redirect stderr to the given filename" ) ]
     (fun filename -> file := Some filename)
     "" ;
   let file =

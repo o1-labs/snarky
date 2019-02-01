@@ -1,0 +1,27 @@
+let x = 15;
+
+let y = x;
+
+let z = (x);
+
+let a = (15);
+
+let b = {x; y;};
+
+let c = fun (x) => { x; };
+
+let d = {let e = c};
+
+let e = {let e = {let e = x; e}; e;};
+
+let f = {
+  let f = fun (x) => { x; };
+  f;
+};
+
+let g : _ -> _ = {
+  let f : _ -> _ = fun (x) => { x; };
+  f;
+};
+
+let h = c b;

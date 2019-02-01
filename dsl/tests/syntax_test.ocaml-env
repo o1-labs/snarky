@@ -1,0 +1,15 @@
+type char
+type float
+type int
+type string
+type unit = unit
+val a : int
+val b : int
+val c : int -> int
+val d : unit
+val e : int
+val f : 'a -> 'a
+val g : 'a -> 'a
+val h : int
+val x : int
+val y : int

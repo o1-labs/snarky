@@ -1,0 +1,13 @@
+type char
+type float
+type int
+type int' = int
+type record = {
+  one: int ;
+  two: int' ;
+  three: int }
+type string
+type unit = unit
+val a : int
+val b : record -> (int * int)
+val c : record -> record

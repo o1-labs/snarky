@@ -1,0 +1,12 @@
+let a : 'a -> 'a = fun (f : 'b -> 'b) => {
+  f;
+};
+
+let b : _ = {
+  let f : _ = fun (x : 'a) => {x;};
+  f f f;
+};
+
+let c : _ = fun (f : 'b -> 'b, x : int) => {
+  f x;
+};

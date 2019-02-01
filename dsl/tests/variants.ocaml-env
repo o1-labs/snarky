@@ -1,0 +1,10 @@
+type char
+type float
+type int
+type string
+type unit = unit
+type variant =
+  | A 
+  | B 
+  | C 
+  | D 

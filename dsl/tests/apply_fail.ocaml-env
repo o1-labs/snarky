@@ -1,0 +1,5 @@
+type char
+type float
+type int
+type string
+type unit = unit

@@ -1,0 +1,8 @@
+type char
+type float
+type int
+type string
+type unit = unit
+val a : (int * int * int)
+val b : ((int * int * int) * int * int * (int * (int * int)))
+val c : (unit * unit * unit)

@@ -1,0 +1,10 @@
+type char
+type float
+type int
+type string
+type unit = unit
+val a :
+  ((int * int * (int * int * (int * int * unit))) ->
+     (int * int * (int * int * (int * int * unit))) ->
+       (int * int * (int * int * (int * int * unit))))
+    ->
