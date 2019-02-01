@@ -175,6 +175,12 @@ module Core = struct
 
   let unit = TypeDecl.mk (Alias (Type.mk (Ttuple [])))
 
+  let bool =
+    TypeDecl.mk
+      (Variant
+         [ TypeDecl.mk_constructor "true" (Constr_tuple [])
+         ; TypeDecl.mk_constructor "false" (Constr_tuple []) ])
+
   let char = TypeDecl.mk Abstract
 
   let string = TypeDecl.mk Abstract
@@ -188,6 +194,8 @@ module Core = struct
 
     let unit = Type.mk_constr' ~decl:unit (mkloc "unit")
 
+    let bool = Type.mk_constr' ~decl:bool (mkloc "bool")
+
     let char = Type.mk_constr' ~decl:char (mkloc "char")
 
     let string = Type.mk_constr' ~decl:string (mkloc "string")
@@ -199,6 +207,7 @@ module Core = struct
     empty
     |> register_type (mkloc "int") int
     |> register_type (mkloc "unit") unit
+    |> register_type (mkloc "bool") bool
     |> register_type (mkloc "char") char
     |> register_type (mkloc "string") string
     |> register_type (mkloc "float") float

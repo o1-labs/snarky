@@ -24,6 +24,8 @@ let mkstr = pos_to_loc Statement.mk
 %token LET
 %token TYPE
 %token SWITCH
+%token TRUE
+%token FALSE
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -103,8 +105,16 @@ variant_return_type:
   | COLON t = type_expr
     { Some t }
 
+constructor:
+  | id = UIDENT
+    { id }
+  | TRUE
+    { "true" }
+  | FALSE
+    { "false" }
+
 variant:
-  | id = UIDENT args = variant_args return_typ = variant_return_type
+  | id = constructor args = variant_args return_typ = variant_return_type
     { { constr_decl_ident= mkrhs id $loc(id)
       ; constr_decl_args= args
       ; constr_decl_return= return_typ

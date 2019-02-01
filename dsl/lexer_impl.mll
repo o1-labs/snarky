@@ -22,6 +22,8 @@ rule token = parse
   | "let" { LET }
   | "type" { TYPE }
   | "switch" { SWITCH }
+  | "true" { TRUE }
+  | "false" { FALSE }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }

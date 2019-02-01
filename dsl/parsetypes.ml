@@ -116,6 +116,12 @@ module TypeDecl = struct
     ; type_decl_id= !id
     ; type_decl_loc= loc
     ; type_decl_in_recursion= false }
+
+  let mk_constructor ?(loc = Location.none) ?return name args =
+    { constr_decl_ident= Location.mkloc name loc
+    ; constr_decl_args= args
+    ; constr_decl_return= return
+    ; constr_decl_loc= loc }
 end
 
 module Type = struct
