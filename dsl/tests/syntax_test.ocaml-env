@@ -1,8 +1,10 @@
+[@@@ocaml.doc "Types:"]
 type char
 type float
 type int
 type string
 type unit = unit
+[@@@ocaml.doc "Values:"]
 val a : int
 val b : int
 val c : int -> int
@@ -13,3 +15,5 @@ val g : 'a -> 'a
 val h : int
 val x : int
 val y : int
+val z : int
+[@@@ocaml.doc "Fields:"]

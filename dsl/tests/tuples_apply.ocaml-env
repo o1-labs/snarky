@@ -1,10 +1,13 @@
+[@@@ocaml.doc "Types:"]
 type char
 type float
 type int
 type string
 type unit = unit
+[@@@ocaml.doc "Values:"]
 val a :
   ((int * int * (int * int * (int * int * unit))) ->
      (int * int * (int * int * (int * int * unit))) ->
        (int * int * (int * int * (int * int * unit))))
-    ->
+    -> (int * int * (int * int * (int * int * unit)))
+[@@@ocaml.doc "Fields:"]

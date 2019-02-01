@@ -1,4 +1,4 @@
-[1mFile "[1mtests/apply_fail.meja", line 3, characters 2-5[0m[0m:
-[1;31mError[0m: Type error: Cannot unify 'unit -> unit' and 'unit -> '_a17, types '
+File "tests/apply_fail.meja", line 3, characters 2-5:
+Error: Type error: Cannot unify 'unit -> unit' and 'unit -> '_a17, types '
 int' and 'unit' are incompatable.
 

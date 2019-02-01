@@ -1,3 +1,4 @@
+[@@@ocaml.doc "Types:"]
 type char
 type float
 type int
@@ -8,3 +9,13 @@ type variant =
   | B 
   | C 
   | D 
+type variant2 =
+  | A of int 
+  | B of unit * int 
+  | C of variant2 
+[@@@ocaml.doc "Values:"]
+[@@@ocaml.doc "Fields:"]
+[@@@ocaml.doc "Constructors:"]
+val A : variant2
+val B : variant2
+val C : variant2

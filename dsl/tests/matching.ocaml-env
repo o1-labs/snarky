@@ -1,3 +1,4 @@
+[@@@ocaml.doc "Types:"]
 type char
 type float
 type int
@@ -8,6 +9,12 @@ type record = {
   three: int }
 type string
 type unit = unit
+[@@@ocaml.doc "Values:"]
 val a : int
 val b : record -> (int * int)
 val c : record -> record
+val d : (((int -> int -> '_a105) * record) * int) -> '_a105
+[@@@ocaml.doc "Fields:"]
+val one : record
+val three : record
+val two : record
