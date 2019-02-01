@@ -6,6 +6,13 @@ open Environ
 type error =
   | Check_failed_aux of type_expr * type_expr
   | Check_failed of type_expr * type_expr * type_expr * type_expr
+  | Tdefer_found of string
+  | Tpoly_found of string
+  | Tvar_expected of string
+  | Unbound_constructor of string
+  | Unbound_value of string
+  | Unbound_record_field of string
+  | Empty_record
 
 exception Error of Location.t * error
 
@@ -59,8 +66,7 @@ let rec check_type_aux typ constr_typ =
       | Ok _ -> ()
       | Unequal_lengths ->
           raise (Error (loc, Check_failed_aux (typ, constr_typ))) )
-    | Tdefer _, _ | _, Tdefer _ ->
-        failwith "Unexpected Tdefer outside copy_type."
+    | Tdefer _, _ | _, Tdefer _ -> raise (Error (loc, Tdefer_found __LOC__))
     | Tvar data, Tvar constr_data -> (
       match (data.instance, constr_data.instance) with
       | None, None ->
@@ -129,8 +135,8 @@ let rec unify_after_parse' env typ =
       ( match Environ.find_type data.constr_ident env with
       | Some type_decl -> data.constr_type_decl <- type_decl
       | None ->
-          failwithf "can't find type %s in environment" data.constr_ident.txt
-            () ) ;
+        let ident = data.constr_ident in
+        raise (Error (ident.loc, Unbound_constructor ident.txt))) ;
       (typ, env, Base.Set.empty (module Type))
   | Tarrow (typ1, typ2) ->
       let typ1, env, vars1 = unify_after_parse' env typ1 in
@@ -211,8 +217,8 @@ let rec find_next_free_var ~loc typ_vars vars_size =
 let capture_type_vars vars typ =
   let rec capture_type_vars depth typ vars removed_vars =
     match typ.type_desc with
-    | Tpoly _ -> failwith "Unexpected Tpoly in capture_type_variables."
-    | Tdefer _ -> failwith "Unexpected Tdefer in capture_type_variables."
+    | Tpoly _ -> raise (Error (typ.type_loc, Tpoly_found __LOC__))
+    | Tdefer _ -> raise (Error (typ.type_loc, Tdefer_found __LOC__))
     | Tvar {instance= Some typ'; depth= depth'; _} ->
         if Set.mem vars typ then vars
         else if Set.mem removed_vars typ then
@@ -236,8 +242,7 @@ let capture_type_vars vars typ =
       pp_type_expr Format.std_formatter typ ;
       raise a )
   | Tvar _ -> var_set
-  | _ ->
-      failwith "Bad argument given to capture_type_variables; expected a Tvar."
+  | _ -> raise (Error (typ.type_loc, Tvar_expected __LOC__))
 
 let reduce_type_vars typ =
   let rec reduce_type_vars typ vars =
@@ -286,7 +291,7 @@ let get_name name env =
   match Environ.find_name name env with
   | Some (`Copy, typ) -> copy_type env.depth typ
   | Some (`NoCopy, typ) -> typ
-  | None -> failwithf "Could not find name %s." name.txt ()
+  | None -> raise (Error (name.loc, Unbound_value name.txt))
 
 let get_field_type ~loc field typ env =
   let record_typ, field_typ =
@@ -294,9 +299,7 @@ let get_field_type ~loc field typ env =
       (Environ.find_record_type field env, Environ.find_field_type field env)
     with
     | Some typ, Some field_type -> (typ, field_type)
-    | _, _ ->
-        failwithf "Could not find the record and field type for field %s"
-          field.txt ()
+    | _, _ -> raise (Error (field.loc, Unbound_record_field field.txt))
   in
   let field_arrow = mk_arrow ~loc record_typ field_typ in
   let field_arrow = copy_type env.depth field_arrow in
@@ -395,12 +398,11 @@ let rec get_expression env exp =
       mk ~loc
         (Ttuple
            (List.map es ~f:(fun e -> strip_polymorphism (get_expression env e))))
-  | Record_literal {record_fields= {field_ident; _} :: _; _} -> (
-    match Environ.find_record_type field_ident env with
+  | Record_literal {record_fields= {field_ident=field; _} :: _; _} -> (
+    match Environ.find_record_type field env with
     | Some typ -> copy_type env.depth typ
-    | None ->
-        failwithf "Could not find the record for field %s" field_ident.txt () )
-  | Record_literal _ -> failwith "Unexpected empty record expression."
+    | None -> raise (Error (field.loc, Unbound_record_field field.txt)))
+  | Record_literal _ -> raise (Error (exp.exp_loc, Empty_record))
   | Field (e, field) ->
       let e_typ = get_expression env e in
       get_field_type ~loc field e_typ env
@@ -520,6 +522,20 @@ let report_error ppf = function
       pp_typ ppf constr_typ' ;
       pp_print_string ppf "' are incompatable." ;
       pp_print_newline ppf ()
+  | Unbound_constructor ctor ->
+      fprintf ppf "Unbound constructor %s." ctor
+  | Unbound_value value ->
+      fprintf ppf "Unbound value %s." value
+  | Unbound_record_field field ->
+      fprintf ppf "Unbound record field %s." field
+  | Empty_record ->
+      fprintf ppf "Record has no fields."
+  | Tdefer_found loc ->
+      fprintf ppf "Internal error at %s: Unexpected Tdefer found." loc
+  | Tpoly_found loc ->
+      fprintf ppf "Internal error at %s: Unexpected Tpoly found." loc
+  | Tvar_expected loc ->
+      fprintf ppf "Internal error at %s: Expected a Tvar." loc
 
 let () =
   Location.register_error_of_exn (function
