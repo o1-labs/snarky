@@ -25,13 +25,13 @@ check_diff() {
 
 run_test() {
   run_dune exec dsl/meja.exe -- --ml "tests/out/$1.ml" --ocaml-env "tests/out/$FILENAME.ocaml-env" --stderr "tests/out/$1.stderr" "tests/$1.meja"
-  cat "tests/out/$1.stderr"
   if [ $? -ne 0 ]; then
     if [ -e "tests/$1.fail" ]; then
       echo -e "${GREEN}PASSED${NC}: Got expected failure building from $1.mega"
       passes=passes+1
     else
       echo -e "${RED}FAILED${NC}: Building from $1.mega"
+      cat "tests/out/$1.stderr"
       fails=fails+1
     fi
   else
@@ -46,8 +46,8 @@ run_test() {
     mv tests/out/$1.ml.reformat tests/out/$1.ml
     check_diff $1.ml
     check_diff $1.ocaml-env
-    check_diff $1.stderr
   fi
+    check_diff $1.stderr
 }
 
 run_tests() {

@@ -1,4 +1,5 @@
 let a = {
+  let x = 1;
   let f = fun (x) => { x; };
   f x;
 };
