@@ -1,4 +1,7 @@
 [@@@ocaml.doc "Types:"]
+type bool =
+  | true 
+  | false 
 type char
 type float
 type int
@@ -19,3 +22,6 @@ type variant2 =
 val A : variant2
 val B : variant2
 val C : variant2
+val D : variant
+val false : bool
+val true : bool

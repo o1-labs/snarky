@@ -1,4 +1,7 @@
 [@@@ocaml.doc "Types:"]
+type bool =
+  | true 
+  | false 
 type char
 type float
 type int
@@ -10,3 +13,6 @@ val b : ((int * int * int) * int * int * (int * (int * int)))
 val c : (unit * unit * unit)
 val d : unit
 [@@@ocaml.doc "Fields:"]
+[@@@ocaml.doc "Constructors:"]
+val false : bool
+val true : bool

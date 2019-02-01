@@ -1,4 +1,4 @@
 File "tests/apply_fail.meja", line 3, characters 2-5:
-Error: Type error: Cannot unify 'unit -> unit' and 'unit -> '_a17, types '
+Error: Type error: Cannot unify 'unit -> unit' and 'unit -> '_a19, types '
 int' and 'unit' are incompatable.
 

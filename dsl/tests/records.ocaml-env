@@ -1,4 +1,7 @@
 [@@@ocaml.doc "Types:"]
+type bool =
+  | true 
+  | false 
 type char
 type float
 type int
@@ -17,3 +20,6 @@ val two : (record -> record) -> record
 val one : record
 val three : record
 val two : record
+[@@@ocaml.doc "Constructors:"]
+val false : bool
+val true : bool

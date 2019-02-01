@@ -1,4 +1,7 @@
 [@@@ocaml.doc "Types:"]
+type bool =
+  | true 
+  | false 
 type char
 type float
 type int
@@ -13,8 +16,11 @@ type unit = unit
 val a : int
 val b : record -> (int * int)
 val c : record -> record
-val d : (((int -> int -> '_a105) * record) * int) -> '_a105
+val d : (((int -> int -> '_a107) * record) * int) -> '_a107
 [@@@ocaml.doc "Fields:"]
 val one : record
 val three : record
 val two : record
+[@@@ocaml.doc "Constructors:"]
+val false : bool
+val true : bool
