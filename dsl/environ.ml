@@ -23,22 +23,42 @@ let pp (output : Format.formatter) (env : t) =
       Format.fprintf output "%s : %a\n" key pp_type_expr typ ) ;
   Format.pp_print_string output "Free type variables:\n" ;
   Map.iteri env.typ_vars ~f:(fun ~key ~data:(_, typ) ->
+      Format.fprintf output "%s : %a\n" key pp_type_expr typ ) ;
+  Format.pp_print_string output "Fields:\n" ;
+  Map.iteri env.fields ~f:(fun ~key ~data:(typ, _) ->
       Format.fprintf output "%s : %a\n" key pp_type_expr typ )
 
 let pp_ocaml (output : Format.formatter) (env : t) =
+  let open Ast_helper in
+  let doc_comment str =
+    Ast_helper.Sig.attribute
+      Docstrings.(docs_attr (docstring str Location.none))
+  in
   let types =
-    Map.fold env.types ~init:[] ~f:(fun ~key ~data:type_decl types ->
-        Ast_helper.Sig.type_ Recursive
-          [To_ocaml.of_type_decl Location.(mkloc key none) type_decl]
-        :: types )
+    doc_comment "Types:"
+    :: ( List.rev
+       @@ Map.fold env.types ~init:[] ~f:(fun ~key ~data:type_decl types ->
+              Sig.type_ Recursive
+                [To_ocaml.of_type_decl Location.(mkloc key none) type_decl]
+              :: types ) )
   in
   let values =
-    Map.fold env.names ~init:[] ~f:(fun ~key ~data:(_, typ) names ->
-        Ast_helper.(
-          Sig.value (Val.mk Location.(mkloc key none) (To_ocaml.of_typ typ)))
-        :: names )
+    doc_comment "Values:"
+    :: ( List.rev
+       @@ Map.fold env.names ~init:[] ~f:(fun ~key ~data:(_, typ) names ->
+              Sig.value
+                (Val.mk Location.(mkloc key none) (To_ocaml.of_typ typ))
+              :: names ) )
   in
-  Pprintast.signature output (List.rev types @ List.rev values)
+  let fields =
+    doc_comment "Fields:"
+    :: ( List.rev
+       @@ Map.fold env.fields ~init:[] ~f:(fun ~key ~data:(typ, _) fields ->
+              Sig.value
+                (Val.mk Location.(mkloc key none) (To_ocaml.of_typ typ))
+              :: fields ) )
+  in
+  Pprintast.signature output (types @ values @ fields @ constructors)
 
 let empty =
   { names= empty_ident_table
