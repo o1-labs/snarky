@@ -3,9 +3,9 @@ let a =
   let f x = x in
   f x
 
-let b (f : int -> '_a29) =
-  let (i : '_a29) = f 15 in
-  let (j : '_a29) = f i in
+let b (f : int -> '_a28) =
+  let (i : '_a28) = f 15 in
+  let (j : '_a28) = f i in
   j
 
 let c =

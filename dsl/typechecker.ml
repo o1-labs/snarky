@@ -367,7 +367,7 @@ let rec get_expression env exp =
         | [] -> f_typ
         | x :: xs -> (
             let x_typ = get_expression env x in
-            let return_var = mk_var ~depth:(-1) ~loc None in
+            let return_var = mk_var ~depth ~loc None in
             match
               check_type ~loc f_typ
                 (mk ~loc (Tarrow (x_typ, return_var)))

@@ -5,22 +5,14 @@ type bool =
 type char
 type float
 type int
-type int' = int
-type record = {
-  one: int ;
-  two: int' ;
-  three: int }
 type string
 type unit = unit
 [@@@ocaml.doc "Values:"]
 val a : int
-val b : record -> (int * int)
-val c : record -> record
-val d : (((int -> int -> int) * record) * int) -> int
+val b : (int -> '_a28) -> 'a
+val c : 'a
+val d : (int -> int) -> int -> int
 [@@@ocaml.doc "Fields:"]
-val one : record
-val three : record
-val two : record
 [@@@ocaml.doc "Constructors:"]
 val false : bool
 val true : bool
