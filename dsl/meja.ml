@@ -81,27 +81,32 @@ let main =
     Option.value_exn !file
       ~error:(Error.of_string "Please pass a file as an argument.")
   in
-  let ast = read_file (Parser_impl.file Lexer_impl.token) file in
-  let env = Typechecker.check ast in
-  let ocaml_ast = To_ocaml.of_file ast in
-  let ocaml_formatter =
-    match (!ocaml_file, !default) with
-    | Some filename, _ ->
-        Some (Format.formatter_of_out_channel (Out_channel.create filename))
-    | None, true -> Some Format.std_formatter
-    | None, false -> None
-  in
-  do_output !ast_file (fun output ->
-      Printast.structure 2 output ocaml_ast ;
-      Format.pp_print_newline output () ) ;
-  ( match ocaml_formatter with
-  | Some output ->
-      Pprintast.structure output ocaml_ast ;
-      Format.pp_print_newline output ()
-  | None -> () ) ;
-  do_output !struct_file (fun output ->
-      List.iter ast ~f:(fun stri ->
-          Parsetypes.pp_statement output stri ;
-          Format.pp_print_newline output () ) ) ;
-  do_output !env_file (fun output -> Environ.pp output env) ;
-  do_output !ocaml_env_file (fun output -> Environ.pp_ocaml output env)
+  try
+    let ast = read_file (Parser_impl.file Lexer_impl.token) file in
+    let env = Typechecker.check ast in
+    let ocaml_ast = To_ocaml.of_file ast in
+    let ocaml_formatter =
+      match (!ocaml_file, !default) with
+      | Some filename, _ ->
+          Some (Format.formatter_of_out_channel (Out_channel.create filename))
+      | None, true -> Some Format.std_formatter
+      | None, false -> None
+    in
+    do_output !ast_file (fun output ->
+        Printast.structure 2 output ocaml_ast ;
+        Format.pp_print_newline output () ) ;
+    ( match ocaml_formatter with
+    | Some output ->
+        Pprintast.structure output ocaml_ast ;
+        Format.pp_print_newline output ()
+    | None -> () ) ;
+    do_output !struct_file (fun output ->
+        List.iter ast ~f:(fun stri ->
+            Parsetypes.pp_statement output stri ;
+            Format.pp_print_newline output () ) ) ;
+    do_output !env_file (fun output -> Environ.pp output env) ;
+    do_output !ocaml_env_file (fun output -> Environ.pp_ocaml output env) ;
+    exit 0
+  with exn ->
+    Location.report_exception Format.err_formatter exn ;
+    exit 1

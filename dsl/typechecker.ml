@@ -3,6 +3,12 @@ open Parsetypes
 open Parsetypes.Type
 open Environ
 
+type error =
+  | Check_failed_aux of type_expr * type_expr
+  | Check_failed of type_expr * type_expr * type_expr * type_expr
+
+exception Error of Location.t * error
+
 let type_print typ =
   let typ = To_ocaml.of_typ typ in
   Pprintast.core_type Format.std_formatter typ ;
@@ -25,9 +31,8 @@ let rec copy_type depth typ =
       mk ~loc (Tarrow (copy_type depth typ1, copy_type depth typ2))
   | Ttuple typs -> mk ~loc (Ttuple (List.map ~f:(copy_type depth) typs))
 
-exception Check_failed of type_expr * type_expr
-
 let rec check_type_aux typ constr_typ =
+  let loc = constr_typ.type_loc in
   if not (phys_equal typ constr_typ) then
     match (typ.type_desc, constr_typ.type_desc) with
     | Tpoly (_, typ), _ -> check_type_aux typ constr_typ
@@ -45,14 +50,15 @@ let rec check_type_aux typ constr_typ =
               constr_typ_decl.type_decl_in_recursion <- true ;
               check_type_aux typ constr_typ ;
               constr_typ_decl.type_decl_in_recursion <- false
-          | _, _ -> raise (Check_failed (typ, constr_typ)) )
+          | _, _ -> raise (Error (loc, Check_failed_aux (typ, constr_typ))) )
     | Tarrow (typ1, typ2), Tarrow (constr_typ1, constr_typ2) ->
         check_type_aux typ1 constr_typ1 ;
         check_type_aux typ2 constr_typ2
     | Ttuple typs, Ttuple constr_typs -> (
       match List.iter2 ~f:check_type_aux typs constr_typs with
       | Ok _ -> ()
-      | Unequal_lengths -> raise (Check_failed (typ, constr_typ)) )
+      | Unequal_lengths ->
+          raise (Error (loc, Check_failed_aux (typ, constr_typ))) )
     | Tdefer _, _ | _, Tdefer _ ->
         failwith "Unexpected Tdefer outside copy_type."
     | Tvar data, Tvar constr_data -> (
@@ -98,27 +104,13 @@ let rec check_type_aux typ constr_typ =
           data.instance <- Some constr_typ ;
           check_type_aux typ' constr_typ ;
           typ.in_recursion <- in_recursion )
-    | _, _ -> raise (Check_failed (typ, constr_typ))
+    | _, _ -> raise (Error (loc, Check_failed_aux (typ, constr_typ)))
 
 let check_type ~loc typ constr_typ =
-  ( try check_type_aux typ constr_typ
-    with Check_failed (typ', constr_typ') ->
-      let open Format in
-      let pp_typ typ =
-        Pprintast.core_type err_formatter (To_ocaml.of_typ typ)
-      in
-      Location.print_error err_formatter loc ;
-      pp_print_string err_formatter " Type error: Cannot unify '" ;
-      pp_typ typ ;
-      pp_print_string err_formatter "' and '" ;
-      pp_typ constr_typ ;
-      pp_print_string err_formatter ", types '" ;
-      pp_typ typ' ;
-      pp_print_string err_formatter "' and '" ;
-      pp_typ constr_typ' ;
-      pp_print_string err_formatter "' are incompatable." ;
-      pp_print_newline err_formatter () ) ;
-  constr_typ
+  match check_type_aux typ constr_typ with
+  | exception Error (_, Check_failed_aux (typ', constr_typ')) ->
+      raise (Error (loc, Check_failed (typ, constr_typ, typ', constr_typ')))
+  | _ -> constr_typ
 
 let rec unify_after_parse' env typ =
   match typ.type_desc with
@@ -502,3 +494,34 @@ let check_statement env stmt =
 let check (ast : statement list) =
   List.fold_left ast ~init:Environ.Core.env ~f:(fun env stmt ->
       check_statement env stmt )
+
+(* Error handling *)
+
+open Format
+
+let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_typ typ)
+
+let report_error ppf = function
+  | Check_failed_aux (typ', constr_typ') ->
+      pp_print_string ppf "Type error: Types '" ;
+      pp_typ ppf typ' ;
+      pp_print_string ppf "' and '" ;
+      pp_typ ppf constr_typ' ;
+      pp_print_string ppf "' are incompatable." ;
+      pp_print_newline ppf ()
+  | Check_failed (typ, constr_typ, typ', constr_typ') ->
+      pp_print_string ppf "Type error: Cannot unify '" ;
+      pp_typ ppf typ ;
+      pp_print_string ppf "' and '" ;
+      pp_typ ppf constr_typ ;
+      pp_print_string ppf ", types '" ;
+      pp_typ ppf typ' ;
+      pp_print_string ppf "' and '" ;
+      pp_typ ppf constr_typ' ;
+      pp_print_string ppf "' are incompatable." ;
+      pp_print_newline ppf ()
+
+let () =
+  Location.register_error_of_exn (function
+    | Error (loc, err) -> Some (Location.error_of_printer loc report_error err)
+    | _ -> None )
