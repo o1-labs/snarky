@@ -72,7 +72,8 @@ let pp_ocaml (output : Format.formatter) (env : t) =
                 (Val.mk Location.(mkloc key none) (To_ocaml.of_typ typ))
               :: constructors ) )
   in
-  Pprintast.signature output (types @ values @ fields @ constructors)
+  Pprintast.signature output (types @ values @ fields @ constructors);
+  Format.pp_print_flush output ()
 
 let empty =
   { names= empty_ident_table
