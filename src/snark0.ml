@@ -507,8 +507,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       fst (go 0 t)
 
+    let eval_constraints = ref false
+
     let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ?(eval_constraints = false) (t0 : (a, s) t) (s0 : s option) =
+        ?(eval_constraints = !eval_constraints) (t0 : (a, s) t) (s0 : s option)
+        =
       next_auxiliary := 1 + num_inputs ;
       (* We can't evaluate the constraints if we are not computing over a value. *)
       let eval_constraints = eval_constraints && Option.is_some s0 in
@@ -1332,6 +1335,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
   let verify = Run.verify
 
   let constraint_system = Run.constraint_system
+
+  let set_eval_constraints b = eval_constraints := b
 
   module R1CS_constraint_system = struct
     include R1CS_constraint_system
