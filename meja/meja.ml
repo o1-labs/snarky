@@ -26,4 +26,4 @@ let main =
   let files = List.rev !files in
   let asts = List.map files ~f:(read_file (Parser_impl.file Lexer_impl.token)) in
   let ocaml_asts = List.map asts ~f:To_ocaml.of_file in
-  ignore @@ List.map ocaml_asts ~f:(Printast.implementation Format.std_formatter)
+  ignore @@ List.map ocaml_asts ~f:(Pprintast.structure Format.std_formatter)
