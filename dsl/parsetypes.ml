@@ -10,16 +10,16 @@ let show_loc x = Format.asprintf "%a" Location.print_loc x
 
 let pp_loc f x = Format.pp_print_string f (show_loc x)
 
-type 'a loc' = 'a Location.loc = {txt: 'a; loc: loc} [@@deriving show]
+type 'a loc' = 'a Location.loc = {txt: 'a; loc: loc} [@@deriving show { with_path = false }]
 
-type str = string loc' [@@deriving show]
+type str = string loc' [@@deriving show { with_path = false }]
 
 type type_decl =
   { type_decl_desc: type_decl_desc
   ; type_decl_id: int
   ; type_decl_loc: loc
   ; mutable type_decl_in_recursion: bool }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 and type_decl_desc =
   | Abstract
@@ -27,7 +27,7 @@ and type_decl_desc =
   | Record of field_decl list
   | Variant of constr_decl list
   | VariantRecord of field_decl list
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 and field_decl =
   { field_ident: str
@@ -42,26 +42,26 @@ and field_decl =
                pp_type_expr fmt expr ;
                expr.in_recursion <- false )]
   ; field_loc: loc }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 and constr_decl =
   { constr_decl_ident: str
   ; constr_decl_args: constr_args
   ; constr_decl_return: type_expr option
   ; constr_decl_loc: loc }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 and constr_args =
   | Constr_tuple of type_expr list
   | Constr_record of field_decl list
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 and type_expr =
   { mutable type_desc: type_desc
   ; id: int
   ; type_loc: loc
   ; mutable in_recursion: bool }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -73,7 +73,7 @@ and type_desc =
   | Ttuple of type_expr list
   (* Internal, used to wrap a reference to a type. *)
   | Tdefer of type_expr
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 and type_var =
   { name: str option
@@ -91,7 +91,7 @@ and type_var =
                    pp_type_expr fmt expr ;
                    expr.in_recursion <- false )
              | None -> Format.pp_print_string fmt "None"] }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 and type_constr =
   { constr_ident: str
@@ -105,7 +105,7 @@ and type_constr =
                Format.pp_print_string fmt "Some" ;
                pp_type_decl fmt decl ;
                decl.type_decl_in_recursion <- false )] }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 module TypeDecl = struct
   let id = ref 0
@@ -156,11 +156,11 @@ type constant = Parsetree.constant =
   | Pconst_char of char
   | Pconst_string of string * string option
   | Pconst_float of string * char option
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
-type closed_flag = Asttypes.closed_flag = Closed | Open [@@deriving show]
+type closed_flag = Asttypes.closed_flag = Closed | Open [@@deriving show { with_path = false }]
 
-type pattern = {pat_desc: pat_desc; pat_loc: loc} [@@deriving show]
+type pattern = {pat_desc: pat_desc; pat_loc: loc} [@@deriving show { with_path = false }]
 
 and pat_desc =
   | PAny
@@ -170,13 +170,13 @@ and pat_desc =
   | PRecord of (str * pattern) list * closed_flag
   | POr of pattern * pattern
   | PTuple of pattern list
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 module Pattern = struct
   let mk ?(loc = Location.none) pat_desc = {pat_desc; pat_loc= loc}
 end
 
-type expression = {exp_desc: exp_desc; exp_loc: loc} [@@deriving show]
+type expression = {exp_desc: exp_desc; exp_loc: loc} [@@deriving show { with_path = false }]
 
 and exp_desc =
   | Apply of expression * expression list
@@ -190,7 +190,7 @@ and exp_desc =
   | Record_literal of record_contents
   | Field of expression * str
   | Match of expression * (pattern * expression) list
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 and record_contents =
   {record_values: expression list; record_fields: field_decl list}
@@ -199,10 +199,10 @@ module Expression = struct
   let mk ?(loc = Location.none) exp_desc = {exp_desc; exp_loc= loc}
 end
 
-type statement = {stmt_desc: stmt_desc; stmt_loc: loc} [@@deriving show]
+type statement = {stmt_desc: stmt_desc; stmt_loc: loc} [@@deriving show { with_path = false }]
 
 and stmt_desc = Value of pattern * expression | Type of str * type_decl
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 module Statement = struct
   let mk ?(loc = Location.none) stmt_desc = {stmt_desc; stmt_loc= loc}
