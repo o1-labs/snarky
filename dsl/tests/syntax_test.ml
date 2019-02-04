@@ -25,7 +25,7 @@ let f =
   let f x = x in
   f
 
-let (g : '_a37 -> '_a38) =
+let (g : '_a36 -> 'a) =
   let (f : 'a -> 'a) = fun x -> x in
   f
 

@@ -9,8 +9,8 @@ type string
 type unit = unit
 [@@@ocaml.doc "Values:"]
 val a : int
-val b : (int -> '_a28) -> 'a
-val c : 'a
+val b : (int -> int) -> int
+val c : 'a -> 'a
 val d : (int -> int) -> int -> int
 [@@@ocaml.doc "Fields:"]
 [@@@ocaml.doc "Constructors:"]

@@ -92,7 +92,7 @@ let rec check_type_aux typ constr_typ =
           check_type_aux typ' constr_typ ;
           typ.in_recursion <- in_recursion ;
           if data.depth < constr_data.depth then (
-            data.instance <- constr_data.instance ;
+            data.instance <- Some typ' ;
             constr_data.instance <- Some typ ) )
     | _, Tvar constr_data -> (
       match constr_data.instance with
@@ -312,6 +312,7 @@ let get_field_type ~loc field typ env =
 
 let add_type_final name typ env =
   let typ_vars = reduce_type_vars typ in
+  let typ = strip_polymorphism typ in
   let typ = polymorphise typ typ_vars in
   let env = name_type_variables typ env in
   Environ.add_name name (`Copy, typ) env
@@ -380,12 +381,13 @@ let rec get_expression env exp =
   | Fun (p, body) ->
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instanciating the parameters. *)
-      let env = {env with depth= depth + 1} in
+      let env = {env with depth= env.depth + 1} in
       let p_typ = mk_var ~depth:env.depth ~loc None in
       let env =
         check_pattern ~add:add_type_in_progress ~after_parse:unify_after_parse
           env p_typ p
       in
+      let env = {env with depth= env.depth + 1} in
       let body_typ = get_expression env body in
       mk_arrow ~loc p_typ body_typ
   | Seq (e1, e2) ->
