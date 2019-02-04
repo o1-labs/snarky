@@ -174,7 +174,8 @@ let pop_match_instances env =
 module Core = struct
   let int = TypeDecl.mk Abstract
 
-  let unit = TypeDecl.mk (Alias (Type.mk (Ttuple [])))
+  let unit =
+    TypeDecl.mk (Variant [TypeDecl.mk_constructor "()" (Constr_tuple [])])
 
   let bool =
     TypeDecl.mk
