@@ -68,32 +68,33 @@ let rec check_type_aux typ constr_typ =
           raise (Error (loc, Check_failed_aux (typ, constr_typ))) )
     | Tdefer _, _ | _, Tdefer _ -> raise (Error (loc, Tdefer_found __LOC__))
     | Tvar data, Tvar constr_data -> (
-      match (data.instance, constr_data.instance) with
-      | None, None ->
-          if data.depth <= constr_data.depth then
-            constr_data.instance <- Some typ
-          else data.instance <- Some constr_typ
-      | Some typ', None ->
-          if data.depth <= constr_data.depth then
-            constr_data.instance <- Some typ
-          else (
-            constr_data.instance <- Some typ' ;
-            data.instance <- Some constr_typ )
-      | None, Some constr_typ' ->
-          if constr_data.depth <= data.depth then
-            data.instance <- Some constr_typ
-          else (
-            data.instance <- Some constr_typ' ;
-            constr_data.instance <- Some typ )
-      | Some typ', Some _constr_typ' ->
-          let in_recursion = typ.in_recursion in
-          typ.in_recursion <- true ;
-          data.instance <- Some constr_typ ;
-          check_type_aux typ' constr_typ ;
-          typ.in_recursion <- in_recursion ;
-          if data.depth < constr_data.depth then (
-            data.instance <- Some typ' ;
-            constr_data.instance <- Some typ ) )
+        let typ_lt_constr =
+          data.depth < constr_data.depth
+          || (Int.equal data.depth constr_data.depth && typ.id < constr_typ.id)
+        in
+        match (data.instance, constr_data.instance) with
+        | None, None ->
+            if typ_lt_constr then constr_data.instance <- Some typ
+            else data.instance <- Some constr_typ
+        | Some typ', None ->
+            if typ_lt_constr then constr_data.instance <- Some typ
+            else (
+              constr_data.instance <- Some typ' ;
+              data.instance <- Some constr_typ )
+        | None, Some constr_typ' ->
+            if not typ_lt_constr then data.instance <- Some constr_typ
+            else (
+              data.instance <- Some constr_typ' ;
+              constr_data.instance <- Some typ )
+        | Some typ', Some _constr_typ' ->
+            let in_recursion = typ.in_recursion in
+            typ.in_recursion <- true ;
+            data.instance <- Some constr_typ ;
+            check_type_aux typ' constr_typ ;
+            typ.in_recursion <- in_recursion ;
+            if typ_lt_constr then (
+              data.instance <- Some typ' ;
+              constr_data.instance <- Some typ ) )
     | _, Tvar constr_data -> (
       match constr_data.instance with
       | None -> constr_data.instance <- Some typ
@@ -135,8 +136,8 @@ let rec unify_after_parse' env typ =
       ( match Environ.find_type data.constr_ident env with
       | Some type_decl -> data.constr_type_decl <- type_decl
       | None ->
-        let ident = data.constr_ident in
-        raise (Error (ident.loc, Unbound_constructor ident.txt))) ;
+          let ident = data.constr_ident in
+          raise (Error (ident.loc, Unbound_constructor ident.txt)) ) ;
       (typ, env, Base.Set.empty (module Type))
   | Tarrow (typ1, typ2) ->
       let typ1, env, vars1 = unify_after_parse' env typ1 in
@@ -367,7 +368,7 @@ let rec get_expression env exp =
         match xs with
         | [] -> f_typ
         | x :: xs -> (
-            let x_typ = get_expression env x in
+            let x_typ = strip_polymorphism (get_expression env x) in
             let return_var = mk_var ~depth ~loc None in
             match
               check_type ~loc f_typ
@@ -403,10 +404,10 @@ let rec get_expression env exp =
       mk ~loc
         (Ttuple
            (List.map es ~f:(fun e -> strip_polymorphism (get_expression env e))))
-  | Record_literal {record_fields= {field_ident=field; _} :: _; _} -> (
+  | Record_literal {record_fields= {field_ident= field; _} :: _; _} -> (
     match Environ.find_record_type field env with
     | Some typ -> copy_type env.depth typ
-    | None -> raise (Error (field.loc, Unbound_record_field field.txt)))
+    | None -> raise (Error (field.loc, Unbound_record_field field.txt)) )
   | Record_literal _ -> raise (Error (exp.exp_loc, Empty_record))
   | Field (e, field) ->
       let e_typ = get_expression env e in
@@ -526,14 +527,10 @@ let report_error ppf = function
       pp_typ ppf constr_typ' ;
       pp_print_string ppf "' are incompatable." ;
       pp_print_newline ppf ()
-  | Unbound_constructor ctor ->
-      fprintf ppf "Unbound constructor %s." ctor
-  | Unbound_value value ->
-      fprintf ppf "Unbound value %s." value
-  | Unbound_record_field field ->
-      fprintf ppf "Unbound record field %s." field
-  | Empty_record ->
-      fprintf ppf "Record has no fields."
+  | Unbound_constructor ctor -> fprintf ppf "Unbound constructor %s." ctor
+  | Unbound_value value -> fprintf ppf "Unbound value %s." value
+  | Unbound_record_field field -> fprintf ppf "Unbound record field %s." field
+  | Empty_record -> fprintf ppf "Record has no fields."
   | Tdefer_found loc ->
       fprintf ppf "Internal error at %s: Unexpected Tdefer found." loc
   | Tpoly_found loc ->
