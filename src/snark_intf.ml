@@ -352,6 +352,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val project : bool list -> t
     (** Convert a list of bits into a field element. *)
 
+    val project_reference : bool list -> t
+    (** [project], but slow. Exposed for benchmarks. *)
+
     type var' = Var.t
 
     module Var : sig
@@ -453,6 +456,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   module Proof : sig
     type t
+
+    include Stringable.S with type t := t
   end
 
   module Bitstring_checked : sig
@@ -622,6 +627,16 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (_, _) Checked.t -> int
+
+  val set_eval_constraints : bool -> unit
+  (** Sets the [eval_constraints] state. If [true], {!val:run_unchecked} and
+      {!val:prove} will check that the constraint system is satisfied while
+      evaluating the {!type:Checked.t}. The default value is [false].
+
+      Note: This flag will not evaluate any constraints added by
+      {!val:with_constraint_system} (or the underlying
+      {!const:Types.Checked.With_constraint_system}). For these, you should
+      modify your code to use the normal {!val:run_and_check} function. *)
 end
 
 module type S = sig

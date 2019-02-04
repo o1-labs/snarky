@@ -4,6 +4,9 @@ all : docker googlecloud minikube
 build :
 	dune build --root=.
 
+tests :
+	dune runtest --root=.
+
 ml-docs :
 	dune build --root=. @doc
 
