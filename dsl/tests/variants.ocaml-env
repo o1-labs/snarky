@@ -6,22 +6,35 @@ type char
 type float
 type int
 type string
-type unit = unit
+type unit =
+  | () 
 type variant =
   | A 
   | B 
   | C 
   | D 
 type variant2 =
-  | A of int 
-  | B of unit * int 
-  | C of variant2 
+  | E of int 
+  | F of unit * int 
+  | G of variant2 
+type variant3 =
+  | H: variant3 
 [@@@ocaml.doc "Values:"]
+val a : variant
+val b : variant2
+val c : variant2
+val d : variant2
+val e : variant3
 [@@@ocaml.doc "Fields:"]
 [@@@ocaml.doc "Constructors:"]
-val A : variant2
-val B : variant2
-val C : variant2
+val () : unit
+val A : variant
+val B : variant
+val C : variant
 val D : variant
+val E : variant2
+val F : variant2
+val G : variant2
+val H : variant3
 val false : bool
 val true : bool

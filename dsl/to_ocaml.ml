@@ -102,6 +102,8 @@ let rec of_expression exp =
       Exp.match_ ~loc (of_expression e)
         (List.map cases ~f:(fun (p, e) ->
              Exp.case (of_pattern p) (of_expression e) ))
+  | Constructor (id, args) ->
+      Exp.construct (mk_lid id) (Option.map ~f:of_expression args)
 
 let of_statement stmt =
   let loc = stmt.stmt_loc in

@@ -7,12 +7,14 @@ type float
 type int
 type int' = int
 type string
-type unit = unit
+type unit =
+  | () 
 [@@@ocaml.doc "Values:"]
 val a : int -> int'
 val b : int' -> int
 val c : int'
 [@@@ocaml.doc "Fields:"]
 [@@@ocaml.doc "Constructors:"]
+val () : unit
 val false : bool
 val true : bool

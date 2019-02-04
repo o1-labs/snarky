@@ -6,7 +6,8 @@ type char
 type float
 type int
 type string
-type unit = unit
+type unit =
+  | () 
 [@@@ocaml.doc "Values:"]
 val a :
   ((int * int * (int * int * (int * int * unit))) ->
@@ -15,5 +16,6 @@ val a :
     -> (int * int * (int * int * (int * int * unit)))
 [@@@ocaml.doc "Fields:"]
 [@@@ocaml.doc "Constructors:"]
+val () : unit
 val false : bool
 val true : bool

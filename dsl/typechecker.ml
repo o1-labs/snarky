@@ -45,9 +45,14 @@ let rec check_type_aux typ constr_typ =
     | Tpoly (_, typ), _ -> check_type_aux typ constr_typ
     | _, Tpoly (_, constr_typ) -> check_type_aux typ constr_typ
     | ( Tconstr {constr_type_decl= typ_decl; _}
-      , Tconstr {constr_type_decl= constr_typ_decl; _} ) -> (
+      , Tconstr {constr_type_decl= constr_typ_decl; _} ) ->
         if not (Int.equal typ_decl.type_decl_id constr_typ_decl.type_decl_id)
-        then
+        then (
+          let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_typ typ) in
+          Format.fprintf Format.err_formatter
+            "Type error: Cannot unify @['%a'@]%d and @['%a'@]%d.@." pp_typ typ
+            typ_decl.type_decl_id pp_typ constr_typ
+            constr_typ_decl.type_decl_id ;
           match (typ_decl.type_decl_desc, constr_typ_decl.type_decl_desc) with
           | Alias typ, _ ->
               typ_decl.type_decl_in_recursion <- true ;
@@ -371,8 +376,7 @@ let rec get_expression env exp =
             let x_typ = strip_polymorphism (get_expression env x) in
             let return_var = mk_var ~depth ~loc None in
             match
-              check_type ~loc f_typ
-                (mk ~loc (Tarrow (x_typ, return_var)))
+              check_type ~loc f_typ (mk ~loc (Tarrow (x_typ, return_var)))
             with
             | {type_desc= Tarrow (_, f_typ); _} -> apply_typ xs f_typ
             | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.."
@@ -408,7 +412,7 @@ let rec get_expression env exp =
     match Environ.find_record_type field env with
     | Some typ -> copy_type env.depth typ
     | None -> raise (Error (field.loc, Unbound_record_field field.txt)) )
-  | Record_literal _ -> raise (Error (exp.exp_loc, Empty_record))
+  | Record_literal _ -> raise (Error (loc, Empty_record))
   | Field (e, field) ->
       let e_typ = get_expression env e in
       get_field_type ~loc field e_typ env
@@ -435,6 +439,24 @@ let rec get_expression env exp =
                  | Tvar data -> data.instance <- None
                  | _ -> failwith "Expected a Tvar from env.match_instances" )) ;
           check_type ~loc:case_e.exp_loc case_e_typ typ )
+  | Constructor (id, args) -> (
+      let ctor_type =
+        match Environ.find_constructor_types id env with
+        | Some (arg_type, return_type) -> mk_arrow ~loc arg_type return_type
+        | None -> raise (Error (id.loc, Unbound_constructor id.txt))
+      in
+      let args =
+        match args with
+        | Some args -> args
+        | None -> Expression.mk ~loc (Tuple [])
+      in
+      let arg_type = strip_polymorphism (get_expression env args) in
+      let return_var = mk_var ~depth ~loc None in
+      match
+        check_type ~loc ctor_type (mk ~loc (Tarrow (arg_type, return_var)))
+      with
+      | {type_desc= Tarrow (_, ctor_type); _} -> ctor_type
+      | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.." )
 
 and check_binding (env : 's) p e : 's =
   let e_type = get_expression env e in
@@ -447,7 +469,7 @@ let field_after_parse env field =
       (let typ, _ = unify_after_parse env field.field_type in
        typ) }
 
-let ctor_after_parse env type_decl ctor =
+let ctor_after_parse env type_decl name ctor =
   let constr_decl_args =
     match ctor.constr_decl_args with
     | Constr_tuple args ->
@@ -463,40 +485,37 @@ let ctor_after_parse env type_decl ctor =
   in
   let constr_decl_return =
     Option.map ctor.constr_decl_return ~f:(fun type_ret ->
+        let type_ret, _ = unify_after_parse env type_ret in
         let decl_loc = type_decl.type_decl_loc in
         let ctor_loc = ctor.constr_decl_loc in
-        let typ =
-          mk_constr' ~loc:decl_loc ~decl:type_decl
-            (Location.mkloc "<internal>" decl_loc)
-        in
+        let typ = mk_constr' ~loc:decl_loc ~decl:type_decl name in
         check_type ~loc:ctor_loc type_ret typ )
   in
   {ctor with constr_decl_args; constr_decl_return}
 
 let type_decl_after_parse env name type_decl =
-  let loc = type_decl.type_decl_loc in
   match type_decl.type_decl_desc with
-  | Abstract -> type_decl
+  | Abstract -> ()
   | Alias typ ->
       let typ, _ = unify_after_parse env typ in
-      TypeDecl.mk ~loc (Alias typ)
+      type_decl.type_decl_desc <- Alias typ
   | Record fields ->
       let fields = List.map ~f:(field_after_parse env) fields in
-      TypeDecl.mk ~loc (Record fields)
+      type_decl.type_decl_desc <- Record fields
   | VariantRecord fields ->
       let fields = List.map ~f:(field_after_parse env) fields in
-      TypeDecl.mk ~loc (VariantRecord fields)
+      type_decl.type_decl_desc <- VariantRecord fields
   | Variant ctors ->
-      let env' = Environ.register_type name type_decl env in
-      let ctors = List.map ~f:(ctor_after_parse env' type_decl) ctors in
-      TypeDecl.mk ~loc (Variant ctors)
+      let ctors = List.map ~f:(ctor_after_parse env type_decl name) ctors in
+      type_decl.type_decl_desc <- Variant ctors
 
 let check_statement env stmt =
   match stmt.stmt_desc with
   | Value (p, e) -> check_binding env p e
   | Type (x, typ_decl) ->
-      let typ_decl = type_decl_after_parse env x typ_decl in
-      Environ.register_type x typ_decl env
+      let env = Environ.register_type x typ_decl env in
+      type_decl_after_parse env x typ_decl ;
+      env
 
 let check (ast : statement list) =
   List.fold_left ast ~init:Environ.Core.env ~f:(fun env stmt ->
@@ -517,16 +536,11 @@ let report_error ppf = function
       pp_print_string ppf "' are incompatable." ;
       pp_print_newline ppf ()
   | Check_failed (typ, constr_typ, typ', constr_typ') ->
-      pp_print_string ppf "Type error: Cannot unify '" ;
-      pp_typ ppf typ ;
-      pp_print_string ppf "' and '" ;
-      pp_typ ppf constr_typ ;
-      pp_print_string ppf ", types '" ;
-      pp_typ ppf typ' ;
-      pp_print_string ppf "' and '" ;
-      pp_typ ppf constr_typ' ;
-      pp_print_string ppf "' are incompatable." ;
-      pp_print_newline ppf ()
+      fprintf ppf
+        "Type error: Cannot unify @['%a'@]%d and @['%a'@]%d, types @['%a'@]%d \
+         and @['%a'@]%d are incompatable.@."
+        pp_typ typ typ.id pp_typ constr_typ constr_typ.id pp_typ typ' typ'.id
+        pp_typ constr_typ' constr_typ'.id
   | Unbound_constructor ctor -> fprintf ppf "Unbound constructor %s." ctor
   | Unbound_value value -> fprintf ppf "Unbound value %s." value
   | Unbound_record_field field -> fprintf ppf "Unbound record field %s." field

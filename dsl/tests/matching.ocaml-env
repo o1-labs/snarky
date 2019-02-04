@@ -11,7 +11,8 @@ type record = {
   two: int' ;
   three: int }
 type string
-type unit = unit
+type unit =
+  | () 
 [@@@ocaml.doc "Values:"]
 val a : int
 val b : record -> (int * int)
@@ -22,5 +23,6 @@ val one : record
 val three : record
 val two : record
 [@@@ocaml.doc "Constructors:"]
+val () : unit
 val false : bool
 val true : bool

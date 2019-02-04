@@ -16,6 +16,18 @@ let mktypdecl =pos_to_loc TypeDecl.mk
 let mkpat = pos_to_loc Pattern.mk
 let mkexp = pos_to_loc Expression.mk
 let mkstr = pos_to_loc Statement.mk
+
+let make_fields ~pos r = 
+  let (fields, values) = List.fold_left (fun (fields, values) (id, e) ->
+    let field =
+      { field_ident= id
+      ; field_type= Type.mk_var ~loc:id.loc ~depth:0 None
+      ; field_loc= id.loc }
+    in
+    (field :: fields, e :: values)) ([], []) r in
+  mkexp ~pos (Record_literal
+      { record_values= values
+      ; record_fields= fields })
 %}
 %token <string> INT
 %token <string> LIDENT
@@ -102,12 +114,14 @@ variant_args:
 variant_return_type:
   | (* empty *)
     { None }
-  | COLON t = type_expr
+  | COLON t = simple_type_expr
     { Some t }
 
 constructor:
   | id = UIDENT
     { id }
+  | LBRACKET RBRACKET
+    { "()" }
   | TRUE
     { "true" }
   | FALSE
@@ -135,36 +149,42 @@ simple_expr:
     { mkexp ~pos:$loc (Field (e, mkrhs field $loc(field))) }
   | FUN LBRACKET f = function_from_args
     { f }
-  | LBRACKET es = expr RBRACKET
+  | LBRACKET es = expr_with_tuple RBRACKET
     { es }
-  | LBRACKET RBRACKET
-    { mkexp ~pos:$loc (Tuple []) }
   | LBRACE es = block RBRACE
     { es }
   | LBRACE r = exp_record_fields RBRACE
-    { let (fields, values) = List.fold_left (fun (fields, values) (id, e) ->
-      let field =
-        { field_ident= id
-        ; field_type= Type.mk_var ~loc:id.loc ~depth:0 None
-        ; field_loc= id.loc }
-      in
-      (field :: fields, e :: values)) ([], []) r in
-      mkexp ~pos:$loc (Record_literal
-        { record_values= values
-        ; record_fields= fields }) }
+    { make_fields ~pos:$loc r }
 
-expr:
+arg_expr:
   | x = simple_expr
     { x }
-  | f = simple_expr xs = simple_expr_list
+  | id = constructor
+    { mkexp ~pos:$loc (Constructor (mkrhs id $loc(id), None)) }
+
+expr:
+  | x = arg_expr
+    { x }
+  | id = constructor LBRACKET rev = expr_comma_list RBRACKET
+    { mkexp ~pos:$loc (Constructor (mkrhs id $loc(id),
+        Some (mkexp ~pos:$loc(rev) (Tuple (List.rev rev))))) }
+  | id = constructor LBRACE r = exp_record_fields RBRACE
+    { mkexp ~pos:$loc (Constructor (mkrhs id $loc(id), Some (make_fields ~pos:$loc(r) r))) }
+  | id = constructor LBRACKET e = expr RBRACKET
+    { mkexp ~pos:$loc (Constructor (mkrhs id $loc(id), Some e)) }
+  | f = simple_expr xs = arg_expr_list
     { mkexp ~pos:$loc (Apply (f, List.rev xs)) }
-  | rev = expr_comma_list %prec below_COMMA
-    { mkexp ~pos:$loc (Tuple (List.rev rev)) }
-  | SWITCH LBRACKET e = expr RBRACKET LBRACE rev_cases = match_cases RBRACE
+  | SWITCH LBRACKET e = expr_with_tuple RBRACKET LBRACE rev_cases = match_cases RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
 
-expr_with_bind:
+expr_with_tuple:
   | x = expr
+    { x }
+  | rev = expr_comma_list %prec below_COMMA
+    { mkexp ~pos:$loc (Tuple (List.rev rev)) }
+
+expr_with_bind:
+  | x = expr_with_tuple
     { x }
   | bind = let_binding SEMI rhs = expr_with_bind
     { let (x, lhs) = bind in
@@ -181,7 +201,7 @@ exp_record_fields:
     { field :: fields }
 
 match_case:
-  | BAR p = pat EQUALGT e = expr
+  | BAR p = pat EQUALGT e = expr_with_tuple
     { (p, e) }
 
 match_cases:
@@ -191,19 +211,19 @@ match_cases:
     { c :: cs }
 
 let_binding:
-  | LET x = pat EQUAL e = expr
+  | LET x = pat EQUAL e = expr_with_tuple
     { (x, e) }
 
-simple_expr_list:
-  | x = simple_expr
+arg_expr_list:
+  | x = arg_expr
     { [x] }
-  | l = simple_expr_list x = simple_expr
+  | l = arg_expr_list x = arg_expr
     { x :: l }
 
 expr_comma_list:
-  | l = expr_comma_list COMMA e = expr
+  | l = expr_comma_list COMMA e = expr_with_tuple
     { e :: l }
-  | e1 = expr COMMA e2 = expr
+  | e1 = expr_with_tuple COMMA e2 = expr_with_tuple
     { [e2; e1] }
 
 function_from_args:

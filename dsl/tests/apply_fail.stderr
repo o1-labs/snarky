@@ -1,4 +1,5 @@
+Type error: Cannot unify 'int'1 and 'unit'2.
 File "tests/apply_fail.meja", line 3, characters 2-5:
-Error: Type error: Cannot unify 'unit -> unit' and 'unit -> '_a19, types '
-int' and 'unit' are incompatable.
+Error: Type error: Cannot unify 'unit -> unit'12 and 'unit -> '_a19'20, types 
+'int'1 and 'unit'13 are incompatable.
 

@@ -16,7 +16,7 @@ type 'a loc' = 'a Location.loc = {txt: 'a; loc: loc}
 type str = string loc' [@@deriving show {with_path= false}]
 
 type type_decl =
-  { type_decl_desc: type_decl_desc
+  { mutable type_decl_desc: type_decl_desc
   ; type_decl_id: int
   ; type_decl_loc: loc
   ; mutable type_decl_in_recursion: bool }
@@ -194,6 +194,7 @@ and exp_desc =
   | Record_literal of record_contents
   | Field of expression * str
   | Match of expression * (pattern * expression) list
+  | Constructor of str * expression option
 [@@deriving show {with_path= false}]
 
 and record_contents =
