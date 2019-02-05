@@ -2,13 +2,15 @@ open Core_kernel
 
 let print_position outx lexbuf =
   let pos = lexbuf.Lexing.lex_curr_p in
-  fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
+  Format.fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
     (pos.pos_cnum - pos.pos_bol + 1)
 
 let parse_with_error parse lexbuf =
+  let open Format in
   try parse lexbuf with Parser_impl.Error ->
-    fprintf stderr "%a: syntax error\n" print_position lexbuf ;
-    exit (-1)
+    fprintf err_formatter "%a: syntax error\n" print_position lexbuf ;
+    pp_print_flush err_formatter () ;
+    exit 1
 
 let read_file parse filename =
   let file = In_channel.create filename in
