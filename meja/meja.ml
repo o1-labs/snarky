@@ -62,6 +62,7 @@ let main =
   in
   try
     let ast = read_file (Parser_impl.file Lexer_impl.token) file in
+    ignore @@ Typechecker.check ast ;
     let ocaml_ast = To_ocaml.of_file ast in
     let ocaml_formatter =
       match (!ocaml_file, !default) with
