@@ -45,8 +45,8 @@ expr:
     { Variable (mkrhs x 1) }
   | x = INT
     { Int x }
-  | FUN LBRACKET pats = args RBRACKET typ = opt_type_constraint EQUALGT LBRACE body = block RBRACE
-    { Fun (pats, typ, body) }
+  | FUN LBRACKET f = function_from_args
+    { f }
   | LBRACKET es = exprs RBRACKET
     { es }
   | LBRACE es = block RBRACE
@@ -68,6 +68,12 @@ expr_list_multiple:
   | e1 = expr COMMA e2 = expr
     { [e2; e1] }
 
+function_from_args:
+  | p = pat RBRACKET typ = opt_type_constraint EQUALGT LBRACE body = block RBRACE
+    { Fun (p, typ, body) }
+  | p = pat COMMA f = function_from_args
+    { Fun (p, None, f) }
+
 exprs:
   | e = expr
     { e }
@@ -79,12 +85,6 @@ block:
     { e }
   | e1 = expr SEMI rest = block
     { Seq (e1, rest) }
-
-args: 
-  | x = pat
-    { [x] }
-  | x = pat COMMA rest = args
-    { (x :: rest) }
 
 opt_type_constraint:
   /* empty */
