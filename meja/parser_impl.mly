@@ -5,7 +5,8 @@ open Parsetypes
 let mkrhs rhs pos = mkloc rhs (rhs_loc pos)
 %}
 %token <int> INT
-%token <string> VAR
+%token <string> LIDENT
+%token <string> UIDENT
 %token FUN
 %token LET
 %token SEMI
@@ -41,7 +42,7 @@ structure_item:
     { Value (x, e) }
 
 expr:
-  | x = VAR
+  | x = LIDENT
     { Variable (mkrhs x 1) }
   | x = INT
     { Int x }
@@ -97,13 +98,19 @@ pat:
     { p }
   | p = pat COLON typ = type_expr
     { PConstraint (p, typ) }
-  | x = VAR
+  | x = LIDENT
     { PVariable (mkrhs x 1) }
 
-type_expr:
+simple_type_expr:
   | UNDERSCORE
     { TAny }
-  | x = VAR
+  | x = LIDENT
     { TVariable (mkrhs x 1) }
-  | x = type_expr DASHGT y = type_expr
+  | LBRACKET x = type_expr RBRACKET
+    { x }
+
+type_expr:
+  | x = simple_type_expr
+    { x }
+  | x = simple_type_expr DASHGT y = type_expr
     { TArrow (x, y) }
