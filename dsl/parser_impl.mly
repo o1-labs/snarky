@@ -52,8 +52,20 @@ expr:
     { es }
   | LET x = pat EQUAL lhs = expr SEMI rhs = expr
     { Let (x, lhs, rhs) }
-  | f = expr x = expr
-    { Apply (f, x) }
+  | f = expr LBRACKET es = expr_list RBRACKET
+    { Apply (f, List.rev es) }
+
+expr_list:
+  | e = expr
+    { [e] }
+  | es = expr_list_multiple
+    { es }
+
+expr_list_multiple:
+  | es = expr_list_multiple COMMA e = expr
+    { e :: es }
+  | e1 = expr COMMA e2 = expr
+    { [e2; e1] }
 
 exprs:
   | e = expr

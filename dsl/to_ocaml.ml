@@ -12,7 +12,9 @@ let of_typ = function
   | TVariable name -> Typ.constr (mk_lid name) []
 
 let rec of_expression = function
-  | Apply (f, x) -> Exp.apply (of_expression f) [(Nolabel, of_expression x)]
+  | Apply (f, es) ->
+      Exp.apply (of_expression f)
+        (List.map ~f:(fun x -> (Nolabel, of_expression x)) es)
   | Variable name -> Exp.ident (mk_lid name)
   | Int i -> Exp.constant (Const.int i)
   | Fun (args, typ, body) ->

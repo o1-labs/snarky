@@ -21,5 +21,5 @@ let e =
 
 let f =
   let f x = x in
-  let g = (d f) f in
-  g (f (f f))
+  let g = d f f in
+  (g f f) f
