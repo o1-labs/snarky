@@ -19,12 +19,64 @@ let read_file parse filename =
   let ast = parse_with_error parse lex in
   In_channel.close file ; ast
 
+let do_output filename f =
+  match filename with
+  | Some filename ->
+      let output =
+        Format.formatter_of_out_channel (Out_channel.create filename)
+      in
+      f output
+  | None -> ()
+
 let main =
-  let files = ref [] in
-  Arg.parse [] (fun filename -> files := filename :: !files) "" ;
-  let files = List.rev !files in
-  let asts =
-    List.map files ~f:(read_file (Parser_impl.file Lexer_impl.token))
+  let file = ref None in
+  let ocaml_file = ref None in
+  let ast_file = ref None in
+  let default = ref true in
+  let arg_spec =
+    [ ( "--ml"
+      , Arg.String
+          (fun name ->
+            default := false ;
+            ocaml_file := Some name )
+      , "output OCaml code" )
+    ; ( "--ast"
+      , Arg.String
+          (fun name ->
+            default := false ;
+            ast_file := Some name )
+      , "output OCaml ast" )
+    ; ( "--stderr"
+      , Arg.String
+          (fun name ->
+            Format.pp_set_formatter_out_channel Format.err_formatter
+              (Out_channel.create name) )
+      , "redirect stderr to the given filename" ) ]
   in
-  let ocaml_asts = List.map asts ~f:To_ocaml.of_file in
-  ignore @@ List.map ocaml_asts ~f:(Pprintast.structure Format.std_formatter)
+  Arg.parse arg_spec (fun filename -> file := Some filename) "" ;
+  let file =
+    Option.value_exn !file
+      ~error:(Error.of_string "Please pass a file as an argument.")
+  in
+  try
+    let ast = read_file (Parser_impl.file Lexer_impl.token) file in
+    let ocaml_ast = To_ocaml.of_file ast in
+    let ocaml_formatter =
+      match (!ocaml_file, !default) with
+      | Some filename, _ ->
+          Some (Format.formatter_of_out_channel (Out_channel.create filename))
+      | None, true -> Some Format.std_formatter
+      | None, false -> None
+    in
+    do_output !ast_file (fun output ->
+        Printast.structure 2 output ocaml_ast ;
+        Format.pp_print_newline output () ) ;
+    ( match ocaml_formatter with
+    | Some output ->
+        Pprintast.structure output ocaml_ast ;
+        Format.pp_print_newline output ()
+    | None -> () ) ;
+    exit 0
+  with exn ->
+    Location.report_exception Format.err_formatter exn ;
+    exit 1
