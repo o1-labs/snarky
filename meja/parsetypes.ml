@@ -3,14 +3,13 @@ type str = string Location.loc
 type type_expr = {mutable desc: type_desc; id: int}
 
 and type_desc =
-  | Tvar of str option
   (* A type variable. Name is None when not yet chosen. *)
+  | Tvar of str option
   | Tarrow of type_expr * type_expr
-  | Tconstr of str
   (* A type name. *)
+  | Tconstr of str
+  (* Internal, used to wrap a reference to a type. *)
   | Tdefer of type_expr
-
-(* Internal, used to wrap a reference to a type. *)
 
 module Type = struct
   let id = ref 0
