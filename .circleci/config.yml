@@ -12,4 +12,9 @@ jobs:
             - run: eval `opam config env` && make build
             - run: eval `opam config env` && make examples
             - run: eval `opam config env` && make tests
-
+            - run:
+                name: Build Meja
+                command: eval `opam config env` && cd meja && make build
+            - run:
+                name: Meja tests
+                command: eval `opam config env` && cd meja && make test

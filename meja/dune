@@ -1,0 +1,11 @@
+(executable
+ (name meja)
+ (libraries core_kernel ocaml-compiler-libs.common)
+ (flags :standard -warn-error -39-21))
+
+(menhir
+  (flags --explain)
+  (modules parser_impl))
+
+(ocamllex
+  (modules lexer_impl))
