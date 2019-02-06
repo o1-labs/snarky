@@ -74,7 +74,7 @@ module Type = struct
   let rec import typ env =
     match typ.type_desc with
     | Tvar (None, _) -> mkvar None env
-    | Tvar (Some {txt=x; _} as name, _) -> (
+    | Tvar ((Some {txt= x; _} as name), _) -> (
       match TypeEnvi.find_variable x env.type_env with
       | Some var -> (var, env)
       | None ->
@@ -83,9 +83,9 @@ module Type = struct
       )
     | Tconstr _ -> mk typ.type_desc env
     | Tarrow (typ1, typ2) ->
-      let typ1, env = import typ1 env in
-      let typ2, env = import typ2 env in
-      mk (Tarrow (typ1, typ2)) env
+        let typ1, env = import typ1 env in
+        let typ2, env = import typ2 env in
+        mk (Tarrow (typ1, typ2)) env
 
   let rec copy typ =
     match typ.type_desc with
@@ -119,6 +119,6 @@ let add_in_progress name typ =
 
 let get_name name env =
   match List.find_map ~f:(Scope.get_name name) env.scope_stack with
-  | Some (In_progress typ) -> typ, env
+  | Some (In_progress typ) -> (typ, env)
   | Some (Final typ) -> Type.import typ env
   | None -> failwith "Could not find name."
