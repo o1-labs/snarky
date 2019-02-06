@@ -68,7 +68,7 @@ run_test() {
         passes=passes+1
       fi
     fi
-    ocamlformat tests/out/$1.ml > tests/out/$1.ml.reformat
+    ocamlformat tests/out/$1.ml > tests/out/$1.ml.reformat &&
     mv tests/out/$1.ml.reformat tests/out/$1.ml
     check_diff $1.ml
   fi

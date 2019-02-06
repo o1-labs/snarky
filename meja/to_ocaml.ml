@@ -9,6 +9,7 @@ let rec of_type_desc ?loc typ =
   match typ with
   | Tvar (None, _) -> Typ.any ?loc ()
   | Tvar (Some name, _) -> Typ.var ?loc name.txt
+  | Tpoly (_, typ) -> of_type_expr typ
   | Tarrow (typ1, typ2) ->
       Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
   | Tctor name -> Typ.constr ?loc (mk_lid name) []

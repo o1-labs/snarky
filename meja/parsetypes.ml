@@ -9,6 +9,7 @@ and type_desc =
   | Tarrow of type_expr * type_expr
   (* A type name. *)
   | Tctor of str
+  | Tpoly of type_expr list * type_expr
 
 type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
