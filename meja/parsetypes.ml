@@ -4,7 +4,7 @@ type type_expr = {type_desc: type_desc; type_id: int}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of str option
+  | Tvar of str option * (* depth *) int
   | Tarrow of type_expr * type_expr
   (* A type name. *)
   | Tconstr of str

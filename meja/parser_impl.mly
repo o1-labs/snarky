@@ -101,7 +101,7 @@ pat:
 
 simple_type_expr:
   | UNDERSCORE
-    { mktyp (Tvar None) }
+    { mktyp (Tvar (None, 0)) }
   | x = LIDENT
     { mktyp (Tconstr (mkrhs x 1)) }
   | LBRACKET x = type_expr RBRACKET
