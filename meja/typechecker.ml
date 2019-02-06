@@ -32,16 +32,14 @@ let rec check_type_aux typ ctyp env =
                 || (Int.equal constr_depth depth && ctyp.type_id < typ.type_id)
               then Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
-  | Tvar _, _ -> (
-    match without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp) with
-    | Some env -> env
-    | None -> Envi.Type.add_instance typ ctyp env )
-  | _, Tvar _ -> (
-    match
-      without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp)
-    with
-    | Some env -> env
-    | None -> Envi.Type.add_instance ctyp typ env )
+  | Tvar _, _ ->
+      bind_none
+        (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
+        (fun () -> Envi.Type.add_instance typ ctyp env)
+  | _, Tvar _ ->
+      bind_none
+        (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
+        (fun () -> Envi.Type.add_instance ctyp typ env)
   | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
   | Tconstr name, Tconstr constr_name
