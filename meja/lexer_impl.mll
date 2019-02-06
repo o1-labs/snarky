@@ -10,12 +10,19 @@ let new_line lexbuf =
 
 }
 
+let newline = ('\r'* '\n')
+let whitespace = [' ' '\t']+
+let number = ['0'-'9']+
+let lowercase_alpha = ['a'-'z']
+let uppercase_alpha = ['A'-'Z']
+let ident = ['a'-'z' 'A'-'Z' '_' '\'' '0'-'9']
+
 rule token = parse
-    [' ' '\t']+
+    whitespace
   { token lexbuf }
-  | ('\r'* '\n')
+  | newline
     { new_line lexbuf; token lexbuf }
-  | ['0'-'9']+
+  | number
     { INT (int_of_string (Lexing.lexeme lexbuf)) }
   | "fun" { FUN }
   | "let" { LET }
@@ -24,12 +31,13 @@ rule token = parse
   | '}' { RBRACE }
   | '(' { LBRACKET }
   | ')' { RBRACKET }
+  | "->" { DASHGT }
   | "=>" { EQUALGT }
   | '=' { EQUAL }
   | ':' { COLON }
   | ',' { COMMA }
   | '_' { UNDERSCORE }
-  | ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '_' '0'-'9']*
-    { VAR (Lexing.lexeme lexbuf) }
+  | lowercase_alpha ident* { LIDENT(Lexing.lexeme lexbuf) }
+  | uppercase_alpha ident* { UIDENT(Lexing.lexeme lexbuf) }
   | _ { failwith ("Unexpected character: " ^ Lexing.lexeme lexbuf) }
   | eof { EOF }
