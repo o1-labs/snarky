@@ -4,7 +4,10 @@ open Parsetypes
 
 let mkrhs rhs pos = mkloc rhs (rhs_loc pos)
 
-let mktyp d = {type_desc= d; type_id= -1}
+let mktyp d = {type_desc= d; type_id= -1; type_loc= none}
+let mkpat d = {pat_desc= d; pat_loc= none}
+let mkexp d = {exp_desc= d; exp_loc= none}
+let mkstmt d = {stmt_desc= d; stmt_loc= none}
 %}
 %token <int> INT
 %token <string> LIDENT
@@ -41,13 +44,13 @@ file:
 
 structure_item:
   | LET x = pat EQUAL e = expr
-    { Value (x, e) }
+    { mkstmt (Value (x, e)) }
 
 expr:
   | x = LIDENT
-    { Variable (mkrhs x 1) }
+    { mkexp (Variable (mkrhs x 1)) }
   | x = INT
-    { Int x }
+    { mkexp (Int x) }
   | FUN LBRACKET f = function_from_args
     { f }
   | LBRACKET es = exprs RBRACKET
@@ -55,9 +58,9 @@ expr:
   | LBRACE es = block RBRACE
     { es }
   | LET x = pat EQUAL lhs = expr SEMI rhs = expr
-    { Let (x, lhs, rhs) }
+    { mkexp (Let (x, lhs, rhs)) }
   | f = expr LBRACKET es = expr_list RBRACKET
-    { Apply (f, List.rev es) }
+    { mkexp (Apply (f, List.rev es)) }
 
 expr_list:
   | e = expr
@@ -73,31 +76,31 @@ expr_list_multiple:
 
 function_from_args:
   | p = pat RBRACKET EQUALGT LBRACE body = block RBRACE
-    { Fun (p, body) }
+    { mkexp (Fun (p, body)) }
   | p = pat RBRACKET typ = type_expr EQUALGT LBRACE body = block RBRACE
-    { Fun (p, Constraint (body, typ)) }
+    { mkexp (Fun (p, mkexp (Constraint (body, typ)))) }
   | p = pat COMMA f = function_from_args
-    { Fun (p, f) }
+    { mkexp (Fun (p, f)) }
 
 exprs:
   | e = expr
     { e }
   | e1 = expr SEMI rest = exprs
-    { Seq (e1, rest) }
+    { mkexp (Seq (e1, rest)) }
 
 block:
   | e = expr SEMI
     { e }
   | e1 = expr SEMI rest = block
-    { Seq (e1, rest) }
+    { mkexp (Seq (e1, rest)) }
 
 pat:
   | LBRACKET p = pat RBRACKET
     { p }
   | p = pat COLON typ = type_expr
-    { PConstraint (p, typ) }
+    { mkpat (PConstraint (p, typ)) }
   | x = LIDENT
-    { PVariable (mkrhs x 1) }
+    { mkpat (PVariable (mkrhs x 1)) }
 
 simple_type_expr:
   | UNDERSCORE
