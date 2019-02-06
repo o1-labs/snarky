@@ -160,6 +160,44 @@ module Type = struct
         let typ2, env = copy typ2 new_vars_map env in
         mk ~loc (Tarrow (typ1, typ2)) env
 
+  module T = struct
+    type t = type_expr
+
+    let compare typ1 typ2 = Int.compare typ1.type_id typ2.type_id
+
+    let sexp_of_t typ = Int.sexp_of_t typ.type_id
+  end
+
+  module Comparator = struct
+    include T
+    include Comparator.Make (T)
+  end
+
+  include Comparator
+
+  let rec type_vars ?depth typ =
+    let deep_enough x =
+      match depth with Some depth -> depth <= x | None -> true
+    in
+    let type_vars' = type_vars in
+    let type_vars = type_vars ?depth in
+    match typ.type_desc with
+    | Tvar (_, var_depth) when deep_enough var_depth ->
+        Set.singleton (module Comparator) typ
+    | Tvar _ -> Set.empty (module Comparator)
+    | Tpoly (vars, typ) ->
+        let poly_vars =
+          List.fold
+            ~init:(Set.empty (module Comparator))
+            vars
+            ~f:(fun set var -> Set.union set (type_vars' var))
+        in
+        Set.diff (type_vars typ) poly_vars
+    | Tctor _ -> Set.empty (module Comparator)
+    | Ttuple typs ->
+        Set.union_list (module Comparator) (List.map ~f:type_vars typs)
+    | Tarrow (typ1, typ2) -> Set.union (type_vars typ1) (type_vars typ2)
+
   let rec flatten typ env =
     let loc = typ.type_loc in
     match typ.type_desc with
@@ -170,8 +208,16 @@ module Type = struct
           (flattened_typ, add_instance typ typ' env)
       | None -> (typ, env) )
     | Tpoly (vars, typ) ->
+        let (env, var_set) =
+          List.fold vars
+            ~init:(env, Set.empty (module Comparator))
+            ~f:(fun (env, set) var ->
+              let var, env = flatten var env in
+              let set = Set.union set (type_vars ~depth:env.depth var) in
+              (env, set) )
+        in
         let typ, env = flatten typ env in
-        mk ~loc (Tpoly (vars, typ)) env
+        mk ~loc (Tpoly (Set.to_list var_set, typ)) env
     | Tctor _ -> mk ~loc typ.type_desc env
     | Ttuple typs ->
         let env, typs =
@@ -184,17 +230,6 @@ module Type = struct
         let typ1, env = flatten typ1 env in
         let typ2, env = flatten typ2 env in
         mk ~loc (Tarrow (typ1, typ2)) env
-
-  module T = struct
-    type t = type_expr
-
-    let compare typ1 typ2 = Int.compare typ1.type_id typ2.type_id
-
-    let sexp_of_t typ = Int.sexp_of_t typ.type_id
-  end
-
-  include T
-  include Comparator.Make (T)
 end
 
 let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)

@@ -57,29 +57,6 @@ let rec check_type_aux typ ctyp env =
 
 let check_type env typ constr_typ = check_type_aux typ constr_typ env
 
-let rec type_vars ?depth typ =
-  let deep_enough x =
-    match depth with Some depth -> depth <= x | None -> true
-  in
-  let type_vars' = type_vars in
-  let type_vars = type_vars ?depth in
-  match typ.type_desc with
-  | Tvar (_, var_depth) when deep_enough var_depth ->
-      Set.singleton (module Envi.Type) typ
-  | Tvar _ -> Set.empty (module Envi.Type)
-  | Tpoly (vars, typ) ->
-      let poly_vars =
-        List.fold
-          ~init:(Set.empty (module Envi.Type))
-          vars
-          ~f:(fun set var -> Set.union set (type_vars' var))
-      in
-      Set.diff (type_vars typ) poly_vars
-  | Tctor _ -> Set.empty (module Envi.Type)
-  | Ttuple typs ->
-      Set.union_list (module Envi.Type) (List.map ~f:type_vars typs)
-  | Tarrow (typ1, typ2) -> Set.union (type_vars typ1) (type_vars typ2)
-
 let rec free_type_vars ?depth typ =
   let free_type_vars = free_type_vars ?depth in
   match typ.type_desc with
@@ -89,14 +66,14 @@ let rec free_type_vars ?depth typ =
         List.fold
           ~init:(Set.empty (module Envi.Type))
           vars
-          ~f:(fun set var -> Set.union set (type_vars var))
+          ~f:(fun set var -> Set.union set (Envi.Type.type_vars var))
       in
       Set.diff (free_type_vars typ) poly_vars
   | Tctor _ -> Set.empty (module Envi.Type)
   | Ttuple typs ->
       Set.union_list (module Envi.Type) (List.map ~f:free_type_vars typs)
   | Tarrow (typ1, typ2) ->
-      Set.union (type_vars ?depth typ1) (free_type_vars typ2)
+      Set.union (Envi.Type.type_vars ?depth typ1) (free_type_vars typ2)
 
 let polymorphise typ env =
   let loc = typ.type_loc in
