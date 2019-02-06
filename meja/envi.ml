@@ -86,11 +86,6 @@ module Type = struct
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
         mk (Tarrow (typ1, typ2)) env
-
-  let rec copy typ =
-    match typ.type_desc with
-    | (Tvar _ | Tconstr _) as type_desc -> {typ with type_desc}
-    | Tarrow (typ1, typ2) -> {typ with type_desc= Tarrow (copy typ1, copy typ2)}
 end
 
 let current_scope {scope_stack; _} =
