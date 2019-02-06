@@ -45,66 +45,58 @@ let check_type typ constr_typ =
   fixup_deferred !typs ;
   constr_typ
 
-type 'a ready = Final of 'a | In_progress of 'a
-
-let add_final {Location.txt= name; _} typ map =
-  Map.update map name ~f:(fun _ -> Final typ)
-
-let add_in_progress {Location.txt= name; _} typ map =
-  Map.update map name ~f:(fun _ -> In_progress typ)
-
 let get_name {Location.txt= name; _} map =
   match Map.find map name with
-  | Some (In_progress typ) -> typ
-  | Some (Final typ) -> copy_type typ
+  | Some (Envi.In_progress typ) -> typ
+  | Some (Envi.Final typ) -> copy_type typ
   | None -> failwith "Could not find name."
 
-let rec check_pattern ~add state typ = function
-  | PVariable str -> add str typ state
+let rec check_pattern ~add env typ = function
+  | PVariable str -> add str typ env
   | PConstraint (p, constr_typ) ->
       let typ = check_type typ constr_typ in
-      check_pattern ~add state typ p
+      check_pattern ~add env typ p
 
-let rec get_expression state = function
+let rec get_expression env = function
   | Apply (f, xs) ->
-      let f_typ = get_expression state f in
+      let f_typ = get_expression env f in
       let rec apply_typ xs f_typ =
         match xs with
         | [] -> f_typ
         | x :: xs -> (
-            let x_typ = get_expression state x in
+            let x_typ = get_expression env x in
             match check_type f_typ (mk (Tarrow (x_typ, mk (Tvar None)))) with
             | {desc= Tarrow (_, f_typ); _} -> apply_typ xs f_typ
             | _ -> failwith "Met constraint Tarrow, but didn't match Tarrow.."
             )
       in
       apply_typ xs f_typ
-  | Variable name -> get_name name state
+  | Variable name -> get_name name env
   | Int _ -> mk (Tconstr {txt= "int"; loc= Location.none})
   | Fun (p, body) ->
       let p_typ = mk (Tvar None) in
       (* In OCaml, function arguments can't be polymorphic, so each check refines
-       them rather than instanciating the parameters. *)
-      let state = check_pattern ~add:add_in_progress state p_typ p in
-      let body_typ = get_expression state body in
+       them rather than instantiating the parameters. *)
+      let env = check_pattern ~add:Envi.add_in_progress env p_typ p in
+      let body_typ = get_expression env body in
       mk (Tarrow (p_typ, body_typ))
   | Seq (e1, e2) ->
-      let _ = get_expression state e1 in
-      get_expression state e2
+      let _ = get_expression env e1 in
+      get_expression env e2
   | Let (p, e1, e2) ->
-      let state = check_binding state p e1 in
-      get_expression state e2
+      let env = check_binding env p e1 in
+      get_expression env e2
   | Constraint (e, typ) ->
-      let e_typ = get_expression state e in
+      let e_typ = get_expression env e in
       check_type e_typ typ
 
-and check_binding (state : 's) p e : 's =
-  let e_type = get_expression state e in
-  check_pattern ~add:add_final state e_type p
+and check_binding (env : Envi.t) p e : 's =
+  let e_type = get_expression env e in
+  check_pattern ~add:Envi.add_final env e_type p
 
-let check_statement state = function Value (p, e) -> check_binding state p e
+let check_statement env = function Value (p, e) -> check_binding env p e
 
 let check (ast : statement list) =
   List.fold_left ast
-    ~init:(Map.empty (module String))
-    ~f:(fun state stmt -> check_statement state stmt)
+    ~init:Envi.empty
+    ~f:(fun env stmt -> check_statement env stmt)
