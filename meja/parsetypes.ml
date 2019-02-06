@@ -1,6 +1,6 @@
 type str = string Location.loc
 
-type type_expr = {mutable desc: type_desc; id: int}
+type type_expr = {type_desc: type_desc; type_id: int}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -8,14 +8,6 @@ and type_desc =
   | Tarrow of type_expr * type_expr
   (* A type name. *)
   | Tconstr of str
-  (* Internal, used to wrap a reference to a type. *)
-  | Tdefer of type_expr
-
-module Type = struct
-  let id = ref 0
-
-  let mk desc = incr id ; {desc; id= !id}
-end
 
 type pattern = PVariable of str | PConstraint of pattern * type_expr
 

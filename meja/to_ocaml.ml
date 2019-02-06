@@ -6,12 +6,11 @@ open Parsetypes
 let mk_lid name = Location.mkloc (Longident.Lident name.txt) name.loc
 
 let rec of_typ typ =
-  match typ.desc with
+  match typ.type_desc with
   | Tvar None -> Typ.any ()
   | Tvar (Some name) -> Typ.var name.txt
   | Tarrow (typ1, typ2) -> Typ.arrow Nolabel (of_typ typ1) (of_typ typ2)
   | Tconstr name -> Typ.constr (mk_lid name) []
-  | Tdefer typ -> of_typ typ
 
 let rec of_pattern = function
   | PVariable str -> Pat.var str

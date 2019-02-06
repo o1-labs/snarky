@@ -3,6 +3,8 @@ open Location
 open Parsetypes
 
 let mkrhs rhs pos = mkloc rhs (rhs_loc pos)
+
+let mktyp d = {type_desc= d; type_id= -1}
 %}
 %token <int> INT
 %token <string> LIDENT
@@ -99,9 +101,9 @@ pat:
 
 simple_type_expr:
   | UNDERSCORE
-    { Type.mk (Tvar None) }
+    { mktyp (Tvar None) }
   | x = LIDENT
-    { Type.mk (Tconstr (mkrhs x 1)) }
+    { mktyp (Tconstr (mkrhs x 1)) }
   | LBRACKET x = type_expr RBRACKET
     { x }
 
@@ -109,4 +111,4 @@ type_expr:
   | x = simple_type_expr
     { x }
   | x = simple_type_expr DASHGT y = type_expr
-    { Type.mk (Tarrow (x, y)) }
+    { mktyp (Tarrow (x, y)) }
