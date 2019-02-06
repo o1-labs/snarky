@@ -2,6 +2,7 @@ open Core_kernel
 open Parsetypes
 
 let rec check_type_aux typ ctyp env =
+  let bind_none x f = match x with Some x -> x | None -> f () in
   let without_instance ~f (typ : type_expr) env =
     match Envi.Type.instance env typ with
     | Some typ' -> (
@@ -16,33 +17,29 @@ let rec check_type_aux typ ctyp env =
   in
   match (typ.type_desc, ctyp.type_desc) with
   | _, _ when Int.equal typ.type_id ctyp.type_id -> env
-  | Tvar (_, depth), Tvar (_, constr_depth) -> (
-    match without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp) with
-    | Some env -> env
-    | None -> (
-      match
-        without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp)
-      with
-      | Some env -> env
-      | None ->
-          (* Add the outermost (in terms of lexical scope) of the variables as
-             the instance for the other. If they are at the same level, prefer
-             the lowest ID to ensure strict ordering and thus no cycles. *)
-          if
-            constr_depth < depth
-            || (Int.equal constr_depth depth && ctyp.type_id < typ.type_id)
-          then Envi.Type.add_instance typ ctyp env
-          else Envi.Type.add_instance ctyp typ env ) )
-  | Tvar _, _ -> (
-    match without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp) with
-    | Some env -> env
-    | None -> Envi.Type.add_instance typ ctyp env )
-  | _, Tvar _ -> (
-    match
-      without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp)
-    with
-    | Some env -> env
-    | None -> Envi.Type.add_instance ctyp typ env )
+  | Tvar (_, depth), Tvar (_, constr_depth) ->
+      bind_none
+        (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
+        (fun () ->
+          bind_none
+            (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
+            (fun () ->
+              (* Add the outermost (in terms of lexical scope) of the variables as
+                 the instance for the other. If they are at the same level, prefer
+                 the lowest ID to ensure strict ordering and thus no cycles. *)
+              if
+                constr_depth < depth
+                || (Int.equal constr_depth depth && ctyp.type_id < typ.type_id)
+              then Envi.Type.add_instance typ ctyp env
+              else Envi.Type.add_instance ctyp typ env ) )
+  | Tvar _, _ ->
+      bind_none
+        (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
+        (fun () -> Envi.Type.add_instance typ ctyp env)
+  | _, Tvar _ ->
+      bind_none
+        (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
+        (fun () -> Envi.Type.add_instance ctyp typ env)
   | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
   | Tconstr name, Tconstr constr_name
