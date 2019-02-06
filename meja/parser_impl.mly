@@ -104,7 +104,7 @@ simple_type_expr:
   | UNDERSCORE
     { mktyp ~pos:$loc (Tvar (None, 0)) }
   | x = as_loc(LIDENT)
-    { mktyp ~pos:$loc (Tconstr x) }
+    { mktyp ~pos:$loc (Tctor x) }
   | LBRACKET x = type_expr RBRACKET
     { x }
   | LBRACKET xs = tuple(type_expr) RBRACKET

@@ -49,7 +49,7 @@ let rec check_type_aux typ ctyp env =
     | Unequal_lengths -> failwith "Type doesn't check against constr_typ." )
   | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
-  | Tconstr name, Tconstr constr_name
+  | Tctor name, Tctor constr_name
     when String.equal name.txt constr_name.txt ->
       env
   | _, _ -> failwith "Type doesn't check against constr_typ."
@@ -90,7 +90,7 @@ let rec get_expression_desc ~loc env = function
       in
       apply_typ xs f_typ env
   | Variable name -> Envi.get_name name env
-  | Int _ -> Envi.Type.mk ~loc (Tconstr {txt= "int"; loc= Location.none}) env
+  | Int _ -> Envi.Type.mk ~loc (Tctor {txt= "int"; loc= Location.none}) env
   | Fun (p, body) ->
       let env = Envi.open_scope env in
       let p_typ, env = Envi.Type.mkvar ~loc None env in

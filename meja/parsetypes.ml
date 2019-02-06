@@ -8,7 +8,7 @@ and type_desc =
   | Ttuple of type_expr list
   | Tarrow of type_expr * type_expr
   (* A type name. *)
-  | Tconstr of str
+  | Tctor of str
 
 type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 

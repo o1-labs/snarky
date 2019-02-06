@@ -82,7 +82,7 @@ module Type = struct
           let var, env = mkvar ~loc name env in
           (var, {env with type_env= TypeEnvi.add_variable x var env.type_env})
       )
-    | Tconstr _ -> mk ~loc typ.type_desc env
+    | Tctor _ -> mk ~loc typ.type_desc env
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
