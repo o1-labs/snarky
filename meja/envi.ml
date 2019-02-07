@@ -208,7 +208,7 @@ module Type = struct
           (flattened_typ, add_instance typ typ' env)
       | None -> (typ, env) )
     | Tpoly (vars, typ) ->
-        let (env, var_set) =
+        let env, var_set =
           List.fold vars
             ~init:(env, Set.empty (module Comparator))
             ~f:(fun (env, set) var ->
