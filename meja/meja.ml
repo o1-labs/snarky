@@ -44,9 +44,7 @@ let main =
     [ ( "--ml"
       , Arg.String (set_and_clear_default ocaml_file)
       , "output OCaml code" )
-    ; ( "--ast"
-      , Arg.String (set_and_clear_default ast_file)
-      , "output OCaml ast" )
+    ; ("--ast", Arg.String (set_and_clear_default ast_file), "output OCaml ast")
     ; ( "--stderr"
       , Arg.String
           (fun name ->
