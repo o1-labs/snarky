@@ -34,26 +34,26 @@ let main =
   let file = ref None in
   let ocaml_file = ref None in
   let ast_file = ref None in
+  let binml_file = ref None in
   let default = ref true in
+  let set_and_clear_default opt name =
+    default := false ;
+    opt := Some name
+  in
   let arg_spec =
     [ ( "--ml"
-      , Arg.String
-          (fun name ->
-            default := false ;
-            ocaml_file := Some name )
+      , Arg.String (set_and_clear_default ocaml_file)
       , "output OCaml code" )
-    ; ( "--ast"
-      , Arg.String
-          (fun name ->
-            default := false ;
-            ast_file := Some name )
-      , "output OCaml ast" )
+    ; ("--ast", Arg.String (set_and_clear_default ast_file), "output OCaml ast")
     ; ( "--stderr"
       , Arg.String
           (fun name ->
             Format.pp_set_formatter_out_channel Format.err_formatter
               (Out_channel.create name) )
-      , "redirect stderr to the given filename" ) ]
+      , "redirect stderr to the given filename" )
+    ; ( "--binml"
+      , Arg.String (set_and_clear_default binml_file)
+      , "output a binary ml file" ) ]
   in
   Arg.parse arg_spec (fun filename -> file := Some filename) "" ;
   let file =
@@ -78,6 +78,9 @@ let main =
     | Some output ->
         Pprintast.structure output ocaml_ast ;
         Format.pp_print_newline output ()
+    | None -> () ) ;
+    ( match !binml_file with
+    | Some file -> Pparse.write_ast Pparse.Structure file ocaml_ast
     | None -> () ) ;
     exit 0
   with exn ->
