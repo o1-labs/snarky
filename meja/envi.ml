@@ -25,15 +25,9 @@ module Scope = struct
 end
 
 module TypeEnvi = struct
-  type t =
-    { type_id: int
-    ; variables: type_expr name_map
-    ; variable_instances: type_expr int_map }
+  type t = {type_id: int; variable_instances: type_expr int_map}
 
-  let empty =
-    { type_id= 1
-    ; variables= Map.empty (module String)
-    ; variable_instances= Map.empty (module Int) }
+  let empty = {type_id= 1; variable_instances= Map.empty (module Int)}
 
   let instance env (typ : type_expr) =
     Map.find env.variable_instances typ.type_id
