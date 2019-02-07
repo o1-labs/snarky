@@ -12,6 +12,7 @@ let rec of_type_desc ?loc typ =
   | Tarrow (typ1, typ2) ->
       Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
   | Tconstr name -> Typ.constr ?loc (mk_lid name) []
+  | Ttuple typs -> Typ.tuple ?loc (List.map ~f:of_type_expr typs)
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 
@@ -19,6 +20,7 @@ let rec of_pattern_desc ?loc = function
   | PVariable str -> Pat.var ?loc str
   | PConstraint (p, typ) ->
       Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)
+  | PTuple ps -> Pat.tuple ?loc (List.map ~f:of_pattern ps)
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
@@ -37,6 +39,7 @@ let rec of_expression_desc ?loc = function
       Exp.let_ ?loc Nonrecursive
         [Vb.mk (of_pattern p) (of_expression e_rhs)]
         (of_expression e)
+  | Tuple es -> Exp.tuple ?loc (List.map ~f:of_expression es)
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
