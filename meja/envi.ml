@@ -56,12 +56,12 @@ type t = {scope_stack: Scope.t list; type_env: TypeEnvi.t; depth: int}
 let empty = {scope_stack= [Scope.empty]; type_env= TypeEnvi.empty; depth= 0}
 
 module Type = struct
-  let mk type_desc env =
+  let mk ~loc type_desc env =
     let type_id, type_env = TypeEnvi.next_id env.type_env in
     let env = {env with type_env} in
-    ({type_desc; type_id}, env)
+    ({type_desc; type_id; type_loc= loc}, env)
 
-  let mkvar name env = mk (Tvar (name, env.depth)) env
+  let mkvar ~loc name env = mk ~loc (Tvar (name, env.depth)) env
 
   let instance env typ = TypeEnvi.instance env.type_env typ
 
@@ -72,20 +72,21 @@ module Type = struct
   let clear_instance typ = map_env ~f:(TypeEnvi.clear_instance typ)
 
   let rec import typ env =
+    let loc = typ.type_loc in
     match typ.type_desc with
-    | Tvar (None, _) -> mkvar None env
+    | Tvar (None, _) -> mkvar ~loc None env
     | Tvar ((Some {txt= x; _} as name), _) -> (
       match TypeEnvi.find_variable x env.type_env with
       | Some var -> (var, env)
       | None ->
-          let var, env = mkvar name env in
+          let var, env = mkvar ~loc name env in
           (var, {env with type_env= TypeEnvi.add_variable x var env.type_env})
       )
-    | Tconstr _ -> mk typ.type_desc env
+    | Tconstr _ -> mk ~loc typ.type_desc env
     | Tarrow (typ1, typ2) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
-        mk (Tarrow (typ1, typ2)) env
+        mk ~loc (Tarrow (typ1, typ2)) env
 end
 
 let current_scope {scope_stack; _} =
