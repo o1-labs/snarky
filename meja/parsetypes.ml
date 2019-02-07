@@ -8,8 +8,10 @@ and type_desc =
   | Ttuple of type_expr list
   | Tarrow of type_expr * type_expr
   (* A type name. *)
-  | Tctor of str
+  | Tctor of variant
   | Tpoly of type_expr list * type_expr
+
+and variant = {var_ident: str; var_params: type_expr list; var_decl_id: int}
 
 type field_decl =
   {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}

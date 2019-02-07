@@ -51,8 +51,16 @@ let rec check_type_aux typ ctyp env =
     | Unequal_lengths -> failwith "Type doesn't check against constr_typ." )
   | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
-  | Tctor name, Tctor constr_name when String.equal name.txt constr_name.txt ->
-      env
+  | Tctor variant, Tctor constr_variant ->
+      if Int.equal variant.var_decl_id constr_variant.var_decl_id then
+        match
+          List.fold2 ~init:env variant.var_params constr_variant.var_params
+            ~f:(fun env param constr_param ->
+              check_type_aux param constr_param env )
+        with
+        | Ok env -> env
+        | Unequal_lengths -> failwith "Type doesn't check against constr_typ."
+      else failwith "Type doesn't check against constr_typ."
   | _, _ -> failwith "Type doesn't check against constr_typ."
 
 let check_type env typ constr_typ = check_type_aux typ constr_typ env
@@ -121,7 +129,7 @@ let rec get_expression_desc ~loc env = function
       in
       apply_typ xs f_typ env
   | Variable name -> Envi.get_name name env
-  | Int _ -> Envi.Type.mk ~loc (Tctor {txt= "int"; loc= Location.none}) env
+  | Int _ -> (Envi.Core.Type.int, env)
   | Fun (p, body) ->
       let env = Envi.open_scope env in
       let p_typ, env = Envi.Type.mkvar ~loc None env in
@@ -163,4 +171,4 @@ let check_statement_desc env = function Value (p, e) -> check_binding env p e
 let check_statement env stmt = check_statement_desc env stmt.stmt_desc
 
 let check (ast : statement list) =
-  List.fold_left ast ~init:Envi.empty ~f:check_statement
+  List.fold_left ast ~init:Envi.Core.env ~f:check_statement

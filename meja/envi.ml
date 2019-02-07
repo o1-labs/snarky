@@ -54,6 +54,9 @@ module Scope = struct
       type_decls_ids= Map.set scope.type_decls_ids ~key:decl.tdec_id ~data:decl
     }
 
+  let find_type_declaration (name : str) scope =
+    Map.find scope.type_decls name.txt
+
   let register_type_declaration decl scope =
     let scope =
       { scope with
@@ -126,6 +129,9 @@ let add_type_variable name typ =
 let find_type_variable name env =
   List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
 
+let find_type_declaration name env =
+  List.find_map ~f:(Scope.find_type_declaration name) env.scope_stack
+
 module Type = struct
   let mk ~loc type_desc env =
     let type_id, type_env = TypeEnvi.next_type_id env.type_env in
@@ -147,7 +153,10 @@ module Type = struct
     let import = import ?must_find in
     let loc = typ.type_loc in
     match typ.type_desc with
-    | Tvar (None, _) -> mkvar ~loc None env
+    | Tvar (None, _) -> (
+      match must_find with
+      | Some true -> failwith "Anonymous type variable is not allowed here."
+      | _ -> mkvar ~loc None env )
     | Tvar ((Some {txt= x; _} as name), _) -> (
         let var =
           match must_find with
@@ -174,7 +183,27 @@ module Type = struct
         let typ, env = import typ env in
         let env = close_scope env in
         mk ~loc (Tpoly (vars, typ)) env
-    | Tctor _ -> mk ~loc typ.type_desc env
+    | Tctor variant ->
+        let decl =
+          match find_type_declaration variant.var_ident env with
+          | Some decl -> decl
+          | None ->
+              failwithf "Could not find declaration for type %s."
+                variant.var_ident.txt ()
+        in
+        let variant = {variant with var_decl_id= decl.tdec_id} in
+        if
+          not
+            (Int.equal
+               (List.length variant.var_params)
+               (List.length decl.tdec_params))
+        then failwith "Variant has an incorrect number of arguments." ;
+        let env, var_params =
+          List.fold_map ~init:env variant.var_params ~f:(fun env param ->
+              let param, env = import param env in
+              (env, param) )
+        in
+        mk ~loc (Tctor {variant with var_params}) env
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
@@ -292,7 +321,7 @@ module Type = struct
 end
 
 module TypeDecl = struct
-  let mk ~loc ~name ~params desc env =
+  let mk ?(loc = Location.none) ~name ~params desc env =
     let tdec_id, type_env = TypeEnvi.next_decl_id env.type_env in
     let env = {env with type_env} in
     ( { tdec_ident= name
@@ -341,8 +370,8 @@ module TypeDecl = struct
                   | Some ret ->
                       let env = open_scope env in
                       ( match ret.type_desc with
-                      | Tctor str when String.equal str.txt decl.tdec_ident.txt
-                        ->
+                      | Tctor {var_ident= str; _}
+                        when String.equal str.txt decl.tdec_ident.txt ->
                           ()
                       | _ ->
                           failwith
@@ -382,6 +411,13 @@ module TypeDecl = struct
     let decl = {decl with tdec_id; tdec_params; tdec_desc} in
     let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
     (decl, env)
+
+  let mk_typ ?(loc = Location.none) ~params decl =
+    Type.mk ~loc
+      (Tctor
+         { var_ident= decl.tdec_ident
+         ; var_params= params
+         ; var_decl_id= decl.tdec_id })
 end
 
 let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
@@ -390,3 +426,55 @@ let get_name name env =
   match List.find_map ~f:(Scope.get_name name) env.scope_stack with
   | Some typ -> Type.copy typ (Map.empty (module Int)) env
   | None -> failwith "Could not find name."
+
+module Core = struct
+  let mkloc s = Location.(mkloc s none)
+
+  let mk_type_decl name desc =
+    { tdec_ident= mkloc name
+    ; tdec_params= []
+    ; tdec_desc= desc
+    ; tdec_id= 0
+    ; tdec_loc= Location.none }
+
+  let mk_constructor name =
+    { ctor_ident= mkloc name
+    ; ctor_args= Ctor_tuple []
+    ; ctor_ret= None
+    ; ctor_loc= Location.none }
+
+  let env = empty
+
+  let int, env = TypeDecl.import (mk_type_decl "int" TAbstract) env
+
+  let unit, env =
+    TypeDecl.import (mk_type_decl "unit" (TVariant [mk_constructor "()"])) env
+
+  let bool, env =
+    TypeDecl.import
+      (mk_type_decl "bool"
+         (TVariant [mk_constructor "true"; mk_constructor "false"]))
+      env
+
+  let char, env = TypeDecl.import (mk_type_decl "char" TAbstract) env
+
+  let string, env = TypeDecl.import (mk_type_decl "string" TAbstract) env
+
+  let float, env = TypeDecl.import (mk_type_decl "float" TAbstract) env
+
+  module Type = struct
+    let int, env = TypeDecl.mk_typ int ~params:[] env
+
+    let unit, env = TypeDecl.mk_typ unit ~params:[] env
+
+    let bool, env = TypeDecl.mk_typ bool ~params:[] env
+
+    let char, env = TypeDecl.mk_typ char ~params:[] env
+
+    let string, env = TypeDecl.mk_typ string ~params:[] env
+
+    let float, env = TypeDecl.mk_typ float ~params:[] env
+  end
+
+  let env = Type.env
+end

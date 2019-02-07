@@ -12,7 +12,8 @@ let rec of_type_desc ?loc typ =
   | Tpoly (_, typ) -> of_type_expr typ
   | Tarrow (typ1, typ2) ->
       Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
-  | Tctor name -> Typ.constr ?loc (mk_lid name) []
+  | Tctor {var_ident= name; var_params= params; _} ->
+      Typ.constr ?loc (mk_lid name) (List.map ~f:of_type_expr params)
   | Ttuple typs -> Typ.tuple ?loc (List.map ~f:of_type_expr typs)
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
