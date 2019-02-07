@@ -6,28 +6,74 @@ type 'a name_map = (string, 'a, String.comparator_witness) Base.Map.t
 type 'a int_map = (int, 'a, Int.comparator_witness) Base.Map.t
 
 module Scope = struct
-  type t = {names: type_expr name_map; type_variables: type_expr name_map}
+  type t =
+    { names: type_expr name_map
+    ; type_variables: type_expr name_map
+    ; type_decls: type_decl name_map
+    ; type_decls_ids: type_decl int_map
+    ; fields: (type_decl * int) name_map
+    ; ctors: (type_decl * int) name_map }
 
   let empty =
     { names= Map.empty (module String)
-    ; type_variables= Map.empty (module String) }
+    ; type_variables= Map.empty (module String)
+    ; type_decls= Map.empty (module String)
+    ; type_decls_ids= Map.empty (module Int)
+    ; fields= Map.empty (module String)
+    ; ctors= Map.empty (module String) }
 
-  let add_name {Location.txt= name; _} typ scope =
-    {scope with names= Map.update scope.names name ~f:(fun _ -> typ)}
+  let add_name {Location.txt= key; _} typ scope =
+    {scope with names= Map.set scope.names ~key ~data:typ}
 
   let get_name {Location.txt= name; _} {names; _} = Map.find names name
 
-  let add_type_variable name typ scope =
-    { scope with
-      type_variables= Map.update scope.type_variables name ~f:(fun _ -> typ) }
+  let add_type_variable key typ scope =
+    {scope with type_variables= Map.set scope.type_variables ~key ~data:typ}
 
   let find_type_variable name scope = Map.find scope.type_variables name
+
+  let add_field decl index scope field_decl =
+    { scope with
+      fields=
+        Map.set scope.fields ~key:field_decl.fld_ident.txt ~data:(decl, index)
+    }
+
+  let add_ctor decl index scope ctor_decl =
+    { scope with
+      ctors=
+        Map.set scope.ctors ~key:ctor_decl.ctor_ident.txt ~data:(decl, index)
+    }
+
+  let add_type_declaration decl scope =
+    { scope with
+      type_decls= Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
+    }
+
+  let add_type_declaration_id decl scope =
+    { scope with
+      type_decls_ids= Map.set scope.type_decls_ids ~key:decl.tdec_id ~data:decl
+    }
+
+  let register_type_declaration decl scope =
+    let scope =
+      { scope with
+        type_decls=
+          Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
+      ; type_decls_ids=
+          Map.set scope.type_decls_ids ~key:decl.tdec_id ~data:decl }
+    in
+    match decl.tdec_desc with
+    | TAbstract | TAlias _ -> scope
+    | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
+    | TVariant ctors -> List.foldi ~f:(add_ctor decl) ~init:scope ctors
 end
 
 module TypeEnvi = struct
-  type t = {type_id: int; variable_instances: type_expr int_map}
+  type t =
+    {type_id: int; type_decl_id: int; variable_instances: type_expr int_map}
 
-  let empty = {type_id= 1; variable_instances= Map.empty (module Int)}
+  let empty =
+    {type_id= 1; type_decl_id= 1; variable_instances= Map.empty (module Int)}
 
   let instance env (typ : type_expr) =
     Map.find env.variable_instances typ.type_id
@@ -40,7 +86,10 @@ module TypeEnvi = struct
   let clear_instance (typ : type_expr) env =
     {env with variable_instances= Map.remove env.variable_instances typ.type_id}
 
-  let next_id env = (env.type_id, {env with type_id= env.type_id + 1})
+  let next_type_id env = (env.type_id, {env with type_id= env.type_id + 1})
+
+  let next_decl_id env =
+    (env.type_decl_id, {env with type_decl_id= env.type_decl_id + 1})
 end
 
 type t = {scope_stack: Scope.t list; type_env: TypeEnvi.t; depth: int}
@@ -52,13 +101,18 @@ let current_scope {scope_stack; _} =
   | Some scope -> scope
   | None -> failwith "No environment scopes are open"
 
-let open_scope env =
-  {env with scope_stack= Scope.empty :: env.scope_stack; depth= env.depth + 1}
+let push_scope scope env =
+  {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
 
-let close_scope env =
-  match List.tl env.scope_stack with
-  | Some scope_stack -> {env with scope_stack; depth= env.depth - 1}
-  | None -> failwith "No environment scopes are open"
+let open_scope = push_scope Scope.empty
+
+let pop_scope env =
+  match env.scope_stack with
+  | [] -> failwith "No environment scopes are open"
+  | scope :: scope_stack ->
+      (scope, {env with scope_stack; depth= env.depth + 1})
+
+let close_scope env = snd (pop_scope env)
 
 let map_current_scope ~f env =
   match env.scope_stack with
@@ -74,7 +128,7 @@ let find_type_variable name env =
 
 module Type = struct
   let mk ~loc type_desc env =
-    let type_id, type_env = TypeEnvi.next_id env.type_env in
+    let type_id, type_env = TypeEnvi.next_type_id env.type_env in
     let env = {env with type_env} in
     ({type_desc; type_id; type_loc= loc}, env)
 
@@ -88,12 +142,23 @@ module Type = struct
 
   let clear_instance typ = map_env ~f:(TypeEnvi.clear_instance typ)
 
-  let rec import ?(force_new = false) typ env =
+  let rec import ?must_find typ env =
+    let import' = import in
+    let import = import ?must_find in
     let loc = typ.type_loc in
     match typ.type_desc with
     | Tvar (None, _) -> mkvar ~loc None env
     | Tvar ((Some {txt= x; _} as name), _) -> (
-        let var = if force_new then None else find_type_variable x env in
+        let var =
+          match must_find with
+          | Some true ->
+              let var = find_type_variable x env in
+              if not (Option.is_some var) then
+                failwith "Could not find type variable." ;
+              var
+          | Some false -> None
+          | None -> find_type_variable x env
+        in
         match var with
         | Some var -> (var, env)
         | None ->
@@ -103,7 +168,7 @@ module Type = struct
         let env = open_scope env in
         let env, vars =
           List.fold_map vars ~init:env ~f:(fun e t ->
-              let t, e = import ~force_new:true t e in
+              let t, e = import' ~must_find:false t e in
               (e, t) )
         in
         let typ, env = import typ env in
@@ -132,7 +197,7 @@ module Type = struct
     | Tpoly (vars, typ) ->
         let env, vars =
           List.fold_map vars ~init:env ~f:(fun e t ->
-              let t, e = import ~force_new:true t e in
+              let t, e = import ~must_find:false t e in
               (e, t) )
         in
         let new_vars_map =
@@ -224,6 +289,99 @@ module Type = struct
         let typ1, env = flatten typ1 env in
         let typ2, env = flatten typ2 env in
         mk ~loc (Tarrow (typ1, typ2)) env
+end
+
+module TypeDecl = struct
+  let mk ~loc ~name ~params desc env =
+    let tdec_id, type_env = TypeEnvi.next_decl_id env.type_env in
+    let env = {env with type_env} in
+    ( { tdec_ident= name
+      ; tdec_params= params
+      ; tdec_desc= desc
+      ; tdec_id
+      ; tdec_loc= loc }
+    , env )
+
+  let import decl env =
+    let tdec_id, type_env = TypeEnvi.next_decl_id env.type_env in
+    let decl = {decl with tdec_id} in
+    let env = {env with type_env} in
+    (* Make sure the declaration is available to lookup for recursive types. *)
+    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
+    let env = open_scope env in
+    let env, tdec_params =
+      List.fold_map ~init:env decl.tdec_params ~f:(fun env param ->
+          match param.type_desc with
+          | Tvar _ ->
+              let var, env = Type.import ~must_find:false param env in
+              (env, var)
+          | _ -> failwith "Expected a variable as a type parameter." )
+    in
+    let tdec_desc, env =
+      match decl.tdec_desc with
+      | TAbstract -> (TAbstract, env)
+      | TAlias typ ->
+          let typ, env = Type.import ~must_find:true typ env in
+          (TAlias typ, env)
+      | TRecord fields ->
+          let env, fields =
+            List.fold_map ~init:env fields ~f:(fun env field ->
+                let fld_type, env =
+                  Type.import ~must_find:true field.fld_type env
+                in
+                (env, {field with fld_type}) )
+          in
+          (TRecord fields, env)
+      | TVariant ctors ->
+          let env, ctors =
+            List.fold_map ~init:env ctors ~f:(fun env ctor ->
+                let scope, env = pop_scope env in
+                let ctor_ret, env =
+                  match ctor.ctor_ret with
+                  | Some ret ->
+                      let env = open_scope env in
+                      ( match ret.type_desc with
+                      | Tctor str when String.equal str.txt decl.tdec_ident.txt
+                        ->
+                          ()
+                      | _ ->
+                          failwith
+                            "The constructor must be of the type it constructs."
+                      ) ;
+                      let ret, env = Type.import ~must_find:false ret env in
+                      (Some ret, env)
+                  | None -> (None, push_scope scope env)
+                in
+                let env, ctor_args =
+                  match ctor.ctor_args with
+                  | Ctor_tuple args ->
+                      let env, args =
+                        List.fold_map ~init:env args ~f:(fun env arg ->
+                            let arg, env =
+                              Type.import ~must_find:true arg env
+                            in
+                            (env, arg) )
+                      in
+                      (env, Ctor_tuple args)
+                  | Ctor_record fields ->
+                      let env, fields =
+                        List.fold_map ~init:env fields ~f:(fun env field ->
+                            let fld_type, env =
+                              Type.import ~must_find:true field.fld_type env
+                            in
+                            (env, {field with fld_type}) )
+                      in
+                      (env, Ctor_record fields)
+                in
+                let env = push_scope scope (close_scope env) in
+                (env, {ctor with ctor_args; ctor_ret}) )
+          in
+          (TVariant ctors, env)
+    in
+    let env = close_scope env in
+    let decl = {decl with tdec_id; tdec_params; tdec_desc} in
+    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
+    (decl, env)
 end
 
 let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
