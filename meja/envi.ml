@@ -235,6 +235,6 @@ end
 let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
 
 let get_name name env =
-  match List.find_map ~f:(Scope.get_name name) env.scope_stack with
-  | Some typ -> Type.copy typ (Map.empty (module Int)) env
-  | None -> failwith "Could not find name."
+  Option.map 
+  (List.find_map ~f:(Scope.get_name name) env.scope_stack)
+  ~f:(fun typ -> Type.copy typ (Map.empty (module Int)) env)
