@@ -17,7 +17,8 @@ and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 
 let rec of_pattern_desc ?loc = function
   | PVariable str -> Pat.var ?loc str
-  | PConstraint (p, typ) -> Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)
+  | PConstraint (p, typ) ->
+      Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
@@ -27,8 +28,10 @@ let rec of_expression_desc ?loc = function
         (List.map ~f:(fun x -> (Nolabel, of_expression x)) es)
   | Variable name -> Exp.ident ?loc (mk_lid name)
   | Int i -> Exp.constant ?loc (Const.int i)
-  | Fun (p, body) -> Exp.fun_ ?loc Nolabel None (of_pattern p) (of_expression body)
-  | Constraint (e, typ) -> Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
+  | Fun (p, body) ->
+      Exp.fun_ ?loc Nolabel None (of_pattern p) (of_expression body)
+  | Constraint (e, typ) ->
+      Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
   | Seq (e1, e2) -> Exp.sequence ?loc (of_expression e1) (of_expression e2)
   | Let (p, e_rhs, e) ->
       Exp.let_ ?loc Nonrecursive
