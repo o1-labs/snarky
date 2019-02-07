@@ -40,6 +40,13 @@ let rec check_type_aux typ ctyp env =
       bind_none
         (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance ctyp typ env)
+  | Ttuple typs, Ttuple ctyps -> (
+    match
+      List.fold2 ~init:env typs ctyps ~f:(fun env typ ctyp ->
+          check_type_aux typ ctyp env )
+    with
+    | Ok env -> env
+    | Unequal_lengths -> failwith "Type doesn't check against constr_typ." )
   | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
   | Tconstr name, Tconstr constr_name
@@ -49,12 +56,21 @@ let rec check_type_aux typ ctyp env =
 
 let check_type env typ constr_typ = check_type_aux typ constr_typ env
 
-let rec check_pattern_desc ~loc:_ ~add env typ = function
+let rec check_pattern_desc ~loc ~add env typ = function
   | PVariable str -> add str typ env
   | PConstraint (p, constr_typ) ->
       let constr_typ, env = Envi.Type.import constr_typ env in
       let env = check_type env typ constr_typ in
       check_pattern ~add env constr_typ p
+  | PTuple ps ->
+      let vars, env =
+        List.fold ~init:([], env) ps ~f:(fun (vars, env) _ ->
+            let var, env = Envi.Type.mkvar ~loc None env in
+            (var :: vars, env) )
+      in
+      let tuple_typ, env = Envi.Type.mk ~loc (Ttuple vars) env in
+      let env = check_type env typ tuple_typ in
+      List.fold2_exn ~init:env vars ps ~f:(check_pattern ~add)
 
 and check_pattern ~add env typ pat =
   check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc
@@ -96,6 +112,13 @@ let rec get_expression_desc ~loc env = function
       let typ, env = Envi.Type.import typ env in
       let e_typ, env = get_expression env e in
       (typ, check_type env e_typ typ)
+  | Tuple es ->
+      let env, typs =
+        List.fold_map ~init:env es ~f:(fun env e ->
+            let typ, env = get_expression env e in
+            (env, typ) )
+      in
+      Envi.Type.mk ~loc (Ttuple typs) env
 
 and get_expression env exp =
   get_expression_desc ~loc:exp.exp_loc env exp.exp_desc

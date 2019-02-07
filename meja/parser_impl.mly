@@ -55,6 +55,8 @@ expr:
     { f }
   | LBRACKET es = exprs RBRACKET
     { es }
+  | LBRACKET es = tuple(expr) RBRACKET
+    { mkexp ~pos:$loc (Tuple (List.rev es)) }
   | LBRACE es = block RBRACE
     { es }
   | LET x = pat EQUAL lhs = expr SEMI rhs = expr
@@ -65,14 +67,8 @@ expr:
 expr_list:
   | e = expr
     { [e] }
-  | es = expr_list_multiple
-    { es }
-
-expr_list_multiple:
-  | es = expr_list_multiple COMMA e = expr
+  | es = expr_list COMMA e = expr
     { e :: es }
-  | e1 = expr COMMA e2 = expr
-    { [e2; e1] }
 
 function_from_args:
   | p = pat RBRACKET EQUALGT LBRACE body = block RBRACE
@@ -97,6 +93,8 @@ block:
 pat:
   | LBRACKET p = pat RBRACKET
     { p }
+  | LBRACKET ps = tuple(pat) RBRACKET
+    { mkpat ~pos:$loc (PTuple (List.rev ps)) }
   | p = pat COLON typ = type_expr
     { mkpat ~pos:$loc (PConstraint (p, typ)) }
   | x = as_loc(LIDENT)
@@ -109,12 +107,20 @@ simple_type_expr:
     { mktyp ~pos:$loc (Tconstr x) }
   | LBRACKET x = type_expr RBRACKET
     { x }
+  | LBRACKET xs = tuple(type_expr) RBRACKET
+    { mktyp ~pos:$loc (Ttuple (List.rev xs)) }
 
 type_expr:
   | x = simple_type_expr
     { x }
   | x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y)) }
+
+tuple(X):
+  | xs = tuple(X) COMMA x = X
+    { x :: xs }
+  | x1 = X COMMA x2 = X
+    { [x2; x1] }
 
 %inline as_loc(X): x = X
   { mkloc x (mklocation ($symbolstartpos, $endpos)) }

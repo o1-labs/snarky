@@ -83,6 +83,13 @@ module Type = struct
           (var, {env with type_env= TypeEnvi.add_variable x var env.type_env})
       )
     | Tconstr _ -> mk ~loc typ.type_desc env
+    | Ttuple typs ->
+        let env, typs =
+          List.fold_map typs ~init:env ~f:(fun e t ->
+              let t, e = import t e in
+              (e, t) )
+        in
+        mk ~loc (Ttuple typs) env
     | Tarrow (typ1, typ2) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
