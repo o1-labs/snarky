@@ -1,6 +1,6 @@
 type str = string Location.loc
 
-type type_expr = {type_desc: type_desc; type_id: int}
+type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -9,9 +9,13 @@ and type_desc =
   (* A type name. *)
   | Tconstr of str
 
-type pattern = PVariable of str | PConstraint of pattern * type_expr
+type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
-type expression =
+and pattern_desc = PVariable of str | PConstraint of pattern * type_expr
+
+type expression = {exp_desc: expression_desc; exp_loc: Location.t}
+
+and expression_desc =
   | Apply of expression * expression list
   | Variable of str
   | Int of int
@@ -20,4 +24,6 @@ type expression =
   | Let of pattern * expression * expression
   | Constraint of expression * type_expr
 
-type statement = Value of pattern * expression
+type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
+
+and statement_desc = Value of pattern * expression
