@@ -158,9 +158,21 @@ and check_binding (env : Envi.t) p e : 's =
   let e_type, env = get_expression env e in
   check_pattern ~add:add_polymorphised env e_type p
 
-let check_statement_desc env = function Value (p, e) -> check_binding env p e
+let rec check_statement_desc ~loc:_ env = function
+  | Value (p, e) -> check_binding env p e
+  | Module (_name, m) ->
+      let env = Envi.open_scope env in
+      let env = check_module_expr env m in
+      Envi.close_scope env
 
-let check_statement env stmt = check_statement_desc env stmt.stmt_desc
+and check_statement env stmt =
+  check_statement_desc ~loc:stmt.stmt_loc env stmt.stmt_desc
+
+and check_module_desc ~loc:_ env = function
+  | Structure stmts -> List.fold ~f:check_statement ~init:env stmts
+  | ModName _ -> env
+
+and check_module_expr env m = check_module_desc ~loc:m.mod_loc env m.mod_desc
 
 let check (ast : statement list) =
   List.fold_left ast ~init:Envi.empty ~f:check_statement

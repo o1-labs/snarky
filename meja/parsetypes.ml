@@ -32,4 +32,10 @@ and expression_desc =
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
-and statement_desc = Value of pattern * expression
+and statement_desc =
+  | Value of pattern * expression
+  | Module of str * module_expr
+
+and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
+
+and module_desc = Structure of statement list | ModName of str
