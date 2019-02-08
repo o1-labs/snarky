@@ -2,6 +2,7 @@
 open Location
 open Parsetypes
 open Longident
+open Parser_errors
 
 let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 
@@ -16,6 +17,7 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token <string> UIDENT
 %token FUN
 %token LET
+%token TYPE
 %token MODULE
 %token SEMI
 %token LBRACE
@@ -28,6 +30,7 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token COLON
 %token COMMA
 %token UNDERSCORE
+%token QUOT
 %token DOT
 %token EOF
 
@@ -49,10 +52,20 @@ structure:
     { [s] }
   | s = structure_item SEMI rest = structure
     { s :: rest }
+  | structure_item err = err
+    { raise (Error (err, Missing_semi)) }
 
 structure_item:
   | LET x = pat EQUAL e = expr
     { mkstmt ~pos:$loc (Value (x, e)) }
+  | TYPE x = decl_type k = type_kind
+    { let (x, args) = x in
+      mkstmt ~pos:$loc (TypeDecl
+        { tdec_ident= x
+        ; tdec_params= args
+        ; tdec_desc= k
+        ; tdec_id= -1
+        ; tdec_loc= mklocation $loc }) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
     { mkstmt ~pos:$loc (Module (x, m)) }
 
@@ -61,6 +74,30 @@ module_expr:
     { mkmod ~pos:$loc (Structure s) }
   | x = as_loc(longident(UIDENT, UIDENT))
     { mkmod ~pos:$loc (ModName x) }
+
+decl_type:
+  | x = as_loc(LIDENT)
+    { (x, []) }
+  | x = as_loc(LIDENT) LBRACKET args = list(type_expr, COMMA) RBRACKET
+    { (x, List.rev args) }
+
+decl_type_expr:
+  | x = decl_type
+    { let (x, params) = x in
+      mktyp ~pos:$loc
+        (Tctor {var_ident= x; var_params= params; var_decl_id= 0}) }
+
+record_field:
+  | id = as_loc(LIDENT) COLON t = type_expr
+    { { fld_ident= id ; fld_type= t ; fld_id= 0 ; fld_loc= mklocation $loc } }
+
+type_kind:
+  | (* empty *)
+    { TAbstract }
+  | EQUAL t = type_expr
+    { TAlias t }
+  | EQUAL LBRACE fields = list(record_field, COMMA) RBRACE
+    { TRecord (List.rev fields) }
 
 expr:
   | x = as_loc(longident(LIDENT, UIDENT))
@@ -89,6 +126,8 @@ expr_list:
 function_from_args:
   | p = pat RBRACKET EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, body)) }
+  | pat RBRACKET err = err
+    { raise (Error (err, Fun_no_fat_arrow)) }
   | p = pat RBRACKET typ = type_expr EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc(typ) (Constraint (body, typ)))) }
   | p = pat COMMA f = function_from_args
@@ -105,6 +144,8 @@ block:
     { e }
   | e1 = expr SEMI rest = block
     { mkexp ~pos:$loc (Seq (e1, rest)) }
+  | expr err = err
+    { raise (Error (err, Missing_semi)) }
 
 pat:
   | LBRACKET p = pat RBRACKET
@@ -119,8 +160,10 @@ pat:
 simple_type_expr:
   | UNDERSCORE
     { mktyp ~pos:$loc (Tvar (None, 0)) }
-  | x = as_loc(LIDENT)
-    { mktyp ~pos:$loc (Tctor x) }
+  | QUOT x = as_loc(LIDENT)
+    { mktyp ~pos:$loc (Tvar (Some x, 0)) }
+  | t = decl_type_expr
+    { t }
   | LBRACKET x = type_expr RBRACKET
     { x }
   | LBRACKET xs = tuple(type_expr) RBRACKET
@@ -131,6 +174,12 @@ type_expr:
     { x }
   | x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y)) }
+
+list(X, SEP):
+  | xs = list(X, SEP) SEP x = X
+    { x :: xs }
+  | x = X
+    { [ x ] }
 
 tuple(X):
   | xs = tuple(X) COMMA x = X
@@ -152,3 +201,6 @@ longident(X, M):
     { Lident x }
   | path = longident(M, M) DOT x = X
     { Ldot (path, x) }
+
+%inline err : _x = error
+  { mklocation ($symbolstartpos, $endpos) }

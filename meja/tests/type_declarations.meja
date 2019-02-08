@@ -1,0 +1,15 @@
+type t = int;
+
+type u = (int, bool);
+
+type v('a) = 'a;
+
+type x('a) = {a : 'a, b : int, c : bool};
+
+type y = x(unit);
+
+type z = x(bool);
+
+type a = x(x(x(v(x(t)))));
+
+type d
