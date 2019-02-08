@@ -9,6 +9,7 @@ type error =
   | Variable_on_one_side of string
   | Pattern_type_declaration of string
   | Pattern_field_declaration of string
+  | Pattern_module_declaration of string
 
 exception Error of Location.t * error
 
@@ -157,6 +158,8 @@ let rec check_pattern_desc ~loc ~add env typ = function
                   typ.tdec_loc
             in
             raise (Error (loc, Pattern_field_declaration name)) )
+          ~modules:(fun ~key:name ~data:_ _ ->
+            raise (Error (loc, Pattern_module_declaration name)) )
       in
       Envi.push_scope scope2 env
   | PInt _ -> check_type env typ Envi.Core.Type.int
@@ -264,6 +267,8 @@ let rec report_error ppf = function
       fprintf ppf "Unexpected type declaration for %s within a pattern." name
   | Pattern_field_declaration name ->
       fprintf ppf "Unexpected field declaration for %s within a pattern." name
+  | Pattern_module_declaration name ->
+      fprintf ppf "Unexpected module declaration for %s within a pattern." name
 
 let () =
   Location.register_error_of_exn (function

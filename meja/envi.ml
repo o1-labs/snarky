@@ -78,22 +78,25 @@ module Scope = struct
     | TAbstract | TAlias _ -> scope
     | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
 
-  let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields
+  let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~modules
       { names= names1
       ; type_variables= type_variables1
       ; type_decls_ids= _
       ; type_decls= type_decls1
-      ; fields= fields1 }
+      ; fields= fields1
+      ; modules= modules1 }
       { names= names2
       ; type_variables= type_variables2
       ; type_decls_ids= _
       ; type_decls= type_decls2
-      ; fields= fields2 } =
+      ; fields= fields2
+      ; modules= modules2 } =
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
     in
     let acc = Map.fold2 type_decls1 type_decls2 ~init:acc ~f:type_decls in
     let acc = Map.fold2 fields1 fields2 ~init:acc ~f:fields in
+    let acc = Map.fold2 modules1 modules2 ~init:acc ~f:modules in
     let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
     acc
 
