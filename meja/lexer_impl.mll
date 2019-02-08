@@ -1,5 +1,7 @@
 {
+open Location
 open Parser_impl
+open Parser_errors
 
 let new_line lexbuf =
   let pos = lexbuf.Lexing.lex_curr_p in
@@ -8,6 +10,10 @@ let new_line lexbuf =
   ; pos_bol = pos.pos_cnum
   }
 
+let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
+
+let lexeme_loc lexbuf =
+  mklocation (Lexing.lexeme_start_p lexbuf, Lexing.lexeme_end_p lexbuf)
 }
 
 let newline = ('\r'* '\n')
@@ -29,6 +35,9 @@ rule token = parse
   | "type" { TYPE }
   | "true" { TRUE }
   | "false" { FALSE }
+  | "switch" { SWITCH }
+  | "type" { TYPE }
+  | "module" { MODULE }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }
@@ -42,7 +51,8 @@ rule token = parse
   | '_' { UNDERSCORE }
   | '|' { BAR }
   | ''' { QUOT }
+  | '.' { DOT }
   | lowercase_alpha ident* { LIDENT(Lexing.lexeme lexbuf) }
   | uppercase_alpha ident* { UIDENT(Lexing.lexeme lexbuf) }
-  | _ { failwith ("Unexpected character: " ^ Lexing.lexeme lexbuf) }
+  | _ { raise (Error (lexeme_loc lexbuf, Unexpected_character (Lexing.lexeme lexbuf))) }
   | eof { EOF }

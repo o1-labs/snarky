@@ -1,6 +1,19 @@
 open Core_kernel
 open Parsetypes
 
+type error =
+  | Check_failed of type_expr * type_expr * error
+  | Cannot_unify of type_expr * type_expr
+  | Recursive_variable of type_expr
+  | Unbound_value of str
+  | Variable_on_one_side of string
+  | Pattern_type_declaration of string
+  | Pattern_field_declaration of string
+  | Pattern_module_declaration of string
+  | Pattern_ctor_declaration of string
+
+exception Error of Location.t * error
+
 let rec check_type_aux typ ctyp env =
   let bind_none x f = match x with Some x -> x | None -> f () in
   let without_instance ~f (typ : type_expr) env =
@@ -9,9 +22,7 @@ let rec check_type_aux typ ctyp env =
         let env = Envi.Type.clear_instance typ env in
         let env = f typ' env in
         match Envi.Type.instance env typ with
-        | Some _ ->
-            failwith
-              "Found a type variable that unifies with part of its own instance"
+        | Some _ -> raise (Error (typ.type_loc, Recursive_variable typ))
         | None -> Some (Envi.Type.add_instance typ typ' env) )
     | None -> None
   in
@@ -48,7 +59,8 @@ let rec check_type_aux typ ctyp env =
           check_type_aux typ ctyp env )
     with
     | Ok env -> env
-    | Unequal_lengths -> failwith "Type doesn't check against constr_typ." )
+    | Unequal_lengths ->
+        raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) )
   | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
   | Tctor variant, Tctor constr_variant ->
@@ -59,11 +71,16 @@ let rec check_type_aux typ ctyp env =
               check_type_aux param constr_param env )
         with
         | Ok env -> env
-        | Unequal_lengths -> failwith "Type doesn't check against constr_typ."
-      else failwith "Type doesn't check against constr_typ."
-  | _, _ -> failwith "Type doesn't check against constr_typ."
+        | Unequal_lengths ->
+            raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
+      else raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
+  | _, _ -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
 
-let check_type env typ constr_typ = check_type_aux typ constr_typ env
+let check_type env typ constr_typ =
+  match check_type_aux typ constr_typ env with
+  | exception Error (_, err) ->
+      raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
+  | env -> env
 
 let rec free_type_vars ?depth typ =
   let free_type_vars = free_type_vars ?depth in
@@ -96,6 +113,7 @@ let add_polymorphised name typ env =
   Envi.add_name name typ env
 
 let rec check_pattern_desc ~loc ~add env typ = function
+  | PAny -> env
   | PVariable str -> add str typ env
   | PConstraint (p, constr_typ) ->
       let constr_typ, env = Envi.Type.import constr_typ env in
@@ -110,6 +128,49 @@ let rec check_pattern_desc ~loc ~add env typ = function
       let tuple_typ, env = Envi.Type.mk ~loc (Ttuple vars) env in
       let env = check_type env typ tuple_typ in
       List.fold2_exn ~init:env vars ps ~f:(check_pattern ~add)
+  | POr (p1, p2) ->
+      let env = Envi.open_scope env in
+      let env = check_pattern ~add env typ p1 in
+      let scope1, env = Envi.pop_scope env in
+      let env = Envi.open_scope env in
+      let env = check_pattern ~add env typ p2 in
+      let scope2, env = Envi.pop_scope env in
+      (* Check that the assignments in each scope match. *)
+      let env =
+        Envi.Scope.fold_over ~init:env scope1 scope2
+          ~type_variables:(fun ~key:_ ~data env ->
+            match data with
+            | `Both (var1, var2) -> check_type env var1 var2
+            | _ -> env )
+          ~names:(fun ~key:name ~data env ->
+            match data with
+            | `Both (typ1, typ2) -> check_type env typ1 typ2
+            | _ -> raise (Error (loc, Variable_on_one_side name)) )
+          ~type_decls:(fun ~key:name ~data _ ->
+            let loc =
+              match data with
+              | `Both (typ, _) | `Left typ | `Right typ -> typ.tdec_loc
+            in
+            raise (Error (loc, Pattern_type_declaration name)) )
+          ~fields:(fun ~key:name ~data _ ->
+            let loc =
+              match data with
+              | `Both ((typ, _), _) | `Left (typ, _) | `Right (typ, _) ->
+                  typ.tdec_loc
+            in
+            raise (Error (loc, Pattern_field_declaration name)) )
+          ~ctors:(fun ~key:name ~data _ ->
+            let loc =
+              match data with
+              | `Both ((typ, _), _) | `Left (typ, _) | `Right (typ, _) ->
+                  typ.tdec_loc
+            in
+            raise (Error (loc, Pattern_ctor_declaration name)) )
+          ~modules:(fun ~key:name ~data:_ _ ->
+            raise (Error (loc, Pattern_module_declaration name)) )
+      in
+      Envi.push_scope scope2 env
+  | PInt _ -> check_type env typ Envi.Core.Type.int
 
 and check_pattern ~add env typ pat =
   check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc
@@ -128,7 +189,7 @@ let rec get_expression_desc ~loc env = function
             apply_typ xs retvar env
       in
       apply_typ xs f_typ env
-  | Variable name -> Envi.get_name name env
+  | Variable name -> Envi.find_name name env
   | Int _ -> (Envi.Core.Type.int, env)
   | Fun (p, body) ->
       let env = Envi.open_scope env in
@@ -158,6 +219,18 @@ let rec get_expression_desc ~loc env = function
             (env, typ) )
       in
       Envi.Type.mk ~loc (Ttuple typs) env
+  | Match (e, cases) ->
+      let typ, env = get_expression env e in
+      let result_typ, env = Envi.Type.mkvar ~loc None env in
+      let env =
+        List.fold ~init:env cases ~f:(fun env (p, e) ->
+            let env = Envi.open_scope env in
+            let env = check_pattern ~add:add_polymorphised env typ p in
+            let e_typ, env = get_expression env e in
+            let env = Envi.close_scope env in
+            check_type env e_typ result_typ )
+      in
+      (result_typ, env)
 
 and get_expression env exp =
   get_expression_desc ~loc:exp.exp_loc env exp.exp_desc
@@ -166,13 +239,60 @@ and check_binding (env : Envi.t) p e : 's =
   let e_type, env = get_expression env e in
   check_pattern ~add:add_polymorphised env e_type p
 
-let check_statement_desc env = function
+let rec check_statement_desc ~loc:_ env = function
   | Value (p, e) -> check_binding env p e
   | TypeDecl decl ->
       let _, env = Envi.TypeDecl.import decl env in
       env
+  | Module (name, m) ->
+      let env = Envi.open_scope env in
+      let env = check_module_expr env m in
+      let m, env = Envi.pop_scope env in
+      Envi.add_module name m env
 
-let check_statement env stmt = check_statement_desc env stmt.stmt_desc
+and check_statement env stmt =
+  check_statement_desc ~loc:stmt.stmt_loc env stmt.stmt_desc
+
+and check_module_desc ~loc env = function
+  | Structure stmts -> List.fold ~f:check_statement ~init:env stmts
+  | ModName name -> Envi.push_scope (Envi.find_module ~loc name env) env
+
+and check_module_expr env m = check_module_desc ~loc:m.mod_loc env m.mod_desc
 
 let check (ast : statement list) =
   List.fold_left ast ~init:Envi.Core.env ~f:check_statement
+
+(* Error handling *)
+
+open Format
+
+let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
+
+let rec report_error ppf = function
+  | Check_failed (typ, constr_typ, err) ->
+      fprintf ppf "Incompatable types @['%a'@] and @['%a'@]:@.%a" pp_typ typ
+        pp_typ constr_typ report_error err
+  | Cannot_unify (typ, constr_typ) ->
+      fprintf ppf "Cannot unify @['%a'@] and @['%a'@].@." pp_typ typ pp_typ
+        constr_typ
+  | Recursive_variable typ ->
+      fprintf ppf
+        "The variable @['%a@](%d) would have an instance that contains itself."
+        pp_typ typ typ.type_id
+  | Unbound_value value -> fprintf ppf "Unbound value %s." value.txt
+  | Variable_on_one_side name ->
+      fprintf ppf "Variable %s must occur on both sides of this '|' pattern."
+        name
+  | Pattern_type_declaration name ->
+      fprintf ppf "Unexpected type declaration for %s within a pattern." name
+  | Pattern_field_declaration name ->
+      fprintf ppf "Unexpected field declaration for %s within a pattern." name
+  | Pattern_ctor_declaration name ->
+      fprintf ppf "Unexpected constructor declaration for %s within a pattern." name
+  | Pattern_module_declaration name ->
+      fprintf ppf "Unexpected module declaration for %s within a pattern." name
+
+let () =
+  Location.register_error_of_exn (function
+    | Error (loc, err) -> Some (Location.error_of_printer loc report_error err)
+    | _ -> None )
