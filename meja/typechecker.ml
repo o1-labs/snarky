@@ -192,9 +192,9 @@ let rec check_statement_desc ~loc:_ env = function
 and check_statement env stmt =
   check_statement_desc ~loc:stmt.stmt_loc env stmt.stmt_desc
 
-and check_module_desc ~loc:_ env = function
+and check_module_desc ~loc env = function
   | Structure stmts -> List.fold ~f:check_statement ~init:env stmts
-  | ModName name -> Envi.push_scope (Envi.find_module name env) env
+  | ModName name -> Envi.push_scope (Envi.find_module ~loc name env) env
 
 and check_module_expr env m = check_module_desc ~loc:m.mod_loc env m.mod_desc
 

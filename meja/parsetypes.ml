@@ -30,11 +30,12 @@ module Longident = struct
     let sexp_of_t = sexp_of_t
   end)
 
-  let rec show () lid =
+  let rec pp ppf lid =
+    let open Format in
     match lid with
-    | Lident name -> name
-    | Ldot (lid, name) -> sprintf "%a.%s" show lid name
-    | Lapply (lid1, lid2) -> sprintf "%a(%a)" show lid1 show lid2
+    | Lident name -> pp_print_string ppf name
+    | Ldot (lid, name) -> fprintf ppf "%a.%s" pp lid name
+    | Lapply (lid1, lid2) -> fprintf ppf "%a(%a)" pp lid1 pp lid2
 end
 
 type str = string Location.loc

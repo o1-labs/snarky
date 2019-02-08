@@ -6,8 +6,11 @@ type error =
   | No_open_scopes
   | Unbound_type_var of type_expr
   | Unbound_type of string
+  | Unbound_module of Longident.t
+  | Unbound_value of Longident.t
   | Wrong_number_args of string * int * int
   | Expected_type_var of type_expr
+  | Lident_unhandled of string * Longident.t
 
 exception Error of Location.t * error
 
@@ -80,21 +83,19 @@ module Scope = struct
 
   let get_module name scope = Map.find scope.modules name
 
-  let rec find_module lid scope =
+  let rec find_module ~loc lid scope =
     match lid with
     | Lident name -> get_module name scope
     | Ldot (path, name) ->
-        Option.bind (find_module path scope) ~f:(get_module name)
-    | Lapply _ ->
-        failwithf "Don't know how to find module %a" Longident.show lid ()
+        Option.bind (find_module ~loc path scope) ~f:(get_module name)
+    | Lapply _ -> raise (Error (loc, Lident_unhandled ("module", lid)))
 
-  let find_name lid scope =
+  let find_name ~loc lid scope =
     match lid with
     | Lident name -> get_name name scope
     | Ldot (path, name) ->
-        Option.bind (find_module path scope) ~f:(get_name name)
-    | Lapply _ ->
-        failwithf "Don't know how to find identifier %a" Longident.show lid ()
+        Option.bind (find_module ~loc path scope) ~f:(get_name name)
+    | Lapply _ -> raise (Error (loc, Lident_unhandled ("indentifier", lid)))
 end
 
 module TypeEnvi = struct
@@ -161,10 +162,10 @@ let find_type_declaration name env =
 let add_module (name : str) m =
   map_current_scope ~f:(Scope.add_module name.txt m)
 
-let find_module (lid : lid) env =
-  match List.find_map ~f:(Scope.find_module lid.txt) env.scope_stack with
+let find_module ~loc (lid : lid) env =
+  match List.find_map ~f:(Scope.find_module ~loc lid.txt) env.scope_stack with
   | Some m -> m
-  | None -> failwithf "Could not find module %a." Longident.show lid.txt ()
+  | None -> raise (Error (loc, Unbound_module lid.txt))
 
 module Type = struct
   let mk ~loc type_desc env =
@@ -414,14 +415,16 @@ let add_name (name : str) typ =
   map_current_scope ~f:(Scope.add_name name.txt typ)
 
 let get_name (name : str) env =
+  let loc = name.loc in
   match List.find_map ~f:(Scope.get_name name.txt) env.scope_stack with
   | Some typ -> Type.copy typ (Map.empty (module Int)) env
-  | None -> failwithf "Could not find name %s." name.txt ()
+  | None -> raise (Error (loc, Unbound_value (Lident name.txt)))
 
 let find_name (lid : lid) env =
-  match List.find_map ~f:(Scope.find_name lid.txt) env.scope_stack with
+  let loc = lid.loc in
+  match List.find_map ~f:(Scope.find_name ~loc lid.txt) env.scope_stack with
   | Some typ -> Type.copy typ (Map.empty (module Int)) env
-  | None -> failwithf "Could not find name %a." Longident.show lid.txt ()
+  | None -> raise (Error (loc, Unbound_value lid.txt))
 
 module Core = struct
   let mkloc s = Location.(mkloc s none)
@@ -476,6 +479,8 @@ let report_error ppf = function
   | Unbound_type_var var -> fprintf ppf "Unbound type parameter %a." pp_typ var
   | Unbound_type typename ->
       fprintf ppf "Unbound type constructor %s." typename
+  | Unbound_module lid -> fprintf ppf "Unbound module %a." Longident.pp lid
+  | Unbound_value lid -> fprintf ppf "Unbound value %a." Longident.pp lid
   | Wrong_number_args (typename, given, expected) ->
       fprintf ppf
         "@[The type constructor %s expects %d argument(s)@ but is here \
@@ -484,6 +489,8 @@ let report_error ppf = function
   | Expected_type_var typ ->
       fprintf ppf "Syntax error: Expected a type parameter, but got %a." pp_typ
         typ
+  | Lident_unhandled (kind, lid) ->
+      fprintf ppf "Don't know how to find %s %a" kind Longident.pp lid
 
 let () =
   Location.register_error_of_exn (function
