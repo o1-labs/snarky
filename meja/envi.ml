@@ -11,6 +11,7 @@ type error =
   | Wrong_number_args of string * int * int
   | Expected_type_var of type_expr
   | Lident_unhandled of string * Longident.t
+  | Constraints_not_satisfied of type_expr * type_decl
 
 exception Error of Location.t * error
 
@@ -445,9 +446,10 @@ module TypeDecl = struct
                         when String.equal str.txt decl.tdec_ident.txt ->
                           ()
                       | _ ->
-                          failwith
-                            "The constructor must be of the type it constructs."
-                      ) ;
+                          raise
+                            (Error
+                               ( ret.type_loc
+                               , Constraints_not_satisfied (ret, decl) )) ) ;
                       let ret, env = Type.import ~must_find:false ret env in
                       (Some ret, env)
                   | None -> (None, push_scope scope env)
@@ -569,6 +571,16 @@ open Format
 
 let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
 
+let pp_decl_typ ppf decl =
+  pp_typ ppf
+    { type_desc=
+        Tctor
+          { var_ident= decl.tdec_ident
+          ; var_params= decl.tdec_params
+          ; var_decl_id= decl.tdec_id }
+    ; type_id= -1
+    ; type_loc= Location.none }
+
 let report_error ppf = function
   | No_open_scopes ->
       fprintf ppf "Internal error: There is no current open scope."
@@ -587,6 +599,11 @@ let report_error ppf = function
         typ
   | Lident_unhandled (kind, lid) ->
       fprintf ppf "Don't know how to find %s %a" kind Longident.pp lid
+  | Constraints_not_satisfied (typ, decl) ->
+      fprintf ppf
+        "@[Constraints are not satisfied in this type.@ Type %a should be an \
+         instance of %a"
+        pp_typ typ pp_decl_typ decl
 
 let () =
   Location.register_error_of_exn (function
