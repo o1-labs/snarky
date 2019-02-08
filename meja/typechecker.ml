@@ -153,14 +153,15 @@ let rec get_expression_desc ~loc env = function
   | Match (e, cases) ->
       let typ, env = get_expression env e in
       let result_typ, env = Envi.Type.mkvar ~loc None env in
-      let env = List.fold ~init:env cases ~f:(fun env (p, e) ->
-        let env = Envi.open_scope env in
-        let env = check_pattern ~add:add_polymorphised env typ p in
-        let e_typ, env = get_expression env e in
-        let env = Envi.close_scope env in
-        check_type env e_typ result_typ)
+      let env =
+        List.fold ~init:env cases ~f:(fun env (p, e) ->
+            let env = Envi.open_scope env in
+            let env = check_pattern ~add:add_polymorphised env typ p in
+            let e_typ, env = get_expression env e in
+            let env = Envi.close_scope env in
+            check_type env e_typ result_typ )
       in
-      result_typ, env
+      (result_typ, env)
 
 and get_expression env exp =
   get_expression_desc ~loc:exp.exp_loc env exp.exp_desc
