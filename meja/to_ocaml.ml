@@ -23,6 +23,7 @@ let rec of_pattern_desc ?loc = function
   | PConstraint (p, typ) ->
       Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)
   | PTuple ps -> Pat.tuple ?loc (List.map ~f:of_pattern ps)
+  | POr (p1, p2) -> Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 

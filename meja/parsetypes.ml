@@ -18,6 +18,7 @@ and pattern_desc =
   | PVariable of str
   | PConstraint of pattern * type_expr
   | PTuple of pattern list
+  | POr of pattern * pattern
 
 type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 

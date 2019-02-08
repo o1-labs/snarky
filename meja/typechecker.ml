@@ -103,6 +103,29 @@ let rec check_pattern_desc ~loc ~add env typ = function
       let tuple_typ, env = Envi.Type.mk ~loc (Ttuple vars) env in
       let env = check_type env typ tuple_typ in
       List.fold2_exn ~init:env vars ps ~f:(check_pattern ~add)
+  | POr (p1, p2) ->
+      let env = Envi.open_scope env in
+      let env = check_pattern ~add env typ p1 in
+      let scope1, env = Envi.pop_scope env in
+      let env = Envi.open_scope env in
+      let env = check_pattern ~add env typ p2 in
+      let scope2, env = Envi.pop_scope env in
+      (* Check that the assignments in each scope match. *)
+      let env =
+        Envi.Scope.fold_over ~init:env scope1 scope2
+          ~type_variables:(fun ~key:_ ~data env ->
+            match data with
+            | `Both (var1, var2) -> check_type env var1 var2
+            | _ -> env )
+          ~names:(fun ~key:name ~data env ->
+            match data with
+            | `Both (typ1, typ2) -> check_type env typ1 typ2
+            | _ ->
+                failwithf
+                  "Variable %s must occur on both sides of this '|' pattern"
+                  name () )
+      in
+      Envi.push_scope scope2 env
 
 and check_pattern ~add env typ pat =
   check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc

@@ -22,6 +22,15 @@ module Scope = struct
       type_variables= Map.update scope.type_variables name ~f:(fun _ -> typ) }
 
   let find_type_variable name scope = Map.find scope.type_variables name
+
+  let fold_over ~init:acc ~names ~type_variables
+      {names= names1; type_variables= type_variables1}
+      {names= names2; type_variables= type_variables2} =
+    let acc =
+      Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
+    in
+    let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
+    acc
 end
 
 module TypeEnvi = struct
