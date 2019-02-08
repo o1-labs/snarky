@@ -41,6 +41,10 @@ let rec of_expression_desc ?loc = function
         [Vb.mk (of_pattern p) (of_expression e_rhs)]
         (of_expression e)
   | Tuple es -> Exp.tuple ?loc (List.map ~f:of_expression es)
+  | Match (e, cases) ->
+    Exp.match_ ?loc (of_expression e) (List.map cases ~f:(fun (p, e) ->
+      Exp.case (of_pattern p) (of_expression e)))
+
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
