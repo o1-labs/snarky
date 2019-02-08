@@ -1,2 +1,2 @@
 File "tests/pattern_or-fail.meja", line 1, characters 5-10:
-Error: Variable x must occur on both sides of this '|' pattern
+Error: Variable x must occur on both sides of this '|' pattern.
