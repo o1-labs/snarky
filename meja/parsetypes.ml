@@ -49,6 +49,7 @@ and expression_desc =
   | Let of pattern * expression * expression
   | Constraint of expression * type_expr
   | Tuple of expression list
+  | Match of expression * (pattern * expression) list
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 

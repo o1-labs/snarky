@@ -32,6 +32,7 @@ rule token = parse
     { INT (int_of_string (Lexing.lexeme lexbuf)) }
   | "fun" { FUN }
   | "let" { LET }
+  | "switch" { SWITCH }
   | "type" { TYPE }
   | ';' { SEMI }
   | '{' { LBRACE }

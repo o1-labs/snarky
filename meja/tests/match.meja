@@ -1,0 +1,11 @@
+let x = fun (y : int, z : bool) => {
+  switch (y) {
+    | i => z
+  };
+};
+
+let y = fun (f : int -> int -> int -> _) => {
+  switch (1, 2, 3) {
+    | (i, j, k) => f (i, j, k)
+  };
+};
