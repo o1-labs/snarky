@@ -404,10 +404,8 @@ module TypeDecl = struct
 
   let import decl env =
     let tdec_id, type_env = TypeEnvi.next_decl_id env.type_env in
-    let decl = {decl with tdec_id} in
     let env = {env with type_env} in
     (* Make sure the declaration is available to lookup for recursive types. *)
-    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
     let env = open_scope env in
     let env, tdec_params =
       List.fold_map ~init:env decl.tdec_params ~f:(fun env param ->
@@ -417,6 +415,8 @@ module TypeDecl = struct
               (env, var)
           | _ -> raise (Error (param.type_loc, Expected_type_var param)) )
     in
+    let decl = {decl with tdec_id; tdec_params} in
+    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
     let tdec_desc, env =
       match decl.tdec_desc with
       | TAbstract -> (TAbstract, env)
@@ -481,7 +481,7 @@ module TypeDecl = struct
           (TVariant ctors, env)
     in
     let env = close_scope env in
-    let decl = {decl with tdec_id; tdec_params; tdec_desc} in
+    let decl = {decl with tdec_desc} in
     let env =
       map_current_scope ~f:(Scope.register_type_declaration decl) env
     in
