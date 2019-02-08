@@ -1,6 +1,7 @@
 %{
 open Location
 open Parsetypes
+open Longident
 
 let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 
@@ -48,7 +49,7 @@ structure_item:
     { mkstmt ~pos:$loc (Value (x, e)) }
 
 expr:
-  | x = as_loc(LIDENT)
+  | x = as_loc(longident(LIDENT))
     { mkexp ~pos:$loc (Variable x) }
   | x = INT
     { mkexp ~pos:$loc (Int x) }

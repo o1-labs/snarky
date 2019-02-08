@@ -63,7 +63,7 @@ type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 
 and expression_desc =
   | Apply of expression * expression list
-  | Variable of str
+  | Variable of lid
   | Int of int
   | Fun of pattern * expression
   | Seq of expression * expression

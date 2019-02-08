@@ -120,7 +120,7 @@ let rec get_expression_desc ~loc env = function
             apply_typ xs retvar env
       in
       apply_typ xs f_typ env
-  | Variable name -> Envi.get_name name env
+  | Variable name -> Envi.find_name name env
   | Int _ -> Envi.Type.mk ~loc (Tctor {txt= "int"; loc= Location.none}) env
   | Fun (p, body) ->
       let env = Envi.open_scope env in

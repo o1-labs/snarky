@@ -29,7 +29,7 @@ let rec of_expression_desc ?loc = function
   | Apply (f, es) ->
       Exp.apply ?loc (of_expression f)
         (List.map ~f:(fun x -> (Nolabel, of_expression x)) es)
-  | Variable name -> Exp.ident ?loc (mk_lid name)
+  | Variable name -> Exp.ident ?loc name
   | Int i -> Exp.constant ?loc (Const.int i)
   | Fun (p, body) ->
       Exp.fun_ ?loc Nolabel None (of_pattern p) (of_expression body)
