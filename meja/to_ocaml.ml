@@ -49,7 +49,7 @@ let rec of_expression_desc ?loc = function
   | Apply (f, es) ->
       Exp.apply ?loc (of_expression f)
         (List.map ~f:(fun x -> (Nolabel, of_expression x)) es)
-  | Variable name -> Exp.ident ?loc (mk_lid name)
+  | Variable name -> Exp.ident ?loc name
   | Int i -> Exp.constant ?loc (Const.int i)
   | Fun (p, body) ->
       Exp.fun_ ?loc Nolabel None (of_pattern p) (of_expression body)
@@ -68,11 +68,18 @@ let rec of_expression_desc ?loc = function
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
-let of_statement_desc ?loc = function
+let rec of_statement_desc ?loc = function
   | Value (p, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
   | TypeDecl decl -> Str.type_ ?loc Recursive [of_type_decl decl]
+  | Module (name, m) -> Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
 
-let of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
+and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
+
+and of_module_expr m = of_module_desc ~loc:m.mod_loc m.mod_desc
+
+and of_module_desc ?loc = function
+  | Structure stmts -> Mod.structure ?loc (List.map ~f:of_statement stmts)
+  | ModName name -> Mod.ident ?loc name
 
 let of_file = List.map ~f:of_statement

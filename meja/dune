@@ -4,7 +4,7 @@
  (flags :standard -warn-error -39-21))
 
 (menhir
-  (flags --explain)
+  (flags --explain --unused-tokens)
   (modules parser_impl))
 
 (ocamllex

@@ -9,6 +9,7 @@ type error =
   | Variable_on_one_side of string
   | Pattern_type_declaration of string
   | Pattern_field_declaration of string
+  | Pattern_module_declaration of string
 
 exception Error of Location.t * error
 
@@ -157,6 +158,8 @@ let rec check_pattern_desc ~loc ~add env typ = function
                   typ.tdec_loc
             in
             raise (Error (loc, Pattern_field_declaration name)) )
+          ~modules:(fun ~key:name ~data:_ _ ->
+            raise (Error (loc, Pattern_module_declaration name)) )
       in
       Envi.push_scope scope2 env
   | PInt _ -> check_type env typ Envi.Core.Type.int
@@ -178,10 +181,7 @@ let rec get_expression_desc ~loc env = function
             apply_typ xs retvar env
       in
       apply_typ xs f_typ env
-  | Variable name -> (
-    match Envi.get_name name env with
-    | Some (typ, env) -> (typ, env)
-    | None -> raise (Error (loc, Unbound_value name)) )
+  | Variable name -> Envi.find_name name env
   | Int _ -> (Envi.Core.Type.int, env)
   | Fun (p, body) ->
       let env = Envi.open_scope env in
@@ -231,13 +231,25 @@ and check_binding (env : Envi.t) p e : 's =
   let e_type, env = get_expression env e in
   check_pattern ~add:add_polymorphised env e_type p
 
-let check_statement_desc env = function
+let rec check_statement_desc ~loc:_ env = function
   | Value (p, e) -> check_binding env p e
   | TypeDecl decl ->
       let _, env = Envi.TypeDecl.import decl env in
       env
+  | Module (name, m) ->
+      let env = Envi.open_scope env in
+      let env = check_module_expr env m in
+      let m, env = Envi.pop_scope env in
+      Envi.add_module name m env
 
-let check_statement env stmt = check_statement_desc env stmt.stmt_desc
+and check_statement env stmt =
+  check_statement_desc ~loc:stmt.stmt_loc env stmt.stmt_desc
+
+and check_module_desc ~loc env = function
+  | Structure stmts -> List.fold ~f:check_statement ~init:env stmts
+  | ModName name -> Envi.push_scope (Envi.find_module ~loc name env) env
+
+and check_module_expr env m = check_module_desc ~loc:m.mod_loc env m.mod_desc
 
 let check (ast : statement list) =
   List.fold_left ast ~init:Envi.Core.env ~f:check_statement
@@ -267,6 +279,8 @@ let rec report_error ppf = function
       fprintf ppf "Unexpected type declaration for %s within a pattern." name
   | Pattern_field_declaration name ->
       fprintf ppf "Unexpected field declaration for %s within a pattern." name
+  | Pattern_module_declaration name ->
+      fprintf ppf "Unexpected module declaration for %s within a pattern." name
 
 let () =
   Location.register_error_of_exn (function

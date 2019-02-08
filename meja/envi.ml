@@ -1,18 +1,24 @@
 open Core_kernel
 open Parsetypes
+open Longident
 
 type error =
   | No_open_scopes
   | Unbound_type_var of type_expr
   | Unbound_type of string
+  | Unbound_module of Longident.t
+  | Unbound_value of Longident.t
   | Wrong_number_args of string * int * int
   | Expected_type_var of type_expr
+  | Lident_unhandled of string * Longident.t
 
 exception Error of Location.t * error
 
-type 'a name_map = (string, 'a, String.comparator_witness) Base.Map.t
+type 'a name_map = (string, 'a, String.comparator_witness) Map.t
 
-type 'a int_map = (int, 'a, Int.comparator_witness) Base.Map.t
+type 'a int_map = (int, 'a, Int.comparator_witness) Map.t
+
+type 'a lid_map = (Longident.t, 'a, Longident.comparator_witness) Map.t
 
 module Scope = struct
   type t =
@@ -20,19 +26,21 @@ module Scope = struct
     ; type_variables: type_expr name_map
     ; type_decls: type_decl name_map
     ; type_decls_ids: type_decl int_map
-    ; fields: (type_decl * int) name_map }
+    ; fields: (type_decl * int) name_map
+    ; modules: t name_map }
 
   let empty =
     { names= Map.empty (module String)
     ; type_variables= Map.empty (module String)
     ; type_decls= Map.empty (module String)
     ; type_decls_ids= Map.empty (module Int)
-    ; fields= Map.empty (module String) }
+    ; fields= Map.empty (module String)
+    ; modules= Map.empty (module String) }
 
-  let add_name {Location.txt= key; _} typ scope =
+  let add_name key typ scope =
     {scope with names= Map.set scope.names ~key ~data:typ}
 
-  let get_name {Location.txt= name; _} {names; _} = Map.find names name
+  let get_name name {names; _} = Map.find names name
 
   let add_type_variable key typ scope =
     {scope with type_variables= Map.set scope.type_variables ~key ~data:typ}
@@ -70,24 +78,46 @@ module Scope = struct
     | TAbstract | TAlias _ -> scope
     | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
 
-  let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields
+  let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~modules
       { names= names1
       ; type_variables= type_variables1
       ; type_decls_ids= _
       ; type_decls= type_decls1
-      ; fields= fields1 }
+      ; fields= fields1
+      ; modules= modules1 }
       { names= names2
       ; type_variables= type_variables2
       ; type_decls_ids= _
       ; type_decls= type_decls2
-      ; fields= fields2 } =
+      ; fields= fields2
+      ; modules= modules2 } =
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
     in
     let acc = Map.fold2 type_decls1 type_decls2 ~init:acc ~f:type_decls in
     let acc = Map.fold2 fields1 fields2 ~init:acc ~f:fields in
+    let acc = Map.fold2 modules1 modules2 ~init:acc ~f:modules in
     let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
     acc
+
+  let add_module name m scope =
+    {scope with modules= Map.set scope.modules ~key:name ~data:m}
+
+  let get_module name scope = Map.find scope.modules name
+
+  let rec find_module ~loc lid scope =
+    match lid with
+    | Lident name -> get_module name scope
+    | Ldot (path, name) ->
+        Option.bind (find_module ~loc path scope) ~f:(get_module name)
+    | Lapply _ -> raise (Error (loc, Lident_unhandled ("module", lid)))
+
+  let find_name ~loc lid scope =
+    match lid with
+    | Lident name -> get_name name scope
+    | Ldot (path, name) ->
+        Option.bind (find_module ~loc path scope) ~f:(get_name name)
+    | Lapply _ -> raise (Error (loc, Lident_unhandled ("indentifier", lid)))
 end
 
 module TypeEnvi = struct
@@ -150,6 +180,14 @@ let find_type_variable name env =
 
 let find_type_declaration name env =
   List.find_map ~f:(Scope.find_type_declaration name) env.scope_stack
+
+let add_module (name : str) m =
+  map_current_scope ~f:(Scope.add_module name.txt m)
+
+let find_module ~loc (lid : lid) env =
+  match List.find_map ~f:(Scope.find_module ~loc lid.txt) env.scope_stack with
+  | Some m -> m
+  | None -> raise (Error (loc, Unbound_module lid.txt))
 
 module Type = struct
   let mk ~loc type_desc env =
@@ -395,12 +433,20 @@ module TypeDecl = struct
          ; var_decl_id= decl.tdec_id })
 end
 
-let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
+let add_name (name : str) typ =
+  map_current_scope ~f:(Scope.add_name name.txt typ)
 
-let get_name name env =
-  Option.map
-    (List.find_map ~f:(Scope.get_name name) env.scope_stack)
-    ~f:(fun typ -> Type.copy typ (Map.empty (module Int)) env)
+let get_name (name : str) env =
+  let loc = name.loc in
+  match List.find_map ~f:(Scope.get_name name.txt) env.scope_stack with
+  | Some typ -> Type.copy typ (Map.empty (module Int)) env
+  | None -> raise (Error (loc, Unbound_value (Lident name.txt)))
+
+let find_name (lid : lid) env =
+  let loc = lid.loc in
+  match List.find_map ~f:(Scope.find_name ~loc lid.txt) env.scope_stack with
+  | Some typ -> Type.copy typ (Map.empty (module Int)) env
+  | None -> raise (Error (loc, Unbound_value lid.txt))
 
 module Core = struct
   let mkloc s = Location.(mkloc s none)
@@ -455,6 +501,8 @@ let report_error ppf = function
   | Unbound_type_var var -> fprintf ppf "Unbound type parameter %a." pp_typ var
   | Unbound_type typename ->
       fprintf ppf "Unbound type constructor %s." typename
+  | Unbound_module lid -> fprintf ppf "Unbound module %a." Longident.pp lid
+  | Unbound_value lid -> fprintf ppf "Unbound value %a." Longident.pp lid
   | Wrong_number_args (typename, given, expected) ->
       fprintf ppf
         "@[The type constructor %s expects %d argument(s)@ but is here \
@@ -463,6 +511,8 @@ let report_error ppf = function
   | Expected_type_var typ ->
       fprintf ppf "Syntax error: Expected a type parameter, but got %a." pp_typ
         typ
+  | Lident_unhandled (kind, lid) ->
+      fprintf ppf "Don't know how to find %s %a" kind Longident.pp lid
 
 let () =
   Location.register_error_of_exn (function

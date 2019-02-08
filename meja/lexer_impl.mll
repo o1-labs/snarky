@@ -34,6 +34,7 @@ rule token = parse
   | "let" { LET }
   | "switch" { SWITCH }
   | "type" { TYPE }
+  | "module" { MODULE }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }
@@ -47,6 +48,7 @@ rule token = parse
   | '_' { UNDERSCORE }
   | '|' { BAR }
   | ''' { QUOT }
+  | '.' { DOT }
   | lowercase_alpha ident* { LIDENT(Lexing.lexeme lexbuf) }
   | uppercase_alpha ident* { UIDENT(Lexing.lexeme lexbuf) }
   | _ { raise (Error (lexeme_loc lexbuf, Unexpected_character (Lexing.lexeme lexbuf))) }

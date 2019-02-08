@@ -1,6 +1,7 @@
 %{
 open Location
 open Parsetypes
+open Longident
 open Parser_errors
 
 let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
@@ -9,6 +10,7 @@ let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= mklocation pos}
 let mkpat ~pos d = {pat_desc= d; pat_loc= mklocation pos}
 let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos}
 let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
+let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %}
 %token <int> INT
 %token <string> LIDENT
@@ -17,6 +19,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 %token LET
 %token SWITCH
 %token TYPE
+%token MODULE
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -30,6 +33,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 %token UNDERSCORE
 %token BAR
 %token QUOT
+%token DOT
 %token EOF
 
 %token EOL
@@ -40,11 +44,15 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 %%
 
 file:
-  | EOF (* Empty *)
+  | s = structure EOF
+    { s }
+
+structure:
+  | (* Empty *)
     { [] }
-  | s = structure_item EOF
+  | s = structure_item maybe(SEMI)
     { [s] }
-  | s = structure_item SEMI rest = file
+  | s = structure_item SEMI rest = structure
     { s :: rest }
   | structure_item err = err
     { raise (Error (err, Missing_semi)) }
@@ -60,6 +68,14 @@ structure_item:
         ; tdec_desc= k
         ; tdec_id= -1
         ; tdec_loc= mklocation $loc }) }
+  | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
+    { mkstmt ~pos:$loc (Module (x, m)) }
+
+module_expr:
+  | LBRACE s = structure RBRACE
+    { mkmod ~pos:$loc (Structure s) }
+  | x = as_loc(longident(UIDENT, UIDENT))
+    { mkmod ~pos:$loc (ModName x) }
 
 decl_type:
   | x = as_loc(LIDENT)
@@ -86,7 +102,7 @@ type_kind:
     { TRecord (List.rev fields) }
 
 expr:
-  | x = as_loc(LIDENT)
+  | x = as_loc(longident(LIDENT, UIDENT))
     { mkexp ~pos:$loc (Variable x) }
   | x = INT
     { mkexp ~pos:$loc (Int x) }
@@ -195,6 +211,12 @@ tuple(X):
     { None }
   | x = X
     { Some x }
+
+longident(X, M):
+  | x = X
+    { Lident x }
+  | path = longident(M, M) DOT x = X
+    { Ldot (path, x) }
 
 %inline err : _x = error
   { mklocation ($symbolstartpos, $endpos) }
