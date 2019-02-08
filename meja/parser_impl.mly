@@ -1,6 +1,7 @@
 %{
 open Location
 open Parsetypes
+open Parser_errors
 
 let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 
@@ -42,6 +43,8 @@ file:
     { [s] }
   | s = structure_item SEMI rest = file
     { s :: rest }
+  | structure_item err = err
+    { raise (Error (err, Missing_semi)) }
 
 structure_item:
   | LET x = pat EQUAL e = expr
@@ -74,6 +77,8 @@ expr_list:
 function_from_args:
   | p = pat RBRACKET EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, body)) }
+  | pat RBRACKET err = err
+    { raise (Error (err, Fun_no_fat_arrow)) }
   | p = pat RBRACKET typ = type_expr EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc(typ) (Constraint (body, typ)))) }
   | p = pat COMMA f = function_from_args
@@ -90,6 +95,8 @@ block:
     { e }
   | e1 = expr SEMI rest = block
     { mkexp ~pos:$loc (Seq (e1, rest)) }
+  | expr err = err
+    { raise (Error (err, Missing_semi)) }
 
 pat_no_bar:
   | UNDERSCORE
@@ -135,3 +142,6 @@ tuple(X):
 
 %inline as_loc(X): x = X
   { mkloc x (mklocation ($symbolstartpos, $endpos)) }
+
+%inline err : _x = error
+  { mklocation ($symbolstartpos, $endpos) }
