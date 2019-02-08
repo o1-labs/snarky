@@ -26,6 +26,7 @@ rule token = parse
     { INT (int_of_string (Lexing.lexeme lexbuf)) }
   | "fun" { FUN }
   | "let" { LET }
+  | "switch" { SWITCH }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }
@@ -37,6 +38,7 @@ rule token = parse
   | ':' { COLON }
   | ',' { COMMA }
   | '_' { UNDERSCORE }
+  | '|' { BAR }
   | lowercase_alpha ident* { LIDENT(Lexing.lexeme lexbuf) }
   | uppercase_alpha ident* { UIDENT(Lexing.lexeme lexbuf) }
   | _ { failwith ("Unexpected character: " ^ Lexing.lexeme lexbuf) }

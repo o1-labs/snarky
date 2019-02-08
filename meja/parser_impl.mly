@@ -14,6 +14,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 %token <string> UIDENT
 %token FUN
 %token LET
+%token SWITCH
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -25,6 +26,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 %token COLON
 %token COMMA
 %token UNDERSCORE
+%token BAR
 %token EOF
 
 %token EOL
@@ -53,16 +55,26 @@ expr:
     { mkexp ~pos:$loc (Int x) }
   | FUN LBRACKET f = function_from_args
     { f }
-  | LBRACKET es = exprs RBRACKET
-    { es }
-  | LBRACKET es = tuple(expr) RBRACKET
-    { mkexp ~pos:$loc (Tuple (List.rev es)) }
+  | LBRACKET e = expr_or_bare_tuple RBRACKET
+    { e }
   | LBRACE es = block RBRACE
     { es }
   | LET x = pat EQUAL lhs = expr SEMI rhs = expr
     { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
   | f = expr LBRACKET es = expr_list RBRACKET
     { mkexp ~pos:$loc (Apply (f, List.rev es)) }
+  | SWITCH LBRACKET e = expr_or_bare_tuple RBRACKET LBRACE rev_cases = list(match_case, {}) RBRACE
+    { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
+
+expr_or_bare_tuple:
+  | x = expr
+    { x }
+  | es = tuple(expr)
+    { mkexp ~pos:$loc (Tuple (List.rev es)) }
+
+match_case:
+  | BAR p = pat EQUALGT e = expr
+    { (p, e) }
 
 expr_list:
   | e = expr
@@ -77,12 +89,6 @@ function_from_args:
     { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc(typ) (Constraint (body, typ)))) }
   | p = pat COMMA f = function_from_args
     { mkexp ~pos:$loc (Fun (p, f)) }
-
-exprs:
-  | e = expr
-    { e }
-  | e1 = expr SEMI rest = exprs
-    { mkexp ~pos:$loc (Seq (e1, rest)) }
 
 block:
   | e = expr SEMI
@@ -115,6 +121,12 @@ type_expr:
     { x }
   | x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y)) }
+
+list(X, SEP):
+  | xs = list(X, SEP) SEP x = X
+    { x :: xs }
+  | x = X
+    { [ x ] }
 
 tuple(X):
   | xs = tuple(X) COMMA x = X

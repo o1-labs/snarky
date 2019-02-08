@@ -6,7 +6,9 @@ let z = x
 
 let a = 15
 
-let b = x ; y
+let b =
+  let y = x in
+  y
 
 let c = x ; y
 
