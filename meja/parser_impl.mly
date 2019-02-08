@@ -91,6 +91,8 @@ block:
     { mkexp ~pos:$loc (Seq (e1, rest)) }
 
 pat:
+  | UNDERSCORE
+    { mkpat ~pos:$loc PAny }
   | LBRACKET p = pat RBRACKET
     { p }
   | LBRACKET ps = tuple(pat) RBRACKET

@@ -18,6 +18,7 @@ let rec of_type_desc ?loc typ =
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 
 let rec of_pattern_desc ?loc = function
+  | PAny -> Pat.any ?loc ()
   | PVariable str -> Pat.var ?loc str
   | PConstraint (p, typ) ->
       Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)

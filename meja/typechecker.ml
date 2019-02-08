@@ -88,6 +88,7 @@ let add_polymorphised name typ env =
   Envi.add_name name typ env
 
 let rec check_pattern_desc ~loc ~add env typ = function
+  | PAny -> env
   | PVariable str -> add str typ env
   | PConstraint (p, constr_typ) ->
       let constr_typ, env = Envi.Type.import constr_typ env in
