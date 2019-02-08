@@ -274,7 +274,7 @@ let rec report_error ppf = function
         constr_typ
   | Recursive_variable typ ->
       fprintf ppf
-        "The variable @['%a@](%d) would have an instance that contains itself."
+        "The variable @[%a@](%d) would have an instance that contains itself."
         pp_typ typ typ.type_id
   | Unbound_value value -> fprintf ppf "Unbound value %s." value.txt
   | Variable_on_one_side name ->
