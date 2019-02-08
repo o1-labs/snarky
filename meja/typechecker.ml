@@ -6,6 +6,7 @@ type error =
   | Cannot_unify of type_expr * type_expr
   | Recursive_variable of type_expr
   | Unbound_value of str
+  | Variable_on_one_side of string
 
 exception Error of Location.t * error
 
@@ -131,10 +132,7 @@ let rec check_pattern_desc ~loc ~add env typ = function
           ~names:(fun ~key:name ~data env ->
             match data with
             | `Both (typ1, typ2) -> check_type env typ1 typ2
-            | _ ->
-                failwithf
-                  "Variable %s must occur on both sides of this '|' pattern"
-                  name () )
+            | _ -> raise (Error (loc, Variable_on_one_side name)) )
       in
       Envi.push_scope scope2 env
   | PInt _ ->
@@ -226,6 +224,9 @@ let rec report_error ppf = function
         "The variable @['%a@](%d) would have an instance that contains itself."
         pp_typ typ typ.type_id
   | Unbound_value value -> fprintf ppf "Unbound value %s." value.txt
+  | Variable_on_one_side name ->
+      fprintf ppf "Variable %s must occur on both sides of this '|' pattern"
+        name
 
 let () =
   Location.register_error_of_exn (function
