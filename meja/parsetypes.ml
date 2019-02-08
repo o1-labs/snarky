@@ -31,9 +31,12 @@ and type_decl_desc =
 type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
 and pattern_desc =
+  | PAny
   | PVariable of str
   | PConstraint of pattern * type_expr
   | PTuple of pattern list
+  | POr of pattern * pattern
+  | PInt of int
 
 type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 
