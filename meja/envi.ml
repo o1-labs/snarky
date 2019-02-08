@@ -1,6 +1,10 @@
 open Core_kernel
 open Parsetypes
 
+type error = No_open_scopes
+
+exception Error of Location.t * error
+
 type 'a name_map = (string, 'a, String.comparator_witness) Base.Map.t
 
 type 'a int_map = (int, 'a, Int.comparator_witness) Base.Map.t
@@ -56,7 +60,7 @@ let empty = {scope_stack= [Scope.empty]; type_env= TypeEnvi.empty; depth= 0}
 let current_scope {scope_stack; _} =
   match List.hd scope_stack with
   | Some scope -> scope
-  | None -> failwith "No environment scopes are open"
+  | None -> raise (Error (Location.none, No_open_scopes))
 
 let open_scope env =
   {env with scope_stack= Scope.empty :: env.scope_stack; depth= env.depth + 1}
@@ -64,13 +68,13 @@ let open_scope env =
 let close_scope env =
   match List.tl env.scope_stack with
   | Some scope_stack -> {env with scope_stack; depth= env.depth - 1}
-  | None -> failwith "No environment scopes are open"
+  | None -> raise (Error (Location.none, No_open_scopes))
 
 let map_current_scope ~f env =
   match env.scope_stack with
   | current_scope :: scope_stack ->
       {env with scope_stack= f current_scope :: scope_stack}
-  | [] -> failwith "No environment scopes are open"
+  | [] -> raise (Error (Location.none, No_open_scopes))
 
 let add_type_variable name typ =
   map_current_scope ~f:(Scope.add_type_variable name typ)
@@ -235,6 +239,19 @@ end
 let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
 
 let get_name name env =
-  match List.find_map ~f:(Scope.get_name name) env.scope_stack with
-  | Some typ -> Type.copy typ (Map.empty (module Int)) env
-  | None -> failwith "Could not find name."
+  Option.map
+    (List.find_map ~f:(Scope.get_name name) env.scope_stack)
+    ~f:(fun typ -> Type.copy typ (Map.empty (module Int)) env)
+
+(* Error handling *)
+
+open Format
+
+let report_error ppf = function
+  | No_open_scopes ->
+      fprintf ppf "Internal error: There is no current open scope."
+
+let () =
+  Location.register_error_of_exn (function
+    | Error (loc, err) -> Some (Location.error_of_printer loc report_error err)
+    | _ -> None )
