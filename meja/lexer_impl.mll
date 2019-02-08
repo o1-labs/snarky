@@ -26,6 +26,7 @@ rule token = parse
     { INT (int_of_string (Lexing.lexeme lexbuf)) }
   | "fun" { FUN }
   | "let" { LET }
+  | "module" { MODULE }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }

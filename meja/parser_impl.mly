@@ -9,12 +9,14 @@ let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= mklocation pos}
 let mkpat ~pos d = {pat_desc= d; pat_loc= mklocation pos}
 let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos}
 let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
+let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %}
 %token <int> INT
 %token <string> LIDENT
 %token <string> UIDENT
 %token FUN
 %token LET
+%token MODULE
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -37,19 +39,31 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 %%
 
 file:
-  | EOF (* Empty *)
+  | s = structure EOF
+    { s }
+
+structure:
+  | (* Empty *)
     { [] }
-  | s = structure_item EOF
+  | s = structure_item maybe(SEMI)
     { [s] }
-  | s = structure_item SEMI rest = file
+  | s = structure_item SEMI rest = structure
     { s :: rest }
 
 structure_item:
   | LET x = pat EQUAL e = expr
     { mkstmt ~pos:$loc (Value (x, e)) }
+  | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
+    { mkstmt ~pos:$loc (Module (x, m)) }
+
+module_expr:
+  | LBRACE s = structure RBRACE
+    { mkmod ~pos:$loc (Structure s) }
+  | x = as_loc(longident(UIDENT, UIDENT))
+    { mkmod ~pos:$loc (ModName x) }
 
 expr:
-  | x = as_loc(longident(LIDENT))
+  | x = as_loc(longident(LIDENT, UIDENT))
     { mkexp ~pos:$loc (Variable x) }
   | x = INT
     { mkexp ~pos:$loc (Int x) }
@@ -127,8 +141,14 @@ tuple(X):
 %inline as_loc(X): x = X
   { mkloc x (mklocation ($symbolstartpos, $endpos)) }
 
-longident(X):
+%inline maybe(X):
+  | (* empty *)
+    { None }
+  | x = X
+    { Some x }
+
+longident(X, M):
   | x = X
     { Lident x }
-  | path = longident(X) DOT x = X
+  | path = longident(M, M) DOT x = X
     { Ldot (path, x) }
