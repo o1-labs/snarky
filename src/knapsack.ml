@@ -52,7 +52,9 @@ module Make (Impl : Snark_intf.S) = struct
       with_label "hash_to_bits"
         (let%map bss =
            Checked.all
-             (List.map xs ~f:(Field.Checked.unpack ~length:Field.size_in_bits))
+             (List.map xs
+                ~f:
+                  (Field.Checked.choose_preimage_var ~length:Field.size_in_bits))
          in
          List.concat bss)
   end
