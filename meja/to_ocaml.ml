@@ -55,6 +55,6 @@ and of_module_expr m = of_module_desc ~loc:m.mod_loc m.mod_desc
 
 and of_module_desc ?loc = function
   | Structure stmts -> Mod.structure ?loc (List.map ~f:of_statement stmts)
-  | ModName name -> Mod.ident ?loc (mk_lid name)
+  | ModName name -> Mod.ident ?loc name
 
 let of_file = List.map ~f:of_statement

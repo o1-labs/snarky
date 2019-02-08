@@ -1,9 +1,12 @@
 open Core_kernel
 open Parsetypes
+open Longident
 
-type 'a name_map = (string, 'a, String.comparator_witness) Base.Map.t
+type 'a name_map = (string, 'a, String.comparator_witness) Map.t
 
-type 'a int_map = (int, 'a, Int.comparator_witness) Base.Map.t
+type 'a int_map = (int, 'a, Int.comparator_witness) Map.t
+
+type 'a lid_map = (Longident.t, 'a, Longident.comparator_witness) Map.t
 
 module Scope = struct
   type t =
@@ -16,10 +19,10 @@ module Scope = struct
     ; type_variables= Map.empty (module String)
     ; modules= Map.empty (module String) }
 
-  let add_name {Location.txt= name; _} typ scope =
+  let add_name name typ scope =
     {scope with names= Map.update scope.names name ~f:(fun _ -> typ)}
 
-  let get_name {Location.txt= name; _} {names; _} = Map.find names name
+  let get_name name {names; _} = Map.find names name
 
   let add_type_variable name typ scope =
     { scope with
@@ -31,6 +34,22 @@ module Scope = struct
     {scope with modules= Map.set scope.modules ~key:name ~data:m}
 
   let get_module name scope = Map.find scope.modules name
+
+  let rec find_module lid scope =
+    match lid with
+    | Lident name -> get_module name scope
+    | Ldot (path, name) ->
+        Option.bind (find_module path scope) ~f:(get_module name)
+    | Lapply _ ->
+        failwithf "Don't know how to find module %a" Longident.show lid ()
+
+  let find_name lid scope =
+    match lid with
+    | Lident name -> get_name name scope
+    | Ldot (path, name) ->
+        Option.bind (find_module path scope) ~f:(get_name name)
+    | Lapply _ ->
+        failwithf "Don't know how to find identifier %a" Longident.show lid ()
 end
 
 module TypeEnvi = struct
@@ -95,8 +114,10 @@ let find_type_variable name env =
 let add_module (name : str) m =
   map_current_scope ~f:(Scope.add_module name.txt m)
 
-let get_module (name : str) env =
-  List.find_map ~f:(Scope.get_module name.txt) env.scope_stack
+let find_module (lid : lid) env =
+  match List.find_map ~f:(Scope.find_module lid.txt) env.scope_stack with
+  | Some m -> m
+  | None -> failwithf "Could not find module %a." Longident.show lid.txt ()
 
 module Type = struct
   let mk ~loc type_desc env =
@@ -252,9 +273,15 @@ module Type = struct
         mk ~loc (Tarrow (typ1, typ2)) env
 end
 
-let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
+let add_name (name : str) typ =
+  map_current_scope ~f:(Scope.add_name name.txt typ)
 
-let get_name name env =
-  match List.find_map ~f:(Scope.get_name name) env.scope_stack with
+let get_name (name : str) env =
+  match List.find_map ~f:(Scope.get_name name.txt) env.scope_stack with
   | Some typ -> Type.copy typ (Map.empty (module Int)) env
   | None -> failwithf "Could not find name %s." name.txt ()
+
+let find_name (lid : lid) env =
+  match List.find_map ~f:(Scope.find_name lid.txt) env.scope_stack with
+  | Some typ -> Type.copy typ (Map.empty (module Int)) env
+  | None -> failwithf "Could not find name %a." Longident.show lid.txt ()

@@ -171,10 +171,7 @@ and check_statement env stmt =
 
 and check_module_desc ~loc:_ env = function
   | Structure stmts -> List.fold ~f:check_statement ~init:env stmts
-  | ModName name -> (
-    match Envi.get_module name env with
-    | Some m -> Envi.push_scope m env
-    | None -> failwithf "Could not find module %s" name.txt () )
+  | ModName name -> Envi.push_scope (Envi.find_module name env) env
 
 and check_module_expr env m = check_module_desc ~loc:m.mod_loc env m.mod_desc
 
