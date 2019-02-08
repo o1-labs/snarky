@@ -25,7 +25,6 @@ module Scope = struct
     { names: type_expr name_map
     ; type_variables: type_expr name_map
     ; type_decls: type_decl name_map
-    ; type_decls_ids: type_decl int_map
     ; fields: (type_decl * int) name_map
     ; ctors: (type_decl * int) name_map
     ; modules: t name_map }
@@ -34,7 +33,6 @@ module Scope = struct
     { names= Map.empty (module String)
     ; type_variables= Map.empty (module String)
     ; type_decls= Map.empty (module String)
-    ; type_decls_ids= Map.empty (module Int)
     ; fields= Map.empty (module String)
     ; ctors= Map.empty (module String)
     ; modules= Map.empty (module String) }
@@ -66,11 +64,6 @@ module Scope = struct
       type_decls= Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
     }
 
-  let add_type_declaration_id decl scope =
-    { scope with
-      type_decls_ids= Map.set scope.type_decls_ids ~key:decl.tdec_id ~data:decl
-    }
-
   let find_type_declaration (name : str) scope =
     Map.find scope.type_decls name.txt
 
@@ -78,26 +71,23 @@ module Scope = struct
     let scope =
       { scope with
         type_decls=
-          Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
-      ; type_decls_ids=
-          Map.set scope.type_decls_ids ~key:decl.tdec_id ~data:decl }
+          Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl }
     in
     match decl.tdec_desc with
     | TAbstract | TAlias _ -> scope
     | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
     | TVariant ctors -> List.foldi ~f:(add_ctor decl) ~init:scope ctors
 
-  let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors ~modules
+  let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors
+      ~modules
       { names= names1
       ; type_variables= type_variables1
-      ; type_decls_ids= _
       ; type_decls= type_decls1
       ; fields= fields1
       ; ctors= ctors1
       ; modules= modules1 }
       { names= names2
       ; type_variables= type_variables2
-      ; type_decls_ids= _
       ; type_decls= type_decls2
       ; fields= fields2
       ; ctors= ctors2
@@ -134,10 +124,16 @@ end
 
 module TypeEnvi = struct
   type t =
-    {type_id: int; type_decl_id: int; variable_instances: type_expr int_map}
+    { type_id: int
+    ; type_decl_id: int
+    ; variable_instances: type_expr int_map
+    ; type_decls: type_decl int_map }
 
   let empty =
-    {type_id= 1; type_decl_id= 1; variable_instances= Map.empty (module Int)}
+    { type_id= 1
+    ; type_decl_id= 1
+    ; variable_instances= Map.empty (module Int)
+    ; type_decls= Map.empty (module Int) }
 
   let instance env (typ : type_expr) =
     Map.find env.variable_instances typ.type_id
@@ -145,7 +141,7 @@ module TypeEnvi = struct
   let add_instance (typ : type_expr) typ' env =
     { env with
       variable_instances=
-        Map.update env.variable_instances typ.type_id ~f:(fun _ -> typ') }
+        Map.set env.variable_instances ~key:typ.type_id ~data:typ' }
 
   let clear_instance (typ : type_expr) env =
     {env with variable_instances= Map.remove env.variable_instances typ.type_id}
@@ -154,6 +150,11 @@ module TypeEnvi = struct
 
   let next_decl_id env =
     (env.type_decl_id, {env with type_decl_id= env.type_decl_id + 1})
+
+  let decl env (ctor : variant) = Map.find env.type_decls ctor.var_decl_id
+
+  let add_decl (decl : type_decl) env =
+    {env with type_decls= Map.set env.type_decls ~key:decl.tdec_id ~data:decl}
 end
 
 type t = {scope_stack: Scope.t list; type_env: TypeEnvi.t; depth: int}
@@ -457,7 +458,9 @@ module TypeDecl = struct
                       let env, args =
                         List.fold_map ~init:env args ~f:(fun env arg ->
                             let arg, env =
-                              Type.import ~must_find:(not (Option.is_some ctor_ret)) arg env
+                              Type.import
+                                ~must_find:(not (Option.is_some ctor_ret))
+                                arg env
                             in
                             (env, arg) )
                       in
@@ -479,7 +482,10 @@ module TypeDecl = struct
     in
     let env = close_scope env in
     let decl = {decl with tdec_id; tdec_params; tdec_desc} in
-    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
+    let env =
+      map_current_scope ~f:(Scope.register_type_declaration decl) env
+    in
+    let env = {env with type_env= TypeEnvi.add_decl decl env.type_env} in
     (decl, env)
 
   let mk_typ ?(loc = Location.none) ~params decl =

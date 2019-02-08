@@ -281,7 +281,8 @@ let rec report_error ppf = function
       fprintf ppf "Variable %s must occur on both sides of this '|' pattern."
         name
   | Pattern_declaration (kind, name) ->
-      fprintf ppf "Unexpected %s declaration for %s within a pattern." kind name
+      fprintf ppf "Unexpected %s declaration for %s within a pattern." kind
+        name
 
 let () =
   Location.register_error_of_exn (function
