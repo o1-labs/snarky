@@ -1,7 +1,12 @@
 open Core_kernel
 open Parsetypes
 
-type error = No_open_scopes
+type error =
+  | No_open_scopes
+  | Unbound_type_var of type_expr
+  | Unbound_type of string
+  | Wrong_number_args of string * int * int
+  | Expected_type_var of type_expr
 
 exception Error of Location.t * error
 
@@ -150,7 +155,7 @@ module Type = struct
     match typ.type_desc with
     | Tvar (None, _) -> (
       match must_find with
-      | Some true -> failwith "Anonymous type variable is not allowed here."
+      | Some true -> raise (Error (typ.type_loc, Unbound_type_var typ))
       | _ -> mkvar ~loc None env )
     | Tvar ((Some {txt= x; _} as name), _) -> (
         let var =
@@ -158,7 +163,7 @@ module Type = struct
           | Some true ->
               let var = find_type_variable x env in
               if not (Option.is_some var) then
-                failwith "Could not find type variable." ;
+                raise (Error (typ.type_loc, Unbound_type_var typ)) ;
               var
           | Some false -> None
           | None -> find_type_variable x env
@@ -179,22 +184,23 @@ module Type = struct
         let env = close_scope env in
         mk ~loc (Tpoly (vars, typ)) env
     | Tctor variant ->
+        let {var_ident; var_params; _} = variant in
         let decl =
-          match find_type_declaration variant.var_ident env with
+          match find_type_declaration var_ident env with
           | Some decl -> decl
-          | None ->
-              failwithf "Could not find declaration for type %s."
-                variant.var_ident.txt ()
+          | None -> raise (Error (var_ident.loc, Unbound_type var_ident.txt))
         in
         let variant = {variant with var_decl_id= decl.tdec_id} in
-        if
-          not
-            (Int.equal
-               (List.length variant.var_params)
-               (List.length decl.tdec_params))
-        then failwith "Variant has an incorrect number of arguments." ;
+        let given_args_length = List.length var_params in
+        let expected_args_length = List.length decl.tdec_params in
+        if not (Int.equal given_args_length expected_args_length) then
+          raise
+            (Error
+               ( typ.type_loc
+               , Wrong_number_args
+                   (var_ident.txt, given_args_length, expected_args_length) )) ;
         let env, var_params =
-          List.fold_map ~init:env variant.var_params ~f:(fun env param ->
+          List.fold_map ~init:env var_params ~f:(fun env param ->
               let param, env = import param env in
               (env, param) )
         in
@@ -339,7 +345,7 @@ module TypeDecl = struct
           | Tvar _ ->
               let var, env = Type.import ~must_find:false param env in
               (env, var)
-          | _ -> failwith "Expected a variable as a type parameter." )
+          | _ -> raise (Error (param.type_loc, Expected_type_var param)) )
     in
     let tdec_desc, env =
       match decl.tdec_desc with
@@ -422,9 +428,22 @@ end
 
 open Format
 
+let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
+
 let report_error ppf = function
   | No_open_scopes ->
       fprintf ppf "Internal error: There is no current open scope."
+  | Unbound_type_var var -> fprintf ppf "Unbound type parameter %a." pp_typ var
+  | Unbound_type typename ->
+      fprintf ppf "Unbound type constructor %s." typename
+  | Wrong_number_args (typename, given, expected) ->
+      fprintf ppf
+        "@[The type constructor %s expects %d argument(s)@ but is here \
+         applied to %d argument(s).@]"
+        typename expected given
+  | Expected_type_var typ ->
+      fprintf ppf "Syntax error: Expected a type parameter, but got %a." pp_typ
+        typ
 
 let () =
   Location.register_error_of_exn (function

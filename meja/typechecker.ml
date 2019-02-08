@@ -66,7 +66,8 @@ let rec check_type_aux typ ctyp env =
               check_type_aux param constr_param env )
         with
         | Ok env -> env
-        | Unequal_lengths -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
+        | Unequal_lengths ->
+            raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
       else raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
   | _, _ -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
 
