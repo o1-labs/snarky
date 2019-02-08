@@ -77,6 +77,7 @@ and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 let of_statement_desc ?loc = function
   | Value (p, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
+  | TypeDecl decl -> Str.type_ ?loc Recursive [of_type_decl decl]
 
 let of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 
