@@ -133,7 +133,7 @@ let rec get_expression_desc ~loc env = function
   | Variable name -> (
     match Envi.get_name name env with
     | Some (typ, env) -> (typ, env)
-    | None -> raise (Error (loc, Unbound_value name)))
+    | None -> raise (Error (loc, Unbound_value name)) )
   | Int _ -> Envi.Type.mk ~loc (Tctor {txt= "int"; loc= Location.none}) env
   | Fun (p, body) ->
       let env = Envi.open_scope env in
@@ -186,17 +186,16 @@ let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
 
 let rec report_error ppf = function
   | Check_failed (typ, constr_typ, err) ->
-      fprintf ppf
-        "Incompatable types @['%a'@] and @['%a'@]:@.%a"
-        pp_typ typ pp_typ constr_typ report_error err
+      fprintf ppf "Incompatable types @['%a'@] and @['%a'@]:@.%a" pp_typ typ
+        pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
-      fprintf ppf "Cannot unify @['%a'@] and @['%a'@].@."
-        pp_typ typ pp_typ constr_typ
+      fprintf ppf "Cannot unify @['%a'@] and @['%a'@].@." pp_typ typ pp_typ
+        constr_typ
   | Recursive_variable typ ->
-      fprintf ppf "The variable @['%a@](%d) would have an instance that contains itself."
+      fprintf ppf
+        "The variable @['%a@](%d) would have an instance that contains itself."
         pp_typ typ typ.type_id
-  | Unbound_value value ->
-      fprintf ppf "Unbound value %s." value.txt
+  | Unbound_value value -> fprintf ppf "Unbound value %s." value.txt
 
 let () =
   Location.register_error_of_exn (function
