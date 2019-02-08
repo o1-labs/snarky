@@ -1,8 +1,7 @@
 open Core_kernel
 open Parsetypes
 
-type error =
-  | No_open_scopes
+type error = No_open_scopes
 
 exception Error of Location.t * error
 
@@ -250,7 +249,7 @@ open Format
 
 let report_error ppf = function
   | No_open_scopes ->
-    fprintf ppf "Internal error: There is no current open scope."
+      fprintf ppf "Internal error: There is no current open scope."
 
 let () =
   Location.register_error_of_exn (function

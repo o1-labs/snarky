@@ -54,7 +54,8 @@ let rec check_type_aux typ ctyp env =
           check_type_aux typ ctyp env )
     with
     | Ok env -> env
-    | Unequal_lengths -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) )
+    | Unequal_lengths ->
+        raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) )
   | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
   | Tctor name, Tctor constr_name when String.equal name.txt constr_name.txt ->
