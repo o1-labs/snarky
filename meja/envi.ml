@@ -58,13 +58,18 @@ let current_scope {scope_stack; _} =
   | Some scope -> scope
   | None -> failwith "No environment scopes are open"
 
-let open_scope env =
-  {env with scope_stack= Scope.empty :: env.scope_stack; depth= env.depth + 1}
+let push_scope scope env =
+  {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
 
-let close_scope env =
-  match List.tl env.scope_stack with
-  | Some scope_stack -> {env with scope_stack; depth= env.depth - 1}
-  | None -> failwith "No environment scopes are open"
+let open_scope = push_scope Scope.empty
+
+let pop_scope env =
+  match env.scope_stack with
+  | [] -> failwith "No environment scopes are open"
+  | scope :: scope_stack ->
+      (scope, {env with scope_stack; depth= env.depth + 1})
+
+let close_scope env = snd (pop_scope env)
 
 let map_current_scope ~f env =
   match env.scope_stack with
