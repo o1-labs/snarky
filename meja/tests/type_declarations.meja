@@ -4,26 +4,12 @@ type u = (int, bool);
 
 type v('a) = 'a;
 
-type w(_) = A(int) | B('a) : w('a);
-
 type x('a) = {a : 'a, b : int, c : bool};
 
 type y = x(unit);
 
 type z = x(bool);
 
-type a = x(x(x(w(x(t)))));
-
-type b('a, 'b, 'c) =
-  | First('a) : b('a, 'a, 'a)
-  | Second('b, b('a, _, _)) : b('a, 'b, 'b)
-  | Third('c, b('a, 'b, _)) : b('a, 'b, 'c)
-  | Rotate(b('a, 'b, 'c)) : b('b, 'c, 'a);
-
-type unit = ();
-
-type polycary = A('a) : polycary;
-
-type c('a) = A{x : 'a} | B('a) | C{x : 'b} : c('b);
+type a = x(x(x(v(x(t)))));
 
 type d

@@ -11,16 +11,14 @@ module Scope = struct
     ; type_variables: type_expr name_map
     ; type_decls: type_decl name_map
     ; type_decls_ids: type_decl int_map
-    ; fields: (type_decl * int) name_map
-    ; ctors: (type_decl * int) name_map }
+    ; fields: (type_decl * int) name_map }
 
   let empty =
     { names= Map.empty (module String)
     ; type_variables= Map.empty (module String)
     ; type_decls= Map.empty (module String)
     ; type_decls_ids= Map.empty (module Int)
-    ; fields= Map.empty (module String)
-    ; ctors= Map.empty (module String) }
+    ; fields= Map.empty (module String) }
 
   let add_name {Location.txt= key; _} typ scope =
     {scope with names= Map.set scope.names ~key ~data:typ}
@@ -36,12 +34,6 @@ module Scope = struct
     { scope with
       fields=
         Map.set scope.fields ~key:field_decl.fld_ident.txt ~data:(decl, index)
-    }
-
-  let add_ctor decl index scope ctor_decl =
-    { scope with
-      ctors=
-        Map.set scope.ctors ~key:ctor_decl.ctor_ident.txt ~data:(decl, index)
     }
 
   let add_type_declaration decl scope =
@@ -68,7 +60,6 @@ module Scope = struct
     match decl.tdec_desc with
     | TAbstract | TAlias _ -> scope
     | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
-    | TVariant ctors -> List.foldi ~f:(add_ctor decl) ~init:scope ctors
 end
 
 module TypeEnvi = struct
@@ -361,51 +352,6 @@ module TypeDecl = struct
                 (env, {field with fld_type}) )
           in
           (TRecord fields, env)
-      | TVariant ctors ->
-          let env, ctors =
-            List.fold_map ~init:env ctors ~f:(fun env ctor ->
-                let scope, env = pop_scope env in
-                let ctor_ret, env =
-                  match ctor.ctor_ret with
-                  | Some ret ->
-                      let env = open_scope env in
-                      ( match ret.type_desc with
-                      | Tctor {var_ident= str; _}
-                        when String.equal str.txt decl.tdec_ident.txt ->
-                          ()
-                      | _ ->
-                          failwith
-                            "The constructor must be of the type it constructs."
-                      ) ;
-                      let ret, env = Type.import ~must_find:false ret env in
-                      (Some ret, env)
-                  | None -> (None, push_scope scope env)
-                in
-                let env, ctor_args =
-                  match ctor.ctor_args with
-                  | Ctor_tuple args ->
-                      let env, args =
-                        List.fold_map ~init:env args ~f:(fun env arg ->
-                            let arg, env =
-                              Type.import ?must_find:(Option.map ctor_ret ~f:(fun _ -> true)) arg env
-                            in
-                            (env, arg) )
-                      in
-                      (env, Ctor_tuple args)
-                  | Ctor_record fields ->
-                      let env, fields =
-                        List.fold_map ~init:env fields ~f:(fun env field ->
-                            let fld_type, env =
-                              Type.import ~must_find:true field.fld_type env
-                            in
-                            (env, {field with fld_type}) )
-                      in
-                      (env, Ctor_record fields)
-                in
-                let env = push_scope scope (close_scope env) in
-                (env, {ctor with ctor_args; ctor_ret}) )
-          in
-          (TVariant ctors, env)
     in
     let env = close_scope env in
     let decl = {decl with tdec_id; tdec_params; tdec_desc} in
@@ -437,24 +383,13 @@ module Core = struct
     ; tdec_id= 0
     ; tdec_loc= Location.none }
 
-  let mk_constructor name =
-    { ctor_ident= mkloc name
-    ; ctor_args= Ctor_tuple []
-    ; ctor_ret= None
-    ; ctor_loc= Location.none }
-
   let env = empty
 
   let int, env = TypeDecl.import (mk_type_decl "int" TAbstract) env
 
-  let unit, env =
-    TypeDecl.import (mk_type_decl "unit" (TVariant [mk_constructor "()"])) env
+  let unit, env = TypeDecl.import (mk_type_decl "unit" TAbstract) env
 
-  let bool, env =
-    TypeDecl.import
-      (mk_type_decl "bool"
-         (TVariant [mk_constructor "true"; mk_constructor "false"]))
-      env
+  let bool, env = TypeDecl.import (mk_type_decl "bool" TAbstract) env
 
   let char, env = TypeDecl.import (mk_type_decl "char" TAbstract) env
 
