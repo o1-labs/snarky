@@ -6,6 +6,9 @@ type error =
   | Cannot_unify of type_expr * type_expr
   | Recursive_variable of type_expr
   | Unbound_value of str
+  | Variable_on_one_side of string
+  | Pattern_type_declaration of string
+  | Pattern_field_declaration of string
 
 exception Error of Location.t * error
 
@@ -108,6 +111,7 @@ let add_polymorphised name typ env =
   Envi.add_name name typ env
 
 let rec check_pattern_desc ~loc ~add env typ = function
+  | PAny -> env
   | PVariable str -> add str typ env
   | PConstraint (p, constr_typ) ->
       let constr_typ, env = Envi.Type.import constr_typ env in
@@ -122,6 +126,40 @@ let rec check_pattern_desc ~loc ~add env typ = function
       let tuple_typ, env = Envi.Type.mk ~loc (Ttuple vars) env in
       let env = check_type env typ tuple_typ in
       List.fold2_exn ~init:env vars ps ~f:(check_pattern ~add)
+  | POr (p1, p2) ->
+      let env = Envi.open_scope env in
+      let env = check_pattern ~add env typ p1 in
+      let scope1, env = Envi.pop_scope env in
+      let env = Envi.open_scope env in
+      let env = check_pattern ~add env typ p2 in
+      let scope2, env = Envi.pop_scope env in
+      (* Check that the assignments in each scope match. *)
+      let env =
+        Envi.Scope.fold_over ~init:env scope1 scope2
+          ~type_variables:(fun ~key:_ ~data env ->
+            match data with
+            | `Both (var1, var2) -> check_type env var1 var2
+            | _ -> env )
+          ~names:(fun ~key:name ~data env ->
+            match data with
+            | `Both (typ1, typ2) -> check_type env typ1 typ2
+            | _ -> raise (Error (loc, Variable_on_one_side name)) )
+          ~type_decls:(fun ~key:name ~data _ ->
+            let loc =
+              match data with
+              | `Both (typ, _) | `Left typ | `Right typ -> typ.tdec_loc
+            in
+            raise (Error (loc, Pattern_type_declaration name)) )
+          ~fields:(fun ~key:name ~data _ ->
+            let loc =
+              match data with
+              | `Both ((typ, _), _) | `Left (typ, _) | `Right (typ, _) ->
+                  typ.tdec_loc
+            in
+            raise (Error (loc, Pattern_field_declaration name)) )
+      in
+      Envi.push_scope scope2 env
+  | PInt _ -> check_type env typ Envi.Core.Type.int
 
 and check_pattern ~add env typ pat =
   check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc
@@ -210,6 +248,13 @@ let rec report_error ppf = function
         "The variable @['%a@](%d) would have an instance that contains itself."
         pp_typ typ typ.type_id
   | Unbound_value value -> fprintf ppf "Unbound value %s." value.txt
+  | Variable_on_one_side name ->
+      fprintf ppf "Variable %s must occur on both sides of this '|' pattern."
+        name
+  | Pattern_type_declaration name ->
+      fprintf ppf "Unexpected type declaration for %s within a pattern." name
+  | Pattern_field_declaration name ->
+      fprintf ppf "Unexpected field declaration for %s within a pattern." name
 
 let () =
   Location.register_error_of_exn (function
