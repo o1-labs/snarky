@@ -35,10 +35,13 @@ let of_type_decl decl =
         ~kind:(Parsetree.Ptype_record (List.map ~f:of_field_decl fields))
 
 let rec of_pattern_desc ?loc = function
+  | PAny -> Pat.any ?loc ()
   | PVariable str -> Pat.var ?loc str
   | PConstraint (p, typ) ->
       Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)
   | PTuple ps -> Pat.tuple ?loc (List.map ~f:of_pattern ps)
+  | POr (p1, p2) -> Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
+  | PInt i -> Pat.constant ?loc (Const.int i)
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 

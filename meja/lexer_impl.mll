@@ -45,6 +45,7 @@ rule token = parse
   | ':' { COLON }
   | ',' { COMMA }
   | '_' { UNDERSCORE }
+  | '|' { BAR }
   | ''' { QUOT }
   | '.' { DOT }
   | lowercase_alpha ident* { LIDENT(Lexing.lexeme lexbuf) }
