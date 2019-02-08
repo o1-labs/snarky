@@ -19,6 +19,7 @@ and pattern_desc =
   | PConstraint of pattern * type_expr
   | PTuple of pattern list
   | POr of pattern * pattern
+  | PInt of int
 
 type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 

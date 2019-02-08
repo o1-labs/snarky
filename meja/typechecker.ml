@@ -126,6 +126,11 @@ let rec check_pattern_desc ~loc ~add env typ = function
                   name () )
       in
       Envi.push_scope scope2 env
+  | PInt _ ->
+      let constr_typ, env =
+        Envi.Type.mk ~loc (Tctor {txt= "int"; loc= Location.none}) env
+      in
+      check_type env typ constr_typ
 
 and check_pattern ~add env typ pat =
   check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc

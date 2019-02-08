@@ -102,6 +102,8 @@ pat_no_bar:
     { mkpat ~pos:$loc (PConstraint (p, typ)) }
   | x = as_loc(LIDENT)
     { mkpat ~pos:$loc (PVariable x) }
+  | i = INT
+    { mkpat ~pos:$loc (PInt i) }
 
 pat:
   | p = pat_no_bar
