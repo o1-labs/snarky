@@ -160,17 +160,21 @@ and check_binding (env : Envi.t) p e : 's =
 
 let rec check_statement_desc ~loc:_ env = function
   | Value (p, e) -> check_binding env p e
-  | Module (_name, m) ->
+  | Module (name, m) ->
       let env = Envi.open_scope env in
       let env = check_module_expr env m in
-      Envi.close_scope env
+      let m, env = Envi.pop_scope env in
+      Envi.add_module name m env
 
 and check_statement env stmt =
   check_statement_desc ~loc:stmt.stmt_loc env stmt.stmt_desc
 
 and check_module_desc ~loc:_ env = function
   | Structure stmts -> List.fold ~f:check_statement ~init:env stmts
-  | ModName _ -> env
+  | ModName name -> (
+    match Envi.get_module name env with
+    | Some m -> Envi.push_scope m env
+    | None -> failwithf "Could not find module %s" name.txt () )
 
 and check_module_expr env m = check_module_desc ~loc:m.mod_loc env m.mod_desc
 

@@ -6,11 +6,15 @@ type 'a name_map = (string, 'a, String.comparator_witness) Base.Map.t
 type 'a int_map = (int, 'a, Int.comparator_witness) Base.Map.t
 
 module Scope = struct
-  type t = {names: type_expr name_map; type_variables: type_expr name_map}
+  type t =
+    { names: type_expr name_map
+    ; type_variables: type_expr name_map
+    ; modules: t name_map }
 
   let empty =
     { names= Map.empty (module String)
-    ; type_variables= Map.empty (module String) }
+    ; type_variables= Map.empty (module String)
+    ; modules= Map.empty (module String) }
 
   let add_name {Location.txt= name; _} typ scope =
     {scope with names= Map.update scope.names name ~f:(fun _ -> typ)}
@@ -22,6 +26,11 @@ module Scope = struct
       type_variables= Map.update scope.type_variables name ~f:(fun _ -> typ) }
 
   let find_type_variable name scope = Map.find scope.type_variables name
+
+  let add_module name m scope =
+    {scope with modules= Map.set scope.modules ~key:name ~data:m}
+
+  let get_module name scope = Map.find scope.modules name
 end
 
 module TypeEnvi = struct
@@ -58,13 +67,18 @@ let current_scope {scope_stack; _} =
   | Some scope -> scope
   | None -> failwith "No environment scopes are open"
 
-let open_scope env =
-  {env with scope_stack= Scope.empty :: env.scope_stack; depth= env.depth + 1}
+let push_scope scope env =
+  {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
 
-let close_scope env =
-  match List.tl env.scope_stack with
-  | Some scope_stack -> {env with scope_stack; depth= env.depth - 1}
-  | None -> failwith "No environment scopes are open"
+let open_scope = push_scope Scope.empty
+
+let pop_scope env =
+  match env.scope_stack with
+  | [] -> failwith "No environment scopes are open"
+  | scope :: scope_stack ->
+      (scope, {env with scope_stack; depth= env.depth + 1})
+
+let close_scope env = snd (pop_scope env)
 
 let map_current_scope ~f env =
   match env.scope_stack with
@@ -77,6 +91,12 @@ let add_type_variable name typ =
 
 let find_type_variable name env =
   List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
+
+let add_module (name : str) m =
+  map_current_scope ~f:(Scope.add_module name.txt m)
+
+let get_module (name : str) env =
+  List.find_map ~f:(Scope.get_module name.txt) env.scope_stack
 
 module Type = struct
   let mk ~loc type_desc env =
