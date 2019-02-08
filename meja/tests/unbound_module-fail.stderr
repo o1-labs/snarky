@@ -1,0 +1,2 @@
+File "tests/unbound_module-fail.meja", line 1, characters 11-12:
+Error: Unbound module Y.
