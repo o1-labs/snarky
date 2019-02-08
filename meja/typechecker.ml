@@ -166,7 +166,11 @@ and check_binding (env : Envi.t) p e : 's =
   let e_type, env = get_expression env e in
   check_pattern ~add:add_polymorphised env e_type p
 
-let check_statement_desc env = function Value (p, e) -> check_binding env p e
+let check_statement_desc env = function
+  | Value (p, e) -> check_binding env p e
+  | TypeDecl decl ->
+      let _, env = Envi.TypeDecl.import decl env in
+      env
 
 let check_statement env stmt = check_statement_desc env stmt.stmt_desc
 

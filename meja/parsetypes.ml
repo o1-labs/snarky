@@ -60,4 +60,4 @@ and expression_desc =
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
-and statement_desc = Value of pattern * expression
+and statement_desc = Value of pattern * expression | TypeDecl of type_decl
