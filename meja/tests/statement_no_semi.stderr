@@ -1,0 +1,2 @@
+File "tests/statement_no_semi.meja", line 2, characters 0-3:
+Error: Missing semicolon.

@@ -1,6 +1,14 @@
 open Core_kernel
 open Parsetypes
 
+type error =
+  | Check_failed of type_expr * type_expr * error
+  | Cannot_unify of type_expr * type_expr
+  | Recursive_variable of type_expr
+  | Unbound_value of str
+
+exception Error of Location.t * error
+
 let rec check_type_aux typ ctyp env =
   let bind_none x f = match x with Some x -> x | None -> f () in
   let without_instance ~f (typ : type_expr) env =
@@ -9,9 +17,7 @@ let rec check_type_aux typ ctyp env =
         let env = Envi.Type.clear_instance typ env in
         let env = f typ' env in
         match Envi.Type.instance env typ with
-        | Some _ ->
-            failwith
-              "Found a type variable that unifies with part of its own instance"
+        | Some _ -> raise (Error (typ.type_loc, Recursive_variable typ))
         | None -> Some (Envi.Type.add_instance typ typ' env) )
     | None -> None
   in
@@ -48,7 +54,8 @@ let rec check_type_aux typ ctyp env =
           check_type_aux typ ctyp env )
     with
     | Ok env -> env
-    | Unequal_lengths -> failwith "Type doesn't check against constr_typ." )
+    | Unequal_lengths ->
+        raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) )
   | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
   | Tctor variant, Tctor constr_variant ->
@@ -59,11 +66,15 @@ let rec check_type_aux typ ctyp env =
               check_type_aux param constr_param env )
         with
         | Ok env -> env
-        | Unequal_lengths -> failwith "Type doesn't check against constr_typ."
-      else failwith "Type doesn't check against constr_typ."
-  | _, _ -> failwith "Type doesn't check against constr_typ."
+        | Unequal_lengths -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
+      else raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
+  | _, _ -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
 
-let check_type env typ constr_typ = check_type_aux typ constr_typ env
+let check_type env typ constr_typ =
+  match check_type_aux typ constr_typ env with
+  | exception Error (_, err) ->
+      raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
+  | env -> env
 
 let rec free_type_vars ?depth typ =
   let free_type_vars = free_type_vars ?depth in
@@ -128,7 +139,10 @@ let rec get_expression_desc ~loc env = function
             apply_typ xs retvar env
       in
       apply_typ xs f_typ env
-  | Variable name -> Envi.get_name name env
+  | Variable name -> (
+    match Envi.get_name name env with
+    | Some (typ, env) -> (typ, env)
+    | None -> raise (Error (loc, Unbound_value name)) )
   | Int _ -> (Envi.Core.Type.int, env)
   | Fun (p, body) ->
       let env = Envi.open_scope env in
@@ -176,3 +190,27 @@ let check_statement env stmt = check_statement_desc env stmt.stmt_desc
 
 let check (ast : statement list) =
   List.fold_left ast ~init:Envi.Core.env ~f:check_statement
+
+(* Error handling *)
+
+open Format
+
+let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
+
+let rec report_error ppf = function
+  | Check_failed (typ, constr_typ, err) ->
+      fprintf ppf "Incompatable types @['%a'@] and @['%a'@]:@.%a" pp_typ typ
+        pp_typ constr_typ report_error err
+  | Cannot_unify (typ, constr_typ) ->
+      fprintf ppf "Cannot unify @['%a'@] and @['%a'@].@." pp_typ typ pp_typ
+        constr_typ
+  | Recursive_variable typ ->
+      fprintf ppf
+        "The variable @['%a@](%d) would have an instance that contains itself."
+        pp_typ typ typ.type_id
+  | Unbound_value value -> fprintf ppf "Unbound value %s." value.txt
+
+let () =
+  Location.register_error_of_exn (function
+    | Error (loc, err) -> Some (Location.error_of_printer loc report_error err)
+    | _ -> None )

@@ -1,4 +1,4 @@
-Uncaught exception:
-  
-  (Failure "Type doesn't check against constr_typ.")
+File "tests/apply-fail.meja", line 3, characters 2-7:
+Error: Incompatable types '_ -> _' and 'unit -> _':
+Cannot unify 'int' and 'unit'.
 
