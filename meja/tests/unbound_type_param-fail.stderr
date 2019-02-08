@@ -1,0 +1,2 @@
+File "tests/unbound_type_param-fail.meja", line 1, characters 18-20:
+Error: Unbound type parameter 'b.
