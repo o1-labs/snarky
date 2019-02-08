@@ -25,6 +25,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 %token COLON
 %token COMMA
 %token UNDERSCORE
+%token QUOT
 %token EOF
 
 %token EOL
@@ -103,6 +104,8 @@ pat:
 simple_type_expr:
   | UNDERSCORE
     { mktyp ~pos:$loc (Tvar (None, 0)) }
+  | QUOT x = as_loc(LIDENT)
+    { mktyp ~pos:$loc (Tvar (Some x, 0)) }
   | x = as_loc(LIDENT)
     { mktyp ~pos:$loc (Tctor {var_ident= x; var_params= []; var_decl_id= 0}) }
   | LBRACKET x = type_expr RBRACKET
