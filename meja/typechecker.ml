@@ -145,13 +145,18 @@ let rec check_pattern_desc ~loc ~add env typ = function
             | `Both (typ1, typ2) -> check_type env typ1 typ2
             | _ -> raise (Error (loc, Variable_on_one_side name)) )
           ~type_decls:(fun ~key:name ~data _ ->
-            let loc = match data with
-            | `Both (typ, _) | `Left typ | `Right typ -> typ.tdec_loc in
-            raise (Error (loc, Pattern_type_declaration name)))
-          ~fields:(fun ~key:name ~data:data _ ->
-            let loc = match data with
-            | `Both ((typ, _), _) | `Left (typ, _) | `Right (typ, _) -> typ.tdec_loc in
-            raise (Error (loc, Pattern_field_declaration name)))
+            let loc =
+              match data with
+              | `Both (typ, _) | `Left typ | `Right typ -> typ.tdec_loc
+            in
+            raise (Error (loc, Pattern_type_declaration name)) )
+          ~fields:(fun ~key:name ~data _ ->
+            let loc =
+              match data with
+              | `Both ((typ, _), _) | `Left (typ, _) | `Right (typ, _) ->
+                  typ.tdec_loc
+            in
+            raise (Error (loc, Pattern_field_declaration name)) )
       in
       Envi.push_scope scope2 env
   | PInt _ -> check_type env typ Envi.Core.Type.int
