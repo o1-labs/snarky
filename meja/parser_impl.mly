@@ -25,6 +25,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 %token COLON
 %token COMMA
 %token UNDERSCORE
+%token BAR
 %token EOF
 
 %token EOL
@@ -90,17 +91,23 @@ block:
   | e1 = expr SEMI rest = block
     { mkexp ~pos:$loc (Seq (e1, rest)) }
 
-pat:
+pat_no_bar:
   | UNDERSCORE
     { mkpat ~pos:$loc PAny }
   | LBRACKET p = pat RBRACKET
     { p }
   | LBRACKET ps = tuple(pat) RBRACKET
     { mkpat ~pos:$loc (PTuple (List.rev ps)) }
-  | p = pat COLON typ = type_expr
+  | p = pat_no_bar COLON typ = type_expr
     { mkpat ~pos:$loc (PConstraint (p, typ)) }
   | x = as_loc(LIDENT)
     { mkpat ~pos:$loc (PVariable x) }
+
+pat:
+  | p = pat_no_bar
+    { p }
+  | p1 = pat_no_bar BAR p2 = pat
+    { mkpat ~pos:$loc (POr (p1, p2)) }
 
 simple_type_expr:
   | UNDERSCORE
