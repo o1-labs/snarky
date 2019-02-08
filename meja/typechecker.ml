@@ -7,6 +7,8 @@ type error =
   | Recursive_variable of type_expr
   | Unbound_value of str
   | Variable_on_one_side of string
+  | Pattern_type_declaration of string
+  | Pattern_field_declaration of string
 
 exception Error of Location.t * error
 
@@ -59,8 +61,17 @@ let rec check_type_aux typ ctyp env =
         raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) )
   | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
-  | Tctor name, Tctor constr_name when String.equal name.txt constr_name.txt ->
-      env
+  | Tctor variant, Tctor constr_variant ->
+      if Int.equal variant.var_decl_id constr_variant.var_decl_id then
+        match
+          List.fold2 ~init:env variant.var_params constr_variant.var_params
+            ~f:(fun env param constr_param ->
+              check_type_aux param constr_param env )
+        with
+        | Ok env -> env
+        | Unequal_lengths ->
+            raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
+      else raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
   | _, _ -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
 
 let check_type env typ constr_typ =
@@ -133,13 +144,17 @@ let rec check_pattern_desc ~loc ~add env typ = function
             match data with
             | `Both (typ1, typ2) -> check_type env typ1 typ2
             | _ -> raise (Error (loc, Variable_on_one_side name)) )
+          ~type_decls:(fun ~key:name ~data _ ->
+            let loc = match data with
+            | `Both (typ, _) | `Left typ | `Right typ -> typ.tdec_loc in
+            raise (Error (loc, Pattern_type_declaration name)))
+          ~fields:(fun ~key:name ~data:data _ ->
+            let loc = match data with
+            | `Both ((typ, _), _) | `Left (typ, _) | `Right (typ, _) -> typ.tdec_loc in
+            raise (Error (loc, Pattern_field_declaration name)))
       in
       Envi.push_scope scope2 env
-  | PInt _ ->
-      let constr_typ, env =
-        Envi.Type.mk ~loc (Tctor {txt= "int"; loc= Location.none}) env
-      in
-      check_type env typ constr_typ
+  | PInt _ -> check_type env typ Envi.Core.Type.int
 
 and check_pattern ~add env typ pat =
   check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc
@@ -162,7 +177,7 @@ let rec get_expression_desc ~loc env = function
     match Envi.get_name name env with
     | Some (typ, env) -> (typ, env)
     | None -> raise (Error (loc, Unbound_value name)) )
-  | Int _ -> Envi.Type.mk ~loc (Tctor {txt= "int"; loc= Location.none}) env
+  | Int _ -> (Envi.Core.Type.int, env)
   | Fun (p, body) ->
       let env = Envi.open_scope env in
       let p_typ, env = Envi.Type.mkvar ~loc None env in
@@ -199,12 +214,16 @@ and check_binding (env : Envi.t) p e : 's =
   let e_type, env = get_expression env e in
   check_pattern ~add:add_polymorphised env e_type p
 
-let check_statement_desc env = function Value (p, e) -> check_binding env p e
+let check_statement_desc env = function
+  | Value (p, e) -> check_binding env p e
+  | TypeDecl decl ->
+      let _, env = Envi.TypeDecl.import decl env in
+      env
 
 let check_statement env stmt = check_statement_desc env stmt.stmt_desc
 
 let check (ast : statement list) =
-  List.fold_left ast ~init:Envi.empty ~f:check_statement
+  List.fold_left ast ~init:Envi.Core.env ~f:check_statement
 
 (* Error handling *)
 
@@ -225,8 +244,12 @@ let rec report_error ppf = function
         pp_typ typ typ.type_id
   | Unbound_value value -> fprintf ppf "Unbound value %s." value.txt
   | Variable_on_one_side name ->
-      fprintf ppf "Variable %s must occur on both sides of this '|' pattern"
+      fprintf ppf "Variable %s must occur on both sides of this '|' pattern."
         name
+  | Pattern_type_declaration name ->
+      fprintf ppf "Unexpected type declaration for %s within a pattern." name
+  | Pattern_field_declaration name ->
+      fprintf ppf "Unexpected field declaration for %s within a pattern." name
 
 let () =
   Location.register_error_of_exn (function
