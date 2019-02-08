@@ -37,6 +37,7 @@ rule token = parse
   | ':' { COLON }
   | ',' { COMMA }
   | '_' { UNDERSCORE }
+  | '.' { DOT }
   | lowercase_alpha ident* { LIDENT(Lexing.lexeme lexbuf) }
   | uppercase_alpha ident* { UIDENT(Lexing.lexeme lexbuf) }
   | _ { failwith ("Unexpected character: " ^ Lexing.lexeme lexbuf) }

@@ -25,6 +25,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 %token COLON
 %token COMMA
 %token UNDERSCORE
+%token DOT
 %token EOF
 
 %token EOL
@@ -124,3 +125,9 @@ tuple(X):
 
 %inline as_loc(X): x = X
   { mkloc x (mklocation ($symbolstartpos, $endpos)) }
+
+longident(X):
+  | x = X
+    { Lident x }
+  | path = longident(X) DOT x = X
+    { Ldot (path, x) }
