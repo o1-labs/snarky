@@ -1,0 +1,4 @@
+Uncaught exception:
+  
+  (Failure "Variable x must occur on both sides of this '|' pattern")
+
