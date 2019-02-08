@@ -387,7 +387,7 @@ module TypeDecl = struct
                       let env, args =
                         List.fold_map ~init:env args ~f:(fun env arg ->
                             let arg, env =
-                              Type.import ~must_find:true arg env
+                              Type.import ?must_find:(Option.map ctor_ret ~f:(fun _ -> true)) arg env
                             in
                             (env, arg) )
                       in
