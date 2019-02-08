@@ -406,7 +406,6 @@ module TypeDecl = struct
   let import decl env =
     let tdec_id, type_env = TypeEnvi.next_decl_id env.type_env in
     let env = {env with type_env} in
-    (* Make sure the declaration is available to lookup for recursive types. *)
     let env = open_scope env in
     let env, tdec_params =
       List.fold_map ~init:env decl.tdec_params ~f:(fun env param ->
@@ -416,8 +415,11 @@ module TypeDecl = struct
               (env, var)
           | _ -> raise (Error (param.type_loc, Expected_type_var param)) )
     in
+    (* Make sure the declaration is available to lookup for recursive types. *)
     let decl = {decl with tdec_id; tdec_params} in
+    let scope, env = pop_scope env in
     let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
+    let env = push_scope scope env in
     let tdec_desc, env =
       match decl.tdec_desc with
       | TAbstract -> (TAbstract, env)
@@ -437,7 +439,7 @@ module TypeDecl = struct
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
                 let scope, env = pop_scope env in
-                let ctor_ret, env =
+                let ctor_ret, env, must_find =
                   match ctor.ctor_ret with
                   | Some ret ->
                       let env = open_scope env in
@@ -451,19 +453,15 @@ module TypeDecl = struct
                                ( ret.type_loc
                                , Constraints_not_satisfied (ret, decl) )) ) ;
                       let ret, env = Type.import ~must_find:false ret env in
-                      (Some ret, env)
-                  | None -> (None, push_scope scope env)
+                      (Some ret, env, None)
+                  | None -> (None, push_scope scope env, Some true)
                 in
                 let env, ctor_args =
                   match ctor.ctor_args with
                   | Ctor_tuple args ->
                       let env, args =
                         List.fold_map ~init:env args ~f:(fun env arg ->
-                            let arg, env =
-                              Type.import
-                                ~must_find:(not (Option.is_some ctor_ret))
-                                arg env
-                            in
+                            let arg, env = Type.import ?must_find arg env in
                             (env, arg) )
                       in
                       (env, Ctor_tuple args)
@@ -471,7 +469,7 @@ module TypeDecl = struct
                       let env, fields =
                         List.fold_map ~init:env fields ~f:(fun env field ->
                             let fld_type, env =
-                              Type.import ~must_find:true field.fld_type env
+                              Type.import ?must_find field.fld_type env
                             in
                             (env, {field with fld_type}) )
                       in
