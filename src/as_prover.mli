@@ -11,6 +11,9 @@ include Monad.S3 with type ('a, 'e, 's) t = 'e -> 's -> 's * 'a
 
 val run : ('a, 'e, 's) t -> 'e -> 's -> 's * 'a
 
+val read :
+  ('var, 'value, 'field, 'cvar, 'sys) Typ.t -> 'var -> ('value, 'cvar -> 'field, 'prover_state) t
+
 module type S = sig
   type var
 
