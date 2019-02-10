@@ -24,8 +24,14 @@ module Read = struct
 
   let read v = Free (T.Read (v, return))
 
-  let rec run t f =
-    match t with Pure x -> x | Free (T.Read (x, k)) -> run (k (f x)) f
+  let rec run_inspect ~inspect t f =
+    match t with
+    | Pure x -> x
+    | Free (T.Read (x, k)) ->
+        inspect x ;
+        run_inspect ~inspect (k (f x)) f
+
+  let run t f = run_inspect ~inspect:(fun _ -> ()) t f
 end
 
 module Alloc = struct

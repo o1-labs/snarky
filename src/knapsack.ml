@@ -77,29 +77,8 @@ module Make (Impl : Snark_intf.S) = struct
     (* res = (1 - b) * xs + b * ys
      res - xs = b * (ys - xs)
   *)
-    let if_ (b : Boolean.var) ~then_:ys ~else_:xs : (var, _) Impl.Checked.t =
-      let open Impl.Let_syntax in
-      let%bind res =
-        exists typ_unchecked
-          ~compute:
-            (let open As_prover.Let_syntax in
-            match%bind As_prover.read Boolean.typ b with
-            | false -> As_prover.read typ xs
-            | true -> As_prover.read typ ys)
-      in
-      let%map () =
-        let open Field.Checked.Infix in
-        assert_all
-          (List.map3_exn
-             (xs :> Field.Var.t list)
-             (ys :> Field.Var.t list)
-             (res :> Field.Var.t list)
-             ~f:(fun x y r ->
-               Constraint.r1cs ~label:"Knapsack.Hash.if_"
-                 (b :> Field.Var.t)
-                 (y - x) (r - x) ))
-      in
-      res
+    let if_ (b : Boolean.var) ~then_ ~else_ : (var, _) Impl.Checked.t =
+      Impl.Checked.if_ typ_unchecked b ~then_ ~else_
 
     let hash (h1 : var) (h2 : var) =
       with_label "Knapsack.hash" (Checked.hash_to_bits knapsack (h1 @ h2))

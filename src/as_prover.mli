@@ -35,6 +35,12 @@ module type S = sig
   val read :
     ('var, 'value, field, var, 'sys) Typ.t -> 'var -> ('value, 'prover_state) t
 
+  val read_inspect :
+       inspect:(var -> unit)
+    -> ('var, 'value, field, var, 'sys) Typ.t
+    -> 'var
+    -> ('value, 'prover_state) t
+
   module Ref : sig
     type 'a t
 

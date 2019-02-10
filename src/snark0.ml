@@ -747,7 +747,51 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let%bind y_inv = inv y in
         mul x y_inv)
 
-    let%snarkydef_ if_ (b : Cvar.t Boolean.t) ~(then_ : Cvar.t)
+    let%snarkydef_ if_ (typ : ('var, 'value) Typ.t) (b : Cvar.t Boolean.t)
+        ~(then_ : 'var) ~(else_ : 'var) =
+      let open Let_syntax in
+      (* r = e + b (t - e)
+      r - e = b (t - e)
+    *)
+      let b = (b :> Cvar.t) in
+      let then_vars = ref [] in
+      let else_vars = ref [] in
+      let result_vars = ref [] in
+      let%bind r =
+        exists typ
+          ~compute:
+            (let open As_prover in
+            let open Let_syntax in
+            let%bind then_ =
+              read_inspect typ then_ ~inspect:(fun x ->
+                  then_vars := x :: !then_vars )
+            in
+            let%bind else_ =
+              read_inspect typ else_ ~inspect:(fun x ->
+                  else_vars := x :: !else_vars )
+            in
+            let%map b = read_var b in
+            if Field.equal b Field.one then then_ else else_)
+      in
+      let%bind _ =
+        as_prover
+          (let open As_prover in
+          let open Let_syntax in
+          let%map _ =
+            read_inspect typ r ~inspect:(fun x ->
+                result_vars := x :: !result_vars )
+          in
+          ())
+      in
+      let%map () =
+        Checked.all_unit
+          (Core.List.map3_exn !then_vars !else_vars !result_vars
+             ~f:(fun then_ else_ r ->
+               Cvar.Infix.(assert_r1cs b (then_ - else_) (r - else_)) ))
+      in
+      r
+
+    let%snarkydef_ if_field (b : Cvar.t Boolean.t) ~(then_ : Cvar.t)
         ~(else_ : Cvar.t) =
       let open Let_syntax in
       (* r = e + b (t - e)
@@ -793,7 +837,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let if_ b ~(then_ : var) ~(else_ : var) =
         Checked0.map ~f:create
-          (if_ b ~then_:(then_ :> Cvar.t) ~else_:(else_ :> Cvar.t))
+          (if_field b ~then_:(then_ :> Cvar.t) ~else_:(else_ :> Cvar.t))
 
       let ( && ) (x : var) (y : var) =
         (* (x + y)^2 = 2 z + x + y
@@ -1158,7 +1202,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       type comparison_result =
         {less: Checked.Boolean.var; less_or_equal: Checked.Boolean.var}
 
-      let if_ = Checked.if_
+      let if_ = Checked.if_field
 
       let compare ~bit_length a b =
         let open Checked in

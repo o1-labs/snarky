@@ -26,6 +26,12 @@ module type S = sig
   val read :
     ('var, 'value, field, var, 'sys) Typ.t -> 'var -> ('value, 'prover_state) t
 
+  val read_inspect :
+       inspect:(var -> unit)
+    -> ('var, 'value, field, var, 'sys) Typ.t
+    -> 'var
+    -> ('value, 'prover_state) t
+
   module Ref : sig
     type 'a t
 
@@ -45,6 +51,11 @@ module T = struct
   let read ({read; _} : ('var, 'value, 'field, 'cvar, 'sys) Typ.t) (var : 'var)
       : ('value, 'cvar -> 'field, 'prover_state) t =
    fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
+
+  let read_inspect ~inspect
+      ({read; _} : ('var, 'value, 'field, 'cvar, 'sys) Typ.t) (var : 'var) :
+      ('value, 'cvar -> 'field, 'prover_state) t =
+   fun tbl s -> (s, Typ_monads.Read.run_inspect ~inspect (read var) tbl)
 
   module Ref = struct
     type 'a t = 'a option ref

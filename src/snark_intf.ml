@@ -324,6 +324,29 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
        and type 'a t = 'a list
        and type boolean := Boolean.var
 
+    val if_ :
+         ('var, _) Typ.t
+      -> Boolean.var
+      -> then_:'var
+      -> else_:'var
+      -> ('var, _) Checked.t
+    (** A generic [if_] function, parameterised over the {!type:Typ.t} for the
+        return type.
+
+        {b WARNING}: Do not use this if {!recfield:Types.Typ.store} and
+        {!recfield:Types.Typ.read} don't form an isomorphism! That is, the
+        following code should preserve the representation of [x] in the
+        {!type:Cvar.t}s that back the {!type:Checked.t} monad:
+{[
+let checked_identity x = exists typ ~compute:As_prover.(read typ x)
+}]
+
+        Internally, this function uses {!val:As_prover.read_inspect} monitor
+        which variables are read, and in which order, by a [read] call to
+        [then_], [else_], and the result. If this order or the contents of the
+        variables may vary between 2 stored instances of the same data, the
+        constraints system may not be satisfied. *)
+
     (** [Choose_preimage] is the request issued by
         {!val:Field.Checked.choose_preimage_var} before falling back to its
         default implementation. You can respond to this request to override the
