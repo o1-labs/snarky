@@ -652,6 +652,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ('vin, 'valin) Typ.t
       -> ('vout, 'valout) Typ.t
       -> ('vin -> ('vout, unit) Checked.t)
+      -> ('valin -> 'valout)
       -> 'valin
       -> unit
   end
