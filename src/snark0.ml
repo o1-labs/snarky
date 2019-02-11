@@ -896,7 +896,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 ~compute:
                   As_prover.(
                     map2 ~f:( <> ) (read typ_unchecked b1)
-                      (read typ_unchecked b1))
+                      (read typ_unchecked b2))
             in
             let%map () =
               let a = (b1 :> Cvar.t) in
