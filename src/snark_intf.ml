@@ -230,6 +230,8 @@ module type Basic = sig
 
     val ( || ) : var -> var -> (var, _) Checked.t
 
+    val ( lxor ) : var -> var -> (var, _) Checked.t
+
     val any : var list -> (var, _) Checked.t
 
     val all : var list -> (var, _) Checked.t
