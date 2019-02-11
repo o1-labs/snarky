@@ -1370,6 +1370,27 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   let set_eval_constraints b = eval_constraints := b
 
+  module Test = struct
+    let checked_to_unchecked typ1 typ2 checked input =
+      let (), checked_result =
+        run_and_check
+          (let open Let_syntax in
+          let%bind input = exists typ1 ~compute:(As_prover.return input) in
+          let%map result = checked input in
+          As_prover.read typ2 result)
+          ()
+        |> Or_error.ok_exn
+      in
+      checked_result
+
+    let test_equal (type a) ?(sexp_of_t = sexp_of_opaque) ?(equal = ( = )) typ1
+        typ2 checked unchecked input =
+      let checked_result = checked_to_unchecked typ1 typ2 checked input in
+      let sexp_of_a = sexp_of_t in
+      let compare_a x y = if equal x y then 0 else 1 in
+      [%test_eq: a] checked_result (unchecked input)
+  end
+
   module R1CS_constraint_system = struct
     include R1CS_constraint_system
   end
