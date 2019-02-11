@@ -510,97 +510,182 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let eval_constraints = ref false
 
-    let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ?(eval_constraints = !eval_constraints) (t0 : (a, s) t) (s0 : s option)
-        =
-      next_auxiliary := 1 + num_inputs ;
-      (* We can't evaluate the constraints if we are not computing over a value. *)
-      let eval_constraints = eval_constraints && Option.is_some s0 in
-      let get_value : Cvar.t -> Field.t =
+    module Run_helper = struct
+      type 'prover_state run_state =
+        { system: R1CS_constraint_system.t option
+        ; input: Field.Vector.t
+        ; aux: Field.Vector.t
+        ; eval_constraints: bool
+        ; num_inputs: int
+        ; next_auxiliary: int ref
+        ; prover_state: 'prover_state option
+        ; stack: string list
+        ; handler: Request.Handler.t }
+
+      let update_prover_state ~f
+          { system
+          ; input
+          ; aux
+          ; eval_constraints
+          ; num_inputs
+          ; next_auxiliary
+          ; prover_state
+          ; stack
+          ; handler } =
+        { system
+        ; input
+        ; aux
+        ; eval_constraints
+        ; num_inputs
+        ; next_auxiliary
+        ; prover_state= f prover_state
+        ; stack
+        ; handler }
+
+      let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
         let get_one v =
           let i = Backend.Var.index v in
           if i <= num_inputs then Field.Vector.get input (i - 1)
           else Field.Vector.get aux (i - num_inputs - 1)
         in
         Cvar.eval get_one
-      and store_field_elt x =
+
+      let store_field_elt {next_auxiliary; aux; _} x =
         let v = Backend.Var.create !next_auxiliary in
         incr next_auxiliary ;
         Field.Vector.emplace_back aux x ;
         Cvar.Unsafe.of_var v
-      and alloc_var () =
+
+      let alloc_var {next_auxiliary; _} =
         let v = Backend.Var.create !next_auxiliary in
         incr next_auxiliary ; Cvar.Unsafe.of_var v
-      in
-      let run_as_prover x s =
-        match (x, s) with
+
+      let run_as_prover x state =
+        match (x, state.prover_state) with
         | Some x, Some s ->
-            let s', y = As_prover.run x get_value s in
-            (Some s', Some y)
-        | _, _ -> (None, None)
+            let s', y = As_prover.run x (get_value state) s in
+            ({state with prover_state= Some s'}, Some y)
+        | _, _ -> (state, None)
+
+      let with_label label ~f state =
+        let stack = state.stack in
+        let state, b = f {state with stack= label :: stack} in
+        ({state with stack}, b)
+
+      let add_constraint c state =
+        if state.eval_constraints && not (Constraint.eval c (get_value state))
+        then
+          failwithf "Constraint unsatisfied:\n%s\n%s\n"
+            (Constraint.annotation c)
+            (Constraint.stack_to_string state.stack)
+            () ;
+        Option.iter state.system ~f:(fun system ->
+            Constraint.add ~stack:state.stack c system ) ;
+        (state, ())
+
+      let with_state ~f ~and_then as_prover state =
+        let state, s_sub = run_as_prover (Some as_prover) state in
+        let sub_state, y = f (update_prover_state ~f:(fun _ -> s_sub) state) in
+        let sub_prover_state = Option.map ~f:and_then sub_state.prover_state in
+        let state, (_ : unit option) = run_as_prover sub_prover_state state in
+        (state, y)
+
+      let with_handler ~f h state =
+        let handler = state.handler in
+        let state, y =
+          f {state with handler= Request.Handler.push handler h}
+        in
+        ({state with handler}, y)
+
+      let clear_handler ~f state =
+        let handler = state.handler in
+        let state, y = f {state with handler= Request.Handler.fail} in
+        ({state with handler}, y)
+
+      let exists ~(run : _ Checked.t -> unit run_state -> unit run_state)
+          {Types.Typ.store; alloc; check; _} provider state =
+        match state.prover_state with
+        | Some s ->
+            let s', value =
+              Provider.run provider state.stack (get_value state) s
+                state.handler
+            in
+            let var = Typ.Store.run (store value) (store_field_elt state) in
+            let state = update_prover_state ~f:(fun _ -> Some ()) state in
+            let state = run (check var) state in
+            let state = update_prover_state ~f:(fun _ -> Some s') state in
+            (state, {Handle.var; value= Some value})
+        | None ->
+            let var = Typ.Alloc.run alloc (fun () -> alloc_var state) in
+            let state = update_prover_state ~f:(fun _ -> None) state in
+            let state = run (check var) state in
+            let state = update_prover_state ~f:(fun _ -> None) state in
+            (state, {Handle.var; value= None})
+
+      let next_auxiliary state = (state, !(state.next_auxiliary))
+    end
+
+    let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
+        ?(eval_constraints = !eval_constraints) (t0 : (a, s) t) (s0 : s option)
+        =
+      let eval_constraints = eval_constraints && Option.is_some s0 in
+      next_auxiliary := 1 + num_inputs ;
+      let state =
+        { Run_helper.system
+        ; input
+        ; aux
+        ; eval_constraints
+        ; num_inputs
+        ; next_auxiliary
+        ; prover_state= s0
+        ; stack= []
+        ; handler= Request.Handler.fail }
       in
       Option.iter system ~f:(fun system ->
           R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
       (* INVARIANT: go _ _ _ s = (s', _) gives (s' = Some _) iff (s = Some _) *)
       let rec go : type a s.
-             string list
-          -> (a, s) t
-          -> Request.Handler.t
-          -> s option
-          -> s option * a =
-       fun stack t handler s ->
+          (a, s) t -> s Run_helper.run_state -> s Run_helper.run_state * a =
+       fun t state ->
         match t with
-        | Pure x -> (s, x)
+        | Pure x -> (state, x)
         | With_label (lab, t, k) ->
-            let s', y = go (lab :: stack) t handler s in
-            go stack (k y) handler s'
+            let state, y = Run_helper.with_label lab ~f:(go t) state in
+            go (k y) state
         | As_prover (x, k) ->
-            let s', (_ : unit option) = run_as_prover (Some x) s in
-            go stack k handler s'
-        | Add_constraint (c, t) ->
-            if eval_constraints && not (Constraint.eval c get_value) then
-              failwithf "Constraint unsatisfied:\n%s\n%s\n"
-                (Constraint.annotation c)
-                (Constraint.stack_to_string stack)
-                () ;
-            Option.iter system ~f:(fun system -> Constraint.add ~stack c system) ;
-            go stack t handler s
-        | With_state (p, and_then, t_sub, k) ->
-            let s, s_sub = run_as_prover (Some p) s in
-            let s_sub, y = go stack t_sub handler s_sub in
-            let s, (_ : unit option) =
-              run_as_prover (Option.map ~f:and_then s_sub) s
+            let state, (_ : unit option) =
+              Run_helper.run_as_prover (Some x) state
             in
-            go stack (k y) handler s
+            go k state
+        | Add_constraint (c, k) ->
+            let state, () = Run_helper.add_constraint c state in
+            go k state
+        | With_state (p, and_then, t_sub, k) ->
+            let state, y =
+              Run_helper.with_state p ~f:(go t_sub) ~and_then state
+            in
+            go (k y) state
         | With_handler (h, t, k) ->
-            let s', y = go stack t (Request.Handler.push handler h) s in
-            go stack (k y) handler s'
+            let state, y = Run_helper.with_handler h ~f:(go t) state in
+            go (k y) state
         | Clear_handler (t, k) ->
-            let s', y = go stack t Request.Handler.fail s in
-            go stack (k y) handler s'
-        | Exists ({store; alloc; check; _}, p, k) -> (
-          match s with
-          | Some s ->
-              let s', value = Provider.run p stack get_value s handler in
-              let var = Typ.Store.run (store value) store_field_elt in
-              (* TODO: Push a label onto the stack here *)
-              let (_ : unit option), () =
-                go stack (check var) handler (Some ())
-              in
-              go stack (k {Handle.var; value= Some value}) handler (Some s')
-          | None ->
-              let var = Typ.Alloc.run alloc alloc_var in
-              (* TODO: Push a label onto the stack here *)
-              let (_ : unit option), () = go stack (check var) handler None in
-              go stack (k {Handle.var; value= None}) handler None )
-        | Next_auxiliary k -> go stack (k !next_auxiliary) handler s
+            let state, y = Run_helper.clear_handler ~f:(go t) state in
+            go (k y) state
+        | Exists (typ, p, k) ->
+            let state, handle =
+              Run_helper.exists ~run:(fun t state -> fst (go t state)) typ p state
+            in
+            go (k handle) state
+        | Next_auxiliary k ->
+            let state, i = Run_helper.next_auxiliary state in
+            go (k i) state
       in
-      let retval = go [] t0 Request.Handler.fail s0 in
+      let (state, value) = go t0 state in
       Option.iter system ~f:(fun system ->
           let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
           R1CS_constraint_system.set_auxiliary_input_size system
             auxiliary_input_size ) ;
-      retval
+      (state.prover_state, value)
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
     let constraint_system ~num_inputs (t : (unit, 's) t) :
