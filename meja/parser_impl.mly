@@ -17,6 +17,8 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token <string> UIDENT
 %token FUN
 %token LET
+%token TRUE
+%token FALSE
 %token SWITCH
 %token TYPE
 %token MODULE
@@ -100,6 +102,34 @@ type_kind:
     { TAlias t }
   | EQUAL LBRACE fields = list(record_field, COMMA) RBRACE
     { TRecord (List.rev fields) }
+  | EQUAL maybe(BAR) ctors = list(ctor_decl, BAR)
+    { TVariant (List.rev ctors) }
+
+ctor_decl_args:
+  | (* empty *)
+    { Ctor_tuple [] }
+  | LBRACKET rev_args = list(type_expr, COMMA) RBRACKET
+    { Ctor_tuple (List.rev rev_args) }
+  | LBRACE fields = list(record_field, COMMA) RBRACE
+    { Ctor_record (List.rev fields) }
+
+ctor_ident:
+  | id = UIDENT
+    { id }
+  | LBRACKET RBRACKET
+    { "()" }
+  | TRUE
+    { "true" }
+  | FALSE
+    { "false" }
+
+ctor_decl:
+  | id = as_loc(ctor_ident) args = ctor_decl_args
+    return_typ = maybe(COLON t = decl_type_expr { t })
+    { { ctor_ident= id
+      ; ctor_args= args
+      ; ctor_ret= return_typ
+      ; ctor_loc= mklocation $loc } }
 
 expr:
   | x = as_loc(longident(LIDENT, UIDENT))

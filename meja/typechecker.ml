@@ -7,9 +7,7 @@ type error =
   | Recursive_variable of type_expr
   | Unbound_value of str
   | Variable_on_one_side of string
-  | Pattern_type_declaration of string
-  | Pattern_field_declaration of string
-  | Pattern_module_declaration of string
+  | Pattern_declaration of string * string
 
 exception Error of Location.t * error
 
@@ -150,16 +148,23 @@ let rec check_pattern_desc ~loc ~add env typ = function
               match data with
               | `Both (typ, _) | `Left typ | `Right typ -> typ.tdec_loc
             in
-            raise (Error (loc, Pattern_type_declaration name)) )
+            raise (Error (loc, Pattern_declaration ("type", name))) )
           ~fields:(fun ~key:name ~data _ ->
             let loc =
               match data with
               | `Both ((typ, _), _) | `Left (typ, _) | `Right (typ, _) ->
                   typ.tdec_loc
             in
-            raise (Error (loc, Pattern_field_declaration name)) )
+            raise (Error (loc, Pattern_declaration ("field", name))) )
+          ~ctors:(fun ~key:name ~data _ ->
+            let loc =
+              match data with
+              | `Both ((typ, _), _) | `Left (typ, _) | `Right (typ, _) ->
+                  typ.tdec_loc
+            in
+            raise (Error (loc, Pattern_declaration ("constructor", name))) )
           ~modules:(fun ~key:name ~data:_ _ ->
-            raise (Error (loc, Pattern_module_declaration name)) )
+            raise (Error (loc, Pattern_declaration ("module", name))) )
       in
       Envi.push_scope scope2 env
   | PInt _ -> check_type env typ Envi.Core.Type.int
@@ -269,18 +274,15 @@ let rec report_error ppf = function
         constr_typ
   | Recursive_variable typ ->
       fprintf ppf
-        "The variable @['%a@](%d) would have an instance that contains itself."
+        "The variable @[%a@](%d) would have an instance that contains itself."
         pp_typ typ typ.type_id
   | Unbound_value value -> fprintf ppf "Unbound value %s." value.txt
   | Variable_on_one_side name ->
       fprintf ppf "Variable %s must occur on both sides of this '|' pattern."
         name
-  | Pattern_type_declaration name ->
-      fprintf ppf "Unexpected type declaration for %s within a pattern." name
-  | Pattern_field_declaration name ->
-      fprintf ppf "Unexpected field declaration for %s within a pattern." name
-  | Pattern_module_declaration name ->
-      fprintf ppf "Unexpected module declaration for %s within a pattern." name
+  | Pattern_declaration (kind, name) ->
+      fprintf ppf "Unexpected %s declaration for %s within a pattern." kind
+        name
 
 let () =
   Location.register_error_of_exn (function

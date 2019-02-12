@@ -21,6 +21,16 @@ and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
   Type.field ~loc name (of_type_expr typ)
 
+let of_ctor_args = function
+  | Ctor_tuple args -> Parsetree.Pcstr_tuple (List.map ~f:of_type_expr args)
+  | Ctor_record fields ->
+      Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
+
+let of_ctor_decl
+    {ctor_ident= name; ctor_args= args; ctor_ret= ret; ctor_loc= loc} =
+  Type.constructor name ~loc ~args:(of_ctor_args args)
+    ?res:(Option.map ~f:of_type_expr ret)
+
 let of_type_decl decl =
   let loc = decl.tdec_loc in
   let name = decl.tdec_ident in
@@ -33,6 +43,9 @@ let of_type_decl decl =
   | TRecord fields ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_record (List.map ~f:of_field_decl fields))
+  | TVariant ctors ->
+      Type.mk name ~loc ~params
+        ~kind:(Parsetree.Ptype_variant (List.map ~f:of_ctor_decl ctors))
 
 let rec of_pattern_desc ?loc = function
   | PAny -> Pat.any ?loc ()
