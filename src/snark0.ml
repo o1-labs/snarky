@@ -556,7 +556,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         Field.Vector.emplace_back aux x ;
         Cvar.Unsafe.of_var v
 
-      let alloc_var {next_auxiliary; _} =
+      let alloc_var {next_auxiliary; _} () =
         let v = Backend.Var.create !next_auxiliary in
         incr next_auxiliary ; Cvar.Unsafe.of_var v
 
@@ -616,7 +616,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let state = update_prover_state ~f:(fun _ -> Some s') state in
             (state, {Handle.var; value= Some value})
         | None ->
-            let var = Typ.Alloc.run alloc (fun () -> alloc_var state) in
+            let var = Typ.Alloc.run alloc (alloc_var state) in
             let state = update_prover_state ~f:(fun _ -> None) state in
             let state = run (check var) state in
             let state = update_prover_state ~f:(fun _ -> None) state in
