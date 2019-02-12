@@ -58,6 +58,16 @@ and variant = {var_ident: str; var_params: type_expr list; var_decl_id: int}
 type field_decl =
   {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}
 
+type ctor_args =
+  | Ctor_tuple of type_expr list
+  | Ctor_record of field_decl list
+
+type ctor_decl =
+  { ctor_ident: str
+  ; ctor_args: ctor_args
+  ; ctor_ret: type_expr option
+  ; ctor_loc: Location.t }
+
 type type_decl =
   { tdec_ident: str
   ; tdec_params: type_expr list
@@ -69,6 +79,7 @@ and type_decl_desc =
   | TAbstract
   | TAlias of type_expr
   | TRecord of field_decl list
+  | TVariant of ctor_decl list
 
 type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
