@@ -185,7 +185,7 @@ FieldT* camlsnark_bn128_field_random() {
   return new FieldT(FieldT::random_element());
 }
 
-FieldT* camlsnark_bn128_field_of_int(int n) {
+FieldT* camlsnark_bn128_field_of_int(long n) {
   return new FieldT(n);
 }
 
