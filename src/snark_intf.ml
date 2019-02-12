@@ -230,6 +230,8 @@ module type Basic = sig
 
     val ( || ) : var -> var -> (var, _) Checked.t
 
+    val ( lxor ) : var -> var -> (var, _) Checked.t
+
     val any : var list -> (var, _) Checked.t
 
     val all : var list -> (var, _) Checked.t
@@ -637,6 +639,25 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       {!val:with_constraint_system} (or the underlying
       {!const:Types.Checked.With_constraint_system}). For these, you should
       modify your code to use the normal {!val:run_and_check} function. *)
+
+  module Test : sig
+    val checked_to_unchecked :
+         ('vin, 'valin) Typ.t
+      -> ('vout, 'valout) Typ.t
+      -> ('vin -> ('vout, unit) Checked.t)
+      -> 'valin
+      -> 'valout
+
+    val test_equal :
+         ?sexp_of_t:('valout -> Sexp.t)
+      -> ?equal:('valout -> 'valout -> bool)
+      -> ('vin, 'valin) Typ.t
+      -> ('vout, 'valout) Typ.t
+      -> ('vin -> ('vout, unit) Checked.t)
+      -> ('valin -> 'valout)
+      -> 'valin
+      -> unit
+  end
 end
 
 module type S = sig
