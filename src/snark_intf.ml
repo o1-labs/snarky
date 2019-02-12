@@ -126,13 +126,7 @@ module type Basic = sig
       val read : Field.Var.t -> field t
     end
 
-    type ('var, 'value) t =
-      ( 'var
-      , 'value
-      , Field.t
-      , Field.Var.t
-      , R1CS_constraint_system.t )
-      Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, Field.t, Field.Var.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -312,13 +306,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     *)
     include
       Monad.S2
-      with type ('a, 's) t =
-                  ( 'a
-                  , 's
-                  , Field.t
-                  , Field.Var.t
-                  , R1CS_constraint_system.t )
-                  Types.Checked.t
+      with type ('a, 's) t = ('a, 's, Field.t, Field.Var.t) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -588,9 +576,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
 
-  val with_constraint_system :
-    (R1CS_constraint_system.t -> unit) -> (unit, _) Checked.t
-
   val constraint_system :
        exposing:((unit, 's) Checked.t, _, 'k_var, _) Data_spec.t
     -> 'k_var
@@ -633,12 +618,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val set_eval_constraints : bool -> unit
   (** Sets the [eval_constraints] state. If [true], {!val:run_unchecked} and
       {!val:prove} will check that the constraint system is satisfied while
-      evaluating the {!type:Checked.t}. The default value is [false].
-
-      Note: This flag will not evaluate any constraints added by
-      {!val:with_constraint_system} (or the underlying
-      {!const:Types.Checked.With_constraint_system}). For these, you should
-      modify your code to use the normal {!val:run_and_check} function. *)
+      evaluating the {!type:Checked.t}. The default value is [false]. *)
 
   module Test : sig
     val checked_to_unchecked :
