@@ -152,6 +152,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let var_indices t =
       let _, terms = to_constant_and_terms t in
       List.map ~f:(fun (_, v) -> Var.index v) terms
+
+    let to_constant : t -> Field0.t option = function
+      | Constant x -> Some x
+      | _ -> None
   end
 
   module Linear_combination = struct
@@ -841,18 +845,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
               (Cvar.constant (Field.of_int (List.length bs)))
               (Cvar.sum (bs :> Cvar.t list))
 
-      let equal (x : var) (y : var) = equal (x :> Cvar.t) (y :> Cvar.t)
-
-      let of_field x =
-        let open Let_syntax in
-        let%map () = assert_ (Constraint.boolean x) in
-        create x
+      let to_constant (b : var) =
+        Option.map (Cvar.to_constant (b :> Cvar.t)) ~f:Field.(equal one)
 
       let var_of_value b = if b then true_ else false_
-
-      module Unsafe = struct
-        let of_cvar (t : Cvar.t) : var = create t
-      end
 
       let typ : (var, value) Typ.t =
         let open Typ in
@@ -874,6 +870,48 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let typ_unchecked : (var, value) Typ.t =
         {typ with check= (fun _ -> return ())}
+
+      let ( lxor ) b1 b2 =
+        match (to_constant b1, to_constant b2) with
+        | Some b1, Some b2 -> return (var_of_value (b1 <> b2))
+        | Some true, None -> return (not b2)
+        | None, Some true -> return (not b1)
+        | Some false, None -> return b2
+        | None, Some false -> return b1
+        | None, None ->
+            (* (1 - 2 a) (1 - 2 b) = 1 - 2 c
+              1 - 2 (a + b) + 4 a b = 1 - 2 c
+              - 2 (a + b) + 4 a b = - 2 c
+              (a + b) - 2 a b = c
+              2 a b = a + b - c
+            *)
+            let open Let_syntax in
+            let%bind res =
+              exists typ_unchecked
+                ~compute:
+                  As_prover.(
+                    map2 ~f:( <> ) (read typ_unchecked b1)
+                      (read typ_unchecked b2))
+            in
+            let%map () =
+              let a = (b1 :> Cvar.t) in
+              let b = (b2 :> Cvar.t) in
+              let c = (res :> Cvar.t) in
+              let open Cvar.Infix in
+              assert_r1cs (a + a) b (a + b - c)
+            in
+            res
+
+      let equal (a : var) (b : var) = a lxor b >>| not
+
+      let of_field x =
+        let open Let_syntax in
+        let%map () = assert_ (Constraint.boolean x) in
+        create x
+
+      module Unsafe = struct
+        let of_cvar (t : Cvar.t) : var = create t
+      end
 
       module Assert = struct
         let ( = ) (x : var) (y : var) = assert_equal (x :> Cvar.t) (y :> Cvar.t)
@@ -1127,13 +1165,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     type var' = Var.t
 
-    module Var = struct
-      include Cvar1
-
-      let to_constant : t -> Field0.t option = function
-        | Constant x -> Some x
-        | _ -> None
-    end
+    module Var = Cvar1
 
     module Checked = struct
       include Cvar1
@@ -1332,6 +1364,27 @@ module Make_basic (Backend : Backend_intf.S) = struct
   let constraint_system = Run.constraint_system
 
   let set_eval_constraints b = eval_constraints := b
+
+  module Test = struct
+    let checked_to_unchecked typ1 typ2 checked input =
+      let (), checked_result =
+        run_and_check
+          (let open Let_syntax in
+          let%bind input = exists typ1 ~compute:(As_prover.return input) in
+          let%map result = checked input in
+          As_prover.read typ2 result)
+          ()
+        |> Or_error.ok_exn
+      in
+      checked_result
+
+    let test_equal (type a) ?(sexp_of_t = sexp_of_opaque) ?(equal = ( = )) typ1
+        typ2 checked unchecked input =
+      let checked_result = checked_to_unchecked typ1 typ2 checked input in
+      let sexp_of_a = sexp_of_t in
+      let compare_a x y = if equal x y then 0 else 1 in
+      [%test_eq: a] checked_result (unchecked input)
+  end
 
   module R1CS_constraint_system = struct
     include R1CS_constraint_system
