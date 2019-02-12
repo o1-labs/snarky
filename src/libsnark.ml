@@ -254,6 +254,8 @@ struct
 
       val to_field : t -> Field0.t
 
+      val to_bigstring : t -> Bigstring.t
+
       val compare : t -> t -> int
 
       val test_bit : t -> int -> bool
