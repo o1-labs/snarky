@@ -288,8 +288,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     module T = struct
       open Types.Checked
 
-      type ('a, 's) t =
-        ('a, 's, Field.t, Cvar.t, R1CS_constraint_system.t) Checked.t
+      type ('a, 's) t = ('a, 's, Field.t, Cvar.t) Checked.t
 
       include Checked.T
     end
@@ -303,8 +302,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     include Typ_monads
     include Typ.T
 
-    type ('var, 'value) t =
-      ('var, 'value, Field.t, Cvar.t, R1CS_constraint_system.t) Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, Field.t, Cvar.t) Types.Typ.t
 
     type ('var, 'value) typ = ('var, 'value) t
 
@@ -481,7 +479,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
        fun count t0 ->
         match t0 with
         | Pure x -> (count, x)
-        | With_constraint_system (_f, k) -> go count k
         | As_prover (_x, k) -> go count k
         | Add_constraint (_c, t) -> go (count + 1) t
         | Next_auxiliary k -> go count (k !next_auxiliary)
@@ -550,8 +547,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
        fun stack t handler s ->
         match t with
         | Pure x -> (s, x)
-        | With_constraint_system (f, k) ->
-            Option.iter ~f system ; go stack k handler s
         | With_label (lab, t, k) ->
             let s', y = go (lab :: stack) t handler s in
             go stack (k y) handler s'
