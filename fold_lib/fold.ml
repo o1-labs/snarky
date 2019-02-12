@@ -43,6 +43,9 @@ let to_list (t : 'a t) : 'a list =
 let of_list (xs : 'a list) : 'a t =
   {fold= (fun ~init ~f -> List.fold xs ~init ~f)}
 
+let of_array (xs : 'a array) : 'a t =
+  {fold= (fun ~init ~f -> Array.fold xs ~init ~f)}
+
 let%test_unit "fold-to-list" =
   Quickcheck.test (Quickcheck.Generator.list Int.gen) ~f:(fun xs ->
       assert (xs = to_list (of_list xs)) )
