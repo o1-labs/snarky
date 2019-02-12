@@ -472,9 +472,9 @@ struct
           schedule_delete y ; y
 
       let of_int =
-        let stub = foreign (func_name "of_int") (int @-> returning typ) in
+        let stub = foreign (func_name "of_int") (long @-> returning typ) in
         fun n ->
-          let x = stub n in
+          let x = stub (Signed.Long.of_int n) in
           schedule_delete x ; x
 
       let add =
