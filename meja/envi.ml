@@ -11,6 +11,7 @@ type error =
   | Wrong_number_args of string * int * int
   | Expected_type_var of type_expr
   | Lident_unhandled of string * Longident.t
+  | Constraints_not_satisfied of type_expr * type_decl
 
 exception Error of Location.t * error
 
@@ -25,16 +26,16 @@ module Scope = struct
     { names: type_expr name_map
     ; type_variables: type_expr name_map
     ; type_decls: type_decl name_map
-    ; type_decls_ids: type_decl int_map
     ; fields: (type_decl * int) name_map
+    ; ctors: (type_decl * int) name_map
     ; modules: t name_map }
 
   let empty =
     { names= Map.empty (module String)
     ; type_variables= Map.empty (module String)
     ; type_decls= Map.empty (module String)
-    ; type_decls_ids= Map.empty (module Int)
     ; fields= Map.empty (module String)
+    ; ctors= Map.empty (module String)
     ; modules= Map.empty (module String) }
 
   let add_name key typ scope =
@@ -53,14 +54,15 @@ module Scope = struct
         Map.set scope.fields ~key:field_decl.fld_ident.txt ~data:(decl, index)
     }
 
+  let add_ctor decl index scope ctor_decl =
+    { scope with
+      ctors=
+        Map.set scope.ctors ~key:ctor_decl.ctor_ident.txt ~data:(decl, index)
+    }
+
   let add_type_declaration decl scope =
     { scope with
       type_decls= Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
-    }
-
-  let add_type_declaration_id decl scope =
-    { scope with
-      type_decls_ids= Map.set scope.type_decls_ids ~key:decl.tdec_id ~data:decl
     }
 
   let find_type_declaration (name : str) scope =
@@ -70,31 +72,32 @@ module Scope = struct
     let scope =
       { scope with
         type_decls=
-          Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
-      ; type_decls_ids=
-          Map.set scope.type_decls_ids ~key:decl.tdec_id ~data:decl }
+          Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl }
     in
     match decl.tdec_desc with
     | TAbstract | TAlias _ -> scope
     | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
+    | TVariant ctors -> List.foldi ~f:(add_ctor decl) ~init:scope ctors
 
-  let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~modules
+  let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors
+      ~modules
       { names= names1
       ; type_variables= type_variables1
-      ; type_decls_ids= _
       ; type_decls= type_decls1
       ; fields= fields1
+      ; ctors= ctors1
       ; modules= modules1 }
       { names= names2
       ; type_variables= type_variables2
-      ; type_decls_ids= _
       ; type_decls= type_decls2
       ; fields= fields2
+      ; ctors= ctors2
       ; modules= modules2 } =
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
     in
     let acc = Map.fold2 type_decls1 type_decls2 ~init:acc ~f:type_decls in
+    let acc = Map.fold2 ctors1 ctors2 ~init:acc ~f:ctors in
     let acc = Map.fold2 fields1 fields2 ~init:acc ~f:fields in
     let acc = Map.fold2 modules1 modules2 ~init:acc ~f:modules in
     let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
@@ -122,10 +125,16 @@ end
 
 module TypeEnvi = struct
   type t =
-    {type_id: int; type_decl_id: int; variable_instances: type_expr int_map}
+    { type_id: int
+    ; type_decl_id: int
+    ; variable_instances: type_expr int_map
+    ; type_decls: type_decl int_map }
 
   let empty =
-    {type_id= 1; type_decl_id= 1; variable_instances= Map.empty (module Int)}
+    { type_id= 1
+    ; type_decl_id= 1
+    ; variable_instances= Map.empty (module Int)
+    ; type_decls= Map.empty (module Int) }
 
   let instance env (typ : type_expr) =
     Map.find env.variable_instances typ.type_id
@@ -133,7 +142,7 @@ module TypeEnvi = struct
   let add_instance (typ : type_expr) typ' env =
     { env with
       variable_instances=
-        Map.update env.variable_instances typ.type_id ~f:(fun _ -> typ') }
+        Map.set env.variable_instances ~key:typ.type_id ~data:typ' }
 
   let clear_instance (typ : type_expr) env =
     {env with variable_instances= Map.remove env.variable_instances typ.type_id}
@@ -142,6 +151,11 @@ module TypeEnvi = struct
 
   let next_decl_id env =
     (env.type_decl_id, {env with type_decl_id= env.type_decl_id + 1})
+
+  let decl env (ctor : variant) = Map.find env.type_decls ctor.var_decl_id
+
+  let add_decl (decl : type_decl) env =
+    {env with type_decls= Map.set env.type_decls ~key:decl.tdec_id ~data:decl}
 end
 
 type t = {scope_stack: Scope.t list; type_env: TypeEnvi.t; depth: int}
@@ -391,10 +405,7 @@ module TypeDecl = struct
 
   let import decl env =
     let tdec_id, type_env = TypeEnvi.next_decl_id env.type_env in
-    let decl = {decl with tdec_id} in
     let env = {env with type_env} in
-    (* Make sure the declaration is available to lookup for recursive types. *)
-    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
     let env = open_scope env in
     let env, tdec_params =
       List.fold_map ~init:env decl.tdec_params ~f:(fun env param ->
@@ -404,6 +415,11 @@ module TypeDecl = struct
               (env, var)
           | _ -> raise (Error (param.type_loc, Expected_type_var param)) )
     in
+    (* Make sure the declaration is available to lookup for recursive types. *)
+    let decl = {decl with tdec_id; tdec_params} in
+    let scope, env = pop_scope env in
+    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
+    let env = push_scope scope env in
     let tdec_desc, env =
       match decl.tdec_desc with
       | TAbstract -> (TAbstract, env)
@@ -419,10 +435,57 @@ module TypeDecl = struct
                 (env, {field with fld_type}) )
           in
           (TRecord fields, env)
+      | TVariant ctors ->
+          let env, ctors =
+            List.fold_map ~init:env ctors ~f:(fun env ctor ->
+                let scope, env = pop_scope env in
+                let ctor_ret, env, must_find =
+                  match ctor.ctor_ret with
+                  | Some ret ->
+                      let env = open_scope env in
+                      ( match ret.type_desc with
+                      | Tctor {var_ident= str; _}
+                        when String.equal str.txt decl.tdec_ident.txt ->
+                          ()
+                      | _ ->
+                          raise
+                            (Error
+                               ( ret.type_loc
+                               , Constraints_not_satisfied (ret, decl) )) ) ;
+                      let ret, env = Type.import ~must_find:false ret env in
+                      (Some ret, env, None)
+                  | None -> (None, push_scope scope env, Some true)
+                in
+                let env, ctor_args =
+                  match ctor.ctor_args with
+                  | Ctor_tuple args ->
+                      let env, args =
+                        List.fold_map ~init:env args ~f:(fun env arg ->
+                            let arg, env = Type.import ?must_find arg env in
+                            (env, arg) )
+                      in
+                      (env, Ctor_tuple args)
+                  | Ctor_record fields ->
+                      let env, fields =
+                        List.fold_map ~init:env fields ~f:(fun env field ->
+                            let fld_type, env =
+                              Type.import ?must_find field.fld_type env
+                            in
+                            (env, {field with fld_type}) )
+                      in
+                      (env, Ctor_record fields)
+                in
+                let env = push_scope scope (close_scope env) in
+                (env, {ctor with ctor_args; ctor_ret}) )
+          in
+          (TVariant ctors, env)
     in
     let env = close_scope env in
-    let decl = {decl with tdec_id; tdec_params; tdec_desc} in
-    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
+    let decl = {decl with tdec_desc} in
+    let env =
+      map_current_scope ~f:(Scope.register_type_declaration decl) env
+    in
+    let env = {env with type_env= TypeEnvi.add_decl decl env.type_env} in
     (decl, env)
 
   let mk_typ ?(loc = Location.none) ~params decl =
@@ -458,13 +521,24 @@ module Core = struct
     ; tdec_id= 0
     ; tdec_loc= Location.none }
 
+  let mk_constructor name =
+    { ctor_ident= mkloc name
+    ; ctor_args= Ctor_tuple []
+    ; ctor_ret= None
+    ; ctor_loc= Location.none }
+
   let env = empty
 
   let int, env = TypeDecl.import (mk_type_decl "int" TAbstract) env
 
-  let unit, env = TypeDecl.import (mk_type_decl "unit" TAbstract) env
+  let unit, env =
+    TypeDecl.import (mk_type_decl "unit" (TVariant [mk_constructor "()"])) env
 
-  let bool, env = TypeDecl.import (mk_type_decl "bool" TAbstract) env
+  let bool, env =
+    TypeDecl.import
+      (mk_type_decl "bool"
+         (TVariant [mk_constructor "true"; mk_constructor "false"]))
+      env
 
   let char, env = TypeDecl.import (mk_type_decl "char" TAbstract) env
 
@@ -495,6 +569,16 @@ open Format
 
 let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
 
+let pp_decl_typ ppf decl =
+  pp_typ ppf
+    { type_desc=
+        Tctor
+          { var_ident= decl.tdec_ident
+          ; var_params= decl.tdec_params
+          ; var_decl_id= decl.tdec_id }
+    ; type_id= -1
+    ; type_loc= Location.none }
+
 let report_error ppf = function
   | No_open_scopes ->
       fprintf ppf "Internal error: There is no current open scope."
@@ -513,6 +597,11 @@ let report_error ppf = function
         typ
   | Lident_unhandled (kind, lid) ->
       fprintf ppf "Don't know how to find %s %a" kind Longident.pp lid
+  | Constraints_not_satisfied (typ, decl) ->
+      fprintf ppf
+        "@[Constraints are not satisfied in this type.@ Type %a should be an \
+         instance of %a"
+        pp_typ typ pp_decl_typ decl
 
 let () =
   Location.register_error_of_exn (function
