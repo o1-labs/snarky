@@ -25,3 +25,7 @@ let a = fun (x : t, {f}) => {
     | {a: x, b} => f (x)
   };
 };
+
+let b = switch ({f: fun (x) => { 12; }}) {
+  | {f} => f
+};
