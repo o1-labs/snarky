@@ -161,6 +161,12 @@ expr:
     { mkexp ~pos:$loc (Apply (f, List.rev es)) }
   | SWITCH LBRACKET e = expr_or_bare_tuple RBRACKET LBRACE rev_cases = list(match_case, {}) RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
+  | e = expr_record
+    { e }
+  | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
+    { mkexp ~pos:$loc (Ctor (id, args)) }
+
+expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE
     { mkexp ~pos:$loc (Record(List.rev fields, None)) }
 
@@ -169,6 +175,14 @@ expr_or_bare_tuple:
     { x }
   | es = tuple(expr)
     { mkexp ~pos:$loc (Tuple (List.rev es)) }
+
+expr_ctor_args:
+  | (* empty *)
+    { None }
+  | LBRACKET e = expr_or_bare_tuple RBRACKET
+    { Some e }
+  | e = expr_record
+    { Some e }
 
 match_case:
   | BAR p = pat EQUALGT e = expr
@@ -204,27 +218,45 @@ pat_field:
   | x = as_loc(longident(LIDENT, UIDENT))
     { (x, mkpat ~pos:$loc (PVariable (lid_last x))) }
 
+pat_record:
+  | LBRACE fields = list(pat_field, COMMA) RBRACE
+    { mkpat ~pos:$loc (PRecord (List.rev fields)) }
+
+pat_ctor_args:
+  | (* empty *)
+    { None }
+  | LBRACKET p = pat_or_bare_tuple RBRACKET
+    { Some p }
+  | p = pat_record
+    { Some p }
+
 pat_no_bar:
   | UNDERSCORE
     { mkpat ~pos:$loc PAny }
-  | LBRACKET p = pat RBRACKET
+  | LBRACKET p = pat_or_bare_tuple RBRACKET
     { p }
-  | LBRACKET ps = tuple(pat) RBRACKET
-    { mkpat ~pos:$loc (PTuple (List.rev ps)) }
   | p = pat_no_bar COLON typ = type_expr
     { mkpat ~pos:$loc (PConstraint (p, typ)) }
   | x = as_loc(LIDENT)
     { mkpat ~pos:$loc (PVariable x) }
   | i = INT
     { mkpat ~pos:$loc (PInt i) }
-  | LBRACE fields = list(pat_field, COMMA) RBRACE
-    { mkpat ~pos:$loc (PRecord (List.rev fields)) }
+  | p = pat_record
+    { p }
+  | id = as_loc(longident(ctor_ident, UIDENT)) args = pat_ctor_args
+    { mkpat ~pos:$loc (PCtor (id, args)) }
 
 pat:
   | p = pat_no_bar
     { p }
   | p1 = pat_no_bar BAR p2 = pat
     { mkpat ~pos:$loc (POr (p1, p2)) }
+
+pat_or_bare_tuple:
+  | x = pat
+    { x }
+  | ps = tuple(pat)
+    { mkpat ~pos:$loc (PTuple (List.rev ps)) }
 
 simple_type_expr:
   | UNDERSCORE
