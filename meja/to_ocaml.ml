@@ -21,7 +21,7 @@ let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
 
 let of_ctor_args = function
   | Ctor_tuple args -> Parsetree.Pcstr_tuple (List.map ~f:of_type_expr args)
-  | Ctor_record fields ->
+  | Ctor_record (_, fields) ->
       Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
 
 let of_ctor_decl
@@ -76,6 +76,12 @@ let rec of_expression_desc ?loc = function
       Exp.match_ ?loc (of_expression e)
         (List.map cases ~f:(fun (p, e) ->
              Exp.case (of_pattern p) (of_expression e) ))
+  | Record (fields, ext) ->
+      Exp.record ?loc
+        (List.map fields ~f:(fun (f, e) -> (f, of_expression e)))
+        (Option.map ~f:of_expression ext)
+  | Ctor (name, arg) ->
+      Exp.construct ?loc name (Option.map ~f:of_expression arg)
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 

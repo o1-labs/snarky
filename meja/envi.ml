@@ -54,11 +54,15 @@ module Scope = struct
         Map.set scope.fields ~key:field_decl.fld_ident.txt ~data:(decl, index)
     }
 
+  let get_field name scope = Map.find scope.fields name
+
   let add_ctor decl index scope ctor_decl =
     { scope with
       ctors=
         Map.set scope.ctors ~key:ctor_decl.ctor_ident.txt ~data:(decl, index)
     }
+
+  let get_ctor name scope = Map.find scope.ctors name
 
   let add_type_declaration decl scope =
     { scope with
@@ -107,28 +111,26 @@ module Scope = struct
 
   let get_module name scope = Map.find scope.modules name
 
-  let rec find_module ~loc lid scope =
-    match lid with
-    | Lident name -> get_module name scope
-    | Ldot (path, name) ->
-        Option.bind (find_module ~loc path scope) ~f:(get_module name)
-    | Lapply _ -> raise (Error (loc, Lident_unhandled ("module", lid)))
-
-  let find_name ~loc lid scope =
+  let find_of_lident ~loc ~kind ~get_name ~find_module lid scope =
     match lid with
     | Lident name -> get_name name scope
     | Ldot (path, name) ->
         Option.bind (find_module ~loc path scope) ~f:(get_name name)
-    | Lapply _ -> raise (Error (loc, Lident_unhandled ("indentifier", lid)))
+    | Lapply _ -> raise (Error (loc, Lident_unhandled (kind, lid)))
 
-  let find_type_declaration ~loc lid scope =
-    match lid with
-    | Lident name -> get_type_declaration name scope
-    | Ldot (path, name) ->
-        Option.bind
-          (find_module ~loc path scope)
-          ~f:(get_type_declaration name)
-    | Lapply _ -> raise (Error (loc, Lident_unhandled ("indentifier", lid)))
+  let rec find_module =
+    find_of_lident ~kind:"module" ~get_name:get_module ~find_module
+
+  let find_name = find_of_lident ~kind:"identifier" ~get_name ~find_module
+
+  let find_type_declaration =
+    find_of_lident ~kind:"type" ~get_name:get_type_declaration ~find_module
+
+  let find_field =
+    find_of_lident ~kind:"field" ~get_name:get_field ~find_module
+
+  let find_ctor =
+    find_of_lident ~kind:"constructor" ~get_name:get_ctor ~find_module
 end
 
 module TypeEnvi = struct
@@ -297,6 +299,19 @@ module Type = struct
         let typ2, env = import typ2 env in
         mk ~loc (Tarrow (typ1, typ2)) env
 
+  let refresh_vars vars new_vars_map env =
+    let env, new_vars =
+      List.fold_map vars ~init:env ~f:(fun e t ->
+          let t, e = import ~must_find:false t e in
+          (e, t) )
+    in
+    let new_vars_map =
+      List.fold2_exn ~init:new_vars_map vars new_vars
+        ~f:(fun map var new_var -> Map.set map ~key:var.type_id ~data:new_var
+      )
+    in
+    (new_vars, new_vars_map, env)
+
   let rec copy typ new_vars_map env =
     let loc = typ.type_loc in
     match typ.type_desc with
@@ -305,18 +320,9 @@ module Type = struct
       | Some var -> (var, env)
       | None -> (typ, env) )
     | Tpoly (vars, typ) ->
-        let env, new_vars =
-          List.fold_map vars ~init:env ~f:(fun e t ->
-              let t, e = import ~must_find:false t e in
-              (e, t) )
-        in
-        let new_vars_map =
-          List.fold2_exn ~init:new_vars_map vars new_vars
-            ~f:(fun map var new_var ->
-              Map.set map ~key:var.type_id ~data:new_var )
-        in
+        let vars, new_vars_map, env = refresh_vars vars new_vars_map env in
         let typ, env = copy typ new_vars_map env in
-        mk ~loc (Tpoly (new_vars, typ)) env
+        mk ~loc (Tpoly (vars, typ)) env
     | Tctor _ -> mk ~loc typ.type_desc env
     | Ttuple typs ->
         let env, typs =
@@ -449,7 +455,7 @@ module TypeDecl = struct
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
                 let scope, env = pop_scope env in
-                let ctor_ret, env, must_find =
+                let ctor_ret, env, must_find, ctor_ret_params =
                   match ctor.ctor_ret with
                   | Some ret ->
                       let env = open_scope env in
@@ -463,8 +469,14 @@ module TypeDecl = struct
                                ( ret.type_loc
                                , Constraints_not_satisfied (ret, decl) )) ) ;
                       let ret, env = Type.import ~must_find:false ret env in
-                      (Some ret, env, None)
-                  | None -> (None, push_scope scope env, Some true)
+                      let ctor_ret_params =
+                        match ret.type_desc with
+                        | Tctor {var_params; _} -> var_params
+                        | _ -> []
+                      in
+                      (Some ret, env, None, ctor_ret_params)
+                  | None ->
+                      (None, push_scope scope env, Some true, decl.tdec_params)
                 in
                 let env, ctor_args =
                   match ctor.ctor_args with
@@ -475,7 +487,7 @@ module TypeDecl = struct
                             (env, arg) )
                       in
                       (env, Ctor_tuple args)
-                  | Ctor_record fields ->
+                  | Ctor_record (_, fields) ->
                       let env, fields =
                         List.fold_map ~init:env fields ~f:(fun env field ->
                             let fld_type, env =
@@ -483,7 +495,14 @@ module TypeDecl = struct
                             in
                             (env, {field with fld_type}) )
                       in
-                      (env, Ctor_record fields)
+                      let decl, env =
+                        mk ~loc:ctor.ctor_loc ~name:ctor.ctor_ident
+                          ~params:ctor_ret_params (TRecord fields) env
+                      in
+                      let env =
+                        {env with type_env= TypeEnvi.add_decl decl env.type_env}
+                      in
+                      (env, Ctor_record (tdec_id, fields))
                 in
                 let env = push_scope scope (close_scope env) in
                 (env, {ctor with ctor_args; ctor_ret}) )
@@ -507,32 +526,52 @@ module TypeDecl = struct
     let decl = raw_find_type_declaration ident env in
     import decl env
 
+  let find_of_type typ env =
+    let open Option.Let_syntax in
+    let%bind variant =
+      match typ.type_desc with Tctor variant -> Some variant | _ -> None
+    in
+    let%map decl = TypeEnvi.decl env.type_env variant in
+    let bound_vars =
+      match
+        List.fold2
+          ~init:(Map.empty (module Int))
+          variant.var_params decl.tdec_params
+          ~f:(fun bound_vars param var ->
+            Map.set bound_vars ~key:var.type_id ~data:param )
+      with
+      | Ok bound_vars -> bound_vars
+      | Unequal_lengths ->
+          raise
+            (Error
+               ( typ.type_loc
+               , Wrong_number_args
+                   ( variant.var_ident.txt
+                   , List.length decl.tdec_params
+                   , List.length variant.var_params ) ))
+    in
+    (decl, bound_vars, env)
+
+  let find_of_field (field : lid) env =
+    List.find_map
+      ~f:(Scope.find_field ~loc:field.loc field.txt)
+      env.scope_stack
+
+  let find_of_constructor (ctor : lid) env =
+    List.find_map ~f:(Scope.find_ctor ~loc:ctor.loc ctor.txt) env.scope_stack
+
   let unfold_alias typ env =
-    match typ.type_desc with
-    | Tctor variant -> (
-      match TypeEnvi.decl env.type_env variant with
-      | Some {tdec_desc= TAlias alias_typ; tdec_params; _} ->
-          let bound_vars =
-            match
-              List.fold2
-                ~init:(Map.empty (module Int))
-                variant.var_params tdec_params
-                ~f:(fun bound_vars param var ->
-                  Map.set bound_vars ~key:var.type_id ~data:param )
-            with
-            | Ok env -> env
-            | Unequal_lengths ->
-                raise
-                  (Error
-                     ( typ.type_loc
-                     , Wrong_number_args
-                         ( variant.var_ident.txt
-                         , List.length tdec_params
-                         , List.length variant.var_params ) ))
-          in
-          Some (Type.copy alias_typ bound_vars env)
-      | _ -> None )
+    match find_of_type typ env with
+    | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
+        Some (Type.copy alias_typ bound_vars env)
     | _ -> None
+
+  let rec find_unaliased_of_type typ env =
+    match find_of_type typ env with
+    | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
+        let typ, env = Type.copy alias_typ bound_vars env in
+        find_unaliased_of_type typ env
+    | ret -> ret
 end
 
 let add_name (name : str) typ =

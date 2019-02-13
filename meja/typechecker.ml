@@ -5,9 +5,12 @@ type error =
   | Check_failed of type_expr * type_expr * error
   | Cannot_unify of type_expr * type_expr
   | Recursive_variable of type_expr
+  | Unbound of string * lid
   | Unbound_value of str
   | Variable_on_one_side of string
   | Pattern_declaration of string * string
+  | Empty_record
+  | Wrong_type_description of string * str
 
 exception Error of Location.t * error
 
@@ -16,14 +19,18 @@ let bind_none x f = match x with Some x -> x | None -> f ()
 let unpack_decls typ ctyp env =
   match (typ.type_desc, ctyp.type_desc) with
   | Tctor variant, Tctor cvariant ->
-    let (decl_id, cdecl_id) = (variant.var_decl_id, cvariant.var_decl_id) in
-    let unfold_typ () = Option.map (Envi.TypeDecl.unfold_alias typ env) ~f:(fun (typ, env) -> (typ, ctyp, env)) in
-    let unfold_ctyp () = Option.map (Envi.TypeDecl.unfold_alias ctyp env) ~f:(fun (ctyp, env) -> (typ, ctyp, env)) in
-    (* Try to unfold the oldest type definition first. *)
-    if decl_id < cdecl_id then
-      bind_none (Some (unfold_ctyp ())) unfold_typ
-    else
-      bind_none (Some (unfold_typ ())) unfold_ctyp
+      let decl_id, cdecl_id = (variant.var_decl_id, cvariant.var_decl_id) in
+      let unfold_typ () =
+        Option.map (Envi.TypeDecl.unfold_alias typ env) ~f:(fun (typ, env) ->
+            (typ, ctyp, env) )
+      in
+      let unfold_ctyp () =
+        Option.map (Envi.TypeDecl.unfold_alias ctyp env) ~f:(fun (ctyp, env) ->
+            (typ, ctyp, env) )
+      in
+      (* Try to unfold the oldest type definition first. *)
+      if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
+      else bind_none (Some (unfold_typ ())) unfold_ctyp
   | _ -> None
 
 let rec check_type_aux typ ctyp env =
@@ -85,9 +92,11 @@ let rec check_type_aux typ ctyp env =
         | Unequal_lengths ->
             raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
       else
-        let typ, ctyp, env = match unpack_decls typ ctyp env with
-        | Some (typ, ctyp, env) -> typ, ctyp, env
-        | None -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) in
+        let typ, ctyp, env =
+          match unpack_decls typ ctyp env with
+          | Some (typ, ctyp, env) -> (typ, ctyp, env)
+          | None -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
+        in
         check_type_aux typ ctyp env
   | _, _ -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
 
@@ -126,6 +135,79 @@ let add_polymorphised name typ env =
   let typ, env = Envi.Type.flatten typ env in
   let typ, env = polymorphise typ env in
   Envi.add_name name typ env
+
+let get_field (field : lid) env =
+  let loc = field.loc in
+  match Envi.TypeDecl.find_of_field field env with
+  | Some
+      ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
+      , i ) ->
+      let vars, bound_vars, env =
+        Envi.Type.refresh_vars tdec_params (Map.empty (module Int)) env
+      in
+      let name =
+        Location.mkloc
+          ( match field.txt with
+          | Longident.Ldot (m, _) -> Longident.Ldot (m, tdec_ident.txt)
+          | _ -> Longident.Lident tdec_ident.txt )
+          tdec_ident.loc
+      in
+      let rcd_type, env =
+        Envi.TypeDecl.mk_typ ~loc ~params:vars ~ident:name decl env
+      in
+      let {fld_type; _} = List.nth_exn field_decls i in
+      let typ, env = Envi.Type.mk ~loc (Tarrow (rcd_type, fld_type)) env in
+      Envi.Type.copy typ bound_vars env
+  | _ -> raise (Error (loc, Unbound ("record field", field)))
+
+let get_field_of_decl bound_vars field_decls (field : lid) env =
+  match field with
+  | {txt= Longident.Lident name; _} -> (
+    match
+      List.find field_decls ~f:(fun {fld_ident; _} ->
+          String.equal fld_ident.txt name )
+    with
+    | Some {fld_type; _} -> Envi.Type.copy fld_type bound_vars env
+    | None -> get_field field env )
+  | _ -> get_field field env
+
+let get_ctor (name : lid) env =
+  let loc = name.loc in
+  match Envi.TypeDecl.find_of_constructor name env with
+  | Some (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
+    ->
+      let ctor = List.nth_exn ctors i in
+      let make_name (tdec_ident : str) =
+        Location.mkloc
+          ( match name.txt with
+          | Longident.Ldot (m, _) -> Longident.Ldot (m, tdec_ident.txt)
+          | _ -> Longident.Lident tdec_ident.txt )
+          tdec_ident.loc
+      in
+      let (typ, env), params =
+        match ctor.ctor_ret with
+        | Some ({type_desc= Tctor {var_params; _}; _} as typ) ->
+            ((typ, env), var_params)
+        | _ ->
+            ( Envi.TypeDecl.mk_typ ~loc ~params:tdec_params
+                ~ident:(make_name tdec_ident) decl env
+            , tdec_params )
+      in
+      let args_typ, env =
+        match ctor.ctor_args with
+        | Ctor_record (tdec_id, _) ->
+            Envi.Type.mk ~loc
+              (Tctor
+                 { var_ident= make_name ctor.ctor_ident
+                 ; var_params= params
+                 ; var_decl_id= tdec_id })
+              env
+        | Ctor_tuple [typ] -> (typ, env)
+        | Ctor_tuple typs -> Envi.Type.mk ~loc (Ttuple typs) env
+      in
+      let typ, env = Envi.Type.mk ~loc (Tarrow (args_typ, typ)) env in
+      Envi.Type.copy typ (Map.empty (module Int)) env
+  | _ -> raise (Error (loc, Unbound ("constructor", name)))
 
 let rec check_pattern_desc ~loc ~add env typ = function
   | PAny -> env
@@ -246,6 +328,43 @@ let rec get_expression_desc ~loc env = function
             check_type env e_typ result_typ )
       in
       (result_typ, env)
+  | Record ([], _) -> raise (Error (loc, Empty_record))
+  | Record (fields, ext) ->
+      let typ, env =
+        match ext with
+        | Some ext -> get_expression env ext
+        | None -> Envi.Type.mkvar ~loc None env
+      in
+      let field_decls, env =
+        match Envi.TypeDecl.find_unaliased_of_type typ env with
+        | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) ->
+            (Some (field_decls, bound_vars), env)
+        | _ -> (None, env)
+      in
+      let env =
+        List.fold ~init:env fields ~f:(fun env (field, e) ->
+            let loc = {field.loc with Location.loc_end= e.exp_loc.loc_end} in
+            let typ', env = get_expression env e in
+            let arrow_type, env = Envi.Type.mk ~loc (Tarrow (typ, typ')) env in
+            let field_typ, env =
+              match field_decls with
+              | Some (field_decls, bound_vars) ->
+                  get_field_of_decl bound_vars field_decls field env
+              | None -> get_field field env
+            in
+            check_type env arrow_type field_typ )
+      in
+      (typ, env)
+  | Ctor (name, arg) ->
+      let arg_typ, env =
+        match arg with
+        | Some arg -> get_expression env arg
+        | None -> Envi.Type.mk ~loc (Ttuple []) env
+      in
+      let typ, env = Envi.Type.mkvar ~loc None env in
+      let arrow_typ, env = Envi.Type.mk ~loc (Tarrow (arg_typ, typ)) env in
+      let ctor_typ, env = get_ctor name env in
+      (typ, check_type env arrow_typ ctor_typ)
 
 and get_expression env exp =
   get_expression_desc ~loc:exp.exp_loc env exp.exp_desc
@@ -294,6 +413,8 @@ let rec report_error ppf = function
       fprintf ppf
         "The variable @[%a@](%d) would have an instance that contains itself."
         pp_typ typ typ.type_id
+  | Unbound (kind, value) ->
+      fprintf ppf "Unbound %s %a." kind Longident.pp value.txt
   | Unbound_value value -> fprintf ppf "Unbound value %s." value.txt
   | Variable_on_one_side name ->
       fprintf ppf "Variable %s must occur on both sides of this '|' pattern."
@@ -301,6 +422,12 @@ let rec report_error ppf = function
   | Pattern_declaration (kind, name) ->
       fprintf ppf "Unexpected %s declaration for %s within a pattern." kind
         name
+  | Empty_record -> fprintf ppf "Unexpected empty record."
+  | Wrong_type_description (kind, name) ->
+      fprintf ppf
+        "Internal error: Expected a type declaration of kind %s, but instead \
+         got %s"
+        kind name.txt
 
 let () =
   Location.register_error_of_exn (function

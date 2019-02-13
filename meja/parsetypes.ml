@@ -62,7 +62,7 @@ type field_decl =
 
 type ctor_args =
   | Ctor_tuple of type_expr list
-  | Ctor_record of field_decl list
+  | Ctor_record of int * field_decl list
 
 type ctor_decl =
   { ctor_ident: str
@@ -105,6 +105,8 @@ and expression_desc =
   | Constraint of expression * type_expr
   | Tuple of expression list
   | Match of expression * (pattern * expression) list
+  | Record of (lid * expression) list * expression option
+  | Ctor of lid * expression option
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 

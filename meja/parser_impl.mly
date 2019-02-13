@@ -111,7 +111,7 @@ ctor_decl_args:
   | LBRACKET rev_args = list(type_expr, COMMA) RBRACKET
     { Ctor_tuple (List.rev rev_args) }
   | LBRACE fields = list(record_field, COMMA) RBRACE
-    { Ctor_record (List.rev fields) }
+    { Ctor_record (0, List.rev fields) }
 
 ctor_ident:
   | id = UIDENT
