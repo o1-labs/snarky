@@ -6,8 +6,19 @@ type t = {a: int; b: bool}
 
 type u = {f: int -> int}
 
+type ('a, 'b) v = {x: 'a; y: 'b; g: 'a -> 'b}
+
 let z x {f; _} = match x with {a= x; b; _} -> f x
 
 let a (x : t) {f; _} = match x with {a= x; b; _} -> f x
 
 let b = match {f= (fun x -> 12)} with {f; _} -> f
+
+let (c : _ -> (int, bool) v) =
+ fun (x : ('a, 'b) v) ->
+  match x with {x; y; g= f; _} -> {x= 12; y; g= (fun _ -> f x)}
+
+type 'a w = A | B : int * int -> int w | C : 'b w -> 'b w
+
+let d x =
+  match x with A -> 1 | B (x, y) -> y | C A -> 2 | C (B (x, y)) -> y | _ -> 3
