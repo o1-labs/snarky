@@ -53,6 +53,11 @@ let rec of_pattern_desc ?loc = function
   | PTuple ps -> Pat.tuple ?loc (List.map ~f:of_pattern ps)
   | POr (p1, p2) -> Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
   | PInt i -> Pat.constant ?loc (Const.int i)
+  | PRecord fields ->
+      Pat.record ?loc
+        (List.map fields ~f:(fun (f, p) -> (f, of_pattern p)))
+        Open
+  | PCtor (name, arg) -> Pat.construct ?loc name (Option.map ~f:of_pattern arg)
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 

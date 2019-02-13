@@ -92,6 +92,8 @@ and pattern_desc =
   | PTuple of pattern list
   | POr of pattern * pattern
   | PInt of int
+  | PRecord of (lid * pattern) list
+  | PCtor of lid * pattern option
 
 type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 

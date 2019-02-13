@@ -268,6 +268,36 @@ let rec check_pattern_desc ~loc ~add env typ = function
       in
       Envi.push_scope scope2 env
   | PInt _ -> check_type env typ Envi.Core.Type.int
+  | PRecord fields ->
+      let field_decls, env =
+        match Envi.TypeDecl.find_unaliased_of_type typ env with
+        | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) ->
+            (Some (field_decls, bound_vars), env)
+        | _ -> (None, env)
+      in
+      List.fold ~init:env fields ~f:(fun env (field, p) ->
+          let loc = {field.loc with Location.loc_end= p.pat_loc.loc_end} in
+          let typ', env = Envi.Type.mkvar ~loc None env in
+          let arrow_type, env = Envi.Type.mk ~loc (Tarrow (typ, typ')) env in
+          let field_typ, env =
+            match field_decls with
+            | Some (field_decls, bound_vars) ->
+                get_field_of_decl bound_vars field_decls field env
+            | None -> get_field field env
+          in
+          let env = check_type env arrow_type field_typ in
+          check_pattern ~add env typ' p )
+  | PCtor (name, arg) -> (
+      let arg_typ, env =
+        if Option.is_some arg then Envi.Type.mkvar ~loc None env
+        else Envi.Type.mk ~loc (Ttuple []) env
+      in
+      let arrow_typ, env = Envi.Type.mk ~loc (Tarrow (arg_typ, typ)) env in
+      let ctor_typ, env = get_ctor name env in
+      let env = check_type env arrow_typ ctor_typ in
+      match arg with
+      | Some arg -> check_pattern ~add env arg_typ arg
+      | None -> env )
 
 and check_pattern ~add env typ pat =
   check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc
