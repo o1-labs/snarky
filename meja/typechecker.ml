@@ -11,8 +11,22 @@ type error =
 
 exception Error of Location.t * error
 
+let bind_none x f = match x with Some x -> x | None -> f ()
+
+let unpack_decls typ ctyp env =
+  match (typ.type_desc, ctyp.type_desc) with
+  | Tctor variant, Tctor cvariant ->
+    let (decl_id, cdecl_id) = (variant.var_decl_id, cvariant.var_decl_id) in
+    let unfold_typ () = Option.map (Envi.TypeDecl.unfold_alias typ env) ~f:(fun (typ, env) -> (typ, ctyp, env)) in
+    let unfold_ctyp () = Option.map (Envi.TypeDecl.unfold_alias ctyp env) ~f:(fun (ctyp, env) -> (typ, ctyp, env)) in
+    (* Try to unfold the oldest type definition first. *)
+    if decl_id < cdecl_id then
+      bind_none (Some (unfold_ctyp ())) unfold_typ
+    else
+      bind_none (Some (unfold_typ ())) unfold_ctyp
+  | _ -> None
+
 let rec check_type_aux typ ctyp env =
-  let bind_none x f = match x with Some x -> x | None -> f () in
   let without_instance ~f (typ : type_expr) env =
     match Envi.Type.instance env typ with
     | Some typ' -> (
@@ -70,7 +84,11 @@ let rec check_type_aux typ ctyp env =
         | Ok env -> env
         | Unequal_lengths ->
             raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
-      else raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
+      else
+        let typ, ctyp, env = match unpack_decls typ ctyp env with
+        | Some (typ, ctyp, env) -> typ, ctyp, env
+        | None -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) in
+        check_type_aux typ ctyp env
   | _, _ -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
 
 let check_type env typ constr_typ =

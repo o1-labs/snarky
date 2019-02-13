@@ -305,17 +305,18 @@ module Type = struct
       | Some var -> (var, env)
       | None -> (typ, env) )
     | Tpoly (vars, typ) ->
-        let env, vars =
+        let env, new_vars =
           List.fold_map vars ~init:env ~f:(fun e t ->
               let t, e = import ~must_find:false t e in
               (e, t) )
         in
         let new_vars_map =
-          List.fold ~init:new_vars_map vars ~f:(fun map var ->
-              Map.update map var.type_id ~f:(fun _ -> var) )
+          List.fold2_exn ~init:new_vars_map vars new_vars
+            ~f:(fun map var new_var ->
+              Map.set map ~key:var.type_id ~data:new_var )
         in
         let typ, env = copy typ new_vars_map env in
-        mk ~loc (Tpoly (vars, typ)) env
+        mk ~loc (Tpoly (new_vars, typ)) env
     | Tctor _ -> mk ~loc typ.type_desc env
     | Ttuple typs ->
         let env, typs =
@@ -501,6 +502,37 @@ module TypeDecl = struct
     let ident = Option.value ident ~default:(mk_lid decl.tdec_ident) in
     Type.mk ~loc
       (Tctor {var_ident= ident; var_params= params; var_decl_id= decl.tdec_id})
+
+  let find ident env =
+    let decl = raw_find_type_declaration ident env in
+    import decl env
+
+  let unfold_alias typ env =
+    match typ.type_desc with
+    | Tctor variant -> (
+      match TypeEnvi.decl env.type_env variant with
+      | Some {tdec_desc= TAlias alias_typ; tdec_params; _} ->
+          let bound_vars =
+            match
+              List.fold2
+                ~init:(Map.empty (module Int))
+                variant.var_params tdec_params
+                ~f:(fun bound_vars param var ->
+                  Map.set bound_vars ~key:var.type_id ~data:param )
+            with
+            | Ok env -> env
+            | Unequal_lengths ->
+                raise
+                  (Error
+                     ( typ.type_loc
+                     , Wrong_number_args
+                         ( variant.var_ident.txt
+                         , List.length tdec_params
+                         , List.length variant.var_params ) ))
+          in
+          Some (Type.copy alias_typ bound_vars env)
+      | _ -> None )
+    | _ -> None
 end
 
 let add_name (name : str) typ =
