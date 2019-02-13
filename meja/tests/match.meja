@@ -49,3 +49,10 @@ let d = fun (x) => {
     | _ => 3
   };
 };
+
+let if_ = fun (x : bool, y : 'a, z : 'a) => {
+  switch (x) {
+    | true => y
+    | false => z
+  };
+}

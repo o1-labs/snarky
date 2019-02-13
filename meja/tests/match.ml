@@ -22,3 +22,5 @@ type 'a w = A | B : int * int -> int w | C : 'b w -> 'b w
 
 let d x =
   match x with A -> 1 | B (x, y) -> y | C A -> 2 | C (B (x, y)) -> y | _ -> 3
+
+let if_ (x : bool) (y : 'a) (z : 'a) = match x with true -> y | false -> z
