@@ -250,30 +250,33 @@ and check_binding (env : Envi.t) p e : 's =
   let env = check_pattern ~add:add_polymorphised env e.exp_type p in
   (p, e, env)
 
-let rec check_statement_desc ~loc:_ env = function
+let rec check_statement env stmt =
+  match stmt.stmt_desc with
   | Value (p, e) ->
-      let _, _, env = check_binding env p e in
-      env
+      let p, e, env = check_binding env p e in
+      env, {stmt with stmt_desc= Value (p, e)}
   | TypeDecl decl ->
-      let _, env = Envi.TypeDecl.import decl env in
-      env
+      let decl, env = Envi.TypeDecl.import decl env in
+      env, {stmt with stmt_desc= TypeDecl decl}
   | Module (name, m) ->
       let env = Envi.open_scope env in
-      let env = check_module_expr env m in
-      let m, env = Envi.pop_scope env in
-      Envi.add_module name m env
+      let env, m = check_module_expr env m in
+      let m_env, env = Envi.pop_scope env in
+      let env = Envi.add_module name m_env env in
+      env, {stmt with stmt_desc= Module (name, m)}
 
-and check_statement env stmt =
-  check_statement_desc ~loc:stmt.stmt_loc env stmt.stmt_desc
-
-and check_module_desc ~loc env = function
-  | Structure stmts -> List.fold ~f:check_statement ~init:env stmts
-  | ModName name -> Envi.push_scope (Envi.find_module ~loc name env) env
-
-and check_module_expr env m = check_module_desc ~loc:m.mod_loc env m.mod_desc
+and check_module_expr env m =
+  let loc = m.mod_loc in
+  match m.mod_desc with
+  | Structure stmts ->
+    let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
+    env, {m with mod_desc= Structure stmts}
+  | ModName name ->
+    let env = Envi.push_scope (Envi.find_module ~loc name env) env in
+    env, m
 
 let check (ast : statement list) =
-  List.fold_left ast ~init:Envi.Core.env ~f:check_statement
+  List.fold_map ast ~init:Envi.Core.env ~f:check_statement
 
 (* Error handling *)
 

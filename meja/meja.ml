@@ -61,8 +61,8 @@ let main =
       ~error:(Error.of_string "Please pass a file as an argument.")
   in
   try
-    let ast = read_file (Parser_impl.file Lexer_impl.token) file in
-    ignore @@ Typechecker.check ast ;
+    let parse_ast = read_file (Parser_impl.file Lexer_impl.token) file in
+    let _env, ast = Typechecker.check parse_ast in
     let ocaml_ast = To_ocaml.of_file ast in
     let ocaml_formatter =
       match (!ocaml_file, !default) with
