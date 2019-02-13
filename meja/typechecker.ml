@@ -168,8 +168,8 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
           String.equal fld_ident.txt name )
     with
     | Some {fld_type; _} ->
-      let typ, env = Envi.Type.mk ~loc (Tarrow (typ, fld_type)) env in
-      Envi.Type.copy typ bound_vars env
+        let typ, env = Envi.Type.mk ~loc (Tarrow (typ, fld_type)) env in
+        Envi.Type.copy typ bound_vars env
     | None -> get_field field env )
   | _ -> get_field field env
 
@@ -287,7 +287,7 @@ let rec check_pattern_desc ~loc ~add env typ = function
                 get_field_of_decl typ bound_vars field_decls field env
             | None -> get_field field env
           in
-          let field_typ = {field_typ with type_loc=field.loc} in
+          let field_typ = {field_typ with type_loc= field.loc} in
           let env = check_type env arrow_type field_typ in
           check_pattern ~add env typ' p )
   | PCtor (name, arg) -> (
@@ -297,7 +297,7 @@ let rec check_pattern_desc ~loc ~add env typ = function
       in
       let arrow_typ, env = Envi.Type.mk ~loc (Tarrow (arg_typ, typ)) env in
       let ctor_typ, env = get_ctor name env in
-      let ctor_typ = {ctor_typ with type_loc=name.loc} in
+      let ctor_typ = {ctor_typ with type_loc= name.loc} in
       let env = check_type env arrow_typ ctor_typ in
       match arg with
       | Some arg -> check_pattern ~add env arg_typ arg
