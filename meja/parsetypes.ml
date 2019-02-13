@@ -81,8 +81,7 @@ and type_decl_desc =
   | TRecord of field_decl list
   | TVariant of ctor_decl list
 
-type pattern =
-  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: type_expr}
+type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
 and pattern_desc =
   | PAny
