@@ -9,3 +9,19 @@ let y = fun (f : int -> int -> int -> _) => {
     | (i, j, k) => f (i, j, k)
   };
 };
+
+type t = {a: int, b: bool};
+
+type u = {f : int -> int};
+
+let z = fun (x, {f}) => {
+  switch (x) {
+    | {a: x, b} => f (x)
+  };
+};
+
+let a = fun (x : t, {f}) => {
+  switch (x) {
+    | {a: x, b} => f (x)
+  };
+};

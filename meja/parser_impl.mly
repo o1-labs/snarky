@@ -6,6 +6,8 @@ open Parser_errors
 
 let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 
+let lid_last x = mkloc (last x.txt) x.loc
+
 let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= mklocation pos}
 let mkpat ~pos d = {pat_desc= d; pat_loc= mklocation pos}
 let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos}
@@ -91,16 +93,21 @@ decl_type_expr:
       mktyp ~pos:$loc
         (Tctor {var_ident= x; var_params= params; var_decl_id= 0}) }
 
-record_field:
-  | id = as_loc(LIDENT) COLON t = type_expr
-    { { fld_ident= id ; fld_type= t ; fld_id= 0 ; fld_loc= mklocation $loc } }
+record_field(ID, EXP):
+  | id = as_loc(ID) COLON t = EXP
+    { (id, t) }
+
+field_decl:
+  | x = record_field(LIDENT, type_expr)
+    { let (fld_ident, fld_type) = x in
+      { fld_ident; fld_type; fld_id= 0; fld_loc= mklocation $loc } }
 
 type_kind:
   | (* empty *)
     { TAbstract }
   | EQUAL t = type_expr
     { TAlias t }
-  | EQUAL LBRACE fields = list(record_field, COMMA) RBRACE
+  | EQUAL LBRACE fields = list(field_decl, COMMA) RBRACE
     { TRecord (List.rev fields) }
   | EQUAL maybe(BAR) ctors = list(ctor_decl, BAR)
     { TVariant (List.rev ctors) }
@@ -110,7 +117,7 @@ ctor_decl_args:
     { Ctor_tuple [] }
   | LBRACKET rev_args = list(type_expr, COMMA) RBRACKET
     { Ctor_tuple (List.rev rev_args) }
-  | LBRACE fields = list(record_field, COMMA) RBRACE
+  | LBRACE fields = list(field_decl, COMMA) RBRACE
     { Ctor_record (0, List.rev fields) }
 
 ctor_ident:
@@ -131,6 +138,12 @@ ctor_decl:
       ; ctor_ret= return_typ
       ; ctor_loc= mklocation $loc } }
 
+expr_field:
+  | x = record_field(longident(LIDENT, UIDENT), expr)
+    { x }
+  | x = as_loc(longident(LIDENT, UIDENT))
+    { (x, mkexp ~pos:$loc (Variable (mk_lid (lid_last x)))) }
+
 expr:
   | x = as_loc(longident(LIDENT, UIDENT))
     { mkexp ~pos:$loc (Variable x) }
@@ -148,6 +161,8 @@ expr:
     { mkexp ~pos:$loc (Apply (f, List.rev es)) }
   | SWITCH LBRACKET e = expr_or_bare_tuple RBRACKET LBRACE rev_cases = list(match_case, {}) RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
+  | LBRACE fields = list(expr_field, COMMA) RBRACE
+    { mkexp ~pos:$loc (Record(List.rev fields, None)) }
 
 expr_or_bare_tuple:
   | x = expr
@@ -183,6 +198,12 @@ block:
   | expr err = err
     { raise (Error (err, Missing_semi)) }
 
+pat_field:
+  | x = record_field(longident(LIDENT, UIDENT), pat)
+    { x }
+  | x = as_loc(longident(LIDENT, UIDENT))
+    { (x, mkpat ~pos:$loc (PVariable (lid_last x))) }
+
 pat_no_bar:
   | UNDERSCORE
     { mkpat ~pos:$loc PAny }
@@ -196,6 +217,8 @@ pat_no_bar:
     { mkpat ~pos:$loc (PVariable x) }
   | i = INT
     { mkpat ~pos:$loc (PInt i) }
+  | LBRACE fields = list(pat_field, COMMA) RBRACE
+    { mkpat ~pos:$loc (PRecord (List.rev fields)) }
 
 pat:
   | p = pat_no_bar

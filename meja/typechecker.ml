@@ -160,14 +160,16 @@ let get_field (field : lid) env =
       Envi.Type.copy typ bound_vars env
   | _ -> raise (Error (loc, Unbound ("record field", field)))
 
-let get_field_of_decl bound_vars field_decls (field : lid) env =
+let get_field_of_decl typ bound_vars field_decls (field : lid) env =
   match field with
-  | {txt= Longident.Lident name; _} -> (
+  | {txt= Longident.Lident name; loc} -> (
     match
       List.find field_decls ~f:(fun {fld_ident; _} ->
           String.equal fld_ident.txt name )
     with
-    | Some {fld_type; _} -> Envi.Type.copy fld_type bound_vars env
+    | Some {fld_type; _} ->
+      let typ, env = Envi.Type.mk ~loc (Tarrow (typ, fld_type)) env in
+      Envi.Type.copy typ bound_vars env
     | None -> get_field field env )
   | _ -> get_field field env
 
@@ -282,9 +284,10 @@ let rec check_pattern_desc ~loc ~add env typ = function
           let field_typ, env =
             match field_decls with
             | Some (field_decls, bound_vars) ->
-                get_field_of_decl bound_vars field_decls field env
+                get_field_of_decl typ bound_vars field_decls field env
             | None -> get_field field env
           in
+          let field_typ = {field_typ with type_loc=field.loc} in
           let env = check_type env arrow_type field_typ in
           check_pattern ~add env typ' p )
   | PCtor (name, arg) -> (
@@ -294,6 +297,7 @@ let rec check_pattern_desc ~loc ~add env typ = function
       in
       let arrow_typ, env = Envi.Type.mk ~loc (Tarrow (arg_typ, typ)) env in
       let ctor_typ, env = get_ctor name env in
+      let ctor_typ = {ctor_typ with type_loc=name.loc} in
       let env = check_type env arrow_typ ctor_typ in
       match arg with
       | Some arg -> check_pattern ~add env arg_typ arg
@@ -379,10 +383,10 @@ let rec get_expression_desc ~loc env = function
             let field_typ, env =
               match field_decls with
               | Some (field_decls, bound_vars) ->
-                  get_field_of_decl bound_vars field_decls field env
+                  get_field_of_decl typ bound_vars field_decls field env
               | None -> get_field field env
             in
-            check_type env arrow_type field_typ )
+            check_type env field_typ arrow_type )
       in
       (typ, env)
   | Ctor (name, arg) ->
