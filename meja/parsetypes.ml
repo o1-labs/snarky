@@ -42,6 +42,8 @@ type str = string Location.loc
 
 type lid = Longident.t Location.loc
 
+let mk_lid (str : str) = Location.mkloc (Longident.Lident str.txt) str.loc
+
 type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
 and type_desc =
@@ -53,7 +55,7 @@ and type_desc =
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
 
-and variant = {var_ident: str; var_params: type_expr list; var_decl_id: int}
+and variant = {var_ident: lid; var_params: type_expr list; var_decl_id: int}
 
 type field_decl =
   {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}

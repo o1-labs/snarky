@@ -62,7 +62,7 @@ structure:
 structure_item:
   | LET x = pat EQUAL e = expr
     { mkstmt ~pos:$loc (Value (x, e)) }
-  | TYPE x = decl_type k = type_kind
+  | TYPE x = decl_type(LIDENT) k = type_kind
     { let (x, args) = x in
       mkstmt ~pos:$loc (TypeDecl
         { tdec_ident= x
@@ -79,14 +79,14 @@ module_expr:
   | x = as_loc(longident(UIDENT, UIDENT))
     { mkmod ~pos:$loc (ModName x) }
 
-decl_type:
-  | x = as_loc(LIDENT)
+decl_type(X):
+  | x = as_loc(X)
     { (x, []) }
-  | x = as_loc(LIDENT) LBRACKET args = list(type_expr, COMMA) RBRACKET
+  | x = as_loc(X) LBRACKET args = list(type_expr, COMMA) RBRACKET
     { (x, List.rev args) }
 
 decl_type_expr:
-  | x = decl_type
+  | x = decl_type(longident(LIDENT, UIDENT))
     { let (x, params) = x in
       mktyp ~pos:$loc
         (Tctor {var_ident= x; var_params= params; var_decl_id= 0}) }

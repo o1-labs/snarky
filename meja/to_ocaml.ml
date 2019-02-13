@@ -3,8 +3,6 @@ open Asttypes
 open Ast_helper
 open Parsetypes
 
-let mk_lid name = Location.mkloc (Longident.Lident name.txt) name.loc
-
 let rec of_type_desc ?loc typ =
   match typ with
   | Tvar (None, _) -> Typ.any ?loc ()
@@ -13,7 +11,7 @@ let rec of_type_desc ?loc typ =
   | Tarrow (typ1, typ2) ->
       Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
   | Tctor {var_ident= name; var_params= params; _} ->
-      Typ.constr ?loc (mk_lid name) (List.map ~f:of_type_expr params)
+      Typ.constr ?loc name (List.map ~f:of_type_expr params)
   | Ttuple typs -> Typ.tuple ?loc (List.map ~f:of_type_expr typs)
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc

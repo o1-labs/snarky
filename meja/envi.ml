@@ -5,10 +5,10 @@ open Longident
 type error =
   | No_open_scopes
   | Unbound_type_var of type_expr
-  | Unbound_type of string
+  | Unbound_type of Longident.t
   | Unbound_module of Longident.t
   | Unbound_value of Longident.t
-  | Wrong_number_args of string * int * int
+  | Wrong_number_args of Longident.t * int * int
   | Expected_type_var of type_expr
   | Lident_unhandled of string * Longident.t
   | Constraints_not_satisfied of type_expr * type_decl
@@ -65,8 +65,7 @@ module Scope = struct
       type_decls= Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
     }
 
-  let find_type_declaration (name : str) scope =
-    Map.find scope.type_decls name.txt
+  let get_type_declaration name scope = Map.find scope.type_decls name
 
   let register_type_declaration decl scope =
     let scope =
@@ -120,6 +119,15 @@ module Scope = struct
     | Lident name -> get_name name scope
     | Ldot (path, name) ->
         Option.bind (find_module ~loc path scope) ~f:(get_name name)
+    | Lapply _ -> raise (Error (loc, Lident_unhandled ("indentifier", lid)))
+
+  let find_type_declaration ~loc lid scope =
+    match lid with
+    | Lident name -> get_type_declaration name scope
+    | Ldot (path, name) ->
+        Option.bind
+          (find_module ~loc path scope)
+          ~f:(get_type_declaration name)
     | Lapply _ -> raise (Error (loc, Lident_unhandled ("indentifier", lid)))
 end
 
@@ -192,8 +200,13 @@ let add_type_variable name typ =
 let find_type_variable name env =
   List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
 
-let find_type_declaration name env =
-  List.find_map ~f:(Scope.find_type_declaration name) env.scope_stack
+let raw_find_type_declaration (lid : lid) env =
+  let loc = lid.loc in
+  match
+    List.find_map ~f:(Scope.find_type_declaration ~loc lid.txt) env.scope_stack
+  with
+  | Some decl -> decl
+  | None -> raise (Error (loc, Unbound_type lid.txt))
 
 let add_module (name : str) m =
   map_current_scope ~f:(Scope.add_module name.txt m)
@@ -256,11 +269,7 @@ module Type = struct
         mk ~loc (Tpoly (vars, typ)) env
     | Tctor variant ->
         let {var_ident; var_params; _} = variant in
-        let decl =
-          match find_type_declaration var_ident env with
-          | Some decl -> decl
-          | None -> raise (Error (var_ident.loc, Unbound_type var_ident.txt))
-        in
+        let decl = raw_find_type_declaration var_ident env in
         let variant = {variant with var_decl_id= decl.tdec_id} in
         let given_args_length = List.length var_params in
         let expected_args_length = List.length decl.tdec_params in
@@ -444,8 +453,8 @@ module TypeDecl = struct
                   | Some ret ->
                       let env = open_scope env in
                       ( match ret.type_desc with
-                      | Tctor {var_ident= str; _}
-                        when String.equal str.txt decl.tdec_ident.txt ->
+                      | Tctor {var_ident= {txt= Lident str; _}; _}
+                        when String.equal str decl.tdec_ident.txt ->
                           ()
                       | _ ->
                           raise
@@ -488,12 +497,10 @@ module TypeDecl = struct
     let env = {env with type_env= TypeEnvi.add_decl decl env.type_env} in
     (decl, env)
 
-  let mk_typ ?(loc = Location.none) ~params decl =
+  let mk_typ ?(loc = Location.none) ~params ?ident decl =
+    let ident = Option.value ident ~default:(mk_lid decl.tdec_ident) in
     Type.mk ~loc
-      (Tctor
-         { var_ident= decl.tdec_ident
-         ; var_params= params
-         ; var_decl_id= decl.tdec_id })
+      (Tctor {var_ident= ident; var_params= params; var_decl_id= decl.tdec_id})
 end
 
 let add_name (name : str) typ =
@@ -573,7 +580,7 @@ let pp_decl_typ ppf decl =
   pp_typ ppf
     { type_desc=
         Tctor
-          { var_ident= decl.tdec_ident
+          { var_ident= mk_lid decl.tdec_ident
           ; var_params= decl.tdec_params
           ; var_decl_id= decl.tdec_id }
     ; type_id= -1
@@ -583,15 +590,15 @@ let report_error ppf = function
   | No_open_scopes ->
       fprintf ppf "Internal error: There is no current open scope."
   | Unbound_type_var var -> fprintf ppf "Unbound type parameter %a." pp_typ var
-  | Unbound_type typename ->
-      fprintf ppf "Unbound type constructor %s." typename
+  | Unbound_type lid ->
+      fprintf ppf "Unbound type constructor %a." Longident.pp lid
   | Unbound_module lid -> fprintf ppf "Unbound module %a." Longident.pp lid
   | Unbound_value lid -> fprintf ppf "Unbound value %a." Longident.pp lid
-  | Wrong_number_args (typename, given, expected) ->
+  | Wrong_number_args (lid, given, expected) ->
       fprintf ppf
-        "@[The type constructor %s expects %d argument(s)@ but is here \
+        "@[The type constructor %a expects %d argument(s)@ but is here \
          applied to %d argument(s).@]"
-        typename expected given
+        Longident.pp lid expected given
   | Expected_type_var typ ->
       fprintf ppf "Syntax error: Expected a type parameter, but got %a." pp_typ
         typ
