@@ -634,16 +634,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ~eval_constraints:true t0 (Some s0)
       with
       | exception e -> Or_error.of_exn e
-      | Some s, x ->
-          let primary_input = Field.Vector.create () in
-          R1CS_constraint_system.set_auxiliary_input_size system
-            (!next_auxiliary - 1) ;
-          if
-            not
-              (R1CS_constraint_system.is_satisfied system ~primary_input
-                 ~auxiliary_input:aux)
-          then Or_error.error_string "Unknown constraint unsatisfied"
-          else Ok (s, x, get_value)
+      | Some s, x -> Ok (s, x, get_value)
       | None, _ ->
           failwith "run_and_check': Expected a value from run, got None."
 
