@@ -81,7 +81,8 @@ and type_decl_desc =
   | TRecord of field_decl list
   | TVariant of ctor_decl list
 
-type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
+type pattern =
+  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: type_expr}
 
 and pattern_desc =
   | PAny
@@ -91,7 +92,8 @@ and pattern_desc =
   | POr of pattern * pattern
   | PInt of int
 
-type expression = {exp_desc: expression_desc; exp_loc: Location.t}
+type expression =
+  {exp_desc: expression_desc; exp_loc: Location.t; exp_type: type_expr}
 
 and expression_desc =
   | Apply of expression * expression list
