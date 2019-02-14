@@ -10,15 +10,17 @@ build: [
   ["jbuilder" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "core"
-  "ctypes"
-  "ctypes-foreign"
-  "ppx_deriving"
-  "ppx_driver"
-  "ppx_jane"
-  "bignum"
+  "core_kernel"
+  "fold_lib"
+  "tuple_lib"
   "bitstring_lib"
   "interval_union"
+  "bignum"
+  "ctypes"
+  "ctypes-foreign"
+  "ppx_snarky"
+  "ppx_jane"
+  "ppx_deriving"
   "jbuilder"                {build & >= "1.0+beta12"}
 ]
 available: [ ocaml-version >= "4.04.1" ]
