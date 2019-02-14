@@ -1,4 +1,3 @@
 .merlin
-dune-project
 _build
 *.install
