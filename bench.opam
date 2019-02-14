@@ -1,7 +1,7 @@
 opam-version: "1.2"
 version: "0.1"
 build: [
-  ["jbuilder" "build" "--only" "interval_union" "--root" "." "-j" jobs "@install"]
+  ["jbuilder" "build" "--only" "interval_union" "-j" jobs "@install"]
 ]
 depends: [ "core" "ppx_deriving" "ppx_jane" ]
 
