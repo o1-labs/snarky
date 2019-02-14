@@ -29,6 +29,8 @@ module T = struct
   let annotation (t : 'a t) =
     String.concat ~sep:"; "
       (List.filter_map t ~f:(fun {annotation; _} -> annotation))
+
+  let stack_to_string = String.concat ~sep:"\n"
 end
 
 include T

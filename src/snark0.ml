@@ -213,8 +213,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
           R1CS_constraint.set_is_square constr false ;
           constr
 
-    let stack_to_string = String.concat ~sep:"\n"
-
     let add ~stack (t : t) system =
       List.iter t ~f:(fun {basic; annotation} ->
           let label = Option.value annotation ~default:"<unknown>" in
@@ -673,14 +671,16 @@ module Make_basic (Backend : Backend_intf.S) = struct
             go (k y) state
         | Exists (typ, p, k) ->
             let state, handle =
-              Run_helper.exists ~run:(fun t state -> fst (go t state)) typ p state
+              Run_helper.exists
+                ~run:(fun t state -> fst (go t state))
+                typ p state
             in
             go (k handle) state
         | Next_auxiliary k ->
             let state, i = Run_helper.next_auxiliary state in
             go (k i) state
       in
-      let (state, value) = go t0 state in
+      let state, value = go t0 state in
       Option.iter system ~f:(fun system ->
           let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
           R1CS_constraint_system.set_auxiliary_input_size system
