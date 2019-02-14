@@ -1,6 +1,27 @@
 opam-version: "1.2"
+name: "meja"
+maintainer: "opensource@o1labs.org"
+authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
+homepage: "https://github.com/o1labs/snarky"
+bug-reports: "https://github.com/o1labs/snarky/issues"
+dev-repo: "git+https://github.com/o1labs/snarky.git"
+license: "MIT"
+build: [
+  ["jbuilder" "build" "--root" "." "-p" name "-j" jobs]
+]
+depends: [
+  "core_kernel"
+  "ocaml-compiler-libs"
+  "dune"                {build & >= "1.0+beta12"}
+]
+available: [ ocaml-version >= "4.04.1" ]
+descr: "
+A Reason-ML style language with baked-in support for Snarky.
+"
+opam-version: "1.2"
 version: "0.1"
 build: [
-  ["dune" "build" "--only" "src" "--root" "." "-j" jobs "@install"]
+  ["jbuilder" "build" "--only" "interval_union" "--root" "." "-j" jobs "@install"]
 ]
+depends: [ "core" "ppx_deriving" "ppx_jane" ]
 
