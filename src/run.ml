@@ -7,6 +7,8 @@ module type S = sig
 
   type 's prover_state
 
+  val add_constraint : Field.Var.t Constraint.t -> (unit, 's) t
+
   val assert_ : ?label:string -> Field.Var.t Constraint.t -> (unit, 's) t
 
   val assert_all :
@@ -17,6 +19,10 @@ module type S = sig
 
   val assert_square :
     ?label:string -> Field.Var.t -> Field.Var.t -> (unit, _) t
+
+  val run_as_prover :
+       ('a, Field.Var.t -> Field.t, 's prover_state) As_prover0.t option
+    -> ('a option, 's) t
 
   val as_prover :
        (unit, Field.Var.t -> Field.t, 's prover_state) As_prover0.t
@@ -82,6 +88,10 @@ module type S = sig
   module Handler : sig
     type t = request -> response
   end
+
+  val with_handler : f:('a, 's) t -> Request.Handler.single -> ('a, 's) t
+
+  val clear_handler : f:('a, 's) t -> ('a, 's) t
 
   val handle : ('a, 's) t -> Handler.t -> ('a, 's) t
 
@@ -240,7 +250,8 @@ module Make
   let request_witness ~run
       (typ : ('var, 'value, Field.t, Field.Var.t) Types.Typ.t)
       (r : ('value Request.t, Field.Var.t -> Field.t, 's) As_prover0.t) =
-    bind (exists_provider ~run typ (Request r)) ~f:(fun h -> return (Handle.var h))
+    bind (exists_provider ~run typ (Request r)) ~f:(fun h ->
+        return (Handle.var h) )
 
   let request ~run ?such_that typ r =
     match such_that with

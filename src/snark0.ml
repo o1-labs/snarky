@@ -520,7 +520,62 @@ module Make_basic (Backend : Backend_intf.S) = struct
         ; stack: string list
         ; handler: Request.Handler.t }
 
-      let update_prover_state ~f
+      module Backend_types = struct
+        module Field = struct
+          type t = Field0.t
+          module Var = struct
+            type t = Cvar.t
+          end
+        end
+      end
+
+      module Runner_state = struct
+        type 's t = 's run_state
+
+        type 's prover_state = 's
+
+        let to_prover_state x = x
+
+        let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
+          let get_one v =
+            let i = Backend.Var.index v in
+            if i <= num_inputs then Field.Vector.get input (i - 1)
+            else Field.Vector.get aux (i - num_inputs - 1)
+          in
+          Cvar.eval get_one
+
+        let store_field_elt {next_auxiliary; aux; _} x =
+          let v = Backend.Var.create !next_auxiliary in
+          incr next_auxiliary ;
+          Field.Vector.emplace_back aux x ;
+          Cvar.Unsafe.of_var v
+
+        let alloc_var {next_auxiliary; _} () =
+          let v = Backend.Var.create !next_auxiliary in
+          incr next_auxiliary ; Cvar.Unsafe.of_var v
+
+        module Constraint = struct
+          let add ~stack c state =
+            ignore @@ Option.map state.system ~f:(Constraint.add ~stack c)
+
+          let eval c state = Constraint.eval c (get_value state)
+        end
+
+        let eval_constraints {eval_constraints; _} = eval_constraints
+
+        let next_auxiliary {next_auxiliary; _} = next_auxiliary
+
+        let prover_state {prover_state; _} = prover_state
+
+        let set_prover_state prover_state
+            { system
+            ; input
+            ; aux
+            ; eval_constraints
+            ; num_inputs
+            ; next_auxiliary
+            ; stack
+            ; handler; _ } =
           { system
           ; input
           ; aux
@@ -529,98 +584,18 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ; next_auxiliary
           ; prover_state
           ; stack
-          ; handler } =
-        { system
-        ; input
-        ; aux
-        ; eval_constraints
-        ; num_inputs
-        ; next_auxiliary
-        ; prover_state= f prover_state
-        ; stack
-        ; handler }
+          ; handler }
 
-      let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
-        let get_one v =
-          let i = Backend.Var.index v in
-          if i <= num_inputs then Field.Vector.get input (i - 1)
-          else Field.Vector.get aux (i - num_inputs - 1)
-        in
-        Cvar.eval get_one
+        let stack {stack; _} = stack
 
-      let store_field_elt {next_auxiliary; aux; _} x =
-        let v = Backend.Var.create !next_auxiliary in
-        incr next_auxiliary ;
-        Field.Vector.emplace_back aux x ;
-        Cvar.Unsafe.of_var v
+        let set_stack stack state = {state with stack}
 
-      let alloc_var {next_auxiliary; _} () =
-        let v = Backend.Var.create !next_auxiliary in
-        incr next_auxiliary ; Cvar.Unsafe.of_var v
+        let handler {handler; _} = handler
 
-      let run_as_prover x state =
-        match (x, state.prover_state) with
-        | Some x, Some s ->
-            let s', y = As_prover.run x (get_value state) s in
-            ({state with prover_state= Some s'}, Some y)
-        | _, _ -> (state, None)
+        let set_handler handler state = {state with handler}
+      end
 
-      let with_label label ~f state =
-        let stack = state.stack in
-        let state, b = f {state with stack= label :: stack} in
-        ({state with stack}, b)
-
-      let add_constraint c state =
-        if state.eval_constraints && not (Constraint.eval c (get_value state))
-        then
-          failwithf "Constraint unsatisfied:\n%s\n%s\n"
-            (Constraint.annotation c)
-            (Constraint.stack_to_string state.stack)
-            () ;
-        Option.iter state.system ~f:(fun system ->
-            Constraint.add ~stack:state.stack c system ) ;
-        (state, ())
-
-      let with_state ~f ~and_then as_prover state =
-        let state, s_sub = run_as_prover (Some as_prover) state in
-        let sub_state, y = f (update_prover_state ~f:(fun _ -> s_sub) state) in
-        let sub_prover_state = Option.map ~f:and_then sub_state.prover_state in
-        let state, (_ : unit option) = run_as_prover sub_prover_state state in
-        (state, y)
-
-      let with_handler ~f h state =
-        let handler = state.handler in
-        let state, y =
-          f {state with handler= Request.Handler.push handler h}
-        in
-        ({state with handler}, y)
-
-      let clear_handler ~f state =
-        let handler = state.handler in
-        let state, y = f {state with handler= Request.Handler.fail} in
-        ({state with handler}, y)
-
-      let exists ~(run : _ Checked.t -> unit run_state -> unit run_state)
-          {Types.Typ.store; alloc; check; _} provider state =
-        match state.prover_state with
-        | Some s ->
-            let s', value =
-              Provider.run provider state.stack (get_value state) s
-                state.handler
-            in
-            let var = Typ.Store.run (store value) (store_field_elt state) in
-            let state = update_prover_state ~f:(fun _ -> Some ()) state in
-            let state = run (check var) state in
-            let state = update_prover_state ~f:(fun _ -> Some s') state in
-            (state, {Handle.var; value= Some value})
-        | None ->
-            let var = Typ.Alloc.run alloc (alloc_var state) in
-            let state = update_prover_state ~f:(fun _ -> None) state in
-            let state = run (check var) state in
-            let state = update_prover_state ~f:(fun _ -> None) state in
-            (state, {Handle.var; value= None})
-
-      let next_auxiliary state = (state, !(state.next_auxiliary))
+      include Run.Make(Backend_types)(Runner_state)
     end
 
     let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
@@ -648,7 +623,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         match t with
         | Pure x -> (state, x)
         | With_label (lab, t, k) ->
-            let state, y = Run_helper.with_label lab ~f:(go t) state in
+            let state, y = Run_helper.with_label lab (go t) state in
             go (k y) state
         | As_prover (x, k) ->
             let state, (_ : unit option) =
@@ -660,7 +635,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             go k state
         | With_state (p, and_then, t_sub, k) ->
             let state, y =
-              Run_helper.with_state p ~f:(go t_sub) ~and_then state
+              Run_helper.with_state p (go t_sub) ~and_then state
             in
             go (k y) state
         | With_handler (h, t, k) ->
@@ -671,9 +646,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             go (k y) state
         | Exists (typ, p, k) ->
             let state, handle =
-              Run_helper.exists
-                ~run:(fun t state -> fst (go t state))
-                typ p state
+              Run_helper.exists_provider ~run:go typ p state
             in
             go (k handle) state
         | Next_auxiliary k ->
