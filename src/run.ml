@@ -20,6 +20,8 @@ module type S = sig
   val assert_square :
     ?label:string -> Field.Var.t -> Field.Var.t -> (unit, _) t
 
+  val assert_equal : ?label:string -> Field.Var.t -> Field.Var.t -> (unit, _) t
+
   val run_as_prover :
        ('a, Field.Var.t -> Field.t, 's prover_state) As_prover0.t option
     -> ('a option, 's) t
@@ -267,12 +269,14 @@ module Make
   let next_auxiliary () state = (state, !(next_auxiliary state))
 end
 
+module type S_imperative = S with type ('a, _) t = 'a and type 'a prover_state = unit
+
 module Make_imperative
     (M : Checked_intf.Backend_types) (State : sig
         include Checked_intf.Runner_state(M).S with type 'a prover_state = 'a
 
         val initial_state : unit t
-    end) : S with type ('a, _) t = 'a and type 'a prover_state = unit = struct
+    end) : S_imperative = struct
   module Stateful = Make (M) (State)
   module Field = Stateful.Field
   open Stateful
@@ -305,6 +309,8 @@ module Make_imperative
   let assert_r1cs ?label c1 c2 c3 = unwrap @@ assert_r1cs ?label c1 c2 c3
 
   let assert_square ?label c1 c2 = unwrap @@ assert_square ?label c1 c2
+
+  let assert_equal ?label c1 c2 = unwrap @@ assert_equal ?label c1 c2
 
   let run_as_prover f =
     unwrap @@ run_as_prover (Option.map ~f:wrap_as_prover f)
