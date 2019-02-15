@@ -603,7 +603,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
         in
         let next_auxiliary = ref (1 + num_inputs) in
         let aux = Field.Vector.create () in
-        next_auxiliary := 1 + num_inputs ;
         { system
         ; input
         ; aux
@@ -617,7 +616,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
       include Run.Make (Backend_types) (Runner_state)
     end
 
-    type ('a, 's) run = 's Run_helper.run_state -> ('a, 's) t -> 's option * 'a
+    type ('a, 's) run =
+      's Run_helper.run_state -> ('a, 's) t -> 's Run_helper.run_state * 'a
 
     let run (type a s) (state : s Run_helper.run_state) (t0 : (a, s) t) =
       Option.iter state.system ~f:(fun system ->
@@ -667,27 +667,26 @@ module Make_basic (Backend : Backend_intf.S) = struct
           in
           R1CS_constraint_system.set_auxiliary_input_size system
             auxiliary_input_size ) ;
-      (state.prover_state, value)
+      (state, value)
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
     let constraint_system ~run ~num_inputs (t : (unit, 's) t) :
         R1CS_constraint_system.t =
       let system = R1CS_constraint_system.create () in
       let state = Run_helper.init ~num_inputs ~system None in
-      ignore (run state t) ;
-      Option.value_exn state.system
+      let state, () = run state t in
+      Option.value_exn state.Run_helper.system
 
     let auxiliary_input (type s) ~run ~num_inputs (t0 : (unit, s) t) (s0 : s)
         (input : Field.Vector.t) : Field.Vector.t =
       let state = Run_helper.init ~num_inputs ~input (Some s0) in
-      ignore (run state t0) ;
-      state.aux
+      let state, () = run state t0 in
+      state.Run_helper.aux
 
     let run_and_check' (type a s) ~run (t0 : (a, s) t) (s0 : s) =
-      let num_inputs = 0 in
       let system = R1CS_constraint_system.create () in
       let state =
-        Run_helper.init ~num_inputs ~system ~eval_constraints:true (Some s0)
+        Run_helper.init ~num_inputs:0 ~system ~eval_constraints:true (Some s0)
       in
       let get_value : Cvar.t -> Field.t =
         let get_one v = Field.Vector.get state.aux (Backend.Var.index v - 1) in
@@ -695,16 +694,15 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       match run state t0 with
       | exception e -> Or_error.of_exn e
-      | Some s, x -> Ok (s, x, get_value)
-      | None, _ ->
+      | {Run_helper.prover_state= Some s; _}, x -> Ok (s, x, get_value)
+      | _ ->
           failwith "run_and_check': Expected a value from run, got None."
 
     let run_unchecked (type a s) ~run (t0 : (a, s) t) (s0 : s) =
-      let num_inputs = 0 in
-      let state = Run_helper.init ~num_inputs (Some s0) in
+      let state = Run_helper.init ~num_inputs:0 (Some s0) in
       match run state t0 with
-      | Some s, x -> (s, x)
-      | None, _ ->
+      | {Run_helper.prover_state= Some s; _}, x -> (s, x)
+      | _ ->
           failwith "run_unchecked: Expected a value from run, got None."
 
     let run_and_check ~run t s =
