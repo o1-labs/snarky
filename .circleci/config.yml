@@ -25,7 +25,7 @@ jobs:
         steps:
             - run:
                 name: opam pin
-                command: eval `opam config env` && opam pin $CIRCLE_REPOSITORY_URL
+                command: eval `opam config env` && opam pin -y $CIRCLE_REPOSITORY_URL
 workflows:
     version: 2
     snarky_parallel:
