@@ -523,6 +523,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       module Backend_types = struct
         module Field = struct
           type t = Field0.t
+
           module Var = struct
             type t = Cvar.t
           end
@@ -595,7 +596,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let set_handler handler state = {state with handler}
       end
 
-      include Run.Make(Backend_types)(Runner_state)
+      include Run.Make (Backend_types) (Runner_state)
     end
 
     let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
@@ -650,7 +651,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             in
             go (k handle) state
         | Next_auxiliary k ->
-            let state, i = Run_helper.next_auxiliary state in
+            let state, i = Run_helper.next_auxiliary () state in
             go (k i) state
       in
       let state, value = go t0 state in

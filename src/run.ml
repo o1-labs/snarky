@@ -38,7 +38,7 @@ module type S = sig
     -> ('a, 's1) t
     -> ('a, 's) t
 
-  val next_auxiliary : (int, 's) t
+  val next_auxiliary : unit -> (int, 's) t
 
   val request_witness :
        run:((unit, unit, Field.t, Field.Var.t) Checked.t -> (unit, unit) t)
@@ -264,5 +264,95 @@ module Make
 
   let perform ~run req = request_witness ~run (Typ.unit ()) req
 
-  let next_auxiliary state = (state, !(next_auxiliary state))
+  let next_auxiliary () state = (state, !(next_auxiliary state))
+end
+
+module Make_imperative
+    (M : Checked_intf.Backend_types) (State : sig
+        include Checked_intf.Runner_state(M).S with type 'a prover_state = 'a
+
+        val initial_state : unit t
+    end) : S with type ('a, _) t = 'a and type 'a prover_state = unit = struct
+  module Stateful = Make (M) (State)
+  module Field = Stateful.Field
+  open Stateful
+
+  type ('a, _) t = 'a
+
+  type _ prover_state = unit
+
+  let state = ref State.initial_state
+
+  let wrap x state = (state, x)
+
+  let wrap_fun f x = wrap (f x)
+
+  let unwrap (x : ('a, unit) t) =
+    let state', x = x !state in
+    state := state' ;
+    x
+
+  let wrap_as_prover f read _ =
+    let (), a = f read () in
+    (State.to_prover_state (), a)
+
+  let add_constraint c = unwrap @@ add_constraint c
+
+  let assert_ ?label c = unwrap @@ assert_ ?label c
+
+  let assert_all ?label c = unwrap @@ assert_all ?label c
+
+  let assert_r1cs ?label c1 c2 c3 = unwrap @@ assert_r1cs ?label c1 c2 c3
+
+  let assert_square ?label c1 c2 = unwrap @@ assert_square ?label c1 c2
+
+  let run_as_prover f =
+    unwrap @@ run_as_prover (Option.map ~f:wrap_as_prover f)
+
+  let as_prover f = unwrap @@ as_prover (wrap_as_prover f)
+
+  let with_state ?and_then f x =
+    let and_then = Option.map and_then ~f:(fun f _ -> wrap_as_prover (f ())) in
+    unwrap @@ with_state ?and_then (wrap_as_prover f) (wrap x)
+
+  let next_auxiliary () = unwrap @@ next_auxiliary ()
+
+  let request_witness ~run typ as_prover =
+    unwrap
+    @@ request_witness ~run:(wrap_fun run) typ (wrap_as_prover as_prover)
+
+  let perform ~run as_prover =
+    unwrap @@ perform ~run:(wrap_fun run) (wrap_as_prover as_prover)
+
+  let request ~run ?such_that typ req =
+    let such_that = Option.map such_that ~f:wrap_fun in
+    unwrap @@ request ~run:(wrap_fun run) ?such_that typ req
+
+  let exists ~run ?request ?compute typ =
+    unwrap @@ exists ~run:(wrap_fun run) ?request ?compute typ
+
+  let exists_provider ~run typ provider =
+    unwrap @@ exists_provider ~run:(wrap_fun run) typ provider
+
+  type response = Request.response
+
+  let unhandled = Request.unhandled
+
+  type request = Request.request =
+    | With :
+        { request: 'a Request.t
+        ; respond: 'a Request.Response.t -> response }
+        -> request
+
+  module Handler = struct
+    type t = request -> response
+  end
+
+  let with_handler ~f handler = unwrap @@ with_handler ~f:(wrap f) handler
+
+  let clear_handler ~f = unwrap @@ clear_handler ~f:(wrap f)
+
+  let handle t handler = unwrap @@ handle (wrap t) handler
+
+  let with_label label t = unwrap @@ with_label label (wrap t)
 end
