@@ -596,24 +596,30 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let set_handler handler state = {state with handler}
       end
 
-      include Run.Make (Backend_types) (Runner_state)
-    end
-
-    let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ?(eval_constraints = !eval_constraints) (t0 : (a, s) t) (s0 : s option)
-        =
-      let eval_constraints = eval_constraints && Option.is_some s0 in
-      next_auxiliary := 1 + num_inputs ;
-      let state =
-        { Run_helper.system
+      let init ~num_inputs ~input ~next_auxiliary ~aux ?system
+          ?(eval_constraints = !eval_constraints) (prover_state : 's option) =
+        let eval_constraints =
+          eval_constraints && Option.is_some prover_state
+        in
+        next_auxiliary := 1 + num_inputs ;
+        { system
         ; input
         ; aux
         ; eval_constraints
         ; num_inputs
         ; next_auxiliary
-        ; prover_state= s0
+        ; prover_state
         ; stack= []
         ; handler= Request.Handler.fail }
+
+      include Run.Make (Backend_types) (Runner_state)
+    end
+
+    let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
+        ?eval_constraints (t0 : (a, s) t) (s0 : s option) =
+      let state =
+        Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux ?system
+          ?eval_constraints s0
       in
       Option.iter system ~f:(fun system ->
           R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
