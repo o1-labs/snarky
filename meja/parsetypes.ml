@@ -42,6 +42,8 @@ type str = string Location.loc
 
 type lid = Longident.t Location.loc
 
+let mk_lid (str : str) = Location.mkloc (Longident.Lident str.txt) str.loc
+
 type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
 and type_desc =
@@ -53,14 +55,14 @@ and type_desc =
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
 
-and variant = {var_ident: str; var_params: type_expr list; var_decl_id: int}
+and variant = {var_ident: lid; var_params: type_expr list; var_decl_id: int}
 
 type field_decl =
   {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}
 
 type ctor_args =
   | Ctor_tuple of type_expr list
-  | Ctor_record of field_decl list
+  | Ctor_record of int * field_decl list
 
 type ctor_decl =
   { ctor_ident: str
@@ -90,6 +92,8 @@ and pattern_desc =
   | PTuple of pattern list
   | POr of pattern * pattern
   | PInt of int
+  | PRecord of (lid * pattern) list
+  | PCtor of lid * pattern option
 
 type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: type_expr}
@@ -104,6 +108,8 @@ and expression_desc =
   | Constraint of expression * type_expr
   | Tuple of expression list
   | Match of expression * (pattern * expression) list
+  | Record of (lid * expression) list * expression option
+  | Ctor of lid * expression option
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 

@@ -1,5 +1,5 @@
 opam-version: "1.2"
-name: "fold_lib"
+name: "snarky_bench"
 maintainer: "opensource@o1labs.org"
 authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
 homepage: "https://github.com/o1labs/snarky"
@@ -7,15 +7,16 @@ bug-reports: "https://github.com/o1labs/snarky/issues"
 dev-repo: "git+https://github.com/o1labs/snarky.git"
 license: "MIT"
 build: [
-  ["dune" "build" "-p" name "-j" jobs]
+  ["jbuilder" "build" "-p" name "-j" jobs]
 ]
 depends: [
   "core"
-  "ppx_deriving"
+  "snarky"
   "ppx_jane"
+  "ppx_bench"
   "jbuilder"                {build & >= "1.0+beta12"}
 ]
 available: [ ocaml-version >= "4.04.1" ]
 descr: "
-A library for treating folds as a first-class data structure and a monad
+Benchmark runner for snarky
 "
