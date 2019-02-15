@@ -24,6 +24,9 @@ jobs:
         - image: codaprotocol/coda:toolchain-7df6b2b12bc316cb71592b12255d80e19396831e
         steps:
             - run:
+                name: get ssh key
+                command: ssh -o StrictHostKeyChecking=no git@github.com || true
+            - run:
                 name: opam pin
                 command: eval `opam config env` && opam pin -y $CIRCLE_REPOSITORY_URL
 workflows:
