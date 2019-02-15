@@ -382,12 +382,12 @@ let rec get_expression env exp =
   | Record (fields, ext) ->
       let typ, ext, env =
         match ext with
-        | Some ext -> 
-          let ext, env = get_expression env ext in
-          (ext.exp_type, Some ext, env)
+        | Some ext ->
+            let ext, env = get_expression env ext in
+            (ext.exp_type, Some ext, env)
         | None ->
-          let typ, env = Envi.Type.mkvar ~loc None env in
-          (typ, None, env)
+            let typ, env = Envi.Type.mkvar ~loc None env in
+            (typ, None, env)
       in
       let field_decls, env =
         match Envi.TypeDecl.find_unaliased_of_type typ env with
@@ -399,7 +399,9 @@ let rec get_expression env exp =
         List.fold_map ~init:env fields ~f:(fun env (field, e) ->
             let loc = {field.loc with Location.loc_end= e.exp_loc.loc_end} in
             let e, env = get_expression env e in
-            let arrow_type, env = Envi.Type.mk ~loc (Tarrow (typ, e.exp_type)) env in
+            let arrow_type, env =
+              Envi.Type.mk ~loc (Tarrow (typ, e.exp_type)) env
+            in
             let field_typ, env =
               match field_decls with
               | Some (field_decls, bound_vars) ->
@@ -412,12 +414,12 @@ let rec get_expression env exp =
   | Ctor (name, arg) ->
       let arg_typ, arg, env =
         match arg with
-        | Some arg -> 
-          let arg, env = get_expression env arg in
-          (arg.exp_type, Some arg, env)
+        | Some arg ->
+            let arg, env = get_expression env arg in
+            (arg.exp_type, Some arg, env)
         | None ->
-          let typ, env = Envi.Type.mk ~loc (Ttuple []) env in
-          (typ, None, env)
+            let typ, env = Envi.Type.mk ~loc (Ttuple []) env in
+            (typ, None, env)
       in
       let typ, env = Envi.Type.mkvar ~loc None env in
       let arrow_typ, env = Envi.Type.mk ~loc (Tarrow (arg_typ, typ)) env in
