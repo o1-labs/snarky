@@ -615,14 +615,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
       include Run.Make (Backend_types) (Runner_state)
     end
 
-    let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ?eval_constraints (t0 : (a, s) t) (s0 : s option) =
-      let state =
-        Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux ?system
-          ?eval_constraints s0
-      in
-      Option.iter system ~f:(fun system ->
-          R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
+    let run (type a s) (state : s Run_helper.run_state) (t0 : (a, s) t) =
+      Option.iter state.system ~f:(fun system ->
+          R1CS_constraint_system.set_primary_input_size system state.num_inputs ) ;
       (* INVARIANT: go _ _ _ s = (s', _) gives (s' = Some _) iff (s = Some _) *)
       let rec go : type a s.
           (a, s) t -> s Run_helper.run_state -> s Run_helper.run_state * a =
@@ -661,8 +656,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
             go (k i) state
       in
       let state, value = go t0 state in
-      Option.iter system ~f:(fun system ->
-          let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
+      Option.iter state.system ~f:(fun system ->
+          let auxiliary_input_size = !(state.next_auxiliary) - (1 + state.num_inputs) in
           R1CS_constraint_system.set_auxiliary_input_size system
             auxiliary_input_size ) ;
       (state.prover_state, value)
@@ -674,15 +669,19 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
       let system = R1CS_constraint_system.create () in
-      ignore (run ~num_inputs ~input ~next_auxiliary ~aux ~system t None) ;
-      system
+      let state =
+      Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux ~system None
+      in
+      ignore (run state t) ;
+      Option.value_exn state.system
 
     let auxiliary_input (type s) ~num_inputs (t0 : (unit, s) t) (s0 : s)
         (input : Field.Vector.t) : Field.Vector.t =
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
-      ignore (run ~num_inputs ~input ~next_auxiliary ~aux t0 (Some s0)) ;
-      aux
+      let state = Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux (Some s0) in
+      ignore (run state t0) ;
+      state.aux
 
     let run_and_check' (type a s) (t0 : (a, s) t) (s0 : s) =
       let num_inputs = 0 in
@@ -690,14 +689,15 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let next_auxiliary = ref 1 in
       let aux = Field.Vector.create () in
       let system = R1CS_constraint_system.create () in
+      let state =
+        Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux ~system
+          ~eval_constraints:true (Some s0)
+      in
       let get_value : Cvar.t -> Field.t =
-        let get_one v = Field.Vector.get aux (Backend.Var.index v - 1) in
+        let get_one v = Field.Vector.get state.aux (Backend.Var.index v - 1) in
         Cvar.eval get_one
       in
-      match
-        run ~num_inputs ~input ~next_auxiliary ~aux ~system
-          ~eval_constraints:true t0 (Some s0)
-      with
+      match run state t0 with
       | exception e -> Or_error.of_exn e
       | Some s, x -> Ok (s, x, get_value)
       | None, _ ->
@@ -708,7 +708,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let input = Field.Vector.create () in
       let next_auxiliary = ref 1 in
       let aux = Field.Vector.create () in
-      match run ~num_inputs ~input ~next_auxiliary ~aux t0 (Some s0) with
+      let state =
+      Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
+      in
+      match run state t0 with
       | Some s, x -> (s, x)
       | None, _ ->
           failwith "run_unchecked: Expected a value from run, got None."
