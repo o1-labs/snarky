@@ -12,9 +12,20 @@ jobs:
             - run: eval `opam config env` && make build
             - run: eval `opam config env` && make examples
             - run: eval `opam config env` && make tests
+    meja:
+        docker:
+        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
+        - image: codaprotocol/coda:toolchain-7df6b2b12bc316cb71592b12255d80e19396831e
+        steps:
             - run:
                 name: Build Meja
                 command: eval `opam config env` && cd meja && make build
             - run:
                 name: Meja tests
                 command: eval `opam config env` && cd meja && make test
+workflows:
+    version: 2
+    snarky_parallel:
+        jobs:
+        - build
+        - meja
