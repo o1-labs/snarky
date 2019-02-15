@@ -3,6 +3,10 @@ open Core_kernel
 
 let () = Camlsnark_c.linkme
 
+let eval_constraints = ref false
+
+let set_eval_constraints b = eval_constraints := b
+
 module Make_basic (Backend : Backend_intf.S) = struct
   open Backend
 
@@ -507,8 +511,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
             go count (k {Handle.var; value= None})
       in
       fst (go 0 t)
-
-    let eval_constraints = ref false
 
     let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
         ?(eval_constraints = !eval_constraints) (t0 : (a, s) t) (s0 : s option)
@@ -1353,8 +1355,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
   let verify = Run.verify
 
   let constraint_system = Run.constraint_system
-
-  let set_eval_constraints b = eval_constraints := b
 
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
