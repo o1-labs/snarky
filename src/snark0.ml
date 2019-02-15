@@ -615,9 +615,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
       include Run.Make (Backend_types) (Runner_state)
     end
 
+    type ('a, 's) run = 's Run_helper.run_state -> ('a, 's) t -> 's option * 'a
+
     let run (type a s) (state : s Run_helper.run_state) (t0 : (a, s) t) =
       Option.iter state.system ~f:(fun system ->
-          R1CS_constraint_system.set_primary_input_size system state.num_inputs ) ;
+          R1CS_constraint_system.set_primary_input_size system state.num_inputs
+      ) ;
       (* INVARIANT: go _ _ _ s = (s', _) gives (s' = Some _) iff (s = Some _) *)
       let rec go : type a s.
           (a, s) t -> s Run_helper.run_state -> s Run_helper.run_state * a =
@@ -657,33 +660,37 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       let state, value = go t0 state in
       Option.iter state.system ~f:(fun system ->
-          let auxiliary_input_size = !(state.next_auxiliary) - (1 + state.num_inputs) in
+          let auxiliary_input_size =
+            !(state.next_auxiliary) - (1 + state.num_inputs)
+          in
           R1CS_constraint_system.set_auxiliary_input_size system
             auxiliary_input_size ) ;
       (state.prover_state, value)
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
-    let constraint_system ~num_inputs (t : (unit, 's) t) :
+    let constraint_system ~run ~num_inputs (t : (unit, 's) t) :
         R1CS_constraint_system.t =
       let input = Field.Vector.create () in
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
       let system = R1CS_constraint_system.create () in
       let state =
-      Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux ~system None
+        Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux ~system None
       in
       ignore (run state t) ;
       Option.value_exn state.system
 
-    let auxiliary_input (type s) ~num_inputs (t0 : (unit, s) t) (s0 : s)
+    let auxiliary_input (type s) ~run ~num_inputs (t0 : (unit, s) t) (s0 : s)
         (input : Field.Vector.t) : Field.Vector.t =
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
-      let state = Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux (Some s0) in
+      let state =
+        Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
+      in
       ignore (run state t0) ;
       state.aux
 
-    let run_and_check' (type a s) (t0 : (a, s) t) (s0 : s) =
+    let run_and_check' (type a s) ~run (t0 : (a, s) t) (s0 : s) =
       let num_inputs = 0 in
       let input = Field.Vector.create () in
       let next_auxiliary = ref 1 in
@@ -703,25 +710,25 @@ module Make_basic (Backend : Backend_intf.S) = struct
       | None, _ ->
           failwith "run_and_check': Expected a value from run, got None."
 
-    let run_unchecked (type a s) (t0 : (a, s) t) (s0 : s) =
+    let run_unchecked (type a s) ~run (t0 : (a, s) t) (s0 : s) =
       let num_inputs = 0 in
       let input = Field.Vector.create () in
       let next_auxiliary = ref 1 in
       let aux = Field.Vector.create () in
       let state =
-      Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
+        Run_helper.init ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
       in
       match run state t0 with
       | Some s, x -> (s, x)
       | None, _ ->
           failwith "run_unchecked: Expected a value from run, got None."
 
-    let run_and_check t s =
-      Or_error.map (run_and_check' t s) ~f:(fun (s, x, get_value) ->
+    let run_and_check ~run t s =
+      Or_error.map (run_and_check' ~run t s) ~f:(fun (s, x, get_value) ->
           let s', x = As_prover.run x get_value s in
           (s', x) )
 
-    let check t s = Or_error.is_ok (run_and_check' t s)
+    let check ~run t s = Or_error.is_ok (run_and_check' ~run t s)
 
     let equal (x : Cvar.t) (y : Cvar.t) : (Cvar.t Boolean.t, _) t =
       let open Let_syntax in
@@ -1074,7 +1081,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module Data_spec = Typ.Data_spec
 
-  module Run = struct
+  module Runner = struct
     open Data_spec
 
     let alloc_var next_input () =
@@ -1098,24 +1105,29 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ()
 
     let r1cs_h : type s r2 k1 k2.
-           int ref
+           run:(unit, s) Checked.run
+        -> int ref
         -> ((unit, s) Checked.t, r2, k1, k2) t
         -> k1
         -> R1CS_constraint_system.t =
-     fun next_input t k ->
+     fun ~run next_input t k ->
       let r = collect_input_constraints next_input t k in
-      Checked.constraint_system ~num_inputs:(!next_input - 1) r
+      Checked.constraint_system ~run ~num_inputs:(!next_input - 1) r
 
-    let constraint_system :
-           exposing:((unit, 's) Checked.t, _, 'k_var, _) t
-        -> 'k_var
+    let constraint_system (type s k_var k_val) :
+           run:(unit, s) Checked.run
+        -> exposing:((unit, s) Checked.t, _, k_var, k_val) t
+        -> k_var
         -> R1CS_constraint_system.t =
-     fun ~exposing k -> r1cs_h (ref 1) exposing k
+     fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
 
     let generate_keypair :
-        exposing:((unit, 's) Checked.t, _, 'k_var, _) t -> 'k_var -> Keypair.t
-        =
-     fun ~exposing k -> Keypair.generate (constraint_system ~exposing k)
+           run:_
+        -> exposing:((unit, 's) Checked.t, _, 'k_var, _) t
+        -> 'k_var
+        -> Keypair.t =
+     fun ~run ~exposing k ->
+      Keypair.generate (constraint_system ~run ~exposing k)
 
     let verify :
            Proof.t
@@ -1172,16 +1184,17 @@ module Make_basic (Backend : Backend_intf.S) = struct
       go t0 k0
 
     let prove :
-           Proving_key.t
+           run:(unit, 's) Checked.run
+        -> Proving_key.t
         -> ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) t
         -> 's
         -> 'k_var
         -> 'k_value =
-     fun key t s k ->
+     fun ~run key t s k ->
       conv
         (fun c primary ->
           let auxiliary =
-            Checked.auxiliary_input
+            Checked.auxiliary_input ~run
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
@@ -1398,7 +1411,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     Quickcheck.test gen ~f:(fun (x, y) ->
         let correct_answer = x < y in
         let (), lt =
-          Checked.run_and_check
+          Checked.run_and_check ~run:Checked.run
             (Checked.map
                ~f:(As_prover.read Checked.Boolean.typ)
                (Field.Checked.lt_bitstring_value
@@ -1412,15 +1425,21 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   include Checked
 
-  let generate_keypair = Run.generate_keypair
+  let generate_keypair ~exposing k = Runner.generate_keypair ~run ~exposing k
 
-  let conv f = Run.conv (fun x _ -> f x)
+  let conv f = Runner.conv (fun x _ -> f x)
 
-  let prove = Run.prove
+  let prove key t s k = Runner.prove ~run key t s k
 
-  let verify = Run.verify
+  let verify = Runner.verify
 
-  let constraint_system = Run.constraint_system
+  let run_unchecked t s = run_unchecked ~run t s
+
+  let run_and_check t s = run_and_check ~run t s
+
+  let check t s = check ~run t s
+
+  let constraint_system ~exposing k = Runner.constraint_system ~run ~exposing k
 
   let set_eval_constraints b = eval_constraints := b
 
