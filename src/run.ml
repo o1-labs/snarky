@@ -269,27 +269,58 @@ module Make
   let next_auxiliary () state = (state, !(next_auxiliary state))
 end
 
-module type S_imperative = S with type ('a, _) t = 'a and type 'a prover_state = unit
+module type S_imperative = sig
+  include S with type ('a, _) t = 'a and type 'a prover_state = unit
+
+  val request_witness :
+       ('var, 'value, Field.t, Field.Var.t) Typ.t
+    -> ('value Request.t, Field.Var.t -> Field.t, 's prover_state) As_prover0.t
+    -> ('var, 's) t
+
+  val perform :
+       (unit Request.t, Field.Var.t -> Field.t, 's prover_state) As_prover0.t
+    -> (unit, 's) t
+
+  val request :
+       ?such_that:('var -> (unit, 's) t)
+    -> ('var, 'value, Field.t, Field.Var.t) Typ.t
+    -> 'value Request.t
+    -> ('var, 's) t
+  (** TODO: Come up with a better name for this in relation to the above *)
+
+  val exists :
+       ?request:( 'value Request.t
+                , Field.Var.t -> Field.t
+                , 's prover_state )
+                As_prover0.t
+    -> ?compute:('value, Field.Var.t -> Field.t, 's prover_state) As_prover0.t
+    -> ('var, 'value, Field.t, Field.Var.t) Typ.t
+    -> ('var, 's) t
+
+  val exists_provider :
+       ('var, 'value, Field.t, Field.Var.t) Typ.t
+    -> ('value, Field.Var.t -> Field.t, 's prover_state) Provider.t
+    -> (('var, 'value) Handle.t, 's) t
+end
 
 module Make_imperative
-    (M : Checked_intf.Backend_types) (State : sig
-        include Checked_intf.Runner_state(M).S with type 'a prover_state = 'a
-
-        val initial_state : unit t
-    end) : S_imperative = struct
+    (M : Checked_intf.Backend_types)
+    (State : Checked_intf.Runner_state(M).S_imperative) :
+  S_imperative
+  with type Field.t = M.Field.t
+   and type Field.Var.t = M.Field.Var.t = struct
+  include M
   module Stateful = Make (M) (State)
-  module Field = Stateful.Field
+  open State
   open Stateful
 
   type ('a, _) t = 'a
 
   type _ prover_state = unit
 
-  let state = ref State.initial_state
+  let state = State.initial_state
 
   let wrap x state = (state, x)
-
-  let wrap_fun f x = wrap (f x)
 
   let unwrap (x : ('a, unit) t) =
     let state', x = x !state in
@@ -323,22 +354,20 @@ module Make_imperative
 
   let next_auxiliary () = unwrap @@ next_auxiliary ()
 
-  let request_witness ~run typ as_prover =
-    unwrap
-    @@ request_witness ~run:(wrap_fun run) typ (wrap_as_prover as_prover)
+  let request_witness typ as_prover =
+    unwrap @@ request_witness ~run typ (wrap_as_prover as_prover)
 
-  let perform ~run as_prover =
-    unwrap @@ perform ~run:(wrap_fun run) (wrap_as_prover as_prover)
+  let perform as_prover = unwrap @@ perform ~run (wrap_as_prover as_prover)
 
-  let request ~run ?such_that typ req =
-    let such_that = Option.map such_that ~f:wrap_fun in
-    unwrap @@ request ~run:(wrap_fun run) ?such_that typ req
+  let request ?such_that typ req =
+    let such_that = Option.map such_that ~f:(fun f x -> wrap (f x)) in
+    unwrap @@ request ~run ?such_that typ req
 
-  let exists ~run ?request ?compute typ =
-    unwrap @@ exists ~run:(wrap_fun run) ?request ?compute typ
+  let exists ?request ?compute typ =
+    unwrap @@ exists ~run ?request ?compute typ
 
-  let exists_provider ~run typ provider =
-    unwrap @@ exists_provider ~run:(wrap_fun run) typ provider
+  let exists_provider typ provider =
+    unwrap @@ exists_provider ~run typ provider
 
   type response = Request.response
 
@@ -362,3 +391,98 @@ module Make_imperative
 
   let with_label label t = unwrap @@ with_label label (wrap t)
 end
+
+type ('field, 'field_var) impl =
+  (module
+   S_imperative
+     with type Field.t = 'field and type Field.Var.t = 'field_var)
+
+let add_constraint (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.add_constraint
+
+let assert_ (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.assert_
+
+let assert_all (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.assert_all
+
+let assert_r1cs (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.assert_r1cs
+
+let assert_square (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.assert_square
+
+let assert_equal (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.assert_equal
+
+let run_as_prover (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.run_as_prover
+
+let as_prover (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.as_prover
+
+let with_state (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.with_state
+
+let next_auxiliary (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.next_auxiliary
+
+let request_witness (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.request_witness
+
+let perform (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.perform
+
+let request (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.request
+
+let exists (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.exists
+
+let exists_provider (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.exists_provider
+
+type response = Request.response
+
+let unhandled = Request.unhandled
+
+type request = Request.request =
+  | With :
+      { request: 'a Request.t
+      ; respond: 'a Request.Response.t -> response }
+      -> request
+
+module Handler = struct
+  type t = request -> response
+end
+
+let with_handler (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.with_handler
+
+let clear_handler (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.clear_handler
+
+let handle (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.handle
+
+let with_label (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.with_label

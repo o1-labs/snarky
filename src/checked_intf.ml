@@ -44,6 +44,15 @@ module Runner_state (M : Backend_types) = struct
 
     val set_handler : Request.Handler.t -> 's t -> 's t
   end
+
+  module type S_imperative = sig
+    include S with type 'a prover_state = 'a
+
+    val initial_state : unit t ref
+
+    val run :
+      (unit, 's, M.Field.t, M.Field.Var.t) Checked.t -> 's t -> 's t * unit
+  end
 end
 
 module type S = sig

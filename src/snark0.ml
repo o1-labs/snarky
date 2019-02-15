@@ -616,8 +616,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
       include Run.Make (Backend_types) (Runner_state)
     end
 
-    type ('a, 's) run =
-      's Run_helper.run_state -> ('a, 's) t -> 's Run_helper.run_state * 'a
+    type ('a, 's, 't) run =
+      's Run_helper.run_state -> 't -> 's Run_helper.run_state * 'a
 
     let run (type a s) (state : s Run_helper.run_state) (t0 : (a, s) t) =
       Option.iter state.system ~f:(fun system ->
@@ -670,20 +670,20 @@ module Make_basic (Backend : Backend_intf.S) = struct
       (state, value)
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
-    let constraint_system ~run ~num_inputs (t : (unit, 's) t) :
+    let constraint_system ~run ~num_inputs (t : ('a, 's) t) :
         R1CS_constraint_system.t =
       let system = R1CS_constraint_system.create () in
       let state = Run_helper.init ~num_inputs ~system None in
-      let state, () = run state t in
+      let state, _ignored = run state t in
       Option.value_exn state.Run_helper.system
 
-    let auxiliary_input (type s) ~run ~num_inputs (t0 : (unit, s) t) (s0 : s)
-        (input : Field.Vector.t) : Field.Vector.t =
+    let auxiliary_input ~run ~num_inputs t0 s0 (input : Field.Vector.t) :
+        Field.Vector.t =
       let state = Run_helper.init ~num_inputs ~input (Some s0) in
       let state, () = run state t0 in
       state.Run_helper.aux
 
-    let run_and_check' (type a s) ~run (t0 : (a, s) t) (s0 : s) =
+    let run_and_check' ~run t0 s0 =
       let system = R1CS_constraint_system.create () in
       let state =
         Run_helper.init ~num_inputs:0 ~system ~eval_constraints:true (Some s0)
@@ -695,15 +695,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
       match run state t0 with
       | exception e -> Or_error.of_exn e
       | {Run_helper.prover_state= Some s; _}, x -> Ok (s, x, get_value)
-      | _ ->
-          failwith "run_and_check': Expected a value from run, got None."
+      | _ -> failwith "run_and_check': Expected a value from run, got None."
 
-    let run_unchecked (type a s) ~run (t0 : (a, s) t) (s0 : s) =
+    let run_unchecked (type a s) ~run t0 s0 =
       let state = Run_helper.init ~num_inputs:0 (Some s0) in
       match run state t0 with
       | {Run_helper.prover_state= Some s; _}, x -> (s, x)
-      | _ ->
-          failwith "run_unchecked: Expected a value from run, got None."
+      | _ -> failwith "run_unchecked: Expected a value from run, got None."
 
     let run_and_check ~run t s =
       Or_error.map (run_and_check' ~run t s) ~f:(fun (s, x, get_value) ->
@@ -1070,44 +1068,41 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let v = Backend.Var.create !next_input in
       incr next_input ; Cvar.Unsafe.of_var v
 
-    let rec collect_input_constraints : type s r2 k1 k2.
-           int ref
-        -> ((unit, s) Checked.t, r2, k1, k2) t
-        -> k1
-        -> (unit, s) Checked.t =
+    let rec collect_input_constraints : type checked s r2 k1 k2.
+        int ref -> (checked, r2, k1, k2) t -> k1 -> (checked, s) Checked.t =
      fun next_input t k ->
       match t with
-      | [] -> k
+      | [] -> Checked.return k
       | {alloc; check; _} :: t' ->
           let var = Typ.Alloc.run alloc (alloc_var next_input) in
-          let r = collect_input_constraints next_input t' (k var) in
           let open Checked.Let_syntax in
           let%map () = Checked.with_state (As_prover.return ()) (check var)
-          and () = r in
-          ()
+          and r = collect_input_constraints next_input t' (k var) in
+          r
 
-    let r1cs_h : type s r2 k1 k2.
-           run:(unit, s) Checked.run
+    let r1cs_h : type checked s r2 k1 k2.
+           run:(unit, s, checked) Checked.run
         -> int ref
-        -> ((unit, s) Checked.t, r2, k1, k2) t
+        -> (checked, r2, k1, k2) t
         -> k1
         -> R1CS_constraint_system.t =
      fun ~run next_input t k ->
       let r = collect_input_constraints next_input t k in
-      Checked.constraint_system ~run ~num_inputs:(!next_input - 1) r
+      let run_in_run state r =
+        let state, x = Checked.run state r in
+        run state x
+      in
+      Checked.constraint_system ~run:run_in_run ~num_inputs:(!next_input - 1) r
 
-    let constraint_system (type s k_var k_val) :
-           run:(unit, s) Checked.run
-        -> exposing:((unit, s) Checked.t, _, k_var, k_val) t
+    let constraint_system (type checked s k_var k_val) :
+           run:(unit, s, checked) Checked.run
+        -> exposing:(checked, _, k_var, k_val) t
         -> k_var
         -> R1CS_constraint_system.t =
      fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
 
     let generate_keypair :
-           run:_
-        -> exposing:((unit, 's) Checked.t, _, 'k_var, _) t
-        -> 'k_var
-        -> Keypair.t =
+        run:_ -> exposing:(_, _, 'k_var, _) t -> 'k_var -> Keypair.t =
      fun ~run ~exposing k ->
       Keypair.generate (constraint_system ~run ~exposing k)
 
@@ -1166,9 +1161,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
       go t0 k0
 
     let prove :
-           run:(unit, 's) Checked.run
+           run:(unit, 's, 'checked) Checked.run
         -> Proving_key.t
-        -> ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) t
+        -> ('checked, Proof.t, 'k_var, 'k_value) t
         -> 's
         -> 'k_var
         -> 'k_value =
@@ -1406,6 +1401,46 @@ module Make_basic (Backend : Backend_intf.S) = struct
         assert (lt = correct_answer) )
 
   include Checked
+
+  module Run = struct
+    type 'a t = impl:(Field.t, Field.Var.t) Run.impl -> 'a
+
+    let runner_state state =
+      ( module struct
+        include Checked.Run_helper.Backend_types
+        include Checked.Run_helper.Runner_state
+
+        let initial_state = state
+
+        let run k state = Checked.run state k
+      end
+      : Checked_intf.Runner_state(Checked.Run_helper.Backend_types)
+        .S_imperative )
+
+    let impl state : (Field.t, Field.Var.t) Run.impl =
+      let (module State) = runner_state state in
+      (module Run.Make_imperative (Checked.Run_helper.Backend_types) (State))
+
+    let run state (x : 'a t) =
+      let state = ref state in
+      let x = x ~impl:(impl state) in
+      (!state, x)
+
+    let generate_keypair ~exposing k = Runner.generate_keypair ~run ~exposing k
+
+    let prove key t k = Runner.prove ~run key t () k
+
+    let verify = Runner.verify
+
+    let run_unchecked t = snd @@ run_unchecked ~run t ()
+
+    let run_and_check t = Or_error.map ~f:snd @@ run_and_check ~run t ()
+
+    let check t = check ~run t ()
+
+    let constraint_system ~exposing k =
+      Runner.constraint_system ~run ~exposing k
+  end
 
   let generate_keypair ~exposing k = Runner.generate_keypair ~run ~exposing k
 

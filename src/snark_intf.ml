@@ -615,6 +615,36 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (_, _) Checked.t -> int
 
+  module Run : sig
+    type 'a t = impl:(Field.t, Field.Var.t) Run.impl -> 'a
+
+    val constraint_system :
+         exposing:(unit t, _, 'k_var, _) Data_spec.t
+      -> 'k_var
+      -> R1CS_constraint_system.t
+
+    val generate_keypair :
+      exposing:(unit t, _, 'k_var, _) Data_spec.t -> 'k_var -> Keypair.t
+
+    val prove :
+         Proving_key.t
+      -> (unit t, Proof.t, 'k_var, 'k_value) Data_spec.t
+      -> 'k_var
+      -> 'k_value
+
+    val verify :
+         Proof.t
+      -> Verification_key.t
+      -> (_, bool, _, 'k_value) Data_spec.t
+      -> 'k_value
+
+    val run_unchecked : 'a t -> 'a
+
+    val run_and_check : ('a, unit) As_prover.t t -> 'a Or_error.t
+
+    val check : 'a t -> bool
+  end
+
   val set_eval_constraints : bool -> unit
   (** Sets the [eval_constraints] state. If [true], {!val:run_unchecked} and
       {!val:prove} will check that the constraint system is satisfied while
