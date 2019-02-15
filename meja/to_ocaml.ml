@@ -3,8 +3,6 @@ open Asttypes
 open Ast_helper
 open Parsetypes
 
-let mk_lid name = Location.mkloc (Longident.Lident name.txt) name.loc
-
 let rec of_type_desc ?loc typ =
   match typ with
   | Tvar (None, _) -> Typ.any ?loc ()
@@ -13,7 +11,7 @@ let rec of_type_desc ?loc typ =
   | Tarrow (typ1, typ2) ->
       Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
   | Tctor {var_ident= name; var_params= params; _} ->
-      Typ.constr ?loc (mk_lid name) (List.map ~f:of_type_expr params)
+      Typ.constr ?loc name (List.map ~f:of_type_expr params)
   | Ttuple typs -> Typ.tuple ?loc (List.map ~f:of_type_expr typs)
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
@@ -23,7 +21,7 @@ let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
 
 let of_ctor_args = function
   | Ctor_tuple args -> Parsetree.Pcstr_tuple (List.map ~f:of_type_expr args)
-  | Ctor_record fields ->
+  | Ctor_record (_, fields) ->
       Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
 
 let of_ctor_decl
@@ -55,6 +53,11 @@ let rec of_pattern_desc ?loc = function
   | PTuple ps -> Pat.tuple ?loc (List.map ~f:of_pattern ps)
   | POr (p1, p2) -> Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
   | PInt i -> Pat.constant ?loc (Const.int i)
+  | PRecord fields ->
+      Pat.record ?loc
+        (List.map fields ~f:(fun (f, p) -> (f, of_pattern p)))
+        Open
+  | PCtor (name, arg) -> Pat.construct ?loc name (Option.map ~f:of_pattern arg)
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
@@ -78,6 +81,12 @@ let rec of_expression_desc ?loc = function
       Exp.match_ ?loc (of_expression e)
         (List.map cases ~f:(fun (p, e) ->
              Exp.case (of_pattern p) (of_expression e) ))
+  | Record (fields, ext) ->
+      Exp.record ?loc
+        (List.map fields ~f:(fun (f, e) -> (f, of_expression e)))
+        (Option.map ~f:of_expression ext)
+  | Ctor (name, arg) ->
+      Exp.construct ?loc name (Option.map ~f:of_expression arg)
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
