@@ -306,68 +306,88 @@ let rec check_pattern_desc ~loc ~add env typ = function
 and check_pattern ~add env typ pat =
   check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc
 
-let rec get_expression_desc ~loc env = function
-  | Apply (f, xs) ->
-      let f_typ, env = get_expression env f in
-      let rec apply_typ xs f_typ env =
-        match xs with
-        | [] -> (f_typ, env)
-        | x :: xs ->
-            let x_typ, env = get_expression env x in
+let rec get_expression env exp =
+  let loc = exp.exp_loc in
+  match exp.exp_desc with
+  | Apply (f, es) ->
+      let f, env = get_expression env f in
+      let (typ, env), es =
+        List.fold_map ~init:(f.exp_type, env) es ~f:(fun (f_typ, env) e ->
+            let e, env = get_expression env e in
             let retvar, env = Envi.Type.mkvar ~loc None env in
-            let arrow, env = Envi.Type.mk ~loc (Tarrow (x_typ, retvar)) env in
+            let arrow, env =
+              Envi.Type.mk ~loc (Tarrow (e.exp_type, retvar)) env
+            in
             let env = check_type env f_typ arrow in
-            apply_typ xs retvar env
+            ((retvar, env), e) )
       in
-      apply_typ xs f_typ env
-  | Variable name -> Envi.find_name name env
-  | Int _ -> (Envi.Core.Type.int, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
+  | Variable name ->
+      let typ, env = Envi.find_name name env in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Variable name}, env)
+  | Int i ->
+      let typ = Envi.Core.Type.int in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
   | Fun (p, body) ->
       let env = Envi.open_scope env in
       let p_typ, env = Envi.Type.mkvar ~loc None env in
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instantiating the parameters. *)
       let env = check_pattern ~add:Envi.add_name env p_typ p in
-      let body_typ, env = get_expression env body in
+      let body, env = get_expression env body in
       let env = Envi.close_scope env in
-      Envi.Type.mk ~loc (Tarrow (p_typ, body_typ)) env
+      let typ, env = Envi.Type.mk ~loc (Tarrow (p_typ, body.exp_type)) env in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Fun (p, body)}, env)
   | Seq (e1, e2) ->
-      let _, env = get_expression env e1 in
-      get_expression env e2
+      let e1, env = get_expression env e1 in
+      let e2, env = get_expression env e2 in
+      ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Seq (e1, e2)}, env)
   | Let (p, e1, e2) ->
       let env = Envi.open_scope env in
-      let env = check_binding env p e1 in
-      let typ, env = get_expression env e2 in
-      (typ, Envi.close_scope env)
-  | Constraint (e, typ) ->
-      let typ, env = Envi.Type.import typ env in
-      let e_typ, env = get_expression env e in
-      (typ, check_type env e_typ typ)
+      let p, e1, env = check_binding env p e1 in
+      let e2, env = get_expression env e2 in
+      let env = Envi.close_scope env in
+      ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
+  | Constraint (e, typ') ->
+      let typ, env = Envi.Type.import typ' env in
+      let e, env = get_expression env e in
+      let env = check_type env e.exp_type typ in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Constraint (e, typ')}, env)
   | Tuple es ->
-      let env, typs =
+      let env, es =
         List.fold_map ~init:env es ~f:(fun env e ->
-            let typ, env = get_expression env e in
-            (env, typ) )
+            let e, env = get_expression env e in
+            (env, e) )
       in
-      Envi.Type.mk ~loc (Ttuple typs) env
+      let typ, env =
+        Envi.Type.mk ~loc
+          (Ttuple (List.map es ~f:(fun {exp_type= t; _} -> t)))
+          env
+      in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Tuple es}, env)
   | Match (e, cases) ->
-      let typ, env = get_expression env e in
+      let e, env = get_expression env e in
+      let typ = e.exp_type in
       let result_typ, env = Envi.Type.mkvar ~loc None env in
-      let env =
-        List.fold ~init:env cases ~f:(fun env (p, e) ->
+      let env, cases =
+        List.fold_map ~init:env cases ~f:(fun env (p, e) ->
             let env = Envi.open_scope env in
             let env = check_pattern ~add:add_polymorphised env typ p in
-            let e_typ, env = get_expression env e in
+            let e, env = get_expression env e in
             let env = Envi.close_scope env in
-            check_type env e_typ result_typ )
+            (check_type env e.exp_type result_typ, (p, e)) )
       in
-      (result_typ, env)
+      ({exp_loc= loc; exp_type= result_typ; exp_desc= Match (e, cases)}, env)
   | Record ([], _) -> raise (Error (loc, Empty_record))
   | Record (fields, ext) ->
-      let typ, env =
+      let typ, ext, env =
         match ext with
-        | Some ext -> get_expression env ext
-        | None -> Envi.Type.mkvar ~loc None env
+        | Some ext ->
+            let ext, env = get_expression env ext in
+            (ext.exp_type, Some ext, env)
+        | None ->
+            let typ, env = Envi.Type.mkvar ~loc None env in
+            (typ, None, env)
       in
       let field_decls, env =
         match Envi.TypeDecl.find_unaliased_of_type typ env with
@@ -375,60 +395,70 @@ let rec get_expression_desc ~loc env = function
             (Some (field_decls, bound_vars), env)
         | _ -> (None, env)
       in
-      let env =
-        List.fold ~init:env fields ~f:(fun env (field, e) ->
+      let env, fields =
+        List.fold_map ~init:env fields ~f:(fun env (field, e) ->
             let loc = {field.loc with Location.loc_end= e.exp_loc.loc_end} in
-            let typ', env = get_expression env e in
-            let arrow_type, env = Envi.Type.mk ~loc (Tarrow (typ, typ')) env in
+            let e, env = get_expression env e in
+            let arrow_type, env =
+              Envi.Type.mk ~loc (Tarrow (typ, e.exp_type)) env
+            in
             let field_typ, env =
               match field_decls with
               | Some (field_decls, bound_vars) ->
                   get_field_of_decl typ bound_vars field_decls field env
               | None -> get_field field env
             in
-            check_type env field_typ arrow_type )
+            (check_type env field_typ arrow_type, (field, e)) )
       in
-      (typ, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Record (fields, ext)}, env)
   | Ctor (name, arg) ->
-      let arg_typ, env =
+      let arg_typ, arg, env =
         match arg with
-        | Some arg -> get_expression env arg
-        | None -> Envi.Type.mk ~loc (Ttuple []) env
+        | Some arg ->
+            let arg, env = get_expression env arg in
+            (arg.exp_type, Some arg, env)
+        | None ->
+            let typ, env = Envi.Type.mk ~loc (Ttuple []) env in
+            (typ, None, env)
       in
       let typ, env = Envi.Type.mkvar ~loc None env in
       let arrow_typ, env = Envi.Type.mk ~loc (Tarrow (arg_typ, typ)) env in
       let ctor_typ, env = get_ctor name env in
-      (typ, check_type env arrow_typ ctor_typ)
-
-and get_expression env exp =
-  get_expression_desc ~loc:exp.exp_loc env exp.exp_desc
+      let env = check_type env arrow_typ ctor_typ in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
 
 and check_binding (env : Envi.t) p e : 's =
-  let e_type, env = get_expression env e in
-  check_pattern ~add:add_polymorphised env e_type p
+  let e, env = get_expression env e in
+  let env = check_pattern ~add:add_polymorphised env e.exp_type p in
+  (p, e, env)
 
-let rec check_statement_desc ~loc:_ env = function
-  | Value (p, e) -> check_binding env p e
+let rec check_statement env stmt =
+  match stmt.stmt_desc with
+  | Value (p, e) ->
+      let p, e, env = check_binding env p e in
+      (env, {stmt with stmt_desc= Value (p, e)})
   | TypeDecl decl ->
-      let _, env = Envi.TypeDecl.import decl env in
-      env
+      let decl, env = Envi.TypeDecl.import decl env in
+      (env, {stmt with stmt_desc= TypeDecl decl})
   | Module (name, m) ->
       let env = Envi.open_scope env in
-      let env = check_module_expr env m in
-      let m, env = Envi.pop_scope env in
-      Envi.add_module name m env
+      let env, m = check_module_expr env m in
+      let m_env, env = Envi.pop_scope env in
+      let env = Envi.add_module name m_env env in
+      (env, {stmt with stmt_desc= Module (name, m)})
 
-and check_statement env stmt =
-  check_statement_desc ~loc:stmt.stmt_loc env stmt.stmt_desc
-
-and check_module_desc ~loc env = function
-  | Structure stmts -> List.fold ~f:check_statement ~init:env stmts
-  | ModName name -> Envi.push_scope (Envi.find_module ~loc name env) env
-
-and check_module_expr env m = check_module_desc ~loc:m.mod_loc env m.mod_desc
+and check_module_expr env m =
+  let loc = m.mod_loc in
+  match m.mod_desc with
+  | Structure stmts ->
+      let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
+      (env, {m with mod_desc= Structure stmts})
+  | ModName name ->
+      let env = Envi.push_scope (Envi.find_module ~loc name env) env in
+      (env, m)
 
 let check (ast : statement list) =
-  List.fold_left ast ~init:Envi.Core.env ~f:check_statement
+  List.fold_map ast ~init:Envi.Core.env ~f:check_statement
 
 (* Error handling *)
 
