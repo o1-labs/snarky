@@ -10,17 +10,9 @@ be used in production systems.
 ## Getting started
 - First install libsnark's dependencies as specified [here](https://github.com/scipr-lab/libsnark#dependencies)
 - Then, make sure you have [opam](https://opam.ocaml.org/doc/Install.html) installed.
-- Next, install snarky's dependencies from the repo
+- Finally, install `snarky` and its dependencies by running
 ```bash
-opam pin add fold_lib git@github.com:o1-labs/snarky.git
-opam pin add tuple_lib git@github.com:o1-labs/snarky.git
-opam pin add bitstring_lib git@github.com:o1-labs/snarky.git
-opam pin add interval_union git@github.com:o1-labs/snarky.git
-opam pin add ppx_snarky git@github.com:o1-labs/snarky.git
-```
-- Finally, install `snarky` by running
-```bash
-opam pin add snarky git@github.com:o1-labs/snarky.git
+opam pin add git@github.com:o1-labs/snarky.git
 ```
 and answering yes to the prompts.
 

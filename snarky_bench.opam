@@ -1,5 +1,5 @@
 opam-version: "1.2"
-name: "bitstring_lib"
+name: "snarky_bench"
 maintainer: "opensource@o1labs.org"
 authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
 homepage: "https://github.com/o1labs/snarky"
@@ -11,12 +11,12 @@ build: [
 ]
 depends: [
   "core"
-  "tuple_lib"
-  "ppx_deriving"
+  "snarky"
   "ppx_jane"
+  "ppx_bench"
   "jbuilder"                {build & >= "1.0+beta12"}
 ]
 available: [ ocaml-version >= "4.04.1" ]
 descr: "
-A helper library for bitstrings in snarky
+Benchmark runner for snarky
 "

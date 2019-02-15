@@ -16,12 +16,5 @@ depends: [
 ]
 available: [ ocaml-version >= "4.04.1" ]
 descr: "
-A Reason-ML style language with baked-in support for Snarky.
+A Reason-ML style language with baked-in support for Snarky
 "
-opam-version: "1.2"
-version: "0.1"
-build: [
-  ["jbuilder" "build" "--only" "interval_union" "--root" "." "-j" jobs "@install"]
-]
-depends: [ "core" "ppx_deriving" "ppx_jane" ]
-
