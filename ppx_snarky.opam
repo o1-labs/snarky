@@ -1,4 +1,5 @@
 opam-version: "1.2"
+name: "ppx_snarky"
 maintainer: "opensource@o1labs.org"
 authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
 homepage: "https://github.com/o1labs/snarky"
@@ -6,21 +7,13 @@ bug-reports: "https://github.com/o1labs/snarky/issues"
 dev-repo: "git+https://github.com/o1labs/snarky.git"
 license: "MIT"
 build: [
-  ["jbuilder" "build" "-p" name "-j" jobs]
+  ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
+  "core_kernel"
   "ppxlib"
-  "ppxlib.metaquot"
-  "core"
-  "ctypes"
-  "ctypes-foreign"
-  "ppx_deriving"
-  "ppx_driver"
-  "ppx_jane"
-  "bignum"
-  "bitstring_lib"
-  "interval_union"
-  "jbuilder"                {build & >= "1.0+beta12"}
+  "ppx_sexp_conv"
+  "dune"                {build & >= "1.0"}
 ]
 available: [ ocaml-version >= "4.04.1" ]
 descr: "

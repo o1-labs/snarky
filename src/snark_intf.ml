@@ -126,13 +126,7 @@ module type Basic = sig
       val read : Field.Var.t -> field t
     end
 
-    type ('var, 'value) t =
-      ( 'var
-      , 'value
-      , Field.t
-      , Field.Var.t
-      , R1CS_constraint_system.t )
-      Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, Field.t, Field.Var.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -312,13 +306,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     *)
     include
       Monad.S2
-      with type ('a, 's) t =
-                  ( 'a
-                  , 's
-                  , Field.t
-                  , Field.Var.t
-                  , R1CS_constraint_system.t )
-                  Types.Checked.t
+      with type ('a, 's) t = ('a, 's, Field.t, Field.Var.t) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -587,9 +575,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val handle : ('a, 's) Checked.t -> Handler.t -> ('a, 's) Checked.t
 
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
-
-  val with_constraint_system :
-    (R1CS_constraint_system.t -> unit) -> (unit, _) Checked.t
 
   val constraint_system :
        exposing:((unit, 's) Checked.t, _, 'k_var, _) Data_spec.t
