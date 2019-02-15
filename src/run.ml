@@ -301,6 +301,9 @@ module type S_imperative = sig
        ('var, 'value, Field.t, Field.Var.t) Typ.t
     -> ('value, Field.Var.t -> Field.t, 's prover_state) Provider.t
     -> (('var, 'value) Handle.t, 's) t
+
+  val of_checked :
+    ('a, 's prover_state, Field.t, Field.Var.t) Checked.t -> ('a, 's) t
 end
 
 module Make_imperative
@@ -322,7 +325,7 @@ module Make_imperative
 
   let wrap x state = (state, x)
 
-  let unwrap (x : ('a, unit) t) =
+  let unwrap (x : ('a, unit) Stateful.t) =
     let state', x = x !state in
     state := state' ;
     x
@@ -390,6 +393,8 @@ module Make_imperative
   let handle t handler = unwrap @@ handle (wrap t) handler
 
   let with_label label t = unwrap @@ with_label label (wrap t)
+
+  let of_checked k = unwrap (run k)
 end
 
 type ('field, 'field_var) impl =
@@ -486,3 +491,7 @@ let handle (type f v) ~(impl : (f, v) impl) =
 let with_label (type f v) ~(impl : (f, v) impl) =
   let (module I) = impl in
   I.with_label
+
+let of_checked (type f v) ~(impl : (f, v) impl) =
+  let (module I) = impl in
+  I.of_checked

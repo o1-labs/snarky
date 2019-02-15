@@ -50,8 +50,7 @@ module Runner_state (M : Backend_types) = struct
 
     val initial_state : unit t ref
 
-    val run :
-      (unit, 's, M.Field.t, M.Field.Var.t) Checked.t -> 's t -> 's t * unit
+    val run : ('a, 's, M.Field.t, M.Field.Var.t) Checked.t -> 's t -> 's t * 'a
   end
 end
 
