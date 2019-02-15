@@ -33,14 +33,14 @@ module type S = sig
   val read_var : var -> (field, 's) t
 
   val read :
-    ('var, 'value, field, var, 'sys) Typ.t -> 'var -> ('value, 'prover_state) t
+    ('var, 'value, field, var) Typ.t -> 'var -> ('value, 'prover_state) t
 
   module Ref : sig
     type 'a t
 
     val create :
          ('a, env, 'prover_state) As_prover0.t
-      -> ('a t, 'prover_state, field, var, 'sys) Checked.t
+      -> ('a t, 'prover_state, field, var) Checked.t
 
     val get : 'a t -> ('a, env, _) As_prover0.t
 

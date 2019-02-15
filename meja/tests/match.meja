@@ -1,0 +1,58 @@
+let x = fun (y : int, z : bool) => {
+  switch (y) {
+    | i => z
+  };
+};
+
+let y = fun (f : int -> int -> int -> _) => {
+  switch (1, 2, 3) {
+    | (i, j, k) => f (i, j, k)
+  };
+};
+
+type t = {a: int, b: bool};
+
+type u = {f : int -> int};
+
+type v('a, 'b) = {x : 'a, y : 'b, g : 'a -> 'b};
+
+let z = fun (x, {f}) => {
+  switch (x) {
+    | {a: x, b} => f (x)
+  };
+};
+
+let a = fun (x : t, {f}) => {
+  switch (x) {
+    | {a: x, b} => f (x)
+  };
+};
+
+let b = switch ({f: fun (x) => { 12; }}) {
+  | {f} => f
+};
+
+let c : _ -> v (int, bool) = fun (x : v ('a, 'b)) => {
+  switch (x) {
+    | {x, y, g: f} => {x: 12, y, g: fun (_) => { f (x); }}
+  };
+};
+
+type w('a) = A | B(int, int) : w(int) | C (w('b)) : w('b);
+
+let d = fun (x) => {
+  switch (x) {
+    | A => 1
+    | B(x, y) => y
+    | C(A) => 2
+    | C(B(x, y)) => y
+    | _ => 3
+  };
+};
+
+let if_ = fun (x : bool, y : 'a, z : 'a) => {
+  switch (x) {
+    | true => y
+    | false => z
+  };
+}

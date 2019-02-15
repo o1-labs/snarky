@@ -10,9 +10,9 @@ be used in production systems.
 ## Getting started
 - First install libsnark's dependencies as specified [here](https://github.com/scipr-lab/libsnark#dependencies)
 - Then, make sure you have [opam](https://opam.ocaml.org/doc/Install.html) installed.
-- Then, install `snarky` by running
+- Finally, install `snarky` and its dependencies by running
 ```bash
-opam pin add snarky git@github.com:o1-labs/snarky.git
+opam pin add git@github.com:o1-labs/snarky.git
 ```
 and answering yes to the prompts.
 

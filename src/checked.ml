@@ -1,8 +1,7 @@
 open Core_kernel
 open Types.Checked
 
-type ('a, 's, 'field, 'var, 'sys) t =
-  ('a, 's, 'field, 'var, 'sys) Types.Checked.t
+type ('a, 's, 'field, 'var) t = ('a, 's, 'field, 'var) Types.Checked.t
 
 module T0 = struct
   let return x = Pure x
@@ -10,12 +9,11 @@ module T0 = struct
   let as_prover x = As_prover (x, return ())
 
   let rec map : type s a b field var sys.
-      (a, s, field, var, sys) t -> f:(a -> b) -> (b, s, field, var, sys) t =
+      (a, s, field, var) t -> f:(a -> b) -> (b, s, field, var) t =
    fun t ~f ->
     match t with
     | Pure x -> Pure (f x)
     | With_label (s, t, k) -> With_label (s, t, fun b -> map (k b) ~f)
-    | With_constraint_system (c, k) -> With_constraint_system (c, map k ~f)
     | As_prover (x, k) -> As_prover (x, map k ~f)
     | Add_constraint (c, t1) -> Add_constraint (c, map t1 ~f)
     | With_state (p, and_then, t_sub, k) ->
@@ -28,14 +26,13 @@ module T0 = struct
   let map = `Custom map
 
   let rec bind : type s a b field var sys.
-         (a, s, field, var, sys) t
-      -> f:(a -> (b, s, field, var, sys) t)
-      -> (b, s, field, var, sys) t =
+         (a, s, field, var) t
+      -> f:(a -> (b, s, field, var) t)
+      -> (b, s, field, var) t =
    fun t ~f ->
     match t with
     | Pure x -> f x
     | With_label (s, t, k) -> With_label (s, t, fun b -> bind (k b) ~f)
-    | With_constraint_system (c, k) -> With_constraint_system (c, bind k ~f)
     | As_prover (x, k) -> As_prover (x, bind k ~f)
     (* Someday: This case is probably a performance bug *)
     | Add_constraint (c, t1) -> Add_constraint (c, bind t1 ~f)
@@ -83,7 +80,7 @@ end
 module T = struct
   include T0
 
-  let request_witness (typ : ('var, 'value, 'field, 'cvar, 'sys) Types.Typ.t)
+  let request_witness (typ : ('var, 'value, 'field, 'cvar) Types.Typ.t)
       (r : ('value Request.t, 'cvar -> 'field, 's) As_prover0.t) =
     Exists (typ, Request r, fun h -> return (Handle.var h))
 
@@ -120,8 +117,6 @@ module T = struct
   let handle t k = With_handler (Request.Handler.create_single k, t, return)
 
   let next_auxiliary = Next_auxiliary return
-
-  let with_constraint_system f = With_constraint_system (f, return ())
 
   let with_label s t = With_label (s, t, return)
 

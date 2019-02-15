@@ -1,10 +1,11 @@
 (executable
  (name meja)
  (libraries core_kernel ocaml-compiler-libs.common)
- (flags :standard -warn-error -39-21))
+ (flags :standard -warn-error -39-21)
+ (preprocess (pps ppx_jane)))
 
 (menhir
-  (flags --explain)
+  (flags --explain --unused-tokens)
   (modules parser_impl))
 
 (ocamllex

@@ -3,8 +3,6 @@ open Asttypes
 open Ast_helper
 open Parsetypes
 
-let mk_lid name = Location.mkloc (Longident.Lident name.txt) name.loc
-
 let rec of_type_desc ?loc typ =
   match typ with
   | Tvar (None, _) -> Typ.any ?loc ()
@@ -12,16 +10,54 @@ let rec of_type_desc ?loc typ =
   | Tpoly (_, typ) -> of_type_expr typ
   | Tarrow (typ1, typ2) ->
       Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
-  | Tctor name -> Typ.constr ?loc (mk_lid name) []
+  | Tctor {var_ident= name; var_params= params; _} ->
+      Typ.constr ?loc name (List.map ~f:of_type_expr params)
   | Ttuple typs -> Typ.tuple ?loc (List.map ~f:of_type_expr typs)
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 
+let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
+  Type.field ~loc name (of_type_expr typ)
+
+let of_ctor_args = function
+  | Ctor_tuple args -> Parsetree.Pcstr_tuple (List.map ~f:of_type_expr args)
+  | Ctor_record (_, fields) ->
+      Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
+
+let of_ctor_decl
+    {ctor_ident= name; ctor_args= args; ctor_ret= ret; ctor_loc= loc} =
+  Type.constructor name ~loc ~args:(of_ctor_args args)
+    ?res:(Option.map ~f:of_type_expr ret)
+
+let of_type_decl decl =
+  let loc = decl.tdec_loc in
+  let name = decl.tdec_ident in
+  let params =
+    List.map ~f:(fun t -> (of_type_expr t, Invariant)) decl.tdec_params
+  in
+  match decl.tdec_desc with
+  | TAbstract -> Type.mk name ~loc ~params
+  | TAlias typ -> Type.mk name ~loc ~params ~manifest:(of_type_expr typ)
+  | TRecord fields ->
+      Type.mk name ~loc ~params
+        ~kind:(Parsetree.Ptype_record (List.map ~f:of_field_decl fields))
+  | TVariant ctors ->
+      Type.mk name ~loc ~params
+        ~kind:(Parsetree.Ptype_variant (List.map ~f:of_ctor_decl ctors))
+
 let rec of_pattern_desc ?loc = function
+  | PAny -> Pat.any ?loc ()
   | PVariable str -> Pat.var ?loc str
   | PConstraint (p, typ) ->
       Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)
   | PTuple ps -> Pat.tuple ?loc (List.map ~f:of_pattern ps)
+  | POr (p1, p2) -> Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
+  | PInt i -> Pat.constant ?loc (Const.int i)
+  | PRecord fields ->
+      Pat.record ?loc
+        (List.map fields ~f:(fun (f, p) -> (f, of_pattern p)))
+        Open
+  | PCtor (name, arg) -> Pat.construct ?loc name (Option.map ~f:of_pattern arg)
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
@@ -29,7 +65,7 @@ let rec of_expression_desc ?loc = function
   | Apply (f, es) ->
       Exp.apply ?loc (of_expression f)
         (List.map ~f:(fun x -> (Nolabel, of_expression x)) es)
-  | Variable name -> Exp.ident ?loc (mk_lid name)
+  | Variable name -> Exp.ident ?loc name
   | Int i -> Exp.constant ?loc (Const.int i)
   | Fun (p, body) ->
       Exp.fun_ ?loc Nolabel None (of_pattern p) (of_expression body)
@@ -41,13 +77,31 @@ let rec of_expression_desc ?loc = function
         [Vb.mk (of_pattern p) (of_expression e_rhs)]
         (of_expression e)
   | Tuple es -> Exp.tuple ?loc (List.map ~f:of_expression es)
+  | Match (e, cases) ->
+      Exp.match_ ?loc (of_expression e)
+        (List.map cases ~f:(fun (p, e) ->
+             Exp.case (of_pattern p) (of_expression e) ))
+  | Record (fields, ext) ->
+      Exp.record ?loc
+        (List.map fields ~f:(fun (f, e) -> (f, of_expression e)))
+        (Option.map ~f:of_expression ext)
+  | Ctor (name, arg) ->
+      Exp.construct ?loc name (Option.map ~f:of_expression arg)
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
-let of_statement_desc ?loc = function
+let rec of_statement_desc ?loc = function
   | Value (p, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
+  | TypeDecl decl -> Str.type_ ?loc Recursive [of_type_decl decl]
+  | Module (name, m) -> Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
 
-let of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
+and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
+
+and of_module_expr m = of_module_desc ~loc:m.mod_loc m.mod_desc
+
+and of_module_desc ?loc = function
+  | Structure stmts -> Mod.structure ?loc (List.map ~f:of_statement stmts)
+  | ModName name -> Mod.ident ?loc name
 
 let of_file = List.map ~f:of_statement

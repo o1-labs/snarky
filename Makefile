@@ -1,5 +1,5 @@
 
-all : docker googlecloud minikube
+default : build
 
 build :
 	dune build --root=.
@@ -32,5 +32,5 @@ minikube :
 googlecloud :
 	./rebuild-googlecloud.sh ocaml-camlsnark
 
-.PHONY : all build examples docker minikube googlecloud
+.PHONY : default build examples docker minikube googlecloud
 
