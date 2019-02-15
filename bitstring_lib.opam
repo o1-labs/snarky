@@ -1,7 +1,22 @@
 opam-version: "1.2"
-version: "0.1"
+name: "bitstring_lib"
+maintainer: "opensource@o1labs.org"
+authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
+homepage: "https://github.com/o1labs/snarky"
+bug-reports: "https://github.com/o1labs/snarky/issues"
+dev-repo: "git+https://github.com/o1labs/snarky.git"
+license: "MIT"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
-depends: [ "core" "ppx_deriving" "ppx_jane" ]
-
+depends: [
+  "core"
+  "tuple_lib"
+  "ppx_deriving"
+  "ppx_jane"
+  "jbuilder"                {build & >= "1.0+beta12"}
+]
+available: [ ocaml-version >= "4.04.1" ]
+descr: "
+A helper library for bitstrings in snarky
+"
