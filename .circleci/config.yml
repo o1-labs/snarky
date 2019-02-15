@@ -18,3 +18,11 @@ jobs:
             - run:
                 name: Meja tests
                 command: eval `opam config env` && cd meja && make test
+    opam-pin:
+        docker:
+        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
+        - image: codaprotocol/coda:toolchain-7df6b2b12bc316cb71592b12255d80e19396831e
+        steps:
+            - run:
+                name: opam pin
+                command: eval `opam config env` && opam pin $CIRCLE_REPOSITORY_URL
