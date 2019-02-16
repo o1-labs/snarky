@@ -1,7 +1,4 @@
-module Make
-    (Impl : Snark_intf.Basic) (M : sig
-        type t [@@deriving enum]
-    end) :
+module Make (Impl : Snark_intf.Basic) (M : Enumerable_intf.Enum) :
   Enumerable_intf.S
   with type ('a, 'b) checked := ('a, 'b) Impl.Checked.t
    and type ('a, 'b) typ := ('a, 'b) Impl.Typ.t

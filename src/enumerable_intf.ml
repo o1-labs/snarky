@@ -1,3 +1,7 @@
+module type Enum = sig
+  type t [@@deriving enum]
+end
+
 module type S = sig
   type (_, _) checked
 
