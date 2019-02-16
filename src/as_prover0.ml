@@ -19,7 +19,7 @@ module T = struct
 
   let read_var v tbl s = (s, tbl v)
 
-  let set_state s tbl _ = (s, ())
+  let set_state s _tbl _ = (s, ())
 
   let modify_state f _tbl s = (f s, ())
 

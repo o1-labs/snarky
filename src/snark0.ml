@@ -475,7 +475,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let perform req = request_witness Typ.unit req
 
-    let constraint_count ?(log = fun ?start _ _ -> ()) (t : (_, _) t) : int =
+    let constraint_count ?(log = fun ?start:_ _ _ -> ()) (t : (_, _) t) : int =
       let next_auxiliary = ref 1 in
       let alloc_var () =
         let v = Backend.Var.create !next_auxiliary in
