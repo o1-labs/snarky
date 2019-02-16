@@ -12,6 +12,17 @@ jobs:
             - run: eval `opam config env` && make build
             - run: eval `opam config env` && make examples
             - run: eval `opam config env` && make tests
+    opam-pin:
+        docker:
+        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
+        - image: codaprotocol/coda:toolchain-7df6b2b12bc316cb71592b12255d80e19396831e
+        steps:
+            - run:
+                name: get ssh key
+                command: ssh -o StrictHostKeyChecking=no git@github.com || true
+            - run:
+                name: opam pin
+                command: eval `opam config env` && opam pin -y $CIRCLE_REPOSITORY_URL
     meja:
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
@@ -29,4 +40,5 @@ workflows:
     snarky_parallel:
         jobs:
         - build
+        - opam-pin
         - meja
