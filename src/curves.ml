@@ -420,7 +420,6 @@ module Edwards = struct
           ~if_:(b : Boolean.var) : (var, _) Checked.t =
         let one = Field.Var.constant Field.one in
         let b = (b :> Field.Var.t) in
-        let open Let_syntax in
         let open Field.Checked.Infix in
         let res a1 a3 =
           let%bind a =
