@@ -73,8 +73,6 @@ let non_empty_hash = function Node (h, _, _) -> h | Leaf (h, _) -> h
 
 let depth {depth; _} = depth
 
-let hash {tree; _} = non_empty_hash tree
-
 let tree_hash ~default = function
   | Empty -> default
   | Non_empty t -> non_empty_hash t

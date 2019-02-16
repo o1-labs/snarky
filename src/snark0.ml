@@ -261,8 +261,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
       include Restrict_monad.Make3 (Read) (A)
 
       let read = Read.read
-
-      let run = Read.run
     end
 
     module Alloc = struct

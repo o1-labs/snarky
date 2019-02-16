@@ -325,7 +325,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   
   and Field : sig
     (** The finite field over which the R1CS operates. *)
-    type t = field [@@deriving bin_io, sexp, hash, compare, eq]
+    type t = field [@@deriving bin_io, sexp, hash, compare]
 
     val gen : t Core_kernel.Quickcheck.Generator.t
     (** A generator for Quickcheck tests. *)

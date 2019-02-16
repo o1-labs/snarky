@@ -103,15 +103,6 @@ module Make (Impl : Snark_intf.S) = struct
     let hash (h1 : var) (h2 : var) =
       with_label "Knapsack.hash" (Checked.hash_to_bits knapsack (h1 @ h2))
 
-    let map2i_exn xs ys ~f =
-      let rec go acc i xs ys =
-        match (xs, ys) with
-        | [], [] -> List.rev acc
-        | x :: xs, y :: ys -> go (f i x y :: acc) (i + 1) xs ys
-        | _, _ -> failwith "mapi_exn: Invalid lengths"
-      in
-      go [] 0 xs ys
-
     let assert_equal = Impl.Bitstring_checked.Assert.equal
   end
 end
