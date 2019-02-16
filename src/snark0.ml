@@ -294,8 +294,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module Checked0 = struct
     module T = struct
-      open Types.Checked
-
       type ('a, 's) t = ('a, 's, Field.t, Cvar.t) Checked.t
 
       include Checked.T
