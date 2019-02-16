@@ -95,7 +95,8 @@ and pattern_desc =
   | PRecord of (lid * pattern) list
   | PCtor of lid * pattern option
 
-type expression = {exp_desc: expression_desc; exp_loc: Location.t}
+type expression =
+  {exp_desc: expression_desc; exp_loc: Location.t; exp_type: type_expr}
 
 and expression_desc =
   | Apply of expression * expression list
