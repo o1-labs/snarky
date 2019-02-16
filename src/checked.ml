@@ -8,7 +8,7 @@ module T0 = struct
 
   let as_prover x = As_prover (x, return ())
 
-  let rec map : type s a b field var sys.
+  let rec map : type s a b field var.
       (a, s, field, var) t -> f:(a -> b) -> (b, s, field, var) t =
    fun t ~f ->
     match t with
@@ -25,7 +25,7 @@ module T0 = struct
 
   let map = `Custom map
 
-  let rec bind : type s a b field var sys.
+  let rec bind : type s a b field var.
          (a, s, field, var) t
       -> f:(a -> (b, s, field, var) t)
       -> (b, s, field, var) t =
