@@ -54,7 +54,7 @@ type ('hash, 'a) t =
   ; compress: 'hash -> 'hash -> 'hash }
 [@@deriving sexp]
 
-let check_exn {tree; depth; count; hash; compress} =
+let check_exn {tree; depth; count; hash; compress; _} =
   let default = hash None in
   let rec check_hash = function
     | Non_empty t -> check_hash_non_empty t
@@ -137,7 +137,7 @@ let insert hash compress t0 mask0 address x =
 
 let ith_bit n i = (n lsr i) land 1 = 1
 
-let update ({hash; compress; tree= tree0; depth} as t) addr0 x =
+let update ({hash; compress; tree= tree0; depth; _} as t) addr0 x =
   let tree_hash = tree_hash ~default:(hash None) in
   let rec go_non_empty tree i =
     match tree with
