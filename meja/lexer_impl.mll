@@ -38,6 +38,7 @@ rule token = parse
   | "switch" { SWITCH }
   | "type" { TYPE }
   | "module" { MODULE }
+  | "open" { OPEN }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }

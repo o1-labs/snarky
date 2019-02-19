@@ -228,12 +228,12 @@ let rec check_pattern_desc ~loc ~add env typ = function
       let env = check_type env typ tuple_typ in
       List.fold2_exn ~init:env vars ps ~f:(check_pattern ~add)
   | POr (p1, p2) ->
-      let env = Envi.open_scope env in
+      let env = Envi.open_expr_scope env in
       let env = check_pattern ~add env typ p1 in
-      let scope1, env = Envi.pop_scope env in
-      let env = Envi.open_scope env in
+      let scope1, env = Envi.pop_expr_scope env in
+      let env = Envi.open_expr_scope env in
       let env = check_pattern ~add env typ p2 in
-      let scope2, env = Envi.pop_scope env in
+      let scope2, env = Envi.pop_expr_scope env in
       (* Check that the assignments in each scope match. *)
       let env =
         Envi.Scope.fold_over ~init:env scope1 scope2
@@ -329,13 +329,13 @@ let rec get_expression env exp =
       let typ = Envi.Core.Type.int in
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
   | Fun (p, body) ->
-      let env = Envi.open_scope env in
+      let env = Envi.open_expr_scope env in
       let p_typ, env = Envi.Type.mkvar ~loc None env in
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instantiating the parameters. *)
       let env = check_pattern ~add:Envi.add_name env p_typ p in
       let body, env = get_expression env body in
-      let env = Envi.close_scope env in
+      let env = Envi.close_expr_scope env in
       let typ, env = Envi.Type.mk ~loc (Tarrow (p_typ, body.exp_type)) env in
       ({exp_loc= loc; exp_type= typ; exp_desc= Fun (p, body)}, env)
   | Seq (e1, e2) ->
@@ -343,10 +343,10 @@ let rec get_expression env exp =
       let e2, env = get_expression env e2 in
       ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Seq (e1, e2)}, env)
   | Let (p, e1, e2) ->
-      let env = Envi.open_scope env in
+      let env = Envi.open_expr_scope env in
       let p, e1, env = check_binding env p e1 in
       let e2, env = get_expression env e2 in
-      let env = Envi.close_scope env in
+      let env = Envi.close_expr_scope env in
       ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
   | Constraint (e, typ') ->
       let typ, env = Envi.Type.import typ' env in
@@ -371,10 +371,10 @@ let rec get_expression env exp =
       let result_typ, env = Envi.Type.mkvar ~loc None env in
       let env, cases =
         List.fold_map ~init:env cases ~f:(fun env (p, e) ->
-            let env = Envi.open_scope env in
+            let env = Envi.open_expr_scope env in
             let env = check_pattern ~add:add_polymorphised env typ p in
             let e, env = get_expression env e in
-            let env = Envi.close_scope env in
+            let env = Envi.close_expr_scope env in
             (check_type env e.exp_type result_typ, (p, e)) )
       in
       ({exp_loc= loc; exp_type= result_typ; exp_desc= Match (e, cases)}, env)
@@ -433,6 +433,7 @@ and check_binding (env : Envi.t) p e : 's =
   (p, e, env)
 
 let rec check_statement env stmt =
+  let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
   | Value (p, e) ->
       let p, e, env = check_binding env p e in
@@ -441,11 +442,14 @@ let rec check_statement env stmt =
       let decl, env = Envi.TypeDecl.import decl env in
       (env, {stmt with stmt_desc= TypeDecl decl})
   | Module (name, m) ->
-      let env = Envi.open_scope env in
+      let env = Envi.open_module env in
       let env, m = check_module_expr env m in
-      let m_env, env = Envi.pop_scope env in
+      let m_env, env = Envi.pop_module ~loc env in
       let env = Envi.add_module name m_env env in
       (env, {stmt with stmt_desc= Module (name, m)})
+  | Open name ->
+      let m = Envi.find_module ~loc name env in
+      (Envi.open_namespace_scope m env, stmt)
 
 and check_module_expr env m =
   let loc = m.mod_loc in

@@ -24,6 +24,7 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token SWITCH
 %token TYPE
 %token MODULE
+%token OPEN
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -74,6 +75,8 @@ structure_item:
         ; tdec_loc= mklocation $loc }) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
     { mkstmt ~pos:$loc (Module (x, m)) }
+  | OPEN x = as_loc(longident(UIDENT, UIDENT))
+    { mkstmt ~pos:$loc (Open x) }
 
 module_expr:
   | LBRACE s = structure RBRACE
