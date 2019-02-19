@@ -269,7 +269,7 @@ let rec check_pattern_desc ~loc ~add env typ = function
             raise (Error (loc, Pattern_declaration ("module", name))) )
       in
       Envi.push_scope scope2 env
-  | PInt _ -> check_type env typ Envi.Core.Type.int
+  | PInt _ -> check_type env typ Envi.Core.int
   | PRecord fields ->
       let field_decls, env =
         match Envi.TypeDecl.find_unaliased_of_type typ env with
@@ -326,7 +326,7 @@ let rec get_expression env exp =
       let typ, env = Envi.find_name name env in
       ({exp_loc= loc; exp_type= typ; exp_desc= Variable name}, env)
   | Int i ->
-      let typ = Envi.Core.Type.int in
+      let typ = Envi.Core.int in
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
   | Fun (p, body) ->
       let env = Envi.open_scope env in

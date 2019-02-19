@@ -590,143 +590,154 @@ let find_name (lid : lid) env =
   | None -> raise (Error (loc, Unbound_value lid.txt))
 
 module Core = struct
-  let mkloc s = Location.(mkloc s none)
+  let env = ref empty
 
-  let mk_type_decl name desc =
-    { tdec_ident= mkloc name
-    ; tdec_params= []
-    ; tdec_desc= desc
-    ; tdec_id= 0
-    ; tdec_loc= Location.none }
+  module Mk = struct
+    let mkloc s = Location.(mkloc s none)
 
-  let mk_constructor name =
-    { ctor_ident= mkloc name
-    ; ctor_args= Ctor_tuple []
-    ; ctor_ret= None
-    ; ctor_loc= Location.none }
+    let constructor name =
+      { ctor_ident= mkloc name
+      ; ctor_args= Ctor_tuple []
+      ; ctor_ret= None
+      ; ctor_loc= Location.none }
 
-  let mk_typ type_desc = {type_desc; type_id= 0; type_loc= Location.none}
+    let type_decl name desc =
+      let decl =
+        { tdec_ident= mkloc name
+        ; tdec_params= []
+        ; tdec_desc= desc
+        ; tdec_id= 0
+        ; tdec_loc= Location.none }
+      in
+      let decl, env' = TypeDecl.import decl !env in
+      env := env' ;
+      decl
 
-  let arrow x y = mk_typ (Tarrow (x, y))
+    let type_decl_typ decl ~params =
+      let typ, env' = TypeDecl.mk_typ decl ~params !env in
+      env := env' ;
+      typ
 
-  let add_name name typ env =
-    let typ, env = Type.import ~must_find:false typ env in
-    add_name {txt=name; loc= Location.none} typ env
+    let typ type_desc =
+      let typ, env' = Type.mk ~loc:Location.none type_desc !env in
+      env := env' ;
+      typ
 
-  let add_module name scope env =
-    add_module {txt=name; loc= Location.none} scope env
-
-  let env = empty
-
-  let int, env = TypeDecl.import (mk_type_decl "int" TAbstract) env
-
-  let unit, env =
-    TypeDecl.import (mk_type_decl "unit" (TVariant [mk_constructor "()"])) env
-
-  let bool, env =
-    TypeDecl.import
-      (mk_type_decl "bool"
-         (TVariant [mk_constructor "true"; mk_constructor "false"]))
-      env
-
-  let char, env = TypeDecl.import (mk_type_decl "char" TAbstract) env
-
-  let string, env = TypeDecl.import (mk_type_decl "string" TAbstract) env
-
-  let float, env = TypeDecl.import (mk_type_decl "float" TAbstract) env
-
-  module Type = struct
-    let int, env = TypeDecl.mk_typ int ~params:[] env
-
-    let unit, env = TypeDecl.mk_typ unit ~params:[] env
-
-    let bool, env = TypeDecl.mk_typ bool ~params:[] env
-
-    let char, env = TypeDecl.mk_typ char ~params:[] env
-
-    let string, env = TypeDecl.mk_typ string ~params:[] env
-
-    let float, env = TypeDecl.mk_typ float ~params:[] env
+    let arrow x y = typ (Tarrow (x, y))
   end
 
-  let env = Type.env
+  let add_name name typ =
+    let typ, env' = Type.import ~must_find:false typ !env in
+    env := add_name {txt= name; loc= Location.none} typ env'
 
-  module type Mod = functor (Env : sig val env : t end) -> sig val env : t end
+  module type Mod = functor (X :sig  end) -> sig end
 
-  module Mod(X : sig
+  module Mod (X : sig
     val name : string
-  end)(Mod : Mod)(Env : sig val env : t end) = struct
-    let env = open_scope Env.env
+  end)
+  (Mod : Mod) =
+  struct
+    let () = env := open_scope !env
 
-    include Mod(struct let env = env end)
+    include Mod ()
 
-    let m_env, env = pop_scope env
-
-    let env = add_module X.name m_env env
+    let () =
+      let m_env, env' = pop_scope !env in
+      env := add_module {txt= X.name; loc= Location.none} m_env env'
   end
 
-  module Field_intf(Env : sig
-    val env : t
-  end) = struct
-    let env = Env.env
+  module Decl = struct
+    let int = Mk.type_decl "int" TAbstract
 
-    let t, env = TypeDecl.import (mk_type_decl "t" TAbstract) env
+    let unit = Mk.type_decl "unit" (TVariant [Mk.constructor "()"])
 
-    let t_type, env = TypeDecl.mk_typ t ~params:[] env
+    let bool =
+      Mk.type_decl "bool"
+        (TVariant [Mk.constructor "true"; Mk.constructor "false"])
 
-    let env = env
-      |> add_name "of_int" (arrow Type.int t_type)
-      |> add_name "one" t_type
-      |> add_name "zero" t_type
-      |> add_name "add" (arrow t_type (arrow t_type t_type))
-      |> add_name "sub" (arrow t_type (arrow t_type t_type))
-      |> add_name "mul" (arrow t_type (arrow t_type t_type))
-      |> add_name "inv" (arrow t_type t_type)
-      |> add_name "square" (arrow t_type t_type)
-      |> add_name "sqrt" (arrow t_type t_type)
-      |> add_name "is_square" (arrow t_type Type.bool)
-      |> add_name "equal" (arrow t_type (arrow t_type Type.bool))
-      |> add_name "size_in_bits" Type.int
-      |> add_name "print" (arrow t_type Type.unit)
-      |> add_name "random" (arrow Type.unit t_type)
+    let char = Mk.type_decl "char" TAbstract
+
+    let string = Mk.type_decl "string" TAbstract
+
+    let float = Mk.type_decl "float" TAbstract
   end
 
-  module Backend_intf(Env : sig
-    val env : t
-  end) = struct
-    let env = Env.env
+  let int = Mk.type_decl_typ Decl.int ~params:[]
 
-    module Field = Mod(struct let name = "Field" end)(Field_intf)(struct let env = env end)
+  let unit = Mk.type_decl_typ Decl.unit ~params:[]
 
-    let env = Field.env
+  let bool = Mk.type_decl_typ Decl.bool ~params:[]
+
+  let char = Mk.type_decl_typ Decl.char ~params:[]
+
+  let string = Mk.type_decl_typ Decl.string ~params:[]
+
+  let float = Mk.type_decl_typ Decl.float ~params:[]
+
+  module Field_intf (Env : sig end) = struct
+    module Decl = struct
+      let t = Mk.type_decl "t" TAbstract
+    end
+
+    let t = Mk.type_decl_typ Decl.t ~params:[]
+
+    let () =
+      add_name "of_int" (Mk.arrow int t) ;
+      add_name "one" t ;
+      add_name "zero" t ;
+      add_name "add" (Mk.arrow t (Mk.arrow t t)) ;
+      add_name "sub" (Mk.arrow t (Mk.arrow t t)) ;
+      add_name "mul" (Mk.arrow t (Mk.arrow t t)) ;
+      add_name "inv" (Mk.arrow t t) ;
+      add_name "square" (Mk.arrow t t) ;
+      add_name "sqrt" (Mk.arrow t t) ;
+      add_name "is_square" (Mk.arrow t bool) ;
+      add_name "equal" (Mk.arrow t (Mk.arrow t bool)) ;
+      add_name "size_in_bits" int ;
+      add_name "print" (Mk.arrow t unit) ;
+      add_name "random" (Mk.arrow unit t)
   end
 
-  module Backends_intf(Env : sig
-    val env : t
-  end) = struct
-    let env = Env.env
-
-    module Mnt4 = Mod(struct let name = "Mnt4" end)(Backend_intf)(struct let env = env end)
-
-    let env = Mnt4.env
-
-    module Mnt6 = Mod(struct let name = "Mnt6" end)(Backend_intf)(struct let env = env end)
-
-    let env = Mnt6.env
-
-    module Bn128 = Mod(struct let name = "Bn128" end)(Backend_intf)(struct let env = env end)
-
-    let env = Bn128.env
+  module Backend_intf (Env : sig end) = struct
+    module Field =
+      Mod (struct
+          let name = "Field"
+        end)
+        (Field_intf)
   end
 
-  module Backends = struct
-    let env = env
+  module Backends_intf (Env : sig end) = struct
+    module Mnt4 =
+      Mod (struct
+          let name = "Mnt4"
+        end)
+        (Backend_intf)
 
-    include Mod(struct let name = "Backends" end)(Backends_intf)(struct let env = env end)
+    module Mnt6 =
+      Mod (struct
+          let name = "Mnt6"
+        end)
+        (Backend_intf)
+
+    module Bn128 =
+      Mod (struct
+          let name = "Bn128"
+        end)
+        (Backend_intf)
   end
 
-  let env = Backends.env
+  module Snarky_intf (Env : sig end) = struct
+    module Backends = Mod (struct
+                let name = "Backends"
+              end)
+              (Backends_intf)
+  end
 
+  module Snarky = struct
+    include Mod (struct let name = "Snarky" end) (Snarky_intf)
+  end
+
+  let env = !env
 end
 
 (* Error handling *)
