@@ -605,6 +605,17 @@ module Core = struct
     ; ctor_ret= None
     ; ctor_loc= Location.none }
 
+  let mk_typ type_desc = {type_desc; type_id= 0; type_loc= Location.none}
+
+  let arrow x y = mk_typ (Tarrow (x, y))
+
+  let add_name name typ env =
+    let typ, env = Type.import ~must_find:false typ env in
+    add_name {txt=name; loc= Location.none} typ env
+
+  let add_module name scope env =
+    add_module {txt=name; loc= Location.none} scope env
+
   let env = empty
 
   let int, env = TypeDecl.import (mk_type_decl "int" TAbstract) env
@@ -639,6 +650,83 @@ module Core = struct
   end
 
   let env = Type.env
+
+  module type Mod = functor (Env : sig val env : t end) -> sig val env : t end
+
+  module Mod(X : sig
+    val name : string
+  end)(Mod : Mod)(Env : sig val env : t end) = struct
+    let env = open_scope Env.env
+
+    include Mod(struct let env = env end)
+
+    let m_env, env = pop_scope env
+
+    let env = add_module X.name m_env env
+  end
+
+  module Field_intf(Env : sig
+    val env : t
+  end) = struct
+    let env = Env.env
+
+    let t, env = TypeDecl.import (mk_type_decl "t" TAbstract) env
+
+    let t_type, env = TypeDecl.mk_typ t ~params:[] env
+
+    let env = env
+      |> add_name "of_int" (arrow Type.int t_type)
+      |> add_name "one" t_type
+      |> add_name "zero" t_type
+      |> add_name "add" (arrow t_type (arrow t_type t_type))
+      |> add_name "sub" (arrow t_type (arrow t_type t_type))
+      |> add_name "mul" (arrow t_type (arrow t_type t_type))
+      |> add_name "inv" (arrow t_type t_type)
+      |> add_name "square" (arrow t_type t_type)
+      |> add_name "sqrt" (arrow t_type t_type)
+      |> add_name "is_square" (arrow t_type Type.bool)
+      |> add_name "equal" (arrow t_type (arrow t_type Type.bool))
+      |> add_name "size_in_bits" Type.int
+      |> add_name "print" (arrow t_type Type.unit)
+      |> add_name "random" (arrow Type.unit t_type)
+  end
+
+  module Backend_intf(Env : sig
+    val env : t
+  end) = struct
+    let env = Env.env
+
+    module Field = Mod(struct let name = "Field" end)(Field_intf)(struct let env = env end)
+
+    let env = Field.env
+  end
+
+  module Backends_intf(Env : sig
+    val env : t
+  end) = struct
+    let env = Env.env
+
+    module Mnt4 = Mod(struct let name = "Mnt4" end)(Backend_intf)(struct let env = env end)
+
+    let env = Mnt4.env
+
+    module Mnt6 = Mod(struct let name = "Mnt6" end)(Backend_intf)(struct let env = env end)
+
+    let env = Mnt6.env
+
+    module Bn128 = Mod(struct let name = "Bn128" end)(Backend_intf)(struct let env = env end)
+
+    let env = Bn128.env
+  end
+
+  module Backends = struct
+    let env = env
+
+    include Mod(struct let name = "Backends" end)(Backends_intf)(struct let env = env end)
+  end
+
+  let env = Backends.env
+
 end
 
 (* Error handling *)
