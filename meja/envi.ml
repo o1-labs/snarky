@@ -727,14 +727,18 @@ module Core = struct
   end
 
   module Snarky_intf (Env : sig end) = struct
-    module Backends = Mod (struct
-                let name = "Backends"
-              end)
-              (Backends_intf)
+    module Backends =
+      Mod (struct
+          let name = "Backends"
+        end)
+        (Backends_intf)
   end
 
   module Snarky = struct
-    include Mod (struct let name = "Snarky" end) (Snarky_intf)
+    include Mod (struct
+                let name = "Snarky"
+              end)
+              (Snarky_intf)
   end
 
   let env = !env
