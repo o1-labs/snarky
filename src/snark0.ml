@@ -610,32 +610,30 @@ module Make_basic (Backend : Backend_intf.S) = struct
               let s, () = run (check var) (set_prover_state None s) in
               run (k {Handle.var; value= None}) (set_prover_state None s) )
         | Next_auxiliary k -> run (k !(s.next_auxiliary)) s
+
+      module State = struct
+        let make ~num_inputs ~input ~next_auxiliary ~aux ?system
+            ?(eval_constraints = !eval_constraints) (s0 : 's option) =
+          next_auxiliary := 1 + num_inputs ;
+          (* We can't evaluate the constraints if we are not computing over a value. *)
+          let eval_constraints = eval_constraints && Option.is_some s0 in
+          Option.iter system ~f:(fun system ->
+              R1CS_constraint_system.set_primary_input_size system num_inputs
+          ) ;
+          { system
+          ; input
+          ; aux
+          ; eval_constraints
+          ; num_inputs
+          ; next_auxiliary
+          ; prover_state= s0
+          ; stack= []
+          ; handler= Request.Handler.fail }
+      end
     end
 
-    let run (type a s) ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ?(eval_constraints = !eval_constraints) (t0 : (a, s) t) (s0 : s option)
-        =
-      next_auxiliary := 1 + num_inputs ;
-      (* We can't evaluate the constraints if we are not computing over a value. *)
-      let eval_constraints = eval_constraints && Option.is_some s0 in
-      Option.iter system ~f:(fun system ->
-          R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
-      let state =
-        { Runner.system
-        ; input
-        ; aux
-        ; eval_constraints
-        ; num_inputs
-        ; next_auxiliary
-        ; prover_state= s0
-        ; stack= []
-        ; handler= Request.Handler.fail }
-      in
+    let run (type a s) (t0 : (a, s) t) (state : s Runner.run_state) =
       let state, retval = Runner.run t0 state in
-      Option.iter system ~f:(fun system ->
-          let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
-          R1CS_constraint_system.set_auxiliary_input_size system
-            auxiliary_input_size ) ;
       (state.prover_state, retval)
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
@@ -645,14 +643,23 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
       let system = R1CS_constraint_system.create () in
-      ignore (run ~num_inputs ~input ~next_auxiliary ~aux ~system t None) ;
+      let state =
+        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system None
+      in
+      ignore (run t state) ;
+      let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
+      R1CS_constraint_system.set_auxiliary_input_size system
+        auxiliary_input_size ;
       system
 
     let auxiliary_input (type s) ~num_inputs (t0 : (unit, s) t) (s0 : s)
         (input : Field.Vector.t) : Field.Vector.t =
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
-      ignore (run ~num_inputs ~input ~next_auxiliary ~aux t0 (Some s0)) ;
+      let state =
+        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
+      in
+      ignore (run t0 state) ;
       aux
 
     let run_and_check' (type a s) (t0 : (a, s) t) (s0 : s) =
@@ -665,10 +672,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let get_one v = Field.Vector.get aux (v - 1) in
         Cvar.eval get_one
       in
-      match
-        run ~num_inputs ~input ~next_auxiliary ~aux ~system
-          ~eval_constraints:true t0 (Some s0)
-      with
+      let state =
+        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
+          ~eval_constraints:true (Some s0)
+      in
+      match run t0 state with
       | exception e -> Or_error.of_exn e
       | Some s, x -> Ok (s, x, get_value)
       | None, _ ->
@@ -679,7 +687,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let input = Field.Vector.create () in
       let next_auxiliary = ref 1 in
       let aux = Field.Vector.create () in
-      match run ~num_inputs ~input ~next_auxiliary ~aux t0 (Some s0) with
+      let state =
+        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
+      in
+      match run t0 state with
       | Some s, x -> (s, x)
       | None, _ ->
           failwith "run_unchecked: Expected a value from run, got None."
