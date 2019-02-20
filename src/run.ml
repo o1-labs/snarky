@@ -113,6 +113,66 @@ module Boolean = struct
 end
 
 module Field = struct
+  let of_int (type f v) ~(intf : (f, v) intf) i =
+    let (module I) = intf in
+    I.Field.of_int i
+
+  let one (type f v) ~(intf : (f, v) intf) =
+    let (module I) = intf in
+    I.Field.one
+
+  let zero (type f v) ~(intf : (f, v) intf) =
+    let (module I) = intf in
+    I.Field.zero
+
+  let add (type f v) ~(intf : (f, v) intf) x y =
+    let (module I) = intf in
+    I.Field.add x y
+
+  let sub (type f v) ~(intf : (f, v) intf) x y =
+    let (module I) = intf in
+    I.Field.sub x y
+
+  let mul (type f v) ~(intf : (f, v) intf) x y =
+    let (module I) = intf in
+    I.Field.mul x y
+
+  let inv (type f v) ~(intf : (f, v) intf) x =
+    let (module I) = intf in
+    I.Field.inv x
+
+  let square (type f v) ~(intf : (f, v) intf) x =
+    let (module I) = intf in
+    I.Field.square x
+
+  let sqrt (type f v) ~(intf : (f, v) intf) x =
+    let (module I) = intf in
+    I.Field.sqrt x
+
+  let is_square (type f v) ~(intf : (f, v) intf) x =
+    let (module I) = intf in
+    I.Field.is_square x
+
+  let equal (type f v) ~(intf : (f, v) intf) x y =
+    let (module I) = intf in
+    I.Field.equal x y
+
+  let size_in_bits (type f v) ~(intf : (f, v) intf) =
+    let (module I) = intf in
+    I.Field.size_in_bits
+
+  let print (type f v) ~(intf : (f, v) intf) x =
+    let (module I) = intf in
+    I.Field.print x
+
+  let random (type f v) ~(intf : (f, v) intf) =
+    let (module I) = intf in
+    I.Field.random ()
+
+  let negate (type f v) ~(intf : (f, v) intf) x =
+    let (module I) = intf in
+    I.Field.negate x
+
   let size (type f v) ~(intf : (f, v) intf) =
     let (module I) = intf in
     I.Field.size
@@ -364,6 +424,7 @@ let unhandled = Request.unhandled
 (* NOTE: this is manually implemented! *)
 let handle (type f v) ~(intf : (f, v) intf) x h =
   let (module I) = intf in
+  let h = Request.Handler.create_single h in
   let handler = I.Runner.get_handler !I.state in
   I.state := I.Runner.set_handler (Request.Handler.push handler h) !I.state ;
   let a = x ~intf in
@@ -377,6 +438,13 @@ let with_label (type f v) ~(intf : (f, v) intf) lbl x =
   I.state := I.Runner.set_stack (lbl :: stack) !I.state ;
   let a = x ~intf in
   I.state := I.Runner.set_stack stack !I.state ;
+  a
+
+(* NOTE: this is manually implemented! *)
+let of_checked (type f v) ~(intf : (f, v) intf) c =
+  let (module I) = intf in
+  let state, a = I.Runner.run c !I.state in
+  I.state := state ;
   a
 
 module Perform = struct
