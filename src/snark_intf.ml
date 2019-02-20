@@ -468,7 +468,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
-    type ('a, 'prover_state) t
+    type ('a, 'prover_state) t =
+      ('a, Field.Var.t -> Field.t, 'prover_state) As_prover.t
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 
@@ -508,6 +509,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val value : (_, 'value) t -> ('value, _) As_prover.t
 
     val var : ('var, _) t -> 'var
+  end
+
+  module Runner : sig
+    type 's run_state
+
+    val run : ('a, unit) Checked.t -> unit run_state -> unit run_state * 'a
   end
 
   val assert_ : ?label:string -> Constraint.t -> (unit, 's) Checked.t
