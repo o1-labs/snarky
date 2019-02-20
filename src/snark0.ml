@@ -650,8 +650,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
         auxiliary_input_size ;
       system
 
-    let auxiliary_input ~run ~num_inputs t0 s0
-        (input : Field.Vector.t) : Field.Vector.t =
+    let auxiliary_input ~run ~num_inputs t0 s0 (input : Field.Vector.t) :
+        Field.Vector.t =
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
       let state =
@@ -677,10 +677,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
       match run t0 state with
       | exception e -> Or_error.of_exn e
       | {Runner.prover_state= Some s; _}, x -> Ok (s, x, get_value)
-      | _ ->
-          failwith "run_and_check': Expected a value from run, got None."
+      | _ -> failwith "run_and_check': Expected a value from run, got None."
 
-    let run_unchecked (type a s) ~run (t0 : (a, s) t) (s0 : s) =
+    let run_unchecked ~run t0 s0 =
       let num_inputs = 0 in
       let input = Field.Vector.create () in
       let next_auxiliary = ref 1 in
@@ -690,8 +689,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       match run t0 state with
       | {Runner.prover_state= Some s; _}, x -> (s, x)
-      | _ ->
-          failwith "run_unchecked: Expected a value from run, got None."
+      | _ -> failwith "run_unchecked: Expected a value from run, got None."
 
     let run_and_check ~run t s =
       Or_error.map (run_and_check' ~run t s) ~f:(fun (s, x, get_value) ->
@@ -1059,10 +1057,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       incr next_input ; Cvar.Unsafe.of_index v
 
     let rec collect_input_constraints : type checked s r2 k1 k2.
-           int ref
-        -> (checked, r2, k1, k2) t
-        -> k1
-        -> (checked, s) Checked.t =
+        int ref -> (checked, r2, k1, k2) t -> k1 -> (checked, s) Checked.t =
      fun next_input t k ->
       match t with
       | [] -> Checked.return k
@@ -1094,9 +1089,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
      fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
 
     let generate_keypair :
-        run:_ -> exposing:((unit, 's) Checked.t, _, 'k_var, _) t -> 'k_var -> Keypair.t
-        =
-     fun ~run ~exposing k -> Keypair.generate (constraint_system ~run ~exposing k)
+           run:(_, _, 'checked) Checked.Runner.run
+        -> exposing:('checked, _, 'k_var, _) t
+        -> 'k_var
+        -> Keypair.t =
+     fun ~run ~exposing k ->
+      Keypair.generate (constraint_system ~run ~exposing k)
 
     let verify :
            Proof.t
@@ -1394,7 +1392,28 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   include Checked
 
-  let generate_keypair  ~exposing k= Run.generate_keypair  ~run:Runner.run ~exposing k
+  module Perform = struct
+    type 'a t = unit Runner.run_state -> unit Runner.run_state * 'a
+
+    let run f state = f state
+
+    let generate_keypair ~exposing k = Run.generate_keypair ~run ~exposing k
+
+    let prove key t k = Run.prove ~run key t () k
+
+    let verify = Run.verify
+
+    let constraint_system ~exposing k = Run.constraint_system ~run ~exposing k
+
+    let run_unchecked t = snd (run_unchecked ~run t ())
+
+    let run_and_check t = Or_error.map (run_and_check ~run t ()) ~f:snd
+
+    let check t = check ~run t ()
+  end
+
+  let generate_keypair ~exposing k =
+    Run.generate_keypair ~run:Runner.run ~exposing k
 
   let conv f = Run.conv (fun x _ -> f x)
 
@@ -1402,7 +1421,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   let verify = Run.verify
 
-  let constraint_system ~exposing k = Run.constraint_system ~run:Runner.run ~exposing k
+  let constraint_system ~exposing k =
+    Run.constraint_system ~run:Runner.run ~exposing k
 
   let run_unchecked t s = run_unchecked ~run:Runner.run t s
 
