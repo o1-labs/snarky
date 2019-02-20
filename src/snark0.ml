@@ -1073,9 +1073,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
       | [] -> Checked.return k
       | {alloc; check; _} :: t' ->
           let var = Typ.Alloc.run alloc (alloc_var next_input) in
+          let r = collect_input_constraints next_input t' (k var) in
           let open Checked.Let_syntax in
-          let%bind () = Checked.with_state (As_prover.return ()) (check var) in
-          collect_input_constraints next_input t' (k var)
+          let%map () = Checked.with_state (As_prover.return ()) (check var)
+          and r = r in
+          r
 
     let r1cs_h : type a s checked r2 k1 k2.
            run:(a, s, checked) Checked.Runner.run

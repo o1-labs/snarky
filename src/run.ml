@@ -365,18 +365,18 @@ let unhandled = Request.unhandled
 let handle (type f v) ~(intf : (f, v) intf) x h =
   let (module I) = intf in
   let handler = I.Runner.get_handler !I.state in
-  I.state := I.Runner.set_handler (Request.Handler.push handler h) !I.state;
+  I.state := I.Runner.set_handler (Request.Handler.push handler h) !I.state ;
   let a = x ~intf in
-  I.state := I.Runner.set_handler handler !I.state;
+  I.state := I.Runner.set_handler handler !I.state ;
   a
 
 (* NOTE: this is manually implemented! *)
 let with_label (type f v) ~(intf : (f, v) intf) lbl x =
   let (module I) = intf in
   let stack = I.Runner.get_stack !I.state in
-  I.state := I.Runner.set_stack (lbl :: stack) !I.state;
+  I.state := I.Runner.set_stack (lbl :: stack) !I.state ;
   let a = x ~intf in
-  I.state := I.Runner.set_stack stack !I.state;
+  I.state := I.Runner.set_stack stack !I.state ;
   a
 
 module Perform = struct
