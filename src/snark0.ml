@@ -509,6 +509,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
         ; stack: string list
         ; handler: Request.Handler.t }
 
+      type state = unit run_state
+
       type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
       let set_prover_state prover_state
@@ -530,6 +532,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
         ; prover_state
         ; stack
         ; handler }
+
+      let set_handler handler state = {state with handler}
+
+      let get_handler {handler; _} = handler
+
+      let set_stack stack state = {state with stack}
+
+      let get_stack {stack; _} = stack
 
       let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
         let get_one i =
@@ -1393,23 +1403,22 @@ module Make_basic (Backend : Backend_intf.S) = struct
   include Checked
 
   module Perform = struct
-    type 'a t = unit Runner.run_state -> unit Runner.run_state * 'a
+    type ('a, 't) t = 't -> unit Runner.run_state -> unit Runner.run_state * 'a
 
-    let run f state = f state
+    let generate_keypair ~run ~exposing k =
+      Run.generate_keypair ~run ~exposing k
 
-    let generate_keypair ~exposing k = Run.generate_keypair ~run ~exposing k
-
-    let prove key t k = Run.prove ~run key t () k
+    let prove ~run key t k = Run.prove ~run key t () k
 
     let verify = Run.verify
 
-    let constraint_system ~exposing k = Run.constraint_system ~run ~exposing k
+    let constraint_system = Run.constraint_system
 
-    let run_unchecked t = snd (run_unchecked ~run t ())
+    let run_unchecked ~run t = snd (run_unchecked ~run t ())
 
-    let run_and_check t = Or_error.map (run_and_check ~run t ()) ~f:snd
+    let run_and_check ~run t = Or_error.map (run_and_check ~run t ()) ~f:snd
 
-    let check t = check ~run t ()
+    let check ~run t = check ~run t ()
   end
 
   let generate_keypair ~exposing k =

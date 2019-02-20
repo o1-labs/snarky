@@ -512,25 +512,38 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   end
 
   module Runner : sig
-    type 's run_state
+    type state
 
-    val run : ('a, unit) Checked.t -> unit run_state -> unit run_state * 'a
+    val run : ('a, unit) Checked.t -> state -> state * 'a
+
+    val set_handler : Request.Handler.t -> state -> state
+
+    val get_handler : state -> Request.Handler.t
+
+    val set_stack : string list -> state -> state
+
+    val get_stack : state -> string list
   end
 
   module Perform : sig
-    type 'a t = unit Runner.run_state -> unit Runner.run_state * 'a
+    type ('a, 't) t = 't -> Runner.state -> Runner.state * 'a
 
     val constraint_system :
-         exposing:('a t, _, 'k_var, _) Data_spec.t
+         run:('a, 't) t
+      -> exposing:('t, _, 'k_var, _) Data_spec.t
       -> 'k_var
       -> R1CS_constraint_system.t
 
     val generate_keypair :
-      exposing:('a t, _, 'k_var, _) Data_spec.t -> 'k_var -> Keypair.t
+         run:('a, 't) t
+      -> exposing:('t, _, 'k_var, _) Data_spec.t
+      -> 'k_var
+      -> Keypair.t
 
     val prove :
-         Proving_key.t
-      -> ('a t, Proof.t, 'k_var, 'k_value) Data_spec.t
+         run:('a, 't) t
+      -> Proving_key.t
+      -> ('t, Proof.t, 'k_var, 'k_value) Data_spec.t
       -> 'k_var
       -> 'k_value
 
@@ -540,11 +553,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> (_, bool, _, 'k_value) Data_spec.t
       -> 'k_value
 
-    val run_unchecked : 'a t -> 'a
+    val run_unchecked : run:('a, 't) t -> 't -> 'a
 
-    val run_and_check : ('a, unit) As_prover.t t -> 'a Or_error.t
+    val run_and_check :
+      run:(('a, unit) As_prover.t, 't) t -> 't -> 'a Or_error.t
 
-    val check : 'a t -> bool
+    val check : run:('a, 't) t -> 't -> bool
   end
 
   val assert_ : ?label:string -> Constraint.t -> (unit, 's) Checked.t

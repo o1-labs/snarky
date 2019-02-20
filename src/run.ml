@@ -1,8 +1,15 @@
 module type Intf = sig
   include Snark_intf.Basic
 
-  val state : unit Runner.run_state ref
+  val state : Runner.state ref
 end
+
+type ('field, 'var, 'state) base_intf =
+  (module
+   Snark_intf.Basic
+     with type field = 'field
+      and type Var.t = 'var
+      and type Runner.state = 'state)
 
 type ('field, 'var) intf =
   (module Intf with type field = 'field and type Var.t = 'var)
@@ -354,16 +361,36 @@ let exists (type f v) ~(intf : (f, v) intf) ?request ?compute typ =
 
 let unhandled = Request.unhandled
 
-(** TODO: Accept [x] that aren't [Checked.t]s. *)
+(* NOTE: this is manually implemented! *)
 let handle (type f v) ~(intf : (f, v) intf) x h =
   let (module I) = intf in
-  let state, a = I.Runner.run (I.handle x h) !I.state in
-  I.state := state ;
+  let handler = I.Runner.get_handler !I.state in
+  I.state := I.Runner.set_handler (Request.Handler.push handler h) !I.state;
+  let a = x ~intf in
+  I.state := I.Runner.set_handler handler !I.state;
   a
 
-(** TODO: Accept [x] that aren't [Checked.t]s. *)
+(* NOTE: this is manually implemented! *)
 let with_label (type f v) ~(intf : (f, v) intf) lbl x =
   let (module I) = intf in
-  let state, a = I.Runner.run (I.with_label lbl x) !I.state in
-  I.state := state ;
+  let stack = I.Runner.get_stack !I.state in
+  I.state := I.Runner.set_stack (lbl :: stack) !I.state;
+  let a = x ~intf in
+  I.state := I.Runner.set_stack stack !I.state;
   a
+
+module Perform = struct
+  let run (type f v s) ~(intf : (f, v, s) base_intf)
+      (k : intf:(f, v) intf -> 'a) state =
+    let (module I) = intf in
+    let (module I' : Intf
+          with type field = f and type Var.t = v and type Runner.state = s) =
+      ( module struct
+        include I
+
+        let state = ref state
+      end )
+    in
+    let x = k ~intf:(module I') in
+    (!I'.state, x)
+end
