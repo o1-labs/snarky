@@ -386,9 +386,8 @@ module Type = struct
       | Some var -> (var, env)
       | None -> (typ, env) )
     | Tpoly (vars, typ) ->
-        let vars, new_vars_map, env = refresh_vars vars new_vars_map env in
-        let typ, env = copy typ new_vars_map env in
-        mk ~loc (Tpoly (vars, typ)) env
+        let _vars, new_vars_map, env = refresh_vars vars new_vars_map env in
+        copy typ new_vars_map env
     | Tctor _ -> mk ~loc typ.type_desc env
     | Ttuple typs ->
         let env, typs =
