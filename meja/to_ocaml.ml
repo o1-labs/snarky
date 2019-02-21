@@ -8,7 +8,7 @@ let rec of_type_desc ?loc typ =
   | Tvar (None, _) -> Typ.any ?loc ()
   | Tvar (Some name, _) -> Typ.var ?loc name.txt
   | Tpoly (_, typ) -> of_type_expr typ
-  | Tarrow (typ1, typ2) ->
+  | Tarrow (typ1, typ2) | Timplicit (typ1, typ2) ->
       Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
   | Tctor {var_ident= name; var_params= params; _} ->
       Typ.constr ?loc name (List.map ~f:of_type_expr params)
@@ -87,6 +87,7 @@ let rec of_expression_desc ?loc = function
         (Option.map ~f:of_expression ext)
   | Ctor (name, arg) ->
       Exp.construct ?loc name (Option.map ~f:of_expression arg)
+  | Unifiable {name} -> Exp.ident ?loc (mk_lid name)
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 

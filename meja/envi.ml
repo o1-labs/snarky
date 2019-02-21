@@ -14,6 +14,7 @@ type error =
   | Expected_type_var of type_expr
   | Lident_unhandled of string * Longident.t
   | Constraints_not_satisfied of type_expr * type_decl
+  | No_unifiable_implicit
 
 exception Error of Location.t * error
 
@@ -175,12 +176,16 @@ module TypeEnvi = struct
     { type_id: int
     ; type_decl_id: int
     ; variable_instances: type_expr int_map
+    ; implicit_vars: expression list
+    ; implicit_id: int
     ; type_decls: type_decl int_map }
 
   let empty =
     { type_id= 1
     ; type_decl_id= 1
     ; variable_instances= Map.empty (module Int)
+    ; implicit_id= 1
+    ; implicit_vars= []
     ; type_decls= Map.empty (module Int) }
 
   let instance env (typ : type_expr) =
@@ -364,6 +369,10 @@ module Type = struct
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
         mk ~loc (Tarrow (typ1, typ2)) env
+    | Timplicit (typ1, typ2) ->
+        let typ1, env = import typ1 env in
+        let typ2, env = import typ2 env in
+        mk ~loc (Timplicit (typ1, typ2)) env
 
   let refresh_vars vars new_vars_map env =
     let env, new_vars =
@@ -401,6 +410,10 @@ module Type = struct
         let typ1, env = copy typ1 new_vars_map env in
         let typ2, env = copy typ2 new_vars_map env in
         mk ~loc (Tarrow (typ1, typ2)) env
+    | Timplicit (typ1, typ2) ->
+        let typ1, env = copy typ1 new_vars_map env in
+        let typ2, env = copy typ2 new_vars_map env in
+        mk ~loc (Timplicit (typ1, typ2)) env
 
   module T = struct
     type t = type_expr
@@ -438,7 +451,8 @@ module Type = struct
     | Tctor _ -> Set.empty (module Comparator)
     | Ttuple typs ->
         Set.union_list (module Comparator) (List.map ~f:type_vars typs)
-    | Tarrow (typ1, typ2) -> Set.union (type_vars typ1) (type_vars typ2)
+    | Tarrow (typ1, typ2) | Timplicit (typ1, typ2) ->
+        Set.union (type_vars typ1) (type_vars typ2)
 
   let rec flatten typ env =
     let loc = typ.type_loc in
@@ -472,6 +486,80 @@ module Type = struct
         let typ1, env = flatten typ1 env in
         let typ2, env = flatten typ2 env in
         mk ~loc (Tarrow (typ1, typ2)) env
+    | Timplicit (typ1, typ2) ->
+        let typ1, env = flatten typ1 env in
+        let typ2, env = flatten typ2 env in
+        mk ~loc (Timplicit (typ1, typ2)) env
+
+  let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
+
+  let rec compare typ1 typ2 =
+    if Int.equal typ1.type_id typ2.type_id then 0
+    else
+      match (typ1.type_desc, typ2.type_desc) with
+      | Tpoly (_, typ1), _ -> compare typ1 typ2
+      | _, Tpoly (_, typ2) -> compare typ1 typ2
+      | Tvar _, Tvar _ -> Int.compare typ1.type_id typ2.type_id
+      | Tvar _, _ -> -1
+      | _, Tvar _ -> 1
+      | ( Tctor {var_decl_id= id1; var_params= params1; _}
+        , Tctor {var_decl_id= id2; var_params= params2; _} ) ->
+          or_compare (Int.compare id1 id2) ~f:(fun () ->
+              compare_all params1 params2 )
+      | Tctor _, _ -> -1
+      | _, Tctor _ -> 1
+      | Ttuple typs1, Ttuple typs2 -> compare_all typs1 typs2
+      | Ttuple _, _ -> -1
+      | _, Ttuple _ -> 1
+      | Tarrow (typ1a, typ1b), Tarrow (typ2a, typ2b)
+       |Timplicit (typ1a, typ1b), Timplicit (typ2a, typ2b) ->
+          or_compare (compare typ1a typ2a) ~f:(fun () -> compare typ1b typ2b)
+      | Tarrow _, _ -> -1
+      | _, Tarrow _ -> 1
+
+  and compare_all typs1 typs2 =
+    match (typs1, typs2) with
+    | [], [] -> 0
+    | [], _ -> -1
+    | _, [] -> 1
+    | typ1 :: typs1, typ2 :: typs2 ->
+        or_compare (compare typ1 typ2) ~f:(fun () -> compare_all typs1 typs2)
+
+  let flattened_implicit_vars typ_vars env =
+    let {TypeEnvi.implicit_vars; _} = env.type_env in
+    let env, implicit_vars =
+      List.fold_map ~init:env implicit_vars ~f:(fun env e ->
+          let typ, env = flatten e.exp_type env in
+          (env, {e with exp_type= typ}) )
+    in
+    let implicit_vars =
+      List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
+          let cmp = compare exp1.exp_type exp2.exp_type in
+          ( if Int.equal cmp 0 then
+            match (exp1.exp_desc, exp2.exp_desc) with
+            | Unifiable desc1, Unifiable desc2 -> desc1.name <- desc2.name
+            | _, _ -> raise (Error (exp1.exp_loc, No_unifiable_implicit)) ) ;
+          cmp )
+    in
+    let local_implicit_vars, implicit_vars =
+      List.partition_tf implicit_vars ~f:(fun {exp_type; _} ->
+          let exp_vars = type_vars exp_type in
+          Set.is_subset exp_vars ~of_:typ_vars )
+    in
+    ( local_implicit_vars
+    , {env with type_env= {env.type_env with implicit_vars}} )
+
+  let new_implicit_var ~loc typ env =
+    let {TypeEnvi.implicit_vars; implicit_id; _} = env.type_env in
+    let mk exp_loc exp_desc = {exp_loc; exp_desc; exp_type= typ} in
+    let name = Location.mkloc (sprintf "__implicit%i__" implicit_id) loc in
+    let new_exp = mk loc (Unifiable {name}) in
+    ( new_exp
+    , { env with
+        type_env=
+          { env.type_env with
+            implicit_vars= new_exp :: implicit_vars
+          ; implicit_id= implicit_id + 1 } } )
 end
 
 module TypeDecl = struct
@@ -751,6 +839,8 @@ let report_error ppf = function
         "@[Constraints are not satisfied in this type.@ Type %a should be an \
          instance of %a"
         pp_typ typ pp_decl_typ decl
+  | No_unifiable_implicit ->
+      fprintf ppf "Internal error: Implicit variable is not unifiable."
 
 let () =
   Location.register_error_of_exn (function

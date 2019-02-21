@@ -11,6 +11,8 @@ type error =
   | Pattern_declaration of string * string
   | Empty_record
   | Wrong_type_description of string * str
+  | Unifiable_expr
+  | No_unifiable_expr
 
 exception Error of Location.t * error
 
@@ -79,7 +81,8 @@ let rec check_type_aux typ ctyp env =
     | Ok env -> env
     | Unequal_lengths ->
         raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) )
-  | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
+  | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2)
+   |Timplicit (typ1, typ2), Timplicit (ctyp1, ctyp2) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
   | Tctor variant, Tctor constr_variant ->
       if Int.equal variant.var_decl_id constr_variant.var_decl_id then
@@ -106,6 +109,18 @@ let check_type env typ constr_typ =
       raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
   | env -> env
 
+let rec get_implicits typ =
+  match typ.type_desc with
+  | Timplicit (typ1, typ2) -> typ1 :: get_implicits typ2
+  | _ -> []
+
+let rec add_implicits ~loc implicits typ env =
+  match implicits with
+  | [] -> (typ, env)
+  | typ' :: implicits ->
+      let typ, env = add_implicits ~loc implicits typ env in
+      Envi.Type.mk ~loc (Timplicit (typ', typ)) env
+
 let rec free_type_vars ?depth typ =
   let free_type_vars = free_type_vars ?depth in
   match typ.type_desc with
@@ -121,15 +136,13 @@ let rec free_type_vars ?depth typ =
   | Tctor _ -> Set.empty (module Envi.Type)
   | Ttuple typs ->
       Set.union_list (module Envi.Type) (List.map ~f:free_type_vars typs)
-  | Tarrow (typ1, typ2) ->
+  | Tarrow (typ1, typ2) | Timplicit (typ1, typ2) ->
       Set.union (Envi.Type.type_vars ?depth typ1) (free_type_vars typ2)
 
 let polymorphise typ env =
   let loc = typ.type_loc in
   let typ_vars = Set.to_list (free_type_vars ~depth:env.Envi.depth typ) in
-  match typ.type_desc with
-  | Tpoly (vars, typ) -> Envi.Type.mk ~loc (Tpoly (typ_vars @ vars, typ)) env
-  | _ -> Envi.Type.mk ~loc (Tpoly (typ_vars, typ)) env
+  Envi.Type.mk ~loc (Tpoly (typ_vars, typ)) env
 
 let add_polymorphised name typ env =
   let typ, env = Envi.Type.flatten typ env in
@@ -324,7 +337,22 @@ let rec get_expression env exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
       let typ, env = Envi.find_name name env in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Variable name}, env)
+      let implicits = get_implicits typ in
+      let (ret_typ, env), es =
+        List.fold_map ~init:(typ, env) implicits ~f:(fun (f_typ, env) typ ->
+            let e, env = Envi.Type.new_implicit_var ~loc typ env in
+            let retvar, env = Envi.Type.mkvar ~loc None env in
+            let arrow, env = Envi.Type.mk ~loc (Timplicit (typ, retvar)) env in
+            let env = check_type env f_typ arrow in
+            ((retvar, env), e) )
+      in
+      let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
+      let e =
+        match es with
+        | [] -> e
+        | _ -> {exp_loc= loc; exp_type= ret_typ; exp_desc= Apply (e, es)}
+      in
+      (e, env)
   | Int i ->
       let typ = Envi.Core.Type.int in
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
@@ -426,11 +454,39 @@ let rec get_expression env exp =
       let ctor_typ, env = get_ctor name env in
       let env = check_type env arrow_typ ctor_typ in
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
+  | Unifiable _ -> raise (Error (loc, Unifiable_expr))
 
 and check_binding (env : Envi.t) p e : 's =
   let e, env = get_expression env e in
-  let env = check_pattern ~add:add_polymorphised env e.exp_type p in
-  (p, e, env)
+  match p.pat_desc with
+  | PVariable str ->
+      let exp_type, env = Envi.Type.flatten e.exp_type env in
+      let e = {e with exp_type} in
+      let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
+      let implicit_vars, env =
+        Envi.Type.flattened_implicit_vars typ_vars env
+      in
+      let loc = e.exp_loc in
+      let e, env =
+        List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
+            match var with
+            | {exp_desc= Unifiable {name}; exp_type= typ; _} ->
+                let exp_type, env =
+                  Envi.Type.mk ~loc (Timplicit (typ, e.exp_type)) env
+                in
+                let p = {pat_desc= PVariable name; pat_loc= loc} in
+                ({exp_desc= Fun (p, e); exp_type; exp_loc= loc}, env)
+            | _ -> raise (Error (loc, No_unifiable_expr)) )
+      in
+      let loc = p.pat_loc in
+      let typ, env =
+        Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, e.exp_type)) env
+      in
+      let env = Envi.add_name str typ env in
+      (p, e, env)
+  | _ ->
+      let env = check_pattern ~add:add_polymorphised env e.exp_type p in
+      (p, e, env)
 
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
@@ -496,6 +552,9 @@ let rec report_error ppf = function
         "Internal error: Expected a type declaration of kind %s, but instead \
          got %s"
         kind name.txt
+  | Unifiable_expr ->
+      fprintf ppf "Internal error: Unexpected Unifiable in the parsetree."
+  | No_unifiable_expr -> fprintf ppf "Internal error: Expected a Unifiable."
 
 let () =
   Location.register_error_of_exn (function

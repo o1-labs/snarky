@@ -51,6 +51,7 @@ and type_desc =
   | Tvar of str option * (* depth *) int
   | Ttuple of type_expr list
   | Tarrow of type_expr * type_expr
+  | Timplicit of type_expr * type_expr
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
@@ -110,6 +111,7 @@ and expression_desc =
   | Match of expression * (pattern * expression) list
   | Record of (lid * expression) list * expression option
   | Ctor of lid * expression option
+  | Unifiable of {mutable name: str}
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
