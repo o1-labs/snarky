@@ -16,8 +16,7 @@ module T = struct
       ('value, 'field) Read.t =
     read v
 
-  let alloc ({alloc; _} : ('var, 'value, 'field) t) :
-      ('var, 'field) Alloc.t =
+  let alloc ({alloc; _} : ('var, 'value, 'field) t) : ('var, 'field) Alloc.t =
     alloc
 
   let check (type field) ({check; _} : ('var, 'value, field) t) (v : 'var) :

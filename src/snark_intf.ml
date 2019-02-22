@@ -107,8 +107,7 @@ module type Basic = sig
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
-      include
-        Monad.S with type 'a t = ('a, Field.t) Typ_monads.Store.t
+      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Store.t
 
       val store : field -> Field.Var.t t
     end
@@ -120,8 +119,7 @@ module type Basic = sig
     end
 
     module Read : sig
-      include
-        Monad.S with type 'a t = ('a, Field.t) Typ_monads.Read.t
+      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Read.t
 
       val read : Field.Var.t -> field t
     end

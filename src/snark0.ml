@@ -261,7 +261,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     module Alloc = struct
       open Alloc
-
       include Restrict_monad.Make2 (Alloc) (Field)
 
       let alloc = alloc
