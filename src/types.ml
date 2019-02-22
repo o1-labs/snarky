@@ -44,14 +44,14 @@ and Checked : sig
         'f Cvar.t Constraint.t * ('a, 's, 'f) t
         -> ('a, 's, 'f) t
     | As_prover :
-        (unit, 'f Cvar.t -> 'f, 's) As_prover0.t * ('a, 's, 'f) t
+        (unit, 'f, 's) As_prover0.t * ('a, 's, 'f) t
         -> ('a, 's, 'f) t
     | With_label :
         string * ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t)
         -> ('b, 's, 'f) t
     | With_state :
-        ('s1, 'f Cvar.t -> 'f, 's) As_prover0.t
-        * ('s1 -> (unit, 'f Cvar.t -> 'f, 's) As_prover0.t)
+        ('s1, 'f, 's) As_prover0.t
+        * ('s1 -> (unit, 'f, 's) As_prover0.t)
         * ('b, 's1, 'f) t
         * ('b -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
@@ -65,7 +65,7 @@ and Checked : sig
         -> ('b, 's, 'f) t
     | Exists :
         ('var, 'value, 'f) Typ.t
-        * ('value, 'f Cvar.t -> 'f, 's) Provider.t
+        * ('value, 'f, 's) Provider.t
         * (('var, 'value) Handle.t -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
     | Next_auxiliary : (int -> ('a, 's, 'f) t) -> ('a, 's, 'f) t

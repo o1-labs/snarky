@@ -1,6 +1,6 @@
 open Core_kernel
 
-type ('a, 'e, 's) t = 'e -> 's -> 's * 'a
+type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
 
 module T = struct
   let map t ~f tbl s =
@@ -28,7 +28,7 @@ module T = struct
     let s, y = y tbl s in
     (s, f x y)
 
-  let read_var (v : 'var) : ('field, 'var -> 'field, 's) t =
+  let read_var (v : 'var) : ('field, 'field, 's) t =
    fun tbl s -> (s, tbl v)
 end
 

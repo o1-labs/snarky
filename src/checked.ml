@@ -81,7 +81,7 @@ module T = struct
   include T0
 
   let request_witness (typ : ('var, 'value, 'field) Types.Typ.t)
-      (r : ('value Request.t, 'field Cvar.t -> 'field, 's) As_prover0.t) =
+      (r : ('value Request.t, 'field, 's) As_prover0.t) =
     Exists (typ, Request r, fun h -> return (Handle.var h))
 
   let request ?such_that typ r =
