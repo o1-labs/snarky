@@ -231,7 +231,7 @@ let pop_scope env =
   match env.scope_stack with
   | [] -> raise (Error (Location.none, No_open_scopes))
   | scope :: scope_stack ->
-      (scope, {env with scope_stack; depth= env.depth + 1})
+      (scope, {env with scope_stack; depth= env.depth - 1})
 
 let pop_expr_scope env =
   let scope, env = pop_scope env in
