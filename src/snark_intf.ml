@@ -1070,6 +1070,8 @@ module type Run = sig
       val ( - ) : t -> t -> t
 
       val ( * ) : t -> t -> t
+
+      val ( / ) : t -> t -> t
     end
 
     module Unsafe : sig
@@ -1201,16 +1203,16 @@ module type Run = sig
   val with_label : string -> (unit -> 'a) -> 'a
 
   val constraint_system :
-       exposing:(unit -> unit, _, 'k_var, _) Data_spec.t
+       exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
     -> 'k_var
     -> R1CS_constraint_system.t
 
   val generate_keypair :
-    exposing:(unit -> unit, _, 'k_var, _) Data_spec.t -> 'k_var -> Keypair.t
+    exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t -> 'k_var -> Keypair.t
 
   val prove :
        Proving_key.t
-    -> (unit -> unit, Proof.t, 'k_var, 'k_value) Data_spec.t
+    -> (unit -> 'a, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
     -> 'k_value
 
