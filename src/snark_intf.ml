@@ -108,20 +108,20 @@ module type Basic = sig
   and Typ : sig
     module Store : sig
       include
-        Monad.S with type 'a t = ('a, Field.t, Field.Var.t) Typ_monads.Store.t
+        Monad.S with type 'a t = ('a, Field.t) Typ_monads.Store.t
 
       val store : field -> Field.Var.t t
     end
 
     module Alloc : sig
-      include Monad.S with type 'a t = ('a, Field.Var.t) Typ_monads.Alloc.t
+      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Alloc.t
 
       val alloc : Field.Var.t t
     end
 
     module Read : sig
       include
-        Monad.S with type 'a t = ('a, Field.t, Field.Var.t) Typ_monads.Read.t
+        Monad.S with type 'a t = ('a, Field.t) Typ_monads.Read.t
 
       val read : Field.Var.t -> field t
     end

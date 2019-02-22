@@ -243,14 +243,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
   module Typ_monads = struct
     open Typ_monads
 
-    module A = struct
-      type t1 = Field.t
-
-      type t2 = Cvar.t
-    end
-
     module Store = struct
-      include Restrict_monad.Make3 (Store) (A)
+      include Restrict_monad.Make2 (Store) (Field)
 
       let store = Store.store
 
@@ -258,7 +252,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     end
 
     module Read = struct
-      include Restrict_monad.Make3 (Read) (A)
+      include Restrict_monad.Make2 (Read) (Field)
 
       let read = Read.read
 
@@ -268,11 +262,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     module Alloc = struct
       open Alloc
 
-      include Restrict_monad.Make2
-                (Alloc)
-                (struct
-                  type t = Cvar.t
-                end)
+      include Restrict_monad.Make2 (Alloc) (Field)
 
       let alloc = alloc
 

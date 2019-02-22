@@ -9,15 +9,15 @@ module T = struct
   open Typ_monads
 
   let store ({store; _} : ('var, 'value, 'field) t) (x : 'value) :
-      ('var, 'field, 'field Cvar.t) Store.t =
+      ('var, 'field) Store.t =
     store x
 
   let read ({read; _} : ('var, 'value, 'field) t) (v : 'var) :
-      ('value, 'field, 'field Cvar.t) Read.t =
+      ('value, 'field) Read.t =
     read v
 
   let alloc ({alloc; _} : ('var, 'value, 'field) t) :
-      ('var, 'field Cvar.t) Alloc.t =
+      ('var, 'field) Alloc.t =
     alloc
 
   let check (type field) ({check; _} : ('var, 'value, field) t) (v : 'var) :

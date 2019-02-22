@@ -21,9 +21,9 @@ module rec Typ : sig
   end
 ]}*)
   type ('var, 'value, 'field) t =
-    { store: 'value -> ('var, 'field, 'field Cvar.t) Store.t
-    ; read: 'var -> ('value, 'field, 'field Cvar.t) Read.t
-    ; alloc: ('var, 'field Cvar.t) Alloc.t
+    { store: 'value -> ('var, 'field) Store.t
+    ; read: 'var -> ('value, 'field) Read.t
+    ; alloc: ('var, 'field) Alloc.t
     ; check: 'var -> (unit, unit, 'field) Checked.t }
 end =
   Typ

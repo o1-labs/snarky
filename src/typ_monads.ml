@@ -1,11 +1,11 @@
 module Store = struct
   module T = struct
-    type ('k, 'field, 'var) t = Store of 'field * ('var -> 'k)
+    type ('k, 'field) t = Store of 'field * ('field Cvar.t -> 'k)
 
     let map t ~f = match t with Store (x, k) -> Store (x, fun v -> f (k v))
   end
 
-  include Free_monad.Make3 (T)
+  include Free_monad.Make2 (T)
 
   let store x = Free (T.Store (x, fun v -> Pure v))
 
@@ -15,12 +15,12 @@ end
 
 module Read = struct
   module T = struct
-    type ('k, 'field, 'cvar) t = Read of 'cvar * ('field -> 'k)
+    type ('k, 'field) t = Read of 'field Cvar.t * ('field -> 'k)
 
     let map t ~f = match t with Read (v, k) -> Read (v, fun x -> f (k x))
   end
 
-  include Free_monad.Make3 (T)
+  include Free_monad.Make2 (T)
 
   let read v = Free (T.Read (v, return))
 
@@ -30,7 +30,7 @@ end
 
 module Alloc = struct
   module T = struct
-    type ('k, 'var) t = Alloc of ('var -> 'k)
+    type ('k, 'field) t = Alloc of ('field Cvar.t -> 'k)
 
     let map t ~f = match t with Alloc k -> Alloc (fun v -> f (k v))
   end
