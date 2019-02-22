@@ -1554,7 +1554,7 @@ module Run = struct
 
       let of_hlistable = of_hlistable
 
-      module Of_traverable = Of_traversable
+      module Of_traversable = Of_traversable
     end
 
     module Boolean = struct
@@ -1568,7 +1568,7 @@ module Run = struct
 
       let false_ = false_
 
-      let if_ = if_
+      let if_ b ~then_ ~else_ = run (if_ b ~then_ ~else_)
 
       let not = not
 
@@ -1578,7 +1578,9 @@ module Run = struct
 
       let ( lxor ) x y = run (x lxor y)
 
-      let any = any
+      let any l = run (any l)
+
+      let all l = run (all l)
 
       let of_field x = run (of_field x)
 
@@ -1633,7 +1635,9 @@ module Run = struct
       open Snark.Field
 
       module T = struct
-        type nonrec t = t
+        type t = Snark.Field.t [@@deriving bin_io, sexp, hash, compare, eq]
+
+        let gen = gen
 
         let of_int = of_int
 
@@ -1659,6 +1663,8 @@ module Run = struct
 
         let size_in_bits = size_in_bits
 
+        let print = print
+
         let random = random
 
         module Vector = Vector
@@ -1666,6 +1672,16 @@ module Run = struct
         let negate = negate
 
         module Infix = Infix
+
+        let of_string = of_string
+
+        let to_string = to_string
+
+        let size = size
+
+        let unpack = unpack
+
+        let project = project
       end
 
       open Snark.Field.Var
@@ -1724,7 +1740,8 @@ module Run = struct
 
       let choose_preimage_var x ~length = run (choose_preimage_var x ~length)
 
-      type nonrec comparison_result = comparison_result
+      type nonrec comparison_result = comparison_result =
+        {less: Boolean.var; less_or_equal: Boolean.var}
 
       let compare ~bit_length x y = run (compare ~bit_length x y)
 
@@ -1800,7 +1817,12 @@ module Run = struct
 
     let perform p = run (perform p)
 
-    let request ?such_that typ r = run (request ?such_that typ r)
+    let request ?such_that typ r =
+      match such_that with
+      | None -> request_witness typ (As_prover0.return r)
+      | Some such_that ->
+          let x = request_witness typ (As_prover0.return r) in
+          such_that x ; x
 
     let exists ?request ?compute typ = run (exists ?request ?compute typ)
 
@@ -1808,7 +1830,11 @@ module Run = struct
 
     let unhandled = unhandled
 
-    type nonrec request = request
+    type request = Request.request =
+      | With :
+          { request: 'a Request.t
+          ; respond: 'a Request.Response.t -> response }
+          -> request
 
     module Handler = Handler
 
@@ -1839,7 +1865,7 @@ module Run = struct
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 
-    let run_and_check x = Perform.run_and_check ~run:as_stateful x
+    let run_and_check x = Perform.run_and_check ~run:as_stateful (fun () -> x)
 
     let check x = Perform.check ~run:as_stateful x
   end
