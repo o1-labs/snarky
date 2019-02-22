@@ -21,7 +21,7 @@ depends: [
   "ppx_snarky"
   "ppx_jane"
   "ppx_deriving"
-  "jbuilder"                {build & >= "1.0+beta12"}
+  "bisect_ppx"
   "dune"                {build & >= "1.0"}
 ]
 available: [ ocaml-version >= "4.04.1" ]
