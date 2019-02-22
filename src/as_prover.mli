@@ -12,11 +12,9 @@ include Monad.S3 with type ('a, 'e, 's) t = 'e -> 's -> 's * 'a
 val run : ('a, 'e, 's) t -> 'e -> 's -> 's * 'a
 
 module type S = sig
-  type var
-
   type field
 
-  type env = var -> field
+  type env = field Cvar.t -> field
 
   include Monad.S2 with type ('a, 's) t = ('a, env, 's) t
 
@@ -30,17 +28,17 @@ module type S = sig
 
   val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
 
-  val read_var : var -> (field, 's) t
+  val read_var : field Cvar.t -> (field, 's) t
 
   val read :
-    ('var, 'value, field, var) Typ.t -> 'var -> ('value, 'prover_state) t
+    ('var, 'value, field) Typ.t -> 'var -> ('value, 'prover_state) t
 
   module Ref : sig
     type 'a t
 
     val create :
          ('a, env, 'prover_state) As_prover0.t
-      -> ('a t, 'prover_state, field, var) Checked.t
+      -> ('a t, 'prover_state, field) Checked.t
 
     val get : 'a t -> ('a, env, _) As_prover0.t
 
@@ -49,7 +47,5 @@ module type S = sig
 end
 
 module Make (Env : sig
-  type var
-
   type field
-end) : S with type var := Env.var with type field := Env.field
+end) : S with type field := Env.field

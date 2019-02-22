@@ -126,7 +126,7 @@ module type Basic = sig
       val read : Field.Var.t -> field t
     end
 
-    type ('var, 'value) t = ('var, 'value, Field.t, Field.Var.t) Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -306,7 +306,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     *)
     include
       Monad.S2
-      with type ('a, 's) t = ('a, 's, Field.t, Field.Var.t) Types.Checked.t
+      with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
 
     module List :
       Monad_sequence.S

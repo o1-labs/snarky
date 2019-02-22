@@ -294,7 +294,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module Checked0 = struct
     module T = struct
-      type ('a, 's) t = ('a, 's, Field.t, Cvar.t) Checked.t
+      type ('a, 's) t = ('a, 's, Field.t) Checked.t
 
       include Checked.T
     end
@@ -308,7 +308,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     include Typ_monads
     include Typ.T
 
-    type ('var, 'value) t = ('var, 'value, Field.t, Cvar.t) Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
 
     type ('var, 'value) typ = ('var, 'value) t
 
