@@ -26,9 +26,7 @@ module T0 = struct
   let map = `Custom map
 
   let rec bind : type s a b field.
-         (a, s, field) t
-      -> f:(a -> (b, s, field) t)
-      -> (b, s, field) t =
+      (a, s, field) t -> f:(a -> (b, s, field) t) -> (b, s, field) t =
    fun t ~f ->
     match t with
     | Pure x -> f x

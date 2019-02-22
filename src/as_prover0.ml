@@ -28,8 +28,7 @@ module T = struct
     let s, y = y tbl s in
     (s, f x y)
 
-  let read_var (v : 'var) : ('field, 'field, 's) t =
-   fun tbl s -> (s, tbl v)
+  let read_var (v : 'var) : ('field, 'field, 's) t = fun tbl s -> (s, tbl v)
 end
 
 include T

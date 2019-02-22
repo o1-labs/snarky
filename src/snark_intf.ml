@@ -304,9 +304,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   Field.Checked.mul x_times_y z
 ]}
     *)
-    include
-      Monad.S2
-      with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
+    include Monad.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
 
     module List :
       Monad_sequence.S

@@ -56,13 +56,9 @@ and Checked : sig
         * ('b -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
     | With_handler :
-        Request.Handler.single
-        * ('a, 's, 'f) t
-        * ('a -> ('b, 's, 'f) t)
+        Request.Handler.single * ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t)
         -> ('b, 's, 'f) t
-    | Clear_handler :
-        ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t)
-        -> ('b, 's, 'f) t
+    | Clear_handler : ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t) -> ('b, 's, 'f) t
     | Exists :
         ('var, 'value, 'f) Typ.t
         * ('value, 'f, 's) Provider.t

@@ -28,8 +28,7 @@ module type S = sig
 
   val read_var : field Cvar.t -> (field, 's) t
 
-  val read :
-    ('var, 'value, field) Typ.t -> 'var -> ('value, 'prover_state) t
+  val read : ('var, 'value, field) Typ.t -> 'var -> ('value, 'prover_state) t
 
   module Ref : sig
     type 'a t

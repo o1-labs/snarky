@@ -1,7 +1,6 @@
 open Core_kernel
 
-type ('var, 'value, 'field) t =
-  ('var, 'value, 'field) Types.Typ.t
+type ('var, 'value, 'field) t = ('var, 'value, 'field) Types.Typ.t
 
 type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
@@ -21,11 +20,9 @@ module T = struct
       ('var, 'field Cvar.t) Alloc.t =
     alloc
 
-  let check (type field) ({check; _} : ('var, 'value, field) t)
-      (v : 'var) : (unit, 's, field) Types.Checked.t =
-    let do_nothing : (unit, field, _) As_prover0.t =
-     fun _ s -> (s, ())
-    in
+  let check (type field) ({check; _} : ('var, 'value, field) t) (v : 'var) :
+      (unit, 's, field) Types.Checked.t =
+    let do_nothing : (unit, field, _) As_prover0.t = fun _ s -> (s, ()) in
     With_state (do_nothing, (fun () -> do_nothing), check v, Checked.return)
 
   let unit () : (unit, unit, 'field) t =
@@ -43,8 +40,7 @@ module T = struct
     ; alloc= Alloc.alloc
     ; check= (fun _ -> Checked.return ()) }
 
-  let transport
-      ({read; store; alloc; check} : ('var1, 'value1, 'field) t)
+  let transport ({read; store; alloc; check} : ('var1, 'value1, 'field) t)
       ~(there : 'value2 -> 'value1) ~(back : 'value1 -> 'value2) :
       ('var1, 'value2, 'field) t =
     { alloc
@@ -52,8 +48,7 @@ module T = struct
     ; read= (fun v -> Read.map ~f:back (read v))
     ; check }
 
-  let transport_var
-      ({read; store; alloc; check} : ('var1, 'value, 'field) t)
+  let transport_var ({read; store; alloc; check} : ('var1, 'value, 'field) t)
       ~(there : 'var2 -> 'var1) ~(back : 'var1 -> 'var2) :
       ('var2, 'value, 'field) t =
     { alloc= Alloc.map alloc ~f:back
@@ -135,8 +130,7 @@ module T = struct
   let ( * ) = tuple2
 
   let tuple3 (typ1 : ('var1, 'value1, 'field) t)
-      (typ2 : ('var2, 'value2, 'field) t)
-      (typ3 : ('var3, 'value3, 'field) t) :
+      (typ2 : ('var2, 'value2, 'field) t) (typ3 : ('var3, 'value3, 'field) t) :
       ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3, 'field) t =
     let alloc =
       let open Alloc.Let_syntax in
