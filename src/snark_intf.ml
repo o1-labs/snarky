@@ -348,7 +348,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type var' = Var.t
 
     module Var : sig
-      type t = (field, Var.t) Cvar.t
+      type t = field Cvar.t
 
       val length : t -> int
       (** For debug purposes *)
@@ -419,7 +419,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       end
 
       module Unsafe : sig
-        val of_var : var' -> Var.t
+        val of_index : int -> Var.t
       end
 
       module Assert : sig
