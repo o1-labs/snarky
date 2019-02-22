@@ -1474,6 +1474,377 @@ module Make (Backend : Backend_intf.S) = struct
   module Enumerable = Enumerable.Make (Basic)
 end
 
+module Run = struct
+  module Make (Backend : Backend_intf.S) = struct
+    module Snark = Make (Backend)
+    open Snark
+
+    let state =
+      ref
+        { Runner.system= Some (R1CS_constraint_system.create ())
+        ; input= Field.Vector.create ()
+        ; aux= Field.Vector.create ()
+        ; eval_constraints= true
+        ; num_inputs= 0
+        ; next_auxiliary= ref 1
+        ; prover_state= Some ()
+        ; stack= []
+        ; handler= Request.Handler.fail }
+
+    let run checked =
+      let state', x = Runner.run checked !state in
+      state := state' ;
+      x
+
+    let as_stateful x state' =
+      let old_state = !state in
+      state := state' ;
+      let a = x () in
+      let state' = !state in
+      state := old_state ;
+      (state', a)
+
+    module Proving_key = Snark.Proving_key
+    module Verification_key = Snark.Verification_key
+    module R1CS_constraint_system = Snark.R1CS_constraint_system
+    module Keypair = Snark.Keypair
+    module Var = Snark.Var
+
+    type field = Snark.field
+
+    module Bigint = Snark.Bigint
+    module Constraint = Snark.Constraint
+    module Data_spec = Snark.Data_spec
+
+    module Typ = struct
+      open Snark.Typ
+      module Store = Store
+      module Alloc = Alloc
+      module Read = Read
+
+      type nonrec ('var, 'value) t = ('var, 'value) t
+
+      let store = store
+
+      let read = read
+
+      let alloc = alloc
+
+      let check typ var = run (check typ var)
+
+      let unit = unit
+
+      let field = field
+
+      let tuple2 = tuple2
+
+      let ( * ) = ( * )
+
+      let tuple3 = tuple3
+
+      let list = list
+
+      let array = array
+
+      let hlist = hlist
+
+      let transport = transport
+
+      let transport_var = transport_var
+
+      let of_hlistable = of_hlistable
+
+      module Of_traverable = Of_traversable
+    end
+
+    module Boolean = struct
+      open Snark.Boolean
+
+      type nonrec var = var
+
+      type value = bool
+
+      let true_ = true_
+
+      let false_ = false_
+
+      let if_ = if_
+
+      let not = not
+
+      let ( && ) x y = run (x && y)
+
+      let ( || ) x y = run (x || y)
+
+      let ( lxor ) x y = run (x lxor y)
+
+      let any = any
+
+      let of_field x = run (of_field x)
+
+      let var_of_value = var_of_value
+
+      let typ = typ
+
+      let typ_unchecked = typ_unchecked
+
+      let equal x y = run (equal x y)
+
+      module Expr = struct
+        open Snark.Boolean.Expr
+
+        type nonrec t = t
+
+        let ( ! ) = ( ! )
+
+        let ( && ) = ( && )
+
+        let ( || ) = ( || )
+
+        let any = any
+
+        let all = all
+
+        let not = not
+
+        let eval x = run (eval x)
+
+        let assert_ x = run (assert_ x)
+      end
+
+      module Unsafe = Unsafe
+
+      module Assert = struct
+        open Snark.Boolean.Assert
+
+        let ( = ) x y = run (x = y)
+
+        let is_true x = run (is_true x)
+
+        let any l = run (any l)
+
+        let all l = run (all l)
+
+        let exactly_one l = run (exactly_one l)
+      end
+    end
+
+    module Field = struct
+      open Snark.Field
+
+      module T = struct
+        type nonrec t = t
+
+        let of_int = of_int
+
+        let one = one
+
+        let zero = zero
+
+        let add = add
+
+        let sub = sub
+
+        let mul = mul
+
+        let inv = inv
+
+        let square = square
+
+        let sqrt = sqrt
+
+        let is_square = is_square
+
+        let equal = equal
+
+        let size_in_bits = size_in_bits
+
+        let random = random
+
+        module Vector = Vector
+
+        let negate = negate
+
+        module Infix = Infix
+      end
+
+      open Snark.Field.Var
+
+      type nonrec t = t
+
+      let length = length
+
+      let var_indices = var_indices
+
+      let to_constant_and_terms = to_constant_and_terms
+
+      let constant = constant
+
+      let to_constant = to_constant
+
+      let linear_combination = linear_combination
+
+      let sum = sum
+
+      let add = add
+
+      let sub = sub
+
+      let scale = scale
+
+      let project = project
+
+      let pack = pack
+
+      (* New definitions *)
+
+      let of_int i = constant (T.of_int i)
+
+      let one = constant T.one
+
+      let zero = constant T.zero
+
+      open Snark.Field.Checked
+
+      let mul x y = run (mul x y)
+
+      let square x = run (square x)
+
+      let div x y = run (div x y)
+
+      let inv x = run (inv x)
+
+      let equal x y = run (equal x y)
+
+      let unpack x ~length = run (unpack x ~length)
+
+      let unpack_flagged x ~length = run (unpack_flagged x ~length)
+
+      let unpack_full x = run (unpack_full x)
+
+      let choose_preimage_var x ~length = run (choose_preimage_var x ~length)
+
+      type nonrec comparison_result = comparison_result
+
+      let compare ~bit_length x y = run (compare ~bit_length x y)
+
+      let if_ b ~then_ ~else_ = run (if_ b ~then_ ~else_)
+
+      module Infix = struct
+        let ( + ) = add
+
+        let ( - ) = sub
+
+        let ( * ) = mul
+
+        let ( / ) = div
+      end
+
+      module Unsafe = Unsafe
+
+      module Assert = struct
+        open Snark.Field.Checked.Assert
+
+        let lte ~bit_length x y = run (lte ~bit_length x y)
+
+        let gte ~bit_length x y = run (gte ~bit_length x y)
+
+        let lt ~bit_length x y = run (lt ~bit_length x y)
+
+        let gt ~bit_length x y = run (gt ~bit_length x y)
+
+        let not_equal x y = run (not_equal x y)
+
+        let equal x y = run (equal x y)
+
+        let non_zero x = run (non_zero x)
+      end
+
+      let typ = typ
+    end
+
+    module Proof = Proof
+
+    module Bitstring_checked = struct
+      open Snark.Bitstring_checked
+
+      type nonrec t = t
+
+      let equal x y = run (equal x y)
+
+      let lt_value x y = run (lt_value x y)
+
+      module Assert = struct
+        open Snark.Bitstring_checked.Assert
+
+        let equal x y = run (equal x y)
+      end
+    end
+
+    module As_prover = As_prover
+    module Handle = Handle
+
+    let assert_ ?label c = run (assert_ ?label c)
+
+    let assert_all ?label c = run (assert_all ?label c)
+
+    let assert_r1cs ?label a b c = run (assert_r1cs ?label a b c)
+
+    let assert_square ?label x y = run (assert_square ?label x y)
+
+    let as_prover p = run (as_prover p)
+
+    let next_auxiliary () = run next_auxiliary
+
+    let request_witness typ p = run (request_witness typ p)
+
+    let perform p = run (perform p)
+
+    let request ?such_that typ r = run (request ?such_that typ r)
+
+    let exists ?request ?compute typ = run (exists ?request ?compute typ)
+
+    type nonrec response = response
+
+    let unhandled = unhandled
+
+    type nonrec request = request
+
+    module Handler = Handler
+
+    let handle x h =
+      let h = Request.Handler.create_single h in
+      let {Runner.handler; _} = !state in
+      state := {!state with handler= Request.Handler.push handler h} ;
+      let a = x () in
+      state := {!state with handler} ;
+      a
+
+    let with_label lbl x =
+      let {Runner.stack; _} = !state in
+      state := {!state with stack= lbl :: stack} ;
+      let a = x () in
+      state := {!state with stack} ;
+      a
+
+    let constraint_system ~exposing x =
+      Perform.constraint_system ~run:as_stateful ~exposing x
+
+    let generate_keypair ~exposing x =
+      Perform.generate_keypair ~run:as_stateful ~exposing x
+
+    let prove pk x = Perform.prove ~run:as_stateful pk x
+
+    let verify pf vk spec = verify pf vk spec
+
+    let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
+
+    let run_and_check x = Perform.run_and_check ~run:as_stateful x
+
+    let check x = Perform.check ~run:as_stateful x
+  end
+end
+
 let%test_module "snark0-test" =
   ( module struct
     include Make (Backends.Mnt4.GM)
