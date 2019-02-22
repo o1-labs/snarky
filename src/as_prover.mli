@@ -5,22 +5,18 @@ open Core_kernel
     
     We form a {{: https://en.wikipedia.org/wiki/Monad_(functional_programming)}monad}
     over {!type:t} so that we have a simple way to interact with values inside the type
-    (the value of type ['a] corresponding to our [('a, 'e, 's) t]).
+    (the value of type ['a] corresponding to our [('a, 'f, 's) t]).
     *)
-include Monad.S3 with type ('a, 'e, 's) t = 'e -> 's -> 's * 'a
+include Monad.S3 with type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
 
-val run : ('a, 'e, 's) t -> 'e -> 's -> 's * 'a
+val run : ('a, 'f, 's) t -> ('f Cvar.t -> 'f) -> 's -> 's * 'a
 
 module type S = sig
-  type var
-
   type field
 
-  type env = var -> field
+  include Monad.S2 with type ('a, 's) t = ('a, field, 's) t
 
-  include Monad.S2 with type ('a, 's) t = ('a, env, 's) t
-
-  val run : ('a, 's) t -> env -> 's -> 's * 'a
+  val run : ('a, 's) t -> (field Cvar.t -> field) -> 's -> 's * 'a
 
   val get_state : ('s, 's) t
 
@@ -30,26 +26,23 @@ module type S = sig
 
   val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
 
-  val read_var : var -> (field, 's) t
+  val read_var : field Cvar.t -> (field, 's) t
 
-  val read :
-    ('var, 'value, field, var) Typ.t -> 'var -> ('value, 'prover_state) t
+  val read : ('var, 'value, field) Typ.t -> 'var -> ('value, 'prover_state) t
 
   module Ref : sig
     type 'a t
 
     val create :
-         ('a, env, 'prover_state) As_prover0.t
-      -> ('a t, 'prover_state, field, var) Checked.t
+         ('a, field, 'prover_state) As_prover0.t
+      -> ('a t, 'prover_state, field) Checked.t
 
-    val get : 'a t -> ('a, env, _) As_prover0.t
+    val get : 'a t -> ('a, field, _) As_prover0.t
 
-    val set : 'a t -> 'a -> (unit, env, _) As_prover0.t
+    val set : 'a t -> 'a -> (unit, field, _) As_prover0.t
   end
 end
 
 module Make (Env : sig
-  type var
-
   type field
-end) : S with type var := Env.var with type field := Env.field
+end) : S with type field := Env.field

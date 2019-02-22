@@ -243,14 +243,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
   module Typ_monads = struct
     open Typ_monads
 
-    module A = struct
-      type t1 = Field.t
-
-      type t2 = Cvar.t
-    end
-
     module Store = struct
-      include Restrict_monad.Make3 (Store) (A)
+      include Restrict_monad.Make2 (Store) (Field)
 
       let store = Store.store
 
@@ -258,7 +252,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     end
 
     module Read = struct
-      include Restrict_monad.Make3 (Read) (A)
+      include Restrict_monad.Make2 (Read) (Field)
 
       let read = Read.read
 
@@ -267,12 +261,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     module Alloc = struct
       open Alloc
-
-      include Restrict_monad.Make2
-                (Alloc)
-                (struct
-                  type t = Cvar.t
-                end)
+      include Restrict_monad.Make2 (Alloc) (Field)
 
       let alloc = alloc
 
@@ -294,7 +283,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module Checked0 = struct
     module T = struct
-      type ('a, 's) t = ('a, 's, Field.t, Cvar.t) Checked.t
+      type ('a, 's) t = ('a, 's, Field.t) Checked.t
 
       include Checked.T
     end
@@ -308,7 +297,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     include Typ_monads
     include Typ.T
 
-    type ('var, 'value) t = ('var, 'value, Field.t, Cvar.t) Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
 
     type ('var, 'value) typ = ('var, 'value) t
 
@@ -457,8 +446,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module As_prover = struct
     include As_prover.Make (struct
-      type var = Cvar.t
-
       type field = Field.t
     end)
 
