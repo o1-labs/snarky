@@ -388,7 +388,12 @@ module Type = struct
     | Tpoly (vars, typ) ->
         let _vars, new_vars_map, env = refresh_vars vars new_vars_map env in
         copy typ new_vars_map env
-    | Tctor _ -> mk ~loc typ.type_desc env
+    | Tctor ({var_params; _} as variant) ->
+        let env, var_params = List.fold_map ~init:env var_params ~f:(fun e t ->
+          let t, e = copy t new_vars_map e in
+          (e, t))
+        in
+      mk ~loc (Tctor {variant with var_params}) env
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
