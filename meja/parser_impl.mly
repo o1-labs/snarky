@@ -38,9 +38,24 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token BAR
 %token QUOT
 %token DOT
+%token <string> PREFIXOP
+%token <string> INFIXOP0
+%token <string> INFIXOP1
+%token <string> INFIXOP2
+%token <string> INFIXOP3
+%token <string> INFIXOP4
 %token EOF
 
 %token EOL
+
+%nonassoc SEMI
+%left     INFIXOP0 EQUAL
+%right    INFIXOP1
+%left     INFIXOP2
+%left     INFIXOP3
+%right    INFIXOP4
+%nonassoc above_infix
+%nonassoc LBRACKET
 
 %start file
 %type <Parsetypes.statement list> file
@@ -130,6 +145,34 @@ ctor_ident:
   | FALSE
     { "false" }
 
+infix_operator:
+  | op = INFIXOP0 { op }
+  | EQUAL    { "=" }
+  | op = INFIXOP1 { op }
+  | op = INFIXOP2 { op }
+  | op = INFIXOP3 { op }
+  | op = INFIXOP4 { op }
+
+operator:
+    op = PREFIXOP
+    { op }
+  | op = infix_operator
+    { op }
+
+val_ident:
+  | id = LIDENT
+    { id }
+  | LBRACKET op = operator RBRACKET
+    { op }
+  | LBRACKET operator err = err
+    { raise (Error (err, Expecting "operator")) }
+  | LBRACKET err = err
+    { raise (Error (err, Expecting ")")) }
+
+val_longident:
+  | x = longident (val_ident, UIDENT)
+    { x }
+
 ctor_decl:
   | id = as_loc(ctor_ident) args = ctor_decl_args
     return_typ = maybe(COLON t = decl_type_expr { t })
@@ -145,7 +188,7 @@ expr_field:
     { (x, mkexp ~pos:$loc (Variable (mk_lid (lid_last x)))) }
 
 expr:
-  | x = as_loc(longident(LIDENT, UIDENT))
+  | x = as_loc(val_longident)
     { mkexp ~pos:$loc (Variable x) }
   | x = INT
     { mkexp ~pos:$loc (Int x) }
@@ -159,6 +202,12 @@ expr:
     { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
   | f = expr LBRACKET es = expr_list RBRACKET
     { mkexp ~pos:$loc (Apply (f, List.rev es)) }
+  | e1 = expr op = infix_operator e2 = expr %prec above_infix
+    { let op = mkloc (Lident op) (mklocation $loc(op)) in
+      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [e1; e2])) }
+  | op = PREFIXOP e = expr
+    { let op = mkloc (Lident op) (mklocation $loc(op)) in
+      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [e])) }
   | SWITCH LBRACKET e = expr_or_bare_tuple RBRACKET LBRACE rev_cases = list(match_case, {}) RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
   | e = expr_record
@@ -237,7 +286,7 @@ pat_no_bar:
     { p }
   | p = pat_no_bar COLON typ = type_expr
     { mkpat ~pos:$loc (PConstraint (p, typ)) }
-  | x = as_loc(LIDENT)
+  | x = as_loc(val_ident)
     { mkpat ~pos:$loc (PVariable x) }
   | i = INT
     { mkpat ~pos:$loc (PInt i) }

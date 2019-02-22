@@ -22,6 +22,8 @@ let number = ['0'-'9']+
 let lowercase_alpha = ['a'-'z']
 let uppercase_alpha = ['A'-'Z']
 let ident = ['a'-'z' 'A'-'Z' '_' '\'' '0'-'9']
+let symbolchar =
+  ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
 
 rule token = parse
     whitespace
@@ -52,6 +54,14 @@ rule token = parse
   | '|' { BAR }
   | ''' { QUOT }
   | '.' { DOT }
+
+  | "!" symbolchar * as op { PREFIXOP op }
+  | ['~' '?'] symbolchar + as op { PREFIXOP op }
+  | ['=' '<' '>' '|' '&' '$'] symbolchar * as op { INFIXOP0 op }
+  | ['@' '^'] symbolchar * as op { INFIXOP1 op }
+  | ['+' '-'] symbolchar * as op { INFIXOP2 op }
+  | "**" symbolchar * as op { INFIXOP4 op }
+  | ['*' '/' '%'] symbolchar * as op { INFIXOP3 op }
   | lowercase_alpha ident* { LIDENT(Lexing.lexeme lexbuf) }
   | uppercase_alpha ident* { UIDENT(Lexing.lexeme lexbuf) }
   | _ { raise (Error (lexeme_loc lexbuf, Unexpected_character (Lexing.lexeme lexbuf))) }
