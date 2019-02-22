@@ -279,7 +279,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let run = run
 
       let size t =
-        let dummy = Cvar.Unsafe.of_var (Backend.Var.create 0) in
+        let dummy = Cvar.Unsafe.of_index 0 in
         let rec go acc = function
           | Pure _ -> acc
           | Free (T.Alloc k) -> go (acc + 1) (k dummy)
@@ -478,8 +478,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let constraint_count ?(log = fun ?start _ _ -> ()) (t : (_, _) t) : int =
       let next_auxiliary = ref 1 in
       let alloc_var () =
-        let v = Backend.Var.create !next_auxiliary in
-        incr next_auxiliary ; Cvar.Unsafe.of_var v
+        let v = !next_auxiliary in
+        incr next_auxiliary ; Cvar.Unsafe.of_index v
       in
       let rec go : type a s. int -> (a, s) t -> int * a =
        fun count t0 ->
@@ -517,20 +517,19 @@ module Make_basic (Backend : Backend_intf.S) = struct
       (* We can't evaluate the constraints if we are not computing over a value. *)
       let eval_constraints = eval_constraints && Option.is_some s0 in
       let get_value : Cvar.t -> Field.t =
-        let get_one v =
-          let i = Backend.Var.index v in
+        let get_one i =
           if i <= num_inputs then Field.Vector.get input (i - 1)
           else Field.Vector.get aux (i - num_inputs - 1)
         in
         Cvar.eval get_one
       and store_field_elt x =
-        let v = Backend.Var.create !next_auxiliary in
+        let v = !next_auxiliary in
         incr next_auxiliary ;
         Field.Vector.emplace_back aux x ;
-        Cvar.Unsafe.of_var v
+        Cvar.Unsafe.of_index v
       and alloc_var () =
-        let v = Backend.Var.create !next_auxiliary in
-        incr next_auxiliary ; Cvar.Unsafe.of_var v
+        let v = !next_auxiliary in
+        incr next_auxiliary ; Cvar.Unsafe.of_index v
       in
       let run_as_prover x s =
         match (x, s) with
@@ -626,7 +625,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let aux = Field.Vector.create () in
       let system = R1CS_constraint_system.create () in
       let get_value : Cvar.t -> Field.t =
-        let get_one v = Field.Vector.get aux (Backend.Var.index v - 1) in
+        let get_one v = Field.Vector.get aux (v - 1) in
         Cvar.eval get_one
       in
       match
@@ -1010,8 +1009,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
     open Data_spec
 
     let alloc_var next_input () =
-      let v = Backend.Var.create !next_input in
-      incr next_input ; Cvar.Unsafe.of_var v
+      let v = !next_input in
+      incr next_input ; Cvar.Unsafe.of_index v
 
     let rec collect_input_constraints : type s r2 k1 k2.
            int ref
@@ -1059,10 +1058,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let store_field_elt =
         let next_input = ref 1 in
         fun x ->
-          let v = Backend.Var.create !next_input in
+          let v = !next_input in
           incr next_input ;
           Field.Vector.emplace_back primary_input x ;
-          Cvar.Unsafe.of_var v
+          Cvar.Unsafe.of_index v
       in
       let rec go : type r_var k_var k_value.
           (r_var, bool, k_var, k_value) t -> k_value =
@@ -1086,10 +1085,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let store_field_elt =
         let next_input = ref 1 in
         fun x ->
-          let v = Backend.Var.create !next_input in
+          let v = !next_input in
           incr next_input ;
           Field.Vector.emplace_back primary_input x ;
-          Cvar.Unsafe.of_var v
+          Cvar.Unsafe.of_index v
       in
       let rec go : type k_var k_value.
           (r_var, r_value, k_var, k_value) t -> k_var -> k_value =
