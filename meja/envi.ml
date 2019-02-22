@@ -746,9 +746,9 @@ let find_name (lid : lid) env =
 module Core = struct
   let mkloc s = Location.(mkloc s none)
 
-  let mk_type_decl name desc =
+  let mk_type_decl ?(params = []) name desc =
     { tdec_ident= mkloc name
-    ; tdec_params= []
+    ; tdec_params= params
     ; tdec_desc= desc
     ; tdec_id= 0
     ; tdec_loc= Location.none }
@@ -778,6 +778,8 @@ module Core = struct
 
   let float, env = TypeDecl.import (mk_type_decl "float" TAbstract) env
 
+  module Type__ = Type
+
   module Type = struct
     let int, env = TypeDecl.mk_typ int ~params:[] env
 
@@ -793,6 +795,18 @@ module Core = struct
   end
 
   let env = Type.env
+
+  let env =
+    let loc = Location.none in
+    let var, env = Type__.mkvar ~loc None env in
+    let testing_show_constr, env =
+      TypeDecl.import (mk_type_decl "testing_show_constr" ~params:[var] TAbstract) env
+    in
+    let testing_show_typ, env = TypeDecl.mk_typ testing_show_constr ~params:[var] env in
+    let typ, env = Type__.mk ~loc (Tarrow (var, Type.string)) env in
+    let typ, env = Type__.mk ~loc (Timplicit (testing_show_typ, typ)) env in
+    let typ, env = Type__.mk ~loc (Tpoly ([var], typ)) env in
+    add_name (mkloc "testing_show") typ env
 end
 
 (* Error handling *)
