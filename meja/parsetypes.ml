@@ -117,6 +117,7 @@ and statement_desc =
   | Value of pattern * expression
   | TypeDecl of type_decl
   | Module of str * module_expr
+  | Open of lid
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 

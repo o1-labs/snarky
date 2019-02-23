@@ -95,6 +95,7 @@ let rec of_statement_desc ?loc = function
       Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
   | TypeDecl decl -> Str.type_ ?loc Recursive [of_type_decl decl]
   | Module (name, m) -> Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
+  | Open name -> Str.open_ ?loc (Opn.mk ?loc name)
 
 and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 

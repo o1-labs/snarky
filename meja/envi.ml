@@ -4,6 +4,8 @@ open Longident
 
 type error =
   | No_open_scopes
+  | Wrong_scope_kind of string
+  | Multiple_definition of string * string
   | Unbound_type_var of type_expr
   | Unbound_type of Longident.t
   | Unbound_module of Longident.t
@@ -22,16 +24,20 @@ type 'a int_map = (int, 'a, Int.comparator_witness) Map.t
 type 'a lid_map = (Longident.t, 'a, Longident.comparator_witness) Map.t
 
 module Scope = struct
+  type kind = Module | Expr | Open | Continue
+
   type t =
-    { names: type_expr name_map
+    { kind: kind
+    ; names: type_expr name_map
     ; type_variables: type_expr name_map
     ; type_decls: type_decl name_map
     ; fields: (type_decl * int) name_map
     ; ctors: (type_decl * int) name_map
     ; modules: t name_map }
 
-  let empty =
-    { names= Map.empty (module String)
+  let empty kind =
+    { kind
+    ; names= Map.empty (module String)
     ; type_variables= Map.empty (module String)
     ; type_decls= Map.empty (module String)
     ; fields= Map.empty (module String)
@@ -84,13 +90,15 @@ module Scope = struct
 
   let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors
       ~modules
-      { names= names1
+      { kind= _
+      ; names= names1
       ; type_variables= type_variables1
       ; type_decls= type_decls1
       ; fields= fields1
       ; ctors= ctors1
       ; modules= modules1 }
-      { names= names2
+      { kind= _
+      ; names= names2
       ; type_variables= type_variables2
       ; type_decls= type_decls2
       ; fields= fields2
@@ -105,6 +113,35 @@ module Scope = struct
     let acc = Map.fold2 modules1 modules2 ~init:acc ~f:modules in
     let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
     acc
+
+  let join ~loc
+      { kind
+      ; names= names1
+      ; type_variables= type_variables1
+      ; type_decls= type_decls1
+      ; fields= fields1
+      ; ctors= ctors1
+      ; modules= modules1 }
+      { kind= _
+      ; names= names2
+      ; type_variables= type_variables2
+      ; type_decls= type_decls2
+      ; fields= fields2
+      ; ctors= ctors2
+      ; modules= modules2 } =
+    { kind
+    ; names= Map.merge_skewed names1 names2 ~combine:(fun ~key:_ _ v -> v)
+    ; type_variables=
+        Map.merge_skewed type_variables1 type_variables2
+          ~combine:(fun ~key:_ _ v -> v )
+    ; type_decls=
+        Map.merge_skewed type_decls1 type_decls2 ~combine:(fun ~key _ _ ->
+            raise (Error (loc, Multiple_definition ("type", key))) )
+    ; fields= Map.merge_skewed fields1 fields2 ~combine:(fun ~key:_ _ v -> v)
+    ; ctors= Map.merge_skewed ctors1 ctors2 ~combine:(fun ~key:_ _ v -> v)
+    ; modules=
+        Map.merge_skewed modules1 modules2 ~combine:(fun ~key _ _ ->
+            raise (Error (loc, Multiple_definition ("module", key))) ) }
 
   let add_module name m scope =
     {scope with modules= Map.set scope.modules ~key:name ~data:m}
@@ -170,7 +207,8 @@ end
 
 type t = {scope_stack: Scope.t list; type_env: TypeEnvi.t; depth: int}
 
-let empty = {scope_stack= [Scope.empty]; type_env= TypeEnvi.empty; depth= 0}
+let empty =
+  {scope_stack= [Scope.empty Scope.Module]; type_env= TypeEnvi.empty; depth= 0}
 
 let current_scope {scope_stack; _} =
   match List.hd scope_stack with
@@ -180,7 +218,14 @@ let current_scope {scope_stack; _} =
 let push_scope scope env =
   {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
 
-let open_scope = push_scope Scope.empty
+let open_expr_scope = push_scope Scope.(empty Expr)
+
+let open_module = push_scope Scope.(empty Module)
+
+let open_namespace_scope scope env =
+  env
+  |> push_scope {scope with kind= Scope.Open}
+  |> push_scope Scope.(empty Continue)
 
 let pop_scope env =
   match env.scope_stack with
@@ -188,7 +233,28 @@ let pop_scope env =
   | scope :: scope_stack ->
       (scope, {env with scope_stack; depth= env.depth + 1})
 
-let close_scope env = snd (pop_scope env)
+let pop_expr_scope env =
+  let scope, env = pop_scope env in
+  match scope.Scope.kind with
+  | Scope.Expr -> (scope, env)
+  | _ -> raise (Error (Location.none, Wrong_scope_kind "expression"))
+
+let pop_module ~loc env =
+  let rec all_scopes scopes env =
+    let scope, env = pop_scope env in
+    match scope.kind with
+    | Scope.Module -> (scope :: scopes, env)
+    | Expr -> raise (Error (Location.none, Wrong_scope_kind "module"))
+    | Open -> all_scopes scopes env
+    | Continue -> all_scopes (scope :: scopes) env
+  in
+  let scopes, env = all_scopes [] env in
+  let m =
+    List.fold_left ~init:Scope.(empty Module) scopes ~f:(Scope.join ~loc)
+  in
+  (m, env)
+
+let close_expr_scope env = snd (pop_expr_scope env)
 
 let map_current_scope ~f env =
   match env.scope_stack with
@@ -260,14 +326,14 @@ module Type = struct
             let var, env = mkvar ~loc name env in
             (var, add_type_variable x var env) )
     | Tpoly (vars, typ) ->
-        let env = open_scope env in
+        let env = open_expr_scope env in
         let env, vars =
           List.fold_map vars ~init:env ~f:(fun e t ->
               let t, e = import' ~must_find:false t e in
               (e, t) )
         in
         let typ, env = import typ env in
-        let env = close_scope env in
+        let env = close_expr_scope env in
         mk ~loc (Tpoly (vars, typ)) env
     | Tctor variant ->
         let {var_ident; var_params; _} = variant in
@@ -422,7 +488,7 @@ module TypeDecl = struct
   let import decl env =
     let tdec_id, type_env = TypeEnvi.next_decl_id env.type_env in
     let env = {env with type_env} in
-    let env = open_scope env in
+    let env = open_expr_scope env in
     let env, tdec_params =
       List.fold_map ~init:env decl.tdec_params ~f:(fun env param ->
           match param.type_desc with
@@ -433,7 +499,7 @@ module TypeDecl = struct
     in
     (* Make sure the declaration is available to lookup for recursive types. *)
     let decl = {decl with tdec_id; tdec_params} in
-    let scope, env = pop_scope env in
+    let scope, env = pop_expr_scope env in
     let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
     let env = push_scope scope env in
     let tdec_desc, env =
@@ -454,11 +520,11 @@ module TypeDecl = struct
       | TVariant ctors ->
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
-                let scope, env = pop_scope env in
+                let scope, env = pop_expr_scope env in
                 let ctor_ret, env, must_find, ctor_ret_params =
                   match ctor.ctor_ret with
                   | Some ret ->
-                      let env = open_scope env in
+                      let env = open_expr_scope env in
                       ( match ret.type_desc with
                       | Tctor {var_ident= {txt= Lident str; _}; _}
                         when String.equal str decl.tdec_ident.txt ->
@@ -504,12 +570,12 @@ module TypeDecl = struct
                       in
                       (env, Ctor_record (tdec_id, fields))
                 in
-                let env = push_scope scope (close_scope env) in
+                let env = push_scope scope (close_expr_scope env) in
                 (env, {ctor with ctor_args; ctor_ret}) )
           in
           (TVariant ctors, env)
     in
-    let env = close_scope env in
+    let env = close_expr_scope env in
     let decl = {decl with tdec_desc} in
     let env =
       map_current_scope ~f:(Scope.register_type_declaration decl) env
@@ -660,6 +726,11 @@ let pp_decl_typ ppf decl =
 let report_error ppf = function
   | No_open_scopes ->
       fprintf ppf "Internal error: There is no current open scope."
+  | Wrong_scope_kind kind ->
+      fprintf ppf
+        "Internal error: Expected the current scope to be a %s scope." kind
+  | Multiple_definition (kind, name) ->
+      fprintf ppf "Multiple definition of the %s name %s" kind name
   | Unbound_type_var var -> fprintf ppf "Unbound type parameter %a." pp_typ var
   | Unbound_type lid ->
       fprintf ppf "Unbound type constructor %a." Longident.pp lid
