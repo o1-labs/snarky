@@ -1,17 +1,13 @@
 open Core_kernel
 
-type ('a, 'e, 's) t = ('a, 'e, 's) As_prover0.t
+type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
 
 module type S = sig
-  type var
-
   type field
 
-  type env = var -> field
+  include Monad.S2 with type ('a, 's) t = ('a, field, 's) t
 
-  include Monad.S2 with type ('a, 's) t = ('a, env, 's) t
-
-  val run : ('a, 's) t -> env -> 's -> 's * 'a
+  val run : ('a, 's) t -> (field Cvar.t -> field) -> 's -> 's * 'a
 
   val get_state : ('s, 's) t
 
@@ -21,36 +17,35 @@ module type S = sig
 
   val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
 
-  val read_var : var -> (field, 's) t
+  val read_var : field Cvar.t -> (field, 's) t
 
-  val read :
-    ('var, 'value, field, var) Typ.t -> 'var -> ('value, 'prover_state) t
+  val read : ('var, 'value, field) Typ.t -> 'var -> ('value, 'prover_state) t
 
   module Ref : sig
     type 'a t
 
     val create :
-         ('a, env, 'prover_state) As_prover0.t
-      -> ('a t, 'prover_state, field, var) Checked.t
+         ('a, field, 'prover_state) As_prover0.t
+      -> ('a t, 'prover_state, field) Checked.t
 
-    val get : 'a t -> ('a, env, _) As_prover0.t
+    val get : 'a t -> ('a, field, _) As_prover0.t
 
-    val set : 'a t -> 'a -> (unit, env, _) As_prover0.t
+    val set : 'a t -> 'a -> (unit, field, _) As_prover0.t
   end
 end
 
 module T = struct
   include As_prover0.T
 
-  let read ({read; _} : ('var, 'value, 'field, 'cvar) Typ.t) (var : 'var) :
-      ('value, 'cvar -> 'field, 'prover_state) t =
+  let read ({read; _} : ('var, 'value, 'field) Typ.t) (var : 'var) :
+      ('value, 'field, 'prover_state) t =
    fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
 
   module Ref = struct
     type 'a t = 'a option ref
 
-    let create (x : ('a, 'cvar -> 'field, 's) As_prover0.t) :
-        ('a t, 's, 'field, 'cvar) Checked.t =
+    let create (x : ('a, 'field, 's) As_prover0.t) :
+        ('a t, 's, 'field) Checked.t =
       let r = ref None in
       let open Checked in
       let%map () =
@@ -65,16 +60,12 @@ module T = struct
 end
 
 module Make (Env : sig
-  type var
-
   type field
 end) =
 struct
   include Env
 
-  type env = var -> field
-
-  type nonrec ('a, 's) t = ('a, env, 's) t
+  type nonrec ('a, 's) t = ('a, field, 's) t
 
   include T
 
@@ -94,7 +85,7 @@ end
 include T
 
 include Monad.Make3 (struct
-  type nonrec ('a, 'e, 's) t = ('a, 'e, 's) t
+  type nonrec ('a, 'f, 's) t = ('a, 'f, 's) t
 
   let map = `Custom map
 

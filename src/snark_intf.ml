@@ -107,26 +107,24 @@ module type Basic = sig
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
-      include
-        Monad.S with type 'a t = ('a, Field.t, Field.Var.t) Typ_monads.Store.t
+      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Store.t
 
       val store : field -> Field.Var.t t
     end
 
     module Alloc : sig
-      include Monad.S with type 'a t = ('a, Field.Var.t) Typ_monads.Alloc.t
+      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Alloc.t
 
       val alloc : Field.Var.t t
     end
 
     module Read : sig
-      include
-        Monad.S with type 'a t = ('a, Field.t, Field.Var.t) Typ_monads.Read.t
+      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Read.t
 
       val read : Field.Var.t -> field t
     end
 
-    type ('var, 'value) t = ('var, 'value, Field.t, Field.Var.t) Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -304,9 +302,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   Field.Checked.mul x_times_y z
 ]}
     *)
-    include
-      Monad.S2
-      with type ('a, 's) t = ('a, 's, Field.t, Field.Var.t) Types.Checked.t
+    include Monad.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -348,7 +344,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type var' = Var.t
 
     module Var : sig
-      type t = (field, Var.t) Cvar.t
+      type t = field Cvar.t
 
       val length : t -> int
       (** For debug purposes *)
@@ -419,7 +415,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       end
 
       module Unsafe : sig
-        val of_var : var' -> Var.t
+        val of_index : int -> Var.t
       end
 
       module Assert : sig
