@@ -128,15 +128,17 @@ let rec typ_debug_print fmt typ =
   let print i = fprintf fmt i in
   let print_comma fmt () = pp_print_char fmt ',' in
   let print_list pp = pp_print_list ~pp_sep:print_comma pp in
-  print "(%i:" typ.type_id;
-  (match typ.type_desc with
+  print "(%i:" typ.type_id ;
+  ( match typ.type_desc with
   | Tvar (None, i) -> print "var _@%i" i
   | Tvar (Some name, i) -> print "var %s@%i" name.txt i
-  | Tpoly (typs, typ) -> print "poly [%a] %a" (print_list typ_debug_print) typs typ_debug_print typ
+  | Tpoly (typs, typ) ->
+      print "poly [%a] %a"
+        (print_list typ_debug_print)
+        typs typ_debug_print typ
   | Tarrow (typ1, typ2) ->
       print "%a -> %a" typ_debug_print typ1 typ_debug_print typ2
   | Tctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
-  | Ttuple typs -> print "(%a)" (print_list typ_debug_print) typs
-  );
-  print ")";
+  | Ttuple typs -> print "(%a)" (print_list typ_debug_print) typs ) ;
+  print ")"
