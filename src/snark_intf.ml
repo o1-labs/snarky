@@ -805,8 +805,7 @@ module type Run = sig
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
-      include
-        Monad.S with type 'a t = ('a, field) Typ_monads.Store.t
+      include Monad.S with type 'a t = ('a, field) Typ_monads.Store.t
 
       val store : field -> Field.t t
     end
@@ -818,8 +817,7 @@ module type Run = sig
     end
 
     module Read : sig
-      include
-        Monad.S with type 'a t = ('a, field) Typ_monads.Read.t
+      include Monad.S with type 'a t = ('a, field) Typ_monads.Read.t
 
       val read : Field.t -> field t
     end

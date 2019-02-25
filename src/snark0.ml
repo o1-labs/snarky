@@ -1640,61 +1640,71 @@ module Run = struct
         let gen = gen
 
         module T = struct
-        let bin_shape_t = bin_shape_t
-        let bin_writer_t = bin_writer_t
-        let bin_write_t = bin_write_t
-        let bin_size_t = bin_size_t
-        let bin_reader_t = bin_reader_t
-        let __bin_read_t__ = __bin_read_t__
-        let bin_read_t = bin_read_t
-        let bin_t = bin_t
-        let sexp_of_t = sexp_of_t
-        let t_of_sexp = t_of_sexp
+          let bin_shape_t = bin_shape_t
 
-        let of_int = of_int
+          let bin_writer_t = bin_writer_t
 
-        let one = one
+          let bin_write_t = bin_write_t
 
-        let zero = zero
+          let bin_size_t = bin_size_t
 
-        let add = add
+          let bin_reader_t = bin_reader_t
 
-        let sub = sub
+          let __bin_read_t__ = __bin_read_t__
 
-        let mul = mul
+          let bin_read_t = bin_read_t
 
-        let inv = inv
+          let bin_t = bin_t
 
-        let square = square
+          let sexp_of_t = sexp_of_t
 
-        let sqrt = sqrt
+          let t_of_sexp = t_of_sexp
 
-        let is_square = is_square
+          let of_int = of_int
 
-        let equal = equal
+          let one = one
 
-        let size_in_bits = size_in_bits
+          let zero = zero
 
-        let print = print
+          let add = add
 
-        let random = random
+          let sub = sub
 
-        module Vector = Vector
+          let mul = mul
 
-        let negate = negate
+          let inv = inv
 
-        module Infix = Infix
+          let square = square
 
-        let of_string = of_string
+          let sqrt = sqrt
 
-        let to_string = to_string
+          let is_square = is_square
 
-        let size = size
+          let equal = equal
 
-        let unpack = unpack
+          let size_in_bits = size_in_bits
 
-        let project = project
+          let print = print
+
+          let random = random
+
+          module Vector = Vector
+
+          let negate = negate
+
+          module Infix = Infix
+
+          let of_string = of_string
+
+          let to_string = to_string
+
+          let size = size
+
+          let unpack = unpack
+
+          let project = project
         end
+
         include T
       end
 
@@ -1814,6 +1824,7 @@ module Run = struct
       include As_prover
       include Field.Constant.T
     end
+
     module Handle = Handle
 
     let assert_ ?label c = run (assert_ ?label c)

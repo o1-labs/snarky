@@ -48,8 +48,7 @@ let test2 (type f v) ((module I) : (f, v) m) x =
   in
   M.res
 
-let test3 (type f v) ((module I) : (f, v) m) x =
-  test ((module I)) x I.Field.one
+let test3 (type f v) ((module I) : (f, v) m) x = test (module I) x I.Field.one
 
 let prove () =
   let ((module I) as i) = make (module Backends.Mnt4.GM) in
@@ -61,7 +60,7 @@ let prove () =
   (Proof.to_string proof, Verification_key.to_bigstring (Keypair.vk keys))
 
 let verify proof vk =
-  let ((module I)) = make (module Backends.Mnt4.GM) in
+  let (module I) = make (module Backends.Mnt4.GM) in
   let open I in
   let exposing = Data_spec.[Field.typ] in
   let proof = Proof.of_string proof in
@@ -74,7 +73,7 @@ let exposing = Intf.(Data_spec.[Field.typ])
 
 let prove2 () =
   let open Intf in
-  let f x () = test3 ((module Intf)) x in
+  let f x () = test3 (module Intf) x in
   let keys = generate_keypair ~exposing f in
   let proof = prove (Keypair.pk keys) exposing f (Field.Constant.of_int 39) in
   (Proof.to_string proof, Verification_key.to_bigstring (Keypair.vk keys))
