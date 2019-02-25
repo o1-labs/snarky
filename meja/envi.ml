@@ -432,17 +432,12 @@ module Type = struct
         Set.singleton (module Comparator) typ
     | Tvar _ -> Set.empty (module Comparator)
     | Tpoly (vars, typ) ->
-        let poly_vars =
-          List.fold
-            ~init:(Set.empty (module Comparator))
-            vars
-            ~f:(fun set var -> Set.union set (type_vars' var))
+        let poly_vars = Set.union_list (module Comparator)
+          (List.map ~f:type_vars' vars)
         in
         Set.diff (type_vars typ) poly_vars
     | Tctor {var_params; _} ->
-        List.fold ~init:(Set.empty (module Comparator))
-          var_params
-          ~f:(fun set var -> Set.union set (type_vars' var))
+        Set.union_list (module Comparator) (List.map ~f:type_vars var_params)
     | Ttuple typs ->
         Set.union_list (module Comparator) (List.map ~f:type_vars typs)
     | Tarrow (typ1, typ2) -> Set.union (type_vars typ1) (type_vars typ2)
