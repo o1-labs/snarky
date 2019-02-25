@@ -800,9 +800,13 @@ module Core = struct
     let loc = Location.none in
     let var, env = Type__.mkvar ~loc None env in
     let testing_show_constr, env =
-      TypeDecl.import (mk_type_decl "testing_show_constr" ~params:[var] TAbstract) env
+      TypeDecl.import
+        (mk_type_decl "testing_show_constr" ~params:[var] TAbstract)
+        env
     in
-    let testing_show_typ, env = TypeDecl.mk_typ testing_show_constr ~params:[var] env in
+    let testing_show_typ, env =
+      TypeDecl.mk_typ testing_show_constr ~params:[var] env
+    in
     let typ, env = Type__.mk ~loc (Tarrow (var, Type.string)) env in
     let typ, env = Type__.mk ~loc (Timplicit (testing_show_typ, typ)) env in
     let typ, env = Type__.mk ~loc (Tpoly ([var], typ)) env in
