@@ -1869,12 +1869,12 @@ module Run = struct
   end
 end
 
-type ('field, 'var) intf =
+type ('field, 'var) m =
   (module Snark_intf.Run with type field = 'field and type Var.t = 'var)
 
 let make (type field var)
     (module Backend : Backend_intf.S
-      with type Field.t = field and type Var.t = var) : (field, var) intf =
+      with type Field.t = field and type Var.t = var) : (field, var) m =
   (module Run.Make (Backend))
 
 let%test_module "snark0-test" =

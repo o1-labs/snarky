@@ -32,9 +32,9 @@ module Run : sig
      and type Proof.t = Backend.Proof.t
 end
 
-type ('field, 'var) intf =
+type ('field, 'var) m =
   (module Snark_intf.Run with type field = 'field and type Var.t = 'var)
 
 val make :
      (module Backend_intf.S with type Field.t = 'field and type Var.t = 'var)
-  -> ('field, 'var) intf
+  -> ('field, 'var) m
