@@ -468,8 +468,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
-    type ('a, 'prover_state) t =
-      ('a, Field.Var.t -> Field.t, 'prover_state) As_prover.t
+    type ('a, 'prover_state) t = ('a, field, 'prover_state) As_prover.t
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 
@@ -807,25 +806,25 @@ module type Run = sig
   and Typ : sig
     module Store : sig
       include
-        Monad.S with type 'a t = ('a, Field.Constant.t, Field.t) Typ_monads.Store.t
+        Monad.S with type 'a t = ('a, field) Typ_monads.Store.t
 
       val store : field -> Field.t t
     end
 
     module Alloc : sig
-      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Alloc.t
+      include Monad.S with type 'a t = ('a, field) Typ_monads.Alloc.t
 
       val alloc : Field.t t
     end
 
     module Read : sig
       include
-        Monad.S with type 'a t = ('a, Field.Constant.t, Field.t) Typ_monads.Read.t
+        Monad.S with type 'a t = ('a, field) Typ_monads.Read.t
 
       val read : Field.t -> field t
     end
 
-    type ('var, 'value) t = ('var, 'value, Field.Constant.t, Field.t) Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, field) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -1004,7 +1003,7 @@ module type Run = sig
       (** Convert a list of bits into a field element. *)
     end
 
-    type t = (field, Var.t) Cvar.t
+    type t = field Cvar.t
 
     val length : t -> int
     (** For debug purposes *)
@@ -1073,7 +1072,7 @@ module type Run = sig
     val ( / ) : t -> t -> t
 
     module Unsafe : sig
-      val of_var : Var.t -> t
+      val of_index : int -> t
     end
 
     module Assert : sig
@@ -1123,8 +1122,7 @@ module type Run = sig
 
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
-    type ('a, 'prover_state) t =
-      ('a, Field.t -> Field.Constant.t, 'prover_state) As_prover.t
+    type ('a, 'prover_state) t = ('a, field, 'prover_state) As_prover.t
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 
