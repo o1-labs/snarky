@@ -1,0 +1,14 @@
+let x = fun (x : 'a) => {
+  let f = fun (x) => { testing_show (x); };
+  f (x);
+};
+
+let y = fun (x : 'a, y : 'a) => {
+  let a = testing_show (x);
+  let b = testing_show (y);
+  let c = testing_show (15);
+  let d = testing_show (18);
+  let e = testing_show (true);
+  let f = testing_show (false);
+  (a, b, c, d, e, f);
+};
