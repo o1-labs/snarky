@@ -439,7 +439,10 @@ module Type = struct
             ~f:(fun set var -> Set.union set (type_vars' var))
         in
         Set.diff (type_vars typ) poly_vars
-    | Tctor _ -> Set.empty (module Comparator)
+    | Tctor {var_params; _} ->
+        List.fold ~init:(Set.empty (module Comparator))
+          var_params
+          ~f:(fun set var -> Set.union set (type_vars' var))
     | Ttuple typs ->
         Set.union_list (module Comparator) (List.map ~f:type_vars typs)
     | Tarrow (typ1, typ2) -> Set.union (type_vars typ1) (type_vars typ2)
