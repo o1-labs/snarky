@@ -807,7 +807,7 @@ module type Run = sig
   and Typ : sig
     module Store : sig
       include
-        Monad.S with type 'a t = ('a, Field.T.t, Field.t) Typ_monads.Store.t
+        Monad.S with type 'a t = ('a, Field.Constant.t, Field.t) Typ_monads.Store.t
 
       val store : field -> Field.t t
     end
@@ -820,12 +820,12 @@ module type Run = sig
 
     module Read : sig
       include
-        Monad.S with type 'a t = ('a, Field.T.t, Field.t) Typ_monads.Read.t
+        Monad.S with type 'a t = ('a, Field.Constant.t, Field.t) Typ_monads.Read.t
 
       val read : Field.t -> field t
     end
 
-    type ('var, 'value) t = ('var, 'value, Field.T.t, Field.t) Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, Field.Constant.t, Field.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -984,7 +984,7 @@ module type Run = sig
   end
   
   and Field : sig
-    module T : sig
+    module Constant : sig
       (** The finite field over which the R1CS operates. *)
       type t = field [@@deriving bin_io, sexp, hash, compare, eq]
 
@@ -1092,7 +1092,7 @@ module type Run = sig
       val non_zero : t -> unit
     end
 
-    val typ : (t, T.t) Typ.t
+    val typ : (t, Constant.t) Typ.t
   end
 
   module Proof : sig
@@ -1124,7 +1124,7 @@ module type Run = sig
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
     type ('a, 'prover_state) t =
-      ('a, Field.t -> Field.T.t, 'prover_state) As_prover.t
+      ('a, Field.t -> Field.Constant.t, 'prover_state) As_prover.t
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 

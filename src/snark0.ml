@@ -1634,7 +1634,7 @@ module Run = struct
     module Field = struct
       open Snark.Field
 
-      module T = struct
+      module Constant = struct
         type t = Snark.Field.t [@@deriving bin_io, sexp, hash, compare, eq]
 
         let gen = gen
@@ -1714,11 +1714,11 @@ module Run = struct
 
       (* New definitions *)
 
-      let of_int i = constant (T.of_int i)
+      let of_int i = constant (Constant.of_int i)
 
-      let one = constant T.one
+      let one = constant Constant.one
 
-      let zero = constant T.zero
+      let zero = constant Constant.zero
 
       open Snark.Field.Checked
 
