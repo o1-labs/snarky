@@ -463,7 +463,6 @@ struct
   (* addr0 should have least significant bit first *)
   let%snarkydef_ update ~(depth : int) ~root ~prev ~next addr0 :
       (Hash.var, (Hash.value, Elt.value) merkle_tree) Checked.t =
-    let open Let_syntax in
     let%bind prev_entry_hash = Elt.hash prev
     and next_entry_hash = Elt.hash next
     and prev_path =

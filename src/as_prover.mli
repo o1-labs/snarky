@@ -1,5 +1,3 @@
-open Core_kernel
-
 (** {!type:t} is the type of functions that the prover can run during the
     course of a checked computation.
     
@@ -7,14 +5,15 @@ open Core_kernel
     over {!type:t} so that we have a simple way to interact with values inside the type
     (the value of type ['a] corresponding to our [('a, 'f, 's) t]).
     *)
-include Monad.S3 with type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
+include
+  Monad_let.S3 with type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
 
 val run : ('a, 'f, 's) t -> ('f Cvar.t -> 'f) -> 's -> 's * 'a
 
 module type S = sig
   type field
 
-  include Monad.S2 with type ('a, 's) t = ('a, field, 's) t
+  include Monad_let.S2 with type ('a, 's) t = ('a, field, 's) t
 
   val run : ('a, 's) t -> (field Cvar.t -> field) -> 's -> 's * 'a
 

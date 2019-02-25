@@ -46,7 +46,6 @@ module Make (Impl : Snark_intf.S) = struct
 
     let hash_to_bits (t : t) (vs : Boolean.var list) :
         (Boolean.var list, _) Checked.t =
-      let open Let_syntax in
       let%bind xs = hash_to_field t vs in
       with_label "hash_to_bits"
         (let%map bss =
@@ -77,7 +76,6 @@ module Make (Impl : Snark_intf.S) = struct
      res - xs = b * (ys - xs)
   *)
     let if_ (b : Boolean.var) ~then_:ys ~else_:xs : (var, _) Impl.Checked.t =
-      let open Impl.Let_syntax in
       let%bind res =
         exists typ_unchecked
           ~compute:

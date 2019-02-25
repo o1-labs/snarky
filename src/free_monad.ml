@@ -1,5 +1,3 @@
-open Base
-
 module Functor = struct
   module type S = sig
     type 'a t
@@ -23,7 +21,7 @@ end
 module Make (F : Functor.S) : sig
   type 'a t = Pure of 'a | Free of 'a t F.t
 
-  include Monad.S with type 'a t := 'a t
+  include Monad_let.S with type 'a t := 'a t
 end = struct
   module T = struct
     type 'a t = Pure of 'a | Free of 'a t F.t
@@ -42,13 +40,13 @@ end = struct
   end
 
   include T
-  include Monad.Make (T)
+  include Monad_let.Make (T)
 end
 
 module Make2 (F : Functor.S2) : sig
   type ('a, 'x) t = Pure of 'a | Free of (('a, 'x) t, 'x) F.t
 
-  include Monad.S2 with type ('a, 'x) t := ('a, 'x) t
+  include Monad_let.S2 with type ('a, 'x) t := ('a, 'x) t
 end = struct
   module T = struct
     type ('a, 'x) t = Pure of 'a | Free of (('a, 'x) t, 'x) F.t
@@ -67,13 +65,13 @@ end = struct
   end
 
   include T
-  include Monad.Make2 (T)
+  include Monad_let.Make2 (T)
 end
 
 module Make3 (F : Functor.S3) : sig
   type ('a, 'x, 'y) t = Pure of 'a | Free of (('a, 'x, 'y) t, 'x, 'y) F.t
 
-  include Monad.S3 with type ('a, 'x, 'y) t := ('a, 'x, 'y) t
+  include Monad_let.S3 with type ('a, 'x, 'y) t := ('a, 'x, 'y) t
 end = struct
   module T = struct
     type ('a, 'x, 'y) t = Pure of 'a | Free of (('a, 'x, 'y) t, 'x, 'y) F.t
@@ -92,5 +90,5 @@ end = struct
   end
 
   include T
-  include Monad.Make3 (T)
+  include Monad_let.Make3 (T)
 end
