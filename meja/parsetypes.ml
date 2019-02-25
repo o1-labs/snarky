@@ -135,8 +135,6 @@ let rec typ_debug_print fmt typ =
   | Tpoly (typs, typ) -> print "poly [%a] %a" (print_list typ_debug_print) typs typ_debug_print typ
   | Tarrow (typ1, typ2) ->
       print "%a -> %a" typ_debug_print typ1 typ_debug_print typ2
-  | Timplicit (typ1, typ2) ->
-      print "(implicit %a) -> %a" typ_debug_print typ1 typ_debug_print typ2
   | Tctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
   | Ttuple typs -> print "(%a)" (print_list typ_debug_print) typs
