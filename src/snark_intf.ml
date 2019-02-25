@@ -1140,6 +1140,13 @@ module type Run = sig
       ('prover_state -> 'prover_state) -> (unit, 'prover_state) t
 
     val read : ('var, 'value) Typ.t -> 'var -> ('value, 'prover_state) t
+
+    include Field_intf.Extended with type t := field
+
+    val unpack : field -> bool list
+    (** Convert a field element into its constituent bits. *)
+
+    val project : bool list -> field
   end
 
   module Handle : sig

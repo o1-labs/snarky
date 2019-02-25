@@ -1639,6 +1639,18 @@ module Run = struct
 
         let gen = gen
 
+        module T = struct
+        let bin_shape_t = bin_shape_t
+        let bin_writer_t = bin_writer_t
+        let bin_write_t = bin_write_t
+        let bin_size_t = bin_size_t
+        let bin_reader_t = bin_reader_t
+        let __bin_read_t__ = __bin_read_t__
+        let bin_read_t = bin_read_t
+        let bin_t = bin_t
+        let sexp_of_t = sexp_of_t
+        let t_of_sexp = t_of_sexp
+
         let of_int = of_int
 
         let one = one
@@ -1682,6 +1694,8 @@ module Run = struct
         let unpack = unpack
 
         let project = project
+        end
+        include T
       end
 
       open Snark.Field.Var
@@ -1796,7 +1810,10 @@ module Run = struct
       end
     end
 
-    module As_prover = As_prover
+    module As_prover = struct
+      include As_prover
+      include Field.Constant.T
+    end
     module Handle = Handle
 
     let assert_ ?label c = run (assert_ ?label c)
