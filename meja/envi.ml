@@ -389,11 +389,12 @@ module Type = struct
         let _vars, new_vars_map, env = refresh_vars vars new_vars_map env in
         copy typ new_vars_map env
     | Tctor ({var_params; _} as variant) ->
-        let env, var_params = List.fold_map ~init:env var_params ~f:(fun e t ->
-          let t, e = copy t new_vars_map e in
-          (e, t))
+        let env, var_params =
+          List.fold_map ~init:env var_params ~f:(fun e t ->
+              let t, e = copy t new_vars_map e in
+              (e, t) )
         in
-      mk ~loc (Tctor {variant with var_params}) env
+        mk ~loc (Tctor {variant with var_params}) env
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
@@ -432,8 +433,8 @@ module Type = struct
         Set.singleton (module Comparator) typ
     | Tvar _ -> Set.empty (module Comparator)
     | Tpoly (vars, typ) ->
-        let poly_vars = Set.union_list (module Comparator)
-          (List.map ~f:type_vars' vars)
+        let poly_vars =
+          Set.union_list (module Comparator) (List.map ~f:type_vars' vars)
         in
         Set.diff (type_vars typ) poly_vars
     | Tctor {var_params; _} ->
@@ -463,10 +464,10 @@ module Type = struct
         let typ, env = flatten typ env in
         mk ~loc (Tpoly (Set.to_list var_set, typ)) env
     | Tctor variant ->
-        let env, var_params = List.fold_map ~init:env variant.var_params
-          ~f:(fun env typ ->
-            let typ, env = flatten typ env in
-            (env, typ))
+        let env, var_params =
+          List.fold_map ~init:env variant.var_params ~f:(fun env typ ->
+              let typ, env = flatten typ env in
+              (env, typ) )
         in
         mk ~loc (Tctor {variant with var_params}) env
     | Ttuple typs ->
