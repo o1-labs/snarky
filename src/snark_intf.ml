@@ -1064,15 +1064,13 @@ module type Run = sig
 
     val if_ : Boolean.var -> then_:t -> else_:t -> t
 
-    module Infix : sig
-      val ( + ) : t -> t -> t
+    val ( + ) : t -> t -> t
 
-      val ( - ) : t -> t -> t
+    val ( - ) : t -> t -> t
 
-      val ( * ) : t -> t -> t
+    val ( * ) : t -> t -> t
 
-      val ( / ) : t -> t -> t
-    end
+    val ( / ) : t -> t -> t
 
     module Unsafe : sig
       val of_var : Var.t -> t

@@ -1747,15 +1747,13 @@ module Run = struct
 
       let if_ b ~then_ ~else_ = run (if_ b ~then_ ~else_)
 
-      module Infix = struct
-        let ( + ) = add
+      let ( + ) = add
 
-        let ( - ) = sub
+      let ( - ) = sub
 
-        let ( * ) = mul
+      let ( * ) = mul
 
-        let ( / ) = div
-      end
+      let ( / ) = div
 
       module Unsafe = Unsafe
 
