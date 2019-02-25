@@ -33,7 +33,7 @@ module Run : sig
 end
 
 type ('field, 'var) intf =
-  | T of (module Snark_intf.Run with type field = 'field and type Var.t = 'var)
+  (module Snark_intf.Run with type field = 'field and type Var.t = 'var)
 
 val make :
      (module Backend_intf.S with type Field.t = 'field and type Var.t = 'var)
