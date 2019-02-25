@@ -467,7 +467,13 @@ module Type = struct
         in
         let typ, env = flatten typ env in
         mk ~loc (Tpoly (Set.to_list var_set, typ)) env
-    | Tctor _ -> mk ~loc typ.type_desc env
+    | Tctor variant ->
+        let env, var_params = List.fold_map ~init:env variant.var_params
+          ~f:(fun env typ ->
+            let typ, env = flatten typ env in
+            (env, typ))
+        in
+        mk ~loc (Tctor {variant with var_params}) env
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
