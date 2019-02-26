@@ -36,6 +36,12 @@ module Longident = struct
     | Lident name -> pp_print_string ppf name
     | Ldot (lid, name) -> fprintf ppf "%a.%s" pp lid name
     | Lapply (lid1, lid2) -> fprintf ppf "%a(%a)" pp lid1 pp lid2
+
+  let rec add_outer_module name lid =
+    match lid with
+    | Lident name2 -> Ldot (Lident name, name2)
+    | Ldot (lid, name2) -> Ldot (add_outer_module name lid, name2)
+    | Lapply _ -> failwith "Unhandled Lapply in add_outer_module"
 end
 
 type str = string Location.loc

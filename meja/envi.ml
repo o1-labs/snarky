@@ -303,7 +303,15 @@ let raw_find_type_declaration (lid : lid) env =
   | None -> raise (Error (loc, Unbound_type lid.txt))
 
 let add_module (name : str) m =
-  map_current_scope ~f:(Scope.add_module name.txt m)
+  map_current_scope ~f:(fun scope ->
+      let scope = Scope.add_module name.txt m scope in
+      { scope with
+        instances=
+          Map.merge scope.instances m.instances ~f:(fun ~key:_ data ->
+              match data with
+              | `Left x -> Some x
+              | `Both (_, x) | `Right x ->
+                  Some (Longident.add_outer_module name.txt x) ) } )
 
 let find_module ~loc (lid : lid) env =
   match List.find_map ~f:(Scope.find_module ~loc lid.txt) env.scope_stack with
