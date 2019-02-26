@@ -534,7 +534,7 @@ module Type = struct
     | typ1 :: typs1, typ2 :: typs2 ->
         or_compare (compare typ1 typ2) ~f:(fun () -> compare_all typs1 typs2)
 
-  let flattened_implicit_vars typ_vars env =
+  let flattened_implicit_vars ~toplevel typ_vars env =
     let {TypeEnvi.implicit_vars; _} = env.type_env in
     let env, implicit_vars =
       List.fold_map ~init:env implicit_vars ~f:(fun env e ->
@@ -551,10 +551,12 @@ module Type = struct
           cmp )
     in
     let local_implicit_vars, implicit_vars =
-      List.partition_tf implicit_vars ~f:(fun {exp_type; _} ->
-          let exp_vars = type_vars exp_type in
-          let instantiated_vars = Set.inter exp_vars typ_vars in
-          not (Set.is_empty instantiated_vars) )
+      if toplevel then implicit_vars, []
+      else
+        List.partition_tf implicit_vars ~f:(fun {exp_type; _} ->
+            let exp_vars = type_vars exp_type in
+            let instantiated_vars = Set.inter exp_vars typ_vars in
+            not (Set.is_empty instantiated_vars) )
     in
     ( local_implicit_vars
     , {env with type_env= {env.type_env with implicit_vars}} )

@@ -457,7 +457,7 @@ let rec get_expression env exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
   | Unifiable _ -> raise (Error (loc, Unifiable_expr))
 
-and check_binding (env : Envi.t) p e : 's =
+and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let e, env = get_expression env e in
   match p.pat_desc with
   | PVariable str ->
@@ -465,7 +465,7 @@ and check_binding (env : Envi.t) p e : 's =
       let e = {e with exp_type} in
       let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
       let implicit_vars, env =
-        Envi.Type.flattened_implicit_vars typ_vars env
+        Envi.Type.flattened_implicit_vars ~toplevel typ_vars env
       in
       let loc = e.exp_loc in
       let e, env =
@@ -493,7 +493,7 @@ let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
   | Value (p, e) ->
-      let p, e, env = check_binding env p e in
+      let p, e, env = check_binding ~toplevel:true env p e in
       (env, {stmt with stmt_desc= Value (p, e)})
   | TypeDecl decl ->
       let decl, env = Envi.TypeDecl.import decl env in
