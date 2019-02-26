@@ -87,7 +87,8 @@ let rec of_expression_desc ?loc = function
         (Option.map ~f:of_expression ext)
   | Ctor (name, arg) ->
       Exp.construct ?loc name (Option.map ~f:of_expression arg)
-  | Unifiable {expression} -> of_expression expression
+  | Unifiable {expression= Some e; _} -> of_expression e
+  | Unifiable {name; _} -> Exp.ident ?loc (mk_lid name)
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 

@@ -542,10 +542,10 @@ module Type = struct
   let new_implicit_var ~loc typ env =
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.type_env in
     let mk exp_loc exp_desc = {exp_loc; exp_desc; exp_type= typ} in
-    let name =
-      Location.mkloc (Lident (sprintf "__implicit%i__" implicit_id)) loc
+    let name = Location.mkloc (sprintf "__implicit%i__" implicit_id) loc in
+    let new_exp =
+      mk loc (Unifiable {expression= None; name; id= implicit_id})
     in
-    let new_exp = mk loc (Unifiable {expression= mk loc (Variable name)}) in
     ( new_exp
     , { env with
         type_env=
@@ -566,21 +566,51 @@ module Type = struct
         in
         ({exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}, env)
 
-  let flattened_implicit_vars ~toplevel typ_vars env =
-    let {TypeEnvi.implicit_vars; _} = env.type_env in
+  let find_instance _ _ = None
+
+  let rec instantiate_implicits implicit_vars env =
     let env, implicit_vars =
       List.fold_map ~init:env implicit_vars ~f:(fun env e ->
           let typ, env = flatten e.exp_type env in
           (env, {e with exp_type= typ}) )
     in
+    let env_implicits = env.type_env.implicit_vars in
+    let env = ref {env with type_env= {env.type_env with implicit_vars= []}} in
+    let implicit_vars =
+      List.filter implicit_vars ~f:(fun exp ->
+          match find_instance exp.exp_type !env with
+          | Some (name, typ) ->
+              let e =
+                {exp_loc= exp.exp_loc; exp_type= typ; exp_desc= Variable name}
+              in
+              let e, env' = generate_implicits e !env in
+              ( match exp.exp_desc with
+              | Unifiable desc -> desc.expression <- Some e
+              | _ -> raise (Error (exp.exp_loc, No_unifiable_implicit)) ) ;
+              env := env' ;
+              false
+          | None -> true )
+    in
+    let new_implicits = !env.type_env.implicit_vars in
+    let env =
+      {!env with type_env= {!env.type_env with implicit_vars= env_implicits}}
+    in
+    match new_implicits with
+    | [] -> (implicit_vars, env)
+    | _ -> instantiate_implicits (new_implicits @ implicit_vars) env
+
+  let flattened_implicit_vars ~toplevel typ_vars env =
+    let {TypeEnvi.implicit_vars; _} = env.type_env in
+    let implicit_vars, env = instantiate_implicits implicit_vars env in
     let implicit_vars =
       List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
           let cmp = compare exp1.exp_type exp2.exp_type in
           ( if Int.equal cmp 0 then
             match (exp1.exp_desc, exp2.exp_desc) with
             | Unifiable desc1, Unifiable desc2 ->
-                desc1.expression <- desc2.expression
-            | _, _ -> raise (Error (exp1.exp_loc, No_unifiable_implicit)) ) ;
+                if desc1.id < desc2.id then desc2.expression <- Some exp1
+                else desc1.expression <- Some exp2
+            | _ -> raise (Error (exp2.exp_loc, No_unifiable_implicit)) ) ;
           cmp )
     in
     let local_implicit_vars, implicit_vars =

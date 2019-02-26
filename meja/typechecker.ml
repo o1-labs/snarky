@@ -451,19 +451,14 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let loc = e.exp_loc in
       let e, env =
         List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
-            match var with
-            | { exp_desc=
-                  Unifiable
-                    { expression=
-                        {exp_desc= Variable {txt= Lident name; loc}; _} }
-              ; exp_type= typ; _ } ->
-                let name = Location.mkloc name loc in
+            match var.exp_desc with
+            | Unifiable {expression= None; name; _} ->
                 let exp_type, env =
-                  Envi.Type.mk ~loc (Timplicit (typ, e.exp_type)) env
+                  Envi.Type.mk ~loc (Timplicit (var.exp_type, e.exp_type)) env
                 in
                 let p = {pat_desc= PVariable name; pat_loc= loc} in
                 ({exp_desc= Fun (p, e); exp_type; exp_loc= loc}, env)
-            | _ -> raise (Error (loc, No_unifiable_expr)) )
+            | _ -> raise (Error (var.exp_loc, No_unifiable_expr)) )
       in
       let loc = p.pat_loc in
       let typ, env =
@@ -540,7 +535,7 @@ let rec report_error ppf = function
          got %s"
         kind name.txt
   | Unifiable_expr ->
-      fprintf ppf "Internal error: Unexpected Unifiable in the parsetree."
+      fprintf ppf "Internal error: Unexpected an unresolved implicit variable."
   | No_unifiable_expr -> fprintf ppf "Internal error: Expected a Unifiable."
 
 let () =

@@ -111,7 +111,7 @@ and expression_desc =
   | Match of expression * (pattern * expression) list
   | Record of (lid * expression) list * expression option
   | Ctor of lid * expression option
-  | Unifiable of {mutable expression: expression}
+  | Unifiable of {mutable expression: expression option; name: str; id: int}
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
