@@ -124,3 +124,23 @@ and statement_desc =
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc = Structure of statement list | ModName of lid
+
+let rec typ_debug_print fmt typ =
+  let open Format in
+  let print i = fprintf fmt i in
+  let print_comma fmt () = pp_print_char fmt ',' in
+  let print_list pp = pp_print_list ~pp_sep:print_comma pp in
+  print "(%i:" typ.type_id ;
+  ( match typ.type_desc with
+  | Tvar (None, i) -> print "var _@%i" i
+  | Tvar (Some name, i) -> print "var %s@%i" name.txt i
+  | Tpoly (typs, typ) ->
+      print "poly [%a] %a"
+        (print_list typ_debug_print)
+        typs typ_debug_print typ
+  | Tarrow (typ1, typ2) ->
+      print "%a -> %a" typ_debug_print typ1 typ_debug_print typ2
+  | Tctor {var_ident= name; var_params= params; _} ->
+      print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
+  | Ttuple typs -> print "(%a)" (print_list typ_debug_print) typs ) ;
+  print ")"
