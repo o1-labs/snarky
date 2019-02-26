@@ -413,14 +413,10 @@ module Type = struct
               (e, t) )
         in
         mk ~loc (Ttuple typs) env
-    | Tarrow (typ1, typ2) ->
+    | Tarrow (typ1, typ2, explicit) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
-        mk ~loc (Tarrow (typ1, typ2)) env
-    | Timplicit (typ1, typ2) ->
-        let typ1, env = import typ1 env in
-        let typ2, env = import typ2 env in
-        mk ~loc (Timplicit (typ1, typ2)) env
+        mk ~loc (Tarrow (typ1, typ2, explicit)) env
 
   let refresh_vars vars new_vars_map env =
     let env, new_vars =
@@ -459,14 +455,10 @@ module Type = struct
               (e, t) )
         in
         mk ~loc (Ttuple typs) env
-    | Tarrow (typ1, typ2) ->
+    | Tarrow (typ1, typ2, explicit) ->
         let typ1, env = copy typ1 new_vars_map env in
         let typ2, env = copy typ2 new_vars_map env in
-        mk ~loc (Tarrow (typ1, typ2)) env
-    | Timplicit (typ1, typ2) ->
-        let typ1, env = copy typ1 new_vars_map env in
-        let typ2, env = copy typ2 new_vars_map env in
-        mk ~loc (Timplicit (typ1, typ2)) env
+        mk ~loc (Tarrow (typ1, typ2, explicit)) env
 
   module T = struct
     type t = type_expr
@@ -502,8 +494,7 @@ module Type = struct
         Set.union_list (module Comparator) (List.map ~f:type_vars var_params)
     | Ttuple typs ->
         Set.union_list (module Comparator) (List.map ~f:type_vars typs)
-    | Tarrow (typ1, typ2) | Timplicit (typ1, typ2) ->
-        Set.union (type_vars typ1) (type_vars typ2)
+    | Tarrow (typ1, typ2, _) -> Set.union (type_vars typ1) (type_vars typ2)
 
   let rec flatten typ env =
     let loc = typ.type_loc in
@@ -539,14 +530,10 @@ module Type = struct
               (e, t) )
         in
         mk ~loc (Ttuple typs) env
-    | Tarrow (typ1, typ2) ->
+    | Tarrow (typ1, typ2, explicit) ->
         let typ1, env = flatten typ1 env in
         let typ2, env = flatten typ2 env in
-        mk ~loc (Tarrow (typ1, typ2)) env
-    | Timplicit (typ1, typ2) ->
-        let typ1, env = flatten typ1 env in
-        let typ2, env = flatten typ2 env in
-        mk ~loc (Timplicit (typ1, typ2)) env
+        mk ~loc (Tarrow (typ1, typ2, explicit)) env
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
@@ -568,11 +555,11 @@ module Type = struct
       | Ttuple typs1, Ttuple typs2 -> compare_all typs1 typs2
       | Ttuple _, _ -> -1
       | _, Ttuple _ -> 1
-      | Tarrow (typ1a, typ1b), Tarrow (typ2a, typ2b)
-       |Timplicit (typ1a, typ1b), Timplicit (typ2a, typ2b) ->
+      | Tarrow (typ1a, typ1b, Explicit), Tarrow (typ2a, typ2b, Explicit)
+       |Tarrow (typ1a, typ1b, Implicit), Tarrow (typ2a, typ2b, Implicit) ->
           or_compare (compare typ1a typ2a) ~f:(fun () -> compare typ1b typ2b)
-      | Tarrow _, _ -> -1
-      | _, Tarrow _ -> 1
+      | Tarrow (_, _, Explicit), _ -> -1
+      | _, Tarrow (_, _, Explicit) -> 1
 
   and compare_all typs1 typs2 =
     match (typs1, typs2) with
@@ -584,7 +571,7 @@ module Type = struct
 
   let rec get_rev_implicits acc typ =
     match typ.type_desc with
-    | Timplicit (typ1, typ2) -> get_rev_implicits (typ1 :: acc) typ2
+    | Tarrow (typ1, typ2, Implicit) -> get_rev_implicits (typ1 :: acc) typ2
     | _ -> (acc, typ)
 
   let new_implicit_var ~loc typ env =
@@ -631,7 +618,9 @@ module Type = struct
               in
               let name = Location.mkloc name exp_loc in
               let env' = unify env' exp_type instance_typ in
-              let e = {exp_loc; exp_type= instance_typ; exp_desc= Variable name} in
+              let e =
+                {exp_loc; exp_type= instance_typ; exp_desc= Variable name}
+              in
               let e, env' = generate_implicits e env' in
               ( match exp.exp_desc with
               | Unifiable desc -> desc.expression <- Some e
@@ -921,8 +910,10 @@ module Core = struct
     let testing_show_typ, env =
       TypeDecl.mk_typ testing_show_constr ~params:[var] env
     in
-    let typ, env = Type__.mk ~loc (Tarrow (var, Type.string)) env in
-    let typ, env = Type__.mk ~loc (Timplicit (testing_show_typ, typ)) env in
+    let typ, env = Type__.mk ~loc (Tarrow (var, Type.string, Explicit)) env in
+    let typ, env =
+      Type__.mk ~loc (Tarrow (testing_show_typ, typ, Implicit)) env
+    in
     let typ, env = Type__.mk ~loc (Tpoly ([var], typ)) env in
     add_name (mkloc "testing_show") typ env
 end

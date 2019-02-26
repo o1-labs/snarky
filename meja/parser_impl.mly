@@ -256,7 +256,7 @@ function_from_args:
     { mkexp ~pos:$loc (Fun (p, body, Explicit)) }
   | pat RBRACKET err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
-  | p = pat RBRACKET typ = type_expr EQUALGT LBRACE body = block RBRACE
+  | p = pat RBRACKET COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc(typ) (Constraint (body, typ)), Explicit)) }
   | p = pat COMMA f = function_from_args
     { mkexp ~pos:$loc (Fun (p, f, Explicit)) }
@@ -266,10 +266,12 @@ function_from_implicit_args:
     { mkexp ~pos:$loc (Fun (p, f, Implicit)) }
   | p = pat RBRACE EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, body, Implicit)) }
-  | p = pat RBRACE typ = type_expr EQUALGT LBRACE body = block RBRACE
+  | p = pat RBRACE COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc(typ) (Constraint (body, typ)), Implicit)) }
   | p = pat COMMA f = function_from_implicit_args
     { mkexp ~pos:$loc (Fun (p, f, Implicit)) }
+  | pat RBRACE err = err
+    { raise (Error (err, Fun_no_fat_arrow)) }
 
 block:
   | e = expr SEMI
@@ -341,7 +343,9 @@ type_expr:
   | x = simple_type_expr
     { x }
   | x = simple_type_expr DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y)) }
+    { mktyp ~pos:$loc (Tarrow (x, y, Explicit)) }
+  | LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
+    { mktyp ~pos:$loc (Tarrow (x, y, Implicit)) }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X

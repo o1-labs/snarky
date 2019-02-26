@@ -48,6 +48,8 @@ type str = string Location.loc
 
 type lid = Longident.t Location.loc
 
+type explicitness = Implicit | Explicit
+
 let mk_lid (str : str) = Location.mkloc (Longident.Lident str.txt) str.loc
 
 type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
@@ -56,8 +58,7 @@ and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
   | Tvar of str option * (* depth *) int
   | Ttuple of type_expr list
-  | Tarrow of type_expr * type_expr
-  | Timplicit of type_expr * type_expr
+  | Tarrow of type_expr * type_expr * explicitness
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
@@ -102,8 +103,6 @@ and pattern_desc =
   | PRecord of (lid * pattern) list
   | PCtor of lid * pattern option
 
-type explicitness = Implicit | Explicit
-
 type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: type_expr}
 
@@ -147,9 +146,9 @@ let rec typ_debug_print fmt typ =
       print "poly [%a] %a"
         (print_list typ_debug_print)
         typs typ_debug_print typ
-  | Tarrow (typ1, typ2) ->
+  | Tarrow (typ1, typ2, Explicit) ->
       print "%a -> %a" typ_debug_print typ1 typ_debug_print typ2
-  | Timplicit (typ1, typ2) ->
+  | Tarrow (typ1, typ2, Implicit) ->
       print "{%a} -> %a" typ_debug_print typ1 typ_debug_print typ2
   | Tctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
