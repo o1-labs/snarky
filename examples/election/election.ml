@@ -2,7 +2,6 @@ open Core
 open Snarky
 open Impl
 open Import
-open Let_syntax
 
 (* First we declare the type of "votes" and call a library functor [Enumerable] to
    make it possible to refer to values of type [Vote.t] in checked computations. *)
