@@ -1,15 +1,19 @@
+type showable('a) = {show : 'a -> string};
+
+let show = fun {{show}} => { show; };
+
 let f = fun (x : 'a) => {
-  let f = fun (x) => { testing_show (x); };
+  let f = fun (x) => { show (x); };
   f (x);
 };
 
 let g = fun (x : 'a, y : 'a) => {
-  let a = testing_show (x);
-  let b = testing_show (y);
-  let c = testing_show (15);
-  let d = testing_show (18);
-  let e = testing_show (true);
-  let f = testing_show (false);
+  let a = show (x);
+  let b = show (y);
+  let c = show (15);
+  let d = show (18);
+  let e = show (true);
+  let f = show (false);
   (a, b, c, d, e, f);
 };
 
@@ -21,14 +25,26 @@ type conv ('a, 'b) = {conv: 'a -> 'b};
 
 let conv = fun {{conv}} => { conv; };
 
-instance conv_bool_int = {conv: fun (x) => {switch (x) { | true => 1 | false => 0 };}};
+instance conv_bool_int =
+  {conv: fun (x) => {
+      switch (x) {
+        | true => 1
+        | false => 0
+      };
+    }};
 
 let i = fun (b : bool, f : int -> 'a) => {
   f (conv (b));
 };
 
 module T = {
-  instance conv_int_bool = {conv: fun (x) => {switch (x) { | 0 => false | _ => true };}};
+  instance conv_int_bool =
+    {conv: fun (x) => {
+        switch (x) {
+          | 0 => false
+          | _ => true
+        };
+      }};
 };
 
 let j = fun (i : int, f : bool -> 'a) => {
@@ -39,7 +55,7 @@ type equiv ('a, 'b) = Equiv('a -> 'b, 'b -> 'a);
 
 instance equiv_eq = Equiv(fun (x) => {x;}, fun (x) => {x;});
 
-instance conv_equiv = fun {Equiv(conv, _)} => {{conv};};
+instance conv_equiv = fun {Equiv(conv, _)} => { {conv}; };
 
 let k = fun (i : int, f : 'a -> 'a -> 'a) => {
   f (i, conv(i));
