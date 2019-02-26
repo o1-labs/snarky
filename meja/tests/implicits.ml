@@ -16,3 +16,25 @@ let h __implicit15__ __implicit11__ __implicit9__ (x : int) (y : bool)
   ( (g __implicit11__ __implicit9__ __implicit9__) x x
   , (g __implicit11__ __implicit9__ __implicit11__) y y
   , (g __implicit11__ __implicit9__ __implicit15__) z z )
+
+type ('a, 'b) conv = {conv: 'a -> 'b}
+
+let conv {conv; _} = conv
+
+let conv_bool_int = {conv= (fun x -> match x with true -> 1 | false -> 0)}
+
+let i (b : bool) (f : int -> 'a) = f ((conv conv_bool_int) b)
+
+module T = struct
+  let conv_int_bool = {conv= (fun x -> match x with 0 -> false | _ -> true)}
+end
+
+let j (i : int) (f : bool -> 'a) = f ((conv T.conv_int_bool) i)
+
+type ('a, 'b) equiv = Equiv of ('a -> 'b) * ('b -> 'a)
+
+let equiv_eq = Equiv ((fun x -> x), fun x -> x)
+
+let conv_equiv (Equiv (conv, _)) = {conv}
+
+let k (i : int) (f : 'a -> 'a -> 'a) = f i ((conv (conv_equiv equiv_eq)) i)

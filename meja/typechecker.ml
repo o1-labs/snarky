@@ -345,7 +345,7 @@ let rec get_expression env exp =
   | Int i ->
       let typ = Envi.Core.Type.int in
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
-  | Fun (p, body) ->
+  | Fun (p, body, explicit) ->
       let env = Envi.open_expr_scope env in
       let p_typ, env = Envi.Type.mkvar ~loc None env in
       (* In OCaml, function arguments can't be polymorphic, so each check refines
@@ -353,8 +353,13 @@ let rec get_expression env exp =
       let env = check_pattern ~add:Envi.add_name env p_typ p in
       let body, env = get_expression env body in
       let env = Envi.close_expr_scope env in
-      let typ, env = Envi.Type.mk ~loc (Tarrow (p_typ, body.exp_type)) env in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Fun (p, body)}, env)
+      let typ_desc =
+        match explicit with
+        | Explicit -> Tarrow (p_typ, body.exp_type)
+        | Implicit -> Timplicit (p_typ, body.exp_type)
+      in
+      let typ, env = Envi.Type.mk ~loc typ_desc env in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Fun (p, body, explicit)}, env)
   | Seq (e1, e2) ->
       let e1, env = get_expression env e1 in
       let e2, env = get_expression env e2 in
@@ -462,7 +467,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
               Envi.Type.mk ~loc (Timplicit (var.exp_type, e.exp_type)) env
             in
             let p = {pat_desc= PVariable name; pat_loc= loc} in
-            ({exp_desc= Fun (p, e); exp_type; exp_loc= loc}, env)
+            ({exp_desc= Fun (p, e, Implicit); exp_type; exp_loc= loc}, env)
         | _ -> raise (Error (var.exp_loc, No_unifiable_expr)) )
   in
   let loc = p.pat_loc in
@@ -486,6 +491,11 @@ let rec check_statement env stmt =
   | Value (p, e) ->
       let p, e, env = check_binding ~toplevel:true env p e in
       (env, {stmt with stmt_desc= Value (p, e)})
+  | Instance (name, e) ->
+      let p = {pat_desc= PVariable name; pat_loc= name.loc} in
+      let _, e, env = check_binding ~toplevel:true env p e in
+      let env = Envi.add_implicit_instance name.txt e.exp_type env in
+      (env, {stmt with stmt_desc= Instance (name, e)})
   | TypeDecl decl ->
       let decl, env = Envi.TypeDecl.import decl env in
       (env, {stmt with stmt_desc= TypeDecl decl})

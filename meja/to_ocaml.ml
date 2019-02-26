@@ -67,7 +67,7 @@ let rec of_expression_desc ?loc = function
         (List.map ~f:(fun x -> (Nolabel, of_expression x)) es)
   | Variable name -> Exp.ident ?loc name
   | Int i -> Exp.constant ?loc (Const.int i)
-  | Fun (p, body) ->
+  | Fun (p, body, _) ->
       Exp.fun_ ?loc Nolabel None (of_pattern p) (of_expression body)
   | Constraint (e, typ) ->
       Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
@@ -95,6 +95,8 @@ and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 let rec of_statement_desc ?loc = function
   | Value (p, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
+  | Instance (name, e) ->
+      Str.value ?loc Nonrecursive [Vb.mk (Pat.var ?loc name) (of_expression e)]
   | TypeDecl decl -> Str.type_ ?loc Recursive [of_type_decl decl]
   | Module (name, m) -> Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
   | Open name -> Str.open_ ?loc (Opn.mk ?loc name)

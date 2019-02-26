@@ -102,6 +102,8 @@ and pattern_desc =
   | PRecord of (lid * pattern) list
   | PCtor of lid * pattern option
 
+type explicitness = Implicit | Explicit
+
 type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: type_expr}
 
@@ -109,7 +111,7 @@ and expression_desc =
   | Apply of expression * expression list
   | Variable of lid
   | Int of int
-  | Fun of pattern * expression
+  | Fun of pattern * expression * explicitness
   | Seq of expression * expression
   | Let of pattern * expression * expression
   | Constraint of expression * type_expr
@@ -123,6 +125,7 @@ type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
 and statement_desc =
   | Value of pattern * expression
+  | Instance of str * expression
   | TypeDecl of type_decl
   | Module of str * module_expr
   | Open of lid

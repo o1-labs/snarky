@@ -16,3 +16,31 @@ let g = fun (x : 'a, y : 'a) => {
 let h = fun (x : int, y : bool, z : float) => {
   (g (x, x), g (y, y), g (z, z));
 };
+
+type conv ('a, 'b) = {conv: 'a -> 'b};
+
+let conv = fun {{conv}} => { conv; };
+
+instance conv_bool_int = {conv: fun (x) => {switch (x) { | true => 1 | false => 0 };}};
+
+let i = fun (b : bool, f : int -> 'a) => {
+  f (conv (b));
+};
+
+module T = {
+  instance conv_int_bool = {conv: fun (x) => {switch (x) { | 0 => false | _ => true };}};
+};
+
+let j = fun (i : int, f : bool -> 'a) => {
+  f (conv (i));
+};
+
+type equiv ('a, 'b) = Equiv('a -> 'b, 'b -> 'a);
+
+instance equiv_eq = Equiv(fun (x) => {x;}, fun (x) => {x;});
+
+instance conv_equiv = fun {Equiv(conv, _)} => {{conv};};
+
+let k = fun (i : int, f : 'a -> 'a -> 'a) => {
+  f (i, conv(i));
+};

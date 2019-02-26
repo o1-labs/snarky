@@ -318,7 +318,8 @@ let find_module ~loc (lid : lid) env =
   | Some m -> m
   | None -> raise (Error (loc, Unbound_module lid.txt))
 
-let add_implicit_instance path typ env =
+let add_implicit_instance name typ env =
+  let path = Lident name in
   let id, type_env = TypeEnvi.next_instance_id env.type_env in
   let env =
     map_current_scope env ~f:(fun scope ->
