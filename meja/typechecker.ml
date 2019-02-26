@@ -133,7 +133,8 @@ let rec free_type_vars ?depth typ =
           ~f:(fun set var -> Set.union set (Envi.Type.type_vars var))
       in
       Set.diff (free_type_vars typ) poly_vars
-  | Tctor _ -> Set.empty (module Envi.Type)
+  | Tctor {var_params; _} ->
+      Set.union_list (module Envi.Type) (List.map ~f:free_type_vars var_params)
   | Ttuple typs ->
       Set.union_list (module Envi.Type) (List.map ~f:free_type_vars typs)
   | Tarrow (typ1, typ2) | Timplicit (typ1, typ2) ->
