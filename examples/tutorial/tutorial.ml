@@ -11,7 +11,6 @@ open Snarky
 (* 0. First we instantiate Snarky with a 'backend' *)
 module Impl = Snark.Make (Backends.Bn128.Default)
 open Impl
-open Let_syntax
 
 (* 1. There is a monad called 'Checked'. It has an extra type parameter but let's
   ignore that for now *)

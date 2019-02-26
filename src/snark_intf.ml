@@ -107,19 +107,19 @@ module type Basic = sig
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
-      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Store.t
+      include Monad_let.S with type 'a t = ('a, Field.t) Typ_monads.Store.t
 
       val store : field -> Field.Var.t t
     end
 
     module Alloc : sig
-      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Alloc.t
+      include Monad_let.S with type 'a t = ('a, Field.t) Typ_monads.Alloc.t
 
       val alloc : Field.Var.t t
     end
 
     module Read : sig
-      include Monad.S with type 'a t = ('a, Field.t) Typ_monads.Read.t
+      include Monad_let.S with type 'a t = ('a, Field.t) Typ_monads.Read.t
 
       val read : Field.Var.t -> field t
     end
@@ -302,7 +302,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   Field.Checked.mul x_times_y z
 ]}
     *)
-    include Monad.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
+    include
+      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -438,7 +439,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val typ : (Var.t, t) Typ.t
   end
 
-  include Monad.Syntax2 with type ('a, 's) t := ('a, 's) Checked.t
+  module Let_syntax :
+    Monad_let.Syntax2 with type ('a, 's) t := ('a, 's) Checked.t
 
   module Proof : sig
     type t
@@ -486,7 +488,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       val set : 'a t -> 'a -> (unit, _) as_prover
     end
 
-    include Monad.S2 with type ('a, 's) t := ('a, 's) t
+    include Monad_let.S2 with type ('a, 's) t := ('a, 's) t
 
     val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
 

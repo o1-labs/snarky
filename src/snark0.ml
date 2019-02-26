@@ -289,7 +289,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     end
 
     include T
-    include Monad.Make2 (T)
+    include Monad_let.Make2 (T)
   end
 
   module Typ = struct
