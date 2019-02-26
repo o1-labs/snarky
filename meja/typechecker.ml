@@ -279,6 +279,7 @@ let rec check_pattern_desc ~loc ~add env typ = function
             raise (Error (loc, Pattern_declaration ("constructor", name))) )
           ~modules:(fun ~key:name ~data:_ _ ->
             raise (Error (loc, Pattern_declaration ("module", name))) )
+          ~instances:(fun ~key:_ ~data:_ env -> env)
       in
       Envi.push_scope scope2 env
   | PInt _ -> check_type env typ Envi.Core.Type.int
@@ -447,7 +448,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let e = {e with exp_type} in
   let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
   let implicit_vars, env =
-    Envi.Type.flattened_implicit_vars ~toplevel typ_vars env
+    Envi.Type.flattened_implicit_vars ~toplevel ~unify:check_type typ_vars env
   in
   let loc = e.exp_loc in
   let e, env =

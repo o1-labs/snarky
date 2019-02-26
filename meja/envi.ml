@@ -15,6 +15,7 @@ type error =
   | Lident_unhandled of string * Longident.t
   | Constraints_not_satisfied of type_expr * type_decl
   | No_unifiable_implicit
+  | Multiple_instances of type_expr
 
 exception Error of Location.t * error
 
@@ -34,7 +35,8 @@ module Scope = struct
     ; type_decls: type_decl name_map
     ; fields: (type_decl * int) name_map
     ; ctors: (type_decl * int) name_map
-    ; modules: t name_map }
+    ; modules: t name_map
+    ; instances: Longident.t int_map }
 
   let empty kind =
     { kind
@@ -43,7 +45,8 @@ module Scope = struct
     ; type_decls= Map.empty (module String)
     ; fields= Map.empty (module String)
     ; ctors= Map.empty (module String)
-    ; modules= Map.empty (module String) }
+    ; modules= Map.empty (module String)
+    ; instances= Map.empty (module Int) }
 
   let add_name key typ scope =
     {scope with names= Map.set scope.names ~key ~data:typ}
@@ -90,21 +93,23 @@ module Scope = struct
     | TVariant ctors -> List.foldi ~f:(add_ctor decl) ~init:scope ctors
 
   let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors
-      ~modules
+      ~modules ~instances
       { kind= _
       ; names= names1
       ; type_variables= type_variables1
       ; type_decls= type_decls1
       ; fields= fields1
       ; ctors= ctors1
-      ; modules= modules1 }
+      ; modules= modules1
+      ; instances= instances1 }
       { kind= _
       ; names= names2
       ; type_variables= type_variables2
       ; type_decls= type_decls2
       ; fields= fields2
       ; ctors= ctors2
-      ; modules= modules2 } =
+      ; modules= modules2
+      ; instances= instances2 } =
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
     in
@@ -112,6 +117,7 @@ module Scope = struct
     let acc = Map.fold2 ctors1 ctors2 ~init:acc ~f:ctors in
     let acc = Map.fold2 fields1 fields2 ~init:acc ~f:fields in
     let acc = Map.fold2 modules1 modules2 ~init:acc ~f:modules in
+    let acc = Map.fold2 instances1 instances2 ~init:acc ~f:instances in
     let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
     acc
 
@@ -122,14 +128,16 @@ module Scope = struct
       ; type_decls= type_decls1
       ; fields= fields1
       ; ctors= ctors1
-      ; modules= modules1 }
+      ; modules= modules1
+      ; instances= instances1 }
       { kind= _
       ; names= names2
       ; type_variables= type_variables2
       ; type_decls= type_decls2
       ; fields= fields2
       ; ctors= ctors2
-      ; modules= modules2 } =
+      ; modules= modules2
+      ; instances= instances2 } =
     { kind
     ; names= Map.merge_skewed names1 names2 ~combine:(fun ~key:_ _ v -> v)
     ; type_variables=
@@ -142,7 +150,10 @@ module Scope = struct
     ; ctors= Map.merge_skewed ctors1 ctors2 ~combine:(fun ~key:_ _ v -> v)
     ; modules=
         Map.merge_skewed modules1 modules2 ~combine:(fun ~key _ _ ->
-            raise (Error (loc, Multiple_definition ("module", key))) ) }
+            raise (Error (loc, Multiple_definition ("module", key))) )
+    ; instances=
+        Map.merge_skewed instances1 instances2 ~combine:(fun ~key:_ _ v -> v)
+    }
 
   let add_module name m scope =
     {scope with modules= Map.set scope.modules ~key:name ~data:m}
@@ -175,18 +186,22 @@ module TypeEnvi = struct
   type t =
     { type_id: int
     ; type_decl_id: int
+    ; instance_id: int
     ; variable_instances: type_expr int_map
     ; implicit_vars: expression list
     ; implicit_id: int
-    ; type_decls: type_decl int_map }
+    ; type_decls: type_decl int_map
+    ; instances: (int * type_expr) list }
 
   let empty =
     { type_id= 1
     ; type_decl_id= 1
+    ; instance_id= 1
     ; variable_instances= Map.empty (module Int)
     ; implicit_id= 1
     ; implicit_vars= []
-    ; type_decls= Map.empty (module Int) }
+    ; type_decls= Map.empty (module Int)
+    ; instances= [] }
 
   let instance env (typ : type_expr) =
     Map.find env.variable_instances typ.type_id
@@ -208,6 +223,12 @@ module TypeEnvi = struct
 
   let add_decl (decl : type_decl) env =
     {env with type_decls= Map.set env.type_decls ~key:decl.tdec_id ~data:decl}
+
+  let next_instance_id env =
+    (env.instance_id, {env with instance_id= env.instance_id + 1})
+
+  let add_implicit_instance id typ env =
+    {env with instances= (id, typ) :: env.instances}
 end
 
 type t = {scope_stack: Scope.t list; type_env: TypeEnvi.t; depth: int}
@@ -288,6 +309,24 @@ let find_module ~loc (lid : lid) env =
   match List.find_map ~f:(Scope.find_module ~loc lid.txt) env.scope_stack with
   | Some m -> m
   | None -> raise (Error (loc, Unbound_module lid.txt))
+
+let add_implicit_instance path typ env =
+  let id, type_env = TypeEnvi.next_instance_id env.type_env in
+  let env =
+    map_current_scope env ~f:(fun scope ->
+        {scope with instances= Map.set ~key:id ~data:path scope.instances} )
+  in
+  {env with type_env= TypeEnvi.add_implicit_instance id typ type_env}
+
+let implicit_instances ~(unify : t -> type_expr -> type_expr -> 'a)
+    (typ : type_expr) env =
+  List.filter_map env.type_env.instances ~f:(fun (id, instance_typ) ->
+      match unify env typ instance_typ with
+      | _ ->
+          List.find_map env.scope_stack ~f:(fun {instances; _} ->
+              Option.map (Map.find instances id) ~f:(fun path ->
+                  (path, instance_typ) ) )
+      | exception _ -> None )
 
 module Type = struct
   let mk ~loc type_desc env =
@@ -566,9 +605,7 @@ module Type = struct
         in
         ({exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}, env)
 
-  let find_instance _ _ = None
-
-  let rec instantiate_implicits implicit_vars env =
+  let rec instantiate_implicits ~unify implicit_vars env =
     let env, implicit_vars =
       List.fold_map ~init:env implicit_vars ~f:(fun env e ->
           let typ, env = flatten e.exp_type env in
@@ -577,19 +614,20 @@ module Type = struct
     let env_implicits = env.type_env.implicit_vars in
     let env = ref {env with type_env= {env.type_env with implicit_vars= []}} in
     let implicit_vars =
-      List.filter implicit_vars ~f:(fun exp ->
-          match find_instance exp.exp_type !env with
-          | Some (name, typ) ->
-              let e =
-                {exp_loc= exp.exp_loc; exp_type= typ; exp_desc= Variable name}
-              in
-              let e, env' = generate_implicits e !env in
+      List.filter implicit_vars ~f:(fun ({exp_loc; exp_type; _} as exp) ->
+          match implicit_instances ~unify exp_type !env with
+          | [(name, instance_typ)] ->
+              let name = Location.mkloc name exp_loc in
+              let env' = unify !env exp_type instance_typ in
+              let e = {exp_loc; exp_type; exp_desc= Variable name} in
+              let e, env' = generate_implicits e env' in
               ( match exp.exp_desc with
               | Unifiable desc -> desc.expression <- Some e
               | _ -> raise (Error (exp.exp_loc, No_unifiable_implicit)) ) ;
               env := env' ;
               false
-          | None -> true )
+          | [] -> true
+          | _ -> raise (Error (exp_loc, Multiple_instances exp_type)) )
     in
     let new_implicits = !env.type_env.implicit_vars in
     let env =
@@ -597,11 +635,11 @@ module Type = struct
     in
     match new_implicits with
     | [] -> (implicit_vars, env)
-    | _ -> instantiate_implicits (new_implicits @ implicit_vars) env
+    | _ -> instantiate_implicits ~unify (new_implicits @ implicit_vars) env
 
-  let flattened_implicit_vars ~toplevel typ_vars env =
+  let flattened_implicit_vars ~toplevel ~unify typ_vars env =
     let {TypeEnvi.implicit_vars; _} = env.type_env in
-    let implicit_vars, env = instantiate_implicits implicit_vars env in
+    let implicit_vars, env = instantiate_implicits ~unify implicit_vars env in
     let implicit_vars =
       List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
           let cmp = compare exp1.exp_type exp2.exp_type in
@@ -922,6 +960,11 @@ let report_error ppf = function
         pp_typ typ pp_decl_typ decl
   | No_unifiable_implicit ->
       fprintf ppf "Internal error: Implicit variable is not unifiable."
+  | Multiple_instances typ ->
+      fprintf ppf
+        "Multiple instances were found satisfying %a, could not decide \
+         between them."
+        pp_typ typ
 
 let () =
   Location.register_error_of_exn (function
