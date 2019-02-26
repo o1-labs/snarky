@@ -534,6 +534,38 @@ module Type = struct
     | typ1 :: typs1, typ2 :: typs2 ->
         or_compare (compare typ1 typ2) ~f:(fun () -> compare_all typs1 typs2)
 
+  let rec get_rev_implicits acc typ =
+    match typ.type_desc with
+    | Timplicit (typ1, typ2) -> get_rev_implicits (typ1 :: acc) typ2
+    | _ -> (acc, typ)
+
+  let new_implicit_var ~loc typ env =
+    let {TypeEnvi.implicit_vars; implicit_id; _} = env.type_env in
+    let mk exp_loc exp_desc = {exp_loc; exp_desc; exp_type= typ} in
+    let name =
+      Location.mkloc (Lident (sprintf "__implicit%i__" implicit_id)) loc
+    in
+    let new_exp = mk loc (Unifiable {expression= mk loc (Variable name)}) in
+    ( new_exp
+    , { env with
+        type_env=
+          { env.type_env with
+            implicit_vars= new_exp :: implicit_vars
+          ; implicit_id= implicit_id + 1 } } )
+
+  let generate_implicits e env =
+    let loc = e.exp_loc in
+    let rev_implicits, typ = get_rev_implicits [] e.exp_type in
+    match rev_implicits with
+    | [] -> (e, env)
+    | _ ->
+        let es, env =
+          List.fold ~init:([], env) rev_implicits ~f:(fun (es, env) typ ->
+              let e, env = new_implicit_var ~loc typ env in
+              (e :: es, env) )
+        in
+        ({exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}, env)
+
   let flattened_implicit_vars ~toplevel typ_vars env =
     let {TypeEnvi.implicit_vars; _} = env.type_env in
     let env, implicit_vars =
@@ -561,20 +593,6 @@ module Type = struct
     in
     ( local_implicit_vars
     , {env with type_env= {env.type_env with implicit_vars}} )
-
-  let new_implicit_var ~loc typ env =
-    let {TypeEnvi.implicit_vars; implicit_id; _} = env.type_env in
-    let mk exp_loc exp_desc = {exp_loc; exp_desc; exp_type= typ} in
-    let name =
-      Location.mkloc (Lident (sprintf "__implicit%i__" implicit_id)) loc
-    in
-    let new_exp = mk loc (Unifiable {expression= mk loc (Variable name)}) in
-    ( new_exp
-    , { env with
-        type_env=
-          { env.type_env with
-            implicit_vars= new_exp :: implicit_vars
-          ; implicit_id= implicit_id + 1 } } )
 end
 
 module TypeDecl = struct

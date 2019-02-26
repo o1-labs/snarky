@@ -11,8 +11,8 @@ let g __implicit7__ __implicit5__ __implicit3__ (x : 'a) (y : 'a) =
   let f = (testing_show __implicit7__) false in
   (a, b, c, d, e, f)
 
-let h __implicit17__ __implicit14__ __implicit10__ (x : int) (y : bool)
+let h __implicit15__ __implicit14__ __implicit9__ (x : int) (y : bool)
     (z : float) =
-  ( (g __implicit14__ __implicit10__ __implicit10__) x x
-  , (g __implicit14__ __implicit10__ __implicit14__) y y
-  , (g __implicit14__ __implicit10__ __implicit17__) z z )
+  ( (g __implicit14__ __implicit9__ __implicit9__) x x
+  , (g __implicit14__ __implicit9__ __implicit14__) y y
+  , (g __implicit14__ __implicit9__ __implicit15__) z z )

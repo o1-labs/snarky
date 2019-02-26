@@ -109,11 +109,6 @@ let check_type env typ constr_typ =
       raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
   | env -> env
 
-let rec get_implicits typ =
-  match typ.type_desc with
-  | Timplicit (typ1, typ2) -> typ1 :: get_implicits typ2
-  | _ -> []
-
 let rec add_implicits ~loc implicits typ env =
   match implicits with
   | [] -> (typ, env)
@@ -338,22 +333,8 @@ let rec get_expression env exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
       let typ, env = Envi.find_name name env in
-      let implicits = get_implicits typ in
-      let (ret_typ, env), es =
-        List.fold_map ~init:(typ, env) implicits ~f:(fun (f_typ, env) typ ->
-            let e, env = Envi.Type.new_implicit_var ~loc typ env in
-            let retvar, env = Envi.Type.mkvar ~loc None env in
-            let arrow, env = Envi.Type.mk ~loc (Timplicit (typ, retvar)) env in
-            let env = check_type env f_typ arrow in
-            ((retvar, env), e) )
-      in
       let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
-      let e =
-        match es with
-        | [] -> e
-        | _ -> {exp_loc= loc; exp_type= ret_typ; exp_desc= Apply (e, es)}
-      in
-      (e, env)
+      Envi.Type.generate_implicits e env
   | Int i ->
       let typ = Envi.Core.Type.int in
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
