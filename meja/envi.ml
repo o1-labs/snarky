@@ -546,12 +546,13 @@ module Type = struct
           let cmp = compare exp1.exp_type exp2.exp_type in
           ( if Int.equal cmp 0 then
             match (exp1.exp_desc, exp2.exp_desc) with
-            | Unifiable desc1, Unifiable desc2 -> desc1.name <- desc2.name
+            | Unifiable desc1, Unifiable desc2 ->
+                desc1.expression <- desc2.expression
             | _, _ -> raise (Error (exp1.exp_loc, No_unifiable_implicit)) ) ;
           cmp )
     in
     let local_implicit_vars, implicit_vars =
-      if toplevel then implicit_vars, []
+      if toplevel then (implicit_vars, [])
       else
         List.partition_tf implicit_vars ~f:(fun {exp_type; _} ->
             let exp_vars = type_vars exp_type in
@@ -564,8 +565,10 @@ module Type = struct
   let new_implicit_var ~loc typ env =
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.type_env in
     let mk exp_loc exp_desc = {exp_loc; exp_desc; exp_type= typ} in
-    let name = Location.mkloc (sprintf "__implicit%i__" implicit_id) loc in
-    let new_exp = mk loc (Unifiable {name}) in
+    let name =
+      Location.mkloc (Lident (sprintf "__implicit%i__" implicit_id)) loc
+    in
+    let new_exp = mk loc (Unifiable {expression= mk loc (Variable name)}) in
     ( new_exp
     , { env with
         type_env=

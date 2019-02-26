@@ -471,7 +471,12 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let e, env =
         List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
             match var with
-            | {exp_desc= Unifiable {name}; exp_type= typ; _} ->
+            | { exp_desc=
+                  Unifiable
+                    { expression=
+                        {exp_desc= Variable {txt= Lident name; loc}; _} }
+              ; exp_type= typ; _ } ->
+                let name = Location.mkloc name loc in
                 let exp_type, env =
                   Envi.Type.mk ~loc (Timplicit (typ, e.exp_type)) env
                 in
