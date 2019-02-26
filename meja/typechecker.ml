@@ -13,6 +13,7 @@ type error =
   | Wrong_type_description of string * str
   | Unifiable_expr
   | No_unifiable_expr
+  | No_instance of type_expr
 
 exception Error of Location.t * error
 
@@ -138,7 +139,9 @@ let rec free_type_vars ?depth typ =
 let polymorphise typ env =
   let loc = typ.type_loc in
   let typ_vars = Set.to_list (free_type_vars ~depth:env.Envi.depth typ) in
-  Envi.Type.mk ~loc (Tpoly (typ_vars, typ)) env
+  match typ_vars with
+  | [] -> (typ, env)
+  | _ -> Envi.Type.mk ~loc (Tpoly (typ_vars, typ)) env
 
 let add_polymorphised name typ env =
   let typ, env = Envi.Type.flatten typ env in
@@ -440,35 +443,38 @@ let rec get_expression env exp =
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let e, env = get_expression env e in
-  match p.pat_desc with
-  | PVariable str ->
-      let exp_type, env = Envi.Type.flatten e.exp_type env in
-      let e = {e with exp_type} in
-      let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
-      let implicit_vars, env =
-        Envi.Type.flattened_implicit_vars ~toplevel typ_vars env
-      in
-      let loc = e.exp_loc in
-      let e, env =
-        List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
-            match var.exp_desc with
-            | Unifiable {expression= None; name; _} ->
-                let exp_type, env =
-                  Envi.Type.mk ~loc (Timplicit (var.exp_type, e.exp_type)) env
-                in
-                let p = {pat_desc= PVariable name; pat_loc= loc} in
-                ({exp_desc= Fun (p, e); exp_type; exp_loc= loc}, env)
-            | _ -> raise (Error (var.exp_loc, No_unifiable_expr)) )
-      in
-      let loc = p.pat_loc in
+  let exp_type, env = Envi.Type.flatten e.exp_type env in
+  let e = {e with exp_type} in
+  let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
+  let implicit_vars, env =
+    Envi.Type.flattened_implicit_vars ~toplevel typ_vars env
+  in
+  let loc = e.exp_loc in
+  let e, env =
+    List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
+        match var.exp_desc with
+        | Unifiable {expression= None; name; _} ->
+            let exp_type, env =
+              Envi.Type.mk ~loc (Timplicit (var.exp_type, e.exp_type)) env
+            in
+            let p = {pat_desc= PVariable name; pat_loc= loc} in
+            ({exp_desc= Fun (p, e); exp_type; exp_loc= loc}, env)
+        | _ -> raise (Error (var.exp_loc, No_unifiable_expr)) )
+  in
+  let loc = p.pat_loc in
+  match (p.pat_desc, implicit_vars) with
+  | PVariable str, _ ->
       let typ, env =
-        Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, e.exp_type)) env
+        if Set.is_empty typ_vars then (e.exp_type, env)
+        else Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, e.exp_type)) env
       in
       let env = Envi.add_name str typ env in
       (p, e, env)
-  | _ ->
+  | _, [] ->
       let env = check_pattern ~add:add_polymorphised env e.exp_type p in
       (p, e, env)
+  | _, implicit :: _ ->
+      raise (Error (e.exp_loc, No_instance implicit.exp_type))
 
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
@@ -535,8 +541,13 @@ let rec report_error ppf = function
          got %s"
         kind name.txt
   | Unifiable_expr ->
-      fprintf ppf "Internal error: Unexpected an unresolved implicit variable."
-  | No_unifiable_expr -> fprintf ppf "Internal error: Expected a Unifiable."
+      fprintf ppf "Internal error: Unexpected implicit variable."
+  | No_unifiable_expr ->
+      fprintf ppf "Internal error: Expected an unresolved implicit variable."
+  | No_instance typ ->
+      fprintf ppf
+        "Could not find an instance for an implicit variable of type @[%a@]."
+        pp_typ typ
 
 let () =
   Location.register_error_of_exn (function
