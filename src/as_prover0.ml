@@ -1,5 +1,3 @@
-open Core_kernel
-
 type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
 
 module T = struct
@@ -33,7 +31,7 @@ end
 
 include T
 
-include Monad.Make3 (struct
+include Monad_let.Make3 (struct
   type nonrec ('a, 'e, 's) t = ('a, 'e, 's) t
 
   let map = `Custom map
