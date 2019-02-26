@@ -231,7 +231,7 @@ let pop_scope env =
   match env.scope_stack with
   | [] -> raise (Error (Location.none, No_open_scopes))
   | scope :: scope_stack ->
-      (scope, {env with scope_stack; depth= env.depth + 1})
+      (scope, {env with scope_stack; depth= env.depth - 1})
 
 let pop_expr_scope env =
   let scope, env = pop_scope env in
@@ -386,10 +386,15 @@ module Type = struct
       | Some var -> (var, env)
       | None -> (typ, env) )
     | Tpoly (vars, typ) ->
-        let vars, new_vars_map, env = refresh_vars vars new_vars_map env in
-        let typ, env = copy typ new_vars_map env in
-        mk ~loc (Tpoly (vars, typ)) env
-    | Tctor _ -> mk ~loc typ.type_desc env
+        let _vars, new_vars_map, env = refresh_vars vars new_vars_map env in
+        copy typ new_vars_map env
+    | Tctor ({var_params; _} as variant) ->
+        let env, var_params =
+          List.fold_map ~init:env var_params ~f:(fun e t ->
+              let t, e = copy t new_vars_map e in
+              (e, t) )
+        in
+        mk ~loc (Tctor {variant with var_params}) env
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
@@ -429,13 +434,11 @@ module Type = struct
     | Tvar _ -> Set.empty (module Comparator)
     | Tpoly (vars, typ) ->
         let poly_vars =
-          List.fold
-            ~init:(Set.empty (module Comparator))
-            vars
-            ~f:(fun set var -> Set.union set (type_vars' var))
+          Set.union_list (module Comparator) (List.map ~f:type_vars' vars)
         in
         Set.diff (type_vars typ) poly_vars
-    | Tctor _ -> Set.empty (module Comparator)
+    | Tctor {var_params; _} ->
+        Set.union_list (module Comparator) (List.map ~f:type_vars var_params)
     | Ttuple typs ->
         Set.union_list (module Comparator) (List.map ~f:type_vars typs)
     | Tarrow (typ1, typ2) -> Set.union (type_vars typ1) (type_vars typ2)
@@ -460,7 +463,13 @@ module Type = struct
         in
         let typ, env = flatten typ env in
         mk ~loc (Tpoly (Set.to_list var_set, typ)) env
-    | Tctor _ -> mk ~loc typ.type_desc env
+    | Tctor variant ->
+        let env, var_params =
+          List.fold_map ~init:env variant.var_params ~f:(fun env typ ->
+              let typ, env = flatten typ env in
+              (env, typ) )
+        in
+        mk ~loc (Tctor {variant with var_params}) env
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
