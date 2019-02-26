@@ -625,9 +625,12 @@ module Type = struct
       List.filter implicit_vars ~f:(fun ({exp_loc; exp_type; _} as exp) ->
           match implicit_instances ~unify exp_type !env with
           | [(name, instance_typ)] ->
+              let instance_typ, env' =
+                copy instance_typ (Map.empty (module Int)) !env
+              in
               let name = Location.mkloc name exp_loc in
-              let env' = unify !env exp_type instance_typ in
-              let e = {exp_loc; exp_type; exp_desc= Variable name} in
+              let env' = unify env' exp_type instance_typ in
+              let e = {exp_loc; exp_type= instance_typ; exp_desc= Variable name} in
               let e, env' = generate_implicits e env' in
               ( match exp.exp_desc with
               | Unifiable desc -> desc.expression <- Some e
@@ -646,6 +649,7 @@ module Type = struct
     | _ -> instantiate_implicits ~unify (new_implicits @ implicit_vars) env
 
   let flattened_implicit_vars ~toplevel ~unify typ_vars env =
+    let unify env typ ctyp = unify env typ (snd (get_rev_implicits [] ctyp)) in
     let {TypeEnvi.implicit_vars; _} = env.type_env in
     let implicit_vars, env = instantiate_implicits ~unify implicit_vars env in
     let implicit_vars =

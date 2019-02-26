@@ -220,7 +220,10 @@ let get_ctor (name : lid) env =
         | Ctor_tuple typs -> Envi.Type.mk ~loc (Ttuple typs) env
       in
       let typ, env = Envi.Type.mk ~loc (Tarrow (args_typ, typ)) env in
-      Envi.Type.copy typ (Map.empty (module Int)) env
+      let _, bound_vars, env =
+        Envi.Type.refresh_vars params (Map.empty (module Int)) env
+      in
+      Envi.Type.copy typ bound_vars env
   | _ -> raise (Error (loc, Unbound ("constructor", name)))
 
 let rec check_pattern_desc ~loc ~add env typ = function
