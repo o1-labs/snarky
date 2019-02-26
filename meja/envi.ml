@@ -553,7 +553,8 @@ module Type = struct
     let local_implicit_vars, implicit_vars =
       List.partition_tf implicit_vars ~f:(fun {exp_type; _} ->
           let exp_vars = type_vars exp_type in
-          Set.is_subset exp_vars ~of_:typ_vars )
+          let instantiated_vars = Set.inter exp_vars typ_vars in
+          not (Set.is_empty instantiated_vars))
     in
     ( local_implicit_vars
     , {env with type_env= {env.type_env with implicit_vars}} )
