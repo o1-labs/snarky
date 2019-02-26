@@ -1,9 +1,7 @@
-open Base
-
 module Make2
-    (M : Monad.S2) (T : sig
+    (M : Monad_let.S2) (T : sig
         type t
-    end) : Monad.S with type 'a t = ('a, T.t) M.t = struct
+    end) : Monad_let.S with type 'a t = ('a, T.t) M.t = struct
   type 'a t = ('a, T.t) M.t
 
   let map = M.map
@@ -28,11 +26,11 @@ module Make2
 end
 
 module Make3
-    (M : Monad.S3) (T : sig
+    (M : Monad_let.S3) (T : sig
         type t1
 
         type t2
-    end) : Monad.S with type 'a t = ('a, T.t1, T.t2) M.t = struct
+    end) : Monad_let.S with type 'a t = ('a, T.t1, T.t2) M.t = struct
   type 'a t = ('a, T.t1, T.t2) M.t
 
   let map = M.map
