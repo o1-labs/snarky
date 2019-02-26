@@ -113,7 +113,6 @@ end = struct
 
   let lookup ((s0, s1, s2) : Boolean.var Triple.t)
       (q : Weierstrass_curve.t Quadruple.t) =
-    let open Let_syntax in
     let%bind s_and = Boolean.(s0 && s1) in
     let open Field.Checked.Infix in
     let lookup_one (a1, a2, a3, a4) =
@@ -205,7 +204,6 @@ end = struct
     let support t = t.support
 
     let disjoint_union_exn t1 t2 =
-      let open Let_syntax in
       let support = Interval_union.disjoint_union_exn t1.support t2.support in
       let%map acc = Acc.add t1.acc t2.acc in
       {support; acc}

@@ -5,7 +5,7 @@ type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
 module type S = sig
   type field
 
-  include Monad.S2 with type ('a, 's) t = ('a, field, 's) t
+  include Monad_let.S2 with type ('a, 's) t = ('a, field, 's) t
 
   val run : ('a, 's) t -> (field Cvar.t -> field) -> 's -> 's * 'a
 
@@ -79,12 +79,12 @@ struct
     let return = return
   end
 
-  include Monad.Make2 (T)
+  include Monad_let.Make2 (T)
 end
 
 include T
 
-include Monad.Make3 (struct
+include Monad_let.Make3 (struct
   type nonrec ('a, 'f, 's) t = ('a, 'f, 's) t
 
   let map = `Custom map
