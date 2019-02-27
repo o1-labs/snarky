@@ -1187,11 +1187,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
         proof_system.verification_key <- verification_key ;
         proof_system.proving_key_path <- proving_key_path ;
         proof_system.verification_key_path <- verification_key_path ;
-        match handler with
+        (match handler with
         | Some handler ->
             proof_system.prover_state
             <- {proof_system.prover_state with handler}
-        | None -> ()
+        | None -> ());
+        proof_system
 
       let set_inputs {provide_inputs; _} inputs = provide_inputs inputs
 
