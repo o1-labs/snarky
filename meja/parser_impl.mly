@@ -39,6 +39,7 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token UNDERSCORE
 %token BAR
 %token QUOT
+%token DOTDOTDOT
 %token DOT
 %token <string> PREFIXOP
 %token <string> INFIXOP0
@@ -232,6 +233,8 @@ expr:
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE
     { mkexp ~pos:$loc (Record(List.rev fields, None)) }
+  | LBRACE DOTDOTDOT e = expr COMMA fields = list(expr_field, COMMA) RBRACE
+    { mkexp ~pos:$loc (Record(List.rev fields, Some e)) }
 
 expr_or_bare_tuple:
   | x = expr

@@ -12,4 +12,12 @@ module X = struct
   let x = {a= 1; b= 1; c= 1}
 end
 
+let a = {X.x with b= 12}
+
 let b = {X.a= 1; b= 1; c= 1}
+
+let c = {x with a= 35}
+
+let d = (a.b, b.b)
+
+let e = a.X.a

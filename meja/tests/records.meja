@@ -12,4 +12,12 @@ module X = {
   let x = {a: 1, b: 1, c: 1};
 };
 
+let a = {...X.x, b: 12};
+
 let b = {X.a: 1, b: 1, c: 1};
+
+let c = {...x, a: 35};
+
+let d = (a.b, b.b);
+
+let e = a.X.a;
