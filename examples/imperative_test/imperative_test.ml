@@ -54,9 +54,9 @@ let prove () =
   let ((module I) as i) = make (module Backends.Mnt4.GM) in
   let open I in
   let exposing = Data_spec.[Field.typ] in
-  let f x () = test2 i x in
+  let f H_list.([x]) = test2 i x |> ignore in
   let keys = generate_keypair ~exposing f in
-  let proof = prove (Keypair.pk keys) exposing f (Field.Constant.of_int 17) in
+  let proof = prove (Keypair.pk keys) exposing f [Field.Constant.of_int 17] in
   (Proof.to_string proof, Verification_key.to_bigstring (Keypair.vk keys))
 
 let verify proof vk =
@@ -65,7 +65,7 @@ let verify proof vk =
   let exposing = Data_spec.[Field.typ] in
   let proof = Proof.of_string proof in
   let vk = Verification_key.of_bigstring vk in
-  verify proof vk exposing (Field.Constant.of_int 17)
+  verify proof vk exposing [Field.Constant.of_int 17]
 
 module Intf = Snark.Run.Make (Backends.Mnt4.GM)
 
@@ -73,16 +73,16 @@ let exposing = Intf.(Data_spec.[Field.typ])
 
 let prove2 () =
   let open Intf in
-  let f x () = test3 (module Intf) x in
+  let f H_list.([x]) = test3 (module Intf) x |> ignore in
   let keys = generate_keypair ~exposing f in
-  let proof = prove (Keypair.pk keys) exposing f (Field.Constant.of_int 39) in
+  let proof = prove (Keypair.pk keys) exposing f [Field.Constant.of_int 39] in
   (Proof.to_string proof, Verification_key.to_bigstring (Keypair.vk keys))
 
 let verify2 proof vk =
   let open Intf in
   let proof = Proof.of_string proof in
   let vk = Verification_key.of_bigstring vk in
-  verify proof vk exposing (Field.Constant.of_int 29)
+  verify proof vk exposing [Field.Constant.of_int 29]
 
 let main () =
   let proof, vk = prove () in

@@ -107,7 +107,7 @@ let winner ballots =
 
 let number_of_voters = 11
 
-let check_winner commitments claimed_winner =
+let check_winner H_list.([commitments; claimed_winner]) =
   let%bind w = winner commitments in
   Vote.assert_equal w claimed_winner
 
@@ -133,16 +133,15 @@ let tally_and_prove (ballots : Ballot.Opened.t array) =
         Hash.hash (Ballot.Opened.to_bits ballots.(i)) )
   in
   let winner = winner ballots in
-  let handled_check commitments claimed_winner =
+  let handled_check input =
     (* As mentioned before, a checked computation can request help from outside.
        Here is where we answer those requests (or at least some of them). *)
-    handle (check_winner commitments claimed_winner)
-      (fun (With {request; respond}) ->
+    handle (check_winner input) (fun (With {request; respond}) ->
         match request with
         | Open_ballot i -> respond (Provide ballots.(i))
         | _ -> unhandled )
   in
   ( commitments
   , winner
-  , prove (Keypair.pk keypair) (exposed ()) () handled_check commitments winner
-  )
+  , prove (Keypair.pk keypair) (exposed ()) () handled_check
+      [commitments; winner] )

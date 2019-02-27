@@ -39,4 +39,4 @@ let () =
     )
   in
   let commitments, winner, proof = tally_and_prove received_ballots in
-  assert (verify proof (Keypair.vk keypair) (exposed ()) commitments winner)
+  assert (verify proof (Keypair.vk keypair) (exposed ()) [commitments; winner])

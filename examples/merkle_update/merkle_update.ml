@@ -122,7 +122,8 @@ let update_many root_start
 (* Now that we have specified the computation to produce a snark for, we can actually
    produce the snark. *)
 (* First we generate the keypair. *)
-let keypair = generate_keypair ~exposing:(input ()) update_many
+let keypair =
+  generate_keypair ~exposing:(input ()) (fun [a; us; b] -> update_many a us b)
 
 (* Next, we can generate a proof on some sample inputs. *)
 (* First the inputs. *)
@@ -154,12 +155,13 @@ let proof =
   prove (Keypair.pk keypair) (input ()) (* The input spec *)
                                         tree_start
     (* The initial state for the prover *)
-    update_many (* The computation to create a snark for *)
-                root_start (* The inputs for the snark *)
-                           updates root_end
+      (fun [a; us; b] -> update_many a us b)
+    (* The computation to create a snark for *)
+    (* The inputs for the snark *)
+    [root_start; updates; root_end]
 
 (* Now we can check that the snark verifies as expected. *)
 let verified =
-  verify proof (Keypair.vk keypair) (input ()) root_start updates root_end
+  verify proof (Keypair.vk keypair) (input ()) [root_start; updates; root_end]
 
 let () = printf "Verified: %b\n" verified

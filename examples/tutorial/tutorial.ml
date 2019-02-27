@@ -100,18 +100,22 @@ let exercise1 () =
   let input () = Data_spec.[Field.typ] in
   (* Now we generate a keypair that we can use produce and verify proofs *)
   let keypair =
-    generate_keypair ~exposing:(input ()) assert_is_cube_root_of_1
+    generate_keypair ~exposing:(input ()) (fun [x] ->
+        assert_is_cube_root_of_1 x )
   in
   (* Now we prove: Here is an input to `assert_is_cube_root_of_1` such that the
      checked computation terminates without failing any assertions. In other
      words, there exists some cube_root_of_1.
    *)
   let proof =
-    prove (Keypair.pk keypair) (input ()) () assert_is_cube_root_of_1
-      cube_root_of_1
+    prove (Keypair.pk keypair) (input ()) ()
+      (fun [x] -> assert_is_cube_root_of_1 x)
+      [cube_root_of_1]
   in
   (* We can verify a proof as follows *)
-  let is_valid = verify proof (Keypair.vk keypair) (input ()) cube_root_of_1 in
+  let is_valid =
+    verify proof (Keypair.vk keypair) (input ()) [cube_root_of_1]
+  in
   printf !"is %{sexp:Field.t} a cube root of 1? %b\n%!" cube_root_of_1 is_valid
 
 (* Exercise 1: Comment this out when you're ready to test it! *)
@@ -248,14 +252,17 @@ module Exercise3 = struct
     let matrix = Typ.array ~length:2 cols in
     Data_spec.[matrix]
 
-  let keypair = generate_keypair ~exposing:(input ()) assert_exists_sqrt
+  let keypair =
+    generate_keypair ~exposing:(input ()) (fun [x] -> assert_exists_sqrt x)
 
   let mat_1245 = Field.[|[|of_int 1; of_int 2|]; [|of_int 4; of_int 5|]|]
 
   let proof =
-    prove (Keypair.pk keypair) (input ()) () assert_exists_sqrt mat_1245
+    prove (Keypair.pk keypair) (input ()) ()
+      (fun [x] -> assert_exists_sqrt x)
+      [mat_1245]
 
-  let is_valid = verify proof (Keypair.vk keypair) (input ()) mat_1245
+  let is_valid = verify proof (Keypair.vk keypair) (input ()) [mat_1245]
 
   let run () =
     printf "Is mat_1245 the sqrt of our 9;12 24;33 matrix: %b?" is_valid
