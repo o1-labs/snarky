@@ -1066,6 +1066,60 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let v = !next_input in
       incr next_input ; Cvar.Unsafe.of_index v
 
+    let store_field_elt primary_input next_input x =
+      let v = alloc_var next_input () in
+      Field.Vector.emplace_back primary_input x ;
+      v
+
+    let rec allocate_inputs : type checked s r2 k1 k2.
+           Field.Vector.t
+        -> (unit, s) Checked.t
+        -> int ref
+        -> (checked, unit, k1, k2) t
+        -> (unit -> k1)
+        -> (unit -> checked) * (unit, s) Checked.t * k2 =
+     fun primary_input check_inputs next_input t compute ->
+      match t with
+      | [] -> (compute, Checked.return (), ())
+      | {alloc; check; store; _} :: t' ->
+          let before_input = !next_input in
+          let var = Typ.Alloc.run alloc (alloc_var next_input) in
+          let after_input = !next_input in
+          let compute () = compute () var in
+          let check_inputs =
+            let open Checked.Let_syntax in
+            let%bind () = check_inputs in
+            Checked.with_state (As_prover.return ()) (check var)
+          in
+          let compute, check_inputs, provide_inputs =
+            allocate_inputs primary_input check_inputs next_input t' compute
+          in
+          let provide_inputs value =
+            (* NOTE: We assume here that [store] and [alloc] allocate their
+                 variables in the same way, and order them the same way in
+                 their output.
+                 This is "safe", in that you could never generate a proof when
+                 they deviated previously, since the constraints system we
+                 generate the keys for and the one satisfied by the prover
+                 would be different.
+                 Thus, here we only store the values, with the understanding
+                 that the values passed from [alloc] above should already be
+                 identical. *)
+            let next_input = ref before_input in
+            let store_field_elt = store_field_elt primary_input next_input in
+            let _var = Typ.Store.run (store value) store_field_elt in
+            if not (Int.equal !next_input after_input) then
+              failwithf
+                "allocate_inputs: Cannot work with this Typ.t. The alloc \
+                 method allocates %i field elements, but the store method \
+                 allocates %i."
+                (after_input - before_input)
+                (!next_input - before_input)
+                ()
+            else provide_inputs
+          in
+          (compute, check_inputs, provide_inputs)
+
     let rec collect_input_constraints : type checked s r2 k1 k2.
         int ref -> (checked, r2, k1, k2) t -> k1 -> (checked, s) Checked.t =
      fun next_input t k ->
@@ -1115,14 +1169,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
         -> 'k_value =
      fun proof vk t0 ->
       let primary_input = Field.Vector.create () in
-      let store_field_elt =
-        let next_input = ref 1 in
-        fun x ->
-          let v = !next_input in
-          incr next_input ;
-          Field.Vector.emplace_back primary_input x ;
-          Cvar.Unsafe.of_index v
-      in
+      let next_input = ref 1 in
+      let store_field_elt = store_field_elt primary_input next_input in
       let rec go : type r_var k_var k_value.
           (r_var, bool, k_var, k_value) t -> k_value =
        fun t ->
