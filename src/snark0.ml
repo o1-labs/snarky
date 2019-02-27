@@ -1071,31 +1071,77 @@ module Make_basic (Backend : Backend_intf.S) = struct
       Field.Vector.emplace_back primary_input x ;
       v
 
-    let rec allocate_inputs : type checked s r2 k1 k2.
-           Field.Vector.t
-        -> (unit, s) Checked.t
-        -> int ref
-        -> (checked, unit, k1, k2) t
-        -> (unit -> k1)
-        -> (unit -> checked) * (unit, s) Checked.t * k2 =
-     fun primary_input check_inputs next_input t compute ->
-      match t with
-      | [] -> (compute, Checked.return (), ())
-      | {alloc; check; store; _} :: t' ->
-          let before_input = !next_input in
-          let var = Typ.Alloc.run alloc (alloc_var next_input) in
-          let after_input = !next_input in
-          let compute () = compute () var in
-          let check_inputs =
-            let open Checked.Let_syntax in
-            let%bind () = check_inputs in
-            Checked.with_state (As_prover.return ()) (check var)
-          in
-          let compute, check_inputs, provide_inputs =
-            allocate_inputs primary_input check_inputs next_input t' compute
-          in
-          let provide_inputs value =
-            (* NOTE: We assume here that [store] and [alloc] allocate their
+    module Proof_system = struct
+      type ('checked, 'inputs, 's) proof_system =
+        { compute: unit -> 'checked
+        ; check_inputs: (unit, unit) Checked.t
+        ; provide_inputs: (unit, 'inputs) H_list.t -> unit
+        ; has_input: bool ref
+        ; has_run_with_input: bool ref
+        ; mutable proving_key: Proving_key.t option
+        ; mutable verification_key: Verification_key.t option
+        ; mutable proving_key_path: string option
+        ; mutable verification_key_path: string option
+        ; mutable prover_state: 's Checked.Runner.run_state }
+
+      let rec allocate_inputs : type checked r2 k1 k2.
+             Field.Vector.t
+          -> (unit, unit) Checked.t
+          -> int ref
+          -> (checked, unit, k1, k2) t
+          -> (unit -> k1)
+          -> (checked, k2, 's) proof_system =
+       fun input check_inputs next_input t compute ->
+        match t with
+        | [] ->
+            let has_input = ref false in
+            let has_run_with_input = ref false in
+            { compute
+            ; check_inputs= Checked.return ()
+            ; provide_inputs=
+                (fun ([] : (unit, unit) H_list.t) ->
+                  has_input := true ;
+                  has_run_with_input := false )
+            ; has_input
+            ; has_run_with_input
+            ; proving_key= None
+            ; verification_key= None
+            ; proving_key_path= None
+            ; verification_key_path= None
+            ; prover_state=
+                { system= None
+                ; input
+                ; aux= Field.Vector.create ()
+                ; num_inputs= !next_input - 1
+                ; next_auxiliary= ref !next_input
+                ; prover_state= None
+                ; stack= []
+                ; handler= Request.Handler.fail
+                ; eval_constraints= false } }
+        | {alloc; check; store; _} :: t' ->
+            let before_input = !next_input in
+            let var = Typ.Alloc.run alloc (alloc_var next_input) in
+            let after_input = !next_input in
+            let compute () = compute () var in
+            let check_inputs =
+              let open Checked.Let_syntax in
+              let%bind () = check_inputs in
+              Checked.with_state (As_prover.return ()) (check var)
+            in
+            let { compute
+                ; check_inputs
+                ; provide_inputs
+                ; has_input
+                ; has_run_with_input
+                ; proving_key
+                ; verification_key
+                ; proving_key_path
+                ; verification_key_path
+                ; prover_state } =
+              allocate_inputs input check_inputs next_input t' compute
+            in
+            let provide_inputs H_list.(value :: values) =
+              (* NOTE: We assume here that [store] and [alloc] allocate their
                  variables in the same way, and order them the same way in
                  their output.
                  This is "safe", in that you could never generate a proof when
@@ -1105,20 +1151,246 @@ module Make_basic (Backend : Backend_intf.S) = struct
                  Thus, here we only store the values, with the understanding
                  that the values passed from [alloc] above should already be
                  identical. *)
-            let next_input = ref before_input in
-            let store_field_elt = store_field_elt primary_input next_input in
-            let _var = Typ.Store.run (store value) store_field_elt in
-            if not (Int.equal !next_input after_input) then
-              failwithf
-                "allocate_inputs: Cannot work with this Typ.t. The alloc \
-                 method allocates %i field elements, but the store method \
-                 allocates %i."
-                (after_input - before_input)
-                (!next_input - before_input)
-                ()
-            else provide_inputs
-          in
-          (compute, check_inputs, provide_inputs)
+              let next_input = ref before_input in
+              let store_field_elt = store_field_elt input next_input in
+              let _var = Typ.Store.run (store value) store_field_elt in
+              if not (Int.equal !next_input after_input) then
+                failwithf
+                  "allocate_inputs: Cannot work with this Typ.t. The alloc \
+                   method allocates %i field elements, but the store method \
+                   allocates %i."
+                  (after_input - before_input)
+                  (!next_input - before_input)
+                  ()
+              else provide_inputs values
+            in
+            { compute
+            ; check_inputs
+            ; provide_inputs
+            ; has_input
+            ; has_run_with_input
+            ; proving_key
+            ; verification_key
+            ; proving_key_path
+            ; verification_key_path
+            ; prover_state }
+
+      let create ?proving_key ?verification_key ?proving_key_path
+          ?verification_key_path ?handler ~exposing compute =
+        let input = Field.Vector.create () in
+        let next_input = ref 1 in
+        let proof_system =
+          allocate_inputs input (Checked.return ()) next_input exposing
+            (fun () -> compute )
+        in
+        proof_system.proving_key <- proving_key ;
+        proof_system.verification_key <- verification_key ;
+        proof_system.proving_key_path <- proving_key_path ;
+        proof_system.verification_key_path <- verification_key_path ;
+        match handler with
+        | Some handler ->
+            proof_system.prover_state
+            <- {proof_system.prover_state with handler}
+        | None -> ()
+
+      let set_inputs {provide_inputs; _} inputs = provide_inputs inputs
+
+      let clear_inputs {has_input; has_run_with_input; _} =
+        has_input := false ;
+        has_run_with_input := false
+
+      let set_proving_key proof_system key =
+        proof_system.proving_key <- Some key
+
+      let proving_key {proving_key; _} = proving_key
+
+      let set_verification_key proof_system key =
+        proof_system.verification_key <- Some key
+
+      let verification_key {verification_key; _} = verification_key
+
+      let clear_keys proof_system =
+        proof_system.proving_key <- None ;
+        proof_system.verification_key <- None
+
+      let set_proving_key_path proof_system path =
+        proof_system.proving_key_path <- Some path
+
+      let clear_proving_key_path proof_system =
+        proof_system.proving_key_path <- None
+
+      let set_verification_key_path proof_system path =
+        proof_system.verification_key_path <- Some path
+
+      let clear_verification_key_path proof_system =
+        proof_system.verification_key_path <- None
+
+      let run_proof_system ~run proof_system =
+        let {prover_state; _} = proof_system in
+        let prover_state, () =
+          Checked.Runner.run proof_system.check_inputs prover_state
+        in
+        let prover_state, a = run (proof_system.compute ()) prover_state in
+        Option.iter prover_state.Checked.Runner.system ~f:(fun system ->
+            let auxiliary_input_size =
+              !(prover_state.next_auxiliary) - (1 + prover_state.num_inputs)
+            in
+            R1CS_constraint_system.set_auxiliary_input_size system
+              auxiliary_input_size ) ;
+        proof_system.prover_state <- prover_state ;
+        a
+
+      let constraint_system ~run proof_system =
+        let {prover_state; _} = proof_system in
+        match prover_state.system with
+        | Some system -> system
+        | None ->
+            let system = R1CS_constraint_system.create () in
+            let next_auxiliary = ref (1 + prover_state.num_inputs) in
+            proof_system.prover_state
+            <- { prover_state with
+                 system= Some system
+               ; eval_constraints= false
+               ; next_auxiliary
+               ; prover_state= None
+               ; stack= []
+               ; handler= Request.Handler.fail } ;
+            ignore (run_proof_system ~run proof_system) ;
+            system
+
+      let generate_keypair ~run proof_system =
+        let keypair = Keypair.generate (constraint_system ~run proof_system) in
+        proof_system.proving_key <- Some keypair.pk ;
+        proof_system.verification_key <- Some keypair.vk ;
+        keypair
+
+      let run_with_input ~run ?exposing ?(handler = Request.Handler.fail)
+          proof_system s =
+        ( match (exposing, !(proof_system.has_input)) with
+        | Some exposing, _ -> set_inputs proof_system exposing
+        | None, true -> ()
+        | None, false ->
+            failwith
+              "Could not run the proof system; no input has been provided." ) ;
+        let {prover_state; _} = proof_system in
+        proof_system.prover_state
+        <- { prover_state with
+             next_auxiliary= ref (1 + prover_state.num_inputs)
+           ; prover_state= Some s
+           ; stack= []
+           ; handler= Request.Handler.fail } ;
+        ignore (run_proof_system ~run proof_system) ;
+        proof_system.has_run_with_input := false ;
+        let a = run_proof_system ~run proof_system in
+        proof_system.has_run_with_input := true ;
+        match proof_system.prover_state.prover_state with
+        | Some s -> (s, a)
+        | None ->
+            failwith "run_and_check': Expected a value from run, got None."
+
+      let run_unchecked ~run ?exposing ?handler proof_system s =
+        let {prover_state; _} = proof_system in
+        proof_system.prover_state
+        <- {prover_state with eval_constraints= false; system= None} ;
+        run_with_input ~run ?exposing ?handler proof_system s
+
+      let run_checked ~run ?exposing ?handler proof_system s =
+        let {prover_state; _} = proof_system in
+        let system = R1CS_constraint_system.create () in
+        proof_system.prover_state
+        <- {prover_state with eval_constraints= true; system= Some system} ;
+        match run_with_input ~run ?exposing ?handler proof_system s with
+        | exception e -> Or_error.of_exn e
+        | s, x ->
+            let s', x =
+              As_prover.run x
+                (Checked.Runner.get_value proof_system.prover_state)
+                s
+            in
+            Ok (s', x)
+
+      let check ~run ?exposing ?handler proof_system s =
+        Or_error.is_ok (run_checked ~run ?exposing ?handler proof_system s)
+
+      let read_proving_key proof_system =
+        match proof_system.proving_key_path with
+        | Some path -> Some (Proving_key.of_string (In_channel.read_all path))
+        | None -> None
+
+      let write_proving_key proof_system key =
+        match proof_system.proving_key_path with
+        | Some path ->
+            Out_channel.write_all path ~data:(Proving_key.to_string key)
+        | None -> ()
+
+      let read_verification_key proof_system =
+        match proof_system.verification_key_path with
+        | Some path ->
+            Some (Verification_key.of_string (In_channel.read_all path))
+        | None -> None
+
+      let write_verification_key proof_system key =
+        match proof_system.verification_key_path with
+        | Some path ->
+            Out_channel.write_all path ~data:(Verification_key.to_string key)
+        | None -> ()
+
+      let prove ~run ?exposing ?proving_key ?handler proof_system s =
+        let {prover_state; _} = proof_system in
+        if
+          Option.is_some exposing || Option.is_some handler
+          || (not !(proof_system.has_run_with_input))
+          || Option.is_none proof_system.prover_state.system
+        then (
+          ( match exposing with
+          | Some exposing -> set_inputs proof_system exposing
+          | None -> () ) ;
+          let system = R1CS_constraint_system.create () in
+          proof_system.prover_state
+          <- {prover_state with eval_constraints= false; system= Some system} ;
+          ignore (run_with_input ~run ?exposing ?handler proof_system s) ) ;
+        let {Checked.Runner.input; aux; _} = prover_state in
+        let proving_key =
+          match proving_key with
+          | Some proving_key -> proving_key
+          | None -> (
+            match proof_system.proving_key with
+            | Some proving_key -> proving_key
+            | None -> (
+              match read_proving_key proof_system with
+              | Some proving_key -> proving_key
+              | None ->
+                  let {Keypair.pk; vk} = generate_keypair ~run proof_system in
+                  write_verification_key proof_system vk ;
+                  pk ) )
+        in
+        write_proving_key proof_system proving_key ;
+        Proof.create proving_key ~primary:input ~auxiliary:aux
+
+      let verify ~run ?exposing ?verification_key proof_system proof =
+        ( match exposing with
+        | Some exposing -> set_inputs proof_system exposing
+        | None ->
+            if not !(proof_system.has_input) then
+              failwith
+                "Could not verify the proof; no input has been provided." ) ;
+        let verification_key =
+          match verification_key with
+          | Some verification_key -> verification_key
+          | None -> (
+            match proof_system.verification_key with
+            | Some verification_key -> verification_key
+            | None -> (
+              match read_verification_key proof_system with
+              | Some verification_key -> verification_key
+              | None ->
+                  failwith
+                    "Could not verify the proof; no verification key has been \
+                     provided." ) )
+        in
+        write_verification_key proof_system verification_key ;
+        Proof.verify proof verification_key proof_system.prover_state.input
+    end
 
     let rec collect_input_constraints : type checked s r2 k1 k2.
         int ref -> (checked, r2, k1, k2) t -> k1 -> (checked, s) Checked.t =
