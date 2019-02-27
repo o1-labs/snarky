@@ -735,7 +735,7 @@ module Make_weierstrass_checked
       end
     end
 
-    let create (type shifted) () : ((module S), _) Checked.t =
+    let create () : ((module S), _) Checked.t =
       let%map shift =
         exists typ ~compute:As_prover.(map (return ()) ~f:Curve.random)
       in
