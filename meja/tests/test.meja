@@ -8,7 +8,10 @@ let a = (15);
 
 let b = (let y = x; y);
 
-let c = {x; y;};
+let c = fun (ignore : int -> unit) => {
+  ignore(x);
+  y;
+};
 
 let d = fun (x) => { x; };
 
