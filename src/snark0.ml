@@ -1259,6 +1259,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ignore (run_proof_system ~run proof_system) ;
             system
 
+      let digest ~run proof_system =
+        let system = constraint_system ~run proof_system in
+        R1CS_constraint_system.digest system
+
       let generate_keypair ~run proof_system =
         let keypair = Keypair.generate (constraint_system ~run proof_system) in
         proof_system.proving_key <- Some keypair.pk ;
