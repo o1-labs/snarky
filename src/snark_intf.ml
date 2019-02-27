@@ -89,19 +89,20 @@ module type Basic = sig
   
   (** The data specification for checked computations. *)
   and Data_spec : sig
+    (* Re-export the constructors *)
+    type ('a, 'b, 'f) t_ = ('a, 'b, 'f) Types.Data_spec.t =
+      | [] : (unit, unit, 'f) t_
+      | ( :: ) :
+          ('a, 'b, 'f) Types.Typ.t * ('var, 'value, 'f) t_
+          -> ('a * 'var, 'b * 'value, 'f) t_
+
     (** A list of {!type:Typ.t} values, describing the inputs to a checked computation.
         The type [('r_var, 'r_value, 'k_var, 'k_value) t] represents
         - ['k_value] is the OCaml type of the computation
         - ['r_value] is the OCaml type of the result
         - ['k_var] is the type of the computation within the R1CS
         - ['k_value] is the type of the result within the R1CS. *)
-    type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | ( :: ) :
-          ('var, 'value) Typ.t * ('r_var, 'r_value, 'k_var, 'k_value) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
-
-    val size : (_, _, _, _) t -> int
+    type ('k_var, 'k_value) t = ('k_var, 'k_value, Field.t) t_
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -166,8 +167,7 @@ module type Basic = sig
     val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
 
     val hlist :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
+      ('l_var, 'l_value) Data_spec.t -> ('l_var H_list.t, 'l_value H_list.t) t
     (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
         a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
 
@@ -187,11 +187,11 @@ module type Basic = sig
       -> ('var2, 'value) t
 
     val of_hlistable :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
-      -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
-      -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
-      -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
+         ('l_var, 'l_value) Data_spec.t
+      -> var_to_hlist:('var -> 'l_var H_list.t)
+      -> var_of_hlist:('l_var H_list.t -> 'var)
+      -> value_to_hlist:('value -> 'l_value H_list.t)
+      -> value_of_hlist:('l_value H_list.t -> 'value)
       -> ('var, 'value) t
 
     module Of_traversable (T : Traversable.S) : sig
@@ -531,28 +531,30 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     val constraint_system :
          run:('a, 't) t
-      -> exposing:('t, _, 'k_var, _) Data_spec.t
-      -> 'k_var
+      -> exposing:('l_var, _) Data_spec.t
+      -> ('l_var H_list.t -> 't)
       -> R1CS_constraint_system.t
 
     val generate_keypair :
          run:('a, 't) t
-      -> exposing:('t, _, 'k_var, _) Data_spec.t
-      -> 'k_var
+      -> exposing:('l_var, _) Data_spec.t
+      -> ('l_var H_list.t -> 't)
       -> Keypair.t
 
     val prove :
          run:('a, 't) t
       -> Proving_key.t
-      -> ('t, Proof.t, 'k_var, 'k_value) Data_spec.t
-      -> 'k_var
-      -> 'k_value
+      -> ('l_var, 'l_value) Data_spec.t
+      -> ('l_var H_list.t -> 't)
+      -> 'l_value H_list.t
+      -> Proof.t
 
     val verify :
          Proof.t
       -> Verification_key.t
-      -> (_, bool, _, 'k_value) Data_spec.t
-      -> 'k_value
+      -> (_, 'l_value) Data_spec.t
+      -> 'l_value H_list.t
+      -> bool
 
     val run_unchecked : run:('a, 't) t -> 't -> 'a
 
@@ -625,33 +627,37 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
 
   val constraint_system :
-       exposing:((unit, 's) Checked.t, _, 'k_var, _) Data_spec.t
-    -> 'k_var
+       exposing:('l_var, _) Data_spec.t
+    -> ('l_var H_list.t -> (unit, 's) Checked.t)
     -> R1CS_constraint_system.t
 
   val generate_keypair :
-       exposing:((unit, 's) Checked.t, _, 'k_var, _) Data_spec.t
-    -> 'k_var
+       exposing:('l_var, _) Data_spec.t
+    -> ('l_var H_list.t -> (unit, 's) Checked.t)
     -> Keypair.t
 
+  (* TODO
   val conv :
        ('r_var -> 'r_value)
     -> ('r_var, 'r_value, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
     -> 'k_value
+*)
 
   val prove :
        Proving_key.t
-    -> ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
+    -> ('k_var, 'k_value) Data_spec.t
     -> 's
-    -> 'k_var
-    -> 'k_value
+    -> ('k_var H_list.t -> (unit, 's) Checked.t)
+    -> 'k_value H_list.t
+    -> Proof.t
 
   val verify :
        Proof.t
     -> Verification_key.t
-    -> (_, bool, _, 'k_value) Data_spec.t
-    -> 'k_value
+    -> (_, 'k_value) Data_spec.t
+    -> 'k_value H_list.t
+    -> bool
 
   val run_unchecked : ('a, 's) Checked.t -> 's -> 's * 'a
 
@@ -789,19 +795,22 @@ module type Run = sig
   
   (** The data specification for checked computations. *)
   and Data_spec : sig
+    (* Re-export the constructors *)
+    type ('a, 'b, 'f) t_ = ('a, 'b, 'f) Types.Data_spec.t =
+      | [] : (unit, unit, 'f) t_
+      | ( :: ) :
+          ('a, 'b, 'f) Types.Typ.t * ('var, 'value, 'f) t_
+          -> ('a * 'var, 'b * 'value, 'f) t_
+
     (** A list of {!type:Typ.t} values, describing the inputs to a checked computation.
         The type [('r_var, 'r_value, 'k_var, 'k_value) t] represents
         - ['k_value] is the OCaml type of the computation
         - ['r_value] is the OCaml type of the result
         - ['k_var] is the type of the computation within the R1CS
         - ['k_value] is the type of the result within the R1CS. *)
-    type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | ( :: ) :
-          ('var, 'value) Typ.t * ('r_var, 'r_value, 'k_var, 'k_value) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+    type ('k_var, 'k_value) t = ('k_var, 'k_value, field) t_
 
-    val size : (_, _, _, _) t -> int
+    val size : (_, _) t -> int
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -866,8 +875,7 @@ module type Run = sig
     val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
 
     val hlist :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
+      ('k_var, 'k_value) Data_spec.t -> ('k_var H_list.t, 'k_value H_list.t) t
     (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
         a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
 
@@ -887,11 +895,11 @@ module type Run = sig
       -> ('var2, 'value) t
 
     val of_hlistable :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
-      -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
-      -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
-      -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
+         ('k_var, 'k_value) Data_spec.t
+      -> var_to_hlist:('var -> 'k_var H_list.t)
+      -> var_of_hlist:('k_var H_list.t -> 'var)
+      -> value_to_hlist:('value -> 'k_value H_list.t)
+      -> value_of_hlist:('k_value H_list.t -> 'value)
       -> ('var, 'value) t
 
     module Of_traversable (T : Traversable.S) : sig
@@ -1205,25 +1213,28 @@ module type Run = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
+  (* TODO *)
   val constraint_system :
-       exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
-    -> 'k_var
+       exposing:('k_var, _) Data_spec.t
+    -> ('k_var H_list.t -> unit)
     -> R1CS_constraint_system.t
 
   val generate_keypair :
-    exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t -> 'k_var -> Keypair.t
+    exposing:('k_var, _) Data_spec.t -> ('k_var H_list.t -> unit) -> Keypair.t
 
   val prove :
        Proving_key.t
-    -> (unit -> 'a, Proof.t, 'k_var, 'k_value) Data_spec.t
-    -> 'k_var
-    -> 'k_value
+    -> ('k_var, 'k_value) Data_spec.t
+    -> ('k_var H_list.t -> unit)
+    -> 'k_value H_list.t
+    -> Proof.t
 
   val verify :
        Proof.t
     -> Verification_key.t
-    -> (_, bool, _, 'k_value) Data_spec.t
-    -> 'k_value
+    -> (_, 'k_value) Data_spec.t
+    -> 'k_value H_list.t
+    -> bool
 
   val run_unchecked : (unit -> 'a) -> 'a
 

@@ -67,3 +67,11 @@ and Checked : sig
     | Next_auxiliary : (int -> ('a, 's, 'f) t) -> ('a, 's, 'f) t
 end =
   Checked
+
+module Data_spec = struct
+  type (_, _, _) t =
+    | [] : (unit, unit, 'f) t
+    | ( :: ) :
+        ('a, 'b, 'f) Typ.t * ('var, 'value, 'f) t
+        -> ('a * 'var, 'b * 'value, 'f) t
+end

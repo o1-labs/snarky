@@ -255,8 +255,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
       include Restrict_monad.Make2 (Read) (Field)
 
       let read = Read.read
-
-      let run = Read.run
     end
 
     module Alloc = struct
@@ -299,18 +297,17 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
 
-    type ('var, 'value) typ = ('var, 'value) t
-
     module Data_spec = struct
-      type ('r_var, 'r_value, 'k_var, 'k_value) t =
+      type ('a, 'b, 'f) t_ = ('a, 'b, 'f) Types.Data_spec.t =
+        | [] : (unit, unit, 'f) t_
         | ( :: ) :
-            ('var, 'value) typ * ('r_var, 'r_value, 'k_var, 'k_value) t
-            -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-        | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+            ('a, 'b, 'f) Types.Typ.t * ('var, 'value, 'f) t_
+            -> ('a * 'var, 'b * 'value, 'f) t_
+
+      type ('k_var, 'k_value) t = ('k_var, 'k_value, Field.t) t_
 
       let size t =
-        let rec go : type r_var r_value k_var k_value.
-            int -> (r_var, r_value, k_var, k_value) t -> int =
+        let rec go : type k_var k_value. int -> (k_var, k_value) t -> int =
          fun acc t ->
           match t with
           | [] -> acc
@@ -323,16 +320,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let field : (Cvar.t, Field.t) t = field ()
 
-    let hlist (type k_var k_value)
-        (spec0 : (unit, unit, k_var, k_value) Data_spec.t) :
-        ((unit, k_var) H_list.t, (unit, k_value) H_list.t) t =
+    let hlist (type k_var k_value) (spec0 : (k_var, k_value) Data_spec.t) :
+        (k_var H_list.t, k_value H_list.t) t =
       let store xs0 : _ Store.t =
         let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_value) H_list.t
-            -> (unit, k_var) H_list.t Store.t =
+               (k_var, k_value) Data_spec.t
+            -> k_value H_list.t
+            -> k_var H_list.t Store.t =
          fun spec0 xs0 ->
-          let open Data_spec in
           let open H_list in
           match (spec0, xs0) with
           | [], [] -> Store.return H_list.[]
@@ -343,13 +338,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
         in
         go spec0 xs0
       in
-      let read xs0 : (unit, k_value) H_list.t Read.t =
+      let read xs0 : k_value H_list.t Read.t =
         let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_var) H_list.t
-            -> (unit, k_value) H_list.t Read.t =
+               (k_var, k_value) Data_spec.t
+            -> k_var H_list.t
+            -> k_value H_list.t Read.t =
          fun spec0 xs0 ->
-          let open Data_spec in
           let open H_list in
           match (spec0, xs0) with
           | [], [] -> Read.return H_list.[]
@@ -362,10 +356,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       let alloc : _ Alloc.t =
         let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_var) H_list.t Alloc.t =
+            (k_var, k_value) Data_spec.t -> k_var H_list.t Alloc.t =
          fun spec0 ->
-          let open Data_spec in
           let open H_list in
           match spec0 with
           | [] -> Alloc.return H_list.[]
@@ -378,11 +370,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       let check xs0 : (unit, unit) Checked0.t =
         let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_var) H_list.t
+               (k_var, k_value) Data_spec.t
+            -> k_var H_list.t
             -> (unit, unit) Checked0.t =
          fun spec0 xs0 ->
-          let open Data_spec in
           let open H_list in
           let open Checked0.Let_syntax in
           match (spec0, xs0) with
@@ -397,12 +388,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     (* TODO: Do a CPS style thing instead if it ends up being an issue converting
      back and forth. *)
-    let of_hlistable (spec : (unit, unit, 'k_var, 'k_value) Data_spec.t)
-        ~(var_to_hlist : 'var -> (unit, 'k_var) H_list.t)
-        ~(var_of_hlist : (unit, 'k_var) H_list.t -> 'var)
-        ~(value_to_hlist : 'value -> (unit, 'k_value) H_list.t)
-        ~(value_of_hlist : (unit, 'k_value) H_list.t -> 'value) :
-        ('var, 'value) t =
+    let of_hlistable (spec : ('k_var, 'k_value) Data_spec.t)
+        ~(var_to_hlist : 'var -> 'k_var H_list.t)
+        ~(var_of_hlist : 'k_var H_list.t -> 'var)
+        ~(value_to_hlist : 'value -> 'k_value H_list.t)
+        ~(value_of_hlist : 'k_value H_list.t -> 'value) : ('var, 'value) t =
       let {read; store; alloc; check} = hlist spec in
       { read= (fun v -> Read.map ~f:value_of_hlist (read (var_to_hlist v)))
       ; store= (fun x -> Store.map ~f:var_of_hlist (store (value_to_hlist x)))
@@ -462,7 +452,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let perform req = request_witness Typ.unit req
 
-    let constraint_count ?(log = fun ?start _ _ -> ()) (t : (_, _) t) : int =
+    let constraint_count ?(log = fun ?start:_ _ _ -> ()) (t : (_, _) t) : int =
       let next_auxiliary = ref 1 in
       let alloc_var () =
         let v = !next_auxiliary in
@@ -1066,119 +1056,96 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let v = !next_input in
       incr next_input ; Cvar.Unsafe.of_index v
 
-    let rec collect_input_constraints : type checked s r2 k1 k2.
-        int ref -> (checked, r2, k1, k2) t -> k1 -> (checked, s) Checked.t =
-     fun next_input t k ->
+    let rec collect_input_constraints : type s input_var input_val.
+           int ref
+        -> (input_var, input_val) t
+        -> (input_var H_list.t, s) Checked.t =
+     fun next_input t ->
       match t with
-      | [] -> Checked.return k
+      | [] -> Checked.return H_list.[]
       | {alloc; check; _} :: t' ->
           let var = Typ.Alloc.run alloc (alloc_var next_input) in
-          let r = collect_input_constraints next_input t' (k var) in
           let open Checked.Let_syntax in
           let%map () = Checked.with_state (As_prover.return ()) (check var)
-          and r = r in
-          r
+          and r = collect_input_constraints next_input t' in
+          H_list.(var :: r)
 
-    let r1cs_h : type a s checked r2 k1 k2.
+    let r1cs_h : type a s checked k1 k2.
            run:(a, s, checked) Checked.Runner.run
         -> int ref
-        -> (checked, r2, k1, k2) t
-        -> k1
+        -> (k1, k2) t
+        -> (k1 H_list.t -> checked)
         -> R1CS_constraint_system.t =
      fun ~run next_input t k ->
-      let r = collect_input_constraints next_input t k in
+      let r = Checked.map (collect_input_constraints next_input t) ~f:k in
       let run_in_run r state =
         let state, x = Checked.Runner.run r state in
         run x state
       in
       Checked.constraint_system ~run:run_in_run ~num_inputs:(!next_input - 1) r
 
-    let constraint_system (type a s checked k_var k_val) :
-           run:(a, s, checked) Checked.Runner.run
-        -> exposing:(checked, _, 'k_var, _) t
-        -> 'k_var
+    let constraint_system :
+           run:('a, 's, 'checked) Checked.Runner.run
+        -> exposing:('k_var, _) t
+        -> ('k_var H_list.t -> 'checked)
         -> R1CS_constraint_system.t =
      fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
 
     let generate_keypair :
            run:(_, _, 'checked) Checked.Runner.run
-        -> exposing:('checked, _, 'k_var, _) t
-        -> 'k_var
+        -> exposing:('k_var, _) t
+        -> ('k_var H_list.t -> 'checked)
         -> Keypair.t =
      fun ~run ~exposing k ->
       Keypair.generate (constraint_system ~run ~exposing k)
 
+    let primary_input ~next_input t0 xs0 =
+      let primary_input = Field.Vector.create () in
+      let store_field_elt x =
+        let v = !next_input in
+        incr next_input ;
+        Field.Vector.emplace_back primary_input x ;
+        Cvar.Unsafe.of_index v
+      in
+      let rec go : type k_var k_value.
+          (k_var, k_value) t -> k_value H_list.t -> k_var H_list.t =
+       fun t xs ->
+        match (t, xs) with
+        | [], [] -> H_list.[]
+        | {store; _} :: t', value :: xs' ->
+            let var = Typ.Store.run (store value) store_field_elt in
+            H_list.(var :: go t' xs')
+      in
+      (primary_input, go t0 xs0)
+
     let verify :
            Proof.t
         -> Verification_key.t
-        -> ('r_var, bool, 'k_var, 'k_value) t
-        -> 'k_value =
-     fun proof vk t0 ->
-      let primary_input = Field.Vector.create () in
-      let store_field_elt =
-        let next_input = ref 1 in
-        fun x ->
-          let v = !next_input in
-          incr next_input ;
-          Field.Vector.emplace_back primary_input x ;
-          Cvar.Unsafe.of_index v
-      in
-      let rec go : type r_var k_var k_value.
-          (r_var, bool, k_var, k_value) t -> k_value =
-       fun t ->
-        match t with
-        | [] -> Proof.verify proof vk primary_input
-        | {store; _} :: t' ->
-            fun value ->
-              let _var = Typ.Store.run (store value) store_field_elt in
-              go t'
-      in
-      go t0
-
-    let conv : type r_var r_value.
-           (r_var -> Field.Vector.t -> r_value)
-        -> (r_var, r_value, 'k_var, 'k_value) t
-        -> 'k_var
-        -> 'k_value =
-     fun cont0 t0 k0 ->
-      let primary_input = Field.Vector.create () in
-      let store_field_elt =
-        let next_input = ref 1 in
-        fun x ->
-          let v = !next_input in
-          incr next_input ;
-          Field.Vector.emplace_back primary_input x ;
-          Cvar.Unsafe.of_index v
-      in
-      let rec go : type k_var k_value.
-          (r_var, r_value, k_var, k_value) t -> k_var -> k_value =
-       fun t k ->
-        match t with
-        | [] -> cont0 k primary_input
-        | {store; _} :: t' ->
-            fun value ->
-              let var = Typ.Store.run (store value) store_field_elt in
-              go t' (k var)
-      in
-      go t0 k0
+        -> ('k_var, 'k_value) t
+        -> 'k_value H_list.t
+        -> bool =
+     fun proof vk t0 xs0 ->
+      let primary_input, _vars = primary_input ~next_input:(ref 1) t0 xs0 in
+      Proof.verify proof vk primary_input
 
     let prove :
            run:('a, 's, 'checked) Checked.Runner.run
         -> Proving_key.t
-        -> ('checked, Proof.t, 'k_var, 'k_value) t
+        -> ('k_var, 'k_value) t
         -> 's
-        -> 'k_var
-        -> 'k_value =
-     fun ~run key t s k ->
-      conv
-        (fun c primary ->
-          let auxiliary =
-            Checked.auxiliary_input ~run
-              ~num_inputs:(Field.Vector.length primary)
-              c s primary
-          in
-          Proof.create key ~primary ~auxiliary )
-        t k
+        -> ('k_var H_list.t -> 'checked)
+        -> 'k_value H_list.t
+        -> Proof.t =
+     fun ~run key t s k input ->
+      let next_input = ref 1 in
+      let primary, input_vars = primary_input ~next_input t input in
+      let checked = k input_vars in
+      let auxiliary =
+        Checked.auxiliary_input ~run
+          ~num_inputs:(Field.Vector.length primary)
+          checked s primary
+      in
+      Proof.create key ~primary ~auxiliary
   end
 
   module Cvar1 = struct
@@ -1425,8 +1392,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   let generate_keypair ~exposing k =
     Run.generate_keypair ~run:Runner.run ~exposing k
-
-  let conv f = Run.conv (fun x _ -> f x)
 
   let prove key t s k = Run.prove ~run:Runner.run key t s k
 
@@ -1880,12 +1845,13 @@ module Run = struct
       a
 
     let constraint_system ~exposing x =
-      Perform.constraint_system ~run:as_stateful ~exposing x
+      Perform.constraint_system ~run:as_stateful ~exposing (fun xs () -> x xs)
 
     let generate_keypair ~exposing x =
-      Perform.generate_keypair ~run:as_stateful ~exposing x
+      Perform.generate_keypair ~run:as_stateful ~exposing (fun xs () -> x xs)
 
-    let prove pk x = Perform.prove ~run:as_stateful pk x
+    let prove pk spec f =
+      Perform.prove ~run:as_stateful pk spec (fun xs () -> f xs)
 
     let verify pf vk spec = verify pf vk spec
 
