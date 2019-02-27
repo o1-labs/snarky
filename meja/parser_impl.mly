@@ -193,19 +193,27 @@ expr_field:
   | x = as_loc(longident(LIDENT, UIDENT))
     { (x, mkexp ~pos:$loc (Variable (mk_lid (lid_last x)))) }
 
-expr:
+simpl_expr:
   | x = as_loc(val_longident)
     { mkexp ~pos:$loc (Variable x) }
   | x = INT
     { mkexp ~pos:$loc (Int x) }
-  | FUN LBRACKET f = function_from_args
-    { f }
-  | FUN LBRACE f = function_from_implicit_args
-    { f }
   | LBRACKET e = expr_or_bare_tuple RBRACKET
     { e }
   | LBRACE es = block RBRACE
     { es }
+  | e = expr_record
+    { e }
+  | e = simpl_expr DOT field = as_loc(longident(LIDENT, UIDENT))
+    { mkexp ~pos:$loc (Field (e, field)) }
+
+expr:
+  | x = simpl_expr
+    { x }
+  | FUN LBRACKET f = function_from_args
+    { f }
+  | FUN LBRACE f = function_from_implicit_args
+    { f }
   | LET x = pat EQUAL lhs = expr SEMI rhs = expr
     { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
   | f = expr LBRACKET es = expr_list RBRACKET
@@ -218,8 +226,6 @@ expr:
       mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [e])) }
   | SWITCH LBRACKET e = expr_or_bare_tuple RBRACKET LBRACE rev_cases = list(match_case, {}) RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
-  | e = expr_record
-    { e }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Ctor (id, args)) }
 

@@ -116,6 +116,7 @@ and expression_desc =
   | Constraint of expression * type_expr
   | Tuple of expression list
   | Match of expression * (pattern * expression) list
+  | Field of expression * lid
   | Record of (lid * expression) list * expression option
   | Ctor of lid * expression option
   | Unifiable of {mutable expression: expression option; name: str; id: int}

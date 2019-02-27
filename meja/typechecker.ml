@@ -442,6 +442,78 @@ let rec get_expression env expected exp =
             (env, (p, e)) )
       in
       ({exp_loc= loc; exp_type= expected; exp_desc= Match (e, cases)}, env)
+  | Field (e, field) ->
+    let field_info =
+      match field.txt with
+      | Lident _ -> None
+      | Ldot (path, _) -> (
+        match Envi.TypeDecl.find_of_field field env with
+        | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
+          ->
+            let vars, bound_vars, env =
+              Envi.Type.refresh_vars tdec_params (Map.empty (module Int)) env
+            in
+            let ident = Location.mkloc (Longident.Ldot (path, decl.tdec_ident.txt)) loc in
+            let decl_type, env =
+              Envi.TypeDecl.mk_typ ~loc ~params:vars ~ident decl env
+            in
+            let {fld_type; _} = List.nth_exn field_decls i in
+            let fld_type, env = Envi.Type.copy fld_type bound_vars env in
+            let env = check_type env expected fld_type in
+            Some (fld_type, decl_type, env)
+        | _ -> None)
+      | Lapply _ -> failwith "Unhandled Lapply in field name"
+    in
+    let (typ, decl_type, env, resolved) = match field_info with
+    | Some (fld_type, decl_type, env) -> (fld_type, decl_type, env, true)
+    | None ->
+      let fld_type = expected in
+      let decl_type, env = Envi.Type.mkvar ~loc None env in
+      (fld_type, decl_type, env, false)
+    in
+    let e, env = get_expression env decl_type e in
+    let typ, env =
+      if resolved then typ, env
+      else
+        match Envi.TypeDecl.find_unaliased_of_type e.exp_type env with
+        | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) -> (
+            match List.find field_decls ~f:(fun {fld_ident; _} ->
+              match field.txt with
+              | Lident field -> String.equal fld_ident.txt field
+              | _ -> false (* This case shouldn't happen! *))
+            with
+            | Some {fld_type; _} ->
+              let fld_type, env = Envi.Type.copy fld_type bound_vars env in
+              let env = check_type env typ fld_type in
+              (fld_type, env)
+            | None -> raise (Error (loc, Wrong_record_field (field.txt, e.exp_type)))
+            )
+        | _ -> (
+          match Envi.TypeDecl.find_of_field field env with
+          | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
+            ->
+              let vars, bound_vars, env =
+                Envi.Type.refresh_vars tdec_params (Map.empty (module Int)) env
+              in
+              let ident =
+                Longident.(
+                  match field.txt with
+                  | Lident _ -> Location.mkloc (Lident decl.tdec_ident.txt) loc
+                  | Ldot (path, _) ->
+                      Location.mkloc (Ldot (path, decl.tdec_ident.txt)) loc
+                  | _ -> failwith "Unhandled Lapply in field name")
+              in
+              let e_typ, env =
+                Envi.TypeDecl.mk_typ ~loc ~params:vars ~ident decl env
+              in
+              let env = check_type env e.exp_type e_typ in
+              let {fld_type; _} = List.nth_exn field_decls i in
+              let fld_type, env = Envi.Type.copy fld_type bound_vars env in
+              let fld_type, env = Envi.Type.copy fld_type bound_vars env in
+              (fld_type, env)
+          | _ -> raise (Error (loc, Unbound ("record field", field))) )
+      in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Field (e, field)}, env)
   | Record ([], _) -> raise (Error (loc, Empty_record))
   | Record (((field, _) :: _ as fields), ext) ->
       let typ, ext, env =
