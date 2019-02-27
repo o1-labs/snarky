@@ -11,6 +11,9 @@ type error =
   | Pattern_declaration of string * string
   | Empty_record
   | Wrong_type_description of string * str
+  | Unifiable_expr
+  | No_unifiable_expr
+  | No_instance of type_expr
 
 exception Error of Location.t * error
 
@@ -79,7 +82,8 @@ let rec check_type_aux typ ctyp env =
     | Ok env -> env
     | Unequal_lengths ->
         raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) )
-  | Tarrow (typ1, typ2), Tarrow (ctyp1, ctyp2) ->
+  | Tarrow (typ1, typ2, Explicit), Tarrow (ctyp1, ctyp2, Explicit)
+   |Tarrow (typ1, typ2, Implicit), Tarrow (ctyp1, ctyp2, Implicit) ->
       env |> check_type_aux typ1 ctyp1 |> check_type_aux typ2 ctyp2
   | Tctor variant, Tctor constr_variant ->
       if Int.equal variant.var_decl_id constr_variant.var_decl_id then
@@ -106,6 +110,13 @@ let check_type env typ constr_typ =
       raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
   | env -> env
 
+let rec add_implicits ~loc implicits typ env =
+  match implicits with
+  | [] -> (typ, env)
+  | typ' :: implicits ->
+      let typ, env = add_implicits ~loc implicits typ env in
+      Envi.Type.mk ~loc (Tarrow (typ', typ, Implicit)) env
+
 let rec free_type_vars ?depth typ =
   let free_type_vars = free_type_vars ?depth in
   match typ.type_desc with
@@ -122,14 +133,14 @@ let rec free_type_vars ?depth typ =
       Set.union_list (module Envi.Type) (List.map ~f:free_type_vars var_params)
   | Ttuple typs ->
       Set.union_list (module Envi.Type) (List.map ~f:free_type_vars typs)
-  | Tarrow (typ1, typ2) ->
+  | Tarrow (typ1, typ2, _) ->
       Set.union (Envi.Type.type_vars ?depth typ1) (free_type_vars typ2)
 
 let polymorphise typ env =
   let loc = typ.type_loc in
   let typ_vars = Set.to_list (free_type_vars ~depth:env.Envi.depth typ) in
-  match typ.type_desc with
-  | Tpoly (vars, typ) -> Envi.Type.mk ~loc (Tpoly (typ_vars @ vars, typ)) env
+  match typ_vars with
+  | [] -> (typ, env)
   | _ -> Envi.Type.mk ~loc (Tpoly (typ_vars, typ)) env
 
 let add_polymorphised name typ env =
@@ -157,7 +168,9 @@ let get_field (field : lid) env =
         Envi.TypeDecl.mk_typ ~loc ~params:vars ~ident:name decl env
       in
       let {fld_type; _} = List.nth_exn field_decls i in
-      let typ, env = Envi.Type.mk ~loc (Tarrow (rcd_type, fld_type)) env in
+      let typ, env =
+        Envi.Type.mk ~loc (Tarrow (rcd_type, fld_type, Explicit)) env
+      in
       Envi.Type.copy typ bound_vars env
   | _ -> raise (Error (loc, Unbound ("record field", field)))
 
@@ -169,7 +182,9 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
           String.equal fld_ident.txt name )
     with
     | Some {fld_type; _} ->
-        let typ, env = Envi.Type.mk ~loc (Tarrow (typ, fld_type)) env in
+        let typ, env =
+          Envi.Type.mk ~loc (Tarrow (typ, fld_type, Explicit)) env
+        in
         Envi.Type.copy typ bound_vars env
     | None -> get_field field env )
   | _ -> get_field field env
@@ -208,8 +223,13 @@ let get_ctor (name : lid) env =
         | Ctor_tuple [typ] -> (typ, env)
         | Ctor_tuple typs -> Envi.Type.mk ~loc (Ttuple typs) env
       in
-      let typ, env = Envi.Type.mk ~loc (Tarrow (args_typ, typ)) env in
-      Envi.Type.copy typ (Map.empty (module Int)) env
+      let typ, env =
+        Envi.Type.mk ~loc (Tarrow (args_typ, typ, Explicit)) env
+      in
+      let _, bound_vars, env =
+        Envi.Type.refresh_vars params (Map.empty (module Int)) env
+      in
+      Envi.Type.copy typ bound_vars env
   | _ -> raise (Error (loc, Unbound ("constructor", name)))
 
 let rec check_pattern_desc ~loc ~add env typ = function
@@ -268,6 +288,7 @@ let rec check_pattern_desc ~loc ~add env typ = function
             raise (Error (loc, Pattern_declaration ("constructor", name))) )
           ~modules:(fun ~key:name ~data:_ _ ->
             raise (Error (loc, Pattern_declaration ("module", name))) )
+          ~instances:(fun ~key:_ ~data:_ env -> env)
       in
       Envi.push_scope scope2 env
   | PInt _ -> check_type env typ Envi.Core.Type.int
@@ -281,7 +302,9 @@ let rec check_pattern_desc ~loc ~add env typ = function
       List.fold ~init:env fields ~f:(fun env (field, p) ->
           let loc = {field.loc with Location.loc_end= p.pat_loc.loc_end} in
           let typ', env = Envi.Type.mkvar ~loc None env in
-          let arrow_type, env = Envi.Type.mk ~loc (Tarrow (typ, typ')) env in
+          let arrow_type, env =
+            Envi.Type.mk ~loc (Tarrow (typ, typ', Explicit)) env
+          in
           let field_typ, env =
             match field_decls with
             | Some (field_decls, bound_vars) ->
@@ -296,7 +319,9 @@ let rec check_pattern_desc ~loc ~add env typ = function
         if Option.is_some arg then Envi.Type.mkvar ~loc None env
         else Envi.Type.mk ~loc (Ttuple []) env
       in
-      let arrow_typ, env = Envi.Type.mk ~loc (Tarrow (arg_typ, typ)) env in
+      let arrow_typ, env =
+        Envi.Type.mk ~loc (Tarrow (arg_typ, typ, Explicit)) env
+      in
       let ctor_typ, env = get_ctor name env in
       let ctor_typ = {ctor_typ with type_loc= name.loc} in
       let env = check_type env arrow_typ ctor_typ in
@@ -317,7 +342,7 @@ let rec get_expression env exp =
             let e, env = get_expression env e in
             let retvar, env = Envi.Type.mkvar ~loc None env in
             let arrow, env =
-              Envi.Type.mk ~loc (Tarrow (e.exp_type, retvar)) env
+              Envi.Type.mk ~loc (Tarrow (e.exp_type, retvar, Explicit)) env
             in
             let env = check_type env f_typ arrow in
             ((retvar, env), e) )
@@ -325,11 +350,12 @@ let rec get_expression env exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
       let typ, env = Envi.find_name name env in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Variable name}, env)
+      let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
+      Envi.Type.generate_implicits e env
   | Int i ->
       let typ = Envi.Core.Type.int in
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
-  | Fun (p, body) ->
+  | Fun (p, body, explicit) ->
       let env = Envi.open_expr_scope env in
       let p_typ, env = Envi.Type.mkvar ~loc None env in
       (* In OCaml, function arguments can't be polymorphic, so each check refines
@@ -337,8 +363,10 @@ let rec get_expression env exp =
       let env = check_pattern ~add:Envi.add_name env p_typ p in
       let body, env = get_expression env body in
       let env = Envi.close_expr_scope env in
-      let typ, env = Envi.Type.mk ~loc (Tarrow (p_typ, body.exp_type)) env in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Fun (p, body)}, env)
+      let typ, env =
+        Envi.Type.mk ~loc (Tarrow (p_typ, body.exp_type, explicit)) env
+      in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Fun (p, body, explicit)}, env)
   | Seq (e1, e2) ->
       let e1, env = get_expression env e1 in
       let e2, env = get_expression env e2 in
@@ -401,7 +429,7 @@ let rec get_expression env exp =
             let loc = {field.loc with Location.loc_end= e.exp_loc.loc_end} in
             let e, env = get_expression env e in
             let arrow_type, env =
-              Envi.Type.mk ~loc (Tarrow (typ, e.exp_type)) env
+              Envi.Type.mk ~loc (Tarrow (typ, e.exp_type, Explicit)) env
             in
             let field_typ, env =
               match field_decls with
@@ -423,22 +451,62 @@ let rec get_expression env exp =
             (typ, None, env)
       in
       let typ, env = Envi.Type.mkvar ~loc None env in
-      let arrow_typ, env = Envi.Type.mk ~loc (Tarrow (arg_typ, typ)) env in
+      let arrow_typ, env =
+        Envi.Type.mk ~loc (Tarrow (arg_typ, typ, Explicit)) env
+      in
       let ctor_typ, env = get_ctor name env in
       let env = check_type env arrow_typ ctor_typ in
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
+  | Unifiable _ -> raise (Error (loc, Unifiable_expr))
 
-and check_binding (env : Envi.t) p e : 's =
+and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let e, env = get_expression env e in
-  let env = check_pattern ~add:add_polymorphised env e.exp_type p in
-  (p, e, env)
+  let exp_type, env = Envi.Type.flatten e.exp_type env in
+  let e = {e with exp_type} in
+  let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
+  let implicit_vars, env =
+    Envi.Type.flattened_implicit_vars ~toplevel ~unify:check_type typ_vars env
+  in
+  let loc = e.exp_loc in
+  let e, env =
+    List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
+        match var.exp_desc with
+        | Unifiable {expression= None; name; _} ->
+            let exp_type, env =
+              Envi.Type.mk ~loc
+                (Tarrow (var.exp_type, e.exp_type, Implicit))
+                env
+            in
+            let p = {pat_desc= PVariable name; pat_loc= loc} in
+            ({exp_desc= Fun (p, e, Implicit); exp_type; exp_loc= loc}, env)
+        | _ -> raise (Error (var.exp_loc, No_unifiable_expr)) )
+  in
+  let loc = p.pat_loc in
+  match (p.pat_desc, implicit_vars) with
+  | PVariable str, _ ->
+      let typ, env =
+        if Set.is_empty typ_vars then (e.exp_type, env)
+        else Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, e.exp_type)) env
+      in
+      let env = Envi.add_name str typ env in
+      (p, e, env)
+  | _, [] ->
+      let env = check_pattern ~add:add_polymorphised env e.exp_type p in
+      (p, e, env)
+  | _, implicit :: _ ->
+      raise (Error (e.exp_loc, No_instance implicit.exp_type))
 
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
   | Value (p, e) ->
-      let p, e, env = check_binding env p e in
+      let p, e, env = check_binding ~toplevel:true env p e in
       (env, {stmt with stmt_desc= Value (p, e)})
+  | Instance (name, e) ->
+      let p = {pat_desc= PVariable name; pat_loc= name.loc} in
+      let _, e, env = check_binding ~toplevel:true env p e in
+      let env = Envi.add_implicit_instance name.txt e.exp_type env in
+      (env, {stmt with stmt_desc= Instance (name, e)})
   | TypeDecl decl ->
       let decl, env = Envi.TypeDecl.import decl env in
       (env, {stmt with stmt_desc= TypeDecl decl})
@@ -497,6 +565,14 @@ let rec report_error ppf = function
         "Internal error: Expected a type declaration of kind %s, but instead \
          got %s"
         kind name.txt
+  | Unifiable_expr ->
+      fprintf ppf "Internal error: Unexpected implicit variable."
+  | No_unifiable_expr ->
+      fprintf ppf "Internal error: Expected an unresolved implicit variable."
+  | No_instance typ ->
+      fprintf ppf
+        "Could not find an instance for an implicit variable of type @[%a@]."
+        pp_typ typ
 
 let () =
   Location.register_error_of_exn (function
