@@ -21,3 +21,9 @@ let c = {...x, a: 35};
 let d = (a.b, b.b);
 
 let e = a.X.a;
+
+let f = {a: true, b: (), c: 15}.a;
+
+let g = {X.a: (), b: (), c: ()}.a;
+
+let h = {X.a: (), b: (), c: ()}.X.a;
