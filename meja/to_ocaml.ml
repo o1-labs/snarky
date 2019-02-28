@@ -81,6 +81,7 @@ let rec of_expression_desc ?loc = function
       Exp.match_ ?loc (of_expression e)
         (List.map cases ~f:(fun (p, e) ->
              Exp.case (of_pattern p) (of_expression e) ))
+  | Field (e, field) -> Exp.field ?loc (of_expression e) field
   | Record (fields, ext) ->
       Exp.record ?loc
         (List.map fields ~f:(fun (f, e) -> (f, of_expression e)))
