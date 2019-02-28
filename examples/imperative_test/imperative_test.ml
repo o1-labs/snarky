@@ -2,7 +2,7 @@ open Snarky
 open Snark
 
 (* Use a module expression *)
-let test (type f v) ((module I) : (f, v) m) x y =
+let test (type f) ((module I) : f m) x y =
   let open I.Field in
   let z = x / y in
   Assert.equal x (y * z) ;
@@ -13,7 +13,7 @@ module T (Intf : Snark_intf.Run) = struct
 
   let test x y z =
     (* Call a module expression *)
-    let a = test ((module Intf) : (Field.Constant.t, Var.t) m) x y in
+    let a = test ((module Intf) : Field.Constant.t m) x y in
     (* Call within a functor *)
     Field.(x * y * z * a)
 end
@@ -36,7 +36,7 @@ end
 type 'a res = (module Res with type t = 'a)
 
 (* Call within a functor using a module expression *)
-let test2 (type f v) ((module I) : (f, v) m) x =
+let test2 (type f) ((module I) : f m) x =
   let ((module M) : f Cvar.t res) =
     ( module struct
       module T1 = T1 (I)
@@ -48,7 +48,7 @@ let test2 (type f v) ((module I) : (f, v) m) x =
   in
   M.res
 
-let test3 (type f v) ((module I) : (f, v) m) x = test (module I) x I.Field.one
+let test3 (type f) ((module I) : f m) x = test (module I) x I.Field.one
 
 let prove () =
   let ((module I) as i) = make (module Backends.Mnt4.GM) in
