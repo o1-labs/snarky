@@ -2171,8 +2171,8 @@ module Run = struct
 
       let run_checked ~exposing ?handler (proof_system : _ t) =
         Or_error.map
-        (run_checked ~run:as_stateful ~exposing ?handler proof_system ())
-        ~f:snd
+          (run_checked ~run:as_stateful ~exposing ?handler proof_system ())
+          ~f:snd
 
       let check ~exposing ?handler (proof_system : _ t) =
         check ~run:as_stateful ~exposing ?handler proof_system ()
