@@ -666,7 +666,7 @@ let rec check_statement env stmt =
       let env = Envi.add_module name m_env env in
       (env, {stmt with stmt_desc= Module (name, m)})
   | Open name ->
-      let m = Envi.find_module ~loc name env in
+      let m, env = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)
 
 and check_module_expr env m =
@@ -676,11 +676,42 @@ and check_module_expr env m =
       let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
       (env, {m with mod_desc= Structure stmts})
   | ModName name ->
-      let env = Envi.push_scope (Envi.find_module ~loc name env) env in
+      let m', env = Envi.find_module ~loc name env in
+      let env = Envi.push_scope m' env in
       (env, m)
 
-let check (ast : statement list) =
-  List.fold_map ast ~init:Envi.Core.env ~f:check_statement
+let rec check_signature_item env item =
+  let loc = item.sig_loc in
+  match item.sig_desc with
+  | SValue (name, typ) ->
+      let typ, env = Envi.Type.import ~must_find:false typ env in
+      add_polymorphised name typ env
+  | SInstance (name, typ) ->
+      let typ, env = Envi.Type.import ~must_find:false typ env in
+      let env = add_polymorphised name typ env in
+      Envi.add_implicit_instance name.txt typ env
+  | STypeDecl decl ->
+      let _decl, env = Envi.TypeDecl.import decl env in
+      env
+  | SModule (name, signature) ->
+      let env = Envi.open_module env in
+      let env =
+        match signature with
+        | Signature signature -> check_signature env signature
+        | SigName lid ->
+            let m, env = Envi.find_module ~loc lid env in
+            Envi.push_scope m env
+        | SigAbstract -> env
+      in
+      let m_env, env = Envi.pop_module ~loc env in
+      Envi.add_module name m_env env
+  | SModType (_name, _signature) -> env
+
+and check_signature env signature =
+  List.fold ~init:env signature ~f:check_signature_item
+
+let check (ast : statement list) (env : Envi.t) =
+  List.fold_map ast ~init:env ~f:check_statement
 
 (* Error handling *)
 

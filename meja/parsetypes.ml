@@ -142,7 +142,6 @@ and signature_desc =
   | STypeDecl of type_decl
   | SModule of str * module_sig
   | SModType of str * module_sig
-  | SOpen of str
 
 and module_sig =
   | Signature of signature_item list

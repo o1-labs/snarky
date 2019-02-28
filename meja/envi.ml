@@ -231,10 +231,19 @@ module TypeEnvi = struct
     {env with instances= (id, typ) :: env.instances}
 end
 
-type t = {scope_stack: Scope.t list; type_env: TypeEnvi.t; depth: int}
+type 'a or_deferred = Immediate of 'a | Deferred of string
+
+type t =
+  { scope_stack: Scope.t list
+  ; type_env: TypeEnvi.t
+  ; depth: int
+  ; external_modules: Scope.t or_deferred name_map }
 
 let empty =
-  {scope_stack= [Scope.empty Scope.Module]; type_env= TypeEnvi.empty; depth= 0}
+  { scope_stack= [Scope.empty Scope.Module]
+  ; type_env= TypeEnvi.empty
+  ; depth= 0
+  ; external_modules= Map.empty (module String) }
 
 let current_scope {scope_stack; _} =
   match List.hd scope_stack with
@@ -313,10 +322,46 @@ let add_module (name : str) m =
               | `Both (_, x) | `Right x ->
                   Some (Longident.add_outer_module name.txt x) ) } )
 
+let load_module :
+    (loc:Location.t -> name:string -> t -> string -> Scope.t * t) ref =
+  ref (fun ~loc ~name _env _filename ->
+      raise (Error (loc, Unbound_module (Lident name))) )
+
+let register_external_module name x env =
+  {env with external_modules= Map.set ~key:name ~data:x env.external_modules}
+
+let rec outer_mod_name ~loc lid =
+  let outer_mod_name = outer_mod_name ~loc in
+  match lid with
+  | Lident name -> (name, None)
+  | Ldot (lid, name) -> (
+    match outer_mod_name lid with
+    | outer_name, Some lid -> (outer_name, Some (Ldot (lid, name)))
+    | outer_name, None -> (outer_name, Some (Lident name)) )
+  | Lapply (lid1, lid2) -> (
+    match outer_mod_name lid1 with
+    | outer_name, Some lid -> (outer_name, Some (Lapply (lid, lid2)))
+    | _, None ->
+        (* You can't apply a toplevel module, so we just error out instead. *)
+        raise (Error (loc, Unbound_module lid)) )
+
 let find_module ~loc (lid : lid) env =
   match List.find_map ~f:(Scope.find_module ~loc lid.txt) env.scope_stack with
-  | Some m -> m
-  | None -> raise (Error (loc, Unbound_module lid.txt))
+  | Some m -> (m, env)
+  | None -> (
+      let name, lid = outer_mod_name ~loc lid.txt in
+      let m, env =
+        match Map.find env.external_modules name with
+        | Some (Immediate m) -> (m, env)
+        | Some (Deferred filename) -> !load_module ~loc ~name env filename
+        | None -> raise (Error (loc, Unbound_module (Lident name)))
+      in
+      match lid with
+      | Some lid -> (
+        match Scope.find_module ~loc lid m with
+        | Some m -> (m, env)
+        | None -> raise (Error (loc, Unbound_module (Lident name))) )
+      | None -> (m, env) )
 
 let add_implicit_instance name typ env =
   let path = Lident name in
