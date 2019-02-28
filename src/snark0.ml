@@ -1074,7 +1074,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     module Proof_system = struct
       type ('checked, 'inputs, 's) proof_system =
         { compute: unit -> 'checked
-        ; check_inputs: (unit, unit) Checked.t
+        ; check_inputs: (unit, 's) Checked.t
         ; provide_inputs: (unit, 'inputs) H_list.t -> unit
         ; has_input: bool ref
         ; has_run_with_input: bool ref
@@ -1086,7 +1086,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let rec allocate_inputs : type checked r2 k1 k2.
              Field.Vector.t
-          -> (unit, unit) Checked.t
+          -> (unit, 's) Checked.t
           -> int ref
           -> (checked, unit, k1, k2) t
           -> (unit -> k1)
