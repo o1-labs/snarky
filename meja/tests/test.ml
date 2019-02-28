@@ -10,7 +10,7 @@ let b =
   let y = x in
   y
 
-let c = x ; y
+let c (ignore : int -> unit) = ignore x ; y
 
 let d x = x
 

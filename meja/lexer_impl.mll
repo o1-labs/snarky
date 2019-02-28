@@ -55,6 +55,7 @@ rule token = parse
   | '_' { UNDERSCORE }
   | '|' { BAR }
   | ''' { QUOT }
+  | "..." { DOTDOTDOT }
   | '.' { DOT }
 
   | "!" symbolchar * as op { PREFIXOP op }
