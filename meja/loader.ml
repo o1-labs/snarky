@@ -6,7 +6,7 @@ let load ~loc ~name env filename =
   let cmi_info = read_cmi filename in
   let signature = Of_ocaml.to_signature cmi_info.cmi_sign in
   let scopes = env.Envi.scope_stack in
-  let env = Envi.{env with scope_stack= [Scope.empty Scope.Module]} in
+  let env = Envi.{env with scope_stack= (Scope.empty Scope.Module) :: Envi.Core.env.scope_stack} in
   let env = Typechecker.check_signature env signature in
   Format.(fprintf err_formatter "Loaded@.") ;
   let m, env = Envi.pop_module ~loc env in
