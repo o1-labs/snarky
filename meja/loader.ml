@@ -24,7 +24,8 @@ let load ~loc ~name env filename =
 
 let () = Envi.load_module := load
 
-let modname_of_filename file = String.capitalize (Filename.chop_extension file)
+let modname_of_filename file =
+  String.capitalize (Filename.chop_extension (Filename.basename file))
 
 let load_directory env dirname =
   let files = try Sys.readdir dirname with Sys_error _ -> [||] in
