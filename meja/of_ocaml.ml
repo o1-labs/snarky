@@ -68,7 +68,7 @@ let to_type_decl_desc decl =
   | None, Type_variant ctors -> TVariant (List.map ctors ~f:to_ctor_decl)
 
 let can_create_signature_item item =
-  match item with Sig_type _ | Sig_class _ -> false | _ -> true
+  match item with Sig_typext _ | Sig_class _ -> false | _ -> true
 
 let rec to_signature_item item =
   match item with
