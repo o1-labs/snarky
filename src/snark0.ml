@@ -1196,36 +1196,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let set_inputs {provide_inputs; _} inputs = provide_inputs inputs
 
-      let clear_inputs {has_input; has_run_with_input; _} =
-        has_input := false ;
-        has_run_with_input := false
-
-      let set_proving_key proof_system key =
-        proof_system.proving_key <- Some key
-
-      let proving_key {proving_key; _} = proving_key
-
-      let set_verification_key proof_system key =
-        proof_system.verification_key <- Some key
-
-      let verification_key {verification_key; _} = verification_key
-
-      let clear_keys proof_system =
-        proof_system.proving_key <- None ;
-        proof_system.verification_key <- None
-
-      let set_proving_key_path proof_system path =
-        proof_system.proving_key_path <- Some path
-
-      let clear_proving_key_path proof_system =
-        proof_system.proving_key_path <- None
-
-      let set_verification_key_path proof_system path =
-        proof_system.verification_key_path <- Some path
-
-      let clear_verification_key_path proof_system =
-        proof_system.verification_key_path <- None
-
       let run_proof_system ~run proof_system =
         let {prover_state; _} = proof_system in
         let prover_state, () =
@@ -1291,7 +1261,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         match proof_system.prover_state.prover_state with
         | Some s -> (s, a)
         | None ->
-            failwith "run_and_check': Expected a value from run, got None."
+            failwith "run_with_input: Expected a value from run, got None."
 
       let run_unchecked ~run ?exposing ?handler proof_system s =
         let {prover_state; _} = proof_system in
@@ -1299,23 +1269,27 @@ module Make_basic (Backend : Backend_intf.S) = struct
         <- {prover_state with eval_constraints= false; system= None} ;
         run_with_input ~run ?exposing ?handler proof_system s
 
-      let run_checked ~run ?exposing ?handler proof_system s =
+      let run_checked' ~run ?exposing ?handler proof_system s =
         let {prover_state; _} = proof_system in
         let system = R1CS_constraint_system.create () in
         proof_system.prover_state
         <- {prover_state with eval_constraints= true; system= Some system} ;
         match run_with_input ~run ?exposing ?handler proof_system s with
         | exception e -> Or_error.of_exn e
-        | s, x ->
+        | s, x -> Ok (s, x)
+
+      let run_checked ~run ?exposing ?handler proof_system s =
+        Or_error.map (run_checked' ~run ?exposing ?handler proof_system s)
+          ~f:(fun (s, x) ->
             let s', x =
               As_prover.run x
                 (Checked.Runner.get_value proof_system.prover_state)
                 s
             in
-            Ok (s', x)
+            (s', x) )
 
       let check ~run ?exposing ?handler proof_system s =
-        Or_error.is_ok (run_checked ~run ?exposing ?handler proof_system s)
+        Or_error.is_ok (run_checked' ~run ?exposing ?handler proof_system s)
 
       let read_proving_key proof_system =
         match proof_system.proving_key_path with
@@ -1728,6 +1702,34 @@ module Make_basic (Backend : Backend_intf.S) = struct
         assert (lt = correct_answer) )
 
   include Checked
+
+  module Proof_system = struct
+    open Run.Proof_system
+
+    type ('a, 's, 'inputs) t = (('a, 's) Checked.t, 'inputs, 's) proof_system
+
+    let create = create
+
+    let digest (proof_system : _ t) = digest ~run:Runner.run proof_system
+
+    let generate_keypair (proof_system : _ t) =
+      generate_keypair ~run:Runner.run proof_system
+
+    let run_unchecked ~exposing ?handler (proof_system : _ t) =
+      run_unchecked ~run:Runner.run ~exposing ?handler proof_system
+
+    let run_checked ~exposing ?handler (proof_system : _ t) =
+      run_checked ~run:Runner.run ~exposing ?handler proof_system
+
+    let check ~exposing ?handler (proof_system : _ t) =
+      check ~run:Runner.run ~exposing ?handler proof_system
+
+    let prove ~exposing ?proving_key ?handler (proof_system : _ t) =
+      prove ~run:Runner.run ~exposing ?proving_key ?handler proof_system
+
+    let verify ~exposing ?verification_key (proof_system : _ t) =
+      verify ~run:Runner.run ~exposing ?verification_key proof_system
+  end
 
   module Perform = struct
     type ('a, 't) t = 't -> unit Runner.run_state -> unit Runner.run_state * 'a
@@ -2151,6 +2153,36 @@ module Run = struct
     end
 
     module Handle = Handle
+
+    module Proof_system = struct
+      open Run.Proof_system
+
+      type ('a, 'inputs) t = (unit -> 'a, 'inputs, unit) proof_system
+
+      let create = create
+
+      let digest (proof_system : _ t) = digest ~run:as_stateful proof_system
+
+      let generate_keypair (proof_system : _ t) =
+        generate_keypair ~run:as_stateful proof_system
+
+      let run_unchecked ~exposing ?handler (proof_system : _ t) =
+        snd (run_unchecked ~run:as_stateful ~exposing ?handler proof_system ())
+
+      let run_checked ~exposing ?handler (proof_system : _ t) =
+        Or_error.map
+        (run_checked ~run:as_stateful ~exposing ?handler proof_system ())
+        ~f:snd
+
+      let check ~exposing ?handler (proof_system : _ t) =
+        check ~run:as_stateful ~exposing ?handler proof_system ()
+
+      let prove ~exposing ?proving_key ?handler (proof_system : _ t) =
+        prove ~run:as_stateful ~exposing ?proving_key ?handler proof_system ()
+
+      let verify ~exposing ?verification_key (proof_system : _ t) =
+        verify ~run:as_stateful ~exposing ?verification_key proof_system
+    end
 
     let assert_ ?label c = run (assert_ ?label c)
 
