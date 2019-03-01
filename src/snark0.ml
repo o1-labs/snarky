@@ -1208,6 +1208,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let keypair = Keypair.generate (constraint_system ~run proof_system) in
         proof_system.proving_key <- Some keypair.pk ;
         proof_system.verification_key <- Some keypair.vk ;
+        (* Write keys to the corresponding files. *)
+        Option.iter proof_system.proving_key_path ~f:(fun path ->
+            Out_channel.write_all path ~data:(Proving_key.to_string keypair.pk)
+        ) ;
+        Option.iter proof_system.verification_key_path ~f:(fun path ->
+            Out_channel.write_all path
+              ~data:(Verification_key.to_string keypair.vk) ) ;
         keypair
 
       let run_with_input ~run ~public_input ?system ?eval_constraints ?handler
@@ -1256,23 +1263,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | Some path -> Some (Proving_key.of_string (In_channel.read_all path))
         | None -> None
 
-      let write_proving_key proof_system key =
-        match proof_system.proving_key_path with
-        | Some path ->
-            Out_channel.write_all path ~data:(Proving_key.to_string key)
-        | None -> ()
-
       let read_verification_key proof_system =
         match proof_system.verification_key_path with
         | Some path ->
             Some (Verification_key.of_string (In_channel.read_all path))
         | None -> None
-
-      let write_verification_key proof_system key =
-        match proof_system.verification_key_path with
-        | Some path ->
-            Out_channel.write_all path ~data:(Verification_key.to_string key)
-        | None -> ()
 
       let prove ~run ~public_input ?proving_key ?handler proof_system s =
         let system = R1CS_constraint_system.create () in
@@ -1286,12 +1281,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
             [ (fun () -> proving_key)
             ; (fun () -> proof_system.proving_key)
             ; (fun () -> read_proving_key proof_system)
-            ; (fun () ->
-                let {Keypair.pk; vk} = generate_keypair ~run proof_system in
-                write_verification_key proof_system vk ;
-                Some pk ) ]
+            ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
-        write_proving_key proof_system proving_key ;
         Proof.create proving_key ~primary:input ~auxiliary:aux
 
       let verify ~run ~public_input ?verification_key proof_system proof =
@@ -1309,7 +1300,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
                   "Could not verify the proof; no verification key has been \
                    provided." ) ]
         in
-        write_verification_key proof_system verification_key ;
         Proof.verify proof verification_key input
     end
 
