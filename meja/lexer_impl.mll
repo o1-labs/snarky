@@ -49,6 +49,7 @@ rule token = parse
   | ')' { RBRACKET }
   | "->" { DASHGT }
   | "=>" { EQUALGT }
+  | "+=" { PLUSEQUAL }
   | '=' { EQUAL }
   | ':' { COLON }
   | ',' { COMMA }
@@ -56,6 +57,7 @@ rule token = parse
   | '|' { BAR }
   | ''' { QUOT }
   | "..." { DOTDOTDOT }
+  | ".." { DOTDOT }
   | '.' { DOT }
 
   | "!" symbolchar * as op { PREFIXOP op }

@@ -91,7 +91,7 @@ module Scope = struct
     | TAbstract | TAlias _ | TOpen -> scope
     | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
     | TVariant ctors -> List.foldi ~f:(add_ctor decl) ~init:scope ctors
-    | TExtend (_, ctors) ->
+    | TExtend (_, _, ctors) ->
         (* Don't add the identifier to the scope *)
         let scope = {scope with type_decls} in
         List.foldi ~f:(add_ctor decl) ~init:scope ctors
@@ -695,7 +695,11 @@ module TypeDecl = struct
     (* Make sure the declaration is available to lookup for recursive types. *)
     let decl = {decl with tdec_id; tdec_params} in
     let scope, env = pop_expr_scope env in
-    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
+    let env =
+      match decl.tdec_desc with
+      | TExtend _ -> env
+      | _ -> map_current_scope ~f:(Scope.add_type_declaration decl) env
+    in
     let env = push_scope scope env in
     let tdec_desc, env =
       match decl.tdec_desc with
@@ -713,7 +717,7 @@ module TypeDecl = struct
                 (env, {field with fld_type}) )
           in
           (TRecord fields, env)
-      | TVariant ctors | TExtend (_, ctors) -> (
+      | TVariant ctors | TExtend (_, _, ctors) -> (
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
                 let scope, env = pop_expr_scope env in
@@ -771,7 +775,7 @@ module TypeDecl = struct
           in
           match decl.tdec_desc with
           | TVariant _ -> (TVariant ctors, env)
-          | TExtend (id, _) -> (TExtend (id, ctors), env)
+          | TExtend (id, decl, _) -> (TExtend (id, decl, ctors), env)
           | _ -> failwith "Expected a TVariant or a TExtend" )
     in
     let env = close_expr_scope env in

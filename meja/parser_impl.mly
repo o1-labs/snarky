@@ -1,5 +1,6 @@
 %{
 open Location
+open Asttypes
 open Parsetypes
 open Longident
 open Parser_errors
@@ -33,6 +34,7 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token RBRACKET
 %token DASHGT
 %token EQUALGT
+%token PLUSEQUAL
 %token EQUAL
 %token COLON
 %token COMMA
@@ -40,6 +42,7 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token BAR
 %token QUOT
 %token DOTDOTDOT
+%token DOTDOT
 %token DOT
 %token <string> PREFIXOP
 %token <string> INFIXOP0
@@ -54,7 +57,7 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %nonassoc SEMI
 %left     INFIXOP0 EQUAL
 %right    INFIXOP1
-%left     INFIXOP2
+%left     INFIXOP2 PLUSEQUAL
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
@@ -96,6 +99,12 @@ structure_item:
     { mkstmt ~pos:$loc (Module (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
     { mkstmt ~pos:$loc (Open x) }
+  | TYPE x = decl_type(type_lident) PLUSEQUAL
+    maybe(BAR) ctors = list(ctor_decl, BAR)
+    { let (x, params) = x in
+      mkstmt ~pos:$loc (TypeExtension
+        ( {var_ident= x; var_params= params; var_decl_id= 0}
+        , ctors)) }
 
 module_expr:
   | LBRACE s = structure RBRACE
@@ -103,7 +112,7 @@ module_expr:
   | x = as_loc(longident(UIDENT, UIDENT))
     { mkmod ~pos:$loc (ModName x) }
 
-decl_type(X):
+%inline decl_type(X):
   | x = as_loc(X)
     { (x, []) }
   | x = as_loc(X) LBRACKET args = list(type_expr, COMMA) RBRACKET
@@ -127,12 +136,18 @@ field_decl:
 type_kind:
   | (* empty *)
     { TAbstract }
-  | EQUAL t = type_expr
+  | EQUAL k = type_kind_body
+    { k }
+
+type_kind_body:
+  | t = type_expr
     { TAlias t }
-  | EQUAL LBRACE fields = list(field_decl, COMMA) RBRACE
+  | LBRACE fields = list(field_decl, COMMA) RBRACE
     { TRecord (List.rev fields) }
-  | EQUAL maybe(BAR) ctors = list(ctor_decl, BAR)
+  | maybe(BAR) ctors = list(ctor_decl, BAR)
     { TVariant (List.rev ctors) }
+  | DOTDOT
+    { TOpen }
 
 ctor_decl_args:
   | (* empty *)
@@ -141,6 +156,12 @@ ctor_decl_args:
     { Ctor_tuple (List.rev rev_args) }
   | LBRACE fields = list(field_decl, COMMA) RBRACE
     { Ctor_record (0, List.rev fields) }
+
+%inline type_lident:
+  | id = LIDENT
+    { Lident id }
+  | m = longident(UIDENT, UIDENT) DOT id = LIDENT
+    { Ldot (m, id) }
 
 ctor_ident:
   | id = UIDENT
@@ -154,9 +175,10 @@ ctor_ident:
 
 infix_operator:
   | op = INFIXOP0 { op }
-  | EQUAL    { "=" }
+  | EQUAL         { "=" }
   | op = INFIXOP1 { op }
   | op = INFIXOP2 { op }
+  | PLUSEQUAL     { "+=" }
   | op = INFIXOP3 { op }
   | op = INFIXOP4 { op }
 

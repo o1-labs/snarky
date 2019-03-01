@@ -113,6 +113,8 @@ let rec check_type_aux typ ctyp env =
 let check_type env typ constr_typ =
   match check_type_aux typ constr_typ env with
   | exception Error (_, err) ->
+    let typ, _ = Envi.Type.flatten typ env in
+    let constr_typ, _ = Envi.Type.flatten constr_typ env in
       raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
   | env -> env
 
@@ -195,9 +197,16 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
 
 let get_ctor (name : lid) env =
   let loc = name.loc in
-  match Envi.TypeDecl.find_of_constructor name env with
-  | Some (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
-    ->
+  match (Envi.TypeDecl.find_of_constructor name env, name) with
+  | ( Some
+        (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
+    , name )
+   |( Some
+        ( { tdec_desc= TExtend (name, decl, ctors)
+            ; tdec_ident
+            ; tdec_params; _ }
+        , i )
+    , _ ) ->
       let ctor = List.nth_exn ctors i in
       let make_name (tdec_ident : str) =
         Location.mkloc
@@ -412,11 +421,7 @@ let rec get_expression env expected exp =
             let typ, env = Envi.Type.mkvar ~loc:e.exp_loc None env in
             (env, typ) )
       in
-      let typ, env =
-        Envi.Type.mk ~loc
-          (Ttuple (List.map es ~f:(fun {exp_type= t; _} -> t)))
-          env
-      in
+      let typ, env = Envi.Type.mk ~loc (Ttuple typs) env in
       let env = check_type env expected typ in
       let env = ref env in
       let es =
@@ -690,13 +695,13 @@ let rec check_statement env stmt =
         { tdec_ident
         ; tdec_params= variant.var_params
         ; tdec_id
-        ; tdec_desc= TExtend (decl, ctors)
+        ; tdec_desc= TExtend (variant.var_ident, decl, ctors)
         ; tdec_loc= loc }
       in
       let decl, env = Envi.TypeDecl.import decl env in
       let ctors =
         match decl.tdec_desc with
-        | TExtend (_, ctors) -> ctors
+        | TExtend (_, _, ctors) -> ctors
         | _ -> failwith "Expected a TExtend."
       in
       let variant =
