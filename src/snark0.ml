@@ -625,7 +625,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       module State = struct
         let make ~num_inputs ~input ~next_auxiliary ~aux ?system
-            ?(eval_constraints = !eval_constraints) (s0 : 's option) =
+            ?(eval_constraints = !eval_constraints) ?handler (s0 : 's option) =
           next_auxiliary := 1 + num_inputs ;
           (* We can't evaluate the constraints if we are not computing over a value. *)
           let eval_constraints = eval_constraints && Option.is_some s0 in
@@ -640,7 +640,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ; next_auxiliary
           ; prover_state= s0
           ; stack= []
-          ; handler= Request.Handler.fail }
+          ; handler= Option.value handler ~default:Request.Handler.fail }
       end
     end
 
@@ -1076,13 +1076,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
         { compute: unit -> 'checked
         ; check_inputs: (unit, 's) Checked.t
         ; provide_inputs: (unit, 'inputs) H_list.t -> unit
-        ; has_input: bool ref
-        ; has_run_with_input: bool ref
+        ; input: Field.Vector.t
+        ; num_inputs: int
+        ; handler: Request.Handler.t option
         ; mutable proving_key: Proving_key.t option
         ; mutable verification_key: Verification_key.t option
-        ; mutable proving_key_path: string option
-        ; mutable verification_key_path: string option
-        ; mutable prover_state: 's Checked.Runner.run_state }
+        ; proving_key_path: string option
+        ; verification_key_path: string option }
 
       let rec allocate_inputs : type checked r2 k1 k2.
              Field.Vector.t
@@ -1094,30 +1094,16 @@ module Make_basic (Backend : Backend_intf.S) = struct
        fun input check_inputs next_input t compute ->
         match t with
         | [] ->
-            let has_input = ref false in
-            let has_run_with_input = ref false in
             { compute
             ; check_inputs= Checked.return ()
-            ; provide_inputs=
-                (fun ([] : (unit, unit) H_list.t) ->
-                  has_input := true ;
-                  has_run_with_input := false )
-            ; has_input
-            ; has_run_with_input
+            ; provide_inputs= (fun ([] : (unit, unit) H_list.t) -> ())
+            ; input
+            ; num_inputs= !next_input - 1
+            ; handler= None
             ; proving_key= None
             ; verification_key= None
             ; proving_key_path= None
-            ; verification_key_path= None
-            ; prover_state=
-                { system= None
-                ; input
-                ; aux= Field.Vector.create ()
-                ; num_inputs= !next_input - 1
-                ; next_auxiliary= ref !next_input
-                ; prover_state= None
-                ; stack= []
-                ; handler= Request.Handler.fail
-                ; eval_constraints= false } }
+            ; verification_key_path= None }
         | {alloc; check; store; _} :: t' ->
             let before_input = !next_input in
             let var = Typ.Alloc.run alloc (alloc_var next_input) in
@@ -1131,13 +1117,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let { compute
                 ; check_inputs
                 ; provide_inputs
-                ; has_input
-                ; has_run_with_input
+                ; input
+                ; num_inputs
+                ; handler
                 ; proving_key
                 ; verification_key
                 ; proving_key_path
-                ; verification_key_path
-                ; prover_state } =
+                ; verification_key_path } =
               allocate_inputs input check_inputs next_input t' compute
             in
             let provide_inputs H_list.(value :: values) =
@@ -1167,13 +1153,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
             { compute
             ; check_inputs
             ; provide_inputs
-            ; has_input
-            ; has_run_with_input
+            ; input
+            ; num_inputs
+            ; handler
             ; proving_key
             ; verification_key
             ; proving_key_path
-            ; verification_key_path
-            ; prover_state }
+            ; verification_key_path }
 
       let create ?proving_key ?verification_key ?proving_key_path
           ?verification_key_path ?handler ~exposing compute =
@@ -1183,51 +1169,42 @@ module Make_basic (Backend : Backend_intf.S) = struct
           allocate_inputs input (Checked.return ()) next_input exposing
             (fun () -> compute )
         in
-        proof_system.proving_key <- proving_key ;
-        proof_system.verification_key <- verification_key ;
-        proof_system.proving_key_path <- proving_key_path ;
-        proof_system.verification_key_path <- verification_key_path ;
-        ( match handler with
-        | Some handler ->
-            proof_system.prover_state
-            <- {proof_system.prover_state with handler}
-        | None -> () ) ;
-        proof_system
+        { proof_system with
+          proving_key
+        ; verification_key
+        ; proving_key_path
+        ; verification_key_path
+        ; handler }
 
       let set_inputs {provide_inputs; _} inputs = provide_inputs inputs
 
-      let run_proof_system ~run proof_system =
-        let {prover_state; _} = proof_system in
+      let run_proof_system ~run ?system ?eval_constraints ?handler proof_system
+          s =
+        let {num_inputs; input; _} = proof_system in
+        let handler =
+          if Option.is_some handler then handler else proof_system.handler
+        in
+        let prover_state =
+          Checked.Runner.State.make ~num_inputs ~input
+            ~next_auxiliary:(ref (num_inputs + 1))
+            ~aux:(Field.Vector.create ()) ?system ?eval_constraints ?handler s
+        in
         let prover_state, () =
           Checked.Runner.run proof_system.check_inputs prover_state
         in
         let prover_state, a = run (proof_system.compute ()) prover_state in
         Option.iter prover_state.Checked.Runner.system ~f:(fun system ->
-            let auxiliary_input_size =
-              !(prover_state.next_auxiliary) - (1 + prover_state.num_inputs)
+            let aux_input_size =
+              !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
             R1CS_constraint_system.set_auxiliary_input_size system
-              auxiliary_input_size ) ;
-        proof_system.prover_state <- prover_state ;
-        a
+              aux_input_size ) ;
+        (prover_state, a)
 
       let constraint_system ~run proof_system =
-        let {prover_state; _} = proof_system in
-        match prover_state.system with
-        | Some system -> system
-        | None ->
-            let system = R1CS_constraint_system.create () in
-            let next_auxiliary = ref (1 + prover_state.num_inputs) in
-            proof_system.prover_state
-            <- { prover_state with
-                 system= Some system
-               ; eval_constraints= false
-               ; next_auxiliary
-               ; prover_state= None
-               ; stack= []
-               ; handler= Request.Handler.fail } ;
-            ignore (run_proof_system ~run proof_system) ;
-            system
+        let system = R1CS_constraint_system.create () in
+        ignore (run_proof_system ~run ~system proof_system None);
+        system
 
       let digest ~run proof_system =
         let system = constraint_system ~run proof_system in
@@ -1239,53 +1216,37 @@ module Make_basic (Backend : Backend_intf.S) = struct
         proof_system.verification_key <- Some keypair.vk ;
         keypair
 
-      let run_with_input ~run ?exposing ?(handler = Request.Handler.fail)
+      let run_with_input ~run ~exposing ?system ?eval_constraints ?handler
           proof_system s =
-        ( match (exposing, !(proof_system.has_input)) with
-        | Some exposing, _ -> set_inputs proof_system exposing
-        | None, true -> ()
-        | None, false ->
-            failwith
-              "Could not run the proof system; no input has been provided." ) ;
-        let {prover_state; _} = proof_system in
-        proof_system.prover_state
-        <- { prover_state with
-             next_auxiliary= ref (1 + prover_state.num_inputs)
-           ; prover_state= Some s
-           ; stack= []
-           ; handler= Request.Handler.fail } ;
-        ignore (run_proof_system ~run proof_system) ;
-        proof_system.has_run_with_input := false ;
-        let a = run_proof_system ~run proof_system in
-        proof_system.has_run_with_input := true ;
-        match proof_system.prover_state.prover_state with
-        | Some s -> (s, a)
+        set_inputs proof_system exposing ;
+        let ({Checked.Runner.prover_state= s; _} as state), a =
+          run_proof_system ~run ?system ?eval_constraints ?handler proof_system
+            (Some s)
+        in
+        match s with
+        | Some s -> (s, a, state)
         | None ->
-            failwith "run_with_input: Expected a value from run, got None."
+            failwith
+              "run_with_input: Expected a value from run_proof_system, got \
+               None."
 
       let run_unchecked ~run ~exposing ?handler proof_system s =
-        let {prover_state; _} = proof_system in
-        proof_system.prover_state
-        <- {prover_state with eval_constraints= false; system= None} ;
-        run_with_input ~run ~exposing ?handler proof_system s
+        let s, a, _ = run_with_input ~run ~exposing ?handler proof_system s in
+        (s, a)
 
       let run_checked' ~run ~exposing ?handler proof_system s =
-        let {prover_state; _} = proof_system in
         let system = R1CS_constraint_system.create () in
-        proof_system.prover_state
-        <- {prover_state with eval_constraints= true; system= Some system} ;
-        match run_with_input ~run ~exposing ?handler proof_system s with
+        match
+          run_with_input ~run ~exposing ~system ~eval_constraints:true ?handler
+            proof_system s
+        with
         | exception e -> Or_error.of_exn e
-        | s, x -> Ok (s, x)
+        | s, x, state -> Ok (s, x, state)
 
       let run_checked ~run ~exposing ?handler proof_system s =
         Or_error.map (run_checked' ~run ~exposing ?handler proof_system s)
-          ~f:(fun (s, x) ->
-            let s', x =
-              As_prover.run x
-                (Checked.Runner.get_value proof_system.prover_state)
-                s
-            in
+          ~f:(fun (s, x, state) ->
+            let s', x = As_prover.run x (Checked.Runner.get_value state) s in
             (s', x) )
 
       let check ~run ~exposing ?handler proof_system s =
@@ -1314,21 +1275,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
             Out_channel.write_all path ~data:(Verification_key.to_string key)
         | None -> ()
 
-      let prove ~run ?exposing ?proving_key ?handler proof_system s =
-        let {prover_state; _} = proof_system in
-        if
-          Option.is_some exposing || Option.is_some handler
-          || (not !(proof_system.has_run_with_input))
-          || Option.is_none proof_system.prover_state.system
-        then (
-          ( match exposing with
-          | Some exposing -> set_inputs proof_system exposing
-          | None -> () ) ;
-          let system = R1CS_constraint_system.create () in
-          proof_system.prover_state
-          <- {prover_state with eval_constraints= false; system= Some system} ;
-          ignore (run_with_input ~run ?exposing ?handler proof_system s) ) ;
-        let {Checked.Runner.input; aux; _} = prover_state in
+      let prove ~run ~exposing ?proving_key ?handler proof_system s =
+        let system = R1CS_constraint_system.create () in
+        let _, _, state =
+          run_with_input ~run ~exposing ~system ?handler proof_system s
+        in
+        let {Checked.Runner.input; aux; _} = state in
         let proving_key =
           List.find_map_exn
             ~f:(fun f -> f ())
@@ -1357,7 +1309,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
                    provided." ) ]
         in
         write_verification_key proof_system verification_key ;
-        Proof.verify proof verification_key proof_system.prover_state.input
+        Proof.verify proof verification_key proof_system.input
     end
 
     let rec collect_input_constraints : type checked s r2 k1 k2.
@@ -1713,8 +1665,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let check ~exposing ?handler (proof_system : _ t) =
       check ~run:Runner.run ~exposing ?handler proof_system
 
-    let prove ?exposing ?proving_key ?handler (proof_system : _ t) =
-      prove ~run:Runner.run ?exposing ?proving_key ?handler proof_system
+    let prove ~exposing ?proving_key ?handler (proof_system : _ t) =
+      prove ~run:Runner.run ~exposing ?proving_key ?handler proof_system
 
     let verify ~exposing ?verification_key (proof_system : _ t) =
       verify ~run:Runner.run ~exposing ?verification_key proof_system
@@ -2167,8 +2119,8 @@ module Run = struct
       let check ~exposing ?handler (proof_system : _ t) =
         check ~run:as_stateful ~exposing ?handler proof_system ()
 
-      let prove ?exposing ?proving_key ?handler (proof_system : _ t) =
-        prove ~run:as_stateful ?exposing ?proving_key ?handler proof_system ()
+      let prove ~exposing ?proving_key ?handler (proof_system : _ t) =
+        prove ~run:as_stateful ~exposing ?proving_key ?handler proof_system ()
 
       let verify ~exposing ?verification_key (proof_system : _ t) =
         verify ~run:as_stateful ~exposing ?verification_key proof_system

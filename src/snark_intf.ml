@@ -569,7 +569,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> bool
 
     val prove :
-         ?exposing:(unit, 'public_input) H_list.t
+         exposing:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handler:Request.Handler.t
       -> ('a, 's, 'public_input) t
@@ -1251,7 +1251,7 @@ module type Run = sig
       -> bool
 
     val prove :
-         ?exposing:(unit, 'public_input) H_list.t
+         exposing:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handler:Request.Handler.t
       -> ('a, 'public_input) t
