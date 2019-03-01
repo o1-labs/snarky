@@ -18,6 +18,8 @@ type error =
   | No_unifiable_expr
   | No_instance of type_expr
   | Argument_expected of Longident.t
+  | Not_extensible of Longident.t
+  | Extension_different_arity of Longident.t
 
 exception Error of Location.t * error
 
@@ -668,6 +670,39 @@ let rec check_statement env stmt =
   | Open name ->
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)
+  | TypeExtension (variant, ctors) ->
+      let ({tdec_ident; tdec_params; tdec_desc; tdec_id; _} as decl) =
+        match Envi.raw_find_type_declaration variant.var_ident env with
+        | open_decl -> open_decl
+        | exception _ ->
+            raise
+              (Error (loc, Unbound ("type constructor", variant.var_ident)))
+      in
+      ( match tdec_desc with
+      | TOpen -> ()
+      | _ -> raise (Error (loc, Not_extensible variant.var_ident.txt)) ) ;
+      ( match List.iter2 tdec_params variant.var_params ~f:(fun _ _ -> ()) with
+      | Ok _ -> ()
+      | Unequal_lengths ->
+          raise (Error (loc, Extension_different_arity variant.var_ident.txt))
+      ) ;
+      let decl =
+        { tdec_ident
+        ; tdec_params= variant.var_params
+        ; tdec_id
+        ; tdec_desc= TExtend (decl, ctors)
+        ; tdec_loc= loc }
+      in
+      let decl, env = Envi.TypeDecl.import decl env in
+      let ctors =
+        match decl.tdec_desc with
+        | TExtend (_, ctors) -> ctors
+        | _ -> failwith "Expected a TExtend."
+      in
+      let variant =
+        {variant with var_decl_id= tdec_id; var_params= decl.tdec_params}
+      in
+      (env, {stmt with stmt_desc= TypeExtension (variant, ctors)})
 
 and check_module_expr env m =
   let loc = m.mod_loc in
@@ -736,6 +771,13 @@ let rec report_error ppf = function
   | Argument_expected lid ->
       fprintf ppf "@[The constructor %a expects an argument.@]" Longident.pp
         lid
+  | Not_extensible lid ->
+      fprintf ppf "@[Type definition %a is not extensible.@]" Longident.pp lid
+  | Extension_different_arity lid ->
+      fprintf ppf
+        "@[This extension does not match the definition of type %a@.They have \
+         different arities.@]"
+        Longident.pp lid
 
 let () =
   Location.register_error_of_exn (function
