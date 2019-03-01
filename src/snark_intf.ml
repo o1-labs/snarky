@@ -535,11 +535,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?proving_key_path:string
       -> ?verification_key_path:string
       -> ?handler:Request.Handler.t
-      -> exposing:( ('a, 's) Checked.t
-                  , unit
-                  , 'computation
-                  , 'public_input )
-                  Data_spec.t
+      -> public_input:( ('a, 's) Checked.t
+                      , unit
+                      , 'computation
+                      , 'public_input )
+                      Data_spec.t
       -> 'computation
       -> ('a, 's, 'public_input) t
 
@@ -548,28 +548,28 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val generate_keypair : ('a, 's, 'public_input) t -> Keypair.t
 
     val run_unchecked :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
       -> ('a, 's, 'public_input) t
       -> 's
       -> 's * 'a
 
     val run_checked :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
       -> (('a, 's) As_prover.t, 's, 'public_input) t
       -> 's
       -> ('s * 'a) Or_error.t
 
     val check :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
       -> ('a, 's, 'public_input) t
       -> 's
       -> bool
 
     val prove :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handler:Request.Handler.t
       -> ('a, 's, 'public_input) t
@@ -577,7 +577,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> Proof.t
 
     val verify :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?verification_key:Verification_key.t
       -> ('a, 's, 'public_input) t
       -> Proof.t
@@ -1224,7 +1224,11 @@ module type Run = sig
       -> ?proving_key_path:string
       -> ?verification_key_path:string
       -> ?handler:Request.Handler.t
-      -> exposing:(unit -> 'a, unit, 'computation, 'public_input) Data_spec.t
+      -> public_input:( unit -> 'a
+                      , unit
+                      , 'computation
+                      , 'public_input )
+                      Data_spec.t
       -> 'computation
       -> ('a, 'public_input) t
 
@@ -1233,32 +1237,32 @@ module type Run = sig
     val generate_keypair : ('a, 'public_input) t -> Keypair.t
 
     val run_unchecked :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
       -> ('a, 'public_input) t
       -> 'a
 
     val run_checked :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
       -> (('a, unit) As_prover.t, 'public_input) t
       -> 'a Or_error.t
 
     val check :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
       -> ('a, 'public_input) t
       -> bool
 
     val prove :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handler:Request.Handler.t
       -> ('a, 'public_input) t
       -> Proof.t
 
     val verify :
-         exposing:(unit, 'public_input) H_list.t
+         public_input:(unit, 'public_input) H_list.t
       -> ?verification_key:Verification_key.t
       -> ('a, 'public_input) t
       -> Proof.t
