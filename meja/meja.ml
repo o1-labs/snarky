@@ -64,15 +64,15 @@ let main =
       , "add a directory to the list of paths to search for .cmi files" ) ]
   in
   Arg.parse arg_spec (fun filename -> file := Some filename) "" ;
-  let env = List.fold ~init:Envi.Core.env !cmi_dirs ~f:Loader.load_directory in
+  let env = Envi.Core.env in
+  List.iter !cmi_dirs ~f:(Loader.load_directory env) ;
   try
     let cmi_files = List.rev !cmi_files in
-    let env =
-      List.fold ~init:env cmi_files ~f:(fun env filename ->
-          snd
-            (Loader.load ~loc:Location.none
-               ~name:(Loader.modname_of_filename filename)
-               env filename) )
+    let _cmi_scopes =
+      List.map cmi_files ~f:(fun filename ->
+          Loader.load ~loc:Location.none
+            ~name:(Loader.modname_of_filename filename)
+            env.Envi.resolve_env filename )
     in
     if not (List.is_empty cmi_files) then exit 0 ;
     let file =
