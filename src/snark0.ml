@@ -1203,7 +1203,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let constraint_system ~run proof_system =
         let system = R1CS_constraint_system.create () in
-        ignore (run_proof_system ~run ~system proof_system None);
+        ignore (run_proof_system ~run ~system proof_system None) ;
         system
 
       let digest ~run proof_system =
