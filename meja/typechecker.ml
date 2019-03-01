@@ -113,8 +113,8 @@ let rec check_type_aux typ ctyp env =
 let check_type env typ constr_typ =
   match check_type_aux typ constr_typ env with
   | exception Error (_, err) ->
-    let typ, _ = Envi.Type.flatten typ env in
-    let constr_typ, _ = Envi.Type.flatten constr_typ env in
+      let typ, _ = Envi.Type.flatten typ env in
+      let constr_typ, _ = Envi.Type.flatten constr_typ env in
       raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
   | env -> env
 
@@ -202,9 +202,7 @@ let get_ctor (name : lid) env =
         (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
     , name )
    |( Some
-        ( { tdec_desc= TExtend (name, decl, ctors)
-            ; tdec_ident
-            ; tdec_params; _ }
+        ( {tdec_desc= TExtend (name, decl, ctors); tdec_ident; tdec_params; _}
         , i )
     , _ ) ->
       let ctor = List.nth_exn ctors i in
