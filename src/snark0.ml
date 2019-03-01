@@ -1263,23 +1263,23 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | None ->
             failwith "run_with_input: Expected a value from run, got None."
 
-      let run_unchecked ~run ?exposing ?handler proof_system s =
+      let run_unchecked ~run ~exposing ?handler proof_system s =
         let {prover_state; _} = proof_system in
         proof_system.prover_state
         <- {prover_state with eval_constraints= false; system= None} ;
-        run_with_input ~run ?exposing ?handler proof_system s
+        run_with_input ~run ~exposing ?handler proof_system s
 
-      let run_checked' ~run ?exposing ?handler proof_system s =
+      let run_checked' ~run ~exposing ?handler proof_system s =
         let {prover_state; _} = proof_system in
         let system = R1CS_constraint_system.create () in
         proof_system.prover_state
         <- {prover_state with eval_constraints= true; system= Some system} ;
-        match run_with_input ~run ?exposing ?handler proof_system s with
+        match run_with_input ~run ~exposing ?handler proof_system s with
         | exception e -> Or_error.of_exn e
         | s, x -> Ok (s, x)
 
-      let run_checked ~run ?exposing ?handler proof_system s =
-        Or_error.map (run_checked' ~run ?exposing ?handler proof_system s)
+      let run_checked ~run ~exposing ?handler proof_system s =
+        Or_error.map (run_checked' ~run ~exposing ?handler proof_system s)
           ~f:(fun (s, x) ->
             let s', x =
               As_prover.run x
@@ -1288,8 +1288,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
             in
             (s', x) )
 
-      let check ~run ?exposing ?handler proof_system s =
-        Or_error.is_ok (run_checked' ~run ?exposing ?handler proof_system s)
+      let check ~run ~exposing ?handler proof_system s =
+        Or_error.is_ok (run_checked' ~run ~exposing ?handler proof_system s)
 
       let read_proving_key proof_system =
         match proof_system.proving_key_path with
@@ -1330,42 +1330,31 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ignore (run_with_input ~run ?exposing ?handler proof_system s) ) ;
         let {Checked.Runner.input; aux; _} = prover_state in
         let proving_key =
-          match proving_key with
-          | Some proving_key -> proving_key
-          | None -> (
-            match proof_system.proving_key with
-            | Some proving_key -> proving_key
-            | None -> (
-              match read_proving_key proof_system with
-              | Some proving_key -> proving_key
-              | None ->
-                  let {Keypair.pk; vk} = generate_keypair ~run proof_system in
-                  write_verification_key proof_system vk ;
-                  pk ) )
+          List.find_map_exn
+            ~f:(fun f -> f ())
+            [ (fun () -> proving_key)
+            ; (fun () -> proof_system.proving_key)
+            ; (fun () -> read_proving_key proof_system)
+            ; (fun () ->
+                let {Keypair.pk; vk} = generate_keypair ~run proof_system in
+                write_verification_key proof_system vk ;
+                Some pk ) ]
         in
         write_proving_key proof_system proving_key ;
         Proof.create proving_key ~primary:input ~auxiliary:aux
 
-      let verify ~run ?exposing ?verification_key proof_system proof =
-        ( match exposing with
-        | Some exposing -> set_inputs proof_system exposing
-        | None ->
-            if not !(proof_system.has_input) then
-              failwith
-                "Could not verify the proof; no input has been provided." ) ;
+      let verify ~run ~exposing ?verification_key proof_system proof =
+        set_inputs proof_system exposing ;
         let verification_key =
-          match verification_key with
-          | Some verification_key -> verification_key
-          | None -> (
-            match proof_system.verification_key with
-            | Some verification_key -> verification_key
-            | None -> (
-              match read_verification_key proof_system with
-              | Some verification_key -> verification_key
-              | None ->
-                  failwith
-                    "Could not verify the proof; no verification key has been \
-                     provided." ) )
+          List.find_map_exn
+            ~f:(fun f -> f ())
+            [ (fun () -> verification_key)
+            ; (fun () -> proof_system.verification_key)
+            ; (fun () -> read_verification_key proof_system)
+            ; (fun () ->
+                failwith
+                  "Could not verify the proof; no verification key has been \
+                   provided." ) ]
         in
         write_verification_key proof_system verification_key ;
         Proof.verify proof verification_key proof_system.prover_state.input
@@ -1724,8 +1713,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let check ~exposing ?handler (proof_system : _ t) =
       check ~run:Runner.run ~exposing ?handler proof_system
 
-    let prove ~exposing ?proving_key ?handler (proof_system : _ t) =
-      prove ~run:Runner.run ~exposing ?proving_key ?handler proof_system
+    let prove ?exposing ?proving_key ?handler (proof_system : _ t) =
+      prove ~run:Runner.run ?exposing ?proving_key ?handler proof_system
 
     let verify ~exposing ?verification_key (proof_system : _ t) =
       verify ~run:Runner.run ~exposing ?verification_key proof_system
@@ -2157,7 +2146,8 @@ module Run = struct
     module Proof_system = struct
       open Run.Proof_system
 
-      type ('a, 'inputs) t = (unit -> 'a, 'inputs, unit) proof_system
+      type ('a, 'public_input) t =
+        (unit -> 'a, 'public_input, unit) proof_system
 
       let create = create
 
@@ -2177,8 +2167,8 @@ module Run = struct
       let check ~exposing ?handler (proof_system : _ t) =
         check ~run:as_stateful ~exposing ?handler proof_system ()
 
-      let prove ~exposing ?proving_key ?handler (proof_system : _ t) =
-        prove ~run:as_stateful ~exposing ?proving_key ?handler proof_system ()
+      let prove ?exposing ?proving_key ?handler (proof_system : _ t) =
+        prove ~run:as_stateful ?exposing ?proving_key ?handler proof_system ()
 
       let verify ~exposing ?verification_key (proof_system : _ t) =
         verify ~run:as_stateful ~exposing ?verification_key proof_system
