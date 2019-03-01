@@ -606,7 +606,9 @@ let rec get_expression env expected exp =
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let typ = Envi.Type.mkvar ~loc:e.exp_loc None env in
+  let env = Envi.open_expr_scope env in
   let e, env = get_expression env typ e in
+  let env = Envi.close_expr_scope env in
   let exp_type = Envi.Type.flatten e.exp_type env in
   let e = {e with exp_type} in
   let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
