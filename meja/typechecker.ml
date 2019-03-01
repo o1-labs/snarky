@@ -677,37 +677,6 @@ and check_module_expr env m =
       let env = Envi.push_scope m' env in
       (env, m)
 
-let rec check_signature_item env item =
-  let loc = item.sig_loc in
-  match item.sig_desc with
-  | SValue (name, typ) ->
-      let typ, env = Envi.Type.import ~must_find:false typ env in
-      add_polymorphised name typ env
-  | SInstance (name, typ) ->
-      let typ, env = Envi.Type.import ~must_find:false typ env in
-      let env = add_polymorphised name typ env in
-      Envi.add_implicit_instance name.txt typ env
-  | STypeDecl decl ->
-      let _decl, env = Envi.TypeDecl.import decl env in
-      env
-  | SModule (name, signature) -> (
-    match signature with
-    | Signature signature ->
-        let env = Envi.open_module env in
-        let env = check_signature env signature in
-        let m, env = Envi.pop_module ~loc env in
-        Envi.add_module name m env
-    | SigName lid -> (
-      match Envi.find_module_deferred ~loc lid env with
-      | Some (Immediate m) -> Envi.add_module name m env
-      | Some (Deferred path) -> Envi.add_deferred_module name path env
-      | None -> Envi.add_deferred_module name lid.txt env )
-    | SigAbstract -> env )
-  | SModType (_name, _signature) -> env
-
-and check_signature env signature =
-  List.fold ~init:env signature ~f:check_signature_item
-
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:check_statement
 

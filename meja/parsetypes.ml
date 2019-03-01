@@ -134,20 +134,6 @@ and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc = Structure of statement list | ModName of lid
 
-type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
-
-and signature_desc =
-  | SValue of str * type_expr
-  | SInstance of str * type_expr
-  | STypeDecl of type_decl
-  | SModule of str * module_sig
-  | SModType of str * module_sig
-
-and module_sig =
-  | Signature of signature_item list
-  | SigName of lid
-  | SigAbstract
-
 let rec typ_debug_print fmt typ =
   let open Format in
   let print i = fprintf fmt i in
