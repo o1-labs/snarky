@@ -661,17 +661,17 @@ module Type = struct
        } ;
     new_exp
 
-let implicit_instances ~(unify : env -> type_expr -> type_expr -> 'a)
-    (typ : type_expr) env =
-  List.filter_map env.resolve_env.type_env.instances
-    ~f:(fun (id, instance_typ) ->
-      let instance_typ = copy instance_typ (Map.empty (module Int)) env in
-      match unify env typ instance_typ with
-      | _ ->
-          List.find_map env.scope_stack ~f:(fun {instances; _} ->
-              Option.map (Map.find instances id) ~f:(fun path ->
-                  (path, instance_typ) ) )
-      | exception _ -> None )
+  let implicit_instances ~(unify : env -> type_expr -> type_expr -> 'a)
+      (typ : type_expr) env =
+    List.filter_map env.resolve_env.type_env.instances
+      ~f:(fun (id, instance_typ) ->
+        let instance_typ = copy instance_typ (Map.empty (module Int)) env in
+        match unify env typ instance_typ with
+        | _ ->
+            List.find_map env.scope_stack ~f:(fun {instances; _} ->
+                Option.map (Map.find instances id) ~f:(fun path ->
+                    (path, instance_typ) ) )
+        | exception _ -> None )
 
   let generate_implicits e env =
     let loc = e.exp_loc in
@@ -921,9 +921,7 @@ let get_name (name : str) env =
   | None -> raise (Error (loc, Unbound_value (Lident name.txt)))
 
 let find_name (lid : lid) env =
-  match
-    find_of_lident ~kind:"name" ~get_name:Scope.get_name lid env
-  with
+  match find_of_lident ~kind:"name" ~get_name:Scope.get_name lid env with
   | Some typ -> Type.copy typ (Map.empty (module Int)) env
   | None -> raise (Error (lid.loc, Unbound_value lid.txt))
 
