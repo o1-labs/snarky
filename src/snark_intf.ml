@@ -1216,7 +1216,7 @@ module type Run = sig
   end
 
   module Proof_system : sig
-    type ('a, 'inputs) t
+    type ('a, 'public_input) t
 
     val create :
          ?proving_key:Proving_key.t
@@ -1224,43 +1224,43 @@ module type Run = sig
       -> ?proving_key_path:string
       -> ?verification_key_path:string
       -> ?handler:Request.Handler.t
-      -> exposing:(unit -> 'a, unit, 'computation, 'input) Data_spec.t
+      -> exposing:(unit -> 'a, unit, 'computation, 'public_input) Data_spec.t
       -> 'computation
-      -> ('a, 'input) t
+      -> ('a, 'public_input) t
 
-    val digest : ('a, 'input) t -> Md5_lib.t
+    val digest : ('a, 'public_input) t -> Md5_lib.t
 
-    val generate_keypair : ('a, 'input) t -> Keypair.t
+    val generate_keypair : ('a, 'public_input) t -> Keypair.t
 
     val run_unchecked :
-         exposing:(unit, 'input) H_list.t
+         exposing:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
-      -> ('a, 'input) t
+      -> ('a, 'public_input) t
       -> 'a
 
     val run_checked :
-         exposing:(unit, 'input) H_list.t
+         exposing:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
-      -> (('a, unit) As_prover.t, 'input) t
+      -> (('a, unit) As_prover.t, 'public_input) t
       -> 'a Or_error.t
 
     val check :
-         exposing:(unit, 'input) H_list.t
+         exposing:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
-      -> ('a, 'input) t
+      -> ('a, 'public_input) t
       -> bool
 
     val prove :
-         ?exposing:(unit, 'input) H_list.t
+         ?exposing:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handler:Request.Handler.t
-      -> ('a, 'input) t
+      -> ('a, 'public_input) t
       -> Proof.t
 
     val verify :
-         exposing:(unit, 'input) H_list.t
+         exposing:(unit, 'public_input) H_list.t
       -> ?verification_key:Verification_key.t
-      -> ('a, 'input) t
+      -> ('a, 'public_input) t
       -> Proof.t
       -> bool
   end
