@@ -1614,54 +1614,24 @@ module type Run = sig
     end
   end
 
-  module Prover : sig
-    (** A handle to call prover functions with. Use {!val:As_prover.run_prover}
-        to convert a function using this handle into an {!type:As_prover.t}. *)
-    type t
-
-    val read_var : p:t -> Field.t -> Field.Constant.t
-
-    val get_state : p:t -> unit
-
-    val set_state : p:t -> unit -> unit
-
-    val read : p:t -> ('var, 'value) Typ.t -> 'var -> 'value
-
-    include Field_intf.Extended with type t := field
-
-    val unpack : field -> bool list
-    (** Convert a field element into its constituent bits. *)
-
-    val project : bool list -> field
-  end
-
+  (** The functions in this module may only be run as the prover; trying to
+      run them outside of functions that refer to [As_prover.t] will result in
+      a runtime error. *)
   module As_prover : sig
-    (** An [('a, 'prover_state) t] value uses the current ['prover_state] to
-        generate a value of type ['a], and update the ['prover_state] as
-        necessary, within a checked computation.
+    (** This type marks function arguments that can include function calls from
+        this module. Using these functions outside of these will result in a
+        runtime error. *)
+    type 'a t = 'a
 
-        This type specialises the {!type:As_prover.t} type for the backend's
-        particular field and variable type. *)
-    type ('a, 'prover_state) t = ('a, field, 'prover_state) As_prover.t
+    val read_var : Field.t -> Field.Constant.t
 
-    type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
+    val get_state : unit
 
-    include Monad_let.S2 with type ('a, 's) t := ('a, 's) t
+    val set_state : unit -> unit
 
-    val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
+    val read : ('var, 'value) Typ.t -> 'var -> 'value
 
-    val read_var : Field.t -> (field, 'prover_state) t
-
-    val get_state : ('prover_state, 'prover_state) t
-
-    val set_state : 'prover_state -> (unit, 'prover_state) t
-
-    val modify_state :
-      ('prover_state -> 'prover_state) -> (unit, 'prover_state) t
-
-    val read : ('var, 'value) Typ.t -> 'var -> ('value, 'prover_state) t
-
-    val run_prover : (Prover.t -> 'a) -> ('a, unit) t
+    val modify_state : (unit -> unit) -> unit
 
     include Field_intf.Extended with type t := field
 
@@ -1674,7 +1644,7 @@ module type Run = sig
   module Handle : sig
     type ('var, 'value) t = {var: 'var; value: 'value option}
 
-    val value : (_, 'value) t -> ('value, unit) As_prover.t
+    val value : (_, 'value) t -> (unit -> 'value) As_prover.t
 
     val var : ('var, _) t -> 'var
   end
@@ -1723,7 +1693,7 @@ module type Run = sig
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
-      -> (('a, unit) As_prover.t, 'public_input) t
+      -> ('a, 'public_input) t
       -> 'a Or_error.t
 
     val check :
@@ -1755,14 +1725,14 @@ module type Run = sig
 
   val assert_square : ?label:string -> Field.t -> Field.t -> unit
 
-  val as_prover : (unit, unit) As_prover.t -> unit
+  val as_prover : (unit -> unit) As_prover.t -> unit
 
   val next_auxiliary : unit -> int
 
   val request_witness :
-    ('var, 'value) Typ.t -> ('value Request.t, unit) As_prover.t -> 'var
+    ('var, 'value) Typ.t -> (unit -> 'value Request.t) As_prover.t -> 'var
 
-  val perform : (unit Request.t, unit) As_prover.t -> unit
+  val perform : (unit -> unit Request.t) As_prover.t -> unit
 
   val request :
        ?such_that:('var -> unit)
@@ -1772,8 +1742,8 @@ module type Run = sig
   (** TODO: Come up with a better name for this in relation to the above *)
 
   val exists :
-       ?request:('value Request.t, unit) As_prover.t
-    -> ?compute:('value, unit) As_prover.t
+       ?request:(unit -> 'value Request.t) As_prover.t
+    -> ?compute:(unit -> 'value) As_prover.t
     -> ('var, 'value) Typ.t
     -> 'var
 
@@ -1806,7 +1776,7 @@ module type Run = sig
 
   val run_unchecked : (unit -> 'a) -> 'a
 
-  val run_and_check : (unit -> ('a, unit) As_prover.t) -> 'a Or_error.t
+  val run_and_check : (unit -> unit -> 'a) -> 'a Or_error.t
 
   val check : (unit -> 'a) -> bool
 
