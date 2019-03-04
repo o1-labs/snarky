@@ -512,20 +512,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val var : ('var, _) t -> 'var
   end
 
-  module Runner : sig
-    type state
-
-    val run : ('a, unit) Checked.t -> state -> state * 'a
-
-    val set_handler : Request.Handler.t -> state -> state
-
-    val get_handler : state -> Request.Handler.t
-
-    val set_stack : string list -> state -> state
-
-    val get_stack : state -> string list
-  end
-
   module Proof_system : sig
     type ('a, 's, 'public_input) t
 
@@ -582,42 +568,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ('a, 's, 'public_input) t
       -> Proof.t
       -> bool
-  end
-
-  module Perform : sig
-    type ('a, 't) t = 't -> Runner.state -> Runner.state * 'a
-
-    val constraint_system :
-         run:('a, 't) t
-      -> exposing:('t, _, 'k_var, _) Data_spec.t
-      -> 'k_var
-      -> R1CS_constraint_system.t
-
-    val generate_keypair :
-         run:('a, 't) t
-      -> exposing:('t, _, 'k_var, _) Data_spec.t
-      -> 'k_var
-      -> Keypair.t
-
-    val prove :
-         run:('a, 't) t
-      -> Proving_key.t
-      -> ('t, Proof.t, 'k_var, 'k_value) Data_spec.t
-      -> 'k_var
-      -> 'k_value
-
-    val verify :
-         Proof.t
-      -> Verification_key.t
-      -> (_, bool, _, 'k_value) Data_spec.t
-      -> 'k_value
-
-    val run_unchecked : run:('a, 't) t -> 't -> 'a
-
-    val run_and_check :
-      run:(('a, unit) As_prover.t, 't) t -> 't -> 'a Or_error.t
-
-    val check : run:('a, 't) t -> 't -> bool
   end
 
   val assert_ : ?label:string -> Constraint.t -> (unit, 's) Checked.t
@@ -764,6 +714,8 @@ end
 
 (** The imperative interface to Snarky. *)
 module type Run = sig
+  type prover_state
+
   (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
   module Proving_key : sig
     type t [@@deriving bin_io]
@@ -1240,18 +1192,21 @@ module type Run = sig
          public_input:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
       -> ('a, 'public_input) t
-      -> 'a
+      -> prover_state
+      -> prover_state * 'a
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
-      -> (('a, unit) As_prover.t, 'public_input) t
-      -> 'a Or_error.t
+      -> (('a, prover_state) As_prover.t, 'public_input) t
+      -> prover_state
+      -> (prover_state * 'a) Or_error.t
 
     val check :
          public_input:(unit, 'public_input) H_list.t
       -> ?handler:Request.Handler.t
       -> ('a, 'public_input) t
+      -> prover_state
       -> bool
 
     val prove :
@@ -1259,6 +1214,7 @@ module type Run = sig
       -> ?proving_key:Proving_key.t
       -> ?handler:Request.Handler.t
       -> ('a, 'public_input) t
+      -> prover_state
       -> Proof.t
 
     val verify :
@@ -1277,14 +1233,16 @@ module type Run = sig
 
   val assert_square : ?label:string -> Field.t -> Field.t -> unit
 
-  val as_prover : (unit, unit) As_prover.t -> unit
+  val as_prover : (unit, prover_state) As_prover.t -> unit
 
   val next_auxiliary : unit -> int
 
   val request_witness :
-    ('var, 'value) Typ.t -> ('value Request.t, unit) As_prover.t -> 'var
+       ('var, 'value) Typ.t
+    -> ('value Request.t, prover_state) As_prover.t
+    -> 'var
 
-  val perform : (unit Request.t, unit) As_prover.t -> unit
+  val perform : (unit Request.t, prover_state) As_prover.t -> unit
 
   val request :
        ?such_that:('var -> unit)
@@ -1294,8 +1252,8 @@ module type Run = sig
   (** TODO: Come up with a better name for this in relation to the above *)
 
   val exists :
-       ?request:('value Request.t, unit) As_prover.t
-    -> ?compute:('value, unit) As_prover.t
+       ?request:('value Request.t, prover_state) As_prover.t
+    -> ?compute:('value, prover_state) As_prover.t
     -> ('var, 'value) Typ.t
     -> 'var
 
@@ -1328,6 +1286,7 @@ module type Run = sig
   val prove :
        Proving_key.t
     -> (unit -> 'a, Proof.t, 'k_var, 'k_value) Data_spec.t
+    -> prover_state
     -> 'k_var
     -> 'k_value
 
@@ -1337,9 +1296,12 @@ module type Run = sig
     -> (_, bool, _, 'k_value) Data_spec.t
     -> 'k_value
 
-  val run_unchecked : (unit -> 'a) -> 'a
+  val run_unchecked : (unit -> 'a) -> prover_state -> prover_state * 'a
 
-  val run_and_check : ('a, unit) As_prover.t -> 'a Or_error.t
+  val run_and_check :
+       ('a, prover_state) As_prover.t
+    -> prover_state
+    -> (prover_state * 'a) Or_error.t
 
-  val check : (unit -> 'a) -> bool
+  val check : (unit -> 'a) -> prover_state -> bool
 end

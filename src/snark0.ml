@@ -1664,22 +1664,22 @@ module Make_basic (Backend : Backend_intf.S) = struct
   end
 
   module Perform = struct
-    type ('a, 't) t = 't -> unit Runner.run_state -> unit Runner.run_state * 'a
+    type ('a, 't, 's) t = 't -> 's Runner.run_state -> 's Runner.run_state * 'a
 
     let generate_keypair ~run ~exposing k =
       Run.generate_keypair ~run ~exposing k
 
-    let prove ~run key t k = Run.prove ~run key t () k
+    let prove ~run key t s k = Run.prove ~run key t s k
 
     let verify = Run.verify
 
     let constraint_system = Run.constraint_system
 
-    let run_unchecked ~run t = snd (run_unchecked ~run t ())
+    let run_unchecked ~run t s = run_unchecked ~run t s
 
-    let run_and_check ~run t = Or_error.map (run_and_check ~run t ()) ~f:snd
+    let run_and_check ~run t s = run_and_check ~run t s
 
-    let check ~run t = check ~run t ()
+    let check ~run t s = check ~run t s
   end
 
   let generate_keypair ~exposing k =
@@ -1734,9 +1734,15 @@ module Make (Backend : Backend_intf.S) = struct
 end
 
 module Run = struct
-  module Make (Backend : Backend_intf.S) = struct
+  module Make
+      (Backend : Backend_intf.S) (Prover_state : sig
+          type t
+      end) =
+  struct
     module Snark = Make (Backend)
     open Snark
+
+    type prover_state = Prover_state.t
 
     let state =
       ref
@@ -1746,7 +1752,7 @@ module Run = struct
         ; eval_constraints= true
         ; num_inputs= 0
         ; next_auxiliary= ref 1
-        ; prover_state= Some ()
+        ; prover_state= (None : prover_state option)
         ; stack= []
         ; handler= Request.Handler.fail }
 
@@ -2090,7 +2096,7 @@ module Run = struct
       open Run.Proof_system
 
       type ('a, 'public_input) t =
-        (unit -> 'a, 'public_input, unit) proof_system
+        (unit -> 'a, 'public_input, prover_state) proof_system
 
       let create = create
 
@@ -2099,22 +2105,18 @@ module Run = struct
       let generate_keypair (proof_system : _ t) =
         generate_keypair ~run:as_stateful proof_system
 
-      let run_unchecked ~public_input ?handler (proof_system : _ t) =
-        snd
-          (run_unchecked ~run:as_stateful ~public_input ?handler proof_system
-             ())
+      let run_unchecked ~public_input ?handler (proof_system : _ t) s =
+        run_unchecked ~run:as_stateful ~public_input ?handler proof_system s
 
-      let run_checked ~public_input ?handler (proof_system : _ t) =
-        Or_error.map
-          (run_checked ~run:as_stateful ~public_input ?handler proof_system ())
-          ~f:snd
+      let run_checked ~public_input ?handler (proof_system : _ t) s =
+        run_checked ~run:as_stateful ~public_input ?handler proof_system s
 
-      let check ~public_input ?handler (proof_system : _ t) =
-        check ~run:as_stateful ~public_input ?handler proof_system ()
+      let check ~public_input ?handler (proof_system : _ t) s =
+        check ~run:as_stateful ~public_input ?handler proof_system s
 
-      let prove ~public_input ?proving_key ?handler (proof_system : _ t) =
+      let prove ~public_input ?proving_key ?handler (proof_system : _ t) s =
         prove ~run:as_stateful ~public_input ?proving_key ?handler proof_system
-          ()
+          s
 
       let verify ~public_input ?verification_key (proof_system : _ t) =
         verify ~run:as_stateful ~public_input ?verification_key proof_system
@@ -2178,23 +2180,32 @@ module Run = struct
     let generate_keypair ~exposing x =
       Perform.generate_keypair ~run:as_stateful ~exposing x
 
-    let prove pk x = Perform.prove ~run:as_stateful pk x
+    let prove pk s x = Perform.prove ~run:as_stateful pk s x
 
     let verify pf vk spec = verify pf vk spec
 
-    let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
+    let run_unchecked x s = Perform.run_unchecked ~run:as_stateful x s
 
-    let run_and_check x = Perform.run_and_check ~run:as_stateful (fun () -> x)
+    let run_and_check x s =
+      Perform.run_and_check ~run:as_stateful (fun () -> x) s
 
-    let check x = Perform.check ~run:as_stateful x
+    let check x s = Perform.check ~run:as_stateful x s
   end
 end
 
-type 'field m = (module Snark_intf.Run with type field = 'field)
+type ('field, 'prover_state) m =
+  (module
+   Snark_intf.Run
+     with type field = 'field and type prover_state = 'prover_state)
 
-let make (type field)
-    (module Backend : Backend_intf.S with type Field.t = field) : field m =
-  (module Run.Make (Backend))
+let make (type field prover_state)
+    (module Backend : Backend_intf.S with type Field.t = field) :
+    (field, prover_state) m =
+  ( module Run.Make
+             (Backend)
+             (struct
+               type t = prover_state
+             end) )
 
 let%test_module "snark0-test" =
   ( module struct

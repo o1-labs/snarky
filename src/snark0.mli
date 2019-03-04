@@ -20,7 +20,10 @@ module Make (Backend : Backend_intf.S) :
    and type Proof.t = Backend.Proof.t
 
 module Run : sig
-  module Make (Backend : Backend_intf.S) :
+  module Make
+      (Backend : Backend_intf.S) (Prover_state : sig
+          type t
+      end) :
     Snark_intf.Run
     with type field = Backend.Field.t
      and type Bigint.t = Backend.Bigint.R.t
@@ -30,8 +33,14 @@ module Run : sig
      and type Verification_key.t = Backend.Verification_key.t
      and type Proving_key.t = Backend.Proving_key.t
      and type Proof.t = Backend.Proof.t
+     and type prover_state = Prover_state.t
 end
 
-type 'field m = (module Snark_intf.Run with type field = 'field)
+type ('field, 'prover_state) m =
+  (module
+   Snark_intf.Run
+     with type field = 'field and type prover_state = 'prover_state)
 
-val make : (module Backend_intf.S with type Field.t = 'field) -> 'field m
+val make :
+     (module Backend_intf.S with type Field.t = 'field)
+  -> ('field, 'prover_state) m
