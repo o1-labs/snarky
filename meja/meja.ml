@@ -74,8 +74,9 @@ let main =
             ~name:(Loader.modname_of_filename filename)
             env.Envi.resolve_env filename )
     in
-    let env = List.fold ~init:env cmi_scopes ~f:(fun env scope ->
-      Envi.open_namespace_scope scope env)
+    let env =
+      List.fold ~init:env cmi_scopes ~f:(fun env scope ->
+          Envi.open_namespace_scope scope env )
     in
     let file =
       Option.value_exn !file

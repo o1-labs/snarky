@@ -976,23 +976,33 @@ module Core = struct
 
   let option, env =
     let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
-    TypeDecl.import (mk_type_decl "option" ~params:[var]
-      (TVariant [mk_constructor "Some" ~params:[var]; mk_constructor "None"])) env
+    TypeDecl.import
+      (mk_type_decl "option" ~params:[var]
+         (TVariant [mk_constructor "Some" ~params:[var]; mk_constructor "None"]))
+      env
 
   let list, env =
     let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
-    let typ = Type.mk ~loc:Location.none
-      (Tctor {var_ident= mkloc (Lident "list"); var_params= [var]; var_decl_id= 0})
-      env
+    let typ =
+      Type.mk ~loc:Location.none
+        (Tctor
+           {var_ident= mkloc (Lident "list"); var_params= [var]; var_decl_id= 0})
+        env
     in
-    TypeDecl.import (mk_type_decl "list" ~params:[var]
-      (TVariant [mk_constructor "::" ~params:[var; typ]; mk_constructor "None"])) env
+    TypeDecl.import
+      (mk_type_decl "list" ~params:[var]
+         (TVariant
+            [mk_constructor "::" ~params:[var; typ]; mk_constructor "None"]))
+      env
 
   let env =
-    List.fold ~init:env ~f:(fun env (name, vars) ->
-      let params = List.init vars ~f:(fun _ -> Type.mkvar ~loc:Location.none None env) in
-      snd (TypeDecl.import (mk_type_decl name ~params TAbstract) env))
-      ["bytes", 0; "int32", 0; "int64", 0; "nativeint", 0]
+    List.fold ~init:env
+      ~f:(fun env (name, vars) ->
+        let params =
+          List.init vars ~f:(fun _ -> Type.mkvar ~loc:Location.none None env)
+        in
+        snd (TypeDecl.import (mk_type_decl name ~params TAbstract) env) )
+      [("bytes", 0); ("int32", 0); ("int64", 0); ("nativeint", 0)]
 
   module Type = struct
     let int = TypeDecl.mk_typ int ~params:[] env
