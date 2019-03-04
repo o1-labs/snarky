@@ -63,6 +63,11 @@ public:
     static bigint<n> Rsquared; // R^2, where R = W^k, where k = ??
     static bigint<n> Rcubed;   // R^3
 
+    static bool small_subgroup_defined;
+    static size_t small_subgroup_base;
+    static size_t small_subgroup_power;
+    static Fp_model<n, modulus> full_root_of_unity; // generator^((modulus-1) / (2^s * small_subgroup_base^small_subgroup_power))
+
     static bool modulus_is_valid() { return modulus.data[n-1] != 0; } // mpn inverse assumes that highest limb is non-zero
 
     Fp_model() {};
@@ -177,6 +182,18 @@ bigint<n> Fp_model<n, modulus>::Rsquared;
 
 template<mp_size_t n, const bigint<n>& modulus>
 bigint<n> Fp_model<n, modulus>::Rcubed;
+
+template<mp_size_t n, const bigint<n>& modulus>
+bool Fp_model<n, modulus>::small_subgroup_defined;
+
+template<mp_size_t n, const bigint<n>& modulus>
+size_t Fp_model<n, modulus>::small_subgroup_base;
+
+template<mp_size_t n, const bigint<n>& modulus>
+size_t Fp_model<n, modulus>::small_subgroup_power;
+
+template<mp_size_t n, const bigint<n>& modulus>
+Fp_model<n, modulus> Fp_model<n, modulus>::full_root_of_unity;
 
 } // libff
 #include <libff/algebra/fields/fp.tcc>
