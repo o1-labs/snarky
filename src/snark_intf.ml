@@ -1614,6 +1614,27 @@ module type Run = sig
     end
   end
 
+  module Prover : sig
+    (** A handle to call prover functions with. Use {!val:As_prover.run_prover}
+        to convert a function using this handle into an {!type:As_prover.t}. *)
+    type t
+
+    val read_var : p:t -> Field.t -> Field.Constant.t
+
+    val get_state : p:t -> unit
+
+    val set_state : p:t -> unit -> unit
+
+    val read : p:t -> ('var, 'value) Typ.t -> 'var -> 'value
+
+    include Field_intf.Extended with type t := field
+
+    val unpack : field -> bool list
+    (** Convert a field element into its constituent bits. *)
+
+    val project : bool list -> field
+  end
+
   module As_prover : sig
     (** An [('a, 'prover_state) t] value uses the current ['prover_state] to
         generate a value of type ['a], and update the ['prover_state] as
@@ -1639,6 +1660,8 @@ module type Run = sig
       ('prover_state -> 'prover_state) -> (unit, 'prover_state) t
 
     val read : ('var, 'value) Typ.t -> 'var -> ('value, 'prover_state) t
+
+    val run_prover : (Prover.t -> 'a) -> ('a, unit) t
 
     include Field_intf.Extended with type t := field
 
