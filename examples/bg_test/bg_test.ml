@@ -141,11 +141,11 @@ module Inner = Snark.Make(Backends.Mnt6.Default)
 module M = Snark.Run.Make(Backends.Mnt4.Default)
 module G = Backends.Mnt6.G1
 
-let m : M.field m = (module M)
-
-let constant_point p =
+let constant_point (type f) ~m:((module I) : f m) p =
   let x, y = Backends.Mnt6.G1.to_affine_coordinates p in
   M.Field.(constant x, constant y)
+
+let m : M.field m = (module M)
 
 let printi n = Core.printf "%d\n%!" n
 
@@ -153,19 +153,27 @@ let () =
   let g1 = G.random () in
   let g2 = G.random () in
   let res =
-    let actual =Curve.add_exn ~m 
-        (constant_point g1)
-        (constant_point g2)
+    let actual () =
+      let module M = Snark.Run.Make(Backends.Mnt4.Default) in
+      let m : M.field m = (module M) in
+      Curve.add_exn ~m
+        (constant_point ~m g1)
+        (constant_point ~m g2)
     in
+    printi 1;
     let c =
-      (* Segfaults here *)
-      M.As_prover.read 
-        (Curve.typ ~m)
-        actual
+      fun x ->
+        M.As_prover.read
+          (Curve.typ ~m)
+          (actual ())
+          x
     in
+    printi 2;
+    (* Segfaults here *)
     M.run_and_check c
     |> Or_error.ok_exn
   in
+  printi 3;
   [%test_eq: M.Field.Constant.t * M.Field.Constant.t]
     res
     (G.to_affine_coordinates (G.add g1 g2))
@@ -185,12 +193,12 @@ let commit
   =
   let amount_g =
     Curve.scale ~m ~params
-      ~init:(constant_point init)
-      (constant_point g)
+      ~init:(constant_point ~m init)
+      (constant_point ~m g)
       amount
   in
   Curve.scale ~m ~params ~init:amount_g
-    (constant_point h)
+    (constant_point ~m h)
     randomness
 
 let commit_unchecked ~amount ~randomness =
