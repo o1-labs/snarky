@@ -542,6 +542,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let rec run : type a s. (a, s) t -> s run_state -> s run_state * a =
        fun t s ->
         match t with
+        | As_prover (x, k) ->
+            let s', (_ : unit option) = run_as_prover (Some x) s in
+            run k s'
+        | _ when !(s.as_prover) ->
+            failwith
+              "Can't run checked code as the prover: the verifier's \
+               constraint system will not match."
         | Pure x -> (s, x)
         | Direct (d, k) ->
             let Run_state.({prover_state; _}) = s in
@@ -553,9 +560,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let Run_state.({stack; _}) = s in
             let s', y = run t {s with Run_state.stack= lab :: stack} in
             run (k y) {s' with stack}
-        | As_prover (x, k) ->
-            let s', (_ : unit option) = run_as_prover (Some x) s in
-            run k s'
         | Add_constraint (c, t) ->
             if s.eval_constraints && not (Constraint.eval c (get_value s)) then
               failwithf "Constraint unsatisfied:\n%s\n%s\n"
