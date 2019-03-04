@@ -68,13 +68,15 @@ let main =
   List.iter !cmi_dirs ~f:(Loader.load_directory env) ;
   try
     let cmi_files = List.rev !cmi_files in
-    let _cmi_scopes =
+    let cmi_scopes =
       List.map cmi_files ~f:(fun filename ->
           Loader.load ~loc:Location.none
             ~name:(Loader.modname_of_filename filename)
             env.Envi.resolve_env filename )
     in
-    if not (List.is_empty cmi_files) then exit 0 ;
+    let env = List.fold ~init:env cmi_scopes ~f:(fun env scope ->
+      Envi.open_namespace_scope scope env)
+    in
     let file =
       Option.value_exn !file
         ~error:(Error.of_string "Please pass a file as an argument.")
