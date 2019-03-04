@@ -282,6 +282,18 @@ target_link_libraries(
 )
 
 add_executable(
+  profile_r1cs_bg_ppzksnark
+  EXCLUDE_FROM_ALL
+
+  zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark/profiling/profile_r1cs_bg_ppzksnark.cpp
+)
+target_link_libraries(
+  profile_r1cs_bg_ppzksnark
+
+  snark
+)
+
+add_executable(
   profile_ram_ppzksnark
   EXCLUDE_FROM_ALL
 
@@ -598,6 +610,18 @@ target_link_libraries(
 )
 
 add_executable(
+  zk_proof_systems_r1cs_bg_ppzksnark_test
+  EXCLUDE_FROM_ALL
+
+  zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark/tests/test_r1cs_bg_ppzksnark.cpp
+)
+target_link_libraries(
+  zk_proof_systems_r1cs_bg_ppzksnark_test
+
+  snark
+)
+
+add_executable(
   zk_proof_systems_ram_ppzksnark_test
   EXCLUDE_FROM_ALL
 
@@ -759,6 +783,10 @@ add_test(
   COMMAND zk_proof_systems_r1cs_gg_ppzksnark_test
 )
 add_test(
+  NAME zk_proof_systems_r1cs_bg_ppzksnark_test
+  COMMAND zk_proof_systems_r1cs_bg_ppzksnark_test
+)
+add_test(
   NAME zk_proof_systems_ram_ppzksnark_test
   COMMAND zk_proof_systems_ram_ppzksnark_test
 )
@@ -804,6 +832,7 @@ add_dependencies(check zk_proof_systems_bacs_ppzksnark_test)
 add_dependencies(check zk_proof_systems_r1cs_ppzksnark_test)
 add_dependencies(check zk_proof_systems_r1cs_se_ppzksnark_test)
 add_dependencies(check zk_proof_systems_r1cs_gg_ppzksnark_test)
+add_dependencies(check zk_proof_systems_r1cs_bg_ppzksnark_test)
 add_dependencies(check zk_proof_systems_ram_ppzksnark_test)
 add_dependencies(check zk_proof_systems_tbcs_ppzksnark_test)
 add_dependencies(check zk_proof_systems_uscs_ppzksnark_test)
