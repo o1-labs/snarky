@@ -44,6 +44,8 @@ let of_type_decl decl =
   | TVariant ctors ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_variant (List.map ~f:of_ctor_decl ctors))
+  | TOpen -> Type.mk name ~loc ~params ~kind:Parsetree.Ptype_open
+  | TExtend _ -> failwith "Cannot convert TExtend to OCaml"
 
 let rec of_pattern_desc ?loc = function
   | PAny -> Pat.any ?loc ()
@@ -101,6 +103,22 @@ let rec of_statement_desc ?loc = function
   | TypeDecl decl -> Str.type_ ?loc Recursive [of_type_decl decl]
   | Module (name, m) -> Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
   | Open name -> Str.open_ ?loc (Opn.mk ?loc name)
+  | TypeExtension (variant, ctors) ->
+      let params =
+        List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
+        )
+      in
+      let ctors =
+        List.map ctors
+          ~f:(fun { ctor_ident= name
+                  ; ctor_args= args
+                  ; ctor_ret= ret
+                  ; ctor_loc= loc }
+             ->
+            Te.decl ~loc ~args:(of_ctor_args args) name
+              ?res:(Option.map ~f:of_type_expr ret) )
+      in
+      Str.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
 
 and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 

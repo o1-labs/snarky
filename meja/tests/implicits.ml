@@ -15,11 +15,11 @@ let g __implicit7__ __implicit5__ __implicit3__ (x : 'a) (y : 'a) =
   let f = (show __implicit7__) false in
   (a, b, c, d, e, f)
 
-let h __implicit15__ __implicit11__ __implicit9__ (x : int) (y : bool)
+let h __implicit17__ __implicit9__ __implicit10__ (x : int) (y : bool)
     (z : float) =
-  ( (g __implicit11__ __implicit9__ __implicit9__) x x
-  , (g __implicit11__ __implicit9__ __implicit11__) y y
-  , (g __implicit11__ __implicit9__ __implicit15__) z z )
+  ( (g __implicit9__ __implicit10__ __implicit10__) x x
+  , (g __implicit9__ __implicit10__ __implicit9__) y y
+  , (g __implicit9__ __implicit10__ __implicit17__) z z )
 
 type ('a, 'b) conv = {conv: 'a -> 'b}
 

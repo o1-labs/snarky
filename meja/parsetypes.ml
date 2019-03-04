@@ -90,6 +90,9 @@ and type_decl_desc =
   | TAlias of type_expr
   | TRecord of field_decl list
   | TVariant of ctor_decl list
+  | TOpen
+  | TExtend of lid * type_decl * ctor_decl list
+      (** Internal; this should never be present in the AST. *)
 
 type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
@@ -129,6 +132,7 @@ and statement_desc =
   | TypeDecl of type_decl
   | Module of str * module_expr
   | Open of lid
+  | TypeExtension of variant * ctor_decl list
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
