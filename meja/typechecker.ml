@@ -113,8 +113,8 @@ let rec check_type_aux typ ctyp env =
 let check_type env typ constr_typ =
   match check_type_aux typ constr_typ env with
   | exception Error (_, err) ->
-      let typ, _ = Envi.Type.flatten typ env in
-      let constr_typ, _ = Envi.Type.flatten constr_typ env in
+      let typ = Envi.Type.flatten typ env in
+      let constr_typ = Envi.Type.flatten constr_typ env in
       raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
   | () -> ()
 
@@ -416,7 +416,7 @@ let rec get_expression env expected exp =
       let typs =
         List.map es ~f:(fun e -> Envi.Type.mkvar ~loc:e.exp_loc None env)
       in
-      let typ, env = Envi.Type.mk ~loc (Ttuple typs) env in
+      let typ = Envi.Type.mk ~loc (Ttuple typs) env in
       check_type env expected typ ;
       let env = ref env in
       let es =
