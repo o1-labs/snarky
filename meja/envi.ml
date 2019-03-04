@@ -148,15 +148,19 @@ module Scope = struct
   let get_type_declaration name scope = Map.find scope.type_decls name
 
   let register_type_declaration decl scope =
+    let {type_decls; _} = scope in
     let scope =
       { scope with
-        type_decls=
-          Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl }
+        type_decls= Map.set type_decls ~key:decl.tdec_ident.txt ~data:decl }
     in
     match decl.tdec_desc with
-    | TAbstract | TAlias _ -> scope
+    | TAbstract | TAlias _ | TOpen -> scope
     | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
     | TVariant ctors -> List.foldi ~f:(add_ctor decl) ~init:scope ctors
+    | TExtend (_, _, ctors) ->
+        (* Don't add the identifier to the scope *)
+        let scope = {scope with type_decls} in
+        List.foldi ~f:(add_ctor decl) ~init:scope ctors
 
   let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors
       ~modules ~instances
@@ -775,11 +779,16 @@ module TypeDecl = struct
     (* Make sure the declaration is available to lookup for recursive types. *)
     let decl = {decl with tdec_id; tdec_params} in
     let scope, env = pop_expr_scope env in
-    let env = map_current_scope ~f:(Scope.add_type_declaration decl) env in
+    let env =
+      match decl.tdec_desc with
+      | TExtend _ -> env
+      | _ -> map_current_scope ~f:(Scope.add_type_declaration decl) env
+    in
     let env = push_scope scope env in
     let tdec_desc, env =
       match decl.tdec_desc with
       | TAbstract -> (TAbstract, env)
+      | TOpen -> (TOpen, env)
       | TAlias typ ->
           let typ, env = Type.import ~must_find:true typ env in
           (TAlias typ, env)
@@ -792,7 +801,7 @@ module TypeDecl = struct
                 (env, {field with fld_type}) )
           in
           (TRecord fields, env)
-      | TVariant ctors ->
+      | TVariant ctors | TExtend (_, _, ctors) -> (
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
                 let scope, env = pop_expr_scope env in
@@ -846,7 +855,10 @@ module TypeDecl = struct
                 let env = push_scope scope (close_expr_scope env) in
                 (env, {ctor with ctor_args; ctor_ret}) )
           in
-          (TVariant ctors, env)
+          match decl.tdec_desc with
+          | TVariant _ -> (TVariant ctors, env)
+          | TExtend (id, decl, _) -> (TExtend (id, decl, ctors), env)
+          | _ -> failwith "Expected a TVariant or a TExtend" )
     in
     let env = close_expr_scope env in
     let decl = {decl with tdec_desc} in

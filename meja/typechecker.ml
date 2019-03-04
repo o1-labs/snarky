@@ -18,6 +18,8 @@ type error =
   | No_unifiable_expr
   | No_instance of type_expr
   | Argument_expected of Longident.t
+  | Not_extensible of Longident.t
+  | Extension_different_arity of Longident.t
 
 exception Error of Location.t * error
 
@@ -111,6 +113,8 @@ let rec check_type_aux typ ctyp env =
 let check_type env typ constr_typ =
   match check_type_aux typ constr_typ env with
   | exception Error (_, err) ->
+      let typ, _ = Envi.Type.flatten typ env in
+      let constr_typ, _ = Envi.Type.flatten constr_typ env in
       raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
   | () -> ()
 
@@ -193,9 +197,14 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
 
 let get_ctor (name : lid) env =
   let loc = name.loc in
-  match Envi.TypeDecl.find_of_constructor name env with
-  | Some (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
-    ->
+  match (Envi.TypeDecl.find_of_constructor name env, name) with
+  | ( Some
+        (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
+    , name )
+   |( Some
+        ( {tdec_desc= TExtend (name, decl, ctors); tdec_ident; tdec_params; _}
+        , i )
+    , _ ) ->
       let ctor = List.nth_exn ctors i in
       let make_name (tdec_ident : str) =
         Location.mkloc
@@ -407,11 +416,7 @@ let rec get_expression env expected exp =
       let typs =
         List.map es ~f:(fun e -> Envi.Type.mkvar ~loc:e.exp_loc None env)
       in
-      let typ =
-        Envi.Type.mk ~loc
-          (Ttuple (List.map es ~f:(fun {exp_type= t; _} -> t)))
-          env
-      in
+      let typ, env = Envi.Type.mk ~loc (Ttuple typs) env in
       check_type env expected typ ;
       let env = ref env in
       let es =
@@ -667,6 +672,39 @@ let rec check_statement env stmt =
   | Open name ->
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)
+  | TypeExtension (variant, ctors) ->
+      let ({tdec_ident; tdec_params; tdec_desc; tdec_id; _} as decl) =
+        match Envi.raw_find_type_declaration variant.var_ident env with
+        | open_decl -> open_decl
+        | exception _ ->
+            raise
+              (Error (loc, Unbound ("type constructor", variant.var_ident)))
+      in
+      ( match tdec_desc with
+      | TOpen -> ()
+      | _ -> raise (Error (loc, Not_extensible variant.var_ident.txt)) ) ;
+      ( match List.iter2 tdec_params variant.var_params ~f:(fun _ _ -> ()) with
+      | Ok _ -> ()
+      | Unequal_lengths ->
+          raise (Error (loc, Extension_different_arity variant.var_ident.txt))
+      ) ;
+      let decl =
+        { tdec_ident
+        ; tdec_params= variant.var_params
+        ; tdec_id
+        ; tdec_desc= TExtend (variant.var_ident, decl, ctors)
+        ; tdec_loc= loc }
+      in
+      let decl, env = Envi.TypeDecl.import decl env in
+      let ctors =
+        match decl.tdec_desc with
+        | TExtend (_, _, ctors) -> ctors
+        | _ -> failwith "Expected a TExtend."
+      in
+      let variant =
+        {variant with var_decl_id= tdec_id; var_params= decl.tdec_params}
+      in
+      (env, {stmt with stmt_desc= TypeExtension (variant, ctors)})
 
 and check_module_expr env m =
   let loc = m.mod_loc in
@@ -736,6 +774,13 @@ let rec report_error ppf = function
   | Argument_expected lid ->
       fprintf ppf "@[The constructor %a expects an argument.@]" Longident.pp
         lid
+  | Not_extensible lid ->
+      fprintf ppf "@[Type definition %a is not extensible.@]" Longident.pp lid
+  | Extension_different_arity lid ->
+      fprintf ppf
+        "@[This extension does not match the definition of type %a@.They have \
+         different arities.@]"
+        Longident.pp lid
 
 let () =
   Location.register_error_of_exn (function
