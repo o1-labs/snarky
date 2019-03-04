@@ -526,6 +526,64 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val get_stack : state -> string list
   end
 
+  module Proof_system : sig
+    type ('a, 's, 'public_input) t
+
+    val create :
+         ?proving_key:Proving_key.t
+      -> ?verification_key:Verification_key.t
+      -> ?proving_key_path:string
+      -> ?verification_key_path:string
+      -> ?handler:Request.Handler.t
+      -> public_input:( ('a, 's) Checked.t
+                      , unit
+                      , 'computation
+                      , 'public_input )
+                      Data_spec.t
+      -> 'computation
+      -> ('a, 's, 'public_input) t
+
+    val digest : ('a, 's, 'public_input) t -> Md5_lib.t
+
+    val generate_keypair : ('a, 's, 'public_input) t -> Keypair.t
+
+    val run_unchecked :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handler:Request.Handler.t
+      -> ('a, 's, 'public_input) t
+      -> 's
+      -> 's * 'a
+
+    val run_checked :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handler:Request.Handler.t
+      -> (('a, 's) As_prover.t, 's, 'public_input) t
+      -> 's
+      -> ('s * 'a) Or_error.t
+
+    val check :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handler:Request.Handler.t
+      -> ('a, 's, 'public_input) t
+      -> 's
+      -> bool
+
+    val prove :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?proving_key:Proving_key.t
+      -> ?handler:Request.Handler.t
+      -> ('a, 's, 'public_input) t
+      -> 's
+      -> Proof.t
+
+    val verify :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?verification_key:Verification_key.t
+      -> ('a, 's, 'public_input) t
+      -> Proof.t
+      -> bool
+  end
+
   module Perform : sig
     type ('a, 't) t = 't -> Runner.state -> Runner.state * 'a
 
@@ -1155,6 +1213,60 @@ module type Run = sig
     val value : (_, 'value) t -> ('value, unit) As_prover.t
 
     val var : ('var, _) t -> 'var
+  end
+
+  module Proof_system : sig
+    type ('a, 'public_input) t
+
+    val create :
+         ?proving_key:Proving_key.t
+      -> ?verification_key:Verification_key.t
+      -> ?proving_key_path:string
+      -> ?verification_key_path:string
+      -> ?handler:Request.Handler.t
+      -> public_input:( unit -> 'a
+                      , unit
+                      , 'computation
+                      , 'public_input )
+                      Data_spec.t
+      -> 'computation
+      -> ('a, 'public_input) t
+
+    val digest : ('a, 'public_input) t -> Md5_lib.t
+
+    val generate_keypair : ('a, 'public_input) t -> Keypair.t
+
+    val run_unchecked :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handler:Request.Handler.t
+      -> ('a, 'public_input) t
+      -> 'a
+
+    val run_checked :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handler:Request.Handler.t
+      -> (('a, unit) As_prover.t, 'public_input) t
+      -> 'a Or_error.t
+
+    val check :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handler:Request.Handler.t
+      -> ('a, 'public_input) t
+      -> bool
+
+    val prove :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?proving_key:Proving_key.t
+      -> ?handler:Request.Handler.t
+      -> ('a, 'public_input) t
+      -> Proof.t
+
+    val verify :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?verification_key:Verification_key.t
+      -> ('a, 'public_input) t
+      -> Proof.t
+      -> bool
   end
 
   val assert_ : ?label:string -> Constraint.t -> unit
