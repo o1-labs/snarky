@@ -48,6 +48,7 @@ public:
 
     my_Fp c0, c1;
     Fp2_model() {};
+    Fp2_model(const std::vector<my_Fp>& v) : c0(v[0]), c1(v[1]) {};
     Fp2_model(const my_Fp& c0, const my_Fp& c1) : c0(c0), c1(c1) {};
 
     std::vector<my_Fp> all_base_field_elements();
