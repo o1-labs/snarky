@@ -567,9 +567,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let run_as_prover x state =
         match (x, state.prover_state) with
         | Some x, Some s ->
-            state.as_prover := true;
+            state.as_prover := true ;
             let s', y = As_prover.run x (get_value state) s in
-            state.as_prover := false;
+            state.as_prover := false ;
             ({state with prover_state= Some s'}, Some y)
         | _, _ -> (state, None)
 
@@ -615,11 +615,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | Exists ({store; alloc; check; _}, p, k) -> (
           match s.prover_state with
           | Some ps ->
-              s.as_prover := true;
+              s.as_prover := true ;
               let ps, value =
                 Provider.run p s.stack (get_value s) ps s.handler
               in
-              s.as_prover := false;
+              s.as_prover := false ;
               let var = Typ.Store.run (store value) (store_field_elt s) in
               (* TODO: Push a label onto the stack here *)
               let s, () = run (check var) (set_prover_state (Some ()) s) in
@@ -652,7 +652,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ; stack= []
           ; handler= Option.value handler ~default:Request.Handler.fail
           ; is_running= true
-          ; as_prover= ref false}
+          ; as_prover= ref false }
       end
     end
 
@@ -1772,10 +1772,11 @@ module Run = struct
 
     let run checked =
       if !(!state.as_prover) then
-        failwith "Can't run checked code as the prover: the verifier's \
-               constraint system will not match.";
+        failwith
+          "Can't run checked code as the prover: the verifier's constraint \
+           system will not match." ;
       if not !state.is_running then
-        failwith "This function can't be run outside of a checked computation.";
+        failwith "This function can't be run outside of a checked computation." ;
       let state', x = Runner.run checked !state in
       state := state' ;
       x
@@ -2209,7 +2210,10 @@ module Run = struct
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 
-    let run_and_check x = Perform.run_and_check ~run:as_stateful x
+    let run_and_check x = Perform.run_and_check ~run:as_stateful (fun () ->
+      let prover_block = x () in
+      !state.as_prover := true;
+      prover_block)
 
     let check x = Perform.check ~run:as_stateful x
   end
