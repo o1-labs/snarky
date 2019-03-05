@@ -1184,7 +1184,7 @@ module type Run = sig
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 
-    include Monad.S2 with type ('a, 's) t := ('a, 's) t
+    include Monad_let.S2 with type ('a, 's) t := ('a, 's) t
 
     val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
 
