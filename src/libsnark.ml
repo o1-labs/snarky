@@ -1352,7 +1352,7 @@ module Make_mnt_cycle (Security_level : sig
 end) =
 struct
   let suffix =
-    match Security_level.modulus_size with `Bits298-> "" | `Bits753 -> "753"
+    match Security_level.modulus_size with `Bits298 -> "" | `Bits753 -> "753"
 
   module Mnt4_0 = Make_full (struct
     let prefix = "camlsnark_mnt4" ^ suffix
@@ -1978,7 +1978,8 @@ module Curves = struct
   module Mnt6 = struct
     module G1 = struct
       let generator =
-        mk_generator Mnt298.Mnt4_0.Field.typ Mnt298.Mnt4_0.Field.delete "mnt6_G1"
+        mk_generator Mnt298.Mnt4_0.Field.typ Mnt298.Mnt4_0.Field.delete
+          "mnt6_G1"
 
       module Coefficients =
         Make_coefficients
