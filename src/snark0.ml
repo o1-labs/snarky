@@ -2184,7 +2184,7 @@ module Run = struct
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 
-    let run_and_check x = Perform.run_and_check ~run:as_stateful (fun () -> x)
+    let run_and_check x = Perform.run_and_check ~run:as_stateful x
 
     let check x = Perform.check ~run:as_stateful x
   end
