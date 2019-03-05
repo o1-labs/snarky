@@ -124,7 +124,8 @@ module type Basic = sig
       val read : Field.Var.t -> field t
     end
 
-    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
+    type ('var, 'value) t =
+      ('var, 'value, Field.t, unit Checked.run_state) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -302,8 +303,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   Field.Checked.mul x_times_y z
 ]}
     *)
+
+    type 'prover_state run_state =
+      ('prover_state, R1CS_constraint_system.t, Field.Vector.t) Run_state.t
+
     include
-      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
+      Monad_let.S2
+      with type ('a, 's) t =
+                  ('a, 's, Field.t, unit Checked.run_state) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -882,7 +889,13 @@ module type Run = sig
       val read : Field.t -> field t
     end
 
-    type ('var, 'value) t = ('var, 'value, field) Types.Typ.t
+    type 'prover_state run_state =
+      ( 'prover_state
+      , R1CS_constraint_system.t
+      , Field.Constant.Vector.t )
+      Run_state.t
+
+    type ('var, 'value) t = ('var, 'value, field, unit run_state) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 

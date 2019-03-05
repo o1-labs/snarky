@@ -282,8 +282,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
   end
 
   module Checked0 = struct
+    type 'prover_state run_state =
+      ('prover_state, R1CS_constraint_system.t, Field.Vector.t) Run_state.t
+
     module T = struct
-      type ('a, 's) t = ('a, 's, Field.t) Checked.t
+      type ('a, 's) t = ('a, 's, Field.t, unit run_state) Checked.t
 
       include Checked.T
     end
@@ -297,7 +300,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
     include Typ_monads
     include Typ.T
 
-    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
+    type ('var, 'value) t =
+      ('var, 'value, Field.t, unit Checked0.run_state) Types.Typ.t
 
     type ('var, 'value) typ = ('var, 'value) t
 
@@ -498,9 +502,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
       fst (go 0 t)
 
     module Runner = struct
-      type 'prover_state run_state =
-        ('prover_state, R1CS_constraint_system.t, Field.Vector.t) Run_state.t
-
       type state = unit run_state
 
       type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
@@ -1662,7 +1663,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
   end
 
   module Perform = struct
-    type ('a, 't) t = 't -> unit Runner.run_state -> unit Runner.run_state * 'a
+    type ('a, 't) t =
+      't -> unit Checked.run_state -> unit Checked.run_state * 'a
 
     let generate_keypair ~run ~exposing k =
       Run.generate_keypair ~run ~exposing k
@@ -1778,6 +1780,8 @@ module Run = struct
       module Store = Store
       module Alloc = Alloc
       module Read = Read
+
+      type 'prover_state run_state = 'prover_state Snark.Checked.run_state
 
       type nonrec ('var, 'value) t = ('var, 'value) t
 
