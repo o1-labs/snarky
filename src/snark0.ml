@@ -499,70 +499,64 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     module Runner = struct
       type 'prover_state run_state =
-        { system: R1CS_constraint_system.t option
-        ; input: Field.Vector.t
-        ; aux: Field.Vector.t
-        ; eval_constraints: bool
-        ; num_inputs: int
-        ; next_auxiliary: int ref
-        ; prover_state: 'prover_state option
-        ; stack: string list
-        ; handler: Request.Handler.t }
+        ('prover_state, R1CS_constraint_system.t, Field.Vector.t) Run_state.t
 
       type state = unit run_state
 
       type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
       let set_prover_state prover_state
+          Run_state.({ system
+                     ; input
+                     ; aux
+                     ; eval_constraints
+                     ; num_inputs
+                     ; next_auxiliary
+                     ; prover_state= _
+                     ; stack
+                     ; handler }) =
+        Run_state.
           { system
           ; input
           ; aux
           ; eval_constraints
           ; num_inputs
           ; next_auxiliary
-          ; prover_state= _
+          ; prover_state
           ; stack
-          ; handler } =
-        { system
-        ; input
-        ; aux
-        ; eval_constraints
-        ; num_inputs
-        ; next_auxiliary
-        ; prover_state
-        ; stack
-        ; handler }
+          ; handler }
 
-      let set_handler handler state = {state with handler}
+      let set_handler handler state = {state with Run_state.handler}
 
-      let get_handler {handler; _} = handler
+      let get_handler Run_state.({handler; _}) = handler
 
-      let set_stack stack state = {state with stack}
+      let set_stack stack state = {state with Run_state.stack}
 
-      let get_stack {stack; _} = stack
+      let get_stack Run_state.({stack; _}) = stack
 
-      let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
+      let get_value Run_state.({num_inputs; input; aux; _}) : Cvar.t -> Field.t
+          =
         let get_one i =
           if i <= num_inputs then Field.Vector.get input (i - 1)
           else Field.Vector.get aux (i - num_inputs - 1)
         in
         Cvar.eval get_one
 
-      let store_field_elt {next_auxiliary; aux; _} x =
+      let store_field_elt Run_state.({next_auxiliary; aux; _}) x =
         let v = !next_auxiliary in
         incr next_auxiliary ;
         Field.Vector.emplace_back aux x ;
         Cvar.Unsafe.of_index v
 
-      let alloc_var {next_auxiliary; _} () =
+      let alloc_var Run_state.({next_auxiliary; _}) () =
         let v = !next_auxiliary in
         incr next_auxiliary ; Cvar.Unsafe.of_index v
 
       let run_as_prover x state =
-        match (x, state.prover_state) with
+        match (x, state.Run_state.prover_state) with
         | Some x, Some s ->
             let s', y = As_prover.run x (get_value state) s in
-            ({state with prover_state= Some s'}, Some y)
+            ({state with Run_state.prover_state= Some s'}, Some y)
         | _, _ -> (state, None)
 
       (* INVARIANT: run _ s = (s', _) gives
@@ -572,8 +566,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
         match t with
         | Pure x -> (s, x)
         | With_label (lab, t, k) ->
-            let {stack; _} = s in
-            let s', y = run t {s with stack= lab :: stack} in
+            let Run_state.({stack; _}) = s in
+            let s', y = run t {s with Run_state.stack= lab :: stack} in
             run (k y) {s' with stack}
         | As_prover (x, k) ->
             let s', (_ : unit option) = run_as_prover (Some x) s in
@@ -595,20 +589,23 @@ module Make_basic (Backend : Backend_intf.S) = struct
             in
             run (k y) s
         | With_handler (h, t, k) ->
-            let {handler; _} = s in
+            let Run_state.({handler; _}) = s in
             let s', y =
-              run t {s with handler= Request.Handler.push handler h}
+              run t {s with Run_state.handler= Request.Handler.push handler h}
             in
             run (k y) {s' with handler}
         | Clear_handler (t, k) ->
-            let {handler; _} = s in
-            let s', y = run t {s with handler= Request.Handler.fail} in
-            run (k y) {s' with handler}
+            let Run_state.({handler; _}) = s in
+            let s', y =
+              run t {s with Run_state.handler= Request.Handler.fail}
+            in
+            run (k y) {s' with Run_state.handler}
         | Exists ({store; alloc; check; _}, p, k) -> (
-          match s.prover_state with
+          match s.Run_state.prover_state with
           | Some ps ->
               let ps, value =
-                Provider.run p s.stack (get_value s) ps s.handler
+                Provider.run p s.Run_state.stack (get_value s) ps
+                  s.Run_state.handler
               in
               let var = Typ.Store.run (store value) (store_field_elt s) in
               (* TODO: Push a label onto the stack here *)
@@ -632,15 +629,16 @@ module Make_basic (Backend : Backend_intf.S) = struct
           Option.iter system ~f:(fun system ->
               R1CS_constraint_system.set_primary_input_size system num_inputs
           ) ;
-          { system
-          ; input
-          ; aux
-          ; eval_constraints
-          ; num_inputs
-          ; next_auxiliary
-          ; prover_state= s0
-          ; stack= []
-          ; handler= Option.value handler ~default:Request.Handler.fail }
+          Run_state.
+            { system
+            ; input
+            ; aux
+            ; eval_constraints
+            ; num_inputs
+            ; next_auxiliary
+            ; prover_state= s0
+            ; stack= []
+            ; handler= Option.value handler ~default:Request.Handler.fail }
       end
     end
 
@@ -686,7 +684,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       match run t0 state with
       | exception e -> Or_error.of_exn e
-      | {Runner.prover_state= Some s; _}, x -> Ok (s, x, get_value)
+      | {Run_state.prover_state= Some s; _}, x -> Ok (s, x, get_value)
       | _ -> failwith "run_and_check': Expected a value from run, got None."
 
     let run_unchecked ~run t0 s0 =
@@ -698,7 +696,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
       in
       match run t0 state with
-      | {Runner.prover_state= Some s; _}, x -> (s, x)
+      | {Run_state.prover_state= Some s; _}, x -> (s, x)
       | _ -> failwith "run_unchecked: Expected a value from run, got None."
 
     let run_and_check ~run t s =
@@ -1186,7 +1184,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           Checked.Runner.run proof_system.check_inputs prover_state
         in
         let prover_state, a = run (proof_system.compute ()) prover_state in
-        Option.iter prover_state.Checked.Runner.system ~f:(fun system ->
+        Option.iter prover_state.Run_state.system ~f:(fun system ->
             let aux_input_size =
               !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
@@ -1222,7 +1220,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
-        let ({Checked.Runner.prover_state= s; _} as state), a =
+        let ({Run_state.prover_state= s; _} as state), a =
           run_proof_system ~run ~input ?system ?eval_constraints ?handler
             proof_system (Some s)
         in
@@ -1274,7 +1272,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let _, _, state =
           run_with_input ~run ~public_input ~system ?handler proof_system s
         in
-        let {Checked.Runner.input; aux; _} = state in
+        let {Run_state.input; aux; _} = state in
         let proving_key =
           List.find_map_exn
             ~f:(fun f -> f ())
@@ -1740,7 +1738,7 @@ module Run = struct
 
     let state =
       ref
-        { Runner.system= Some (R1CS_constraint_system.create ())
+        { Run_state.system= Some (R1CS_constraint_system.create ())
         ; input= Field.Vector.create ()
         ; aux= Field.Vector.create ()
         ; eval_constraints= true
@@ -2159,14 +2157,14 @@ module Run = struct
 
     let handle x h =
       let h = Request.Handler.create_single h in
-      let {Runner.handler; _} = !state in
+      let {Run_state.handler; _} = !state in
       state := {!state with handler= Request.Handler.push handler h} ;
       let a = x () in
       state := {!state with handler} ;
       a
 
     let with_label lbl x =
-      let {Runner.stack; _} = !state in
+      let {Run_state.stack; _} = !state in
       state := {!state with stack= lbl :: stack} ;
       let a = x () in
       state := {!state with stack} ;
