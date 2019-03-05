@@ -2,7 +2,7 @@
 
 set -e
 
-rm -r website/website/pages/api
+rm -r website/website/pages/api || true
 cp -r -T _build/default/_doc/_html/ website/website/pages/api
 
 # Fix css and js URLs
