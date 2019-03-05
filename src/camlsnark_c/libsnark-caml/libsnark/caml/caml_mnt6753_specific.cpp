@@ -3,8 +3,6 @@
 extern "C" {
 using namespace libsnark;
 
-// verification key
-
 void camlsnark_mnt6753_emplace_bits_of_field(std::vector<bool>* v, FieldT &x) {
   size_t field_size = FieldT::size_in_bits();
   auto n = x.as_bigint();
@@ -13,7 +11,7 @@ void camlsnark_mnt6753_emplace_bits_of_field(std::vector<bool>* v, FieldT &x) {
   }
 }
 
-// Start g1 ops code
+// Start g1 code
 
 libff::G1<ppT>* camlsnark_mnt6753_g1_of_coords (libff::Fq<ppT>* x, libff::Fq<ppT>* y) {
   return new libff::G1<ppT>(*x, *y);
@@ -98,8 +96,58 @@ void camlsnark_mnt6753_g1_vector_delete(std::vector<libff::G1<ppT>>* v) {
   delete v;
 }
 
+// End g1 code
+
+// Start g2 code
+libff::G2<ppT>* camlsnark_mnt6753_g2_of_coords (
+    std::vector<libff::Fq<ppT>>* x,
+    std::vector<libff::Fq<ppT>>* y) {
+  return new libff::G2<ppT>(
+      libff::Fqe<ppT>(*x), libff::Fqe<ppT>(*y), libff::Fqe<ppT>::one() );
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_g2_negate (libff::G2<ppT>* a) {
+  return new libff::G2<ppT>(- *a);
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_g2_double (libff::G2<ppT>* a) {
+  return new libff::G2<ppT>(a->dbl());
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_g2_add (libff::G2<ppT>* a, libff::G2<ppT>* b) {
+  return new libff::G2<ppT>((*a) + (*b));
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_g2_scale (libff::bigint<libff::mnt6753_r_limbs> *a, libff::G2<ppT>* x) {
+  return new libff::G2<ppT>((*a) * (*x));
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_g2_scale_field (FieldT *a, libff::G2<ppT>* x) {
+  return new libff::G2<ppT>((*a) * (*x));
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_g2_zero () {
+  return new libff::G2<ppT>(libff::G2<ppT>::zero());
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_g2_one () {
+  return new libff::G2<ppT>(libff::G2<ppT>::one());
+}
+
+void camlsnark_mnt6753_g2_print(libff::G2<ppT>* x) {
+  x->print();
+}
+
+bool camlsnark_mnt6753_g2_equal(libff::G2<ppT>* a, libff::G2<ppT>* b) {
+  return *a == *b;
+}
+
 void camlsnark_mnt6753_g2_delete(libff::G2<ppT>* a) {
   delete a;
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_g2_random() {
+  return new libff::G2<ppT>(libff::G2<ppT>::random_element());
 }
 
 void camlsnark_mnt6753_g2_to_affine_coordinates(libff::G2<ppT>* a) {
@@ -115,6 +163,29 @@ std::vector<libff::Fq<ppT>>* camlsnark_mnt6753_g2_y(libff::G2<ppT>* a) {
   assert(a->Z() == libff::Fqe<ppT>::one());
   return new std::vector< libff::Fq<ppT> >(a->Y().all_base_field_elements());
 }
+
+std::vector<libff::G2<ppT>>* camlsnark_mnt6753_g2_vector_create() {
+  return new std::vector<libff::G2<ppT>>();
+}
+
+int camlsnark_mnt6753_g2_vector_length(std::vector<libff::G2<ppT>> *v) {
+  return v->size();
+}
+
+void camlsnark_mnt6753_g2_vector_emplace_back(std::vector<libff::G2<ppT>>* v, libff::G2<ppT>* x) {
+  v->emplace_back(*x);
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_g2_vector_get(std::vector<libff::G2<ppT>>* v, int i) {
+  libff::G2<ppT> res = (*v)[i];
+  return new libff::G2<ppT>(res);
+}
+
+void camlsnark_mnt6753_g2_vector_delete(std::vector<libff::G2<ppT>>* v) {
+  delete v;
+}
+
+// End g2 code
 
 void camlsnark_mnt6753_fqk_delete(libff::Fqk<ppT>* a) {
   delete a;
