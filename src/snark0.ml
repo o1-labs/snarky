@@ -2210,10 +2210,16 @@ module Run = struct
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 
-    let run_and_check x = Perform.run_and_check ~run:as_stateful (fun () ->
-      let prover_block = x () in
-      !state.as_prover := true;
-      prover_block)
+    let run_and_check x =
+      !state.as_prover := true ;
+      let res =
+        Perform.run_and_check ~run:as_stateful (fun () ->
+            let prover_block = x () in
+            !state.as_prover := true ;
+            prover_block )
+      in
+      !state.as_prover := false ;
+      res
 
     let check x = Perform.check ~run:as_stateful x
   end
