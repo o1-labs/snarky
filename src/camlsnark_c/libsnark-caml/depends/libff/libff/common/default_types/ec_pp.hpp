@@ -39,19 +39,19 @@ typedef edwards_pp default_ec_pp;
 } // libff
 #endif
 
-#ifdef CURVE_MNT4128
+#ifdef CURVE_MNT4753
 #define LIBFF_DEFAULT_EC_PP_DEFINED
-#include <libff/algebra/curves/mnt_128/mnt4128/mnt4128_pp.hpp>
+#include <libff/algebra/curves/mnt753/mnt4753/mnt4753_pp.hpp>
 namespace libff {
-typedef mnt4128_pp default_ec_pp;
+typedef mnt4753_pp default_ec_pp;
 } // libff
 #endif
 
-#ifdef CURVE_MNT6128
+#ifdef CURVE_MNT6753
 #define LIBFF_DEFAULT_EC_PP_DEFINED
-#include <libff/algebra/curves/mnt_128/mnt6128/mnt6128_pp.hpp>
+#include <libff/algebra/curves/mnt753/mnt6753/mnt6753_pp.hpp>
 namespace libff {
-typedef mnt6128_pp default_ec_pp;
+typedef mnt6753_pp default_ec_pp;
 } // libff
 #endif
 
