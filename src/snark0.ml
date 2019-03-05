@@ -507,7 +507,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
         ; next_auxiliary: int ref
         ; prover_state: 'prover_state option
         ; stack: string list
-        ; handler: Request.Handler.t }
+        ; handler: Request.Handler.t
+        ; is_running: bool
+        ; as_prover: bool ref }
 
       type state = unit run_state
 
@@ -522,7 +524,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ; next_auxiliary
           ; prover_state= _
           ; stack
-          ; handler } =
+          ; handler
+          ; is_running
+          ; as_prover } =
         { system
         ; input
         ; aux
@@ -531,7 +535,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
         ; next_auxiliary
         ; prover_state
         ; stack
-        ; handler }
+        ; handler
+        ; is_running
+        ; as_prover }
 
       let set_handler handler state = {state with handler}
 
@@ -561,7 +567,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let run_as_prover x state =
         match (x, state.prover_state) with
         | Some x, Some s ->
+            state.as_prover := true;
             let s', y = As_prover.run x (get_value state) s in
+            state.as_prover := false;
             ({state with prover_state= Some s'}, Some y)
         | _, _ -> (state, None)
 
@@ -607,9 +615,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | Exists ({store; alloc; check; _}, p, k) -> (
           match s.prover_state with
           | Some ps ->
+              s.as_prover := true;
               let ps, value =
                 Provider.run p s.stack (get_value s) ps s.handler
               in
+              s.as_prover := false;
               let var = Typ.Store.run (store value) (store_field_elt s) in
               (* TODO: Push a label onto the stack here *)
               let s, () = run (check var) (set_prover_state (Some ()) s) in
@@ -640,7 +650,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ; next_auxiliary
           ; prover_state= s0
           ; stack= []
-          ; handler= Option.value handler ~default:Request.Handler.fail }
+          ; handler= Option.value handler ~default:Request.Handler.fail
+          ; is_running= true
+          ; as_prover= ref false}
       end
     end
 
@@ -1746,17 +1758,24 @@ module Run = struct
 
     let state =
       ref
-        { Runner.system= Some (R1CS_constraint_system.create ())
+        { Runner.system= None
         ; input= Field.Vector.create ()
         ; aux= Field.Vector.create ()
-        ; eval_constraints= true
+        ; eval_constraints= false
         ; num_inputs= 0
         ; next_auxiliary= ref 1
-        ; prover_state= Some ()
+        ; prover_state= None
         ; stack= []
-        ; handler= Request.Handler.fail }
+        ; handler= Request.Handler.fail
+        ; is_running= false
+        ; as_prover= ref false }
 
     let run checked =
+      if !(!state.as_prover) then
+        failwith "Can't run checked code as the prover: the verifier's \
+               constraint system will not match.";
+      if not !state.is_running then
+        failwith "This function can't be run outside of a checked computation.";
       let state', x = Runner.run checked !state in
       state := state' ;
       x
