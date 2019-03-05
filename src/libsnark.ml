@@ -35,7 +35,7 @@ let set_no_profiling =
 
 let () = set_no_profiling true
 
-module Make_G1 (M : sig
+module Make_group (P : sig
   val prefix : string
 end) (Field : sig
   type t
@@ -50,165 +50,164 @@ end) (Fq : sig
 
   val typ : t Ctypes.typ
 
-  val schedule_delete : t -> unit
-end) =
-struct
-  module Group : sig
-    type t [@@deriving bin_io]
+  val delete : t -> unit
+end) : sig
+  type t [@@deriving bin_io]
 
-    val typ : t Ctypes.typ
+  val typ : t Ctypes.typ
 
-    val add : t -> t -> t
+  val add : t -> t -> t
 
-    val ( + ) : t -> t -> t
+  val ( + ) : t -> t -> t
 
-    val negate : t -> t
+  val negate : t -> t
 
-    val double : t -> t
+  val double : t -> t
 
-    val scale : t -> Bigint_r.t -> t
+  val scale : t -> Bigint_r.t -> t
 
-    val scale_field : t -> Field.t -> t
+  val scale_field : t -> Field.t -> t
 
-    val zero : t
+  val zero : t
 
-    val one : t
+  val one : t
 
-    val to_affine_coordinates : t -> Fq.t * Fq.t
+  val to_affine_coordinates : t -> Fq.t * Fq.t
 
-    val of_affine_coordinates : Fq.t * Fq.t -> t
+  val of_affine_coordinates : Fq.t * Fq.t -> t
 
-    val equal : t -> t -> bool
+  val equal : t -> t -> bool
 
-    val random : unit -> t
+  val random : unit -> t
 
-    val delete : t -> unit
+  val delete : t -> unit
 
-    val print : t -> unit
+  val print : t -> unit
 
-    module Vector : Vector.S with type elt := t
-  end = struct
-    module P = struct
-      let prefix = with_prefix M.prefix "g1"
-    end
+  module Vector : Vector.S_binable with type elt := t
+end = struct
+  include P
+  include Make_foreign (P)
 
-    include P
-    include Make_foreign (P)
+  let zero =
+    let stub = foreign (func_name "zero") (void @-> returning typ) in
+    stub ()
 
-    let zero =
-      let stub = foreign (func_name "zero") (void @-> returning typ) in
-      stub ()
+  let one =
+    let stub = foreign (func_name "one") (void @-> returning typ) in
+    stub ()
 
-    let one =
-      let stub = foreign (func_name "one") (void @-> returning typ) in
-      stub ()
+  let delete = foreign (func_name "delete") (typ @-> returning void)
 
-    let delete = foreign (func_name "delete") (typ @-> returning void)
+  let schedule_delete t = Caml.Gc.finalise delete t
 
-    let schedule_delete t = Caml.Gc.finalise delete t
+  let print = foreign (func_name "print") (typ @-> returning void)
 
-    module Vector = Vector.Make (struct
-      type elt = t
+  let random =
+    let stub = foreign (func_name "random") (void @-> returning typ) in
+    fun () ->
+      let x = stub () in
+      schedule_delete x ; x
 
-      let typ = typ
+  let of_affine_coordinates =
+    let stub =
+      foreign (func_name "of_coords") (Fq.typ @-> Fq.typ @-> returning typ)
+    in
+    fun (x, y) ->
+      let t = stub x y in
+      schedule_delete t ; t
 
-      let prefix = with_prefix prefix "vector"
+  let double =
+    let stub = foreign (func_name "double") (typ @-> returning typ) in
+    fun x ->
+      let z = stub x in
+      schedule_delete z ; z
 
-      let schedule_delete = schedule_delete
-    end)
+  let negate =
+    let stub = foreign (func_name "negate") (typ @-> returning typ) in
+    fun x ->
+      let z = stub x in
+      schedule_delete z ; z
 
-    let print = foreign (func_name "print") (typ @-> returning void)
+  let add =
+    let stub = foreign (func_name "add") (typ @-> typ @-> returning typ) in
+    fun x y ->
+      let z = stub x y in
+      schedule_delete z ; z
 
-    let random =
-      let stub = foreign (func_name "random") (void @-> returning typ) in
-      fun () ->
-        let x = stub () in
-        schedule_delete x ; x
+  let ( + ) = add
 
-    let of_affine_coordinates =
-      let stub =
-        foreign (func_name "of_coords") (Fq.typ @-> Fq.typ @-> returning typ)
-      in
-      fun (x, y) ->
-        let t = stub x y in
-        schedule_delete t ; t
+  let scale =
+    let stub =
+      foreign (func_name "scale") (Bigint_r.typ @-> typ @-> returning typ)
+    in
+    fun y x ->
+      let z = stub x y in
+      schedule_delete z ; z
 
-    let double =
-      let stub = foreign (func_name "double") (typ @-> returning typ) in
-      fun x ->
-        let z = stub x in
-        schedule_delete z ; z
+  let scale_field =
+    let stub =
+      foreign (func_name "scale_field") (Field.typ @-> typ @-> returning typ)
+    in
+    fun y x ->
+      let z = stub x y in
+      schedule_delete z ; z
 
-    let negate =
-      let stub = foreign (func_name "negate") (typ @-> returning typ) in
-      fun x ->
-        let z = stub x in
-        schedule_delete z ; z
+  let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
 
-    let add =
-      let stub = foreign (func_name "add") (typ @-> typ @-> returning typ) in
-      fun x y ->
-        let z = stub x y in
-        schedule_delete z ; z
+  let to_affine_coordinates =
+    let stub_to_affine =
+      foreign (func_name "to_affine_coordinates") (typ @-> returning void)
+    in
+    let stub_x = foreign (func_name "x") (typ @-> returning Fq.typ) in
+    let stub_y = foreign (func_name "y") (typ @-> returning Fq.typ) in
+    fun t ->
+      let () = stub_to_affine t in
+      let x = stub_x t in
+      Caml.Gc.finalise Fq.delete x ;
+      let y = stub_y t in
+      Caml.Gc.finalise Fq.delete y ;
+      (x, y)
 
-    let ( + ) = add
-
-    let scale =
-      let stub =
-        foreign (func_name "scale") (Bigint_r.typ @-> typ @-> returning typ)
-      in
-      fun y x ->
-        let z = stub x y in
-        schedule_delete z ; z
-
-    let scale_field =
-      let stub =
-        foreign (func_name "scale_field") (Field.typ @-> typ @-> returning typ)
-      in
-      fun y x ->
-        let z = stub x y in
-        schedule_delete z ; z
-
-    let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
-
-    let to_affine_coordinates =
-      let stub_to_affine =
-        foreign (func_name "to_affine_coordinates") (typ @-> returning void)
-      in
-      let stub_x = foreign (func_name "x") (typ @-> returning Fq.typ) in
-      let stub_y = foreign (func_name "y") (typ @-> returning Fq.typ) in
-      fun t ->
-        let () = stub_to_affine t in
-        let x = stub_x t in
-        Fq.schedule_delete x ;
-        let y = stub_y t in
-        Fq.schedule_delete y ; (x, y)
-
-    module Repr = struct
-      type t = Zero | Non_zero of {x: Fq.t; y: Fq.t} [@@deriving bin_io]
-    end
-
-    let to_repr t : Repr.t =
-      if equal zero t then Zero
-      else
-        let x, y = to_affine_coordinates t in
-        Non_zero {x; y}
-
-    let of_repr (r : Repr.t) =
-      match r with
-      | Zero -> zero
-      | Non_zero {x; y} -> of_affine_coordinates (x, y)
-
-    include Binable.Of_binable
-              (Repr)
-              (struct
-                type nonrec t = t
-
-                let to_binable = to_repr
-
-                let of_binable = of_repr
-              end)
+  module Repr = struct
+    type t = Zero | Non_zero of {x: Fq.t; y: Fq.t} [@@deriving bin_io]
   end
+
+  let to_repr t : Repr.t =
+    if equal zero t then Zero
+    else
+      let x, y = to_affine_coordinates t in
+      Non_zero {x; y}
+
+  let of_repr (r : Repr.t) =
+    match r with
+    | Zero -> zero
+    | Non_zero {x; y} -> of_affine_coordinates (x, y)
+
+  module B =
+    Binable.Of_binable
+      (Repr)
+      (struct
+        type nonrec t = t
+
+        let to_binable = to_repr
+
+        let of_binable = of_repr
+      end)
+
+  include B
+
+  module Vector = Vector.Make_binable (struct
+    type nonrec t = t
+
+    include B
+
+    let typ = typ
+
+    let prefix = with_prefix prefix "vector"
+
+    let schedule_delete = schedule_delete
+  end)
 end
 
 module Make_common (M : sig
@@ -436,7 +435,7 @@ struct
 
     val print : t -> unit
 
-    module Vector : Vector.S with type elt = t
+    module Vector : Vector.S_binable with type elt = t
   end = struct
     module T = struct
       include Field0
@@ -510,8 +509,23 @@ struct
       let zero = of_int 0
     end
 
-    module Vector = Vector.Make (struct
-      type elt = T.t
+    module B =
+      Binable.Of_binable
+        (Bigint.R)
+        (struct
+          type t = T.t
+
+          let to_binable = Bigint.R.of_field
+
+          let of_binable = Bigint.R.to_field
+        end)
+
+    include B
+
+    module Vector = Vector.Make_binable (struct
+      type t = T.t
+
+      include B
 
       let typ = T.typ
 
@@ -521,16 +535,6 @@ struct
     end)
 
     include T
-
-    include Binable.Of_binable
-              (Bigint.R)
-              (struct
-                type t = T.t
-
-                let to_binable = Bigint.R.of_field
-
-                let of_binable = Bigint.R.to_field
-              end)
   end
 
   module Var : sig
@@ -626,7 +630,7 @@ struct
         fun t -> Var.create (stub t)
 
       module Vector = Vector.Make (struct
-        type elt = t
+        type nonrec t = t
 
         let typ = typ
 
@@ -639,7 +643,7 @@ struct
     let schedule_delete t = Caml.Gc.finalise delete t
 
     module Vector = Vector.Make (struct
-      type elt = t
+      type nonrec t = t
 
       let typ = typ
 
@@ -1344,11 +1348,11 @@ module Bn128 = Make_full (struct
 end)
 
 module Make_mnt_cycle (Security_level : sig
-  val modulus_size : [`Bits80 | `Bits753]
+  val modulus_size : [`Bits298 | `Bits753]
 end) =
 struct
   let suffix =
-    match Security_level.modulus_size with `Bits80 -> "" | `Bits753 -> "753"
+    match Security_level.modulus_size with `Bits298-> "" | `Bits753 -> "753"
 
   module Mnt4_0 = Make_full (struct
     let prefix = "camlsnark_mnt4" ^ suffix
@@ -1457,39 +1461,6 @@ struct
     let c = func "c" G1.typ G1.delete
   end
 
-  (* TODO: Clean this up and unify with G1 *)
-  module Make_G2 (Prefix : sig
-    val prefix : string
-  end) (Fq : sig
-    include Deletable_intf
-
-    module Vector : Deletable_intf
-  end) =
-  struct
-    include Make_foreign (struct
-      let prefix = with_prefix Prefix.prefix "g2"
-    end)
-
-    let to_coords =
-      let coord name =
-        let stub =
-          foreign (func_name name) (typ @-> returning Fq.Vector.typ)
-        in
-        fun t ->
-          let r = stub t in
-          Caml.Gc.finalise Fq.Vector.delete r ;
-          r
-      in
-      let to_affine =
-        foreign (func_name "to_affine_coordinates") (typ @-> returning void)
-      in
-      let get_x = coord "x" in
-      let get_y = coord "y" in
-      fun t ->
-        to_affine t ;
-        (get_x t, get_y t)
-  end
-
   module Make_fqk
       (Prefix : Prefix_intf) (Fq : sig
           include Deletable_intf
@@ -1514,19 +1485,33 @@ struct
   module Mnt4 = struct
     include Mnt4_0
     module Fqk = Make_fqk (Prefix) (Mnt6_0.Field)
-    module G2 = Make_G2 (Prefix) (Mnt6_0.Field)
-    include Make_G1 (Prefix) (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field)
+
+    module G2 =
+      Make_group (struct
+          let prefix = with_prefix Prefix.prefix "g2"
+        end)
+        (Mnt4_0.Field)
+        (Mnt4_0.Bigint.R)
+        (Mnt6_0.Field.Vector)
+
+    module G1 =
+      Make_group (struct
+          let prefix = with_prefix Prefix.prefix "g1"
+        end)
+        (Mnt4_0.Field)
+        (Mnt4_0.Bigint.R)
+        (Mnt6_0.Field)
 
     module GM_proof_accessors =
       Make_proof_accessors (struct
           let prefix = with_prefix Prefix.prefix "gm_proof"
         end)
         (GM.Proof)
-        (Group)
+        (G1)
         (G2)
 
     module GM_verification_key_accessors =
-      Make_GM_verification_key_accessors (Prefix) (GM.Verification_key) (Group)
+      Make_GM_verification_key_accessors (Prefix) (GM.Verification_key) (G1)
         (G2)
         (Fqk)
 
@@ -1535,14 +1520,14 @@ struct
           let prefix = with_prefix Prefix.prefix "proof"
         end)
         (Default.Proof)
-        (Group)
+        (G1)
         (G2)
 
     module Groth16_verification_key_accessors =
       Make_Groth16_verification_key_accessors
         (Prefix)
         (Default.Verification_key)
-        (Group)
+        (G1)
         (G2)
         (Fqk)
   end
@@ -1550,19 +1535,33 @@ struct
   module Mnt6 = struct
     include Mnt6_0
     module Fqk = Make_fqk (Prefix) (Mnt4_0.Field)
-    module G2 = Make_G2 (Prefix) (Mnt4_0.Field)
-    include Make_G1 (Prefix) (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field)
+
+    module G2 =
+      Make_group (struct
+          let prefix = with_prefix Prefix.prefix "g1"
+        end)
+        (Mnt6_0.Field)
+        (Mnt6_0.Bigint.R)
+        (Mnt4_0.Field.Vector)
+
+    module G1 =
+      Make_group (struct
+          let prefix = with_prefix Prefix.prefix "g1"
+        end)
+        (Mnt6_0.Field)
+        (Mnt6_0.Bigint.R)
+        (Mnt4_0.Field)
 
     module GM_proof_accessors =
       Make_proof_accessors (struct
           let prefix = with_prefix Prefix.prefix "gm_proof"
         end)
         (GM.Proof)
-        (Group)
+        (G1)
         (G2)
 
     module GM_verification_key_accessors =
-      Make_GM_verification_key_accessors (Prefix) (GM.Verification_key) (Group)
+      Make_GM_verification_key_accessors (Prefix) (GM.Verification_key) (G1)
         (G2)
         (Fqk)
 
@@ -1571,25 +1570,25 @@ struct
           let prefix = with_prefix Prefix.prefix "proof"
         end)
         (Default.Proof)
-        (Group)
+        (G1)
         (G2)
 
     module Groth16_verification_key_accessors =
       Make_Groth16_verification_key_accessors
         (Prefix)
         (Default.Verification_key)
-        (Group)
+        (G1)
         (G2)
         (Fqk)
   end
 end
 
-module Mnt80 = Make_mnt_cycle (struct
-  let modulus_size = `Bits80
+module Mnt298 = Make_mnt_cycle (struct
+  let modulus_size = `Bits298
 end)
 
-module Mnt4 = Mnt80.Mnt4
-module Mnt6 = Mnt80.Mnt6
+module Mnt4 = Mnt298.Mnt4
+module Mnt6 = Mnt298.Mnt6
 
 module Mnt753 = Make_mnt_cycle (struct
   let modulus_size = `Bits753
@@ -1979,11 +1978,11 @@ module Curves = struct
   module Mnt6 = struct
     module G1 = struct
       let generator =
-        mk_generator Mnt80.Mnt4_0.Field.typ Mnt80.Mnt4_0.Field.delete "mnt6_G1"
+        mk_generator Mnt298.Mnt4_0.Field.typ Mnt298.Mnt4_0.Field.delete "mnt6_G1"
 
       module Coefficients =
         Make_coefficients
-          (Mnt80.Mnt4_0.Field)
+          (Mnt298.Mnt4_0.Field)
           (struct
             let curve_name = "mnt6_G1"
           end)

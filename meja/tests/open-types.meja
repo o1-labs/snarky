@@ -1,0 +1,31 @@
+type t = ..;
+
+type t += A;
+
+type t += B;
+
+let a : t = A;
+
+let b : t = B;
+
+module T = {
+  type t = ..;
+
+  type t += C;
+};
+
+let c : T.t = T.C;
+
+type T.t += D;
+
+let d : T.t = D;
+
+type u('a, 'b) = ..;
+
+type u('a, 'b) += E('a, 'b) | F('a);
+
+let e : u(int, bool) = E(1, true);
+
+let f : u(int, int) = E(1, 1);
+
+let g : u(unit, bool) = F(());
