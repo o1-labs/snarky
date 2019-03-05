@@ -283,7 +283,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module Checked0 = struct
     type 'prover_state run_state =
-      ('prover_state, R1CS_constraint_system.t, Field.Vector.t) Run_state.t
+      ('prover_state, R1CS_constraint_system.t, Field.t, Field.Vector.t) Run_state.t
 
     module T = struct
       type ('a, 's) t = ('a, 's, Field.t, unit run_state) Checked.t
@@ -466,45 +466,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let perform req = request_witness Typ.unit req
 
-    let constraint_count ?(log = fun ?start _ _ -> ()) (t : (_, _) t) : int =
-      let next_auxiliary = ref 1 in
-      let alloc_var () =
-        let v = !next_auxiliary in
-        incr next_auxiliary ; Cvar.Unsafe.of_index v
-      in
-      let rec go : type a s. int -> (a, s) t -> int * a =
-       fun count t0 ->
-        match t0 with
-        | Pure x -> (count, x)
-        | Direct _ ->
-            failwith
-              "Cannot count constraints; this checked computation includes a \
-               Direct constructor."
-        | As_prover (_x, k) -> go count k
-        | Add_constraint (_c, t) -> go (count + 1) t
-        | Next_auxiliary k -> go count (k !next_auxiliary)
-        | With_label (s, t, k) ->
-            log ~start:true s count ;
-            let count', y = go count t in
-            log s count' ;
-            go count' (k y)
-        | With_state (_p, _and_then, t_sub, k) ->
-            let count', y = go count t_sub in
-            go count' (k y)
-        | With_handler (_h, t, k) ->
-            let count, x = go count t in
-            go count (k x)
-        | Clear_handler (t, k) ->
-            let count, x = go count t in
-            go count (k x)
-        | Exists ({alloc; check; _}, _c, k) ->
-            let var = Typ.Alloc.run alloc alloc_var in
-            (* TODO: Push a label onto the stack here *)
-            let count, () = go count (check var) in
-            go count (k {Handle.var; value= None})
-      in
-      fst (go 0 t)
-
     module Runner = struct
       type state = unit run_state
 
@@ -519,7 +480,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
                      ; next_auxiliary
                      ; prover_state= _
                      ; stack
-                     ; handler }) =
+                     ; handler
+                     ; run_special }) =
         Run_state.
           { system
           ; input
@@ -529,7 +491,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ; next_auxiliary
           ; prover_state
           ; stack
-          ; handler }
+          ; handler
+          ; run_special }
 
       let set_handler handler state = {state with Run_state.handler}
 
@@ -649,9 +612,61 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ; next_auxiliary
             ; prover_state= s0
             ; stack= []
-            ; handler= Option.value handler ~default:Request.Handler.fail }
+            ; handler= Option.value handler ~default:Request.Handler.fail
+            ; run_special= None }
       end
     end
+
+    let constraint_count ?(log = fun ?start _ _ -> ()) (t : (_, _) t) : int =
+      let next_auxiliary = ref 1 in
+      let alloc_var () =
+        let v = !next_auxiliary in
+        incr next_auxiliary ; Cvar.Unsafe.of_index v
+      in
+      let rec go : type a s. int -> (a, s) t -> int * a =
+       fun count t0 ->
+        match t0 with
+        | Pure x -> (count, x)
+        | Direct (d, k) ->
+            let input = Field.Vector.create () in
+            let next_auxiliary = ref 1 in
+            let aux = Field.Vector.create () in
+            let state =
+              Runner.State.make ~num_inputs:0 ~input ~next_auxiliary ~aux None
+            in
+            let count = ref count in
+            let run_special x =
+              let count', a = go !count x in
+              count := count' ;
+              a
+            in
+            let state = {state with run_special= Some run_special} in
+            let _, x = d state in
+            go !count (k x)
+        | As_prover (_x, k) -> go count k
+        | Add_constraint (_c, t) -> go (count + 1) t
+        | Next_auxiliary k -> go count (k !next_auxiliary)
+        | With_label (s, t, k) ->
+            log ~start:true s count ;
+            let count', y = go count t in
+            log s count' ;
+            go count' (k y)
+        | With_state (_p, _and_then, t_sub, k) ->
+            let count', y = go count t_sub in
+            go count' (k y)
+        | With_handler (_h, t, k) ->
+            let count, x = go count t in
+            go count (k x)
+        | Clear_handler (t, k) ->
+            let count, x = go count t in
+            go count (k x)
+        | Exists ({alloc; check; _}, _c, k) ->
+            let var = Typ.Alloc.run alloc alloc_var in
+            (* TODO: Push a label onto the stack here *)
+            let count, () = go count (check var) in
+            go count (k {Handle.var; value= None})
+      in
+      fst (go 0 t)
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
     let constraint_system ~run ~num_inputs (t : ('a, 's) t) :
@@ -1758,12 +1773,16 @@ module Run = struct
         ; next_auxiliary= ref 1
         ; prover_state= Some ()
         ; stack= []
-        ; handler= Request.Handler.fail }
+        ; handler= Request.Handler.fail
+        ; run_special= None }
 
     let run checked =
-      let state', x = Runner.run checked !state in
-      state := state' ;
-      x
+      match !state.run_special with
+      | Some f -> f checked
+      | None ->
+          let state', x = Runner.run checked !state in
+          state := state' ;
+          x
 
     let as_stateful x state' =
       let old_state = !state in

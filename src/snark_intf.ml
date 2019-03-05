@@ -305,7 +305,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     *)
 
     type 'prover_state run_state =
-      ('prover_state, R1CS_constraint_system.t, Field.Vector.t) Run_state.t
+      ( 'prover_state
+      , R1CS_constraint_system.t
+      , Field.t
+      , Field.Vector.t )
+      Run_state.t
 
     include
       Monad_let.S2
@@ -891,6 +895,7 @@ module type Run = sig
     type 'prover_state run_state =
       ( 'prover_state
       , R1CS_constraint_system.t
+      , Field.Constant.t
       , Field.Constant.Vector.t )
       Run_state.t
 
