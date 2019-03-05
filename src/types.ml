@@ -42,6 +42,9 @@ and Checked : sig
       - ['runner] is the internal type of the checked computation evaluator. *)
   type ('a, 's, 'f, 'r) t =
     | Pure : 'a -> ('a, 's, 'f, 'r) t
+    | Direct :
+        ('r -> 'r * 'a) * ('a -> ('b, 's, 'f, 'r) t)
+        -> ('b, 's, 'f, 'r) t
     | Add_constraint :
         'f Cvar.t Constraint.t * ('a, 's, 'f, 'r) t
         -> ('a, 's, 'f, 'r) t

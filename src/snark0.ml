@@ -476,6 +476,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
        fun count t0 ->
         match t0 with
         | Pure x -> (count, x)
+        | Direct _ ->
+            failwith
+              "Cannot count constraints; this checked computation includes a \
+               Direct constructor."
         | As_prover (_x, k) -> go count k
         | Add_constraint (_c, t) -> go (count + 1) t
         | Next_auxiliary k -> go count (k !next_auxiliary)
@@ -566,6 +570,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
        fun t s ->
         match t with
         | Pure x -> (s, x)
+        | Direct (d, k) ->
+            let Run_state.({prover_state; _}) = s in
+            let s, y =
+              d (set_prover_state (Option.map ~f:(fun _ -> ()) prover_state) s)
+            in
+            run (k y) (set_prover_state prover_state s)
         | With_label (lab, t, k) ->
             let Run_state.({stack; _}) = s in
             let s', y = run t {s with Run_state.stack= lab :: stack} in
