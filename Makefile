@@ -10,6 +10,9 @@ tests :
 ml-docs :
 	dune build --root=. @doc
 
+website : ml-docs
+	./scripts/build-website.sh
+
 examples :
 	dune exec --root=. ./examples/election/election_main.exe
 	# TODO: Re-enable when fixed, see #41
