@@ -1362,4 +1362,7 @@ module type Run = sig
   val run_and_check : ('a, unit) As_prover.t -> 'a Or_error.t
 
   val check : (unit -> 'a) -> bool
+
+  val constraint_count :
+    ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
 end
