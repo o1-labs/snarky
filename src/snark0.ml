@@ -2184,6 +2184,8 @@ module Run = struct
       state := {!state with stack} ;
       a
 
+    let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
+
     let constraint_system ~exposing x =
       Perform.constraint_system ~run:as_stateful ~exposing x
 

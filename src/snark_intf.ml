@@ -309,8 +309,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     include
       Monad_let.S2
-      with type ('a, 's) t =
-                  ('a, 's, Field.t, unit Checked.run_state) Types.Checked.t
+      with type ('a, 's) t = ('a, 's, Field.t, unit run_state) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -1329,6 +1328,9 @@ module type Run = sig
   val handle : (unit -> 'a) -> Handler.t -> 'a
 
   val with_label : string -> (unit -> 'a) -> 'a
+
+  val make_checked :
+    (unit -> 'a) -> ('a, 's, Field.t, unit Typ.run_state) Types.Checked.t
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
