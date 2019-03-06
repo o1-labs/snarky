@@ -1538,7 +1538,7 @@ struct
 
     module G2 =
       Make_group (struct
-          let prefix = with_prefix Prefix.prefix "g1"
+          let prefix = with_prefix Prefix.prefix "g2"
         end)
         (Mnt6_0.Field)
         (Mnt6_0.Bigint.R)
