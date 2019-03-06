@@ -53,6 +53,44 @@ end = struct
   let b = mk_coeff (with_prefix P.prefix "coeff_b")
 end
 
+module Make_window_table
+    (P : Prefix_intf)
+    (G : Deletable_intf)
+    (Scalar : Foreign_intf) (V : sig
+        include Deletable_intf
+
+        include Binable.S with type t := t
+    end) : sig
+  type t [@@deriving bin_io]
+
+  val create : G.t -> t
+
+  val scale : t -> Scalar.t -> G.t
+end = struct
+  let func_name = with_prefix P.prefix
+
+  include V
+
+  let create =
+    let stub =
+      foreign (func_name "create_window_table") (G.typ @-> returning typ)
+    in
+    fun g ->
+      let t = stub g in
+      Caml.Gc.finalise delete t ; t
+
+  let scale =
+    let stub =
+      foreign
+        (func_name "window_scalar_mul")
+        (typ @-> Scalar.typ @-> returning G.typ)
+    in
+    fun tbl s ->
+      let x = stub tbl s in
+      Caml.Gc.finalise G.delete x ;
+      x
+end
+
 module Make_group (P : sig
   val prefix : string
 end) (Field : sig
@@ -1528,12 +1566,15 @@ struct
         (Mnt6_0.Field.Vector)
 
     module G1 = struct
-      include Make_group (struct
-                  let prefix = with_prefix Mnt4_0.prefix "g1"
-                end)
-                (Mnt4_0.Field)
-                (Mnt4_0.Bigint.R)
-                (Mnt6_0.Field)
+      module T =
+        Make_group (struct
+            let prefix = with_prefix Mnt4_0.prefix "g1"
+          end)
+          (Mnt4_0.Field)
+          (Mnt4_0.Bigint.R)
+          (Mnt6_0.Field)
+
+      include T
 
       let%test "scalar_mul" =
         let g = one in
@@ -1545,33 +1586,18 @@ struct
           end)
           (Mnt6_0.Field)
 
-      let func_name = with_prefix (with_prefix Mnt4_0.prefix "g1")
-
-      let create_window_table =
-        let stub =
-          foreign
-            (func_name "create_window_table")
-            (typ @-> returning Vector.typ)
-        in
-        fun g ->
-          let t = stub g in
-          Caml.Gc.finalise Vector.delete t ;
-          t
-
-      let window_scale =
-        let stub =
-          foreign
-            (func_name "window_scalar_mul")
-            (Vector.typ @-> Bigint.R.typ @-> returning typ)
-        in
-        fun tbl s ->
-          let x = stub tbl s in
-          Caml.Gc.finalise delete x ; x
+      module Window_table =
+        Make_window_table (struct
+            let prefix = with_prefix Mnt4_0.prefix "g1"
+          end)
+          (T)
+          (Bigint.R)
+          (Vector)
 
       let%test "window-scale" =
-        let table = create_window_table one in
+        let table = Window_table.create one in
         let s = Bigint.R.of_field (Field.random ()) in
-        equal (window_scale table s) (scale one s)
+        equal (Window_table.scale table s) (scale one s)
 
       let%test "coefficients correct" =
         let x, y = to_affine_coordinates one in
@@ -1628,12 +1654,15 @@ struct
         (Mnt4_0.Field.Vector)
 
     module G1 = struct
-      include Make_group (struct
-                  let prefix = with_prefix Mnt6_0.prefix "g1"
-                end)
-                (Mnt6_0.Field)
-                (Mnt6_0.Bigint.R)
-                (Mnt4_0.Field)
+      module T =
+        Make_group (struct
+            let prefix = with_prefix Mnt6_0.prefix "g1"
+          end)
+          (Mnt6_0.Field)
+          (Mnt6_0.Bigint.R)
+          (Mnt4_0.Field)
+
+      include T
 
       let%test "scalar_mul" =
         let g = one in
@@ -1645,33 +1674,18 @@ struct
           end)
           (Mnt4_0.Field)
 
-      let func_name = with_prefix (with_prefix Mnt6_0.prefix "g1")
-
-      let create_window_table =
-        let stub =
-          foreign
-            (func_name "create_window_table")
-            (typ @-> returning Vector.typ)
-        in
-        fun g ->
-          let t = stub g in
-          Caml.Gc.finalise Vector.delete t ;
-          t
-
-      let window_scale =
-        let stub =
-          foreign
-            (func_name "window_scalar_mul")
-            (Vector.typ @-> Bigint.R.typ @-> returning typ)
-        in
-        fun tbl s ->
-          let x = stub tbl s in
-          Caml.Gc.finalise delete x ; x
+      module Window_table =
+        Make_window_table (struct
+            let prefix = with_prefix Mnt6_0.prefix "g1"
+          end)
+          (T)
+          (Bigint.R)
+          (Vector)
 
       let%test "window-scale" =
-        let table = create_window_table one in
+        let table = Window_table.create one in
         let s = Bigint.R.of_field (Field.random ()) in
-        equal (window_scale table s) (scale one s)
+        equal (Window_table.scale table s) (scale one s)
 
       let%test "coefficients correct" =
         let x, y = to_affine_coordinates one in
