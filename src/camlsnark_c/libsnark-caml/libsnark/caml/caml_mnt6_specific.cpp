@@ -13,6 +13,14 @@ void camlsnark_mnt6_emplace_bits_of_field(std::vector<bool>* v, FieldT &x) {
 
 // Start g1 code
 
+libff::Fq<ppT>* camlsnark_mnt6_g1_coeff_a () {
+  return &libff::G1<ppT>::coeff_a;
+}
+
+libff::Fq<ppT>* camlsnark_mnt6_g1_coeff_b () {
+  return &libff::G1<ppT>::coeff_b;
+}
+
 libff::G1<ppT>* camlsnark_mnt6_g1_of_coords (libff::Fq<ppT>* x, libff::Fq<ppT>* y) {
   return new libff::G1<ppT>(*x, *y);
 }
