@@ -195,6 +195,10 @@ void camlsnark_mnt6753_g2_vector_delete(std::vector<libff::G2<ppT>>* v) {
 
 // End g2 code
 
+libff::Fqk<ppT>* camlsnark_mnt6753_fqk_one(libff::Fqk<ppT>* a) {
+  return new libff::Fqk<ppT>(libff::Fqk<ppT>::one());
+}
+
 void camlsnark_mnt6753_fqk_delete(libff::Fqk<ppT>* a) {
   delete a;
 }

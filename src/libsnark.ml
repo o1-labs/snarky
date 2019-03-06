@@ -1,3 +1,4 @@
+module Bignum_bigint = Bigint
 open Core
 open Ctypes
 open Foreign
@@ -49,7 +50,7 @@ end = struct
 
   let a = mk_coeff (with_prefix P.prefix "coeff_a")
 
-  let b = mk_coeff (with_prefix P.prefix "coeff_a")
+  let b = mk_coeff (with_prefix P.prefix "coeff_b")
 end
 
 module Make_group (P : sig
@@ -1489,6 +1490,11 @@ struct
       let prefix = with_prefix Prefix.prefix "fqk"
     end)
 
+    let one =
+      let stub = foreign (func_name "one") (void @-> returning typ) in
+      let x = stub () in
+      Caml.Gc.finalise delete x ; x
+
     let to_elts =
       let stub =
         foreign (func_name "to_elts") (typ @-> returning Fq.Vector.typ)
@@ -1503,21 +1509,40 @@ struct
     include Mnt4_0
     module Fqk = Make_fqk (Prefix) (Mnt6_0.Field)
 
+    let%test "fqk4" =
+      let v = Fqk.to_elts Fqk.one in
+      Mnt6_0.Field.Vector.length v = 4
+
+    let other_prefix = Mnt6_0.prefix
+
     module G2 =
       Make_group (struct
-          let prefix = with_prefix Prefix.prefix "g2"
+          let prefix = with_prefix other_prefix "g2"
         end)
         (Mnt4_0.Field)
         (Mnt4_0.Bigint.R)
         (Mnt6_0.Field.Vector)
 
     module G1 = struct
-      module P = struct
-        let prefix = with_prefix Prefix.prefix "g1"
-      end
+      include Make_group (struct
+                  let prefix = with_prefix other_prefix "g1"
+                end)
+                (Mnt4_0.Field)
+                (Mnt4_0.Bigint.R)
+                (Mnt6_0.Field)
 
-      include Make_group (P) (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field)
-      module Coefficients = Make_group_coefficients (P) (Mnt6_0.Field)
+      module Coefficients =
+        Make_group_coefficients (struct
+            let prefix = with_prefix other_prefix "g1"
+          end)
+          (Mnt6_0.Field)
+
+      let%test "coefficients correct" =
+        let x, y = to_affine_coordinates one in
+        let ( + ) = Field.add in
+        let ( * ) = Field.mul in
+        Field.(
+          equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b))
     end
 
     module GM_proof_accessors =
@@ -1554,21 +1579,40 @@ struct
     include Mnt6_0
     module Fqk = Make_fqk (Prefix) (Mnt4_0.Field)
 
+    let%test "fqk6" =
+      let v = Fqk.to_elts Fqk.one in
+      Mnt4_0.Field.Vector.length v = 6
+
+    let other_prefix = Mnt4_0.prefix
+
     module G2 =
       Make_group (struct
-          let prefix = with_prefix Prefix.prefix "g2"
+          let prefix = with_prefix other_prefix "g2"
         end)
         (Mnt6_0.Field)
         (Mnt6_0.Bigint.R)
         (Mnt4_0.Field.Vector)
 
     module G1 = struct
-      module P = struct
-        let prefix = with_prefix Prefix.prefix "g1"
-      end
+      include Make_group (struct
+                  let prefix = with_prefix other_prefix "g1"
+                end)
+                (Mnt6_0.Field)
+                (Mnt6_0.Bigint.R)
+                (Mnt4_0.Field)
 
-      include Make_group (P) (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field)
-      module Coefficients = Make_group_coefficients (P) (Mnt6_0.Field)
+      module Coefficients =
+        Make_group_coefficients (struct
+            let prefix = with_prefix other_prefix "g1"
+          end)
+          (Mnt6_0.Field)
+
+      let%test "coefficients correct" =
+        let x, y = to_affine_coordinates one in
+        let ( + ) = Field.add in
+        let ( * ) = Field.mul in
+        Field.(
+          equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b))
     end
 
     module GM_proof_accessors =
