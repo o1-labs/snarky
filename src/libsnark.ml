@@ -241,7 +241,13 @@ struct
 
   let () = init ()
 
-  module Field0 = struct
+  module Field0 : sig
+    type t [@@deriving sexp]
+
+    include Deletable_intf with type t := t
+
+    val func_name : string -> string
+  end = struct
     module F = Make_foreign (struct
       let prefix = with_prefix prefix "field"
     end)
@@ -1513,11 +1519,9 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt6_0.Field.Vector.length v = 4
 
-    let other_prefix = Mnt6_0.prefix
-
     module G2 =
       Make_group (struct
-          let prefix = with_prefix other_prefix "g2"
+          let prefix = with_prefix Mnt4_0.prefix "g2"
         end)
         (Mnt4_0.Field)
         (Mnt4_0.Bigint.R)
@@ -1525,24 +1529,56 @@ struct
 
     module G1 = struct
       include Make_group (struct
-                  let prefix = with_prefix other_prefix "g1"
+                  let prefix = with_prefix Mnt4_0.prefix "g1"
                 end)
                 (Mnt4_0.Field)
                 (Mnt4_0.Bigint.R)
                 (Mnt6_0.Field)
 
+      let%test "scalar_mul" =
+        let g = one in
+        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
+
       module Coefficients =
         Make_group_coefficients (struct
-            let prefix = with_prefix other_prefix "g1"
+            let prefix = with_prefix Mnt4_0.prefix "g1"
           end)
           (Mnt6_0.Field)
 
+      let func_name = with_prefix (with_prefix Mnt4_0.prefix "g1")
+
+      let create_window_table =
+        let stub =
+          foreign
+            (func_name "create_window_table")
+            (typ @-> returning Vector.typ)
+        in
+        fun g ->
+          let t = stub g in
+          Caml.Gc.finalise Vector.delete t ;
+          t
+
+      let window_scale =
+        let stub =
+          foreign
+            (func_name "window_scalar_mul")
+            (Vector.typ @-> Bigint.R.typ @-> returning typ)
+        in
+        fun tbl s ->
+          let x = stub tbl s in
+          Caml.Gc.finalise delete x ; x
+
+      let%test "window-scale" =
+        let table = create_window_table one in
+        let s = Bigint.R.of_field (Field.random ()) in
+        equal (window_scale table s) (scale one s)
+
       let%test "coefficients correct" =
         let x, y = to_affine_coordinates one in
-        let ( + ) = Field.add in
-        let ( * ) = Field.mul in
-        Field.(
-          equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b))
+        let open Mnt6_0.Field in
+        let ( + ) = add in
+        let ( * ) = mul in
+        equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b)
     end
 
     module GM_proof_accessors =
@@ -1583,11 +1619,9 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt4_0.Field.Vector.length v = 6
 
-    let other_prefix = Mnt4_0.prefix
-
     module G2 =
       Make_group (struct
-          let prefix = with_prefix other_prefix "g2"
+          let prefix = with_prefix Mnt6_0.prefix "g2"
         end)
         (Mnt6_0.Field)
         (Mnt6_0.Bigint.R)
@@ -1595,24 +1629,56 @@ struct
 
     module G1 = struct
       include Make_group (struct
-                  let prefix = with_prefix other_prefix "g1"
+                  let prefix = with_prefix Mnt6_0.prefix "g1"
                 end)
                 (Mnt6_0.Field)
                 (Mnt6_0.Bigint.R)
                 (Mnt4_0.Field)
 
+      let%test "scalar_mul" =
+        let g = one in
+        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
+
       module Coefficients =
         Make_group_coefficients (struct
-            let prefix = with_prefix other_prefix "g1"
+            let prefix = with_prefix Mnt6_0.prefix "g1"
           end)
-          (Mnt6_0.Field)
+          (Mnt4_0.Field)
+
+      let func_name = with_prefix (with_prefix Mnt6_0.prefix "g1")
+
+      let create_window_table =
+        let stub =
+          foreign
+            (func_name "create_window_table")
+            (typ @-> returning Vector.typ)
+        in
+        fun g ->
+          let t = stub g in
+          Caml.Gc.finalise Vector.delete t ;
+          t
+
+      let window_scale =
+        let stub =
+          foreign
+            (func_name "window_scalar_mul")
+            (Vector.typ @-> Bigint.R.typ @-> returning typ)
+        in
+        fun tbl s ->
+          let x = stub tbl s in
+          Caml.Gc.finalise delete x ; x
+
+      let%test "window-scale" =
+        let table = create_window_table one in
+        let s = Bigint.R.of_field (Field.random ()) in
+        equal (window_scale table s) (scale one s)
 
       let%test "coefficients correct" =
         let x, y = to_affine_coordinates one in
-        let ( + ) = Field.add in
-        let ( * ) = Field.mul in
-        Field.(
-          equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b))
+        let open Mnt4_0.Field in
+        let ( + ) = add in
+        let ( * ) = mul in
+        equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b)
     end
 
     module GM_proof_accessors =
