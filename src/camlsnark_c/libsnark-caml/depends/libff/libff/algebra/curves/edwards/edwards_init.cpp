@@ -66,6 +66,7 @@ void init_edwards_params()
     edwards_Fr::root_of_unity = edwards_Fr("695314865466598274460565335217615316274564719601897184");
     edwards_Fr::nqr = edwards_Fr("11");
     edwards_Fr::nqr_to_t = edwards_Fr("1326707053668679463752768729767248251415639579872144553");
+    edwards_Fr::small_subgroup_defined = false;
 
     /* parameters for base field Fq */
 
@@ -92,6 +93,7 @@ void init_edwards_params()
     edwards_Fq::root_of_unity = edwards_Fq("4692813029219384139894873043933463717810008194158530536");
     edwards_Fq::nqr = edwards_Fq("23");
     edwards_Fq::nqr_to_t = edwards_Fq("2626736066325740702418554487368721595489070118548299138");
+    edwards_Fq::small_subgroup_defined = false;
 
     /* parameters for twist field Fq3 */
 

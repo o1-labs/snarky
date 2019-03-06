@@ -1,4 +1,4 @@
 File "tests/apply-fail.meja", line 1, characters 33-37:
-Error: Incompatable types 'int' and 'unit':
+Error: Incompatable types '_' and 'unit':
 Cannot unify 'int' and 'unit'.
 
