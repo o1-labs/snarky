@@ -35,6 +35,23 @@ let set_no_profiling =
 
 let () = set_no_profiling true
 
+module Make_group_coefficients (P : sig
+  val prefix : string
+end)
+(Fq : Foreign_intf) : sig
+  val a : Fq.t
+
+  val b : Fq.t
+end = struct
+  let mk_coeff name =
+    let stub = foreign name (void @-> returning Fq.typ) in
+    stub ()
+
+  let a = mk_coeff (with_prefix P.prefix "coeff_a")
+
+  let b = mk_coeff (with_prefix P.prefix "coeff_a")
+end
+
 module Make_group (P : sig
   val prefix : string
 end) (Field : sig
@@ -1494,13 +1511,14 @@ struct
         (Mnt4_0.Bigint.R)
         (Mnt6_0.Field.Vector)
 
-    module G1 =
-      Make_group (struct
-          let prefix = with_prefix Prefix.prefix "g1"
-        end)
-        (Mnt4_0.Field)
-        (Mnt4_0.Bigint.R)
-        (Mnt6_0.Field)
+    module G1 = struct
+      module P = struct
+        let prefix = with_prefix Prefix.prefix "g1"
+      end
+
+      include Make_group (P) (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field)
+      module Coefficients = Make_group_coefficients (P) (Mnt6_0.Field)
+    end
 
     module GM_proof_accessors =
       Make_proof_accessors (struct
@@ -1544,13 +1562,14 @@ struct
         (Mnt6_0.Bigint.R)
         (Mnt4_0.Field.Vector)
 
-    module G1 =
-      Make_group (struct
-          let prefix = with_prefix Prefix.prefix "g1"
-        end)
-        (Mnt6_0.Field)
-        (Mnt6_0.Bigint.R)
-        (Mnt4_0.Field)
+    module G1 = struct
+      module P = struct
+        let prefix = with_prefix Prefix.prefix "g1"
+      end
+
+      include Make_group (P) (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field)
+      module Coefficients = Make_group_coefficients (P) (Mnt6_0.Field)
+    end
 
     module GM_proof_accessors =
       Make_proof_accessors (struct
@@ -1930,71 +1949,5 @@ module type S = sig
     val to_string : t -> string
 
     val of_string : string -> t
-  end
-end
-
-module Curves = struct
-  let mk_coeff typ name =
-    let stub = foreign name (void @-> returning typ) in
-    stub ()
-
-  let mk_generator typ delete curve_name =
-    let prefix = sprintf "camlsnark_%s_generator" curve_name in
-    let mk s =
-      let stub = foreign (with_prefix prefix s) (void @-> returning typ) in
-      let r = stub () in
-      Caml.Gc.finalise delete r ; r
-    in
-    (mk "x", mk "y")
-
-  module Make_coefficients (Base_field : sig
-    type t
-
-    val typ : t Ctypes.typ
-  end) (M : sig
-    val curve_name : string
-  end) =
-  struct
-    let prefix = sprintf "camlsnark_%s_coeff" M.curve_name
-
-    let a = mk_coeff Base_field.typ (with_prefix prefix "a")
-
-    let b = mk_coeff Base_field.typ (with_prefix prefix "b")
-  end
-
-  module Mnt4 = struct
-    module G1 = struct
-      let generator = mk_generator Mnt6.Field.typ Mnt6.Field.delete "mnt4_G1"
-
-      module Coefficients =
-        Make_coefficients
-          (Mnt6.Field)
-          (struct
-            let curve_name = "mnt4_G1"
-          end)
-    end
-  end
-
-  module Mnt6 = struct
-    module G1 = struct
-      let generator =
-        mk_generator Mnt298.Mnt4_0.Field.typ Mnt298.Mnt4_0.Field.delete
-          "mnt6_G1"
-
-      module Coefficients =
-        Make_coefficients
-          (Mnt298.Mnt4_0.Field)
-          (struct
-            let curve_name = "mnt6_G1"
-          end)
-    end
-
-    let final_exponent_last_chunk_abs_of_w0 =
-      !@(foreign_value "camlsnark_mnt6_final_exponent_last_chunk_abs_of_w0"
-           Mnt6.Bigint.Q.typ)
-
-    let final_exponent_last_chunk_w1 =
-      !@(foreign_value "camlsnark_mnt6_final_exponent_last_chunk_w1"
-           Mnt6.Bigint.Q.typ)
   end
 end
