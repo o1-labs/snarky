@@ -558,7 +558,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> public_input:( ('a, 's) Checked.t
                       , unit
                       , 'computation
@@ -573,21 +573,21 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> ('a, 's, 'public_input) t
       -> 's
       -> 's * 'a
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> (('a, 's) As_prover.t, 's, 'public_input) t
       -> 's
       -> ('s * 'a) Or_error.t
 
     val check :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> ('a, 's, 'public_input) t
       -> 's
       -> bool
@@ -595,7 +595,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val prove :
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> ('a, 's, 'public_input) t
       -> 's
       -> Proof.t
@@ -1254,7 +1254,7 @@ module type Run = sig
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> public_input:( unit -> 'a
                       , unit
                       , 'computation
@@ -1269,26 +1269,26 @@ module type Run = sig
 
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> ('a, 'public_input) t
       -> 'a
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> (('a, unit) As_prover.t, 'public_input) t
       -> 'a Or_error.t
 
     val check :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> ('a, 'public_input) t
       -> bool
 
     val prove :
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
-      -> ?handlers:Handler.t list
+      -> ?handler:Handler.t
       -> ('a, 'public_input) t
       -> Proof.t
 
