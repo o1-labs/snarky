@@ -54,7 +54,6 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 
 %token EOL
 
-%nonassoc SEMI
 %left     INFIXOP0 EQUAL
 %right    INFIXOP1
 %left     INFIXOP2 PLUSEQUAL
@@ -237,8 +236,6 @@ expr:
     { f }
   | FUN LBRACE f = function_from_implicit_args
     { f }
-  | LET x = pat EQUAL lhs = expr SEMI rhs = expr
-    { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
   | f = expr LBRACKET es = expr_list RBRACKET
     { mkexp ~pos:$loc (Apply (f, List.rev es)) }
   | e1 = expr op = infix_operator e2 = expr %prec above_infix
@@ -309,6 +306,10 @@ block:
     { e }
   | e1 = expr SEMI rest = block
     { mkexp ~pos:$loc (Seq (e1, rest)) }
+  | LET x = pat EQUAL lhs = expr SEMI rhs = block
+    { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
+  | LET pat EQUAL expr err = err
+    { raise (Error (err, Missing_semi)) }
   | expr err = err
     { raise (Error (err, Missing_semi)) }
 

@@ -36,7 +36,7 @@ check_diff() {
 }
 
 run_test() {
-  run_dune exec meja/meja.exe -- --ml "tests/out/$1.ml" --stderr "tests/out/$1.stderr" "tests/$1.meja" 2> /dev/null
+  run_dune exec meja/meja.exe -- -I ../_build/default/src/.snarky.objs/byte --ml "tests/out/$1.ml" --stderr "tests/out/$1.stderr" "tests/$1.meja" 2> /dev/null
   if [ $? -ne 0 ]; then
     if [ -e "tests/$1.fail" ]; then
       if [[ "$update_output" -eq 0 ]]; then

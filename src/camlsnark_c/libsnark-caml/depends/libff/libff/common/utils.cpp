@@ -126,4 +126,68 @@ void deserialize_bit_vector(std::istream &in, bit_vector &v)
         v[i] = b;
     }
 }
+
+size_t k_adicity(size_t k, size_t n)
+{
+    size_t r = 0;
+    while (n > 1)
+    {
+        if (n % k == 0) {
+            r += 1;
+            n /= k;
+        } else {
+            return r;
+        }
+    }
+    return r;
+}
+
+size_t pow_int(size_t base, size_t exp)
+{
+    size_t res = 1;
+    while (exp)
+    {
+        if (exp & 1)
+        {
+            res *= base;
+        }
+        exp /= 2;
+        base *= base;
+    }
+    return res;
+}
+
+size_t mixed_radix_FFT_permute(size_t two_adicity, size_t q_adicity, size_t q, size_t N, size_t i)
+{
+    /*
+    This is the permutation obtained by splitting into
+    2 groups two_adicity times and then
+    q groups q_adicity many times
+    It can be efficiently described as follows
+    write 
+    i = 2^0 b_0 + 2^1 b_1 + ... + 2^{two_adicity - 1} b_{two_adicity - 1} 
+      + 2^two_adicity ( x_0 + q^1 x_1 + .. + q^{q_adicity-1} x_{q_adicity-1})
+    We want to return
+    j = b_0 (N/2) + b_1 (N/ 2^2) + ... + b_{two_adicity-1} (N/ 2^two_adicity)
+      + x_0 (N / 2^two_adicity / q) + .. + x_{q_adicity-1} (N / 2^two_adicity / q^q_adicity) */
+    size_t res = 0;
+    size_t shift = N;
+
+    for (size_t s = 0; s < two_adicity; ++s)
+    {
+      shift = shift / 2;
+      res += (i % 2) * shift;
+      i = i / 2;
+    }
+
+    for (size_t s = 0; s < q_adicity; ++s)
+    {
+        shift = shift / q;
+        res += (i % q) * shift;
+        i = i / q;
+    }
+
+    return res;
+}
+
 } // libff

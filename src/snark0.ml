@@ -282,8 +282,15 @@ module Make_basic (Backend : Backend_intf.S) = struct
   end
 
   module Checked0 = struct
+    type 'prover_state run_state =
+      ( 'prover_state
+      , R1CS_constraint_system.t
+      , Field.t
+      , Field.Vector.t )
+      Run_state.t
+
     module T = struct
-      type ('a, 's) t = ('a, 's, Field.t) Checked.t
+      type ('a, 's) t = ('a, 's, Field.t, unit run_state) Checked.t
 
       include Checked.T
     end
@@ -297,7 +304,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
     include Typ_monads
     include Typ.T
 
-    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
+    type ('var, 'value) t =
+      ('var, 'value, Field.t, unit Checked0.run_state) Types.Typ.t
 
     type ('var, 'value) typ = ('var, 'value) t
 
@@ -462,115 +470,71 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let perform req = request_witness Typ.unit req
 
-    let constraint_count ?(log = fun ?start _ _ -> ()) (t : (_, _) t) : int =
-      let next_auxiliary = ref 1 in
-      let alloc_var () =
-        let v = !next_auxiliary in
-        incr next_auxiliary ; Cvar.Unsafe.of_index v
-      in
-      let rec go : type a s. int -> (a, s) t -> int * a =
-       fun count t0 ->
-        match t0 with
-        | Pure x -> (count, x)
-        | As_prover (_x, k) -> go count k
-        | Add_constraint (_c, t) -> go (count + 1) t
-        | Next_auxiliary k -> go count (k !next_auxiliary)
-        | With_label (s, t, k) ->
-            log ~start:true s count ;
-            let count', y = go count t in
-            log s count' ;
-            go count' (k y)
-        | With_state (_p, _and_then, t_sub, k) ->
-            let count', y = go count t_sub in
-            go count' (k y)
-        | With_handler (_h, t, k) ->
-            let count, x = go count t in
-            go count (k x)
-        | Clear_handler (t, k) ->
-            let count, x = go count t in
-            go count (k x)
-        | Exists ({alloc; check; _}, _c, k) ->
-            let var = Typ.Alloc.run alloc alloc_var in
-            (* TODO: Push a label onto the stack here *)
-            let count, () = go count (check var) in
-            go count (k {Handle.var; value= None})
-      in
-      fst (go 0 t)
-
     module Runner = struct
-      type 'prover_state run_state =
-        { system: R1CS_constraint_system.t option
-        ; input: Field.Vector.t
-        ; aux: Field.Vector.t
-        ; eval_constraints: bool
-        ; num_inputs: int
-        ; next_auxiliary: int ref
-        ; prover_state: 'prover_state option
-        ; stack: string list
-        ; handler: Request.Handler.t
-        ; is_running: bool
-        ; as_prover: bool ref }
-
       type state = unit run_state
 
       type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
       let set_prover_state prover_state
+          Run_state.({ system
+                     ; input
+                     ; aux
+                     ; eval_constraints
+                     ; num_inputs
+                     ; next_auxiliary
+                     ; prover_state= _
+                     ; stack
+                     ; handler
+                     ; is_running
+                     ; as_prover
+                     ; run_special }) =
+        Run_state.
           { system
           ; input
           ; aux
           ; eval_constraints
           ; num_inputs
           ; next_auxiliary
-          ; prover_state= _
+          ; prover_state
           ; stack
           ; handler
           ; is_running
-          ; as_prover } =
-        { system
-        ; input
-        ; aux
-        ; eval_constraints
-        ; num_inputs
-        ; next_auxiliary
-        ; prover_state
-        ; stack
-        ; handler
-        ; is_running
-        ; as_prover }
+          ; as_prover
+          ; run_special }
 
-      let set_handler handler state = {state with handler}
+      let set_handler handler state = {state with Run_state.handler}
 
-      let get_handler {handler; _} = handler
+      let get_handler Run_state.({handler; _}) = handler
 
-      let set_stack stack state = {state with stack}
+      let set_stack stack state = {state with Run_state.stack}
 
-      let get_stack {stack; _} = stack
+      let get_stack Run_state.({stack; _}) = stack
 
-      let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
+      let get_value Run_state.({num_inputs; input; aux; _}) : Cvar.t -> Field.t
+          =
         let get_one i =
           if i <= num_inputs then Field.Vector.get input (i - 1)
           else Field.Vector.get aux (i - num_inputs - 1)
         in
         Cvar.eval get_one
 
-      let store_field_elt {next_auxiliary; aux; _} x =
+      let store_field_elt Run_state.({next_auxiliary; aux; _}) x =
         let v = !next_auxiliary in
         incr next_auxiliary ;
         Field.Vector.emplace_back aux x ;
         Cvar.Unsafe.of_index v
 
-      let alloc_var {next_auxiliary; _} () =
+      let alloc_var Run_state.({next_auxiliary; _}) () =
         let v = !next_auxiliary in
         incr next_auxiliary ; Cvar.Unsafe.of_index v
 
       let run_as_prover x state =
-        match (x, state.prover_state) with
+        match (x, state.Run_state.prover_state) with
         | Some x, Some s ->
             state.as_prover := true ;
             let s', y = As_prover.run x (get_value state) s in
             state.as_prover := false ;
-            ({state with prover_state= Some s'}, Some y)
+            ({state with Run_state.prover_state= Some s'}, Some y)
         | _, _ -> (state, None)
 
       (* INVARIANT: run _ s = (s', _) gives
@@ -579,9 +543,15 @@ module Make_basic (Backend : Backend_intf.S) = struct
        fun t s ->
         match t with
         | Pure x -> (s, x)
+        | Direct (d, k) ->
+            let Run_state.({prover_state; _}) = s in
+            let s, y =
+              d (set_prover_state (Option.map ~f:(fun _ -> ()) prover_state) s)
+            in
+            run (k y) (set_prover_state prover_state s)
         | With_label (lab, t, k) ->
-            let {stack; _} = s in
-            let s', y = run t {s with stack= lab :: stack} in
+            let Run_state.({stack; _}) = s in
+            let s', y = run t {s with Run_state.stack= lab :: stack} in
             run (k y) {s' with stack}
         | As_prover (x, k) ->
             let s', (_ : unit option) = run_as_prover (Some x) s in
@@ -603,21 +573,24 @@ module Make_basic (Backend : Backend_intf.S) = struct
             in
             run (k y) s
         | With_handler (h, t, k) ->
-            let {handler; _} = s in
+            let Run_state.({handler; _}) = s in
             let s', y =
-              run t {s with handler= Request.Handler.push handler h}
+              run t {s with Run_state.handler= Request.Handler.push handler h}
             in
             run (k y) {s' with handler}
         | Clear_handler (t, k) ->
-            let {handler; _} = s in
-            let s', y = run t {s with handler= Request.Handler.fail} in
-            run (k y) {s' with handler}
+            let Run_state.({handler; _}) = s in
+            let s', y =
+              run t {s with Run_state.handler= Request.Handler.fail}
+            in
+            run (k y) {s' with Run_state.handler}
         | Exists ({store; alloc; check; _}, p, k) -> (
-          match s.prover_state with
+          match s.Run_state.prover_state with
           | Some ps ->
               s.as_prover := true ;
               let ps, value =
-                Provider.run p s.stack (get_value s) ps s.handler
+                Provider.run p s.Run_state.stack (get_value s) ps
+                  s.Run_state.handler
               in
               s.as_prover := false ;
               let var = Typ.Store.run (store value) (store_field_elt s) in
@@ -642,19 +615,73 @@ module Make_basic (Backend : Backend_intf.S) = struct
           Option.iter system ~f:(fun system ->
               R1CS_constraint_system.set_primary_input_size system num_inputs
           ) ;
-          { system
-          ; input
-          ; aux
-          ; eval_constraints
-          ; num_inputs
-          ; next_auxiliary
-          ; prover_state= s0
-          ; stack= []
-          ; handler= Option.value handler ~default:Request.Handler.fail
-          ; is_running= true
-          ; as_prover= ref false }
+          Run_state.
+            { system
+            ; input
+            ; aux
+            ; eval_constraints
+            ; num_inputs
+            ; next_auxiliary
+            ; prover_state= s0
+            ; stack= []
+            ; handler= Option.value handler ~default:Request.Handler.fail
+            ; is_running= true
+            ; as_prover= ref false
+            ; run_special= None }
       end
     end
+
+    let rec constraint_count_aux : type a s.
+        log:(?start:_ -> _) -> auxc:_ -> int -> (a, s) t -> int * a =
+     fun ~log ~auxc count t0 ->
+      match t0 with
+      | Pure x -> (count, x)
+      | Direct (d, k) ->
+          let input = Field.Vector.create () in
+          let aux = Field.Vector.create () in
+          let state =
+            Runner.State.make ~num_inputs:0 ~input ~next_auxiliary:auxc ~aux
+              None
+          in
+          let count = ref count in
+          let run_special x =
+            let count', a = constraint_count_aux ~log ~auxc !count x in
+            count := count' ;
+            a
+          in
+          let state = {state with run_special= Some run_special} in
+          let _, x = d state in
+          constraint_count_aux ~log ~auxc !count (k x)
+      | As_prover (_x, k) -> constraint_count_aux ~log ~auxc count k
+      | Add_constraint (_c, t) -> constraint_count_aux ~log ~auxc (count + 1) t
+      | Next_auxiliary k -> constraint_count_aux ~log ~auxc count (k !auxc)
+      | With_label (s, t, k) ->
+          log ~start:true s count ;
+          let count', y = constraint_count_aux ~log ~auxc count t in
+          log s count' ;
+          constraint_count_aux ~log ~auxc count' (k y)
+      | With_state (_p, _and_then, t_sub, k) ->
+          let count', y = constraint_count_aux ~log ~auxc count t_sub in
+          constraint_count_aux ~log ~auxc count' (k y)
+      | With_handler (_h, t, k) ->
+          let count, x = constraint_count_aux ~log ~auxc count t in
+          constraint_count_aux ~log ~auxc count (k x)
+      | Clear_handler (t, k) ->
+          let count, x = constraint_count_aux ~log ~auxc count t in
+          constraint_count_aux ~log ~auxc count (k x)
+      | Exists ({alloc; check; _}, _c, k) ->
+          let alloc_var () =
+            let v = !auxc in
+            incr auxc ; Cvar.Unsafe.of_index v
+          in
+          let var = Typ.Alloc.run alloc alloc_var in
+          (* TODO: Push a label onto the stack here *)
+          let count, () = constraint_count_aux ~log ~auxc count (check var) in
+          constraint_count_aux ~log ~auxc count (k {Handle.var; value= None})
+
+    let constraint_count ?(log = fun ?start _ _ -> ()) (t : (_, _) t) : int =
+      let next_auxiliary = ref 1 in
+      fst (constraint_count_aux ~log ~auxc:next_auxiliary 0 t)
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
     let constraint_system ~run ~num_inputs (t : ('a, 's) t) :
@@ -698,7 +725,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       match run t0 state with
       | exception e -> Or_error.of_exn e
-      | {Runner.prover_state= Some s; _}, x -> Ok (s, x, get_value)
+      | {Run_state.prover_state= Some s; _}, x -> Ok (s, x, get_value)
       | _ -> failwith "run_and_check': Expected a value from run, got None."
 
     let run_unchecked ~run t0 s0 =
@@ -710,7 +737,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
       in
       match run t0 state with
-      | {Runner.prover_state= Some s; _}, x -> (s, x)
+      | {Run_state.prover_state= Some s; _}, x -> (s, x)
       | _ -> failwith "run_unchecked: Expected a value from run, got None."
 
     let run_and_check ~run t s =
@@ -1204,7 +1231,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           Checked.Runner.run proof_system.check_inputs prover_state
         in
         let prover_state, a = run (proof_system.compute ()) prover_state in
-        Option.iter prover_state.Checked.Runner.system ~f:(fun system ->
+        Option.iter prover_state.Run_state.system ~f:(fun system ->
             let aux_input_size =
               !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
@@ -1240,7 +1267,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
-        let ({Checked.Runner.prover_state= s; _} as state), a =
+        let ({Run_state.prover_state= s; _} as state), a =
           run_proof_system ~run ~input ?system ?eval_constraints ?handlers
             proof_system (Some s)
         in
@@ -1292,7 +1319,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let _, _, state =
           run_with_input ~run ~public_input ~system ?handlers proof_system s
         in
-        let {Checked.Runner.input; aux; _} = state in
+        let {Run_state.input; aux; _} = state in
         let proving_key =
           List.find_map_exn
             ~f:(fun f -> f ())
@@ -1682,7 +1709,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
   end
 
   module Perform = struct
-    type ('a, 't) t = 't -> unit Runner.run_state -> unit Runner.run_state * 'a
+    type ('a, 't) t =
+      't -> unit Checked.run_state -> unit Checked.run_state * 'a
 
     let generate_keypair ~run ~exposing k =
       Run.generate_keypair ~run ~exposing k
@@ -1758,7 +1786,7 @@ module Run = struct
 
     let state =
       ref
-        { Runner.system= None
+        { Run_state.system= None
         ; input= Field.Vector.create ()
         ; aux= Field.Vector.create ()
         ; eval_constraints= false
@@ -1768,7 +1796,8 @@ module Run = struct
         ; stack= []
         ; handler= Request.Handler.fail
         ; is_running= false
-        ; as_prover= ref false }
+        ; as_prover= ref false
+        ; run_special= None }
 
     let run checked =
       if !(!state.as_prover) then
@@ -1777,9 +1806,12 @@ module Run = struct
            system will not match." ;
       if not !state.is_running then
         failwith "This function can't be run outside of a checked computation." ;
-      let state', x = Runner.run checked !state in
-      state := state' ;
-      x
+      match !state.run_special with
+      | Some f -> f checked
+      | None ->
+          let state', x = Runner.run checked !state in
+          state := state' ;
+          x
 
     let as_stateful x state' =
       let old_state = !state in
@@ -1806,6 +1838,8 @@ module Run = struct
       module Store = Store
       module Alloc = Alloc
       module Read = Read
+
+      type 'prover_state run_state = 'prover_state Snark.Checked.run_state
 
       type nonrec ('var, 'value) t = ('var, 'value) t
 
@@ -2185,18 +2219,20 @@ module Run = struct
 
     let handle x h =
       let h = Request.Handler.create_single h in
-      let {Runner.handler; _} = !state in
+      let {Run_state.handler; _} = !state in
       state := {!state with handler= Request.Handler.push handler h} ;
       let a = x () in
       state := {!state with handler} ;
       a
 
     let with_label lbl x =
-      let {Runner.stack; _} = !state in
+      let {Run_state.stack; _} = !state in
       state := {!state with stack= lbl :: stack} ;
       let a = x () in
       state := {!state with stack} ;
       a
+
+    let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
 
     let constraint_system ~exposing x =
       Perform.constraint_system ~run:as_stateful ~exposing x
@@ -2222,6 +2258,22 @@ module Run = struct
       res
 
     let check x = Perform.check ~run:as_stateful x
+
+    let constraint_count ?(log = fun ?start _ _ -> ()) x =
+      let count = ref 0 in
+      let next_auxiliary = ref 1 in
+      let run_special x =
+        let count', a =
+          constraint_count_aux ~log ~auxc:next_auxiliary !count x
+        in
+        count := count' ;
+        a
+      in
+      let {Run_state.run_special= old; _} = !state in
+      state := {!state with run_special= Some run_special} ;
+      ignore (x ()) ;
+      state := {!state with run_special= old} ;
+      !count
   end
 end
 

@@ -124,7 +124,8 @@ module type Basic = sig
       val read : Field.Var.t -> field t
     end
 
-    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
+    type ('var, 'value) t =
+      ('var, 'value, Field.t, unit Checked.run_state) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -302,8 +303,17 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   Field.Checked.mul x_times_y z
 ]}
     *)
+
+    type 'prover_state run_state =
+      ( 'prover_state
+      , R1CS_constraint_system.t
+      , Field.t
+      , Field.Vector.t )
+      Run_state.t
+
     include
-      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
+      Monad_let.S2
+      with type ('a, 's) t = ('a, 's, Field.t, unit run_state) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -882,7 +892,14 @@ module type Run = sig
       val read : Field.t -> field t
     end
 
-    type ('var, 'value) t = ('var, 'value, field) Types.Typ.t
+    type 'prover_state run_state =
+      ( 'prover_state
+      , R1CS_constraint_system.t
+      , Field.Constant.t
+      , Field.Constant.Vector.t )
+      Run_state.t
+
+    type ('var, 'value) t = ('var, 'value, field, unit run_state) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -1184,7 +1201,7 @@ module type Run = sig
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 
-    include Monad.S2 with type ('a, 's) t := ('a, 's) t
+    include Monad_let.S2 with type ('a, 's) t := ('a, 's) t
 
     val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
 
@@ -1317,6 +1334,9 @@ module type Run = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
+  val make_checked :
+    (unit -> 'a) -> ('a, 's, Field.t, unit Typ.run_state) Types.Checked.t
+
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
     -> 'k_var
@@ -1342,4 +1362,7 @@ module type Run = sig
   val run_and_check : (unit -> ('a, unit) As_prover.t) -> 'a Or_error.t
 
   val check : (unit -> 'a) -> bool
+
+  val constraint_count :
+    ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
 end
