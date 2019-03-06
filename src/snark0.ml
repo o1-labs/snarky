@@ -1197,14 +1197,15 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ; verification_key_path }
 
       let create ?proving_key ?verification_key ?proving_key_path
-          ?verification_key_path ?handler ~public_input compute =
+          ?verification_key_path ?(handlers = ([] : Handler.t list))
+          ~public_input compute =
         let next_input = ref 1 in
         let proof_system =
           allocate_inputs (Checked.return ()) next_input public_input
             (fun () -> compute )
         in
         let handler =
-          Option.fold ~init:proof_system.handler handler ~f:(fun handler h ->
+          List.fold ~init:proof_system.handler handlers ~f:(fun handler h ->
               Request.Handler.(push handler (create_single h)) )
         in
         { proof_system with
@@ -1214,11 +1215,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
         ; verification_key_path
         ; handler }
 
-      let run_proof_system ~run ~input ?system ?eval_constraints ?handler
-          proof_system s =
+      let run_proof_system ~run ~input ?system ?eval_constraints
+          ?(handlers = ([] : Handler.t list)) proof_system s =
         let {num_inputs; _} = proof_system in
         let handler =
-          Option.fold ~init:proof_system.handler handler ~f:(fun handler h ->
+          List.fold ~init:proof_system.handler handlers ~f:(fun handler h ->
               Request.Handler.(push handler (create_single h)) )
         in
         let prover_state =
@@ -1261,13 +1262,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
               ~data:(Verification_key.to_string keypair.vk) ) ;
         keypair
 
-      let run_with_input ~run ~public_input ?system ?eval_constraints ?handler
+      let run_with_input ~run ~public_input ?system ?eval_constraints ?handlers
           proof_system s =
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
         let ({Run_state.prover_state= s; _} as state), a =
-          run_proof_system ~run ~input ?system ?eval_constraints ?handler
+          run_proof_system ~run ~input ?system ?eval_constraints ?handlers
             proof_system (Some s)
         in
         match s with
@@ -1277,30 +1278,30 @@ module Make_basic (Backend : Backend_intf.S) = struct
               "run_with_input: Expected a value from run_proof_system, got \
                None."
 
-      let run_unchecked ~run ~public_input ?handler proof_system s =
+      let run_unchecked ~run ~public_input ?handlers proof_system s =
         let s, a, _ =
-          run_with_input ~run ~public_input ?handler proof_system s
+          run_with_input ~run ~public_input ?handlers proof_system s
         in
         (s, a)
 
-      let run_checked' ~run ~public_input ?handler proof_system s =
+      let run_checked' ~run ~public_input ?handlers proof_system s =
         let system = R1CS_constraint_system.create () in
         match
           run_with_input ~run ~public_input ~system ~eval_constraints:true
-            ?handler proof_system s
+            ?handlers proof_system s
         with
         | exception e -> Or_error.of_exn e
         | s, x, state -> Ok (s, x, state)
 
-      let run_checked ~run ~public_input ?handler proof_system s =
-        Or_error.map (run_checked' ~run ~public_input ?handler proof_system s)
+      let run_checked ~run ~public_input ?handlers proof_system s =
+        Or_error.map (run_checked' ~run ~public_input ?handlers proof_system s)
           ~f:(fun (s, x, state) ->
             let s', x = As_prover.run x (Checked.Runner.get_value state) s in
             (s', x) )
 
-      let check ~run ~public_input ?handler proof_system s =
+      let check ~run ~public_input ?handlers proof_system s =
         Or_error.is_ok
-          (run_checked' ~run ~public_input ?handler proof_system s)
+          (run_checked' ~run ~public_input ?handlers proof_system s)
 
       let read_proving_key proof_system =
         match proof_system.proving_key_path with
@@ -1313,10 +1314,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
             Some (Verification_key.of_string (In_channel.read_all path))
         | None -> None
 
-      let prove ~run ~public_input ?proving_key ?handler proof_system s =
+      let prove ~run ~public_input ?proving_key ?handlers proof_system s =
         let system = R1CS_constraint_system.create () in
         let _, _, state =
-          run_with_input ~run ~public_input ~system ?handler proof_system s
+          run_with_input ~run ~public_input ~system ?handlers proof_system s
         in
         let {Run_state.input; aux; _} = state in
         let proving_key =
@@ -1691,17 +1692,17 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let generate_keypair (proof_system : _ t) =
       generate_keypair ~run:Runner.run proof_system
 
-    let run_unchecked ~public_input ?handler (proof_system : _ t) =
-      run_unchecked ~run:Runner.run ~public_input ?handler proof_system
+    let run_unchecked ~public_input ?handlers (proof_system : _ t) =
+      run_unchecked ~run:Runner.run ~public_input ?handlers proof_system
 
-    let run_checked ~public_input ?handler (proof_system : _ t) =
-      run_checked ~run:Runner.run ~public_input ?handler proof_system
+    let run_checked ~public_input ?handlers (proof_system : _ t) =
+      run_checked ~run:Runner.run ~public_input ?handlers proof_system
 
-    let check ~public_input ?handler (proof_system : _ t) =
-      check ~run:Runner.run ~public_input ?handler proof_system
+    let check ~public_input ?handlers (proof_system : _ t) =
+      check ~run:Runner.run ~public_input ?handlers proof_system
 
-    let prove ~public_input ?proving_key ?handler (proof_system : _ t) =
-      prove ~run:Runner.run ~public_input ?proving_key ?handler proof_system
+    let prove ~public_input ?proving_key ?handlers (proof_system : _ t) =
+      prove ~run:Runner.run ~public_input ?proving_key ?handlers proof_system
 
     let verify ~public_input ?verification_key (proof_system : _ t) =
       verify ~run:Runner.run ~public_input ?verification_key proof_system
@@ -2158,22 +2159,22 @@ module Run = struct
       let generate_keypair (proof_system : _ t) =
         generate_keypair ~run:as_stateful proof_system
 
-      let run_unchecked ~public_input ?handler (proof_system : _ t) =
+      let run_unchecked ~public_input ?handlers (proof_system : _ t) =
         snd
-          (run_unchecked ~run:as_stateful ~public_input ?handler proof_system
+          (run_unchecked ~run:as_stateful ~public_input ?handlers proof_system
              ())
 
-      let run_checked ~public_input ?handler (proof_system : _ t) =
+      let run_checked ~public_input ?handlers (proof_system : _ t) =
         Or_error.map
-          (run_checked ~run:as_stateful ~public_input ?handler proof_system ())
+          (run_checked ~run:as_stateful ~public_input ?handlers proof_system ())
           ~f:snd
 
-      let check ~public_input ?handler (proof_system : _ t) =
-        check ~run:as_stateful ~public_input ?handler proof_system ()
+      let check ~public_input ?handlers (proof_system : _ t) =
+        check ~run:as_stateful ~public_input ?handlers proof_system ()
 
-      let prove ~public_input ?proving_key ?handler (proof_system : _ t) =
-        prove ~run:as_stateful ~public_input ?proving_key ?handler proof_system
-          ()
+      let prove ~public_input ?proving_key ?handlers (proof_system : _ t) =
+        prove ~run:as_stateful ~public_input ?proving_key ?handlers
+          proof_system ()
 
       let verify ~public_input ?verification_key (proof_system : _ t) =
         verify ~run:as_stateful ~public_input ?verification_key proof_system
