@@ -310,7 +310,7 @@ let exercise6 () = failwith "Exercise 6"
 *)
 
 let sum (l : Field.Var.t list) : (Field.Var.t, _) Checked.t =
-  failwith "Exercise 5"
+  failwith "Exercise 7"
 
 let sum_unchecked (l : Field.t list) =
   List.fold ~init:Field.zero ~f:Field.add l
@@ -338,7 +338,7 @@ let exercise7 () =
   let input () = failwith "Exercise 7: Data_spec here" in
   let keypair = failwith "Exercise 7: Keypair here" in
   let proof l = failwith "Exercise 7: Proof" in
-  let is_valid proof l = failwith "Exercise 2: Verify" in
+  let is_valid proof l = failwith "Exercise 7: Verify" in
   let proved (l : int list) =
     let l : Field.t list = List.map ~f:Field.of_int l in
     is_valid (proof l) l
