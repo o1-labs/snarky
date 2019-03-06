@@ -83,40 +83,6 @@ void camlsnark_int_vector_delete(std::vector<int>* v) {
   delete v;
 }
 
-libff::Fr<libff::mnt4_pp>* camlsnark_mnt6_G1_coeff_a() {
-  return &libff::mnt6_G1::coeff_a;
-}
-
-libff::Fr<libff::mnt4_pp>* camlsnark_mnt6_G1_coeff_b() {
-  return &libff::mnt6_G1::coeff_b;
-}
-
-libff::Fr<libff::mnt4_pp>* camlsnark_mnt6_G1_generator_x() {
-  return new libff::Fr<libff::mnt4_pp>(libff::mnt6_G1::G1_one.X());
-}
-
-libff::Fr<libff::mnt4_pp>* camlsnark_mnt6_G1_generator_y() {
-  return new libff::Fr<libff::mnt4_pp>(libff::mnt6_G1::G1_one.Y());
-}
-
-
-
-libff::Fr<libff::mnt6_pp>* camlsnark_mnt4_G1_coeff_a() {
-  return &libff::mnt4_G1::coeff_a;
-}
-
-libff::Fr<libff::mnt6_pp>* camlsnark_mnt4_G1_coeff_b() {
-  return &libff::mnt4_G1::coeff_b;
-}
-
-libff::Fr<libff::mnt6_pp>* camlsnark_mnt4_G1_generator_x() {
-  return new libff::Fr<libff::mnt6_pp>(libff::mnt4_G1::G1_one.X());
-}
-
-libff::Fr<libff::mnt6_pp>* camlsnark_mnt4_G1_generator_y() {
-  return new libff::Fr<libff::mnt6_pp>(libff::mnt4_G1::G1_one.Y());
-}
-
 const char* camlsnark_string_to_char_pointer(std::string* s) {
   return s->c_str();
 }
