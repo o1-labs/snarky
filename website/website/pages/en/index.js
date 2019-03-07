@@ -22,7 +22,7 @@ class HomeSplash extends React.Component {
     const docUrl = doc => `${baseUrl}${docsPart}${langPart}${doc}`;
 
     const SplashContainer = props => (
-      <div className="homeContainer">
+      <div className="homeContainer lightBackground">
         <div className="homeSplashFade">
           <div className="wrapper homeWrapper">{props.children}</div>
         </div>
@@ -64,7 +64,7 @@ class HomeSplash extends React.Component {
         <div className="inner">
           <ProjectTitle siteConfig={siteConfig} />
           <PromoSection>
-            <Button href="#try">Try It Out</Button>
+            <Button href="#quickstart">Quick Start</Button>
           </PromoSection>
         </div>
       </SplashContainer>
@@ -94,13 +94,16 @@ class Index extends React.Component {
     );
 
     const CodeSample = () => (
-      <MarkdownBlock>{example_code}</MarkdownBlock>
+      <Container id="codesample" padding={['bottom', 'top']} background="light">
+        <MarkdownBlock>{example_code}</MarkdownBlock>
+      </Container>
     );
 
     const QuickStart = () => (
-      <Container id="quickstart" padding={['bottom', 'top']} align={['center']}>
+      <Container id="quickstart" padding={['bottom', 'top']}>
         <MarkdownBlock>
-          {`Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_blank">libsnark dependencies</a> and <a href="https://opam.ocaml.org/doc/Install.html" target="_blank">opam</a>, then run <span style="white-space: nowrap;">\`opam pin add git@github.com:o1-labs/snarky.git\`</span>
+          {`
+Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_blank">libsnark dependencies</a> and <a href="https://opam.ocaml.org/doc/Install.html" target="_blank">opam</a>, then run <span style="white-space: nowrap;">\`opam pin add git@github.com:o1-labs/snarky.git\`</span>
           `}
         </MarkdownBlock>
       </Container>
@@ -120,8 +123,8 @@ class Index extends React.Component {
         {[
           {
             content: 'Talk about trying this out',
-            image: `${baseUrl}img/zklambda.svg`,
-            imageAlign: 'left',
+            /*image: `${baseUrl}img/zklambda.svg`,
+            imageAlign: 'left',*/
             title: 'Try it Out',
           },
         ]}
@@ -206,8 +209,8 @@ class Index extends React.Component {
     return (
       <div>
         <HomeSplash siteConfig={siteConfig} language={language} />
+        <CodeSample />
         <div className="mainContainer">
-          <CodeSample />
           <QuickStart />
           <Features />
           <FeatureCallout />
