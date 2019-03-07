@@ -101,11 +101,14 @@ class Index extends React.Component {
 
     const QuickStart = () => (
       <Container id="quickstart" padding={['bottom', 'top']}>
-        <MarkdownBlock>
-          {`
+        <div style={{'text-align': 'center'}}>
+          <h2>Quick Start</h2>
+          <MarkdownBlock>
+            {`
 Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_blank">libsnark dependencies</a> and <a href="https://opam.ocaml.org/doc/Install.html" target="_blank">opam</a>, then run <span style="white-space: nowrap;">\`opam pin add git@github.com:o1-labs/snarky.git\`</span>
-          `}
-        </MarkdownBlock>
+            `}
+          </MarkdownBlock>
+        </div>
       </Container>
     );
 
