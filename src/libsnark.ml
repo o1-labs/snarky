@@ -55,17 +55,24 @@ end
 
 module Make_window_table
     (P : Prefix_intf)
-    (G : Deletable_intf)
-    (Scalar : Foreign_intf) (V : sig
-        include Deletable_intf
+    (G : Deletable_intf) (Scalar_field : sig
+        type t
+    end) (Scalar : sig
+      include Foreign_intf
 
-        include Binable.S with type t := t
+      val of_field : Scalar_field.t -> t
+    end) (V : sig
+      include Deletable_intf
+
+      include Binable.S with type t := t
     end) : sig
   type t [@@deriving bin_io]
 
   val create : G.t -> t
 
   val scale : t -> Scalar.t -> G.t
+
+  val scale_field : t -> Scalar_field.t -> G.t
 end = struct
   let func_name = with_prefix P.prefix
 
@@ -89,6 +96,8 @@ end = struct
       let x = stub tbl s in
       Caml.Gc.finalise G.delete x ;
       x
+
+  let scale_field t (x : Scalar_field.t) = scale t (Scalar.of_field x)
 end
 
 module Make_group (P : sig
@@ -1591,6 +1600,7 @@ struct
             let prefix = with_prefix Mnt4_0.prefix "g1"
           end)
           (T)
+          (Field)
           (Bigint.R)
           (Vector)
 
@@ -1598,6 +1608,21 @@ struct
         let table = Window_table.create one in
         let s = Bigint.R.of_field (Field.random ()) in
         equal (Window_table.scale table s) (scale one s)
+
+      let%test "window-base" =
+        let rec random_curve_point () =
+          let module Field = Mnt6_0.Field in
+          let ( + ) = Field.add in
+          let ( * ) = Field.mul in
+          let x = Field.random () in
+          let f = (x * x * x) + (Coefficients.a * x) + Coefficients.b in
+          if Field.is_square f then of_affine_coordinates (x, Field.sqrt f)
+          else random_curve_point ()
+        in
+        let g = random_curve_point () in
+        let table = Window_table.create g in
+        let s = Bigint.R.of_field Field.one in
+        equal (Window_table.scale table s) g
 
       let%test "coefficients correct" =
         let x, y = to_affine_coordinates one in
@@ -1679,6 +1704,7 @@ struct
             let prefix = with_prefix Mnt6_0.prefix "g1"
           end)
           (T)
+          (Field)
           (Bigint.R)
           (Vector)
 

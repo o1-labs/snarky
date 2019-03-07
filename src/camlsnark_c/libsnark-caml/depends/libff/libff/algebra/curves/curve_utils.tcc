@@ -64,7 +64,7 @@ std::vector<GroupT> create_window_table(const GroupT &g) {
     const size_t W = 1 << scalar_mul_window_size;
     std::vector<GroupT> res;
 
-    GroupT JW_g = GroupT::one();
+    GroupT JW_g = GroupT(g);
     // Invariant: JW_g = 2^{j*w} g
     for (size_t j = 0; j < num_windows; ++j) {
 
