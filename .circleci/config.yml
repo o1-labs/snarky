@@ -38,12 +38,12 @@ jobs:
     website:
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-7df6b2b12bc316cb71592b12255d80e19396831e
+        - image: node/latest
         steps:
             - checkout
             - run:
                 name: Test a release build of the website
-                command: eval `opam config env` && make test-website-build
+                command: make test-website-build
 workflows:
     version: 2
     snarky_parallel:
