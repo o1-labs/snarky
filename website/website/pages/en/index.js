@@ -60,7 +60,7 @@ class HomeSplash extends React.Component {
 
     return (
       <SplashContainer>
-        <Logo img_src={`${baseUrl}img/docusaurus.svg`} />
+        <Logo img_src={`${baseUrl}img/zklambda.svg`} />
         <div className="inner">
           <ProjectTitle siteConfig={siteConfig} />
           <PromoSection>
@@ -104,7 +104,7 @@ class Index extends React.Component {
         {[
           {
             content: 'Talk about trying this out',
-            image: `${baseUrl}img/docusaurus.svg`,
+            image: `${baseUrl}img/zklambda.svg`,
             imageAlign: 'left',
             title: 'Try it Out',
           },
@@ -118,7 +118,7 @@ class Index extends React.Component {
           {
             content:
               'This is another description of how this project is useful',
-            image: `${baseUrl}img/docusaurus.svg`,
+            image: `${baseUrl}img/zklambda.svg`,
             imageAlign: 'right',
             title: 'Description',
           },
@@ -131,7 +131,7 @@ class Index extends React.Component {
         {[
           {
             content: 'Talk about learning how to use this',
-            image: `${baseUrl}img/docusaurus.svg`,
+            image: `${baseUrl}img/zklambda.svg`,
             imageAlign: 'right',
             title: 'Learn How',
           },
@@ -144,13 +144,13 @@ class Index extends React.Component {
         {[
           {
             content: 'This is the content of my feature',
-            image: `${baseUrl}img/docusaurus.svg`,
+            image: `${baseUrl}img/zklambda.svg`,
             imageAlign: 'top',
             title: 'Feature One',
           },
           {
             content: 'The content of my second feature',
-            image: `${baseUrl}img/docusaurus.svg`,
+            image: `${baseUrl}img/zklambda.svg`,
             imageAlign: 'top',
             title: 'Feature Two',
           },

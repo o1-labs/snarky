@@ -48,14 +48,14 @@ const siteConfig = {
   users,
 
   /* path to images for header/footer */
-  headerIcon: 'img/docusaurus.svg',
-  footerIcon: 'img/docusaurus.svg',
+  headerIcon: 'img/zklambda.svg',
+  footerIcon: 'img/zklambda.svg',
   favicon: 'img/favicon.png',
 
   /* Colors for website */
   colors: {
-    primaryColor: '#2E8555',
-    secondaryColor: '#205C3B',
+    primaryColor: '#662d91',
+    secondaryColor: '#58027F',
   },
 
   /* Custom fonts for website */
@@ -89,8 +89,8 @@ const siteConfig = {
   cleanUrl: true,
 
   // Open Graph and Twitter card images.
-  ogImage: 'img/docusaurus.png',
-  twitterImage: 'img/docusaurus.png',
+  ogImage: 'img/zklambda.png',
+  twitterImage: 'img/zklambda.png',
 
   separateCss: ['static/css/odoc.css'],
 
