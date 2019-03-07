@@ -13,6 +13,9 @@ ml-docs :
 website : ml-docs
 	./scripts/build-website.sh
 
+test-website-build :
+	./scripts/test-website-build.sh
+
 examples :
 	dune exec --root=. ./examples/election/election_main.exe
 	# TODO: Re-enable when fixed, see #41
