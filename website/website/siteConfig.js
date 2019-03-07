@@ -10,14 +10,14 @@
 
 // List of projects/orgs using your project for the users page.
 const users = [
-  /*{
-    caption: 'User1',
+  {
+    caption: 'Coda',
     // You will need to prepend the image path with your baseUrl
     // if it is not '/', like: '/test-site/img/docusaurus.svg'.
-    image: '/img/docusaurus.svg',
-    infoLink: 'https://www.facebook.com',
+    image: '/snarky/img/coda.svg',
+    infoLink: 'https://codaprotocol.com',
     pinned: true,
-  },*/
+  },
 ];
 
 const siteConfig = {

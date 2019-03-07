@@ -101,7 +101,7 @@ class Index extends React.Component {
 
     const QuickStart = () => (
       <Container id="quickstart" padding={['bottom', 'top']}>
-        <div style={{'text-align': 'center'}}>
+        <div style={{'textAlign': 'center'}}>
           <h2>Quick Start</h2>
           <MarkdownBlock>
             {`
@@ -121,18 +121,16 @@ Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_b
       </div>
     )*/ null;
 
-    const TryOut = () => (
+    const TryOut = () => /*(
       <Block id="try">
         {[
           {
             content: 'Talk about trying this out',
-            /*image: `${baseUrl}img/zklambda.svg`,
-            imageAlign: 'left',*/
             title: 'Try it Out',
           },
         ]}
       </Block>
-    );
+    )*/ null;
 
     const Description = () => /*(
       <Block background="dark">
@@ -161,24 +159,24 @@ Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_b
       </Block>
     )*/ null;
 
-    const Features = () => /*(
+    const ExampleCode = () => (
       <Block layout="fourColumn">
         {[
           {
-            content: 'This is the content of my feature',
+            content: 'You can use our [tutorial](https://github.com/o1-labs/snarky/blob/master/examples/tutorial/tutorial.ml) to get you up to speed',
             image: `${baseUrl}img/zklambda.svg`,
             imageAlign: 'top',
-            title: 'Feature One',
+            title: 'Try it out',
           },
           {
-            content: 'The content of my second feature',
+            content: '[election example](https://github.com/o1-labs/snarky/blob/master/examples/tutorial/tutorial.ml)',
             image: `${baseUrl}img/zklambda.svg`,
             imageAlign: 'top',
-            title: 'Feature Two',
+            title: 'Look at examples',
           },
         ]}
       </Block>
-    )*/ null;
+    );
 
     const Showcase = () => {
       if ((siteConfig.users || []).length === 0) {
@@ -197,8 +195,8 @@ Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_b
 
       return (
         <div className="productShowcaseSection paddingBottom">
-          <h2>Who is Using This?</h2>
-          <p>This project is used by all these people</p>
+          <h2>Who is using Snarky?</h2>
+          <p>This project is used by</p>
           <div className="logos">{showcase}</div>
           <div className="more-users">
             <a className="button" href={pageUrl('users.html')}>
@@ -215,7 +213,7 @@ Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_b
         <CodeSample />
         <div className="mainContainer">
           <QuickStart />
-          <Features />
+          <ExampleCode />
           <FeatureCallout />
           <LearnHow />
           <TryOut />
