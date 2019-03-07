@@ -53,6 +53,53 @@ end = struct
   let b = mk_coeff (with_prefix P.prefix "coeff_b")
 end
 
+module Make_window_table
+    (P : Prefix_intf)
+    (G : Deletable_intf) (Scalar_field : sig
+        type t
+    end) (Scalar : sig
+      include Foreign_intf
+
+      val of_field : Scalar_field.t -> t
+    end) (V : sig
+      include Deletable_intf
+
+      include Binable.S with type t := t
+    end) : sig
+  type t [@@deriving bin_io]
+
+  val create : G.t -> t
+
+  val scale : t -> Scalar.t -> G.t
+
+  val scale_field : t -> Scalar_field.t -> G.t
+end = struct
+  let func_name = with_prefix P.prefix
+
+  include V
+
+  let create =
+    let stub =
+      foreign (func_name "create_window_table") (G.typ @-> returning typ)
+    in
+    fun g ->
+      let t = stub g in
+      Caml.Gc.finalise delete t ; t
+
+  let scale =
+    let stub =
+      foreign
+        (func_name "window_scalar_mul")
+        (typ @-> Scalar.typ @-> returning G.typ)
+    in
+    fun tbl s ->
+      let x = stub tbl s in
+      Caml.Gc.finalise G.delete x ;
+      x
+
+  let scale_field t (x : Scalar_field.t) = scale t (Scalar.of_field x)
+end
+
 module Make_group (P : sig
   val prefix : string
 end) (Field : sig
@@ -241,7 +288,13 @@ struct
 
   let () = init ()
 
-  module Field0 = struct
+  module Field0 : sig
+    type t [@@deriving sexp]
+
+    include Deletable_intf with type t := t
+
+    val func_name : string -> string
+  end = struct
     module F = Make_foreign (struct
       let prefix = with_prefix prefix "field"
     end)
@@ -1513,36 +1566,70 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt6_0.Field.Vector.length v = 4
 
-    let other_prefix = Mnt6_0.prefix
-
     module G2 =
       Make_group (struct
-          let prefix = with_prefix other_prefix "g2"
+          let prefix = with_prefix Mnt4_0.prefix "g2"
         end)
         (Mnt4_0.Field)
         (Mnt4_0.Bigint.R)
         (Mnt6_0.Field.Vector)
 
     module G1 = struct
-      include Make_group (struct
-                  let prefix = with_prefix other_prefix "g1"
-                end)
-                (Mnt4_0.Field)
-                (Mnt4_0.Bigint.R)
-                (Mnt6_0.Field)
+      module T =
+        Make_group (struct
+            let prefix = with_prefix Mnt4_0.prefix "g1"
+          end)
+          (Mnt4_0.Field)
+          (Mnt4_0.Bigint.R)
+          (Mnt6_0.Field)
+
+      include T
+
+      let%test "scalar_mul" =
+        let g = one in
+        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
       module Coefficients =
         Make_group_coefficients (struct
-            let prefix = with_prefix other_prefix "g1"
+            let prefix = with_prefix Mnt4_0.prefix "g1"
           end)
           (Mnt6_0.Field)
 
+      module Window_table =
+        Make_window_table (struct
+            let prefix = with_prefix Mnt4_0.prefix "g1"
+          end)
+          (T)
+          (Field)
+          (Bigint.R)
+          (Vector)
+
+      let%test "window-scale" =
+        let table = Window_table.create one in
+        let s = Bigint.R.of_field (Field.random ()) in
+        equal (Window_table.scale table s) (scale one s)
+
+      let%test "window-base" =
+        let rec random_curve_point () =
+          let module Field = Mnt6_0.Field in
+          let ( + ) = Field.add in
+          let ( * ) = Field.mul in
+          let x = Field.random () in
+          let f = (x * x * x) + (Coefficients.a * x) + Coefficients.b in
+          if Field.is_square f then of_affine_coordinates (x, Field.sqrt f)
+          else random_curve_point ()
+        in
+        let g = random_curve_point () in
+        let table = Window_table.create g in
+        let s = Bigint.R.of_field Field.one in
+        equal (Window_table.scale table s) g
+
       let%test "coefficients correct" =
         let x, y = to_affine_coordinates one in
-        let ( + ) = Field.add in
-        let ( * ) = Field.mul in
-        Field.(
-          equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b))
+        let open Mnt6_0.Field in
+        let ( + ) = add in
+        let ( * ) = mul in
+        equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b)
     end
 
     module GM_proof_accessors =
@@ -1583,36 +1670,55 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt4_0.Field.Vector.length v = 6
 
-    let other_prefix = Mnt4_0.prefix
-
     module G2 =
       Make_group (struct
-          let prefix = with_prefix other_prefix "g2"
+          let prefix = with_prefix Mnt6_0.prefix "g2"
         end)
         (Mnt6_0.Field)
         (Mnt6_0.Bigint.R)
         (Mnt4_0.Field.Vector)
 
     module G1 = struct
-      include Make_group (struct
-                  let prefix = with_prefix other_prefix "g1"
-                end)
-                (Mnt6_0.Field)
-                (Mnt6_0.Bigint.R)
-                (Mnt4_0.Field)
+      module T =
+        Make_group (struct
+            let prefix = with_prefix Mnt6_0.prefix "g1"
+          end)
+          (Mnt6_0.Field)
+          (Mnt6_0.Bigint.R)
+          (Mnt4_0.Field)
+
+      include T
+
+      let%test "scalar_mul" =
+        let g = one in
+        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
       module Coefficients =
         Make_group_coefficients (struct
-            let prefix = with_prefix other_prefix "g1"
+            let prefix = with_prefix Mnt6_0.prefix "g1"
           end)
-          (Mnt6_0.Field)
+          (Mnt4_0.Field)
+
+      module Window_table =
+        Make_window_table (struct
+            let prefix = with_prefix Mnt6_0.prefix "g1"
+          end)
+          (T)
+          (Field)
+          (Bigint.R)
+          (Vector)
+
+      let%test "window-scale" =
+        let table = Window_table.create one in
+        let s = Bigint.R.of_field (Field.random ()) in
+        equal (Window_table.scale table s) (scale one s)
 
       let%test "coefficients correct" =
         let x, y = to_affine_coordinates one in
-        let ( + ) = Field.add in
-        let ( * ) = Field.mul in
-        Field.(
-          equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b))
+        let open Mnt4_0.Field in
+        let ( + ) = add in
+        let ( * ) = mul in
+        equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b)
     end
 
     module GM_proof_accessors =
