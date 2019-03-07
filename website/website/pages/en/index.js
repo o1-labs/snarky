@@ -95,6 +95,7 @@ class Index extends React.Component {
 
     const CodeSample = () => (
       <Container id="codesample" padding={['bottom', 'top']} background="light">
+        Snarky is an OCaml front-end for writing R1CS SNARKs. It is modular over the backend SNARK library, and comes with backends from <a href="https://github.com/scipr-lab/libsnark" target="_blank">libsnark</a>.
         <MarkdownBlock>{example_code}</MarkdownBlock>
       </Container>
     );
@@ -164,14 +165,14 @@ Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_b
         {[
           {
             content: 'You can use our [tutorial](https://github.com/o1-labs/snarky/blob/master/examples/tutorial/tutorial.ml) to get you up to speed',
-            image: `${baseUrl}img/zklambda.svg`,
-            imageAlign: 'top',
+            /*image: `${baseUrl}img/zklambda.svg`,
+            imageAlign: 'top',*/
             title: 'Try it out',
           },
           {
             content: '[election example](https://github.com/o1-labs/snarky/blob/master/examples/tutorial/tutorial.ml)',
-            image: `${baseUrl}img/zklambda.svg`,
-            imageAlign: 'top',
+            /*image: `${baseUrl}img/zklambda.svg`,
+            imageAlign: 'top',*/
             title: 'Look at examples',
           },
         ]}
