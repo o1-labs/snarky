@@ -37,8 +37,7 @@ jobs:
                 command: eval `opam config env` && cd meja && make test
     website:
         docker:
-        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: node/latest
+        - image: node
         steps:
             - checkout
             - run:
