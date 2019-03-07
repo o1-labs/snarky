@@ -72,6 +72,9 @@ class HomeSplash extends React.Component {
   }
 }
 
+const example_code = `\`\`\`ocaml
+\`\`\``
+
 class Index extends React.Component {
   render() {
     const {config: siteConfig, language = ''} = this.props;
@@ -87,6 +90,19 @@ class Index extends React.Component {
           contents={props.children}
           layout={props.layout}
         />
+      </Container>
+    );
+
+    const CodeSample = () => (
+      <MarkdownBlock>{example_code}</MarkdownBlock>
+    );
+
+    const QuickStart = () => (
+      <Container id="quickstart" padding={['bottom', 'top']} align={['center']}>
+        <MarkdownBlock>
+          {`Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_blank">libsnark dependencies</a> and <a href="https://opam.ocaml.org/doc/Install.html" target="_blank">opam</a>, then run <span style="white-space: nowrap;">\`opam pin add git@github.com:o1-labs/snarky.git\`</span>
+          `}
+        </MarkdownBlock>
       </Container>
     );
 
@@ -191,6 +207,8 @@ class Index extends React.Component {
       <div>
         <HomeSplash siteConfig={siteConfig} language={language} />
         <div className="mainContainer">
+          <CodeSample />
+          <QuickStart />
           <Features />
           <FeatureCallout />
           <LearnHow />
