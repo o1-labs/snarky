@@ -923,4 +923,17 @@ void camlsnark_mnt4_sha256_compression_function_gadget_generate_r1cs_witness(
   g->generate_r1cs_witness();
 }
 
+std::vector<libff::G1<ppT>>* camlsnark_mnt4_g1_create_window_table(libff::G1<ppT>* base) {
+  return new std::vector<libff::G1<ppT>>(
+      libff::create_window_table<libff::G1<ppT>>(*base));
+}
+
+libff::G1<ppT>* camlsnark_mnt4_g1_window_scalar_mul(
+    std::vector<libff::G1<ppT>>* table,
+    libff::bigint<libff::Fr<ppT>::num_limbs>* scalar) {
+  return new libff::G1<ppT>(
+      libff::window_scalar_mul< libff::G1<ppT>, libff::Fr<ppT>::num_limbs >(
+        *table, *scalar));
+}
+
 }
