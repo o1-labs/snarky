@@ -877,7 +877,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
          let dummy_offset = read_offset var in
          assert (Int.equal !next_input 0 || dummy_offset >= 0) ;
          let%bind r =
-           exists typ
+           exists {typ with check= fun _ -> Checked.return ()}
              ~compute:
                (let open As_prover in
                let%bind b = read_var (b :> Cvar.t) in
