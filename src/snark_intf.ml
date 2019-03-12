@@ -536,6 +536,20 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val get_stack : state -> string list
   end
 
+  type response = Request.response
+
+  val unhandled : response
+
+  type request = Request.request =
+    | With :
+        { request: 'a Request.t
+        ; respond: 'a Request.Response.t -> response }
+        -> request
+
+  module Handler : sig
+    type t = request -> response
+  end
+
   module Proof_system : sig
     type ('a, 's, 'public_input) t
 
@@ -544,7 +558,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> public_input:( ('a, 's) Checked.t
                       , unit
                       , 'computation
@@ -559,21 +573,21 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 's, 'public_input) t
       -> 's
       -> 's * 'a
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> (('a, 's) As_prover.t, 's, 'public_input) t
       -> 's
       -> ('s * 'a) Or_error.t
 
     val check :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 's, 'public_input) t
       -> 's
       -> bool
@@ -581,7 +595,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val prove :
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 's, 'public_input) t
       -> 's
       -> Proof.t
@@ -673,20 +687,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> ?compute:('value, 's) As_prover.t
     -> ('var, 'value) Typ.t
     -> ('var, 's) Checked.t
-
-  type response = Request.response
-
-  val unhandled : response
-
-  type request = Request.request =
-    | With :
-        { request: 'a Request.t
-        ; respond: 'a Request.Response.t -> response }
-        -> request
-
-  module Handler : sig
-    type t = request -> response
-  end
 
   val handle : ('a, 's) Checked.t -> Handler.t -> ('a, 's) Checked.t
 
@@ -1232,6 +1232,20 @@ module type Run = sig
     val var : ('var, _) t -> 'var
   end
 
+  type response = Request.response
+
+  val unhandled : response
+
+  type request = Request.request =
+    | With :
+        { request: 'a Request.t
+        ; respond: 'a Request.Response.t -> response }
+        -> request
+
+  module Handler : sig
+    type t = request -> response
+  end
+
   module Proof_system : sig
     type ('a, 'public_input) t
 
@@ -1240,7 +1254,7 @@ module type Run = sig
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> public_input:( unit -> 'a
                       , unit
                       , 'computation
@@ -1255,26 +1269,26 @@ module type Run = sig
 
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
       -> 'a
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> (('a, unit) As_prover.t, 'public_input) t
       -> 'a Or_error.t
 
     val check :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
       -> bool
 
     val prove :
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
       -> Proof.t
 
@@ -1316,20 +1330,6 @@ module type Run = sig
     -> ('var, 'value) Typ.t
     -> 'var
 
-  type response = Request.response
-
-  val unhandled : response
-
-  type request = Request.request =
-    | With :
-        { request: 'a Request.t
-        ; respond: 'a Request.Response.t -> response }
-        -> request
-
-  module Handler : sig
-    type t = request -> response
-  end
-
   val handle : (unit -> 'a) -> Handler.t -> 'a
 
   val with_label : string -> (unit -> 'a) -> 'a
@@ -1359,7 +1359,7 @@ module type Run = sig
 
   val run_unchecked : (unit -> 'a) -> 'a
 
-  val run_and_check : ('a, unit) As_prover.t -> 'a Or_error.t
+  val run_and_check : (unit -> ('a, unit) As_prover.t) -> 'a Or_error.t
 
   val check : (unit -> 'a) -> bool
 
