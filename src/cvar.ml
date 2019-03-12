@@ -9,6 +9,15 @@ type 'f t =
 
 type 'f cvar = 'f t [@@deriving sexp]
 
+let rec first_var_index = function
+  | Constant _ -> None
+  | Var var -> Some var
+  | Add (x, y) -> (
+    match first_var_index x with
+    | Some var -> Some var
+    | None -> first_var_index x )
+  | Scale (_, x) -> first_var_index x
+
 module Make
     (Field : Field_intf.Extended) (Var : sig
         include Comparable.S
@@ -21,6 +30,8 @@ struct
   type t = Field.t cvar [@@deriving sexp]
 
   let length _ = failwith "TODO"
+
+  let first_var_index = first_var_index
 
   module Unsafe = struct
     let of_index v = Var v

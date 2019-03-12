@@ -854,6 +854,51 @@ module Make_basic (Backend : Backend_intf.S) = struct
           in
           r
 
+    let if_generic (typ : ('var, 'value) Typ.t) (b : Cvar.t Boolean.t)
+        ~(then_ : 'var) ~(else_ : 'var) =
+      [%with_label_ "if_"]
+        (let next_input = ref 0 in
+         let alloc_var next_input () =
+           let v = !next_input in
+           incr next_input ; Cvar.Unsafe.of_index v
+         in
+         let var = Typ.Alloc.run typ.alloc (alloc_var next_input) in
+         let read_offset var =
+           let module E = struct
+             exception Return of Cvar.t
+           end in
+           try
+             ignore
+               (Typ.Read.run (typ.read var) (fun var -> raise (E.Return var))) ;
+             -1
+           with E.Return cvar ->
+             Option.value ~default:(-1) (Cvar.first_var_index cvar)
+         in
+         let dummy_offset = read_offset var in
+         assert (Int.equal !next_input 0 || dummy_offset >= 0) ;
+         let%bind r =
+           exists typ
+             ~compute:
+               (let open As_prover in
+               let%bind b = read_var (b :> Cvar.t) in
+               read typ (if Field.equal b Field.one then then_ else else_))
+         in
+         let then_offset = read_offset then_ - dummy_offset in
+         let else_offset = read_offset else_ - dummy_offset in
+         let r_offset = read_offset r - dummy_offset in
+         let asserts =
+           List.init !next_input ~f:(fun i ->
+               let then_ = Cvar.Unsafe.of_index (then_offset + i) in
+               let else_ = Cvar.Unsafe.of_index (else_offset + i) in
+               let r = Cvar.Unsafe.of_index (r_offset + i) in
+               Constraint.r1cs
+                 (b :> Cvar.t)
+                 Cvar.Infix.(then_ - else_)
+                 Cvar.Infix.(r - else_) )
+         in
+         let%map () = Checked.assert_all asserts in
+         r)
+
     let%snarkydef_ assert_non_zero (v : Cvar.t) =
       let open Let_syntax in
       let%map _ = inv v in
@@ -1680,6 +1725,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   include Checked
 
+  let if_ = if_generic
+
   module Proof_system = struct
     open Run.Proof_system
 
@@ -2187,6 +2234,8 @@ module Run = struct
     let assert_r1cs ?label a b c = run (assert_r1cs ?label a b c)
 
     let assert_square ?label x y = run (assert_square ?label x y)
+
+    let if_ typ b ~then_ ~else_ = run (if_ typ b ~then_ ~else_)
 
     let as_prover p = run (as_prover p)
 

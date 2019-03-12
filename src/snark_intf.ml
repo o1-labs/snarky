@@ -658,6 +658,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val assert_square :
     ?label:string -> Field.Var.t -> Field.Var.t -> (unit, _) Checked.t
 
+  val if_ :
+       ('var, 'value) Typ.t
+    -> Boolean.var
+    -> then_:'var
+    -> else_:'var
+    -> ('var, _) Checked.t
+
   val as_prover : (unit, 's) As_prover.t -> (unit, 's) Checked.t
 
   val with_state :
@@ -1307,6 +1314,9 @@ module type Run = sig
   val assert_r1cs : ?label:string -> Field.t -> Field.t -> Field.t -> unit
 
   val assert_square : ?label:string -> Field.t -> Field.t -> unit
+
+  val if_ :
+    ('var, 'value) Typ.t -> Boolean.var -> then_:'var -> else_:'var -> 'var
 
   val as_prover : (unit, unit) As_prover.t -> unit
 
