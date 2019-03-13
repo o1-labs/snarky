@@ -1,5 +1,7 @@
 {
   "docs": {
-    "Introduction": ["about"]
+    "Introduction": ["overview"],
+    "Getting started": ["installation", "try-it-out"],
+    "Other": ["readme"]
   }
 }
