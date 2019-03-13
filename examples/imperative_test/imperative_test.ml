@@ -70,16 +70,14 @@ let verify proof vk =
 module Intf = Snark.Run.Make (Backends.Mnt4.GM)
 
 module Old = struct
-  module M = Snark.Make(Backends.Mnt4.GM)
+  module M = Snark.Make (Backends.Mnt4.GM)
   open M
 
   let f = Field.Checked.mul
 
   let foo x y =
     let%bind z = f x y in
-    Intf.make_checked (fun () ->
-      test2 (module Intf) z
-    )
+    Intf.make_checked (fun () -> test2 (module Intf) z)
 end
 
 let exposing = Intf.(Data_spec.[Field.typ])
