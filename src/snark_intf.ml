@@ -1776,7 +1776,7 @@ module type Run = sig
 
   val run_unchecked : (unit -> 'a) -> 'a
 
-  val run_and_check : (unit -> unit -> 'a) -> 'a Or_error.t
+  val run_and_check : (unit -> (unit -> 'a) As_prover.t) -> 'a Or_error.t
 
   val check : (unit -> 'a) -> bool
 
