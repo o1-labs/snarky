@@ -73,24 +73,46 @@ module type Basic = sig
 
   (** Rank-1 constraints over {!type:Var.t}s. *)
   module rec Constraint : sig
+    (** The type of constraints.
+        In the proof system, every constraint is a rank-1 constraint; that is,
+        the constraint takes the form [a * b = c] for some [a], [b] and [c]
+        which are made up of some linear combination of {!type:Field.Var.t}s.
+
+        For example, a constraint could be [(w + 2*x) * (y + z) = a + b], where
+        [w], [x], [y], [z], [a], and [b] are field variables.
+        Note that a linear combination is the result of adding together some of
+        these variables, each multiplied by a field constant ({!type:Field.t}); 
+        any time we want to multiply our *variables*, we need to add a new 
+        rank-1 constraint.
+    *)
     type t = Field.Var.t Constraint0.t
 
     type 'k with_constraint_args = ?label:string -> 'k
 
     val boolean : (Field.Var.t -> t) with_constraint_args
+    (** A constraint that asserts that the field variable is a boolean: either
+        {!val:Field.zero} or {!val:Field.one}.
+    *)
 
     val equal : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
+    (** A constraint that asserts that the field variable arguments are equal.
+    *)
 
     val r1cs :
       (Field.Var.t -> Field.Var.t -> Field.Var.t -> t) with_constraint_args
+    (** A bare rank-1 constraint. *)
 
     val square : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
+    (** A constraint that asserts that the first variable squares to the
+        second, ie. [square x y] => [x*x = y] within the field.
+    *)
   end
   
   (** The data specification for checked computations. *)
   and Data_spec : sig
-    (** A list of {!type:Typ.t} values, describing the inputs to a checked computation.
-        The type [('r_var, 'r_value, 'k_var, 'k_value) t] represents
+    (** A list of {!type:Typ.t} values, describing the inputs to a checked
+        computation. The type [('r_var, 'r_value, 'k_var, 'k_value) t]
+        represents
         - ['k_value] is the OCaml type of the computation
         - ['r_value] is the OCaml type of the result
         - ['k_var] is the type of the computation within the R1CS
@@ -102,39 +124,116 @@ module type Basic = sig
       | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
 
     val size : (_, _, _, _) t -> int
+    (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
+        allocated by allocating [typ1], followed by [typ2], etc. *)
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
+      (** A ['value Store.t] value describes storing {!type:Field.t}s in
+          variables for use in the R1CS. It is a monad, which lets us combine
+          these variables to create more complex values.
+
+          For example, we can store a 3-tuple of values by writing
+{[
+  let store3 (store_a : 'a Store.t) (store_b : 'b Store.t)
+    (store_c : 'b Store.t) : ('a, 'b, 'c) Store.t =
+    let open Store in
+    let%map a = store_a
+    and b = store_b
+    and c = store_c
+    in
+    (a, b, c)
+]}
+      *)
       include Monad_let.S with type 'a t = ('a, Field.t) Typ_monads.Store.t
 
       val store : field -> Field.Var.t t
+      (** Store a single field element for the R1CS, and return the variable
+          that refers to it. *)
     end
 
     module Alloc : sig
+      (** A ['value Alloc.t] describes allocating variables for the R1CS to use
+          without explicitly giving the values to store in them. This is
+          analogous to {!type:Store.t}.
+
+          The main use of this is in generating the constraint system and
+          generating the {!type:Keypair.t} with {!val:generate_keypair}; we
+          can't know yet what values we will want to store in the variables,
+          but we still want to know what constraints they will have to satisfy.
+      *)
       include Monad_let.S with type 'a t = ('a, Field.t) Typ_monads.Alloc.t
 
       val alloc : Field.Var.t t
+      (** Allocate a variable in the R1CS that can hold a single field element.
+      *)
     end
 
     module Read : sig
+      (** A ['value Read.t] describes reading values back out of the R1CS
+          variables, so that the prover can use them in {!module:As_prover}
+          blocks. It is a monad, which lets us combine these values to
+          create more complex ones.
+
+          For example, we can create a record containing the results of some
+          reads by writing
+{[
+  type ('a, 'b) t = {a : 'a; b : 'b}
+
+  let read_t (read_a : 'a Read.t) (read_b : 'b Read.t) : ('a, 'b) t =
+    let open Read in
+    let%map a = read_a
+    and b = read_b
+    in
+    {a; b}
+]}
+      *)
       include Monad_let.S with type 'a t = ('a, Field.t) Typ_monads.Read.t
 
       val read : Field.Var.t -> field t
+      (** Read the contents of a single R1CS variable. *)
     end
 
-    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
+    (** The type [('var, 'value) t] describes a mapping from the OCaml type
+        ['value] to a type representing the value using R1CS variables
+        (['var]).
+        This description includes
+        - a {!type:Store.t} for storing ['value]s as ['var]s
+        - a {!type:Alloc.t} for creating a ['var] when we don't know what values
+          it should contain yet
+        - a {!type:Read.t} for reading the contents of the ['var] back out as a
+          ['value] in {!module:As_prover} blocks
+        - a {!type:Checked.t} for asserting constraints on the ['var] -- for
+          example, that a [Boolean.t] is either a {!val:Field.zero} or a
+          {!val:Field.one}.
+    *)
+    type ('var, 'value) t =
+      ('var, 'value, Field.t, unit Checked.run_state) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
     val store : ('var, 'value) t -> 'value -> 'var Store.t
+    (** [store typ x] stores [x] as a ['var] according to the description given
+        by [typ].
+    *)
 
     val read : ('var, 'value) t -> 'var -> 'value Read.t
+    (** [read typ x] reads [x] as a ['value] according to the description given
+    by [typ].
+    *)
 
     val alloc : ('var, 'value) t -> 'var Alloc.t
+    (** [alloc typ] allocates the R1CS variables necessary to represent a
+        ['value] and creates a ['var] from them, according to the description
+        given by [typ].
+    *)
 
     val check : ('var, 'value) t -> 'var -> (unit, _) Checked.t
+    (** [check typ x] runs a checked computation to generate the constraints
+        described by [typ] that [x] should satisfy.
+    *)
 
     (** Basic instances: *)
 
@@ -153,7 +252,7 @@ module type Basic = sig
          ('var1, 'value1) t
       -> ('var2, 'value2) t
       -> ('var1 * 'var2, 'value1 * 'value2) t
-    (** synonym for tuple2 *)
+    (** synonym for {!val:tuple2} *)
 
     val tuple3 :
          ('var1, 'value1) t
@@ -162,8 +261,28 @@ module type Basic = sig
       -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
 
     val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
+    (** [list ~length typ] describes how to convert between a ['value list] and
+        a ['var list], given a description of how to convert between a ['value]
+        and a ['var].
+
+        [length] must be the length of the lists that are converted. This value
+        must be constant for every use; otherwise the constraint system may use
+        a different number of variables depending on the data given.
+
+        Passing a list of the wrong length throws an error.
+    *)
 
     val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
+    (** [array ~length typ] describes how to convert between a ['value array]
+        and a ['var array], given a description of how to convert between a
+        ['value] and a ['var].
+
+        [length] must be the length of the arrays that are converted. This
+        value must be constant for every use; otherwise the constraint system
+        may use a different number of variables depending on the data given.
+
+        Passing an array of the wrong length throws an error.
+    *)
 
     val hlist :
          (unit, unit, 'k_var, 'k_value) Data_spec.t
@@ -193,6 +312,10 @@ module type Basic = sig
       -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
       -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
       -> ('var, 'value) t
+    (** A specialised version of {!val:transport}/{!val:transport_var} that
+        describes the relationship between ['var] and ['value] in terms of a
+        {!type:Data_spec.t}.
+    *)
 
     module Of_traversable (T : Traversable.S) : sig
       val typ :
@@ -206,33 +329,47 @@ module type Basic = sig
       [false] to {!val:Field.zero}, adding a check in {!val:Boolean.typ} to
       ensure that these are the only vales. *)
   and Boolean : sig
+    (** The type that stores booleans as R1CS variables. *)
     type var = Field.Var.t Boolean0.t
 
     type value = bool
 
     val true_ : var
+    (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
 
     val false_ : var
+    (** An R1CS variable containing {!val:Field.zero}, representing [false]. *)
 
     val if_ : var -> then_:var -> else_:var -> (var, _) Checked.t
+    (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+        otherwise.
+    *)
 
     val not : var -> var
+    (** Negate a boolean value *)
 
     val ( && ) : var -> var -> (var, _) Checked.t
+    (** Boolean and *)
 
     val ( || ) : var -> var -> (var, _) Checked.t
+    (** Boolean or *)
 
     val ( lxor ) : var -> var -> (var, _) Checked.t
+    (** Boolean xor (exclusive-or) *)
 
     val any : var list -> (var, _) Checked.t
+    (** Returns [true] if any value in the list is true, false otherwise. *)
 
     val all : var list -> (var, _) Checked.t
+    (** Returns [true] if all value in the list are true, false otherwise. *)
 
     val of_field : Field.Var.t -> (var, _) Checked.t
     (** Convert a value in a field to a boolean, adding checks to the R1CS that
        it is a valid boolean value. *)
 
     val var_of_value : value -> var
+    (** Convert an OCaml [bool] into a R1CS variable representing the same
+        value. *)
 
     val typ : (var, value) Typ.t
     (** The relationship between {!val:var} and {!val:value}, with a check that
@@ -243,6 +380,7 @@ module type Basic = sig
 
     val equal : var -> var -> (var, _) Checked.t
 
+    (** Build trees representing boolean expressions. *)
     module Expr : sig
       (** Expression trees. *)
       type t
@@ -302,8 +440,17 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   Field.Checked.mul x_times_y z
 ]}
     *)
+
+    type 'prover_state run_state =
+      ( 'prover_state
+      , R1CS_constraint_system.t
+      , Field.t
+      , Field.Vector.t )
+      Run_state.t
+
     include
-      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
+      Monad_let.S2
+      with type ('a, 's) t = ('a, 's, Field.t, unit run_state) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -321,7 +468,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   end
   
   and Field : sig
-    (** The finite field over which the R1CS operates. *)
+    (** The finite field over which the R1CS operates.
+        Values may be between 0 and {!val:size}. *)
     type t = field [@@deriving bin_io, sexp, hash, compare, eq]
 
     val gen : t Core_kernel.Quickcheck.Generator.t
@@ -332,12 +480,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     include Stringable.S with type t := t
 
     val size : Bignum_bigint.t
+    (** The number at which values in the field wrap back around to 0. *)
 
     val unpack : t -> bool list
     (** Convert a field element into its constituent bits. *)
 
     val project : bool list -> t
-    (** Convert a list of bits into a field element. *)
+    (** Convert a list of bits into a field element. This is the inverse of
+        unpack.
+    *)
 
     val project_reference : bool list -> t
     (** [project], but slow. Exposed for benchmarks. *)
@@ -345,6 +496,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type var' = Var.t
 
     module Var : sig
+      (** The type that stores booleans as R1CS variables. *)
       type t = field Cvar.t
 
       val length : t -> int
@@ -357,56 +509,169 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           scaled R1CS variables. *)
 
       val constant : field -> t
+      (** [constant x] creates a new R1CS variable containing the constant
+          field element [x]. *)
 
       val to_constant : t -> field option
+      (** [to_constant x] returns [Some f] if x holds only the constant field
+          element [f]. Otherwise, it returns [None].
+      *)
 
       val linear_combination : (field * t) list -> t
+      (** [linear_combination [(f1, x1);...;(fn, xn)]] returns the result of
+          calculating [f1 * x1 + f2 * x2 + ... + fn * xn].
+          This does not add a new constraint; see {!type:Constraint.t} for more
+          information.
+      *)
 
       val sum : t list -> t
+      (** [sum l] returns the sum of all R1CS variables in [l].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
 
       val add : t -> t -> t
+      (** [add x y] returns the result of adding the R1CS variables [x] and
+          [y].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
 
       val sub : t -> t -> t
+      (** [sub x y] returns the result of subtracting the R1CS variables [x]
+          and [y].
+
+          If the result would be less than 0 then the value will underflow
+          to be between 0 and {!val:Field.size}.
+      *)
 
       val scale : t -> field -> t
+      (** [scale x f] returns the result of multiplying the R1CS variable [x]
+          by the constant field element [f].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
 
       val project : Boolean.var list -> t
+      (** Convert a list of bits into a field element.
+
+          [project [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
 
       val pack : Boolean.var list -> t
+      (** Convert a list of bits into a field element.
+
+          [pack [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
+      
+          This will raise an assertion error if the length of the list is not
+          strictly less than number of bits in {!val:Field.size}.
+
+          Use [project] if you know that the list represents a value less than
+          {!val:Field.size} but where the number of bits may be the maximum, or
+          where overflow is appropriate.
+      *)
     end
 
     module Checked : sig
       val mul : Var.t -> Var.t -> (Var.t, _) Checked.t
+      (** [mul x y] returns the result of multiplying the R1CS variables [x]
+          and [y].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
 
       val square : Var.t -> (Var.t, _) Checked.t
+      (** [square x] returns the result of multiplying the R1CS variables [x]
+          by itself.
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
 
       val div : Var.t -> Var.t -> (Var.t, _) Checked.t
+      (** [div x y] returns the result of dividing the R1CS variable [x] by
+          [y].
+
+          If [x] is not an integer multiple of [y], the result could be any
+          value; it is equivalent to computing [mul x (inv y)].
+
+          If [y] is 0, this raises a [Failure].
+      *)
 
       val inv : Var.t -> (Var.t, _) Checked.t
+      (** [inv x] returns the value such that [mul x (inv x) = 1].
+
+          If [x] is 0, this raises a [Failure].
+      *)
 
       val equal : Var.t -> Var.t -> (Boolean.var, 's) Checked.t
+      (** [equal x y] returns a R1CS variable containing the value [true] if
+          the R1CS variables [x] and [y] are equal, or [false] otherwise.
+      *)
 
       val unpack : Var.t -> length:int -> (Boolean.var list, _) Checked.t
+      (** [unpack x ~length] returns a list of R1CS variables containing the
+          [length] lowest bits of [x]. If [length] is greater than the number
+          of bits in {!val:Field.size} then this raises a [Failure].
+
+          For example,
+          - [unpack 8 ~length:4 = [0; 0; 0; 1]]
+          - [unpack 9 ~length:3 = [1; 0; 0]]
+          - [unpack 9 ~length:5 = [1; 0; 0; 1; 0]]
+      *)
 
       val unpack_flagged :
            Var.t
         -> length:int
         -> (Boolean.var list * [`Success of Boolean.var], _) Checked.t
+      (** [unpack x ~length = (unpack x ~length, `Success success)], where
+          [success] is an R1CS variable containing [true] if the returned bits
+          represent [x], and [false] otherwise.
+
+          If [length] is greater than the number of bits in {!val:Field.size}
+          then this raises a [Failure].
+      *)
 
       val unpack_full :
         Var.t -> (Boolean.var Bitstring_lib.Bitstring.Lsb_first.t, _) Checked.t
+      (** [unpack x ~length] returns a list of R1CS variables containing the
+          bits of [x].
+      *)
 
       val choose_preimage_var :
         Var.t -> length:int -> (Boolean.var list, _) Checked.t
+      (** [unpack x ~length] returns a list of R1CS variables containing the
+          [length] lowest bits of [x].
+      *)
 
+      (** The type of results from checked comparisons, stored as boolean R1CS
+          variables.
+      *)
       type comparison_result = {less: Boolean.var; less_or_equal: Boolean.var}
 
       val compare :
         bit_length:int -> Var.t -> Var.t -> (comparison_result, _) Checked.t
+      (** [compare ~bit_length x y] compares the [bit_length] lowest bits of
+          [x] and [y].
+
+          This requires converting the R1CS variables [x] and [y] into a list
+          of bits.
+      *)
 
       val if_ :
         Boolean.var -> then_:Var.t -> else_:Var.t -> (Var.t, _) Checked.t
+      (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+          otherwise.
+      *)
 
+      (** Infix notations for the basic field operations. *)
       module Infix : sig
         val ( + ) : Var.t -> Var.t -> Var.t
 
@@ -419,6 +684,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         val of_index : int -> Var.t
       end
 
+      (** Assertions *)
       module Assert : sig
         val lte : bit_length:int -> Var.t -> Var.t -> (unit, _) Checked.t
 
@@ -437,17 +703,20 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     end
 
     val typ : (Var.t, t) Typ.t
+    (** Describes how to convert between {!type:t} and {!type:Var.t} values. *)
   end
 
   module Let_syntax :
     Monad_let.Syntax2 with type ('a, 's) t := ('a, 's) Checked.t
 
+  (** Zero-knowledge proofs generated from checked computations. *)
   module Proof : sig
     type t
 
     include Stringable.S with type t := t
   end
 
+  (** Utility functions for dealing with lists of bits in the R1CS. *)
   module Bitstring_checked : sig
     type t = Boolean.var list
 
@@ -463,6 +732,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     end
   end
 
+  (** Code that can be run by the prover only, using 'superpowers' like looking
+      at the contents of R1CS variables and creating new variables from other
+      OCaml values.
+  *)
   module As_prover : sig
     (** An [('a, 'prover_state) t] value uses the current ['prover_state] to
         generate a value of type ['a], and update the ['prover_state] as
@@ -491,28 +764,91 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     include Monad_let.S2 with type ('a, 's) t := ('a, 's) t
 
     val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
+    (** Combine 2 {!type:As_prover.t} blocks using another function. *)
 
     val read_var : Field.Var.t -> (field, 'prover_state) t
+    (** Read the contents of a R1CS variable representing a single field
+        element. *)
 
     val get_state : ('prover_state, 'prover_state) t
+    (** Read the ['prover_state] carried by the {!type:As_prover.t} monad. *)
 
     val set_state : 'prover_state -> (unit, 'prover_state) t
+    (** Update the ['prover_state] carried by the {!type:As_prover.t} monad. *)
 
     val modify_state :
       ('prover_state -> 'prover_state) -> (unit, 'prover_state) t
+    (** Change the ['prover_state] carried by the {!type:As_prover.t} monad. *)
 
     val read : ('var, 'value) Typ.t -> 'var -> ('value, 'prover_state) t
+    (** [read typ x] reads the contents of the R1CS variables in [x] to create
+        an OCaml variable of type ['value], according to the description given
+        by [typ].
+    *)
   end
 
+  (** Representation of an R1CS value and an OCaml value (if running as the
+      prover) together.
+  *)
   module Handle : sig
     type ('var, 'value) t = {var: 'var; value: 'value option}
 
     val value : (_, 'value) t -> ('value, _) As_prover.t
+    (** Get the value of a handle as the prover. *)
 
     val var : ('var, _) t -> 'var
+    (** Get the R1CS representation of a value. *)
   end
 
+  (** Utility functions for calling single checked computations. *)
+  module Runner : sig
+    type 's state
+
+    val run : ('a, 's) Checked.t -> 's state -> 's state * 'a
+
+    val set_handler : Request.Handler.t -> 's state -> 's state
+
+    val get_handler : 's state -> Request.Handler.t
+
+    val set_stack : string list -> 's state -> 's state
+
+    val get_stack : 's state -> string list
+  end
+
+  type response = Request.response
+
+  val unhandled : response
+
+  (** The argument type for request handlers.
+
+{[
+  type _ Request.t += My_request : 'a list -> 'a Request.t
+
+  let handled (c : ('a, _) Checked.t) : ('a, _) Checked.t =
+    handle (fun (With {request; respond}) ->
+      match request with
+      | My_request l ->
+        let x = (* Do something with l to create a single value. *) in
+        respond (Provide x)
+      | _ -> unhandled )
+]}
+  *)
+  type request = Request.request =
+    | With :
+        { request: 'a Request.t
+        ; respond: 'a Request.Response.t -> response }
+        -> request
+
+  (** The type of handlers. *)
+  module Handler : sig
+    type t = request -> response
+  end
+
+  (** The interface for managing proof systems. *)
   module Proof_system : sig
+    (** A proof system instance for a checked computation producing a value of
+        type ['a], with prover state ['s] and public inputs ['public_input].
+    *)
     type ('a, 's, 'public_input) t
 
     val create :
@@ -520,7 +856,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> public_input:( ('a, 's) Checked.t
                       , unit
                       , 'computation
@@ -528,39 +864,81 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
                       Data_spec.t
       -> 'computation
       -> ('a, 's, 'public_input) t
+    (** Create a new proof system. The arguments are
+        - [proving_key] -- optional, defines the key to be used for proving.
+          If not present, a key will be read from [proving_key_path], or one
+          will be generated automatically.
+        - [verification_key] -- optional, defines the key to be used for
+          verification of a proof.
+          If not present, a key will be read from [verification_key_path], or
+          one will be generated automatically.
+        - [proving_key_path] -- optional, defines the path to a file where the
+          proving key can be found. If the file does not exist and no
+          [proving_key] argument is given, the generated key will be written to
+          this file.
+        - [verification_key_path] -- optional, defines the path to a file where
+          the verification key can be found. If the file does not exist and no
+          [verification_key] argument is given, the generated key will be
+          written to this file.
+        - [handlers] -- optional, the list of handlers that should be used to
+          handle requests made from the checked computation
+        - [public_input] -- the {!type:Data_spec.t} that describes the form
+          that the public inputs must take
+        - ['computation] -- a checked computation that takes as arguments
+          values with the types described by [public_input] to the output type.
+    *)
 
     val digest : ('a, 's, 'public_input) t -> Md5_lib.t
+    (** The MD5 hash of the constraint system. *)
 
     val generate_keypair : ('a, 's, 'public_input) t -> Keypair.t
+    (** Generate a keypair for the checked computation, writing it to the
+        [proving_key_path] and [verification_key_path], if set.
+    *)
 
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 's, 'public_input) t
       -> 's
       -> 's * 'a
+    (** Run the checked computation as the prover, without checking any
+        constraints.
+    *)
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> (('a, 's) As_prover.t, 's, 'public_input) t
       -> 's
       -> ('s * 'a) Or_error.t
+    (** Run the checked computation as the prover, checking any constraints. *)
 
     val check :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 's, 'public_input) t
       -> 's
       -> bool
+    (** Run the checked computation as the prover, returning [true] if all of
+        the constraints are correct, or [false] otherwise.
+    *)
 
     val prove :
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 's, 'public_input) t
       -> 's
       -> Proof.t
+    (** Run the checked computation as the prover, generating a {!type:Proof.t}
+        that the verifier may check efficiently.
+        - The [proving_key] argument overrides the argument given to
+          {!val:create}, if any.
+        - The [handlers] argument adds handlers to those already given to
+          {!val:create}. If handlers for the same requests were provided to
+          both, the ones passed here are given priority.
+    *)
 
     val verify :
          public_input:(unit, 'public_input) H_list.t
@@ -568,11 +946,60 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ('a, 's, 'public_input) t
       -> Proof.t
       -> bool
+    (** Verify a {!type:Proof.t} generated by a prover.
+       [verification_key] overrides the argument given to {!val:create}, if
+       any.
+    *)
+  end
+
+  (** Utility functions for running different representations of checked
+      computations using a standard interface.
+  *)
+  module Perform : sig
+    type ('a, 't, 's) t = 't -> 's Runner.state -> 's Runner.state * 'a
+
+    val constraint_system :
+         run:('a, 't, 's) t
+      -> exposing:('t, _, 'k_var, _) Data_spec.t
+      -> 'k_var
+      -> R1CS_constraint_system.t
+
+    val generate_keypair :
+         run:('a, 't, 's) t
+      -> exposing:('t, _, 'k_var, _) Data_spec.t
+      -> 'k_var
+      -> Keypair.t
+
+    val prove :
+         run:('a, 't, 's) t
+      -> Proving_key.t
+      -> ('t, Proof.t, 'k_var, 'k_value) Data_spec.t
+      -> 's
+      -> 'k_var
+      -> 'k_value
+
+    val verify :
+         Proof.t
+      -> Verification_key.t
+      -> (_, bool, _, 'k_value) Data_spec.t
+      -> 'k_value
+
+    val run_unchecked : run:('a, 't, 's) t -> 't -> 's -> 's * 'a
+
+    val run_and_check :
+      run:(('a, 's) As_prover.t, 't, 's) t -> 't -> 's -> ('s * 'a) Or_error.t
+
+    val check : run:('a, 't, 's) t -> 't -> 's -> bool
   end
 
   val assert_ : ?label:string -> Constraint.t -> (unit, 's) Checked.t
+  (** Add a constraint to the constraint system, optionally with the label
+      given by [label]. *)
 
   val assert_all : ?label:string -> Constraint.t list -> (unit, 's) Checked.t
+  (** Add all of the constraints in the list to the constraint system,
+      optionally with the label given by [label].
+  *)
 
   val assert_r1cs :
        ?label:string
@@ -580,73 +1007,113 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> Field.Var.t
     -> Field.Var.t
     -> (unit, _) Checked.t
+  (** Add a rank-1 constraint to the constraint system, optionally with the
+      label given by [label].
+
+      See {!val:Constraint.r1cs} for more information on rank-1 constraints.
+  *)
 
   val assert_square :
     ?label:string -> Field.Var.t -> Field.Var.t -> (unit, _) Checked.t
+  (** Add a 'square' constraint to the constraint system, optionally with the
+      label given by [label].
+
+      See {!val:Constraint.square} for more information.
+  *)
 
   val as_prover : (unit, 's) As_prover.t -> (unit, 's) Checked.t
+  (** Run an {!module:As_prover} block. *)
 
   val with_state :
        ?and_then:('s1 -> (unit, 's) As_prover.t)
     -> ('s1, 's) As_prover.t
     -> ('a, 's1) Checked.t
     -> ('a, 's) Checked.t
+  (** Update the prover state by running an {!module:As_prover} block. *)
 
   val next_auxiliary : (int, 's) Checked.t
+  (** Internal: read the value of the next unused auxiliary input index. *)
 
   val request_witness :
        ('var, 'value) Typ.t
     -> ('value Request.t, 's) As_prover.t
     -> ('var, 's) Checked.t
+  (** [request_witness typ create_request] runs the [create_request]
+      {!type:As_prover.t} block to generate a {!type:Request.t}.
+
+      This allows us to introduce values into the R1CS without passing them as
+      public inputs.
+
+      If no handler for the request is attached by {!val:handle}, this raises
+      a [Failure].
+  *)
 
   val perform : (unit Request.t, 's) As_prover.t -> (unit, 's) Checked.t
+  (** Like {!val:request_witness}, but the request doesn't return any usable
+      value.
+  *)
 
   val request :
        ?such_that:('var -> (unit, 's) Checked.t)
     -> ('var, 'value) Typ.t
     -> 'value Request.t
     -> ('var, 's) Checked.t
-  (** TODO: Come up with a better name for this in relation to the above *)
+  (** Like {!val:request_witness}, but generates the request without using
+      any {!module:As_prover} 'superpowers'.
+
+      The argument [such_that] allows adding extra constraints on the returned
+      value.
+
+      (* TODO: Come up with a better name for this in relation to the above *)
+  *)
 
   val exists :
        ?request:('value Request.t, 's) As_prover.t
     -> ?compute:('value, 's) As_prover.t
     -> ('var, 'value) Typ.t
     -> ('var, 's) Checked.t
+  (** Introduce a value into the R1CS.
+      - The [request] argument functions like {!val:request_witness}, creating
+        a request and returning the result.
+      - If no [request] argument is given, or if the [request] isn't handled,
+        then [compute] is run to create a value.
 
-  type response = Request.response
-
-  val unhandled : response
-
-  type request = Request.request =
-    | With :
-        { request: 'a Request.t
-        ; respond: 'a Request.Response.t -> response }
-        -> request
-
-  module Handler : sig
-    type t = request -> response
-  end
+      If [compute] is not given and [request] fails/is also not given, then
+      this function raises a [Failure].
+  *)
 
   val handle : ('a, 's) Checked.t -> Handler.t -> ('a, 's) Checked.t
+  (** Add a request handler to the checked computation, to be used by
+      {!val:request_witness}, {!val:perform}, {!val:request} or {!val:exists}.
+  *)
 
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
+  (** Add a label to all of the constraints added in the checked computation.
+      If a constraint is checked and isn't satisfied, this label will be shown
+      in the error message.
+  *)
 
   val constraint_system :
        exposing:((unit, 's) Checked.t, _, 'k_var, _) Data_spec.t
     -> 'k_var
     -> R1CS_constraint_system.t
+  (** Generate the R1CS for the checked computation. *)
 
   val generate_keypair :
        exposing:((unit, 's) Checked.t, _, 'k_var, _) Data_spec.t
     -> 'k_var
     -> Keypair.t
+  (** Create a new keypair for the R1CS generated by the checked computation.
+  *)
 
   val conv :
        ('r_var -> 'r_value)
     -> ('r_var, 'r_value, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
     -> 'k_value
+  (** Internal: supplies arguments to a checked computation by storing them
+      according to the {!type:Data_spec.t} and passing the R1CS versions.
+  *)
 
   val prove :
        Proving_key.t
@@ -654,22 +1121,40 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> 's
     -> 'k_var
     -> 'k_value
+  (** Run the checked computation, creating a proof that it has been run
+      correctly (ie. satisfies its constraints).
+  *)
 
   val verify :
        Proof.t
     -> Verification_key.t
     -> (_, bool, _, 'k_value) Data_spec.t
     -> 'k_value
+  (** Verify a {!type:Proof.t} generated from a checked computation. *)
 
   val run_unchecked : ('a, 's) Checked.t -> 's -> 's * 'a
+  (** Run a checked computation as the prover, without checking the
+      constraints. *)
 
   val run_and_check :
     (('a, 's) As_prover.t, 's) Checked.t -> 's -> ('s * 'a) Or_error.t
+  (** Run a checked computation as the prover, checking the constraints. *)
 
   val check : ('a, 's) Checked.t -> 's -> bool
+  (** Run a checked computation as the prover, returning [true] if the
+      constraints are all satisfied, or [false] otherwise. *)
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (_, _) Checked.t -> int
+  (** Returns the number of constraints in the constraint system.
+
+      The optional [log] argument is called at the start and end of each
+      [with_label], with the arguments [log ?start label count], where:
+      - [start] is [Some true] if it the start of the [with_label], or [None]
+        otherwise
+      - [label] is the label added by [with_label]
+      - [count] is the number of constraints at that point.
+  *)
 
   module Test : sig
     val checked_to_unchecked :
@@ -714,6 +1199,8 @@ end
 
 (** The imperative interface to Snarky. *)
 module type Run = sig
+  (** The type of state that the prover has access to in this instance of the
+      interface. *)
   type prover_state
 
   (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
@@ -834,7 +1321,14 @@ module type Run = sig
       val read : Field.t -> field t
     end
 
-    type ('var, 'value) t = ('var, 'value, field) Types.Typ.t
+    type 'prover_state run_state =
+      ( 'prover_state
+      , R1CS_constraint_system.t
+      , Field.Constant.t
+      , Field.Constant.Vector.t )
+      Run_state.t
+
+    type ('var, 'value) t = ('var, 'value, field, unit run_state) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -1125,31 +1619,24 @@ module type Run = sig
     end
   end
 
+  (** The functions in this module may only be run as the prover; trying to
+      run them outside of functions that refer to [As_prover.t] will result in
+      a runtime error. *)
   module As_prover : sig
-    (** An [('a, 'prover_state) t] value uses the current ['prover_state] to
-        generate a value of type ['a], and update the ['prover_state] as
-        necessary, within a checked computation.
+    (** This type marks function arguments that can include function calls from
+        this module. Using these functions outside of these will result in a
+        runtime error. *)
+    type 'a t = 'a
 
-        This type specialises the {!type:As_prover.t} type for the backend's
-        particular field and variable type. *)
-    type ('a, 'prover_state) t = ('a, field, 'prover_state) As_prover.t
+    val read_var : Field.t -> Field.Constant.t
 
-    type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
+    val get_state : prover_state
 
-    include Monad.S2 with type ('a, 's) t := ('a, 's) t
+    val set_state : prover_state -> unit
 
-    val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
+    val read : ('var, 'value) Typ.t -> 'var -> 'value
 
-    val read_var : Field.t -> (field, 'prover_state) t
-
-    val get_state : ('prover_state, 'prover_state) t
-
-    val set_state : 'prover_state -> (unit, 'prover_state) t
-
-    val modify_state :
-      ('prover_state -> 'prover_state) -> (unit, 'prover_state) t
-
-    val read : ('var, 'value) Typ.t -> 'var -> ('value, 'prover_state) t
+    val modify_state : (prover_state -> prover_state) -> unit
 
     include Field_intf.Extended with type t := field
 
@@ -1162,9 +1649,23 @@ module type Run = sig
   module Handle : sig
     type ('var, 'value) t = {var: 'var; value: 'value option}
 
-    val value : (_, 'value) t -> ('value, unit) As_prover.t
+    val value : (_, 'value) t -> (unit -> 'value) As_prover.t
 
     val var : ('var, _) t -> 'var
+  end
+
+  type response = Request.response
+
+  val unhandled : response
+
+  type request = Request.request =
+    | With :
+        { request: 'a Request.t
+        ; respond: 'a Request.Response.t -> response }
+        -> request
+
+  module Handler : sig
+    type t = request -> response
   end
 
   module Proof_system : sig
@@ -1175,7 +1676,7 @@ module type Run = sig
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> public_input:( unit -> 'a
                       , unit
                       , 'computation
@@ -1190,21 +1691,21 @@ module type Run = sig
 
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
       -> prover_state
       -> prover_state * 'a
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
-      -> (('a, prover_state) As_prover.t, 'public_input) t
+      -> ?handlers:Handler.t list
+      -> ('a, 'public_input) t
       -> prover_state
       -> (prover_state * 'a) Or_error.t
 
     val check :
          public_input:(unit, 'public_input) H_list.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
       -> prover_state
       -> bool
@@ -1212,7 +1713,7 @@ module type Run = sig
     val prove :
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
-      -> ?handler:Request.Handler.t
+      -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
       -> prover_state
       -> Proof.t
@@ -1233,16 +1734,14 @@ module type Run = sig
 
   val assert_square : ?label:string -> Field.t -> Field.t -> unit
 
-  val as_prover : (unit, prover_state) As_prover.t -> unit
+  val as_prover : (unit -> unit) As_prover.t -> unit
 
   val next_auxiliary : unit -> int
 
   val request_witness :
-       ('var, 'value) Typ.t
-    -> ('value Request.t, prover_state) As_prover.t
-    -> 'var
+    ('var, 'value) Typ.t -> (unit -> 'value Request.t) As_prover.t -> 'var
 
-  val perform : (unit Request.t, prover_state) As_prover.t -> unit
+  val perform : (unit -> unit Request.t) As_prover.t -> unit
 
   val request :
        ?such_that:('var -> unit)
@@ -1252,28 +1751,18 @@ module type Run = sig
   (** TODO: Come up with a better name for this in relation to the above *)
 
   val exists :
-       ?request:('value Request.t, prover_state) As_prover.t
-    -> ?compute:('value, prover_state) As_prover.t
+       ?request:(unit -> 'value Request.t) As_prover.t
+    -> ?compute:(unit -> 'value) As_prover.t
     -> ('var, 'value) Typ.t
     -> 'var
-
-  type response = Request.response
-
-  val unhandled : response
-
-  type request = Request.request =
-    | With :
-        { request: 'a Request.t
-        ; respond: 'a Request.Response.t -> response }
-        -> request
-
-  module Handler : sig
-    type t = request -> response
-  end
 
   val handle : (unit -> 'a) -> Handler.t -> 'a
 
   val with_label : string -> (unit -> 'a) -> 'a
+
+  val make_checked :
+       (unit -> 'a)
+    -> ('a, 's, Field.t, prover_state Typ.run_state) Types.Checked.t
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
@@ -1299,9 +1788,12 @@ module type Run = sig
   val run_unchecked : (unit -> 'a) -> prover_state -> prover_state * 'a
 
   val run_and_check :
-       ('a, prover_state) As_prover.t
+       (unit -> (unit -> 'a) As_prover.t)
     -> prover_state
     -> (prover_state * 'a) Or_error.t
 
   val check : (unit -> 'a) -> prover_state -> bool
+
+  val constraint_count :
+    ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
 end

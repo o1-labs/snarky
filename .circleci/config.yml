@@ -35,6 +35,14 @@ jobs:
             - run:
                 name: Meja tests
                 command: eval `opam config env` && cd meja && make test
+    website:
+        docker:
+        - image: node
+        steps:
+            - checkout
+            - run:
+                name: Test a release build of the website
+                command: make test-website-build
 workflows:
     version: 2
     snarky_parallel:
@@ -42,3 +50,4 @@ workflows:
         - build
         - opam-pin
         - meja
+        - website

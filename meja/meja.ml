@@ -40,6 +40,8 @@ let main =
     default := false ;
     opt := Some name
   in
+  let cmi_files = ref [] in
+  let cmi_dirs = ref [] in
   let arg_spec =
     [ ( "--ml"
       , Arg.String (set_and_clear_default ocaml_file)
@@ -53,16 +55,35 @@ let main =
       , "redirect stderr to the given filename" )
     ; ( "--binml"
       , Arg.String (set_and_clear_default binml_file)
-      , "output a binary ml file" ) ]
+      , "output a binary ml file" )
+    ; ( "--load-cmi"
+      , Arg.String (fun filename -> cmi_files := filename :: !cmi_files)
+      , "load a .cmi file" )
+    ; ( "-I"
+      , Arg.String (fun dirname -> cmi_dirs := dirname :: !cmi_dirs)
+      , "add a directory to the list of paths to search for .cmi files" ) ]
   in
   Arg.parse arg_spec (fun filename -> file := Some filename) "" ;
-  let file =
-    Option.value_exn !file
-      ~error:(Error.of_string "Please pass a file as an argument.")
-  in
+  let env = Envi.Core.env in
+  List.iter !cmi_dirs ~f:(Loader.load_directory env) ;
   try
+    let cmi_files = List.rev !cmi_files in
+    let cmi_scopes =
+      List.map cmi_files ~f:(fun filename ->
+          Loader.load ~loc:Location.none
+            ~name:(Loader.modname_of_filename filename)
+            env.Envi.resolve_env filename )
+    in
+    let env =
+      List.fold ~init:env cmi_scopes ~f:(fun env scope ->
+          Envi.open_namespace_scope scope env )
+    in
+    let file =
+      Option.value_exn !file
+        ~error:(Error.of_string "Please pass a file as an argument.")
+    in
     let parse_ast = read_file (Parser_impl.file Lexer_impl.token) file in
-    let _env, ast = Typechecker.check parse_ast in
+    let _env, ast = Typechecker.check parse_ast env in
     let ocaml_ast = To_ocaml.of_file ast in
     let ocaml_formatter =
       match (!ocaml_file, !default) with

@@ -1,3 +1,4 @@
+module Bignum_bigint = Bigint
 open Core
 open Ctypes
 open Foreign
@@ -34,6 +35,70 @@ let set_no_profiling =
   foreign "camlsnark_set_profiling" (bool @-> returning void)
 
 let () = set_no_profiling true
+
+module Make_group_coefficients (P : sig
+  val prefix : string
+end)
+(Fq : Foreign_intf) : sig
+  val a : Fq.t
+
+  val b : Fq.t
+end = struct
+  let mk_coeff name =
+    let stub = foreign name (void @-> returning Fq.typ) in
+    stub ()
+
+  let a = mk_coeff (with_prefix P.prefix "coeff_a")
+
+  let b = mk_coeff (with_prefix P.prefix "coeff_b")
+end
+
+module Make_window_table
+    (P : Prefix_intf)
+    (G : Deletable_intf) (Scalar_field : sig
+        type t
+    end) (Scalar : sig
+      include Foreign_intf
+
+      val of_field : Scalar_field.t -> t
+    end) (V : sig
+      include Deletable_intf
+
+      include Binable.S with type t := t
+    end) : sig
+  type t [@@deriving bin_io]
+
+  val create : G.t -> t
+
+  val scale : t -> Scalar.t -> G.t
+
+  val scale_field : t -> Scalar_field.t -> G.t
+end = struct
+  let func_name = with_prefix P.prefix
+
+  include V
+
+  let create =
+    let stub =
+      foreign (func_name "create_window_table") (G.typ @-> returning typ)
+    in
+    fun g ->
+      let t = stub g in
+      Caml.Gc.finalise delete t ; t
+
+  let scale =
+    let stub =
+      foreign
+        (func_name "window_scalar_mul")
+        (typ @-> Scalar.typ @-> returning G.typ)
+    in
+    fun tbl s ->
+      let x = stub tbl s in
+      Caml.Gc.finalise G.delete x ;
+      x
+
+  let scale_field t (x : Scalar_field.t) = scale t (Scalar.of_field x)
+end
 
 module Make_group (P : sig
   val prefix : string
@@ -223,7 +288,13 @@ struct
 
   let () = init ()
 
-  module Field0 = struct
+  module Field0 : sig
+    type t [@@deriving sexp]
+
+    include Deletable_intf with type t := t
+
+    val func_name : string -> string
+  end = struct
     module F = Make_foreign (struct
       let prefix = with_prefix prefix "field"
     end)
@@ -1347,258 +1418,353 @@ module Bn128 = Make_full (struct
   let prefix = "camlsnark_bn128"
 end)
 
-module Mnt4_0 = Make_full (struct
-  let prefix = "camlsnark_mnt4"
-end)
-
-module Mnt6_0 = Make_full (struct
-  let prefix = "camlsnark_mnt6"
-end)
-
-module Make_Groth16_verification_key_accessors (Prefix : sig
-  val prefix : string
-end)
-(Verification_key : Foreign_intf) (G1 : sig
-    include Deletable_intf
-
-    module Vector : Deletable_intf
-end)
-(G2 : Deletable_intf)
-(Fqk : Deletable_intf) =
-struct
-  open Prefix
-
-  let prefix = with_prefix prefix "verification_key"
-
-  let func_name = with_prefix prefix
-
-  let func name ret delete =
-    let stub =
-      foreign (func_name name) (Verification_key.typ @-> returning ret)
-    in
-    fun vk ->
-      let r = stub vk in
-      Caml.Gc.finalise delete r ; r
-
-  let delta = func "delta" G2.typ G2.delete
-
-  let query = func "query" G1.Vector.typ G1.Vector.delete
-
-  let alpha_beta = func "alpha_beta" Fqk.typ Fqk.delete
-end
-
-module Make_GM_verification_key_accessors (Prefix : sig
-  val prefix : string
-end)
-(Gm_verification_key : Foreign_intf) (G1 : sig
-    include Deletable_intf
-
-    module Vector : Deletable_intf
-end)
-(G2 : Deletable_intf)
-(Fqk : Deletable_intf) =
-struct
-  open Prefix
-
-  let prefix = with_prefix prefix "gm_verification_key"
-
-  let func_name = with_prefix prefix
-
-  let func name ret delete =
-    let stub =
-      foreign (func_name name) (Gm_verification_key.typ @-> returning ret)
-    in
-    fun vk ->
-      let r = stub vk in
-      Caml.Gc.finalise delete r ; r
-
-  let h = func "h" G2.typ G2.delete
-
-  let g_alpha = func "g_alpha" G1.typ G1.delete
-
-  let h_beta = func "h_beta" G2.typ G2.delete
-
-  let g_gamma = func "g_gamma" G1.typ G1.delete
-
-  let h_gamma = func "h_gamma" G2.typ G2.delete
-
-  let query = func "query" G1.Vector.typ G1.Vector.delete
-
-  let g_alpha_h_beta = func "g_alpha_h_beta" Fqk.typ Fqk.delete
-end
-
-module Make_proof_accessors (Prefix : sig
-  val prefix : string
-end)
-(Proof : Foreign_intf) (G1 : sig
-    include Deletable_intf
-
-    module Vector : Deletable_intf
-end)
-(G2 : Deletable_intf) =
-struct
-  open Prefix
-
-  let func_name = with_prefix prefix
-
-  let func name ret delete =
-    let stub = foreign (func_name name) (Proof.typ @-> returning ret) in
-    fun vk ->
-      let r = stub vk in
-      Caml.Gc.finalise delete r ; r
-
-  let a = func "a" G1.typ G1.delete
-
-  let b = func "b" G2.typ G2.delete
-
-  let c = func "c" G1.typ G1.delete
-end
-
-(*
-module Make_G2 (Prefix : sig
-  val prefix : string
-end) (Fq : sig
-  include Deletable_intf
-
-  module Vector : Deletable_intf
+module Make_mnt_cycle (Security_level : sig
+  val modulus_size : [`Bits298 | `Bits753]
 end) =
 struct
-  include Make_foreign (struct
-    let prefix = with_prefix Prefix.prefix "g2"
+  let suffix =
+    match Security_level.modulus_size with `Bits298 -> "" | `Bits753 -> "753"
+
+  module Mnt4_0 = Make_full (struct
+    let prefix = "camlsnark_mnt4" ^ suffix
   end)
 
-  let to_coords =
-    let coord name =
-      let stub = foreign (func_name name) (typ @-> returning Fq.Vector.typ) in
+  module Mnt6_0 = Make_full (struct
+    let prefix = "camlsnark_mnt6" ^ suffix
+  end)
+
+  module Make_Groth16_verification_key_accessors (Prefix : sig
+    val prefix : string
+  end)
+  (Verification_key : Foreign_intf) (G1 : sig
+      include Deletable_intf
+
+      module Vector : Deletable_intf
+  end)
+  (G2 : Deletable_intf)
+  (Fqk : Deletable_intf) =
+  struct
+    open Prefix
+
+    let prefix = with_prefix prefix "verification_key"
+
+    let func_name = with_prefix prefix
+
+    let func name ret delete =
+      let stub =
+        foreign (func_name name) (Verification_key.typ @-> returning ret)
+      in
+      fun vk ->
+        let r = stub vk in
+        Caml.Gc.finalise delete r ; r
+
+    let delta = func "delta" G2.typ G2.delete
+
+    let query = func "query" G1.Vector.typ G1.Vector.delete
+
+    let alpha_beta = func "alpha_beta" Fqk.typ Fqk.delete
+  end
+
+  module Make_GM_verification_key_accessors (Prefix : sig
+    val prefix : string
+  end)
+  (Gm_verification_key : Foreign_intf) (G1 : sig
+      include Deletable_intf
+
+      module Vector : Deletable_intf
+  end)
+  (G2 : Deletable_intf)
+  (Fqk : Deletable_intf) =
+  struct
+    open Prefix
+
+    let prefix = with_prefix prefix "gm_verification_key"
+
+    let func_name = with_prefix prefix
+
+    let func name ret delete =
+      let stub =
+        foreign (func_name name) (Gm_verification_key.typ @-> returning ret)
+      in
+      fun vk ->
+        let r = stub vk in
+        Caml.Gc.finalise delete r ; r
+
+    let h = func "h" G2.typ G2.delete
+
+    let g_alpha = func "g_alpha" G1.typ G1.delete
+
+    let h_beta = func "h_beta" G2.typ G2.delete
+
+    let g_gamma = func "g_gamma" G1.typ G1.delete
+
+    let h_gamma = func "h_gamma" G2.typ G2.delete
+
+    let query = func "query" G1.Vector.typ G1.Vector.delete
+
+    let g_alpha_h_beta = func "g_alpha_h_beta" Fqk.typ Fqk.delete
+  end
+
+  module Make_proof_accessors (Prefix : sig
+    val prefix : string
+  end)
+  (Proof : Foreign_intf) (G1 : sig
+      include Deletable_intf
+
+      module Vector : Deletable_intf
+  end)
+  (G2 : Deletable_intf) =
+  struct
+    open Prefix
+
+    let func_name = with_prefix prefix
+
+    let func name ret delete =
+      let stub = foreign (func_name name) (Proof.typ @-> returning ret) in
+      fun vk ->
+        let r = stub vk in
+        Caml.Gc.finalise delete r ; r
+
+    let a = func "a" G1.typ G1.delete
+
+    let b = func "b" G2.typ G2.delete
+
+    let c = func "c" G1.typ G1.delete
+  end
+
+  module Make_fqk
+      (Prefix : Prefix_intf) (Fq : sig
+          include Deletable_intf
+
+          module Vector : Deletable_intf
+      end) =
+  struct
+    include Make_foreign (struct
+      let prefix = with_prefix Prefix.prefix "fqk"
+    end)
+
+    let one =
+      let stub = foreign (func_name "one") (void @-> returning typ) in
+      let x = stub () in
+      Caml.Gc.finalise delete x ; x
+
+    let to_elts =
+      let stub =
+        foreign (func_name "to_elts") (typ @-> returning Fq.Vector.typ)
+      in
       fun t ->
-        let r = stub t in
-        Caml.Gc.finalise Fq.Vector.delete r ;
-        r
-    in
-    let to_affine =
-      foreign (func_name "to_affine_coordinates") (typ @-> returning void)
-    in
-    let get_x = coord "x" in
-    let get_y = coord "y" in
-    fun t ->
-      to_affine t ;
-      (get_x t, get_y t)
-   end *)
+        let v = stub t in
+        Caml.Gc.finalise Fq.Vector.delete v ;
+        v
+  end
 
-module Make_fqk
-    (Prefix : Prefix_intf) (Fq : sig
-        include Deletable_intf
+  module Mnt4 = struct
+    include Mnt4_0
+    module Fqk = Make_fqk (Prefix) (Mnt6_0.Field)
 
-        module Vector : Deletable_intf
-    end) =
-struct
-  include Make_foreign (struct
-    let prefix = with_prefix Prefix.prefix "fqk"
-  end)
+    let%test "fqk4" =
+      let v = Fqk.to_elts Fqk.one in
+      Mnt6_0.Field.Vector.length v = 4
 
-  let to_elts =
-    let stub =
-      foreign (func_name "to_elts") (typ @-> returning Fq.Vector.typ)
-    in
-    fun t ->
-      let v = stub t in
-      Caml.Gc.finalise Fq.Vector.delete v ;
-      v
+    module G2 =
+      Make_group (struct
+          let prefix = with_prefix Mnt4_0.prefix "g2"
+        end)
+        (Mnt4_0.Field)
+        (Mnt4_0.Bigint.R)
+        (Mnt6_0.Field.Vector)
+
+    module G1 = struct
+      module T =
+        Make_group (struct
+            let prefix = with_prefix Mnt4_0.prefix "g1"
+          end)
+          (Mnt4_0.Field)
+          (Mnt4_0.Bigint.R)
+          (Mnt6_0.Field)
+
+      include T
+
+      let%test "scalar_mul" =
+        let g = one in
+        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
+
+      module Coefficients =
+        Make_group_coefficients (struct
+            let prefix = with_prefix Mnt4_0.prefix "g1"
+          end)
+          (Mnt6_0.Field)
+
+      module Window_table =
+        Make_window_table (struct
+            let prefix = with_prefix Mnt4_0.prefix "g1"
+          end)
+          (T)
+          (Field)
+          (Bigint.R)
+          (Vector)
+
+      let%test "window-scale" =
+        let table = Window_table.create one in
+        let s = Bigint.R.of_field (Field.random ()) in
+        equal (Window_table.scale table s) (scale one s)
+
+      let%test "window-base" =
+        let rec random_curve_point () =
+          let module Field = Mnt6_0.Field in
+          let ( + ) = Field.add in
+          let ( * ) = Field.mul in
+          let x = Field.random () in
+          let f = (x * x * x) + (Coefficients.a * x) + Coefficients.b in
+          if Field.is_square f then of_affine_coordinates (x, Field.sqrt f)
+          else random_curve_point ()
+        in
+        let g = random_curve_point () in
+        let table = Window_table.create g in
+        let s = Bigint.R.of_field Field.one in
+        equal (Window_table.scale table s) g
+
+      let%test "coefficients correct" =
+        let x, y = to_affine_coordinates one in
+        let open Mnt6_0.Field in
+        let ( + ) = add in
+        let ( * ) = mul in
+        equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b)
+    end
+
+    module GM_proof_accessors =
+      Make_proof_accessors (struct
+          let prefix = with_prefix Prefix.prefix "gm_proof"
+        end)
+        (GM.Proof)
+        (G1)
+        (G2)
+
+    module GM_verification_key_accessors =
+      Make_GM_verification_key_accessors (Prefix) (GM.Verification_key) (G1)
+        (G2)
+        (Fqk)
+
+    module Groth16_proof_accessors =
+      Make_proof_accessors (struct
+          let prefix = with_prefix Prefix.prefix "proof"
+        end)
+        (Default.Proof)
+        (G1)
+        (G2)
+
+    module Groth16_verification_key_accessors =
+      Make_Groth16_verification_key_accessors
+        (Prefix)
+        (Default.Verification_key)
+        (G1)
+        (G2)
+        (Fqk)
+  end
+
+  module Mnt6 = struct
+    include Mnt6_0
+    module Fqk = Make_fqk (Prefix) (Mnt4_0.Field)
+
+    let%test "fqk6" =
+      let v = Fqk.to_elts Fqk.one in
+      Mnt4_0.Field.Vector.length v = 6
+
+    module G2 =
+      Make_group (struct
+          let prefix = with_prefix Mnt6_0.prefix "g2"
+        end)
+        (Mnt6_0.Field)
+        (Mnt6_0.Bigint.R)
+        (Mnt4_0.Field.Vector)
+
+    module G1 = struct
+      module T =
+        Make_group (struct
+            let prefix = with_prefix Mnt6_0.prefix "g1"
+          end)
+          (Mnt6_0.Field)
+          (Mnt6_0.Bigint.R)
+          (Mnt4_0.Field)
+
+      include T
+
+      let%test "scalar_mul" =
+        let g = one in
+        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
+
+      module Coefficients =
+        Make_group_coefficients (struct
+            let prefix = with_prefix Mnt6_0.prefix "g1"
+          end)
+          (Mnt4_0.Field)
+
+      module Window_table =
+        Make_window_table (struct
+            let prefix = with_prefix Mnt6_0.prefix "g1"
+          end)
+          (T)
+          (Field)
+          (Bigint.R)
+          (Vector)
+
+      let%test "window-scale" =
+        let table = Window_table.create one in
+        let s = Bigint.R.of_field (Field.random ()) in
+        equal (Window_table.scale table s) (scale one s)
+
+      let%test "coefficients correct" =
+        let x, y = to_affine_coordinates one in
+        let open Mnt4_0.Field in
+        let ( + ) = add in
+        let ( * ) = mul in
+        equal (square y) ((x * x * x) + (Coefficients.a * x) + Coefficients.b)
+    end
+
+    module GM_proof_accessors =
+      Make_proof_accessors (struct
+          let prefix = with_prefix Prefix.prefix "gm_proof"
+        end)
+        (GM.Proof)
+        (G1)
+        (G2)
+
+    module GM_verification_key_accessors =
+      Make_GM_verification_key_accessors (Prefix) (GM.Verification_key) (G1)
+        (G2)
+        (Fqk)
+
+    module Groth16_proof_accessors =
+      Make_proof_accessors (struct
+          let prefix = with_prefix Prefix.prefix "proof"
+        end)
+        (Default.Proof)
+        (G1)
+        (G2)
+
+    module Groth16_verification_key_accessors =
+      Make_Groth16_verification_key_accessors
+        (Prefix)
+        (Default.Verification_key)
+        (G1)
+        (G2)
+        (Fqk)
+  end
 end
 
-module Mnt4 = struct
-  include Mnt4_0
-  module Fqk = Make_fqk (Prefix) (Mnt6_0.Field)
+module Mnt298 = Make_mnt_cycle (struct
+  let modulus_size = `Bits298
+end)
 
-  module G2 =
-    Make_group (struct
-        let prefix = with_prefix Prefix.prefix "g2"
-      end)
-      (Mnt4_0.Field)
-      (Mnt4_0.Bigint.R)
-      (Mnt6_0.Field.Vector)
+module Mnt4 = Mnt298.Mnt4
+module Mnt6 = Mnt298.Mnt6
 
-  module G1 =
-    Make_group (struct
-        let prefix = with_prefix Prefix.prefix "g1"
-      end)
-      (Mnt4_0.Field)
-      (Mnt4_0.Bigint.R)
-      (Mnt6_0.Field)
+module Mnt753 = Make_mnt_cycle (struct
+  let modulus_size = `Bits753
+end)
 
-  module GM_proof_accessors =
-    Make_proof_accessors (struct
-        let prefix = with_prefix Prefix.prefix "gm_proof"
-      end)
-      (GM.Proof)
-      (G1)
-      (G2)
-
-  module GM_verification_key_accessors =
-    Make_GM_verification_key_accessors (Prefix) (GM.Verification_key) (G1) (G2)
-      (Fqk)
-
-  module Groth16_proof_accessors =
-    Make_proof_accessors (struct
-        let prefix = with_prefix Prefix.prefix "proof"
-      end)
-      (Default.Proof)
-      (G1)
-      (G2)
-
-  module Groth16_verification_key_accessors =
-    Make_Groth16_verification_key_accessors (Prefix) (Default.Verification_key)
-      (G1)
-      (G2)
-      (Fqk)
-end
-
-module Mnt6 = struct
-  include Mnt6_0
-  module Fqk = Make_fqk (Prefix) (Mnt4_0.Field)
-
-  module G2 =
-    Make_group (struct
-        let prefix = with_prefix Prefix.prefix "g1"
-      end)
-      (Mnt6_0.Field)
-      (Mnt6_0.Bigint.R)
-      (Mnt4_0.Field.Vector)
-
-  module G1 =
-    Make_group (struct
-        let prefix = with_prefix Prefix.prefix "g1"
-      end)
-      (Mnt6_0.Field)
-      (Mnt6_0.Bigint.R)
-      (Mnt4_0.Field)
-
-  module GM_proof_accessors =
-    Make_proof_accessors (struct
-        let prefix = with_prefix Prefix.prefix "gm_proof"
-      end)
-      (GM.Proof)
-      (G1)
-      (G2)
-
-  module GM_verification_key_accessors =
-    Make_GM_verification_key_accessors (Prefix) (GM.Verification_key) (G1) (G2)
-      (Fqk)
-
-  module Groth16_proof_accessors =
-    Make_proof_accessors (struct
-        let prefix = with_prefix Prefix.prefix "proof"
-      end)
-      (Default.Proof)
-      (G1)
-      (G2)
-
-  module Groth16_verification_key_accessors =
-    Make_Groth16_verification_key_accessors (Prefix) (Default.Verification_key)
-      (G1)
-      (G2)
-      (Fqk)
-end
+module Mnt4753 = Mnt753.Mnt4
+module Mnt6753 = Mnt753.Mnt6
 
 module type S = sig
   val prefix : string
@@ -1933,70 +2099,5 @@ module type S = sig
     val to_string : t -> string
 
     val of_string : string -> t
-  end
-end
-
-module Curves = struct
-  let mk_coeff typ name =
-    let stub = foreign name (void @-> returning typ) in
-    stub ()
-
-  let mk_generator typ delete curve_name =
-    let prefix = sprintf "camlsnark_%s_generator" curve_name in
-    let mk s =
-      let stub = foreign (with_prefix prefix s) (void @-> returning typ) in
-      let r = stub () in
-      Caml.Gc.finalise delete r ; r
-    in
-    (mk "x", mk "y")
-
-  module Make_coefficients (Base_field : sig
-    type t
-
-    val typ : t Ctypes.typ
-  end) (M : sig
-    val curve_name : string
-  end) =
-  struct
-    let prefix = sprintf "camlsnark_%s_coeff" M.curve_name
-
-    let a = mk_coeff Base_field.typ (with_prefix prefix "a")
-
-    let b = mk_coeff Base_field.typ (with_prefix prefix "b")
-  end
-
-  module Mnt4 = struct
-    module G1 = struct
-      let generator = mk_generator Mnt6.Field.typ Mnt6.Field.delete "mnt4_G1"
-
-      module Coefficients =
-        Make_coefficients
-          (Mnt6.Field)
-          (struct
-            let curve_name = "mnt4_G1"
-          end)
-    end
-  end
-
-  module Mnt6 = struct
-    module G1 = struct
-      let generator =
-        mk_generator Mnt4_0.Field.typ Mnt4_0.Field.delete "mnt6_G1"
-
-      module Coefficients =
-        Make_coefficients
-          (Mnt4_0.Field)
-          (struct
-            let curve_name = "mnt6_G1"
-          end)
-    end
-
-    let final_exponent_last_chunk_abs_of_w0 =
-      !@(foreign_value "camlsnark_mnt6_final_exponent_last_chunk_abs_of_w0"
-           Mnt6.Bigint.Q.typ)
-
-    let final_exponent_last_chunk_w1 =
-      !@(foreign_value "camlsnark_mnt6_final_exponent_last_chunk_w1"
-           Mnt6.Bigint.Q.typ)
   end
 end
