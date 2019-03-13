@@ -486,25 +486,26 @@ module Type = struct
         match raw_find_type_declaration var_ident env with
         | {tdec_desc= TUnfold typ; _} -> (typ, env)
         | decl ->
-        let variant =
-          { variant with
-            var_decl_id= decl.tdec_id
-          ; var_implicit_params= decl.tdec_implicit_params }
-        in
-        let given_args_length = List.length var_params in
-        let expected_args_length = List.length decl.tdec_params in
-        if not (Int.equal given_args_length expected_args_length) then
-          raise
-            (Error
-               ( typ.type_loc
-               , Wrong_number_args
-                   (var_ident.txt, given_args_length, expected_args_length) )) ;
-        let env, var_params =
-          List.fold_map ~init:env var_params ~f:(fun env param ->
-              let param, env = import param env in
-              (env, param) )
-        in
-        (mk ~loc (Tctor {variant with var_params}) env, env) )
+            let variant =
+              { variant with
+                var_decl_id= decl.tdec_id
+              ; var_implicit_params= decl.tdec_implicit_params }
+            in
+            let given_args_length = List.length var_params in
+            let expected_args_length = List.length decl.tdec_params in
+            if not (Int.equal given_args_length expected_args_length) then
+              raise
+                (Error
+                   ( typ.type_loc
+                   , Wrong_number_args
+                       (var_ident.txt, given_args_length, expected_args_length)
+                   )) ;
+            let env, var_params =
+              List.fold_map ~init:env var_params ~f:(fun env param ->
+                  let param, env = import param env in
+                  (env, param) )
+            in
+            (mk ~loc (Tctor {variant with var_params}) env, env) )
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
@@ -1075,7 +1076,11 @@ module Core = struct
       [("bytes", 0); ("int32", 0); ("int64", 0); ("nativeint", 0)]
 
   let field, env =
-    let var = Type.mkvar ~loc:Location.none ~explicitness:Implicit (Some (mkloc "field")) env in
+    let var =
+      Type.mkvar ~loc:Location.none ~explicitness:Implicit
+        (Some (mkloc "field"))
+        env
+    in
     TypeDecl.import (mk_type_decl "field" (TUnfold var)) env
 
   module Type = struct
