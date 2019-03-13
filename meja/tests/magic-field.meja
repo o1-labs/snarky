@@ -1,0 +1,17 @@
+type field_pair = (field, field);
+
+type field_pair_alias = field_pair;
+
+type record_containing_field = {a : (int, (int, field))};
+
+type with_param('a) = (unit, 'a);
+
+type field_param = with_param(field);
+
+let add3 = fun (add : field -> field -> field, x : field, y : field, z : field) => {
+  add (add (x, y), z);
+};
+
+let test_add3 = fun (add : int -> int -> int) => {
+  add3 (add, 1, 2, 3);
+};
