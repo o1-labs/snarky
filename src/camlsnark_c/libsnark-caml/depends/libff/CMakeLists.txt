@@ -192,7 +192,7 @@ if("${CPPDEBUG}")
 endif()
 
 if("${PERFORMANCE}")
-  add_definitions(-DNDEBUG)
+  #add_definitions(-DNDEBUG)
   set(
     CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -flto -fuse-linker-plugin"
