@@ -8,6 +8,12 @@ type 'a with_param = unit * 'a
 
 type 'field field_param = 'field with_param
 
+type 'field variant_containing_field = A of 'field | B
+
+type (_, 'field) variant_with_field_param =
+  | A : (int, 'field) variant_with_field_param
+  | B : ('field, 'field) variant_with_field_param
+
 let add3 (add : field -> field -> field) (x : field) (y : field) (z : field) =
   add (add x y) z
 

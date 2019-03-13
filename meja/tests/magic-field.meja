@@ -8,6 +8,12 @@ type with_param('a) = (unit, 'a);
 
 type field_param = with_param(field);
 
+type variant_containing_field = A(field) | B;
+
+type variant_with_field_param(_) =
+| A : variant_with_field_param(int)
+| B : variant_with_field_param(field);
+
 let add3 = fun (add : field -> field -> field, x : field, y : field, z : field) => {
   add (add (x, y), z);
 };
