@@ -542,6 +542,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let rec run : type a s. (a, s) t -> s run_state -> s run_state * a =
        fun t s ->
         match t with
+        | As_prover (x, k) ->
+            let s', (_ : unit option) = run_as_prover (Some x) s in
+            run k s'
+        | _ when !(s.as_prover) ->
+            failwith
+              "Can't run checked code as the prover: the verifier's \
+               constraint system will not match."
         | Pure x -> (s, x)
         | Direct (d, k) ->
             let Run_state.({prover_state; _}) = s in
@@ -553,9 +560,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let Run_state.({stack; _}) = s in
             let s', y = run t {s with Run_state.stack= lab :: stack} in
             run (k y) {s' with stack}
-        | As_prover (x, k) ->
-            let s', (_ : unit option) = run_as_prover (Some x) s in
-            run k s'
         | Add_constraint (c, t) ->
             if s.eval_constraints && not (Constraint.eval c (get_value s)) then
               failwithf "Constraint unsatisfied:\n%s\n%s\n"
@@ -2140,11 +2144,45 @@ module Run = struct
     end
 
     module As_prover = struct
-      include As_prover
+      type 'a t = 'a
+
+      let eval_as_prover f =
+        if !(!state.as_prover) && Option.is_some !state.prover_state then (
+          let s = Option.value_exn !state.Run_state.prover_state in
+          let s, a = f (Runner.get_value !state) s in
+          state := Runner.set_prover_state (Some s) !state ;
+          a )
+        else failwith "Can't evaluate prover code outside an as_prover block"
+
+      let read_var var = eval_as_prover (As_prover.read_var var)
+
+      let get_state = eval_as_prover As_prover.get_state
+
+      let set_state s = eval_as_prover (As_prover.set_state s)
+
+      let modify_state f = eval_as_prover (As_prover.modify_state f)
+
+      let read typ var = eval_as_prover (As_prover.read typ var)
+
       include Field.Constant.T
+
+      let run_prover f tbl s =
+        if !(!state.as_prover) && Option.is_some !state.prover_state then (
+          state := Runner.set_prover_state (Some s) !state ;
+          let a = f () in
+          let s' = Option.value_exn !state.prover_state in
+          (s', a) )
+        else failwith "Can't evaluate prover code outside an as_prover block"
     end
 
-    module Handle = Handle
+    module Handle = struct
+      type ('var, 'value) t = ('var, 'value) Handle.t =
+        {var: 'var; value: 'value option}
+
+      let value handle () = As_prover.eval_as_prover (Handle.value handle)
+
+      let var = Handle.var
+    end
 
     module Proof_system = struct
       open Run.Proof_system
@@ -2166,11 +2204,13 @@ module Run = struct
 
       let run_checked ~public_input ?handlers (proof_system : _ t) =
         Or_error.map
-          (run_checked ~run:as_stateful ~public_input ?handlers proof_system ())
-          ~f:snd
+          (run_checked' ~run:as_stateful ~public_input ?handlers proof_system
+             ()) ~f:(fun (s, x, state) -> x )
 
       let check ~public_input ?handlers (proof_system : _ t) =
-        check ~run:as_stateful ~public_input ?handlers proof_system ()
+        Or_error.is_ok
+          (run_checked' ~run:as_stateful ~public_input ?handlers proof_system
+             ())
 
       let prove ~public_input ?proving_key ?handlers (proof_system : _ t) =
         prove ~run:as_stateful ~public_input ?proving_key ?handlers
@@ -2188,22 +2228,26 @@ module Run = struct
 
     let assert_square ?label x y = run (assert_square ?label x y)
 
-    let as_prover p = run (as_prover p)
+    let as_prover p = run (as_prover (As_prover.run_prover p))
 
     let next_auxiliary () = run next_auxiliary
 
-    let request_witness typ p = run (request_witness typ p)
+    let request_witness typ p =
+      run (request_witness typ (As_prover.run_prover p))
 
-    let perform p = run (perform p)
+    let perform p = run (perform (As_prover.run_prover p))
 
     let request ?such_that typ r =
       match such_that with
-      | None -> request_witness typ (As_prover0.return r)
+      | None -> request_witness typ (fun () -> r)
       | Some such_that ->
-          let x = request_witness typ (As_prover0.return r) in
+          let x = request_witness typ (fun () -> r) in
           such_that x ; x
 
-    let exists ?request ?compute typ = run (exists ?request ?compute typ)
+    let exists ?request ?compute typ =
+      let request = Option.map request ~f:As_prover.run_prover in
+      let compute = Option.map compute ~f:As_prover.run_prover in
+      run (exists ?request ?compute typ)
 
     type nonrec response = response
 
@@ -2252,7 +2296,7 @@ module Run = struct
         Perform.run_and_check ~run:as_stateful (fun () ->
             let prover_block = x () in
             !state.as_prover := true ;
-            prover_block )
+            As_prover.run_prover prover_block )
       in
       !state.as_prover := false ;
       res
