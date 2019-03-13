@@ -11,7 +11,7 @@ let lid_last x = mkloc (last x.txt) x.loc
 
 let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= mklocation pos}
 let mkpat ~pos d = {pat_desc= d; pat_loc= mklocation pos}
-let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos; exp_type= mktyp ~pos (Tvar (None, -1))}
+let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos; exp_type= mktyp ~pos (Tvar (None, -1, Explicit))}
 let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %}
@@ -362,9 +362,9 @@ pat_or_bare_tuple:
 
 simple_type_expr:
   | UNDERSCORE
-    { mktyp ~pos:$loc (Tvar (None, 0)) }
+    { mktyp ~pos:$loc (Tvar (None, 0, Explicit)) }
   | QUOT x = as_loc(LIDENT)
-    { mktyp ~pos:$loc (Tvar (Some x, 0)) }
+    { mktyp ~pos:$loc (Tvar (Some x, 0, Explicit)) }
   | t = decl_type_expr
     { t }
   | LBRACKET x = type_expr RBRACKET

@@ -57,7 +57,7 @@ let rec check_type_aux typ ctyp env =
   | _, _ when Int.equal typ.type_id ctyp.type_id -> ()
   | Tpoly (_, typ), _ -> check_type_aux typ ctyp env
   | _, Tpoly (_, ctyp) -> check_type_aux typ ctyp env
-  | Tvar (_, depth), Tvar (_, constr_depth) ->
+  | Tvar (_, depth, _), Tvar (_, constr_depth, _) ->
       bind_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () ->

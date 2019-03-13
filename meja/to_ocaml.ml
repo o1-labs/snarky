@@ -5,8 +5,8 @@ open Parsetypes
 
 let rec of_type_desc ?loc typ =
   match typ with
-  | Tvar (None, _) -> Typ.any ?loc ()
-  | Tvar (Some name, _) -> Typ.var ?loc name.txt
+  | Tvar (None, _, _) -> Typ.any ?loc ()
+  | Tvar (Some name, _, _) -> Typ.var ?loc name.txt
   | Tpoly (_, typ) -> of_type_expr typ
   | Tarrow (typ1, typ2, _) ->
       Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
@@ -50,6 +50,7 @@ let of_type_decl decl =
         ~kind:(Parsetree.Ptype_variant (List.map ~f:of_ctor_decl ctors))
   | TOpen -> Type.mk name ~loc ~params ~kind:Parsetree.Ptype_open
   | TExtend _ -> failwith "Cannot convert TExtend to OCaml"
+  | TUnfold _ -> failwith "Cannot convert TUnfold to OCaml"
 
 let rec of_pattern_desc ?loc = function
   | PAny -> Pat.any ?loc ()

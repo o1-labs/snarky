@@ -154,7 +154,7 @@ module Scope = struct
         type_decls= Map.set type_decls ~key:decl.tdec_ident.txt ~data:decl }
     in
     match decl.tdec_desc with
-    | TAbstract | TAlias _ | TOpen -> scope
+    | TAbstract | TAlias _ | TUnfold _ | TOpen -> scope
     | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
     | TVariant ctors -> List.foldi ~f:(add_ctor decl) ~init:scope ctors
     | TExtend (_, _, ctors) ->
@@ -435,7 +435,8 @@ module Type = struct
     (env.resolve_env).type_env <- type_env ;
     {type_desc; type_id; type_loc= loc}
 
-  let mkvar ~loc name env = mk ~loc (Tvar (name, env.depth)) env
+  let mkvar ~loc ?(explicitness = Explicit) name env =
+    mk ~loc (Tvar (name, env.depth, explicitness)) env
 
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
@@ -450,11 +451,11 @@ module Type = struct
     let import = import ?must_find in
     let loc = typ.type_loc in
     match typ.type_desc with
-    | Tvar (None, _) -> (
+    | Tvar (None, _, explicitness) -> (
       match must_find with
       | Some true -> raise (Error (typ.type_loc, Unbound_type_var typ))
-      | _ -> (mkvar ~loc None env, env) )
-    | Tvar ((Some {txt= x; _} as name), _) -> (
+      | _ -> (mkvar ~loc ~explicitness None env, env) )
+    | Tvar ((Some {txt= x; _} as name), _, explicitness) -> (
         let var =
           match must_find with
           | Some true ->
@@ -468,7 +469,7 @@ module Type = struct
         match var with
         | Some var -> (var, env)
         | None ->
-            let var = mkvar ~loc name env in
+            let var = mkvar ~loc ~explicitness name env in
             (var, add_type_variable x var env) )
     | Tpoly (vars, typ) ->
         let env = open_expr_scope env in
@@ -480,9 +481,11 @@ module Type = struct
         let typ, env = import typ env in
         let env = close_expr_scope env in
         (mk ~loc (Tpoly (vars, typ)) env, env)
-    | Tctor variant ->
+    | Tctor variant -> (
         let {var_ident; var_params; _} = variant in
-        let decl = raw_find_type_declaration var_ident env in
+        match raw_find_type_declaration var_ident env with
+        | {tdec_desc= TUnfold typ; _} -> (typ, env)
+        | decl ->
         let variant =
           { variant with
             var_decl_id= decl.tdec_id
@@ -501,7 +504,7 @@ module Type = struct
               let param, env = import param env in
               (env, param) )
         in
-        (mk ~loc (Tctor {variant with var_params}) env, env)
+        (mk ~loc (Tctor {variant with var_params}) env, env) )
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
@@ -572,7 +575,7 @@ module Type = struct
     let type_vars' = type_vars in
     let type_vars = type_vars ?depth in
     match typ.type_desc with
-    | Tvar (_, var_depth) when deep_enough var_depth ->
+    | Tvar (_, var_depth, _) when deep_enough var_depth ->
         Set.singleton (module Comparator) typ
     | Tvar _ -> Set.empty (module Comparator)
     | Tpoly (vars, typ) ->
@@ -757,7 +760,8 @@ module Type = struct
   let rec implicit_params env typ =
     let implicit_params = implicit_params env in
     match typ.type_desc with
-    | Tvar _ -> Set.empty (module Comparator)
+    | Tvar (_, _, Explicit) -> Set.empty (module Comparator)
+    | Tvar (_, _, Implicit) -> Set.singleton (module Comparator) typ
     | Ttuple typs ->
         Set.union_list (module Comparator) (List.map ~f:implicit_params typs)
     | Tarrow (typ1, typ2, _) ->
@@ -805,7 +809,7 @@ module TypeDecl = struct
     let tdec_implicit_params =
       match decl.tdec_desc with
       | TAbstract | TOpen | TExtend _ -> Set.empty (module Type)
-      | TAlias typ -> Type.implicit_params env typ
+      | TAlias typ | TUnfold typ -> Type.implicit_params env typ
       | TRecord fields ->
           Set.union_list
             (module Type)
@@ -847,6 +851,9 @@ module TypeDecl = struct
       | TAlias typ ->
           let typ, env = Type.import ~must_find:true typ env in
           (TAlias typ, env)
+      | TUnfold typ ->
+          let typ, env = Type.import ~must_find:false typ env in
+          (TUnfold typ, env)
       | TRecord fields ->
           let env, fields =
             List.fold_map ~init:env fields ~f:(fun env field ->
@@ -1066,6 +1073,10 @@ module Core = struct
         in
         snd (TypeDecl.import (mk_type_decl name ~params TAbstract) env) )
       [("bytes", 0); ("int32", 0); ("int64", 0); ("nativeint", 0)]
+
+  let field, env =
+    let var = Type.mkvar ~loc:Location.none ~explicitness:Implicit (Some (mkloc "field")) env in
+    TypeDecl.import (mk_type_decl "field" (TUnfold var)) env
 
   module Type = struct
     let int = TypeDecl.mk_typ int ~params:[] env
