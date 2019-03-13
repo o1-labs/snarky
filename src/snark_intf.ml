@@ -1752,7 +1752,7 @@ module type Run = sig
   val with_label : string -> (unit -> 'a) -> 'a
 
   val make_checked :
-    (unit -> 'a) -> ('a, 's, Field.t, unit Typ.run_state) Types.Checked.t
+    (unit -> 'a) -> ('a, 's, field, unit Typ.run_state) Types.Checked.t
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
