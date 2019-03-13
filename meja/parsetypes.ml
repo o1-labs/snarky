@@ -63,7 +63,11 @@ and type_desc =
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
 
-and variant = {var_ident: lid; var_params: type_expr list; var_decl_id: int}
+and variant =
+  { var_ident: lid
+  ; var_params: type_expr list
+  ; var_implicit_params: type_expr list
+  ; var_decl_id: int }
 
 type field_decl =
   {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}
@@ -81,6 +85,7 @@ type ctor_decl =
 type type_decl =
   { tdec_ident: str
   ; tdec_params: type_expr list
+  ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
   ; tdec_id: int
   ; tdec_loc: Location.t }

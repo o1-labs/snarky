@@ -10,8 +10,10 @@ let rec of_type_desc ?loc typ =
   | Tpoly (_, typ) -> of_type_expr typ
   | Tarrow (typ1, typ2, _) ->
       Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
-  | Tctor {var_ident= name; var_params= params; _} ->
-      Typ.constr ?loc name (List.map ~f:of_type_expr params)
+  | Tctor
+      {var_ident= name; var_params= params; var_implicit_params= implicits; _}
+    ->
+      Typ.constr ?loc name (List.map ~f:of_type_expr (params @ implicits))
   | Ttuple typs -> Typ.tuple ?loc (List.map ~f:of_type_expr typs)
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
@@ -33,7 +35,9 @@ let of_type_decl decl =
   let loc = decl.tdec_loc in
   let name = decl.tdec_ident in
   let params =
-    List.map ~f:(fun t -> (of_type_expr t, Invariant)) decl.tdec_params
+    List.map
+      ~f:(fun t -> (of_type_expr t, Invariant))
+      (decl.tdec_params @ decl.tdec_implicit_params)
   in
   match decl.tdec_desc with
   | TAbstract -> Type.mk name ~loc ~params

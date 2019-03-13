@@ -483,7 +483,11 @@ module Type = struct
     | Tctor variant ->
         let {var_ident; var_params; _} = variant in
         let decl = raw_find_type_declaration var_ident env in
-        let variant = {variant with var_decl_id= decl.tdec_id} in
+        let variant =
+          { variant with
+            var_decl_id= decl.tdec_id
+          ; var_implicit_params= decl.tdec_implicit_params }
+        in
         let given_args_length = List.length var_params in
         let expected_args_length = List.length decl.tdec_params in
         if not (Int.equal given_args_length expected_args_length) then
@@ -749,6 +753,26 @@ module Type = struct
     in
     (env.resolve_env).type_env <- {env.resolve_env.type_env with implicit_vars} ;
     local_implicit_vars
+
+  let rec implicit_params env typ =
+    let implicit_params = implicit_params env in
+    match typ.type_desc with
+    | Tvar _ -> Set.empty (module Comparator)
+    | Ttuple typs ->
+        Set.union_list (module Comparator) (List.map ~f:implicit_params typs)
+    | Tarrow (typ1, typ2, _) ->
+        Set.union (implicit_params typ1) (implicit_params typ2)
+    | Tctor variant ->
+        let ctor_params =
+          try
+            let decl = raw_find_type_declaration variant.var_ident env in
+            Set.of_list (module Comparator) decl.tdec_implicit_params
+          with Error (_, Unbound_type _) -> Set.empty (module Comparator)
+        in
+        Set.union_list
+          (module Comparator)
+          (ctor_params :: List.map ~f:implicit_params variant.var_params)
+    | Tpoly (_, typ) -> implicit_params typ
 end
 
 module TypeDecl = struct
@@ -757,10 +781,12 @@ module TypeDecl = struct
     (env.resolve_env).type_env <- type_env ;
     tdec_id
 
-  let mk ?(loc = Location.none) ~name ~params desc env =
+  let mk ?(loc = Location.none) ~name ~params ?(implicit_params = []) desc env
+      =
     let tdec_id = next_id env in
     { tdec_ident= name
     ; tdec_params= params
+    ; tdec_implicit_params= implicit_params
     ; tdec_desc= desc
     ; tdec_id
     ; tdec_loc= loc }
@@ -776,8 +802,37 @@ module TypeDecl = struct
               (env, var)
           | _ -> raise (Error (param.type_loc, Expected_type_var param)) )
     in
+    let tdec_implicit_params =
+      match decl.tdec_desc with
+      | TAbstract | TOpen | TExtend _ -> Set.empty (module Type)
+      | TAlias typ -> Type.implicit_params env typ
+      | TRecord fields ->
+          Set.union_list
+            (module Type)
+            (List.map fields ~f:(fun {fld_type; _} ->
+                 Type.implicit_params env fld_type ))
+      | TVariant ctors ->
+          Set.union_list
+            (module Type)
+            (List.map ctors ~f:(fun ctor ->
+                 let typs =
+                   match ctor.ctor_args with
+                   | Ctor_tuple typs -> typs
+                   | Ctor_record (_, fields) ->
+                       List.map ~f:(fun {fld_type; _} -> fld_type) fields
+                 in
+                 let typs =
+                   match ctor.ctor_ret with
+                   | Some ctor_ret -> ctor_ret :: typs
+                   | None -> typs
+                 in
+                 Set.union_list
+                   (module Type)
+                   (List.map typs ~f:(Type.implicit_params env)) ))
+    in
+    let tdec_implicit_params = Set.to_list tdec_implicit_params in
     (* Make sure the declaration is available to lookup for recursive types. *)
-    let decl = {decl with tdec_id; tdec_params} in
+    let decl = {decl with tdec_id; tdec_params; tdec_implicit_params} in
     let scope, env = pop_expr_scope env in
     let env =
       match decl.tdec_desc with
@@ -871,7 +926,11 @@ module TypeDecl = struct
   let mk_typ ?(loc = Location.none) ~params ?ident decl =
     let ident = Option.value ident ~default:(mk_lid decl.tdec_ident) in
     Type.mk ~loc
-      (Tctor {var_ident= ident; var_params= params; var_decl_id= decl.tdec_id})
+      (Tctor
+         { var_ident= ident
+         ; var_params= params
+         ; var_implicit_params= []
+         ; var_decl_id= decl.tdec_id })
 
   let find ident env =
     let decl = raw_find_type_declaration ident env in
@@ -940,9 +999,10 @@ let find_name (lid : lid) env =
 module Core = struct
   let mkloc s = Location.(mkloc s none)
 
-  let mk_type_decl ?(params = []) name desc =
+  let mk_type_decl ?(params = []) ?(implicit_params = []) name desc =
     { tdec_ident= mkloc name
     ; tdec_params= params
+    ; tdec_implicit_params= implicit_params
     ; tdec_desc= desc
     ; tdec_id= 0
     ; tdec_loc= Location.none }
@@ -986,7 +1046,10 @@ module Core = struct
     let typ =
       Type.mk ~loc:Location.none
         (Tctor
-           {var_ident= mkloc (Lident "list"); var_params= [var]; var_decl_id= 0})
+           { var_ident= mkloc (Lident "list")
+           ; var_params= [var]
+           ; var_implicit_params= []
+           ; var_decl_id= 0 })
         env
     in
     TypeDecl.import
@@ -1037,6 +1100,7 @@ let pp_decl_typ ppf decl =
         Tctor
           { var_ident= mk_lid decl.tdec_ident
           ; var_params= decl.tdec_params
+          ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl_id= decl.tdec_id }
     ; type_id= -1
     ; type_loc= Location.none }

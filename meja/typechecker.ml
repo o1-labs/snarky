@@ -199,10 +199,17 @@ let get_ctor (name : lid) env =
   let loc = name.loc in
   match (Envi.TypeDecl.find_of_constructor name env, name) with
   | ( Some
-        (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
+        ( ( { tdec_desc= TVariant ctors
+            ; tdec_ident
+            ; tdec_params
+            ; tdec_implicit_params; _ } as decl )
+        , i )
     , name )
    |( Some
-        ( {tdec_desc= TExtend (name, decl, ctors); tdec_ident; tdec_params; _}
+        ( { tdec_desc= TExtend (name, decl, ctors)
+          ; tdec_ident
+          ; tdec_params
+          ; tdec_implicit_params; _ }
         , i )
     , _ ) ->
       let ctor = List.nth_exn ctors i in
@@ -229,6 +236,7 @@ let get_ctor (name : lid) env =
               (Tctor
                  { var_ident= make_name ctor.ctor_ident
                  ; var_params= params
+                 ; var_implicit_params= tdec_implicit_params
                  ; var_decl_id= tdec_id })
               env
         | Ctor_tuple [typ] -> typ
@@ -673,7 +681,11 @@ let rec check_statement env stmt =
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)
   | TypeExtension (variant, ctors) ->
-      let ({tdec_ident; tdec_params; tdec_desc; tdec_id; _} as decl) =
+      let ( { tdec_ident
+            ; tdec_params
+            ; tdec_implicit_params
+            ; tdec_desc
+            ; tdec_id; _ } as decl ) =
         match Envi.raw_find_type_declaration variant.var_ident env with
         | open_decl -> open_decl
         | exception _ ->
@@ -691,6 +703,7 @@ let rec check_statement env stmt =
       let decl =
         { tdec_ident
         ; tdec_params= variant.var_params
+        ; tdec_implicit_params
         ; tdec_id
         ; tdec_desc= TExtend (variant.var_ident, decl, ctors)
         ; tdec_loc= loc }

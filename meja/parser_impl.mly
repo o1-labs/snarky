@@ -91,6 +91,7 @@ structure_item:
       mkstmt ~pos:$loc (TypeDecl
         { tdec_ident= x
         ; tdec_params= args
+        ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_id= -1
         ; tdec_loc= mklocation $loc }) }
@@ -102,7 +103,7 @@ structure_item:
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
       mkstmt ~pos:$loc (TypeExtension
-        ( {var_ident= x; var_params= params; var_decl_id= 0}
+        ( {var_ident= x; var_params= params; var_implicit_params= []; var_decl_id= 0}
         , ctors)) }
 
 module_expr:
@@ -121,7 +122,7 @@ decl_type_expr:
   | x = decl_type(longident(LIDENT, UIDENT))
     { let (x, params) = x in
       mktyp ~pos:$loc
-        (Tctor {var_ident= x; var_params= params; var_decl_id= 0}) }
+        (Tctor {var_ident= x; var_params= params; var_implicit_params= []; var_decl_id= 0}) }
 
 record_field(ID, EXP):
   | id = as_loc(ID) COLON t = EXP
