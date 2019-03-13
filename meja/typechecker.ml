@@ -630,7 +630,9 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
                 (Tarrow (var.exp_type, e.exp_type, Implicit))
                 env
             in
-            let p = {pat_desc= PVariable name; pat_loc= loc} in
+            let p =
+              {pat_desc= PVariable name; pat_loc= loc; pat_type= var.exp_type}
+            in
             ({exp_desc= Fun (p, e, Implicit); exp_type; exp_loc= loc}, env)
         | _ -> raise (Error (var.exp_loc, No_unifiable_expr)) )
   in
@@ -656,7 +658,12 @@ let rec check_statement env stmt =
       let p, e, env = check_binding ~toplevel:true env p e in
       (env, {stmt with stmt_desc= Value (p, e)})
   | Instance (name, e) ->
-      let p = {pat_desc= PVariable name; pat_loc= name.loc} in
+      let dummy_type =
+        {type_desc= Tvar (None, -1); type_id= -1; type_loc= loc}
+      in
+      let p =
+        {pat_desc= PVariable name; pat_loc= name.loc; pat_type= dummy_type}
+      in
       let _, e, env = check_binding ~toplevel:true env p e in
       let env = Envi.add_implicit_instance name.txt e.exp_type env in
       (env, {stmt with stmt_desc= Instance (name, e)})
