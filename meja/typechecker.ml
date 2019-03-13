@@ -242,7 +242,9 @@ let get_ctor (name : lid) env =
       (typ, args_typ)
   | _ -> raise (Error (loc, Unbound ("constructor", name)))
 
-let rec check_pattern_desc ~loc ~add env typ = function
+let rec check_pattern ~add env typ pat =
+  let loc = pat.pat_loc in
+  match pat.pat_desc with
   | PAny -> env
   | PVariable str -> add str typ env
   | PConstraint (p, constr_typ) ->
@@ -352,9 +354,6 @@ let rec check_pattern_desc ~loc ~add env typ = function
           let typ = Envi.Type.mkvar ~loc None env in
           check_type env args_typ typ ;
           env )
-
-and check_pattern ~add env typ pat =
-  check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc
 
 let rec get_expression env expected exp =
   let loc = exp.exp_loc in
