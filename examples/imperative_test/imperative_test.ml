@@ -81,14 +81,55 @@ module Old = struct
 end
 
 module As_prover_test = struct
+  open Intf
+
   let test x =
+    let y = Field.div x x in
     fun () ->
-      Intf.As_prover.read_var (Intf.Field.div x x)
+      let x' = As_prover.read_var x in
+      let y' = As_prover.read_var y in
+      let z = Field.Constant.Infix.(x' / x') in
+      (x, y', z)
+
+  let a, b = Field.Constant.(random (), random ())
+
+  let (x, y, z) =
+    run_and_check (fun () ->
+    let open Intf in
+    let test_2 = test (Field.of_int 2) in
+    as_prover (fun () -> ignore (test_2 ()));
+    Field.(Assert.equal one one);
+    exists ~compute:(fun () -> ()) Typ.unit;
+    let c = Field.(constant a * constant b) in
+    let as_prover = test c in
+    as_prover)
+  |> Core.Or_error.ok_exn
 
   let () =
-    Intf.run_and_check (fun () -> test (Intf.Field.of_int 1))
+    (* We are still considered to be the prover at the end of 'run_and_check',
+       at least until the next checked computation is run. *)
+    let c = Field.Constant.Infix.(a * b) in
+    assert (As_prover.in_prover_block ());
+    assert Field.Constant.(equal (As_prover.read_var x) c);
+    assert Field.Constant.(equal y one);
+    assert Field.Constant.(equal z one)
+
+  let test2 =
+    run_and_check (fun () ->
+      let res = Field.(one * one * one * one * one * one * one) in
+      fun () -> As_prover.read_var res)
     |> Core.Or_error.ok_exn
-    |> ignore
+
+  let () = assert Field.Constant.(equal test2 one)
+
+  let test3 =
+    run_and_check (fun () ->
+      let two = Field.of_int 2 in
+      let res = Field.(two * two * two * two * two * two * two) in
+      fun () -> As_prover.read_var res)
+    |> Core.Or_error.ok_exn
+
+  let () = assert Field.Constant.(equal test3 (of_int 128))
 end
 
 let exposing = Intf.(Data_spec.[Field.typ])
@@ -109,7 +150,7 @@ let verify2 proof vk =
 let main () =
   let proof, vk = prove () in
   let proof2, vk2 = prove2 () in
-  Format.printf "expecting true:%B expecting false:%B" (verify proof vk)
+  Format.printf "expecting true:%B expecting false:%B@." (verify proof vk)
     (verify2 proof2 vk2)
 
 let () = main ()
