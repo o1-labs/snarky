@@ -531,9 +531,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let run_as_prover x state =
         match (x, state.Run_state.prover_state) with
         | Some x, Some s ->
+            let old = !(state.as_prover) in
             state.as_prover := true ;
             let s', y = As_prover.run x (get_value state) s in
-            state.as_prover := false ;
+            state.as_prover := old ;
             ({state with Run_state.prover_state= Some s'}, Some y)
         | _, _ -> (state, None)
 
@@ -591,12 +592,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | Exists ({store; alloc; check; _}, p, k) -> (
           match s.Run_state.prover_state with
           | Some ps ->
+              let old = !(s.as_prover) in
               s.as_prover := true ;
               let ps, value =
                 Provider.run p s.Run_state.stack (get_value s) ps
                   s.Run_state.handler
               in
-              s.as_prover := false ;
+              s.as_prover := old ;
               let var = Typ.Store.run (store value) (store_field_elt s) in
               (* TODO: Push a label onto the stack here *)
               let s, () = run (check var) (set_prover_state (Some ()) s) in
@@ -2154,9 +2156,11 @@ module Run = struct
           a )
         else failwith "Can't evaluate prover code outside an as_prover block"
 
+      let in_prover_block () = !(!state.as_prover)
+
       let read_var var = eval_as_prover (As_prover.read_var var)
 
-      let get_state = eval_as_prover As_prover.get_state
+      let get_state () = eval_as_prover As_prover.get_state
 
       let set_state s = eval_as_prover (As_prover.set_state s)
 
@@ -2167,12 +2171,13 @@ module Run = struct
       include Field.Constant.T
 
       let run_prover f tbl s =
-        if !(!state.as_prover) && Option.is_some !state.prover_state then (
-          state := Runner.set_prover_state (Some s) !state ;
-          let a = f () in
-          let s' = Option.value_exn !state.prover_state in
-          (s', a) )
-        else failwith "Can't evaluate prover code outside an as_prover block"
+        let old = !(!state.as_prover) in
+        !state.as_prover := true ;
+        state := Runner.set_prover_state (Some s) !state ;
+        let a = f () in
+        let s' = Option.value_exn !state.prover_state in
+        !state.as_prover := old ;
+        (s', a)
     end
 
     module Handle = struct
@@ -2291,14 +2296,13 @@ module Run = struct
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 
     let run_and_check x =
-      !state.as_prover := true ;
       let res =
         Perform.run_and_check ~run:as_stateful (fun () ->
             let prover_block = x () in
             !state.as_prover := true ;
             As_prover.run_prover prover_block )
       in
-      !state.as_prover := false ;
+      !state.as_prover := true ;
       res
 
     let check x = Perform.check ~run:as_stateful x
