@@ -1820,12 +1820,9 @@ module Run = struct
           x
 
     let as_stateful x state' =
-      let old_state = !state in
       state := state' ;
       let a = x () in
-      let state' = !state in
-      state := old_state ;
-      (state', a)
+      (!state, a)
 
     module Proving_key = Snark.Proving_key
     module Verification_key = Snark.Verification_key
