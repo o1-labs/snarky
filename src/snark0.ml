@@ -2172,11 +2172,11 @@ module Run = struct
 
       let run_prover f tbl s =
         let old = !(!state.as_prover) in
-        !state.as_prover := true;
+        !state.as_prover := true ;
         state := Runner.set_prover_state (Some s) !state ;
         let a = f () in
         let s' = Option.value_exn !state.prover_state in
-        !state.as_prover := old;
+        !state.as_prover := old ;
         (s', a)
     end
 
