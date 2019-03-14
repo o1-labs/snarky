@@ -1623,9 +1623,11 @@ module type Run = sig
         runtime error. *)
     type 'a t = 'a
 
+    val in_prover_block : unit -> bool
+
     val read_var : Field.t -> Field.Constant.t
 
-    val get_state : unit
+    val get_state : unit -> unit
 
     val set_state : unit -> unit
 
