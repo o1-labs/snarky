@@ -80,6 +80,17 @@ module Old = struct
     Intf.make_checked (fun () -> test2 (module Intf) z)
 end
 
+module As_prover_test = struct
+  let test x =
+    fun () ->
+      Intf.As_prover.read_var (Intf.Field.div x x)
+
+  let () =
+    Intf.run_and_check (fun () -> test (Intf.Field.of_int 1))
+    |> Core.Or_error.ok_exn
+    |> ignore
+end
+
 let exposing = Intf.(Data_spec.[Field.typ])
 
 let prove2 () =
