@@ -1,5 +1,4 @@
 open Core
-open Snarky
 open Impl
 open Import
 
@@ -46,130 +45,67 @@ module Ballot = struct
   module Closed = Hash
 end
 
-(* Here we have a checked computation for "closing" an opened ballot. In other words,
-   turning the ballot into a commitment. *)
-let close_ballot_var (ballot : Ballot.Opened.var) =
-  let%bind bs = Ballot.Opened.var_to_bits ballot in
-  Hash.hash_var bs
+let rec deep_hash_unchecked i bits =
+  if i > 0 then
+    let bits = Hash.to_bits (Hash.hash bits) in
+    let x = Field.project bits in
+    let x = Field.Infix.(x * x) in
+    let bits = Field.unpack x in
+    deep_hash_unchecked (i-1) bits
+  else
+    Hash.hash bits
 
-let close_ballot (ballot : Ballot.Opened.t) =
-  Hash.hash (Ballot.Opened.to_bits ballot)
+let rec deep_hash i bits =
+  if i > 0 then
+    let%bind x = Hash.hash_var bits in
+    let%bind bits = Hash.var_to_bits x in
+    let x = Field.Var.project bits in
+    let%bind x = Field.Checked.mul x x in
+    let%bind bits = Field.Checked.choose_preimage_var ~length:Field.size_in_bits x in
+    deep_hash (i-1) bits
+  else
+    Hash.hash_var bits
 
-(* Checked computations in Snarky are allowed to ask for help.
-   This adds a new kind of "help request" a checked computation can make:
-   [Open_ballot i] is a request for the opened ballot corresponding to voter [i].
-*)
-type _ Request.t += Open_ballot : int -> Ballot.Opened.t Request.t
+let check_deep_hash i x out_expected =
+  let%bind out = deep_hash i x in
+  Hash.assert_equal out out_expected
 
-(* Here we write a checked function [open_ballot], which given a voter index [i]
-   and a closed ballot (i.e., a commitment) [closed], produces the corresponding
-   opened ballot (i.e., the value committed to).
+let hash_depth = 80
 
-   This seems odd, since commitments are supposed to be hiding. That is, there should
-   be no way to compute the committed value from the commitment which this checked function
-   is supposed to do. The trick is that checked computations are allowed to ask for help
-   and then verify that the help was useful. In this case, we [request] for someone out there
-   to provide us with an opening to our commitment, and then check that it is indeed a
-   correct opening of our closed ballot, before returning it as the result of the function. *)
-let open_ballot i (commitment : Ballot.Closed.var) =
-  let%map _, vote =
-    request Ballot.Opened.typ (Open_ballot i) ~such_that:(fun opened ->
-        let%bind implied = close_ballot_var opened in
-        Ballot.Closed.assert_equal commitment implied )
-  in
-  vote
+let input_size = 80
 
-(* Now we write a simple checked function counting up all the votes for pepperoni in a
-   given list of votes. *)
-let count_pepperoni_votes vs =
-  let open Number in
-  Checked.List.fold vs ~init:(constant Field.zero) ~f:(fun acc v ->
-      let%bind pepperoni_vote = Vote.(v = var Pepperoni) in
-      Number.if_ pepperoni_vote
-        ~then_:(acc + constant Field.one)
-        ~else_:(acc + constant Field.zero) )
+let input = List.init input_size ~f:(fun _ -> Random.bool ())
 
-(* Aside for experts: This function could be much more efficient since a Candidate
-   is just a bool which can be coerced to a cvar (thus requiring literally no constraints
-   to just sum up). It's written this way for pedagogical purposes. *)
-(* Now we can put it all together to write a verifiable computation computing the winner: *)
-let winner ballots =
-  let open Number in
-  let half = constant (Field.of_int (List.length ballots / 2)) in
-  (* First we open all the ballots *)
-  let%bind votes = Checked.List.mapi ~f:open_ballot ballots in
-  (* Then we sum up all the votes (we only have to sum up the pepperoni votes
-     since the mushroom votes are N - pepperoni votes)
-  *)
-  let%bind pepperoni_vote_count = count_pepperoni_votes votes in
-  let%bind pepperoni_wins = pepperoni_vote_count > half in
-  Vote.(if_ pepperoni_wins ~then_:(var Pepperoni) ~else_:(var Mushroom))
 
-let number_of_voters = 11
-
-let check_winner commitments claimed_winner =
-  let%bind w = winner commitments in
-  Vote.assert_equal w claimed_winner
-
-(* This specifies the data that will be exposed in the statement we're proving:
-   a list of closed ballots (commitments to votes) and the winner. *)
-let exposed () =
-  Data_spec.[Typ.list ~length:number_of_voters Ballot.Closed.typ; Vote.typ]
-
-let keypair = generate_keypair check_winner ~exposing:(exposed ())
-
-let winner_unchecked (ballots : Ballot.Opened.t array) =
-  let pepperoni_votes =
-    Array.count ballots ~f:(function
-      | _, Pepperoni -> true
-      | _, Mushroom -> false )
-  in
-  if pepperoni_votes > Array.length ballots / 2 then Vote.Pepperoni
-  else Mushroom
-
-let tally_and_prove (ballots : Ballot.Opened.t array) =
-  let commitments =
-    List.init number_of_voters ~f:(fun i ->
-        Hash.hash (Ballot.Opened.to_bits ballots.(i)) )
-  in
-  let winner = winner_unchecked ballots in
-  let handled_check commitments claimed_winner =
-    (* As mentioned before, a checked computation can request help from outside.
-       Here is where we answer those requests (or at least some of them). *)
-    handle (check_winner commitments claimed_winner)
-      (fun (With {request; respond}) ->
-        match request with
-        | Open_ballot i -> respond (Provide ballots.(i))
-        | _ -> unhandled )
-  in
-  ( commitments
-  , winner
-  , prove (Keypair.pk keypair) (exposed ()) () handled_check commitments winner
-  )
-
-(* Instead of using [prove], we could have also used the [Proof_system] API,
-   which simplifies some of this work for us. Usefully, it also lets us declare
-   a public output, so that we don't have to worry about calculating the
-   [claimed_winner].
-*)
 let proof_system =
   Proof_system.create
-    ~public_input:[Typ.list ~length:number_of_voters Ballot.Closed.typ]
-    ~public_output:{typ= Vote.typ; assert_equal= Vote.assert_equal}
-    winner
+    ~public_input:[Typ.list ~length:input_size Boolean.typ; Hash.typ]
+    (check_deep_hash hash_depth)
 
-let tally_and_prove_ps (ballots : Ballot.Opened.t array) =
-  let commitments =
-    List.init number_of_voters ~f:(fun i ->
-        Hash.hash (Ballot.Opened.to_bits ballots.(i)) )
-  in
-  let proof, winner =
-    Proof_system.prove ~public_input:[commitments]
-      ~handlers:
-        [ (fun (With {request; respond}) ->
-            match request with
-            | Open_ballot i -> respond (Provide ballots.(i))
-            | _ -> unhandled ) ]
-      proof_system ()
-  in
-  (commitments, Option.value_exn winner, proof)
+let keypair = Proof_system.generate_keypair proof_system
+
+let check_proof_system input =
+  let output = deep_hash_unchecked hash_depth input in
+  ignore (Proof_system.prove ~proving_key:(Keypair.pk keypair) ~public_input:[input; output] proof_system ())
+
+let%bench_fun "check_proof_system" = fun () -> check_proof_system input
+
+let check_proof_system_precomp input output =
+  ignore (Proof_system.prove ~proving_key:(Keypair.pk keypair) ~public_input:[input; output] proof_system ())
+
+let%bench_fun "check_proof_system_precomp" =
+  let output = deep_hash_unchecked hash_depth input in
+  fun () -> check_proof_system_precomp input output
+
+let proof_system =
+  Proof_system.create
+    ~public_input:[Typ.list ~length:input_size Boolean.typ]
+    ~public_output:{typ= Hash.typ; assert_equal= Hash.assert_equal}
+    (deep_hash hash_depth)
+
+let keypair = Proof_system.generate_keypair proof_system
+
+let check_proof_system_output input =
+  ignore (Proof_system.prove ~proving_key:(Keypair.pk keypair) ~public_input:[input] proof_system ())
+
+let%bench_fun "check_proof_system_output" = fun () -> check_proof_system input

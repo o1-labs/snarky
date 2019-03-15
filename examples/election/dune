@@ -1,6 +1,17 @@
+(library
+  (name election1)
+  (modes native)
+  (modules :standard \ election_main)
+  (preprocess
+    (pps ppx_jane ppx_deriving.enum ppx_bench))
+  (library_flags -linkall)
+  (inline_tests)
+  (libraries snarky core))
+
 (executables
  (names election_main)
  (modes native)
+ (modules election_main)
  (preprocess
   (pps ppx_jane ppx_deriving.enum))
- (libraries snarky core))
+ (libraries snarky core core_bench.inline_benchmarks election1))
