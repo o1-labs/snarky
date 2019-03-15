@@ -118,7 +118,7 @@ let exposed () =
 
 let keypair = generate_keypair check_winner ~exposing:(exposed ())
 
-let winner (ballots : Ballot.Opened.t array) =
+let winner_unchecked (ballots : Ballot.Opened.t array) =
   let pepperoni_votes =
     Array.count ballots ~f:(function
       | _, Pepperoni -> true
@@ -132,7 +132,7 @@ let tally_and_prove (ballots : Ballot.Opened.t array) =
     List.init number_of_voters ~f:(fun i ->
         Hash.hash (Ballot.Opened.to_bits ballots.(i)) )
   in
-  let winner = winner ballots in
+  let winner = winner_unchecked ballots in
   let handled_check commitments claimed_winner =
     (* As mentioned before, a checked computation can request help from outside.
        Here is where we answer those requests (or at least some of them). *)
@@ -146,3 +146,30 @@ let tally_and_prove (ballots : Ballot.Opened.t array) =
   , winner
   , prove (Keypair.pk keypair) (exposed ()) () handled_check commitments winner
   )
+
+(* Instead of using [prove], we could have also used the [Proof_system] API,
+   which simplifies some of this work for us. Usefully, it also lets us declare
+   a public output, so that we don't have to worry about calculating the
+   [claimed_winner].
+*)
+let proof_system =
+  Proof_system.create
+    ~public_input:[Typ.list ~length:number_of_voters Ballot.Closed.typ]
+    ~public_output:{typ= Vote.typ; assert_equal= Vote.assert_equal}
+    winner
+
+let tally_and_prove_ps (ballots : Ballot.Opened.t array) =
+  let commitments =
+    List.init number_of_voters ~f:(fun i ->
+        Hash.hash (Ballot.Opened.to_bits ballots.(i)) )
+  in
+  let proof, winner =
+    Proof_system.prove ~public_input:[commitments]
+      ~handlers:
+        [ (fun (With {request; respond}) ->
+            match request with
+            | Open_ballot i -> respond (Provide ballots.(i))
+            | _ -> unhandled ) ]
+      proof_system ()
+  in
+  (commitments, Option.value_exn winner, proof)

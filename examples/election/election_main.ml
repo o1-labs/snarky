@@ -39,4 +39,9 @@ let () =
     )
   in
   let commitments, winner, proof = tally_and_prove received_ballots in
-  assert (verify proof (Keypair.vk keypair) (exposed ()) commitments winner)
+  assert (verify proof (Keypair.vk keypair) (exposed ()) commitments winner) ;
+  (* We can also use the [Proof_system] API for this: *)
+  let commitments, winner, proof = tally_and_prove_ps received_ballots in
+  assert (
+    Proof_system.verify proof_system proof ~public_input:[commitments]
+      ~public_output:winner )
