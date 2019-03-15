@@ -849,7 +849,28 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** A proof system instance for a checked computation producing a value of
         type ['a], with prover state ['s] and public inputs ['public_input].
     *)
-    type ('a, 's, 'public_input) t
+    type ('a, 's, 'public_input, 'public_output) t
+
+    (** A [('var, 'value) public_output] describes the result of a checked
+        computation that will be passed to the verifier.
+        - [typ] describes how to convert from the return type of the checked
+          computation ['var] to the OCaml type ['value] that will be given to
+          the verifier
+        - [assert_equal] is the checked computation that asserts equality
+          between the value returned by the checked computation and the ['var]
+          that the verifier will store the public input into. This is run after
+          the checked computation finishes.
+
+        Internally, a public output is an additional public input whose value
+        is not known until the end of the checked computation, and to which the
+        checked computation has no access. That is, a checked computation with
+        public inputs [[typ1; typ2; ...; typn]] and public output [{typ; _}] is
+        equivalent to a checked computation with public inputs
+        [[typ1; typ2; ...; typn; typ] in the eyes of the verifier.
+    *)
+    type ('var, 'value) public_output =
+      { typ: ('var, 'value) Typ.t
+      ; assert_equal: 'var -> 'var -> (unit, unit) Checked.t }
 
     val create :
          ?proving_key:Proving_key.t
@@ -862,8 +883,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
                       , 'computation
                       , 'public_input )
                       Data_spec.t
+      -> ?public_output:('a, 'public_output) public_output
       -> 'computation
-      -> ('a, 's, 'public_input) t
+      -> ('a, 's, 'public_input, 'public_output) t
     (** Create a new proof system. The arguments are
         - [proving_key] -- optional, defines the key to be used for proving.
           If not present, a key will be read from [proving_key_path], or one
@@ -884,14 +906,18 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           handle requests made from the checked computation
         - [public_input] -- the {!type:Data_spec.t} that describes the form
           that the public inputs must take
+        - [public_output] -- optional, the {!type:public_output} that describes
+          the representation of and a check for the value returned by the
+          checked computation
         - ['computation] -- a checked computation that takes as arguments
           values with the types described by [public_input] to the output type.
     *)
 
-    val digest : ('a, 's, 'public_input) t -> Md5_lib.t
+    val digest : ('a, 's, 'public_input, 'public_output) t -> Md5_lib.t
     (** The MD5 hash of the constraint system. *)
 
-    val generate_keypair : ('a, 's, 'public_input) t -> Keypair.t
+    val generate_keypair :
+      ('a, 's, 'public_input, 'public_output) t -> Keypair.t
     (** Generate a keypair for the checked computation, writing it to the
         [proving_key_path] and [verification_key_path], if set.
     *)
@@ -899,7 +925,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
-      -> ('a, 's, 'public_input) t
+      -> ('a, 's, 'public_input, 'public_output) t
       -> 's
       -> 's * 'a
     (** Run the checked computation as the prover, without checking any
@@ -909,7 +935,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
-      -> (('a, 's) As_prover.t, 's, 'public_input) t
+      -> (('a, 's) As_prover.t, 's, 'public_input, 'public_output) t
       -> 's
       -> ('s * 'a) Or_error.t
     (** Run the checked computation as the prover, checking any constraints. *)
@@ -917,7 +943,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val check :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
-      -> ('a, 's, 'public_input) t
+      -> ('a, 's, 'public_input, 'public_output) t
       -> 's
       -> bool
     (** Run the checked computation as the prover, returning [true] if all of
@@ -928,9 +954,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
-      -> ('a, 's, 'public_input) t
+      -> ('a, 's, 'public_input, 'public_output) t
       -> 's
-      -> Proof.t
+      -> Proof.t * 'public_output option
     (** Run the checked computation as the prover, generating a {!type:Proof.t}
         that the verifier may check efficiently.
         - The [proving_key] argument overrides the argument given to
@@ -938,17 +964,28 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         - The [handlers] argument adds handlers to those already given to
           {!val:create}. If handlers for the same requests were provided to
           both, the ones passed here are given priority.
+
+        The second return value, ['public_output option], contains the public
+        output if the proof system was defined to have [public_output] (in
+        {!val:create}), or [None] otherwise.
     *)
 
     val verify :
          public_input:(unit, 'public_input) H_list.t
+      -> ?public_output:'public_output
       -> ?verification_key:Verification_key.t
-      -> ('a, 's, 'public_input) t
+      -> ('a, 's, 'public_input, 'public_output) t
       -> Proof.t
       -> bool
     (** Verify a {!type:Proof.t} generated by a prover.
        [verification_key] overrides the argument given to {!val:create}, if
        any.
+
+       The optional [public_output] argument should be used to pass the public
+       output generated by {!val:prove}, if any. This value must be passed if
+       the proof system was {!val:create}d using a [public_output] argument;
+       otherwise, it must not be passed. A runtime error will be raised if this
+       condition is not met.
     *)
   end
 
@@ -1666,7 +1703,10 @@ module type Run = sig
   end
 
   module Proof_system : sig
-    type ('a, 'public_input) t
+    type ('a, 'public_input, 'public_output) t
+
+    type ('var, 'value) public_output =
+      {typ: ('var, 'value) Typ.t; assert_equal: 'var -> 'var -> unit}
 
     val create :
          ?proving_key:Proving_key.t
@@ -1679,42 +1719,44 @@ module type Run = sig
                       , 'computation
                       , 'public_input )
                       Data_spec.t
+      -> ?public_output:('a, 'public_output) public_output
       -> 'computation
-      -> ('a, 'public_input) t
+      -> ('a, 'public_input, 'public_output) t
 
-    val digest : ('a, 'public_input) t -> Md5_lib.t
+    val digest : ('a, 'public_input, 'public_output) t -> Md5_lib.t
 
-    val generate_keypair : ('a, 'public_input) t -> Keypair.t
+    val generate_keypair : ('a, 'public_input, 'public_output) t -> Keypair.t
 
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
-      -> ('a, 'public_input) t
+      -> ('a, 'public_input, 'public_output) t
       -> 'a
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
-      -> ('a, 'public_input) t
+      -> ('a, 'public_input, 'public_output) t
       -> 'a Or_error.t
 
     val check :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
-      -> ('a, 'public_input) t
+      -> ('a, 'public_input, 'public_output) t
       -> bool
 
     val prove :
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
-      -> ('a, 'public_input) t
-      -> Proof.t
+      -> ('a, 'public_input, 'public_output) t
+      -> Proof.t * 'public_output option
 
     val verify :
          public_input:(unit, 'public_input) H_list.t
+      -> ?public_output:'public_output
       -> ?verification_key:Verification_key.t
-      -> ('a, 'public_input) t
+      -> ('a, 'public_input, 'public_output) t
       -> Proof.t
       -> bool
   end
