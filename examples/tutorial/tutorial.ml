@@ -76,7 +76,7 @@ let assert_is_square_root_of_9 (x : Field.t) : unit =
 (* In this field, it happens to be the case that -3 is a square. *)
 let () = assert (Field.Constant.(is_square (of_int (-3))))
 
-let assert_is_cube_root_of_1 (x : Field.t) = failwith "Exercise 1"
+let assert_is_cube_root_of_1 (x : Field.t) : unit = failwith "Exercise 1"
 
 let cube_root_of_1 =
   let open Field.Constant in
@@ -96,14 +96,16 @@ let exercise1 () =
   let input () = Data_spec.[Field.typ] in
   (* Now we generate a keypair that we can use produce and verify proofs *)
   let keypair =
-    generate_keypair ~exposing:(input ()) assert_is_cube_root_of_1
+    generate_keypair ~exposing:(input ()) (fun x () ->
+        assert_is_cube_root_of_1 x )
   in
   (* Now we prove: Here is an input to `assert_is_cube_root_of_1` such that the
      checked computation terminates without failing any assertions. In other
      words, there exists some cube_root_of_1.
    *)
   let proof =
-    prove (Keypair.pk keypair) (input ()) assert_is_cube_root_of_1
+    prove (Keypair.pk keypair) (input ())
+      (fun x () -> assert_is_cube_root_of_1 x)
       cube_root_of_1
   in
   (* We can verify a proof as follows *)
@@ -370,7 +372,7 @@ let exercise7 () =
 *)
 type _ Request.t += Choose_two_from_list : 'a list -> ('a * 'a) Request.t
 
-let in_list (x : Field.t) (l : Field.t list) =
+let in_list (x : Field.t) (l : Field.t list) : unit =
   (* Assert that x is equal to one of the values in l. *)
   failwith "Exercise 8"
 
