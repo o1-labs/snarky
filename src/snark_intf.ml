@@ -848,6 +848,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   module Proof_system : sig
     (** A proof system instance for a checked computation producing a value of
         type ['a], with prover state ['s] and public inputs ['public_input].
+
+        If the checked computation's output is to be checked by the verifier,
+        the ['public_output] type is the OCaml type corresponding to the return
+        value ['a].
     *)
     type ('a, 's, 'public_input, 'public_output) t
 
