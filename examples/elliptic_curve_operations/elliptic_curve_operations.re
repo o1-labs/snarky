@@ -6,10 +6,10 @@ let div_unsafe = (type f, ~m as (module I): m(f), x, y) => {
   let z =
     exists(
       Field.typ,
-      ~compute=
-        As_prover.(
-          map2(read_var(x), read_var(y), ~f=Field.Constant.Infix.(/))
-        ),
+      ~compute=() => {
+        open As_prover;
+        Field.Constant.Infix.(read_var(x) / read_var(y))
+      },
     );
 
   assert_r1cs(z, y, x);
@@ -28,10 +28,9 @@ module Curve = {
     let lambda =
       exists(
         Field.typ,
-        ~compute={
+        ~compute=() => {
           open As_prover;
-          open Let_syntax;
-          let%map x_squared = read_var(x_squared)
+          let x_squared = read_var(x_squared)
           and ay = read_var(ay);
           Field.Constant.Infix.(
             (x_squared + x_squared + x_squared + params.a) / (ay + ay)
@@ -42,10 +41,9 @@ module Curve = {
     let bx =
       exists(
         Field.typ,
-        ~compute={
+        ~compute= () => {
           open As_prover;
-          open Let_syntax;
-          let%map lambda = read_var(lambda)
+          let lambda = read_var(lambda)
           and ax = read_var(ax);
           Field.Constant.(Infix.(square(lambda) - (ax + ax)));
         },
@@ -54,10 +52,9 @@ module Curve = {
     let by =
       exists(
         Field.typ,
-        ~compute={
+        ~compute=() => {
           open As_prover;
-          open Let_syntax;
-          let%map lambda = read_var(lambda)
+          let lambda = read_var(lambda)
           and ax = read_var(ax)
           and ay = read_var(ay)
           and bx = read_var(bx);
@@ -83,10 +80,9 @@ module Curve = {
     let cx =
       exists(
         Field.typ,
-        ~compute={
+        ~compute= () => {
           open As_prover;
-          open Let_syntax;
-          let%map lambda = read_var(lambda)
+          let lambda = read_var(lambda)
           and s = read_var(Field.(ax + bx));
           Field.Constant.Infix.(lambda + s);
         },
@@ -96,10 +92,9 @@ module Curve = {
     let cy =
       exists(
         Field.typ,
-        ~compute={
+        ~compute= () => {
           open As_prover;
-          open Let_syntax;
-          let%map lambda = read_var(lambda)
+          let lambda = read_var(lambda)
           and ax = read_var(ax)
           and cx = read_var(cx)
           and ay = read_var(ay);
@@ -107,7 +102,7 @@ module Curve = {
         },
       );
 
-    I.assert_r1cs(lambda, Field.(ax - cx), Field.(cy + ay));
+    assert_r1cs(lambda, Field.(ax - cx), Field.(cy + ay));
     (cx, cy);
   };
 
