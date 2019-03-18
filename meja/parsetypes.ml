@@ -94,7 +94,8 @@ and type_decl_desc =
   | TExtend of lid * type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
-type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
+type pattern =
+  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: type_expr}
 
 and pattern_desc =
   | PAny

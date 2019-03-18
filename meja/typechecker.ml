@@ -242,28 +242,33 @@ let get_ctor (name : lid) env =
       (typ, args_typ)
   | _ -> raise (Error (loc, Unbound ("constructor", name)))
 
-let rec check_pattern_desc ~loc ~add env typ = function
-  | PAny -> env
-  | PVariable str -> add str typ env
+let rec check_pattern ~add env typ pat =
+  let loc = pat.pat_loc in
+  match pat.pat_desc with
+  | PAny -> ({pat_loc= loc; pat_type= typ; pat_desc= PAny}, env)
+  | PVariable str ->
+      let env = add str typ env in
+      ({pat_loc= loc; pat_type= typ; pat_desc= PVariable str}, env)
   | PConstraint (p, constr_typ) ->
       let constr_typ, env = Envi.Type.import constr_typ env in
       check_type env typ constr_typ ;
-      check_pattern ~add env constr_typ p
+      let p, env = check_pattern ~add env constr_typ p in
+      ( {pat_loc= loc; pat_type= typ; pat_desc= PConstraint (p, constr_typ)}
+      , env )
   | PTuple ps ->
       let vars =
-        List.fold ~init:[] ps ~f:(fun vars _ ->
-            let var = Envi.Type.mkvar ~loc None env in
-            var :: vars )
+        List.map ps ~f:(fun {pat_loc= loc; _} -> Envi.Type.mkvar ~loc None env)
       in
       let tuple_typ = Envi.Type.mk ~loc (Ttuple vars) env in
       check_type env typ tuple_typ ;
-      List.fold2_exn ~init:env vars ps ~f:(check_pattern ~add)
+      let ps, env = check_patterns ~add env vars ps in
+      ({pat_loc= loc; pat_type= tuple_typ; pat_desc= PTuple ps}, env)
   | POr (p1, p2) ->
       let env = Envi.open_expr_scope env in
-      let env = check_pattern ~add env typ p1 in
+      let p1, env = check_pattern ~add env typ p1 in
       let scope1, env = Envi.pop_expr_scope env in
       let env = Envi.open_expr_scope env in
-      let env = check_pattern ~add env typ p2 in
+      let p2, env = check_pattern ~add env typ p2 in
       let scope2, env = Envi.pop_expr_scope env in
       (* Check that the assignments in each scope match. *)
       let () =
@@ -300,10 +305,11 @@ let rec check_pattern_desc ~loc ~add env typ = function
             raise (Error (loc, Pattern_declaration ("module", name))) )
           ~instances:(fun ~key:_ ~data:_ () -> ())
       in
-      Envi.push_scope scope2 env
-  | PInt _ ->
+      let env = Envi.push_scope scope2 env in
+      ({pat_loc= loc; pat_type= typ; pat_desc= POr (p1, p2)}, env)
+  | PInt i ->
       check_type env typ Envi.Core.Type.int ;
-      env
+      ({pat_loc= loc; pat_type= typ; pat_desc= PInt i}, env)
   | PRecord [] -> raise (Error (loc, Empty_record))
   | PRecord ((field, _) :: _ as fields) ->
       let typ, field_decls, bound_vars, env =
@@ -332,29 +338,53 @@ let rec check_pattern_desc ~loc ~add env typ = function
               (decl_type, field_decls, bound_vars, env)
           | _ -> raise (Error (loc, Unbound ("record field", field))) )
       in
-      List.fold ~init:env fields ~f:(fun env (field, p) ->
-          let _, field_typ, record_typ =
-            get_field_of_decl typ bound_vars field_decls field env
-          in
-          ( try check_type env record_typ typ
-            with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->
-              raise (Error (field.loc, Wrong_record_field (field.txt, typ))) ) ;
-          let field_typ = {field_typ with type_loc= field.loc} in
-          check_pattern ~add env field_typ p )
-  | PCtor (name, arg) -> (
+      let ps =
+        List.map fields ~f:(fun (field, p) ->
+            let _, field_typ, record_typ =
+              get_field_of_decl typ bound_vars field_decls field env
+            in
+            ( try check_type env record_typ typ
+              with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->
+                raise (Error (field.loc, Wrong_record_field (field.txt, typ)))
+            ) ;
+            let field_typ = {field_typ with type_loc= field.loc} in
+            {p with pat_type= field_typ} )
+      in
+      let ps, env = check_patterns ~add env [] ps in
+      let fields =
+        List.map2_exn fields ps ~f:(fun (field, _) p -> (field, p))
+      in
+      ({pat_loc= loc; pat_type= typ; pat_desc= PRecord fields}, env)
+  | PCtor (name, arg) ->
       let typ', args_typ = get_ctor name env in
       let typ' = {typ' with type_loc= loc} in
       check_type env typ typ' ;
-      match arg with
-      | Some arg ->
-          check_pattern ~add env {args_typ with type_loc= arg.pat_loc} arg
-      | None ->
-          let typ = Envi.Type.mkvar ~loc None env in
-          check_type env args_typ typ ;
-          env )
+      let arg, env =
+        match arg with
+        | Some arg ->
+            let arg, env =
+              check_pattern ~add env {args_typ with type_loc= arg.pat_loc} arg
+            in
+            (Some arg, env)
+        | None ->
+            let typ = Envi.Type.mk ~loc (Ttuple []) env in
+            check_type env args_typ typ ;
+            (None, env)
+      in
+      ({pat_loc= loc; pat_type= typ'; pat_desc= PCtor (name, arg)}, env)
 
-and check_pattern ~add env typ pat =
-  check_pattern_desc ~loc:pat.pat_loc ~add env typ pat.pat_desc
+and check_patterns ~add env typs pats =
+  match pats with
+  | [] -> ([], env)
+  | pat :: pats ->
+      let typ, typs =
+        match typs with
+        | [] -> (* Type is passed with the pattern! *) (pat.pat_type, [])
+        | typ :: typs -> (typ, typs)
+      in
+      let pat, env = check_pattern ~add env typ pat in
+      let pats, env = check_patterns ~add env typs pats in
+      (pat :: pats, env)
 
 let rec get_expression env expected exp =
   let loc = exp.exp_loc in
@@ -392,7 +422,7 @@ let rec get_expression env expected exp =
       check_type env expected typ ;
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instantiating the parameters. *)
-      let env = check_pattern ~add:Envi.add_name env p_typ p in
+      let p, env = check_pattern ~add:Envi.add_name env p_typ p in
       let body, env = get_expression env body_typ body in
       let env = Envi.close_expr_scope env in
       ({exp_loc= loc; exp_type= typ; exp_desc= Fun (p, body, explicit)}, env)
@@ -438,7 +468,7 @@ let rec get_expression env expected exp =
       let env, cases =
         List.fold_map ~init:env cases ~f:(fun env (p, e) ->
             let env = Envi.open_expr_scope env in
-            let env = check_pattern ~add:add_polymorphised env typ p in
+            let p, env = check_pattern ~add:add_polymorphised env typ p in
             let e, env = get_expression env expected e in
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )
@@ -630,7 +660,9 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
                 (Tarrow (var.exp_type, e.exp_type, Implicit))
                 env
             in
-            let p = {pat_desc= PVariable name; pat_loc= loc} in
+            let p =
+              {pat_desc= PVariable name; pat_loc= loc; pat_type= var.exp_type}
+            in
             ({exp_desc= Fun (p, e, Implicit); exp_type; exp_loc= loc}, env)
         | _ -> raise (Error (var.exp_loc, No_unifiable_expr)) )
   in
@@ -642,9 +674,10 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         else Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, e.exp_type)) env
       in
       let env = Envi.add_name str typ env in
+      let p = {p with pat_type= typ} in
       (p, e, env)
   | _, [] ->
-      let env = check_pattern ~add:add_polymorphised env e.exp_type p in
+      let p, env = check_pattern ~add:add_polymorphised env e.exp_type p in
       (p, e, env)
   | _, implicit :: _ ->
       raise (Error (e.exp_loc, No_instance implicit.exp_type))
@@ -656,7 +689,12 @@ let rec check_statement env stmt =
       let p, e, env = check_binding ~toplevel:true env p e in
       (env, {stmt with stmt_desc= Value (p, e)})
   | Instance (name, e) ->
-      let p = {pat_desc= PVariable name; pat_loc= name.loc} in
+      let dummy_type =
+        {type_desc= Tvar (None, -1); type_id= -1; type_loc= loc}
+      in
+      let p =
+        {pat_desc= PVariable name; pat_loc= name.loc; pat_type= dummy_type}
+      in
       let _, e, env = check_binding ~toplevel:true env p e in
       let env = Envi.add_implicit_instance name.txt e.exp_type env in
       (env, {stmt with stmt_desc= Instance (name, e)})
