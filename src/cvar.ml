@@ -27,14 +27,15 @@ struct
   end
 
   let eval context t0 =
-    let res = ref Field.zero in
+    let open Field in
+    let res = of_int 0 in
     let rec go scale = function
-      | Constant c -> res := Field.add !res (Field.mul scale c)
-      | Var v -> res := Field.add !res (Field.mul scale (context v))
-      | Scale (s, t) -> go (Field.mul s scale) t
+      | Constant c -> res += mul scale c
+      | Var v -> res += mul scale (context v)
+      | Scale (s, t) -> go (mul s scale) t
       | Add (t1, t2) -> go scale t1 ; go scale t2
     in
-    go Field.one t0 ; !res
+    go one t0 ; res
 
   let constant c = Constant c
 
