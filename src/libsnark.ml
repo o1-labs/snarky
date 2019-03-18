@@ -506,6 +506,20 @@ struct
 
     val print : t -> unit
 
+    module Mutable : sig
+      val add : t -> other:t -> unit
+
+      val mul : t -> other:t -> unit
+
+      val sub : t -> other:t -> unit
+    end
+
+    val ( += ) : t -> t -> unit
+
+    val ( -= ) : t -> t -> unit
+
+    val ( *= ) : t -> t -> unit
+
     module Vector : Vector.S_binable with type elt = t
   end = struct
     module T = struct
@@ -572,6 +586,26 @@ struct
         fun x y ->
           let z = stub x y in
           schedule_delete z ; z
+
+      module Mutable = struct
+        let make name =
+          let stub =
+            foreign (func_name ("mut_" ^ name)) (typ @-> typ @-> returning void)
+          in
+          fun x ~other -> stub x other
+
+        let add = make "add"
+
+        let sub = make "sub"
+
+        let mul = make "mul"
+      end
+
+      let ( += ) t other = Mutable.add t ~other
+
+      let ( -= ) t other = Mutable.sub t ~other
+
+      let ( *= ) t other = Mutable.mul t ~other
 
       let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
 

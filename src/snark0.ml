@@ -2010,6 +2010,14 @@ module Run = struct
 
           let random = random
 
+          module Mutable = Mutable
+
+          let ( += ) = ( += )
+
+          let ( -= ) = ( -= )
+
+          let ( *= ) = ( *= )
+
           module Vector = Vector
 
           let negate = negate
