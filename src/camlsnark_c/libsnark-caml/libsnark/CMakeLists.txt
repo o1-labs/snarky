@@ -42,6 +42,10 @@ add_library(
   caml/caml_mnt4.cpp
   caml/caml_mnt4_specific.cpp
   caml/caml_mnt6_specific.cpp
+  caml/caml_mnt6753.cpp
+  caml/caml_mnt4753.cpp
+  caml/caml_mnt4753_specific.cpp
+  caml/caml_mnt6753_specific.cpp
   misc/pedersen.cpp
   relations/circuit_satisfaction_problems/tbcs/tbcs.cpp
   relations/ram_computations/memory/memory_store_trace.cpp
