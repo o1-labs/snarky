@@ -22,7 +22,7 @@ const users = [
 
 const siteConfig = {
   title: 'Snarky', // Title for your website.
-  tagline: 'OCaml DSL for verifiable computation',
+  tagline: 'Write efficient, beautiful, safe zk-SNARK code',
   url: 'https://o1-labs.github.io', // Your website URL
   baseUrl: '/snarky/', // Base URL for your project */
   // For github.io type URLs, you would set the url and baseUrl like:
