@@ -698,7 +698,7 @@ let rec check_statement env stmt =
       (env, {stmt with stmt_desc= Value (p, e)})
   | Instance (name, e) ->
       let dummy_type =
-        {type_desc= Tvar (None, -1); type_id= -1; type_loc= loc}
+        {type_desc= Tvar (None, -1, Explicit); type_id= -1; type_loc= loc}
       in
       let p =
         {pat_desc= PVariable name; pat_loc= name.loc; pat_type= dummy_type}
