@@ -29,6 +29,20 @@ module type S = sig
 
   val random : unit -> t
 
+  module Mutable : sig
+    val add : t -> other:t -> unit
+
+    val mul : t -> other:t -> unit
+
+    val sub : t -> other:t -> unit
+  end
+
+  val ( += ) : t -> t -> unit
+
+  val ( -= ) : t -> t -> unit
+
+  val ( *= ) : t -> t -> unit
+
   module Vector : Vector.S with type elt = t
 end
 
