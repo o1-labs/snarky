@@ -1117,7 +1117,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
       v
 
     module Proof_system = struct
-      type ('checked, 'inputs, 's) proof_system =
+      type ('var, 'value) public_output =
+        { typ: ('var, 'value) Typ.t
+        ; assert_equal: 'var -> 'var -> (unit, unit) Checked.t }
+
+      type ('checked, 'output_var, 'output, 'inputs, 's) proof_system =
         { compute: unit -> 'checked
         ; check_inputs: (unit, 's) Checked.t
         ; provide_inputs:
@@ -1127,15 +1131,18 @@ module Make_basic (Backend : Backend_intf.S) = struct
         ; mutable proving_key: Proving_key.t option
         ; mutable verification_key: Verification_key.t option
         ; proving_key_path: string option
-        ; verification_key_path: string option }
+        ; verification_key_path: string option
+        ; public_output: ('output_var, 'output) public_output option
+        ; output_size: int }
 
       let rec allocate_inputs : type checked r2 k1 k2.
              (unit, 's) Checked.t
           -> int ref
           -> (checked, unit, k1, k2) t
+          -> ('output_var, 'public_output) public_output option
           -> (unit -> k1)
-          -> (checked, k2, 's) proof_system =
-       fun check_inputs next_input t compute ->
+          -> (checked, 'output_var, 'public_output, k2, 's) proof_system =
+       fun check_inputs next_input t public_output compute ->
         match t with
         | [] ->
             { compute
@@ -1146,7 +1153,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ; proving_key= None
             ; verification_key= None
             ; proving_key_path= None
-            ; verification_key_path= None }
+            ; verification_key_path= None
+            ; public_output
+            ; output_size= 0 }
         | {alloc; check; store; _} :: t' ->
             let before_input = !next_input in
             let var = Typ.Alloc.run alloc (alloc_var next_input) in
@@ -1165,8 +1174,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 ; proving_key
                 ; verification_key
                 ; proving_key_path
-                ; verification_key_path } =
-              allocate_inputs check_inputs next_input t' compute
+                ; verification_key_path
+                ; public_output
+                ; output_size } =
+              allocate_inputs check_inputs next_input t' public_output compute
             in
             let provide_inputs input H_list.(value :: values) =
               (* NOTE: We assume here that [store] and [alloc] allocate their
@@ -1200,50 +1211,93 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ; proving_key
             ; verification_key
             ; proving_key_path
-            ; verification_key_path }
+            ; verification_key_path
+            ; public_output
+            ; output_size }
 
       let create ?proving_key ?verification_key ?proving_key_path
           ?verification_key_path ?(handlers = ([] : Handler.t list))
-          ~public_input compute =
+          ~public_input ?public_output compute =
         let next_input = ref 1 in
         let proof_system =
           allocate_inputs (Checked.return ()) next_input public_input
-            (fun () -> compute )
+            public_output (fun () -> compute )
         in
+        (* Allocate space for the public output, if there is one. *)
+        ignore
+          (Option.map public_output ~f:(fun {typ= {alloc; _}; _} ->
+               Typ.Alloc.run alloc (alloc_var next_input) )) ;
         let handler =
           List.fold ~init:proof_system.handler handlers ~f:(fun handler h ->
               Request.Handler.(push handler (create_single h)) )
         in
+        let num_inputs = !next_input - 1 in
         { proof_system with
           proving_key
         ; verification_key
         ; proving_key_path
         ; verification_key_path
-        ; handler }
+        ; handler
+        ; num_inputs
+        ; output_size= num_inputs - proof_system.num_inputs }
 
       let run_proof_system ~run ~input ?system ?eval_constraints
           ?(handlers = ([] : Handler.t list)) proof_system s =
-        let {num_inputs; _} = proof_system in
+        let {num_inputs; public_output; output_size; _} = proof_system in
         let handler =
           List.fold ~init:proof_system.handler handlers ~f:(fun handler h ->
               Request.Handler.(push handler (create_single h)) )
         in
-        let prover_state =
+        let run_state =
           Checked.Runner.State.make ~num_inputs ~input
             ~next_auxiliary:(ref (num_inputs + 1))
             ~aux:(Field.Vector.create ()) ?system ?eval_constraints ~handler s
         in
-        let prover_state, () =
-          Checked.Runner.run proof_system.check_inputs prover_state
+        let run_state, () =
+          Checked.Runner.run proof_system.check_inputs run_state
         in
-        let prover_state, a = run (proof_system.compute ()) prover_state in
-        Option.iter prover_state.Run_state.system ~f:(fun system ->
+        let run_state, a = run (proof_system.compute ()) run_state in
+        (* If our output is public, we should store/allocate it now. *)
+        let next_input = ref (num_inputs + 1 - output_size) in
+        let run_state, output =
+          match (public_output, run_state.Run_state.prover_state) with
+          | Some {typ; assert_equal}, Some s ->
+              let output =
+                Typ.Read.run (typ.read a) (Checked.Runner.get_value run_state)
+              in
+              let output_var =
+                let store_field_elt = store_field_elt input next_input in
+                Typ.Store.run (typ.store output) store_field_elt
+              in
+              let run_state =
+                Checked.Runner.set_prover_state (Some ()) run_state
+              in
+              let run_state, () =
+                Checked.Runner.run (assert_equal a output_var) run_state
+              in
+              let run_state =
+                Checked.Runner.set_prover_state (Some s) run_state
+              in
+              (run_state, Some output)
+          | Some {typ; assert_equal}, None ->
+              let output_var =
+                Typ.Alloc.run typ.alloc (alloc_var next_input)
+              in
+              let run_state = Checked.Runner.set_prover_state None run_state in
+              let run_state, () =
+                Checked.Runner.run (assert_equal a output_var) run_state
+              in
+              let run_state = Checked.Runner.set_prover_state None run_state in
+              (run_state, None)
+          | _ -> (run_state, None)
+        in
+        Option.iter run_state.Run_state.system ~f:(fun system ->
             let aux_input_size =
-              !(prover_state.next_auxiliary) - (1 + num_inputs)
+              !(run_state.next_auxiliary) - (1 + num_inputs)
             in
             R1CS_constraint_system.set_auxiliary_input_size system
               aux_input_size ) ;
-        (prover_state, a)
+        (run_state, a, output)
 
       let constraint_system ~run proof_system =
         let input = Field.Vector.create () in
@@ -1273,19 +1327,19 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
-        let ({Run_state.prover_state= s; _} as state), a =
+        let ({Run_state.prover_state= s; _} as state), a, public_output =
           run_proof_system ~run ~input ?system ?eval_constraints ?handlers
             proof_system (Some s)
         in
         match s with
-        | Some s -> (s, a, state)
+        | Some s -> (s, a, state, public_output)
         | None ->
             failwith
               "run_with_input: Expected a value from run_proof_system, got \
                None."
 
       let run_unchecked ~run ~public_input ?handlers proof_system s =
-        let s, a, _ =
+        let s, a, _, _ =
           run_with_input ~run ~public_input ?handlers proof_system s
         in
         (s, a)
@@ -1297,7 +1351,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ?handlers proof_system s
         with
         | exception e -> Or_error.of_exn e
-        | s, x, state -> Ok (s, x, state)
+        | s, x, state, _ -> Ok (s, x, state)
 
       let run_checked ~run ~public_input ?handlers proof_system s =
         Or_error.map (run_checked' ~run ~public_input ?handlers proof_system s)
@@ -1322,7 +1376,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let prove ~run ~public_input ?proving_key ?handlers proof_system s =
         let system = R1CS_constraint_system.create () in
-        let _, _, state =
+        let _, _, state, public_output =
           run_with_input ~run ~public_input ~system ?handlers proof_system s
         in
         let {Run_state.input; aux; _} = state in
@@ -1334,12 +1388,24 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ; (fun () -> read_proving_key proof_system)
             ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
-        Proof.create proving_key ~primary:input ~auxiliary:aux
+        (Proof.create proving_key ~primary:input ~auxiliary:aux, public_output)
 
-      let verify ~run ~public_input ?verification_key proof_system proof =
+      let verify ~run ~public_input ?public_output ?verification_key
+          proof_system proof =
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
+        ( match (public_output, proof_system.public_output) with
+        | Some public_output, Some {typ; _} ->
+            let next_input =
+              ref (proof_system.num_inputs - proof_system.output_size)
+            in
+            let store_field_elt = store_field_elt input next_input in
+            ignore (Typ.Store.run (typ.store public_output) store_field_elt)
+        | None, None -> ()
+        | Some _, None ->
+            failwith "This proof system doesn't accept public output"
+        | None, Some _ -> failwith "This proof system expects public output" ) ;
         let verification_key =
           List.find_map_exn
             ~f:(fun f -> f ())
@@ -1689,7 +1755,15 @@ module Make_basic (Backend : Backend_intf.S) = struct
   module Proof_system = struct
     open Run.Proof_system
 
-    type ('a, 's, 'inputs) t = (('a, 's) Checked.t, 'inputs, 's) proof_system
+    type ('var, 'value) public_output =
+                                       ( 'var
+                                       , 'value )
+                                       Run.Proof_system.public_output =
+      { typ: ('var, 'value) Typ.t
+      ; assert_equal: 'var -> 'var -> (unit, unit) Checked.t }
+
+    type ('a, 's, 'inputs, 'output) t =
+      (('a, 's) Checked.t, 'a, 'output, 'inputs, 's) proof_system
 
     let create = create
 
@@ -1710,8 +1784,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let prove ~public_input ?proving_key ?handlers (proof_system : _ t) =
       prove ~run:Runner.run ~public_input ?proving_key ?handlers proof_system
 
-    let verify ~public_input ?verification_key (proof_system : _ t) =
-      verify ~run:Runner.run ~public_input ?verification_key proof_system
+    let verify ~public_input ?public_output ?verification_key
+        (proof_system : _ t) =
+      verify ~run:Runner.run ~public_input ?public_output ?verification_key
+        proof_system
   end
 
   module Perform = struct
@@ -2189,10 +2265,25 @@ module Run = struct
     module Proof_system = struct
       open Run.Proof_system
 
-      type ('a, 'public_input) t =
-        (unit -> 'a, 'public_input, unit) proof_system
+      type ('a, 'public_input, 'public_output) t =
+        (unit -> 'a, 'a, 'public_output, 'public_input, unit) proof_system
 
-      let create = create
+      type ('var, 'value) public_output =
+        {typ: ('var, 'value) Typ.t; assert_equal: 'var -> 'var -> unit}
+
+      let create ?proving_key ?verification_key ?proving_key_path
+          ?verification_key_path ?handlers ~public_input ?public_output =
+        let public_output =
+          Option.map public_output ~f:(fun {typ; assert_equal} ->
+              { Run.Proof_system.typ
+              ; assert_equal=
+                  (fun x y ->
+                    Types.Checked.Direct
+                      ( as_stateful (fun () -> assert_equal x y)
+                      , fun x -> Pure x ) ) } )
+        in
+        create ?proving_key ?verification_key ?proving_key_path
+          ?verification_key_path ?handlers ~public_input ?public_output
 
       let digest (proof_system : _ t) = digest ~run:as_stateful proof_system
 
@@ -2218,8 +2309,10 @@ module Run = struct
         prove ~run:as_stateful ~public_input ?proving_key ?handlers
           proof_system ()
 
-      let verify ~public_input ?verification_key (proof_system : _ t) =
-        verify ~run:as_stateful ~public_input ?verification_key proof_system
+      let verify ~public_input ?public_output ?verification_key
+          (proof_system : _ t) =
+        verify ~run:as_stateful ~public_input ?public_output ?verification_key
+          proof_system
     end
 
     let assert_ ?label c = run (assert_ ?label c)
