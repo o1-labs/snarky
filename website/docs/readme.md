@@ -1,7 +1,7 @@
 ---
-id: about
-title: Snarky
-sidebar_label: About
+id: readme
+title: Project Readme
+sidebar_label: Project Readme
 ---
 
 `snarky` is an OCaml front-end for writing R1CS SNARKs.
