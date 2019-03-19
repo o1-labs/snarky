@@ -346,8 +346,8 @@ let exercise7 () =
     is_valid (proof l) l
   in
   printf
-    "Have we proved that we've calculated the product of the list [1; 2; 3; 4; \
-     5]? %b\n"
+    "Have we proved that we've calculated the product of the list [1; 2; 3; \
+     4; 5]? %b\n"
     (proved [1; 2; 3; 4; 5])
 
 (* Exercise 7: Comment this out when you're ready to test it! *)
@@ -466,7 +466,7 @@ module Exercise9 = struct
     [|[|of_int 1; of_int 2|]; [|of_int 3; of_int 4|]; [|of_int 5; of_int 6|]|]
 
   (* let () = printf !"Result %{sexp: Mat.t}\n%!" (Mat.mul a b) *)
-
+  
   (* Exercise 9:
      To bring everything together, we want to prove something more substantial.
      Here, we will build a program that
