@@ -222,7 +222,7 @@ void camlsnark_bn128_field_mut_sub(FieldT* x, FieldT* y) {
 }
 
 void camlsnark_bn128_field_copy(FieldT* x, FieldT* y) {
-  *x = *y;
+  mpn_copyi(x->mont_repr.data, y->mont_repr.data, x->num_limbs);
 }
 
 FieldT* camlsnark_bn128_field_rng(int i) {
