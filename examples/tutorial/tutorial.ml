@@ -465,7 +465,7 @@ module Exercise9 = struct
     let open Field in
     [|[|of_int 1; of_int 2|]; [|of_int 3; of_int 4|]; [|of_int 5; of_int 6|]|]
 
-  let () = printf !"Result %{sexp: Mat.t}\n%!" (Mat.mul a b)
+  (* let () = printf !"Result %{sexp: Mat.t}\n%!" (Mat.mul a b) *)
 
   (* Exercise 9:
      To bring everything together, we want to prove something more substantial.
@@ -487,7 +487,7 @@ module Exercise9 = struct
 
     (* Next, we need to make a checked version of [Matrix.mul] from above.
        This should feel familiar: we did a very similar thing when we were
-       finding the sum of a list!
+       finding the product of a list!
      *)
     let mul : t -> t -> (t, _) Checked.t =
      fun a b -> failwith "Exercise 9: Write mul"
