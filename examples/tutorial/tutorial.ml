@@ -524,7 +524,7 @@ module Exercise9 = struct
 
   let input () = Data_spec.[typ ()]
 
-  let keypair = generate_keypair ~exposing:(input ()) assert_exists_sqrt
+  let keypair () = generate_keypair ~exposing:(input ()) assert_exists_sqrt
 
   (* Build a proof.
      This should consist of:
