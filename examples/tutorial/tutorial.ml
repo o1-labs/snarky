@@ -224,11 +224,11 @@ let exercise4 () =
   in
   let input () = failwith "Exercise 4: Data_spec here" in
   let keypair = failwith "Exercise 4: Keypair here" in
-  let proof x y = prove (Keypair.pk keypair) (input ()) () either x y in
+  let proof = prove (Keypair.pk keypair) (input ()) () either true true in
   let is_valid proof x y = verify proof (Keypair.vk keypair) (input ()) x y in
-  let proved x y = is_valid (proof x y) x y in
+  let proved x y = is_valid proof x y in
   printf
-    "Proved that:\n true && true is true? %b\n true && false is true? %b"
+    "Proved that:\n true && true is true? %b\n true && false is true? %b\n"
     (proved true true) (proved true false)
 
 (* Exercise 4: Comment this out when you're ready to test it! *)
