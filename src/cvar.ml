@@ -26,12 +26,20 @@ struct
     let of_index v = Var v
   end
 
+  let scratch = Field.of_int 0
+
   let eval context t0 =
     let open Field in
     let res = of_int 0 in
     let rec go scale = function
-      | Constant c -> res += mul scale c
-      | Var v -> res += mul scale (context v)
+      | Constant c ->
+        Mutable.copy ~over:scratch c;
+        scratch *= scale;
+        res += scratch
+      | Var v ->
+        Mutable.copy ~over:scratch (context v);
+        scratch *= scale;
+        res += scratch
       | Scale (s, t) -> go (mul s scale) t
       | Add (t1, t2) -> go scale t1 ; go scale t2
     in

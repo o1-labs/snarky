@@ -512,6 +512,8 @@ struct
       val mul : t -> other:t -> unit
 
       val sub : t -> other:t -> unit
+
+      val copy : over:t -> t -> unit
     end
 
     val ( += ) : t -> t -> unit
@@ -599,6 +601,12 @@ struct
         let sub = make "sub"
 
         let mul = make "mul"
+
+        let copy =
+          let stub =
+            foreign (func_name "copy") (typ @-> typ @-> returning void)
+          in
+          fun ~over x -> stub over x
       end
 
       let ( += ) t other = Mutable.add t ~other
