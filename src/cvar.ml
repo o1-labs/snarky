@@ -31,17 +31,31 @@ struct
   let eval context t0 =
     let open Field in
     let res = of_int 0 in
+    let can_mutate_scale = ref false in
     let rec go scale = function
+      | Constant c when !can_mutate_scale -> scale *= c ; res += scale
       | Constant c ->
           Mutable.copy ~over:scratch c ;
           scratch *= scale ;
           res += scratch
+      | Var v when !can_mutate_scale ->
+          scale *= context v ;
+          res += scale
       | Var v ->
           Mutable.copy ~over:scratch (context v) ;
           scratch *= scale ;
           res += scratch
-      | Scale (s, t) -> go (mul s scale) t
-      | Add (t1, t2) -> go scale t1 ; go scale t2
+      | Scale (s, t) when !can_mutate_scale -> scale *= s ; go scale t
+      | Scale (s, t) ->
+          can_mutate_scale := true ;
+          go (mul s scale) t ;
+          can_mutate_scale := false
+      | Add (t1, t2) ->
+          let cms = !can_mutate_scale in
+          can_mutate_scale := false ;
+          go scale t1 ;
+          can_mutate_scale := cms ;
+          go scale t2
     in
     go one t0 ; res
 
