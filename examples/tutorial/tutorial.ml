@@ -176,7 +176,9 @@ let zero_or_inverse (x : Field.Var.t) = failwith "Exercise 3"
 let exercise3 () =
   (* Unchecked reference implementation. *)
   let zero_or_inverse_unchecked x =
-    if Field.equal x Field.zero then x else Field.inv x
+    let b = Field.equal x Field.zero in
+    let invertable = if b then Field.one else x in
+    if b then x else Field.inv invertable
   in
   (* Check the value matches [expected_value]. *)
   let matches_unchecked x expected_value =
