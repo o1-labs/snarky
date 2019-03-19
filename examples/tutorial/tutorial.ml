@@ -242,22 +242,22 @@ let exercise4 () =
    [Typ.t]s we already have.
 
    Exercise 5:
-   Fill in [sum] below, and use [Typ.list] to create a proof from [sum_equals]
-   that it gives the correct value.
+   Fill in [product] below, and use [Typ.list] to create a proof from
+   [product_equals] that it gives the correct value.
 
-   Hint: the function [Checked.all] is useful for joining up a list of checked
-   computations into a checked computation of a list!
+   Hint: the functions in [Checked.List] are useful for working with checked
+   functions over lists!
 *)
 
-let sum (l : Field.Var.t list) : (Field.Var.t, _) Checked.t =
+let product (l : Field.Var.t list) : (Field.Var.t, _) Checked.t =
   failwith "Exercise 5"
 
-let sum_equals (l : Field.Var.t list) (expected_total : Field.Var.t) =
-  let%bind total = sum l in
+let product_equals (l : Field.Var.t list) (expected_total : Field.Var.t) =
+  let%bind total = product l in
   Field.Checked.Assert.equal total expected_total
 
-let sum_unchecked (l : Field.t list) =
-  List.fold ~init:Field.zero ~f:Field.add l
+let product_unchecked (l : Field.t list) =
+  List.fold ~init:Field.one ~f:Field.mul l
 
 let exercise5 () =
   let input () = failwith "Exercise 5: Data_spec here" in
@@ -266,10 +266,10 @@ let exercise5 () =
   let is_valid proof l expected_total = failwith "Exercise 5: Verify" in
   let proved (l : int list) =
     let l : Field.t list = List.map ~f:Field.of_int l in
-    let expected_total = sum_unchecked l in
+    let expected_total = product_unchecked l in
     is_valid (proof l expected_total) l expected_total
   in
-  printf "Does sum [1; 2; 3; 4; 5] = 15? %b\n" (proved [1; 2; 3; 4; 5])
+  printf "Does product [1; 2; 3; 4; 5] = 120? %b\n" (proved [1; 2; 3; 4; 5])
 
 (* Exercise 5: Comment this out when you're ready to test it! *)
 (* let () = exercise5 () *)
