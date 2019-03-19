@@ -276,11 +276,11 @@ let exercise5 () =
 
 (* Exercise 6:
    Adapt your solution to exercise 5 to create a checked version of
-   [add_triple] below.
+   [product_triple] below.
 *)
 
-let add_triple ((x, y, z) : Field.t * Field.t * Field.t) : Field.t =
-  Field.Infix.(x + y + z)
+let product_triple ((x, y, z) : Field.t * Field.t * Field.t) : Field.t =
+  Field.Infix.(x * y * z)
 
 let exercise6 () = failwith "Exercise 6"
 
@@ -306,19 +306,19 @@ let exercise6 () = failwith "Exercise 6"
    For now, we will focus on the [~compute] argument.
 
    Exercise 7:
-   Rework your solution to exercise 5 to provide a proof that [sum] and
-   [sum_unchecked] return the same value, but without exposing the
-   result from [sum_unchecked].
+   Rework your solution to exercise 5 to provide a proof that [product] and
+   [product_unchecked] return the same value, but without exposing the
+   result from [product_unchecked].
 *)
 
-let sum (l : Field.Var.t list) : (Field.Var.t, _) Checked.t =
+let product (l : Field.Var.t list) : (Field.Var.t, _) Checked.t =
   failwith "Exercise 7"
 
-let sum_unchecked (l : Field.t list) =
-  List.fold ~init:Field.zero ~f:Field.add l
+let product_unchecked (l : Field.t list) =
+  List.fold ~init:Field.one ~f:Field.mul l
 
-let sum_equals (l : Field.Var.t list) =
-  let%bind total = sum l in
+let product_equals (l : Field.Var.t list) =
+  let%bind total = product l in
   let%bind expected_total =
     exists Field.typ
       ~compute:
@@ -329,10 +329,10 @@ let sum_equals (l : Field.Var.t list) =
              from our checked computation back into normal OCaml values.
           *)
           let%map l = read (Typ.list ~length:(List.length l) Field.typ) l in
-          (* Now we have l back as a [Field.t list], so we can call [sum_unchecked]
-             on it.
+          (* Now we have l back as a [Field.t list], so we can call
+             [product_unchecked] on it.
           *)
-          sum_unchecked l)
+          product_unchecked l)
   in
   Field.Checked.Assert.equal total expected_total
 
@@ -346,7 +346,7 @@ let exercise7 () =
     is_valid (proof l) l
   in
   printf
-    "Have we proved that we've calculated the sum of the list [1; 2; 3; 4; \
+    "Have we proved that we've calculated the product of the list [1; 2; 3; 4; \
      5]? %b\n"
     (proved [1; 2; 3; 4; 5])
 
