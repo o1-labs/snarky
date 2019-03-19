@@ -57,7 +57,7 @@ let rec check_type_aux typ ctyp env =
   | _, _ when Int.equal typ.type_id ctyp.type_id -> ()
   | Tpoly (_, typ), _ -> check_type_aux typ ctyp env
   | _, Tpoly (_, ctyp) -> check_type_aux typ ctyp env
-  | Tvar (_, depth), Tvar (_, constr_depth) ->
+  | Tvar (_, depth, _), Tvar (_, constr_depth, _) ->
       bind_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () ->
@@ -199,10 +199,17 @@ let get_ctor (name : lid) env =
   let loc = name.loc in
   match (Envi.TypeDecl.find_of_constructor name env, name) with
   | ( Some
-        (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
+        ( ( { tdec_desc= TVariant ctors
+            ; tdec_ident
+            ; tdec_params
+            ; tdec_implicit_params; _ } as decl )
+        , i )
     , name )
    |( Some
-        ( {tdec_desc= TExtend (name, decl, ctors); tdec_ident; tdec_params; _}
+        ( { tdec_desc= TExtend (name, decl, ctors)
+          ; tdec_ident
+          ; tdec_params
+          ; tdec_implicit_params; _ }
         , i )
     , _ ) ->
       let ctor = List.nth_exn ctors i in
@@ -229,6 +236,7 @@ let get_ctor (name : lid) env =
               (Tctor
                  { var_ident= make_name ctor.ctor_ident
                  ; var_params= params
+                 ; var_implicit_params= tdec_implicit_params
                  ; var_decl_id= tdec_id })
               env
         | Ctor_tuple [typ] -> typ
@@ -690,7 +698,7 @@ let rec check_statement env stmt =
       (env, {stmt with stmt_desc= Value (p, e)})
   | Instance (name, e) ->
       let dummy_type =
-        {type_desc= Tvar (None, -1); type_id= -1; type_loc= loc}
+        {type_desc= Tvar (None, -1, Explicit); type_id= -1; type_loc= loc}
       in
       let p =
         {pat_desc= PVariable name; pat_loc= name.loc; pat_type= dummy_type}
@@ -711,7 +719,11 @@ let rec check_statement env stmt =
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)
   | TypeExtension (variant, ctors) ->
-      let ({tdec_ident; tdec_params; tdec_desc; tdec_id; _} as decl) =
+      let ( { tdec_ident
+            ; tdec_params
+            ; tdec_implicit_params
+            ; tdec_desc
+            ; tdec_id; _ } as decl ) =
         match Envi.raw_find_type_declaration variant.var_ident env with
         | open_decl -> open_decl
         | exception _ ->
@@ -729,6 +741,7 @@ let rec check_statement env stmt =
       let decl =
         { tdec_ident
         ; tdec_params= variant.var_params
+        ; tdec_implicit_params
         ; tdec_id
         ; tdec_desc= TExtend (variant.var_ident, decl, ctors)
         ; tdec_loc= loc }
