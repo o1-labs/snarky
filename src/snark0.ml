@@ -460,9 +460,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
   end
 
-  module Handle = struct
-    include Handle
-  end
+  module Handle = Handle
 
   module Checked = struct
     open Types.Checked
@@ -2186,8 +2184,7 @@ module Run = struct
     end
 
     module Handle = struct
-      type ('var, 'value) t = ('var, 'value) Handle.t =
-        {var: 'var; value: 'value option}
+      type ('var, 'value) t = ('var, 'value) Handle.t
 
       let value handle () = As_prover.eval_as_prover (Handle.value handle)
 
@@ -2258,6 +2255,11 @@ module Run = struct
       let request = Option.map request ~f:As_prover.run_prover in
       let compute = Option.map compute ~f:As_prover.run_prover in
       run (exists ?request ?compute typ)
+
+    let exists_handle ?request ?compute typ =
+      let request = Option.map request ~f:As_prover.run_prover in
+      let compute = Option.map compute ~f:As_prover.run_prover in
+      run (exists_handle ?request ?compute typ)
 
     type nonrec response = response
 

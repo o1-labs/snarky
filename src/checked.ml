@@ -104,6 +104,17 @@ module T = struct
     in
     Exists (typ, provider, fun h -> return (Handle.var h))
 
+  let exists_handle ?request ?compute typ =
+    let provider =
+      let request =
+        Option.value request ~default:(As_prover0.return Request.Fail)
+      in
+      match compute with
+      | None -> Provider.Request request
+      | Some c -> Provider.Both (request, c)
+    in
+    Exists (typ, provider, return)
+
   type response = Request.response
 
   let unhandled = Request.unhandled
