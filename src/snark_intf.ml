@@ -1143,6 +1143,17 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** Run a checked computation as the prover, returning [true] if the
       constraints are all satisfied, or [false] otherwise. *)
 
+  val generate_auxiliary_input :
+       (('a, 's) Checked.t, unit, 'k_var, 'k_value) Data_spec.t
+    -> 's
+    -> 'k_var
+    -> 'k_value
+  (** Run the checked computation and generate the auxiliary input, but don't
+      generate a proof.
+
+      Returns [unit]; this is for testing only.
+  *)
+
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (_, _) Checked.t -> int
   (** Returns the number of constraints in the constraint system.
