@@ -1478,7 +1478,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
           in
           ignore auxiliary )
         t k
-
   end
 
   module Cvar1 = struct
@@ -1759,7 +1758,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   let prove key t s k = Run.prove ~run:Runner.run key t s k
 
-  let generate_auxiliary_input t s k = Run.generate_auxiliary_input ~run:Runner.run t s k
+  let generate_auxiliary_input t s k =
+    Run.generate_auxiliary_input ~run:Runner.run t s k
 
   let verify = Run.verify
 
