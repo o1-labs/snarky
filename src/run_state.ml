@@ -11,6 +11,6 @@ type ('prover_state, 'system, 'field, 'vector) t =
   ; is_running: bool
   ; as_prover: bool ref
   ; run_special:
-      'a 's.
-      (   ('a, 's, 'field, (unit, 'system, 'field, 'vector) t) Types.Checked.t
+      'a 's 's1.
+      (   ('a, 's, 'field, ('s1, 'system, 'field, 'vector) t) Types.Checked.t
        -> 'a) option }
