@@ -1461,6 +1461,23 @@ module Make_basic (Backend : Backend_intf.S) = struct
           in
           Proof.create key ~primary ~auxiliary )
         t k
+
+    let generate_auxiliary_input :
+           run:('a, 's, 'checked) Checked.Runner.run
+        -> ('checked, unit, 'k_var, 'k_value) t
+        -> 's
+        -> 'k_var
+        -> 'k_value =
+     fun ~run t s k ->
+      conv
+        (fun c primary ->
+          let auxiliary =
+            Checked.auxiliary_input ~run
+              ~num_inputs:(Field.Vector.length primary)
+              c s primary
+          in
+          ignore auxiliary )
+        t k
   end
 
   module Cvar1 = struct
@@ -1740,6 +1757,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
   let conv f = Run.conv (fun x _ -> f x)
 
   let prove key t s k = Run.prove ~run:Runner.run key t s k
+
+  let generate_auxiliary_input t s k =
+    Run.generate_auxiliary_input ~run:Runner.run t s k
 
   let verify = Run.verify
 
