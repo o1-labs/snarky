@@ -27,6 +27,20 @@ module type S = sig
     val of_field : Field.t -> t
 
     val add_term : t -> Field.t -> Var.t -> unit
+
+    module Term : sig
+      type t
+
+      val create : Field.t -> Var.t -> t
+
+      val coeff : t -> Field.t
+
+      val var : t -> Var.t
+
+      module Vector : Vector.S with type elt = t
+    end
+
+    val terms : t -> Term.Vector.t
   end
 
   module R1CS_constraint : sig
@@ -36,6 +50,12 @@ module type S = sig
       Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
 
     val set_is_square : t -> bool -> unit
+
+    val a : t -> Linear_combination.t
+
+    val b : t -> Linear_combination.t
+
+    val c : t -> Linear_combination.t
   end
 
   module Proving_key : sig
@@ -103,7 +123,7 @@ module type S = sig
 
     val iter_constraints : (R1CS_constraint.t -> unit) -> t -> unit
 
-    val fold_constraints : ('a -> R1CS_constraint.t -> unit) -> 'a -> t -> unit
+    val fold_constraints : ('a -> R1CS_constraint.t -> 'a) -> 'a -> t -> 'a
   end
 
   module Keypair : sig

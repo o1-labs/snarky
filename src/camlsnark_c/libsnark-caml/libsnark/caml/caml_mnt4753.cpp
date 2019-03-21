@@ -463,6 +463,18 @@ void camlsnark_mnt4753_r1cs_constraint_set_is_square(r1cs_constraint<FieldT>* c,
   c->is_square = is_square;
 }
 
+const linear_combination<FieldT>* camlsnark_mnt4753_r1cs_constraint_a(const r1cs_constraint<FieldT>* c) {
+  return &c->a;
+}
+
+const linear_combination<FieldT>* camlsnark_mnt4753_r1cs_constraint_b(const r1cs_constraint<FieldT>* c) {
+  return &c->b;
+}
+
+const linear_combination<FieldT>* camlsnark_mnt4753_r1cs_constraint_c(const r1cs_constraint<FieldT>* c) {
+  return &c->c;
+}
+
 r1cs_constraint_system<FieldT>* camlsnark_mnt4753_r1cs_constraint_system_create() {
   return new r1cs_constraint_system<FieldT>();
 }

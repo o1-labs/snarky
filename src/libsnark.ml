@@ -814,6 +814,12 @@ struct
       Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
 
     val set_is_square : t -> bool -> unit
+
+    val a : t -> Linear_combination.t
+
+    val b : t -> Linear_combination.t
+
+    val c : t -> Linear_combination.t
   end = struct
     include Make_foreign (struct
       let prefix = with_prefix M.prefix "r1cs_constraint"
@@ -831,6 +837,24 @@ struct
 
     let set_is_square =
       foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
+
+    let a =
+      let stub =
+        foreign (func_name "a") (typ @-> returning Linear_combination.typ)
+      in
+      fun t -> stub t
+
+    let b =
+      let stub =
+        foreign (func_name "b") (typ @-> returning Linear_combination.typ)
+      in
+      fun t -> stub t
+
+    let c =
+      let stub =
+        foreign (func_name "c") (typ @-> returning Linear_combination.typ)
+      in
+      fun t -> stub t
   end
 
   module R1CS_constraint_system : sig
