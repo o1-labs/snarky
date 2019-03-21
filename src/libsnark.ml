@@ -969,7 +969,7 @@ struct
 
     let fold_constraints ~f ~init t =
       let a = ref init in
-      let f c = a := (f !a c) in
+      let f c = a := f !a c in
       iter_constraints ~f t ; !a
   end
 
