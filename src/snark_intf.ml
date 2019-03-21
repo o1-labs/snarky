@@ -3,6 +3,14 @@ open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
 
+(** Yojson-compatible JSON type. *)
+type 'a json =
+  [> `String of string
+  | `Assoc of (string * 'a json) list
+  | `List of 'a json list ]
+  as
+  'a
+
 (** The base interface to Snarky. *)
 module type Basic = sig
   (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
@@ -43,6 +51,13 @@ module type Basic = sig
 
     val constraints : t -> field Cvar.t Constraint0.t
     (** Extract the constraints from the constraint system. *)
+
+    val to_json : t -> 'a json
+    (** Convert a basic constraint into a JSON representation.
+
+        This representation is compatible with the Yojson library, which can be
+        used to print JSON to the screen, write it to a file, etc.
+    *)
   end
 
   (** Managing and generating pairs of keys {!type:Proving_key.t} and
@@ -110,21 +125,14 @@ module type Basic = sig
         second, ie. [square x y] => [x*x = y] within the field.
     *)
 
-    val basic_to_json :
-         Field.Var.t Constraint0.basic
-      -> [> `List of [> `Assoc of (string * [> `String of string]) list] list]
+    val basic_to_json : Field.Var.t Constraint0.basic -> 'a json
     (** Convert a basic constraint into a JSON representation.
 
         This representation is compatible with the Yojson library, which can be
         used to print JSON to the screen, write it to a file, etc.
     *)
 
-    val to_json :
-         t
-      -> [> `List of [> `List of [> `Assoc of (string * [> `String of string])
-                                              list ]
-                                 list ]
-                     list ]
+    val to_json : t -> 'a json
     (** Convert a constraint into a JSON representation.
 
         This representation is compatible with the Yojson library, which can be

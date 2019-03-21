@@ -91,6 +91,7 @@ struct
     in
     let map = go Field.one x in
     `Assoc
-      (List.map (Map.to_alist map) ~f:(fun (i, f) ->
-           (Int.to_string i, `String (Field.to_string f)) ))
+      (List.filter_map (Map.to_alist map) ~f:(fun (i, f) ->
+           if Field.(equal f zero) then None
+           else Some (Int.to_string i, `String (Field.to_string f)) ))
 end

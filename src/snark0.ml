@@ -1832,6 +1832,20 @@ module Make_basic (Backend : Backend_intf.S) = struct
           let b = Linear_combination.to_var (R1CS_constraint.b constr) in
           let c = Linear_combination.to_var (R1CS_constraint.c constr) in
           Constraint.create_basic (R1CS (a, b, c)) :: acc )
+
+    let to_json system =
+      let open Base in
+      let inputs =
+        List.init (get_primary_input_size system) ~f:(fun i ->
+            `String (sprintf "input%i" i) )
+      in
+      let auxiliaries =
+        List.init (get_primary_input_size system) ~f:(fun i ->
+            `String (sprintf "a%i" i) )
+      in
+      `Assoc
+        [ ("Variables", `List ((`String "ONE" :: inputs) @ auxiliaries))
+        ; ("constraints", Constraint.to_json (constraints system)) ]
   end
 end
 
