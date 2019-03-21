@@ -891,9 +891,10 @@ struct
 
     val digest : t -> Md5.t
 
-    val iter_constraints : (R1CS_constraint.t -> unit) -> t -> unit
+    val iter_constraints : f:(R1CS_constraint.t -> unit) -> t -> unit
 
-    val fold_constraints : ('a -> R1CS_constraint.t -> 'a) -> 'a -> t -> 'a
+    val fold_constraints :
+      f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
   end = struct
     include Make_foreign (struct
       let prefix = with_prefix M.prefix "r1cs_constraint_system"
@@ -964,12 +965,12 @@ struct
           @-> funptr (R1CS_constraint.typ @-> returning void)
           @-> returning void )
       in
-      fun f t -> stub t f
+      fun ~f t -> stub t f
 
-    let fold_constraints f a t =
-      let ptr = Root.create a in
-      let f c = Root.set ptr (f (Root.get ptr) c) in
-      iter_constraints f t ; Root.get ptr
+    let fold_constraints ~f ~init t =
+      let a = ref.create init in
+      let f c = a := (f !a c) in
+      iter_constraints ~f t ; !a
   end
 
   module Protoboard : sig

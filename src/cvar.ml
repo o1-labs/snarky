@@ -79,4 +79,18 @@ struct
 
     let ( * ) c x = scale x c
   end
+
+  let to_json x =
+    let singleton = Map.singleton (module Int) in
+    let join = Map.merge_skewed ~combine:(fun ~key:_ -> Field.add) in
+    let rec go scale = function
+      | Constant f -> singleton 0 (Field.mul scale f)
+      | Var i -> singleton i scale
+      | Add (x, y) -> join (go scale x) (go scale y)
+      | Scale (s, x) -> go Field.Infix.(scale * s) x
+    in
+    let map = go Field.one x in
+    `Assoc
+      (List.map (Map.to_alist map) ~f:(fun (i, f) ->
+           (Int.to_string i, `String (Field.to_string f)) ))
 end

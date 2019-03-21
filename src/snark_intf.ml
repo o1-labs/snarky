@@ -31,12 +31,18 @@ module type Basic = sig
     val of_bigstring : Bigstring.t -> t
   end
 
+  (** The finite field over which the R1CS operates. *)
+  type field
+
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
     type t
 
     val digest : t -> Md5.t
+
+    val constraints : t -> field Cvar.t Constraint0.t
+    (** Extract the constraints from the constraint system. *)
   end
 
   (** Managing and generating pairs of keys {!type:Proving_key.t} and
@@ -59,9 +65,6 @@ module type Basic = sig
 
     val create : int -> t
   end
-
-  (** The finite field over which the R1CS operates. *)
-  type field
 
   module Bigint : sig
     include Bigint_intf.Extended with type field := field
@@ -105,6 +108,27 @@ module type Basic = sig
     val square : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
     (** A constraint that asserts that the first variable squares to the
         second, ie. [square x y] => [x*x = y] within the field.
+    *)
+
+    val basic_to_json :
+         Field.Var.t Constraint0.basic
+      -> [> `List of [> `Assoc of (string * [> `String of string]) list] list]
+    (** Convert a basic constraint into a JSON representation.
+
+        This representation is compatible with the Yojson library, which can be
+        used to print JSON to the screen, write it to a file, etc.
+    *)
+
+    val to_json :
+         t
+      -> [> `List of [> `List of [> `Assoc of (string * [> `String of string])
+                                              list ]
+                                 list ]
+                     list ]
+    (** Convert a constraint into a JSON representation.
+
+        This representation is compatible with the Yojson library, which can be
+        used to print JSON to the screen, write it to a file, etc.
     *)
   end
   

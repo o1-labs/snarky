@@ -176,6 +176,22 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let of_field = Backend.Linear_combination.of_field
 
     let zero = of_field Field.zero
+
+    let to_var lc =
+      let terms = Linear_combination.terms lc in
+      let l =
+        List.init (Linear_combination.Term.Vector.length terms) ~f:(fun i ->
+            let term = Linear_combination.Term.Vector.get terms i in
+            let coeff = Linear_combination.Term.coeff term in
+            let var = Linear_combination.Term.var term in
+            let index = Backend.Var.index var in
+            let var =
+              if Int.equal index 0 then Cvar.constant Field.one
+              else Cvar.Unsafe.of_index (index - 1)
+            in
+            (coeff, var) )
+      in
+      Cvar.linear_combination l
   end
 
   module Constraint = struct
@@ -238,6 +254,20 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let eval t get_value =
       List.for_all t ~f:(fun {basic; _} -> eval_basic basic get_value)
+
+    let basic_to_json = function
+      | Boolean x ->
+          let fx = Cvar.to_json x in
+          `List [fx; fx; fx]
+      | Equal (x, y) ->
+          `List [`Assoc []; `Assoc []; Cvar.to_json (Cvar.sub x y)]
+      | Square (a, c) ->
+          let fa = Cvar.to_json a in
+          `List [fa; fa; Cvar.to_json c]
+      | R1CS (a, b, c) -> `List [Cvar.to_json a; Cvar.to_json b; Cvar.to_json c]
+
+    let to_json x =
+      `List (List.map x ~f:(fun {basic; _} -> basic_to_json basic))
   end
 
   module Typ_monads = struct
@@ -1795,6 +1825,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module R1CS_constraint_system = struct
     include R1CS_constraint_system
+
+    let constraints : t -> Constraint.t =
+      fold_constraints ~init:[] ~f:(fun acc constr ->
+          let a = Linear_combination.to_var (R1CS_constraint.a constr) in
+          let b = Linear_combination.to_var (R1CS_constraint.b constr) in
+          let c = Linear_combination.to_var (R1CS_constraint.c constr) in
+          Constraint.create_basic (R1CS (a, b, c)) :: acc )
   end
 end
 
@@ -2027,6 +2064,8 @@ module Run = struct
           let size_in_bits = size_in_bits
 
           let print = print
+
+          let to_string = to_string
 
           let random = random
 

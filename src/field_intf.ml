@@ -49,6 +49,8 @@ end
 module type Extended = sig
   include S
 
+  val to_string : t -> string
+
   val negate : t -> t
 
   module Infix : sig
