@@ -1837,11 +1837,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let open Base in
       let inputs =
         List.init (get_primary_input_size system) ~f:(fun i ->
-            `String (sprintf "input%i" i) )
+            `String (sprintf "input%i" (i + 1)) )
       in
       let auxiliaries =
-        List.init (get_primary_input_size system) ~f:(fun i ->
-            `String (sprintf "a%i" i) )
+        List.init (get_auxiliary_input_size system) ~f:(fun i ->
+            `String (sprintf "a%i" (i + 1)) )
       in
       `Assoc
         [ ("Variables", `List ((`String "ONE" :: inputs) @ auxiliaries))
