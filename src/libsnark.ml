@@ -866,6 +866,10 @@ struct
       -> bool
 
     val digest : t -> Md5.t
+
+    val iter_constraints : (R1CS_constraint.t -> unit) -> t -> unit
+
+    val fold_constraints : ('a -> R1CS_constraint.t -> 'a) -> 'a -> t -> 'a
   end = struct
     include Make_foreign (struct
       let prefix = with_prefix M.prefix "r1cs_constraint_system"
@@ -928,6 +932,20 @@ struct
         let s = stub t in
         let r = Cpp_string.to_string s in
         Cpp_string.delete s ; Md5.of_binary_exn r
+
+    let iter_constraints =
+      let stub =
+        foreign (func_name "iter")
+          ( typ
+          @-> funptr (R1CS_constraint.typ @-> returning void)
+          @-> returning void )
+      in
+      fun f t -> stub t f
+
+    let fold_constraints f a t =
+      let ptr = Root.create a in
+      let f c = Root.set ptr (f (Root.get ptr) c) in
+      iter_constraints f t ; Root.get ptr
   end
 
   module Protoboard : sig

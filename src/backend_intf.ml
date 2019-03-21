@@ -100,6 +100,10 @@ module type S = sig
       -> bool
 
     val digest : t -> Md5.t
+
+    val iter_constraints : (R1CS_constraint.t -> unit) -> t -> unit
+
+    val fold_constraints : ('a -> R1CS_constraint.t -> unit) -> 'a -> t -> unit
   end
 
   module Keypair : sig

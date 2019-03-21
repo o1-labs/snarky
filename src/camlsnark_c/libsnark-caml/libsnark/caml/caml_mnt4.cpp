@@ -576,6 +576,15 @@ int camlsnark_mnt4_r1cs_constraint_system_get_auxiliary_input_size(
   return sys->auxiliary_input_size;
 }
 
+void camlsnark_mnt4_r1cs_constraint_system_iter(
+    r1cs_constraint_system<FieldT>* sys,
+    void (*f)(const r1cs_constraint<FieldT> *)) {
+  std::vector<r1cs_constraint<FieldT>>& cs = sys->constraints;
+  for (std::vector<r1cs_constraint<FieldT>>::const_iterator i = cs.cbegin(); i != cs.cend(); i++) {
+    f(&*i);
+  }
+}
+
 std::vector<FieldT>* camlsnark_mnt4_field_vector_create() {
   return new std::vector<FieldT>();
 }
