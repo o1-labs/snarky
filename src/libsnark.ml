@@ -968,7 +968,7 @@ struct
       fun ~f t -> stub t f
 
     let fold_constraints ~f ~init t =
-      let a = ref.create init in
+      let a = ref init in
       let f c = a := (f !a c) in
       iter_constraints ~f t ; !a
   end
