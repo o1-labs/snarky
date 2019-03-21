@@ -258,13 +258,20 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let basic_to_json = function
       | Boolean x ->
           let fx = Cvar.to_json x in
-          `List [fx; fx; fx]
+          `Assoc [("A", fx); ("B", fx); ("C", fx)]
       | Equal (x, y) ->
-          `List [`Assoc []; `Assoc []; Cvar.to_json (Cvar.sub x y)]
+          `Assoc
+            [ ("A", `Assoc [])
+            ; ("B", `Assoc [])
+            ; ("C", Cvar.to_json (Cvar.sub x y)) ]
       | Square (a, c) ->
           let fa = Cvar.to_json a in
-          `List [fa; fa; Cvar.to_json c]
-      | R1CS (a, b, c) -> `List [Cvar.to_json a; Cvar.to_json b; Cvar.to_json c]
+          `Assoc [("A", fa); ("B", fa); ("C", Cvar.to_json c)]
+      | R1CS (a, b, c) ->
+          `Assoc
+            [ ("A", Cvar.to_json a)
+            ; ("B", Cvar.to_json b)
+            ; ("C", Cvar.to_json c) ]
 
     let to_json x =
       `List (List.map x ~f:(fun {basic; _} -> basic_to_json basic))
