@@ -285,8 +285,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     type 'prover_state run_state =
       ( 'prover_state
       , R1CS_constraint_system.t
-      , Field.t
-      , Field.Vector.t )
+      , Field.t )
       Run_state.t
 
     module T = struct

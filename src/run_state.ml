@@ -1,7 +1,7 @@
-type ('prover_state, 'system, 'field, 'vector) t =
+type ('prover_state, 'system, 'field) t =
   { system: 'system option
-  ; input: 'vector
-  ; aux: 'vector
+  ; input: 'field Vector.t
+  ; aux: 'field Vector.t
   ; eval_constraints: bool
   ; num_inputs: int
   ; next_auxiliary: int ref
@@ -12,5 +12,5 @@ type ('prover_state, 'system, 'field, 'vector) t =
   ; as_prover: bool ref
   ; run_special:
       'a 's.
-      (   ('a, 's, 'field, (unit, 'system, 'field, 'vector) t) Types.Checked.t
-       -> 'a) option }
+      (('a, 's, 'field, (unit, 'system, 'field) t) Types.Checked.t -> 'a)
+      option }
