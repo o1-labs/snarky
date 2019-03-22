@@ -282,8 +282,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
   end
 
   module Checked0 = struct
-    type 'prover_state run_state =
-      ('prover_state, Field.t) Run_state.t
+    type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
     module T = struct
       type ('a, 's) t = ('a, 's, Field.t, unit run_state) Checked.t
