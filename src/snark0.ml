@@ -463,6 +463,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
     open Types.Run_state
     include Checked0
 
+    let perform req = request_witness Typ.unit req
+
     module Runner = struct
       type state = unit run_state
 
