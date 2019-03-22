@@ -1,31 +1,30 @@
 open Core_kernel
 
-type ('var, 'value, 'field, 'r) t = ('var, 'value, 'field, 'r) Types.Typ.t
+type ('var, 'value, 'field) t = ('var, 'value, 'field) Types.Typ.t
 
-type ('var, 'value, 'field, 'r) typ = ('var, 'value, 'field, 'r) t
+type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
 module T = struct
   open Types.Typ
   open Typ_monads
 
-  let store ({store; _} : ('var, 'value, 'field, 'r) t) (x : 'value) :
+  let store ({store; _} : ('var, 'value, 'field) t) (x : 'value) :
       ('var, 'field) Store.t =
     store x
 
-  let read ({read; _} : ('var, 'value, 'field, 'r) t) (v : 'var) :
+  let read ({read; _} : ('var, 'value, 'field) t) (v : 'var) :
       ('value, 'field) Read.t =
     read v
 
-  let alloc ({alloc; _} : ('var, 'value, 'field, 'r) t) :
-      ('var, 'field) Alloc.t =
+  let alloc ({alloc; _} : ('var, 'value, 'field) t) : ('var, 'field) Alloc.t =
     alloc
 
-  let check (type field) ({check; _} : ('var, 'value, field, 'r) t) (v : 'var)
-      : (unit, 's, field, 'r) Types.Checked.t =
+  let check (type field) ({check; _} : ('var, 'value, field) t) (v : 'var) :
+      (unit, 's, field) Types.Checked.t =
     let do_nothing : (unit, field, _) As_prover0.t = fun _ s -> (s, ()) in
     With_state (do_nothing, (fun () -> do_nothing), check v, Checked.return)
 
-  let unit () : (unit, unit, 'field, 'r) t =
+  let unit () : (unit, unit, 'field) t =
     let s = Store.return () in
     let r = Read.return () in
     let c = Checked.return () in
@@ -34,32 +33,31 @@ module T = struct
     ; check= (fun () -> c)
     ; alloc= Alloc.return () }
 
-  let field () : ('field Cvar.t, 'field, 'field, 'r) t =
+  let field () : ('field Cvar.t, 'field, 'field) t =
     { store= Store.store
     ; read= Read.read
     ; alloc= Alloc.alloc
     ; check= (fun _ -> Checked.return ()) }
 
-  let transport ({read; store; alloc; check} : ('var1, 'value1, 'field, 'r) t)
+  let transport ({read; store; alloc; check} : ('var1, 'value1, 'field) t)
       ~(there : 'value2 -> 'value1) ~(back : 'value1 -> 'value2) :
-      ('var1, 'value2, 'field, 'r) t =
+      ('var1, 'value2, 'field) t =
     { alloc
     ; store= (fun x -> store (there x))
     ; read= (fun v -> Read.map ~f:back (read v))
     ; check }
 
-  let transport_var
-      ({read; store; alloc; check} : ('var1, 'value, 'field, 'r) t)
+  let transport_var ({read; store; alloc; check} : ('var1, 'value, 'field) t)
       ~(there : 'var2 -> 'var1) ~(back : 'var1 -> 'var2) :
-      ('var2, 'value, 'field, 'r) t =
+      ('var2, 'value, 'field) t =
     { alloc= Alloc.map alloc ~f:back
     ; store= (fun x -> Store.map (store x) ~f:back)
     ; read= (fun x -> read (there x))
     ; check= (fun x -> check (there x)) }
 
   let list ~length
-      ({read; store; alloc; check} : ('elt_var, 'elt_value, 'field, 'r) t) :
-      ('elt_var list, 'elt_value list, 'field, 'r) t =
+      ({read; store; alloc; check} : ('elt_var, 'elt_value, 'field) t) :
+      ('elt_var list, 'elt_value list, 'field) t =
     let store ts =
       let n = List.length ts in
       if n <> length then
@@ -73,8 +71,8 @@ module T = struct
 
   (* TODO-someday: Make more efficient *)
   let array ~length
-      ({read; store; alloc; check} : ('elt_var, 'elt_value, 'field, 'r) t) :
-      ('elt_var array, 'elt_value array, 'field, 'r) t =
+      ({read; store; alloc; check} : ('elt_var, 'elt_value, 'field) t) :
+      ('elt_var array, 'elt_value array, 'field) t =
     let store ts =
       assert (Array.length ts = length) ;
       Store.map ~f:Array.of_list
@@ -103,9 +101,9 @@ module T = struct
     in
     {read; store; alloc; check}
 
-  let tuple2 (typ1 : ('var1, 'value1, 'field, 'r) t)
-      (typ2 : ('var2, 'value2, 'field, 'r) t) :
-      ('var1 * 'var2, 'value1 * 'value2, 'field, 'r) t =
+  let tuple2 (typ1 : ('var1, 'value1, 'field) t)
+      (typ2 : ('var2, 'value2, 'field) t) :
+      ('var1 * 'var2, 'value1 * 'value2, 'field) t =
     let alloc =
       let open Alloc.Let_syntax in
       let%map x = typ1.alloc and y = typ2.alloc in
@@ -130,10 +128,9 @@ module T = struct
 
   let ( * ) = tuple2
 
-  let tuple3 (typ1 : ('var1, 'value1, 'field, 'r) t)
-      (typ2 : ('var2, 'value2, 'field, 'r) t)
-      (typ3 : ('var3, 'value3, 'field, 'r) t) :
-      ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3, 'field, 'r) t =
+  let tuple3 (typ1 : ('var1, 'value1, 'field) t)
+      (typ2 : ('var2, 'value2, 'field) t) (typ3 : ('var3, 'value3, 'field) t) :
+      ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3, 'field) t =
     let alloc =
       let open Alloc.Let_syntax in
       let%map x = typ1.alloc and y = typ2.alloc and z = typ3.alloc in
