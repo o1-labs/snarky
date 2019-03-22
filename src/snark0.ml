@@ -283,10 +283,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module Checked0 = struct
     type 'prover_state run_state =
-      ( 'prover_state
-      , R1CS_constraint_system.t
-      , Field.t )
-      Run_state.t
+      ('prover_state, Field.t) Run_state.t
 
     module T = struct
       type ('a, 's) t = ('a, 's, Field.t, unit run_state) Checked.t
