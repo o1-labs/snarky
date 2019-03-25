@@ -77,6 +77,77 @@ module Let_syntax = struct
   end
 end
 
+module Make (Basic : Checked_intf.Basic) : Checked_intf.S with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t = struct
+  include Basic
+
+  let request_witness (typ : ('var, 'value, 'field) Types.Typ.t)
+      (r : ('value Request.t, 'field, 's) As_prover0.t) =
+    let%map h = exists typ (Request r) in
+    Handle.var h
+
+  let request ?such_that typ r =
+    match such_that with
+    | None -> request_witness typ (As_prover0.return r)
+    | Some such_that ->
+        let open Let_syntax in
+        let%bind x = request_witness typ (As_prover0.return r) in
+        let%map () = such_that x in
+        x
+
+  let exists ?request ?compute typ =
+    let provider =
+      let request =
+        Option.value request ~default:(As_prover0.return Request.Fail)
+      in
+      match compute with
+      | None -> Provider.Request request
+      | Some c -> Provider.Both (request, c)
+    in
+    let%map h = exists typ provider in
+    Handle.var h
+
+  type response = Request.response
+
+  let unhandled = Request.unhandled
+
+  type request = Request.request =
+    | With :
+        { request: 'a Request.t
+        ; respond: 'a Request.Response.t -> response }
+        -> request
+
+  let handle t k = with_handler (Request.Handler.create_single k) t
+
+  let do_nothing _ = As_prover0.return ()
+
+  let with_state ?(and_then = do_nothing) f sub =
+    with_state f and_then sub
+
+  let assert_ ?label c =
+    add_constraint
+      (List.map c ~f:(fun c -> Constraint.override_label c label))
+
+  let assert_r1cs ?label a b c = assert_ (Constraint.r1cs ?label a b c)
+
+  let assert_square ?label a c = assert_ (Constraint.square ?label a c)
+
+  let assert_all =
+    let map_concat_rev xss ~f =
+      let rec go acc xs xss =
+        match (xs, xss) with
+        | [], [] -> acc
+        | [], xs :: xss -> go acc xs xss
+        | x :: xs, _ -> go (f x :: acc) xs xss
+      in
+      go [] [] xss
+    in
+    fun ?label cs ->
+      add_constraint
+        ( map_concat_rev ~f:(fun c -> Constraint.override_label c label) cs )
+
+  let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
+end
+
 module T = struct
   include T0
 
