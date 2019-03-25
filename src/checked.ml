@@ -4,9 +4,9 @@ open Types.Checked
 type ('a, 's, 'field) t = ('a, 's, 'field) Types.Checked.t
 
 module T0 = struct
-  let return x = Pure x
+  type nonrec ('a, 's, 'field) t = ('a, 's, 'field) t
 
-  let as_prover x = As_prover (x, return ())
+  let return x = Pure x
 
   let rec map : type s a b field.
       (a, s, field) t -> f:(a -> b) -> (b, s, field) t =
@@ -44,40 +44,31 @@ module T0 = struct
     | Next_auxiliary k -> Next_auxiliary (fun x -> bind (k x) ~f)
 end
 
-let rec all_unit = function
-  | [] -> T0.return ()
-  | t :: ts -> T0.bind t ~f:(fun () -> all_unit ts)
+module Basic : Checked_intf.Basic with type ('a, 's, 'f) t = ('a, 's, 'f) t =
+struct
+  type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
 
-module Let_syntax = struct
-  let return = T0.return
+  include Monad_let.Make3 (T0)
 
-  let bind = T0.bind
+  let add_constraint c = Add_constraint (c, return ())
 
-  let map =
-    match T0.map with
-    | `Define_using_bind -> fun ma ~f -> bind ma ~f:(fun a -> T0.return (f a))
-    | `Custom x -> x
+  let as_prover x = As_prover (x, return ())
 
-  let ( >>= ) t f = bind t ~f
+  let with_label lbl x = With_label (lbl, x, return)
 
-  let ( >>| ) t f = map t ~f
+  let with_state p and_then sub = With_state (p, and_then, sub, return)
 
-  let both a b = bind a ~f:(fun a -> map b ~f:(fun b -> (a, b)))
+  let with_handler h x = With_handler (h, x, return)
 
-  module Let_syntax = struct
-    let return = return
+  let clear_handler x = Clear_handler (x, return)
 
-    let bind = bind
+  let exists typ p = Exists (typ, p, return)
 
-    let map = map
-
-    let both a b = a >>= fun a -> b >>| fun b -> (a, b)
-
-    module Open_on_rhs = struct end
-  end
+  let next_auxiliary = Next_auxiliary return
 end
 
-module Make (Basic : Checked_intf.Basic) : Checked_intf.S with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t = struct
+module Make (Basic : Checked_intf.Basic) :
+  Checked_intf.S with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t = struct
   include Basic
 
   let request_witness (typ : ('var, 'value, 'field) Types.Typ.t)
@@ -120,12 +111,10 @@ module Make (Basic : Checked_intf.Basic) : Checked_intf.S with type ('a, 's, 'f)
 
   let do_nothing _ = As_prover0.return ()
 
-  let with_state ?(and_then = do_nothing) f sub =
-    with_state f and_then sub
+  let with_state ?(and_then = do_nothing) f sub = with_state f and_then sub
 
   let assert_ ?label c =
-    add_constraint
-      (List.map c ~f:(fun c -> Constraint.override_label c label))
+    add_constraint (List.map c ~f:(fun c -> Constraint.override_label c label))
 
   let assert_r1cs ?label a b c = assert_ (Constraint.r1cs ?label a b c)
 
@@ -143,83 +132,14 @@ module Make (Basic : Checked_intf.Basic) : Checked_intf.S with type ('a, 's, 'f)
     in
     fun ?label cs ->
       add_constraint
-        ( map_concat_rev ~f:(fun c -> Constraint.override_label c label) cs )
+        (map_concat_rev ~f:(fun c -> Constraint.override_label c label) cs)
 
   let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
 end
 
 module T = struct
-  include T0
-
-  let request_witness (typ : ('var, 'value, 'field) Types.Typ.t)
-      (r : ('value Request.t, 'field, 's) As_prover0.t) =
-    Exists (typ, Request r, fun h -> return (Handle.var h))
-
-  let request ?such_that typ r =
-    match such_that with
-    | None -> request_witness typ (As_prover0.return r)
-    | Some such_that ->
-        let open Let_syntax in
-        let%bind x = request_witness typ (As_prover0.return r) in
-        let%map () = such_that x in
-        x
-
-  let exists ?request ?compute typ =
-    let provider =
-      let request =
-        Option.value request ~default:(As_prover0.return Request.Fail)
-      in
-      match compute with
-      | None -> Provider.Request request
-      | Some c -> Provider.Both (request, c)
-    in
-    Exists (typ, provider, fun h -> return (Handle.var h))
-
-  type response = Request.response
-
-  let unhandled = Request.unhandled
-
-  type request = Request.request =
-    | With :
-        { request: 'a Request.t
-        ; respond: 'a Request.Response.t -> response }
-        -> request
-
-  let handle t k = With_handler (Request.Handler.create_single k, t, return)
-
-  let next_auxiliary = Next_auxiliary return
-
-  let with_label s t = With_label (s, t, return)
-
-  let do_nothing _ = As_prover0.return ()
-
-  let with_state ?(and_then = do_nothing) f sub =
-    With_state (f, and_then, sub, return)
-
-  let assert_ ?label c =
-    Add_constraint
-      (List.map c ~f:(fun c -> Constraint.override_label c label), return ())
-
-  let assert_r1cs ?label a b c = assert_ (Constraint.r1cs ?label a b c)
-
-  let assert_square ?label a c = assert_ (Constraint.square ?label a c)
-
-  let assert_all =
-    let map_concat_rev xss ~f =
-      let rec go acc xs xss =
-        match (xs, xss) with
-        | [], [] -> acc
-        | [], xs :: xss -> go acc xs xss
-        | x :: xs, _ -> go (f x :: acc) xs xss
-      in
-      go [] [] xss
-    in
-    fun ?label cs ->
-      Add_constraint
-        ( map_concat_rev ~f:(fun c -> Constraint.override_label c label) cs
-        , return () )
-
-  let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
+  include (
+    Make (Basic) : Checked_intf.S with type ('a, 's, 'f) t := ('a, 's, 'f) t)
 end
 
 include T

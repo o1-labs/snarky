@@ -3,8 +3,6 @@ module type Basic = sig
 
   include Monad_let.S3 with type ('a, 's, 'f) t := ('a, 's, 'f) t
 
-  val pure : 'a -> ('a, 's, 'f) t
-
   val add_constraint : 'f Cvar.t Constraint.t -> (unit, 's, 'f) t
 
   val as_prover : (unit, 'f, 's) As_prover0.t -> (unit, 's, 'f) t
@@ -33,6 +31,8 @@ module type S = sig
   type ('a, 's, 'f) t
 
   include Monad_let.S3 with type ('a, 's, 'f) t := ('a, 's, 'f) t
+
+  val as_prover : (unit, 'f, 's) As_prover0.t -> (unit, 's, 'f) t
 
   val request_witness :
        ('var, 'value, 'f) Types.Typ.t
