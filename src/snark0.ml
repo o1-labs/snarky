@@ -267,13 +267,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let run = run
 
-      let size t =
-        let dummy = Cvar.Unsafe.of_index 0 in
-        let rec go acc = function
-          | Pure _ -> acc
-          | Free (T.Alloc k) -> go (acc + 1) (k dummy)
-        in
-        go 0 t
+      let size t = size t
     end
   end
 

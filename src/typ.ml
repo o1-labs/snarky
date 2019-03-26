@@ -4,6 +4,26 @@ type ('var, 'value, 'field) t = ('var, 'value, 'field) Types.Typ.t
 
 type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
+module Data_spec = struct
+
+type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
+  | ( :: ) :
+      ('var, 'value, 'f) typ * ('r_var, 'r_value, 'k_var, 'k_value, 'f) t
+      -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'f) t
+  | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) t
+
+
+  let size t =
+    let rec go : type r_var r_value k_var k_value.
+        int -> (r_var, r_value, k_var, k_value, 'f) t -> int =
+     fun acc t ->
+      match t with
+      | [] -> acc
+      | {alloc; _} :: t' -> go (acc + Typ_monads.Alloc.size alloc) t'
+    in
+    go 0 t
+end
+
 module T = struct
   open Types.Typ
   open Typ_monads
