@@ -150,9 +150,15 @@ module type Basic = sig
                                                                  Typ0.Data_spec
                                                                  .t =
       | ( :: ) :
-          ('var, 'value, 'f) typ * ('r_var, 'r_value, 'k_var, 'k_value, 'f) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'f) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) t
+          ('var, 'value, 'f) Typ0.t
+          * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
+          -> ( 'r_var
+             , 'r_value
+             , 'var -> 'k_var
+             , 'value -> 'k_value
+             , 'f )
+             data_spec
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -1351,9 +1357,15 @@ module type Run = sig
                                                                  Typ0.Data_spec
                                                                  .t =
       | ( :: ) :
-          ('var, 'value, 'f) typ * ('r_var, 'r_value, 'k_var, 'k_value, 'f) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'f) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) t
+          ('var, 'value, 'f) Types.Typ.t
+          * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
+          -> ( 'r_var
+             , 'r_value
+             , 'var -> 'k_var
+             , 'value -> 'k_value
+             , 'f )
+             data_spec
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
