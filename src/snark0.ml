@@ -22,68 +22,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
   module Field0 = Field
   module Cvar = Cvar
   module Linear_combination = Linear_combination
-
-  module Constraint = struct
-    open Constraint
-    include Constraint.T
-
-    type basic = Cvar.t Constraint.basic
-
-    type 'k with_constraint_args = ?label:string -> 'k
-
-    type t = Cvar.t Constraint.t [@@deriving sexp]
-
-    let basic_to_r1cs_constraint : basic -> R1CS_constraint.t =
-      let of_var = Linear_combination.of_var in
-      function
-      | Boolean v ->
-          let lc = of_var v in
-          let constr = R1CS_constraint.create lc lc lc in
-          R1CS_constraint.set_is_square constr true ;
-          constr
-      | Equal (v1, v2) ->
-          (* 0 * 0 = (v1 - v2) *)
-          let constr =
-            R1CS_constraint.create Linear_combination.zero
-              Linear_combination.zero
-              (of_var (Cvar.sub v1 v2))
-          in
-          R1CS_constraint.set_is_square constr true ;
-          constr
-      | Square (a, c) ->
-          let a = of_var a in
-          let constr = R1CS_constraint.create a a (of_var c) in
-          R1CS_constraint.set_is_square constr true ;
-          constr
-      | R1CS (a, b, c) ->
-          let constr =
-            R1CS_constraint.create (of_var a) (of_var b) (of_var c)
-          in
-          R1CS_constraint.set_is_square constr false ;
-          constr
-
-    let stack_to_string = String.concat ~sep:"\n"
-
-    let add ~stack (t : t) system =
-      List.iter t ~f:(fun {basic; annotation} ->
-          let label = Option.value annotation ~default:"<unknown>" in
-          let c = basic_to_r1cs_constraint basic in
-          R1CS_constraint_system.add_constraint_with_annotation system c
-            (stack_to_string (label :: stack)) )
-
-    let eval_basic t get_value =
-      match t with
-      | Boolean v ->
-          let x = get_value v in
-          Field.(equal x zero || equal x one)
-      | Equal (v1, v2) -> Field.equal (get_value v1) (get_value v2)
-      | R1CS (v1, v2, v3) ->
-          Field.(equal (mul (get_value v1) (get_value v2)) (get_value v3))
-      | Square (a, c) -> Field.equal (Field.square (get_value a)) (get_value c)
-
-    let eval t get_value =
-      List.for_all t ~f:(fun {basic; _} -> eval_basic basic get_value)
-  end
+  module Constraint = Constraint
 
   module Typ_monads = struct
     open Typ_monads
