@@ -600,7 +600,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let dummy_vector = Field.Vector.create ()
 
       let fake_state next_auxiliary =
-        { Run_state.system= None
+        { system= None
         ; input= dummy_vector
         ; aux= dummy_vector
         ; eval_constraints= false
@@ -628,13 +628,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let _, y = d (fake_state next_auxiliary) in
             let f, a = flatten_as_prover next_auxiliary (k y) in
             ( (fun s ->
-                let Run_state.({prover_state; _}) = s in
-                let s, _y =
-                  d
-                    (set_prover_state
-                       (Option.map ~f:(fun _ -> ()) prover_state)
-                       s)
-                in
+                let {prover_state; _} = s in
+                let s, _y = d s in
                 f (set_prover_state prover_state s) )
             , a )
         | With_label (lab, t, k) ->
@@ -657,7 +652,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let f, y = flatten_as_prover next_auxiliary t in
             let g, a = flatten_as_prover next_auxiliary (k y) in
             ( (fun s ->
-                let Run_state.({handler; _}) = s in
+                let {handler; _} = s in
                 let s' = f {s with handler= Request.Handler.push handler h} in
                 g {s' with handler} )
             , a )
@@ -665,7 +660,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let f, y = flatten_as_prover next_auxiliary t in
             let g, a = flatten_as_prover next_auxiliary (k y) in
             ( (fun s ->
-                let Run_state.({handler; _}) = s in
+                let {handler; _} = s in
                 let s' = f {s with handler= Request.Handler.fail} in
                 g {s' with handler} )
             , a )
@@ -680,9 +675,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 let old = !(s.as_prover) in
                 s.as_prover := true ;
                 let ps, value =
-                  Provider.run p s.Run_state.stack (get_value s)
+                  Provider.run p s.stack (get_value s)
                     (Option.value_exn s.prover_state)
-                    s.Run_state.handler
+                    s.handler
                 in
                 s.as_prover := old ;
                 let _var = Typ.Store.run (store value) (store_field_elt s) in
@@ -736,7 +731,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
            log:(?start:_ -> _)
         -> auxc:_
         -> int
-        -> (a, s, _, (s1, _, _, _) Run_state.t) Types.Checked.t
+        -> (a, s, _) Types.Checked.t
         -> int * a =
      fun ~log ~auxc count t0 ->
       match t0 with
@@ -749,8 +744,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
               None
           in
           let count = ref count in
-          let run_special (type a s s1)
-              (x : (a, s, _, (s1, _, _, _) Run_state.t) Types.Checked.t) =
+          let run_special (type a s s1) (x : (a, s, _) Types.Checked.t) =
             let count', a = constraint_count_aux ~log ~auxc !count x in
             count := count' ;
             a
