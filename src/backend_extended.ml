@@ -1,5 +1,4 @@
 open Core_kernel
-
 module Bignum_bigint = Bigint
 
 module type S = sig
@@ -7,6 +6,16 @@ module type S = sig
     type t [@@deriving bin_io, sexp, hash, compare]
 
     include Field_intf.Extended with type t := t
+
+    include Stringable.S with type t := t
+
+    val size : Bigint.t
+
+    val unpack : t -> bool list
+
+    val project_reference : bool list -> t
+
+    val project : bool list -> t
   end
 
   module Bigint : sig
@@ -32,35 +41,39 @@ module type S = sig
   module Cvar : sig
     type t = Field.t Cvar.t [@@deriving sexp]
 
-  val length : t -> int
+    val length : t -> int
 
-  module Unsafe : sig
-    val of_index : int -> t
-  end
+    module Unsafe : sig
+      val of_index : int -> t
+    end
 
-  val eval : (int -> Field.t) -> t -> Field.t
+    val eval : (int -> Field.t) -> t -> Field.t
 
-  val constant : Field.t -> t
+    val constant : Field.t -> t
 
-  val to_constant_and_terms : t -> Field.t option * (Field.t * Var.t) list
+    val to_constant_and_terms : t -> Field.t option * (Field.t * Var.t) list
 
-  val add : t -> t -> t
+    val add : t -> t -> t
 
-  val scale : t -> Field.t -> t
+    val scale : t -> Field.t -> t
 
-  val sub : t -> t -> t
+    val sub : t -> t -> t
 
-  val linear_combination : (Field.t * t) list -> t
+    val linear_combination : (Field.t * t) list -> t
 
-  val sum : t list -> t
+    val sum : t list -> t
 
-  module Infix : sig
-    val ( + ) : t -> t -> t
+    module Infix : sig
+      val ( + ) : t -> t -> t
 
-    val ( - ) : t -> t -> t
+      val ( - ) : t -> t -> t
 
-    val ( * ) : Field.t -> t -> t
-  end
+      val ( * ) : Field.t -> t -> t
+    end
+
+    val var_indices : t -> int list
+
+    val to_constant : t -> Field.t option
   end
 
   module Linear_combination : sig
@@ -159,7 +172,9 @@ module type S = sig
   end
 end
 
-module Make (Backend : Backend_intf.S) : S = struct
+module Make (Backend : Backend_intf.S) :
+  S with type Field.t = Backend.Field.t and type Bigint.t = Backend.Bigint.R.t =
+struct
   open Backend
 
   type field = Field.t
@@ -333,6 +348,5 @@ module Make (Backend : Backend_intf.S) : S = struct
   end
 
   module R1CS_constraint = R1CS_constraint
-
   module R1CS_constraint_system = R1CS_constraint_system
 end
