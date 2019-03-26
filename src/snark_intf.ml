@@ -209,8 +209,7 @@ module type Basic = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-    type ('var, 'value) t =
-      ('var, 'value, Field.t, unit Checked.run_state) Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -441,16 +440,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    type 'prover_state run_state =
-      ( 'prover_state
-      , R1CS_constraint_system.t
-      , Field.t
-      , Field.Vector.t )
-      Run_state.t
+    type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
 
     include
-      Monad_let.S2
-      with type ('a, 's) t = ('a, 's, Field.t, unit run_state) Types.Checked.t
+      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -1143,6 +1136,17 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** Run a checked computation as the prover, returning [true] if the
       constraints are all satisfied, or [false] otherwise. *)
 
+  val generate_auxiliary_input :
+       (('a, 's) Checked.t, unit, 'k_var, 'k_value) Data_spec.t
+    -> 's
+    -> 'k_var
+    -> 'k_value
+  (** Run the checked computation and generate the auxiliary input, but don't
+      generate a proof.
+
+      Returns [unit]; this is for testing only.
+  *)
+
   val reduce_to_prover :
     (('a, 's) Checked.t, _, 'checked, _) Data_spec.t -> 'checked -> 'checked
   (** Reduce a checked computation to be run as the prover.
@@ -1334,13 +1338,9 @@ module type Run = sig
     end
 
     type 'prover_state run_state =
-      ( 'prover_state
-      , R1CS_constraint_system.t
-      , Field.Constant.t
-      , Field.Constant.Vector.t )
-      Run_state.t
+      ('prover_state, Field.Constant.t) Types.Run_state.t
 
-    type ('var, 'value) t = ('var, 'value, field, unit run_state) Types.Typ.t
+    type ('var, 'value) t = ('var, 'value, field) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -1770,8 +1770,7 @@ module type Run = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
-  val make_checked :
-    (unit -> 'a) -> ('a, 's, field, unit Typ.run_state) Types.Checked.t
+  val make_checked : (unit -> 'a) -> ('a, 's, field) Types.Checked.t
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
