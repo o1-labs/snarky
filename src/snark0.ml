@@ -636,7 +636,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 let s', (_ : unit option) = run_as_prover (Some x) s in
                 f s' )
             , a )
-        | Pure x -> ((fun s -> s), x)
+        | Pure x -> (Fn.id, x)
         | Direct (d, k) ->
             let _, y = d (fake_state next_auxiliary) in
             let f, a = flatten_as_prover next_auxiliary (k y) in
