@@ -299,10 +299,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     module Data_spec = struct
       type ('r_var, 'r_value, 'k_var, 'k_value) t =
-        | ( :: ) :
-            ('var, 'value) typ * ('r_var, 'r_value, 'k_var, 'k_value) t
-            -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-        | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+        ('r_var, 'r_value, 'k_var, 'k_value, field) Typ.Data_spec.t
 
       let size t =
         let rec go : type r_var r_value k_var k_value.
@@ -328,7 +325,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
             -> (unit, k_value) H_list.t
             -> (unit, k_var) H_list.t Store.t =
          fun spec0 xs0 ->
-          let open Data_spec in
           let open H_list in
           match (spec0, xs0) with
           | [], [] -> Store.return H_list.[]
@@ -345,7 +341,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
             -> (unit, k_var) H_list.t
             -> (unit, k_value) H_list.t Read.t =
          fun spec0 xs0 ->
-          let open Data_spec in
           let open H_list in
           match (spec0, xs0) with
           | [], [] -> Read.return H_list.[]
@@ -361,7 +356,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
                (unit, unit, k_var, k_value) Data_spec.t
             -> (unit, k_var) H_list.t Alloc.t =
          fun spec0 ->
-          let open Data_spec in
           let open H_list in
           match spec0 with
           | [] -> Alloc.return H_list.[]
@@ -378,7 +372,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
             -> (unit, k_var) H_list.t
             -> (unit, unit) Checked0.t =
          fun spec0 xs0 ->
-          let open Data_spec in
           let open H_list in
           let open Checked0.Let_syntax in
           match (spec0, xs0) with
