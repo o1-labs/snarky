@@ -1,9 +1,8 @@
 module Bignum_bigint = Bigint
 open Core
+open Backend_types
 open Ctypes
 open Foreign
-
-let with_prefix prefix s = sprintf "%s_%s" prefix s
 
 module type Foreign_intf = sig
   type t
@@ -15,20 +14,6 @@ module type Deletable_intf = sig
   include Foreign_intf
 
   val delete : t -> unit
-end
-
-module type Prefix_intf = sig
-  val prefix : string
-end
-
-module Make_foreign (M : Prefix_intf) = struct
-  type t = unit ptr
-
-  let typ = ptr void
-
-  let func_name = with_prefix M.prefix
-
-  let delete = foreign (func_name "delete") (typ @-> returning void)
 end
 
 let set_no_profiling =
@@ -651,7 +636,7 @@ struct
   end
 
   module Var : sig
-    type t
+    type t = Field0.t Backend_types.Var.t
 
     val typ : t Ctypes.typ
 
@@ -659,8 +644,10 @@ struct
 
     val create : int -> t
   end = struct
-    include Make_foreign (struct
+    include Var.Make (struct
       let prefix = with_prefix M.prefix "var"
+
+      type field = Field0.t
     end)
 
     let create =
@@ -678,7 +665,7 @@ struct
   end
 
   module Linear_combination : sig
-    type t
+    type t = Field0.t Backend_types.Linear_combination.t
 
     val typ : t Ctypes.typ
 
@@ -693,7 +680,7 @@ struct
     val print : t -> unit
 
     module Term : sig
-      type t
+      type t = Field0.t Backend_types.Linear_combination.Term.t
 
       val create : Field.t -> Var.t -> t
 
@@ -712,15 +699,19 @@ struct
   end = struct
     let prefix = with_prefix M.prefix "linear_combination"
 
-    include Make_foreign (struct
+    include Linear_combination.Make (struct
       let prefix = prefix
+
+      type field = Field0.t
     end)
 
     module Term = struct
       let prefix = with_prefix prefix "term"
 
-      include Make_foreign (struct
+      include Linear_combination.Term.Make (struct
         let prefix = prefix
+
+        type field = Field0.t
       end)
 
       let create =
@@ -814,7 +805,7 @@ struct
   end
 
   module R1CS_constraint : sig
-    type t
+    type t = Field0.t Backend_types.R1CS_constraint.t
 
     val typ : t Ctypes.typ
 
@@ -823,8 +814,10 @@ struct
 
     val set_is_square : t -> bool -> unit
   end = struct
-    include Make_foreign (struct
+    include R1CS_constraint.Make (struct
       let prefix = with_prefix M.prefix "r1cs_constraint"
+
+      type field = Field0.t
     end)
 
     let create =
@@ -842,7 +835,7 @@ struct
   end
 
   module R1CS_constraint_system : sig
-    type t
+    type t = Field0.t Backend_types.R1CS_constraint_system.t
 
     val typ : t Ctypes.typ
 
@@ -875,8 +868,10 @@ struct
 
     val digest : t -> Md5.t
   end = struct
-    include Make_foreign (struct
+    include R1CS_constraint_system.Make (struct
       let prefix = with_prefix M.prefix "r1cs_constraint_system"
+
+      type field = Field0.t
     end)
 
     let report_statistics =
@@ -1135,6 +1130,8 @@ module Make_proof_system (M : sig
   end
 
   module Field : sig
+    type t
+
     module Vector : sig
       type t
 
@@ -1144,7 +1141,7 @@ module Make_proof_system (M : sig
 end) =
 struct
   module Proving_key : sig
-    type t [@@deriving bin_io]
+    type t = M.Field.t Backend_types.Proving_key.t [@@deriving bin_io]
 
     val typ : t Ctypes.typ
 
@@ -1158,8 +1155,10 @@ struct
 
     val of_bigstring : Bigstring.t -> t
   end = struct
-    include Make_foreign (struct
+    include Proving_key.Make (struct
       let prefix = with_prefix M.prefix "proving_key"
+
+      type field = M.Field.t
     end)
 
     let to_cpp_string_stub : t -> Cpp_string.t =
@@ -1254,7 +1253,7 @@ struct
   end
 
   module Verification_key : sig
-    type t
+    type t = M.Field.t Backend_types.Verification_key.t
 
     val typ : t Ctypes.typ
 
@@ -1270,8 +1269,10 @@ struct
 
     val size_in_bits : t -> int
   end = struct
-    include Make_foreign (struct
+    include Verification_key.Make (struct
       let prefix = with_prefix M.prefix "verification_key"
+
+      type field = M.Field.t
     end)
 
     let size_in_bits =
@@ -1325,7 +1326,7 @@ struct
   end
 
   module Keypair : sig
-    type t
+    type t = M.Field.t Backend_types.Keypair.t
 
     val typ : t Ctypes.typ
 
@@ -1337,8 +1338,10 @@ struct
 
     val create : M.R1CS_constraint_system.t -> t
   end = struct
-    include Make_foreign (struct
+    include Keypair.Make (struct
       let prefix = with_prefix M.prefix "keypair"
+
+      type field = M.Field.t
     end)
 
     let pk =
@@ -1370,7 +1373,7 @@ struct
   end
 
   module Proof : sig
-    type t
+    type t = M.Field.t Backend_types.Proof.t
 
     val typ : t Ctypes.typ
 
@@ -1386,8 +1389,10 @@ struct
 
     val of_string : string -> t
   end = struct
-    include Make_foreign (struct
+    include Proof.Make (struct
       let prefix = with_prefix M.prefix "proof"
+
+      type field = M.Field.t
     end)
 
     let to_string : t -> string =

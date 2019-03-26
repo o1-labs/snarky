@@ -2,10 +2,12 @@ open Ctypes
 open Foreign
 open Core
 
+type 'a t = unit ptr
+
 module type S = sig
   type elt
 
-  type t
+  type nonrec t = elt t
 
   val typ : t Ctypes.typ
 
@@ -39,7 +41,7 @@ module Make (Elt : sig
 end) : S with type elt = Elt.t = struct
   type elt = Elt.t
 
-  type t = unit ptr
+  type nonrec t = elt t
 
   let typ = ptr void
 
