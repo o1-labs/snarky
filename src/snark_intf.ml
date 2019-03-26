@@ -82,8 +82,8 @@ module type Basic = sig
         For example, a constraint could be [(w + 2*x) * (y + z) = a + b], where
         [w], [x], [y], [z], [a], and [b] are field variables.
         Note that a linear combination is the result of adding together some of
-        these variables, each multiplied by a field constant ({!type:Field.t}); 
-        any time we want to multiply our *variables*, we need to add a new 
+        these variables, each multiplied by a field constant ({!type:Field.t});
+        any time we want to multiply our *variables*, we need to add a new
         rank-1 constraint.
     *)
     type t = Field.Var.t Constraint0.t
@@ -140,6 +140,19 @@ module type Basic = sig
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
+
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
+                                                                 ( 'r_var
+                                                                 , 'r_value
+                                                                 , 'k_var
+                                                                 , 'k_value
+                                                                 , 'field )
+                                                                 Typ0.Data_spec
+                                                                 .t =
+      | ( :: ) :
+          ('var, 'value, 'f) typ * ('r_var, 'r_value, 'k_var, 'k_value, 'f) t
+          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'f) t
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) t
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -575,7 +588,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       (** Convert a list of bits into a field element.
 
           [pack [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
-      
+
           This will raise an assertion error if the length of the list is not
           strictly less than number of bits in {!val:Field.size}.
 
@@ -1328,6 +1341,19 @@ module type Run = sig
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
+
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
+                                                                 ( 'r_var
+                                                                 , 'r_value
+                                                                 , 'k_var
+                                                                 , 'k_value
+                                                                 , 'field )
+                                                                 Typ0.Data_spec
+                                                                 .t =
+      | ( :: ) :
+          ('var, 'value, 'f) typ * ('r_var, 'r_value, 'k_var, 'k_value, 'f) t
+          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'f) t
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) t
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)

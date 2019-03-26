@@ -298,6 +298,24 @@ module Make_basic (Backend : Backend_intf.S) = struct
     type ('var, 'value) typ = ('var, 'value) t
 
     module Data_spec = struct
+      (** TODO: This exists only to bring the constructors into scope in this
+                module. Upstream a patch to permit different arities in types
+                with a different arity type manifest.
+      *)
+      type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
+                                                                   ( 'r_var
+                                                                   , 'r_value
+                                                                   , 'k_var
+                                                                   , 'k_value
+                                                                   , 'field )
+                                                                   Typ
+                                                                   .Data_spec
+                                                                   .t =
+        | ( :: ) :
+            ('var, 'value, 'f) typ * ('r_var, 'r_value, 'k_var, 'k_value, 'f) t
+            -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'f) t
+        | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) t
+
       type ('r_var, 'r_value, 'k_var, 'k_value) t =
         ('r_var, 'r_value, 'k_var, 'k_value, field) Typ.Data_spec.t
 
