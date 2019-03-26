@@ -1,15 +1,15 @@
 open Core_kernel
 open Types.Checked
 
-type ('a, 's, 'field, 'r) t = ('a, 's, 'field, 'r) Types.Checked.t
+type ('a, 's, 'field) t = ('a, 's, 'field) Types.Checked.t
 
 module T0 = struct
   let return x = Pure x
 
   let as_prover x = As_prover (x, return ())
 
-  let rec map : type s a b field r.
-      (a, s, field, r) t -> f:(a -> b) -> (b, s, field, r) t =
+  let rec map : type s a b field.
+      (a, s, field) t -> f:(a -> b) -> (b, s, field) t =
    fun t ~f ->
     match t with
     | Pure x -> Pure (f x)
@@ -26,8 +26,8 @@ module T0 = struct
 
   let map = `Custom map
 
-  let rec bind : type s a b field r.
-      (a, s, field, r) t -> f:(a -> (b, s, field, r) t) -> (b, s, field, r) t =
+  let rec bind : type s a b field.
+      (a, s, field) t -> f:(a -> (b, s, field) t) -> (b, s, field) t =
    fun t ~f ->
     match t with
     | Pure x -> f x
@@ -80,7 +80,7 @@ end
 module T = struct
   include T0
 
-  let request_witness (typ : ('var, 'value, 'field, 'r) Types.Typ.t)
+  let request_witness (typ : ('var, 'value, 'field) Types.Typ.t)
       (r : ('value Request.t, 'field, 's) As_prover0.t) =
     Exists (typ, Request r, fun h -> return (Handle.var h))
 
