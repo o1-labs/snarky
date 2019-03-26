@@ -10,7 +10,7 @@ module type S = sig
   val field_size : Bigint.R.t
 
   module Var : sig
-    type t
+    type t = Field.t Backend_types.Var.t
 
     val index : t -> int
 
@@ -18,7 +18,7 @@ module type S = sig
   end
 
   module Linear_combination : sig
-    type t
+    type t = Field.t Backend_types.Linear_combination.t
 
     val create : unit -> t
 
@@ -30,7 +30,7 @@ module type S = sig
   end
 
   module R1CS_constraint : sig
-    type t
+    type t = Field.t Backend_types.R1CS_constraint.t
 
     val create :
       Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
@@ -39,7 +39,7 @@ module type S = sig
   end
 
   module Proving_key : sig
-    type t [@@deriving bin_io]
+    type t = Field.t Backend_types.Proving_key.t [@@deriving bin_io]
 
     val to_string : t -> string
 
@@ -51,7 +51,7 @@ module type S = sig
   end
 
   module Verification_key : sig
-    type t
+    type t = Field.t Backend_types.Verification_key.t
 
     include Stringable.S with type t := t
 
@@ -61,7 +61,7 @@ module type S = sig
   end
 
   module Proof : sig
-    type t
+    type t = Field.t Backend_types.Proof.t
 
     include Stringable.S with type t := t
 
@@ -72,7 +72,7 @@ module type S = sig
   end
 
   module R1CS_constraint_system : sig
-    type t
+    type t = Field.t Backend_types.R1CS_constraint_system.t
 
     val create : unit -> t
 
@@ -103,7 +103,7 @@ module type S = sig
   end
 
   module Keypair : sig
-    type t
+    type t = Field.t Backend_types.Keypair.t
 
     val pk : t -> Proving_key.t
 

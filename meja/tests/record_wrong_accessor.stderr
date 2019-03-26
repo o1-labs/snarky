@@ -1,0 +1,4 @@
+File "tests/record_wrong_accessor.meja", line 3, characters 8-29:
+Error: Incompatable types '_ X.t' and '(int, int, int) t':
+Cannot unify ''a X.t' and '(int, int, int) t'.
+

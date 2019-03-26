@@ -1,0 +1,9 @@
+type t('a, 'b, 'c) = {a : 'a, b : 'b, c : 'c};
+
+let x = {a: 15, b: 20, c: 25};
+
+module X = {
+  type t('a) = {a : 'a, b : 'a, c : 'a};
+};
+
+let y = x.X.a;

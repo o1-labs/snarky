@@ -1,27 +1,29 @@
 open Core_kernel
 
-type ('f, 'v) t =
+type 'f t =
   | Constant of 'f
-  | Var of 'v
-  | Add of ('f, 'v) t * ('f, 'v) t
-  | Scale of 'f * ('f, 'v) t
+  | Var of int
+  | Add of 'f t * 'f t
+  | Scale of 'f * 'f t
 [@@deriving sexp]
 
-type ('f, 'v) cvar = ('f, 'v) t [@@deriving sexp]
+type 'f cvar = 'f t [@@deriving sexp]
 
 module Make
     (Field : Field_intf.Extended) (Var : sig
         include Comparable.S
 
         include Sexpable.S with type t := t
+
+        val create : int -> t
     end) =
 struct
-  type t = (Field.t, Var.t) cvar [@@deriving sexp]
+  type t = Field.t cvar [@@deriving sexp]
 
   let length _ = failwith "TODO"
 
   module Unsafe = struct
-    let of_var v = Var v
+    let of_index v = Var v
   end
 
   let eval context t0 =
@@ -39,7 +41,7 @@ struct
   let to_constant_and_terms =
     let rec go scale constant terms = function
       | Constant c -> (Field.add constant (Field.mul scale c), terms)
-      | Var v -> (constant, (scale, v) :: terms)
+      | Var v -> (constant, (scale, Var.create v) :: terms)
       | Scale (s, t) -> go (Field.mul s scale) constant terms t
       | Add (x1, x2) ->
           let c1, terms1 = go scale constant terms x1 in

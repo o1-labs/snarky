@@ -36,11 +36,19 @@ module Longident = struct
     | Lident name -> pp_print_string ppf name
     | Ldot (lid, name) -> fprintf ppf "%a.%s" pp lid name
     | Lapply (lid1, lid2) -> fprintf ppf "%a(%a)" pp lid1 pp lid2
+
+  let rec add_outer_module name lid =
+    match lid with
+    | Lident name2 -> Ldot (Lident name, name2)
+    | Ldot (lid, name2) -> Ldot (add_outer_module name lid, name2)
+    | Lapply _ -> failwith "Unhandled Lapply in add_outer_module"
 end
 
 type str = string Location.loc
 
 type lid = Longident.t Location.loc
+
+type explicitness = Implicit | Explicit
 
 let mk_lid (str : str) = Location.mkloc (Longident.Lident str.txt) str.loc
 
@@ -48,14 +56,18 @@ type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of str option * (* depth *) int
+  | Tvar of str option * (* depth *) int * explicitness
   | Ttuple of type_expr list
-  | Tarrow of type_expr * type_expr
+  | Tarrow of type_expr * type_expr * explicitness
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
 
-and variant = {var_ident: lid; var_params: type_expr list; var_decl_id: int}
+and variant =
+  { var_ident: lid
+  ; var_params: type_expr list
+  ; var_implicit_params: type_expr list
+  ; var_decl_id: int }
 
 type field_decl =
   {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}
@@ -73,6 +85,7 @@ type ctor_decl =
 type type_decl =
   { tdec_ident: str
   ; tdec_params: type_expr list
+  ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
   ; tdec_id: int
   ; tdec_loc: Location.t }
@@ -80,10 +93,15 @@ type type_decl =
 and type_decl_desc =
   | TAbstract
   | TAlias of type_expr
+  | TUnfold of type_expr
   | TRecord of field_decl list
   | TVariant of ctor_decl list
+  | TOpen
+  | TExtend of lid * type_decl * ctor_decl list
+      (** Internal; this should never be present in the AST. *)
 
-type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
+type pattern =
+  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: type_expr}
 
 and pattern_desc =
   | PAny
@@ -102,22 +120,65 @@ and expression_desc =
   | Apply of expression * expression list
   | Variable of lid
   | Int of int
-  | Fun of pattern * expression
+  | Fun of pattern * expression * explicitness
   | Seq of expression * expression
   | Let of pattern * expression * expression
   | Constraint of expression * type_expr
   | Tuple of expression list
   | Match of expression * (pattern * expression) list
+  | Field of expression * lid
   | Record of (lid * expression) list * expression option
   | Ctor of lid * expression option
+  | Unifiable of {mutable expression: expression option; name: str; id: int}
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
 and statement_desc =
   | Value of pattern * expression
+  | Instance of str * expression
   | TypeDecl of type_decl
   | Module of str * module_expr
+  | Open of lid
+  | TypeExtension of variant * ctor_decl list
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc = Structure of statement list | ModName of lid
+
+type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
+
+and signature_desc =
+  | SValue of str * type_expr
+  | SInstance of str * type_expr
+  | STypeDecl of type_decl
+  | SModule of str * module_sig
+  | SModType of str * module_sig
+
+and module_sig =
+  | Signature of signature_item list
+  | SigName of lid
+  | SigAbstract
+
+let rec typ_debug_print fmt typ =
+  let open Format in
+  let print i = fprintf fmt i in
+  let print_comma fmt () = pp_print_char fmt ',' in
+  let print_list pp = pp_print_list ~pp_sep:print_comma pp in
+  print "(%i:" typ.type_id ;
+  ( match typ.type_desc with
+  | Tvar (None, i, Explicit) -> print "var _@%i" i
+  | Tvar (Some name, i, Explicit) -> print "var %s@%i" name.txt i
+  | Tvar (None, i, Implicit) -> print "implicit_var _@%i" i
+  | Tvar (Some name, i, Implicit) -> print "implicit_var %s@%i" name.txt i
+  | Tpoly (typs, typ) ->
+      print "poly [%a] %a"
+        (print_list typ_debug_print)
+        typs typ_debug_print typ
+  | Tarrow (typ1, typ2, Explicit) ->
+      print "%a -> %a" typ_debug_print typ1 typ_debug_print typ2
+  | Tarrow (typ1, typ2, Implicit) ->
+      print "{%a} -> %a" typ_debug_print typ1 typ_debug_print typ2
+  | Tctor {var_ident= name; var_params= params; _} ->
+      print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
+  | Ttuple typs -> print "(%a)" (print_list typ_debug_print) typs ) ;
+  print ")"

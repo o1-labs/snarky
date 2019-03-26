@@ -281,7 +281,6 @@ module Edwards = struct
     (* TODO: Assert quadratic non-residuosity of Params.d *)
 
     let assert_on_curve (x, y) =
-      let open Let_syntax in
       let%bind x2 = Field.Checked.mul x x and y2 = Field.Checked.mul y y in
       let open Field.Checked.Infix in
       assert_r1cs (Params.d * x2) y2 (x2 + y2 - Field.Var.constant Field.one)
@@ -420,7 +419,6 @@ module Edwards = struct
           ~if_:(b : Boolean.var) : (var, _) Checked.t =
         let one = Field.Var.constant Field.one in
         let b = (b :> Field.Var.t) in
-        let open Let_syntax in
         let open Field.Checked.Infix in
         let res a1 a3 =
           let%bind a =
@@ -581,7 +579,6 @@ module Make_weierstrass_checked
   type t = Curve.t
 
   let assert_on_curve (x, y) =
-    let open Let_syntax in
     let%bind x2 = Field.Checked.square x in
     let%bind x3 = Field.Checked.mul x2 x in
     assert_square y
@@ -611,7 +608,6 @@ module Make_weierstrass_checked
   end
 
   let%snarkydef_ add' ~div (ax, ay) (bx, by) =
-    let open Let_syntax in
     let%bind lambda = div (Field.Var.sub by ay) (Field.Var.sub bx ax) in
     let%bind cx =
       exists Typ.field
@@ -651,7 +647,6 @@ module Make_weierstrass_checked
    on which it is called are not equal. If it is called on equal points,
    the prover can return almost any curve point they want to from this function. *)
   let add_unsafe =
-    let open Let_syntax in
     let div_unsafe x y =
       let%bind z =
         exists Field.typ
@@ -691,7 +686,6 @@ module Make_weierstrass_checked
       go 0 [] xs ys zs
     in
     fun b ~then_ ~else_ ->
-      let open Let_syntax in
       let%bind r =
         exists typ
           ~compute:
@@ -742,7 +736,6 @@ module Make_weierstrass_checked
     end
 
     let create (type shifted) () : ((module S), _) Checked.t =
-      let open Let_syntax in
       let%map shift =
         exists typ ~compute:As_prover.(map (return ()) ~f:Curve.random)
       in
@@ -753,7 +746,6 @@ module Make_weierstrass_checked
   end
 
   let%snarkydef_ double (ax, ay) =
-    let open Let_syntax in
     let%bind x_squared = Field.Checked.square ax in
     let%bind lambda =
       exists Typ.field
@@ -827,7 +819,6 @@ module Make_weierstrass_checked
    a discussion of this trick.
 *)
   let lookup_point (b0, b1) (t1, t2, t3, t4) =
-    let open Let_syntax in
     let%map b0_and_b1 = Boolean.( && ) b0 b1 in
     let lookup_one (a1, a2, a3, a4) =
       let open Field.Infix in

@@ -1,0 +1,28 @@
+let (+) = 15;
+
+let (-) = 20;
+
+let (!) = fun (_) => {30;};
+
+let (||) = fun (x, y) => {
+  switch (x) {
+    | true => x
+    | false => y
+  };
+};
+
+let a = (||) (true, false);
+
+let b = true || false;
+
+let c = !a;
+
+let f : (int -> int -> int) -> int = fun (check : 'a -> 'a -> 'a) => {
+  let (+) = fun (l, _) => {l;};
+  let (-) = fun (_, r) => {r;};
+  let (*) = fun (_, r) => {r;};
+  let (/) = fun (l, _) => {l;};
+  let x = () * true - 1 / ((), ()) + (1, 1);
+  let y = (() * true) - (1 / ((), ())) + (1, 1);
+  check (x, y);
+};

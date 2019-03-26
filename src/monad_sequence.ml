@@ -45,7 +45,7 @@ module type S = sig
 end
 
 module List
-    (M : Monad.S2) (Bool : sig
+    (M : Monad_let.S2) (Bool : sig
         type t
 
         val any : t list -> (t, _) M.t
