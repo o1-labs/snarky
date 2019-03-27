@@ -2,6 +2,7 @@ module Bignum_bigint = Bigint
 open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
+module Typ0 = Typ
 
 (** The base interface to Snarky. *)
 module type Basic = sig
@@ -81,8 +82,8 @@ module type Basic = sig
         For example, a constraint could be [(w + 2*x) * (y + z) = a + b], where
         [w], [x], [y], [z], [a], and [b] are field variables.
         Note that a linear combination is the result of adding together some of
-        these variables, each multiplied by a field constant ({!type:Field.t}); 
-        any time we want to multiply our *variables*, we need to add a new 
+        these variables, each multiplied by a field constant ({!type:Field.t});
+        any time we want to multiply our *variables*, we need to add a new
         rank-1 constraint.
     *)
     type t = Field.Var.t Constraint0.t
@@ -116,16 +117,48 @@ module type Basic = sig
         - ['k_value] is the OCaml type of the computation
         - ['r_value] is the OCaml type of the result
         - ['k_var] is the type of the computation within the R1CS
-        - ['k_value] is the type of the result within the R1CS. *)
+        - ['k_value] is the type of the result within the R1CS.
+
+        This functions the same as OCaml's default list type:
+{[
+  Data_spec.[typ1; typ2; typ3]
+
+  Data_spec.(typ1 :: typs)
+
+  let open Data_spec in
+  [typ1; typ2; typ3; typ4; typ5]
+
+  let open Data_spec in
+  typ1 :: typ2 :: typs
+
+]}
+        all function as you would expect.
+    *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | ( :: ) :
-          ('var, 'value) Typ.t * ('r_var, 'r_value, 'k_var, 'k_value) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
 
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
+
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
+                                                                 ( 'r_var
+                                                                 , 'r_value
+                                                                 , 'k_var
+                                                                 , 'k_value
+                                                                 , 'field )
+                                                                 Typ0.Data_spec
+                                                                 .t =
+      | ( :: ) :
+          ('var, 'value, 'f) Typ0.t
+          * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
+          -> ( 'r_var
+             , 'r_value
+             , 'var -> 'k_var
+             , 'value -> 'k_value
+             , 'f )
+             data_spec
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -561,7 +594,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       (** Convert a list of bits into a field element.
 
           [pack [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
-      
+
           This will raise an assertion error if the length of the list is not
           strictly less than number of bits in {!val:Field.size}.
 
@@ -1302,19 +1335,54 @@ module type Run = sig
   
   (** The data specification for checked computations. *)
   and Data_spec : sig
-    (** A list of {!type:Typ.t} values, describing the inputs to a checked computation.
-        The type [('r_var, 'r_value, 'k_var, 'k_value) t] represents
+    (** A list of {!type:Typ.t} values, describing the inputs to a checked
+        computation. The type [('r_var, 'r_value, 'k_var, 'k_value) t]
+        represents
         - ['k_value] is the OCaml type of the computation
         - ['r_value] is the OCaml type of the result
         - ['k_var] is the type of the computation within the R1CS
-        - ['k_value] is the type of the result within the R1CS. *)
+        - ['k_value] is the type of the result within the R1CS.
+
+        This functions the same as OCaml's default list type:
+{[
+  Data_spec.[typ1; typ2; typ3]
+
+  Data_spec.(typ1 :: typs)
+
+  let open Data_spec in
+  [typ1; typ2; typ3; typ4; typ5]
+
+  let open Data_spec in
+  typ1 :: typ2 :: typs
+
+]}
+        all function as you would expect.
+    *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | ( :: ) :
-          ('var, 'value) Typ.t * ('r_var, 'r_value, 'k_var, 'k_value) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
 
     val size : (_, _, _, _) t -> int
+    (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
+        allocated by allocating [typ1], followed by [typ2], etc. *)
+
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
+                                                                 ( 'r_var
+                                                                 , 'r_value
+                                                                 , 'k_var
+                                                                 , 'k_value
+                                                                 , 'field )
+                                                                 Typ0.Data_spec
+                                                                 .t =
+      | ( :: ) :
+          ('var, 'value, 'f) Types.Typ.t
+          * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
+          -> ( 'r_var
+             , 'r_value
+             , 'var -> 'k_var
+             , 'value -> 'k_value
+             , 'f )
+             data_spec
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
