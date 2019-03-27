@@ -945,9 +945,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?handlers:Handler.t list
       -> ('a, 's, 'public_input) t
       -> 's
-      -> bool
-    (** Run the checked computation as the prover, returning [true] if all of
-        the constraints are correct, or [false] otherwise.
+      -> unit Or_error.t
+    (** Run the checked computation as the prover, returning [Ok ()] if all of
+        the constraints are correct, or an error describing which constraint
+        was not satisfied.
     *)
 
     val prove :
@@ -1014,7 +1015,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val run_and_check :
       run:(('a, unit) As_prover.t, 't) t -> 't -> 'a Or_error.t
 
-    val check : run:('a, 't) t -> 't -> bool
+    val check : run:('a, 't) t -> 't -> unit Or_error.t
   end
 
   val assert_ : ?label:string -> Constraint.t -> (unit, 's) Checked.t
@@ -1165,7 +1166,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (('a, 's) As_prover.t, 's) Checked.t -> 's -> ('s * 'a) Or_error.t
   (** Run a checked computation as the prover, checking the constraints. *)
 
-  val check : ('a, 's) Checked.t -> 's -> bool
+  val check : ('a, 's) Checked.t -> 's -> unit Or_error.t
   (** Run a checked computation as the prover, returning [true] if the
       constraints are all satisfied, or [false] otherwise. *)
 
@@ -1787,7 +1788,7 @@ module type Run = sig
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
-      -> bool
+      -> unit Or_error.t
 
     val prove :
          public_input:(unit, 'public_input) H_list.t

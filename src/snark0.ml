@@ -774,7 +774,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           let s', x = As_prover.run x get_value s in
           (s', x) )
 
-    let check ~run t s = Or_error.is_ok (run_and_check' ~run t s)
+    let check ~run t s = run_and_check' ~run t s |> Result.map ~f:(Fn.const ())
 
     let equal (x : Cvar.t) (y : Cvar.t) : (Cvar.t Boolean.t, _) t =
       let open Let_syntax in
@@ -1330,7 +1330,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             (s', x) )
 
       let check ~run ~public_input ?handlers proof_system s =
-        Or_error.is_ok
+        Or_error.map ~f:(Fn.const ())
           (run_checked' ~run ~public_input ?handlers proof_system s)
 
       let read_proving_key proof_system =
@@ -2284,7 +2284,7 @@ module Run = struct
              ()) ~f:(fun (s, x, state) -> x )
 
       let check ~public_input ?handlers (proof_system : _ t) =
-        Or_error.is_ok
+        Or_error.map ~f:(Fn.const ())
           (run_checked' ~run:as_stateful ~public_input ?handlers proof_system
              ())
 
@@ -2388,7 +2388,7 @@ module Run = struct
       !state.as_prover := true ;
       res
 
-    let check x = Perform.check ~run:as_stateful x
+    let check x = Perform.check ~run:as_stateful x |> Result.is_ok
 
     let constraint_count ?(log = fun ?start _ _ -> ()) x =
       let count = ref 0 in
