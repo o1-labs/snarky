@@ -817,7 +817,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       prover) together.
   *)
   module Handle : sig
-    type ('var, 'value) t = {var: 'var; value: 'value option}
+    type ('var, 'value) t
 
     val value : (_, 'value) t -> ('value, _) As_prover.t
     (** Get the value of a handle as the prover. *)
@@ -1178,6 +1178,23 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       generate a proof.
 
       Returns [unit]; this is for testing only.
+  *)
+
+  val reduce_to_prover :
+    (('a, 's) Checked.t, _, 'checked, _) Data_spec.t -> 'checked -> 'checked
+  (** Reduce a checked computation to be run as the prover.
+
+      This precomputes all parts of a {!type:Checked.t} except
+      {!module:As_prover} blocks, and creates a new checked computation that
+      uses this precomputed information to evaluate only the
+      {!module:As_prover} blocks.
+
+      **WARNING**: Any code inside a [Checked.t] that isn't inside an
+      [As_prover] block will only be run once. DO NOT USE if you use mutation
+      inside [Checked.t].
+
+      The resulting checked computation will generate 0 constraints; use the
+      original checked computation if you need to generate a keypair.
   *)
 
   val constraint_count :
@@ -1712,7 +1729,7 @@ module type Run = sig
   end
 
   module Handle : sig
-    type ('var, 'value) t = {var: 'var; value: 'value option}
+    type ('var, 'value) t
 
     val value : (_, 'value) t -> (unit -> 'value) As_prover.t
 
