@@ -9,7 +9,7 @@ module type Basic = sig
 
   type 'f field
 
-  module Checked : Checked_intf.S
+  type ('a, 's, 'f) checked
 
   include Monad_let.S3 with type ('a, 'f, 's) t := ('a, 'f field, 's) t
 
@@ -33,7 +33,7 @@ module type Basic = sig
   val read_var : 'f field Cvar.t -> ('f field, 'f field, 's) t
 
   val read :
-       ('var, 'value, 'f field, (unit, unit, 'f field) Checked.t) Types.Typ.t
+       ('var, 'value, 'f field, (unit, unit, 'f field) checked) Types.Typ.t
     -> 'var
     -> ('value, 'f field, 'prover_state) t
 
@@ -42,7 +42,7 @@ module type Basic = sig
 
     val create :
          ('a, 'f field, 'prover_state) as_prover
-      -> ('a t, 'prover_state, 'f field) Checked.t
+      -> ('a t, 'prover_state, 'f field) checked
 
     val get : 'a t -> ('a, 'f field, _) as_prover
 
@@ -67,7 +67,7 @@ module Make_basic (Checked : Checked_intf.S) = struct
 
   type ('a, 'f, 's) as_prover = ('a, 'f, 's) t
 
-  type 'f field = 'f
+  type 'f field = 'f Checked.field
 
   include As_prover0.T
 
@@ -100,7 +100,7 @@ module T :
   with type 'f field := 'f
    and type ('a, 'f, 's) t := ('a, 'f, 's) As_prover0.t
    and type ('a, 'f, 's) as_prover := ('a, 'f, 's) as_prover
-  with module Checked := Checked =
+   and type ('a, 's, 'f) checked := ('a, 's, 'f) Checked.t =
   Make_basic (Checked)
 
 include T
@@ -108,14 +108,14 @@ include T
 module Make (Env : sig
   type field
 end)
-(Checked : Checked_intf.S)
-(Basic : Basic with type 'f field := Env.field with module Checked := Checked) =
+(Checked : Checked_intf.S with type 'f field := Env.field)
+(Basic : Basic
+         with type 'f field := Env.field
+          and type ('a, 's, 'f) checked := ('a, 's, 'f) Checked.t) =
 struct
   type ('a, 's) t = ('a, Env.field, 's) Basic.t
 
   include Env
-
-  module Checked = Checked
 
   include (
     Basic :
@@ -123,5 +123,5 @@ struct
       with type 'f field := field
        and type ('a, 'f, 's) t := ('a, 's) t
        and type ('a, 'f, 's) as_prover := ('a, 's) t
-      with module Checked := Checked )
+       and type ('a, 's, 'f) checked := ('a, 's, 'f) Checked.t )
 end
