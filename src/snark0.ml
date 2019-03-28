@@ -280,8 +280,7 @@ module Runner = struct
   end
 end
 
-module Make_basic (Backend : Backend_intf.S) = struct
-  module Backend = Backend_extended.Make (Backend)
+module Make_basic (Backend : Backend_extended.S) = struct
   open Backend
 
   type field = Field.t
@@ -1629,7 +1628,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
 end
 
 module Make (Backend : Backend_intf.S) = struct
-  module Basic = Make_basic (Backend)
+  module Backend_extended = Backend_extended.Make (Backend)
+  module Basic = Make_basic (Backend_extended)
   include Basic
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
