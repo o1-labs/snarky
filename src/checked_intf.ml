@@ -92,3 +92,14 @@ module type S = sig
   val assert_equal :
     ?label:Base.string -> 'f Cvar.t -> 'f Cvar.t -> (unit, 's, 'f) t
 end
+
+module type Extended = sig
+  include S
+
+  type field
+
+  val run :
+       ('a, 's, field) t
+    -> ('s, field) Types.Run_state.t
+    -> ('s, field) Types.Run_state.t * 'a
+end

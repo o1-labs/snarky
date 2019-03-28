@@ -3,6 +3,8 @@ module type Basic = sig
 
   type 'f field
 
+  module Checked : Checked_intf.S
+
   include Monad_let.S3 with type ('a, 'f, 's) t := ('a, 'f field, 's) t
 
   type ('a, 'f, 's) as_prover = ('a, 'f, 's) t
@@ -25,7 +27,7 @@ module type Basic = sig
   val read_var : 'f field Cvar.t -> ('f field, 'f field, 's) t
 
   val read :
-       ('var, 'value, 'f field) Typ.t
+       ('var, 'value, 'f field, (unit, unit, 'f field) Checked.t) Types.Typ.t
     -> 'var
     -> ('value, 'f field, 'prover_state) t
 
@@ -54,15 +56,24 @@ module type S = sig
      and type ('a, 'f, 's) as_prover := ('a, 's) t
 end
 
+module Make_basic (Checked : Checked_intf.S) :
+  Basic
+  with type 'f field = 'f
+   and type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  with module Checked := Checked
+
 include
   Basic
   with type 'f field := 'f
    and type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  with module Checked := Checked
 
 module Make (Env : sig
   type field
 end)
-(Basic : Basic with type 'f field := Env.field) :
+(Checked : Checked_intf.S)
+(Basic : Basic with type 'f field := Env.field with module Checked := Checked) :
   S
   with type field := Env.field
    and type ('a, 's) t = ('a, Env.field, 's) Basic.t
+  with module Checked := Checked

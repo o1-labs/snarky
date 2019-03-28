@@ -9,6 +9,8 @@ module type Basic = sig
 
   type 'f field
 
+  module Checked : Checked_intf.S
+
   include Monad_let.S3 with type ('a, 'f, 's) t := ('a, 'f field, 's) t
 
   type ('a, 'f, 's) as_prover = ('a, 'f, 's) t
@@ -31,7 +33,7 @@ module type Basic = sig
   val read_var : 'f field Cvar.t -> ('f field, 'f field, 's) t
 
   val read :
-       ('var, 'value, 'f field) Typ.t
+       ('var, 'value, 'f field, (unit, unit, 'f field) Checked.t) Types.Typ.t
     -> 'var
     -> ('value, 'f field, 'prover_state) t
 
@@ -60,11 +62,19 @@ module type S = sig
      and type ('a, 'f, 's) as_prover := ('a, 's) t
 end
 
-module T = struct
+module Make_basic (Checked : Checked_intf.S) = struct
+  type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+
+  type ('a, 'f, 's) as_prover = ('a, 'f, 's) t
+
+  type 'f field = 'f
+
   include As_prover0.T
 
-  let read ({read; _} : ('var, 'value, 'field) Typ.t) (var : 'var) :
-      ('value, 'field, 'prover_state) t =
+  let read
+      ({read; _} :
+        ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t)
+      (var : 'var) : ('value, 'field, 'prover_state) t =
    fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
 
   module Ref = struct
@@ -85,21 +95,33 @@ module T = struct
   end
 end
 
+module T :
+  Basic
+  with type 'f field := 'f
+   and type ('a, 'f, 's) t := ('a, 'f, 's) As_prover0.t
+   and type ('a, 'f, 's) as_prover := ('a, 'f, 's) as_prover
+  with module Checked := Checked =
+  Make_basic (Checked)
+
 include T
 
 module Make (Env : sig
   type field
 end)
-(Basic : Basic with type 'f field := Env.field) =
+(Checked : Checked_intf.S)
+(Basic : Basic with type 'f field := Env.field with module Checked := Checked) =
 struct
   type ('a, 's) t = ('a, Env.field, 's) Basic.t
 
   include Env
+
+  module Checked = Checked
 
   include (
     Basic :
       Basic
       with type 'f field := field
        and type ('a, 'f, 's) t := ('a, 's) t
-       and type ('a, 'f, 's) as_prover := ('a, 's) t )
+       and type ('a, 'f, 's) as_prover := ('a, 's) t
+      with module Checked := Checked )
 end
