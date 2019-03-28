@@ -81,6 +81,69 @@ module Runner = struct
           ({state with prover_state= Some s'}, Some y)
       | _, _ -> (state, None)
 
+    let as_prover x s =
+      let s', (_ : unit option) = run_as_prover (Some x) s in
+      (s', ())
+
+    let with_label lab t s =
+      let {stack; _} = s in
+      let s', y = t {s with stack= lab :: stack} in
+      ({s' with stack}, y)
+
+    let add_constraint c s =
+      if !(s.as_prover) then
+        failwith "Cannot add a constraint as the prover: the verifier's constraint system will not match.";
+      if s.eval_constraints && not (Constraint.eval c (get_value s)) then
+        failwithf "Constraint unsatisfied:\n%s\n%s\n"
+          (Constraint.annotation c)
+          (Constraint.stack_to_string s.stack)
+          () ;
+      Option.iter s.system ~f:(fun system ->
+          Constraint.add ~stack:s.stack c system ) ;
+      (s, ())
+
+    let with_state p and_then t_sub s =
+      let s, s_sub = run_as_prover (Some p) s in
+      let s_sub, y = t_sub (set_prover_state s_sub s) in
+      let s, (_ : unit option) =
+        run_as_prover (Option.map ~f:and_then s_sub.prover_state) s
+      in
+      (s, y)
+
+    let with_handler h t s =
+      let {handler; _} = s in
+      let s', y = t {s with handler= Request.Handler.push handler h} in
+      ({s' with handler}, y)
+
+    let clear_handler t s =
+      let {handler; _} = s in
+      let s', y = t {s with handler= Request.Handler.fail} in
+      ({s' with handler}, y)
+
+    let exists ~run {Types.Typ.store; alloc; check; _} p s =
+      if !(s.as_prover) then
+        failwith "Cannot create a variable as the prover: the verifier's constraint system will not match.";
+    match s.prover_state with
+    | Some ps ->
+        let old = !(s.as_prover) in
+        s.as_prover := true ;
+        let ps, value =
+          Provider.run p s.stack (get_value s) ps s.handler
+        in
+        s.as_prover := old ;
+        let var = Typ_monads.Store.run (store value) (store_field_elt s) in
+        (* TODO: Push a label onto the stack here *)
+        let s, () = run (check var) (set_prover_state (Some ()) s) in
+        (set_prover_state (Some ps) s, {Handle.var; value= Some value})
+    | None ->
+        let var = Typ_monads.Alloc.run alloc (alloc_var s) in
+        (* TODO: Push a label onto the stack here *)
+        let s, () = run (check var) (set_prover_state None s) in
+        (set_prover_state None s, {Handle.var; value= None})
+
+    let next_auxiliary s =
+      (s, !(s.next_auxiliary))
+
     (* INVARIANT: run _ s = (s', _) gives
          (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
     let rec run : type a s. (a, s, Field.t) t -> s run_state -> s run_state * a
@@ -88,12 +151,8 @@ module Runner = struct
      fun t s ->
       match t with
       | As_prover (x, k) ->
-          let s', (_ : unit option) = run_as_prover (Some x) s in
-          run k s'
-      | _ when !(s.as_prover) ->
-          failwith
-            "Can't run checked code as the prover: the verifier's constraint \
-             system will not match."
+          let s, () = as_prover x s in
+          run k s
       | Pure x -> (s, x)
       | Direct (d, k) ->
           let s, y = d s in
@@ -106,54 +165,26 @@ module Runner = struct
           in
           run (k y) s
       | With_label (lab, t, k) ->
-          let {stack; _} = s in
-          let s', y = run t {s with stack= lab :: stack} in
-          run (k y) {s' with stack}
+          let s, y = with_label lab (run t) s in
+          run (k y) s
       | Add_constraint (c, t) ->
-          if s.eval_constraints && not (Constraint.eval c (get_value s)) then
-            failwithf "Constraint unsatisfied:\n%s\n%s\n"
-              (Constraint.annotation c)
-              (Constraint.stack_to_string s.stack)
-              () ;
-          Option.iter s.system ~f:(fun system ->
-              Constraint.add ~stack:s.stack c system ) ;
+          let s, () = add_constraint c s in
           run t s
       | With_state (p, and_then, t_sub, k) ->
-          let s, s_sub = run_as_prover (Some p) s in
-          let s_sub, y = run t_sub (set_prover_state s_sub s) in
-          let s, (_ : unit option) =
-            run_as_prover (Option.map ~f:and_then s_sub.prover_state) s
-          in
+          let s, y = with_state p and_then (run t_sub) s in
           run (k y) s
       | With_handler (h, t, k) ->
-          let {handler; _} = s in
-          let s', y = run t {s with handler= Request.Handler.push handler h} in
-          run (k y) {s' with handler}
+          let s, y = with_handler h (run t) s in
+          run (k y) s
       | Clear_handler (t, k) ->
-          let {handler; _} = s in
-          let s', y = run t {s with handler= Request.Handler.fail} in
-          run (k y) {s' with handler}
-      | Exists ({store; alloc; check; _}, p, k) -> (
-        match s.prover_state with
-        | Some ps ->
-            let old = !(s.as_prover) in
-            s.as_prover := true ;
-            let ps, value =
-              Provider.run p s.stack (get_value s) ps s.handler
-            in
-            s.as_prover := old ;
-            let var = Typ_monads.Store.run (store value) (store_field_elt s) in
-            (* TODO: Push a label onto the stack here *)
-            let s, () = run (check var) (set_prover_state (Some ()) s) in
-            run
-              (k {Handle.var; value= Some value})
-              (set_prover_state (Some ps) s)
-        | None ->
-            let var = Typ_monads.Alloc.run alloc (alloc_var s) in
-            (* TODO: Push a label onto the stack here *)
-            let s, () = run (check var) (set_prover_state None s) in
-            run (k {Handle.var; value= None}) (set_prover_state None s) )
-      | Next_auxiliary k -> run (k !(s.next_auxiliary)) s
+          let s, y = clear_handler (run t) s in
+          run (k y) s
+      | Exists (typ, p, k) ->
+          let s, y = exists ~run typ p s in
+          run (k y) s
+      | Next_auxiliary k ->
+          let s, y = next_auxiliary s in
+          run (k y) s
 
     let dummy_vector = Field.Vector.create ()
 
