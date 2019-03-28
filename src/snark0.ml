@@ -284,51 +284,20 @@ module Make_basic (Backend : Backend_intf.S) = struct
   end
 
   module Typ = struct
-    open Types.Typ
+    include Types.Typ.T
+    module T = Typ.Make (Checked)
     include Typ_monads
-    include Typ.T
+    include T.T
 
-    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
-
-    type ('var, 'value) typ = ('var, 'value) t
+    type ('var, 'value) t = ('var, 'value, Field.t) T.t
 
     module Data_spec = struct
-      (** TODO: This exists only to bring the constructors into scope in this
-                module. Upstream a patch to permit different arities in types
-                with a different arity type manifest.
-      *)
-      type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
-                                                                   ( 'r_var
-                                                                   , 'r_value
-                                                                   , 'k_var
-                                                                   , 'k_value
-                                                                   , 'field )
-                                                                   Typ
-                                                                   .Data_spec
-                                                                   .t =
-        | ( :: ) :
-            ('var, 'value, 'f) Types.Typ.t
-            * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
-            -> ( 'r_var
-               , 'r_value
-               , 'var -> 'k_var
-               , 'value -> 'k_value
-               , 'f )
-               data_spec
-        | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
+      include Typ.Data_spec0
 
       type ('r_var, 'r_value, 'k_var, 'k_value) t =
-        ('r_var, 'r_value, 'k_var, 'k_value, field) Typ.Data_spec.t
+        ('r_var, 'r_value, 'k_var, 'k_value, field) T.Data_spec.t
 
-      let size t =
-        let rec go : type r_var r_value k_var k_value.
-            int -> (r_var, r_value, k_var, k_value) t -> int =
-         fun acc t ->
-          match t with
-          | [] -> acc
-          | {alloc; _} :: t' -> go (acc + Alloc.size alloc) t'
-        in
-        go 0 t
+      let size t = T.Data_spec.size t
     end
 
     let unit : (unit, unit) t = unit ()
