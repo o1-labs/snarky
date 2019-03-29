@@ -12,6 +12,8 @@
 #include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
 #include <libff/algebra/curves/mnt/mnt4/mnt4_pp.hpp>
 #include <libff/algebra/curves/mnt/mnt6/mnt6_pp.hpp>
+#include <libff/algebra/curves/mnt753/mnt4753/mnt4753_pp.hpp>
+#include <libff/algebra/curves/mnt753/mnt6753/mnt6753_pp.hpp>
 
 using namespace libff;
 
@@ -123,6 +125,16 @@ int main(void)
     pairing_test<mnt4_pp>();
     double_miller_loop_test<mnt4_pp>();
     affine_pairing_test<mnt4_pp>();
+
+    mnt6753_pp::init_public_params();
+    pairing_test<mnt6753_pp>();
+    double_miller_loop_test<mnt6753_pp>();
+    affine_pairing_test<mnt6753_pp>();
+
+    mnt4753_pp::init_public_params();
+    pairing_test<mnt4753_pp>();
+    double_miller_loop_test<mnt4753_pp>();
+    affine_pairing_test<mnt4753_pp>();
 
     alt_bn128_pp::init_public_params();
     pairing_test<alt_bn128_pp>();

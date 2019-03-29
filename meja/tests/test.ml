@@ -29,3 +29,17 @@ let f =
 let (g : _ -> _) =
   let (f : _ -> _) = fun x -> x in
   f
+
+let h (ignore : int -> unit) =
+  let a = 1 in
+  let b = 2 in
+  ignore a ;
+  ignore b ;
+  let c = 3 in
+  let d = 4 in
+  ignore c ;
+  ignore d ;
+  let e = 5 in
+  ignore e ;
+  let f x y = x in
+  f a (f b (f c (f d e)))

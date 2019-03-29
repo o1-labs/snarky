@@ -209,6 +209,22 @@ FieldT* camlsnark_mnt4_field_sub(FieldT* x, FieldT* y) {
   return new FieldT(*x - *y);
 }
 
+void camlsnark_mnt4_field_mut_add(FieldT* x, FieldT* y) {
+  *x += *y;
+}
+
+void camlsnark_mnt4_field_mut_mul(FieldT* x, FieldT* y) {
+  *x *= *y;
+}
+
+void camlsnark_mnt4_field_mut_sub(FieldT* x, FieldT* y) {
+  *x -= *y;
+}
+
+void camlsnark_mnt4_field_copy(FieldT* x, FieldT* y) {
+  mpn_copyi(x->mont_repr.data, y->mont_repr.data, x->num_limbs);
+}
+
 FieldT* camlsnark_mnt4_field_rng(int i) {
   return new FieldT(libff::SHA512_rng<FieldT>(i));
 }
@@ -1054,6 +1070,19 @@ void camlsnark_mnt4_sha256_compression_function_gadget_generate_r1cs_constraints
 void camlsnark_mnt4_sha256_compression_function_gadget_generate_r1cs_witness(
   sha256_compression_function_gadget<FieldT>* g) {
   g->generate_r1cs_witness();
+}
+
+std::vector<libff::G1<ppT>>* camlsnark_mnt4_g1_create_window_table(libff::G1<ppT>* base) {
+  return new std::vector<libff::G1<ppT>>(
+      libff::create_window_table<libff::G1<ppT>>(*base));
+}
+
+libff::G1<ppT>* camlsnark_mnt4_g1_window_scalar_mul(
+    std::vector<libff::G1<ppT>>* table,
+    libff::bigint<libff::Fr<ppT>::num_limbs>* scalar) {
+  return new libff::G1<ppT>(
+      libff::window_scalar_mul< libff::G1<ppT>, libff::Fr<ppT>::num_limbs >(
+        *table, *scalar));
 }
 
 }
