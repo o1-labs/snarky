@@ -469,6 +469,15 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | Direct (d, k) ->
             let s, y = d s in
             run (k y) s
+        | Reduced (t, d, k) ->
+            let s =
+              if Option.is_some s.prover_state && Option.is_none s.system then
+                d s
+              else
+                let s, _y = run t s in
+                s
+            in
+            run k s
         | With_label (lab, t, k) ->
             let {stack; _} = s in
             let s', y = run t {s with stack= lab :: stack} in
@@ -556,6 +565,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 let s, _y = d s in
                 f (set_prover_state prover_state s) )
             , a )
+        | Reduced (t, d, k) ->
+            let g, a = flatten_as_prover next_auxiliary k in
+            ((fun s -> g (d s)), a)
         | With_label (lab, t, k) ->
             let f, y = flatten_as_prover next_auxiliary t in
             let g, a = flatten_as_prover next_auxiliary (k y) in
@@ -615,17 +627,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let reduce_to_prover (type a s) next_auxiliary (t : (a, s) t) : (a, s) t
           =
         let f, a = flatten_as_prover next_auxiliary t in
-        let prover_state = ref None in
-        As_prover
-          ( As_prover.(
-              let%map s = get_state in
-              prover_state := Some s)
-          , Direct
-              ( (fun s ->
-                  let ps = s.prover_state in
-                  let s = f {s with prover_state= !prover_state} in
-                  ({s with prover_state= ps}, a) )
-              , return ) )
+        Reduced (t, f, return a)
 
       module State = struct
         let make ~num_inputs ~input ~next_auxiliary ~aux ?system
@@ -676,6 +678,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
           let state = {state with run_special= Some run_special} in
           let _, x = d state in
           constraint_count_aux ~log ~auxc !count (k x)
+      | Reduced (t, _, k) ->
+          let count, _ = constraint_count_aux ~log ~auxc count t in
+          constraint_count_aux ~log ~auxc count k
       | As_prover (_x, k) -> constraint_count_aux ~log ~auxc count k
       | Add_constraint (_c, t) -> constraint_count_aux ~log ~auxc (count + 1) t
       | Next_auxiliary k -> constraint_count_aux ~log ~auxc count (k !auxc)
