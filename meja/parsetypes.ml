@@ -56,14 +56,18 @@ type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of str option * (* depth *) int
+  | Tvar of str option * (* depth *) int * explicitness
   | Ttuple of type_expr list
   | Tarrow of type_expr * type_expr * explicitness
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
 
-and variant = {var_ident: lid; var_params: type_expr list; var_decl_id: int}
+and variant =
+  { var_ident: lid
+  ; var_params: type_expr list
+  ; var_implicit_params: type_expr list
+  ; var_decl_id: int }
 
 type field_decl =
   {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}
@@ -81,6 +85,7 @@ type ctor_decl =
 type type_decl =
   { tdec_ident: str
   ; tdec_params: type_expr list
+  ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
   ; tdec_id: int
   ; tdec_loc: Location.t }
@@ -88,13 +93,15 @@ type type_decl =
 and type_decl_desc =
   | TAbstract
   | TAlias of type_expr
+  | TUnfold of type_expr
   | TRecord of field_decl list
   | TVariant of ctor_decl list
   | TOpen
   | TExtend of lid * type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
-type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
+type pattern =
+  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: type_expr}
 
 and pattern_desc =
   | PAny
@@ -159,8 +166,10 @@ let rec typ_debug_print fmt typ =
   let print_list pp = pp_print_list ~pp_sep:print_comma pp in
   print "(%i:" typ.type_id ;
   ( match typ.type_desc with
-  | Tvar (None, i) -> print "var _@%i" i
-  | Tvar (Some name, i) -> print "var %s@%i" name.txt i
+  | Tvar (None, i, Explicit) -> print "var _@%i" i
+  | Tvar (Some name, i, Explicit) -> print "var %s@%i" name.txt i
+  | Tvar (None, i, Implicit) -> print "implicit_var _@%i" i
+  | Tvar (Some name, i, Implicit) -> print "implicit_var %s@%i" name.txt i
   | Tpoly (typs, typ) ->
       print "poly [%a] %a"
         (print_list typ_debug_print)
