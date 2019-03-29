@@ -2,36 +2,62 @@ open Core_kernel
 
 type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
 
-module type S = sig
-  type field
+type ('a, 'f, 's) as_prover = ('a, 'f, 's) t
 
-  include Monad_let.S2 with type ('a, 's) t = ('a, field, 's) t
+module type Basic = sig
+  type ('a, 'f, 's) t
 
-  val run : ('a, 's) t -> (field Cvar.t -> field) -> 's -> 's * 'a
+  type 'f field
 
-  val get_state : ('s, 's) t
+  include Monad_let.S3 with type ('a, 'f, 's) t := ('a, 'f field, 's) t
 
-  val set_state : 's -> (unit, 's) t
+  type ('a, 'f, 's) as_prover = ('a, 'f, 's) t
 
-  val modify_state : ('s -> 's) -> (unit, 's) t
+  val run :
+    ('a, 'f field, 's) t -> ('f field Cvar.t -> 'f field) -> 's -> 's * 'a
 
-  val map2 : ('a, 's) t -> ('b, 's) t -> f:('a -> 'b -> 'c) -> ('c, 's) t
+  val get_state : ('s, 'f field, 's) t
 
-  val read_var : field Cvar.t -> (field, 's) t
+  val set_state : 's -> (unit, 'f field, 's) t
 
-  val read : ('var, 'value, field) Typ.t -> 'var -> ('value, 'prover_state) t
+  val modify_state : ('s -> 's) -> (unit, 'f field, 's) t
+
+  val map2 :
+       ('a, 'f field, 's) t
+    -> ('b, 'f field, 's) t
+    -> f:('a -> 'b -> 'c)
+    -> ('c, 'f field, 's) t
+
+  val read_var : 'f field Cvar.t -> ('f field, 'f field, 's) t
+
+  val read :
+       ('var, 'value, 'f field) Typ.t
+    -> 'var
+    -> ('value, 'f field, 'prover_state) t
 
   module Ref : sig
     type 'a t
 
     val create :
-         ('a, field, 'prover_state) As_prover0.t
-      -> ('a t, 'prover_state, field) Checked.t
+         ('a, 'f field, 'prover_state) as_prover
+      -> ('a t, 'prover_state, 'f field) Checked.t
 
-    val get : 'a t -> ('a, field, _) As_prover0.t
+    val get : 'a t -> ('a, 'f field, _) as_prover
 
-    val set : 'a t -> 'a -> (unit, field, _) As_prover0.t
+    val set : 'a t -> 'a -> (unit, 'f field, _) as_prover
   end
+end
+
+module type S = sig
+  type ('a, 's) t
+
+  type field
+
+  include
+    Basic
+    with type 'f field := field
+     and type ('a, 'f, 's) t := ('a, 's) t
+     and type ('a, 'f, 's) as_prover := ('a, 's) t
 end
 
 module T = struct
@@ -59,37 +85,21 @@ module T = struct
   end
 end
 
-module Make (Env : sig
-  type field
-end) =
-struct
-  include Env
-
-  type nonrec ('a, 's) t = ('a, field, 's) t
-
-  include T
-
-  module T = struct
-    type nonrec ('a, 's) t = ('a, 's) t
-
-    let map = `Custom map
-
-    let bind = bind
-
-    let return = return
-  end
-
-  include Monad_let.Make2 (T)
-end
-
 include T
 
-include Monad_let.Make3 (struct
-  type nonrec ('a, 'f, 's) t = ('a, 'f, 's) t
-
-  let map = `Custom map
-
-  let bind = bind
-
-  let return = return
+module Make (Env : sig
+  type field
 end)
+(Basic : Basic with type 'f field := Env.field) =
+struct
+  type ('a, 's) t = ('a, Env.field, 's) Basic.t
+
+  include Env
+
+  include (
+    Basic :
+      Basic
+      with type 'f field := field
+       and type ('a, 'f, 's) t := ('a, 's) t
+       and type ('a, 'f, 's) as_prover := ('a, 's) t )
+end
