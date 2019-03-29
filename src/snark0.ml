@@ -278,14 +278,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
   module Checked0 = struct
     type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
 
-    module T = struct
-      type ('a, 's) t = ('a, 's, Field.t) Checked.t
+    type ('a, 's) t = ('a, 's, Field.t) Checked.t
 
-      include Checked.T
-    end
-
-    include T
-    include Monad_let.Make2 (T)
+    include Checked.T
   end
 
   module Typ = struct
