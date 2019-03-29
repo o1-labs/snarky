@@ -1,15 +1,15 @@
 open Core_kernel
 open Types.Checked
 
-type ('a, 's, 'field, 'r) t = ('a, 's, 'field, 'r) Types.Checked.t
+type ('a, 's, 'field) t = ('a, 's, 'field) Types.Checked.t
 
 module T0 = struct
+  type nonrec ('a, 's, 'field) t = ('a, 's, 'field) t
+
   let return x = Pure x
 
-  let as_prover x = As_prover (x, return ())
-
-  let rec map : type s a b field r.
-      (a, s, field, r) t -> f:(a -> b) -> (b, s, field, r) t =
+  let rec map : type s a b field.
+      (a, s, field) t -> f:(a -> b) -> (b, s, field) t =
    fun t ~f ->
     match t with
     | Pure x -> Pure (f x)
@@ -26,8 +26,8 @@ module T0 = struct
 
   let map = `Custom map
 
-  let rec bind : type s a b field r.
-      (a, s, field, r) t -> f:(a -> (b, s, field, r) t) -> (b, s, field, r) t =
+  let rec bind : type s a b field.
+      (a, s, field) t -> f:(a -> (b, s, field) t) -> (b, s, field) t =
    fun t ~f ->
     match t with
     | Pure x -> f x
@@ -44,45 +44,37 @@ module T0 = struct
     | Next_auxiliary k -> Next_auxiliary (fun x -> bind (k x) ~f)
 end
 
-let rec all_unit = function
-  | [] -> T0.return ()
-  | t :: ts -> T0.bind t ~f:(fun () -> all_unit ts)
+module Basic : Checked_intf.Basic with type ('a, 's, 'f) t = ('a, 's, 'f) t =
+struct
+  type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
 
-module Let_syntax = struct
-  let return = T0.return
+  include Monad_let.Make3 (T0)
 
-  let bind = T0.bind
+  let add_constraint c = Add_constraint (c, return ())
 
-  let map =
-    match T0.map with
-    | `Define_using_bind -> fun ma ~f -> bind ma ~f:(fun a -> T0.return (f a))
-    | `Custom x -> x
+  let as_prover x = As_prover (x, return ())
 
-  let ( >>= ) t f = bind t ~f
+  let with_label lbl x = With_label (lbl, x, return)
 
-  let ( >>| ) t f = map t ~f
+  let with_state p and_then sub = With_state (p, and_then, sub, return)
 
-  let both a b = bind a ~f:(fun a -> map b ~f:(fun b -> (a, b)))
+  let with_handler h x = With_handler (h, x, return)
 
-  module Let_syntax = struct
-    let return = return
+  let clear_handler x = Clear_handler (x, return)
 
-    let bind = bind
+  let exists typ p = Exists (typ, p, return)
 
-    let map = map
-
-    let both a b = a >>= fun a -> b >>| fun b -> (a, b)
-
-    module Open_on_rhs = struct end
-  end
+  let next_auxiliary = Next_auxiliary return
 end
 
-module T = struct
-  include T0
+module Make (Basic : Checked_intf.Basic) :
+  Checked_intf.S with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t = struct
+  include Basic
 
-  let request_witness (typ : ('var, 'value, 'field, 'r) Types.Typ.t)
+  let request_witness (typ : ('var, 'value, 'field) Types.Typ.t)
       (r : ('value Request.t, 'field, 's) As_prover0.t) =
-    Exists (typ, Request r, fun h -> return (Handle.var h))
+    let%map h = exists typ (Request r) in
+    Handle.var h
 
   let request ?such_that typ r =
     match such_that with
@@ -102,7 +94,8 @@ module T = struct
       | None -> Provider.Request request
       | Some c -> Provider.Both (request, c)
     in
-    Exists (typ, provider, fun h -> return (Handle.var h))
+    let%map h = exists typ provider in
+    Handle.var h
 
   type response = Request.response
 
@@ -114,20 +107,14 @@ module T = struct
         ; respond: 'a Request.Response.t -> response }
         -> request
 
-  let handle t k = With_handler (Request.Handler.create_single k, t, return)
-
-  let next_auxiliary = Next_auxiliary return
-
-  let with_label s t = With_label (s, t, return)
+  let handle t k = with_handler (Request.Handler.create_single k) t
 
   let do_nothing _ = As_prover0.return ()
 
-  let with_state ?(and_then = do_nothing) f sub =
-    With_state (f, and_then, sub, return)
+  let with_state ?(and_then = do_nothing) f sub = with_state f and_then sub
 
   let assert_ ?label c =
-    Add_constraint
-      (List.map c ~f:(fun c -> Constraint.override_label c label), return ())
+    add_constraint (List.map c ~f:(fun c -> Constraint.override_label c label))
 
   let assert_r1cs ?label a b c = assert_ (Constraint.r1cs ?label a b c)
 
@@ -144,11 +131,15 @@ module T = struct
       go [] [] xss
     in
     fun ?label cs ->
-      Add_constraint
-        ( map_concat_rev ~f:(fun c -> Constraint.override_label c label) cs
-        , return () )
+      add_constraint
+        (map_concat_rev ~f:(fun c -> Constraint.override_label c label) cs)
 
   let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
+end
+
+module T = struct
+  include (
+    Make (Basic) : Checked_intf.S with type ('a, 's, 'f) t := ('a, 's, 'f) t)
 end
 
 include T

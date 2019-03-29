@@ -41,4 +41,12 @@ module Alloc = struct
 
   let rec run t f =
     match t with Pure x -> x | Free (T.Alloc k) -> run (k (f ())) f
+
+  let size t =
+    let dummy = Cvar.Var 0 in
+    let rec go acc = function
+      | Pure _ -> acc
+      | Free (T.Alloc k) -> go (acc + 1) (k dummy)
+    in
+    go 0 t
 end

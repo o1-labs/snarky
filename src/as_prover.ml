@@ -19,15 +19,14 @@ module type S = sig
 
   val read_var : field Cvar.t -> (field, 's) t
 
-  val read :
-    ('var, 'value, field, 'r) Typ.t -> 'var -> ('value, 'prover_state) t
+  val read : ('var, 'value, field) Typ.t -> 'var -> ('value, 'prover_state) t
 
   module Ref : sig
     type 'a t
 
     val create :
          ('a, field, 'prover_state) As_prover0.t
-      -> ('a t, 'prover_state, field, 'r) Checked.t
+      -> ('a t, 'prover_state, field) Checked.t
 
     val get : 'a t -> ('a, field, _) As_prover0.t
 
@@ -38,7 +37,7 @@ end
 module T = struct
   include As_prover0.T
 
-  let read ({read; _} : ('var, 'value, 'field, 'r) Typ.t) (var : 'var) :
+  let read ({read; _} : ('var, 'value, 'field) Typ.t) (var : 'var) :
       ('value, 'field, 'prover_state) t =
    fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
 
@@ -46,7 +45,7 @@ module T = struct
     type 'a t = 'a option ref
 
     let create (x : ('a, 'field, 's) As_prover0.t) :
-        ('a t, 's, 'field, 'r) Checked.t =
+        ('a t, 's, 'field) Checked.t =
       let r = ref None in
       let open Checked in
       let%map () =

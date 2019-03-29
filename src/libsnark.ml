@@ -1,9 +1,8 @@
 module Bignum_bigint = Bigint
 open Core
+open Backend_types
 open Ctypes
 open Foreign
-
-let with_prefix prefix s = sprintf "%s_%s" prefix s
 
 module type Foreign_intf = sig
   type t
@@ -15,20 +14,6 @@ module type Deletable_intf = sig
   include Foreign_intf
 
   val delete : t -> unit
-end
-
-module type Prefix_intf = sig
-  val prefix : string
-end
-
-module Make_foreign (M : Prefix_intf) = struct
-  type t = unit ptr
-
-  let typ = ptr void
-
-  let func_name = with_prefix M.prefix
-
-  let delete = foreign (func_name "delete") (typ @-> returning void)
 end
 
 let set_no_profiling =
@@ -506,6 +491,22 @@ struct
 
     val print : t -> unit
 
+    module Mutable : sig
+      val add : t -> other:t -> unit
+
+      val mul : t -> other:t -> unit
+
+      val sub : t -> other:t -> unit
+
+      val copy : over:t -> t -> unit
+    end
+
+    val ( += ) : t -> t -> unit
+
+    val ( -= ) : t -> t -> unit
+
+    val ( *= ) : t -> t -> unit
+
     module Vector : Vector.S_binable with type elt = t
   end = struct
     module T = struct
@@ -573,6 +574,32 @@ struct
           let z = stub x y in
           schedule_delete z ; z
 
+      module Mutable = struct
+        let make name =
+          let stub =
+            foreign (func_name ("mut_" ^ name)) (typ @-> typ @-> returning void)
+          in
+          fun x ~other -> stub x other
+
+        let add = make "add"
+
+        let sub = make "sub"
+
+        let mul = make "mul"
+
+        let copy =
+          let stub =
+            foreign (func_name "copy") (typ @-> typ @-> returning void)
+          in
+          fun ~over x -> stub over x
+      end
+
+      let ( += ) t other = Mutable.add t ~other
+
+      let ( -= ) t other = Mutable.sub t ~other
+
+      let ( *= ) t other = Mutable.mul t ~other
+
       let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
 
       let one = of_int 1
@@ -609,7 +636,7 @@ struct
   end
 
   module Var : sig
-    type t
+    type t = Field0.t Backend_types.Var.t
 
     val typ : t Ctypes.typ
 
@@ -617,8 +644,10 @@ struct
 
     val create : int -> t
   end = struct
-    include Make_foreign (struct
+    include Var.Make (struct
       let prefix = with_prefix M.prefix "var"
+
+      type field = Field0.t
     end)
 
     let create =
@@ -636,7 +665,7 @@ struct
   end
 
   module Linear_combination : sig
-    type t
+    type t = Field0.t Backend_types.Linear_combination.t
 
     val typ : t Ctypes.typ
 
@@ -651,7 +680,7 @@ struct
     val print : t -> unit
 
     module Term : sig
-      type t
+      type t = Field0.t Backend_types.Linear_combination.Term.t
 
       val create : Field.t -> Var.t -> t
 
@@ -670,15 +699,19 @@ struct
   end = struct
     let prefix = with_prefix M.prefix "linear_combination"
 
-    include Make_foreign (struct
+    include Linear_combination.Make (struct
       let prefix = prefix
+
+      type field = Field0.t
     end)
 
     module Term = struct
       let prefix = with_prefix prefix "term"
 
-      include Make_foreign (struct
+      include Linear_combination.Term.Make (struct
         let prefix = prefix
+
+        type field = Field0.t
       end)
 
       let create =
@@ -772,7 +805,7 @@ struct
   end
 
   module R1CS_constraint : sig
-    type t
+    type t = Field0.t Backend_types.R1CS_constraint.t
 
     val typ : t Ctypes.typ
 
@@ -781,8 +814,10 @@ struct
 
     val set_is_square : t -> bool -> unit
   end = struct
-    include Make_foreign (struct
+    include R1CS_constraint.Make (struct
       let prefix = with_prefix M.prefix "r1cs_constraint"
+
+      type field = Field0.t
     end)
 
     let create =
@@ -800,7 +835,7 @@ struct
   end
 
   module R1CS_constraint_system : sig
-    type t
+    type t = Field0.t Backend_types.R1CS_constraint_system.t
 
     val typ : t Ctypes.typ
 
@@ -833,8 +868,10 @@ struct
 
     val digest : t -> Md5.t
   end = struct
-    include Make_foreign (struct
+    include R1CS_constraint_system.Make (struct
       let prefix = with_prefix M.prefix "r1cs_constraint_system"
+
+      type field = Field0.t
     end)
 
     let report_statistics =
@@ -1083,7 +1120,7 @@ struct
     stub ()
 end
 
-module Make_proof_system (M : sig
+module type Proof_system_inputs_intf = sig
   val prefix : string
 
   module R1CS_constraint_system : sig
@@ -1093,16 +1130,21 @@ module Make_proof_system (M : sig
   end
 
   module Field : sig
+    type t
+
     module Vector : sig
       type t
 
       val typ : t Ctypes.typ
     end
   end
-end) =
-struct
+end
+
+module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   module Proving_key : sig
-    type t [@@deriving bin_io]
+    type t = M.Field.t Backend_types.Proving_key.t [@@deriving bin_io]
+
+    val func_name : string -> string
 
     val typ : t Ctypes.typ
 
@@ -1116,8 +1158,10 @@ struct
 
     val of_bigstring : Bigstring.t -> t
   end = struct
-    include Make_foreign (struct
+    include Proving_key.Make (struct
       let prefix = with_prefix M.prefix "proving_key"
+
+      type field = M.Field.t
     end)
 
     let to_cpp_string_stub : t -> Cpp_string.t =
@@ -1212,7 +1256,7 @@ struct
   end
 
   module Verification_key : sig
-    type t
+    type t = M.Field.t Backend_types.Verification_key.t
 
     val typ : t Ctypes.typ
 
@@ -1228,8 +1272,10 @@ struct
 
     val size_in_bits : t -> int
   end = struct
-    include Make_foreign (struct
+    include Verification_key.Make (struct
       let prefix = with_prefix M.prefix "verification_key"
+
+      type field = M.Field.t
     end)
 
     let size_in_bits =
@@ -1283,7 +1329,7 @@ struct
   end
 
   module Keypair : sig
-    type t
+    type t = M.Field.t Backend_types.Keypair.t
 
     val typ : t Ctypes.typ
 
@@ -1295,8 +1341,10 @@ struct
 
     val create : M.R1CS_constraint_system.t -> t
   end = struct
-    include Make_foreign (struct
+    include Keypair.Make (struct
       let prefix = with_prefix M.prefix "keypair"
+
+      type field = M.Field.t
     end)
 
     let pk =
@@ -1326,9 +1374,32 @@ struct
         let t = stub sys in
         Caml.Gc.finalise delete t ; t
   end
+end
+
+module Make_proof_system (M : sig
+  val prefix : string
+
+  module R1CS_constraint_system : sig
+    type t
+
+    val typ : t Ctypes.typ
+  end
+
+  module Field : sig
+    type t
+
+    module Vector : sig
+      type t
+
+      val typ : t Ctypes.typ
+    end
+  end
+end) =
+struct
+  include Make_proof_system_keys (M)
 
   module Proof : sig
-    type t
+    type t = M.Field.t Backend_types.Proof.t
 
     val typ : t Ctypes.typ
 
@@ -1344,8 +1415,10 @@ struct
 
     val of_string : string -> t
   end = struct
-    include Make_foreign (struct
+    include Proof.Make (struct
       let prefix = with_prefix M.prefix "proof"
+
+      type field = M.Field.t
     end)
 
     let to_string : t -> string =
@@ -1417,6 +1490,143 @@ end
 module Bn128 = Make_full (struct
   let prefix = "camlsnark_bn128"
 end)
+
+module Make_proof_accessors (Prefix : sig
+  val prefix : string
+end)
+(Proof : Foreign_intf) (G1 : sig
+    include Deletable_intf
+
+    module Vector : Deletable_intf
+end)
+(G2 : Deletable_intf) =
+struct
+  open Prefix
+
+  let func_name = with_prefix prefix
+
+  let func name ret delete =
+    let stub = foreign (func_name name) (Proof.typ @-> returning ret) in
+    fun vk ->
+      let r = stub vk in
+      Caml.Gc.finalise delete r ; r
+
+  let a = func "a" G1.typ G1.delete
+
+  let b = func "b" G2.typ G2.delete
+
+  let c = func "c" G1.typ G1.delete
+end
+
+module Make_bowe_gabizon (M : sig
+  val prefix : string
+
+  module R1CS_constraint_system : sig
+    type t
+
+    val typ : t Ctypes.typ
+  end
+
+  module Field : sig
+    include Deletable_intf
+
+    val random : unit -> t
+
+    module Vector : sig
+      type t
+
+      val typ : t Ctypes.typ
+    end
+  end
+
+  module G1 : sig
+    include Deletable_intf
+
+    include Binable.S with type t := t
+
+    module Vector : Deletable_intf
+
+    val scale_field : t -> Field.t -> t
+  end
+
+  module G2 : sig
+    include Deletable_intf
+
+    include Binable.S with type t := t
+  end
+end) (H : sig
+  open M
+
+  val hash :
+       ?message:bool array
+    -> a:G1.t
+    -> b:G2.t
+    -> c:G1.t
+    -> delta_prime:G2.t
+    -> G1.t
+end) =
+struct
+  open M
+
+  include Make_proof_system_keys (struct
+    include M
+
+    let prefix = with_prefix M.prefix "bg"
+  end)
+
+  module Proof = struct
+    module Pre = struct
+      module Prefix = struct
+        let prefix = with_prefix M.prefix "bg_proof"
+      end
+
+      module T = struct
+        include Make_foreign (Prefix)
+      end
+
+      include T
+      include Make_proof_accessors (M) (T) (G1) (G2)
+
+      let delta_prime = func "delta_prime" G2.typ G2.delete
+
+      let verify_components ~a ~b ~c ~delta_prime ~z ~y_s key input =
+        let stub =
+          foreign
+            (func_name "verify_components")
+            ( G1.typ @-> G2.typ @-> G1.typ @-> G2.typ @-> G1.typ @-> G1.typ
+            @-> Verification_key.typ @-> Field.Vector.typ @-> returning bool )
+        in
+        stub a b c delta_prime z y_s key input
+
+      let create proving_key ~primary ~auxiliary ~d =
+        let stub =
+          foreign (func_name "create")
+            ( Proving_key.typ @-> Field.typ @-> Field.Vector.typ
+            @-> Field.Vector.typ @-> returning typ )
+        in
+        let t = stub proving_key d primary auxiliary in
+        Caml.Gc.finalise delete t ; t
+    end
+
+    type t = {a: G1.t; b: G2.t; c: G1.t; delta_prime: G2.t; z: G1.t}
+    [@@deriving bin_io]
+
+    let create ?message proving_key ~primary ~auxiliary =
+      let d = Field.random () in
+      let pre = Pre.create proving_key ~primary ~auxiliary ~d in
+      let a = Pre.a pre in
+      let b = Pre.b pre in
+      let c = Pre.c pre in
+      let delta_prime = Pre.delta_prime pre in
+      let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
+      let z = G1.scale_field y_s d in
+      {a= Pre.a pre; b= Pre.b pre; c= Pre.c pre; z; delta_prime}
+
+    let verify ?message {a; b; c; z; delta_prime} vk input =
+      let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
+      Pre.verify_components ~a ~b ~c ~delta_prime ~y_s ~z vk input
+  end
+end
 
 module Make_mnt_cycle (Security_level : sig
   val modulus_size : [`Bits298 | `Bits753]
@@ -1503,33 +1713,6 @@ struct
     let query = func "query" G1.Vector.typ G1.Vector.delete
 
     let g_alpha_h_beta = func "g_alpha_h_beta" Fqk.typ Fqk.delete
-  end
-
-  module Make_proof_accessors (Prefix : sig
-    val prefix : string
-  end)
-  (Proof : Foreign_intf) (G1 : sig
-      include Deletable_intf
-
-      module Vector : Deletable_intf
-  end)
-  (G2 : Deletable_intf) =
-  struct
-    open Prefix
-
-    let func_name = with_prefix prefix
-
-    let func name ret delete =
-      let stub = foreign (func_name name) (Proof.typ @-> returning ret) in
-      fun vk ->
-        let r = stub vk in
-        Caml.Gc.finalise delete r ; r
-
-    let a = func "a" G1.typ G1.delete
-
-    let b = func "b" G2.typ G2.delete
-
-    let c = func "c" G1.typ G1.delete
   end
 
   module Make_fqk

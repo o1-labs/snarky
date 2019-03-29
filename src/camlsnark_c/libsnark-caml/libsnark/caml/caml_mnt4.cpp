@@ -209,6 +209,22 @@ FieldT* camlsnark_mnt4_field_sub(FieldT* x, FieldT* y) {
   return new FieldT(*x - *y);
 }
 
+void camlsnark_mnt4_field_mut_add(FieldT* x, FieldT* y) {
+  *x += *y;
+}
+
+void camlsnark_mnt4_field_mut_mul(FieldT* x, FieldT* y) {
+  *x *= *y;
+}
+
+void camlsnark_mnt4_field_mut_sub(FieldT* x, FieldT* y) {
+  *x -= *y;
+}
+
+void camlsnark_mnt4_field_copy(FieldT* x, FieldT* y) {
+  mpn_copyi(x->mont_repr.data, y->mont_repr.data, x->num_limbs);
+}
+
 FieldT* camlsnark_mnt4_field_rng(int i) {
   return new FieldT(libff::SHA512_rng<FieldT>(i));
 }

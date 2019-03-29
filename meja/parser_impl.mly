@@ -10,8 +10,8 @@ let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 let lid_last x = mkloc (last x.txt) x.loc
 
 let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= mklocation pos}
-let mkpat ~pos d = {pat_desc= d; pat_loc= mklocation pos}
-let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos; exp_type= mktyp ~pos (Tvar (None, -1))}
+let mkpat ~pos d = {pat_desc= d; pat_loc= mklocation pos; pat_type= mktyp ~pos (Tvar (None, -1, Explicit))}
+let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos; exp_type= mktyp ~pos (Tvar (None, -1, Explicit))}
 let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %}
@@ -91,6 +91,7 @@ structure_item:
       mkstmt ~pos:$loc (TypeDecl
         { tdec_ident= x
         ; tdec_params= args
+        ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_id= -1
         ; tdec_loc= mklocation $loc }) }
@@ -102,7 +103,7 @@ structure_item:
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
       mkstmt ~pos:$loc (TypeExtension
-        ( {var_ident= x; var_params= params; var_decl_id= 0}
+        ( {var_ident= x; var_params= params; var_implicit_params= []; var_decl_id= 0}
         , ctors)) }
 
 module_expr:
@@ -121,7 +122,7 @@ decl_type_expr:
   | x = decl_type(longident(LIDENT, UIDENT))
     { let (x, params) = x in
       mktyp ~pos:$loc
-        (Tctor {var_ident= x; var_params= params; var_decl_id= 0}) }
+        (Tctor {var_ident= x; var_params= params; var_implicit_params= []; var_decl_id= 0}) }
 
 record_field(ID, EXP):
   | id = as_loc(ID) COLON t = EXP
@@ -361,9 +362,9 @@ pat_or_bare_tuple:
 
 simple_type_expr:
   | UNDERSCORE
-    { mktyp ~pos:$loc (Tvar (None, 0)) }
+    { mktyp ~pos:$loc (Tvar (None, 0, Explicit)) }
   | QUOT x = as_loc(LIDENT)
-    { mktyp ~pos:$loc (Tvar (Some x, 0)) }
+    { mktyp ~pos:$loc (Tvar (Some x, 0, Explicit)) }
   | t = decl_type_expr
     { t }
   | LBRACKET x = type_expr RBRACKET

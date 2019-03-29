@@ -41,6 +41,9 @@ which ocaml
 ocaml --version
 ```
 
+## ReasonML
+Install the Reason tooling with `opam install reason rtop`.
+
 ## Snarky
 
 Now, simply install snarky from [our GitHub repo](https://github.com/o1-labs/snarky):

@@ -31,6 +31,7 @@ open Impl
 (* This is an example usage of the above "election proof system".
    To see how this is actually implemented using Snarky, check out election.ml.
 *)
+
 let () =
   (* Mock data *)
   let received_ballots =
