@@ -1447,7 +1447,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let field_size_bits =
         List.init Field.size_in_bits ~f:(fun i ->
-            Bigint.test_bit field_size (Field.size_in_bits - 1 - i) )
+            Z.testbit (Bignum_bigint.to_zarith_bigint Field.size) (Field.size_in_bits - 1 - i) )
         |> Bitstring_lib.Bitstring.Msb_first.of_list
 
       let unpack_full x =

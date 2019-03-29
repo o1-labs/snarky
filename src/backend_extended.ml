@@ -26,8 +26,6 @@ module type S = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
-  val field_size : Bigint.t
-
   module Var : sig
     type t = Field.t Backend_types.Var.t [@@deriving sexp]
 
@@ -218,8 +216,6 @@ struct
       in
       go 0 Bignum_bigint.one Bignum_bigint.zero
   end
-
-  let field_size = field_size
 
   module Proof = Proof
 
