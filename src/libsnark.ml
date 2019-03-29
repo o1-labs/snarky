@@ -1120,7 +1120,7 @@ struct
     stub ()
 end
 
-module Make_proof_system (M : sig
+module type Proof_system_inputs_intf = sig
   val prefix : string
 
   module R1CS_constraint_system : sig
@@ -1138,10 +1138,13 @@ module Make_proof_system (M : sig
       val typ : t Ctypes.typ
     end
   end
-end) =
-struct
+end
+
+module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   module Proving_key : sig
     type t = M.Field.t Backend_types.Proving_key.t [@@deriving bin_io]
+
+    val func_name : string -> string
 
     val typ : t Ctypes.typ
 
@@ -1371,6 +1374,29 @@ struct
         let t = stub sys in
         Caml.Gc.finalise delete t ; t
   end
+end
+
+module Make_proof_system (M : sig
+  val prefix : string
+
+  module R1CS_constraint_system : sig
+    type t
+
+    val typ : t Ctypes.typ
+  end
+
+  module Field : sig
+    type t
+
+    module Vector : sig
+      type t
+
+      val typ : t Ctypes.typ
+    end
+  end
+end) =
+struct
+  include Make_proof_system_keys (M)
 
   module Proof : sig
     type t = M.Field.t Backend_types.Proof.t
@@ -1465,6 +1491,143 @@ module Bn128 = Make_full (struct
   let prefix = "camlsnark_bn128"
 end)
 
+module Make_proof_accessors (Prefix : sig
+  val prefix : string
+end)
+(Proof : Foreign_intf) (G1 : sig
+    include Deletable_intf
+
+    module Vector : Deletable_intf
+end)
+(G2 : Deletable_intf) =
+struct
+  open Prefix
+
+  let func_name = with_prefix prefix
+
+  let func name ret delete =
+    let stub = foreign (func_name name) (Proof.typ @-> returning ret) in
+    fun vk ->
+      let r = stub vk in
+      Caml.Gc.finalise delete r ; r
+
+  let a = func "a" G1.typ G1.delete
+
+  let b = func "b" G2.typ G2.delete
+
+  let c = func "c" G1.typ G1.delete
+end
+
+module Make_bowe_gabizon (M : sig
+  val prefix : string
+
+  module R1CS_constraint_system : sig
+    type t
+
+    val typ : t Ctypes.typ
+  end
+
+  module Field : sig
+    include Deletable_intf
+
+    val random : unit -> t
+
+    module Vector : sig
+      type t
+
+      val typ : t Ctypes.typ
+    end
+  end
+
+  module G1 : sig
+    include Deletable_intf
+
+    include Binable.S with type t := t
+
+    module Vector : Deletable_intf
+
+    val scale_field : t -> Field.t -> t
+  end
+
+  module G2 : sig
+    include Deletable_intf
+
+    include Binable.S with type t := t
+  end
+end) (H : sig
+  open M
+
+  val hash :
+       ?message:bool array
+    -> a:G1.t
+    -> b:G2.t
+    -> c:G1.t
+    -> delta_prime:G2.t
+    -> G1.t
+end) =
+struct
+  open M
+
+  include Make_proof_system_keys (struct
+    include M
+
+    let prefix = with_prefix M.prefix "bg"
+  end)
+
+  module Proof = struct
+    module Pre = struct
+      module Prefix = struct
+        let prefix = with_prefix M.prefix "bg_proof"
+      end
+
+      module T = struct
+        include Make_foreign (Prefix)
+      end
+
+      include T
+      include Make_proof_accessors (M) (T) (G1) (G2)
+
+      let delta_prime = func "delta_prime" G2.typ G2.delete
+
+      let verify_components ~a ~b ~c ~delta_prime ~z ~y_s key input =
+        let stub =
+          foreign
+            (func_name "verify_components")
+            ( G1.typ @-> G2.typ @-> G1.typ @-> G2.typ @-> G1.typ @-> G1.typ
+            @-> Verification_key.typ @-> Field.Vector.typ @-> returning bool )
+        in
+        stub a b c delta_prime z y_s key input
+
+      let create proving_key ~primary ~auxiliary ~d =
+        let stub =
+          foreign (func_name "create")
+            ( Proving_key.typ @-> Field.typ @-> Field.Vector.typ
+            @-> Field.Vector.typ @-> returning typ )
+        in
+        let t = stub proving_key d primary auxiliary in
+        Caml.Gc.finalise delete t ; t
+    end
+
+    type t = {a: G1.t; b: G2.t; c: G1.t; delta_prime: G2.t; z: G1.t}
+    [@@deriving bin_io]
+
+    let create ?message proving_key ~primary ~auxiliary =
+      let d = Field.random () in
+      let pre = Pre.create proving_key ~primary ~auxiliary ~d in
+      let a = Pre.a pre in
+      let b = Pre.b pre in
+      let c = Pre.c pre in
+      let delta_prime = Pre.delta_prime pre in
+      let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
+      let z = G1.scale_field y_s d in
+      {a= Pre.a pre; b= Pre.b pre; c= Pre.c pre; z; delta_prime}
+
+    let verify ?message {a; b; c; z; delta_prime} vk input =
+      let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
+      Pre.verify_components ~a ~b ~c ~delta_prime ~y_s ~z vk input
+  end
+end
+
 module Make_mnt_cycle (Security_level : sig
   val modulus_size : [`Bits298 | `Bits753]
 end) =
@@ -1550,33 +1713,6 @@ struct
     let query = func "query" G1.Vector.typ G1.Vector.delete
 
     let g_alpha_h_beta = func "g_alpha_h_beta" Fqk.typ Fqk.delete
-  end
-
-  module Make_proof_accessors (Prefix : sig
-    val prefix : string
-  end)
-  (Proof : Foreign_intf) (G1 : sig
-      include Deletable_intf
-
-      module Vector : Deletable_intf
-  end)
-  (G2 : Deletable_intf) =
-  struct
-    open Prefix
-
-    let func_name = with_prefix prefix
-
-    let func name ret delete =
-      let stub = foreign (func_name name) (Proof.typ @-> returning ret) in
-      fun vk ->
-        let r = stub vk in
-        Caml.Gc.finalise delete r ; r
-
-    let a = func "a" G1.typ G1.delete
-
-    let b = func "b" G2.typ G2.delete
-
-    let c = func "c" G1.typ G1.delete
   end
 
   module Make_fqk
