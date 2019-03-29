@@ -51,13 +51,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let run = run
 
-      let size t =
-        let dummy = Cvar.Unsafe.of_index 0 in
-        let rec go acc = function
-          | Pure _ -> acc
-          | Free (T.Alloc k) -> go (acc + 1) (k dummy)
-        in
-        go 0 t
+      let size t = size t
     end
   end
 
@@ -88,11 +82,32 @@ module Make_basic (Backend : Backend_intf.S) = struct
     type ('var, 'value) typ = ('var, 'value) t
 
     module Data_spec = struct
-      type ('r_var, 'r_value, 'k_var, 'k_value) t =
+      (** TODO: This exists only to bring the constructors into scope in this
+                module. Upstream a patch to permit different arities in types
+                with a different arity type manifest.
+      *)
+      type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
+                                                                   ( 'r_var
+                                                                   , 'r_value
+                                                                   , 'k_var
+                                                                   , 'k_value
+                                                                   , 'field )
+                                                                   Typ
+                                                                   .Data_spec
+                                                                   .t =
         | ( :: ) :
-            ('var, 'value) typ * ('r_var, 'r_value, 'k_var, 'k_value) t
-            -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-        | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+            ('var, 'value, 'f) Types.Typ.t
+            * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
+            -> ( 'r_var
+               , 'r_value
+               , 'var -> 'k_var
+               , 'value -> 'k_value
+               , 'f )
+               data_spec
+        | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
+
+      type ('r_var, 'r_value, 'k_var, 'k_value) t =
+        ('r_var, 'r_value, 'k_var, 'k_value, field) Typ.Data_spec.t
 
       let size t =
         let rec go : type r_var r_value k_var k_value.
@@ -108,92 +123,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let unit : (unit, unit) t = unit ()
 
     let field : (Cvar.t, Field.t) t = field ()
-
-    let hlist (type k_var k_value)
-        (spec0 : (unit, unit, k_var, k_value) Data_spec.t) :
-        ((unit, k_var) H_list.t, (unit, k_value) H_list.t) t =
-      let store xs0 : _ Store.t =
-        let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_value) H_list.t
-            -> (unit, k_var) H_list.t Store.t =
-         fun spec0 xs0 ->
-          let open Data_spec in
-          let open H_list in
-          match (spec0, xs0) with
-          | [], [] -> Store.return H_list.[]
-          | s :: spec, x :: xs ->
-              let open Store.Let_syntax in
-              let%map y = store s x and ys = go spec xs in
-              y :: ys
-        in
-        go spec0 xs0
-      in
-      let read xs0 : (unit, k_value) H_list.t Read.t =
-        let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_var) H_list.t
-            -> (unit, k_value) H_list.t Read.t =
-         fun spec0 xs0 ->
-          let open Data_spec in
-          let open H_list in
-          match (spec0, xs0) with
-          | [], [] -> Read.return H_list.[]
-          | s :: spec, x :: xs ->
-              let open Read.Let_syntax in
-              let%map y = read s x and ys = go spec xs in
-              y :: ys
-        in
-        go spec0 xs0
-      in
-      let alloc : _ Alloc.t =
-        let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_var) H_list.t Alloc.t =
-         fun spec0 ->
-          let open Data_spec in
-          let open H_list in
-          match spec0 with
-          | [] -> Alloc.return H_list.[]
-          | s :: spec ->
-              let open Alloc.Let_syntax in
-              let%map y = alloc s and ys = go spec in
-              y :: ys
-        in
-        go spec0
-      in
-      let check xs0 : (unit, unit) Checked0.t =
-        let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_var) H_list.t
-            -> (unit, unit) Checked0.t =
-         fun spec0 xs0 ->
-          let open Data_spec in
-          let open H_list in
-          let open Checked0.Let_syntax in
-          match (spec0, xs0) with
-          | [], [] -> return ()
-          | s :: spec, x :: xs ->
-              let%map () = check s x and () = go spec xs in
-              ()
-        in
-        go spec0 xs0
-      in
-      {read; store; alloc; check}
-
-    (* TODO: Do a CPS style thing instead if it ends up being an issue converting
-     back and forth. *)
-    let of_hlistable (spec : (unit, unit, 'k_var, 'k_value) Data_spec.t)
-        ~(var_to_hlist : 'var -> (unit, 'k_var) H_list.t)
-        ~(var_of_hlist : (unit, 'k_var) H_list.t -> 'var)
-        ~(value_to_hlist : 'value -> (unit, 'k_value) H_list.t)
-        ~(value_of_hlist : (unit, 'k_value) H_list.t -> 'value) :
-        ('var, 'value) t =
-      let {read; store; alloc; check} = hlist spec in
-      { read= (fun v -> Read.map ~f:value_of_hlist (read (var_to_hlist v)))
-      ; store= (fun x -> Store.map ~f:var_of_hlist (store (value_to_hlist x)))
-      ; alloc= Alloc.map ~f:var_of_hlist alloc
-      ; check= (fun v -> check (var_to_hlist v)) }
 
     (* TODO: Assert that a stored value has the same shape as the template. *)
     module Of_traversable (T : Traversable.S) = struct
@@ -238,9 +167,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
   end
 
-  module Handle = struct
-    include Handle
-  end
+  module Handle = Handle
 
   module Checked = struct
     open Types.Checked
@@ -383,6 +310,112 @@ module Make_basic (Backend : Backend_intf.S) = struct
               run (k {Handle.var; value= None}) (set_prover_state None s) )
         | Next_auxiliary k -> run (k !(s.next_auxiliary)) s
 
+      let dummy_vector = Field.Vector.create ()
+
+      let fake_state next_auxiliary =
+        { system= None
+        ; input= dummy_vector
+        ; aux= dummy_vector
+        ; eval_constraints= false
+        ; num_inputs= 0
+        ; next_auxiliary
+        ; prover_state= None
+        ; stack= []
+        ; handler= Request.Handler.fail
+        ; is_running= true
+        ; as_prover= ref false
+        ; run_special= None }
+
+      let rec flatten_as_prover : type a s.
+          int ref -> (a, s) t -> (s run_state -> s run_state) * a =
+       fun next_auxiliary t ->
+        match t with
+        | As_prover (x, k) ->
+            let f, a = flatten_as_prover next_auxiliary k in
+            ( (fun s ->
+                let s', (_ : unit option) = run_as_prover (Some x) s in
+                f s' )
+            , a )
+        | Pure x -> (Fn.id, x)
+        | Direct (d, k) ->
+            let _, y = d (fake_state next_auxiliary) in
+            let f, a = flatten_as_prover next_auxiliary (k y) in
+            ( (fun s ->
+                let {prover_state; _} = s in
+                let s, _y = d s in
+                f (set_prover_state prover_state s) )
+            , a )
+        | With_label (lab, t, k) ->
+            let f, y = flatten_as_prover next_auxiliary t in
+            let g, a = flatten_as_prover next_auxiliary (k y) in
+            ((fun s -> g (f s)), a)
+        | Add_constraint (c, t) -> flatten_as_prover next_auxiliary t
+        | With_state (p, and_then, t_sub, k) ->
+            let f_sub, y = flatten_as_prover next_auxiliary t_sub in
+            let f, a = flatten_as_prover next_auxiliary (k y) in
+            ( (fun s ->
+                let s, s_sub = run_as_prover (Some p) s in
+                let s_sub = f_sub (set_prover_state s_sub s) in
+                let s, (_ : unit option) =
+                  run_as_prover (Option.map ~f:and_then s_sub.prover_state) s
+                in
+                f s )
+            , a )
+        | With_handler (h, t, k) ->
+            let f, y = flatten_as_prover next_auxiliary t in
+            let g, a = flatten_as_prover next_auxiliary (k y) in
+            ( (fun s ->
+                let {handler; _} = s in
+                let s' = f {s with handler= Request.Handler.push handler h} in
+                g {s' with handler} )
+            , a )
+        | Clear_handler (t, k) ->
+            let f, y = flatten_as_prover next_auxiliary t in
+            let g, a = flatten_as_prover next_auxiliary (k y) in
+            ( (fun s ->
+                let {handler; _} = s in
+                let s' = f {s with handler= Request.Handler.fail} in
+                g {s' with handler} )
+            , a )
+        | Exists ({store; alloc; check; _}, p, k) ->
+            let var =
+              Typ.Alloc.run alloc (alloc_var (fake_state next_auxiliary))
+            in
+            let f, () = flatten_as_prover next_auxiliary (check var) in
+            let handle = {Handle.var; value= None} in
+            let g, a = flatten_as_prover next_auxiliary (k handle) in
+            ( (fun s ->
+                let old = !(s.as_prover) in
+                s.as_prover := true ;
+                let ps, value =
+                  Provider.run p s.stack (get_value s)
+                    (Option.value_exn s.prover_state)
+                    s.handler
+                in
+                s.as_prover := old ;
+                let _var = Typ.Store.run (store value) (store_field_elt s) in
+                let s = f (set_prover_state (Some ()) s) in
+                handle.value <- Some value ;
+                g (set_prover_state (Some ps) s) )
+            , a )
+        | Next_auxiliary k ->
+            flatten_as_prover next_auxiliary (k !next_auxiliary)
+
+      let reduce_to_prover (type a s) next_auxiliary (t : (a, s) t) : (a, s) t
+          =
+        let f, a = flatten_as_prover next_auxiliary t in
+        let prover_state = ref None in
+        As_prover
+          ( As_prover.(
+              let%map s = get_state in
+              prover_state := Some s)
+          , Direct
+              ( (fun s ->
+                  let ps = s.prover_state in
+                  let s = f {s with prover_state= !prover_state} in
+                  ({s with prover_state= ps}, a) )
+              , return ) )
+
       module State = struct
         let make ~num_inputs ~input ~next_auxiliary ~aux ?system
             ?(eval_constraints = !eval_constraints) ?handler (s0 : 's option) =
@@ -407,8 +440,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
       end
     end
 
-    let rec constraint_count_aux : type a s.
-        log:(?start:_ -> _) -> auxc:_ -> int -> (a, s) t -> int * a =
+    let rec constraint_count_aux : type a s s1.
+           log:(?start:_ -> _)
+        -> auxc:_
+        -> int
+        -> (a, s, _) Types.Checked.t
+        -> int * a =
      fun ~log ~auxc count t0 ->
       match t0 with
       | Pure x -> (count, x)
@@ -420,7 +457,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
               None
           in
           let count = ref count in
-          let run_special x =
+          let run_special (type a s s1) (x : (a, s, _) Types.Checked.t) =
             let count', a = constraint_count_aux ~log ~auxc !count x in
             count := count' ;
             a
@@ -521,7 +558,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           let s', x = As_prover.run x get_value s in
           (s', x) )
 
-    let check ~run t s = Or_error.is_ok (run_and_check' ~run t s)
+    let check ~run t s = run_and_check' ~run t s |> Result.map ~f:(Fn.const ())
 
     let equal (x : Cvar.t) (y : Cvar.t) : (Cvar.t Boolean.t, _) t =
       let open Let_syntax in
@@ -1077,7 +1114,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             (s', x) )
 
       let check ~run ~public_input ?handlers proof_system s =
-        Or_error.is_ok
+        Or_error.map ~f:(Fn.const ())
           (run_checked' ~run ~public_input ?handlers proof_system s)
 
       let read_proving_key proof_system =
@@ -1249,6 +1286,26 @@ module Make_basic (Backend : Backend_intf.S) = struct
           in
           ignore auxiliary )
         t k
+
+    let reduce_to_prover : type a s r_value.
+        ((a, s) Checked.t, r_value, 'k_var, _) t -> 'k_var -> 'k_var =
+     fun t0 k0 ->
+      let next_input = ref 1 in
+      let alloc_var () =
+        let v = !next_input in
+        incr next_input ; Cvar.Unsafe.of_index v
+      in
+      let rec go : type k_var k_value.
+          ((a, s) Checked.t, r_value, k_var, k_value) t -> k_var -> k_var =
+       fun t k ->
+        match t with
+        | [] -> Checked.Runner.reduce_to_prover next_input k
+        | {alloc; _} :: t' ->
+            let var = Typ.Alloc.run alloc alloc_var in
+            let ret = go t' (k var) in
+            fun _ -> ret
+      in
+      go t0 k0
   end
 
   module Cvar1 = struct
@@ -1542,6 +1599,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
   let run_and_check t s = run_and_check ~run:Runner.run t s
 
   let check t s = check ~run:Runner.run t s
+
+  let reduce_to_prover = Run.reduce_to_prover
 
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
@@ -1978,8 +2037,7 @@ module Run = struct
     end
 
     module Handle = struct
-      type ('var, 'value) t = ('var, 'value) Handle.t =
-        {var: 'var; value: 'value option}
+      type ('var, 'value) t = ('var, 'value) Handle.t
 
       let value handle () = As_prover.eval_as_prover (Handle.value handle)
 
@@ -2010,7 +2068,7 @@ module Run = struct
              ()) ~f:(fun (s, x, state) -> x )
 
       let check ~public_input ?handlers (proof_system : _ t) =
-        Or_error.is_ok
+        Or_error.map ~f:(Fn.const ())
           (run_checked' ~run:as_stateful ~public_input ?handlers proof_system
              ())
 
@@ -2114,7 +2172,7 @@ module Run = struct
       !state.as_prover := true ;
       res
 
-    let check x = Perform.check ~run:as_stateful x
+    let check x = Perform.check ~run:as_stateful x |> Result.is_ok
 
     let constraint_count ?(log = fun ?start _ _ -> ()) x =
       let count = ref 0 in
