@@ -4,8 +4,12 @@ module Constraint0 = Constraint
 module Boolean0 = Boolean
 module Typ0 = Typ
 
+type 'a sok_with_prove_args = ?message:bool array -> 'a
+
 (** The base interface to Snarky. *)
 module type Basic = sig
+  type _ with_prove_args
+
   (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
   module Proving_key : sig
     type t [@@deriving bin_io]
@@ -956,8 +960,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
       -> ('a, 's, 'public_input) t
-      -> 's
-      -> Proof.t
+      -> ('s -> Proof.t) with_prove_args
     (** Run the checked computation as the prover, generating a {!type:Proof.t}
         that the verifier may check efficiently.
         - The [proving_key] argument overrides the argument given to
@@ -1001,8 +1004,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
          run:('a, 't) t
       -> Proving_key.t
       -> ('t, Proof.t, 'k_var, 'k_value) Data_spec.t
-      -> 'k_var
-      -> 'k_value
+      -> ('k_var -> 'k_value) with_prove_args
 
     val verify :
          Proof.t
@@ -1145,8 +1147,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
        Proving_key.t
     -> ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 's
-    -> 'k_var
-    -> 'k_value
+    -> ('k_var -> 'k_value) with_prove_args
   (** Run the checked computation, creating a proof that it has been run
       correctly (ie. satisfies its constraints).
   *)
@@ -1253,6 +1254,8 @@ end
 
 (** The imperative interface to Snarky. *)
 module type Run = sig
+  type _ with_prove_args
+
   (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
   module Proving_key : sig
     type t [@@deriving bin_io]
@@ -1794,8 +1797,7 @@ module type Run = sig
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
-      -> ('a, 'public_input) t
-      -> Proof.t
+      -> (('a, 'public_input) t -> Proof.t) with_prove_args
 
     val verify :
          public_input:(unit, 'public_input) H_list.t
@@ -1852,8 +1854,7 @@ module type Run = sig
   val prove :
        Proving_key.t
     -> (unit -> 'a, Proof.t, 'k_var, 'k_value) Data_spec.t
-    -> 'k_var
-    -> 'k_value
+    -> ('k_var -> 'k_value) with_prove_args
 
   val verify :
        Proof.t
