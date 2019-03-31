@@ -18,6 +18,7 @@ module Make (Backend : Backend_intf.S) :
    and type Verification_key.t = Backend.Verification_key.t
    and type Proving_key.t = Backend.Proving_key.t
    and type Proof.t = Backend.Proof.t
+   and type 'a with_prove_args = 'a Backend.Proof.with_create_args
 
 module Run : sig
   module Make (Backend : Backend_intf.S) :
@@ -30,6 +31,7 @@ module Run : sig
      and type Verification_key.t = Backend.Verification_key.t
      and type Proving_key.t = Backend.Proving_key.t
      and type Proof.t = Backend.Proof.t
+     and type 'a with_prove_args = 'a Backend.Proof.with_create_args
 end
 
 type 'field m = (module Snark_intf.Run with type field = 'field)
