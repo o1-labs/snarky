@@ -117,3 +117,8 @@ module type S = sig
     val create : R1CS_constraint_system.t -> t
   end
 end
+
+module type S_default = S with type 'a Proof.with_create_args = 'a
+
+module type S_signature_of_knowledge =
+  S with type 'a Proof.with_create_args = ?message:bool array -> 'a

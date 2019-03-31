@@ -1252,6 +1252,11 @@ module type S = sig
      and type t := M.t
 end
 
+module type S_standard = S with type 'a with_prove_args = 'a
+
+module type S_signature_of_knowledge =
+  S with type 'a with_prove_args = 'a sok_with_prove_args
+
 (** The imperative interface to Snarky. *)
 module type Run = sig
   type _ with_prove_args
@@ -1871,3 +1876,8 @@ module type Run = sig
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
 end
+
+module type Run_standard = S with type 'a with_prove_args = 'a
+
+module type Run_signature_of_knowledge =
+  S with type 'a with_prove_args = 'a sok_with_prove_args
