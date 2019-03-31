@@ -1399,6 +1399,10 @@ struct
   include Make_proof_system_keys (M)
 
   module Proof : sig
+    type 'a with_create_args = 'a
+
+    val proof_system_type : ('a, 'a with_create_args) Proof_system_type.t
+
     type t = M.Field.t Backend_types.Proof.t
 
     val typ : t Ctypes.typ
@@ -1415,6 +1419,10 @@ struct
 
     val of_string : string -> t
   end = struct
+    type 'a with_create_args = 'a
+
+    let proof_system_type = Proof_system_type.standard
+
     include Proof.Make (struct
       let prefix = with_prefix M.prefix "proof"
 
@@ -1575,6 +1583,10 @@ struct
   end)
 
   module Proof = struct
+    type 'a with_create_args = ?message:bool array -> 'a
+
+    let proof_system_type = Proof_system_type.signature_of_knowledge
+
     module Pre = struct
       module Prefix = struct
         let prefix = with_prefix M.prefix "bg_proof"
@@ -2272,10 +2284,15 @@ module type S = sig
   module Proof : sig
     type t
 
+    type _ with_create_args
+
+    val proof_system_type : ('a, 'a with_create_args) Proof_system_type.t
+
     val typ : t Ctypes.typ
 
     val create :
-      Proving_key.t -> primary:Field.Vector.t -> auxiliary:Field.Vector.t -> t
+      (Proving_key.t -> primary:Field.Vector.t -> auxiliary:Field.Vector.t -> t)
+      with_create_args
 
     val verify : t -> Verification_key.t -> Field.Vector.t -> bool
 
