@@ -61,12 +61,17 @@ module type S = sig
   end
 
   module Proof : sig
+    type _ with_create_args
+
+    val proof_system_type : ('a, 'a with_create_args) Proof_system_type.t
+
     type t = Field.t Backend_types.Proof.t
 
     include Stringable.S with type t := t
 
     val create :
-      Proving_key.t -> primary:Field.Vector.t -> auxiliary:Field.Vector.t -> t
+      (Proving_key.t -> primary:Field.Vector.t -> auxiliary:Field.Vector.t -> t)
+      with_create_args
 
     val verify : t -> Verification_key.t -> Field.Vector.t -> bool
   end
