@@ -10,7 +10,17 @@ let set_eval_constraints b = eval_constraints := b
 module Make_basic (Backend : Backend_intf.S) = struct
   open Backend
 
+  let on_proof_system_type finish =
+    match Proof.proof_system_type with
+    | Standard eq ->
+        Type_equal.(conv (sym eq)) (finish (Type_equal.conv eq Proof.create))
+    | Signature_of_knowledge eq ->
+        Type_equal.(conv (sym eq)) (fun ?message ->
+            finish (Type_equal.conv eq Proof.create ?message) )
+
   type field = Field.t
+
+  type 'a with_prove_args = 'a Proof.with_create_args
 
   module Bigint = struct
     include Bigint.R
@@ -1339,12 +1349,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             Some (Verification_key.of_string (In_channel.read_all path))
         | None -> None
 
-      let prove ~run ~public_input ?proving_key ?handlers proof_system s =
-        let system = R1CS_constraint_system.create () in
-        let _, _, state =
-          run_with_input ~run ~public_input ~system ?handlers proof_system s
-        in
-        let {input; aux; _} = state in
+      let prove ~run ~public_input ?proving_key ?handlers proof_system =
         let proving_key =
           List.find_map_exn
             ~f:(fun f -> f ())
@@ -1353,7 +1358,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ; (fun () -> read_proving_key proof_system)
             ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
-        Proof.create proving_key ~primary:input ~auxiliary:aux
+        on_proof_system_type (fun prove s ->
+            let system = R1CS_constraint_system.create () in
+            let _, _, {input; aux; _} =
+              run_with_input ~run ~public_input ~system ?handlers proof_system
+                s
+            in
+            prove proving_key ~primary:input ~auxiliary:aux )
 
       let verify ~run ~public_input ?verification_key proof_system proof =
         let input =
@@ -1468,18 +1479,18 @@ module Make_basic (Backend : Backend_intf.S) = struct
         -> Proving_key.t
         -> ('checked, Proof.t, 'k_var, 'k_value) t
         -> 's
-        -> 'k_var
-        -> 'k_value =
-     fun ~run key t s k ->
-      conv
-        (fun c primary ->
-          let auxiliary =
-            Checked.auxiliary_input ~run
-              ~num_inputs:(Field.Vector.length primary)
-              c s primary
-          in
-          Proof.create key ~primary ~auxiliary )
-        t k
+        -> ('k_var -> 'k_value) Proof.with_create_args =
+     fun ~run key t s ->
+      on_proof_system_type (fun prove k ->
+          conv
+            (fun c primary ->
+              let auxiliary =
+                Checked.auxiliary_input ~run
+                  ~num_inputs:(Field.Vector.length primary)
+                  c s primary
+              in
+              prove key ~primary ~auxiliary )
+            t k )
 
     let generate_auxiliary_input :
            run:('a, 's, 'checked) Checked.Runner.run
@@ -1777,7 +1788,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let generate_keypair ~run ~exposing k =
       Run.generate_keypair ~run ~exposing k
 
-    let prove ~run key t k = Run.prove ~run key t () k
+    let prove ~run key t = Run.prove ~run key t ()
 
     let verify = Run.verify
 
@@ -1795,7 +1806,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   let conv f = Run.conv (fun x _ -> f x)
 
-  let prove key t s k = Run.prove ~run:Runner.run key t s k
+  let prove key t s = Run.prove ~run:Runner.run key t s
 
   let generate_auxiliary_input t s k =
     Run.generate_auxiliary_input ~run:Runner.run t s k
@@ -1851,6 +1862,8 @@ module Run = struct
     module Snark = Make (Backend)
     open Types.Run_state
     open Snark
+
+    type 'a with_prove_args = 'a Proof.with_create_args
 
     let state =
       ref
@@ -2283,9 +2296,20 @@ module Run = struct
           (run_checked' ~run:as_stateful ~public_input ?handlers proof_system
              ())
 
-      let prove ~public_input ?proving_key ?handlers (proof_system : _ t) =
-        prove ~run:as_stateful ~public_input ?proving_key ?handlers
-          proof_system ()
+      let prove ~public_input ?proving_key ?handlers =
+        match Proof.proof_system_type with
+        | Standard eq ->
+            Type_equal.(conv (sym eq)) (fun proof_system ->
+                Type_equal.conv eq
+                  (prove ~run:as_stateful ~public_input ?proving_key ?handlers
+                     proof_system)
+                  () )
+        | Signature_of_knowledge eq ->
+            Type_equal.(conv (sym eq)) (fun ?message proof_system ->
+                Type_equal.conv eq
+                  (prove ~run:as_stateful ~public_input ?proving_key ?handlers
+                     proof_system)
+                  ?message () )
 
       let verify ~public_input ?verification_key (proof_system : _ t) =
         verify ~run:as_stateful ~public_input ?verification_key proof_system
