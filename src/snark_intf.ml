@@ -697,14 +697,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           otherwise.
       *)
 
+      val ( + ) : Var.t -> Var.t -> Var.t
       (** Infix notations for the basic field operations. *)
-      module Infix : sig
-        val ( + ) : Var.t -> Var.t -> Var.t
 
-        val ( - ) : Var.t -> Var.t -> Var.t
+      val ( - ) : Var.t -> Var.t -> Var.t
 
-        val ( * ) : field -> Var.t -> Var.t
-      end
+      val ( * ) : field -> Var.t -> Var.t
 
       module Unsafe : sig
         val of_index : int -> Var.t

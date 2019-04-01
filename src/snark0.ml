@@ -139,15 +139,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
             (project bs |> to_string)
             (project_reference bs |> to_string) )
 
-    module Infix = struct
-      let ( + ) = add
+    let ( + ) = add
 
-      let ( * ) = mul
+    let ( * ) = mul
 
-      let ( - ) = sub
+    let ( - ) = sub
 
-      let ( / ) = div
-    end
+    let ( / ) = div
   end
 
   module Cvar = struct
@@ -788,7 +786,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       let%map () =
         let open Constraint in
-        let open Cvar.Infix in
+        let open Cvar in
         assert_all
           [ r1cs ~label:"equals_1" inv (x - y) (Cvar.constant Field.one - r)
           ; r1cs ~label:"equals_2" r (x - y) (Cvar.constant Field.zero) ]
@@ -862,7 +860,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let b = (b :> Cvar.t) in
       match (then_, else_) with
       | Constant t, Constant e ->
-          return Cvar.(Infix.((t * b) + (e * (constant Field0.one - b))))
+          return Cvar.((t * b) + (e * (constant Field0.one - b)))
       | _, _ ->
           let%bind r =
             exists Typ.field
@@ -873,9 +871,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 read Typ.field
                   (if Field.equal b Field.one then then_ else else_))
           in
-          let%map () =
-            assert_r1cs b Cvar.Infix.(then_ - else_) Cvar.Infix.(r - else_)
-          in
+          let%map () = assert_r1cs b Cvar.(then_ - else_) Cvar.(r - else_) in
           r
 
     let%snarkydef_ assert_non_zero (v : Cvar.t) =
@@ -894,8 +890,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let false_ : var = create (Cvar.constant Field.zero)
 
-      let not (x : var) : var =
-        create Cvar.Infix.((true_ :> Cvar.t) - (x :> Cvar.t))
+      let not (x : var) : var = create Cvar.((true_ :> Cvar.t) - (x :> Cvar.t))
 
       let if_ b ~(then_ : var) ~(else_ : var) =
         Checked0.map ~f:create
@@ -923,7 +918,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         in
         let%map () =
           let x_plus_y = Cvar.add x y in
-          assert_square x_plus_y Cvar.Infix.((Field.of_int 2 * z) + x_plus_y)
+          assert_square x_plus_y Cvar.((Field.of_int 2 * z) + x_plus_y)
         in
         create z
 
@@ -1004,7 +999,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
               let a = (b1 :> Cvar.t) in
               let b = (b2 :> Cvar.t) in
               let c = (res :> Cvar.t) in
-              let open Cvar.Infix in
+              let open Cvar in
               assert_r1cs (a + a) b (a + b - c)
             in
             res
@@ -1585,9 +1580,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let open Let_syntax in
         [%with_label_ "compare"]
           (let alpha_packed =
-             Cvar.Infix.(Cvar.constant (two_to_the bit_length) + b - a)
+             Cvar.(constant (two_to_the bit_length) + b - a)
            in
-           let%bind alpha = unpack alpha_packed ~length:(bit_length + 1) in
+           let%bind alpha = unpack alpha_packed ~length:Int.(bit_length + 1) in
            let prefix, less_or_equal =
              match Core_kernel.List.split_n alpha bit_length with
              | p, [l] -> (p, l)
@@ -1667,7 +1662,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let field_size_bits =
         List.init Field.size_in_bits ~f:(fun i ->
-            Bigint.test_bit field_size (Field.size_in_bits - 1 - i) )
+            Bigint.test_bit field_size Int.(Field.size_in_bits - 1 - i) )
         |> Bitstring_lib.Bitstring.Msb_first.of_list
 
       let unpack_full x =
@@ -2091,7 +2086,13 @@ module Run = struct
 
           let negate = negate
 
-          module Infix = Infix
+          let ( + ) = ( + )
+
+          let ( - ) = ( - )
+
+          let ( * ) = ( * )
+
+          let ( / ) = ( / )
 
           let of_string = of_string
 
