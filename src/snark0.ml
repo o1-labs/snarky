@@ -481,12 +481,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let s', y = run t {s with stack= lab :: stack} in
             run (k y) {s' with stack}
         | Add_constraint (c, t) ->
-            if s.eval_constraints && not (Constraint.eval c (get_value s)) then (
-              Constraint.print c (get_value s) ;
+            if s.eval_constraints && not (Constraint.eval c (get_value s)) then
               failwithf "Constraint unsatisfied:\n%s\n%s\n"
                 (Constraint.annotation c)
                 (Constraint.stack_to_string s.stack)
-                () ) ;
+                () ;
             Option.iter s.system ~f:(fun system ->
                 Constraint.add ~stack:s.stack c system ) ;
             run t s
