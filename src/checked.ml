@@ -14,7 +14,7 @@ module T0 = struct
     match t with
     | Pure x -> Pure (f x)
     | Direct (d, k) -> Direct (d, fun b -> map (k b) ~f)
-    | Reduced (t, d, k) -> Reduced (t, d, map k ~f)
+    | Reduced (t, d, res, k) -> Reduced (t, d, res, fun b -> map (k b) ~f)
     | With_label (s, t, k) -> With_label (s, t, fun b -> map (k b) ~f)
     | As_prover (x, k) -> As_prover (x, map k ~f)
     | Add_constraint (c, t1) -> Add_constraint (c, map t1 ~f)
@@ -33,7 +33,7 @@ module T0 = struct
     match t with
     | Pure x -> f x
     | Direct (d, k) -> Direct (d, fun b -> bind (k b) ~f)
-    | Reduced (t, d, k) -> Reduced (t, d, bind k ~f)
+    | Reduced (t, d, res, k) -> Reduced (t, d, res, fun b -> bind (k b) ~f)
     | With_label (s, t, k) -> With_label (s, t, fun b -> bind (k b) ~f)
     | As_prover (x, k) -> As_prover (x, bind k ~f)
     (* Someday: This case is probably a performance bug *)
