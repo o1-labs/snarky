@@ -61,14 +61,21 @@ module type S = sig
   end
 
   module Proof : sig
+    type message
+
     type t = Field.t Backend_types.Proof.t
 
     include Stringable.S with type t := t
 
     val create :
-      Proving_key.t -> primary:Field.Vector.t -> auxiliary:Field.Vector.t -> t
+         ?message:message
+      -> Proving_key.t
+      -> primary:Field.Vector.t
+      -> auxiliary:Field.Vector.t
+      -> t
 
-    val verify : t -> Verification_key.t -> Field.Vector.t -> bool
+    val verify :
+      ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
   end
 
   module R1CS_constraint_system : sig
