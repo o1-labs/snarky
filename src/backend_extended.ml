@@ -1,6 +1,14 @@
 open Core_kernel
 module Bignum_bigint = Bigint
 
+(** Yojson-compatible JSON type. *)
+type 'a json =
+  [> `String of string
+  | `Assoc of (string * 'a json) list
+  | `List of 'a json list ]
+  as
+  'a
+
 module type S = sig
   module Field : sig
     type t [@@deriving bin_io, sexp, hash, compare]
@@ -160,6 +168,10 @@ module type S = sig
       -> bool
 
     val digest : t -> Md5.t
+
+    val constraints : t -> Cvar.t Constraint.t
+
+    val to_json : t -> 'a json
   end
 
   module Keypair : sig
@@ -197,6 +209,10 @@ module type S = sig
          Cvar.t Constraint.basic_with_annotation list
       -> (Cvar.t -> Field.t)
       -> bool
+
+    val basic_to_json : Cvar.t Constraint.basic -> 'a json
+
+    val to_json : t -> 'a json
   end
 end
 
@@ -369,10 +385,25 @@ module Make (Backend : Backend_intf.S) :
     let of_field = Backend.Linear_combination.of_field
 
     let zero = of_field Field.zero
+
+    let to_var lc =
+      let terms = Linear_combination.terms lc in
+      let l =
+        List.init (Linear_combination.Term.Vector.length terms) ~f:(fun i ->
+            let term = Linear_combination.Term.Vector.get terms i in
+            let coeff = Linear_combination.Term.coeff term in
+            let var = Linear_combination.Term.var term in
+            let index = Backend.Var.index var in
+            let var =
+              if Int.equal index 0 then Cvar.constant Field.one
+              else Cvar.Unsafe.of_index (index - 1)
+            in
+            (coeff, var) )
+      in
+      Cvar.linear_combination l
   end
 
   module R1CS_constraint = R1CS_constraint
-  module R1CS_constraint_system = R1CS_constraint_system
 
   module Constraint = struct
     open Constraint
@@ -434,5 +465,51 @@ module Make (Backend : Backend_intf.S) :
 
     let eval t get_value =
       List.for_all t ~f:(fun {basic; _} -> eval_basic basic get_value)
+
+    let basic_to_json = function
+      | Boolean x ->
+          let fx = Cvar.to_json x in
+          `Assoc [("A", fx); ("B", fx); ("C", fx)]
+      | Equal (x, y) ->
+          `Assoc
+            [ ("A", `Assoc [])
+            ; ("B", `Assoc [])
+            ; ("C", Cvar.to_json (Cvar.sub x y)) ]
+      | Square (a, c) ->
+          let fa = Cvar.to_json a in
+          `Assoc [("A", fa); ("B", fa); ("C", Cvar.to_json c)]
+      | R1CS (a, b, c) ->
+          `Assoc
+            [ ("A", Cvar.to_json a)
+            ; ("B", Cvar.to_json b)
+            ; ("C", Cvar.to_json c) ]
+
+    let to_json x =
+      `List (List.map x ~f:(fun {basic; _} -> basic_to_json basic))
+  end
+
+  module R1CS_constraint_system = struct
+    include R1CS_constraint_system
+
+    let constraints : t -> Constraint.t =
+      fold_constraints ~init:[] ~f:(fun acc constr ->
+          let a = Linear_combination.to_var (R1CS_constraint.a constr) in
+          let b = Linear_combination.to_var (R1CS_constraint.b constr) in
+          let c = Linear_combination.to_var (R1CS_constraint.c constr) in
+          Constraint.create_basic (R1CS (a, b, c)) :: acc )
+
+    let to_json system =
+      let open Base in
+      let inputs =
+        List.init (get_primary_input_size system) ~f:(fun i ->
+            `String (sprintf "input%i" (i + 1)) )
+      in
+      let auxiliaries =
+        List.init (get_auxiliary_input_size system) ~f:(fun i ->
+            `String (sprintf "a%i" (i + 1)) )
+      in
+      `Assoc
+        [ ("Variables", `List ((`String "ONE" :: inputs) @ auxiliaries))
+        ; ("constraints", Constraint.to_json (constraints system)) ]
   end
 end
