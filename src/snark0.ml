@@ -1527,12 +1527,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
        fun t k ->
         match t with
         | [] ->
-          let open Checked.Let_syntax in
-          let r = Checked.Runner.reduce_to_prover next_input k in
-          let%bind next_auxiliary = Checked.next_auxiliary in
-          if next_auxiliary <> !next_input then
-            failwith (Format.(sprintf "%i <> %i" next_auxiliary !next_input));
-          r
+            let open Checked.Let_syntax in
+            let first_auxiliary = !next_input in
+            let r = Checked.Runner.reduce_to_prover next_input k in
+            let%bind next_auxiliary = Checked.next_auxiliary in
+            if next_auxiliary <> first_auxiliary then
+              failwith
+                Format.(sprintf "%i <> %i" next_auxiliary first_auxiliary) ;
+            r
         | {alloc; _} :: t' ->
             let var = Typ.Alloc.run alloc alloc_var in
             let ret = go t' (k var) in
