@@ -86,8 +86,8 @@ module Make (Checked : Checked_intf.S) = struct
         =
       alloc
 
-    let check (type field) ({check; _} : ('var, 'value, field) t) (v : 'var) :
-        (unit, 's, field) Checked.t =
+    let check (type field) ({check; _} : ('var, 'value, field Checked.field) t)
+        (v : 'var) : (unit, 's, field Checked.field) Checked.t =
       Checked.with_state (As_prover0.return ()) (check v)
 
     let unit () : (unit, unit, 'field) t =
