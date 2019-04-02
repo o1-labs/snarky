@@ -35,6 +35,8 @@ module type S = sig
     val mul : t -> other:t -> unit
 
     val sub : t -> other:t -> unit
+
+    val copy : over:t -> t -> unit
   end
 
   val ( += ) : t -> t -> unit
@@ -49,15 +51,15 @@ end
 module type Extended = sig
   include S
 
+  val to_string : t -> string
+
   val negate : t -> t
 
-  module Infix : sig
-    val ( + ) : t -> t -> t
+  val ( + ) : t -> t -> t
 
-    val ( * ) : t -> t -> t
+  val ( * ) : t -> t -> t
 
-    val ( - ) : t -> t -> t
+  val ( - ) : t -> t -> t
 
-    val ( / ) : t -> t -> t
-  end
+  val ( / ) : t -> t -> t
 end

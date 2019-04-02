@@ -221,6 +221,10 @@ void camlsnark_mnt4_field_mut_sub(FieldT* x, FieldT* y) {
   *x -= *y;
 }
 
+void camlsnark_mnt4_field_copy(FieldT* x, FieldT* y) {
+  mpn_copyi(x->mont_repr.data, y->mont_repr.data, x->num_limbs);
+}
+
 FieldT* camlsnark_mnt4_field_rng(int i) {
   return new FieldT(libff::SHA512_rng<FieldT>(i));
 }
@@ -463,6 +467,18 @@ void camlsnark_mnt4_r1cs_constraint_set_is_square(r1cs_constraint<FieldT>* c, bo
   c->is_square = is_square;
 }
 
+const linear_combination<FieldT>* camlsnark_mnt4_r1cs_constraint_a(const r1cs_constraint<FieldT>* c) {
+  return &c->a;
+}
+
+const linear_combination<FieldT>* camlsnark_mnt4_r1cs_constraint_b(const r1cs_constraint<FieldT>* c) {
+  return &c->b;
+}
+
+const linear_combination<FieldT>* camlsnark_mnt4_r1cs_constraint_c(const r1cs_constraint<FieldT>* c) {
+  return &c->c;
+}
+
 r1cs_constraint_system<FieldT>* camlsnark_mnt4_r1cs_constraint_system_create() {
   return new r1cs_constraint_system<FieldT>();
 }
@@ -574,6 +590,15 @@ int camlsnark_mnt4_r1cs_constraint_system_get_primary_input_size(
 int camlsnark_mnt4_r1cs_constraint_system_get_auxiliary_input_size(
     r1cs_constraint_system<FieldT>* sys) {
   return sys->auxiliary_input_size;
+}
+
+void camlsnark_mnt4_r1cs_constraint_system_iter(
+    r1cs_constraint_system<FieldT>* sys,
+    void (*f)(const r1cs_constraint<FieldT> *)) {
+  std::vector<r1cs_constraint<FieldT>>& cs = sys->constraints;
+  for (std::vector<r1cs_constraint<FieldT>>::const_iterator i = cs.cbegin(); i != cs.cend(); i++) {
+    f(&*i);
+  }
 }
 
 std::vector<FieldT>* camlsnark_mnt4_field_vector_create() {
@@ -998,15 +1023,27 @@ r1cs_bg_ppzksnark_proof<ppT>* camlsnark_mnt4_bg_proof_create(
   return new r1cs_bg_ppzksnark_proof<ppT>(res);
 }
 
-void camlsnark_mnt4_bg_proof_delete(r1cs_bg_ppzksnark_proof<ppT>* proof) {
-  delete proof;
-}
-
-bool camlsnark_mnt4_bg_proof_verify(
-    r1cs_bg_ppzksnark_proof<ppT>* proof,
+bool camlsnark_mnt4_bg_proof_verify_components(
+    libff::G1<ppT>* a,
+    libff::G2<ppT>* b,
+    libff::G1<ppT>* c,
+    libff::G2<ppT>* delta_prime,
+    libff::G1<ppT>* z,
+    libff::G1<ppT>* y_s,
     r1cs_bg_ppzksnark_verification_key<ppT>* key,
     std::vector<FieldT>* primary_input) {
-  return r1cs_bg_ppzksnark_verifier_weak_IC(*key, *primary_input, *proof);
+  r1cs_bg_ppzksnark_proof<ppT> p = r1cs_bg_ppzksnark_proof<ppT>();
+  p.g_A = *a;
+  p.g_B = *b;
+  p.g_C = *c;
+  p.delta_prime = *delta_prime;
+  p.z = *z;
+  p.y_s = *y_s;
+  return r1cs_bg_ppzksnark_verifier_strong_IC(*key, *primary_input, p);
+}
+
+void camlsnark_mnt4_bg_proof_delete(r1cs_bg_ppzksnark_proof<ppT>* proof) {
+  delete proof;
 }
 
 libff::G1<ppT>* camlsnark_mnt4_bg_proof_a(r1cs_bg_ppzksnark_proof<ppT>* proof) {

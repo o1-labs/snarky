@@ -10,7 +10,7 @@ module type S = sig
   val field_size : Bigint.R.t
 
   module Var : sig
-    type t
+    type t = Field.t Backend_types.Var.t
 
     val index : t -> int
 
@@ -18,7 +18,7 @@ module type S = sig
   end
 
   module Linear_combination : sig
-    type t
+    type t = Field.t Backend_types.Linear_combination.t
 
     val create : unit -> t
 
@@ -27,19 +27,39 @@ module type S = sig
     val of_field : Field.t -> t
 
     val add_term : t -> Field.t -> Var.t -> unit
+
+    module Term : sig
+      type t
+
+      val create : Field.t -> Var.t -> t
+
+      val coeff : t -> Field.t
+
+      val var : t -> Var.t
+
+      module Vector : Vector.S with type elt = t
+    end
+
+    val terms : t -> Term.Vector.t
   end
 
   module R1CS_constraint : sig
-    type t
+    type t = Field.t Backend_types.R1CS_constraint.t
 
     val create :
       Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
 
     val set_is_square : t -> bool -> unit
+
+    val a : t -> Linear_combination.t
+
+    val b : t -> Linear_combination.t
+
+    val c : t -> Linear_combination.t
   end
 
   module Proving_key : sig
-    type t [@@deriving bin_io]
+    type t = Field.t Backend_types.Proving_key.t [@@deriving bin_io]
 
     val to_string : t -> string
 
@@ -51,7 +71,7 @@ module type S = sig
   end
 
   module Verification_key : sig
-    type t
+    type t = Field.t Backend_types.Verification_key.t
 
     include Stringable.S with type t := t
 
@@ -61,18 +81,25 @@ module type S = sig
   end
 
   module Proof : sig
-    type t
+    type message
+
+    type t = Field.t Backend_types.Proof.t
 
     include Stringable.S with type t := t
 
     val create :
-      Proving_key.t -> primary:Field.Vector.t -> auxiliary:Field.Vector.t -> t
+         ?message:message
+      -> Proving_key.t
+      -> primary:Field.Vector.t
+      -> auxiliary:Field.Vector.t
+      -> t
 
-    val verify : t -> Verification_key.t -> Field.Vector.t -> bool
+    val verify :
+      ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
   end
 
   module R1CS_constraint_system : sig
-    type t
+    type t = Field.t Backend_types.R1CS_constraint_system.t
 
     val create : unit -> t
 
@@ -100,10 +127,15 @@ module type S = sig
       -> bool
 
     val digest : t -> Md5.t
+
+    val iter_constraints : f:(R1CS_constraint.t -> unit) -> t -> unit
+
+    val fold_constraints :
+      f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
   end
 
   module Keypair : sig
-    type t
+    type t = Field.t Backend_types.Keypair.t
 
     val pk : t -> Proving_key.t
 

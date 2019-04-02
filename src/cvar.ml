@@ -26,15 +26,38 @@ struct
     let of_index v = Var v
   end
 
+  let scratch = Field.of_int 0
+
   let eval context t0 =
-    let res = ref Field.zero in
+    let open Field in
+    let res = of_int 0 in
+    let can_mutate_scale = ref false in
     let rec go scale = function
-      | Constant c -> res := Field.add !res (Field.mul scale c)
-      | Var v -> res := Field.add !res (Field.mul scale (context v))
-      | Scale (s, t) -> go (Field.mul s scale) t
-      | Add (t1, t2) -> go scale t1 ; go scale t2
+      | Constant c when !can_mutate_scale -> scale *= c ; res += scale
+      | Constant c ->
+          Mutable.copy ~over:scratch c ;
+          scratch *= scale ;
+          res += scratch
+      | Var v when !can_mutate_scale ->
+          scale *= context v ;
+          res += scale
+      | Var v ->
+          Mutable.copy ~over:scratch (context v) ;
+          scratch *= scale ;
+          res += scratch
+      | Scale (s, t) when !can_mutate_scale -> scale *= s ; go scale t
+      | Scale (s, t) ->
+          can_mutate_scale := true ;
+          go (mul s scale) t ;
+          can_mutate_scale := false
+      | Add (t1, t2) ->
+          let cms = !can_mutate_scale in
+          can_mutate_scale := false ;
+          go scale t1 ;
+          can_mutate_scale := cms ;
+          go scale t2
     in
-    go Field.one t0 ; !res
+    go one t0 ; res
 
   let constant c = Constant c
 
@@ -72,11 +95,24 @@ struct
 
   let sum vs = linear_combination (List.map vs ~f:(fun v -> (Field.one, v)))
 
-  module Infix = struct
-    let ( + ) = add
+  let ( + ) = add
 
-    let ( - ) = sub
+  let ( - ) = sub
 
-    let ( * ) c x = scale x c
-  end
+  let ( * ) c x = scale x c
+
+  let to_json x =
+    let singleton = Map.singleton (module Int) in
+    let join = Map.merge_skewed ~combine:(fun ~key:_ -> Field.add) in
+    let rec go scale = function
+      | Constant f -> singleton 0 (Field.mul scale f)
+      | Var i -> singleton i scale
+      | Add (x, y) -> join (go scale x) (go scale y)
+      | Scale (s, x) -> go Field.(scale * s) x
+    in
+    let map = go Field.one x in
+    `Assoc
+      (List.filter_map (Map.to_alist map) ~f:(fun (i, f) ->
+           if Field.(equal f zero) then None
+           else Some (Int.to_string i, `String (Field.to_string f)) ))
 end

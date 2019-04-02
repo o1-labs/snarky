@@ -37,7 +37,7 @@ let _foo () : (unit, _) Checked.t = Checked.return ()
 let () =
   let x = Field.of_int 23 in
   let x_cubed = Field.mul x (Field.square x) in
-  let z = Field.Infix.(x_cubed / x) in
+  let z = Field.(x_cubed / x) in
   assert (Field.equal z (Field.square x))
 
 (* Try seeing what operations there are in the [Field] module by using
@@ -84,7 +84,7 @@ let assert_is_cube_root_of_1 (x : Field.Var.t) = failwith "Exercise 1"
 
 let cube_root_of_1 =
   let open Field in
-  Infix.((of_int (-1) + sqrt (of_int (-3))) / of_int 2)
+  (of_int (-1) + sqrt (of_int (-3))) / of_int 2
 
 let exercise1 () =
   (* Before we generate a constraint system or a proof for our checked
@@ -176,7 +176,9 @@ let zero_or_inverse (x : Field.Var.t) = failwith "Exercise 3"
 let exercise3 () =
   (* Unchecked reference implementation. *)
   let zero_or_inverse_unchecked x =
-    if Field.equal x Field.zero then x else Field.inv x
+    let b = Field.equal x Field.zero in
+    let invertable = if b then Field.one else x in
+    if b then x else Field.inv invertable
   in
   (* Check the value matches [expected_value]. *)
   let matches_unchecked x expected_value =
@@ -222,11 +224,11 @@ let exercise4 () =
   in
   let input () = failwith "Exercise 4: Data_spec here" in
   let keypair = failwith "Exercise 4: Keypair here" in
-  let proof x y = prove (Keypair.pk keypair) (input ()) () either x y in
+  let proof = prove (Keypair.pk keypair) (input ()) () either true true in
   let is_valid proof x y = verify proof (Keypair.vk keypair) (input ()) x y in
-  let proved x y = is_valid (proof x y) x y in
+  let proved x y = is_valid proof x y in
   printf
-    "Proved that:\n true && true is true? %b\n true && false is true? %b"
+    "Proved that:\n true && true is true? %b\n true && false is true? %b\n"
     (proved true true) (proved true false)
 
 (* Exercise 4: Comment this out when you're ready to test it! *)
@@ -240,22 +242,22 @@ let exercise4 () =
    [Typ.t]s we already have.
 
    Exercise 5:
-   Fill in [sum] below, and use [Typ.list] to create a proof from [sum_equals]
-   that it gives the correct value.
+   Fill in [product] below, and use [Typ.list] to create a proof from
+   [product_equals] that it gives the correct value.
 
-   Hint: the function [Checked.all] is useful for joining up a list of checked
-   computations into a checked computation of a list!
+   Hint: the functions in [Checked.List] are useful for working with checked
+   functions over lists!
 *)
 
-let sum (l : Field.Var.t list) : (Field.Var.t, _) Checked.t =
+let product (l : Field.Var.t list) : (Field.Var.t, _) Checked.t =
   failwith "Exercise 5"
 
-let sum_equals (l : Field.Var.t list) (expected_total : Field.Var.t) =
-  let%bind total = sum l in
+let product_equals (l : Field.Var.t list) (expected_total : Field.Var.t) =
+  let%bind total = product l in
   Field.Checked.Assert.equal total expected_total
 
-let sum_unchecked (l : Field.t list) =
-  List.fold ~init:Field.zero ~f:Field.add l
+let product_unchecked (l : Field.t list) =
+  List.fold ~init:Field.one ~f:Field.mul l
 
 let exercise5 () =
   let input () = failwith "Exercise 5: Data_spec here" in
@@ -264,21 +266,21 @@ let exercise5 () =
   let is_valid proof l expected_total = failwith "Exercise 5: Verify" in
   let proved (l : int list) =
     let l : Field.t list = List.map ~f:Field.of_int l in
-    let expected_total = sum_unchecked l in
+    let expected_total = product_unchecked l in
     is_valid (proof l expected_total) l expected_total
   in
-  printf "Does sum [1; 2; 3; 4; 5] = 15? %b\n" (proved [1; 2; 3; 4; 5])
+  printf "Does product [1; 2; 3; 4; 5] = 120? %b\n" (proved [1; 2; 3; 4; 5])
 
 (* Exercise 5: Comment this out when you're ready to test it! *)
 (* let () = exercise5 () *)
 
 (* Exercise 6:
    Adapt your solution to exercise 5 to create a checked version of
-   [add_triple] below.
+   [product_triple] below.
 *)
 
-let add_triple ((x, y, z) : Field.t * Field.t * Field.t) : Field.t =
-  Field.Infix.(x + y + z)
+let product_triple ((x, y, z) : Field.t * Field.t * Field.t) : Field.t =
+  Field.(x * y * z)
 
 let exercise6 () = failwith "Exercise 6"
 
@@ -304,19 +306,19 @@ let exercise6 () = failwith "Exercise 6"
    For now, we will focus on the [~compute] argument.
 
    Exercise 7:
-   Rework your solution to exercise 5 to provide a proof that [sum] and
-   [sum_unchecked] return the same value, but without exposing the
-   result from [sum_unchecked].
+   Rework your solution to exercise 5 to provide a proof that [product] and
+   [product_unchecked] return the same value, but without exposing the
+   result from [product_unchecked].
 *)
 
-let sum (l : Field.Var.t list) : (Field.Var.t, _) Checked.t =
+let product (l : Field.Var.t list) : (Field.Var.t, _) Checked.t =
   failwith "Exercise 7"
 
-let sum_unchecked (l : Field.t list) =
-  List.fold ~init:Field.zero ~f:Field.add l
+let product_unchecked (l : Field.t list) =
+  List.fold ~init:Field.one ~f:Field.mul l
 
-let sum_equals (l : Field.Var.t list) =
-  let%bind total = sum l in
+let product_equals (l : Field.Var.t list) =
+  let%bind total = product l in
   let%bind expected_total =
     exists Field.typ
       ~compute:
@@ -327,10 +329,10 @@ let sum_equals (l : Field.Var.t list) =
              from our checked computation back into normal OCaml values.
           *)
           let%map l = read (Typ.list ~length:(List.length l) Field.typ) l in
-          (* Now we have l back as a [Field.t list], so we can call [sum_unchecked]
-             on it.
+          (* Now we have l back as a [Field.t list], so we can call
+             [product_unchecked] on it.
           *)
-          sum_unchecked l)
+          product_unchecked l)
   in
   Field.Checked.Assert.equal total expected_total
 
@@ -344,8 +346,8 @@ let exercise7 () =
     is_valid (proof l) l
   in
   printf
-    "Have we proved that we've calculated the sum of the list [1; 2; 3; 4; \
-     5]? %b\n"
+    "Have we proved that we've calculated the product of the list [1; 2; 3; \
+     4; 5]? %b\n"
     (proved [1; 2; 3; 4; 5])
 
 (* Exercise 7: Comment this out when you're ready to test it! *)
@@ -463,8 +465,8 @@ module Exercise9 = struct
     let open Field in
     [|[|of_int 1; of_int 2|]; [|of_int 3; of_int 4|]; [|of_int 5; of_int 6|]|]
 
-  let () = printf !"Result %{sexp: Mat.t}\n%!" (Mat.mul a b)
-
+  (* let () = printf !"Result %{sexp: Mat.t}\n%!" (Mat.mul a b) *)
+  
   (* Exercise 9:
      To bring everything together, we want to prove something more substantial.
      Here, we will build a program that
@@ -485,7 +487,7 @@ module Exercise9 = struct
 
     (* Next, we need to make a checked version of [Matrix.mul] from above.
        This should feel familiar: we did a very similar thing when we were
-       finding the sum of a list!
+       finding the product of a list!
      *)
     let mul : t -> t -> (t, _) Checked.t =
      fun a b -> failwith "Exercise 9: Write mul"
@@ -522,7 +524,7 @@ module Exercise9 = struct
 
   let input () = Data_spec.[typ ()]
 
-  let keypair = generate_keypair ~exposing:(input ()) assert_exists_sqrt
+  let keypair () = generate_keypair ~exposing:(input ()) assert_exists_sqrt
 
   (* Build a proof.
      This should consist of:

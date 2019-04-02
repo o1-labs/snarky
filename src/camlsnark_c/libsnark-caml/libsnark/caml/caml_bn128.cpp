@@ -221,6 +221,10 @@ void camlsnark_bn128_field_mut_sub(FieldT* x, FieldT* y) {
   *x -= *y;
 }
 
+void camlsnark_bn128_field_copy(FieldT* x, FieldT* y) {
+  mpn_copyi(x->mont_repr.data, y->mont_repr.data, x->num_limbs);
+}
+
 FieldT* camlsnark_bn128_field_rng(int i) {
   return new FieldT(libff::SHA512_rng<FieldT>(i));
 }
@@ -463,6 +467,18 @@ void camlsnark_bn128_r1cs_constraint_set_is_square(r1cs_constraint<FieldT>* c, b
   c->is_square = is_square;
 }
 
+const linear_combination<FieldT>* camlsnark_bn128_r1cs_constraint_a(const r1cs_constraint<FieldT>* c) {
+  return &c->a;
+}
+
+const linear_combination<FieldT>* camlsnark_bn128_r1cs_constraint_b(const r1cs_constraint<FieldT>* c) {
+  return &c->b;
+}
+
+const linear_combination<FieldT>* camlsnark_bn128_r1cs_constraint_c(const r1cs_constraint<FieldT>* c) {
+  return &c->c;
+}
+
 r1cs_constraint_system<FieldT>* camlsnark_bn128_r1cs_constraint_system_create() {
   return new r1cs_constraint_system<FieldT>();
 }
@@ -574,6 +590,15 @@ int camlsnark_bn128_r1cs_constraint_system_get_primary_input_size(
 int camlsnark_bn128_r1cs_constraint_system_get_auxiliary_input_size(
     r1cs_constraint_system<FieldT>* sys) {
   return sys->auxiliary_input_size;
+}
+
+void camlsnark_bn128_r1cs_constraint_system_iter(
+    r1cs_constraint_system<FieldT>* sys,
+    void (*f)(const r1cs_constraint<FieldT> *)) {
+  std::vector<r1cs_constraint<FieldT>>& cs = sys->constraints;
+  for (std::vector<r1cs_constraint<FieldT>>::const_iterator i = cs.cbegin(); i != cs.cend(); i++) {
+    f(&*i);
+  }
 }
 
 std::vector<FieldT>* camlsnark_bn128_field_vector_create() {
