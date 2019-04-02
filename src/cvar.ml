@@ -108,7 +108,7 @@ struct
       | Constant f -> singleton 0 (Field.mul scale f)
       | Var i -> singleton i scale
       | Add (x, y) -> join (go scale x) (go scale y)
-      | Scale (s, x) -> go Field.Infix.(scale * s) x
+      | Scale (s, x) -> go Field.(scale * s) x
     in
     let map = go Field.one x in
     `Assoc
