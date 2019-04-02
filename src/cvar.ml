@@ -95,11 +95,9 @@ struct
 
   let sum vs = linear_combination (List.map vs ~f:(fun v -> (Field.one, v)))
 
-  module Infix = struct
-    let ( + ) = add
+  let ( + ) = add
 
-    let ( - ) = sub
+  let ( - ) = sub
 
-    let ( * ) c x = scale x c
-  end
+  let ( * ) c x = scale x c
 end

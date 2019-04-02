@@ -684,13 +684,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       *)
 
       (** Infix notations for the basic field operations. *)
-      module Infix : sig
-        val ( + ) : Var.t -> Var.t -> Var.t
 
-        val ( - ) : Var.t -> Var.t -> Var.t
+      val ( + ) : Var.t -> Var.t -> Var.t
 
-        val ( * ) : field -> Var.t -> Var.t
-      end
+      val ( - ) : Var.t -> Var.t -> Var.t
+
+      val ( * ) : field -> Var.t -> Var.t
 
       module Unsafe : sig
         val of_index : int -> Var.t
@@ -724,6 +723,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** Zero-knowledge proofs generated from checked computations. *)
   module Proof : sig
     type t
+
+    (** The type of messages that can be associated with a proof. *)
+    type message
 
     include Stringable.S with type t := t
   end
@@ -941,6 +943,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
+      -> ?message:Proof.message
       -> ('a, 's, 'public_input) t
       -> 's
       -> Proof.t
@@ -951,11 +954,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         - The [handlers] argument adds handlers to those already given to
           {!val:create}. If handlers for the same requests were provided to
           both, the ones passed here are given priority.
+        - The [message] argument specifies the message to associate with the
+          proof, if any.
     *)
 
     val verify :
          public_input:(unit, 'public_input) H_list.t
       -> ?verification_key:Verification_key.t
+      -> ?message:Proof.message
       -> ('a, 's, 'public_input) t
       -> Proof.t
       -> bool
@@ -985,13 +991,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     val prove :
          run:('a, 't) t
+      -> ?message:Proof.message
       -> Proving_key.t
       -> ('t, Proof.t, 'k_var, 'k_value) Data_spec.t
       -> 'k_var
       -> 'k_value
 
     val verify :
-         Proof.t
+         ?message:Proof.message
+      -> Proof.t
       -> Verification_key.t
       -> (_, bool, _, 'k_value) Data_spec.t
       -> 'k_value
@@ -1128,7 +1136,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val prove :
-       Proving_key.t
+       ?message:Proof.message
+    -> Proving_key.t
     -> ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 's
     -> 'k_var
@@ -1138,7 +1147,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val verify :
-       Proof.t
+       ?message:Proof.message
+    -> Proof.t
     -> Verification_key.t
     -> (_, bool, _, 'k_value) Data_spec.t
     -> 'k_value
@@ -1652,6 +1662,8 @@ module type Run = sig
   module Proof : sig
     type t
 
+    type message
+
     include Stringable.S with type t := t
   end
 
@@ -1764,12 +1776,14 @@ module type Run = sig
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
+      -> ?message:Proof.message
       -> ('a, 'public_input) t
       -> Proof.t
 
     val verify :
          public_input:(unit, 'public_input) H_list.t
       -> ?verification_key:Verification_key.t
+      -> ?message:Proof.message
       -> ('a, 'public_input) t
       -> Proof.t
       -> bool
@@ -1820,13 +1834,15 @@ module type Run = sig
     exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t -> 'k_var -> Keypair.t
 
   val prove :
-       Proving_key.t
+       ?message:Proof.message
+    -> Proving_key.t
     -> (unit -> 'a, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
     -> 'k_value
 
   val verify :
-       Proof.t
+       ?message:Proof.message
+    -> Proof.t
     -> Verification_key.t
     -> (_, bool, _, 'k_value) Data_spec.t
     -> 'k_value

@@ -1002,15 +1002,27 @@ r1cs_bg_ppzksnark_proof<ppT>* camlsnark_mnt6_bg_proof_create(
   return new r1cs_bg_ppzksnark_proof<ppT>(res);
 }
 
-void camlsnark_mnt6_bg_proof_delete(r1cs_bg_ppzksnark_proof<ppT>* proof) {
-  delete proof;
-}
-
-bool camlsnark_mnt6_bg_proof_verify(
-    r1cs_bg_ppzksnark_proof<ppT>* proof,
+bool camlsnark_mnt6_bg_proof_verify_components(
+    libff::G1<ppT>* a,
+    libff::G2<ppT>* b,
+    libff::G1<ppT>* c,
+    libff::G2<ppT>* delta_prime,
+    libff::G1<ppT>* z,
+    libff::G1<ppT>* y_s,
     r1cs_bg_ppzksnark_verification_key<ppT>* key,
     std::vector<FieldT>* primary_input) {
-  return r1cs_bg_ppzksnark_verifier_weak_IC(*key, *primary_input, *proof);
+  r1cs_bg_ppzksnark_proof<ppT> p = r1cs_bg_ppzksnark_proof<ppT>();
+  p.g_A = *a;
+  p.g_B = *b;
+  p.g_C = *c;
+  p.delta_prime = *delta_prime;
+  p.z = *z;
+  p.y_s = *y_s;
+  return r1cs_bg_ppzksnark_verifier_strong_IC(*key, *primary_input, p);
+}
+
+void camlsnark_mnt6_bg_proof_delete(r1cs_bg_ppzksnark_proof<ppT>* proof) {
+  delete proof;
 }
 
 libff::G1<ppT>* camlsnark_mnt6_bg_proof_a(r1cs_bg_ppzksnark_proof<ppT>* proof) {

@@ -87,7 +87,7 @@ module Make (Impl : Snark_intf.S) = struct
             | true -> As_prover.read typ ys)
       in
       let%map () =
-        let open Field.Checked.Infix in
+        let open Field.Checked in
         assert_all
           (List.map3_exn
              (xs :> Field.Var.t list)
