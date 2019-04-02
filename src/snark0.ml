@@ -2181,6 +2181,11 @@ module Run = struct
       let compute = Option.map compute ~f:As_prover.run_prover in
       run (exists ?request ?compute typ)
 
+    let exists_handle ?request ?compute typ =
+      let request = Option.map request ~f:As_prover.run_prover in
+      let compute = Option.map compute ~f:As_prover.run_prover in
+      run (exists_handle ?request ?compute typ)
+
     type nonrec response = response
 
     let unhandled = unhandled

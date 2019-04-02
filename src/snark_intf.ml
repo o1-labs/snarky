@@ -1134,6 +1134,18 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       this function raises a [Failure].
   *)
 
+  val exists_handle :
+       ?request:('value Request.t, 's) As_prover.t
+    -> ?compute:('value, 's) As_prover.t
+    -> ('var, 'value) Typ.t
+    -> (('var, 'value) Handle.t, 's) Checked.t
+  (** Like {!val:exists}, but returns a {!type:Handle.t}.
+
+      This persists the OCaml value of the result, which is stored unchanged in
+      the {!type:Handle.t} and can be recalled in later {!module:As_prover}
+      blocks using {!val:Handle.value}.
+  *)
+
   val handle : ('a, 's) Checked.t -> Handler.t -> ('a, 's) Checked.t
   (** Add a request handler to the checked computation, to be used by
       {!val:request_witness}, {!val:perform}, {!val:request} or {!val:exists}.
@@ -1868,6 +1880,12 @@ module type Run = sig
     -> ?compute:(unit -> 'value) As_prover.t
     -> ('var, 'value) Typ.t
     -> 'var
+
+  val exists_handle :
+       ?request:(unit -> 'value Request.t) As_prover.t
+    -> ?compute:(unit -> 'value) As_prover.t
+    -> ('var, 'value) Typ.t
+    -> ('var, 'value) Handle.t
 
   val handle : (unit -> 'a) -> Handler.t -> 'a
 
