@@ -1399,17 +1399,21 @@ struct
   include Make_proof_system_keys (M)
 
   module Proof : sig
+    type message = unit
+
     type t = M.Field.t Backend_types.Proof.t
 
     val typ : t Ctypes.typ
 
     val create :
-         Proving_key.t
+         ?message:message
+      -> Proving_key.t
       -> primary:M.Field.Vector.t
       -> auxiliary:M.Field.Vector.t
       -> t
 
-    val verify : t -> Verification_key.t -> M.Field.Vector.t -> bool
+    val verify :
+      ?message:message -> t -> Verification_key.t -> M.Field.Vector.t -> bool
 
     val to_string : t -> string
 
@@ -1420,6 +1424,8 @@ struct
 
       type field = M.Field.t
     end)
+
+    type message = unit
 
     let to_string : t -> string =
       let stub =
@@ -1449,11 +1455,16 @@ struct
         let t = stub k primary auxiliary in
         Caml.Gc.finalise delete t ; t
 
-    let create key ~primary ~auxiliary = create_ key primary auxiliary
+    let create ?message:_ key ~primary ~auxiliary =
+      create_ key primary auxiliary
 
     let verify =
-      foreign (func_name "verify")
-        (typ @-> Verification_key.typ @-> M.Field.Vector.typ @-> returning bool)
+      let stub =
+        foreign (func_name "verify")
+          ( typ @-> Verification_key.typ @-> M.Field.Vector.typ
+          @-> returning bool )
+      in
+      fun ?message:_ t k primary -> stub t k primary
   end
 end
 
@@ -1607,6 +1618,8 @@ struct
         let t = stub proving_key d primary auxiliary in
         Caml.Gc.finalise delete t ; t
     end
+
+    type message = bool array
 
     type t = {a: G1.t; b: G2.t; c: G1.t; delta_prime: G2.t; z: G1.t}
     [@@deriving bin_io]
@@ -2272,12 +2285,19 @@ module type S = sig
   module Proof : sig
     type t
 
+    type message
+
     val typ : t Ctypes.typ
 
     val create :
-      Proving_key.t -> primary:Field.Vector.t -> auxiliary:Field.Vector.t -> t
+         ?message:message
+      -> Proving_key.t
+      -> primary:Field.Vector.t
+      -> auxiliary:Field.Vector.t
+      -> t
 
-    val verify : t -> Verification_key.t -> Field.Vector.t -> bool
+    val verify :
+      ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
 
     val to_string : t -> string
 

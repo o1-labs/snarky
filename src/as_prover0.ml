@@ -27,16 +27,16 @@ module T = struct
     (s, f x y)
 
   let read_var (v : 'var) : ('field, 'field, 's) t = fun tbl s -> (s, tbl v)
+
+  include Monad_let.Make3 (struct
+    type nonrec ('a, 'e, 's) t = ('a, 'e, 's) t
+
+    let map = `Custom map
+
+    let bind = bind
+
+    let return = return
+  end)
 end
 
 include T
-
-include Monad_let.Make3 (struct
-  type nonrec ('a, 'e, 's) t = ('a, 'e, 's) t
-
-  let map = `Custom map
-
-  let bind = bind
-
-  let return = return
-end)

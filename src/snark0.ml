@@ -139,15 +139,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
             (project bs |> to_string)
             (project_reference bs |> to_string) )
 
-    module Infix = struct
-      let ( + ) = add
+    let ( + ) = add
 
-      let ( * ) = mul
+    let ( * ) = mul
 
-      let ( - ) = sub
+    let ( - ) = sub
 
-      let ( / ) = div
-    end
+    let ( / ) = div
   end
 
   module Cvar = struct
@@ -372,8 +370,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module As_prover = struct
     include As_prover.Make (struct
-      type field = Field.t
-    end)
+                type field = Field.t
+              end)
+              (As_prover)
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
   end
@@ -797,7 +796,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       let%map () =
         let open Constraint in
-        let open Cvar.Infix in
+        let open Cvar in
         assert_all
           [ r1cs ~label:"equals_1" inv (x - y) (Cvar.constant Field.one - r)
           ; r1cs ~label:"equals_2" r (x - y) (Cvar.constant Field.zero) ]
@@ -871,7 +870,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let b = (b :> Cvar.t) in
       match (then_, else_) with
       | Constant t, Constant e ->
-          return Cvar.(Infix.((t * b) + (e * (constant Field0.one - b))))
+          return Cvar.((t * b) + (e * (constant Field0.one - b)))
       | _, _ ->
           let%bind r =
             exists Typ.field
@@ -882,9 +881,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 read Typ.field
                   (if Field.equal b Field.one then then_ else else_))
           in
-          let%map () =
-            assert_r1cs b Cvar.Infix.(then_ - else_) Cvar.Infix.(r - else_)
-          in
+          let%map () = assert_r1cs b Cvar.(then_ - else_) Cvar.(r - else_) in
           r
 
     let%snarkydef_ assert_non_zero (v : Cvar.t) =
@@ -903,8 +900,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let false_ : var = create (Cvar.constant Field.zero)
 
-      let not (x : var) : var =
-        create Cvar.Infix.((true_ :> Cvar.t) - (x :> Cvar.t))
+      let not (x : var) : var = create Cvar.((true_ :> Cvar.t) - (x :> Cvar.t))
 
       let if_ b ~(then_ : var) ~(else_ : var) =
         Checked0.map ~f:create
@@ -932,7 +928,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         in
         let%map () =
           let x_plus_y = Cvar.add x y in
-          assert_square x_plus_y Cvar.Infix.((Field.of_int 2 * z) + x_plus_y)
+          assert_square x_plus_y Cvar.((Field.of_int 2 * z) + x_plus_y)
         in
         create z
 
@@ -1013,7 +1009,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
               let a = (b1 :> Cvar.t) in
               let b = (b2 :> Cvar.t) in
               let c = (res :> Cvar.t) in
-              let open Cvar.Infix in
+              let open Cvar in
               assert_r1cs (a + a) b (a + b - c)
             in
             res
@@ -1348,7 +1344,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
             Some (Verification_key.of_string (In_channel.read_all path))
         | None -> None
 
-      let prove ~run ~public_input ?proving_key ?handlers proof_system s =
+      let prove ~run ~public_input ?proving_key ?handlers ?message proof_system
+          s =
         let system = R1CS_constraint_system.create () in
         let _, _, state =
           run_with_input ~run ~public_input ~system ?handlers proof_system s
@@ -1362,9 +1359,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ; (fun () -> read_proving_key proof_system)
             ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
-        Proof.create proving_key ~primary:input ~auxiliary:aux
+        Proof.create ?message proving_key ~primary:input ~auxiliary:aux
 
-      let verify ~run ~public_input ?verification_key proof_system proof =
+      let verify ~run ~public_input ?verification_key ?message proof_system
+          proof =
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
@@ -1379,7 +1377,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
                   "Could not verify the proof; no verification key has been \
                    provided." ) ]
         in
-        Proof.verify proof verification_key input
+        Proof.verify ?message proof verification_key input
     end
 
     let rec collect_input_constraints : type checked s r2 k1 k2.
@@ -1425,11 +1423,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
       Keypair.generate (constraint_system ~run ~exposing k)
 
     let verify :
-           Proof.t
+           ?message:Proof.message
+        -> Proof.t
         -> Verification_key.t
         -> ('r_var, bool, 'k_var, 'k_value) t
         -> 'k_value =
-     fun proof vk t0 ->
+     fun ?message proof vk t0 ->
       let primary_input = Field.Vector.create () in
       let next_input = ref 1 in
       let store_field_elt = store_field_elt primary_input next_input in
@@ -1437,7 +1436,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           (r_var, bool, k_var, k_value) t -> k_value =
        fun t ->
         match t with
-        | [] -> Proof.verify proof vk primary_input
+        | [] -> Proof.verify ?message proof vk primary_input
         | {store; _} :: t' ->
             fun value ->
               let _var = Typ.Store.run (store value) store_field_elt in
@@ -1474,13 +1473,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let prove :
            run:('a, 's, 'checked) Checked.Runner.run
+        -> ?message:Proof.message
         -> Proving_key.t
         -> ('checked, Proof.t, 'k_var, 'k_value) t
         -> ?handlers:Handler.t list
         -> 's
         -> 'k_var
         -> 'k_value =
-     fun ~run key t ?handlers s k ->
+     fun ~run ?message key t ?handlers s k ->
       conv
         (fun c primary ->
           let auxiliary =
@@ -1488,7 +1488,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
-          Proof.create key ~primary ~auxiliary )
+          Proof.create ?message key ~primary ~auxiliary )
         t k
 
     let generate_auxiliary_input :
@@ -1599,9 +1599,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let open Let_syntax in
         [%with_label_ "compare"]
           (let alpha_packed =
-             Cvar.Infix.(Cvar.constant (two_to_the bit_length) + b - a)
+             Cvar.(constant (two_to_the bit_length) + b - a)
            in
-           let%bind alpha = unpack alpha_packed ~length:(bit_length + 1) in
+           let%bind alpha = unpack alpha_packed ~length:Int.(bit_length + 1) in
            let prefix, less_or_equal =
              match Core_kernel.List.split_n alpha bit_length with
              | p, [l] -> (p, l)
@@ -1681,7 +1681,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let field_size_bits =
         List.init Field.size_in_bits ~f:(fun i ->
-            Bigint.test_bit field_size (Field.size_in_bits - 1 - i) )
+            Bigint.test_bit field_size Int.(Field.size_in_bits - 1 - i) )
         |> Bitstring_lib.Bitstring.Msb_first.of_list
 
       let unpack_full x =
@@ -1781,11 +1781,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let check ~public_input ?handlers (proof_system : _ t) =
       check ~run:Runner.run ~public_input ?handlers proof_system
 
-    let prove ~public_input ?proving_key ?handlers (proof_system : _ t) =
-      prove ~run:Runner.run ~public_input ?proving_key ?handlers proof_system
+    let prove ~public_input ?proving_key ?handlers ?message
+        (proof_system : _ t) =
+      prove ~run:Runner.run ~public_input ?proving_key ?handlers ?message
+        proof_system
 
-    let verify ~public_input ?verification_key (proof_system : _ t) =
-      verify ~run:Runner.run ~public_input ?verification_key proof_system
+    let verify ~public_input ?verification_key ?message (proof_system : _ t) =
+      verify ~run:Runner.run ~public_input ?verification_key ?message
+        proof_system
   end
 
   module Perform = struct
@@ -1795,7 +1798,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let generate_keypair ~run ~exposing k =
       Run.generate_keypair ~run ~exposing k
 
-    let prove ~run key t k = Run.prove ~run key t () k
+    let prove ~run ?message key t k = Run.prove ~run ?message key t () k
 
     let verify = Run.verify
 
@@ -1813,7 +1816,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   let conv f = Run.conv (fun x _ -> f x)
 
-  let prove key t s k = Run.prove ~run:Runner.run key t s k
+  let prove ?message key t s k = Run.prove ~run:Runner.run ?message key t s k
 
   let generate_auxiliary_input t s k =
     Run.generate_auxiliary_input ~run:Runner.run t s k
@@ -2102,7 +2105,13 @@ module Run = struct
 
           let negate = negate
 
-          module Infix = Infix
+          let ( + ) = ( + )
+
+          let ( - ) = ( - )
+
+          let ( * ) = ( * )
+
+          let ( / ) = ( / )
 
           let of_string = of_string
 
@@ -2301,11 +2310,13 @@ module Run = struct
           (run_checked' ~run:as_stateful ~public_input ?handlers proof_system
              ())
 
-      let prove ~public_input ?proving_key ?handlers (proof_system : _ t) =
-        prove ~run:as_stateful ~public_input ?proving_key ?handlers
+      let prove ~public_input ?proving_key ?handlers ?message
+          (proof_system : _ t) =
+        prove ~run:as_stateful ~public_input ?proving_key ?handlers ?message
           proof_system ()
 
-      let verify ~public_input ?verification_key (proof_system : _ t) =
+      let verify ~public_input ?verification_key ?message (proof_system : _ t)
+          =
         verify ~run:as_stateful ~public_input ?verification_key proof_system
     end
 
@@ -2385,9 +2396,9 @@ module Run = struct
     let generate_keypair ~exposing x =
       Perform.generate_keypair ~run:as_stateful ~exposing x
 
-    let prove pk x = Perform.prove ~run:as_stateful pk x
+    let prove ?message pk x = Perform.prove ~run:as_stateful ?message pk x
 
-    let verify pf vk spec = verify pf vk spec
+    let verify ?message pf vk spec = verify ?message pf vk spec
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 
