@@ -139,15 +139,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
             (project bs |> to_string)
             (project_reference bs |> to_string) )
 
-    module Infix = struct
-      let ( + ) = add
+    let ( + ) = add
 
-      let ( * ) = mul
+    let ( * ) = mul
 
-      let ( - ) = sub
+    let ( - ) = sub
 
-      let ( / ) = div
-    end
+    let ( / ) = div
   end
 
   module Cvar = struct
@@ -304,13 +302,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let run = run
 
-      let size t =
-        let dummy = Cvar.Unsafe.of_index 0 in
-        let rec go acc = function
-          | Pure _ -> acc
-          | Free (T.Alloc k) -> go (acc + 1) (k dummy)
-        in
-        go 0 t
+      let size t = size t
     end
   end
 
@@ -319,140 +311,33 @@ module Make_basic (Backend : Backend_intf.S) = struct
   end
 
   module Checked0 = struct
-    type 'prover_state run_state =
-      ( 'prover_state
-      , R1CS_constraint_system.t
-      , Field.t
-      , Field.Vector.t )
-      Run_state.t
+    type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
 
-    module T = struct
-      type ('a, 's) t = ('a, 's, Field.t, unit run_state) Checked.t
+    type ('a, 's) t = ('a, 's, Field.t) Checked.t
 
-      include Checked.T
-    end
-
-    include T
-    include Monad_let.Make2 (T)
+    include Checked.T
   end
 
   module Typ = struct
-    open Types.Typ
+    include Types.Typ.T
+    module T = Typ.Make (Checked)
     include Typ_monads
-    include Typ.T
+    include T.T
 
-    type ('var, 'value) t =
-      ('var, 'value, Field.t, unit Checked0.run_state) Types.Typ.t
-
-    type ('var, 'value) typ = ('var, 'value) t
+    type ('var, 'value) t = ('var, 'value, Field.t) T.t
 
     module Data_spec = struct
-      type ('r_var, 'r_value, 'k_var, 'k_value) t =
-        | ( :: ) :
-            ('var, 'value) typ * ('r_var, 'r_value, 'k_var, 'k_value) t
-            -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-        | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+      include Typ.Data_spec0
 
-      let size t =
-        let rec go : type r_var r_value k_var k_value.
-            int -> (r_var, r_value, k_var, k_value) t -> int =
-         fun acc t ->
-          match t with
-          | [] -> acc
-          | {alloc; _} :: t' -> go (acc + Alloc.size alloc) t'
-        in
-        go 0 t
+      type ('r_var, 'r_value, 'k_var, 'k_value) t =
+        ('r_var, 'r_value, 'k_var, 'k_value, field) T.Data_spec.t
+
+      let size t = T.Data_spec.size t
     end
 
     let unit : (unit, unit) t = unit ()
 
     let field : (Cvar.t, Field.t) t = field ()
-
-    let hlist (type k_var k_value)
-        (spec0 : (unit, unit, k_var, k_value) Data_spec.t) :
-        ((unit, k_var) H_list.t, (unit, k_value) H_list.t) t =
-      let store xs0 : _ Store.t =
-        let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_value) H_list.t
-            -> (unit, k_var) H_list.t Store.t =
-         fun spec0 xs0 ->
-          let open Data_spec in
-          let open H_list in
-          match (spec0, xs0) with
-          | [], [] -> Store.return H_list.[]
-          | s :: spec, x :: xs ->
-              let open Store.Let_syntax in
-              let%map y = store s x and ys = go spec xs in
-              y :: ys
-        in
-        go spec0 xs0
-      in
-      let read xs0 : (unit, k_value) H_list.t Read.t =
-        let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_var) H_list.t
-            -> (unit, k_value) H_list.t Read.t =
-         fun spec0 xs0 ->
-          let open Data_spec in
-          let open H_list in
-          match (spec0, xs0) with
-          | [], [] -> Read.return H_list.[]
-          | s :: spec, x :: xs ->
-              let open Read.Let_syntax in
-              let%map y = read s x and ys = go spec xs in
-              y :: ys
-        in
-        go spec0 xs0
-      in
-      let alloc : _ Alloc.t =
-        let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_var) H_list.t Alloc.t =
-         fun spec0 ->
-          let open Data_spec in
-          let open H_list in
-          match spec0 with
-          | [] -> Alloc.return H_list.[]
-          | s :: spec ->
-              let open Alloc.Let_syntax in
-              let%map y = alloc s and ys = go spec in
-              y :: ys
-        in
-        go spec0
-      in
-      let check xs0 : (unit, unit) Checked0.t =
-        let rec go : type k_var k_value.
-               (unit, unit, k_var, k_value) Data_spec.t
-            -> (unit, k_var) H_list.t
-            -> (unit, unit) Checked0.t =
-         fun spec0 xs0 ->
-          let open Data_spec in
-          let open H_list in
-          let open Checked0.Let_syntax in
-          match (spec0, xs0) with
-          | [], [] -> return ()
-          | s :: spec, x :: xs ->
-              let%map () = check s x and () = go spec xs in
-              ()
-        in
-        go spec0 xs0
-      in
-      {read; store; alloc; check}
-
-    (* TODO: Do a CPS style thing instead if it ends up being an issue converting
-     back and forth. *)
-    let of_hlistable (spec : (unit, unit, 'k_var, 'k_value) Data_spec.t)
-        ~(var_to_hlist : 'var -> (unit, 'k_var) H_list.t)
-        ~(var_of_hlist : (unit, 'k_var) H_list.t -> 'var)
-        ~(value_to_hlist : 'value -> (unit, 'k_value) H_list.t)
-        ~(value_of_hlist : (unit, 'k_value) H_list.t -> 'value) :
-        ('var, 'value) t =
-      let {read; store; alloc; check} = hlist spec in
-      { read= (fun v -> Read.map ~f:value_of_hlist (read (var_to_hlist v)))
-      ; store= (fun x -> Store.map ~f:var_of_hlist (store (value_to_hlist x)))
-      ; alloc= Alloc.map ~f:var_of_hlist alloc
-      ; check= (fun v -> check (var_to_hlist v)) }
 
     (* TODO: Assert that a stored value has the same shape as the template. *)
     module Of_traversable (T : Traversable.S) = struct
@@ -491,18 +376,18 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   module As_prover = struct
     include As_prover.Make (struct
-      type field = Field.t
-    end)
+                type field = Field.t
+              end)
+              (As_prover)
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
   end
 
-  module Handle = struct
-    include Handle
-  end
+  module Handle = Handle
 
   module Checked = struct
     open Types.Checked
+    open Types.Run_state
     include Checked0
 
     let perform req = request_witness Typ.unit req
@@ -513,66 +398,64 @@ module Make_basic (Backend : Backend_intf.S) = struct
       type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
       let set_prover_state prover_state
-          Run_state.({ system
-                     ; input
-                     ; aux
-                     ; eval_constraints
-                     ; num_inputs
-                     ; next_auxiliary
-                     ; prover_state= _
-                     ; stack
-                     ; handler
-                     ; is_running
-                     ; as_prover
-                     ; run_special }) =
-        Run_state.
           { system
           ; input
           ; aux
           ; eval_constraints
           ; num_inputs
           ; next_auxiliary
-          ; prover_state
+          ; prover_state= _
           ; stack
           ; handler
           ; is_running
           ; as_prover
-          ; run_special }
+          ; run_special } =
+        { system
+        ; input
+        ; aux
+        ; eval_constraints
+        ; num_inputs
+        ; next_auxiliary
+        ; prover_state
+        ; stack
+        ; handler
+        ; is_running
+        ; as_prover
+        ; run_special }
 
-      let set_handler handler state = {state with Run_state.handler}
+      let set_handler handler state = {state with handler}
 
-      let get_handler Run_state.({handler; _}) = handler
+      let get_handler {handler; _} = handler
 
-      let set_stack stack state = {state with Run_state.stack}
+      let set_stack stack state = {state with stack}
 
-      let get_stack Run_state.({stack; _}) = stack
+      let get_stack {stack; _} = stack
 
-      let get_value Run_state.({num_inputs; input; aux; _}) : Cvar.t -> Field.t
-          =
+      let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
         let get_one i =
           if i <= num_inputs then Field.Vector.get input (i - 1)
           else Field.Vector.get aux (i - num_inputs - 1)
         in
         Cvar.eval get_one
 
-      let store_field_elt Run_state.({next_auxiliary; aux; _}) x =
+      let store_field_elt {next_auxiliary; aux; _} x =
         let v = !next_auxiliary in
         incr next_auxiliary ;
         Field.Vector.emplace_back aux x ;
         Cvar.Unsafe.of_index v
 
-      let alloc_var Run_state.({next_auxiliary; _}) () =
+      let alloc_var {next_auxiliary; _} () =
         let v = !next_auxiliary in
         incr next_auxiliary ; Cvar.Unsafe.of_index v
 
       let run_as_prover x state =
-        match (x, state.Run_state.prover_state) with
+        match (x, state.prover_state) with
         | Some x, Some s ->
             let old = !(state.as_prover) in
             state.as_prover := true ;
             let s', y = As_prover.run x (get_value state) s in
             state.as_prover := old ;
-            ({state with Run_state.prover_state= Some s'}, Some y)
+            ({state with prover_state= Some s'}, Some y)
         | _, _ -> (state, None)
 
       (* INVARIANT: run _ s = (s', _) gives
@@ -589,14 +472,18 @@ module Make_basic (Backend : Backend_intf.S) = struct
                constraint system will not match."
         | Pure x -> (s, x)
         | Direct (d, k) ->
-            let Run_state.({prover_state; _}) = s in
+            let s, y = d s in
+            run (k y) s
+        | Reduced (t, d, res, k) ->
             let s, y =
-              d (set_prover_state (Option.map ~f:(fun _ -> ()) prover_state) s)
+              if Option.is_some s.prover_state && Option.is_none s.system then
+                (d s, res)
+              else run t s
             in
-            run (k y) (set_prover_state prover_state s)
+            run (k y) s
         | With_label (lab, t, k) ->
-            let Run_state.({stack; _}) = s in
-            let s', y = run t {s with Run_state.stack= lab :: stack} in
+            let {stack; _} = s in
+            let s', y = run t {s with stack= lab :: stack} in
             run (k y) {s' with stack}
         | Add_constraint (c, t) ->
             if s.eval_constraints && not (Constraint.eval c (get_value s)) then
@@ -615,25 +502,22 @@ module Make_basic (Backend : Backend_intf.S) = struct
             in
             run (k y) s
         | With_handler (h, t, k) ->
-            let Run_state.({handler; _}) = s in
+            let {handler; _} = s in
             let s', y =
-              run t {s with Run_state.handler= Request.Handler.push handler h}
+              run t {s with handler= Request.Handler.push handler h}
             in
             run (k y) {s' with handler}
         | Clear_handler (t, k) ->
-            let Run_state.({handler; _}) = s in
-            let s', y =
-              run t {s with Run_state.handler= Request.Handler.fail}
-            in
-            run (k y) {s' with Run_state.handler}
+            let {handler; _} = s in
+            let s', y = run t {s with handler= Request.Handler.fail} in
+            run (k y) {s' with handler}
         | Exists ({store; alloc; check; _}, p, k) -> (
-          match s.Run_state.prover_state with
+          match s.prover_state with
           | Some ps ->
               let old = !(s.as_prover) in
               s.as_prover := true ;
               let ps, value =
-                Provider.run p s.Run_state.stack (get_value s) ps
-                  s.Run_state.handler
+                Provider.run p s.stack (get_value s) ps s.handler
               in
               s.as_prover := old ;
               let var = Typ.Store.run (store value) (store_field_elt s) in
@@ -649,6 +533,106 @@ module Make_basic (Backend : Backend_intf.S) = struct
               run (k {Handle.var; value= None}) (set_prover_state None s) )
         | Next_auxiliary k -> run (k !(s.next_auxiliary)) s
 
+      let dummy_vector = Field.Vector.create ()
+
+      let fake_state next_auxiliary =
+        { system= None
+        ; input= dummy_vector
+        ; aux= dummy_vector
+        ; eval_constraints= false
+        ; num_inputs= 0
+        ; next_auxiliary
+        ; prover_state= None
+        ; stack= []
+        ; handler= Request.Handler.fail
+        ; is_running= true
+        ; as_prover= ref false
+        ; run_special= None }
+
+      let rec flatten_as_prover : type a s.
+          int ref -> (a, s) t -> (s run_state -> s run_state) * a =
+       fun next_auxiliary t ->
+        match t with
+        | As_prover (x, k) ->
+            let f, a = flatten_as_prover next_auxiliary k in
+            ( (fun s ->
+                let s', (_ : unit option) = run_as_prover (Some x) s in
+                f s' )
+            , a )
+        | Pure x -> (Fn.id, x)
+        | Direct (d, k) ->
+            let _, y = d (fake_state next_auxiliary) in
+            let f, a = flatten_as_prover next_auxiliary (k y) in
+            ( (fun s ->
+                let {prover_state; _} = s in
+                let s, _y = d s in
+                f (set_prover_state prover_state s) )
+            , a )
+        | Reduced (t, d, _res, k) ->
+            let f, y = flatten_as_prover next_auxiliary t in
+            let g, a = flatten_as_prover next_auxiliary (k y) in
+            ((fun s -> g (f s)), a)
+        | With_label (lab, t, k) ->
+            let f, y = flatten_as_prover next_auxiliary t in
+            let g, a = flatten_as_prover next_auxiliary (k y) in
+            ((fun s -> g (f s)), a)
+        | Add_constraint (c, t) -> flatten_as_prover next_auxiliary t
+        | With_state (p, and_then, t_sub, k) ->
+            let f_sub, y = flatten_as_prover next_auxiliary t_sub in
+            let f, a = flatten_as_prover next_auxiliary (k y) in
+            ( (fun s ->
+                let s, s_sub = run_as_prover (Some p) s in
+                let s_sub = f_sub (set_prover_state s_sub s) in
+                let s, (_ : unit option) =
+                  run_as_prover (Option.map ~f:and_then s_sub.prover_state) s
+                in
+                f s )
+            , a )
+        | With_handler (h, t, k) ->
+            let f, y = flatten_as_prover next_auxiliary t in
+            let g, a = flatten_as_prover next_auxiliary (k y) in
+            ( (fun s ->
+                let {handler; _} = s in
+                let s' = f {s with handler= Request.Handler.push handler h} in
+                g {s' with handler} )
+            , a )
+        | Clear_handler (t, k) ->
+            let f, y = flatten_as_prover next_auxiliary t in
+            let g, a = flatten_as_prover next_auxiliary (k y) in
+            ( (fun s ->
+                let {handler; _} = s in
+                let s' = f {s with handler= Request.Handler.fail} in
+                g {s' with handler} )
+            , a )
+        | Exists ({store; alloc; check; _}, p, k) ->
+            let var =
+              Typ.Alloc.run alloc (alloc_var (fake_state next_auxiliary))
+            in
+            let f, () = flatten_as_prover next_auxiliary (check var) in
+            let handle = {Handle.var; value= None} in
+            let g, a = flatten_as_prover next_auxiliary (k handle) in
+            ( (fun s ->
+                let old = !(s.as_prover) in
+                s.as_prover := true ;
+                let ps, value =
+                  Provider.run p s.stack (get_value s)
+                    (Option.value_exn s.prover_state)
+                    s.handler
+                in
+                s.as_prover := old ;
+                let _var = Typ.Store.run (store value) (store_field_elt s) in
+                let s = f (set_prover_state (Some ()) s) in
+                handle.value <- Some value ;
+                g (set_prover_state (Some ps) s) )
+            , a )
+        | Next_auxiliary k ->
+            flatten_as_prover next_auxiliary (k !next_auxiliary)
+
+      let reduce_to_prover (type a s) next_auxiliary (t : (a, s) t) : (a, s) t
+          =
+        let f, a = flatten_as_prover next_auxiliary t in
+        Reduced (t, f, a, return)
+
       module State = struct
         let make ~num_inputs ~input ~next_auxiliary ~aux ?system
             ?(eval_constraints = !eval_constraints) ?handler (s0 : 's option) =
@@ -658,24 +642,27 @@ module Make_basic (Backend : Backend_intf.S) = struct
           Option.iter system ~f:(fun system ->
               R1CS_constraint_system.set_primary_input_size system num_inputs
           ) ;
-          Run_state.
-            { system
-            ; input
-            ; aux
-            ; eval_constraints
-            ; num_inputs
-            ; next_auxiliary
-            ; prover_state= s0
-            ; stack= []
-            ; handler= Option.value handler ~default:Request.Handler.fail
-            ; is_running= true
-            ; as_prover= ref false
-            ; run_special= None }
+          { system
+          ; input
+          ; aux
+          ; eval_constraints
+          ; num_inputs
+          ; next_auxiliary
+          ; prover_state= s0
+          ; stack= []
+          ; handler= Option.value handler ~default:Request.Handler.fail
+          ; is_running= true
+          ; as_prover= ref false
+          ; run_special= None }
       end
     end
 
-    let rec constraint_count_aux : type a s.
-        log:(?start:_ -> _) -> auxc:_ -> int -> (a, s) t -> int * a =
+    let rec constraint_count_aux : type a s s1.
+           log:(?start:_ -> _)
+        -> auxc:_
+        -> int
+        -> (a, s, _) Types.Checked.t
+        -> int * a =
      fun ~log ~auxc count t0 ->
       match t0 with
       | Pure x -> (count, x)
@@ -687,7 +674,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
               None
           in
           let count = ref count in
-          let run_special x =
+          let run_special (type a s s1) (x : (a, s, _) Types.Checked.t) =
             let count', a = constraint_count_aux ~log ~auxc !count x in
             count := count' ;
             a
@@ -695,6 +682,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
           let state = {state with run_special= Some run_special} in
           let _, x = d state in
           constraint_count_aux ~log ~auxc !count (k x)
+      | Reduced (t, _, _, k) ->
+          let count, y = constraint_count_aux ~log ~auxc count t in
+          constraint_count_aux ~log ~auxc count (k y)
       | As_prover (_x, k) -> constraint_count_aux ~log ~auxc count k
       | Add_constraint (_c, t) -> constraint_count_aux ~log ~auxc (count + 1) t
       | Next_auxiliary k -> constraint_count_aux ~log ~auxc count (k !auxc)
@@ -742,12 +732,17 @@ module Make_basic (Backend : Backend_intf.S) = struct
         auxiliary_input_size ;
       system
 
-    let auxiliary_input ~run ~num_inputs t0 s0 (input : Field.Vector.t) :
-        Field.Vector.t =
+    let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
+        s0 (input : Field.Vector.t) : Field.Vector.t =
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
+      let handler =
+        List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
+            Request.Handler.(push handler (create_single h)) )
+      in
       let state =
-        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
+        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~handler
+          (Some s0)
       in
       ignore (run t0 state) ;
       aux
@@ -768,7 +763,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       match run t0 state with
       | exception e -> Or_error.of_exn e
-      | {Run_state.prover_state= Some s; _}, x -> Ok (s, x, get_value)
+      | {prover_state= Some s; _}, x -> Ok (s, x, get_value)
       | _ -> failwith "run_and_check': Expected a value from run, got None."
 
     let run_unchecked ~run t0 s0 =
@@ -780,7 +775,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
       in
       match run t0 state with
-      | {Run_state.prover_state= Some s; _}, x -> (s, x)
+      | {prover_state= Some s; _}, x -> (s, x)
       | _ -> failwith "run_unchecked: Expected a value from run, got None."
 
     let run_and_check ~run t s =
@@ -788,7 +783,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           let s', x = As_prover.run x get_value s in
           (s', x) )
 
-    let check ~run t s = Or_error.is_ok (run_and_check' ~run t s)
+    let check ~run t s = run_and_check' ~run t s |> Result.map ~f:(Fn.const ())
 
     let equal (x : Cvar.t) (y : Cvar.t) : (Cvar.t Boolean.t, _) t =
       let open Let_syntax in
@@ -807,7 +802,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       in
       let%map () =
         let open Constraint in
-        let open Cvar.Infix in
+        let open Cvar in
         assert_all
           [ r1cs ~label:"equals_1" inv (x - y) (Cvar.constant Field.one - r)
           ; r1cs ~label:"equals_2" r (x - y) (Cvar.constant Field.zero) ]
@@ -881,7 +876,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let b = (b :> Cvar.t) in
       match (then_, else_) with
       | Constant t, Constant e ->
-          return Cvar.(Infix.((t * b) + (e * (constant Field0.one - b))))
+          return Cvar.((t * b) + (e * (constant Field0.one - b)))
       | _, _ ->
           let%bind r =
             exists Typ.field
@@ -892,9 +887,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 read Typ.field
                   (if Field.equal b Field.one then then_ else else_))
           in
-          let%map () =
-            assert_r1cs b Cvar.Infix.(then_ - else_) Cvar.Infix.(r - else_)
-          in
+          let%map () = assert_r1cs b Cvar.(then_ - else_) Cvar.(r - else_) in
           r
 
     let%snarkydef_ assert_non_zero (v : Cvar.t) =
@@ -913,8 +906,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let false_ : var = create (Cvar.constant Field.zero)
 
-      let not (x : var) : var =
-        create Cvar.Infix.((true_ :> Cvar.t) - (x :> Cvar.t))
+      let not (x : var) : var = create Cvar.((true_ :> Cvar.t) - (x :> Cvar.t))
 
       let if_ b ~(then_ : var) ~(else_ : var) =
         Checked0.map ~f:create
@@ -942,7 +934,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         in
         let%map () =
           let x_plus_y = Cvar.add x y in
-          assert_square x_plus_y Cvar.Infix.((Field.of_int 2 * z) + x_plus_y)
+          assert_square x_plus_y Cvar.((Field.of_int 2 * z) + x_plus_y)
         in
         create z
 
@@ -1023,7 +1015,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
               let a = (b1 :> Cvar.t) in
               let b = (b2 :> Cvar.t) in
               let c = (res :> Cvar.t) in
-              let open Cvar.Infix in
+              let open Cvar in
               assert_r1cs (a + a) b (a + b - c)
             in
             res
@@ -1142,6 +1134,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
   module Data_spec = Typ.Data_spec
 
   module Run = struct
+    open Types.Run_state
     open Data_spec
 
     let alloc_var next_input () =
@@ -1274,7 +1267,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           Checked.Runner.run proof_system.check_inputs prover_state
         in
         let prover_state, a = run (proof_system.compute ()) prover_state in
-        Option.iter prover_state.Run_state.system ~f:(fun system ->
+        Option.iter prover_state.system ~f:(fun system ->
             let aux_input_size =
               !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
@@ -1310,7 +1303,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
-        let ({Run_state.prover_state= s; _} as state), a =
+        let ({prover_state= s; _} as state), a =
           run_proof_system ~run ~input ?system ?eval_constraints ?handlers
             proof_system (Some s)
         in
@@ -1343,7 +1336,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
             (s', x) )
 
       let check ~run ~public_input ?handlers proof_system s =
-        Or_error.is_ok
+        Or_error.map ~f:(Fn.const ())
           (run_checked' ~run ~public_input ?handlers proof_system s)
 
       let read_proving_key proof_system =
@@ -1357,12 +1350,13 @@ module Make_basic (Backend : Backend_intf.S) = struct
             Some (Verification_key.of_string (In_channel.read_all path))
         | None -> None
 
-      let prove ~run ~public_input ?proving_key ?handlers proof_system s =
+      let prove ~run ~public_input ?proving_key ?handlers ?message proof_system
+          s =
         let system = R1CS_constraint_system.create () in
         let _, _, state =
           run_with_input ~run ~public_input ~system ?handlers proof_system s
         in
-        let {Run_state.input; aux; _} = state in
+        let {input; aux; _} = state in
         let proving_key =
           List.find_map_exn
             ~f:(fun f -> f ())
@@ -1371,9 +1365,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ; (fun () -> read_proving_key proof_system)
             ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
-        Proof.create proving_key ~primary:input ~auxiliary:aux
+        Proof.create ?message proving_key ~primary:input ~auxiliary:aux
 
-      let verify ~run ~public_input ?verification_key proof_system proof =
+      let verify ~run ~public_input ?verification_key ?message proof_system
+          proof =
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
@@ -1388,7 +1383,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
                   "Could not verify the proof; no verification key has been \
                    provided." ) ]
         in
-        Proof.verify proof verification_key input
+        Proof.verify ?message proof verification_key input
     end
 
     let rec collect_input_constraints : type checked s r2 k1 k2.
@@ -1434,11 +1429,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
       Keypair.generate (constraint_system ~run ~exposing k)
 
     let verify :
-           Proof.t
+           ?message:Proof.message
+        -> Proof.t
         -> Verification_key.t
         -> ('r_var, bool, 'k_var, 'k_value) t
         -> 'k_value =
-     fun proof vk t0 ->
+     fun ?message proof vk t0 ->
       let primary_input = Field.Vector.create () in
       let next_input = ref 1 in
       let store_field_elt = store_field_elt primary_input next_input in
@@ -1446,7 +1442,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
           (r_var, bool, k_var, k_value) t -> k_value =
        fun t ->
         match t with
-        | [] -> Proof.verify proof vk primary_input
+        | [] -> Proof.verify ?message proof vk primary_input
         | {store; _} :: t' ->
             fun value ->
               let _var = Typ.Store.run (store value) store_field_elt in
@@ -1483,38 +1479,68 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let prove :
            run:('a, 's, 'checked) Checked.Runner.run
+        -> ?message:Proof.message
         -> Proving_key.t
         -> ('checked, Proof.t, 'k_var, 'k_value) t
+        -> ?handlers:Handler.t list
         -> 's
         -> 'k_var
         -> 'k_value =
-     fun ~run key t s k ->
+     fun ~run ?message key t ?handlers s k ->
       conv
         (fun c primary ->
           let auxiliary =
-            Checked.auxiliary_input ~run
+            Checked.auxiliary_input ~run ?handlers
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
-          Proof.create key ~primary ~auxiliary )
+          Proof.create ?message key ~primary ~auxiliary )
         t k
 
     let generate_auxiliary_input :
            run:('a, 's, 'checked) Checked.Runner.run
         -> ('checked, unit, 'k_var, 'k_value) t
+        -> ?handlers:Handler.t list
         -> 's
         -> 'k_var
         -> 'k_value =
-     fun ~run t s k ->
+     fun ~run t ?handlers s k ->
       conv
         (fun c primary ->
           let auxiliary =
-            Checked.auxiliary_input ~run
+            Checked.auxiliary_input ~run ?handlers
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
           ignore auxiliary )
         t k
+
+    let reduce_to_prover : type a s r_value.
+           ((a, s) Checked.t, Proof.t, 'k_var, 'k_value) t
+        -> 'k_var
+        -> Proving_key.t
+        -> ?handlers:Handler.t list
+        -> s
+        -> 'k_value =
+     fun t0 k0 ->
+      let next_input = ref 1 in
+      let alloc_var () =
+        let v = !next_input in
+        incr next_input ; Cvar.Unsafe.of_index v
+      in
+      let rec go : type k_var k_value.
+          ((a, s) Checked.t, Proof.t, k_var, k_value) t -> k_var -> k_var =
+       fun t k ->
+        match t with
+        | [] -> Checked.Runner.reduce_to_prover next_input k
+        | {alloc; _} :: t' ->
+            let var = Typ.Alloc.run alloc alloc_var in
+            let ret = go t' (k var) in
+            fun _ -> ret
+      in
+      let reduced = go t0 k0 in
+      fun key ?handlers s ->
+        prove ~run:Checked.Runner.run key t0 ?handlers s reduced
   end
 
   module Cvar1 = struct
@@ -1579,9 +1605,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let open Let_syntax in
         [%with_label_ "compare"]
           (let alpha_packed =
-             Cvar.Infix.(Cvar.constant (two_to_the bit_length) + b - a)
+             Cvar.(constant (two_to_the bit_length) + b - a)
            in
-           let%bind alpha = unpack alpha_packed ~length:(bit_length + 1) in
+           let%bind alpha = unpack alpha_packed ~length:Int.(bit_length + 1) in
            let prefix, less_or_equal =
              match Core_kernel.List.split_n alpha bit_length with
              | p, [l] -> (p, l)
@@ -1661,7 +1687,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let field_size_bits =
         List.init Field.size_in_bits ~f:(fun i ->
-            Bigint.test_bit field_size (Field.size_in_bits - 1 - i) )
+            Bigint.test_bit field_size Int.(Field.size_in_bits - 1 - i) )
         |> Bitstring_lib.Bitstring.Msb_first.of_list
 
       let unpack_full x =
@@ -1761,11 +1787,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let check ~public_input ?handlers (proof_system : _ t) =
       check ~run:Runner.run ~public_input ?handlers proof_system
 
-    let prove ~public_input ?proving_key ?handlers (proof_system : _ t) =
-      prove ~run:Runner.run ~public_input ?proving_key ?handlers proof_system
+    let prove ~public_input ?proving_key ?handlers ?message
+        (proof_system : _ t) =
+      prove ~run:Runner.run ~public_input ?proving_key ?handlers ?message
+        proof_system
 
-    let verify ~public_input ?verification_key (proof_system : _ t) =
-      verify ~run:Runner.run ~public_input ?verification_key proof_system
+    let verify ~public_input ?verification_key ?message (proof_system : _ t) =
+      verify ~run:Runner.run ~public_input ?verification_key ?message
+        proof_system
   end
 
   module Perform = struct
@@ -1775,7 +1804,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let generate_keypair ~run ~exposing k =
       Run.generate_keypair ~run ~exposing k
 
-    let prove ~run key t k = Run.prove ~run key t () k
+    let prove ~run ?message key t k = Run.prove ~run ?message key t () k
 
     let verify = Run.verify
 
@@ -1793,7 +1822,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
   let conv f = Run.conv (fun x _ -> f x)
 
-  let prove key t s k = Run.prove ~run:Runner.run key t s k
+  let prove ?message key t s k = Run.prove ~run:Runner.run ?message key t s k
 
   let generate_auxiliary_input t s k =
     Run.generate_auxiliary_input ~run:Runner.run t s k
@@ -1808,6 +1837,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
   let run_and_check t s = run_and_check ~run:Runner.run t s
 
   let check t s = check ~run:Runner.run t s
+
+  let reduce_to_prover = Run.reduce_to_prover
 
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
@@ -1866,11 +1897,12 @@ end
 module Run = struct
   module Make (Backend : Backend_intf.S) = struct
     module Snark = Make (Backend)
+    open Types.Run_state
     open Snark
 
     let state =
       ref
-        { Run_state.system= None
+        { system= None
         ; input= Field.Vector.create ()
         ; aux= Field.Vector.create ()
         ; eval_constraints= false
@@ -2102,7 +2134,13 @@ module Run = struct
 
           let negate = negate
 
-          module Infix = Infix
+          let ( + ) = ( + )
+
+          let ( - ) = ( - )
+
+          let ( * ) = ( * )
+
+          let ( / ) = ( / )
 
           let of_string = of_string
 
@@ -2235,7 +2273,7 @@ module Run = struct
 
       let eval_as_prover f =
         if !(!state.as_prover) && Option.is_some !state.prover_state then (
-          let s = Option.value_exn !state.Run_state.prover_state in
+          let s = Option.value_exn !state.prover_state in
           let s, a = f (Runner.get_value !state) s in
           state := Runner.set_prover_state (Some s) !state ;
           a )
@@ -2266,8 +2304,7 @@ module Run = struct
     end
 
     module Handle = struct
-      type ('var, 'value) t = ('var, 'value) Handle.t =
-        {var: 'var; value: 'value option}
+      type ('var, 'value) t = ('var, 'value) Handle.t
 
       let value handle () = As_prover.eval_as_prover (Handle.value handle)
 
@@ -2298,15 +2335,17 @@ module Run = struct
              ()) ~f:(fun (s, x, state) -> x )
 
       let check ~public_input ?handlers (proof_system : _ t) =
-        Or_error.is_ok
+        Or_error.map ~f:(Fn.const ())
           (run_checked' ~run:as_stateful ~public_input ?handlers proof_system
              ())
 
-      let prove ~public_input ?proving_key ?handlers (proof_system : _ t) =
-        prove ~run:as_stateful ~public_input ?proving_key ?handlers
+      let prove ~public_input ?proving_key ?handlers ?message
+          (proof_system : _ t) =
+        prove ~run:as_stateful ~public_input ?proving_key ?handlers ?message
           proof_system ()
 
-      let verify ~public_input ?verification_key (proof_system : _ t) =
+      let verify ~public_input ?verification_key ?message (proof_system : _ t)
+          =
         verify ~run:as_stateful ~public_input ?verification_key proof_system
     end
 
@@ -2353,20 +2392,32 @@ module Run = struct
 
     let handle x h =
       let h = Request.Handler.create_single h in
-      let {Run_state.handler; _} = !state in
+      let {handler; _} = !state in
       state := {!state with handler= Request.Handler.push handler h} ;
       let a = x () in
       state := {!state with handler} ;
       a
 
     let with_label lbl x =
-      let {Run_state.stack; _} = !state in
+      let {stack; _} = !state in
       state := {!state with stack= lbl :: stack} ;
       let a = x () in
       state := {!state with stack} ;
       a
 
-    let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
+    let make_checked x =
+      let f state =
+        let {prover_state; _} = state in
+        let state =
+          Runner.set_prover_state
+            (Option.map prover_state ~f:(fun _ -> ()))
+            state
+        in
+        let state, a = as_stateful x state in
+        let state = Runner.set_prover_state prover_state state in
+        (state, a)
+      in
+      Types.Checked.Direct (f, fun x -> Pure x)
 
     let constraint_system ~exposing x =
       Perform.constraint_system ~run:as_stateful ~exposing x
@@ -2374,9 +2425,9 @@ module Run = struct
     let generate_keypair ~exposing x =
       Perform.generate_keypair ~run:as_stateful ~exposing x
 
-    let prove pk x = Perform.prove ~run:as_stateful pk x
+    let prove ?message pk x = Perform.prove ~run:as_stateful ?message pk x
 
-    let verify pf vk spec = verify pf vk spec
+    let verify ?message pf vk spec = verify ?message pf vk spec
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 
@@ -2390,7 +2441,7 @@ module Run = struct
       !state.as_prover := true ;
       res
 
-    let check x = Perform.check ~run:as_stateful x
+    let check x = Perform.check ~run:as_stateful x |> Result.is_ok
 
     let constraint_count ?(log = fun ?start _ _ -> ()) x =
       let count = ref 0 in
@@ -2402,7 +2453,7 @@ module Run = struct
         count := count' ;
         a
       in
-      let {Run_state.run_special= old; _} = !state in
+      let {run_special= old; _} = !state in
       state := {!state with run_special= Some run_special} ;
       ignore (x ()) ;
       state := {!state with run_special= old} ;

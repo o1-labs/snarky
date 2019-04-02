@@ -2,6 +2,7 @@ module Bignum_bigint = Bigint
 open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
+module Typ0 = Typ
 
 (** Yojson-compatible JSON type. *)
 type 'a json =
@@ -99,8 +100,8 @@ module type Basic = sig
         For example, a constraint could be [(w + 2*x) * (y + z) = a + b], where
         [w], [x], [y], [z], [a], and [b] are field variables.
         Note that a linear combination is the result of adding together some of
-        these variables, each multiplied by a field constant ({!type:Field.t}); 
-        any time we want to multiply our *variables*, we need to add a new 
+        these variables, each multiplied by a field constant ({!type:Field.t});
+        any time we want to multiply our *variables*, we need to add a new
         rank-1 constraint.
     *)
     type t = Field.Var.t Constraint0.t
@@ -148,16 +149,31 @@ module type Basic = sig
         - ['k_value] is the OCaml type of the computation
         - ['r_value] is the OCaml type of the result
         - ['k_var] is the type of the computation within the R1CS
-        - ['k_value] is the type of the result within the R1CS. *)
+        - ['k_value] is the type of the result within the R1CS.
+
+        This functions the same as OCaml's default list type:
+{[
+  Data_spec.[typ1; typ2; typ3]
+
+  Data_spec.(typ1 :: typs)
+
+  let open Data_spec in
+  [typ1; typ2; typ3; typ4; typ5]
+
+  let open Data_spec in
+  typ1 :: typ2 :: typs
+
+]}
+        all function as you would expect.
+    *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | ( :: ) :
-          ('var, 'value) Typ.t * ('r_var, 'r_value, 'k_var, 'k_value) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
 
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
+
+    include module type of Typ0.Data_spec0
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -242,7 +258,7 @@ module type Basic = sig
           {!val:Field.one}.
     *)
     type ('var, 'value) t =
-      ('var, 'value, Field.t, unit Checked.run_state) Types.Typ.t
+      ('var, 'value, Field.t, (unit, unit) Checked.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -353,6 +369,8 @@ module type Basic = sig
       val typ :
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
+
+    include module type of Types.Typ.T
   end
   
   (** Representation of booleans within a field.
@@ -473,16 +491,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    type 'prover_state run_state =
-      ( 'prover_state
-      , R1CS_constraint_system.t
-      , Field.t
-      , Field.Vector.t )
-      Run_state.t
+    type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
 
     include
-      Monad_let.S2
-      with type ('a, 's) t = ('a, 's, Field.t, unit run_state) Types.Checked.t
+      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
 
     module List :
       Monad_sequence.S
@@ -600,7 +612,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       (** Convert a list of bits into a field element.
 
           [pack [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
-      
+
           This will raise an assertion error if the length of the list is not
           strictly less than number of bits in {!val:Field.size}.
 
@@ -704,13 +716,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       *)
 
       (** Infix notations for the basic field operations. *)
-      module Infix : sig
-        val ( + ) : Var.t -> Var.t -> Var.t
 
-        val ( - ) : Var.t -> Var.t -> Var.t
+      val ( + ) : Var.t -> Var.t -> Var.t
 
-        val ( * ) : field -> Var.t -> Var.t
-      end
+      val ( - ) : Var.t -> Var.t -> Var.t
+
+      val ( * ) : field -> Var.t -> Var.t
 
       module Unsafe : sig
         val of_index : int -> Var.t
@@ -744,6 +755,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** Zero-knowledge proofs generated from checked computations. *)
   module Proof : sig
     type t
+
+    (** The type of messages that can be associated with a proof. *)
+    type message
 
     include Stringable.S with type t := t
   end
@@ -823,7 +837,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       prover) together.
   *)
   module Handle : sig
-    type ('var, 'value) t = {var: 'var; value: 'value option}
+    type ('var, 'value) t
 
     val value : (_, 'value) t -> ('value, _) As_prover.t
     (** Get the value of a handle as the prover. *)
@@ -951,15 +965,17 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?handlers:Handler.t list
       -> ('a, 's, 'public_input) t
       -> 's
-      -> bool
-    (** Run the checked computation as the prover, returning [true] if all of
-        the constraints are correct, or [false] otherwise.
+      -> unit Or_error.t
+    (** Run the checked computation as the prover, returning [Ok ()] if all of
+        the constraints are correct, or an error describing which constraint
+        was not satisfied.
     *)
 
     val prove :
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
+      -> ?message:Proof.message
       -> ('a, 's, 'public_input) t
       -> 's
       -> Proof.t
@@ -970,11 +986,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         - The [handlers] argument adds handlers to those already given to
           {!val:create}. If handlers for the same requests were provided to
           both, the ones passed here are given priority.
+        - The [message] argument specifies the message to associate with the
+          proof, if any.
     *)
 
     val verify :
          public_input:(unit, 'public_input) H_list.t
       -> ?verification_key:Verification_key.t
+      -> ?message:Proof.message
       -> ('a, 's, 'public_input) t
       -> Proof.t
       -> bool
@@ -1004,13 +1023,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     val prove :
          run:('a, 't) t
+      -> ?message:Proof.message
       -> Proving_key.t
       -> ('t, Proof.t, 'k_var, 'k_value) Data_spec.t
       -> 'k_var
       -> 'k_value
 
     val verify :
-         Proof.t
+         ?message:Proof.message
+      -> Proof.t
       -> Verification_key.t
       -> (_, bool, _, 'k_value) Data_spec.t
       -> 'k_value
@@ -1020,7 +1041,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val run_and_check :
       run:(('a, unit) As_prover.t, 't) t -> 't -> 'a Or_error.t
 
-    val check : run:('a, 't) t -> 't -> bool
+    val check : run:('a, 't) t -> 't -> unit Or_error.t
   end
 
   val assert_ : ?label:string -> Constraint.t -> (unit, 's) Checked.t
@@ -1147,7 +1168,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val prove :
-       Proving_key.t
+       ?message:Proof.message
+    -> Proving_key.t
     -> ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 's
     -> 'k_var
@@ -1157,7 +1179,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val verify :
-       Proof.t
+       ?message:Proof.message
+    -> Proof.t
     -> Verification_key.t
     -> (_, bool, _, 'k_value) Data_spec.t
     -> 'k_value
@@ -1171,7 +1194,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (('a, 's) As_prover.t, 's) Checked.t -> 's -> ('s * 'a) Or_error.t
   (** Run a checked computation as the prover, checking the constraints. *)
 
-  val check : ('a, 's) Checked.t -> 's -> bool
+  val check : ('a, 's) Checked.t -> 's -> unit Or_error.t
   (** Run a checked computation as the prover, returning [true] if the
       constraints are all satisfied, or [false] otherwise. *)
 
@@ -1184,6 +1207,41 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       generate a proof.
 
       Returns [unit]; this is for testing only.
+  *)
+
+  val reduce_to_prover :
+       ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
+    -> 'k_var
+    -> Proving_key.t
+    -> ?handlers:Handler.t list
+    -> 's
+    -> 'k_value
+  (** Reduce a checked computation, then generate a proof.
+
+      [reduce_to_prover public_input computation] evaluates all parts of the
+      {!type:Checked.t} [computation] except {!module:As_prover} blocks, and
+      generates a program that can be used to generate proofs more quickly with
+      different inputs.
+
+      For example, for a checked computation [main] with inputs [inputs] and
+      proving key [pk],
+{[
+  let prove_main = reduce_to_prover inputs main
+
+  let proof1 = prove_main pk s1 input1a input1b input1c
+  let proof2 = prove_main pk s2 input2a input2b input2c
+  let proof3 = prove_main pk s3 input3a input3b input3c
+}]
+      is equivalent to
+{[
+  let proof1 = prove pk inputs s1 main input1a input1b input1c
+  let proof2 = prove pk inputs s2 main input2a input2b input2c
+  let proof3 = prove pk inputs s3 main input3a input3b input3c
+}]
+
+      **WARNING**: Any code inside a [Checked.t] that isn't inside an
+      [As_prover] block will only be run once. DO NOT USE if you use mutation
+      inside [Checked.t].
   *)
 
   val constraint_count :
@@ -1324,19 +1382,37 @@ module type Run = sig
   
   (** The data specification for checked computations. *)
   and Data_spec : sig
-    (** A list of {!type:Typ.t} values, describing the inputs to a checked computation.
-        The type [('r_var, 'r_value, 'k_var, 'k_value) t] represents
+    (** A list of {!type:Typ.t} values, describing the inputs to a checked
+        computation. The type [('r_var, 'r_value, 'k_var, 'k_value) t]
+        represents
         - ['k_value] is the OCaml type of the computation
         - ['r_value] is the OCaml type of the result
         - ['k_var] is the type of the computation within the R1CS
-        - ['k_value] is the type of the result within the R1CS. *)
+        - ['k_value] is the type of the result within the R1CS.
+
+        This functions the same as OCaml's default list type:
+{[
+  Data_spec.[typ1; typ2; typ3]
+
+  Data_spec.(typ1 :: typs)
+
+  let open Data_spec in
+  [typ1; typ2; typ3; typ4; typ5]
+
+  let open Data_spec in
+  typ1 :: typ2 :: typs
+
+]}
+        all function as you would expect.
+    *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | ( :: ) :
-          ('var, 'value) Typ.t * ('r_var, 'r_value, 'k_var, 'k_value) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
 
     val size : (_, _, _, _) t -> int
+    (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
+        allocated by allocating [typ1], followed by [typ2], etc. *)
+
+    include module type of Typ0.Data_spec0
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -1360,13 +1436,10 @@ module type Run = sig
     end
 
     type 'prover_state run_state =
-      ( 'prover_state
-      , R1CS_constraint_system.t
-      , Field.Constant.t
-      , Field.Constant.Vector.t )
-      Run_state.t
+      ('prover_state, Field.Constant.t) Types.Run_state.t
 
-    type ('var, 'value) t = ('var, 'value, field, unit run_state) Types.Typ.t
+    type ('var, 'value) t =
+      ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -1639,6 +1712,8 @@ module type Run = sig
   module Proof : sig
     type t
 
+    type message
+
     include Stringable.S with type t := t
   end
 
@@ -1687,7 +1762,7 @@ module type Run = sig
   end
 
   module Handle : sig
-    type ('var, 'value) t = {var: 'var; value: 'value option}
+    type ('var, 'value) t
 
     val value : (_, 'value) t -> (unit -> 'value) As_prover.t
 
@@ -1745,18 +1820,20 @@ module type Run = sig
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
-      -> bool
+      -> unit Or_error.t
 
     val prove :
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
+      -> ?message:Proof.message
       -> ('a, 'public_input) t
       -> Proof.t
 
     val verify :
          public_input:(unit, 'public_input) H_list.t
       -> ?verification_key:Verification_key.t
+      -> ?message:Proof.message
       -> ('a, 'public_input) t
       -> Proof.t
       -> bool
@@ -1796,8 +1873,7 @@ module type Run = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
-  val make_checked :
-    (unit -> 'a) -> ('a, 's, field, unit Typ.run_state) Types.Checked.t
+  val make_checked : (unit -> 'a) -> ('a, 's, field) Types.Checked.t
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
@@ -1808,13 +1884,15 @@ module type Run = sig
     exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t -> 'k_var -> Keypair.t
 
   val prove :
-       Proving_key.t
+       ?message:Proof.message
+    -> Proving_key.t
     -> (unit -> 'a, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
     -> 'k_value
 
   val verify :
-       Proof.t
+       ?message:Proof.message
+    -> Proof.t
     -> Verification_key.t
     -> (_, bool, _, 'k_value) Data_spec.t
     -> 'k_value

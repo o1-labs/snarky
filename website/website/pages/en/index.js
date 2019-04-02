@@ -72,7 +72,23 @@ class HomeSplash extends React.Component {
   }
 }
 
-const example_code = `\`\`\`ocaml
+const example_code = `\`\`\`reasonml
+module M = Snarky.Snark.Run.Make(Backends.Mnt4.Default);
+open M;
+
+// Compute division by guessing the result and checking with a
+// multiplication
+let div = (x, y) => {
+  // Non-deterministically choose a result
+  let z =
+    exists(Field.typ, ~compute= () => {
+      Field.Constant.Infix.(
+        read_var(x) / read_var(y)) // How to actually compute the result
+    });
+
+  assert_r1cs(z, y, x); // assert (z * y = x), so the result is correct
+  z;
+};
 \`\`\``
 
 class Index extends React.Component {
@@ -95,21 +111,40 @@ class Index extends React.Component {
 
     const CodeSample = () => (
       <Container id="codesample" padding={['bottom', 'top']} background="light">
-        Snarky is an OCaml front-end for writing R1CS SNARKs. It is modular over the backend SNARK library, and comes with backends from <a href="https://github.com/scipr-lab/libsnark" target="_blank">libsnark</a>.
-        <MarkdownBlock>{example_code}</MarkdownBlock>
+        <div style={{width:'100%', display:'flex', flexDirection:'row'}}>
+          <div style={{width:'50%'}}>
+            <MarkdownBlock>
+              **snarky** lets you write zk-SNARKs as if you were writing ordinary code.
+              It's easy to use, efficient, and comes with a bunch of pre-built eunctionality.
+            </MarkdownBlock>
+            <MarkdownBlock>
+              It is modular over the backend SNARK library, and
+              comes with backends from [libsnark](https://github.com/scipr-lab/libsnark).
+            </MarkdownBlock>
+          </div>
+          <MarkdownBlock style={{width:'50%'}}>{example_code}</MarkdownBlock>
+        </div>
       </Container>
     );
 
+    const installCommand = `\`\`\`bash
+bash <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+\`\`\``
+
+      /*
+            {`
+Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_blank">libsnark dependencies</a> and <a href="https://opam.ocaml.org/doc/Install.html" target="_blank">opam</a>, then run <span style="white-space: nowrap;">\`opam pin add git@github.com:o1-labs/snarky.git\`</span>
+            `}
+            */
     const QuickStart = () => (
       <Container id="quickstart" padding={['bottom', 'top']}>
         <div style={{'textAlign': 'center'}}>
           <h2>Quick Start</h2>
-          <MarkdownBlock>
-            {`
-Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_blank">libsnark dependencies</a> and <a href="https://opam.ocaml.org/doc/Install.html" target="_blank">opam</a>, then run <span style="white-space: nowrap;">\`opam pin add git@github.com:o1-labs/snarky.git\`</span>
-            `}
-          </MarkdownBlock>
         </div>
+      <MarkdownBlock>
+      You can easily install snarky and all its dependencies with
+      </MarkdownBlock>
+      <MarkdownBlock>{installCommand}</MarkdownBlock>
       </Container>
     );
 
@@ -164,16 +199,16 @@ Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_b
       <Block layout="fourColumn">
         {[
           {
-            content: 'You can use our [tutorial](https://github.com/o1-labs/snarky/blob/master/examples/tutorial/tutorial.ml) to get you up to speed',
+            content: 'Check out out [this page](docs/try-it-out) to get started with a simple snarky project.',
             /*image: `${baseUrl}img/zklambda.svg`,
             imageAlign: 'top',*/
             title: 'Try it out',
           },
           {
-            content: '[election example](https://github.com/o1-labs/snarky/blob/master/examples/tutorial/tutorial.ml)',
+            content: 'Operations on an [elliptic curve](https://github.com/o1-labs/snarky/blob/master/examples/elliptic_curve_operations/elliptic_curve_operations.re)',
             /*image: `${baseUrl}img/zklambda.svg`,
             imageAlign: 'top',*/
-            title: 'Look at examples',
+            title: 'Examples',
           },
         ]}
       </Block>
