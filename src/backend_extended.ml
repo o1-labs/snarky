@@ -61,13 +61,11 @@ module type S = sig
 
     val sum : t list -> t
 
-    module Infix : sig
-      val ( + ) : t -> t -> t
+    val ( + ) : t -> t -> t
 
-      val ( - ) : t -> t -> t
+    val ( - ) : t -> t -> t
 
-      val ( * ) : Field.t -> t -> t
-    end
+    val ( * ) : Field.t -> t -> t
 
     val var_indices : t -> int list
 
@@ -118,12 +116,19 @@ module type S = sig
   module Proof : sig
     type t = Field.t Backend_types.Proof.t
 
+    type message
+
     include Stringable.S with type t := t
 
     val create :
-      Proving_key.t -> primary:Field.Vector.t -> auxiliary:Field.Vector.t -> t
+         ?message:message
+      -> Proving_key.t
+      -> primary:Field.Vector.t
+      -> auxiliary:Field.Vector.t
+      -> t
 
-    val verify : t -> Verification_key.t -> Field.Vector.t -> bool
+    val verify :
+      ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
   end
 
   module R1CS_constraint_system : sig
@@ -196,8 +201,10 @@ module type S = sig
 end
 
 module Make (Backend : Backend_intf.S) :
-  S with type Field.t = Backend.Field.t and type Bigint.t = Backend.Bigint.R.t =
-struct
+  S
+  with type Field.t = Backend.Field.t
+   and type Bigint.t = Backend.Bigint.R.t
+   and type Proof.message = Backend.Proof.message = struct
   open Backend
 
   module Bigint = struct
@@ -325,15 +332,13 @@ struct
             (project bs |> to_string)
             (project_reference bs |> to_string) )
 
-    module Infix = struct
-      let ( + ) = add
+    let ( + ) = add
 
-      let ( * ) = mul
+    let ( * ) = mul
 
-      let ( - ) = sub
+    let ( - ) = sub
 
-      let ( / ) = div
-    end
+    let ( / ) = div
   end
 
   module Cvar = struct

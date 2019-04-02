@@ -114,12 +114,12 @@ end = struct
   let lookup ((s0, s1, s2) : Boolean.var Triple.t)
       (q : Weierstrass_curve.t Quadruple.t) =
     let%bind s_and = Boolean.(s0 && s1) in
-    let open Field.Checked.Infix in
+    let open Field.Checked in
     let lookup_one (a1, a2, a3, a4) =
       Field.Var.constant a1
-      + (Field.Infix.(a2 - a1) * (s0 :> Field.Var.t))
-      + (Field.Infix.(a3 - a1) * (s1 :> Field.Var.t))
-      + (Field.Infix.(a4 + a1 - a2 - a3) * (s_and :> Field.Var.t))
+      + (Field.(a2 - a1) * (s0 :> Field.Var.t))
+      + (Field.(a3 - a1) * (s1 :> Field.Var.t))
+      + (Field.(a4 + a1 - a2 - a3) * (s_and :> Field.Var.t))
     in
     let x_q, y_q = coords q in
     let x = lookup_one x_q in
