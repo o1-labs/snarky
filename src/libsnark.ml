@@ -1639,7 +1639,7 @@ struct
       end
 
       include T
-      include Make_proof_accessors (M) (T) (G1) (G2)
+      include Make_proof_accessors (Prefix) (T) (G1) (G2)
 
       let delta_prime = func "delta_prime" G2.typ G2.delete
 
