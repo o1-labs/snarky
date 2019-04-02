@@ -697,8 +697,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           otherwise.
       *)
 
-      val ( + ) : Var.t -> Var.t -> Var.t
       (** Infix notations for the basic field operations. *)
+
+      val ( + ) : Var.t -> Var.t -> Var.t
 
       val ( - ) : Var.t -> Var.t -> Var.t
 
