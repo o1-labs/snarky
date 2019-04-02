@@ -88,18 +88,6 @@ module Make (Basic : Checked_intf.Basic) :
         let%map () = such_that x in
         x
 
-  let exists ?request ?compute typ =
-    let provider =
-      let request =
-        Option.value request ~default:(As_prover0.return Request.Fail)
-      in
-      match compute with
-      | None -> Provider.Request request
-      | Some c -> Provider.Both (request, c)
-    in
-    let%map h = exists typ provider in
-    Handle.var h
-
   let exists_handle ?request ?compute typ =
     let provider =
       let request =
@@ -109,7 +97,11 @@ module Make (Basic : Checked_intf.Basic) :
       | None -> Provider.Request request
       | Some c -> Provider.Both (request, c)
     in
-    Exists (typ, provider, return)
+    exists typ provider
+
+  let exists ?request ?compute typ =
+    let%map h = exists_handle ?request ?compute typ in
+    Handle.var h
 
   type response = Request.response
 

@@ -45,6 +45,12 @@ module type S = sig
     -> 'value Request.t
     -> ('var, 's, 'field) t
 
+  val exists_handle :
+       ?request:('value Request.t, 'f, 's) As_prover0.t
+    -> ?compute:('value, 'f, 's) As_prover0.t
+    -> ('var, 'value, 'f, (unit, unit, 'f) t) Types.Typ.t
+    -> (('var, 'value) Handle.t, 's, 'f) t
+
   val exists :
        ?request:('value Request.t, 'f, 's) As_prover0.t
     -> ?compute:('value, 'f, 's) As_prover0.t
