@@ -53,13 +53,11 @@ module type Extended = sig
 
   val negate : t -> t
 
-  module Infix : sig
-    val ( + ) : t -> t -> t
+  val ( + ) : t -> t -> t
 
-    val ( * ) : t -> t -> t
+  val ( * ) : t -> t -> t
 
-    val ( - ) : t -> t -> t
+  val ( - ) : t -> t -> t
 
-    val ( / ) : t -> t -> t
-  end
+  val ( / ) : t -> t -> t
 end
