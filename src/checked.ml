@@ -14,6 +14,7 @@ module T0 = struct
     match t with
     | Pure x -> Pure (f x)
     | Direct (d, k) -> Direct (d, fun b -> map (k b) ~f)
+    | Reduced (t, d, res, k) -> Reduced (t, d, res, fun b -> map (k b) ~f)
     | With_label (s, t, k) -> With_label (s, t, fun b -> map (k b) ~f)
     | As_prover (x, k) -> As_prover (x, map k ~f)
     | Add_constraint (c, t1) -> Add_constraint (c, map t1 ~f)
@@ -32,6 +33,7 @@ module T0 = struct
     match t with
     | Pure x -> f x
     | Direct (d, k) -> Direct (d, fun b -> bind (k b) ~f)
+    | Reduced (t, d, res, k) -> Reduced (t, d, res, fun b -> bind (k b) ~f)
     | With_label (s, t, k) -> With_label (s, t, fun b -> bind (k b) ~f)
     | As_prover (x, k) -> As_prover (x, bind k ~f)
     (* Someday: This case is probably a performance bug *)
@@ -71,7 +73,8 @@ module Make (Basic : Checked_intf.Basic) :
   Checked_intf.S with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t = struct
   include Basic
 
-  let request_witness (typ : ('var, 'value, 'field) Types.Typ.t)
+  let request_witness
+      (typ : ('var, 'value, 'field, (unit, unit, 'field) t) Types.Typ.t)
       (r : ('value Request.t, 'field, 's) As_prover0.t) =
     let%map h = exists typ (Request r) in
     Handle.var h

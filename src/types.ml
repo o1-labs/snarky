@@ -1,12 +1,14 @@
-module rec Typ : sig
+module Typ = struct
   open Typ_monads
 
-  (** The type [('var, 'value, 'field, 'runner_state) t] describes a mapping from OCaml types
-      to the variables and constraints they represent:
+  module T = struct
+    (** The type [('var, 'value, 'field, 'checked) t] describes a mapping from
+      OCaml types to the variables and constraints they represent:
       - ['value] is the OCaml type
       - ['field] is the type of the field elements
       - ['var] is some other type that contains some R1CS variables
-      - ['runner_state] is the internal type of the checked computation evaluator.
+      - ['checked] is the type of checked computation that verifies the stored
+        contents as R1CS variables.
 
       For convenience and readability, it is usually best to have the ['var]
       type mirror the ['value] type in structure, for example:
@@ -21,15 +23,20 @@ module rec Typ : sig
     let or (x : t) = Snark.Boolean.(x.b1 || x.b2)
   end
 ]}*)
-  type ('var, 'value, 'field) t =
-    { store: 'value -> ('var, 'field) Store.t
-    ; read: 'var -> ('value, 'field) Read.t
-    ; alloc: ('var, 'field) Alloc.t
-    ; check: 'var -> (unit, unit, 'field) Checked.t }
-end =
-  Typ
+    type ('var, 'value, 'field, 'checked) typ =
+      { store: 'value -> ('var, 'field) Store.t
+      ; read: 'var -> ('value, 'field) Read.t
+      ; alloc: ('var, 'field) Alloc.t
+      ; check: 'var -> 'checked }
+  end
 
-and Checked : sig
+  include T
+
+  type ('var, 'value, 'field, 'checked) t =
+    ('var, 'value, 'field, 'checked) typ
+end
+
+module rec Checked : sig
   (* TODO-someday: Consider having an "Assembly" type with only a store constructor for straight up Var.t's
     that this gets compiled into. *)
 
@@ -43,6 +50,12 @@ and Checked : sig
     | Pure : 'a -> ('a, 's, 'f) t
     | Direct :
         (('s, 'f) Run_state.t -> ('s, 'f) Run_state.t * 'a)
+        * ('a -> ('b, 's, 'f) t)
+        -> ('b, 's, 'f) t
+    | Reduced :
+        ('a, 's, 'f) t
+        * (('s, 'f) Run_state.t -> ('s, 'f) Run_state.t)
+        * 'a
         * ('a -> ('b, 's, 'f) t)
         -> ('b, 's, 'f) t
     | Add_constraint :
@@ -65,7 +78,7 @@ and Checked : sig
         -> ('b, 's, 'f) t
     | Clear_handler : ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t) -> ('b, 's, 'f) t
     | Exists :
-        ('var, 'value, 'f) Typ.t
+        ('var, 'value, 'f, (unit, unit, 'f) t) Typ.t
         * ('value, 'f, 's) Provider.t
         * (('var, 'value) Handle.t -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t

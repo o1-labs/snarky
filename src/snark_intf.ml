@@ -141,24 +141,7 @@ module type Basic = sig
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
-    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
-                                                                 ( 'r_var
-                                                                 , 'r_value
-                                                                 , 'k_var
-                                                                 , 'k_value
-                                                                 , 'field )
-                                                                 Typ0.Data_spec
-                                                                 .t =
-      | ( :: ) :
-          ('var, 'value, 'f) Typ0.t
-          * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
-          -> ( 'r_var
-             , 'r_value
-             , 'var -> 'k_var
-             , 'value -> 'k_value
-             , 'f )
-             data_spec
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
+    include module type of Typ0.Data_spec0
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -242,7 +225,8 @@ module type Basic = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
+    type ('var, 'value) t =
+      ('var, 'value, Field.t, (unit, unit) Checked.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -353,6 +337,8 @@ module type Basic = sig
       val typ :
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
+
+    include module type of Types.Typ.T
   end
   
   (** Representation of booleans within a field.
@@ -1192,20 +1178,38 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val reduce_to_prover :
-    (('a, 's) Checked.t, _, 'checked, _) Data_spec.t -> 'checked -> 'checked
-  (** Reduce a checked computation to be run as the prover.
+       ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
+    -> 'k_var
+    -> Proving_key.t
+    -> ?handlers:Handler.t list
+    -> 's
+    -> 'k_value
+  (** Reduce a checked computation, then generate a proof.
 
-      This precomputes all parts of a {!type:Checked.t} except
-      {!module:As_prover} blocks, and creates a new checked computation that
-      uses this precomputed information to evaluate only the
-      {!module:As_prover} blocks.
+      [reduce_to_prover public_input computation] evaluates all parts of the
+      {!type:Checked.t} [computation] except {!module:As_prover} blocks, and
+      generates a program that can be used to generate proofs more quickly with
+      different inputs.
+
+      For example, for a checked computation [main] with inputs [inputs] and
+      proving key [pk],
+{[
+  let prove_main = reduce_to_prover inputs main
+
+  let proof1 = prove_main pk s1 input1a input1b input1c
+  let proof2 = prove_main pk s2 input2a input2b input2c
+  let proof3 = prove_main pk s3 input3a input3b input3c
+}]
+      is equivalent to
+{[
+  let proof1 = prove pk inputs s1 main input1a input1b input1c
+  let proof2 = prove pk inputs s2 main input2a input2b input2c
+  let proof3 = prove pk inputs s3 main input3a input3b input3c
+}]
 
       **WARNING**: Any code inside a [Checked.t] that isn't inside an
       [As_prover] block will only be run once. DO NOT USE if you use mutation
       inside [Checked.t].
-
-      The resulting checked computation will generate 0 constraints; use the
-      original checked computation if you need to generate a keypair.
   *)
 
   val constraint_count :
@@ -1376,24 +1380,7 @@ module type Run = sig
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
-    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
-                                                                 ( 'r_var
-                                                                 , 'r_value
-                                                                 , 'k_var
-                                                                 , 'k_value
-                                                                 , 'field )
-                                                                 Typ0.Data_spec
-                                                                 .t =
-      | ( :: ) :
-          ('var, 'value, 'f) Types.Typ.t
-          * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
-          -> ( 'r_var
-             , 'r_value
-             , 'var -> 'k_var
-             , 'value -> 'k_value
-             , 'f )
-             data_spec
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
+    include module type of Typ0.Data_spec0
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -1419,7 +1406,8 @@ module type Run = sig
     type 'prover_state run_state =
       ('prover_state, Field.Constant.t) Types.Run_state.t
 
-    type ('var, 'value) t = ('var, 'value, field) Types.Typ.t
+    type ('var, 'value) t =
+      ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
