@@ -1526,7 +1526,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ((a, s) Checked.t, Proof.t, k_var, k_value) t -> k_var -> k_var =
        fun t k ->
         match t with
-        | [] -> Checked.Runner.reduce_to_prover next_input k
+        | [] ->
+          let open Checked.Let_syntax in
+          let r = Checked.Runner.reduce_to_prover next_input k in
+          let%bind next_auxiliary = Checked.next_auxiliary in
+          assert (next_auxiliary = !next_input);
+          r
         | {alloc; _} :: t' ->
             let var = Typ.Alloc.run alloc alloc_var in
             let ret = go t' (k var) in
