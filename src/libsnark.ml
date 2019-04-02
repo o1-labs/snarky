@@ -813,6 +813,12 @@ struct
       Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
 
     val set_is_square : t -> bool -> unit
+
+    val a : t -> Linear_combination.t
+
+    val b : t -> Linear_combination.t
+
+    val c : t -> Linear_combination.t
   end = struct
     include R1CS_constraint.Make (struct
       let prefix = with_prefix M.prefix "r1cs_constraint"
@@ -832,6 +838,24 @@ struct
 
     let set_is_square =
       foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
+
+    let a =
+      let stub =
+        foreign (func_name "a") (typ @-> returning Linear_combination.typ)
+      in
+      fun t -> stub t
+
+    let b =
+      let stub =
+        foreign (func_name "b") (typ @-> returning Linear_combination.typ)
+      in
+      fun t -> stub t
+
+    let c =
+      let stub =
+        foreign (func_name "c") (typ @-> returning Linear_combination.typ)
+      in
+      fun t -> stub t
   end
 
   module R1CS_constraint_system : sig
@@ -867,6 +891,11 @@ struct
       -> bool
 
     val digest : t -> Md5.t
+
+    val iter_constraints : f:(R1CS_constraint.t -> unit) -> t -> unit
+
+    val fold_constraints :
+      f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
   end = struct
     include R1CS_constraint_system.Make (struct
       let prefix = with_prefix M.prefix "r1cs_constraint_system"
@@ -931,6 +960,20 @@ struct
         let s = stub t in
         let r = Cpp_string.to_string s in
         Cpp_string.delete s ; Md5.of_binary_exn r
+
+    let iter_constraints =
+      let stub =
+        foreign (func_name "iter")
+          ( typ
+          @-> funptr (R1CS_constraint.typ @-> returning void)
+          @-> returning void )
+      in
+      fun ~f t -> stub t f
+
+    let fold_constraints ~f ~init t =
+      let a = ref init in
+      let f c = a := f !a c in
+      iter_constraints ~f t ; !a
   end
 
   module Protoboard : sig
@@ -1596,7 +1639,7 @@ struct
       end
 
       include T
-      include Make_proof_accessors (M) (T) (G1) (G2)
+      include Make_proof_accessors (Prefix) (T) (G1) (G2)
 
       let delta_prime = func "delta_prime" G2.typ G2.delete
 

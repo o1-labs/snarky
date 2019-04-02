@@ -1921,6 +1921,8 @@ module Run = struct
 
           let print = print
 
+          let to_string = to_string
+
           let random = random
 
           module Mutable = Mutable

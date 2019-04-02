@@ -467,6 +467,18 @@ void camlsnark_mnt4753_r1cs_constraint_set_is_square(r1cs_constraint<FieldT>* c,
   c->is_square = is_square;
 }
 
+const linear_combination<FieldT>* camlsnark_mnt4753_r1cs_constraint_a(const r1cs_constraint<FieldT>* c) {
+  return &c->a;
+}
+
+const linear_combination<FieldT>* camlsnark_mnt4753_r1cs_constraint_b(const r1cs_constraint<FieldT>* c) {
+  return &c->b;
+}
+
+const linear_combination<FieldT>* camlsnark_mnt4753_r1cs_constraint_c(const r1cs_constraint<FieldT>* c) {
+  return &c->c;
+}
+
 r1cs_constraint_system<FieldT>* camlsnark_mnt4753_r1cs_constraint_system_create() {
   return new r1cs_constraint_system<FieldT>();
 }
@@ -578,6 +590,15 @@ int camlsnark_mnt4753_r1cs_constraint_system_get_primary_input_size(
 int camlsnark_mnt4753_r1cs_constraint_system_get_auxiliary_input_size(
     r1cs_constraint_system<FieldT>* sys) {
   return sys->auxiliary_input_size;
+}
+
+void camlsnark_mnt4753_r1cs_constraint_system_iter(
+    r1cs_constraint_system<FieldT>* sys,
+    void (*f)(const r1cs_constraint<FieldT> *)) {
+  std::vector<r1cs_constraint<FieldT>>& cs = sys->constraints;
+  for (std::vector<r1cs_constraint<FieldT>>::const_iterator i = cs.cbegin(); i != cs.cend(); i++) {
+    f(&*i);
+  }
 }
 
 std::vector<FieldT>* camlsnark_mnt4753_field_vector_create() {
@@ -1035,6 +1056,10 @@ libff::G2<ppT>* camlsnark_mnt4753_bg_proof_b(r1cs_bg_ppzksnark_proof<ppT>* proof
 
 libff::G1<ppT>* camlsnark_mnt4753_bg_proof_c(r1cs_bg_ppzksnark_proof<ppT>* proof) {
   return new libff::G1<ppT>(proof->g_C);
+}
+
+libff::G2<ppT>* camlsnark_mnt4753_bg_proof_delta_prime(r1cs_bg_ppzksnark_proof<ppT>* proof) {
+  return new libff::G2<ppT>(proof->delta_prime);
 }
 
 // End BG specific code
