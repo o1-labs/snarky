@@ -141,24 +141,7 @@ module type Basic = sig
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
-    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
-                                                                 ( 'r_var
-                                                                 , 'r_value
-                                                                 , 'k_var
-                                                                 , 'k_value
-                                                                 , 'field )
-                                                                 Typ0.Data_spec
-                                                                 .t =
-      | ( :: ) :
-          ('var, 'value, 'f) Typ0.t
-          * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
-          -> ( 'r_var
-             , 'r_value
-             , 'var -> 'k_var
-             , 'value -> 'k_value
-             , 'f )
-             data_spec
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
+    include module type of Typ0.Data_spec0
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -242,7 +225,8 @@ module type Basic = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-    type ('var, 'value) t = ('var, 'value, Field.t) Types.Typ.t
+    type ('var, 'value) t =
+      ('var, 'value, Field.t, (unit, unit) Checked.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -353,6 +337,8 @@ module type Basic = sig
       val typ :
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
+
+    include module type of Types.Typ.T
   end
   
   (** Representation of booleans within a field.
@@ -1394,24 +1380,7 @@ module type Run = sig
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
-    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
-                                                                 ( 'r_var
-                                                                 , 'r_value
-                                                                 , 'k_var
-                                                                 , 'k_value
-                                                                 , 'field )
-                                                                 Typ0.Data_spec
-                                                                 .t =
-      | ( :: ) :
-          ('var, 'value, 'f) Types.Typ.t
-          * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
-          -> ( 'r_var
-             , 'r_value
-             , 'var -> 'k_var
-             , 'value -> 'k_value
-             , 'f )
-             data_spec
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
+    include module type of Typ0.Data_spec0
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -1437,7 +1406,8 @@ module type Run = sig
     type 'prover_state run_state =
       ('prover_state, Field.Constant.t) Types.Run_state.t
 
-    type ('var, 'value) t = ('var, 'value, field) Types.Typ.t
+    type ('var, 'value) t =
+      ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 

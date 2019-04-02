@@ -20,7 +20,7 @@ module type Basic = sig
   val clear_handler : ('a, 's, 'f) t -> ('a, 's, 'f) t
 
   val exists :
-       ('var, 'value, 'f) Types.Typ.t
+       ('var, 'value, 'f, (unit, unit, 'f) t) Types.Typ.t
     -> ('value, 'f, 's) Provider.t
     -> (('var, 'value) Handle.t, 's, 'f) t
 
@@ -35,20 +35,20 @@ module type S = sig
   val as_prover : (unit, 'f, 's) As_prover0.t -> (unit, 's, 'f) t
 
   val request_witness :
-       ('var, 'value, 'f) Types.Typ.t
+       ('var, 'value, 'f, (unit, unit, 'f) t) Types.Typ.t
     -> ('value Request.t, 'f, 's) As_prover0.t
     -> ('var, 's, 'f) t
 
   val request :
        ?such_that:('var -> (unit, 's, 'field) t)
-    -> ('var, 'value, 'field) Types.Typ.t
+    -> ('var, 'value, 'field, (unit, unit, 'field) t) Types.Typ.t
     -> 'value Request.t
     -> ('var, 's, 'field) t
 
   val exists :
        ?request:('value Request.t, 'f, 's) As_prover0.t
     -> ?compute:('value, 'f, 's) As_prover0.t
-    -> ('var, 'value, 'f) Types.Typ.t
+    -> ('var, 'value, 'f, (unit, unit, 'f) t) Types.Typ.t
     -> ('var, 's, 'f) t
 
   type response = Request.response

@@ -73,7 +73,8 @@ module Make (Basic : Checked_intf.Basic) :
   Checked_intf.S with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t = struct
   include Basic
 
-  let request_witness (typ : ('var, 'value, 'field) Types.Typ.t)
+  let request_witness
+      (typ : ('var, 'value, 'field, (unit, unit, 'field) t) Types.Typ.t)
       (r : ('value Request.t, 'field, 's) As_prover0.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
