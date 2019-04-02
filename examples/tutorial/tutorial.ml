@@ -37,7 +37,7 @@ let _foo () : (unit, _) Checked.t = Checked.return ()
 let () =
   let x = Field.of_int 23 in
   let x_cubed = Field.mul x (Field.square x) in
-  let z = Field.Infix.(x_cubed / x) in
+  let z = Field.(x_cubed / x) in
   assert (Field.equal z (Field.square x))
 
 (* Try seeing what operations there are in the [Field] module by using
@@ -84,7 +84,7 @@ let assert_is_cube_root_of_1 (x : Field.Var.t) = failwith "Exercise 1"
 
 let cube_root_of_1 =
   let open Field in
-  Infix.((of_int (-1) + sqrt (of_int (-3))) / of_int 2)
+  (of_int (-1) + sqrt (of_int (-3))) / of_int 2
 
 let exercise1 () =
   (* Before we generate a constraint system or a proof for our checked
@@ -280,7 +280,7 @@ let exercise5 () =
 *)
 
 let product_triple ((x, y, z) : Field.t * Field.t * Field.t) : Field.t =
-  Field.Infix.(x * y * z)
+  Field.(x * y * z)
 
 let exercise6 () = failwith "Exercise 6"
 
