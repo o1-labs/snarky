@@ -52,6 +52,12 @@ module rec Checked : sig
         (('s, 'f) Run_state.t -> ('s, 'f) Run_state.t * 'a)
         * ('a -> ('b, 's, 'f) t)
         -> ('b, 's, 'f) t
+    | Reduced :
+        ('a, 's, 'f) t
+        * (('s, 'f) Run_state.t -> ('s, 'f) Run_state.t)
+        * 'a
+        * ('a -> ('b, 's, 'f) t)
+        -> ('b, 's, 'f) t
     | Add_constraint :
         'f Cvar.t Constraint.t * ('a, 's, 'f) t
         -> ('a, 's, 'f) t
