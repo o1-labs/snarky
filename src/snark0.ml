@@ -188,7 +188,7 @@ module Runner = struct
 
     let dummy_vector = Field.Vector.create ()
 
-    let fake_state next_auxiliary =
+    let fake_state next_auxiliary stack =
       { system= None
       ; input= dummy_vector
       ; aux= dummy_vector
@@ -196,43 +196,56 @@ module Runner = struct
       ; num_inputs= 0
       ; next_auxiliary
       ; prover_state= None
-      ; stack= []
+      ; stack
       ; handler= Request.Handler.fail
       ; is_running= true
       ; as_prover= ref false
       ; run_special= None }
 
     let rec flatten_as_prover : type a s.
-        int ref -> (a, s, Field.t) t -> (s run_state -> s run_state) * a =
-     fun next_auxiliary t ->
+           int ref
+        -> string list
+        -> (a, s, Field.t) t
+        -> (s run_state -> s run_state) * a =
+     fun next_auxiliary stack t ->
       match t with
       | As_prover (x, k) ->
-          let f, a = flatten_as_prover next_auxiliary k in
+          let f, a = flatten_as_prover next_auxiliary stack k in
           ( (fun s ->
               let s', (_ : unit option) = run_as_prover (Some x) s in
               f s' )
           , a )
       | Pure x -> (Fn.id, x)
       | Direct (d, k) ->
-          let _, y = d (fake_state next_auxiliary) in
-          let f, a = flatten_as_prover next_auxiliary (k y) in
+          let _, y = d (fake_state next_auxiliary stack) in
+          let f, a = flatten_as_prover next_auxiliary stack (k y) in
           ( (fun s ->
               let {prover_state; _} = s in
               let s, _y = d s in
               f (set_prover_state prover_state s) )
           , a )
       | Reduced (t, d, _res, k) ->
-          let f, y = flatten_as_prover next_auxiliary t in
-          let g, a = flatten_as_prover next_auxiliary (k y) in
+          let f, y = flatten_as_prover next_auxiliary stack t in
+          let g, a = flatten_as_prover next_auxiliary stack (k y) in
           ((fun s -> g (f s)), a)
       | With_label (lab, t, k) ->
-          let f, y = flatten_as_prover next_auxiliary t in
-          let g, a = flatten_as_prover next_auxiliary (k y) in
+          let f, y = flatten_as_prover next_auxiliary (lab :: stack) t in
+          let g, a = flatten_as_prover next_auxiliary stack (k y) in
           ((fun s -> g (f s)), a)
-      | Add_constraint (c, t) -> flatten_as_prover next_auxiliary t
+      | Add_constraint (c, t) ->
+          let f, y = flatten_as_prover next_auxiliary stack t in
+          ( (fun s ->
+              if s.eval_constraints && not (Constraint.eval c (get_value s))
+              then
+                failwithf "Constraint unsatisfied:\n%s\n%s\n"
+                  (Constraint.annotation c)
+                  (Constraint.stack_to_string stack)
+                  () ;
+              f s )
+          , y )
       | With_state (p, and_then, t_sub, k) ->
-          let f_sub, y = flatten_as_prover next_auxiliary t_sub in
-          let f, a = flatten_as_prover next_auxiliary (k y) in
+          let f_sub, y = flatten_as_prover next_auxiliary stack t_sub in
+          let f, a = flatten_as_prover next_auxiliary stack (k y) in
           ( (fun s ->
               let s, s_sub = run_as_prover (Some p) s in
               let s_sub = f_sub (set_prover_state s_sub s) in
@@ -242,16 +255,16 @@ module Runner = struct
               f s )
           , a )
       | With_handler (h, t, k) ->
-          let f, y = flatten_as_prover next_auxiliary t in
-          let g, a = flatten_as_prover next_auxiliary (k y) in
+          let f, y = flatten_as_prover next_auxiliary stack t in
+          let g, a = flatten_as_prover next_auxiliary stack (k y) in
           ( (fun s ->
               let {handler; _} = s in
               let s' = f {s with handler= Request.Handler.push handler h} in
               g {s' with handler} )
           , a )
       | Clear_handler (t, k) ->
-          let f, y = flatten_as_prover next_auxiliary t in
-          let g, a = flatten_as_prover next_auxiliary (k y) in
+          let f, y = flatten_as_prover next_auxiliary stack t in
+          let g, a = flatten_as_prover next_auxiliary stack (k y) in
           ( (fun s ->
               let {handler; _} = s in
               let s' = f {s with handler= Request.Handler.fail} in
@@ -259,11 +272,12 @@ module Runner = struct
           , a )
       | Exists ({store; alloc; check; _}, p, k) ->
           let var =
-            Typ_monads.Alloc.run alloc (alloc_var (fake_state next_auxiliary))
+            Typ_monads.Alloc.run alloc
+              (alloc_var (fake_state next_auxiliary stack))
           in
-          let f, () = flatten_as_prover next_auxiliary (check var) in
+          let f, () = flatten_as_prover next_auxiliary stack (check var) in
           let handle = {Handle.var; value= None} in
-          let g, a = flatten_as_prover next_auxiliary (k handle) in
+          let g, a = flatten_as_prover next_auxiliary stack (k handle) in
           ( (fun s ->
               let old = !(s.as_prover) in
               s.as_prover := true ;
@@ -281,11 +295,11 @@ module Runner = struct
               g (set_prover_state (Some ps) s) )
           , a )
       | Next_auxiliary k ->
-          flatten_as_prover next_auxiliary (k !next_auxiliary)
+          flatten_as_prover next_auxiliary stack (k !next_auxiliary)
 
     let reduce_to_prover (type a s) next_auxiliary (t : (a, s, Field.t) t) :
         (a, s, Field.t) t =
-      let f, a = flatten_as_prover next_auxiliary t in
+      let f, a = flatten_as_prover next_auxiliary [] t in
       Reduced (t, f, a, return)
 
     module State = struct
