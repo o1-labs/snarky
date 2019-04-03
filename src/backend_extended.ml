@@ -102,7 +102,7 @@ module type S = sig
   end
 
   module Proving_key : sig
-    type t = Field.t Backend_types.Proving_key.t [@@deriving bin_io]
+    type t [@@deriving bin_io]
 
     include Stringable.S with type t := t
 
@@ -112,7 +112,7 @@ module type S = sig
   end
 
   module Verification_key : sig
-    type t = Field.t Backend_types.Verification_key.t [@@deriving bin_io]
+    type t [@@deriving bin_io]
 
     include Stringable.S with type t := t
 
@@ -122,7 +122,7 @@ module type S = sig
   end
 
   module Proof : sig
-    type t = Field.t Backend_types.Proof.t
+    type t
 
     type message
 
@@ -220,7 +220,10 @@ module Make (Backend : Backend_intf.S) :
   S
   with type Field.t = Backend.Field.t
    and type Bigint.t = Backend.Bigint.R.t
-   and type Proof.message = Backend.Proof.message = struct
+   and type Proof.message = Backend.Proof.message
+   and type Proving_key.t = Backend.Proving_key.t
+   and type Verification_key.t = Backend.Verification_key.t
+   and type Proof.t = Backend.Proof.t = struct
   open Backend
 
   module Bigint = struct

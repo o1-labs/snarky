@@ -1185,7 +1185,7 @@ end
 
 module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   module Proving_key : sig
-    type t = M.Field.t Backend_types.Proving_key.t [@@deriving bin_io]
+    type t [@@deriving bin_io]
 
     val func_name : string -> string
 
@@ -1299,7 +1299,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end
 
   module Verification_key : sig
-    type t = M.Field.t Backend_types.Verification_key.t
+    type t
 
     val typ : t Ctypes.typ
 
@@ -1372,7 +1372,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end
 
   module Keypair : sig
-    type t = M.Field.t Backend_types.Keypair.t
+    type t
 
     val typ : t Ctypes.typ
 
@@ -1444,7 +1444,7 @@ struct
   module Proof : sig
     type message = unit
 
-    type t = M.Field.t Backend_types.Proof.t
+    type t
 
     val typ : t Ctypes.typ
 

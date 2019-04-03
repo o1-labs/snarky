@@ -59,7 +59,7 @@ module type S = sig
   end
 
   module Proving_key : sig
-    type t = Field.t Backend_types.Proving_key.t [@@deriving bin_io]
+    type t [@@deriving bin_io]
 
     val to_string : t -> string
 
@@ -71,7 +71,7 @@ module type S = sig
   end
 
   module Verification_key : sig
-    type t = Field.t Backend_types.Verification_key.t
+    type t
 
     include Stringable.S with type t := t
 
@@ -83,7 +83,7 @@ module type S = sig
   module Proof : sig
     type message
 
-    type t = Field.t Backend_types.Proof.t
+    type t
 
     include Stringable.S with type t := t
 
@@ -135,7 +135,7 @@ module type S = sig
   end
 
   module Keypair : sig
-    type t = Field.t Backend_types.Keypair.t
+    type t
 
     val pk : t -> Proving_key.t
 
