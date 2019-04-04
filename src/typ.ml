@@ -1,9 +1,15 @@
 open Core_kernel
 open Types.Typ
 
-module Make (Checked : Checked_intf.S) = struct
-  type ('var, 'value, 'field) t =
-    ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t
+module Make
+    (Checked : Checked_intf.S)
+    (As_prover : As_prover_intf.S
+                 with type 'f field := 'f Checked.field
+                 with module Types := Checked.Types) =
+struct
+  module Types = Checked.Types
+
+  type ('var, 'value, 'field) t = ('var, 'value, 'field) Types.Typ.t
 
   type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
@@ -47,7 +53,7 @@ module Make (Checked : Checked_intf.S) = struct
 
     let check (type field) ({check; _} : ('var, 'value, field Checked.field) t)
         (v : 'var) : (unit, 's, field Checked.field) Checked.t =
-      Checked.with_state (As_prover0.return ()) (check v)
+      Checked.with_state (As_prover.return ()) (check v)
 
     let unit () : (unit, unit, 'field) t =
       let s = Store.return () in
@@ -264,5 +270,5 @@ module Make (Checked : Checked_intf.S) = struct
   end
 end
 
-include Make (Checked)
+include Make (Checked) (As_prover)
 include T

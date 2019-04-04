@@ -280,7 +280,9 @@ end
 
 module Make_basic
     (Backend : Backend_extended.S)
-    (Checked : Checked_intf.Extended with type field = Backend.Field.t) =
+    (Checked : Checked_intf.Extended
+               with type field = Backend.Field.t
+               with module Types = Checked.Types) =
 struct
   open Backend
   module Checked_S = Checked_intf.Unextend (Checked)
@@ -335,7 +337,7 @@ struct
 
   module Typ = struct
     include Types.Typ.T
-    module T = Typ.Make (Checked_S)
+    module T = Typ.Make (Checked_S) (As_prover)
     include Typ_monads
     include T.T
 
