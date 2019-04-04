@@ -35,3 +35,16 @@ let set_prover_state prover_state
   ; handler
   ; is_running
   ; as_prover }
+
+let dummy_state () =
+  { system= None
+  ; input= Vector.null
+  ; aux= Vector.null
+  ; eval_constraints= false
+  ; num_inputs= 0
+  ; next_auxiliary= ref 1
+  ; prover_state= None
+  ; stack= []
+  ; handler= Request.Handler.fail
+  ; is_running= true
+  ; as_prover= ref false }
