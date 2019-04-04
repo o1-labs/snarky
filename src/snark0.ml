@@ -3,7 +3,7 @@ open Core_kernel
 
 let () = Camlsnark_c.linkme
 
-let eval_constraints = ref false
+let eval_constraints = ref true
 
 let set_eval_constraints b = eval_constraints := b
 
@@ -481,7 +481,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         auxiliary_input_size ;
       system
 
-    let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
+    let auxiliary_input ?system ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
         s0 (input : Field.Vector.t) : Field.Vector.t =
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
@@ -490,10 +490,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
             Request.Handler.(push handler (create_single h)) )
       in
       let state =
-        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~handler
+        Runner.State.make ?system ~num_inputs ~input ~next_auxiliary ~aux ~handler
           (Some s0)
       in
       ignore (run t0 state) ;
+      Option.iter system ~f:(fun system ->
+        let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
+        R1CS_constraint_system.set_auxiliary_input_size system
+          auxiliary_input_size);
       aux
 
     let run_and_check' ~run t0 s0 =
@@ -1101,11 +1105,6 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let prove ~run ~public_input ?proving_key ?handlers ?message proof_system
           s =
-        let system = R1CS_constraint_system.create () in
-        let _, _, state =
-          run_with_input ~run ~public_input ~system ?handlers proof_system s
-        in
-        let {input; aux; _} = state in
         let proving_key =
           List.find_map_exn
             ~f:(fun f -> f ())
@@ -1114,6 +1113,16 @@ module Make_basic (Backend : Backend_intf.S) = struct
             ; (fun () -> read_proving_key proof_system)
             ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
+        let system =
+          let s = Proving_key.r1cs_constraint_system proving_key in
+          if R1CS_constraint_system.get_primary_input_size s = 0
+          then Some s
+          else None
+        in
+        let _, _, state =
+          run_with_input ~run ~public_input ?system ?handlers proof_system s
+        in
+        let {input; aux; _} = state in
         Proof.create ?message proving_key ~primary:input ~auxiliary:aux
 
       let verify ~run ~public_input ?verification_key ?message proof_system
@@ -1238,8 +1247,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
      fun ~run ?message key t ?handlers s k ->
       conv
         (fun c primary ->
+          let system =
+            let s = Proving_key.r1cs_constraint_system key in
+            if R1CS_constraint_system.get_primary_input_size s = 0
+            then Some s
+            else None
+              in
           let auxiliary =
-            Checked.auxiliary_input ~run ?handlers
+            Checked.auxiliary_input ?system ~run ?handlers
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
