@@ -159,3 +159,46 @@ module T = struct
 end
 
 include T
+
+let rec constraint_count_aux : type a s.
+    log:(?start:_ -> _) -> int -> (a, s, _) Types.Checked.t -> int * a =
+ fun ~log count t0 ->
+  match t0 with
+  | Pure x -> (count, x)
+  | Direct (d, k) ->
+      let state = Run_state.dummy_state () in
+      (* We can't inspect a direct computation, so we skip it. *)
+      (* TODO: Create a constraint system from the computation and extract
+               the number of constraints from there. *)
+      let _, x = d state in
+      constraint_count_aux ~log count (k x)
+  | Reduced (t, _, _, k) ->
+      let count, y = constraint_count_aux ~log count t in
+      constraint_count_aux ~log count (k y)
+  | As_prover (_x, k) -> constraint_count_aux ~log count k
+  | Add_constraint (_c, t) -> constraint_count_aux ~log (count + 1) t
+  | Next_auxiliary k -> constraint_count_aux ~log count (k 1)
+  | With_label (s, t, k) ->
+      log ~start:true s count ;
+      let count', y = constraint_count_aux ~log count t in
+      log s count' ;
+      constraint_count_aux ~log count' (k y)
+  | With_state (_p, _and_then, t_sub, k) ->
+      let count', y = constraint_count_aux ~log count t_sub in
+      constraint_count_aux ~log count' (k y)
+  | With_handler (_h, t, k) ->
+      let count, x = constraint_count_aux ~log count t in
+      constraint_count_aux ~log count (k x)
+  | Clear_handler (t, k) ->
+      let count, x = constraint_count_aux ~log count t in
+      constraint_count_aux ~log count (k x)
+  | Exists ({alloc; check; _}, _c, k) ->
+      let alloc_var () = Cvar.Var 1 in
+      let var = Typ_monads.Alloc.run alloc alloc_var in
+      (* TODO: Push a label onto the stack here *)
+      let count, () = constraint_count_aux ~log count (check var) in
+      constraint_count_aux ~log count (k {Handle.var; value= None})
+
+let constraint_count ?(log = fun ?start:_ _ _ -> ())
+    (t : (_, _, _) Types.Checked.t) : int =
+  fst (constraint_count_aux ~log 0 t)
