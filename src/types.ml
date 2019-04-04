@@ -84,6 +84,44 @@ module Data_spec = struct
     ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) data_spec
 end
 
+module type Types = sig
+  module Checked : sig
+    type ('a, 's, 'f) t
+
+    type ('a, 's, 'f, 'arg) thunk
+  end
+
+  module As_prover : sig
+    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  end
+
+  module Provider : sig
+    type ('a, 'f, 's) t =
+      (('a Request.t, 'f, 's) As_prover.t, ('a, 'f, 's) As_prover.t) Provider.t
+
+    module T = Provider.T
+
+    include module type of Provider.T
+  end
+
+  module Typ : sig
+    type ('var, 'value, 'f) t =
+      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) Typ.t
+
+    module T = Typ.T
+
+    include module type of Typ.T
+  end
+
+  module Data_spec : sig
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t = ('r_var, 'r_value, 'k_var, 'k_value, 'f, (unit, unit, 'f) Checked.t) Data_spec.t
+
+    module T = Data_spec.T
+
+    include module type of Data_spec.T
+  end
+end
+
 module Provider = struct
   type ('a, 'f, 's) t =
     (('a Request.t, 'f, 's) As_prover0.t, ('a, 'f, 's) As_prover0.t) Provider.t
