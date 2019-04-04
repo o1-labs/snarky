@@ -388,13 +388,16 @@ struct
   end
 
   module As_prover = struct
-    include As_prover.Make (struct
+    include As_prover.Make_extended (struct
                 type field = Field.t
               end)
-              (Checked_S)
-              (As_prover.Make_basic (Checked_S))
+              (As_prover.Make (Checked_S) (struct
+                include As_prover0
 
-    type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
+                type 'f field = Field.t
+
+                module Types = Checked_S.Types
+              end))
   end
 
   module Handle = Handle

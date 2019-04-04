@@ -2,126 +2,96 @@ open Core_kernel
 
 type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
 
-type ('a, 'f, 's) as_prover = ('a, 'f, 's) t
+module Make
+    (Checked : Checked_intf.S)
+    (As_prover : As_prover_intf.Basic
+                 with type 'f field = 'f Checked.field
+                  and module Types = Checked.Types) =
+struct
+  include As_prover
 
-module type Basic = sig
-  type ('a, 'f, 's) t
+  include Monad_let.Make3 (struct
+    include As_prover
 
-  type 'f field
+    let map = `Custom map
+  end)
 
-  type ('a, 's, 'f) checked
+  let get_state = wrap (fun s -> (s, s))
 
-  include Monad_let.S3 with type ('a, 'f, 's) t := ('a, 'f field, 's) t
+  let set_state s = wrap (fun _ -> (s, ()))
 
-  type ('a, 'f, 's) as_prover = ('a, 'f, 's) t
+  let modify_state f = wrap (fun s -> (f s, ()))
 
-  val run :
-    ('a, 'f field, 's) t -> ('f field Cvar.t -> 'f field) -> 's -> 's * 'a
+  let map2 x y ~f =
+    let%map x = x and y = y in
+    f x y
 
-  val get_state : ('s, 'f field, 's) t
+  let read_var v = with_read (fun read_var -> read_var v)
 
-  val set_state : 's -> (unit, 'f field, 's) t
-
-  val modify_state : ('s -> 's) -> (unit, 'f field, 's) t
-
-  val map2 :
-       ('a, 'f field, 's) t
-    -> ('b, 'f field, 's) t
-    -> f:('a -> 'b -> 'c)
-    -> ('c, 'f field, 's) t
-
-  val read_var : 'f field Cvar.t -> ('f field, 'f field, 's) t
-
-  val read :
-       ('var, 'value, 'f field, (unit, unit, 'f field) checked) Types.Typ.t
-    -> 'var
-    -> ('value, 'f field, 'prover_state) t
-
-  module Ref : sig
-    type 'a t
-
-    val create :
-         ('a, 'f field, 'prover_state) as_prover
-      -> ('a t, 'prover_state, 'f field) checked
-
-    val get : 'a t -> ('a, 'f field, _) as_prover
-
-    val set : 'a t -> 'a -> (unit, 'f field, _) as_prover
-  end
-end
-
-module type S = sig
-  type ('a, 's) t
-
-  type field
-
-  include
-    Basic
-    with type 'f field := field
-     and type ('a, 'f, 's) t := ('a, 's) t
-     and type ('a, 'f, 's) as_prover := ('a, 's) t
-end
-
-module Make_basic (Checked : Checked_intf.S) = struct
-  type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
-
-  type ('a, 'f, 's) as_prover = ('a, 'f, 's) t
-
-  type 'f field = 'f Checked.field
-
-  include As_prover0.T
-
-  let read
-      ({read; _} :
-        ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t)
-      (var : 'var) : ('value, 'field, 'prover_state) t =
-   fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
+  let read ({read; _} : ('var, 'value, 'f field) Types.Typ.t) (var : 'var) :
+      ('value, 'f field, 'prover_state) t =
+    with_read (fun read_var -> Typ_monads.Read.run (read var) read_var)
 
   module Ref = struct
     type 'a t = 'a option ref
 
-    let create (x : ('a, 'field, 's) As_prover0.t) :
-        ('a t, 's, 'field) Checked.t =
+    let create (x : ('a, 'f field, 's) Types.As_prover.t) :
+        ('a t, 's, 'f field) Checked.t =
       let r = ref None in
       let open Checked in
       let%map () =
-        Checked.as_prover (As_prover0.map x ~f:(fun x -> r := Some x))
+        Checked.as_prover (As_prover.map x ~f:(fun x -> r := Some x))
       in
       r
 
-    let get (r : 'a t) _tbl s = (s, Option.value_exn !r)
+    let get (r : 'a t) = wrap (fun s -> (s, Option.value_exn !r))
 
-    let set (r : 'a t) x _tbl s = (s, (r := Some x))
+    let set (r : 'a t) x = wrap (fun s -> (s, (r := Some x)))
+  end
+
+  module Provider = struct
+    include Types.Provider
+
+    let run t stack tbl s (handler : Request.Handler.t) =
+      match t with
+      | Request rc ->
+          let s', r = run rc tbl s in
+          (s', Request.Handler.run handler stack r)
+      | Compute c -> run c tbl s
+      | Both (rc, c) -> (
+          let s', r = run rc tbl s in
+          match Request.Handler.run handler stack r with
+          | exception _ -> run c tbl s
+          | x -> (s', x) )
   end
 end
 
 module T :
-  Basic
-  with type 'f field := 'f
-   and type ('a, 'f, 's) t := ('a, 'f, 's) As_prover0.t
-   and type ('a, 'f, 's) as_prover := ('a, 'f, 's) as_prover
-   and type ('a, 's, 'f) checked := ('a, 's, 'f) Checked.t =
-  Make_basic (Checked)
+  As_prover_intf.S' with type 'f field := 'f with module Types := Checked.Types =
+  Make
+    (Checked)
+    (struct
+      include As_prover0
+      type 'f field = 'f
+      module Types = Checked.Types
+    end)
 
 include T
 
-module Make (Env : sig
+module Make_extended (Env : sig
   type field
 end)
-(Checked : Checked_intf.S with type 'f field := Env.field)
-(Basic : Basic
-         with type 'f field := Env.field
-          and type ('a, 's, 'f) checked := ('a, 's, 'f) Checked.t) =
+(As_prover : As_prover_intf.S with type 'f field := Env.field) =
 struct
-  type ('a, 's) t = ('a, Env.field, 's) Basic.t
+  type ('a, 's) t = ('a, Env.field, 's) As_prover.t
+
+  type ('a, 's) as_prover = ('a, 's) t
 
   include Env
 
   include (
-    Basic :
-      Basic
+    As_prover :
+      As_prover_intf.S'
       with type 'f field := field
-       and type ('a, 'f, 's) t := ('a, 's) t
-       and type ('a, 'f, 's) as_prover := ('a, 's) t
-       and type ('a, 's, 'f) checked := ('a, 's, 'f) Checked.t )
+      with module Types = As_prover.Types )
 end
