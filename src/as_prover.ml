@@ -72,7 +72,9 @@ module T :
     (Checked)
     (struct
       include As_prover0
+
       type 'f field = 'f
+
       module Types = Checked.Types
     end)
 

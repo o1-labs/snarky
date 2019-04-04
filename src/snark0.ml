@@ -96,7 +96,9 @@ module Runner = struct
       | Some ps ->
           let old = !(s.as_prover) in
           s.as_prover := true ;
-          let ps, value = As_prover.Provider.run p s.stack (get_value s) ps s.handler in
+          let ps, value =
+            As_prover.Provider.run p s.stack (get_value s) ps s.handler
+          in
           s.as_prover := old ;
           let var = Typ_monads.Store.run (store value) (store_field_elt s) in
           (* TODO: Push a label onto the stack here *)
@@ -391,13 +393,15 @@ struct
     include As_prover.Make_extended (struct
                 type field = Field.t
               end)
-              (As_prover.Make (Checked_S) (struct
-                include As_prover0
+              (As_prover.Make
+                 (Checked_S)
+                 (struct
+                   include As_prover0
 
-                type 'f field = Field.t
+                   type 'f field = Field.t
 
-                module Types = Checked_S.Types
-              end))
+                   module Types = Checked_S.Types
+                 end))
   end
 
   module Handle = Handle
@@ -828,8 +832,7 @@ struct
           type nonrec ('a, 's) t = ('a, 's) t
 
           include (
-            Checked_S :
-              Checked_intf.S' with module Types := Checked_S.Types)
+            Checked_S : Checked_intf.S' with module Types := Checked_S.Types )
         end)
         (struct
           type t = Boolean.var
@@ -1589,7 +1592,7 @@ module Make (Backend : Backend_intf.S) = struct
           Checked :
             Checked_intf.S'
             with type 'f field := 'f
-            and module Types = Checked.Types)
+             and module Types = Checked.Types )
 
         type field = Backend_extended.Field.t
 

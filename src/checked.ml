@@ -190,7 +190,6 @@ module Make
   let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
 end
 
-
 module T = struct
   include (
     Make
