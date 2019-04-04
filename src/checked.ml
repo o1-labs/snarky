@@ -110,7 +110,10 @@ module Basic :
 end
 
 module Make
-    (Basic : Checked_intf.Basic') :
+    (Basic : Checked_intf.Basic')
+    (As_prover : As_prover_intf.Basic
+                 with type 'f field := 'f Basic.field
+                 with module Types := Basic.Types) :
   Checked_intf.S
   with type 'f field = 'f Basic.field
   with module Types = Basic.Types = struct
@@ -119,23 +122,23 @@ module Make
   type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
 
   let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
-      (r : ('value Request.t, 'f field, 's) As_prover0.t) =
+      (r : ('value Request.t, 'f field, 's) As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
 
   let request ?such_that typ r =
     match such_that with
-    | None -> request_witness typ (As_prover0.return r)
+    | None -> request_witness typ (As_prover.return r)
     | Some such_that ->
         let open Let_syntax in
-        let%bind x = request_witness typ (As_prover0.return r) in
+        let%bind x = request_witness typ (As_prover.return r) in
         let%map () = such_that x in
         x
 
   let exists_handle ?request ?compute typ =
     let provider =
       let request =
-        Option.value request ~default:(As_prover0.return Request.Fail)
+        Option.value request ~default:(As_prover.return Request.Fail)
       in
       match compute with
       | None -> Provider.Request request
@@ -159,7 +162,7 @@ module Make
 
   let handle t k = with_handler (Request.Handler.create_single k) t
 
-  let do_nothing _ = As_prover0.return ()
+  let do_nothing _ = As_prover.return ()
 
   let with_state ?(and_then = do_nothing) f sub = with_state f and_then sub
 
@@ -191,7 +194,11 @@ end
 module T = struct
   include (
     Make
-      (Basic) :
+      (Basic)
+      (struct
+        include As_prover0
+        module Types = Types
+      end) :
       Checked_intf.S' with type 'f field = 'f with module Types := Types )
 end
 

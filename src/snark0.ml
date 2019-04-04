@@ -96,7 +96,7 @@ module Runner = struct
       | Some ps ->
           let old = !(s.as_prover) in
           s.as_prover := true ;
-          let ps, value = As_prover0.Provider.run p s.stack (get_value s) ps s.handler in
+          let ps, value = As_prover.Provider.run p s.stack (get_value s) ps s.handler in
           s.as_prover := old ;
           let var = Typ_monads.Store.run (store value) (store_field_elt s) in
           (* TODO: Push a label onto the stack here *)
@@ -233,7 +233,7 @@ module Runner = struct
               let old = !(s.as_prover) in
               s.as_prover := true ;
               let ps, value =
-                As_prover0.Provider.run p s.stack (get_value s)
+                As_prover.Provider.run p s.stack (get_value s)
                   (Option.value_exn s.prover_state)
                   s.handler
               in
