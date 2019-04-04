@@ -481,8 +481,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
         auxiliary_input_size ;
       system
 
-    let auxiliary_input ?system ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
-        s0 (input : Field.Vector.t) : Field.Vector.t =
+    let auxiliary_input ?system ~run ~num_inputs
+        ?(handlers = ([] : Handler.t list)) t0 s0 (input : Field.Vector.t) :
+        Field.Vector.t =
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
       let handler =
@@ -490,14 +491,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
             Request.Handler.(push handler (create_single h)) )
       in
       let state =
-        Runner.State.make ?system ~num_inputs ~input ~next_auxiliary ~aux ~handler
-          (Some s0)
+        Runner.State.make ?system ~num_inputs ~input ~next_auxiliary ~aux
+          ~handler (Some s0)
       in
       ignore (run t0 state) ;
       Option.iter system ~f:(fun system ->
-        let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
-        R1CS_constraint_system.set_auxiliary_input_size system
-          auxiliary_input_size);
+          let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
+          R1CS_constraint_system.set_auxiliary_input_size system
+            auxiliary_input_size ) ;
       aux
 
     let run_and_check' ~run t0 s0 =
@@ -1115,8 +1116,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         in
         let system =
           let s = Proving_key.r1cs_constraint_system proving_key in
-          if R1CS_constraint_system.get_primary_input_size s = 0
-          then Some s
+          if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
           else None
         in
         let _, _, state =
@@ -1249,10 +1249,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
         (fun c primary ->
           let system =
             let s = Proving_key.r1cs_constraint_system key in
-            if R1CS_constraint_system.get_primary_input_size s = 0
-            then Some s
+            if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
             else None
-              in
+          in
           let auxiliary =
             Checked.auxiliary_input ?system ~run ?handlers
               ~num_inputs:(Field.Vector.length primary)
