@@ -40,3 +40,19 @@ module T = struct
 end
 
 include T
+
+module Provider = struct
+  include Provider.T
+
+  let run t stack tbl s (handler : Request.Handler.t) =
+    match t with
+    | Request rc ->
+        let s', r = run rc tbl s in
+        (s', Request.Handler.run handler stack r)
+    | Compute c -> run c tbl s
+    | Both (rc, c) -> (
+        let s', r = run rc tbl s in
+        match Request.Handler.run handler stack r with
+        | exception _ -> run c tbl s
+        | x -> (s', x) )
+end

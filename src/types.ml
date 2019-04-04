@@ -84,6 +84,14 @@ module Data_spec = struct
     ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) data_spec
 end
 
+module Provider = struct
+  type ('a, 'f, 's) t =
+    (('a Request.t, 'f, 's) As_prover0.t, ('a, 'f, 's) As_prover0.t) Provider.t
+
+  module T = Provider.T
+  include T
+end
+
 module Checked = struct
   (* TODO-someday: Consider having an "Assembly" type with only a store constructor for straight up Var.t's
     that this gets compiled into. *)
