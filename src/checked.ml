@@ -1,6 +1,8 @@
 open Core_kernel
 open Types.Checked
 
+module Types0 = Types
+
 type ('a, 's, 'field) t = ('a, 's, 'field) Types.Checked.t
 
 module T0 = struct
@@ -46,6 +48,42 @@ module T0 = struct
     | Next_auxiliary k -> Next_auxiliary (fun x -> bind (k x) ~f)
 end
 
+module Types = struct
+  module Checked = struct
+    type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
+
+    type ('a, 's, 'f, 'arg) thunk = ('a, 's, 'f) t
+  end
+
+  module As_prover = struct
+    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  end
+
+  module Provider = Types.Provider
+
+  module Typ = struct
+    type ('var, 'value, 'f) t =
+      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) Types.Typ.t
+
+    module T = Types.Typ.T
+    include T
+  end
+
+  module Data_spec = struct
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , 'f
+      , (unit, unit, 'f) Checked.t )
+      Types.Data_spec.t
+
+    module T = Types.Data_spec.T
+    include T
+  end
+end
+
 module Basic :
   Checked_intf.Basic
   with type ('a, 's, 'f) t = ('a, 's, 'f) t
@@ -79,8 +117,7 @@ module Make (Basic : Checked_intf.Basic) :
    and type 'f field = 'f Basic.field = struct
   include Basic
 
-  let request_witness
-      (typ : ('var, 'value, 'f field, (unit, unit, 'f field) t) Types.Typ.t)
+  let request_witness (typ : ('var, 'value, 'f field, (unit, unit, 'f field) t) Types0.Typ.t)
       (r : ('value Request.t, 'f field, 's) As_prover0.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
