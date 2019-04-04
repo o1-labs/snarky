@@ -816,7 +816,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** Read the contents of a R1CS variable representing a single field
         element. *)
 
-    val get_state : ('prover_state, 'prover_state) t
+    val get_state : unit -> ('prover_state, 'prover_state) t
     (** Read the ['prover_state] carried by the {!type:As_prover.t} monad. *)
 
     val set_state : 'prover_state -> (unit, 'prover_state) t

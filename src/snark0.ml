@@ -1988,7 +1988,7 @@ module Run = struct
 
       let read_var var = eval_as_prover (As_prover.read_var var)
 
-      let get_state () = eval_as_prover As_prover.get_state
+      let get_state () = eval_as_prover (As_prover.get_state ())
 
       let set_state s = eval_as_prover (As_prover.set_state s)
 

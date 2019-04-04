@@ -16,7 +16,7 @@ struct
     let map = `Custom map
   end)
 
-  let get_state = wrap (fun s -> (s, s))
+  let get_state () = wrap (fun s -> (s, s))
 
   let set_state s = wrap (fun _ -> (s, ()))
 

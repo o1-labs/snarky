@@ -38,7 +38,7 @@ module type S' = sig
   val run :
     ('a, 'f field, 's) t -> ('f field Cvar.t -> 'f field) -> 's -> 's * 'a
 
-  val get_state : ('s, 'f field, 's) t
+  val get_state : unit -> ('s, 'f field, 's) t
 
   val set_state : 's -> (unit, 'f field, 's) t
 
