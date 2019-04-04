@@ -865,6 +865,8 @@ struct
 
     val create : unit -> t
 
+    val clear : t -> unit
+
     val delete : t -> unit
 
     val report_statistics : t -> unit
@@ -916,6 +918,8 @@ struct
       fun () ->
         let t = stub () in
         Caml.Gc.finalise delete t ; t
+
+    let clear = foreign (func_name "clear") (typ @-> returning void)
 
     let add_constraint =
       foreign
@@ -1170,6 +1174,8 @@ module type Proof_system_inputs_intf = sig
     type t
 
     val typ : t Ctypes.typ
+
+    val clear : t -> unit
   end
 
   module Field : sig
@@ -1191,6 +1197,8 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val typ : t Ctypes.typ
 
+    val r1cs_constraint_system : t -> M.R1CS_constraint_system.t
+
     val delete : t -> unit
 
     val to_string : t -> string
@@ -1207,8 +1215,15 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
       type field = M.Field.t
     end)
 
+    let r1cs_constraint_system =
+      foreign (func_name "r1cs_constraint_system")
+        (typ @-> returning M.R1CS_constraint_system.typ)
+
     let to_cpp_string_stub : t -> Cpp_string.t =
-      foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+      let stub = foreign (func_name "to_string") (typ @-> returning Cpp_string.typ) in
+      fun t ->
+        M.R1CS_constraint_system.clear (r1cs_constraint_system t);
+        stub t
 
     let to_string : t -> string =
      fun t ->
@@ -1426,6 +1441,8 @@ module Make_proof_system (M : sig
     type t
 
     val typ : t Ctypes.typ
+
+    val clear : t -> unit
   end
 
   module Field : sig
@@ -1579,6 +1596,8 @@ module Make_bowe_gabizon (M : sig
     type t
 
     val typ : t Ctypes.typ
+
+    val clear : t -> unit
   end
 
   module Field : sig
@@ -2281,6 +2300,8 @@ module type S = sig
     type t [@@deriving bin_io]
 
     val typ : t Ctypes.typ
+
+    val r1cs_constraint_system : t -> R1CS_constraint_system.t
 
     val delete : t -> unit
 
