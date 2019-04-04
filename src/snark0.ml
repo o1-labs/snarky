@@ -372,12 +372,10 @@ struct
         let traverse_checked =
           let module M =
             T.Traverse
-              (Restrict_monad.Make3
+              (Restrict_monad.Make2
                  (Checked)
                  (struct
-                   type t1 = unit
-
-                   type t2 = Field.t
+                   type t = unit
                  end)) in
           M.f
         in
@@ -404,13 +402,11 @@ struct
   module Checked = struct
     open Run_state
 
-    type ('a, 's) t = ('a, 's, Field.t) Checked.t
-
     include (
       Checked :
         Checked_intf.Extended
-        with type ('a, 's, 'f) t := ('a, 's, 'f) Checked.t
-         and type field := field )
+        with type field := field
+        with module Types = Checked.Types )
 
     let perform req = request_witness Typ.unit req
 
@@ -830,7 +826,7 @@ struct
 
           include (
             Checked_S :
-              Checked_intf.S with type ('a, 's, 'f) t := ('a, 's, 'f) Checked.t )
+              Checked_intf.S' with module Types := Checked_S.Types)
         end)
         (struct
           type t = Boolean.var
@@ -1588,11 +1584,13 @@ module Make (Backend : Backend_intf.S) = struct
       (struct
         include (
           Checked :
-            Checked_intf.S
-            with type ('a, 's, 'f) t = ('a, 's, 'f) Checked.t
-             and type 'f field := 'f )
+            Checked_intf.S'
+            with type 'f field := 'f
+            and module Types = Checked.Types)
 
         type field = Backend_extended.Field.t
+
+        type ('a, 's) t = ('a, 's, field) Checked.t
 
         let run = Runner0.run
       end)
@@ -2114,7 +2112,7 @@ module Run = struct
       state := {!state with stack} ;
       a
 
-    let make_checked x =
+    let make_checked x : _ Checked.t =
       let f state =
         let {prover_state; _} = state in
         let state =
@@ -2126,7 +2124,7 @@ module Run = struct
         let state = Run_state.set_prover_state prover_state state in
         (state, a)
       in
-      Types.Checked.Direct (f, fun x -> Pure x)
+      Direct (f, fun x -> Pure x)
 
     let constraint_system ~exposing x =
       Perform.constraint_system ~run:as_stateful ~exposing x

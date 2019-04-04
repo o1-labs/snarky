@@ -1,8 +1,6 @@
 open Core_kernel
 open Types.Checked
 
-module Types0 = Types
-
 type ('a, 's, 'field) t = ('a, 's, 'field) Types.Checked.t
 
 module T0 = struct
@@ -85,10 +83,10 @@ module Types = struct
 end
 
 module Basic :
-  Checked_intf.Basic
-  with type ('a, 's, 'f) t = ('a, 's, 'f) t
-   and type 'f field = 'f = struct
-  type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
+  Checked_intf.Basic with type 'f field = 'f with module Types = Types = struct
+  module Types = Types
+
+  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
 
   type 'f field = 'f
 
@@ -111,13 +109,16 @@ module Basic :
   let next_auxiliary = Next_auxiliary return
 end
 
-module Make (Basic : Checked_intf.Basic) :
+module Make
+    (Basic : Checked_intf.Basic') :
   Checked_intf.S
-  with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t
-   and type 'f field = 'f Basic.field = struct
+  with type 'f field = 'f Basic.field
+  with module Types = Basic.Types = struct
   include Basic
 
-  let request_witness (typ : ('var, 'value, 'f field, (unit, unit, 'f field) t) Types0.Typ.t)
+  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+
+  let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
       (r : ('value Request.t, 'f field, 's) As_prover0.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
@@ -186,13 +187,12 @@ module Make (Basic : Checked_intf.Basic) :
   let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
 end
 
+
 module T = struct
   include (
     Make
       (Basic) :
-      Checked_intf.S
-      with type ('a, 's, 'f) t := ('a, 's, 'f) t
-       and type 'f field = 'f )
+      Checked_intf.S' with type 'f field = 'f with module Types := Types )
 end
 
 include T
