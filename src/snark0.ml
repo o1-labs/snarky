@@ -11,48 +11,14 @@ let set_eval_constraints b = eval_constraints := b
 module Runner = struct
   module Make (Backend : Backend_extended.S) = struct
     open Backend
-    open Types.Run_state
+    open Run_state
     open Checked
 
-    type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
+    type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
     type state = unit run_state
 
     type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
-
-    let set_prover_state prover_state
-        { system
-        ; input
-        ; aux
-        ; eval_constraints
-        ; num_inputs
-        ; next_auxiliary
-        ; prover_state= _
-        ; stack
-        ; handler
-        ; is_running
-        ; as_prover
-        ; run_special } =
-      { system
-      ; input
-      ; aux
-      ; eval_constraints
-      ; num_inputs
-      ; next_auxiliary
-      ; prover_state
-      ; stack
-      ; handler
-      ; is_running
-      ; as_prover
-      ; run_special }
-
-    let set_handler handler state = {state with handler}
-
-    let get_handler {handler; _} = handler
-
-    let set_stack stack state = {state with stack}
-
-    let get_stack {stack; _} = stack
 
     let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
       let get_one i =
@@ -199,8 +165,7 @@ module Runner = struct
       ; stack= []
       ; handler= Request.Handler.fail
       ; is_running= true
-      ; as_prover= ref false
-      ; run_special= None }
+      ; as_prover= ref false }
 
     let rec flatten_as_prover : type a s.
         int ref -> (a, s, Field.t) t -> (s run_state -> s run_state) * a =
@@ -306,8 +271,7 @@ module Runner = struct
         ; stack= []
         ; handler= Option.value handler ~default:Request.Handler.fail
         ; is_running= true
-        ; as_prover= ref false
-        ; run_special= None }
+        ; as_prover= ref false }
     end
   end
 end
@@ -439,7 +403,7 @@ struct
 
   module Checked = struct
     open Types.Checked
-    open Types.Run_state
+    open Run_state
 
     type ('a, 's) t = ('a, 's, Field.t) Checked.t
 
@@ -471,15 +435,11 @@ struct
             Runner.State.make ~num_inputs:0 ~input ~next_auxiliary:auxc ~aux
               None
           in
-          let count = ref count in
-          let run_special (type a s s1) (x : (a, s, _) Types.Checked.t) =
-            let count', a = constraint_count_aux ~log ~auxc !count x in
-            count := count' ;
-            a
-          in
-          let state = {state with run_special= Some run_special} in
+          (* We can't inspect a direct computation, so we skip it. *)
+          (* TODO: Create a constraint system from the computation and extract
+                   the number of constraints from there. *)
           let _, x = d state in
-          constraint_count_aux ~log ~auxc !count (k x)
+          constraint_count_aux ~log ~auxc count (k x)
       | Reduced (t, _, _, k) ->
           let count, y = constraint_count_aux ~log ~auxc count t in
           constraint_count_aux ~log ~auxc count (k y)
@@ -937,7 +897,7 @@ struct
   module Data_spec = Typ.Data_spec
 
   module Run = struct
-    open Types.Run_state
+    open Run_state
     open Data_spec
 
     let alloc_var next_input () =
@@ -1700,7 +1660,7 @@ end
 module Run = struct
   module Make (Backend : Backend_intf.S) = struct
     module Snark = Make (Backend)
-    open Types.Run_state
+    open Run_state
     open Snark
 
     let state =
@@ -1715,8 +1675,7 @@ module Run = struct
         ; stack= []
         ; handler= Request.Handler.fail
         ; is_running= false
-        ; as_prover= ref false
-        ; run_special= None }
+        ; as_prover= ref false }
 
     let run checked =
       if !(!state.as_prover) then
@@ -1725,12 +1684,9 @@ module Run = struct
            system will not match." ;
       if not !state.is_running then
         failwith "This function can't be run outside of a checked computation." ;
-      match !state.run_special with
-      | Some f -> f checked
-      | None ->
-          let state', x = Runner.run checked !state in
-          state := state' ;
-          x
+      let state', x = Runner.run checked !state in
+      state := state' ;
+      x
 
     let as_stateful x state' =
       state := state' ;
@@ -2078,7 +2034,7 @@ module Run = struct
         if !(!state.as_prover) && Option.is_some !state.prover_state then (
           let s = Option.value_exn !state.prover_state in
           let s, a = f (Runner.get_value !state) s in
-          state := Runner.set_prover_state (Some s) !state ;
+          state := Run_state.set_prover_state (Some s) !state ;
           a )
         else failwith "Can't evaluate prover code outside an as_prover block"
 
@@ -2099,7 +2055,7 @@ module Run = struct
       let run_prover f tbl s =
         let old = !(!state.as_prover) in
         !state.as_prover := true ;
-        state := Runner.set_prover_state (Some s) !state ;
+        state := Run_state.set_prover_state (Some s) !state ;
         let a = f () in
         let s' = Option.value_exn !state.prover_state in
         !state.as_prover := old ;
@@ -2217,12 +2173,12 @@ module Run = struct
       let f state =
         let {prover_state; _} = state in
         let state =
-          Runner.set_prover_state
+          Run_state.set_prover_state
             (Option.map prover_state ~f:(fun _ -> ()))
             state
         in
         let state, a = as_stateful x state in
-        let state = Runner.set_prover_state prover_state state in
+        let state = Run_state.set_prover_state prover_state state in
         (state, a)
       in
       Types.Checked.Direct (f, fun x -> Pure x)
@@ -2251,21 +2207,10 @@ module Run = struct
 
     let check x = Perform.check ~run:as_stateful x |> Result.is_ok
 
+    (** TODO: Generate a constraint system and extract the number of
+              constraints from that. *)
     let constraint_count ?(log = fun ?start _ _ -> ()) x =
-      let count = ref 0 in
-      let next_auxiliary = ref 1 in
-      let run_special x =
-        let count', a =
-          constraint_count_aux ~log ~auxc:next_auxiliary !count x
-        in
-        count := count' ;
-        a
-      in
-      let {run_special= old; _} = !state in
-      state := {!state with run_special= Some run_special} ;
-      ignore (x ()) ;
-      state := {!state with run_special= old} ;
-      !count
+      failwith "Not implemented"
   end
 end
 
