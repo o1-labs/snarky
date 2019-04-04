@@ -101,8 +101,45 @@ module type S = sig
     val set_is_square : t -> bool -> unit
   end
 
+  module R1CS_constraint_system : sig
+    type t = Field.t Backend_types.R1CS_constraint_system.t
+
+    val create : unit -> t
+
+    val report_statistics : t -> unit
+
+    val add_constraint : t -> R1CS_constraint.t -> unit
+
+    val add_constraint_with_annotation :
+      t -> R1CS_constraint.t -> string -> unit
+
+    val set_primary_input_size : t -> int -> unit
+
+    val set_auxiliary_input_size : t -> int -> unit
+
+    val get_primary_input_size : t -> int
+
+    val get_auxiliary_input_size : t -> int
+
+    val check_exn : t -> unit
+
+    val is_satisfied :
+         t
+      -> primary_input:Field.Vector.t
+      -> auxiliary_input:Field.Vector.t
+      -> bool
+
+    val digest : t -> Md5.t
+
+    val constraints : t -> Cvar.t Constraint.t
+
+    val to_json : t -> 'a json
+  end
+
   module Proving_key : sig
     type t = Field.t Backend_types.Proving_key.t [@@deriving bin_io]
+
+    val r1cs_constraint_system : t -> R1CS_constraint_system.t
 
     include Stringable.S with type t := t
 
@@ -137,41 +174,6 @@ module type S = sig
 
     val verify :
       ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
-  end
-
-  module R1CS_constraint_system : sig
-    type t = Field.t Backend_types.R1CS_constraint_system.t
-
-    val create : unit -> t
-
-    val report_statistics : t -> unit
-
-    val add_constraint : t -> R1CS_constraint.t -> unit
-
-    val add_constraint_with_annotation :
-      t -> R1CS_constraint.t -> string -> unit
-
-    val set_primary_input_size : t -> int -> unit
-
-    val set_auxiliary_input_size : t -> int -> unit
-
-    val get_primary_input_size : t -> int
-
-    val get_auxiliary_input_size : t -> int
-
-    val check_exn : t -> unit
-
-    val is_satisfied :
-         t
-      -> primary_input:Field.Vector.t
-      -> auxiliary_input:Field.Vector.t
-      -> bool
-
-    val digest : t -> Md5.t
-
-    val constraints : t -> Cvar.t Constraint.t
-
-    val to_json : t -> 'a json
   end
 
   module Keypair : sig
