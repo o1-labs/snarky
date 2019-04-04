@@ -1,47 +1,6 @@
 open Core_kernel
 open Types.Typ
 
-module Data_spec0 = struct
-  (** A list of {!type:Type.Typ.t} values, describing the inputs to a checked
-      computation. The type [('r_var, 'r_value, 'k_var, 'k_value, 'field) t]
-      represents
-      - ['k_value] is the OCaml type of the computation
-      - ['r_value] is the OCaml type of the result
-      - ['k_var] is the type of the computation within the R1CS
-      - ['k_value] is the type of the result within the R1CS
-      - ['field] is the field over which the R1CS operates
-      - ['checked] is the type of checked computation that verifies the stored
-        contents as R1CS variables.
-
-      This functions the same as OCaml's default list type:
-{[
-  Data_spec.[typ1; typ2; typ3]
-
-  Data_spec.(typ1 :: typs)
-
-  let open Data_spec in
-  [typ1; typ2; typ3; typ4; typ5]
-
-  let open Data_spec in
-  typ1 :: typ2 :: typs
-
-]}
-      all function as you would expect.
-  *)
-  type ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) data_spec =
-    | ( :: ) :
-        ('var, 'value, 'f, 'checked) Types.Typ.t
-        * ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) data_spec
-        -> ( 'r_var
-           , 'r_value
-           , 'var -> 'k_var
-           , 'value -> 'k_value
-           , 'f
-           , 'checked )
-           data_spec
-    | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f, 'checked) data_spec
-end
-
 module Make (Checked : Checked_intf.S) = struct
   type ('var, 'value, 'field) t =
     ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t
@@ -49,7 +8,7 @@ module Make (Checked : Checked_intf.S) = struct
   type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
   module Data_spec = struct
-    include Data_spec0
+    include Types.Data_spec.T
 
     type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
       ( 'r_var

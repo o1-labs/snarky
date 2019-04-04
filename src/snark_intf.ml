@@ -173,7 +173,7 @@ module type Basic = sig
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
-    include module type of Typ0.Data_spec0
+    include module type of Types.Data_spec.T
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -1416,7 +1416,7 @@ module type Run = sig
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
-    include module type of Typ0.Data_spec0
+    include module type of Types.Data_spec.T
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)

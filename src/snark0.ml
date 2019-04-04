@@ -340,7 +340,7 @@ struct
     type ('var, 'value) t = ('var, 'value, Field.t) T.t
 
     module Data_spec = struct
-      include Typ.Data_spec0
+      include Types.Data_spec.T
 
       type ('r_var, 'r_value, 'k_var, 'k_value) t =
         ('r_var, 'r_value, 'k_var, 'k_value, field) T.Data_spec.t
