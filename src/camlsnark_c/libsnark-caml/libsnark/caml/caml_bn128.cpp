@@ -1065,6 +1065,10 @@ libff::G1<ppT>* camlsnark_bn128_bg_proof_c(r1cs_bg_ppzksnark_proof<ppT>* proof) 
   return new libff::G1<ppT>(proof->g_C);
 }
 
+libff::G2<ppT>* camlsnark_bn128_bg_proof_delta_prime(r1cs_bg_ppzksnark_proof<ppT>* proof) {
+  return new libff::G2<ppT>(proof->delta_prime);
+}
+
 // End BG specific code
 
 // begin SHA gadget code
