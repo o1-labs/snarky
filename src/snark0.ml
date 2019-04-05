@@ -282,7 +282,10 @@ module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended
                with type field = Backend.Field.t
-               with module Types = Checked.Types) =
+               with module Types = Checked.Types)
+    (Typ : Typ_intf.S
+           with type 'f field := Checked.field
+           with module Types := Checked.Types) =
 struct
   open Backend
   module Checked_S = Checked_intf.Unextend (Checked)
@@ -336,21 +339,33 @@ struct
   end
 
   module Typ = struct
-    include Types.Typ.T
-    module T = Typ.Make (Checked_S) (As_prover)
-    include Typ_monads
-    include T.T
-
-    type ('var, 'value) t = ('var, 'value, Field.t) T.t
-
     module Data_spec = struct
-      include Types.Data_spec.T
+      include Checked.Types.Data_spec.T
 
       type ('r_var, 'r_value, 'k_var, 'k_value) t =
-        ('r_var, 'r_value, 'k_var, 'k_value, field) T.Data_spec.t
+        ( 'r_var
+        , 'r_value
+        , 'k_var
+        , 'k_value
+        , field
+        , (unit, unit) Checked.t )
+        data_spec
 
-      let size t = T.Data_spec.size t
+      let size = Typ.Data_spec.size
     end
+
+    include (
+      Typ :
+        Typ_intf.S'
+        with type 'f field := Backend.Field.t
+        with module Types := Checked.Types
+        and module Data_spec := Data_spec )
+
+    include Typ_monads
+
+    type ('var, 'value) t = ('var, 'value, Field.t) Checked.Types.Typ.t
+
+    include Checked.Types.Typ.T
 
     let unit : (unit, unit) t = unit ()
 
@@ -1602,6 +1617,7 @@ module Make (Backend : Backend_intf.S) = struct
 
         let run = Runner0.run
       end)
+      (Typ.Make (Checked) (As_prover))
 
   include Basic
   module Number = Number.Make (Basic)

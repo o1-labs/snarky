@@ -7,23 +7,14 @@ module Make
                  with type 'f field := 'f Checked.field
                  with module Types := Checked.Types) =
 struct
+  type 'f field = 'f Checked.field
+
   module Types = Checked.Types
 
   type ('var, 'value, 'field) t = ('var, 'value, 'field) Types.Typ.t
 
-  type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
-
   module Data_spec = struct
-    include Types.Data_spec.T
-
-    type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
-      ( 'r_var
-      , 'r_value
-      , 'k_var
-      , 'k_value
-      , 'f
-      , (unit, unit, 'f) Checked.t )
-      data_spec
+    include Types.Data_spec
 
     let size t =
       let rec go : type r_var r_value k_var k_value.
@@ -268,6 +259,8 @@ struct
       ; alloc= Alloc.map ~f:var_of_hlist alloc
       ; check= (fun v -> check (var_to_hlist v)) }
   end
+
+  include T
 end
 
 include Make (Checked) (As_prover)
