@@ -2,7 +2,6 @@ module Bignum_bigint = Bigint
 open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
-module Typ0 = Typ
 
 (** Yojson-compatible JSON type. *)
 type 'a json =
@@ -167,7 +166,13 @@ module type Basic = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , field
+      , (unit, unit) Checked.t )
+      Types.Data_spec.t
 
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
@@ -1410,7 +1415,13 @@ module type Run = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , field
+      , (unit, unit, Field.Constant.t) Checked.t )
+      Types.Data_spec.t
 
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
