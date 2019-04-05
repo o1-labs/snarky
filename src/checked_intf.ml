@@ -5,7 +5,11 @@ module type Basic' = sig
 
   type 'f field
 
-  include Monad_let.S3 with type ('a, 's, 'f) t := ('a, 's, 'f) t
+  val return : 'a -> ('a, 's, 'f) t
+
+  val map : ('a, 's, 'f) t -> f:('a -> 'b) -> ('b, 's, 'f) t
+
+  val bind : ('a, 's, 'f) t -> f:('a -> ('b, 's, 'f) t) -> ('b, 's, 'f) t
 
   val add_constraint : 'f field Cvar.t Constraint.t -> (unit, 's, 'f field) t
 

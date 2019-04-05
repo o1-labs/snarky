@@ -1639,6 +1639,54 @@ struct
   module Enumerable = Enumerable.Make (Basic)
 end
 
+module Checked_runner (Backend : Backend_intf.S) = struct
+  module Backend = Backend_extended.Make (Backend)
+  module Runner0 = Runner.Make (Backend)
+
+  module Runner = struct
+    let run x s = x s
+  end
+
+  module Checked = struct
+    let return x s = (s, x)
+
+    let map x ~f s =
+      let s, x = x s in
+      (s, f x)
+
+    let bind x ~f s =
+      let s, x = x s in
+      f x s
+
+    include Runner0
+
+    let exists typ p = exists ~run:Runner.run typ p
+
+    type 'f field = Backend.Field.t
+
+    module Types = Checked.Make_Types (struct
+      module Checked = struct
+        type ('a, 's, 'f) t = ('s, 'f) Run_state.t -> ('s, 'f) Run_state.t * 'a
+
+        type ('a, 's, 'f, 'arg) thunk = ('a, 's, 'f) t
+      end
+
+      module As_prover = struct
+        type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+      end
+    end)
+
+    type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+  end
+end
+
+module Make_noast (Backend : Backend_intf.S) = struct
+  module Checked_runner = Checked_runner (Backend)
+  include Make_full (Checked_runner.Backend) (Checked_runner.Checked)
+            (Checked_runner.Runner)
+            (As_prover0)
+end
+
 module Make (Backend : Backend_intf.S) = struct
   module Backend = Backend_extended.Make (Backend)
   module Runner0 = Runner.Make (Backend)

@@ -46,17 +46,20 @@ module T0 = struct
     | Next_auxiliary k -> Next_auxiliary (fun x -> bind (k x) ~f)
 end
 
-module Types = struct
-  module Checked = struct
-    type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
+module Make_Types (Base : sig
+  module Checked : sig
+    type ('a, 's, 'f) t
 
-    type ('a, 's, 'f, 'arg) thunk = ('a, 's, 'f) t
+    type ('a, 's, 'f, 'arg) thunk
   end
 
-  module As_prover = struct
-    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  module As_prover : sig
+    type ('a, 'f, 's) t
   end
-
+end) =
+struct
+  module Checked = Base.Checked
+  module As_prover = Base.As_prover
   module Provider = Types.Provider
 
   module Typ = struct
@@ -81,6 +84,18 @@ module Types = struct
     include T
   end
 end
+
+module Types = Make_Types (struct
+  module Checked = struct
+    type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
+
+    type ('a, 's, 'f, 'arg) thunk = ('a, 's, 'f) t
+  end
+
+  module As_prover = struct
+    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  end
+end)
 
 module Basic :
   Checked_intf.Basic with type 'f field = 'f with module Types = Types = struct
@@ -118,6 +133,14 @@ module Make
   with type 'f field = 'f Basic.field
   with module Types = Basic.Types = struct
   include Basic
+
+  include Monad_let.Make3 (struct
+    include Basic
+
+    type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+
+    let map = `Custom map
+  end)
 
   type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
 
