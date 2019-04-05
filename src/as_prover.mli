@@ -1,8 +1,8 @@
 module Make
     (Checked : Checked_intf.S)
     (As_prover : As_prover_intf.Basic
-                 with type 'f field = 'f Checked.field
-                 with module Types = Checked.Types) :
+                 with type 'f field := 'f Checked.field
+                 with module Types := Checked.Types) :
   As_prover_intf.S
   with type 'f field = 'f Checked.field
   with module Types = Checked.Types

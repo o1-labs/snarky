@@ -5,9 +5,13 @@ type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
 module Make
     (Checked : Checked_intf.S)
     (As_prover : As_prover_intf.Basic
-                 with type 'f field = 'f Checked.field
-                  and module Types = Checked.Types) =
+                 with type 'f field := 'f Checked.field
+                  and module Types := Checked.Types) =
 struct
+  type 'f field = 'f Checked.field
+
+  module Types = Checked.Types
+
   include As_prover
 
   include Monad_let.Make3 (struct
