@@ -1584,48 +1584,65 @@ struct
   end
 end
 
-module Make (Backend : Backend_intf.S) = struct
-  module Backend_extended = Backend_extended.Make (Backend)
-  module Runner0 = Runner.Make (Backend_extended)
+module Make_full
+    (Backend : Backend_extended.S)
+    (Checked0 : Checked_intf.Basic with type 'f field := Backend.Field.t)
+                                                                        (Runner : sig
+        val run :
+             ('a, 's, Backend.Field.t) Checked0.t
+          -> ('s, Backend.Field.t) Run_state.t
+          -> ('s, Backend.Field.t) Run_state.t * 'a
+    end)
+    (As_prover0 : As_prover_intf.Basic
+                  with type 'f field := Backend.Field.t
+                  with module Types := Checked0.Types) =
+struct
+  module Checked0 = struct
+    include Checked.Make (struct
+                include Checked0
 
-  module As_prover0 = struct
-              include (As_prover.Make
-                 (Checked)
-                 (As_prover0))
-  end
-  module Typ0 = Typ.Make (Checked) (As_prover0)
-
-  module Checked1 = struct
-        include (
-          Checked :
-            Checked_intf.S'
-            with type 'f field := 'f
-             and module Types = Checked.Types )
-
-        type field = Backend_extended.Field.t
-
-        type ('a, 's) t = ('a, 's, field) Checked.t
-
-        let run = Runner0.run
-      end
-
-  module As_prover1 = struct
-        include As_prover.Make_extended (struct
-                type field = Backend_extended.Field.t
+                type 'f field = Backend.Field.t
               end)
               (As_prover0)
-      end
+  end
 
-  module Basic =
-    Make_basic
-      (Backend_extended)
-      (Checked1)
-      (As_prover1)
-      (Typ0)
+  module As_prover0 = struct
+    include As_prover.Make (Checked0) (As_prover0)
+  end
 
+  module Typ0 = Typ.Make (Checked0) (As_prover0)
+
+  module Checked1 = struct
+    include (
+      Checked0 :
+        Checked_intf.S'
+        with type 'f field := 'f Checked0.field
+         and module Types = Checked0.Types )
+
+    type field = Backend.Field.t
+
+    type ('a, 's) t = ('a, 's, field) Checked0.t
+
+    let run = Runner.run
+  end
+
+  module As_prover1 = struct
+    include As_prover.Make_extended (struct
+                type field = Backend.Field.t
+              end)
+              (As_prover0)
+  end
+
+  module Basic = Make_basic (Backend) (Checked1) (As_prover1) (Typ0)
   include Basic
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
+end
+
+module Make (Backend : Backend_intf.S) = struct
+  module Backend = Backend_extended.Make (Backend)
+  module Runner0 = Runner.Make (Backend)
+  include Make_full (Backend) (Checked.Basic) (Runner0) (As_prover0)
 end
 
 module Run = struct
