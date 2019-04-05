@@ -281,8 +281,7 @@ end
 module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended
-               with type field = Backend.Field.t
-               with module Types = Checked.Types)
+               with type field = Backend.Field.t)
     (As_prover : As_prover_intf.Extended with type field := Backend.Field.t with module Types := Checked.Types)
     (Typ : Typ_intf.S
            with type 'f field := Checked.field
