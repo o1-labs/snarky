@@ -8,76 +8,79 @@ module type S' = sig
   end
 
   val store :
-       ('var, 'value, 'field) Types.Typ.t
+       ('var, 'value, 'f field) Types.Typ.t
     -> 'value
-    -> ('var, 'field) Typ_monads.Store.t
+    -> ('var, 'f field) Typ_monads.Store.t
 
   val read :
-       ('var, 'value, 'field) Types.Typ.t
+       ('var, 'value, 'f field) Types.Typ.t
     -> 'var
-    -> ('value, 'field) Typ_monads.Read.t
+    -> ('value, 'f field) Typ_monads.Read.t
 
   val alloc :
-    ('var, 'value, 'field) Types.Typ.t -> ('var, 'field) Typ_monads.Alloc.t
+    ('var, 'value, 'f field) Types.Typ.t -> ('var, 'f field) Typ_monads.Alloc.t
 
   val check :
-       ('var, 'value, 'a field) Types.Typ.t
+       ('var, 'value, 'f field) Types.Typ.t
     -> 'var
-    -> (unit, 's, 'a field) Types.Checked.t
+    -> (unit, 's, 'f field) Types.Checked.t
 
-  val unit : unit -> (unit, unit, 'field) Types.Typ.t
+  val unit : unit -> (unit, unit, 'f field) Types.Typ.t
 
-  val field : unit -> ('field Cvar.t, 'field, 'field) Types.Typ.t
+  val field : unit -> ('f field Cvar.t, 'f field, 'f field) Types.Typ.t
 
   val transport :
-       ('var1, 'value1, 'field) Types.Typ.t
+       ('var1, 'value1, 'f field) Types.Typ.t
     -> there:('value2 -> 'value1)
     -> back:('value1 -> 'value2)
-    -> ('var1, 'value2, 'field) Types.Typ.t
+    -> ('var1, 'value2, 'f field) Types.Typ.t
 
   val transport_var :
-       ('var1, 'value, 'field) Types.Typ.t
+       ('var1, 'value, 'f field) Types.Typ.t
     -> there:('var2 -> 'var1)
     -> back:('var1 -> 'var2)
-    -> ('var2, 'value, 'field) Types.Typ.t
+    -> ('var2, 'value, 'f field) Types.Typ.t
 
   val list :
        length:int
-    -> ('elt_var, 'elt_value, 'field) Types.Typ.t
-    -> ('elt_var list, 'elt_value list, 'field) Types.Typ.t
+    -> ('elt_var, 'elt_value, 'f field) Types.Typ.t
+    -> ('elt_var list, 'elt_value list, 'f field) Types.Typ.t
 
   val array :
        length:int
-    -> ('elt_var, 'elt_value, 'field) Types.Typ.t
-    -> ('elt_var array, 'elt_value array, 'field) Types.Typ.t
+    -> ('elt_var, 'elt_value, 'f field) Types.Typ.t
+    -> ('elt_var array, 'elt_value array, 'f field) Types.Typ.t
 
   val tuple2 :
-       ('var1, 'value1, 'field) Types.Typ.t
-    -> ('var2, 'value2, 'field) Types.Typ.t
-    -> ('var1 * 'var2, 'value1 * 'value2, 'field) Types.Typ.t
+       ('var1, 'value1, 'f field) Types.Typ.t
+    -> ('var2, 'value2, 'f field) Types.Typ.t
+    -> ('var1 * 'var2, 'value1 * 'value2, 'f field) Types.Typ.t
 
   val ( * ) :
-       ('a, 'b, 'c) Types.Typ.t
-    -> ('d, 'e, 'c) Types.Typ.t
-    -> ('a * 'd, 'b * 'e, 'c) Types.Typ.t
+       ('var1, 'value1, 'f field) Types.Typ.t
+    -> ('var2, 'value2, 'f field) Types.Typ.t
+    -> ('var1 * 'var2, 'value1 * 'value2, 'f field) Types.Typ.t
 
   val tuple3 :
-       ('var1, 'value1, 'field) Types.Typ.t
-    -> ('var2, 'value2, 'field) Types.Typ.t
-    -> ('var3, 'value3, 'field) Types.Typ.t
-    -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3, 'field) Types.Typ.t
+       ('var1, 'value1, 'f field) Types.Typ.t
+    -> ('var2, 'value2, 'f field) Types.Typ.t
+    -> ('var3, 'value3, 'f field) Types.Typ.t
+    -> ( 'var1 * 'var2 * 'var3
+       , 'value1 * 'value2 * 'value3
+       , 'f field )
+       Types.Typ.t
 
   val hlist :
-       (unit, unit, 'a, 'b, 'c Checked.field) Types.Data_spec.t
-    -> ((unit, 'a) H_list.t, (unit, 'b) H_list.t, 'c Checked.field) Types.Typ.t
+       (unit, unit, 'vars, 'values, 'f field) Types.Data_spec.t
+    -> ((unit, 'vars) H_list.t, (unit, 'values) H_list.t, 'f field) Types.Typ.t
 
   val of_hlistable :
-       (unit, unit, 'k_var, 'k_value, 'a Checked.field) Types.Data_spec.t
+       (unit, unit, 'k_var, 'k_value, 'a field) Types.Data_spec.t
     -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
     -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
     -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
     -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
-    -> ('var, 'value, 'a Checked.field) Types.Typ.t
+    -> ('var, 'value, 'a field) Types.Typ.t
 end
 
 module type S = sig
