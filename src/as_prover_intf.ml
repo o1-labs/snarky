@@ -80,6 +80,15 @@ module type S' = sig
       -> Request.Handler.t
       -> 's * 'a
   end
+
+  module Handle : sig
+    type ('var, 'value) t = ('var, 'value) Handle.t =
+      {var: 'var; mutable value: 'value option}
+
+    val var : ('var, 'value) t -> 'var
+
+    val value : ('var, 'value) t -> ('value, 'f field, 's) Types.As_prover.t
+  end
 end
 
 module type S = sig

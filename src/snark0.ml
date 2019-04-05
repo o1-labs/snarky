@@ -280,9 +280,10 @@ end
 
 module Make_basic
     (Backend : Backend_extended.S)
-    (Checked : Checked_intf.Extended
-               with type field = Backend.Field.t)
-    (As_prover : As_prover_intf.Extended with type field := Backend.Field.t with module Types := Checked.Types)
+    (Checked : Checked_intf.Extended with type field = Backend.Field.t)
+    (As_prover : As_prover_intf.Extended
+                 with type field := Backend.Field.t
+                 with module Types := Checked.Types)
     (Typ : Typ_intf.S
            with type 'f field := Checked.field
            with module Types := Checked.Types) =
@@ -359,7 +360,7 @@ struct
         Typ_intf.S'
         with type 'f field := Backend.Field.t
         with module Types := Checked.Types
-        and module Data_spec := Data_spec )
+         and module Data_spec := Data_spec )
 
     include Typ_monads
 
@@ -407,8 +408,7 @@ struct
   end
 
   module As_prover = As_prover
-
-  module Handle = Handle
+  module Handle = As_prover.Handle
 
   module Checked = struct
     open Run_state

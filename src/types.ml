@@ -115,7 +115,13 @@ module type Types = sig
 
   module Data_spec : sig
     type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
-      ('r_var, 'r_value,' k_var, 'k_value, 'f, (unit, unit, 'f) Checked.t) Data_spec.t
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , 'f
+      , (unit, unit, 'f) Checked.t )
+      Data_spec.t
 
     module T = Data_spec.T
 

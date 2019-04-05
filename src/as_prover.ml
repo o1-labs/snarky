@@ -11,7 +11,6 @@ struct
   type 'f field = 'f Checked.field
 
   module Types = Checked.Types
-
   include As_prover
 
   include Monad_let.Make3 (struct
@@ -68,19 +67,18 @@ struct
           | exception _ -> run c tbl s
           | x -> (s', x) )
   end
+
+  module Handle = struct
+    include Handle
+
+    let value (t : ('var, 'value) t) : ('value, 'field, 's) As_prover.t =
+      wrap (fun s -> (s, Option.value_exn t.value))
+  end
 end
 
 module T :
   As_prover_intf.S' with type 'f field := 'f with module Types := Checked.Types =
-  Make
-    (Checked)
-    (struct
-      include As_prover0
-
-      type 'f field = 'f
-
-      module Types = Checked.Types
-    end)
+  Make (Checked) (As_prover0)
 
 include T
 

@@ -264,4 +264,3 @@ struct
 end
 
 include Make (Checked) (As_prover)
-include T
