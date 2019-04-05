@@ -2,6 +2,7 @@ module Bignum_bigint = Bigint
 open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
+module Checked_ast = Checked
 
 (** Yojson-compatible JSON type. *)
 type 'a json =
@@ -498,8 +499,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
-    include
-      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
+    include Monad_let.S2
 
     module List :
       Monad_sequence.S
@@ -794,7 +794,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
-    type ('a, 'prover_state) t = ('a, field, 'prover_state) As_prover.t
+    type ('a, 'prover_state) t
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 
@@ -855,7 +855,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   module Runner : sig
     type state
 
-    val run : ('a, unit) Checked.t -> state -> state * 'a
+    val run : ('a, unit, Field.t) Checked_ast.t -> state -> state * 'a
   end
 
   type response = Request.response
@@ -1219,7 +1219,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val reduce_to_prover :
-       ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
+       ( (unit, 's, Field.t) Checked_ast.t
+       , Proof.t
+       , 'k_var
+       , 'k_value )
+       Data_spec.t
     -> 'k_var
     -> Proving_key.t
     -> ?handlers:Handler.t list
@@ -1254,7 +1258,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val constraint_count :
-    ?log:(?start:bool -> string -> int -> unit) -> (_, _) Checked.t -> int
+       ?log:(?start:bool -> string -> int -> unit)
+    -> (_, _, _) Checked_ast.t
+    -> int
   (** Returns the number of constraints in the constraint system.
 
       The optional [log] argument is called at the start and end of each
