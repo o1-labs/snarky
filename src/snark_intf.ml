@@ -1426,7 +1426,7 @@ module type Run = sig
       , 'k_var
       , 'k_value
       , field
-      , (unit, unit, Field.Constant.t) Checked.t )
+      , (unit, field) Run_state.t -> (unit, field) Run_state.t * unit )
       Types.Data_spec.t
 
     val size : (_, _, _, _) t -> int
@@ -1460,7 +1460,7 @@ module type Run = sig
       ('prover_state, Field.Constant.t) Run_state.t
 
     type ('var, 'value) t =
-      ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
+      ('var, 'value, field, (unit, field) Run_state.t -> (unit, field) Run_state.t * unit ) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -1900,7 +1900,8 @@ module type Run = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
-  val make_checked : (unit -> 'a) -> ('a, 's, field) Types.Checked.t
+  val make_checked : (unit -> 'a) ->
+      ('s, field) Run_state.t -> ('s, field) Run_state.t * 'a
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t

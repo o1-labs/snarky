@@ -1695,7 +1695,7 @@ end
 
 module Run = struct
   module Make (Backend : Backend_intf.S) = struct
-    module Snark = Make (Backend)
+    module Snark = Make_noast (Backend)
     open Run_state
     open Snark
 
@@ -1720,7 +1720,7 @@ module Run = struct
            system will not match." ;
       if not !state.is_running then
         failwith "This function can't be run outside of a checked computation." ;
-      let state', x = Runner.run checked !state in
+      let state', x = checked !state in
       state := state' ;
       x
 
@@ -2217,7 +2217,7 @@ module Run = struct
         let state = Run_state.set_prover_state prover_state state in
         (state, a)
       in
-      Direct (f, fun x -> Pure x)
+      f
 
     let constraint_system ~exposing x =
       Perform.constraint_system ~run:as_stateful ~exposing x
