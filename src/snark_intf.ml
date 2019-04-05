@@ -853,7 +853,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** Utility functions for calling single checked computations. *)
   module Runner : sig
-    type state
+    type state = (unit, Field.t) Run_state.t
 
     val run : ('a, unit, Field.t) Checked_ast.t -> state -> state * 'a
   end
