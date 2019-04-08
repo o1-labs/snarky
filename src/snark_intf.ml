@@ -1219,11 +1219,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val reduce_to_prover :
-       ( (unit, 's, Field.t) Checked_ast.t
-       , Proof.t
-       , 'k_var
-       , 'k_value )
-       Data_spec.t
+       ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
     -> Proving_key.t
     -> ?handlers:Handler.t list
@@ -1460,7 +1456,11 @@ module type Run = sig
       ('prover_state, Field.Constant.t) Run_state.t
 
     type ('var, 'value) t =
-      ('var, 'value, field, (unit, field) Run_state.t -> (unit, field) Run_state.t * unit ) Types.Typ.t
+      ( 'var
+      , 'value
+      , field
+      , (unit, field) Run_state.t -> (unit, field) Run_state.t * unit )
+      Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -1900,8 +1900,8 @@ module type Run = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
-  val make_checked : (unit -> 'a) ->
-      ('s, field) Run_state.t -> ('s, field) Run_state.t * 'a
+  val make_checked :
+    (unit -> 'a) -> ('s, field) Run_state.t -> ('s, field) Run_state.t * 'a
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t

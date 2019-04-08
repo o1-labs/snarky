@@ -1230,7 +1230,7 @@ struct
         t k
 
     let reduce_to_prover : type a s r_value.
-           ((a, s, Field.t) Checked_ast.t, Proof.t, 'k_var, 'k_value) t
+           ((a, s) Checked.t, Proof.t, 'k_var, 'k_value) t
         -> 'k_var
         -> Proving_key.t
         -> ?handlers:Handler.t list
@@ -1243,20 +1243,17 @@ struct
         incr next_input ; Cvar.Unsafe.of_index v
       in
       let rec go : type k_var k_value.
-             ((a, s, Field.t) Checked_ast.t, Proof.t, k_var, k_value) t
-          -> k_var
-          -> k_var =
+          ((a, s) Checked.t, Proof.t, k_var, k_value) t -> k_var -> k_var =
        fun t k ->
         match t with
-        | [] -> Checked.Runner.reduce_to_prover next_input k
+        | [] -> Checked.reduce_to_prover next_input k
         | {alloc; _} :: t' ->
             let var = Typ.Alloc.run alloc alloc_var in
             let ret = go t' (k var) in
             fun _ -> ret
       in
       let reduced = go t0 k0 in
-      fun key ?handlers s ->
-        prove ~run:Checked.Runner.run key t0 ?handlers s reduced
+      fun key ?handlers s -> prove ~run:Checked.run key t0 ?handlers s reduced
   end
 
   module Cvar1 = struct
@@ -1592,6 +1589,11 @@ module Make_full
              ('a, 's, Backend.Field.t) Checked0.t
           -> ('s, Backend.Field.t) Run_state.t
           -> ('s, Backend.Field.t) Run_state.t * 'a
+
+        val reduce_to_prover :
+             int ref
+          -> ('a, 's, Backend.Field.t) Checked0.t
+          -> ('a, 's, Backend.Field.t) Checked0.t
     end)
     (As_prover0 : As_prover_intf.Basic
                   with type 'f field := Backend.Field.t
@@ -1624,6 +1626,8 @@ struct
     type ('a, 's) t = ('a, 's, field) Checked0.t
 
     let run = Runner.run
+
+    let reduce_to_prover = Runner.reduce_to_prover
   end
 
   module As_prover1 = struct
@@ -1645,6 +1649,8 @@ module Checked_runner (Backend : Backend_intf.S) = struct
 
   module Runner = struct
     let run x s = x s
+
+    let reduce_to_prover _ = Fn.id
   end
 
   module Checked = struct
@@ -1685,6 +1691,145 @@ module Make_noast (Backend : Backend_intf.S) = struct
   include Make_full (Checked_runner.Backend) (Checked_runner.Checked)
             (Checked_runner.Runner)
             (As_prover0)
+end
+
+type ('a, 's, 'f) checked_rtp =
+  { check: (unit, 'f) Run_state.t -> (unit, 'f) Run_state.t
+  ; value: 'a
+  ; as_prover: ('s, 'f) Run_state.t -> ('s, 'f) Run_state.t }
+
+module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
+  module Backend = Backend_extended.Make (Backend)
+  module Runner0 = Runner.Make (Backend)
+
+  type ('a, 's, 'f) t =
+    { check: (unit, 'f) Run_state.t -> (unit, 'f) Run_state.t
+    ; value: 'a
+    ; as_prover: ('s, 'f) Run_state.t -> ('s, 'f) Run_state.t }
+
+  module Runner = struct
+    let run x s = x s
+
+    let reduce_to_prover next_auxiliary t _ = t next_auxiliary
+  end
+
+  module Checked = struct
+    open Runner0
+
+    let return x _ = {check= Fn.id; value= x; as_prover= Fn.id}
+
+    let map x ~f next_auxiliary =
+      let x = x next_auxiliary in
+      {check= x.check; value= f x.value; as_prover= x.as_prover}
+
+    let bind x ~f next_auxiliary =
+      let x = x next_auxiliary in
+      let y = f x.value next_auxiliary in
+      { check= (fun s -> y.check (x.check s))
+      ; value= y.value
+      ; as_prover= (fun s -> y.as_prover (x.as_prover s)) }
+
+    let add_constraint c _ =
+      { check= (fun s -> fst (Runner0.add_constraint c s))
+      ; value= ()
+      ; as_prover= Fn.id }
+
+    let as_prover p _ =
+      { check= Fn.id
+      ; value= ()
+      ; as_prover= (fun s -> fst (Runner0.as_prover p s)) }
+
+    let with_label lab x _ =
+      { x with
+        check=
+          (fun s ->
+            let {Run_state.stack; _} = s in
+            let s' = x.check {s with stack= lab :: stack} in
+            {s' with stack} ) }
+
+    let with_state p and_then t_sub _ =
+      { check= t_sub.check
+      ; value= t_sub.value
+      ; as_prover=
+          (fun s ->
+            let s, s_sub = Runner0.run_as_prover (Some p) s in
+            let s_sub = t_sub.as_prover (Run_state.set_prover_state s_sub s) in
+            let s, (_ : unit option) =
+              run_as_prover (Option.map ~f:and_then s_sub.prover_state) s
+            in
+            s ) }
+
+    let with_handler h t _ =
+      { t with
+        as_prover=
+          (fun s ->
+            let {Run_state.handler; _} = s in
+            let s' =
+              t.as_prover {s with handler= Request.Handler.push handler h}
+            in
+            {s' with handler} ) }
+
+    let clear_handler t _ =
+      { t with
+        as_prover=
+          (fun s ->
+            let {Run_state.handler; _} = s in
+            let s' = t.as_prover {s with handler= Request.Handler.fail} in
+            {s' with handler} ) }
+
+    let exists {Types.Typ.store; alloc; check; _} p next_auxiliary =
+      let alloc_var () =
+        let v = !next_auxiliary in
+        incr next_auxiliary ;
+        Backend.Cvar.Unsafe.of_index v
+      in
+      let var = Typ_monads.Alloc.run alloc alloc_var in
+      let check = check var in
+      let handle = {Handle.var; value= None} in
+      { check= check.check
+      ; value= handle
+      ; as_prover=
+          (fun s ->
+            let old = !(s.Run_state.as_prover) in
+            s.as_prover := true ;
+            let ps = Option.value_exn s.prover_state in
+            let ps, value =
+              As_prover.Provider.run p s.stack (get_value s) ps s.handler
+            in
+            s.as_prover := old ;
+            let _var =
+              Typ_monads.Store.run (store value) (store_field_elt s)
+            in
+            handle.value <- Some value ;
+            Run_state.set_prover_state (Some ps) s ) }
+
+    let next_auxiliary next_auxiliary =
+      {check= Fn.id; value= !next_auxiliary; as_prover= Fn.id}
+
+    type 'f field = Backend.Field.t
+
+    module Types = Checked.Make_Types (struct
+      module Checked = struct
+        type nonrec ('a, 's, 'f) t = int ref -> ('a, 's, 'f) t
+
+        type ('a, 's, 'f, 'arg) thunk = ('a, 's, 'f) t
+      end
+
+      module As_prover = struct
+        type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+      end
+    end)
+
+    type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+  end
+end
+
+module Make_reduce_to_prover (Backend : Backend_intf.S) = struct
+  module Checked_runner = Checked_runner (Backend)
+  include Make_full (Checked_runner.Backend) (Checked_runner.Checked)
+            (Checked_runner.Runner)
+            (As_prover0)
+
 end
 
 module Make (Backend : Backend_intf.S) = struct

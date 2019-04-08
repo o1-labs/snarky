@@ -30,6 +30,11 @@ module Make_full
              ('a, 's, Backend.Field.t) Checked.t
           -> ('s, Backend.Field.t) Run_state.t
           -> ('s, Backend.Field.t) Run_state.t * 'a
+
+        val reduce_to_prover :
+             int ref
+          -> ('a, 's, Backend.Field.t) Checked.t
+          -> ('a, 's, Backend.Field.t) Checked.t
     end)
     (As_prover : As_prover_intf.Basic
                  with type 'f field := Backend.Field.t
@@ -61,6 +66,11 @@ module Checked_runner (Backend : Backend_intf.S) : sig
          ('a, 's, Backend.Field.t) Checked.t
       -> ('s, Backend.Field.t) Run_state.t
       -> ('s, Backend.Field.t) Run_state.t * 'a
+
+    val reduce_to_prover :
+         int ref
+      -> ('a, 's, Backend.Field.t) Checked.t
+      -> ('a, 's, Backend.Field.t) Checked.t
   end
 end
 
@@ -78,6 +88,22 @@ module Make_noast (Backend : Backend_intf.S) :
    and type ('a, 's) Checked.t =
                  ('s, Backend.Field.t) Run_state.t
               -> ('s, Backend.Field.t) Run_state.t * 'a
+   and type ('a, 's) As_prover.t = ('a, Backend.Field.t, 's) As_prover.t
+
+type ('a, 's, 'f) checked_rtp
+
+module Make_reduce_to_prover (Backend : Backend_intf.S) :
+  Snark_intf.S
+  with type field = Backend.Field.t
+   and type Bigint.t = Backend.Bigint.R.t
+   and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
+   and type Var.t = Backend.Var.t
+   and type Field.Vector.t = Backend.Field.Vector.t
+   and type Verification_key.t = Backend.Verification_key.t
+   and type Proving_key.t = Backend.Proving_key.t
+   and type Proof.t = Backend.Proof.t
+   and type Proof.message = Backend.Proof.message
+    and type ('a, 's) Checked.t = ('a, 's, Backend.Field.t) checked_rtp
    and type ('a, 's) As_prover.t = ('a, Backend.Field.t, 's) As_prover.t
 
 module Run : sig

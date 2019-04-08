@@ -146,6 +146,11 @@ module type Extended' = sig
        ('a, 's, field) Types.Checked.t
     -> ('s, field) Run_state.t
     -> ('s, field) Run_state.t * 'a
+
+  val reduce_to_prover :
+       int ref
+    -> ('a, 's, field) Types.Checked.t
+    -> ('a, 's, field) Types.Checked.t
 end
 
 module type Extended = sig
