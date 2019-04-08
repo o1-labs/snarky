@@ -1,3 +1,5 @@
+module Ast_types = Types
+
 module type Basic' = sig
   module Types : Types.Types
 
@@ -151,6 +153,9 @@ module type Extended' = sig
        int ref
     -> ('a, 's, field) Types.Checked.t
     -> ('a, 's, field) Types.Checked.t
+
+  val of_checked_ast :
+    ('a, 's, field) Ast_types.Checked.t -> ('a, 's, field) Types.Checked.t
 end
 
 module type Extended = sig

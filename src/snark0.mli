@@ -1,3 +1,5 @@
+module Checked_ast = Checked
+
 val set_eval_constraints : bool -> unit
 (** Sets the [eval_constraints] state. If [true], {!val:run_unchecked} and
     {!val:prove} will check that the constraint system is satisfied while
@@ -35,6 +37,10 @@ module Make_full
              int ref
           -> ('a, 's, Backend.Field.t) Checked.t
           -> ('a, 's, Backend.Field.t) Checked.t
+
+        val of_checked_ast :
+             ('a, 's, Backend.Field.t) Checked_ast.t
+          -> ('a, 's, Backend.Field.t) Checked.t
     end)
     (As_prover : As_prover_intf.Basic
                  with type 'f field := Backend.Field.t
@@ -70,6 +76,10 @@ module Checked_runner (Backend : Backend_intf.S) : sig
     val reduce_to_prover :
          int ref
       -> ('a, 's, Backend.Field.t) Checked.t
+      -> ('a, 's, Backend.Field.t) Checked.t
+
+    val of_checked_ast :
+         ('a, 's, Backend.Field.t) Checked_ast.t
       -> ('a, 's, Backend.Field.t) Checked.t
   end
 end

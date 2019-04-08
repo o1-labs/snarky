@@ -1594,6 +1594,10 @@ module Make_full
              int ref
           -> ('a, 's, Backend.Field.t) Checked0.t
           -> ('a, 's, Backend.Field.t) Checked0.t
+
+        val of_checked_ast :
+             ('a, 's, Backend.Field.t) Checked_ast.t
+          -> ('a, 's, Backend.Field.t) Checked0.t
     end)
     (As_prover0 : As_prover_intf.Basic
                   with type 'f field := Backend.Field.t
@@ -1625,9 +1629,7 @@ struct
 
     type ('a, 's) t = ('a, 's, field) Checked0.t
 
-    let run = Runner.run
-
-    let reduce_to_prover = Runner.reduce_to_prover
+    include Runner
   end
 
   module As_prover1 = struct
@@ -1651,6 +1653,8 @@ module Checked_runner (Backend : Backend_intf.S) = struct
     let run x s = x s
 
     let reduce_to_prover _ = Fn.id
+
+    let of_checked_ast = Runner0.run
   end
 
   module Checked = struct
@@ -1721,6 +1725,31 @@ module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
       (s, x.value)
 
     let reduce_to_prover next_auxiliary t _ = t next_auxiliary
+
+    let of_checked_ast t next_auxiliary =
+      let open Run_state in
+      let na = !next_auxiliary in
+      let _, value = Runner0.run t {(dummy_state ()) with next_auxiliary} in
+      let na' = !next_auxiliary in
+      { check=
+          (fun s ->
+            let {prover_state; _} = s in
+            let s = {s with next_auxiliary= ref na} in
+            let s, _ = Runner0.run t (set_prover_state None s) in
+            assert (Int.equal na' !(s.next_auxiliary)) ;
+            let s = {s with next_auxiliary} in
+            set_prover_state prover_state s )
+      ; value
+      ; as_prover=
+          (fun s ->
+            let {system; eval_constraints; _} = s in
+            let s = {s with next_auxiliary= ref na} in
+            let s, _ =
+              Runner0.run t {s with system= None; eval_constraints= false}
+            in
+            assert (Int.equal na' !(s.next_auxiliary)) ;
+            let s = {s with next_auxiliary} in
+            {s with system; eval_constraints} ) }
   end
 
   module Checked = struct
@@ -1847,7 +1876,13 @@ end
 
 module Make (Backend : Backend_intf.S) = struct
   module Backend = Backend_extended.Make (Backend)
-  module Runner0 = Runner.Make (Backend)
+
+  module Runner0 = struct
+    include Runner.Make (Backend)
+
+    let of_checked_ast = Fn.id
+  end
+
   include Make_full (Backend) (Checked.Basic) (Runner0) (As_prover0)
 end
 
