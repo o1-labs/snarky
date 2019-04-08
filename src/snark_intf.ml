@@ -1267,6 +1267,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       - [count] is the number of constraints at that point.
   *)
 
+  val of_checked_ast : ('a, 's, field) Checked_ast.t -> ('a, 's) Checked.t
+  (** Compile a checked computation AST into a checked computation. *)
+
   module Test : sig
     val checked_to_unchecked :
          ('vin, 'valin) Typ.t
