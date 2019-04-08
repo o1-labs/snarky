@@ -103,7 +103,8 @@ module Make_reduce_to_prover (Backend : Backend_intf.S) :
    and type Proving_key.t = Backend.Proving_key.t
    and type Proof.t = Backend.Proof.t
    and type Proof.message = Backend.Proof.message
-    and type ('a, 's) Checked.t = ('a, 's, Backend.Field.t) checked_rtp
+   and type ('a, 's) Checked.t =
+              int ref -> ('a, 's, Backend.Field.t) checked_rtp
    and type ('a, 's) As_prover.t = ('a, Backend.Field.t, 's) As_prover.t
 
 module Run : sig

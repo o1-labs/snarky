@@ -1702,13 +1702,23 @@ module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
   module Backend = Backend_extended.Make (Backend)
   module Runner0 = Runner.Make (Backend)
 
-  type ('a, 's, 'f) t =
-    { check: (unit, 'f) Run_state.t -> (unit, 'f) Run_state.t
-    ; value: 'a
-    ; as_prover: ('s, 'f) Run_state.t -> ('s, 'f) Run_state.t }
+  type ('a, 's, 'f) t = int ref -> ('a, 's, 'f) checked_rtp
 
   module Runner = struct
-    let run x s = x s
+    let run x s =
+      let x = x s.Run_state.next_auxiliary in
+      let s = if Option.is_some s.prover_state then x.as_prover s else s in
+      let s =
+        if s.eval_constraints || Option.is_some s.system then
+          let ps = s.prover_state in
+          let s =
+            Run_state.set_prover_state (Option.map ps ~f:(Fn.const ())) s
+          in
+          let s = x.check s in
+          Run_state.set_prover_state ps s
+        else s
+      in
+      (s, x.value)
 
     let reduce_to_prover next_auxiliary t _ = t next_auxiliary
   end
@@ -1739,7 +1749,8 @@ module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
       ; value= ()
       ; as_prover= (fun s -> fst (Runner0.as_prover p s)) }
 
-    let with_label lab x _ =
+    let with_label lab x next_auxiliary =
+      let x = x next_auxiliary in
       { x with
         check=
           (fun s ->
@@ -1747,7 +1758,8 @@ module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
             let s' = x.check {s with stack= lab :: stack} in
             {s' with stack} ) }
 
-    let with_state p and_then t_sub _ =
+    let with_state p and_then t_sub next_auxiliary =
+      let t_sub = t_sub next_auxiliary in
       { check= t_sub.check
       ; value= t_sub.value
       ; as_prover=
@@ -1759,7 +1771,8 @@ module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
             in
             s ) }
 
-    let with_handler h t _ =
+    let with_handler h t next_auxiliary =
+      let t = t next_auxiliary in
       { t with
         as_prover=
           (fun s ->
@@ -1769,7 +1782,8 @@ module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
             in
             {s' with handler} ) }
 
-    let clear_handler t _ =
+    let clear_handler t next_auxiliary =
+      let t = t next_auxiliary in
       { t with
         as_prover=
           (fun s ->
@@ -1784,7 +1798,7 @@ module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
         Backend.Cvar.Unsafe.of_index v
       in
       let var = Typ_monads.Alloc.run alloc alloc_var in
-      let check = check var in
+      let check = check var next_auxiliary in
       let handle = {Handle.var; value= None} in
       { check= check.check
       ; value= handle
@@ -1810,7 +1824,7 @@ module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
 
     module Types = Checked.Make_Types (struct
       module Checked = struct
-        type nonrec ('a, 's, 'f) t = int ref -> ('a, 's, 'f) t
+        type nonrec ('a, 's, 'f) t = int ref -> ('a, 's, 'f) checked_rtp
 
         type ('a, 's, 'f, 'arg) thunk = ('a, 's, 'f) t
       end
@@ -1825,11 +1839,10 @@ module Checked_reduce_to_prover (Backend : Backend_intf.S) = struct
 end
 
 module Make_reduce_to_prover (Backend : Backend_intf.S) = struct
-  module Checked_runner = Checked_runner (Backend)
+  module Checked_runner = Checked_reduce_to_prover (Backend)
   include Make_full (Checked_runner.Backend) (Checked_runner.Checked)
             (Checked_runner.Runner)
             (As_prover0)
-
 end
 
 module Make (Backend : Backend_intf.S) = struct
