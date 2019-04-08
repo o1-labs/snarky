@@ -10,7 +10,7 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "core"
+  "core_kernel"             {< "v0.12"}
   "ppx_deriving"
   "ppx_jane"
   "bisect_ppx"
