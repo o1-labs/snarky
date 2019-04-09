@@ -79,8 +79,9 @@ let main =
           Envi.open_namespace_scope scope env )
     in
     let file =
-      Option.value_exn !file
-        ~error:(Error.of_string "Please pass a file as an argument.")
+      match !file with
+      | Some file -> file
+      | None -> Arg.usage arg_spec Sys.executable_name; exit 1
     in
     let parse_ast = read_file (Parser_impl.file Lexer_impl.token) file in
     let _env, ast = Typechecker.check parse_ast env in
