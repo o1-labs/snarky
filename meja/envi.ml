@@ -270,6 +270,9 @@ module Scope = struct
       match Map.find resolve_env.external_modules name with
       | Some (Immediate m) -> Some m
       | Some (Deferred filename) ->
+          resolve_env.external_modules
+          <- Map.set resolve_env.external_modules ~key:name
+               ~data:(In_flight filename) ;
           let m = !load_module ~loc ~name resolve_env filename in
           resolve_env.external_modules
           <- Map.set resolve_env.external_modules ~key:name ~data:(Immediate m) ;
