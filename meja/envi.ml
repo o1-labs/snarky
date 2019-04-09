@@ -1169,6 +1169,14 @@ module Core = struct
     in
     TypeDecl.import (mk_type_decl "field" (TUnfold var)) env
 
+  let lazy_t, env =
+    let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
+    TypeDecl.import (mk_type_decl "lazy_t" ~params:[var] TAbstract) env
+
+  let array, env =
+    let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
+    TypeDecl.import (mk_type_decl "array" ~params:[var] TAbstract) env
+
   module Type = struct
     let int = TypeDecl.mk_typ int ~params:[] env
 
