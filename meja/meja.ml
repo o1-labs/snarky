@@ -87,7 +87,10 @@ let main =
       , "add a directory to the list of paths to search for .cmi files" )
     ; ( "--preamble"
       , Arg.Set snarky_preamble
-      , "enable/disable outputting the snarky preamble" )
+      , "output the snarky preamble" )
+    ; ( "--no-preamble"
+      , Arg.Clear snarky_preamble
+      , "do not output snarky preamble" )
     ; ( "--curve"
       , Arg.Set_string curve
       , "set the elliptic curve to use \x1B[4mdefault: Mnt4\x1B[24m" )
