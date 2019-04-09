@@ -483,6 +483,13 @@ r1cs_constraint_system<FieldT>* camlsnark_mnt6753_r1cs_constraint_system_create(
   return new r1cs_constraint_system<FieldT>();
 }
 
+void camlsnark_mnt6753_r1cs_constraint_system_clear(r1cs_constraint_system<FieldT>* sys) {
+  sys->primary_input_size = 0;
+  sys->auxiliary_input_size = 0;
+  sys->num_square_constraints = 0;
+  sys->constraints.clear();
+}
+
 void camlsnark_mnt6753_linear_combination_update_digest(
     linear_combination<FieldT>& lc,
     MD5_CTX* ctx) {
@@ -1056,6 +1063,10 @@ libff::G2<ppT>* camlsnark_mnt6753_bg_proof_b(r1cs_bg_ppzksnark_proof<ppT>* proof
 
 libff::G1<ppT>* camlsnark_mnt6753_bg_proof_c(r1cs_bg_ppzksnark_proof<ppT>* proof) {
   return new libff::G1<ppT>(proof->g_C);
+}
+
+libff::G2<ppT>* camlsnark_mnt6753_bg_proof_delta_prime(r1cs_bg_ppzksnark_proof<ppT>* proof) {
+  return new libff::G2<ppT>(proof->delta_prime);
 }
 
 // End BG specific code
