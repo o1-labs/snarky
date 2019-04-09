@@ -45,13 +45,16 @@ rule token = parse
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }
-  | '(' { LBRACKET }
-  | ')' { RBRACKET }
+  | '(' { LPAREN }
+  | ')' { RPAREN }
+  | '[' { LBRACKET }
+  | ']' { RBRACKET }
   | "->" { DASHGT }
   | "=>" { EQUALGT }
   | "+=" { PLUSEQUAL }
   | '=' { EQUAL }
   | ':' { COLON }
+  | "::" { COLONCOLON }
   | ',' { COMMA }
   | '_' { UNDERSCORE }
   | '|' { BAR }
