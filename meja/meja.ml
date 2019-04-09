@@ -36,6 +36,7 @@ let main =
   let ast_file = ref None in
   let binml_file = ref None in
   let default = ref true in
+  let stdlib = ref true in
   let set_and_clear_default opt name =
     default := false ;
     opt := Some name
@@ -61,10 +62,35 @@ let main =
       , "load a .cmi file" )
     ; ( "-I"
       , Arg.String (fun dirname -> cmi_dirs := dirname :: !cmi_dirs)
-      , "add a directory to the list of paths to search for .cmi files" ) ]
+      , "add a directory to the list of paths to search for .cmi files" )
+    ; ( "--stdlib"
+      , Arg.Set stdlib
+      , "load the OCaml standard library \x1B[4mdefault\x1B[24m" )
+    ; ( "--no-stdlib"
+      , Arg.Clear stdlib
+      , "do not load the OCaml standard library" ) ]
   in
   Arg.parse arg_spec (fun filename -> file := Some filename) "" ;
   let env = Envi.Core.env in
+  let env =
+    if !stdlib then (
+      match Sys.getenv_opt "OPAM_SWITCH_PREFIX" with
+      | Some opam_path ->
+          let ocaml_path = Filename.concat opam_path "lib/ocaml" in
+          Loader.load_directory env ocaml_path ;
+          let stdlib_scope =
+            Loader.load ~loc:Location.none ~name:"Stdlib" env.Envi.resolve_env
+              (Filename.concat ocaml_path "stdlib.cmi")
+          in
+          Envi.open_namespace_scope stdlib_scope env
+      | None ->
+          Format.(
+            fprintf err_formatter
+              "Warning: OPAM_SWITCH_PREFIX environment variable is not set. \
+               Not loading the standard library.") ;
+          env )
+    else env
+  in
   List.iter !cmi_dirs ~f:(Loader.load_directory env) ;
   try
     let cmi_files = List.rev !cmi_files in

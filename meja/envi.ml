@@ -824,14 +824,14 @@ module Type = struct
         Set.union (implicit_params typ1) (implicit_params typ2)
     | Tctor variant ->
         let {predeclare_types; _} = env.resolve_env in
-        env.resolve_env.predeclare_types <- false;
+        (env.resolve_env).predeclare_types <- false ;
         let ctor_params =
           try
             let decl = raw_find_type_declaration variant.var_ident env in
             Set.of_list (module Comparator) decl.tdec_implicit_params
           with Error (_, Unbound_type _) -> Set.empty (module Comparator)
         in
-        env.resolve_env.predeclare_types <- predeclare_types;
+        (env.resolve_env).predeclare_types <- predeclare_types ;
         Set.union_list
           (module Comparator)
           (ctor_params :: List.map ~f:implicit_params variant.var_params)
