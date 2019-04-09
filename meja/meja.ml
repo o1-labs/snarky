@@ -63,7 +63,11 @@ let main =
       , Arg.String (fun dirname -> cmi_dirs := dirname :: !cmi_dirs)
       , "add a directory to the list of paths to search for .cmi files" ) ]
   in
-  Arg.parse arg_spec (fun filename -> file := Some filename) "" ;
+  let usage_text =
+    Format.sprintf "Usage:@.@[%s [options] file@]@.@.OPTIONS:"
+      (Filename.basename Sys.executable_name)
+  in
+  Arg.parse arg_spec (fun filename -> file := Some filename) usage_text ;
   let env = Envi.Core.env in
   List.iter !cmi_dirs ~f:(Loader.load_directory env) ;
   try
@@ -81,7 +85,9 @@ let main =
     let file =
       match !file with
       | Some file -> file
-      | None -> Arg.usage arg_spec Sys.executable_name; exit 1
+      | None ->
+          Arg.usage arg_spec usage_text ;
+          exit 1
     in
     let parse_ast = read_file (Parser_impl.file Lexer_impl.token) file in
     let _env, ast = Typechecker.check parse_ast env in
