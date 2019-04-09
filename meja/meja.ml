@@ -85,9 +85,7 @@ let main =
     ; ( "-I"
       , Arg.String (fun dirname -> cmi_dirs := dirname :: !cmi_dirs)
       , "add a directory to the list of paths to search for .cmi files" )
-    ; ( "--preamble"
-      , Arg.Set snarky_preamble
-      , "output the snarky preamble" )
+    ; ("--preamble", Arg.Set snarky_preamble, "output the snarky preamble")
     ; ( "--no-preamble"
       , Arg.Clear snarky_preamble
       , "do not output snarky preamble" )
