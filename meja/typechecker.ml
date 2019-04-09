@@ -772,10 +772,14 @@ let rec check_signature_item env item =
   let loc = item.sig_loc in
   match item.sig_desc with
   | SValue (name, typ) ->
+      let env = Envi.open_expr_scope env in
       let typ, env = Envi.Type.import ~must_find:false typ env in
+      let env = Envi.close_expr_scope env in
       add_polymorphised name typ env
   | SInstance (name, typ) ->
+      let env = Envi.open_expr_scope env in
       let typ, env = Envi.Type.import ~must_find:false typ env in
+      let env = Envi.close_expr_scope env in
       let env = add_polymorphised name typ env in
       Envi.add_implicit_instance name.txt typ env
   | STypeDecl decl ->
