@@ -30,12 +30,34 @@ let do_output filename f =
       f output
   | None -> ()
 
+let add_preamble curve proofs ast =
+  let open Parsetypes in
+  let open Longident in
+  let mkloc x = Location.(mkloc x none) in
+  let dot y x = Ldot (x, y) in
+  let snarky_make = Lident "Snarky" |> dot "Snark" |> dot "Make" in
+  let backend_path =
+    Lident "Snarky" |> dot "Backends" |> dot curve |> dot proofs
+  in
+  let snarky_impl_path = mkloc (Lapply (snarky_make, backend_path)) in
+  let snarky_impl =
+    Module
+      ( mkloc "Impl"
+      , {mod_desc= ModName snarky_impl_path; mod_loc= Location.none} )
+  in
+  let snarky_open = Open (mkloc (Lident "Impl")) in
+  let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in
+  mk_stmt snarky_impl :: mk_stmt snarky_open :: ast
+
 let main =
   let file = ref None in
   let ocaml_file = ref None in
   let ast_file = ref None in
   let binml_file = ref None in
   let default = ref true in
+  let snarky_preamble = ref true in
+  let curve = ref "Mnt4" in
+  let proofs = ref "Default" in
   let set_and_clear_default opt name =
     default := false ;
     opt := Some name
@@ -61,7 +83,15 @@ let main =
       , "load a .cmi file" )
     ; ( "-I"
       , Arg.String (fun dirname -> cmi_dirs := dirname :: !cmi_dirs)
-      , "add a directory to the list of paths to search for .cmi files" ) ]
+      , "add a directory to the list of paths to search for .cmi files" )
+    ; ( "--preamble"
+      , Arg.Set snarky_preamble
+      , "enable/disable outputting the snarky preamble" )
+    ; ( "--curve"
+      , Arg.Set_string curve
+      , "set the elliptic curve to use \x1B[4mdefault: Mnt4\x1B[24m" )
+    ; ("--proofs", Arg.Set_string proofs, "set the snarky proof system to use")
+    ]
   in
   Arg.parse arg_spec (fun filename -> file := Some filename) "" ;
   let env = Envi.Core.env in
@@ -84,6 +114,9 @@ let main =
     in
     let parse_ast = read_file (Parser_impl.file Lexer_impl.token) file in
     let _env, ast = Typechecker.check parse_ast env in
+    let ast =
+      if !snarky_preamble then add_preamble !curve !proofs ast else ast
+    in
     let ocaml_ast = To_ocaml.of_file ast in
     let ocaml_formatter =
       match (!ocaml_file, !default) with
