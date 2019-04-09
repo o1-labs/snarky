@@ -1212,10 +1212,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val reduce_to_prover :
        ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
-    -> Proving_key.t
-    -> ?handlers:Handler.t list
-    -> 's
-    -> 'k_value
+    -> (Proving_key.t -> ?handlers:Handler.t list -> 's -> 'k_value) Staged.t
   (** Reduce a checked computation, then generate a proof.
 
       [reduce_to_prover public_input computation] evaluates all parts of the
