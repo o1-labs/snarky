@@ -799,6 +799,12 @@ let rec check_signature_item env item =
 and check_signature env signature =
   List.fold ~init:env signature ~f:check_signature_item
 
+let check_signature env signature =
+  Envi.set_type_predeclaring env ;
+  let ret = check_signature env signature in
+  Envi.unset_type_predeclaring env ;
+  ret
+
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:check_statement
 
