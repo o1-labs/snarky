@@ -136,7 +136,7 @@ structure_item:
     { mkstmt ~pos:$loc (Request (arg, x, handler)) }
 
 default_request_handler:
-  | WITH p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
+  | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
     { (p, body) }
 
 module_expr:
