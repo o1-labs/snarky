@@ -821,6 +821,7 @@ let rec check_statement env stmt =
         {variant with var_decl_id= tdec_id; var_params= decl.tdec_params}
       in
       (env, {stmt with stmt_desc= TypeExtension (variant, ctors)})
+  | Request _ -> (env, stmt)
 
 and check_module_expr env m =
   let loc = m.mod_loc in
