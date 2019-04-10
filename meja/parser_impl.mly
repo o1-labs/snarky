@@ -9,6 +9,8 @@ let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 
 let lid_last x = mkloc (last x.txt) x.loc
 
+let mkloc ~pos x = mkloc x (mklocation pos)
+
 let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= mklocation pos}
 let mkpat ~pos d = {pat_desc= d; pat_loc= mklocation pos; pat_type= mktyp ~pos (Tvar (None, -1, Explicit))}
 let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos; exp_type= mktyp ~pos (Tvar (None, -1, Explicit))}
@@ -233,6 +235,11 @@ simpl_expr:
 expr:
   | x = simpl_expr
     { x }
+  | FUN LBRACKET RBRACKET EQUALGT LBRACE body = block RBRACE
+    { let unit_pat =
+        mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
+      in
+      mkexp ~pos:$loc (Fun (unit_pat, body, Explicit)) }
   | FUN LBRACKET f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
@@ -240,10 +247,10 @@ expr:
   | f = expr LBRACKET es = expr_list RBRACKET
     { mkexp ~pos:$loc (Apply (f, List.rev es)) }
   | e1 = expr op = infix_operator e2 = expr %prec above_infix
-    { let op = mkloc (Lident op) (mklocation $loc(op)) in
+    { let op = mkloc ~pos:$loc(op) (Lident op) in
       mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [e1; e2])) }
   | op = PREFIXOP e = expr
-    { let op = mkloc (Lident op) (mklocation $loc(op)) in
+    { let op = mkloc ~pos:$loc(op) (Lident op) in
       mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [e])) }
   | SWITCH LBRACKET e = expr_or_bare_tuple RBRACKET LBRACE rev_cases = list(match_case, {}) RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
@@ -275,6 +282,8 @@ match_case:
     { (p, e) }
 
 expr_list:
+  | (* empty *)
+    { [mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "()"), None))] }
   | e = expr
     { [e] }
   | es = expr_list COMMA e = expr
@@ -393,7 +402,7 @@ tuple(X):
     { [x2; x1] }
 
 %inline as_loc(X): x = X
-  { mkloc x (mklocation ($symbolstartpos, $endpos)) }
+  { mkloc x ~pos:($symbolstartpos, $endpos) }
 
 %inline maybe(X):
   | (* empty *)
