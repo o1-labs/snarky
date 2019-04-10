@@ -249,12 +249,12 @@ module Scope = struct
           (* You can't apply a toplevel module, so we just error out instead. *)
           raise (Error (loc, Unbound_module lid)) )
 
-  let rec find_module ~loc resolve_env lid scope =
+  let rec find_module_ ~loc resolve_env lid scope =
     match lid with
     | Lident name -> get_module ~loc resolve_env name scope
     | Ldot (path, name) ->
         Option.bind
-          (find_module ~loc resolve_env path scope)
+          (find_module_ ~loc resolve_env path scope)
           ~f:(get_module ~loc resolve_env name)
     | Lapply _ -> raise (Error (loc, Lident_unhandled ("module", lid)))
 
@@ -276,9 +276,21 @@ module Scope = struct
       | None -> None
     in
     match (m, lid) with
-    | Some m, Some lid -> find_module ~loc resolve_env lid m
+    | Some m, Some lid -> find_module_ ~loc resolve_env lid m
     | Some m, None -> Some m
     | None, _ -> None
+
+  and find_module ~loc (lid : lid) resolve_env scopes =
+    match
+      List.find_map
+        ~f:(find_module_ ~loc resolve_env lid.txt)
+        scopes
+    with
+    | Some m -> m
+    | None -> (
+      match get_global_module ~loc resolve_env lid.txt with
+      | Some m -> m
+      | None -> raise (Error (loc, Unbound_module lid.txt)) )
 
   let rec find_module_deferred ~loc lid scope =
     match lid with
@@ -386,17 +398,8 @@ let register_external_module name x env =
   (env.resolve_env).external_modules
   <- Map.set ~key:name ~data:x env.resolve_env.external_modules
 
-let find_module ~loc (lid : lid) env =
-  match
-    List.find_map
-      ~f:(Scope.find_module ~loc env.resolve_env lid.txt)
-      env.scope_stack
-  with
-  | Some m -> m
-  | None -> (
-    match Scope.get_global_module ~loc env.resolve_env lid.txt with
-    | Some m -> m
-    | None -> raise (Error (loc, Unbound_module lid.txt)) )
+let find_module ~loc lid env =
+  Scope.find_module ~loc lid env.resolve_env env.scope_stack
 
 let find_module_deferred ~loc (lid : lid) env =
   List.find_map ~f:(Scope.find_module_deferred ~loc lid.txt) env.scope_stack
@@ -419,7 +422,7 @@ let find_of_lident ~kind ~get_name (lid : lid) env =
     | Ldot (path, name) ->
         fun scope ->
           Option.bind ~f:(get_name name)
-            (Scope.find_module ~loc env.resolve_env path scope)
+            (Scope.find_module_ ~loc env.resolve_env path scope)
     | Lapply _ -> raise (Error (loc, Lident_unhandled (kind, lid.txt)))
   in
   match List.find_map ~f:full_get_name env.scope_stack with
