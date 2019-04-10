@@ -738,12 +738,18 @@ and check_module_sig env msig =
         | Envi.Scope.Deferred path -> Envi.add_deferred_module name path env
       in
       let f, env = Envi.pop_module ~loc env in
-      (* Typecheck main module *)
-      let env = Envi.open_module env in
-      let env = Envi.open_namespace_scope f env in
-      let m, env = check_module_sig env msig in
-      let _, env = Envi.pop_module ~loc env in
-      (m, env)
+      let ftor f_instance =
+        let env = Envi.open_module env in
+        let env = Envi.open_namespace_scope f_instance env in
+        (* TODO: check that f_instance matches f' *)
+        let m, env = check_module_sig env msig in
+        let _, env = Envi.pop_module ~loc env in
+        (m, env.Envi.resolve_env)
+      in
+      (* Check that f builds the functor as expected. *)
+      ignore (ftor f);
+      let m = Envi.make_functor ftor in
+      (Envi.Scope.Immediate m, env)
 
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
@@ -823,19 +829,34 @@ and check_module_expr env m =
       let env = Envi.push_scope m' env in
       (env, m)
   | Functor (name, f, m) ->
-      let f, env = check_module_sig env f in
+      let f', env = check_module_sig env f in
       (* Set up functor module *)
       let env = Envi.open_module env in
       let env =
-        match f with
-        | Envi.Scope.Immediate f -> Envi.add_module name f env
+        match f' with
+        | Envi.Scope.Immediate f' -> Envi.add_module name f' env
         | Envi.Scope.Deferred path -> Envi.add_deferred_module name path env
       in
-      let f, env = Envi.pop_module ~loc env in
-      (* Typecheck main module *)
-      let env = Envi.open_module env in
-      let env = Envi.open_namespace_scope f env in
-      check_module_expr env m
+      let f', env = Envi.pop_module ~loc env in
+      let ftor f_instance =
+        let env = Envi.open_module env in
+        let env = Envi.open_namespace_scope f_instance env in
+        (* TODO: check that f_instance matches f' *)
+        let env, m' = check_module_expr env m in
+        let m, env = Envi.pop_module ~loc env in
+        let _, env = Envi.pop_module ~loc env in
+        (Envi.Scope.Immediate m, env.Envi.resolve_env, m')
+      in
+      (* Check that f builds the functor as expected. *)
+      let _, _, m = ftor f' in
+      let env =
+        Envi.push_scope
+          (Envi.make_functor (fun f ->
+               let m, env, _ = ftor f in
+               (m, env) ))
+          env
+      in
+      (env, {m with mod_desc= Functor (name, f, m)})
 
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:check_statement

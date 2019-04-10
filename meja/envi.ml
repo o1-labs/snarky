@@ -17,6 +17,7 @@ type error =
   | No_unifiable_implicit
   | Multiple_instances of type_expr
   | Recursive_load of string
+  | Functor_in_module_sig
 
 exception Error of Location.t * error
 
@@ -85,12 +86,17 @@ type 'a resolve_env =
   ; mutable external_modules: 'a or_deferred name_map }
 
 module Scope = struct
-  type kind = Module | Expr | Open | Continue
-
   type 'a or_path = Immediate of 'a | Deferred of Longident.t
 
+  type 't kind =
+    | Module
+    | Expr
+    | Open
+    | Continue
+    | Functor of ('t -> 't or_path * 't resolve_env)
+
   type t =
-    { kind: kind
+    { kind: t kind
     ; names: type_expr name_map
     ; type_variables: type_expr name_map
     ; type_decls: type_decl name_map
@@ -307,6 +313,8 @@ let current_scope {scope_stack; _} =
 let push_scope scope env =
   {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
 
+let make_functor f = Scope.empty (Functor f)
+
 let open_expr_scope = push_scope Scope.(empty Expr)
 
 let open_module = push_scope Scope.(empty Module)
@@ -336,6 +344,9 @@ let pop_module ~loc env =
     | Expr -> raise (Error (Location.none, Wrong_scope_kind "module"))
     | Open -> all_scopes scopes env
     | Continue -> all_scopes (scope :: scopes) env
+    | Functor _ ->
+        if List.is_empty scopes then ([scope], env)
+        else raise (Error (Location.none, Functor_in_module_sig))
   in
   let scopes, env = all_scopes [] env in
   let m =
@@ -1158,6 +1169,9 @@ let report_error ppf = function
         pp_typ typ
   | Recursive_load filename ->
       fprintf ppf "Circular dependency found; tried to re-load %s" filename
+  | Functor_in_module_sig ->
+      fprintf ppf
+        "Internal error: Bare functor found as part of a module signature."
 
 let () =
   Location.register_error_of_exn (function
