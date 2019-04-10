@@ -298,20 +298,23 @@ module Scope = struct
       | Some m -> m
       | None -> raise (Error (loc, Unbound_module lid)) )
 
-  let rec find_module_deferred ~loc lid scope =
+  let rec find_module_deferred ~loc ~scopes resolve_env lid scope =
     match lid with
     | Lident name -> Map.find scope.modules name
     | Ldot (path, name) -> (
-      match find_module_deferred ~loc path scope with
+      match find_module_deferred ~loc ~scopes resolve_env path scope with
       | Some (Immediate m) -> Map.find m.modules name
       | Some (Deferred lid) -> Some (Deferred (Ldot (lid, name)))
       | None -> None )
-    | Lapply (lid1, lid2) -> (
-      match find_module_deferred ~loc lid1 scope with
-      | Some (Immediate _) ->
-          raise (Error (loc, Lident_unhandled ("module", lid)))
-      | Some (Deferred lid) -> Some (Deferred (Lapply (lid, lid2)))
-      | None -> None )
+    | Lapply (lid1, lid2) ->
+        (* Don't defer functor applications *)
+        let m1 = find_module ~loc lid1 resolve_env scopes in
+        let f =
+          match m1.kind with
+          | Functor f -> f
+          | _ -> raise (Error (loc, Not_a_functor))
+        in
+        Some (Immediate (f (find_module ~loc lid2 resolve_env scopes)))
 end
 
 let empty_resolve_env =
@@ -408,7 +411,11 @@ let find_module ~loc (lid : lid) env =
   Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack
 
 let find_module_deferred ~loc (lid : lid) env =
-  List.find_map ~f:(Scope.find_module_deferred ~loc lid.txt) env.scope_stack
+  List.find_map
+    ~f:
+      (Scope.find_module_deferred ~loc ~scopes:env.scope_stack env.resolve_env
+         lid.txt)
+    env.scope_stack
 
 let add_implicit_instance name typ env =
   let path = Lident name in
