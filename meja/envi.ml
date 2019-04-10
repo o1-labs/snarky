@@ -18,6 +18,7 @@ type error =
   | Multiple_instances of type_expr
   | Recursive_load of string
   | Functor_in_module_sig
+  | Not_a_functor
 
 exception Error of Location.t * error
 
@@ -86,14 +87,9 @@ type 'a resolve_env =
   ; mutable external_modules: 'a or_deferred name_map }
 
 module Scope = struct
-  type 'a or_path = Immediate of 'a | Deferred of Longident.t
+  type 't kind = Module | Expr | Open | Continue | Functor of ('t -> 't)
 
-  type 't kind =
-    | Module
-    | Expr
-    | Open
-    | Continue
-    | Functor of ('t -> 't or_path * 't resolve_env)
+  type 'a or_path = Immediate of 'a | Deferred of Longident.t
 
   type t =
     { kind: t kind
@@ -249,22 +245,34 @@ module Scope = struct
           (* You can't apply a toplevel module, so we just error out instead. *)
           raise (Error (loc, Unbound_module lid)) )
 
-  let rec find_module_ ~loc resolve_env lid scope =
+  let rec find_module_ ~loc ~scopes resolve_env lid scope =
     match lid with
-    | Lident name -> get_module ~loc resolve_env name scope
+    | Lident name -> get_module ~loc ~scopes resolve_env name scope
     | Ldot (path, name) ->
         Option.bind
-          (find_module_ ~loc resolve_env path scope)
-          ~f:(get_module ~loc resolve_env name)
-    | Lapply _ -> raise (Error (loc, Lident_unhandled ("module", lid)))
+          (find_module_ ~loc ~scopes resolve_env path scope)
+          ~f:(get_module ~loc ~scopes resolve_env name)
+    | Lapply (fpath, path) ->
+        Option.map
+          (find_module_ ~loc ~scopes resolve_env fpath scope)
+          ~f:(apply_functor ~loc ~scopes resolve_env path)
 
-  and get_module ~loc resolve_env name scope =
+  and apply_functor ~loc ~scopes resolve_env lid scope =
+    let f =
+      match scope.kind with
+      | Functor f -> f
+      | _ -> raise (Error (loc, Not_a_functor))
+    in
+    let m = find_module ~loc lid resolve_env scopes in
+    f m
+
+  and get_module ~loc ~scopes resolve_env name scope =
     match Map.find scope.modules name with
     | Some (Immediate m) -> Some m
-    | Some (Deferred lid) -> get_global_module ~loc resolve_env lid
+    | Some (Deferred lid) -> get_global_module ~loc ~scopes resolve_env lid
     | None -> None
 
-  and get_global_module ~loc resolve_env lid =
+  and get_global_module ~loc ~scopes resolve_env lid =
     let name, lid = outer_mod_name ~loc lid in
     let m =
       match Map.find resolve_env.external_modules name with
@@ -276,21 +284,19 @@ module Scope = struct
       | None -> None
     in
     match (m, lid) with
-    | Some m, Some lid -> find_module_ ~loc resolve_env lid m
+    | Some m, Some lid -> find_module_ ~loc ~scopes resolve_env lid m
     | Some m, None -> Some m
     | None, _ -> None
 
-  and find_module ~loc (lid : lid) resolve_env scopes =
+  and find_module ~loc lid resolve_env scopes =
     match
-      List.find_map
-        ~f:(find_module_ ~loc resolve_env lid.txt)
-        scopes
+      List.find_map ~f:(find_module_ ~loc ~scopes resolve_env lid) scopes
     with
     | Some m -> m
     | None -> (
-      match get_global_module ~loc resolve_env lid.txt with
+      match get_global_module ~loc ~scopes resolve_env lid with
       | Some m -> m
-      | None -> raise (Error (loc, Unbound_module lid.txt)) )
+      | None -> raise (Error (loc, Unbound_module lid)) )
 
   let rec find_module_deferred ~loc lid scope =
     match lid with
@@ -398,8 +404,8 @@ let register_external_module name x env =
   (env.resolve_env).external_modules
   <- Map.set ~key:name ~data:x env.resolve_env.external_modules
 
-let find_module ~loc lid env =
-  Scope.find_module ~loc lid env.resolve_env env.scope_stack
+let find_module ~loc (lid : lid) env =
+  Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack
 
 let find_module_deferred ~loc (lid : lid) env =
   List.find_map ~f:(Scope.find_module_deferred ~loc lid.txt) env.scope_stack
@@ -422,7 +428,8 @@ let find_of_lident ~kind ~get_name (lid : lid) env =
     | Ldot (path, name) ->
         fun scope ->
           Option.bind ~f:(get_name name)
-            (Scope.find_module_ ~loc env.resolve_env path scope)
+            (Scope.find_module_ ~loc ~scopes:env.scope_stack env.resolve_env
+               path scope)
     | Lapply _ -> raise (Error (loc, Lident_unhandled (kind, lid.txt)))
   in
   match List.find_map ~f:full_get_name env.scope_stack with
@@ -430,7 +437,10 @@ let find_of_lident ~kind ~get_name (lid : lid) env =
   | None -> (
     match lid.txt with
     | Ldot (path, name) ->
-        let m = Scope.get_global_module ~loc env.resolve_env path in
+        let m =
+          Scope.get_global_module ~loc ~scopes:env.scope_stack env.resolve_env
+            path
+        in
         Option.bind m ~f:(get_name name)
     | _ -> None )
 
@@ -1175,6 +1185,7 @@ let report_error ppf = function
   | Functor_in_module_sig ->
       fprintf ppf
         "Internal error: Bare functor found as part of a module signature."
+  | Not_a_functor -> fprintf ppf "This module is not a functor."
 
 let () =
   Location.register_error_of_exn (function

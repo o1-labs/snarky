@@ -742,12 +742,14 @@ and check_module_sig env msig =
         let env = Envi.open_module env in
         let env = Envi.open_namespace_scope f_instance env in
         (* TODO: check that f_instance matches f' *)
-        let m, env = check_module_sig env msig in
-        let _, env = Envi.pop_module ~loc env in
-        (m, env.Envi.resolve_env)
+        let m, _env = check_module_sig env msig in
+        match m with
+        | Envi.Scope.Immediate m -> m
+        | Envi.Scope.Deferred path ->
+            Envi.find_module ~loc (Location.mkloc path loc) env
       in
       (* Check that f builds the functor as expected. *)
-      ignore (ftor f);
+      ignore (ftor f) ;
       let m = Envi.make_functor ftor in
       (Envi.Scope.Immediate m, env)
 
@@ -843,18 +845,13 @@ and check_module_expr env m =
         let env = Envi.open_namespace_scope f_instance env in
         (* TODO: check that f_instance matches f' *)
         let env, m' = check_module_expr env m in
-        let m, env = Envi.pop_module ~loc env in
-        let _, env = Envi.pop_module ~loc env in
-        (Envi.Scope.Immediate m, env.Envi.resolve_env, m')
+        let m, _env = Envi.pop_module ~loc env in
+        (m, m')
       in
       (* Check that f builds the functor as expected. *)
-      let _, _, m = ftor f' in
+      let _, m = ftor f' in
       let env =
-        Envi.push_scope
-          (Envi.make_functor (fun f ->
-               let m, env, _ = ftor f in
-               (m, env) ))
-          env
+        Envi.push_scope (Envi.make_functor (fun f -> fst (ftor f))) env
       in
       (env, {m with mod_desc= Functor (name, f, m)})
 
