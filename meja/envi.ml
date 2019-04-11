@@ -944,7 +944,7 @@ module TypeDecl = struct
                           ~params:ctor_ret_params (TRecord fields) env
                       in
                       Type.map_env env ~f:(TypeEnvi.add_decl decl) ;
-                      (env, Ctor_record (tdec_id, fields))
+                      (env, Ctor_record (decl.tdec_id, fields))
                 in
                 let env = push_scope scope (close_expr_scope env) in
                 (env, {ctor with ctor_args; ctor_ret}) )
