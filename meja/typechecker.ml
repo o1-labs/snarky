@@ -823,8 +823,11 @@ let rec check_statement env stmt =
   | Request (arg, ctor_decl, handler) ->
       let open Ast_build in
       let variant =
-        Type.variant ~loc ~params:[arg] (Lid.of_list ["Snarky__Request"; "t"])
+        Type.variant ~loc ~params:[Type.none ~loc ()]
+          (Lid.of_list ["Snarky__Request"; "t"])
       in
+      let ctor_ret = Type.mk ~loc (Tctor {variant with var_params= [arg]}) in
+      let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
       let env, _, ctors = type_extension ~loc variant [ctor_decl] env in
       let ctor_decl =
         match ctors with
@@ -835,32 +838,33 @@ let rec check_statement env stmt =
       let handler, env =
         match handler with
         | Some (pat, body) ->
-            let loc =
+            let loc, pat_loc =
               Location.(
                 match pat with
                 | Some pat ->
-                    {body.exp_loc with loc_start= pat.pat_loc.loc_start}
-                | None -> body.exp_loc)
+                    ( {body.exp_loc with loc_start= pat.pat_loc.loc_start}
+                    , pat.pat_loc )
+                | None -> (body.exp_loc, body.exp_loc))
             in
             let p = Pat.var ~loc ("handle_" ^ name) in
             let e =
               let request = Lid.of_name "request" in
               let respond = Lid.of_name "respond" in
               let body =
-                Exp.let_ (Pat.var ~loc "unhandled")
-                  (Exp.var ~loc (Lid.of_list ["Snarky__Request"; "unhandled"]))
-                  (Exp.match_ ~loc
+                Exp.let_ ~loc (Pat.var "unhandled")
+                  (Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
+                  (Exp.match_ ~loc:stmt.stmt_loc
                      (Exp.var ~loc (Lid.of_name "request"))
-                     [ (Pat.ctor ~loc (Lid.of_name name) ?args:pat, body)
-                     ; ( Pat.any ~loc ()
-                       , Exp.var ~loc
-                           (Lid.of_list ["Snarky__Request"; "unhandled"]) ) ])
+                     [ ( Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat
+                       , body )
+                     ; ( Pat.any ()
+                       , Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"])
+                       ) ])
               in
-              Exp.fun_ ~loc
-                (Pat.ctor ~loc
+              Exp.fun_
+                (Pat.ctor
                    (Lid.of_list ["Snarky__Request"; "With"])
-                   ~args:
-                     (Pat.record ~loc [Pat.field request; Pat.field respond]))
+                   ~args:(Pat.record [Pat.field request; Pat.field respond]))
                 body
             in
             let _p, e, env = check_binding ~toplevel:true env p e in

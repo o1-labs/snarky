@@ -1,4 +1,12 @@
-request('a) Request(list('a));
+request('x) Request(list('x));
 
-request('a) Request2(list('a))
-  with handler (l) => { Snarky__Request.Repond (List.hd(l)); };
+request('x) Request2
+  with handler => { let _ = (); unhandled; };
+
+request('x) Request3(option('x))
+  with handler (x) => {
+    switch (x) {
+      | None => unhandled
+      | Some(x) => respond(x)
+    };
+  };
