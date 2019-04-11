@@ -847,15 +847,14 @@ let rec check_statement env stmt =
               let request = Lid.of_name "request" in
               let respond = Lid.of_name "respond" in
               let body =
-                Exp.match_ ~loc
-                  (Exp.var ~loc (Lid.of_name "request"))
-                  [ ( Pat.ctor ~loc (Lid.of_name name) ?args:pat
-                    , Exp.apply ~loc
-                        (Exp.var ~loc (Lid.of_name "respond"))
-                        [body] )
-                  ; ( Pat.any ~loc ()
-                    , Exp.ctor ~loc
-                        (Lid.of_list ["Snarky__Request"; "Unhandled"]) ) ]
+                Exp.let_ (Pat.var ~loc "unhandled")
+                  (Exp.var ~loc (Lid.of_list ["Snarky__Request"; "unhandled"]))
+                  (Exp.match_ ~loc
+                     (Exp.var ~loc (Lid.of_name "request"))
+                     [ (Pat.ctor ~loc (Lid.of_name name) ?args:pat, body)
+                     ; ( Pat.any ~loc ()
+                       , Exp.var ~loc
+                           (Lid.of_list ["Snarky__Request"; "unhandled"]) ) ])
               in
               Exp.fun_ ~loc
                 (Pat.ctor ~loc
@@ -871,11 +870,14 @@ let rec check_statement env stmt =
                     Fun
                       ( _
                       , { exp_desc=
-                            Match
+                            Let
                               ( _
-                              , [ ( {pat_desc= PCtor (_, pat); _}
-                                  , {exp_desc= Apply (_, [body]); _} )
-                                ; _ ] ); _ }
+                              , _
+                              , { exp_desc=
+                                    Match
+                                      ( _
+                                      , [ ({pat_desc= PCtor (_, pat); _}, body)
+                                        ; _ ] ); _ } ); _ }
                       , _ ); _ } ->
                   (pat, body)
               | _ -> failwith "Unexpected output of check_binding for Request"

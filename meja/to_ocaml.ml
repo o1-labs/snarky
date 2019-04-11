@@ -181,9 +181,10 @@ let rec of_statement_desc ?loc = function
                             [%p
                               Pat.construct ~loc (mk_lid ctor.ctor_ident)
                                 (Option.map ~f:of_pattern args)]
-                        ; respond= ____respond____ } ->
-                        ____respond____ [%e of_expression body]
-                    | _ -> unhandled])
+                        ; respond } ->
+                        let unhandled = Snarky.Request.unhandled in
+                        [%e of_expression body]
+                    | _ -> Snarky.Request.unhandled])
       in
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)

@@ -110,9 +110,10 @@ let main =
       | Some opam_path ->
           let lib_path = Filename.concat opam_path "lib" in
           Loader.load_directory env (Filename.concat lib_path "snarky") ;
-          ignore (
-            Loader.load ~loc:Location.none ~name:"Snarky__Request" env.Envi.resolve_env
-              (Filename.concat lib_path "snarky/snarky__Request.cmi")) ;
+          ignore
+            (Loader.load ~loc:Location.none ~name:"Snarky__Request"
+               env.Envi.resolve_env
+               (Filename.concat lib_path "snarky/snarky__Request.cmi")) ;
           env
       | None ->
           Format.(
