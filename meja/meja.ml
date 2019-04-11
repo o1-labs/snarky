@@ -104,6 +104,24 @@ let main =
   in
   Arg.parse arg_spec (fun filename -> file := Some filename) usage_text ;
   let env = Envi.Core.env in
+  let env =
+    if true then (
+      match Sys.getenv_opt "OPAM_SWITCH_PREFIX" with
+      | Some opam_path ->
+          let lib_path = Filename.concat opam_path "lib" in
+          Loader.load_directory env (Filename.concat lib_path "snarky") ;
+          ignore (
+            Loader.load ~loc:Location.none ~name:"Snarky__Request" env.Envi.resolve_env
+              (Filename.concat lib_path "snarky/snarky__Request.cmi")) ;
+          env
+      | None ->
+          Format.(
+            fprintf err_formatter
+              "Warning: OPAM_SWITCH_PREFIX environment variable is not set. \
+               Not loading the standard library.") ;
+          env )
+    else env
+  in
   List.iter !cmi_dirs ~f:(Loader.load_directory env) ;
   try
     let cmi_files = List.rev !cmi_files in
