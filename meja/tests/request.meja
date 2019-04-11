@@ -1,4 +1,4 @@
 request('a) Request(list('a));
 
 request('a) Request2(list('a))
-  with handler (l) => { List.hd(l); };
+  with handler (l) => { Snarky__Request.Repond (List.hd(l)); };
