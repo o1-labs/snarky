@@ -1062,8 +1062,7 @@ module Core = struct
     in
     TypeDecl.import
       (mk_type_decl "list" ~params:[var]
-         (TVariant
-            [mk_constructor "::" ~params:[var; typ]; mk_constructor "None"]))
+         (TVariant [mk_constructor "::" ~params:[var; typ]; mk_constructor "[]"]))
       env
 
   let env =
