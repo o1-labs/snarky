@@ -755,6 +755,40 @@ and check_module_sig env msig =
       let m = Envi.make_functor ftor in
       (Envi.Scope.Immediate m, env)
 
+let type_extension ~loc variant ctors =
+  let ( {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_id; _}
+      as decl ) =
+    match Envi.raw_find_type_declaration variant.var_ident env with
+    | open_decl -> open_decl
+    | exception _ ->
+        raise (Error (loc, Unbound ("type constructor", variant.var_ident)))
+  in
+  ( match tdec_desc with
+  | TOpen -> ()
+  | _ -> raise (Error (loc, Not_extensible variant.var_ident.txt)) ) ;
+  ( match List.iter2 tdec_params variant.var_params ~f:(fun _ _ -> ()) with
+  | Ok _ -> ()
+  | Unequal_lengths ->
+      raise (Error (loc, Extension_different_arity variant.var_ident.txt)) ) ;
+  let decl =
+    { tdec_ident
+    ; tdec_params= variant.var_params
+    ; tdec_implicit_params
+    ; tdec_id
+    ; tdec_desc= TExtend (variant.var_ident, decl, ctors)
+    ; tdec_loc= loc }
+  in
+  let decl, env = Envi.TypeDecl.import decl env in
+  let ctors =
+    match decl.tdec_desc with
+    | TExtend (_, _, ctors) -> ctors
+    | _ -> failwith "Expected a TExtend."
+  in
+  let variant =
+    {variant with var_decl_id= tdec_id; var_params= decl.tdec_params}
+  in
+  (env, variant, ctors)
+
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
@@ -784,42 +818,7 @@ let rec check_statement env stmt =
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)
   | TypeExtension (variant, ctors) ->
-      let ( { tdec_ident
-            ; tdec_params
-            ; tdec_implicit_params
-            ; tdec_desc
-            ; tdec_id; _ } as decl ) =
-        match Envi.raw_find_type_declaration variant.var_ident env with
-        | open_decl -> open_decl
-        | exception _ ->
-            raise
-              (Error (loc, Unbound ("type constructor", variant.var_ident)))
-      in
-      ( match tdec_desc with
-      | TOpen -> ()
-      | _ -> raise (Error (loc, Not_extensible variant.var_ident.txt)) ) ;
-      ( match List.iter2 tdec_params variant.var_params ~f:(fun _ _ -> ()) with
-      | Ok _ -> ()
-      | Unequal_lengths ->
-          raise (Error (loc, Extension_different_arity variant.var_ident.txt))
-      ) ;
-      let decl =
-        { tdec_ident
-        ; tdec_params= variant.var_params
-        ; tdec_implicit_params
-        ; tdec_id
-        ; tdec_desc= TExtend (variant.var_ident, decl, ctors)
-        ; tdec_loc= loc }
-      in
-      let decl, env = Envi.TypeDecl.import decl env in
-      let ctors =
-        match decl.tdec_desc with
-        | TExtend (_, _, ctors) -> ctors
-        | _ -> failwith "Expected a TExtend."
-      in
-      let variant =
-        {variant with var_decl_id= tdec_id; var_params= decl.tdec_params}
-      in
+      let env, variant, ctors = type_extension ~loc variant ctors in
       (env, {stmt with stmt_desc= TypeExtension (variant, ctors)})
   | Request _ -> (env, stmt)
 
