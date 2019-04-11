@@ -909,9 +909,17 @@ module TypeDecl = struct
                   match ctor.ctor_ret with
                   | Some ret ->
                       let env = open_expr_scope env in
+                      let name =
+                        match decl.tdec_desc with
+                        | TVariant _ -> Lident decl.tdec_ident.txt
+                        | TExtend (lid, _, _) -> lid.txt
+                        | _ ->
+                            failwith
+                              "Could not find name for TVariant/TExtend."
+                      in
                       ( match ret.type_desc with
-                      | Tctor {var_ident= {txt= Lident str; _}; _}
-                        when String.equal str decl.tdec_ident.txt ->
+                      | Tctor {var_ident= {txt= lid; _}; _}
+                        when Longident.compare lid name = 0 ->
                           ()
                       | _ ->
                           raise
