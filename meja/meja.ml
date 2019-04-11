@@ -109,12 +109,30 @@ let main =
       match Sys.getenv_opt "OPAM_SWITCH_PREFIX" with
       | Some opam_path ->
           let lib_path = Filename.concat opam_path "lib" in
+          let snarky_build_path =
+            Filename.(
+              Sys.executable_name |> dirname
+              |> Fn.flip concat
+                   (concat parent_dir_name "src/.snarky.objs/byte/snarky/"))
+          in
           Loader.load_directory env (Filename.concat lib_path "snarky") ;
-          ignore
-            (Loader.load ~loc:Location.none ~name:"Snarky__Request"
-               env.Envi.resolve_env
-               (Filename.concat lib_path "snarky/snarky__Request.cmi")) ;
-          env
+          Loader.load_directory env snarky_build_path ;
+          let m, env =
+            let loc = Location.none in
+            let mkloc s = Location.mkloc s loc in
+            let env = Envi.open_module env in
+            let env = Envi.open_module env in
+            let m =
+              Envi.find_module ~loc
+                (mkloc (Longident.Lident "Snarky__Request"))
+                env
+            in
+            let env = Envi.add_module (mkloc "Request") m env in
+            let m, env = Envi.pop_module ~loc env in
+            let env = Envi.add_module (mkloc "Snarky") m env in
+            Envi.pop_module ~loc env
+          in
+          Envi.open_namespace_scope m env
       | None ->
           Format.(
             fprintf err_formatter
