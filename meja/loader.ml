@@ -17,7 +17,9 @@ let modname_of_filename file =
   String.capitalize (Filename.chop_extension (Filename.basename file))
 
 let load_directory env dirname =
-  let files = try Sys.readdir dirname with Sys_error _ -> [||] in
+  let files = try Sys.readdir dirname with Sys_error _ ->
+    Format.(fprintf err_formatter "Warning: Could not read load directory %s@." dirname);
+    [||] in
   Array.iter files ~f:(fun file ->
       if String.equal (Filename.extension file) ".cmi" then
         let filename = Filename.concat dirname file in
