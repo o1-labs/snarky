@@ -130,7 +130,7 @@ let main =
               with _ ->
                 Format.(
                   fprintf err_formatter
-                    "Could not find the compiled inteface files for Snarky.") ;
+                    "Could not find the compiled interface files for Snarky.@.") ;
                 exit 1
             in
             let env = Envi.add_module (mkloc "Request") m env in
