@@ -58,6 +58,7 @@ let consexp ~pos hd tl =
 %token DOTDOTDOT
 %token DOTDOT
 %token DOT
+%token <string> COMMENT
 %token <string> PREFIXOP
 %token <string> INFIXOP0
 %token <string> INFIXOP1
