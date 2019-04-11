@@ -36,7 +36,108 @@ module Typ = struct
     ('var, 'value, 'field, 'checked) typ
 end
 
-module rec Checked : sig
+module Data_spec = struct
+  module T = struct
+    (** A list of {!type:Type.Typ.t} values, describing the inputs to a checked
+        computation. The type [('r_var, 'r_value, 'k_var, 'k_value, 'field) t]
+        represents
+        - ['k_value] is the OCaml type of the computation
+        - ['r_value] is the OCaml type of the result
+        - ['k_var] is the type of the computation within the R1CS
+        - ['k_value] is the type of the result within the R1CS
+        - ['field] is the field over which the R1CS operates
+        - ['checked] is the type of checked computation that verifies the stored
+          contents as R1CS variables.
+
+        This functions the same as OCaml's default list type:
+{[
+  Data_spec.[typ1; typ2; typ3]
+
+  Data_spec.(typ1 :: typs)
+
+  let open Data_spec in
+  [typ1; typ2; typ3; typ4; typ5]
+
+  let open Data_spec in
+  typ1 :: typ2 :: typs
+
+]}
+        all function as you would expect.
+    *)
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) data_spec =
+      | ( :: ) :
+          ('var, 'value, 'f, 'checked) Typ.t
+          * ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) data_spec
+          -> ( 'r_var
+             , 'r_value
+             , 'var -> 'k_var
+             , 'value -> 'k_value
+             , 'f
+             , 'checked )
+             data_spec
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f, 'checked) data_spec
+  end
+
+  include T
+
+  type ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) t =
+    ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) data_spec
+end
+
+module type Types = sig
+  module Checked : sig
+    type ('a, 's, 'f) t
+
+    type ('a, 's, 'f, 'arg) thunk
+  end
+
+  module As_prover : sig
+    type ('a, 'f, 's) t
+  end
+
+  module Provider : sig
+    type ('a, 'f, 's) t =
+      (('a Request.t, 'f, 's) As_prover.t, ('a, 'f, 's) As_prover.t) Provider.t
+
+    module T = Provider.T
+
+    include module type of Provider.T
+  end
+
+  module Typ : sig
+    type ('var, 'value, 'f) t =
+      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) Typ.t
+
+    module T = Typ.T
+
+    include module type of Typ.T
+  end
+
+  module Data_spec : sig
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , 'f
+      , (unit, unit, 'f) Checked.t )
+      Data_spec.t
+
+    module T = Data_spec.T
+
+    include module type of Data_spec.T
+  end
+end
+
+module Provider = struct
+  type ('a, 'f, 's) t =
+    (('a Request.t, 'f, 's) As_prover0.t, ('a, 'f, 's) As_prover0.t) Provider.t
+
+  module T = Provider.T
+  include T
+end
+
+module Checked = struct
   (* TODO-someday: Consider having an "Assembly" type with only a store constructor for straight up Var.t's
     that this gets compiled into. *)
 
@@ -83,23 +184,4 @@ module rec Checked : sig
         * (('var, 'value) Handle.t -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
     | Next_auxiliary : (int -> ('a, 's, 'f) t) -> ('a, 's, 'f) t
-end =
-  Checked
-
-and Run_state : sig
-  (** The internal state used to run a checked computation. *)
-  type ('prover_state, 'field) t =
-    { system: 'field Backend_types.R1CS_constraint_system.t option
-    ; input: 'field Vector.t
-    ; aux: 'field Vector.t
-    ; eval_constraints: bool
-    ; num_inputs: int
-    ; next_auxiliary: int ref
-    ; prover_state: 'prover_state option
-    ; stack: string list
-    ; handler: Request.Handler.t
-    ; is_running: bool
-    ; as_prover: bool ref
-    ; run_special: 'a 's. (('a, 's, 'field) Checked.t -> 'a) option }
-end =
-  Run_state
+end

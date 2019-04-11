@@ -2,7 +2,7 @@ module Bignum_bigint = Bigint
 open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
-module Typ0 = Typ
+module Checked_ast = Checked
 
 (** Yojson-compatible JSON type. *)
 type 'a json =
@@ -167,13 +167,19 @@ module type Basic = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , field
+      , (unit, unit) Checked.t )
+      Types.Data_spec.t
 
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
-    include module type of Typ0.Data_spec0
+    include module type of Types.Data_spec.T
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -491,10 +497,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
+    type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
-    include
-      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
+    include Monad_let.S2
 
     module List :
       Monad_sequence.S
@@ -789,7 +794,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
-    type ('a, 'prover_state) t = ('a, field, 'prover_state) As_prover.t
+    type ('a, 'prover_state) t
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 
@@ -816,7 +821,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** Read the contents of a R1CS variable representing a single field
         element. *)
 
-    val get_state : ('prover_state, 'prover_state) t
+    val get_state : unit -> ('prover_state, 'prover_state) t
     (** Read the ['prover_state] carried by the {!type:As_prover.t} monad. *)
 
     val set_state : 'prover_state -> (unit, 'prover_state) t
@@ -850,15 +855,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   module Runner : sig
     type state
 
-    val run : ('a, unit) Checked.t -> state -> state * 'a
-
-    val set_handler : Request.Handler.t -> state -> state
-
-    val get_handler : state -> Request.Handler.t
-
-    val set_stack : string list -> state -> state
-
-    val get_stack : state -> string list
+    val run : ('a, unit, Field.t) Checked_ast.t -> state -> state * 'a
   end
 
   type response = Request.response
@@ -1222,7 +1219,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val reduce_to_prover :
-       ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
+       ( (unit, 's, Field.t) Checked_ast.t
+       , Proof.t
+       , 'k_var
+       , 'k_value )
+       Data_spec.t
     -> 'k_var
     -> (Proving_key.t -> ?handlers:Handler.t list -> 's -> 'k_value) Staged.t
   (** Reduce a checked computation, then generate a proof.
@@ -1254,7 +1255,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
 
   val constraint_count :
-    ?log:(?start:bool -> string -> int -> unit) -> (_, _) Checked.t -> int
+       ?log:(?start:bool -> string -> int -> unit)
+    -> (_, _, _) Checked_ast.t
+    -> int
   (** Returns the number of constraints in the constraint system.
 
       The optional [log] argument is called at the start and end of each
@@ -1415,13 +1418,19 @@ module type Run = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , field
+      , (unit, unit, Field.Constant.t) Checked.t )
+      Types.Data_spec.t
 
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
-    include module type of Typ0.Data_spec0
+    include module type of Types.Data_spec.T
   end
   
   (** Mappings from OCaml types to R1CS variables and constraints. *)
@@ -1445,7 +1454,7 @@ module type Run = sig
     end
 
     type 'prover_state run_state =
-      ('prover_state, Field.Constant.t) Types.Run_state.t
+      ('prover_state, Field.Constant.t) Run_state.t
 
     type ('var, 'value) t =
       ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t

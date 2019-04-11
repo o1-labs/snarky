@@ -4,6 +4,8 @@ open Core
 
 type 'a t = unit ptr
 
+let null = null
+
 module type S = sig
   type elt
 

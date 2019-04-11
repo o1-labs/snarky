@@ -46,11 +46,47 @@ module T0 = struct
     | Next_auxiliary k -> Next_auxiliary (fun x -> bind (k x) ~f)
 end
 
+module Types = struct
+  module Checked = struct
+    type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
+
+    type ('a, 's, 'f, 'arg) thunk = ('a, 's, 'f) t
+  end
+
+  module As_prover = struct
+    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  end
+
+  module Provider = Types.Provider
+
+  module Typ = struct
+    type ('var, 'value, 'f) t =
+      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) Types.Typ.t
+
+    module T = Types.Typ.T
+    include T
+  end
+
+  module Data_spec = struct
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , 'f
+      , (unit, unit, 'f) Checked.t )
+      Types.Data_spec.t
+
+    module T = Types.Data_spec.T
+    include T
+  end
+end
+
 module Basic :
-  Checked_intf.Basic
-  with type ('a, 's, 'f) t = ('a, 's, 'f) t
-   and type 'f field = 'f = struct
-  type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
+  Checked_intf.Basic with type 'f field = 'f with module Types = Types = struct
+  module Types = Types
+
+  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
 
   type 'f field = 'f
 
@@ -73,31 +109,36 @@ module Basic :
   let next_auxiliary = Next_auxiliary return
 end
 
-module Make (Basic : Checked_intf.Basic) :
+module Make
+    (Basic : Checked_intf.Basic')
+    (As_prover : As_prover_intf.Basic
+                 with type 'f field := 'f Basic.field
+                 with module Types := Basic.Types) :
   Checked_intf.S
-  with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t
-   and type 'f field = 'f Basic.field = struct
+  with type 'f field = 'f Basic.field
+  with module Types = Basic.Types = struct
   include Basic
 
-  let request_witness
-      (typ : ('var, 'value, 'f field, (unit, unit, 'f field) t) Types.Typ.t)
-      (r : ('value Request.t, 'f field, 's) As_prover0.t) =
+  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+
+  let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
+      (r : ('value Request.t, 'f field, 's) As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
 
   let request ?such_that typ r =
     match such_that with
-    | None -> request_witness typ (As_prover0.return r)
+    | None -> request_witness typ (As_prover.return r)
     | Some such_that ->
         let open Let_syntax in
-        let%bind x = request_witness typ (As_prover0.return r) in
+        let%bind x = request_witness typ (As_prover.return r) in
         let%map () = such_that x in
         x
 
   let exists_handle ?request ?compute typ =
     let provider =
       let request =
-        Option.value request ~default:(As_prover0.return Request.Fail)
+        Option.value request ~default:(As_prover.return Request.Fail)
       in
       match compute with
       | None -> Provider.Request request
@@ -121,7 +162,7 @@ module Make (Basic : Checked_intf.Basic) :
 
   let handle t k = with_handler (Request.Handler.create_single k) t
 
-  let do_nothing _ = As_prover0.return ()
+  let do_nothing _ = As_prover.return ()
 
   let with_state ?(and_then = do_nothing) f sub = with_state f and_then sub
 
@@ -152,10 +193,55 @@ end
 module T = struct
   include (
     Make
-      (Basic) :
-      Checked_intf.S
-      with type ('a, 's, 'f) t := ('a, 's, 'f) t
-       and type 'f field = 'f )
+      (Basic)
+      (struct
+        include As_prover0
+        module Types = Types
+      end) :
+      Checked_intf.S' with type 'f field = 'f with module Types := Types )
 end
 
 include T
+
+let rec constraint_count_aux : type a s.
+    log:(?start:_ -> _) -> int -> (a, s, _) Types.Checked.t -> int * a =
+ fun ~log count t0 ->
+  match t0 with
+  | Pure x -> (count, x)
+  | Direct (d, k) ->
+      let state = Run_state.dummy_state () in
+      (* We can't inspect a direct computation, so we skip it. *)
+      (* TODO: Create a constraint system from the computation and extract
+               the number of constraints from there. *)
+      let _, x = d state in
+      constraint_count_aux ~log count (k x)
+  | Reduced (t, _, _, k) ->
+      let count, y = constraint_count_aux ~log count t in
+      constraint_count_aux ~log count (k y)
+  | As_prover (_x, k) -> constraint_count_aux ~log count k
+  | Add_constraint (_c, t) -> constraint_count_aux ~log (count + 1) t
+  | Next_auxiliary k -> constraint_count_aux ~log count (k 1)
+  | With_label (s, t, k) ->
+      log ~start:true s count ;
+      let count', y = constraint_count_aux ~log count t in
+      log s count' ;
+      constraint_count_aux ~log count' (k y)
+  | With_state (_p, _and_then, t_sub, k) ->
+      let count', y = constraint_count_aux ~log count t_sub in
+      constraint_count_aux ~log count' (k y)
+  | With_handler (_h, t, k) ->
+      let count, x = constraint_count_aux ~log count t in
+      constraint_count_aux ~log count (k x)
+  | Clear_handler (t, k) ->
+      let count, x = constraint_count_aux ~log count t in
+      constraint_count_aux ~log count (k x)
+  | Exists ({alloc; check; _}, _c, k) ->
+      let alloc_var () = Cvar.Var 1 in
+      let var = Typ_monads.Alloc.run alloc alloc_var in
+      (* TODO: Push a label onto the stack here *)
+      let count, () = constraint_count_aux ~log count (check var) in
+      constraint_count_aux ~log count (k {Handle.var; value= None})
+
+let constraint_count ?(log = fun ?start:_ _ _ -> ())
+    (t : (_, _, _) Types.Checked.t) : int =
+  fst (constraint_count_aux ~log 0 t)

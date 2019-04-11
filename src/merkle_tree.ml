@@ -469,7 +469,7 @@ struct
       exists (Path.typ ~depth)
         ~compute:
           As_prover.(
-            map2 ~f:get_path get_state (read (Address.typ ~depth) addr0))
+            map2 ~f:get_path (get_state ()) (read (Address.typ ~depth) addr0))
     in
     let%bind prev_root_hash = implied_root prev_entry_hash addr0 prev_path in
     let%bind () = Hash.assert_equal root prev_root_hash
