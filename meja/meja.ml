@@ -112,10 +112,12 @@ let main =
           let snarky_build_path =
             Filename.(
               Sys.executable_name |> dirname
-              |> Fn.flip concat
-                   (concat parent_dir_name "src/.snarky.objs/native/"))
+              |> Fn.flip concat (concat parent_dir_name "src/.snarky.objs/"))
           in
           Loader.load_directory env (Filename.concat lib_path "snarky") ;
+          Loader.load_directory env (Filename.concat snarky_build_path "byte") ;
+          Loader.load_directory env
+            (Filename.concat snarky_build_path "native") ;
           Loader.load_directory env snarky_build_path ;
           let m, env =
             let loc = Location.none in
