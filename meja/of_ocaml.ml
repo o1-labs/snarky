@@ -69,7 +69,8 @@ let to_ctor_decl {cd_id; cd_args; cd_res; cd_loc; _} =
 let to_type_decl_desc decl =
   match (decl.type_manifest, decl.type_kind) with
   | Some typ, _ -> TAlias (to_type_expr ~loc:decl.type_loc typ)
-  | None, (Type_abstract | Type_open) -> TAbstract
+  | None, Type_abstract -> TAbstract
+  | None, Type_open -> TOpen
   | None, Type_record (labels, _) -> TRecord (List.map labels ~f:to_field_decl)
   | None, Type_variant ctors -> TVariant (List.map ctors ~f:to_ctor_decl)
 
