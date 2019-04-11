@@ -113,7 +113,7 @@ let main =
             Filename.(
               Sys.executable_name |> dirname
               |> Fn.flip concat
-                   (concat parent_dir_name "src/.snarky.objs/byte/snarky/"))
+                   (concat parent_dir_name "src/.snarky.objs/byte/"))
           in
           Loader.load_directory env (Filename.concat lib_path "snarky") ;
           Loader.load_directory env snarky_build_path ;
