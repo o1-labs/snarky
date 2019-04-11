@@ -755,7 +755,7 @@ and check_module_sig env msig =
       let m = Envi.make_functor ftor in
       (Envi.Scope.Immediate m, env)
 
-let type_extension ~loc variant ctors =
+let type_extension ~loc variant ctors env =
   let ( {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_id; _}
       as decl ) =
     match Envi.raw_find_type_declaration variant.var_ident env with
@@ -818,9 +818,72 @@ let rec check_statement env stmt =
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)
   | TypeExtension (variant, ctors) ->
-      let env, variant, ctors = type_extension ~loc variant ctors in
+      let env, variant, ctors = type_extension ~loc variant ctors env in
       (env, {stmt with stmt_desc= TypeExtension (variant, ctors)})
-  | Request _ -> (env, stmt)
+  | Request (arg, ctor_decl, handler) ->
+      let open Ast_build in
+      let variant =
+        Type.variant ~loc ~params:[arg] (Lid.of_list ["Snarky__Request"; "t"])
+      in
+      let env, _, ctors = type_extension ~loc variant [ctor_decl] env in
+      let ctor_decl =
+        match ctors with
+        | [ctor] -> ctor
+        | _ -> failwith "Wrong number of constructors returned for Request."
+      in
+      let name = ctor_decl.ctor_ident.txt in
+      let handler, env =
+        match handler with
+        | Some (pat, body) ->
+            let loc =
+              Location.(
+                match pat with
+                | Some pat ->
+                    {body.exp_loc with loc_start= pat.pat_loc.loc_start}
+                | None -> body.exp_loc)
+            in
+            let p = Pat.var ~loc ("handle_" ^ name) in
+            let e =
+              let request = Lid.of_name "request" in
+              let respond = Lid.of_name "respond" in
+              let body =
+                Exp.match_ ~loc
+                  (Exp.var ~loc (Lid.of_name "request"))
+                  [ ( Pat.ctor ~loc (Lid.of_name name) ?args:pat
+                    , Exp.apply ~loc
+                        (Exp.var ~loc (Lid.of_name "respond"))
+                        [body] )
+                  ; ( Pat.any ~loc ()
+                    , Exp.ctor ~loc
+                        (Lid.of_list ["Snarky__Request"; "Unhandled"]) ) ]
+              in
+              Exp.fun_ ~loc
+                (Pat.ctor ~loc
+                   (Lid.of_list ["Snarky__Request"; "With"])
+                   ~args:
+                     (Pat.record ~loc [Pat.field request; Pat.field respond]))
+                body
+            in
+            let _p, e, env = check_binding ~toplevel:true env p e in
+            let pat, body =
+              match e with
+              | { exp_desc=
+                    Fun
+                      ( _
+                      , { exp_desc=
+                            Match
+                              ( _
+                              , [ ( {pat_desc= PCtor (_, pat); _}
+                                  , {exp_desc= Apply (_, [body]); _} )
+                                ; _ ] ); _ }
+                      , _ ); _ } ->
+                  (pat, body)
+              | _ -> failwith "Unexpected output of check_binding for Request"
+            in
+            (Some (pat, body), env)
+        | None -> (None, env)
+      in
+      (env, {stmt with stmt_desc= Request (arg, ctor_decl, handler)})
 
 and check_module_expr env m =
   let loc = m.mod_loc in
