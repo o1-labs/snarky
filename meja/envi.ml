@@ -983,10 +983,15 @@ module TypeDecl = struct
 
   let find_of_type typ env =
     let open Option.Let_syntax in
-    let%bind variant =
+    let%map variant =
       match typ.type_desc with Tctor variant -> Some variant | _ -> None
     in
-    let%map decl = TypeEnvi.decl env.resolve_env.type_env variant in
+    let decl =
+      match TypeEnvi.decl env.resolve_env.type_env variant with
+      | Some decl -> decl
+      | None ->
+          raise (Error (typ.type_loc, Unbound_type variant.var_ident.txt))
+    in
     let bound_vars =
       match
         List.fold2
