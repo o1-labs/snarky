@@ -1335,10 +1335,8 @@ struct
     let reduce_to_prover : type a s r_value.
            ((a, s, Field.t) Checked_ast.t, Proof.t, 'k_var, 'k_value) t
         -> 'k_var
-        -> Proving_key.t
-        -> ?handlers:Handler.t list
-        -> s
-        -> 'k_value =
+        -> (Proving_key.t -> ?handlers:Handler.t list -> s -> 'k_value)
+           Staged.t =
      fun t0 k0 ->
       let next_input = ref 1 in
       let alloc_var () =
@@ -1358,8 +1356,8 @@ struct
             fun _ -> ret
       in
       let reduced = go t0 k0 in
-      fun key ?handlers s ->
-        prove ~run:Checked.Runner.run key t0 ?handlers s reduced
+      stage (fun key ?handlers s ->
+          prove ~run:Checked.Runner.run key t0 ?handlers s reduced )
   end
 
   module Cvar1 = struct
