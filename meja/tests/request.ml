@@ -1,9 +1,9 @@
 include struct
-  type 'x Snarky.Request.t += Request : 'x list -> 'x Snarky__Request.t
+  type _ Snarky.Request.t += Request : 'x list -> 'x Snarky.Request.t
 end
 
 include struct
-  type 'x Snarky.Request.t += Request2 : 'x Snarky__Request.t
+  type _ Snarky.Request.t += Request2 : 'x Snarky.Request.t
 
   let handle_Request2 = function
     | With {request= Request2; respond} ->
@@ -14,7 +14,7 @@ include struct
 end
 
 include struct
-  type 'x Snarky.Request.t += Request3 : 'x option -> 'x Snarky__Request.t
+  type _ Snarky.Request.t += Request3 : 'x option -> 'x Snarky.Request.t
 
   let handle_Request3 = function
     | With {request= Request3 x; respond} -> (

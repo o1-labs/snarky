@@ -831,7 +831,14 @@ let rec check_statement env stmt =
       let env, _, ctors = type_extension ~loc variant [ctor_decl] env in
       let ctor_decl =
         match ctors with
-        | [ctor] -> ctor
+        | [ctor] ->
+            { ctor with
+              ctor_ret=
+                Some
+                  (Type.mk ~loc
+                     (Tctor
+                        (Type.variant ~loc ~params:[arg]
+                           (Lid.of_list ["Snarky"; "Request"; "t"])))) }
         | _ -> failwith "Wrong number of constructors returned for Request."
       in
       let name = ctor_decl.ctor_ident.txt in

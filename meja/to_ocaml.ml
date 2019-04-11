@@ -157,8 +157,8 @@ let rec of_statement_desc ?loc = function
       in
       let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Str.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
-  | Request (arg, ctor, handler) ->
-      let params = [(of_type_expr arg, Invariant)] in
+  | Request (_, ctor, handler) ->
+      let params = [(Typ.any ?loc (), Invariant)] in
       let ident =
         Location.mkloc
           Longident.(Ldot (Ldot (Lident "Snarky", "Request"), "t"))
