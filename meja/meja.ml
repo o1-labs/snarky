@@ -123,9 +123,15 @@ let main =
             let env = Envi.open_module env in
             let env = Envi.open_module env in
             let m =
-              Envi.find_module ~loc
-                (mkloc (Longident.Lident "Snarky__Request"))
-                env
+              try
+                Envi.find_module ~loc
+                  (mkloc (Longident.Lident "Snarky__Request"))
+                  env
+              with _ ->
+                Format.(
+                  fprintf err_formatter
+                    "Could not find the compiled inteface files for Snarky.") ;
+                exit 1
             in
             let env = Envi.add_module (mkloc "Request") m env in
             let m, env = Envi.pop_module ~loc env in
