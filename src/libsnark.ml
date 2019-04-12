@@ -431,14 +431,7 @@ struct
 
 
       include Binable.Of_binable
-                (struct
-                type t = bigstring
-                let bin_read_t = Bin_prot.Std.bin_read_bigstring
-                let __bin_read_t__ = Bin_prot.Std.__bin_read_bigstring__
-                let bin_write_t = Bin_prot.Std.bin_write_bigstring
-                let bin_shape_t = Bin_prot.Std.bin_shape_bigstring
-                let bin_size_t = Bin_prot.Std.bin_size_bigstring
-                end)
+                (Bigstring.Stable.V1)
                 (struct
                   type nonrec t = t
 
