@@ -253,6 +253,11 @@ simpl_expr:
 expr:
   | x = simpl_expr
     { x }
+  | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
+    { let unit_pat =
+        mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
+      in
+      mkexp ~pos:$loc (Fun (unit_pat, body, Explicit)) }
   | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
@@ -297,6 +302,8 @@ match_case:
     { (p, e) }
 
 expr_list:
+  | (* empty *)
+    { [mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "()"), None))] }
   | e = expr
     { [e] }
   | es = expr_list COMMA e = expr

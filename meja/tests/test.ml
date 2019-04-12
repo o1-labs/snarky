@@ -46,3 +46,7 @@ let h (ignore : int -> unit) =
   ignore e ;
   let f x y = x in
   f a (f b (f c (f d e)))
+
+let i () = ()
+
+let j = i ()
