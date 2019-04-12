@@ -1,4 +1,5 @@
 open Core_kernel
+open Meja_lib
 
 let print_position outx lexbuf =
   let pos = lexbuf.Lexing.lex_curr_p in
