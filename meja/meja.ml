@@ -98,7 +98,11 @@ let main =
       , "set the name to give to the snarky implementation module \
          \x1B[4mdefault: Impl\x1B[24m" ) ]
   in
-  Arg.parse arg_spec (fun filename -> file := Some filename) "" ;
+  let usage_text =
+    Format.sprintf "Usage:@.@[%s [options] file@]@.@.OPTIONS:"
+      (Filename.basename Sys.executable_name)
+  in
+  Arg.parse arg_spec (fun filename -> file := Some filename) usage_text ;
   let env = Envi.Core.env in
   List.iter !cmi_dirs ~f:(Loader.load_directory env) ;
   try
@@ -114,8 +118,11 @@ let main =
           Envi.open_namespace_scope scope env )
     in
     let file =
-      Option.value_exn !file
-        ~error:(Error.of_string "Please pass a file as an argument.")
+      match !file with
+      | Some file -> file
+      | None ->
+          Arg.usage arg_spec usage_text ;
+          exit 1
     in
     let parse_ast = read_file (Parser_impl.file Lexer_impl.token) file in
     let _env, ast = Typechecker.check parse_ast env in
