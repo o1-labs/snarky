@@ -692,6 +692,69 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   | _, implicit :: _ ->
       raise (Error (e.exp_loc, No_instance implicit.exp_type))
 
+let rec check_signature_item env item =
+  match item.sig_desc with
+  | SValue (name, typ) ->
+      let typ, env = Envi.Type.import ~must_find:false typ env in
+      add_polymorphised name typ env
+  | SInstance (name, typ) ->
+      let typ, env = Envi.Type.import ~must_find:false typ env in
+      let env = add_polymorphised name typ env in
+      Envi.add_implicit_instance name.txt typ env
+  | STypeDecl decl ->
+      let _decl, env = Envi.TypeDecl.import decl env in
+      env
+  | SModule (name, msig) -> (
+      let m, env = check_module_sig env msig in
+      match m with
+      | Envi.Scope.Immediate m -> Envi.add_module name m env
+      | Envi.Scope.Deferred path -> Envi.add_deferred_module name path env )
+  | SModType (_name, _signature) -> env
+
+and check_signature env signature =
+  List.fold ~init:env signature ~f:check_signature_item
+
+and check_module_sig env msig =
+  let loc = msig.msig_loc in
+  match msig.msig_desc with
+  | Signature signature ->
+      let env = Envi.open_module env in
+      let env = check_signature env signature in
+      let m, env = Envi.pop_module ~loc env in
+      (Envi.Scope.Immediate m, env)
+  | SigName lid -> (
+    match Envi.find_module_deferred ~loc lid env with
+    | Some m -> (m, env)
+    | None -> (Envi.Scope.Deferred lid.txt, env) )
+  | SigAbstract ->
+      let env = Envi.open_module env in
+      let m, env = Envi.pop_module ~loc env in
+      (Envi.Scope.Immediate m, env)
+  | SigFunctor (name, f, msig) ->
+      let f, env = check_module_sig env f in
+      (* Set up functor module *)
+      let env = Envi.open_module env in
+      let env =
+        match f with
+        | Envi.Scope.Immediate f -> Envi.add_module name f env
+        | Envi.Scope.Deferred path -> Envi.add_deferred_module name path env
+      in
+      let f, env = Envi.pop_module ~loc env in
+      let ftor f_instance =
+        let env = Envi.open_module env in
+        let env = Envi.open_namespace_scope f_instance env in
+        (* TODO: check that f_instance matches f' *)
+        let m, _env = check_module_sig env msig in
+        match m with
+        | Envi.Scope.Immediate m -> m
+        | Envi.Scope.Deferred path ->
+            Envi.find_module ~loc (Location.mkloc path loc) env
+      in
+      (* Check that f builds the functor as expected. *)
+      ignore (ftor f) ;
+      let m = Envi.make_functor ftor in
+      (Envi.Scope.Immediate m, env)
+
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
@@ -769,37 +832,30 @@ and check_module_expr env m =
       let m' = Envi.find_module ~loc name env in
       let env = Envi.push_scope m' env in
       (env, m)
-
-let rec check_signature_item env item =
-  let loc = item.sig_loc in
-  match item.sig_desc with
-  | SValue (name, typ) ->
-      let typ, env = Envi.Type.import ~must_find:false typ env in
-      add_polymorphised name typ env
-  | SInstance (name, typ) ->
-      let typ, env = Envi.Type.import ~must_find:false typ env in
-      let env = add_polymorphised name typ env in
-      Envi.add_implicit_instance name.txt typ env
-  | STypeDecl decl ->
-      let _decl, env = Envi.TypeDecl.import decl env in
-      env
-  | SModule (name, signature) -> (
-    match signature with
-    | Signature signature ->
+  | Functor (name, f, m) ->
+      let f', env = check_module_sig env f in
+      (* Set up functor module *)
+      let env = Envi.open_module env in
+      let env =
+        match f' with
+        | Envi.Scope.Immediate f' -> Envi.add_module name f' env
+        | Envi.Scope.Deferred path -> Envi.add_deferred_module name path env
+      in
+      let f', env = Envi.pop_module ~loc env in
+      let ftor f_instance =
         let env = Envi.open_module env in
-        let env = check_signature env signature in
-        let m, env = Envi.pop_module ~loc env in
-        Envi.add_module name m env
-    | SigName lid -> (
-      match Envi.find_module_deferred ~loc lid env with
-      | Some (Immediate m) -> Envi.add_module name m env
-      | Some (Deferred path) -> Envi.add_deferred_module name path env
-      | None -> Envi.add_deferred_module name lid.txt env )
-    | SigAbstract -> env )
-  | SModType (_name, _signature) -> env
-
-and check_signature env signature =
-  List.fold ~init:env signature ~f:check_signature_item
+        let env = Envi.open_namespace_scope f_instance env in
+        (* TODO: check that f_instance matches f' *)
+        let env, m' = check_module_expr env m in
+        let m, _env = Envi.pop_module ~loc env in
+        (m, m')
+      in
+      (* Check that f builds the functor as expected. *)
+      let _, m = ftor f' in
+      let env =
+        Envi.push_scope (Envi.make_functor (fun f -> fst (ftor f))) env
+      in
+      (env, {m with mod_desc= Functor (name, f, m)})
 
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:check_statement

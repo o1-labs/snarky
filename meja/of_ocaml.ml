@@ -117,11 +117,17 @@ and to_signature items =
       if can_create_signature_item item then Some (to_signature_item item)
       else None )
 
-and to_module_sig ~loc decl =
+and to_module_sig_desc ~loc decl =
   match decl with
   | None -> SigAbstract
   | Some (Mty_ident path | Mty_alias (_, path)) ->
       SigName (mkloc (longident_of_path path) loc)
   | Some (Mty_signature signature) -> Signature (to_signature signature)
-  | Some (Mty_functor _) -> (* TODO: Implement functors. *)
-                            SigAbstract
+  | Some (Mty_functor (name, f, mty)) ->
+      SigFunctor
+        ( mkloc (Ident.name name) loc
+        , to_module_sig ~loc f
+        , to_module_sig ~loc (Some mty) )
+
+and to_module_sig ~loc decl =
+  {msig_loc= loc; msig_desc= to_module_sig_desc ~loc decl}

@@ -131,6 +131,23 @@ and expression_desc =
   | Ctor of lid * expression option
   | Unifiable of {mutable expression: expression option; name: str; id: int}
 
+type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
+
+and signature_desc =
+  | SValue of str * type_expr
+  | SInstance of str * type_expr
+  | STypeDecl of type_decl
+  | SModule of str * module_sig
+  | SModType of str * module_sig
+
+and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
+
+and module_sig_desc =
+  | Signature of signature_item list
+  | SigName of lid
+  | SigAbstract
+  | SigFunctor of str * module_sig * module_sig
+
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
 and statement_desc =
@@ -143,21 +160,10 @@ and statement_desc =
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
-and module_desc = Structure of statement list | ModName of lid
-
-type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
-
-and signature_desc =
-  | SValue of str * type_expr
-  | SInstance of str * type_expr
-  | STypeDecl of type_decl
-  | SModule of str * module_sig
-  | SModType of str * module_sig
-
-and module_sig =
-  | Signature of signature_item list
-  | SigName of lid
-  | SigAbstract
+and module_desc =
+  | Structure of statement list
+  | ModName of lid
+  | Functor of str * module_sig * module_expr
 
 let rec typ_debug_print fmt typ =
   let open Format in
