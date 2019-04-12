@@ -19,7 +19,7 @@ let rec type_desc ?(bracket = false) fmt = function
   | Tctor v -> variant fmt v
   | Tpoly (vars, typ) ->
       if bracket then fprintf fmt "(" ;
-      fprintf fmt "/*%a.*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
+      fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
         type_expr typ ;
       if bracket then fprintf fmt ")"
 
@@ -61,7 +61,7 @@ let type_decl_desc fmt = function
       fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
   | TOpen -> fprintf fmt "@ =@ .."
   | TExtend (name, _, ctors) ->
-      fprintf fmt "@ /*%a +=@ %a*/" Longident.pp name.txt
+      fprintf fmt "@ /*@[%a +=@ %a@]*/" Longident.pp name.txt
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
   | TForward i ->
@@ -95,11 +95,11 @@ and signature fmt sigs = List.iter (signature_item fmt) sigs
 
 and module_sig_desc ~prefix fmt = function
   | Signature msig -> prefix fmt;
-    fprintf fmt "{@;@[<v2>%a@]}@;" signature msig
+    fprintf fmt "{@[<v2>@;%a@]}" signature msig
   | SigName name -> prefix fmt; Longident.pp fmt name.txt
   | SigAbstract -> ()
   | SigFunctor (name, f, m) ->
     let pp = module_sig ~prefix:(fun _ -> ()) in
-    fprintf fmt "/* functor@ (%s :@ %a)@ =>@ %a */" name.txt pp f pp m
+    fprintf fmt "/* @[functor@ (%s :@ %a)@ =>@ %a@] */" name.txt pp f pp m
 
 and module_sig ~prefix fmt msig = module_sig_desc ~prefix fmt msig.msig_desc
