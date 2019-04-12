@@ -78,7 +78,8 @@ let type_decl fmt decl =
   type_decl_desc fmt decl.tdec_desc
 
 let rec signature_desc fmt = function
-  | SValue (name, typ) -> fprintf fmt "@[let@ %s@ :@ @[%a;@]@]@;@;" name.txt type_expr typ
+  | SValue (name, typ) ->
+      fprintf fmt "@[let@ %s@ :@ @[%a;@]@]@;@;" name.txt type_expr typ
   | SInstance (name, typ) ->
       fprintf fmt "@[instance@ %s@ :@ @[%a@];@]@;@;" name.txt type_expr typ
   | STypeDecl decl -> fprintf fmt "@[%a;@]@;@;" type_decl decl
@@ -87,19 +88,21 @@ let rec signature_desc fmt = function
       fprintf fmt "@[module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix) msig
   | SModType (name, msig) ->
       let prefix fmt = fprintf fmt "=@ " in
-      fprintf fmt "@[module type@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix) msig
+      fprintf fmt "@[module type@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
+        msig
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 
 and signature fmt sigs = List.iter (signature_item fmt) sigs
 
 and module_sig_desc ~prefix fmt = function
-  | Signature msig -> prefix fmt;
-    fprintf fmt "{@[<v2>@;%a@]}" signature msig
-  | SigName name -> prefix fmt; Longident.pp fmt name.txt
+  | Signature msig ->
+      prefix fmt ;
+      fprintf fmt "{@[<v2>@;%a@]}" signature msig
+  | SigName name -> prefix fmt ; Longident.pp fmt name.txt
   | SigAbstract -> ()
   | SigFunctor (name, f, m) ->
-    let pp = module_sig ~prefix:(fun _ -> ()) in
-    fprintf fmt "/* @[functor@ (%s :@ %a)@ =>@ %a@] */" name.txt pp f pp m
+      let pp = module_sig ~prefix:(fun _ -> ()) in
+      fprintf fmt "/* @[functor@ (%s :@ %a)@ =>@ %a@] */" name.txt pp f pp m
 
 and module_sig ~prefix fmt msig = module_sig_desc ~prefix fmt msig.msig_desc

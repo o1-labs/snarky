@@ -2,9 +2,7 @@ open Core_kernel
 open Meja_lib
 
 let do_output filename f =
-  let output =
-    Format.formatter_of_out_channel (Out_channel.create filename)
-  in
+  let output = Format.formatter_of_out_channel (Out_channel.create filename) in
   f output
 
 let main =
@@ -14,8 +12,7 @@ let main =
   let arg_spec =
     [ ( "-o"
       , Arg.Set_string outdir
-      , "output directory.\n\
-        \         \x1B[4mdefault: current directory\x1B[24m" )
+      , "output directory. \x1B[4mdefault: current directory\x1B[24m" )
     ; ( "-I"
       , Arg.String (fun dirname -> cmi_dirs := dirname :: !cmi_dirs)
       , "add a directory to the list of paths to search for .cmi files" ) ]
