@@ -191,7 +191,7 @@ let main =
           Arg.usage arg_spec usage_text ;
           exit 1
     in
-    let parse_ast = read_file (Parser_impl.file Lexer_impl.token) file in
+    let parse_ast = read_file (Parser_impl.implementation Lexer_impl.token) file in
     let _env, ast = Typechecker.check parse_ast env in
     let ast =
       if !snarky_preamble then add_preamble !impl_mod !curve !proofs ast

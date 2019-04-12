@@ -16,7 +16,9 @@ let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= mklocation pos}
 let mkpat ~pos d = {pat_desc= d; pat_loc= mklocation pos; pat_type= mktyp ~pos (Tvar (None, -1, Explicit))}
 let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos; exp_type= mktyp ~pos (Tvar (None, -1, Explicit))}
 let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
+let mksig ~pos d = {sig_desc= d; sig_loc= mklocation pos}
 let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
+let mkmty ~pos d = {msig_desc= d; msig_loc= mklocation pos}
 
 let conspat ~pos hd tl =
   mkpat ~pos (PCtor
@@ -83,8 +85,11 @@ let consexp ~pos hd tl =
 %nonassoc above_infix
 %nonassoc LPAREN
 
-%start file
-%type <Parsetypes.statement list> file
+%start implementation
+%type <Parsetypes.statement list> implementation
+
+%start interface
+%type <Parsetypes.signature_item list> interface
 
 %%
 
@@ -96,19 +101,31 @@ let consexp ~pos hd tl =
   | HANDLER
     { "handler" }
 
-file:
+implementation:
   | s = structure EOF
     { s }
 
-structure:
+interface:
+  | s = signature EOF
+    { s }
+
+file(item):
   | (* Empty *)
     { [] }
-  | s = structure_item maybe(SEMI)
+  | s = item maybe(SEMI)
     { [s] }
-  | s = structure_item SEMI rest = structure
+  | s = item SEMI rest = file(item)
     { s :: rest }
-  | structure_item err = err
+  | item err = err
     { raise (Error (err, Missing_semi)) }
+
+structure:
+  | s = file(structure_item)
+    { s }
+
+signature:
+  | s = file(signature_item)
+    { s }
 
 structure_item:
   | LET x = pat EQUAL e = expr
@@ -137,6 +154,27 @@ structure_item:
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Request (arg, x, handler)) }
 
+signature_item:
+  | LET x = as_loc(val_ident) COLON typ = type_expr
+    { mksig ~pos:$loc (SValue (x, typ)) }
+  | INSTANCE x = as_loc(val_ident) COLON typ = type_expr
+    { mksig ~pos:$loc (SInstance (x, typ)) }
+  | TYPE x = decl_type(lident) k = type_kind
+    { let (x, args) = x in
+      mksig ~pos:$loc (STypeDecl
+        { tdec_ident= x
+        ; tdec_params= args
+        ; tdec_implicit_params= []
+        ; tdec_desc= k
+        ; tdec_id= -1
+        ; tdec_loc= mklocation $loc }) }
+  | MODULE x = as_loc(UIDENT) COLON m = module_sig
+    { mksig ~pos:$loc (SModule (x, m)) }
+  | MODULE x = as_loc(UIDENT)
+    { mksig ~pos:$loc (SModule (x, mkmty ~pos:$loc SigAbstract)) }
+  | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
+    { mksig ~pos:$loc (SModType (x, m)) }
+
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
     { (p, body) }
@@ -146,6 +184,12 @@ module_expr:
     { mkmod ~pos:$loc (Structure s) }
   | x = as_loc(longident(UIDENT, UIDENT))
     { mkmod ~pos:$loc (ModName x) }
+
+module_sig:
+  | LBRACE s = signature RBRACE
+    { mkmty ~pos:$loc (Signature s) }
+  | x = as_loc(longident(UIDENT, UIDENT))
+    { mkmty ~pos:$loc (SigName x) }
 
 %inline decl_type(X):
   | x = as_loc(X)
