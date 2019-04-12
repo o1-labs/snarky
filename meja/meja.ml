@@ -111,7 +111,12 @@ let main =
     Format.sprintf "Usage:@.@[%s [options] file@]@.@.OPTIONS:"
       (Filename.basename Sys.executable_name)
   in
-  Arg.parse arg_spec (fun filename -> file := Some filename) usage_text ;
+  Arg.parse arg_spec (fun filename ->
+    match !file with
+    | Some _ ->
+        Arg.usage arg_spec usage_text ;
+        exit 1
+    | None -> file := Some filename) usage_text ;
   let env = Envi.Core.env in
   try
     let env =
