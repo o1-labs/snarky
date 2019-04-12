@@ -122,7 +122,8 @@ let main =
       | Some _ ->
           Arg.usage arg_spec usage_text ;
           exit 1
-      | None -> file := Some filename )
+      | None ->
+          file := Some filename )
     usage_text ;
   let env = Envi.Core.env in
   try

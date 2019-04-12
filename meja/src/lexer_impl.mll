@@ -94,6 +94,7 @@ rule token = parse
   | "**" symbolchar * as op { INFIXOP4 op }
   | ['*' '/' '%'] symbolchar * as op { INFIXOP3 op }
   | lowercase_alpha ident* { LIDENT(Lexing.lexeme lexbuf) }
+  | '_' ident* { LIDENT(Lexing.lexeme lexbuf) }
   | uppercase_alpha ident* { UIDENT(Lexing.lexeme lexbuf) }
   | _ { raise (Error (lexeme_loc lexbuf, Unexpected_character (Lexing.lexeme lexbuf))) }
   | eof { EOF }
