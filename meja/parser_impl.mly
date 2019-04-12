@@ -132,7 +132,7 @@ structure_item:
       mkstmt ~pos:$loc (TypeExtension
         ( {var_ident= x; var_params= params; var_implicit_params= []; var_decl_id= 0}
         , ctors)) }
-  | REQUEST LBRACKET arg = type_expr RBRACKET x = ctor_decl handler = maybe(default_request_handler)
+  | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Request (arg, x, handler)) }
 
 default_request_handler:
