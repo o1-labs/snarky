@@ -3,7 +3,7 @@ open Format
 
 let comma_sep fmt () = fprintf fmt ",@ "
 
-let bar_sep fmt () = fprintf fmt "|@ "
+let bar_sep fmt () = fprintf fmt "@ | "
 
 let rec type_desc ?(bracket = false) fmt = function
   | Tvar (None, _, _) ->
@@ -55,7 +55,7 @@ let ctor_args fmt = function
       fprintf fmt "{%a}" (pp_print_list ~pp_sep:comma_sep field_decl) fields
 
 let ctor_decl fmt decl =
-  fprintf fmt "%s%a" decl.ctor_ident.txt ctor_args decl.ctor_args ;
+  fprintf fmt "%a%a" pp_name decl.ctor_ident.txt ctor_args decl.ctor_args ;
   match decl.ctor_ret with
   | Some typ ->
       fprintf fmt "@ :@ @[%a@]" type_expr typ
