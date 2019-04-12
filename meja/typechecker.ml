@@ -110,12 +110,12 @@ let rec check_type_aux typ ctyp env =
         check_type_aux typ ctyp env
   | _, _ -> raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp)))
 
-let check_type env typ constr_typ =
+let check_type ~loc env typ constr_typ =
   match check_type_aux typ constr_typ env with
   | exception Error (_, err) ->
       let typ = Envi.Type.flatten typ env in
       let constr_typ = Envi.Type.flatten constr_typ env in
-      raise (Error (constr_typ.type_loc, Check_failed (typ, constr_typ, err)))
+      raise (Error (loc, Check_failed (typ, constr_typ, err)))
   | () -> ()
 
 let rec add_implicits ~loc implicits typ env =
@@ -259,7 +259,7 @@ let rec check_pattern ~add env typ pat =
       ({pat_loc= loc; pat_type= typ; pat_desc= PVariable str}, env)
   | PConstraint (p, constr_typ) ->
       let constr_typ, env = Envi.Type.import constr_typ env in
-      check_type env typ constr_typ ;
+      check_type ~loc env typ constr_typ ;
       let p, env = check_pattern ~add env constr_typ p in
       ( {pat_loc= loc; pat_type= typ; pat_desc= PConstraint (p, constr_typ)}
       , env )
@@ -268,7 +268,7 @@ let rec check_pattern ~add env typ pat =
         List.map ps ~f:(fun {pat_loc= loc; _} -> Envi.Type.mkvar ~loc None env)
       in
       let tuple_typ = Envi.Type.mk ~loc (Ttuple vars) env in
-      check_type env typ tuple_typ ;
+      check_type ~loc env typ tuple_typ ;
       let ps, env = check_patterns ~add env vars ps in
       ({pat_loc= loc; pat_type= tuple_typ; pat_desc= PTuple ps}, env)
   | POr (p1, p2) ->
@@ -283,11 +283,11 @@ let rec check_pattern ~add env typ pat =
         Envi.Scope.fold_over ~init:() scope1 scope2
           ~type_variables:(fun ~key:_ ~data () ->
             match data with
-            | `Both (var1, var2) -> check_type env var1 var2
+            | `Both (var1, var2) -> check_type ~loc env var1 var2
             | _ -> () )
           ~names:(fun ~key:name ~data () ->
             match data with
-            | `Both (typ1, typ2) -> check_type env typ1 typ2
+            | `Both (typ1, typ2) -> check_type ~loc env typ1 typ2
             | _ -> raise (Error (loc, Variable_on_one_side name)) )
           ~type_decls:(fun ~key:name ~data _ ->
             let loc =
@@ -316,7 +316,7 @@ let rec check_pattern ~add env typ pat =
       let env = Envi.push_scope scope2 env in
       ({pat_loc= loc; pat_type= typ; pat_desc= POr (p1, p2)}, env)
   | PInt i ->
-      check_type env typ Envi.Core.Type.int ;
+      check_type ~loc env typ Envi.Core.Type.int ;
       ({pat_loc= loc; pat_type= typ; pat_desc= PInt i}, env)
   | PRecord [] -> raise (Error (loc, Empty_record))
   | PRecord ((field, _) :: _ as fields) ->
@@ -342,7 +342,7 @@ let rec check_pattern ~add env typ pat =
               let decl_type =
                 Envi.TypeDecl.mk_typ ~loc ~params:vars ~ident decl env
               in
-              check_type env typ decl_type ;
+              check_type ~loc env typ decl_type ;
               (decl_type, field_decls, bound_vars, env)
           | _ -> raise (Error (loc, Unbound ("record field", field))) )
       in
@@ -351,7 +351,7 @@ let rec check_pattern ~add env typ pat =
             let _, field_typ, record_typ =
               get_field_of_decl typ bound_vars field_decls field env
             in
-            ( try check_type env record_typ typ
+            ( try check_type ~loc:field.loc env record_typ typ
               with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->
                 raise (Error (field.loc, Wrong_record_field (field.txt, typ)))
             ) ;
@@ -366,7 +366,7 @@ let rec check_pattern ~add env typ pat =
   | PCtor (name, arg) ->
       let typ', args_typ = get_ctor name env in
       let typ' = {typ' with type_loc= loc} in
-      check_type env typ typ' ;
+      check_type ~loc env typ typ' ;
       let arg, env =
         match arg with
         | Some arg ->
@@ -376,7 +376,7 @@ let rec check_pattern ~add env typ pat =
             (Some arg, env)
         | None ->
             let typ = Envi.Type.mk ~loc (Ttuple []) env in
-            check_type env args_typ typ ;
+            check_type ~loc env args_typ typ ;
             (None, env)
       in
       ({pat_loc= loc; pat_type= typ'; pat_desc= PCtor (name, arg)}, env)
@@ -407,27 +407,27 @@ let rec get_expression env expected exp =
             let arrow =
               Envi.Type.mk ~loc (Tarrow (e_typ, res_typ, Explicit)) env
             in
-            check_type env f_typ arrow ;
+            check_type ~loc:e.exp_loc env f_typ arrow ;
             let e, env = get_expression env e_typ e in
             ((res_typ, env), e) )
       in
-      check_type env expected typ ;
+      check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
       let typ = Envi.find_name name env in
-      check_type env expected typ ;
+      check_type ~loc env expected typ ;
       let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
       (Envi.Type.generate_implicits e env, env)
   | Int i ->
       let typ = Envi.Core.Type.int in
-      check_type env expected typ ;
+      check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
   | Fun (p, body, explicit) ->
       let env = Envi.open_expr_scope env in
-      let p_typ = Envi.Type.mkvar ~loc None env in
-      let body_typ = Envi.Type.mkvar ~loc None env in
+      let p_typ = Envi.Type.mkvar ~loc:p.pat_loc None env in
+      let body_typ = Envi.Type.mkvar ~loc:body.exp_loc None env in
       let typ = Envi.Type.mk ~loc (Tarrow (p_typ, body_typ, explicit)) env in
-      check_type env expected typ ;
+      check_type ~loc env expected typ ;
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instantiating the parameters. *)
       let p, env = check_pattern ~add:Envi.add_name env p_typ p in
@@ -446,16 +446,16 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
   | Constraint (e, typ') ->
       let typ, env = Envi.Type.import typ' env in
-      check_type env expected typ ;
+      check_type ~loc env expected typ ;
       let e, env = get_expression env typ e in
-      check_type env e.exp_type typ ;
+      check_type ~loc env e.exp_type typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Constraint (e, typ')}, env)
   | Tuple es ->
       let typs =
         List.map es ~f:(fun e -> Envi.Type.mkvar ~loc:e.exp_loc None env)
       in
       let typ = Envi.Type.mk ~loc (Ttuple typs) env in
-      check_type env expected typ ;
+      check_type ~loc env expected typ ;
       let env = ref env in
       let es =
         List.map2_exn es typs ~f:(fun e expected ->
@@ -501,7 +501,7 @@ let rec get_expression env expected exp =
               in
               let {fld_type; _} = List.nth_exn field_decls i in
               let fld_type = Envi.Type.copy fld_type bound_vars env in
-              check_type env expected fld_type ;
+              check_type ~loc env expected fld_type ;
               Some (fld_type, decl_type, env)
           | _ -> None )
         | Lapply _ -> failwith "Unhandled Lapply in field name"
@@ -529,7 +529,7 @@ let rec get_expression env expected exp =
             with
             | Some {fld_type; _} ->
                 let fld_type = Envi.Type.copy fld_type bound_vars env in
-                check_type env typ fld_type ;
+                check_type ~loc env typ fld_type ;
                 (fld_type, env)
             | None ->
                 raise (Error (loc, Wrong_record_field (field.txt, e.exp_type)))
@@ -556,7 +556,7 @@ let rec get_expression env expected exp =
                 let e_typ =
                   Envi.TypeDecl.mk_typ ~loc ~params:vars ~ident decl env
                 in
-                check_type env e.exp_type e_typ ;
+                check_type ~loc env e.exp_type e_typ ;
                 let {fld_type; _} = List.nth_exn field_decls i in
                 let fld_type = Envi.Type.copy fld_type bound_vars env in
                 let fld_type = Envi.Type.copy fld_type bound_vars env in
@@ -595,7 +595,7 @@ let rec get_expression env expected exp =
               let decl_type =
                 Envi.TypeDecl.mk_typ ~loc ~params:vars ~ident decl env
               in
-              check_type env typ decl_type ;
+              check_type ~loc env typ decl_type ;
               (decl_type, field_decls, bound_vars, env)
           | _ -> raise (Error (loc, Unbound ("record field", field))) )
       in
@@ -606,7 +606,7 @@ let rec get_expression env expected exp =
             let i, field_typ, record_typ =
               get_field_of_decl typ bound_vars field_decls field !env
             in
-            ( try check_type !env record_typ typ
+            ( try check_type ~loc:field.loc !env record_typ typ
               with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->
                 raise (Error (field.loc, Wrong_record_field (field.txt, typ)))
             ) ;
@@ -632,7 +632,7 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Record (fields, ext)}, !env)
   | Ctor (name, arg) ->
       let typ, arg_typ = get_ctor name env in
-      check_type env expected typ ;
+      check_type ~loc env expected typ ;
       let arg, env =
         match arg with
         | Some arg ->
@@ -640,7 +640,7 @@ let rec get_expression env expected exp =
             (Some arg, env)
         | None ->
             let typ = Envi.Type.mk ~loc (Ttuple []) env in
-            ( try check_type env arg_typ typ with _ ->
+            ( try check_type ~loc env arg_typ typ with _ ->
                 raise (Error (loc, Argument_expected name.txt)) ) ;
             (None, env)
       in
@@ -656,7 +656,9 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let e = {e with exp_type} in
   let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
   let implicit_vars =
-    Envi.Type.flattened_implicit_vars ~toplevel ~unify:check_type typ_vars env
+    Envi.Type.flattened_implicit_vars ~toplevel
+      ~unify:(check_type ~loc:e.exp_loc)
+      typ_vars env
   in
   let loc = e.exp_loc in
   let e, env =
@@ -689,6 +691,69 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       (p, e, env)
   | _, implicit :: _ ->
       raise (Error (e.exp_loc, No_instance implicit.exp_type))
+
+let rec check_signature_item env item =
+  match item.sig_desc with
+  | SValue (name, typ) ->
+      let typ, env = Envi.Type.import ~must_find:false typ env in
+      add_polymorphised name typ env
+  | SInstance (name, typ) ->
+      let typ, env = Envi.Type.import ~must_find:false typ env in
+      let env = add_polymorphised name typ env in
+      Envi.add_implicit_instance name.txt typ env
+  | STypeDecl decl ->
+      let _decl, env = Envi.TypeDecl.import decl env in
+      env
+  | SModule (name, msig) -> (
+      let m, env = check_module_sig env msig in
+      match m with
+      | Envi.Scope.Immediate m -> Envi.add_module name m env
+      | Envi.Scope.Deferred path -> Envi.add_deferred_module name path env )
+  | SModType (_name, _signature) -> env
+
+and check_signature env signature =
+  List.fold ~init:env signature ~f:check_signature_item
+
+and check_module_sig env msig =
+  let loc = msig.msig_loc in
+  match msig.msig_desc with
+  | Signature signature ->
+      let env = Envi.open_module env in
+      let env = check_signature env signature in
+      let m, env = Envi.pop_module ~loc env in
+      (Envi.Scope.Immediate m, env)
+  | SigName lid -> (
+    match Envi.find_module_deferred ~loc lid env with
+    | Some m -> (m, env)
+    | None -> (Envi.Scope.Deferred lid.txt, env) )
+  | SigAbstract ->
+      let env = Envi.open_module env in
+      let m, env = Envi.pop_module ~loc env in
+      (Envi.Scope.Immediate m, env)
+  | SigFunctor (name, f, msig) ->
+      let f, env = check_module_sig env f in
+      (* Set up functor module *)
+      let env = Envi.open_module env in
+      let env =
+        match f with
+        | Envi.Scope.Immediate f -> Envi.add_module name f env
+        | Envi.Scope.Deferred path -> Envi.add_deferred_module name path env
+      in
+      let f, env = Envi.pop_module ~loc env in
+      let ftor f_instance =
+        let env = Envi.open_module env in
+        let env = Envi.open_namespace_scope f_instance env in
+        (* TODO: check that f_instance matches f' *)
+        let m, _env = check_module_sig env msig in
+        match m with
+        | Envi.Scope.Immediate m -> m
+        | Envi.Scope.Deferred path ->
+            Envi.find_module ~loc (Location.mkloc path loc) env
+      in
+      (* Check that f builds the functor as expected. *)
+      ignore (ftor f) ;
+      let m = Envi.make_functor ftor in
+      (Envi.Scope.Immediate m, env)
 
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
@@ -767,37 +832,30 @@ and check_module_expr env m =
       let m' = Envi.find_module ~loc name env in
       let env = Envi.push_scope m' env in
       (env, m)
-
-let rec check_signature_item env item =
-  let loc = item.sig_loc in
-  match item.sig_desc with
-  | SValue (name, typ) ->
-      let typ, env = Envi.Type.import ~must_find:false typ env in
-      add_polymorphised name typ env
-  | SInstance (name, typ) ->
-      let typ, env = Envi.Type.import ~must_find:false typ env in
-      let env = add_polymorphised name typ env in
-      Envi.add_implicit_instance name.txt typ env
-  | STypeDecl decl ->
-      let _decl, env = Envi.TypeDecl.import decl env in
-      env
-  | SModule (name, signature) -> (
-    match signature with
-    | Signature signature ->
+  | Functor (name, f, m) ->
+      let f', env = check_module_sig env f in
+      (* Set up functor module *)
+      let env = Envi.open_module env in
+      let env =
+        match f' with
+        | Envi.Scope.Immediate f' -> Envi.add_module name f' env
+        | Envi.Scope.Deferred path -> Envi.add_deferred_module name path env
+      in
+      let f', env = Envi.pop_module ~loc env in
+      let ftor f_instance =
         let env = Envi.open_module env in
-        let env = check_signature env signature in
-        let m, env = Envi.pop_module ~loc env in
-        Envi.add_module name m env
-    | SigName lid -> (
-      match Envi.find_module_deferred ~loc lid env with
-      | Some (Immediate m) -> Envi.add_module name m env
-      | Some (Deferred path) -> Envi.add_deferred_module name path env
-      | None -> Envi.add_deferred_module name lid.txt env )
-    | SigAbstract -> env )
-  | SModType (_name, _signature) -> env
-
-and check_signature env signature =
-  List.fold ~init:env signature ~f:check_signature_item
+        let env = Envi.open_namespace_scope f_instance env in
+        (* TODO: check that f_instance matches f' *)
+        let env, m' = check_module_expr env m in
+        let m, _env = Envi.pop_module ~loc env in
+        (m, m')
+      in
+      (* Check that f builds the functor as expected. *)
+      let _, m = ftor f' in
+      let env =
+        Envi.push_scope (Envi.make_functor (fun f -> fst (ftor f))) env
+      in
+      (env, {m with mod_desc= Functor (name, f, m)})
 
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:check_statement

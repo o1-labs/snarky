@@ -1,6 +1,8 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-let x, y, _ = (1, 2, 3)
+let x = (1, 2, 7)
 
-let (1 | _) = 2
+let y =
+  let i, j, k = x in
+  (i, j)

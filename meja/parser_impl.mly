@@ -1,4 +1,5 @@
 %{
+module List = Core_kernel.List
 open Location
 open Asttypes
 open Parsetypes
@@ -16,6 +17,14 @@ let mkpat ~pos d = {pat_desc= d; pat_loc= mklocation pos; pat_type= mktyp ~pos (
 let mkexp ~pos d = {exp_desc= d; exp_loc= mklocation pos; exp_type= mktyp ~pos (Tvar (None, -1, Explicit))}
 let mkstmt ~pos d = {stmt_desc= d; stmt_loc= mklocation pos}
 let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
+
+let conspat ~pos hd tl =
+  mkpat ~pos (PCtor
+    ( mkloc ~pos (Lident "::"), Some (mkpat ~pos (PTuple [hd; tl]))))
+
+let consexp ~pos hd tl =
+  mkexp ~pos (Ctor
+    ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Tuple [hd; tl]))))
 %}
 %token <int> INT
 %token <string> LIDENT
@@ -32,6 +41,8 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token SEMI
 %token LBRACE
 %token RBRACE
+%token LPAREN
+%token RPAREN
 %token LBRACKET
 %token RBRACKET
 %token DASHGT
@@ -39,6 +50,7 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token PLUSEQUAL
 %token EQUAL
 %token COLON
+%token COLONCOLON
 %token COMMA
 %token UNDERSCORE
 %token BAR
@@ -46,6 +58,7 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 %token DOTDOTDOT
 %token DOTDOT
 %token DOT
+%token <string> COMMENT
 %token <string> PREFIXOP
 %token <string> INFIXOP0
 %token <string> INFIXOP1
@@ -58,11 +71,12 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= mklocation pos}
 
 %left     INFIXOP0 EQUAL
 %right    INFIXOP1
+%right    COLONCOLON
 %left     INFIXOP2 PLUSEQUAL
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
-%nonassoc LBRACKET
+%nonassoc LPAREN
 
 %start file
 %type <Parsetypes.statement list> file
@@ -117,7 +131,7 @@ module_expr:
 %inline decl_type(X):
   | x = as_loc(X)
     { (x, []) }
-  | x = as_loc(X) LBRACKET args = list(type_expr, COMMA) RBRACKET
+  | x = as_loc(X) LPAREN args = list(type_expr, COMMA) RPAREN
     { (x, List.rev args) }
 
 decl_type_expr:
@@ -154,7 +168,7 @@ type_kind_body:
 ctor_decl_args:
   | (* empty *)
     { Ctor_tuple [] }
-  | LBRACKET rev_args = list(type_expr, COMMA) RBRACKET
+  | LPAREN rev_args = list(type_expr, COMMA) RPAREN
     { Ctor_tuple (List.rev rev_args) }
   | LBRACE fields = list(field_decl, COMMA) RBRACE
     { Ctor_record (0, List.rev fields) }
@@ -168,7 +182,7 @@ ctor_decl_args:
 ctor_ident:
   | id = UIDENT
     { id }
-  | LBRACKET RBRACKET
+  | LPAREN RPAREN
     { "()" }
   | TRUE
     { "true" }
@@ -193,11 +207,11 @@ operator:
 val_ident:
   | id = LIDENT
     { id }
-  | LBRACKET op = operator RBRACKET
+  | LPAREN op = operator RPAREN
     { op }
-  | LBRACKET operator err = err
+  | LPAREN operator err = err
     { raise (Error (err, Expecting "operator")) }
-  | LBRACKET err = err
+  | LPAREN err = err
     { raise (Error (err, Expecting ")")) }
 
 val_longident:
@@ -223,8 +237,12 @@ simpl_expr:
     { mkexp ~pos:$loc (Variable x) }
   | x = INT
     { mkexp ~pos:$loc (Int x) }
-  | LBRACKET e = expr_or_bare_tuple RBRACKET
+  | LPAREN e = expr_or_bare_tuple RPAREN
     { e }
+  | LBRACKET es = list_maybe_empty(expr, COMMA, RBRACKET)
+    { List.fold
+        ~init:(mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "[]"), None)))
+        es ~f:(fun acc e -> consexp ~pos:$loc e acc) }
   | LBRACE es = block RBRACE
     { es }
   | e = expr_record
@@ -235,24 +253,26 @@ simpl_expr:
 expr:
   | x = simpl_expr
     { x }
-  | FUN LBRACKET RBRACKET EQUALGT LBRACE body = block RBRACE
+  | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
     { let unit_pat =
         mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
       in
       mkexp ~pos:$loc (Fun (unit_pat, body, Explicit)) }
-  | FUN LBRACKET f = function_from_args
+  | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
     { f }
-  | f = expr LBRACKET es = expr_list RBRACKET
+  | f = expr LPAREN es = expr_list RPAREN
     { mkexp ~pos:$loc (Apply (f, List.rev es)) }
+  | hd = expr COLONCOLON tl = expr
+    { consexp ~pos:$loc hd tl }
   | e1 = expr op = infix_operator e2 = expr %prec above_infix
-    { let op = mkloc ~pos:$loc(op) (Lident op) in
+    { let op = mkloc (Lident op) ~pos:$loc(op) in
       mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [e1; e2])) }
   | op = PREFIXOP e = expr
-    { let op = mkloc ~pos:$loc(op) (Lident op) in
+    { let op = mkloc (Lident op) ~pos:$loc(op) in
       mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [e])) }
-  | SWITCH LBRACKET e = expr_or_bare_tuple RBRACKET LBRACE rev_cases = list(match_case, {}) RBRACE
+  | SWITCH LPAREN e = expr_or_bare_tuple RPAREN LBRACE rev_cases = list(match_case, {}) RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Ctor (id, args)) }
@@ -272,7 +292,7 @@ expr_or_bare_tuple:
 expr_ctor_args:
   | (* empty *)
     { None }
-  | LBRACKET e = expr_or_bare_tuple RBRACKET
+  | LPAREN e = expr_or_bare_tuple RPAREN
     { Some e }
   | e = expr_record
     { Some e }
@@ -290,17 +310,17 @@ expr_list:
     { e :: es }
 
 function_from_args:
-  | p = pat RBRACKET EQUALGT LBRACE body = block RBRACE
+  | p = pat RPAREN EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, body, Explicit)) }
-  | pat RBRACKET err = err
+  | pat RPAREN err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
-  | p = pat RBRACKET COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
+  | p = pat RPAREN COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc(typ) (Constraint (body, typ)), Explicit)) }
   | p = pat COMMA f = function_from_args
     { mkexp ~pos:$loc (Fun (p, f, Explicit)) }
 
 function_from_implicit_args:
-  | p = pat RBRACE LBRACKET f = function_from_args
+  | p = pat RBRACE LPAREN f = function_from_args
     { mkexp ~pos:$loc (Fun (p, f, Implicit)) }
   | p = pat RBRACE EQUALGT LBRACE body = block RBRACE
     { mkexp ~pos:$loc (Fun (p, body, Implicit)) }
@@ -336,7 +356,7 @@ pat_record:
 pat_ctor_args:
   | (* empty *)
     { None }
-  | LBRACKET p = pat_or_bare_tuple RBRACKET
+  | LPAREN p = pat_or_bare_tuple RPAREN
     { Some p }
   | p = pat_record
     { Some p }
@@ -344,8 +364,14 @@ pat_ctor_args:
 pat_no_bar:
   | UNDERSCORE
     { mkpat ~pos:$loc PAny }
-  | LBRACKET p = pat_or_bare_tuple RBRACKET
+  | LPAREN p = pat_or_bare_tuple RPAREN
     { p }
+  | LBRACKET ps = list_maybe_empty(pat, COMMA, RBRACKET)
+    { List.fold
+        ~init:(mkpat ~pos:$loc (PCtor (mkloc ~pos:$loc (Lident "[]"), None)))
+        ps ~f:(fun acc p -> conspat ~pos:$loc p acc) }
+  | hd = pat_no_bar COLONCOLON tl = pat_no_bar
+    { conspat ~pos:$loc hd tl }
   | p = pat_no_bar COLON typ = type_expr
     { mkpat ~pos:$loc (PConstraint (p, typ)) }
   | x = as_loc(val_ident)
@@ -376,9 +402,9 @@ simple_type_expr:
     { mktyp ~pos:$loc (Tvar (Some x, 0, Explicit)) }
   | t = decl_type_expr
     { t }
-  | LBRACKET x = type_expr RBRACKET
+  | LPAREN x = type_expr RPAREN
     { x }
-  | LBRACKET xs = tuple(type_expr) RBRACKET
+  | LPAREN xs = tuple(type_expr) RPAREN
     { mktyp ~pos:$loc (Ttuple (List.rev xs)) }
 
 type_expr:
@@ -394,6 +420,12 @@ list(X, SEP):
     { x :: xs }
   | x = X
     { [ x ] }
+
+list_maybe_empty(X, SEP, TERMINATOR):
+  | TERMINATOR
+    { [] }
+  | xs = list(X, SEP) TERMINATOR
+    { xs }
 
 tuple(X):
   | xs = tuple(X) COMMA x = X

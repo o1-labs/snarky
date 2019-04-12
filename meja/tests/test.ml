@@ -1,3 +1,6 @@
+module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Impl
+
 let x = 15
 
 let y = x
