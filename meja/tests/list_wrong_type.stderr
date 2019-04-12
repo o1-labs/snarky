@@ -1,4 +1,4 @@
-File "tests/list_wrong_type.meja", line 1, characters 8-17:
+File "tests/list_wrong_type.meja", line 3, characters 16-17:
 Error: Incompatable types '_' and 'int list':
 Cannot unify 'bool' and 'int'.
 

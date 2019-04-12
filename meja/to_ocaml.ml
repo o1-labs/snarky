@@ -101,6 +101,43 @@ let rec of_expression_desc ?loc = function
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
+let rec of_signature_desc ?loc = function
+  | SValue (name, typ) | SInstance (name, typ) ->
+      Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
+  | STypeDecl decl -> Sig.type_ ?loc Recursive [of_type_decl decl]
+  | SModule (name, msig) ->
+      let msig =
+        match of_module_sig msig with
+        | Some msig -> msig
+        | None ->
+            failwith
+              "Cannot generate OCaml for a module with an abstract signature"
+      in
+      Sig.module_ ?loc (Md.mk ?loc name msig)
+  | SModType (name, msig) ->
+      Sig.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
+
+and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
+
+and of_signature sig_ = List.map ~f:of_signature_item sig_
+
+and of_module_sig_desc ?loc = function
+  | Signature signature -> Some (Mty.signature ?loc (of_signature signature))
+  | SigName name -> Some (Mty.alias ?loc name)
+  | SigAbstract -> None
+  | SigFunctor (name, f, msig) ->
+      let msig =
+        match of_module_sig msig with
+        | Some msig -> msig
+        | None ->
+            failwith
+              "Cannot generate OCaml for a functor signature with an abstract \
+               signature"
+      in
+      Some (Mty.functor_ ?loc name (of_module_sig f) msig)
+
+and of_module_sig msig = of_module_sig_desc ~loc:msig.msig_loc msig.msig_desc
+
 let rec of_statement_desc ?loc = function
   | Value (p, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
@@ -133,5 +170,7 @@ and of_module_expr m = of_module_desc ~loc:m.mod_loc m.mod_desc
 and of_module_desc ?loc = function
   | Structure stmts -> Mod.structure ?loc (List.map ~f:of_statement stmts)
   | ModName name -> Mod.ident ?loc name
+  | Functor (name, f, m) ->
+      Mod.functor_ ?loc name (of_module_sig f) (of_module_expr m)
 
 let of_file = List.map ~f:of_statement

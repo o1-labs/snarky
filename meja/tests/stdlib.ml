@@ -1,3 +1,6 @@
+module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Impl
+
 let test_plus = 1 + 2
 
 let test_times = 3 * 4

@@ -1,3 +1,6 @@
+module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Impl
+
 type ('a, 'b, 'c) t = {a: 'a; b: 'b; c: 'c}
 
 let x = {a= 15; b= 20; c= 25}

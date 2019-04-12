@@ -1,0 +1,11 @@
+// Comments
+let /* In pattern */ x = /* In expression */ (1, 2, /* 3, 4, (5, 6), */ 7);
+
+let y = { /* {
+  let x = x;
+  let (i, j, k, l, (m, n), o) = x; // Inner end of line comment
+  (i, j);
+*/
+  let (i, j, k) = x;
+  (i, j); // End of line comment
+};
