@@ -56,6 +56,7 @@ let of_type_decl decl =
   | TOpen -> Type.mk name ~loc ~params ~kind:Parsetree.Ptype_open
   | TExtend _ -> failwith "Cannot convert TExtend to OCaml"
   | TUnfold _ -> failwith "Cannot convert TUnfold to OCaml"
+  | TForward _ -> failwith "Cannot convert TForward to OCaml"
 
 let rec of_pattern_desc ?loc = function
   | PAny -> Pat.any ?loc ()

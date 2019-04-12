@@ -17,6 +17,7 @@ type error =
   | No_unifiable_implicit
   | Multiple_instances of type_expr
   | Recursive_load of string
+  | Predeclared_types of string list
   | Functor_in_module_sig
   | Not_a_functor
 
@@ -37,7 +38,10 @@ module TypeEnvi = struct
     ; implicit_vars: expression list
     ; implicit_id: int
     ; type_decls: type_decl int_map
-    ; instances: (int * type_expr) list }
+    ; instances: (int * type_expr) list
+    ; predeclared_types:
+        (int (* id *) * int option ref (* num. args *) * Location.t) name_map
+    }
 
   let empty =
     { type_id= 1
@@ -47,7 +51,8 @@ module TypeEnvi = struct
     ; implicit_id= 1
     ; implicit_vars= []
     ; type_decls= Map.empty (module Int)
-    ; instances= [] }
+    ; instances= []
+    ; predeclared_types= Map.empty (module String) }
 
   let instance env (typ : type_expr) =
     Map.find env.variable_instances typ.type_id
@@ -84,7 +89,8 @@ type 'a or_deferred =
 
 type 'a resolve_env =
   { mutable type_env: TypeEnvi.t
-  ; mutable external_modules: 'a or_deferred name_map }
+  ; mutable external_modules: 'a or_deferred name_map
+  ; mutable predeclare_types: bool }
 
 module Scope = struct
   type 't kind = Module | Expr | Open | Continue | Functor of ('t -> 't)
@@ -156,7 +162,7 @@ module Scope = struct
         type_decls= Map.set type_decls ~key:decl.tdec_ident.txt ~data:decl }
     in
     match decl.tdec_desc with
-    | TAbstract | TAlias _ | TUnfold _ | TOpen -> scope
+    | TAbstract | TAlias _ | TUnfold _ | TOpen | TForward _ -> scope
     | TRecord fields -> List.foldi ~f:(add_field decl) ~init:scope fields
     | TVariant ctors -> List.foldi ~f:(add_ctor decl) ~init:scope ctors
     | TExtend (_, _, ctors) ->
@@ -324,7 +330,9 @@ module Scope = struct
 end
 
 let empty_resolve_env =
-  {type_env= TypeEnvi.empty; external_modules= Map.empty (module String)}
+  { type_env= TypeEnvi.empty
+  ; external_modules= Map.empty (module String)
+  ; predeclare_types= false }
 
 type t =
   {scope_stack: Scope.t list; depth: int; resolve_env: Scope.t resolve_env}
@@ -382,6 +390,18 @@ let pop_module ~loc env =
   (m, env)
 
 let close_expr_scope env = snd (pop_expr_scope env)
+
+let set_type_predeclaring env = (env.resolve_env).predeclare_types <- true
+
+let unset_type_predeclaring env =
+  if Map.is_empty env.resolve_env.type_env.predeclared_types then
+    (env.resolve_env).predeclare_types <- false
+  else
+    let _, (_, _, loc) =
+      Map.min_elt_exn env.resolve_env.type_env.predeclared_types
+    in
+    let predeclared = Map.keys env.resolve_env.type_env.predeclared_types in
+    raise (Error (loc, Predeclared_types predeclared))
 
 let map_current_scope ~f env =
   match env.scope_stack with
@@ -462,7 +482,33 @@ let raw_find_type_declaration (lid : lid) env =
     find_of_lident ~kind:"type" ~get_name:Scope.get_type_declaration lid env
   with
   | Some v -> v
-  | None -> raise (Error (lid.loc, Unbound_type lid.txt))
+  | None -> (
+    match lid.txt with
+    | Lident name when env.resolve_env.predeclare_types ->
+        let {type_env; _} = env.resolve_env in
+        let id, num_args =
+          match Map.find type_env.predeclared_types name with
+          | Some (id, num_args, _loc) -> (id, num_args)
+          | None ->
+              let id, type_env = TypeEnvi.next_decl_id type_env in
+              let num_args = ref None in
+              let type_env =
+                { type_env with
+                  predeclared_types=
+                    Map.add_exn ~key:name
+                      ~data:(id, ref None, lid.loc)
+                      type_env.predeclared_types }
+              in
+              (env.resolve_env).type_env <- type_env ;
+              (id, num_args)
+        in
+        { tdec_ident= Location.mkloc name lid.loc
+        ; tdec_params= []
+        ; tdec_implicit_params= []
+        ; tdec_desc= TForward num_args
+        ; tdec_id= id
+        ; tdec_loc= lid.loc }
+    | _ -> raise (Error (lid.loc, Unbound_type lid.txt)) )
 
 module Type = struct
   type env = t
@@ -529,7 +575,16 @@ module Type = struct
               ; var_implicit_params= decl.tdec_implicit_params }
             in
             let given_args_length = List.length var_params in
-            let expected_args_length = List.length decl.tdec_params in
+            let expected_args_length =
+              match decl.tdec_desc with
+              | TForward num_args -> (
+                match !num_args with
+                | Some l -> l
+                | None ->
+                    num_args := Some given_args_length ;
+                    given_args_length )
+              | _ -> List.length decl.tdec_params
+            in
             if not (Int.equal given_args_length expected_args_length) then
               raise
                 (Error
@@ -805,12 +860,15 @@ module Type = struct
     | Tarrow (typ1, typ2, _) ->
         Set.union (implicit_params typ1) (implicit_params typ2)
     | Tctor variant ->
+        let {predeclare_types; _} = env.resolve_env in
+        (env.resolve_env).predeclare_types <- false ;
         let ctor_params =
           try
             let decl = raw_find_type_declaration variant.var_ident env in
             Set.of_list (module Comparator) decl.tdec_implicit_params
           with Error (_, Unbound_type _) -> Set.empty (module Comparator)
         in
+        (env.resolve_env).predeclare_types <- predeclare_types ;
         Set.union_list
           (module Comparator)
           (ctor_params :: List.map ~f:implicit_params variant.var_params)
@@ -834,7 +892,29 @@ module TypeDecl = struct
     ; tdec_loc= loc }
 
   let import decl env =
-    let tdec_id = next_id env in
+    let tdec_id =
+      match
+        Map.find env.resolve_env.type_env.predeclared_types decl.tdec_ident.txt
+      with
+      | Some (id, num_args, loc) ->
+          ( match !num_args with
+          | Some num_args ->
+              let given = List.length decl.tdec_params in
+              if not (Int.equal given num_args) then
+                raise
+                  (Error
+                     ( loc
+                     , Wrong_number_args
+                         (Lident decl.tdec_ident.txt, given, num_args) ))
+          | None -> () ) ;
+          let {type_env; _} = env.resolve_env in
+          (env.resolve_env).type_env
+          <- { type_env with
+               predeclared_types=
+                 Map.remove type_env.predeclared_types decl.tdec_ident.txt } ;
+          id
+      | None -> next_id env
+    in
     let env = open_expr_scope env in
     let env, tdec_params =
       List.fold_map ~init:env decl.tdec_params ~f:(fun env param ->
@@ -871,6 +951,7 @@ module TypeDecl = struct
                  Set.union_list
                    (module Type)
                    (List.map typs ~f:(Type.implicit_params env)) ))
+      | TForward _ -> failwith "Cannot import a forward type declaration"
     in
     let tdec_implicit_params = Set.to_list tdec_implicit_params in
     (* Make sure the declaration is available to lookup for recursive types. *)
@@ -884,8 +965,7 @@ module TypeDecl = struct
     let env = push_scope scope env in
     let tdec_desc, env =
       match decl.tdec_desc with
-      | TAbstract -> (TAbstract, env)
-      | TOpen -> (TOpen, env)
+      | (TAbstract | TOpen | TForward _) as desc -> (desc, env)
       | TAlias typ ->
           let typ, env = Type.import ~must_find:true typ env in
           (TAlias typ, env)
@@ -1132,6 +1212,14 @@ module Core = struct
     in
     TypeDecl.import (mk_type_decl "field" (TUnfold var)) env
 
+  let lazy_t, env =
+    let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
+    TypeDecl.import (mk_type_decl "lazy_t" ~params:[var] TAbstract) env
+
+  let array, env =
+    let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
+    TypeDecl.import (mk_type_decl "array" ~params:[var] TAbstract) env
+
   module Type = struct
     let int = TypeDecl.mk_typ int ~params:[] env
 
@@ -1207,6 +1295,10 @@ let report_error ppf = function
         pp_typ typ
   | Recursive_load filename ->
       fprintf ppf "Circular dependency found; tried to re-load %s" filename
+  | Predeclared_types types ->
+      fprintf ppf "Could not find declarations for some types:@.%a"
+        (pp_print_list ~pp_sep:pp_print_space pp_print_string)
+        types
   | Functor_in_module_sig ->
       fprintf ppf
         "Internal error: Bare functor found as part of a module signature."

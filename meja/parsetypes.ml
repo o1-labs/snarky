@@ -101,6 +101,8 @@ and type_decl_desc =
   | TOpen
   | TExtend of lid * type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
+  | TForward of int option ref
+      (** Forward declaration for types loaded from cmi files. *)
 
 type pattern =
   {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: type_expr}
