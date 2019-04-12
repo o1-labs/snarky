@@ -695,10 +695,14 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
 let rec check_signature_item env item =
   match item.sig_desc with
   | SValue (name, typ) ->
+      let env = Envi.open_expr_scope env in
       let typ, env = Envi.Type.import ~must_find:false typ env in
+      let env = Envi.close_expr_scope env in
       add_polymorphised name typ env
   | SInstance (name, typ) ->
+      let env = Envi.open_expr_scope env in
       let typ, env = Envi.Type.import ~must_find:false typ env in
+      let env = Envi.close_expr_scope env in
       let env = add_polymorphised name typ env in
       Envi.add_implicit_instance name.txt typ env
   | STypeDecl decl ->
@@ -856,6 +860,12 @@ and check_module_expr env m =
         Envi.push_scope (Envi.make_functor (fun f -> fst (ftor f))) env
       in
       (env, {m with mod_desc= Functor (name, f, m)})
+
+let check_signature env signature =
+  Envi.set_type_predeclaring env ;
+  let ret = check_signature env signature in
+  Envi.unset_type_predeclaring env ;
+  ret
 
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:check_statement

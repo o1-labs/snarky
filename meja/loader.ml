@@ -1,13 +1,13 @@
 open Core_kernel
 open Cmi_format
 
-let load ~loc ~name resolve_env filename =
-  Format.(fprintf err_formatter "Loading %s from %s...@." name filename) ;
+let load ~loc ~name:_ resolve_env filename =
+  (*Format.(fprintf err_formatter "Loading %s from %s...@." name filename) ;*)
   let cmi_info = read_cmi filename in
   let signature = Of_ocaml.to_signature cmi_info.cmi_sign in
   let env = {Envi.Core.env with resolve_env} in
   let env = Typechecker.check_signature env signature in
-  Format.(fprintf err_formatter "Loaded@.") ;
+  (*Format.(fprintf err_formatter "Loaded@.") ;*)
   let m, _ = Envi.pop_module ~loc env in
   m
 
