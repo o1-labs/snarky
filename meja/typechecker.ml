@@ -759,6 +759,40 @@ and check_module_sig env msig =
       let m = Envi.make_functor ftor in
       (Envi.Scope.Immediate m, env)
 
+let type_extension ~loc variant ctors env =
+  let ( {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_id; _}
+      as decl ) =
+    match Envi.raw_find_type_declaration variant.var_ident env with
+    | open_decl -> open_decl
+    | exception _ ->
+        raise (Error (loc, Unbound ("type constructor", variant.var_ident)))
+  in
+  ( match tdec_desc with
+  | TOpen -> ()
+  | _ -> raise (Error (loc, Not_extensible variant.var_ident.txt)) ) ;
+  ( match List.iter2 tdec_params variant.var_params ~f:(fun _ _ -> ()) with
+  | Ok _ -> ()
+  | Unequal_lengths ->
+      raise (Error (loc, Extension_different_arity variant.var_ident.txt)) ) ;
+  let decl =
+    { tdec_ident
+    ; tdec_params= variant.var_params
+    ; tdec_implicit_params
+    ; tdec_id
+    ; tdec_desc= TExtend (variant.var_ident, decl, ctors)
+    ; tdec_loc= loc }
+  in
+  let decl, env = Envi.TypeDecl.import decl env in
+  let ctors =
+    match decl.tdec_desc with
+    | TExtend (_, _, ctors) -> ctors
+    | _ -> failwith "Expected a TExtend."
+  in
+  let variant =
+    {variant with var_decl_id= tdec_id; var_params= decl.tdec_params}
+  in
+  (env, variant, ctors)
+
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
@@ -788,43 +822,85 @@ let rec check_statement env stmt =
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)
   | TypeExtension (variant, ctors) ->
-      let ( { tdec_ident
-            ; tdec_params
-            ; tdec_implicit_params
-            ; tdec_desc
-            ; tdec_id; _ } as decl ) =
-        match Envi.raw_find_type_declaration variant.var_ident env with
-        | open_decl -> open_decl
-        | exception _ ->
-            raise
-              (Error (loc, Unbound ("type constructor", variant.var_ident)))
-      in
-      ( match tdec_desc with
-      | TOpen -> ()
-      | _ -> raise (Error (loc, Not_extensible variant.var_ident.txt)) ) ;
-      ( match List.iter2 tdec_params variant.var_params ~f:(fun _ _ -> ()) with
-      | Ok _ -> ()
-      | Unequal_lengths ->
-          raise (Error (loc, Extension_different_arity variant.var_ident.txt))
-      ) ;
-      let decl =
-        { tdec_ident
-        ; tdec_params= variant.var_params
-        ; tdec_implicit_params
-        ; tdec_id
-        ; tdec_desc= TExtend (variant.var_ident, decl, ctors)
-        ; tdec_loc= loc }
-      in
-      let decl, env = Envi.TypeDecl.import decl env in
-      let ctors =
-        match decl.tdec_desc with
-        | TExtend (_, _, ctors) -> ctors
-        | _ -> failwith "Expected a TExtend."
-      in
-      let variant =
-        {variant with var_decl_id= tdec_id; var_params= decl.tdec_params}
-      in
+      let env, variant, ctors = type_extension ~loc variant ctors env in
       (env, {stmt with stmt_desc= TypeExtension (variant, ctors)})
+  | Request (arg, ctor_decl, handler) ->
+      let open Ast_build in
+      let variant =
+        Type.variant ~loc ~params:[Type.none ~loc ()]
+          (Lid.of_list ["Snarky__Request"; "t"])
+      in
+      let ctor_ret = Type.mk ~loc (Tctor {variant with var_params= [arg]}) in
+      let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
+      let env, _, ctors = type_extension ~loc variant [ctor_decl] env in
+      let ctor_decl =
+        match ctors with
+        | [ctor] ->
+            { ctor with
+              ctor_ret=
+                Some
+                  (Type.mk ~loc
+                     (Tctor
+                        (Type.variant ~loc ~params:[arg]
+                           (Lid.of_list ["Snarky"; "Request"; "t"])))) }
+        | _ -> failwith "Wrong number of constructors returned for Request."
+      in
+      let name = ctor_decl.ctor_ident.txt in
+      let handler, env =
+        match handler with
+        | Some (pat, body) ->
+            let loc, pat_loc =
+              Location.(
+                match pat with
+                | Some pat ->
+                    ( {body.exp_loc with loc_start= pat.pat_loc.loc_start}
+                    , pat.pat_loc )
+                | None -> (body.exp_loc, body.exp_loc))
+            in
+            let p = Pat.var ~loc ("handle_" ^ name) in
+            let e =
+              let request = Lid.of_name "request" in
+              let respond = Lid.of_name "respond" in
+              let body =
+                Exp.let_ ~loc (Pat.var "unhandled")
+                  (Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
+                  (Exp.match_ ~loc:stmt.stmt_loc
+                     (Exp.var ~loc (Lid.of_name "request"))
+                     [ ( Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat
+                       , body )
+                     ; ( Pat.any ()
+                       , Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"])
+                       ) ])
+              in
+              Exp.fun_
+                (Pat.ctor
+                   (Lid.of_list ["Snarky__Request"; "With"])
+                   ~args:(Pat.record [Pat.field request; Pat.field respond]))
+                body
+            in
+            let _p, e, env = check_binding ~toplevel:true env p e in
+            let pat, body =
+              match e with
+              | { exp_desc=
+                    Fun
+                      ( _
+                      , { exp_desc=
+                            Let
+                              ( _
+                              , _
+                              , { exp_desc=
+                                    Match
+                                      ( _
+                                      , [ ({pat_desc= PCtor (_, pat); _}, body)
+                                        ; _ ] ); _ } ); _ }
+                      , _ ); _ } ->
+                  (pat, body)
+              | _ -> failwith "Unexpected output of check_binding for Request"
+            in
+            (Some (pat, body), env)
+        | None -> (None, env)
+      in
+      (env, {stmt with stmt_desc= Request (arg, ctor_decl, handler)})
 
 and check_module_expr env m =
   let loc = m.mod_loc in

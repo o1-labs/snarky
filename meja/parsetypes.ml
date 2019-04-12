@@ -50,7 +50,9 @@ type lid = Longident.t Location.loc
 
 type explicitness = Implicit | Explicit
 
-let mk_lid (str : str) = Location.mkloc (Longident.Lident str.txt) str.loc
+let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
+
+let mk_lid (str : str) = map_loc str ~f:(fun x -> Longident.Lident x)
 
 type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
@@ -159,6 +161,7 @@ and statement_desc =
   | Module of str * module_expr
   | Open of lid
   | TypeExtension of variant * ctor_decl list
+  | Request of type_expr * ctor_decl * (pattern option * expression) option
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 

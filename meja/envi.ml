@@ -989,9 +989,17 @@ module TypeDecl = struct
                   match ctor.ctor_ret with
                   | Some ret ->
                       let env = open_expr_scope env in
+                      let name =
+                        match decl.tdec_desc with
+                        | TVariant _ -> Lident decl.tdec_ident.txt
+                        | TExtend (lid, _, _) -> lid.txt
+                        | _ ->
+                            failwith
+                              "Could not find name for TVariant/TExtend."
+                      in
                       ( match ret.type_desc with
-                      | Tctor {var_ident= {txt= Lident str; _}; _}
-                        when String.equal str decl.tdec_ident.txt ->
+                      | Tctor {var_ident= {txt= lid; _}; _}
+                        when Longident.compare lid name = 0 ->
                           ()
                       | _ ->
                           raise
@@ -1030,7 +1038,7 @@ module TypeDecl = struct
                           ~params:ctor_ret_params (TRecord fields) env
                       in
                       Type.map_env env ~f:(TypeEnvi.add_decl decl) ;
-                      (env, Ctor_record (tdec_id, fields))
+                      (env, Ctor_record (decl.tdec_id, fields))
                 in
                 let env = push_scope scope (close_expr_scope env) in
                 (env, {ctor with ctor_args; ctor_ret}) )
@@ -1063,10 +1071,15 @@ module TypeDecl = struct
 
   let find_of_type typ env =
     let open Option.Let_syntax in
-    let%bind variant =
+    let%map variant =
       match typ.type_desc with Tctor variant -> Some variant | _ -> None
     in
-    let%map decl = TypeEnvi.decl env.resolve_env.type_env variant in
+    let decl =
+      match TypeEnvi.decl env.resolve_env.type_env variant with
+      | Some decl -> decl
+      | None ->
+          raise (Error (typ.type_loc, Unbound_type variant.var_ident.txt))
+    in
     let bound_vars =
       match
         List.fold2

@@ -30,6 +30,9 @@ jobs:
         steps:
             - checkout
             - run:
+                name: Build snarky
+                command: eval `opam config env` && make build
+            - run:
                 name: Build Meja
                 command: eval `opam config env` && cd meja && make build
             - run:

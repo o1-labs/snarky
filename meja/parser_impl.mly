@@ -38,6 +38,9 @@ let consexp ~pos hd tl =
 %token TYPE
 %token MODULE
 %token OPEN
+%token REQUEST
+%token WITH
+%token HANDLER
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -83,6 +86,14 @@ let consexp ~pos hd tl =
 
 %%
 
+%inline lident:
+  | l = LIDENT
+    { l }
+  | REQUEST
+    { "request" }
+  | HANDLER
+    { "handler" }
+
 file:
   | s = structure EOF
     { s }
@@ -102,7 +113,7 @@ structure_item:
     { mkstmt ~pos:$loc (Value (x, e)) }
   | INSTANCE x = as_loc(val_ident) EQUAL e = expr
     { mkstmt ~pos:$loc (Instance (x, e)) }
-  | TYPE x = decl_type(LIDENT) k = type_kind
+  | TYPE x = decl_type(lident) k = type_kind
     { let (x, args) = x in
       mkstmt ~pos:$loc (TypeDecl
         { tdec_ident= x
@@ -121,6 +132,12 @@ structure_item:
       mkstmt ~pos:$loc (TypeExtension
         ( {var_ident= x; var_params= params; var_implicit_params= []; var_decl_id= 0}
         , ctors)) }
+  | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
+    { mkstmt ~pos:$loc (Request (arg, x, handler)) }
+
+default_request_handler:
+  | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
+    { (p, body) }
 
 module_expr:
   | LBRACE s = structure RBRACE
@@ -135,7 +152,7 @@ module_expr:
     { (x, List.rev args) }
 
 decl_type_expr:
-  | x = decl_type(longident(LIDENT, UIDENT))
+  | x = decl_type(longident(lident, UIDENT))
     { let (x, params) = x in
       mktyp ~pos:$loc
         (Tctor {var_ident= x; var_params= params; var_implicit_params= []; var_decl_id= 0}) }
@@ -145,7 +162,7 @@ record_field(ID, EXP):
     { (id, t) }
 
 field_decl:
-  | x = record_field(LIDENT, type_expr)
+  | x = record_field(lident, type_expr)
     { let (fld_ident, fld_type) = x in
       { fld_ident; fld_type; fld_id= 0; fld_loc= mklocation $loc } }
 
@@ -174,9 +191,9 @@ ctor_decl_args:
     { Ctor_record (0, List.rev fields) }
 
 %inline type_lident:
-  | id = LIDENT
+  | id = lident
     { Lident id }
-  | m = longident(UIDENT, UIDENT) DOT id = LIDENT
+  | m = longident(UIDENT, UIDENT) DOT id = lident
     { Ldot (m, id) }
 
 ctor_ident:
@@ -205,7 +222,7 @@ operator:
     { op }
 
 val_ident:
-  | id = LIDENT
+  | id = lident
     { id }
   | LPAREN op = operator RPAREN
     { op }
@@ -227,9 +244,9 @@ ctor_decl:
       ; ctor_loc= mklocation $loc } }
 
 expr_field:
-  | x = record_field(longident(LIDENT, UIDENT), expr)
+  | x = record_field(longident(lident, UIDENT), expr)
     { x }
-  | x = as_loc(longident(LIDENT, UIDENT))
+  | x = as_loc(longident(lident, UIDENT))
     { (x, mkexp ~pos:$loc (Variable (mk_lid (lid_last x)))) }
 
 simpl_expr:
@@ -247,7 +264,7 @@ simpl_expr:
     { es }
   | e = expr_record
     { e }
-  | e = simpl_expr DOT field = as_loc(longident(LIDENT, UIDENT))
+  | e = simpl_expr DOT field = as_loc(longident(lident, UIDENT))
     { mkexp ~pos:$loc (Field (e, field)) }
 
 expr:
@@ -344,9 +361,9 @@ block:
     { raise (Error (err, Missing_semi)) }
 
 pat_field:
-  | x = record_field(longident(LIDENT, UIDENT), pat)
+  | x = record_field(longident(lident, UIDENT), pat)
     { x }
-  | x = as_loc(longident(LIDENT, UIDENT))
+  | x = as_loc(longident(lident, UIDENT))
     { (x, mkpat ~pos:$loc (PVariable (lid_last x))) }
 
 pat_record:
@@ -398,7 +415,7 @@ pat_or_bare_tuple:
 simple_type_expr:
   | UNDERSCORE
     { mktyp ~pos:$loc (Tvar (None, 0, Explicit)) }
-  | QUOT x = as_loc(LIDENT)
+  | QUOT x = as_loc(lident)
     { mktyp ~pos:$loc (Tvar (Some x, 0, Explicit)) }
   | t = decl_type_expr
     { t }

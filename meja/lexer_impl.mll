@@ -53,6 +53,9 @@ rule token = parse
   | "type" { TYPE }
   | "module" { MODULE }
   | "open" { OPEN }
+  | "request" { REQUEST }
+  | "with" { WITH }
+  | "handler" { HANDLER }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }

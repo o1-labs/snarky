@@ -31,6 +31,11 @@ let of_ctor_decl
   Type.constructor name ~loc ~args:(of_ctor_args args)
     ?res:(Option.map ~f:of_type_expr ret)
 
+let of_ctor_decl_ext
+    {ctor_ident= name; ctor_args= args; ctor_ret= ret; ctor_loc= loc} =
+  Te.decl ~loc ~args:(of_ctor_args args) name
+    ?res:(Option.map ~f:of_type_expr ret)
+
 let of_type_decl decl =
   let loc = decl.tdec_loc in
   let name = decl.tdec_ident in
@@ -151,17 +156,41 @@ let rec of_statement_desc ?loc = function
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
         )
       in
-      let ctors =
-        List.map ctors
-          ~f:(fun { ctor_ident= name
-                  ; ctor_args= args
-                  ; ctor_ret= ret
-                  ; ctor_loc= loc }
-             ->
-            Te.decl ~loc ~args:(of_ctor_args args) name
-              ?res:(Option.map ~f:of_type_expr ret) )
-      in
+      let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Str.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
+  | Request (_, ctor, handler) ->
+      let params = [(Typ.any ?loc (), Invariant)] in
+      let ident =
+        Location.mkloc
+          Longident.(Ldot (Ldot (Lident "Snarky", "Request"), "t"))
+          (Option.value ~default:Location.none loc)
+      in
+      let typ_ext =
+        Str.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
+      in
+      let handler =
+        Option.map handler
+          ~f:
+            Parsetree.(
+              fun (args, body) ->
+                let {txt= name; loc} = ctor.ctor_ident in
+                [%stri
+                  let [%p Pat.var ~loc (Location.mkloc ("handle_" ^ name) loc)]
+                      = function
+                    | With
+                        { request=
+                            [%p
+                              Pat.construct ~loc (mk_lid ctor.ctor_ident)
+                                (Option.map ~f:of_pattern args)]
+                        ; respond } ->
+                        let unhandled = Snarky.Request.unhandled in
+                        [%e of_expression body]
+                    | _ -> Snarky.Request.unhandled])
+      in
+      Str.include_ ?loc
+        { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
+        ; pincl_loc= Option.value ~default:Location.none loc
+        ; pincl_attributes= [] }
 
 and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 

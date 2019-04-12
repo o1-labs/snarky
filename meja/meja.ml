@@ -115,13 +115,48 @@ let main =
     if !stdlib then (
       match Sys.getenv_opt "OPAM_SWITCH_PREFIX" with
       | Some opam_path ->
-          let ocaml_path = Filename.concat opam_path "lib/ocaml" in
-          Loader.load_directory env ocaml_path ;
+          let lib_path = Filename.concat opam_path "lib" in
+          (* Load OCaml stdlib *)
+          Loader.load_directory env (Filename.concat lib_path "ocaml") ;
           let stdlib_scope =
             Loader.load ~loc:Location.none ~name:"Stdlib" env.Envi.resolve_env
-              (Filename.concat ocaml_path "stdlib.cmi")
+              (Filename.concat lib_path "ocaml/stdlib.cmi")
           in
-          Envi.open_namespace_scope stdlib_scope env
+          let env = Envi.open_namespace_scope stdlib_scope env in
+          (* Load Snarky.Request *)
+          let snarky_build_path =
+            Filename.(
+              Sys.executable_name |> dirname
+              |> Fn.flip concat (concat parent_dir_name "src/.snarky.objs/"))
+          in
+          Loader.load_directory env (Filename.concat lib_path "snarky") ;
+          Loader.load_directory env (Filename.concat snarky_build_path "byte") ;
+          Loader.load_directory env
+            (Filename.concat snarky_build_path "native") ;
+          Loader.load_directory env snarky_build_path ;
+          (* Set up module structure for Snarky.Request *)
+          let m, env =
+            let loc = Location.none in
+            let mkloc s = Location.mkloc s loc in
+            let env = Envi.open_module env in
+            let env = Envi.open_module env in
+            let m =
+              try
+                Envi.find_module ~loc
+                  (mkloc (Longident.Lident "Snarky__Request"))
+                  env
+              with _ ->
+                Format.(
+                  fprintf err_formatter
+                    "Could not find the compiled interface files for Snarky.@.") ;
+                exit 1
+            in
+            let env = Envi.add_module (mkloc "Request") m env in
+            let m, env = Envi.pop_module ~loc env in
+            let env = Envi.add_module (mkloc "Snarky") m env in
+            Envi.pop_module ~loc env
+          in
+          Envi.open_namespace_scope m env
       | None ->
           Format.(
             fprintf err_formatter
