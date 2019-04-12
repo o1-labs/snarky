@@ -1,3 +1,6 @@
+module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Impl
+
 include struct
   type _ Snarky.Request.t += Request : 'x list -> 'x Snarky.Request.t
 end
