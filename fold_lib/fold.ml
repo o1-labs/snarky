@@ -47,7 +47,7 @@ let of_array (xs : 'a array) : 'a t =
   {fold= (fun ~init ~f -> Array.fold xs ~init ~f)}
 
 let%test_unit "fold-to-list" =
-  Quickcheck.test (Quickcheck.Generator.list Int.gen) ~f:(fun xs ->
+  Quickcheck.test (Quickcheck.Generator.list Int.quickcheck_generator) ~f:(fun xs ->
       assert (xs = to_list (of_list xs)) )
 
 let sexp_of_t f t = List.sexp_of_t f (to_list t)
@@ -76,7 +76,7 @@ let group3 ~default (t : 'a t) : ('a * 'a * 'a) t =
         | _x1 :: _x2 :: _x3 :: _x4 :: _ -> assert false ) }
 
 let%test_unit "group3" =
-  Quickcheck.test (Quickcheck.Generator.list Int.gen) ~f:(fun xs ->
+  Quickcheck.test (Quickcheck.Generator.list Int.quickcheck_generator) ~f:(fun xs ->
       let default = 0 in
       let n = List.length xs in
       let tuples = to_list (group3 ~default (of_list xs)) in
