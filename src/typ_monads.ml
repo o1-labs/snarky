@@ -45,8 +45,10 @@ module Alloc = struct
   let size t =
     let dummy = Cvar.Var 0 in
     let rec go acc = function
-      | Pure _ -> acc
-      | Free (T.Alloc k) -> go (acc + 1) (k dummy)
+      | Pure _ ->
+          acc
+      | Free (T.Alloc k) ->
+          go (acc + 1) (k dummy)
     in
     go 0 t
 end

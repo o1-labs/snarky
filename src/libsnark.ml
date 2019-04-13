@@ -231,8 +231,10 @@ end = struct
 
   let of_repr (r : Repr.t) =
     match r with
-    | Zero -> zero
-    | Non_zero {x; y} -> of_affine_coordinates (x, y)
+    | Zero ->
+        zero
+    | Non_zero {x; y} ->
+        of_affine_coordinates (x, y)
 
   module B =
     Binable.Of_binable
@@ -428,7 +430,6 @@ struct
       let of_data bs ~bitcount =
         assert (bitcount <= length_in_bytes * 8) ;
         of_bigstring bs
-
 
       include Binable.Of_binable
                 (Bigstring.Stable.V1)
