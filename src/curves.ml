@@ -369,8 +369,10 @@ module Edwards = struct
             match (xs, ys, zs) with
             | x :: xs, y :: ys, z :: zs ->
                 go (i + 1) (f i x y z :: acc) xs ys zs
-            | [], [], [] -> acc
-            | _ -> failwith "rev_map3i_exn"
+            | [], [], [] ->
+                acc
+            | _ ->
+                failwith "rev_map3i_exn"
           in
           go 0 [] xs ys zs
         in
@@ -398,7 +400,8 @@ module Edwards = struct
 
       let%snarkydef_ scale t (c : Scalar.var) =
         let rec go i acc pt = function
-          | [] -> return acc
+          | [] ->
+              return acc
           | b :: bs ->
               let%bind acc' =
                 with_label (sprintf "acc_%d" i)
@@ -409,7 +412,8 @@ module Edwards = struct
               go (i + 1) acc' pt' bs
         in
         match c with
-        | [] -> failwith "Edwards.Checked.scale: Empty bits"
+        | [] ->
+            failwith "Edwards.Checked.scale: Empty bits"
         | b :: bs ->
             let%bind acc = if_ b ~then_:t ~else_:identity and pt = double t in
             go 1 acc pt bs
@@ -449,10 +453,12 @@ module Edwards = struct
                 with_label (sprintf "acc_%d" i) (cond_add pt ~to_:acc ~if_:b)
               in
               go (i + 1) acc' (double_value pt) bs
-          | [] -> return acc
+          | [] ->
+              return acc
         in
         match c with
-        | [] -> failwith "scale_known: Empty bits"
+        | [] ->
+            failwith "scale_known: Empty bits"
         | b :: bs ->
             let acc =
               let b = (b :> Field.Var.t) in
@@ -677,9 +683,12 @@ module Make_weierstrass_checked
     let rev_map3i_exn xs ys zs ~f =
       let rec go i acc xs ys zs =
         match (xs, ys, zs) with
-        | x :: xs, y :: ys, z :: zs -> go (i + 1) (f i x y z :: acc) xs ys zs
-        | [], [], [] -> acc
-        | _ -> failwith "rev_map3i_exn"
+        | x :: xs, y :: ys, z :: zs ->
+            go (i + 1) (f i x y z :: acc) xs ys zs
+        | [], [], [] ->
+            acc
+        | _ ->
+            failwith "rev_map3i_exn"
       in
       go 0 [] xs ys zs
     in
@@ -799,7 +808,8 @@ module Make_weierstrass_checked
     let open Let_syntax in
     let rec go i bs0 acc pt =
       match bs0 with
-      | [] -> return acc
+      | [] ->
+          return acc
       | b :: bs ->
           let%bind acc' =
             with_label (sprintf "acc_%d" i)
@@ -901,7 +911,8 @@ module Make_weierstrass_checked
         Can get away with using an unsafe add if we modify this a bit. *)
     let rec go acc two_to_the_i bits =
       match bits with
-      | [] -> return acc
+      | [] ->
+          return acc
       | [b_i] ->
           let term =
             lookup_single_bit b_i (sigma, Curve.add sigma two_to_the_i)
@@ -925,7 +936,8 @@ module Make_weierstrass_checked
       ~init =
     let open Let_syntax in
     let rec go acc = function
-      | [] -> return acc
+      | [] ->
+          return acc
       | t :: ts ->
           let%bind acc' = Shifted.add acc t in
           go acc' ts

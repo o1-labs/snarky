@@ -13,8 +13,10 @@ module Lid = struct
   let of_list l =
     let init, rest =
       match l with
-      | [] -> failwith "Cannot build a Longident.t from an empty list"
-      | x :: rest -> (Lident x, rest)
+      | [] ->
+          failwith "Cannot build a Longident.t from an empty list"
+      | x :: rest ->
+          (Lident x, rest)
     in
     List.fold ~init rest ~f:(fun lid x -> Ldot (lid, x))
 
