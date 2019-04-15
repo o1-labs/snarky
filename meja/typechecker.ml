@@ -463,14 +463,19 @@ let rec get_expression env expected exp =
               Envi.Type.mk ~loc (Tarrow (e_typ, res_typ, Explicit, label)) env
             in
             check_type ~loc:e.exp_loc env f_typ arrow ;
-            let e_typ = match label with
-              | Optional _ -> Envi.Core.Type.option e_typ
-              | _ -> e_typ
+            let e_typ =
+              match label with
+              | Optional _ ->
+                  Envi.Core.Type.option e_typ
+              | _ ->
+                  e_typ
             in
             let e, env = get_expression env e_typ e in
             ((res_typ, env), (label, e)) )
       in
-      let typ = Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env in
+      let typ =
+        Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
+      in
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
