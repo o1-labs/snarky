@@ -33,3 +33,19 @@ let e = fun () => {
   let x8 = d(~a = true);
   (x1, x2, x3, x4, x5, x6, x7, x8);
 };
+
+let f : a:int -> ?b:bool -> int -> int = fun (~a, ?b, c) => {
+  switch (b) {
+    | Some(true) => a
+    | Some(false) => c
+    | None => a + c
+  };
+};
+
+let g : a:int -> int -> int = f(~b = true);
+
+let h : a:int -> ?b:bool -> int = f(15);
+
+let i : ?b:bool -> int -> int = f(~a = 15);
+
+let j : unit -> int = fun () => { f(20, ~a = 15); };

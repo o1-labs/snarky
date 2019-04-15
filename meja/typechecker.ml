@@ -470,7 +470,7 @@ let rec get_expression env expected exp =
             let e, env = get_expression env e_typ e in
             ((res_typ, env), (label, e)) )
       in
-      let typ = Envi.Type.discard_optional_labels typ in
+      let typ = Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env in
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->

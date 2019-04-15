@@ -462,11 +462,19 @@ simple_type_expr:
   | LPAREN xs = tuple(type_expr) RPAREN
     { mktyp ~pos:$loc (Ttuple (List.rev xs)) }
 
+%inline type_arrow_label:
+  | (* Empty *)
+    { Asttypes.Nolabel }
+  | name = LIDENT COLON
+    { Asttypes.Labelled name }
+  | QUESTION name = LIDENT COLON
+    { Asttypes.Optional name }
+
 type_expr:
   | x = simple_type_expr
     { x }
-  | x = simple_type_expr DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Explicit, Nolabel)) }
+  | label = type_arrow_label x = simple_type_expr DASHGT y = type_expr
+    { mktyp ~pos:$loc (Tarrow (x, y, Explicit, label)) }
   | LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Implicit, Nolabel)) }
 
