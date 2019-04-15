@@ -773,6 +773,16 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let env = Envi.add_name str typ env in
       let p = {p with pat_type= typ} in
       (p, e, env)
+  | PConstraint ({pat_desc= PVariable str; _}, typ), _ ->
+      let typ, env = Envi.Type.import typ env in
+      check_type ~loc env e.exp_type typ ;
+      let typ =
+        if Set.is_empty typ_vars then typ
+        else Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, typ)) env
+      in
+      let env = Envi.add_name str typ env in
+      let p = {p with pat_type= typ} in
+      (p, e, env)
   | _, [] ->
       let p, env = check_pattern ~add:add_polymorphised env e.exp_type p in
       (p, e, env)

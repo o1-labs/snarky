@@ -49,3 +49,18 @@ let h : a:int -> ?b:bool -> int = f(15);
 let i : ?b:bool -> int -> int = f(~a = 15);
 
 let j : unit -> int = fun () => { f(20, ~a = 15); };
+
+let j : a:{int} -> b:{option(int)} -> int = fun {~a, ~b} => {
+  switch (b) {
+    | Some(a) => a
+    | None => a
+  };
+};
+
+instance x = 0;
+
+let k : {option(int)} -> int = j;
+
+instance y = Some(0);
+
+let l : int = j;

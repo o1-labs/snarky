@@ -352,6 +352,10 @@ pat_arg:
     { ( Asttypes.Labelled name.txt
       , mkpat ~pos:$loc
           (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
+
+pat_arg_opt:
+  | p = pat_arg
+    { p }
   | QUESTION name = as_loc(LIDENT)
     { (Asttypes.Optional name.txt, mkpat ~pos:$loc (PVariable name)) }
   | QUESTION name = as_loc(LIDENT) COLON typ = type_expr
@@ -360,30 +364,34 @@ pat_arg:
           (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
 
 function_from_args:
-  | p = pat_arg RPAREN EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg_opt RPAREN EQUALGT LBRACE body = block RBRACE
     { let (label, p) = p in
       mkexp ~pos:$loc (Fun (label, p, body, Explicit)) }
-  | pat_arg RPAREN err = err
+  | pat_arg_opt RPAREN err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
-  | p = pat_arg RPAREN COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg_opt RPAREN COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
     { let (label, p) = p in
       mkexp ~pos:$loc (Fun (label, p, mkexp ~pos:$loc(typ)
         (Constraint (body, typ)), Explicit)) }
-  | p = pat_arg COMMA f = function_from_args
+  | p = pat_arg_opt COMMA f = function_from_args
     { let (label, p) = p in
       mkexp ~pos:$loc (Fun (label, p, f, Explicit)) }
 
 function_from_implicit_args:
-  | p = pat RBRACE LPAREN f = function_from_args
-    { mkexp ~pos:$loc (Fun (Nolabel, p, f, Implicit)) }
-  | p = pat RBRACE EQUALGT LBRACE body = block RBRACE
-    { mkexp ~pos:$loc (Fun (Nolabel, p, body, Implicit)) }
-  | p = pat RBRACE COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
-    { mkexp ~pos:$loc (Fun (Nolabel, p, mkexp ~pos:$loc(typ)
+  | p = pat_arg RBRACE LPAREN f = function_from_args
+    { let (label, p) = p in
+      mkexp ~pos:$loc (Fun (label, p, f, Implicit)) }
+  | p = pat_arg RBRACE EQUALGT LBRACE body = block RBRACE
+    { let (label, p) = p in
+      mkexp ~pos:$loc (Fun (label, p, body, Implicit)) }
+  | p = pat_arg RBRACE COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
+    { let (label, p) = p in
+      mkexp ~pos:$loc (Fun (label, p, mkexp ~pos:$loc(typ)
         (Constraint (body, typ)), Implicit)) }
-  | p = pat COMMA f = function_from_implicit_args
-    { mkexp ~pos:$loc (Fun (Nolabel, p, f, Implicit)) }
-  | pat RBRACE err = err
+  | p = pat_arg COMMA f = function_from_implicit_args
+    { let (label, p) = p in
+      mkexp ~pos:$loc (Fun (label, p, f, Implicit)) }
+  | pat_arg RBRACE err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
 
 block:
@@ -467,16 +475,16 @@ simple_type_expr:
     { Asttypes.Nolabel }
   | name = LIDENT COLON
     { Asttypes.Labelled name }
-  | QUESTION name = LIDENT COLON
-    { Asttypes.Optional name }
 
 type_expr:
   | x = simple_type_expr
     { x }
   | label = type_arrow_label x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Explicit, label)) }
-  | LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Implicit, Nolabel)) }
+  | QUESTION name = LIDENT COLON x = simple_type_expr DASHGT y = type_expr
+    { mktyp ~pos:$loc (Tarrow (x, y, Explicit, Asttypes.Optional name)) }
+  | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
+    { mktyp ~pos:$loc (Tarrow (x, y, Implicit, label)) }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X

@@ -21,3 +21,25 @@ let e () =
   let x7 = d ~b:true ~a:true in
   let x8 = d ~a:true in
   (x1, x2, x3, x4, x5, x6, x7, x8)
+
+let (f : a:int -> ?b:bool -> int -> int) =
+ fun ~a ?b c -> match b with Some true -> a | Some false -> c | None -> a + c
+
+let (g : a:int -> int -> int) = f ~b:true
+
+let (h : a:int -> ?b:bool -> int) = f 15
+
+let (i : ?b:bool -> int -> int) = f ~a:15
+
+let (j : unit -> int) = fun () -> f 20 ~a:15
+
+let (j : a:int -> b:int option -> int) =
+ fun ~a ~b -> match b with Some a -> a | None -> a
+
+let x = 0
+
+let (k : int option -> int) = fun __implicit2__ -> j ~a:x ~b:__implicit2__
+
+let y = Some 0
+
+let (l : int) = j ~a:x ~b:y
