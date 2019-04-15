@@ -1,0 +1,35 @@
+let a = fun (~a) => {
+  a;
+};
+
+let b = fun (~a : int) => {
+  a + a;
+};
+
+let c = fun (?a) => {
+  switch (a) {
+    | Some(a) => a
+    | None => false
+  };
+};
+
+let d = fun (~a, ?b : bool) => {
+  switch (b) {
+    | Some(a) => a
+    | None => a
+  };
+};
+
+let e = fun () => {
+  let x1 = a(~a = [1, 2, 3]);
+  let x2 = b(~a = 2);
+  let a = 2;
+  let x3 = b(~a);
+  let x4 = c(~a = true);
+  let a = true;
+  let x5 = c(~a);
+  let x6 = c(?a = Some(a));
+  let x7 = d(~b = true, ~a = true);
+  let x8 = d(~a = true);
+  (x1, x2, x3, x4, x5, x6, x7, x8);
+};

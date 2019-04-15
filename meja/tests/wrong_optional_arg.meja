@@ -1,0 +1,5 @@
+let a = fun (~a) => {
+  a;
+};
+
+let b = fun () => { a(?a = Some(15)); };
