@@ -48,6 +48,8 @@ let consexp ~pos hd tl =
 %token RPAREN
 %token LBRACKET
 %token RBRACKET
+%token TILDE
+%token QUESTION
 %token DASHGT
 %token EQUALGT
 %token PLUSEQUAL
@@ -319,24 +321,57 @@ match_case:
   | BAR p = pat EQUALGT e = expr
     { (p, e) }
 
+expr_arg:
+  | e = expr
+    { (Asttypes.Nolabel, e) }
+  | TILDE name = LIDENT
+    { (Asttypes.Labelled name, mkexp ~pos:$loc
+        (Variable (mkloc ~pos:$loc (Lident name)))) }
+  | TILDE name = LIDENT EQUAL e = expr
+    { (Asttypes.Labelled name, e) }
+  | QUESTION name = LIDENT
+    { (Asttypes.Optional name, mkexp ~pos:$loc
+        (Variable (mkloc ~pos:$loc (Lident name)))) }
+  | QUESTION name = LIDENT EQUAL e = expr
+    { (Asttypes.Optional name, e) }
+
 expr_arg_list:
   | (* empty *)
     { [Nolabel, mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "()"), None))] }
-  | e = expr
-    { [Nolabel, e] }
-  | es = expr_arg_list COMMA e = expr
-    { (Nolabel, e) :: es }
+  | e = expr_arg
+    { [e] }
+  | es = expr_arg_list COMMA e = expr_arg
+    { e :: es }
+
+pat_arg:
+  | p = pat
+    { (Asttypes.Nolabel, p) }
+  | TILDE name = as_loc(LIDENT)
+    { (Asttypes.Labelled name.txt, mkpat ~pos:$loc (PVariable name)) }
+  | TILDE LPAREN name = as_loc(LIDENT) COLON typ = type_expr
+    { ( Asttypes.Labelled name.txt
+      , mkpat ~pos:$loc
+          (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
+  | QUESTION name = as_loc(LIDENT)
+    { (Asttypes.Optional name.txt, mkpat ~pos:$loc (PVariable name)) }
+  | QUESTION LPAREN name = as_loc(LIDENT) COLON typ = type_expr
+    { ( Asttypes.Optional name.txt
+      , mkpat ~pos:$loc
+          (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
 
 function_from_args:
-  | p = pat RPAREN EQUALGT LBRACE body = block RBRACE
-    { mkexp ~pos:$loc (Fun (Nolabel, p, body, Explicit)) }
-  | pat RPAREN err = err
+  | p = pat_arg RPAREN EQUALGT LBRACE body = block RBRACE
+    { let (label, p) = p in
+      mkexp ~pos:$loc (Fun (label, p, body, Explicit)) }
+  | pat_arg RPAREN err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
-  | p = pat RPAREN COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
-    { mkexp ~pos:$loc (Fun (Nolabel, p, mkexp ~pos:$loc(typ)
+  | p = pat_arg RPAREN COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
+    { let (label, p) = p in
+      mkexp ~pos:$loc (Fun (label, p, mkexp ~pos:$loc(typ)
         (Constraint (body, typ)), Explicit)) }
-  | p = pat COMMA f = function_from_args
-    { mkexp ~pos:$loc (Fun (Nolabel, p, f, Explicit)) }
+  | p = pat_arg COMMA f = function_from_args
+    { let (label, p) = p in
+      mkexp ~pos:$loc (Fun (label, p, f, Explicit)) }
 
 function_from_implicit_args:
   | p = pat RBRACE LPAREN f = function_from_args
