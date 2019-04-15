@@ -988,6 +988,13 @@ module Type = struct
     | Tarrow (typ1, typ2, explicit, arr_label)
       when Int.equal (compare_label label arr_label) 0 ->
         (Some (typ1, explicit, arr_label), typ2)
+    | Tarrow (typ1, typ2, explicit, arr_label)
+      when match (label, arr_label) with
+           | Labelled lbl, Optional arr_lbl ->
+               String.equal lbl arr_lbl
+           | _ ->
+               false ->
+        (Some (typ1, explicit, label), typ2)
     | Tarrow (typ1, typ2, explicit, arr_label) -> (
       match bubble_label_aux env label typ2 with
       | None, _ ->

@@ -348,13 +348,13 @@ pat_arg:
     { (Asttypes.Nolabel, p) }
   | TILDE name = as_loc(LIDENT)
     { (Asttypes.Labelled name.txt, mkpat ~pos:$loc (PVariable name)) }
-  | TILDE LPAREN name = as_loc(LIDENT) COLON typ = type_expr
+  | TILDE name = as_loc(LIDENT) COLON typ = type_expr
     { ( Asttypes.Labelled name.txt
       , mkpat ~pos:$loc
           (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
   | QUESTION name = as_loc(LIDENT)
     { (Asttypes.Optional name.txt, mkpat ~pos:$loc (PVariable name)) }
-  | QUESTION LPAREN name = as_loc(LIDENT) COLON typ = type_expr
+  | QUESTION name = as_loc(LIDENT) COLON typ = type_expr
     { ( Asttypes.Optional name.txt
       , mkpat ~pos:$loc
           (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }

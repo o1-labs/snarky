@@ -463,6 +463,10 @@ let rec get_expression env expected exp =
               Envi.Type.mk ~loc (Tarrow (e_typ, res_typ, Explicit, label)) env
             in
             check_type ~loc:e.exp_loc env f_typ arrow ;
+            let e_typ = match label with
+              | Optional _ -> Envi.Core.Type.option e_typ
+              | _ -> e_typ
+            in
             let e, env = get_expression env e_typ e in
             ((res_typ, env), (label, e)) )
       in
@@ -486,9 +490,16 @@ let rec get_expression env expected exp =
         Envi.Type.mk ~loc (Tarrow (p_typ, body_typ, explicit, label)) env
       in
       check_type ~loc env expected typ ;
+      let add_name =
+        match label with
+        | Optional _ ->
+            fun name typ -> Envi.add_name name (Envi.Core.Type.option typ)
+        | _ ->
+            Envi.add_name
+      in
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instantiating the parameters. *)
-      let p, env = check_pattern ~add:Envi.add_name env p_typ p in
+      let p, env = check_pattern ~add:add_name env p_typ p in
       let body, env = get_expression env body_typ body in
       let env = Envi.close_expr_scope env in
       ( {exp_loc= loc; exp_type= typ; exp_desc= Fun (label, p, body, explicit)}
