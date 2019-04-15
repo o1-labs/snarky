@@ -185,11 +185,14 @@ end = struct
                 Weierstrass_curve.Checked.add_known_unsafe v x
               in
               `Var v
-        | `Value x1, `Value x2 -> return (`Value (Weierstrass_curve.add x1 x2))
+        | `Value x1, `Value x2 ->
+            return (`Value (Weierstrass_curve.add x1 x2))
 
       let to_var = function
-        | `Var v -> v
-        | `Value x -> Weierstrass_curve.Checked.constant x
+        | `Var v ->
+            v
+        | `Value x ->
+            Weierstrass_curve.Checked.constant x
     end
 
     type t = {support: Interval_union.t; acc: Acc.t}
@@ -238,7 +241,8 @@ end = struct
             acc )
       in
       match triples with
-      | [] -> return t
+      | [] ->
+          return t
       | x :: xs ->
           let support =
             Interval_union.disjoint_union_exn t.support
@@ -259,7 +263,8 @@ end = struct
                     r
                 in
                 hash (start + 1) init xs
-            | `Var v -> hash start v (x :: xs)
+            | `Var v ->
+                hash start v (x :: xs)
           in
           {support; acc= `Var acc}
   end

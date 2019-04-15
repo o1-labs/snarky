@@ -62,7 +62,8 @@ module List
 
   let foldi t ~init ~f =
     let rec go i acc = function
-      | [] -> return acc
+      | [] ->
+          return acc
       | x :: xs ->
           let%bind acc = f i acc x in
           go (i + 1) acc xs
@@ -94,7 +95,8 @@ module List
 
   let iteri t ~f =
     let rec go i = function
-      | [] -> return ()
+      | [] ->
+          return ()
       | x :: xs ->
           let%bind () = f i x in
           go (i + 1) xs
@@ -105,7 +107,8 @@ module List
 
   let mapi t ~f =
     let rec go i acc = function
-      | [] -> return (List.rev acc)
+      | [] ->
+          return (List.rev acc)
       | x :: xs ->
           let%bind y = f i x in
           go (i + 1) (y :: acc) xs

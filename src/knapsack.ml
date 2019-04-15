@@ -16,8 +16,10 @@ module Make (Impl : Snark_intf.S) = struct
   let map2_lax xs ys ~f =
     let rec go acc xs ys =
       match (xs, ys) with
-      | _, [] | [], _ -> List.rev acc
-      | x :: xs, y :: ys -> go (f x y :: acc) xs ys
+      | _, [] | [], _ ->
+          List.rev acc
+      | x :: xs, y :: ys ->
+          go (f x y :: acc) xs ys
     in
     go [] xs ys
 
@@ -83,8 +85,10 @@ module Make (Impl : Snark_intf.S) = struct
           ~compute:
             (let open As_prover.Let_syntax in
             match%bind As_prover.read Boolean.typ b with
-            | false -> As_prover.read typ xs
-            | true -> As_prover.read typ ys)
+            | false ->
+                As_prover.read typ xs
+            | true ->
+                As_prover.read typ ys)
       in
       let%map () =
         let open Field.Checked in
@@ -106,9 +110,12 @@ module Make (Impl : Snark_intf.S) = struct
     let map2i_exn xs ys ~f =
       let rec go acc i xs ys =
         match (xs, ys) with
-        | [], [] -> List.rev acc
-        | x :: xs, y :: ys -> go (f i x y :: acc) (i + 1) xs ys
-        | _, _ -> failwith "mapi_exn: Invalid lengths"
+        | [], [] ->
+            List.rev acc
+        | x :: xs, y :: ys ->
+            go (f i x y :: acc) (i + 1) xs ys
+        | _, _ ->
+            failwith "mapi_exn: Invalid lengths"
       in
       go [] 0 xs ys
 

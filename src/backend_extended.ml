@@ -296,8 +296,10 @@ module Make (Backend : Backend_intf.S) :
 
     let project_reference =
       let rec go x acc = function
-        | [] -> acc
-        | b :: bs -> go (Field.add x x) (if b then Field.add acc x else acc) bs
+        | [] ->
+            acc
+        | b :: bs ->
+            go (Field.add x x) (if b then Field.add acc x else acc) bs
       in
       fun bs -> go Field.one Field.zero bs
 
@@ -367,16 +369,20 @@ module Make (Backend : Backend_intf.S) :
       List.map ~f:(fun (_, v) -> Var.index v) terms
 
     let to_constant : t -> Field.t option = function
-      | Constant x -> Some x
-      | _ -> None
+      | Constant x ->
+          Some x
+      | _ ->
+          None
   end
 
   module Linear_combination = struct
     type t = Linear_combination.t
 
     let of_constant = function
-      | None -> Linear_combination.create ()
-      | Some c -> Linear_combination.of_field c
+      | None ->
+          Linear_combination.create ()
+      | Some c ->
+          Linear_combination.of_field c
 
     let of_var (cv : Cvar.t) =
       let constant, terms = Cvar.to_constant_and_terms cv in
@@ -460,10 +466,12 @@ module Make (Backend : Backend_intf.S) :
       | Boolean v ->
           let x = get_value v in
           Field.(equal x zero || equal x one)
-      | Equal (v1, v2) -> Field.equal (get_value v1) (get_value v2)
+      | Equal (v1, v2) ->
+          Field.equal (get_value v1) (get_value v2)
       | R1CS (v1, v2, v3) ->
           Field.(equal (mul (get_value v1) (get_value v2)) (get_value v3))
-      | Square (a, c) -> Field.equal (Field.square (get_value a)) (get_value c)
+      | Square (a, c) ->
+          Field.equal (Field.square (get_value a)) (get_value c)
 
     let eval t get_value =
       List.for_all t ~f:(fun {basic; _} -> eval_basic basic get_value)

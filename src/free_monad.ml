@@ -28,8 +28,10 @@ end = struct
 
     let rec map t ~f =
       match t with
-      | Pure x -> Pure (f x)
-      | Free tf -> Free (F.map tf ~f:(map ~f))
+      | Pure x ->
+          Pure (f x)
+      | Free tf ->
+          Free (F.map tf ~f:(map ~f))
 
     let map = `Custom map
 
@@ -53,8 +55,10 @@ end = struct
 
     let rec map t ~f =
       match t with
-      | Pure x -> Pure (f x)
-      | Free tf -> Free (F.map tf ~f:(map ~f))
+      | Pure x ->
+          Pure (f x)
+      | Free tf ->
+          Free (F.map tf ~f:(map ~f))
 
     let map = `Custom map
 
@@ -78,8 +82,10 @@ end = struct
 
     let rec map t ~f =
       match t with
-      | Pure x -> Pure (f x)
-      | Free tf -> Free (F.map tf ~f:(map ~f))
+      | Pure x ->
+          Pure (f x)
+      | Free tf ->
+          Free (F.map tf ~f:(map ~f))
 
     let map = `Custom map
 

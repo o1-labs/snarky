@@ -19,9 +19,11 @@ let modname_of_filename file =
 let load_directory env dirname =
   let files = try Sys.readdir dirname with Sys_error _ -> [||] in
   Array.iter files ~f:(fun file ->
-      let ext = Filename.extension file in
-      if String.equal ext ".cmi" || String.equal ext ".cmti" then
-        let filename = Filename.concat dirname file in
-        let module_name = modname_of_filename file in
-        Envi.register_external_module module_name (Envi.Deferred filename) env
-  )
+      match Filename.split_extension file with
+      | _, Some ("cmi" | "cmti") ->
+          let filename = Filename.concat dirname file in
+          let module_name = modname_of_filename file in
+          Envi.register_external_module module_name (Envi.Deferred filename)
+            env
+      | _ ->
+          () )
