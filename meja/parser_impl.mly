@@ -274,21 +274,22 @@ expr:
     { let unit_pat =
         mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
       in
-      mkexp ~pos:$loc (Fun (unit_pat, body, Explicit)) }
+      mkexp ~pos:$loc (Fun (Nolabel, unit_pat, body, Explicit)) }
   | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
     { f }
-  | f = expr LPAREN es = expr_list RPAREN
+  | f = expr LPAREN es = expr_arg_list RPAREN
     { mkexp ~pos:$loc (Apply (f, List.rev es)) }
   | hd = expr COLONCOLON tl = expr
     { consexp ~pos:$loc hd tl }
   | e1 = expr op = infix_operator e2 = expr %prec above_infix
     { let op = mkloc (Lident op) ~pos:$loc(op) in
-      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [e1; e2])) }
+      mkexp ~pos:$loc
+        (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e1; Nolabel, e2])) }
   | op = PREFIXOP e = expr
     { let op = mkloc (Lident op) ~pos:$loc(op) in
-      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [e])) }
+      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e])) }
   | SWITCH LPAREN e = expr_or_bare_tuple RPAREN LBRACE rev_cases = list(match_case, {}) RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
@@ -318,33 +319,35 @@ match_case:
   | BAR p = pat EQUALGT e = expr
     { (p, e) }
 
-expr_list:
+expr_arg_list:
   | (* empty *)
-    { [mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "()"), None))] }
+    { [Nolabel, mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "()"), None))] }
   | e = expr
-    { [e] }
-  | es = expr_list COMMA e = expr
-    { e :: es }
+    { [Nolabel, e] }
+  | es = expr_arg_list COMMA e = expr
+    { (Nolabel, e) :: es }
 
 function_from_args:
   | p = pat RPAREN EQUALGT LBRACE body = block RBRACE
-    { mkexp ~pos:$loc (Fun (p, body, Explicit)) }
+    { mkexp ~pos:$loc (Fun (Nolabel, p, body, Explicit)) }
   | pat RPAREN err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
   | p = pat RPAREN COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
-    { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc(typ) (Constraint (body, typ)), Explicit)) }
+    { mkexp ~pos:$loc (Fun (Nolabel, p, mkexp ~pos:$loc(typ)
+        (Constraint (body, typ)), Explicit)) }
   | p = pat COMMA f = function_from_args
-    { mkexp ~pos:$loc (Fun (p, f, Explicit)) }
+    { mkexp ~pos:$loc (Fun (Nolabel, p, f, Explicit)) }
 
 function_from_implicit_args:
   | p = pat RBRACE LPAREN f = function_from_args
-    { mkexp ~pos:$loc (Fun (p, f, Implicit)) }
+    { mkexp ~pos:$loc (Fun (Nolabel, p, f, Implicit)) }
   | p = pat RBRACE EQUALGT LBRACE body = block RBRACE
-    { mkexp ~pos:$loc (Fun (p, body, Implicit)) }
+    { mkexp ~pos:$loc (Fun (Nolabel, p, body, Implicit)) }
   | p = pat RBRACE COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
-    { mkexp ~pos:$loc (Fun (p, mkexp ~pos:$loc(typ) (Constraint (body, typ)), Implicit)) }
+    { mkexp ~pos:$loc (Fun (Nolabel, p, mkexp ~pos:$loc(typ)
+        (Constraint (body, typ)), Implicit)) }
   | p = pat COMMA f = function_from_implicit_args
-    { mkexp ~pos:$loc (Fun (p, f, Implicit)) }
+    { mkexp ~pos:$loc (Fun (Nolabel, p, f, Implicit)) }
   | pat RBRACE err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
 
@@ -428,9 +431,9 @@ type_expr:
   | x = simple_type_expr
     { x }
   | x = simple_type_expr DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Explicit)) }
+    { mktyp ~pos:$loc (Tarrow (x, y, Explicit, Nolabel)) }
   | LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Implicit)) }
+    { mktyp ~pos:$loc (Tarrow (x, y, Implicit, Nolabel)) }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X
