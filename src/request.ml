@@ -33,9 +33,12 @@ module Handler = struct
             ^ Core_kernel.String.concat ~sep:"\n" label_stack )
       | {handle} :: hs -> (
         match handle req with
-        | Provide x -> x
-        | Delegate req' -> go req' hs
-        | Unhandled -> go req hs )
+        | Provide x ->
+            x
+        | Delegate req' ->
+            go req' hs
+        | Unhandled ->
+            go req hs )
     in
     go req0 stack0
 
@@ -46,8 +49,10 @@ module Handler = struct
         type response += T of a Response.t
       end in
       match handler (With {request; respond= (fun x -> T.T x)}) with
-      | T.T x -> x
-      | _ -> Response.Unhandled
+      | T.T x ->
+          x
+      | _ ->
+          Response.Unhandled
     in
     {handle}
 

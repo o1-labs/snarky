@@ -1,3 +1,6 @@
+module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Impl
+
 type 'field field_pair = 'field * 'field
 
 type 'field field_pair_alias = 'field field_pair
