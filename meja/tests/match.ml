@@ -9,7 +9,34 @@ type t = {a: int; b: bool}
 
 type u = {f: int -> int}
 
-type ('a, 'b) v = {x: 'a; y: 'b; g: 'a -> 'b}
+include struct
+  type ('a, 'b) v = {x: 'a; y: 'b; g: 'a -> 'b}
+
+  let v_typ : (_, (_, _) v) Typ.t =
+    { Typ.store=
+        (fun {x; y; g; _} ->
+          Typ.Store.bind (Typ.store g) (fun g ->
+              Typ.Store.bind (Typ.store y) (fun y ->
+                  Typ.Store.bind (Typ.store x) (fun x ->
+                      Typ.Store.return {x; y; g} ) ) ) )
+    ; Typ.read=
+        (fun {x; y; g; _} ->
+          Typ.Read.bind (Snarky.read g) (fun g ->
+              Typ.Read.bind (Snarky.read y) (fun y ->
+                  Typ.Read.bind (Snarky.read x) (fun x ->
+                      Typ.Read.return {x; y; g} ) ) ) )
+    ; Typ.alloc=
+        (fun {x; y; g; _} ->
+          Typ.Alloc.bind Typ.alloc (fun g ->
+              Typ.Alloc.bind Typ.alloc (fun y ->
+                  Typ.Alloc.bind Typ.alloc (fun x -> Typ.Alloc.return {x; y; g})
+              ) ) )
+    ; Typ.check=
+        (fun {x; y; g; _} ->
+          (fun f x -> f x) (Typ.check g) (fun g ->
+              (fun f x -> f x) (Typ.check y) (fun y ->
+                  (fun f x -> f x) (Typ.check x) (fun x -> ()) ) ) ) }
+end
 
 let z x {f; _} = match x with {a= x; b; _} -> f x
 

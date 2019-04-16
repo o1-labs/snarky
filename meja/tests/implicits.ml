@@ -24,7 +24,25 @@ let h __implicit17__ __implicit9__ __implicit10__ (x : int) (y : bool)
   , (g __implicit9__ __implicit10__ __implicit9__) y y
   , (g __implicit9__ __implicit10__ __implicit17__) z z )
 
-type ('a, 'b) conv = {conv: 'a -> 'b}
+include struct
+  type ('a, 'b) conv = {conv: 'a -> 'b}
+
+  let conv_typ : (_, (_, _) conv) Typ.t =
+    { Typ.store=
+        (fun {conv; _} ->
+          Typ.Store.bind (Typ.store conv) (fun conv -> Typ.Store.return {conv})
+          )
+    ; Typ.read=
+        (fun {conv; _} ->
+          Typ.Read.bind (Snarky.read conv) (fun conv -> Typ.Read.return {conv})
+          )
+    ; Typ.alloc=
+        (fun {conv; _} ->
+          Typ.Alloc.bind Typ.alloc (fun conv -> Typ.Alloc.return {conv}) )
+    ; Typ.check=
+        (fun {conv; _} -> (fun f x -> f x) (Typ.check conv) (fun conv -> ()))
+    }
+end
 
 let conv {conv; _} = conv
 
