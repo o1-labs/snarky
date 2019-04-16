@@ -176,6 +176,7 @@ and statement_desc =
   | Open of lid
   | TypeExtension of variant * ctor_decl list
   | Request of type_expr * ctor_decl * (pattern option * expression) option
+  | Multiple of statement list
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 

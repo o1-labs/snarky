@@ -225,6 +225,11 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Multiple stmts ->
+      Str.include_ ?loc
+        { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
+        ; pincl_loc= Option.value ~default:Location.none loc
+        ; pincl_attributes= [] }
 
 and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 
