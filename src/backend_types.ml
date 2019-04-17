@@ -56,7 +56,11 @@ end
 
 module R1CS_constraint = Field_constrained
 module R1CS_constraint_system = Field_constrained
-module Proving_key = Field_constrained
-module Verification_key = Field_constrained
-module Keypair = Field_constrained
-module Proof = Field_constrained
+
+module Proving_key = struct
+  module Make = Make_foreign
+end
+
+module Verification_key = Proving_key
+module Keypair = Proving_key
+module Proof = Proving_key

@@ -42,10 +42,18 @@ module R1CS_constraint : Field_constrained
 
 module R1CS_constraint_system : Field_constrained
 
-module Proving_key : Field_constrained
+module Proving_key : sig
+  module Make (M : Prefix_intf) : S
+end
 
-module Verification_key : Field_constrained
+module Verification_key : sig
+  module Make (M : Prefix_intf) : S
+end
 
-module Keypair : Field_constrained
+module Keypair : sig
+  module Make (M : Prefix_intf) : S
+end
 
-module Proof : Field_constrained
+module Proof : sig
+  module Make (M : Prefix_intf) : S
+end
