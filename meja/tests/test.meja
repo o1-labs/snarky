@@ -42,3 +42,7 @@ let h = fun (ignore : int -> unit) => {
   let f = fun (x, y) => {x;};
   f (a, f (b, f (c, f (d, e))));
 };
+
+let i = fun () => { (); };
+
+let j = i ();

@@ -101,8 +101,45 @@ module type S = sig
     val set_is_square : t -> bool -> unit
   end
 
+  module R1CS_constraint_system : sig
+    type t = Field.t Backend_types.R1CS_constraint_system.t
+
+    val create : unit -> t
+
+    val report_statistics : t -> unit
+
+    val add_constraint : t -> R1CS_constraint.t -> unit
+
+    val add_constraint_with_annotation :
+      t -> R1CS_constraint.t -> string -> unit
+
+    val set_primary_input_size : t -> int -> unit
+
+    val set_auxiliary_input_size : t -> int -> unit
+
+    val get_primary_input_size : t -> int
+
+    val get_auxiliary_input_size : t -> int
+
+    val check_exn : t -> unit
+
+    val is_satisfied :
+         t
+      -> primary_input:Field.Vector.t
+      -> auxiliary_input:Field.Vector.t
+      -> bool
+
+    val digest : t -> Md5.t
+
+    val constraints : t -> Cvar.t Constraint.t
+
+    val to_json : t -> 'a json
+  end
+
   module Proving_key : sig
     type t [@@deriving bin_io]
+
+    val r1cs_constraint_system : t -> R1CS_constraint_system.t
 
     include Stringable.S with type t := t
 
@@ -137,41 +174,6 @@ module type S = sig
 
     val verify :
       ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
-  end
-
-  module R1CS_constraint_system : sig
-    type t = Field.t Backend_types.R1CS_constraint_system.t
-
-    val create : unit -> t
-
-    val report_statistics : t -> unit
-
-    val add_constraint : t -> R1CS_constraint.t -> unit
-
-    val add_constraint_with_annotation :
-      t -> R1CS_constraint.t -> string -> unit
-
-    val set_primary_input_size : t -> int -> unit
-
-    val set_auxiliary_input_size : t -> int -> unit
-
-    val get_primary_input_size : t -> int
-
-    val get_auxiliary_input_size : t -> int
-
-    val check_exn : t -> unit
-
-    val is_satisfied :
-         t
-      -> primary_input:Field.Vector.t
-      -> auxiliary_input:Field.Vector.t
-      -> bool
-
-    val digest : t -> Md5.t
-
-    val constraints : t -> Cvar.t Constraint.t
-
-    val to_json : t -> 'a json
   end
 
   module Keypair : sig
@@ -297,8 +299,10 @@ module Make (Backend : Backend_intf.S) :
 
     let project_reference =
       let rec go x acc = function
-        | [] -> acc
-        | b :: bs -> go (Field.add x x) (if b then Field.add acc x else acc) bs
+        | [] ->
+            acc
+        | b :: bs ->
+            go (Field.add x x) (if b then Field.add acc x else acc) bs
       in
       fun bs -> go Field.one Field.zero bs
 
@@ -368,16 +372,20 @@ module Make (Backend : Backend_intf.S) :
       List.map ~f:(fun (_, v) -> Var.index v) terms
 
     let to_constant : t -> Field.t option = function
-      | Constant x -> Some x
-      | _ -> None
+      | Constant x ->
+          Some x
+      | _ ->
+          None
   end
 
   module Linear_combination = struct
     type t = Linear_combination.t
 
     let of_constant = function
-      | None -> Linear_combination.create ()
-      | Some c -> Linear_combination.of_field c
+      | None ->
+          Linear_combination.create ()
+      | Some c ->
+          Linear_combination.of_field c
 
     let of_var (cv : Cvar.t) =
       let constant, terms = Cvar.to_constant_and_terms cv in
@@ -461,10 +469,12 @@ module Make (Backend : Backend_intf.S) :
       | Boolean v ->
           let x = get_value v in
           Field.(equal x zero || equal x one)
-      | Equal (v1, v2) -> Field.equal (get_value v1) (get_value v2)
+      | Equal (v1, v2) ->
+          Field.equal (get_value v1) (get_value v2)
       | R1CS (v1, v2, v3) ->
           Field.(equal (mul (get_value v1) (get_value v2)) (get_value v3))
-      | Square (a, c) -> Field.equal (Field.square (get_value a)) (get_value c)
+      | Square (a, c) ->
+          Field.equal (Field.square (get_value a)) (get_value c)
 
     let eval t get_value =
       List.for_all t ~f:(fun {basic; _} -> eval_basic basic get_value)

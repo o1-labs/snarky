@@ -14,6 +14,17 @@ let mklocation (loc_start, loc_end) = {loc_start; loc_end; loc_ghost= false}
 
 let lexeme_loc lexbuf =
   mklocation (Lexing.lexeme_start_p lexbuf, Lexing.lexeme_end_p lexbuf)
+
+let comment_buffer = Buffer.create 256
+let store_lexeme lexbuf =
+  Buffer.add_string comment_buffer (Lexing.lexeme lexbuf)
+
+let get_comment comment lexbuf =
+  Buffer.reset comment_buffer;
+  comment lexbuf;
+  let s = Buffer.contents comment_buffer in
+  Buffer.reset comment_buffer;
+  s
 }
 
 let newline = ('\r'* '\n')
@@ -42,16 +53,22 @@ rule token = parse
   | "type" { TYPE }
   | "module" { MODULE }
   | "open" { OPEN }
+  | "request" { REQUEST }
+  | "with" { WITH }
+  | "handler" { HANDLER }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }
-  | '(' { LBRACKET }
-  | ')' { RBRACKET }
+  | '(' { LPAREN }
+  | ')' { RPAREN }
+  | '[' { LBRACKET }
+  | ']' { RBRACKET }
   | "->" { DASHGT }
   | "=>" { EQUALGT }
   | "+=" { PLUSEQUAL }
   | '=' { EQUAL }
   | ':' { COLON }
+  | "::" { COLONCOLON }
   | ',' { COMMA }
   | '_' { UNDERSCORE }
   | '|' { BAR }
@@ -59,6 +76,13 @@ rule token = parse
   | "..." { DOTDOTDOT }
   | ".." { DOTDOT }
   | '.' { DOT }
+  | "//" ([^'\n']* as comment) newline
+    { new_line lexbuf; COMMENT (comment) }
+  | "//" ([^'\n']* as comment) eof
+    { new_line lexbuf; COMMENT (comment) }
+  | "/*"
+    { let comment = get_comment comment lexbuf in
+      COMMENT (comment) }
 
   | "!" symbolchar * as op { PREFIXOP op }
   | ['~' '?'] symbolchar + as op { PREFIXOP op }
@@ -71,3 +95,21 @@ rule token = parse
   | uppercase_alpha ident* { UIDENT(Lexing.lexeme lexbuf) }
   | _ { raise (Error (lexeme_loc lexbuf, Unexpected_character (Lexing.lexeme lexbuf))) }
   | eof { EOF }
+
+and comment = parse
+  | "*/"
+    { store_lexeme lexbuf }
+  | newline
+    { new_line lexbuf; store_lexeme lexbuf; comment lexbuf }
+  | _
+    { store_lexeme lexbuf; comment lexbuf }
+
+{
+  let token lexbuf =
+    let rec go () =
+      match token lexbuf with
+      | COMMENT _ -> go ()
+      | tok -> tok
+    in
+    go ()
+}

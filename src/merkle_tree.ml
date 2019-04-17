@@ -14,7 +14,8 @@ module Free_hash = struct
     end in
     let rec go path t1 t2 =
       match (t1, t2) with
-      | Hash_empty, Hash_empty -> None
+      | Hash_empty, Hash_empty ->
+          None
       | Hash_value x, Hash_value y ->
           if x = y then None else raise (M.Done path)
       | Compress (l1, r1), Compress (l2, r2) ->
@@ -22,19 +23,21 @@ module Free_hash = struct
           ignore (go (true :: path) r1 r2) ;
           None
       | Hash_empty, Hash_value _
-       |Hash_empty, Compress _
-       |Hash_value _, Hash_empty
-       |Hash_value _, Compress _
-       |Compress _, Hash_empty
-       |Compress _, Hash_value _ ->
+      | Hash_empty, Compress _
+      | Hash_value _, Hash_empty
+      | Hash_value _, Compress _
+      | Compress _, Hash_empty
+      | Compress _, Hash_value _ ->
           raise (M.Done path)
     in
     try go [] t1 t2 with M.Done addr -> Some addr
 
   let rec run t ~hash ~compress =
     match t with
-    | Hash_value x -> hash (Some x)
-    | Hash_empty -> hash None
+    | Hash_value x ->
+        hash (Some x)
+    | Hash_empty ->
+        hash None
     | Compress (l, r) ->
         compress (run ~hash ~compress l) (run ~hash ~compress r)
 end
@@ -57,8 +60,10 @@ type ('hash, 'a) t =
 let check_exn {tree; depth; count; hash; compress} =
   let default = hash None in
   let rec check_hash = function
-    | Non_empty t -> check_hash_non_empty t
-    | Empty -> default
+    | Non_empty t ->
+        check_hash_non_empty t
+    | Empty ->
+        default
   and check_hash_non_empty = function
     | Leaf (h, x) ->
         assert (h = hash (Some x)) ;
@@ -76,13 +81,17 @@ let depth {depth; _} = depth
 let hash {tree; _} = non_empty_hash tree
 
 let tree_hash ~default = function
-  | Empty -> default
-  | Non_empty t -> non_empty_hash t
+  | Empty ->
+      default
+  | Non_empty t ->
+      non_empty_hash t
 
 let to_list : ('hash, 'a) t -> 'a list =
   let rec go acc = function
-    | Empty -> acc
-    | Non_empty (Leaf (_, x)) -> x :: acc
+    | Empty ->
+        acc
+    | Non_empty (Leaf (_, x)) ->
+        x :: acc
     | Non_empty (Node (h, l, r)) ->
         let acc' = go acc r in
         go acc' l
@@ -105,8 +114,10 @@ let insert hash compress t0 mask0 address x =
   let rec go mask t =
     if mask = 0 then
       match t with
-      | Empty -> Leaf (hash (Some x), x)
-      | Non_empty _ -> failwith "Tree should be empty"
+      | Empty ->
+          Leaf (hash (Some x), x)
+      | Non_empty _ ->
+          failwith "Tree should be empty"
     else
       let go_left = mask land address = 0 in
       let mask' = mask lsr 1 in
@@ -131,7 +142,8 @@ let insert hash compress t0 mask0 address x =
               ( compress (tree_hash ~default t_l) (non_empty_hash t_r')
               , t_l
               , Non_empty t_r' )
-      | Non_empty (Leaf _) -> failwith "Cannot insert into leaf"
+      | Non_empty (Leaf _) ->
+          failwith "Cannot insert into leaf"
   in
   go mask0 t0
 
@@ -141,7 +153,8 @@ let update ({hash; compress; tree= tree0; depth} as t) addr0 x =
   let tree_hash = tree_hash ~default:(hash None) in
   let rec go_non_empty tree i =
     match tree with
-    | Leaf (_, _) -> Leaf (hash (Some x), x)
+    | Leaf (_, _) ->
+        Leaf (hash (Some x), x)
     | Node (_, t_l, t_r) ->
         let b = ith_bit addr0 i in
         let t_l', t_r' =
@@ -150,8 +163,10 @@ let update ({hash; compress; tree= tree0; depth} as t) addr0 x =
         Node (compress (tree_hash t_l') (tree_hash t_r'), t_l', t_r')
   and go tree i =
     match tree with
-    | Non_empty tree -> Non_empty (go_non_empty tree i)
-    | Empty -> failwith "Merkle_tree.update: Invalid address"
+    | Non_empty tree ->
+        Non_empty (go_non_empty tree i)
+    | Empty ->
+        failwith "Merkle_tree.update: Invalid address"
   in
   {t with tree= go_non_empty tree0 (depth - 1)}
 
@@ -163,7 +178,8 @@ let get {tree; depth; _} addr0 =
     | Node (_, l, r) ->
         let go_right = ith_bit addr0 i in
         if go_right then get r (i - 1) else get l (i - 1)
-    | Leaf (_, x) -> Some x
+    | Leaf (_, x) ->
+        Some x
   in
   get_non_empty tree (depth - 1)
 
@@ -176,11 +192,14 @@ let set_dirty default tree addr x =
         let t = Non_empty (go Empty bs) in
         let l, r = if go_right then (Empty, t) else (t, Empty) in
         Node (default, l, r)
-    | Empty, [] -> Leaf (default, x)
-    | Non_empty t, _ -> go_non_empty t addr
+    | Empty, [] ->
+        Leaf (default, x)
+    | Non_empty t, _ ->
+        go_non_empty t addr
   and go_non_empty tree addr =
     match (tree, addr) with
-    | Leaf _, [] -> Leaf (default, x)
+    | Leaf _, [] ->
+        Leaf (default, x)
     | Node (_, l, r), go_right :: bs ->
         let l', r' =
           if go_right then (l, Non_empty (go r bs))
@@ -198,10 +217,13 @@ let recompute_hashes {tree; depth; count; hash; compress} =
     fun t -> tree_hash ~default t
   in
   let rec go = function
-    | Non_empty t -> Non_empty (go_non_empty t)
-    | Empty -> Empty
+    | Non_empty t ->
+        Non_empty (go_non_empty t)
+    | Empty ->
+        Empty
   and go_non_empty = function
-    | Leaf (_, x) -> Leaf (hash (Some x), x)
+    | Leaf (_, x) ->
+        Leaf (hash (Some x), x)
     | Node (_, l, r) ->
         let l' = go l in
         let r' = go r in
@@ -268,14 +290,18 @@ let get_path {tree; hash; depth; _} addr0 =
       let go_right = ith_bit addr0 i in
       if go_right then
         match t with
-        | Leaf _ -> failwith "get_path"
-        | Node (_h, _t_l, Empty) -> failwith "get_path"
+        | Leaf _ ->
+            failwith "get_path"
+        | Node (_h, _t_l, Empty) ->
+            failwith "get_path"
         | Node (_h, t_l, Non_empty t_r) ->
             go (tree_hash ~default t_l :: acc) t_r (i - 1)
       else
         match t with
-        | Leaf _ -> failwith "get_path"
-        | Node (_h, Empty, _t_r) -> failwith "get_path"
+        | Leaf _ ->
+            failwith "get_path"
+        | Node (_h, Empty, _t_r) ->
+            failwith "get_path"
         | Node (_h, Non_empty t_l, t_r) ->
             go (tree_hash ~default t_r :: acc) t_l (i - 1)
   in
@@ -284,7 +310,8 @@ let get_path {tree; hash; depth; _} addr0 =
 let implied_root ~compress addr0 entry_hash path0 =
   let rec go acc i path =
     match path with
-    | [] -> acc
+    | [] ->
+        acc
     | h :: hs ->
         go
           (if ith_bit addr0 i then compress h acc else compress acc h)
@@ -293,9 +320,12 @@ let implied_root ~compress addr0 entry_hash path0 =
   go entry_hash 0 path0
 
 let rec free_tree_hash = function
-  | Empty -> Free_hash.Hash_empty
-  | Non_empty (Leaf (_, x)) -> Hash_value x
-  | Non_empty (Node (_, l, r)) -> Compress (free_tree_hash l, free_tree_hash r)
+  | Empty ->
+      Free_hash.Hash_empty
+  | Non_empty (Leaf (_, x)) ->
+      Hash_value x
+  | Non_empty (Node (_, l, r)) ->
+      Compress (free_tree_hash l, free_tree_hash r)
 
 let free_root {tree; _} = free_tree_hash (Non_empty tree)
 
@@ -306,14 +336,18 @@ let get_free_path {tree; depth; _} addr0 =
       let go_right = ith_bit addr0 i in
       if go_right then
         match t with
-        | Leaf _ -> failwith "get_path"
-        | Node (_h, _t_l, Empty) -> failwith "get_path"
+        | Leaf _ ->
+            failwith "get_path"
+        | Node (_h, _t_l, Empty) ->
+            failwith "get_path"
         | Node (_h, t_l, Non_empty t_r) ->
             go (free_tree_hash t_l :: acc) t_r (i - 1)
       else
         match t with
-        | Leaf _ -> failwith "get_path"
-        | Node (_h, Empty, _t_r) -> failwith "get_path"
+        | Leaf _ ->
+            failwith "get_path"
+        | Node (_h, Empty, _t_r) ->
+            failwith "get_path"
         | Node (_h, Non_empty t_l, t_r) ->
             go (free_tree_hash t_r :: acc) t_l (i - 1)
   in
@@ -378,7 +412,8 @@ struct
     let rec go height acc addr path =
       let open Let_syntax in
       match (addr, path) with
-      | [], [] -> return acc
+      | [], [] ->
+          return acc
       | b :: bs, h :: hs ->
           let%bind l = Hash.if_ b ~then_:h ~else_:acc
           and r = Hash.if_ b ~then_:acc ~else_:h in

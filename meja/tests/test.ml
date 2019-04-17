@@ -1,3 +1,6 @@
+module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Impl
+
 let x = 15
 
 let y = x
@@ -43,3 +46,7 @@ let h (ignore : int -> unit) =
   ignore e ;
   let f x y = x in
   f a (f b (f c (f d e)))
+
+let i () = ()
+
+let j = i ()

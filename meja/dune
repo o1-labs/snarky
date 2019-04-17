@@ -1,8 +1,8 @@
 (executable
  (name meja)
- (libraries core_kernel ocaml-compiler-libs.common)
+ (libraries core_kernel ocaml-compiler-libs.common snarky)
  (flags :standard -warn-error -39-21)
- (preprocess (pps ppx_jane)))
+ (preprocess (pps ppxlib.metaquot ppx_jane)))
 
 (menhir
   (flags --explain --unused-tokens)

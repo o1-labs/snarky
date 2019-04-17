@@ -140,7 +140,7 @@ module type Basic = sig
         used to print JSON to the screen, write it to a file, etc.
     *)
   end
-  
+
   (** The data specification for checked computations. *)
   and Data_spec : sig
     (** A list of {!type:Typ.t} values, describing the inputs to a checked
@@ -175,7 +175,7 @@ module type Basic = sig
 
     include module type of Typ0.Data_spec0
   end
-  
+
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
@@ -372,7 +372,7 @@ module type Basic = sig
 
     include module type of Types.Typ.T
   end
-  
+
   (** Representation of booleans within a field.
 
       This representation ties the value of [true] to {!val:Field.one} and
@@ -469,7 +469,7 @@ module type Basic = sig
       val exactly_one : var list -> (unit, _) Checked.t
     end
   end
-  
+
   (** Checked computations.
 
       These are the values used to generate an R1CS for a computation. *)
@@ -510,7 +510,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         See {!module:Request} for more information on requests. *)
     type _ Request.t += Choose_preimage : field * int -> bool list Request.t
   end
-  
+
   and Field : sig
     (** The finite field over which the R1CS operates.
         Values may be between 0 and {!val:size}. *)
@@ -1224,10 +1224,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val reduce_to_prover :
        ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
-    -> Proving_key.t
-    -> ?handlers:Handler.t list
-    -> 's
-    -> 'k_value
+    -> (Proving_key.t -> ?handlers:Handler.t list -> 's -> 'k_value) Staged.t
   (** Reduce a checked computation, then generate a proof.
 
       [reduce_to_prover public_input computation] evaluates all parts of the
@@ -1391,7 +1388,7 @@ module type Run = sig
 
     val square : (Field.t -> Field.t -> t) with_constraint_args
   end
-  
+
   (** The data specification for checked computations. *)
   and Data_spec : sig
     (** A list of {!type:Typ.t} values, describing the inputs to a checked
@@ -1426,7 +1423,7 @@ module type Run = sig
 
     include module type of Typ0.Data_spec0
   end
-  
+
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
@@ -1526,7 +1523,7 @@ module type Run = sig
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
   end
-  
+
   (** Representation of booleans within a field.
 
       This representation ties the value of [true] to {!val:Field.one} and
@@ -1608,7 +1605,7 @@ module type Run = sig
       val exactly_one : var list -> unit
     end
   end
-  
+
   and Field : sig
     module Constant : sig
       (** The finite field over which the R1CS operates. *)
