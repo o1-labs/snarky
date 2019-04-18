@@ -432,7 +432,7 @@ struct
         of_bigstring bs
 
       include Binable.Of_binable
-                (Bigstring.Stable.V1)
+                (Bigstring)
                 (struct
                   type nonrec t = t
 
