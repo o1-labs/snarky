@@ -1480,9 +1480,7 @@ struct
     val verify :
       ?message:message -> t -> Verification_key.t -> M.Field.Vector.t -> bool
 
-    val to_string : t -> string
-
-    val of_string : string -> t
+    include Binable.S with type t := t
   end = struct
     include Proof.Make (struct
       let prefix = with_prefix M.prefix "proof"
@@ -1492,23 +1490,27 @@ struct
 
     type message = unit
 
-    let to_string : t -> string =
-      let stub =
-        foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
-      in
-      fun t ->
-        let s = stub t in
-        let r = Cpp_string.to_string s in
-        Cpp_string.delete s ; r
+    include Binable.Of_stringable (struct
+      type nonrec t = t
 
-    let of_string : string -> t =
-      let stub =
-        foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
-      in
-      fun s ->
-        let str = Cpp_string.of_string_don't_delete s in
-        let t = stub str in
-        Cpp_string.delete str ; t
+      let to_string : t -> string =
+        let stub =
+          foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+        in
+        fun t ->
+          let s = stub t in
+          let r = Cpp_string.to_string s in
+          Cpp_string.delete s ; r
+
+      let of_string : string -> t =
+        let stub =
+          foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
+        in
+        fun s ->
+          let str = Cpp_string.of_string_don't_delete s in
+          let t = stub str in
+          Cpp_string.delete str ; t
+    end)
 
     let create_ =
       let stub =
@@ -2368,8 +2370,6 @@ module type S = sig
     val verify :
       ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
 
-    val to_string : t -> string
-
-    val of_string : string -> t
+    include Binable.S with type t := t
   end
 end
