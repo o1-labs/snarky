@@ -1,0 +1,6 @@
+(executables
+ (names main)
+ (modes native)
+ (preprocess
+  (pps ppx_jane ppx_deriving.enum))
+ (libraries snarky core))
