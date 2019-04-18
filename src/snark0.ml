@@ -240,7 +240,8 @@ module Runner = struct
           ( (fun s ->
               if s.eval_constraints && not (Constraint.eval c (get_value s))
               then
-                let data = String.concat ~sep:"\n" (List.map c ~f:(function
+                (let data = String.concat ~sep:"\n" (List.map c ~f:(fun {basic; _} ->
+                  match basic with
                   | Boolean var ->
                       let str = Field.to_string (get_value s var) in
                       Format.(asprintf "Boolean %s" (Field.to_string (get_value s var)))
@@ -252,12 +253,12 @@ module Runner = struct
                       Format.(asprintf "R1CS %s %s %s" (Field.to_string (get_value s var1)) (Field.to_string (get_value s var2)) (Field.to_string (get_value s var3)))
                 ))
                 in
-                failwithf "Constraint unsatisfied:\n%s\n%s\n\nConstraint:\n%s\nData:\n%a"
+                failwithf "Constraint unsatisfied:\n%s\n%s\n\nConstraint:\n%s\nData:\n%s"
                   (Constraint.annotation c)
                   (Constraint.stack_to_string stack)
                   (Sexp.to_string (Constraint.sexp_of_t c))
                   data
-                  () ;
+                  ()) ;
               f s )
           , y )
       | With_state (p, and_then, t_sub, k) ->
