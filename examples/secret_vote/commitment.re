@@ -2,7 +2,6 @@ open Core;
 open Backend;
 open Fold_lib;
 
-module Value = Randomness
 module Randomness = Randomness
 
 type t = Field.t
@@ -14,11 +13,11 @@ type Snarky.Request.t(_) +=
 
 let check = {
   let init = boolean_triples(init);
-  (comm : t, value : Value.t) => {
+  (comm : t, vk : Voting_key.t) => {
     let r = exists(Randomness.typ, ~request=() => Commitment_randomness);
     Field.Assert.equal(
       comm,
-      Pedersen.digest(init @ Value.to_triples(value) @ Randomness.to_triples(r)) )
+      Pedersen.digest(init @ Voting_key.to_triples(vk) @ Randomness.to_triples(r)) )
   };
 }
 
@@ -27,10 +26,10 @@ let to_triples (t : t) = Pedersen.Digest.to_triples(t);
 module Constant = {
   type t = Field.Constant.t
 
-  let commit(value : Value.Constant.t) : t = {
+  let commit(vk : Voting_key.Constant.t) : t = {
     let r = Randomness.Constant.create();
     Pedersen.Constant.digest (
-      init @ Value.Constant.to_triples(value) @ Randomness.Constant.to_triples(r))
+      init @ Voting_key.Constant.to_triples(vk) @ Randomness.Constant.to_triples(r))
   };
 };
 

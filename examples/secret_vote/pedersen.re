@@ -52,6 +52,10 @@ module Digest = {
     Field.choose_preimage_var(~length=Field.Constant.size_in_bits, x);
 
   let to_triples = Fn.compose(triples_of_bits(Boolean.false_), to_bits);
+
+  module Constant = {
+    type t = Field.Constant.t;
+  };
 };
 
 module Constant = {

@@ -1,7 +1,7 @@
 open Backend;
 
-let a = failwith("TODO");
-let b = failwith("TODO");
+let a = Field.Constant.of_string("7296080957279758407415468581752425029516121466805344781232734728849116493472");
+let b = Field.Constant.of_string("16213513238399463127589930181672055621146936592900766180517188641980520820846");
 
 type t = (Field.t , Field.t )
 

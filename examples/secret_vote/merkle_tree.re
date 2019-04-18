@@ -51,3 +51,31 @@ let lookup(root : t, index : Index.t) : Commitment.t = {
   failwith("TODO")
 };
 
+module Constant = {
+  type hash = Pedersen.Digest.Constant.t;
+
+  type t = 
+    | Leaf (hash, Commitment.Constant.t)
+    | Node (hash, t, t);
+
+  let hash = fun
+    | Leaf (h, _) => h
+    | Node (h, _, _) => h
+
+  let rec get_path(t, index) = {
+    switch (t, index) {
+      | (Leaf(_, c), []) => (c, [])
+      | (Node(_, l, r), [b, ...bs]) => {
+        let (sub_tree, other) =
+          if (b) {
+            (r, l)
+          } else {
+            (l, r)
+          };
+        let (c, path) = get_path(sub_tree, bs);
+        (c, [hash(other), ...path])
+      }
+      | _ => failwith("Bad index")
+    };
+  };
+};
