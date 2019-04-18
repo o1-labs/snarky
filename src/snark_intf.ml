@@ -514,7 +514,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   and Field : sig
     (** The finite field over which the R1CS operates.
         Values may be between 0 and {!val:size}. *)
-    type t = field [@@deriving bin_io, sexp, hash, compare, eq]
+    type t = field [@@deriving bin_io, sexp, hash, compare]
 
     val gen : t Core_kernel.Quickcheck.Generator.t
     (** A generator for Quickcheck tests. *)
@@ -1307,7 +1307,7 @@ module type S = sig
 end
 
 (** The imperative interface to Snarky. *)
-module type Run = sig
+module type Run_basic = sig
   (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
   module Proving_key : sig
     type t [@@deriving bin_io]
@@ -1609,7 +1609,7 @@ module type Run = sig
   and Field : sig
     module Constant : sig
       (** The finite field over which the R1CS operates. *)
-      type t = field [@@deriving bin_io, sexp, hash, compare, eq]
+      type t = field [@@deriving bin_io, sexp, hash, compare]
 
       val gen : t Core_kernel.Quickcheck.Generator.t
       (** A generator for Quickcheck tests. *)
@@ -1617,8 +1617,6 @@ module type Run = sig
       include Field_intf.Extended with type t := t
 
       include Stringable.S with type t := t
-
-      val size : Bignum_bigint.t
 
       val unpack : t -> bool list
       (** Convert a field element into its constituent bits. *)
@@ -1628,6 +1626,10 @@ module type Run = sig
     end
 
     type t = field Cvar.t
+
+    val size_in_bits : int
+
+    val size : Bignum_bigint.t
 
     val length : t -> int
     (** For debug purposes *)
@@ -1920,4 +1922,23 @@ module type Run = sig
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
+end
+
+module type Run = sig
+  include Run_basic
+
+  module Number :
+    Number_intf.Run
+    with type field := field
+     and type field_var := Field.t
+     and type bool_var := Boolean.var
+
+  module Enumerable (M : sig
+    type t [@@deriving enum]
+  end) :
+    Enumerable_intf.Run
+    with type ('a, 'b) typ := ('a, 'b) Typ.t
+     and type bool_var := Boolean.var
+     and type var = Field.t
+     and type t := M.t
 end

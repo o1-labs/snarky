@@ -1773,7 +1773,7 @@ module Make (Backend : Backend_intf.S) = struct
 end
 
 module Run = struct
-  module Make (Backend : Backend_intf.S) = struct
+  module Make_basic (Backend : Backend_intf.S) = struct
     module Snark = Make (Backend)
     open Types.Run_state
     open Snark
@@ -1944,6 +1944,10 @@ module Run = struct
 
     module Field = struct
       open Snark.Field
+
+      let size_in_bits = size_in_bits
+
+      let size = size
 
       module Constant = struct
         type t = Snark.Field.t [@@deriving bin_io, sexp, hash, compare, eq]
@@ -2343,6 +2347,13 @@ module Run = struct
       ignore (x ()) ;
       state := {!state with run_special= old} ;
       !count
+  end
+
+  module Make (Backend : Backend_intf.S) = struct
+    module Basic = Make_basic (Backend)
+    include Basic
+    module Number = Number.Run.Make (Basic)
+    module Enumerable = Enumerable.Run.Make (Basic)
   end
 end
 
