@@ -243,7 +243,6 @@ module Runner = struct
                 (let data = String.concat ~sep:"\n" (List.map c ~f:(fun {basic; _} ->
                   match basic with
                   | Boolean var ->
-                      let str = Field.to_string (get_value s var) in
                       Format.(asprintf "Boolean %s" (Field.to_string (get_value s var)))
                   | Equal (var1, var2) ->
                       Format.(asprintf "Equal %s %s" (Field.to_string (get_value s var1)) (Field.to_string (get_value s var2)))
