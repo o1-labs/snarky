@@ -30,13 +30,13 @@ check-format:
 	dune exec --root=. app/reformat-snarky/reformat.exe -- -path . -check
 
 docker :
-	./rebuild-docker.sh ocaml-camlsnark
+	./rebuild-docker.sh snarky
 
 minikube :
-	./rebuild-minikube.sh ocaml-camlsnark
+	./rebuild-minikube.sh snarky
 
 googlecloud :
-	./rebuild-googlecloud.sh ocaml-camlsnark
+	./rebuild-googlecloud.sh snarky
 
 .PHONY : default build examples docker minikube googlecloud
 

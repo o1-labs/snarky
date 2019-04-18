@@ -30,8 +30,10 @@ module Make (Impl : Snark_intf.Basic) = struct
     let length = bigint_num_bits upper_bound in
     with_label "Number.to_bits"
       ( match bits with
-      | Some bs -> return (List.take bs length)
-      | None -> Field.Checked.unpack var ~length )
+      | Some bs ->
+          return (List.take bs length)
+      | None ->
+          Field.Checked.unpack var ~length )
 
   let of_bits bs =
     let n = List.length bs in

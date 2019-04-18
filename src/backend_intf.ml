@@ -58,8 +58,46 @@ module type S = sig
     val c : t -> Linear_combination.t
   end
 
+  module R1CS_constraint_system : sig
+    type t = Field.t Backend_types.R1CS_constraint_system.t
+
+    val create : unit -> t
+
+    val report_statistics : t -> unit
+
+    val add_constraint : t -> R1CS_constraint.t -> unit
+
+    val add_constraint_with_annotation :
+      t -> R1CS_constraint.t -> string -> unit
+
+    val set_primary_input_size : t -> int -> unit
+
+    val set_auxiliary_input_size : t -> int -> unit
+
+    val get_primary_input_size : t -> int
+
+    val get_auxiliary_input_size : t -> int
+
+    val check_exn : t -> unit
+
+    val is_satisfied :
+         t
+      -> primary_input:Field.Vector.t
+      -> auxiliary_input:Field.Vector.t
+      -> bool
+
+    val digest : t -> Md5.t
+
+    val iter_constraints : f:(R1CS_constraint.t -> unit) -> t -> unit
+
+    val fold_constraints :
+      f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
+  end
+
   module Proving_key : sig
     type t = Field.t Backend_types.Proving_key.t [@@deriving bin_io]
+
+    val r1cs_constraint_system : t -> R1CS_constraint_system.t
 
     val to_string : t -> string
 
@@ -96,42 +134,6 @@ module type S = sig
 
     val verify :
       ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
-  end
-
-  module R1CS_constraint_system : sig
-    type t = Field.t Backend_types.R1CS_constraint_system.t
-
-    val create : unit -> t
-
-    val report_statistics : t -> unit
-
-    val add_constraint : t -> R1CS_constraint.t -> unit
-
-    val add_constraint_with_annotation :
-      t -> R1CS_constraint.t -> string -> unit
-
-    val set_primary_input_size : t -> int -> unit
-
-    val set_auxiliary_input_size : t -> int -> unit
-
-    val get_primary_input_size : t -> int
-
-    val get_auxiliary_input_size : t -> int
-
-    val check_exn : t -> unit
-
-    val is_satisfied :
-         t
-      -> primary_input:Field.Vector.t
-      -> auxiliary_input:Field.Vector.t
-      -> bool
-
-    val digest : t -> Md5.t
-
-    val iter_constraints : f:(R1CS_constraint.t -> unit) -> t -> unit
-
-    val fold_constraints :
-      f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
   end
 
   module Keypair : sig

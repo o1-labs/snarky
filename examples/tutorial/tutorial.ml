@@ -406,7 +406,8 @@ let exercise8 () =
             let choice1 = List.nth_exn l secret1 in
             let choice2 = List.nth_exn l secret2 in
             respond (Provide (choice1, choice2))
-        | _ -> unhandled )
+        | _ ->
+            unhandled )
   in
   let proof l =
     prove (Keypair.pk keypair) (input ()) () handled_chosen_two_different l
@@ -450,7 +451,7 @@ module Exercise9 = struct
       Array.init (rows a) ~f:(fun i ->
           Array.init (cols b) ~f:(fun j ->
               Array.fold2_exn (row a i) (col b j) ~init:R.zero
-                ~f:(fun acc aik bkj -> R.add acc (R.mul aik bkj) ) ) )
+                ~f:(fun acc aik bkj -> R.add acc (R.mul aik bkj)) ) )
   end
 
   (* A Field is a ring *)
@@ -466,7 +467,7 @@ module Exercise9 = struct
     [|[|of_int 1; of_int 2|]; [|of_int 3; of_int 4|]; [|of_int 5; of_int 6|]|]
 
   (* let () = printf !"Result %{sexp: Mat.t}\n%!" (Mat.mul a b) *)
-  
+
   (* Exercise 9:
      To bring everything together, we want to prove something more substantial.
      Here, we will build a program that
