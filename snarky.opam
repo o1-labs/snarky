@@ -10,18 +10,18 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "core_kernel" {>= "0.12.0" & < "0.13.0" }
+  "core_kernel" {>= "v0.12" & < "v0.13" }
   "fold_lib"
   "tuple_lib"
   "bitstring_lib"
   "interval_union"
   "bignum"
-  "ctypes" {>= "0.14.0" & < "0.15.0"}
+  "ctypes" {>= "0.14" & < "0.15"}
   "ctypes-foreign" {>= "0.4.0" & < "0.5.0"}
   "ppx_snarky"
-  "ppx_jane" {>= "0.12.0" & < "0.13.0"}
-  "ppx_deriving" {>= "4.2.1" & < "4.3.0"}
-  "bisect_ppx" {>= "1.4.1" & < "1.5.0"}
+  "ppx_jane" {>= "v0.12" & < "v0.13"}
+  "ppx_deriving" {>= "4.2.1" & < "4.3"}
+  "bisect_ppx" {>= "1.4.1" & < "1.5"}
   "dune"                {build & >= "1.0"}
 ]
 available: [ ocaml-version >= "4.04.1" ]
