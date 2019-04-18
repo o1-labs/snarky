@@ -131,7 +131,7 @@ module Runner = struct
            Data:\n\
            %s"
           (Constraint.annotation c)
-          (Constraint.stack_to_string stack)
+          (Constraint.stack_to_string s.stack)
           (Sexp.to_string (Constraint.sexp_of_t c))
           data () ) ;
       Option.iter s.system ~f:(fun system ->
