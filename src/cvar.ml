@@ -33,7 +33,8 @@ struct
     let res = of_int 0 in
     let can_mutate_scale = ref false in
     let rec go scale = function
-      | Constant c when !can_mutate_scale -> scale *= c ; res += scale
+      | Constant c when !can_mutate_scale ->
+          scale *= c ; res += scale
       | Constant c ->
           Mutable.copy ~over:scratch c ;
           scratch *= scale ;
@@ -45,7 +46,8 @@ struct
           Mutable.copy ~over:scratch (context v) ;
           scratch *= scale ;
           res += scratch
-      | Scale (s, t) when !can_mutate_scale -> scale *= s ; go scale t
+      | Scale (s, t) when !can_mutate_scale ->
+          scale *= s ; go scale t
       | Scale (s, t) ->
           can_mutate_scale := true ;
           go (mul s scale) t ;
@@ -63,9 +65,12 @@ struct
 
   let to_constant_and_terms =
     let rec go scale constant terms = function
-      | Constant c -> (Field.add constant (Field.mul scale c), terms)
-      | Var v -> (constant, (scale, Var.create v) :: terms)
-      | Scale (s, t) -> go (Field.mul s scale) constant terms t
+      | Constant c ->
+          (Field.add constant (Field.mul scale c), terms)
+      | Var v ->
+          (constant, (scale, Var.create v) :: terms)
+      | Scale (s, t) ->
+          go (Field.mul s scale) constant terms t
       | Add (x1, x2) ->
           let c1, terms1 = go scale constant terms x1 in
           go scale c1 terms1 x2
@@ -76,14 +81,19 @@ struct
 
   let add x y =
     match (x, y) with
-    | Constant x, Constant y -> Constant (Field.add x y)
-    | _, _ -> Add (x, y)
+    | Constant x, Constant y ->
+        Constant (Field.add x y)
+    | _, _ ->
+        Add (x, y)
 
   let scale x s =
     match x with
-    | Constant x -> Constant (Field.mul x s)
-    | Scale (sx, x) -> Scale (Field.mul sx s, x)
-    | _ -> Scale (s, x)
+    | Constant x ->
+        Constant (Field.mul x s)
+    | Scale (sx, x) ->
+        Scale (Field.mul sx s, x)
+    | _ ->
+        Scale (s, x)
 
   let neg_one = Field.(sub zero one)
 

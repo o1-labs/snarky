@@ -12,17 +12,26 @@ module T0 = struct
       (a, s, field) t -> f:(a -> b) -> (b, s, field) t =
    fun t ~f ->
     match t with
-    | Pure x -> Pure (f x)
-    | Direct (d, k) -> Direct (d, fun b -> map (k b) ~f)
-    | With_label (s, t, k) -> With_label (s, t, fun b -> map (k b) ~f)
-    | As_prover (x, k) -> As_prover (x, map k ~f)
-    | Add_constraint (c, t1) -> Add_constraint (c, map t1 ~f)
+    | Pure x ->
+        Pure (f x)
+    | Direct (d, k) ->
+        Direct (d, fun b -> map (k b) ~f)
+    | With_label (s, t, k) ->
+        With_label (s, t, fun b -> map (k b) ~f)
+    | As_prover (x, k) ->
+        As_prover (x, map k ~f)
+    | Add_constraint (c, t1) ->
+        Add_constraint (c, map t1 ~f)
     | With_state (p, and_then, t_sub, k) ->
         With_state (p, and_then, t_sub, fun b -> map (k b) ~f)
-    | With_handler (h, t, k) -> With_handler (h, t, fun b -> map (k b) ~f)
-    | Clear_handler (t, k) -> Clear_handler (t, fun b -> map (k b) ~f)
-    | Exists (typ, c, k) -> Exists (typ, c, fun v -> map (k v) ~f)
-    | Next_auxiliary k -> Next_auxiliary (fun x -> map (k x) ~f)
+    | With_handler (h, t, k) ->
+        With_handler (h, t, fun b -> map (k b) ~f)
+    | Clear_handler (t, k) ->
+        Clear_handler (t, fun b -> map (k b) ~f)
+    | Exists (typ, c, k) ->
+        Exists (typ, c, fun v -> map (k v) ~f)
+    | Next_auxiliary k ->
+        Next_auxiliary (fun x -> map (k x) ~f)
 
   let map = `Custom map
 
@@ -30,18 +39,27 @@ module T0 = struct
       (a, s, field) t -> f:(a -> (b, s, field) t) -> (b, s, field) t =
    fun t ~f ->
     match t with
-    | Pure x -> f x
-    | Direct (d, k) -> Direct (d, fun b -> bind (k b) ~f)
-    | With_label (s, t, k) -> With_label (s, t, fun b -> bind (k b) ~f)
-    | As_prover (x, k) -> As_prover (x, bind k ~f)
+    | Pure x ->
+        f x
+    | Direct (d, k) ->
+        Direct (d, fun b -> bind (k b) ~f)
+    | With_label (s, t, k) ->
+        With_label (s, t, fun b -> bind (k b) ~f)
+    | As_prover (x, k) ->
+        As_prover (x, bind k ~f)
     (* Someday: This case is probably a performance bug *)
-    | Add_constraint (c, t1) -> Add_constraint (c, bind t1 ~f)
+    | Add_constraint (c, t1) ->
+        Add_constraint (c, bind t1 ~f)
     | With_state (p, and_then, t_sub, k) ->
         With_state (p, and_then, t_sub, fun b -> bind (k b) ~f)
-    | With_handler (h, t, k) -> With_handler (h, t, fun b -> bind (k b) ~f)
-    | Clear_handler (t, k) -> Clear_handler (t, fun b -> bind (k b) ~f)
-    | Exists (typ, c, k) -> Exists (typ, c, fun v -> bind (k v) ~f)
-    | Next_auxiliary k -> Next_auxiliary (fun x -> bind (k x) ~f)
+    | With_handler (h, t, k) ->
+        With_handler (h, t, fun b -> bind (k b) ~f)
+    | Clear_handler (t, k) ->
+        Clear_handler (t, fun b -> bind (k b) ~f)
+    | Exists (typ, c, k) ->
+        Exists (typ, c, fun v -> bind (k v) ~f)
+    | Next_auxiliary k ->
+        Next_auxiliary (fun x -> bind (k x) ~f)
 end
 
 module Basic : Checked_intf.Basic with type ('a, 's, 'f) t = ('a, 's, 'f) t =
@@ -78,7 +96,8 @@ module Make (Basic : Checked_intf.Basic) :
 
   let request ?such_that typ r =
     match such_that with
-    | None -> request_witness typ (As_prover0.return r)
+    | None ->
+        request_witness typ (As_prover0.return r)
     | Some such_that ->
         let open Let_syntax in
         let%bind x = request_witness typ (As_prover0.return r) in
@@ -91,8 +110,10 @@ module Make (Basic : Checked_intf.Basic) :
         Option.value request ~default:(As_prover0.return Request.Fail)
       in
       match compute with
-      | None -> Provider.Request request
-      | Some c -> Provider.Both (request, c)
+      | None ->
+          Provider.Request request
+      | Some c ->
+          Provider.Both (request, c)
     in
     let%map h = exists typ provider in
     Handle.var h
@@ -124,9 +145,12 @@ module Make (Basic : Checked_intf.Basic) :
     let map_concat_rev xss ~f =
       let rec go acc xs xss =
         match (xs, xss) with
-        | [], [] -> acc
-        | [], xs :: xss -> go acc xs xss
-        | x :: xs, _ -> go (f x :: acc) xs xss
+        | [], [] ->
+            acc
+        | [], xs :: xss ->
+            go acc xs xss
+        | x :: xs, _ ->
+            go (f x :: acc) xs xss
       in
       go [] [] xss
     in

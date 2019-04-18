@@ -6,8 +6,10 @@ open Types
 open Location
 
 let rec longident_of_path = function
-  | Pident ident -> Lident (Ident.name ident)
-  | Pdot (path, ident, _) -> Ldot (longident_of_path path, ident)
+  | Pident ident ->
+      Lident (Ident.name ident)
+  | Pdot (path, ident, _) ->
+      Ldot (longident_of_path path, ident)
   | Papply (path1, path2) ->
       Lapply (longident_of_path path1, longident_of_path path2)
 
@@ -21,7 +23,8 @@ let rec to_type_desc ~loc desc =
   | Tarrow (Optional _lbl, _typ1, typ2, _) ->
       (* TODO: Don't ignore optional arguments. *)
       (to_type_expr typ2).type_desc
-  | Ttuple typs -> Parsetypes.Ttuple (List.map ~f:to_type_expr typs)
+  | Ttuple typs ->
+      Parsetypes.Ttuple (List.map ~f:to_type_expr typs)
   | Tconstr (path, params, _) ->
       let var_ident = mkloc (longident_of_path path) loc in
       Parsetypes.Tctor
@@ -29,7 +32,8 @@ let rec to_type_desc ~loc desc =
         ; var_params= List.map ~f:to_type_expr params
         ; var_implicit_params= []
         ; var_decl_id= 0 }
-  | Tlink typ | Tsubst typ -> (to_type_expr typ).type_desc
+  | Tlink typ | Tsubst typ ->
+      (to_type_expr typ).type_desc
   | Tpoly (typ, typs) ->
       Parsetypes.Tpoly (List.map ~f:to_type_expr typs, to_type_expr typ)
   | Tpackage (path, _bound_names, typs) ->
@@ -57,8 +61,10 @@ let to_field_decl {ld_id; ld_type; ld_loc; _} =
   ; fld_loc= ld_loc }
 
 let to_ctor_args ~loc = function
-  | Cstr_tuple typs -> Ctor_tuple (List.map ~f:(to_type_expr ~loc) typs)
-  | Cstr_record labels -> Ctor_record (0, List.map ~f:to_field_decl labels)
+  | Cstr_tuple typs ->
+      Ctor_tuple (List.map ~f:(to_type_expr ~loc) typs)
+  | Cstr_record labels ->
+      Ctor_record (0, List.map ~f:to_field_decl labels)
 
 let to_ctor_decl {cd_id; cd_args; cd_res; cd_loc; _} =
   { ctor_ident= mkloc (Ident.name cd_id) cd_loc
@@ -68,10 +74,14 @@ let to_ctor_decl {cd_id; cd_args; cd_res; cd_loc; _} =
 
 let to_type_decl_desc decl =
   match (decl.type_manifest, decl.type_kind) with
-  | Some typ, _ -> TAlias (to_type_expr ~loc:decl.type_loc typ)
-  | None, (Type_abstract | Type_open) -> TAbstract
-  | None, Type_record (labels, _) -> TRecord (List.map labels ~f:to_field_decl)
-  | None, Type_variant ctors -> TVariant (List.map ctors ~f:to_ctor_decl)
+  | Some typ, _ ->
+      TAlias (to_type_expr ~loc:decl.type_loc typ)
+  | None, (Type_abstract | Type_open) ->
+      TAbstract
+  | None, Type_record (labels, _) ->
+      TRecord (List.map labels ~f:to_field_decl)
+  | None, Type_variant ctors ->
+      TVariant (List.map ctors ~f:to_ctor_decl)
 
 let can_create_signature_item item =
   match item with Sig_typext _ | Sig_class _ -> false | _ -> true
@@ -119,9 +129,12 @@ and to_signature items =
 
 and to_module_sig ~loc decl =
   match decl with
-  | None -> SigAbstract
+  | None ->
+      SigAbstract
   | Some (Mty_ident path | Mty_alias (_, path)) ->
       SigName (mkloc (longident_of_path path) loc)
-  | Some (Mty_signature signature) -> Signature (to_signature signature)
-  | Some (Mty_functor _) -> (* TODO: Implement functors. *)
-                            SigAbstract
+  | Some (Mty_signature signature) ->
+      Signature (to_signature signature)
+  | Some (Mty_functor _) ->
+      (* TODO: Implement functors. *)
+      SigAbstract

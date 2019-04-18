@@ -25,4 +25,5 @@ let () =
         ; "-lprocps"
         ; "-lgmp"
         ; "-lstdc++" ]
-    | s -> failwith (sprintf "don't know how to link on %s yet" s) )
+    | s ->
+        failwith (sprintf "don't know how to link on %s yet" s) )

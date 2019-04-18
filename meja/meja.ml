@@ -7,7 +7,8 @@ let print_position outx lexbuf =
 
 let parse_with_error parse lexbuf =
   let open Format in
-  try parse lexbuf with Parser_impl.Error ->
+  try parse lexbuf
+  with Parser_impl.Error ->
     fprintf err_formatter "%a: syntax error\n" print_position lexbuf ;
     pp_print_flush err_formatter () ;
     exit 1
@@ -28,7 +29,8 @@ let do_output filename f =
         Format.formatter_of_out_channel (Out_channel.create filename)
       in
       f output
-  | None -> ()
+  | None ->
+      ()
 
 let main =
   let file = ref None in
@@ -89,8 +91,10 @@ let main =
       match (!ocaml_file, !default) with
       | Some filename, _ ->
           Some (Format.formatter_of_out_channel (Out_channel.create filename))
-      | None, true -> Some Format.std_formatter
-      | None, false -> None
+      | None, true ->
+          Some Format.std_formatter
+      | None, false ->
+          None
     in
     do_output !ast_file (fun output ->
         Printast.structure 2 output ocaml_ast ;
@@ -99,10 +103,13 @@ let main =
     | Some output ->
         Pprintast.structure output ocaml_ast ;
         Format.pp_print_newline output ()
-    | None -> () ) ;
+    | None ->
+        () ) ;
     ( match !binml_file with
-    | Some file -> Pparse.write_ast Pparse.Structure file ocaml_ast
-    | None -> () ) ;
+    | Some file ->
+        Pparse.write_ast Pparse.Structure file ocaml_ast
+    | None ->
+        () ) ;
     exit 0
   with exn ->
     Location.report_exception Format.err_formatter exn ;

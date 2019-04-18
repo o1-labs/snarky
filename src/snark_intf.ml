@@ -108,7 +108,7 @@ module type Basic = sig
         second, ie. [square x y] => [x*x = y] within the field.
     *)
   end
-  
+
   (** The data specification for checked computations. *)
   and Data_spec : sig
     (** A list of {!type:Typ.t} values, describing the inputs to a checked
@@ -142,13 +142,7 @@ module type Basic = sig
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
     type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
-                                                                 ( 'r_var
-                                                                 , 'r_value
-                                                                 , 'k_var
-                                                                 , 'k_value
-                                                                 , 'field )
-                                                                 Typ0.Data_spec
-                                                                 .t =
+          ('r_var, 'r_value, 'k_var, 'k_value, 'field) Typ0.Data_spec.t =
       | ( :: ) :
           ('var, 'value, 'f) Typ0.t
           * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
@@ -160,7 +154,7 @@ module type Basic = sig
              data_spec
       | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
   end
-  
+
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
@@ -354,7 +348,7 @@ module type Basic = sig
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
   end
-  
+
   (** Representation of booleans within a field.
 
       This representation ties the value of [true] to {!val:Field.one} and
@@ -451,7 +445,7 @@ module type Basic = sig
       val exactly_one : var list -> (unit, _) Checked.t
     end
   end
-  
+
   (** Checked computations.
 
       These are the values used to generate an R1CS for a computation. *)
@@ -492,7 +486,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         See {!module:Request} for more information on requests. *)
     type _ Request.t += Choose_preimage : field * int -> bool list Request.t
   end
-  
+
   and Field : sig
     (** The finite field over which the R1CS operates.
         Values may be between 0 and {!val:size}. *)
@@ -1343,7 +1337,7 @@ module type Run = sig
 
     val square : (Field.t -> Field.t -> t) with_constraint_args
   end
-  
+
   (** The data specification for checked computations. *)
   and Data_spec : sig
     (** A list of {!type:Typ.t} values, describing the inputs to a checked
@@ -1377,13 +1371,7 @@ module type Run = sig
         allocated by allocating [typ1], followed by [typ2], etc. *)
 
     type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
-                                                                 ( 'r_var
-                                                                 , 'r_value
-                                                                 , 'k_var
-                                                                 , 'k_value
-                                                                 , 'field )
-                                                                 Typ0.Data_spec
-                                                                 .t =
+          ('r_var, 'r_value, 'k_var, 'k_value, 'field) Typ0.Data_spec.t =
       | ( :: ) :
           ('var, 'value, 'f) Types.Typ.t
           * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
@@ -1395,7 +1383,7 @@ module type Run = sig
              data_spec
       | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f) data_spec
   end
-  
+
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
     module Store : sig
@@ -1494,7 +1482,7 @@ module type Run = sig
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
   end
-  
+
   (** Representation of booleans within a field.
 
       This representation ties the value of [true] to {!val:Field.one} and
@@ -1576,7 +1564,7 @@ module type Run = sig
       val exactly_one : var list -> unit
     end
   end
-  
+
   and Field : sig
     module Constant : sig
       (** The finite field over which the R1CS operates. *)

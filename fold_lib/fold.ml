@@ -66,14 +66,20 @@ let group3 ~default (t : 'a t) : ('a * 'a * 'a) t =
               | [b2; b1; b0] ->
                   let pt' = f pt (b0, b1, b2) in
                   (pt', [b])
-              | _ -> (pt, b :: bs) )
+              | _ ->
+                  (pt, b :: bs) )
         in
         match bs with
-        | [b2; b1; b0] -> f pt (b0, b1, b2)
-        | [b1; b0] -> f pt (b0, b1, default)
-        | [b0] -> f pt (b0, default, default)
-        | [] -> pt
-        | _x1 :: _x2 :: _x3 :: _x4 :: _ -> assert false ) }
+        | [b2; b1; b0] ->
+            f pt (b0, b1, b2)
+        | [b1; b0] ->
+            f pt (b0, b1, default)
+        | [b0] ->
+            f pt (b0, default, default)
+        | [] ->
+            pt
+        | _x1 :: _x2 :: _x3 :: _x4 :: _ ->
+            assert false ) }
 
 let%test_unit "group3" =
   Quickcheck.test (Quickcheck.Generator.list Int.quickcheck_generator)

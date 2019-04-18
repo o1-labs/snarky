@@ -40,8 +40,10 @@ module Data_spec = struct
         int -> (r_var, r_value, k_var, k_value, 'f) t -> int =
      fun acc t ->
       match t with
-      | [] -> acc
-      | {alloc; _} :: t' -> go (acc + Typ_monads.Alloc.size alloc) t'
+      | [] ->
+          acc
+      | {alloc; _} :: t' ->
+          go (acc + Typ_monads.Alloc.size alloc) t'
     in
     go 0 t
 end
@@ -206,7 +208,8 @@ module T = struct
        fun spec0 xs0 ->
         let open H_list in
         match (spec0, xs0) with
-        | [], [] -> Store.return H_list.[]
+        | [], [] ->
+            Store.return H_list.[]
         | s :: spec, x :: xs ->
             let open Store.Let_syntax in
             let%map y = store s x and ys = go spec xs in
@@ -222,7 +225,8 @@ module T = struct
        fun spec0 xs0 ->
         let open H_list in
         match (spec0, xs0) with
-        | [], [] -> Read.return H_list.[]
+        | [], [] ->
+            Read.return H_list.[]
         | s :: spec, x :: xs ->
             let open Read.Let_syntax in
             let%map y = read s x and ys = go spec xs in
@@ -237,7 +241,8 @@ module T = struct
        fun spec0 ->
         let open H_list in
         match spec0 with
-        | [] -> Alloc.return H_list.[]
+        | [] ->
+            Alloc.return H_list.[]
         | s :: spec ->
             let open Alloc.Let_syntax in
             let%map y = alloc s and ys = go spec in
@@ -254,7 +259,8 @@ module T = struct
         let open H_list in
         let open Checked.Let_syntax in
         match (spec0, xs0) with
-        | [], [] -> return ()
+        | [], [] ->
+            return ()
         | s :: spec, x :: xs ->
             let%map () = check s x and () = go spec xs in
             ()

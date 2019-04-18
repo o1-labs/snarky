@@ -85,8 +85,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let project_reference =
       let rec go x acc = function
-        | [] -> acc
-        | b :: bs -> go (Field.add x x) (if b then Field.add acc x else acc) bs
+        | [] ->
+            acc
+        | b :: bs ->
+            go (Field.add x x) (if b then Field.add acc x else acc) bs
       in
       fun bs -> go Field.one Field.zero bs
 
@@ -156,14 +158,18 @@ module Make_basic (Backend : Backend_intf.S) = struct
       List.map ~f:(fun (_, v) -> Var.index v) terms
 
     let to_constant : t -> Field0.t option = function
-      | Constant x -> Some x
-      | _ -> None
+      | Constant x ->
+          Some x
+      | _ ->
+          None
   end
 
   module Linear_combination = struct
     let of_constant = function
-      | None -> Linear_combination.create ()
-      | Some c -> Linear_combination.of_field c
+      | None ->
+          Linear_combination.create ()
+      | Some c ->
+          Linear_combination.of_field c
 
     let of_var (cv : Cvar.t) =
       let constant, terms = Cvar.to_constant_and_terms cv in
@@ -229,10 +235,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
       | Boolean v ->
           let x = get_value v in
           Field.(equal x zero || equal x one)
-      | Equal (v1, v2) -> Field.equal (get_value v1) (get_value v2)
+      | Equal (v1, v2) ->
+          Field.equal (get_value v1) (get_value v2)
       | R1CS (v1, v2, v3) ->
           Field.(equal (mul (get_value v1) (get_value v2)) (get_value v3))
-      | Square (a, c) -> Field.equal (Field.square (get_value a)) (get_value c)
+      | Square (a, c) ->
+          Field.equal (Field.square (get_value a)) (get_value c)
 
     let eval t get_value =
       List.for_all t ~f:(fun {basic; _} -> eval_basic basic get_value)
@@ -296,14 +304,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 with a different arity type manifest.
       *)
       type ('r_var, 'r_value, 'k_var, 'k_value, 'field) data_spec =
-                                                                   ( 'r_var
-                                                                   , 'r_value
-                                                                   , 'k_var
-                                                                   , 'k_value
-                                                                   , 'field )
-                                                                   Typ
-                                                                   .Data_spec
-                                                                   .t =
+            ('r_var, 'r_value, 'k_var, 'k_value, 'field) Typ.Data_spec.t =
         | ( :: ) :
             ('var, 'value, 'f) Types.Typ.t
             * ('r_var, 'r_value, 'k_var, 'k_value, 'f) data_spec
@@ -323,8 +324,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
             int -> (r_var, r_value, k_var, k_value) t -> int =
          fun acc t ->
           match t with
-          | [] -> acc
-          | {alloc; _} :: t' -> go (acc + Alloc.size alloc) t'
+          | [] ->
+              acc
+          | {alloc; _} :: t' ->
+              go (acc + Alloc.size alloc) t'
         in
         go 0 t
     end
@@ -449,7 +452,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let s', y = As_prover.run x (get_value state) s in
             state.as_prover := old ;
             ({state with prover_state= Some s'}, Some y)
-        | _, _ -> (state, None)
+        | _, _ ->
+            (state, None)
 
       (* INVARIANT: run _ s = (s', _) gives
          (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
@@ -463,7 +467,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
             failwith
               "Can't run checked code as the prover: the verifier's \
                constraint system will not match."
-        | Pure x -> (s, x)
+        | Pure x ->
+            (s, x)
         | Direct (d, k) ->
             let s, y = d s in
             run (k y) s
@@ -517,7 +522,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
               (* TODO: Push a label onto the stack here *)
               let s, () = run (check var) (set_prover_state None s) in
               run (k {Handle.var; value= None}) (set_prover_state None s) )
-        | Next_auxiliary k -> run (k !(s.next_auxiliary)) s
+        | Next_auxiliary k ->
+            run (k !(s.next_auxiliary)) s
 
       let dummy_vector = Field.Vector.create ()
 
@@ -545,7 +551,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
                 let s', (_ : unit option) = run_as_prover (Some x) s in
                 f s' )
             , a )
-        | Pure x -> (Fn.id, x)
+        | Pure x ->
+            (Fn.id, x)
         | Direct (d, k) ->
             let _, y = d (fake_state next_auxiliary) in
             let f, a = flatten_as_prover next_auxiliary (k y) in
@@ -558,7 +565,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let f, y = flatten_as_prover next_auxiliary t in
             let g, a = flatten_as_prover next_auxiliary (k y) in
             ((fun s -> g (f s)), a)
-        | Add_constraint (c, t) -> flatten_as_prover next_auxiliary t
+        | Add_constraint (c, t) ->
+            flatten_as_prover next_auxiliary t
         | With_state (p, and_then, t_sub, k) ->
             let f_sub, y = flatten_as_prover next_auxiliary t_sub in
             let f, a = flatten_as_prover next_auxiliary (k y) in
@@ -657,7 +665,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
         -> int * a =
      fun ~log ~auxc count t0 ->
       match t0 with
-      | Pure x -> (count, x)
+      | Pure x ->
+          (count, x)
       | Direct (d, k) ->
           let input = Field.Vector.create () in
           let aux = Field.Vector.create () in
@@ -674,9 +683,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
           let state = {state with run_special= Some run_special} in
           let _, x = d state in
           constraint_count_aux ~log ~auxc !count (k x)
-      | As_prover (_x, k) -> constraint_count_aux ~log ~auxc count k
-      | Add_constraint (_c, t) -> constraint_count_aux ~log ~auxc (count + 1) t
-      | Next_auxiliary k -> constraint_count_aux ~log ~auxc count (k !auxc)
+      | As_prover (_x, k) ->
+          constraint_count_aux ~log ~auxc count k
+      | Add_constraint (_c, t) ->
+          constraint_count_aux ~log ~auxc (count + 1) t
+      | Next_auxiliary k ->
+          constraint_count_aux ~log ~auxc count (k !auxc)
       | With_label (s, t, k) ->
           log ~start:true s count ;
           let count', y = constraint_count_aux ~log ~auxc count t in
@@ -746,9 +758,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ~eval_constraints:true (Some s0)
       in
       match run t0 state with
-      | exception e -> Or_error.of_exn e
-      | {prover_state= Some s; _}, x -> Ok (s, x, get_value)
-      | _ -> failwith "run_and_check': Expected a value from run, got None."
+      | exception e ->
+          Or_error.of_exn e
+      | {prover_state= Some s; _}, x ->
+          Ok (s, x, get_value)
+      | _ ->
+          failwith "run_and_check': Expected a value from run, got None."
 
     let run_unchecked ~run t0 s0 =
       let num_inputs = 0 in
@@ -759,8 +774,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
         Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
       in
       match run t0 state with
-      | {prover_state= Some s; _}, x -> (s, x)
-      | _ -> failwith "run_unchecked: Expected a value from run, got None."
+      | {prover_state= Some s; _}, x ->
+          (s, x)
+      | _ ->
+          failwith "run_unchecked: Expected a value from run, got None."
 
     let run_and_check ~run t s =
       Or_error.map (run_and_check' ~run t s) ~f:(fun (s, x, get_value) ->
@@ -795,9 +812,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let mul ?(label = "Checked.mul") (x : Cvar.t) (y : Cvar.t) =
       match (x, y) with
-      | Constant x, Constant y -> return (Cvar.constant (Field.mul x y))
-      | Constant x, _ -> return (Cvar.scale y x)
-      | _, Constant y -> return (Cvar.scale x y)
+      | Constant x, Constant y ->
+          return (Cvar.constant (Field.mul x y))
+      | Constant x, _ ->
+          return (Cvar.scale y x)
+      | _, Constant y ->
+          return (Cvar.scale x y)
       | _, _ ->
           with_label label
             (let open Let_syntax in
@@ -811,7 +831,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let square ?(label = "Checked.square") (x : Cvar.t) =
       match x with
-      | Constant x -> return (Cvar.constant (Field.square x))
+      | Constant x ->
+          return (Cvar.constant (Field.square x))
       | _ ->
           with_label label
             (let open Let_syntax in
@@ -827,7 +848,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
      x is zero. *)
     let inv ?(label = "Checked.inv") (x : Cvar.t) =
       match x with
-      | Constant x -> return (Cvar.constant (Field.inv x))
+      | Constant x ->
+          return (Cvar.constant (Field.inv x))
       | _ ->
           with_label label
             (let open Let_syntax in
@@ -928,9 +950,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
         not both_false
 
       let any = function
-        | [] -> return false_
-        | [b1] -> return b1
-        | [b1; b2] -> b1 || b2
+        | [] ->
+            return false_
+        | [b1] ->
+            return b1
+        | [b1; b2] ->
+            b1 || b2
         | bs ->
             let open Let_syntax in
             let%map all_zero =
@@ -939,9 +964,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
             not all_zero
 
       let all = function
-        | [] -> return true_
-        | [b1] -> return b1
-        | [b1; b2] -> b1 && b2
+        | [] ->
+            return true_
+        | [b1] ->
+            return b1
+        | [b1; b2] ->
+            b1 && b2
         | bs ->
             equal
               (Cvar.constant (Field.of_int (List.length bs)))
@@ -975,11 +1003,16 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let ( lxor ) b1 b2 =
         match (to_constant b1, to_constant b2) with
-        | Some b1, Some b2 -> return (var_of_value (b1 <> b2))
-        | Some true, None -> return (not b2)
-        | None, Some true -> return (not b1)
-        | Some false, None -> return b2
-        | None, Some false -> return b1
+        | Some b1, Some b2 ->
+            return (var_of_value (b1 <> b2))
+        | Some true, None ->
+            return (not b2)
+        | None, Some true ->
+            return (not b1)
+        | Some false, None ->
+            return b2
+        | None, Some false ->
+            return b1
         | None, None ->
             (* (1 - 2 a) (1 - 2 b) = 1 - 2 c
               1 - 2 (a + b) + 4 a b = 1 - 2 c
@@ -1038,10 +1071,14 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let rec eval t =
           let open Let_syntax in
           match t with
-          | Not t -> eval t >>| not
-          | Var v -> return v
-          | And ts -> Checked0.all (List.map ~f:eval ts) >>= all
-          | Or ts -> Checked0.all (List.map ~f:eval ts) >>= any
+          | Not t ->
+              eval t >>| not
+          | Var v ->
+              return v
+          | And ts ->
+              Checked0.all (List.map ~f:eval ts) >>= all
+          | Or ts ->
+              Checked0.all (List.map ~f:eval ts) >>= any
 
         let assert_ t = eval t >>= Assert.is_true
 
@@ -1222,7 +1259,7 @@ module Make_basic (Backend : Backend_intf.S) = struct
         let next_input = ref 1 in
         let proof_system =
           allocate_inputs (Checked.return ()) next_input public_input
-            (fun () -> compute )
+            (fun () -> compute)
         in
         let handler =
           List.fold ~init:proof_system.handler handlers ~f:(fun handler h ->
@@ -1292,7 +1329,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
             proof_system (Some s)
         in
         match s with
-        | Some s -> (s, a, state)
+        | Some s ->
+            (s, a, state)
         | None ->
             failwith
               "run_with_input: Expected a value from run_proof_system, got \
@@ -1310,8 +1348,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
           run_with_input ~run ~public_input ~system ~eval_constraints:true
             ?handlers proof_system s
         with
-        | exception e -> Or_error.of_exn e
-        | s, x, state -> Ok (s, x, state)
+        | exception e ->
+            Or_error.of_exn e
+        | s, x, state ->
+            Ok (s, x, state)
 
       let run_checked ~run ~public_input ?handlers proof_system s =
         Or_error.map (run_checked' ~run ~public_input ?handlers proof_system s)
@@ -1325,14 +1365,17 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
       let read_proving_key proof_system =
         match proof_system.proving_key_path with
-        | Some path -> Some (Proving_key.of_string (In_channel.read_all path))
-        | None -> None
+        | Some path ->
+            Some (Proving_key.of_string (In_channel.read_all path))
+        | None ->
+            None
 
       let read_verification_key proof_system =
         match proof_system.verification_key_path with
         | Some path ->
             Some (Verification_key.of_string (In_channel.read_all path))
-        | None -> None
+        | None ->
+            None
 
       let prove ~run ~public_input ?proving_key ?handlers ?message proof_system
           s =
@@ -1374,7 +1417,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
         int ref -> (checked, r2, k1, k2) t -> k1 -> (checked, s) Checked.t =
      fun next_input t k ->
       match t with
-      | [] -> Checked.return k
+      | [] ->
+          Checked.return k
       | {alloc; check; _} :: t' ->
           let var = Typ.Alloc.run alloc (alloc_var next_input) in
           let r = collect_input_constraints next_input t' (k var) in
@@ -1426,7 +1470,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
           (r_var, bool, k_var, k_value) t -> k_value =
        fun t ->
         match t with
-        | [] -> Proof.verify ?message proof vk primary_input
+        | [] ->
+            Proof.verify ?message proof vk primary_input
         | {store; _} :: t' ->
             fun value ->
               let _var = Typ.Store.run (store value) store_field_elt in
@@ -1453,7 +1498,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
           (r_var, r_value, k_var, k_value) t -> k_var -> k_value =
        fun t k ->
         match t with
-        | [] -> cont0 k primary_input
+        | [] ->
+            cont0 k primary_input
         | {store; _} :: t' ->
             fun value ->
               let var = Typ.Store.run (store value) store_field_elt in
@@ -1509,7 +1555,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
           ((a, s) Checked.t, r_value, k_var, k_value) t -> k_var -> k_var =
        fun t k ->
         match t with
-        | [] -> Checked.Runner.reduce_to_prover next_input k
+        | [] ->
+            Checked.Runner.reduce_to_prover next_input k
         | {alloc; _} :: t' ->
             let var = Typ.Alloc.run alloc alloc_var in
             let ret = go t' (k var) in
@@ -1523,8 +1570,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
 
     let project (vars : Checked.Boolean.var list) =
       let rec go c acc = function
-        | [] -> List.rev acc
-        | v :: vs -> go (Field.add c c) ((c, v) :: acc) vs
+        | [] ->
+            List.rev acc
+        | v :: vs ->
+            go (Field.add c c) ((c, v) :: acc) vs
       in
       Cvar.linear_combination (go Field.one [] (vars :> Cvar.t list))
 
@@ -1585,8 +1634,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
            let%bind alpha = unpack alpha_packed ~length:Int.(bit_length + 1) in
            let prefix, less_or_equal =
              match Core_kernel.List.split_n alpha bit_length with
-             | p, [l] -> (p, l)
-             | _ -> failwith "compare: Invalid alpha"
+             | p, [l] ->
+                 (p, l)
+             | _ ->
+                 failwith "compare: Invalid alpha"
            in
            let%bind not_all_zeros = Boolean.any prefix in
            let%map less = Boolean.(less_or_equal && not_all_zeros) in
@@ -1628,29 +1679,44 @@ module Make_basic (Backend : Backend_intf.S) = struct
             type 'a t = Lit of 'a | And of 'a t list | Or of 'a t list
 
             let rec of_binary : 'a Binary.t -> 'a t = function
-              | Lit x -> Lit x
-              | And (x, And (y, t)) -> And [Lit x; Lit y; of_binary t]
-              | Or (x, Or (y, t)) -> Or [Lit x; Lit y; of_binary t]
-              | And (x, t) -> And [Lit x; of_binary t]
-              | Or (x, t) -> Or [Lit x; of_binary t]
+              | Lit x ->
+                  Lit x
+              | And (x, And (y, t)) ->
+                  And [Lit x; Lit y; of_binary t]
+              | Or (x, Or (y, t)) ->
+                  Or [Lit x; Lit y; of_binary t]
+              | And (x, t) ->
+                  And [Lit x; of_binary t]
+              | Or (x, t) ->
+                  Or [Lit x; of_binary t]
 
             let rec eval =
               let open Checked.Let_syntax in
               function
-              | Lit x -> return x
-              | And xs -> Checked.List.map xs ~f:eval >>= Boolean.all
-              | Or xs -> Checked.List.map xs ~f:eval >>= Boolean.any
+              | Lit x ->
+                  return x
+              | And xs ->
+                  Checked.List.map xs ~f:eval >>= Boolean.all
+              | Or xs ->
+                  Checked.List.map xs ~f:eval >>= Boolean.any
           end
         end in
         let rec lt_binary xs ys : Boolean.var Expr.Binary.t =
           match (xs, ys) with
-          | [], [] -> Lit Boolean.false_
-          | [_x], [false] -> Lit Boolean.false_
-          | [x], [true] -> Lit (Boolean.not x)
-          | [x1; _x2], [true; false] -> Lit (Boolean.not x1)
-          | [_x1; _x2], [false; false] -> Lit Boolean.false_
-          | x :: xs, false :: ys -> And (Boolean.not x, lt_binary xs ys)
-          | x :: xs, true :: ys -> Or (Boolean.not x, lt_binary xs ys)
+          | [], [] ->
+              Lit Boolean.false_
+          | [_x], [false] ->
+              Lit Boolean.false_
+          | [x], [true] ->
+              Lit (Boolean.not x)
+          | [x1; _x2], [true; false] ->
+              Lit (Boolean.not x1)
+          | [_x1; _x2], [false; false] ->
+              Lit Boolean.false_
+          | x :: xs, false :: ys ->
+              And (Boolean.not x, lt_binary xs ys)
+          | x :: xs, true :: ys ->
+              Or (Boolean.not x, lt_binary xs ys)
           | _ :: _, [] | [], _ :: _ ->
               failwith "lt_bitstring_value: Got unequal length strings"
         in
@@ -1691,7 +1757,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
       let chunk_size = Field.size_in_bits - 1 in
       let rec go acc t1 t2 =
         match (t1, t2) with
-        | [], [] -> acc
+        | [], [] ->
+            acc
         | _, _ ->
             let t1_a, t1_b = List.split_n t1 chunk_size in
             let t2_a, t2_b = List.split_n t2 chunk_size in
@@ -1877,7 +1944,8 @@ module Run = struct
       if not !state.is_running then
         failwith "This function can't be run outside of a checked computation." ;
       match !state.run_special with
-      | Some f -> f checked
+      | Some f ->
+          f checked
       | None ->
           let state', x = Runner.run checked !state in
           state := state' ;
@@ -2284,7 +2352,7 @@ module Run = struct
       let run_checked ~public_input ?handlers (proof_system : _ t) =
         Or_error.map
           (run_checked' ~run:as_stateful ~public_input ?handlers proof_system
-             ()) ~f:(fun (s, x, state) -> x )
+             ()) ~f:(fun (s, x, state) -> x)
 
       let check ~public_input ?handlers (proof_system : _ t) =
         Or_error.map ~f:(Fn.const ())
@@ -2320,7 +2388,8 @@ module Run = struct
 
     let request ?such_that typ r =
       match such_that with
-      | None -> request_witness typ (fun () -> r)
+      | None ->
+          request_witness typ (fun () -> r)
       | Some such_that ->
           let x = request_witness typ (fun () -> r) in
           such_that x ; x

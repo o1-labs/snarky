@@ -231,8 +231,10 @@ end = struct
 
   let of_repr (r : Repr.t) =
     match r with
-    | Zero -> zero
-    | Non_zero {x; y} -> of_affine_coordinates (x, y)
+    | Zero ->
+        zero
+    | Non_zero {x; y} ->
+        of_affine_coordinates (x, y)
 
   module B =
     Binable.Of_binable
