@@ -9,15 +9,15 @@ let double ((x, y)) = {
   open Field;
   let x_squared = square(x);
   let lambda =
-    exists_field(fun () =>
+    exists_field(() =>
       Constant.(read_var(x) / read_var(y)));
   let bx =
-    exists_field(fun () => {
+    exists_field(() => {
         let x = read_var(x);
         Constant.(square(read_var(lambda)) - (x + x))
       });
   let by =
-    exists_field(fun () =>
+    exists_field(() =>
       Constant.(read_var(lambda) * (read_var(x) - read_var(bx)) - read_var(y)));
   assert_ ((lambda + lambda) *: y == of_int(3) * x_squared + constant(a));
   assert_ (lambda *: lambda == bx + x + x);
@@ -28,7 +28,7 @@ let double ((x, y)) = {
 let div_unsafe (x, y) = {
   let z =
     exists_field(
-        fun () =>
+        () =>
           Field.Constant.(read_var(x) / read_var(y)));
   assert_(z *: y == x);
   z
@@ -38,13 +38,13 @@ let add_unsafe = ((ax, ay), (bx, by)) => {
   let lambda = div_unsafe(Field.(by - ay), Field.(bx - ax));
   let cx =
     exists_field(
-      fun () =>
+      () =>
         Field.Constant.(read_var(lambda) + read_var(ax) + read_var(bx))
     );
 
   assert_square(lambda, Field.(cx + ax + bx));
   let cy =
-    exists_field(fun () => {
+    exists_field(() => {
         let lambda = read_var(lambda)
         and ax = read_var(ax)
         and cx = read_var(cx)
