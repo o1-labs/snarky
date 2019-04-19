@@ -25,13 +25,9 @@ let double ((x, y)) = {
   (bx, by)
 };
 
-let div_unsafe (x, y) = {
-  let z =
-    exists_field(
-        () =>
-          Field.Constant.(read_var(x) / read_var(y)));
-  assert_(z *: y == x);
-  z
+/* Return x / y. I.e., z such that z * y = x. */
+let div_unsafe (x, y) : Field.t = {
+  failwith("TODO")
 };
 
 let add_unsafe = ((ax, ay), (bx, by)) => {
