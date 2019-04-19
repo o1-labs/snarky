@@ -4,14 +4,14 @@ module Digest = {
   type t = Field.t;
 
   module Constant = {
-    type t = Field.Constant.t
+    type t = Field.Constant.t;
   };
 
   let typ = Field.typ;
 };
 
-let digest = Pedersen.digest
+let digest = Pedersen.digest;
 
 module Constant = {
-  let digest = Pedersen.Constant.digest
+  let digest = Pedersen.Constant.digest;
 };
