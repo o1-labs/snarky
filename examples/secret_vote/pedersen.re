@@ -32,14 +32,9 @@ let lookup = ((s0, s1, s2): Triple.t(Boolean.var), q) => {
   (x, y);
 };
 
+/* Match the behavior of the 'constant' version Constant.hash */
 let hash = (triples: list((Boolean.var, Boolean.var, Boolean.var))) => {
-  switch (triples) {
-  | [] => failwith("TODO: digest empty")
-  | [x, ...xs] =>
-    List.foldi(xs, ~init=lookup(x, Params.params[0]), ~f=(i, acc, t) =>
-      Curve.add_unsafe(acc, lookup(t, Params.params[i + 1]))
-    )
-  };
+  failwith("TODO");
 };
 
 let digest = Fn.compose(fst, hash);

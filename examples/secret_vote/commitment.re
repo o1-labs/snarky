@@ -11,6 +11,7 @@ let init = Fold.(to_list(string_triples("comm")));
 type Snarky.Request.t(_) +=
   | Commitment_randomness: Snarky.Request.t(Randomness.Constant.t);
 
+/* Check that comm == commit(vk, r) for some randomness r */
 let check = {
   let init = boolean_triples(init);
   (comm: t, vk: Voting_key.t) => {
