@@ -55,6 +55,8 @@ module Digest = {
 
   module Constant = {
     type t = Field.Constant.t;
+
+    let to_triples = Fn.compose(triples_of_bits(false), Field.Constant.unpack);
   };
 };
 

@@ -23,7 +23,7 @@ let rec random_curve_point = () => {
 let gen = () => {
   let s = Caml.Random.get_state ();
   Random.init(0);
-  let r = Array.init(100, ~f=(_) => random_curve_point());
+  let r = Array.init(200, ~f=(_) => random_curve_point());
   Caml.Random.set_state(s);
   r
 }

@@ -16,4 +16,3 @@ module Constant = {
 
   let to_triples = triples_of_bits(false);
 };
-

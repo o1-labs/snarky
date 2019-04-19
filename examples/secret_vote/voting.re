@@ -69,6 +69,32 @@ module Vote_proof = {
       ~verification_key_path="verification_key",
       ~public_input=public_input(), main
     );
+
+  let create(tree, witness : Witness.t, vote) = {
+    Proof_system.prove(
+      proof_system,
+      ~handlers = [ Merkle_tree.Constant.handler(tree), Witness.handler(witness) ],
+      ~public_input=
+      [ Merkle_tree.Constant.hash(tree),
+        Nullifier.Constant.create(witness.voting_key) ,
+        vote
+      ]
+    )
+  };
 };
 
-let _ = List.map
+let example () = {
+  let witness : Vote_proof.Witness.t = {
+    merkle_index: List.init(Merkle_tree.depth, ~f=(_) => false),
+    voting_key : Voting_key.Constant.create (),
+    commitment_randomness : Commitment.Randomness.Constant.create ()
+  };
+  let my_commitment = Commitment.Constant.commit (witness.commitment_randomness);
+  let tree =
+    Merkle_tree.Constant.of_commitments
+      ([ my_commitment, ...List.init(5, ~f=(_) => Commitment.Constant.commit (Randomness.Constant.create ()))]);
+  let _kp = Proof_system.generate_keypair(Vote_proof.proof_system);
+  ignore (Vote_proof.create(tree, witness, Pepperoni));
+};
+
+let () = example()

@@ -17,6 +17,9 @@ let typ = Random_oracle.Digest.typ;
 let assert_equal = Field.Assert.equal
 
 module Constant = {
-  type t = Random_oracle.Digest.Constant.t
+  type t = Random_oracle.Digest.Constant.t;
+
+  let create = (v : Voting_key.Constant.t) =>
+    Random_oracle.Constant.digest(init @ Voting_key.Constant.to_triples(v))
 };
 

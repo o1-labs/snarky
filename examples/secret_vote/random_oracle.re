@@ -11,3 +11,7 @@ module Digest = {
 };
 
 let digest = Pedersen.digest
+
+module Constant = {
+  let digest = Pedersen.Constant.digest
+};

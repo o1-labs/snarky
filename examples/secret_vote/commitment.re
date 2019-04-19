@@ -26,11 +26,14 @@ let to_triples (t : t) = Pedersen.Digest.to_triples(t);
 module Constant = {
   type t = Field.Constant.t
 
+  let empty = Field.Constant.zero
+
   let commit(vk : Voting_key.Constant.t) : t = {
     let r = Randomness.Constant.create();
     Pedersen.Constant.digest (
       init @ Voting_key.Constant.to_triples(vk) @ Randomness.Constant.to_triples(r))
   };
+  let to_triples (t : t) = Pedersen.Digest.Constant.to_triples(t);
 };
 
 let typ = Field.typ;

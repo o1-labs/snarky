@@ -1,15 +1,48 @@
 open Snarky;
 open Snark;
 
+module I = Run.Make(Backends.Bn128.Default);
+open I;
+
+open As_prover;
+
+let ( *: ) (x, y) =
+  fun (z) => Constraint.r1cs (x, y, z);
+
+let (==) (lhs, rhs) = lhs (rhs);
+
+let exists_field(f) = exists(Field.typ, ~compute=f);
+
+let a = failwith("TODO");
+
+let double ((x, y)) = {
+  open Field;
+  let x_squared = square(x);
+  let lambda =
+    exists_field(fun () =>
+      Constant.(read_var(x) / read_var(y)));
+  let bx =
+    exists_field(fun () => {
+        let x = read_var(x);
+        Constant.(square(read_var(lambda)) - (x + x))
+      });
+  let by =
+    exists_field(fun () =>
+      Constant.(read_var(lambda) * (read_var(x) - read_var(bx)) - read_var(y)));
+  assert_ ((lambda + lambda) *: y == of_int(3) * x_squared + a);
+  assert_ (lambda *: lambda == bx + x + x);
+  assert_ (lambda *: (x - bx) == by + y);
+  (x, y)
+};
+
 let div_unsafe = (type f, ~m as (module I): m(f), x, y) => {
   open I;
   let z =
     exists(
       Field.typ,
       ~compute=
-        As_prover.(
-          map2(read_var(x), read_var(y), ~f=Field.Constant.Infix.(/))
-        ),
+        As_prover.(fun () =>
+          Field.Constant.(read_var(x) / read_var(y))),
     );
 
   assert_r1cs(z, y, x);
@@ -28,12 +61,11 @@ module Curve = {
     let lambda =
       exists(
         Field.typ,
-        ~compute={
+        ~compute=fun () => {
           open As_prover;
-          open Let_syntax;
-          let%map x_squared = read_var(x_squared)
+          let x_squared = read_var(x_squared)
           and ay = read_var(ay);
-          Field.Constant.Infix.(
+          Field.Constant.(
             (x_squared + x_squared + x_squared + params.a) / (ay + ay)
           );
         },
@@ -42,26 +74,24 @@ module Curve = {
     let bx =
       exists(
         Field.typ,
-        ~compute={
+        ~compute=fun () => {
           open As_prover;
-          open Let_syntax;
-          let%map lambda = read_var(lambda)
+          let lambda = read_var(lambda)
           and ax = read_var(ax);
-          Field.Constant.(Infix.(square(lambda) - (ax + ax)));
+          Field.Constant.(square(lambda) - (ax + ax));
         },
       );
 
     let by =
       exists(
         Field.typ,
-        ~compute={
+        ~compute=fun () => {
           open As_prover;
-          open Let_syntax;
-          let%map lambda = read_var(lambda)
+          let lambda = read_var(lambda)
           and ax = read_var(ax)
           and ay = read_var(ay)
           and bx = read_var(bx);
-          Field.Constant.Infix.(lambda * (ax - bx) - ay);
+          Field.Constant.(lambda * (ax - bx) - ay);
         },
       );
 
@@ -83,12 +113,11 @@ module Curve = {
     let cx =
       exists(
         Field.typ,
-        ~compute={
+        ~compute=fun () => {
           open As_prover;
-          open Let_syntax;
-          let%map lambda = read_var(lambda)
+          let lambda = read_var(lambda)
           and s = read_var(Field.(ax + bx));
-          Field.Constant.Infix.(lambda + s);
+          Field.Constant.(lambda + s);
         },
       );
 
@@ -96,14 +125,13 @@ module Curve = {
     let cy =
       exists(
         Field.typ,
-        ~compute={
+        ~compute=fun () => {
           open As_prover;
-          open Let_syntax;
-          let%map lambda = read_var(lambda)
+          let lambda = read_var(lambda)
           and ax = read_var(ax)
           and cx = read_var(cx)
           and ay = read_var(ay);
-          Field.Constant.Infix.(lambda * (ax - cx) - ay);
+          Field.Constant.(lambda * (ax - cx) - ay);
         },
       );
 
