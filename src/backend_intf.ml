@@ -123,7 +123,7 @@ module type S = sig
 
     type t
 
-    include Stringable.S with type t := t
+    include Binable.S with type t := t
 
     val create :
          ?message:message

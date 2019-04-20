@@ -759,7 +759,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** The type of messages that can be associated with a proof. *)
     type message
 
-    include Stringable.S with type t := t
+    include Binable.S with type t := t
   end
 
   (** Utility functions for dealing with lists of bits in the R1CS. *)
@@ -1723,7 +1723,7 @@ module type Run = sig
 
     type message
 
-    include Stringable.S with type t := t
+    include Binable.S with type t := t
   end
 
   module Bitstring_checked : sig
