@@ -132,24 +132,6 @@ let typ_of_decl env decl =
                 Envi.Type.mk ~loc (Tctor variant) env :: l )
           in
           mk_decl params
-          (*let var_decl_fields =
-            List.map fields ~f:(fun field ->
-                let typ =
-                  Envi.Type.constr_map env field.fld_type ~f:(fun variant ->
-                      let name = variant.var_ident in
-                      { variant with
-                        var_ident=
-                          Location.mkloc (var_type_lident name.txt) name.loc }
-                  )
-                in
-                {field with fld_type= typ} )
-          in
-          { stmt_loc= loc
-          ; stmt_desc=
-              TypeDecl
-                { decl with
-                  tdec_ident= Location.mkloc (var_type_name name) loc
-                ; tdec_desc= TRecord var_decl_fields } }*)
         in
         let typ_instance =
           let typ_body =
