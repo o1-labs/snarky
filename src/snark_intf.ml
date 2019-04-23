@@ -1254,6 +1254,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       inside [Checked.t].
   *)
 
+  val stop_reducing : ('a, 's) Checked.t -> ('a, 's) Checked.t
+
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (_, _) Checked.t -> int
   (** Returns the number of constraints in the constraint system.

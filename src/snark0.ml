@@ -1803,6 +1803,8 @@ struct
 
   let reduce_to_prover = Run.reduce_to_prover
 
+  let stop_reducing t = Checked.direct (Checked.run t)
+
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
       let (), checked_result =
@@ -1846,6 +1848,8 @@ module Make (Backend : Backend_intf.S) = struct
         type field = Backend_extended.Field.t
 
         let run = Runner0.run
+
+        let direct f = Types.Checked.Direct (f, return)
       end)
 
   include Basic
