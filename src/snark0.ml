@@ -1784,7 +1784,8 @@ struct
 
   let conv f = Run.conv (fun x _ -> f x)
 
-  let prove ?message key t s k = Run.prove ~run:Checked.run ?message key t s k
+  let prove ?message key t ?handlers s k =
+    Run.prove ~run:Checked.run ?message key t ?handlers s k
 
   let generate_auxiliary_input t s k =
     Run.generate_auxiliary_input ~run:Checked.run t s k

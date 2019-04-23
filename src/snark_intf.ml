@@ -1183,6 +1183,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
        ?message:Proof.message
     -> Proving_key.t
     -> ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
+    -> ?handlers:Handler.t list
     -> 's
     -> 'k_var
     -> 'k_value
