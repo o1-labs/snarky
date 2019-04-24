@@ -1655,6 +1655,9 @@ struct
 
     let create = create
 
+    let constraint_system (proof_system : _ t) =
+      constraint_system ~run:Checked.run proof_system
+
     let digest (proof_system : _ t) = digest ~run:Checked.run proof_system
 
     let generate_keypair (proof_system : _ t) =
@@ -2197,6 +2200,9 @@ module Run = struct
         (unit -> 'a, 'public_input, unit) proof_system
 
       let create = create
+
+      let constraint_system (proof_system : _ t) =
+        constraint_system ~run:as_stateful proof_system
 
       let digest (proof_system : _ t) = digest ~run:as_stateful proof_system
 

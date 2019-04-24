@@ -934,6 +934,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           values with the types described by [public_input] to the output type.
     *)
 
+    val constraint_system :
+      ('a, 's, 'public_input) t -> R1CS_constraint_system.t
+    (** The constraint system that this proof system's checked computation
+        describes.
+    *)
+
     val digest : ('a, 's, 'public_input) t -> Md5_lib.t
     (** The MD5 hash of the constraint system. *)
 
@@ -1808,6 +1814,8 @@ module type Run = sig
                       Data_spec.t
       -> 'computation
       -> ('a, 'public_input) t
+
+    val constraint_system : ('a, 'public_input) t -> R1CS_constraint_system.t
 
     val digest : ('a, 'public_input) t -> Md5_lib.t
 
