@@ -1336,11 +1336,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
               "run_with_input: Expected a value from run_proof_system, got \
                None."
 
-      let run_unchecked ~run ~public_input ?handlers proof_system s =
-        let s, a, _ =
+      let run_unchecked ~run ~public_input ?handlers proof_system eval s =
+        let s, a, state =
           run_with_input ~run ~public_input ?handlers proof_system s
         in
-        (s, a)
+        As_prover.run (eval a) (Checked.Runner.get_value state) s
 
       let run_checked' ~run ~public_input ?handlers proof_system s =
         let system = R1CS_constraint_system.create () in
@@ -1353,10 +1353,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | s, x, state ->
             Ok (s, x, state)
 
-      let run_checked ~run ~public_input ?handlers proof_system s =
+      let run_checked ~run ~public_input ?handlers proof_system eval s =
         Or_error.map (run_checked' ~run ~public_input ?handlers proof_system s)
           ~f:(fun (s, x, state) ->
-            let s', x = As_prover.run x (Checked.Runner.get_value state) s in
+            let s', x =
+              As_prover.run (eval x) (Checked.Runner.get_value state) s
+            in
             (s', x) )
 
       let check ~run ~public_input ?handlers proof_system s =
@@ -2347,6 +2349,7 @@ module Run = struct
       let run_unchecked ~public_input ?handlers (proof_system : _ t) =
         snd
           (run_unchecked ~run:as_stateful ~public_input ?handlers proof_system
+             (fun a _ s -> (s, a))
              ())
 
       let run_checked ~public_input ?handlers (proof_system : _ t) =
