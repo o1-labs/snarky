@@ -879,6 +879,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?proving_key_path:string
       -> ?verification_key_path:string
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> public_input:( ('a, 's) Checked.t
                       , unit
                       , 'computation
@@ -904,6 +905,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           written to this file.
         - [handlers] -- optional, the list of handlers that should be used to
           handle requests made from the checked computation
+        - [reduce] -- optional, default [false], whether to perform the
+          [reduce_to_caller] optimisation while creating the proof system
         - [public_input] -- the {!type:Data_spec.t} that describes the form
           that the public inputs must take
         - ['computation] -- a checked computation that takes as arguments
@@ -921,6 +924,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> ('a, 's, 'public_input) t
       -> 's
       -> 's * 'a
@@ -931,6 +935,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> (('a, 's) As_prover.t, 's, 'public_input) t
       -> 's
       -> ('s * 'a) Or_error.t
@@ -939,6 +944,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val check :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> ('a, 's, 'public_input) t
       -> 's
       -> unit Or_error.t
@@ -951,6 +957,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> ?message:Proof.message
       -> ('a, 's, 'public_input) t
       -> 's
@@ -962,6 +969,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         - The [handlers] argument adds handlers to those already given to
           {!val:create}. If handlers for the same requests were provided to
           both, the ones passed here are given priority.
+        - The [reduce] argument determines whether to run use the
+          [reduce_to_prover]-optimised checked computation. The default value
+          may be changed with {!val:Snark0.set_reduce_to_prover}.
         - The [message] argument specifies the message to associate with the
           proof, if any.
     *)
