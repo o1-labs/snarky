@@ -115,7 +115,7 @@ class Index extends React.Component {
           <div id="codesample-blurb">
             <MarkdownBlock>
               **Snarky** lets you write zk-SNARKs as if you were writing ordinary code.
-              It's easy to use, efficient, and comes with a bunch of pre-built eunctionality.
+              It's easy to use, efficient, and comes with a bunch of pre-built functionality.
             </MarkdownBlock>
             <MarkdownBlock>
               It is modular over the backend SNARK library, and
