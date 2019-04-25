@@ -122,7 +122,9 @@ class Index extends React.Component {
               comes with backends from [libsnark](https://github.com/scipr-lab/libsnark).
             </MarkdownBlock>
           </div>
-          <MarkdownBlock style={{width:'50%'}}>{example_code}</MarkdownBlock>
+          <div style={{width:'50%', overflowX:'scroll'}}>
+            <MarkdownBlock>{example_code}</MarkdownBlock>
+          </div>
         </div>
       </Container>
     );
