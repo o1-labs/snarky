@@ -568,7 +568,11 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | With_label (lab, t, k) ->
             let f, y = flatten_as_prover next_auxiliary t in
             let g, a = flatten_as_prover next_auxiliary (k y) in
-            ((fun s -> g (f s)), a)
+            ( (fun s ->
+                let {stack; _} = s in
+                let s = f {s with stack= lab :: stack} in
+                g {s with stack} )
+            , a )
         | Add_constraint (c, t) ->
             flatten_as_prover next_auxiliary t
         | With_state (p, and_then, t_sub, k) ->
@@ -1213,8 +1217,10 @@ module Make_basic (Backend : Backend_intf.S) = struct
             let compute () = compute () var in
             let check_inputs =
               let open Checked.Let_syntax in
-              let%bind () = check_inputs in
-              Checked.with_state (As_prover.return ()) (check var)
+              let%bind () =
+                Checked.with_state (As_prover.return ()) (check var)
+              in
+              check_inputs
             in
             let { compute
                 ; reduced_compute
@@ -1356,7 +1362,8 @@ module Make_basic (Backend : Backend_intf.S) = struct
               "run_with_input: Expected a value from run_proof_system, got \
                None."
 
-      let run_unchecked ~run ~public_input ?handlers ?reduce proof_system eval s =
+      let run_unchecked ~run ~public_input ?handlers ?reduce proof_system eval
+          s =
         let s, a, state =
           run_with_input ~run ?reduce ~public_input ?handlers proof_system s
         in
@@ -1373,11 +1380,12 @@ module Make_basic (Backend : Backend_intf.S) = struct
         | s, x, state ->
             Ok (s, x, state)
 
-      let run_checked ~run ~public_input ?handlers ?reduce proof_system eval s =
+      let run_checked ~run ~public_input ?handlers ?reduce proof_system eval s
+          =
         Or_error.map
           (run_checked' ~run ?reduce ~public_input ?handlers proof_system s)
           ~f:(fun (s, x, state) ->
-              As_prover.run (eval x) (Checked.Runner.get_value state) s)
+            As_prover.run (eval x) (Checked.Runner.get_value state) s )
 
       let check ~run ~public_input ?handlers ?reduce proof_system s =
         Or_error.map ~f:(Fn.const ())
@@ -1839,7 +1847,9 @@ module Make_basic (Backend : Backend_intf.S) = struct
     let create ?proving_key ?verification_key ?proving_key_path
         ?verification_key_path ?handlers ?reduce ~public_input checked =
       create
-        ~reduce_to_prover:(fun i f () -> Runner.reduce_to_prover i (f ()))
+        ~reduce_to_prover:(fun i f ->
+          let x = Runner.reduce_to_prover i (f ()) in
+          fun () -> x )
         ?proving_key ?verification_key ?proving_key_path ?verification_key_path
         ?handlers ?reduce ~public_input checked
 
@@ -2392,18 +2402,17 @@ module Run = struct
 
       let run_checked ~public_input ?handlers (proof_system : _ t) =
         Or_error.map
-          (run_checked' ~run ~public_input ?handlers proof_system
-             ()) ~f:(fun (s, x, state) -> x)
+          (run_checked' ~run ~public_input ?handlers proof_system ())
+          ~f:(fun (s, x, state) -> x)
 
       let check ~public_input ?handlers (proof_system : _ t) =
         Or_error.map ~f:(Fn.const ())
-          (run_checked' ~run ~public_input ?handlers proof_system
-             ())
+          (run_checked' ~run ~public_input ?handlers proof_system ())
 
       let prove ~public_input ?proving_key ?handlers ?message
           (proof_system : _ t) =
-        prove ~run ~public_input ?proving_key ?handlers ?message
-          proof_system ()
+        prove ~run ~public_input ?proving_key ?handlers ?message proof_system
+          ()
 
       let verify ~public_input ?verification_key ?message (proof_system : _ t)
           =
