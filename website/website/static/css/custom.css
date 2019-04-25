@@ -1,5 +1,33 @@
 /* your custom css */
 
+#codesample > .wrapper > div {
+  display: flex;
+  flex-direction: row;
+}
+
+#codesample-blurb {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+#codesample-code {
+  width: 50%;
+  overflow-x: scroll;
+}
+
+@media only screen and (max-width: 480px) {
+  #codesample > .wrapper > div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #codesample-blurb, #codesample-code {
+    width: 100%;
+  }
+}
+
 @media only screen and (min-device-width: 360px) and (max-device-width: 736px) {
 }
 

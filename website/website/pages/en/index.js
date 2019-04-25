@@ -111,8 +111,8 @@ class Index extends React.Component {
 
     const CodeSample = () => (
       <Container id="codesample" padding={['bottom', 'top']} background="light">
-        <div style={{width:'100%', display:'flex', flexDirection:'row'}}>
-          <div style={{width:'50%', display:'flex', flexDirection:'column', justifyContent:'center'}}>
+        <div style={{width:'100%'}}>
+          <div id="codesample-blurb">
             <MarkdownBlock>
               **Snarky** lets you write zk-SNARKs as if you were writing ordinary code.
               It's easy to use, efficient, and comes with a bunch of pre-built eunctionality.
@@ -122,7 +122,7 @@ class Index extends React.Component {
               comes with backends from [libsnark](https://github.com/scipr-lab/libsnark).
             </MarkdownBlock>
           </div>
-          <div style={{width:'50%', overflowX:'scroll'}}>
+          <div id="codesample-code">
             <MarkdownBlock>{example_code}</MarkdownBlock>
           </div>
         </div>
