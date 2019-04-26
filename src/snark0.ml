@@ -1184,8 +1184,8 @@ struct
 
       let run_checked' ~run ~public_input ?handlers ?reduce proof_system s =
         match
-          run_with_input ~run ?reduce ~public_input
-            ~eval_constraints:true ?handlers proof_system s
+          run_with_input ~run ?reduce ~public_input ~eval_constraints:true
+            ?handlers proof_system s
         with
         | exception e ->
             Or_error.of_exn e
