@@ -314,11 +314,132 @@ module Runner = struct
         ; run_special= None }
     end
   end
+
+  module type S = sig
+    type field
+
+    type cvar
+
+    type constr
+
+    type r1cs
+
+    type 'prover_state run_state = ('prover_state, field) Types.Run_state.t
+
+    type state = unit run_state
+
+    type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
+
+    val set_prover_state :
+      'a option -> ('b, 'c) Types.Run_state.t -> ('a, 'c) Types.Run_state.t
+
+    val set_handler :
+         Request.Handler.t
+      -> ('a, 'b) Types.Run_state.t
+      -> ('a, 'b) Types.Run_state.t
+
+    val get_handler : ('a, 'b) Types.Run_state.t -> Request.Handler.t
+
+    val set_stack :
+      string list -> ('a, 'b) Types.Run_state.t -> ('a, 'b) Types.Run_state.t
+
+    val get_stack : ('a, 'b) Types.Run_state.t -> string list
+
+    val get_value : ('a, field) Types.Run_state.t -> cvar -> field
+
+    val store_field_elt : ('a, field) Types.Run_state.t -> field -> cvar
+
+    val alloc_var : ('a, 'b) Types.Run_state.t -> unit -> cvar
+
+    val run_as_prover :
+         ('a, field, 'b) As_prover0.t option
+      -> ('b, field) Types.Run_state.t
+      -> ('b, field) Types.Run_state.t * 'a option
+
+    val as_prover :
+         (unit, field, 'a) As_prover0.t
+      -> ('a, field) Types.Run_state.t
+      -> ('a, field) Types.Run_state.t * unit
+
+    val with_label :
+         string
+      -> (('a, 'b) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
+      -> ('a, 'b) Types.Run_state.t
+      -> ('c, 'd) Types.Run_state.t * 'e
+
+    val add_constraint :
+         constr
+      -> ('a, field) Types.Run_state.t
+      -> ('a, field) Types.Run_state.t * unit
+
+    val with_state :
+         ('a, field, 'b) As_prover0.t
+      -> ('c -> (unit, field, 'b) As_prover0.t)
+      -> (('a, field) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
+      -> ('b, field) Types.Run_state.t
+      -> ('b, field) Types.Run_state.t * 'e
+
+    val with_handler :
+         Request.Handler.single
+      -> (('a, 'b) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
+      -> ('a, 'b) Types.Run_state.t
+      -> ('c, 'd) Types.Run_state.t * 'e
+
+    val clear_handler :
+         (('a, 'b) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
+      -> ('a, 'b) Types.Run_state.t
+      -> ('c, 'd) Types.Run_state.t * 'e
+
+    val exists :
+         run:(   'a
+              -> (unit, field) Types.Run_state.t
+              -> ('b, 'c) Types.Run_state.t * unit)
+      -> ('d, 'e, field, 'a) Types.Typ.typ
+      -> ('e, field, 'f) Provider.t
+      -> ('f, field) Types.Run_state.t
+      -> ('f, 'c) Types.Run_state.t * ('d, 'e) Handle.t
+
+    val next_auxiliary :
+      ('a, 'b) Types.Run_state.t -> ('a, 'b) Types.Run_state.t * int
+
+    val run :
+      ('a, 's, field) Checked_ast.t -> 's run_state -> 's run_state * 'a
+
+    val dummy_vector : field Vector.t
+
+    val fake_state : int ref -> ('a, field) Types.Run_state.t
+
+    val flatten_as_prover :
+         int ref
+      -> ('a, 's, field) Checked_ast.t
+      -> ('s run_state -> 's run_state) * 'a
+
+    val reduce_to_prover :
+      int ref -> ('a, 'b, field) Checked_ast.t -> ('a, 'b, field) Checked_ast.t
+
+    module State : sig
+      val make :
+           num_inputs:int
+        -> input:field Vector.t
+        -> next_auxiliary:int ref
+        -> aux:field Vector.t
+        -> ?system:r1cs
+        -> ?eval_constraints:bool
+        -> ?handler:Request.Handler.t
+        -> 's option
+        -> ('s, field) Types.Run_state.t
+    end
+  end
 end
 
 module Make_basic
     (Backend : Backend_extended.S)
-    (Checked : Checked_intf.Extended with type field = Backend.Field.t) =
+    (Checked : Checked_intf.Extended with type field = Backend.Field.t)
+    (Runner : Runner.S
+              with type field := Backend.Field.t
+               and type cvar := Backend.Cvar.t
+               and type constr := Backend.Constraint.t
+               and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend
   module Checked_S = Checked_intf.Unextend (Checked)
@@ -455,7 +576,7 @@ struct
 
     let perform req = request_witness Typ.unit req
 
-    module Runner = Runner.Make (Backend)
+    module Runner = Runner
 
     type 'prover_state run_state = 'prover_state Runner.run_state
 
@@ -1766,6 +1887,7 @@ module Make (Backend : Backend_intf.S) = struct
 
         let run = Runner0.run
       end)
+      (Runner0)
 
   include Basic
   module Number = Number.Make (Basic)
