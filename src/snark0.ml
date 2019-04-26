@@ -1666,10 +1666,9 @@ struct
 
     let create ?proving_key ?verification_key ?proving_key_path
         ?verification_key_path ?handlers ?reduce ~public_input checked =
-      create
-        ~reduce_to_prover:Runner.reduce_to_prover
-        ?proving_key ?verification_key ?proving_key_path ?verification_key_path
-        ?handlers ?reduce ~public_input checked
+      create ~reduce_to_prover:Runner.reduce_to_prover ?proving_key
+        ?verification_key ?proving_key_path ?verification_key_path ?handlers
+        ?reduce ~public_input checked
 
     let digest (proof_system : _ t) = digest ~run:Checked.run proof_system
 
@@ -1677,7 +1676,8 @@ struct
       generate_keypair ~run:Checked.run proof_system
 
     let run_unchecked ~public_input ?handlers ?reduce (proof_system : _ t) =
-      run_unchecked ~run:Checked.run ~public_input ?handlers ?reduce proof_system
+      run_unchecked ~run:Checked.run ~public_input ?handlers ?reduce
+        proof_system
 
     let run_checked ~public_input ?handlers ?reduce (proof_system : _ t) =
       run_checked ~run:Checked.run ~public_input ?handlers ?reduce proof_system
@@ -1687,8 +1687,8 @@ struct
 
     let prove ~public_input ?proving_key ?handlers ?reduce ?message
         (proof_system : _ t) =
-      prove ~run:Checked.run ~public_input ?proving_key ?handlers ?reduce ?message
-        proof_system
+      prove ~run:Checked.run ~public_input ?proving_key ?handlers ?reduce
+        ?message proof_system
 
     let verify ~public_input ?verification_key ?message (proof_system : _ t) =
       verify ~run:Checked.run ~public_input ?verification_key ?message
@@ -2227,24 +2227,21 @@ module Run = struct
         generate_keypair ~run proof_system
 
       let run_unchecked ~public_input ?handlers (proof_system : _ t) =
-        snd
-          (run_unchecked ~run ~public_input ?handlers proof_system
-             ())
+        snd (run_unchecked ~run ~public_input ?handlers proof_system ())
 
       let run_checked ~public_input ?handlers (proof_system : _ t) =
         Or_error.map
-          (run_checked' ~run ~public_input ?handlers proof_system
-             ()) ~f:(fun (s, x, state) -> x)
+          (run_checked' ~run ~public_input ?handlers proof_system ())
+          ~f:(fun (s, x, state) -> x)
 
       let check ~public_input ?handlers (proof_system : _ t) =
         Or_error.map ~f:(Fn.const ())
-          (run_checked' ~run ~public_input ?handlers proof_system
-             ())
+          (run_checked' ~run ~public_input ?handlers proof_system ())
 
       let prove ~public_input ?proving_key ?handlers ?message
           (proof_system : _ t) =
-        prove ~run ~public_input ?proving_key ?handlers ?message
-          proof_system ()
+        prove ~run ~public_input ?proving_key ?handlers ?message proof_system
+          ()
 
       let verify ~public_input ?verification_key ?message (proof_system : _ t)
           =
