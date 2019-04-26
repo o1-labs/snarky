@@ -35,7 +35,7 @@ module type S = sig
   end
 
   module Var : sig
-    type t = Field.t Backend_types.Var.t [@@deriving sexp]
+    type t = Field.t Backend_types.Var.t [@@deriving sexp, compare]
 
     include Comparable.S with type t := t
 
@@ -45,7 +45,7 @@ module type S = sig
   end
 
   module Cvar : sig
-    type t = Field.t Cvar.t [@@deriving sexp]
+    type t = Field.t Cvar.t [@@deriving sexp, compare]
 
     val length : t -> int
 

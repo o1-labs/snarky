@@ -542,6 +542,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     module Var : sig
       (** The type that stores booleans as R1CS variables. *)
       type t = field Cvar.t
+      [@@deriving sexp, compare]
 
       val length : t -> int
       (** For debug purposes *)
@@ -1283,6 +1284,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> 'valin
       -> unit
   end
+
+  val constraints : Constraint.t list ref
 end
 
 module type S = sig

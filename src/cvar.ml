@@ -5,12 +5,16 @@ type 'f t =
   | Var of int
   | Add of 'f t * 'f t
   | Scale of 'f * 'f t
-[@@deriving sexp]
+[@@deriving sexp, compare]
 
-type 'f cvar = 'f t [@@deriving sexp]
+type 'f cvar = 'f t [@@deriving sexp, compare]
 
 module Make
-    (Field : Field_intf.Extended) (Var : sig
+    (Field : sig type t [@@deriving compare] 
+       include Field_intf.Extended
+         with type t := t
+     end
+    ) (Var : sig
         include Comparable.S
 
         include Sexpable.S with type t := t
@@ -18,7 +22,7 @@ module Make
         val create : int -> t
     end) =
 struct
-  type t = Field.t cvar [@@deriving sexp]
+  type t = Field.t cvar [@@deriving sexp, compare]
 
   let length _ = failwith "TODO"
 

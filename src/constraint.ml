@@ -5,12 +5,12 @@ type 'var basic =
   | Equal of 'var * 'var
   | Square of 'var * 'var
   | R1CS of 'var * 'var * 'var
-[@@deriving sexp]
+[@@deriving sexp, eq, compare]
 
 type 'v basic_with_annotation = {basic: 'v basic; annotation: string option}
-[@@deriving sexp]
+[@@deriving sexp, eq, compare]
 
-type 'v t = 'v basic_with_annotation list [@@deriving sexp]
+type 'v t = 'v basic_with_annotation list [@@deriving sexp, compare]
 
 module T = struct
   let create_basic ?label basic = {basic; annotation= label}

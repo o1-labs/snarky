@@ -14,11 +14,15 @@ module Runner = struct
     open Types.Run_state
     open Checked
 
+    let () = printf "Calling runner.Make\n%!"
+
     type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
 
     type state = unit run_state
 
     type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
+
+    let constraints = ref []
 
     let set_prover_state prover_state
         { system
@@ -92,14 +96,17 @@ module Runner = struct
       ({s' with stack}, y)
 
     let add_constraint c s =
-      if !(s.as_prover) then
+      (if !(s.as_prover) then (
         failwith
           "Cannot add a constraint as the prover: the verifier's constraint \
-           system will not match." ;
-      if s.eval_constraints && not (Constraint.eval c (get_value s)) then
+           system will not match." )
+       else () );
+      (if s.eval_constraints && not (Constraint.eval c (get_value s)) then (
         failwithf "Constraint unsatisfied:\n%s\n%s\n" (Constraint.annotation c)
           (Constraint.stack_to_string s.stack)
-          () ;
+          () )
+       else () );
+      constraints := c :: !constraints;
       Option.iter s.system ~f:(fun system ->
           Constraint.add ~stack:s.stack c system ) ;
       (s, ())
@@ -187,6 +194,14 @@ module Runner = struct
       | Next_auxiliary k ->
           let s, y = next_auxiliary s in
           run (k y) s
+      ;;
+
+      let run t s = 
+        printf "%s\n%!" __LOC__; 
+        let res = run t s in
+        printf "Length of constraints = %d\n%!"
+          (List.length !constraints);
+        res
 
     let dummy_vector = Field.Vector.create ()
 
@@ -525,6 +540,7 @@ struct
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
     let constraint_system ~run ~num_inputs t : R1CS_constraint_system.t =
+    printf "%s\n%!" __LOC__;
       let input = Field.Vector.create () in
       let next_auxiliary = ref (1 + num_inputs) in
       let aux = Field.Vector.create () in
@@ -972,6 +988,8 @@ struct
         end)
   end
 
+  let constraints = Checked.Runner.constraints
+
   module Data_spec = Typ.Data_spec
 
   module Run = struct
@@ -1108,7 +1126,7 @@ struct
           Checked.run proof_system.check_inputs prover_state
         in
         let prover_state, a = run (proof_system.compute ()) prover_state in
-        Option.iter prover_state.system ~f:(fun system ->
+        Option.iter system ~f:(fun system ->
             let aux_input_size =
               !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
@@ -1127,6 +1145,7 @@ struct
         R1CS_constraint_system.digest system
 
       let generate_keypair ~run proof_system =
+        printf "%s\n%!" __LOC__;
         let keypair = Keypair.generate (constraint_system ~run proof_system) in
         proof_system.proving_key <- Some keypair.pk ;
         proof_system.verification_key <- Some keypair.vk ;
@@ -1258,8 +1277,10 @@ struct
         -> k1
         -> R1CS_constraint_system.t =
      fun ~run next_input t k ->
+    printf "%s\n%!" __LOC__;
       let r = collect_input_constraints next_input t k in
       let run_in_run r state =
+    printf "%s\n%!" __LOC__;
         let state, x = Checked.run r state in
         run x state
       in
@@ -1270,7 +1291,9 @@ struct
         -> exposing:(checked, _, 'k_var, _) t
         -> 'k_var
         -> R1CS_constraint_system.t =
-     fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
+      fun ~run ~exposing k -> 
+    printf "%s\n%!" __LOC__;
+      r1cs_h ~run (ref 1) exposing k
 
     let generate_keypair :
            run:(_, _, 'checked) Checked.Runner.run
@@ -1278,6 +1301,7 @@ struct
         -> 'k_var
         -> Keypair.t =
      fun ~run ~exposing k ->
+      printf "%s\n%!" __LOC__;
       Keypair.generate (constraint_system ~run ~exposing k)
 
     let verify :
@@ -1345,6 +1369,9 @@ struct
         (fun c primary ->
           let system =
             let s = Proving_key.r1cs_constraint_system key in
+            printf "before:auxiliary_input_size=%d, primary_input_size=%d\n"
+              (R1CS_constraint_system.get_auxiliary_input_size s)
+              (R1CS_constraint_system.get_primary_input_size s) ;
             if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
             else None
           in
@@ -1353,6 +1380,11 @@ struct
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
+          (
+            let s = Proving_key.r1cs_constraint_system key in
+            printf "after:auxiliary_input_size=%d, primary_input_size=%d\n"
+              (R1CS_constraint_system.get_auxiliary_input_size s)
+              (R1CS_constraint_system.get_primary_input_size s) );
           Proof.create ?message key ~primary ~auxiliary )
         t k
 
@@ -1658,6 +1690,7 @@ struct
     let digest (proof_system : _ t) = digest ~run:Checked.run proof_system
 
     let generate_keypair (proof_system : _ t) =
+      printf "%s\n%!" __LOC__;
       generate_keypair ~run:Checked.run proof_system
 
     let run_unchecked ~public_input ?handlers (proof_system : _ t) =
@@ -1684,6 +1717,7 @@ struct
       't -> unit Checked.run_state -> unit Checked.run_state * 'a
 
     let generate_keypair ~run ~exposing k =
+      printf "%s\n%!" __LOC__;
       Run.generate_keypair ~run ~exposing k
 
     let prove ~run ?message key t k = Run.prove ~run ?message key t () k
@@ -1700,6 +1734,7 @@ struct
   end
 
   let generate_keypair ~exposing k =
+    printf "%s\n%!" __LOC__;
     Run.generate_keypair ~run:Checked.run ~exposing k
 
   let conv f = Run.conv (fun x _ -> f x)
@@ -1768,6 +1803,8 @@ module Make (Backend : Backend_intf.S) = struct
       end)
 
   include Basic
+
+  let constraints = Runner0.constraints
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
 end
@@ -2201,6 +2238,7 @@ module Run = struct
       let digest (proof_system : _ t) = digest ~run:as_stateful proof_system
 
       let generate_keypair (proof_system : _ t) =
+        printf "%s\n%!" __LOC__;
         generate_keypair ~run:as_stateful proof_system
 
       let run_unchecked ~public_input ?handlers (proof_system : _ t) =
@@ -2308,6 +2346,7 @@ module Run = struct
       Perform.constraint_system ~run:as_stateful ~exposing x
 
     let generate_keypair ~exposing x =
+      printf "%s\n%!" __LOC__;
       Perform.generate_keypair ~run:as_stateful ~exposing x
 
     let prove ?message pk x = Perform.prove ~run:as_stateful ?message pk x
