@@ -28,16 +28,20 @@ let set_printing_stdout =
 let set_printing_file =
   foreign "camlsnark_set_printing_file" (string @-> returning void)
 
+module Print_func = struct
+  let print = ref (fun _ -> ())
+
+  let dispatch str = Sys.opaque_identity (!print str)
+end
+
 let set_printing_fun =
   let stub =
     foreign "camlsnark_set_printing_fun"
       (funptr (string @-> returning void) @-> returning void)
   in
-  let f_ref = ref (fun _ -> ()) in
-  let dispatch str = Sys.opaque_identity (!f_ref str) in
   fun f ->
-    f_ref := f ;
-    stub dispatch
+    Print_func.print := f ;
+    stub Print_func.dispatch
 
 let () = set_no_profiling true
 
