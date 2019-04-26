@@ -1213,8 +1213,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end = struct
     include Proving_key.Make (struct
       let prefix = with_prefix M.prefix "proving_key"
-
-      type field = M.Field.t
     end)
 
     let r1cs_constraint_system =
@@ -1337,8 +1335,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end = struct
     include Verification_key.Make (struct
       let prefix = with_prefix M.prefix "verification_key"
-
-      type field = M.Field.t
     end)
 
     let size_in_bits =
@@ -1406,8 +1402,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end = struct
     include Keypair.Make (struct
       let prefix = with_prefix M.prefix "keypair"
-
-      type field = M.Field.t
     end)
 
     let pk =
@@ -1484,8 +1478,6 @@ struct
   end = struct
     include Proof.Make (struct
       let prefix = with_prefix M.prefix "proof"
-
-      type field = M.Field.t
     end)
 
     type message = unit
