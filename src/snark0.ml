@@ -1670,6 +1670,9 @@ struct
         ?verification_key ?proving_key_path ?verification_key_path ?handlers
         ?reduce ~public_input checked
 
+    let constraint_system (proof_system : _ t) =
+      constraint_system ~run:Checked.run proof_system
+
     let digest (proof_system : _ t) = digest ~run:Checked.run proof_system
 
     let generate_keypair (proof_system : _ t) =
@@ -2220,6 +2223,9 @@ module Run = struct
           ?verification_key_path ?handlers ~public_input checked
 
       let run = as_stateful
+
+      let constraint_system (proof_system : _ t) =
+        constraint_system ~run proof_system
 
       let digest (proof_system : _ t) = digest ~run proof_system
 
