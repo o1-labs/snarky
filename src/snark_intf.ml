@@ -956,20 +956,35 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?handlers:Handler.t list
       -> ?reduce:bool
       -> ('a, 's, 'public_input) t
+      -> ('a -> ('b, 's) As_prover.t)
       -> 's
-      -> 's * 'a
+      -> 's * 'b
     (** Run the checked computation as the prover, without checking any
         constraints.
+
+        [run_unchecked ~public_input ~handlers proof_system eval prover_state]
+        runs the checked computation described by [proof_system] with public
+        input [public_input], then evaluates the result using [eval]. [eval]
+        may be used to convert proof system variables back into OCaml values;
+        see {!module:As_prover} for the available functions.
     *)
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
       -> ?reduce:bool
-      -> (('a, 's) As_prover.t, 's, 'public_input) t
+      -> ('a, 's, 'public_input) t
+      -> ('a -> ('b, 's) As_prover.t)
       -> 's
-      -> ('s * 'a) Or_error.t
-    (** Run the checked computation as the prover, checking any constraints. *)
+      -> ('s * 'b) Or_error.t
+    (** Run the checked computation as the prover, checking any constraints.
+
+        [run_checked ~public_input ~handlers proof_system eval prover_state]
+        runs the checked computation described by [proof_system] with public
+        input [public_input], then evaluates the result using [eval]. [eval]
+        may be used to convert proof system variables back into OCaml values;
+        see {!module:As_prover} for the available functions.
+    *)
 
     val check :
          public_input:(unit, 'public_input) H_list.t
