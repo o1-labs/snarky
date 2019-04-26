@@ -28,6 +28,17 @@ let set_printing_stdout =
 let set_printing_file =
   foreign "camlsnark_set_printing_file" (string @-> returning void)
 
+let set_printing_fun =
+  let stub =
+    foreign "camlsnark_set_printing_fun"
+      (funptr (string @-> returning void) @-> returning void)
+  in
+  let f_ref = ref (fun _ -> ()) in
+  let dispatch str = Sys.opaque_identity (!f_ref str) in
+  fun f ->
+    f_ref := f ;
+    stub dispatch
+
 let () = set_no_profiling true
 
 module Make_group_coefficients (P : sig

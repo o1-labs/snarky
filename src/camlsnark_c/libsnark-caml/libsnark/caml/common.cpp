@@ -37,6 +37,18 @@ int file_print(const char* format, va_list args) {
     return vfprintf(snarky_print_dest, format, args);
 }
 
+int (*snarky_print_func)(char*) = NULL;
+
+int snarky_print_to_func(const char* format, va_list args) {
+    char output[1024];
+    int true_size = vsnprintf(output, 1024, format, args);
+    if (true_size >= 0) {
+        return (*snarky_print_func)(output);
+    } else {
+        return (-true_size);
+    }
+}
+
 extern "C" {
 
 void camlsnark_set_printing_off() {
@@ -50,14 +62,20 @@ void camlsnark_set_printing_stdout() {
 }
 
 void camlsnark_set_printing_file(char *file) {
+    snarky_printf_deferred = &no_print;
     close_snarky_print_dest();
     snarky_print_dest = fopen(file, "a");
     if (snarky_print_dest) {
         snarky_printf_deferred = &file_print;
     } else {
         // Fail silently..
-        snarky_printf_deferred = &no_print;
     }
+}
+
+void camlsnark_set_printing_fun(int (*pf)(char*)) {
+    snarky_print_func = pf;
+    snarky_printf_deferred = &snarky_print_to_func;
+    close_snarky_print_dest();
 }
 
 void camlsnark_set_profiling(bool b) {
