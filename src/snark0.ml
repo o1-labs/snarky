@@ -1207,13 +1207,8 @@ struct
             ; (fun () -> read_proving_key proof_system)
             ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
-        let system =
-          let s = Proving_key.r1cs_constraint_system proving_key in
-          if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
-          else None
-        in
         let _, _, state =
-          run_with_input ~run ~public_input ?system ?handlers proof_system s
+          run_with_input ~run ~public_input ?handlers proof_system s
         in
         let {input; aux; _} = state in
         Proof.create ?message proving_key ~primary:input ~auxiliary:aux
@@ -1343,13 +1338,8 @@ struct
      fun ~run ?message key t ?handlers s k ->
       conv
         (fun c primary ->
-          let system =
-            let s = Proving_key.r1cs_constraint_system key in
-            if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
-            else None
-          in
           let auxiliary =
-            Checked.auxiliary_input ?system ~run ?handlers
+            Checked.auxiliary_input ~run ?handlers
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
