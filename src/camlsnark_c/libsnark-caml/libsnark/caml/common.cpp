@@ -6,8 +6,59 @@
 #include <libff/algebra/curves/mnt/mnt4/mnt4_pp.hpp>
 #include <libff/algebra/curves/mnt/mnt6/mnt6_pp.hpp>
 #include <libff/common/profiling.hpp>
+#include <stdarg.h>
+
+int (*snarky_printf_deferred)(const char* format, va_list args) = &vprintf;
+
+int snarky_printf(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int ret = (*snarky_printf_deferred)(format, args);
+    va_end(args);
+    return ret;
+}
+
+int no_print(const char* format, va_list args) {
+    return 0;
+}
+
+FILE *snarky_print_dest = NULL;
+
+int close_snarky_print_dest() {
+    if (snarky_print_dest) {
+        return fclose(snarky_print_dest);
+    } else {
+        return 0;
+    }
+}
+
+int file_print(const char* format, va_list args) {
+    return vfprintf(snarky_print_dest, format, args);
+}
 
 extern "C" {
+
+void camlsnark_set_printing_off() {
+    snarky_printf_deferred = &no_print;
+    close_snarky_print_dest();
+}
+
+void camlsnark_set_printing_stdout() {
+    snarky_printf_deferred = &vprintf;
+    close_snarky_print_dest();
+}
+
+void camlsnark_set_printing_file(char *file) {
+    close_snarky_print_dest();
+    snarky_print_dest = fopen(file, "a");
+    if (snarky_print_dest) {
+        snarky_printf_deferred = &file_print;
+    } else {
+        // Fail silently..
+        snarky_printf_deferred = &no_print;
+    }
+}
 
 void camlsnark_set_profiling(bool b) {
   libff::inhibit_profiling_counters = b;
