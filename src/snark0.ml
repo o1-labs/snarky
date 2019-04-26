@@ -1183,9 +1183,8 @@ struct
         (s, a)
 
       let run_checked' ~run ~public_input ?handlers ?reduce proof_system s =
-        let system = R1CS_constraint_system.create () in
         match
-          run_with_input ~run ?reduce ~public_input ~system
+          run_with_input ~run ?reduce ~public_input
             ~eval_constraints:true ?handlers proof_system s
         with
         | exception e ->
