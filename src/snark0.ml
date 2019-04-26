@@ -1183,10 +1183,9 @@ struct
         As_prover.run (eval a) (Checked.Runner.get_value state) s
 
       let run_checked' ~run ~public_input ?handlers ?reduce proof_system s =
-        let system = R1CS_constraint_system.create () in
         match
-          run_with_input ~run ?reduce ~public_input ~system
-            ~eval_constraints:true ?handlers proof_system s
+          run_with_input ~run ?reduce ~public_input ~eval_constraints:true
+            ?handlers proof_system s
         with
         | exception e ->
             Or_error.of_exn e
@@ -1230,8 +1229,14 @@ struct
             ; (fun () -> read_proving_key proof_system)
             ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
+        let system =
+          let s = Proving_key.r1cs_constraint_system proving_key in
+          if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
+          else None
+        in
         let _, _, state =
-          run_with_input ~run ?reduce ~public_input ?handlers proof_system s
+          run_with_input ~run ?reduce ~public_input ?system ?handlers
+            proof_system s
         in
         let {input; aux; _} = state in
         Proof.create ?message proving_key ~primary:input ~auxiliary:aux
@@ -1361,8 +1366,13 @@ struct
      fun ~run ?message key t ?handlers s k ->
       conv
         (fun c primary ->
+          let system =
+            let s = Proving_key.r1cs_constraint_system key in
+            if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
+            else None
+          in
           let auxiliary =
-            Checked.auxiliary_input ~run ?handlers
+            Checked.auxiliary_input ?system ~run ?handlers
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
