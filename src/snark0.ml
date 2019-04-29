@@ -459,7 +459,7 @@ struct
 
     type 'prover_state run_state = 'prover_state Runner.run_state
 
-    let rec constraint_count_aux : type a s s1.
+    let rec constraint_count_aux : type a s.
            log:(?start:_ -> _)
         -> auxc:_
         -> int
@@ -477,7 +477,7 @@ struct
               None
           in
           let count = ref count in
-          let run_special (type a s s1) (x : (a, s, _) Types.Checked.t) =
+          let run_special (type a s) (x : (a, s, _) Types.Checked.t) =
             let count', a = constraint_count_aux ~log ~auxc !count x in
             count := count' ;
             a
@@ -1000,7 +1000,7 @@ struct
         ; proving_key_path: string option
         ; verification_key_path: string option }
 
-      let rec allocate_inputs : type checked r2 k1 k2.
+      let rec allocate_inputs : type checked k1 k2.
              (unit, 's) Checked.t
           -> int ref
           -> (checked, unit, k1, k2) t
@@ -1265,10 +1265,10 @@ struct
       in
       Checked.constraint_system ~run:run_in_run ~num_inputs:(!next_input - 1) r
 
-    let constraint_system (type a s checked k_var k_val) :
+    let constraint_system (type a s checked k_var) :
            run:(a, s, checked) Checked.Runner.run
-        -> exposing:(checked, _, 'k_var, _) t
-        -> 'k_var
+        -> exposing:(checked, _, k_var, _) t
+        -> k_var
         -> R1CS_constraint_system.t =
      fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
 
@@ -1374,7 +1374,7 @@ struct
           ignore auxiliary )
         t k
 
-    let reduce_to_prover : type a s r_value.
+    let reduce_to_prover : type a s.
            ((a, s, Field.t) Checked_ast.t, Proof.t, 'k_var, 'k_value) t
         -> 'k_var
         -> (Proving_key.t -> ?handlers:Handler.t list -> s -> 'k_value)
