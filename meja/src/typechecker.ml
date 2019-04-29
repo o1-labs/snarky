@@ -1097,7 +1097,7 @@ let check (ast : statement list) (env : Envi.t) =
 
 open Format
 
-let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
+let pp_typ = Pprint.type_expr
 
 let rec report_error ppf = function
   | Check_failed (typ, constr_typ, err) ->
