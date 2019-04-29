@@ -3,11 +3,11 @@ set -e # Exit on error
 set -u # Fail if an undefined variable is used
 
 OS_NAME=$(uname)
-if [ $OS_NAME = 'Linux' ]; then
+if [ "$OS_NAME" = 'Linux' ]; then
 
   # Find the Linux distro
   if [ -n "$(command -v lsb_release)" ]; then
-	DISTRO=$(lsb_release -s -d)
+	DISTRO=$(lsb_release --short --id)
   elif [ -f "/etc/os-release" ]; then
 	DISTRO=$(grep NAME /etc/os-release | sed 's/NAME=//g' | tr -d '="')
   elif [ -f "/etc/debian_version" ]; then
@@ -15,38 +15,38 @@ if [ $OS_NAME = 'Linux' ]; then
   elif [ -f "/etc/redhat-release" ]; then
 	DISTRO="Fedora"
   else
-    DISTRO=""
+    DISTRO="Unknown"
   fi
 
-  if [ $DISTRO = 'Ubuntu' ]; then
+  if [ "$DISTRO" = 'Ubuntu' ]; then
     # Install common dependencies
     sudo apt-get install build-essential cmake git libgmp3-dev libboost-all-dev libssl-dev
     # Install the right version of libprocps-dev for the release
     RELEASE=$(lsb_release -s --release)
-    if [ $RELEASE = '18.04' ]; then
+    if [ "$RELEASE" = '18.04' ]; then
       sudo apt-get install libprocps-dev
-    elif [ $RELEASE = '16.04' ]; then
+    elif [ "$RELEASE" = '16.04' ]; then
       sudo apt-get install libprocps4-dev
-    elif [ $RELEASE = '14.04' ]; then
+    elif [ "$RELEASE" = '14.04' ]; then
       sudo apt-get install libprocps3-dev
     else
       # Try all of the different packages for libprocps-dev, in order of package recency
       sudo apt-get install libprocps-dev || sudo apt-get install libprocps4-dev || sudo apt-get install libprocps3-dev
     fi
 
-  elif [ $DISTRO = 'Fedora' ]; then
+  elif [ "$DISTRO" = 'Fedora' ]; then
     # Install common dependencies
     sudo yum install gcc-c++ cmake make git gmp-devel procps-ng-devel
 
-  elif [ $DISTRO = 'Debian' ]; then
+  elif [ "$DISTRO" = 'Debian' ]; then
     # Install common dependencies (WARNING: Untested)
     sudo apt-get install build-essential cmake git libgmp3-dev libboost-all-dev libssl-dev libprocps-dev
 
   else
-    echo 'Unrecognised Linux distribution: $DISTRO'
+    echo "Unrecognised Linux distribution: $DISTRO"
   fi
 
-elif [ $OS_NAME = 'Darwin' ]; then
+elif [ "$OS_NAME" = 'Darwin' ]; then
   PACKAGES="gpatch opam cmake gmp pkg-config openssl libffi libsodium boost zlib libomp"
 
   # removing already installed packages from the list
