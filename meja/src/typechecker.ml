@@ -1101,42 +1101,47 @@ let pp_typ = Pprint.type_expr
 
 let rec report_error ppf = function
   | Check_failed (typ, constr_typ, err) ->
-      fprintf ppf "Incompatable types @[%a@] and @[%a@]:@.%a" pp_typ typ
-        pp_typ constr_typ report_error err
+      fprintf ppf
+        "@[<v>@[<hov>Incompatable types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
+        pp_typ typ pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
-      fprintf ppf "Cannot unify @[%a@] and @[%a@].@." pp_typ typ pp_typ
-        constr_typ
+      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" pp_typ typ
+        pp_typ constr_typ
   | Recursive_variable typ ->
       fprintf ppf
-        "The variable @[%a@](%d) would have an instance that contains itself."
+        "@[<hov>The variable@ @[<h>%a@](%d) would have an instance that \
+         contains itself.@]"
         pp_typ typ typ.type_id
   | Unbound (kind, value) ->
-      fprintf ppf "Unbound %s %a." kind Longident.pp value.txt
+      fprintf ppf "@[<hov>Unbound %s@ %a.@]" kind Longident.pp value.txt
   | Unbound_value value ->
       fprintf ppf "Unbound value %s." value.txt
   | Variable_on_one_side name ->
-      fprintf ppf "Variable %s must occur on both sides of this '|' pattern."
+      fprintf ppf
+        "@[<hov>Variable@ %s@ must@ occur@ on@ both@ sides@ of@ this@ '|'@ \
+         pattern.@]"
         name
   | Pattern_declaration (kind, name) ->
-      fprintf ppf "Unexpected %s declaration for %s within a pattern." kind
-        name
+      fprintf ppf "@[<hov>Unexpected %s declaration for %s within a pattern.@]"
+        kind name
   | Empty_record ->
       fprintf ppf "Unexpected empty record."
   | Wrong_record_field (field, typ) ->
       fprintf ppf
-        "This record expression is expected to have type %a@.The field %a \
-         does not belong to type %a."
+        "@[<hov>This record expression is expected to have type@ \
+         @[<h>%a@]@;The field %a does not belong to type@ @[<h>%a@].@]"
         pp_typ typ Longident.pp field pp_typ typ
   | Repeated_field field ->
-      fprintf ppf "The record field %s is defined several times." field
+      fprintf ppf "@[<hov>The record field %s is defined several times.@]"
+        field
   | Missing_fields fields ->
-      fprintf ppf "Some record fields are undefined: %a"
-        (pp_print_list pp_print_string)
+      fprintf ppf "@[<hov>Some record fields are undefined:@ %a@]"
+        (pp_print_list ~pp_sep:pp_print_space pp_print_string)
         fields
   | Wrong_type_description (kind, name) ->
       fprintf ppf
-        "Internal error: Expected a type declaration of kind %s, but instead \
-         got %s"
+        "@[<hov>Internal error: Expected a type declaration of kind %s, but \
+         instead got %s@]"
         kind name.txt
   | Unifiable_expr ->
       fprintf ppf "Internal error: Unexpected implicit variable."
@@ -1144,17 +1149,19 @@ let rec report_error ppf = function
       fprintf ppf "Internal error: Expected an unresolved implicit variable."
   | No_instance typ ->
       fprintf ppf
-        "Could not find an instance for an implicit variable of type @[%a@]."
+        "@[<hov>Could not find an instance for an implicit variable of type@ \
+         @[<h>%a@].@]"
         pp_typ typ
   | Argument_expected lid ->
-      fprintf ppf "@[The constructor %a expects an argument.@]" Longident.pp
-        lid
+      fprintf ppf "@[<hov>The constructor %a expects an argument.@]"
+        Longident.pp lid
   | Not_extensible lid ->
-      fprintf ppf "@[Type definition %a is not extensible.@]" Longident.pp lid
+      fprintf ppf "@[<hov>Type definition %a is not extensible.@]" Longident.pp
+        lid
   | Extension_different_arity lid ->
       fprintf ppf
-        "@[This extension does not match the definition of type %a@.They have \
-         different arities.@]"
+        "@[<hov>This extension does not match the definition of type %a@;They \
+         have different arities.@]"
         Longident.pp lid
 
 let () =
