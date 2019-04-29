@@ -105,3 +105,30 @@ update_test_output() {
   update_output=1
   run_tests
 }
+
+
+run_one() {
+  if [ -z "$FILENAME" ]; then
+    echo "Please specify the filename of the test to run in FILENAME"
+    return 1
+  fi
+  run_dune build meja/meja.exe
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}BUILD FAILED${NC}"
+  else
+    mkdir -p tests/out
+    run_test "$FILENAME"
+    declare -i total
+    total=passes+fails
+    if [[ "$update_output" -ne 0 ]]; then
+      echo -e "${GREEN}UP-TO-DATE${NC} $fails files changed"
+      return 0
+    elif [[ "$fails" -ne 0 ]]; then
+      echo -e "${RED}FAILED${NC} $fails/$total"
+      return 1
+    else
+      echo -e "${GREEN}PASSED${NC} $passes/$total"
+      return 0
+    fi
+  fi
+}
