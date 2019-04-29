@@ -29,9 +29,11 @@ let set_printing_file =
   foreign "camlsnark_set_printing_file" (string @-> returning void)
 
 module Print_func = struct
-  let print = ref (fun _ -> ())
+  let print = ref (fun str -> str)
 
-  let dispatch str = Sys.opaque_identity (!print str)
+  let puts = foreign "camlsnark_puts" (string @-> returning void)
+
+  let dispatch str = puts (!print str)
 end
 
 let set_printing_fun =
