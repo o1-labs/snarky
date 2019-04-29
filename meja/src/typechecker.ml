@@ -1101,10 +1101,10 @@ let pp_typ = Pprint.type_expr
 
 let rec report_error ppf = function
   | Check_failed (typ, constr_typ, err) ->
-      fprintf ppf "Incompatable types @['%a'@] and @['%a'@]:@.%a" pp_typ typ
+      fprintf ppf "Incompatable types @[%a@] and @[%a@]:@.%a" pp_typ typ
         pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
-      fprintf ppf "Cannot unify @['%a'@] and @['%a'@].@." pp_typ typ pp_typ
+      fprintf ppf "Cannot unify @[%a@] and @[%a@].@." pp_typ typ pp_typ
         constr_typ
   | Recursive_variable typ ->
       fprintf ppf
