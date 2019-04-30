@@ -2362,7 +2362,7 @@ let%test_module "snark0-test" =
 
     let swap b (x, y) = if b then (y, x) else (x, y)
 
-    let%test_unit "proving-key serialization" =
+    let%test_unit "key serialization" =
       let main x =
         let%bind y = exists Field.typ ~compute:(As_prover.return Field.zero) in
         let rec go b acc i =
@@ -2379,9 +2379,8 @@ let%test_module "snark0-test" =
         return ()
       in
       let kp = generate_keypair ~exposing:[Field.typ] main in
-      let vk = Keypair.vk kp in
-      let pk = Keypair.pk kp in
-      let pk = bin_io_id (module Proving_key) pk in
+      let vk = Keypair.vk kp |> bin_io_id (module Verification_key) in
+      let pk = Keypair.pk kp |> bin_io_id (module Proving_key) in
       let input = Field.one in
       let proof = prove pk [Field.typ] () main input in
       assert (verify proof vk [Field.typ] input)
