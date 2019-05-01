@@ -49,6 +49,9 @@ module Print_func = struct
   (** The dispatcher passed to the C++ interface in {!val:set_printing_fun}.
       We cannot pass the user-provided function directly to the C++ side in
       case of GC relocation, so this provides a statically-allocated wrapper.
+
+      The call to {!val:puts} is made from here instead of the C++ side so that
+      OCaml's GC behaviour is mitigated by the the Ctypes API.
   *)
   let dispatch str = puts (!print str)
 end
