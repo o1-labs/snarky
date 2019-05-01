@@ -318,11 +318,132 @@ module Runner = struct
         ; run_special= None }
     end
   end
+
+  module type S = sig
+    type field
+
+    type cvar
+
+    type constr
+
+    type r1cs
+
+    type 'prover_state run_state = ('prover_state, field) Types.Run_state.t
+
+    type state = unit run_state
+
+    type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
+
+    val set_prover_state :
+      'a option -> ('b, 'c) Types.Run_state.t -> ('a, 'c) Types.Run_state.t
+
+    val set_handler :
+         Request.Handler.t
+      -> ('a, 'b) Types.Run_state.t
+      -> ('a, 'b) Types.Run_state.t
+
+    val get_handler : ('a, 'b) Types.Run_state.t -> Request.Handler.t
+
+    val set_stack :
+      string list -> ('a, 'b) Types.Run_state.t -> ('a, 'b) Types.Run_state.t
+
+    val get_stack : ('a, 'b) Types.Run_state.t -> string list
+
+    val get_value : ('a, field) Types.Run_state.t -> cvar -> field
+
+    val store_field_elt : ('a, field) Types.Run_state.t -> field -> cvar
+
+    val alloc_var : ('a, 'b) Types.Run_state.t -> unit -> cvar
+
+    val run_as_prover :
+         ('a, field, 'b) As_prover0.t option
+      -> ('b, field) Types.Run_state.t
+      -> ('b, field) Types.Run_state.t * 'a option
+
+    val as_prover :
+         (unit, field, 'a) As_prover0.t
+      -> ('a, field) Types.Run_state.t
+      -> ('a, field) Types.Run_state.t * unit
+
+    val with_label :
+         string
+      -> (('a, 'b) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
+      -> ('a, 'b) Types.Run_state.t
+      -> ('c, 'd) Types.Run_state.t * 'e
+
+    val add_constraint :
+         constr
+      -> ('a, field) Types.Run_state.t
+      -> ('a, field) Types.Run_state.t * unit
+
+    val with_state :
+         ('a, field, 'b) As_prover0.t
+      -> ('c -> (unit, field, 'b) As_prover0.t)
+      -> (('a, field) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
+      -> ('b, field) Types.Run_state.t
+      -> ('b, field) Types.Run_state.t * 'e
+
+    val with_handler :
+         Request.Handler.single
+      -> (('a, 'b) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
+      -> ('a, 'b) Types.Run_state.t
+      -> ('c, 'd) Types.Run_state.t * 'e
+
+    val clear_handler :
+         (('a, 'b) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
+      -> ('a, 'b) Types.Run_state.t
+      -> ('c, 'd) Types.Run_state.t * 'e
+
+    val exists :
+         run:(   'a
+              -> (unit, field) Types.Run_state.t
+              -> ('b, 'c) Types.Run_state.t * unit)
+      -> ('d, 'e, field, 'a) Types.Typ.typ
+      -> ('e, field, 'f) Provider.t
+      -> ('f, field) Types.Run_state.t
+      -> ('f, 'c) Types.Run_state.t * ('d, 'e) Handle.t
+
+    val next_auxiliary :
+      ('a, 'b) Types.Run_state.t -> ('a, 'b) Types.Run_state.t * int
+
+    val run :
+      ('a, 's, field) Checked_ast.t -> 's run_state -> 's run_state * 'a
+
+    val dummy_vector : field Vector.t
+
+    val fake_state : int ref -> ('a, field) Types.Run_state.t
+
+    val flatten_as_prover :
+         int ref
+      -> ('a, 's, field) Checked_ast.t
+      -> ('s run_state -> 's run_state) * 'a
+
+    val reduce_to_prover :
+      int ref -> ('a, 'b, field) Checked_ast.t -> ('a, 'b, field) Checked_ast.t
+
+    module State : sig
+      val make :
+           num_inputs:int
+        -> input:field Vector.t
+        -> next_auxiliary:int ref
+        -> aux:field Vector.t
+        -> ?system:r1cs
+        -> ?eval_constraints:bool
+        -> ?handler:Request.Handler.t
+        -> 's option
+        -> ('s, field) Types.Run_state.t
+    end
+  end
 end
 
 module Make_basic
     (Backend : Backend_extended.S)
-    (Checked : Checked_intf.Extended with type field = Backend.Field.t) =
+    (Checked : Checked_intf.Extended with type field = Backend.Field.t)
+    (Runner : Runner.S
+              with type field := Backend.Field.t
+               and type cvar := Backend.Cvar.t
+               and type constr := Backend.Constraint.t
+               and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend
   module Checked_S = Checked_intf.Unextend (Checked)
@@ -459,11 +580,11 @@ struct
 
     let perform req = request_witness Typ.unit req
 
-    module Runner = Runner.Make (Backend)
+    module Runner = Runner
 
     type 'prover_state run_state = 'prover_state Runner.run_state
 
-    let rec constraint_count_aux : type a s s1.
+    let rec constraint_count_aux : type a s.
            log:(?start:_ -> _)
         -> auxc:_
         -> int
@@ -481,7 +602,7 @@ struct
               None
           in
           let count = ref count in
-          let run_special (type a s s1) (x : (a, s, _) Types.Checked.t) =
+          let run_special (type a s) (x : (a, s, _) Types.Checked.t) =
             let count', a = constraint_count_aux ~log ~auxc !count x in
             count := count' ;
             a
@@ -559,7 +680,8 @@ struct
       Option.iter system ~f:(fun system ->
           let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
           R1CS_constraint_system.set_auxiliary_input_size system
-            auxiliary_input_size ) ;
+            auxiliary_input_size ;
+          R1CS_constraint_system.finalize system ) ;
       aux
 
     let run_and_check' ~run t0 s0 =
@@ -1005,7 +1127,7 @@ struct
         ; proving_key_path: string option
         ; verification_key_path: string option }
 
-      let rec allocate_inputs : type checked r2 k1 k2.
+      let rec allocate_inputs : type checked k1 k2.
              reduce_to_prover:(int ref -> checked -> checked)
           -> (unit, 's) Checked.t
           -> int ref
@@ -1133,7 +1255,8 @@ struct
               !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
             R1CS_constraint_system.set_auxiliary_input_size system
-              aux_input_size ) ;
+              aux_input_size ;
+            R1CS_constraint_system.finalize system ) ;
         (prover_state, a)
 
       let constraint_system ~run proof_system =
@@ -1239,8 +1362,7 @@ struct
         let {input; aux; _} = state in
         Proof.create ?message proving_key ~primary:input ~auxiliary:aux
 
-      let verify ~run ~public_input ?verification_key ?message proof_system
-          proof =
+      let verify ~public_input ?verification_key ?message proof_system proof =
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
@@ -1286,10 +1408,10 @@ struct
       in
       Checked.constraint_system ~run:run_in_run ~num_inputs:(!next_input - 1) r
 
-    let constraint_system (type a s checked k_var k_val) :
+    let constraint_system (type a s checked k_var) :
            run:(a, s, checked) Checked.Runner.run
-        -> exposing:(checked, _, 'k_var, _) t
-        -> 'k_var
+        -> exposing:(checked, _, k_var, _) t
+        -> k_var
         -> R1CS_constraint_system.t =
      fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
 
@@ -1395,7 +1517,7 @@ struct
           ignore auxiliary )
         t k
 
-    let reduce_to_prover : type a s r_value.
+    let reduce_to_prover : type a s.
            ((a, s, Field.t) Checked_ast.t, Proof.t, 'k_var, 'k_value) t
         -> 'k_var
         -> (Proving_key.t -> ?handlers:Handler.t list -> s -> 'k_value)
@@ -1701,8 +1823,7 @@ struct
         ?message proof_system
 
     let verify ~public_input ?verification_key ?message (proof_system : _ t) =
-      verify ~run:Checked.run ~public_input ?verification_key ?message
-        proof_system
+      verify ~public_input ?verification_key ?message proof_system
   end
 
   module Perform = struct
@@ -1745,8 +1866,6 @@ struct
   let run_and_check t s = run_and_check ~run:Checked.run t s
 
   let check t s = check ~run:Checked.run t s
-
-  let reduce_to_prover = Run.reduce_to_prover
 
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
@@ -1792,6 +1911,7 @@ module Make (Backend : Backend_intf.S) = struct
 
         let run = Runner0.run
       end)
+      (Runner0)
 
   include Basic
   module Number = Number.Make (Basic)
@@ -2255,7 +2375,7 @@ module Run = struct
 
       let verify ~public_input ?verification_key ?message (proof_system : _ t)
           =
-        verify ~run ~public_input ?verification_key proof_system
+        verify ~public_input ?verification_key ?message proof_system
     end
 
     let assert_ ?label c = run (assert_ ?label c)
@@ -2384,5 +2504,32 @@ let make (type field)
 
 let%test_module "snark0-test" =
   ( module struct
-    include Make (Backends.Mnt4.GM)
+    include Make (Backends.Mnt4.Default)
+
+    let bin_io_id m = Fn.compose (Binable.of_string m) (Binable.to_string m)
+
+    let swap b (x, y) = if b then (y, x) else (x, y)
+
+    let%test_unit "key serialization" =
+      let main x =
+        let%bind y = exists Field.typ ~compute:(As_prover.return Field.zero) in
+        let rec go b acc i =
+          if i = 0 then return acc
+          else
+            let%bind z =
+              Tuple2.uncurry Field.Checked.mul
+                (swap b (Field.Checked.add y acc, x))
+            in
+            go b z (i - 1)
+        in
+        let%bind _ = go false x 19 in
+        let%bind _ = go true y 20 in
+        return ()
+      in
+      let kp = generate_keypair ~exposing:[Field.typ] main in
+      let vk = Keypair.vk kp |> bin_io_id (module Verification_key) in
+      let pk = Keypair.pk kp |> bin_io_id (module Proving_key) in
+      let input = Field.one in
+      let proof = prove pk [Field.typ] () main input in
+      assert (verify proof vk [Field.typ] input)
   end )
