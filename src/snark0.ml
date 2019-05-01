@@ -10,6 +10,7 @@ let set_eval_constraints b = eval_constraints := b
 
 module Runner = struct
   module Make (Backend : Backend_extended.S) = struct
+    open Constraint
     open Backend
     open Types.Run_state
     open Checked
@@ -91,37 +92,36 @@ module Runner = struct
       let s', y = t {s with stack= lab :: stack} in
       ({s' with stack}, y)
 
+    let log_constraint c s =
+      String.concat ~sep:"\n"
+        (List.map c ~f:(fun {basic; _} ->
+             match basic with
+             | Boolean var ->
+                 Format.(
+                   asprintf "Boolean %s" (Field.to_string (get_value s var)))
+             | Equal (var1, var2) ->
+                 Format.(
+                   asprintf "Equal %s %s"
+                     (Field.to_string (get_value s var1))
+                     (Field.to_string (get_value s var2)))
+             | Square (var1, var2) ->
+                 Format.(
+                   asprintf "Square %s %s"
+                     (Field.to_string (get_value s var1))
+                     (Field.to_string (get_value s var2)))
+             | R1CS (var1, var2, var3) ->
+                 Format.(
+                   asprintf "R1CS %s %s %s"
+                     (Field.to_string (get_value s var1))
+                     (Field.to_string (get_value s var2))
+                     (Field.to_string (get_value s var3))) ))
+
     let add_constraint c s =
       if !(s.as_prover) then
         failwith
           "Cannot add a constraint as the prover: the verifier's constraint \
            system will not match." ;
-      ( if s.eval_constraints && not (Constraint.eval c (get_value s)) then
-        let data =
-          String.concat ~sep:"\n"
-            (List.map c ~f:(fun {basic; _} ->
-                 match basic with
-                 | Boolean var ->
-                     Format.(
-                       asprintf "Boolean %s"
-                         (Field.to_string (get_value s var)))
-                 | Equal (var1, var2) ->
-                     Format.(
-                       asprintf "Equal %s %s"
-                         (Field.to_string (get_value s var1))
-                         (Field.to_string (get_value s var2)))
-                 | Square (var1, var2) ->
-                     Format.(
-                       asprintf "Square %s %s"
-                         (Field.to_string (get_value s var1))
-                         (Field.to_string (get_value s var2)))
-                 | R1CS (var1, var2, var3) ->
-                     Format.(
-                       asprintf "R1CS %s %s %s"
-                         (Field.to_string (get_value s var1))
-                         (Field.to_string (get_value s var2))
-                         (Field.to_string (get_value s var3))) ))
-        in
+      if s.eval_constraints && not (Constraint.eval c (get_value s)) then
         failwithf
           "Constraint unsatisfied (unreduced):\n\
            %s\n\
@@ -133,7 +133,7 @@ module Runner = struct
           (Constraint.annotation c)
           (Constraint.stack_to_string s.stack)
           (Sexp.to_string (Constraint.sexp_of_t c))
-          data () ) ;
+          (log_constraint c s) () ;
       Option.iter s.system ~f:(fun system ->
           Constraint.add ~stack:s.stack c system ) ;
       (s, ())
@@ -272,33 +272,8 @@ module Runner = struct
       | Add_constraint (c, t) ->
           let f, y = flatten_as_prover next_auxiliary stack t in
           ( (fun s ->
-              ( if s.eval_constraints && not (Constraint.eval c (get_value s))
+              if s.eval_constraints && not (Constraint.eval c (get_value s))
               then
-                let data =
-                  String.concat ~sep:"\n"
-                    (List.map c ~f:(fun {basic; _} ->
-                         match basic with
-                         | Boolean var ->
-                             Format.(
-                               asprintf "Boolean %s"
-                                 (Field.to_string (get_value s var)))
-                         | Equal (var1, var2) ->
-                             Format.(
-                               asprintf "Equal %s %s"
-                                 (Field.to_string (get_value s var1))
-                                 (Field.to_string (get_value s var2)))
-                         | Square (var1, var2) ->
-                             Format.(
-                               asprintf "Square %s %s"
-                                 (Field.to_string (get_value s var1))
-                                 (Field.to_string (get_value s var2)))
-                         | R1CS (var1, var2, var3) ->
-                             Format.(
-                               asprintf "R1CS %s %s %s"
-                                 (Field.to_string (get_value s var1))
-                                 (Field.to_string (get_value s var2))
-                                 (Field.to_string (get_value s var3))) ))
-                in
                 failwithf
                   "Constraint unsatisfied:\n\
                    %s\n\
@@ -310,7 +285,7 @@ module Runner = struct
                   (Constraint.annotation c)
                   (Constraint.stack_to_string stack)
                   (Sexp.to_string (Constraint.sexp_of_t c))
-                  data () ) ;
+                  (log_constraint c s) () ;
               f s )
           , y )
       | With_state (p, and_then, t_sub, k) ->
