@@ -459,7 +459,7 @@ struct
 
     type 'prover_state run_state = 'prover_state Runner.run_state
 
-    let rec constraint_count_aux : type a s s1.
+    let rec constraint_count_aux : type a s.
            log:(?start:_ -> _)
         -> auxc:_
         -> int
@@ -477,7 +477,7 @@ struct
               None
           in
           let count = ref count in
-          let run_special (type a s s1) (x : (a, s, _) Types.Checked.t) =
+          let run_special (type a s) (x : (a, s, _) Types.Checked.t) =
             let count', a = constraint_count_aux ~log ~auxc !count x in
             count := count' ;
             a
@@ -555,7 +555,8 @@ struct
       Option.iter system ~f:(fun system ->
           let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
           R1CS_constraint_system.set_auxiliary_input_size system
-            auxiliary_input_size ) ;
+            auxiliary_input_size ;
+          R1CS_constraint_system.finalize system ) ;
       aux
 
     let run_and_check' ~run t0 s0 =
@@ -1000,7 +1001,7 @@ struct
         ; proving_key_path: string option
         ; verification_key_path: string option }
 
-      let rec allocate_inputs : type checked r2 k1 k2.
+      let rec allocate_inputs : type checked k1 k2.
              (unit, 's) Checked.t
           -> int ref
           -> (checked, unit, k1, k2) t
@@ -1113,7 +1114,8 @@ struct
               !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
             R1CS_constraint_system.set_auxiliary_input_size system
-              aux_input_size ) ;
+              aux_input_size ;
+            R1CS_constraint_system.finalize system ) ;
         (prover_state, a)
 
       let constraint_system ~run proof_system =
@@ -1265,10 +1267,10 @@ struct
       in
       Checked.constraint_system ~run:run_in_run ~num_inputs:(!next_input - 1) r
 
-    let constraint_system (type a s checked k_var k_val) :
+    let constraint_system (type a s checked k_var) :
            run:(a, s, checked) Checked.Runner.run
-        -> exposing:(checked, _, 'k_var, _) t
-        -> 'k_var
+        -> exposing:(checked, _, k_var, _) t
+        -> k_var
         -> R1CS_constraint_system.t =
      fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
 
@@ -1374,7 +1376,7 @@ struct
           ignore auxiliary )
         t k
 
-    let reduce_to_prover : type a s r_value.
+    let reduce_to_prover : type a s.
            ((a, s, Field.t) Checked_ast.t, Proof.t, 'k_var, 'k_value) t
         -> 'k_var
         -> (Proving_key.t -> ?handlers:Handler.t list -> s -> 'k_value)
@@ -2352,5 +2354,32 @@ let make (type field)
 
 let%test_module "snark0-test" =
   ( module struct
-    include Make (Backends.Mnt4.GM)
+    include Make (Backends.Mnt4.Default)
+
+    let bin_io_id m = Fn.compose (Binable.of_string m) (Binable.to_string m)
+
+    let swap b (x, y) = if b then (y, x) else (x, y)
+
+    let%test_unit "key serialization" =
+      let main x =
+        let%bind y = exists Field.typ ~compute:(As_prover.return Field.zero) in
+        let rec go b acc i =
+          if i = 0 then return acc
+          else
+            let%bind z =
+              Tuple2.uncurry Field.Checked.mul
+                (swap b (Field.Checked.add y acc, x))
+            in
+            go b z (i - 1)
+        in
+        let%bind _ = go false x 19 in
+        let%bind _ = go true y 20 in
+        return ()
+      in
+      let kp = generate_keypair ~exposing:[Field.typ] main in
+      let vk = Keypair.vk kp |> bin_io_id (module Verification_key) in
+      let pk = Keypair.pk kp |> bin_io_id (module Proving_key) in
+      let input = Field.one in
+      let proof = prove pk [Field.typ] () main input in
+      assert (verify proof vk [Field.typ] input)
   end )

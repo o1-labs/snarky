@@ -19,6 +19,30 @@ end
 let set_no_profiling =
   foreign "camlsnark_set_profiling" (bool @-> returning void)
 
+let set_printing_off =
+  foreign "camlsnark_set_printing_off" (void @-> returning void)
+
+let set_printing_stdout =
+  foreign "camlsnark_set_printing_stdout" (void @-> returning void)
+
+let set_printing_file =
+  foreign "camlsnark_set_printing_file" (string @-> returning void)
+
+module Print_func = struct
+  let print = ref (fun _ -> ())
+
+  let dispatch str = Sys.opaque_identity (!print str)
+end
+
+let set_printing_fun =
+  let stub =
+    foreign "camlsnark_set_printing_fun"
+      (funptr (string @-> returning void) @-> returning void)
+  in
+  fun f ->
+    Print_func.print := f ;
+    stub Print_func.dispatch
+
 let () = set_no_profiling true
 
 module Make_group_coefficients (P : sig
@@ -873,6 +897,8 @@ struct
 
     val report_statistics : t -> unit
 
+    val finalize : t -> unit
+
     val add_constraint : t -> R1CS_constraint.t -> unit
 
     val add_constraint_with_annotation :
@@ -909,6 +935,8 @@ struct
 
     let report_statistics =
       foreign (func_name "report_statistics") (typ @-> returning void)
+
+    let finalize = foreign (func_name "finalize") (typ @-> returning void)
 
     let check_exn =
       let stub = foreign (func_name "check") (typ @-> returning bool) in
@@ -1213,8 +1241,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end = struct
     include Proving_key.Make (struct
       let prefix = with_prefix M.prefix "proving_key"
-
-      type field = M.Field.t
     end)
 
     let r1cs_constraint_system =
@@ -1337,8 +1363,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end = struct
     include Verification_key.Make (struct
       let prefix = with_prefix M.prefix "verification_key"
-
-      type field = M.Field.t
     end)
 
     let size_in_bits =
@@ -1406,8 +1430,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end = struct
     include Keypair.Make (struct
       let prefix = with_prefix M.prefix "keypair"
-
-      type field = M.Field.t
     end)
 
     let pk =
@@ -1484,8 +1506,6 @@ struct
   end = struct
     include Proof.Make (struct
       let prefix = with_prefix M.prefix "proof"
-
-      type field = M.Field.t
     end)
 
     type message = unit

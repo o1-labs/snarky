@@ -8,7 +8,7 @@ Disclaimer: This code has not been thoroughly audited and should not
 be used in production systems.
 
 ## Getting started
-- First install libsnark's dependencies as specified [here](https://github.com/scipr-lab/libsnark#dependencies)
+- First install libsnark's dependencies by running [scripts/depends.sh](scripts/depends.sh), or following the instructions [here](https://github.com/scipr-lab/libsnark#dependencies).
 - Then, make sure you have [opam](https://opam.ocaml.org/doc/Install.html) installed.
 - Finally, install `snarky` and its dependencies by running
 ```bash
