@@ -676,7 +676,8 @@ struct
       Option.iter system ~f:(fun system ->
           let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
           R1CS_constraint_system.set_auxiliary_input_size system
-            auxiliary_input_size ) ;
+            auxiliary_input_size ;
+          R1CS_constraint_system.finalize system ) ;
       aux
 
     let run_and_check' ~run t0 s0 =
@@ -1234,7 +1235,8 @@ struct
               !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
             R1CS_constraint_system.set_auxiliary_input_size system
-              aux_input_size ) ;
+              aux_input_size ;
+            R1CS_constraint_system.finalize system ) ;
         (prover_state, a)
 
       let constraint_system ~run proof_system =
@@ -1840,8 +1842,6 @@ struct
   let run_and_check t s = run_and_check ~run:Checked.run t s
 
   let check t s = check ~run:Checked.run t s
-
-  let reduce_to_prover = Run.reduce_to_prover
 
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
@@ -2476,5 +2476,32 @@ let make (type field)
 
 let%test_module "snark0-test" =
   ( module struct
-    include Make (Backends.Mnt4.GM)
+    include Make (Backends.Mnt4.Default)
+
+    let bin_io_id m = Fn.compose (Binable.of_string m) (Binable.to_string m)
+
+    let swap b (x, y) = if b then (y, x) else (x, y)
+
+    let%test_unit "key serialization" =
+      let main x =
+        let%bind y = exists Field.typ ~compute:(As_prover.return Field.zero) in
+        let rec go b acc i =
+          if i = 0 then return acc
+          else
+            let%bind z =
+              Tuple2.uncurry Field.Checked.mul
+                (swap b (Field.Checked.add y acc, x))
+            in
+            go b z (i - 1)
+        in
+        let%bind _ = go false x 19 in
+        let%bind _ = go true y 20 in
+        return ()
+      in
+      let kp = generate_keypair ~exposing:[Field.typ] main in
+      let vk = Keypair.vk kp |> bin_io_id (module Verification_key) in
+      let pk = Keypair.pk kp |> bin_io_id (module Proving_key) in
+      let input = Field.one in
+      let proof = prove pk [Field.typ] () main input in
+      assert (verify proof vk [Field.typ] input)
   end )
