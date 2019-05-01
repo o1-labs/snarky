@@ -111,31 +111,30 @@ class Index extends React.Component {
 
     const CodeSample = () => (
       <Container id="codesample" padding={['bottom', 'top']} background="light">
-        <div style={{width:'100%', display:'flex', flexDirection:'row'}}>
-          <div style={{width:'50%'}}>
+        <div style={{width:'100%'}}>
+          <div id="codesample-blurb">
             <MarkdownBlock>
-              **snarky** lets you write zk-SNARKs as if you were writing ordinary code.
-              It's easy to use, efficient, and comes with a bunch of pre-built eunctionality.
+              **Snarky** lets you write zk-SNARKs as if you were writing ordinary code.
+              It's easy to use, efficient, and comes with a bunch of pre-built functionality.
             </MarkdownBlock>
             <MarkdownBlock>
               It is modular over the backend SNARK library, and
               comes with backends from [libsnark](https://github.com/scipr-lab/libsnark).
             </MarkdownBlock>
           </div>
-          <MarkdownBlock style={{width:'50%'}}>{example_code}</MarkdownBlock>
+          <div id="codesample-code">
+            <MarkdownBlock>{example_code}</MarkdownBlock>
+          </div>
         </div>
       </Container>
     );
 
     const installCommand = `\`\`\`bash
 bash <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+bash <(curl -sL https://raw.githubusercontent.com/o1-labs/snarky/master/scripts/depends.sh)
+opam pin add git@github.com:o1-labs/snarky.git
 \`\`\``
 
-      /*
-            {`
-Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_blank">libsnark dependencies</a> and <a href="https://opam.ocaml.org/doc/Install.html" target="_blank">opam</a>, then run <span style="white-space: nowrap;">\`opam pin add git@github.com:o1-labs/snarky.git\`</span>
-            `}
-            */
     const QuickStart = () => (
       <Container id="quickstart" padding={['bottom', 'top']}>
         <div style={{'textAlign': 'center'}}>

@@ -12,4 +12,8 @@ test-output: SHELL := /bin/bash
 test-output:
 	source scripts/run-tests.sh; update_test_output
 
+test-one: SHELL := /bin/bash
+test-one:
+	source scripts/run-tests.sh; run_one
+
 .PHONY: build test
