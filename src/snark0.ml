@@ -12,6 +12,12 @@ let reduce_to_prover = ref false
 
 let set_reduce_to_prover b = reduce_to_prover := b
 
+let log_constraint = ref None
+
+let set_constraint_logger f = log_constraint := Some f
+
+let clear_constraint_logger () = log_constraint := None
+
 module Runner = struct
   module Make (Backend : Backend_extended.S) = struct
     open Backend
@@ -296,7 +302,7 @@ module Runner = struct
         ; handler= Option.value handler ~default:Request.Handler.fail
         ; is_running= true
         ; as_prover= ref false
-        ; log_constraint= None }
+        ; log_constraint= !log_constraint }
     end
   end
 
@@ -2445,7 +2451,7 @@ module Run = struct
 
     let constraint_count ?(log = fun ?start _ _ -> ()) x =
       let count = ref 0 in
-      let log_constraint c = count := count + List.length c in
+      let log_constraint c = count := !count + Core_kernel.List.length c in
       let old = !state in
       state :=
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
