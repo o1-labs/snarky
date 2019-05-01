@@ -563,6 +563,10 @@ void camlsnark_bn128_r1cs_constraint_system_report_statistics(r1cs_constraint_sy
   sys->report_linear_constraint_statistics();
 }
 
+void camlsnark_bn128_r1cs_constraint_system_finalize(r1cs_constraint_system<FieldT>* sys) {
+  sys->swap_AB_if_beneficial();
+}
+
 void camlsnark_bn128_r1cs_constraint_system_add_constraint(
     r1cs_constraint_system<FieldT>* sys, 
     r1cs_constraint<FieldT>* c) {

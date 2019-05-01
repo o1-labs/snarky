@@ -131,13 +131,10 @@ class Index extends React.Component {
 
     const installCommand = `\`\`\`bash
 bash <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+bash <(curl -sL https://raw.githubusercontent.com/o1-labs/snarky/master/scripts/depends.sh)
+opam pin add git@github.com:o1-labs/snarky.git
 \`\`\``
 
-      /*
-            {`
-Grab the <a href="https://github.com/scipr-lab/libsnark#dependencies" target="_blank">libsnark dependencies</a> and <a href="https://opam.ocaml.org/doc/Install.html" target="_blank">opam</a>, then run <span style="white-space: nowrap;">\`opam pin add git@github.com:o1-labs/snarky.git\`</span>
-            `}
-            */
     const QuickStart = () => (
       <Container id="quickstart" padding={['bottom', 'top']}>
         <div style={{'textAlign': 'center'}}>
