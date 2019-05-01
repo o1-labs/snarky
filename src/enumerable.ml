@@ -68,6 +68,6 @@ module Run = struct
 
     let if_ x ~then_ ~else_ = run_checked (if_ x ~then_ ~else_)
 
-    let (=) x y = run_checked (x = y)
+    let ( = ) x y = run_checked (x = y)
   end
 end
