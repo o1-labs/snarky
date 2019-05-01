@@ -1722,8 +1722,6 @@ struct
 
   let check t s = check ~run:Checked.run t s
 
-  let reduce_to_prover = Run.reduce_to_prover
-
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
       let (), checked_result =
