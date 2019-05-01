@@ -1922,6 +1922,10 @@ module type Run_basic = sig
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
+
+  module Internal_Basic : Basic with type field = field
+
+  val run_checked : ('a, unit) Internal_Basic.Checked.t -> 'a
 end
 
 module type Run = sig

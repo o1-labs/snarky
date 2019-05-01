@@ -2347,6 +2347,10 @@ module Run = struct
       ignore (x ()) ;
       state := {!state with run_special= old} ;
       !count
+
+    module Internal_Basic = Snark
+
+    let run_checked = run
   end
 
   module Make (Backend : Backend_intf.S) = struct
