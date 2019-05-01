@@ -575,7 +575,7 @@ struct
               None
           in
           let count = ref count in
-          let log_constraint _ = incr count in
+          let log_constraint c = count := !count + List.length c in
           let state = {state with log_constraint= Some log_constraint} in
           let _, x = d state in
           constraint_count_aux ~log ~auxc !count (k x)
@@ -584,8 +584,8 @@ struct
           constraint_count_aux ~log ~auxc count (k y)
       | As_prover (_x, k) ->
           constraint_count_aux ~log ~auxc count k
-      | Add_constraint (_c, t) ->
-          constraint_count_aux ~log ~auxc (count + 1) t
+      | Add_constraint (c, t) ->
+          constraint_count_aux ~log ~auxc (count + List.length c) t
       | Next_auxiliary k ->
           constraint_count_aux ~log ~auxc count (k !auxc)
       | With_label (s, t, k) ->
@@ -2445,7 +2445,7 @@ module Run = struct
 
     let constraint_count ?(log = fun ?start _ _ -> ()) x =
       let count = ref 0 in
-      let log_constraint _ = incr count in
+      let log_constraint c = count := count + List.length c in
       let old = !state in
       state :=
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
