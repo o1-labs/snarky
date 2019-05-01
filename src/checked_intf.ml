@@ -122,8 +122,8 @@ module type Extended = sig
 
   val run :
        ('a, 's, field) t
-    -> ('s, field) Types.Run_state.t
-    -> ('s, field) Types.Run_state.t * 'a
+    -> ('s, field) Run_state.t
+    -> ('s, field) Run_state.t * 'a
 end
 
 module Unextend (Checked : Extended) :

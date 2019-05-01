@@ -491,7 +491,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
+    type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
     include
       Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
@@ -1423,7 +1423,7 @@ module type Run = sig
     end
 
     type 'prover_state run_state =
-      ('prover_state, Field.Constant.t) Types.Run_state.t
+      ('prover_state, Field.Constant.t) Run_state.t
 
     type ('var, 'value) t =
       ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t

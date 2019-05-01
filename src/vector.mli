@@ -2,6 +2,8 @@ open Core
 
 type 'a t
 
+val null : 'a t
+
 module type S = sig
   type elt
 
