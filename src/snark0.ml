@@ -12,17 +12,17 @@ let reduce_to_prover = ref false
 
 let set_reduce_to_prover b = reduce_to_prover := b
 
-let log_constraint = ref None
-
-let set_constraint_logger f = log_constraint := Some f
-
-let clear_constraint_logger () = log_constraint := None
-
 module Runner = struct
   module Make (Backend : Backend_extended.S) = struct
     open Backend
     open Run_state
     open Checked
+
+    let log_constraint = ref None
+
+    let set_constraint_logger f = log_constraint := Some f
+
+    let clear_constraint_logger () = log_constraint := None
 
     type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
@@ -315,6 +315,10 @@ module Runner = struct
 
     type r1cs
 
+    val set_constraint_logger : (constr -> unit) -> unit
+
+    val clear_constraint_logger : unit -> unit
+
     type 'prover_state run_state = ('prover_state, field) Run_state.t
 
     type state = unit run_state
@@ -426,6 +430,10 @@ module Make_basic
 struct
   open Backend
   module Checked_S = Checked_intf.Unextend (Checked)
+
+  let set_constraint_logger = Runner.set_constraint_logger
+
+  let clear_constraint_logger = Runner.clear_constraint_logger
 
   type field = Field.t
 
@@ -1898,6 +1906,10 @@ module Run = struct
     module Snark = Make (Backend)
     open Run_state
     open Snark
+
+    let set_constraint_logger = set_constraint_logger
+
+    let clear_constraint_logger = clear_constraint_logger
 
     let state =
       ref

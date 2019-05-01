@@ -1261,6 +1261,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> 'valin
       -> unit
   end
+
+  val set_constraint_logger : (Constraint.t -> unit) -> unit
+
+  val clear_constraint_logger : unit -> unit
 end
 
 module type S = sig
@@ -1898,4 +1902,8 @@ module type Run = sig
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
+
+  val set_constraint_logger : (Constraint.t -> unit) -> unit
+
+  val clear_constraint_logger : unit -> unit
 end
