@@ -1341,8 +1341,7 @@ struct
         let {input; aux; _} = state in
         Proof.create ?message proving_key ~primary:input ~auxiliary:aux
 
-      let verify ~run ~public_input ?verification_key ?message proof_system
-          proof =
+      let verify ~public_input ?verification_key ?message proof_system proof =
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
@@ -1798,8 +1797,7 @@ struct
         proof_system
 
     let verify ~public_input ?verification_key ?message (proof_system : _ t) =
-      verify ~run:Checked.run ~public_input ?verification_key ?message
-        proof_system
+      verify ~public_input ?verification_key ?message proof_system
   end
 
   module Perform = struct
@@ -2347,7 +2345,7 @@ module Run = struct
 
       let verify ~public_input ?verification_key ?message (proof_system : _ t)
           =
-        verify ~run:as_stateful ~public_input ?verification_key proof_system
+        verify ~public_input ?verification_key ?message proof_system
     end
 
     let assert_ ?label c = run (assert_ ?label c)
