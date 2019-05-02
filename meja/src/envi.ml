@@ -1041,6 +1041,13 @@ module Type = struct
           typ'
     in
     go typ
+
+  let is_arrow typ =
+    match typ.type_desc with
+    | Tarrow _ | Tpoly (_, {type_desc= Tarrow _; _}) ->
+        true
+    | _ ->
+        false
 end
 
 module TypeDecl = struct

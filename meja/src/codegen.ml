@@ -62,6 +62,10 @@ let typ_of_decl env decl =
         let poly_decl, poly_decl_content =
           let poly_decl_fields =
             List.map fields ~f:(fun field ->
+                assert (
+                  not
+                    (Envi.Type.is_arrow (Envi.Type.flatten field.fld_type env))
+                ) ;
                 let typ =
                   Envi.Type.constr_map env field.fld_type ~f:(fun variant ->
                       if Int.equal variant.var_decl_id decl.tdec_id then
