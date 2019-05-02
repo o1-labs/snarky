@@ -38,7 +38,7 @@
    pushd libsnark-caml
    mkdir -p build
    pushd build
-     cmake -DMULTICORE=ON -DUSE_PT_COMPRESSION=OFF ..
+     cmake -DPERFORMANCE=ON -DMULTICORE=ON -DUSE_PT_COMPRESSION=OFF ..
      make -j$(nproc)
  
      mkdir _stubs_build
@@ -60,7 +60,7 @@
    pushd libsnark-caml
      mkdir -p build
      pushd build
-       BOOST_ROOT=/usr/local/Cellar/boost/1.68.0_1 BOOST_INCLUDEDIR=/usr/local/Cellar/boost/1.68.0_1/include CPPFLAGS='-I/usr/local/opt/openssl/include -I/usr/local/opt/boost/include -I/usr/local/opt/gmp/include -I/usr/local/include -L/usr/local/lib -I/usr/local/include/gmp.h' CFLAGS='-I/usr/local/include' CXXFLAGS='-I/usr/local/include' LDFLAGS='-L/usr/local/opt/openssl/lib -L/usr/local/opt/boost/lib -L/usr/local/opt/gmp/lib' PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig cmake -DMULTICORE=OFF -DUSE_PT_COMPRESSION=OFF -DWITH_SUPERCOP=OFF -DWITH_PROCPS=OFF -DCMAKE_LIBRARY_PATH=/usr/local/opt/gmp/lib -DCMAKE_RULE_MESSAGES:BOOL=OFF -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ..
+       BOOST_ROOT=/usr/local/Cellar/boost/1.68.0_1 BOOST_INCLUDEDIR=/usr/local/Cellar/boost/1.68.0_1/include CPPFLAGS='-I/usr/local/opt/openssl/include -I/usr/local/opt/boost/include -I/usr/local/opt/gmp/include -I/usr/local/include -L/usr/local/lib -I/usr/local/include/gmp.h' CFLAGS='-I/usr/local/include' CXXFLAGS='-I/usr/local/include' LDFLAGS='-L/usr/local/opt/openssl/lib -L/usr/local/opt/boost/lib -L/usr/local/opt/gmp/lib' PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig cmake -DPERFORMANCE=ON -DMULTICORE=ON -DUSE_PT_COMPRESSION=OFF -DWITH_SUPERCOP=OFF -DWITH_PROCPS=OFF -DCMAKE_LIBRARY_PATH=/usr/local/opt/gmp/lib -DCMAKE_RULE_MESSAGES:BOOL=OFF -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ..
        make -j$(sysctl -n hw.ncpu)
    
        mkdir _stubs_build

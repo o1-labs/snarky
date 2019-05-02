@@ -17,12 +17,10 @@ jobs:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
         - image: codaprotocol/coda:toolchain-f8dc1642d4ed1d38a7c726f0f2677f53654e4bfc
         steps:
-            - run:
-                name: get ssh key
-                command: ssh -o StrictHostKeyChecking=no git@github.com || true
+            - checkout
             - run:
                 name: opam pin
-                command: eval `opam config env` && opam pin -y $CIRCLE_REPOSITORY_URL#$CIRCLE_SHA1
+                command: eval `opam config env` && opam pin .
     meja:
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow

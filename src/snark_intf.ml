@@ -514,7 +514,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   and Field : sig
     (** The finite field over which the R1CS operates.
         Values may be between 0 and {!val:size}. *)
-    type t = field [@@deriving bin_io, sexp, hash, compare, eq]
+    type t = field [@@deriving bin_io, sexp, hash, compare]
 
     val gen : t Core_kernel.Quickcheck.Generator.t
     (** A generator for Quickcheck tests. *)
@@ -759,7 +759,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** The type of messages that can be associated with a proof. *)
     type message
 
-    include Stringable.S with type t := t
+    include Binable.S with type t := t
   end
 
   (** Utility functions for dealing with lists of bits in the R1CS. *)
@@ -903,6 +903,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?proving_key_path:string
       -> ?verification_key_path:string
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> public_input:( ('a, 's) Checked.t
                       , unit
                       , 'computation
@@ -928,6 +929,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           written to this file.
         - [handlers] -- optional, the list of handlers that should be used to
           handle requests made from the checked computation
+        - [reduce] -- optional, default [false], whether to perform the
+          [reduce_to_caller] optimisation while creating the proof system
         - [public_input] -- the {!type:Data_spec.t} that describes the form
           that the public inputs must take
         - ['computation] -- a checked computation that takes as arguments
@@ -945,6 +948,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val run_unchecked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> ('a, 's, 'public_input) t
       -> 's
       -> 's * 'a
@@ -955,6 +959,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> (('a, 's) As_prover.t, 's, 'public_input) t
       -> 's
       -> ('s * 'a) Or_error.t
@@ -963,6 +968,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val check :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> ('a, 's, 'public_input) t
       -> 's
       -> unit Or_error.t
@@ -975,6 +981,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
          public_input:(unit, 'public_input) H_list.t
       -> ?proving_key:Proving_key.t
       -> ?handlers:Handler.t list
+      -> ?reduce:bool
       -> ?message:Proof.message
       -> ('a, 's, 'public_input) t
       -> 's
@@ -986,6 +993,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         - The [handlers] argument adds handlers to those already given to
           {!val:create}. If handlers for the same requests were provided to
           both, the ones passed here are given priority.
+        - The [reduce] argument determines whether to run use the
+          [reduce_to_prover]-optimised checked computation. The default value
+          may be changed with {!val:Snark0.set_reduce_to_prover}.
         - The [message] argument specifies the message to associate with the
           proof, if any.
     *)
@@ -1221,38 +1231,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       Returns [unit]; this is for testing only.
   *)
 
-  val reduce_to_prover :
-       ((unit, 's) Checked.t, Proof.t, 'k_var, 'k_value) Data_spec.t
-    -> 'k_var
-    -> (Proving_key.t -> ?handlers:Handler.t list -> 's -> 'k_value) Staged.t
-  (** Reduce a checked computation, then generate a proof.
-
-      [reduce_to_prover public_input computation] evaluates all parts of the
-      {!type:Checked.t} [computation] except {!module:As_prover} blocks, and
-      generates a program that can be used to generate proofs more quickly with
-      different inputs.
-
-      For example, for a checked computation [main] with inputs [inputs] and
-      proving key [pk],
-{[
-  let prove_main = reduce_to_prover inputs main
-
-  let proof1 = prove_main pk s1 input1a input1b input1c
-  let proof2 = prove_main pk s2 input2a input2b input2c
-  let proof3 = prove_main pk s3 input3a input3b input3c
-}]
-      is equivalent to
-{[
-  let proof1 = prove pk inputs s1 main input1a input1b input1c
-  let proof2 = prove pk inputs s2 main input2a input2b input2c
-  let proof3 = prove pk inputs s3 main input3a input3b input3c
-}]
-
-      **WARNING**: Any code inside a [Checked.t] that isn't inside an
-      [As_prover] block will only be run once. DO NOT USE if you use mutation
-      inside [Checked.t].
-  *)
-
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (_, _) Checked.t -> int
   (** Returns the number of constraints in the constraint system.
@@ -1307,7 +1285,7 @@ module type S = sig
 end
 
 (** The imperative interface to Snarky. *)
-module type Run = sig
+module type Run_basic = sig
   (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
   module Proving_key : sig
     type t [@@deriving bin_io]
@@ -1609,7 +1587,7 @@ module type Run = sig
   and Field : sig
     module Constant : sig
       (** The finite field over which the R1CS operates. *)
-      type t = field [@@deriving bin_io, sexp, hash, compare, eq]
+      type t = field [@@deriving bin_io, sexp, hash, compare]
 
       val gen : t Core_kernel.Quickcheck.Generator.t
       (** A generator for Quickcheck tests. *)
@@ -1617,8 +1595,6 @@ module type Run = sig
       include Field_intf.Extended with type t := t
 
       include Stringable.S with type t := t
-
-      val size : Bignum_bigint.t
 
       val unpack : t -> bool list
       (** Convert a field element into its constituent bits. *)
@@ -1628,6 +1604,10 @@ module type Run = sig
     end
 
     type t = field Cvar.t
+
+    val size_in_bits : int
+
+    val size : Bignum_bigint.t
 
     val length : t -> int
     (** For debug purposes *)
@@ -1723,7 +1703,7 @@ module type Run = sig
 
     type message
 
-    include Stringable.S with type t := t
+    include Binable.S with type t := t
   end
 
   module Bitstring_checked : sig
@@ -1920,4 +1900,27 @@ module type Run = sig
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
+
+  module Internal_Basic : Basic with type field = field
+
+  val run_checked : ('a, unit) Internal_Basic.Checked.t -> 'a
+end
+
+module type Run = sig
+  include Run_basic
+
+  module Number :
+    Number_intf.Run
+    with type field := field
+     and type field_var := Field.t
+     and type bool_var := Boolean.var
+
+  module Enumerable (M : sig
+    type t [@@deriving enum]
+  end) :
+    Enumerable_intf.Run
+    with type ('a, 'b) typ := ('a, 'b) Typ.t
+     and type bool_var := Boolean.var
+     and type var = Field.t
+     and type t := M.t
 end

@@ -32,6 +32,7 @@ RUN sudo chown -R opam:opam /source
 VOLUME ["/source"]
 
 # Move to a newer version of OCaml and install dune/jbuilder.
+RUN git -C /home/opam/opam-repository pull
 RUN opam update -y && opam upgrade -y
 
 WORKDIR /source
