@@ -6,13 +6,18 @@ let comma_sep fmt () = fprintf fmt ",@ "
 let bar_sep fmt () = fprintf fmt "@ | "
 
 let arg_label fmt = function
-  | Asttypes.Nolabel -> ()
-  | Labelled label -> fprintf fmt "@[<hv2>%s:@," label
-  | Optional label -> fprintf fmt "@[<hv2>?%s:@," label
+  | Asttypes.Nolabel ->
+      ()
+  | Labelled label ->
+      fprintf fmt "@[<hv2>%s:@," label
+  | Optional label ->
+      fprintf fmt "@[<hv2>?%s:@," label
 
 let arg_label_box_end fmt = function
-  | Asttypes.Nolabel -> ()
-  | _ -> fprintf fmt "@]"
+  | Asttypes.Nolabel ->
+      ()
+  | _ ->
+      fprintf fmt "@]"
 
 let rec type_desc ?(bracket = false) fmt = function
   | Tvar (None, _, _) ->
@@ -51,7 +56,8 @@ and variant fmt v =
   | [] ->
       Longident.pp fmt v.var_ident.txt
   | _ ->
-      fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple v.var_params
+      fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple
+        v.var_params
 
 let field_decl fmt decl =
   fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident.txt type_expr decl.fld_type
@@ -62,7 +68,9 @@ let ctor_args fmt = function
   | Ctor_tuple typs ->
       tuple fmt typs
   | Ctor_record (_, fields) ->
-      fprintf fmt "{@[<2>%a@]}" (pp_print_list ~pp_sep:comma_sep field_decl) fields
+      fprintf fmt "{@[<2>%a@]}"
+        (pp_print_list ~pp_sep:comma_sep field_decl)
+        fields
 
 let ctor_decl fmt decl =
   fprintf fmt "%a%a" pp_name decl.ctor_ident.txt ctor_args decl.ctor_args ;
@@ -106,19 +114,21 @@ let type_decl fmt decl =
 
 let rec signature_desc fmt = function
   | SValue (name, typ) ->
-      fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt type_expr typ
+      fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt
+        type_expr typ
   | SInstance (name, typ) ->
-      fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" pp_name name.txt type_expr
-        typ
+      fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" pp_name name.txt
+        type_expr typ
   | STypeDecl decl ->
       fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
   | SModule (name, msig) ->
       let prefix fmt = fprintf fmt ":@ " in
-      fprintf fmt "@[<hov2>module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix) msig
+      fprintf fmt "@[<hov2>module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
+        msig
   | SModType (name, msig) ->
       let prefix fmt = fprintf fmt "=@ " in
-      fprintf fmt "@[<hov2>module type@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
-        msig
+      fprintf fmt "@[<hov2>module type@ %s@ %a;@]@;@;" name.txt
+        (module_sig ~prefix) msig
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 
