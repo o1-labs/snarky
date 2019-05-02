@@ -33,8 +33,9 @@ let number = ['0'-'9']+
 let lowercase_alpha = ['a'-'z']
 let uppercase_alpha = ['A'-'Z']
 let ident = ['a'-'z' 'A'-'Z' '_' '\'' '0'-'9']
-let symbolchar =
-  ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
+let symbolchar_no_asterisk =
+  ['!' '$' '%' '&' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
+let symbolchar = symbolchar_no_asterisk | '*'
 
 rule token = parse
     whitespace
@@ -65,6 +66,8 @@ rule token = parse
   | ']' { RBRACKET }
   | "->" { DASHGT }
   | "=>" { EQUALGT }
+  | "~" { TILDE }
+  | "?" { QUESTION }
   | "+=" { PLUSEQUAL }
   | '=' { EQUAL }
   | ':' { COLON }
@@ -90,8 +93,11 @@ rule token = parse
   | ['@' '^'] symbolchar * as op { INFIXOP1 op }
   | ['+' '-'] symbolchar * as op { INFIXOP2 op }
   | "**" symbolchar * as op { INFIXOP4 op }
-  | ['*' '/' '%'] symbolchar * as op { INFIXOP3 op }
+  | ['*' '%'] symbolchar * as op { INFIXOP3 op }
+  | '/' symbolchar_no_asterisk symbolchar * as op { INFIXOP3 op }
+  | '/' { INFIXOP3 "/" }
   | lowercase_alpha ident* { LIDENT(Lexing.lexeme lexbuf) }
+  | '_' ident* { LIDENT(Lexing.lexeme lexbuf) }
   | uppercase_alpha ident* { UIDENT(Lexing.lexeme lexbuf) }
   | _ { raise (Error (lexeme_loc lexbuf, Unexpected_character (Lexing.lexeme lexbuf))) }
   | eof { EOF }
