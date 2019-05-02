@@ -242,7 +242,7 @@ ctor_decl_args:
   | m = longident(UIDENT, UIDENT) DOT id = lident
     { Ldot (m, id) }
 
-ctor_ident:
+%inline ctor_ident:
   | id = UIDENT
     { id }
   | LPAREN RPAREN
@@ -251,6 +251,10 @@ ctor_ident:
     { "true" }
   | FALSE
     { "false" }
+  | LBRACKET RBRACKET
+    { "[]" }
+  | LPAREN COLONCOLON RPAREN
+    { "::" }
 
 infix_operator:
   | op = INFIXOP0 { op }
