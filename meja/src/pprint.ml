@@ -7,8 +7,12 @@ let bar_sep fmt () = fprintf fmt "@ | "
 
 let arg_label fmt = function
   | Asttypes.Nolabel -> ()
-  | Labelled label -> fprintf fmt "%s:@," label
-  | Optional label -> fprintf fmt "?%s:@," label
+  | Labelled label -> fprintf fmt "@[<hv2>%s:@," label
+  | Optional label -> fprintf fmt "@[<hv2>?%s:@," label
+
+let arg_label_box_end fmt = function
+  | Asttypes.Nolabel -> ()
+  | _ -> fprintf fmt "@]"
 
 let rec type_desc ?(bracket = false) fmt = function
   | Tvar (None, _, _) ->
@@ -16,15 +20,16 @@ let rec type_desc ?(bracket = false) fmt = function
   | Tvar (Some name, _, _) ->
       fprintf fmt "'%s" name.txt
   | Ttuple typs ->
-      tuple fmt typs
+      fprintf fmt "@[<1>%a@]" tuple typs
   | Tarrow (typ1, typ2, implicitness, label) ->
       if bracket then fprintf fmt "(" ;
       ( match implicitness with
       | Explicit ->
-          fprintf fmt "@[%a%a" arg_label label type_expr_b typ1
+          fprintf fmt "%a%a" arg_label label type_expr_b typ1
       | Implicit ->
-          fprintf fmt "@[%a{%a}" arg_label label type_expr typ1 ) ;
-      fprintf fmt "@ ->@ %a@]" type_expr typ2 ;
+          fprintf fmt "%a{%a}" arg_label label type_expr typ1 ) ;
+      arg_label_box_end fmt label ;
+      fprintf fmt "@ -> %a" type_expr typ2 ;
       if bracket then fprintf fmt ")"
   | Tctor v ->
       variant fmt v
@@ -35,7 +40,7 @@ let rec type_desc ?(bracket = false) fmt = function
       if bracket then fprintf fmt ")"
 
 and tuple fmt typs =
-  fprintf fmt "(@[%a@])" (pp_print_list ~pp_sep:comma_sep type_expr) typs
+  fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
 
 and type_expr fmt typ = type_desc fmt typ.type_desc
 
@@ -46,10 +51,10 @@ and variant fmt v =
   | [] ->
       Longident.pp fmt v.var_ident.txt
   | _ ->
-      fprintf fmt "%a%a" Longident.pp v.var_ident.txt tuple v.var_params
+      fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple v.var_params
 
 let field_decl fmt decl =
-  fprintf fmt "%s:@ @[%a@]" decl.fld_ident.txt type_expr decl.fld_type
+  fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident.txt type_expr decl.fld_type
 
 let ctor_args fmt = function
   | Ctor_tuple [] ->
@@ -57,13 +62,13 @@ let ctor_args fmt = function
   | Ctor_tuple typs ->
       tuple fmt typs
   | Ctor_record (_, fields) ->
-      fprintf fmt "{%a}" (pp_print_list ~pp_sep:comma_sep field_decl) fields
+      fprintf fmt "{@[<2>%a@]}" (pp_print_list ~pp_sep:comma_sep field_decl) fields
 
 let ctor_decl fmt decl =
   fprintf fmt "%a%a" pp_name decl.ctor_ident.txt ctor_args decl.ctor_args ;
   match decl.ctor_ret with
   | Some typ ->
-      fprintf fmt "@ :@ @[%a@]" type_expr typ
+      fprintf fmt "@ :@ @[<hv>%a@]" type_expr typ
   | None ->
       ()
 
@@ -71,9 +76,9 @@ let type_decl_desc fmt = function
   | TAbstract ->
       ()
   | TAlias typ | TUnfold typ ->
-      fprintf fmt "@ =@ %a" type_expr typ
+      fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
   | TRecord fields ->
-      fprintf fmt "@ =@ {%a}"
+      fprintf fmt "@ =@ {@[<hv2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
   | TVariant ctors ->
@@ -101,18 +106,18 @@ let type_decl fmt decl =
 
 let rec signature_desc fmt = function
   | SValue (name, typ) ->
-      fprintf fmt "@[let@ %a@ :@ @[%a;@]@]@;@;" pp_name name.txt type_expr typ
+      fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt type_expr typ
   | SInstance (name, typ) ->
-      fprintf fmt "@[instance@ %a@ :@ @[%a@];@]@;@;" pp_name name.txt type_expr
+      fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" pp_name name.txt type_expr
         typ
   | STypeDecl decl ->
-      fprintf fmt "@[%a;@]@;@;" type_decl decl
+      fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
   | SModule (name, msig) ->
       let prefix fmt = fprintf fmt ":@ " in
-      fprintf fmt "@[module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix) msig
+      fprintf fmt "@[<hov2>module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix) msig
   | SModType (name, msig) ->
       let prefix fmt = fprintf fmt "=@ " in
-      fprintf fmt "@[module type@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
+      fprintf fmt "@[<hov2>module type@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
         msig
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
@@ -122,7 +127,7 @@ and signature fmt sigs = List.iter (signature_item fmt) sigs
 and module_sig_desc ~prefix fmt = function
   | Signature msig ->
       prefix fmt ;
-      fprintf fmt "{@[<v2>@;%a@]}" signature msig
+      fprintf fmt "{@[<hv1>@;%a@]}" signature msig
   | SigName name ->
       prefix fmt ; Longident.pp fmt name.txt
   | SigAbstract ->
