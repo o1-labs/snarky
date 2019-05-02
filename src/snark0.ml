@@ -1299,11 +1299,12 @@ struct
               "run_with_input: Expected a value from run_proof_system, got \
                None."
 
-      let run_unchecked ~run ~public_input ?handlers ?reduce proof_system s =
-        let s, a, _ =
+      let run_unchecked ~run ~public_input ?handlers ?reduce proof_system eval
+          s =
+        let s, a, state =
           run_with_input ~run ?reduce ~public_input ?handlers proof_system s
         in
-        (s, a)
+        As_prover.run (eval a) (Checked.Runner.get_value state) s
 
       let run_checked' ~run ~public_input ?handlers ?reduce proof_system s =
         match
@@ -1315,11 +1316,14 @@ struct
         | s, x, state ->
             Ok (s, x, state)
 
-      let run_checked ~run ~public_input ?handlers ?reduce proof_system s =
+      let run_checked ~run ~public_input ?handlers ?reduce proof_system eval s
+          =
         Or_error.map
           (run_checked' ~run ?reduce ~public_input ?handlers proof_system s)
           ~f:(fun (s, x, state) ->
-            let s', x = As_prover.run x (Checked.Runner.get_value state) s in
+            let s', x =
+              As_prover.run (eval x) (Checked.Runner.get_value state) s
+            in
             (s', x) )
 
       let check ~run ~public_input ?handlers ?reduce proof_system s =
@@ -1802,6 +1806,9 @@ struct
         ?verification_key ?proving_key_path ?verification_key_path ?handlers
         ?reduce ~public_input checked
 
+    let constraint_system (proof_system : _ t) =
+      constraint_system ~run:Checked.run proof_system
+
     let digest (proof_system : _ t) = digest ~run:Checked.run proof_system
 
     let generate_keypair (proof_system : _ t) =
@@ -1919,7 +1926,7 @@ module Make (Backend : Backend_intf.S) = struct
 end
 
 module Run = struct
-  module Make (Backend : Backend_intf.S) = struct
+  module Make_basic (Backend : Backend_intf.S) = struct
     module Snark = Make (Backend)
     open Types.Run_state
     open Snark
@@ -2090,6 +2097,10 @@ module Run = struct
 
     module Field = struct
       open Snark.Field
+
+      let size_in_bits = size_in_bits
+
+      let size = size
 
       module Constant = struct
         type t = Snark.Field.t [@@deriving bin_io, sexp, hash, compare, eq]
@@ -2351,13 +2362,19 @@ module Run = struct
 
       let run = as_stateful
 
+      let constraint_system (proof_system : _ t) =
+        constraint_system ~run proof_system
+
       let digest (proof_system : _ t) = digest ~run proof_system
 
       let generate_keypair (proof_system : _ t) =
         generate_keypair ~run proof_system
 
       let run_unchecked ~public_input ?handlers (proof_system : _ t) =
-        snd (run_unchecked ~run ~public_input ?handlers proof_system ())
+        snd
+          (run_unchecked ~run ~public_input ?handlers proof_system
+             (fun a _ s -> (s, a))
+             ())
 
       let run_checked ~public_input ?handlers (proof_system : _ t) =
         Or_error.map
@@ -2493,6 +2510,17 @@ module Run = struct
       ignore (x ()) ;
       state := {!state with run_special= old} ;
       !count
+
+    module Internal_Basic = Snark
+
+    let run_checked = run
+  end
+
+  module Make (Backend : Backend_intf.S) = struct
+    module Basic = Make_basic (Backend)
+    include Basic
+    module Number = Number.Run.Make (Basic)
+    module Enumerable = Enumerable.Run.Make (Basic)
   end
 end
 

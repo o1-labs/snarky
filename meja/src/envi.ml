@@ -658,10 +658,10 @@ module Type = struct
               (e, t) )
         in
         (mk ~loc (Ttuple typs) env, env)
-    | Tarrow (typ1, typ2, explicit) ->
+    | Tarrow (typ1, typ2, explicit, label) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
-        (mk ~loc (Tarrow (typ1, typ2, explicit)) env, env)
+        (mk ~loc (Tarrow (typ1, typ2, explicit, label)) env, env)
 
   let refresh_vars vars new_vars_map env =
     let env, new_vars =
@@ -696,10 +696,10 @@ module Type = struct
     | Ttuple typs ->
         let typs = List.map typs ~f:(fun t -> copy t new_vars_map env) in
         mk ~loc (Ttuple typs) env
-    | Tarrow (typ1, typ2, explicit) ->
+    | Tarrow (typ1, typ2, explicit, label) ->
         let typ1 = copy typ1 new_vars_map env in
         let typ2 = copy typ2 new_vars_map env in
-        mk ~loc (Tarrow (typ1, typ2, explicit)) env
+        mk ~loc (Tarrow (typ1, typ2, explicit, label)) env
 
   module T = struct
     type t = type_expr
@@ -736,7 +736,7 @@ module Type = struct
         Set.union_list (module Comparator) (List.map ~f:type_vars var_params)
     | Ttuple typs ->
         Set.union_list (module Comparator) (List.map ~f:type_vars typs)
-    | Tarrow (typ1, typ2, _) ->
+    | Tarrow (typ1, typ2, _, _) ->
         Set.union (type_vars typ1) (type_vars typ2)
 
   let rec flatten typ env =
@@ -766,12 +766,29 @@ module Type = struct
     | Ttuple typs ->
         let typs = List.map typs ~f:(fun typ -> flatten typ env) in
         mk ~loc (Ttuple typs) env
-    | Tarrow (typ1, typ2, explicit) ->
+    | Tarrow (typ1, typ2, explicit, label) ->
         let typ1 = flatten typ1 env in
         let typ2 = flatten typ2 env in
-        mk ~loc (Tarrow (typ1, typ2, explicit)) env
+        mk ~loc (Tarrow (typ1, typ2, explicit, label)) env
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
+
+  let compare_label label1 label2 =
+    match (label1, label2) with
+    | Asttypes.Nolabel, Asttypes.Nolabel ->
+        0
+    | Nolabel, _ ->
+        -1
+    | _, Nolabel ->
+        1
+    | Labelled x, Labelled y ->
+        String.compare x y
+    | Labelled _, _ ->
+        -1
+    | _, Labelled _ ->
+        1
+    | Optional x, Optional y ->
+        String.compare x y
 
   let rec compare typ1 typ2 =
     if Int.equal typ1.type_id typ2.type_id then 0
@@ -801,12 +818,16 @@ module Type = struct
           -1
       | _, Ttuple _ ->
           1
-      | Tarrow (typ1a, typ1b, Explicit), Tarrow (typ2a, typ2b, Explicit)
-      | Tarrow (typ1a, typ1b, Implicit), Tarrow (typ2a, typ2b, Implicit) ->
-          or_compare (compare typ1a typ2a) ~f:(fun () -> compare typ1b typ2b)
-      | Tarrow (_, _, Explicit), _ ->
+      | ( Tarrow (typ1a, typ1b, Explicit, label1)
+        , Tarrow (typ2a, typ2b, Explicit, label2) )
+      | ( Tarrow (typ1a, typ1b, Implicit, label1)
+        , Tarrow (typ2a, typ2b, Implicit, label2) ) ->
+          or_compare (compare_label label1 label2) ~f:(fun () ->
+              or_compare (compare typ1a typ2a) ~f:(fun () ->
+                  compare typ1b typ2b ) )
+      | Tarrow (_, _, Explicit, _), _ ->
           -1
-      | _, Tarrow (_, _, Explicit) ->
+      | _, Tarrow (_, _, Explicit, _) ->
           1
 
   and compare_all typs1 typs2 =
@@ -822,8 +843,8 @@ module Type = struct
 
   let rec get_implicits acc typ =
     match typ.type_desc with
-    | Tarrow (typ1, typ2, Implicit) ->
-        get_implicits (typ1 :: acc) typ2
+    | Tarrow (typ1, typ2, Implicit, label) ->
+        get_implicits ((label, typ1) :: acc) typ2
     | _ ->
         (List.rev acc, typ)
 
@@ -861,7 +882,8 @@ module Type = struct
         e
     | _ ->
         let es =
-          List.map implicits ~f:(fun typ -> new_implicit_var ~loc typ env)
+          List.map implicits ~f:(fun (label, typ) ->
+              (label, new_implicit_var ~loc typ env) )
         in
         {exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}
 
@@ -943,7 +965,7 @@ module Type = struct
         Set.singleton (module Comparator) typ
     | Ttuple typs ->
         Set.union_list (module Comparator) (List.map ~f:implicit_params typs)
-    | Tarrow (typ1, typ2, _) ->
+    | Tarrow (typ1, typ2, _, _) ->
         Set.union (implicit_params typ1) (implicit_params typ2)
     | Tctor variant ->
         let {predeclare_types; _} = env.resolve_env in
@@ -960,6 +982,72 @@ module Type = struct
           (ctor_params :: List.map ~f:implicit_params variant.var_params)
     | Tpoly (_, typ) ->
         implicit_params typ
+
+  let rec constr_map env ~f typ =
+    let loc = typ.type_loc in
+    match typ.type_desc with
+    | Tvar _ ->
+        typ
+    | Ttuple typs ->
+        let typs = List.map ~f:(constr_map env ~f) typs in
+        mk ~loc (Ttuple typs) env
+    | Tarrow (typ1, typ2, explicit, label) ->
+        let typ1 = constr_map env ~f typ1 in
+        let typ2 = constr_map env ~f typ2 in
+        mk ~loc (Tarrow (typ1, typ2, explicit, label)) env
+    | Tctor variant ->
+        mk ~loc (f variant) env
+    | Tpoly (typs, typ) ->
+        mk ~loc (Tpoly (typs, constr_map env ~f typ)) env
+
+  let rec bubble_label_aux env label typ =
+    match typ.type_desc with
+    | Tarrow (typ1, typ2, explicit, arr_label)
+      when Int.equal (compare_label label arr_label) 0 ->
+        (Some (typ1, explicit, arr_label), typ2)
+    | Tarrow (typ1, typ2, explicit, arr_label)
+      when match (label, arr_label) with
+           | Labelled lbl, Optional arr_lbl ->
+               String.equal lbl arr_lbl
+           | _ ->
+               false ->
+        (Some (typ1, explicit, label), typ2)
+    | Tarrow (typ1, typ2, explicit, arr_label) -> (
+      match bubble_label_aux env label typ2 with
+      | None, _ ->
+          (None, typ)
+      | res, typ2 ->
+          ( res
+          , mk ~loc:typ.type_loc (Tarrow (typ1, typ2, explicit, arr_label)) env
+          ) )
+    | _ ->
+        (None, typ)
+
+  let bubble_label env label typ =
+    match bubble_label_aux env label typ with
+    | Some (typ1, explicit, arr_label), typ2 ->
+        mk ~loc:typ.type_loc (Tarrow (typ1, typ2, explicit, arr_label)) env
+    | None, typ ->
+        typ
+
+  let discard_optional_labels typ =
+    let rec go typ' =
+      match typ'.type_desc with
+      | Tarrow (_, typ2, _, Optional _) ->
+          go typ2
+      | Tarrow (_, _, _, _) ->
+          typ
+      | _ ->
+          typ'
+    in
+    go typ
+
+  let is_arrow typ =
+    match typ.type_desc with
+    | Tarrow _ | Tpoly (_, {type_desc= Tarrow _; _}) ->
+        true
+    | _ ->
+        false
 end
 
 module TypeDecl = struct
