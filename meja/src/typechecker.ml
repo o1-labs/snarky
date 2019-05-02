@@ -281,8 +281,12 @@ let get_ctor (name : lid) env =
         | Ctor_tuple typs ->
             Envi.Type.mk ~loc (Ttuple typs) env
       in
+      let bound_vars =
+        Set.to_list
+          (Set.union (Envi.Type.type_vars typ) (Envi.Type.type_vars args_typ))
+      in
       let _, bound_vars, _ =
-        Envi.Type.refresh_vars params (Map.empty (module Int)) env
+        Envi.Type.refresh_vars bound_vars (Map.empty (module Int)) env
       in
       let args_typ = Envi.Type.copy args_typ bound_vars env in
       let typ = Envi.Type.copy typ bound_vars env in
