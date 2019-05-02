@@ -60,8 +60,8 @@ module Exp = struct
   let mk ?(loc = Location.none) d =
     {exp_desc= d; exp_loc= loc; exp_type= Type.none ~loc ()}
 
-  let fun_ ?loc ?(explicit = Explicit) p body =
-    mk ?loc (Fun (p, body, explicit))
+  let fun_ ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) p body =
+    mk ?loc (Fun (label, p, body, explicit))
 
   let apply ?loc e es = mk ?loc (Apply (e, es))
 

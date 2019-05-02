@@ -1,0 +1,4 @@
+File "tests/wrong_optional_arg.meja", line 5, characters 27-35:
+Error: Incompatable types 'a:_ -> _' and '?a:_ -> _':
+Cannot unify 'a:_ -> _' and '?a:_ -> _'.
+

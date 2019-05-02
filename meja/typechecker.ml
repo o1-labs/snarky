@@ -95,8 +95,19 @@ let rec check_type_aux typ ctyp env =
         ()
     | Unequal_lengths ->
         raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) )
-  | Tarrow (typ1, typ2, Explicit), Tarrow (ctyp1, ctyp2, Explicit)
-  | Tarrow (typ1, typ2, Implicit), Tarrow (ctyp1, ctyp2, Implicit) ->
+  | ( Tarrow (typ1, typ2, Explicit, label1)
+    , Tarrow (ctyp1, ctyp2, Explicit, label2) )
+  | ( Tarrow (typ1, typ2, Implicit, label1)
+    , Tarrow (ctyp1, ctyp2, Implicit, label2) ) ->
+      ( match (label1, label2) with
+      | Nolabel, Nolabel ->
+          ()
+      | Labelled x, Labelled y when String.equal x y ->
+          ()
+      | Optional x, Optional y when String.equal x y ->
+          ()
+      | _ ->
+          raise (Error (ctyp.type_loc, Cannot_unify (typ, ctyp))) ) ;
       check_type_aux typ1 ctyp1 env ;
       check_type_aux typ2 ctyp2 env
   | Tctor variant, Tctor constr_variant ->
@@ -137,7 +148,7 @@ let rec add_implicits ~loc implicits typ env =
       typ
   | typ' :: implicits ->
       let typ = add_implicits ~loc implicits typ env in
-      Envi.Type.mk ~loc (Tarrow (typ', typ, Implicit)) env
+      Envi.Type.mk ~loc (Tarrow (typ', typ, Implicit, Nolabel)) env
 
 let rec free_type_vars ?depth typ =
   let free_type_vars = free_type_vars ?depth in
@@ -156,7 +167,7 @@ let rec free_type_vars ?depth typ =
       Set.union_list (module Envi.Type) (List.map ~f:free_type_vars var_params)
   | Ttuple typs ->
       Set.union_list (module Envi.Type) (List.map ~f:free_type_vars typs)
-  | Tarrow (typ1, typ2, _) ->
+  | Tarrow (typ1, typ2, _, _) ->
       Set.union (Envi.Type.type_vars ?depth typ1) (free_type_vars typ2)
 
 let polymorphise typ env =
@@ -443,15 +454,27 @@ let rec get_expression env expected exp =
       let f_typ = Envi.Type.mkvar ~loc None env in
       let f, env = get_expression env f_typ f in
       let (typ, env), es =
-        List.fold_map ~init:(f.exp_type, env) es ~f:(fun (f_typ, env) e ->
+        List.fold_map ~init:(f.exp_type, env) es
+          ~f:(fun (f_typ, env) (label, e) ->
+            let f_typ = Envi.Type.bubble_label env label f_typ in
             let e_typ = Envi.Type.mkvar ~loc None env in
             let res_typ = Envi.Type.mkvar ~loc None env in
             let arrow =
-              Envi.Type.mk ~loc (Tarrow (e_typ, res_typ, Explicit)) env
+              Envi.Type.mk ~loc (Tarrow (e_typ, res_typ, Explicit, label)) env
             in
             check_type ~loc:e.exp_loc env f_typ arrow ;
+            let e_typ =
+              match label with
+              | Optional _ ->
+                  Envi.Core.Type.option e_typ
+              | _ ->
+                  e_typ
+            in
             let e, env = get_expression env e_typ e in
-            ((res_typ, env), e) )
+            ((res_typ, env), (label, e)) )
+      in
+      let typ =
+        Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
       in
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
@@ -464,18 +487,28 @@ let rec get_expression env expected exp =
       let typ = Envi.Core.Type.int in
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
-  | Fun (p, body, explicit) ->
+  | Fun (label, p, body, explicit) ->
       let env = Envi.open_expr_scope env in
       let p_typ = Envi.Type.mkvar ~loc:p.pat_loc None env in
       let body_typ = Envi.Type.mkvar ~loc:body.exp_loc None env in
-      let typ = Envi.Type.mk ~loc (Tarrow (p_typ, body_typ, explicit)) env in
+      let typ =
+        Envi.Type.mk ~loc (Tarrow (p_typ, body_typ, explicit, label)) env
+      in
       check_type ~loc env expected typ ;
+      let add_name =
+        match label with
+        | Optional _ ->
+            fun name typ -> Envi.add_name name (Envi.Core.Type.option typ)
+        | _ ->
+            Envi.add_name
+      in
       (* In OCaml, function arguments can't be polymorphic, so each check refines
        them rather than instantiating the parameters. *)
-      let p, env = check_pattern ~add:Envi.add_name env p_typ p in
+      let p, env = check_pattern ~add:add_name env p_typ p in
       let body, env = get_expression env body_typ body in
       let env = Envi.close_expr_scope env in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Fun (p, body, explicit)}, env)
+      ( {exp_loc= loc; exp_type= typ; exp_desc= Fun (label, p, body, explicit)}
+      , env )
   | Seq (e1, e2) ->
       let e1, env = get_expression env Envi.Core.Type.unit e1 in
       let e2, env = get_expression env expected e2 in
@@ -724,13 +757,14 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         | Unifiable {expression= None; name; _} ->
             let exp_type =
               Envi.Type.mk ~loc
-                (Tarrow (var.exp_type, e.exp_type, Implicit))
+                (Tarrow (var.exp_type, e.exp_type, Implicit, Nolabel))
                 env
             in
             let p =
               {pat_desc= PVariable name; pat_loc= loc; pat_type= var.exp_type}
             in
-            ({exp_desc= Fun (p, e, Implicit); exp_type; exp_loc= loc}, env)
+            ( {exp_desc= Fun (Nolabel, p, e, Implicit); exp_type; exp_loc= loc}
+            , env )
         | _ ->
             raise (Error (var.exp_loc, No_unifiable_expr)) )
   in
@@ -740,6 +774,16 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let typ =
         if Set.is_empty typ_vars then e.exp_type
         else Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, e.exp_type)) env
+      in
+      let env = Envi.add_name str typ env in
+      let p = {p with pat_type= typ} in
+      (p, e, env)
+  | PConstraint ({pat_desc= PVariable str; _}, typ), _ ->
+      let typ, env = Envi.Type.import typ env in
+      check_type ~loc env e.exp_type typ ;
+      let typ =
+        if Set.is_empty typ_vars then typ
+        else Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, typ)) env
       in
       let env = Envi.add_name str typ env in
       let p = {p with pat_type= typ} in
@@ -957,7 +1001,8 @@ let rec check_statement env stmt =
               match e with
               | { exp_desc=
                     Fun
-                      ( _
+                      ( Nolabel
+                      , _
                       , { exp_desc=
                             Let
                               ( _
