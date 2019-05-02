@@ -466,10 +466,11 @@ module Runner = struct
 
     val dummy_vector : field Vector.t
 
-    val fake_state : int ref -> ('a, field) Types.Run_state.t
+    val fake_state : int ref -> string list -> ('a, field) Types.Run_state.t
 
     val flatten_as_prover :
          int ref
+      -> string list
       -> ('a, 's, field) Checked_ast.t
       -> ('s run_state -> 's run_state) * 'a
 
