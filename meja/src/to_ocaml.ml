@@ -11,8 +11,8 @@ let rec of_type_desc ?loc typ =
       Typ.var ?loc name.txt
   | Tpoly (_, typ) ->
       of_type_expr typ
-  | Tarrow (typ1, typ2, _) ->
-      Typ.arrow ?loc Nolabel (of_type_expr typ1) (of_type_expr typ2)
+  | Tarrow (typ1, typ2, _, label) ->
+      Typ.arrow ?loc label (of_type_expr typ1) (of_type_expr typ2)
   | Tctor
       {var_ident= name; var_params= params; var_implicit_params= implicits; _}
     ->
@@ -94,13 +94,13 @@ and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 let rec of_expression_desc ?loc = function
   | Apply (f, es) ->
       Exp.apply ?loc (of_expression f)
-        (List.map ~f:(fun x -> (Nolabel, of_expression x)) es)
+        (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
   | Variable name ->
       Exp.ident ?loc name
   | Int i ->
       Exp.constant ?loc (Const.int i)
-  | Fun (p, body, _) ->
-      Exp.fun_ ?loc Nolabel None (of_pattern p) (of_expression body)
+  | Fun (label, p, body, _) ->
+      Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
   | Constraint (e, typ) ->
       Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
   | Seq (e1, e2) ->
@@ -223,6 +223,11 @@ let rec of_statement_desc ?loc = function
       in
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
+        ; pincl_loc= Option.value ~default:Location.none loc
+        ; pincl_attributes= [] }
+  | Multiple stmts ->
+      Str.include_ ?loc
+        { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
 
