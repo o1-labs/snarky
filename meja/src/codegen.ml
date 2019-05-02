@@ -140,8 +140,11 @@ let typ_of_decl env decl =
               let bindings =
                 List.fold ~init:result fields ~f:(fun result {fld_ident; _} ->
                     Exp.apply ~loc bind
-                      [ Nolabel, run (Exp.var ~loc (Lid.of_name fld_ident.txt))
-                      ; Nolabel, Exp.fun_ ~loc (Pat.var ~loc fld_ident.txt) result ] )
+                      [ ( Nolabel
+                        , run (Exp.var ~loc (Lid.of_name fld_ident.txt)) )
+                      ; ( Nolabel
+                        , Exp.fun_ ~loc (Pat.var ~loc fld_ident.txt) result )
+                      ] )
               in
               Exp.fun_ ~loc
                 (Pat.record ~loc
@@ -150,7 +153,9 @@ let typ_of_decl env decl =
                 bindings
             in
             let var_of_list l = Exp.var ~loc (Lid.of_list l) in
-            let apply_var_of_list l x = Exp.apply ~loc (var_of_list l) [Nolabel, x] in
+            let apply_var_of_list l x =
+              Exp.apply ~loc (var_of_list l) [(Nolabel, x)]
+            in
             let result =
               Exp.record ~loc
                 (List.map fields ~f:(fun {fld_ident; _} ->
@@ -183,7 +188,7 @@ let typ_of_decl env decl =
                      (Exp.fun_ (Pat.var ~loc "x")
                         (Exp.apply
                            (Exp.var ~loc (Lid.of_name "f"))
-                           [Nolabel, Exp.var ~loc (Lid.of_name "x")])))
+                           [(Nolabel, Exp.var ~loc (Lid.of_name "x"))])))
                 ~run:(apply_var_of_list ["Typ"; "check"])
             in
             let body =
