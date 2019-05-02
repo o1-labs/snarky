@@ -19,8 +19,6 @@ module Free_hash : sig
     -> 'hash
 end
 
-val root : ('hash, _) t -> 'hash
-
 val depth : (_, _) t -> int
 
 val create :
