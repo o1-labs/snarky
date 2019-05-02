@@ -35,6 +35,12 @@ module Type = struct
     ; var_decl_id= -1 }
 
   let none ?loc () = mk ?loc (Tvar (None, -1, Explicit))
+
+  let var ?loc ?(explicit = Explicit) name =
+    mk ?loc (Tvar (Some (Loc.mk ?loc name), -1, explicit))
+
+  let constr ?loc ?params ?implicits ident =
+    mk ?loc (Tctor (variant ?loc ?params ?implicits ident))
 end
 
 module Pat = struct
@@ -60,8 +66,8 @@ module Exp = struct
   let mk ?(loc = Location.none) d =
     {exp_desc= d; exp_loc= loc; exp_type= Type.none ~loc ()}
 
-  let fun_ ?loc ?(explicit = Explicit) p body =
-    mk ?loc (Fun (p, body, explicit))
+  let fun_ ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) p body =
+    mk ?loc (Fun (label, p, body, explicit))
 
   let apply ?loc e es = mk ?loc (Apply (e, es))
 
@@ -71,5 +77,9 @@ module Exp = struct
 
   let ctor ?loc ?args name = mk ?loc (Ctor (Loc.mk ?loc name, args))
 
+  let record ?loc ?default fields = mk ?loc (Record (fields, default))
+
   let let_ ?loc p e_eq e = mk ?loc (Let (p, e_eq, e))
+
+  let constraint_ ?loc e typ = mk ?loc (Constraint (e, typ))
 end

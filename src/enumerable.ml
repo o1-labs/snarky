@@ -52,3 +52,22 @@ struct
 
   let ( = ) = Field.Checked.equal
 end
+
+module Run = struct
+  module Make
+      (Impl : Snark_intf.Run_basic) (M : sig
+          type t [@@deriving enum]
+      end) =
+  struct
+    open Impl
+    include Make (Impl.Internal_Basic) (M)
+
+    let assert_equal x y = run_checked (assert_equal x y)
+
+    let var_to_bits x = run_checked (var_to_bits x)
+
+    let if_ x ~then_ ~else_ = run_checked (if_ x ~then_ ~else_)
+
+    let ( = ) x y = run_checked (x = y)
+  end
+end
