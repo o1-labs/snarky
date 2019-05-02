@@ -491,7 +491,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
+    type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
     include
       Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
@@ -1282,6 +1282,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> 'valin
       -> unit
   end
+
+  val set_constraint_logger : (Constraint.t -> unit) -> unit
+
+  val clear_constraint_logger : unit -> unit
 end
 
 module type S = sig
@@ -1444,7 +1448,7 @@ module type Run_basic = sig
     end
 
     type 'prover_state run_state =
-      ('prover_state, Field.Constant.t) Types.Run_state.t
+      ('prover_state, Field.Constant.t) Run_state.t
 
     type ('var, 'value) t =
       ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
@@ -1923,6 +1927,10 @@ module type Run_basic = sig
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
+
+  val set_constraint_logger : (Constraint.t -> unit) -> unit
+
+  val clear_constraint_logger : unit -> unit
 
   module Internal_Basic : Basic with type field = field
 

@@ -16,40 +16,22 @@ module Runner = struct
   module Make (Backend : Backend_extended.S) = struct
     open Constraint
     open Backend
-    open Types.Run_state
+    open Run_state
     open Checked
 
-    type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
+    let constraint_logger = ref None
+
+    let set_constraint_logger f = constraint_logger := Some f
+
+    let clear_constraint_logger () = constraint_logger := None
+
+    type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
     type state = unit run_state
 
     type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
-    let set_prover_state prover_state
-        { system
-        ; input
-        ; aux
-        ; eval_constraints
-        ; num_inputs
-        ; next_auxiliary
-        ; prover_state= _
-        ; stack
-        ; handler
-        ; is_running
-        ; as_prover
-        ; run_special } =
-      { system
-      ; input
-      ; aux
-      ; eval_constraints
-      ; num_inputs
-      ; next_auxiliary
-      ; prover_state
-      ; stack
-      ; handler
-      ; is_running
-      ; as_prover
-      ; run_special }
+    let set_prover_state = set_prover_state
 
     let set_handler handler state = {state with handler}
 
@@ -125,6 +107,7 @@ module Runner = struct
         failwith
           "Cannot add a constraint as the prover: the verifier's constraint \
            system will not match." ;
+      Option.iter s.log_constraint ~f:(fun f -> f c) ;
       if s.eval_constraints && not (Constraint.eval c (get_value s)) then
         failwithf
           "Constraint unsatisfied (unreduced):\n\
@@ -240,7 +223,7 @@ module Runner = struct
       ; handler= Request.Handler.fail
       ; is_running= true
       ; as_prover= ref false
-      ; run_special= None }
+      ; log_constraint= None }
 
     let rec flatten_as_prover : type a s.
            int ref
@@ -276,6 +259,7 @@ module Runner = struct
       | Add_constraint (c, t) ->
           let f, y = flatten_as_prover next_auxiliary stack t in
           ( (fun s ->
+              Option.iter s.log_constraint ~f:(fun f -> f c) ;
               if s.eval_constraints && not (Constraint.eval c (get_value s))
               then
                 failwithf
@@ -370,7 +354,7 @@ module Runner = struct
         ; handler= Option.value handler ~default:Request.Handler.fail
         ; is_running= true
         ; as_prover= ref false
-        ; run_special= None }
+        ; log_constraint= !constraint_logger }
     end
   end
 
@@ -383,90 +367,86 @@ module Runner = struct
 
     type r1cs
 
-    type 'prover_state run_state = ('prover_state, field) Types.Run_state.t
+    val set_constraint_logger : (constr -> unit) -> unit
+
+    val clear_constraint_logger : unit -> unit
+
+    type 'prover_state run_state = ('prover_state, field) Run_state.t
 
     type state = unit run_state
 
     type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
     val set_prover_state :
-      'a option -> ('b, 'c) Types.Run_state.t -> ('a, 'c) Types.Run_state.t
+      'a option -> ('b, 'c) Run_state.t -> ('a, 'c) Run_state.t
 
     val set_handler :
-         Request.Handler.t
-      -> ('a, 'b) Types.Run_state.t
-      -> ('a, 'b) Types.Run_state.t
+      Request.Handler.t -> ('a, 'b) Run_state.t -> ('a, 'b) Run_state.t
 
-    val get_handler : ('a, 'b) Types.Run_state.t -> Request.Handler.t
+    val get_handler : ('a, 'b) Run_state.t -> Request.Handler.t
 
-    val set_stack :
-      string list -> ('a, 'b) Types.Run_state.t -> ('a, 'b) Types.Run_state.t
+    val set_stack : string list -> ('a, 'b) Run_state.t -> ('a, 'b) Run_state.t
 
-    val get_stack : ('a, 'b) Types.Run_state.t -> string list
+    val get_stack : ('a, 'b) Run_state.t -> string list
 
-    val get_value : ('a, field) Types.Run_state.t -> cvar -> field
+    val get_value : ('a, field) Run_state.t -> cvar -> field
 
-    val store_field_elt : ('a, field) Types.Run_state.t -> field -> cvar
+    val store_field_elt : ('a, field) Run_state.t -> field -> cvar
 
-    val alloc_var : ('a, 'b) Types.Run_state.t -> unit -> cvar
+    val alloc_var : ('a, 'b) Run_state.t -> unit -> cvar
 
     val run_as_prover :
          ('a, field, 'b) As_prover0.t option
-      -> ('b, field) Types.Run_state.t
-      -> ('b, field) Types.Run_state.t * 'a option
+      -> ('b, field) Run_state.t
+      -> ('b, field) Run_state.t * 'a option
 
     val as_prover :
          (unit, field, 'a) As_prover0.t
-      -> ('a, field) Types.Run_state.t
-      -> ('a, field) Types.Run_state.t * unit
+      -> ('a, field) Run_state.t
+      -> ('a, field) Run_state.t * unit
 
     val with_label :
          string
-      -> (('a, 'b) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
-      -> ('a, 'b) Types.Run_state.t
-      -> ('c, 'd) Types.Run_state.t * 'e
+      -> (('a, 'b) Run_state.t -> ('c, 'd) Run_state.t * 'e)
+      -> ('a, 'b) Run_state.t
+      -> ('c, 'd) Run_state.t * 'e
 
     val add_constraint :
-         constr
-      -> ('a, field) Types.Run_state.t
-      -> ('a, field) Types.Run_state.t * unit
+      constr -> ('a, field) Run_state.t -> ('a, field) Run_state.t * unit
 
     val with_state :
          ('a, field, 'b) As_prover0.t
       -> ('c -> (unit, field, 'b) As_prover0.t)
-      -> (('a, field) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
-      -> ('b, field) Types.Run_state.t
-      -> ('b, field) Types.Run_state.t * 'e
+      -> (('a, field) Run_state.t -> ('c, 'd) Run_state.t * 'e)
+      -> ('b, field) Run_state.t
+      -> ('b, field) Run_state.t * 'e
 
     val with_handler :
          Request.Handler.single
-      -> (('a, 'b) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
-      -> ('a, 'b) Types.Run_state.t
-      -> ('c, 'd) Types.Run_state.t * 'e
+      -> (('a, 'b) Run_state.t -> ('c, 'd) Run_state.t * 'e)
+      -> ('a, 'b) Run_state.t
+      -> ('c, 'd) Run_state.t * 'e
 
     val clear_handler :
-         (('a, 'b) Types.Run_state.t -> ('c, 'd) Types.Run_state.t * 'e)
-      -> ('a, 'b) Types.Run_state.t
-      -> ('c, 'd) Types.Run_state.t * 'e
+         (('a, 'b) Run_state.t -> ('c, 'd) Run_state.t * 'e)
+      -> ('a, 'b) Run_state.t
+      -> ('c, 'd) Run_state.t * 'e
 
     val exists :
-         run:(   'a
-              -> (unit, field) Types.Run_state.t
-              -> ('b, 'c) Types.Run_state.t * unit)
+         run:('a -> (unit, field) Run_state.t -> ('b, 'c) Run_state.t * unit)
       -> ('d, 'e, field, 'a) Types.Typ.typ
       -> ('e, field, 'f) Provider.t
-      -> ('f, field) Types.Run_state.t
-      -> ('f, 'c) Types.Run_state.t * ('d, 'e) Handle.t
+      -> ('f, field) Run_state.t
+      -> ('f, 'c) Run_state.t * ('d, 'e) Handle.t
 
-    val next_auxiliary :
-      ('a, 'b) Types.Run_state.t -> ('a, 'b) Types.Run_state.t * int
+    val next_auxiliary : ('a, 'b) Run_state.t -> ('a, 'b) Run_state.t * int
 
     val run :
       ('a, 's, field) Checked_ast.t -> 's run_state -> 's run_state * 'a
 
     val dummy_vector : field Vector.t
 
-    val fake_state : int ref -> string list -> ('a, field) Types.Run_state.t
+    val fake_state : int ref -> string list -> ('a, field) Run_state.t
 
     val flatten_as_prover :
          int ref
@@ -487,7 +467,7 @@ module Runner = struct
         -> ?eval_constraints:bool
         -> ?handler:Request.Handler.t
         -> 's option
-        -> ('s, field) Types.Run_state.t
+        -> ('s, field) Run_state.t
     end
   end
 end
@@ -503,6 +483,10 @@ module Make_basic
 struct
   open Backend
   module Checked_S = Checked_intf.Unextend (Checked)
+
+  let set_constraint_logger = Runner.set_constraint_logger
+
+  let clear_constraint_logger = Runner.clear_constraint_logger
 
   type field = Field.t
 
@@ -624,7 +608,7 @@ struct
 
   module Checked = struct
     open Types.Checked
-    open Types.Run_state
+    open Run_state
 
     type ('a, 's) t = ('a, 's, Field.t) Checked.t
 
@@ -658,12 +642,8 @@ struct
               None
           in
           let count = ref count in
-          let run_special (type a s) (x : (a, s, _) Types.Checked.t) =
-            let count', a = constraint_count_aux ~log ~auxc !count x in
-            count := count' ;
-            a
-          in
-          let state = {state with run_special= Some run_special} in
+          let log_constraint c = count := !count + List.length c in
+          let state = {state with log_constraint= Some log_constraint} in
           let _, x = d state in
           constraint_count_aux ~log ~auxc !count (k x)
       | Reduced (t, _, _, k) ->
@@ -671,8 +651,8 @@ struct
           constraint_count_aux ~log ~auxc count (k y)
       | As_prover (_x, k) ->
           constraint_count_aux ~log ~auxc count k
-      | Add_constraint (_c, t) ->
-          constraint_count_aux ~log ~auxc (count + 1) t
+      | Add_constraint (c, t) ->
+          constraint_count_aux ~log ~auxc (count + List.length c) t
       | Next_auxiliary k ->
           constraint_count_aux ~log ~auxc count (k !auxc)
       | With_label (s, t, k) ->
@@ -1157,7 +1137,7 @@ struct
   module Data_spec = Typ.Data_spec
 
   module Run = struct
-    open Types.Run_state
+    open Run_state
     open Data_spec
 
     let alloc_var next_input () =
@@ -1984,8 +1964,12 @@ end
 module Run = struct
   module Make_basic (Backend : Backend_intf.S) = struct
     module Snark = Make (Backend)
-    open Types.Run_state
+    open Run_state
     open Snark
+
+    let set_constraint_logger = set_constraint_logger
+
+    let clear_constraint_logger = clear_constraint_logger
 
     let state =
       ref
@@ -2000,7 +1984,7 @@ module Run = struct
         ; handler= Request.Handler.fail
         ; is_running= false
         ; as_prover= ref false
-        ; run_special= None }
+        ; log_constraint= None }
 
     let run checked =
       if !(!state.as_prover) then
@@ -2009,13 +1993,9 @@ module Run = struct
            system will not match." ;
       if not !state.is_running then
         failwith "This function can't be run outside of a checked computation." ;
-      match !state.run_special with
-      | Some f ->
-          f checked
-      | None ->
-          let state', x = Runner.run checked !state in
-          state := state' ;
-          x
+      let state', x = Runner.run checked !state in
+      state := state' ;
+      x
 
     let as_stateful x state' =
       state := state' ;
@@ -2553,18 +2533,14 @@ module Run = struct
 
     let constraint_count ?(log = fun ?start _ _ -> ()) x =
       let count = ref 0 in
-      let next_auxiliary = ref 1 in
-      let run_special x =
-        let count', a =
-          constraint_count_aux ~log ~auxc:next_auxiliary !count x
-        in
-        count := count' ;
-        a
-      in
-      let {run_special= old; _} = !state in
-      state := {!state with run_special= Some run_special} ;
+      let log_constraint c = count := !count + Core_kernel.List.length c in
+      let old = !state in
+      state :=
+        Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
+          ~next_auxiliary:(ref 1) ~eval_constraints:false None ;
+      state := {!state with log_constraint= Some log_constraint} ;
       ignore (x ()) ;
-      state := {!state with run_special= old} ;
+      state := old ;
       !count
 
     module Internal_Basic = Snark

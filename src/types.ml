@@ -36,7 +36,7 @@ module Typ = struct
     ('var, 'value, 'field, 'checked) typ
 end
 
-module rec Checked : sig
+module Checked = struct
   (* TODO-someday: Consider having an "Assembly" type with only a store constructor for straight up Var.t's
     that this gets compiled into. *)
 
@@ -83,23 +83,4 @@ module rec Checked : sig
         * (('var, 'value) Handle.t -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
     | Next_auxiliary : (int -> ('a, 's, 'f) t) -> ('a, 's, 'f) t
-end =
-  Checked
-
-and Run_state : sig
-  (** The internal state used to run a checked computation. *)
-  type ('prover_state, 'field) t =
-    { system: 'field Backend_types.R1CS_constraint_system.t option
-    ; input: 'field Vector.t
-    ; aux: 'field Vector.t
-    ; eval_constraints: bool
-    ; num_inputs: int
-    ; next_auxiliary: int ref
-    ; prover_state: 'prover_state option
-    ; stack: string list
-    ; handler: Request.Handler.t
-    ; is_running: bool
-    ; as_prover: bool ref
-    ; run_special: 'a 's. (('a, 's, 'field) Checked.t -> 'a) option }
-end =
-  Run_state
+end
