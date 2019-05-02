@@ -306,7 +306,7 @@ simpl_expr:
     { mkexp ~pos:$loc (Int x) }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { e }
-  | LBRACKET es = list_maybe_empty(expr, COMMA, RBRACKET)
+  | LBRACKET es = list(expr, COMMA) RBRACKET
     { List.fold
         ~init:(mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "[]"), None)))
         es ~f:(fun acc e -> consexp ~pos:$loc e acc) }
@@ -477,7 +477,7 @@ pat_no_bar:
     { mkpat ~pos:$loc PAny }
   | LPAREN p = pat_or_bare_tuple RPAREN
     { p }
-  | LBRACKET ps = list_maybe_empty(pat, COMMA, RBRACKET)
+  | LBRACKET ps = list(pat, COMMA) RBRACKET
     { List.fold
         ~init:(mkpat ~pos:$loc (PCtor (mkloc ~pos:$loc (Lident "[]"), None)))
         ps ~f:(fun acc p -> conspat ~pos:$loc p acc) }
@@ -539,12 +539,6 @@ list(X, SEP):
     { x :: xs }
   | x = X
     { [ x ] }
-
-list_maybe_empty(X, SEP, TERMINATOR):
-  | TERMINATOR
-    { [] }
-  | xs = list(X, SEP) TERMINATOR
-    { xs }
 
 tuple(X):
   | xs = tuple(X) COMMA x = X
