@@ -913,6 +913,8 @@ let type_extension ~loc variant ctors env =
   in
   (env, variant, ctors)
 
+let in_decl = ref false
+
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
@@ -931,7 +933,19 @@ let rec check_statement env stmt =
       (env, {stmt with stmt_desc= Instance (name, e)})
   | TypeDecl decl ->
       let decl, env = Envi.TypeDecl.import decl env in
-      (env, {stmt with stmt_desc= TypeDecl decl})
+      let stmt = {stmt with stmt_desc= TypeDecl decl} in
+      if !in_decl then (env, stmt)
+      else (
+        in_decl := true ;
+        let ret =
+          match Codegen.typ_of_decl env decl with
+          | Some typ_stmts ->
+              (env, {stmt with stmt_desc= Multiple typ_stmts})
+          | None ->
+              (env, stmt)
+        in
+        in_decl := false ;
+        ret )
   | Module (name, m) ->
       let env = Envi.open_module env in
       let env, m = check_module_expr env m in
@@ -1029,6 +1043,9 @@ let rec check_statement env stmt =
             (None, env)
       in
       (env, {stmt with stmt_desc= Request (arg, ctor_decl, handler)})
+  | Multiple stmts ->
+      let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
+      (env, {stmt with stmt_desc= Multiple stmts})
 
 and check_module_expr env m =
   let loc = m.mod_loc in

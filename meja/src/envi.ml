@@ -983,6 +983,23 @@ module Type = struct
     | Tpoly (_, typ) ->
         implicit_params typ
 
+  let rec constr_map env ~f typ =
+    let loc = typ.type_loc in
+    match typ.type_desc with
+    | Tvar _ ->
+        typ
+    | Ttuple typs ->
+        let typs = List.map ~f:(constr_map env ~f) typs in
+        mk ~loc (Ttuple typs) env
+    | Tarrow (typ1, typ2, explicit, label) ->
+        let typ1 = constr_map env ~f typ1 in
+        let typ2 = constr_map env ~f typ2 in
+        mk ~loc (Tarrow (typ1, typ2, explicit, label)) env
+    | Tctor variant ->
+        mk ~loc (f variant) env
+    | Tpoly (typs, typ) ->
+        mk ~loc (Tpoly (typs, constr_map env ~f typ)) env
+
   let rec bubble_label_aux env label typ =
     match typ.type_desc with
     | Tarrow (typ1, typ2, explicit, arr_label)
@@ -1024,6 +1041,13 @@ module Type = struct
           typ'
     in
     go typ
+
+  let is_arrow typ =
+    match typ.type_desc with
+    | Tarrow _ | Tpoly (_, {type_desc= Tarrow _; _}) ->
+        true
+    | _ ->
+        false
 end
 
 module TypeDecl = struct
