@@ -1299,7 +1299,8 @@ struct
               "run_with_input: Expected a value from run_proof_system, got \
                None."
 
-      let run_unchecked ~run ~public_input ?handlers ?reduce proof_system eval s =
+      let run_unchecked ~run ~public_input ?handlers ?reduce proof_system eval
+          s =
         let s, a, state =
           run_with_input ~run ?reduce ~public_input ?handlers proof_system s
         in
@@ -1315,8 +1316,10 @@ struct
         | s, x, state ->
             Ok (s, x, state)
 
-      let run_checked ~run ~public_input ?handlers ?reduce proof_system eval s =
-        Or_error.map (run_checked' ~run ?reduce ~public_input ?handlers proof_system s)
+      let run_checked ~run ~public_input ?handlers ?reduce proof_system eval s
+          =
+        Or_error.map
+          (run_checked' ~run ?reduce ~public_input ?handlers proof_system s)
           ~f:(fun (s, x, state) ->
             let s', x =
               As_prover.run (eval x) (Checked.Runner.get_value state) s
