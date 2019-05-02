@@ -8,7 +8,7 @@ let bar_sep fmt () = fprintf fmt "@ | "
 let arg_label fmt = function
   | Asttypes.Nolabel -> ()
   | Labelled label -> fprintf fmt "%s:@," label
-  | Optional label -> fprintf fmt "?%s@," label
+  | Optional label -> fprintf fmt "?%s:@," label
 
 let rec type_desc ?(bracket = false) fmt = function
   | Tvar (None, _, _) ->
