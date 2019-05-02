@@ -108,6 +108,8 @@ module type S = sig
 
     val report_statistics : t -> unit
 
+    val finalize : t -> unit
+
     val add_constraint : t -> R1CS_constraint.t -> unit
 
     val add_constraint_with_annotation :
@@ -163,7 +165,7 @@ module type S = sig
 
     type message
 
-    include Stringable.S with type t := t
+    include Binable.S with type t := t
 
     val create :
          ?message:message

@@ -19,6 +19,52 @@ end
 let set_no_profiling =
   foreign "camlsnark_set_profiling" (bool @-> returning void)
 
+let set_printing_off =
+  foreign "camlsnark_set_printing_off" (void @-> returning void)
+
+let set_printing_stdout =
+  foreign "camlsnark_set_printing_stdout" (void @-> returning void)
+
+let set_printing_file =
+  foreign "camlsnark_set_printing_file" (string @-> returning void)
+
+module Print_func = struct
+  (** Internal: The reference to the user-defined function passed to
+      {!val:set_printing_fun}.
+      OCaml may relocate the function in memory if it is heap-allocated (e.g.
+      using a closure) during its GC cycle, so we store a reference here and
+      call it from the statically-allocated OCaml function {!val:dispatch}
+      below.
+  *)
+  let print = ref (fun str -> str)
+
+  (** A reference to the C [puts] function.
+
+      The OCaml stdlib functions use thread-unsafe primitives that may cause a
+      crash if calls from multiple threads overlap, so we use this to avoid
+      their thread-unsafe blocking behaviour.
+  *)
+  let puts = foreign "camlsnark_puts" (string @-> returning void)
+
+  (** The dispatcher passed to the C++ interface in {!val:set_printing_fun}.
+      We cannot pass the user-provided function directly to the C++ side in
+      case of GC relocation, so this provides a statically-allocated wrapper.
+
+      The call to {!val:puts} is made from here instead of the C++ side so that
+      OCaml's GC behaviour is mitigated by the the Ctypes API.
+  *)
+  let dispatch str = puts (!print str)
+end
+
+let set_printing_fun =
+  let stub =
+    foreign "camlsnark_set_printing_fun"
+      (funptr (string @-> returning void) @-> returning void)
+  in
+  fun f ->
+    Print_func.print := f ;
+    stub Print_func.dispatch
+
 let () = set_no_profiling true
 
 module Make_group_coefficients (P : sig
@@ -873,6 +919,8 @@ struct
 
     val report_statistics : t -> unit
 
+    val finalize : t -> unit
+
     val add_constraint : t -> R1CS_constraint.t -> unit
 
     val add_constraint_with_annotation :
@@ -909,6 +957,8 @@ struct
 
     let report_statistics =
       foreign (func_name "report_statistics") (typ @-> returning void)
+
+    let finalize = foreign (func_name "finalize") (typ @-> returning void)
 
     let check_exn =
       let stub = foreign (func_name "check") (typ @-> returning bool) in
@@ -1213,8 +1263,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end = struct
     include Proving_key.Make (struct
       let prefix = with_prefix M.prefix "proving_key"
-
-      type field = M.Field.t
     end)
 
     let r1cs_constraint_system =
@@ -1337,8 +1385,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end = struct
     include Verification_key.Make (struct
       let prefix = with_prefix M.prefix "verification_key"
-
-      type field = M.Field.t
     end)
 
     let size_in_bits =
@@ -1406,8 +1452,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end = struct
     include Keypair.Make (struct
       let prefix = with_prefix M.prefix "keypair"
-
-      type field = M.Field.t
     end)
 
     let pk =
@@ -1480,35 +1524,35 @@ struct
     val verify :
       ?message:message -> t -> Verification_key.t -> M.Field.Vector.t -> bool
 
-    val to_string : t -> string
-
-    val of_string : string -> t
+    include Binable.S with type t := t
   end = struct
     include Proof.Make (struct
       let prefix = with_prefix M.prefix "proof"
-
-      type field = M.Field.t
     end)
 
     type message = unit
 
-    let to_string : t -> string =
-      let stub =
-        foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
-      in
-      fun t ->
-        let s = stub t in
-        let r = Cpp_string.to_string s in
-        Cpp_string.delete s ; r
+    include Binable.Of_stringable (struct
+      type nonrec t = t
 
-    let of_string : string -> t =
-      let stub =
-        foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
-      in
-      fun s ->
-        let str = Cpp_string.of_string_don't_delete s in
-        let t = stub str in
-        Cpp_string.delete str ; t
+      let to_string : t -> string =
+        let stub =
+          foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+        in
+        fun t ->
+          let s = stub t in
+          let r = Cpp_string.to_string s in
+          Cpp_string.delete s ; r
+
+      let of_string : string -> t =
+        let stub =
+          foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
+        in
+        fun s ->
+          let str = Cpp_string.of_string_don't_delete s in
+          let t = stub str in
+          Cpp_string.delete str ; t
+    end)
 
     let create_ =
       let stub =
@@ -2368,8 +2412,6 @@ module type S = sig
     val verify :
       ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
 
-    val to_string : t -> string
-
-    val of_string : string -> t
+    include Binable.S with type t := t
   end
 end
