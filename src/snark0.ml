@@ -19,11 +19,11 @@ module Runner = struct
     open Run_state
     open Checked
 
-    let log_constraint = ref None
+    let constraint_logger = ref None
 
-    let set_constraint_logger f = log_constraint := Some f
+    let set_constraint_logger f = constraint_logger := Some f
 
-    let clear_constraint_logger () = log_constraint := None
+    let clear_constraint_logger () = constraint_logger := None
 
     type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
@@ -354,7 +354,7 @@ module Runner = struct
         ; handler= Option.value handler ~default:Request.Handler.fail
         ; is_running= true
         ; as_prover= ref false
-        ; log_constraint= !log_constraint }
+        ; log_constraint= !constraint_logger }
     end
   end
 
