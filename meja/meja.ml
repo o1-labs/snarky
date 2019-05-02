@@ -1,4 +1,5 @@
 open Core_kernel
+open Meja_lib
 
 let print_position outx lexbuf =
   let pos = lexbuf.Lexing.lex_curr_p in
@@ -66,6 +67,7 @@ let main =
     default := false ;
     opt := Some name
   in
+  let meji_files = ref [] in
   let cmi_files = ref [] in
   let cmi_dirs = ref [] in
   let arg_spec =
@@ -82,6 +84,9 @@ let main =
     ; ( "--binml"
       , Arg.String (set_and_clear_default binml_file)
       , "output a binary ml file" )
+    ; ( "--meji"
+      , Arg.String (fun filename -> meji_files := filename :: !meji_files)
+      , "load a .meji interface file" )
     ; ( "--load-cmi"
       , Arg.String (fun filename -> cmi_files := filename :: !cmi_files)
       , "load a .cmi file" )
@@ -111,7 +116,15 @@ let main =
     Format.sprintf "Usage:@.@[%s [options] file@]@.@.OPTIONS:"
       (Filename.basename Sys.executable_name)
   in
-  Arg.parse arg_spec (fun filename -> file := Some filename) usage_text ;
+  Arg.parse arg_spec
+    (fun filename ->
+      match !file with
+      | Some _ ->
+          Arg.usage arg_spec usage_text ;
+          exit 1
+      | None ->
+          file := Some filename )
+    usage_text ;
   let env = Envi.Core.env in
   try
     let env =
@@ -183,6 +196,18 @@ let main =
       List.fold ~init:env cmi_scopes ~f:(fun env scope ->
           Envi.open_namespace_scope scope env )
     in
+    let meji_files = List.rev !meji_files in
+    let env =
+      List.fold ~init:env meji_files ~f:(fun env file ->
+          let parse_ast =
+            read_file (Parser_impl.interface Lexer_impl.token) file
+          in
+          let env = Envi.open_module env in
+          let env = Typechecker.check_signature env parse_ast in
+          let m, env = Envi.pop_module ~loc:Location.none env in
+          let name = Location.(mkloc (Loader.modname_of_filename file) none) in
+          Envi.add_module name m env )
+    in
     let file =
       match !file with
       | Some file ->
@@ -191,7 +216,9 @@ let main =
           Arg.usage arg_spec usage_text ;
           exit 1
     in
-    let parse_ast = read_file (Parser_impl.file Lexer_impl.token) file in
+    let parse_ast =
+      read_file (Parser_impl.implementation Lexer_impl.token) file
+    in
     let _env, ast = Typechecker.check parse_ast env in
     let ast =
       if !snarky_preamble then add_preamble !impl_mod !curve !proofs ast

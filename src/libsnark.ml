@@ -919,6 +919,8 @@ struct
 
     val report_statistics : t -> unit
 
+    val finalize : t -> unit
+
     val add_constraint : t -> R1CS_constraint.t -> unit
 
     val add_constraint_with_annotation :
@@ -955,6 +957,8 @@ struct
 
     let report_statistics =
       foreign (func_name "report_statistics") (typ @-> returning void)
+
+    let finalize = foreign (func_name "finalize") (typ @-> returning void)
 
     let check_exn =
       let stub = foreign (func_name "check") (typ @-> returning bool) in

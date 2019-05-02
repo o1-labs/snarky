@@ -92,7 +92,7 @@ module Make (Impl : Snark_intf.Basic) = struct
       y     [ ]
 
       x     [ ]
-      y [ ] 
+      y [ ]
     *)
     with_label "Number.(<)"
       ( if x.upper_bound < y.lower_bound then return Boolean.true_
@@ -113,7 +113,7 @@ module Make (Impl : Snark_intf.Basic) = struct
       y   [ ]
 
       x     [ ]
-      y [ ] 
+      y [ ]
     *)
     with_label "Number.(<)"
       ( if x.upper_bound <= y.lower_bound then return Boolean.true_
@@ -207,4 +207,37 @@ module Make (Impl : Snark_intf.Basic) = struct
   let max x y =
     let%bind less = x < y in
     if_ less ~then_:y ~else_:x
+end
+
+module Run = struct
+  module Make (Impl : Snark_intf.Run_basic) = struct
+    open Impl
+    include Make (Impl.Internal_Basic)
+
+    let ( * ) x y = run_checked (x * y)
+
+    let if_ x ~then_ ~else_ = run_checked (if_ x ~then_ ~else_)
+
+    let ( < ) x y = run_checked (x < y)
+
+    let ( > ) x y = run_checked (x > y)
+
+    let ( <= ) x y = run_checked (x <= y)
+
+    let ( >= ) x y = run_checked (x >= y)
+
+    let ( = ) x y = run_checked (x = y)
+
+    let min x y = run_checked (min x y)
+
+    let max x y = run_checked (max x y)
+
+    let to_bits x = run_checked (to_bits x)
+
+    let div_pow_2 x y = run_checked (div_pow_2 x y)
+
+    let mul_pow_2 x y = run_checked (mul_pow_2 x y)
+
+    let clamp_to_n_bits x y = run_checked (clamp_to_n_bits x y)
+  end
 end
