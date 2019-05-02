@@ -74,7 +74,7 @@ and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
   | Tvar of str option * (* depth *) int * explicitness
   | Ttuple of type_expr list
-  | Tarrow of type_expr * type_expr * explicitness
+  | Tarrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
@@ -135,10 +135,10 @@ type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: type_expr}
 
 and expression_desc =
-  | Apply of expression * expression list
+  | Apply of expression * (Asttypes.arg_label * expression) list
   | Variable of lid
   | Int of int
-  | Fun of pattern * expression * explicitness
+  | Fun of Asttypes.arg_label * pattern * expression * explicitness
   | Seq of expression * expression
   | Let of pattern * expression * expression
   | Constraint of expression * type_expr
@@ -189,6 +189,14 @@ let rec typ_debug_print fmt typ =
   let print i = fprintf fmt i in
   let print_comma fmt () = pp_print_char fmt ',' in
   let print_list pp = pp_print_list ~pp_sep:print_comma pp in
+  let print_label fmt = function
+    | Asttypes.Nolabel ->
+        ()
+    | Asttypes.Labelled str ->
+        fprintf fmt "~%s:" str
+    | Asttypes.Optional str ->
+        fprintf fmt "?%s:" str
+  in
   print "(%i:" typ.type_id ;
   ( match typ.type_desc with
   | Tvar (None, i, Explicit) ->
@@ -203,10 +211,12 @@ let rec typ_debug_print fmt typ =
       print "poly [%a] %a"
         (print_list typ_debug_print)
         typs typ_debug_print typ
-  | Tarrow (typ1, typ2, Explicit) ->
-      print "%a -> %a" typ_debug_print typ1 typ_debug_print typ2
-  | Tarrow (typ1, typ2, Implicit) ->
-      print "{%a} -> %a" typ_debug_print typ1 typ_debug_print typ2
+  | Tarrow (typ1, typ2, Explicit, label) ->
+      print "%a%a -> %a" print_label label typ_debug_print typ1 typ_debug_print
+        typ2
+  | Tarrow (typ1, typ2, Implicit, label) ->
+      print "%a{%a} -> %a" print_label label typ_debug_print typ1
+        typ_debug_print typ2
   | Tctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
   | Ttuple typs ->

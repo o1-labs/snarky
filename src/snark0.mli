@@ -8,6 +8,14 @@ val set_eval_constraints : bool -> unit
     {!const:Types.Checked.With_constraint_system}). For these, you should
     modify your code to use the normal {!val:run_and_check} function. *)
 
+val set_reduce_to_prover : bool -> unit
+(** Sets the [reduce_to_prover] state. If [true], the [Proof_system] interface
+    will run optimised versions of the checked computations whenever possible.
+
+    Note: This optimisation pre-evaluates and caches some parts of the checked
+    computation, to speed up subsequent calls. *DO NOT USE* if your checked
+    computation uses mutability outside of [As_prover] blocks. *)
+
 module Make (Backend : Backend_intf.S) :
   Snark_intf.S
   with type field = Backend.Field.t

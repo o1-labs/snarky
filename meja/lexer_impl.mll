@@ -65,6 +65,8 @@ rule token = parse
   | ']' { RBRACKET }
   | "->" { DASHGT }
   | "=>" { EQUALGT }
+  | "~" { TILDE }
+  | "?" { QUESTION }
   | "+=" { PLUSEQUAL }
   | '=' { EQUAL }
   | ':' { COLON }
