@@ -18,11 +18,8 @@ let rec to_type_desc ~loc desc =
   match desc with
   | Tvar x | Tunivar x ->
       Parsetypes.Tvar (Option.map ~f:(fun x -> mkloc x loc) x, -1, Explicit)
-  | Tarrow ((Nolabel | Labelled _), typ1, typ2, _) ->
-      Parsetypes.Tarrow (to_type_expr typ1, to_type_expr typ2, Explicit)
-  | Tarrow (Optional _lbl, _typ1, typ2, _) ->
-      (* TODO: Don't ignore optional arguments. *)
-      (to_type_expr typ2).type_desc
+  | Tarrow (label, typ1, typ2, _) ->
+      Parsetypes.Tarrow (to_type_expr typ1, to_type_expr typ2, Explicit, label)
   | Ttuple typs ->
       Parsetypes.Ttuple (List.map ~f:to_type_expr typs)
   | Tconstr (path, params, _) ->
