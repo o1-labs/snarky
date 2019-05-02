@@ -148,6 +148,7 @@ and expression_desc =
   | Variable of lid
   | Int of int
   | Fun of Asttypes.arg_label * pattern * expression * explicitness
+  | Newtype of str * expression
   | Seq of expression * expression
   | Let of pattern * expression * expression
   | Constraint of expression * type_expr
