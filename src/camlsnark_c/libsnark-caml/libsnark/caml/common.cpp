@@ -78,6 +78,10 @@ void camlsnark_set_printing_fun(int (*pf)(char*)) {
     close_snarky_print_dest();
 }
 
+void camlsnark_puts(const char* str) {
+    puts(str);
+}
+
 void camlsnark_set_profiling(bool b) {
   libff::inhibit_profiling_counters = b;
   libff::inhibit_profiling_info = b;

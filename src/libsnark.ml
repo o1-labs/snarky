@@ -29,9 +29,31 @@ let set_printing_file =
   foreign "camlsnark_set_printing_file" (string @-> returning void)
 
 module Print_func = struct
-  let print = ref (fun _ -> ())
+  (** Internal: The reference to the user-defined function passed to
+      {!val:set_printing_fun}.
+      OCaml may relocate the function in memory if it is heap-allocated (e.g.
+      using a closure) during its GC cycle, so we store a reference here and
+      call it from the statically-allocated OCaml function {!val:dispatch}
+      below.
+  *)
+  let print = ref (fun str -> str)
 
-  let dispatch str = Sys.opaque_identity (!print str)
+  (** A reference to the C [puts] function.
+
+      The OCaml stdlib functions use thread-unsafe primitives that may cause a
+      crash if calls from multiple threads overlap, so we use this to avoid
+      their thread-unsafe blocking behaviour.
+  *)
+  let puts = foreign "camlsnark_puts" (string @-> returning void)
+
+  (** The dispatcher passed to the C++ interface in {!val:set_printing_fun}.
+      We cannot pass the user-provided function directly to the C++ side in
+      case of GC relocation, so this provides a statically-allocated wrapper.
+
+      The call to {!val:puts} is made from here instead of the C++ side so that
+      OCaml's GC behaviour is mitigated by the the Ctypes API.
+  *)
+  let dispatch str = puts (!print str)
 end
 
 let set_printing_fun =
