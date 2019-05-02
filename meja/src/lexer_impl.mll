@@ -79,6 +79,7 @@ rule token = parse
   | "..." { DOTDOTDOT }
   | ".." { DOTDOT }
   | '.' { DOT }
+  | '-' { MINUS }
   | "//" ([^'\n']* as comment) newline
     { new_line lexbuf; COMMENT (comment) }
   | "//" ([^'\n']* as comment) eof
