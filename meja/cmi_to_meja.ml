@@ -30,6 +30,6 @@ let main =
       let signature = Of_ocaml.to_signature cmi_info.cmi_sign in
       let out_file =
         Filename.(
-          concat !outdir (remove_extension (basename filename) ^ ".meji"))
+          concat !outdir (chop_extension (basename filename) ^ ".meji"))
       in
       do_output out_file (fun out -> Pprint.signature out signature) )
