@@ -52,8 +52,6 @@ module Longident = struct
     match lid with
     | Lident name ->
         pp_name ppf name
-    | Lident name ->
-        pp_print_string ppf name
     | Ldot (lid, name) ->
         fprintf ppf "%a.%s" pp lid name
     | Lapply (lid1, lid2) ->

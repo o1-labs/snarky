@@ -5,6 +5,11 @@ let comma_sep fmt () = fprintf fmt ",@ "
 
 let bar_sep fmt () = fprintf fmt "@ | "
 
+let arg_label fmt = function
+  | Asttypes.Nolabel -> ()
+  | Labelled label -> fprintf fmt "%s:@," label
+  | Optional label -> fprintf fmt "?%s@," label
+
 let rec type_desc ?(bracket = false) fmt = function
   | Tvar (None, _, _) ->
       fprintf fmt "_"
@@ -12,13 +17,13 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "'%s" name.txt
   | Ttuple typs ->
       tuple fmt typs
-  | Tarrow (typ1, typ2, implicitness) ->
+  | Tarrow (typ1, typ2, implicitness, label) ->
       if bracket then fprintf fmt "(" ;
       ( match implicitness with
       | Explicit ->
-          fprintf fmt "@[%a" type_expr_b typ1
+          fprintf fmt "@[%a%a" arg_label label type_expr_b typ1
       | Implicit ->
-          fprintf fmt "@[{%a}" type_expr typ1 ) ;
+          fprintf fmt "@[%a{%a}" arg_label label type_expr typ1 ) ;
       fprintf fmt "@ ->@ %a@]" type_expr typ2 ;
       if bracket then fprintf fmt ")"
   | Tctor v ->
