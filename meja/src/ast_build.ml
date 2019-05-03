@@ -34,7 +34,7 @@ module Type = struct
     ; var_implicit_params= implicits
     ; var_decl_id= -1 }
 
-  let none ?loc () = mk ?loc (Tvar (None, -1, Explicit))
+  let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, -1, explicit))
 
   let var ?loc ?(explicit = Explicit) name =
     mk ?loc (Tvar (Some (Loc.mk ?loc name), -1, explicit))
