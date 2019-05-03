@@ -17,7 +17,7 @@ let rec to_type_desc ~loc desc =
   let to_type_expr = to_type_expr ~loc in
   match desc with
   | Tvar x | Tunivar x ->
-      Parsetypes.Tvar (Option.map ~f:(fun x -> mkloc x loc) x, -1, Explicit)
+      Parsetypes.Tvar (Option.map ~f:(fun x -> mkloc x loc) x, Explicit)
   | Tarrow (label, typ1, typ2, _) ->
       Parsetypes.Tarrow (to_type_expr typ1, to_type_expr typ2, Explicit, label)
   | Ttuple typs ->
@@ -46,7 +46,7 @@ let rec to_type_desc ~loc desc =
   | Tobject _ | Tfield _ | Tnil | Tvariant _ ->
       (* This type isn't supported here. For now, just replace it with a
          variable, so we can still manipulate values including it. *)
-      Parsetypes.Tvar (None, -1, Explicit)
+      Parsetypes.Tvar (None, Explicit)
 
 and to_type_expr ~loc typ =
   {type_desc= to_type_desc ~loc typ.desc; type_id= -1; type_loc= loc}

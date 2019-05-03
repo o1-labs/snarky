@@ -20,13 +20,13 @@ module Type = struct
     let import = import ?must_find in
     let loc = typ.type_loc in
     match typ.type_desc with
-    | Tvar (None, _, explicitness) -> (
+    | Tvar (None, explicitness) -> (
       match must_find with
       | Some true ->
           raise (Error (typ.type_loc, Unbound_type_var typ))
       | _ ->
           (mkvar ~loc ~explicitness None env, env) )
-    | Tvar ((Some {txt= x; _} as name), _, explicitness) -> (
+    | Tvar ((Some {txt= x; _} as name), explicitness) -> (
         let var =
           match must_find with
           | Some true ->

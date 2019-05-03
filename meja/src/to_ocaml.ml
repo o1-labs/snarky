@@ -6,9 +6,9 @@ open Parsetypes
 
 let rec of_type_desc ?loc typ =
   match typ with
-  | Tvar (None, _, _) ->
+  | Tvar (None, _) ->
       Typ.any ?loc ()
-  | Tvar (Some name, _, _) ->
+  | Tvar (Some name, _) ->
       Typ.var ?loc name.txt
   | Tpoly (_, typ) ->
       of_type_expr typ

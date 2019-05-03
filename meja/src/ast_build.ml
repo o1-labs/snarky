@@ -50,10 +50,10 @@ module Type = struct
     ; var_implicit_params= implicits
     ; var_decl_id= -1 }
 
-  let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, -1, explicit))
+  let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, explicit))
 
   let var ?loc ?(explicit = Explicit) name =
-    mk ?loc (Tvar (Some (Loc.mk ?loc name), -1, explicit))
+    mk ?loc (Tvar (Some (Loc.mk ?loc name), explicit))
 
   let constr ?loc ?params ?implicits ident =
     mk ?loc (Tctor (variant ?loc ?params ?implicits ident))

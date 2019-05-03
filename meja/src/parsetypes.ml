@@ -5,7 +5,7 @@ type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of str option * (* depth *) int * explicitness
+  | Tvar of str option * explicitness
   | Ttuple of type_expr list
   | Tarrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
@@ -133,14 +133,14 @@ let rec typ_debug_print fmt typ =
   in
   print "(%i:" typ.type_id ;
   ( match typ.type_desc with
-  | Tvar (None, i, Explicit) ->
-      print "var _@%i" i
-  | Tvar (Some name, i, Explicit) ->
-      print "var %s@%i" name.txt i
-  | Tvar (None, i, Implicit) ->
-      print "implicit_var _@%i" i
-  | Tvar (Some name, i, Implicit) ->
-      print "implicit_var %s@%i" name.txt i
+  | Tvar (None, Explicit) ->
+      print "var _"
+  | Tvar (Some name, Explicit) ->
+      print "var %s" name.txt
+  | Tvar (None, Implicit) ->
+      print "implicit_var _"
+  | Tvar (Some name, Implicit) ->
+      print "implicit_var %s" name.txt
   | Tpoly (typs, typ) ->
       print "poly [%a] %a"
         (print_list typ_debug_print)
