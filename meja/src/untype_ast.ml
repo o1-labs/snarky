@@ -60,4 +60,4 @@ and type_decl decl =
   type_decl_desc ~loc:decl.tdec_loc
     ~params:(List.map ~f:type_expr decl.tdec_params)
     ~implicits:(List.map ~f:type_expr decl.tdec_params)
-    decl.tdec_ident.txt
+    decl.tdec_ident.txt decl.tdec_desc
