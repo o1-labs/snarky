@@ -47,8 +47,7 @@ module Type = struct
   let variant ?loc ?(params = []) ?(implicits = []) ident =
     { var_ident= Loc.mk ident ?loc
     ; var_params= params
-    ; var_implicit_params= implicits
-    ; var_decl_id= -1 }
+    ; var_implicit_params= implicits }
 
   let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, explicit))
 
@@ -99,7 +98,7 @@ module Type_decl = struct
 
   module Field = struct
     let mk ?(loc = Location.none) name typ : Parsetypes.field_decl =
-      {fld_ident= Loc.mk ~loc name; fld_type= typ; fld_id= -1; fld_loc= loc}
+      {fld_ident= Loc.mk ~loc name; fld_type= typ; fld_loc= loc}
   end
 
   module Ctor = struct

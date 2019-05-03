@@ -151,7 +151,7 @@ structure_item:
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
       mkstmt ~pos:$loc (TypeExtension
-        ( {var_ident= x; var_params= params; var_implicit_params= []; var_decl_id= 0}
+        ( {var_ident= x; var_params= params; var_implicit_params= []}
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Request (arg, x, handler)) }
@@ -203,7 +203,7 @@ decl_type_expr:
   | x = decl_type(longident(lident, UIDENT))
     { let (x, params) = x in
       mktyp ~pos:$loc
-        (Tctor {var_ident= x; var_params= params; var_implicit_params= []; var_decl_id= 0}) }
+        (Tctor {var_ident= x; var_params= params; var_implicit_params= []}) }
 
 record_field(ID, EXP):
   | id = as_loc(ID) COLON t = EXP
@@ -212,7 +212,7 @@ record_field(ID, EXP):
 field_decl:
   | x = record_field(lident, type_expr)
     { let (fld_ident, fld_type) = x in
-      { fld_ident; fld_type; fld_id= 0; fld_loc= Loc.of_pos $loc } }
+      { fld_ident; fld_type; fld_loc= Loc.of_pos $loc } }
 
 type_kind:
   | (* empty *)

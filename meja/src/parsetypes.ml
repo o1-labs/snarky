@@ -15,11 +15,10 @@ and type_desc =
 and variant =
   { var_ident: lid
   ; var_params: type_expr list
-  ; var_implicit_params: type_expr list
-  ; var_decl_id: int }
+  ; var_implicit_params: type_expr list }
 
 type field_decl =
-  {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}
+  {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
 type ctor_args =
   | Ctor_tuple of type_expr list

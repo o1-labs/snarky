@@ -109,7 +109,7 @@ end
 module TypeDecl = struct
   open TypeDecl
 
-  let import_field ?must_find env {fld_ident; fld_type; fld_id= _; fld_loc} =
+  let import_field ?must_find env {fld_ident; fld_type; fld_loc} =
     let fld_type, env = Type.import ?must_find fld_type env in
     (env, {Type0.fld_ident; fld_type; fld_id= -1; fld_loc})
 
@@ -385,8 +385,7 @@ let pp_decl_typ ppf decl =
         Tctor
           { var_ident= mk_lid decl.tdec_ident
           ; var_params= decl.tdec_params
-          ; var_implicit_params= decl.tdec_implicit_params
-          ; var_decl_id= decl.tdec_id }
+          ; var_implicit_params= decl.tdec_implicit_params }
     ; type_id= -1
     ; type_loc= Location.none }
 

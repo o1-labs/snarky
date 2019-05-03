@@ -878,7 +878,7 @@ and check_module_sig env msig =
       (Envi.Scope.Immediate m, env)
 
 let type_extension ~loc variant ctors env =
-  let {Parsetypes.var_ident; var_params; var_implicit_params= _; var_decl_id= _}
+  let {Parsetypes.var_ident; var_params; var_implicit_params= _}
       =
     variant
   in

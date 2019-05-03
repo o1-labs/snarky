@@ -27,8 +27,7 @@ let rec to_type_desc ~loc desc =
       Parsetypes.Tctor
         { var_ident
         ; var_params= List.map ~f:to_type_expr params
-        ; var_implicit_params= []
-        ; var_decl_id= 0 }
+        ; var_implicit_params= [] }
   | Tlink typ | Tsubst typ ->
       (to_type_expr typ).type_desc
   | Tpoly (typ, typs) ->
@@ -41,8 +40,7 @@ let rec to_type_desc ~loc desc =
       Parsetypes.Tctor
         { var_ident
         ; var_params= List.map ~f:to_type_expr typs
-        ; var_implicit_params= []
-        ; var_decl_id= 0 }
+        ; var_implicit_params= [] }
   | Tobject _ | Tfield _ | Tnil | Tvariant _ ->
       (* This type isn't supported here. For now, just replace it with a
          variable, so we can still manipulate values including it. *)
@@ -54,7 +52,6 @@ and to_type_expr ~loc typ =
 let to_field_decl {ld_id; ld_type; ld_loc; _} =
   { fld_ident= mkloc (Ident.name ld_id) ld_loc
   ; fld_type= to_type_expr ~loc:ld_loc ld_type
-  ; fld_id= 0
   ; fld_loc= ld_loc }
 
 let to_ctor_args ~loc = function
