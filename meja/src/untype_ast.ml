@@ -59,5 +59,5 @@ let rec type_decl_desc ?loc ?params ?implicits name = function
 and type_decl decl =
   type_decl_desc ~loc:decl.tdec_loc
     ~params:(List.map ~f:type_expr decl.tdec_params)
-    ~implicits:(List.map ~f:type_expr decl.tdec_params)
+    ~implicits:(List.map ~f:type_expr decl.tdec_implicit_params)
     decl.tdec_ident.txt decl.tdec_desc

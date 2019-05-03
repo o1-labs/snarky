@@ -42,3 +42,56 @@ and variant fmt v =
   | _ ->
       fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple
         v.var_params
+
+let field_decl fmt decl =
+  fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident.txt type_expr decl.fld_type
+
+let ctor_args fmt = function
+  | Ctor_tuple [] ->
+      ()
+  | Ctor_tuple typs ->
+      tuple fmt typs
+  | Ctor_record (_, fields) ->
+      fprintf fmt "{@[<2>%a@]}"
+        (pp_print_list ~pp_sep:comma_sep field_decl)
+        fields
+
+let ctor_decl fmt decl =
+  fprintf fmt "%a%a" pp_name decl.ctor_ident.txt ctor_args decl.ctor_args ;
+  match decl.ctor_ret with
+  | Some typ ->
+      fprintf fmt "@ :@ @[<hv>%a@]" type_expr typ
+  | None ->
+      ()
+
+let type_decl_desc fmt = function
+  | TAbstract ->
+      ()
+  | TAlias typ | TUnfold typ ->
+      fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
+  | TRecord fields ->
+      fprintf fmt "@ =@ {@[<hv2>%a@]}"
+        (pp_print_list ~pp_sep:comma_sep field_decl)
+        fields
+  | TVariant ctors ->
+      fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
+  | TOpen ->
+      fprintf fmt "@ =@ .."
+  | TExtend (name, _, ctors) ->
+      fprintf fmt "@ /*@[%a +=@ %a@]*/" Longident.pp name.txt
+        (pp_print_list ~pp_sep:bar_sep ctor_decl)
+        ctors
+  | TForward i ->
+      let print_id fmt i =
+        match i with
+        | Some i ->
+            pp_print_int fmt i
+        | None ->
+            pp_print_char fmt '?'
+      in
+      fprintf fmt "@ /* forward declaration %a */" print_id !i
+
+let type_decl fmt decl =
+  fprintf fmt "type %s" decl.tdec_ident.txt ;
+  (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
+  type_decl_desc fmt decl.tdec_desc

@@ -1,5 +1,5 @@
 (** The default initial environment. *)
-open Envi
+open Typet
 
 open TypeDecl
 

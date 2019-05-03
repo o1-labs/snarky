@@ -1,6 +1,7 @@
 open Core_kernel
 open Ast_types
 open Parsetypes
+open Type0
 
 type error =
   | Check_failed of type_expr * type_expr * error
@@ -304,9 +305,9 @@ let rec check_pattern ~add env typ pat =
       let env = add str typ env in
       ({pat_loc= loc; pat_type= typ; pat_desc= PVariable str}, env)
   | PConstraint (p, constr_typ) ->
-      let constr_typ, env = Envi.Type.import constr_typ env in
-      check_type ~loc env typ constr_typ ;
-      let p, env = check_pattern ~add env constr_typ p in
+      let ctyp, env = Typet.Type.import constr_typ env in
+      check_type ~loc env typ ctyp ;
+      let p, env = check_pattern ~add env ctyp p in
       ( {pat_loc= loc; pat_type= typ; pat_desc= PConstraint (p, constr_typ)}
       , env )
   | PTuple ps ->
@@ -525,7 +526,7 @@ let rec get_expression env expected exp =
       let env = Envi.close_expr_scope env in
       ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
   | Constraint (e, typ') ->
-      let typ, env = Envi.Type.import typ' env in
+      let typ, env = Typet.Type.import typ' env in
       check_type ~loc env expected typ ;
       let e, env = get_expression env typ e in
       check_type ~loc env e.exp_type typ ;
@@ -784,14 +785,14 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let p = {p with pat_type= typ} in
       (p, e, env)
   | PConstraint ({pat_desc= PVariable str; _}, typ), _ ->
-      let typ, env = Envi.Type.import typ env in
-      check_type ~loc env e.exp_type typ ;
-      let typ =
-        if Set.is_empty typ_vars then typ
-        else Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, typ)) env
+      let ctyp, env = Typet.Type.import typ env in
+      check_type ~loc env e.exp_type ctyp ;
+      let ctyp =
+        if Set.is_empty typ_vars then ctyp
+        else Envi.Type.mk ~loc (Tpoly (Set.to_list typ_vars, ctyp)) env
       in
-      let env = Envi.add_name str typ env in
-      let p = {p with pat_type= typ} in
+      let env = Envi.add_name str ctyp env in
+      let p = {p with pat_type= ctyp} in
       (p, e, env)
   | _, [] ->
       let p, env = check_pattern ~add:add_polymorphised env e.exp_type p in
@@ -803,17 +804,17 @@ let rec check_signature_item env item =
   match item.sig_desc with
   | SValue (name, typ) ->
       let env = Envi.open_expr_scope env in
-      let typ, env = Envi.Type.import ~must_find:false typ env in
+      let typ, env = Typet.Type.import ~must_find:false typ env in
       let env = Envi.close_expr_scope env in
       add_polymorphised name typ env
   | SInstance (name, typ) ->
       let env = Envi.open_expr_scope env in
-      let typ, env = Envi.Type.import ~must_find:false typ env in
+      let typ, env = Typet.Type.import ~must_find:false typ env in
       let env = Envi.close_expr_scope env in
       let env = add_polymorphised name typ env in
       Envi.add_implicit_instance name.txt typ env
   | STypeDecl decl ->
-      let _decl, env = Envi.TypeDecl.import decl env in
+      let _decl, env = Typet.TypeDecl.import decl env in
       env
   | SModule (name, msig) -> (
       let m, env = check_module_sig env msig in
@@ -875,33 +876,38 @@ and check_module_sig env msig =
       (Envi.Scope.Immediate m, env)
 
 let type_extension ~loc variant ctors env =
+  let {Parsetypes.var_ident; var_params; var_implicit_params= _; var_decl_id= _}
+      =
+    variant
+  in
   let ( {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_id; _}
       as decl ) =
-    match Envi.raw_find_type_declaration variant.var_ident env with
+    match Envi.raw_find_type_declaration var_ident env with
     | open_decl ->
         open_decl
     | exception _ ->
-        raise (Error (loc, Unbound ("type constructor", variant.var_ident)))
+        raise (Error (loc, Unbound ("type constructor", var_ident)))
   in
   ( match tdec_desc with
   | TOpen ->
       ()
   | _ ->
-      raise (Error (loc, Not_extensible variant.var_ident.txt)) ) ;
-  ( match List.iter2 tdec_params variant.var_params ~f:(fun _ _ -> ()) with
+      raise (Error (loc, Not_extensible var_ident.txt)) ) ;
+  ( match List.iter2 tdec_params var_params ~f:(fun _ _ -> ()) with
   | Ok _ ->
       ()
   | Unequal_lengths ->
-      raise (Error (loc, Extension_different_arity variant.var_ident.txt)) ) ;
+      raise (Error (loc, Extension_different_arity var_ident.txt)) ) ;
   let decl =
-    { tdec_ident
-    ; tdec_params= variant.var_params
-    ; tdec_implicit_params
+    { Parsetypes.tdec_ident
+    ; tdec_params= var_params
+    ; tdec_implicit_params=
+        List.map ~f:Untype_ast.type_expr tdec_implicit_params
     ; tdec_id
-    ; tdec_desc= TExtend (variant.var_ident, decl, ctors)
+    ; tdec_desc= TExtend (var_ident, decl, ctors)
     ; tdec_loc= loc }
   in
-  let decl, env = Envi.TypeDecl.import decl env in
+  let decl, env = Typet.TypeDecl.import decl env in
   let ctors =
     match decl.tdec_desc with
     | TExtend (_, _, ctors) ->
@@ -910,7 +916,10 @@ let type_extension ~loc variant ctors env =
         failwith "Expected a TExtend."
   in
   let variant =
-    {variant with var_decl_id= tdec_id; var_params= decl.tdec_params}
+    { var_ident
+    ; var_implicit_params= decl.tdec_implicit_params
+    ; var_decl_id= tdec_id
+    ; var_params= decl.tdec_params }
   in
   (env, variant, ctors)
 
@@ -932,9 +941,9 @@ let rec check_statement env stmt =
       let _, e, env = check_binding ~toplevel:true env p e in
       let env = Envi.add_implicit_instance name.txt e.exp_type env in
       (env, {stmt with stmt_desc= Instance (name, e)})
-  | TypeDecl decl ->
-      let decl, env = Envi.TypeDecl.import decl env in
-      let stmt = {stmt with stmt_desc= TypeDecl decl} in
+  | TypeDecl decl' ->
+      let decl, env = Typet.TypeDecl.import decl' env in
+      let stmt = {stmt with stmt_desc= TypeDecl (Untype_ast.type_decl decl)} in
       if !in_decl then (env, stmt)
       else (
         in_decl := true ;
@@ -957,7 +966,7 @@ let rec check_statement env stmt =
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)
   | TypeExtension (variant, ctors) ->
-      let env, variant, ctors = type_extension ~loc variant ctors env in
+      let env, _variant, _ctors = type_extension ~loc variant ctors env in
       (env, {stmt with stmt_desc= TypeExtension (variant, ctors)})
   | Request (arg, ctor_decl, handler) ->
       let open Ast_build in
@@ -971,7 +980,7 @@ let rec check_statement env stmt =
       let ctor_decl =
         match ctors with
         | [ctor] ->
-            { ctor with
+            { (Untype_ast.ctor_decl ctor) with
               ctor_ret=
                 Some
                   (Type.mk ~loc
@@ -1098,7 +1107,7 @@ let check (ast : statement list) (env : Envi.t) =
 
 open Format
 
-let pp_typ = Pprint.type_expr
+let pp_typ = Typeprint.type_expr
 
 let rec report_error ppf = function
   | Check_failed (typ, constr_typ, err) ->

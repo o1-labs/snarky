@@ -1,4 +1,5 @@
 open Core_kernel
+open Ast_types
 open Parsetypes
 
 let poly_name name = match name with "t" -> "poly" | name -> name ^ "_poly"
@@ -30,9 +31,10 @@ let var_type_lident lid =
 
 let typ_name name = match name with "t" -> "typ" | name -> name ^ "_typ"
 
-let typ_of_decl env decl =
+let typ_of_decl env (decl : Type0.type_decl) =
   let loc = decl.tdec_loc in
   let name = decl.tdec_ident.txt in
+  let decl' = Untype_ast.type_decl decl in
   try
     match decl.tdec_desc with
     | TRecord fields ->
@@ -59,7 +61,7 @@ let typ_of_decl env decl =
             name )
         in
         let poly_name = poly_name name in
-        let poly_decl, poly_decl_content =
+        let poly_decl =
           let poly_decl_fields =
             List.map fields ~f:(fun field ->
                 assert (
@@ -89,37 +91,37 @@ let typ_of_decl env decl =
                         Tvar (Some (Location.mkloc var_name loc), -1, Explicit)
                   )
                 in
-                {field with fld_type= typ} )
+                Untype_ast.field_decl {field with fld_type= typ} )
           in
           let params =
             Map.fold !constr_map ~init:[] ~f:(fun ~key:_ ~data:(name, _) l ->
                 Ast_build.Type.var ~loc name :: l )
           in
           let poly_decl_content =
-            { decl with
+            { decl' with
               tdec_ident= Location.mkloc poly_name loc
             ; tdec_desc= TRecord poly_decl_fields
-            ; tdec_params= decl.tdec_params @ params }
+            ; tdec_params= decl'.tdec_params @ params }
           in
-          ( {stmt_loc= loc; stmt_desc= TypeDecl poly_decl_content}
-          , poly_decl_content )
+          {stmt_loc= loc; stmt_desc= TypeDecl poly_decl_content}
         in
         let mk_decl params =
           { stmt_loc= loc
           ; stmt_desc=
               TypeDecl
-                { decl with
+                { decl' with
                   tdec_desc=
                     TAlias
-                      (Envi.TypeDecl.mk_typ ~loc
-                         ~params:(decl.tdec_params @ params)
-                         poly_decl_content env) } }
+                      (Ast_build.Type.constr ~loc
+                         ~params:(decl'.tdec_params @ params)
+                         (Lident poly_name)) } }
         in
         let t_decl =
           let params =
             Map.fold !constr_map ~init:[]
               ~f:(fun ~key:_ ~data:(_, variant) l ->
-                Envi.Type.mk ~loc (Tctor variant) env :: l )
+                Untype_ast.type_expr (Envi.Type.mk ~loc (Tctor variant) env)
+                :: l )
           in
           mk_decl params
         in
@@ -133,7 +135,8 @@ let typ_of_decl env decl =
                     var_ident=
                       Location.mkloc (var_type_lident name.txt) name.loc }
                 in
-                Envi.Type.mk ~loc (Tctor variant) env :: l )
+                Untype_ast.type_expr (Envi.Type.mk ~loc (Tctor variant) env)
+                :: l )
           in
           mk_decl params
         in
@@ -220,7 +223,9 @@ let typ_of_decl env decl =
           }
         in
         if Map.is_empty !constr_map then
-          Some [{stmt_loc= loc; stmt_desc= TypeDecl decl}; typ_instance]
+          Some
+            [ {stmt_loc= loc; stmt_desc= TypeDecl (Untype_ast.type_decl decl)}
+            ; typ_instance ]
         else Some [poly_decl; t_decl; var_decl; typ_instance]
     | _ ->
         None

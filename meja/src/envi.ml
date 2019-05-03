@@ -1,6 +1,6 @@
 open Core_kernel
 open Ast_types
-open Parsetypes
+open Type0
 open Ast_build.Loc
 open Longident
 
@@ -37,7 +37,7 @@ module TypeEnvi = struct
     ; type_decl_id: int
     ; instance_id: int
     ; variable_instances: type_expr int_map
-    ; implicit_vars: expression list
+    ; implicit_vars: Parsetypes.expression list
     ; implicit_id: int
     ; type_decls: type_decl int_map
     ; instances: (int * type_expr) list
@@ -852,7 +852,7 @@ module Type = struct
 
   let new_implicit_var ~loc typ env =
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.resolve_env.type_env in
-    let mk exp_loc exp_desc = {exp_loc; exp_desc; exp_type= typ} in
+    let mk exp_loc exp_desc = {Parsetypes.exp_loc; exp_desc; exp_type= typ} in
     let name = Location.mkloc (sprintf "__implicit%i__" implicit_id) loc in
     let new_exp =
       mk loc (Unifiable {expression= None; name; id= implicit_id})
@@ -877,7 +877,7 @@ module Type = struct
             None )
 
   let generate_implicits e env =
-    let loc = e.exp_loc in
+    let loc = e.Parsetypes.exp_loc in
     let implicits, typ = get_implicits [] e.exp_type in
     match implicits with
     | [] ->
@@ -892,7 +892,7 @@ module Type = struct
   let rec instantiate_implicits ~unify implicit_vars env =
     let implicit_vars =
       List.map implicit_vars ~f:(fun e ->
-          {e with exp_type= flatten e.exp_type env} )
+          {e with Parsetypes.exp_type= flatten e.Parsetypes.exp_type env} )
     in
     let env_implicits = env.resolve_env.type_env.implicit_vars in
     env.resolve_env.type_env
@@ -937,7 +937,9 @@ module Type = struct
     let implicit_vars = instantiate_implicits ~unify implicit_vars env in
     let implicit_vars =
       List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
-          let cmp = compare exp1.exp_type exp2.exp_type in
+          let cmp =
+            compare exp1.Parsetypes.exp_type exp2.Parsetypes.exp_type
+          in
           ( if Int.equal cmp 0 then
             match (exp1.exp_desc, exp2.exp_desc) with
             | Unifiable desc1, Unifiable desc2 ->
@@ -1342,7 +1344,7 @@ let find_name (lid : lid) env =
 
 open Format
 
-let pp_typ = Pprint.type_expr
+let pp_typ = Typeprint.type_expr
 
 let pp_decl_typ ppf decl =
   pp_typ ppf

@@ -1,10 +1,6 @@
 open Core_kernel
 open Ast_types
 
-let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
-
-let mk_lid (str : str) = map_loc str ~f:(fun x -> Longident.Lident x)
-
 type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
 and type_desc =
@@ -50,13 +46,13 @@ and type_decl_desc =
   | TRecord of field_decl list
   | TVariant of ctor_decl list
   | TOpen
-  | TExtend of lid * type_decl * ctor_decl list
+  | TExtend of lid * Type0.type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
 type pattern =
-  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: type_expr}
+  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: Type0.type_expr}
 
 and pattern_desc =
   | PAny
@@ -69,7 +65,7 @@ and pattern_desc =
   | PCtor of lid * pattern option
 
 type expression =
-  {exp_desc: expression_desc; exp_loc: Location.t; exp_type: type_expr}
+  {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
 
 and expression_desc =
   | Apply of expression * (Asttypes.arg_label * expression) list
