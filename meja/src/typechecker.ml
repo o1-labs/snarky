@@ -1,4 +1,5 @@
 open Core_kernel
+open Ast_types
 open Parsetypes
 
 type error =
