@@ -1,94 +1,91 @@
-open Core_kernel
-open Parsetypes
 open Envi
-open Longident
+open TypeDecl
+open Ast_build
+open Type
+open Type_decl
 
-let mkloc s = Location.(mkloc s none)
+module TypeDecls = struct
+  let var_a = Type.var "a"
 
-let mk_type_decl ?(params = []) ?(implicit_params = []) name desc =
-  { tdec_ident= mkloc name
-  ; tdec_params= params
-  ; tdec_implicit_params= implicit_params
-  ; tdec_desc= desc
-  ; tdec_id= 0
-  ; tdec_loc= Location.none }
+  let int = abstract "int"
 
-let mk_constructor ?(params = []) name =
-  { ctor_ident= mkloc name
-  ; ctor_args= Ctor_tuple params
-  ; ctor_ret= None
-  ; ctor_loc= Location.none }
+  let unit = variant "unit" [Ctor.with_args "()" []]
 
-let env = empty (empty_resolve_env ())
+  let bool =
+    variant "bool" [Ctor.with_args "true" []; Ctor.with_args "false" []]
 
-let int, env = TypeDecl.import (mk_type_decl "int" TAbstract) env
+  let char = abstract "char"
 
-let unit, env =
-  TypeDecl.import (mk_type_decl "unit" (TVariant [mk_constructor "()"])) env
+  let string = abstract "string"
 
-let bool, env =
-  TypeDecl.import
-    (mk_type_decl "bool"
-       (TVariant [mk_constructor "true"; mk_constructor "false"]))
-    env
+  let float = abstract "float"
 
-let char, env = TypeDecl.import (mk_type_decl "char" TAbstract) env
+  let exn = open_ "exn"
 
-let string, env = TypeDecl.import (mk_type_decl "string" TAbstract) env
+  let option =
+    variant "option" ~params:[var "a"]
+      [Ctor.with_args "None" []; Ctor.with_args "Some" [Type.var "a"]]
 
-let float, env = TypeDecl.import (mk_type_decl "float" TAbstract) env
+  let list =
+    variant "list" ~params:[var "a"]
+      [ Ctor.with_args "[]" []
+      ; Ctor.with_args "::" [var "a"; constr (Lident "list") ~params:[var "a"]]
+      ]
 
-let exn, env = TypeDecl.import (mk_type_decl "exn" TOpen) env
+  let bytes = abstract "bytes"
 
-let option, env =
-  let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
-  TypeDecl.import
-    (mk_type_decl "option" ~params:[var]
-       (TVariant [mk_constructor "Some" ~params:[var]; mk_constructor "None"]))
-    env
+  let int32 = abstract "int32"
 
-let list, env =
-  let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
-  let typ =
-    Type.mk ~loc:Location.none
-      (Tctor
-         { var_ident= mkloc (Lident "list")
-         ; var_params= [var]
-         ; var_implicit_params= []
-         ; var_decl_id= 0 })
-      env
-  in
-  TypeDecl.import
-    (mk_type_decl "list" ~params:[var]
-       (TVariant [mk_constructor "::" ~params:[var; typ]; mk_constructor "[]"]))
-    env
+  let int64 = abstract "int64"
 
-let env =
-  List.fold ~init:env
-    ~f:(fun env (name, vars) ->
-      let params =
-        List.init vars ~f:(fun _ -> Type.mkvar ~loc:Location.none None env)
-      in
-      snd (TypeDecl.import (mk_type_decl name ~params TAbstract) env) )
-    [("bytes", 0); ("int32", 0); ("int64", 0); ("nativeint", 0)]
+  let nativeint = abstract "nativeint"
 
-let field, env =
-  let var =
-    Type.mkvar ~loc:Location.none ~explicitness:Implicit
-      (Some (mkloc "field"))
-      env
-  in
-  TypeDecl.import (mk_type_decl "field" (TUnfold var)) env
+  let field = unfold "field" (Type.var ~explicit:Implicit "field")
 
-let lazy_t, env =
-  let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
-  TypeDecl.import (mk_type_decl "lazy_t" ~params:[var] TAbstract) env
+  let lazy_t = abstract "lazy_t" ~params:[var "a"]
 
-let array, env =
-  let var = Type.mkvar ~loc:Location.none (Some (mkloc "a")) env in
-  TypeDecl.import (mk_type_decl "array" ~params:[var] TAbstract) env
+  let array = abstract "array" ~params:[var "a"]
+end
+
+let env = Envi.(empty (empty_resolve_env ()))
+
+open TypeDecls
+
+let int, env = import int env
+
+let unit, env = import unit env
+
+let bool, env = import bool env
+
+let char, env = import char env
+
+let string, env = import string env
+
+let float, env = import float env
+
+let exn, env = import exn env
+
+let option, env = import option env
+
+let list, env = import list env
+
+let bytes, env = import bytes env
+
+let int32, env = import int32 env
+
+let int64, env = import int64 env
+
+let nativeint, env = import nativeint env
+
+let field, env = import field env
+
+let lazy_t, env = import lazy_t env
+
+let array, env = import array env
 
 module Type = struct
+  open Envi
+
   let int = TypeDecl.mk_typ int ~params:[] env
 
   let unit = TypeDecl.mk_typ unit ~params:[] env
