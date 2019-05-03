@@ -1,0 +1,44 @@
+open Ast_types
+open Type0
+open Format
+open Ast_print
+
+let rec type_desc ?(bracket = false) fmt = function
+  | Tvar (None, _, _) ->
+      fprintf fmt "_"
+  | Tvar (Some name, _, _) ->
+      fprintf fmt "'%s" name.txt
+  | Ttuple typs ->
+      fprintf fmt "@[<1>%a@]" tuple typs
+  | Tarrow (typ1, typ2, implicitness, label) ->
+      if bracket then fprintf fmt "(" ;
+      ( match implicitness with
+      | Explicit ->
+          fprintf fmt "%a%a" arg_label label type_expr_b typ1
+      | Implicit ->
+          fprintf fmt "%a{%a}" arg_label label type_expr typ1 ) ;
+      arg_label_box_end fmt label ;
+      fprintf fmt "@ -> %a" type_expr typ2 ;
+      if bracket then fprintf fmt ")"
+  | Tctor v ->
+      variant fmt v
+  | Tpoly (vars, typ) ->
+      if bracket then fprintf fmt "(" ;
+      fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
+        type_expr typ ;
+      if bracket then fprintf fmt ")"
+
+and tuple fmt typs =
+  fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
+
+and type_expr fmt typ = type_desc fmt typ.type_desc
+
+and type_expr_b fmt typ = type_desc ~bracket:true fmt typ.type_desc
+
+and variant fmt v =
+  match v.var_params with
+  | [] ->
+      Longident.pp fmt v.var_ident.txt
+  | _ ->
+      fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple
+        v.var_params
