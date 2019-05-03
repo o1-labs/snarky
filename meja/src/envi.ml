@@ -1262,10 +1262,6 @@ module TypeDecl = struct
          ; var_implicit_params= []
          ; var_decl_id= decl.tdec_id })
 
-  let find ident env =
-    let decl = raw_find_type_declaration ident env in
-    import decl env
-
   let find_of_type ~loc typ env =
     let open Option.Let_syntax in
     let%map variant =
