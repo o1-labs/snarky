@@ -41,6 +41,13 @@ module Type = struct
 
   let constr ?loc ?params ?implicits ident =
     mk ?loc (Tctor (variant ?loc ?params ?implicits ident))
+
+  let tuple ?loc typs = mk ?loc (Ttuple typs)
+
+  let arrow ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) typ1 typ2 =
+    mk ?loc (Tarrow (typ1, typ2, explicit, label))
+
+  let poly ?loc vars var = mk ?loc (Tpoly (vars, var))
 end
 
 module Pat = struct
