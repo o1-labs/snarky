@@ -125,7 +125,7 @@ let main =
       | None ->
           file := Some filename )
     usage_text ;
-  let env = Envi.Core.env in
+  let env = Initial_env.env in
   try
     let env =
       if !stdlib then (
