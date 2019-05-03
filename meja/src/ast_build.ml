@@ -50,6 +50,52 @@ module Type = struct
   let poly ?loc vars var = mk ?loc (Tpoly (vars, var))
 end
 
+module Type_decl = struct
+  let mk ?(loc = Location.none) ?(params = []) ?(implicits = []) ~name d =
+    { tdec_ident= Loc.mk ~loc name
+    ; tdec_params= params
+    ; tdec_implicit_params= implicits
+    ; tdec_desc= d
+    ; tdec_id= -1
+    ; tdec_loc= loc }
+
+  let abstract ?loc ?params ?implicits ~name =
+    mk ?loc ?params ?implicits ~name TAbstract
+
+  let alias ?loc ?params ?implicits ~name typ =
+    mk ?loc ?params ?implicits ~name (TAlias typ)
+
+  let unfold ?loc ?params ?implicits ~name typ =
+    mk ?loc ?params ?implicits ~name (TUnfold typ)
+
+  let record ?loc ?params ?implicits ~name fields =
+    mk ?loc ?params ?implicits ~name (TRecord fields)
+
+  let variant ?loc ?params ?implicits ~name ctors =
+    mk ?loc ?params ?implicits ~name (TVariant ctors)
+
+  let open_ ?loc ?params ?implicits ~name =
+    mk ?loc ?params ?implicits ~name TOpen
+
+  let forward ?loc ?params ?implicits ~name =
+    mk ?loc ?params ?implicits ~name (TForward (ref None))
+
+  module Field = struct
+    let mk ?(loc = Location.none) ~name typ =
+      {fld_ident= Loc.mk ~loc name; fld_type= typ; fld_id= -1; fld_loc= loc}
+  end
+
+  module Ctor = struct
+    let mk ?(loc = Location.none) ?ret ~name d =
+      {ctor_ident= Loc.mk ~loc name; ctor_args= d; ctor_ret= ret; ctor_loc= loc}
+
+    let with_args ?loc ?ret ~name args = mk ?loc ?ret ~name (Ctor_tuple args)
+
+    let with_record ?loc ?ret ~name fields =
+      mk ?loc ?ret ~name (Ctor_record (-1, fields))
+  end
+end
+
 module Pat = struct
   let mk ?(loc = Location.none) d =
     {pat_desc= d; pat_loc= loc; pat_type= Type.none ~loc ()}
