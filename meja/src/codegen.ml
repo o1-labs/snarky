@@ -31,10 +31,9 @@ let var_type_lident lid =
 
 let typ_name name = match name with "t" -> "typ" | name -> name ^ "_typ"
 
-let typ_of_decl env (decl : Type0.type_decl) =
-  let loc = decl.tdec_loc in
+let typ_of_decl ~loc env (decl : Type0.type_decl) =
   let name = decl.tdec_ident.txt in
-  let decl' = Untype_ast.type_decl decl in
+  let decl' = Untype_ast.type_decl ~loc decl in
   try
     match decl.tdec_desc with
     | TRecord fields ->
@@ -91,7 +90,7 @@ let typ_of_decl env (decl : Type0.type_decl) =
                         Tvar (Some (Location.mkloc var_name loc), -1, Explicit)
                   )
                 in
-                Untype_ast.field_decl {field with fld_type= typ} )
+                Untype_ast.field_decl ~loc {field with fld_type= typ} )
           in
           let params =
             Map.fold !constr_map ~init:[] ~f:(fun ~key:_ ~data:(name, _) l ->
@@ -121,7 +120,7 @@ let typ_of_decl env (decl : Type0.type_decl) =
           let params =
             Map.fold !constr_map ~init:[]
               ~f:(fun ~key:_ ~data:(_, variant) l ->
-                Untype_ast.type_expr (Envi.Type.mk ~loc (Tctor variant) env)
+                Untype_ast.type_expr ~loc (Envi.Type.mk (Tctor variant) env)
                 :: l )
           in
           mk_decl params
@@ -136,7 +135,7 @@ let typ_of_decl env (decl : Type0.type_decl) =
                     var_ident=
                       Location.mkloc (var_type_lident name.txt) name.loc }
                 in
-                Untype_ast.type_expr (Envi.Type.mk ~loc (Tctor variant) env)
+                Untype_ast.type_expr ~loc (Envi.Type.mk (Tctor variant) env)
                 :: l )
           in
           mk_decl params
@@ -225,7 +224,8 @@ let typ_of_decl env (decl : Type0.type_decl) =
         in
         if Map.is_empty !constr_map then
           Some
-            [ {stmt_loc= loc; stmt_desc= TypeDecl (Untype_ast.type_decl decl)}
+            [ { stmt_loc= loc
+              ; stmt_desc= TypeDecl (Untype_ast.type_decl ~loc decl) }
             ; typ_instance ]
         else Some [poly_decl; t_decl; var_decl; typ_instance]
     | _ ->

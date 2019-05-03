@@ -1,6 +1,6 @@
 open Ast_types
 
-type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
+type type_expr = {type_desc: type_desc; type_id: int}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -17,26 +17,21 @@ and variant =
   ; var_implicit_params: type_expr list
   ; var_decl_id: int }
 
-type field_decl =
-  {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}
+type field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
 
 type ctor_args =
   | Ctor_tuple of type_expr list
   | Ctor_record of int * field_decl list
 
 type ctor_decl =
-  { ctor_ident: str
-  ; ctor_args: ctor_args
-  ; ctor_ret: type_expr option
-  ; ctor_loc: Location.t }
+  {ctor_ident: str; ctor_args: ctor_args; ctor_ret: type_expr option}
 
 type type_decl =
   { tdec_ident: str
   ; tdec_params: type_expr list
   ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
-  ; tdec_id: int
-  ; tdec_loc: Location.t }
+  ; tdec_id: int }
 
 and type_decl_desc =
   | TAbstract
@@ -50,8 +45,7 @@ and type_decl_desc =
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
-let none ?(loc = Location.none) () =
-  {type_desc= Tvar (None, -1, Explicit); type_id= -1; type_loc= loc}
+let none = {type_desc= Tvar (None, -1, Explicit); type_id= -1}
 
 let rec typ_debug_print fmt typ =
   let open Format in

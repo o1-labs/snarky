@@ -23,16 +23,16 @@ module Type = struct
     | Tvar (None, explicitness) -> (
       match must_find with
       | Some true ->
-          raise (Error (typ.type_loc, Unbound_type_var typ))
+          raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (mkvar ~loc ~explicitness None env, env) )
+          (mkvar ~explicitness None env, env) )
     | Tvar ((Some {txt= x; _} as name), explicitness) -> (
         let var =
           match must_find with
           | Some true ->
               let var = find_type_variable x env in
               if not (Option.is_some var) then
-                raise (Error (typ.type_loc, Unbound_type_var typ)) ;
+                raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
               None
@@ -43,7 +43,7 @@ module Type = struct
         | Some var ->
             (var, env)
         | None ->
-            let var = mkvar ~loc ~explicitness name env in
+            let var = mkvar ~explicitness name env in
             (var, add_type_variable x var env) )
     | Tpoly (vars, typ) ->
         let env = open_expr_scope env in
@@ -54,7 +54,7 @@ module Type = struct
         in
         let typ, env = import typ env in
         let env = close_expr_scope env in
-        (mk ~loc (Tpoly (vars, typ)) env, env)
+        (mk (Tpoly (vars, typ)) env, env)
     | Tctor variant -> (
         let {var_ident; var_params; _} = variant in
         match raw_find_type_declaration var_ident env with
@@ -77,7 +77,7 @@ module Type = struct
             if not (Int.equal given_args_length expected_args_length) then
               raise
                 (Error
-                   ( typ.type_loc
+                   ( loc
                    , Wrong_number_args
                        (var_ident.txt, given_args_length, expected_args_length)
                    )) ;
@@ -92,33 +92,30 @@ module Type = struct
               ; var_decl_id= decl.tdec_id
               ; var_implicit_params= decl.tdec_implicit_params }
             in
-            (mk ~loc (Tctor variant) env, env) )
+            (mk (Tctor variant) env, env) )
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
               let t, e = import t e in
               (e, t) )
         in
-        (mk ~loc (Ttuple typs) env, env)
+        (mk (Ttuple typs) env, env)
     | Tarrow (typ1, typ2, explicit, label) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
-        (mk ~loc (Tarrow (typ1, typ2, explicit, label)) env, env)
+        (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
 end
 
 module TypeDecl = struct
   open TypeDecl
 
-  let import_field ?must_find env {fld_ident; fld_type; fld_loc} =
+  let import_field ?must_find env {fld_ident; fld_type; fld_loc= _} =
     let fld_type, env = Type.import ?must_find fld_type env in
-    (env, {Type0.fld_ident; fld_type; fld_id= -1; fld_loc})
+    (env, {Type0.fld_ident; fld_type; fld_id= -1})
 
   let import decl' env =
-    let { tdec_ident
-        ; tdec_params
-        ; tdec_implicit_params
-        ; tdec_desc
-        ; tdec_loc } =
+    let {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc= _}
+        =
       decl'
     in
     let tdec_id =
@@ -164,8 +161,7 @@ module TypeDecl = struct
         ; tdec_params
         ; tdec_implicit_params= []
         ; tdec_desc= TAbstract
-        ; tdec_id
-        ; tdec_loc }
+        ; tdec_id }
     in
     let add_implicits implicit_params =
       if Set.is_empty implicit_params then tdec_implicit_params
@@ -270,18 +266,15 @@ module TypeDecl = struct
                           ~f:(import_field ?must_find)
                       in
                       let decl =
-                        mk ~loc:ctor.ctor_loc ~name:ctor.ctor_ident
-                          ~params:ctor_ret_params (TRecord fields) env
+                        mk ~name:ctor.ctor_ident ~params:ctor_ret_params
+                          (TRecord fields) env
                       in
                       Envi.Type.map_env env ~f:(TypeEnvi.add_decl decl) ;
                       (env, Type0.Ctor_record (decl.tdec_id, fields))
                 in
                 let env = push_scope scope (close_expr_scope env) in
-                ( env
-                , { Type0.ctor_ident= ctor.ctor_ident
-                  ; ctor_args
-                  ; ctor_ret
-                  ; ctor_loc= ctor.ctor_loc } ) )
+                (env, {Type0.ctor_ident= ctor.ctor_ident; ctor_args; ctor_ret})
+            )
           in
           let tdec_desc =
             match tdec_desc with

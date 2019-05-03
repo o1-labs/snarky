@@ -113,7 +113,7 @@ end
 
 module Pat = struct
   let mk ?(loc = Location.none) d : Parsetypes.pattern =
-    {pat_desc= d; pat_loc= loc; pat_type= Type0.none ~loc ()}
+    {pat_desc= d; pat_loc= loc; pat_type= Type0.none}
 
   let any ?loc () = mk ?loc PAny
 
@@ -132,7 +132,7 @@ end
 
 module Exp = struct
   let mk ?(loc = Location.none) d : Parsetypes.expression =
-    {exp_desc= d; exp_loc= loc; exp_type= Type0.none ~loc ()}
+    {exp_desc= d; exp_loc= loc; exp_type= Type0.none}
 
   let fun_ ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) p body =
     mk ?loc (Fun (label, p, body, explicit))

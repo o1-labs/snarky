@@ -8,35 +8,37 @@ let rec type_desc ?loc = function
   | Tvar (Some name, _, explicit) ->
       Type.var ?loc ~explicit name.txt
   | Ttuple typs ->
-      Type.tuple ?loc (List.map ~f:type_expr typs)
+      Type.tuple ?loc (List.map ~f:(type_expr ?loc) typs)
   | Tarrow (typ1, typ2, explicit, label) ->
-      Type.arrow ?loc ~explicit ~label (type_expr typ1) (type_expr typ2)
+      Type.arrow ?loc ~explicit ~label (type_expr ?loc typ1)
+        (type_expr ?loc typ2)
   | Tctor
       { var_ident= ident
       ; var_params= params
       ; var_implicit_params= implicits
       ; var_decl_id= _ } ->
-      let params = List.map ~f:type_expr params in
-      let implicits = List.map ~f:type_expr implicits in
+      let params = List.map ~f:(type_expr ?loc) params in
+      let implicits = List.map ~f:(type_expr ?loc) implicits in
       Type.constr ?loc ~params ~implicits ident.txt
   | Tpoly (vars, var) ->
-      Type.poly ?loc (List.map ~f:type_expr vars) (type_expr var)
+      Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
 
-and type_expr typ = type_desc ~loc:typ.type_loc typ.type_desc
+and type_expr ?loc typ = type_desc ?loc typ.type_desc
 
-let field_decl fld =
-  Type_decl.Field.mk ~loc:fld.fld_loc fld.fld_ident.txt
-    (type_expr fld.fld_type)
+let field_decl ?loc fld =
+  Type_decl.Field.mk ?loc fld.fld_ident.txt (type_expr ?loc fld.fld_type)
 
 let ctor_args ?loc ?ret name = function
   | Ctor_tuple typs ->
-      Type_decl.Ctor.with_args ?loc ?ret name (List.map ~f:type_expr typs)
+      Type_decl.Ctor.with_args ?loc ?ret name
+        (List.map ~f:(type_expr ?loc) typs)
   | Ctor_record (_, fields) ->
-      Type_decl.Ctor.with_record ?loc ?ret name (List.map ~f:field_decl fields)
+      Type_decl.Ctor.with_record ?loc ?ret name
+        (List.map ~f:(field_decl ?loc) fields)
 
-let ctor_decl ctor =
-  ctor_args ctor.ctor_ident.txt ctor.ctor_args ~loc:ctor.ctor_loc
-    ?ret:(Option.map ~f:type_expr ctor.ctor_ret)
+let ctor_decl ?loc ctor =
+  ctor_args ?loc ctor.ctor_ident.txt ctor.ctor_args
+    ?ret:(Option.map ~f:(type_expr ?loc) ctor.ctor_ret)
 
 let rec type_decl_desc ?loc ?params ?implicits name = function
   | TAbstract ->
@@ -58,8 +60,8 @@ let rec type_decl_desc ?loc ?params ?implicits name = function
   | TForward _ ->
       Type_decl.forward ?loc ?params ?implicits name
 
-and type_decl decl =
-  type_decl_desc ~loc:decl.tdec_loc
+and type_decl ?loc decl =
+  type_decl_desc ?loc
     ~params:(List.map ~f:type_expr decl.tdec_params)
     ~implicits:(List.map ~f:type_expr decl.tdec_implicit_params)
     decl.tdec_ident.txt decl.tdec_desc
