@@ -905,7 +905,6 @@ let type_extension ~loc variant ctors env =
     ; tdec_params= var_params
     ; tdec_implicit_params=
         List.map ~f:Untype_ast.type_expr tdec_implicit_params
-    ; tdec_id
     ; tdec_desc= TExtend (var_ident, decl, ctors)
     ; tdec_loc= loc }
   in

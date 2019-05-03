@@ -118,7 +118,6 @@ module TypeDecl = struct
         ; tdec_params
         ; tdec_implicit_params
         ; tdec_desc
-        ; tdec_id= _
         ; tdec_loc } =
       decl'
     in

@@ -72,7 +72,6 @@ module Type_decl = struct
     ; tdec_params= params
     ; tdec_implicit_params= implicits
     ; tdec_desc= d
-    ; tdec_id= -1
     ; tdec_loc= loc }
 
   let abstract ?loc ?params ?implicits name =

@@ -100,7 +100,6 @@ let rec to_signature_item item =
                 List.map ~f:(to_type_expr ~loc:decl.type_loc) decl.type_params
             ; tdec_implicit_params= []
             ; tdec_desc
-            ; tdec_id= 0
             ; tdec_loc= decl.type_loc }
       ; sig_loc= decl.type_loc }
   | Sig_module (ident, decl, _) ->

@@ -35,7 +35,6 @@ type type_decl =
   ; tdec_params: type_expr list
   ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
-  ; tdec_id: int
   ; tdec_loc: Location.t }
 
 and type_decl_desc =

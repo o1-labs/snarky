@@ -141,7 +141,6 @@ structure_item:
         ; tdec_params= args
         ; tdec_implicit_params= []
         ; tdec_desc= k
-        ; tdec_id= -1
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
     { mkstmt ~pos:$loc (Module (x, m)) }
@@ -168,7 +167,6 @@ signature_item:
         ; tdec_params= args
         ; tdec_implicit_params= []
         ; tdec_desc= k
-        ; tdec_id= -1
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
     { mksig ~pos:$loc (SModule (x, m)) }
