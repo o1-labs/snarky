@@ -72,3 +72,7 @@ type str = string Location.loc
 type lid = Longident.t Location.loc
 
 type explicitness = Implicit | Explicit
+
+let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
+
+let mk_lid (str : str) = map_loc str ~f:(fun x -> Longident.Lident x)

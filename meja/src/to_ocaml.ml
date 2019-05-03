@@ -1,5 +1,6 @@
 open Core_kernel
 open Asttypes
+open Ast_types
 open Ast_helper
 open Parsetypes
 

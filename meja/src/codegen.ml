@@ -1,4 +1,5 @@
 open Core_kernel
+open Ast_types
 open Parsetypes
 
 let poly_name name = match name with "t" -> "poly" | name -> name ^ "_poly"

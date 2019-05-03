@@ -2,6 +2,7 @@
 module List = Core_kernel.List
 open Location
 open Asttypes
+open Ast_types
 open Parsetypes
 open Longident
 open Parser_errors
