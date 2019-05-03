@@ -983,6 +983,23 @@ module Type = struct
     | Tpoly (_, typ) ->
         implicit_params typ
 
+  let rec constr_map env ~f typ =
+    let loc = typ.type_loc in
+    match typ.type_desc with
+    | Tvar _ ->
+        typ
+    | Ttuple typs ->
+        let typs = List.map ~f:(constr_map env ~f) typs in
+        mk ~loc (Ttuple typs) env
+    | Tarrow (typ1, typ2, explicit, label) ->
+        let typ1 = constr_map env ~f typ1 in
+        let typ2 = constr_map env ~f typ2 in
+        mk ~loc (Tarrow (typ1, typ2, explicit, label)) env
+    | Tctor variant ->
+        mk ~loc (f variant) env
+    | Tpoly (typs, typ) ->
+        mk ~loc (Tpoly (typs, constr_map env ~f typ)) env
+
   let rec bubble_label_aux env label typ =
     match typ.type_desc with
     | Tarrow (typ1, typ2, explicit, arr_label)
@@ -1024,6 +1041,13 @@ module Type = struct
           typ'
     in
     go typ
+
+  let is_arrow typ =
+    match typ.type_desc with
+    | Tarrow _ | Tpoly (_, {type_desc= Tarrow _; _}) ->
+        true
+    | _ ->
+        false
 end
 
 module TypeDecl = struct
@@ -1423,7 +1447,7 @@ end
 
 open Format
 
-let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
+let pp_typ = Pprint.type_expr
 
 let pp_decl_typ ppf decl =
   pp_typ ppf
@@ -1443,41 +1467,46 @@ let report_error ppf = function
       fprintf ppf
         "Internal error: Expected the current scope to be a %s scope." kind
   | Multiple_definition (kind, name) ->
-      fprintf ppf "Multiple definition of the %s name %s" kind name
+      fprintf ppf "@[<hov>Multiple definition of the %s name@ %s@]" kind name
   | Unbound_type_var var ->
-      fprintf ppf "Unbound type parameter %a." pp_typ var
+      fprintf ppf "@[<hov>Unbound type parameter@ @[<h>%a@].@]" pp_typ var
   | Unbound_type lid ->
-      fprintf ppf "Unbound type constructor %a." Longident.pp lid
+      fprintf ppf "@[<hov>Unbound type constructor@ @[<h>%a@].@]" Longident.pp
+        lid
   | Unbound_module lid ->
-      fprintf ppf "Unbound module %a." Longident.pp lid
+      fprintf ppf "@[<hov>Unbound module @[<h>%a@].@]" Longident.pp lid
   | Unbound_value lid ->
-      fprintf ppf "Unbound value %a." Longident.pp lid
+      fprintf ppf "@[<hov>Unbound value @[<h>%a@].@]" Longident.pp lid
   | Wrong_number_args (lid, given, expected) ->
       fprintf ppf
-        "@[The type constructor %a expects %d argument(s)@ but is here \
+        "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \
          applied to %d argument(s).@]"
         Longident.pp lid expected given
   | Expected_type_var typ ->
-      fprintf ppf "Syntax error: Expected a type parameter, but got %a." pp_typ
-        typ
+      fprintf ppf
+        "@[<hov>Syntax error: Expected a type parameter, but got @[<h>%a@].@]"
+        pp_typ typ
   | Lident_unhandled (kind, lid) ->
-      fprintf ppf "Don't know how to find %s %a" kind Longident.pp lid
+      fprintf ppf "@[<hov>Don't know how to find %s @[<h>%a@].@]" kind
+        Longident.pp lid
   | Constraints_not_satisfied (typ, decl) ->
       fprintf ppf
-        "@[Constraints are not satisfied in this type.@ Type %a should be an \
-         instance of %a"
+        "@[<hov>Constraints are not satisfied in this type.@ Type @[<h>%a@] \
+         should be an instance of @[<h>%a@].@]"
         pp_typ typ pp_decl_typ decl
   | No_unifiable_implicit ->
       fprintf ppf "Internal error: Implicit variable is not unifiable."
   | Multiple_instances typ ->
       fprintf ppf
-        "Multiple instances were found satisfying %a, could not decide \
-         between them."
+        "@[<hov>Multiple instances were found satisfying @[<h>%a@],@ could \
+         not decide between them.@]"
         pp_typ typ
   | Recursive_load filename ->
-      fprintf ppf "Circular dependency found; tried to re-load %s" filename
+      fprintf ppf
+        "@[<hov>Circular dependency found; tried to re-load @[<h>%s@]@]"
+        filename
   | Predeclared_types types ->
-      fprintf ppf "Could not find declarations for some types:@.%a"
+      fprintf ppf "@[<hov>Could not find declarations for some types:@]@;%a@"
         (pp_print_list ~pp_sep:pp_print_space pp_print_string)
         types
   | Functor_in_module_sig ->

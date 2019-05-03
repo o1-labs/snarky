@@ -281,8 +281,12 @@ let get_ctor (name : lid) env =
         | Ctor_tuple typs ->
             Envi.Type.mk ~loc (Ttuple typs) env
       in
+      let bound_vars =
+        Set.to_list
+          (Set.union (Envi.Type.type_vars typ) (Envi.Type.type_vars args_typ))
+      in
       let _, bound_vars, _ =
-        Envi.Type.refresh_vars params (Map.empty (module Int)) env
+        Envi.Type.refresh_vars bound_vars (Map.empty (module Int)) env
       in
       let args_typ = Envi.Type.copy args_typ bound_vars env in
       let typ = Envi.Type.copy typ bound_vars env in
@@ -909,6 +913,8 @@ let type_extension ~loc variant ctors env =
   in
   (env, variant, ctors)
 
+let in_decl = ref false
+
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
@@ -927,7 +933,19 @@ let rec check_statement env stmt =
       (env, {stmt with stmt_desc= Instance (name, e)})
   | TypeDecl decl ->
       let decl, env = Envi.TypeDecl.import decl env in
-      (env, {stmt with stmt_desc= TypeDecl decl})
+      let stmt = {stmt with stmt_desc= TypeDecl decl} in
+      if !in_decl then (env, stmt)
+      else (
+        in_decl := true ;
+        let ret =
+          match Codegen.typ_of_decl env decl with
+          | Some typ_stmts ->
+              (env, {stmt with stmt_desc= Multiple typ_stmts})
+          | None ->
+              (env, stmt)
+        in
+        in_decl := false ;
+        ret )
   | Module (name, m) ->
       let env = Envi.open_module env in
       let env, m = check_module_expr env m in
@@ -1025,6 +1043,9 @@ let rec check_statement env stmt =
             (None, env)
       in
       (env, {stmt with stmt_desc= Request (arg, ctor_decl, handler)})
+  | Multiple stmts ->
+      let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
+      (env, {stmt with stmt_desc= Multiple stmts})
 
 and check_module_expr env m =
   let loc = m.mod_loc in
@@ -1076,46 +1097,51 @@ let check (ast : statement list) (env : Envi.t) =
 
 open Format
 
-let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
+let pp_typ = Pprint.type_expr
 
 let rec report_error ppf = function
   | Check_failed (typ, constr_typ, err) ->
-      fprintf ppf "Incompatable types @['%a'@] and @['%a'@]:@.%a" pp_typ typ
-        pp_typ constr_typ report_error err
+      fprintf ppf
+        "@[<v>@[<hov>Incompatable types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
+        pp_typ typ pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
-      fprintf ppf "Cannot unify @['%a'@] and @['%a'@].@." pp_typ typ pp_typ
-        constr_typ
+      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" pp_typ typ
+        pp_typ constr_typ
   | Recursive_variable typ ->
       fprintf ppf
-        "The variable @[%a@](%d) would have an instance that contains itself."
+        "@[<hov>The variable@ @[<h>%a@](%d) would have an instance that \
+         contains itself.@]"
         pp_typ typ typ.type_id
   | Unbound (kind, value) ->
-      fprintf ppf "Unbound %s %a." kind Longident.pp value.txt
+      fprintf ppf "@[<hov>Unbound %s@ %a.@]" kind Longident.pp value.txt
   | Unbound_value value ->
       fprintf ppf "Unbound value %s." value.txt
   | Variable_on_one_side name ->
-      fprintf ppf "Variable %s must occur on both sides of this '|' pattern."
+      fprintf ppf
+        "@[<hov>Variable@ %s@ must@ occur@ on@ both@ sides@ of@ this@ '|'@ \
+         pattern.@]"
         name
   | Pattern_declaration (kind, name) ->
-      fprintf ppf "Unexpected %s declaration for %s within a pattern." kind
-        name
+      fprintf ppf "@[<hov>Unexpected %s declaration for %s within a pattern.@]"
+        kind name
   | Empty_record ->
       fprintf ppf "Unexpected empty record."
   | Wrong_record_field (field, typ) ->
       fprintf ppf
-        "This record expression is expected to have type %a@.The field %a \
-         does not belong to type %a."
+        "@[<hov>This record expression is expected to have type@ \
+         @[<h>%a@]@;The field %a does not belong to type@ @[<h>%a@].@]"
         pp_typ typ Longident.pp field pp_typ typ
   | Repeated_field field ->
-      fprintf ppf "The record field %s is defined several times." field
+      fprintf ppf "@[<hov>The record field %s is defined several times.@]"
+        field
   | Missing_fields fields ->
-      fprintf ppf "Some record fields are undefined: %a"
-        (pp_print_list pp_print_string)
+      fprintf ppf "@[<hov>Some record fields are undefined:@ %a@]"
+        (pp_print_list ~pp_sep:pp_print_space pp_print_string)
         fields
   | Wrong_type_description (kind, name) ->
       fprintf ppf
-        "Internal error: Expected a type declaration of kind %s, but instead \
-         got %s"
+        "@[<hov>Internal error: Expected a type declaration of kind %s, but \
+         instead got %s@]"
         kind name.txt
   | Unifiable_expr ->
       fprintf ppf "Internal error: Unexpected implicit variable."
@@ -1123,17 +1149,19 @@ let rec report_error ppf = function
       fprintf ppf "Internal error: Expected an unresolved implicit variable."
   | No_instance typ ->
       fprintf ppf
-        "Could not find an instance for an implicit variable of type @[%a@]."
+        "@[<hov>Could not find an instance for an implicit variable of type@ \
+         @[<h>%a@].@]"
         pp_typ typ
   | Argument_expected lid ->
-      fprintf ppf "@[The constructor %a expects an argument.@]" Longident.pp
-        lid
+      fprintf ppf "@[<hov>The constructor %a expects an argument.@]"
+        Longident.pp lid
   | Not_extensible lid ->
-      fprintf ppf "@[Type definition %a is not extensible.@]" Longident.pp lid
+      fprintf ppf "@[<hov>Type definition %a is not extensible.@]" Longident.pp
+        lid
   | Extension_different_arity lid ->
       fprintf ppf
-        "@[This extension does not match the definition of type %a@.They have \
-         different arities.@]"
+        "@[<hov>This extension does not match the definition of type %a@;They \
+         have different arities.@]"
         Longident.pp lid
 
 let () =
