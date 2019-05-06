@@ -141,6 +141,83 @@ and pattern fmt pat = pattern_desc fmt pat.pat_desc
 and pattern_field fmt (path, p) =
   fprintf fmt "@[<hv2>%a =@;@[<hv>%a@]@]" Longident.pp path.txt pattern p
 
+let arg_label fmt = function
+  | Asttypes.Nolabel ->
+      ()
+  | Labelled a ->
+      fprintf fmt "%s=@;" a
+  | Optional a ->
+      fprintf fmt "?%s=@;" a
+
+let rec expression_desc fmt = function
+  | Apply (e, args) ->
+      fprintf fmt "@[<hv2>@[<h2>%a@]@;@[<hv2>(@;%a@;)@]@]" expression e
+        (pp_print_list ~pp_sep:comma_sep expression_args)
+        args
+  | Variable lid ->
+      Longident.pp fmt lid.txt
+  | Int i ->
+      pp_print_int fmt i
+  | Fun (label, p, e, explicitness) ->
+      pp_print_string fmt "fun " ;
+      ( match explicitness with
+      | Explicit ->
+          pp_print_char fmt '('
+      | Implicit ->
+          pp_print_char fmt '{' ) ;
+      fprintf fmt "@[<hv2>%a%a@]" arg_label label pattern p ;
+      ( match explicitness with
+      | Explicit ->
+          pp_print_char fmt ')'
+      | Implicit ->
+          pp_print_char fmt '}' ) ;
+      fprintf fmt "=>@ {@[<hv2>%a;@;@]}" expression e
+  | Seq (e1, e2) ->
+      fprintf fmt "%a;@;%a" expression e1 expression e2
+  | Let (p, e1, e2) ->
+      fprintf fmt "let@[<hv2>@ %a@] =@ @[<hv2>%a@]@ in@]@ %a" pattern p
+        expression e1 expression e2
+  | Constraint (e, typ) ->
+      fprintf fmt "@[<hv2>%a :@ %a]" expression e type_expr typ
+  | Tuple es ->
+      fprintf fmt "(@[<hv1>%a@;@])"
+        (pp_print_list ~pp_sep:comma_sep expression)
+        es
+  | Match (e, cases) ->
+      fprintf fmt "@[<hv2>switch (%a) {@;@[<h2>%a@]@;}@]" expression e
+        (pp_print_list ~pp_sep:pp_print_newline (fun fmt (p, e) ->
+             fprintf fmt "| @[<hv2>%a@] =>@ @[<hv2>%a@]" pattern p expression e
+         ))
+        cases
+  | Field (e, lid) ->
+      fprintf fmt "@[<hv2>%a@;@].%a" expression e Longident.pp lid.txt
+  | Record (fields, None) ->
+      fprintf fmt "@[<hv2>{@;@[<hv2>%a@]@;}@]"
+        (pp_print_list ~pp_sep:comma_sep expression_field)
+        fields
+  | Record (fields, Some default) ->
+      fprintf fmt "@[<hv2>{@;@[<hv2>...%a@;%a@]@;}@]" expression default
+        (pp_print_list ~pp_sep:comma_sep expression_field)
+        fields
+  | Ctor (path, None) ->
+      Longident.pp fmt path.txt
+  | Ctor (path, Some args) ->
+      fprintf fmt "%a(@[<hv2>%a@;@])" Longident.pp path.txt
+        expression
+        args
+  | Unifiable {expression= Some e; _} ->
+      expression fmt e
+  | Unifiable {expression= None; name; _} ->
+      fprintf fmt "(%s /* implicit */)" name.txt
+
+and expression fmt exp = expression_desc fmt exp.exp_desc
+
+and expression_args fmt (label, e) =
+  fprintf fmt "%a%a" arg_label label expression e
+
+and expression_field fmt (label, e) =
+  fprintf fmt "%a=@ %a" Longident.pp label.txt expression e
+
 let rec signature_desc fmt = function
   | SValue (name, typ) ->
       fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt
