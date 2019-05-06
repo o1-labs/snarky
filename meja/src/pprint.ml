@@ -112,6 +112,35 @@ let type_decl fmt decl =
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
 
+let rec pattern_desc fmt = function
+  | PAny ->
+      fprintf fmt "_"
+  | PVariable str ->
+      fprintf fmt "'%s" str.txt
+  | PConstraint (p, typ) ->
+      fprintf fmt "%a@ : @[<hv2>%a@]" pattern p type_expr typ
+  | PTuple pats ->
+      fprintf fmt "(@[<hv1>@;%a@;@])"
+        (pp_print_list ~pp_sep:comma_sep pattern)
+        pats
+  | POr (p1, p2) ->
+      fprintf fmt "@[<hv>%a@]@ | @[<hv>%a@]" pattern p1 pattern p2
+  | PInt i ->
+      pp_print_int fmt i
+  | PRecord fields ->
+      fprintf fmt "{@[<hv2>%a@]}"
+        (pp_print_list ~pp_sep:comma_sep pattern_field)
+        fields
+  | PCtor (path, None) ->
+      Longident.pp fmt path.txt
+  | PCtor (path, Some arg) ->
+      fprintf fmt "%a%a" Longident.pp path.txt pattern arg
+
+and pattern fmt pat = pattern_desc fmt pat.pat_desc
+
+and pattern_field fmt (path, p) =
+  fprintf fmt "@[<hv2>%a =@;@[<hv>%a@]@]" Longident.pp path.txt pattern p
+
 let rec signature_desc fmt = function
   | SValue (name, typ) ->
       fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt
