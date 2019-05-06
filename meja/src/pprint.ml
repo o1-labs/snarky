@@ -202,9 +202,7 @@ let rec expression_desc fmt = function
   | Ctor (path, None) ->
       Longident.pp fmt path.txt
   | Ctor (path, Some args) ->
-      fprintf fmt "%a(@[<hv2>%a@;@])" Longident.pp path.txt
-        expression
-        args
+      fprintf fmt "%a(@[<hv2>%a@;@])" Longident.pp path.txt expression args
   | Unifiable {expression= Some e; _} ->
       expression fmt e
   | Unifiable {expression= None; name; _} ->
