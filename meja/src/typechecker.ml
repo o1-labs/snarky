@@ -764,7 +764,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let env = Envi.add_name str typ env in
       let p = {p with pat_type= typ} in
       (p, e, env)
-  | PConstraint ({pat_desc= PVariable str; _}, typ), _ ->
+  | PConstraint (({pat_desc= PVariable str; _} as p'), typ), _ ->
       let ctyp, env = Typet.Type.import typ env in
       check_type ~loc env e.exp_type ctyp ;
       let ctyp =
@@ -772,7 +772,9 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         else Envi.Type.mk (Tpoly (Set.to_list typ_vars, ctyp)) env
       in
       let env = Envi.add_name str ctyp env in
-      let p = {p with pat_type= ctyp} in
+      let p' = {p' with pat_type= ctyp} in
+      let typ = Untype_ast.type_expr ~loc ctyp in
+      let p = {p with pat_desc= PConstraint (p', typ); pat_type= ctyp} in
       (p, e, env)
   | _, [] ->
       let p, env = check_pattern ~add:add_polymorphised env e.exp_type p in

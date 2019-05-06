@@ -7,6 +7,7 @@ open Longident
 type error =
   | Unbound_type_var of type_expr
   | Wrong_number_args of Longident.t * int * int
+  | Wrong_number_implicit_args of Longident.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
 
@@ -21,8 +22,8 @@ module Type = struct
     let loc = typ.type_loc in
     match typ.type_desc with
     | Tvar (None, explicitness) -> (
-      match must_find with
-      | Some true ->
+      match (must_find, explicitness) with
+      | Some true, Explicit ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
           (mkvar ~explicitness None env, env) )
@@ -31,7 +32,7 @@ module Type = struct
           match must_find with
           | Some true ->
               let var = find_type_variable x env in
-              if not (Option.is_some var) then
+              if (not (Option.is_some var)) && explicitness = Explicit then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
@@ -56,7 +57,7 @@ module Type = struct
         let env = close_expr_scope env in
         (mk (Tpoly (vars, typ)) env, env)
     | Tctor variant -> (
-        let {var_ident; var_params; _} = variant in
+        let {var_ident; var_params; var_implicit_params; _} = variant in
         match raw_find_type_declaration var_ident env with
         | {tdec_desc= TUnfold typ; _} ->
             (typ, env)
@@ -74,6 +75,26 @@ module Type = struct
               | _ ->
                   List.length decl.tdec_params
             in
+            let import_implicits () =
+              List.fold_map ~init:env decl.tdec_implicit_params
+                ~f:(fun env param ->
+                  let param, env =
+                    Envi.Type.import ~loc ?must_find param env
+                  in
+                  (env, param) )
+            in
+            let env, var_implicit_params =
+              if List.is_empty var_implicit_params then import_implicits ()
+              else
+                let expected = List.length decl.tdec_implicit_params in
+                let given = List.length var_implicit_params in
+                if Int.equal expected given then
+                  List.fold_map ~init:env var_implicit_params
+                    ~f:(fun env param ->
+                      let param, env = import' ~must_find:false param env in
+                      (env, param) )
+                else import_implicits ()
+            in
             if not (Int.equal given_args_length expected_args_length) then
               raise
                 (Error
@@ -90,7 +111,7 @@ module Type = struct
               { Type0.var_params
               ; var_ident
               ; var_decl_id= decl.tdec_id
-              ; var_implicit_params= decl.tdec_implicit_params }
+              ; var_implicit_params }
             in
             (mk (Tctor variant) env, env) )
     | Ttuple typs ->
@@ -388,6 +409,11 @@ let report_error ppf = function
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \
          applied to %d argument(s).@]"
+        Longident.pp lid expected given
+  | Wrong_number_implicit_args (lid, given, expected) ->
+      fprintf ppf
+        "@[The type constructor @[<h>%a@] expects %d implicit argument(s)@ \
+         but is here applied to %d implicit argument(s).@]"
         Longident.pp lid expected given
   | Expected_type_var typ ->
       fprintf ppf

@@ -580,8 +580,8 @@ module Type = struct
     let import = import ~loc ?must_find in
     match typ.type_desc with
     | Tvar (None, _, explicitness) -> (
-      match must_find with
-      | Some true ->
+      match (must_find, explicitness) with
+      | Some true, Explicit ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
           (mkvar ~explicitness None env, env) )
@@ -590,7 +590,7 @@ module Type = struct
           match must_find with
           | Some true ->
               let var = find_type_variable x env in
-              if not (Option.is_some var) then
+              if (not (Option.is_some var)) && explicitness = Explicit then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
