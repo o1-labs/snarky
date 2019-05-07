@@ -1992,7 +1992,10 @@ module Run = struct
 
     let run checked =
       if not !state.is_running then
-        failwith "This function can't be run outside of a checked computation." ;
+        failwith
+          "This function can't be run outside of a checked computation. \
+           Please check that all parts of the checked computation are wrapped \
+           in the same 'fun () ->'" ;
       let state', x = Runner.run checked !state in
       state := state' ;
       x
