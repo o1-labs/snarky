@@ -18,3 +18,14 @@ let set (type whole view) ((module M) : (whole, view) t) = M.setter
 let map (type whole view) ((module M) : (whole, view) t) ~f x =
   let y = M.getter x in
   M.setter x (f y)
+
+let constant (type whole view) (x : view) : (whole, view) t =
+  ( module struct
+    type nonrec whole = whole
+
+    type nonrec view = view
+
+    let getter _ = x
+
+    let setter w _ = w
+  end )
