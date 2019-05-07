@@ -1,0 +1,4 @@
+(executables
+ (names toplevel_test)
+ (modes native)
+ (libraries snarky core_kernel))
