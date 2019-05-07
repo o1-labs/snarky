@@ -28,6 +28,9 @@ module type Basic = sig
     -> (('var, 'value) Handle.t, 's, 'f field) t
 
   val next_auxiliary : (int, 's, 'f field) t
+
+  val with_lens :
+    ('whole, 'view) Lens.t -> ('a, 'view, 'f) t -> ('a, 'whole, 'f) t
 end
 
 module type S = sig
@@ -113,6 +116,9 @@ module type S = sig
     -> 'f field Cvar.t
     -> 'f field Cvar.t
     -> (unit, 's, 'f field) t
+
+  val with_lens :
+    ('whole, 'view) Lens.t -> ('a, 'view, 'f) t -> ('a, 'whole, 'f) t
 end
 
 module type Extended = sig

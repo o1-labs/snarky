@@ -17,3 +17,12 @@ let run t stack tbl s (handler : Request.Handler.t) =
           As_prover0.run c tbl s
       | x ->
           (s', x) )
+
+let with_lens lens t =
+  match t with
+  | Request r ->
+      Request (As_prover0.with_lens lens r)
+  | Compute c ->
+      Compute (As_prover0.with_lens lens c)
+  | Both (r, c) ->
+      Both (As_prover0.with_lens lens r, As_prover0.with_lens lens c)
