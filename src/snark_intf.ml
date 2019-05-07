@@ -853,17 +853,17 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** Utility functions for calling single checked computations. *)
   module Runner : sig
-    type state
+    type 's state
 
-    val run : ('a, unit) Checked.t -> state -> state * 'a
+    val run : ('a, 's) Checked.t -> 's state -> 's state * 'a
 
-    val set_handler : Request.Handler.t -> state -> state
+    val set_handler : Request.Handler.t -> 's state -> 's state
 
-    val get_handler : state -> Request.Handler.t
+    val get_handler : 's state -> Request.Handler.t
 
-    val set_stack : string list -> state -> state
+    val set_stack : string list -> 's state -> 's state
 
-    val get_stack : state -> string list
+    val get_stack : 's state -> string list
   end
 
   type response = Request.response
@@ -1043,26 +1043,27 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       computations using a standard interface.
   *)
   module Perform : sig
-    type ('a, 't) t = 't -> Runner.state -> Runner.state * 'a
+    type ('a, 's, 't) t = 't -> 's Runner.state -> 's Runner.state * 'a
 
     val constraint_system :
-         run:('a, 't) t
+         run:('a, 's, 't) t
       -> exposing:('t, _, 'k_var, _) Data_spec.t
       -> 'k_var
       -> R1CS_constraint_system.t
 
     val generate_keypair :
-         run:('a, 't) t
+         run:('a, 's, 't) t
       -> exposing:('t, _, 'k_var, _) Data_spec.t
       -> 'k_var
       -> Keypair.t
 
     val prove :
-         run:('a, 't) t
+         run:('a, 's, 't) t
       -> ?message:Proof.message
       -> Proving_key.t
       -> ('t, Proof.t, 'k_var, 'k_value) Data_spec.t
       -> 'k_var
+      -> 's
       -> 'k_value
 
     val verify :
@@ -1072,12 +1073,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> (_, bool, _, 'k_value) Data_spec.t
       -> 'k_value
 
-    val run_unchecked : run:('a, 't) t -> 't -> 'a
+    val run_unchecked : run:('a, 's, 't) t -> 't -> 's -> 's * 'a
 
     val run_and_check :
-      run:(('a, unit) As_prover.t, 't) t -> 't -> 'a Or_error.t
+      run:(('a, 's) As_prover.t, 's, 't) t -> 't -> 's -> ('s * 'a) Or_error.t
 
-    val check : run:('a, 't) t -> 't -> unit Or_error.t
+    val check : run:('a, 's, 't) t -> 't -> 's -> unit Or_error.t
   end
 
   val assert_ : ?label:string -> Constraint.t -> (unit, 's) Checked.t
@@ -1323,7 +1324,7 @@ end
 (** The imperative interface to Snarky. *)
 module type Run_basic = sig
   (** The type of state that As_prover blocks may read to/write from. *)
-  type prover_state = unit
+  type prover_state
 
   (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
   module Proving_key : sig
@@ -1460,9 +1461,6 @@ module type Run_basic = sig
 
       val read : Field.t -> field t
     end
-
-    type 'prover_state run_state =
-      ('prover_state, Field.Constant.t) Run_state.t
 
     type ('var, 'value) t =
       ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
@@ -1844,18 +1842,21 @@ module type Run_basic = sig
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
-      -> 'a
+      -> prover_state
+      -> prover_state * 'a
 
     val run_checked :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
-      -> 'a Or_error.t
+      -> prover_state
+      -> (prover_state * 'a) Or_error.t
 
     val check :
          public_input:(unit, 'public_input) H_list.t
       -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
+      -> prover_state
       -> unit Or_error.t
 
     val prove :
@@ -1864,6 +1865,7 @@ module type Run_basic = sig
       -> ?handlers:Handler.t list
       -> ?message:Proof.message
       -> ('a, 'public_input) t
+      -> prover_state
       -> Proof.t
 
     val verify :
@@ -1915,7 +1917,7 @@ module type Run_basic = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
-  val make_checked : (unit -> 'a) -> ('a, 's, field) Types.Checked.t
+  val make_checked : (unit -> 'a) -> ('a, prover_state, field) Types.Checked.t
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
@@ -1930,6 +1932,7 @@ module type Run_basic = sig
     -> Proving_key.t
     -> (unit -> 'a, Proof.t, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
+    -> prover_state
     -> 'k_value
 
   val verify :
@@ -1939,11 +1942,14 @@ module type Run_basic = sig
     -> (_, bool, _, 'k_value) Data_spec.t
     -> 'k_value
 
-  val run_unchecked : (unit -> 'a) -> 'a
+  val run_unchecked : (unit -> 'a) -> prover_state -> prover_state * 'a
 
-  val run_and_check : (unit -> (unit -> 'a) As_prover.t) -> 'a Or_error.t
+  val run_and_check :
+       (unit -> (unit -> 'a) As_prover.t)
+    -> prover_state
+    -> (prover_state * 'a) Or_error.t
 
-  val check : (unit -> 'a) -> bool
+  val check : (unit -> 'a) -> prover_state -> unit Or_error.t
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
@@ -1954,7 +1960,7 @@ module type Run_basic = sig
 
   module Internal_Basic : Basic with type field = field
 
-  val run_checked : ('a, unit) Internal_Basic.Checked.t -> 'a
+  val run_checked : ('a, prover_state) Internal_Basic.Checked.t -> 'a
 end
 
 module type Run = sig
