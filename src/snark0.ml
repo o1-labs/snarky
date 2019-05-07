@@ -220,6 +220,7 @@ module Runner = struct
       ; prover_state= None
       ; stack
       ; handler= Request.Handler.fail
+      ; is_running= true
       ; as_prover= ref false
       ; log_constraint= None }
 
@@ -355,6 +356,7 @@ module Runner = struct
         ; prover_state= s0
         ; stack= []
         ; handler= Option.value handler ~default:Request.Handler.fail
+        ; is_running= true
         ; as_prover= ref false
         ; log_constraint= !constraint_logger }
     end
@@ -1984,10 +1986,13 @@ module Run = struct
         ; prover_state= Some ()
         ; stack= []
         ; handler= Request.Handler.fail
+        ; is_running= true
         ; as_prover= ref true
         ; log_constraint= None }
 
     let run checked =
+      if not !state.is_running then
+        failwith "This function can't be run outside of a checked computation." ;
       let state', x = Runner.run checked !state in
       state := state' ;
       x
@@ -2386,14 +2391,26 @@ module Run = struct
 
       let create ?proving_key ?verification_key ?proving_key_path
           ?verification_key_path ?handlers ~public_input checked =
-        create
-          ~reduce_to_prover:(fun i f -> f)
-          ?proving_key ?verification_key ?proving_key_path
-          ?verification_key_path ?handlers ~public_input checked
+        (* Don't allow the partially-applied checked computation to run.
+
+         For example, [fun a b -> let x = Field.(a * b) in fun c () -> x * c]
+         has the right type and will be accepted, but the definition of [x]
+         will happen while the system is in an inconsistent state. *)
+        let is_running = !state.is_running in
+        state := {!state with is_running= false} ;
+        let ps =
+          create
+            ~reduce_to_prover:(fun i f -> f)
+            ?proving_key ?verification_key ?proving_key_path
+            ?verification_key_path ?handlers ~public_input checked
+        in
+        state := {!state with is_running} ;
+        ps
 
       let run f s =
         let res = as_stateful f s in
         s.as_prover := true ;
+        state := {!state with prover_state= Some ()} ;
         res
 
       let constraint_system (proof_system : _ t) =

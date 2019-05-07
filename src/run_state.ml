@@ -9,6 +9,7 @@ type ('prover_state, 'field) t =
   ; prover_state: 'prover_state option
   ; stack: string list
   ; handler: Request.Handler.t
+  ; is_running: bool
   ; as_prover: bool ref
   ; log_constraint: ('field Cvar.t Constraint.t -> unit) option }
 
@@ -22,6 +23,7 @@ let set_prover_state prover_state
     ; prover_state= _
     ; stack
     ; handler
+    ; is_running
     ; as_prover
     ; log_constraint } =
   { system
@@ -33,5 +35,6 @@ let set_prover_state prover_state
   ; prover_state
   ; stack
   ; handler
+  ; is_running
   ; as_prover
   ; log_constraint }
