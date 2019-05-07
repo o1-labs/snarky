@@ -831,6 +831,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         an OCaml variable of type ['value], according to the description given
         by [typ].
     *)
+
+    val with_lens : ('whole, 'lens) Lens.t -> ('a, 'lens) t -> ('a, 'whole) t
+    (** [with_lens lens as_prover] uses the {!type:Lens.t} provided to lift the
+        prover state of [as_prover] to ['whole] from a sub-type ['lens].
+    *)
   end
 
   (** Representation of an R1CS value and an OCaml value (if running as the
@@ -1193,6 +1198,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> 'k_var
     -> R1CS_constraint_system.t
   (** Generate the R1CS for the checked computation. *)
+
+  val with_lens :
+    ('whole, 'lens) Lens.t -> ('a, 'lens) Checked.t -> ('a, 'whole) Checked.t
+  (** [with_lens lens t] uses the {!type:Lens.t} provided to lift the prover
+      state of [as_prover] to ['whole] from a sub-type ['lens].
+  *)
 
   val generate_keypair :
        exposing:((unit, 's) Checked.t, _, 'k_var, _) Data_spec.t
@@ -1773,6 +1784,12 @@ module type Run_basic = sig
     (** Convert a field element into its constituent bits. *)
 
     val project : bool list -> field
+
+    val with_lens :
+      (unit, 'lens) Lens.t -> ('a, field, 'lens) As_prover.t -> unit -> 'a t
+    (** Lift the monadic {!type:As_prover.t} defined with state ['lens] to an
+        as-prover computation using [prover_state].
+    *)
   end
 
   module Handle : sig

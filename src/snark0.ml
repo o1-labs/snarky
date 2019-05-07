@@ -2373,6 +2373,9 @@ module Run = struct
         let s' = Option.value_exn !state.prover_state in
         !state.as_prover := old ;
         (s', a)
+
+      let with_lens lens as_prover () =
+        eval_as_prover (As_prover.with_lens lens as_prover)
     end
 
     module Handle = struct
