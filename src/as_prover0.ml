@@ -15,9 +15,7 @@ module T = struct
 
   let get_state _tbl s = (s, s)
 
-  let read_var v tbl s = (s, tbl v)
-
-  let set_state s tbl _ = (s, ())
+  let set_state s _tbl _ = (s, ())
 
   let modify_state f _tbl s = (f s, ())
 
@@ -37,6 +35,11 @@ module T = struct
 
     let return = return
   end)
+
+  let with_lens (lens : ('whole, 'view) Lens.t) as_prover tbl s =
+    let s' = Lens.get lens s in
+    let s', a = as_prover tbl s' in
+    (Lens.set lens s s', a)
 end
 
 include T

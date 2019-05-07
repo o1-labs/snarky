@@ -37,6 +37,9 @@ module type Basic = sig
     -> 'var
     -> ('value, 'f field, 'prover_state) t
 
+  val with_lens :
+    ('whole, 'view) Lens.t -> ('a, 'f, 'view) t -> ('a, 'f, 'whole) t
+
   module Ref : sig
     type 'a t
 
