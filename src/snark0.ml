@@ -1967,6 +1967,8 @@ module Run = struct
     open Run_state
     open Snark
 
+    type prover_state = unit
+
     let set_constraint_logger = set_constraint_logger
 
     let clear_constraint_logger = clear_constraint_logger
@@ -2374,7 +2376,7 @@ module Run = struct
         !state.as_prover := old ;
         (s', a)
 
-      let with_lens lens as_prover () =
+      let with_lens lens as_prover =
         eval_as_prover (As_prover.with_lens lens as_prover)
     end
 

@@ -1322,6 +1322,9 @@ end
 
 (** The imperative interface to Snarky. *)
 module type Run_basic = sig
+  (** The type of state that As_prover blocks may read to/write from. *)
+  type prover_state = unit
+
   (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
   module Proving_key : sig
     type t [@@deriving bin_io]
@@ -1770,13 +1773,13 @@ module type Run_basic = sig
 
     val read_var : Field.t -> Field.Constant.t
 
-    val get_state : unit -> unit
+    val get_state : unit -> prover_state
 
-    val set_state : unit -> unit
+    val set_state : prover_state -> unit
 
     val read : ('var, 'value) Typ.t -> 'var -> 'value
 
-    val modify_state : (unit -> unit) -> unit
+    val modify_state : (prover_state -> prover_state) -> unit
 
     include Field_intf.Extended with type t := field
 
@@ -1786,7 +1789,7 @@ module type Run_basic = sig
     val project : bool list -> field
 
     val with_lens :
-      (unit, 'lens) Lens.t -> ('a, field, 'lens) As_prover.t -> unit -> 'a t
+      (prover_state, 'lens) Lens.t -> ('a, field, 'lens) As_prover.t -> 'a t
     (** Lift the monadic {!type:As_prover.t} defined with state ['lens] to an
         as-prover computation using [prover_state].
     *)
