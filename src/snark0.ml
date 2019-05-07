@@ -1981,7 +1981,7 @@ module Run = struct
         ; eval_constraints= false
         ; num_inputs= 0
         ; next_auxiliary= ref 1
-        ; prover_state= None
+        ; prover_state= Some ()
         ; stack= []
         ; handler= Request.Handler.fail
         ; as_prover= ref true
@@ -2391,7 +2391,10 @@ module Run = struct
           ?proving_key ?verification_key ?proving_key_path
           ?verification_key_path ?handlers ~public_input checked
 
-      let run = as_stateful
+      let run f s =
+        let res = as_stateful f s in
+        s.as_prover := true ;
+        res
 
       let constraint_system (proof_system : _ t) =
         constraint_system ~run proof_system
@@ -2503,20 +2506,20 @@ module Run = struct
       Types.Checked.Direct (f, fun x -> Pure x)
 
     let constraint_system ~exposing x =
-      Perform.constraint_system ~run:as_stateful ~exposing x
+      Perform.constraint_system ~run:Proof_system.run ~exposing x
 
     let generate_keypair ~exposing x =
-      Perform.generate_keypair ~run:as_stateful ~exposing x
+      Perform.generate_keypair ~run:Proof_system.run ~exposing x
 
-    let prove ?message pk x = Perform.prove ~run:as_stateful ?message pk x
+    let prove ?message pk x = Perform.prove ~run:Proof_system.run ?message pk x
 
     let verify ?message pf vk spec = verify ?message pf vk spec
 
-    let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
+    let run_unchecked x = Perform.run_unchecked ~run:Proof_system.run x
 
     let run_and_check x =
       let res =
-        Perform.run_and_check ~run:as_stateful (fun () ->
+        Perform.run_and_check ~run:Proof_system.run (fun () ->
             let prover_block = x () in
             !state.as_prover := true ;
             As_prover.run_prover prover_block )
@@ -2524,7 +2527,7 @@ module Run = struct
       !state.as_prover := true ;
       res
 
-    let check x = Perform.check ~run:as_stateful x |> Result.is_ok
+    let check x = Perform.check ~run:Proof_system.run x |> Result.is_ok
 
     let constraint_count ?(log = fun ?start _ _ -> ()) x =
       let count = ref 0 in
