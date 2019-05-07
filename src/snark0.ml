@@ -54,6 +54,8 @@ module Runner = struct
       Field.Vector.emplace_back aux x ;
       Cvar.Unsafe.of_index v
 
+    let no_store_field_elt _ = Cvar.constant
+
     let alloc_var {next_auxiliary; _} () =
       let v = !next_auxiliary in
       incr next_auxiliary ; Cvar.Unsafe.of_index v
@@ -103,27 +105,25 @@ module Runner = struct
                      (Field.to_string (get_value s var3))) ))
 
     let add_constraint c s =
-      if !(s.as_prover) then
-        failwith
-          "Cannot add a constraint as the prover: the verifier's constraint \
-           system will not match." ;
-      Option.iter s.log_constraint ~f:(fun f -> f c) ;
-      if s.eval_constraints && not (Constraint.eval c (get_value s)) then
-        failwithf
-          "Constraint unsatisfied (unreduced):\n\
-           %s\n\
-           %s\n\n\
-           Constraint:\n\
-           %s\n\
-           Data:\n\
-           %s"
-          (Constraint.annotation c)
-          (Constraint.stack_to_string s.stack)
-          (Sexp.to_string (Constraint.sexp_of_t c))
-          (log_constraint c s) () ;
-      Option.iter s.system ~f:(fun system ->
-          Constraint.add ~stack:s.stack c system ) ;
-      (s, ())
+      if !(s.as_prover) then (s, ())
+      else (
+        Option.iter s.log_constraint ~f:(fun f -> f c) ;
+        if s.eval_constraints && not (Constraint.eval c (get_value s)) then
+          failwithf
+            "Constraint unsatisfied (unreduced):\n\
+             %s\n\
+             %s\n\n\
+             Constraint:\n\
+             %s\n\
+             Data:\n\
+             %s"
+            (Constraint.annotation c)
+            (Constraint.stack_to_string s.stack)
+            (Sexp.to_string (Constraint.sexp_of_t c))
+            (log_constraint c s) () ;
+        Option.iter s.system ~f:(fun system ->
+            Constraint.add ~stack:s.stack c system ) ;
+        (s, ()) )
 
     let with_state p and_then t_sub s =
       let s, s_sub = run_as_prover (Some p) s in
@@ -144,16 +144,15 @@ module Runner = struct
       ({s' with handler}, y)
 
     let exists ~run {Types.Typ.store; alloc; check; _} p s =
-      if !(s.as_prover) then
-        failwith
-          "Cannot create a variable as the prover: the verifier's constraint \
-           system will not match." ;
       match s.prover_state with
       | Some ps ->
           let old = !(s.as_prover) in
           s.as_prover := true ;
           let ps, value = Provider.run p s.stack (get_value s) ps s.handler in
           s.as_prover := old ;
+          let store_field_elt =
+            if !(s.as_prover) then no_store_field_elt else store_field_elt
+          in
           let var = Typ_monads.Store.run (store value) (store_field_elt s) in
           (* TODO: Push a label onto the stack here *)
           let s, () = run (check var) (set_prover_state (Some ()) s) in
@@ -221,7 +220,6 @@ module Runner = struct
       ; prover_state= None
       ; stack
       ; handler= Request.Handler.fail
-      ; is_running= true
       ; as_prover= ref false
       ; log_constraint= None }
 
@@ -259,22 +257,24 @@ module Runner = struct
       | Add_constraint (c, t) ->
           let f, y = flatten_as_prover next_auxiliary stack t in
           ( (fun s ->
-              Option.iter s.log_constraint ~f:(fun f -> f c) ;
-              if s.eval_constraints && not (Constraint.eval c (get_value s))
-              then
-                failwithf
-                  "Constraint unsatisfied:\n\
-                   %s\n\
-                   %s\n\n\
-                   Constraint:\n\
-                   %s\n\
-                   Data:\n\
-                   %s"
-                  (Constraint.annotation c)
-                  (Constraint.stack_to_string stack)
-                  (Sexp.to_string (Constraint.sexp_of_t c))
-                  (log_constraint c s) () ;
-              f s )
+              if !(s.as_prover) then f s
+              else (
+                Option.iter s.log_constraint ~f:(fun f -> f c) ;
+                if s.eval_constraints && not (Constraint.eval c (get_value s))
+                then
+                  failwithf
+                    "Constraint unsatisfied:\n\
+                     %s\n\
+                     %s\n\n\
+                     Constraint:\n\
+                     %s\n\
+                     Data:\n\
+                     %s"
+                    (Constraint.annotation c)
+                    (Constraint.stack_to_string stack)
+                    (Sexp.to_string (Constraint.sexp_of_t c))
+                    (log_constraint c s) () ;
+                f s ) )
           , y )
       | With_state (p, and_then, t_sub, k) ->
           let f_sub, y = flatten_as_prover next_auxiliary stack t_sub in
@@ -320,6 +320,9 @@ module Runner = struct
                   s.handler
               in
               s.as_prover := old ;
+              let store_field_elt =
+                if !(s.as_prover) then no_store_field_elt else store_field_elt
+              in
               let _var =
                 Typ_monads.Store.run (store value) (store_field_elt s)
               in
@@ -352,7 +355,6 @@ module Runner = struct
         ; prover_state= s0
         ; stack= []
         ; handler= Option.value handler ~default:Request.Handler.fail
-        ; is_running= true
         ; as_prover= ref false
         ; log_constraint= !constraint_logger }
     end
@@ -1982,17 +1984,10 @@ module Run = struct
         ; prover_state= None
         ; stack= []
         ; handler= Request.Handler.fail
-        ; is_running= false
-        ; as_prover= ref false
+        ; as_prover= ref true
         ; log_constraint= None }
 
     let run checked =
-      if !(!state.as_prover) then
-        failwith
-          "Can't run checked code as the prover: the verifier's constraint \
-           system will not match." ;
-      if not !state.is_running then
-        failwith "This function can't be run outside of a checked computation." ;
       let state', x = Runner.run checked !state in
       state := state' ;
       x
