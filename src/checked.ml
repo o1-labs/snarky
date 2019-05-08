@@ -124,7 +124,7 @@ module Make (Basic : Checked_intf.Basic) :
   include Basic
 
   let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
-      (r : ('value Request.t, 'f field, 's) As_prover0.t) =
+      (r : ('value Request.t, 'f field, 's) Types.As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
 

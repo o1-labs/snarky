@@ -120,6 +120,6 @@ module type Types = sig
     include module type of Provider.T
 
     type ('a, 'f, 's) t =
-      (('a Request.t, 'f, 's) As_prover0.t, ('a, 'f, 's) As_prover0.t) provider
+      (('a Request.t, 'f, 's) As_prover.t, ('a, 'f, 's) As_prover.t) provider
   end
 end

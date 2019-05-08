@@ -9,13 +9,13 @@ module type Basic = sig
 
   val add_constraint : 'f field Cvar.t Constraint.t -> (unit, 's, 'f field) t
 
-  val as_prover : (unit, 'f field, 's) As_prover0.t -> (unit, 's, 'f field) t
+  val as_prover : (unit, 'f field, 's) Types.As_prover.t -> (unit, 's, 'f field) t
 
   val with_label : string -> ('a, 's, 'f field) t -> ('a, 's, 'f field) t
 
   val with_state :
-       ('s1, 'f field, 's) As_prover0.t
-    -> ('s1 -> (unit, 'f field, 's) As_prover0.t)
+       ('s1, 'f field, 's) Types.As_prover.t
+    -> ('s1 -> (unit, 'f field, 's) Types.As_prover.t)
     -> ('a, 's1, 'f field) t
     -> ('a, 's, 'f field) t
 
@@ -41,11 +41,11 @@ module type S = sig
 
   include Monad_let.S3 with type ('a, 's, 'f) t := ('a, 's, 'f) t
 
-  val as_prover : (unit, 'f field, 's) As_prover0.t -> (unit, 's, 'f field) t
+  val as_prover : (unit, 'f field, 's) Types.As_prover.t -> (unit, 's, 'f field) t
 
   val request_witness :
        ('var, 'value, 'f field) Types.Typ.t
-    -> ('value Request.t, 'f field, 's) As_prover0.t
+    -> ('value Request.t, 'f field, 's) Types.As_prover.t
     -> ('var, 's, 'f field) t
 
   val request :
@@ -55,14 +55,14 @@ module type S = sig
     -> ('var, 's, 'f field) t
 
   val exists_handle :
-       ?request:('value Request.t, 'f field, 's) As_prover0.t
-    -> ?compute:('value, 'f field, 's) As_prover0.t
+       ?request:('value Request.t, 'f field, 's) Types.As_prover.t
+    -> ?compute:('value, 'f field, 's) Types.As_prover.t
     -> ('var, 'value, 'f field) Types.Typ.t
     -> (('var, 'value) Handle.t, 's, 'f field) t
 
   val exists :
-       ?request:('value Request.t, 'f field, 's) As_prover0.t
-    -> ?compute:('value, 'f field, 's) As_prover0.t
+       ?request:('value Request.t, 'f field, 's) Types.As_prover.t
+    -> ?compute:('value, 'f field, 's) Types.As_prover.t
     -> ('var, 'value, 'f field) Types.Typ.t
     -> ('var, 's, 'f field) t
 
@@ -84,8 +84,8 @@ module type S = sig
   val with_label : string -> ('a, 's, 'f field) t -> ('a, 's, 'f field) t
 
   val with_state :
-       ?and_then:('s1 -> (unit, 'f field, 's) As_prover0.t)
-    -> ('s1, 'f field, 's) As_prover0.t
+       ?and_then:('s1 -> (unit, 'f field, 's) Types.As_prover.t)
+    -> ('s1, 'f field, 's) Types.As_prover.t
     -> ('a, 's1, 'f field) t
     -> ('a, 's, 'f field) t
 
