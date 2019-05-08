@@ -15,6 +15,9 @@ let set_reduce_to_prover b = reduce_to_prover := b
 module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
+    (As_prover : As_prover_intf.S
+                 with module Types := Checked.Types
+                 with type field := Backend.Field.t)
     (Runner : Runner.S
               with type field := Backend.Field.t
                and type cvar := Backend.Cvar.t
@@ -133,11 +136,7 @@ struct
   end
 
   module As_prover = struct
-    include As_prover.Make (struct
-                type field = Field.t
-              end)
-              (Checked_S)
-              (As_prover.Make_basic (Checked_S))
+    include As_prover
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
   end
@@ -1496,6 +1495,11 @@ module Make (Backend : Backend_intf.S) = struct
 
         let run = Runner0.run
       end)
+      (As_prover.Make (struct
+           type field = Backend_extended.Field.t
+         end)
+         (Checked)
+         (As_prover.Make_basic (Checked)))
       (Runner0)
 
   include Basic
