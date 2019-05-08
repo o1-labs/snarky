@@ -831,6 +831,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         an OCaml variable of type ['value], according to the description given
         by [typ].
     *)
+
+    val run_checked : ('a, 's) Checked.t -> ('a, 's) t
+    (** Run a checked computation as the prover.
+
+        Any new constraints that would be normally be added by the checked
+        computation are ignored, and no new variables are allocated. This is
+        roughly equivalent to running the inner [As_prover] blocks and any
+        other non-checked parts of the computation.
+    *)
   end
 
   (** Representation of an R1CS value and an OCaml value (if running as the

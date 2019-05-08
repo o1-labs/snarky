@@ -606,6 +606,20 @@ struct
               (As_prover.Make_basic (Checked_S))
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
+
+    let run_checked (t : ('a, 's, Field.t) Checked.t) tbl s =
+      let rs =
+        Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
+          ~next_auxiliary:(ref 1) ~eval_constraints:false (Some s)
+      in
+      rs.as_prover := true ;
+      let rs, a = Checked.run t rs in
+      let s =
+        Option.value_exn
+          ~message:"Prover state was cleared by the checked computation"
+          rs.prover_state
+      in
+      (s, a)
   end
 
   module Handle = Handle
