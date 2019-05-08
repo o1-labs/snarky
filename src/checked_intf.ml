@@ -1,5 +1,7 @@
 module type Basic = sig
-  type ('a, 's, 'f) t
+  module Types : Types.Types
+
+  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
 
   type 'f field
 
@@ -23,7 +25,7 @@ module type Basic = sig
   val clear_handler : ('a, 's, 'f field) t -> ('a, 's, 'f field) t
 
   val exists :
-       ('var, 'value, 'f field, (unit, unit, 'f field) t) Types.Typ.t
+       ('var, 'value, 'f field) Types.Typ.t
     -> ('value, 'f field, 's) Provider.t
     -> (('var, 'value) Handle.t, 's, 'f field) t
 

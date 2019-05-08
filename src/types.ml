@@ -84,3 +84,18 @@ module Checked = struct
         -> ('a, 's, 'f) t
     | Next_auxiliary : (int -> ('a, 's, 'f) t) -> ('a, 's, 'f) t
 end
+
+module type Types = sig
+  module Checked : sig
+    type ('a, 's, 'f) t
+  end
+
+  module As_prover : sig
+    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  end
+
+  module Typ : sig
+    include module type of Typ.T
+    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, unit, 'f) Checked.t) Typ.t
+  end
+end

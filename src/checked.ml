@@ -66,11 +66,30 @@ module T0 = struct
         Next_auxiliary (fun x -> bind (k x) ~f)
 end
 
+module Types = struct
+  module Checked = struct
+    type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+  end
+
+  module As_prover = struct
+    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  end
+
+  module Typ = struct
+    include Types.Typ.T
+
+    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, unit, 'f) Checked.t) typ
+  end
+end
+
 module Basic :
   Checked_intf.Basic
-  with type ('a, 's, 'f) t = ('a, 's, 'f) t
-   and type 'f field = 'f = struct
-  type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
+  with module Types = Types
+  with type 'f field = 'f = struct
+
+  module Types = Types
+
+  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
 
   type 'f field = 'f
 
@@ -100,7 +119,7 @@ module Make (Basic : Checked_intf.Basic) :
   include Basic
 
   let request_witness
-      (typ : ('var, 'value, 'f field, (unit, unit, 'f field) t) Types.Typ.t)
+      (typ : ('var, 'value, 'f field) Types.Typ.t)
       (r : ('value Request.t, 'f field, 's) As_prover0.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
