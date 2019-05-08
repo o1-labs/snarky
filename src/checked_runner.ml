@@ -2,7 +2,10 @@ open Core_kernel
 
 let eval_constraints = ref true
 
-module Make_checked (Backend : Backend_extended.S) = struct
+module Make_checked
+    (Backend : Backend_extended.S)
+    (As_prover : As_prover_intf.S with type 'f field := Backend.Field.t) =
+struct
   type 'prover_state run_state = ('prover_state, Backend.Field.t) Run_state.t
 
   module Types = struct
@@ -11,7 +14,7 @@ module Make_checked (Backend : Backend_extended.S) = struct
     end
 
     module As_prover = struct
-      type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+      type ('a, 'f, 's) t = ('a, 'f, 's) As_prover.t
     end
 
     module Typ = struct
@@ -25,9 +28,7 @@ module Make_checked (Backend : Backend_extended.S) = struct
       include Types.Provider.T
 
       type ('a, 'f, 's) t =
-        ( ('a Request.t, 'f, 's) As_prover0.t
-        , ('a, 'f, 's) As_prover0.t )
-        provider
+        (('a Request.t, 'f, 's) As_prover.t, ('a, 'f, 's) As_prover.t) provider
     end
   end
 
@@ -198,7 +199,7 @@ module Make (Backend : Backend_extended.S) = struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  include Make_checked (Backend)
+  include Make_checked (Backend) (As_prover)
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
@@ -394,6 +395,8 @@ end
 module type S = sig
   type field
 
+  module Types : Types.Types
+
   type cvar
 
   type constr
@@ -417,12 +420,12 @@ module type S = sig
   val alloc_var : ('a, 'b) Run_state.t -> unit -> cvar
 
   val run_as_prover :
-       ('a, field, 'b) As_prover0.t option
+       ('a, field, 'b) Types.As_prover.t option
     -> ('b, field) Run_state.t
     -> ('b, field) Run_state.t * 'a option
 
   val as_prover :
-       (unit, field, 'a) As_prover0.t
+       (unit, field, 'a) Types.As_prover.t
     -> ('a, field) Run_state.t
     -> ('a, field) Run_state.t * unit
 
@@ -436,8 +439,8 @@ module type S = sig
     constr -> ('a, field) Run_state.t -> ('a, field) Run_state.t * unit
 
   val with_state :
-       ('a, field, 'b) As_prover0.t
-    -> ('c -> (unit, field, 'b) As_prover0.t)
+       ('a, field, 'b) Types.As_prover.t
+    -> ('c -> (unit, field, 'b) Types.As_prover.t)
     -> (('a, field) Run_state.t -> ('c, 'd) Run_state.t * 'e)
     -> ('b, field) Run_state.t
     -> ('b, field) Run_state.t * 'e
@@ -459,9 +462,7 @@ module type S = sig
        , field
        , (unit, field) Run_state.t -> (unit, field) Run_state.t * unit )
        Types.Typ.typ
-    -> ( ('value Request.t, field, 's) As_prover0.t
-       , ('value, field, 's) As_prover0.t )
-       Types.Provider.t
+    -> ('value, field, 's) Types.Provider.t
     -> ('s, field) Run_state.t
     -> ('s, field) Run_state.t * ('var, 'value) Handle.t
 

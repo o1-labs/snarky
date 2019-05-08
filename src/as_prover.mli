@@ -10,7 +10,7 @@ module Make
                              ('a, 'f, 's) Checked.Types.Provider.t) :
   S with module Types = Checked.Types with type 'f field = 'f Checked.field
 
-include S with module Types := Checked.Types with type 'f field := 'f
+include S with module Types = Checked.Types with type 'f field := 'f
 
 module Make_extended (Env : sig
   type field
