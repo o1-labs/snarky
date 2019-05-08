@@ -108,7 +108,7 @@ module type Types = sig
   end
 
   module As_prover : sig
-    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover.t
+    type ('a, 'f, 's) t
   end
 
   module Typ : sig
