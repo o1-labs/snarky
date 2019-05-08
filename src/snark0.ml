@@ -81,7 +81,7 @@ struct
 
   module Typ = struct
     include Types.Typ.T
-    module T = Typ.Make (Checked_S)
+    module T = Typ.Make (Checked_S) (As_prover)
     include Typ_monads
     include T.T
 
