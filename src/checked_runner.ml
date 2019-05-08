@@ -3,12 +3,58 @@ open Core_kernel
 let eval_constraints = ref true
 
 module Make_checked (Backend : Backend_extended.S) = struct
+  type 'prover_state run_state = ('prover_state, Backend.Field.t) Run_state.t
+
+  module Types = struct
+    module Checked = struct
+      type ('a, 's, 'f) t = 's run_state -> 's run_state * 'a
+    end
+
+    module As_prover = struct
+      type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+    end
+
+    module Typ = struct
+      include Types.Typ.T
+
+      type ('var, 'value, 'f) t =
+        ('var, 'value, 'f, (unit, unit, 'f) Checked.t) typ
+    end
+
+    module Provider = struct
+      include Types.Provider.T
+
+      type ('a, 'f, 's) t =
+        ( ('a Request.t, 'f, 's) As_prover0.t
+        , ('a, 'f, 's) As_prover0.t )
+        provider
+    end
+  end
+
+  type 'f field = Backend.Field.t
+
+  type ('a, 's, 'f) t = ('a, 's, 'f field) Types.Checked.t
+
+  include Monad_let.Make3 (struct
+    type ('a, 's, 'f) t = ('a, 's, 'f field) Types.Checked.t
+
+    let return x s = (s, x)
+
+    let map =
+      `Custom
+        (fun x ~f s ->
+          let s, a = x s in
+          (s, f a) )
+
+    let bind x ~f s =
+      let s, a = x s in
+      f a s
+  end)
+
   open Constraint
   open Backend
   open Run_state
   open Checked
-
-  type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
   type state = unit run_state
 
@@ -145,7 +191,6 @@ end
 module Make (Backend : Backend_extended.S) = struct
   open Backend
   open Run_state
-  open Checked
 
   let constraint_logger = ref None
 
@@ -157,8 +202,8 @@ module Make (Backend : Backend_extended.S) = struct
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
-  let rec run : type a s. (a, s, Field.t) t -> s run_state -> s run_state * a
-      =
+  let rec run : type a s.
+      (a, s, Field.t) Checked.t -> s run_state -> s run_state * a =
    fun t s ->
     match t with
     | As_prover (x, k) ->
@@ -223,7 +268,7 @@ module Make (Backend : Backend_extended.S) = struct
   let rec flatten_as_prover : type a s.
          int ref
       -> string list
-      -> (a, s, Field.t) t
+      -> (a, s, Field.t) Checked.t
       -> (s run_state -> s run_state) * a =
    fun next_auxiliary stack t ->
     match t with
@@ -255,16 +300,9 @@ module Make (Backend : Backend_extended.S) = struct
         let f, y = flatten_as_prover next_auxiliary stack t in
         ( (fun s ->
             Option.iter s.log_constraint ~f:(fun f -> f c) ;
-            if s.eval_constraints && not (Constraint.eval c (get_value s))
-            then
+            if s.eval_constraints && not (Constraint.eval c (get_value s)) then
               failwithf
-                "Constraint unsatisfied:\n\
-                 %s\n\
-                 %s\n\n\
-                 Constraint:\n\
-                 %s\n\
-                 Data:\n\
-                 %s"
+                "Constraint unsatisfied:\n%s\n%s\n\nConstraint:\n%s\nData:\n%s"
                 (Constraint.annotation c)
                 (Constraint.stack_to_string stack)
                 (Sexp.to_string (Constraint.sexp_of_t c))
@@ -325,10 +363,10 @@ module Make (Backend : Backend_extended.S) = struct
     | Next_auxiliary k ->
         flatten_as_prover next_auxiliary stack (k !next_auxiliary)
 
-  let reduce_to_prover (type a s) next_auxiliary (t : (a, s, Field.t) t) :
-      (a, s, Field.t) t =
+  let reduce_to_prover (type a s) next_auxiliary
+      (t : (a, s, Field.t) Checked.t) : (a, s, Field.t) Checked.t =
     let f, a = flatten_as_prover next_auxiliary [] t in
-    Reduced (t, f, a, return)
+    Reduced (t, f, a, Checked.return)
 
   module State = struct
     let make ~num_inputs ~input ~next_auxiliary ~aux ?system
@@ -429,8 +467,7 @@ module type S = sig
 
   val next_auxiliary : ('a, 'b) Run_state.t -> ('a, 'b) Run_state.t * int
 
-  val run :
-    ('a, 's, field) Checked.t -> 's run_state -> 's run_state * 'a
+  val run : ('a, 's, field) Checked.t -> 's run_state -> 's run_state * 'a
 
   val dummy_vector : field Vector.t
 
