@@ -143,7 +143,7 @@ module Runner = struct
       let s', y = t {s with handler= Request.Handler.fail} in
       ({s' with handler}, y)
 
-    let exists ~run {Types.Typ.store; alloc; check; _} p s =
+    let exists {Types.Typ.store; alloc; check; _} p s =
       if !(s.as_prover) then
         failwith
           "Cannot create a variable as the prover: the verifier's constraint \
@@ -158,12 +158,12 @@ module Runner = struct
           s.as_prover := old ;
           let var = Typ_monads.Store.run (store value) (store_field_elt s) in
           (* TODO: Push a label onto the stack here *)
-          let s, () = run (check var) (set_prover_state (Some ()) s) in
+          let s, () = check var (set_prover_state (Some ()) s) in
           (set_prover_state (Some ps) s, {Handle.var; value= Some value})
       | None ->
           let var = Typ_monads.Alloc.run alloc (alloc_var s) in
           (* TODO: Push a label onto the stack here *)
-          let s, () = run (check var) (set_prover_state None s) in
+          let s, () = check var (set_prover_state None s) in
           (set_prover_state None s, {Handle.var; value= None})
 
     let next_auxiliary s = (s, !(s.next_auxiliary))
@@ -205,7 +205,13 @@ module Runner = struct
           let s, y = clear_handler (run t) s in
           run (k y) s
       | Exists (typ, p, k) ->
-          let s, y = exists ~run typ p s in
+          let typ =
+            { Types.Typ.store= typ.store
+            ; read= typ.read
+            ; alloc= typ.alloc
+            ; check= (fun var -> run (typ.check var)) }
+          in
+          let s, y = exists typ p s in
           run (k y) s
       | Next_auxiliary k ->
           let s, y = next_auxiliary s in
@@ -435,10 +441,11 @@ module Runner = struct
       -> ('c, 'd) Run_state.t * 'e
 
     val exists :
-         run:(   'checked
-              -> (unit, field) Run_state.t
-              -> (unit, field) Run_state.t * unit)
-      -> ('var, 'value, field, 'checked) Types.Typ.typ
+         ( 'var
+         , 'value
+         , field
+         , (unit, field) Run_state.t -> (unit, field) Run_state.t * unit )
+         Types.Typ.typ
       -> ( ('value Request.t, field, 's) As_prover0.t
          , ('value, field, 's) As_prover0.t )
          Types.Provider.t
