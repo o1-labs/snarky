@@ -26,7 +26,7 @@ module type Basic = sig
 
   val exists :
        ('var, 'value, 'f field) Types.Typ.t
-    -> ('value, 'f field, 's) Provider.t
+    -> ('value, 'f field, 's) Types.Provider.t
     -> (('var, 'value) Handle.t, 's, 'f field) t
 
   val next_auxiliary : (int, 's, 'f field) t

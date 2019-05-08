@@ -1,3 +1,16 @@
+module Provider = struct
+  module T = struct
+    type ('request, 'compute) provider =
+      | Request of 'request
+      | Compute of 'compute
+      | Both of 'request * 'compute
+  end
+
+  include T
+
+  type ('request, 'compute) t = ('request, 'compute) provider
+end
+
 module Typ = struct
   open Typ_monads
 
@@ -79,7 +92,9 @@ module Checked = struct
     | Clear_handler : ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t) -> ('b, 's, 'f) t
     | Exists :
         ('var, 'value, 'f, (unit, unit, 'f) t) Typ.t
-        * ('value, 'f, 's) Provider.t
+        * ( ('value Request.t, 'f, 's) As_prover0.t
+          , ('value, 'f, 's) As_prover0.t )
+          Provider.t
         * (('var, 'value) Handle.t -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
     | Next_auxiliary : (int -> ('a, 's, 'f) t) -> ('a, 's, 'f) t
@@ -99,5 +114,12 @@ module type Types = sig
 
     type ('var, 'value, 'f) t =
       ('var, 'value, 'f, (unit, unit, 'f) Checked.t) Typ.t
+  end
+
+  module Provider : sig
+    include module type of Provider.T
+
+    type ('a, 'f, 's) t =
+      (('a Request.t, 'f, 's) As_prover0.t, ('a, 'f, 's) As_prover0.t) provider
   end
 end

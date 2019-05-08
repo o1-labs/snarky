@@ -29,6 +29,18 @@ module type Basic = sig
     -> 'var
     -> ('value, 'f field, 'prover_state) t
 
+  module Provider : sig
+    type ('a, 'f, 's) t = ('a, 'f, 's) Types.Provider.t
+
+    val run :
+         ('a, 'f field, 's) t
+      -> string list
+      -> ('f field Cvar.t -> 'f field)
+      -> 's
+      -> Request.Handler.t
+      -> 's * 'a
+  end
+
   module Ref : sig
     type 'a t
 

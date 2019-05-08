@@ -31,6 +31,18 @@ module type Basic = sig
     -> 'var
     -> ('value, 'f field, 'prover_state) t
 
+  module Provider : sig
+    type ('a, 'f, 's) t = ('a, 'f, 's) Types.Provider.t
+
+    val run :
+         ('a, 'f field, 's) t
+      -> string list
+      -> ('f field Cvar.t -> 'f field)
+      -> 's
+      -> Request.Handler.t
+      -> 's * 'a
+  end
+
   module Ref : sig
     type 'a t
 
@@ -74,6 +86,27 @@ struct
   let read ({read; _} : ('var, 'value, 'field) Types.Typ.t) (var : 'var) :
       ('value, 'field, 'prover_state) t =
    fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
+
+  module Provider = struct
+    open Types.Provider
+
+    type ('a, 'f, 's) t = ('a, 'f, 's) Types.Provider.t
+
+    let run t stack tbl s (handler : Request.Handler.t) =
+      match t with
+      | Request rc ->
+          let s', r = As_prover0.run rc tbl s in
+          (s', Request.Handler.run handler stack r)
+      | Compute c ->
+          As_prover0.run c tbl s
+      | Both (rc, c) -> (
+          let s', r = As_prover0.run rc tbl s in
+          match Request.Handler.run handler stack r with
+          | exception _ ->
+              As_prover0.run c tbl s
+          | x ->
+              (s', x) )
+  end
 
   module Ref = struct
     type 'a t = 'a option ref

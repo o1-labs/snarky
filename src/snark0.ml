@@ -152,7 +152,9 @@ module Runner = struct
       | Some ps ->
           let old = !(s.as_prover) in
           s.as_prover := true ;
-          let ps, value = Provider.run p s.stack (get_value s) ps s.handler in
+          let ps, value =
+            As_prover.Provider.run p s.stack (get_value s) ps s.handler
+          in
           s.as_prover := old ;
           let var = Typ_monads.Store.run (store value) (store_field_elt s) in
           (* TODO: Push a label onto the stack here *)
@@ -315,7 +317,7 @@ module Runner = struct
               let old = !(s.as_prover) in
               s.as_prover := true ;
               let ps, value =
-                Provider.run p s.stack (get_value s)
+                As_prover.Provider.run p s.stack (get_value s)
                   (Option.value_exn s.prover_state)
                   s.handler
               in
@@ -433,11 +435,15 @@ module Runner = struct
       -> ('c, 'd) Run_state.t * 'e
 
     val exists :
-         run:('a -> (unit, field) Run_state.t -> ('b, 'c) Run_state.t * unit)
-      -> ('d, 'e, field, 'a) Types.Typ.typ
-      -> ('e, field, 'f) Provider.t
-      -> ('f, field) Run_state.t
-      -> ('f, 'c) Run_state.t * ('d, 'e) Handle.t
+         run:(   'checked
+              -> (unit, field) Run_state.t
+              -> (unit, field) Run_state.t * unit)
+      -> ('var, 'value, field, 'checked) Types.Typ.typ
+      -> ( ('value Request.t, field, 's) As_prover0.t
+         , ('value, field, 's) As_prover0.t )
+         Types.Provider.t
+      -> ('s, field) Run_state.t
+      -> ('s, field) Run_state.t * ('var, 'value) Handle.t
 
     val next_auxiliary : ('a, 'b) Run_state.t -> ('a, 'b) Run_state.t * int
 
