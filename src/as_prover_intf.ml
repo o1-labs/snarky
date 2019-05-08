@@ -52,6 +52,11 @@ module type Basic = sig
 
     val set : 'a t -> 'a -> (unit, 'f field, _) Types.As_prover.t
   end
+
+  module Handle : sig
+    val value :
+      ('var, 'value) Handle.t -> ('value, 'f field, 's) Types.As_prover.t
+  end
 end
 
 module type S = sig

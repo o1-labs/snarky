@@ -1,4 +1,6 @@
-type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
+open Core_kernel
+
+type ('a, 'f, 's) t = ('a, 'f, 's) Types.As_prover.t
 
 module T = struct
   let map t ~f tbl s =
@@ -37,6 +39,11 @@ module T = struct
 
     let return = return
   end)
+
+  module Handle = struct
+    let value (t : ('var, 'value) Handle.t) : ('value, 'field, 's) t =
+     fun _ s -> (s, Option.value_exn t.value)
+  end
 end
 
 include T

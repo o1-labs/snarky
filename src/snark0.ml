@@ -141,7 +141,11 @@ struct
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
   end
 
-  module Handle = Handle
+  module Handle = struct
+    include Handle
+
+    let value = As_prover.Handle.value
+  end
 
   module Checked = struct
     open Types.Checked

@@ -1,3 +1,7 @@
+module As_prover = struct
+  type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
+end
+
 module Provider = struct
   module T = struct
     type ('request, 'compute) provider =
@@ -74,15 +78,13 @@ module Checked = struct
     | Add_constraint :
         'f Cvar.t Constraint.t * ('a, 's, 'f) t
         -> ('a, 's, 'f) t
-    | As_prover :
-        (unit, 'f, 's) As_prover0.t * ('a, 's, 'f) t
-        -> ('a, 's, 'f) t
+    | As_prover : (unit, 'f, 's) As_prover.t * ('a, 's, 'f) t -> ('a, 's, 'f) t
     | With_label :
         string * ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t)
         -> ('b, 's, 'f) t
     | With_state :
-        ('s1, 'f, 's) As_prover0.t
-        * ('s1 -> (unit, 'f, 's) As_prover0.t)
+        ('s1, 'f, 's) As_prover.t
+        * ('s1 -> (unit, 'f, 's) As_prover.t)
         * ('b, 's1, 'f) t
         * ('b -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
@@ -92,8 +94,8 @@ module Checked = struct
     | Clear_handler : ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t) -> ('b, 's, 'f) t
     | Exists :
         ('var, 'value, 'f, (unit, unit, 'f) t) Typ.t
-        * ( ('value Request.t, 'f, 's) As_prover0.t
-          , ('value, 'f, 's) As_prover0.t )
+        * ( ('value Request.t, 'f, 's) As_prover.t
+          , ('value, 'f, 's) As_prover.t )
           Provider.t
         * (('var, 'value) Handle.t -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
@@ -106,7 +108,7 @@ module type Types = sig
   end
 
   module As_prover : sig
-    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover.t
   end
 
   module Typ : sig
