@@ -9,7 +9,8 @@ module type Basic = sig
 
   val add_constraint : 'f field Cvar.t Constraint.t -> (unit, 's, 'f field) t
 
-  val as_prover : (unit, 'f field, 's) Types.As_prover.t -> (unit, 's, 'f field) t
+  val as_prover :
+    (unit, 'f field, 's) Types.As_prover.t -> (unit, 's, 'f field) t
 
   val with_label : string -> ('a, 's, 'f field) t -> ('a, 's, 'f field) t
 
@@ -41,7 +42,8 @@ module type S = sig
 
   include Monad_let.S3 with type ('a, 's, 'f) t := ('a, 's, 'f) t
 
-  val as_prover : (unit, 'f field, 's) Types.As_prover.t -> (unit, 's, 'f field) t
+  val as_prover :
+    (unit, 'f field, 's) Types.As_prover.t -> (unit, 's, 'f field) t
 
   val request_witness :
        ('var, 'value, 'f field) Types.Typ.t
