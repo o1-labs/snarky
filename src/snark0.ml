@@ -577,12 +577,10 @@ struct
         let traverse_checked =
           let module M =
             T.Traverse
-              (Restrict_monad.Make3
+              (Restrict_monad.Make2
                  (Checked)
                  (struct
-                   type t1 = unit
-
-                   type t2 = Field.t
+                   type t = unit
                  end)) in
           M.f
         in
@@ -610,13 +608,11 @@ struct
     open Types.Checked
     open Run_state
 
-    type ('a, 's) t = ('a, 's, Field.t) Checked.t
-
     include (
       Checked :
         Checked_intf.Extended
-        with type ('a, 's, 'f) t := ('a, 's, 'f) Checked.t
-         and type field := field )
+        with module Types := Checked.Types
+        with type field := field )
 
     let perform req = request_witness Typ.unit req
 
@@ -1125,7 +1121,10 @@ struct
 
           include (
             Checked_S :
-              Checked_intf.S with type ('a, 's, 'f) t := ('a, 's, 'f) Checked.t )
+              Checked_intf.S
+              with module Types := Checked_S.Types
+              with type ('a, 's, 'f) t :=
+                          ('a, 's, 'f) Checked_S.Types.Checked.t )
         end)
         (struct
           type t = Boolean.var
@@ -1947,10 +1946,13 @@ module Make (Backend : Backend_intf.S) = struct
         include (
           Checked :
             Checked_intf.S
-            with type ('a, 's, 'f) t = ('a, 's, 'f) Checked.t
+            with module Types = Checked.Types
+            with type ('a, 's, 'f) t := ('a, 's, 'f) Checked.t
              and type 'f field := 'f )
 
         type field = Backend_extended.Field.t
+
+        type ('a, 's) t = ('a, 's, field) Types.Checked.t
 
         let run = Runner0.run
       end)

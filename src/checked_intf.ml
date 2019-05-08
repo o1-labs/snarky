@@ -33,7 +33,9 @@ module type Basic = sig
 end
 
 module type S = sig
-  type ('a, 's, 'f) t
+  module Types : Types.Types
+
+  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
 
   type 'f field
 
@@ -42,26 +44,26 @@ module type S = sig
   val as_prover : (unit, 'f field, 's) As_prover0.t -> (unit, 's, 'f field) t
 
   val request_witness :
-       ('var, 'value, 'f field, (unit, unit, 'f field) t) Types.Typ.t
+       ('var, 'value, 'f field) Types.Typ.t
     -> ('value Request.t, 'f field, 's) As_prover0.t
     -> ('var, 's, 'f field) t
 
   val request :
        ?such_that:('var -> (unit, 's, 'f field) t)
-    -> ('var, 'value, 'f field, (unit, unit, 'f field) t) Types.Typ.t
+    -> ('var, 'value, 'f field) Types.Typ.t
     -> 'value Request.t
     -> ('var, 's, 'f field) t
 
   val exists_handle :
        ?request:('value Request.t, 'f field, 's) As_prover0.t
     -> ?compute:('value, 'f field, 's) As_prover0.t
-    -> ('var, 'value, 'f field, (unit, unit, 'f field) t) Types.Typ.t
+    -> ('var, 'value, 'f field) Types.Typ.t
     -> (('var, 'value) Handle.t, 's, 'f field) t
 
   val exists :
        ?request:('value Request.t, 'f field, 's) As_prover0.t
     -> ?compute:('value, 'f field, 's) As_prover0.t
-    -> ('var, 'value, 'f field, (unit, unit, 'f field) t) Types.Typ.t
+    -> ('var, 'value, 'f field) Types.Typ.t
     -> ('var, 's, 'f field) t
 
   type response = Request.response
@@ -120,23 +122,31 @@ end
 module type Extended = sig
   type field
 
-  include S with type 'f field := field
+  module Types : Types.Types
+
+  type ('a, 's) t = ('a, 's, field) Types.Checked.t
+
+  include
+    S
+    with module Types := Types
+    with type 'f field := field
+     and type ('a, 's, 'f) t := ('a, 's, 'f) Types.Checked.t
 
   val run :
-       ('a, 's, field) t
-    -> ('s, field) Run_state.t
-    -> ('s, field) Run_state.t * 'a
+    ('a, 's) t -> ('s, field) Run_state.t -> ('s, field) Run_state.t * 'a
 end
 
 module Unextend (Checked : Extended) :
-  S
-  with type 'f field = Checked.field
-   and type ('a, 's, 'f) t = ('a, 's, 'f) Checked.t = struct
+  S with module Types = Checked.Types with type 'f field = Checked.field =
+struct
   include (
     Checked :
       S
+      with module Types = Checked.Types
       with type 'f field := Checked.field
-       and type ('a, 's, 'f) t = ('a, 's, 'f) Checked.t )
+       and type ('a, 's, 'f) t := ('a, 's, 'f) Checked.Types.Checked.t )
 
   type 'f field = Checked.field
+
+  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
 end

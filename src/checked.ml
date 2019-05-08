@@ -78,15 +78,13 @@ module Types = struct
   module Typ = struct
     include Types.Typ.T
 
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, unit, 'f) Checked.t) typ
+    type ('var, 'value, 'f) t =
+      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) typ
   end
 end
 
 module Basic :
-  Checked_intf.Basic
-  with module Types = Types
-  with type 'f field = 'f = struct
-
+  Checked_intf.Basic with module Types = Types with type 'f field = 'f = struct
   module Types = Types
 
   type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
@@ -114,12 +112,11 @@ end
 
 module Make (Basic : Checked_intf.Basic) :
   Checked_intf.S
-  with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t
-   and type 'f field = 'f Basic.field = struct
+  with module Types = Basic.Types
+  with type 'f field = 'f Basic.field = struct
   include Basic
 
-  let request_witness
-      (typ : ('var, 'value, 'f field) Types.Typ.t)
+  let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
       (r : ('value Request.t, 'f field, 's) As_prover0.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
@@ -199,7 +196,8 @@ module T = struct
     Make
       (Basic) :
       Checked_intf.S
-      with type ('a, 's, 'f) t := ('a, 's, 'f) t
+      with module Types := Types
+      with type ('a, 's, 'f) t := ('a, 's, 'f) Types.Checked.t
        and type 'f field = 'f )
 end
 

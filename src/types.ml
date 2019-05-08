@@ -96,6 +96,8 @@ module type Types = sig
 
   module Typ : sig
     include module type of Typ.T
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, unit, 'f) Checked.t) Typ.t
+
+    type ('var, 'value, 'f) t =
+      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) Typ.t
   end
 end
