@@ -2,17 +2,11 @@ open Core_kernel
 
 let eval_constraints = ref true
 
-module Make (Backend : Backend_extended.S) = struct
+module Make_checked (Backend : Backend_extended.S) = struct
   open Constraint
   open Backend
   open Run_state
   open Checked
-
-  let constraint_logger = ref None
-
-  let set_constraint_logger f = constraint_logger := Some f
-
-  let clear_constraint_logger () = constraint_logger := None
 
   type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
@@ -156,6 +150,20 @@ module Make (Backend : Backend_extended.S) = struct
         (set_prover_state None s, {Handle.var; value= None})
 
   let next_auxiliary s = (s, !(s.next_auxiliary))
+end
+
+module Make (Backend : Backend_extended.S) = struct
+  open Backend
+  open Run_state
+  open Checked
+
+  let constraint_logger = ref None
+
+  let set_constraint_logger f = constraint_logger := Some f
+
+  let clear_constraint_logger () = constraint_logger := None
+
+  include Make_checked (Backend)
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
