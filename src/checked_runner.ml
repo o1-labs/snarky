@@ -424,55 +424,7 @@ module type S = sig
     -> ('b, field) Run_state.t
     -> ('b, field) Run_state.t * 'a option
 
-  val as_prover :
-       (unit, field, 'a) Types.As_prover.t
-    -> ('a, field) Run_state.t
-    -> ('a, field) Run_state.t * unit
-
-  val with_label :
-       string
-    -> (('a, 'b) Run_state.t -> ('c, 'd) Run_state.t * 'e)
-    -> ('a, 'b) Run_state.t
-    -> ('c, 'd) Run_state.t * 'e
-
-  val add_constraint :
-    constr -> ('a, field) Run_state.t -> ('a, field) Run_state.t * unit
-
-  val with_state :
-       ('a, field, 'b) Types.As_prover.t
-    -> ('c -> (unit, field, 'b) Types.As_prover.t)
-    -> (('a, field) Run_state.t -> ('c, 'd) Run_state.t * 'e)
-    -> ('b, field) Run_state.t
-    -> ('b, field) Run_state.t * 'e
-
-  val with_handler :
-       Request.Handler.single
-    -> (('a, 'b) Run_state.t -> ('c, 'd) Run_state.t * 'e)
-    -> ('a, 'b) Run_state.t
-    -> ('c, 'd) Run_state.t * 'e
-
-  val clear_handler :
-       (('a, 'b) Run_state.t -> ('c, 'd) Run_state.t * 'e)
-    -> ('a, 'b) Run_state.t
-    -> ('c, 'd) Run_state.t * 'e
-
-  val exists :
-       ( 'var
-       , 'value
-       , field
-       , (unit, field) Run_state.t -> (unit, field) Run_state.t * unit )
-       Types.Typ.typ
-    -> ('value, field, 's) Types.Provider.t
-    -> ('s, field) Run_state.t
-    -> ('s, field) Run_state.t * ('var, 'value) Handle.t
-
-  val next_auxiliary : ('a, 'b) Run_state.t -> ('a, 'b) Run_state.t * int
-
   val run : ('a, 's, field) Checked.t -> 's run_state -> 's run_state * 'a
-
-  val dummy_vector : field Vector.t
-
-  val fake_state : int ref -> string list -> ('a, field) Run_state.t
 
   val flatten_as_prover :
        int ref
