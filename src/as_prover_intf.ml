@@ -1,7 +1,5 @@
 module type Basic = sig
-  module Types : Types.Types
-
-  type ('a, 'f, 's) t = ('a, 'f, 's) Types.As_prover.t
+  type ('a, 'f, 's) t
 
   type 'f field
 
@@ -25,12 +23,12 @@ module type Basic = sig
   val read_var : 'f field Cvar.t -> ('f field, 'f field, 's) t
 
   val read :
-       ('var, 'value, 'f field) Types.Typ.t
+       ('var, 'value, 'f field, _) Types.Typ.t
     -> 'var
     -> ('value, 'f field, 'prover_state) t
 
   module Provider : sig
-    type ('a, 'f, 's) t = ('a, 'f, 's) Types.Provider.t
+    type ('a, 'f, 's) t
 
     val run :
          ('a, 'f field, 's) t
@@ -40,6 +38,20 @@ module type Basic = sig
       -> Request.Handler.t
       -> 's * 'a
   end
+
+  module Handle : sig
+    val value :
+      ('var, 'value) Handle.t -> ('value, 'f field, 's) Types.As_prover.t
+  end
+end
+
+module type S = sig
+  module Types : Types.Types
+
+  include
+    Basic
+    with type ('a, 'f, 's) t = ('a, 'f, 's) Types.As_prover.t
+     and type ('a, 'f, 's) Provider.t = ('a, 'f, 's) Types.Provider.t
 
   module Ref : sig
     type 'a t
@@ -52,20 +64,15 @@ module type Basic = sig
 
     val set : 'a t -> 'a -> (unit, 'f field, _) Types.As_prover.t
   end
-
-  module Handle : sig
-    val value :
-      ('var, 'value) Handle.t -> ('value, 'f field, 's) Types.As_prover.t
-  end
 end
 
-module type S = sig
+module type Extended = sig
   type field
 
   module Types : Types.Types
 
   include
-    Basic
+    S
     with module Types := Types
     with type 'f field := field
      and type ('a, 'f, 's) t := ('a, 'f, 's) Types.As_prover.t
