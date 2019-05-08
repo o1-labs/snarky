@@ -1947,6 +1947,29 @@ struct
       let sexp_of_a = sexp_of_t in
       let compare_a x y = if equal x y then 0 else 1 in
       [%test_eq: a] checked_result (unchecked input)
+
+    let run_checked_in_as_prover typ checked x y =
+      let (), checked_result =
+        run_and_check
+          (let open Let_syntax in
+          let x = Field.Var.constant x in
+          let y = Field.Var.constant y in
+          let%bind unchecked_result =
+            exists typ
+              ~compute:
+                As_prover.(
+                  let%bind z = run_checked (checked x y) in
+                  read typ z)
+          in
+          let%map result = checked x y in
+          let open As_prover in
+          let%map unchecked_result = read typ unchecked_result
+          and result = read typ result in
+          (unchecked_result, result))
+          ()
+        |> Or_error.ok_exn
+      in
+      checked_result
   end
 
   module R1CS_constraint_system = struct
@@ -2624,4 +2647,13 @@ let%test_module "snark0-test" =
       let input = Field.one in
       let proof = prove pk [Field.typ] () main input in
       assert (verify proof vk [Field.typ] input)
+
+    let%test_unit "run checked in as prover" =
+      let expected = Field.of_int 360 in
+      let unchecked, checked =
+        Test.run_checked_in_as_prover Field.typ Field.Checked.mul
+          (Field.of_int 18) (Field.of_int 20)
+      in
+      assert (Field.equal unchecked checked) ;
+      assert (Field.equal expected unchecked)
   end )
