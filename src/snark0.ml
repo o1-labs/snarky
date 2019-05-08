@@ -1889,7 +1889,7 @@ module Run = struct
         if !(!state.as_prover) && Option.is_some !state.prover_state then (
           let s = Option.value_exn !state.prover_state in
           let s, a = f (Runner.get_value !state) s in
-          state := Runner.set_prover_state (Some s) !state ;
+          state := Run_state.set_prover_state (Some s) !state ;
           a )
         else failwith "Can't evaluate prover code outside an as_prover block"
 
@@ -1910,7 +1910,7 @@ module Run = struct
       let run_prover f tbl s =
         let old = !(!state.as_prover) in
         !state.as_prover := true ;
-        state := Runner.set_prover_state (Some s) !state ;
+        state := Run_state.set_prover_state (Some s) !state ;
         let a = f () in
         let s' = Option.value_exn !state.prover_state in
         !state.as_prover := old ;
@@ -2039,12 +2039,12 @@ module Run = struct
       let f state =
         let {prover_state; _} = state in
         let state =
-          Runner.set_prover_state
+          Run_state.set_prover_state
             (Option.map prover_state ~f:(fun _ -> ()))
             state
         in
         let state, a = as_stateful x state in
-        let state = Runner.set_prover_state prover_state state in
+        let state = Run_state.set_prover_state prover_state state in
         (state, a)
       in
       Types.Checked.Direct (f, fun x -> Pure x)

@@ -14,16 +14,6 @@ module Make_checked (Backend : Backend_extended.S) = struct
 
   type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
-  let set_prover_state = set_prover_state
-
-  let set_handler handler state = {state with handler}
-
-  let get_handler {handler; _} = handler
-
-  let set_stack stack state = {state with stack}
-
-  let get_stack {stack; _} = stack
-
   let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
     let get_one i =
       if i <= num_inputs then Field.Vector.get input (i - 1)
@@ -381,18 +371,6 @@ module type S = sig
   type state = unit run_state
 
   type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
-
-  val set_prover_state :
-    'a option -> ('b, 'c) Run_state.t -> ('a, 'c) Run_state.t
-
-  val set_handler :
-    Request.Handler.t -> ('a, 'b) Run_state.t -> ('a, 'b) Run_state.t
-
-  val get_handler : ('a, 'b) Run_state.t -> Request.Handler.t
-
-  val set_stack : string list -> ('a, 'b) Run_state.t -> ('a, 'b) Run_state.t
-
-  val get_stack : ('a, 'b) Run_state.t -> string list
 
   val get_value : ('a, field) Run_state.t -> cvar -> field
 
