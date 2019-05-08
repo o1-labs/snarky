@@ -19,6 +19,7 @@ module Make_basic
                  with module Types := Checked.Types
                  with type field := Backend.Field.t)
     (Runner : Runner.S
+              with module Types := Checked.Types
               with type field := Backend.Field.t
                and type cvar := Backend.Cvar.t
                and type constr := Backend.Constraint.t
@@ -1100,7 +1101,7 @@ struct
         t k
 
     let reduce_to_prover : type a s.
-           ((a, s, Field.t) Checked_ast.t, Proof.t, 'k_var, 'k_value) t
+           ((a, s) Checked.t, Proof.t, 'k_var, 'k_value) t
         -> 'k_var
         -> (Proving_key.t -> ?handlers:Handler.t list -> s -> 'k_value)
            Staged.t =
@@ -1111,9 +1112,7 @@ struct
         incr next_input ; Cvar.Unsafe.of_index v
       in
       let rec go : type k_var k_value.
-             ((a, s, Field.t) Checked_ast.t, Proof.t, k_var, k_value) t
-          -> k_var
-          -> k_var =
+          ((a, s) Checked.t, Proof.t, k_var, k_value) t -> k_var -> k_var =
        fun t k ->
         match t with
         | [] ->

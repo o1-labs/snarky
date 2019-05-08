@@ -57,10 +57,6 @@ struct
   open Run_state
   open Checked
 
-  type state = unit run_state
-
-  type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
-
   let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
     let get_one i =
       if i <= num_inputs then Field.Vector.get input (i - 1)
@@ -189,6 +185,25 @@ struct
   let next_auxiliary s = (s, !(s.next_auxiliary))
 end
 
+module type Run_extras = sig
+  type field
+
+  type cvar
+
+  module Types : Types.Types
+
+  val get_value : ('a, field) Run_state.t -> cvar -> field
+
+  val store_field_elt : ('a, field) Run_state.t -> field -> cvar
+
+  val alloc_var : ('a, 'b) Run_state.t -> unit -> cvar
+
+  val run_as_prover :
+       ('a, field, 'b) Types.As_prover.t option
+    -> ('b, field) Run_state.t
+    -> ('b, field) Run_state.t * 'a option
+end
+
 module Make (Backend : Backend_extended.S) = struct
   open Backend
   open Run_state
@@ -199,7 +214,31 @@ module Make (Backend : Backend_extended.S) = struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  include Make_checked (Backend) (As_prover)
+  module Checked_runner = Make_checked (Backend) (As_prover)
+  open Checked_runner
+
+  type 'prover_state run_state = 'prover_state Checked_runner.run_state
+
+  type state = unit run_state
+
+  type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
+
+  include (
+    Checked_runner :
+      sig
+        include
+          Checked_intf.Basic
+          with module Types := Checked_runner.Types
+          with type 'f field := 'f Checked_runner.field
+
+        include
+          Run_extras
+          with module Types := Checked_runner.Types
+          with type field := Backend.Field.t
+           and type cvar := Backend.Cvar.t
+      end )
+
+  module Types = Checked.Types
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
@@ -393,11 +432,7 @@ module Make (Backend : Backend_extended.S) = struct
 end
 
 module type S = sig
-  type field
-
-  module Types : Types.Types
-
-  type cvar
+  include Run_extras
 
   type constr
 
@@ -413,27 +448,19 @@ module type S = sig
 
   type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
-  val get_value : ('a, field) Run_state.t -> cvar -> field
-
-  val store_field_elt : ('a, field) Run_state.t -> field -> cvar
-
-  val alloc_var : ('a, 'b) Run_state.t -> unit -> cvar
-
-  val run_as_prover :
-       ('a, field, 'b) Types.As_prover.t option
-    -> ('b, field) Run_state.t
-    -> ('b, field) Run_state.t * 'a option
-
-  val run : ('a, 's, field) Checked.t -> 's run_state -> 's run_state * 'a
+  val run :
+    ('a, 's, field) Types.Checked.t -> 's run_state -> 's run_state * 'a
 
   val flatten_as_prover :
        int ref
     -> string list
-    -> ('a, 's, field) Checked.t
+    -> ('a, 's, field) Types.Checked.t
     -> ('s run_state -> 's run_state) * 'a
 
   val reduce_to_prover :
-    int ref -> ('a, 'b, field) Checked.t -> ('a, 'b, field) Checked.t
+       int ref
+    -> ('a, 'b, field) Types.Checked.t
+    -> ('a, 'b, field) Types.Checked.t
 
   module State : sig
     val make :
