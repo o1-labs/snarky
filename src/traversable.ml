@@ -1,6 +1,6 @@
 open Core_kernel
 
-module type Basic = sig
+module type S = sig
   type 'a t
 
   (* TODO-someday: Should be applicative, it's anonying because Applicative.S is not a subsignature
@@ -10,8 +10,8 @@ module type Basic = sig
   end
 end
 
-module type S = sig
-  include Basic
+module type Full = sig
+  include S
 
   module Traverse2 (A : Monad.S2) : sig
     val f : 'a t -> f:('a -> ('b, 'c) A.t) -> ('b t, 'c) A.t
@@ -22,14 +22,14 @@ module type S = sig
   end
 end
 
-module type Res = sig
-  type result
-
-  val result : result
-end
-
-module Make (Basic : Basic) = struct
+module Make (Basic : S) : Full with type 'a t = 'a Basic.t = struct
   include Basic
+
+  module type Res = sig
+    type result
+
+    val result : result
+  end
 
   module Traverse2 (A : Monad.S2) = struct
     let f (type b c) (x : 'a t) ~(f : 'a -> (b, c) A.t) =

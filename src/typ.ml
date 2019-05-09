@@ -310,7 +310,7 @@ module Make (Checked : Checked_intf.S) = struct
       ; check= (fun v -> check (var_to_hlist v)) }
 
     (* TODO: Assert that a stored value has the same shape as the template. *)
-    module Of_traversable (T : Traversable.Basic) = struct
+    module Of_traversable (T : Traversable.S) = struct
       module T = Traversable.Make (T)
 
       let typ (type f) ~template
