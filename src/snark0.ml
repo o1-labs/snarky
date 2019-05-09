@@ -607,7 +607,6 @@ struct
   module Handle = Handle
 
   module Checked = struct
-    open Types.Checked
     open Run_state
 
     type ('a, 's) t = ('a, 's, Field.t) Checked.t
