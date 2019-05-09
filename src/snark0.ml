@@ -624,66 +624,6 @@ struct
 
     type 'prover_state run_state = 'prover_state Runner.run_state
 
-    let rec constraint_count_aux : type a s.
-           log:(?start:_ -> _)
-        -> auxc:_
-        -> int
-        -> (a, s, _) Types.Checked.t
-        -> int * a =
-     fun ~log ~auxc count t0 ->
-      match t0 with
-      | Pure x ->
-          (count, x)
-      | Direct (d, k) ->
-          let input = Field.Vector.create () in
-          let aux = Field.Vector.create () in
-          let state =
-            Runner.State.make ~num_inputs:0 ~input ~next_auxiliary:auxc ~aux
-              None
-          in
-          let count = ref count in
-          let log_constraint c = count := !count + List.length c in
-          let state = {state with log_constraint= Some log_constraint} in
-          let _, x = d state in
-          constraint_count_aux ~log ~auxc !count (k x)
-      | Reduced (t, _, _, k) ->
-          let count, y = constraint_count_aux ~log ~auxc count t in
-          constraint_count_aux ~log ~auxc count (k y)
-      | As_prover (_x, k) ->
-          constraint_count_aux ~log ~auxc count k
-      | Add_constraint (c, t) ->
-          constraint_count_aux ~log ~auxc (count + List.length c) t
-      | Next_auxiliary k ->
-          constraint_count_aux ~log ~auxc count (k !auxc)
-      | With_label (s, t, k) ->
-          log ~start:true s count ;
-          let count', y = constraint_count_aux ~log ~auxc count t in
-          log s count' ;
-          constraint_count_aux ~log ~auxc count' (k y)
-      | With_state (_p, _and_then, t_sub, k) ->
-          let count', y = constraint_count_aux ~log ~auxc count t_sub in
-          constraint_count_aux ~log ~auxc count' (k y)
-      | With_handler (_h, t, k) ->
-          let count, x = constraint_count_aux ~log ~auxc count t in
-          constraint_count_aux ~log ~auxc count (k x)
-      | Clear_handler (t, k) ->
-          let count, x = constraint_count_aux ~log ~auxc count t in
-          constraint_count_aux ~log ~auxc count (k x)
-      | Exists ({alloc; check; _}, _c, k) ->
-          let alloc_var () =
-            let v = !auxc in
-            incr auxc ; Cvar.Unsafe.of_index v
-          in
-          let var = Typ.Alloc.run alloc alloc_var in
-          (* TODO: Push a label onto the stack here *)
-          let count, () = constraint_count_aux ~log ~auxc count (check var) in
-          constraint_count_aux ~log ~auxc count (k {Handle.var; value= None})
-
-    let constraint_count ?(log = fun ?start _ _ -> ())
-        (t : (_, _, _) Types.Checked.t) : int =
-      let next_auxiliary = ref 1 in
-      fst (constraint_count_aux ~log ~auxc:next_auxiliary 0 t)
-
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
     let constraint_system ~run ~num_inputs t : R1CS_constraint_system.t =
       let input = Field.Vector.create () in
