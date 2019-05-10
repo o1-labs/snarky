@@ -58,10 +58,24 @@ module Type = struct
         (mk (Tpoly (vars, typ)) env, env)
     | Tctor variant -> (
         let {var_ident; var_params; var_implicit_params; _} = variant in
-        match raw_find_type_declaration var_ident env with
-        | {tdec_desc= TUnfold typ; _} ->
+        let decl = raw_find_type_declaration var_ident env in
+        let import_implicits () =
+          List.fold_map ~init:env decl.tdec_implicit_params
+            ~f:(fun env param ->
+              let param, env = Envi.Type.import ~loc ?must_find param env in
+              (env, param) )
+        in
+        match decl with
+        | {tdec_desc= TUnfold typ; tdec_implicit_params; _} ->
+            let env, implicit_params = import_implicits () in
+            let new_vars_map = List.fold2_exn ~init:(Map.empty (module Int))
+              tdec_implicit_params implicit_params
+              ~f:(fun new_vars_map var param ->
+                  Map.set new_vars_map ~key:var.type_id ~data:param )
+            in
+            let typ = Envi.Type.copy ~loc typ new_vars_map env in
             (typ, env)
-        | decl ->
+        | _ ->
             let given_args_length = List.length var_params in
             let expected_args_length =
               match decl.tdec_desc with
@@ -74,14 +88,6 @@ module Type = struct
                     given_args_length )
               | _ ->
                   List.length decl.tdec_params
-            in
-            let import_implicits () =
-              List.fold_map ~init:env decl.tdec_implicit_params
-                ~f:(fun env param ->
-                  let param, env =
-                    Envi.Type.import ~loc ?must_find param env
-                  in
-                  (env, param) )
             in
             let env, var_implicit_params =
               if List.is_empty var_implicit_params then import_implicits ()
