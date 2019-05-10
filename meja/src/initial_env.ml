@@ -3,11 +3,12 @@ open Envi
 
 open TypeDecl
 open Ast_build
-open Type
-open Type_decl
 
+(** The built-in types. These match the OCaml built-ins. *)
 module TypeDecls = struct
-  (** The built-in types. These match the OCaml built-ins. *)
+  open Type
+  open Type_decl
+
   let int = abstract "int"
 
   let unit = variant "unit" [Ctor.with_args "()" []]
