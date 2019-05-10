@@ -5,8 +5,6 @@ open Type
 open Type_decl
 
 module TypeDecls = struct
-  let var_a = Type.var "a"
-
   let int = abstract "int"
 
   let unit = variant "unit" [Ctor.with_args "()" []]
@@ -24,7 +22,7 @@ module TypeDecls = struct
 
   let option =
     variant "option" ~params:[var "a"]
-      [Ctor.with_args "None" []; Ctor.with_args "Some" [Type.var "a"]]
+      [Ctor.with_args "None" []; Ctor.with_args "Some" [var "a"]]
 
   let list =
     variant "list" ~params:[var "a"]
@@ -40,7 +38,7 @@ module TypeDecls = struct
 
   let nativeint = abstract "nativeint"
 
-  let field = unfold "field" (Type.var ~explicit:Implicit "field")
+  let field = unfold "field" (var ~explicit:Implicit "field")
 
   let lazy_t = abstract "lazy_t" ~params:[var "a"]
 
