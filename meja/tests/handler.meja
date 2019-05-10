@@ -1,0 +1,14 @@
+request('a) A;
+
+handler A => {
+  unhandled;
+};
+
+request('a) B('a);
+
+let x = {
+  handler B(y) => {
+    y;
+  };
+  ();
+};
