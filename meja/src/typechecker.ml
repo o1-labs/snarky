@@ -366,7 +366,7 @@ let rec check_pattern ~add env typ pat =
       let env = Envi.push_scope scope2 env in
       ({pat_loc= loc; pat_type= typ; pat_desc= POr (p1, p2)}, env)
   | PInt i ->
-      check_type ~loc env typ Envi.Core.Type.int ;
+      check_type ~loc env typ Initial_env.Type.int ;
       ({pat_loc= loc; pat_type= typ; pat_desc= PInt i}, env)
   | PRecord [] ->
       raise (Error (loc, Empty_record))
@@ -470,7 +470,7 @@ let rec get_expression env expected exp =
             let e_typ =
               match label with
               | Optional _ ->
-                  Envi.Core.Type.option e_typ
+                  Initial_env.Type.option e_typ
               | _ ->
                   e_typ
             in
@@ -488,7 +488,7 @@ let rec get_expression env expected exp =
       let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
       (Envi.Type.generate_implicits e env, env)
   | Int i ->
-      let typ = Envi.Core.Type.int in
+      let typ = Initial_env.Type.int in
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
   | Fun (label, p, body, explicit) ->
@@ -502,7 +502,7 @@ let rec get_expression env expected exp =
       let add_name =
         match label with
         | Optional _ ->
-            fun name typ -> Envi.add_name name (Envi.Core.Type.option typ)
+            fun name typ -> Envi.add_name name (Initial_env.Type.option typ)
         | _ ->
             Envi.add_name
       in
@@ -514,7 +514,7 @@ let rec get_expression env expected exp =
       ( {exp_loc= loc; exp_type= typ; exp_desc= Fun (label, p, body, explicit)}
       , env )
   | Seq (e1, e2) ->
-      let e1, env = get_expression env Envi.Core.Type.unit e1 in
+      let e1, env = get_expression env Initial_env.Type.unit e1 in
       let e2, env = get_expression env expected e2 in
       ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Seq (e1, e2)}, env)
   | Let (p, e1, e2) ->
