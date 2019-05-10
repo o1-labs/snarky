@@ -2,12 +2,11 @@
 open Envi
 
 open TypeDecl
-open Ast_build
 
 (** The built-in types. These match the OCaml built-ins. *)
 module TypeDecls = struct
-  open Type
-  open Type_decl
+  open Ast_build.Type
+  open Ast_build.Type_decl
 
   let int = abstract "int"
 
