@@ -2,7 +2,8 @@ open Core_kernel
 open Parsetypes
 
 module Loc = struct
-  let mk ?(loc = Location.none) x : Location.t = Location.mkloc x loc
+  let mk ?(loc = Location.none) (x : 'a) : 'a Location.loc =
+    Location.mkloc x loc
 
   let map x ~f = {Location.loc= x.Location.loc; txt= f x.Location.txt}
 end
