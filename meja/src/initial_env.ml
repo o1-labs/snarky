@@ -52,7 +52,7 @@ module TypeDecls = struct
 end
 
 (** Empty environment. *)
-let env = Envi.(empty (empty_resolve_env ()))
+let env = Envi.(empty empty_resolve_env)
 
 open TypeDecls
 

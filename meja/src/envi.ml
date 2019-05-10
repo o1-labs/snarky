@@ -356,13 +356,13 @@ module Scope = struct
         Some (Immediate (f (find_module ~loc lid2 resolve_env scopes)))
 end
 
-let empty_resolve_env () =
+type t =
+  {scope_stack: Scope.t list; depth: int; resolve_env: Scope.t resolve_env}
+
+let empty_resolve_env : Scope.t resolve_env =
   { type_env= TypeEnvi.empty
   ; external_modules= Map.empty (module String)
   ; predeclare_types= false }
-
-type t =
-  {scope_stack: Scope.t list; depth: int; resolve_env: Scope.t resolve_env}
 
 let empty resolve_env =
   {scope_stack= [Scope.empty Scope.Module]; depth= 0; resolve_env}
