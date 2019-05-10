@@ -740,6 +740,40 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
   | Unifiable _ ->
       raise (Error (loc, Unifiable_expr))
+  | Handler (pat, body, rest) ->
+      let name =
+        match pat.pat_desc with
+        | PCtor (lid, _) ->
+            Codegen.name_of_lid lid.txt
+        | _ ->
+            "any"
+      in
+      let p = Ast_build.Pat.var ~loc ("handle_" ^ name) in
+      let e1 = Codegen.handler_body ~loc (pat, body) in
+      let env = Envi.open_expr_scope env in
+      let _, e1, env = check_binding env p e1 in
+      let pat, body =
+        match e1 with
+        | { exp_desc=
+              Fun
+                ( Nolabel
+                , _
+                , { exp_desc=
+                      Let (_, _, {exp_desc= Match (_, [(pat, body); _]); _})
+                  ; _ }
+                , _ )
+          ; _ } ->
+            (pat, body)
+        | _ ->
+            failwith "Unexpected output of check_binding for Handler"
+      in
+      (*let env = Envi.add_implicit_instance name e1.exp_type env in*)
+      let rest, env = get_expression env expected rest in
+      let env = Envi.close_expr_scope env in
+      ( { exp_loc= loc
+        ; exp_type= rest.exp_type
+        ; exp_desc= Handler (pat, body, rest) }
+      , env )
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let typ = Envi.Type.mkvar ~loc:e.exp_loc None env in
@@ -995,24 +1029,8 @@ let rec check_statement env stmt =
             in
             let p = Pat.var ~loc ("handle_" ^ name) in
             let e =
-              let request = Lid.of_name "request" in
-              let respond = Lid.of_name "respond" in
-              let body =
-                Exp.let_ ~loc (Pat.var "unhandled")
-                  (Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
-                  (Exp.match_ ~loc:stmt.stmt_loc
-                     (Exp.var ~loc (Lid.of_name "request"))
-                     [ ( Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat
-                       , body )
-                     ; ( Pat.any ()
-                       , Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"])
-                       ) ])
-              in
-              Exp.fun_
-                (Pat.ctor
-                   (Lid.of_list ["Snarky__Request"; "With"])
-                   ~args:(Pat.record [Pat.field request; Pat.field respond]))
-                body
+              Codegen.handler_body ~loc:stmt.stmt_loc
+                (Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat, body)
             in
             let _p, e, env = check_binding ~toplevel:true env p e in
             let pat, body =
@@ -1043,6 +1061,34 @@ let rec check_statement env stmt =
             (None, env)
       in
       (env, {stmt with stmt_desc= Request (arg, ctor_decl, handler)})
+  | Handler (pat, body) ->
+      let name =
+        match pat.pat_desc with
+        | PCtor (lid, _) ->
+            Codegen.name_of_lid lid.txt
+        | _ ->
+            "any"
+      in
+      let p = Ast_build.Pat.var ~loc ("handle_" ^ name) in
+      let e1 = Codegen.handler_body ~loc (pat, body) in
+      let _, e1, env = check_binding env p e1 in
+      let pat, body =
+        match e1 with
+        | { exp_desc=
+              Fun
+                ( Nolabel
+                , _
+                , { exp_desc=
+                      Let (_, _, {exp_desc= Match (_, [(pat, body); _]); _})
+                  ; _ }
+                , _ )
+          ; _ } ->
+            (pat, body)
+        | _ ->
+            failwith "Unexpected output of check_binding for Handler"
+      in
+      (*let env = Envi.add_implicit_instance name e1.exp_type env in*)
+      (env, {stmt with stmt_desc= Handler (pat, body)})
   | Multiple stmts ->
       let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
       (env, {stmt with stmt_desc= Multiple stmts})

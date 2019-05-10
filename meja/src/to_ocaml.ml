@@ -127,6 +127,43 @@ let rec of_expression_desc ?loc = function
       of_expression e
   | Unifiable {name; _} ->
       Exp.ident ?loc (mk_lid name)
+  | Handler (pat, body, rest) ->
+      let name =
+        match pat.pat_desc with
+        | PCtor (lid, _) ->
+            Codegen.name_of_lid lid.txt
+        | _ ->
+            "any"
+      in
+      let loc = Option.value ~default:Location.none loc in
+      [%expr
+        let [%p Pat.var ~loc (Location.mkloc ("handle_" ^ name) loc)] =
+          [%e of_handler ~loc (Some pat, body)]
+        in
+        [%e of_expression rest]]
+
+and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
+  Parsetree.(
+    [%expr
+      function
+      | With
+          { request=
+              [%p
+                match ctor_ident with
+                | Some ctor_ident ->
+                    Pat.construct ~loc (mk_lid ctor_ident)
+                      (Option.map ~f:of_pattern args)
+                | None -> (
+                  match args with
+                  | Some args ->
+                      of_pattern args
+                  | None ->
+                      Pat.any () )]
+          ; respond } ->
+          let unhandled = Snarky.Request.unhandled in
+          [%e of_expression body]
+      | _ ->
+          Snarky.Request.unhandled])
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
@@ -201,30 +238,46 @@ let rec of_statement_desc ?loc = function
       let typ_ext =
         Str.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
       in
+      let {txt= name; _} = ctor.ctor_ident in
       let handler =
-        Option.map handler
-          ~f:
+        Option.map handler ~f:(fun (pat, body) ->
+            let loc =
+              match (loc, pat) with
+              | Some loc, _ ->
+                  loc
+              | None, Some {pat_loc= {loc_start; _}; _} ->
+                  {body.exp_loc with Location.loc_start}
+              | None, None ->
+                  body.exp_loc
+            in
             Parsetree.(
-              fun (args, body) ->
-                let {txt= name; loc} = ctor.ctor_ident in
-                [%stri
-                  let [%p Pat.var ~loc (Location.mkloc ("handle_" ^ name) loc)]
-                      = function
-                    | With
-                        { request=
-                            [%p
-                              Pat.construct ~loc (mk_lid ctor.ctor_ident)
-                                (Option.map ~f:of_pattern args)]
-                        ; respond } ->
-                        let unhandled = Snarky.Request.unhandled in
-                        [%e of_expression body]
-                    | _ ->
-                        Snarky.Request.unhandled])
+              [%stri
+                let [%p Pat.var ~loc (Location.mkloc ("handle_" ^ name) loc)] =
+                  [%e of_handler ~loc ~ctor_ident:ctor.ctor_ident (pat, body)]])
+        )
       in
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Handler (pat, body) ->
+      let name =
+        match pat.pat_desc with
+        | PCtor (lid, _) ->
+            Codegen.name_of_lid lid.txt
+        | _ ->
+            "any"
+      in
+      let loc =
+        match loc with
+        | Some loc ->
+            loc
+        | None ->
+            {body.exp_loc with Location.loc_start= pat.pat_loc.loc_start}
+      in
+      [%stri
+        let [%p Pat.var ~loc (Location.mkloc ("handle_" ^ name) loc)] =
+          [%e of_handler ~loc (Some pat, body)]]
   | Multiple stmts ->
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)

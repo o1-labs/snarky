@@ -153,6 +153,8 @@ structure_item:
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Request (arg, x, handler)) }
+  | HANDLER p = pat EQUALGT LBRACE body = block RBRACE
+    { mkstmt ~pos:$loc (Handler (p, body)) }
 
 signature_item:
   | LET x = as_loc(val_ident) COLON typ = type_expr
@@ -451,6 +453,10 @@ block:
     { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
   | LET pat EQUAL expr err = err
     { raise (Error (err, Missing_semi)) }
+  | HANDLER p = pat EQUALGT LBRACE body = block RBRACE SEMI rest = block
+    { mkexp ~pos:$loc (Handler (p, body, rest)) }
+  | HANDLER pat EQUALGT LBRACE block RBRACE err = err
+    { raise (Error (err, Dangling_handler)) }
   | expr err = err
     { raise (Error (err, Missing_semi)) }
 
