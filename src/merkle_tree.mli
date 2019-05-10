@@ -118,6 +118,13 @@ module Checked
     -> f:(Elt.var -> (Elt.var, 's) Checked.t)
     -> (Hash.var, 's) Checked.t
 
+  val modify_or_get_req :
+       depth:int
+    -> Hash.var
+    -> Address.var
+    -> f:(Elt.var -> (Elt.var, 's) Checked.t)
+    -> (Hash.var * Elt.var, 's) Checked.t
+
   val get_req : depth:int -> Hash.var -> Address.var -> (Elt.var, 's) Checked.t
 
   (* TODO: Change [prev] to be [prev_hash : Hash.var] since there may be no need
