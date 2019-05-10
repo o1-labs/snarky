@@ -1,10 +1,13 @@
+(** The default initial environment. *)
 open Envi
+
 open TypeDecl
 open Ast_build
 open Type
 open Type_decl
 
 module TypeDecls = struct
+  (** The built-in types. These match the OCaml built-ins. *)
   let int = abstract "int"
 
   let unit = variant "unit" [Ctor.with_args "()" []]
@@ -38,16 +41,23 @@ module TypeDecls = struct
 
   let nativeint = abstract "nativeint"
 
-  let field = unfold "field" (var ~explicit:Implicit "field")
-
   let lazy_t = abstract "lazy_t" ~params:[var "a"]
 
   let array = abstract "array" ~params:[var "a"]
+
+  (** Meja-specific built-ins. *)
+
+  let field = unfold "field" (var ~explicit:Implicit "field")
 end
 
+(** Empty environment. *)
 let env = Envi.(empty (empty_resolve_env ()))
 
 open TypeDecls
+
+(** Import the built-in type definitions, overriding the previous definition of
+    the environment [env] each time.
+*)
 
 let int, env = import int env
 
@@ -81,6 +91,9 @@ let lazy_t, env = import lazy_t env
 
 let array, env = import array env
 
+(** Canonical references for each of the built-in types that the typechecker
+    refers to.
+*)
 module Type = struct
   open Envi
 
