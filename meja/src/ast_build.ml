@@ -2,7 +2,7 @@ open Core_kernel
 open Parsetypes
 
 module Loc = struct
-  let mk ?(loc = Location.none) x = Location.mkloc x loc
+  let mk ?(loc = Location.none) x : Location.t = Location.mkloc x loc
 
   let map x ~f = {Location.loc= x.Location.loc; txt= f x.Location.txt}
 end
@@ -26,7 +26,8 @@ module Lid = struct
 end
 
 module Type = struct
-  let mk ?(loc = Location.none) d = {type_desc= d; type_id= -1; type_loc= loc}
+  let mk ?(loc = Location.none) d : Parsetypes.type_expr =
+    {type_desc= d; type_id= -1; type_loc= loc}
 
   let variant ?loc ?(params = []) ?(implicits = []) ident =
     { var_ident= Loc.mk ident ?loc
@@ -51,7 +52,8 @@ module Type = struct
 end
 
 module Type_decl = struct
-  let mk ?(loc = Location.none) ?(params = []) ?(implicits = []) name d =
+  let mk ?(loc = Location.none) ?(params = []) ?(implicits = []) name d :
+      Parsetypes.type_decl =
     { tdec_ident= Loc.mk ~loc name
     ; tdec_params= params
     ; tdec_implicit_params= implicits
@@ -81,12 +83,12 @@ module Type_decl = struct
     mk ?loc ?params ?implicits name (TForward (ref None))
 
   module Field = struct
-    let mk ?(loc = Location.none) name typ =
+    let mk ?(loc = Location.none) name typ : Parsetypes.field_decl =
       {fld_ident= Loc.mk ~loc name; fld_type= typ; fld_id= -1; fld_loc= loc}
   end
 
   module Ctor = struct
-    let mk ?(loc = Location.none) ?ret name d =
+    let mk ?(loc = Location.none) ?ret name d : Parsetypes.ctor_decl =
       {ctor_ident= Loc.mk ~loc name; ctor_args= d; ctor_ret= ret; ctor_loc= loc}
 
     let with_args ?loc ?ret name args = mk ?loc ?ret name (Ctor_tuple args)
@@ -97,7 +99,7 @@ module Type_decl = struct
 end
 
 module Pat = struct
-  let mk ?(loc = Location.none) d =
+  let mk ?(loc = Location.none) d : Parsetypes.pattern =
     {pat_desc= d; pat_loc= loc; pat_type= Type.none ~loc ()}
 
   let any ?loc () = mk ?loc PAny
@@ -116,7 +118,7 @@ module Pat = struct
 end
 
 module Exp = struct
-  let mk ?(loc = Location.none) d =
+  let mk ?(loc = Location.none) d : Parsetypes.expression =
     {exp_desc= d; exp_loc= loc; exp_type= Type.none ~loc ()}
 
   let fun_ ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) p body =
