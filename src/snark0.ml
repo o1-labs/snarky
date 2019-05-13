@@ -556,42 +556,6 @@ struct
     let unit : (unit, unit) t = unit ()
 
     let field : (Cvar.t, Field.t) t = field ()
-
-    (* TODO: Assert that a stored value has the same shape as the template. *)
-    module Of_traversable (T : Traversable.S) = struct
-      let typ ~template
-          ({read; store; alloc; check} : ('elt_var, 'elt_value) t) :
-          ('elt_var T.t, 'elt_value T.t) t =
-        let traverse_store =
-          let module M = T.Traverse (Store) in
-          M.f
-        in
-        let traverse_read =
-          let module M = T.Traverse (Read) in
-          M.f
-        in
-        let traverse_alloc =
-          let module M = T.Traverse (Alloc) in
-          M.f
-        in
-        let traverse_checked =
-          let module M =
-            T.Traverse
-              (Restrict_monad.Make3
-                 (Checked)
-                 (struct
-                   type t1 = unit
-
-                   type t2 = Field.t
-                 end)) in
-          M.f
-        in
-        let read var = traverse_read var ~f:read in
-        let store value = traverse_store value ~f:store in
-        let alloc = traverse_alloc template ~f:(fun () -> alloc) in
-        let check t = Checked.map (traverse_checked t ~f:check) ~f:ignore in
-        {read; store; alloc; check}
-    end
   end
 
   module As_prover = struct
