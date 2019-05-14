@@ -18,7 +18,7 @@ module Loc = struct
     ; loc_ghost= false }
 
   let of_pos (loc_start, loc_end) =
-    { Location.loc_start; loc_end; loc_ghost= false }
+    {Location.loc_start; loc_end; loc_ghost= false}
 end
 
 module Lid = struct
