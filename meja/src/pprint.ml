@@ -132,9 +132,12 @@ let rec signature_desc fmt = function
   | SOpen name ->
       fprintf fmt "@[<2>open %a@]@;@;" Longident.pp name.txt
   | STypeExtension (typ, ctors) ->
-      fprintf fmt "@[<2>type %a +=@[<hv2>@ %a@]@]@;@;" variant typ (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
+      fprintf fmt "@[<2>type %a +=@[<hv2>@ %a@]@]@;@;" variant typ
+        (pp_print_list ~pp_sep:bar_sep ctor_decl)
+        ctors
   | SRequest (typ, ctor) ->
-      fprintf fmt "@[<2>request (%a)@[<hv2>@ %a@]@]@;@;" type_expr typ ctor_decl ctor
+      fprintf fmt "@[<2>request (%a)@[<hv2>@ %a@]@]@;@;" type_expr typ
+        ctor_decl ctor
   | SMultiple sigs ->
       signature fmt sigs
 

@@ -879,7 +879,9 @@ let rec check_signature_item env item =
       in
       let ctor_ret = Type.mk ~loc (Tctor {variant with var_params= [arg]}) in
       let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
-      let env, _variant, _ctors = type_extension ~loc variant [ctor_decl] env in
+      let env, _variant, _ctors =
+        type_extension ~loc variant [ctor_decl] env
+      in
       env
   | SMultiple sigs ->
       check_signature env sigs
