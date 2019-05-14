@@ -662,7 +662,7 @@ module Type = struct
         let typ2, env = import typ2 env in
         (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
 
-  let refresh_vars ~loc:_ vars new_vars_map env =
+  let refresh_vars vars new_vars_map env =
     let env, new_vars =
       List.fold_map vars ~init:env ~f:(fun env typ ->
           match typ.type_desc with
@@ -686,7 +686,7 @@ module Type = struct
     in
     (new_vars, new_vars_map, env)
 
-  let rec copy ~loc typ new_vars_map env =
+  let rec copy typ new_vars_map env =
     match typ.type_desc with
     | Tvar _ -> (
       match Map.find new_vars_map typ.type_id with
@@ -695,21 +695,19 @@ module Type = struct
       | None ->
           typ )
     | Tpoly (vars, typ) ->
-        let _vars, new_vars_map, env =
-          refresh_vars ~loc vars new_vars_map env
-        in
-        copy ~loc typ new_vars_map env
+        let _vars, new_vars_map, env = refresh_vars vars new_vars_map env in
+        copy typ new_vars_map env
     | Tctor ({var_params; _} as variant) ->
         let var_params =
-          List.map var_params ~f:(fun t -> copy ~loc t new_vars_map env)
+          List.map var_params ~f:(fun t -> copy t new_vars_map env)
         in
         mk (Tctor {variant with var_params}) env
     | Ttuple typs ->
-        let typs = List.map typs ~f:(fun t -> copy ~loc t new_vars_map env) in
+        let typs = List.map typs ~f:(fun t -> copy t new_vars_map env) in
         mk (Ttuple typs) env
     | Tarrow (typ1, typ2, explicit, label) ->
-        let typ1 = copy ~loc typ1 new_vars_map env in
-        let typ2 = copy ~loc typ2 new_vars_map env in
+        let typ1 = copy typ1 new_vars_map env in
+        let typ2 = copy typ2 new_vars_map env in
         mk (Tarrow (typ1, typ2, explicit, label)) env
 
   module T = struct
@@ -871,13 +869,11 @@ module Type = struct
        ; implicit_id= implicit_id + 1 } ;
     new_exp
 
-  let implicit_instances ~loc ~(unify : env -> type_expr -> type_expr -> 'a)
+  let implicit_instances ~(unify : env -> type_expr -> type_expr -> 'a)
       (typ : type_expr) env =
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, instance_typ) ->
-        let instance_typ =
-          copy ~loc instance_typ (Map.empty (module Int)) env
-        in
+        let instance_typ = copy instance_typ (Map.empty (module Int)) env in
         match unify env typ instance_typ with
         | _ ->
             List.find_map env.scope_stack ~f:(fun {instances; _} ->
@@ -909,10 +905,10 @@ module Type = struct
     <- {env.resolve_env.type_env with implicit_vars= []} ;
     let implicit_vars =
       List.filter implicit_vars ~f:(fun ({exp_loc; exp_type; _} as exp) ->
-          match implicit_instances ~loc:exp_loc ~unify exp_type env with
+          match implicit_instances ~unify exp_type env with
           | [(name, instance_typ)] ->
               let instance_typ =
-                copy ~loc:exp_loc instance_typ (Map.empty (module Int)) env
+                copy instance_typ (Map.empty (module Int)) env
               in
               let name = Location.mkloc name exp_loc in
               unify env exp_type instance_typ ;
@@ -1324,14 +1320,14 @@ module TypeDecl = struct
   let unfold_alias ~loc typ env =
     match find_of_type ~loc typ env with
     | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
-        Some (Type.copy ~loc alias_typ bound_vars env)
+        Some (Type.copy alias_typ bound_vars env)
     | _ ->
         None
 
   let rec find_unaliased_of_type ~loc typ env =
     match find_of_type ~loc typ env with
     | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
-        let typ = Type.copy ~loc alias_typ bound_vars env in
+        let typ = Type.copy alias_typ bound_vars env in
         find_unaliased_of_type ~loc typ env
     | ret ->
         ret

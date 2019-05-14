@@ -192,7 +192,7 @@ let get_field (field : lid) env =
       ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
       , i ) ->
       let vars, bound_vars, _ =
-        Envi.Type.refresh_vars ~loc tdec_params (Map.empty (module Int)) env
+        Envi.Type.refresh_vars tdec_params (Map.empty (module Int)) env
       in
       let name =
         Location.mkloc
@@ -205,22 +205,22 @@ let get_field (field : lid) env =
       in
       let rcd_type = Envi.TypeDecl.mk_typ ~params:vars ~ident:name decl env in
       let {fld_type; _} = List.nth_exn field_decls i in
-      let rcd_type = Envi.Type.copy ~loc rcd_type bound_vars env in
-      let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
+      let rcd_type = Envi.Type.copy rcd_type bound_vars env in
+      let fld_type = Envi.Type.copy fld_type bound_vars env in
       (i, fld_type, rcd_type)
   | _ ->
       raise (Error (loc, Unbound ("record field", field)))
 
 let get_field_of_decl typ bound_vars field_decls (field : lid) env =
   match field with
-  | {txt= Longident.Lident name; loc} -> (
+  | {txt= Longident.Lident name; _} -> (
     match
       List.findi field_decls ~f:(fun _ {fld_ident; _} ->
           String.equal fld_ident.txt name )
     with
     | Some (i, {fld_type; _}) ->
-        let typ = Envi.Type.copy ~loc typ bound_vars env in
-        let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
+        let typ = Envi.Type.copy typ bound_vars env in
+        let fld_type = Envi.Type.copy fld_type bound_vars env in
         (i, fld_type, typ)
     | None ->
         get_field field env )
@@ -285,10 +285,10 @@ let get_ctor (name : lid) env =
           (Set.union (Envi.Type.type_vars typ) (Envi.Type.type_vars args_typ))
       in
       let _, bound_vars, _ =
-        Envi.Type.refresh_vars ~loc bound_vars (Map.empty (module Int)) env
+        Envi.Type.refresh_vars bound_vars (Map.empty (module Int)) env
       in
-      let args_typ = Envi.Type.copy ~loc args_typ bound_vars env in
-      let typ = Envi.Type.copy typ ~loc bound_vars env in
+      let args_typ = Envi.Type.copy args_typ bound_vars env in
+      let typ = Envi.Type.copy typ bound_vars env in
       (typ, args_typ)
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
@@ -377,9 +377,7 @@ let rec check_pattern ~add env typ pat =
           | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
             ->
               let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params
-                  (Map.empty (module Int))
-                  env
+                Envi.Type.refresh_vars tdec_params (Map.empty (module Int)) env
               in
               let ident =
                 Longident.(
@@ -482,7 +480,7 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
-      let typ = Envi.find_name ~loc name env in
+      let typ = Envi.find_name name env in
       check_type ~loc env expected typ ;
       let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
       (Envi.Type.generate_implicits e env, env)
@@ -564,9 +562,7 @@ let rec get_expression env expected exp =
           | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
             ->
               let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params
-                  (Map.empty (module Int))
-                  env
+                Envi.Type.refresh_vars tdec_params (Map.empty (module Int)) env
               in
               let ident =
                 Location.mkloc (Longident.Ldot (path, decl.tdec_ident.txt)) loc
@@ -575,7 +571,7 @@ let rec get_expression env expected exp =
                 Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
               in
               let {fld_type; _} = List.nth_exn field_decls i in
-              let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
+              let fld_type = Envi.Type.copy fld_type bound_vars env in
               check_type ~loc env expected fld_type ;
               Some (fld_type, decl_type, env)
           | _ ->
@@ -608,7 +604,7 @@ let rec get_expression env expected exp =
                   (* This case shouldn't happen! *) )
             with
             | Some {fld_type; _} ->
-                let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
+                let fld_type = Envi.Type.copy fld_type bound_vars env in
                 check_type ~loc env typ fld_type ;
                 (fld_type, env)
             | None ->
@@ -620,7 +616,7 @@ let rec get_expression env expected exp =
                 (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
               ->
                 let vars, bound_vars, env =
-                  Envi.Type.refresh_vars ~loc tdec_params
+                  Envi.Type.refresh_vars tdec_params
                     (Map.empty (module Int))
                     env
                 in
@@ -639,8 +635,8 @@ let rec get_expression env expected exp =
                 in
                 check_type ~loc env e.exp_type e_typ ;
                 let {fld_type; _} = List.nth_exn field_decls i in
-                let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
-                let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
+                let fld_type = Envi.Type.copy fld_type bound_vars env in
+                let fld_type = Envi.Type.copy fld_type bound_vars env in
                 (fld_type, env)
             | _ ->
                 raise (Error (loc, Unbound ("record field", field))) )
@@ -666,9 +662,7 @@ let rec get_expression env expected exp =
           | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
             ->
               let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params
-                  (Map.empty (module Int))
-                  env
+                Envi.Type.refresh_vars tdec_params (Map.empty (module Int)) env
               in
               let ident =
                 Longident.(
