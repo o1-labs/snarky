@@ -1,5 +1,6 @@
 open Core_kernel
 open Parsetypes
+open Ast_build.Loc
 open Longident
 
 type error =
@@ -372,7 +373,7 @@ let current_scope {scope_stack; _} =
   | Some scope ->
       scope
   | None ->
-      raise (Error (Location.none, No_open_scopes))
+      raise (Error (of_prim __POS__, No_open_scopes))
 
 let push_scope scope env =
   {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
@@ -391,7 +392,7 @@ let open_namespace_scope scope env =
 let pop_scope env =
   match env.scope_stack with
   | [] ->
-      raise (Error (Location.none, No_open_scopes))
+      raise (Error (of_prim __POS__, No_open_scopes))
   | scope :: scope_stack ->
       (scope, {env with scope_stack; depth= env.depth - 1})
 
@@ -401,7 +402,7 @@ let pop_expr_scope env =
   | Scope.Expr ->
       (scope, env)
   | _ ->
-      raise (Error (Location.none, Wrong_scope_kind "expression"))
+      raise (Error (of_prim __POS__, Wrong_scope_kind "expression"))
 
 let pop_module ~loc env =
   let rec all_scopes scopes env =
@@ -410,14 +411,14 @@ let pop_module ~loc env =
     | Scope.Module ->
         (scope :: scopes, env)
     | Expr ->
-        raise (Error (Location.none, Wrong_scope_kind "module"))
+        raise (Error (of_prim __POS__, Wrong_scope_kind "module"))
     | Open ->
         all_scopes scopes env
     | Continue ->
         all_scopes (scope :: scopes) env
     | Functor _ ->
         if List.is_empty scopes then ([scope], env)
-        else raise (Error (Location.none, Functor_in_module_sig))
+        else raise (Error (of_prim __POS__, Functor_in_module_sig))
   in
   let scopes, env = all_scopes [] env in
   let m =
@@ -444,7 +445,7 @@ let map_current_scope ~f env =
   | current_scope :: scope_stack ->
       {env with scope_stack= f current_scope :: scope_stack}
   | [] ->
-      raise (Error (Location.none, No_open_scopes))
+      raise (Error (of_prim __POS__, No_open_scopes))
 
 let add_type_variable name typ =
   map_current_scope ~f:(Scope.add_type_variable name typ)
