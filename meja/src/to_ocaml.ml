@@ -147,6 +147,28 @@ let rec of_signature_desc ?loc = function
       Sig.module_ ?loc (Md.mk ?loc name msig)
   | SModType (name, msig) ->
       Sig.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
+  | SOpen name ->
+      Sig.open_ ?loc (Opn.mk ?loc name)
+  | STypeExtension (variant, ctors) ->
+      let params =
+        List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
+        )
+      in
+      let ctors = List.map ~f:of_ctor_decl_ext ctors in
+      Sig.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
+  | SRequest (_, ctor) ->
+      let params = [(Typ.any ?loc (), Invariant)] in
+      let ident =
+        Location.mkloc
+          Longident.(Ldot (Ldot (Lident "Snarky", "Request"), "t"))
+          (Option.value ~default:Location.none loc)
+      in
+      Sig.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
+  | SMultiple sigs ->
+      Sig.include_ ?loc
+        { pincl_mod= Mty.signature ?loc (of_signature sigs)
+        ; pincl_loc= Option.value ~default:Location.none loc
+        ; pincl_attributes= [] }
 
 and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
 

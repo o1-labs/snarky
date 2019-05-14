@@ -166,6 +166,10 @@ and signature_desc =
   | STypeDecl of type_decl
   | SModule of str * module_sig
   | SModType of str * module_sig
+  | SOpen of lid
+  | STypeExtension of variant * ctor_decl list
+  | SRequest of type_expr * ctor_decl
+  | SMultiple of signature_item list
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
