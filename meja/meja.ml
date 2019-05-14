@@ -70,6 +70,7 @@ let main =
   let meji_files = ref [] in
   let cmi_files = ref [] in
   let cmi_dirs = ref [] in
+  let exn_backtraces = ref false in
   let arg_spec =
     [ ( "--ml"
       , Arg.String (set_and_clear_default ocaml_file)
@@ -110,7 +111,11 @@ let main =
     ; ( "--impl-name"
       , Arg.Set_string impl_mod
       , "set the name to give to the snarky implementation module \
-         \x1B[4mdefault: Impl\x1B[24m" ) ]
+         \x1B[4mdefault: Impl\x1B[24m" )
+    ; ( "--compiler-backtraces"
+      , Arg.Set exn_backtraces
+      , "show a backtrace through the compiler when an error is encountered" )
+    ]
   in
   let usage_text =
     Format.sprintf "Usage:@.@[%s [options] file@]@.@.OPTIONS:"
@@ -126,6 +131,7 @@ let main =
           file := Some filename )
     usage_text ;
   let env = Initial_env.env in
+  Printexc.record_backtrace !exn_backtraces ;
   try
     let env =
       if !stdlib then (
@@ -250,5 +256,7 @@ let main =
         () ) ;
     exit 0
   with exn ->
+    ( if !exn_backtraces then
+      Format.(pp_print_string err_formatter (Printexc.get_backtrace ())) ) ;
     Location.report_exception Format.err_formatter exn ;
     exit 1
