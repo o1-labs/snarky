@@ -410,16 +410,13 @@ struct
 
   module Tag = struct
     type value = [`Curr_ledger | `Epoch_ledger]
+
     type var = Boolean.var
 
     let typ : (var, value) Typ.t =
       Typ.transport Boolean.typ
-        ~there:(function
-          | `Curr_ledger -> false
-          | `Epoch_ledger -> true)
-        ~back:(function
-          | false -> `Curr_ledger
-          | true -> `Epoch_ledger)
+        ~there:(function `Curr_ledger -> false | `Epoch_ledger -> true)
+        ~back:(function false -> `Curr_ledger | true -> `Epoch_ledger)
   end
 
   let implied_root entry_hash addr0 path0 =
@@ -440,7 +437,9 @@ struct
     go 0 entry_hash addr0 path0
 
   type _ Request.t +=
-    | Get_element : Tag.value * Address.value -> (Elt.value * Path.value) Request.t
+    | Get_element :
+        Tag.value * Address.value
+        -> (Elt.value * Path.value) Request.t
     | Get_path : Address.value -> Path.value Request.t
     | Set : Address.value * Elt.value -> unit Request.t
 
@@ -452,7 +451,9 @@ struct
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         As_prover.(
-          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element (`Curr_ledger, a)))
+          map
+            (read (Address.typ ~depth) addr0)
+            ~f:(fun a -> Get_element (`Curr_ledger, a)))
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in
@@ -470,18 +471,17 @@ struct
     in
     implied_root next_entry_hash addr0 prev_path
 
-  let%snarkydef_ modify_or_get_req ~is_chain_voting ~(depth : int) root addr0 ~f :
-      (Hash.var * Elt.var, 's) Checked.t =
+  let%snarkydef_ modify_or_get_req ~is_chain_voting ~(depth : int) root addr0
+      ~f : (Hash.var * Elt.var, 's) Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         As_prover.(
-            Let_syntax.(
+          Let_syntax.(
             let%map addr = read (Address.typ ~depth) addr0
-            and tag = read Tag.typ is_chain_voting
-            in
-            Get_element (tag, addr) ))
+            and tag = read Tag.typ is_chain_voting in
+            Get_element (tag, addr)))
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in
@@ -507,7 +507,9 @@ struct
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         As_prover.(
-          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element (`Curr_ledger, a)))
+          map
+            (read (Address.typ ~depth) addr0)
+            ~f:(fun a -> Get_element (`Curr_ledger, a)))
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in

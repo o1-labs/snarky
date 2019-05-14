@@ -102,12 +102,16 @@ module Checked
 
   module Tag : sig
     type value = [`Curr_ledger | `Epoch_ledger]
+
     type var = Boolean.var
+
     val typ : (var, value) Typ.t
   end
 
   type _ Request.t +=
-    | Get_element : Tag.value * Address.value -> (Elt.value * Path.value) Request.t
+    | Get_element :
+        Tag.value * Address.value
+        -> (Elt.value * Path.value) Request.t
     | Get_path : Address.value -> Path.value Request.t
     | Set : Address.value * Elt.value -> unit Request.t
 
@@ -126,7 +130,7 @@ module Checked
 
   val modify_or_get_req :
        is_chain_voting:Boolean.var
-    -> depth:int       
+    -> depth:int
     -> Hash.var
     -> Address.var
     -> f:(Elt.var -> (Elt.var, 's) Checked.t)
