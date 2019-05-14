@@ -662,11 +662,22 @@ module Type = struct
         let typ2, env = import typ2 env in
         (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
 
-  let refresh_vars ~loc vars new_vars_map env =
+  let refresh_vars ~loc:_ vars new_vars_map env =
     let env, new_vars =
-      List.fold_map vars ~init:env ~f:(fun e t ->
-          let t, e = import ~loc ~must_find:false t e in
-          (e, t) )
+      List.fold_map vars ~init:env ~f:(fun env typ ->
+          match typ.type_desc with
+          | Tvar (name, _, explicitness) ->
+              let var = mkvar ~explicitness name env in
+              let env =
+                match name with
+                | Some name ->
+                    add_type_variable name.txt var env
+                | None ->
+                    env
+              in
+              (env, var)
+          | _ ->
+              assert false )
     in
     let new_vars_map =
       List.fold2_exn ~init:new_vars_map vars new_vars
