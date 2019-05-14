@@ -426,7 +426,7 @@ struct
     go 0 entry_hash addr0 path0
 
   type _ Request.t +=
-    | Get_element : Address.value -> (Elt.value * Path.value) Request.t
+    | Get_element : [< `Curr_ledger | `Epoch_ledger] * Address.value -> (Elt.value * Path.value) Request.t
     | Get_path : Address.value -> Path.value Request.t
     | Set : Address.value * Elt.value -> unit Request.t
 
@@ -438,7 +438,7 @@ struct
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         As_prover.(
-          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a))
+          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element (`Curr_ledger, a)))
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in
@@ -456,14 +456,14 @@ struct
     in
     implied_root next_entry_hash addr0 prev_path
 
-  let%snarkydef_ modify_or_get_req ~(depth : int) root addr0 ~f :
+  let%snarkydef_ modify_or_get_req ~tag ~(depth : int) root addr0 ~f :
       (Hash.var * Elt.var, 's) Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         As_prover.(
-          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a))
+          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element (tag, a)))
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in
@@ -489,7 +489,7 @@ struct
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         As_prover.(
-          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a))
+          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element (`Curr_ledger, a)))
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in

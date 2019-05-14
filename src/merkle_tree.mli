@@ -101,7 +101,7 @@ module Checked
   end
 
   type _ Request.t +=
-    | Get_element : Address.value -> (Elt.value * Path.value) Request.t
+    | Get_element : [< `Curr_ledger | `Epoch_ledger] * Address.value -> (Elt.value * Path.value) Request.t
     | Get_path : Address.value -> Path.value Request.t
     | Set : Address.value * Elt.value -> unit Request.t
 
@@ -119,7 +119,8 @@ module Checked
     -> (Hash.var, 's) Checked.t
 
   val modify_or_get_req :
-       depth:int
+       tag:[< `Curr_ledger | `Epoch_ledger]
+-> depth:int       
     -> Hash.var
     -> Address.var
     -> f:(Elt.var -> (Elt.var, 's) Checked.t)
