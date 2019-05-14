@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Capture the interrupt signal (Ctrl-C) and exit
+trap "exit" SIGINT
+
 run_dune() {
   dune $1 --display quiet --root=.. ${@:2}
 }
