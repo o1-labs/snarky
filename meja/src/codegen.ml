@@ -111,7 +111,7 @@ let typ_of_decl env decl =
                 { decl with
                   tdec_desc=
                     TAlias
-                      (Envi.TypeDecl.mk_typ ~loc
+                      (Envi.TypeDecl.mk_typ
                          ~params:(decl.tdec_params @ params)
                          poly_decl_content env) } }
         in
@@ -119,7 +119,7 @@ let typ_of_decl env decl =
           let params =
             Map.fold !constr_map ~init:[]
               ~f:(fun ~key:_ ~data:(_, variant) l ->
-                Envi.Type.mk ~loc (Tctor variant) env :: l )
+                Envi.Type.mk (Tctor variant) env :: l )
           in
           mk_decl params
         in
@@ -133,7 +133,7 @@ let typ_of_decl env decl =
                     var_ident=
                       Location.mkloc (var_type_lident name.txt) name.loc }
                 in
-                Envi.Type.mk ~loc (Tctor variant) env :: l )
+                Envi.Type.mk (Tctor variant) env :: l )
           in
           mk_decl params
         in
