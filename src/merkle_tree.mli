@@ -100,8 +100,14 @@ module Checked
     val typ : depth:int -> (var, value) Typ.t
   end
 
+  module Tag : sig
+    type value = [`Curr_ledger | `Epoch_ledger]
+    type var = Boolean.var
+    val typ : (var, value) Typ.t
+  end
+
   type _ Request.t +=
-    | Get_element : [< `Curr_ledger | `Epoch_ledger] * Address.value -> (Elt.value * Path.value) Request.t
+    | Get_element : Tag.value * Address.value -> (Elt.value * Path.value) Request.t
     | Get_path : Address.value -> Path.value Request.t
     | Set : Address.value * Elt.value -> unit Request.t
 
@@ -119,8 +125,8 @@ module Checked
     -> (Hash.var, 's) Checked.t
 
   val modify_or_get_req :
-       tag:[< `Curr_ledger | `Epoch_ledger]
--> depth:int       
+       is_chain_voting:Boolean.var
+    -> depth:int       
     -> Hash.var
     -> Address.var
     -> f:(Elt.var -> (Elt.var, 's) Checked.t)
