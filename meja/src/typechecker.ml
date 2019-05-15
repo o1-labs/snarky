@@ -308,6 +308,7 @@ let rec check_pattern ~add env typ pat =
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp ;
       let p, env = check_pattern ~add env ctyp p in
+      let constr_typ = Untype_ast.type_expr ctyp in
       ( {pat_loc= loc; pat_type= typ; pat_desc= PConstraint (p, constr_typ)}
       , env )
   | PTuple ps ->
@@ -530,6 +531,7 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ ;
       let e, env = get_expression env typ e in
       check_type ~loc env e.exp_type typ ;
+      let typ' = Untype_ast.type_expr typ in
       ({exp_loc= loc; exp_type= typ; exp_desc= Constraint (e, typ')}, env)
   | Tuple es ->
       let typs =

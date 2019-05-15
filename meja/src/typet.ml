@@ -58,8 +58,8 @@ module Type = struct
     | Tctor variant -> (
         let {var_ident; var_params; _} = variant in
         match raw_find_type_declaration var_ident env with
-        (*| {tdec_desc= TUnfold typ; _} ->
-            (typ, env)*)
+        | {tdec_desc= TUnfold typ; _} ->
+            (typ, env)
         | decl ->
             let given_args_length = List.length var_params in
             let expected_args_length =
@@ -321,8 +321,51 @@ module TypeDecl = struct
           failwith "Cannot import a forward type declaration"
     in
     let env = close_expr_scope env in
-    (* TODO: Map over all ctors in the declaration and update the implicit
-             parameters to include those discovered along the way. *)
+    let decl =
+      let open Envi in
+      let open Type0 in
+      (* Insert the implicit arguments in all nested references to this type. *)
+      if List.is_empty decl.tdec_implicit_params then decl
+      else
+        let map_type typ =
+          Type.constr_map env typ ~f:(fun variant ->
+              let variant =
+                if Int.equal variant.var_decl_id decl.tdec_id then
+                  {variant with var_implicit_params= decl.tdec_implicit_params}
+                else variant
+              in
+              Tctor variant )
+        in
+        let map_field field = {field with fld_type= map_type field.fld_type} in
+        let map_ctor_args = function
+          | Ctor_tuple typs ->
+              Ctor_tuple (List.map ~f:map_type typs)
+          | Ctor_record (i, fields) ->
+              Ctor_record (i, List.map ~f:map_field fields)
+        in
+        let map_ctor ctor =
+          { ctor with
+            ctor_args= map_ctor_args ctor.ctor_args
+          ; ctor_ret= Option.map ~f:map_type ctor.ctor_ret }
+        in
+        match decl.tdec_desc with
+        | TAbstract | TOpen ->
+            decl
+        | TAlias typ ->
+            {decl with tdec_desc= TAlias (map_type typ)}
+        | TUnfold typ ->
+            {decl with tdec_desc= TUnfold (map_type typ)}
+        | TRecord fields ->
+            {decl with tdec_desc= TRecord (List.map ~f:map_field fields)}
+        | TVariant ctors ->
+            {decl with tdec_desc= TVariant (List.map ~f:map_ctor ctors)}
+        | TExtend (lid, base_decl, ctors) ->
+            { decl with
+              tdec_desc= TExtend (lid, base_decl, List.map ~f:map_ctor ctors)
+            }
+        | TForward _ ->
+            failwith "Cannot import a forward type declaration"
+    in
     let env =
       map_current_scope ~f:(Scope.register_type_declaration decl) env
     in

@@ -46,9 +46,11 @@ let rec type_decl_desc ?loc ?params ?implicits name = function
   | TUnfold typ ->
       Type_decl.unfold ?loc ?params ?implicits name (type_expr typ)
   | TRecord fields ->
-      Type_decl.record ?loc ?params ?implicits name (List.map ~f:field_decl fields)
+      Type_decl.record ?loc ?params ?implicits name
+        (List.map ~f:field_decl fields)
   | TVariant ctors ->
-      Type_decl.variant ?loc ?params ?implicits name (List.map ~f:ctor_decl ctors)
+      Type_decl.variant ?loc ?params ?implicits name
+        (List.map ~f:ctor_decl ctors)
   | TOpen ->
       Type_decl.open_ ?loc ?params ?implicits name
   | TExtend _ ->

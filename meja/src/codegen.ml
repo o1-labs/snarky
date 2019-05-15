@@ -114,6 +114,7 @@ let typ_of_decl env (decl : Type0.type_decl) =
                     TAlias
                       (Ast_build.Type.constr ~loc
                          ~params:(decl'.tdec_params @ params)
+                         ~implicits:decl'.tdec_implicit_params
                          (Lident poly_name)) } }
         in
         let t_decl =
