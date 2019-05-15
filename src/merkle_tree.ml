@@ -149,7 +149,7 @@ let insert hash compress t0 mask0 address x =
 
 let ith_bit n i = (n lsr i) land 1 = 1
 
-let update ({hash; compress; tree= tree0; depth} as t) addr0 x =
+let update ({hash; compress; tree= tree0; depth; _} as t) addr0 x =
   let tree_hash = tree_hash ~default:(hash None) in
   let rec go_non_empty tree i =
     match tree with
@@ -408,17 +408,6 @@ struct
     let typ ~depth : (var, value) Typ.t = Typ.(list ~length:depth Hash.typ)
   end
 
-  module Tag = struct
-    type value = [`Curr_ledger | `Epoch_ledger]
-
-    type var = Boolean.var
-
-    let typ : (var, value) Typ.t =
-      Typ.transport Boolean.typ
-        ~there:(function `Curr_ledger -> false | `Epoch_ledger -> true)
-        ~back:(function false -> `Curr_ledger | true -> `Epoch_ledger)
-  end
-
   let implied_root entry_hash addr0 path0 =
     let rec go height acc addr path =
       let open Let_syntax in
@@ -437,24 +426,19 @@ struct
     go 0 entry_hash addr0 path0
 
   type _ Request.t +=
-    | Get_element :
-        Tag.value * Address.value
-        -> (Elt.value * Path.value) Request.t
+    | Get_element : Address.value -> (Elt.value * Path.value) Request.t
     | Get_path : Address.value -> Path.value Request.t
     | Set : Address.value * Elt.value -> unit Request.t
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef_ modify_req ~is_chain_voting ~(depth : int) root addr0 ~f :
+  let%snarkydef_ fetch_and_update_req ~(depth : int) root addr0 ~f :
       (Hash.var * Elt.var, 's) Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         As_prover.(
-          Let_syntax.(
-            let%map addr = read (Address.typ ~depth) addr0
-            and tag = read Tag.typ is_chain_voting in
-            Get_element (tag, addr)))
+          read (Address.typ ~depth) addr0 >>| fun addr -> Get_element addr)
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in
@@ -474,15 +458,19 @@ struct
     (new_root, prev)
 
   (* addr0 should have least significant bit first *)
+  let%snarkydef_ modify_req ~(depth : int) root addr0 ~f :
+      (Hash.var, 's) Checked.t =
+    let open Let_syntax in
+    fetch_and_update_req ~depth root addr0 ~f >>| fst
+
+  (* addr0 should have least significant bit first *)
   let%snarkydef_ get_req ~(depth : int) root addr0 : (Elt.var, 's) Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         As_prover.(
-          map
-            (read (Address.typ ~depth) addr0)
-            ~f:(fun a -> Get_element (`Curr_ledger, a)))
+          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a))
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in
