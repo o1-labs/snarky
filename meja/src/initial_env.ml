@@ -1,5 +1,6 @@
 (** The default initial environment. *)
 open Typet
+
 open TypeDecl
 
 (** The built-in types. These match the OCaml built-ins. *)

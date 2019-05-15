@@ -68,9 +68,11 @@ module Type = struct
         match decl with
         | {tdec_desc= TUnfold typ; tdec_implicit_params; _} ->
             let env, implicit_params = import_implicits () in
-            let new_vars_map = List.fold2_exn ~init:(Map.empty (module Int))
-              tdec_implicit_params implicit_params
-              ~f:(fun new_vars_map var param ->
+            let new_vars_map =
+              List.fold2_exn
+                ~init:(Map.empty (module Int))
+                tdec_implicit_params implicit_params
+                ~f:(fun new_vars_map var param ->
                   Map.set new_vars_map ~key:var.type_id ~data:param )
             in
             let typ = Envi.Type.copy ~loc typ new_vars_map env in
