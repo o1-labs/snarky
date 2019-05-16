@@ -172,6 +172,16 @@ module Make
 
   let handle t k = with_handler (Request.Handler.create_single k) t
 
+  let handle_as_prover t k =
+    let handler = ref None in
+    let%bind () =
+      as_prover
+        As_prover.(
+          let%map h = k in
+          handler := Some h)
+    in
+    handle t (fun request -> (Option.value_exn !handler) request)
+
   let do_nothing _ = As_prover.return ()
 
   let with_state ?(and_then = do_nothing) f sub = with_state f and_then sub
