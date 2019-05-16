@@ -31,6 +31,9 @@ module type Basic = sig
     -> (('var, 'value) Handle.t, 's, 'f field) t
 
   val next_auxiliary : (int, 's, 'f field) t
+
+  val constraint_count :
+    ?log:(?start:bool -> string -> int -> unit) -> ('a, 's, 'f field) t -> int
 end
 
 module type S = sig
@@ -124,6 +127,9 @@ module type S = sig
     -> 'f field Cvar.t
     -> 'f field Cvar.t
     -> (unit, 's, 'f field) t
+
+  val constraint_count :
+    ?log:(?start:bool -> string -> int -> unit) -> ('a, 's, 'f field) t -> int
 end
 
 module type Extended = sig
