@@ -66,11 +66,35 @@ module T0 = struct
         Next_auxiliary (fun x -> bind (k x) ~f)
 end
 
+module Types = struct
+  module Checked = struct
+    type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+  end
+
+  module As_prover = struct
+    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  end
+
+  module Typ = struct
+    include Types.Typ.T
+
+    type ('var, 'value, 'f) t =
+      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) typ
+  end
+
+  module Provider = struct
+    include Types.Provider.T
+
+    type ('a, 'f, 's) t =
+      (('a Request.t, 'f, 's) As_prover0.t, ('a, 'f, 's) As_prover0.t) provider
+  end
+end
+
 module Basic :
-  Checked_intf.Basic
-  with type ('a, 's, 'f) t = ('a, 's, 'f) t
-   and type 'f field = 'f = struct
-  type nonrec ('a, 's, 'f) t = ('a, 's, 'f) t
+  Checked_intf.Basic with module Types = Types with type 'f field = 'f = struct
+  module Types = Types
+
+  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
 
   type 'f field = 'f
 
@@ -93,38 +117,42 @@ module Basic :
   let next_auxiliary = Next_auxiliary return
 end
 
-module Make (Basic : Checked_intf.Basic) :
+module Make
+    (Basic : Checked_intf.Basic)
+    (As_prover : As_prover_intf.Basic
+                 with type ('a, 'f, 's) t =
+                             ('a, 'f, 's) Basic.Types.As_prover.t
+                  and type 'f field := 'f Basic.field) :
   Checked_intf.S
-  with type ('a, 's, 'f) t = ('a, 's, 'f) Basic.t
-   and type 'f field = 'f Basic.field = struct
+  with module Types = Basic.Types
+  with type 'f field = 'f Basic.field = struct
   include Basic
 
-  let request_witness
-      (typ : ('var, 'value, 'f field, (unit, unit, 'f field) t) Types.Typ.t)
-      (r : ('value Request.t, 'f field, 's) As_prover0.t) =
+  let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
+      (r : ('value Request.t, 'f field, 's) As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
 
   let request ?such_that typ r =
     match such_that with
     | None ->
-        request_witness typ (As_prover0.return r)
+        request_witness typ (As_prover.return r)
     | Some such_that ->
         let open Let_syntax in
-        let%bind x = request_witness typ (As_prover0.return r) in
+        let%bind x = request_witness typ (As_prover.return r) in
         let%map () = such_that x in
         x
 
   let exists_handle ?request ?compute typ =
     let provider =
       let request =
-        Option.value request ~default:(As_prover0.return Request.Fail)
+        Option.value request ~default:(As_prover.return Request.Fail)
       in
       match compute with
       | None ->
-          Provider.Request request
+          Types.Provider.Request request
       | Some c ->
-          Provider.Both (request, c)
+          Types.Provider.Both (request, c)
     in
     exists typ provider
 
@@ -144,7 +172,7 @@ module Make (Basic : Checked_intf.Basic) :
 
   let handle t k = with_handler (Request.Handler.create_single k) t
 
-  let do_nothing _ = As_prover0.return ()
+  let do_nothing _ = As_prover.return ()
 
   let with_state ?(and_then = do_nothing) f sub = with_state f and_then sub
 
@@ -177,10 +205,10 @@ end
 
 module T = struct
   include (
-    Make
-      (Basic) :
+    Make (Basic) (As_prover0) :
       Checked_intf.S
-      with type ('a, 's, 'f) t := ('a, 's, 'f) t
+      with module Types := Types
+      with type ('a, 's, 'f) t := ('a, 's, 'f) Types.Checked.t
        and type 'f field = 'f )
 end
 
