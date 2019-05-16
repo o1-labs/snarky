@@ -919,7 +919,7 @@ struct
 
     val report_statistics : t -> unit
 
-    val finalize : t -> unit
+    val swap_AB_if_beneficial : t -> unit
 
     val add_constraint : t -> R1CS_constraint.t -> unit
 
@@ -958,7 +958,8 @@ struct
     let report_statistics =
       foreign (func_name "report_statistics") (typ @-> returning void)
 
-    let finalize = foreign (func_name "finalize") (typ @-> returning void)
+    let swap_AB_if_beneficial =
+      foreign (func_name "swap_AB_if_beneficial") (typ @-> returning void)
 
     let check_exn =
       let stub = foreign (func_name "check") (typ @-> returning bool) in
@@ -1590,12 +1591,33 @@ struct
   module type Common_intf = module type of Common
 
   module Default = struct
-    include Common
+    module R1CS_constraint_system = struct
+      include Common.R1CS_constraint_system
+
+      let finalize = Common.R1CS_constraint_system.swap_AB_if_beneficial
+    end
+
+    include (
+      Common :
+        module type of Common
+        with module Field0 := Common.Field0
+         and module R1CS_constraint_system := Common.R1CS_constraint_system )
+
     include Make_proof_system (Common)
   end
 
   module GM = struct
-    include Common
+    module R1CS_constraint_system = struct
+      include Common.R1CS_constraint_system
+
+      let finalize = ignore
+    end
+
+    include (
+      Common :
+        module type of Common
+        with module Field0 := Common.Field0
+         and module R1CS_constraint_system := Common.R1CS_constraint_system )
 
     include Make_proof_system (struct
       include Common
