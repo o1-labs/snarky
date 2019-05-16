@@ -1,12 +1,12 @@
 open Ast_types
-open Parsetypes
+open Type0
 open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Tvar (None, _) ->
+  | Tvar (None, _, _) ->
       fprintf fmt "_"
-  | Tvar (Some name, _) ->
+  | Tvar (Some name, _, _) ->
       fprintf fmt "'%s" name.txt
   | Ttuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
@@ -95,39 +95,3 @@ let type_decl fmt decl =
   fprintf fmt "type %s" decl.tdec_ident.txt ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
-
-let rec signature_desc fmt = function
-  | SValue (name, typ) ->
-      fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt
-        type_expr typ
-  | SInstance (name, typ) ->
-      fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" pp_name name.txt
-        type_expr typ
-  | STypeDecl decl ->
-      fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
-  | SModule (name, msig) ->
-      let prefix fmt = fprintf fmt ":@ " in
-      fprintf fmt "@[<hov2>module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
-        msig
-  | SModType (name, msig) ->
-      let prefix fmt = fprintf fmt "=@ " in
-      fprintf fmt "@[<hov2>module type@ %s@ %a;@]@;@;" name.txt
-        (module_sig ~prefix) msig
-
-and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
-
-and signature fmt sigs = List.iter (signature_item fmt) sigs
-
-and module_sig_desc ~prefix fmt = function
-  | Signature msig ->
-      prefix fmt ;
-      fprintf fmt "{@[<hv1>@;%a@]}" signature msig
-  | SigName name ->
-      prefix fmt ; Longident.pp fmt name.txt
-  | SigAbstract ->
-      ()
-  | SigFunctor (name, f, m) ->
-      let pp = module_sig ~prefix:(fun _ -> ()) in
-      fprintf fmt "/* @[functor@ (%s :@ %a)@ =>@ %a@] */" name.txt pp f pp m
-
-and module_sig ~prefix fmt msig = module_sig_desc ~prefix fmt msig.msig_desc

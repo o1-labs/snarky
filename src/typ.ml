@@ -315,6 +315,45 @@ struct
       ; store= (fun x -> Store.map ~f:var_of_hlist (store (value_to_hlist x)))
       ; alloc= Alloc.map ~f:var_of_hlist alloc
       ; check= (fun v -> check (var_to_hlist v)) }
+
+    (* TODO: Assert that a stored value has the same shape as the template. *)
+    module Of_traversable (T : Traversable.S) = struct
+      module T = Traversable.Make (T)
+
+      let typ (type f) ~template
+          ({read; store; alloc; check} :
+            ('elt_var, 'elt_value, f Checked.field) t) :
+          ('elt_var T.t, 'elt_value T.t, f Checked.field) t =
+        let traverse_store =
+          let module M = T.Traverse2 (Store) in
+          M.f
+        in
+        let traverse_read =
+          let module M = T.Traverse2 (Read) in
+          M.f
+        in
+        let traverse_alloc =
+          let module M = T.Traverse2 (Alloc) in
+          M.f
+        in
+        let traverse_checked =
+          let module M =
+            T.Traverse
+              (Restrict_monad.Make3
+                 (Checked)
+                 (struct
+                   type t1 = unit
+
+                   type t2 = f Checked.field
+                 end)) in
+          M.f
+        in
+        let read var = traverse_read var ~f:read in
+        let store value = traverse_store value ~f:store in
+        let alloc = traverse_alloc template ~f:(fun () -> alloc) in
+        let check t = Checked.map (traverse_checked t ~f:check) ~f:ignore in
+        {read; store; alloc; check}
+    end
   end
 end
 
