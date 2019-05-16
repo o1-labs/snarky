@@ -84,6 +84,11 @@ module type S = sig
   val handle :
     ('a, 's, 'f field) t -> (request -> response) -> ('a, 's, 'f field) t
 
+  val handle_as_prover :
+       ('a, 's, 'f field) t
+    -> (request -> response, 'f field, 's) Types.As_prover.t
+    -> ('a, 's, 'f field) t
+
   val next_auxiliary : (int, 's, 'f field) t
 
   val with_label : string -> ('a, 's, 'f field) t -> ('a, 's, 'f field) t

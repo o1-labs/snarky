@@ -1940,6 +1940,10 @@ module Run = struct
       state := {!state with handler} ;
       a
 
+    let handle_as_prover x h =
+      let h = h () in
+      handle x h
+
     let with_label lbl x =
       let {stack; _} = !state in
       state := {!state with stack= lbl :: stack} ;

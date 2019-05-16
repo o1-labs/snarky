@@ -1174,6 +1174,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       {!val:request_witness}, {!val:perform}, {!val:request} or {!val:exists}.
   *)
 
+  val handle_as_prover :
+    ('a, 's) Checked.t -> (Handler.t, 's) As_prover.t -> ('a, 's) Checked.t
+  (** Generate a handler using the {!module:As_prover} 'superpowers', and use
+      it for {!val:request_witness}, {!val:perform}, {!val:request} or
+      {!val:exists} calls in the wrapped checked computation.
+  *)
+
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
   (** Add a label to all of the constraints added in the checked computation.
       If a constraint is checked and isn't satisfied, this label will be shown
@@ -1884,6 +1891,8 @@ module type Run_basic = sig
     -> ('var, 'value) Handle.t
 
   val handle : (unit -> 'a) -> Handler.t -> 'a
+
+  val handle_as_prover : (unit -> 'a) -> (unit -> Handler.t As_prover.t) -> 'a
 
   val with_label : string -> (unit -> 'a) -> 'a
 
