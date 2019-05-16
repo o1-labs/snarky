@@ -2,9 +2,23 @@ open Core_kernel
 open Parsetypes
 
 module Loc = struct
-  let mk ?(loc = Location.none) x = Location.mkloc x loc
+  let mk ?(loc = Location.none) (x : 'a) : 'a Location.loc =
+    Location.mkloc x loc
 
   let map x ~f = {Location.loc= x.Location.loc; txt= f x.Location.txt}
+
+  (** Convert the OCaml primitive [__POS__] into a Lexing.position *)
+  let of_prim (file, lnum, cnum, enum) =
+    (* Note: We use a fake value for [pos_bol], since we can't get the true
+             value from [__POS__]. *)
+    { Location.loc_start=
+        {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= cnum; pos_bol= 0}
+    ; loc_end=
+        {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= enum; pos_bol= 0}
+    ; loc_ghost= false }
+
+  let of_pos (loc_start, loc_end) =
+    {Location.loc_start; loc_end; loc_ghost= false}
 end
 
 module Lid = struct
@@ -26,7 +40,8 @@ module Lid = struct
 end
 
 module Type = struct
-  let mk ?(loc = Location.none) d = {type_desc= d; type_id= -1; type_loc= loc}
+  let mk ?(loc = Location.none) d : Parsetypes.type_expr =
+    {type_desc= d; type_id= -1; type_loc= loc}
 
   let variant ?loc ?(params = []) ?(implicits = []) ident =
     { var_ident= Loc.mk ident ?loc
@@ -34,17 +49,71 @@ module Type = struct
     ; var_implicit_params= implicits
     ; var_decl_id= -1 }
 
-  let none ?loc () = mk ?loc (Tvar (None, -1, Explicit))
+  let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, -1, explicit))
 
   let var ?loc ?(explicit = Explicit) name =
     mk ?loc (Tvar (Some (Loc.mk ?loc name), -1, explicit))
 
   let constr ?loc ?params ?implicits ident =
     mk ?loc (Tctor (variant ?loc ?params ?implicits ident))
+
+  let tuple ?loc typs = mk ?loc (Ttuple typs)
+
+  let arrow ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) typ1 typ2 =
+    mk ?loc (Tarrow (typ1, typ2, explicit, label))
+
+  let poly ?loc vars var = mk ?loc (Tpoly (vars, var))
+end
+
+module Type_decl = struct
+  let mk ?(loc = Location.none) ?(params = []) ?(implicits = []) name d :
+      Parsetypes.type_decl =
+    { tdec_ident= Loc.mk ~loc name
+    ; tdec_params= params
+    ; tdec_implicit_params= implicits
+    ; tdec_desc= d
+    ; tdec_id= -1
+    ; tdec_loc= loc }
+
+  let abstract ?loc ?params ?implicits name =
+    mk ?loc ?params ?implicits name TAbstract
+
+  let alias ?loc ?params ?implicits name typ =
+    mk ?loc ?params ?implicits name (TAlias typ)
+
+  let unfold ?loc ?params ?implicits name typ =
+    mk ?loc ?params ?implicits name (TUnfold typ)
+
+  let record ?loc ?params ?implicits name fields =
+    mk ?loc ?params ?implicits name (TRecord fields)
+
+  let variant ?loc ?params ?implicits name ctors =
+    mk ?loc ?params ?implicits name (TVariant ctors)
+
+  let open_ ?loc ?params ?implicits name =
+    mk ?loc ?params ?implicits name TOpen
+
+  let forward ?loc ?params ?implicits name =
+    mk ?loc ?params ?implicits name (TForward (ref None))
+
+  module Field = struct
+    let mk ?(loc = Location.none) name typ : Parsetypes.field_decl =
+      {fld_ident= Loc.mk ~loc name; fld_type= typ; fld_id= -1; fld_loc= loc}
+  end
+
+  module Ctor = struct
+    let mk ?(loc = Location.none) ?ret name d : Parsetypes.ctor_decl =
+      {ctor_ident= Loc.mk ~loc name; ctor_args= d; ctor_ret= ret; ctor_loc= loc}
+
+    let with_args ?loc ?ret name args = mk ?loc ?ret name (Ctor_tuple args)
+
+    let with_record ?loc ?ret name fields =
+      mk ?loc ?ret name (Ctor_record (-1, fields))
+  end
 end
 
 module Pat = struct
-  let mk ?(loc = Location.none) d =
+  let mk ?(loc = Location.none) d : Parsetypes.pattern =
     {pat_desc= d; pat_loc= loc; pat_type= Type.none ~loc ()}
 
   let any ?loc () = mk ?loc PAny
@@ -63,7 +132,7 @@ module Pat = struct
 end
 
 module Exp = struct
-  let mk ?(loc = Location.none) d =
+  let mk ?(loc = Location.none) d : Parsetypes.expression =
     {exp_desc= d; exp_loc= loc; exp_type= Type.none ~loc ()}
 
   let fun_ ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) p body =
