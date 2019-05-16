@@ -42,7 +42,14 @@ module Data_spec0 = struct
     | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f, 'checked) data_spec
 end
 
-module Make (Checked : Checked_intf.S) = struct
+module Make
+    (Checked : Checked_intf.S)
+    (As_prover : As_prover_intf.S
+                 with module Types := Checked.Types
+                 with type 'f field := 'f Checked.field
+                  and type ('a, 's, 'f) t :=
+                             ('a, 's, 'f) Checked.Types.As_prover.t) =
+struct
   type ('var, 'value, 'field) t =
     ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t
 
@@ -90,7 +97,7 @@ module Make (Checked : Checked_intf.S) = struct
 
     let check (type field) ({check; _} : ('var, 'value, field Checked.field) t)
         (v : 'var) : (unit, 's, field Checked.field) Checked.t =
-      Checked.with_state (As_prover0.return ()) (check v)
+      Checked.with_state (As_prover.return ()) (check v)
 
     let unit () : (unit, unit, 'field) t =
       let s = Store.return () in
@@ -308,8 +315,47 @@ module Make (Checked : Checked_intf.S) = struct
       ; store= (fun x -> Store.map ~f:var_of_hlist (store (value_to_hlist x)))
       ; alloc= Alloc.map ~f:var_of_hlist alloc
       ; check= (fun v -> check (var_to_hlist v)) }
+
+    (* TODO: Assert that a stored value has the same shape as the template. *)
+    module Of_traversable (T : Traversable.S) = struct
+      module T = Traversable.Make (T)
+
+      let typ (type f) ~template
+          ({read; store; alloc; check} :
+            ('elt_var, 'elt_value, f Checked.field) t) :
+          ('elt_var T.t, 'elt_value T.t, f Checked.field) t =
+        let traverse_store =
+          let module M = T.Traverse2 (Store) in
+          M.f
+        in
+        let traverse_read =
+          let module M = T.Traverse2 (Read) in
+          M.f
+        in
+        let traverse_alloc =
+          let module M = T.Traverse2 (Alloc) in
+          M.f
+        in
+        let traverse_checked =
+          let module M =
+            T.Traverse
+              (Restrict_monad.Make3
+                 (Checked)
+                 (struct
+                   type t1 = unit
+
+                   type t2 = f Checked.field
+                 end)) in
+          M.f
+        in
+        let read var = traverse_read var ~f:read in
+        let store value = traverse_store value ~f:store in
+        let alloc = traverse_alloc template ~f:(fun () -> alloc) in
+        let check t = Checked.map (traverse_checked t ~f:check) ~f:ignore in
+        {read; store; alloc; check}
+    end
   end
 end
 
-include Make (Checked)
+include Make (Checked) (As_prover)
 include T

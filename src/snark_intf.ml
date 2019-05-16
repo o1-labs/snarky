@@ -851,14 +851,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type state
 
     val run : ('a, unit) Checked.t -> state -> state * 'a
-
-    val set_handler : Request.Handler.t -> state -> state
-
-    val get_handler : state -> Request.Handler.t
-
-    val set_stack : string list -> state -> state
-
-    val get_stack : state -> string list
   end
 
   type response = Request.response
