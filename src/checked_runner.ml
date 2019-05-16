@@ -183,6 +183,28 @@ struct
         (set_prover_state None s, {Handle.var; value= None})
 
   let next_auxiliary s = (s, !(s.next_auxiliary))
+
+  let constraint_count ?log:_ t =
+    (* TODO: Integrate log with log_constraint *)
+        let count = ref 0 in
+        let log_constraint c = count := !count + List.length c in
+        let state =
+          Run_state.
+            { system= None
+            ; input= Vector.null
+            ; aux= Vector.null
+            ; eval_constraints= false
+            ; num_inputs= 0
+            ; next_auxiliary= ref 1
+            ; prover_state= None
+            ; stack= []
+            ; handler= Request.Handler.fail
+            ; is_running= true
+            ; as_prover= ref false
+            ; log_constraint= Some log_constraint }
+        in
+        let _ = t state in
+        !count
 end
 
 module type Run_extras = sig
