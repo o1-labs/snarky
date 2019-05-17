@@ -49,7 +49,11 @@
    pushd libsnark-caml
    mkdir -p build
    pushd build
-     cmake -DPERFORMANCE=$SNARKY_PERFORMANCE -DMULTICORE=ON -DUSE_PT_COMPRESSION=OFF ..
+     cmake -DPERFORMANCE=$SNARKY_PERFORMANCE \\
+       -DMULTICORE=ON \\
+       -DUSE_PT_COMPRESSION=OFF \\
+       -DUSE_ASM=ON \\
+       -DOPT_FLAGS='-ggdb3 -O2' ..
      make -j$(nproc)
  
      mkdir _stubs_build
@@ -79,7 +83,9 @@
        LDFLAGS='-L/usr/local/opt/openssl/lib -L/usr/local/opt/boost/lib -L/usr/local/opt/gmp/lib' \\
        PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig \\
        cmake \\
-         -DPERFORMANCE=$SNARKY_PERFORMANCE \\
+         -DPERFORMANCE=OFF \\
+         -DUSE_ASM=ON \\
+         -DOPT_FLAGS='-ggdb3 -O2' \\
          -DMULTICORE=ON \\
          -DUSE_PT_COMPRESSION=OFF \\
          -DWITH_SUPERCOP=OFF \\
