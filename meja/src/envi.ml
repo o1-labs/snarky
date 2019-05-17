@@ -575,16 +575,14 @@ module Type = struct
 
   let clear_instance typ = map_env ~f:(TypeEnvi.clear_instance typ)
 
-  let rec import ~loc ?must_find typ env =
-    let import' = import ~loc in
-    let import = import ~loc ?must_find in
+  let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
     | Tvar (None, _, explicitness) -> (
       match (must_find, explicitness) with
       | Some true, Explicit ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (mkvar ~explicitness None env, env) )
+          (env, mkvar ~explicitness None env) )
     | Tvar ((Some {txt= x; _} as name), _, explicitness) -> (
         let var =
           match must_find with
@@ -600,74 +598,16 @@ module Type = struct
         in
         match var with
         | Some var ->
-            (var, env)
+            (env, var)
         | None ->
             let var = mkvar ~explicitness name env in
-            (var, add_type_variable x var env) )
-    | Tpoly (vars, typ) ->
-        let env = open_expr_scope env in
-        let env, vars =
-          List.fold_map vars ~init:env ~f:(fun e t ->
-              let t, e = import' ~must_find:false t e in
-              (e, t) )
-        in
-        let typ, env = import typ env in
-        let env = close_expr_scope env in
-        (mk (Tpoly (vars, typ)) env, env)
-    | Tctor variant -> (
-        let {var_ident; var_params; _} = variant in
-        match raw_find_type_declaration var_ident env with
-        | {tdec_desc= TUnfold typ; _} ->
-            (typ, env)
-        | decl ->
-            let variant =
-              { variant with
-                var_decl_id= decl.tdec_id
-              ; var_implicit_params= decl.tdec_implicit_params }
-            in
-            let given_args_length = List.length var_params in
-            let expected_args_length =
-              match decl.tdec_desc with
-              | TForward num_args -> (
-                match !num_args with
-                | Some l ->
-                    l
-                | None ->
-                    num_args := Some given_args_length ;
-                    given_args_length )
-              | _ ->
-                  List.length decl.tdec_params
-            in
-            if not (Int.equal given_args_length expected_args_length) then
-              raise
-                (Error
-                   ( loc
-                   , Wrong_number_args
-                       (var_ident.txt, given_args_length, expected_args_length)
-                   )) ;
-            let env, var_params =
-              List.fold_map ~init:env var_params ~f:(fun env param ->
-                  let param, env = import param env in
-                  (env, param) )
-            in
-            (mk (Tctor {variant with var_params}) env, env) )
-    | Ttuple typs ->
-        let env, typs =
-          List.fold_map typs ~init:env ~f:(fun e t ->
-              let t, e = import t e in
-              (e, t) )
-        in
-        (mk (Ttuple typs) env, env)
-    | Tarrow (typ1, typ2, explicit, label) ->
-        let typ1, env = import typ1 env in
-        let typ2, env = import typ2 env in
-        (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
+            (add_type_variable x var env, var) )
+    | _ ->
+        raise (Error (loc, Expected_type_var typ))
 
   let refresh_vars ~loc vars new_vars_map env =
     let env, new_vars =
-      List.fold_map vars ~init:env ~f:(fun e t ->
-          let t, e = import ~loc ~must_find:false t e in
-          (e, t) )
+      List.fold_map vars ~init:env ~f:(refresh_var ~loc ~must_find:false)
     in
     let new_vars_map =
       List.fold2_exn ~init:new_vars_map vars new_vars
