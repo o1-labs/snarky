@@ -86,7 +86,7 @@
          -DPERFORMANCE=OFF \\
          -DUSE_ASM=ON \\
          -DOPT_FLAGS='-ggdb3 -O2' \\
-         -DMULTICORE=ON \\
+         -DMULTICORE=OFF \\
          -DUSE_PT_COMPRESSION=OFF \\
          -DWITH_SUPERCOP=OFF \\
          -DWITH_PROCPS=OFF \\

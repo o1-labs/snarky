@@ -13,7 +13,6 @@ let () =
         ; "-lssl"
         ; "-lcrypto"
         ; "-lgmp"
-        ; "-lomp"
         ; "-lstdc++" ]
     | "Linux" ->
         [ "-Wl,-E"
