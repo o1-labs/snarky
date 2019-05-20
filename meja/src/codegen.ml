@@ -41,7 +41,7 @@ let typ_of_decl ~loc (decl : type_decl) =
         let find_name name =
           let rec find_name i =
             let name = sprintf "%s%i" name i in
-            if Set.mem !vars name then find_name i
+            if Set.mem !vars name then find_name (i + 1)
             else (
               vars := Set.add !vars name ;
               name )
