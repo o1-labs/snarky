@@ -145,6 +145,16 @@ let check_type ~loc env typ constr_typ =
   | () ->
       ()
 
+(** [is_subtype ~loc env typ ~of_:ctyp] returns whether [typ] is a subtype of
+    [ctyp], instantiating any variables in [ctyp] to those they match with in
+    [typ].
+
+    If this function returns [false], the [ctyp] value *must not* be used,
+    since its variables may have been instantiated incorrectly. A type
+    containing only fresh variables should be used.
+
+    The type variables within [typ] will remain unchanged.
+    *)
 let rec is_subtype ~loc env typ ~of_:ctyp =
   let is_subtype = is_subtype ~loc env in
   let without_instance ~f (typ : type_expr) =
