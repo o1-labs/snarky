@@ -133,6 +133,46 @@ module Type = struct
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
         (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
+
+  let fold ~init ~f typ =
+    match typ.type_desc with
+    | Tvar _ ->
+        init
+    | Ttuple typs ->
+        List.fold ~init ~f typs
+    | Tarrow (typ1, typ2, _, _) ->
+        let acc = f init typ1 in
+        f acc typ2
+    | Tctor variant ->
+        let acc = List.fold ~init ~f variant.var_params in
+        List.fold ~init:acc ~f variant.var_implicit_params
+    | Tpoly (typs, typ) ->
+        let acc = List.fold ~init ~f typs in
+        f acc typ
+
+  let iter ~f = fold ~init:() ~f:(fun () -> f)
+
+  let map ~loc ~f typ =
+    match typ.type_desc with
+    | Tvar _ ->
+        {typ with type_loc= loc}
+    | Ttuple typs ->
+        let typs = List.map ~f typs in
+        {typ with type_desc= Ttuple typs; type_loc= loc}
+    | Tarrow (typ1, typ2, explicit, label) ->
+        { typ with
+          type_desc= Tarrow (f typ1, f typ2, explicit, label)
+        ; type_loc= loc }
+    | Tctor variant ->
+        let variant =
+          { variant with
+            var_params= List.map ~f variant.var_params
+          ; var_implicit_params= List.map ~f variant.var_implicit_params }
+        in
+        {typ with type_desc= Tctor variant; type_loc= loc}
+    | Tpoly (typs, typ) ->
+        let typs = List.map ~f typs in
+        {typ with type_desc= Tpoly (typs, f typ); type_loc= loc}
 end
 
 module TypeDecl = struct

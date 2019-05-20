@@ -202,7 +202,10 @@ let main =
       List.fold ~init:env cmi_scopes ~f:(fun env scope ->
           Envi.open_namespace_scope scope env )
     in
-    let meji_files = List.rev !meji_files in
+    let meji_files =
+      "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
+      :: List.rev !meji_files
+    in
     let env =
       List.fold ~init:env meji_files ~f:(fun env file ->
           let parse_ast =
