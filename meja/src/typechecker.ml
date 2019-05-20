@@ -145,6 +145,94 @@ let check_type ~loc env typ constr_typ =
   | () ->
       ()
 
+let rec is_subtype ~loc typ ~of_:ctyp env =
+  let is_subtype = is_subtype ~loc in
+  let without_instance ~f (typ : type_expr) env =
+    match Envi.Type.instance env typ with
+    | Some typ' -> (
+        Envi.Type.clear_instance typ env ;
+        let ret = f typ' env in
+        match Envi.Type.instance env typ with
+        | Some _ ->
+            raise (Error (loc, Recursive_variable typ))
+        | None ->
+            Envi.Type.add_instance typ typ' env ;
+            Some ret )
+    | None ->
+        None
+  in
+  match (typ.type_desc, ctyp.type_desc) with
+  | _, _ when Int.equal typ.type_id ctyp.type_id ->
+      true
+  | Tpoly (_, typ), _ ->
+      is_subtype typ ~of_:ctyp env
+  | _, Tpoly (_, ctyp) ->
+      is_subtype typ ~of_:ctyp env
+  | Tvar _, Tvar _ ->
+      bind_none
+        (without_instance typ env ~f:(fun typ -> is_subtype typ ~of_:ctyp))
+        (fun () ->
+          bind_none
+            (without_instance ctyp env ~f:(fun ctyp -> is_subtype typ ~of_:ctyp))
+            (fun () ->
+              Envi.Type.add_instance ctyp typ env ;
+              true ) )
+  | Tvar _, _ ->
+      (* [typ] is more general than [ctyp] *)
+      bind_none
+        (without_instance typ env ~f:(fun typ -> is_subtype typ ~of_:ctyp))
+        (fun () -> false)
+  | _, Tvar _ ->
+      (* [ctyp] is more general than [typ] *)
+      bind_none
+        (without_instance ctyp env ~f:(fun ctyp -> is_subtype typ ~of_:ctyp))
+        (fun () ->
+          Envi.Type.add_instance ctyp typ env ;
+          true )
+  | Ttuple typs, Ttuple ctyps -> (
+    match
+      List.for_all2 typs ctyps ~f:(fun typ ctyp -> is_subtype typ ~of_:ctyp env)
+    with
+    | Ok x ->
+        x
+    | Unequal_lengths ->
+        false )
+  | ( Tarrow (typ1, typ2, Explicit, label1)
+    , Tarrow (ctyp1, ctyp2, Explicit, label2) )
+  | ( Tarrow (typ1, typ2, Implicit, label1)
+    , Tarrow (ctyp1, ctyp2, Implicit, label2) ) ->
+      ( match (label1, label2) with
+      | Nolabel, Nolabel ->
+          true
+      | Labelled x, Labelled y when String.equal x y ->
+          true
+      | Optional x, Optional y when String.equal x y ->
+          true
+      | _ ->
+          false )
+      && is_subtype typ1 ~of_:ctyp1 env
+      && is_subtype typ2 ~of_:ctyp2 env
+  | Tctor variant, Tctor constr_variant -> (
+      if Int.equal variant.var_decl_id constr_variant.var_decl_id
+      then
+        match
+          List.for_all2 variant.var_params constr_variant.var_params
+            ~f:(fun param constr_param ->
+              is_subtype param ~of_:constr_param env )
+        with
+        | Ok x ->
+            x
+        | Unequal_lengths ->
+            false
+      else
+        match unpack_decls ~loc typ ctyp env with
+        | Some (typ, ctyp) ->
+            is_subtype typ ~of_:ctyp env
+        | None ->
+            false )
+  | _, _ ->
+      raise (Error (loc, Cannot_unify (typ, ctyp)))
+
 let rec add_implicits ~loc implicits typ env =
   match implicits with
   | [] ->
