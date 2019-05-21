@@ -77,14 +77,17 @@ let typ_of_decl ~loc env (decl : Type0.type_decl) =
                                 variant.var_ident.loc }
                       else
                         let var_name =
-                          match Map.find !constr_map variant.var_decl.tdec_id with
+                          match
+                            Map.find !constr_map variant.var_decl.tdec_id
+                          with
                           | Some (name, _) ->
                               name
                           | None ->
                               let name = next_var_name () in
                               constr_map :=
                                 Map.add_exn !constr_map
-                                  ~key:variant.var_decl.tdec_id ~data:(name, variant) ;
+                                  ~key:variant.var_decl.tdec_id
+                                  ~data:(name, variant) ;
                               name
                         in
                         Tvar (Some (Location.mkloc var_name loc), -1, Explicit)

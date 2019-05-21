@@ -30,7 +30,9 @@ let bind_none x f = match x with Some x -> x | None -> f ()
 let unpack_decls ~loc typ ctyp env =
   match (typ.type_desc, ctyp.type_desc) with
   | Tctor variant, Tctor cvariant ->
-      let decl_id, cdecl_id = (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id) in
+      let decl_id, cdecl_id =
+        (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
+      in
       let unfold_typ () =
         Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
             (typ, ctyp) )
@@ -114,7 +116,8 @@ let rec check_type_aux ~loc typ ctyp env =
       check_type_aux typ1 ctyp1 env ;
       check_type_aux typ2 ctyp2 env
   | Tctor variant, Tctor constr_variant ->
-      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id then
+      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
+      then
         match
           List.iter2 variant.var_params constr_variant.var_params
             ~f:(fun param constr_param -> check_type_aux param constr_param env
@@ -222,7 +225,8 @@ let rec is_subtype ~loc env typ ~of_:ctyp =
           false )
       && is_subtype typ1 ~of_:ctyp1 && is_subtype typ2 ~of_:ctyp2
   | Tctor variant, Tctor constr_variant -> (
-      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id then
+      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
+      then
         match
           List.for_all2 variant.var_params constr_variant.var_params
             ~f:(fun param constr_param -> is_subtype param ~of_:constr_param)
@@ -954,8 +958,7 @@ and check_module_sig env msig =
 
 let type_extension ~loc variant ctors env =
   let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
-  let ( {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _}
-      as decl ) =
+  let ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl) =
     match Envi.raw_find_type_declaration var_ident env with
     | open_decl ->
         open_decl

@@ -116,10 +116,7 @@ module Type = struct
                   (env, param) )
             in
             let variant =
-              { Type0.var_params
-              ; var_ident
-              ; var_decl= decl
-              ; var_implicit_params }
+              {Type0.var_params; var_ident; var_decl= decl; var_implicit_params}
             in
             (mk (Tctor variant) env, env) )
     | Ttuple typs ->
@@ -363,7 +360,8 @@ module TypeDecl = struct
           | Ctor_tuple typs ->
               Ctor_tuple (List.map ~f:map_type typs)
           | Ctor_record ({tdec_desc= TRecord fields; _} as decl) ->
-              Ctor_record ({decl with tdec_desc= TRecord (List.map ~f:map_field fields)})
+              Ctor_record
+                {decl with tdec_desc= TRecord (List.map ~f:map_field fields)}
           | Ctor_record _ ->
               assert false
         in

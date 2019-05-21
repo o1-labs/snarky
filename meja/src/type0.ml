@@ -19,9 +19,7 @@ and variant =
 
 and field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
 
-and ctor_args =
-  | Ctor_tuple of type_expr list
-  | Ctor_record of type_decl
+and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 
 and ctor_decl =
   {ctor_ident: str; ctor_args: ctor_args; ctor_ret: type_expr option}
