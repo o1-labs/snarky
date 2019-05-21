@@ -118,7 +118,7 @@ module Type = struct
             let variant =
               { Type0.var_params
               ; var_ident
-              ; var_decl_id= decl.tdec_id
+              ; var_decl= decl
               ; var_implicit_params }
             in
             (mk (Tctor variant) env, env) )
@@ -298,8 +298,7 @@ module TypeDecl = struct
                         mk ~name:ctor.ctor_ident ~params:ctor_ret_params
                           (TRecord fields) env
                       in
-                      Envi.Type.map_env env ~f:(TypeEnvi.add_decl decl) ;
-                      (env, Type0.Ctor_record (decl.tdec_id, fields))
+                      (env, Type0.Ctor_record decl)
                 in
                 let env = push_scope scope (close_expr_scope env) in
                 (env, {Type0.ctor_ident= ctor.ctor_ident; ctor_args; ctor_ret})
@@ -323,8 +322,10 @@ module TypeDecl = struct
                         match ctor.ctor_args with
                         | Ctor_tuple typs ->
                             typs
-                        | Ctor_record (_, fields) ->
+                        | Ctor_record {tdec_desc= TRecord fields; _} ->
                             List.map ~f:(fun {fld_type; _} -> fld_type) fields
+                        | Ctor_record _ ->
+                            assert false
                       in
                       let typs =
                         match ctor.ctor_ret with
@@ -351,7 +352,7 @@ module TypeDecl = struct
         let map_type typ =
           Type.constr_map env typ ~f:(fun variant ->
               let variant =
-                if Int.equal variant.var_decl_id decl.tdec_id then
+                if Int.equal variant.var_decl.tdec_id decl.tdec_id then
                   {variant with var_implicit_params= decl.tdec_implicit_params}
                 else variant
               in
@@ -361,8 +362,10 @@ module TypeDecl = struct
         let map_ctor_args = function
           | Ctor_tuple typs ->
               Ctor_tuple (List.map ~f:map_type typs)
-          | Ctor_record (i, fields) ->
-              Ctor_record (i, List.map ~f:map_field fields)
+          | Ctor_record ({tdec_desc= TRecord fields; _} as decl) ->
+              Ctor_record ({decl with tdec_desc= TRecord (List.map ~f:map_field fields)})
+          | Ctor_record _ ->
+              assert false
         in
         let map_ctor ctor =
           { ctor with
@@ -390,7 +393,6 @@ module TypeDecl = struct
     let env =
       map_current_scope ~f:(Scope.register_type_declaration decl) env
     in
-    Envi.Type.map_env env ~f:(TypeEnvi.add_decl decl) ;
     (decl, env)
 end
 
