@@ -21,7 +21,7 @@ let rec of_type_desc ?loc typ =
   | Ttuple typs ->
       Typ.tuple ?loc (List.map ~f:of_type_expr typs)
   | Trow _ ->
-      assert false
+      Typ.constr ?loc (Location.mknoloc (Longident.Lident "unit")) []
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 
