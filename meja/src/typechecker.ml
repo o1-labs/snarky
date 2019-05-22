@@ -591,16 +591,15 @@ let rec get_expression env expected exp =
       , env )
   | Newtype (name, body) ->
       let env = Envi.open_expr_scope env in
-      let typ = Envi.Type.mkvar ~loc:name.loc (Some name) env in
+      let typ = Envi.Type.mkvar (Some name) env in
       let decl =
         { tdec_ident= name
         ; tdec_params= []
         ; tdec_implicit_params= []
         ; tdec_desc= TAbstract
-        ; tdec_id= -1
         ; tdec_loc= loc }
       in
-      let decl, env = Envi.TypeDecl.import decl env in
+      let decl, env = Typet.TypeDecl.import decl env in
       let body, env = get_expression env expected body in
       env.resolve_env.type_env
       <- Envi.TypeEnvi.add_decl
