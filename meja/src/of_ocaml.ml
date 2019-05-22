@@ -17,7 +17,7 @@ let rec to_type_desc ~loc desc =
   let to_type_expr = to_type_expr ~loc in
   match desc with
   | Tvar x | Tunivar x ->
-      Parsetypes.Tvar (Option.map ~f:(fun x -> mkloc x loc) x, -1, Explicit)
+      Parsetypes.Tvar (Option.map ~f:(fun x -> mkloc x loc) x, Explicit)
   | Tarrow (label, typ1, typ2, _) ->
       Parsetypes.Tarrow (to_type_expr typ1, to_type_expr typ2, Explicit, label)
   | Ttuple typs ->
@@ -27,8 +27,7 @@ let rec to_type_desc ~loc desc =
       Parsetypes.Tctor
         { var_ident
         ; var_params= List.map ~f:to_type_expr params
-        ; var_implicit_params= []
-        ; var_decl_id= 0 }
+        ; var_implicit_params= [] }
   | Tlink typ | Tsubst typ ->
       (to_type_expr typ).type_desc
   | Tpoly (typ, typs) ->
@@ -41,12 +40,11 @@ let rec to_type_desc ~loc desc =
       Parsetypes.Tctor
         { var_ident
         ; var_params= List.map ~f:to_type_expr typs
-        ; var_implicit_params= []
-        ; var_decl_id= 0 }
+        ; var_implicit_params= [] }
   | Tobject _ | Tfield _ | Tnil | Tvariant _ ->
       (* This type isn't supported here. For now, just replace it with a
          variable, so we can still manipulate values including it. *)
-      Parsetypes.Tvar (None, -1, Explicit)
+      Parsetypes.Tvar (None, Explicit)
 
 and to_type_expr ~loc typ =
   {type_desc= to_type_desc ~loc typ.desc; type_id= -1; type_loc= loc}
@@ -54,7 +52,6 @@ and to_type_expr ~loc typ =
 let to_field_decl {ld_id; ld_type; ld_loc; _} =
   { fld_ident= mkloc (Ident.name ld_id) ld_loc
   ; fld_type= to_type_expr ~loc:ld_loc ld_type
-  ; fld_id= 0
   ; fld_loc= ld_loc }
 
 let to_ctor_args ~loc = function
@@ -103,7 +100,6 @@ let rec to_signature_item item =
                 List.map ~f:(to_type_expr ~loc:decl.type_loc) decl.type_params
             ; tdec_implicit_params= []
             ; tdec_desc
-            ; tdec_id= 0
             ; tdec_loc= decl.type_loc }
       ; sig_loc= decl.type_loc }
   | Sig_module (ident, decl, _) ->

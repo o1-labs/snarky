@@ -1,28 +1,12 @@
+open Ast_types
 open Parsetypes
 open Format
-
-let comma_sep fmt () = fprintf fmt ",@ "
-
-let bar_sep fmt () = fprintf fmt "@ | "
-
-let arg_label fmt = function
-  | Asttypes.Nolabel ->
-      ()
-  | Labelled label ->
-      fprintf fmt "@[<hv2>%s:@," label
-  | Optional label ->
-      fprintf fmt "@[<hv2>?%s:@," label
-
-let arg_label_box_end fmt = function
-  | Asttypes.Nolabel ->
-      ()
-  | _ ->
-      fprintf fmt "@]"
+open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Tvar (None, _, _) ->
+  | Tvar (None, _) ->
       fprintf fmt "_"
-  | Tvar (Some name, _, _) ->
+  | Tvar (Some name, _) ->
       fprintf fmt "'%s" name.txt
   | Ttuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
