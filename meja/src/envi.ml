@@ -640,6 +640,22 @@ module Type = struct
         let typ1 = copy typ1 new_vars_map env in
         let typ2 = copy typ2 new_vars_map env in
         mk (Tarrow (typ1, typ2, explicit, label)) env
+    | Trow row ->
+        mk (Trow (copy_row ~loc env new_vars_map row)) env
+
+  and copy_row ~loc env new_vars_map row =
+    let copy_row = copy_row ~loc env new_vars_map in
+    match row with
+    | Row_var typ ->
+        Row_var (copy ~loc typ new_vars_map env)
+    | Row_union (row1, row2) ->
+        Row_union (copy_row row1, copy_row row2)
+    | Row_inter (row1, row2) ->
+        Row_inter (copy_row row1, copy_row row2)
+    | Row_diff (row1, row2) ->
+        Row_diff (copy_row row1, copy_row row2)
+    | _ ->
+        row
 
   module T = struct
     type t = type_expr
@@ -710,6 +726,22 @@ module Type = struct
         let typ1 = flatten typ1 env in
         let typ2 = flatten typ2 env in
         mk (Tarrow (typ1, typ2, explicit, label)) env
+    | Trow row ->
+        mk (Trow (flatten_row env row)) env
+
+  and flatten_row env row =
+    match row with
+    | Row_var typ -> (
+        let typ = flatten typ env in
+        match typ.type_desc with Trow row -> row | _ -> Row_var typ )
+    | Row_union (row1, row2) ->
+        Row_union (flatten_row env row1, flatten_row env row2)
+    | Row_inter (row1, row2) ->
+        Row_inter (flatten_row env row1, flatten_row env row2)
+    | Row_diff (row1, row2) ->
+        Row_diff (flatten_row env row1, flatten_row env row2)
+    | _ ->
+        row
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
@@ -769,6 +801,12 @@ module Type = struct
           -1
       | _, Tarrow (_, _, Explicit, _) ->
           1
+      | Tarrow (_, _, Implicit, _), _ ->
+          -1
+      | _, Tarrow (_, _, Implicit, _) ->
+          1
+      | Trow row1, Trow row2 ->
+          row_compare row1 row2
 
   and compare_all typs1 typs2 =
     match (typs1, typs2) with
@@ -780,6 +818,46 @@ module Type = struct
         1
     | typ1 :: typs1, typ2 :: typs2 ->
         or_compare (compare typ1 typ2) ~f:(fun () -> compare_all typs1 typs2)
+
+  and row_compare row1 row2 =
+    match (row1, row2) with
+    | Row_empty, Row_empty ->
+        0
+    | Row_empty, _ ->
+        -1
+    | _, Row_empty ->
+        1
+    | Row_ctor (lid1, id1), Row_ctor (lid2, id2) ->
+        or_compare (Int.compare id1 id2) ~f:(fun () ->
+            String.compare (Longident.last lid1.txt) (Longident.last lid2.txt)
+        )
+    | Row_ctor _, _ ->
+        -1
+    | _, Row_ctor _ ->
+        1
+    | Row_var typ1, Row_var typ2 ->
+        compare typ1 typ2
+    | Row_var _, _ ->
+        -1
+    | _, Row_var _ ->
+        1
+    | Row_union (row1a, row1b), Row_union (row2a, row2b) ->
+        or_compare (row_compare row1a row2a) ~f:(fun () ->
+            row_compare row1b row2b )
+    | Row_union _, _ ->
+        -1
+    | _, Row_union _ ->
+        1
+    | Row_inter (row1a, row1b), Row_inter (row2a, row2b) ->
+        or_compare (row_compare row1a row2a) ~f:(fun () ->
+            row_compare row1b row2b )
+    | Row_inter _, _ ->
+        -1
+    | _, Row_inter _ ->
+        1
+    | Row_diff (row1a, row1b), Row_diff (row2a, row2b) ->
+        or_compare (row_compare row1a row2a) ~f:(fun () ->
+            row_compare row1b row2b )
 
   let rec get_implicits acc typ =
     match typ.type_desc with
@@ -928,6 +1006,21 @@ module Type = struct
         mk (f variant) env
     | Tpoly (typs, typ) ->
         mk (Tpoly (typs, constr_map env ~f typ)) env
+    | Trow row ->
+        mk (Trow (row_constr_map env ~f row)) env
+
+  and row_constr_map env ~f row =
+    match row with
+    | Row_var typ ->
+        Row_var (constr_map env ~f typ)
+    | Row_union (row1, row2) ->
+        Row_union (row_constr_map env ~f row1, row_constr_map env ~f row2)
+    | Row_inter (row1, row2) ->
+        Row_inter (row_constr_map env ~f row1, row_constr_map env ~f row2)
+    | Row_diff (row1, row2) ->
+        Row_diff (row_constr_map env ~f row1, row_constr_map env ~f row2)
+    | _ ->
+        row
 
   let rec bubble_label_aux env label typ =
     match typ.type_desc with

@@ -22,8 +22,24 @@ let rec type_desc ?loc = function
       Type.constr ?loc ~params ~implicits ident.txt
   | Tpoly (vars, var) ->
       Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
+  | Trow row ->
+      Type.row ?loc (row_desc ?loc row)
 
 and type_expr ?loc typ = type_desc ?loc typ.type_desc
+
+and row_desc ?loc = function
+  | Row_empty ->
+      Parsetypes.Row_empty
+  | Row_ctor (lid, _) ->
+      Parsetypes.Row_ctor lid
+  | Row_var typ ->
+      Parsetypes.Row_var (type_expr ?loc typ)
+  | Row_union (row1, row2) ->
+      Parsetypes.Row_union (row_desc ?loc row1, row_desc ?loc row2)
+  | Row_inter (row1, row2) ->
+      Parsetypes.Row_inter (row_desc ?loc row1, row_desc ?loc row2)
+  | Row_diff (row1, row2) ->
+      Parsetypes.Row_diff (row_desc ?loc row1, row_desc ?loc row2)
 
 let field_decl ?loc fld =
   Type_decl.Field.mk ?loc fld.fld_ident.txt (type_expr ?loc fld.fld_type)

@@ -11,12 +11,21 @@ and type_desc =
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
+  | Trow of row_desc
 
 and variant =
   { var_ident: lid
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
   ; var_decl: type_decl }
+
+and row_desc =
+  | Row_empty
+  | Row_ctor of lid * int (* decl_id *)
+  | Row_var of type_expr
+  | Row_union of row_desc * row_desc
+  | Row_inter of row_desc * row_desc
+  | Row_diff of row_desc * row_desc
 
 and field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
 
@@ -82,8 +91,41 @@ let rec typ_debug_print fmt typ =
   | Tctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
   | Ttuple typs ->
-      print "(%a)" (print_list typ_debug_print) typs ) ;
+      print "(%a)" (print_list typ_debug_print) typs
+  | Trow row ->
+      print "[%a]" row_debug_print row ) ;
   print " @%i)" typ.type_depth
+
+and row_debug_print fmt row =
+  let open Format in
+  match row with
+  | Row_empty ->
+      ()
+  | Row_ctor (ctor, id) ->
+      fprintf fmt "%a(%i)" Longident.pp ctor.txt id
+  | Row_var typ ->
+      typ_debug_print fmt typ
+  | Row_union (row1, row2) ->
+      fprintf fmt "[%a] + [%a]" row_debug_print row1 row_debug_print row2
+  | Row_inter (row1, row2) ->
+      fprintf fmt "[%a] & [%a]" row_debug_print row1 row_debug_print row2
+  | Row_diff (row1, row2) ->
+      fprintf fmt "[%a] - [%a]" row_debug_print row1 row_debug_print row2
+
+let fold_row ~init ~f row =
+  match row with
+  | Row_empty | Row_ctor _ | Row_var _ ->
+      init
+  | Row_union (row1, row2) | Row_inter (row1, row2) | Row_diff (row1, row2) ->
+      let acc = f init row1 in
+      f acc row2
+
+let rec fold_row_typ ~init ~f row =
+  match row with
+  | Row_var typ ->
+      f init typ
+  | _ ->
+      fold_row ~init ~f:(fun acc row -> fold_row_typ ~init:acc ~f row) row
 
 let fold ~init ~f typ =
   match typ.type_desc with
@@ -100,5 +142,7 @@ let fold ~init ~f typ =
   | Tpoly (typs, typ) ->
       let acc = List.fold ~init ~f typs in
       f acc typ
+  | Trow row ->
+      fold_row_typ ~init ~f row
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)

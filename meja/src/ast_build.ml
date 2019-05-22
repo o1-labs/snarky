@@ -63,6 +63,8 @@ module Type = struct
     mk ?loc (Tarrow (typ1, typ2, explicit, label))
 
   let poly ?loc vars var = mk ?loc (Tpoly (vars, var))
+
+  let row ?loc row = mk ?loc (Trow row)
 end
 
 module Type_decl = struct
