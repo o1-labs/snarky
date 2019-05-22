@@ -128,6 +128,8 @@ module Type = struct
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
         (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
+    | Trow _ ->
+        assert false
 end
 
 module TypeDecl = struct
