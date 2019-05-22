@@ -248,25 +248,23 @@ let rec add_implicits ~loc implicits typ env =
       let typ = add_implicits ~loc implicits typ env in
       Envi.Type.mk (Tarrow (typ', typ, Implicit, Nolabel)) env
 
-let rec free_type_vars ?depth typ =
-  let free_type_vars = free_type_vars ?depth in
-  match typ.type_desc with
-  | Tvar _ ->
-      Set.empty (module Envi.Type)
-  | Tpoly (vars, typ) ->
-      let poly_vars =
-        List.fold
-          ~init:(Set.empty (module Envi.Type))
-          vars
-          ~f:(fun set var -> Set.union set (Envi.Type.type_vars var))
-      in
-      Set.diff (free_type_vars typ) poly_vars
-  | Tctor {var_params; _} ->
-      Set.union_list (module Envi.Type) (List.map ~f:free_type_vars var_params)
-  | Ttuple typs ->
-      Set.union_list (module Envi.Type) (List.map ~f:free_type_vars typs)
-  | Tarrow (typ1, typ2, _, _) ->
-      Set.union (Envi.Type.type_vars ?depth typ1) (free_type_vars typ2)
+let free_type_vars ?depth typ =
+  let empty = Set.empty (module Envi.Type) in
+  let rec free_type_vars set typ =
+    match typ.type_desc with
+    | Tpoly (vars, typ) ->
+        let poly_vars =
+          Set.union_list
+            (module Envi.Type)
+            (List.map ~f:(Envi.Type.type_vars ?depth) vars)
+        in
+        Set.union set (Set.diff (free_type_vars empty typ) poly_vars)
+    | Tarrow (typ1, typ2, _, _) ->
+        Set.union (Envi.Type.type_vars ?depth typ1) (free_type_vars set typ2)
+    | _ ->
+        fold ~init:set typ ~f:free_type_vars
+  in
+  free_type_vars empty typ
 
 let polymorphise typ env =
   let typ_vars = Set.to_list (free_type_vars ~depth:env.Envi.depth typ) in

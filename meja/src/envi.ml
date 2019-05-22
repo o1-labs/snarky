@@ -963,12 +963,12 @@ module Type = struct
   let implicit_params _env typ =
     let rec implicit_params set typ =
       match typ.type_desc with
-    | Tvar (_, _, Implicit) ->
-        Set.add set typ
-    | Tpoly (_, typ) ->
-        implicit_params set typ
-    | _ ->
-        fold ~init:set typ ~f:implicit_params
+      | Tvar (_, _, Implicit) ->
+          Set.add set typ
+      | Tpoly (_, typ) ->
+          implicit_params set typ
+      | _ ->
+          fold ~init:set typ ~f:implicit_params
     in
     implicit_params (Set.empty (module Comparator)) typ
 
