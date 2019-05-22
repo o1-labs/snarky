@@ -718,28 +718,26 @@ module Type = struct
 
   include Comparator
 
-  let rec type_vars ?depth typ =
-    let deep_enough x =
-      match depth with Some depth -> depth <= x | None -> true
+  let type_vars ?depth typ =
+    let deep_enough =
+      match depth with
+      | Some depth ->
+          fun x -> depth <= x
+      | None ->
+          fun _ -> true
     in
-    let type_vars' = type_vars in
-    let type_vars = type_vars ?depth in
-    match typ.type_desc with
-    | Tvar (_, var_depth, _) when deep_enough var_depth ->
-        Set.singleton (module Comparator) typ
-    | Tvar _ ->
-        Set.empty (module Comparator)
-    | Tpoly (vars, typ) ->
-        let poly_vars =
-          Set.union_list (module Comparator) (List.map ~f:type_vars' vars)
-        in
-        Set.diff (type_vars typ) poly_vars
-    | Tctor {var_params; _} ->
-        Set.union_list (module Comparator) (List.map ~f:type_vars var_params)
-    | Ttuple typs ->
-        Set.union_list (module Comparator) (List.map ~f:type_vars typs)
-    | Tarrow (typ1, typ2, _, _) ->
-        Set.union (type_vars typ1) (type_vars typ2)
+    let empty = Set.empty (module Comparator) in
+    let rec type_vars set typ =
+      match typ.type_desc with
+      | Tvar (_, var_depth, _) when deep_enough var_depth ->
+          Set.add set typ
+      | Tpoly (vars, typ) ->
+          let poly_vars = List.fold ~init:empty vars ~f:type_vars in
+          Set.union set (Set.diff (type_vars empty typ) poly_vars)
+      | _ ->
+          fold ~init:set typ ~f:type_vars
+    in
+    type_vars empty typ
 
   let rec flatten typ env =
     match typ.type_desc with
@@ -962,32 +960,17 @@ module Type = struct
     env.resolve_env.type_env <- {env.resolve_env.type_env with implicit_vars} ;
     local_implicit_vars
 
-  let rec implicit_params env typ =
-    let implicit_params = implicit_params env in
-    match typ.type_desc with
-    | Tvar (_, _, Explicit) ->
-        Set.empty (module Comparator)
+  let implicit_params _env typ =
+    let rec implicit_params set typ =
+      match typ.type_desc with
     | Tvar (_, _, Implicit) ->
-        Set.singleton (module Comparator) typ
-    | Ttuple typs ->
-        Set.union_list (module Comparator) (List.map ~f:implicit_params typs)
-    | Tarrow (typ1, typ2, _, _) ->
-        Set.union (implicit_params typ1) (implicit_params typ2)
-    | Tctor variant ->
-        let {predeclare_types; _} = env.resolve_env in
-        env.resolve_env.predeclare_types <- false ;
-        let ctor_params =
-          try
-            let decl = raw_find_type_declaration variant.var_ident env in
-            Set.of_list (module Comparator) decl.tdec_implicit_params
-          with Error (_, Unbound_type _) -> Set.empty (module Comparator)
-        in
-        env.resolve_env.predeclare_types <- predeclare_types ;
-        Set.union_list
-          (module Comparator)
-          (ctor_params :: List.map ~f:implicit_params variant.var_params)
+        Set.add set typ
     | Tpoly (_, typ) ->
-        implicit_params typ
+        implicit_params set typ
+    | _ ->
+        fold ~init:set typ ~f:implicit_params
+    in
+    implicit_params (Set.empty (module Comparator)) typ
 
   let rec constr_map env ~f typ =
     match typ.type_desc with
