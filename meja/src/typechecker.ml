@@ -28,22 +28,26 @@ exception Error of Location.t * error
 let bind_none x f = match x with Some x -> x | None -> f ()
 
 let unpack_decls ~loc typ ctyp env =
+  let unfold_typ () =
+    Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
+        (typ, ctyp) )
+  in
+  let unfold_ctyp () =
+    Option.map (Envi.TypeDecl.unfold_alias ~loc ctyp env) ~f:(fun ctyp ->
+        (typ, ctyp) )
+  in
   match (typ.type_desc, ctyp.type_desc) with
   | Tctor variant, Tctor cvariant ->
       let decl_id, cdecl_id =
         (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
       in
-      let unfold_typ () =
-        Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
-            (typ, ctyp) )
-      in
-      let unfold_ctyp () =
-        Option.map (Envi.TypeDecl.unfold_alias ~loc ctyp env) ~f:(fun ctyp ->
-            (typ, ctyp) )
-      in
       (* Try to unfold the oldest type definition first. *)
       if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
       else bind_none (Some (unfold_typ ())) unfold_ctyp
+  | Tctor _, _ ->
+      unfold_typ ()
+  | _, Tctor _ ->
+      unfold_ctyp ()
   | _ ->
       None
 
@@ -116,27 +120,36 @@ let rec check_type_aux ~loc typ ctyp env =
           raise (Error (loc, Cannot_unify (typ, ctyp))) ) ;
       check_type_aux typ1 ctyp1 env ;
       check_type_aux typ2 ctyp2 env
-  | Tctor variant, Tctor constr_variant ->
-      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-      then
-        match
-          List.iter2 variant.var_params constr_variant.var_params
-            ~f:(fun param constr_param -> check_type_aux param constr_param env
-          )
-        with
-        | Ok env ->
-            env
-        | Unequal_lengths ->
-            raise (Error (loc, Cannot_unify (typ, ctyp)))
-      else
-        let typ, ctyp =
-          match unpack_decls ~loc typ ctyp env with
-          | Some (typ, ctyp) ->
-              (typ, ctyp)
-          | None ->
-              raise (Error (loc, Cannot_unify (typ, ctyp)))
-        in
+  | Tctor variant, Tctor constr_variant -> (
+    (* Always try to unfold first, so that type aliases with phantom
+         parameters can unify, as in OCaml.
+      *)
+    match unpack_decls ~loc typ ctyp env with
+    | Some (typ, ctyp) ->
         check_type_aux typ ctyp env
+    | None ->
+        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
+        then
+          match
+            List.iter2 variant.var_params constr_variant.var_params
+              ~f:(fun param constr_param ->
+                check_type_aux param constr_param env )
+          with
+          | Ok env ->
+              env
+          | Unequal_lengths ->
+              raise (Error (loc, Cannot_unify (typ, ctyp)))
+        else raise (Error (loc, Cannot_unify (typ, ctyp))) )
+  | Tctor _, _ | _, Tctor _ ->
+      (* Unfold an alias and compare again *)
+      let typ, ctyp =
+        match unpack_decls ~loc typ ctyp env with
+        | Some (typ, ctyp) ->
+            (typ, ctyp)
+        | None ->
+            raise (Error (loc, Cannot_unify (typ, ctyp)))
+      in
+      check_type_aux typ ctyp env
   | _, _ ->
       raise (Error (loc, Cannot_unify (typ, ctyp)))
 
