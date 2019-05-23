@@ -143,6 +143,8 @@ structure_item:
         ; tdec_loc= mklocation $loc }) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
     { mkstmt ~pos:$loc (Module (x, m)) }
+  | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
+    { mkstmt ~pos:$loc (ModType (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
     { mkstmt ~pos:$loc (Open x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL

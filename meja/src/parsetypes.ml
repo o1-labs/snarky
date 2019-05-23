@@ -186,6 +186,7 @@ and statement_desc =
   | Instance of str * expression
   | TypeDecl of type_decl
   | Module of str * module_expr
+  | ModType of str * module_sig
   | Open of lid
   | TypeExtension of variant * ctor_decl list
   | Request of type_expr * ctor_decl * (pattern option * expression) option

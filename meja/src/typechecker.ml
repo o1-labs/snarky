@@ -361,6 +361,8 @@ let rec check_pattern ~add env typ pat =
             raise (Error (loc, Pattern_declaration ("constructor", name))) )
           ~modules:(fun ~key:name ~data:_ _ ->
             raise (Error (loc, Pattern_declaration ("module", name))) )
+          ~module_types:(fun ~key:name ~data:_ _ ->
+            raise (Error (loc, Pattern_declaration ("module type", name))) )
           ~instances:(fun ~key:_ ~data:_ () -> ())
       in
       let env = Envi.push_scope scope2 env in
@@ -862,8 +864,10 @@ let rec check_signature_item env item =
           Envi.add_module name m env
       | Envi.Scope.Deferred path ->
           Envi.add_deferred_module name path env )
-  | SModType (_name, _signature) ->
-      (* TODO *)
+  | SModType (name, signature) ->
+      let env = Envi.open_module env in
+      let m_env, env = check_module_sig env signature in
+      let env = Envi.add_module_type name.txt m_env env in
       env
   | SOpen name ->
       let m = Envi.find_module ~loc name env in
@@ -974,6 +978,11 @@ let rec check_statement env stmt =
       let m_env, env = Envi.pop_module ~loc env in
       let env = Envi.add_module name m_env env in
       (env, {stmt with stmt_desc= Module (name, m)})
+  | ModType (name, signature) ->
+      let env = Envi.open_module env in
+      let m_env, env = check_module_sig env signature in
+      let env = Envi.add_module_type name.txt m_env env in
+      (env, stmt)
   | Open name ->
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)

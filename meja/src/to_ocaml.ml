@@ -204,6 +204,8 @@ let rec of_statement_desc ?loc = function
       Str.type_ ?loc Recursive [of_type_decl decl]
   | Module (name, m) ->
       Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
+  | ModType (name, msig) ->
+      Str.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
   | Open name ->
       Str.open_ ?loc (Opn.mk ?loc name)
   | TypeExtension (variant, ctors) ->

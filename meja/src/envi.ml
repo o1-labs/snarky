@@ -105,6 +105,7 @@ module Scope = struct
     ; fields: (type_decl * int) name_map
     ; ctors: (type_decl * int) name_map
     ; modules: t or_path name_map
+    ; module_types: t or_path name_map
     ; instances: Longident.t int_map }
 
   let load_module :
@@ -120,6 +121,7 @@ module Scope = struct
     ; fields= Map.empty (module String)
     ; ctors= Map.empty (module String)
     ; modules= Map.empty (module String)
+    ; module_types= Map.empty (module String)
     ; instances= Map.empty (module Int) }
 
   let add_name key typ scope =
@@ -174,7 +176,7 @@ module Scope = struct
         List.foldi ~f:(add_ctor decl) ~init:scope ctors
 
   let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors
-      ~modules ~instances
+      ~modules ~module_types ~instances
       { kind= _
       ; names= names1
       ; type_variables= type_variables1
@@ -182,6 +184,7 @@ module Scope = struct
       ; fields= fields1
       ; ctors= ctors1
       ; modules= modules1
+      ; module_types= module_types1
       ; instances= instances1 }
       { kind= _
       ; names= names2
@@ -190,6 +193,7 @@ module Scope = struct
       ; fields= fields2
       ; ctors= ctors2
       ; modules= modules2
+      ; module_types= module_types2
       ; instances= instances2 } =
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
@@ -198,6 +202,9 @@ module Scope = struct
     let acc = Map.fold2 ctors1 ctors2 ~init:acc ~f:ctors in
     let acc = Map.fold2 fields1 fields2 ~init:acc ~f:fields in
     let acc = Map.fold2 modules1 modules2 ~init:acc ~f:modules in
+    let acc =
+      Map.fold2 module_types1 module_types2 ~init:acc ~f:module_types
+    in
     let acc = Map.fold2 instances1 instances2 ~init:acc ~f:instances in
     let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
     acc
@@ -210,6 +217,7 @@ module Scope = struct
       ; fields= fields1
       ; ctors= ctors1
       ; modules= modules1
+      ; module_types= module_types1
       ; instances= instances1 }
       { kind= _
       ; names= names2
@@ -218,6 +226,7 @@ module Scope = struct
       ; fields= fields2
       ; ctors= ctors2
       ; modules= modules2
+      ; module_types= module_types2
       ; instances= instances2 } =
     { kind
     ; names= Map.merge_skewed names1 names2 ~combine:(fun ~key:_ _ v -> v)
@@ -232,12 +241,20 @@ module Scope = struct
     ; modules=
         Map.merge_skewed modules1 modules2 ~combine:(fun ~key _ _ ->
             raise (Error (loc, Multiple_definition ("module", key))) )
+    ; module_types=
+        Map.merge_skewed module_types1 module_types2 ~combine:(fun ~key _ _ ->
+            raise (Error (loc, Multiple_definition ("module type", key))) )
     ; instances=
         Map.merge_skewed instances1 instances2 ~combine:(fun ~key:_ _ v -> v)
     }
 
   let add_module name m scope =
     {scope with modules= Map.set scope.modules ~key:name ~data:m}
+
+  let add_module_type name m scope =
+    {scope with module_types= Map.set scope.module_types ~key:name ~data:m}
+
+  let get_module_type name scope = Map.find scope.module_types name
 
   let rec outer_mod_name ~loc lid =
     let outer_mod_name = outer_mod_name ~loc in
@@ -554,6 +571,12 @@ let raw_find_type_declaration (lid : lid) env =
         ; tdec_loc= lid.loc }
     | _ ->
         raise (Error (lid.loc, Unbound_type lid.txt)) )
+
+let add_module_type name m =
+  map_current_scope ~f:(Scope.add_module_type name m)
+
+let find_module_type =
+  find_of_lident ~kind:"module type" ~get_name:Scope.get_module_type
 
 module Type = struct
   type env = t
