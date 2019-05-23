@@ -589,6 +589,25 @@ let rec get_expression env expected exp =
       let env = Envi.close_expr_scope env in
       ( {exp_loc= loc; exp_type= typ; exp_desc= Fun (label, p, body, explicit)}
       , env )
+  | Newtype (name, body) ->
+      let env = Envi.open_expr_scope env in
+      let typ = Envi.Type.mkvar (Some name) env in
+      let decl =
+        { tdec_ident= name
+        ; tdec_params= []
+        ; tdec_implicit_params= []
+        ; tdec_desc= TAbstract
+        ; tdec_loc= loc }
+      in
+      let decl, env = Typet.TypeDecl.import decl env in
+      let body, env = get_expression env expected body in
+      env.resolve_env.type_env
+      <- Envi.TypeEnvi.add_decl
+           {decl with tdec_desc= TUnfold typ}
+           env.resolve_env.type_env ;
+      let env = Envi.close_expr_scope env in
+      ( {exp_loc= loc; exp_type= body.exp_type; exp_desc= Newtype (name, body)}
+      , env )
   | Seq (e1, e2) ->
       let e1, env = get_expression env Initial_env.Type.unit e1 in
       let e2, env = get_expression env expected e2 in
