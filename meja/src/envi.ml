@@ -562,10 +562,10 @@ module Type = struct
   let mk type_desc env =
     let type_id, type_env = TypeEnvi.next_type_id env.resolve_env.type_env in
     env.resolve_env.type_env <- type_env ;
-    {type_desc; type_id}
+    {type_desc; type_id; type_depth= env.depth}
 
   let mkvar ?(explicitness = Explicit) name env =
-    mk (Tvar (name, env.depth, explicitness)) env
+    mk (Tvar (name, explicitness)) env
 
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
@@ -579,13 +579,13 @@ module Type = struct
     let import' = import ~loc in
     let import = import ~loc ?must_find in
     match typ.type_desc with
-    | Tvar (None, _, explicitness) -> (
+    | Tvar (None, explicitness) -> (
       match (must_find, explicitness) with
       | Some true, Explicit ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
           (mkvar ~explicitness None env, env) )
-    | Tvar ((Some {txt= x; _} as name), _, explicitness) -> (
+    | Tvar ((Some {txt= x; _} as name), explicitness) -> (
         let var =
           match must_find with
           | Some true ->
@@ -719,13 +719,13 @@ module Type = struct
   include Comparator
 
   let rec type_vars ?depth typ =
-    let deep_enough x =
-      match depth with Some depth -> depth <= x | None -> true
+    let deep_enough () =
+      match depth with Some depth -> depth <= typ.type_depth | None -> true
     in
     let type_vars' = type_vars in
     let type_vars = type_vars ?depth in
     match typ.type_desc with
-    | Tvar (_, var_depth, _) when deep_enough var_depth ->
+    | Tvar _ when deep_enough () ->
         Set.singleton (module Comparator) typ
     | Tvar _ ->
         Set.empty (module Comparator)
@@ -965,9 +965,9 @@ module Type = struct
   let rec implicit_params env typ =
     let implicit_params = implicit_params env in
     match typ.type_desc with
-    | Tvar (_, _, Explicit) ->
+    | Tvar (_, Explicit) ->
         Set.empty (module Comparator)
-    | Tvar (_, _, Implicit) ->
+    | Tvar (_, Implicit) ->
         Set.singleton (module Comparator) typ
     | Ttuple typs ->
         Set.union_list (module Comparator) (List.map ~f:implicit_params typs)
@@ -1350,7 +1350,8 @@ let pp_decl_typ ppf decl =
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl_id= decl.tdec_id }
-    ; type_id= -1 }
+    ; type_id= -1
+    ; type_depth= -1 }
 
 let report_error ppf = function
   | No_open_scopes ->

@@ -67,7 +67,7 @@ let rec check_type_aux ~loc typ ctyp env =
       check_type_aux typ ctyp env
   | _, Tpoly (_, ctyp) ->
       check_type_aux typ ctyp env
-  | Tvar (_, depth, _), Tvar (_, constr_depth, _) ->
+  | Tvar _, Tvar _ ->
       bind_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () ->
@@ -78,8 +78,9 @@ let rec check_type_aux ~loc typ ctyp env =
                  the instance for the other. If they are at the same level, prefer
                  the lowest ID to ensure strict ordering and thus no cycles. *)
               if
-                constr_depth < depth
-                || (Int.equal constr_depth depth && ctyp.type_id < typ.type_id)
+                ctyp.type_depth < typ.type_depth
+                || Int.equal ctyp.type_depth typ.type_depth
+                   && ctyp.type_id < typ.type_id
               then Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
   | Tvar _, _ ->
