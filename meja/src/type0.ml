@@ -1,3 +1,4 @@
+open Core_kernel
 open Ast_types
 
 type type_expr = {type_desc: type_desc; type_id: int; type_depth: int}
@@ -85,3 +86,21 @@ let rec typ_debug_print fmt typ =
   | Ttuple typs ->
       print "(%a)" (print_list typ_debug_print) typs ) ;
   print " @%i)" typ.type_depth
+
+let fold ~init ~f typ =
+  match typ.type_desc with
+  | Tvar _ ->
+      init
+  | Ttuple typs ->
+      List.fold ~init ~f typs
+  | Tarrow (typ1, typ2, _, _) ->
+      let acc = f init typ1 in
+      f acc typ2
+  | Tctor variant ->
+      let acc = List.fold ~init ~f variant.var_params in
+      List.fold ~init:acc ~f variant.var_implicit_params
+  | Tpoly (typs, typ) ->
+      let acc = List.fold ~init ~f typs in
+      f acc typ
+
+let iter ~f = fold ~init:() ~f:(fun () -> f)
