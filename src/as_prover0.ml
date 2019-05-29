@@ -1,4 +1,6 @@
-type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
+open Core_kernel
+
+type ('a, 'f, 's) t = ('a, 'f, 's) Types.As_prover.t
 
 module T = struct
   let map t ~f tbl s =
@@ -26,6 +28,10 @@ module T = struct
 
   let read_var (v : 'var) : ('field, 'field, 's) t = fun tbl s -> (s, tbl v)
 
+  let read ({read; _} : ('var, 'value, 'field, _) Types.Typ.t) (var : 'var) :
+      ('value, 'field, 'prover_state) t =
+   fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
+
   include Monad_let.Make3 (struct
     type nonrec ('a, 'e, 's) t = ('a, 'e, 's) t
 
@@ -40,6 +46,42 @@ module T = struct
     let s' = Lens.get lens s in
     let s', a = as_prover tbl s' in
     (Lens.set lens s s', a)
+
+  module Provider = struct
+    type nonrec ('a, 'f, 's) t =
+      (('a Request.t, 'f, 's) t, ('a, 'f, 's) t) Types.Provider.t
+
+    open Types.Provider
+
+    let run t stack tbl s (handler : Request.Handler.t) =
+      match t with
+      | Request rc ->
+          let s', r = run rc tbl s in
+          (s', Request.Handler.run handler stack r)
+      | Compute c ->
+          run c tbl s
+      | Both (rc, c) -> (
+          let s', r = run rc tbl s in
+          match Request.Handler.run handler stack r with
+          | exception _ ->
+              run c tbl s
+          | x ->
+              (s', x) )
+
+let with_lens lens t =
+  match t with
+  | Request r ->
+      Request (with_lens lens r)
+  | Compute c ->
+      Compute (with_lens lens c)
+  | Both (r, c) ->
+      Both (with_lens lens r, with_lens lens c)
+  end
+
+  module Handle = struct
+    let value (t : ('var, 'value) Handle.t) : ('value, 'field, 's) t =
+     fun _ s -> (s, Option.value_exn t.value)
+  end
 end
 
 include T

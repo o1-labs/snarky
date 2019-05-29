@@ -1,0 +1,4 @@
+let f : ('a -> 'a) -> 'a -> 'a =
+  fun (type t, x : t -> t, y : t) : t => {
+    x(y);
+  };

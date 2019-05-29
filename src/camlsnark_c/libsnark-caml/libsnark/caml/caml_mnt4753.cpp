@@ -563,7 +563,8 @@ void camlsnark_mnt4753_r1cs_constraint_system_report_statistics(r1cs_constraint_
   sys->report_linear_constraint_statistics();
 }
 
-void camlsnark_mnt4753_r1cs_constraint_system_finalize(r1cs_constraint_system<FieldT>* sys) {
+void camlsnark_mnt4753_r1cs_constraint_system_swap_AB_if_beneficial(
+    r1cs_constraint_system<FieldT>* sys) {
   sys->swap_AB_if_beneficial();
 }
 

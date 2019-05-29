@@ -1,5 +1,5 @@
 open Ast_types
-open Parsetypes
+open Type0
 open Format
 open Ast_print
 
@@ -51,10 +51,12 @@ let ctor_args fmt = function
       ()
   | Ctor_tuple typs ->
       tuple fmt typs
-  | Ctor_record (_, fields) ->
+  | Ctor_record {tdec_desc= TRecord fields; _} ->
       fprintf fmt "{@[<2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
+  | Ctor_record _ ->
+      assert false
 
 let ctor_decl fmt decl =
   fprintf fmt "%a%a" pp_name decl.ctor_ident.txt ctor_args decl.ctor_args ;
@@ -95,39 +97,3 @@ let type_decl fmt decl =
   fprintf fmt "type %s" decl.tdec_ident.txt ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
-
-let rec signature_desc fmt = function
-  | SValue (name, typ) ->
-      fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt
-        type_expr typ
-  | SInstance (name, typ) ->
-      fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" pp_name name.txt
-        type_expr typ
-  | STypeDecl decl ->
-      fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
-  | SModule (name, msig) ->
-      let prefix fmt = fprintf fmt ":@ " in
-      fprintf fmt "@[<hov2>module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
-        msig
-  | SModType (name, msig) ->
-      let prefix fmt = fprintf fmt "=@ " in
-      fprintf fmt "@[<hov2>module type@ %s@ %a;@]@;@;" name.txt
-        (module_sig ~prefix) msig
-
-and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
-
-and signature fmt sigs = List.iter (signature_item fmt) sigs
-
-and module_sig_desc ~prefix fmt = function
-  | Signature msig ->
-      prefix fmt ;
-      fprintf fmt "{@[<hv1>@;%a@]}" signature msig
-  | SigName name ->
-      prefix fmt ; Longident.pp fmt name.txt
-  | SigAbstract ->
-      ()
-  | SigFunctor (name, f, m) ->
-      let pp = module_sig ~prefix:(fun _ -> ()) in
-      fprintf fmt "/* @[functor@ (%s :@ %a)@ =>@ %a@] */" name.txt pp f pp m
-
-and module_sig ~prefix fmt msig = module_sig_desc ~prefix fmt msig.msig_desc

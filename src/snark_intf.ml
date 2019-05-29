@@ -856,14 +856,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type 's state
 
     val run : ('a, 's) Checked.t -> 's state -> 's state * 'a
-
-    val set_handler : Request.Handler.t -> 's state -> 's state
-
-    val get_handler : 's state -> Request.Handler.t
-
-    val set_stack : string list -> 's state -> 's state
-
-    val get_stack : 's state -> string list
   end
 
   type response = Request.response
@@ -1186,6 +1178,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val handle : ('a, 's) Checked.t -> Handler.t -> ('a, 's) Checked.t
   (** Add a request handler to the checked computation, to be used by
       {!val:request_witness}, {!val:perform}, {!val:request} or {!val:exists}.
+  *)
+
+  val handle_as_prover :
+    ('a, 's) Checked.t -> (Handler.t, 's) As_prover.t -> ('a, 's) Checked.t
+  (** Generate a handler using the {!module:As_prover} 'superpowers', and use
+      it for {!val:request_witness}, {!val:perform}, {!val:request} or
+      {!val:exists} calls in the wrapped checked computation.
   *)
 
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
@@ -1914,6 +1913,8 @@ module type Run_basic = sig
     -> ('var, 'value) Handle.t
 
   val handle : (unit -> 'a) -> Handler.t -> 'a
+
+  val handle_as_prover : (unit -> 'a) -> (unit -> Handler.t As_prover.t) -> 'a
 
   val with_label : string -> (unit -> 'a) -> 'a
 

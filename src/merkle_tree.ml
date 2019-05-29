@@ -149,7 +149,7 @@ let insert hash compress t0 mask0 address x =
 
 let ith_bit n i = (n lsr i) land 1 = 1
 
-let update ({hash; compress; tree= tree0; depth} as t) addr0 x =
+let update ({hash; compress; tree= tree0; depth; _} as t) addr0 x =
   let tree_hash = tree_hash ~default:(hash None) in
   let rec go_non_empty tree i =
     match tree with
@@ -431,14 +431,14 @@ struct
     | Set : Address.value * Elt.value -> unit Request.t
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef_ modify_req ~(depth : int) root addr0 ~f :
-      (Hash.var, 's) Checked.t =
+  let%snarkydef_ fetch_and_update_req ~(depth : int) root addr0 ~f :
+      (Hash.var * Elt.var, 's) Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         As_prover.(
-          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a))
+          read (Address.typ ~depth) addr0 >>| fun addr -> Get_element addr)
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in
@@ -454,7 +454,14 @@ struct
         and next = read Elt.typ next in
         Set (addr, next))
     in
-    implied_root next_entry_hash addr0 prev_path
+    let%map new_root = implied_root next_entry_hash addr0 prev_path in
+    (new_root, prev)
+
+  (* addr0 should have least significant bit first *)
+  let%snarkydef_ modify_req ~(depth : int) root addr0 ~f :
+      (Hash.var, 's) Checked.t =
+    let open Let_syntax in
+    fetch_and_update_req ~depth root addr0 ~f >>| fst
 
   (* addr0 should have least significant bit first *)
   let%snarkydef_ get_req ~(depth : int) root addr0 : (Elt.var, 's) Checked.t =
