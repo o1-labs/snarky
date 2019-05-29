@@ -184,6 +184,13 @@ struct
 
   let next_auxiliary s = (s, !(s.next_auxiliary))
 
+  let with_lens (lens : ('whole, 'view) Lens.t) t rs =
+    let s = rs.prover_state in
+    let s' = Option.map ~f:(Lens.get lens) s in
+    let rs, a = t (set_prover_state s' rs) in
+    let s = Option.map2 ~f:(Lens.set lens) s s' in
+    (set_prover_state s rs, a)
+
   let constraint_count ?log:_ t =
     (* TODO: Integrate log with log_constraint *)
     let count = ref 0 in
@@ -241,7 +248,7 @@ module Make (Backend : Backend_extended.S) = struct
 
   type 'prover_state run_state = 'prover_state Checked_runner.run_state
 
-  type state = unit run_state
+  type 's state = 's run_state
 
   type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
@@ -466,7 +473,7 @@ module type S = sig
 
   type 'prover_state run_state = ('prover_state, field) Run_state.t
 
-  type state = unit run_state
+  type 's state = 's run_state
 
   type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 

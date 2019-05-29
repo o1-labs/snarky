@@ -32,6 +32,9 @@ module type Basic = sig
 
   val next_auxiliary : (int, 's, 'f field) t
 
+  val with_lens :
+    ('whole, 'view) Lens.t -> ('a, 'view, 'f) t -> ('a, 'whole, 'f) t
+
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> ('a, 's, 'f field) t -> int
 end
@@ -127,6 +130,9 @@ module type S = sig
     -> 'f field Cvar.t
     -> 'f field Cvar.t
     -> (unit, 's, 'f field) t
+
+  val with_lens :
+    ('whole, 'view) Lens.t -> ('a, 'view, 'f) t -> ('a, 'whole, 'f) t
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> ('a, 's, 'f field) t -> int

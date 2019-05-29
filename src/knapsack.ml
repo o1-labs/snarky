@@ -1,6 +1,6 @@
 open Core_kernel
 
-module Make (Impl : Snark_intf.S) = struct
+module Make (Impl : Snark_intf.Basic) = struct
   open Impl
 
   type t =
@@ -120,5 +120,43 @@ module Make (Impl : Snark_intf.S) = struct
       go [] 0 xs ys
 
     let assert_equal = Impl.Bitstring_checked.Assert.equal
+  end
+end
+
+module Run = struct
+  module Make (Intf : Snark_intf.Run_basic) = struct
+    open Intf
+    module Impl = Make (Intf.Internal_Basic)
+    open Impl
+
+    type t = Impl.t
+
+    let create = create
+
+    let hash_to_field = hash_to_field
+
+    let hash_to_bits = hash_to_bits
+
+    module Hash (M : sig
+      val knapsack : t
+    end) =
+    struct
+      include Impl.Hash (M)
+
+      let if_ b ~(then_ : var) ~(else_ : var) =
+        run_checked (if_ b ~then_ ~else_)
+
+      let hash h1 h2 = run_checked (hash h1 h2)
+
+      let assert_equal h1 h2 = run_checked (assert_equal h1 h2)
+    end
+
+    module Checked = struct
+      include Impl.Checked
+
+      let hash_to_field h vs = run_checked (hash_to_field h vs)
+
+      let hash_to_bits h vs = run_checked (hash_to_bits h vs)
+    end
   end
 end

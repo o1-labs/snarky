@@ -17,9 +17,7 @@ module T = struct
 
   let get_state _tbl s = (s, s)
 
-  let read_var v tbl s = (s, tbl v)
-
-  let set_state s tbl _ = (s, ())
+  let set_state s _tbl _ = (s, ())
 
   let modify_state f _tbl s = (f s, ())
 
@@ -44,6 +42,11 @@ module T = struct
     let return = return
   end)
 
+  let with_lens (lens : ('whole, 'view) Lens.t) as_prover tbl s =
+    let s' = Lens.get lens s in
+    let s', a = as_prover tbl s' in
+    (Lens.set lens s s', a)
+
   module Provider = struct
     type nonrec ('a, 'f, 's) t =
       (('a Request.t, 'f, 's) t, ('a, 'f, 's) t) Types.Provider.t
@@ -64,6 +67,15 @@ module T = struct
               run c tbl s
           | x ->
               (s', x) )
+
+    let with_lens lens t =
+      match t with
+      | Request r ->
+          Request (with_lens lens r)
+      | Compute c ->
+          Compute (with_lens lens c)
+      | Both (r, c) ->
+          Both (with_lens lens r, with_lens lens c)
   end
 
   module Handle = struct
