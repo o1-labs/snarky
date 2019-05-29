@@ -491,7 +491,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    type 'prover_state run_state = ('prover_state, Field.t) Types.Run_state.t
+    type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
     include
       Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
@@ -851,14 +851,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type state
 
     val run : ('a, unit) Checked.t -> state -> state * 'a
-
-    val set_handler : Request.Handler.t -> state -> state
-
-    val get_handler : state -> Request.Handler.t
-
-    val set_stack : string list -> state -> state
-
-    val get_stack : state -> string list
   end
 
   type response = Request.response
@@ -935,6 +927,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           that the public inputs must take
         - ['computation] -- a checked computation that takes as arguments
           values with the types described by [public_input] to the output type.
+    *)
+
+    val constraint_system :
+      ('a, 's, 'public_input) t -> R1CS_constraint_system.t
+    (** The constraint system that this proof system's checked computation
+        describes.
     *)
 
     val digest : ('a, 's, 'public_input) t -> Md5_lib.t
@@ -1176,6 +1174,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       {!val:request_witness}, {!val:perform}, {!val:request} or {!val:exists}.
   *)
 
+  val handle_as_prover :
+    ('a, 's) Checked.t -> (Handler.t, 's) As_prover.t -> ('a, 's) Checked.t
+  (** Generate a handler using the {!module:As_prover} 'superpowers', and use
+      it for {!val:request_witness}, {!val:perform}, {!val:request} or
+      {!val:exists} calls in the wrapped checked computation.
+  *)
+
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
   (** Add a label to all of the constraints added in the checked computation.
       If a constraint is checked and isn't satisfied, this label will be shown
@@ -1276,6 +1281,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> 'valin
       -> unit
   end
+
+  val set_constraint_logger : (Constraint.t -> unit) -> unit
+
+  val clear_constraint_logger : unit -> unit
 end
 
 module type S = sig
@@ -1438,7 +1447,7 @@ module type Run_basic = sig
     end
 
     type 'prover_state run_state =
-      ('prover_state, Field.Constant.t) Types.Run_state.t
+      ('prover_state, Field.Constant.t) Run_state.t
 
     type ('var, 'value) t =
       ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
@@ -1804,6 +1813,8 @@ module type Run_basic = sig
       -> 'computation
       -> ('a, 'public_input) t
 
+    val constraint_system : ('a, 'public_input) t -> R1CS_constraint_system.t
+
     val digest : ('a, 'public_input) t -> Md5_lib.t
 
     val generate_keypair : ('a, 'public_input) t -> Keypair.t
@@ -1881,6 +1892,8 @@ module type Run_basic = sig
 
   val handle : (unit -> 'a) -> Handler.t -> 'a
 
+  val handle_as_prover : (unit -> 'a) -> (unit -> Handler.t As_prover.t) -> 'a
+
   val with_label : string -> (unit -> 'a) -> 'a
 
   val make_checked : (unit -> 'a) -> ('a, 's, field) Types.Checked.t
@@ -1915,6 +1928,10 @@ module type Run_basic = sig
 
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
+
+  val set_constraint_logger : (Constraint.t -> unit) -> unit
+
+  val clear_constraint_logger : unit -> unit
 
   module Internal_Basic : Basic with type field = field
 

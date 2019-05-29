@@ -1,13 +1,14 @@
 open Core_kernel
 open Asttypes
+open Ast_types
 open Ast_helper
 open Parsetypes
 
 let rec of_type_desc ?loc typ =
   match typ with
-  | Tvar (None, _, _) ->
+  | Tvar (None, _) ->
       Typ.any ?loc ()
-  | Tvar (Some name, _, _) ->
+  | Tvar (Some name, _) ->
       Typ.var ?loc name.txt
   | Tpoly (_, typ) ->
       of_type_expr typ
@@ -101,6 +102,8 @@ let rec of_expression_desc ?loc = function
       Exp.constant ?loc (Const.int i)
   | Fun (label, p, body, _) ->
       Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
+  | Newtype (name, body) ->
+      Exp.newtype ?loc name (of_expression body)
   | Constraint (e, typ) ->
       Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
   | Seq (e1, e2) ->
@@ -223,6 +226,11 @@ let rec of_statement_desc ?loc = function
       in
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
+        ; pincl_loc= Option.value ~default:Location.none loc
+        ; pincl_attributes= [] }
+  | Multiple stmts ->
+      Str.include_ ?loc
+        { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
 

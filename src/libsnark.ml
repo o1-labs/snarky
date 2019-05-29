@@ -29,9 +29,31 @@ let set_printing_file =
   foreign "camlsnark_set_printing_file" (string @-> returning void)
 
 module Print_func = struct
-  let print = ref (fun _ -> ())
+  (** Internal: The reference to the user-defined function passed to
+      {!val:set_printing_fun}.
+      OCaml may relocate the function in memory if it is heap-allocated (e.g.
+      using a closure) during its GC cycle, so we store a reference here and
+      call it from the statically-allocated OCaml function {!val:dispatch}
+      below.
+  *)
+  let print = ref (fun str -> str)
 
-  let dispatch str = Sys.opaque_identity (!print str)
+  (** A reference to the C [puts] function.
+
+      The OCaml stdlib functions use thread-unsafe primitives that may cause a
+      crash if calls from multiple threads overlap, so we use this to avoid
+      their thread-unsafe blocking behaviour.
+  *)
+  let puts = foreign "camlsnark_puts" (string @-> returning void)
+
+  (** The dispatcher passed to the C++ interface in {!val:set_printing_fun}.
+      We cannot pass the user-provided function directly to the C++ side in
+      case of GC relocation, so this provides a statically-allocated wrapper.
+
+      The call to {!val:puts} is made from here instead of the C++ side so that
+      OCaml's GC behaviour is mitigated by the the Ctypes API.
+  *)
+  let dispatch str = puts (!print str)
 end
 
 let set_printing_fun =
@@ -897,7 +919,7 @@ struct
 
     val report_statistics : t -> unit
 
-    val finalize : t -> unit
+    val swap_AB_if_beneficial : t -> unit
 
     val add_constraint : t -> R1CS_constraint.t -> unit
 
@@ -936,7 +958,8 @@ struct
     let report_statistics =
       foreign (func_name "report_statistics") (typ @-> returning void)
 
-    let finalize = foreign (func_name "finalize") (typ @-> returning void)
+    let swap_AB_if_beneficial =
+      foreign (func_name "swap_AB_if_beneficial") (typ @-> returning void)
 
     let check_exn =
       let stub = foreign (func_name "check") (typ @-> returning bool) in
@@ -1568,12 +1591,33 @@ struct
   module type Common_intf = module type of Common
 
   module Default = struct
-    include Common
+    module R1CS_constraint_system = struct
+      include Common.R1CS_constraint_system
+
+      let finalize = Common.R1CS_constraint_system.swap_AB_if_beneficial
+    end
+
+    include (
+      Common :
+        module type of Common
+        with module Field0 := Common.Field0
+         and module R1CS_constraint_system := Common.R1CS_constraint_system )
+
     include Make_proof_system (Common)
   end
 
   module GM = struct
-    include Common
+    module R1CS_constraint_system = struct
+      include Common.R1CS_constraint_system
+
+      let finalize = ignore
+    end
+
+    include (
+      Common :
+        module type of Common
+        with module Field0 := Common.Field0
+         and module R1CS_constraint_system := Common.R1CS_constraint_system )
 
     include Make_proof_system (struct
       include Common
@@ -1588,6 +1632,38 @@ end
 module Bn128 = Make_full (struct
   let prefix = "camlsnark_bn128"
 end)
+
+module Make_Groth16_verification_key_accessors (Prefix : sig
+  val prefix : string
+end)
+(Verification_key : Foreign_intf) (G1 : sig
+    include Deletable_intf
+
+    module Vector : Deletable_intf
+end)
+(G2 : Deletable_intf)
+(Fqk : Deletable_intf) =
+struct
+  open Prefix
+
+  let prefix = with_prefix prefix "verification_key"
+
+  let func_name = with_prefix prefix
+
+  let func name ret delete =
+    let stub =
+      foreign (func_name name) (Verification_key.typ @-> returning ret)
+    in
+    fun vk ->
+      let r = stub vk in
+      Caml.Gc.finalise delete r ; r
+
+  let delta = func "delta" G2.typ G2.delete
+
+  let query = func "query" G1.Vector.typ G1.Vector.delete
+
+  let alpha_beta = func "alpha_beta" Fqk.typ Fqk.delete
+end
 
 module Make_proof_accessors (Prefix : sig
   val prefix : string
@@ -1639,6 +1715,8 @@ module Make_bowe_gabizon (M : sig
     end
   end
 
+  module Fqk : Deletable_intf
+
   module G1 : sig
     include Deletable_intf
 
@@ -1668,11 +1746,28 @@ end) =
 struct
   open M
 
-  include Make_proof_system_keys (struct
+  let bg_prefix = with_prefix M.prefix "bg"
+
+  module Keys = Make_proof_system_keys (struct
     include M
 
-    let prefix = with_prefix M.prefix "bg"
+    let prefix = bg_prefix
   end)
+
+  module Proving_key = Keys.Proving_key
+  module Keypair = Keys.Keypair
+
+  module Verification_key = struct
+    include Keys.Verification_key
+
+    include Make_Groth16_verification_key_accessors (struct
+                let prefix = bg_prefix
+              end)
+              (Keys.Verification_key)
+              (G1)
+              (G2)
+              (Fqk)
+  end
 
   module Proof = struct
     module Pre = struct
@@ -1744,38 +1839,6 @@ struct
   module Mnt6_0 = Make_full (struct
     let prefix = "camlsnark_mnt6" ^ suffix
   end)
-
-  module Make_Groth16_verification_key_accessors (Prefix : sig
-    val prefix : string
-  end)
-  (Verification_key : Foreign_intf) (G1 : sig
-      include Deletable_intf
-
-      module Vector : Deletable_intf
-  end)
-  (G2 : Deletable_intf)
-  (Fqk : Deletable_intf) =
-  struct
-    open Prefix
-
-    let prefix = with_prefix prefix "verification_key"
-
-    let func_name = with_prefix prefix
-
-    let func name ret delete =
-      let stub =
-        foreign (func_name name) (Verification_key.typ @-> returning ret)
-      in
-      fun vk ->
-        let r = stub vk in
-        Caml.Gc.finalise delete r ; r
-
-    let delta = func "delta" G2.typ G2.delete
-
-    let query = func "query" G1.Vector.typ G1.Vector.delete
-
-    let alpha_beta = func "alpha_beta" Fqk.typ Fqk.delete
-  end
 
   module Make_GM_verification_key_accessors (Prefix : sig
     val prefix : string

@@ -8,8 +8,6 @@ exception Error of Location.t * error
 
 open Format
 
-let pp_typ ppf typ = Pprintast.core_type ppf (To_ocaml.of_type_expr typ)
-
 let report_error ppf = function
   | Fun_no_fat_arrow ->
       fprintf ppf "Expected => before {@."

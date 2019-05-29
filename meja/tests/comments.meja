@@ -9,3 +9,31 @@ let y = { /* {
   let (i, j, k) = x;
   (i, j); // End of line comment
 };
+
+// Empty comment
+/*/
+
+let f = 1;
+
+/* Several /* layers /* of /* nested /* comment */
+   let f = (); */ */ */ */
+
+let g = f + 2;
+
+/* A
+   /* more
+      /* complicated */
+      nested
+      /*
+        comment
+         /* with */
+         multiple
+      */
+   */ layers
+*/
+
+let h = ();
+
+/****************************/
+
+let i = ();

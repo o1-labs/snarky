@@ -1,3 +1,20 @@
+module As_prover = struct
+  type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
+end
+
+module Provider = struct
+  module T = struct
+    type ('request, 'compute) provider =
+      | Request of 'request
+      | Compute of 'compute
+      | Both of 'request * 'compute
+  end
+
+  include T
+
+  type ('request, 'compute) t = ('request, 'compute) provider
+end
+
 module Typ = struct
   open Typ_monads
 
@@ -36,7 +53,7 @@ module Typ = struct
     ('var, 'value, 'field, 'checked) typ
 end
 
-module rec Checked : sig
+module Checked = struct
   (* TODO-someday: Consider having an "Assembly" type with only a store constructor for straight up Var.t's
     that this gets compiled into. *)
 
@@ -61,15 +78,13 @@ module rec Checked : sig
     | Add_constraint :
         'f Cvar.t Constraint.t * ('a, 's, 'f) t
         -> ('a, 's, 'f) t
-    | As_prover :
-        (unit, 'f, 's) As_prover0.t * ('a, 's, 'f) t
-        -> ('a, 's, 'f) t
+    | As_prover : (unit, 'f, 's) As_prover.t * ('a, 's, 'f) t -> ('a, 's, 'f) t
     | With_label :
         string * ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t)
         -> ('b, 's, 'f) t
     | With_state :
-        ('s1, 'f, 's) As_prover0.t
-        * ('s1 -> (unit, 'f, 's) As_prover0.t)
+        ('s1, 'f, 's) As_prover.t
+        * ('s1 -> (unit, 'f, 's) As_prover.t)
         * ('b, 's1, 'f) t
         * ('b -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
@@ -79,27 +94,34 @@ module rec Checked : sig
     | Clear_handler : ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t) -> ('b, 's, 'f) t
     | Exists :
         ('var, 'value, 'f, (unit, unit, 'f) t) Typ.t
-        * ('value, 'f, 's) Provider.t
+        * ( ('value Request.t, 'f, 's) As_prover.t
+          , ('value, 'f, 's) As_prover.t )
+          Provider.t
         * (('var, 'value) Handle.t -> ('a, 's, 'f) t)
         -> ('a, 's, 'f) t
     | Next_auxiliary : (int -> ('a, 's, 'f) t) -> ('a, 's, 'f) t
-end =
-  Checked
+end
 
-and Run_state : sig
-  (** The internal state used to run a checked computation. *)
-  type ('prover_state, 'field) t =
-    { system: 'field Backend_types.R1CS_constraint_system.t option
-    ; input: 'field Vector.t
-    ; aux: 'field Vector.t
-    ; eval_constraints: bool
-    ; num_inputs: int
-    ; next_auxiliary: int ref
-    ; prover_state: 'prover_state option
-    ; stack: string list
-    ; handler: Request.Handler.t
-    ; is_running: bool
-    ; as_prover: bool ref
-    ; run_special: 'a 's. (('a, 's, 'field) Checked.t -> 'a) option }
-end =
-  Run_state
+module type Types = sig
+  module Checked : sig
+    type ('a, 's, 'f) t
+  end
+
+  module As_prover : sig
+    type ('a, 'f, 's) t
+  end
+
+  module Typ : sig
+    include module type of Typ.T
+
+    type ('var, 'value, 'f) t =
+      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) Typ.t
+  end
+
+  module Provider : sig
+    include module type of Provider.T
+
+    type ('a, 'f, 's) t =
+      (('a Request.t, 'f, 's) As_prover.t, ('a, 'f, 's) As_prover.t) provider
+  end
+end
