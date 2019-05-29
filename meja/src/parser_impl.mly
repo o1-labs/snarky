@@ -414,17 +414,25 @@ pat_arg_opt:
       , mkpat ~pos:$loc
           (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
 
+function_body:
+ | EQUALGT LBRACE body = block RBRACE
+   { body }
+ | err = err
+   { raise (Error (err, Fun_no_fat_arrow)) }
+
 function_from_args:
-  | p = pat_arg_opt RPAREN EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg_opt RPAREN body = function_body
     { let (label, p) = p in
       mkexp ~pos:$loc (Fun (label, p, body, Explicit)) }
-  | p = pat_arg_opt RPAREN COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg_opt RPAREN COLON typ = type_expr body = function_body
     { let (label, p) = p in
       mkexp ~pos:$loc (Fun (label, p, mkexp ~pos:$loc(typ)
         (Constraint (body, typ)), Explicit)) }
   | p = pat_arg_opt COMMA f = function_from_args
     { let (label, p) = p in
       mkexp ~pos:$loc (Fun (label, p, f, Explicit)) }
+  | TYPE t = as_loc(lident) RPAREN body = function_body
+    { mkexp ~pos:$loc (Newtype (t, body)) }
   | TYPE t = as_loc(lident) COMMA f = function_from_args
     { mkexp ~pos:$loc (Newtype (t, f)) }
   | pat_arg_opt RPAREN err = err

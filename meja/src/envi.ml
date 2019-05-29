@@ -623,11 +623,16 @@ module Type = struct
           refresh_vars ~loc vars new_vars_map env
         in
         copy typ new_vars_map env
-    | Tctor ({var_params; _} as variant) ->
+    | Tctor {var_decl= {tdec_desc= TUnfold typ; _}; _} ->
+        typ
+    | Tctor ({var_params; var_implicit_params; _} as variant) ->
         let var_params =
           List.map var_params ~f:(fun t -> copy t new_vars_map env)
         in
-        mk (Tctor {variant with var_params}) env
+        let var_implicit_params =
+          List.map var_implicit_params ~f:(fun t -> copy t new_vars_map env)
+        in
+        mk (Tctor {variant with var_params; var_implicit_params}) env
     | Ttuple typs ->
         let typs = List.map typs ~f:(fun t -> copy t new_vars_map env) in
         mk (Ttuple typs) env
@@ -694,7 +699,10 @@ module Type = struct
         let var_params =
           List.map variant.var_params ~f:(fun typ -> flatten typ env)
         in
-        mk (Tctor {variant with var_params}) env
+        let var_implicit_params =
+          List.map variant.var_implicit_params ~f:(fun typ -> flatten typ env)
+        in
+        mk (Tctor {variant with var_params; var_implicit_params}) env
     | Ttuple typs ->
         let typs = List.map typs ~f:(fun typ -> flatten typ env) in
         mk (Ttuple typs) env
