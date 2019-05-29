@@ -4,6 +4,8 @@ let (-) = 20;
 
 let (!) = fun (_) => {30;};
 
+let (~-) = fun (_) => {80;};
+
 let (||) = fun (x, y) => {
   switch (x) {
     | true => x
@@ -16,6 +18,10 @@ let a = (||) (true, false);
 let b = true || false;
 
 let c = !a;
+
+let d = - 35;
+
+let e = - d;
 
 let f : (int -> int -> int) -> int = fun (check : 'a -> 'a -> 'a) => {
   let (+) = fun (l, _) => {l;};
