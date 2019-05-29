@@ -3,9 +3,9 @@ open Type0
 open Ast_build
 
 let rec type_desc ?loc = function
-  | Tvar (None, _, explicit) ->
+  | Tvar (None, explicit) ->
       Type.none ?loc ~explicit ()
-  | Tvar (Some name, _, explicit) ->
+  | Tvar (Some name, explicit) ->
       Type.var ?loc ~explicit name.txt
   | Ttuple typs ->
       Type.tuple ?loc (List.map ~f:(type_expr ?loc) typs)
