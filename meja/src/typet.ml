@@ -61,9 +61,7 @@ module Type = struct
         let decl = raw_find_type_declaration var_ident env in
         let import_implicits () =
           List.fold_map ~init:env decl.tdec_implicit_params
-            ~f:(fun env param ->
-              let param, env = Envi.Type.import ~loc ?must_find param env in
-              (env, param) )
+            ~f:(Envi.Type.refresh_var ~loc ?must_find)
         in
         match decl with
         | {tdec_desc= TUnfold typ; tdec_implicit_params; _} ->
