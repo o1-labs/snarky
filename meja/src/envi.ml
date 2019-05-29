@@ -562,10 +562,10 @@ module Type = struct
   let mk type_desc env =
     let type_id, type_env = TypeEnvi.next_type_id env.resolve_env.type_env in
     env.resolve_env.type_env <- type_env ;
-    {type_desc; type_id}
+    {type_desc; type_id; type_depth= env.depth}
 
   let mkvar ?(explicitness = Explicit) name env =
-    mk (Tvar (name, env.depth, explicitness)) env
+    mk (Tvar (name, explicitness)) env
 
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
@@ -577,13 +577,13 @@ module Type = struct
 
   let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
-    | Tvar (None, _, explicitness) -> (
+    | Tvar (None, explicitness) -> (
       match (must_find, explicitness) with
       | Some true, Explicit ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
           (env, mkvar ~explicitness None env) )
-    | Tvar ((Some {txt= x; _} as name), _, explicitness) -> (
+    | Tvar ((Some {txt= x; _} as name), explicitness) -> (
         let var =
           match must_find with
           | Some true ->
@@ -658,28 +658,26 @@ module Type = struct
 
   include Comparator
 
-  let rec type_vars ?depth typ =
-    let deep_enough x =
-      match depth with Some depth -> depth <= x | None -> true
+  let type_vars ?depth typ =
+    let deep_enough =
+      match depth with
+      | Some depth ->
+          fun typ -> depth <= typ.type_depth
+      | None ->
+          fun _ -> true
     in
-    let type_vars' = type_vars in
-    let type_vars = type_vars ?depth in
-    match typ.type_desc with
-    | Tvar (_, var_depth, _) when deep_enough var_depth ->
-        Set.singleton (module Comparator) typ
-    | Tvar _ ->
-        Set.empty (module Comparator)
-    | Tpoly (vars, typ) ->
-        let poly_vars =
-          Set.union_list (module Comparator) (List.map ~f:type_vars' vars)
-        in
-        Set.diff (type_vars typ) poly_vars
-    | Tctor {var_params; _} ->
-        Set.union_list (module Comparator) (List.map ~f:type_vars var_params)
-    | Ttuple typs ->
-        Set.union_list (module Comparator) (List.map ~f:type_vars typs)
-    | Tarrow (typ1, typ2, _, _) ->
-        Set.union (type_vars typ1) (type_vars typ2)
+    let empty = Set.empty (module Comparator) in
+    let rec type_vars set typ =
+      match typ.type_desc with
+      | Tvar _ when deep_enough typ ->
+          Set.add set typ
+      | Tpoly (vars, typ) ->
+          let poly_vars = List.fold ~init:empty vars ~f:type_vars in
+          Set.union set (Set.diff (type_vars empty typ) poly_vars)
+      | _ ->
+          fold ~init:set typ ~f:type_vars
+    in
+    type_vars empty typ
 
   let rec flatten typ env =
     match typ.type_desc with
@@ -802,20 +800,19 @@ module Type = struct
        ; implicit_id= implicit_id + 1 } ;
     new_exp
 
-  let implicit_instances ~loc ~(unify : env -> type_expr -> type_expr -> 'a)
+  let implicit_instances ~loc
+      ~(is_subtype : env -> type_expr -> of_:type_expr -> bool)
       (typ : type_expr) env =
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, instance_typ) ->
         let instance_typ =
           copy ~loc instance_typ (Map.empty (module Int)) env
         in
-        match unify env typ instance_typ with
-        | _ ->
-            List.find_map env.scope_stack ~f:(fun {instances; _} ->
-                Option.map (Map.find instances id) ~f:(fun path ->
-                    (path, instance_typ) ) )
-        | exception _ ->
-            None )
+        if is_subtype env typ ~of_:instance_typ then
+          List.find_map env.scope_stack ~f:(fun {instances; _} ->
+              Option.map (Map.find instances id) ~f:(fun path ->
+                  (path, instance_typ) ) )
+        else None )
 
   let generate_implicits e env =
     let loc = e.Parsetypes.exp_loc in
@@ -830,7 +827,7 @@ module Type = struct
         in
         {exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}
 
-  let rec instantiate_implicits ~loc ~unify implicit_vars env =
+  let rec instantiate_implicits ~loc ~is_subtype implicit_vars env =
     let implicit_vars =
       List.map implicit_vars ~f:(fun e ->
           {e with Parsetypes.exp_type= flatten e.Parsetypes.exp_type env} )
@@ -840,13 +837,9 @@ module Type = struct
     <- {env.resolve_env.type_env with implicit_vars= []} ;
     let implicit_vars =
       List.filter implicit_vars ~f:(fun ({exp_loc; exp_type; _} as exp) ->
-          match implicit_instances ~loc ~unify exp_type env with
+          match implicit_instances ~loc ~is_subtype exp_type env with
           | [(name, instance_typ)] ->
-              let instance_typ =
-                copy ~loc instance_typ (Map.empty (module Int)) env
-              in
               let name = Location.mkloc name exp_loc in
-              unify env exp_type instance_typ ;
               let e =
                 generate_implicits
                   {exp_loc; exp_type= instance_typ; exp_desc= Variable name}
@@ -870,12 +863,18 @@ module Type = struct
     | [] ->
         implicit_vars
     | _ ->
-        instantiate_implicits ~loc ~unify (new_implicits @ implicit_vars) env
+        instantiate_implicits ~loc ~is_subtype
+          (new_implicits @ implicit_vars)
+          env
 
-  let flattened_implicit_vars ~loc ~toplevel ~unify typ_vars env =
-    let unify env typ ctyp = unify env typ (snd (get_implicits [] ctyp)) in
+  let flattened_implicit_vars ~loc ~toplevel ~is_subtype typ_vars env =
+    let is_subtype env typ ~of_:ctyp =
+      is_subtype env typ ~of_:(snd (get_implicits [] ctyp))
+    in
     let {TypeEnvi.implicit_vars; _} = env.resolve_env.type_env in
-    let implicit_vars = instantiate_implicits ~loc ~unify implicit_vars env in
+    let implicit_vars =
+      instantiate_implicits ~loc ~is_subtype implicit_vars env
+    in
     let implicit_vars =
       List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
           let cmp =
@@ -901,32 +900,17 @@ module Type = struct
     env.resolve_env.type_env <- {env.resolve_env.type_env with implicit_vars} ;
     local_implicit_vars
 
-  let rec implicit_params env typ =
-    let implicit_params = implicit_params env in
-    match typ.type_desc with
-    | Tvar (_, _, Explicit) ->
-        Set.empty (module Comparator)
-    | Tvar (_, _, Implicit) ->
-        Set.singleton (module Comparator) typ
-    | Ttuple typs ->
-        Set.union_list (module Comparator) (List.map ~f:implicit_params typs)
-    | Tarrow (typ1, typ2, _, _) ->
-        Set.union (implicit_params typ1) (implicit_params typ2)
-    | Tctor variant ->
-        let {predeclare_types; _} = env.resolve_env in
-        env.resolve_env.predeclare_types <- false ;
-        let ctor_params =
-          try
-            let decl = raw_find_type_declaration variant.var_ident env in
-            Set.of_list (module Comparator) decl.tdec_implicit_params
-          with Error (_, Unbound_type _) -> Set.empty (module Comparator)
-        in
-        env.resolve_env.predeclare_types <- predeclare_types ;
-        Set.union_list
-          (module Comparator)
-          (ctor_params :: List.map ~f:implicit_params variant.var_params)
-    | Tpoly (_, typ) ->
-        implicit_params typ
+  let implicit_params _env typ =
+    let rec implicit_params set typ =
+      match typ.type_desc with
+      | Tvar (_, Implicit) ->
+          Set.add set typ
+      | Tpoly (_, typ) ->
+          implicit_params set typ
+      | _ ->
+          fold ~init:set typ ~f:implicit_params
+    in
+    implicit_params (Set.empty (module Comparator)) typ
 
   let rec constr_map env ~f typ =
     match typ.type_desc with
@@ -1102,7 +1086,8 @@ let pp_decl_typ ppf decl =
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl_id= decl.tdec_id }
-    ; type_id= -1 }
+    ; type_id= -1
+    ; type_depth= -1 }
 
 let report_error ppf = function
   | No_open_scopes ->

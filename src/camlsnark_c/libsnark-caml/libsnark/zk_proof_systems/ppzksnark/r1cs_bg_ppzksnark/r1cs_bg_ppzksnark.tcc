@@ -309,7 +309,7 @@ r1cs_bg_ppzksnark_keypair<ppT> r1cs_bg_ppzksnark_generator(const r1cs_bg_ppzksna
     libff::leave_block("Generating G1 MSM window table");
 
     libff::enter_block("Generating G2 MSM window table");
-    const libff::G2<ppT> G2_gen = libff::G2<ppT>::random_element();
+    const libff::G2<ppT> G2_gen = libff::G2<ppT>::one();
     const size_t g2_scalar_count = non_zero_Bt;
     const size_t g2_scalar_size = libff::Fr<ppT>::size_in_bits();
     size_t g2_window_size = libff::get_exp_window_size<libff::G2<ppT> >(g2_scalar_count);
@@ -559,11 +559,12 @@ bool r1cs_bg_ppzksnark_online_verifier_weak_IC(const r1cs_bg_ppzksnark_processed
     const libff::G2_precomp<ppT> proof_g_B_precomp = ppT::precompute_G2(proof.g_B);
     const libff::G1_precomp<ppT> proof_g_C_precomp = ppT::precompute_G1(proof.g_C);
     const libff::G1_precomp<ppT> acc_precomp = ppT::precompute_G1(acc);
+    const libff::G2_precomp<ppT> proof_delta_prime_precomp = ppT::precompute_G2(proof.delta_prime);
 
     const libff::Fqk<ppT> QAP1 = ppT::miller_loop(proof_g_A_precomp,  proof_g_B_precomp);
     const libff::Fqk<ppT> QAP2 = ppT::double_miller_loop(
         acc_precomp, pvk.vk_generator_g2_precomp,
-        proof_g_C_precomp, pvk.vk_delta_g2_precomp);
+        proof_g_C_precomp, proof_delta_prime_precomp);
     const libff::GT<ppT> QAP = ppT::final_exponentiation(QAP1 * QAP2.unitary_inverse());
 
     const bool groth16_test = QAP == pvk.vk_alpha_g1_beta_g2;
@@ -578,7 +579,7 @@ bool r1cs_bg_ppzksnark_online_verifier_weak_IC(const r1cs_bg_ppzksnark_processed
 
     bool bg_test = ppT::final_exponentiation(
         ppT::double_miller_loop(
-          ppT::precompute_G1(proof.y_s), ppT::precompute_G2(proof.delta_prime),
+          ppT::precompute_G1(proof.y_s), proof_delta_prime_precomp,
           ppT::precompute_G1(-proof.z), pvk.vk_delta_g2_precomp))
       == libff::Fqk<ppT>::one();
 
@@ -670,10 +671,11 @@ bool r1cs_bg_ppzksnark_affine_verifier_weak_IC(const r1cs_bg_ppzksnark_verificat
     const libff::affine_ate_G2_precomp<ppT> proof_g_B_precomp = ppT::affine_ate_precompute_G2(proof.g_B);
     const libff::affine_ate_G1_precomp<ppT> proof_g_C_precomp = ppT::affine_ate_precompute_G1(proof.g_C);
     const libff::affine_ate_G1_precomp<ppT> acc_precomp = ppT::affine_ate_precompute_G1(acc);
+    const libff::affine_ate_G2_precomp<ppT> proof_delta_prime_precomp = ppT::affine_ate_precompute_G2(proof.delta_prime);
 
     const libff::Fqk<ppT> QAP_miller = ppT::affine_ate_e_times_e_over_e_miller_loop(
         acc_precomp, pvk_vk_generator_g2_precomp,
-        proof_g_C_precomp, pvk_vk_delta_g2_precomp,
+        proof_g_C_precomp, proof_delta_prime_precomp,
         proof_g_A_precomp,  proof_g_B_precomp);
     const libff::GT<ppT> QAP = ppT::final_exponentiation(QAP_miller.unitary_inverse());
 
@@ -689,7 +691,7 @@ bool r1cs_bg_ppzksnark_affine_verifier_weak_IC(const r1cs_bg_ppzksnark_verificat
 
     bool bg_test = ppT::final_exponentiation(
         ppT::affine_ate_e_over_e_miller_loop(
-          ppT::affine_ate_precompute_G1(proof.y_s), ppT::affine_ate_precompute_G2(proof.delta_prime),
+          ppT::affine_ate_precompute_G1(proof.y_s), proof_delta_prime_precomp,
           ppT::affine_ate_precompute_G1(proof.z), pvk_vk_delta_g2_precomp))
       == libff::Fqk<ppT>::one();
 

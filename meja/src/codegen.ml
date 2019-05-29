@@ -45,7 +45,7 @@ let typ_of_decl ~loc env (decl : Type0.type_decl) =
                (module String)
                (List.map decl.tdec_params ~f:(fun param ->
                     match param.type_desc with
-                    | Tvar (Some name, _, _) ->
+                    | Tvar (Some name, _) ->
                         name.txt
                     | _ ->
                         "" )))
@@ -87,8 +87,7 @@ let typ_of_decl ~loc env (decl : Type0.type_decl) =
                                   ~key:variant.var_decl_id ~data:(name, variant) ;
                               name
                         in
-                        Tvar (Some (Location.mkloc var_name loc), -1, Explicit)
-                  )
+                        Tvar (Some (Location.mkloc var_name loc), Explicit) )
                 in
                 Untype_ast.field_decl ~loc {field with fld_type= typ} )
           in

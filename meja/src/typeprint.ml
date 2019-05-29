@@ -4,9 +4,9 @@ open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Tvar (None, _, _) ->
+  | Tvar (None, _) ->
       fprintf fmt "_"
-  | Tvar (Some name, _, _) ->
+  | Tvar (Some name, _) ->
       fprintf fmt "'%s" name.txt
   | Ttuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
