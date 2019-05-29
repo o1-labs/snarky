@@ -542,7 +542,7 @@ module Run = struct
                     interface that the computations are not constrained in
                     their prover-state type: the type is abstract from the
                     perspective of the functions, and so they cannot have any
-                    affect on the state.
+                    effect on the state.
           *)
       end) (Elt : sig
         type var
@@ -561,7 +561,7 @@ module Run = struct
                     interface that the computations are not constrained in
                     their prover-state type: the type is abstract from the
                     perspective of the functions, and so they cannot have any
-                    affect on the state.
+                    effect on the state.
           *)
 
         val lens : (Impl.prover_state, (Hash.value, value) merkle_tree) Lens.t
