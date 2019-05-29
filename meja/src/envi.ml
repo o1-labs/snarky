@@ -39,7 +39,6 @@ module TypeEnvi = struct
     ; variable_instances: type_expr int_map
     ; implicit_vars: Parsetypes.expression list
     ; implicit_id: int
-    ; type_decls: type_decl int_map
     ; instances: (int * type_expr) list
     ; predeclared_types:
         (int (* id *) * int option ref (* num. args *) * Location.t) name_map
@@ -52,7 +51,6 @@ module TypeEnvi = struct
     ; variable_instances= Map.empty (module Int)
     ; implicit_id= 1
     ; implicit_vars= []
-    ; type_decls= Map.empty (module Int)
     ; instances= []
     ; predeclared_types= Map.empty (module String) }
 
@@ -71,11 +69,6 @@ module TypeEnvi = struct
 
   let next_decl_id env =
     (env.type_decl_id, {env with type_decl_id= env.type_decl_id + 1})
-
-  let decl env (ctor : variant) = Map.find env.type_decls ctor.var_decl_id
-
-  let add_decl (decl : type_decl) env =
-    {env with type_decls= Map.set env.type_decls ~key:decl.tdec_id ~data:decl}
 
   let next_instance_id env =
     (env.instance_id, {env with instance_id= env.instance_id + 1})
@@ -743,8 +736,8 @@ module Type = struct
           -1
       | _, Tvar _ ->
           1
-      | ( Tctor {var_decl_id= id1; var_params= params1; _}
-        , Tctor {var_decl_id= id2; var_params= params2; _} ) ->
+      | ( Tctor {var_decl= {tdec_id= id1; _}; var_params= params1; _}
+        , Tctor {var_decl= {tdec_id= id2; _}; var_params= params2; _} ) ->
           or_compare (Int.compare id1 id2) ~f:(fun () ->
               compare_all params1 params2 )
       | Tctor _, _ ->
@@ -997,20 +990,14 @@ module TypeDecl = struct
          { var_ident= ident
          ; var_params= params
          ; var_implicit_params= []
-         ; var_decl_id= decl.tdec_id })
+         ; var_decl= decl })
 
   let find_of_type ~loc typ env =
     let open Option.Let_syntax in
     let%map variant =
       match typ.type_desc with Tctor variant -> Some variant | _ -> None
     in
-    let decl =
-      match TypeEnvi.decl env.resolve_env.type_env variant with
-      | Some decl ->
-          decl
-      | None ->
-          raise (Error (loc, Unbound_type variant.var_ident.txt))
-    in
+    let decl = variant.var_decl in
     let bound_vars =
       match
         List.fold2
@@ -1085,7 +1072,7 @@ let pp_decl_typ ppf decl =
           { var_ident= mk_lid decl.tdec_ident
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params
-          ; var_decl_id= decl.tdec_id }
+          ; var_decl= decl }
     ; type_id= -1
     ; type_depth= -1 }
 
