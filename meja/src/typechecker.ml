@@ -67,7 +67,7 @@ let rec check_type_aux ~loc typ ctyp env =
       check_type_aux typ ctyp env
   | _, Tpoly (_, ctyp) ->
       check_type_aux typ ctyp env
-  | Tvar (_, depth, _), Tvar (_, constr_depth, _) ->
+  | Tvar _, Tvar _ ->
       bind_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () ->
@@ -78,8 +78,9 @@ let rec check_type_aux ~loc typ ctyp env =
                  the instance for the other. If they are at the same level, prefer
                  the lowest ID to ensure strict ordering and thus no cycles. *)
               if
-                constr_depth < depth
-                || (Int.equal constr_depth depth && ctyp.type_id < typ.type_id)
+                ctyp.type_depth < typ.type_depth
+                || Int.equal ctyp.type_depth typ.type_depth
+                   && ctyp.type_id < typ.type_id
               then Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
   | Tvar _, _ ->
@@ -586,6 +587,25 @@ let rec get_expression env expected exp =
       let body, env = get_expression env body_typ body in
       let env = Envi.close_expr_scope env in
       ( {exp_loc= loc; exp_type= typ; exp_desc= Fun (label, p, body, explicit)}
+      , env )
+  | Newtype (name, body) ->
+      let env = Envi.open_expr_scope env in
+      let typ = Envi.Type.mkvar (Some name) env in
+      let decl =
+        { tdec_ident= name
+        ; tdec_params= []
+        ; tdec_implicit_params= []
+        ; tdec_desc= TAbstract
+        ; tdec_loc= loc }
+      in
+      let decl, env = Typet.TypeDecl.import decl env in
+      let body, env = get_expression env expected body in
+      env.resolve_env.type_env
+      <- Envi.TypeEnvi.add_decl
+           {decl with tdec_desc= TUnfold typ}
+           env.resolve_env.type_env ;
+      let env = Envi.close_expr_scope env in
+      ( {exp_loc= loc; exp_type= body.exp_type; exp_desc= Newtype (name, body)}
       , env )
   | Seq (e1, e2) ->
       let e1, env = get_expression env Initial_env.Type.unit e1 in

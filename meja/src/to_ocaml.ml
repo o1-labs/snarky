@@ -102,6 +102,8 @@ let rec of_expression_desc ?loc = function
       Exp.constant ?loc (Const.int i)
   | Fun (label, p, body, _) ->
       Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
+  | Newtype (name, body) ->
+      Exp.newtype ?loc name (of_expression body)
   | Constraint (e, typ) ->
       Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
   | Seq (e1, e2) ->
