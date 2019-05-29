@@ -45,7 +45,7 @@ let typ_of_decl ~loc env (decl : Type0.type_decl) =
                (module String)
                (List.map decl.tdec_params ~f:(fun param ->
                     match param.type_desc with
-                    | Tvar (Some name, _, _) ->
+                    | Tvar (Some name, _) ->
                         name.txt
                     | _ ->
                         "" )))
@@ -69,7 +69,7 @@ let typ_of_decl ~loc env (decl : Type0.type_decl) =
                 ) ;
                 let typ =
                   Envi.Type.constr_map env field.fld_type ~f:(fun variant ->
-                      if Int.equal variant.var_decl_id decl.tdec_id then
+                      if Int.equal variant.var_decl.tdec_id decl.tdec_id then
                         Tctor
                           { variant with
                             var_ident=
@@ -77,18 +77,20 @@ let typ_of_decl ~loc env (decl : Type0.type_decl) =
                                 variant.var_ident.loc }
                       else
                         let var_name =
-                          match Map.find !constr_map variant.var_decl_id with
+                          match
+                            Map.find !constr_map variant.var_decl.tdec_id
+                          with
                           | Some (name, _) ->
                               name
                           | None ->
                               let name = next_var_name () in
                               constr_map :=
                                 Map.add_exn !constr_map
-                                  ~key:variant.var_decl_id ~data:(name, variant) ;
+                                  ~key:variant.var_decl.tdec_id
+                                  ~data:(name, variant) ;
                               name
                         in
-                        Tvar (Some (Location.mkloc var_name loc), -1, Explicit)
-                  )
+                        Tvar (Some (Location.mkloc var_name loc), Explicit) )
                 in
                 Untype_ast.field_decl ~loc {field with fld_type= typ} )
           in

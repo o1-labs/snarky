@@ -3,9 +3,9 @@ open Type0
 open Ast_build
 
 let rec type_desc ?loc = function
-  | Tvar (None, _, explicit) ->
+  | Tvar (None, explicit) ->
       Type.none ?loc ~explicit ()
-  | Tvar (Some name, _, explicit) ->
+  | Tvar (Some name, explicit) ->
       Type.var ?loc ~explicit name.txt
   | Ttuple typs ->
       Type.tuple ?loc (List.map ~f:(type_expr ?loc) typs)
@@ -16,7 +16,7 @@ let rec type_desc ?loc = function
       { var_ident= ident
       ; var_params= params
       ; var_implicit_params= implicits
-      ; var_decl_id= _ } ->
+      ; var_decl= _ } ->
       let params = List.map ~f:(type_expr ?loc) params in
       let implicits = List.map ~f:(type_expr ?loc) implicits in
       Type.constr ?loc ~params ~implicits ident.txt
@@ -32,9 +32,11 @@ let ctor_args ?loc ?ret name = function
   | Ctor_tuple typs ->
       Type_decl.Ctor.with_args ?loc ?ret name
         (List.map ~f:(type_expr ?loc) typs)
-  | Ctor_record (_, fields) ->
+  | Ctor_record {tdec_desc= TRecord fields; _} ->
       Type_decl.Ctor.with_record ?loc ?ret name
         (List.map ~f:(field_decl ?loc) fields)
+  | Ctor_record _ ->
+      assert false
 
 let ctor_decl ?loc ctor =
   ctor_args ?loc ctor.ctor_ident.txt ctor.ctor_args

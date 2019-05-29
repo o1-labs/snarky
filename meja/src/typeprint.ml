@@ -4,9 +4,9 @@ open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Tvar (None, _, _) ->
+  | Tvar (None, _) ->
       fprintf fmt "_"
-  | Tvar (Some name, _, _) ->
+  | Tvar (Some name, _) ->
       fprintf fmt "'%s" name.txt
   | Ttuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
@@ -51,10 +51,12 @@ let ctor_args fmt = function
       ()
   | Ctor_tuple typs ->
       tuple fmt typs
-  | Ctor_record (_, fields) ->
+  | Ctor_record {tdec_desc= TRecord fields; _} ->
       fprintf fmt "{@[<2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
+  | Ctor_record _ ->
+      assert false
 
 let ctor_decl fmt decl =
   fprintf fmt "%a%a" pp_name decl.ctor_ident.txt ctor_args decl.ctor_args ;

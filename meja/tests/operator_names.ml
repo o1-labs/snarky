@@ -7,6 +7,8 @@ let ( - ) = 20
 
 let ( ! ) _ = 30
 
+let ( ~- ) _ = 80
+
 let ( || ) x y = match x with true -> x | false -> y
 
 let a = true || false
@@ -14,6 +16,10 @@ let a = true || false
 let b = true || false
 
 let c = !a
+
+let d = ~-35
+
+let e = -d
 
 let (f : (int -> int -> int) -> int) =
  fun (check : 'a -> 'a -> 'a) ->

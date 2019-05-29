@@ -39,7 +39,6 @@ module TypeEnvi = struct
     ; variable_instances: type_expr int_map
     ; implicit_vars: Parsetypes.expression list
     ; implicit_id: int
-    ; type_decls: type_decl int_map
     ; instances: (int * type_expr) list
     ; predeclared_types:
         (int (* id *) * int option ref (* num. args *) * Location.t) name_map
@@ -52,7 +51,6 @@ module TypeEnvi = struct
     ; variable_instances= Map.empty (module Int)
     ; implicit_id= 1
     ; implicit_vars= []
-    ; type_decls= Map.empty (module Int)
     ; instances= []
     ; predeclared_types= Map.empty (module String) }
 
@@ -71,11 +69,6 @@ module TypeEnvi = struct
 
   let next_decl_id env =
     (env.type_decl_id, {env with type_decl_id= env.type_decl_id + 1})
-
-  let decl env (ctor : variant) = Map.find env.type_decls ctor.var_decl_id
-
-  let add_decl (decl : type_decl) env =
-    {env with type_decls= Map.set env.type_decls ~key:decl.tdec_id ~data:decl}
 
   let next_instance_id env =
     (env.instance_id, {env with instance_id= env.instance_id + 1})
@@ -562,10 +555,10 @@ module Type = struct
   let mk type_desc env =
     let type_id, type_env = TypeEnvi.next_type_id env.resolve_env.type_env in
     env.resolve_env.type_env <- type_env ;
-    {type_desc; type_id}
+    {type_desc; type_id; type_depth= env.depth}
 
   let mkvar ?(explicitness = Explicit) name env =
-    mk (Tvar (name, env.depth, explicitness)) env
+    mk (Tvar (name, explicitness)) env
 
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
@@ -575,17 +568,15 @@ module Type = struct
 
   let clear_instance typ = map_env ~f:(TypeEnvi.clear_instance typ)
 
-  let rec import ~loc ?must_find typ env =
-    let import' = import ~loc in
-    let import = import ~loc ?must_find in
+  let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
-    | Tvar (None, _, explicitness) -> (
+    | Tvar (None, explicitness) -> (
       match (must_find, explicitness) with
       | Some true, Explicit ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (mkvar ~explicitness None env, env) )
-    | Tvar ((Some {txt= x; _} as name), _, explicitness) -> (
+          (env, mkvar ~explicitness None env) )
+    | Tvar ((Some {txt= x; _} as name), explicitness) -> (
         let var =
           match must_find with
           | Some true ->
@@ -600,74 +591,16 @@ module Type = struct
         in
         match var with
         | Some var ->
-            (var, env)
+            (env, var)
         | None ->
             let var = mkvar ~explicitness name env in
-            (var, add_type_variable x var env) )
-    | Tpoly (vars, typ) ->
-        let env = open_expr_scope env in
-        let env, vars =
-          List.fold_map vars ~init:env ~f:(fun e t ->
-              let t, e = import' ~must_find:false t e in
-              (e, t) )
-        in
-        let typ, env = import typ env in
-        let env = close_expr_scope env in
-        (mk (Tpoly (vars, typ)) env, env)
-    | Tctor variant -> (
-        let {var_ident; var_params; _} = variant in
-        match raw_find_type_declaration var_ident env with
-        | {tdec_desc= TUnfold typ; _} ->
-            (typ, env)
-        | decl ->
-            let variant =
-              { variant with
-                var_decl_id= decl.tdec_id
-              ; var_implicit_params= decl.tdec_implicit_params }
-            in
-            let given_args_length = List.length var_params in
-            let expected_args_length =
-              match decl.tdec_desc with
-              | TForward num_args -> (
-                match !num_args with
-                | Some l ->
-                    l
-                | None ->
-                    num_args := Some given_args_length ;
-                    given_args_length )
-              | _ ->
-                  List.length decl.tdec_params
-            in
-            if not (Int.equal given_args_length expected_args_length) then
-              raise
-                (Error
-                   ( loc
-                   , Wrong_number_args
-                       (var_ident.txt, given_args_length, expected_args_length)
-                   )) ;
-            let env, var_params =
-              List.fold_map ~init:env var_params ~f:(fun env param ->
-                  let param, env = import param env in
-                  (env, param) )
-            in
-            (mk (Tctor {variant with var_params}) env, env) )
-    | Ttuple typs ->
-        let env, typs =
-          List.fold_map typs ~init:env ~f:(fun e t ->
-              let t, e = import t e in
-              (e, t) )
-        in
-        (mk (Ttuple typs) env, env)
-    | Tarrow (typ1, typ2, explicit, label) ->
-        let typ1, env = import typ1 env in
-        let typ2, env = import typ2 env in
-        (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
+            (add_type_variable x var env, var) )
+    | _ ->
+        raise (Error (loc, Expected_type_var typ))
 
   let refresh_vars ~loc vars new_vars_map env =
     let env, new_vars =
-      List.fold_map vars ~init:env ~f:(fun e t ->
-          let t, e = import ~loc ~must_find:false t e in
-          (e, t) )
+      List.fold_map vars ~init:env ~f:(refresh_var ~loc ~must_find:false)
     in
     let new_vars_map =
       List.fold2_exn ~init:new_vars_map vars new_vars
@@ -718,28 +651,26 @@ module Type = struct
 
   include Comparator
 
-  let rec type_vars ?depth typ =
-    let deep_enough x =
-      match depth with Some depth -> depth <= x | None -> true
+  let type_vars ?depth typ =
+    let deep_enough =
+      match depth with
+      | Some depth ->
+          fun typ -> depth <= typ.type_depth
+      | None ->
+          fun _ -> true
     in
-    let type_vars' = type_vars in
-    let type_vars = type_vars ?depth in
-    match typ.type_desc with
-    | Tvar (_, var_depth, _) when deep_enough var_depth ->
-        Set.singleton (module Comparator) typ
-    | Tvar _ ->
-        Set.empty (module Comparator)
-    | Tpoly (vars, typ) ->
-        let poly_vars =
-          Set.union_list (module Comparator) (List.map ~f:type_vars' vars)
-        in
-        Set.diff (type_vars typ) poly_vars
-    | Tctor {var_params; _} ->
-        Set.union_list (module Comparator) (List.map ~f:type_vars var_params)
-    | Ttuple typs ->
-        Set.union_list (module Comparator) (List.map ~f:type_vars typs)
-    | Tarrow (typ1, typ2, _, _) ->
-        Set.union (type_vars typ1) (type_vars typ2)
+    let empty = Set.empty (module Comparator) in
+    let rec type_vars set typ =
+      match typ.type_desc with
+      | Tvar _ when deep_enough typ ->
+          Set.add set typ
+      | Tpoly (vars, typ) ->
+          let poly_vars = List.fold ~init:empty vars ~f:type_vars in
+          Set.union set (Set.diff (type_vars empty typ) poly_vars)
+      | _ ->
+          fold ~init:set typ ~f:type_vars
+    in
+    type_vars empty typ
 
   let rec flatten typ env =
     match typ.type_desc with
@@ -805,8 +736,8 @@ module Type = struct
           -1
       | _, Tvar _ ->
           1
-      | ( Tctor {var_decl_id= id1; var_params= params1; _}
-        , Tctor {var_decl_id= id2; var_params= params2; _} ) ->
+      | ( Tctor {var_decl= {tdec_id= id1; _}; var_params= params1; _}
+        , Tctor {var_decl= {tdec_id= id2; _}; var_params= params2; _} ) ->
           or_compare (Int.compare id1 id2) ~f:(fun () ->
               compare_all params1 params2 )
       | Tctor _, _ ->
@@ -962,32 +893,17 @@ module Type = struct
     env.resolve_env.type_env <- {env.resolve_env.type_env with implicit_vars} ;
     local_implicit_vars
 
-  let rec implicit_params env typ =
-    let implicit_params = implicit_params env in
-    match typ.type_desc with
-    | Tvar (_, _, Explicit) ->
-        Set.empty (module Comparator)
-    | Tvar (_, _, Implicit) ->
-        Set.singleton (module Comparator) typ
-    | Ttuple typs ->
-        Set.union_list (module Comparator) (List.map ~f:implicit_params typs)
-    | Tarrow (typ1, typ2, _, _) ->
-        Set.union (implicit_params typ1) (implicit_params typ2)
-    | Tctor variant ->
-        let {predeclare_types; _} = env.resolve_env in
-        env.resolve_env.predeclare_types <- false ;
-        let ctor_params =
-          try
-            let decl = raw_find_type_declaration variant.var_ident env in
-            Set.of_list (module Comparator) decl.tdec_implicit_params
-          with Error (_, Unbound_type _) -> Set.empty (module Comparator)
-        in
-        env.resolve_env.predeclare_types <- predeclare_types ;
-        Set.union_list
-          (module Comparator)
-          (ctor_params :: List.map ~f:implicit_params variant.var_params)
-    | Tpoly (_, typ) ->
-        implicit_params typ
+  let implicit_params _env typ =
+    let rec implicit_params set typ =
+      match typ.type_desc with
+      | Tvar (_, Implicit) ->
+          Set.add set typ
+      | Tpoly (_, typ) ->
+          implicit_params set typ
+      | _ ->
+          fold ~init:set typ ~f:implicit_params
+    in
+    implicit_params (Set.empty (module Comparator)) typ
 
   let rec constr_map env ~f typ =
     match typ.type_desc with
@@ -1067,193 +983,6 @@ module TypeDecl = struct
     ; tdec_desc= desc
     ; tdec_id }
 
-  let import ~loc decl env =
-    let tdec_id =
-      match
-        Map.find env.resolve_env.type_env.predeclared_types decl.tdec_ident.txt
-      with
-      | Some (id, num_args, loc) ->
-          ( match !num_args with
-          | Some num_args ->
-              let given = List.length decl.tdec_params in
-              if not (Int.equal given num_args) then
-                raise
-                  (Error
-                     ( loc
-                     , Wrong_number_args
-                         (Lident decl.tdec_ident.txt, given, num_args) ))
-          | None ->
-              () ) ;
-          let {type_env; _} = env.resolve_env in
-          env.resolve_env.type_env
-          <- { type_env with
-               predeclared_types=
-                 Map.remove type_env.predeclared_types decl.tdec_ident.txt } ;
-          id
-      | None ->
-          next_id env
-    in
-    let env = open_expr_scope env in
-    let env, tdec_params =
-      List.fold_map ~init:env decl.tdec_params ~f:(fun env param ->
-          match param.type_desc with
-          | Tvar _ ->
-              let var, env = Type.import ~loc ~must_find:false param env in
-              (env, var)
-          | _ ->
-              raise (Error (loc, Expected_type_var param)) )
-    in
-    let tdec_implicit_params =
-      match decl.tdec_desc with
-      | TAbstract | TOpen | TExtend _ ->
-          Set.empty (module Type)
-      | TAlias typ | TUnfold typ ->
-          Type.implicit_params env typ
-      | TRecord fields ->
-          Set.union_list
-            (module Type)
-            (List.map fields ~f:(fun {fld_type; _} ->
-                 Type.implicit_params env fld_type ))
-      | TVariant ctors ->
-          Set.union_list
-            (module Type)
-            (List.map ctors ~f:(fun ctor ->
-                 let typs =
-                   match ctor.ctor_args with
-                   | Ctor_tuple typs ->
-                       typs
-                   | Ctor_record (_, fields) ->
-                       List.map ~f:(fun {fld_type; _} -> fld_type) fields
-                 in
-                 let typs =
-                   match ctor.ctor_ret with
-                   | Some ctor_ret ->
-                       ctor_ret :: typs
-                   | None ->
-                       typs
-                 in
-                 Set.union_list
-                   (module Type)
-                   (List.map typs ~f:(Type.implicit_params env)) ))
-      | TForward _ ->
-          failwith "Cannot import a forward type declaration"
-    in
-    let tdec_implicit_params = Set.to_list tdec_implicit_params in
-    (* Make sure the declaration is available to lookup for recursive types. *)
-    let decl = {decl with tdec_id; tdec_params; tdec_implicit_params} in
-    let scope, env = pop_expr_scope env in
-    let env =
-      match decl.tdec_desc with
-      | TExtend _ ->
-          env
-      | _ ->
-          map_current_scope ~f:(Scope.add_type_declaration decl) env
-    in
-    let env = push_scope scope env in
-    let tdec_desc, env =
-      match decl.tdec_desc with
-      | (TAbstract | TOpen | TForward _) as desc ->
-          (desc, env)
-      | TAlias typ ->
-          let typ, env = Type.import ~loc ~must_find:true typ env in
-          (TAlias typ, env)
-      | TUnfold typ ->
-          let typ, env = Type.import ~loc ~must_find:false typ env in
-          (TUnfold typ, env)
-      | TRecord fields ->
-          let env, fields =
-            List.fold_map ~init:env fields ~f:(fun env field ->
-                let fld_type, env =
-                  Type.import ~loc ~must_find:true field.fld_type env
-                in
-                (env, {field with fld_type}) )
-          in
-          (TRecord fields, env)
-      | TVariant ctors | TExtend (_, _, ctors) -> (
-          let env, ctors =
-            List.fold_map ~init:env ctors ~f:(fun env ctor ->
-                let scope, env = pop_expr_scope env in
-                let ctor_ret, env, must_find, ctor_ret_params =
-                  match ctor.ctor_ret with
-                  | Some ret ->
-                      let env = open_expr_scope env in
-                      let name =
-                        match decl.tdec_desc with
-                        | TVariant _ ->
-                            Lident decl.tdec_ident.txt
-                        | TExtend (lid, _, _) ->
-                            lid.txt
-                        | _ ->
-                            failwith
-                              "Could not find name for TVariant/TExtend."
-                      in
-                      ( match ret.type_desc with
-                      | Tctor {var_ident= {txt= lid; _}; _}
-                        when Longident.compare lid name = 0 ->
-                          ()
-                      | _ ->
-                          raise
-                            (Error (loc, Constraints_not_satisfied (ret, decl)))
-                      ) ;
-                      let ret, env =
-                        Type.import ~loc ~must_find:false ret env
-                      in
-                      let ctor_ret_params =
-                        match ret.type_desc with
-                        | Tctor {var_params; _} ->
-                            var_params
-                        | _ ->
-                            []
-                      in
-                      (Some ret, env, None, ctor_ret_params)
-                  | None ->
-                      (None, push_scope scope env, Some true, decl.tdec_params)
-                in
-                let env, ctor_args =
-                  match ctor.ctor_args with
-                  | Ctor_tuple args ->
-                      let env, args =
-                        List.fold_map ~init:env args ~f:(fun env arg ->
-                            let arg, env =
-                              Type.import ~loc ?must_find arg env
-                            in
-                            (env, arg) )
-                      in
-                      (env, Ctor_tuple args)
-                  | Ctor_record (_, fields) ->
-                      let env, fields =
-                        List.fold_map ~init:env fields ~f:(fun env field ->
-                            let fld_type, env =
-                              Type.import ~loc ?must_find field.fld_type env
-                            in
-                            (env, {field with fld_type}) )
-                      in
-                      let decl =
-                        mk ~name:ctor.ctor_ident ~params:ctor_ret_params
-                          (TRecord fields) env
-                      in
-                      Type.map_env env ~f:(TypeEnvi.add_decl decl) ;
-                      (env, Ctor_record (decl.tdec_id, fields))
-                in
-                let env = push_scope scope (close_expr_scope env) in
-                (env, {ctor with ctor_args; ctor_ret}) )
-          in
-          match decl.tdec_desc with
-          | TVariant _ ->
-              (TVariant ctors, env)
-          | TExtend (id, decl, _) ->
-              (TExtend (id, decl, ctors), env)
-          | _ ->
-              failwith "Expected a TVariant or a TExtend" )
-    in
-    let env = close_expr_scope env in
-    let decl = {decl with tdec_desc} in
-    let env =
-      map_current_scope ~f:(Scope.register_type_declaration decl) env
-    in
-    Type.map_env env ~f:(TypeEnvi.add_decl decl) ;
-    (decl, env)
-
   let mk_typ ~params ?ident decl =
     let ident = Option.value ident ~default:(mk_lid decl.tdec_ident) in
     Type.mk
@@ -1261,20 +990,14 @@ module TypeDecl = struct
          { var_ident= ident
          ; var_params= params
          ; var_implicit_params= []
-         ; var_decl_id= decl.tdec_id })
+         ; var_decl= decl })
 
   let find_of_type ~loc typ env =
     let open Option.Let_syntax in
     let%map variant =
       match typ.type_desc with Tctor variant -> Some variant | _ -> None
     in
-    let decl =
-      match TypeEnvi.decl env.resolve_env.type_env variant with
-      | Some decl ->
-          decl
-      | None ->
-          raise (Error (loc, Unbound_type variant.var_ident.txt))
-    in
+    let decl = variant.var_decl in
     let bound_vars =
       match
         List.fold2
@@ -1349,8 +1072,9 @@ let pp_decl_typ ppf decl =
           { var_ident= mk_lid decl.tdec_ident
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params
-          ; var_decl_id= decl.tdec_id }
-    ; type_id= -1 }
+          ; var_decl= decl }
+    ; type_id= -1
+    ; type_depth= -1 }
 
 let report_error ppf = function
   | No_open_scopes ->

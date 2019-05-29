@@ -1633,6 +1633,38 @@ module Bn128 = Make_full (struct
   let prefix = "camlsnark_bn128"
 end)
 
+module Make_Groth16_verification_key_accessors (Prefix : sig
+  val prefix : string
+end)
+(Verification_key : Foreign_intf) (G1 : sig
+    include Deletable_intf
+
+    module Vector : Deletable_intf
+end)
+(G2 : Deletable_intf)
+(Fqk : Deletable_intf) =
+struct
+  open Prefix
+
+  let prefix = with_prefix prefix "verification_key"
+
+  let func_name = with_prefix prefix
+
+  let func name ret delete =
+    let stub =
+      foreign (func_name name) (Verification_key.typ @-> returning ret)
+    in
+    fun vk ->
+      let r = stub vk in
+      Caml.Gc.finalise delete r ; r
+
+  let delta = func "delta" G2.typ G2.delete
+
+  let query = func "query" G1.Vector.typ G1.Vector.delete
+
+  let alpha_beta = func "alpha_beta" Fqk.typ Fqk.delete
+end
+
 module Make_proof_accessors (Prefix : sig
   val prefix : string
 end)
@@ -1683,6 +1715,8 @@ module Make_bowe_gabizon (M : sig
     end
   end
 
+  module Fqk : Deletable_intf
+
   module G1 : sig
     include Deletable_intf
 
@@ -1712,11 +1746,28 @@ end) =
 struct
   open M
 
-  include Make_proof_system_keys (struct
+  let bg_prefix = with_prefix M.prefix "bg"
+
+  module Keys = Make_proof_system_keys (struct
     include M
 
-    let prefix = with_prefix M.prefix "bg"
+    let prefix = bg_prefix
   end)
+
+  module Proving_key = Keys.Proving_key
+  module Keypair = Keys.Keypair
+
+  module Verification_key = struct
+    include Keys.Verification_key
+
+    include Make_Groth16_verification_key_accessors (struct
+                let prefix = bg_prefix
+              end)
+              (Keys.Verification_key)
+              (G1)
+              (G2)
+              (Fqk)
+  end
 
   module Proof = struct
     module Pre = struct
@@ -1788,38 +1839,6 @@ struct
   module Mnt6_0 = Make_full (struct
     let prefix = "camlsnark_mnt6" ^ suffix
   end)
-
-  module Make_Groth16_verification_key_accessors (Prefix : sig
-    val prefix : string
-  end)
-  (Verification_key : Foreign_intf) (G1 : sig
-      include Deletable_intf
-
-      module Vector : Deletable_intf
-  end)
-  (G2 : Deletable_intf)
-  (Fqk : Deletable_intf) =
-  struct
-    open Prefix
-
-    let prefix = with_prefix prefix "verification_key"
-
-    let func_name = with_prefix prefix
-
-    let func name ret delete =
-      let stub =
-        foreign (func_name name) (Verification_key.typ @-> returning ret)
-      in
-      fun vk ->
-        let r = stub vk in
-        Caml.Gc.finalise delete r ; r
-
-    let delta = func "delta" G2.typ G2.delete
-
-    let query = func "query" G1.Vector.typ G1.Vector.delete
-
-    let alpha_beta = func "alpha_beta" Fqk.typ Fqk.delete
-  end
 
   module Make_GM_verification_key_accessors (Prefix : sig
     val prefix : string

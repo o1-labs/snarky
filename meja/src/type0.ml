@@ -1,10 +1,11 @@
+open Core_kernel
 open Ast_types
 
-type type_expr = {type_desc: type_desc; type_id: int}
+type type_expr = {mutable type_desc: type_desc; type_id: int; type_depth: int}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of str option * (* depth *) int * explicitness
+  | Tvar of str option * explicitness
   | Ttuple of type_expr list
   | Tarrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
@@ -15,18 +16,16 @@ and variant =
   { var_ident: lid
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
-  ; var_decl_id: int }
+  ; var_decl: type_decl }
 
-type field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
+and field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
 
-type ctor_args =
-  | Ctor_tuple of type_expr list
-  | Ctor_record of int * field_decl list
+and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 
-type ctor_decl =
+and ctor_decl =
   {ctor_ident: str; ctor_args: ctor_args; ctor_ret: type_expr option}
 
-type type_decl =
+and type_decl =
   { tdec_ident: str
   ; tdec_params: type_expr list
   ; tdec_implicit_params: type_expr list
@@ -45,7 +44,7 @@ and type_decl_desc =
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
-let none = {type_desc= Tvar (None, -1, Explicit); type_id= -1}
+let none = {type_desc= Tvar (None, Explicit); type_id= -1; type_depth= -1}
 
 let rec typ_debug_print fmt typ =
   let open Format in
@@ -62,14 +61,14 @@ let rec typ_debug_print fmt typ =
   in
   print "(%i:" typ.type_id ;
   ( match typ.type_desc with
-  | Tvar (None, i, Explicit) ->
-      print "var _@%i" i
-  | Tvar (Some name, i, Explicit) ->
-      print "var %s@%i" name.txt i
-  | Tvar (None, i, Implicit) ->
-      print "implicit_var _@%i" i
-  | Tvar (Some name, i, Implicit) ->
-      print "implicit_var %s@%i" name.txt i
+  | Tvar (None, Explicit) ->
+      print "var _"
+  | Tvar (Some name, Explicit) ->
+      print "var %s@" name.txt
+  | Tvar (None, Implicit) ->
+      print "implicit_var _"
+  | Tvar (Some name, Implicit) ->
+      print "implicit_var %s" name.txt
   | Tpoly (typs, typ) ->
       print "poly [%a] %a"
         (print_list typ_debug_print)
@@ -84,4 +83,22 @@ let rec typ_debug_print fmt typ =
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
   | Ttuple typs ->
       print "(%a)" (print_list typ_debug_print) typs ) ;
-  print ")"
+  print " @%i)" typ.type_depth
+
+let fold ~init ~f typ =
+  match typ.type_desc with
+  | Tvar _ ->
+      init
+  | Ttuple typs ->
+      List.fold ~init ~f typs
+  | Tarrow (typ1, typ2, _, _) ->
+      let acc = f init typ1 in
+      f acc typ2
+  | Tctor variant ->
+      let acc = List.fold ~init ~f variant.var_params in
+      List.fold ~init:acc ~f variant.var_implicit_params
+  | Tpoly (typs, typ) ->
+      let acc = List.fold ~init ~f typs in
+      f acc typ
+
+let iter ~f = fold ~init:() ~f:(fun () -> f)
