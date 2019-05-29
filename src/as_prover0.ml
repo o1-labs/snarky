@@ -68,14 +68,14 @@ module T = struct
           | x ->
               (s', x) )
 
-let with_lens lens t =
-  match t with
-  | Request r ->
-      Request (with_lens lens r)
-  | Compute c ->
-      Compute (with_lens lens c)
-  | Both (r, c) ->
-      Both (with_lens lens r, with_lens lens c)
+    let with_lens lens t =
+      match t with
+      | Request r ->
+          Request (with_lens lens r)
+      | Compute c ->
+          Compute (with_lens lens c)
+      | Both (r, c) ->
+          Both (with_lens lens r, with_lens lens c)
   end
 
   module Handle = struct

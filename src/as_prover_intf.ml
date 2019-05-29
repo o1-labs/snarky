@@ -42,9 +42,7 @@ module type Basic = sig
       -> 's * 'a
 
     val with_lens :
-          ('whole, 'view) Lens.t
-      -> ('a, 'f, 'view) t
-      -> ('a, 'f, 'whole) t
+      ('whole, 'view) Lens.t -> ('a, 'f, 'view) t -> ('a, 'f, 'whole) t
   end
 
   module Handle : sig

@@ -157,7 +157,10 @@ module Basic :
     | Clear_handler (t, k) ->
         Clear_handler (with_lens lens t, fun b -> with_lens lens (k b))
     | Exists (typ, c, k) ->
-        Exists (typ, As_prover0.Provider.with_lens lens c, fun b -> with_lens lens (k b))
+        Exists
+          ( typ
+          , As_prover0.Provider.with_lens lens c
+          , fun b -> with_lens lens (k b) )
     | Next_auxiliary k ->
         Next_auxiliary (fun b -> with_lens lens (k b))
 
