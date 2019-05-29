@@ -1,7 +1,7 @@
 open Core_kernel
 open Ast_types
 
-type type_expr = {type_desc: type_desc; type_id: int; type_depth: int}
+type type_expr = {mutable type_desc: type_desc; type_id: int; type_depth: int}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -16,18 +16,16 @@ and variant =
   { var_ident: lid
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
-  ; var_decl_id: int }
+  ; var_decl: type_decl }
 
-type field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
+and field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
 
-type ctor_args =
-  | Ctor_tuple of type_expr list
-  | Ctor_record of int * field_decl list
+and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 
-type ctor_decl =
+and ctor_decl =
   {ctor_ident: str; ctor_args: ctor_args; ctor_ret: type_expr option}
 
-type type_decl =
+and type_decl =
   { tdec_ident: str
   ; tdec_params: type_expr list
   ; tdec_implicit_params: type_expr list

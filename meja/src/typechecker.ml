@@ -30,7 +30,9 @@ let bind_none x f = match x with Some x -> x | None -> f ()
 let unpack_decls ~loc typ ctyp env =
   match (typ.type_desc, ctyp.type_desc) with
   | Tctor variant, Tctor cvariant ->
-      let decl_id, cdecl_id = (variant.var_decl_id, cvariant.var_decl_id) in
+      let decl_id, cdecl_id =
+        (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
+      in
       let unfold_typ () =
         Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
             (typ, ctyp) )
@@ -115,7 +117,8 @@ let rec check_type_aux ~loc typ ctyp env =
       check_type_aux typ1 ctyp1 env ;
       check_type_aux typ2 ctyp2 env
   | Tctor variant, Tctor constr_variant ->
-      if Int.equal variant.var_decl_id constr_variant.var_decl_id then
+      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
+      then
         match
           List.iter2 variant.var_params constr_variant.var_params
             ~f:(fun param constr_param -> check_type_aux param constr_param env
@@ -223,7 +226,8 @@ let rec is_subtype ~loc env typ ~of_:ctyp =
           false )
       && is_subtype typ1 ~of_:ctyp1 && is_subtype typ2 ~of_:ctyp2
   | Tctor variant, Tctor constr_variant -> (
-      if Int.equal variant.var_decl_id constr_variant.var_decl_id then
+      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
+      then
         match
           List.for_all2 variant.var_params constr_variant.var_params
             ~f:(fun param constr_param -> is_subtype param ~of_:constr_param)
@@ -363,13 +367,13 @@ let get_ctor (name : lid) env =
       in
       let args_typ =
         match ctor.ctor_args with
-        | Ctor_record (tdec_id, _) ->
+        | Ctor_record decl ->
             Envi.Type.mk
               (Tctor
                  { var_ident= make_name ctor.ctor_ident
                  ; var_params= params
                  ; var_implicit_params= tdec_implicit_params
-                 ; var_decl_id= tdec_id })
+                 ; var_decl= decl })
               env
         | Ctor_tuple [typ] ->
             typ
@@ -590,20 +594,27 @@ let rec get_expression env expected exp =
       , env )
   | Newtype (name, body) ->
       let env = Envi.open_expr_scope env in
-      let typ = Envi.Type.mkvar (Some name) env in
       let decl =
         { tdec_ident= name
         ; tdec_params= []
         ; tdec_implicit_params= []
-        ; tdec_desc= TAbstract
+        ; tdec_desc= TUnfold (Ast_build.Type.none ())
         ; tdec_loc= loc }
       in
       let decl, env = Typet.TypeDecl.import decl env in
+      let typ =
+        match decl.tdec_desc with TUnfold typ -> typ | _ -> assert false
+      in
+      (* Create a self-referencing type declaration. *)
+      typ.type_desc
+      <- Tctor
+           { var_ident= mk_lid name
+           ; var_params= []
+           ; var_implicit_params= []
+           ; var_decl= decl } ;
       let body, env = get_expression env expected body in
-      env.resolve_env.type_env
-      <- Envi.TypeEnvi.add_decl
-           {decl with tdec_desc= TUnfold typ}
-           env.resolve_env.type_env ;
+      (* Substitute the self-reference for a type variable. *)
+      typ.type_desc <- Tvar (Some name, Explicit) ;
       let env = Envi.close_expr_scope env in
       ( {exp_loc= loc; exp_type= body.exp_type; exp_desc= Newtype (name, body)}
       , env )
@@ -972,8 +983,7 @@ and check_module_sig env msig =
 
 let type_extension ~loc variant ctors env =
   let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
-  let ( {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_id; _}
-      as decl ) =
+  let ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl) =
     match Envi.raw_find_type_declaration var_ident env with
     | open_decl ->
         open_decl
@@ -1009,7 +1019,7 @@ let type_extension ~loc variant ctors env =
   let variant =
     { var_ident
     ; var_implicit_params= decl.tdec_implicit_params
-    ; var_decl_id= tdec_id
+    ; var_decl= decl
     ; var_params= decl.tdec_params }
   in
   (env, variant, ctors)
