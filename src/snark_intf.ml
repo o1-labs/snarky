@@ -1368,6 +1368,18 @@ module type Run_basic = sig
     val vk : t -> Verification_key.t
 
     val generate : R1CS_constraint_system.t -> t
+
+    val check : t -> bool
+    (** A fast check to ensure that the keys in the keypair are compatible.
+        NOTE: This is not currently implemented for the GM backends, and will
+        always return [true].
+    *)
+
+    val check_keys : Proving_key.t -> Verification_key.t -> bool
+    (** A fast check to ensure that the keys are compatible.
+        NOTE: This is not currently implemented for the GM backends, and will
+        always return [true].
+    *)
   end
 
   (** Variables in the R1CS. *)
