@@ -187,10 +187,10 @@ let rec expression_desc fmt = function
         (pp_print_list ~pp_sep:comma_sep expression)
         es
   | Match (e, cases) ->
-      fprintf fmt "@[<hv2>@[<h>switch@ (@[<hv1>@,%a@,@])@] {@ %a@ }@]"
+      fprintf fmt "@[<hv2>@[<h>switch@ (@[<hv1>@,%a@,@])@] {@;@[<hv>%a@]@;}@]"
         expression e
         (pp_print_list ~pp_sep:pp_print_space (fun fmt (p, e) ->
-             fprintf fmt "@[<hv>| @[<hv2>%a@] =>@;<1 4>@[<hv2>%a@]@]" pattern p
+             fprintf fmt "| @[<hv2>%a@] =>@;<1 4>@[<hv2>%a@]" pattern p
                expression e ))
         cases
   | Field (e, lid) ->
