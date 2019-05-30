@@ -188,6 +188,10 @@ module type S = sig
     val vk : t -> Verification_key.t
 
     val generate : R1CS_constraint_system.t -> t
+
+    val check : t -> bool
+
+    val check_keys : Proving_key.t -> Verification_key.t -> bool
   end
 
   module Constraint : sig
@@ -265,6 +269,10 @@ module Make (Backend : Backend_intf.S) :
     let of_backend_keypair kp = {pk= Keypair.pk kp; vk= Keypair.vk kp}
 
     let generate = Fn.compose of_backend_keypair Backend.Keypair.create
+
+    let check_keys pk vk = Backend.Keypair.check (Backend.Keypair.of_keys pk vk)
+
+    let check kp = check_keys kp.pk kp.vk
   end
 
   module Var = struct

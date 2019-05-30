@@ -720,6 +720,18 @@ r1cs_gg_ppzksnark_keypair<ppT>* camlsnark_mnt6753_keypair_create(
   return new r1cs_gg_ppzksnark_keypair<ppT>(res);
 }
 
+r1cs_gg_ppzksnark_keypair<ppT>* camlsnark_mnt6753_keypair_of_keys(
+    r1cs_gg_ppzksnark_proving_key<ppT>* pk,
+    r1cs_gg_ppzksnark_verification_key<ppT>* vk) {
+  r1cs_gg_ppzksnark_proving_key<ppT> pk_(*pk);
+  r1cs_gg_ppzksnark_verification_key<ppT> vk_(*vk);
+  return new r1cs_gg_ppzksnark_keypair<ppT>(std::move(pk_), std::move(vk_));
+}
+
+bool camlsnark_mnt6753_keypair_check(r1cs_gg_ppzksnark_keypair<ppT>* keypair) {
+  return keypair->pk.delta_g2 == keypair->vk.delta_g2;
+}
+
 std::string* camlsnark_mnt6753_proof_to_string(
     r1cs_gg_ppzksnark_proof<ppT>* p) {
   std::stringstream stream;
@@ -880,6 +892,18 @@ r1cs_se_ppzksnark_keypair<ppT>* camlsnark_mnt6753_gm_keypair_create(
   return new r1cs_se_ppzksnark_keypair<ppT>(res);
 }
 
+r1cs_se_ppzksnark_keypair<ppT>* camlsnark_mnt6753_gm_keypair_of_keys(
+    r1cs_se_ppzksnark_proving_key<ppT>* pk,
+    r1cs_se_ppzksnark_verification_key<ppT>* vk) {
+  r1cs_se_ppzksnark_proving_key<ppT> pk_(*pk);
+  r1cs_se_ppzksnark_verification_key<ppT> vk_(*vk);
+  return new r1cs_se_ppzksnark_keypair<ppT>(std::move(pk_), std::move(vk_));
+}
+
+bool camlsnark_mnt6753_gm_keypair_check(r1cs_gg_ppzksnark_keypair<ppT>* keypair) {
+  return true;
+}
+
 std::string* camlsnark_mnt6753_gm_proof_to_string(
     r1cs_se_ppzksnark_proof<ppT>* p) {
   std::stringstream stream;
@@ -1002,6 +1026,14 @@ r1cs_bg_ppzksnark_verification_key<ppT>* camlsnark_mnt6753_bg_keypair_vk(r1cs_bg
   return new r1cs_bg_ppzksnark_verification_key<ppT>(keypair->vk);
 }
 
+r1cs_bg_ppzksnark_keypair<ppT>* camlsnark_mnt6753_bg_keypair_of_keys(
+    r1cs_bg_ppzksnark_proving_key<ppT>* pk,
+    r1cs_bg_ppzksnark_verification_key<ppT>* vk) {
+  r1cs_bg_ppzksnark_proving_key<ppT> pk_(*pk);
+  r1cs_bg_ppzksnark_verification_key<ppT> vk_(*vk);
+  return new r1cs_bg_ppzksnark_keypair<ppT>(std::move(pk_), std::move(vk_));
+}
+
 void camlsnark_mnt6753_bg_keypair_delete(r1cs_bg_ppzksnark_keypair<ppT>* keypair) {
   delete keypair;
 }
@@ -1010,6 +1042,10 @@ r1cs_bg_ppzksnark_keypair<ppT>* camlsnark_mnt6753_bg_keypair_create(
     r1cs_constraint_system<FieldT>* sys) {
   r1cs_bg_ppzksnark_keypair<ppT> res = r1cs_bg_ppzksnark_generator<ppT>(*sys);
   return new r1cs_bg_ppzksnark_keypair<ppT>(res);
+}
+
+bool camlsnark_mnt6753_bg_keypair_check(r1cs_bg_ppzksnark_keypair<ppT>* keypair) {
+  return keypair->pk.delta_g2 == keypair->vk.delta_g2;
 }
 
 std::string* camlsnark_mnt6753_bg_proof_to_string(
