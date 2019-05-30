@@ -100,7 +100,7 @@ let rec pattern_desc fmt = function
   | PAny ->
       fprintf fmt "_"
   | PVariable str ->
-      fprintf fmt "'%s" str.txt
+      fprintf fmt "%s" str.txt
   | PConstraint (p, typ) ->
       fprintf fmt "%a@ : @[<hv2>%a@]" pattern_bracket p type_expr typ
   | PTuple pats ->
