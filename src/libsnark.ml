@@ -1495,8 +1495,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
         let t = stub pk vk in
         Caml.Gc.finalise delete t ; t
 
-    let check =
-      foreign (func_name "check") (typ @-> returning bool)
+    let check = foreign (func_name "check") (typ @-> returning bool)
   end
 end
 

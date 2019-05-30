@@ -270,7 +270,8 @@ module Make (Backend : Backend_intf.S) :
 
     let generate = Fn.compose of_backend_keypair Backend.Keypair.create
 
-    let check_keys pk vk = Backend.Keypair.check (Backend.Keypair.of_keys pk vk)
+    let check_keys pk vk =
+      Backend.Keypair.check (Backend.Keypair.of_keys pk vk)
 
     let check kp = check_keys kp.pk kp.vk
   end
