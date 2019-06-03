@@ -107,8 +107,7 @@ let iter ~f = fold ~init:() ~f:(fun () -> f)
 (* TODO: integrate with a backtrack mechanism for unification errors. *)
 let set_depth depth typ = typ.type_depth <- depth
 
-let update_depth depth typ =
-  if typ.type_depth > depth then set_depth depth typ
+let update_depth depth typ = if typ.type_depth > depth then set_depth depth typ
 
 let unify_depths typ1 typ2 =
   iter ~f:(update_depth typ1.type_depth) typ2 ;
