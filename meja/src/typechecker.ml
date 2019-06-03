@@ -563,9 +563,10 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
       let typ = Envi.find_name ~loc name env in
-      check_type ~loc env expected typ ;
       let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
-      (Envi.Type.generate_implicits e env, env)
+      let e = Envi.Type.generate_implicits e env in
+      check_type ~loc env expected e.exp_type ;
+      (e, env)
   | Int i ->
       let typ = Initial_env.Type.int in
       check_type ~loc env expected typ ;
