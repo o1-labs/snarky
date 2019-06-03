@@ -1,7 +1,8 @@
 open Core_kernel
 open Ast_types
 
-type type_expr = {mutable type_desc: type_desc; type_id: int; type_depth: int}
+type type_expr =
+  {mutable type_desc: type_desc; type_id: int; mutable type_depth: int}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -102,3 +103,13 @@ let fold ~init ~f typ =
       f acc typ
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
+
+(* TODO: integrate with a backtrack mechanism for unification errors. *)
+let set_depth depth typ = typ.type_depth <- depth
+
+let update_depth depth typ =
+  if typ.type_depth > depth then set_depth depth typ
+
+let unify_depths typ1 typ2 =
+  iter ~f:(update_depth typ1.type_depth) typ2 ;
+  iter ~f:(update_depth typ2.type_depth) typ1
