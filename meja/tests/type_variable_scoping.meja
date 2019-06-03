@@ -9,11 +9,15 @@ let g : 'a -> 'b = fun (x : bool) => {
 module X = {
   type t('a) = A('a) | B(int) | C(bool) : t(bool);
 
-  let a : t(int) = A(15);
+  let a : t('int) = A(15);
 
-  let a1 : t(unit) = A(());
+  let a1 : t('unit) = A(());
 
-  let b : t(bool) = B(30);
+  let b : t('bool) = B(30);
 
-  let c : t(bool) = C(true);
+  let c : t('bool) = C(true);
+
+  let f : 'int -> 'unit -> 'bool = fun (a : 'a, b : 'a) => {
+    a;
+  };
 };

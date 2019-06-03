@@ -8,11 +8,13 @@ let (g : 'a -> 'b) = fun (x : bool) -> x
 module X = struct
   type 'a t = A of 'a | B of int | C : bool -> bool t
 
-  let (a : int t) = A 15
+  let (a : 'int t) = A 15
 
-  let (a1 : unit t) = A ()
+  let (a1 : 'unit t) = A ()
 
-  let (b : bool t) = B 30
+  let (b : 'bool t) = B 30
 
-  let (c : bool t) = C true
+  let (c : 'bool t) = C true
+
+  let (f : 'int -> 'unit -> 'bool) = fun (a : 'a) (b : 'a) -> a
 end
