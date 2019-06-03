@@ -552,10 +552,12 @@ let raw_find_type_declaration (lid : lid) env =
 module Type = struct
   type env = t
 
-  let mk type_desc env =
+  let mk' env depth type_desc =
     let type_id, type_env = TypeEnvi.next_type_id env.resolve_env.type_env in
     env.resolve_env.type_env <- type_env ;
-    {type_desc; type_id; type_depth= env.depth}
+    {type_desc; type_id; type_depth= depth}
+
+  let mk type_desc env = mk' env env.depth type_desc
 
   let mkvar ?(explicitness = Explicit) name env =
     mk (Tvar (name, explicitness)) env
@@ -677,7 +679,16 @@ module Type = struct
     in
     type_vars empty typ
 
+  let rec update_depths env typ =
+    Type0.update_depth env.depth typ ;
+    match typ.type_desc with
+    | Tvar _ ->
+        Option.iter ~f:(update_depths env) (instance env typ)
+    | _ ->
+        Type0.iter ~f:(update_depths env) typ
+
   let rec flatten typ env =
+    let mk' = mk' env typ.type_depth in
     match typ.type_desc with
     | Tvar _ -> (
       match instance env typ with
@@ -694,7 +705,7 @@ module Type = struct
             (List.map vars ~f:(type_vars ~depth:env.depth))
         in
         let typ = flatten typ env in
-        mk (Tpoly (Set.to_list var_set, typ)) env
+        mk' (Tpoly (Set.to_list var_set, typ))
     | Tctor variant ->
         let var_params =
           List.map variant.var_params ~f:(fun typ -> flatten typ env)
@@ -702,14 +713,14 @@ module Type = struct
         let var_implicit_params =
           List.map variant.var_implicit_params ~f:(fun typ -> flatten typ env)
         in
-        mk (Tctor {variant with var_params; var_implicit_params}) env
+        mk' (Tctor {variant with var_params; var_implicit_params})
     | Ttuple typs ->
         let typs = List.map typs ~f:(fun typ -> flatten typ env) in
-        mk (Ttuple typs) env
+        mk' (Ttuple typs)
     | Tarrow (typ1, typ2, explicit, label) ->
         let typ1 = flatten typ1 env in
         let typ2 = flatten typ2 env in
-        mk (Tarrow (typ1, typ2, explicit, label)) env
+        mk' (Tarrow (typ1, typ2, explicit, label))
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
@@ -829,15 +840,12 @@ module Type = struct
         {exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}
 
   let rec instantiate_implicits ~loc ~is_subtype implicit_vars env =
-    let implicit_vars =
-      List.map implicit_vars ~f:(fun e ->
-          {e with Parsetypes.exp_type= flatten e.Parsetypes.exp_type env} )
-    in
     let env_implicits = env.resolve_env.type_env.implicit_vars in
     env.resolve_env.type_env
     <- {env.resolve_env.type_env with implicit_vars= []} ;
     let implicit_vars =
-      List.filter implicit_vars ~f:(fun ({exp_loc; exp_type; _} as exp) ->
+      List.filter implicit_vars
+        ~f:(fun ({Parsetypes.exp_loc; exp_type; _} as exp) ->
           match implicit_instances ~loc ~is_subtype exp_type env with
           | [(name, instance_typ)] ->
               let name = Location.mkloc name exp_loc in
@@ -873,6 +881,10 @@ module Type = struct
       is_subtype env typ ~of_:(snd (get_implicits [] ctyp))
     in
     let {TypeEnvi.implicit_vars; _} = env.resolve_env.type_env in
+    let implicit_vars =
+      List.map implicit_vars ~f:(fun exp ->
+          {exp with exp_type= flatten exp.exp_type env} )
+    in
     let implicit_vars =
       instantiate_implicits ~loc ~is_subtype implicit_vars env
     in
