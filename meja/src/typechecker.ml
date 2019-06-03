@@ -1030,7 +1030,12 @@ let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
   | Value (p, e) ->
+      let env = Envi.open_expr_scope env in
       let p, e, env = check_binding ~toplevel:true env p e in
+      let scope, env = Envi.pop_expr_scope env in
+      (* Uplift the names from the expression scope, discarding the scope and
+         its associated type variables etc. *)
+      let env = Envi.join_expr_scope env scope in
       (env, {stmt with stmt_desc= Value (p, e)})
   | Instance (name, e) ->
       let p =
