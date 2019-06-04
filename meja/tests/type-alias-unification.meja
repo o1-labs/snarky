@@ -1,0 +1,49 @@
+module Alias_alias = {
+  type u('a, 'b) = 'a -> 'a;
+
+  type v('a, 'b) = u('a, 'a);
+
+  let f = fun (x : u(int, bool)) : u(int, int) => { x; };
+
+  let g = fun (x : v(int, int)) : v(int, bool) => { x; };
+
+  let h = fun (x : v(int, bool)) : u(int, int) => { x; };
+
+  let i = fun (x : u(bool, bool)) : v(bool, unit) => { x; };
+};
+
+module Alias_opaque = {
+  type u('a, 'b);
+
+  type v('a, 'b) = u('a, 'a);
+
+  let f = fun (x : v(int, int)) : v(int, bool) => { x; };
+
+  let g = fun (x : v(int, bool)) : u(int, int) => { x; };
+
+  let h = fun (x : u(bool, bool)) : v(bool, unit) => { x; };
+};
+
+module Alias_record = {
+  type u('a, 'b) = {a : 'a, b : 'b};
+
+  type v('a, 'b) = u('a, 'a);
+
+  let f = fun (x : v(int, int)) : v(int, bool) => { x; };
+
+  let g = fun (x : v(int, bool)) : u(int, int) => { x; };
+
+  let h = fun (x : u(bool, bool)) : v(bool, unit) => { x; };
+};
+
+module Alias_variant = {
+  type u('a, 'b) = A | B | C('a) | D('b);
+
+  type v('a, 'b) = u('a, 'a);
+
+  let f = fun (x : v(int, int)) : v(int, bool) => { x; };
+
+  let g = fun (x : v(int, bool)) : u(int, int) => { x; };
+
+  let h = fun (x : u(bool, bool)) : v(bool, unit) => { x; };
+};
