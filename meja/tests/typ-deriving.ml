@@ -2,11 +2,11 @@ module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
 include struct
-  type 'a1 poly = {a: 'a1; b: 'field}
+  type ('a1, 'field) poly = {a: 'a1; b: 'field}
 
-  type t = bool poly
+  type 'field t = (bool, 'field) poly
 
-  type t = Boolean.var poly
+  type 'field t = (Boolean.var, 'field) poly
 
   let typ : (_, t) Typ.t =
     { Typ.store=
