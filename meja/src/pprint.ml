@@ -27,6 +27,8 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
         type_expr typ ;
       if bracket then fprintf fmt ")"
+  | Trow row ->
+      fprintf fmt "[@[<hv1>@,%a@,@]]" row_desc row
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -42,6 +44,20 @@ and variant fmt v =
   | _ ->
       fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple
         v.var_params
+
+and row_desc fmt = function
+  | Row_empty ->
+      ()
+  | Row_ctor lid ->
+      Longident.pp fmt lid.txt
+  | Row_var typ ->
+      type_expr fmt typ
+  | Row_union (row1, row2) ->
+      row_desc fmt row1 ; bar_sep fmt () ; row_desc fmt row2
+  | Row_inter (row1, row2) ->
+      fprintf fmt "%a@ & [@[<hv1>@,%a@,@]]" row_desc row1 row_desc row2
+  | Row_diff (row1, row2) ->
+      fprintf fmt "%a@ - [@[<hv1>@,%a@,@]]" row_desc row1 row_desc row2
 
 let field_decl fmt decl =
   fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident.txt type_expr decl.fld_type

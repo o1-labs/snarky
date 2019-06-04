@@ -11,11 +11,20 @@ and type_desc =
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
+  | Trow of row_desc
 
 and variant =
   { var_ident: lid
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list }
+
+and row_desc =
+  | Row_empty
+  | Row_ctor of lid
+  | Row_var of type_expr
+  | Row_union of row_desc * row_desc
+  | Row_inter of row_desc * row_desc
+  | Row_diff of row_desc * row_desc
 
 type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
@@ -152,5 +161,23 @@ let rec typ_debug_print fmt typ =
   | Tctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
   | Ttuple typs ->
-      print "(%a)" (print_list typ_debug_print) typs ) ;
+      print "(%a)" (print_list typ_debug_print) typs
+  | Trow row ->
+      print "[%a]" row_debug_print row ) ;
   print ")"
+
+and row_debug_print fmt row =
+  let open Format in
+  match row with
+  | Row_empty ->
+      ()
+  | Row_ctor ctor ->
+      Longident.pp fmt ctor.txt
+  | Row_var typ ->
+      typ_debug_print fmt typ
+  | Row_union (row1, row2) ->
+      fprintf fmt "[%a] + [%a]" row_debug_print row1 row_debug_print row2
+  | Row_inter (row1, row2) ->
+      fprintf fmt "[%a] & [%a]" row_debug_print row1 row_debug_print row2
+  | Row_diff (row1, row2) ->
+      fprintf fmt "[%a] - [%a]" row_debug_print row1 row_debug_print row2

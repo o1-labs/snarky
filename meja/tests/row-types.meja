@@ -1,0 +1,9 @@
+type t = ..;
+
+type t += A | B | C;
+
+type u = [A | B];
+
+type v('a) = [A | B | 'a];
+
+type w('a, 'b, 'c) = [[A | B | C] - ['a & 'b]];

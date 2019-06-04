@@ -66,6 +66,7 @@ let consexp ~pos hd tl =
 %token DOTDOT
 %token DOT
 %token MINUS
+%token AMP
 %token <string> COMMENT
 %token <string> PREFIXOP
 %token <string> INFIXOP0
@@ -77,7 +78,8 @@ let consexp ~pos hd tl =
 
 %token EOL
 
-%left     INFIXOP0 EQUAL
+%left     BAR
+%left     AMP INFIXOP0 EQUAL
 %right    INFIXOP1
 %right    COLONCOLON
 %left     MINUS INFIXOP2 PLUSEQUAL
@@ -256,6 +258,7 @@ ctor_decl_args:
     { "::" }
 
 infix_operator:
+  | AMP           { "&" }
   | op = INFIXOP0 { op }
   | EQUAL         { "=" }
   | op = INFIXOP1 { op }
@@ -519,17 +522,23 @@ pat_or_bare_tuple:
   | ps = tuple(pat)
     { mkpat ~pos:$loc (PTuple (List.rev ps)) }
 
+%inline type_var:
+  | QUOT x = as_loc(lident)
+    { mktyp ~pos:$loc (Tvar (Some x, Explicit)) }
+
 simple_type_expr:
   | UNDERSCORE
     { mktyp ~pos:$loc (Tvar (None, Explicit)) }
-  | QUOT x = as_loc(lident)
-    { mktyp ~pos:$loc (Tvar (Some x, Explicit)) }
+  | t = type_var
+    { t }
   | t = decl_type_expr
     { t }
   | LPAREN x = type_expr RPAREN
     { x }
   | LPAREN xs = tuple(type_expr) RPAREN
     { mktyp ~pos:$loc (Ttuple (List.rev xs)) }
+  | LBRACKET row = row_desc RBRACKET
+    { mktyp ~pos:$loc (Trow row) }
 
 %inline type_arrow_label:
   | (* Empty *)
@@ -546,6 +555,22 @@ type_expr:
     { mktyp ~pos:$loc (Tarrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Implicit, label)) }
+
+row_desc:
+  | maybe(BAR)
+    { Row_empty }
+  | id = as_loc(longident(ctor_ident, UIDENT))
+    { Row_ctor id }
+  | t = type_var
+    { Row_var t }
+  | row1 = row_desc BAR row2 = row_desc
+    { Row_union (row1, row2) }
+  | row1 = row_desc AMP row2 = row_desc
+    { Row_inter (row1, row2) }
+  | row1 = row_desc MINUS row2 = row_desc
+    { Row_diff (row1, row2) }
+  | LBRACKET row = row_desc RBRACKET
+    { row }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X

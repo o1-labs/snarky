@@ -10,6 +10,7 @@ type error =
   | Wrong_number_implicit_args of Longident.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
+  | Unbound of string * lid
 
 exception Error of Location.t * error
 
@@ -128,6 +129,36 @@ module Type = struct
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
         (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
+    | Trow row ->
+        let env, row = import_row ?must_find env row in
+        (mk (Trow row) env, env)
+
+  and import_row ?must_find env (row : row_desc) : env * Type0.row =
+    let import_row = import_row ?must_find in
+    match row with
+    | Row_empty ->
+        (env, Row_spec {row_ctors= []; row_typs= []})
+    | Row_ctor lid -> (
+      match Envi.TypeDecl.find_of_constructor lid env with
+      | Some (decl, _) ->
+          (env, Row_spec {row_ctors= [(lid.txt, decl.tdec_id)]; row_typs= []})
+      | None ->
+          raise (Error (lid.loc, Unbound ("constructor", lid))) )
+    | Row_var typ ->
+        let typ, env = import ?must_find typ env in
+        (env, Row_spec {row_ctors= []; row_typs= [typ]})
+    | Row_union (row1, row2) ->
+        let env, row1 = import_row env row1 in
+        let env, row2 = import_row env row2 in
+        (env, Row_union (row1, row2))
+    | Row_diff (row1, row2) ->
+        let env, row1 = import_row env row1 in
+        let env, row2 = import_row env row2 in
+        (env, Row_diff (row1, row2))
+    | Row_inter (row1, row2) ->
+        let env, row1 = import_row env row1 in
+        let env, row2 = import_row env row2 in
+        (env, Row_inter (row1, row2))
 end
 
 module TypeDecl = struct
@@ -190,8 +221,7 @@ module TypeDecl = struct
     let add_implicits implicit_params =
       if Set.is_empty implicit_params then tdec_implicit_params
       else
-        tdec_implicit_params
-        |> Set.of_list (module Envi.Type.Comparator)
+        tdec_implicit_params |> Envi.Type.Set.of_list
         |> Set.union implicit_params |> Set.to_list
     in
     (* Make sure the declaration is available to lookup for recursive types. *)
@@ -230,8 +260,7 @@ module TypeDecl = struct
           in
           let tdec_implicit_params =
             add_implicits
-              (Set.union_list
-                 (module Envi.Type)
+              (Envi.Type.Set.union_list
                  (List.map fields ~f:(fun {fld_type; _} ->
                       Envi.Type.implicit_params env fld_type )))
           in
@@ -310,8 +339,7 @@ module TypeDecl = struct
           in
           let tdec_implicit_params =
             add_implicits
-              (Set.union_list
-                 (module Envi.Type)
+              (Envi.Type.Set.union_list
                  (List.map ctors ~f:(fun ctor ->
                       let typs =
                         match ctor.ctor_args with
@@ -329,8 +357,7 @@ module TypeDecl = struct
                         | None ->
                             typs
                       in
-                      Set.union_list
-                        (module Envi.Type)
+                      Envi.Type.Set.union_list
                         (List.map typs ~f:(Envi.Type.implicit_params env)) )))
           in
           ({decl with tdec_desc; tdec_implicit_params}, env)
@@ -429,6 +456,8 @@ let report_error ppf = function
         "@[<hov>Constraints are not satisfied in this type.@ Type @[<h>%a@] \
          should be an instance of @[<h>%a@].@]"
         pp_typ typ pp_decl_typ decl
+  | Unbound (kind, value) ->
+      fprintf ppf "@[<hov>Unbound %s@ %a.@]" kind Longident.pp value.txt
 
 let () =
   Location.register_error_of_exn (function

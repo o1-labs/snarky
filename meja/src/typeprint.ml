@@ -1,3 +1,4 @@
+open Core_kernel
 open Ast_types
 open Type0
 open Format
@@ -27,6 +28,8 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
         type_expr typ ;
       if bracket then fprintf fmt ")"
+  | Trow row ->
+      fprintf fmt "[@[<hv1>@,%a@,@]]" row_desc row
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -42,6 +45,23 @@ and variant fmt v =
   | _ ->
       fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple
         v.var_params
+
+and row_desc fmt = function
+  | Row_spec spec ->
+      row_spec fmt spec
+  | Row_union (row1, row2) ->
+      row_desc fmt row1 ; bar_sep fmt () ; row_desc fmt row2
+  | Row_inter (row1, row2) ->
+      fprintf fmt "%a@ & [@[<hv1>@,%a@,@]]" row_desc row1 row_desc row2
+  | Row_diff (row1, row2) ->
+      fprintf fmt "%a@ - [@[<hv1>@,%a@,@]]" row_desc row1 row_desc row2
+
+and row_spec fmt spec =
+  let first = ref true in
+  let bar_sep fmt () = if !first then first := false else bar_sep fmt () in
+  List.iter spec.row_ctors ~f:(fun (lid, _) ->
+      bar_sep fmt () ; Longident.pp fmt lid ) ;
+  List.iter spec.row_typs ~f:(fun typ -> bar_sep fmt () ; type_expr fmt typ)
 
 let field_decl fmt decl =
   fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident.txt type_expr decl.fld_type
