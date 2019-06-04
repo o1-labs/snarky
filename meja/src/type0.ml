@@ -1,38 +1,111 @@
 open Core_kernel
 open Ast_types
 
+module Row = struct
+  type 'a t =
+    | Row_spec of 'a
+    | Row_union of 'a t * 'a t
+    | Row_inter of 'a t * 'a t
+    | Row_diff of 'a t * 'a t
+  [@@deriving ord, sexp]
+
+  type 'a spec =
+    {row_ctors: (Longident.t * int) (* decl_id *) list; row_typs: 'a list}
+  [@@deriving ord, sexp]
+
+  let has_ctors {row_ctors; _} = List.is_empty row_ctors
+
+  let has_typs {row_typs; _} = List.is_empty row_typs
+
+  let is_spec = function Row_spec _ -> true | _ -> false
+
+  let has_direct_ctors = function
+    | Row_spec spec ->
+        has_ctors spec
+    | _ ->
+        false
+
+  let has_direct_typs = function Row_spec spec -> has_typs spec | _ -> false
+
+  open Format
+
+  let rec debug_print print_spec fmt = function
+    | Row_spec spec ->
+        fprintf fmt "[%a]" print_spec spec
+    | Row_union (row1, row2) ->
+        fprintf fmt "[%a] + [%a]" (debug_print print_spec) row1
+          (debug_print print_spec) row2
+    | Row_inter (row1, row2) ->
+        fprintf fmt "[%a] & [%a]" (debug_print print_spec) row1
+          (debug_print print_spec) row2
+    | Row_diff (row1, row2) ->
+        fprintf fmt "[%a] - [%a]" (debug_print print_spec) row1
+          (debug_print print_spec) row2
+
+  let spec_debug_print print_typ fmt spec =
+    let is_first = ref true in
+    let pp_sep fmt () =
+      if !is_first then is_first := false else fprintf fmt " | "
+    in
+    List.iter spec.row_ctors ~f:(fun (lid, id) ->
+        fprintf fmt "%a%a(%i)" pp_sep () Longident.pp lid id ) ;
+    List.iter spec.row_typs ~f:(fprintf fmt "%a%a" pp_sep () print_typ)
+
+  let fold ~init ~f row =
+    match row with
+    | Row_spec _ ->
+        init
+    | Row_union (row1, row2) | Row_inter (row1, row2) | Row_diff (row1, row2)
+      ->
+        let acc = f init row1 in
+        f acc row2
+
+  let iter ~f = fold ~init:() ~f:(fun () -> f)
+
+  let rec fold_typ ~init ~f row =
+    match row with
+    | Row_spec spec ->
+        List.fold ~init ~f spec.row_typs
+    | _ ->
+        fold ~init ~f:(fun acc row -> fold_typ ~init:acc ~f row) row
+
+  let iter_typ ~f = fold_typ ~init:() ~f:(fun () -> f)
+end
+
 type type_expr = {mutable type_desc: type_desc; type_id: int; type_depth: int}
+[@@deriving sexp]
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
   | Tvar of str option * explicitness
   | Ttuple of type_expr list
-  | Tarrow of type_expr * type_expr * explicitness * Asttypes.arg_label
+  | Tarrow of type_expr * type_expr * explicitness * arg_label
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
-  | Trow of row_desc
+  | Trow of row
+[@@deriving sexp]
 
 and variant =
   { var_ident: lid
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
   ; var_decl: type_decl }
+[@@deriving sexp]
 
-and row_desc =
-  | Row_empty
-  | Row_ctor of lid * int (* decl_id *)
-  | Row_var of type_expr
-  | Row_union of row_desc * row_desc
-  | Row_inter of row_desc * row_desc
-  | Row_diff of row_desc * row_desc
+and row_spec = type_expr Row.spec [@@deriving sexp]
+
+and row = row_spec Row.t [@@deriving sexp]
 
 and field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
+[@@deriving sexp]
 
 and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
+[@@deriving sexp]
 
 and ctor_decl =
   {ctor_ident: str; ctor_args: ctor_args; ctor_ret: type_expr option}
+[@@deriving sexp]
 
 and type_decl =
   { tdec_ident: str
@@ -40,6 +113,7 @@ and type_decl =
   ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
   ; tdec_id: int }
+[@@deriving sexp]
 
 and type_decl_desc =
   | TAbstract
@@ -52,6 +126,7 @@ and type_decl_desc =
       (** Internal; this should never be present in the AST. *)
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
+[@@deriving sexp]
 
 let none = {type_desc= Tvar (None, Explicit); type_id= -1; type_depth= -1}
 
@@ -97,35 +172,7 @@ let rec typ_debug_print fmt typ =
   print " @%i)" typ.type_depth
 
 and row_debug_print fmt row =
-  let open Format in
-  match row with
-  | Row_empty ->
-      ()
-  | Row_ctor (ctor, id) ->
-      fprintf fmt "%a(%i)" Longident.pp ctor.txt id
-  | Row_var typ ->
-      typ_debug_print fmt typ
-  | Row_union (row1, row2) ->
-      fprintf fmt "[%a] + [%a]" row_debug_print row1 row_debug_print row2
-  | Row_inter (row1, row2) ->
-      fprintf fmt "[%a] & [%a]" row_debug_print row1 row_debug_print row2
-  | Row_diff (row1, row2) ->
-      fprintf fmt "[%a] - [%a]" row_debug_print row1 row_debug_print row2
-
-let fold_row ~init ~f row =
-  match row with
-  | Row_empty | Row_ctor _ | Row_var _ ->
-      init
-  | Row_union (row1, row2) | Row_inter (row1, row2) | Row_diff (row1, row2) ->
-      let acc = f init row1 in
-      f acc row2
-
-let rec fold_row_typ ~init ~f row =
-  match row with
-  | Row_var typ ->
-      f init typ
-  | _ ->
-      fold_row ~init ~f:(fun acc row -> fold_row_typ ~init:acc ~f row) row
+  Row.debug_print (Row.spec_debug_print typ_debug_print) fmt row
 
 let fold ~init ~f typ =
   match typ.type_desc with
@@ -143,6 +190,6 @@ let fold ~init ~f typ =
       let acc = List.fold ~init ~f typs in
       f acc typ
   | Trow row ->
-      fold_row_typ ~init ~f row
+      Row.fold_typ ~init ~f row
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)

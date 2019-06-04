@@ -646,31 +646,35 @@ module Type = struct
   and copy_row ~loc env new_vars_map row =
     let copy_row = copy_row ~loc env new_vars_map in
     match row with
-    | Row_var typ ->
-        Row_var (copy ~loc typ new_vars_map env)
+    | Row_spec spec ->
+        Row_spec (copy_row_spec ~loc env new_vars_map spec)
     | Row_union (row1, row2) ->
         Row_union (copy_row row1, copy_row row2)
     | Row_inter (row1, row2) ->
         Row_inter (copy_row row1, copy_row row2)
     | Row_diff (row1, row2) ->
         Row_diff (copy_row row1, copy_row row2)
-    | _ ->
-        row
+
+  and copy_row_spec ~loc env new_vars_map spec =
+    { spec with
+      row_typs=
+        List.map spec.row_typs ~f:(fun typ -> copy ~loc typ new_vars_map env)
+    }
 
   module T = struct
     type t = type_expr
 
     let compare typ1 typ2 = Int.compare typ1.type_id typ2.type_id
 
-    let sexp_of_t typ = Int.sexp_of_t typ.type_id
+    let t_of_sexp = type_expr_of_sexp
+
+    let sexp_of_t = sexp_of_type_expr
   end
 
-  module Comparator = struct
+  module Comparable = struct
     include T
-    include Comparator.Make (T)
+    include Comparable.Make (T)
   end
-
-  include Comparator
 
   let type_vars ?depth typ =
     let deep_enough =
@@ -680,7 +684,7 @@ module Type = struct
       | None ->
           fun _ -> true
     in
-    let empty = Set.empty (module Comparator) in
+    let empty = Comparable.Set.empty in
     let rec type_vars set typ =
       match typ.type_desc with
       | Tvar _ when deep_enough typ ->
@@ -692,6 +696,110 @@ module Type = struct
           fold ~init:set typ ~f:type_vars
     in
     type_vars empty typ
+
+  module Row_set_spec = struct
+    module Ctor = struct
+      module T = struct
+        type t = Longident.t * int [@@deriving ord, sexp]
+      end
+
+      include T
+      include Core_kernel.Comparable.Make (T)
+    end
+
+    type t = {row_ctors: Ctor.Set.t; row_typs: Comparable.Set.t}
+
+    let has_ctors {row_ctors; _} = Ctor.Set.is_empty row_ctors
+
+    let has_typs {row_typs; _} = Comparable.Set.is_empty row_typs
+
+    let union spec1 spec2 =
+      { row_ctors= Set.union spec1.row_ctors spec2.row_ctors
+      ; row_typs= Set.union spec1.row_typs spec2.row_typs }
+
+    let of_row_spec spec =
+      { row_ctors= Ctor.Set.of_list spec.Row.row_ctors
+      ; row_typs= Comparable.Set.of_list spec.Row.row_typs }
+
+    let to_row_spec spec =
+      { Row.row_ctors= Set.to_list spec.row_ctors
+      ; row_typs= Set.to_list spec.row_typs }
+
+    let row_of_spec_or_row = function
+      | Ok spec ->
+          Row.Row_spec (to_row_spec spec)
+      | Error row ->
+          row
+
+    (* Non-recursive reducing iterator.
+       The recursor [f] may be specified so that it has additional behaviour,
+       such as flattening types and extracting their inner rows, etc.
+    *)
+    let row_to_spec_or_row ~f (row : row) =
+      match row with
+      | Row_spec spec ->
+          Ok (of_row_spec spec)
+      | Row_union (row1, row2) -> (
+        match (f row1, f row2) with
+        | Ok spec1, Ok spec2 ->
+            Ok (union spec1 spec2)
+        | row1, row2 ->
+            Error
+              (Row.Row_union (row_of_spec_or_row row1, row_of_spec_or_row row2))
+        )
+      | Row_inter (row1, row2) -> (
+        match (f row1, f row2) with
+        | Ok spec1, Ok spec2 ->
+            let mk_row spec1 spec2 =
+              Result.Error
+                (Row.Row_inter
+                   (Row_spec (to_row_spec spec1), Row_spec (to_row_spec spec2)))
+            in
+            if has_typs spec1 then
+              if has_typs spec2 then mk_row spec1 spec2
+              else
+                let spec1 =
+                  { spec1 with
+                    row_ctors= Set.inter spec1.row_ctors spec2.row_ctors }
+                in
+                mk_row spec1 spec2
+            else if has_typs spec2 then
+              let spec2 =
+                { spec2 with
+                  row_ctors= Set.inter spec1.row_ctors spec2.row_ctors }
+              in
+              mk_row spec1 spec2
+            else
+              let spec1 =
+                { spec1 with
+                  row_ctors= Set.inter spec1.row_ctors spec2.row_ctors }
+              in
+              let spec2 =
+                { spec2 with
+                  row_ctors= Set.inter spec1.row_ctors spec2.row_ctors }
+              in
+              Ok
+                { row_ctors= Set.inter spec1.row_ctors spec2.row_ctors
+                ; row_typs= Comparable.Set.empty }
+        | row1, row2 ->
+            Result.Error
+              (Row_inter (row_of_spec_or_row row1, row_of_spec_or_row row2)) )
+      | Row_diff (row1, row2) -> (
+        match (f row1, f row2) with
+        | Ok spec1, Ok spec2 ->
+            let mk_row spec1 spec2 =
+              Result.Error
+                (Row.Row_diff
+                   (Row_spec (to_row_spec spec1), Row_spec (to_row_spec spec2)))
+            in
+            let spec1 =
+              {spec1 with row_ctors= Set.diff spec1.row_ctors spec2.row_ctors}
+            in
+            if has_typs spec2 then mk_row spec1 spec2 else Ok spec1
+        | row1, row2 ->
+            Result.Error
+              (Row_diff (row_of_spec_or_row row1, row_of_spec_or_row row2)) )
+  end
 
   let rec flatten typ env =
     match typ.type_desc with
@@ -705,8 +813,7 @@ module Type = struct
           typ )
     | Tpoly (vars, typ) ->
         let var_set =
-          Set.union_list
-            (module Comparator)
+          Comparable.Set.union_list
             (List.map vars ~f:(type_vars ~depth:env.depth))
         in
         let typ = flatten typ env in
@@ -729,18 +836,46 @@ module Type = struct
     | Trow row ->
         mk (Trow (flatten_row env row)) env
 
-  and flatten_row env row =
+  and flatten_row_spec env spec =
+    { spec with
+      Row.row_typs= List.map spec.Row.row_typs ~f:(fun typ -> flatten typ env)
+    }
+
+  and flatten_row_error env row =
+    let open Row in
     match row with
-    | Row_var typ -> (
-        let typ = flatten typ env in
-        match typ.type_desc with Trow row -> row | _ -> Row_var typ )
-    | Row_union (row1, row2) ->
-        Row_union (flatten_row env row1, flatten_row env row2)
-    | Row_inter (row1, row2) ->
-        Row_inter (flatten_row env row1, flatten_row env row2)
-    | Row_diff (row1, row2) ->
-        Row_diff (flatten_row env row1, flatten_row env row2)
+    | Row_spec spec ->
+        let spec = flatten_row_spec env spec in
+        let typs, rows =
+          List.partition_map spec.row_typs ~f:(fun typ ->
+              match typ.type_desc with Trow row -> `Snd row | _ -> `Fst typ )
+        in
+        let spec = {spec with row_typs= typs} in
+        let row =
+          match rows with
+          | [] ->
+              Row_spec spec
+          | row :: rows ->
+              let row =
+                List.fold ~init:row
+                  ~f:(fun row1 row2 -> Row_union (row2, row1))
+                  rows
+              in
+              Row_union (Row_spec spec, row)
+        in
+        (* Every type within this row has already been unfolded, so we do a
+           straight recursion instead to avoid unnecessary overhead.
+        *)
+        let rec squash row = Row_set_spec.row_to_spec_or_row ~f:squash row in
+        squash row
     | _ ->
+        Row_set_spec.row_to_spec_or_row ~f:(flatten_row_error env) row
+
+  and flatten_row env row =
+    match flatten_row_error env row with
+    | Ok spec ->
+        Row_spec (Row_set_spec.to_row_spec spec)
+    | Error row ->
         row
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
@@ -806,7 +941,7 @@ module Type = struct
       | _, Tarrow (_, _, Implicit, _) ->
           1
       | Trow row1, Trow row2 ->
-          row_compare row1 row2
+          Row.compare (Row.compare_spec compare) row1 row2
 
   and compare_all typs1 typs2 =
     match (typs1, typs2) with
@@ -818,46 +953,6 @@ module Type = struct
         1
     | typ1 :: typs1, typ2 :: typs2 ->
         or_compare (compare typ1 typ2) ~f:(fun () -> compare_all typs1 typs2)
-
-  and row_compare row1 row2 =
-    match (row1, row2) with
-    | Row_empty, Row_empty ->
-        0
-    | Row_empty, _ ->
-        -1
-    | _, Row_empty ->
-        1
-    | Row_ctor (lid1, id1), Row_ctor (lid2, id2) ->
-        or_compare (Int.compare id1 id2) ~f:(fun () ->
-            String.compare (Longident.last lid1.txt) (Longident.last lid2.txt)
-        )
-    | Row_ctor _, _ ->
-        -1
-    | _, Row_ctor _ ->
-        1
-    | Row_var typ1, Row_var typ2 ->
-        compare typ1 typ2
-    | Row_var _, _ ->
-        -1
-    | _, Row_var _ ->
-        1
-    | Row_union (row1a, row1b), Row_union (row2a, row2b) ->
-        or_compare (row_compare row1a row2a) ~f:(fun () ->
-            row_compare row1b row2b )
-    | Row_union _, _ ->
-        -1
-    | _, Row_union _ ->
-        1
-    | Row_inter (row1a, row1b), Row_inter (row2a, row2b) ->
-        or_compare (row_compare row1a row2a) ~f:(fun () ->
-            row_compare row1b row2b )
-    | Row_inter _, _ ->
-        -1
-    | _, Row_inter _ ->
-        1
-    | Row_diff (row1a, row1b), Row_diff (row2a, row2b) ->
-        or_compare (row_compare row1a row2a) ~f:(fun () ->
-            row_compare row1b row2b )
 
   let rec get_implicits acc typ =
     match typ.type_desc with
@@ -989,7 +1084,7 @@ module Type = struct
       | _ ->
           fold ~init:set typ ~f:implicit_params
     in
-    implicit_params (Set.empty (module Comparator)) typ
+    implicit_params (Set.empty (module Comparable)) typ
 
   let rec constr_map env ~f typ =
     match typ.type_desc with
@@ -1011,16 +1106,15 @@ module Type = struct
 
   and row_constr_map env ~f row =
     match row with
-    | Row_var typ ->
-        Row_var (constr_map env ~f typ)
+    | Row_spec spec ->
+        Row_spec
+          {spec with row_typs= List.map ~f:(constr_map env ~f) spec.row_typs}
     | Row_union (row1, row2) ->
         Row_union (row_constr_map env ~f row1, row_constr_map env ~f row2)
     | Row_inter (row1, row2) ->
         Row_inter (row_constr_map env ~f row1, row_constr_map env ~f row2)
     | Row_diff (row1, row2) ->
         Row_diff (row_constr_map env ~f row1, row_constr_map env ~f row2)
-    | _ ->
-        row
 
   let rec bubble_label_aux env label typ =
     match typ.type_desc with
@@ -1068,6 +1162,8 @@ module Type = struct
         true
     | _ ->
         false
+
+  module Set = Comparable.Set
 end
 
 module TypeDecl = struct

@@ -1,3 +1,4 @@
+open Core_kernel
 open Ast_types
 open Type0
 open Format
@@ -46,18 +47,21 @@ and variant fmt v =
         v.var_params
 
 and row_desc fmt = function
-  | Row_empty ->
-      ()
-  | Row_ctor (lid, _) ->
-      Longident.pp fmt lid.txt
-  | Row_var typ ->
-      type_expr fmt typ
+  | Row_spec spec ->
+      row_spec fmt spec
   | Row_union (row1, row2) ->
       row_desc fmt row1 ; bar_sep fmt () ; row_desc fmt row2
   | Row_inter (row1, row2) ->
       fprintf fmt "%a@ & [@[<hv1>@,%a@,@]]" row_desc row1 row_desc row2
   | Row_diff (row1, row2) ->
       fprintf fmt "%a@ - [@[<hv1>@,%a@,@]]" row_desc row1 row_desc row2
+
+and row_spec fmt spec =
+  let first = ref true in
+  let bar_sep fmt () = if !first then first := false else bar_sep fmt () in
+  List.iter spec.row_ctors ~f:(fun (lid, _) ->
+      bar_sep fmt () ; Longident.pp fmt lid ) ;
+  List.iter spec.row_typs ~f:(fun typ -> bar_sep fmt () ; type_expr fmt typ)
 
 let field_decl fmt decl =
   fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident.txt type_expr decl.fld_type

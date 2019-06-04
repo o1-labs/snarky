@@ -267,13 +267,12 @@ let rec add_implicits ~loc implicits typ env =
       Envi.Type.mk (Tarrow (typ', typ, Implicit, Nolabel)) env
 
 let free_type_vars ?depth typ =
-  let empty = Set.empty (module Envi.Type) in
+  let empty = Envi.Type.Set.empty in
   let rec free_type_vars set typ =
     match typ.type_desc with
     | Tpoly (vars, typ) ->
         let poly_vars =
-          Set.union_list
-            (module Envi.Type)
+          Envi.Type.Set.union_list
             (List.map ~f:(Envi.Type.type_vars ?depth) vars)
         in
         Set.union set (Set.diff (free_type_vars empty typ) poly_vars)

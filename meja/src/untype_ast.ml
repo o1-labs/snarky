@@ -28,18 +28,41 @@ let rec type_desc ?loc = function
 and type_expr ?loc typ = type_desc ?loc typ.type_desc
 
 and row_desc ?loc = function
-  | Row_empty ->
-      Parsetypes.Row_empty
-  | Row_ctor (lid, _) ->
-      Parsetypes.Row_ctor lid
-  | Row_var typ ->
-      Parsetypes.Row_var (type_expr ?loc typ)
+  | Row_spec spec ->
+      row_spec ?loc spec
   | Row_union (row1, row2) ->
       Parsetypes.Row_union (row_desc ?loc row1, row_desc ?loc row2)
   | Row_inter (row1, row2) ->
       Parsetypes.Row_inter (row_desc ?loc row1, row_desc ?loc row2)
   | Row_diff (row1, row2) ->
       Parsetypes.Row_diff (row_desc ?loc row1, row_desc ?loc row2)
+
+and row_spec ?loc spec =
+  let ctors_list =
+    List.map spec.row_ctors ~f:(fun (lid, _) ->
+        Parsetypes.Row_ctor (Loc.mk ?loc lid) )
+  in
+  let typs_list =
+    List.map spec.row_typs ~f:(fun typ ->
+        Parsetypes.Row_var (type_expr ?loc typ) )
+  in
+  let rec pair l =
+    match l with
+    | a :: b :: l ->
+        Parsetypes.Row_union (a, b) :: pair l
+    | _ ->
+        l
+  in
+  let rec pair_rec l =
+    match l with
+    | [] ->
+        Parsetypes.Row_empty
+    | [r] ->
+        r
+    | _ ->
+        pair_rec (pair l)
+  in
+  pair_rec (ctors_list @ typs_list)
 
 let field_decl ?loc fld =
   Type_decl.Field.mk ?loc fld.fld_ident.txt (type_expr ?loc fld.fld_type)
