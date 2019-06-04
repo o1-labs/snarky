@@ -9,35 +9,34 @@ let pp_name ppf name =
   then Format.pp_print_string ppf name
   else Format.fprintf ppf "(%s)" name
 
+module Lexing = struct
+  type position = Lexing.position =
+    {pos_fname: string; pos_lnum: int; pos_bol: int; pos_cnum: int}
+  [@@deriving ord, sexp]
+
+  include (Lexing : module type of Lexing with type position := position)
+end
+
+module Location = struct
+  type t = Location.t =
+    {loc_start: Lexing.position; loc_end: Lexing.position; loc_ghost: bool}
+  [@@deriving ord, sexp]
+
+  type 'a loc = 'a Location.loc = {txt: 'a; loc: t} [@@deriving ord, sexp]
+
+  include (
+    Location :
+      module type of Location with type t := t and type 'a loc := 'a loc )
+end
+
 module Longident = struct
-  include Longident
+  type t = Longident.t =
+    | Lident of string
+    | Ldot of t * string
+    | Lapply of t * t
+  [@@deriving ord, sexp]
 
-  let rec compare lid1 lid2 =
-    let nonzero_or x f = if Int.equal x 0 then f () else x in
-    match (lid1, lid2) with
-    | Lident name1, Lident name2 ->
-        String.compare name1 name2
-    | Ldot (lid1, name1), Ldot (lid2, name2) ->
-        nonzero_or (String.compare name1 name2) (fun () -> compare lid1 lid2)
-    | Lapply (lid1a, lid1b), Lapply (lid2a, lid2b) ->
-        nonzero_or (compare lid1a lid2a) (fun () -> compare lid1b lid2b)
-    | Lident _, _ ->
-        -1
-    | _, Lident _ ->
-        1
-    | Ldot _, _ ->
-        -1
-    | _, Ldot _ ->
-        1
-
-  let rec sexp_of_t lid =
-    match lid with
-    | Lident name ->
-        Sexp.Atom name
-    | Ldot (lid, name) ->
-        Sexp.List [sexp_of_t lid; Atom name]
-    | Lapply (lid1, lid2) ->
-        Sexp.List [sexp_of_t lid1; sexp_of_t lid2]
+  include (Longident : module type of Longident with type t := t)
 
   include Comparator.Make (struct
     type nonrec t = t
@@ -67,11 +66,17 @@ module Longident = struct
         failwith "Unhandled Lapply in add_outer_module"
 end
 
-type str = string Location.loc
+type str = string Location.loc [@@deriving ord, sexp]
 
-type lid = Longident.t Location.loc
+type lid = Longident.t Location.loc [@@deriving ord, sexp]
 
-type explicitness = Implicit | Explicit
+type explicitness = Implicit | Explicit [@@deriving ord, sexp]
+
+type arg_label = Asttypes.arg_label =
+  | Nolabel
+  | Labelled of string
+  | Optional of string
+[@@deriving ord, sexp]
 
 let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
 
