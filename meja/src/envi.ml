@@ -1108,6 +1108,9 @@ module TypeDecl = struct
 
   let unfold_alias ~loc typ env =
     match find_of_type ~loc typ env with
+    | Some ({tdec_desc= TUnfold typ'; _}, _, _) when not (phys_equal typ typ')
+      ->
+        Some typ'
     | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
         Some (Type.copy ~loc alias_typ bound_vars env)
     | _ ->
@@ -1115,6 +1118,9 @@ module TypeDecl = struct
 
   let rec find_unaliased_of_type ~loc typ env =
     match find_of_type ~loc typ env with
+    | Some ({tdec_desc= TUnfold typ'; _}, _, _) when not (phys_equal typ typ')
+      ->
+        find_unaliased_of_type ~loc typ' env
     | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
         let typ = Type.copy ~loc alias_typ bound_vars env in
         find_unaliased_of_type ~loc typ env
