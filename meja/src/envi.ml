@@ -792,6 +792,13 @@ module Type = struct
     | typ1 :: typs1, typ2 :: typs2 ->
         or_compare (compare typ1 typ2) ~f:(fun () -> compare_all typs1 typs2)
 
+  let rec weak_variables depth set typ =
+    match typ.type_desc with
+    | Tvar _ when typ.type_depth > depth ->
+        Set.add set typ
+    | _ ->
+        Type0.fold ~init:set ~f:(weak_variables depth) typ
+
   let rec get_implicits acc typ =
     match typ.type_desc with
     | Tarrow (typ1, typ2, Implicit, label) ->
@@ -901,6 +908,60 @@ module Type = struct
             | _ ->
                 raise (Error (exp2.exp_loc, No_unifiable_implicit)) ) ;
           cmp )
+    in
+    let implicit_vars =
+      (* Eliminate unifiable implicit variables containing 'weak type
+         variables'. *)
+      let consider_weak = ref true in
+      let weak_vars_set = ref (Set.empty (module Comparator)) in
+      let strong_implicit_vars, weak_implicit_vars =
+        List.partition_tf implicit_vars ~f:(fun {exp_type; _} ->
+            if !consider_weak then
+              let weak_vars =
+                weak_variables env.depth
+                  (Set.empty (module Comparator))
+                  exp_type
+              in
+              if Set.is_empty weak_vars then true
+              else (
+                if Set.is_empty (Set.inter !weak_vars_set weak_vars) then
+                  weak_vars_set := Set.union !weak_vars_set weak_vars
+                else
+                  (* Several implicit variables contain the same weak type
+                     variable, so we give up on eliminating variables.
+
+                     This avoids an expensive proof search for a dependent-type
+                     witness of the form:
+                       forall (T1, ..., Tn : Type -> Type),
+                         exists (A1, ..., An : Type),
+                         T1(A1, ..., An) + ... + Tn(A1, ..., An).
+                *)
+                  consider_weak := false ;
+                false )
+            else true )
+      in
+      if !consider_weak then
+        let weak_implicit_vars =
+          List.filter weak_implicit_vars ~f:(fun e_weak ->
+              not
+                (List.exists strong_implicit_vars ~f:(fun e_strong ->
+                     if
+                       Type0.equal_at_depth ~depth:env.depth e_weak.exp_type
+                         e_strong.exp_type
+                     then (
+                       ignore
+                         (is_subtype env e_strong.exp_type ~of_:e_weak.exp_type) ;
+                       ( match e_weak.exp_desc with
+                       | Unifiable desc ->
+                           desc.expression <- Some e_strong
+                       | _ ->
+                           raise
+                             (Error (e_weak.exp_loc, No_unifiable_implicit)) ) ;
+                       true )
+                     else false )) )
+        in
+        strong_implicit_vars @ weak_implicit_vars
+      else implicit_vars
     in
     let local_implicit_vars, implicit_vars =
       if toplevel then (implicit_vars, [])
