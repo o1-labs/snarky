@@ -71,6 +71,9 @@ let rec check_type_aux ~loc typ ctyp env =
   | _, Tpoly (_, ctyp) ->
       check_type_aux typ ctyp env
   | Tvar _, Tvar _ ->
+      if Int.equal typ.type_depth Type0.generic_depth ||
+      Int.equal ctyp.type_depth Type0.generic_depth then
+        raise (Error (loc, Cannot_unify (typ, ctyp))) ;
       bind_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () ->
@@ -84,10 +87,14 @@ let rec check_type_aux ~loc typ ctyp env =
                 Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
   | Tvar _, _ ->
+      if Int.equal typ.type_depth Type0.generic_depth then
+        raise (Error (loc, Cannot_unify (typ, ctyp))) ;
       bind_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance typ ctyp env)
   | _, Tvar _ ->
+      if Int.equal ctyp.type_depth Type0.generic_depth then
+        raise (Error (loc, Cannot_unify (typ, ctyp))) ;
       bind_none
         (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance ctyp typ env)

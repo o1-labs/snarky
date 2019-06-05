@@ -1,6 +1,8 @@
 open Core_kernel
 open Ast_types
 
+let generic_depth = 1000000
+
 type type_expr =
   {mutable type_desc: type_desc; type_id: int; mutable type_depth: int}
 
