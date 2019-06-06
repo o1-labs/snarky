@@ -124,10 +124,10 @@ let rec pattern_desc fmt = function
 
 and pattern_desc_bracket fmt pat =
   match pat with
-  | PConstraint _ | POr _ ->
-      fprintf fmt "(@[<hv1>@,%a@,@])" pattern_desc pat
-  | _ ->
+  | PAny | PVariable _ | PTuple _ | PInt _ | PRecord _ | PCtor _ ->
       pattern_desc fmt pat
+  | _ ->
+      fprintf fmt "(@[<hv1>@,%a@,@])" pattern_desc pat
 
 and pattern fmt pat = pattern_desc fmt pat.pat_desc
 
@@ -214,12 +214,19 @@ let rec expression_desc fmt = function
 
 and expression_desc_bracket fmt exp =
   match exp with
-  | Seq _ | Fun _ | Newtype _ | Let _ | Match _ ->
-      fprintf fmt "(@[<hv1>@,%a@,@])" expression_desc exp
   | Unifiable {expression= Some e; _} ->
       expression_bracket fmt e
-  | _ ->
+  | Apply _
+  | Variable _
+  | Int _
+  | Constraint _
+  | Tuple _
+  | Field _
+  | Record _
+  | Ctor _ ->
       expression_desc fmt exp
+  | _ ->
+      fprintf fmt "(@[<hv1>@,%a@,@])" expression_desc exp
 
 and expression fmt exp = expression_desc fmt exp.exp_desc
 
