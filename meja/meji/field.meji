@@ -1,0 +1,4 @@
+module Var :
+{
+  type t;
+}

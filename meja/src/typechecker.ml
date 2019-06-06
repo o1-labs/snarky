@@ -28,22 +28,26 @@ exception Error of Location.t * error
 let bind_none x f = match x with Some x -> x | None -> f ()
 
 let unpack_decls ~loc typ ctyp env =
+  let unfold_typ () =
+    Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
+        (typ, ctyp) )
+  in
+  let unfold_ctyp () =
+    Option.map (Envi.TypeDecl.unfold_alias ~loc ctyp env) ~f:(fun ctyp ->
+        (typ, ctyp) )
+  in
   match (typ.type_desc, ctyp.type_desc) with
   | Tctor variant, Tctor cvariant ->
       let decl_id, cdecl_id =
         (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
       in
-      let unfold_typ () =
-        Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
-            (typ, ctyp) )
-      in
-      let unfold_ctyp () =
-        Option.map (Envi.TypeDecl.unfold_alias ~loc ctyp env) ~f:(fun ctyp ->
-            (typ, ctyp) )
-      in
       (* Try to unfold the oldest type definition first. *)
       if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
       else bind_none (Some (unfold_typ ())) unfold_ctyp
+  | Tctor _, _ ->
+      unfold_typ ()
+  | _, Tctor _ ->
+      unfold_ctyp ()
   | _ ->
       None
 
@@ -62,6 +66,7 @@ let rec check_type_aux ~loc typ ctyp env =
     | None ->
         None
   in
+  Type0.unify_depths typ ctyp ;
   match (typ.type_desc, ctyp.type_desc) with
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
@@ -77,13 +82,10 @@ let rec check_type_aux ~loc typ ctyp env =
             (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
             (fun () ->
               (* Add the outermost (in terms of lexical scope) of the variables as
-                 the instance for the other. If they are at the same level, prefer
-                 the lowest ID to ensure strict ordering and thus no cycles. *)
-              if
-                ctyp.type_depth < typ.type_depth
-                || Int.equal ctyp.type_depth typ.type_depth
-                   && ctyp.type_id < typ.type_id
-              then Envi.Type.add_instance typ ctyp env
+                 the instance for the other. We do this by chosing the type of
+                 lowest ID, to ensure strict ordering and thus no cycles. *)
+              if ctyp.type_id < typ.type_id then
+                Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
   | Tvar _, _ ->
       bind_none
@@ -116,27 +118,36 @@ let rec check_type_aux ~loc typ ctyp env =
           raise (Error (loc, Cannot_unify (typ, ctyp))) ) ;
       check_type_aux typ1 ctyp1 env ;
       check_type_aux typ2 ctyp2 env
-  | Tctor variant, Tctor constr_variant ->
-      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-      then
-        match
-          List.iter2 variant.var_params constr_variant.var_params
-            ~f:(fun param constr_param -> check_type_aux param constr_param env
-          )
-        with
-        | Ok env ->
-            env
-        | Unequal_lengths ->
-            raise (Error (loc, Cannot_unify (typ, ctyp)))
-      else
-        let typ, ctyp =
-          match unpack_decls ~loc typ ctyp env with
-          | Some (typ, ctyp) ->
-              (typ, ctyp)
-          | None ->
-              raise (Error (loc, Cannot_unify (typ, ctyp)))
-        in
+  | Tctor variant, Tctor constr_variant -> (
+    (* Always try to unfold first, so that type aliases with phantom
+         parameters can unify, as in OCaml.
+      *)
+    match unpack_decls ~loc typ ctyp env with
+    | Some (typ, ctyp) ->
         check_type_aux typ ctyp env
+    | None ->
+        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
+        then
+          match
+            List.iter2 variant.var_params constr_variant.var_params
+              ~f:(fun param constr_param ->
+                check_type_aux param constr_param env )
+          with
+          | Ok env ->
+              env
+          | Unequal_lengths ->
+              raise (Error (loc, Cannot_unify (typ, ctyp)))
+        else raise (Error (loc, Cannot_unify (typ, ctyp))) )
+  | Tctor _, _ | _, Tctor _ ->
+      (* Unfold an alias and compare again *)
+      let typ, ctyp =
+        match unpack_decls ~loc typ ctyp env with
+        | Some (typ, ctyp) ->
+            (typ, ctyp)
+        | None ->
+            raise (Error (loc, Cannot_unify (typ, ctyp)))
+      in
+      check_type_aux typ ctyp env
   | _, _ ->
       raise (Error (loc, Cannot_unify (typ, ctyp)))
 
@@ -565,9 +576,10 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
       let typ = Envi.find_name ~loc name env in
-      check_type ~loc env expected typ ;
       let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
-      (Envi.Type.generate_implicits e env, env)
+      let e = Envi.Type.generate_implicits e env in
+      check_type ~loc env expected e.exp_type ;
+      (e, env)
   | Int i ->
       let typ = Initial_env.Type.int in
       check_type ~loc env expected typ ;
@@ -590,6 +602,7 @@ let rec get_expression env expected exp =
       let p, env = check_pattern ~add:add_name env p_typ p in
       let body, env = get_expression env body_typ body in
       let env = Envi.close_expr_scope env in
+      Envi.Type.update_depths env typ ;
       ( {exp_loc= loc; exp_type= typ; exp_desc= Fun (label, p, body, explicit)}
       , env )
   | Newtype (name, body) ->
@@ -616,6 +629,7 @@ let rec get_expression env expected exp =
       (* Substitute the self-reference for a type variable. *)
       typ.type_desc <- Tvar (Some name, Explicit) ;
       let env = Envi.close_expr_scope env in
+      Envi.Type.update_depths env body.exp_type ;
       ( {exp_loc= loc; exp_type= body.exp_type; exp_desc= Newtype (name, body)}
       , env )
   | Seq (e1, e2) ->
@@ -627,6 +641,7 @@ let rec get_expression env expected exp =
       let p, e1, env = check_binding env p e1 in
       let e2, env = get_expression env expected e2 in
       let env = Envi.close_expr_scope env in
+      Envi.Type.update_depths env e2.exp_type ;
       ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
   | Constraint (e, typ') ->
       let typ, env = Typet.Type.import typ' env in
@@ -662,6 +677,7 @@ let rec get_expression env expected exp =
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )
       in
+      Envi.Type.update_depths env expected ;
       ({exp_loc= loc; exp_type= expected; exp_desc= Match (e, cases)}, env)
   | Field (e, field) ->
       let field_info =
@@ -853,6 +869,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let env = Envi.open_expr_scope env in
   let e, env = get_expression env typ e in
   let env = Envi.close_expr_scope env in
+  Envi.Type.update_depths env e.exp_type ;
   let exp_type = Envi.Type.flatten e.exp_type env in
   let e = {e with exp_type} in
   let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
@@ -910,13 +927,15 @@ let rec check_signature_item env item =
   match item.sig_desc with
   | SValue (name, typ) ->
       let env = Envi.open_expr_scope env in
-      let typ, env = Typet.Type.import ~must_find:false typ env in
+      let typ, env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
+      Envi.Type.update_depths env typ ;
       add_polymorphised name typ env
   | SInstance (name, typ) ->
       let env = Envi.open_expr_scope env in
-      let typ, env = Typet.Type.import ~must_find:false typ env in
+      let typ, env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
+      Envi.Type.update_depths env typ ;
       let env = add_polymorphised name typ env in
       Envi.add_implicit_instance name.txt typ env
   | STypeDecl decl ->

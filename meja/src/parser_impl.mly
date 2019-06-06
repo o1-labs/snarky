@@ -320,6 +320,8 @@ simpl_expr:
 expr:
   | x = simpl_expr
     { x }
+  | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
+    { mkexp ~pos:$loc (Constraint (x, typ)) }
   | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
     { let unit_pat =
         mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
