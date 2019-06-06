@@ -1,2 +1,2 @@
 File "tests/newtype-non-gadt.meja", line 3, characters 6-7:
-Error: Cannot unify _ and int
+Error: Cannot unify t and int

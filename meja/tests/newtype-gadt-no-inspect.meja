@@ -1,6 +1,6 @@
 type t('a) = A(int) : t(int) | B(bool) : t(bool);
 
-let f = fun (type t, x : t) => {
+let f = fun (type u, x : u) => {
   switch (x) {
     | A(_) => 15
     | B(_) => 20
