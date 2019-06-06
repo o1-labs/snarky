@@ -143,15 +143,18 @@ let typ_of_decl ~loc (decl : type_decl) =
                 ~run:(fun _ -> var_of_list ["Typ"; "alloc"])
             in
             let check =
-              bind_over
-                ~result:(Exp.ctor ~loc (Lid.of_name "()"))
-                ~bind:
-                  (Exp.fun_ (Pat.var ~loc "x")
-                     (Exp.fun_ (Pat.var ~loc "f")
-                        (Exp.apply
-                           (Exp.var ~loc (Lid.of_name "f"))
-                           [(Nolabel, Exp.var ~loc (Lid.of_name "x"))])))
-                ~run:(apply_var_of_list ["Typ"; "check"])
+              Exp.fun_ ~loc
+                (Pat.record ~loc
+                   (List.map fields ~f:(fun {fld_ident; _} ->
+                        (mk_lid fld_ident, Pat.var ~loc fld_ident.txt) )))
+                (List.fold
+                   ~init:(Exp.ctor ~loc (Lid.of_name "()"))
+                   fields
+                   ~f:(fun result {fld_ident; _} ->
+                     Exp.seq ~loc
+                       (apply_var_of_list ["Typ"; "check"]
+                          (Exp.var ~loc (Lid.of_name fld_ident.txt)))
+                       result ))
             in
             let body =
               Exp.record ~loc

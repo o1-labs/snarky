@@ -35,14 +35,10 @@ include struct
                     Typ.Alloc.return {a; b; c} ) ) )
     ; Typ.check=
         (fun {a; b; c; _} ->
-          (fun x f -> f x)
-            ((Typ.check __implicit1__) c)
-            (fun c ->
-              (fun x f -> f x)
-                ((Typ.check __implicit2__) b)
-                (fun b ->
-                  (fun x f -> f x) ((Typ.check __implicit3__) a) (fun a -> ())
-                  ) ) ) }
+          (Typ.check __implicit1__) c ;
+          (Typ.check __implicit2__) b ;
+          (Typ.check __implicit3__) a ;
+          () ) }
 end
 
 let x = {a= 15; b= 20; c= 25}
@@ -85,15 +81,10 @@ module X = struct
                       Typ.Alloc.return {a; b; c} ) ) )
       ; Typ.check=
           (fun {a; b; c; _} ->
-            (fun x f -> f x)
-              ((Typ.check __implicit13__) c)
-              (fun c ->
-                (fun x f -> f x)
-                  ((Typ.check __implicit13__) b)
-                  (fun b ->
-                    (fun x f -> f x)
-                      ((Typ.check __implicit13__) a)
-                      (fun a -> ()) ) ) ) }
+            (Typ.check __implicit13__) c ;
+            (Typ.check __implicit13__) b ;
+            (Typ.check __implicit13__) a ;
+            () ) }
   end
 
   let x = {a= 1; b= 1; c= 1}
