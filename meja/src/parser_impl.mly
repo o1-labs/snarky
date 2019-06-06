@@ -84,6 +84,7 @@ let consexp ~pos hd tl =
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
+%nonassoc BAR
 %nonassoc LPAREN
 
 %start implementation
