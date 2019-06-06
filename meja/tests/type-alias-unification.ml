@@ -31,26 +31,33 @@ module Alias_record = struct
   include struct
     type ('a, 'b) u = {a: 'a; b: 'b}
 
-    let u_typ : (_, (_, _) u) Typ.t =
+    let u_typ __implicit1__ __implicit2__ : (('a2, 'b2) u, ('a1, 'b1) u) Typ.t
+        =
       { Typ.store=
           (fun {a; b; _} ->
-            Typ.Store.bind (Typ.store b) (fun b ->
-                Typ.Store.bind (Typ.store a) (fun a -> Typ.Store.return {a; b})
-            ) )
+            Typ.Store.bind
+              ((Typ.store __implicit1__) b)
+              (fun b ->
+                Typ.Store.bind
+                  ((Typ.store __implicit2__) a)
+                  (fun a -> Typ.Store.return {a; b}) ) )
       ; Typ.read=
           (fun {a; b; _} ->
-            Typ.Read.bind (Snarky.read b) (fun b ->
-                Typ.Read.bind (Snarky.read a) (fun a -> Typ.Read.return {a; b})
-            ) )
+            Typ.Read.bind
+              ((Typ.read __implicit1__) b)
+              (fun b ->
+                Typ.Read.bind
+                  ((Typ.read __implicit2__) a)
+                  (fun a -> Typ.Read.return {a; b}) ) )
       ; Typ.alloc=
-          (fun {a; b; _} ->
-            Typ.Alloc.bind Typ.alloc (fun b ->
-                Typ.Alloc.bind Typ.alloc (fun a -> Typ.Alloc.return {a; b}) )
-            )
+          Typ.Alloc.bind (Typ.alloc __implicit1__) (fun b ->
+              Typ.Alloc.bind (Typ.alloc __implicit2__) (fun a ->
+                  Typ.Alloc.return {a; b} ) )
       ; Typ.check=
           (fun {a; b; _} ->
-            (fun f x -> f x) (Typ.check b) (fun b ->
-                (fun f x -> f x) (Typ.check a) (fun a -> ()) ) ) }
+            (Typ.check __implicit1__) b ;
+            (Typ.check __implicit2__) a ;
+            () ) }
   end
 
   type ('a, 'b) v = ('a, 'a) u

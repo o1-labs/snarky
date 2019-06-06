@@ -1058,23 +1058,26 @@ let rec check_statement env stmt =
       let _, e, env = check_binding ~toplevel:true env p e in
       let env = Envi.add_implicit_instance name.txt e.exp_type env in
       (env, {stmt with stmt_desc= Instance (name, e)})
-  | TypeDecl decl' ->
-      let decl, env = Typet.TypeDecl.import decl' env in
+  | TypeDecl decl when !in_decl ->
+      let decl, env = Typet.TypeDecl.import decl env in
       let stmt =
         {stmt with stmt_desc= TypeDecl (Untype_ast.type_decl ~loc decl)}
       in
-      if !in_decl then (env, stmt)
-      else (
-        in_decl := true ;
-        let ret =
-          match Codegen.typ_of_decl ~loc env decl with
+      (env, stmt)
+  | TypeDecl decl ->
+      in_decl := true ;
+      let ret =
+        let stmt =
+          match Codegen.typ_of_decl ~loc decl with
           | Some typ_stmts ->
-              (env, {stmt with stmt_desc= Multiple typ_stmts})
+              {stmt with stmt_desc= Multiple typ_stmts}
           | None ->
-              (env, stmt)
+              stmt
         in
-        in_decl := false ;
-        ret )
+        check_statement env stmt
+      in
+      in_decl := false ;
+      ret
   | Module (name, m) ->
       let env = Envi.open_module env in
       let env, m = check_module_expr env m in
