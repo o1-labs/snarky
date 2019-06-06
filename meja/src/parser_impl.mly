@@ -65,6 +65,7 @@ let consexp ~pos hd tl =
 %token DOTDOTDOT
 %token DOTDOT
 %token DOT
+%token MINUS
 %token <string> COMMENT
 %token <string> PREFIXOP
 %token <string> INFIXOP0
@@ -79,7 +80,7 @@ let consexp ~pos hd tl =
 %left     INFIXOP0 EQUAL
 %right    INFIXOP1
 %right    COLONCOLON
-%left     INFIXOP2 PLUSEQUAL
+%left     MINUS INFIXOP2 PLUSEQUAL
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
@@ -258,6 +259,7 @@ infix_operator:
   | op = INFIXOP0 { op }
   | EQUAL         { "=" }
   | op = INFIXOP1 { op }
+  | MINUS         { "-" }
   | op = INFIXOP2 { op }
   | PLUSEQUAL     { "+=" }
   | op = INFIXOP3 { op }
@@ -318,6 +320,8 @@ simpl_expr:
 expr:
   | x = simpl_expr
     { x }
+  | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
+    { mkexp ~pos:$loc (Constraint (x, typ)) }
   | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
     { let unit_pat =
         mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
@@ -337,6 +341,9 @@ expr:
         (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e1; Nolabel, e2])) }
   | op = PREFIXOP e = expr
     { let op = mkloc (Lident op) ~pos:$loc(op) in
+      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e])) }
+  | _op = MINUS e = expr
+    { let op = mkloc (Lident "~-") ~pos:$loc(_op) in
       mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e])) }
   | SWITCH LPAREN e = expr_or_bare_tuple RPAREN LBRACE rev_cases = list(match_case, {}) RBRACE
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
@@ -409,19 +416,29 @@ pat_arg_opt:
       , mkpat ~pos:$loc
           (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
 
+function_body:
+ | EQUALGT LBRACE body = block RBRACE
+   { body }
+ | err = err
+   { raise (Error (err, Fun_no_fat_arrow)) }
+
 function_from_args:
-  | p = pat_arg_opt RPAREN EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg_opt RPAREN body = function_body
     { let (label, p) = p in
       mkexp ~pos:$loc (Fun (label, p, body, Explicit)) }
-  | pat_arg_opt RPAREN err = err
-    { raise (Error (err, Fun_no_fat_arrow)) }
-  | p = pat_arg_opt RPAREN COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg_opt RPAREN COLON typ = type_expr body = function_body
     { let (label, p) = p in
       mkexp ~pos:$loc (Fun (label, p, mkexp ~pos:$loc(typ)
         (Constraint (body, typ)), Explicit)) }
   | p = pat_arg_opt COMMA f = function_from_args
     { let (label, p) = p in
       mkexp ~pos:$loc (Fun (label, p, f, Explicit)) }
+  | TYPE t = as_loc(lident) RPAREN body = function_body
+    { mkexp ~pos:$loc (Newtype (t, body)) }
+  | TYPE t = as_loc(lident) COMMA f = function_from_args
+    { mkexp ~pos:$loc (Newtype (t, f)) }
+  | pat_arg_opt RPAREN err = err
+    { raise (Error (err, Fun_no_fat_arrow)) }
 
 function_from_implicit_args:
   | p = pat_arg RBRACE LPAREN f = function_from_args
