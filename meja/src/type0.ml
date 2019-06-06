@@ -161,33 +161,30 @@ let rec equal_at_depth ~depth typ1 typ2 =
 
 let is_newtype typ =
   match typ.type_desc with
-  | Tctor {var_decl= {tdec_is_newtype= true; _}; _} -> true
-  | _ -> false
+  | Tctor {var_decl= {tdec_is_newtype= true; _}; _} ->
+      true
+  | _ ->
+      false
 
 let is_generic typ = Int.equal typ.type_depth generic_depth
 
 (* TODO: integrate with a backtrack mechanism for unification errors. *)
 let make_generic typ = typ.type_depth <- generic_depth
 
-let rec generalise typ =
-  make_generic typ;
-  iter ~f:generalise typ
+let rec generalise typ = make_generic typ ; iter ~f:generalise typ
 
 (* TODO: integrate with a backtrack mechanism for unification errors. *)
-let set_depth_raw depth typ =
-  typ.type_depth <- depth
+let set_depth_raw depth typ = typ.type_depth <- depth
 
 let rec ungeneralise depth typ =
-  if is_generic typ then
-    set_depth_raw depth typ ;
+  if is_generic typ then set_depth_raw depth typ ;
   iter ~f:(ungeneralise depth) typ
 
 let set_depth depth typ =
   if is_newtype typ then
     (* Newtypes should always be at the generic depth. *)
     assert (is_generic typ)
-  else
-    set_depth_raw depth typ
+  else set_depth_raw depth typ
 
 let update_depth depth typ = if typ.type_depth > depth then set_depth depth typ
 
