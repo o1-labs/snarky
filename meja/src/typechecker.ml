@@ -528,7 +528,16 @@ let rec check_pattern ~add env typ pat =
           Note: We don't generalise the type itself, otherwise we would be able
           to inspect a newtype by unifying it with a constructor of a GADT.
          *)
-        Type0.iter ~f:(Type0.ungeneralise env.Envi.depth) typ ;
+        Type0.iter typ
+          ~f:
+            (let rec ungeneralise typ =
+               Type0.ungeneralise env.Envi.depth typ ;
+               Option.iter
+                 ~f:(Type0.iter ~f:ungeneralise)
+                 (Envi.Type.instance env typ) ;
+               Type0.iter ~f:ungeneralise typ
+             in
+             ungeneralise) ;
       let arg, env =
         match arg with
         | Some arg ->
