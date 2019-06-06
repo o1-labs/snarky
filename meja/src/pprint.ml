@@ -181,7 +181,7 @@ let rec expression_desc fmt = function
       fprintf fmt "let@[<hv2>@ %a@] =@ @[<hv2>%a@];@;@]@ %a" pattern p
         expression e1 expression e2
   | Constraint (e, typ) ->
-      fprintf fmt "@[<hv2>%a :@ %a@]" expression_bracket e type_expr typ
+      fprintf fmt "(@[<hv1>%a :@ %a@])" expression e type_expr typ
   | Tuple es ->
       fprintf fmt "(@[<hv1>@,%a@,@])"
         (pp_print_list ~pp_sep:comma_sep expression)
