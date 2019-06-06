@@ -522,7 +522,6 @@ let rec check_pattern ~add env typ pat =
       ({pat_loc= loc; pat_type= typ; pat_desc= PRecord fields}, env)
   | PCtor (name, arg) ->
       let typ', args_typ, is_gadt = get_ctor name env in
-      let env = Envi.set_can_generalise true env in
       check_type ~loc env typ typ' ;
       if is_gadt then
         (* Lower any generalised values *within the current type* to the
@@ -534,7 +533,6 @@ let rec check_pattern ~add env typ pat =
           to inspect a newtype by unifying it with a constructor of a GADT.
          *)
         Type0.iter ~f:(Type0.ungeneralise env.Envi.depth) typ ;
-      let env = Envi.set_can_generalise false env in
       let arg, env =
         match arg with
         | Some arg ->
@@ -713,9 +711,7 @@ let rec get_expression env expected exp =
             in
             let p, e, env =
               try
-                let env = Envi.set_specialising true env in
                 let p, env = check_pattern ~add:add_polymorphised env typ p in
-                let env = Envi.set_specialising false env in
                 (* Check any instances provided by GADTs. *)
                 List.iter newtypes ~f:(fun (typ, _) ->
                     match Envi.Type.instance env typ with

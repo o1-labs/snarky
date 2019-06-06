@@ -357,19 +357,10 @@ let empty_resolve_env : Scope.t resolve_env =
   ; predeclare_types= false }
 
 type t =
-  { scope_stack: Scope.t list
-  ; depth: int
-  ; resolve_env: Scope.t resolve_env
-  ; in_specialising_scope: bool
-        (* true if GADT parameters can unify with generic variables *)
-  ; can_generalise: bool (* true if unifying GADT parameters *) }
+  {scope_stack: Scope.t list; depth: int; resolve_env: Scope.t resolve_env}
 
 let empty resolve_env =
-  { scope_stack= [Scope.empty Scope.Module]
-  ; depth= 0
-  ; resolve_env
-  ; in_specialising_scope= true
-  ; can_generalise= true }
+  {scope_stack= [Scope.empty Scope.Module]; depth= 0; resolve_env}
 
 let current_scope {scope_stack; _} =
   match List.hd scope_stack with
@@ -430,15 +421,6 @@ let pop_module ~loc env =
   (m, env)
 
 let close_expr_scope env = snd (pop_expr_scope env)
-
-let set_specialising b env = {env with in_specialising_scope= b}
-
-let is_specialising {in_specialising_scope= b; _} = b
-
-let set_can_generalise b env =
-  if is_specialising env then {env with can_generalise= b} else env
-
-let can_generalise {can_generalise= b; _} = b
 
 let set_type_predeclaring env = env.resolve_env.predeclare_types <- true
 
