@@ -12,4 +12,12 @@ type (_, _) t =
   | B : 'a * (_, 'rest) t -> ('a, 'a -> 'rest) t
 
 let h (type rest) (x : ('a, rest) t) : rest =
-  match x with A -> () | B (x, _) -> x
+  match x with A -> (() : _) | B (x, _) -> x
+
+type _ u = Int : int u | Bool : bool u
+
+let destruct_with (type kind) (x : kind u) (y : kind) : kind =
+  match (x, y) with Int, i -> i + 1 | Bool, b -> not b
+
+let destruct_with2 (type kind) (x : kind u) (y : kind) : kind =
+  match (y, x) with i, Int -> i + 1 | b, Bool -> not b

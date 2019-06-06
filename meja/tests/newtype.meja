@@ -16,7 +16,7 @@ type t(_, _) =
 
 let h = fun (type rest, x : t('a, rest)) : rest => {
   switch (x) {
-    | A => ()
+    | A => (() : rest)
     | B(x, _) => x
   };
 };
