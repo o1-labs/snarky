@@ -357,10 +357,19 @@ let empty_resolve_env : Scope.t resolve_env =
   ; predeclare_types= false }
 
 type t =
-  {scope_stack: Scope.t list; depth: int; resolve_env: Scope.t resolve_env}
+  { scope_stack: Scope.t list
+  ; depth: int
+  ; resolve_env: Scope.t resolve_env
+  ; in_specialising_scope: bool
+        (* true if GADT parameters can unify with generic variables *)
+  ; can_generalise: bool (* true if unifying GADT parameters *) }
 
 let empty resolve_env =
-  {scope_stack= [Scope.empty Scope.Module]; depth= 0; resolve_env}
+  { scope_stack= [Scope.empty Scope.Module]
+  ; depth= 0
+  ; resolve_env
+  ; in_specialising_scope= true
+  ; can_generalise= true }
 
 let current_scope {scope_stack; _} =
   match List.hd scope_stack with
@@ -421,6 +430,15 @@ let pop_module ~loc env =
   (m, env)
 
 let close_expr_scope env = snd (pop_expr_scope env)
+
+let set_specialising b env = {env with in_specialising_scope= b}
+
+let is_specialising {in_specialising_scope= b; _} = b
+
+let set_can_generalise b env =
+  if is_specialising env then {env with can_generalise= b} else env
+
+let can_generalise {can_generalise= b; _} = b
 
 let set_type_predeclaring env = env.resolve_env.predeclare_types <- true
 
@@ -486,6 +504,9 @@ let add_implicit_instance name typ env =
   env.resolve_env.type_env <- TypeEnvi.add_implicit_instance id typ type_env ;
   env
 
+let add_type_declaration_raw decl =
+  map_current_scope ~f:(Scope.add_type_declaration decl)
+
 let find_of_lident ~kind ~get_name (lid : lid) env =
   let loc = lid.loc in
   let full_get_name =
@@ -545,7 +566,8 @@ let raw_find_type_declaration (lid : lid) env =
         ; tdec_params= []
         ; tdec_implicit_params= []
         ; tdec_desc= TForward num_args
-        ; tdec_id= id }
+        ; tdec_id= id
+        ; tdec_is_newtype= false }
     | _ ->
         raise (Error (lid.loc, Unbound_type lid.txt)) )
 
@@ -569,6 +591,17 @@ module Type = struct
   let add_instance typ typ' = map_env ~f:(TypeEnvi.add_instance typ typ')
 
   let clear_instance typ = map_env ~f:(TypeEnvi.clear_instance typ)
+
+  let might_unify typ =
+    match typ.type_desc with Tvar _ -> true | _ -> is_newtype typ
+
+  let can_unify env typ =
+    might_unify typ
+    && ( can_generalise env
+       || (not (is_generic typ))
+       || (* Generic types with an instance have already been 'cast' to variables
+           by a pattern match over a GADT. *)
+          Option.is_some (instance env typ) )
 
   let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
@@ -680,7 +713,8 @@ module Type = struct
     type_vars empty typ
 
   let rec update_depths env typ =
-    Type0.update_depth env.depth typ ;
+    if typ.type_depth <> Type0.generic_depth then
+      Type0.update_depth env.depth typ ;
     match typ.type_desc with
     | Tvar _ ->
         Option.iter ~f:(update_depths env) (instance env typ)
@@ -1062,7 +1096,8 @@ module TypeDecl = struct
     ; tdec_params= params
     ; tdec_implicit_params= implicit_params
     ; tdec_desc= desc
-    ; tdec_id }
+    ; tdec_id
+    ; tdec_is_newtype= false }
 
   let mk_typ ~params ?ident decl =
     let ident = Option.value ident ~default:(mk_lid decl.tdec_ident) in

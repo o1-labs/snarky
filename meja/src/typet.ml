@@ -185,7 +185,8 @@ module TypeDecl = struct
         ; tdec_params
         ; tdec_implicit_params= []
         ; tdec_desc= TAbstract
-        ; tdec_id }
+        ; tdec_id
+        ; tdec_is_newtype= false }
     in
     let add_implicits implicit_params =
       if Set.is_empty implicit_params then tdec_implicit_params
@@ -202,7 +203,7 @@ module TypeDecl = struct
         | TExtend _ ->
             env
         | _ ->
-            map_current_scope ~f:(Scope.add_type_declaration decl) env
+            Envi.add_type_declaration_raw decl env
       in
       Envi.push_scope scope env
     in

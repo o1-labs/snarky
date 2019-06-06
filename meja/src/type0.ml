@@ -33,7 +33,8 @@ and type_decl =
   ; tdec_params: type_expr list
   ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
-  ; tdec_id: int }
+  ; tdec_id: int
+  ; tdec_is_newtype: bool }
 
 and type_decl_desc =
   | TAbstract
@@ -158,11 +159,33 @@ let rec equal_at_depth ~depth typ1 typ2 =
     | _, _ ->
         false
 
+let is_newtype typ =
+  match typ.type_desc with
+  | Tctor {var_decl= {tdec_is_newtype= true; _}; _} ->
+      true
+  | _ ->
+      false
+
+let is_generic typ = Int.equal typ.type_depth generic_depth
+
 (* TODO: integrate with a backtrack mechanism for unification errors. *)
-let set_depth depth typ = typ.type_depth <- depth
+let make_generic typ = typ.type_depth <- generic_depth
+
+let rec generalise typ = make_generic typ ; iter ~f:generalise typ
+
+(* TODO: integrate with a backtrack mechanism for unification errors. *)
+let set_depth depth typ =
+  if is_newtype typ then
+    (* Newtypes should always be at the generic depth. *)
+    assert (is_generic typ)
+  else typ.type_depth <- depth
 
 let update_depth depth typ = if typ.type_depth > depth then set_depth depth typ
 
+let rec update_all_depths depth typ =
+  update_depth depth typ ;
+  iter ~f:(update_all_depths depth) typ
+
 let unify_depths typ1 typ2 =
-  iter ~f:(update_depth typ1.type_depth) typ2 ;
-  iter ~f:(update_depth typ2.type_depth) typ1
+  iter ~f:(update_all_depths typ1.type_depth) typ2 ;
+  iter ~f:(update_all_depths typ2.type_depth) typ1
