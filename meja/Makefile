@@ -1,3 +1,5 @@
+SHELL=/bin/bash -o pipefail
+
 build:
 	dune build --root=.. meja/meja.exe 2>&1 | sed -e 's#"meja/#"#'
 
@@ -7,16 +9,13 @@ cmi-to-meja:
 reformat:
 	dune exec --root=.. app/reformat-snarky/reformat.exe -- -path .
 
-test: SHELL := /bin/bash
-test:
+test: build
 	source scripts/run-tests.sh; run_tests
 
-test-output: SHELL := /bin/bash
-test-output:
+test-output: build
 	source scripts/run-tests.sh; update_test_output
 
-test-one: SHELL := /bin/bash
-test-one:
+test-one: build
 	source scripts/run-tests.sh; run_one
 
 .PHONY: build test
