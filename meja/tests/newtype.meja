@@ -9,3 +9,30 @@ let g : ('a -> 'a) -> 'a -> 'a =
       x(y);
     };
   };
+
+type t(_, _) =
+  | A : t(unit, unit)
+  | B ('a, t(_, 'rest)) : t('a, 'a -> 'rest);
+
+let h = fun (type rest, x : t('a, rest)) : rest => {
+  switch (x) {
+    | A => ()
+    | B(x, _) => x
+  };
+};
+
+type u (_) = Int : u(int) | Bool : u(bool);
+
+let destruct_with = fun (type kind, x : u(kind), y : kind) : kind => {
+  switch (x, y) {
+    | (Int, i) => i + 1
+    | (Bool, b) => not(b)
+  };
+};
+
+let destruct_with2 = fun (type kind, x : u(kind), y : kind) : kind => {
+  switch (y, x) {
+    | (i, Int) => i + 1
+    | (b, Bool) => not(b)
+  };
+};
