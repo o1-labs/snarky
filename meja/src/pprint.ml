@@ -134,7 +134,7 @@ and pattern fmt pat = pattern_desc fmt pat.pat_desc
 and pattern_bracket fmt pat = pattern_desc_bracket fmt pat.pat_desc
 
 and pattern_field fmt (path, p) =
-  fprintf fmt "@[<hv2>%a =@ @[<hv>%a@]@]" Longident.pp path.txt pattern p
+  fprintf fmt "@[<hv2>%a:@ @[<hv>%a@]@]" Longident.pp path.txt pattern p
 
 let arg_label fmt = function
   | Asttypes.Nolabel ->
@@ -229,7 +229,7 @@ and expression_args fmt (label, e) =
   fprintf fmt "%a%a" arg_label label expression e
 
 and expression_field fmt (label, e) =
-  fprintf fmt "%a=@ %a" Longident.pp label.txt expression e
+  fprintf fmt "%a:@ %a" Longident.pp label.txt expression e
 
 let rec signature_desc fmt = function
   | SValue (name, typ) ->
