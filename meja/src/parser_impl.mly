@@ -307,6 +307,8 @@ simpl_expr:
     { mkexp ~pos:$loc (Int x) }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { e }
+  | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
+    { mkexp ~pos:$loc (Constraint (x, typ)) }
   | LBRACKET es = list(expr, COMMA) RBRACKET
     { List.fold
         ~init:(mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "[]"), None)))
@@ -321,8 +323,6 @@ simpl_expr:
 expr:
   | x = simpl_expr
     { x }
-  | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
-    { mkexp ~pos:$loc (Constraint (x, typ)) }
   | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
     { let unit_pat =
         mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
