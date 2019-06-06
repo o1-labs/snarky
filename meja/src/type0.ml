@@ -166,15 +166,14 @@ let is_newtype typ =
   | _ ->
       false
 
-let is_generic typ = Int.equal typ.type_depth generic_depth
-
-(* TODO: integrate with a backtrack mechanism for unification errors. *)
-let make_generic typ = typ.type_depth <- generic_depth
-
-let rec generalise typ = make_generic typ ; iter ~f:generalise typ
-
 (* TODO: integrate with a backtrack mechanism for unification errors. *)
 let set_depth_raw depth typ = typ.type_depth <- depth
+
+let is_generic typ = Int.equal typ.type_depth generic_depth
+
+let make_generic typ = set_depth_raw generic_depth typ
+
+let rec generalise typ = make_generic typ ; iter ~f:generalise typ
 
 let rec ungeneralise depth typ =
   if is_generic typ then set_depth_raw depth typ ;

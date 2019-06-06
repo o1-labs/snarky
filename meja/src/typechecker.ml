@@ -86,13 +86,9 @@ let rec check_type_aux ~loc typ ctyp env =
               (* Add the outermost (in terms of lexical scope) of the variables
                  as the instance for the other. We do this by chosing the type
                  of lowest ID, to ensure strict ordering and thus no cycles.
-
-                 If a newtype is present, prefer that. *)
-              if
-                Bool.equal (Type0.is_newtype ctyp) (Type0.is_newtype ctyp)
-                && ctyp.type_id < typ.type_id
-                || Type0.is_newtype typ
-              then Envi.Type.add_instance typ ctyp env
+              *)
+              if ctyp.type_id < typ.type_id then
+                Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
   | Tvar _, _ ->
       bind_none
