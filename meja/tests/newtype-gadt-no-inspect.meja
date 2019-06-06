@@ -1,0 +1,8 @@
+type t('a) = A(int) : t(int) | B(bool) : t(bool);
+
+let f = fun (type t, x : t) => {
+  switch (x) {
+    | A(_) => 15
+    | B(_) => 20
+  };
+};
