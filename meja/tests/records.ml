@@ -4,8 +4,7 @@ open Impl
 include struct
   type ('a, 'b, 'c) t = {a: 'a; b: 'b; c: 'c}
 
-  let typ __implicit10__ __implicit7__ __implicit1__ __implicit11__
-      __implicit8__ __implicit2__ __implicit12__ __implicit9__ __implicit3__ :
+  let typ __implicit1__ __implicit2__ __implicit3__ :
       (('a2, 'b2, 'c2) t, ('a1, 'b1, 'c1) t) Typ.t =
     { Typ.store=
         (fun {a; b; c; _} ->
@@ -30,19 +29,19 @@ include struct
                     ((Typ.read __implicit3__) a)
                     (fun a -> Typ.Read.return {a; b; c}) ) ) )
     ; Typ.alloc=
-        Typ.Alloc.bind (Typ.alloc __implicit7__) (fun c ->
-            Typ.Alloc.bind (Typ.alloc __implicit8__) (fun b ->
-                Typ.Alloc.bind (Typ.alloc __implicit9__) (fun a ->
+        Typ.Alloc.bind (Typ.alloc __implicit1__) (fun c ->
+            Typ.Alloc.bind (Typ.alloc __implicit2__) (fun b ->
+                Typ.Alloc.bind (Typ.alloc __implicit3__) (fun a ->
                     Typ.Alloc.return {a; b; c} ) ) )
     ; Typ.check=
         (fun {a; b; c; _} ->
           (fun x f -> f x)
-            ((Typ.check __implicit10__) c)
+            ((Typ.check __implicit1__) c)
             (fun c ->
               (fun x f -> f x)
-                ((Typ.check __implicit11__) b)
+                ((Typ.check __implicit2__) b)
                 (fun b ->
-                  (fun x f -> f x) ((Typ.check __implicit12__) a) (fun a -> ())
+                  (fun x f -> f x) ((Typ.check __implicit3__) a) (fun a -> ())
                   ) ) ) }
 end
 
@@ -56,8 +55,7 @@ module X = struct
   include struct
     type 'a t = {a: 'a; b: 'a; c: 'a}
 
-    let typ __implicit24__ __implicit23__ __implicit22__ __implicit21__
-        __implicit20__ __implicit19__ __implicit13__ : ('a2 t, 'a1 t) Typ.t =
+    let typ __implicit13__ : ('a2 t, 'a1 t) Typ.t =
       { Typ.store=
           (fun {a; b; c; _} ->
             Typ.Store.bind
@@ -81,20 +79,20 @@ module X = struct
                       ((Typ.read __implicit13__) a)
                       (fun a -> Typ.Read.return {a; b; c}) ) ) )
       ; Typ.alloc=
-          Typ.Alloc.bind (Typ.alloc __implicit19__) (fun c ->
-              Typ.Alloc.bind (Typ.alloc __implicit20__) (fun b ->
-                  Typ.Alloc.bind (Typ.alloc __implicit21__) (fun a ->
+          Typ.Alloc.bind (Typ.alloc __implicit13__) (fun c ->
+              Typ.Alloc.bind (Typ.alloc __implicit13__) (fun b ->
+                  Typ.Alloc.bind (Typ.alloc __implicit13__) (fun a ->
                       Typ.Alloc.return {a; b; c} ) ) )
       ; Typ.check=
           (fun {a; b; c; _} ->
             (fun x f -> f x)
-              ((Typ.check __implicit22__) c)
+              ((Typ.check __implicit13__) c)
               (fun c ->
                 (fun x f -> f x)
-                  ((Typ.check __implicit23__) b)
+                  ((Typ.check __implicit13__) b)
                   (fun b ->
                     (fun x f -> f x)
-                      ((Typ.check __implicit24__) a)
+                      ((Typ.check __implicit13__) a)
                       (fun a -> ()) ) ) ) }
   end
 

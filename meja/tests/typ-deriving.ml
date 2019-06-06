@@ -8,8 +8,8 @@ include struct
 
   type var = (Boolean.var, Field.Var.t) poly
 
-  let typ __implicit7__ __implicit5__ __implicit1__ __implicit8__ __implicit6__
-      __implicit2__ : (('a1, 'b1) poly, ('a, 'b) poly) Typ.t =
+  let typ __implicit1__ __implicit2__ : (('a1, 'b1) poly, ('a, 'b) poly) Typ.t
+      =
     { Typ.store=
         (fun {a; b; _} ->
           Typ.Store.bind
@@ -27,15 +27,15 @@ include struct
                 ((Typ.read __implicit2__) a)
                 (fun a -> Typ.Read.return {a; b}) ) )
     ; Typ.alloc=
-        Typ.Alloc.bind (Typ.alloc __implicit5__) (fun b ->
-            Typ.Alloc.bind (Typ.alloc __implicit6__) (fun a ->
+        Typ.Alloc.bind (Typ.alloc __implicit1__) (fun b ->
+            Typ.Alloc.bind (Typ.alloc __implicit2__) (fun a ->
                 Typ.Alloc.return {a; b} ) )
     ; Typ.check=
         (fun {a; b; _} ->
           (fun x f -> f x)
-            ((Typ.check __implicit7__) b)
+            ((Typ.check __implicit1__) b)
             (fun b ->
-              (fun x f -> f x) ((Typ.check __implicit8__) a) (fun a -> ()) ) )
+              (fun x f -> f x) ((Typ.check __implicit2__) a) (fun a -> ()) ) )
     }
 end
 
@@ -46,8 +46,7 @@ include struct
 
   type 'a u_var = ('a, Boolean.var) u_poly
 
-  let u_typ __implicit15__ __implicit13__ __implicit9__ __implicit16__
-      __implicit14__ __implicit10__ :
+  let u_typ __implicit9__ __implicit10__ :
       (('a11, 'b11) u_poly, ('a1, 'b1) u_poly) Typ.t =
     { Typ.store=
         (fun {a1; b1; _} ->
@@ -66,23 +65,22 @@ include struct
                 ((Typ.read __implicit10__) a1)
                 (fun a1 -> Typ.Read.return {a1; b1}) ) )
     ; Typ.alloc=
-        Typ.Alloc.bind (Typ.alloc __implicit13__) (fun b1 ->
-            Typ.Alloc.bind (Typ.alloc __implicit14__) (fun a1 ->
+        Typ.Alloc.bind (Typ.alloc __implicit9__) (fun b1 ->
+            Typ.Alloc.bind (Typ.alloc __implicit10__) (fun a1 ->
                 Typ.Alloc.return {a1; b1} ) )
     ; Typ.check=
         (fun {a1; b1; _} ->
           (fun x f -> f x)
-            ((Typ.check __implicit15__) b1)
+            ((Typ.check __implicit9__) b1)
             (fun b1 ->
-              (fun x f -> f x) ((Typ.check __implicit16__) a1) (fun a1 -> ())
+              (fun x f -> f x) ((Typ.check __implicit10__) a1) (fun a1 -> ())
               ) ) }
 end
 
 include struct
   type ('a, 'b) v = {a2: 'a; b2: 'b}
 
-  let v_typ __implicit23__ __implicit21__ __implicit17__ __implicit24__
-      __implicit22__ __implicit18__ : (('a1, 'b1) v, ('a, 'b) v) Typ.t =
+  let v_typ __implicit17__ __implicit18__ : (('a1, 'b1) v, ('a, 'b) v) Typ.t =
     { Typ.store=
         (fun {a2; b2; _} ->
           Typ.Store.bind
@@ -100,14 +98,14 @@ include struct
                 ((Typ.read __implicit18__) a2)
                 (fun a2 -> Typ.Read.return {a2; b2}) ) )
     ; Typ.alloc=
-        Typ.Alloc.bind (Typ.alloc __implicit21__) (fun b2 ->
-            Typ.Alloc.bind (Typ.alloc __implicit22__) (fun a2 ->
+        Typ.Alloc.bind (Typ.alloc __implicit17__) (fun b2 ->
+            Typ.Alloc.bind (Typ.alloc __implicit18__) (fun a2 ->
                 Typ.Alloc.return {a2; b2} ) )
     ; Typ.check=
         (fun {a2; b2; _} ->
           (fun x f -> f x)
-            ((Typ.check __implicit23__) b2)
+            ((Typ.check __implicit17__) b2)
             (fun b2 ->
-              (fun x f -> f x) ((Typ.check __implicit24__) a2) (fun a2 -> ())
+              (fun x f -> f x) ((Typ.check __implicit18__) a2) (fun a2 -> ())
               ) ) }
 end
