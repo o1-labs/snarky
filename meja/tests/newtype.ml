@@ -11,8 +11,8 @@ type (_, _) t =
   | A : (unit, unit) t
   | B : 'a * (_, 'rest) t -> ('a, 'a -> 'rest) t
 
-let h (type rest) (x : ('a, rest) t) : rest =
-  match x with A -> (() : _) | B (x, _) -> x
+let h (type var rest) (x : (var, rest) t) : var =
+  match x with A -> () | B (x, _) -> x
 
 type _ u = Int : int u | Bool : bool u
 
