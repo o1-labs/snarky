@@ -704,29 +704,38 @@ let rec get_expression env expected exp =
             in
             let generalised_vars = cache [] typ in
             let generalised_vars = cache generalised_vars expected in
-            let env = Envi.set_specialising true env in
-            let p, env = check_pattern ~add:add_polymorphised env typ p in
-            let env = Envi.set_specialising false env in
-            (* Check any instances provided by GADTs. *)
-            List.iter generalised_vars ~f:(fun (typ, _) ->
-                match Envi.Type.instance env typ with
-                | Some typ' ->
-                    if Type0.is_generic typ then
-                      (* This type wasn't instantiated by a GADT parameter,
+            let restore_vars () =
+              (* Restore the previous state of the generalised vars. *)
+              List.iter generalised_vars ~f:(fun (typ, type_desc) ->
+                  Type0.make_generic typ ;
+                  typ.type_desc <- type_desc ;
+                  Envi.Type.clear_instance typ env )
+            in
+            let p, e, env =
+              try
+                let env = Envi.set_specialising true env in
+                let p, env = check_pattern ~add:add_polymorphised env typ p in
+                let env = Envi.set_specialising false env in
+                (* Check any instances provided by GADTs. *)
+                List.iter generalised_vars ~f:(fun (typ, _) ->
+                    match Envi.Type.instance env typ with
+                    | Some typ' ->
+                        if Type0.is_generic typ then
+                          (* This type wasn't instantiated by a GADT parameter,
                          throw a type error.
                       *)
-                      (* TODO: Find a way to bubble the exact location of a
+                          (* TODO: Find a way to bubble the exact location of a
                                candidate bad unification.
                       *)
-                      raise (Error (p.pat_loc, Cannot_unify (typ, typ')))
-                | _ ->
-                    () ) ;
-            let e, env = get_expression env expected e in
-            (* Restore the previous state of the generalised vars. *)
-            List.iter generalised_vars ~f:(fun (typ, type_desc) ->
-                Type0.make_generic typ ;
-                typ.type_desc <- type_desc ;
-                Envi.Type.clear_instance typ env ) ;
+                          raise (Error (p.pat_loc, Cannot_unify (typ, typ')))
+                    | _ ->
+                        () ) ;
+                let e, env = get_expression env expected e in
+                restore_vars () ; (p, e, env)
+              with err ->
+                (* Restore variables to give the right error message. *)
+                restore_vars () ; raise err
+            in
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )
       in
