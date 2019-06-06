@@ -67,10 +67,8 @@ let rec check_type_aux ~loc typ ctyp env =
         None
   in
   (* Don't change the depth if one of the types is generic. *)
-  if
-    (not (Type0.is_generic typ || Type0.is_generic ctyp))
-    || Envi.can_generalise env
-  then Type0.unify_depths typ ctyp ;
+  if not (Type0.is_generic typ || Type0.is_generic ctyp) then
+    Type0.unify_depths typ ctyp ;
   match (typ.type_desc, ctyp.type_desc) with
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
@@ -78,7 +76,7 @@ let rec check_type_aux ~loc typ ctyp env =
       check_type_aux typ ctyp env
   | _, Tpoly (_, ctyp) ->
       check_type_aux typ ctyp env
-  | _, _ when Envi.Type.can_unify env typ && Envi.Type.can_unify env ctyp ->
+  | Tvar _, Tvar _ ->
       bind_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () ->
@@ -96,11 +94,11 @@ let rec check_type_aux ~loc typ ctyp env =
                 || Type0.is_newtype typ
               then Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
-  | _, _ when Envi.Type.can_unify env typ ->
+  | Tvar _, _ ->
       bind_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance typ ctyp env)
-  | _, _ when Envi.Type.can_unify env ctyp ->
+  | _, Tvar _ ->
       bind_none
         (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance ctyp typ env)
@@ -693,7 +691,7 @@ let rec get_expression env expected exp =
       let env, cases =
         List.fold_map ~init:env cases ~f:(fun env (p, e) ->
             let env = Envi.open_expr_scope env in
-            (* Cache all variables and newtypes at generic depth. *)
+            (* Cache all newtypes at generic depth. *)
             let rec cache acc typ =
               match typ.type_desc with
               | desc when Type0.is_generic typ && Type0.is_newtype typ ->
@@ -702,14 +700,16 @@ let rec get_expression env expected exp =
               | _ ->
                   Type0.fold ~init:acc typ ~f:cache
             in
-            let generalised_vars = cache [] typ in
-            let generalised_vars = cache generalised_vars expected in
-            let restore_vars () =
-              (* Restore the previous state of the generalised vars. *)
-              List.iter generalised_vars ~f:(fun (typ, type_desc) ->
-                  Type0.make_generic typ ;
-                  typ.type_desc <- type_desc ;
-                  Envi.Type.clear_instance typ env )
+            let newtypes = cache [] typ in
+            let newtypes = cache newtypes expected in
+            let restore_newtypes restore_all =
+              (* Restore the previous state of the newtypes. *)
+              List.iter newtypes ~f:(fun (typ, type_desc) ->
+                  if restore_all || Option.is_none (Envi.Type.instance env typ)
+                  then (
+                    Type0.make_generic typ ;
+                    typ.type_desc <- type_desc ;
+                    Envi.Type.clear_instance typ env ) )
             in
             let p, e, env =
               try
@@ -717,24 +717,27 @@ let rec get_expression env expected exp =
                 let p, env = check_pattern ~add:add_polymorphised env typ p in
                 let env = Envi.set_specialising false env in
                 (* Check any instances provided by GADTs. *)
-                List.iter generalised_vars ~f:(fun (typ, _) ->
+                List.iter newtypes ~f:(fun (typ, _) ->
                     match Envi.Type.instance env typ with
                     | Some typ' ->
                         if Type0.is_generic typ then
                           (* This type wasn't instantiated by a GADT parameter,
-                         throw a type error.
-                      *)
+                             throw a type error.
+                          *)
                           (* TODO: Find a way to bubble the exact location of a
-                               candidate bad unification.
-                      *)
+                                   candidate bad unification.
+                          *)
                           raise (Error (p.pat_loc, Cannot_unify (typ, typ')))
                     | _ ->
                         () ) ;
+                (* Restore all non-instantiated newtypes. *)
+                restore_newtypes false ;
                 let e, env = get_expression env expected e in
-                restore_vars () ; (p, e, env)
+                (* Restore the remaining newtypes. *)
+                restore_newtypes true ; (p, e, env)
               with err ->
-                (* Restore variables to give the right error message. *)
-                restore_vars () ; raise err
+                (* Restore newtypes to give the right error message. *)
+                restore_newtypes true ; raise err
             in
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )

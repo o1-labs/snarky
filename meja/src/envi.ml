@@ -592,17 +592,6 @@ module Type = struct
 
   let clear_instance typ = map_env ~f:(TypeEnvi.clear_instance typ)
 
-  let might_unify typ =
-    match typ.type_desc with Tvar _ -> true | _ -> is_newtype typ
-
-  let can_unify env typ =
-    might_unify typ
-    && ( can_generalise env
-       || (not (is_generic typ && is_newtype typ))
-       || (* Generic types with an instance have already been 'cast' to variables
-           by a pattern match over a GADT. *)
-          Option.is_some (instance env typ) )
-
   let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
     | Tvar (None, explicitness) -> (
