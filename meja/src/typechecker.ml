@@ -87,9 +87,14 @@ let rec check_type_aux ~loc typ ctyp env =
             (fun () ->
               (* Add the outermost (in terms of lexical scope) of the variables
                  as the instance for the other. We do this by chosing the type
-                 of lowest ID, to ensure strict ordering and thus no cycles. *)
-              if ctyp.type_id < typ.type_id then
-                Envi.Type.add_instance typ ctyp env
+                 of lowest ID, to ensure strict ordering and thus no cycles.
+
+                 If a newtype is present, prefer that. *)
+              if
+                Bool.equal (Type0.is_newtype ctyp) (Type0.is_newtype ctyp)
+                && ctyp.type_id < typ.type_id
+                || Type0.is_newtype typ
+              then Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
   | _, _ when Envi.Type.can_unify env typ ->
       bind_none
@@ -528,9 +533,9 @@ let rec check_pattern ~add env typ pat =
           their levels adjusted if they unified; if not, the newtype was not
           unified with GADT type variables.
           Note: We don't generalise the type itself, otherwise we would be able
-          to inspect a newtype by unifying it with a GADT.
+          to inspect a newtype by unifying it with a constructor of a GADT.
          *)
-        Type0.iter ~f:(Type0.update_all_depths env.Envi.depth) typ ;
+        Type0.iter ~f:(Type0.ungeneralise env.Envi.depth) typ;
       let env = Envi.set_can_generalise false env in
       let arg, env =
         match arg with
@@ -691,8 +696,9 @@ let rec get_expression env expected exp =
             (* Cache all variables and newtypes at generic depth. *)
             let rec cache acc typ =
               match typ.type_desc with
-              | _ when Type0.is_generic typ && Envi.Type.might_unify typ ->
-                  typ :: acc
+              | desc when Type0.is_generic typ && Type0.is_newtype typ ->
+                  typ.type_desc <- Tvar (None, Explicit) ;
+                  (typ, desc) :: acc
               | _ ->
                   Type0.fold ~init:acc typ ~f:cache
             in
@@ -700,21 +706,26 @@ let rec get_expression env expected exp =
             let generalised_vars = cache generalised_vars expected in
             let env = Envi.set_specialising true env in
             let p, env = check_pattern ~add:add_polymorphised env typ p in
-            let e, env = get_expression env expected e in
             let env = Envi.set_specialising false env in
-            (* Remove any instances provided by GADTs and reset the generic
-               level. *)
-            List.iter generalised_vars ~f:(fun typ ->
-                ( match Envi.Type.instance env typ with
-                | Some typ' when Type0.is_generic typ ->
-                    (* This type wasn't instantiated by a GADT parameter, throw
-                       a type error. *)
-                    (* TODO: Find a way to bubble the exact location of a
-                             candidate bad unification. *)
-                    raise (Error (p.pat_loc, Cannot_unify (typ, typ')))
+            (* Check any instances provided by GADTs. *)
+            List.iter generalised_vars ~f:(fun (typ, _) ->
+                match Envi.Type.instance env typ with
+                | Some typ' ->
+                    if Type0.is_generic typ then
+                      (* This type wasn't instantiated by a GADT parameter,
+                         throw a type error.
+                      *)
+                      (* TODO: Find a way to bubble the exact location of a
+                               candidate bad unification.
+                      *)
+                      raise (Error (p.pat_loc, Cannot_unify (typ, typ')))
                 | _ ->
                     () ) ;
+            let e, env = get_expression env expected e in
+            (* Restore the previous state of the generalised vars. *)
+            List.iter generalised_vars ~f:(fun (typ, type_desc) ->
                 Type0.make_generic typ ;
+                typ.type_desc <- type_desc ;
                 Envi.Type.clear_instance typ env ) ;
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )
