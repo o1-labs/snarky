@@ -60,7 +60,6 @@ struct
       include Restrict_monad.Make2 (Read) (Field)
 
       let read = Read.read
-
     end
 
     module Alloc = struct

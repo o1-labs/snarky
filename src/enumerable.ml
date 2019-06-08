@@ -20,7 +20,7 @@ struct
   open M
 
   let _unused = M.min (* generate unused variable error *)
-     
+
   let bit_length =
     let n = Int.ceil_log2 (M.max + 1) in
     assert (n < Field.size_in_bits) ;

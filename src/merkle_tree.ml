@@ -57,7 +57,7 @@ type ('hash, 'a) t =
   ; compress: 'hash -> 'hash -> 'hash }
 [@@deriving sexp]
 
-let check_exn {tree; hash; compress;_} =
+let check_exn {tree; hash; compress; _} =
   let default = hash None in
   let rec check_hash = function
     | Non_empty t ->
