@@ -1,7 +1,6 @@
 (executables
  (names tutorial)
  (modes native)
- (flags :standard -warn-error -27-26-32-33)
  (preprocess
   (pps ppx_jane))
  (libraries snarky core))

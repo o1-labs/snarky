@@ -23,7 +23,7 @@ module Make (Impl : Snark_intf.S) = struct
     in
     go [] xs ys
 
-  let hash_to_field {dimension; max_input_length; coefficients} xs =
+  let hash_to_field {coefficients; _} xs =
     let sum = List.fold ~init:Field.zero ~f:Field.add in
     List.map coefficients ~f:(fun cs ->
         sum (map2_lax cs xs ~f:(fun c b -> if b then c else Field.zero)) )
@@ -35,7 +35,7 @@ module Make (Impl : Snark_intf.S) = struct
         List.init Field.size_in_bits ~f:(fun i -> Bigint.test_bit n i) )
 
   module Checked = struct
-    let hash_to_field ({dimension; max_input_length; coefficients} : t)
+    let hash_to_field ({max_input_length; coefficients; _} : t)
         (vs : Boolean.var list) : (Field.Var.t list, _) Checked.t =
       let vs = (vs :> Field.Var.t list) in
       let input_len = List.length vs in
@@ -106,18 +106,6 @@ module Make (Impl : Snark_intf.S) = struct
 
     let hash (h1 : var) (h2 : var) =
       with_label "Knapsack.hash" (Checked.hash_to_bits knapsack (h1 @ h2))
-
-    let map2i_exn xs ys ~f =
-      let rec go acc i xs ys =
-        match (xs, ys) with
-        | [], [] ->
-            List.rev acc
-        | x :: xs, y :: ys ->
-            go (f i x y :: acc) (i + 1) xs ys
-        | _, _ ->
-            failwith "mapi_exn: Invalid lengths"
-      in
-      go [] 0 xs ys
 
     let assert_equal = Impl.Bitstring_checked.Assert.equal
   end

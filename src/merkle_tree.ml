@@ -57,7 +57,7 @@ type ('hash, 'a) t =
   ; compress: 'hash -> 'hash -> 'hash }
 [@@deriving sexp]
 
-let check_exn {tree; depth; count; hash; compress} =
+let check_exn {tree; hash; compress;_} =
   let default = hash None in
   let rec check_hash = function
     | Non_empty t ->
@@ -78,8 +78,6 @@ let non_empty_hash = function Node (h, _, _) -> h | Leaf (h, _) -> h
 
 let depth {depth; _} = depth
 
-let hash {tree; _} = non_empty_hash tree
-
 let tree_hash ~default = function
   | Empty ->
       default
@@ -92,7 +90,7 @@ let to_list : ('hash, 'a) t -> 'a list =
         acc
     | Non_empty (Leaf (_, x)) ->
         x :: acc
-    | Non_empty (Node (h, l, r)) ->
+    | Non_empty (Node (_h, l, r)) ->
         let acc' = go acc r in
         go acc' l
   in
@@ -129,7 +127,7 @@ let insert hash compress t0 mask0 address x =
           else
             let t_r' = go mask' Empty in
             Node (compress default (non_empty_hash t_r'), Empty, Non_empty t_r')
-      | Non_empty (Node (h, t_l, t_r)) ->
+      | Non_empty (Node (_h, t_l, t_r)) ->
           if go_left then
             let t_l' = go mask' t_l in
             Node
@@ -211,7 +209,7 @@ let set_dirty default tree addr x =
   in
   go_non_empty tree (List.rev addr)
 
-let recompute_hashes {tree; depth; count; hash; compress} =
+let recompute_hashes {tree; hash; compress; _} =
   let h =
     let default = hash None in
     fun t -> tree_hash ~default t
