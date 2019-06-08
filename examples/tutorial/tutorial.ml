@@ -80,7 +80,7 @@ let assert_is_square_root_of_9 (x : Field.Var.t) : (unit, _) Checked.t =
 (* In this field, it happens to be the case that -3 is a square. *)
 let () = assert (Field.is_square (Field.of_int (-3)))
 
-let assert_is_cube_root_of_1 (x : Field.Var.t) = failwith "Exercise 1"
+let assert_is_cube_root_of_1 (_x : Field.Var.t) = failwith "Exercise 1"
 
 let cube_root_of_1 =
   let open Field in
@@ -119,7 +119,7 @@ let exercise1 () =
 
 let exercise2 () =
   (* Now let's prove that there are two cube roots of 1. *)
-  let distinct_cube_roots_of_1 x y =
+  let _distinct_cube_roots_of_1 x y =
     let%map () = assert_is_cube_root_of_1 x
     and () = assert_is_cube_root_of_1 y
     and () = Field.Checked.Assert.not_equal x y in
@@ -130,9 +130,9 @@ let exercise2 () =
      for `distinct_cube_roots_of_1`.
    *)
   let another_cube_root_of_1 = failwith "x^3 = 1, find x" in
-  let input () = failwith "Exercise 2: Data_spec here" in
-  let keypair = failwith "Exercise 2: Keypair here" in
-  let proof = failwith "Exercise 2: Proof" in
+  let _input () = failwith "Exercise 2: Data_spec here" in
+  let _keypair = failwith "Exercise 2: Keypair here" in
+  let _proof = failwith "Exercise 2: Proof" in
   let is_valid = failwith "Exercise 2: Verify" in
   printf
     !"Are %{sexp:Field.t} and %{sexp:Field.t} two distinct cube roots of 1? %b\n\
@@ -171,7 +171,7 @@ let if_both x y a b =
    that returns zero if the input is zero, or the inverse of the input
    otherwise.
 *)
-let zero_or_inverse (x : Field.Var.t) = failwith "Exercise 3"
+let zero_or_inverse (_x : Field.Var.t) = failwith "Exercise 3"
 
 let exercise3 () =
   (* Unchecked reference implementation. *)
