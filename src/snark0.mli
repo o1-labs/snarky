@@ -46,11 +46,17 @@ module Run : sig
      and type Proof.message = Backend.Proof.message
 end
 
-type ('prover_state, 'field) m =
+type 'field m = (module Snark_intf.Run with type field = 'field)
+
+val make : (module Backend_intf.S with type Field.t = 'field) -> 'field m
+
+type ('prover_state, 'field) m' =
   (module Snark_intf.Run
      with type field = 'field
       and type prover_state = 'prover_state)
 
-val make :
+val make' :
      (module Backend_intf.S with type Field.t = 'field)
-  -> ('prover_state, 'field) m
+  -> ('prover_state, 'field) m'
+
+val ignore_state : ('prover_state, 'field) m' -> 'field m

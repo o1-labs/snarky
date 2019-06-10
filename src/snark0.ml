@@ -1980,19 +1980,29 @@ module Run = struct
   end
 end
 
-type ('prover_state, 'field) m =
+type 'field m = (module Snark_intf.Run with type field = 'field)
+
+type ('prover_state, 'field) m' =
   (module Snark_intf.Run
      with type field = 'field
       and type prover_state = 'prover_state)
 
-let make (type field prover_state)
+let make (type field)
+    (module Backend : Backend_intf.S with type Field.t = field) : field m =
+  (module Run.Make (Backend) (Unit))
+
+let make' (type field prover_state)
     (module Backend : Backend_intf.S with type Field.t = field) :
-    (prover_state, field) m =
+    (prover_state, field) m' =
   ( module Run.Make
              (Backend)
              (struct
                type t = prover_state
              end) )
+
+let ignore_state (type prover_state field)
+    ((module M) : (prover_state, field) m') : field m =
+  (module M)
 
 let%test_module "snark0-test" =
   ( module struct
