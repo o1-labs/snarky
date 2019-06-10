@@ -31,132 +31,88 @@ let var_type_lident lid =
 
 let typ_name name = match name with "t" -> "typ" | name -> name ^ "_typ"
 
-let typ_of_decl ~loc env (decl : Type0.type_decl) =
+let typ_of_decl ~loc (decl : type_decl) =
+  let open Ast_build in
   let name = decl.tdec_ident.txt in
-  let decl' = Untype_ast.type_decl ~loc decl in
   try
     match decl.tdec_desc with
     | TRecord fields ->
-        let decl = {decl with tdec_implicit_params= []} in
-        let constr_map = ref (Map.empty (module Int)) in
-        let vars_map =
-          ref
-            (Set.of_list
-               (module String)
-               (List.map decl.tdec_params ~f:(fun param ->
-                    match param.type_desc with
-                    | Tvar (Some name, _) ->
-                        name.txt
-                    | _ ->
-                        "" )))
-        in
-        let next_num = ref 1 in
-        let rec next_var_name () =
-          let name = sprintf "a%i" !next_num in
-          if Set.mem !vars_map name then next_var_name ()
+        let vars = ref String.Set.empty in
+        let find_name name =
+          let rec find_name i =
+            let name = sprintf "%s%i" name i in
+            if Set.mem !vars name then find_name (i + 1)
+            else (
+              vars := Set.add !vars name ;
+              name )
+          in
+          if Set.mem !vars name then find_name 1
           else (
-            incr next_num ;
-            vars_map := Set.add !vars_map name ;
+            vars := Set.add !vars name ;
             name )
         in
         let poly_name = poly_name name in
         let poly_decl =
-          let poly_decl_fields =
-            List.map fields ~f:(fun field ->
-                assert (
-                  not
-                    (Envi.Type.is_arrow (Envi.Type.flatten field.fld_type env))
-                ) ;
-                let typ =
-                  Envi.Type.constr_map env field.fld_type ~f:(fun variant ->
-                      if Int.equal variant.var_decl_id decl.tdec_id then
-                        Tctor
-                          { variant with
-                            var_ident=
-                              Location.mkloc (Longident.Lident poly_name)
-                                variant.var_ident.loc }
-                      else
-                        let var_name =
-                          match Map.find !constr_map variant.var_decl_id with
-                          | Some (name, _) ->
-                              name
-                          | None ->
-                              let name = next_var_name () in
-                              constr_map :=
-                                Map.add_exn !constr_map
-                                  ~key:variant.var_decl_id ~data:(name, variant) ;
-                              name
-                        in
-                        Tvar (Some (Location.mkloc var_name loc), Explicit) )
-                in
-                Untype_ast.field_decl ~loc {field with fld_type= typ} )
+          let type_vars =
+            List.map fields ~f:(fun {fld_ident; _} ->
+                Type.var ~loc (find_name fld_ident.txt) )
           in
-          let params =
-            Map.fold !constr_map ~init:[] ~f:(fun ~key:_ ~data:(name, _) l ->
-                Ast_build.Type.var ~loc name :: l )
+          let fields =
+            List.map2_exn fields type_vars ~f:(fun field var ->
+                {field with fld_type= var; fld_loc= loc} )
           in
-          let poly_decl_content =
-            { decl' with
-              tdec_ident= Location.mkloc poly_name loc
-            ; tdec_desc= TRecord poly_decl_fields
-            ; tdec_params= decl'.tdec_params @ params }
-          in
-          {stmt_loc= loc; stmt_desc= TypeDecl poly_decl_content}
-        in
-        let mk_decl params =
-          { stmt_loc= loc
-          ; stmt_desc=
-              TypeDecl
-                { decl' with
-                  tdec_desc=
-                    TAlias
-                      (Ast_build.Type.constr ~loc
-                         ~params:(decl'.tdec_params @ params)
-                         ~implicits:decl'.tdec_implicit_params
-                         (Lident poly_name)) } }
+          Type_decl.record poly_name ~loc ~params:type_vars fields
         in
         let t_decl =
-          let params =
-            Map.fold !constr_map ~init:[]
-              ~f:(fun ~key:_ ~data:(_, variant) l ->
-                Untype_ast.type_expr ~loc (Envi.Type.mk (Tctor variant) env)
-                :: l )
-          in
-          mk_decl params
+          let type_vars = List.map fields ~f:(fun {fld_type; _} -> fld_type) in
+          Type_decl.alias name ~loc ~params:decl.tdec_params
+            ~implicits:decl.tdec_implicit_params
+            (Type.constr ~loc ~params:type_vars (Lid.of_name poly_name))
         in
+        let var_name = var_type_name name in
+        let has_constr = ref false in
         let var_decl =
-          let params =
-            Map.fold !constr_map ~init:[]
-              ~f:(fun ~key:_ ~data:(_, variant) l ->
-                let name = variant.var_ident in
-                let variant =
-                  { variant with
-                    var_ident=
-                      Location.mkloc (var_type_lident name.txt) name.loc }
-                in
-                Untype_ast.type_expr ~loc (Envi.Type.mk (Tctor variant) env)
-                :: l )
+          let rec change_names typ =
+            match typ.type_desc with
+            | Tctor ({var_ident; _} as variant) ->
+                has_constr := true ;
+                Typet.Type.map ~loc ~f:change_names
+                  { typ with
+                    type_desc=
+                      Tctor
+                        { variant with
+                          var_ident=
+                            Loc.mk ~loc (var_type_lident var_ident.txt) } }
+            | Tarrow _ ->
+                (* We don't support generating [Typ.t]s on [_ -> _]. *)
+                assert false
+            | _ ->
+                Typet.Type.map ~loc ~f:change_names typ
           in
-          mk_decl params
+          let type_vars =
+            List.map fields ~f:(fun {fld_type; _} -> change_names fld_type)
+          in
+          Type_decl.alias var_name ~loc ~params:decl.tdec_params
+            ~implicits:decl.tdec_implicit_params
+            (Type.constr ~loc ~params:type_vars (Lid.of_name poly_name))
         in
         let typ_instance =
           let typ_body =
             let open Ast_build in
+            let bindings ~run ~bind ~result =
+              List.fold ~init:result fields ~f:(fun result {fld_ident; _} ->
+                  Exp.apply ~loc bind
+                    [ (Nolabel, run (Exp.var ~loc (Lid.of_name fld_ident.txt)))
+                    ; ( Nolabel
+                      , Exp.fun_ ~loc (Pat.var ~loc fld_ident.txt) result ) ]
+              )
+            in
             let bind_over ~run ~bind ~result =
-              let bindings =
-                List.fold ~init:result fields ~f:(fun result {fld_ident; _} ->
-                    Exp.apply ~loc bind
-                      [ ( Nolabel
-                        , run (Exp.var ~loc (Lid.of_name fld_ident.txt)) )
-                      ; ( Nolabel
-                        , Exp.fun_ ~loc (Pat.var ~loc fld_ident.txt) result )
-                      ] )
-              in
               Exp.fun_ ~loc
                 (Pat.record ~loc
                    (List.map fields ~f:(fun {fld_ident; _} ->
                         (mk_lid fld_ident, Pat.var ~loc fld_ident.txt) )))
-                bindings
+                (bindings ~run ~bind ~result)
             in
             let var_of_list l = Exp.var ~loc (Lid.of_list l) in
             let apply_var_of_list l x =
@@ -178,24 +134,27 @@ let typ_of_decl ~loc env (decl : Type0.type_decl) =
               bind_over
                 ~result:(apply_var_of_list ["Typ"; "Read"; "return"] result)
                 ~bind:(var_of_list ["Typ"; "Read"; "bind"])
-                ~run:(apply_var_of_list ["Snarky"; "read"])
+                ~run:(apply_var_of_list ["Typ"; "read"])
             in
             let alloc =
-              bind_over
+              bindings
                 ~result:(apply_var_of_list ["Typ"; "Alloc"; "return"] result)
                 ~bind:(var_of_list ["Typ"; "Alloc"; "bind"])
                 ~run:(fun _ -> var_of_list ["Typ"; "alloc"])
             in
             let check =
-              bind_over
-                ~result:(Exp.ctor ~loc (Lid.of_name "()"))
-                ~bind:
-                  (Exp.fun_ (Pat.var ~loc "f")
-                     (Exp.fun_ (Pat.var ~loc "x")
-                        (Exp.apply
-                           (Exp.var ~loc (Lid.of_name "f"))
-                           [(Nolabel, Exp.var ~loc (Lid.of_name "x"))])))
-                ~run:(apply_var_of_list ["Typ"; "check"])
+              Exp.fun_ ~loc
+                (Pat.record ~loc
+                   (List.map fields ~f:(fun {fld_ident; _} ->
+                        (mk_lid fld_ident, Pat.var ~loc fld_ident.txt) )))
+                (List.fold
+                   ~init:(Exp.ctor ~loc (Lid.of_name "()"))
+                   fields
+                   ~f:(fun result {fld_ident; _} ->
+                     Exp.seq ~loc
+                       (apply_var_of_list ["Typ"; "check"]
+                          (Exp.var ~loc (Lid.of_name fld_ident.txt)))
+                       result ))
             in
             let body =
               Exp.record ~loc
@@ -204,29 +163,52 @@ let typ_of_decl ~loc env (decl : Type0.type_decl) =
                 ; (Loc.mk ~loc (Lid.of_list ["Typ"; "alloc"]), alloc)
                 ; (Loc.mk ~loc (Lid.of_list ["Typ"; "check"]), check) ]
             in
+            let fresh_names =
+              List.map ~f:(fun name -> Type.var ~loc (find_name name))
+            in
+            let new_base_type () =
+              let type_vars =
+                fresh_names
+                  (List.map decl.tdec_params ~f:(fun param ->
+                       match param.type_desc with
+                       | Tvar (Some name, _) ->
+                           name.txt
+                       | _ ->
+                           "a" ))
+              in
+              Type.constr ~loc ~params:type_vars (Lid.of_name name)
+            in
             let value_type =
-              Type.constr ~loc
-                ~params:
-                  (List.map decl.tdec_params ~f:(fun _ -> Type.none ~loc ()))
-                (Lid.of_name decl.tdec_ident.txt)
+              if !has_constr then
+                Type.constr ~loc ~params:poly_decl.tdec_params
+                  (Lid.of_name poly_name)
+              else new_base_type ()
+            in
+            let var_type =
+              if !has_constr then
+                let type_vars =
+                  fresh_names
+                    (List.map fields ~f:(fun {fld_ident; _} -> fld_ident.txt))
+                in
+                Type.constr ~loc ~params:type_vars (Lid.of_name poly_name)
+              else new_base_type ()
             in
             let target_type =
-              Type.constr ~loc
-                ~params:[Type.none ~loc (); value_type]
+              Type.constr ~loc ~params:[var_type; value_type]
                 (Lid.of_list ["Typ"; "t"])
             in
             Exp.constraint_ ~loc body target_type
           in
-          { stmt_loc= loc
-          ; stmt_desc= Instance (Location.mkloc (typ_name name) loc, typ_body)
-          }
+          Instance (Location.mkloc (typ_name name) loc, typ_body)
         in
-        if Map.is_empty !constr_map then
+        let mk_stmt stmt_desc = {stmt_loc= loc; stmt_desc} in
+        if !has_constr then
           Some
-            [ { stmt_loc= loc
-              ; stmt_desc= TypeDecl (Untype_ast.type_decl ~loc decl) }
-            ; typ_instance ]
-        else Some [poly_decl; t_decl; var_decl; typ_instance]
+            [ mk_stmt (TypeDecl poly_decl)
+            ; mk_stmt (TypeDecl t_decl)
+            ; mk_stmt (TypeDecl var_decl)
+            ; mk_stmt typ_instance ]
+        else Some [mk_stmt (TypeDecl decl); mk_stmt typ_instance]
     | _ ->
         None
   with _ -> None

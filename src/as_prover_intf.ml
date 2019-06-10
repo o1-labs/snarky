@@ -27,6 +27,9 @@ module type Basic = sig
     -> 'var
     -> ('value, 'f field, 'prover_state) t
 
+  val with_lens :
+    ('whole, 'view) Lens.t -> ('a, 'f, 'view) t -> ('a, 'f, 'whole) t
+
   module Provider : sig
     type ('a, 'f, 's) t
 
@@ -37,6 +40,9 @@ module type Basic = sig
       -> 's
       -> Request.Handler.t
       -> 's * 'a
+
+    val with_lens :
+      ('whole, 'view) Lens.t -> ('a, 'f, 'view) t -> ('a, 'f, 'whole) t
   end
 
   module Handle : sig

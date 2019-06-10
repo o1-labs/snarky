@@ -1,0 +1,26 @@
+let typ =
+  ({ Typ.store: fun ((a, b)) => {
+      Typ.Store.bind(Typ.store(b), fun (b) => {
+        Typ.Store.bind(Typ.store(a), fun (a) => {
+          Typ.Store.return((a, b));
+        });
+      });
+    }
+  , Typ.read: fun ((a, b)) => {
+      Typ.Read.bind(Typ.read(b), fun (b) => {
+        Typ.Read.bind(Typ.read(a), fun (a) => {
+          Typ.Read.return((a, b));
+        });
+      });
+    }
+  , Typ.alloc:
+      Typ.Alloc.bind(Typ.alloc, fun (b) => {
+        Typ.Alloc.bind(Typ.alloc, fun (a) => {
+          Typ.Alloc.return((a, b));
+        });
+      })
+  , Typ.check: fun ((a, b)) => {
+      Typ.check(a);
+      Typ.check(b);
+    }
+  } : Typ.t(('var_a, 'var_b), ('value_a, 'value_b)));
