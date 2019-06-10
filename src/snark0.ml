@@ -2030,6 +2030,10 @@ let make' (type field prover_state)
                type t = prover_state
              end) )
 
+let ignore_state (type prover_state field)
+    ((module M) : (prover_state, field) m') : field m =
+  (module M)
+
 let%test_module "snark0-test" =
   ( module struct
     let bin_io_id m = Fn.compose (Binable.of_string m) (Binable.to_string m)

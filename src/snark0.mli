@@ -58,3 +58,5 @@ type ('prover_state, 'field) m' =
 val make' :
      (module Backend_intf.S with type Field.t = 'field)
   -> ('prover_state, 'field) m'
+
+val ignore_state : ('prover_state, 'field) m' -> 'field m
