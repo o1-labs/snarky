@@ -20,6 +20,9 @@ let rec of_type_desc ?loc typ =
       Typ.constr ?loc name (List.map ~f:of_type_expr (params @ implicits))
   | Ttuple typs ->
       Typ.tuple ?loc (List.map ~f:of_type_expr typs)
+  | Trow _ ->
+      (* Don't emit a type for this row. *)
+      Typ.constr ?loc Ast_build.(Loc.mk ?loc (Lid.of_name "unit")) []
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 

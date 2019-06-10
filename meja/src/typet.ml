@@ -128,6 +128,20 @@ module Type = struct
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
         (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
+    | Trow _row ->
+        assert false
+
+  let row_type_fold ~init ~f row =
+    let fold_field init = function
+      | Row_ctor _ ->
+          init
+      | Row_var typ ->
+          f init typ
+    in
+    let fold_fields acc fields = List.fold ~init:acc ~f:fold_field fields in
+    let acc = fold_fields init row.row_upper in
+    let acc = Option.fold ~init:acc ~f:fold_fields row.row_lower in
+    Option.fold ~init:acc ~f:fold_fields row.row_diff
 
   let fold ~init ~f typ =
     match typ.type_desc with
@@ -144,8 +158,20 @@ module Type = struct
     | Tpoly (typs, typ) ->
         let acc = List.fold ~init ~f typs in
         f acc typ
+    | Trow row ->
+        row_type_fold ~init ~f row
 
   let iter ~f = fold ~init:() ~f:(fun () -> f)
+
+  let row_type_map ~loc ~f row =
+    let map_field field =
+      match field with Row_ctor _ -> field | Row_var typ -> Row_var (f typ)
+    in
+    { row with
+      row_upper= List.map ~f:map_field row.row_upper
+    ; row_lower= Option.map ~f:(List.map ~f:map_field) row.row_lower
+    ; row_diff= Option.map ~f:(List.map ~f:map_field) row.row_diff
+    ; row_loc= loc }
 
   let map ~loc ~f typ =
     match typ.type_desc with
@@ -168,6 +194,8 @@ module Type = struct
     | Tpoly (typs, typ) ->
         let typs = List.map ~f typs in
         {typ with type_desc= Tpoly (typs, f typ); type_loc= loc}
+    | Trow row ->
+        {typ with type_desc= Trow (row_type_map ~loc ~f row); type_loc= loc}
 end
 
 module TypeDecl = struct

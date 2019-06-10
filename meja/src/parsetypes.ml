@@ -11,11 +11,21 @@ and type_desc =
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
+  | Trow of row_expr
 
 and variant =
   { var_ident: lid
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list }
+
+and row_expr =
+  { row_upper: row_field list
+  ; row_closed: Asttypes.closed_flag
+  ; row_lower: row_field list option
+  ; row_diff: row_field list option
+  ; row_loc: Location.t }
+
+and row_field = Row_ctor of lid | Row_var of type_expr
 
 type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
@@ -152,5 +162,34 @@ let rec typ_debug_print fmt typ =
   | Tctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
   | Ttuple typs ->
-      print "(%a)" (print_list typ_debug_print) typs ) ;
+      print "(%a)" (print_list typ_debug_print) typs
+  | Trow row ->
+      row_debug_print fmt row ) ;
   print ")"
+
+and row_debug_print fmt row =
+  let open Format in
+  let pp_sep fmt () = pp_print_string fmt " | " in
+  pp_print_string fmt "[" ;
+  if row.row_closed = Asttypes.Open then (
+    ( match row.row_lower with
+    | Some row ->
+        pp_print_string fmt "<" ;
+        pp_print_list ~pp_sep row_field_debug_print fmt row
+    | None ->
+        () ) ;
+    pp_print_string fmt ">" ) ;
+  pp_print_list ~pp_sep row_field_debug_print fmt row.row_upper ;
+  ( match row.row_diff with
+  | Some row ->
+      pp_print_string fmt "-" ;
+      pp_print_list ~pp_sep row_field_debug_print fmt row
+  | None ->
+      () ) ;
+  pp_print_string fmt "]"
+
+and row_field_debug_print fmt = function
+  | Row_ctor lid ->
+      Longident.pp fmt lid.txt
+  | Row_var typ ->
+      typ_debug_print fmt typ
