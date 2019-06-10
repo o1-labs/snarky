@@ -618,10 +618,10 @@ row_expr:
   | LBRACKET row = row_inner_expr_no_diff RBRACKET
     { row }
   | LBRACKET row = row_inner_expr_no_diff
-    MINUS rows = list(row_field, BAR) RBRACKET
+    MINUS rows = list(row_ctor_field, BAR) RBRACKET
     { {row with row_diff= Some (List.rev rows) } }
-  | LBRACKET field = row_field MINUS rows = list(row_field, BAR) RBRACKET
-    { { row_upper= [field]
+  | LBRACKET typ = type_var MINUS rows = list(row_ctor_field, BAR) RBRACKET
+    { { row_upper= [Row_var typ]
       ; row_closed= Asttypes.Closed
       ; row_lower= None
       ; row_diff= Some (List.rev rows)
