@@ -52,6 +52,8 @@ let consexp ~pos hd tl =
 %token RBRACKET
 %token TILDE
 %token QUESTION
+%token GREATER
+%token LESS
 %token DASHGT
 %token EQUALGT
 %token PLUSEQUAL
@@ -257,6 +259,8 @@ ctor_decl_args:
 
 infix_operator:
   | op = INFIXOP0 { op }
+  | LESS          { "<" }
+  | GREATER       { ">" }
   | EQUAL         { "=" }
   | op = INFIXOP1 { op }
   | MINUS         { "-" }
@@ -521,17 +525,21 @@ pat_or_bare_tuple:
   | ps = tuple(pat)
     { mkpat ~pos:$loc (PTuple (List.rev ps)) }
 
+type_var:
+  | QUOT x = as_loc(lident)
+    { mktyp ~pos:$loc (Tvar (Some x, Explicit)) }
+
 simple_type_expr:
   | UNDERSCORE
     { mktyp ~pos:$loc (Tvar (None, Explicit)) }
-  | QUOT x = as_loc(lident)
-    { mktyp ~pos:$loc (Tvar (Some x, Explicit)) }
   | t = decl_type_expr
     { t }
   | LPAREN x = type_expr RPAREN
     { x }
   | LPAREN xs = tuple(type_expr) RPAREN
     { mktyp ~pos:$loc (Ttuple (List.rev xs)) }
+  | row = row_expr
+    { mktyp ~pos:$loc (Trow row) }
 
 %inline type_arrow_label:
   | (* Empty *)
@@ -548,6 +556,74 @@ type_expr:
     { mktyp ~pos:$loc (Tarrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Implicit, label)) }
+
+row_ctor_field:
+  | ctor = as_loc(longident(ctor_ident, UIDENT))
+    { Row_ctor ctor }
+
+row_field:
+  | row = row_ctor_field
+    { row }
+  | typ = type_var
+    { Row_var typ }
+
+row_inner_expr_no_diff:
+  | row = row_ctor_field
+    { { row_upper= [row]
+      ; row_closed= Asttypes.Closed
+      ; row_lower= None
+      ; row_diff= None
+      ; row_loc= Loc.of_pos $loc } }
+  | BAR rows = list(row_field, BAR)
+    { { row_upper= List.rev rows
+      ; row_closed= Asttypes.Closed
+      ; row_lower= None
+      ; row_diff= None
+      ; row_loc= Loc.of_pos $loc } }
+  | row = row_field BAR rows = list(row_field, BAR)
+    { { row_upper= row :: List.rev rows
+      ; row_closed= Asttypes.Closed
+      ; row_lower= None
+      ; row_diff= None
+      ; row_loc= Loc.of_pos $loc } }
+  | LESS option(BAR) rows = list(row_field, BAR)
+    { { row_upper= List.rev rows
+      ; row_closed= Asttypes.Closed
+      ; row_lower= Some []
+      ; row_diff= None
+      ; row_loc= Loc.of_pos $loc } }
+  | LESS option(BAR) rows_lower = list(row_field, BAR)
+    GREATER rows = list(row_field, BAR)
+    { { row_upper= List.rev rows
+      ; row_closed= Asttypes.Closed
+      ; row_lower= Some (List.rev rows_lower)
+      ; row_diff= None
+      ; row_loc= Loc.of_pos $loc } }
+  | GREATER option(BAR) rows = list(row_field, BAR)
+    { { row_upper= List.rev rows
+      ; row_closed= Asttypes.Open
+      ; row_lower= None
+      ; row_diff= None
+      ; row_loc= Loc.of_pos $loc } }
+  | GREATER option(BAR) rows = list(row_field, BAR)
+    { { row_upper= List.rev rows
+      ; row_closed= Asttypes.Open
+      ; row_lower= None
+      ; row_diff= None
+      ; row_loc= Loc.of_pos $loc } }
+
+row_expr:
+  | LBRACKET row = row_inner_expr_no_diff RBRACKET
+    { row }
+  | LBRACKET row = row_inner_expr_no_diff
+    MINUS rows = list(row_field, BAR) RBRACKET
+    { {row with row_diff= Some (List.rev rows) } }
+  | LBRACKET field = row_field MINUS rows = list(row_field, BAR) RBRACKET
+    { { row_upper= [field]
+      ; row_closed= Asttypes.Closed
+      ; row_lower= None
+      ; row_diff= Some (List.rev rows)
+      ; row_loc= Loc.of_pos $loc } }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X
