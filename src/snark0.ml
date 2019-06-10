@@ -2008,12 +2008,16 @@ module Run = struct
     module Number = Number.Run.Make (Basic)
     module Enumerable = Enumerable.Run.Make (Basic)
   end
+
+  module Make_stateless (Backend : Backend_intf.S) = Make(Backend)(Unit)
 end
 
 type ('prover_state, 'field) m =
   (module Snark_intf.Run
      with type field = 'field
       and type prover_state = 'prover_state)
+
+type 'field m' = (unit, 'field) m
 
 let make (type field prover_state)
     (module Backend : Backend_intf.S with type Field.t = field) :
