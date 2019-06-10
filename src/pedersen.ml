@@ -13,10 +13,6 @@ module Make
 
         val to_affine_coordinates : t -> Impl.Field.t * Impl.Field.t
 
-        val typ : (var, t) Impl.Typ.t
-
-        val negate : t -> t
-
         val add : t -> t -> t
 
         val zero : t
