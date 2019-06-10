@@ -1,6 +1,21 @@
 open Core_kernel
 open Ast_types
 
+module Row_ctor = struct
+  module T = struct
+    type t = Longident.t * int [@@deriving sexp]
+
+    let compare (lid1, id1) (lid2, id2) =
+      let cmp = Int.compare id1 id2 in
+      if Int.equal cmp 0 then
+        String.compare (Longident.last lid1) (Longident.last lid2)
+      else cmp
+  end
+
+  include Comparable.Make (T)
+  include T
+end
+
 type type_expr =
   {mutable type_desc: type_desc; type_id: int; mutable type_depth: int}
 
@@ -12,12 +27,21 @@ and type_desc =
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
+  | Trow of row_expr
 
 and variant =
   { var_ident: lid
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
   ; var_decl: type_decl }
+
+and row_expr =
+  { row_contents: row_field Row_ctor.Map.t
+  ; row_closed: Asttypes.closed_flag
+  ; row_type: type_expr
+  ; row_includes: type_expr list }
+
+and row_field = Row_always | Row_maybe | Row_never
 
 and field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
 
@@ -83,7 +107,25 @@ let rec typ_debug_print fmt typ =
   | Tctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
   | Ttuple typs ->
-      print "(%a)" (print_list typ_debug_print) typs ) ;
+      print "(%a)" (print_list typ_debug_print) typs
+  | Trow row ->
+      let pp_sep fmt () = pp_print_string fmt " " in
+      print "[%s %a %a]"
+        (match row.row_closed with Closed -> "closed" | Open -> "open")
+        (pp_map ~pp_sep (fun fmt (lid, id) kind ->
+             ( match kind with
+             | Row_always ->
+                 ()
+             | Row_maybe ->
+                 pp_print_string fmt "?"
+             | Row_never ->
+                 pp_print_string fmt "-" ) ;
+             fprintf fmt "%a@%i" Longident.pp lid id ))
+        row.row_contents
+        (pp_print_list ~pp_sep typ_debug_print)
+        row.row_includes ;
+      if row.row_type.type_id <> typ.type_id then
+        print "= %a" typ_debug_print row.row_type ) ;
   print " @%i)" typ.type_depth
 
 let fold ~init ~f typ =
@@ -101,6 +143,12 @@ let fold ~init ~f typ =
   | Tpoly (typs, typ) ->
       let acc = List.fold ~init ~f typs in
       f acc typ
+  | Trow row ->
+      let acc =
+        if row.row_type.type_id <> typ.type_id then f init row.row_type
+        else init
+      in
+      List.fold ~init:acc ~f row.row_includes
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -153,6 +201,8 @@ let rec equal_at_depth ~depth typ1 typ2 =
           equal_at_depth ~depth typ1 typ2
       | _ ->
           false )
+    | Trow row1, Trow row2 ->
+        Int.equal row1.row_type.type_id row2.row_type.type_id
     | _, _ ->
         false
 

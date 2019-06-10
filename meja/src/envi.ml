@@ -642,6 +642,15 @@ module Type = struct
         let typ1 = copy typ1 new_vars_map env in
         let typ2 = copy typ2 new_vars_map env in
         mk (Tarrow (typ1, typ2, explicit, label)) env
+    | Trow row ->
+        mk
+          (Trow
+             { row with
+               row_type= copy row.row_type new_vars_map env
+             ; row_includes=
+                 List.map row.row_includes ~f:(fun typ ->
+                     copy typ new_vars_map env ) })
+          env
 
   module T = struct
     type t = type_expr
@@ -721,6 +730,56 @@ module Type = struct
         let typ1 = flatten typ1 env in
         let typ2 = flatten typ2 env in
         mk' (Tarrow (typ1, typ2, explicit, label))
+    | Trow row ->
+        let rows, typs =
+          List.partition_map row.row_includes ~f:(fun typ ->
+              let typ = flatten typ env in
+              match typ.type_desc with
+              | Trow row ->
+                  `Fst row
+              | Tvar _ ->
+                  `Snd typ
+              | _ ->
+                  assert false )
+        in
+        let typs = Set.to_list (Set.of_list (module Comparator) typs) in
+        let row = {row with row_includes= typs} in
+        let row = List.fold ~init:row ~f:row_include rows in
+        row.row_type.type_desc <- Trow row ;
+        mk' row.row_type.type_desc
+
+  and row_include row row' =
+    let row_closed =
+      match (row.row_closed, row'.row_closed) with
+      | Open, _ | _, Open ->
+          Asttypes.Open
+      | _ ->
+          Asttypes.Closed
+    in
+    let row_includes =
+      Set.to_list
+        (Set.union
+           (Set.of_list (module Comparator) row.row_includes)
+           (Set.of_list (module Comparator) row'.row_includes))
+    in
+    let row_contents =
+      Map.merge_skewed row.row_contents row'.row_contents
+        ~combine:(fun ~key:_ kind1 kind2 ->
+          match (kind1, kind2) with
+          | Row_always, _ ->
+              Row_always
+          | Row_never, _ ->
+              Row_never
+          | Row_maybe, Row_always ->
+              Row_always
+          | Row_maybe, _
+            when row_closed = Asttypes.Open || not (List.is_empty row_includes)
+            ->
+              Row_maybe
+          | Row_maybe, _ ->
+              Row_never )
+    in
+    {row with row_contents; row_closed; row_includes}
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
@@ -779,6 +838,12 @@ module Type = struct
       | Tarrow (_, _, Explicit, _), _ ->
           -1
       | _, Tarrow (_, _, Explicit, _) ->
+          1
+      | Trow row1, Trow row2 ->
+          Int.compare row1.row_type.type_id row2.row_type.type_id
+      | Trow _, _ ->
+          -1
+      | _, Trow _ ->
           1
 
   and compare_all typs1 typs2 =
@@ -1001,6 +1066,12 @@ module Type = struct
         mk (f variant) env
     | Tpoly (typs, typ) ->
         mk (Tpoly (typs, constr_map env ~f typ)) env
+    | Trow row ->
+        let row =
+          { row with
+            row_includes= List.map ~f:(constr_map env ~f) row.row_includes }
+        in
+        mk (Trow row) env
 
   let rec bubble_label_aux env label typ =
     match typ.type_desc with
