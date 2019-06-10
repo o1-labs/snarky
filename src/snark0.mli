@@ -45,8 +45,7 @@ module Run : sig
      and type Proof.t = Backend.Proof.t
      and type Proof.message = Backend.Proof.message
 
-  module Make_stateless
-      (Backend : Backend_intf.S) :
+  module Make_stateless (Backend : Backend_intf.S) :
     Snark_intf.Run
     with type field = Backend.Field.t
      and type prover_state = unit

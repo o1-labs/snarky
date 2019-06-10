@@ -2009,7 +2009,7 @@ module Run = struct
     module Enumerable = Enumerable.Run.Make (Basic)
   end
 
-  module Make_stateless (Backend : Backend_intf.S) = Make(Backend)(Unit)
+  module Make_stateless (Backend : Backend_intf.S) = Make (Backend) (Unit)
 end
 
 type ('prover_state, 'field) m =
