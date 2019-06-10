@@ -525,13 +525,15 @@ pat_or_bare_tuple:
   | ps = tuple(pat)
     { mkpat ~pos:$loc (PTuple (List.rev ps)) }
 
-type_var:
+%inline type_var:
   | QUOT x = as_loc(lident)
     { mktyp ~pos:$loc (Tvar (Some x, Explicit)) }
 
 simple_type_expr:
   | UNDERSCORE
     { mktyp ~pos:$loc (Tvar (None, Explicit)) }
+  | t = type_var
+    { t }
   | t = decl_type_expr
     { t }
   | LPAREN x = type_expr RPAREN
@@ -557,11 +559,11 @@ type_expr:
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Implicit, label)) }
 
-row_ctor_field:
+%inline row_ctor_field:
   | ctor = as_loc(longident(ctor_ident, UIDENT))
     { Row_ctor ctor }
 
-row_field:
+%inline row_field:
   | row = row_ctor_field
     { row }
   | typ = type_var
@@ -593,7 +595,7 @@ row_inner_expr_no_diff:
       ; row_diff= None
       ; row_loc= Loc.of_pos $loc } }
   | LESS option(BAR) rows_lower = list(row_field, BAR)
-    GREATER rows = list(row_field, BAR)
+    GREATER rows = list(row_ctor_field, BAR)
     { { row_upper= List.rev rows
       ; row_closed= Asttypes.Closed
       ; row_lower= Some (List.rev rows_lower)
