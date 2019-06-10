@@ -1949,9 +1949,11 @@ module Run = struct
 
     let check x s = Perform.check ~run:as_stateful x s
 
-    let constraint_count ?log:_ x =
+    let constraint_count ?log x =
       let count = ref 0 in
       let log_constraint c = count := !count + Core_kernel.List.length c in
+      (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
+      ignore log ;
       let old = !state in
       state :=
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
