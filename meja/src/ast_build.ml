@@ -1,4 +1,5 @@
 open Core_kernel
+open Ast_types
 open Parsetypes
 
 module Loc = struct
@@ -6,6 +7,19 @@ module Loc = struct
     Location.mkloc x loc
 
   let map x ~f = {Location.loc= x.Location.loc; txt= f x.Location.txt}
+
+  (** Convert the OCaml primitive [__POS__] into a Lexing.position *)
+  let of_prim (file, lnum, cnum, enum) =
+    (* Note: We use a fake value for [pos_bol], since we can't get the true
+             value from [__POS__]. *)
+    { Location.loc_start=
+        {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= cnum; pos_bol= 0}
+    ; loc_end=
+        {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= enum; pos_bol= 0}
+    ; loc_ghost= false }
+
+  let of_pos (loc_start, loc_end) =
+    {Location.loc_start; loc_end; loc_ghost= false}
 end
 
 module Lid = struct
@@ -33,13 +47,12 @@ module Type = struct
   let variant ?loc ?(params = []) ?(implicits = []) ident =
     { var_ident= Loc.mk ident ?loc
     ; var_params= params
-    ; var_implicit_params= implicits
-    ; var_decl_id= -1 }
+    ; var_implicit_params= implicits }
 
-  let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, -1, explicit))
+  let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, explicit))
 
   let var ?loc ?(explicit = Explicit) name =
-    mk ?loc (Tvar (Some (Loc.mk ?loc name), -1, explicit))
+    mk ?loc (Tvar (Some (Loc.mk ?loc name), explicit))
 
   let constr ?loc ?params ?implicits ident =
     mk ?loc (Tctor (variant ?loc ?params ?implicits ident))
@@ -59,7 +72,6 @@ module Type_decl = struct
     ; tdec_params= params
     ; tdec_implicit_params= implicits
     ; tdec_desc= d
-    ; tdec_id= -1
     ; tdec_loc= loc }
 
   let abstract ?loc ?params ?implicits name =
@@ -85,7 +97,7 @@ module Type_decl = struct
 
   module Field = struct
     let mk ?(loc = Location.none) name typ : Parsetypes.field_decl =
-      {fld_ident= Loc.mk ~loc name; fld_type= typ; fld_id= -1; fld_loc= loc}
+      {fld_ident= Loc.mk ~loc name; fld_type= typ; fld_loc= loc}
   end
 
   module Ctor = struct
@@ -101,7 +113,7 @@ end
 
 module Pat = struct
   let mk ?(loc = Location.none) d : Parsetypes.pattern =
-    {pat_desc= d; pat_loc= loc; pat_type= Type.none ~loc ()}
+    {pat_desc= d; pat_loc= loc; pat_type= Type0.none}
 
   let any ?loc () = mk ?loc PAny
 
@@ -120,7 +132,7 @@ end
 
 module Exp = struct
   let mk ?(loc = Location.none) d : Parsetypes.expression =
-    {exp_desc= d; exp_loc= loc; exp_type= Type.none ~loc ()}
+    {exp_desc= d; exp_loc= loc; exp_type= Type0.none}
 
   let fun_ ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) p body =
     mk ?loc (Fun (label, p, body, explicit))
@@ -138,4 +150,6 @@ module Exp = struct
   let let_ ?loc p e_eq e = mk ?loc (Let (p, e_eq, e))
 
   let constraint_ ?loc e typ = mk ?loc (Constraint (e, typ))
+
+  let seq ?loc e1 e2 = mk ?loc (Seq (e1, e2))
 end

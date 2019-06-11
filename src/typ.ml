@@ -42,7 +42,14 @@ module Data_spec0 = struct
     | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f, 'checked) data_spec
 end
 
-module Make (Checked : Checked_intf.S) = struct
+module Make
+    (Checked : Checked_intf.S)
+    (As_prover : As_prover_intf.S
+                 with module Types := Checked.Types
+                 with type 'f field := 'f Checked.field
+                  and type ('a, 's, 'f) t :=
+                             ('a, 's, 'f) Checked.Types.As_prover.t) =
+struct
   type ('var, 'value, 'field) t =
     ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t
 
@@ -90,7 +97,7 @@ module Make (Checked : Checked_intf.S) = struct
 
     let check (type field) ({check; _} : ('var, 'value, field Checked.field) t)
         (v : 'var) : (unit, 's, field Checked.field) Checked.t =
-      Checked.with_state (As_prover0.return ()) (check v)
+      Checked.with_state (As_prover.return ()) (check v)
 
     let unit () : (unit, unit, 'field) t =
       let s = Store.return () in
@@ -350,5 +357,5 @@ module Make (Checked : Checked_intf.S) = struct
   end
 end
 
-include Make (Checked)
+include Make (Checked) (As_prover)
 include T
