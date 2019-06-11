@@ -162,8 +162,8 @@ let main =
             let m, env =
               let loc = Location.none in
               let mkloc s = Location.mkloc s loc in
-              let env = Envi.open_module env in
-              let env = Envi.open_module env in
+              let env = Envi.open_absolute_module None env in
+              let env = Envi.open_absolute_module None env in
               let m =
                 try
                   Envi.find_module ~loc
@@ -211,10 +211,13 @@ let main =
           let parse_ast =
             read_file (Parser_impl.interface Lexer_impl.token) file
           in
-          let env = Envi.open_module env in
+          let module_name = Loader.modname_of_filename file in
+          let env =
+            Envi.open_absolute_module (Some (Longident.Lident module_name)) env
+          in
           let env = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:Location.none env in
-          let name = Location.(mkloc (Loader.modname_of_filename file) none) in
+          let name = Location.(mkloc module_name none) in
           Envi.add_module name m env )
     in
     let file =

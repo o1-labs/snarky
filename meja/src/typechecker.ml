@@ -942,7 +942,9 @@ let rec check_signature_item env item =
       let _decl, env = Typet.TypeDecl.import decl env in
       env
   | SModule (name, msig) -> (
-      let m, env = check_module_sig env msig in
+      let m, env =
+        check_module_sig env (Envi.relative_path env name.txt) msig
+      in
       match m with
       | Envi.Scope.Immediate m ->
           Envi.add_module name m env
@@ -954,11 +956,11 @@ let rec check_signature_item env item =
 and check_signature env signature =
   List.fold ~init:env signature ~f:check_signature_item
 
-and check_module_sig env msig =
+and check_module_sig env path msig =
   let loc = msig.msig_loc in
   match msig.msig_desc with
   | Signature signature ->
-      let env = Envi.open_module env in
+      let env = Envi.open_absolute_module (Some path) env in
       let env = check_signature env signature in
       let m, env = Envi.pop_module ~loc env in
       (Envi.Scope.Immediate m, env)
@@ -969,26 +971,25 @@ and check_module_sig env msig =
     | None ->
         (Envi.Scope.Deferred lid.txt, env) )
   | SigAbstract ->
-      let env = Envi.open_module env in
+      let env = Envi.open_absolute_module (Some path) env in
       let m, env = Envi.pop_module ~loc env in
       (Envi.Scope.Immediate m, env)
-  | SigFunctor (name, f, msig) ->
-      let f, env = check_module_sig env f in
-      (* Set up functor module *)
-      let env = Envi.open_module env in
-      let env =
-        match f with
-        | Envi.Scope.Immediate f ->
-            Envi.add_module name f env
-        | Envi.Scope.Deferred path ->
-            Envi.add_deferred_module name path env
-      in
-      let f, env = Envi.pop_module ~loc env in
-      let ftor f_instance =
-        let env = Envi.open_module env in
-        let env = Envi.open_namespace_scope f_instance env in
+  | SigFunctor (f_name, f, msig) ->
+      let f, env = check_module_sig env (Lident f_name.txt) f in
+      let ftor path f_instance =
+        (* We want the functored module to be accessible only in un-prefixed
+           space.
+        *)
+        let env = Envi.open_absolute_module None env in
+        let env =
+          match f_instance with
+          | Envi.Scope.Immediate f ->
+              Envi.add_module f_name f env
+          | Envi.Scope.Deferred path ->
+              Envi.add_deferred_module f_name path env
+        in
         (* TODO: check that f_instance matches f' *)
-        let m, _env = check_module_sig env msig in
+        let m, _env = check_module_sig env path msig in
         match m with
         | Envi.Scope.Immediate m ->
             m
@@ -996,8 +997,8 @@ and check_module_sig env msig =
             Envi.find_module ~loc (Location.mkloc path loc) env
       in
       (* Check that f builds the functor as expected. *)
-      ignore (ftor f) ;
-      let m = Envi.make_functor ftor in
+      ignore (ftor (Lapply (path, Lident f_name.txt)) f) ;
+      let m = Envi.make_functor path ftor in
       (Envi.Scope.Immediate m, env)
 
 let type_extension ~loc variant ctors env =
@@ -1079,7 +1080,7 @@ let rec check_statement env stmt =
       in_decl := false ;
       ret
   | Module (name, m) ->
-      let env = Envi.open_module env in
+      let env = Envi.open_module name.txt env in
       let env, m = check_module_expr env m in
       let m_env, env = Envi.pop_module ~loc env in
       let env = Envi.add_module name m_env env in
@@ -1186,35 +1187,43 @@ and check_module_expr env m =
       let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
       (env, {m with mod_desc= Structure stmts})
   | ModName name ->
+      let path = Envi.current_path env in
+      (* Remove the module placed on the stack by the caller. *)
+      let _, env = Envi.pop_module ~loc env in
       let m' = Envi.find_module ~loc name env in
-      let env = Envi.push_scope m' env in
+      let env = Envi.push_scope {m' with path} env in
       (env, m)
-  | Functor (name, f, m) ->
-      let f', env = check_module_sig env f in
-      (* Set up functor module *)
-      let env = Envi.open_module env in
-      let env =
-        match f' with
-        | Envi.Scope.Immediate f' ->
-            Envi.add_module name f' env
-        | Envi.Scope.Deferred path ->
-            Envi.add_deferred_module name path env
-      in
-      let f', env = Envi.pop_module ~loc env in
-      let ftor f_instance =
-        let env = Envi.open_module env in
-        let env = Envi.open_namespace_scope f_instance env in
+  | Functor (f_name, f, m) ->
+      let path = Option.value_exn (Envi.current_path env) in
+      (* Remove the module placed on the stack by the caller. *)
+      let _, env = Envi.pop_module ~loc env in
+      let f', env = check_module_sig env (Lident f_name.txt) f in
+      let ftor path f_instance =
+        (* We want the functored module to be accessible only in un-prefixed
+           space.
+        *)
+        let env = Envi.open_absolute_module None env in
+        let env =
+          match f_instance with
+          | Envi.Scope.Immediate f ->
+              Envi.add_module f_name f env
+          | Envi.Scope.Deferred path ->
+              Envi.add_deferred_module f_name path env
+        in
         (* TODO: check that f_instance matches f' *)
+        let env = Envi.open_absolute_module (Some path) env in
         let env, m' = check_module_expr env m in
         let m, _env = Envi.pop_module ~loc env in
         (m, m')
       in
       (* Check that f builds the functor as expected. *)
-      let _, m = ftor f' in
+      let _, m = ftor (Lapply (path, Lident f_name.txt)) f' in
       let env =
-        Envi.push_scope (Envi.make_functor (fun f -> fst (ftor f))) env
+        Envi.push_scope
+          (Envi.make_functor path (fun path f -> fst (ftor path f)))
+          env
       in
-      (env, {m with mod_desc= Functor (name, f, m)})
+      (env, {m with mod_desc= Functor (f_name, f, m)})
 
 let check_signature env signature =
   Envi.set_type_predeclaring env ;
