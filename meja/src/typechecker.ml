@@ -302,7 +302,7 @@ let get_field (field : lid) env =
       ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
       , i ) ->
       let vars, bound_vars, _ =
-        Envi.Type.refresh_vars ~loc tdec_params (Map.empty (module Int)) env
+        Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
       in
       let name =
         Location.mkloc
@@ -396,7 +396,7 @@ let get_ctor (name : lid) env =
           (Set.union (Envi.Type.type_vars typ) (Envi.Type.type_vars args_typ))
       in
       let _, bound_vars, _ =
-        Envi.Type.refresh_vars ~loc bound_vars (Map.empty (module Int)) env
+        Envi.Type.refresh_vars ~loc bound_vars Int.Map.empty env
       in
       let args_typ = Envi.Type.copy ~loc args_typ bound_vars env in
       let typ = Envi.Type.copy ~loc typ bound_vars env in
@@ -474,9 +474,7 @@ let rec check_pattern ~add env typ pat =
           | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
             ->
               let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params
-                  (Map.empty (module Int))
-                  env
+                Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
               let ident =
                 Longident.(
@@ -689,9 +687,7 @@ let rec get_expression env expected exp =
           | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
             ->
               let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params
-                  (Map.empty (module Int))
-                  env
+                Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
               let ident =
                 Location.mkloc (Longident.Ldot (path, decl.tdec_ident.txt)) loc
@@ -745,9 +741,7 @@ let rec get_expression env expected exp =
                 (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
               ->
                 let vars, bound_vars, env =
-                  Envi.Type.refresh_vars ~loc tdec_params
-                    (Map.empty (module Int))
-                    env
+                  Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
                 in
                 let ident =
                   Longident.(
@@ -791,9 +785,7 @@ let rec get_expression env expected exp =
           | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
             ->
               let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params
-                  (Map.empty (module Int))
-                  env
+                Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
               let ident =
                 Longident.(
