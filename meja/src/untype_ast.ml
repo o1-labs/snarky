@@ -22,8 +22,51 @@ let rec type_desc ?loc = function
       Type.constr ?loc ~params ~implicits ident.txt
   | Tpoly (vars, var) ->
       Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
+  | Trow row ->
+      Type.row ?loc (row_expr ?loc row)
 
 and type_expr ?loc typ = type_desc ?loc typ.type_desc
+
+and row_expr ?loc row =
+  let base, diff =
+    Map.partition_tf row.row_contents ~f:(function
+      | Row_never ->
+          false
+      | _ ->
+          true )
+  in
+  let has_maybe = ref false in
+  let always =
+    Map.filter base ~f:(function
+      | Row_always ->
+          true
+      | _ ->
+          has_maybe := true ;
+          false )
+  in
+  let ctor_list_of_map map =
+    List.map
+      ~f:(fun ((lid, _), _) -> Parsetypes.Row_ctor (Loc.mk ?loc lid))
+      (Map.to_alist map)
+  in
+  let row_upper =
+    ctor_list_of_map base
+    @ List.map
+        ~f:(fun typ -> Parsetypes.Row_var (type_expr ?loc typ))
+        row.row_includes
+  in
+  let row_lower =
+    if List.is_empty row.row_includes && not !has_maybe then None
+    else Some (ctor_list_of_map always)
+  in
+  let row_diff =
+    if Map.is_empty diff then None else Some (ctor_list_of_map diff)
+  in
+  { row_upper
+  ; row_closed= row.row_closed
+  ; row_lower
+  ; row_diff
+  ; row_loc= Option.value ~default:Location.none loc }
 
 let field_decl ?loc fld =
   Type_decl.Field.mk ?loc fld.fld_ident.txt (type_expr ?loc fld.fld_type)

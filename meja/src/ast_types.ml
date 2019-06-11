@@ -9,8 +9,19 @@ let pp_name ppf name =
   then Format.pp_print_string ppf name
   else Format.fprintf ppf "(%s)" name
 
+let pp_map ?(pp_sep = fun _ _ -> ()) pp ppf map =
+  let first = ref true in
+  let pp_sep ppf () = if !first then first := false else pp_sep ppf () in
+  Map.iteri map ~f:(fun ~key ~data -> pp_sep ppf () ; pp ppf key data)
+
 module Longident = struct
-  include Longident
+  type t = Longident.t =
+    | Lident of string
+    | Ldot of t * string
+    | Lapply of t * t
+  [@@deriving sexp]
+
+  include (Longident : module type of Longident with type t := t)
 
   let rec compare lid1 lid2 =
     let nonzero_or x f = if Int.equal x 0 then f () else x in

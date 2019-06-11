@@ -94,6 +94,8 @@ rule token = parse
 
   | "!" symbolchar * as op { PREFIXOP op }
   | ['~' '?'] symbolchar + as op { PREFIXOP op }
+  | '<' { LESS }
+  | '>' { GREATER }
   | ['=' '<' '>' '|' '&' '$'] symbolchar * as op { INFIXOP0 op }
   | ['@' '^'] symbolchar * as op { INFIXOP1 op }
   | ['+' '-'] symbolchar * as op { INFIXOP2 op }

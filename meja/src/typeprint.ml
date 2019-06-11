@@ -1,3 +1,4 @@
+open Core_kernel
 open Ast_types
 open Type0
 open Format
@@ -27,6 +28,8 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
         type_expr typ ;
       if bracket then fprintf fmt ")"
+  | Trow row ->
+      row_expr fmt row
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -42,6 +45,42 @@ and variant fmt v =
   | _ ->
       fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple
         v.var_params
+
+and row_expr fmt row =
+  let first = ref true in
+  let pp_sep fmt () = if !first then first := false else fprintf fmt "@ | " in
+  let base, diff =
+    Map.partition_tf row.row_contents ~f:(function
+      | Row_never ->
+          false
+      | _ ->
+          true )
+  in
+  let has_maybe = ref false in
+  let always =
+    Map.filter base ~f:(function
+      | Row_always ->
+          true
+      | _ ->
+          has_maybe := true ;
+          false )
+  in
+  fprintf fmt "[@[<hv2>" ;
+  if
+    row.row_closed = Closed
+    && (!has_maybe || not (List.is_empty row.row_includes))
+  then fprintf fmt "<@ "
+  else fprintf fmt "@," ;
+  pp_map ~pp_sep (fun fmt (lid, _) _ -> Longident.pp fmt lid) fmt base ;
+  pp_sep fmt () ;
+  pp_print_list ~pp_sep type_expr fmt row.row_includes ;
+  if !has_maybe || not (List.is_empty row.row_includes) then (
+    fprintf fmt ">@ " ;
+    pp_map ~pp_sep (fun fmt (lid, _) _ -> Longident.pp fmt lid) fmt always ) ;
+  if not (Map.is_empty diff) then (
+    fprintf fmt "-@ " ;
+    pp_map ~pp_sep (fun fmt (lid, _) _ -> Longident.pp fmt lid) fmt diff ) ;
+  fprintf fmt "@]]"
 
 let field_decl fmt decl =
   fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident.txt type_expr decl.fld_type
