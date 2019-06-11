@@ -65,6 +65,21 @@ module Longident = struct
         Ldot (add_outer_module name lid, name2)
     | Lapply _ ->
         failwith "Unhandled Lapply in add_outer_module"
+
+  let rec join lid1 lid2 =
+    match lid2 with
+    | Lident name ->
+        Ldot (lid1, name)
+    | Ldot (lid2, name) ->
+        Ldot (join lid1 lid2, name)
+    | Lapply (lid2, lid_apply) ->
+        Lapply (join lid1 lid2, lid_apply)
+
+  let join_name lid name =
+    match lid with Some lid -> Ldot (lid, name) | None -> Lident name
+
+  let join_path lid1 lid2 =
+    match lid1 with Some lid1 -> join lid1 lid2 | None -> lid2
 end
 
 type str = string Location.loc

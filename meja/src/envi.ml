@@ -91,6 +91,8 @@ module Scope = struct
     | Continue
     | Functor of (Longident.t -> 't or_path -> 't)
 
+  type paths = {type_paths: Longident.t Int.Map.t}
+
   type t =
     { kind: t kind
     ; path: Longident.t option
@@ -100,12 +102,15 @@ module Scope = struct
     ; fields: (type_decl * int) String.Map.t
     ; ctors: (type_decl * int) String.Map.t
     ; modules: t or_path String.Map.t
-    ; instances: Longident.t Int.Map.t }
+    ; instances: Longident.t Int.Map.t
+    ; paths: paths }
 
   let load_module :
       (loc:Location.t -> name:string -> t resolve_env -> string -> t) ref =
     ref (fun ~loc ~name _env _filename ->
         raise (Error (loc, Unbound_module (Lident name))) )
+
+  let empty_paths = {type_paths= Int.Map.empty}
 
   let empty path kind =
     { kind
@@ -116,7 +121,8 @@ module Scope = struct
     ; fields= String.Map.empty
     ; ctors= String.Map.empty
     ; modules= String.Map.empty
-    ; instances= Int.Map.empty }
+    ; instances= Int.Map.empty
+    ; paths= empty_paths }
 
   let set_path path env = {env with path= Some path}
 
@@ -146,19 +152,24 @@ module Scope = struct
 
   let get_ctor name scope = Map.find scope.ctors name
 
+  let add_preferred_type_name path decl_id {type_paths} =
+    {type_paths= Map.set type_paths ~key:decl_id ~data:path}
+
+  let get_preferred_type_name decl_id {paths= {type_paths}; _} =
+    Map.find type_paths decl_id
+
   let add_type_declaration decl scope =
     { scope with
       type_decls= Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
-    }
+    ; paths=
+        add_preferred_type_name (Lident decl.tdec_ident.txt) decl.tdec_id
+          scope.paths }
 
   let get_type_declaration name scope = Map.find scope.type_decls name
 
   let register_type_declaration decl scope =
-    let {type_decls; _} = scope in
-    let scope =
-      { scope with
-        type_decls= Map.set type_decls ~key:decl.tdec_ident.txt ~data:decl }
-    in
+    let scope' = scope in
+    let scope = add_type_declaration decl scope in
     match decl.tdec_desc with
     | TAbstract | TAlias _ | TUnfold _ | TOpen | TForward _ ->
         scope
@@ -167,9 +178,8 @@ module Scope = struct
     | TVariant ctors ->
         List.foldi ~f:(add_ctor decl) ~init:scope ctors
     | TExtend (_, _, ctors) ->
-        (* Don't add the identifier to the scope *)
-        let scope = {scope with type_decls} in
-        List.foldi ~f:(add_ctor decl) ~init:scope ctors
+        (* Use [scope'] to avoid adding the type name. *)
+        List.foldi ~f:(add_ctor decl) ~init:scope' ctors
 
   let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors
       ~modules ~instances
@@ -181,7 +191,8 @@ module Scope = struct
       ; fields= fields1
       ; ctors= ctors1
       ; modules= modules1
-      ; instances= instances1 }
+      ; instances= instances1
+      ; paths= _ }
       { kind= _
       ; path= _
       ; names= names2
@@ -190,7 +201,8 @@ module Scope = struct
       ; fields= fields2
       ; ctors= ctors2
       ; modules= modules2
-      ; instances= instances2 } =
+      ; instances= instances2
+      ; paths= _ } =
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
     in
@@ -201,6 +213,14 @@ module Scope = struct
     let acc = Map.fold2 instances1 instances2 ~init:acc ~f:instances in
     let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
     acc
+
+  (* Extend the paths in the first argument with those in the second,
+     overwriting them where both exist.
+  *)
+  let join_paths {type_paths= type_paths1} {type_paths= type_paths2} =
+    { type_paths=
+        Map.merge_skewed type_paths1 type_paths2 ~combine:(fun ~key:_ _ v -> v)
+    }
 
   (* [join ~loc scope1 scope2] attaches the definitions in [scope2] to
      [scope1], raising an error at [loc] if a name is defined in both scopes
@@ -218,7 +238,8 @@ module Scope = struct
       ; fields= fields1
       ; ctors= ctors1
       ; modules= modules1
-      ; instances= instances1 }
+      ; instances= instances1
+      ; paths= paths1 }
       { kind= _
       ; path= _
       ; names= names2
@@ -227,7 +248,8 @@ module Scope = struct
       ; fields= fields2
       ; ctors= ctors2
       ; modules= modules2
-      ; instances= instances2 } =
+      ; instances= instances2
+      ; paths= paths2 } =
     { kind
     ; path
     ; names= Map.merge_skewed names1 names2 ~combine:(fun ~key:_ _ v -> v)
@@ -244,7 +266,10 @@ module Scope = struct
             raise (Error (loc, Multiple_definition ("module", key))) )
     ; instances=
         Map.merge_skewed instances1 instances2 ~combine:(fun ~key:_ _ v -> v)
-    }
+    ; paths= join_paths paths1 paths2 }
+
+  let extend_paths name {type_paths} =
+    {type_paths= Map.map ~f:(add_outer_module name) type_paths}
 
   let add_module name m scope =
     {scope with modules= Map.set scope.modules ~key:name ~data:m}
@@ -383,12 +408,7 @@ let push_scope scope env =
 
 let current_path env = (current_scope env).path
 
-let relative_path env name =
-  match current_path env with
-  | Some path ->
-      Ldot (path, name)
-  | None ->
-      Lident name
+let relative_path env name = join_name (current_path env) name
 
 let make_functor path f = Scope.empty (Some path) (Functor f)
 
@@ -477,6 +497,7 @@ let find_type_variable name env =
 let add_module (name : str) m =
   map_current_scope ~f:(fun scope ->
       let scope = Scope.add_module name.txt (Scope.Immediate m) scope in
+      let paths = Scope.extend_paths name.txt m.Scope.paths in
       { scope with
         instances=
           Map.merge scope.instances m.instances ~f:(fun ~key:_ data ->
@@ -484,7 +505,10 @@ let add_module (name : str) m =
               | `Left x ->
                   Some x
               | `Both (_, x) | `Right x ->
-                  Some (Longident.add_outer_module name.txt x) ) } )
+                  Some (Longident.add_outer_module name.txt x) )
+      ; (* Prefer the shorter paths in the current module to those in the
+           module we are adding. *)
+        paths= Scope.join_paths paths scope.paths } )
 
 let add_deferred_module (name : str) lid =
   map_current_scope ~f:(Scope.add_module name.txt (Scope.Deferred lid))
@@ -1026,6 +1050,18 @@ module Type = struct
         mk (f variant) env
     | Tpoly (typs, typ) ->
         mk (Tpoly (typs, constr_map env ~f typ)) env
+
+  let normalise_constr_names env typ =
+    constr_map env typ ~f:(fun variant ->
+        match
+          List.find_map env.scope_stack
+            ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)
+        with
+        | Some ident ->
+            Tctor
+              {variant with var_ident= {txt= ident; loc= variant.var_ident.loc}}
+        | None ->
+            Tctor variant )
 
   let rec bubble_label_aux env label typ =
     match typ.type_desc with

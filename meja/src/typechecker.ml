@@ -416,7 +416,10 @@ let rec check_pattern ~add env typ pat =
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp ;
       let p, env = check_pattern ~add env ctyp p in
-      let constr_typ = Untype_ast.type_expr ~loc:constr_typ.type_loc ctyp in
+      let constr_typ =
+        Untype_ast.type_expr ~loc:constr_typ.type_loc
+          (Envi.Type.normalise_constr_names env ctyp)
+      in
       ( {pat_loc= loc; pat_type= typ; pat_desc= PConstraint (p, constr_typ)}
       , env )
   | PTuple ps ->
@@ -646,7 +649,10 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ ;
       let e, env = get_expression env typ e in
       check_type ~loc env e.exp_type typ ;
-      let typ' = Untype_ast.type_expr ~loc:typ'.type_loc typ in
+      let typ' =
+        Untype_ast.type_expr ~loc:typ'.type_loc
+          (Envi.Type.normalise_constr_names env typ)
+      in
       ({exp_loc= loc; exp_type= typ; exp_desc= Constraint (e, typ')}, env)
   | Tuple es ->
       let typs = List.map es ~f:(fun _ -> Envi.Type.mkvar None env) in
@@ -906,7 +912,9 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       in
       let env = Envi.add_name str ctyp env in
       let p' = {p' with pat_type= ctyp} in
-      let typ = Untype_ast.type_expr ~loc ctyp in
+      let typ =
+        Untype_ast.type_expr ~loc (Envi.Type.normalise_constr_names env ctyp)
+      in
       let p = {p with pat_desc= PConstraint (p', typ); pat_type= ctyp} in
       (p, e, env)
   | _, [] ->
