@@ -349,6 +349,13 @@ module Scope = struct
               raise (Error (loc, Not_a_functor))
         in
         Some (Immediate (f (find_module ~loc lid2 resolve_env scopes)))
+
+  let join_expr_scope (expr_scope : t) (scope : t) =
+    assert (expr_scope.kind = Expr) ;
+    let select_new ~key:_ _ new_value = new_value in
+    { scope with
+      names= Map.merge_skewed scope.names expr_scope.names ~combine:select_new
+    }
 end
 
 let empty_resolve_env : Scope.t resolve_env =
@@ -513,6 +520,9 @@ let find_of_lident ~kind ~get_name (lid : lid) env =
         Option.bind m ~f:(get_name name)
     | _ ->
         None )
+
+let join_expr_scope env expr_scope =
+  map_current_scope ~f:(Scope.join_expr_scope expr_scope) env
 
 let raw_find_type_declaration (lid : lid) env =
   match
