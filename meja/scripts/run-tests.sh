@@ -87,6 +87,7 @@ run_tests() {
   run_dune build meja/meja.exe
   if [ $? -ne 0 ]; then
     echo -e "${RED}BUILD FAILED${NC}"
+    return 1
   else
     mkdir -p tests/out
     for test in tests/*.meja; do
@@ -123,6 +124,7 @@ run_one() {
   run_dune build meja/meja.exe
   if [ $? -ne 0 ]; then
     echo -e "${RED}BUILD FAILED${NC}"
+    return 1
   else
     mkdir -p tests/out
     run_test "$FILENAME"

@@ -150,4 +150,6 @@ module Exp = struct
   let let_ ?loc p e_eq e = mk ?loc (Let (p, e_eq, e))
 
   let constraint_ ?loc e typ = mk ?loc (Constraint (e, typ))
+
+  let seq ?loc e1 e2 = mk ?loc (Seq (e1, e2))
 end

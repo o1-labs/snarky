@@ -562,10 +562,12 @@ let raw_find_type_declaration (lid : lid) env =
 module Type = struct
   type env = t
 
-  let mk type_desc env =
+  let mk' env depth type_desc =
     let type_id, type_env = TypeEnvi.next_type_id env.resolve_env.type_env in
     env.resolve_env.type_env <- type_env ;
-    {type_desc; type_id; type_depth= env.depth}
+    {type_desc; type_id; type_depth= depth}
+
+  let mk type_desc env = mk' env env.depth type_desc
 
   let mkvar ?(explicitness = Explicit) name env =
     mk (Tvar (name, explicitness)) env
@@ -687,7 +689,16 @@ module Type = struct
     in
     type_vars empty typ
 
+  let rec update_depths env typ =
+    Type0.update_depth env.depth typ ;
+    match typ.type_desc with
+    | Tvar _ ->
+        Option.iter ~f:(update_depths env) (instance env typ)
+    | _ ->
+        Type0.iter ~f:(update_depths env) typ
+
   let rec flatten typ env =
+    let mk' = mk' env typ.type_depth in
     match typ.type_desc with
     | Tvar _ -> (
       match instance env typ with
@@ -704,7 +715,7 @@ module Type = struct
             (List.map vars ~f:(type_vars ~depth:env.depth))
         in
         let typ = flatten typ env in
-        mk (Tpoly (Set.to_list var_set, typ)) env
+        mk' (Tpoly (Set.to_list var_set, typ))
     | Tctor variant ->
         let var_params =
           List.map variant.var_params ~f:(fun typ -> flatten typ env)
@@ -712,14 +723,14 @@ module Type = struct
         let var_implicit_params =
           List.map variant.var_implicit_params ~f:(fun typ -> flatten typ env)
         in
-        mk (Tctor {variant with var_params; var_implicit_params}) env
+        mk' (Tctor {variant with var_params; var_implicit_params})
     | Ttuple typs ->
         let typs = List.map typs ~f:(fun typ -> flatten typ env) in
-        mk (Ttuple typs) env
+        mk' (Ttuple typs)
     | Tarrow (typ1, typ2, explicit, label) ->
         let typ1 = flatten typ1 env in
         let typ2 = flatten typ2 env in
-        mk (Tarrow (typ1, typ2, explicit, label)) env
+        mk' (Tarrow (typ1, typ2, explicit, label))
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
@@ -791,6 +802,13 @@ module Type = struct
     | typ1 :: typs1, typ2 :: typs2 ->
         or_compare (compare typ1 typ2) ~f:(fun () -> compare_all typs1 typs2)
 
+  let rec weak_variables depth set typ =
+    match typ.type_desc with
+    | Tvar _ when typ.type_depth > depth ->
+        Set.add set typ
+    | _ ->
+        Type0.fold ~init:set ~f:(weak_variables depth) typ
+
   let rec get_implicits acc typ =
     match typ.type_desc with
     | Tarrow (typ1, typ2, Implicit, label) ->
@@ -839,15 +857,12 @@ module Type = struct
         {exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}
 
   let rec instantiate_implicits ~loc ~is_subtype implicit_vars env =
-    let implicit_vars =
-      List.map implicit_vars ~f:(fun e ->
-          {e with Parsetypes.exp_type= flatten e.Parsetypes.exp_type env} )
-    in
     let env_implicits = env.resolve_env.type_env.implicit_vars in
     env.resolve_env.type_env
     <- {env.resolve_env.type_env with implicit_vars= []} ;
     let implicit_vars =
-      List.filter implicit_vars ~f:(fun ({exp_loc; exp_type; _} as exp) ->
+      List.filter implicit_vars
+        ~f:(fun ({Parsetypes.exp_loc; exp_type; _} as exp) ->
           match implicit_instances ~loc ~is_subtype exp_type env with
           | [(name, instance_typ)] ->
               let name = Location.mkloc name exp_loc in
@@ -884,6 +899,10 @@ module Type = struct
     in
     let {TypeEnvi.implicit_vars; _} = env.resolve_env.type_env in
     let implicit_vars =
+      List.map implicit_vars ~f:(fun exp ->
+          {exp with exp_type= flatten exp.exp_type env} )
+    in
+    let implicit_vars =
       instantiate_implicits ~loc ~is_subtype implicit_vars env
     in
     let implicit_vars =
@@ -899,6 +918,60 @@ module Type = struct
             | _ ->
                 raise (Error (exp2.exp_loc, No_unifiable_implicit)) ) ;
           cmp )
+    in
+    let implicit_vars =
+      (* Eliminate unifiable implicit variables containing 'weak type
+         variables'. *)
+      let consider_weak = ref true in
+      let weak_vars_set = ref (Set.empty (module Comparator)) in
+      let strong_implicit_vars, weak_implicit_vars =
+        List.partition_tf implicit_vars ~f:(fun {exp_type; _} ->
+            if !consider_weak then
+              let weak_vars =
+                weak_variables env.depth
+                  (Set.empty (module Comparator))
+                  exp_type
+              in
+              if Set.is_empty weak_vars then true
+              else (
+                if Set.is_empty (Set.inter !weak_vars_set weak_vars) then
+                  weak_vars_set := Set.union !weak_vars_set weak_vars
+                else
+                  (* Several implicit variables contain the same weak type
+                     variable, so we give up on eliminating variables.
+
+                     This avoids an expensive proof search for a dependent-type
+                     witness of the form:
+                       forall (T1, ..., Tn : Type -> Type),
+                         exists (A1, ..., An : Type),
+                         T1(A1, ..., An) + ... + Tn(A1, ..., An).
+                *)
+                  consider_weak := false ;
+                false )
+            else true )
+      in
+      if !consider_weak then
+        let weak_implicit_vars =
+          List.filter weak_implicit_vars ~f:(fun e_weak ->
+              not
+                (List.exists strong_implicit_vars ~f:(fun e_strong ->
+                     if
+                       Type0.equal_at_depth ~depth:env.depth e_weak.exp_type
+                         e_strong.exp_type
+                     then (
+                       ignore
+                         (is_subtype env e_strong.exp_type ~of_:e_weak.exp_type) ;
+                       ( match e_weak.exp_desc with
+                       | Unifiable desc ->
+                           desc.expression <- Some e_strong
+                       | _ ->
+                           raise
+                             (Error (e_weak.exp_loc, No_unifiable_implicit)) ) ;
+                       true )
+                     else false )) )
+        in
+        strong_implicit_vars @ weak_implicit_vars
+      else implicit_vars
     in
     let local_implicit_vars, implicit_vars =
       if toplevel then (implicit_vars, [])
@@ -1045,6 +1118,9 @@ module TypeDecl = struct
 
   let unfold_alias ~loc typ env =
     match find_of_type ~loc typ env with
+    | Some ({tdec_desc= TUnfold typ'; _}, _, _) when not (phys_equal typ typ')
+      ->
+        Some typ'
     | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
         Some (Type.copy ~loc alias_typ bound_vars env)
     | _ ->
@@ -1052,6 +1128,9 @@ module TypeDecl = struct
 
   let rec find_unaliased_of_type ~loc typ env =
     match find_of_type ~loc typ env with
+    | Some ({tdec_desc= TUnfold typ'; _}, _, _) when not (phys_equal typ typ')
+      ->
+        find_unaliased_of_type ~loc typ' env
     | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
         let typ = Type.copy ~loc alias_typ bound_vars env in
         find_unaliased_of_type ~loc typ env
