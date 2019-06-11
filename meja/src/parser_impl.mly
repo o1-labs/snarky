@@ -143,6 +143,8 @@ structure_item:
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
     { mkstmt ~pos:$loc (Module (x, m)) }
+  | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
+    { mkstmt ~pos:$loc (ModType (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
     { mkstmt ~pos:$loc (Open x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
@@ -173,6 +175,16 @@ signature_item:
     { mksig ~pos:$loc (SModule (x, mkmty ~pos:$loc SigAbstract)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
     { mksig ~pos:$loc (SModType (x, m)) }
+  | OPEN x = as_loc(longident(UIDENT, UIDENT))
+    { mksig ~pos:$loc (SOpen x) }
+  | TYPE x = decl_type(type_lident) PLUSEQUAL
+    maybe(BAR) ctors = list(ctor_decl, BAR)
+    { let (x, params) = x in
+      mksig ~pos:$loc (STypeExtension
+        ( {var_ident= x; var_params= params; var_implicit_params= []}
+        , ctors)) }
+  | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl
+    { mksig ~pos:$loc (SRequest (arg, x)) }
 
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE

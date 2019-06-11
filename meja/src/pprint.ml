@@ -255,6 +255,17 @@ let rec signature_desc fmt = function
       let prefix fmt = fprintf fmt "=@ " in
       fprintf fmt "@[<hov2>module type@ %s@ %a;@]@;@;" name.txt
         (module_sig ~prefix) msig
+  | SOpen name ->
+      fprintf fmt "@[<2>open %a@]@;@;" Longident.pp name.txt
+  | STypeExtension (typ, ctors) ->
+      fprintf fmt "@[<2>type %a +=@[<hv2>@ %a@]@]@;@;" variant typ
+        (pp_print_list ~pp_sep:bar_sep ctor_decl)
+        ctors
+  | SRequest (typ, ctor) ->
+      fprintf fmt "@[<2>request (%a)@[<hv2>@ %a@]@]@;@;" type_expr typ
+        ctor_decl ctor
+  | SMultiple sigs ->
+      signature fmt sigs
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 
