@@ -450,7 +450,7 @@ let rec check_pattern mode ~add env typ pat =
                        () )
                  ~names:(fun ~key:name ~data () ->
                    match data with
-                   | `Both (typ1, typ2) ->
+                   | `Both ((typ1, _), (typ2, _)) ->
                        check_type mode ~loc env typ1 typ2
                    | _ ->
                        raise
@@ -594,7 +594,14 @@ let rec get_expression mode env expected exp =
       check_type mode ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
-      let typ = Envi.find_name mode ~loc name env in
+      let typ, id = Envi.find_name mode ~loc name env in
+      let name =
+        match Envi.find_preferred_name OCaml id env with
+        | Some name ->
+            Ast_build.Loc.mk ~loc name
+        | None ->
+            name
+      in
       let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
       let e = Envi.Type.generate_implicits e env in
       check_type mode ~loc env expected e.exp_type ;
