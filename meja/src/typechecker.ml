@@ -865,6 +865,23 @@ let rec get_expression mode env expected exp =
           if not (List.is_empty names) then
             raise (Error (loc, Missing_fields names)) ) ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Record (fields, ext)}, !env)
+  | Ctor ({txt= Lident (("true" | "false") as txt); loc= name_loc}, None)
+    when mode = Checked ->
+      let typ = Initial_env.Type.bool mode in
+      check_type mode ~loc env expected typ ;
+      let name =
+        let lid =
+          match txt with
+          | "true" ->
+              Ast_build.Lid.of_list ["Boolean"; "true_"]
+          | "false" ->
+              Ast_build.Lid.of_list ["Boolean"; "false_"]
+          | _ ->
+              assert false
+        in
+        Ast_build.Loc.mk ~loc:name_loc lid
+      in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Variable name}, env)
   | Ctor (name, arg) ->
       let typ, arg_typ = get_ctor mode name env in
       check_type mode ~loc env expected typ ;
