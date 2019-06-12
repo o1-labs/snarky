@@ -27,7 +27,7 @@ module Type = struct
       | Some true, Explicit ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (mkvar ~explicitness None env, env) )
+          (mkvar mode ~explicitness None env, env) )
     | Tvar ((Some {txt= x; _} as name), explicitness) -> (
         let var =
           match must_find with
@@ -45,7 +45,7 @@ module Type = struct
         | Some var ->
             (var, env)
         | None ->
-            let var = mkvar ~explicitness name env in
+            let var = mkvar mode ~explicitness name env in
             (var, add_type_variable x var env) )
     | Tpoly (vars, typ) ->
         let env = open_expr_scope mode env in
@@ -56,7 +56,7 @@ module Type = struct
         in
         let typ, env = import typ env in
         let env = close_expr_scope env in
-        (mk (Tpoly (vars, typ)) env, env)
+        (mk mode (Tpoly (vars, typ)) env, env)
     | Tctor variant -> (
         let {var_ident; var_params; var_implicit_params; _} = variant in
         let decl = raw_find_type_declaration mode var_ident env in
@@ -117,18 +117,18 @@ module Type = struct
             let variant =
               {Type0.var_params; var_ident; var_decl= decl; var_implicit_params}
             in
-            (mk (Tctor variant) env, env) )
+            (mk mode (Tctor variant) env, env) )
     | Ttuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
               let t, e = import t e in
               (e, t) )
         in
-        (mk (Ttuple typs) env, env)
+        (mk mode (Ttuple typs) env, env)
     | Tarrow (typ1, typ2, explicit, label) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
-        (mk (Tarrow (typ1, typ2, explicit, label)) env, env)
+        (mk mode (Tarrow (typ1, typ2, explicit, label)) env, env)
 
   let fold ~init ~f typ =
     match typ.type_desc with

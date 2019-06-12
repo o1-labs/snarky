@@ -97,21 +97,21 @@ let array, env = import Checked array env
 module Type = struct
   open Envi
 
-  let int = TypeDecl.mk_typ int ~params:[] env
+  let int = TypeDecl.mk_typ Checked int ~params:[] env
 
-  let unit = TypeDecl.mk_typ unit ~params:[] env
+  let unit = TypeDecl.mk_typ Checked unit ~params:[] env
 
-  let bool = TypeDecl.mk_typ bool ~params:[] env
+  let bool = TypeDecl.mk_typ Checked bool ~params:[] env
 
-  let char = TypeDecl.mk_typ char ~params:[] env
+  let char = TypeDecl.mk_typ Checked char ~params:[] env
 
-  let string = TypeDecl.mk_typ string ~params:[] env
+  let string = TypeDecl.mk_typ Checked string ~params:[] env
 
-  let float = TypeDecl.mk_typ float ~params:[] env
+  let float = TypeDecl.mk_typ Checked float ~params:[] env
 
-  let exn = TypeDecl.mk_typ exn ~params:[] env
+  let exn = TypeDecl.mk_typ Checked exn ~params:[] env
 
-  let option a = TypeDecl.mk_typ option ~params:[a] env
+  let option a = TypeDecl.mk_typ Checked option ~params:[a] env
 
-  let list a = TypeDecl.mk_typ list ~params:[a] env
+  let list a = TypeDecl.mk_typ Checked list ~params:[a] env
 end

@@ -2,7 +2,10 @@ open Core_kernel
 open Ast_types
 
 type type_expr =
-  {mutable type_desc: type_desc; type_id: int; mutable type_depth: int}
+  { mutable type_desc: type_desc
+  ; type_id: int
+  ; mutable type_depth: int
+  ; type_mode: mode }
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -45,7 +48,11 @@ and type_decl_desc =
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
-let none = {type_desc= Tvar (None, Explicit); type_id= -1; type_depth= -1}
+let none =
+  { type_desc= Tvar (None, Explicit)
+  ; type_id= -1
+  ; type_depth= -1
+  ; type_mode= OCaml }
 
 let rec typ_debug_print fmt typ =
   let open Format in

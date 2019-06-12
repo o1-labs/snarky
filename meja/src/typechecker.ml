@@ -256,13 +256,13 @@ let rec is_subtype mode ~loc env typ ~of_:ctyp =
   | _, _ ->
       false
 
-let rec add_implicits ~loc implicits typ env =
+let rec add_implicits mode ~loc implicits typ env =
   match implicits with
   | [] ->
       typ
   | typ' :: implicits ->
-      let typ = add_implicits ~loc implicits typ env in
-      Envi.Type.mk (Tarrow (typ', typ, Implicit, Nolabel)) env
+      let typ = add_implicits mode ~loc implicits typ env in
+      Envi.Type.mk mode (Tarrow (typ', typ, Implicit, Nolabel)) env
 
 let free_type_vars ?depth typ =
   let empty = Set.empty (module Envi.Type) in
@@ -282,17 +282,17 @@ let free_type_vars ?depth typ =
   in
   free_type_vars empty typ
 
-let polymorphise typ env =
+let polymorphise mode typ env =
   let typ_vars = Set.to_list (free_type_vars ~depth:env.Envi.depth typ) in
   match typ_vars with
   | [] ->
       typ
   | _ ->
-      Envi.Type.mk (Tpoly (typ_vars, typ)) env
+      Envi.Type.mk mode (Tpoly (typ_vars, typ)) env
 
-let add_polymorphised name typ env =
+let add_polymorphised mode name typ env =
   let typ = Envi.Type.flatten typ env in
-  let typ = polymorphise typ env in
+  let typ = polymorphise mode typ env in
   Envi.add_name name typ env
 
 let get_field mode (field : lid) env =
@@ -313,7 +313,9 @@ let get_field mode (field : lid) env =
               Longident.Lident tdec_ident.txt )
           tdec_ident.loc
       in
-      let rcd_type = Envi.TypeDecl.mk_typ ~params:vars ~ident:name decl env in
+      let rcd_type =
+        Envi.TypeDecl.mk_typ mode ~params:vars ~ident:name decl env
+      in
       let {fld_type; _} = List.nth_exn field_decls i in
       let rcd_type = Envi.Type.copy mode ~loc rcd_type bound_vars env in
       let fld_type = Envi.Type.copy mode ~loc fld_type bound_vars env in
@@ -372,14 +374,14 @@ let get_ctor mode (name : lid) env =
         | Some ({type_desc= Tctor {var_params; _}; _} as typ) ->
             (typ, var_params)
         | _ ->
-            ( Envi.TypeDecl.mk_typ ~params:tdec_params
+            ( Envi.TypeDecl.mk_typ mode ~params:tdec_params
                 ~ident:(make_name tdec_ident) decl env
             , tdec_params )
       in
       let args_typ =
         match ctor.ctor_args with
         | Ctor_record decl ->
-            Envi.Type.mk
+            Envi.Type.mk mode
               (Tctor
                  { var_ident= make_name ctor.ctor_ident
                  ; var_params= params
@@ -389,7 +391,7 @@ let get_ctor mode (name : lid) env =
         | Ctor_tuple [typ] ->
             typ
         | Ctor_tuple typs ->
-            Envi.Type.mk (Ttuple typs) env
+            Envi.Type.mk mode (Ttuple typs) env
       in
       let bound_vars =
         Set.to_list
@@ -423,8 +425,8 @@ let rec check_pattern mode ~add env typ pat =
       ( {pat_loc= loc; pat_type= typ; pat_desc= PConstraint (p, constr_typ)}
       , env )
   | PTuple ps ->
-      let vars = List.map ps ~f:(fun _ -> Envi.Type.mkvar None env) in
-      let tuple_typ = Envi.Type.mk (Ttuple vars) env in
+      let vars = List.map ps ~f:(fun _ -> Envi.Type.mkvar mode None env) in
+      let tuple_typ = Envi.Type.mk mode (Ttuple vars) env in
       check_type mode ~loc env typ tuple_typ ;
       let ps, env = check_patterns mode ~add env vars ps in
       ({pat_loc= loc; pat_type= tuple_typ; pat_desc= PTuple ps}, env)
@@ -493,7 +495,7 @@ let rec check_pattern mode ~add env typ pat =
                       failwith "Unhandled Lapply in field name")
               in
               let decl_type =
-                Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
+                Envi.TypeDecl.mk_typ ~params:vars ~ident mode decl env
               in
               check_type mode ~loc env typ decl_type ;
               (decl_type, field_decls, bound_vars, env)
@@ -525,7 +527,7 @@ let rec check_pattern mode ~add env typ pat =
             let arg, env = check_pattern mode ~add env args_typ arg in
             (Some arg, env)
         | None ->
-            let typ = Envi.Type.mk (Ttuple []) env in
+            let typ = Envi.Type.mk mode (Ttuple []) env in
             check_type mode ~loc env args_typ typ ;
             (None, env)
       in
@@ -551,16 +553,16 @@ let rec get_expression mode env expected exp =
   let loc = exp.exp_loc in
   match exp.exp_desc with
   | Apply (f, es) ->
-      let f_typ = Envi.Type.mkvar None env in
+      let f_typ = Envi.Type.mkvar mode None env in
       let f, env = get_expression mode env f_typ f in
       let (typ, env), es =
         List.fold_map ~init:(f.exp_type, env) es
           ~f:(fun (f_typ, env) (label, e) ->
-            let f_typ = Envi.Type.bubble_label env label f_typ in
-            let e_typ = Envi.Type.mkvar None env in
-            let res_typ = Envi.Type.mkvar None env in
+            let f_typ = Envi.Type.bubble_label mode env label f_typ in
+            let e_typ = Envi.Type.mkvar mode None env in
+            let res_typ = Envi.Type.mkvar mode None env in
             let arrow =
-              Envi.Type.mk (Tarrow (e_typ, res_typ, Explicit, label)) env
+              Envi.Type.mk mode (Tarrow (e_typ, res_typ, Explicit, label)) env
             in
             check_type mode ~loc:e.exp_loc env f_typ arrow ;
             let e_typ =
@@ -590,9 +592,11 @@ let rec get_expression mode env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
   | Fun (label, p, body, explicit) ->
       let env = Envi.open_expr_scope mode env in
-      let p_typ = Envi.Type.mkvar None env in
-      let body_typ = Envi.Type.mkvar None env in
-      let typ = Envi.Type.mk (Tarrow (p_typ, body_typ, explicit, label)) env in
+      let p_typ = Envi.Type.mkvar mode None env in
+      let body_typ = Envi.Type.mkvar mode None env in
+      let typ =
+        Envi.Type.mk mode (Tarrow (p_typ, body_typ, explicit, label)) env
+      in
       check_type mode ~loc env expected typ ;
       let add_name =
         match label with
@@ -658,8 +662,8 @@ let rec get_expression mode env expected exp =
       in
       ({exp_loc= loc; exp_type= typ; exp_desc= Constraint (e, typ')}, env)
   | Tuple es ->
-      let typs = List.map es ~f:(fun _ -> Envi.Type.mkvar None env) in
-      let typ = Envi.Type.mk (Ttuple typs) env in
+      let typs = List.map es ~f:(fun _ -> Envi.Type.mkvar mode None env) in
+      let typ = Envi.Type.mk mode (Ttuple typs) env in
       check_type mode ~loc env expected typ ;
       let env = ref env in
       let es =
@@ -669,17 +673,19 @@ let rec get_expression mode env expected exp =
             e )
       in
       let typ =
-        Envi.Type.mk (Ttuple (List.map es ~f:(fun {exp_type= t; _} -> t))) !env
+        Envi.Type.mk mode
+          (Ttuple (List.map es ~f:(fun {exp_type= t; _} -> t)))
+          !env
       in
       ({exp_loc= loc; exp_type= typ; exp_desc= Tuple es}, !env)
   | Match (e, cases) ->
-      let e_typ = Envi.Type.mkvar None env in
+      let e_typ = Envi.Type.mkvar mode None env in
       let e, env = get_expression mode env e_typ e in
       let typ = e.exp_type in
       let env, cases =
         List.fold_map ~init:env cases ~f:(fun env (p, e) ->
             let env = Envi.open_expr_scope mode env in
-            let p, env = check_pattern mode ~add:add_polymorphised env typ p in
+            let p, env = check_pattern mode ~add:(add_polymorphised mode) env typ p in
             let e, env = get_expression mode env expected e in
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )
@@ -702,7 +708,7 @@ let rec get_expression mode env expected exp =
                 Location.mkloc (Longident.Ldot (path, decl.tdec_ident.txt)) loc
               in
               let decl_type =
-                Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
+                Envi.TypeDecl.mk_typ mode ~params:vars ~ident decl env
               in
               let {fld_type; _} = List.nth_exn field_decls i in
               let fld_type =
@@ -721,7 +727,7 @@ let rec get_expression mode env expected exp =
             (fld_type, decl_type, env, true)
         | None ->
             let fld_type = expected in
-            let decl_type = Envi.Type.mkvar None env in
+            let decl_type = Envi.Type.mkvar mode None env in
             (fld_type, decl_type, env, false)
       in
       let e, env = get_expression mode env decl_type e in
@@ -770,7 +776,7 @@ let rec get_expression mode env expected exp =
                         failwith "Unhandled Lapply in field name")
                 in
                 let e_typ =
-                  Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
+                  Envi.TypeDecl.mk_typ mode ~params:vars ~ident decl env
                 in
                 check_type mode ~loc env e.exp_type e_typ ;
                 let {fld_type; _} = List.nth_exn field_decls i in
@@ -818,7 +824,7 @@ let rec get_expression mode env expected exp =
                       failwith "Unhandled Lapply in field name")
               in
               let decl_type =
-                Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
+                Envi.TypeDecl.mk_typ mode ~params:vars ~ident decl env
               in
               check_type mode ~loc env typ decl_type ;
               (decl_type, field_decls, bound_vars, env)
@@ -866,7 +872,7 @@ let rec get_expression mode env expected exp =
             let arg, env = get_expression mode env arg_typ arg in
             (Some arg, env)
         | None ->
-            let typ = Envi.Type.mk (Ttuple []) env in
+            let typ = Envi.Type.mk mode (Ttuple []) env in
             ( try check_type mode ~loc env arg_typ typ
               with _ -> raise (Error (loc, Argument_expected name.txt)) ) ;
             (None, env)
@@ -877,7 +883,7 @@ let rec get_expression mode env expected exp =
 
 and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
-  let typ = Envi.Type.mkvar None env in
+  let typ = Envi.Type.mkvar mode None env in
   let env = Envi.open_expr_scope mode env in
   let e, env = get_expression mode env typ e in
   let env = Envi.close_expr_scope env in
@@ -895,7 +901,7 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
         match var.exp_desc with
         | Unifiable {expression= None; name; _} ->
             let exp_type =
-              Envi.Type.mk
+              Envi.Type.mk mode
                 (Tarrow (var.exp_type, e.exp_type, Implicit, Nolabel))
                 env
             in
@@ -912,7 +918,7 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
   | PVariable str, _ ->
       let typ =
         if Set.is_empty typ_vars then e.exp_type
-        else Envi.Type.mk (Tpoly (Set.to_list typ_vars, e.exp_type)) env
+        else Envi.Type.mk mode (Tpoly (Set.to_list typ_vars, e.exp_type)) env
       in
       let env = Envi.add_name str typ env in
       let p = {p with pat_type= typ} in
@@ -922,7 +928,7 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
       check_type mode ~loc env e.exp_type ctyp ;
       let ctyp =
         if Set.is_empty typ_vars then ctyp
-        else Envi.Type.mk (Tpoly (Set.to_list typ_vars, ctyp)) env
+        else Envi.Type.mk mode (Tpoly (Set.to_list typ_vars, ctyp)) env
       in
       let env = Envi.add_name str ctyp env in
       let p' = {p' with pat_type= ctyp} in
@@ -934,7 +940,7 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
       (p, e, env)
   | _, [] ->
       let p, env =
-        check_pattern mode ~add:add_polymorphised env e.exp_type p
+        check_pattern mode ~add:(add_polymorphised mode) env e.exp_type p
       in
       (p, e, env)
   | _, implicit :: _ ->
@@ -991,13 +997,13 @@ let rec check_signature_item mode env item =
       let typ, env = Typet.Type.import mode typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ ;
-      add_polymorphised name typ env
+      add_polymorphised mode name typ env
   | SInstance (name, typ) ->
       let env = Envi.open_expr_scope mode env in
       let typ, env = Typet.Type.import mode typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ ;
-      let env = add_polymorphised name typ env in
+      let env = add_polymorphised mode name typ env in
       Envi.add_implicit_instance name.txt typ env
   | STypeDecl decl ->
       let _decl, env = Typet.TypeDecl.import mode decl env in

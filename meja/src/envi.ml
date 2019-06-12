@@ -507,14 +507,15 @@ let current_scope {scope_stack; _} =
       raise (Error (of_prim __POS__, No_open_scopes))
 
 let push_scope scope env =
-  (match env.scope_stack, scope.FullScope.kind with
+  ( match (env.scope_stack, scope.FullScope.kind) with
   | {kind= Expr; _} :: _, (Module | Open | Continue) ->
       raise (Error (of_prim __POS__, Wrong_scope_kind "expression"))
-  | {kind= (Module | Open | Continue | Expr); _} :: _, Functor _ ->
+  | {kind= Module | Open | Continue | Expr; _} :: _, Functor _ ->
       raise (Error (of_prim __POS__, Wrong_scope_kind "non_functor"))
   | {kind= Functor _; _} :: _, _ ->
-     raise (Error (of_prim __POS__, Functor_in_module_sig))
-  | _ -> ());
+      raise (Error (of_prim __POS__, Functor_in_module_sig))
+  | _ ->
+      () ) ;
   {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
 
 let current_path mode env = (FullScope.get_scope mode (current_scope env)).path
@@ -738,15 +739,15 @@ let find_module_type =
 module Type = struct
   type env = t
 
-  let mk' env depth type_desc =
+  let mk' mode env depth type_desc =
     let type_id, type_env = TypeEnvi.next_type_id env.resolve_env.type_env in
     env.resolve_env.type_env <- type_env ;
-    {type_desc; type_id; type_depth= depth}
+    {type_desc; type_id; type_depth= depth; type_mode= mode}
 
-  let mk type_desc env = mk' env env.depth type_desc
+  let mk mode type_desc env = mk' mode env env.depth type_desc
 
-  let mkvar ?(explicitness = Explicit) name env =
-    mk (Tvar (name, explicitness)) env
+  let mkvar mode ?(explicitness = Explicit) name env =
+    mk mode (Tvar (name, explicitness)) env
 
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
@@ -763,7 +764,7 @@ module Type = struct
       | Some true, Explicit ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (env, mkvar ~explicitness None env) )
+          (env, mkvar mode ~explicitness None env) )
     | Tvar ((Some {txt= x; _} as name), explicitness) -> (
         let var =
           match must_find with
@@ -781,7 +782,7 @@ module Type = struct
         | Some var ->
             (env, var)
         | None ->
-            let var = mkvar ~explicitness name env in
+            let var = mkvar mode ~explicitness name env in
             (add_type_variable x var env, var) )
     | _ ->
         raise (Error (loc, Expected_type_var typ))
@@ -820,14 +821,14 @@ module Type = struct
         let var_implicit_params =
           List.map var_implicit_params ~f:(fun t -> copy t new_vars_map env)
         in
-        mk (Tctor {variant with var_params; var_implicit_params}) env
+        mk mode (Tctor {variant with var_params; var_implicit_params}) env
     | Ttuple typs ->
         let typs = List.map typs ~f:(fun t -> copy t new_vars_map env) in
-        mk (Ttuple typs) env
+        mk mode (Ttuple typs) env
     | Tarrow (typ1, typ2, explicit, label) ->
         let typ1 = copy typ1 new_vars_map env in
         let typ2 = copy typ2 new_vars_map env in
-        mk (Tarrow (typ1, typ2, explicit, label)) env
+        mk mode (Tarrow (typ1, typ2, explicit, label)) env
 
   module T = struct
     type t = type_expr
@@ -874,7 +875,7 @@ module Type = struct
         Type0.iter ~f:(update_depths env) typ
 
   let rec flatten typ env =
-    let mk' = mk' env typ.type_depth in
+    let mk' = mk' typ.type_mode env typ.type_depth in
     match typ.type_desc with
     | Tvar _ -> (
       match instance env typ with
@@ -1172,24 +1173,24 @@ module Type = struct
     in
     implicit_params (Set.empty (module Comparator)) typ
 
-  let rec constr_map env ~f typ =
+  let rec constr_map mode env ~f typ =
     match typ.type_desc with
     | Tvar _ ->
         typ
     | Ttuple typs ->
-        let typs = List.map ~f:(constr_map env ~f) typs in
-        mk (Ttuple typs) env
+        let typs = List.map ~f:(constr_map mode env ~f) typs in
+        mk mode (Ttuple typs) env
     | Tarrow (typ1, typ2, explicit, label) ->
-        let typ1 = constr_map env ~f typ1 in
-        let typ2 = constr_map env ~f typ2 in
-        mk (Tarrow (typ1, typ2, explicit, label)) env
+        let typ1 = constr_map mode env ~f typ1 in
+        let typ2 = constr_map mode env ~f typ2 in
+        mk mode (Tarrow (typ1, typ2, explicit, label)) env
     | Tctor variant ->
-        mk (f variant) env
+        mk mode (f variant) env
     | Tpoly (typs, typ) ->
-        mk (Tpoly (typs, constr_map env ~f typ)) env
+        mk mode (Tpoly (typs, constr_map mode env ~f typ)) env
 
   let normalise_constr_names mode env typ =
-    constr_map env typ ~f:(fun variant ->
+    constr_map mode env typ ~f:(fun variant ->
         match
           List.find_map env.scope_stack
             ~f:
@@ -1202,7 +1203,7 @@ module Type = struct
         | None ->
             Tctor variant )
 
-  let rec bubble_label_aux env label typ =
+  let rec bubble_label_aux mode env label typ =
     match typ.type_desc with
     | Tarrow (typ1, typ2, explicit, arr_label)
       when Int.equal (compare_label label arr_label) 0 ->
@@ -1215,18 +1216,18 @@ module Type = struct
                false ->
         (Some (typ1, explicit, label), typ2)
     | Tarrow (typ1, typ2, explicit, arr_label) -> (
-      match bubble_label_aux env label typ2 with
+      match bubble_label_aux mode env label typ2 with
       | None, _ ->
           (None, typ)
       | res, typ2 ->
-          (res, mk (Tarrow (typ1, typ2, explicit, arr_label)) env) )
+          (res, mk mode (Tarrow (typ1, typ2, explicit, arr_label)) env) )
     | _ ->
         (None, typ)
 
-  let bubble_label env label typ =
-    match bubble_label_aux env label typ with
+  let bubble_label mode env label typ =
+    match bubble_label_aux mode env label typ with
     | Some (typ1, explicit, arr_label), typ2 ->
-        mk (Tarrow (typ1, typ2, explicit, arr_label)) env
+        mk mode (Tarrow (typ1, typ2, explicit, arr_label)) env
     | None, typ ->
         typ
 
@@ -1264,9 +1265,9 @@ module TypeDecl = struct
     ; tdec_desc= desc
     ; tdec_id }
 
-  let mk_typ ~params ?ident decl =
+  let mk_typ mode ~params ?ident decl =
     let ident = Option.value ident ~default:(mk_lid decl.tdec_ident) in
-    Type.mk
+    Type.mk mode
       (Tctor
          { var_ident= ident
          ; var_params= params
@@ -1373,7 +1374,8 @@ let pp_decl_typ ppf decl =
           ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl= decl }
     ; type_id= -1
-    ; type_depth= -1 }
+    ; type_depth= -1
+    ; type_mode= OCaml }
 
 let report_error ppf = function
   | No_open_scopes ->
