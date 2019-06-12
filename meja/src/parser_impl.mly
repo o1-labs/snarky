@@ -87,6 +87,7 @@ let consexp ~pos hd tl =
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
+%right    DASHGT
 %nonassoc LPAREN
 
 %start implementation
@@ -430,9 +431,9 @@ pat_arg:
 pat_arg_opt:
   | p = pat_arg
     { p }
-  | QUESTION name = as_loc(LIDENT)
+  | QUESTION name = as_loc(lident)
     { (Asttypes.Optional name.txt, mkpat ~pos:$loc (PVariable name)) }
-  | QUESTION name = as_loc(LIDENT) COLON typ = type_expr
+  | QUESTION name = as_loc(lident) COLON typ = type_expr
     { ( Asttypes.Optional name.txt
       , mkpat ~pos:$loc
           (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
@@ -557,7 +558,7 @@ simple_type_expr:
 %inline type_arrow_label:
   | (* Empty *)
     { Asttypes.Nolabel }
-  | name = LIDENT COLON
+  | name = lident COLON
     { Asttypes.Labelled name }
 
 type_expr:
@@ -565,7 +566,7 @@ type_expr:
     { x }
   | label = type_arrow_label x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Explicit, label)) }
-  | QUESTION name = LIDENT COLON x = simple_type_expr DASHGT y = type_expr
+  | QUESTION name = lident COLON x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Implicit, label)) }
