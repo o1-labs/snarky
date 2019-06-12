@@ -202,6 +202,15 @@ let main =
       List.fold ~init:env cmi_scopes ~f:(fun env scope ->
           Envi.open_namespace_scope scope Checked env )
     in
+    let () =
+      let lex = Lexing.from_string Stdlib.stdlib in
+      lex.Lexing.lex_curr_p
+      <- {lex.Lexing.lex_curr_p with Lexing.pos_fname= "stdlib"} ;
+      let ast =
+        parse_with_error (Parser_impl.interface Lexer_impl.token) lex
+      in
+      ignore ast
+    in
     let meji_files =
       "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
       :: List.rev !meji_files
