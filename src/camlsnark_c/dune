@@ -23,7 +23,6 @@
  (modules :standard \ camlsnark_linker_flags_gen)
  (public_name snarky.c)
  (preprocess no_preprocessing)
- (flags :standard -short-paths -safe-string)
  (c_library_flags
   :standard
   (:include flags.sexp))

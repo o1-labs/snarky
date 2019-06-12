@@ -60,8 +60,6 @@ struct
       include Restrict_monad.Make2 (Read) (Field)
 
       let read = Read.read
-
-      let run = Read.run
     end
 
     module Alloc = struct
@@ -71,8 +69,6 @@ struct
       let alloc = alloc
 
       let run = run
-
-      let size t = size t
     end
   end
 
@@ -1004,32 +1000,6 @@ struct
           in
           ignore auxiliary )
         t k
-
-    let reduce_to_prover : type a s.
-           ((a, s) Checked.t, Proof.t, 'k_var, 'k_value) t
-        -> 'k_var
-        -> (Proving_key.t -> ?handlers:Handler.t list -> s -> 'k_value)
-           Staged.t =
-     fun t0 k0 ->
-      let next_input = ref 1 in
-      let alloc_var () =
-        let v = !next_input in
-        incr next_input ; Cvar.Unsafe.of_index v
-      in
-      let rec go : type k_var k_value.
-          ((a, s) Checked.t, Proof.t, k_var, k_value) t -> k_var -> k_var =
-       fun t k ->
-        match t with
-        | [] ->
-            Checked.Runner.reduce_to_prover next_input k
-        | {alloc; _} :: t' ->
-            let var = Typ.Alloc.run alloc alloc_var in
-            let ret = go t' (k var) in
-            fun _ -> ret
-      in
-      let reduced = go t0 k0 in
-      stage (fun key ?handlers s ->
-          prove ~run:Checked.Runner.run key t0 ?handlers s reduced )
   end
 
   module Cvar1 = struct
@@ -1676,8 +1646,6 @@ module Run = struct
 
           let to_string = to_string
 
-          let size = size
-
           let unpack = unpack
 
           let project = project
@@ -1823,7 +1791,7 @@ module Run = struct
 
       include Field.Constant.T
 
-      let run_prover f tbl s =
+      let run_prover f _tbl s =
         let old = !(!state.as_prover) in
         !state.as_prover := true ;
         state := Run_state.set_prover_state (Some s) !state ;
@@ -1853,7 +1821,7 @@ module Run = struct
       let create ?proving_key ?verification_key ?proving_key_path
           ?verification_key_path ?handlers ~public_input checked =
         create
-          ~reduce_to_prover:(fun i f -> f)
+          ~reduce_to_prover:(fun _i f -> f)
           ?proving_key ?verification_key ?proving_key_path
           ?verification_key_path ?handlers ~public_input checked
 
@@ -1874,7 +1842,7 @@ module Run = struct
 
       let run_checked ~public_input ?handlers (proof_system : _ t) s =
         Or_error.map (run_checked' ~run ~public_input ?handlers proof_system s)
-          ~f:(fun (s, x, state) -> (s, x))
+          ~f:(fun (s, x, _state) -> (s, x))
 
       let check ~public_input ?handlers (proof_system : _ t) s =
         Or_error.map ~f:(Fn.const ())
@@ -1981,9 +1949,11 @@ module Run = struct
 
     let check x s = Perform.check ~run:as_stateful x s
 
-    let constraint_count ?(log = fun ?start _ _ -> ()) x =
+    let constraint_count ?log x =
       let count = ref 0 in
       let log_constraint c = count := !count + Core_kernel.List.length c in
+      (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
+      ignore log ;
       let old = !state in
       state :=
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
@@ -2010,19 +1980,29 @@ module Run = struct
   end
 end
 
-type ('prover_state, 'field) m =
+type 'field m = (module Snark_intf.Run with type field = 'field)
+
+type ('prover_state, 'field) m' =
   (module Snark_intf.Run
      with type field = 'field
       and type prover_state = 'prover_state)
 
-let make (type field prover_state)
+let make (type field)
+    (module Backend : Backend_intf.S with type Field.t = field) : field m =
+  (module Run.Make (Backend) (Unit))
+
+let make' (type field prover_state)
     (module Backend : Backend_intf.S with type Field.t = field) :
-    (prover_state, field) m =
+    (prover_state, field) m' =
   ( module Run.Make
              (Backend)
              (struct
                type t = prover_state
              end) )
+
+let ignore_state (type prover_state field)
+    ((module M) : (prover_state, field) m') : field m =
+  (module M)
 
 let%test_module "snark0-test" =
   ( module struct

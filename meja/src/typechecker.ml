@@ -458,6 +458,8 @@ let rec check_pattern ~add env typ pat =
             raise (Error (loc, Pattern_declaration ("constructor", name))) )
           ~modules:(fun ~key:name ~data:_ _ ->
             raise (Error (loc, Pattern_declaration ("module", name))) )
+          ~module_types:(fun ~key:name ~data:_ _ ->
+            raise (Error (loc, Pattern_declaration ("module type", name))) )
           ~instances:(fun ~key:_ ~data:_ () -> ())
       in
       let env = Envi.push_scope scope2 env in
@@ -923,7 +925,51 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   | _, implicit :: _ ->
       raise (Error (loc, No_instance implicit.exp_type))
 
+let type_extension ~loc variant ctors env =
+  let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
+  let ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl) =
+    match Envi.raw_find_type_declaration var_ident env with
+    | open_decl ->
+        open_decl
+    | exception _ ->
+        raise (Error (loc, Unbound ("type constructor", var_ident)))
+  in
+  ( match tdec_desc with
+  | TOpen ->
+      ()
+  | _ ->
+      raise (Error (loc, Not_extensible var_ident.txt)) ) ;
+  ( match List.iter2 tdec_params var_params ~f:(fun _ _ -> ()) with
+  | Ok _ ->
+      ()
+  | Unequal_lengths ->
+      raise (Error (loc, Extension_different_arity var_ident.txt)) ) ;
+  let decl =
+    { Parsetypes.tdec_ident
+    ; tdec_params= var_params
+    ; tdec_implicit_params=
+        List.map ~f:(Untype_ast.type_expr ~loc) tdec_implicit_params
+    ; tdec_desc= TExtend (var_ident, decl, ctors)
+    ; tdec_loc= loc }
+  in
+  let decl, env = Typet.TypeDecl.import decl env in
+  let ctors =
+    match decl.tdec_desc with
+    | TExtend (_, _, ctors) ->
+        ctors
+    | _ ->
+        failwith "Expected a TExtend."
+  in
+  let variant =
+    { var_ident
+    ; var_implicit_params= decl.tdec_implicit_params
+    ; var_decl= decl
+    ; var_params= decl.tdec_params }
+  in
+  (env, variant, ctors)
+
 let rec check_signature_item env item =
+  let loc = item.sig_loc in
   match item.sig_desc with
   | SValue (name, typ) ->
       let env = Envi.open_expr_scope env in
@@ -950,8 +996,33 @@ let rec check_signature_item env item =
           Envi.add_module name m env
       | Envi.Scope.Deferred path ->
           Envi.add_deferred_module name path env )
-  | SModType (_name, _signature) ->
+  | SModType (name, signature) ->
+      let env = Envi.open_module name.txt env in
+      let m_env, env =
+        check_module_sig env (Envi.relative_path env name.txt) signature
+      in
+      let env = Envi.add_module_type name.txt m_env env in
       env
+  | SOpen name ->
+      let m = Envi.find_module ~loc name env in
+      Envi.open_namespace_scope m env
+  | STypeExtension (variant, ctors) ->
+      let env, _variant, _ctors = type_extension ~loc variant ctors env in
+      env
+  | SRequest (arg, ctor_decl) ->
+      let open Ast_build in
+      let variant =
+        Type.variant ~loc ~params:[Type.none ~loc ()]
+          (Lid.of_list ["Snarky__Request"; "t"])
+      in
+      let ctor_ret = Type.mk ~loc (Tctor {variant with var_params= [arg]}) in
+      let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
+      let env, _variant, _ctors =
+        type_extension ~loc variant [ctor_decl] env
+      in
+      env
+  | SMultiple sigs ->
+      check_signature env sigs
 
 and check_signature env signature =
   List.fold ~init:env signature ~f:check_signature_item
@@ -1001,56 +1072,18 @@ and check_module_sig env path msig =
       let m = Envi.make_functor path ftor in
       (Envi.Scope.Immediate m, env)
 
-let type_extension ~loc variant ctors env =
-  let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
-  let ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl) =
-    match Envi.raw_find_type_declaration var_ident env with
-    | open_decl ->
-        open_decl
-    | exception _ ->
-        raise (Error (loc, Unbound ("type constructor", var_ident)))
-  in
-  ( match tdec_desc with
-  | TOpen ->
-      ()
-  | _ ->
-      raise (Error (loc, Not_extensible var_ident.txt)) ) ;
-  ( match List.iter2 tdec_params var_params ~f:(fun _ _ -> ()) with
-  | Ok _ ->
-      ()
-  | Unequal_lengths ->
-      raise (Error (loc, Extension_different_arity var_ident.txt)) ) ;
-  let decl =
-    { Parsetypes.tdec_ident
-    ; tdec_params= var_params
-    ; tdec_implicit_params=
-        List.map ~f:(Untype_ast.type_expr ~loc) tdec_implicit_params
-    ; tdec_desc= TExtend (var_ident, decl, ctors)
-    ; tdec_loc= loc }
-  in
-  let decl, env = Typet.TypeDecl.import decl env in
-  let ctors =
-    match decl.tdec_desc with
-    | TExtend (_, _, ctors) ->
-        ctors
-    | _ ->
-        failwith "Expected a TExtend."
-  in
-  let variant =
-    { var_ident
-    ; var_implicit_params= decl.tdec_implicit_params
-    ; var_decl= decl
-    ; var_params= decl.tdec_params }
-  in
-  (env, variant, ctors)
-
 let in_decl = ref false
 
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
   | Value (p, e) ->
+      let env = Envi.open_expr_scope env in
       let p, e, env = check_binding ~toplevel:true env p e in
+      let scope, env = Envi.pop_expr_scope env in
+      (* Uplift the names from the expression scope, discarding the scope and
+         its associated type variables etc. *)
+      let env = Envi.join_expr_scope env scope in
       (env, {stmt with stmt_desc= Value (p, e)})
   | Instance (name, e) ->
       let p =
@@ -1085,6 +1118,12 @@ let rec check_statement env stmt =
       let m_env, env = Envi.pop_module ~loc env in
       let env = Envi.add_module name m_env env in
       (env, {stmt with stmt_desc= Module (name, m)})
+  | ModType (name, signature) ->
+      let m_env, env =
+        check_module_sig env (Envi.relative_path env name.txt) signature
+      in
+      let env = Envi.add_module_type name.txt m_env env in
+      (env, stmt)
   | Open name ->
       let m = Envi.find_module ~loc name env in
       (Envi.open_namespace_scope m env, stmt)

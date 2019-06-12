@@ -1,7 +1,6 @@
 (library
  (name tuple_lib)
  (public_name tuple_lib)
- (flags :standard -short-paths)
  (library_flags -linkall)
  (inline_tests)
  (libraries core_kernel)
