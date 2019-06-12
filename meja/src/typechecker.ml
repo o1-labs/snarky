@@ -1086,10 +1086,13 @@ let rec check_statement env stmt =
       let env = Envi.join_expr_scope env scope in
       (env, {stmt with stmt_desc= Value (p, e)})
   | Instance (name, e) ->
+      let env = Envi.open_expr_scope env in
       let p =
         {pat_desc= PVariable name; pat_loc= name.loc; pat_type= Type0.none}
       in
       let _, e, env = check_binding ~toplevel:true env p e in
+      let scope, env = Envi.pop_expr_scope env in
+      let env = Envi.join_expr_scope env scope in
       let env = Envi.add_implicit_instance name.txt e.exp_type env in
       (env, {stmt with stmt_desc= Instance (name, e)})
   | TypeDecl decl when !in_decl ->
