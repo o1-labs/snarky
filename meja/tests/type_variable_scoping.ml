@@ -3,7 +3,7 @@ open Impl
 
 let (f : 'a -> 'b) = fun (x : int) -> x
 
-let (g : 'a -> 'b) = fun (x : bool) -> x
+let (g : 'a -> 'b) = fun (x : Boolean.var) -> x
 
 module X = struct
   type 'a t = A of 'a | B of int | C : bool -> bool t
@@ -14,7 +14,7 @@ module X = struct
 
   let (b : 'bool t) = B 30
 
-  let (c : 'bool t) = C true
+  let (c : 'bool t) = C Boolean.true_
 
   let (f : 'int -> 'unit -> 'bool) = fun (a : 'a) (b : 'a) -> a
 end

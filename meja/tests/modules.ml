@@ -50,9 +50,9 @@ module Test6 = struct
 
   let (c : int) = b
 
-  let b = true
+  let b = Boolean.true_
 
-  let (d : bool) = b
+  let (d : Boolean.var) = b
 
   open Test5.Test.Test
 

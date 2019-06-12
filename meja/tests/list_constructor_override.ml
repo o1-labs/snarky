@@ -9,9 +9,9 @@ let x = []
 
 let y = [12]
 
-let z = [1; true; ()]
+let z = [1; Boolean.true_; ()]
 
-let z = [1; true; ()]
+let z = [1; Boolean.true_; ()]
 
 module A = struct
   type ('a, 'b) u = [] of 'a * 'b

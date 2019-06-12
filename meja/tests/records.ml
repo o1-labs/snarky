@@ -43,7 +43,7 @@ end
 
 let x = {a= 15; b= 20; c= 25}
 
-let y = {a= true; b= false; c= true}
+let y = {a= Boolean.true_; b= Boolean.false_; c= Boolean.true_}
 
 let z = {a= x.a; b= y.b; c= ()}
 
@@ -100,7 +100,7 @@ let d = (a.b, b.b)
 
 let e = a.X.a
 
-let f = {a= true; b= (); c= 15}.a
+let f = {a= Boolean.true_; b= (); c= 15}.a
 
 let g = {X.a= (); b= (); c= ()}.a
 
