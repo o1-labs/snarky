@@ -164,6 +164,6 @@ let env =
   |> reg Checked ~name:"field" (Lid.of_name "field") field_var
   (* bool/Boolean.var *)
   |> reg OCaml (Lid.of_name "bool") bool
-  |> reg OCaml (Lid.of_list ["Boolean"; "var"]) bool_var
+  |> reg OCaml ~name:"bool_var" (Lid.of_list ["Boolean"; "var"]) bool_var
   |> reg Prover ~name:"boolean" (Lid.of_name "bool") bool
   |> reg Checked ~name:"boolean" (Lid.of_name "boolean") bool_var

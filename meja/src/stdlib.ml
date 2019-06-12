@@ -140,7 +140,7 @@ let stdlib =
   };
 
   module Boolean : {
-    type var;
+    type var = bool_var;
 
     type value = bool;
 

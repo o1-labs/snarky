@@ -4,3 +4,16 @@ let x = fun (x : field) : field => {
   let three = 3;
   Field.mul(one, Field.mul(two, Field.mul(three, x)));
 };
+
+open Field;
+let y = fun (x : field) : field => {
+  let a = 15;
+  let b = 20;
+  let c = 25;
+  a * (b + c) * x;
+};
+
+open Boolean;
+let z = fun (a : boolean, b : boolean) : boolean => {
+  0b || 1b && (a || b);
+};
