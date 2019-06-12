@@ -302,7 +302,7 @@ let get_field (field : lid) env =
       ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
       , i ) ->
       let vars, bound_vars, _ =
-        Envi.Type.refresh_vars ~loc tdec_params (Map.empty (module Int)) env
+        Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
       in
       let name =
         Location.mkloc
@@ -396,7 +396,7 @@ let get_ctor (name : lid) env =
           (Set.union (Envi.Type.type_vars typ) (Envi.Type.type_vars args_typ))
       in
       let _, bound_vars, _ =
-        Envi.Type.refresh_vars ~loc bound_vars (Map.empty (module Int)) env
+        Envi.Type.refresh_vars ~loc bound_vars Int.Map.empty env
       in
       let args_typ = Envi.Type.copy ~loc args_typ bound_vars env in
       let typ = Envi.Type.copy ~loc typ bound_vars env in
@@ -416,7 +416,10 @@ let rec check_pattern ~add env typ pat =
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp ;
       let p, env = check_pattern ~add env ctyp p in
-      let constr_typ = Untype_ast.type_expr ~loc:constr_typ.type_loc ctyp in
+      let constr_typ =
+        Untype_ast.type_expr ~loc:constr_typ.type_loc
+          (Envi.Type.normalise_constr_names env ctyp)
+      in
       ( {pat_loc= loc; pat_type= typ; pat_desc= PConstraint (p, constr_typ)}
       , env )
   | PTuple ps ->
@@ -476,9 +479,7 @@ let rec check_pattern ~add env typ pat =
           | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
             ->
               let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params
-                  (Map.empty (module Int))
-                  env
+                Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
               let ident =
                 Longident.(
@@ -650,7 +651,10 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ ;
       let e, env = get_expression env typ e in
       check_type ~loc env e.exp_type typ ;
-      let typ' = Untype_ast.type_expr ~loc:typ'.type_loc typ in
+      let typ' =
+        Untype_ast.type_expr ~loc:typ'.type_loc
+          (Envi.Type.normalise_constr_names env typ)
+      in
       ({exp_loc= loc; exp_type= typ; exp_desc= Constraint (e, typ')}, env)
   | Tuple es ->
       let typs = List.map es ~f:(fun _ -> Envi.Type.mkvar None env) in
@@ -691,9 +695,7 @@ let rec get_expression env expected exp =
           | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
             ->
               let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params
-                  (Map.empty (module Int))
-                  env
+                Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
               let ident =
                 Location.mkloc (Longident.Ldot (path, decl.tdec_ident.txt)) loc
@@ -747,9 +749,7 @@ let rec get_expression env expected exp =
                 (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
               ->
                 let vars, bound_vars, env =
-                  Envi.Type.refresh_vars ~loc tdec_params
-                    (Map.empty (module Int))
-                    env
+                  Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
                 in
                 let ident =
                   Longident.(
@@ -793,9 +793,7 @@ let rec get_expression env expected exp =
           | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
             ->
               let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params
-                  (Map.empty (module Int))
-                  env
+                Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
               let ident =
                 Longident.(
@@ -916,7 +914,9 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       in
       let env = Envi.add_name str ctyp env in
       let p' = {p' with pat_type= ctyp} in
-      let typ = Untype_ast.type_expr ~loc ctyp in
+      let typ =
+        Untype_ast.type_expr ~loc (Envi.Type.normalise_constr_names env ctyp)
+      in
       let p = {p with pat_desc= PConstraint (p', typ); pat_type= ctyp} in
       (p, e, env)
   | _, [] ->
@@ -988,15 +988,19 @@ let rec check_signature_item env item =
       let _decl, env = Typet.TypeDecl.import decl env in
       env
   | SModule (name, msig) -> (
-      let m, env = check_module_sig env msig in
+      let m, env =
+        check_module_sig env (Envi.relative_path env name.txt) msig
+      in
       match m with
       | Envi.Scope.Immediate m ->
           Envi.add_module name m env
       | Envi.Scope.Deferred path ->
           Envi.add_deferred_module name path env )
   | SModType (name, signature) ->
-      let env = Envi.open_module env in
-      let m_env, env = check_module_sig env signature in
+      let env = Envi.open_module name.txt env in
+      let m_env, env =
+        check_module_sig env (Envi.relative_path env name.txt) signature
+      in
       let env = Envi.add_module_type name.txt m_env env in
       env
   | SOpen name ->
@@ -1023,11 +1027,11 @@ let rec check_signature_item env item =
 and check_signature env signature =
   List.fold ~init:env signature ~f:check_signature_item
 
-and check_module_sig env msig =
+and check_module_sig env path msig =
   let loc = msig.msig_loc in
   match msig.msig_desc with
   | Signature signature ->
-      let env = Envi.open_module env in
+      let env = Envi.open_absolute_module (Some path) env in
       let env = check_signature env signature in
       let m, env = Envi.pop_module ~loc env in
       (Envi.Scope.Immediate m, env)
@@ -1038,26 +1042,25 @@ and check_module_sig env msig =
     | None ->
         (Envi.Scope.Deferred lid.txt, env) )
   | SigAbstract ->
-      let env = Envi.open_module env in
+      let env = Envi.open_absolute_module (Some path) env in
       let m, env = Envi.pop_module ~loc env in
       (Envi.Scope.Immediate m, env)
-  | SigFunctor (name, f, msig) ->
-      let f, env = check_module_sig env f in
-      (* Set up functor module *)
-      let env = Envi.open_module env in
-      let env =
-        match f with
-        | Envi.Scope.Immediate f ->
-            Envi.add_module name f env
-        | Envi.Scope.Deferred path ->
-            Envi.add_deferred_module name path env
-      in
-      let f, env = Envi.pop_module ~loc env in
-      let ftor f_instance =
-        let env = Envi.open_module env in
-        let env = Envi.open_namespace_scope f_instance env in
+  | SigFunctor (f_name, f, msig) ->
+      let f, env = check_module_sig env (Lident f_name.txt) f in
+      let ftor path f_instance =
+        (* We want the functored module to be accessible only in un-prefixed
+           space.
+        *)
+        let env = Envi.open_absolute_module None env in
+        let env =
+          match f_instance with
+          | Envi.Scope.Immediate f ->
+              Envi.add_module f_name f env
+          | Envi.Scope.Deferred path ->
+              Envi.add_deferred_module f_name path env
+        in
         (* TODO: check that f_instance matches f' *)
-        let m, _env = check_module_sig env msig in
+        let m, _env = check_module_sig env path msig in
         match m with
         | Envi.Scope.Immediate m ->
             m
@@ -1065,8 +1068,8 @@ and check_module_sig env msig =
             Envi.find_module ~loc (Location.mkloc path loc) env
       in
       (* Check that f builds the functor as expected. *)
-      ignore (ftor f) ;
-      let m = Envi.make_functor ftor in
+      ignore (ftor (Lapply (path, Lident f_name.txt)) f) ;
+      let m = Envi.make_functor path ftor in
       (Envi.Scope.Immediate m, env)
 
 let in_decl = ref false
@@ -1110,14 +1113,15 @@ let rec check_statement env stmt =
       in_decl := false ;
       ret
   | Module (name, m) ->
-      let env = Envi.open_module env in
+      let env = Envi.open_module name.txt env in
       let env, m = check_module_expr env m in
       let m_env, env = Envi.pop_module ~loc env in
       let env = Envi.add_module name m_env env in
       (env, {stmt with stmt_desc= Module (name, m)})
   | ModType (name, signature) ->
-      let env = Envi.open_module env in
-      let m_env, env = check_module_sig env signature in
+      let m_env, env =
+        check_module_sig env (Envi.relative_path env name.txt) signature
+      in
       let env = Envi.add_module_type name.txt m_env env in
       (env, stmt)
   | Open name ->
@@ -1222,35 +1226,43 @@ and check_module_expr env m =
       let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
       (env, {m with mod_desc= Structure stmts})
   | ModName name ->
+      let path = Envi.current_path env in
+      (* Remove the module placed on the stack by the caller. *)
+      let _, env = Envi.pop_module ~loc env in
       let m' = Envi.find_module ~loc name env in
-      let env = Envi.push_scope m' env in
+      let env = Envi.push_scope {m' with path} env in
       (env, m)
-  | Functor (name, f, m) ->
-      let f', env = check_module_sig env f in
-      (* Set up functor module *)
-      let env = Envi.open_module env in
-      let env =
-        match f' with
-        | Envi.Scope.Immediate f' ->
-            Envi.add_module name f' env
-        | Envi.Scope.Deferred path ->
-            Envi.add_deferred_module name path env
-      in
-      let f', env = Envi.pop_module ~loc env in
-      let ftor f_instance =
-        let env = Envi.open_module env in
-        let env = Envi.open_namespace_scope f_instance env in
+  | Functor (f_name, f, m) ->
+      let path = Option.value_exn (Envi.current_path env) in
+      (* Remove the module placed on the stack by the caller. *)
+      let _, env = Envi.pop_module ~loc env in
+      let f', env = check_module_sig env (Lident f_name.txt) f in
+      let ftor path f_instance =
+        (* We want the functored module to be accessible only in un-prefixed
+           space.
+        *)
+        let env = Envi.open_absolute_module None env in
+        let env =
+          match f_instance with
+          | Envi.Scope.Immediate f ->
+              Envi.add_module f_name f env
+          | Envi.Scope.Deferred path ->
+              Envi.add_deferred_module f_name path env
+        in
         (* TODO: check that f_instance matches f' *)
+        let env = Envi.open_absolute_module (Some path) env in
         let env, m' = check_module_expr env m in
         let m, _env = Envi.pop_module ~loc env in
         (m, m')
       in
       (* Check that f builds the functor as expected. *)
-      let _, m = ftor f' in
+      let _, m = ftor (Lapply (path, Lident f_name.txt)) f' in
       let env =
-        Envi.push_scope (Envi.make_functor (fun f -> fst (ftor f))) env
+        Envi.push_scope
+          (Envi.make_functor path (fun path f -> fst (ftor path f)))
+          env
       in
-      (env, {m with mod_desc= Functor (name, f, m)})
+      (env, {m with mod_desc= Functor (f_name, f, m)})
 
 let check_signature env signature =
   Envi.set_type_predeclaring env ;
