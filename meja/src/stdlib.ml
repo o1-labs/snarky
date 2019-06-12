@@ -46,10 +46,6 @@ let stdlib =
     let create : int -> t;
   };
 
-  type field;
-
-  type field_var;
-
   module Constraint : {
     type t =
       | Boolean(field_var)
@@ -229,7 +225,7 @@ let stdlib =
 
       let (+) : t -> t -> t;
 
-      let (*) : t -> t -> t;
+      let ( * ) : t -> t -> t;
 
       let (-) : t -> t -> t;
 
@@ -245,7 +241,7 @@ let stdlib =
 
     };
 
-    type t;
+    type t = field_var;
 
     let size_in_bits : int;
 

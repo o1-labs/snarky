@@ -202,19 +202,20 @@ let main =
       List.fold ~init:env cmi_scopes ~f:(fun env scope ->
           Envi.open_namespace_scope scope Checked env )
     in
-    let () =
+    let env =
+      (* Load stdlib. *)
       let lex = Lexing.from_string Stdlib.stdlib in
       lex.Lexing.lex_curr_p
       <- {lex.Lexing.lex_curr_p with Lexing.pos_fname= "stdlib"} ;
       let stdlib_ast =
         parse_with_error (Parser_impl.interface Lexer_impl.token) lex
       in
-      let env = Envi.open_absolute_module None Checked env in
-      let env = Typechecker.check_signature env stdlib_ast in
-      ignore env
+      let env = Envi.open_continue_module Checked env in
+      let env = Typechecker.check_signature' OCaml env stdlib_ast in
+      env
     in
     let meji_files =
-      "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
+      (*"meji/field.meji" :: "meji/boolean.meji" ::*) "meji/typ.meji"
       :: List.rev !meji_files
     in
     let env =

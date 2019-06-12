@@ -158,8 +158,8 @@ let env =
   let reg = Envi.register_type_declaration_raw in
   env
   (* Field.t/Field.Constant.t *)
-  |> reg OCaml (Lid.of_list ["Field"; "Constant"; "t"]) field
-  |> reg OCaml (Lid.of_list ["Field"; "t"]) field_var
+  |> reg OCaml ~name:"field" (Lid.of_list ["Field"; "Constant"; "t"]) field
+  |> reg OCaml ~name:"field_var" (Lid.of_list ["Field"; "t"]) field_var
   |> reg Prover ~name:"field" (Lid.of_name "field") field
   |> reg Checked ~name:"field" (Lid.of_name "field") field_var
   (* bool/Boolean.var *)

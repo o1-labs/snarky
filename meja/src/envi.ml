@@ -432,16 +432,16 @@ module FullScope = struct
   let empty mode path kind =
     let empty = Scope.empty path in
     match mode with
-    | Checked ->
+    | Prover ->
         { ocaml_scope= empty
-        ; checked_scope= Some empty
+        ; checked_scope= None
         ; prover_scope= empty
         ; kind
         ; modules= String.Map.empty
         ; module_types= String.Map.empty }
     | _ ->
         { ocaml_scope= empty
-        ; checked_scope= None
+        ; checked_scope= Some empty
         ; prover_scope= empty
         ; kind
         ; modules= String.Map.empty
@@ -554,6 +554,9 @@ let open_module name mode env =
 
 let open_absolute_module path mode env =
   push_scope FullScope.(empty mode path Module) env
+
+let open_continue_module mode env =
+  push_scope FullScope.(empty mode (current_path mode env) Continue) env
 
 let open_namespace_scope scope mode env =
   let path = current_path mode env in

@@ -1368,11 +1368,13 @@ and check_module_expr mode env m =
       in
       (env, {m with mod_desc= Functor (f_name, f, m)})
 
-let check_signature env signature =
+let check_signature' mode env signature =
   Envi.set_type_predeclaring env ;
-  let ret = check_signature Checked env signature in
+  let ret = check_signature mode env signature in
   Envi.unset_type_predeclaring env ;
   ret
+
+let check_signature env signature = check_signature' Checked env signature
 
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:(check_statement Checked)
