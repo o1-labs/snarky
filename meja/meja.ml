@@ -206,10 +206,12 @@ let main =
       let lex = Lexing.from_string Stdlib.stdlib in
       lex.Lexing.lex_curr_p
       <- {lex.Lexing.lex_curr_p with Lexing.pos_fname= "stdlib"} ;
-      let ast =
+      let stdlib_ast =
         parse_with_error (Parser_impl.interface Lexer_impl.token) lex
       in
-      ignore ast
+      let env = Envi.open_absolute_module None Checked env in
+      let env = Typechecker.check_signature env stdlib_ast in
+      ignore env
     in
     let meji_files =
       "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"

@@ -43,8 +43,6 @@ let stdlib =
 
     let clamp_exn : t -> min:t -> max:t -> t;
 
-    let clamp : t -> min:t -> max:t -> Base__.Or_error.t(t);
-
     let create : int -> t;
   };
 
@@ -59,13 +57,13 @@ let stdlib =
       | Square(field_var, field_var)
       | R1CS(field_var, field_var);
 
-    let boolean : ?label:string -> Field.t -> t;
+    let boolean : ?label:string -> field_var -> t;
 
-    let equal : ?label:string -> Field.t -> Field.t -> t;
+    let equal : ?label:string -> field_var -> field_var -> t;
 
-    let r1cs : ?label:string -> Field.t -> Field.t -> Field.t -> t;
+    let r1cs : ?label:string -> field_var -> field_var -> field_var -> t;
 
-    let square : ?label:string -> Field.t -> Field.t -> t;
+    let square : ?label:string -> field_var -> field_var -> t;
   };
 
   module Typ : {
@@ -78,7 +76,7 @@ let stdlib =
 
       let map : t('a) -> f:('a -> 'b) -> t('b);
 
-      let store : field -> t(Field.t);
+      let store : field -> t(field_var);
     };
 
     module Alloc : {
@@ -90,7 +88,7 @@ let stdlib =
 
       let map : t('a) -> f:('a -> 'b) -> t('b);
 
-      let alloc : t(Field.t);
+      let alloc : t(field_var);
     };
 
     module Read : {
@@ -102,7 +100,7 @@ let stdlib =
 
       let map : t('a) -> f:('a -> 'b) -> t('b);
 
-      let read : Field.t -> t(field);
+      let read : field_var -> t(field);
     };
 
 
@@ -123,14 +121,14 @@ let stdlib =
 
     instance unit : t(unit, unit);
 
-    instance field : t(Field.t, field);
+    instance field : t(field_var, field);
 
     instance tuple2 :
          {t('var1, 'value1)}
       -> {t('var2, 'value2)}
       -> t(('var1, 'var2), ('value1, 'value2));
 
-    instance (*) :
+    instance ( * ) :
          {t('var1, 'value1)}
       -> {t('var2, 'value2)}
       -> t(('var1, 'var2), ('value1, 'value2));
@@ -146,7 +144,7 @@ let stdlib =
   };
 
   module Boolean : {
-    type var = Boolean0.t(Field.t);
+    type var;
 
     type value = bool;
 
@@ -168,7 +166,7 @@ let stdlib =
 
     let all : list(var) -> var;
 
-    let of_field : Field.t -> var;
+    let of_field : field_var -> var;
 
     let var_of_value : value -> var;
 
@@ -176,12 +174,12 @@ let stdlib =
 
     let equal : var -> var -> var;
 
-    module Unsafe : { let of_cvar : Field.t -> var;  };
+    module Unsafe : { let of_cvar : field_var -> var;  };
 
     module Assert : {
-      let (=) : Boolean.var -> Boolean.var -> unit;
+      let (=) : var -> var -> unit;
 
-      let is_true : Boolean.var -> unit;
+      let is_true : var -> unit;
 
       let any : list(var) -> unit;
 
@@ -434,26 +432,26 @@ let stdlib =
   let next_auxiliary : unit -> int;
 
   let request_witness :
-    {Typ.t('var, 'value)}
-    -> As_prover.t(unit -> request('value))
+       {Typ.t('var, 'value)}
+    -> As_prover.t(unit -> Request.t('value))
     -> 'var;
 
-  let perform : As_prover.t(unit -> request(unit)) -> unit;
+  let perform : As_prover.t(unit -> Request.t(unit)) -> unit;
 
   let request :
-    ?such_that:('var -> unit)
+       ?such_that:('var -> unit)
     -> {Typ.t('var, 'value)}
-    -> request('value)
+    -> Request.t('value)
     -> 'var;
 
   let exists :
-    ?request:As_prover.t(unit -> request('value))
+       ?request:As_prover.t(unit -> Request.t('value))
     -> ?compute:As_prover.t(unit -> 'value)
     -> {Typ.t('var, 'value)}
     -> 'var;
 
   let exists_handle :
-    ?request:As_prover.t(unit -> request('value))
+       ?request:As_prover.t(unit -> Request.t('value))
     -> ?compute:As_prover.t(unit -> 'value)
     -> {Typ.t('var, 'value)}
     -> Handle.t('var, 'value);
