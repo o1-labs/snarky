@@ -1,0 +1,6 @@
+let x = fun (x : field) : field => {
+  let one = 1;
+  let two = 2;
+  let three = 3;
+  Field.mul(one, Field.mul(two, Field.mul(three, x)));
+};

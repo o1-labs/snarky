@@ -1,0 +1,2 @@
+File "tests/typ-deriving.meja", line 1, characters 0-30:
+Error: Unbound type constructor Field.Var.t.
