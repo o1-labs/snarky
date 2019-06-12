@@ -5,6 +5,8 @@ type error =
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
 
+exception Error of Location.t * error
+
 module Type : sig
   val import :
        Ast_types.mode

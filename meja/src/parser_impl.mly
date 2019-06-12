@@ -28,7 +28,9 @@ let consexp ~pos hd tl =
   mkexp ~pos (Ctor
     ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Tuple [hd; tl]))))
 %}
+%token <string> FIELD
 %token <int> INT
+%token <bool> BOOL
 %token <string> LIDENT
 %token <string> UIDENT
 %token FUN
@@ -316,7 +318,11 @@ simpl_expr:
   | x = as_loc(val_longident)
     { mkexp ~pos:$loc (Variable x) }
   | x = INT
-    { mkexp ~pos:$loc (Int x) }
+    { mkexp ~pos:$loc (Literal (Int x)) }
+  | x = BOOL
+    { mkexp ~pos:$loc (Literal (Bool x)) }
+  | x = FIELD
+    { mkexp ~pos:$loc (Literal (Field x)) }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { e }
   | LBRACKET es = list(expr, COMMA) RBRACKET

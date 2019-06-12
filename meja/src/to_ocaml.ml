@@ -92,14 +92,31 @@ let rec of_pattern_desc ?loc = function
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
+let of_literal ?loc = function
+  | Bool false ->
+      Exp.ident ?loc
+        Ast_build.(Loc.mk ?loc (Lid.of_list ["Boolean"; "false_"]))
+  | Bool true ->
+      Exp.ident ?loc Ast_build.(Loc.mk ?loc (Lid.of_list ["Boolean"; "true_"]))
+  | Int i ->
+      Exp.constant ?loc (Const.int i)
+  | Field f ->
+      Exp.apply ?loc
+        (Exp.ident ?loc
+           Ast_build.(
+             Loc.mk ?loc (Lid.of_list ["Field"; "Constant"; "of_string"])))
+        [(Nolabel, Exp.constant ?loc (Const.string f))]
+  | String s ->
+      Exp.constant ?loc (Const.string s)
+
 let rec of_expression_desc ?loc = function
   | Apply (f, es) ->
       Exp.apply ?loc (of_expression f)
         (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
   | Variable name ->
       Exp.ident ?loc name
-  | Int i ->
-      Exp.constant ?loc (Const.int i)
+  | Literal l ->
+      of_literal ?loc l
   | Fun (label, p, body, _) ->
       Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
   | Newtype (name, body) ->

@@ -23,7 +23,7 @@ type error =
   | Not_extensible of Longident.t
   | Extension_different_arity of Longident.t
 
-exception Error of Location.t * error
+exception Error of Location.t * Envi.t * mode * error
 
 let bind_none x f = match x with Some x -> x | None -> f ()
 
@@ -60,7 +60,7 @@ let rec check_type_aux mode ~loc typ ctyp env =
         f typ' env ;
         match Envi.Type.instance env typ with
         | Some _ ->
-            raise (Error (loc, Recursive_variable typ))
+            raise (Error (loc, env, mode, Recursive_variable typ))
         | None ->
             Some (Envi.Type.add_instance typ typ' env) )
     | None ->
@@ -102,7 +102,7 @@ let rec check_type_aux mode ~loc typ ctyp env =
     | Ok () ->
         ()
     | Unequal_lengths ->
-        raise (Error (loc, Cannot_unify (typ, ctyp))) )
+        raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) )
   | ( Tarrow (typ1, typ2, Explicit, label1)
     , Tarrow (ctyp1, ctyp2, Explicit, label2) )
   | ( Tarrow (typ1, typ2, Implicit, label1)
@@ -115,7 +115,7 @@ let rec check_type_aux mode ~loc typ ctyp env =
       | Optional x, Optional y when String.equal x y ->
           ()
       | _ ->
-          raise (Error (loc, Cannot_unify (typ, ctyp))) ) ;
+          raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) ) ;
       check_type_aux typ1 ctyp1 env ;
       check_type_aux typ2 ctyp2 env
   | Tctor variant, Tctor constr_variant -> (
@@ -136,8 +136,8 @@ let rec check_type_aux mode ~loc typ ctyp env =
           | Ok env ->
               env
           | Unequal_lengths ->
-              raise (Error (loc, Cannot_unify (typ, ctyp)))
-        else raise (Error (loc, Cannot_unify (typ, ctyp))) )
+              raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
+        else raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) )
   | Tctor _, _ | _, Tctor _ ->
       (* Unfold an alias and compare again *)
       let typ, ctyp =
@@ -145,18 +145,18 @@ let rec check_type_aux mode ~loc typ ctyp env =
         | Some (typ, ctyp) ->
             (typ, ctyp)
         | None ->
-            raise (Error (loc, Cannot_unify (typ, ctyp)))
+            raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
       in
       check_type_aux typ ctyp env
   | _, _ ->
-      raise (Error (loc, Cannot_unify (typ, ctyp)))
+      raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
 
 let check_type mode ~loc env typ constr_typ =
   match check_type_aux mode ~loc typ constr_typ env with
-  | exception Error (_, err) ->
+  | exception Error (_, _, _, err) ->
       let typ = Envi.Type.flatten typ env in
       let constr_typ = Envi.Type.flatten constr_typ env in
-      raise (Error (loc, Check_failed (typ, constr_typ, err)))
+      raise (Error (loc, env, mode, Check_failed (typ, constr_typ, err)))
   | () ->
       ()
 
@@ -321,7 +321,7 @@ let get_field mode (field : lid) env =
       let fld_type = Envi.Type.copy mode ~loc fld_type bound_vars env in
       (i, fld_type, rcd_type)
   | _ ->
-      raise (Error (loc, Unbound ("record field", field)))
+      raise (Error (loc, env, mode, Unbound ("record field", field)))
 
 let get_field_of_decl mode typ bound_vars field_decls (field : lid) env =
   let loc = field.loc in
@@ -404,7 +404,7 @@ let get_ctor mode (name : lid) env =
       let typ = Envi.Type.copy mode ~loc typ bound_vars env in
       (typ, args_typ)
   | _ ->
-      raise (Error (loc, Unbound ("constructor", name)))
+      raise (Error (loc, env, mode, Unbound ("constructor", name)))
 
 let rec check_pattern mode ~add env typ pat =
   let loc = pat.pat_loc in
@@ -453,14 +453,17 @@ let rec check_pattern mode ~add env typ pat =
                    | `Both (typ1, typ2) ->
                        check_type mode ~loc env typ1 typ2
                    | _ ->
-                       raise (Error (loc, Variable_on_one_side name)) )
+                       raise (Error (loc, env, mode, Variable_on_one_side name)) )
                  ~type_decls:(fun ~key:name ~data:_ _ ->
-                   raise (Error (loc, Pattern_declaration ("type", name))) )
+                   raise (Error (loc, env, mode, Pattern_declaration ("type", name)))
+                   )
                  ~fields:(fun ~key:name ~data:_ _ ->
-                   raise (Error (loc, Pattern_declaration ("field", name))) )
+                   raise
+                     (Error (loc, env, mode, Pattern_declaration ("field", name))) )
                  ~ctors:(fun ~key:name ~data:_ _ ->
                    raise
-                     (Error (loc, Pattern_declaration ("constructor", name)))
+                     (Error
+                        (loc, env, mode, Pattern_declaration ("constructor", name)))
                    )
                  ~instances:(fun ~key:_ ~data:_ () -> ()) ;
                scope1 ))
@@ -471,7 +474,7 @@ let rec check_pattern mode ~add env typ pat =
       check_type mode ~loc env typ Initial_env.Type.int ;
       ({pat_loc= loc; pat_type= typ; pat_desc= PInt i}, env)
   | PRecord [] ->
-      raise (Error (loc, Empty_record))
+      raise (Error (loc, env, mode, Empty_record))
   | PRecord ((field, _) :: _ as fields) ->
       let typ, field_decls, bound_vars, env =
         match Envi.TypeDecl.find_unaliased_of_type mode ~loc typ env with
@@ -500,7 +503,7 @@ let rec check_pattern mode ~add env typ pat =
               check_type mode ~loc env typ decl_type ;
               (decl_type, field_decls, bound_vars, env)
           | _ ->
-              raise (Error (loc, Unbound ("record field", field))) )
+              raise (Error (loc, env, mode, Unbound ("record field", field))) )
       in
       let ps =
         List.map fields ~f:(fun (field, p) ->
@@ -508,8 +511,10 @@ let rec check_pattern mode ~add env typ pat =
               get_field_of_decl mode typ bound_vars field_decls field env
             in
             ( try check_type mode ~loc:field.loc env record_typ typ
-              with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->
-                raise (Error (field.loc, Wrong_record_field (field.txt, typ)))
+              with
+              | Error (_, env, mode, Check_failed (_, _, Cannot_unify (typ, _))) ->
+                raise
+                  (Error (field.loc, env, mode, Wrong_record_field (field.txt, typ)))
             ) ;
             {p with pat_type= field_typ} )
       in
@@ -586,10 +591,44 @@ let rec get_expression mode env expected exp =
       let e = Envi.Type.generate_implicits e env in
       check_type mode ~loc env expected e.exp_type ;
       (e, env)
-  | Int i ->
+  | Literal (Int i) ->
       let typ = Initial_env.Type.int in
       check_type mode ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (Int i)}, env)
+  | Literal (Bool b) ->
+      let typ = Initial_env.Type.boolean mode in
+      check_type mode ~loc env expected typ ;
+      let desc =
+        if typ.type_mode = Checked then
+          let name = if b then "true_" else "false_" in
+          Variable Ast_build.(Loc.mk ~loc (Lid.of_list ["Boolean"; name]))
+        else
+          let name = if b then "true" else "false" in
+          Ctor (Ast_build.(Loc.mk ~loc (Lid.of_name name)), None)
+      in
+      ({exp_loc= loc; exp_type= typ; exp_desc= desc}, env)
+  | Literal (Field f) ->
+      let typ = Initial_env.Type.field mode in
+      check_type mode ~loc env expected typ ;
+      let e =
+        Ast_build.(
+          Exp.apply ~loc
+            (Exp.var ~loc (Lid.of_list ["Field"; "Constant"; "of_string"]))
+            [(Nolabel, Exp.literal (String f))])
+      in
+      let e =
+        if typ.type_mode = Checked then
+          Ast_build.(
+            Exp.apply ~loc
+              (Exp.var ~loc (Lid.of_list ["Field"; "constant"]))
+              [(Nolabel, e)])
+        else e
+      in
+      ({exp_loc= loc; exp_type= typ; exp_desc= e.exp_desc}, env)
+  | Literal (String s) ->
+      let typ = Initial_env.Type.string in
+      check_type mode ~loc env expected typ ;
+      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (String s)}, env)
   | Fun (label, p, body, explicit) ->
       let env = Envi.open_expr_scope mode env in
       let p_typ = Envi.Type.mkvar mode None env in
@@ -756,7 +795,8 @@ let rec get_expression mode env expected exp =
                 check_type mode ~loc env typ fld_type ;
                 (fld_type, env)
             | None ->
-                raise (Error (loc, Wrong_record_field (field.txt, e.exp_type)))
+                raise
+                  (Error (loc, env, mode, Wrong_record_field (field.txt, e.exp_type)))
             )
           | _ -> (
             match Envi.TypeDecl.find_of_field mode field env with
@@ -790,11 +830,11 @@ let rec get_expression mode env expected exp =
                 in
                 (fld_type, env)
             | _ ->
-                raise (Error (loc, Unbound ("record field", field))) )
+                raise (Error (loc, env, mode, Unbound ("record field", field))) )
       in
       ({exp_loc= loc; exp_type= typ; exp_desc= Field (e, field)}, env)
   | Record ([], _) ->
-      raise (Error (loc, Empty_record))
+      raise (Error (loc, env, mode, Empty_record))
   | Record (((field, _) :: _ as fields), ext) ->
       let typ, ext, env =
         match ext with
@@ -831,7 +871,7 @@ let rec get_expression mode env expected exp =
               check_type mode ~loc env typ decl_type ;
               (decl_type, field_decls, bound_vars, env)
           | _ ->
-              raise (Error (loc, Unbound ("record field", field))) )
+              raise (Error (loc, env, mode, Unbound ("record field", field))) )
       in
       let env = ref env in
       let fields_filled = Array.create ~len:(List.length field_decls) false in
@@ -841,13 +881,15 @@ let rec get_expression mode env expected exp =
               get_field_of_decl mode typ bound_vars field_decls field !env
             in
             ( try check_type mode ~loc:field.loc !env record_typ typ
-              with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->
-                raise (Error (field.loc, Wrong_record_field (field.txt, typ)))
+              with
+              | Error (_, env, mode, Check_failed (_, _, Cannot_unify (typ, _))) ->
+                raise
+                  (Error (field.loc, env, mode, Wrong_record_field (field.txt, typ)))
             ) ;
             let e, env' = get_expression mode !env field_typ e in
             ( if fields_filled.(i) then
               let name = (List.nth_exn field_decls i).fld_ident.txt in
-              raise (Error (field.loc, Repeated_field name)) ) ;
+              raise (Error (field.loc, !env, mode, Repeated_field name)) ) ;
             fields_filled.(i) <- true ;
             env := env' ;
             (field, e) )
@@ -863,7 +905,7 @@ let rec get_expression mode env expected exp =
                 if filled then names else fld_ident.txt :: names )
           in
           if not (List.is_empty names) then
-            raise (Error (loc, Missing_fields names)) ) ;
+            raise (Error (loc, !env, mode, Missing_fields names)) ) ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Record (fields, ext)}, !env)
   | Ctor (name, arg) ->
       let typ, arg_typ = get_ctor mode name env in
@@ -876,12 +918,12 @@ let rec get_expression mode env expected exp =
         | None ->
             let typ = Envi.Type.mk mode (Ttuple []) env in
             ( try check_type mode ~loc env arg_typ typ
-              with _ -> raise (Error (loc, Argument_expected name.txt)) ) ;
+              with _ -> raise (Error (loc, env, mode, Argument_expected name.txt)) ) ;
             (None, env)
       in
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
   | Unifiable _ ->
-      raise (Error (loc, Unifiable_expr))
+      raise (Error (loc, env, mode, Unifiable_expr))
   | Prover e ->
       let e, env = get_expression Prover env Initial_env.Type.unit e in
       check_type mode ~loc env expected Initial_env.Type.unit ;
@@ -917,7 +959,7 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
             ( {exp_desc= Fun (Nolabel, p, e, Implicit); exp_type; exp_loc= loc}
             , env )
         | _ ->
-            raise (Error (var.exp_loc, No_unifiable_expr)) )
+            raise (Error (var.exp_loc, env, mode, No_unifiable_expr)) )
   in
   let loc = p.pat_loc in
   match (p.pat_desc, implicit_vars) with
@@ -950,7 +992,7 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
       in
       (p, e, env)
   | _, implicit :: _ ->
-      raise (Error (loc, No_instance implicit.exp_type))
+      raise (Error (loc, env, mode, No_instance implicit.exp_type))
 
 let type_extension mode ~loc variant ctors env =
   let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
@@ -959,18 +1001,18 @@ let type_extension mode ~loc variant ctors env =
     | open_decl ->
         open_decl
     | exception _ ->
-        raise (Error (loc, Unbound ("type constructor", var_ident)))
+        raise (Error (loc, env, mode, Unbound ("type constructor", var_ident)))
   in
   ( match tdec_desc with
   | TOpen ->
       ()
   | _ ->
-      raise (Error (loc, Not_extensible var_ident.txt)) ) ;
+      raise (Error (loc, env, mode, Not_extensible var_ident.txt)) ) ;
   ( match List.iter2 tdec_params var_params ~f:(fun _ _ -> ()) with
   | Ok _ ->
       ()
   | Unequal_lengths ->
-      raise (Error (loc, Extension_different_arity var_ident.txt)) ) ;
+      raise (Error (loc, env, mode, Extension_different_arity var_ident.txt)) ) ;
   let decl =
     { Parsetypes.tdec_ident
     ; tdec_params= var_params
@@ -1316,16 +1358,20 @@ let check (ast : statement list) (env : Envi.t) =
 
 open Format
 
-let pp_typ = Typeprint.type_expr
+let pp_typ env mode fmt typ =
+  Typeprint.type_expr fmt (Envi.Type.normalise_constr_names mode env typ)
 
-let rec report_error ppf = function
+let rec report_error env mode ppf err =
+  let report_error = report_error env mode in
+  let pp_typ = pp_typ env mode in
+  match err with
   | Check_failed (typ, constr_typ, err) ->
       fprintf ppf
         "@[<v>@[<hov>Incompatable types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
         pp_typ typ pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
-      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" pp_typ typ
-        pp_typ constr_typ
+      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]"
+        pp_typ typ pp_typ constr_typ
   | Recursive_variable typ ->
       fprintf ppf
         "@[<hov>The variable@ @[<h>%a@](%d) would have an instance that \
@@ -1385,7 +1431,7 @@ let rec report_error ppf = function
 
 let () =
   Location.register_error_of_exn (function
-    | Error (loc, err) ->
-        Some (Location.error_of_printer loc report_error err)
+    | Error (loc, env, mode, err) ->
+        Some (Location.error_of_printer loc (report_error env mode) err)
     | _ ->
         None )

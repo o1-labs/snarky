@@ -48,11 +48,11 @@ module TypeDecls = struct
 
   (** Meja-specific built-ins. *)
 
-  let field = abstract "t"
+  let field = abstract "field"
 
-  let field_var = abstract "t"
+  let field_var = abstract "field_var"
 
-  let bool_var = abstract "var"
+  let bool_var = abstract "boolean"
 end
 
 (** Empty environment. *)
@@ -102,7 +102,7 @@ let field, env = import Prover field env
 
 let field_var, env = import Checked field_var env
 
-let bool_var, env = import Prover bool_var env
+let bool_var, env = import Checked bool_var env
 
 let env = snd (Envi.pop_module ~loc:Location.none env)
 
@@ -138,7 +138,7 @@ module Type = struct
     fun mode -> match mode with Ast_types.Checked -> field_var | _ -> field
 
   let boolean =
-    let bool_var = TypeDecl.mk_typ Prover bool_var ~params:[] env in
+    let bool_var = TypeDecl.mk_typ Checked bool_var ~params:[] env in
     fun mode -> match mode with Ast_types.Checked -> bool_var | _ -> bool
 end
 
@@ -163,7 +163,7 @@ let env =
   |> reg Prover ~name:"field" (Lid.of_name "field") field
   |> reg Checked ~name:"field" (Lid.of_name "field") field_var
   (* bool/Boolean.var *)
-  |> reg OCaml (Lid.of_name "boolean") bool
+  |> reg OCaml (Lid.of_name "bool") bool
   |> reg OCaml (Lid.of_list ["Boolean"; "var"]) bool_var
-  |> reg Prover ~name:"bool" (Lid.of_name "boolean") bool
-  |> reg Checked ~name:"bool" (Lid.of_name "boolean") bool_var
+  |> reg Prover ~name:"boolean" (Lid.of_name "bool") bool
+  |> reg Checked ~name:"boolean" (Lid.of_name "boolean") bool_var
