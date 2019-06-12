@@ -211,6 +211,8 @@ let rec expression_desc fmt = function
       expression fmt e
   | Unifiable {expression= None; name; _} ->
       fprintf fmt "(%s /* implicit */)" name.txt
+  | Prover e ->
+      fprintf fmt "@[<hv2>Prover {@ %a@ }@]" expression e
 
 and expression_desc_bracket fmt exp =
   match exp with

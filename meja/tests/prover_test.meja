@@ -1,0 +1,17 @@
+let f = fun (x) => {
+  Prover {
+    ();
+  };
+};
+
+let ignore = fun (x) => {
+  Prover {
+    ();
+  };
+};
+
+let g = fun (x) => {
+  Prover {
+    ignore(x);
+  };
+};

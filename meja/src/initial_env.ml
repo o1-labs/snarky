@@ -1,6 +1,7 @@
 (** The default initial environment. *)
-open Typet
+open Core_kernel
 
+open Typet
 open TypeDecl
 
 (** The built-in types. These match the OCaml built-ins. *)
@@ -47,7 +48,11 @@ module TypeDecls = struct
 
   (** Meja-specific built-ins. *)
 
-  let field = unfold "field" (var ~explicit:Implicit "field")
+  let field = abstract "t"
+
+  let field_var = abstract "t"
+
+  let bool_var = abstract "var"
 end
 
 (** Empty environment. *)
@@ -62,8 +67,6 @@ open TypeDecls
 let int, env = import Checked int env
 
 let unit, env = import Checked unit env
-
-let bool, env = import Checked bool env
 
 let char, env = import Checked char env
 
@@ -85,11 +88,25 @@ let int64, env = import Checked int64 env
 
 let nativeint, env = import Checked nativeint env
 
-let field, env = import Checked field env
-
 let lazy_t, env = import Checked lazy_t env
 
 let array, env = import Checked array env
+
+(* Specialised types that may differ across environments. *)
+
+let env = Envi.open_module "__field__" Checked env
+
+let field, env = import Prover field env
+
+let field_var, env = import Checked field_var env
+
+let bool, env = import Prover bool env
+
+let bool_var, env = import Prover bool_var env
+
+let env = snd (Envi.pop_module ~loc:Location.none env)
+
+(* End of specialised types. *)
 
 (** Canonical references for each of the built-in types that the typechecker
     refers to.
@@ -100,8 +117,6 @@ module Type = struct
   let int = TypeDecl.mk_typ Checked int ~params:[] env
 
   let unit = TypeDecl.mk_typ Checked unit ~params:[] env
-
-  let bool = TypeDecl.mk_typ Checked bool ~params:[] env
 
   let char = TypeDecl.mk_typ Checked char ~params:[] env
 
@@ -114,4 +129,40 @@ module Type = struct
   let option a = TypeDecl.mk_typ Checked option ~params:[a] env
 
   let list a = TypeDecl.mk_typ Checked list ~params:[a] env
+
+  let field =
+    let field_var = TypeDecl.mk_typ Checked field_var ~params:[] env in
+    let field = TypeDecl.mk_typ Prover field ~params:[] env in
+    fun mode -> match mode with Ast_types.Checked -> field_var | _ -> field
+
+  let bool =
+    let bool_var = TypeDecl.mk_typ Prover bool_var ~params:[] env in
+    let bool = TypeDecl.mk_typ Checked bool ~params:[] env in
+    fun mode -> match mode with Ast_types.Checked -> bool_var | _ -> bool
 end
+
+let env =
+  { env with
+    scope_stack=
+      List.map env.Envi.scope_stack ~f:(fun scope ->
+          let checked_scope = Option.value_exn scope.checked_scope in
+          { scope with
+            Envi.FullScope.ocaml_scope= checked_scope
+          ; prover_scope= checked_scope } ) }
+
+(* Add field types to the respective environments. *)
+
+let env =
+  let open Ast_build in
+  let reg = Envi.register_type_declaration_raw in
+  env
+  (* Field.t/Field.Constant.t *)
+  |> reg OCaml (Lid.of_list ["Field"; "Constant"; "t"]) field
+  |> reg OCaml (Lid.of_list ["Field"; "t"]) field_var
+  |> reg Prover ~name:"field" (Lid.of_name "field") field
+  |> reg Checked ~name:"field" (Lid.of_name "field") field_var
+  (* bool/Boolean.var *)
+  |> reg OCaml (Lid.of_name "bool") bool
+  |> reg OCaml (Lid.of_list ["Boolean"; "var"]) bool_var
+  |> reg Prover ~name:"bool" (Lid.of_name "bool") bool
+  |> reg Checked ~name:"bool" (Lid.of_name "bool") bool_var

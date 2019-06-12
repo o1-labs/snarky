@@ -130,6 +130,8 @@ let rec of_expression_desc ?loc = function
       of_expression e
   | Unifiable {name; _} ->
       Exp.ident ?loc (mk_lid name)
+  | Prover e ->
+      of_expression e
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 

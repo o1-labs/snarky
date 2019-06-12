@@ -685,7 +685,9 @@ let rec get_expression mode env expected exp =
       let env, cases =
         List.fold_map ~init:env cases ~f:(fun env (p, e) ->
             let env = Envi.open_expr_scope mode env in
-            let p, env = check_pattern mode ~add:(add_polymorphised mode) env typ p in
+            let p, env =
+              check_pattern mode ~add:(add_polymorphised mode) env typ p
+            in
             let e, env = get_expression mode env expected e in
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )
@@ -880,6 +882,10 @@ let rec get_expression mode env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
   | Unifiable _ ->
       raise (Error (loc, Unifiable_expr))
+  | Prover e ->
+      let e, env = get_expression Prover env Initial_env.Type.unit e in
+      check_type mode ~loc env expected Initial_env.Type.unit ;
+      ({exp_loc= loc; exp_type= expected; exp_desc= Prover e}, env)
 
 and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in

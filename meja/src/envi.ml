@@ -179,18 +179,24 @@ module Scope = struct
   let get_preferred_type_name decl_id {paths= {type_paths}; _} =
     Map.find type_paths decl_id
 
+  let add_type_declaration_explicit name path decl scope =
+    match decl.tdec_desc with
+    | TExtend _ ->
+        scope
+    | _ ->
+        { scope with
+          type_decls=
+            Option.fold ~init:scope.type_decls name ~f:(fun type_decls name ->
+                Map.set type_decls ~key:name ~data:decl )
+        ; paths= add_preferred_type_name path decl.tdec_id scope.paths }
+
   let add_type_declaration decl scope =
-    { scope with
-      type_decls= Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
-    ; paths=
-        add_preferred_type_name (Lident decl.tdec_ident.txt) decl.tdec_id
-          scope.paths }
+    add_type_declaration_explicit (Some decl.tdec_ident.txt)
+      (Lident decl.tdec_ident.txt) decl scope
 
   let get_type_declaration name scope = Map.find scope.type_decls name
 
-  let register_type_declaration decl scope =
-    let scope' = scope in
-    let scope = add_type_declaration decl scope in
+  let register_type_declaration_parts decl scope =
     match decl.tdec_desc with
     | TAbstract | TAlias _ | TUnfold _ | TOpen | TForward _ ->
         scope
@@ -199,8 +205,11 @@ module Scope = struct
     | TVariant ctors ->
         List.foldi ~f:(add_ctor decl) ~init:scope ctors
     | TExtend (_, _, ctors) ->
-        (* Use [scope'] to avoid adding the type name. *)
-        List.foldi ~f:(add_ctor decl) ~init:scope' ctors
+        List.foldi ~f:(add_ctor decl) ~init:scope ctors
+
+  let register_type_declaration decl scope =
+    let scope = add_type_declaration decl scope in
+    register_type_declaration_parts decl scope
 
   let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors
       ~instances
@@ -482,6 +491,15 @@ module FullScope = struct
 
   let get_type_declaration mode name =
     on_scope mode ~f:(Scope.get_type_declaration name)
+
+  let register_type_declaration_raw ~add name lid mode decl scope =
+    let scope =
+      map_scope mode scope
+        ~f:(Scope.add_type_declaration_explicit name lid decl)
+    in
+    if add then
+      map_scope mode scope ~f:(Scope.register_type_declaration_parts decl)
+    else scope
 end
 
 let empty_resolve_env : FullScope.t resolve_env =
@@ -648,6 +666,12 @@ let find_module_deferred ~loc (lid : lid) env =
       (Scope.find_module_deferred ~loc ~scopes:env.scope_stack env.resolve_env
          lid.txt)
     env.scope_stack
+
+let register_type_declaration_raw mode ?name lid decl =
+  map_current_scope
+    ~f:
+      (FullScope.register_type_declaration_raw ~add:(Option.is_some name) name
+         lid mode decl)
 
 let add_implicit_instance name typ env =
   let path = Lident name in

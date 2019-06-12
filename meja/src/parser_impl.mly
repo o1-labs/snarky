@@ -43,6 +43,7 @@ let consexp ~pos hd tl =
 %token REQUEST
 %token WITH
 %token HANDLER
+%token PROVER
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -361,6 +362,8 @@ expr:
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Ctor (id, args)) }
+  | PROVER LBRACE x = block RBRACE
+    { mkexp ~pos:$loc (Prover x) }
 
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE
