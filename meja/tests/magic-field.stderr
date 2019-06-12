@@ -1,0 +1,3 @@
+File "tests/magic-field.meja", line 22, characters 8-11:
+Error: Incompatable types _ and int -> int -> int:
+       Cannot unify field and int

@@ -3,6 +3,8 @@ open Impl
 
 let f x = ()
 
-let ignore x = ()
+let ignore (x : Field.t) = ()
 
-let g x = ignore x
+let g (x : Field.t) =
+  let f (x : Field.Constant.t) = () in
+  ()

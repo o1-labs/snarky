@@ -4,14 +4,16 @@ let f = fun (x) => {
   };
 };
 
-let ignore = fun (x) => {
+let ignore = fun (x : field) => {
   Prover {
     ();
   };
 };
 
-let g = fun (x) => {
+let g = fun (x : field) => {
   Prover {
-    ignore(x);
+    let f = fun (x : field) => { (); };
+    /*f(x);*/
+    ();
   };
 };

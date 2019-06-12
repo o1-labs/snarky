@@ -1,3 +1,2 @@
-File "tests/list_wrong_type.meja", line 3, characters 16-17:
-Error: Incompatable types _ and list(int):
-       Cannot unify bool and int
+File "tests/list_wrong_type.meja", line 3, characters 8-12:
+Error: Unbound constructor true.

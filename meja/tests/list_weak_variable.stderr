@@ -1,3 +1,2 @@
-File "tests/list_weak_variable.meja", line 5, characters 13-14:
-Error: Incompatable types _ and list('a):
-       Cannot unify int and bool
+File "tests/list_weak_variable.meja", line 3, characters 8-12:
+Error: Unbound constructor true.

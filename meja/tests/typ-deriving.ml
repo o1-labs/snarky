@@ -4,7 +4,7 @@ open Impl
 include struct
   type ('a, 'b) poly = {a: 'a; b: 'b}
 
-  type 'field t = (bool, 'field) poly
+  type t = (bool, field) poly
 
   type var = (Boolean.var, Field.Var.t) poly
 

@@ -1,3 +1,2 @@
-File "tests/implicits-fail.meja", line 5, characters 5-9:
-Error: Could not find an instance for an implicit variable of type
-       showable(int).
+File "tests/implicits-fail.meja", line 5, characters 31-35:
+Error: Unbound constructor true.

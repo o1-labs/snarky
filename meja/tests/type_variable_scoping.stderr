@@ -1,0 +1,2 @@
+File "tests/type_variable_scoping.meja", line 18, characters 23-27:
+Error: Unbound constructor true.
