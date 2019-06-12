@@ -59,37 +59,37 @@ open TypeDecls
     the environment [env] each time.
 *)
 
-let int, env = import int env
+let int, env = import Checked int env
 
-let unit, env = import unit env
+let unit, env = import Checked unit env
 
-let bool, env = import bool env
+let bool, env = import Checked bool env
 
-let char, env = import char env
+let char, env = import Checked char env
 
-let string, env = import string env
+let string, env = import Checked string env
 
-let float, env = import float env
+let float, env = import Checked float env
 
-let exn, env = import exn env
+let exn, env = import Checked exn env
 
-let option, env = import option env
+let option, env = import Checked option env
 
-let list, env = import list env
+let list, env = import Checked list env
 
-let bytes, env = import bytes env
+let bytes, env = import Checked bytes env
 
-let int32, env = import int32 env
+let int32, env = import Checked int32 env
 
-let int64, env = import int64 env
+let int64, env = import Checked int64 env
 
-let nativeint, env = import nativeint env
+let nativeint, env = import Checked nativeint env
 
-let field, env = import field env
+let field, env = import Checked field env
 
-let lazy_t, env = import lazy_t env
+let lazy_t, env = import Checked lazy_t env
 
-let array, env = import array env
+let array, env = import Checked array env
 
 (** Canonical references for each of the built-in types that the typechecker
     refers to.

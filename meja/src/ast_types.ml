@@ -1,5 +1,7 @@
 open Core_kernel
 
+type mode = OCaml | Checked | Prover [@@deriving sexp]
+
 let pp_name ppf name =
   let c = name.[0] in
   if

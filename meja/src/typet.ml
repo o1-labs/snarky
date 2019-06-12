@@ -16,9 +16,10 @@ exception Error of Location.t * error
 module Type = struct
   open Type
 
-  let rec import ?must_find (typ : type_expr) env : Type0.type_expr * env =
-    let import' = import in
-    let import = import ?must_find in
+  let rec import mode ?must_find (typ : type_expr) env : Type0.type_expr * env
+      =
+    let import' = import mode in
+    let import = import mode ?must_find in
     let loc = typ.type_loc in
     match typ.type_desc with
     | Tvar (None, explicitness) -> (
@@ -31,14 +32,14 @@ module Type = struct
         let var =
           match must_find with
           | Some true ->
-              let var = find_type_variable x env in
+              let var = find_type_variable x mode env in
               if (not (Option.is_some var)) && explicitness = Explicit then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
               None
           | None ->
-              find_type_variable x env
+              find_type_variable x mode env
         in
         match var with
         | Some var ->
@@ -47,7 +48,7 @@ module Type = struct
             let var = mkvar ~explicitness name env in
             (var, add_type_variable x var env) )
     | Tpoly (vars, typ) ->
-        let env = open_expr_scope env in
+        let env = open_expr_scope mode env in
         let env, vars =
           List.fold_map vars ~init:env ~f:(fun e t ->
               let t, e = import' ~must_find:false t e in
@@ -58,10 +59,10 @@ module Type = struct
         (mk (Tpoly (vars, typ)) env, env)
     | Tctor variant -> (
         let {var_ident; var_params; var_implicit_params; _} = variant in
-        let decl = raw_find_type_declaration var_ident env in
+        let decl = raw_find_type_declaration mode var_ident env in
         let import_implicits () =
           List.fold_map ~init:env decl.tdec_implicit_params
-            ~f:(Envi.Type.refresh_var ~loc ?must_find)
+            ~f:(Envi.Type.refresh_var mode ~loc ?must_find)
         in
         match decl with
         | {tdec_desc= TUnfold typ; tdec_implicit_params; _} ->
@@ -73,7 +74,7 @@ module Type = struct
                 ~f:(fun new_vars_map var param ->
                   Map.set new_vars_map ~key:var.type_id ~data:param )
             in
-            let typ = Envi.Type.copy ~loc typ new_vars_map env in
+            let typ = Envi.Type.copy mode ~loc typ new_vars_map env in
             (typ, env)
         | _ ->
             let given_args_length = List.length var_params in
@@ -173,11 +174,11 @@ end
 module TypeDecl = struct
   open TypeDecl
 
-  let import_field ?must_find env {fld_ident; fld_type; fld_loc= _} =
-    let fld_type, env = Type.import ?must_find fld_type env in
+  let import_field mode ?must_find env {fld_ident; fld_type; fld_loc= _} =
+    let fld_type, env = Type.import mode ?must_find fld_type env in
     (env, {Type0.fld_ident; fld_type; fld_id= -1})
 
-  let import decl' env =
+  let import mode decl' env =
     let {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc= _}
         =
       decl'
@@ -207,12 +208,12 @@ module TypeDecl = struct
       | None ->
           next_id env
     in
-    let env = open_expr_scope env in
+    let env = open_expr_scope mode env in
     let import_params env =
       List.fold_map ~init:env ~f:(fun env param ->
           match param.type_desc with
           | Tvar _ ->
-              let var, env = Type.import ~must_find:false param env in
+              let var, env = Type.import mode ~must_find:false param env in
               (env, var)
           | _ ->
               raise (Error (param.type_loc, Expected_type_var param)) )
@@ -242,7 +243,9 @@ module TypeDecl = struct
         | TExtend _ ->
             env
         | _ ->
-            map_current_scope ~f:(Scope.add_type_declaration decl) env
+            map_current_scope
+              ~f:(FullScope.map_scopes ~f:(Scope.add_type_declaration decl))
+              env
       in
       Envi.push_scope scope env
     in
@@ -251,13 +254,13 @@ module TypeDecl = struct
       | TAbstract ->
           ({decl with tdec_implicit_params}, env)
       | TAlias typ ->
-          let typ, env = Type.import ~must_find:true typ env in
+          let typ, env = Type.import mode ~must_find:true typ env in
           let tdec_implicit_params =
             add_implicits (Envi.Type.implicit_params env typ)
           in
           ({decl with tdec_desc= TAlias typ; tdec_implicit_params}, env)
       | TUnfold typ ->
-          let typ, env = Type.import ~must_find:false typ env in
+          let typ, env = Type.import mode ~must_find:false typ env in
           let tdec_implicit_params =
             add_implicits (Envi.Type.implicit_params env typ)
           in
@@ -266,7 +269,8 @@ module TypeDecl = struct
           ({decl with tdec_desc= TOpen}, env)
       | TRecord fields ->
           let env, fields =
-            List.fold_map ~init:env fields ~f:(import_field ~must_find:true)
+            List.fold_map ~init:env fields
+              ~f:(import_field mode ~must_find:true)
           in
           let tdec_implicit_params =
             add_implicits
@@ -283,7 +287,7 @@ module TypeDecl = struct
                 let ctor_ret, env, must_find, ctor_ret_params =
                   match ctor.ctor_ret with
                   | Some ret ->
-                      let env = open_expr_scope env in
+                      let env = open_expr_scope mode env in
                       let name =
                         match tdec_desc with
                         | TVariant _ ->
@@ -303,7 +307,9 @@ module TypeDecl = struct
                             (Error
                                ( ret.type_loc
                                , Constraints_not_satisfied (ret, decl') )) ) ;
-                      let ret, env = Type.import ~must_find:false ret env in
+                      let ret, env =
+                        Type.import mode ~must_find:false ret env
+                      in
                       let ctor_ret_params =
                         match ret.type_desc with
                         | Tctor {var_params; _} ->
@@ -320,14 +326,16 @@ module TypeDecl = struct
                   | Ctor_tuple args ->
                       let env, args =
                         List.fold_map ~init:env args ~f:(fun env arg ->
-                            let arg, env = Type.import ?must_find arg env in
+                            let arg, env =
+                              Type.import mode ?must_find arg env
+                            in
                             (env, arg) )
                       in
                       (env, Type0.Ctor_tuple args)
                   | Ctor_record (_, fields) ->
                       let env, fields =
                         List.fold_map ~init:env fields
-                          ~f:(import_field ?must_find)
+                          ~f:(import_field mode ?must_find)
                       in
                       let decl =
                         mk ~name:ctor.ctor_ident ~params:ctor_ret_params
@@ -426,7 +434,9 @@ module TypeDecl = struct
             failwith "Cannot import a forward type declaration"
     in
     let env =
-      map_current_scope ~f:(Scope.register_type_declaration decl) env
+      map_current_scope
+        ~f:(FullScope.map_scope mode ~f:(Scope.register_type_declaration decl))
+        env
     in
     (decl, env)
 end

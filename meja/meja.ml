@@ -145,7 +145,7 @@ let main =
                 env.Envi.resolve_env
                 (Filename.concat lib_path "ocaml/stdlib.cmi")
             in
-            let env = Envi.open_namespace_scope stdlib_scope env in
+            let env = Envi.open_namespace_scope stdlib_scope Checked env in
             (* Load Snarky.Request *)
             let snarky_build_path =
               Filename.(
@@ -162,8 +162,8 @@ let main =
             let m, env =
               let loc = Location.none in
               let mkloc s = Location.mkloc s loc in
-              let env = Envi.open_absolute_module None env in
-              let env = Envi.open_absolute_module None env in
+              let env = Envi.open_absolute_module None Checked env in
+              let env = Envi.open_absolute_module None Checked env in
               let m =
                 try
                   Envi.find_module ~loc
@@ -181,7 +181,7 @@ let main =
               let env = Envi.add_module (mkloc "Snarky") m env in
               Envi.pop_module ~loc env
             in
-            Envi.open_namespace_scope m env
+            Envi.open_namespace_scope m Checked env
         | None ->
             Format.(
               fprintf err_formatter
@@ -200,7 +200,7 @@ let main =
     in
     let env =
       List.fold ~init:env cmi_scopes ~f:(fun env scope ->
-          Envi.open_namespace_scope scope env )
+          Envi.open_namespace_scope scope Checked env )
     in
     let meji_files =
       "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
@@ -213,7 +213,8 @@ let main =
           in
           let module_name = Loader.modname_of_filename file in
           let env =
-            Envi.open_absolute_module (Some (Longident.Lident module_name)) env
+            Envi.open_absolute_module (Some (Longident.Lident module_name))
+              Checked env
           in
           let env = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:Location.none env in
