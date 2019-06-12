@@ -453,18 +453,24 @@ let rec check_pattern mode ~add env typ pat =
                    | `Both (typ1, typ2) ->
                        check_type mode ~loc env typ1 typ2
                    | _ ->
-                       raise (Error (loc, env, mode, Variable_on_one_side name)) )
+                       raise
+                         (Error (loc, env, mode, Variable_on_one_side name)) )
                  ~type_decls:(fun ~key:name ~data:_ _ ->
-                   raise (Error (loc, env, mode, Pattern_declaration ("type", name)))
+                   raise
+                     (Error (loc, env, mode, Pattern_declaration ("type", name)))
                    )
                  ~fields:(fun ~key:name ~data:_ _ ->
                    raise
-                     (Error (loc, env, mode, Pattern_declaration ("field", name))) )
+                     (Error
+                        (loc, env, mode, Pattern_declaration ("field", name)))
+                   )
                  ~ctors:(fun ~key:name ~data:_ _ ->
                    raise
                      (Error
-                        (loc, env, mode, Pattern_declaration ("constructor", name)))
-                   )
+                        ( loc
+                        , env
+                        , mode
+                        , Pattern_declaration ("constructor", name) )) )
                  ~instances:(fun ~key:_ ~data:_ () -> ()) ;
                scope1 ))
       in
@@ -512,9 +518,11 @@ let rec check_pattern mode ~add env typ pat =
             in
             ( try check_type mode ~loc:field.loc env record_typ typ
               with
-              | Error (_, env, mode, Check_failed (_, _, Cannot_unify (typ, _))) ->
+              | Error (_, env, mode, Check_failed (_, _, Cannot_unify (typ, _)))
+              ->
                 raise
-                  (Error (field.loc, env, mode, Wrong_record_field (field.txt, typ)))
+                  (Error
+                     (field.loc, env, mode, Wrong_record_field (field.txt, typ)))
             ) ;
             {p with pat_type= field_typ} )
       in
@@ -796,8 +804,11 @@ let rec get_expression mode env expected exp =
                 (fld_type, env)
             | None ->
                 raise
-                  (Error (loc, env, mode, Wrong_record_field (field.txt, e.exp_type)))
-            )
+                  (Error
+                     ( loc
+                     , env
+                     , mode
+                     , Wrong_record_field (field.txt, e.exp_type) )) )
           | _ -> (
             match Envi.TypeDecl.find_of_field mode field env with
             | Some
@@ -830,7 +841,8 @@ let rec get_expression mode env expected exp =
                 in
                 (fld_type, env)
             | _ ->
-                raise (Error (loc, env, mode, Unbound ("record field", field))) )
+                raise (Error (loc, env, mode, Unbound ("record field", field)))
+            )
       in
       ({exp_loc= loc; exp_type= typ; exp_desc= Field (e, field)}, env)
   | Record ([], _) ->
@@ -882,9 +894,11 @@ let rec get_expression mode env expected exp =
             in
             ( try check_type mode ~loc:field.loc !env record_typ typ
               with
-              | Error (_, env, mode, Check_failed (_, _, Cannot_unify (typ, _))) ->
+              | Error (_, env, mode, Check_failed (_, _, Cannot_unify (typ, _)))
+              ->
                 raise
-                  (Error (field.loc, env, mode, Wrong_record_field (field.txt, typ)))
+                  (Error
+                     (field.loc, env, mode, Wrong_record_field (field.txt, typ)))
             ) ;
             let e, env' = get_expression mode !env field_typ e in
             ( if fields_filled.(i) then
@@ -918,7 +932,8 @@ let rec get_expression mode env expected exp =
         | None ->
             let typ = Envi.Type.mk mode (Ttuple []) env in
             ( try check_type mode ~loc env arg_typ typ
-              with _ -> raise (Error (loc, env, mode, Argument_expected name.txt)) ) ;
+              with _ ->
+                raise (Error (loc, env, mode, Argument_expected name.txt)) ) ;
             (None, env)
       in
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
@@ -1012,7 +1027,8 @@ let type_extension mode ~loc variant ctors env =
   | Ok _ ->
       ()
   | Unequal_lengths ->
-      raise (Error (loc, env, mode, Extension_different_arity var_ident.txt)) ) ;
+      raise (Error (loc, env, mode, Extension_different_arity var_ident.txt))
+  ) ;
   let decl =
     { Parsetypes.tdec_ident
     ; tdec_params= var_params
@@ -1370,8 +1386,8 @@ let rec report_error env mode ppf err =
         "@[<v>@[<hov>Incompatable types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
         pp_typ typ pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
-      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]"
-        pp_typ typ pp_typ constr_typ
+      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" pp_typ typ
+        pp_typ constr_typ
   | Recursive_variable typ ->
       fprintf ppf
         "@[<hov>The variable@ @[<h>%a@](%d) would have an instance that \
