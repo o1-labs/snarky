@@ -70,6 +70,8 @@ let unit, env = import Checked unit env
 
 let char, env = import Checked char env
 
+let bool, env = import Checked bool env
+
 let string, env = import Checked string env
 
 let float, env = import Checked float env
@@ -100,8 +102,6 @@ let field, env = import Prover field env
 
 let field_var, env = import Checked field_var env
 
-let bool, env = import Prover bool env
-
 let bool_var, env = import Prover bool_var env
 
 let env = snd (Envi.pop_module ~loc:Location.none env)
@@ -130,14 +130,15 @@ module Type = struct
 
   let list a = TypeDecl.mk_typ Checked list ~params:[a] env
 
+  let bool = TypeDecl.mk_typ Checked bool ~params:[] env
+
   let field =
     let field_var = TypeDecl.mk_typ Checked field_var ~params:[] env in
     let field = TypeDecl.mk_typ Prover field ~params:[] env in
     fun mode -> match mode with Ast_types.Checked -> field_var | _ -> field
 
-  let bool =
+  let boolean =
     let bool_var = TypeDecl.mk_typ Prover bool_var ~params:[] env in
-    let bool = TypeDecl.mk_typ Checked bool ~params:[] env in
     fun mode -> match mode with Ast_types.Checked -> bool_var | _ -> bool
 end
 
@@ -162,7 +163,7 @@ let env =
   |> reg Prover ~name:"field" (Lid.of_name "field") field
   |> reg Checked ~name:"field" (Lid.of_name "field") field_var
   (* bool/Boolean.var *)
-  |> reg OCaml (Lid.of_name "bool") bool
+  |> reg OCaml (Lid.of_name "boolean") bool
   |> reg OCaml (Lid.of_list ["Boolean"; "var"]) bool_var
-  |> reg Prover ~name:"bool" (Lid.of_name "bool") bool
-  |> reg Checked ~name:"bool" (Lid.of_name "bool") bool_var
+  |> reg Prover ~name:"bool" (Lid.of_name "boolean") bool
+  |> reg Checked ~name:"bool" (Lid.of_name "boolean") bool_var
