@@ -7,11 +7,11 @@ type 'a t = [] : nil t | ( :: ) : 'hd * 'tl t -> ('hd -> 'tl) t
 
 let x = []
 
-let y = [12]
+let y = [Field.constant (Field.Constant.of_string "12")]
 
-let z = [1; Boolean.true_; ()]
+let z = [Field.constant (Field.Constant.of_string "1"); true; ()]
 
-let z = [1; Boolean.true_; ()]
+let z = [Field.constant (Field.Constant.of_string "1"); true; ()]
 
 module A = struct
   type ('a, 'b) u = [] of 'a * 'b

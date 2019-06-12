@@ -1,13 +1,13 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-let ( + ) = 15
+let ( + ) = Field.constant (Field.Constant.of_string "15")
 
-let ( - ) = 20
+let ( - ) = Field.constant (Field.Constant.of_string "20")
 
-let ( ! ) _ = 30
+let ( ! ) _ = Field.constant (Field.Constant.of_string "30")
 
-let ( ~- ) _ = 80
+let ( ~- ) _ = Field.constant (Field.Constant.of_string "80")
 
 let ( || ) x y = match x with true -> x | false -> y
 
@@ -17,7 +17,7 @@ let b = true || false
 
 let c = !a
 
-let d = ~-35
+let d = -Field.constant (Field.Constant.of_string "35")
 
 let e = -d
 

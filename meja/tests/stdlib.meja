@@ -1,8 +1,8 @@
-let test_plus = 1 + 2;
+let test_plus = 1i + 2i;
 
-let test_times = 3 * 4;
+let test_times = 3i * 4i;
 
-let test_print_int = print_int(15);
+let test_print_int = print_int(15i);
 
 let fold_list = fun (l : list(bool)) => {
   List.fold_left ((fun (x, y) => {x && y;}), true, l);

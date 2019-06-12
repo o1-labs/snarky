@@ -1,7 +1,10 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-let x = (1, 2, 7)
+let x =
+  ( Field.constant (Field.Constant.of_string "1")
+  , Field.constant (Field.Constant.of_string "2")
+  , Field.constant (Field.Constant.of_string "7") )
 
 let y =
   let i, j, k = x in

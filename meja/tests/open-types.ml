@@ -27,7 +27,7 @@ type ('a, 'b) u = ..
 
 type ('a, 'b) u += F of 'a | E of 'a * 'b
 
-let (e : (int, bool) u) = E (1, Boolean.true_)
+let (e : (int, bool) u) = E (1, true)
 
 let (f : (int, int) u) = E (1, 1)
 

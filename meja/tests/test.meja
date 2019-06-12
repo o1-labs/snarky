@@ -1,10 +1,10 @@
-let x = 15;
+let x = 15i;
 
 let y = x;
 
 let z = (x);
 
-let a = (15);
+let a = (15i);
 
 let b = {let y = x; y;};
 
@@ -29,15 +29,15 @@ let g : _ -> _ = {
 };
 
 let h = fun (ignore : int -> unit) => {
-  let a = 1;
-  let b = 2;
+  let a = 1i;
+  let b = 2i;
   ignore (a);
   ignore (b);
-  let c = 3;
-  let d = 4;
+  let c = 3i;
+  let d = 4i;
   ignore (c);
   ignore (d);
-  let e = 5;
+  let e = 5i;
   ignore (e);
   let f = fun (x, y) => {x;};
   f (a, f (b, f (c, f (d, e))));

@@ -41,7 +41,7 @@ module T = {
   instance conv_int_bool =
     {conv: fun (x) => {
         switch (x) {
-          | 0 => false
+          | 0i => false
           | _ => true
         };
       }};

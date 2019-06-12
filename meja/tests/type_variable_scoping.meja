@@ -13,7 +13,7 @@ module X = {
 
   let a1 : t('unit) = A(());
 
-  let b : t('bool) = B(30);
+  let b : t('bool) = B(30i);
 
   let c : t('bool) = C(true);
 

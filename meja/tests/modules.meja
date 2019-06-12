@@ -1,11 +1,11 @@
-let x = 15;
+let x = 15i;
 
 module Test1 = {
   let x = x;
 
-  let y = 15;
+  let y = 15i;
 
-  let z = (1, 2);
+  let z = (1i, 2i);
 
   module Test2 = {
     let a = z;

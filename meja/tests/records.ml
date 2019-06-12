@@ -41,9 +41,12 @@ include struct
           () ) }
 end
 
-let x = {a= 15; b= 20; c= 25}
+let x =
+  { a= Field.constant (Field.Constant.of_string "15")
+  ; b= Field.constant (Field.Constant.of_string "20")
+  ; c= Field.constant (Field.Constant.of_string "25") }
 
-let y = {a= Boolean.true_; b= Boolean.false_; c= Boolean.true_}
+let y = {a= true; b= false; c= true}
 
 let z = {a= x.a; b= y.b; c= ()}
 
@@ -87,20 +90,26 @@ module X = struct
             () ) }
   end
 
-  let x = {a= 1; b= 1; c= 1}
+  let x =
+    { a= Field.constant (Field.Constant.of_string "1")
+    ; b= Field.constant (Field.Constant.of_string "1")
+    ; c= Field.constant (Field.Constant.of_string "1") }
 end
 
-let a = {X.x with b= 12}
+let a = {X.x with b= Field.constant (Field.Constant.of_string "12")}
 
-let b = {X.a= 1; b= 1; c= 1}
+let b =
+  { X.a= Field.constant (Field.Constant.of_string "1")
+  ; b= Field.constant (Field.Constant.of_string "1")
+  ; c= Field.constant (Field.Constant.of_string "1") }
 
-let c = {x with a= 35}
+let c = {x with a= Field.constant (Field.Constant.of_string "35")}
 
 let d = (a.b, b.b)
 
 let e = a.X.a
 
-let f = {a= Boolean.true_; b= (); c= 15}.a
+let f = {a= true; b= (); c= Field.constant (Field.Constant.of_string "15")}.a
 
 let g = {X.a= (); b= (); c= ()}.a
 

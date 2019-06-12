@@ -1,9 +1,21 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-let x = [1; 2; 3]
+let x =
+  [ Field.constant (Field.Constant.of_string "1")
+  ; Field.constant (Field.Constant.of_string "2")
+  ; Field.constant (Field.Constant.of_string "3") ]
 
-let y = [(1, 2, 3); (4, 5, 6); (7, 8, 9)]
+let y =
+  [ ( Field.constant (Field.Constant.of_string "1")
+    , Field.constant (Field.Constant.of_string "2")
+    , Field.constant (Field.Constant.of_string "3") )
+  ; ( Field.constant (Field.Constant.of_string "4")
+    , Field.constant (Field.Constant.of_string "5")
+    , Field.constant (Field.Constant.of_string "6") )
+  ; ( Field.constant (Field.Constant.of_string "7")
+    , Field.constant (Field.Constant.of_string "8")
+    , Field.constant (Field.Constant.of_string "9") ) ]
 
 let f (l : bool list) : bool * bool * bool =
   match l with

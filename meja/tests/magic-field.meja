@@ -14,10 +14,11 @@ type variant_with_field_param(_) =
 | A : variant_with_field_param(int)
 | B : variant_with_field_param(field);
 
-let add3 = fun (add : field -> field -> field, x : field, y : field, z : field) => {
-  add (add (x, y), z);
+let add3 = fun (add : field -> field -> field) => {
+  add (add (1, 2), 3);
 };
-
+/*
 let test_add3 = fun (add : int -> int -> int) => {
-  add3 (add, 1, 2, 3);
+  add3 (add, 1i, 2i, 3i);
 };
+*/

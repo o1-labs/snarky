@@ -9,28 +9,39 @@ let f __implicit2__ (x : 'a) =
   let f __implicit1__ x = (show __implicit1__) x in
   (f __implicit2__) x
 
-let g __implicit7__ __implicit5__ __implicit3__ (x : 'a) (y : 'a) =
+let g __implicit5__ __implicit7__ __implicit3__ (x : 'a) (y : 'a) =
   let a = (show __implicit3__) x in
   let b = (show __implicit3__) y in
-  let c = (show __implicit5__) 15 in
-  let d = (show __implicit5__) 18 in
+  let c =
+    (show __implicit5__) (Field.constant (Field.Constant.of_string "15"))
+  in
+  let d =
+    (show __implicit5__) (Field.constant (Field.Constant.of_string "18"))
+  in
   let e = (show __implicit7__) true in
   let f = (show __implicit7__) false in
   (a, b, c, d, e, f)
 
-let h __implicit17__ __implicit9__ __implicit10__ (x : int) (y : bool)
-    (z : float) =
-  ( (g __implicit9__ __implicit10__ __implicit10__) x x
-  , (g __implicit9__ __implicit10__ __implicit9__) y y
+let h __implicit9__ __implicit17__ __implicit10__ __implicit11__ (x : int)
+    (y : bool) (z : float) =
+  ( (g __implicit9__ __implicit10__ __implicit11__) x x
+  , (g __implicit9__ __implicit10__ __implicit10__) y y
   , (g __implicit9__ __implicit10__ __implicit17__) z z )
 
 type ('a, 'b) conv = {conv: 'a -> 'b}
 
 let conv {conv; _} = conv
 
-let conv_bool_int = {conv= (fun x -> match x with true -> 1 | false -> 0)}
+let conv_bool_int =
+  { conv=
+      (fun x ->
+        match x with
+        | true ->
+            Field.constant (Field.Constant.of_string "1")
+        | false ->
+            Field.constant (Field.Constant.of_string "0") ) }
 
-let i (b : bool) (f : int -> 'a) = f ((conv conv_bool_int) b)
+let i __implicit18__ (b : bool) (f : int -> 'a) = f ((conv __implicit18__) b)
 
 module T = struct
   let conv_int_bool = {conv= (fun x -> match x with 0 -> false | _ -> true)}
