@@ -6,28 +6,15 @@ let poly_name name = match name with "t" -> "poly" | name -> name ^ "_poly"
 
 let var_type_name name = match name with "t" -> "var" | name -> name ^ "_var"
 
-let rec var_type_lident =
-  Longident.(
-    function
-    | Lident name ->
-        Lident (var_type_name name)
-    | Ldot (lid, name) ->
-        Ldot (lid, var_type_name name)
-    | Lapply (lid1, lid2) ->
-        Lapply (lid1, var_type_lident lid2))
+let var_type_lident = Fn.id
 
 let var_type_lident lid =
-  Ast_build.(
-    Longident.(
-      match lid with
-      | Lident "string" | Lident "int" ->
-          failwith "Native type isn't snarkable"
-      | Lident "bool" ->
-          Lid.of_list ["Boolean"; "var"]
-      | Lident "field" | Ldot (Lident "Field", "t") ->
-          Lid.of_list ["Field"; "Var"; "t"]
-      | _ ->
-          var_type_lident lid))
+  Longident.(
+    match lid with
+    | Lident "string" | Lident "int" ->
+        failwith "Native type isn't snarkable"
+    | _ ->
+        var_type_lident lid)
 
 let typ_name name = match name with "t" -> "typ" | name -> name ^ "_typ"
 
@@ -103,7 +90,7 @@ let typ_of_decl ~loc (decl : type_decl) =
               List.fold ~init:result fields ~f:(fun result {fld_ident; _} ->
                   Exp.apply ~loc bind
                     [ (Nolabel, run (Exp.var ~loc (Lid.of_name fld_ident.txt)))
-                    ; ( Nolabel
+                    ; ( Labelled "f"
                       , Exp.fun_ ~loc (Pat.var ~loc fld_ident.txt) result ) ]
               )
             in
@@ -204,11 +191,18 @@ let typ_of_decl ~loc (decl : type_decl) =
         let mk_stmt stmt_desc = {stmt_loc= loc; stmt_desc} in
         if !has_constr then
           Some
-            [ mk_stmt (TypeDecl poly_decl)
-            ; mk_stmt (TypeDecl t_decl)
-            ; mk_stmt (TypeDecl var_decl)
-            ; mk_stmt typ_instance ]
-        else Some [mk_stmt (TypeDecl decl); mk_stmt typ_instance]
+            [ ( OCaml
+              , [(Checked, None); (Prover, None)]
+              , mk_stmt (TypeDecl poly_decl) )
+            ; (Prover, [(OCaml, None)], mk_stmt (TypeDecl t_decl))
+            ; (Checked, [(Checked, Some name)], mk_stmt (TypeDecl var_decl))
+            ; (OCaml, [(Prover, None)], mk_stmt typ_instance) ]
+        else
+          Some
+            [ ( OCaml
+              , [(Checked, None); (Prover, None)]
+              , mk_stmt (TypeDecl decl) )
+            ; (OCaml, [(Prover, None)], mk_stmt typ_instance) ]
     | _ ->
         None
   with _ -> None

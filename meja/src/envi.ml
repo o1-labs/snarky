@@ -566,7 +566,13 @@ let push_scope scope env =
       () ) ;
   {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
 
-let current_path mode env = (FullScope.get_scope mode (current_scope env)).path
+let current_path mode env =
+  let scope = current_scope env in
+  match FullScope.get_scope_opt mode scope with
+  | Some scope ->
+      scope.path
+  | None ->
+      scope.ocaml_scope.path
 
 let relative_path env mode name = join_name (current_path mode env) name
 

@@ -10,28 +10,28 @@ include struct
         (fun {a; b; c; _} ->
           Typ.Store.bind
             ((Typ.store __implicit1__) c)
-            (fun c ->
+            ~f:(fun c ->
               Typ.Store.bind
                 ((Typ.store __implicit2__) b)
-                (fun b ->
+                ~f:(fun b ->
                   Typ.Store.bind
                     ((Typ.store __implicit3__) a)
-                    (fun a -> Typ.Store.return {a; b; c}) ) ) )
+                    ~f:(fun a -> Typ.Store.return {a; b; c}) ) ) )
     ; Typ.read=
         (fun {a; b; c; _} ->
           Typ.Read.bind
             ((Typ.read __implicit1__) c)
-            (fun c ->
+            ~f:(fun c ->
               Typ.Read.bind
                 ((Typ.read __implicit2__) b)
-                (fun b ->
+                ~f:(fun b ->
                   Typ.Read.bind
                     ((Typ.read __implicit3__) a)
-                    (fun a -> Typ.Read.return {a; b; c}) ) ) )
+                    ~f:(fun a -> Typ.Read.return {a; b; c}) ) ) )
     ; Typ.alloc=
-        Typ.Alloc.bind (Typ.alloc __implicit1__) (fun c ->
-            Typ.Alloc.bind (Typ.alloc __implicit2__) (fun b ->
-                Typ.Alloc.bind (Typ.alloc __implicit3__) (fun a ->
+        Typ.Alloc.bind (Typ.alloc __implicit1__) ~f:(fun c ->
+            Typ.Alloc.bind (Typ.alloc __implicit2__) ~f:(fun b ->
+                Typ.Alloc.bind (Typ.alloc __implicit3__) ~f:(fun a ->
                     Typ.Alloc.return {a; b; c} ) ) )
     ; Typ.check=
         (fun {a; b; c; _} ->
@@ -59,28 +59,28 @@ module X = struct
           (fun {a; b; c; _} ->
             Typ.Store.bind
               ((Typ.store __implicit13__) c)
-              (fun c ->
+              ~f:(fun c ->
                 Typ.Store.bind
                   ((Typ.store __implicit13__) b)
-                  (fun b ->
+                  ~f:(fun b ->
                     Typ.Store.bind
                       ((Typ.store __implicit13__) a)
-                      (fun a -> Typ.Store.return {a; b; c}) ) ) )
+                      ~f:(fun a -> Typ.Store.return {a; b; c}) ) ) )
       ; Typ.read=
           (fun {a; b; c; _} ->
             Typ.Read.bind
               ((Typ.read __implicit13__) c)
-              (fun c ->
+              ~f:(fun c ->
                 Typ.Read.bind
                   ((Typ.read __implicit13__) b)
-                  (fun b ->
+                  ~f:(fun b ->
                     Typ.Read.bind
                       ((Typ.read __implicit13__) a)
-                      (fun a -> Typ.Read.return {a; b; c}) ) ) )
+                      ~f:(fun a -> Typ.Read.return {a; b; c}) ) ) )
       ; Typ.alloc=
-          Typ.Alloc.bind (Typ.alloc __implicit13__) (fun c ->
-              Typ.Alloc.bind (Typ.alloc __implicit13__) (fun b ->
-                  Typ.Alloc.bind (Typ.alloc __implicit13__) (fun a ->
+          Typ.Alloc.bind (Typ.alloc __implicit13__) ~f:(fun c ->
+              Typ.Alloc.bind (Typ.alloc __implicit13__) ~f:(fun b ->
+                  Typ.Alloc.bind (Typ.alloc __implicit13__) ~f:(fun a ->
                       Typ.Alloc.return {a; b; c} ) ) )
       ; Typ.check=
           (fun {a; b; c; _} ->

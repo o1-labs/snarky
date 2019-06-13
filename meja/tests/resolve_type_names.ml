@@ -9,4 +9,4 @@ let (x : A.t) = 15
 
 open A
 
-let (y : t) = 20
+let (y : A.t) = 20

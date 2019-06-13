@@ -1,4 +1,4 @@
-let typ =
+/*let typ =
   ({ Typ.store: fun ((a, b)) => {
       Typ.Store.bind(Typ.store(b), fun (b) => {
         Typ.Store.bind(Typ.store(a), fun (a) => {
@@ -23,4 +23,4 @@ let typ =
       Typ.check(a);
       Typ.check(b);
     }
-  } : Typ.t(('var_a, 'var_b), ('value_a, 'value_b)));
+  } : Typ.t(('var_a, 'var_b), ('value_a, 'value_b)));*/

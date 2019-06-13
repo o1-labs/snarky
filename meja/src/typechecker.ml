@@ -1236,14 +1236,52 @@ let rec check_statement mode env stmt =
   | TypeDecl decl ->
       in_decl := true ;
       let ret =
-        let stmt =
-          match Codegen.typ_of_decl ~loc decl with
-          | Some typ_stmts ->
-              {stmt with stmt_desc= Multiple typ_stmts}
-          | None ->
-              stmt
-        in
-        check_statement mode env stmt
+        match Codegen.typ_of_decl ~loc decl with
+        | Some typ_stmts ->
+            let env, stmts =
+              List.fold_map ~init:env typ_stmts
+                ~f:(fun env (start_mode, modes, stmt) ->
+                  (* We evaluate each statement generated:
+                     * first in mode [start_mode], which has the appropriate
+                       name resolutions
+                     * then, for each [mode, newname] in [modes], assigning the
+                       default name if [newname] is [None], or the new [name]
+                       if [newname] is [Some name].
+                  *)
+                  let env, stmt = check_statement start_mode env stmt in
+                  let env =
+                    List.fold ~init:env modes ~f:(fun env (mode, newname) ->
+                        match stmt.stmt_desc with
+                        | TypeDecl {tdec_ident= name; _} ->
+                            let decl =
+                              Envi.raw_find_type_declaration start_mode
+                                (mk_lid name) env
+                            in
+                            let name =
+                              Option.value newname ~default:name.txt
+                            in
+                            Envi.register_type_declaration_raw mode ~name
+                              (Envi.relative_path env mode name)
+                              decl env
+                        | Instance (name, _) ->
+                            let typ, id =
+                              Envi.find_name start_mode ~loc (mk_lid name) env
+                            in
+                            let name =
+                              Location.mkloc
+                                (Option.value newname ~default:name.txt)
+                                name.loc
+                            in
+                            let env = Envi.add_name_raw mode name typ id env in
+                            Envi.add_implicit_instance name.txt typ env
+                        | _ ->
+                            assert false )
+                  in
+                  (env, stmt) )
+            in
+            (env, {stmt with stmt_desc= Multiple stmts})
+        | None ->
+            check_statement mode env stmt
       in
       in_decl := false ;
       ret
