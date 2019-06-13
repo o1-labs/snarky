@@ -1379,6 +1379,47 @@ let check_signature env signature = check_signature' Checked env signature
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:(check_statement Checked)
 
+let rec check_alias ~out_mode ~in_mode env alias =
+  match alias with
+  | AValue (name, lid) ->
+      let typ, id = Envi.find_name ~loc:lid.loc in_mode lid env in
+      Envi.add_name_raw out_mode name typ id env
+  | AInstance (name, lid) ->
+      let typ, id = Envi.find_name ~loc:lid.loc in_mode lid env in
+      let env = Envi.add_name_raw out_mode name typ id env in
+      Envi.add_implicit_instance name.txt typ env
+  | ATypeDecl (name, lid) ->
+      let decl = Envi.raw_find_type_declaration in_mode lid env in
+      Envi.register_type_declaration_raw out_mode ~name:name.txt
+        (Envi.relative_path env out_mode name.txt)
+        decl env
+  | AModule (name, m) ->
+      let env = Envi.open_module name.txt out_mode env in
+      let env = check_alias_module ~out_mode ~in_mode env m in
+      let m_env, env = Envi.pop_module ~loc:name.loc env in
+      Envi.add_module name m_env env
+  | ATypeExtension lid ->
+      let decl =
+        match Envi.TypeDecl.find_of_constructor in_mode lid env with
+        | Some (decl, _) ->
+            decl
+        | None ->
+            raise (Error (lid.loc, env, in_mode, Unbound ("constructor", lid)))
+      in
+      Envi.map_current_scope env
+        ~f:
+          (Envi.FullScope.map_scope out_mode
+             ~f:(Envi.Scope.register_type_declaration_parts decl))
+
+and check_alias_module ~out_mode ~in_mode env m =
+  match m with
+  | AModStructure ast ->
+      List.fold ast ~init:env ~f:(check_alias ~out_mode ~in_mode)
+
+let import_alias ~out_mode ~in_mode (ast : alias_statement list) (env : Envi.t)
+    =
+  List.fold ast ~init:env ~f:(check_alias ~out_mode ~in_mode)
+
 (* Error handling *)
 
 open Format

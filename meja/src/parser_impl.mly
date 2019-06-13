@@ -96,6 +96,9 @@ let consexp ~pos hd tl =
 %start interface
 %type <Parsetypes.signature_item list> interface
 
+%start alias_interface
+%type <Parsetypes.alias_statement list> alias_interface
+
 %%
 
 %inline lident:
@@ -114,10 +117,14 @@ interface:
   | s = signature EOF
     { s }
 
+alias_interface:
+  | s = alias EOF
+    { s }
+
 file(item):
   | (* Empty *)
     { [] }
-  | s = item maybe(SEMI)
+  | s = item
     { [s] }
   | s = item SEMI rest = file(item)
     { s :: rest }
@@ -189,6 +196,26 @@ signature_item:
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl
     { mksig ~pos:$loc (SRequest (arg, x)) }
+
+alias:
+  | x = file(alias_statement)
+    { x }
+
+alias_statement:
+  | LET x = as_loc(val_ident) EQUAL lid = as_loc(longident(val_ident, UIDENT))
+    { AValue (x, lid) }
+  | INSTANCE x = as_loc(val_ident) EQUAL lid = as_loc(longident(val_ident, UIDENT))
+    { AInstance (x, lid) }
+  | TYPE x = as_loc(val_ident) EQUAL lid = as_loc(longident(val_ident, UIDENT))
+    { ATypeDecl (x, lid) }
+  | MODULE x = as_loc(UIDENT) m = alias_module
+    { AModule (x, m) }
+  | TYPE UNDERSCORE PLUSEQUAL lid = as_loc(longident(ctor_ident, UIDENT))
+    { ATypeExtension lid }
+
+%inline alias_module:
+  | EQUAL LBRACE alias = alias RBRACE
+    { AModStructure(alias) }
 
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE

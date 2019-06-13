@@ -124,6 +124,15 @@ and module_desc =
   | ModName of lid
   | Functor of str * module_sig * module_expr
 
+type alias_statement =
+  | AValue of str * lid
+  | AInstance of str * lid
+  | ATypeDecl of str * lid
+  | AModule of str * alias_module
+  | ATypeExtension of (* Should point to one of the constructors added. *) lid
+
+and alias_module = AModStructure of alias_statement list
+
 let rec typ_debug_print fmt typ =
   let open Format in
   let print i = fprintf fmt i in

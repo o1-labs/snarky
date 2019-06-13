@@ -146,11 +146,14 @@ module Scope = struct
   let add_preferred_name path id {paths_of_ids} =
     {paths_of_ids= Map.set paths_of_ids ~key:id ~data:path}
 
-  let add_name key typ scope =
-    let id = next_id () in
+  let add_name_raw key typ id scope =
     { scope with
       names= Map.set scope.names ~key ~data:(typ, id)
     ; paths= add_preferred_name (Lident key) id scope.paths }
+
+  let add_name key typ scope =
+    let id = next_id () in
+    add_name_raw key typ id scope
 
   let get_name name {names; _} = Map.find names name
 
@@ -1363,6 +1366,10 @@ end
 
 let add_name (name : str) typ =
   map_current_scope ~f:(FullScope.map_scopes ~f:(Scope.add_name name.txt typ))
+
+let add_name_raw mode (name : str) typ id =
+  map_current_scope
+    ~f:(FullScope.map_scope mode ~f:(Scope.add_name_raw name.txt typ id))
 
 let find_name ~loc mode (lid : lid) env =
   match
