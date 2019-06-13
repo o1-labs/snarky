@@ -204,7 +204,7 @@ let main =
     in
     let env =
       (* Load stdlib. *)
-      let lex = Lexing.from_string Stdlib.stdlib in
+      let lex = Lexing.from_string Meja_stdlib.Snark0.stdlib in
       lex.Lexing.lex_curr_p
       <- {lex.Lexing.lex_curr_p with Lexing.pos_fname= "stdlib"} ;
       let stdlib_ast =

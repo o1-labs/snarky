@@ -1,6 +1,6 @@
 (executable
  (name meja)
- (libraries core_kernel snarky meja.lib)
+ (libraries core_kernel snarky meja.lib meja.stdlib)
  (preprocess (pps ppxlib.metaquot ppx_jane))
  (modules meja))
 
