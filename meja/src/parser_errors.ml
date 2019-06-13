@@ -3,6 +3,7 @@ type error =
   | Missing_semi
   | Unexpected_character of string
   | Expecting of string
+  | Dangling_handler
 
 exception Error of Location.t * error
 
@@ -17,6 +18,8 @@ let report_error ppf = function
       fprintf ppf "Unexpected character '%s'" x
   | Expecting desc ->
       fprintf ppf "Syntax error: %s expected" desc
+  | Dangling_handler ->
+      fprintf ppf "A handler expression cannot finish a block."
 
 let () =
   Location.register_error_of_exn (function

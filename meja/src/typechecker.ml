@@ -958,6 +958,47 @@ let rec get_expression mode env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
   | Unifiable _ ->
       raise (Error (loc, env, mode, Unifiable_expr))
+  | Handler cases ->
+      let typ, _ =
+        (* TODO(Matt): Enable with stdlib. *)
+        (*Typet.Type.import
+          Ast_build.(Type.constr ~loc (Lid.of_list ["Handler"; "t"]))
+          env*)
+        (Envi.Type.mkvar None env, env)
+      in
+      let response, _ =
+        (* TODO(Matt): Enable with stdlib. *)
+        (*Typet.Type.import
+          Ast_build.(Type.constr ~loc (Lid.of_list ["Response"; "response"]))
+          env*)
+        (Envi.Type.mkvar None env, env)
+      in
+      check_type ~loc env typ expected ;
+      let cases =
+        List.map cases ~f:(fun (pat, exp) ->
+            let env = Envi.open_expr_scope env in
+            let typ = Envi.Type.mkvar None env in
+            (* TODO(Matt): Remove these with stdlib. *)
+            let env =
+              Envi.add_name (Ast_build.Loc.mk ~loc "unhandled") response env
+            in
+            let env =
+              Envi.add_name (Ast_build.Loc.mk ~loc "request") typ env
+            in
+            let env =
+              Envi.add_name
+                (Ast_build.Loc.mk ~loc "respond")
+                (Envi.Type.mk
+                   (Tarrow
+                      (Envi.Type.mkvar None env, response, Explicit, Nolabel))
+                   env)
+                env
+            in
+            let p, env = check_pattern ~add:add_polymorphised env typ pat in
+            let e, _env = get_expression env response exp in
+            (p, e) )
+      in
+      ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
   | Prover e ->
       let e, env = get_expression Prover env Initial_env.Type.unit e in
       check_type mode ~loc env expected Initial_env.Type.unit ;
@@ -1355,24 +1396,8 @@ let rec check_statement mode env stmt =
             in
             let p = Pat.var ~loc ("handle_" ^ name) in
             let e =
-              let request = Lid.of_name "request" in
-              let respond = Lid.of_name "respond" in
-              let body =
-                Exp.let_ ~loc (Pat.var "unhandled")
-                  (Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
-                  (Exp.match_ ~loc:stmt.stmt_loc
-                     (Exp.var ~loc (Lid.of_name "request"))
-                     [ ( Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat
-                       , body )
-                     ; ( Pat.any ()
-                       , Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"])
-                       ) ])
-              in
-              Exp.fun_
-                (Pat.ctor
-                   (Lid.of_list ["Snarky__Request"; "With"])
-                   ~args:(Pat.record [Pat.field request; Pat.field respond]))
-                body
+              Codegen.handler_body ~loc:stmt.stmt_loc
+                (Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat, body)
             in
             let _p, e, env = check_binding mode ~toplevel:true env p e in
             let pat, body =

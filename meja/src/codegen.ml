@@ -1,6 +1,15 @@
 open Core_kernel
 open Ast_types
 open Parsetypes
+open Ast_build
+
+let rec name_of_lid = function
+  | Longident.Lident name ->
+      name
+  | Ldot (lid, name) ->
+      name_of_lid lid ^ "__" ^ name
+  | Lapply (lid1, lid2) ->
+      "__" ^ name_of_lid lid1 ^ "____" ^ name_of_lid lid2 ^ "__"
 
 let poly_name name = match name with "t" -> "poly" | name -> name ^ "_poly"
 
@@ -206,3 +215,28 @@ let typ_of_decl ~loc (decl : type_decl) =
     | _ ->
         None
   with _ -> None
+
+let handler_body ?loc (pat, body) =
+  let loc =
+    match loc with
+    | Some loc ->
+        loc
+    | None ->
+        {body.exp_loc with loc_start= pat.pat_loc.loc_start}
+  in
+  let request = Lid.of_name "request" in
+  let respond = Lid.of_name "respond" in
+  let body =
+    Exp.let_ ~loc (Pat.var "unhandled")
+      (Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
+      (Exp.match_ ~loc
+         (Exp.var ~loc (Lid.of_name "request"))
+         [ (pat, body)
+         ; (Pat.any (), Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
+         ])
+  in
+  Exp.fun_
+    (Pat.ctor
+       (Lid.of_list ["Snarky__Request"; "With"])
+       ~args:(Pat.record [Pat.field request; Pat.field respond]))
+    body

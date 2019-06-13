@@ -1,0 +1,13 @@
+request('a) A;
+
+let handle_A = handler {
+  | A => unhandled
+};
+
+request('a) B('a);
+
+let handle_B = {
+  handler {
+    | B(y) => respond(y)
+  };
+};
