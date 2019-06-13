@@ -1,6 +1,15 @@
 open Core_kernel
 open Ast_types
 open Parsetypes
+open Ast_build
+
+let rec name_of_lid = function
+  | Longident.Lident name ->
+      name
+  | Ldot (lid, name) ->
+      name_of_lid lid ^ "__" ^ name
+  | Lapply (lid1, lid2) ->
+      "__" ^ name_of_lid lid1 ^ "____" ^ name_of_lid lid2 ^ "__"
 
 let poly_name name = match name with "t" -> "poly" | name -> name ^ "_poly"
 
@@ -17,17 +26,16 @@ let rec var_type_lident =
         Lapply (lid1, var_type_lident lid2))
 
 let var_type_lident lid =
-  Ast_build.(
-    Longident.(
-      match lid with
-      | Lident "string" | Lident "int" ->
-          failwith "Native type isn't snarkable"
-      | Lident "bool" ->
-          Lid.of_list ["Boolean"; "var"]
-      | Lident "field" | Ldot (Lident "Field", "t") ->
-          Lid.of_list ["Field"; "Var"; "t"]
-      | _ ->
-          var_type_lident lid))
+  Longident.(
+    match lid with
+    | Lident "string" | Lident "int" ->
+        failwith "Native type isn't snarkable"
+    | Lident "bool" ->
+        Lid.of_list ["Boolean"; "var"]
+    | Lident "field" | Ldot (Lident "Field", "t") ->
+        Lid.of_list ["Field"; "Var"; "t"]
+    | _ ->
+        var_type_lident lid)
 
 let typ_name name = match name with "t" -> "typ" | name -> name ^ "_typ"
 
@@ -212,3 +220,28 @@ let typ_of_decl ~loc (decl : type_decl) =
     | _ ->
         None
   with _ -> None
+
+let handler_body ?loc (pat, body) =
+  let loc =
+    match loc with
+    | Some loc ->
+        loc
+    | None ->
+        {body.exp_loc with loc_start= pat.pat_loc.loc_start}
+  in
+  let request = Lid.of_name "request" in
+  let respond = Lid.of_name "respond" in
+  let body =
+    Exp.let_ ~loc (Pat.var "unhandled")
+      (Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
+      (Exp.match_ ~loc
+         (Exp.var ~loc (Lid.of_name "request"))
+         [ (pat, body)
+         ; (Pat.any (), Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
+         ])
+  in
+  Exp.fun_
+    (Pat.ctor
+       (Lid.of_list ["Snarky__Request"; "With"])
+       ~args:(Pat.record [Pat.field request; Pat.field respond]))
+    body

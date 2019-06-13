@@ -1,6 +1,7 @@
 (executable
  (name meja)
  (libraries core_kernel snarky meja.lib)
+ (flags :standard -warn-error -39-21)
  (preprocess (pps ppxlib.metaquot ppx_jane))
  (modules meja))
 

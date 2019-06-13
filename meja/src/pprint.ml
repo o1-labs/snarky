@@ -211,6 +211,12 @@ let rec expression_desc fmt = function
       expression fmt e
   | Unifiable {expression= None; name; _} ->
       fprintf fmt "(%s /* implicit */)" name.txt
+  | Handler cases ->
+      fprintf fmt "@[<hv2>Handler {%a}"
+        (pp_print_list ~pp_sep:pp_print_space (fun fmt (p, e) ->
+             fprintf fmt "| @[<hv2>%a@] =>@;<1 4>@[<hv2>%a@]" pattern p
+               expression e ))
+        cases
 
 and expression_desc_bracket fmt exp =
   match exp with

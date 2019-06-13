@@ -361,6 +361,8 @@ expr:
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Ctor (id, args)) }
+  | HANDLER LBRACE rev_cases = list(match_case, {}) RBRACE
+    { mkexp ~pos:$loc (Handler (List.rev rev_cases)) }
 
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE
