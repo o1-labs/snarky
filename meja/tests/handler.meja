@@ -1,14 +1,13 @@
 request('a) A;
 
-handler A => {
-  unhandled;
+let handle_A = handler {
+  | A => unhandled
 };
 
 request('a) B('a);
 
-let x = {
-  handler B(y) => {
-    y;
+let handle_B = {
+  handler {
+    | B(y) => respond(y)
   };
-  ();
 };

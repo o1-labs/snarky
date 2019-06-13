@@ -862,40 +862,47 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
   | Unifiable _ ->
       raise (Error (loc, Unifiable_expr))
-  | Handler (pat, body, rest) ->
-      let name =
-        match pat.pat_desc with
-        | PCtor (lid, _) ->
-            Codegen.name_of_lid lid.txt
-        | _ ->
-            "any"
+  | Handler cases ->
+      let typ, _ =
+        (* TODO(Matt): Enable with stdlib. *)
+        (*Typet.Type.import
+          Ast_build.(Type.constr ~loc (Lid.of_list ["Handler"; "t"]))
+          env*)
+        (Envi.Type.mkvar None env, env)
       in
-      let p = Ast_build.Pat.var ~loc ("handle_" ^ name) in
-      let e1 = Codegen.handler_body ~loc (pat, body) in
-      let env = Envi.open_expr_scope env in
-      let _, e1, env = check_binding env p e1 in
-      let pat, body =
-        match e1 with
-        | { exp_desc=
-              Fun
-                ( Nolabel
-                , _
-                , { exp_desc=
-                      Let (_, _, {exp_desc= Match (_, [(pat, body); _]); _})
-                  ; _ }
-                , _ )
-          ; _ } ->
-            (pat, body)
-        | _ ->
-            failwith "Unexpected output of check_binding for Handler"
+      let response, _ =
+        (* TODO(Matt): Enable with stdlib. *)
+        (*Typet.Type.import
+          Ast_build.(Type.constr ~loc (Lid.of_list ["Response"; "response"]))
+          env*)
+        (Envi.Type.mkvar None env, env)
       in
-      (*let env = Envi.add_implicit_instance name e1.exp_type env in*)
-      let rest, env = get_expression env expected rest in
-      let env = Envi.close_expr_scope env in
-      ( { exp_loc= loc
-        ; exp_type= rest.exp_type
-        ; exp_desc= Handler (pat, body, rest) }
-      , env )
+      check_type ~loc env typ expected ;
+      let cases =
+        List.map cases ~f:(fun (pat, exp) ->
+            let env = Envi.open_expr_scope env in
+            let typ = Envi.Type.mkvar None env in
+            (* TODO(Matt): Remove these with stdlib. *)
+            let env =
+              Envi.add_name (Ast_build.Loc.mk ~loc "unhandled") response env
+            in
+            let env =
+              Envi.add_name (Ast_build.Loc.mk ~loc "request") typ env
+            in
+            let env =
+              Envi.add_name
+                (Ast_build.Loc.mk ~loc "respond")
+                (Envi.Type.mk
+                   (Tarrow
+                      (Envi.Type.mkvar None env, response, Explicit, Nolabel))
+                   env)
+                env
+            in
+            let p, env = check_pattern ~add:add_polymorphised env typ pat in
+            let e, _env = get_expression env response exp in
+            (p, e) )
+      in
+      ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
@@ -1233,34 +1240,6 @@ let rec check_statement env stmt =
             (None, env)
       in
       (env, {stmt with stmt_desc= Request (arg, ctor_decl, handler)})
-  | Handler (pat, body) ->
-      let name =
-        match pat.pat_desc with
-        | PCtor (lid, _) ->
-            Codegen.name_of_lid lid.txt
-        | _ ->
-            "any"
-      in
-      let p = Ast_build.Pat.var ~loc ("handle_" ^ name) in
-      let e1 = Codegen.handler_body ~loc (pat, body) in
-      let _, e1, env = check_binding env p e1 in
-      let pat, body =
-        match e1 with
-        | { exp_desc=
-              Fun
-                ( Nolabel
-                , _
-                , { exp_desc=
-                      Let (_, _, {exp_desc= Match (_, [(pat, body); _]); _})
-                  ; _ }
-                , _ )
-          ; _ } ->
-            (pat, body)
-        | _ ->
-            failwith "Unexpected output of check_binding for Handler"
-      in
-      (*let env = Envi.add_implicit_instance name e1.exp_type env in*)
-      (env, {stmt with stmt_desc= Handler (pat, body)})
   | Multiple stmts ->
       let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
       (env, {stmt with stmt_desc= Multiple stmts})

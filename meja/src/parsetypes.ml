@@ -79,7 +79,7 @@ and expression_desc =
   | Record of (lid * expression) list * expression option
   | Ctor of lid * expression option
   | Unifiable of {mutable expression: expression option; name: str; id: int}
-  | Handler of pattern * expression * expression
+  | Handler of (pattern * expression) list
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
@@ -113,7 +113,6 @@ and statement_desc =
   | Open of lid
   | TypeExtension of variant * ctor_decl list
   | Request of type_expr * ctor_decl * (pattern option * expression) option
-  | Handler of pattern * expression
   | Multiple of statement list
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}

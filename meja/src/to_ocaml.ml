@@ -130,20 +130,21 @@ let rec of_expression_desc ?loc = function
       of_expression e
   | Unifiable {name; _} ->
       Exp.ident ?loc (mk_lid name)
-  | Handler (pat, body, rest) ->
-      let name =
-        match pat.pat_desc with
-        | PCtor (lid, _) ->
-            Codegen.name_of_lid lid.txt
-        | _ ->
-            "any"
+  | Handler cases ->
+      let cases =
+        List.map cases ~f:(fun (pat, expr) ->
+            let pat =
+              let loc = pat.pat_loc in
+              Parsetree.([%pat? With {request= [%p of_pattern pat]; respond}])
+            in
+            Exp.case pat (of_expression expr) )
       in
-      let loc = Option.value ~default:Location.none loc in
-      [%expr
-        let [%p Pat.var ~loc (Location.mkloc ("handle_" ^ name) loc)] =
-          [%e of_handler ~loc (Some pat, body)]
-        in
-        [%e of_expression rest]]
+      let default =
+        Exp.case (Pat.any ?loc ())
+          (Exp.ident ?loc
+             Ast_build.(Loc.mk ?loc (Lid.of_list ["Request"; "Unhandled"])))
+      in
+      Exp.function_ ?loc (cases @ [default])
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(
@@ -287,24 +288,6 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
-  | Handler (pat, body) ->
-      let name =
-        match pat.pat_desc with
-        | PCtor (lid, _) ->
-            Codegen.name_of_lid lid.txt
-        | _ ->
-            "any"
-      in
-      let loc =
-        match loc with
-        | Some loc ->
-            loc
-        | None ->
-            {body.exp_loc with Location.loc_start= pat.pat_loc.loc_start}
-      in
-      [%stri
-        let [%p Pat.var ~loc (Location.mkloc ("handle_" ^ name) loc)] =
-          [%e of_handler ~loc (Some pat, body)]]
   | Multiple stmts ->
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
