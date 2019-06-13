@@ -252,8 +252,8 @@ let main =
       env
     in
     let meji_files =
-      (*"meji/field.meji" :: "meji/boolean.meji" ::*)
-      "meji/typ.meji" :: List.rev !meji_files
+      (*"meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji" :: *)
+      List.rev !meji_files
     in
     let env =
       List.fold ~init:env meji_files ~f:(fun env file ->
