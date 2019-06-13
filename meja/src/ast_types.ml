@@ -2,6 +2,14 @@ open Core_kernel
 
 type mode = OCaml | Checked | Prover [@@deriving sexp]
 
+let pp_mode fmt = function
+  | OCaml ->
+      Format.pp_print_string fmt "OCaml"
+  | Checked ->
+      Format.pp_print_string fmt "Checked"
+  | Prover ->
+      Format.pp_print_string fmt "Prover"
+
 let pp_name ppf name =
   let c = name.[0] in
   if

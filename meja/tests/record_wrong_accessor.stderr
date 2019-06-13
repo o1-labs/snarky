@@ -1,3 +1,3 @@
 File "tests/record_wrong_accessor.meja", line 9, characters 8-9:
-Error: Incompatable types X.X.t(_) and t(field_var, field_var, field_var):
-       Cannot unify X.X.t('a) and t(field_var, field_var, field_var)
+Error: Incompatable types X.t(_) and t(field_var, field_var, field_var):
+       Cannot unify X.t('a) and t(field_var, field_var, field_var)

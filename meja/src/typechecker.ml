@@ -1309,7 +1309,7 @@ let rec check_statement mode env stmt =
                               Option.value newname ~default:name.txt
                             in
                             Envi.register_type_declaration_raw mode ~name
-                              (Envi.relative_path env mode name)
+                              (Lident name)
                               decl env
                         | Instance (name, _) ->
                             let typ, id =
