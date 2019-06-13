@@ -70,6 +70,7 @@ let main =
   let meji_files = ref [] in
   let cmi_files = ref [] in
   let cmi_dirs = ref [] in
+  let exn_backtraces = ref false in
   let arg_spec =
     [ ( "--ml"
       , Arg.String (set_and_clear_default ocaml_file)
@@ -110,7 +111,11 @@ let main =
     ; ( "--impl-name"
       , Arg.Set_string impl_mod
       , "set the name to give to the snarky implementation module \
-         \x1B[4mdefault: Impl\x1B[24m" ) ]
+         \x1B[4mdefault: Impl\x1B[24m" )
+    ; ( "--compiler-backtraces"
+      , Arg.Set exn_backtraces
+      , "show a backtrace through the compiler when an error is encountered" )
+    ]
   in
   let usage_text =
     Format.sprintf "Usage:@.@[%s [options] file@]@.@.OPTIONS:"
@@ -125,7 +130,8 @@ let main =
       | None ->
           file := Some filename )
     usage_text ;
-  let env = Envi.Core.env in
+  let env = Initial_env.env in
+  Printexc.record_backtrace !exn_backtraces ;
   try
     let env =
       if !stdlib then (
@@ -156,8 +162,8 @@ let main =
             let m, env =
               let loc = Location.none in
               let mkloc s = Location.mkloc s loc in
-              let env = Envi.open_module env in
-              let env = Envi.open_module env in
+              let env = Envi.open_absolute_module None env in
+              let env = Envi.open_absolute_module None env in
               let m =
                 try
                   Envi.find_module ~loc
@@ -196,16 +202,22 @@ let main =
       List.fold ~init:env cmi_scopes ~f:(fun env scope ->
           Envi.open_namespace_scope scope env )
     in
-    let meji_files = List.rev !meji_files in
+    let meji_files =
+      "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
+      :: List.rev !meji_files
+    in
     let env =
       List.fold ~init:env meji_files ~f:(fun env file ->
           let parse_ast =
             read_file (Parser_impl.interface Lexer_impl.token) file
           in
-          let env = Envi.open_module env in
+          let module_name = Loader.modname_of_filename file in
+          let env =
+            Envi.open_absolute_module (Some (Longident.Lident module_name)) env
+          in
           let env = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:Location.none env in
-          let name = Location.(mkloc (Loader.modname_of_filename file) none) in
+          let name = Location.(mkloc module_name none) in
           Envi.add_module name m env )
     in
     let file =
@@ -250,5 +262,7 @@ let main =
         () ) ;
     exit 0
   with exn ->
+    ( if !exn_backtraces then
+      Format.(pp_print_string err_formatter (Printexc.get_backtrace ())) ) ;
     Location.report_exception Format.err_formatter exn ;
     exit 1

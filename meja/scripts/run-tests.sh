@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Capture the interrupt signal (Ctrl-C) and exit
+trap "exit" SIGINT
+
 run_dune() {
   dune $1 --display quiet --root=.. ${@:2}
 }
@@ -36,7 +39,12 @@ check_diff() {
 }
 
 run_test() {
-  run_dune exec meja/meja.exe -- --ml "tests/out/$1.ml" --stderr "tests/out/$1.stderr" "tests/$1.meja" 2> /dev/null
+  if [ -z "$MEJA_BACKTRACE" ]; then
+    BACKTRACE_FLAG=""
+  else
+    BACKTRACE_FLAG="--compiler-backtraces"
+  fi
+  run_dune exec meja/meja.exe -- $BACKTRACE_FLAG --ml "tests/out/$1.ml" --stderr "tests/out/$1.stderr" "tests/$1.meja" 2> /dev/null
   if [ $? -ne 0 ]; then
     if [ -e "tests/$1.fail" ]; then
       if [[ "$update_output" -eq 0 ]]; then
@@ -79,6 +87,7 @@ run_tests() {
   run_dune build meja/meja.exe
   if [ $? -ne 0 ]; then
     echo -e "${RED}BUILD FAILED${NC}"
+    return 1
   else
     mkdir -p tests/out
     for test in tests/*.meja; do
@@ -115,6 +124,7 @@ run_one() {
   run_dune build meja/meja.exe
   if [ $? -ne 0 ]; then
     echo -e "${RED}BUILD FAILED${NC}"
+    return 1
   else
     mkdir -p tests/out
     run_test "$FILENAME"

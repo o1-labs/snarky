@@ -16,6 +16,7 @@ let lexeme_loc lexbuf =
   mklocation (Lexing.lexeme_start_p lexbuf, Lexing.lexeme_end_p lexbuf)
 
 let comment_buffer = Buffer.create 256
+let comment_depth = ref 0
 let store_lexeme lexbuf =
   Buffer.add_string comment_buffer (Lexing.lexeme lexbuf)
 
@@ -79,13 +80,17 @@ rule token = parse
   | "..." { DOTDOTDOT }
   | ".." { DOTDOT }
   | '.' { DOT }
+  | '-' { MINUS }
   | "//" ([^'\n']* as comment) newline
     { new_line lexbuf; COMMENT (comment) }
   | "//" ([^'\n']* as comment) eof
     { new_line lexbuf; COMMENT (comment) }
   | "/*"
-    { let comment = get_comment comment lexbuf in
+    { incr comment_depth ;
+      let comment = get_comment comment lexbuf in
       COMMENT (comment) }
+  | "/*/"
+    { COMMENT ("") }
 
   | "!" symbolchar * as op { PREFIXOP op }
   | ['~' '?'] symbolchar + as op { PREFIXOP op }
@@ -104,7 +109,10 @@ rule token = parse
 
 and comment = parse
   | "*/"
-    { store_lexeme lexbuf }
+    { decr comment_depth; store_lexeme lexbuf;
+      if !comment_depth > 0 then comment lexbuf }
+  | "/*"
+    { incr comment_depth ; store_lexeme lexbuf; comment lexbuf }
   | newline
     { new_line lexbuf; store_lexeme lexbuf; comment lexbuf }
   | _
