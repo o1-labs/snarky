@@ -1,5 +1,6 @@
-let stdlib =
-  {|
+let ocaml =
+  ( __LINE__ + 1
+  , {|
   module Request : {
     type req('a) = ..;
 
@@ -500,3 +501,237 @@ let stdlib =
 
   };
 |}
+  )
+
+let checked =
+  ( __LINE__ + 1
+  , {|
+  module Constraint = {
+    type t = Constraint.t;
+
+    let boolean = Constraint.boolean;
+
+    let equal = Constraint.equal;
+
+    let r1cs = Constraint.r1cs;
+
+    let square = Constraint.square;
+  };
+
+  module Boolean = {
+    type t = Boolean.var;
+
+    let true_ = Boolean.true_;
+
+    let false_ = Boolean.false_;
+
+    let if_ = Boolean.if_;
+
+    let not = Boolean.not;
+
+    let (&&) = Boolean.(&&);
+
+    let (||) = Boolean.(||);
+
+    let lxor = Boolean.lxor;
+
+    let any = Boolean.any;
+
+    let all = Boolean.all;
+
+    let of_field = Boolean.of_field;
+
+    let equal = Boolean.equal;
+
+    module Assert = {
+      let (=) = Boolean.Assert.(=);
+
+      let is_true = Boolean.Assert.is_true;
+
+      let any = Boolean.Assert.any;
+
+      let all = Boolean.Assert.all;
+
+      let exactly_one = Boolean.Assert.exactly_one;
+    };
+  };
+
+  module Field = {
+    type t = Field.t;
+
+    let size_in_bits = Field.size_in_bits;
+
+    let length = Field.length;
+
+    let constant = Field.constant;
+
+    let to_constant = Field.to_constant;
+
+    let linear_combination = Field.linear_combination;
+
+    let sum = Field.sum;
+
+    let add = Field.add;
+
+    let sub = Field.sub;
+
+    let scale = Field.scale;
+
+    let project = Field.project;
+
+    let pack = Field.pack;
+
+    let of_int = Field.of_int;
+
+    let one = Field.one;
+
+    let zero = Field.zero;
+
+    let mul = Field.mul;
+
+    let square = Field.square;
+
+    let div = Field.div;
+
+    let inv = Field.inv;
+
+    let equal = Field.equal;
+
+    let unpack = Field.unpack;
+
+    let unpack_full = Field.unpack_full;
+
+    let choose_preimage_var = Field.choose_preimage_var;
+
+    type comparison_result = Field.comparison_result;
+
+    let compare = Field.compare;
+
+    let if_ = Field.if_;
+
+    let (+) = Field.(+);
+
+    let (-) = Field.(-);
+
+    let (*) = Field.(*);
+
+    let (/) = Field.(/);
+
+    module Assert = {
+      let lte = Field.Assert.lte;
+
+      let gte = Field.Assert.gte;
+
+      let lt = Field.Assert.lt;
+
+      let gt = Field.Assert.gt;
+
+      let not_equal = Field.Assert.not_equal;
+
+      let equal = Field.Assert.equal;
+
+      let non_zero = Field.Assert.non_zero;
+
+    };
+  };
+
+  module Bitstring = {
+    type t = Bitstring_checked.t;
+
+    let equal = Bitstring_checked.equal;
+
+    let lt_value = Bitstring_checked.lt_value;
+
+    module Assert = {
+      let equal = Bitstring_checked.Assert.equal;
+    };
+
+  };
+
+  module Handle = {
+    type t = Handle.t;
+
+    let var = Handle.var;
+
+  };
+
+  type response = response;
+
+  let unhandled = unhandled;
+
+  type request = request;
+
+  module Handler = {
+    type t = Handler.t;
+  };
+
+  let assert_ = assert_;
+
+  let assert_all = assert_all;
+
+  let assert_r1cs = assert_r1cs;
+
+  let assert_square = assert_square;
+
+  let as_prover = as_prover;
+
+  let next_auxiliary = next_auxiliary;
+
+  let request_witness = request_witness;
+
+  let perform = perform;
+
+  let request = request;
+
+  let exists = exists;
+
+  let exists_handle = exists_handle;
+
+  let handle = handle;
+
+  let handle_as_prover = handle_as_prover;
+
+  let with_label = with_label;
+
+  module Number = {
+    type t = Number.t;
+
+    let (+) = Number.(+);
+
+    let (-) = Number.(-);
+
+    let (*) = Number.(*);
+
+    let constant = Number.constant;
+
+    let one = Number.one;
+
+    let zero = Number.zero;
+
+    let if_ = Number.if_;
+
+    let (<) = Number.(<);
+
+    let (>) = Number.(>);
+
+    let (<=) = Number.(<=);
+
+    let (>=) = Number.(>=);
+
+    let (=) = Number.(=);
+
+    let min = Number.min;
+
+    let max = Number.max;
+
+    let to_var = Number.to_var;
+
+    let of_bits = Number.of_bits;
+
+    let to_bits = Number.to_bits;
+
+    let clamp_to_n_bits = Number.clamp_to_n_bits;
+
+  };
+|}
+  )

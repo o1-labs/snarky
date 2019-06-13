@@ -23,6 +23,20 @@ let read_file parse filename =
   let ast = parse_with_error parse lex in
   In_channel.close file ; ast
 
+let read_string ?at_line parse filename contents =
+  let lex = Lexing.from_string contents in
+  (* Set filename and current line in lex_curr_p. *)
+  let pos = {lex.Lexing.lex_curr_p with Lexing.pos_fname= filename} in
+  let pos =
+    match at_line with
+    | Some line ->
+        {pos with Lexing.pos_lnum= line}
+    | None ->
+        pos
+  in
+  lex.Lexing.lex_curr_p <- pos ;
+  parse_with_error parse lex
+
 let do_output filename f =
   match filename with
   | Some filename ->
@@ -203,15 +217,27 @@ let main =
           Envi.open_namespace_scope scope Checked env )
     in
     let env =
+      let open Meja_stdlib in
       (* Load stdlib. *)
-      let lex = Lexing.from_string Meja_stdlib.Snark0.stdlib in
-      lex.Lexing.lex_curr_p
-      <- {lex.Lexing.lex_curr_p with Lexing.pos_fname= "stdlib"} ;
-      let stdlib_ast =
-        parse_with_error (Parser_impl.interface Lexer_impl.token) lex
+      let snark0_line, snark0 = Snark0.ocaml in
+      let snark0_ast =
+        read_string ~at_line:snark0_line
+          (Parser_impl.interface Lexer_impl.token)
+          "snark0" snark0
       in
       let env = Envi.open_continue_module Checked env in
-      let env = Typechecker.check_signature' OCaml env stdlib_ast in
+      let env = Typechecker.check_signature' OCaml env snark0_ast in
+      (* Localise stdlib. *)
+      let snark0_checked_line, snark0_checked = Snark0.checked in
+      let snark0_checked_alias =
+        read_string ~at_line:snark0_checked_line
+          (Parser_impl.alias_interface Lexer_impl.token)
+          "snark0_checked" snark0_checked
+      in
+      let env =
+        Typechecker.import_alias ~in_mode:OCaml ~out_mode:Checked
+          snark0_checked_alias env
+      in
       env
     in
     let meji_files =
