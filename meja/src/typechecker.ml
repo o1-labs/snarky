@@ -471,6 +471,18 @@ let rec check_pattern mode ~add env typ pat =
                         , env
                         , mode
                         , Pattern_declaration ("constructor", name) )) )
+                 ~modules:(fun ~key:name ~data:_ _ ->
+                   raise
+                     (Error
+                        (loc, env, mode, Pattern_declaration ("module", name)))
+                   )
+                 ~module_types:(fun ~key:name ~data:_ _ ->
+                   raise
+                     (Error
+                        ( loc
+                        , env
+                        , mode
+                        , Pattern_declaration ("module type", name) )) )
                  ~instances:(fun ~key:_ ~data:_ () -> ()) ;
                scope1 ))
       in
@@ -1085,9 +1097,9 @@ let rec check_signature_item mode env item =
       in
       match m with
       | Envi.Scope.Immediate m ->
-          Envi.add_module name m env
+          Envi.add_module mode name m env
       | Envi.Scope.Deferred path ->
-          Envi.add_deferred_module name path env )
+          Envi.add_deferred_module mode name path env )
   | SModType (name, signature) ->
       let env = Envi.open_module name.txt mode env in
       let m_env, env =
@@ -1095,10 +1107,23 @@ let rec check_signature_item mode env item =
           (Envi.relative_path env mode name.txt)
           signature
       in
-      let env = Envi.add_module_type name.txt m_env env in
+      let env = Envi.add_module_type mode name.txt m_env env in
       env
   | SOpen name ->
-      let m = Envi.find_module ~loc name env in
+      let try_unless_mode mode' =
+        try Envi.find_module ~loc mode' name env with
+        | err when mode = mode' ->
+            raise err
+        | _ ->
+            Envi.Scope.empty (Envi.current_path mode env)
+      in
+      (* An open operates across all scopes. *)
+      let m =
+        { Envi.FullScope.kind= Open
+        ; ocaml_scope= try_unless_mode OCaml
+        ; checked_scope= Some (try_unless_mode Checked)
+        ; prover_scope= try_unless_mode Prover }
+      in
       Envi.open_namespace_scope m mode env
   | STypeExtension (variant, ctors) ->
       let env, _variant, _ctors = type_extension mode ~loc variant ctors env in
@@ -1130,7 +1155,7 @@ and check_module_sig mode env path msig =
       let m, env = Envi.pop_module ~loc env in
       (Envi.Scope.Immediate m, env)
   | SigName lid -> (
-    match Envi.find_module_deferred ~loc lid env with
+    match Envi.find_module_deferred ~loc mode lid env with
     | Some m ->
         (m, env)
     | None ->
@@ -1141,7 +1166,7 @@ and check_module_sig mode env path msig =
       (Envi.Scope.Immediate m, env)
   | SigFunctor (f_name, f, msig) ->
       let f, env = check_module_sig mode env (Lident f_name.txt) f in
-      let ftor path f_instance =
+      let ftor mode path f_instance =
         (* We want the functored module to be accessible only in un-prefixed
            space.
         *)
@@ -1149,9 +1174,13 @@ and check_module_sig mode env path msig =
         let env =
           match f_instance with
           | Envi.Scope.Immediate f ->
-              Envi.add_module f_name f env
+              let scope = Envi.FullScope.empty mode (Some path) Module in
+              let scope =
+                Envi.FullScope.map_scope mode scope ~f:(fun _ -> f)
+              in
+              Envi.add_module mode f_name scope env
           | Envi.Scope.Deferred path ->
-              Envi.add_deferred_module f_name path env
+              Envi.add_deferred_module mode f_name path env
         in
         (* TODO: check that f_instance matches f' *)
         let m, _env = check_module_sig mode env path msig in
@@ -1159,11 +1188,20 @@ and check_module_sig mode env path msig =
         | Envi.Scope.Immediate m ->
             m
         | Envi.Scope.Deferred path ->
-            Envi.find_module ~loc (Location.mkloc path loc) env
+            let scope = Envi.FullScope.empty mode (Some path) Module in
+            Envi.FullScope.map_scope mode scope ~f:(fun _ ->
+                Envi.find_module ~loc mode (Location.mkloc path loc) env )
+      in
+      let f =
+        match f with
+        | Envi.Scope.Immediate f ->
+            Envi.Scope.Immediate (Envi.FullScope.get_scope mode f)
+        | Envi.Scope.Deferred path ->
+            Envi.Scope.Deferred path
       in
       (* Check that f builds the functor as expected. *)
-      ignore (ftor (Lapply (path, Lident f_name.txt)) f) ;
-      let m = Envi.make_functor path ftor in
+      ignore (ftor mode (Lapply (path, Lident f_name.txt)) f) ;
+      let m = Envi.make_functor mode path ftor in
       (Envi.Scope.Immediate m, env)
 
 let in_decl = ref false
@@ -1213,7 +1251,7 @@ let rec check_statement mode env stmt =
       let env = Envi.open_module name.txt mode env in
       let env, m = check_module_expr mode env m in
       let m_env, env = Envi.pop_module ~loc env in
-      let env = Envi.add_module name m_env env in
+      let env = Envi.add_module mode name m_env env in
       (env, {stmt with stmt_desc= Module (name, m)})
   | ModType (name, signature) ->
       let m_env, env =
@@ -1221,10 +1259,23 @@ let rec check_statement mode env stmt =
           (Envi.relative_path env mode name.txt)
           signature
       in
-      let env = Envi.add_module_type name.txt m_env env in
+      let env = Envi.add_module_type mode name.txt m_env env in
       (env, stmt)
   | Open name ->
-      let m = Envi.find_module ~loc name env in
+      let try_unless_mode mode' =
+        try Envi.find_module ~loc mode' name env with
+        | err when mode = mode' ->
+            raise err
+        | _ ->
+            Envi.Scope.empty (Envi.current_path mode env)
+      in
+      (* An open operates across all scopes. *)
+      let m =
+        { Envi.FullScope.kind= Open
+        ; ocaml_scope= try_unless_mode OCaml
+        ; checked_scope= Some (try_unless_mode Checked)
+        ; prover_scope= try_unless_mode Prover }
+      in
       (Envi.open_namespace_scope m mode env, stmt)
   | TypeExtension (variant, ctors) ->
       let env, _variant, _ctors = type_extension mode ~loc variant ctors env in
@@ -1332,16 +1383,19 @@ and check_module_expr mode env m =
       let path = Envi.current_path mode env in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
-      let m' = Envi.find_module ~loc name env in
-      let m' = Envi.FullScope.map_scopes ~f:(fun m -> {m with path}) m' in
-      let env = Envi.push_scope m' env in
+      let m' = Envi.find_module ~loc mode name env in
+      let scope = Envi.FullScope.empty mode path Module in
+      let scope =
+        Envi.FullScope.map_scope mode scope ~f:(fun _ -> {m' with path})
+      in
+      let env = Envi.push_scope scope env in
       (env, m)
   | Functor (f_name, f, m) ->
       let path = Option.value_exn (Envi.current_path mode env) in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
       let f', env = check_module_sig mode env (Lident f_name.txt) f in
-      let ftor path f_instance =
+      let ftor mode path f_instance =
         (* We want the functored module to be accessible only in un-prefixed
            space.
         *)
@@ -1349,9 +1403,13 @@ and check_module_expr mode env m =
         let env =
           match f_instance with
           | Envi.Scope.Immediate f ->
-              Envi.add_module f_name f env
+              let scope = Envi.FullScope.empty mode (Some path) Module in
+              let scope =
+                Envi.FullScope.map_scope mode scope ~f:(fun _ -> f)
+              in
+              Envi.add_module mode f_name scope env
           | Envi.Scope.Deferred path ->
-              Envi.add_deferred_module f_name path env
+              Envi.add_deferred_module mode f_name path env
         in
         (* TODO: check that f_instance matches f' *)
         let env = Envi.open_absolute_module (Some path) mode env in
@@ -1359,11 +1417,19 @@ and check_module_expr mode env m =
         let m, _env = Envi.pop_module ~loc env in
         (m, m')
       in
+      let f' =
+        match f' with
+        | Envi.Scope.Immediate f ->
+            Envi.Scope.Immediate (Envi.FullScope.get_scope mode f)
+        | Envi.Scope.Deferred path ->
+            Envi.Scope.Deferred path
+      in
       (* Check that f builds the functor as expected. *)
-      let _, m = ftor (Lapply (path, Lident f_name.txt)) f' in
+      let _, m = ftor mode (Lapply (path, Lident f_name.txt)) f' in
       let env =
         Envi.push_scope
-          (Envi.make_functor path (fun path f -> fst (ftor path f)))
+          (Envi.make_functor mode path (fun mode path f ->
+               fst (ftor mode path f) ))
           env
       in
       (env, {m with mod_desc= Functor (f_name, f, m)})
@@ -1397,7 +1463,7 @@ let rec check_alias ~out_mode ~in_mode env alias =
       let env = Envi.open_module name.txt out_mode env in
       let env = check_alias_module ~out_mode ~in_mode env m in
       let m_env, env = Envi.pop_module ~loc:name.loc env in
-      Envi.add_module name m_env env
+      Envi.add_module out_mode name m_env env
   | ATypeExtension lid ->
       let decl =
         match Envi.TypeDecl.find_of_constructor in_mode lid env with

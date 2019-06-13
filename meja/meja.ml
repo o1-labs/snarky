@@ -176,13 +176,21 @@ let main =
             let m, env =
               let loc = Location.none in
               let mkloc s = Location.mkloc s loc in
-              let env = Envi.open_absolute_module None Checked env in
-              let env = Envi.open_absolute_module None Checked env in
+              let env = Envi.open_module "Snarky" Checked env in
+              let env = Envi.open_module "Request" Checked env in
               let m =
                 try
-                  Envi.find_module ~loc
-                    (mkloc (Longident.Lident "Snarky__Request"))
-                    env
+                  let m =
+                    Envi.find_module Checked ~loc
+                      (mkloc (Longident.Lident "Snarky__Request"))
+                      env
+                  in
+                  let scope =
+                    Envi.FullScope.empty Checked
+                      (Envi.current_path Checked env)
+                      Module
+                  in
+                  Envi.FullScope.map_scope Checked scope ~f:(fun _ -> m)
                 with _ ->
                   Format.(
                     fprintf err_formatter
@@ -190,9 +198,9 @@ let main =
                        Snarky.@.") ;
                   exit 1
               in
-              let env = Envi.add_module (mkloc "Request") m env in
+              let env = Envi.add_module Checked (mkloc "Request") m env in
               let m, env = Envi.pop_module ~loc env in
-              let env = Envi.add_module (mkloc "Snarky") m env in
+              let env = Envi.add_module Checked (mkloc "Snarky") m env in
               Envi.pop_module ~loc env
             in
             Envi.open_namespace_scope m Checked env
@@ -268,7 +276,7 @@ let main =
           let env = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:Location.none env in
           let name = Location.(mkloc module_name none) in
-          Envi.add_module name m env )
+          Envi.add_module Checked name m env )
     in
     let file =
       match !file with
