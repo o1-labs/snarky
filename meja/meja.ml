@@ -227,7 +227,7 @@ let main =
       in
       let env = Envi.open_continue_module Checked env in
       let env = Typechecker.check_signature' OCaml env snark0_ast in
-      (* Localise stdlib. *)
+      (* Localise stdlib to checked. *)
       let snark0_checked_line, snark0_checked = Snark0.checked in
       let snark0_checked_alias =
         read_string ~at_line:snark0_checked_line
@@ -237,6 +237,17 @@ let main =
       let env =
         Typechecker.import_alias ~in_mode:OCaml ~out_mode:Checked
           snark0_checked_alias env
+      in
+      (* Localise stdlib to prover. *)
+      let snark0_prover_line, snark0_prover = Snark0.prover in
+      let snark0_prover_alias =
+        read_string ~at_line:snark0_prover_line
+          (Parser_impl.alias_interface Lexer_impl.token)
+          "snark0_prover" snark0_prover
+      in
+      let env =
+        Typechecker.import_alias ~in_mode:OCaml ~out_mode:Prover
+          snark0_prover_alias env
       in
       env
     in
