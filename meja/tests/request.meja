@@ -7,6 +7,6 @@ request('x) Request3(option('x))
   with handler (x) => {
     switch (x) {
       | None => unhandled
-      | Some(x) => respond(x)
+      | Some(x) => respond(Request.Response.Provide(x))
     };
   };

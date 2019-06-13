@@ -228,15 +228,14 @@ let handler_body ?loc (pat, body) =
   let respond = Lid.of_name "respond" in
   let body =
     Exp.let_ ~loc (Pat.var "unhandled")
-      (Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
+      (Exp.var (Lid.of_list ["Request"; "unhandled"]))
       (Exp.match_ ~loc
          (Exp.var ~loc (Lid.of_name "request"))
          [ (pat, body)
-         ; (Pat.any (), Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
-         ])
+         ; (Pat.any (), Exp.var (Lid.of_list ["Request"; "unhandled"])) ])
   in
   Exp.fun_
     (Pat.ctor
-       (Lid.of_list ["Snarky__Request"; "With"])
+       (Lid.of_list ["With"])
        ~args:(Pat.record [Pat.field request; Pat.field respond]))
     body

@@ -8,6 +8,6 @@ request('a) B('a);
 
 let handle_B = {
   handler {
-    | B(y) => respond(y)
+    | B(y) => respond(Request.Response.Provide(y))
   };
 };

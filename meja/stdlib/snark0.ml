@@ -745,6 +745,9 @@ let prover =
     type response = Request.response;
 
     let unhandled = unhandled;
+
+    /* Bring constructors into scope without bringing the name itself. */
+    type _ += Request.Response.Provide;
   };
 
   module Typ = {
@@ -928,6 +931,9 @@ let prover =
   let unhandled = unhandled;
 
   type request = request;
+
+  /* Bring constructors into scope without bringing the name itself. */
+  type _ += Request.Response.Provide;
 
   module Handler = {
     type t = Handler.t;

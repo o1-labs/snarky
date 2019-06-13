@@ -159,51 +159,7 @@ let main =
                 env.Envi.resolve_env
                 (Filename.concat lib_path "ocaml/stdlib.cmi")
             in
-            let env = Envi.open_namespace_scope stdlib_scope Checked env in
-            (* Load Snarky.Request *)
-            let snarky_build_path =
-              Filename.(
-                Sys.executable_name |> dirname
-                |> Fn.flip concat (concat parent_dir_name "src/.snarky.objs/"))
-            in
-            Loader.load_directory env (Filename.concat lib_path "snarky") ;
-            Loader.load_directory env
-              (Filename.concat snarky_build_path "byte") ;
-            Loader.load_directory env
-              (Filename.concat snarky_build_path "native") ;
-            Loader.load_directory env snarky_build_path ;
-            (* Set up module structure for Snarky.Request *)
-            let m, env =
-              let loc = Location.none in
-              let mkloc s = Location.mkloc s loc in
-              let env = Envi.open_module "Snarky" Checked env in
-              let env = Envi.open_module "Request" Checked env in
-              let m =
-                try
-                  let m =
-                    Envi.find_module Checked ~loc
-                      (mkloc (Longident.Lident "Snarky__Request"))
-                      env
-                  in
-                  let scope =
-                    Envi.FullScope.empty Checked
-                      (Envi.current_path Checked env)
-                      Module
-                  in
-                  Envi.FullScope.map_scope Checked scope ~f:(fun _ -> m)
-                with _ ->
-                  Format.(
-                    fprintf err_formatter
-                      "Could not find the compiled interface files for \
-                       Snarky.@.") ;
-                  exit 1
-              in
-              let env = Envi.add_module Checked (mkloc "Request") m env in
-              let m, env = Envi.pop_module ~loc env in
-              let env = Envi.add_module Checked (mkloc "Snarky") m env in
-              Envi.pop_module ~loc env
-            in
-            Envi.open_namespace_scope m Checked env
+            Envi.open_namespace_scope stdlib_scope Checked env
         | None ->
             Format.(
               fprintf err_formatter

@@ -960,42 +960,49 @@ let rec get_expression mode env expected exp =
       raise (Error (loc, env, mode, Unifiable_expr))
   | Handler cases ->
       let typ, _ =
-        (* TODO(Matt): Enable with stdlib. *)
-        (*Typet.Type.import
+        Typet.Type.import Prover
           Ast_build.(Type.constr ~loc (Lid.of_list ["Handler"; "t"]))
-          env*)
-        (Envi.Type.mkvar None env, env)
+          env
       in
-      let response, _ =
-        (* TODO(Matt): Enable with stdlib. *)
-        (*Typet.Type.import
-          Ast_build.(Type.constr ~loc (Lid.of_list ["Response"; "response"]))
-          env*)
-        (Envi.Type.mkvar None env, env)
+      check_type ~loc Prover env typ expected ;
+      let makety path argc =
+        let open Ast_build in
+        let params = List.init argc ~f:(fun _ -> Type.none ~loc ()) in
+        let ty, _env =
+          Typet.Type.import Prover
+            (Type.constr ~loc ~params (Lid.of_list path))
+            env
+        in
+        ty
       in
-      check_type ~loc env typ expected ;
+      let patch_arg typ arg =
+        match typ.type_desc with
+        | Tctor variant ->
+            typ.type_desc <- Tctor {variant with var_params= [arg]}
+        | _ ->
+            assert false
+      in
       let cases =
         List.map cases ~f:(fun (pat, exp) ->
-            let env = Envi.open_expr_scope env in
-            let typ = Envi.Type.mkvar None env in
-            (* TODO(Matt): Remove these with stdlib. *)
-            let env =
-              Envi.add_name (Ast_build.Loc.mk ~loc "unhandled") response env
+            let env = Envi.open_expr_scope Prover env in
+            let typ = Envi.Type.mkvar Prover None env in
+            let request = makety ["Request"; "t"] 1 in
+            patch_arg request typ ;
+            let p, env =
+              check_pattern Prover ~add:(add_polymorphised Prover) env typ pat
             in
-            let env =
-              Envi.add_name (Ast_build.Loc.mk ~loc "request") typ env
-            in
-            let env =
-              Envi.add_name
-                (Ast_build.Loc.mk ~loc "respond")
-                (Envi.Type.mk
-                   (Tarrow
-                      (Envi.Type.mkvar None env, response, Explicit, Nolabel))
-                   env)
+            let response_user = makety ["Request"; "Response"; "t"] 1 in
+            let response = makety ["Request"; "response"] 0 in
+            patch_arg response_user typ ;
+            let respond_type =
+              Envi.Type.mk Prover
+                (Tarrow (response_user, response, Explicit, Nolabel))
                 env
             in
-            let p, env = check_pattern ~add:add_polymorphised env typ pat in
-            let e, _env = get_expression env response exp in
+            let env =
+              Envi.add_name Ast_build.(Loc.mk ~loc "respond") respond_type env
+            in
+            let e, _env = get_expression Prover env response exp in
             (p, e) )
       in
       ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
@@ -1173,12 +1180,12 @@ let rec check_signature_item mode env item =
       let open Ast_build in
       let variant =
         Type.variant ~loc ~params:[Type.none ~loc ()]
-          (Lid.of_list ["Snarky__Request"; "t"])
+          (Lid.of_list ["Request"; "t"])
       in
       let ctor_ret = Type.mk ~loc (Tctor {variant with var_params= [arg]}) in
       let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
       let env, _variant, _ctors =
-        type_extension mode ~loc variant [ctor_decl] env
+        type_extension Prover ~loc variant [ctor_decl] env
       in
       env
   | SMultiple sigs ->
@@ -1363,11 +1370,11 @@ let rec check_statement mode env stmt =
       let open Ast_build in
       let variant =
         Type.variant ~loc ~params:[Type.none ~loc ()]
-          (Lid.of_list ["Snarky__Request"; "t"])
+          (Lid.of_list ["Request"; "t"])
       in
       let ctor_ret = Type.mk ~loc (Tctor {variant with var_params= [arg]}) in
       let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
-      let env, _, ctors = type_extension mode ~loc variant [ctor_decl] env in
+      let env, _, ctors = type_extension Prover ~loc variant [ctor_decl] env in
       let ctor_decl =
         match ctors with
         | [ctor] ->
@@ -1377,7 +1384,7 @@ let rec check_statement mode env stmt =
                   (Type.mk ~loc
                      (Tctor
                         (Type.variant ~loc ~params:[arg]
-                           (Lid.of_list ["Snarky"; "Request"; "t"])))) }
+                           (Lid.of_list ["Request"; "t"])))) }
         | _ ->
             failwith "Wrong number of constructors returned for Request."
       in
@@ -1399,7 +1406,7 @@ let rec check_statement mode env stmt =
               Codegen.handler_body ~loc:stmt.stmt_loc
                 (Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat, body)
             in
-            let _p, e, env = check_binding mode ~toplevel:true env p e in
+            let _p, e, env = check_binding Prover ~toplevel:true env p e in
             let pat, body =
               match e with
               | { exp_desc=
