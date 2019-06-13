@@ -120,7 +120,7 @@ let ocaml =
 
     instance field : t(field_var, field);
 
-    instance tuple2 :
+    let tuple2 :
          {t('var1, 'value1)}
       -> {t('var2, 'value2)}
       -> t(('var1, 'var2), ('value1, 'value2));
@@ -655,12 +655,6 @@ let checked =
 
   };
 
-  type response = response;
-
-  let unhandled = unhandled;
-
-  type request = request;
-
   module Handler = {
     type t = Handler.t;
   };
@@ -732,6 +726,211 @@ let checked =
 
     let clamp_to_n_bits = Number.clamp_to_n_bits;
 
+  };
+|}
+  )
+
+let prover =
+  ( __LINE__ + 1
+  , {|
+  module Request = {
+    type req = Request.req;
+
+    type t = Request.req;
+
+    module Response = {
+      type t = Request.Response.t;
+    };
+
+    type response = Request.response;
+
+    let unhandled = unhandled;
+  };
+
+  module Typ = {
+    module Store = {
+      type t = Typ.Store.t;
+
+      let bind = Typ.Store.bind;
+
+      let return = Typ.Store.return;
+
+      let map = Typ.Store.map;
+
+      let store = Typ.Store.store;
+    };
+
+    module Alloc = {
+      type t = Typ.Alloc.t;
+
+      let bind = Typ.Alloc.bind;
+
+      let return = Typ.Alloc.return;
+
+      let map = Typ.Alloc.map;
+
+      let alloc = Typ.Alloc.alloc;
+    };
+
+    module Read = {
+      type t = Typ.Read.t;
+
+      let bind = Typ.Read.bind;
+
+      let return = Typ.Read.return;
+
+      let map = Typ.Read.map;
+
+      let read = Typ.Read.read;
+    };
+
+
+    type t = Typ.t;
+
+    let store = Typ.store;
+
+    let read = Typ.read;
+
+    let alloc = Typ.alloc;
+
+    instance check = Typ.check;
+
+    instance unit = Typ.unit;
+
+    instance field = Typ.field;
+
+    let tuple2 = Typ.tuple2;
+
+    instance ( * ) = Typ.( * );
+
+    instance tuple3 = Typ.tuple3;
+
+    let list = Typ.list;
+  };
+
+  module Field = {
+    type t = Field.Constant.t;
+
+    let compare = Field.Constant.compare;
+
+    let of_int = Field.Constant.of_int;
+
+    let one = Field.Constant.one;
+
+    let zero = Field.Constant.zero;
+
+    let add = Field.Constant.add;
+
+    let sub = Field.Constant.sub;
+
+    let mul = Field.Constant.mul;
+
+    let inv = Field.Constant.inv;
+
+    let square = Field.Constant.square;
+
+    let sqrt = Field.Constant.sqrt;
+
+    let is_square = Field.Constant.is_square;
+
+    let equal = Field.Constant.equal;
+
+    let size_in_bits = Field.Constant.size_in_bits;
+
+    let print = Field.Constant.print;
+
+    let random = Field.Constant.random;
+
+    let negate = Field.Constant.negate;
+
+    let (+) = Field.Constant.(+);
+
+    let ( * ) = Field.Constant.( * );
+
+    let (-) = Field.Constant.(-);
+
+    let (/) = Field.Constant.(/);
+
+    let of_string = Field.Constant.of_string;
+
+    let to_string = Field.Constant.to_string;
+
+    let unpack = Field.Constant.unpack;
+
+    let project = Field.Constant.project;
+
+    instance typ = Field.typ;
+
+  };
+
+  module As_prover = {
+    type t = As_prover.t;
+
+    let in_prover_block = As_prover.in_prover_block;
+
+    let read_var = As_prover.read_var;
+
+    let read = As_prover.read;
+
+    let of_int = As_prover.of_int;
+
+    let one = As_prover.one;
+
+    let zero = As_prover.zero;
+
+    let add = As_prover.add;
+
+    let sub = As_prover.sub;
+
+    let mul = As_prover.mul;
+
+    let inv = As_prover.inv;
+
+    let square = As_prover.square;
+
+    let sqrt = As_prover.sqrt;
+
+    let is_square = As_prover.is_square;
+
+    let equal = As_prover.equal;
+
+    let size_in_bits = As_prover.size_in_bits;
+
+    let print = As_prover.print;
+
+    let random = As_prover.random;
+
+    let to_string = As_prover.to_string;
+
+    let negate = As_prover.negate;
+
+    let (+) = As_prover.(+);
+
+    let (*) = As_prover.(*);
+
+    let (-) = As_prover.(-);
+
+    let (/) = As_prover.(/);
+
+    let unpack = As_prover.unpack;
+
+    let project = As_prover.project;
+  };
+
+  module Handle = {
+    type t = Handle.t;
+
+    let value = Handle.value;
+  };
+
+  type response = response;
+
+  let unhandled = unhandled;
+
+  type request = request;
+
+  module Handler = {
+    type t = Handler.t;
   };
 |}
   )
