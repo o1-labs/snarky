@@ -220,30 +220,13 @@ let parse () =
         (Arg.usage_string !(!config.spec) (!config.path ^ " " ^ !config.usage)) ;
       exit 0
 
-module Make
-    (Intf : Snark_intf.Run_basic with type prover_state = unit) (M : sig
-        type result
-
-        type computation
-
-        type public_input
-
-        val compute : computation
-
-        val public_input :
-          (unit -> result, unit, computation, public_input) Intf.Data_spec.t
-
-        val read_input : string -> (unit, public_input) H_list.t
-    end) =
+module Make_basic (Intf : Snark_intf.Run_basic with type prover_state = unit) =
 struct
   open Intf
   open Bin_prot_io
 
-  let main () =
+  let main proof_system read_input =
     let config = parse () in
-    let proof_system =
-      Proof_system.create ~public_input:M.public_input M.compute
-    in
     ( match config.mode with
     | Some (Keys conf) ->
         let keypair = Proof_system.generate_keypair proof_system in
@@ -253,7 +236,7 @@ struct
         write (module Verification_key) vk_path ~data:(Keypair.vk keypair)
     | Some (Prove conf) ->
         let public_input =
-          M.read_input (Option.value ~default:"" !conf.public_input)
+          read_input (Option.value ~default:"" !conf.public_input)
         in
         let pk_path = Option.value ~default:(path ^ ".pk") !conf.pk in
         let proving_key = read (module Proving_key) pk_path in
@@ -266,7 +249,7 @@ struct
         write (module Proof) output_path ~data:proof
     | Some (Verify conf) ->
         let public_input =
-          M.read_input (Option.value ~default:"" !conf.public_input)
+          read_input (Option.value ~default:"" !conf.public_input)
         in
         let vk_path = Option.value ~default:(path ^ ".vk") !conf.vk in
         let verification_key = read (module Verification_key) vk_path in
@@ -290,6 +273,32 @@ end
 
 module type Toplevel = sig
   val main : unit -> unit
+end
+
+module Make
+    (Intf : Snark_intf.Run_basic with type prover_state = unit) (M : sig
+        type result
+
+        type computation
+
+        type public_input
+
+        val compute : computation
+
+        val public_input :
+          (unit -> result, unit, computation, public_input) Intf.Data_spec.t
+
+        val read_input : string -> (unit, public_input) H_list.t
+    end) =
+struct
+  open Intf
+  module Basic = Make_basic (Intf)
+
+  let main () =
+    let proof_system =
+      Proof_system.create ~public_input:M.public_input M.compute
+    in
+    Basic.main proof_system M.read_input
 end
 
 let%test_unit "toplevel_functor" =
