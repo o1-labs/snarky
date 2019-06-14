@@ -55,18 +55,13 @@ module Commands = struct
       ; output_path: string option
       ; pk: string option }
 
-    let empty_config =
-      { public_input= None
-      ; output_path= None
-      ; pk= None }
+    let empty_config = {public_input= None; output_path= None; pk= None}
 
     let name = "prove"
 
     let description = "generate a zkSNARK proof"
 
-    let usage =
-      "prove [options..] \
-       PUBLIC_INPUT"
+    let usage = "prove [options..] PUBLIC_INPUT"
 
     let spec config =
       let pk pk = config := {!config with pk= Some pk} in
@@ -298,32 +293,46 @@ module type Toplevel = sig
 end
 
 let%test_unit "toplevel_functor" =
-  let (module M : Toplevel) = (module struct
-    module Intf = Snark.Run.Make (Backends.Bn128.Default) (struct type t = unit end)
-    include Make (Intf) (struct
-      open Intf
-      type result = unit
+  let (module M : Toplevel) =
+    ( module struct
+      module Intf =
+        Snark.Run.Make
+          (Backends.Bn128.Default)
+          (struct
+            type t = unit
+          end)
 
-      type computation = Field.t -> Field.t -> unit -> unit
+      include Make
+                (Intf)
+                (struct
+                  open Intf
 
-      type public_input = Field.Constant.t -> Field.Constant.t -> unit
+                  type result = unit
 
-      let compute x y () =
-        let open Field in
-        let z = (x + y) * (x - y) in
-        let x2 = x * x in
-        let y2 = y * y in
-        Field.Assert.equal z (x2 - y2)
+                  type computation = Field.t -> Field.t -> unit -> unit
 
-      let public_input = Data_spec.[Field.typ; Field.typ]
+                  type public_input =
+                    Field.Constant.t -> Field.Constant.t -> unit
 
-      let read_input str =
-        let strs = String.split str ~on:' ' in
-        match strs with
-        | [x; y] ->
-            H_list.[Field.Constant.of_string x; Field.Constant.of_string y]
-        | _ ->
-            failwith "Bad input. Expected 2 field elements."
-    end)
-  end) in
+                  let compute x y () =
+                    let open Field in
+                    let z = (x + y) * (x - y) in
+                    let x2 = x * x in
+                    let y2 = y * y in
+                    Field.Assert.equal z (x2 - y2)
+
+                  let public_input = Data_spec.[Field.typ; Field.typ]
+
+                  let read_input str =
+                    let strs = String.split str ~on:' ' in
+                    match strs with
+                    | [x; y] ->
+                        H_list.
+                          [ Field.Constant.of_string x
+                          ; Field.Constant.of_string y ]
+                    | _ ->
+                        failwith "Bad input. Expected 2 field elements."
+                end)
+    end )
+  in
   ()
