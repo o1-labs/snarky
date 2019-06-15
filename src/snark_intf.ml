@@ -384,6 +384,8 @@ module type Basic = sig
 
     type value = bool
 
+    val to_field : var -> Field.Var.t
+
     val true_ : var
     (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
 
@@ -1696,6 +1698,10 @@ module type Run_basic = sig
     val unpack_full : t -> Boolean.var Bitstring_lib.Bitstring.Lsb_first.t
 
     val choose_preimage_var : t -> length:int -> Boolean.var list
+
+    val to_bits : ?length:int -> ?allow_overflow:bool -> t -> Boolean.var list
+
+    val of_bits : ?allow_overflow:bool -> Boolean.var list -> t
 
     type comparison_result = {less: Boolean.var; less_or_equal: Boolean.var}
 
