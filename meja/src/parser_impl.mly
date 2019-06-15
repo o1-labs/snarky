@@ -366,6 +366,10 @@ simpl_expr:
     { mkexp ~pos:$loc (Field (e, field)) }
   | s = STRING
     { mkexp ~pos:$loc (Literal (String s)) }
+  (*| REQUEST id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
+    { mkexp ~pos:$loc (MakeRequest (mkexp ~pos:$loc (Ctor (id, args)))) }*)
+  | REQUEST LBRACE e = block RBRACE
+    { mkexp ~pos:$loc (MakeRequest e) }
 
 expr:
   | x = simpl_expr

@@ -168,6 +168,9 @@ let rec of_expression_desc ?loc = function
         (of_expression e)
   | LetOpen (lid, e) ->
       Exp.open_ Fresh lid (of_expression e)
+  | MakeRequest _ ->
+      (* Need an inferred Typ.t, which we don't have here.. *)
+      assert false
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(

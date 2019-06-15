@@ -84,6 +84,7 @@ and expression_desc =
   | Prover of expression
   | Handler of (pattern * expression) list
   | LetOpen of lid * expression
+  | MakeRequest of expression
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 

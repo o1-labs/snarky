@@ -234,6 +234,8 @@ let rec expression_desc fmt = function
       fprintf fmt "@[<hv2>Prover {@ %a@ }@]" expression e
   | LetOpen (lid, e) ->
       fprintf fmt "@[<hv2>%a.(%a)@]" Longident.pp lid.txt expression e
+  | MakeRequest e ->
+      fprintf fmt "@[<hv2>request@.{@,%a@,}@]" expression e
 
 and expression_desc_bracket fmt exp =
   match exp with
