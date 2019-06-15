@@ -1,6 +1,10 @@
 let ocaml =
   ( __LINE__ + 1
   , {|
+
+
+  let fix : (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b);
+
   module Request : {
     type req('a) = ..;
 
@@ -145,6 +149,8 @@ let ocaml =
 
     type value = bool;
 
+    let to_field : var -> field_var;
+
     let true_ : var;
 
     let false_ : var;
@@ -287,6 +293,10 @@ let ocaml =
     let unpack_full : t -> list(Boolean.var);
 
     let choose_preimage_var : t -> length:int -> list(Boolean.var);
+
+    let to_bits : ?length:int -> ?allow_overflow:bool -> t -> list(Boolean.var);
+
+    let of_bits : ?allow_overflow:bool -> list(Boolean.var) -> t;
 
     type comparison_result =
       {less: Boolean.var, less_or_equal: Boolean.var};
@@ -521,6 +531,8 @@ let checked =
   module Boolean = {
     type t = Boolean.var;
 
+    let to_field = Boolean.to_field;
+
     let true_ = Boolean.true_;
 
     let false_ = Boolean.false_;
@@ -602,6 +614,10 @@ let checked =
     let unpack_full = Field.unpack_full;
 
     let choose_preimage_var = Field.choose_preimage_var;
+
+    let to_bits = Field.to_bits;
+
+    let of_bits = Field.of_bits;
 
     type comparison_result = Field.comparison_result;
 

@@ -6,6 +6,8 @@ let () = Camlsnark_c.linkme
 
 module Runner = Checked_runner
 
+let rec fix f x = f (fix f) x
+
 let set_eval_constraints b = Runner.eval_constraints := b
 
 let reduce_to_prover = ref false
@@ -325,6 +327,8 @@ struct
       type var = Cvar.t Boolean.t
 
       type value = bool
+
+      let to_field (x : var) = (x :> Cvar.t)
 
       let true_ : var = create (Cvar.constant Field.one)
 
@@ -1709,6 +1713,20 @@ module Run = struct
       let unpack_full x = run (unpack_full x)
 
       let choose_preimage_var x ~length = run (choose_preimage_var x ~length)
+
+      let to_bits ?(length = Field.size_in_bits) ?(allow_overflow = true)
+          (* TODO: Reconsider this setting of defaults *)
+          x =
+        let length = min length Field.size_in_bits in
+        if (not allow_overflow) && length = Field.size_in_bits then
+          (unpack_full x :> Boolean.var list)
+        else run (choose_preimage x ~length)
+
+      let of_bits ?(allow_overflow = false) bs =
+        let n = Core.List.length bs in
+        if (not allow_overflow) && n >= Field.size_in_bits then
+          failwithf "of_bits: Prevented overflow on bit list of length %d" n () ;
+        project bs
 
       type nonrec comparison_result = comparison_result =
         {less: Boolean.var; less_or_equal: Boolean.var}
