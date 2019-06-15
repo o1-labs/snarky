@@ -1007,8 +1007,7 @@ let rec get_expression mode env expected exp =
       in
       ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
   | Prover e ->
-      let e, env = get_expression Prover env Initial_env.Type.unit e in
-      check_type mode ~loc env expected Initial_env.Type.unit ;
+      let e, env = get_expression Prover env expected e in
       ({exp_loc= loc; exp_type= expected; exp_desc= Prover e}, env)
   | LetOpen (lid, e) ->
       let try_unless_mode mode' =
