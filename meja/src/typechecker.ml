@@ -436,9 +436,9 @@ let rec check_pattern mode ~add env typ pat =
       let ctyp, env = Typet.Type.import mode constr_typ env in
       check_type mode ~loc env typ ctyp ;
       let p, env = check_pattern mode ~add env ctyp p in
+      let normalised_ctyp = Envi.Type.normalise_constr_names OCaml env ctyp in
       let constr_typ =
-        Untype_ast.type_expr ~loc:constr_typ.type_loc
-          (Envi.Type.normalise_constr_names OCaml env ctyp)
+        Untype_ast.type_expr ~loc:constr_typ.type_loc normalised_ctyp
       in
       ( {pat_loc= loc; pat_type= typ; pat_desc= PConstraint (p, constr_typ)}
       , env )

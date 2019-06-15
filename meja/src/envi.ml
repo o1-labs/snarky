@@ -1293,7 +1293,13 @@ module Type = struct
         let typ2 = constr_map mode env ~f typ2 in
         mk mode (Tarrow (typ1, typ2, explicit, label)) env
     | Tctor variant ->
-        mk mode (f variant) env
+        let var_params =
+          List.map ~f:(constr_map mode env ~f) variant.var_params
+        in
+        let var_implicit_params =
+          List.map ~f:(constr_map mode env ~f) variant.var_implicit_params
+        in
+        mk mode (f {variant with var_params; var_implicit_params}) env
     | Tpoly (typs, typ) ->
         mk mode (Tpoly (typs, constr_map mode env ~f typ)) env
 
