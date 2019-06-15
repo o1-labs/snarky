@@ -432,15 +432,15 @@ match_case:
 expr_arg:
   | e = expr
     { (Asttypes.Nolabel, e) }
-  | TILDE name = LIDENT
+  | TILDE name = lident
     { (Asttypes.Labelled name, mkexp ~pos:$loc
         (Variable (mkloc ~pos:$loc (Lident name)))) }
-  | TILDE name = LIDENT EQUAL e = expr
+  | TILDE name = lident EQUAL e = expr
     { (Asttypes.Labelled name, e) }
-  | QUESTION name = LIDENT
+  | QUESTION name = lident
     { (Asttypes.Optional name, mkexp ~pos:$loc
         (Variable (mkloc ~pos:$loc (Lident name)))) }
-  | QUESTION name = LIDENT EQUAL e = expr
+  | QUESTION name = lident EQUAL e = expr
     { (Asttypes.Optional name, e) }
 
 expr_arg_list:
