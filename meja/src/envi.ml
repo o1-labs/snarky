@@ -1079,19 +1079,24 @@ module Type = struct
     | _ ->
         Type0.fold ~init:set ~f:(weak_variables depth) typ
 
-  let rec get_implicits acc typ =
-    match typ.type_desc with
-    | Tarrow (typ1, typ2, Implicit, label) ->
-        get_implicits ((label, typ1) :: acc) typ2
-    | Tarrow (typ1, typ2, Explicit, label) ->
-        let acc, typ = get_implicits acc typ2 in
-        ( acc
-        , { type_desc= Tarrow (typ1, typ, Explicit, label)
-          ; type_id= next_id ()
-          ; type_depth= typ.type_depth
-          ; type_mode= typ.type_mode } )
-    | _ ->
-        (List.rev acc, typ)
+  let get_implicits acc typ =
+    let rec get_implicits accept_labelless acc typ =
+      match typ.type_desc with
+      | Tarrow (typ1, typ2, Implicit, label)
+        when accept_labelless
+             || match label with Labelled _ -> true | _ -> false ->
+          get_implicits accept_labelless ((label, typ1) :: acc) typ2
+      | Tarrow (typ1, typ2, _, label) ->
+          let acc, typ = get_implicits false acc typ2 in
+          ( acc
+          , { type_desc= Tarrow (typ1, typ, Explicit, label)
+            ; type_id= next_id ()
+            ; type_depth= typ.type_depth
+            ; type_mode= typ.type_mode } )
+      | _ ->
+          (List.rev acc, typ)
+    in
+    get_implicits true acc typ
 
   let new_implicit_var ?(loc = Location.none) typ env =
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.resolve_env.type_env in
