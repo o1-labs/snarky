@@ -1,0 +1,7 @@
+let f = fun (x : Boolean.t) => {
+  let g = Prover {
+    let y : bool = x;
+    ();
+  };
+  g ();
+};
