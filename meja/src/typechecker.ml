@@ -1014,7 +1014,14 @@ let rec get_expression mode env expected exp =
       in
       ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
   | Prover e ->
-      let e, env = get_expression Prover env expected e in
+      let typ = Envi.Type.mkvar Prover None env in
+      let typ_full =
+        Envi.Type.mk Prover
+          (Tarrow (Initial_env.Type.unit, typ, Explicit, Nolabel))
+          env
+      in
+      check_type ~loc Prover env typ_full expected ;
+      let e, env = get_expression Prover env typ e in
       ({exp_loc= loc; exp_type= expected; exp_desc= Prover e}, env)
   | LetOpen (lid, e) ->
       let try_unless_mode mode' =
