@@ -28,28 +28,30 @@ exception Error of Location.t * Envi.t * mode * error
 let bind_none x f = match x with Some x -> x | None -> f ()
 
 let unpack_decls mode ~loc typ ctyp env =
-  let unfold_typ () =
-    Option.map (Envi.TypeDecl.unfold_alias mode ~loc typ env) ~f:(fun typ ->
-        (typ, ctyp) )
-  in
-  let unfold_ctyp () =
-    Option.map (Envi.TypeDecl.unfold_alias mode ~loc ctyp env) ~f:(fun ctyp ->
-        (typ, ctyp) )
-  in
-  match (typ.type_desc, ctyp.type_desc) with
-  | Tctor variant, Tctor cvariant ->
-      let decl_id, cdecl_id =
-        (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
-      in
-      (* Try to unfold the oldest type definition first. *)
-      if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
-      else bind_none (Some (unfold_typ ())) unfold_ctyp
-  | Tctor _, _ ->
-      unfold_typ ()
-  | _, Tctor _ ->
-      unfold_ctyp ()
-  | _ ->
-      None
+  if Int.equal typ.type_id ctyp.type_id then Some (typ, ctyp)
+  else
+    let unfold_typ () =
+      Option.map (Envi.TypeDecl.unfold_alias mode ~loc typ env) ~f:(fun typ ->
+          (typ, ctyp) )
+    in
+    let unfold_ctyp () =
+      Option.map (Envi.TypeDecl.unfold_alias mode ~loc ctyp env)
+        ~f:(fun ctyp -> (typ, ctyp))
+    in
+    match (typ.type_desc, ctyp.type_desc) with
+    | Tctor variant, Tctor cvariant ->
+        let decl_id, cdecl_id =
+          (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
+        in
+        (* Try to unfold the oldest type definition first. *)
+        if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
+        else bind_none (Some (unfold_typ ())) unfold_ctyp
+    | Tctor _, _ ->
+        unfold_typ ()
+    | _, Tctor _ ->
+        unfold_ctyp ()
+    | _ ->
+        None
 
 let rec check_type_aux mode ~loc typ ctyp env =
   let check_type_aux = check_type_aux mode ~loc in
@@ -244,22 +246,31 @@ let rec is_subtype mode ~loc env typ ~of_:ctyp =
           false )
       && is_subtype typ1 ~of_:ctyp1 && is_subtype typ2 ~of_:ctyp2
   | Tctor variant, Tctor constr_variant -> (
-      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-      then
-        match
-          List.for_all2 variant.var_params constr_variant.var_params
-            ~f:(fun param constr_param -> is_subtype param ~of_:constr_param)
-        with
-        | Ok x ->
-            x
-        | Unequal_lengths ->
-            false
-      else
-        match unpack_decls mode ~loc typ ctyp env with
-        | Some (typ, ctyp) ->
-            is_subtype typ ~of_:ctyp
-        | None ->
-            false )
+    (* Always try to unfold first, so that type aliases with phantom
+         parameters can unify, as in OCaml.
+      *)
+    match unpack_decls mode ~loc typ ctyp env with
+    | Some (typ, ctyp) ->
+        is_subtype typ ~of_:ctyp
+    | None ->
+        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
+        then
+          match
+            List.for_all2 variant.var_params constr_variant.var_params
+              ~f:(fun param constr_param -> is_subtype param ~of_:constr_param)
+          with
+          | Ok x ->
+              x
+          | Unequal_lengths ->
+              false
+        else false )
+  | Tctor _, _ | _, Tctor _ -> (
+    (* Unfold an alias and compare again *)
+    match unpack_decls mode ~loc typ ctyp env with
+    | Some (typ, ctyp) ->
+        is_subtype typ ~of_:ctyp
+    | None ->
+        false )
   | _, _ ->
       false
 
