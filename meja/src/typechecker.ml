@@ -106,25 +106,25 @@ let rec check_type_aux mode ~loc typ ctyp env =
   | ( Tarrow (typ1, typ2, Explicit, label1)
     , Tarrow (ctyp1, ctyp2, Explicit, label2) )
   | ( Tarrow (typ1, typ2, Implicit, label1)
-    , Tarrow (ctyp1, ctyp2, Implicit, label2) ) ->
-      ( match (label1, label2) with
-      | Nolabel, Nolabel ->
-      check_type_aux typ1 ctyp1 env ;
-      check_type_aux typ2 ctyp2 env
-      | Labelled x, Labelled y when String.equal x y ->
-      check_type_aux typ1 ctyp1 env ;
-      check_type_aux typ2 ctyp2 env
-      | Optional x, Optional y when String.equal x y ->
-      check_type_aux typ1 ctyp1 env ;
-      check_type_aux typ2 ctyp2 env
-      | Labelled x, Optional y when String.equal x y ->
-      check_type_aux (Initial_env.Type.option typ1) ctyp1 env;
-      check_type_aux typ2 ctyp2 env
-      | Optional x, Labelled y when String.equal x y ->
-      check_type_aux (Initial_env.Type.option typ1) ctyp1 env;
-      check_type_aux typ2 ctyp2 env
-      | _ ->
-          raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) ) ;
+    , Tarrow (ctyp1, ctyp2, Implicit, label2) ) -> (
+    match (label1, label2) with
+    | Nolabel, Nolabel ->
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Labelled x, Labelled y when String.equal x y ->
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Optional x, Optional y when String.equal x y ->
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Labelled x, Optional y when String.equal x y ->
+        check_type_aux (Initial_env.Type.option typ1) ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Optional x, Labelled y when String.equal x y ->
+        check_type_aux (Initial_env.Type.option typ1) ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | _ ->
+        raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) )
   | Tctor variant, Tctor constr_variant -> (
     (* Always try to unfold first, so that type aliases with phantom
          parameters can unify, as in OCaml.
