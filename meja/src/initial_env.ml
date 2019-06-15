@@ -22,6 +22,8 @@ module TypeDecls = struct
 
   let float = abstract "float"
 
+  let floatarray = abstract "floatarray"
+
   let exn = open_ "exn"
 
   let option =
@@ -75,6 +77,8 @@ let bool, env = import Checked bool env
 let string, env = import Checked string env
 
 let float, env = import Checked float env
+
+let floatarray, env = import Checked floatarray env
 
 let exn, env = import Checked exn env
 
