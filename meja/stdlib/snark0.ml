@@ -167,7 +167,7 @@ let ocaml =
 
     let var_of_value : value -> var;
 
-    instance typ : Typ.t(var, value);
+    instance typ : Typ.t(bool_var, bool);
 
     let equal : var -> var -> var;
 
@@ -938,5 +938,55 @@ let prover =
   module Handler = {
     type t = Handler.t;
   };
+
+  let in_prover_block = As_prover.in_prover_block;
+
+  let read_var = As_prover.read_var;
+
+  let read = As_prover.read;
+
+  let of_int = As_prover.of_int;
+
+  let one = As_prover.one;
+
+  let zero = As_prover.zero;
+
+  let add = As_prover.add;
+
+  let sub = As_prover.sub;
+
+  let mul = As_prover.mul;
+
+  let inv = As_prover.inv;
+
+  let square = As_prover.square;
+
+  let sqrt = As_prover.sqrt;
+
+  let is_square = As_prover.is_square;
+
+  let equal = As_prover.equal;
+
+  let size_in_bits = As_prover.size_in_bits;
+
+  let print = As_prover.print;
+
+  let random = As_prover.random;
+
+  let to_string = As_prover.to_string;
+
+  let negate = As_prover.negate;
+
+  let (+) = As_prover.(+);
+
+  let (*) = As_prover.(*);
+
+  let (-) = As_prover.(-);
+
+  let (/) = As_prover.(/);
+
+  let unpack = As_prover.unpack;
+
+  let project = As_prover.project;
 |}
   )

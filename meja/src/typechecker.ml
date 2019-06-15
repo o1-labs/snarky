@@ -634,6 +634,25 @@ let rec get_expression mode env expected exp =
       in
       let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
       let e = Envi.Type.generate_implicits e env in
+      let e, env =
+        if mode = Prover && typ.type_mode = Checked then
+          let read =
+            Ast_build.(Loc.mk ~loc (Lid.of_list ["As_prover"; "read"]))
+          in
+          let read_exp =
+            {exp_loc= loc; exp_type= typ; exp_desc= Variable read}
+          in
+          let ret_type = Envi.Type.mkvar mode None env in
+          let read_typ =
+            Envi.Type.mk mode (Tarrow (typ, ret_type, Explicit, Nolabel)) env
+          in
+          let read_exp, env = get_expression mode env read_typ read_exp in
+          ( { exp_loc= loc
+            ; exp_type= ret_type
+            ; exp_desc= Apply (read_exp, [(Nolabel, e)]) }
+          , env )
+        else (e, env)
+      in
       check_type mode ~loc env expected e.exp_type ;
       (e, env)
   | Literal (Int i) ->

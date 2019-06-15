@@ -34,7 +34,7 @@ module TypeEnvi = struct
     { variable_instances: type_expr Int.Map.t
     ; implicit_id: int
     ; implicit_vars: Parsetypes.expression list
-    ; instances: (int * type_expr) list
+    ; instances: (int * Longident.t * type_expr) list
     ; predeclared_types:
         (int (* id *) * int option ref (* num. args *) * Location.t)
         String.Map.t }
@@ -63,8 +63,8 @@ module TypeEnvi = struct
 
   let next_instance_id env = (next_id (), env)
 
-  let add_implicit_instance id typ env =
-    {env with instances= (id, typ) :: env.instances}
+  let add_implicit_instance id canonical_path typ env =
+    {env with instances= (id, canonical_path, typ) :: env.instances}
 end
 
 type 'a or_deferred =
@@ -739,7 +739,9 @@ let add_implicit_instance name typ env =
              {scope with instances= Map.set ~key:id ~data:path scope.instances}
          ))
   in
-  env.resolve_env.type_env <- TypeEnvi.add_implicit_instance id typ type_env ;
+  let canonical_path = relative_path env OCaml name in
+  env.resolve_env.type_env
+  <- TypeEnvi.add_implicit_instance id canonical_path typ type_env ;
   env
 
 let find_of_lident ~kind ~get_name mode (lid : lid) env =
@@ -889,6 +891,7 @@ module Type = struct
     (new_vars, new_vars_map, env)
 
   let rec copy mode ~loc typ new_vars_map env =
+    let mode = if typ.type_mode = OCaml then mode else typ.type_mode in
     let copy = copy mode ~loc in
     match typ.type_desc with
     | Tvar _ -> (
@@ -1107,14 +1110,15 @@ module Type = struct
       ~(is_subtype : env -> type_expr -> of_:type_expr -> bool)
       (typ : type_expr) env =
     List.filter_map env.resolve_env.type_env.instances
-      ~f:(fun (id, instance_typ) ->
+      ~f:(fun (id, canonical_path, instance_typ) ->
         let instance_typ = copy mode ~loc instance_typ Int.Map.empty env in
         if is_subtype env typ ~of_:instance_typ then
           List.find_map env.scope_stack
             ~f:
               (FullScope.on_scope_opt mode ~f:(fun {instances; _} ->
-                   Option.map (Map.find instances id) ~f:(fun path ->
-                       (path, instance_typ) ) ))
+                   match Map.find instances id with
+                   | Some path -> Some (path, instance_typ)
+                   | None -> Some (canonical_path, instance_typ)))
         else None )
 
   let generate_implicits e env =
