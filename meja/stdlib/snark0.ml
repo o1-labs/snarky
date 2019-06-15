@@ -456,7 +456,7 @@ let ocaml =
   let handle : (unit -> 'a) -> Handler.t -> 'a;
 
   let handle_as_prover :
-    (unit -> 'a) -> (unit -> As_prover.t(Handler.t)) -> 'a;
+    (unit -> 'a) -> As_prover.t((unit -> Handler.t)) -> 'a;
 
   let with_label : string -> (unit -> 'a) -> 'a;
 
