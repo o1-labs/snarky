@@ -400,6 +400,10 @@ expr:
     { mkexp ~pos:$loc (Handler (List.rev rev_cases)) }
   | PROVER LBRACE x = block RBRACE
     { mkexp ~pos:$loc (Prover x) }
+  | x = as_loc(longident(UIDENT, UIDENT)) DOT LBRACKET e = expr RBRACKET
+    { mkexp ~pos:$loc (LetOpen (x, e)) }
+  | x = as_loc(longident(UIDENT, UIDENT)) DOT LBRACE e = block RBRACE
+    { mkexp ~pos:$loc (LetOpen (x, e)) }
 
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE

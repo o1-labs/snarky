@@ -80,15 +80,17 @@ type 'a resolve_env =
 module Scope = struct
   type 'a or_path = Immediate of 'a | Deferred of Longident.t
 
-  type kind = Module | Expr | Open | Continue | Functor
+  type kind = Module | Open | Expr | ExprOpen | Continue | Functor
 
   let kind_to_string = function
     | Module ->
         "module"
-    | Expr ->
-        "expr"
     | Open ->
         "open"
+    | Expr ->
+        "expr"
+    | ExprOpen ->
+        "expr-open"
     | Continue ->
         "continue"
     | Functor ->
@@ -555,15 +557,16 @@ let current_scope {scope_stack; _} =
       raise (Error (of_prim __POS__, No_open_scopes))
 
 let push_scope scope env =
-  ( match (env.scope_stack, scope.FullScope.kind) with
-  | {kind= Expr; _} :: _, (Module | Open | Continue) ->
-      raise (Error (of_prim __POS__, Wrong_scope_kind "expression"))
+  (*( match (env.scope_stack, scope.FullScope.kind) with
+  | {kind= (Expr | ExprOpen) as kind; _} :: _, (Module | Open | Continue) ->
+    failwith (Scope.kind_to_string kind ^ " " ^ Scope.kind_to_string scope.FullScope.kind)
+      (*raise (Error (of_prim __POS__, Wrong_scope_kind "expression"))*)
   | {kind= Module | Open | Continue | Expr; _} :: _, Functor ->
       raise (Error (of_prim __POS__, Wrong_scope_kind "non_functor"))
   | {kind= Functor; _} :: _, _ ->
       raise (Error (of_prim __POS__, Functor_in_module_sig))
   | _ ->
-      () ) ;
+      () ) ;*)
   {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
 
 let current_path mode env =
@@ -594,6 +597,12 @@ let open_absolute_module path mode env =
 let open_continue_module mode env =
   push_scope FullScope.(empty mode (current_path mode env) Continue) env
 
+let open_expr_namespace_scope scope mode env =
+  let path = current_path mode env in
+  env
+  |> push_scope {scope with kind= Scope.ExprOpen}
+  |> push_scope FullScope.(empty mode path Continue)
+
 let open_namespace_scope scope mode env =
   let path = current_path mode env in
   env
@@ -610,7 +619,7 @@ let pop_scope env =
 let pop_expr_scope env =
   let scope, env = pop_scope env in
   match scope.Scope.kind with
-  | Scope.Expr ->
+  | Scope.Expr | Scope.ExprOpen ->
       (scope, env)
   | _ ->
       raise (Error (of_prim __POS__, Wrong_scope_kind "expression"))
@@ -621,7 +630,7 @@ let pop_module ~loc env =
     match scope.kind with
     | Scope.Module ->
         (scope :: scopes, env)
-    | Expr ->
+    | Expr | ExprOpen ->
         raise (Error (of_prim __POS__, Wrong_scope_kind "module"))
     | Open ->
         all_scopes scopes env

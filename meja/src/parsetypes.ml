@@ -83,6 +83,7 @@ and expression_desc =
   | Unifiable of {mutable expression: expression option; name: str; id: int}
   | Prover of expression
   | Handler of (pattern * expression) list
+  | LetOpen of lid * expression
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 

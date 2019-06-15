@@ -1010,6 +1010,25 @@ let rec get_expression mode env expected exp =
       let e, env = get_expression Prover env Initial_env.Type.unit e in
       check_type mode ~loc env expected Initial_env.Type.unit ;
       ({exp_loc= loc; exp_type= expected; exp_desc= Prover e}, env)
+  | LetOpen (lid, e) ->
+      let try_unless_mode mode' =
+        try Envi.find_module ~loc mode' lid env with
+        | err when mode = mode' ->
+            raise err
+        | _ ->
+            Envi.Scope.empty (Envi.current_path mode env)
+      in
+      (* An open operates across all scopes. *)
+      let m =
+        { Envi.FullScope.kind= ExprOpen
+        ; ocaml_scope= try_unless_mode OCaml
+        ; checked_scope= Some (try_unless_mode Checked)
+        ; prover_scope= try_unless_mode Prover }
+      in
+      let env = Envi.open_expr_namespace_scope m mode env in
+      let (e, env) = get_expression mode env expected e in
+      let _, env = Envi.pop_scope env in
+      ({exp_loc= loc; exp_type= expected; exp_desc= LetOpen (lid, e)}, env)
 
 and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in

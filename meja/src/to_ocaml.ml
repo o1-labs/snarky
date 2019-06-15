@@ -164,6 +164,8 @@ let rec of_expression_desc ?loc = function
       Exp.function_ ?loc (cases @ [default])
   | Prover e ->
       of_expression e
+  | LetOpen (lid, e) ->
+      Exp.open_ Fresh lid (of_expression e)
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(
