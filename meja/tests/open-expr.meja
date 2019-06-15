@@ -1,0 +1,12 @@
+module X = {
+  let x = 15;
+};
+
+/*
+let y = X.(x);
+*/
+
+let z = X.{
+  ignore (x = x);
+  x;
+};
