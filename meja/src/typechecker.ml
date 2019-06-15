@@ -1026,7 +1026,7 @@ let rec get_expression mode env expected exp =
         ; prover_scope= try_unless_mode Prover }
       in
       let env = Envi.open_expr_namespace_scope m mode env in
-      let (e, env) = get_expression mode env expected e in
+      let e, env = get_expression mode env expected e in
       let _, env = Envi.pop_scope env in
       ({exp_loc= loc; exp_type= expected; exp_desc= LetOpen (lid, e)}, env)
 
@@ -1328,8 +1328,7 @@ let rec check_statement mode env stmt =
                               Option.value newname ~default:name.txt
                             in
                             Envi.register_type_declaration_raw mode ~name
-                              (Lident name)
-                              decl env
+                              (Lident name) decl env
                         | Instance (name, _) ->
                             let typ, id =
                               Envi.find_name start_mode ~loc (mk_lid name) env

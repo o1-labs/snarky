@@ -1080,6 +1080,13 @@ module Type = struct
     match typ.type_desc with
     | Tarrow (typ1, typ2, Implicit, label) ->
         get_implicits ((label, typ1) :: acc) typ2
+    | Tarrow (typ1, typ2, Explicit, label) ->
+        let acc, typ = get_implicits acc typ2 in
+        ( acc
+        , { type_desc= Tarrow (typ1, typ, Explicit, label)
+          ; type_id= next_id ()
+          ; type_depth= typ.type_depth
+          ; type_mode= typ.type_mode } )
     | _ ->
         (List.rev acc, typ)
 
