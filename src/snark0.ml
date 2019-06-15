@@ -518,6 +518,8 @@ struct
       end
     end
 
+    type boolean = Boolean.var
+
     module Control = struct end
 
     let two_to_the n =
@@ -1496,6 +1498,8 @@ module Run = struct
 
       type value = bool
 
+      let to_field = to_field
+
       let true_ = true_
 
       let false_ = false_
@@ -1562,6 +1566,8 @@ module Run = struct
         let exactly_one l = run (exactly_one l)
       end
     end
+
+    type boolean = Boolean.var
 
     module Field = struct
       open Snark.Field

@@ -751,6 +751,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** Describes how to convert between {!type:t} and {!type:Var.t} values. *)
   end
 
+  type boolean = Boolean.var
+
   module Let_syntax :
     Monad_let.Syntax2 with type ('a, 's) t := ('a, 's) Checked.t
 
@@ -1550,6 +1552,8 @@ module type Run_basic = sig
 
     type value = bool
 
+    val to_field : var -> Field.t
+
     val true_ : var
 
     val false_ : var
@@ -1739,6 +1743,8 @@ module type Run_basic = sig
 
     val typ : (t, Constant.t) Typ.t
   end
+
+  type boolean = Boolean.var
 
   module Proof : sig
     type t

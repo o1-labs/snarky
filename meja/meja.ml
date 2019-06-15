@@ -52,19 +52,27 @@ let add_preamble impl_mod curve proofs ast =
   let open Longident in
   let mkloc x = Location.(mkloc x none) in
   let dot y x = Ldot (x, y) in
-  let snarky_make = Lident "Snarky" |> dot "Snark" |> dot "Make" in
+  let snarky_make =
+    Lident "Snarky" |> dot "Snark" |> dot "Run" |> dot "Make"
+  in
   let backend_path =
     Lident "Snarky" |> dot "Backends" |> dot curve |> dot proofs
   in
-  let snarky_impl_path = mkloc (Lapply (snarky_make, backend_path)) in
+  let unit_module = Lident "Core_kernel" |> dot "Unit" in
+  let snarky_impl_path =
+    mkloc (Lapply (Lapply (snarky_make, backend_path), unit_module))
+  in
   let snarky_impl =
     Module
       ( mkloc impl_mod
       , {mod_desc= ModName snarky_impl_path; mod_loc= Location.none} )
   in
-  let snarky_open = Open (mkloc (Lident impl_mod)) in
+  let impl_open = Open (mkloc (Lident impl_mod)) in
+  let snarky_open = Open (mkloc (Lident "Snarky")) in
+  let snarky_snark_open = Open (mkloc (Ldot (Lident "Snarky", "Snark"))) in
   let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in
-  mk_stmt snarky_impl :: mk_stmt snarky_open :: ast
+  mk_stmt snarky_open :: mk_stmt snarky_snark_open :: mk_stmt snarky_impl
+  :: mk_stmt impl_open :: ast
 
 let main =
   let file = ref None in
