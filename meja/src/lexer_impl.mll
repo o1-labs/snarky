@@ -26,6 +26,11 @@ let get_comment comment lexbuf =
   let s = Buffer.contents comment_buffer in
   Buffer.reset comment_buffer;
   s
+
+let string_buffer = Buffer.create 256
+let reset_string_buffer () = Buffer.reset string_buffer
+let get_stored_string () = Buffer.contents string_buffer
+let store_string_char c = Buffer.add_char string_buffer c
 }
 
 let newline = ('\r'* '\n')
@@ -98,6 +103,11 @@ rule token = parse
       COMMENT (comment) }
   | "/*/"
     { COMMENT ("") }
+  | "\"\""
+    { STRING ("") }
+  | "\""
+    { string lexbuf;
+      STRING (get_stored_string ()) }
 
   | "!" symbolchar * as op { PREFIXOP op }
   | ['~' '?'] symbolchar + as op { PREFIXOP op }
@@ -124,6 +134,19 @@ and comment = parse
     { new_line lexbuf; store_lexeme lexbuf; comment lexbuf }
   | _
     { store_lexeme lexbuf; comment lexbuf }
+
+and string = parse
+  | "\""
+    { () }
+  | "\\\""
+    { store_string_char '"';
+      string lexbuf }
+  | "\\"
+    { store_string_char '\\';
+      string lexbuf }
+  | (_ as c)
+    { store_string_char c;
+      string lexbuf }
 
 {
   let token lexbuf =
