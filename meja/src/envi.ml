@@ -1117,8 +1117,10 @@ module Type = struct
             ~f:
               (FullScope.on_scope_opt mode ~f:(fun {instances; _} ->
                    match Map.find instances id with
-                   | Some path -> Some (path, instance_typ)
-                   | None -> Some (canonical_path, instance_typ)))
+                   | Some path ->
+                       Some (path, instance_typ)
+                   | None ->
+                       Some (canonical_path, instance_typ) ))
         else None )
 
   let generate_implicits e env =
