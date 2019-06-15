@@ -31,6 +31,7 @@ let consexp ~pos hd tl =
 %token <string> FIELD
 %token <int> INT
 %token <bool> BOOL
+%token <string> STRING
 %token <string> LIDENT
 %token <string> UIDENT
 %token FUN
@@ -334,6 +335,8 @@ simpl_expr:
     { e }
   | e = simpl_expr DOT field = as_loc(longident(lident, UIDENT))
     { mkexp ~pos:$loc (Field (e, field)) }
+  | s = STRING
+    { mkexp ~pos:$loc (Literal (String s)) }
 
 expr:
   | x = simpl_expr
