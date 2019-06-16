@@ -1035,10 +1035,20 @@ module Type = struct
           -1
       | _, Tvar _ ->
           1
-      | ( Tctor {var_decl= {tdec_id= id1; _}; var_params= params1; _}
-        , Tctor {var_decl= {tdec_id= id2; _}; var_params= params2; _} ) ->
+      | ( Tctor
+            { var_decl= {tdec_id= id1; _}
+            ; var_params= params1
+            ; var_length= length1
+            ; _ }
+        , Tctor
+            { var_decl= {tdec_id= id2; _}
+            ; var_params= params2
+            ; var_length= length2
+            ; _ } ) ->
           or_compare (Int.compare id1 id2) ~f:(fun () ->
-              compare_all params1 params2 )
+              or_compare
+                ([%compare: int option] length1 length2)
+                ~f:(fun () -> compare_all params1 params2) )
       | Tctor _, _ ->
           -1
       | _, Tctor _ ->
@@ -1368,14 +1378,15 @@ module TypeDecl = struct
     ; tdec_desc= desc
     ; tdec_id }
 
-  let mk_typ mode ~params ?ident decl =
+  let mk_typ mode ~params ?ident ?length decl =
     let ident = Option.value ident ~default:(mk_lid decl.tdec_ident) in
     Type.mk mode
       (Tctor
          { var_ident= ident
          ; var_params= params
          ; var_implicit_params= []
-         ; var_decl= decl })
+         ; var_decl= decl
+         ; var_length= length })
 
   let find_of_type ~loc typ env =
     let open Option.Let_syntax in
@@ -1457,7 +1468,8 @@ let pp_decl_typ ppf decl =
           { var_ident= mk_lid decl.tdec_ident
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params
-          ; var_decl= decl }
+          ; var_decl= decl
+          ; var_length= None (* TODO *) }
     ; type_id= -1
     ; type_depth= -1
     ; type_mode= OCaml }

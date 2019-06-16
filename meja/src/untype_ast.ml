@@ -16,6 +16,7 @@ let rec type_desc ?loc = function
       { var_ident= ident
       ; var_params= params
       ; var_implicit_params= implicits
+      ; var_length= _
       ; var_decl= _ } ->
       let params = List.map ~f:(type_expr ?loc) params in
       let implicits = List.map ~f:(type_expr ?loc) implicits in

@@ -4,8 +4,11 @@ type error =
   | Wrong_number_implicit_args of Longident.t * int * int
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
+  | Length_on_non_list_type of Longident.t
 
 exception Error of Location.t * error
+
+val list : Type0.type_decl option ref
 
 module Type : sig
   val import :

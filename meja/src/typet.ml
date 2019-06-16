@@ -10,8 +10,12 @@ type error =
   | Wrong_number_implicit_args of Longident.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
+  | Length_on_non_list_type of Longident.t
 
 exception Error of Location.t * error
+
+(* TODO: undo hack *)
+let list = ref None
 
 module Type = struct
   open Type
@@ -58,7 +62,9 @@ module Type = struct
         let env = close_expr_scope env in
         (mk mode (Tpoly (vars, typ)) env, env)
     | Tctor variant -> (
-        let {var_ident; var_params; var_implicit_params; _} = variant in
+        let {var_ident; var_params; var_implicit_params; var_length; _} =
+          variant
+        in
         let decl = raw_find_type_declaration mode var_ident env in
         let import_implicits () =
           List.fold_map ~init:env decl.tdec_implicit_params
@@ -102,6 +108,15 @@ module Type = struct
                       (env, param) )
                 else import_implicits ()
             in
+            ( match !list with
+            | None ->
+                ()
+            | Some (list : Type0.type_decl) ->
+                if
+                  Option.is_some var_length
+                  && not (Int.equal decl.tdec_id list.tdec_id)
+                then raise (Error (loc, Length_on_non_list_type var_ident.txt))
+            ) ;
             if not (Int.equal given_args_length expected_args_length) then
               raise
                 (Error
@@ -115,7 +130,11 @@ module Type = struct
                   (env, param) )
             in
             let variant =
-              {Type0.var_params; var_ident; var_decl= decl; var_implicit_params}
+              { Type0.var_params
+              ; var_ident
+              ; var_decl= decl
+              ; var_implicit_params
+              ; var_length }
             in
             (mk mode (Tctor variant) env, env) )
     | Ttuple typs ->
@@ -453,7 +472,8 @@ let pp_decl_typ ppf decl =
         Tctor
           { var_ident= mk_lid decl.tdec_ident
           ; var_params= decl.tdec_params
-          ; var_implicit_params= decl.tdec_implicit_params }
+          ; var_implicit_params= decl.tdec_implicit_params
+          ; var_length= None (* TODO *) }
     ; type_id= -1
     ; type_loc= Location.none }
 
@@ -470,6 +490,9 @@ let report_error ppf = function
         "@[The type constructor @[<h>%a@] expects %d implicit argument(s)@ \
          but is here applied to %d implicit argument(s).@]"
         Longident.pp lid expected given
+  | Length_on_non_list_type lid ->
+      fprintf ppf "@[The type constructor @[<h>%a@] cannot take a length.@]"
+        Longident.pp lid
   | Expected_type_var typ ->
       fprintf ppf
         "@[<hov>Syntax error: Expected a type parameter, but got @[<h>%a@].@]"

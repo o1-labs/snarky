@@ -86,6 +86,8 @@ let option, env = import Checked option env
 
 let list, env = import Checked list env
 
+let () = Typet.list := Some list
+
 let bytes, env = import Checked bytes env
 
 let int32, env = import Checked int32 env

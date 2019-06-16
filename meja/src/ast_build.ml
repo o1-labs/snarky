@@ -47,7 +47,8 @@ module Type = struct
   let variant ?loc ?(params = []) ?(implicits = []) ident =
     { var_ident= Loc.mk ident ?loc
     ; var_params= params
-    ; var_implicit_params= implicits }
+    ; var_implicit_params= implicits
+    ; var_length= None }
 
   let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, explicit))
 
