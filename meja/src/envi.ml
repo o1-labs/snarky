@@ -1503,18 +1503,19 @@ let add_name_raw mode (name : str) typ id =
 let find_name_poly ~loc mode (lid : lid) env =
   match find_of_lident ~kind:"name" mode ~get_name:Scope.get_name lid env with
   | Some (typ, i) ->
-      let vars, new_vars_map, typ = (match typ.type_desc with
-      | Tpoly (vars, typ) ->
-        let vars, new_vars_map, _env =
-          Type.refresh_vars mode ~loc vars Int.Map.empty env
-        in
-        (vars, new_vars_map, typ)
-      | _ -> ([], Int.Map.empty, typ))
+      let vars, new_vars_map, typ =
+        match typ.type_desc with
+        | Tpoly (vars, typ) ->
+            let vars, new_vars_map, _env =
+              Type.refresh_vars mode ~loc vars Int.Map.empty env
+            in
+            (vars, new_vars_map, typ)
+        | _ ->
+            ([], Int.Map.empty, typ)
       in
       let typ = Type.copy ~loc mode typ new_vars_map env in
-      let typ = match vars with
-      | [] -> typ
-      | _ -> Type.mk mode (Tpoly (vars, typ)) env
+      let typ =
+        match vars with [] -> typ | _ -> Type.mk mode (Tpoly (vars, typ)) env
       in
       (typ, i)
   | None ->
