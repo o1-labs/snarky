@@ -1894,6 +1894,8 @@ module type Run_basic = sig
 
   val assert_r1cs : ?label:string -> Field.t -> Field.t -> Field.t -> unit
 
+  val assert_r1 : Field.t -> Field.t -> Field.t -> unit
+
   val assert_square : ?label:string -> Field.t -> Field.t -> unit
 
   val as_prover : (unit -> unit) As_prover.t -> unit

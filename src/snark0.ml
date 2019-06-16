@@ -1887,6 +1887,8 @@ module Run = struct
 
     let assert_r1cs ?label a b c = run (assert_r1cs ?label a b c)
 
+    let assert_r1 a b c = assert_r1cs ?label:None a b c
+
     let assert_square ?label x y = run (assert_square ?label x y)
 
     let as_prover p = run (as_prover (As_prover.run_prover p))
