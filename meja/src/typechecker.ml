@@ -1075,8 +1075,9 @@ let rec get_expression mode env expected exp =
   | MakeRequest e ->
       let e =
         Ast_build.(
-          Exp.apply ~loc (Exp.var ~loc (Lid.of_name "exists"))
-          [Labelled "request", Exp.prover ~loc e])
+          Exp.apply ~loc
+            (Exp.var ~loc (Lid.of_name "exists"))
+            [(Labelled "request", Exp.prover ~loc e)])
       in
       get_expression mode env expected e
 
@@ -1346,6 +1347,7 @@ let rec check_statement mode env stmt =
       (env, {stmt with stmt_desc= Instance (name, e)})
   | TypeDecl decl when !in_decl ->
       let decl, env = Typet.TypeDecl.import mode decl env in
+      let decl = Envi.TypeDecl.normalise_constr_names OCaml env decl in
       let stmt =
         {stmt with stmt_desc= TypeDecl (Untype_ast.type_decl ~loc decl)}
       in
@@ -1432,7 +1434,17 @@ let rec check_statement mode env stmt =
       in
       (Envi.open_namespace_scope m mode env, stmt)
   | TypeExtension (variant, ctors) ->
-      let env, _variant, _ctors = type_extension mode ~loc variant ctors env in
+      let env, variant, ctors = type_extension mode ~loc variant ctors env in
+      let ctors =
+        List.map
+          ~f:(Envi.TypeDecl.ctor_arg_normalise_constr_names OCaml env)
+          ctors
+      in
+      let ctors = List.map ~f:(Untype_ast.ctor_decl ~loc) ctors in
+      let variant =
+        Envi.Type.variant_normalise_constr_names OCaml env variant
+      in
+      let variant = Untype_ast.variant ~loc variant in
       (env, {stmt with stmt_desc= TypeExtension (variant, ctors)})
   | Request (arg, ctor_decl, handler) ->
       let open Ast_build in
@@ -1446,13 +1458,10 @@ let rec check_statement mode env stmt =
       let ctor_decl =
         match ctors with
         | [ctor] ->
-            { (Untype_ast.ctor_decl ~loc ctor) with
-              ctor_ret=
-                Some
-                  (Type.mk ~loc
-                     (Tctor
-                        (Type.variant ~loc ~params:[arg]
-                           (Lid.of_list ["Request"; "t"])))) }
+            let ctor =
+              Envi.TypeDecl.ctor_arg_normalise_constr_names OCaml env ctor
+            in
+            Untype_ast.ctor_decl ~loc ctor
         | _ ->
             failwith "Wrong number of constructors returned for Request."
       in

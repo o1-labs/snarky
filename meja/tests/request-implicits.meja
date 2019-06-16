@@ -17,6 +17,7 @@ let get_path : tuple(boolean) -> unit = fun (addr : tuple(boolean)) : unit => {
   ();
 };
 
+// Matt: OCaml printed type is now correct.
 request (boolean) Get_bit;
 
 // Typechecks but doesn't pass the required typ for the output

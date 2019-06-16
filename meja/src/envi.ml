@@ -1303,14 +1303,18 @@ module Type = struct
     | Tpoly (typs, typ) ->
         mk mode (Tpoly (typs, constr_map mode env ~f typ)) env
 
+  let variant_normalise_constr_names mode env variant =
+    match find_preferred_name mode variant.var_decl.tdec_id env with
+    | Some ident ->
+        {variant with var_ident= {txt= ident; loc= variant.var_ident.loc}}
+    | None ->
+        variant
+
+  let normalise_one_constr mode env variant =
+    Tctor (variant_normalise_constr_names mode env variant)
+
   let normalise_constr_names mode env typ =
-    constr_map mode env typ ~f:(fun variant ->
-        match find_preferred_name mode variant.var_decl.tdec_id env with
-        | Some ident ->
-            Tctor
-              {variant with var_ident= {txt= ident; loc= variant.var_ident.loc}}
-        | None ->
-            Tctor variant )
+    constr_map mode env typ ~f:(normalise_one_constr mode env)
 
   let rec bubble_label_aux mode env label typ =
     match typ.type_desc with
@@ -1434,6 +1438,51 @@ module TypeDecl = struct
         find_unaliased_of_type mode ~loc typ env
     | ret ->
         ret
+
+  let field_constr_map mode env ~f field_decl =
+    {field_decl with fld_type= Type.constr_map mode env ~f field_decl.fld_type}
+
+  let field_normalise_constr_names mode env typ =
+    field_constr_map mode env typ ~f:(Type.normalise_one_constr mode env)
+
+  let rec constr_map mode env ~f decl =
+    match decl.tdec_desc with
+    | TAbstract | TOpen | TForward _ | TUnfold _ ->
+        decl
+    | TRecord field_decls ->
+        { decl with
+          tdec_desc=
+            TRecord (List.map ~f:(field_constr_map mode env ~f) field_decls) }
+    | TVariant ctors ->
+        { decl with
+          tdec_desc=
+            TVariant (List.map ~f:(ctor_arg_constr_map mode env ~f) ctors) }
+    | TAlias typ ->
+        {decl with tdec_desc= TAlias (Type.constr_map mode env ~f typ)}
+    | TExtend (lid, type_decl, ctors) ->
+        { decl with
+          tdec_desc=
+            TExtend
+              ( lid
+              , constr_map mode env ~f type_decl
+              , List.map ~f:(ctor_arg_constr_map mode env ~f) ctors ) }
+
+  and ctor_arg_constr_map mode env ~f ctor =
+    let ctor_args =
+      match ctor.ctor_args with
+      | Ctor_tuple typs ->
+          Ctor_tuple (List.map ~f:(Type.constr_map mode env ~f) typs)
+      | Ctor_record decl ->
+          Ctor_record (constr_map mode env ~f decl)
+    in
+    let ctor_ret = Option.map ~f:(Type.constr_map mode env ~f) ctor.ctor_ret in
+    {ctor with ctor_args; ctor_ret}
+
+  let normalise_constr_names mode env typ =
+    constr_map mode env typ ~f:(Type.normalise_one_constr mode env)
+
+  let ctor_arg_normalise_constr_names mode env typ =
+    ctor_arg_constr_map mode env typ ~f:(Type.normalise_one_constr mode env)
 end
 
 let add_name (name : str) typ =
