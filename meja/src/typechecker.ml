@@ -1045,8 +1045,8 @@ let rec get_expression mode env expected exp =
               let request = makety ["Request"; "t"] 1 in
               patch_arg request typ ;
               let p, env =
-                check_pattern Prover ~add:(add_polymorphised Prover) env typ
-                  pat
+                check_pattern Prover ~add:(add_polymorphised Prover) env
+                  request pat
               in
               let response_user = makety ["Request"; "Response"; "t"] 1 in
               let response = makety ["Request"; "response"] 0 in
