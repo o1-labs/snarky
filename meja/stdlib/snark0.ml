@@ -122,7 +122,7 @@ let ocaml =
 
     instance unit : t(unit, unit);
 
-    instance field : t(field_var, field);
+    let field : t(field_var, field);
 
     let tuple2 :
          {t('var1, 'value1)}
@@ -821,7 +821,7 @@ let prover =
 
     instance unit = Typ.unit;
 
-    instance field = Typ.field;
+    let field = Typ.field;
 
     let tuple2 = Typ.tuple2;
 
@@ -883,7 +883,7 @@ let prover =
 
     let project = Field.Constant.project;
 
-    instance typ = Field.typ;
+    let typ = Field.typ;
 
   };
 
