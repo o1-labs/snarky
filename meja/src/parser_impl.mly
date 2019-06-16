@@ -164,7 +164,7 @@ structure_item:
     { let (x, params) = x in
       mkstmt ~pos:$loc (TypeExtension
         ( {var_ident= x; var_params= params; var_implicit_params= []}
-        , ctors)) }
+        , List.rev ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Request (arg, x, handler)) }
 

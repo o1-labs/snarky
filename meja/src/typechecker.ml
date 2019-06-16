@@ -594,7 +594,7 @@ and check_patterns mode ~add env typs pats =
 
 let rec get_expression mode env expected exp =
   let loc = exp.exp_loc in
-  match exp.exp_desc with
+  let (e, env) = match exp.exp_desc with
   | Apply (f, es) ->
       let f_typ = Envi.Type.mkvar mode None env in
       let f, env = get_expression mode env f_typ f in
@@ -1080,6 +1080,8 @@ let rec get_expression mode env expected exp =
             [(Labelled "request", Exp.prover ~loc e)])
       in
       get_expression mode env expected e
+  in
+  (e, env)
 
 and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
@@ -1599,10 +1601,10 @@ let check (ast : statement list) (env : Envi.t) =
 let rec check_alias ~out_mode ~in_mode env alias =
   match alias with
   | AValue (name, lid) ->
-      let typ, id = Envi.find_name ~loc:lid.loc in_mode lid env in
+      let typ, id = Envi.find_name_poly ~loc:lid.loc in_mode lid env in
       Envi.add_name_raw out_mode name typ id env
   | AInstance (name, lid) ->
-      let typ, id = Envi.find_name ~loc:lid.loc in_mode lid env in
+      let typ, id = Envi.find_name_poly ~loc:lid.loc in_mode lid env in
       let env = Envi.add_name_raw out_mode name typ id env in
       Envi.add_implicit_instance name.txt typ env
   | ATypeDecl (name, lid) ->

@@ -1500,6 +1500,26 @@ let add_name_raw mode (name : str) typ id =
   map_current_scope
     ~f:(FullScope.map_scope mode ~f:(Scope.add_name_raw name.txt typ id))
 
+let find_name_poly ~loc mode (lid : lid) env =
+  match find_of_lident ~kind:"name" mode ~get_name:Scope.get_name lid env with
+  | Some (typ, i) ->
+      let vars, new_vars_map, typ = (match typ.type_desc with
+      | Tpoly (vars, typ) ->
+        let vars, new_vars_map, _env =
+          Type.refresh_vars mode ~loc vars Int.Map.empty env
+        in
+        (vars, new_vars_map, typ)
+      | _ -> ([], Int.Map.empty, typ))
+      in
+      let typ = Type.copy ~loc mode typ new_vars_map env in
+      let typ = match vars with
+      | [] -> typ
+      | _ -> Type.mk mode (Tpoly (vars, typ)) env
+      in
+      (typ, i)
+  | None ->
+      raise (Error (lid.loc, Unbound_value lid.txt))
+
 let find_name ~loc mode (lid : lid) env =
   match find_of_lident ~kind:"name" mode ~get_name:Scope.get_name lid env with
   | Some (typ, i) ->
