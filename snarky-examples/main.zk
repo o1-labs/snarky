@@ -229,35 +229,30 @@ module Pedersen = {
   module Digest = {
     type t = field;
   };
+
   module Params = {
-  type t = array(quadruple((field, field)));
-
-  /* Is it possible to speak of something like this? */
-
-    /* I couldn't keep up the reason syntax for this one :p
-        It's ok if we don't have exceptions or whatever but I think there should probably be a way to
-        read from disk (or we could just hardcode things in meja files?).
-    let read path =
-      let f = open_in path in
-      let rec go acc =
-        try
-          let x = input_line f in
-          let y = input_line f in
-          go ((Field.of_string x, Field.of_string y) :: acc)
-        with _ -> beg
-          close_in f;
-          acc
-      in
-      Array.of_list (List.rev (go []))
-    */
-
-    let read : _ -> t = {
-      let z = (0, 0);
-      fun (_) => { Array.create(0i, (z, z, z, z)) ; };
-    }
+    type t = array(quadruple((field, field)));
   };
 
-  let params = Params.read(); /* "params" */
+let params = {
+    let comma = char_of_int(44i);
+    let semi_colon = char_of_int(59i);
+
+    let read_pair = fun (s) => {
+      switch (String.split_on_char(comma, s)) {
+        | [ x, y ] =>
+          (Field.of_string(x), Field.of_string(y))
+      };
+    };
+
+    let strs = Array.of_list(In_channel.read_lines("bn128-params"));
+
+    Array.map(fun (s) => {
+      switch ( List.map(read_pair, String.split_on_char(semi_colon, s)) ) {
+        | [x1, x2, x3, x4] => (x1, x2, x3, x4)
+      };
+    }, strs);
+  };
 
   /* 4 * 2 = 2 * 4 */
   let transpose : quadruple(double('a)) -> double(quadruple('a)) =
