@@ -1,0 +1,3 @@
+type t = list[3](int);
+
+let f = fun (xs : list[12]) => { xs; };
