@@ -1,78 +1,4 @@
 open Core_kernel
-open Meja_lib
-
-let print_position outx lexbuf =
-  let pos = lexbuf.Lexing.lex_curr_p in
-  Format.fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
-    (pos.pos_cnum - pos.pos_bol + 1)
-
-let parse_with_error parse lexbuf =
-  let open Format in
-  try parse lexbuf
-  with Parser_impl.Error ->
-    fprintf err_formatter "%a: syntax error\n" print_position lexbuf ;
-    pp_print_flush err_formatter () ;
-    exit 1
-
-let read_file parse filename =
-  let file = In_channel.create filename in
-  let lex = Lexing.from_channel file in
-  (* Set filename in lex_curr_p. *)
-  lex.Lexing.lex_curr_p
-  <- {lex.Lexing.lex_curr_p with Lexing.pos_fname= filename} ;
-  let ast = parse_with_error parse lex in
-  In_channel.close file ; ast
-
-let read_string ?at_line parse filename contents =
-  let lex = Lexing.from_string contents in
-  (* Set filename and current line in lex_curr_p. *)
-  let pos = {lex.Lexing.lex_curr_p with Lexing.pos_fname= filename} in
-  let pos =
-    match at_line with
-    | Some line ->
-        {pos with Lexing.pos_lnum= line}
-    | None ->
-        pos
-  in
-  lex.Lexing.lex_curr_p <- pos ;
-  parse_with_error parse lex
-
-let do_output filename f =
-  match filename with
-  | Some filename ->
-      let output =
-        Format.formatter_of_out_channel (Out_channel.create filename)
-      in
-      f output
-  | None ->
-      ()
-
-let add_preamble impl_mod curve proofs ast =
-  let open Parsetypes in
-  let open Longident in
-  let mkloc x = Location.(mkloc x none) in
-  let dot y x = Ldot (x, y) in
-  let snarky_make =
-    Lident "Snarky" |> dot "Snark" |> dot "Run" |> dot "Make"
-  in
-  let backend_path =
-    Lident "Snarky" |> dot "Backends" |> dot curve |> dot proofs
-  in
-  let unit_module = Lident "Core_kernel" |> dot "Unit" in
-  let snarky_impl_path =
-    mkloc (Lapply (Lapply (snarky_make, backend_path), unit_module))
-  in
-  let snarky_impl =
-    Module
-      ( mkloc impl_mod
-      , {mod_desc= ModName snarky_impl_path; mod_loc= Location.none} )
-  in
-  let impl_open = Open (mkloc (Lident impl_mod)) in
-  let snarky_open = Open (mkloc (Lident "Snarky")) in
-  let snarky_snark_open = Open (mkloc (Ldot (Lident "Snarky", "Snark"))) in
-  let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in
-  mk_stmt snarky_open :: mk_stmt snarky_snark_open :: mk_stmt snarky_impl
-  :: mk_stmt impl_open :: ast
 
 let main =
   let file = ref None in
@@ -152,139 +78,27 @@ let main =
       | None ->
           file := Some filename )
     usage_text ;
-  let env = Initial_env.env in
-  Printexc.record_backtrace !exn_backtraces ;
-  try
-    let env =
-      if !stdlib then (
-        match Sys.getenv_opt "OPAM_SWITCH_PREFIX" with
-        | Some opam_path ->
-            let lib_path = Filename.concat opam_path "lib" in
-            (* Load OCaml stdlib *)
-            Loader.load_directory env (Filename.concat lib_path "ocaml") ;
-            let stdlib_scope =
-              Loader.load ~loc:Location.none ~name:"Stdlib"
-                env.Envi.resolve_env
-                (Filename.concat lib_path "ocaml/stdlib.cmi")
-            in
-            Envi.open_namespace_scope stdlib_scope Checked env
-        | None ->
-            Format.(
-              fprintf err_formatter
-                "Warning: OPAM_SWITCH_PREFIX environment variable is not set. \
-                 Not loading the standard library.") ;
-            env )
-      else env
-    in
-    List.iter !cmi_dirs ~f:(Loader.load_directory env) ;
-    let cmi_files = List.rev !cmi_files in
-    let cmi_scopes =
-      List.map cmi_files ~f:(fun filename ->
-          Loader.load ~loc:Location.none
-            ~name:(Loader.modname_of_filename filename)
-            env.Envi.resolve_env filename )
-    in
-    let env =
-      List.fold ~init:env cmi_scopes ~f:(fun env scope ->
-          Envi.open_namespace_scope scope Checked env )
-    in
-    let env =
-      let open Meja_stdlib in
-      (* Load stdlib. *)
-      let snark0_line, snark0 = Snark0.ocaml in
-      let snark0_ast =
-        read_string ~at_line:snark0_line
-          (Parser_impl.interface Lexer_impl.token)
-          "snark0" snark0
-      in
-      let env = Envi.open_continue_module Checked env in
-      let env = Typechecker.check_signature' OCaml env snark0_ast in
-      (* Localise stdlib to checked. *)
-      let snark0_checked_line, snark0_checked = Snark0.checked in
-      let snark0_checked_alias =
-        read_string ~at_line:snark0_checked_line
-          (Parser_impl.alias_interface Lexer_impl.token)
-          "snark0_checked" snark0_checked
-      in
-      let env =
-        Typechecker.import_alias ~in_mode:OCaml ~out_mode:Checked
-          snark0_checked_alias env
-      in
-      (* Localise stdlib to prover. *)
-      let snark0_prover_line, snark0_prover = Snark0.prover in
-      let snark0_prover_alias =
-        read_string ~at_line:snark0_prover_line
-          (Parser_impl.alias_interface Lexer_impl.token)
-          "snark0_prover" snark0_prover
-      in
-      let env =
-        Typechecker.import_alias ~in_mode:OCaml ~out_mode:Prover
-          snark0_prover_alias env
-      in
-      env
-    in
-    let meji_files =
-      (*"meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji" :: *)
-      List.rev !meji_files
-    in
-    let env =
-      List.fold ~init:env meji_files ~f:(fun env file ->
-          let parse_ast =
-            read_file (Parser_impl.interface Lexer_impl.token) file
-          in
-          let module_name = Loader.modname_of_filename file in
-          let env =
-            Envi.open_absolute_module (Some (Longident.Lident module_name))
-              Checked env
-          in
-          let env = Typechecker.check_signature env parse_ast in
-          let m, env = Envi.pop_module ~loc:Location.none env in
-          let name = Location.(mkloc module_name none) in
-          Envi.add_module Checked name m env )
-    in
-    let file =
-      match !file with
-      | Some file ->
-          file
-      | None ->
-          Arg.usage arg_spec usage_text ;
-          exit 1
-    in
-    let parse_ast =
-      read_file (Parser_impl.implementation Lexer_impl.token) file
-    in
-    let _env, ast = Typechecker.check parse_ast env in
-    let ast =
-      if !snarky_preamble then add_preamble !impl_mod !curve !proofs ast
-      else ast
-    in
-    let ocaml_ast = To_ocaml.of_file ast in
-    let ocaml_formatter =
-      match (!ocaml_file, !default) with
-      | Some filename, _ ->
-          Some (Format.formatter_of_out_channel (Out_channel.create filename))
-      | None, true ->
-          Some Format.std_formatter
-      | None, false ->
-          None
-    in
-    do_output !ast_file (fun output ->
-        Printast.structure 2 output ocaml_ast ;
-        Format.pp_print_newline output () ) ;
-    ( match ocaml_formatter with
-    | Some output ->
-        Pprintast.structure output ocaml_ast ;
-        Format.pp_print_newline output ()
-    | None ->
-        () ) ;
-    ( match !binml_file with
+  let file =
+    match !file with
     | Some file ->
-        Pparse.write_ast Pparse.Structure file ocaml_ast
+        file
     | None ->
-        () ) ;
-    exit 0
-  with exn ->
-    ( if !exn_backtraces then
-      Format.(pp_print_string err_formatter (Printexc.get_backtrace ())) ) ;
-    Location.report_exception Format.err_formatter exn ;
-    exit 1
+        Arg.usage arg_spec usage_text ;
+        exit 1
+  in
+  Meja_toplevel.Meja.run
+    { file
+    ; ocaml_file= !ocaml_file
+    ; ast_file= !ast_file
+    ; binml_file= !binml_file
+    ; default= !default
+    ; stdlib= !stdlib
+    ; snarky_preamble= !snarky_preamble
+    ; curve= !curve
+    ; proofs= !proofs
+    ; impl_mod= !impl_mod
+    ; meji_files= !meji_files
+    ; cmi_files= !cmi_files
+    ; cmi_dirs= !cmi_dirs
+    ; exn_backtraces= !exn_backtraces } ;
+  exit 0
