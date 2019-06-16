@@ -342,6 +342,19 @@ let ocaml =
 
   };
 
+  module Select : {
+    type t('a) = Boolean.var -> then_:'a -> else_:'a -> 'a;
+
+    let id : {t('a)} -> t('a);
+
+    instance field : t(Field.t);
+    instance boolean : t(Boolean.var);
+    instance tuple2: {t('a1)} -> {t('a2)} -> t(('a1, 'a2));
+
+    instance list: {t('a)} -> t(list('a));
+    instance array: {t('a)} -> t(array('a));
+  };
+
   module Bitstring_checked : {
     type t = list(Boolean.var);
 
@@ -664,6 +677,8 @@ let checked =
 
     };
   };
+
+  let select = Select.id;
 
   module Bitstring = {
     type t = Bitstring_checked.t;
