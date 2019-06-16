@@ -1,0 +1,45 @@
+/* Let's talk a bit more about requests. */
+
+/* Requests let you "ask for help" in computing something.
+   Specifically, if you know a function f such that it's 
+   easier to check if f(x) = y than to compute it, you can
+   use requests to replace computing by checking. */
+
+/* Let's do a simple example.
+   Consider field division.
+
+   Input: x, y
+   Output: x / y, or in other words, z such that z * y = x.
+
+   Luckily snarky predefines division for us, but if it
+   didn't, we could define it using requests.
+
+   Let f(x,y) = x / y.
+   First, how can we check using + and * that
+
+   z = f(x, y) = x / y ?
+
+   Well, we just check z * y = x!
+
+   Here's what this looks like with requests.
+ */
+
+/* First, we declare a Div request. It says this
+   request takes two field elements as arguments and
+   returns a field element. */
+request(field) Div(field, field);
+
+let div = fun (x, y) => {
+  /* Here we actually make the request. 
+     Later, we'll define a handler to respond to this
+     request by providing a value.
+   */
+  let z = request { Div(x, y); };
+  /* This function enforces the "rank 1" (i.e., r1) constraint that
+     z * y = x
+  */
+  assert_r1(z, y, x);
+  /* If we made it throough the assertion, the provided value is indeed
+     x / y, so we can return it. */
+  z ;
+};

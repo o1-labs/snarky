@@ -52,4 +52,4 @@ let square = fun (x : field) : field => {
 };
 
 /* Write a function that checks if its input is zero. */
-let is_zero : field -> boolean = ();
+let is_zero : field -> boolean = failwith("TODO");
