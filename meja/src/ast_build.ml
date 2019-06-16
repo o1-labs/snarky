@@ -154,4 +154,6 @@ module Exp = struct
   let seq ?loc e1 e2 = mk ?loc (Seq (e1, e2))
 
   let literal ?loc l = mk ?loc (Literal l)
+
+  let prover ?loc e = mk ?loc (Prover e)
 end

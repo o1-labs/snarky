@@ -6,6 +6,7 @@ type foo = Foo;
 
 // Shouldn't typecheck but does. Also generates code that
 // doesn't provide "exists" with the typ for the result type.
+// Matt: Fixed.
 let get_path = fun (addr : tuple(boolean)) : foo => {
   request { Get_path(addr); };
 };

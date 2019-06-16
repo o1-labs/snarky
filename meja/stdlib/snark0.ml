@@ -455,15 +455,15 @@ let ocaml =
     -> 'var;
 
   let exists :
-       ?request:As_prover.t(unit -> Request.t('value))
+       {Typ.t('var, 'value)}
+    -> ?request:As_prover.t(unit -> Request.t('value))
     -> ?compute:As_prover.t(unit -> 'value)
-    -> {Typ.t('var, 'value)}
     -> 'var;
 
   let exists_handle :
-       ?request:As_prover.t(unit -> Request.t('value))
+       {Typ.t('var, 'value)}
+    -> ?request:As_prover.t(unit -> Request.t('value))
     -> ?compute:As_prover.t(unit -> 'value)
-    -> {Typ.t('var, 'value)}
     -> Handle.t('var, 'value);
 
   let handle : (unit -> 'a) -> Handler.t -> 'a;

@@ -1073,43 +1073,12 @@ let rec get_expression mode env expected exp =
       let _, env = Envi.pop_scope env in
       ({exp_loc= loc; exp_type= expected; exp_desc= LetOpen (lid, e)}, env)
   | MakeRequest e ->
-      let typ =
-        Ast_build.(
-          Type.constr ~loc
-            (Lid.of_list ["Request"; "t"])
-            ~params:[Type.none ~loc ()])
-      in
-      let typ, env = Typet.Type.import Prover typ env in
-      let typ =
-        Envi.Type.mk mode
-          (Tarrow (Initial_env.Type.unit, typ, Explicit, Nolabel))
-          env
-      in
-      let e, env = get_expression Prover env typ {e with exp_desc= Prover e} in
       let e =
-        let exists = Ast_build.(Loc.mk ~loc (Lid.of_name "exists")) in
-        let exists_typ =
-          Envi.Type.mk mode
-            (Tarrow
-               ( Envi.Type.mkvar mode None env
-               , expected
-               , Explicit
-               , Optional "compute" ))
-            env
-        in
-        let exists_typ =
-          Envi.Type.mk mode
-            (Tarrow (e.exp_type, exists_typ, Explicit, Optional "request"))
-            env
-        in
-        let exists_exp =
-          {exp_loc= loc; exp_type= exists_typ; exp_desc= Variable exists}
-        in
-        { exp_loc= loc
-        ; exp_type= expected
-        ; exp_desc= Apply (exists_exp, [(Labelled "request", e)]) }
+        Ast_build.(
+          Exp.apply ~loc (Exp.var ~loc (Lid.of_name "exists"))
+          [Labelled "request", Exp.prover ~loc e])
       in
-      (e, env)
+      get_expression mode env expected e
 
 and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
