@@ -106,7 +106,7 @@ rule token = parse
     { STRING ("") }
   | "\""
     { string lexbuf;
-      STRING (get_stored_string ()) }
+      STRING (let s = get_stored_string () in reset_string_buffer (); s) }
 
   | "!" symbolchar * as op { PREFIXOP op }
   | ['~' '?'] symbolchar + as op { PREFIXOP op }
