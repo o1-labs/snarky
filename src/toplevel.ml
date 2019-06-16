@@ -51,11 +51,11 @@ module Commands = struct
 
   module Prove = struct
     type config =
-      { public_input: string option
+      { public_input_rev: string list
       ; output_path: string option
       ; pk: string option }
 
-    let empty_config = {public_input= None; output_path= None; pk= None}
+    let empty_config = {public_input_rev= []; output_path= None; pk= None}
 
     let name = "prove"
 
@@ -78,19 +78,14 @@ module Commands = struct
       ; ("-o", Arg.String out, "alias of --output") ]
 
     let anon_fun config data =
-      match !config.public_input with
-      | Some public_input ->
-          config :=
-            {!config with public_input= Some (public_input ^ " " ^ data)}
-      | None ->
-          config := {!config with public_input= Some data}
+      config := {!config with public_input_rev= data :: !config.public_input_rev}
   end
 
   module Verify = struct
     type config =
-      {filename: string option; public_input: string option; vk: string option}
+      {filename: string option; public_input_rev: string list; vk: string option}
 
-    let empty_config = {filename= None; public_input= None; vk= None}
+    let empty_config = {filename= None; public_input_rev= []; vk= None}
 
     let name = "verify"
 
@@ -109,13 +104,8 @@ module Commands = struct
 
     let anon_fun config data =
       match !config.filename with
-      | Some _ -> (
-        match !config.public_input with
-        | Some public_input ->
-            config :=
-              {!config with public_input= Some (public_input ^ " " ^ data)}
-        | None ->
-            config := {!config with public_input= Some data} )
+      | Some _ ->
+          config := {!config with public_input_rev= data :: !config.public_input_rev}
       | None ->
           config := {!config with filename= Some data}
   end
@@ -235,9 +225,7 @@ struct
         let vk_path = Option.value ~default:(path ^ ".vk") !conf.vk in
         write (module Verification_key) vk_path ~data:(Keypair.vk keypair)
     | Some (Prove conf) ->
-        let public_input =
-          read_input (Option.value ~default:"" !conf.public_input)
-        in
+        let public_input = read_input (List.rev !conf.public_input_rev) in
         let pk_path = Option.value ~default:(path ^ ".pk") !conf.pk in
         let proving_key = read (module Proving_key) pk_path in
         let proof =
@@ -248,9 +236,7 @@ struct
         in
         write (module Proof) output_path ~data:proof
     | Some (Verify conf) ->
-        let public_input =
-          read_input (Option.value ~default:"" !conf.public_input)
-        in
+        let public_input = read_input (List.rev !conf.public_input_rev) in
         let vk_path = Option.value ~default:(path ^ ".vk") !conf.vk in
         let verification_key = read (module Verification_key) vk_path in
         let filename = Option.value ~default:(path ^ ".zkp") !conf.filename in
@@ -288,7 +274,7 @@ module Make
         val public_input :
           (unit -> result, unit, computation, public_input) Intf.Data_spec.t
 
-        val read_input : string -> (unit, public_input) H_list.t
+        val read_input : string list -> (unit, public_input) H_list.t
     end) =
 struct
   open Intf
@@ -332,8 +318,7 @@ let%test_unit "toplevel_functor" =
 
                   let public_input = Data_spec.[Field.typ; Field.typ]
 
-                  let read_input str =
-                    let strs = String.split str ~on:' ' in
+                  let read_input strs =
                     match strs with
                     | [x; y] ->
                         H_list.
