@@ -5,6 +5,10 @@ let ocaml =
 
   let fix : (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b);
 
+  module In_channel : {
+    let read_lines : string -> list(string);
+  };
+
   module Request : {
     type req('a) = ..;
 
@@ -255,6 +259,8 @@ let ocaml =
     let length : t -> int;
 
     let constant : field -> t;
+
+    let of_string : string -> t;
 
     let to_constant : t -> option(field);
 
@@ -519,6 +525,9 @@ let ocaml =
 let checked =
   ( __LINE__ + 1
   , {|
+  module In_channel = {
+    let read_lines = In_channel.read_lines;
+  };
   module Constraint = {
     type t = Constraint.t;
 
@@ -579,6 +588,8 @@ let checked =
     let length = Field.length;
 
     let constant = Field.constant;
+
+    let of_string = Field.of_string;
 
     let to_constant = Field.to_constant;
 

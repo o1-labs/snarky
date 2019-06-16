@@ -1676,6 +1676,8 @@ module Run = struct
 
       let constant = constant
 
+      let of_string = Fn.compose constant Constant.of_string
+
       let to_constant = to_constant
 
       let linear_combination = linear_combination

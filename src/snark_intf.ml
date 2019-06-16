@@ -1662,6 +1662,8 @@ module type Run_basic = sig
 
     val constant : field -> t
 
+    val of_string : string -> t
+
     val to_constant : t -> field option
 
     val linear_combination : (field * t) list -> t
