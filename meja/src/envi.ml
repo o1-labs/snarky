@@ -1157,7 +1157,8 @@ module Type = struct
       List.filter implicit_vars
         ~f:(fun ({Parsetypes.exp_loc; exp_type; _} as exp) ->
           match implicit_instances mode ~loc ~is_subtype exp_type env with
-          | [(name, instance_typ)] ->
+          (* TODO: Re-enable multiple instances being an error. *)
+          | (name, instance_typ) :: _xs ->
               let name = Location.mkloc name exp_loc in
               let e =
                 generate_implicits
@@ -1171,9 +1172,7 @@ module Type = struct
                   raise (Error (exp.exp_loc, No_unifiable_implicit)) ) ;
               false
           | [] ->
-              true
-          | _ ->
-              raise (Error (exp_loc, Multiple_instances exp_type)) )
+              true )
     in
     let new_implicits = env.resolve_env.type_env.implicit_vars in
     env.resolve_env.type_env
