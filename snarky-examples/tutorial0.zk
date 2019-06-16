@@ -1,0 +1,73 @@
+/* Welcome! To get started, let's explore the non-SNARK related parts of snarky.
+
+  snarky is a functional programming language with JavaScript-ish syntax. */
+
+// Snarky has block comments and line comments
+
+// To declare values, you use this "let" syntax.
+// All declarations must be terminated with a semi-colon.
+let x = 10;
+
+// We can declare functions like so
+let add = fun (x, y) => {
+  x + y;
+};
+
+// We can also declare the function with a type. This type says the
+// function takes two ints and returns an int
+let add : int -> int -> int = fun (x, y) => {
+  x + y; 
+};
+
+// We can partially apply functions, providing only some of the arguments.
+// int literals need to have "i" suffixed, to distinguish them from field
+// elements, which we will discuss later.
+let add_one : int -> int = add(1i);
+
+// snarky has lots of different types besides int as you would expect.
+
+// string
+let s : string = "hello world";
+
+// bools
+let is_it_raining = false; // I hope
+
+// lists
+let numbers : list(int) = [1i, 2i, 3i] ;
+let strings : list(string) = ["these", "are", "strings"] ;
+
+// tuples
+let coordinate : (int, int) = (123i, 456i);
+let name_and_age : (string, int) = ("Rihanna", 31i);
+
+// The most important basic type is "field" the type of field elements.
+// Field elements are important for reasons we will see later.
+let x : field = 3994789238749023874092374293874982374;
+
+// There are also "booleans" which are field elements which are either 0 or 1.
+// They are similar to bool's, in that they are two of them, but different in
+// that they can be used similarly to field elements. We will understand this more
+// later.
+let a_nice_boolean : boolean = 0b;
+let another_nice_boolean = 1b;
+
+// Top level statements need to be prefixed with "let () =" like so.
+// This prints "hi world" to the console.
+let () = print_endline("hi world");
+
+// In snarky you can do normal functional programming stuff:
+let () = {
+  let xs = List.map(fun (i) => {
+      "a nice number: " ^ string_of_int(i);
+    }, numbers);
+
+  let sum = List.fold_left(add, 0i, numbers);
+
+  List.iter(fun (str) => {
+      print_endline(str);
+  }, xs);
+
+  print_string("The sum is: ");
+  print_endline(string_of_int(sum));
+};
+
