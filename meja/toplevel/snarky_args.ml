@@ -133,15 +133,19 @@ module Commands = struct
 
   module Verify = struct
     type config =
-      {filename: string option; public_input: string option; vk: string option}
+      { filename: string option
+      ; proof_filename: string option
+      ; public_input: string option
+      ; vk: string option }
 
-    let empty_config = {filename= None; public_input= None; vk= None}
+    let empty_config =
+      {filename= None; proof_filename= None; public_input= None; vk= None}
 
     let name = "verify"
 
     let description = "verify a zkSNARK proof"
 
-    let usage = "verify [options..] filename.zkp PUBLIC_INPUT"
+    let usage = "verify [options..] filename.zk PUBLIC_INPUT"
 
     let spec config =
       let vk vk = config := {!config with vk= Some vk} in
@@ -149,7 +153,11 @@ module Commands = struct
         , Arg.String vk
         , "specify a filename for the verification key. Default is filename.vk"
         )
-      ; ("-vk", Arg.String vk, "alias of --verification-key") ]
+      ; ("-vk", Arg.String vk, "alias of --verification-key")
+      ; ( "--proof"
+        , Arg.String
+            (fun proof -> config := {!config with proof_filename= Some proof})
+        , "specify a filename for the proof. Default is filename.zkp" ) ]
 
     let anon_fun config data =
       match !config.filename with
