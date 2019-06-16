@@ -6,7 +6,10 @@ type foo = Foo;
 
 // Shouldn't typecheck but does. Also generates code that
 // doesn't provide "exists" with the typ for the result type.
-// Matt: Fixed.
+//
+// Matt: Fixed codegen.
+// Instance resolution isn't restrictive, so the result type can be whatever
+// (for now) and it will just try to find an instance..
 let get_path = fun (addr : tuple(boolean)) : foo => {
   request { Get_path(addr); };
 };
