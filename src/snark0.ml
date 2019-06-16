@@ -6,7 +6,7 @@ let () = Camlsnark_c.linkme
 
 module Runner = Checked_runner
 
-let rec fix f x = f (fix f) x
+let rec loop f x = f (loop f) x
 
 let set_eval_constraints b = Runner.eval_constraints := b
 

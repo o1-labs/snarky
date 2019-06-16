@@ -1,4 +1,4 @@
-val fix : (('a -> 'b) -> 'a -> 'b) -> 'a -> 'b
+val loop : (('a -> 'b) -> 'a -> 'b) -> 'a -> 'b
 
 val set_eval_constraints : bool -> unit
 (** Sets the [eval_constraints] state. If [true], {!val:run_unchecked} and
