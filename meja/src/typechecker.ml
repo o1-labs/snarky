@@ -1125,6 +1125,10 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
       (p, e, env)
   | PConstraint (({pat_desc= PVariable str; _} as p'), typ), _ ->
       let ctyp, env = Typet.Type.import mode typ env in
+      let implicits =
+        List.rev @@ fst @@ Envi.Type.get_implicits [] e.exp_type
+      in
+      let ctyp = Envi.Type.add_implicits mode env implicits ctyp in
       check_type mode ~loc env e.exp_type ctyp ;
       let ctyp =
         if Set.is_empty typ_vars then ctyp

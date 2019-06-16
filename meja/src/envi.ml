@@ -1098,6 +1098,14 @@ module Type = struct
     in
     get_implicits true acc typ
 
+  let rec add_implicits mode env implicits_list typ =
+    match implicits_list with
+    | [] ->
+        typ
+    | (label, typ1) :: implicits_list ->
+        add_implicits mode env implicits_list
+          (mk mode (Tarrow (typ1, typ, Implicit, label)) env)
+
   let new_implicit_var ?(loc = Location.none) typ env =
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.resolve_env.type_env in
     let mk exp_loc exp_desc = {Parsetypes.exp_loc; exp_desc; exp_type= typ} in
