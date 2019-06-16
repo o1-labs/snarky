@@ -5,6 +5,10 @@ let ocaml =
 
   let fix : (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b);
 
+  module In_channel : {
+    let read_lines : string -> list(string);
+  };
+
   module Request : {
     type req('a) = ..;
 
@@ -256,6 +260,8 @@ let ocaml =
 
     let constant : field -> t;
 
+    let of_string : string -> t;
+
     let to_constant : t -> option(field);
 
     let linear_combination : list((field, t)) -> t;
@@ -334,6 +340,19 @@ let ocaml =
 
     instance typ : Typ.t(t, Constant.t);
 
+  };
+
+  module Select : {
+    type t('a) = Boolean.var -> then_:'a -> else_:'a -> 'a;
+
+    let id : {t('a)} -> t('a);
+
+    instance field : t(Field.t);
+    instance boolean : t(Boolean.var);
+    instance tuple2: {t('a1)} -> {t('a2)} -> t(('a1, 'a2));
+
+    instance list: {t('a)} -> t(list('a));
+    instance array: {t('a)} -> t(array('a));
   };
 
   module Bitstring_checked : {
@@ -519,6 +538,9 @@ let ocaml =
 let checked =
   ( __LINE__ + 1
   , {|
+  module In_channel = {
+    let read_lines = In_channel.read_lines;
+  };
   module Constraint = {
     type t = Constraint.t;
 
@@ -579,6 +601,8 @@ let checked =
     let length = Field.length;
 
     let constant = Field.constant;
+
+    let of_string = Field.of_string;
 
     let to_constant = Field.to_constant;
 
@@ -653,6 +677,8 @@ let checked =
 
     };
   };
+
+  let select = Select.id;
 
   module Bitstring = {
     type t = Bitstring_checked.t;

@@ -1,0 +1,5 @@
+let foo = fun () => {
+  let x : int = failwith("TODO");
+  let y : string = failwith("TODO");
+  ();
+};

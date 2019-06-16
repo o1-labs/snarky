@@ -1662,6 +1662,8 @@ module type Run_basic = sig
 
     val constant : field -> t
 
+    val of_string : string -> t
+
     val to_constant : t -> field option
 
     val linear_combination : (field * t) list -> t
@@ -1745,6 +1747,22 @@ module type Run_basic = sig
   end
 
   type boolean = Boolean.var
+
+  module Select : sig
+    type 'a t = boolean -> then_:'a -> else_:'a -> 'a
+
+    val field : Field.t t
+
+    val boolean : boolean t
+
+    val tuple2 : 'a1 t -> 'a2 t -> ('a1 * 'a2) t
+
+    val list : 'a t -> 'a list t
+
+    val array : 'a t -> 'a array t
+
+    val id : 'a t -> 'a t
+  end
 
   module Proof : sig
     type t

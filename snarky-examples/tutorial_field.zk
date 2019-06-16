@@ -1,0 +1,55 @@
+/* As mentioned in the first tutorial, in snarky we have a type
+   of field elements. There is a module "Field" which has useful
+   functions for doing stuff with field elements. */
+
+/* The default arithmetic operators work with ints. 
+
+   ints are suffixed with the letter i
+*/
+let x : int = (1i + 2i) * 3i;
+
+/* This "opens" the Field module, which brings all its definitions into
+   scope. */
+open Field;
+
+/* We can create field elements just by typing numbers, like so. */
+let one : field = 1;
+
+/* We can also add field elements.
+   Adding field elements is essentially 0-cost in snarky, so add
+   all you like. */
+let two = one + one;
+let three = two + one;
+let four =  two + two;
+
+/* We can also multiply field elements like so.
+   Multiplication  has the followoing costs associated with it:
+   - 0 if one of the arguments is known when the SNARK keypairs
+     are generated.
+   - 1 if neither of the arguments are known at that time.
+*/
+
+/* This multiplication is free for example. We will get to
+   non-free examples later.
+*/
+let twelve = four * three;
+
+/* You can also "locally open" the field module, like so: */
+let example = Field.{ (234 + 2) * 84; };
+/* Inside the curly braces, the Field module is open regardless of
+   whether it was before. */
+
+/* You can check two field elements for equality like so, getting
+   back a boolean. More on booleans in another tutorial.
+*/
+let b = Field.equal(three, four);
+
+/* Now some exercises. */
+
+/* Write a function that squares its input. */
+let square = fun (x : field) : field => {
+  failwith("TODO");
+};
+
+/* Write a function that checks if its input is zero. */
+let is_zero : field -> boolean = ();

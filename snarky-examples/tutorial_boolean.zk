@@ -1,0 +1,47 @@
+/* In snarky there are two types which are like bool:
+
+  1. bool, the type of bools that you're used to.
+  2. boolean, the type of field elements which are either 0 or 1.
+*/
+
+/* Lets review bool quickly. */
+
+/* These are the two bools */
+let x : bool = true;
+let y : bool = false;
+
+/* You can switch on them (we haven't implemented if syntax yet :0) 
+  which lets you define any function you'd like.
+*/
+let or = fun (a, b) => {
+  switch (a, b) {
+    | (true, _) => true
+    | (_ , true) => true
+    | (false, false) => false
+  };
+};
+
+let my_if_then_else = fun (cond, t, e) => {
+  switch (cond) {
+    | true => t
+    | false => e
+  };
+};
+
+let x = my_if_then_else(false, "it was true :)", "it was false :(");
+
+/* Ok, that was bool. Now how about boolean?
+
+  As mentioned, boolean is the type of field elements that are
+  either 0 or 1. We write them as 0b or 1b. 
+*/
+let x : boolean = 0b;
+let y : boolean = 1b;
+
+/* boolean comes with a bunch of built in functions from the
+  
+
+let f = fun () =>  { select; };
+
+let x = select(0b, ~then_=[1, 2], ~else_=[3, 4]);
+

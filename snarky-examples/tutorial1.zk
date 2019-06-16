@@ -1,6 +1,6 @@
 /*
 
-  In this tutorial, we'll make our first SNARKs.
+  In this tutorial, we'll make a SNARK.
   The SNARK will function as follows: 
   Public-input:
     a field element x
