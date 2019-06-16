@@ -68,7 +68,7 @@ module Commands = struct
   module Prove = struct
     type config =
       { filename: string option
-      ; public_input: string option
+      ; public_input_rev: string list
       ; witness_path: string option
       ; witness_data: string option
       ; output_path: string option
@@ -76,7 +76,7 @@ module Commands = struct
 
     let empty_config =
       { filename= None
-      ; public_input= None
+      ; public_input_rev= []
       ; witness_path= None
       ; witness_data= None
       ; output_path= None
@@ -120,13 +120,9 @@ module Commands = struct
 
     let anon_fun config data =
       match !config.filename with
-      | Some _ -> (
-        match !config.public_input with
-        | Some public_input ->
-            config :=
-              {!config with public_input= Some (public_input ^ " " ^ data)}
-        | None ->
-            config := {!config with public_input= Some data} )
+      | Some _ ->
+          config :=
+            {!config with public_input_rev= data :: !config.public_input_rev}
       | None ->
           config := {!config with filename= Some data}
   end
@@ -135,11 +131,11 @@ module Commands = struct
     type config =
       { filename: string option
       ; proof_filename: string option
-      ; public_input: string option
+      ; public_input_rev: string list
       ; vk: string option }
 
     let empty_config =
-      {filename= None; proof_filename= None; public_input= None; vk= None}
+      {filename= None; proof_filename= None; public_input_rev= []; vk= None}
 
     let name = "verify"
 
@@ -161,13 +157,9 @@ module Commands = struct
 
     let anon_fun config data =
       match !config.filename with
-      | Some _ -> (
-        match !config.public_input with
-        | Some public_input ->
-            config :=
-              {!config with public_input= Some (public_input ^ " " ^ data)}
-        | None ->
-            config := {!config with public_input= Some data} )
+      | Some _ ->
+          config :=
+            {!config with public_input_rev= data :: !config.public_input_rev}
       | None ->
           config := {!config with filename= Some data}
   end
@@ -256,6 +248,11 @@ module Commands = struct
   end
 end
 
+let usage_of_toplevel_config config =
+  Arg.usage_string
+    !(config.Commands.Toplevel.spec)
+    (config.path ^ " " ^ config.usage)
+
 let parse () =
   let config = Commands.Toplevel.config () in
   try
@@ -268,6 +265,5 @@ let parse () =
       Format.(pp_print_string err_formatter) err ;
       exit 2
   | Arg.Help _ ->
-      Format.(pp_print_string err_formatter)
-        (Arg.usage_string !(!config.spec) (!config.path ^ " " ^ !config.usage)) ;
+      Format.(pp_print_string err_formatter) (usage_of_toplevel_config !config) ;
       exit 0
