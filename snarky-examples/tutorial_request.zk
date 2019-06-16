@@ -43,3 +43,29 @@ let div = fun (x, y) => {
      x / y, so we can return it. */
   z ;
 };
+
+/* A request can only return values of certain types. 
+   In particular, it can only return values which are
+   made of field elements and booleans and which have
+   a known size. Basically tuples and records.
+*/
+
+/* Tuples for example. */
+request((boolean, field)) Test(field);
+
+let test : unit -> (boolean, field) = fun () => {
+  let x : (boolean, field) = request { Test(0); };
+  x ; 
+};
+
+type point = {
+  x : field,
+  y : field
+};
+
+request(point) Get_point;
+
+let test1 = fun () => {
+  let x : point = request { Get_point; };
+  x ; 
+};
