@@ -339,6 +339,13 @@ let ocaml =
 
     };
 
+    /* Nuclear option: instances for all the different combinations. */
+    instance typ : Typ.t(t, Constant.t);
+
+    instance typ : Typ.t(t, field);
+
+    instance typ : Typ.t(t, field);
+
     instance typ : Typ.t(field_var, field);
 
   };
