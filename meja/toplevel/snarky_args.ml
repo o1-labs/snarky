@@ -15,6 +15,41 @@ module Commands = struct
     val anon_fun : config ref -> Arg.anon_fun
   end
 
+  module Build = struct
+    type config = {curve: string option; filename: string option}
+
+    let empty_config = {curve= None; filename= None}
+
+    let name = "build"
+
+    let description = "compile a .zk file"
+
+    let usage = "[options..] filename.zk"
+
+    let spec config =
+      [ ( "--curve"
+        , Arg.String
+            (fun curve ->
+              match curve with
+              | "Mnt4" | "Mnt4753" | "Mnt6" | "Mnt6753" | "Bn128" ->
+                  config := {!config with curve= Some curve}
+              | _ ->
+                  raise (Arg.Bad (Printf.sprintf "Invalid curve %s" curve)) )
+        , "select the curve to prove over. One of Mnt4, Mnt4753, Mnt6, \
+           Mnt6753, Bn128." ) ]
+
+    let anon_fun config filename =
+      match !config.filename with
+      | Some _ ->
+          raise
+            (Arg.Bad
+               (Printf.sprintf
+                  "Invalid argument %s: another filename was not expected"
+                  filename))
+      | None ->
+          config := {!config with filename= Some filename}
+  end
+
   module Generate_keys = struct
     type config =
       { curve: string option
@@ -42,7 +77,7 @@ module Commands = struct
               | _ ->
                   raise (Arg.Bad (Printf.sprintf "Invalid curve %s" curve)) )
         , "select the curve to prove over. One of Mnt4, Mnt4753, Mnt6, \
-           Mnt6753, BN128." )
+           Mnt6753, Bn128." )
       ; ( "--proving-key"
         , Arg.String pk
         , "specify a filename for the proving key. Default is filename.pk" )
@@ -166,6 +201,7 @@ module Commands = struct
 
   module Toplevel = struct
     type mode =
+      | Build of Build.config ref
       | Keys of Generate_keys.config ref
       | Prove of Prove.config ref
       | Verify of Verify.config ref
@@ -196,16 +232,24 @@ module Commands = struct
     let usage =
       {|[generate-keys | prove | verify] [options..]
 
-  generate-keys  |}
-      ^ Generate_keys.description ^ {|
-  prove  |} ^ Prove.description
+  build  |}
+      ^ Build.description ^ {|
+  generate-keys  |} ^ Generate_keys.description
       ^ {|
-  verify  |} ^ Verify.description
+  prove  |} ^ Prove.description ^ {|
+  verify  |}
+      ^ Verify.description
 
     let spec = []
 
     let anon_fun config data =
       if
+        select_command config data
+          ~cmd:(module Build)
+          ~store_config:(fun mode_config ->
+            config := {!config with mode= Some (Build mode_config)} )
+      then ()
+      else if
         select_command config data
           ~cmd:(module Generate_keys)
           ~store_config:(fun mode_config ->
@@ -229,7 +273,8 @@ module Commands = struct
         in
         (* Set the arguments so that we generate a full spec. *)
         !config.spec :=
-          [ of_key (module Generate_keys)
+          [ of_key (module Build)
+          ; of_key (module Generate_keys)
           ; of_key (module Prove)
           ; of_key (module Verify) ] ;
         raise (Arg.Bad (Printf.sprintf "Unknown argument %s" data))

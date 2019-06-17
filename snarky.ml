@@ -4,7 +4,7 @@ let bare_name filename = Filename.(basename (chop_extension filename))
 
 let generated_name filename = bare_name filename ^ "_gen"
 
-let build_meja dir curve filename =
+let build_meja generate_cli dir curve filename =
   let ocaml_file = Filename.(concat dir (generated_name filename ^ ".ml")) in
   Meja.run
     { file= filename
@@ -21,7 +21,7 @@ let build_meja dir curve filename =
     ; cmi_files= []
     ; cmi_dirs= ["."]
     ; exn_backtraces= false
-    ; generate_cli= true } ;
+    ; generate_cli } ;
   ocaml_file
 
 let build_dune_file dir filename =
@@ -32,7 +32,7 @@ let build_dune_file dir filename =
   (name |} ^ filename
     ^ {|)
   (libraries snarky core_kernel)
-  (flags (:standard -short-paths -w -33-32-26)))
+  (flags (:standard -short-paths -w -A)))
 |}
     ) ;
   close_out dunefile
@@ -42,11 +42,30 @@ let complain = Format.(fprintf err_formatter)
 let main () =
   let config = Snarky_args.parse () in
   let get_usage () = Snarky_args.usage_of_toplevel_config config in
-  let filename, curve, args =
+  let filename, curve, run_cmd, args =
     match config.mode with
     | None ->
         complain "%s@." (get_usage ()) ;
         exit 2
+    | Some (Build config) ->
+        let filename =
+          match !config.filename with
+          | Some filename ->
+              filename
+          | None ->
+              complain "Error: No filename was given.@.%s@." (get_usage ()) ;
+              exit 2
+        in
+        let curve =
+          match !config.curve with
+          | Some curve ->
+              curve
+          | None ->
+              complain "Error: The --curve argument is required.@.%s@."
+                (get_usage ()) ;
+              exit 2
+        in
+        (filename, Some curve, false, [])
     | Some (Keys config) ->
         let filename =
           match !config.filename with
@@ -79,7 +98,7 @@ let main () =
           | None ->
               ["--verification-key=" ^ bare_name filename ^ ".vk"]
         in
-        (filename, Some curve, ["generate-keys"] @ pk_arg @ vk_arg)
+        (filename, Some curve, true, ["generate-keys"] @ pk_arg @ vk_arg)
     | Some (Prove config) ->
         let filename =
           match !config.filename with
@@ -98,7 +117,7 @@ let main () =
         in
         (* TODO: witness. *)
         let public_input = List.rev !config.public_input_rev in
-        (filename, None, ["prove"] @ pk_arg @ public_input)
+        (filename, None, true, ["prove"] @ pk_arg @ public_input)
     | Some (Verify config) ->
         let filename =
           match !config.filename with
@@ -123,7 +142,10 @@ let main () =
               ["--verification-key=" ^ bare_name filename ^ ".vk"]
         in
         let public_input = List.rev !config.public_input_rev in
-        (filename, None, ["verify"] @ proof_filename @ vk_arg @ public_input)
+        ( filename
+        , None
+        , true
+        , ["verify"] @ proof_filename @ vk_arg @ public_input )
   in
   (* Make filename.snarky.build directory *)
   let dirname = "." ^ bare_name filename ^ ".snarky.build" in
@@ -133,7 +155,7 @@ let main () =
   let bare_name =
     match curve with
     | Some curve ->
-        let ocaml_name = build_meja dirname curve filename in
+        let ocaml_name = build_meja run_cmd dirname curve filename in
         let bare_name = bare_name ocaml_name in
         (* Generate the dune file *)
         build_dune_file dirname bare_name ;
@@ -142,15 +164,21 @@ let main () =
         let ocaml_name = generated_name filename ^ ".ml" in
         bare_name ocaml_name
   in
-  let dune_args =
-    ["dune"; "exec"; "--root"; dirname; "./" ^ bare_name ^ ".exe"; "--"] @ args
-  in
-  Format.(
-    fprintf err_formatter "%a@."
-      (pp_print_list
-         ~pp_sep:(fun fmt () -> pp_print_string fmt " ")
-         pp_print_string))
-    dune_args ;
-  Unix.execvp "dune" (Array.of_list dune_args)
+  if run_cmd then (
+    let dune_args =
+      ["dune"; "exec"; "--root"; dirname; "./" ^ bare_name ^ ".exe"; "--"]
+      @ args
+    in
+    Format.(
+      fprintf err_formatter "%a@."
+        (pp_print_list
+           ~pp_sep:(fun fmt () -> pp_print_string fmt " ")
+           pp_print_string))
+      dune_args ;
+    Unix.execvp "dune" (Array.of_list dune_args) )
+  else
+    Unix.execvp "dune"
+      (Array.of_list
+         ["dune"; "build"; "--root"; dirname; "./" ^ bare_name ^ ".exe"])
 
 let () = main ()
