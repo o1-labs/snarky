@@ -1,3 +1,11 @@
+open pin add fold_lib .
+open pin add tuple_lib .
+open pin add bitstring_lib .
+opam pin add interval_union .
+opam pin add ppx_snarky .
+opam pin add meja .
+open pin add snarky .
+
 #!/bin/bash
 mkdir -p ~/bin
 dune build ./snarky.exe
