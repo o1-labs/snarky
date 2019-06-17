@@ -771,6 +771,19 @@ let rec get_expression mode env expected exp =
         let e1, env = get_expression mode env Initial_env.Type.unit e1 in
         let e2, env = get_expression mode env expected e2 in
         ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Seq (e1, e2)}, env)
+    | Let (p, {exp_desc= Prover e1; _}, e2) when mode = Checked ->
+        let env = Envi.open_expr_scope mode env in
+        let e1 =
+          Ast_build.(
+            Exp.apply ~loc
+              (Exp.var ~loc (Lid.of_name "exists"))
+              [(Labelled "compute", Exp.prover ~loc e1)])
+        in
+        let p, e1, env = check_binding mode env p e1 in
+        let e2, env = get_expression mode env expected e2 in
+        let env = Envi.close_expr_scope env in
+        Envi.Type.update_depths env e2.exp_type ;
+        ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
     | Let (p, e1, e2) ->
         let env = Envi.open_expr_scope mode env in
         let p, e1, env = check_binding mode env p e1 in
