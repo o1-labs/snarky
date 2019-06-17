@@ -20,7 +20,8 @@ let build_meja dir curve filename =
     ; meji_files= []
     ; cmi_files= []
     ; cmi_dirs= ["."]
-    ; exn_backtraces= false } ;
+    ; exn_backtraces= false
+    ; generate_cli= true } ;
   ocaml_file
 
 let build_dune_file dir filename =

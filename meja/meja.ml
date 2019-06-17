@@ -100,5 +100,6 @@ let main =
     ; meji_files= !meji_files
     ; cmi_files= !cmi_files
     ; cmi_dirs= !cmi_dirs
-    ; exn_backtraces= !exn_backtraces } ;
+    ; exn_backtraces= !exn_backtraces
+    ; generate_cli= false } ;
   exit 0

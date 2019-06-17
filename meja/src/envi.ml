@@ -1369,6 +1369,17 @@ module Type = struct
         true
     | _ ->
         false
+
+  let get_rev_args typ =
+    let rec get_args acc typ =
+      match typ.type_desc with
+      | Tarrow (typ1, typ2, _, _)
+      | Tpoly (_, {type_desc= Tarrow (typ1, typ2, _, _); _}) ->
+          get_args (typ1 :: acc) typ2
+      | _ ->
+          (acc, typ)
+    in
+    get_args [] typ
 end
 
 module TypeDecl = struct
