@@ -179,6 +179,8 @@ let ocaml =
 
     instance typ : Typ.t(bool_var, bool);
 
+    instance typ : Typ.t(t, bool);
+
     let equal : var -> var -> var;
 
     module Unsafe : { let of_cvar : field_var -> var;  };
