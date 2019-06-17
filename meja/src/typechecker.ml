@@ -1171,6 +1171,17 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
             let p =
               {pat_desc= PVariable name; pat_loc= loc; pat_type= var.exp_type}
             in
+            (* Uncomment to see the inferred types of implicits. *)
+            (*let p =
+              { pat_desc=
+                  PConstraint
+                    ( p
+                    , Untype_ast.type_expr ~loc
+                        (Envi.Type.normalise_constr_names OCaml env
+                           var.exp_type) )
+              ; pat_loc= loc
+              ; pat_type= var.exp_type }
+            in*)
             ( {exp_desc= Fun (Nolabel, p, e, Implicit); exp_type; exp_loc= loc}
             , env )
         | _ ->

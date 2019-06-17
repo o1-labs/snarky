@@ -316,7 +316,7 @@ let ocaml =
 
     let (-) : t -> t -> t;
 
-    let (*) : t -> t -> t;
+    let ( * ) : t -> t -> t;
 
     let (/) : t -> t -> t;
 
@@ -339,7 +339,7 @@ let ocaml =
 
     };
 
-    instance typ : Typ.t(t, Constant.t);
+    instance typ : Typ.t(field_var, field);
 
   };
 
