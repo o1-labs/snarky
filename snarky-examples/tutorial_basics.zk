@@ -40,6 +40,12 @@ let strings : list(string) = ["these", "are", "strings"] ;
 let coordinate : (int, int) = (123i, 456i);
 let name_and_age : (string, int) = ("Rihanna", 31i);
 
+// records!
+type point = {
+  x : int,
+  y : int
+};
+
 // The most important basic type is "field" the type of field elements.
 // Field elements are important for reasons we will see later.
 let x : field = 3994789238749023874092374293874982374;

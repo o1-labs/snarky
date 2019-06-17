@@ -58,7 +58,7 @@ module UInt32 = {
 
   let zero : t = List.init(length, fun (_) => { 0b; });
 
-  let ceil_log2 = fix(fun (self, n) => {
+  let ceil_log2 = loop(fun (self, n) => {
     switch (n) {
       | 0i => 0i
       | _ => 1i + self(n / 2i)
@@ -108,7 +108,7 @@ module UInt32 = {
   };
 
   let of_int : int -> t = fun (n) => {
-    fix( 
+    loop( 
       fun (self, (i, acc)) => {
         switch (i) {
           | 32i => acc

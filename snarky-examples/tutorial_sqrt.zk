@@ -16,10 +16,7 @@
    field element as an argument and we expect the prover to
    return a field element in response."
 */
-request(field) Get_square_root(field)
-with handler (x) => {
-  respond(Provide(Field.sqrt(x)));
-};
+request(field) Get_square_root(field);
 
 let main = fun (x : field) => {
   /* This bit asks the prover to please give us the square root of x. */
@@ -34,7 +31,7 @@ let main = fun (x : field) => {
 let prover =
   handler {
     | Get_square_root(x) => {
-      let y : field = Field.sqrt(x);
+      let y = Field.sqrt(x);
       respond(Provide(y)) ;
     }
   };

@@ -3,7 +3,7 @@ let ocaml =
   , {|
 
 
-  let fix : (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b);
+  let loop : (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b);
 
   module In_channel : {
     let read_lines : string -> list(string);
