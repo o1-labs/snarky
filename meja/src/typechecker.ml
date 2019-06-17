@@ -575,6 +575,18 @@ let rec get_expression env expected exp =
       let typ =
         Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
       in
+        (* Squash nested applies from implicit arguments. *)
+        let f, es = match f.exp_desc with
+        | Apply (f', args) ->
+            if List.for_all args ~f:(function
+              | _, {exp_desc= Unifiable _; _} -> true
+              | _ -> false)
+            then
+              (f', args @ es)
+            else
+              (f, es)
+        | _ -> (f, es)
+        in
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
