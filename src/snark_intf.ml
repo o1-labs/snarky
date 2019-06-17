@@ -1540,6 +1540,8 @@ module type Run_basic = sig
       val typ :
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
+
+    include module type of Types.Typ.T
   end
 
   (** Representation of booleans within a field.
