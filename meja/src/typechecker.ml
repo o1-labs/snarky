@@ -294,7 +294,9 @@ let free_type_vars ?depth typ =
         in
         Set.union set (Set.diff (free_type_vars empty typ) poly_vars)
     | Tarrow (typ1, typ2, _, _) ->
-        Set.union (Envi.Type.type_vars ?depth typ1) (Envi.Type.type_vars ?depth typ2)
+        Set.union
+          (Envi.Type.type_vars ?depth typ1)
+          (Envi.Type.type_vars ?depth typ2)
     | _ ->
         fold ~init:set typ ~f:free_type_vars
   in
@@ -626,16 +628,19 @@ let rec get_expression mode env expected exp =
         in
         check_type mode ~loc env expected typ ;
         (* Squash nested applies from implicit arguments. *)
-        let f, es = match f.exp_desc with
-        | Apply (f', args) ->
-            if List.for_all args ~f:(function
-              | _, {exp_desc= Unifiable _; _} -> true
-              | _ -> false)
-            then
-              (f', args @ es)
-            else
+        let f, es =
+          match f.exp_desc with
+          | Apply (f', args) ->
+              if
+                List.for_all args ~f:(function
+                  | _, {exp_desc= Unifiable _; _} ->
+                      true
+                  | _ ->
+                      false )
+              then (f', args @ es)
+              else (f, es)
+          | _ ->
               (f, es)
-        | _ -> (f, es)
         in
         ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
     | Variable name ->
