@@ -227,7 +227,15 @@ let run
                 "Error: main must be a function.@ Try inserting fun () => { \
                  .. } around your main.@.") ;
             exit 1
-        | _ :: tl ->
+        | hd :: tl ->
+            ( try
+                Typechecker.check_type Checked ~loc:Location.none env
+                  Initial_env.Type.unit hd
+              with _ ->
+                Format.(
+                  fprintf err_formatter
+                    "Error: The final argument to main must be unit.@.") ;
+                exit 1 ) ;
             let with_unit_typ =
               List.fold
                 ~init:
