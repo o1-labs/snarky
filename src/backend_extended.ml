@@ -251,11 +251,13 @@ module Make (Backend : Backend_intf.S) :
 
   module Verification_key = struct
     include Verification_key
+
     (*include Binable.Of_stringable (Verification_key)*)
   end
 
-  module Proving_key = struct 
+  module Proving_key = struct
     include Proving_key
+
     (*include Binable.Of_stringable (Proving_key)*)
   end
 

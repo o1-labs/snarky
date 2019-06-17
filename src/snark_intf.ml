@@ -14,7 +14,6 @@ type 'a json =
 
 (** The base interface to Snarky. *)
 module type Basic = sig
-
   (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
   module Verification_key : sig
     type t [@@deriving bin_io, eq]

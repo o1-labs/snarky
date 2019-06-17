@@ -885,7 +885,8 @@ struct
         Caml.Gc.finalise delete t ; t
 
     let set_is_square _ _ = ()
-      (* foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
+
+    (* foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
       *)
 
     let a =
@@ -970,7 +971,10 @@ struct
         if not (stub sys) then failwith "R1CS_constraint_system.check_exn"
 
     let equal =
-      (*let stub = *)foreign (func_name "equal") (typ @-> typ @-> returning bool) (*in
+      (*let stub = *)
+      foreign (func_name "equal") (typ @-> typ @-> returning bool)
+
+    (*in
       fun c1 c2 ->
         if not (stub c1 c2) then failwith "R1CS_constraint_system.equal"*)
 
@@ -1408,7 +1412,6 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
 
-
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)
 
@@ -1419,16 +1422,16 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
       foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
 
     let to_string : t -> string =
-      fun t ->
-        let s = to_cpp_string_stub t in
-        let r = Cpp_string.to_string s in
-        Cpp_string.delete s ; r
+     fun t ->
+      let s = to_cpp_string_stub t in
+      let r = Cpp_string.to_string s in
+      Cpp_string.delete s ; r
 
     let of_string : string -> t =
-      fun s ->
-        let str = Cpp_string.of_string_don't_delete s in
-        let t = of_cpp_string_stub str in
-        Cpp_string.delete str ; t
+     fun s ->
+      let str = Cpp_string.of_string_don't_delete s in
+      let t = of_cpp_string_stub str in
+      Cpp_string.delete str ; t
 
     include Binable.Of_stringable (struct
       type nonrec t = t
@@ -1775,7 +1778,7 @@ module Make_bowe_gabizon (M : sig
 
     val clear : t -> unit
 
-   (*val equal : t -> t -> bool*)
+    (*val equal : t -> t -> bool*)
   end
 
   module Field : sig

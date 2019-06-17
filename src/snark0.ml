@@ -2050,12 +2050,12 @@ let%test_module "snark0-test" =
       if you look at the equality function in r1cs.tcc, you can print exactly
       which part of the CS is failing to be eq
       *)
-      Core.printf !"Serializing\n%!";
+      Core.printf !"Serializing\n%!" ;
       let vk = Keypair.vk kp |> bin_io_id (module Verification_key) in
       let pk = Keypair.pk kp in
       let pk' = pk |> bin_io_id (module Proving_key) in
       (*assert (R1CS_constraint_system.equal (Proving_key.(r1cs_constraint_system pk) (r1cs_constraint_system pk')) *)
       let input = Field.one in
       let proof = prove pk' [Field.typ] () main input in
-      assert (verify proof vk [Field.typ] input);
+      assert (verify proof vk [Field.typ] input)
   end )
