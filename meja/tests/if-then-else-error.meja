@@ -1,0 +1,7 @@
+let x = fun (b) => {
+  if (b) {
+    true;
+  } else {
+    1;
+  };
+};

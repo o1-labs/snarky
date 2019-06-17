@@ -1,0 +1,35 @@
+let x = {
+  if (true) {
+    true;
+  } else {
+    false;
+  };
+};
+
+let y = {
+  if (true) {
+    ();
+  };
+};
+
+let z = fun (x, y, z) => {
+  if (x) {
+    y;
+  } else {
+    if (true) {
+      z;
+    } else {
+      y;
+    };
+  };
+};
+
+let a = fun (x, y, z) => {
+  if (x) {
+    y;
+  } else if (true) {
+    z;
+  } else {
+    y;
+  };
+};

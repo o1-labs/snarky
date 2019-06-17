@@ -79,6 +79,7 @@ and expression_desc =
   | Record of (lid * expression) list * expression option
   | Ctor of lid * expression option
   | Unifiable of {mutable expression: expression option; name: str; id: int}
+  | If of expression * expression * expression option
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
