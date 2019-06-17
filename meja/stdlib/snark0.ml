@@ -10,9 +10,9 @@ let ocaml =
   };
 
   module Request : {
-    type req('a) = ..;
+    type t('a) = ..;
 
-    type t('a) = req('a);
+    type req('a) = t('a);
 
     module Response : {
       type t('a) = Provide('a) | Delegate(req('a)) | Unhandled;
@@ -784,9 +784,9 @@ let prover =
   ( __LINE__ + 1
   , {|
   module Request = {
-    type req = Request.req;
+    type t = Request.t;
 
-    type t = Request.req;
+    type req = Request.t;
 
     module Response = {
       type t = Request.Response.t;
