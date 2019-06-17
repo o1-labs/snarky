@@ -69,3 +69,35 @@ let test1 = fun () => {
   let x : point = request { Get_point; };
   x ; 
 };
+
+/* Let's look at how to handle or respond to requests. 
+
+   First, we need the concepts of "prover scope" and "verifier scope".
+
+   Verifier scope:
+   This is the normal scope in snarky. Basically the only things you can
+   do with field elements are add them, multiply them, request and make 
+   assertions about them. All other functions on field elements are defined
+   using these primitives. This is because of the way the underlying SNARK
+   constructions (the compilation target) work. They only can certify computations
+   consisting of adds and multiplies.
+
+   Prover scope:
+   When responding to a request, you can perform whatever kind of computation you'd like,
+   and so you gain access to additional functions on field elements.
+   For example, normally, there are no functions
+
+   Field.equal : field -> field -> bool
+   Field.to_bits : field -> field -> list(bool)
+
+   (bool, not boolean). But when handling requests, you do have access to
+   such a function.
+
+   We call the scope when handling requests "prover scope" because it permits you to perform
+   computations that can be performed by the prover.
+*/
+
+/* Actually, even multiplication (i.e., *) is implemented this way.
+   Sort of like the following. */
+request(field) Mul(field, field);
+

@@ -247,9 +247,10 @@ let ocaml =
       let to_string : t -> string;
 
       let unpack : t -> list(bool);
+      let to_bits : t -> list(bool);
 
       let project : list(bool) -> t;
-
+      let of_bits : list(bool) -> t;
     };
 
     type t = field_var;
@@ -576,9 +577,11 @@ let checked =
 
     let all = Boolean.all;
 
-    let of_field = Boolean.of_field;
-
     let equal = Boolean.equal;
+
+    module Unsafe = {
+      let of_field = Boolean.Unsafe.of_cvar;
+    };
 
     module Assert = {
       let (=) = Boolean.Assert.(=);
@@ -907,7 +910,11 @@ let prover =
 
     let unpack = Field.Constant.unpack;
 
+    let to_bits = Field.Constant.to_bits;
+
     let project = Field.Constant.project;
+
+    let of_bits = Field.Constant.of_bits;
 
     let typ = Field.typ;
 
