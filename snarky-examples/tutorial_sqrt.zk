@@ -34,7 +34,7 @@ let main = fun (x : field) => {
   assert_r1(y, y, x);
 };
 
-/* Should work */
+/* TODO: Install the handler */
 let prover =
   handler {
     | Get_square_root(x) => {
@@ -42,3 +42,4 @@ let prover =
       respond(Provide(y)) ;
     }
   };
+
