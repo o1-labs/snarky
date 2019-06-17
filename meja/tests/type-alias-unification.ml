@@ -1,4 +1,7 @@
-module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Snarky
+open Snarky.Snark
+module Impl =
+  Snarky.Snark.Run.Make (Snarky.Backends.Mnt4.Default) (Core_kernel.Unit)
 open Impl
 
 module Alias_alias = struct
@@ -35,29 +38,21 @@ module Alias_record = struct
         =
       { Typ.store=
           (fun {a; b; _} ->
-            Typ.Store.bind
-              ((Typ.store __implicit1__) b)
-              ~f:(fun b ->
-                Typ.Store.bind
-                  ((Typ.store __implicit2__) a)
-                  ~f:(fun a -> Typ.Store.return {a; b}) ) )
+            Typ.Store.bind (Typ.store __implicit1__ b) ~f:(fun b ->
+                Typ.Store.bind (Typ.store __implicit2__ a) ~f:(fun a ->
+                    Typ.Store.return {a; b} ) ) )
       ; Typ.read=
           (fun {a; b; _} ->
-            Typ.Read.bind
-              ((Typ.read __implicit1__) b)
-              ~f:(fun b ->
-                Typ.Read.bind
-                  ((Typ.read __implicit2__) a)
-                  ~f:(fun a -> Typ.Read.return {a; b}) ) )
+            Typ.Read.bind (Typ.read __implicit1__ b) ~f:(fun b ->
+                Typ.Read.bind (Typ.read __implicit2__ a) ~f:(fun a ->
+                    Typ.Read.return {a; b} ) ) )
       ; Typ.alloc=
           Typ.Alloc.bind (Typ.alloc __implicit1__) ~f:(fun b ->
               Typ.Alloc.bind (Typ.alloc __implicit2__) ~f:(fun a ->
                   Typ.Alloc.return {a; b} ) )
       ; Typ.check=
           (fun {a; b; _} ->
-            (Typ.check __implicit1__) b ;
-            (Typ.check __implicit2__) a ;
-            () ) }
+            Typ.check __implicit1__ b ; Typ.check __implicit2__ a ; () ) }
   end
 
   type ('a, 'b) v = ('a, 'a) u
