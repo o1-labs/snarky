@@ -5,48 +5,6 @@ type quadruple('a) = ('a, 'a, 'a, 'a);
 type triple('a) = ('a, 'a, 'a);
 type double('a) = ('a, 'a);
 
-/*
-- Prover doesn't work (needs read Field.typ inserted)
-
-- have to do 
-  assert_r1cs(?label=None, lambda, lambda, cx + ax + bx);
-  label not getting erased
-  - delete the labelled version from snarky
-- toplevel cli
-- write meja
-  -> add hard coded code that calls the functor
-  -> maybe some more parsing for public inputs or something
-
-me
-- list with length thing
-- Field.of_string
-- reproduce: Field.Field.t type error
-- documentation and a plan for monday
-- translate more functions into meja
-- I'll try handlers
-
-- show them this example, walk thru it
-  - tutorial examples with holes, they can fill it in
-  - simple "problem", from scratch (no holes)
-
-bonus
-- batch compile (use dune)
-- arrow type syntax is a bit inconsistent, i'd expect the types to be
-  (a1, .., an) -> b or even
-  (a1, .., an) => b
-- Cannot unify bytes and string
-  let s : string = String.create(0i);
-- if then else
-- recursion
-    /* Could be Prover { ... } instead of Prover {fun () => ... } */
-- array access syntax
-- Bug with two optional args in a row
-  exists(
-    /* Could be Prover { ... } instead of Prover {fun () => ... } */
-    ~compute= Prover { fun () => { Field.(+)(/* should insert calls to read_var here */  lambda, s); }; }
-  );
-*/
-
 let max_int32 = 4294967295i;
 
 module UInt32 = {
