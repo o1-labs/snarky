@@ -10,14 +10,22 @@
 let x : bool = true;
 let y : bool = false;
 
-/* You can switch on them (we haven't implemented if syntax yet :0) 
+/* You can switch on them or use if-then-else
   which lets you define any function you'd like.
 */
-let or = fun (a, b) => {
+let my_or = fun (a, b) => {
   switch (a, b) {
     | (true, _) => true
     | (_ , true) => true
     | (false, false) => false
+  };
+};
+
+let my_and = fun (a, b) => {
+  if (a) {
+    b;
+  } else {
+    false;
   };
 };
 

@@ -1,3 +1,12 @@
+# Installation
+
+After installing the dependencies, as described in the README,
+run
+
+```bash
+./INSTALL.sh
+```
+
 # Tutorials
 Check out snarky-examples for a bunch of tutorial code.
 We recommend looking at them in the following order.
