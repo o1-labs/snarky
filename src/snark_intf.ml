@@ -1639,9 +1639,13 @@ module type Run_basic = sig
       include Stringable.S with type t := t
 
       val unpack : t -> bool list
+
+      val to_bits : t -> bool list
       (** Convert a field element into its constituent bits. *)
 
       val project : bool list -> t
+
+      val of_bits : bool list -> t
       (** Convert a list of bits into a field element. *)
     end
 

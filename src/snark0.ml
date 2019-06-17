@@ -1658,7 +1658,11 @@ module Run = struct
 
           let unpack = unpack
 
+          let to_bits = unpack
+
           let project = project
+
+          let of_bits = project
         end
 
         include T
