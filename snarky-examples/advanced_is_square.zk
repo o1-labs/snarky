@@ -1,0 +1,7 @@
+/* Write a function
+
+   is_square : field -> boolean
+
+   that returns a boolean if and only if its input
+   is a square.
+*/
