@@ -1137,9 +1137,18 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
       ~is_subtype:(is_subtype mode ~loc:e.exp_loc)
       typ_vars env
   in
+  (* We don't necessarily get the outermost representative. Try to unwrap it
+     and get the true representative here. *)
+  let rec unwrap_unifiable var =
+    match var.exp_desc with
+    | Unifiable {expression= Some e; _} ->
+        unwrap_unifiable e
+    | _ ->
+        var
+  in
   let e, env =
     List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
-        match var.exp_desc with
+        match (unwrap_unifiable var).exp_desc with
         | Unifiable {expression= None; name; _} ->
             let exp_type =
               Envi.Type.mk mode
