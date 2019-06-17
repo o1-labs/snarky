@@ -31,7 +31,7 @@ let build_dune_file dir filename =
   (name |} ^ filename
     ^ {|)
   (libraries snarky core_kernel)
-  (flags (:standard -short-paths -w -33-32)))
+  (flags (:standard -short-paths -w -33-32-26)))
 |}
     ) ;
   close_out dunefile
