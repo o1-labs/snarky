@@ -457,17 +457,14 @@ let ocaml =
     type t = request -> response;
   };
 
-  let assert_ : ?label:string -> Constraint.t -> unit;
+  let assert_ : Constraint.t -> unit;
 
-  let assert_all : ?label:string -> list(Constraint.t) -> unit;
+  let assert_all : list(Constraint.t) -> unit;
 
   let assert_r1cs :
-    ?label:string -> Field.t -> Field.t -> Field.t -> unit;
-
-  let assert_r1 :
     Field.t -> Field.t -> Field.t -> unit;
 
-  let assert_square : ?label:string -> Field.t -> Field.t -> unit;
+  let assert_square : Field.t -> Field.t -> unit;
 
   let as_prover : As_prover.t(unit -> unit) -> unit;
 
@@ -727,7 +724,7 @@ let checked =
 
   let assert_r1cs = assert_r1cs;
 
-  let assert_r1 = assert_r1;
+  let assert_r1 = assert_r1cs;
 
   let assert_square = assert_square;
 
