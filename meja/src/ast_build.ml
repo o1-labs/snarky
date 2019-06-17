@@ -44,11 +44,11 @@ module Type = struct
   let mk ?(loc = Location.none) d : Parsetypes.type_expr =
     {type_desc= d; type_id= -1; type_loc= loc}
 
-  let variant ?loc ?(params = []) ?(implicits = []) ident =
+  let variant ?length ?loc ?(params = []) ?(implicits = []) ident =
     { var_ident= Loc.mk ident ?loc
     ; var_params= params
     ; var_implicit_params= implicits
-    ; var_length= None }
+    ; var_length= length }
 
   let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, explicit))
 
