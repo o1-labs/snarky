@@ -159,7 +159,7 @@ let rec of_expression_desc ?loc = function
       let default =
         Exp.case (Pat.any ?loc ())
           (Exp.ident ?loc
-             Ast_build.(Loc.mk ?loc (Lid.of_list ["Request"; "Unhandled"])))
+             Ast_build.(Loc.mk ?loc (Lid.of_list ["Request"; "unhandled"])))
       in
       Exp.function_ ?loc (cases @ [default])
   | Prover e ->
