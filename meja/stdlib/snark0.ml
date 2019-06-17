@@ -108,12 +108,15 @@ let ocaml =
       let read : field_var -> t(field);
     };
 
+    /* A version of Checked.t exposed to support the Typ.t below.
+       This is not available to any user code. */
+    type checked_secret('a);
 
     type t('var, 'value) = {
       store: 'value -> Store.t('var),
       read: 'var -> Read.t('value),
       alloc: Alloc.t('var),
-      check: 'var -> unit
+      check: 'var -> checked_secret(unit)
     };
 
     let store : {t('var, 'value)} -> 'value -> Store.t('var);
@@ -419,7 +422,7 @@ let ocaml =
 
     let (+) : field -> field -> field;
 
-    let (*) : field -> field -> field;
+    let ( * ) : field -> field -> field;
 
     let (-) : field -> field -> field;
 
@@ -502,6 +505,8 @@ let ocaml =
 
   let with_label : string -> (unit -> 'a) -> 'a;
 
+  let make_checked : (unit -> 'a) -> Typ.checked_secret('a);
+
   module Number : {
     type t;
 
@@ -509,7 +514,7 @@ let ocaml =
 
     let (-) : t -> t -> t;
 
-    let (*) : t -> t -> t;
+    let ( * ) : t -> t -> t;
 
     let constant : field -> t;
 
@@ -668,7 +673,7 @@ let checked =
 
     let (-) = Field.(-);
 
-    let (*) = Field.(*);
+    let ( * ) = Field.( * );
 
     let (/) = Field.(/);
 
@@ -746,6 +751,8 @@ let checked =
 
   let with_label = with_label;
 
+  let make_checked = make_checked;
+
   module Number = {
     type t = Number.t;
 
@@ -753,7 +760,7 @@ let checked =
 
     let (-) = Number.(-);
 
-    let (*) = Number.(*);
+    let ( * ) = Number.( * );
 
     let constant = Number.constant;
 
@@ -972,7 +979,7 @@ let prover =
 
     let (+) = As_prover.(+);
 
-    let (*) = As_prover.(*);
+    let ( * ) = As_prover.( * );
 
     let (-) = As_prover.(-);
 
@@ -1042,7 +1049,7 @@ let prover =
 
   let (+) = As_prover.(+);
 
-  let (*) = As_prover.(*);
+  let ( * ) = As_prover.( * );
 
   let (-) = As_prover.(-);
 
