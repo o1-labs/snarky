@@ -29,7 +29,8 @@ include struct
                 Typ.Alloc.return {a; b} ) )
     ; Typ.check=
         (fun {a; b; _} ->
-          Typ.check __implicit1__ b ; Typ.check __implicit2__ a ; () ) }
+          make_checked (fun () ->
+              Typ.check __implicit1__ b ; Typ.check __implicit2__ a ; () ) ) }
 end
 
 include struct
@@ -57,9 +58,10 @@ include struct
                 Typ.Alloc.return {a1; b1} ) )
     ; Typ.check=
         (fun {a1; b1; _} ->
-          Typ.check __implicit9__ b1 ;
-          Typ.check __implicit10__ a1 ;
-          () ) }
+          make_checked (fun () ->
+              Typ.check __implicit9__ b1 ;
+              Typ.check __implicit10__ a1 ;
+              () ) ) }
 end
 
 include struct
@@ -82,7 +84,8 @@ include struct
                 Typ.Alloc.return {a2; b2} ) )
     ; Typ.check=
         (fun {a2; b2; _} ->
-          Typ.check __implicit17__ b2 ;
-          Typ.check __implicit18__ a2 ;
-          () ) }
+          make_checked (fun () ->
+              Typ.check __implicit17__ b2 ;
+              Typ.check __implicit18__ a2 ;
+              () ) ) }
 end

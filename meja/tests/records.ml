@@ -28,10 +28,11 @@ include struct
                     Typ.Alloc.return {a; b; c} ) ) )
     ; Typ.check=
         (fun {a; b; c; _} ->
-          Typ.check __implicit1__ c ;
-          Typ.check __implicit2__ b ;
-          Typ.check __implicit3__ a ;
-          () ) }
+          make_checked (fun () ->
+              Typ.check __implicit1__ c ;
+              Typ.check __implicit2__ b ;
+              Typ.check __implicit3__ a ;
+              () ) ) }
 end
 
 let x =
@@ -67,10 +68,11 @@ module X = struct
                       Typ.Alloc.return {a; b; c} ) ) )
       ; Typ.check=
           (fun {a; b; c; _} ->
-            Typ.check __implicit13__ c ;
-            Typ.check __implicit13__ b ;
-            Typ.check __implicit13__ a ;
-            () ) }
+            make_checked (fun () ->
+                Typ.check __implicit13__ c ;
+                Typ.check __implicit13__ b ;
+                Typ.check __implicit13__ a ;
+                () ) ) }
   end
 
   let x =

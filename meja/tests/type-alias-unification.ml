@@ -52,7 +52,9 @@ module Alias_record = struct
                   Typ.Alloc.return {a; b} ) )
       ; Typ.check=
           (fun {a; b; _} ->
-            Typ.check __implicit1__ b ; Typ.check __implicit2__ a ; () ) }
+            make_checked (fun () ->
+                Typ.check __implicit1__ b ; Typ.check __implicit2__ a ; () ) )
+      }
   end
 
   type ('a, 'b) v = ('a, 'a) u
