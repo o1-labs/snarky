@@ -78,12 +78,15 @@ module Commands = struct
       ; ("-o", Arg.String out, "alias of --output") ]
 
     let anon_fun config data =
-      config := {!config with public_input_rev= data :: !config.public_input_rev}
+      config :=
+        {!config with public_input_rev= data :: !config.public_input_rev}
   end
 
   module Verify = struct
     type config =
-      {filename: string option; public_input_rev: string list; vk: string option}
+      { filename: string option
+      ; public_input_rev: string list
+      ; vk: string option }
 
     let empty_config = {filename= None; public_input_rev= []; vk= None}
 
@@ -105,7 +108,8 @@ module Commands = struct
     let anon_fun config data =
       match !config.filename with
       | Some _ ->
-          config := {!config with public_input_rev= data :: !config.public_input_rev}
+          config :=
+            {!config with public_input_rev= data :: !config.public_input_rev}
       | None ->
           config := {!config with filename= Some data}
   end
