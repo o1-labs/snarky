@@ -12,44 +12,48 @@ let x : int = (1i + 2i) * 3i;
    scope. */
 open Field;
 
-/* We can create field elements just by typing numbers, like so. */
-let one : field = 1;
+let main = fun () => {
 
-/* We can also add field elements.
-   Adding field elements is essentially 0-cost in snarky, so add
-   all you like. */
-let two = one + one;
-let three = two + one;
-let four =  two + two;
+  /* We can create field elements just by typing numbers, like so. */
+  let one : field = 1;
 
-/* We can also multiply field elements like so.
-   Multiplication  has the followoing costs associated with it:
-   - 0 if one of the arguments is known when the SNARK keypairs
-     are generated.
-   - 1 if neither of the arguments are known at that time.
-*/
+  /* We can also add field elements.
+    Adding field elements is essentially 0-cost in snarky, so add
+    all you like. */
+  let two = one + one;
+  let three = two + one;
+  let four =  two + two;
 
-/* This multiplication is free for example. We will get to
-   non-free examples later.
-*/
-let twelve = four * three;
+  /* We can also multiply field elements like so.
+    Multiplication  has the followoing costs associated with it:
+    - 0 if one of the arguments is known when the SNARK keypairs
+      are generated.
+    - 1 if neither of the arguments are known at that time.
+  */
 
-/* You can also "locally open" the field module, like so: */
-let example = Field.{ (234 + 2) * 84; };
-/* Inside the curly braces, the Field module is open regardless of
-   whether it was before. */
+  /* This multiplication is free for example. We will get to
+    non-free examples later.
+  */
+  let twelve = four * three;
 
-/* You can check two field elements for equality like so, getting
-   back a boolean. More on booleans in another tutorial.
-*/
-let b = Field.equal(three, four);
+  /* You can also "locally open" the field module, like so: */
+  let example = Field.{ (234 + 2) * 84; };
+  /* Inside the curly braces, the Field module is open regardless of
+    whether it was before. */
 
-/* Now some exercises. */
+  /* You can check two field elements for equality like so, getting
+    back a boolean. More on booleans in another tutorial.
+  */
+  let b = Field.equal(three, four);
 
-/* Write a function that squares its input. */
-let square = fun (x : field) : field => {
-  failwith("TODO");
+  /* Now some exercises. */
+
+  /* Write a function that squares its input. */
+  let square = fun (x : field) : field => {
+    failwith("TODO");
+  };
+
+  /* Write a function that checks if its input is zero. */
+  let is_zero : field -> boolean = failwith("TODO");
+  ();
 };
-
-/* Write a function that checks if its input is zero. */
-let is_zero : field -> boolean = failwith("TODO");
