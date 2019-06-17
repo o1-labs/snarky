@@ -2290,7 +2290,7 @@ module type S = sig
       -> auxiliary_input:Field.Vector.t
       -> bool
 
-    val digest : t -> Core.Md5.t
+    val digest : t -> Md5.t
   end
 
   module Protoboard : sig
