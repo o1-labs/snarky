@@ -1119,13 +1119,68 @@ module Type = struct
        ; implicit_id= implicit_id + 1 } ;
     new_exp
 
+  let is_concrete_typ_t env typ =
+    match typ.type_desc with
+    | Tctor {var_params= [typ1; typ2]; var_decl; _} -> (
+      match find_preferred_name OCaml var_decl.tdec_id env with
+      | Some (Ldot (Lident "Typ", "t")) -> (
+        match (typ1.type_desc, typ2.type_desc) with
+        | Tvar _, Tvar _ ->
+            false
+        | _ ->
+            true )
+      | _ ->
+          false )
+    | _ ->
+        false
+
+  (* Invariant: This assumes that typ1 is a known concrete Typ.t. *)
+  let is_same_concrete_typ_t env typ1 typ2 =
+    match ((flatten typ1 env).type_desc, (flatten typ2 env).type_desc) with
+    | ( Tctor {var_params= [typ1a; typ1b]; _}
+      , Tctor {var_decl; var_params= [typ2a; typ2b]; _} ) -> (
+      match find_preferred_name OCaml var_decl.tdec_id env with
+      | Some (Ldot (Lident "Typ", "t")) -> (
+          (* Note: we don't check that the type parameters typ2a, typ2b are
+             non-variables, since it is impossible to construct this instance.
+          *)
+          (* WARNING: Bad hack! A type alias may resolve to a variable type
+             such as [type t('a) = 'a] and here we will recognise it as a
+             stable constructor.
+             This should be mostly mitigated by the fact that the instance
+             matches. I hope.
+          *)
+          ( match (typ1a.type_desc, typ2a.type_desc) with
+          | ( Tctor {var_decl= {tdec_id= id1; _}; _}
+            , Tctor {var_decl= {tdec_id= id2; _}; _} )
+            when id1 = id2 ->
+              true
+          | _ ->
+              false )
+          ||
+          match (typ1b.type_desc, typ2b.type_desc) with
+          | ( Tctor {var_decl= {tdec_id= id1; _}; _}
+            , Tctor {var_decl= {tdec_id= id2; _}; _} )
+            when id1 = id2 ->
+              true
+          | _ ->
+              false )
+      | _ ->
+          false )
+    | _ ->
+        false
+
   let implicit_instances mode ~loc
       ~(is_subtype : env -> type_expr -> of_:type_expr -> bool)
       (typ : type_expr) env =
+    let is_concrete_typ_t = is_concrete_typ_t env typ in
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, canonical_path, instance_typ) ->
         let instance_typ = copy mode ~loc instance_typ Int.Map.empty env in
-        if is_subtype env typ ~of_:instance_typ then
+        if
+          (is_concrete_typ_t && is_same_concrete_typ_t env typ instance_typ)
+          || is_subtype env typ ~of_:instance_typ
+        then
           List.find_map env.scope_stack
             ~f:
               (FullScope.on_scope_opt mode ~f:(fun {instances; _} ->
