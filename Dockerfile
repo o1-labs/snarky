@@ -40,6 +40,7 @@ WORKDIR /source
 # Pin and install the dependencies.
 RUN eval "$(opam config env)" && \
     (rm -r .git || true) && \
+    opam install menhir && \
     opam pin add -y "/source"
 
 # Docker inception
