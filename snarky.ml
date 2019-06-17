@@ -30,7 +30,7 @@ let build_dune_file dir filename =
 (executable
   (name |} ^ filename
     ^ {|)
-  (libraries snarky)
+  (libraries snarky core_kernel)
   (flags (:standard -short-paths -w -33-32)))
 |}
     ) ;
