@@ -7,6 +7,11 @@ run
 ./INSTALL.sh
 ```
 
+# Example compilation, key generation, proving flow
+snarky_cli generate-keys snarky-examples/tutorial_simple_snark.zk --curve Bn128
+snarky_cli prove snarky-examples/tutorial_simple_snark.zk --curve Bn128 2 256
+snarky_cli verify snarky-examples/tutorial_simple_snark.zk 2 256 --proof tutorial_simple_snark_gen.zkp
+
 # Tutorials
 Check out snarky-examples for a bunch of tutorial code.
 We recommend looking at them in the following order.
