@@ -334,8 +334,11 @@ let run
                                      (Exp.var (Lid.of_name "failwith"))
                                      [ ( Nolabel
                                        , Exp.literal
-                                           (String "Wrong number of arguments")
-                                       ) ] ) ])) ]))
+                                           (String
+                                              ( "Wrong number of arguments: \
+                                                 expected "
+                                              ^ string_of_int (List.length tl)
+                                              )) ) ] ) ])) ]))
             in
             let toplevel_module =
               Ast_build.(
