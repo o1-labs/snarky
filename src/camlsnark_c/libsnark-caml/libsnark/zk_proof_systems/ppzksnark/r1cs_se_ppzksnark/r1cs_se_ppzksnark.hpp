@@ -157,6 +157,7 @@ public:
     }
 
     bool operator==(const r1cs_se_ppzksnark_proving_key<ppT> &other) const;
+    bool equal(const r1cs_se_ppzksnark_proving_key<ppT> &other) const;
     friend std::ostream& operator<< <ppT>(std::ostream &out, const r1cs_se_ppzksnark_proving_key<ppT> &pk);
     friend std::istream& operator>> <ppT>(std::istream &in, r1cs_se_ppzksnark_proving_key<ppT> &pk);
 };
@@ -248,6 +249,8 @@ public:
     friend std::ostream& operator<< <ppT>(std::ostream &out, const r1cs_se_ppzksnark_verification_key<ppT> &vk);
     friend std::istream& operator>> <ppT>(std::istream &in, r1cs_se_ppzksnark_verification_key<ppT> &vk);
 
+    bool equal(const r1cs_se_ppzksnark_verification_key<ppT> &other) const;
+
     static r1cs_se_ppzksnark_verification_key<ppT> dummy_verification_key(const size_t input_size);
 };
 
@@ -282,6 +285,7 @@ public:
     libff::G1_vector<ppT> query;
 
     bool operator==(const r1cs_se_ppzksnark_processed_verification_key &other) const;
+    bool equal(const r1cs_se_ppzksnark_processed_verification_key &other) const;
     friend std::ostream& operator<< <ppT>(std::ostream &out, const r1cs_se_ppzksnark_processed_verification_key<ppT> &pvk);
     friend std::istream& operator>> <ppT>(std::istream &in, r1cs_se_ppzksnark_processed_verification_key<ppT> &pvk);
 };

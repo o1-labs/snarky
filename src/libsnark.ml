@@ -884,8 +884,9 @@ struct
         let t = stub a b c in
         Caml.Gc.finalise delete t ; t
 
-    let set_is_square =
-      foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
+    let set_is_square _ _ = ()
+      (* foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
+      *)
 
     let a =
       let stub =
@@ -908,6 +909,8 @@ struct
 
   module R1CS_constraint_system : sig
     type t = Field0.t Backend_types.R1CS_constraint_system.t
+
+    (*val equal : t -> t -> bool*)
 
     val typ : t Ctypes.typ
 
@@ -965,6 +968,11 @@ struct
       let stub = foreign (func_name "check") (typ @-> returning bool) in
       fun sys ->
         if not (stub sys) then failwith "R1CS_constraint_system.check_exn"
+
+    let equal =
+      (*let stub = *)foreign (func_name "equal") (typ @-> typ @-> returning bool) (*in
+      fun c1 c2 ->
+        if not (stub c1 c2) then failwith "R1CS_constraint_system.equal"*)
 
     let create =
       let stub = foreign (func_name "create") (void @-> returning typ) in
@@ -1244,7 +1252,7 @@ end
 
 module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   module Proving_key : sig
-    type t [@@deriving bin_io]
+    type t [@@deriving bin_io, eq]
 
     val func_name : string -> string
 
@@ -1265,6 +1273,8 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     include Proving_key.Make (struct
       let prefix = with_prefix M.prefix "proving_key"
     end)
+
+    let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
 
     let r1cs_constraint_system =
       foreign
@@ -1293,6 +1303,14 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
       let str = Cpp_string.of_string_don't_delete s in
       let t = of_cpp_string_stub str in
       Cpp_string.delete str ; t
+
+    (*include Binable.Of_stringable (struct
+        type nonrec t = t
+  
+        let to_string = to_string
+  
+        let of_string = of_string
+      end)*)
 
     include Bin_prot.Utils.Of_minimal (struct
       type nonrec t = t
@@ -1368,7 +1386,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end
 
   module Verification_key : sig
-    type t
+    type t [@@deriving bin_io, eq]
 
     val typ : t Ctypes.typ
 
@@ -1388,26 +1406,81 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
       let prefix = with_prefix M.prefix "verification_key"
     end)
 
+    let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
+
+
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)
 
+    let to_cpp_string_stub : t -> Cpp_string.t =
+      foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+
+    let of_cpp_string_stub =
+      foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
+
     let to_string : t -> string =
-      let stub =
-        foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
-      in
       fun t ->
-        let s = stub t in
+        let s = to_cpp_string_stub t in
         let r = Cpp_string.to_string s in
         Cpp_string.delete s ; r
 
     let of_string : string -> t =
-      let stub =
-        foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
-      in
       fun s ->
         let str = Cpp_string.of_string_don't_delete s in
-        let t = stub str in
+        let t = of_cpp_string_stub str in
         Cpp_string.delete str ; t
+
+    include Binable.Of_stringable (struct
+      type nonrec t = t
+
+      let to_string = to_string
+
+      let of_string = of_string
+    end)
+
+    (*include Bin_prot.Utils.Of_minimal (struct
+      type nonrec t = t
+
+      let bin_shape_t = String.bin_shape_t
+
+      let bin_size_t t =
+        let s = to_cpp_string_stub t in
+        let len = Cpp_string.length s in
+        let plen = Bin_prot.Nat0.of_int len in
+        let size_len = Bin_prot.Size.bin_size_nat0 plen in
+        let res = size_len + len in
+        Cpp_string.delete s ; res
+
+      let bin_write_t buf ~pos t =
+        let s = to_cpp_string_stub t in
+        let len = Cpp_string.length s in
+        let plen = Bin_prot.Nat0.unsafe_of_int len in
+        let new_pos = Bin_prot.Write.bin_write_nat0 buf ~pos plen in
+        let next = new_pos + len in
+        Bin_prot.Common.check_next buf next ;
+        let bs = Cpp_string.to_bigstring s in
+        Bigstring.blit ~src:bs ~dst:buf ~src_pos:0 ~dst_pos:new_pos ~len ;
+        Cpp_string.delete s ;
+        next
+
+      let bin_read_t buf ~pos_ref =
+        let len = (Bin_prot.Read.bin_read_nat0 buf ~pos_ref :> int) in
+        let pos = !pos_ref in
+        let next = pos + len in
+        Bin_prot.Common.check_next buf next ;
+        pos_ref := next ;
+        let cpp_str =
+          let pointer =
+            Ctypes.( +@ ) (Ctypes.bigarray_start Ctypes.array1 buf) pos
+          in
+          Cpp_string.of_char_pointer_don't_delete pointer len
+        in
+        let result = of_cpp_string_stub cpp_str in
+        Cpp_string.delete cpp_str ; result
+
+      let __bin_read_t__ _buf ~pos_ref _vint =
+        Bin_prot.Common.raise_variant_wrong_type "Proving_key.t" !pos_ref
+    end)*)
 
     let to_bigstring : t -> Bigstring.t =
       let stub =
@@ -1701,6 +1774,8 @@ module Make_bowe_gabizon (M : sig
     val typ : t Ctypes.typ
 
     val clear : t -> unit
+
+   (*val equal : t -> t -> bool*)
   end
 
   module Field : sig
@@ -2261,6 +2336,8 @@ module type S = sig
   module R1CS_constraint_system : sig
     type t
 
+    val equal : t -> t -> bool
+
     val typ : t Ctypes.typ
 
     val create : unit -> t
@@ -2405,7 +2482,7 @@ module type S = sig
   end
 
   module Verification_key : sig
-    type t
+    type t [@@deriving bin_io]
 
     val typ : t Ctypes.typ
 

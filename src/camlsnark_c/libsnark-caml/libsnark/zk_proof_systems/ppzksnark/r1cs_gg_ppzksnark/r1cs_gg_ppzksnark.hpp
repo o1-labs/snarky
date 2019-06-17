@@ -214,6 +214,8 @@ public:
     friend std::ostream& operator<< <ppT>(std::ostream &out, const r1cs_gg_ppzksnark_verification_key<ppT> &vk);
     friend std::istream& operator>> <ppT>(std::istream &in, r1cs_gg_ppzksnark_verification_key<ppT> &vk);
 
+    bool equal(const r1cs_gg_ppzksnark_verification_key<ppT> &other) const;
+
     static r1cs_gg_ppzksnark_verification_key<ppT> dummy_verification_key(const size_t input_size);
 };
 

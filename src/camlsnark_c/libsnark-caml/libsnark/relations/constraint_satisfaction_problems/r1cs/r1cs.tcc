@@ -243,14 +243,6 @@ void r1cs_constraint_system<FieldT>::swap_AB_if_beneficial()
 }
 
 template<typename FieldT>
-bool r1cs_constraint_system<FieldT>::operator==(const r1cs_constraint_system<FieldT> &other) const
-{
-    return (this->constraints == other.constraints &&
-            this->primary_input_size == other.primary_input_size &&
-            this->auxiliary_input_size == other.auxiliary_input_size);
-}
-
-template<typename FieldT>
 std::ostream& operator<<(std::ostream &out, const r1cs_constraint_system<FieldT> &cs)
 {
     out << cs.primary_input_size << "\n";
@@ -275,6 +267,22 @@ std::ostream& operator<<(std::ostream &out, const r1cs_constraint_system<FieldT>
 #endif
 
     return out;
+}
+
+template<typename FieldT>
+bool r1cs_constraint_system<FieldT>::operator==(const r1cs_constraint_system<FieldT> &other) const
+{
+    std::cout << "Constraint system 1\n" << *this << "\n";
+    std::cout << "Constraint system 2\n" << other << "\n";
+    return (this->constraints == other.constraints &&
+            this->primary_input_size == other.primary_input_size &&
+            this->auxiliary_input_size == other.auxiliary_input_size);
+}
+
+template<typename FieldT>
+bool r1cs_constraint_system<FieldT>::equal(const r1cs_constraint_system<FieldT> &other)
+{
+    return (this == other);
 }
 
 template<typename FieldT>

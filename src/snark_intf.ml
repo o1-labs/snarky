@@ -14,22 +14,10 @@ type 'a json =
 
 (** The base interface to Snarky. *)
 module type Basic = sig
-  (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
-  module Proving_key : sig
-    type t [@@deriving bin_io]
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-
-    val to_bigstring : t -> Bigstring.t
-
-    val of_bigstring : Bigstring.t -> t
-  end
 
   (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
   module Verification_key : sig
-    type t [@@deriving bin_io]
+    type t [@@deriving bin_io, eq]
 
     val to_string : t -> string
 
@@ -59,6 +47,21 @@ module type Basic = sig
         This representation is compatible with the Yojson library, which can be
         used to print JSON to the screen, write it to a file, etc.
     *)
+  end
+
+  (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
+  module Proving_key : sig
+    type t [@@deriving bin_io, eq]
+
+    val r1cs_constraint_system : t -> R1CS_constraint_system.t
+
+    val to_string : t -> string
+
+    val of_string : string -> t
+
+    val to_bigstring : t -> Bigstring.t
+
+    val of_bigstring : Bigstring.t -> t
   end
 
   (** Managing and generating pairs of keys {!type:Proving_key.t} and

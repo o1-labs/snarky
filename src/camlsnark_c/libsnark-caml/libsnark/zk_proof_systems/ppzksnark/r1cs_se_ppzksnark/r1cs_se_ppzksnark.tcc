@@ -36,6 +36,67 @@ namespace libsnark {
 template<typename ppT>
 bool r1cs_se_ppzksnark_proving_key<ppT>::operator==(const r1cs_se_ppzksnark_proving_key<ppT> &other) const
 {
+    if (this->A_query == other.A_query)
+    {
+        if (this->B_query == other.B_query)
+        {
+            if (this->C_query_1 == other.C_query_1 )
+            {
+                if (this->C_query_2 == other.C_query_2)
+                { if (this->G_gamma_Z == other.G_gamma_Z)
+                  {
+                      if (this->H_gamma_Z == other.H_gamma_Z)
+                      {
+                          if (this->G_ab_gamma_Z == other.G_ab_gamma_Z)
+                          {
+                              if (this->G_gamma2_Z2 == other.G_gamma2_Z2)
+                              {
+                                  if (this->G_gamma2_Z_t == other.G_gamma2_Z_t)
+                                  {
+                                      if (this->constraint_system == other.constraint_system)
+                                      {
+                                          std::cout << "Proving keys equal\n";
+                                      }
+                                      else
+                                      {std::cout << "constraint_system mismatch" << this->constraint_system << "\nNext\n" << other.constraint_system;
+                                  }
+                                  }
+                                  else
+                                  {std::cout << "G_gamma2_Z_t mismatch" << this->G_gamma2_Z_t << "\n" << other.G_gamma2_Z_t;
+                                  }
+                              }
+                              else
+                              {std::cout << "G_gamma2_Z2 mismatch" << this->G_gamma2_Z2 << "\n" << other.G_gamma2_Z2;
+                              } 
+                          }
+                          else
+                          {
+                           std::cout << "G_ab_gamma_Z mismatch" << this->G_ab_gamma_Z << "\n" << other.G_ab_gamma_Z; 
+                          }
+                      }
+                      else
+                      {
+                          std::cout << "H_gamma_Z mismatch" << this->H_gamma_Z << "\n" << other.H_gamma_Z; 
+                      }
+                  }
+                  else
+                  {std::cout << "G_gamma_Z mismatch" << this->G_gamma_Z << "\n" << other.G_gamma_Z;} 
+                }
+                else
+                {std::cout << "C_query_2 mismatch" << this->C_query_2 << "\n" << other.C_query_2;}
+            }
+            else
+            {std::cout << "C_query_1 mismatch" << this->C_query_1 << "\n" << other.C_query_1;}
+        }
+        else
+        {std::cout << "B_query mismatch" << this->B_query << "\n" << other.B_query;}
+
+    }
+    else
+    {
+
+        std::cout << "A_query mismatch" << this->A_query << "\n" << other.A_query;
+    } 
     return (this->A_query == other.A_query &&
             this->B_query == other.B_query &&
             this->C_query_1 == other.C_query_1 &&
@@ -46,6 +107,12 @@ bool r1cs_se_ppzksnark_proving_key<ppT>::operator==(const r1cs_se_ppzksnark_prov
             this->G_gamma2_Z2 == other.G_gamma2_Z2 &&
             this->G_gamma2_Z_t == other.G_gamma2_Z_t &&
             this->constraint_system == other.constraint_system);
+}
+
+template<typename ppT>
+bool r1cs_se_ppzksnark_proving_key<ppT>::equal(const r1cs_se_ppzksnark_proving_key<ppT> &other) const
+{
+    return (this == other);
 }
 
 template<typename ppT>
@@ -85,12 +152,54 @@ std::istream& operator>>(std::istream &in, r1cs_se_ppzksnark_proving_key<ppT> &p
 template<typename ppT>
 bool r1cs_se_ppzksnark_verification_key<ppT>::operator==(const r1cs_se_ppzksnark_verification_key<ppT> &other) const
 {
+    if (this->H == other.H)
+    {
+        if (this->G_alpha == other.G_alpha)
+        {
+            if (this->H_beta == other.H_beta )
+            {
+                if (this->G_gamma == other.G_gamma)
+                { if (this->H_gamma == other.H_gamma)
+                  {
+                      if (this->query == other.query)
+                      {
+                         std::cout << "verification keys equal\n";
+                      }
+                      else
+                      {
+                          std::cout << "query mismatch" << this->query << "\n" << other.query; 
+                      }
+                  }
+                  else
+                  {std::cout << "H_gamma mismatch" << this->H_gamma << "\n" << other.H_gamma;} 
+                }
+                else
+                {std::cout << "G_gamma mismatch" << this->G_gamma << "\n" << other.G_gamma;}
+            }
+            else
+            {std::cout << "H_beta mismatch" << this->H_beta << "\n" << other.H_beta;}
+        }
+        else
+        {std::cout << "G_alpha mismatch" << this->G_alpha << "\n" << other.G_alpha;}
+
+    }
+    else
+    {
+
+        std::cout << "H mismatch" << this->H << "\n" << other.H;
+    } 
     return (this->H == other.H &&
             this->G_alpha == other.G_alpha &&
             this->H_beta == other.H_beta &&
             this->G_gamma == other.G_gamma &&
             this->H_gamma == other.H_gamma &&
             this->query == other.query);
+}
+
+template<typename ppT>
+bool r1cs_se_ppzksnark_verification_key<ppT>::equal(const r1cs_se_ppzksnark_verification_key<ppT> &other) const
+{
+    return (this == other);
 }
 
 template<typename ppT>
@@ -131,6 +240,49 @@ std::istream& operator>>(std::istream &in, r1cs_se_ppzksnark_verification_key<pp
 template<typename ppT>
 bool r1cs_se_ppzksnark_processed_verification_key<ppT>::operator==(const r1cs_se_ppzksnark_processed_verification_key<ppT> &other) const
 {
+     if (this->H_pc == other.H_pc)
+    {
+        if (this->G_alpha == other.G_alpha)
+        {
+            if (this->H_beta == other.H_beta )
+            {
+                if (this->G_gamma_pc == other.G_gamma_pc)
+                { if (this->H_gamma_pc == other.H_gamma_pc)
+                  {
+                      if (this->query == other.query)
+                      {
+                          if (this->G_alpha_H_beta == other.G_alpha_H_beta)
+                          {
+                              std::cout << "processed verification keys equal\n";
+                          }
+                          else
+                          {
+                          std::cout << "G_alpha_H_beta mismatch" << this->G_alpha_H_beta << "\n" << other.G_alpha_H_beta; 
+                          }
+                      }
+                      else
+                      {
+                          std::cout << "query mismatch" << this->query << "\n" << other.query; 
+                      }
+                  }
+                  else
+                  {std::cout << "H_gamma_pc mismatch" << this->H_gamma_pc << "\n" << other.H_gamma_pc;} 
+                }
+                else
+                {std::cout << "G_gamma_pc mismatch" << this->G_gamma_pc << "\n" << other.G_gamma_pc;}
+            }
+            else
+            {std::cout << "H_beta mismatch" << this->H_beta << "\n" << other.H_beta;}
+        }
+        else
+        {std::cout << "G_alpha mismatch" << this->G_alpha << "\n" << other.G_alpha;}
+
+    }
+    else
+    {
+
+        std::cout << "H_pc mismatch" << this->H_pc << "\n" << other.H_pc;
+    } 
     return (this->G_alpha == other.G_alpha &&
             this->H_beta == other.H_beta &&
             this->G_alpha_H_beta == other.G_alpha_H_beta &&
@@ -138,6 +290,12 @@ bool r1cs_se_ppzksnark_processed_verification_key<ppT>::operator==(const r1cs_se
             this->H_gamma_pc == other.H_gamma_pc &&
             this->H_pc == other.H_pc &&
             this->query == other.query);
+}
+
+template<typename ppT>
+bool r1cs_se_ppzksnark_processed_verification_key<ppT>::equal(const r1cs_se_ppzksnark_processed_verification_key<ppT> &other) const
+{
+    return (this == other);
 }
 
 template<typename ppT>

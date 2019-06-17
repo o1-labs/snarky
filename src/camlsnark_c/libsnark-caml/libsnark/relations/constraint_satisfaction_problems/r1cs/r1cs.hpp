@@ -142,6 +142,8 @@ public:
 
     bool operator==(const r1cs_constraint_system<FieldT> &other) const;
 
+    bool equal(const r1cs_constraint_system<FieldT> &other);
+
     friend std::ostream& operator<< <FieldT>(std::ostream &out, const r1cs_constraint_system<FieldT> &cs);
     friend std::istream& operator>> <FieldT>(std::istream &in, r1cs_constraint_system<FieldT> &cs);
 

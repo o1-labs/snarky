@@ -36,6 +36,67 @@ namespace libsnark {
 template<typename ppT>
 bool r1cs_gg_ppzksnark_proving_key<ppT>::operator==(const r1cs_gg_ppzksnark_proving_key<ppT> &other) const
 {
+    if (this->A_query == other.A_query)
+    {
+        if (this->B_query == other.B_query)
+        {
+            if (this->H_query == other.H_query )
+            {
+                if (this->L_query == other.L_query)
+                { if (this->alpha_g1 == other.alpha_g1)
+                  {
+                      if (this->beta_g1 == other.beta_g1)
+                      {
+                          if (this->beta_g2 == other.beta_g2)
+                          {
+                              if (this->delta_g1 == other.delta_g1)
+                              {
+                                  if (this->delta_g2 == other.delta_g2)
+                                  {
+                                      if (this->constraint_system == other.constraint_system)
+                                      {
+                                          std::cout << "gg proving key equal\n";
+                                      }
+                                      else
+                                      {std::cout << "constraint_system mismatch" << this->constraint_system << "\nNext\n" << other.constraint_system;
+                                  }
+                                  }
+                                  else
+                                  {std::cout << "delta_g2 mismatch" << this->delta_g2 << "\n" << other.delta_g2;
+                                  }
+                              }
+                              else
+                              {std::cout << "delta_g1 mismatch" << this->delta_g1 << "\n" << other.delta_g1;
+                              } 
+                          }
+                          else
+                          {
+                           std::cout << "beta_g2 mismatch" << this->beta_g2 << "\n" << other.beta_g2; 
+                          }
+                      }
+                      else
+                      {
+                          std::cout << "beta_g1 mismatch" << this->beta_g1 << "\n" << other.beta_g1; 
+                      }
+                  }
+                  else
+                  {std::cout << "alpha_g1 mismatch" << this->alpha_g1 << "\n" << other.alpha_g1;} 
+                }
+                else
+                {std::cout << "L_query mismatch" << this->L_query << "\n" << other.L_query;}
+            }
+            else
+            {std::cout << "H_query mismatch" << this->H_query << "\n" << other.H_query;}
+        }
+        else
+        {std::cout << "B_query mismatch" << this->B_query << "\n" << other.B_query;}
+
+    }
+    else
+    {
+
+        std::cout << "A_query mismatch" << this->A_query << "\n" << other.A_query;
+    }
     return (this->alpha_g1 == other.alpha_g1 &&
             this->beta_g1 == other.beta_g1 &&
             this->beta_g2 == other.beta_g2 &&
@@ -90,6 +151,26 @@ std::istream& operator>>(std::istream &in, r1cs_gg_ppzksnark_proving_key<ppT> &p
 template<typename ppT>
 bool r1cs_gg_ppzksnark_verification_key<ppT>::operator==(const r1cs_gg_ppzksnark_verification_key<ppT> &other) const
 {
+     if (this->alpha_g1_beta_g2 == other.alpha_g1_beta_g2)
+    {
+        if (this->delta_g2 == other.delta_g2)
+        {
+            if (this->ABC_g1 == other.ABC_g1)
+                { 
+                    std::cout << "gg verification key equal\n";
+                }
+                else
+                {std::cout << "ABC_g1 mismatch" << this->ABC_g1 << "\n" << other.ABC_g1;}
+        }
+        else
+        {std::cout << "delta_g2 mismatch" << this->delta_g2 << "\n" << other.delta_g2;}
+
+    }
+    else
+    {
+
+        std::cout << "alpha_g1_beta_g2 mismatch" << this->alpha_g1_beta_g2 << "\n" << other.alpha_g1_beta_g2;
+    } 
     return (this->alpha_g1_beta_g2 == other.alpha_g1_beta_g2 &&
             this->delta_g2 == other.delta_g2 &&
             this->ABC_g1 == other.ABC_g1);
@@ -121,6 +202,31 @@ std::istream& operator>>(std::istream &in, r1cs_gg_ppzksnark_verification_key<pp
 template<typename ppT>
 bool r1cs_gg_ppzksnark_processed_verification_key<ppT>::operator==(const r1cs_gg_ppzksnark_processed_verification_key<ppT> &other) const
 {
+    if (this->vk_alpha_g1_beta_g2 == other.vk_alpha_g1_beta_g2)
+    {
+        if (this->vk_generator_g2_precomp == other.vk_generator_g2_precomp)
+        {
+            if (this->vk_delta_g2_precomp == other.vk_delta_g2_precomp )
+            {
+                if (this->ABC_g1 == other.ABC_g1)
+                { 
+                    std::cout << "gg processed verfication keys equal\n";
+                }
+                else
+                {std::cout << "ABC_g1 mismatch" << this->ABC_g1 << "\n" << other.ABC_g1;}
+            }
+            else
+            {std::cout << "vk_delta_g2_precomp mismatch" << this->vk_delta_g2_precomp << "\n" << other.vk_delta_g2_precomp;}
+        }
+        else
+        {std::cout << "vk_generator_g2_precomp mismatch" << this->vk_generator_g2_precomp << "\n" << other.vk_generator_g2_precomp;}
+
+    }
+    else
+    {
+
+        std::cout << "vk_alpha_g1_beta_g2 mismatch" << this->vk_alpha_g1_beta_g2 << "\n" << other.vk_alpha_g1_beta_g2;
+    } 
     return (this->vk_alpha_g1_beta_g2 == other.vk_alpha_g1_beta_g2 &&
             this->vk_generator_g2_precomp == other.vk_generator_g2_precomp &&
             this->vk_delta_g2_precomp == other.vk_delta_g2_precomp &&

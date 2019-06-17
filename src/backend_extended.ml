@@ -139,7 +139,7 @@ module type S = sig
   end
 
   module Proving_key : sig
-    type t [@@deriving bin_io]
+    type t [@@deriving bin_io, eq]
 
     val r1cs_constraint_system : t -> R1CS_constraint_system.t
 
@@ -151,7 +151,7 @@ module type S = sig
   end
 
   module Verification_key : sig
-    type t [@@deriving bin_io]
+    type t [@@deriving bin_io, eq]
 
     include Stringable.S with type t := t
 
@@ -251,10 +251,13 @@ module Make (Backend : Backend_intf.S) :
 
   module Verification_key = struct
     include Verification_key
-    include Binable.Of_stringable (Verification_key)
+    (*include Binable.Of_stringable (Verification_key)*)
   end
 
-  module Proving_key = Proving_key
+  module Proving_key = struct 
+    include Proving_key
+    (*include Binable.Of_stringable (Proving_key)*)
+  end
 
   module Keypair = struct
     type t = {pk: Proving_key.t; vk: Verification_key.t}

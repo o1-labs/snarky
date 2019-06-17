@@ -12,6 +12,7 @@ void camlsnark_mnt6_protoboard_delete(protoboard<FieldT>* pb) {
 }
 
 void camlsnark_mnt6_protoboard_set_input_sizes(protoboard<FieldT>* pb, int primary_input_size) {
+  std::cout << "protoboard_set_input_sizes: " << primary_input_size << "\n";
   return pb->set_input_sizes(primary_input_size);
 }
 
@@ -165,6 +166,7 @@ variable<FieldT>* camlsnark_mnt6_var_create(int i) {
 }
 
 void camlsnark_mnt6_var_delete(variable<FieldT>* v) {
+  std::cout << "camlsnark_mnt6_var_delete\n" << v;
   delete v;
 }
 
@@ -456,10 +458,12 @@ r1cs_constraint<FieldT>* camlsnark_mnt6_r1cs_constraint_create(
     linear_combination<FieldT>* a,
     linear_combination<FieldT>* b,
     linear_combination<FieldT>* c) {
+  std::cout << "r1cs_constraint_create\n";
   return new r1cs_constraint<FieldT>(*a, *b, *c);
 }
 
 void camlsnark_mnt6_r1cs_constraint_delete(r1cs_constraint<FieldT>* c) {
+  std::cout << "r1cs_constraint_delete\n";
   delete c;
 }
 
@@ -483,7 +487,15 @@ r1cs_constraint_system<FieldT>* camlsnark_mnt6_r1cs_constraint_system_create() {
   return new r1cs_constraint_system<FieldT>();
 }
 
+bool camlsnark_mnt6_r1cs_constraint_system_equal(
+  r1cs_constraint_system<FieldT>* x1,
+  r1cs_constraint_system<FieldT>* x2) {
+  return *x1 == *x2;
+}
+
+
 void camlsnark_mnt6_r1cs_constraint_system_clear(r1cs_constraint_system<FieldT>* sys) {
+  std::cout << "r1cs_constraint_system_clear\n";
   sys->primary_input_size = 0;
   sys->auxiliary_input_size = 0;
   sys->num_square_constraints = 0;
@@ -556,6 +568,7 @@ bool camlsnark_mnt6_r1cs_constraint_system_check(r1cs_constraint_system<FieldT>*
 }
 
 void camlsnark_mnt6_r1cs_constraint_system_delete(r1cs_constraint_system<FieldT>* sys) {
+  std::cout << "r1cs_constraint_system_delete\n";
   delete sys;
 }
 
@@ -571,6 +584,7 @@ void camlsnark_mnt6_r1cs_constraint_system_swap_AB_if_beneficial(
 void camlsnark_mnt6_r1cs_constraint_system_add_constraint(
     r1cs_constraint_system<FieldT>* sys, 
     r1cs_constraint<FieldT>* c) {
+  std::cout << "r1cs_constraint_system_add_constraint\n" << *c;
   sys->add_constraint(*c);
 }
 
@@ -578,6 +592,7 @@ void camlsnark_mnt6_r1cs_constraint_system_add_constraint_with_annotation(
     r1cs_constraint_system<FieldT>* sys, 
     r1cs_constraint<FieldT>* c,
     char* s) {
+  std::cout << "r1cs_constraint_system_add_constraint_with annotation\n" << *c;
   std::string str(s);
   sys->add_constraint(*c, str);
 }
@@ -585,12 +600,14 @@ void camlsnark_mnt6_r1cs_constraint_system_add_constraint_with_annotation(
 void camlsnark_mnt6_r1cs_constraint_system_set_primary_input_size(
     r1cs_constraint_system<FieldT>* sys, 
     int n) {
+  std::cout << "r1cs_constraint_system_set_primary_input_size: " << n << "\n";
   sys->primary_input_size = n;
 }
 
 void camlsnark_mnt6_r1cs_constraint_system_set_auxiliary_input_size(
     r1cs_constraint_system<FieldT>* sys, 
     int n) {
+  std::cout << "r1cs_constraint_system_auxiliary_input_size: " << n << "\n";
   sys->auxiliary_input_size = n;
 }
 
@@ -656,6 +673,19 @@ r1cs_gg_ppzksnark_proving_key<ppT>* camlsnark_mnt6_proving_key_of_string(std::st
 
 void camlsnark_mnt6_proving_key_delete(r1cs_gg_ppzksnark_proving_key<ppT>* pk) {
   delete pk;
+}
+
+bool camlsnark_mnt6_proving_key_equal(
+  r1cs_gg_ppzksnark_proving_key<ppT>* pk1,
+  r1cs_gg_ppzksnark_proving_key<ppT>* pk2) {
+  return *pk1 == *pk2;
+}
+
+
+bool camlsnark_mnt6_verification_key_equal(
+  r1cs_gg_ppzksnark_verification_key<ppT>* vk1,
+  r1cs_gg_ppzksnark_verification_key<ppT>* vk2) {
+  return *vk1 == *vk2;
 }
 
 void camlsnark_mnt6_verification_key_delete(r1cs_gg_ppzksnark_verification_key<ppT>* vk) {
@@ -788,6 +818,20 @@ r1cs_se_ppzksnark_proving_key<ppT>* camlsnark_mnt6_gm_proving_key_of_string(std:
 
 void camlsnark_mnt6_gm_proving_key_delete(r1cs_se_ppzksnark_proving_key<ppT>* pk) {
   delete pk;
+}
+
+
+bool camlsnark_mnt6_gm_proving_key_equal(
+  r1cs_se_ppzksnark_proving_key<ppT>* pk1,
+  r1cs_se_ppzksnark_proving_key<ppT>* pk2) {
+  return *pk1 == *pk2;
+}
+
+
+bool camlsnark_mnt6_gm_verification_key_equal(
+  r1cs_se_ppzksnark_verification_key<ppT>* vk1,
+  r1cs_se_ppzksnark_verification_key<ppT>* vk2) {
+  return *vk1 == *vk2;
 }
 
 void camlsnark_mnt6_gm_verification_key_delete(r1cs_se_ppzksnark_verification_key<ppT>* vk) {

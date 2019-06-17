@@ -61,6 +61,8 @@ module type S = sig
   module R1CS_constraint_system : sig
     type t = Field.t Backend_types.R1CS_constraint_system.t
 
+    (*val equal : t -> t -> bool*)
+
     val create : unit -> t
 
     val report_statistics : t -> unit
@@ -97,7 +99,7 @@ module type S = sig
   end
 
   module Proving_key : sig
-    type t [@@deriving bin_io]
+    type t [@@deriving bin_io, eq]
 
     val r1cs_constraint_system : t -> R1CS_constraint_system.t
 
@@ -111,9 +113,12 @@ module type S = sig
   end
 
   module Verification_key : sig
-    type t
+    type t [@@deriving bin_io, eq]
 
-    include Stringable.S with type t := t
+    (*include Stringable.S with type t := t*)
+    val to_string : t -> string
+
+    val of_string : string -> t
 
     val to_bigstring : t -> Bigstring.t
 
