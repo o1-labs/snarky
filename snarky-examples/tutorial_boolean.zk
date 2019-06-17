@@ -1,0 +1,90 @@
+/* In snarky there are two types which are like bool:
+
+  1. bool, the type of bools that you're used to.
+  2. boolean, the type of field elements which are either 0 or 1.
+*/
+
+/* Lets review bool quickly. */
+
+/* These are the two bools */
+let x : bool = true;
+let y : bool = false;
+
+/* You can switch on them (we haven't implemented if syntax yet :0) 
+  which lets you define any function you'd like.
+*/
+let or = fun (a, b) => {
+  switch (a, b) {
+    | (true, _) => true
+    | (_ , true) => true
+    | (false, false) => false
+  };
+};
+
+let my_if_then_else = fun (cond, t, e) => {
+  switch (cond) {
+    | true => t
+    | false => e
+  };
+};
+
+let x = my_if_then_else(false, "it was true :)", "it was false :(");
+
+/* Ok, that was bool. Now how about boolean?
+
+  As mentioned, boolean is the type of field elements that are
+  either 0 or 1. We write them as 0b or 1b. 
+*/
+
+let main = fun () => {
+  let x : boolean = 0b;
+  let y : boolean = 1b;
+
+  /* boolean comes with a bunch of built in functions in the Boolean module */
+  let x_and_y = Boolean.{ x && y; };
+
+  /* boolean comes with a bunch of built in functions in the Boolean module */
+  let x_or_y = Boolean.{ x || y; };
+
+  let x_xor_y = Boolean.lxor(x, y);
+
+  let not_x = Boolean.not(x);
+
+  let any_example = Boolean.any([x, not_x, x_xor_y, x_and_y]);
+
+  let all_example = Boolean.all([x, not_x, x_xor_y, x_and_y]);
+
+  /* However, there is no precise equivalent to "switch" or "if then else".
+    The closest analog is the function "select".
+
+    select takes a boolean and two values of the same type, and returns
+    one of them. It's a lot like if-then-else but both arguments are evaluated
+    before we select which one we want. */
+
+  let a_big_computation = fun (x) => {
+    Field.{
+      (x * x) + (23 * x + 3) * x;
+    };
+  };
+
+  /* Both arms of this "select" are evaluated. It's like
+
+    if x_or_y then a_big_computation(12) else a_big_computation(32)
+
+    but we evaluate both branches. This is because of the way SNARKs work,
+    there is no way to branch on the value of field elements, and since booleans
+    are a special case of field elements, we cannot truly branch on booleans.
+  */
+  let one_or_the_other = select(x_or_y, ~then_=a_big_computation(12), ~else_=a_big_computation(32));
+
+  /* As mentioned, this performs a_big_computation on 12 and 32 and then selects the result.
+    Since we perform the same computation in both branches, the following would be more efficient,
+    as it only requires performing a_big_computation once. */
+  let one_or_the_other = a_big_computation(select(x_or_y, ~then_=12, ~else_=32));
+
+  /* You can use select for any type so long as it is only made out of field elements
+    and booleans. For example, lists, tuples, etc. */
+  let ex1 = select(x_or_y, ~then_=[1, 2], ~else_=[3, 4]);
+  let ex2 = select(x_or_y, ~then_=(1, 0b), ~else_=(3, 1b));
+  ();
+};

@@ -134,39 +134,19 @@ let rec check_type_aux mode ~loc typ ctyp env =
     match unpack_decls mode ~loc typ ctyp env with
     | Some (typ, ctyp) ->
         check_type_aux typ ctyp env
-    | None -> (
-        let sort id =
-          if Int.equal id Initial_env.list.tdec_id then `List else `Other
-        in
-        (* Unify constructors *)
-        (let c1 = variant.var_decl.tdec_id in
-         let c2 = constr_variant.var_decl.tdec_id in
-         match (sort c1, sort c2) with
-         | `List, `List -> (
-           match (variant.var_length, constr_variant.var_length) with
-           | Some n, Some m ->
-               if not (Int.equal n m) then
-                 raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
-           | Some n, None ->
-               constr_variant.var_length <- Some n
-           | None, Some n ->
-               variant.var_length <- Some n
-           | None, None ->
-               () )
-         | `Other, `Other ->
-             if not (Int.equal c1 c2) then
-               raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
-         | `List, `Other | `Other, `List ->
-             raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))) ;
-        match
-          List.iter2 variant.var_params constr_variant.var_params
-            ~f:(fun param constr_param -> check_type_aux param constr_param env
-          )
-        with
-        | Ok env ->
-            env
-        | Unequal_lengths ->
-            raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) ) )
+    | None ->
+        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
+        then
+          match
+            List.iter2 variant.var_params constr_variant.var_params
+              ~f:(fun param constr_param ->
+                check_type_aux param constr_param env )
+          with
+          | Ok env ->
+              env
+          | Unequal_lengths ->
+              raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
+        else raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) )
   | Tctor _, _ | _, Tctor _ ->
       (* Unfold an alias and compare again *)
       let typ, ctyp =
@@ -424,8 +404,7 @@ let get_ctor mode (name : lid) env =
                  { var_ident= make_name ctor.ctor_ident
                  ; var_params= params
                  ; var_implicit_params= tdec_implicit_params
-                 ; var_decl= decl
-                 ; var_length= None })
+                 ; var_decl= decl })
               env
         | Ctor_tuple [typ] ->
             typ
@@ -457,9 +436,9 @@ let rec check_pattern mode ~add env typ pat =
       let ctyp, env = Typet.Type.import mode constr_typ env in
       check_type mode ~loc env typ ctyp ;
       let p, env = check_pattern mode ~add env ctyp p in
+      let normalised_ctyp = Envi.Type.normalise_constr_names OCaml env ctyp in
       let constr_typ =
-        Untype_ast.type_expr ~loc:constr_typ.type_loc
-          (Envi.Type.normalise_constr_names OCaml env ctyp)
+        Untype_ast.type_expr ~loc:constr_typ.type_loc normalised_ctyp
       in
       ( {pat_loc= loc; pat_type= typ; pat_desc= PConstraint (p, constr_typ)}
       , env )
@@ -615,282 +594,343 @@ and check_patterns mode ~add env typs pats =
 
 let rec get_expression mode env expected exp =
   let loc = exp.exp_loc in
-  match exp.exp_desc with
-  | Apply (f, es) ->
-      let f_typ = Envi.Type.mkvar mode None env in
-      let f, env = get_expression mode env f_typ f in
-      let (typ, env), es =
-        List.fold_map ~init:(f.exp_type, env) es
-          ~f:(fun (f_typ, env) (label, e) ->
-            let f_typ = Envi.Type.bubble_label mode env label f_typ in
-            let e_typ = Envi.Type.mkvar mode None env in
-            let res_typ = Envi.Type.mkvar mode None env in
-            let arrow =
-              Envi.Type.mk mode (Tarrow (e_typ, res_typ, Explicit, label)) env
+  let e, env =
+    match exp.exp_desc with
+    | Apply (f, es) ->
+        let f_typ = Envi.Type.mkvar mode None env in
+        let f, env = get_expression mode env f_typ f in
+        let (typ, env), es =
+          List.fold_map ~init:(f.exp_type, env) es
+            ~f:(fun (f_typ, env) (label, e) ->
+              let f_typ = Envi.Type.bubble_label mode env label f_typ in
+              let e_typ = Envi.Type.mkvar mode None env in
+              let res_typ = Envi.Type.mkvar mode None env in
+              let arrow =
+                Envi.Type.mk mode
+                  (Tarrow (e_typ, res_typ, Explicit, label))
+                  env
+              in
+              check_type mode ~loc:e.exp_loc env f_typ arrow ;
+              let e_typ =
+                match label with
+                | Optional _ ->
+                    Initial_env.Type.option e_typ
+                | _ ->
+                    e_typ
+              in
+              let e, env = get_expression mode env e_typ e in
+              ((res_typ, env), (label, e)) )
+        in
+        let typ =
+          Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
+        in
+        check_type mode ~loc env expected typ ;
+        ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
+    | Variable name ->
+        let typ, id = Envi.find_name mode ~loc name env in
+        let name =
+          match Envi.find_preferred_name OCaml id env with
+          | Some name ->
+              Ast_build.Loc.mk ~loc name
+          | None ->
+              name
+        in
+        let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
+        let e = Envi.Type.generate_implicits e env in
+        let e, env =
+          if mode = Prover && typ.type_mode = Checked then
+            let read =
+              Ast_build.(Loc.mk ~loc (Lid.of_list ["As_prover"; "read"]))
             in
-            check_type mode ~loc:e.exp_loc env f_typ arrow ;
-            let e_typ =
-              match label with
-              | Optional _ ->
-                  Initial_env.Type.option e_typ
-              | _ ->
-                  e_typ
+            let read_exp =
+              {exp_loc= loc; exp_type= typ; exp_desc= Variable read}
             in
-            let e, env = get_expression mode env e_typ e in
-            ((res_typ, env), (label, e)) )
-      in
-      let typ =
-        Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
-      in
-      check_type mode ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
-  | Variable name ->
-      let typ, id = Envi.find_name mode ~loc name env in
-      let name =
-        match Envi.find_preferred_name OCaml id env with
-        | Some name ->
-            Ast_build.Loc.mk ~loc name
-        | None ->
-            name
-      in
-      let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
-      let e = Envi.Type.generate_implicits e env in
-      let e, env =
-        if mode = Prover && typ.type_mode = Checked then
-          let read =
-            Ast_build.(Loc.mk ~loc (Lid.of_list ["As_prover"; "read"]))
-          in
-          let read_exp =
-            {exp_loc= loc; exp_type= typ; exp_desc= Variable read}
-          in
-          let ret_type = Envi.Type.mkvar mode None env in
-          let read_typ =
-            Envi.Type.mk mode (Tarrow (typ, ret_type, Explicit, Nolabel)) env
-          in
-          let read_exp, env = get_expression mode env read_typ read_exp in
-          ( { exp_loc= loc
-            ; exp_type= ret_type
-            ; exp_desc= Apply (read_exp, [(Nolabel, e)]) }
-          , env )
-        else (e, env)
-      in
-      check_type mode ~loc env expected e.exp_type ;
-      (e, env)
-  | Literal (Int i) ->
-      let typ = Initial_env.Type.int in
-      check_type mode ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (Int i)}, env)
-  | Literal (Bool b) ->
-      let typ = Initial_env.Type.boolean mode in
-      check_type mode ~loc env expected typ ;
-      let desc =
-        if typ.type_mode = Checked then
-          let name = if b then "true_" else "false_" in
-          Variable Ast_build.(Loc.mk ~loc (Lid.of_list ["Boolean"; name]))
-        else
-          let name = if b then "true" else "false" in
-          Ctor (Ast_build.(Loc.mk ~loc (Lid.of_name name)), None)
-      in
-      ({exp_loc= loc; exp_type= typ; exp_desc= desc}, env)
-  | Literal (Field f) ->
-      let typ = Initial_env.Type.field mode in
-      check_type mode ~loc env expected typ ;
-      let e =
-        Ast_build.(
-          Exp.apply ~loc
-            (Exp.var ~loc (Lid.of_list ["Field"; "Constant"; "of_string"]))
-            [(Nolabel, Exp.literal (String f))])
-      in
-      let e =
-        if typ.type_mode = Checked then
+            let ret_type = Envi.Type.mkvar mode None env in
+            let read_typ =
+              Envi.Type.mk mode (Tarrow (typ, ret_type, Explicit, Nolabel)) env
+            in
+            let read_exp, env = get_expression mode env read_typ read_exp in
+            ( { exp_loc= loc
+              ; exp_type= ret_type
+              ; exp_desc= Apply (read_exp, [(Nolabel, e)]) }
+            , env )
+          else (e, env)
+        in
+        check_type mode ~loc env expected e.exp_type ;
+        (e, env)
+    | Literal (Int i) ->
+        let typ = Initial_env.Type.int in
+        check_type mode ~loc env expected typ ;
+        ({exp_loc= loc; exp_type= typ; exp_desc= Literal (Int i)}, env)
+    | Literal (Bool b) ->
+        let typ = Initial_env.Type.boolean mode in
+        check_type mode ~loc env expected typ ;
+        let desc =
+          if typ.type_mode = Checked then
+            let name = if b then "true_" else "false_" in
+            Variable Ast_build.(Loc.mk ~loc (Lid.of_list ["Boolean"; name]))
+          else
+            let name = if b then "true" else "false" in
+            Ctor (Ast_build.(Loc.mk ~loc (Lid.of_name name)), None)
+        in
+        ({exp_loc= loc; exp_type= typ; exp_desc= desc}, env)
+    | Literal (Field f) ->
+        let typ = Initial_env.Type.field mode in
+        check_type mode ~loc env expected typ ;
+        let e =
           Ast_build.(
             Exp.apply ~loc
-              (Exp.var ~loc (Lid.of_list ["Field"; "constant"]))
-              [(Nolabel, e)])
-        else e
-      in
-      ({exp_loc= loc; exp_type= typ; exp_desc= e.exp_desc}, env)
-  | Literal (String s) ->
-      let typ = Initial_env.Type.string in
-      check_type mode ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (String s)}, env)
-  | Fun (label, p, body, explicit) ->
-      let env = Envi.open_expr_scope mode env in
-      let p_typ = Envi.Type.mkvar mode None env in
-      let body_typ = Envi.Type.mkvar mode None env in
-      let typ =
-        Envi.Type.mk mode (Tarrow (p_typ, body_typ, explicit, label)) env
-      in
-      check_type mode ~loc env expected typ ;
-      let add_name =
-        match label with
-        | Optional _ ->
-            fun name typ -> Envi.add_name name (Initial_env.Type.option typ)
-        | _ ->
-            Envi.add_name
-      in
-      (* In OCaml, function arguments can't be polymorphic, so each check refines
-       them rather than instantiating the parameters. *)
-      let p, env = check_pattern mode ~add:add_name env p_typ p in
-      let body, env = get_expression mode env body_typ body in
-      let env = Envi.close_expr_scope env in
-      Envi.Type.update_depths env typ ;
-      ( {exp_loc= loc; exp_type= typ; exp_desc= Fun (label, p, body, explicit)}
-      , env )
-  | Newtype (name, body) ->
-      let env = Envi.open_expr_scope mode env in
-      let decl =
-        { tdec_ident= name
-        ; tdec_params= []
-        ; tdec_implicit_params= []
-        ; tdec_desc= TUnfold (Ast_build.Type.none ())
-        ; tdec_loc= loc }
-      in
-      let decl, env = Typet.TypeDecl.import mode decl env in
-      let typ =
-        match decl.tdec_desc with TUnfold typ -> typ | _ -> assert false
-      in
-      (* Create a self-referencing type declaration. *)
-      typ.type_desc
-      <- Tctor
-           { var_ident= mk_lid name
-           ; var_params= []
-           ; var_implicit_params= []
-           ; var_decl= decl
-           ; var_length= None } ;
-      let body, env = get_expression mode env expected body in
-      (* Substitute the self-reference for a type variable. *)
-      typ.type_desc <- Tvar (Some name, Explicit) ;
-      let env = Envi.close_expr_scope env in
-      Envi.Type.update_depths env body.exp_type ;
-      ( {exp_loc= loc; exp_type= body.exp_type; exp_desc= Newtype (name, body)}
-      , env )
-  | Seq (e1, e2) ->
-      let e1, env = get_expression mode env Initial_env.Type.unit e1 in
-      let e2, env = get_expression mode env expected e2 in
-      ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Seq (e1, e2)}, env)
-  | Let (p, e1, e2) ->
-      let env = Envi.open_expr_scope mode env in
-      let p, e1, env = check_binding mode env p e1 in
-      let e2, env = get_expression mode env expected e2 in
-      let env = Envi.close_expr_scope env in
-      Envi.Type.update_depths env e2.exp_type ;
-      ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
-  | Constraint (e, typ') ->
-      let typ, env = Typet.Type.import mode typ' env in
-      check_type mode ~loc env expected typ ;
-      let e, env = get_expression mode env typ e in
-      check_type mode ~loc env e.exp_type typ ;
-      let typ' =
-        Untype_ast.type_expr ~loc:typ'.type_loc
-          (Envi.Type.normalise_constr_names OCaml env typ)
-      in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Constraint (e, typ')}, env)
-  | Tuple es ->
-      let typs = List.map es ~f:(fun _ -> Envi.Type.mkvar mode None env) in
-      let typ = Envi.Type.mk mode (Ttuple typs) env in
-      check_type mode ~loc env expected typ ;
-      let env = ref env in
-      let es =
-        List.map2_exn es typs ~f:(fun e expected ->
-            let e, env' = get_expression mode !env expected e in
-            env := env' ;
-            e )
-      in
-      let typ =
-        Envi.Type.mk mode
-          (Ttuple (List.map es ~f:(fun {exp_type= t; _} -> t)))
-          !env
-      in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Tuple es}, !env)
-  | Match (e, cases) ->
-      let e_typ = Envi.Type.mkvar mode None env in
-      let e, env = get_expression mode env e_typ e in
-      let typ = e.exp_type in
-      let env, cases =
-        List.fold_map ~init:env cases ~f:(fun env (p, e) ->
-            let env = Envi.open_expr_scope mode env in
-            let p, env =
-              check_pattern mode ~add:(add_polymorphised mode) env typ p
-            in
-            let e, env = get_expression mode env expected e in
-            let env = Envi.close_expr_scope env in
-            (env, (p, e)) )
-      in
-      Envi.Type.update_depths env expected ;
-      ({exp_loc= loc; exp_type= expected; exp_desc= Match (e, cases)}, env)
-  | Field (e, field) ->
-      let field_info =
-        match field.txt with
-        | Lident _ ->
-            None
-        | Ldot (path, _) -> (
-          match Envi.TypeDecl.find_of_field mode field env with
-          | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
-            ->
-              let vars, bound_vars, env =
-                Envi.Type.refresh_vars mode ~loc tdec_params Int.Map.empty env
-              in
-              let ident =
-                Location.mkloc (Longident.Ldot (path, decl.tdec_ident.txt)) loc
-              in
-              let decl_type =
-                Envi.TypeDecl.mk_typ mode ~params:vars ~ident decl env
-              in
-              let {fld_type; _} = List.nth_exn field_decls i in
-              let fld_type =
-                Envi.Type.copy mode ~loc fld_type bound_vars env
-              in
-              check_type mode ~loc env expected fld_type ;
-              Some (fld_type, decl_type, env)
+              (Exp.var ~loc (Lid.of_list ["Field"; "Constant"; "of_string"]))
+              [(Nolabel, Exp.literal (String f))])
+        in
+        let e =
+          if typ.type_mode = Checked then
+            Ast_build.(
+              Exp.apply ~loc
+                (Exp.var ~loc (Lid.of_list ["Field"; "constant"]))
+                [(Nolabel, e)])
+          else e
+        in
+        ({exp_loc= loc; exp_type= typ; exp_desc= e.exp_desc}, env)
+    | Literal (String s) ->
+        let typ = Initial_env.Type.string in
+        check_type mode ~loc env expected typ ;
+        ({exp_loc= loc; exp_type= typ; exp_desc= Literal (String s)}, env)
+    | Fun (label, p, body, explicit) ->
+        let env = Envi.open_expr_scope mode env in
+        let p_typ = Envi.Type.mkvar mode None env in
+        let body_typ = Envi.Type.mkvar mode None env in
+        let typ =
+          Envi.Type.mk mode (Tarrow (p_typ, body_typ, explicit, label)) env
+        in
+        check_type mode ~loc env expected typ ;
+        let add_name =
+          match label with
+          | Optional _ ->
+              fun name typ -> Envi.add_name name (Initial_env.Type.option typ)
           | _ ->
-              None )
-        | Lapply _ ->
-            failwith "Unhandled Lapply in field name"
-      in
-      let typ, decl_type, env, resolved =
-        match field_info with
-        | Some (fld_type, decl_type, env) ->
-            (fld_type, decl_type, env, true)
-        | None ->
-            let fld_type = expected in
-            let decl_type = Envi.Type.mkvar mode None env in
-            (fld_type, decl_type, env, false)
-      in
-      let e, env = get_expression mode env decl_type e in
-      let typ, env =
-        if resolved then (typ, env)
-        else
-          match
-            Envi.TypeDecl.find_unaliased_of_type mode ~loc e.exp_type env
-          with
-          | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) -> (
-            match
-              List.find field_decls ~f:(fun {fld_ident; _} ->
-                  match field.txt with
-                  | Lident field ->
-                      String.equal fld_ident.txt field
-                  | _ ->
-                      false
-                  (* This case shouldn't happen! *) )
-            with
-            | Some {fld_type; _} ->
-                let fld_type =
-                  Envi.Type.copy mode ~loc fld_type bound_vars env
-                in
-                check_type mode ~loc env typ fld_type ;
-                (fld_type, env)
-            | None ->
-                raise
-                  (Error
-                     ( loc
-                     , env
-                     , mode
-                     , Wrong_record_field (field.txt, e.exp_type) )) )
-          | _ -> (
+              Envi.add_name
+        in
+        (* In OCaml, function arguments can't be polymorphic, so each check refines
+       them rather than instantiating the parameters. *)
+        let p, env = check_pattern mode ~add:add_name env p_typ p in
+        let body, env = get_expression mode env body_typ body in
+        let env = Envi.close_expr_scope env in
+        Envi.Type.update_depths env typ ;
+        ( { exp_loc= loc
+          ; exp_type= typ
+          ; exp_desc= Fun (label, p, body, explicit) }
+        , env )
+    | Newtype (name, body) ->
+        let env = Envi.open_expr_scope mode env in
+        let decl =
+          { tdec_ident= name
+          ; tdec_params= []
+          ; tdec_implicit_params= []
+          ; tdec_desc= TUnfold (Ast_build.Type.none ())
+          ; tdec_loc= loc }
+        in
+        let decl, env = Typet.TypeDecl.import mode decl env in
+        let typ =
+          match decl.tdec_desc with TUnfold typ -> typ | _ -> assert false
+        in
+        (* Create a self-referencing type declaration. *)
+        typ.type_desc
+        <- Tctor
+             { var_ident= mk_lid name
+             ; var_params= []
+             ; var_implicit_params= []
+             ; var_decl= decl } ;
+        let body, env = get_expression mode env expected body in
+        (* Substitute the self-reference for a type variable. *)
+        typ.type_desc <- Tvar (Some name, Explicit) ;
+        let env = Envi.close_expr_scope env in
+        Envi.Type.update_depths env body.exp_type ;
+        ( { exp_loc= loc
+          ; exp_type= body.exp_type
+          ; exp_desc= Newtype (name, body) }
+        , env )
+    | Seq (e1, e2) ->
+        let e1, env = get_expression mode env Initial_env.Type.unit e1 in
+        let e2, env = get_expression mode env expected e2 in
+        ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Seq (e1, e2)}, env)
+    | Let (p, e1, e2) ->
+        let env = Envi.open_expr_scope mode env in
+        let p, e1, env = check_binding mode env p e1 in
+        let e2, env = get_expression mode env expected e2 in
+        let env = Envi.close_expr_scope env in
+        Envi.Type.update_depths env e2.exp_type ;
+        ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
+    | Constraint (e, typ') ->
+        let typ, env = Typet.Type.import mode typ' env in
+        check_type mode ~loc env expected typ ;
+        let e, env = get_expression mode env typ e in
+        check_type mode ~loc env e.exp_type typ ;
+        let typ' =
+          Untype_ast.type_expr ~loc:typ'.type_loc
+            (Envi.Type.normalise_constr_names OCaml env typ)
+        in
+        ({exp_loc= loc; exp_type= typ; exp_desc= Constraint (e, typ')}, env)
+    | Tuple es ->
+        let typs = List.map es ~f:(fun _ -> Envi.Type.mkvar mode None env) in
+        let typ = Envi.Type.mk mode (Ttuple typs) env in
+        check_type mode ~loc env expected typ ;
+        let env = ref env in
+        let es =
+          List.map2_exn es typs ~f:(fun e expected ->
+              let e, env' = get_expression mode !env expected e in
+              env := env' ;
+              e )
+        in
+        let typ =
+          Envi.Type.mk mode
+            (Ttuple (List.map es ~f:(fun {exp_type= t; _} -> t)))
+            !env
+        in
+        ({exp_loc= loc; exp_type= typ; exp_desc= Tuple es}, !env)
+    | Match (e, cases) ->
+        let e_typ = Envi.Type.mkvar mode None env in
+        let e, env = get_expression mode env e_typ e in
+        let typ = e.exp_type in
+        let env, cases =
+          List.fold_map ~init:env cases ~f:(fun env (p, e) ->
+              let env = Envi.open_expr_scope mode env in
+              let p, env =
+                check_pattern mode ~add:(add_polymorphised mode) env typ p
+              in
+              let e, env = get_expression mode env expected e in
+              let env = Envi.close_expr_scope env in
+              (env, (p, e)) )
+        in
+        Envi.Type.update_depths env expected ;
+        ({exp_loc= loc; exp_type= expected; exp_desc= Match (e, cases)}, env)
+    | Field (e, field) ->
+        let field_info =
+          match field.txt with
+          | Lident _ ->
+              None
+          | Ldot (path, _) -> (
             match Envi.TypeDecl.find_of_field mode field env with
             | Some
                 (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
+              ->
+                let vars, bound_vars, env =
+                  Envi.Type.refresh_vars mode ~loc tdec_params Int.Map.empty
+                    env
+                in
+                let ident =
+                  Location.mkloc
+                    (Longident.Ldot (path, decl.tdec_ident.txt))
+                    loc
+                in
+                let decl_type =
+                  Envi.TypeDecl.mk_typ mode ~params:vars ~ident decl env
+                in
+                let {fld_type; _} = List.nth_exn field_decls i in
+                let fld_type =
+                  Envi.Type.copy mode ~loc fld_type bound_vars env
+                in
+                check_type mode ~loc env expected fld_type ;
+                Some (fld_type, decl_type, env)
+            | _ ->
+                None )
+          | Lapply _ ->
+              failwith "Unhandled Lapply in field name"
+        in
+        let typ, decl_type, env, resolved =
+          match field_info with
+          | Some (fld_type, decl_type, env) ->
+              (fld_type, decl_type, env, true)
+          | None ->
+              let fld_type = expected in
+              let decl_type = Envi.Type.mkvar mode None env in
+              (fld_type, decl_type, env, false)
+        in
+        let e, env = get_expression mode env decl_type e in
+        let typ, env =
+          if resolved then (typ, env)
+          else
+            match
+              Envi.TypeDecl.find_unaliased_of_type mode ~loc e.exp_type env
+            with
+            | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) -> (
+              match
+                List.find field_decls ~f:(fun {fld_ident; _} ->
+                    match field.txt with
+                    | Lident field ->
+                        String.equal fld_ident.txt field
+                    | _ ->
+                        false
+                    (* This case shouldn't happen! *) )
+              with
+              | Some {fld_type; _} ->
+                  let fld_type =
+                    Envi.Type.copy mode ~loc fld_type bound_vars env
+                  in
+                  check_type mode ~loc env typ fld_type ;
+                  (fld_type, env)
+              | None ->
+                  raise
+                    (Error
+                       ( loc
+                       , env
+                       , mode
+                       , Wrong_record_field (field.txt, e.exp_type) )) )
+            | _ -> (
+              match Envi.TypeDecl.find_of_field mode field env with
+              | Some
+                  ( ({tdec_desc= TRecord field_decls; tdec_params; _} as decl)
+                  , i ) ->
+                  let vars, bound_vars, env =
+                    Envi.Type.refresh_vars mode ~loc tdec_params Int.Map.empty
+                      env
+                  in
+                  let ident =
+                    Longident.(
+                      match field.txt with
+                      | Lident _ ->
+                          Location.mkloc (Lident decl.tdec_ident.txt) loc
+                      | Ldot (path, _) ->
+                          Location.mkloc (Ldot (path, decl.tdec_ident.txt)) loc
+                      | _ ->
+                          failwith "Unhandled Lapply in field name")
+                  in
+                  let e_typ =
+                    Envi.TypeDecl.mk_typ mode ~params:vars ~ident decl env
+                  in
+                  check_type mode ~loc env e.exp_type e_typ ;
+                  let {fld_type; _} = List.nth_exn field_decls i in
+                  let fld_type =
+                    Envi.Type.copy mode ~loc fld_type bound_vars env
+                  in
+                  let fld_type =
+                    Envi.Type.copy mode ~loc fld_type bound_vars env
+                  in
+                  (fld_type, env)
+              | _ ->
+                  raise
+                    (Error (loc, env, mode, Unbound ("record field", field))) )
+        in
+        ({exp_loc= loc; exp_type= typ; exp_desc= Field (e, field)}, env)
+    | Record ([], _) ->
+        raise (Error (loc, env, mode, Empty_record))
+    | Record (((field, _) :: _ as fields), ext) ->
+        let typ, ext, env =
+          match ext with
+          | Some ext ->
+              let ext, env = get_expression mode env expected ext in
+              (ext.exp_type, Some ext, env)
+          | None ->
+              (expected, None, env)
+        in
+        let typ, field_decls, bound_vars, env =
+          match Envi.TypeDecl.find_unaliased_of_type mode ~loc typ env with
+          | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) ->
+              (typ, field_decls, bound_vars, env)
+          | _ -> (
+            match Envi.TypeDecl.find_of_field mode field env with
+            | Some
+                (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
               ->
                 let vars, bound_vars, env =
                   Envi.Type.refresh_vars mode ~loc tdec_params Int.Map.empty
@@ -906,232 +946,164 @@ let rec get_expression mode env expected exp =
                     | _ ->
                         failwith "Unhandled Lapply in field name")
                 in
-                let e_typ =
+                let decl_type =
                   Envi.TypeDecl.mk_typ mode ~params:vars ~ident decl env
                 in
-                check_type mode ~loc env e.exp_type e_typ ;
-                let {fld_type; _} = List.nth_exn field_decls i in
-                let fld_type =
-                  Envi.Type.copy mode ~loc fld_type bound_vars env
-                in
-                let fld_type =
-                  Envi.Type.copy mode ~loc fld_type bound_vars env
-                in
-                (fld_type, env)
+                check_type mode ~loc env typ decl_type ;
+                (decl_type, field_decls, bound_vars, env)
             | _ ->
                 raise (Error (loc, env, mode, Unbound ("record field", field)))
             )
-      in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Field (e, field)}, env)
-  | Record ([], _) ->
-      raise (Error (loc, env, mode, Empty_record))
-  | Record (((field, _) :: _ as fields), ext) ->
-      let typ, ext, env =
-        match ext with
-        | Some ext ->
-            let ext, env = get_expression mode env expected ext in
-            (ext.exp_type, Some ext, env)
+        in
+        let env = ref env in
+        let fields_filled =
+          Array.create ~len:(List.length field_decls) false
+        in
+        let fields =
+          List.map fields ~f:(fun (field, e) ->
+              let i, field_typ, record_typ =
+                get_field_of_decl mode typ bound_vars field_decls field !env
+              in
+              ( try check_type mode ~loc:field.loc !env record_typ typ
+                with
+                | Error
+                    (_, env, mode, Check_failed (_, _, Cannot_unify (typ, _)))
+                ->
+                  raise
+                    (Error
+                       ( field.loc
+                       , env
+                       , mode
+                       , Wrong_record_field (field.txt, typ) )) ) ;
+              let e, env' = get_expression mode !env field_typ e in
+              ( if fields_filled.(i) then
+                let name = (List.nth_exn field_decls i).fld_ident.txt in
+                raise (Error (field.loc, !env, mode, Repeated_field name)) ) ;
+              fields_filled.(i) <- true ;
+              env := env' ;
+              (field, e) )
+        in
+        ( match ext with
+        | Some _ ->
+            () (* TODO: warn when all fields have been provided. *)
         | None ->
-            (expected, None, env)
-      in
-      let typ, field_decls, bound_vars, env =
-        match Envi.TypeDecl.find_unaliased_of_type mode ~loc typ env with
-        | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) ->
-            (typ, field_decls, bound_vars, env)
-        | _ -> (
-          match Envi.TypeDecl.find_of_field mode field env with
-          | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
-            ->
-              let vars, bound_vars, env =
-                Envi.Type.refresh_vars mode ~loc tdec_params Int.Map.empty env
-              in
-              let ident =
-                Longident.(
-                  match field.txt with
-                  | Lident _ ->
-                      Location.mkloc (Lident decl.tdec_ident.txt) loc
-                  | Ldot (path, _) ->
-                      Location.mkloc (Ldot (path, decl.tdec_ident.txt)) loc
-                  | _ ->
-                      failwith "Unhandled Lapply in field name")
-              in
-              let decl_type =
-                Envi.TypeDecl.mk_typ mode ~params:vars ~ident decl env
-              in
-              check_type mode ~loc env typ decl_type ;
-              (decl_type, field_decls, bound_vars, env)
-          | _ ->
-              raise (Error (loc, env, mode, Unbound ("record field", field))) )
-      in
-      let env = ref env in
-      let fields_filled = Array.create ~len:(List.length field_decls) false in
-      let fields =
-        List.map fields ~f:(fun (field, e) ->
-            let i, field_typ, record_typ =
-              get_field_of_decl mode typ bound_vars field_decls field !env
+            let fields_filled = Array.to_list fields_filled in
+            let names =
+              List.fold2_exn ~init:[] fields_filled field_decls
+                ~f:(fun names filled {fld_ident; _} ->
+                  if filled then names else fld_ident.txt :: names )
             in
-            ( try check_type mode ~loc:field.loc !env record_typ typ
-              with
-              | Error (_, env, mode, Check_failed (_, _, Cannot_unify (typ, _)))
-              ->
-                raise
-                  (Error
-                     (field.loc, env, mode, Wrong_record_field (field.txt, typ)))
-            ) ;
-            let e, env' = get_expression mode !env field_typ e in
-            ( if fields_filled.(i) then
-              let name = (List.nth_exn field_decls i).fld_ident.txt in
-              raise (Error (field.loc, !env, mode, Repeated_field name)) ) ;
-            fields_filled.(i) <- true ;
-            env := env' ;
-            (field, e) )
-      in
-      ( match ext with
-      | Some _ ->
-          () (* TODO: warn when all fields have been provided. *)
-      | None ->
-          let fields_filled = Array.to_list fields_filled in
-          let names =
-            List.fold2_exn ~init:[] fields_filled field_decls
-              ~f:(fun names filled {fld_ident; _} ->
-                if filled then names else fld_ident.txt :: names )
-          in
-          if not (List.is_empty names) then
-            raise (Error (loc, !env, mode, Missing_fields names)) ) ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Record (fields, ext)}, !env)
-  | Ctor (name, arg) ->
-      let typ, arg_typ = get_ctor mode name env in
-      check_type mode ~loc env expected typ ;
-      let arg, env =
-        match arg with
-        | Some arg ->
-            let arg, env = get_expression mode env arg_typ arg in
-            (Some arg, env)
-        | None ->
-            let typ = Envi.Type.mk mode (Ttuple []) env in
-            ( try check_type mode ~loc env arg_typ typ
-              with _ ->
-                raise (Error (loc, env, mode, Argument_expected name.txt)) ) ;
-            (None, env)
-      in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
-  | Unifiable _ ->
-      raise (Error (loc, env, mode, Unifiable_expr))
-  | Handler cases ->
-      let typ, _ =
-        Typet.Type.import Prover
-          Ast_build.(Type.constr ~loc (Lid.of_list ["Handler"; "t"]))
-          env
-      in
-      check_type ~loc Prover env typ expected ;
-      let makety path argc =
-        let open Ast_build in
-        let params = List.init argc ~f:(fun _ -> Type.none ~loc ()) in
-        let ty, _env =
+            if not (List.is_empty names) then
+              raise (Error (loc, !env, mode, Missing_fields names)) ) ;
+        ({exp_loc= loc; exp_type= typ; exp_desc= Record (fields, ext)}, !env)
+    | Ctor (name, arg) ->
+        let typ, arg_typ = get_ctor mode name env in
+        check_type mode ~loc env expected typ ;
+        let arg, env =
+          match arg with
+          | Some arg ->
+              let arg, env = get_expression mode env arg_typ arg in
+              (Some arg, env)
+          | None ->
+              let typ = Envi.Type.mk mode (Ttuple []) env in
+              ( try check_type mode ~loc env arg_typ typ
+                with _ ->
+                  raise (Error (loc, env, mode, Argument_expected name.txt)) ) ;
+              (None, env)
+        in
+        ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
+    | Unifiable _ ->
+        raise (Error (loc, env, mode, Unifiable_expr))
+    | Handler cases ->
+        let typ, _ =
           Typet.Type.import Prover
-            (Type.constr ~loc ~params (Lid.of_list path))
+            Ast_build.(Type.constr ~loc (Lid.of_list ["Handler"; "t"]))
             env
         in
-        ty
-      in
-      let patch_arg typ arg =
-        match typ.type_desc with
-        | Tctor variant ->
-            typ.type_desc <- Tctor {variant with var_params= [arg]}
-        | _ ->
-            assert false
-      in
-      let cases =
-        List.map cases ~f:(fun (pat, exp) ->
-            let env = Envi.open_expr_scope Prover env in
-            let typ = Envi.Type.mkvar Prover None env in
-            let request = makety ["Request"; "t"] 1 in
-            patch_arg request typ ;
-            let p, env =
-              check_pattern Prover ~add:(add_polymorphised Prover) env typ pat
-            in
-            let response_user = makety ["Request"; "Response"; "t"] 1 in
-            let response = makety ["Request"; "response"] 0 in
-            patch_arg response_user typ ;
-            let respond_type =
-              Envi.Type.mk Prover
-                (Tarrow (response_user, response, Explicit, Nolabel))
-                env
-            in
-            let env =
-              Envi.add_name Ast_build.(Loc.mk ~loc "respond") respond_type env
-            in
-            let e, _env = get_expression Prover env response exp in
-            (p, e) )
-      in
-      ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
-  | Prover e ->
-      let typ = Envi.Type.mkvar Prover None env in
-      let typ_full =
-        Envi.Type.mk Prover
-          (Tarrow (Initial_env.Type.unit, typ, Explicit, Nolabel))
-          env
-      in
-      check_type ~loc Prover env typ_full expected ;
-      let e, env = get_expression Prover env typ e in
-      ({exp_loc= loc; exp_type= expected; exp_desc= Prover e}, env)
-  | LetOpen (lid, e) ->
-      let try_unless_mode mode' =
-        try Envi.find_module ~loc mode' lid env with
-        | err when mode = mode' ->
-            raise err
-        | _ ->
-            Envi.Scope.empty (Envi.current_path mode env)
-      in
-      (* An open operates across all scopes. *)
-      let m =
-        { Envi.FullScope.kind= ExprOpen
-        ; ocaml_scope= try_unless_mode OCaml
-        ; checked_scope= Some (try_unless_mode Checked)
-        ; prover_scope= try_unless_mode Prover }
-      in
-      let env = Envi.open_expr_namespace_scope m mode env in
-      let e, env = get_expression mode env expected e in
-      let _, env = Envi.pop_scope env in
-      ({exp_loc= loc; exp_type= expected; exp_desc= LetOpen (lid, e)}, env)
-  | MakeRequest e ->
-      let typ =
-        Ast_build.(
-          Type.constr ~loc
-            (Lid.of_list ["Request"; "t"])
-            ~params:[Type.none ~loc ()])
-      in
-      let typ, env = Typet.Type.import Prover typ env in
-      let typ =
-        Envi.Type.mk mode
-          (Tarrow (Initial_env.Type.unit, typ, Explicit, Nolabel))
-          env
-      in
-      let e, env = get_expression Prover env typ {e with exp_desc= Prover e} in
-      let e =
-        let exists = Ast_build.(Loc.mk ~loc (Lid.of_name "exists")) in
-        let exists_typ =
-          Envi.Type.mk mode
-            (Tarrow
-               ( Envi.Type.mkvar mode None env
-               , expected
-               , Explicit
-               , Optional "compute" ))
+        check_type ~loc Prover env typ expected ;
+        let makety path argc =
+          let open Ast_build in
+          let params = List.init argc ~f:(fun _ -> Type.none ~loc ()) in
+          let ty, _env =
+            Typet.Type.import Prover
+              (Type.constr ~loc ~params (Lid.of_list path))
+              env
+          in
+          ty
+        in
+        let patch_arg typ arg =
+          match typ.type_desc with
+          | Tctor variant ->
+              typ.type_desc <- Tctor {variant with var_params= [arg]}
+          | _ ->
+              assert false
+        in
+        let cases =
+          List.map cases ~f:(fun (pat, exp) ->
+              let env = Envi.open_expr_scope Prover env in
+              let typ = Envi.Type.mkvar Prover None env in
+              let request = makety ["Request"; "t"] 1 in
+              patch_arg request typ ;
+              let p, env =
+                check_pattern Prover ~add:(add_polymorphised Prover) env
+                  request pat
+              in
+              let response_user = makety ["Request"; "Response"; "t"] 1 in
+              let response = makety ["Request"; "response"] 0 in
+              patch_arg response_user typ ;
+              let respond_type =
+                Envi.Type.mk Prover
+                  (Tarrow (response_user, response, Explicit, Nolabel))
+                  env
+              in
+              let env =
+                Envi.add_name
+                  Ast_build.(Loc.mk ~loc "respond")
+                  respond_type env
+              in
+              let e, _env = get_expression Prover env response exp in
+              (p, e) )
+        in
+        ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
+    | Prover e ->
+        let typ = Envi.Type.mkvar Prover None env in
+        let typ_full =
+          Envi.Type.mk Prover
+            (Tarrow (Initial_env.Type.unit, typ, Explicit, Nolabel))
             env
         in
-        let exists_typ =
-          Envi.Type.mk mode
-            (Tarrow (e.exp_type, exists_typ, Explicit, Optional "request"))
-            env
+        check_type ~loc Prover env typ_full expected ;
+        let e, env = get_expression Prover env typ e in
+        ({exp_loc= loc; exp_type= expected; exp_desc= Prover e}, env)
+    | LetOpen (lid, e) ->
+        let try_unless_mode mode' =
+          try Envi.find_module ~loc mode' lid env with
+          | err when mode = mode' ->
+              raise err
+          | _ ->
+              Envi.Scope.empty (Envi.current_path mode env)
         in
-        let exists_exp =
-          {exp_loc= loc; exp_type= exists_typ; exp_desc= Variable exists}
+        (* An open operates across all scopes. *)
+        let m =
+          { Envi.FullScope.kind= ExprOpen
+          ; ocaml_scope= try_unless_mode OCaml
+          ; checked_scope= Some (try_unless_mode Checked)
+          ; prover_scope= try_unless_mode Prover }
         in
-        { exp_loc= loc
-        ; exp_type= expected
-        ; exp_desc= Apply (exists_exp, [(Labelled "request", e)]) }
-      in
-      (e, env)
+        let env = Envi.open_expr_namespace_scope m mode env in
+        let e, env = get_expression mode env expected e in
+        let _, env = Envi.pop_scope env in
+        ({exp_loc= loc; exp_type= expected; exp_desc= LetOpen (lid, e)}, env)
+    | MakeRequest e ->
+        let e =
+          Ast_build.(
+            Exp.apply ~loc
+              (Exp.var ~loc (Lid.of_name "exists"))
+              [(Labelled "request", Exp.prover ~loc e)])
+        in
+        get_expression mode env expected e
+  in
+  (e, env)
 
 and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
@@ -1177,6 +1149,10 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
       (p, e, env)
   | PConstraint (({pat_desc= PVariable str; _} as p'), typ), _ ->
       let ctyp, env = Typet.Type.import mode typ env in
+      let implicits =
+        List.rev @@ fst @@ Envi.Type.get_implicits [] e.exp_type
+      in
+      let ctyp = Envi.Type.add_implicits mode env implicits ctyp in
       check_type mode ~loc env e.exp_type ctyp ;
       let ctyp =
         if Set.is_empty typ_vars then ctyp
@@ -1199,9 +1175,7 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
       raise (Error (loc, env, mode, No_instance implicit.exp_type))
 
 let type_extension mode ~loc variant ctors env =
-  let {Parsetypes.var_ident; var_params; var_implicit_params= _; var_length} =
-    variant
-  in
+  let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
   let ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl) =
     match Envi.raw_find_type_declaration mode var_ident env with
     | open_decl ->
@@ -1240,7 +1214,6 @@ let type_extension mode ~loc variant ctors env =
     { var_ident
     ; var_implicit_params= decl.tdec_implicit_params
     ; var_decl= decl
-    ; var_length
     ; var_params= decl.tdec_params }
   in
   (env, variant, ctors)
@@ -1402,6 +1375,7 @@ let rec check_statement mode env stmt =
       (env, {stmt with stmt_desc= Instance (name, e)})
   | TypeDecl decl when !in_decl ->
       let decl, env = Typet.TypeDecl.import mode decl env in
+      let decl = Envi.TypeDecl.normalise_constr_names OCaml env decl in
       let stmt =
         {stmt with stmt_desc= TypeDecl (Untype_ast.type_decl ~loc decl)}
       in
@@ -1488,7 +1462,17 @@ let rec check_statement mode env stmt =
       in
       (Envi.open_namespace_scope m mode env, stmt)
   | TypeExtension (variant, ctors) ->
-      let env, _variant, _ctors = type_extension mode ~loc variant ctors env in
+      let env, variant, ctors = type_extension mode ~loc variant ctors env in
+      let ctors =
+        List.map
+          ~f:(Envi.TypeDecl.ctor_arg_normalise_constr_names OCaml env)
+          ctors
+      in
+      let ctors = List.map ~f:(Untype_ast.ctor_decl ~loc) ctors in
+      let variant =
+        Envi.Type.variant_normalise_constr_names OCaml env variant
+      in
+      let variant = Untype_ast.variant ~loc variant in
       (env, {stmt with stmt_desc= TypeExtension (variant, ctors)})
   | Request (arg, ctor_decl, handler) ->
       let open Ast_build in
@@ -1502,13 +1486,10 @@ let rec check_statement mode env stmt =
       let ctor_decl =
         match ctors with
         | [ctor] ->
-            { (Untype_ast.ctor_decl ~loc ctor) with
-              ctor_ret=
-                Some
-                  (Type.mk ~loc
-                     (Tctor
-                        (Type.variant ~loc ~params:[arg]
-                           (Lid.of_list ["Request"; "t"])))) }
+            let ctor =
+              Envi.TypeDecl.ctor_arg_normalise_constr_names OCaml env ctor
+            in
+            Untype_ast.ctor_decl ~loc ctor
         | _ ->
             failwith "Wrong number of constructors returned for Request."
       in
@@ -1642,10 +1623,10 @@ let check (ast : statement list) (env : Envi.t) =
 let rec check_alias ~out_mode ~in_mode env alias =
   match alias with
   | AValue (name, lid) ->
-      let typ, id = Envi.find_name ~loc:lid.loc in_mode lid env in
+      let typ, id = Envi.find_name_poly ~loc:lid.loc in_mode lid env in
       Envi.add_name_raw out_mode name typ id env
   | AInstance (name, lid) ->
-      let typ, id = Envi.find_name ~loc:lid.loc in_mode lid env in
+      let typ, id = Envi.find_name_poly ~loc:lid.loc in_mode lid env in
       let env = Envi.add_name_raw out_mode name typ id env in
       Envi.add_implicit_instance name.txt typ env
   | ATypeDecl (name, lid) ->

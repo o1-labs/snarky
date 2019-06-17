@@ -1108,6 +1108,14 @@ module Type = struct
     in
     get_implicits true acc typ
 
+  let rec add_implicits mode env implicits_list typ =
+    match implicits_list with
+    | [] ->
+        typ
+    | (label, typ1) :: implicits_list ->
+        add_implicits mode env implicits_list
+          (mk mode (Tarrow (typ1, typ, Implicit, label)) env)
+
   let new_implicit_var ?(loc = Location.none) typ env =
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.resolve_env.type_env in
     let mk exp_loc exp_desc = {Parsetypes.exp_loc; exp_desc; exp_type= typ} in
@@ -1159,7 +1167,8 @@ module Type = struct
       List.filter implicit_vars
         ~f:(fun ({Parsetypes.exp_loc; exp_type; _} as exp) ->
           match implicit_instances mode ~loc ~is_subtype exp_type env with
-          | [(name, instance_typ)] ->
+          (* TODO: Re-enable multiple instances being an error. *)
+          | (name, instance_typ) :: _xs ->
               let name = Location.mkloc name exp_loc in
               let e =
                 generate_implicits
@@ -1173,9 +1182,7 @@ module Type = struct
                   raise (Error (exp.exp_loc, No_unifiable_implicit)) ) ;
               false
           | [] ->
-              true
-          | _ ->
-              raise (Error (exp_loc, Multiple_instances exp_type)) )
+              true )
     in
     let new_implicits = env.resolve_env.type_env.implicit_vars in
     env.resolve_env.type_env
@@ -1303,18 +1310,28 @@ module Type = struct
         let typ2 = constr_map mode env ~f typ2 in
         mk mode (Tarrow (typ1, typ2, explicit, label)) env
     | Tctor variant ->
-        mk mode (f variant) env
+        let var_params =
+          List.map ~f:(constr_map mode env ~f) variant.var_params
+        in
+        let var_implicit_params =
+          List.map ~f:(constr_map mode env ~f) variant.var_implicit_params
+        in
+        mk mode (f {variant with var_params; var_implicit_params}) env
     | Tpoly (typs, typ) ->
         mk mode (Tpoly (typs, constr_map mode env ~f typ)) env
 
+  let variant_normalise_constr_names mode env variant =
+    match find_preferred_name mode variant.var_decl.tdec_id env with
+    | Some ident ->
+        {variant with var_ident= {txt= ident; loc= variant.var_ident.loc}}
+    | None ->
+        variant
+
+  let normalise_one_constr mode env variant =
+    Tctor (variant_normalise_constr_names mode env variant)
+
   let normalise_constr_names mode env typ =
-    constr_map mode env typ ~f:(fun variant ->
-        match find_preferred_name mode variant.var_decl.tdec_id env with
-        | Some ident ->
-            Tctor
-              {variant with var_ident= {txt= ident; loc= variant.var_ident.loc}}
-        | None ->
-            Tctor variant )
+    constr_map mode env typ ~f:(normalise_one_constr mode env)
 
   let rec bubble_label_aux mode env label typ =
     match typ.type_desc with
@@ -1439,6 +1456,51 @@ module TypeDecl = struct
         find_unaliased_of_type mode ~loc typ env
     | ret ->
         ret
+
+  let field_constr_map mode env ~f field_decl =
+    {field_decl with fld_type= Type.constr_map mode env ~f field_decl.fld_type}
+
+  let field_normalise_constr_names mode env typ =
+    field_constr_map mode env typ ~f:(Type.normalise_one_constr mode env)
+
+  let rec constr_map mode env ~f decl =
+    match decl.tdec_desc with
+    | TAbstract | TOpen | TForward _ | TUnfold _ ->
+        decl
+    | TRecord field_decls ->
+        { decl with
+          tdec_desc=
+            TRecord (List.map ~f:(field_constr_map mode env ~f) field_decls) }
+    | TVariant ctors ->
+        { decl with
+          tdec_desc=
+            TVariant (List.map ~f:(ctor_arg_constr_map mode env ~f) ctors) }
+    | TAlias typ ->
+        {decl with tdec_desc= TAlias (Type.constr_map mode env ~f typ)}
+    | TExtend (lid, type_decl, ctors) ->
+        { decl with
+          tdec_desc=
+            TExtend
+              ( lid
+              , constr_map mode env ~f type_decl
+              , List.map ~f:(ctor_arg_constr_map mode env ~f) ctors ) }
+
+  and ctor_arg_constr_map mode env ~f ctor =
+    let ctor_args =
+      match ctor.ctor_args with
+      | Ctor_tuple typs ->
+          Ctor_tuple (List.map ~f:(Type.constr_map mode env ~f) typs)
+      | Ctor_record decl ->
+          Ctor_record (constr_map mode env ~f decl)
+    in
+    let ctor_ret = Option.map ~f:(Type.constr_map mode env ~f) ctor.ctor_ret in
+    {ctor with ctor_args; ctor_ret}
+
+  let normalise_constr_names mode env typ =
+    constr_map mode env typ ~f:(Type.normalise_one_constr mode env)
+
+  let ctor_arg_normalise_constr_names mode env typ =
+    ctor_arg_constr_map mode env typ ~f:(Type.normalise_one_constr mode env)
 end
 
 let add_name (name : str) typ =
@@ -1447,6 +1509,27 @@ let add_name (name : str) typ =
 let add_name_raw mode (name : str) typ id =
   map_current_scope
     ~f:(FullScope.map_scope mode ~f:(Scope.add_name_raw name.txt typ id))
+
+let find_name_poly ~loc mode (lid : lid) env =
+  match find_of_lident ~kind:"name" mode ~get_name:Scope.get_name lid env with
+  | Some (typ, i) ->
+      let vars, new_vars_map, typ =
+        match typ.type_desc with
+        | Tpoly (vars, typ) ->
+            let vars, new_vars_map, _env =
+              Type.refresh_vars mode ~loc vars Int.Map.empty env
+            in
+            (vars, new_vars_map, typ)
+        | _ ->
+            ([], Int.Map.empty, typ)
+      in
+      let typ = Type.copy ~loc mode typ new_vars_map env in
+      let typ =
+        match vars with [] -> typ | _ -> Type.mk mode (Tpoly (vars, typ)) env
+      in
+      (typ, i)
+  | None ->
+      raise (Error (lid.loc, Unbound_value lid.txt))
 
 let find_name ~loc mode (lid : lid) env =
   match find_of_lident ~kind:"name" mode ~get_name:Scope.get_name lid env with

@@ -3,7 +3,11 @@ let ocaml =
   , {|
 
 
-  let fix : (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b);
+  let loop : (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b);
+
+  module In_channel : {
+    let read_lines : string -> list(string);
+  };
 
   module Request : {
     type req('a) = ..;
@@ -122,7 +126,7 @@ let ocaml =
 
     instance unit : t(unit, unit);
 
-    instance field : t(field_var, field);
+    let field : t(field_var, field);
 
     let tuple2 :
          {t('var1, 'value1)}
@@ -243,9 +247,10 @@ let ocaml =
       let to_string : t -> string;
 
       let unpack : t -> list(bool);
+      let to_bits : t -> list(bool);
 
       let project : list(bool) -> t;
-
+      let of_bits : list(bool) -> t;
     };
 
     type t = field_var;
@@ -255,6 +260,8 @@ let ocaml =
     let length : t -> int;
 
     let constant : field -> t;
+
+    let of_string : string -> t;
 
     let to_constant : t -> option(field);
 
@@ -334,6 +341,19 @@ let ocaml =
 
     instance typ : Typ.t(t, Constant.t);
 
+  };
+
+  module Select : {
+    type t('a) = Boolean.var -> then_:'a -> else_:'a -> 'a;
+
+    let id : {t('a)} -> t('a);
+
+    instance field : t(Field.t);
+    instance boolean : t(Boolean.var);
+    instance tuple2: {t('a1)} -> {t('a2)} -> t(('a1, 'a2));
+
+    instance list: {t('a)} -> t(list('a));
+    instance array: {t('a)} -> t(array('a));
   };
 
   module Bitstring_checked : {
@@ -432,6 +452,9 @@ let ocaml =
   let assert_r1cs :
     ?label:string -> Field.t -> Field.t -> Field.t -> unit;
 
+  let assert_r1 :
+    Field.t -> Field.t -> Field.t -> unit;
+
   let assert_square : ?label:string -> Field.t -> Field.t -> unit;
 
   let as_prover : As_prover.t(unit -> unit) -> unit;
@@ -452,15 +475,15 @@ let ocaml =
     -> 'var;
 
   let exists :
-       ?request:As_prover.t(unit -> Request.t('value))
+       {Typ.t('var, 'value)}
+    -> ?request:As_prover.t(unit -> Request.t('value))
     -> ?compute:As_prover.t(unit -> 'value)
-    -> {Typ.t('var, 'value)}
     -> 'var;
 
   let exists_handle :
-       ?request:As_prover.t(unit -> Request.t('value))
+       {Typ.t('var, 'value)}
+    -> ?request:As_prover.t(unit -> Request.t('value))
     -> ?compute:As_prover.t(unit -> 'value)
-    -> {Typ.t('var, 'value)}
     -> Handle.t('var, 'value);
 
   let handle : (unit -> 'a) -> Handler.t -> 'a;
@@ -516,6 +539,9 @@ let ocaml =
 let checked =
   ( __LINE__ + 1
   , {|
+  module In_channel = {
+    let read_lines = In_channel.read_lines;
+  };
   module Constraint = {
     type t = Constraint.t;
 
@@ -551,9 +577,11 @@ let checked =
 
     let all = Boolean.all;
 
-    let of_field = Boolean.of_field;
-
     let equal = Boolean.equal;
+
+    module Unsafe = {
+      let of_field = Boolean.Unsafe.of_cvar;
+    };
 
     module Assert = {
       let (=) = Boolean.Assert.(=);
@@ -576,6 +604,8 @@ let checked =
     let length = Field.length;
 
     let constant = Field.constant;
+
+    let of_string = Field.of_string;
 
     let to_constant = Field.to_constant;
 
@@ -651,6 +681,8 @@ let checked =
     };
   };
 
+  let select = Select.id;
+
   module Bitstring = {
     type t = Bitstring_checked.t;
 
@@ -680,6 +712,8 @@ let checked =
   let assert_all = assert_all;
 
   let assert_r1cs = assert_r1cs;
+
+  let assert_r1 = assert_r1;
 
   let assert_square = assert_square;
 
@@ -816,7 +850,7 @@ let prover =
 
     instance unit = Typ.unit;
 
-    instance field = Typ.field;
+    let field = Typ.field;
 
     let tuple2 = Typ.tuple2;
 
@@ -876,9 +910,13 @@ let prover =
 
     let unpack = Field.Constant.unpack;
 
+    let to_bits = Field.Constant.to_bits;
+
     let project = Field.Constant.project;
 
-    instance typ = Field.typ;
+    let of_bits = Field.Constant.of_bits;
+
+    let typ = Field.typ;
 
   };
 

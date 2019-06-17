@@ -1639,9 +1639,13 @@ module type Run_basic = sig
       include Stringable.S with type t := t
 
       val unpack : t -> bool list
+
+      val to_bits : t -> bool list
       (** Convert a field element into its constituent bits. *)
 
       val project : bool list -> t
+
+      val of_bits : bool list -> t
       (** Convert a list of bits into a field element. *)
     end
 
@@ -1661,6 +1665,8 @@ module type Run_basic = sig
           scaled R1CS variables. *)
 
     val constant : field -> t
+
+    val of_string : string -> t
 
     val to_constant : t -> field option
 
@@ -1745,6 +1751,22 @@ module type Run_basic = sig
   end
 
   type boolean = Boolean.var
+
+  module Select : sig
+    type 'a t = boolean -> then_:'a -> else_:'a -> 'a
+
+    val field : Field.t t
+
+    val boolean : boolean t
+
+    val tuple2 : 'a1 t -> 'a2 t -> ('a1 * 'a2) t
+
+    val list : 'a t -> 'a list t
+
+    val array : 'a t -> 'a array t
+
+    val id : 'a t -> 'a t
+  end
 
   module Proof : sig
     type t
@@ -1893,6 +1915,8 @@ module type Run_basic = sig
   val assert_all : ?label:string -> Constraint.t list -> unit
 
   val assert_r1cs : ?label:string -> Field.t -> Field.t -> Field.t -> unit
+
+  val assert_r1 : Field.t -> Field.t -> Field.t -> unit
 
   val assert_square : ?label:string -> Field.t -> Field.t -> unit
 

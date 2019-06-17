@@ -6,7 +6,7 @@ let () = Camlsnark_c.linkme
 
 module Runner = Checked_runner
 
-let rec fix f x = f (fix f) x
+let rec loop f x = f (loop f) x
 
 let set_eval_constraints b = Runner.eval_constraints := b
 
@@ -1658,7 +1658,11 @@ module Run = struct
 
           let unpack = unpack
 
+          let to_bits = unpack
+
           let project = project
+
+          let of_bits = project
         end
 
         include T
@@ -1675,6 +1679,8 @@ module Run = struct
       let to_constant_and_terms = to_constant_and_terms
 
       let constant = constant
+
+      let of_string = Fn.compose constant Constant.of_string
 
       let to_constant = to_constant
 
@@ -1770,6 +1776,28 @@ module Run = struct
       end
 
       let typ = typ
+    end
+
+    module Select = struct
+      type 'a t = boolean -> then_:'a -> else_:'a -> 'a
+
+      let field : Field.t t = Field.if_
+
+      let boolean : boolean t = Boolean.if_
+
+      let tuple2 if1 if2 cond ~then_:(then_1, then_2) ~else_:(else_1, else_2) =
+        ( if1 cond ~then_:then_1 ~else_:else_1
+        , if2 cond ~then_:then_2 ~else_:else_2 )
+
+      let list if_ cond ~then_ ~else_ =
+        Core.List.map2_exn then_ else_ ~f:(fun then_ else_ ->
+            if_ cond ~then_ ~else_ )
+
+      let array if_ cond ~then_ ~else_ =
+        Core.Array.map2_exn then_ else_ ~f:(fun then_ else_ ->
+            if_ cond ~then_ ~else_ )
+
+      let id = Fn.id
     end
 
     module Proof = Proof
@@ -1886,6 +1914,8 @@ module Run = struct
     let assert_all ?label c = run (assert_all ?label c)
 
     let assert_r1cs ?label a b c = run (assert_r1cs ?label a b c)
+
+    let assert_r1 a b c = assert_r1cs ?label:None a b c
 
     let assert_square ?label x y = run (assert_square ?label x y)
 
