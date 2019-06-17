@@ -1,7 +1,7 @@
 #!/bin/bash
-open pin add fold_lib .
-open pin add tuple_lib .
-open pin add bitstring_lib .
+opam pin add fold_lib .
+opam pin add tuple_lib .
+opam pin add bitstring_lib .
 opam pin add interval_union .
 opam pin add ppx_snarky .
 opam pin add meja .
