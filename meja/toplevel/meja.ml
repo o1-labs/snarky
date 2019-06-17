@@ -298,13 +298,44 @@ let run
                                         [ Exp.var (Lid.of_list ["Field"; "typ"])
                                         ; exp ]) )))
                      ; Stmt.value (Pat.var "read_input")
-                         (Exp.apply
-                            (Exp.var (Lid.of_list ["List"; "map"]))
-                            [ ( Labelled "f"
-                              , Exp.var
-                                  (Lid.of_list
-                                     ["Field"; "Constant"; "of_string"]) ) ])
-                     ]))
+                         (Exp.fun_ (Pat.var "a")
+                            (Exp.match_
+                               (Exp.var (Lid.of_name "a"))
+                               [ ( List.foldi tl
+                                     ~init:(Pat.ctor (Lid.of_name "[]"))
+                                     ~f:(fun i pat _ ->
+                                       Pat.ctor (Lid.of_name "::")
+                                         ~args:
+                                           (Pat.tuple
+                                              [ Pat.var ("f_" ^ string_of_int i)
+                                              ; pat ]) )
+                                 , Exp.open_ (Lid.of_name "H_list")
+                                     (List.foldi tl
+                                        ~init:(Exp.ctor (Lid.of_name "[]"))
+                                        ~f:(fun i exp _ ->
+                                          Exp.ctor (Lid.of_name "::")
+                                            ~args:
+                                              (Exp.tuple
+                                                 [ Exp.apply
+                                                     (Exp.var
+                                                        (Lid.of_list
+                                                           [ "Field"
+                                                           ; "Constant"
+                                                           ; "of_string" ]))
+                                                     [ ( Nolabel
+                                                       , Exp.var
+                                                           (Lid.of_name
+                                                              ( "f_"
+                                                              ^ string_of_int i
+                                                              )) ) ]
+                                                 ; exp ]) )) )
+                               ; ( Pat.any ()
+                                 , Exp.apply
+                                     (Exp.var (Lid.of_name "failwith"))
+                                     [ ( Nolabel
+                                       , Exp.literal
+                                           (String "Wrong number of arguments")
+                                       ) ] ) ])) ]))
             in
             let toplevel_module =
               Ast_build.(
@@ -321,7 +352,7 @@ let run
                 Stmt.value
                   (Pat.ctor (Lid.of_name "()"))
                   (Exp.apply
-                     (Exp.var (Lid.of_name "main"))
+                     (Exp.var (Lid.of_list ["Toplevel_CLI_module__"; "main"]))
                      [(Nolabel, Exp.ctor (Lid.of_name "()"))]))
             in
             ast @ [toplevel_param_module; toplevel_module; call_main] )

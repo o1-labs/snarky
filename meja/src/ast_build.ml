@@ -130,6 +130,8 @@ module Pat = struct
       match eq with Some eq -> eq | None -> var ?loc (Lid.last name)
     in
     (Loc.mk ?loc name, eq)
+
+  let tuple ?loc ps = mk ?loc (PTuple ps)
 end
 
 module Exp = struct
