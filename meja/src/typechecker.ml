@@ -1132,6 +1132,20 @@ let rec get_expression mode env expected exp =
               [(Labelled "request", Exp.prover ~loc e)])
         in
         get_expression mode env expected e
+    | If (e1, e2, None) ->
+        check_type ~loc mode env Initial_env.Type.unit expected ;
+        let e1, env = get_expression mode env Initial_env.Type.bool e1 in
+        let e2, env = get_expression mode env Initial_env.Type.unit e2 in
+        ( { exp_loc= loc
+          ; exp_type= Initial_env.Type.unit
+          ; exp_desc= If (e1, e2, None) }
+        , env )
+    | If (e1, e2, Some e3) ->
+        let e1, env = get_expression mode env Initial_env.Type.bool e1 in
+        let e2, env = get_expression mode env expected e2 in
+        let e3, env = get_expression mode env expected e3 in
+        ( {exp_loc= loc; exp_type= expected; exp_desc= If (e1, e2, Some e3)}
+        , env )
   in
   (e, env)
 
