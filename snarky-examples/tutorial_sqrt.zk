@@ -25,7 +25,7 @@
 */
 request(field) Get_square_root(field);
 
-let main = fun (x : field) => {
+let main = fun (x : field, ()) => {
   /* This bit asks the prover to please give us the square root of x. */
   let y = request { Get_square_root(x); };
 
