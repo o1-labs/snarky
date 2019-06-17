@@ -56,11 +56,3 @@ let j : a:{int} -> b:{option(int)} -> int = fun {~a, ~b} => {
     | None => a
   };
 };
-
-instance x = 0i;
-
-let k : {option(int)} -> int = j;
-
-instance y = Some(0i);
-
-let l : int = j;
