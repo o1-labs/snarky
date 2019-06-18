@@ -1,3 +1,5 @@
+val read_lines : string -> string list
+
 val loop : (('a -> 'b) -> 'a -> 'b) -> 'a -> 'b
 
 val set_eval_constraints : bool -> unit
