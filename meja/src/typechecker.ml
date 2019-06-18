@@ -693,11 +693,7 @@ let rec get_expression mode env expected exp =
           | _ ->
               (f, es)
         in
-        let e = {exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)} in
-        let e, env =
-          if mode = Prover then make_prover_read ~loc env typ e else (e, env)
-        in
-        (e, env)
+        ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
     | Variable name ->
         let typ, id = Envi.find_name mode ~loc name env in
         let name =
@@ -710,7 +706,25 @@ let rec get_expression mode env expected exp =
         let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
         let e = Envi.Type.generate_implicits e env in
         let e, env =
-          if mode = Prover then make_prover_read ~loc env typ e else (e, env)
+          if
+            mode = Prover && typ.type_mode = Checked && potentially_typable typ
+          then
+            let read =
+              Ast_build.(Loc.mk ~loc (Lid.of_list ["As_prover"; "read"]))
+            in
+            let read_exp =
+              {exp_loc= loc; exp_type= typ; exp_desc= Variable read}
+            in
+            let ret_type = Envi.Type.mkvar mode None env in
+            let read_typ =
+              Envi.Type.mk mode (Tarrow (typ, ret_type, Explicit, Nolabel)) env
+            in
+            let read_exp, env = get_expression mode env read_typ read_exp in
+            ( { exp_loc= loc
+              ; exp_type= ret_type
+              ; exp_desc= Apply (read_exp, [(Nolabel, e)]) }
+            , env )
+          else (e, env)
         in
         check_type mode ~loc env expected e.exp_type ;
         (e, env)
@@ -1188,21 +1202,6 @@ let rec get_expression mode env expected exp =
         , env )
   in
   (e, env)
-
-and make_prover_read ~loc env typ e =
-  if typ.type_mode = Checked && potentially_typable typ then
-    let read = Ast_build.(Loc.mk ~loc (Lid.of_list ["As_prover"; "read"])) in
-    let read_exp = {exp_loc= loc; exp_type= typ; exp_desc= Variable read} in
-    let ret_type = Envi.Type.mkvar Prover None env in
-    let read_typ =
-      Envi.Type.mk Prover (Tarrow (typ, ret_type, Explicit, Nolabel)) env
-    in
-    let read_exp, env = get_expression Prover env read_typ read_exp in
-    ( { exp_loc= loc
-      ; exp_type= ret_type
-      ; exp_desc= Apply (read_exp, [(Nolabel, e)]) }
-    , env )
-  else (e, env)
 
 and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
