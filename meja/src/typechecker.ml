@@ -123,8 +123,8 @@ let rec check_type_aux mode ~loc typ ctyp env =
         check_type_aux (Initial_env.Type.option typ1) ctyp1 env ;
         check_type_aux typ2 ctyp2 env
     | Optional x, Labelled y when String.equal x y ->
-        check_type_aux (Initial_env.Type.option typ1) ctyp1 env ;
-        check_type_aux typ2 ctyp2 env
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux (Initial_env.Type.option typ2) ctyp2 env
     | _ ->
         raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) )
   | Tctor variant, Tctor constr_variant -> (
