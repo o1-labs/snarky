@@ -1215,8 +1215,8 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
   let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
   let implicit_vars =
     Envi.Type.flattened_implicit_vars mode ~loc ~toplevel
-      ~is_subtype:(is_subtype mode ~loc:e.exp_loc) ~unify:(check_type mode ~loc)
-      typ_vars env
+      ~is_subtype:(is_subtype mode ~loc:e.exp_loc)
+      ~unify:(check_type mode ~loc) typ_vars env
   in
   (* We don't necessarily get the outermost representative. Try to unwrap it
      and get the true representative here. *)

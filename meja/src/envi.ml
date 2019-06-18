@@ -1182,16 +1182,17 @@ module Type = struct
 
   let implicit_instances mode ~loc
       ~(is_subtype : env -> type_expr -> of_:type_expr -> bool)
-      ~(unify : env -> type_expr -> type_expr -> unit)
-      (typ : type_expr) env =
+      ~(unify : env -> type_expr -> type_expr -> unit) (typ : type_expr) env =
     let is_concrete_typ_t = is_concrete_typ_t env typ in
     let _ignore_unify = unify in
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, canonical_path, instance_typ) ->
         let instance_typ = copy mode ~loc instance_typ Int.Map.empty env in
         if
-          (is_concrete_typ_t && is_same_concrete_typ_t env typ instance_typ &&
-            ((* HACK *) (*unify env typ instance_typ;*) true) )
+          is_concrete_typ_t
+          && is_same_concrete_typ_t env typ instance_typ
+          && (* HACK *)
+             (*unify env typ instance_typ;*) true
           || is_subtype env typ ~of_:instance_typ
         then
           List.find_map env.scope_stack
@@ -1217,14 +1218,17 @@ module Type = struct
         in
         {exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}
 
-  let rec instantiate_implicits mode ~loc ~is_subtype ~unify implicit_vars env =
+  let rec instantiate_implicits mode ~loc ~is_subtype ~unify implicit_vars env
+      =
     let env_implicits = env.resolve_env.type_env.implicit_vars in
     env.resolve_env.type_env
     <- {env.resolve_env.type_env with implicit_vars= []} ;
     let implicit_vars =
       List.filter implicit_vars
         ~f:(fun ({Parsetypes.exp_loc; exp_type; _} as exp) ->
-          match implicit_instances mode ~loc ~is_subtype ~unify exp_type env with
+          match
+            implicit_instances mode ~loc ~is_subtype ~unify exp_type env
+          with
           (* TODO: Re-enable multiple instances being an error. *)
           | (name, instance_typ) :: _xs ->
               let name = Location.mkloc name exp_loc in
@@ -1253,7 +1257,8 @@ module Type = struct
           (new_implicits @ implicit_vars)
           env
 
-  let flattened_implicit_vars mode ~loc ~toplevel ~is_subtype ~unify typ_vars env =
+  let flattened_implicit_vars mode ~loc ~toplevel ~is_subtype ~unify typ_vars
+      env =
     let is_subtype env typ ~of_:ctyp =
       is_subtype env typ ~of_:(snd (get_implicits [] ctyp))
     in
