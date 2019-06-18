@@ -2305,6 +2305,29 @@ module Run = struct
       let typ = typ
     end
 
+    let load_pedersen_params path =
+      let comma = ',' in
+      let semi_colon = ';' in
+      let err =
+        "Bad params. Each line should consist of 4 ; separated pairs."
+      in
+      let read_pair s =
+        match String.split ~on:comma s with
+        | [x; y] ->
+            (Field.(of_string x), Field.(of_string y))
+        | _ ->
+            failwith err
+      in
+      let strs = Array.of_list (In_channel.read_lines path) in
+      Array.map
+        ~f:(fun s ->
+          match Core.List.map ~f:read_pair (String.split ~on:semi_colon s) with
+          | [x1; x2; x3; x4] ->
+              (x1, x2, x3, x4)
+          | _ ->
+              failwith err )
+        strs
+
     module Select = struct
       type 'a t = boolean -> then_:'a -> else_:'a -> 'a
 
