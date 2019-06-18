@@ -15,7 +15,8 @@ and type_desc =
 and variant =
   { var_ident: lid
   ; var_params: type_expr list
-  ; var_implicit_params: type_expr list }
+  ; var_implicit_params: type_expr list
+  ; var_length: int option }
 
 type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
@@ -170,8 +171,16 @@ let rec typ_debug_print fmt typ =
   | Tarrow (typ1, typ2, Implicit, label) ->
       print "%a{%a} -> %a" print_label label typ_debug_print typ1
         typ_debug_print typ2
-  | Tctor {var_ident= name; var_params= params; _} ->
-      print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
+  | Tctor {var_ident= name; var_params= params; var_length; _} -> (
+    match var_length with
+    | Some n ->
+        print "%a[%d] (%a)" Longident.pp name.txt n
+          (print_list typ_debug_print)
+          params
+    | None ->
+        print "%a (%a)" Longident.pp name.txt
+          (print_list typ_debug_print)
+          params )
   | Ttuple typs ->
       print "(%a)" (print_list typ_debug_print) typs ) ;
   print ")"

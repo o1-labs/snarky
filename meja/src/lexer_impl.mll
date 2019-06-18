@@ -95,6 +95,7 @@ rule token = parse
   | ".." { DOTDOT }
   | '.' { DOT }
   | '-' { MINUS }
+  | '#' { POUND }
   | "//" ([^'\n']* as comment) newline
     { new_line lexbuf; COMMENT (comment) }
   | "//" ([^'\n']* as comment) eof

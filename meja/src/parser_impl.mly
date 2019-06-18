@@ -57,6 +57,7 @@ let consexp ~pos hd tl =
 %token LBRACKET
 %token RBRACKET
 %token TILDE
+%token POUND
 %token QUESTION
 %token DASHGT
 %token EQUALGT
@@ -148,7 +149,7 @@ structure_item:
   | INSTANCE x = as_loc(val_ident) EQUAL e = expr
     { mkstmt ~pos:$loc (Instance (x, e)) }
   | TYPE x = decl_type(lident) k = type_kind
-    { let (x, args) = x in
+    { let (x, args, _var_length) = x in
       mkstmt ~pos:$loc (TypeDecl
         { tdec_ident= x
         ; tdec_params= args
@@ -163,9 +164,9 @@ structure_item:
     { mkstmt ~pos:$loc (Open x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
-    { let (x, params) = x in
+    { let (x, params, var_length) = x in
       mkstmt ~pos:$loc (TypeExtension
-        ( {var_ident= x; var_params= params; var_implicit_params= []}
+        ( {var_length; var_ident= x; var_params= params; var_implicit_params= []}
         , List.rev ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Request (arg, x, handler)) }
@@ -176,7 +177,7 @@ signature_item:
   | INSTANCE x = as_loc(val_ident) COLON typ = type_expr
     { mksig ~pos:$loc (SInstance (x, typ)) }
   | TYPE x = decl_type(lident) k = type_kind
-    { let (x, args) = x in
+    { let (x, args, _var_length) = x in
       mksig ~pos:$loc (STypeDecl
         { tdec_ident= x
         ; tdec_params= args
@@ -193,9 +194,9 @@ signature_item:
     { mksig ~pos:$loc (SOpen x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
-    { let (x, params) = x in
+    { let (x, params, var_length) = x in
       mksig ~pos:$loc (STypeExtension
-        ( {var_ident= x; var_params= params; var_implicit_params= []}
+        ( {var_length; var_ident= x; var_params= params; var_implicit_params= [] }
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl
     { mksig ~pos:$loc (SRequest (arg, x)) }
@@ -238,15 +239,17 @@ module_sig:
 
 %inline decl_type(X):
   | x = as_loc(X)
-    { (x, []) }
+    { (x, [], None) }
+  | x = as_loc(X) POUND n = FIELD LPAREN args = list(type_expr, COMMA) RPAREN
+    { (x, List.rev args, Some (int_of_string n)) }
   | x = as_loc(X) LPAREN args = list(type_expr, COMMA) RPAREN
-    { (x, List.rev args) }
+    { (x, List.rev args, None) }
 
 decl_type_expr:
   | x = decl_type(longident(lident, UIDENT))
-    { let (x, params) = x in
+    { let (x, params, var_length) = x in
       mktyp ~pos:$loc
-        (Tctor {var_ident= x; var_params= params; var_implicit_params= []}) }
+        (Tctor {var_length; var_ident= x; var_params= params; var_implicit_params= []}) }
 
 record_field(ID, EXP):
   | id = as_loc(ID) COLON t = EXP

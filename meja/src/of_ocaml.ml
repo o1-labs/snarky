@@ -27,7 +27,8 @@ let rec to_type_desc ~loc desc =
       Parsetypes.Tctor
         { var_ident
         ; var_params= List.map ~f:to_type_expr params
-        ; var_implicit_params= [] }
+        ; var_implicit_params= []
+        ; var_length= None }
   | Tlink typ | Tsubst typ ->
       (to_type_expr typ).type_desc
   | Tpoly (typ, typs) ->
@@ -39,6 +40,7 @@ let rec to_type_desc ~loc desc =
       let var_ident = mkloc (longident_of_path path) loc in
       Parsetypes.Tctor
         { var_ident
+        ; var_length= None
         ; var_params= List.map ~f:to_type_expr typs
         ; var_implicit_params= [] }
   | Tobject _ | Tfield _ | Tnil | Tvariant _ ->

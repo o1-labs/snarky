@@ -462,6 +462,8 @@ module type Basic = sig
     module Assert : sig
       val ( = ) : Boolean.var -> Boolean.var -> (unit, _) Checked.t
 
+      val equal : Boolean.var -> Boolean.var -> (unit, _) Checked.t
+
       val is_true : Boolean.var -> (unit, _) Checked.t
 
       val any : var list -> (unit, _) Checked.t
@@ -1542,6 +1544,520 @@ module type Run_basic = sig
     end
 
     include module type of Types.Typ.T
+
+    val list0 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list1 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list2 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list3 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list4 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list5 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list6 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list7 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list8 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list9 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list10 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list11 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list12 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list13 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list14 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list15 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list16 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list17 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list18 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list19 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list20 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list21 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list22 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list23 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list24 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list25 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list26 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list27 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list28 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list29 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list30 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list31 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list32 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list33 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list34 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list35 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list36 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list37 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list38 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list39 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list40 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list41 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list42 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list43 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list44 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list45 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list46 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list47 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list48 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list49 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list50 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list51 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list52 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list53 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list54 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list55 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list56 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list57 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list58 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list59 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list60 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list61 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list62 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list63 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list64 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list65 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list66 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list67 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list68 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list69 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list70 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list71 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list72 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list73 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list74 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list75 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list76 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list77 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list78 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list79 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list80 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list81 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list82 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list83 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list84 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list85 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list86 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list87 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list88 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list89 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list90 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list91 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list92 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list93 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list94 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list95 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list96 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list97 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list98 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list99 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list100 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list101 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list102 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list103 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list104 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list105 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list106 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list107 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list108 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list109 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list110 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list111 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list112 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list113 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list114 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list115 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list116 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list117 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list118 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list119 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list120 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list121 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list122 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list123 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list124 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list125 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list126 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list127 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list128 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list129 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list130 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list131 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list132 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list133 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list134 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list135 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list136 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list137 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list138 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list139 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list140 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list141 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list142 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list143 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list144 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list145 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list146 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list147 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list148 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list149 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list150 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list151 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list152 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list153 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list154 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list155 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list156 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list157 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list158 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list159 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list160 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list161 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list162 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list163 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list164 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list165 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list166 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list167 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list168 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list169 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list170 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list171 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list172 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list173 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list174 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list175 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list176 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list177 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list178 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list179 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list180 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list181 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list182 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list183 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list184 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list185 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list186 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list187 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list188 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list189 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list190 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list191 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list192 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list193 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list194 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list195 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list196 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list197 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list198 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list199 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list200 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list201 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list202 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list203 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list204 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list205 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list206 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list207 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list208 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list209 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list210 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list211 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list212 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list213 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list214 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list215 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list216 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list217 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list218 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list219 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list220 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list221 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list222 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list223 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list224 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list225 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list226 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list227 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list228 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list229 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list230 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list231 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list232 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list233 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list234 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list235 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list236 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list237 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list238 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list239 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list240 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list241 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list242 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list243 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list244 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list245 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list246 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list247 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list248 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list249 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list250 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list251 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list252 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list253 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list254 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list255 : ('a, 'b) t -> ('a list, 'b list) t
+
+    val list256 : ('a, 'b) t -> ('a list, 'b list) t
   end
 
   (** Representation of booleans within a field.
@@ -1617,6 +2133,8 @@ module type Run_basic = sig
 
     module Assert : sig
       val ( = ) : Boolean.var -> Boolean.var -> unit
+
+      val equal : Boolean.var -> Boolean.var -> unit
 
       val is_true : Boolean.var -> unit
 
@@ -1711,9 +2229,9 @@ module type Run_basic = sig
 
     val choose_preimage_var : t -> length:int -> Boolean.var list
 
-    val to_bits : ?length:int -> ?allow_overflow:bool -> t -> Boolean.var list
+    val to_bits : ?length:int -> t -> Boolean.var list
 
-    val of_bits : ?allow_overflow:bool -> Boolean.var list -> t
+    val of_bits : Boolean.var list -> t
 
     type comparison_result = {less: Boolean.var; less_or_equal: Boolean.var}
 
@@ -1751,6 +2269,9 @@ module type Run_basic = sig
 
     val typ : (t, Constant.t) Typ.t
   end
+
+  val load_pedersen_params :
+    string -> (Field.t * Field.t) Tuple_lib.Quadruple.t array
 
   type boolean = Boolean.var
 

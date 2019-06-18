@@ -20,7 +20,8 @@ and variant =
   { var_ident: lid
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
-  ; var_decl: type_decl }
+  ; var_decl: type_decl
+  ; mutable var_length: int option }
 
 and field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
 

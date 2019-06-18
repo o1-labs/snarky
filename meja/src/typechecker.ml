@@ -134,19 +134,39 @@ let rec check_type_aux mode ~loc typ ctyp env =
     match unpack_decls mode ~loc typ ctyp env with
     | Some (typ, ctyp) ->
         check_type_aux typ ctyp env
-    | None ->
-        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-        then
-          match
-            List.iter2 variant.var_params constr_variant.var_params
-              ~f:(fun param constr_param ->
-                check_type_aux param constr_param env )
-          with
-          | Ok env ->
-              env
-          | Unequal_lengths ->
-              raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
-        else raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) )
+    | None -> (
+        let sort id =
+          if Int.equal id Initial_env.list.tdec_id then `List else `Other
+        in
+        (* Unify constructors *)
+        (let c1 = variant.var_decl.tdec_id in
+         let c2 = constr_variant.var_decl.tdec_id in
+         match (sort c1, sort c2) with
+         | `List, `List -> (
+           match (variant.var_length, constr_variant.var_length) with
+           | Some n, Some m ->
+               if not (Int.equal n m) then
+                 raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
+           | Some n, None ->
+               constr_variant.var_length <- Some n
+           | None, Some n ->
+               variant.var_length <- Some n
+           | None, None ->
+               () )
+         | `Other, `Other ->
+             if not (Int.equal c1 c2) then
+               raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
+         | `List, `Other | `Other, `List ->
+             raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))) ;
+        match
+          List.iter2 variant.var_params constr_variant.var_params
+            ~f:(fun param constr_param -> check_type_aux param constr_param env
+          )
+        with
+        | Ok env ->
+            env
+        | Unequal_lengths ->
+            raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) ) )
   | Tctor _, _ | _, Tctor _ ->
       (* Unfold an alias and compare again *)
       let typ, ctyp =
@@ -253,8 +273,27 @@ let rec is_subtype mode ~loc env typ ~of_:ctyp =
     | Some (typ, ctyp) ->
         is_subtype typ ~of_:ctyp
     | None ->
-        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-        then
+        let sort id =
+          if Int.equal id Initial_env.list.tdec_id then `List else `Other
+        in
+        let c1 = variant.var_decl.tdec_id in
+        let c2 = constr_variant.var_decl.tdec_id in
+        let constructors_match =
+          match (sort c1, sort c2) with
+          | `List, `List -> (
+            match (variant.var_length, constr_variant.var_length) with
+            | None, Some _ ->
+                false
+            | _, None ->
+                true
+            | Some n, Some m ->
+                Int.equal n m )
+          | `Other, `Other ->
+              Int.equal c1 c2
+          | `List, `Other | `Other, `List ->
+              false
+        in
+        if constructors_match then
           match
             List.for_all2 variant.var_params constr_variant.var_params
               ~f:(fun param constr_param -> is_subtype param ~of_:constr_param)
@@ -406,7 +445,8 @@ let get_ctor mode (name : lid) env =
                  { var_ident= make_name ctor.ctor_ident
                  ; var_params= params
                  ; var_implicit_params= tdec_implicit_params
-                 ; var_decl= decl })
+                 ; var_decl= decl
+                 ; var_length= None })
               env
         | Ctor_tuple [typ] ->
             typ
@@ -594,6 +634,17 @@ and check_patterns mode ~add env typs pats =
       let pats, env = check_patterns mode ~add env typs pats in
       (pat :: pats, env)
 
+(* TODO: This is a hack *)
+let potentially_typable typ =
+  match typ.type_desc with
+  | Tarrow _ ->
+      false
+  | _ ->
+      not
+        (List.mem ~equal:Int.equal
+           [Initial_env.Type.string.type_id; Initial_env.Type.int.type_id]
+           typ.type_id)
+
 let rec get_expression mode env expected exp =
   let loc = exp.exp_loc in
   let e, env =
@@ -655,7 +706,9 @@ let rec get_expression mode env expected exp =
         let e = {exp_loc= loc; exp_type= typ; exp_desc= Variable name} in
         let e = Envi.Type.generate_implicits e env in
         let e, env =
-          if mode = Prover && typ.type_mode = Checked then
+          if
+            mode = Prover && typ.type_mode = Checked && potentially_typable typ
+          then
             let read =
               Ast_build.(Loc.mk ~loc (Lid.of_list ["As_prover"; "read"]))
             in
@@ -757,7 +810,8 @@ let rec get_expression mode env expected exp =
              { var_ident= mk_lid name
              ; var_params= []
              ; var_implicit_params= []
-             ; var_decl= decl } ;
+             ; var_decl= decl
+             ; var_length= None } ;
         let body, env = get_expression mode env expected body in
         (* Substitute the self-reference for a type variable. *)
         typ.type_desc <- Tvar (Some name, Explicit) ;
@@ -1239,7 +1293,9 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
       raise (Error (loc, env, mode, No_instance implicit.exp_type))
 
 let type_extension mode ~loc variant ctors env =
-  let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
+  let {Parsetypes.var_ident; var_length; var_params; var_implicit_params= _} =
+    variant
+  in
   let ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl) =
     match Envi.raw_find_type_declaration mode var_ident env with
     | open_decl ->
@@ -1278,7 +1334,8 @@ let type_extension mode ~loc variant ctors env =
     { var_ident
     ; var_implicit_params= decl.tdec_implicit_params
     ; var_decl= decl
-    ; var_params= decl.tdec_params }
+    ; var_params= decl.tdec_params
+    ; var_length }
   in
   (env, variant, ctors)
 

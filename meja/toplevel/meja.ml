@@ -197,10 +197,21 @@ let run
           let name = Location.(mkloc module_name none) in
           Envi.add_module Checked name m env )
     in
+    let env, extended_lib_ast =
+      (* TODO: This is a hack to get the "extended library" to be
+         available. *)
+      let parse_ast =
+        read_string ~at_line:Meja_stdlib.Extended_lib.line
+          (Parser_impl.implementation Lexer_impl.token)
+          "extended_lib" Meja_stdlib.Extended_lib.t
+      in
+      Typechecker.check parse_ast env
+    in
     let parse_ast =
       read_file (Parser_impl.implementation Lexer_impl.token) file
     in
     let env, ast = Typechecker.check parse_ast env in
+    let ast = extended_lib_ast @ ast in
     let ast =
       if snarky_preamble then add_preamble impl_mod curve proofs ast else ast
     in
