@@ -128,41 +128,45 @@ let rec check_type_aux mode ~loc typ ctyp env =
     | _ ->
         raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) )
   | Tctor variant, Tctor constr_variant -> (
-      (* Always try to unfold first, so that type aliases with phantom
+    (* Always try to unfold first, so that type aliases with phantom
          parameters can unify, as in OCaml.
       *)
-      let sort id =
-        if Int.equal id Initial_env.list.tdec_id then `List else `Other
-      in
-      (* Unify constructors *)
-      (let c1 = variant.var_decl.tdec_id in
-       let c2 = constr_variant.var_decl.tdec_id in
-       match (sort c1, sort c2) with
-       | `List, `List -> (
-         match (variant.var_length, constr_variant.var_length) with
-         | Some n, Some m ->
-             if not (Int.equal n m) then
+    match unpack_decls mode ~loc typ ctyp env with
+    | Some (typ, ctyp) ->
+        check_type_aux typ ctyp env
+    | None -> (
+        let sort id =
+          if Int.equal id Initial_env.list.tdec_id then `List else `Other
+        in
+        (* Unify constructors *)
+        (let c1 = variant.var_decl.tdec_id in
+         let c2 = constr_variant.var_decl.tdec_id in
+         match (sort c1, sort c2) with
+         | `List, `List -> (
+           match (variant.var_length, constr_variant.var_length) with
+           | Some n, Some m ->
+               if not (Int.equal n m) then
+                 raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
+           | Some n, None ->
+               constr_variant.var_length <- Some n
+           | None, Some n ->
+               variant.var_length <- Some n
+           | None, None ->
+               () )
+         | `Other, `Other ->
+             if not (Int.equal c1 c2) then
                raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
-         | Some n, None ->
-             constr_variant.var_length <- Some n
-         | None, Some n ->
-             variant.var_length <- Some n
-         | None, None ->
-             () )
-       | `Other, `Other ->
-           if not (Int.equal c1 c2) then
-             raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))
-       | `List, `Other | `Other, `List ->
-           raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))) ;
-      match
-        List.iter2 variant.var_params constr_variant.var_params
-          ~f:(fun param constr_param -> check_type_aux param constr_param env
-        )
-      with
-      | Ok env ->
-          env
-      | Unequal_lengths ->
-          raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) )
+         | `List, `Other | `Other, `List ->
+             raise (Error (loc, env, mode, Cannot_unify (typ, ctyp)))) ;
+        match
+          List.iter2 variant.var_params constr_variant.var_params
+            ~f:(fun param constr_param -> check_type_aux param constr_param env
+          )
+        with
+        | Ok env ->
+            env
+        | Unequal_lengths ->
+            raise (Error (loc, env, mode, Cannot_unify (typ, ctyp))) ) )
   | Tctor _, _ | _, Tctor _ ->
       (* Unfold an alias and compare again *)
       let typ, ctyp =
@@ -269,8 +273,27 @@ let rec is_subtype mode ~loc env typ ~of_:ctyp =
     | Some (typ, ctyp) ->
         is_subtype typ ~of_:ctyp
     | None ->
-        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-        then
+        let sort id =
+          if Int.equal id Initial_env.list.tdec_id then `List else `Other
+        in
+        let c1 = variant.var_decl.tdec_id in
+        let c2 = constr_variant.var_decl.tdec_id in
+        let constructors_match =
+          match (sort c1, sort c2) with
+          | `List, `List -> (
+            match (variant.var_length, constr_variant.var_length) with
+            | None, Some _ ->
+                false
+            | _, None ->
+                true
+            | Some n, Some m ->
+                Int.equal n m )
+          | `Other, `Other ->
+              Int.equal c1 c2
+          | `List, `Other | `Other, `List ->
+              false
+        in
+        if constructors_match then
           match
             List.for_all2 variant.var_params constr_variant.var_params
               ~f:(fun param constr_param -> is_subtype param ~of_:constr_param)
