@@ -1,0 +1,5 @@
+(executable
+ (name crypto_util)
+ (libraries fold_lib tuple_lib core snarky)
+ (preprocess (pps ppxlib.metaquot ppx_jane ppx_deriving.eq))
+ (modules crypto_util affine pedersen))
