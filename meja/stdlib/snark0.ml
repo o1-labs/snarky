@@ -191,6 +191,8 @@ let ocaml =
     module Assert : {
       let (=) : var -> var -> unit;
 
+      let equal : var -> var -> unit;
+
       let is_true : var -> unit;
 
       let any : list(var) -> unit;
@@ -596,6 +598,7 @@ let checked =
 
     module Assert = {
       let (=) = Boolean.Assert.(=);
+      let equal = Boolean.Assert.equal;
 
       let is_true = Boolean.Assert.is_true;
 

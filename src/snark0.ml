@@ -473,6 +473,8 @@ struct
       module Assert = struct
         let ( = ) (x : var) (y : var) = assert_equal (x :> Cvar.t) (y :> Cvar.t)
 
+        let equal = ( = )
+
         let is_true (v : var) = v = true_
 
         let%snarkydef_ any (bs : var list) =
@@ -1557,6 +1559,8 @@ module Run = struct
         open Snark.Boolean.Assert
 
         let ( = ) x y = run (x = y)
+
+        let equal = ( = )
 
         let is_true x = run (is_true x)
 
