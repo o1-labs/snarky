@@ -2270,6 +2270,9 @@ module type Run_basic = sig
     val typ : (t, Constant.t) Typ.t
   end
 
+  val load_pedersen_params :
+    string -> (Field.t * Field.t) Tuple_lib.Quadruple.t array
+
   type boolean = Boolean.var
 
   module Select : sig
