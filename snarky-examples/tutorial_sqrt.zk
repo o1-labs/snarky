@@ -37,12 +37,3 @@ let main = fun (x : field, ()) => {
   assert_r1(y, y, x);
 };
 
-let prover =
-  handler {
-    | Get_square_root(x) => {
-      let y = Field.sqrt(x);
-      respond(Provide(y)) ;
-    }
-  };
-
-
