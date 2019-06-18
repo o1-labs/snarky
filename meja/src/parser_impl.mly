@@ -55,6 +55,7 @@ let consexp ~pos hd tl =
 %token LBRACKET
 %token RBRACKET
 %token TILDE
+%token POUND
 %token QUESTION
 %token DASHGT
 %token EQUALGT
@@ -237,8 +238,8 @@ module_sig:
 %inline decl_type(X):
   | x = as_loc(X)
     { (x, [], None) }
-  | x = as_loc(X) LBRACKET n = INT RBRACKET LPAREN args = list(type_expr, COMMA) RPAREN
-    { (x, List.rev args, Some n) }
+  | x = as_loc(X) POUND n = FIELD LPAREN args = list(type_expr, COMMA) RPAREN
+    { (x, List.rev args, Some (int_of_string n)) }
   | x = as_loc(X) LPAREN args = list(type_expr, COMMA) RPAREN
     { (x, List.rev args, None) }
 
