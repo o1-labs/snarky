@@ -92,14 +92,31 @@ let rec of_pattern_desc ?loc = function
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
+let of_literal ?loc = function
+  | Bool false ->
+      Exp.ident ?loc
+        Ast_build.(Loc.mk ?loc (Lid.of_list ["Boolean"; "false_"]))
+  | Bool true ->
+      Exp.ident ?loc Ast_build.(Loc.mk ?loc (Lid.of_list ["Boolean"; "true_"]))
+  | Int i ->
+      Exp.constant ?loc (Const.int i)
+  | Field f ->
+      Exp.apply ?loc
+        (Exp.ident ?loc
+           Ast_build.(
+             Loc.mk ?loc (Lid.of_list ["Field"; "Constant"; "of_string"])))
+        [(Nolabel, Exp.constant ?loc (Const.string f))]
+  | String s ->
+      Exp.constant ?loc (Const.string s)
+
 let rec of_expression_desc ?loc = function
   | Apply (f, es) ->
       Exp.apply ?loc (of_expression f)
         (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
   | Variable name ->
       Exp.ident ?loc name
-  | Int i ->
-      Exp.constant ?loc (Const.int i)
+  | Literal l ->
+      of_literal ?loc l
   | Fun (label, p, body, _) ->
       Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
   | Newtype (name, body) ->
@@ -130,6 +147,56 @@ let rec of_expression_desc ?loc = function
       of_expression e
   | Unifiable {name; _} ->
       Exp.ident ?loc (mk_lid name)
+  | Handler cases ->
+      let cases =
+        List.map cases ~f:(fun (pat, expr) ->
+            let pat =
+              let loc = pat.pat_loc in
+              Parsetree.([%pat? With {request= [%p of_pattern pat]; respond}])
+            in
+            Exp.case pat (of_expression expr) )
+      in
+      let default =
+        Exp.case (Pat.any ?loc ())
+          (Exp.ident ?loc
+             Ast_build.(Loc.mk ?loc (Lid.of_list ["Request"; "unhandled"])))
+      in
+      Exp.function_ ?loc (cases @ [default])
+  | Prover e ->
+      Exp.fun_ ?loc Nolabel None
+        (Pat.construct ?loc Ast_build.(Loc.mk ?loc (Lid.of_name "()")) None)
+        (of_expression e)
+  | LetOpen (lid, e) ->
+      Exp.open_ ?loc Fresh lid (of_expression e)
+  | MakeRequest _ ->
+      (* Need an inferred Typ.t, which we don't have here.. *)
+      assert false
+  | If (e1, e2, e3) ->
+      Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
+        (Option.map ~f:of_expression e3)
+
+and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
+  Parsetree.(
+    [%expr
+      function
+      | With
+          { request=
+              [%p
+                match ctor_ident with
+                | Some ctor_ident ->
+                    Pat.construct ~loc (mk_lid ctor_ident)
+                      (Option.map ~f:of_pattern args)
+                | None -> (
+                  match args with
+                  | Some args ->
+                      of_pattern args
+                  | None ->
+                      Pat.any () )]
+          ; respond } ->
+          let unhandled = Snarky.Request.unhandled in
+          [%e of_expression body]
+      | _ ->
+          Snarky.Request.unhandled])
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
@@ -228,25 +295,23 @@ let rec of_statement_desc ?loc = function
       let typ_ext =
         Str.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
       in
+      let {txt= name; _} = ctor.ctor_ident in
       let handler =
-        Option.map handler
-          ~f:
+        Option.map handler ~f:(fun (pat, body) ->
+            let loc =
+              match (loc, pat) with
+              | Some loc, _ ->
+                  loc
+              | None, Some {pat_loc= {loc_start; _}; _} ->
+                  {body.exp_loc with Location.loc_start}
+              | None, None ->
+                  body.exp_loc
+            in
             Parsetree.(
-              fun (args, body) ->
-                let {txt= name; loc} = ctor.ctor_ident in
-                [%stri
-                  let [%p Pat.var ~loc (Location.mkloc ("handle_" ^ name) loc)]
-                      = function
-                    | With
-                        { request=
-                            [%p
-                              Pat.construct ~loc (mk_lid ctor.ctor_ident)
-                                (Option.map ~f:of_pattern args)]
-                        ; respond } ->
-                        let unhandled = Snarky.Request.unhandled in
-                        [%e of_expression body]
-                    | _ ->
-                        Snarky.Request.unhandled])
+              [%stri
+                let [%p Pat.var ~loc (Location.mkloc ("handle_" ^ name) loc)] =
+                  [%e of_handler ~loc ~ctor_ident:ctor.ctor_ident (pat, body)]])
+        )
       in
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)

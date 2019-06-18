@@ -1,0 +1,43 @@
+open Extended_lib;
+
+// let expected_output = Array.of_list([0b, 1b, 0b, 1b, 1b, 0b, 0b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 1b, 1b, 0b, 0b, 0b, 1b, 0b, 1b, 1b, 0b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 0b, 0b, 1b, 1b, 1b, 1b, 0b, 1b, 0b, 1b, 0b, 0b, 0b, 1b, 0b, 1b, 0b, 0b, 0b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 0b, 0b, 0b, 0b, 1b, 1b, 1b, 1b, 1b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 0b, 1b, 1b, 0b, 1b, 0b, 0b, 1b, 0b, 1b, 1b, 1b, 1b, 1b, 0b, 0b, 0b, 0b, 1b, 0b, 1b, 0b, 1b, 1b, 0b, 0b, 1b, 0b, 1b, 0b, 0b, 0b, 1b, 1b, 1b, 0b, 1b, 0b, 1b, 1b, 0b, 0b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 0b, 0b, 1b, 0b, 0b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 0b, 1b, 1b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 1b, 0b, 0b, 1b, 0b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 0b, 1b, 1b, 0b, 1b, 0b, 1b, 1b, 1b, 1b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 1b, 1b, 0b, 0b, 1b, 0b, 1b, 1b, 1b, 0b, 0b, 1b, 1b, 1b, 1b, 0b, 0b, 0b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 1b, 1b, 0b, 1b, 1b, 1b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 0b, 1b, 1b, 1b, 0b, 1b, 1b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 0b, 0b, 0b, 0b]);
+
+/* This SNARK will prove:
+
+   I know a pedersen preimage of the public input.
+*/
+
+let preimage_length = 256i;
+
+let pad_to_preimage_length = fun (xs) => {
+  let n = List.length(xs);
+  if (n > preimage_length) {
+    failwith("Too big to be a preimage");
+  } ;
+
+  if (n < preimage_length) {
+    xs @ List.init(preimage_length - n, fun (_) => { false; });
+  } else {
+    xs;
+  };
+};
+
+let get_preimage : unit -> list#256(bool) = fun () => {
+  print_endline("Please enter your preimage") ;
+  let s = read_line () ;
+  pad_to_preimage_length(Blake2.string_to_bool_list(s));
+};
+
+
+let main = fun (expected_output : field, ()) => {
+  let params = load_pedersen_params("bn128-params");
+
+  let preimage : list#256(boolean) = Prover {
+    get_preimage();
+  };
+
+  let b : boolean = Prover { true; };
+  let actual_output : field = Pedersen.digest_bits(params, preimage);
+
+  Field.Assert.equal(expected_output, actual_output);
+};

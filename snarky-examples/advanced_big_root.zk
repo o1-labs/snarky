@@ -1,0 +1,19 @@
+let n = 123456789;
+
+/*
+  Problem:
+  Create a SNARK which functions as follows: 
+
+  Public-input:
+    a field element x
+  Proves: 
+    x is a cube. In other words,
+
+    "There exists y such that y * ... * y = x."
+
+    where y is multiplied by itseelf n times.
+
+  Challenge:
+    Do this in fewer than 100 asserts/multiplies.
+*/
+

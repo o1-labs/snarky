@@ -26,6 +26,11 @@ let get_comment comment lexbuf =
   let s = Buffer.contents comment_buffer in
   Buffer.reset comment_buffer;
   s
+
+let string_buffer = Buffer.create 256
+let reset_string_buffer () = Buffer.reset string_buffer
+let get_stored_string () = Buffer.contents string_buffer
+let store_string_char c = Buffer.add_char string_buffer c
 }
 
 let newline = ('\r'* '\n')
@@ -43,8 +48,14 @@ rule token = parse
   { token lexbuf }
   | newline
     { new_line lexbuf; token lexbuf }
+  | number as n 'i'
+    { INT (int_of_string n) }
+  | "0b"
+    { BOOL false }
+  | "1b"
+    { BOOL true }
   | number
-    { INT (int_of_string (Lexing.lexeme lexbuf)) }
+    { FIELD (Lexing.lexeme lexbuf) }
   | "fun" { FUN }
   | "let" { LET }
   | "instance" { INSTANCE }
@@ -58,6 +69,9 @@ rule token = parse
   | "request" { REQUEST }
   | "with" { WITH }
   | "handler" { HANDLER }
+  | "Prover" { PROVER }
+  | "if" { IF }
+  | "else" { ELSE }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }
@@ -81,6 +95,7 @@ rule token = parse
   | ".." { DOTDOT }
   | '.' { DOT }
   | '-' { MINUS }
+  | '#' { POUND }
   | "//" ([^'\n']* as comment) newline
     { new_line lexbuf; COMMENT (comment) }
   | "//" ([^'\n']* as comment) eof
@@ -91,6 +106,11 @@ rule token = parse
       COMMENT (comment) }
   | "/*/"
     { COMMENT ("") }
+  | "\"\""
+    { STRING ("") }
+  | "\""
+    { string lexbuf;
+      STRING (let s = get_stored_string () in reset_string_buffer (); s) }
 
   | "!" symbolchar * as op { PREFIXOP op }
   | ['~' '?'] symbolchar + as op { PREFIXOP op }
@@ -117,6 +137,19 @@ and comment = parse
     { new_line lexbuf; store_lexeme lexbuf; comment lexbuf }
   | _
     { store_lexeme lexbuf; comment lexbuf }
+
+and string = parse
+  | "\""
+    { () }
+  | "\\\""
+    { store_string_char '"';
+      string lexbuf }
+  | "\\"
+    { store_string_char '\\';
+      string lexbuf }
+  | (_ as c)
+    { store_string_char c;
+      string lexbuf }
 
 {
   let token lexbuf =

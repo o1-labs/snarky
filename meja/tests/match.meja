@@ -5,7 +5,7 @@ let x = fun (y : int, z : bool) => {
 };
 
 let y = fun (f : int -> int -> int -> _) => {
-  switch (1, 2, 3) {
+  switch (1i, 2i, 3i) {
     | (i, j, k) => f (i, j, k)
   };
 };
@@ -28,13 +28,13 @@ let a = fun (x : t, {f}) => {
   };
 };
 
-let b = switch ({f: fun (x) => { 12; }}) {
+let b = switch ({f: fun (x) => { 12i; }}) {
   | {f} => f
 };
 
 let c : _ -> v (int, bool) = fun (x : v ('a, 'b)) => {
   switch (x) {
-    | {x, y, g: f} => {x: 12, y, g: fun (_) => { f (x); }}
+    | {x, y, g: f} => {x: 12i, y, g: fun (_) => { f (x); }}
   };
 };
 
@@ -42,11 +42,11 @@ type w('a) = A | B(int, int) : w(int) | C (w('b)) : w('b);
 
 let d = fun (x) => {
   switch (x) {
-    | A => 1
+    | A => 1i
     | B(x, y) => y
-    | C(A) => 2
+    | C(A) => 2i
     | C(B(x, y)) => y
-    | _ => 3
+    | _ => 3i
   };
 };
 

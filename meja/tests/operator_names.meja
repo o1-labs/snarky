@@ -28,7 +28,7 @@ let f : (int -> int -> int) -> int = fun (check : 'a -> 'a -> 'a) => {
   let (-) = fun (_, r) => {r;};
   let (*) = fun (_, r) => {r;};
   let (/) = fun (l, _) => {l;};
-  let x = () * true - 1 / ((), ()) + (1, 1);
-  let y = (() * true) - (1 / ((), ())) + (1, 1);
+  let x = () * true - 1i / ((), ()) + (1i, 1i);
+  let y = (() * true) - (1i / ((), ())) + (1i, 1i);
   check (x, y);
 };

@@ -38,16 +38,19 @@ module Lid = struct
   let of_name str = Lident str
 
   let last = Longident.last
+
+  let apply lid1 lid2 = Lapply (lid1, lid2)
 end
 
 module Type = struct
   let mk ?(loc = Location.none) d : Parsetypes.type_expr =
     {type_desc= d; type_id= -1; type_loc= loc}
 
-  let variant ?loc ?(params = []) ?(implicits = []) ident =
+  let variant ?length ?loc ?(params = []) ?(implicits = []) ident =
     { var_ident= Loc.mk ident ?loc
     ; var_params= params
-    ; var_implicit_params= implicits }
+    ; var_implicit_params= implicits
+    ; var_length= length }
 
   let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, explicit))
 
@@ -128,6 +131,8 @@ module Pat = struct
       match eq with Some eq -> eq | None -> var ?loc (Lid.last name)
     in
     (Loc.mk ?loc name, eq)
+
+  let tuple ?loc ps = mk ?loc (PTuple ps)
 end
 
 module Exp = struct
@@ -152,4 +157,42 @@ module Exp = struct
   let constraint_ ?loc e typ = mk ?loc (Constraint (e, typ))
 
   let seq ?loc e1 e2 = mk ?loc (Seq (e1, e2))
+
+  let literal ?loc l = mk ?loc (Literal l)
+
+  let prover ?loc e = mk ?loc (Prover e)
+
+  let open_ ?loc lid e = mk ?loc (LetOpen (Loc.mk ?loc lid, e))
+
+  let tuple ?loc l = mk ?loc (Tuple l)
+end
+
+module Stmt = struct
+  let mk ?(loc = Location.none) d : Parsetypes.statement =
+    {stmt_desc= d; stmt_loc= loc}
+
+  let value ?loc p e = mk ?loc (Value (p, e))
+
+  let instance ?loc s e = mk ?loc (Instance (Loc.mk ?loc s, e))
+
+  let type_decl ?loc decl = mk ?loc (TypeDecl decl)
+
+  let module_ ?loc str me = mk ?loc (Module (Loc.mk ?loc str, me))
+
+  let modulety ?loc str ms = mk ?loc (ModType (Loc.mk ?loc str, ms))
+
+  let open_ ?loc lid = mk ?loc (Open (Loc.mk ?loc lid))
+
+  let request ?loc arg ctor handler = mk ?loc (Request (arg, ctor, handler))
+
+  let multiple ?loc stmts = mk ?loc (Multiple stmts)
+end
+
+module ModExp = struct
+  let mk ?(loc = Location.none) d : Parsetypes.module_expr =
+    {mod_desc= d; mod_loc= loc}
+
+  let struct_ ?loc stmts = mk ?loc (Structure stmts)
+
+  let name ?loc lid = mk ?loc (ModName (Loc.mk ?loc lid))
 end

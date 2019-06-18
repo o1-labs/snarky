@@ -1,24 +1,28 @@
-module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Snarky
+open Snarky.Snark
+module Impl =
+  Snarky.Snark.Run.Make (Snarky.Backends.Mnt4.Default) (Core_kernel.Unit)
 open Impl
 
-type 'field field_pair = 'field * 'field
+type field_pair = Field.t * Field.t
 
-type 'field field_pair_alias = 'field field_pair
+type field_pair_alias = field_pair
 
-type 'field record_containing_field = {a: int * (int * 'field)}
+type record_containing_field = {a: int * (int * Field.t)}
 
 type 'a with_param = unit * 'a
 
-type 'field field_param = 'field with_param
+type field_param = Field.t with_param
 
-type 'field variant_containing_field = A of 'field | B
+type variant_containing_field = A of Field.t | B
 
-type (_, 'field) variant_with_field_param =
-  | A : (int, 'field) variant_with_field_param
-  | B : ('field, 'field) variant_with_field_param
+type _ variant_with_field_param =
+  | A : int variant_with_field_param
+  | B : Field.t variant_with_field_param
 
-let add3 (add : 'field -> 'field -> 'field) (x : 'field) (y : 'field)
-    (z : 'field) =
-  add (add x y) z
-
-let test_add3 (add : int -> int -> int) = add3 add 1 2 3
+let add3 (add : Field.t -> Field.t -> Field.t) =
+  add
+    (add
+       (Field.constant (Field.Constant.of_string "1"))
+       (Field.constant (Field.Constant.of_string "2")))
+    (Field.constant (Field.Constant.of_string "3"))

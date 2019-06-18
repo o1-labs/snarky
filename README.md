@@ -20,6 +20,10 @@ The best place to get started learning how to use the library are the annotated 
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
 - [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
 
+### Editor plugins
+- *vim:* The vim plugin [here](https://github.com/o1-labs/vim-reasonml) provides syntax
+  highlighting and indentation.
+
 ## Design
 
 The intention of this library is to allow writing snarks by writing what look

@@ -15,7 +15,8 @@ and type_desc =
 and variant =
   { var_ident: lid
   ; var_params: type_expr list
-  ; var_implicit_params: type_expr list }
+  ; var_implicit_params: type_expr list
+  ; var_length: int option }
 
 type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
@@ -48,6 +49,8 @@ and type_decl_desc =
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
+type literal = Int of int | Bool of bool | Field of string | String of string
+
 type pattern =
   {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: Type0.type_expr}
 
@@ -67,7 +70,7 @@ type expression =
 and expression_desc =
   | Apply of expression * (Asttypes.arg_label * expression) list
   | Variable of lid
-  | Int of int
+  | Literal of literal
   | Fun of Asttypes.arg_label * pattern * expression * explicitness
   | Newtype of str * expression
   | Seq of expression * expression
@@ -79,6 +82,11 @@ and expression_desc =
   | Record of (lid * expression) list * expression option
   | Ctor of lid * expression option
   | Unifiable of {mutable expression: expression option; name: str; id: int}
+  | Prover of expression
+  | Handler of (pattern * expression) list
+  | LetOpen of lid * expression
+  | MakeRequest of expression
+  | If of expression * expression * expression option
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
@@ -121,6 +129,15 @@ and module_desc =
   | ModName of lid
   | Functor of str * module_sig * module_expr
 
+type alias_statement =
+  | AValue of str * lid
+  | AInstance of str * lid
+  | ATypeDecl of str * lid
+  | AModule of str * alias_module
+  | ATypeExtension of (* Should point to one of the constructors added. *) lid
+
+and alias_module = AModStructure of alias_statement list
+
 let rec typ_debug_print fmt typ =
   let open Format in
   let print i = fprintf fmt i in
@@ -154,8 +171,16 @@ let rec typ_debug_print fmt typ =
   | Tarrow (typ1, typ2, Implicit, label) ->
       print "%a{%a} -> %a" print_label label typ_debug_print typ1
         typ_debug_print typ2
-  | Tctor {var_ident= name; var_params= params; _} ->
-      print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
+  | Tctor {var_ident= name; var_params= params; var_length; _} -> (
+    match var_length with
+    | Some n ->
+        print "%a[%d] (%a)" Longident.pp name.txt n
+          (print_list typ_debug_print)
+          params
+    | None ->
+        print "%a (%a)" Longident.pp name.txt
+          (print_list typ_debug_print)
+          params )
   | Ttuple typs ->
       print "(%a)" (print_list typ_debug_print) typs ) ;
   print ")"

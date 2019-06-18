@@ -1,0 +1,110 @@
+// In verifier scope
+module Field : {
+  type t = field;
+
+  let size_in_bits : int;
+
+  let of_string : string -> field;
+
+  let linear_combination : list(field , field) -> field;
+
+  let sum : list(field) -> field;
+
+  let add : field -> field -> field;
+
+  let sub : field -> field -> field;
+
+  let of_int : int -> field;
+
+  let one : field;
+
+  let zero : field;
+
+  let mul : field -> field -> field;
+
+  let square : field -> field;
+
+  let div : field -> field -> field;
+
+  let inv : field -> field;
+
+  let equal : field -> field -> boolean;
+
+  let to_bits : field -> list(boolean);
+
+  let of_bits : list(boolean) -> field;
+
+  let (+) : field -> field -> field;
+
+  let (-) : field -> field -> field;
+
+  let (*) : field -> field -> field;
+
+  let (/) : field -> field -> field;
+
+  module Assert : {
+    let lte : field -> field -> unit;
+    let gte : field -> field -> unit;
+    let lt : field -> field -> unit;
+    let gt : field -> field -> unit;
+
+    let not_equal : field -> field -> unit;
+
+    let equal : field -> field -> unit;
+
+    let non_zero : field -> unit;
+  };
+};
+
+// In prover scope
+module Field = {
+  type t = field;
+
+  let compare : field -> field -> int;
+
+  let of_int : int -> field;
+
+  let one : field;
+
+  let zero : field;
+
+  let add : field -> field -> field;
+
+  let sub : field -> field -> field;
+
+  let mul : field -> field -> field;
+
+  let inv : field -> field -> field;
+
+  let square : field -> field;
+
+  let sqrt : field -> field;
+
+  let is_square : field -> bool;
+
+  let equal : field -> field -> bool;
+
+  let size_in_bits : int
+
+  let print : field -> unit;
+
+  let random : unit -> field;
+
+  let negate : field -> field;
+
+  let (+) : field -> field -> field;
+
+  let ( * ) : field -> field -> field;
+
+  let (-) : field -> field -> field;
+
+  let (/) : field -> field -> field;
+
+  let of_string : string -> field;
+
+  let to_string : field -> string;
+
+  let to_bits : field -> list(bool);
+
+  let of_bits : list(bool) -> field;
+};

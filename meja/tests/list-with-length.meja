@@ -1,0 +1,11 @@
+type t = list#3 (int);
+
+request (list#12(field)) Get_list ;
+
+let f = fun (xs : list#12 (int)) => {
+
+  let x : list#12(field) = request { Get_list; };
+
+  xs; 
+};
+

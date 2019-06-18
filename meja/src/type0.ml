@@ -2,7 +2,10 @@ open Core_kernel
 open Ast_types
 
 type type_expr =
-  {mutable type_desc: type_desc; type_id: int; mutable type_depth: int}
+  { mutable type_desc: type_desc
+  ; type_id: int
+  ; mutable type_depth: int
+  ; type_mode: mode }
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -17,7 +20,8 @@ and variant =
   { var_ident: lid
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
-  ; var_decl: type_decl }
+  ; var_decl: type_decl
+  ; mutable var_length: int option }
 
 and field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
 
@@ -45,7 +49,11 @@ and type_decl_desc =
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
-let none = {type_desc= Tvar (None, Explicit); type_id= -1; type_depth= -1}
+let none =
+  { type_desc= Tvar (None, Explicit)
+  ; type_id= -1
+  ; type_depth= -1
+  ; type_mode= OCaml }
 
 let rec typ_debug_print fmt typ =
   let open Format in
@@ -60,7 +68,7 @@ let rec typ_debug_print fmt typ =
     | Asttypes.Optional str ->
         fprintf fmt "?%s:" str
   in
-  print "(%i:" typ.type_id ;
+  print "(%i:%a:" typ.type_id pp_mode typ.type_mode ;
   ( match typ.type_desc with
   | Tvar (None, Explicit) ->
       print "var _"
@@ -80,8 +88,10 @@ let rec typ_debug_print fmt typ =
   | Tarrow (typ1, typ2, Implicit, label) ->
       print "%a{%a} -> %a" print_label label typ_debug_print typ1
         typ_debug_print typ2
-  | Tctor {var_ident= name; var_params= params; _} ->
-      print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
+  | Tctor {var_ident= name; var_params= params; var_decl= {tdec_id; _}; _} ->
+      print "%a(%i) (%a)" Longident.pp name.txt tdec_id
+        (print_list typ_debug_print)
+        params
   | Ttuple typs ->
       print "(%a)" (print_list typ_debug_print) typs ) ;
   print " @%i)" typ.type_depth

@@ -13,12 +13,12 @@ let y = { /* {
 // Empty comment
 /*/
 
-let f = 1;
+let f = 1i;
 
 /* Several /* layers /* of /* nested /* comment */
    let f = (); */ */ */ */
 
-let g = f + 2;
+let g = f + 2i;
 
 /* A
    /* more

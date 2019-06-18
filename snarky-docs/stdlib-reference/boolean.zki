@@ -1,0 +1,43 @@
+// In verifier scope
+module Boolean : {
+  let to_field : boolean -> field;
+
+  let true_ : boolean;
+
+  let false_ : boolean;
+
+  let not : boolean -> boolean;
+
+  let (&&) : boolean -> boolean -> boolean;
+
+  let (||) : boolean -> boolean -> boolean;
+
+  let lxor : boolean -> boolean -> boolean;
+
+  let any : list(boolean) -> boolean;
+
+  let all : list(boolean) -> boolean;
+
+  let equal = Boolean.equal;
+
+  module Unsafe = {
+    let of_field : field -> boolean;
+  };
+
+  module Assert = {
+    let (=) : boolean -> boolean -> unit;
+
+    let is_true : boolean -> unit;
+
+    let any : list(boolean) -> unit;
+
+    let all : list(boolean) -> unit;
+
+    let exactly_one : list(boolean) -> unit;
+  };
+};
+
+/* In prover scope the Boolean module is not available but
+   (&&) and (||) are in global scope and you can "switch" on
+   bools.
+*/

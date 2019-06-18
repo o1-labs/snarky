@@ -1,4 +1,7 @@
-module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Snarky
+open Snarky.Snark
+module Impl =
+  Snarky.Snark.Run.Make (Snarky.Backends.Mnt4.Default) (Core_kernel.Unit)
 open Impl
 
 type t = int

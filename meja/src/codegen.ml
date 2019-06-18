@@ -1,33 +1,29 @@
 open Core_kernel
 open Ast_types
 open Parsetypes
+open Ast_build
+
+let rec name_of_lid = function
+  | Longident.Lident name ->
+      name
+  | Ldot (lid, name) ->
+      name_of_lid lid ^ "__" ^ name
+  | Lapply (lid1, lid2) ->
+      "__" ^ name_of_lid lid1 ^ "____" ^ name_of_lid lid2 ^ "__"
 
 let poly_name name = match name with "t" -> "poly" | name -> name ^ "_poly"
 
 let var_type_name name = match name with "t" -> "var" | name -> name ^ "_var"
 
-let rec var_type_lident =
-  Longident.(
-    function
-    | Lident name ->
-        Lident (var_type_name name)
-    | Ldot (lid, name) ->
-        Ldot (lid, var_type_name name)
-    | Lapply (lid1, lid2) ->
-        Lapply (lid1, var_type_lident lid2))
+let var_type_lident = Fn.id
 
 let var_type_lident lid =
-  Ast_build.(
-    Longident.(
-      match lid with
-      | Lident "string" | Lident "int" ->
-          failwith "Native type isn't snarkable"
-      | Lident "bool" ->
-          Lid.of_list ["Boolean"; "var"]
-      | Lident "field" | Ldot (Lident "Field", "t") ->
-          Lid.of_list ["Field"; "Var"; "t"]
-      | _ ->
-          var_type_lident lid))
+  Longident.(
+    match lid with
+    | Lident "string" | Lident "int" ->
+        failwith "Native type isn't snarkable"
+    | _ ->
+        var_type_lident lid)
 
 let typ_name name = match name with "t" -> "typ" | name -> name ^ "_typ"
 
@@ -103,7 +99,7 @@ let typ_of_decl ~loc (decl : type_decl) =
               List.fold ~init:result fields ~f:(fun result {fld_ident; _} ->
                   Exp.apply ~loc bind
                     [ (Nolabel, run (Exp.var ~loc (Lid.of_name fld_ident.txt)))
-                    ; ( Nolabel
+                    ; ( Labelled "f"
                       , Exp.fun_ ~loc (Pat.var ~loc fld_ident.txt) result ) ]
               )
             in
@@ -147,14 +143,19 @@ let typ_of_decl ~loc (decl : type_decl) =
                 (Pat.record ~loc
                    (List.map fields ~f:(fun {fld_ident; _} ->
                         (mk_lid fld_ident, Pat.var ~loc fld_ident.txt) )))
-                (List.fold
-                   ~init:(Exp.ctor ~loc (Lid.of_name "()"))
-                   fields
-                   ~f:(fun result {fld_ident; _} ->
-                     Exp.seq ~loc
-                       (apply_var_of_list ["Typ"; "check"]
-                          (Exp.var ~loc (Lid.of_name fld_ident.txt)))
-                       result ))
+                (Exp.apply ~loc
+                   (Exp.var ~loc (Lid.of_name "make_checked"))
+                   [ ( Nolabel
+                     , Exp.fun_ ~loc
+                         (Pat.ctor ~loc (Lid.of_name "()"))
+                         (List.fold
+                            ~init:(Exp.ctor ~loc (Lid.of_name "()"))
+                            fields
+                            ~f:(fun result {fld_ident; _} ->
+                              Exp.seq ~loc
+                                (apply_var_of_list ["Typ"; "check"]
+                                   (Exp.var ~loc (Lid.of_name fld_ident.txt)))
+                                result )) ) ])
             in
             let body =
               Exp.record ~loc
@@ -204,11 +205,42 @@ let typ_of_decl ~loc (decl : type_decl) =
         let mk_stmt stmt_desc = {stmt_loc= loc; stmt_desc} in
         if !has_constr then
           Some
-            [ mk_stmt (TypeDecl poly_decl)
-            ; mk_stmt (TypeDecl t_decl)
-            ; mk_stmt (TypeDecl var_decl)
-            ; mk_stmt typ_instance ]
-        else Some [mk_stmt (TypeDecl decl); mk_stmt typ_instance]
+            [ ( OCaml
+              , [(Checked, None); (Prover, None)]
+              , mk_stmt (TypeDecl poly_decl) )
+            ; (Prover, [(OCaml, None)], mk_stmt (TypeDecl t_decl))
+            ; (Checked, [(Checked, Some name)], mk_stmt (TypeDecl var_decl))
+            ; (OCaml, [(Prover, None)], mk_stmt typ_instance) ]
+        else
+          Some
+            [ ( OCaml
+              , [(Checked, None); (Prover, None)]
+              , mk_stmt (TypeDecl decl) )
+            ; (OCaml, [(Prover, None)], mk_stmt typ_instance) ]
     | _ ->
         None
   with _ -> None
+
+let handler_body ?loc (pat, body) =
+  let loc =
+    match loc with
+    | Some loc ->
+        loc
+    | None ->
+        {body.exp_loc with loc_start= pat.pat_loc.loc_start}
+  in
+  let request = Lid.of_name "request" in
+  let respond = Lid.of_name "respond" in
+  let body =
+    Exp.let_ ~loc (Pat.var "unhandled")
+      (Exp.var (Lid.of_list ["Request"; "unhandled"]))
+      (Exp.match_ ~loc
+         (Exp.var ~loc (Lid.of_name "request"))
+         [ (pat, body)
+         ; (Pat.any (), Exp.var (Lid.of_list ["Request"; "unhandled"])) ])
+  in
+  Exp.fun_
+    (Pat.ctor
+       (Lid.of_list ["With"])
+       ~args:(Pat.record [Pat.field request; Pat.field respond]))
+    body

@@ -16,6 +16,7 @@ let rec type_desc ?loc = function
       { var_ident= ident
       ; var_params= params
       ; var_implicit_params= implicits
+      ; var_length= _
       ; var_decl= _ } ->
       let params = List.map ~f:(type_expr ?loc) params in
       let implicits = List.map ~f:(type_expr ?loc) implicits in
@@ -24,6 +25,16 @@ let rec type_desc ?loc = function
       Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
 
 and type_expr ?loc typ = type_desc ?loc typ.type_desc
+
+let variant ?loc
+    { var_ident= ident
+    ; var_params= params
+    ; var_implicit_params= implicits
+    ; var_decl= _
+    ; var_length } =
+  let params = List.map ~f:(type_expr ?loc) params in
+  let implicits = List.map ~f:(type_expr ?loc) implicits in
+  Type.variant ?length:var_length ?loc ~params ~implicits ident.txt
 
 let field_decl ?loc fld =
   Type_decl.Field.mk ?loc fld.fld_ident.txt (type_expr ?loc fld.fld_type)

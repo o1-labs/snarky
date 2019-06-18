@@ -1,0 +1,40 @@
+type tuple('a) = ('a, 'a, 'a);
+
+request (tuple(field)) Get_path(tuple(boolean));
+
+type foo = Foo;
+
+// Shouldn't typecheck but does. Also generates code that
+// doesn't provide "exists" with the typ for the result type.
+//
+// Matt: Fixed codegen.
+// Instance resolution isn't restrictive, so the result type can be whatever
+// (for now) and it will just try to find an instance..
+let get_path = fun (addr : tuple(boolean)) : foo => {
+  request { Get_path(addr); };
+};
+
+// Doesn't typecheck but should. Instance resolution is not working somehow.
+let get_path : tuple(boolean) -> unit = fun (addr : tuple(boolean)) : unit => {
+  let path = request { Get_path(addr); };
+  ();
+};
+
+// Matt: OCaml printed type is now correct.
+request (boolean) Get_bit;
+
+// Typechecks but doesn't pass the required typ for the output
+let get_bit : field -> boolean = fun (x : field) => {
+  request {
+    Get_bit; 
+  };
+};
+
+// Doesn't typechecks. I think 'let x = x' is trying to synthesize
+// a typ instance but fails? Not sure.
+let get_bit : field -> boolean = fun (x : field) => {
+  request {
+    let x = x;
+    Get_bit; 
+  };
+};

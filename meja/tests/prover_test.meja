@@ -1,0 +1,19 @@
+let f = fun (x) => {
+  Prover {
+    ();
+  };
+};
+
+let ignore = fun (x : field) => {
+  Prover {
+    ();
+  };
+};
+
+let g = fun (x : field) => {
+  Prover {
+    let f = fun (x : field) => { (); };
+    /*f(x);*/
+    ();
+  };
+};

@@ -1,0 +1,5 @@
+let f = fun (?x : int) => {
+  x;
+};
+
+let g = f(~x= 12i);

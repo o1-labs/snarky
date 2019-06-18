@@ -1,4 +1,7 @@
-module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Snarky
+open Snarky.Snark
+module Impl =
+  Snarky.Snark.Run.Make (Snarky.Backends.Mnt4.Default) (Core_kernel.Unit)
 open Impl
 
 let a ~a = a
@@ -10,7 +13,13 @@ let c ?a = match a with Some a -> a | None -> false
 let d ~a ?(b : bool) = match b with Some a -> a | None -> a
 
 let e () =
-  let x1 = a ~a:[1; 2; 3] in
+  let x1 =
+    a
+      ~a:
+        [ Field.constant (Field.Constant.of_string "1")
+        ; Field.constant (Field.Constant.of_string "2")
+        ; Field.constant (Field.Constant.of_string "3") ]
+  in
   let x2 = b ~a:2 in
   let a = 2 in
   let x3 = b ~a in
@@ -33,13 +42,5 @@ let (i : ?b:bool -> int -> int) = f ~a:15
 
 let (j : unit -> int) = fun () -> f 20 ~a:15
 
-let (j : a:int -> b:int option -> int) =
+let (j : a:_ -> b:_ option -> a:int -> b:int option -> int) =
  fun ~a ~b -> match b with Some a -> a | None -> a
-
-let x = 0
-
-let (k : int option -> int) = fun __implicit2__ -> j ~a:x ~b:__implicit2__
-
-let y = Some 0
-
-let (l : int) = j ~a:x ~b:y

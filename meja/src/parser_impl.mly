@@ -28,7 +28,10 @@ let consexp ~pos hd tl =
   mkexp ~pos (Ctor
     ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Tuple [hd; tl]))))
 %}
+%token <string> FIELD
 %token <int> INT
+%token <bool> BOOL
+%token <string> STRING
 %token <string> LIDENT
 %token <string> UIDENT
 %token FUN
@@ -43,6 +46,9 @@ let consexp ~pos hd tl =
 %token REQUEST
 %token WITH
 %token HANDLER
+%token PROVER
+%token IF
+%token ELSE
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -51,6 +57,7 @@ let consexp ~pos hd tl =
 %token LBRACKET
 %token RBRACKET
 %token TILDE
+%token POUND
 %token QUESTION
 %token DASHGT
 %token EQUALGT
@@ -84,6 +91,7 @@ let consexp ~pos hd tl =
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
+%right    DASHGT
 %nonassoc LPAREN
 
 %start implementation
@@ -91,6 +99,9 @@ let consexp ~pos hd tl =
 
 %start interface
 %type <Parsetypes.signature_item list> interface
+
+%start alias_interface
+%type <Parsetypes.alias_statement list> alias_interface
 
 %%
 
@@ -110,10 +121,14 @@ interface:
   | s = signature EOF
     { s }
 
+alias_interface:
+  | s = alias EOF
+    { s }
+
 file(item):
   | (* Empty *)
     { [] }
-  | s = item maybe(SEMI)
+  | s = item
     { [s] }
   | s = item SEMI rest = file(item)
     { s :: rest }
@@ -134,7 +149,7 @@ structure_item:
   | INSTANCE x = as_loc(val_ident) EQUAL e = expr
     { mkstmt ~pos:$loc (Instance (x, e)) }
   | TYPE x = decl_type(lident) k = type_kind
-    { let (x, args) = x in
+    { let (x, args, _var_length) = x in
       mkstmt ~pos:$loc (TypeDecl
         { tdec_ident= x
         ; tdec_params= args
@@ -149,10 +164,10 @@ structure_item:
     { mkstmt ~pos:$loc (Open x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
-    { let (x, params) = x in
+    { let (x, params, var_length) = x in
       mkstmt ~pos:$loc (TypeExtension
-        ( {var_ident= x; var_params= params; var_implicit_params= []}
-        , ctors)) }
+        ( {var_length; var_ident= x; var_params= params; var_implicit_params= []}
+        , List.rev ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Request (arg, x, handler)) }
 
@@ -162,7 +177,7 @@ signature_item:
   | INSTANCE x = as_loc(val_ident) COLON typ = type_expr
     { mksig ~pos:$loc (SInstance (x, typ)) }
   | TYPE x = decl_type(lident) k = type_kind
-    { let (x, args) = x in
+    { let (x, args, _var_length) = x in
       mksig ~pos:$loc (STypeDecl
         { tdec_ident= x
         ; tdec_params= args
@@ -179,12 +194,32 @@ signature_item:
     { mksig ~pos:$loc (SOpen x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
-    { let (x, params) = x in
+    { let (x, params, var_length) = x in
       mksig ~pos:$loc (STypeExtension
-        ( {var_ident= x; var_params= params; var_implicit_params= []}
+        ( {var_length; var_ident= x; var_params= params; var_implicit_params= [] }
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl
     { mksig ~pos:$loc (SRequest (arg, x)) }
+
+alias:
+  | x = file(alias_statement)
+    { x }
+
+alias_statement:
+  | LET x = as_loc(val_ident) EQUAL lid = as_loc(longident(val_ident, UIDENT))
+    { AValue (x, lid) }
+  | INSTANCE x = as_loc(val_ident) EQUAL lid = as_loc(longident(val_ident, UIDENT))
+    { AInstance (x, lid) }
+  | TYPE x = as_loc(val_ident) EQUAL lid = as_loc(longident(val_ident, UIDENT))
+    { ATypeDecl (x, lid) }
+  | MODULE x = as_loc(UIDENT) m = alias_module
+    { AModule (x, m) }
+  | TYPE UNDERSCORE PLUSEQUAL lid = as_loc(longident(ctor_ident, UIDENT))
+    { ATypeExtension lid }
+
+%inline alias_module:
+  | EQUAL LBRACE alias = alias RBRACE
+    { AModStructure(alias) }
 
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
@@ -204,15 +239,17 @@ module_sig:
 
 %inline decl_type(X):
   | x = as_loc(X)
-    { (x, []) }
+    { (x, [], None) }
+  | x = as_loc(X) POUND n = FIELD LPAREN args = list(type_expr, COMMA) RPAREN
+    { (x, List.rev args, Some (int_of_string n)) }
   | x = as_loc(X) LPAREN args = list(type_expr, COMMA) RPAREN
-    { (x, List.rev args) }
+    { (x, List.rev args, None) }
 
 decl_type_expr:
   | x = decl_type(longident(lident, UIDENT))
-    { let (x, params) = x in
+    { let (x, params, var_length) = x in
       mktyp ~pos:$loc
-        (Tctor {var_ident= x; var_params= params; var_implicit_params= []}) }
+        (Tctor {var_length; var_ident= x; var_params= params; var_implicit_params= []}) }
 
 record_field(ID, EXP):
   | id = as_loc(ID) COLON t = EXP
@@ -315,7 +352,11 @@ simpl_expr:
   | x = as_loc(val_longident)
     { mkexp ~pos:$loc (Variable x) }
   | x = INT
-    { mkexp ~pos:$loc (Int x) }
+    { mkexp ~pos:$loc (Literal (Int x)) }
+  | x = BOOL
+    { mkexp ~pos:$loc (Literal (Bool x)) }
+  | x = FIELD
+    { mkexp ~pos:$loc (Literal (Field x)) }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { e }
   | LBRACKET es = list(expr, COMMA) RBRACKET
@@ -328,6 +369,12 @@ simpl_expr:
     { e }
   | e = simpl_expr DOT field = as_loc(longident(lident, UIDENT))
     { mkexp ~pos:$loc (Field (e, field)) }
+  | s = STRING
+    { mkexp ~pos:$loc (Literal (String s)) }
+  (*| REQUEST id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
+    { mkexp ~pos:$loc (MakeRequest (mkexp ~pos:$loc (Ctor (id, args)))) }*)
+  | REQUEST LBRACE e = block RBRACE
+    { mkexp ~pos:$loc (MakeRequest e) }
 
 expr:
   | x = simpl_expr
@@ -361,6 +408,18 @@ expr:
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Ctor (id, args)) }
+  | HANDLER LBRACE rev_cases = list(match_case, {}) RBRACE
+    { mkexp ~pos:$loc (Handler (List.rev rev_cases)) }
+  | PROVER LBRACE x = block RBRACE
+    { mkexp ~pos:$loc (Prover x) }
+  | x = as_loc(longident(UIDENT, UIDENT)) DOT LBRACKET e = expr RBRACKET
+    { mkexp ~pos:$loc (LetOpen (x, e)) }
+  | x = as_loc(longident(UIDENT, UIDENT)) DOT LBRACE e = block RBRACE
+    { mkexp ~pos:$loc (LetOpen (x, e)) }
+  | IF e1 = expr LBRACE e2 = block RBRACE
+    { mkexp ~pos:$loc (If (e1, e2, None)) }
+  | IF e1 = expr LBRACE e2 = block RBRACE ELSE LBRACE e3 = block RBRACE
+    { mkexp ~pos:$loc (If (e1, e2, Some e3)) }
 
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE
@@ -389,15 +448,15 @@ match_case:
 expr_arg:
   | e = expr
     { (Asttypes.Nolabel, e) }
-  | TILDE name = LIDENT
+  | TILDE name = lident
     { (Asttypes.Labelled name, mkexp ~pos:$loc
         (Variable (mkloc ~pos:$loc (Lident name)))) }
-  | TILDE name = LIDENT EQUAL e = expr
+  | TILDE name = lident EQUAL e = expr
     { (Asttypes.Labelled name, e) }
-  | QUESTION name = LIDENT
+  | QUESTION name = lident
     { (Asttypes.Optional name, mkexp ~pos:$loc
         (Variable (mkloc ~pos:$loc (Lident name)))) }
-  | QUESTION name = LIDENT EQUAL e = expr
+  | QUESTION name = lident EQUAL e = expr
     { (Asttypes.Optional name, e) }
 
 expr_arg_list:
@@ -421,9 +480,9 @@ pat_arg:
 pat_arg_opt:
   | p = pat_arg
     { p }
-  | QUESTION name = as_loc(LIDENT)
+  | QUESTION name = as_loc(lident)
     { (Asttypes.Optional name.txt, mkpat ~pos:$loc (PVariable name)) }
-  | QUESTION name = as_loc(LIDENT) COLON typ = type_expr
+  | QUESTION name = as_loc(lident) COLON typ = type_expr
     { ( Asttypes.Optional name.txt
       , mkpat ~pos:$loc
           (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
@@ -548,7 +607,7 @@ simple_type_expr:
 %inline type_arrow_label:
   | (* Empty *)
     { Asttypes.Nolabel }
-  | name = LIDENT COLON
+  | name = lident COLON
     { Asttypes.Labelled name }
 
 type_expr:
@@ -556,7 +615,7 @@ type_expr:
     { x }
   | label = type_arrow_label x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Explicit, label)) }
-  | QUESTION name = LIDENT COLON x = simple_type_expr DASHGT y = type_expr
+  | QUESTION name = lident COLON x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Tarrow (x, y, Implicit, label)) }

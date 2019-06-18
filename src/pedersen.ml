@@ -6,7 +6,7 @@ let local_function ~negate quad (b0, b1, b2) =
   if b2 then negate t else t
 
 module Make
-    (Impl : Snark_intf.S) (Weierstrass_curve : sig
+    (Impl : Snark_intf.Basic) (Weierstrass_curve : sig
         type var = Impl.Field.Var.t * Impl.Field.Var.t
 
         type t [@@deriving eq]

@@ -4,10 +4,16 @@ type error =
   | Wrong_number_implicit_args of Longident.t * int * int
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
+  | Length_on_non_list_type of Longident.t
+
+exception Error of Location.t * error
+
+val list : Type0.type_decl option ref
 
 module Type : sig
   val import :
-       ?must_find:bool
+       Ast_types.mode
+    -> ?must_find:bool
     -> Parsetypes.type_expr
     -> Envi.t
     -> Type0.type_expr * Envi.t
@@ -28,5 +34,9 @@ module Type : sig
 end
 
 module TypeDecl : sig
-  val import : Parsetypes.type_decl -> Envi.t -> Type0.type_decl * Envi.t
+  val import :
+       Ast_types.mode
+    -> Parsetypes.type_decl
+    -> Envi.t
+    -> Type0.type_decl * Envi.t
 end

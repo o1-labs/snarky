@@ -64,7 +64,7 @@ module Store :
       
       };
    
-   let store : field -> t(Field.Var.t);
+   let store : Field.Constant.t -> t(Field.t);
    
    };
 
@@ -134,7 +134,7 @@ module Alloc :
       
       };
    
-   let alloc : t(Field.Var.t);
+   let alloc : t(Field.t);
    
    };
 
@@ -204,7 +204,7 @@ module Read :
       
       };
    
-   let read : Field.Var.t -> t(field);
+   let read : Field.t -> t(Field.Constant.t);
    
    };
 
@@ -225,7 +225,7 @@ let check : {t('var, _)} -> 'var -> unit;
 
 let unit : t(unit, unit);
 
-let field : t(Field.Var.t, field);
+let field : t(Field.t, Field.Constant.t);
 
 let tuple2 :
 t('var1, 'value1) ->

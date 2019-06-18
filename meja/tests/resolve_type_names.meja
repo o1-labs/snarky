@@ -2,8 +2,8 @@ module A = {
   type t = int;
 };
 
-let x : A.t = 15;
+let x : A.t = 15i;
 
 open A;
 
-let y : A.t = 20;
+let y : A.t = 20i;
