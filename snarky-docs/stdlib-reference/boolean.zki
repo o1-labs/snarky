@@ -2,6 +2,8 @@
 module Boolean : {
   let to_field : boolean -> field;
 
+  let of_field : field -> boolean;
+
   let true_ : boolean;
 
   let false_ : boolean;

@@ -442,7 +442,7 @@ let ocaml =
 
     let equal : var -> var -> var;
 
-    module Unsafe : { let of_cvar : field_var -> var;  };
+    module Unsafe : { let of_cvar : field_var -> var; };
 
     module Assert : {
       let (=) : var -> var -> unit;
