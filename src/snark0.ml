@@ -1490,6 +1490,520 @@ module Run = struct
 
       module Of_traversable = Of_traversable
       include Types.Typ.T
+
+      let list0 t = list ~length:0 t
+
+      let list1 t = list ~length:1 t
+
+      let list2 t = list ~length:2 t
+
+      let list3 t = list ~length:3 t
+
+      let list4 t = list ~length:4 t
+
+      let list5 t = list ~length:5 t
+
+      let list6 t = list ~length:6 t
+
+      let list7 t = list ~length:7 t
+
+      let list8 t = list ~length:8 t
+
+      let list9 t = list ~length:9 t
+
+      let list10 t = list ~length:10 t
+
+      let list11 t = list ~length:11 t
+
+      let list12 t = list ~length:12 t
+
+      let list13 t = list ~length:13 t
+
+      let list14 t = list ~length:14 t
+
+      let list15 t = list ~length:15 t
+
+      let list16 t = list ~length:16 t
+
+      let list17 t = list ~length:17 t
+
+      let list18 t = list ~length:18 t
+
+      let list19 t = list ~length:19 t
+
+      let list20 t = list ~length:20 t
+
+      let list21 t = list ~length:21 t
+
+      let list22 t = list ~length:22 t
+
+      let list23 t = list ~length:23 t
+
+      let list24 t = list ~length:24 t
+
+      let list25 t = list ~length:25 t
+
+      let list26 t = list ~length:26 t
+
+      let list27 t = list ~length:27 t
+
+      let list28 t = list ~length:28 t
+
+      let list29 t = list ~length:29 t
+
+      let list30 t = list ~length:30 t
+
+      let list31 t = list ~length:31 t
+
+      let list32 t = list ~length:32 t
+
+      let list33 t = list ~length:33 t
+
+      let list34 t = list ~length:34 t
+
+      let list35 t = list ~length:35 t
+
+      let list36 t = list ~length:36 t
+
+      let list37 t = list ~length:37 t
+
+      let list38 t = list ~length:38 t
+
+      let list39 t = list ~length:39 t
+
+      let list40 t = list ~length:40 t
+
+      let list41 t = list ~length:41 t
+
+      let list42 t = list ~length:42 t
+
+      let list43 t = list ~length:43 t
+
+      let list44 t = list ~length:44 t
+
+      let list45 t = list ~length:45 t
+
+      let list46 t = list ~length:46 t
+
+      let list47 t = list ~length:47 t
+
+      let list48 t = list ~length:48 t
+
+      let list49 t = list ~length:49 t
+
+      let list50 t = list ~length:50 t
+
+      let list51 t = list ~length:51 t
+
+      let list52 t = list ~length:52 t
+
+      let list53 t = list ~length:53 t
+
+      let list54 t = list ~length:54 t
+
+      let list55 t = list ~length:55 t
+
+      let list56 t = list ~length:56 t
+
+      let list57 t = list ~length:57 t
+
+      let list58 t = list ~length:58 t
+
+      let list59 t = list ~length:59 t
+
+      let list60 t = list ~length:60 t
+
+      let list61 t = list ~length:61 t
+
+      let list62 t = list ~length:62 t
+
+      let list63 t = list ~length:63 t
+
+      let list64 t = list ~length:64 t
+
+      let list65 t = list ~length:65 t
+
+      let list66 t = list ~length:66 t
+
+      let list67 t = list ~length:67 t
+
+      let list68 t = list ~length:68 t
+
+      let list69 t = list ~length:69 t
+
+      let list70 t = list ~length:70 t
+
+      let list71 t = list ~length:71 t
+
+      let list72 t = list ~length:72 t
+
+      let list73 t = list ~length:73 t
+
+      let list74 t = list ~length:74 t
+
+      let list75 t = list ~length:75 t
+
+      let list76 t = list ~length:76 t
+
+      let list77 t = list ~length:77 t
+
+      let list78 t = list ~length:78 t
+
+      let list79 t = list ~length:79 t
+
+      let list80 t = list ~length:80 t
+
+      let list81 t = list ~length:81 t
+
+      let list82 t = list ~length:82 t
+
+      let list83 t = list ~length:83 t
+
+      let list84 t = list ~length:84 t
+
+      let list85 t = list ~length:85 t
+
+      let list86 t = list ~length:86 t
+
+      let list87 t = list ~length:87 t
+
+      let list88 t = list ~length:88 t
+
+      let list89 t = list ~length:89 t
+
+      let list90 t = list ~length:90 t
+
+      let list91 t = list ~length:91 t
+
+      let list92 t = list ~length:92 t
+
+      let list93 t = list ~length:93 t
+
+      let list94 t = list ~length:94 t
+
+      let list95 t = list ~length:95 t
+
+      let list96 t = list ~length:96 t
+
+      let list97 t = list ~length:97 t
+
+      let list98 t = list ~length:98 t
+
+      let list99 t = list ~length:99 t
+
+      let list100 t = list ~length:100 t
+
+      let list101 t = list ~length:101 t
+
+      let list102 t = list ~length:102 t
+
+      let list103 t = list ~length:103 t
+
+      let list104 t = list ~length:104 t
+
+      let list105 t = list ~length:105 t
+
+      let list106 t = list ~length:106 t
+
+      let list107 t = list ~length:107 t
+
+      let list108 t = list ~length:108 t
+
+      let list109 t = list ~length:109 t
+
+      let list110 t = list ~length:110 t
+
+      let list111 t = list ~length:111 t
+
+      let list112 t = list ~length:112 t
+
+      let list113 t = list ~length:113 t
+
+      let list114 t = list ~length:114 t
+
+      let list115 t = list ~length:115 t
+
+      let list116 t = list ~length:116 t
+
+      let list117 t = list ~length:117 t
+
+      let list118 t = list ~length:118 t
+
+      let list119 t = list ~length:119 t
+
+      let list120 t = list ~length:120 t
+
+      let list121 t = list ~length:121 t
+
+      let list122 t = list ~length:122 t
+
+      let list123 t = list ~length:123 t
+
+      let list124 t = list ~length:124 t
+
+      let list125 t = list ~length:125 t
+
+      let list126 t = list ~length:126 t
+
+      let list127 t = list ~length:127 t
+
+      let list128 t = list ~length:128 t
+
+      let list129 t = list ~length:129 t
+
+      let list130 t = list ~length:130 t
+
+      let list131 t = list ~length:131 t
+
+      let list132 t = list ~length:132 t
+
+      let list133 t = list ~length:133 t
+
+      let list134 t = list ~length:134 t
+
+      let list135 t = list ~length:135 t
+
+      let list136 t = list ~length:136 t
+
+      let list137 t = list ~length:137 t
+
+      let list138 t = list ~length:138 t
+
+      let list139 t = list ~length:139 t
+
+      let list140 t = list ~length:140 t
+
+      let list141 t = list ~length:141 t
+
+      let list142 t = list ~length:142 t
+
+      let list143 t = list ~length:143 t
+
+      let list144 t = list ~length:144 t
+
+      let list145 t = list ~length:145 t
+
+      let list146 t = list ~length:146 t
+
+      let list147 t = list ~length:147 t
+
+      let list148 t = list ~length:148 t
+
+      let list149 t = list ~length:149 t
+
+      let list150 t = list ~length:150 t
+
+      let list151 t = list ~length:151 t
+
+      let list152 t = list ~length:152 t
+
+      let list153 t = list ~length:153 t
+
+      let list154 t = list ~length:154 t
+
+      let list155 t = list ~length:155 t
+
+      let list156 t = list ~length:156 t
+
+      let list157 t = list ~length:157 t
+
+      let list158 t = list ~length:158 t
+
+      let list159 t = list ~length:159 t
+
+      let list160 t = list ~length:160 t
+
+      let list161 t = list ~length:161 t
+
+      let list162 t = list ~length:162 t
+
+      let list163 t = list ~length:163 t
+
+      let list164 t = list ~length:164 t
+
+      let list165 t = list ~length:165 t
+
+      let list166 t = list ~length:166 t
+
+      let list167 t = list ~length:167 t
+
+      let list168 t = list ~length:168 t
+
+      let list169 t = list ~length:169 t
+
+      let list170 t = list ~length:170 t
+
+      let list171 t = list ~length:171 t
+
+      let list172 t = list ~length:172 t
+
+      let list173 t = list ~length:173 t
+
+      let list174 t = list ~length:174 t
+
+      let list175 t = list ~length:175 t
+
+      let list176 t = list ~length:176 t
+
+      let list177 t = list ~length:177 t
+
+      let list178 t = list ~length:178 t
+
+      let list179 t = list ~length:179 t
+
+      let list180 t = list ~length:180 t
+
+      let list181 t = list ~length:181 t
+
+      let list182 t = list ~length:182 t
+
+      let list183 t = list ~length:183 t
+
+      let list184 t = list ~length:184 t
+
+      let list185 t = list ~length:185 t
+
+      let list186 t = list ~length:186 t
+
+      let list187 t = list ~length:187 t
+
+      let list188 t = list ~length:188 t
+
+      let list189 t = list ~length:189 t
+
+      let list190 t = list ~length:190 t
+
+      let list191 t = list ~length:191 t
+
+      let list192 t = list ~length:192 t
+
+      let list193 t = list ~length:193 t
+
+      let list194 t = list ~length:194 t
+
+      let list195 t = list ~length:195 t
+
+      let list196 t = list ~length:196 t
+
+      let list197 t = list ~length:197 t
+
+      let list198 t = list ~length:198 t
+
+      let list199 t = list ~length:199 t
+
+      let list200 t = list ~length:200 t
+
+      let list201 t = list ~length:201 t
+
+      let list202 t = list ~length:202 t
+
+      let list203 t = list ~length:203 t
+
+      let list204 t = list ~length:204 t
+
+      let list205 t = list ~length:205 t
+
+      let list206 t = list ~length:206 t
+
+      let list207 t = list ~length:207 t
+
+      let list208 t = list ~length:208 t
+
+      let list209 t = list ~length:209 t
+
+      let list210 t = list ~length:210 t
+
+      let list211 t = list ~length:211 t
+
+      let list212 t = list ~length:212 t
+
+      let list213 t = list ~length:213 t
+
+      let list214 t = list ~length:214 t
+
+      let list215 t = list ~length:215 t
+
+      let list216 t = list ~length:216 t
+
+      let list217 t = list ~length:217 t
+
+      let list218 t = list ~length:218 t
+
+      let list219 t = list ~length:219 t
+
+      let list220 t = list ~length:220 t
+
+      let list221 t = list ~length:221 t
+
+      let list222 t = list ~length:222 t
+
+      let list223 t = list ~length:223 t
+
+      let list224 t = list ~length:224 t
+
+      let list225 t = list ~length:225 t
+
+      let list226 t = list ~length:226 t
+
+      let list227 t = list ~length:227 t
+
+      let list228 t = list ~length:228 t
+
+      let list229 t = list ~length:229 t
+
+      let list230 t = list ~length:230 t
+
+      let list231 t = list ~length:231 t
+
+      let list232 t = list ~length:232 t
+
+      let list233 t = list ~length:233 t
+
+      let list234 t = list ~length:234 t
+
+      let list235 t = list ~length:235 t
+
+      let list236 t = list ~length:236 t
+
+      let list237 t = list ~length:237 t
+
+      let list238 t = list ~length:238 t
+
+      let list239 t = list ~length:239 t
+
+      let list240 t = list ~length:240 t
+
+      let list241 t = list ~length:241 t
+
+      let list242 t = list ~length:242 t
+
+      let list243 t = list ~length:243 t
+
+      let list244 t = list ~length:244 t
+
+      let list245 t = list ~length:245 t
+
+      let list246 t = list ~length:246 t
+
+      let list247 t = list ~length:247 t
+
+      let list248 t = list ~length:248 t
+
+      let list249 t = list ~length:249 t
+
+      let list250 t = list ~length:250 t
+
+      let list251 t = list ~length:251 t
+
+      let list252 t = list ~length:252 t
+
+      let list253 t = list ~length:253 t
+
+      let list254 t = list ~length:254 t
+
+      let list255 t = list ~length:255 t
+
+      let list256 t = list ~length:256 t
     end
 
     module Boolean = struct
