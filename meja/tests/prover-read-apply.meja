@@ -1,0 +1,11 @@
+let f = fun (a, b, c) => {
+  (a, b, c);
+};
+
+let g = fun () => {
+  let x = 1i;
+  let y = 2;
+  let z = 0b;
+  let b = Prover {f(x, y, z);};
+  b;
+};
