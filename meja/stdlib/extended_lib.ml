@@ -294,34 +294,23 @@ module Extended_lib = {
     // Would be nice to have "subset syntax" for the Typ for this type.
     type t = double(field);
 
-    request(field) Div(field, field)
-    with handler (x, y) => { respond(Provide(x / y)); };
-
     let div_unsafe = fun (x, y) => {
-      let z : field =  request { Div(x, y); };
-      assert_r1(x, y, z) ;
+      let z : field =  Prover { Field.(/)(x, y); };
+      assert_r1(z, y, x);
       z;
       /* It would be nice if this were a special syntax but that's
           a "nice to have" */
       /* assert (x * y == z); */
     };
 
-    request(field) Addx { lambda : field, ax : field, bx : field }
-    with handler ({ lambda, ax, bx } ) => {
-      let res = square(lambda) - (ax + bx);
-      respond(Provide(res));
-    };
-
-    request(field) Addy { lambda : field, ax : field, ay : field, cx : field }
-    with handler ({ lambda, ax, ay, cx } ) => {
-      let res = (lambda * (ax - cx)) - ay;
-      respond(Provide(res));
-    };
-    
     let add_unsafe = fun ((ax, ay), (bx, by)) => {
       let lambda = div_unsafe(Field.(-)(by, ay), Field.(-)(bx, ax));
-      let cx = request { Addx { lambda, ax, bx }; };
-      let cy = request { Addy { lambda, ax, ay, cx }; };
+      let cx = Prover {
+        square(lambda) - (ax + bx);
+      };
+      let cy = Prover {
+        (lambda * (ax - cx)) - ay;
+      };
       assert_r1(lambda, lambda, cx + ax + bx);
       assert_r1(lambda, (ax - cx) , (cy + ay));
       (cx, cy);
@@ -331,32 +320,34 @@ module Extended_lib = {
   module Pedersen = {
     module Digest = {
       type t = field;
+
+      let to_bits = Field.to_bits(~length=Field.size_in_bits);
     };
 
     module Params = {
       type t = array(quadruple((field, field)));
-    };
 
     /*
-  let params = {
-      let comma = char_of_int(44i);
-      let semi_colon = char_of_int(59i);
+      let load = fun (path) => {
+        let comma = char_of_int(44i);
+        let semi_colon = char_of_int(59i);
 
-      let read_pair = fun (s) => {
-        switch (String.split_on_char(comma, s)) {
-          | [ x, y ] =>
-            (Field.of_string(x), Field.of_string(y))
+        let read_pair = fun (s) => {
+          switch (String.split_on_char(comma, s)) {
+            | [ x, y ] =>
+              (Field.of_string(x), Field.of_string(y))
+          };
         };
-      };
 
-      let strs = Array.of_list(In_channel.read_lines("bn128-params"));
+        let strs = Array.of_list(read_lines(path));
 
-      Array.map(fun (s) => {
-        switch ( List.map(read_pair, String.split_on_char(semi_colon, s)) ) {
-          | [x1, x2, x3, x4] => (x1, x2, x3, x4)
-        };
-      }, strs);
-    }; */
+        Array.map(fun (s) => {
+          switch ( List.map(read_pair, String.split_on_char(semi_colon, s)) ) {
+            | [x1, x2, x3, x4] => (x1, x2, x3, x4)
+          };
+        }, strs);
+      }; */
+    };
 
     /* 4 * 2 = 2 * 4 */
     let transpose : quadruple(double('a)) -> double(quadruple('a)) =
@@ -378,7 +369,13 @@ module Extended_lib = {
         + ((a4 + a1 - a2 - a3) * bool(s_and));
       };
       let (x_q, y_q) = transpose(q);
-      (lookup_one(x_q), (1 - 2 * bool(s2)) * lookup_one(y_q)); 
+      let y = lookup_one(y_q);
+      let neg_one = 0 - 1;
+      let s2 = bool(s2);
+      let a0 = 2 * s2;
+      let a1 = 1 - a0;
+      let y = a1 * y; 
+      (lookup_one(x_q), y);
     };
 
     let digest = fun (params, triples : list(triple(boolean))) : Digest.t => {
@@ -387,10 +384,8 @@ module Extended_lib = {
         | (t::ts) => {
           let (_, (x, _y)) =
             List.fold_left (fun ((i, acc), t) => {
-                (add_int(i, 1i),
-                  Curve.add_unsafe(
-                    acc,
-                    lookup(t, Array.get(params, i))) );
+                let term = lookup(t, Array.get(params, i));
+                (add_int(i, 1i), Curve.add_unsafe(acc,term));
               }, (1i, lookup(t, Array.get(params, 0i) )), ts);
           x;
         }

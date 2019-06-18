@@ -613,6 +613,8 @@ let ocaml =
 
   };
 
+  let load_pedersen_params : string -> array(((field_var, field_var), (field_var, field_var), (field_var, field_var),  (field_var, field_var)));
+
   module Select : {
     type t('a) = Boolean.var -> then_:'a -> else_:'a -> 'a;
 
@@ -808,9 +810,9 @@ let ocaml =
 let checked =
   ( __LINE__ + 1
   , {|
-  module In_channel = {
-    let read_lines = In_channel.read_lines;
-  };
+  let read_lines = read_lines;
+  let load_pedersen_params = load_pedersen_params;
+
   module Constraint = {
     type t = Constraint.t;
 
@@ -1055,6 +1057,8 @@ let checked =
 let prover =
   ( __LINE__ + 1
   , {|
+  let read_lines = read_lines;
+
   module Request = {
     type t = Request.t;
 
