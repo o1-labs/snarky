@@ -1,10 +1,27 @@
 open Extended_lib;
 
-// let expected_output = Array.of_list([0b, 1b, 0b, 1b, 1b, 0b, 0b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 1b, 1b, 0b, 0b, 0b, 1b, 0b, 1b, 1b, 0b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 0b, 0b, 1b, 1b, 1b, 1b, 0b, 1b, 0b, 1b, 0b, 0b, 0b, 1b, 0b, 1b, 0b, 0b, 0b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 0b, 0b, 0b, 0b, 1b, 1b, 1b, 1b, 1b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 0b, 1b, 1b, 0b, 1b, 0b, 0b, 1b, 0b, 1b, 1b, 1b, 1b, 1b, 0b, 0b, 0b, 0b, 1b, 0b, 1b, 0b, 1b, 1b, 0b, 0b, 1b, 0b, 1b, 0b, 0b, 0b, 1b, 1b, 1b, 0b, 1b, 0b, 1b, 1b, 0b, 0b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 0b, 0b, 1b, 0b, 0b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 0b, 1b, 1b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 1b, 0b, 0b, 1b, 0b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 0b, 1b, 1b, 0b, 1b, 0b, 1b, 1b, 1b, 1b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 1b, 1b, 0b, 0b, 1b, 0b, 1b, 1b, 1b, 0b, 0b, 1b, 1b, 1b, 1b, 0b, 0b, 0b, 1b, 0b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 1b, 1b, 1b, 0b, 1b, 1b, 1b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 0b, 1b, 1b, 0b, 0b, 0b, 0b, 0b, 0b, 1b, 1b, 1b, 0b, 1b, 1b, 1b, 0b, 0b, 1b, 1b, 0b, 1b, 0b, 0b, 0b, 0b]);
-
 /* This SNARK will prove:
 
    I know a pedersen preimage of the public input.
+
+   How to run:
+
+   Compute the Pedersen hash by running
+
+   $ dune exec crypto_util/crypto_util.exe 'hello world'
+
+   where 'hello world' is whatever string you like.
+
+   In this case, the output was
+
+   9538985273985886865080453535327260679290459604164841894520913541179636831883
+
+   Now run
+   $ dune exec snarky_cli -- generate-keys snarky-examples/use_pedersen.zk --curve Bn128
+   $ dune exec snarky_cli -- prove snarky-examples/use_pedersen.zk 9538985273985886865080453535327260679290459604164841894520913541179636831883
+
+   You will be prompted for the preimage you typed in before. If you enter it, you
+   will get your proof.
 */
 
 let preimage_length = 256i;
@@ -36,7 +53,6 @@ let main = fun (expected_output : field, ()) => {
     get_preimage();
   };
 
-  let b : boolean = Prover { true; };
   let actual_output : field = Pedersen.digest_bits(params, preimage);
 
   Field.Assert.equal(expected_output, actual_output);
