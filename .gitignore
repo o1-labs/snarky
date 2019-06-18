@@ -1,3 +1,7 @@
 .merlin
 _build
 *.install
+**/**.build/*
+*.vk
+*.pk
+*.zkp
