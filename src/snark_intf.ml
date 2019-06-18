@@ -461,6 +461,7 @@ module type Basic = sig
 
     module Assert : sig
       val ( = ) : Boolean.var -> Boolean.var -> (unit, _) Checked.t
+      val equal : Boolean.var -> Boolean.var -> (unit, _) Checked.t
 
       val is_true : Boolean.var -> (unit, _) Checked.t
 
@@ -2131,6 +2132,8 @@ module type Run_basic = sig
 
     module Assert : sig
       val ( = ) : Boolean.var -> Boolean.var -> unit
+
+      val equal : Boolean.var -> Boolean.var -> unit
 
       val is_true : Boolean.var -> unit
 
