@@ -635,7 +635,15 @@ and check_patterns mode ~add env typs pats =
       (pat :: pats, env)
 
 (* TODO: This is a hack *)
-let potentially_typable = function Tarrow _ -> false | _ -> true
+let potentially_typable typ =
+  match typ.type_desc with
+  | Tarrow _ ->
+      false
+  | _ ->
+      not
+        (List.mem ~equal:Int.equal
+           [Initial_env.Type.string.type_id; Initial_env.Type.int.type_id]
+           typ.type_id)
 
 let rec get_expression mode env expected exp =
   let loc = exp.exp_loc in
@@ -699,8 +707,7 @@ let rec get_expression mode env expected exp =
         let e = Envi.Type.generate_implicits e env in
         let e, env =
           if
-            mode = Prover && typ.type_mode = Checked
-            && potentially_typable typ.type_desc
+            mode = Prover && typ.type_mode = Checked && potentially_typable typ
           then
             let read =
               Ast_build.(Loc.mk ~loc (Lid.of_list ["As_prover"; "read"]))
