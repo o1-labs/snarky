@@ -1,4 +1,4 @@
-let line = __LINE__ + 2
+let line = __LINE__ + 3
 
 let t =
   {meja|
@@ -49,8 +49,8 @@ module Extended_lib = {
           xs);
       take(
         32i,
-        // TODO: Shouldn't have to put Some here
-        Field.to_bits(~length=max_bit_length, ?allow_overflow=Some(false), xs_sum))
+        // TODO: Habe allow_overflow:false
+        Field.to_bits(~length=max_bit_length, xs_sum))
       |> Array.of_list;
     };
 
@@ -212,7 +212,8 @@ module Extended_lib = {
     let personalization =
       String.init( 8i, fun (_) => { char_of_int(0i); });
 
-    let blake2s : array(boolean) -> array(boolean) = fun (input) => {
+    let blake2s : list(boolean) -> list(boolean) = fun (input) => {
+      let input = Array.of_list(input);
       let p = fun (o) => {
         let c = fun(j) => {
           lsl(
@@ -275,7 +276,15 @@ module Extended_lib = {
         Array.get(blocks, Array.length(blocks) - 1i),
         Int64.of_int(input_length_in_bytes),
         true);
-      concat_int32s(h);
+      concat_int32s(h) |> Array.to_list;
+    };
+
+    let string_to_bool_list = fun (s) => {
+      List.init(8i * String.length(s), fun (i) => {
+        let c = int_of_char(String.get(s, i / 8i));
+        let j = mod(i, 8i);
+        land(lsr(c,j), 1i) = 1i;
+      });
     };
   };
 

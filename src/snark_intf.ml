@@ -2225,9 +2225,9 @@ module type Run_basic = sig
 
     val choose_preimage_var : t -> length:int -> Boolean.var list
 
-    val to_bits : ?length:int -> ?allow_overflow:bool -> t -> Boolean.var list
+    val to_bits : ?length:int -> t -> Boolean.var list
 
-    val of_bits : ?allow_overflow:bool -> Boolean.var list -> t
+    val of_bits : Boolean.var list -> t
 
     type comparison_result = {less: Boolean.var; less_or_equal: Boolean.var}
 

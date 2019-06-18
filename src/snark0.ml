@@ -2249,11 +2249,17 @@ module Run = struct
           (unpack_full x :> Boolean.var list)
         else run (choose_preimage x ~length)
 
+      (* TODO: Getting rid of the allow_overflow flag since optional args are
+      a bit borked in meja. Should be readded. *)
+      let to_bits = to_bits ?allow_overflow:None
+
       let of_bits ?(allow_overflow = false) bs =
         let n = Core.List.length bs in
         if (not allow_overflow) && n >= Field.size_in_bits then
           failwithf "of_bits: Prevented overflow on bit list of length %d" n () ;
         project bs
+
+      let of_bits = of_bits ?allow_overflow:None
 
       type nonrec comparison_result = comparison_result =
         {less: Boolean.var; less_or_equal: Boolean.var}

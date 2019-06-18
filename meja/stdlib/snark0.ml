@@ -564,9 +564,9 @@ let ocaml =
 
     let choose_preimage_var : t -> length:int -> list(Boolean.var);
 
-    let to_bits : ?length:int -> ?allow_overflow:bool -> t -> list(Boolean.var);
+    let to_bits : ?length:int -> t -> list(Boolean.var);
 
-    let of_bits : ?allow_overflow:bool -> list(Boolean.var) -> t;
+    let of_bits : list(Boolean.var) -> t;
 
     type comparison_result =
       {less: Boolean.var, less_or_equal: Boolean.var};
