@@ -6,4 +6,4 @@
   (name snarky)
   (public_name snarky_cli)
   (package snarky)
-  (libraries meja.toplevel))
+  (libraries meja.toplevel snarky))

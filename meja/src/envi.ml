@@ -1185,12 +1185,13 @@ module Type = struct
       ~(unify : env -> type_expr -> type_expr -> unit)
       (typ : type_expr) env =
     let is_concrete_typ_t = is_concrete_typ_t env typ in
+    let _ignore_unify = unify in
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, canonical_path, instance_typ) ->
         let instance_typ = copy mode ~loc instance_typ Int.Map.empty env in
         if
           (is_concrete_typ_t && is_same_concrete_typ_t env typ instance_typ &&
-            (unify env typ instance_typ; true) )
+            ((* HACK *) (*unify env typ instance_typ;*) true) )
           || is_subtype env typ ~of_:instance_typ
         then
           List.find_map env.scope_stack
