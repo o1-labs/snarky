@@ -1,0 +1,14 @@
+let get_sqrt = fun (x : Field.Constant.t) => {
+  print_string("Please enter the square root of ");
+  print_endline(Field.Constant.to_string(x));
+  let s = read_line();
+  Field.Constant.of_string(s);
+};
+
+let main = fun (x : field, ()) => {
+  let y : field = Prover {
+    get_sqrt(x);
+  };
+
+  assert_r1(y, y, x);
+};
