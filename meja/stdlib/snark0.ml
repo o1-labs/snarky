@@ -5,9 +5,7 @@ let ocaml =
 
   let loop : (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b);
 
-  module In_channel : {
-    let read_lines : string -> list(string);
-  };
+  let read_lines : string -> list(string);
 
   module Request : {
     type t('a) = ..;

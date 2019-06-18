@@ -6,6 +6,8 @@ let () = Camlsnark_c.linkme
 
 module Runner = Checked_runner
 
+let read_lines = In_channel.read_lines
+
 let rec loop f x = f (loop f) x
 
 let set_eval_constraints b = Runner.eval_constraints := b
