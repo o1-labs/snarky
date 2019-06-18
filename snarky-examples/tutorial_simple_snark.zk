@@ -11,7 +11,7 @@
 /* This brings all the definitions from the Field module into scope */
 open Field;
 
-let main = fun (x, z) => {
+let main = fun (x, z, ()) => {
   let x2 = x * x;
   let x4 = x2 * x2;
   // This says assert x^4 * x^4 = x^8.

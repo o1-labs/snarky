@@ -235,7 +235,14 @@ let rec expression_desc fmt = function
   | LetOpen (lid, e) ->
       fprintf fmt "@[<hv2>%a.(%a)@]" Longident.pp lid.txt expression e
   | MakeRequest e ->
-      fprintf fmt "@[<hv2>request@.{@,%a@,}@]" expression e
+      fprintf fmt "@[<hv2>request@ {@,%a@,}@]" expression e
+  | If (e1, e2, None) ->
+      fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}" expression e1
+        expression e2
+  | If (e1, e2, Some e3) ->
+      fprintf fmt
+        "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else@ {@[<hv2>@,%a@,@]}"
+        expression e1 expression e2 expression e3
 
 and expression_desc_bracket fmt exp =
   match exp with

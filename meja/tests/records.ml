@@ -1,4 +1,7 @@
-module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
+open Snarky
+open Snarky.Snark
+module Impl =
+  Snarky.Snark.Run.Make (Snarky.Backends.Mnt4.Default) (Core_kernel.Unit)
 open Impl
 
 include struct
@@ -8,26 +11,16 @@ include struct
       (('a2, 'b2, 'c2) t, ('a1, 'b1, 'c1) t) Typ.t =
     { Typ.store=
         (fun {a; b; c; _} ->
-          Typ.Store.bind
-            ((Typ.store __implicit1__) c)
-            ~f:(fun c ->
-              Typ.Store.bind
-                ((Typ.store __implicit2__) b)
-                ~f:(fun b ->
-                  Typ.Store.bind
-                    ((Typ.store __implicit3__) a)
-                    ~f:(fun a -> Typ.Store.return {a; b; c}) ) ) )
+          Typ.Store.bind (Typ.store __implicit1__ c) ~f:(fun c ->
+              Typ.Store.bind (Typ.store __implicit2__ b) ~f:(fun b ->
+                  Typ.Store.bind (Typ.store __implicit3__ a) ~f:(fun a ->
+                      Typ.Store.return {a; b; c} ) ) ) )
     ; Typ.read=
         (fun {a; b; c; _} ->
-          Typ.Read.bind
-            ((Typ.read __implicit1__) c)
-            ~f:(fun c ->
-              Typ.Read.bind
-                ((Typ.read __implicit2__) b)
-                ~f:(fun b ->
-                  Typ.Read.bind
-                    ((Typ.read __implicit3__) a)
-                    ~f:(fun a -> Typ.Read.return {a; b; c}) ) ) )
+          Typ.Read.bind (Typ.read __implicit1__ c) ~f:(fun c ->
+              Typ.Read.bind (Typ.read __implicit2__ b) ~f:(fun b ->
+                  Typ.Read.bind (Typ.read __implicit3__ a) ~f:(fun a ->
+                      Typ.Read.return {a; b; c} ) ) ) )
     ; Typ.alloc=
         Typ.Alloc.bind (Typ.alloc __implicit1__) ~f:(fun c ->
             Typ.Alloc.bind (Typ.alloc __implicit2__) ~f:(fun b ->
@@ -35,10 +28,11 @@ include struct
                     Typ.Alloc.return {a; b; c} ) ) )
     ; Typ.check=
         (fun {a; b; c; _} ->
-          (Typ.check __implicit1__) c ;
-          (Typ.check __implicit2__) b ;
-          (Typ.check __implicit3__) a ;
-          () ) }
+          make_checked (fun () ->
+              Typ.check __implicit1__ c ;
+              Typ.check __implicit2__ b ;
+              Typ.check __implicit3__ a ;
+              () ) ) }
 end
 
 let x =
@@ -57,26 +51,16 @@ module X = struct
     let typ __implicit13__ : ('a2 t, 'a1 t) Typ.t =
       { Typ.store=
           (fun {a; b; c; _} ->
-            Typ.Store.bind
-              ((Typ.store __implicit13__) c)
-              ~f:(fun c ->
-                Typ.Store.bind
-                  ((Typ.store __implicit13__) b)
-                  ~f:(fun b ->
-                    Typ.Store.bind
-                      ((Typ.store __implicit13__) a)
-                      ~f:(fun a -> Typ.Store.return {a; b; c}) ) ) )
+            Typ.Store.bind (Typ.store __implicit13__ c) ~f:(fun c ->
+                Typ.Store.bind (Typ.store __implicit13__ b) ~f:(fun b ->
+                    Typ.Store.bind (Typ.store __implicit13__ a) ~f:(fun a ->
+                        Typ.Store.return {a; b; c} ) ) ) )
       ; Typ.read=
           (fun {a; b; c; _} ->
-            Typ.Read.bind
-              ((Typ.read __implicit13__) c)
-              ~f:(fun c ->
-                Typ.Read.bind
-                  ((Typ.read __implicit13__) b)
-                  ~f:(fun b ->
-                    Typ.Read.bind
-                      ((Typ.read __implicit13__) a)
-                      ~f:(fun a -> Typ.Read.return {a; b; c}) ) ) )
+            Typ.Read.bind (Typ.read __implicit13__ c) ~f:(fun c ->
+                Typ.Read.bind (Typ.read __implicit13__ b) ~f:(fun b ->
+                    Typ.Read.bind (Typ.read __implicit13__ a) ~f:(fun a ->
+                        Typ.Read.return {a; b; c} ) ) ) )
       ; Typ.alloc=
           Typ.Alloc.bind (Typ.alloc __implicit13__) ~f:(fun c ->
               Typ.Alloc.bind (Typ.alloc __implicit13__) ~f:(fun b ->
@@ -84,10 +68,11 @@ module X = struct
                       Typ.Alloc.return {a; b; c} ) ) )
       ; Typ.check=
           (fun {a; b; c; _} ->
-            (Typ.check __implicit13__) c ;
-            (Typ.check __implicit13__) b ;
-            (Typ.check __implicit13__) a ;
-            () ) }
+            make_checked (fun () ->
+                Typ.check __implicit13__ c ;
+                Typ.check __implicit13__ b ;
+                Typ.check __implicit13__ a ;
+                () ) ) }
   end
 
   let x =

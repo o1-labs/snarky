@@ -1489,6 +1489,7 @@ module Run = struct
       let of_hlistable = of_hlistable
 
       module Of_traversable = Of_traversable
+      include Types.Typ.T
     end
 
     module Boolean = struct

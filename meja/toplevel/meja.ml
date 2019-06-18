@@ -15,7 +15,8 @@ type config =
   ; meji_files: string list
   ; cmi_files: string list
   ; cmi_dirs: string list
-  ; exn_backtraces: bool }
+  ; exn_backtraces: bool
+  ; generate_cli: bool }
 
 let print_position outx lexbuf =
   let pos = lexbuf.Lexing.lex_curr_p in
@@ -104,7 +105,8 @@ let run
     ; meji_files
     ; cmi_files
     ; cmi_dirs
-    ; exn_backtraces } =
+    ; exn_backtraces
+    ; generate_cli } =
   let env = Initial_env.env in
   Printexc.record_backtrace exn_backtraces ;
   try
@@ -195,12 +197,180 @@ let run
           let name = Location.(mkloc module_name none) in
           Envi.add_module Checked name m env )
     in
+    let env, extended_lib_ast =
+      (* TODO: This is a hack to get the "extended library" to be
+         available. *)
+      let parse_ast =
+        read_string ~at_line:Meja_stdlib.Extended_lib.line
+          (Parser_impl.implementation Lexer_impl.token)
+          "extended_lib" Meja_stdlib.Extended_lib.t
+      in
+      Typechecker.check parse_ast env
+    in
     let parse_ast =
       read_file (Parser_impl.implementation Lexer_impl.token) file
     in
-    let _env, ast = Typechecker.check parse_ast env in
+    let env, ast = Typechecker.check parse_ast env in
+    let ast = extended_lib_ast @ ast in
     let ast =
       if snarky_preamble then add_preamble impl_mod curve proofs ast else ast
+    in
+    let ast =
+      if generate_cli then (
+        (* Get the type of main. *)
+        let main_typ, _ =
+          try
+            Envi.find_name ~loc:Location.none Checked
+              Ast_build.(Loc.mk (Lid.of_name "main"))
+              env
+          with _ ->
+            Format.(
+              fprintf err_formatter "Error: This file has no function main.@.") ;
+            exit 1
+        in
+        let main_typ = Envi.Type.flatten main_typ env in
+        let rev_args, _ = Envi.Type.get_rev_args main_typ in
+        (* Check return type of main. *)
+        match rev_args with
+        | [] ->
+            Format.(
+              fprintf err_formatter
+                "Error: main must be a function.@ Try inserting fun () => { \
+                 .. } around your main.@.") ;
+            exit 1
+        | hd :: tl ->
+            ( try
+                Typechecker.check_type Checked ~loc:Location.none env
+                  Initial_env.Type.unit hd
+              with _ ->
+                Format.(
+                  fprintf err_formatter
+                    "Error: The final argument to main must be unit.@.") ;
+                exit 1 ) ;
+            let with_unit_typ =
+              List.fold
+                ~init:
+                  (Envi.Type.mk Checked
+                     (Tarrow
+                        ( Initial_env.Type.unit
+                        , Initial_env.Type.unit
+                        , Explicit
+                        , Nolabel ))
+                     env)
+                tl
+                ~f:(fun typ _ ->
+                  Envi.Type.mk Checked
+                    (Tarrow
+                       (Initial_env.Type.field Checked, typ, Explicit, Nolabel))
+                    env )
+            in
+            ( try
+                Typechecker.check_type Checked ~loc:Location.none env
+                  with_unit_typ main_typ
+              with err ->
+                Format.(
+                  fprintf err_formatter "Error: main has the wrong type.@.") ;
+                raise err ) ;
+            let public_input =
+              List.fold ~init:Initial_env.Type.unit tl ~f:(fun typ _ ->
+                  Envi.Type.mk Prover
+                    (Tarrow
+                       (Initial_env.Type.field Prover, typ, Explicit, Nolabel))
+                    env )
+            in
+            let toplevel_param_module =
+              Ast_build.(
+                Stmt.module_ "Toplevel_param_module__"
+                  (ModExp.struct_
+                     [ Stmt.type_decl
+                         (Type_decl.alias "result"
+                            (Type.constr (Lid.of_name "unit")))
+                     ; Stmt.type_decl
+                         (Type_decl.alias "computation"
+                            (Untype_ast.type_expr
+                               (Envi.Type.normalise_constr_names OCaml env
+                                  with_unit_typ)))
+                     ; Stmt.type_decl
+                         (Type_decl.alias "public_input"
+                            (Untype_ast.type_expr
+                               (Envi.Type.normalise_constr_names OCaml env
+                                  public_input)))
+                     ; Stmt.value (Pat.var "compute")
+                         (Exp.var (Lid.of_name "main"))
+                     ; Stmt.value (Pat.var "public_input")
+                         (Exp.open_ (Lid.of_name "Data_spec")
+                            (List.fold
+                               ~init:(Exp.ctor (Lid.of_name "[]"))
+                               tl
+                               ~f:(fun exp _ ->
+                                 Exp.ctor (Lid.of_name "::")
+                                   ~args:
+                                     (Exp.tuple
+                                        [ Exp.var (Lid.of_list ["Field"; "typ"])
+                                        ; exp ]) )))
+                     ; Stmt.value (Pat.var "read_input")
+                         (Exp.fun_ (Pat.var "a")
+                            (Exp.match_
+                               (Exp.var (Lid.of_name "a"))
+                               [ ( List.foldi tl
+                                     ~init:(Pat.ctor (Lid.of_name "[]"))
+                                     ~f:(fun i pat _ ->
+                                       Pat.ctor (Lid.of_name "::")
+                                         ~args:
+                                           (Pat.tuple
+                                              [ Pat.var ("f_" ^ string_of_int i)
+                                              ; pat ]) )
+                                 , Exp.open_ (Lid.of_name "H_list")
+                                     (List.foldi tl
+                                        ~init:(Exp.ctor (Lid.of_name "[]"))
+                                        ~f:(fun i exp _ ->
+                                          Exp.ctor (Lid.of_name "::")
+                                            ~args:
+                                              (Exp.tuple
+                                                 [ Exp.apply
+                                                     (Exp.var
+                                                        (Lid.of_list
+                                                           [ "Field"
+                                                           ; "Constant"
+                                                           ; "of_string" ]))
+                                                     [ ( Nolabel
+                                                       , Exp.var
+                                                           (Lid.of_name
+                                                              ( "f_"
+                                                              ^ string_of_int i
+                                                              )) ) ]
+                                                 ; exp ]) )) )
+                               ; ( Pat.any ()
+                                 , Exp.apply
+                                     (Exp.var (Lid.of_name "failwith"))
+                                     [ ( Nolabel
+                                       , Exp.literal
+                                           (String
+                                              ( "Wrong number of arguments: \
+                                                 expected "
+                                              ^ string_of_int (List.length tl)
+                                              )) ) ] ) ])) ]))
+            in
+            let toplevel_module =
+              Ast_build.(
+                Stmt.module_ "Toplevel_CLI_module__"
+                  (ModExp.name
+                     (Lid.apply
+                        (Lid.apply
+                           (Lid.of_list ["Snarky"; "Toplevel"; "Make"])
+                           (Lid.of_name impl_mod))
+                        (Lid.of_name "Toplevel_param_module__"))))
+            in
+            let call_main =
+              Ast_build.(
+                Stmt.value
+                  (Pat.ctor (Lid.of_name "()"))
+                  (Exp.apply
+                     (Exp.var (Lid.of_list ["Toplevel_CLI_module__"; "main"]))
+                     [(Nolabel, Exp.ctor (Lid.of_name "()"))]))
+            in
+            ast @ [toplevel_param_module; toplevel_module; call_main] )
+      else ast
     in
     let ocaml_ast = To_ocaml.of_file ast in
     let ocaml_formatter =

@@ -34,7 +34,7 @@
   (source_tree libsnark-caml)
   (env_var SNARKY_PERFORMANCE))
  (action (bash "
- if [ ! -v SNARKY_PERFORMANCE ] ||
+ if [[ ! -z SNARKY_PERFORMANCE ]] ||
     [ \"$SNARKY_PERFORMANCE\" = \"off\" ] ||
     [ \"$SNARKY_PERFORMANCE\" = \"OFF\" ] ||
     [ \"$SNARKY_PERFORMANCE\" = \"false\" ] ||

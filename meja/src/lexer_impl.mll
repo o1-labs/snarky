@@ -70,6 +70,8 @@ rule token = parse
   | "with" { WITH }
   | "handler" { HANDLER }
   | "Prover" { PROVER }
+  | "if" { IF }
+  | "else" { ELSE }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }

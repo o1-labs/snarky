@@ -10,9 +10,9 @@ let ocaml =
   };
 
   module Request : {
-    type req('a) = ..;
+    type t('a) = ..;
 
-    type t('a) = req('a);
+    type req('a) = t('a);
 
     module Response : {
       type t('a) = Provide('a) | Delegate(req('a)) | Unhandled;
@@ -108,12 +108,15 @@ let ocaml =
       let read : field_var -> t(field);
     };
 
+    /* A version of Checked.t exposed to support the Typ.t below.
+       This is not available to any user code. */
+    type checked_secret('a);
 
     type t('var, 'value) = {
       store: 'value -> Store.t('var),
       read: 'var -> Read.t('value),
       alloc: Alloc.t('var),
-      check: 'var -> unit
+      check: 'var -> checked_secret(unit)
     };
 
     let store : {t('var, 'value)} -> 'value -> Store.t('var);
@@ -178,6 +181,8 @@ let ocaml =
     let var_of_value : value -> var;
 
     instance typ : Typ.t(bool_var, bool);
+
+    instance typ : Typ.t(t, bool);
 
     let equal : var -> var -> var;
 
@@ -316,7 +321,7 @@ let ocaml =
 
     let (-) : t -> t -> t;
 
-    let (*) : t -> t -> t;
+    let ( * ) : t -> t -> t;
 
     let (/) : t -> t -> t;
 
@@ -339,7 +344,14 @@ let ocaml =
 
     };
 
+    /* Nuclear option: instances for all the different combinations. */
     instance typ : Typ.t(t, Constant.t);
+
+    instance typ : Typ.t(t, field);
+
+    instance typ : Typ.t(t, field);
+
+    instance typ : Typ.t(field_var, field);
 
   };
 
@@ -410,7 +422,7 @@ let ocaml =
 
     let (+) : field -> field -> field;
 
-    let (*) : field -> field -> field;
+    let ( * ) : field -> field -> field;
 
     let (-) : field -> field -> field;
 
@@ -445,17 +457,14 @@ let ocaml =
     type t = request -> response;
   };
 
-  let assert_ : ?label:string -> Constraint.t -> unit;
+  let assert_ : Constraint.t -> unit;
 
-  let assert_all : ?label:string -> list(Constraint.t) -> unit;
+  let assert_all : list(Constraint.t) -> unit;
 
   let assert_r1cs :
-    ?label:string -> Field.t -> Field.t -> Field.t -> unit;
-
-  let assert_r1 :
     Field.t -> Field.t -> Field.t -> unit;
 
-  let assert_square : ?label:string -> Field.t -> Field.t -> unit;
+  let assert_square : Field.t -> Field.t -> unit;
 
   let as_prover : As_prover.t(unit -> unit) -> unit;
 
@@ -493,6 +502,8 @@ let ocaml =
 
   let with_label : string -> (unit -> 'a) -> 'a;
 
+  let make_checked : (unit -> 'a) -> Typ.checked_secret('a);
+
   module Number : {
     type t;
 
@@ -500,7 +511,7 @@ let ocaml =
 
     let (-) : t -> t -> t;
 
-    let (*) : t -> t -> t;
+    let ( * ) : t -> t -> t;
 
     let constant : field -> t;
 
@@ -659,7 +670,7 @@ let checked =
 
     let (-) = Field.(-);
 
-    let (*) = Field.(*);
+    let ( * ) = Field.( * );
 
     let (/) = Field.(/);
 
@@ -713,7 +724,7 @@ let checked =
 
   let assert_r1cs = assert_r1cs;
 
-  let assert_r1 = assert_r1;
+  let assert_r1 = assert_r1cs;
 
   let assert_square = assert_square;
 
@@ -737,6 +748,8 @@ let checked =
 
   let with_label = with_label;
 
+  let make_checked = make_checked;
+
   module Number = {
     type t = Number.t;
 
@@ -744,7 +757,7 @@ let checked =
 
     let (-) = Number.(-);
 
-    let (*) = Number.(*);
+    let ( * ) = Number.( * );
 
     let constant = Number.constant;
 
@@ -784,9 +797,9 @@ let prover =
   ( __LINE__ + 1
   , {|
   module Request = {
-    type req = Request.req;
+    type t = Request.t;
 
-    type t = Request.req;
+    type req = Request.t;
 
     module Response = {
       type t = Request.Response.t;
@@ -963,7 +976,7 @@ let prover =
 
     let (+) = As_prover.(+);
 
-    let (*) = As_prover.(*);
+    let ( * ) = As_prover.( * );
 
     let (-) = As_prover.(-);
 
@@ -1033,7 +1046,7 @@ let prover =
 
   let (+) = As_prover.(+);
 
-  let (*) = As_prover.(*);
+  let ( * ) = As_prover.( * );
 
   let (-) = As_prover.(-);
 

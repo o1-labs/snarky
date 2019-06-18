@@ -159,7 +159,7 @@ let rec of_expression_desc ?loc = function
       let default =
         Exp.case (Pat.any ?loc ())
           (Exp.ident ?loc
-             Ast_build.(Loc.mk ?loc (Lid.of_list ["Request"; "Unhandled"])))
+             Ast_build.(Loc.mk ?loc (Lid.of_list ["Request"; "unhandled"])))
       in
       Exp.function_ ?loc (cases @ [default])
   | Prover e ->
@@ -167,10 +167,13 @@ let rec of_expression_desc ?loc = function
         (Pat.construct ?loc Ast_build.(Loc.mk ?loc (Lid.of_name "()")) None)
         (of_expression e)
   | LetOpen (lid, e) ->
-      Exp.open_ Fresh lid (of_expression e)
+      Exp.open_ ?loc Fresh lid (of_expression e)
   | MakeRequest _ ->
       (* Need an inferred Typ.t, which we don't have here.. *)
       assert false
+  | If (e1, e2, e3) ->
+      Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
+        (Option.map ~f:of_expression e3)
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(

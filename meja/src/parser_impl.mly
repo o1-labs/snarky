@@ -47,6 +47,8 @@ let consexp ~pos hd tl =
 %token WITH
 %token HANDLER
 %token PROVER
+%token IF
+%token ELSE
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -414,6 +416,10 @@ expr:
     { mkexp ~pos:$loc (LetOpen (x, e)) }
   | x = as_loc(longident(UIDENT, UIDENT)) DOT LBRACE e = block RBRACE
     { mkexp ~pos:$loc (LetOpen (x, e)) }
+  | IF e1 = expr LBRACE e2 = block RBRACE
+    { mkexp ~pos:$loc (If (e1, e2, None)) }
+  | IF e1 = expr LBRACE e2 = block RBRACE ELSE LBRACE e3 = block RBRACE
+    { mkexp ~pos:$loc (If (e1, e2, Some e3)) }
 
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE

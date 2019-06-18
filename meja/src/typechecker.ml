@@ -310,7 +310,9 @@ let free_type_vars ?depth typ =
         in
         Set.union set (Set.diff (free_type_vars empty typ) poly_vars)
     | Tarrow (typ1, typ2, _, _) ->
-        Set.union (Envi.Type.type_vars ?depth typ1) (free_type_vars set typ2)
+        Set.union
+          (Envi.Type.type_vars ?depth typ1)
+          (Envi.Type.type_vars ?depth typ2)
     | _ ->
         fold ~init:set typ ~f:free_type_vars
   in
@@ -642,6 +644,21 @@ let rec get_expression mode env expected exp =
           Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
         in
         check_type mode ~loc env expected typ ;
+        (* Squash nested applies from implicit arguments. *)
+        let f, es =
+          match f.exp_desc with
+          | Apply (f', args) ->
+              if
+                List.for_all args ~f:(function
+                  | _, {exp_desc= Unifiable _; _} ->
+                      true
+                  | _ ->
+                      false )
+              then (f', args @ es)
+              else (f, es)
+          | _ ->
+              (f, es)
+        in
         ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
     | Variable name ->
         let typ, id = Envi.find_name mode ~loc name env in
@@ -772,6 +789,19 @@ let rec get_expression mode env expected exp =
         let e1, env = get_expression mode env Initial_env.Type.unit e1 in
         let e2, env = get_expression mode env expected e2 in
         ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Seq (e1, e2)}, env)
+    | Let (p, {exp_desc= Prover e1; _}, e2) when mode = Checked ->
+        let env = Envi.open_expr_scope mode env in
+        let e1 =
+          Ast_build.(
+            Exp.apply ~loc
+              (Exp.var ~loc (Lid.of_name "exists"))
+              [(Labelled "compute", Exp.prover ~loc e1)])
+        in
+        let p, e1, env = check_binding mode env p e1 in
+        let e2, env = get_expression mode env expected e2 in
+        let env = Envi.close_expr_scope env in
+        Envi.Type.update_depths env e2.exp_type ;
+        ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
     | Let (p, e1, e2) ->
         let env = Envi.open_expr_scope mode env in
         let p, e1, env = check_binding mode env p e1 in
@@ -1120,6 +1150,20 @@ let rec get_expression mode env expected exp =
               [(Labelled "request", Exp.prover ~loc e)])
         in
         get_expression mode env expected e
+    | If (e1, e2, None) ->
+        check_type ~loc mode env Initial_env.Type.unit expected ;
+        let e1, env = get_expression mode env Initial_env.Type.bool e1 in
+        let e2, env = get_expression mode env Initial_env.Type.unit e2 in
+        ( { exp_loc= loc
+          ; exp_type= Initial_env.Type.unit
+          ; exp_desc= If (e1, e2, None) }
+        , env )
+    | If (e1, e2, Some e3) ->
+        let e1, env = get_expression mode env Initial_env.Type.bool e1 in
+        let e2, env = get_expression mode env expected e2 in
+        let e3, env = get_expression mode env expected e3 in
+        ( {exp_loc= loc; exp_type= expected; exp_desc= If (e1, e2, Some e3)}
+        , env )
   in
   (e, env)
 
@@ -1138,9 +1182,18 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
       ~is_subtype:(is_subtype mode ~loc:e.exp_loc)
       typ_vars env
   in
+  (* We don't necessarily get the outermost representative. Try to unwrap it
+     and get the true representative here. *)
+  let rec unwrap_unifiable var =
+    match var.exp_desc with
+    | Unifiable {expression= Some e; _} ->
+        unwrap_unifiable e
+    | _ ->
+        var
+  in
   let e, env =
     List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
-        match var.exp_desc with
+        match (unwrap_unifiable var).exp_desc with
         | Unifiable {expression= None; name; _} ->
             let exp_type =
               Envi.Type.mk mode
@@ -1150,6 +1203,17 @@ and check_binding mode ?(toplevel = false) (env : Envi.t) p e : 's =
             let p =
               {pat_desc= PVariable name; pat_loc= loc; pat_type= var.exp_type}
             in
+            (* Uncomment to see the inferred types of implicits. *)
+            (*let p =
+              { pat_desc=
+                  PConstraint
+                    ( p
+                    , Untype_ast.type_expr ~loc
+                        (Envi.Type.normalise_constr_names OCaml env
+                           var.exp_type) )
+              ; pat_loc= loc
+              ; pat_type= var.exp_type }
+            in*)
             ( {exp_desc= Fun (Nolabel, p, e, Implicit); exp_type; exp_loc= loc}
             , env )
         | _ ->

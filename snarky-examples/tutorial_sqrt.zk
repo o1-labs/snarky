@@ -17,24 +17,26 @@
   magic of zero-knowledge.
 */
 
-/* This lets us declare a 'request' to the prover. It says
-
-   "There is a request called 'Get_square_root' which takes a
-   field element as an argument and we expect the prover to
-   return a field element in response."
-*/
-request(field) Get_square_root(field);
-
-let main = fun (x : field) => {
-  /* This bit asks the prover to please give us the square root of x. */
-  let y = request { Get_square_root(x); };
+let main = fun (x : field, ()) => {
+  /* This bit asks the prover to please give us the square root of x,
+     and inside of the prover block we have access to extra functions 
+     in Field, including a square root function. Everything inside of
+     the Prover block is not being checked in the SNARK, but is computation
+     performed by the prover.
+   */
+  let y = Prover {
+    if (Field.is_square(x)) {
+      Field.sqrt(x);
+    } else {
+      0;
+    };
+  };
 
   /* Now we check that the prover really has given us the square root of x
      by making an assertion about the value the prover gave us. */
   assert_r1(y, y, x);
 };
 
-/* Should work */
 let prover =
   handler {
     | Get_square_root(x) => {
@@ -42,3 +44,5 @@ let prover =
       respond(Provide(y)) ;
     }
   };
+
+

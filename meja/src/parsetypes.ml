@@ -86,6 +86,7 @@ and expression_desc =
   | Handler of (pattern * expression) list
   | LetOpen of lid * expression
   | MakeRequest of expression
+  | If of expression * expression * expression option
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
