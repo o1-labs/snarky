@@ -871,6 +871,60 @@ let checked =
   module Field = {
     type t = Field.t;
 
+    module Constant = {
+      type t = Field.Constant.t;
+
+      let compare = Field.Constant.compare ;
+
+      let of_int = Field.Constant.of_int ;
+
+      let one = Field.Constant.one ;
+
+      let zero = Field.Constant.zero ;
+
+      let add = Field.Constant.add ;
+
+      let sub = Field.Constant.sub ;
+
+      let mul = Field.Constant.mul ;
+
+      let inv = Field.Constant.inv ;
+
+      let square = Field.Constant.square ;
+
+      let sqrt = Field.Constant.sqrt ;
+
+      let is_square = Field.Constant.is_square ;
+
+      let equal = Field.Constant.equal ;
+
+      let size_in_bits = Field.Constant.size_in_bits ;
+
+      let print = Field.Constant.print ;
+
+      let random = Field.Constant.random ;
+
+      let negate = Field.Constant.negate ;
+
+      let (+) = Field.Constant.(+) ;
+
+      let ( * ) = Field.Constant.( * ) ;
+
+      let (-) = Field.Constant.(-) ;
+
+      let (/) = Field.Constant.(/) ;
+
+      let of_string = Field.Constant.of_string ;
+
+      let to_string = Field.Constant.to_string ;
+
+      let unpack = Field.Constant.unpack ;
+      let to_bits = Field.Constant.to_bits ;
+
+      let project = Field.Constant.project ;
+      let of_bits = Field.Constant.of_bits ;
+    };
+
     let size_in_bits = Field.size_in_bits;
 
     let length = Field.length;
@@ -1139,6 +1193,8 @@ let prover =
 
   module Field = {
     type t = Field.Constant.t;
+
+    type variable = Field.t;
 
     let compare = Field.Constant.compare;
 
