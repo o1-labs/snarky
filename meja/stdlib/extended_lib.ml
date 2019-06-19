@@ -2,6 +2,8 @@ let line = __LINE__ + 3
 
 let t =
   {meja|
+request((field, field)) Base_point;
+
 module Extended_lib = {
   type quadruple('a) = ('a, 'a, 'a, 'a);
   type triple('a) = ('a, 'a, 'a);
@@ -289,6 +291,11 @@ module Extended_lib = {
   };
 
   module Curve = {
+    type coefficients('a) = {
+      a : 'a,
+      b : 'a
+    };
+
     open Field;
 
     // Would be nice to have "subset syntax" for the Typ for this type.
@@ -303,8 +310,8 @@ module Extended_lib = {
       /* assert (x * y == z); */
     };
 
-    let add_unsafe = fun ((ax, ay), (bx, by)) => {
-      let lambda = div_unsafe(Field.(-)(by, ay), Field.(-)(bx, ax));
+    let add_helper = fun (div, (ax, ay), (bx, by)) => {
+      let lambda = div(Field.(-)(by, ay), Field.(-)(bx, ax));
       let cx = Prover {
         square(lambda) - (ax + bx);
       };
@@ -315,6 +322,58 @@ module Extended_lib = {
       assert_r1(lambda, (ax - cx) , (cy + ay));
       (cx, cy);
     };
+
+    let add_unsafe = add_helper(div_unsafe);
+    let add = add_helper(Field.(/));
+
+    let double = fun ((x, y)) => {
+      let xy = x * y;
+      let xx = x * x;
+      let yy = y * y;
+      let a = (2 * xy) / (xx + yy);
+      let b = (yy - xx) / (2 - xx - yy);
+      (a, b);
+    };
+
+    module Assert = {
+      let on_curve = fun ({a, b}, (x, y)) => {
+        let fx = x * (x * x + a) + b;
+        assert_r1(y, y, fx);
+      };
+
+      let not_equal = fun ((x1, y1), (x2, y2)) => {
+        Boolean.Assert.any([
+          Boolean.not(Field.equal(x1, x2)),
+          Boolean.not(Field.equal(y1, y2))
+        ]);
+      };
+
+      let equal = fun ((x1, y1), (x2, y2)) => {
+        Field.Assert.equal(x1, x2);
+        Field.Assert.equal(y1, y2);
+      };
+
+    };
+
+    let negate = fun ((x, y)) => {
+      (x, (0 - y));
+    };
+
+    let scale = fun (coeffs, bs: list(boolean), g : t) => {
+      let base_point : t = request { Base_point; };
+      Assert.on_curve(coeffs, base_point);
+      Assert.not_equal(base_point, g);
+
+      let (acc, _) =
+        List.fold_left(fun ((acc, two_i_g), b) => {
+          let acc = select(b, ~then_=add(acc, two_i_g), ~else_=acc);
+          let two_i_g = double(two_i_g);
+          (acc, two_i_g);
+        }, (base_point, g), bs);
+
+      add(acc, negate(base_point));
+    };
+
   };
 
   module Pedersen = {

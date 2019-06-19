@@ -1,0 +1,70 @@
+open Extended_lib;
+
+let _ = Curve.scale;
+
+type pedersen_commitment = Curve.t;
+
+let bits_of_int = fun (n : int) : list(bool) => {
+  List.init(32i, fun (i) => {
+    land(lsr(n, i), 1i) = 1i;
+  });
+};
+
+let ask_for_exponent : unit -> list#32(bool) = fun () => {
+  print_endline("Type in the exponent");
+  let n = int_of_string(read_line());
+  bits_of_int(n);
+};
+
+// TODO: Nicer way to get Prover block scope.
+let get_base_point : unit -> (Field.Constant.t, Field.Constant.t) = fun () => {
+  let a = Field.Constant.of_string("7296080957279758407415468581752425029516121466805344781232734728849116493472");
+  let b = Field.Constant.of_string("16213513238399463127589930181672055621146936592900766180517188641980520820846");
+
+  loop(fun (continue, ()) => {
+    let x = Field.Constant.random();
+    let x2 = Field.Constant.( * )(x, x);
+    let x2_a = Field.Constant.( + )(x2, a);
+    let x3_ax = Field.Constant.( * )(x2_a, x);
+    let fx = Field.Constant.( + )(x3_ax, b);
+
+    if (Field.Constant.is_square(fx)) {
+      (x, Field.Constant.sqrt(fx));
+    } else {
+      continue();
+    };
+  }, ());
+};
+
+let base_point_handler = handler {
+  | Base_point => respond(Provide(get_base_point()))
+};
+
+let ask_for_blinding = fun () => {
+  print_endline("Type in the blinding factor");
+  let s = read_line();
+  let comma = char_of_int(44i);
+  let [x, y] = String.split_on_char(comma, s);
+  (Field.Constant.of_string(x), Field.Constant.of_string(y));
+};
+
+let g =  (9037382189387117003485325043194617843427186524790646732571880395952040041035,
+ 6132601361257387099740945967038141013134978633143928527914270213583626884148);
+
+/*
+let h =  (20043548215316740571277507548553644808239014370809832223558926863770014360444,
+ 15579599831786036969695735641316699781385038630469903290797422040909604446850); */
+
+let main = fun (egx : field, egy : field , ()) => { 
+  let eg = (egx, egy);
+  let a = 7296080957279758407415468581752425029516121466805344781232734728849116493472;
+  let b = 16213513238399463127589930181672055621146936592900766180517188641980520820846;
+  let coeffs = { Curve.a, b};
+
+  let e : list#32(boolean) = Prover {
+    ask_for_exponent();
+  };
+
+  Curve.Assert.equal(eg, handle(fun () => { Curve.scale(coeffs, e, g); }, base_point_handler));
+};
+
