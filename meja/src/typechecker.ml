@@ -1633,6 +1633,13 @@ let rec check_statement mode env stmt =
                 (Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat, body)
             in
             let _p, e, env = check_binding Prover ~toplevel:true env p e in
+            let rec collect_implicits acc e =
+              match e.exp_desc with
+              | Fun (_, p, e, Implicit) ->
+                  collect_implicits (p :: acc) e
+              | _ -> (acc, e)
+            in
+            let _implicits_rev, e = collect_implicits [] e in
             let pat, body =
               match e with
               | { exp_desc=
