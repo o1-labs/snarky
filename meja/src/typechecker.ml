@@ -1150,14 +1150,25 @@ let rec get_expression mode env expected exp =
         in
         ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
     | Prover e ->
-        let typ = Envi.Type.mkvar Prover None env in
-        let typ_full =
-          Envi.Type.mk Prover
-            (Tarrow (Initial_env.Type.unit, typ, Explicit, Nolabel))
-            env
+        let flattened_expected = Envi.Type.flatten expected env in
+        Format.(
+          fprintf err_formatter "%a%a@." Location.print loc Typeprint.type_expr
+            flattened_expected) ;
+        let e, env =
+          match flattened_expected.type_desc with
+          | Tarrow _ ->
+              (* Automatically insert a (fun () -> ...) thunk wrapper if the return
+                 type is an arrow.
+                 NOTE: This should be true for all functions in the stdlib, but
+                       false in the general Prover {...} use case.
+              *)
+              let e =
+                Ast_build.(Exp.fun_ ~loc (Pat.ctor ~loc (Lid.of_name "()")) e)
+              in
+              get_expression Prover env expected e
+          | _ ->
+              get_expression Prover env expected e
         in
-        check_type ~loc Prover env typ_full expected ;
-        let e, env = get_expression Prover env typ e in
         ({exp_loc= loc; exp_type= expected; exp_desc= Prover e}, env)
     | LetOpen (lid, e) ->
         let try_unless_mode mode' =
@@ -1637,7 +1648,8 @@ let rec check_statement mode env stmt =
               match e.exp_desc with
               | Fun (_, p, e, Implicit) ->
                   collect_implicits (p :: acc) e
-              | _ -> (acc, e)
+              | _ ->
+                  (acc, e)
             in
             let _implicits_rev, e = collect_implicits [] e in
             let pat, body =

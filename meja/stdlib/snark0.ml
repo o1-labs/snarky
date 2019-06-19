@@ -697,7 +697,7 @@ let ocaml =
   module Handle : {
     type t('var, 'value);
 
-    let value : t(_, 'value) -> As_prover.t(unit -> 'value);
+    let value : t(_, 'value) -> (unit -> 'value);
 
     let var : t('var, _) -> 'var;
 
@@ -726,16 +726,16 @@ let ocaml =
 
   let assert_square : Field.t -> Field.t -> unit;
 
-  let as_prover : As_prover.t(unit -> unit) -> unit;
+  let as_prover : (unit -> unit) -> unit;
 
   let next_auxiliary : unit -> int;
 
   let request_witness :
        {Typ.t('var, 'value)}
-    -> As_prover.t(unit -> Request.t('value))
+    -> (unit -> Request.t('value))
     -> 'var;
 
-  let perform : As_prover.t(unit -> Request.t(unit)) -> unit;
+  let perform : (unit -> Request.t(unit)) -> unit;
 
   let request :
        ?such_that:('var -> unit)
@@ -745,20 +745,20 @@ let ocaml =
 
   let exists :
        {Typ.t('var, 'value)}
-    -> ?request:As_prover.t(unit -> Request.t('value))
-    -> ?compute:As_prover.t(unit -> 'value)
+    -> ?request:(unit -> Request.t('value))
+    -> ?compute:(unit -> 'value)
     -> 'var;
 
   let exists_handle :
        {Typ.t('var, 'value)}
-    -> ?request:As_prover.t(unit -> Request.t('value))
-    -> ?compute:As_prover.t(unit -> 'value)
+    -> ?request:(unit -> Request.t('value))
+    -> ?compute:(unit -> 'value)
     -> Handle.t('var, 'value);
 
   let handle : (unit -> 'a) -> Handler.t -> 'a;
 
   let handle_as_prover :
-    (unit -> 'a) -> As_prover.t((unit -> Handler.t)) -> 'a;
+    (unit -> 'a) -> ((unit -> Handler.t)) -> 'a;
 
   let with_label : string -> (unit -> 'a) -> 'a;
 
