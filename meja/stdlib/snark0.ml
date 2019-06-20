@@ -1252,7 +1252,7 @@ let prover =
 
     instance big_int = Typ.big_int;
 
-    instance float = Typ.big_int;
+    instance float = Typ.float;
 
     instance list0 = Typ.list0;
     instance list1 = Typ.list1;
