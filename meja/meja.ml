@@ -101,5 +101,6 @@ let main =
     ; cmi_files= !cmi_files
     ; cmi_dirs= !cmi_dirs
     ; exn_backtraces= !exn_backtraces
-    ; generate_cli= false } ;
+    ; generate_cli= false
+    ; load_extlib= false } ;
   exit 0

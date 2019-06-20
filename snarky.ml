@@ -21,7 +21,8 @@ let build_meja generate_cli dir curve filename =
     ; cmi_files= []
     ; cmi_dirs= ["."]
     ; exn_backtraces= false
-    ; generate_cli } ;
+    ; generate_cli
+    ; load_extlib= true } ;
   ocaml_file
 
 let build_dune_file dir filename =

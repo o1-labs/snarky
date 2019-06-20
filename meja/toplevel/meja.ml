@@ -16,7 +16,8 @@ type config =
   ; cmi_files: string list
   ; cmi_dirs: string list
   ; exn_backtraces: bool
-  ; generate_cli: bool }
+  ; generate_cli: bool
+  ; load_extlib: bool }
 
 let print_position outx lexbuf =
   let pos = lexbuf.Lexing.lex_curr_p in
@@ -106,7 +107,8 @@ let run
     ; cmi_files
     ; cmi_dirs
     ; exn_backtraces
-    ; generate_cli } =
+    ; generate_cli
+    ; load_extlib } =
   let env = Initial_env.env in
   Printexc.record_backtrace exn_backtraces ;
   try
@@ -198,14 +200,16 @@ let run
           Envi.add_module Checked name m env )
     in
     let env, extended_lib_ast =
-      (* TODO: This is a hack to get the "extended library" to be
+      if load_extlib then
+        (* TODO: This is a hack to get the "extended library" to be
          available. *)
-      let parse_ast =
-        read_string ~at_line:Meja_stdlib.Extended_lib.line
-          (Parser_impl.implementation Lexer_impl.token)
-          "extended_lib" Meja_stdlib.Extended_lib.t
-      in
-      Typechecker.check parse_ast env
+        let parse_ast =
+          read_string ~at_line:Meja_stdlib.Extended_lib.line
+            (Parser_impl.implementation Lexer_impl.token)
+            "extended_lib" Meja_stdlib.Extended_lib.t
+        in
+        Typechecker.check parse_ast env
+      else (env, [])
     in
     let parse_ast =
       read_file (Parser_impl.implementation Lexer_impl.token) file
