@@ -1151,9 +1151,6 @@ let rec get_expression mode env expected exp =
         ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
     | Prover e ->
         let flattened_expected = Envi.Type.flatten expected env in
-        Format.(
-          fprintf err_formatter "%a%a@." Location.print loc Typeprint.type_expr
-            flattened_expected) ;
         let e, env =
           match flattened_expected.type_desc with
           | Tarrow _ ->
@@ -1350,6 +1347,30 @@ let type_extension mode ~loc variant ctors env =
   in
   (env, variant, ctors)
 
+let add_module mode name m env =
+  match mode with
+  | Checked ->
+      env
+      |> Envi.add_module Checked name m
+      |> Envi.add_module Prover name m
+      |> Envi.add_module OCaml name m
+  | Prover ->
+      env |> Envi.add_module Prover name m |> Envi.add_module OCaml name m
+  | OCaml ->
+      Envi.add_module OCaml name m env
+
+let add_deferred_module mode name path env =
+  match mode with
+  | Checked ->
+      env
+      |> Envi.add_deferred_module Checked name path
+      |> Envi.add_deferred_module Prover name path
+      |> Envi.add_deferred_module OCaml name path
+  | Prover ->
+      env |> Envi.add_deferred_module Prover name path |> Envi.add_deferred_module OCaml name path
+  | OCaml ->
+      Envi.add_deferred_module OCaml name path env
+
 let rec check_signature_item mode env item =
   let loc = item.sig_loc in
   match item.sig_desc with
@@ -1375,9 +1396,9 @@ let rec check_signature_item mode env item =
       in
       match m with
       | Envi.Scope.Immediate m ->
-          Envi.add_module mode name m env
+          add_module mode name m env
       | Envi.Scope.Deferred path ->
-          Envi.add_deferred_module mode name path env )
+          add_deferred_module mode name path env )
   | SModType (name, signature) ->
       let env = Envi.open_module name.txt mode env in
       let m_env, env =
@@ -1456,7 +1477,7 @@ and check_module_sig mode env path msig =
               let scope =
                 Envi.FullScope.map_scope mode scope ~f:(fun _ -> f)
               in
-              Envi.add_module mode f_name scope env
+              add_module mode f_name scope env
           | Envi.Scope.Deferred path ->
               Envi.add_deferred_module mode f_name path env
         in
@@ -1567,7 +1588,7 @@ let rec check_statement mode env stmt =
       let env = Envi.open_module name.txt mode env in
       let env, m = check_module_expr mode env m in
       let m_env, env = Envi.pop_module ~loc env in
-      let env = Envi.add_module mode name m_env env in
+      let env = add_module mode name m_env env in
       (env, {stmt with stmt_desc= Module (name, m)})
   | ModType (name, signature) ->
       let m_env, env =
@@ -1722,7 +1743,7 @@ and check_module_expr mode env m =
               let scope =
                 Envi.FullScope.map_scope mode scope ~f:(fun _ -> f)
               in
-              Envi.add_module mode f_name scope env
+              add_module mode f_name scope env
           | Envi.Scope.Deferred path ->
               Envi.add_deferred_module mode f_name path env
         in

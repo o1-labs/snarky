@@ -99,6 +99,16 @@ struct
         (v : 'var) : (unit, 's, field Checked.field) Checked.t =
       Checked.with_state (As_prover.return ()) (check v)
 
+    let any default : ('a, 'a, 'field) t =
+      { store= (fun a -> Store.return a)
+      ; read= (fun a -> Read.return a)
+      ; check= (fun _ -> Checked.return ())
+      ; alloc= Alloc.return default }
+
+    let int () = any 0
+
+    let string () = any ""
+
     let unit () : (unit, unit, 'field) t =
       let s = Store.return () in
       let r = Read.return () in

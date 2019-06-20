@@ -30,6 +30,7 @@ let typ_name name = match name with "t" -> "typ" | name -> name ^ "_typ"
 let typ_of_decl ~loc (decl : type_decl) =
   let open Ast_build in
   let name = decl.tdec_ident.txt in
+  let mk_stmt stmt_desc = {stmt_loc= loc; stmt_desc} in
   try
     match decl.tdec_desc with
     | TRecord fields ->
@@ -202,7 +203,6 @@ let typ_of_decl ~loc (decl : type_decl) =
           in
           Instance (Location.mkloc (typ_name name) loc, typ_body)
         in
-        let mk_stmt stmt_desc = {stmt_loc= loc; stmt_desc} in
         if !has_constr then
           Some
             [ ( OCaml
@@ -217,6 +217,14 @@ let typ_of_decl ~loc (decl : type_decl) =
               , [(Checked, None); (Prover, None)]
               , mk_stmt (TypeDecl decl) )
             ; (OCaml, [(Prover, None)], mk_stmt typ_instance) ]
+    | TAlias _ ->
+        let var_name = var_type_name name in
+        Some
+          [ (Prover, [(OCaml, None)], mk_stmt (TypeDecl decl))
+          ; ( Checked
+            , [(Checked, Some name); (OCaml, None)]
+            , mk_stmt (TypeDecl {decl with tdec_ident= Loc.mk ~loc var_name})
+            ) ]
     | _ ->
         None
   with _ -> None
