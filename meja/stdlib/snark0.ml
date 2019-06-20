@@ -189,6 +189,8 @@ let ocaml =
 
     instance char : t(char, char);
 
+    instance big_int : t(Big_int.big_int, Big_int.big_int);
+
     let list :
       length:int -> {t('var, 'value)} -> t(list('var), list('value));
 
@@ -482,7 +484,7 @@ let ocaml =
 
     instance typ : Typ.t(bool_var, bool);
 
-    instance typ : Typ.t(t, bool);
+    /*instance typ : Typ.t(t, bool);*/
 
     let equal : var -> var -> var;
 
@@ -1245,6 +1247,8 @@ let prover =
     instance string = Typ.string;
 
     instance char = Typ.char;
+
+    instance big_int = Typ.big_int;
 
     instance list0 = Typ.list0;
     instance list1 = Typ.list1;
