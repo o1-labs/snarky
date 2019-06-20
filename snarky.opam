@@ -10,11 +10,13 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
+  "async_kernel"
   "core_kernel" {>= "v0.12" & < "v0.13" }
   "fold_lib"
   "tuple_lib"
   "bitstring_lib"
   "interval_union"
+  "menhir"
   "bignum"
   "ctypes" {>= "0.14" & < "0.15"}
   "ctypes-foreign" {>= "0.4.0" & < "0.5.0"}

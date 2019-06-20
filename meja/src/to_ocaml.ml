@@ -163,9 +163,7 @@ let rec of_expression_desc ?loc = function
       in
       Exp.function_ ?loc (cases @ [default])
   | Prover e ->
-      Exp.fun_ ?loc Nolabel None
-        (Pat.construct ?loc Ast_build.(Loc.mk ?loc (Lid.of_name "()")) None)
-        (of_expression e)
+      of_expression e
   | LetOpen (lid, e) ->
       Exp.open_ ?loc Fresh lid (of_expression e)
   | MakeRequest _ ->

@@ -631,7 +631,9 @@ let pop_module ~loc env =
     | Scope.Module ->
         (scope :: scopes, env)
     | Expr | ExprOpen ->
-        raise (Error (of_prim __POS__, Wrong_scope_kind "module"))
+        (*TODO(Matt): Re-enable this. *)
+        (*raise (Error (of_prim __POS__, Wrong_scope_kind "module"))*)
+        all_scopes scopes env
     | Open ->
         all_scopes scopes env
     | Continue ->
