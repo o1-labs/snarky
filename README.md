@@ -1,3 +1,6 @@
+# For workshop attendees: PLEASE SEE snarky-docs/language-reference.markdown
+
+
 # snarky
 
 `snarky` is an OCaml front-end for writing R1CS SNARKs.

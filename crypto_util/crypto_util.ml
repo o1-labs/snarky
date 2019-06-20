@@ -1,4 +1,5 @@
 open Core
+open Fold_lib
 
 type curve = Bn128 | Mnt4 | Mnt6
 
@@ -59,6 +60,16 @@ let curve_module : curve -> curve_module = function
 
 let curve_to_string = function Bn128 -> "bn128" | _ -> assert false
 
+let parse_as_binary s =
+  Array.map (String.to_array s) ~f:(function
+    | '0' ->
+        false
+    | '1' ->
+        true
+    | c ->
+        failwithf "Got non-01 character %c" c () )
+  |> Fold.of_array
+
 let cmd =
   let open Command.Param in
   let open Command.Let_syntax in
@@ -67,10 +78,9 @@ let cmd =
       (optional_with_default Bn128 (Arg_type.create curve_of_string))
       ~doc:"Curve to use"
   and padded_length =
-    flag "padded-length"
-      (optional_with_default 256 int)
-      ~doc:"Length in bits to pad input to"
+    flag "padded-length" (optional int) ~doc:"Length in bits to pad input to"
   and params = flag "params" (optional string) ~doc:"Path to params file"
+  and binary = flag "binary" no_arg ~doc:"Pass input as a string of 0s and 1s"
   and str = anon ("INPUT" %: string) in
   fun () ->
     let module Inputs = (val curve_module curve) in
@@ -82,13 +92,23 @@ let cmd =
         params
       |> P.Params.load
     in
-    assert (padded_length >= String.length str) ;
-    P.digest_fold (P.State.create params)
-      Fold_lib.Fold.(
-        group3 ~default:false
-          ( string_bits str
-          +> init (padded_length - (8 * String.length str)) ~f:(fun _ -> false)
-          ))
+    let s, bit_length =
+      if binary then (parse_as_binary str, String.length str)
+      else (Fold.string_bits str, 8 * String.length str)
+    in
+    let padded =
+      match padded_length with
+      | None ->
+          s
+      | Some padded_length ->
+          assert (padded_length >= String.length str) ;
+          Fold.(s +> init (padded_length - bit_length) ~f:(fun _ -> false))
+    in
+    P.digest_fold (P.State.create params) Fold.(group3 ~default:false padded)
     |> Field.to_string |> print_endline
 
-let () = Command.run (Command.basic cmd ~summary:"Compute pedersen hashes")
+let cmd =
+  Command.group ~summary:"Crypto utilities"
+    [("pedersen", Command.basic cmd ~summary:"Compute pedersen hashes")]
+
+let () = Command.run cmd

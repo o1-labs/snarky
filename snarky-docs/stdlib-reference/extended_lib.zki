@@ -1,0 +1,107 @@
+/* This module defines
+   - Elliptic curve operations
+   - 32 bit unsigned ints
+   - The blake2 hash function
+   - The pedersen hash function
+ */
+
+module Extended_lib : {
+
+  /* Some simple abbreviations. */
+  type quadruple('a) = ('a, 'a, 'a, 'a);
+  type triple('a) = ('a, 'a, 'a);
+  type double('a) = ('a, 'a);
+
+  /* 32 bit unsigned ints, represented as arrays of booleans. */
+  module UInt32 : {
+    let length : int; 
+
+    type t = array(boolean);
+
+    /* Bitwise xor */
+    let xor : t -> t -> t;
+
+    /* The numver 0. */
+    let zero : t = Array.init(length, fun (_) => { 0b; });
+
+    /* Add a list of uint32s mod 2^32. */
+    let sum : list(t) -> t;
+
+    /* Rotate the bits (to the right). */
+    let rotr : t -> int -> t;
+
+    /* Convert from an int. */
+    let of_int : int -> t;
+  };
+
+  module Blake2 = {
+    /* Compute the blake2s hash function. */
+    let blake2s : list(boolean) -> list(boolean);
+  };
+
+  module Curve : {
+    /* The coefficients of an elliptic curve. */
+    type coefficients('a) = {
+      a : 'a,
+      b : 'a
+    };
+
+    /* Curve points are represented in affine coordinates. */
+    type t = double(field);
+
+    /* The "group operation" for elliptic curves. Must only
+       be called on points which you statically know are distinct or 
+       your SNARK will be unsound.
+     */
+    let add_unsafe : t -> t -> t;
+
+    /* The "group operation" for elliptic curves. Calling on
+       points which are identical will not break soundness but it will
+       cause your constraint system to be unsatisfiable. */
+    let add : t -> t -> t;
+
+    /* Add a curve point to itself. */
+    let double: t -> t;
+
+    module Assert = {
+      /* Assert that a point is on the given curve. */
+      let on_curve : coefficients(field) -> t -> unit;
+
+      /* Assert that two points are not equal. */
+      let not_equal : t -> t -> unit;
+
+      /* Assert that two points are equal. */
+      let equal : t -> t -> unit;
+    };
+
+    /* The inverse of a curve point with respect to the group operation. */
+    let negate : t -> t;
+
+    /* Scale a curve point by a least-significant-bit-first scalar. */
+    let scale : coefficients(field) -> list(boolean) -> t -> t;
+  };
+
+  module Pedersen : {
+
+    /* Just some synonyms. */
+    module Digest : {
+      type t = field;
+      let to_bits : t -> list(boolean);
+    };
+
+    /* The parameters for a pedersen hash function. */
+    module Params : {
+      type t = array(quadruple((field, field)));
+
+      /* Load parameters from a given path. There is an example in ./bn128-params for
+         when the backend curve is Bn128. */
+      let load : string -> t;
+    };
+
+    /* Compute the pedersen hash of a triple of bits. */
+    let digest : Params.t -> list(triple(boolean)) -> Digest.t;
+
+    /* Compute the pedersen hash of a list of bits. */
+    let digest_bits : Params.t -> list(boolean) -> Digest.t;
+  };
+};
