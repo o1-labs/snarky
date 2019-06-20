@@ -1,5 +1,6 @@
 /* This module defines
    - Elliptic curve operations
+   - Merkle tree inclusion proof checking
    - 32 bit unsigned ints
    - The blake2 hash function
    - The pedersen hash function
@@ -79,6 +80,24 @@ module Extended_lib : {
 
     /* Scale a curve point by a least-significant-bit-first scalar. */
     let scale : coefficients(field) -> list(boolean) -> t -> t;
+  };
+
+  module Merkle_tree : {
+    // A Merkle tree with field elements at the leaves.
+    type t =
+      | Leaf (Field.Constant.t)
+      | Node (Field.Constant.t , t , t);
+
+    /* paths and addresses should have the neighbors from top to bottom
+    */
+
+    let get_path : t -> list(bool) -> list(Field.Constant.t);
+
+    let implied_root
+      : hash:(list(boolean) -> field)
+        -> list(boolean)
+        -> list(field)
+        -> field;
   };
 
   module Pedersen : {
