@@ -1,11 +1,11 @@
 /*
 
   Problem:
-  Create a SNARK which functions as follows: 
+  Create a SNARK which functions as follows:
 
   Public-input:
     a field element x
-  Proves: 
+  Proves:
     x is a cube. In other words,
     "There exists y such that y * y * y = x."
 */

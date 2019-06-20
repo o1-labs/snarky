@@ -1,14 +1,14 @@
 /*
   In this tutorial, we'll make a SNARK.
-  The SNARK will function as follows: 
+  The SNARK will function as follows:
 
   Public-input:
     a field element x
-  Proves: 
+  Proves:
     x is a square. In other words,
     "There exists y such that y * y = x."
 
-  The idea of a public input is that it is an *exposed* input 
+  The idea of a public input is that it is an *exposed* input
   with respect to which we prove some statement. In this case,
   the statement is that it's a square.
 
@@ -19,7 +19,7 @@
 
 let main = fun (x : field, ()) => {
   /* This bit asks the prover to please give us the square root of x,
-     and inside of the prover block we have access to extra functions 
+     and inside of the prover block we have access to extra functions
      in Field, including a square root function. Everything inside of
      the Prover block is not being checked in the SNARK, but is computation
      performed by the prover.

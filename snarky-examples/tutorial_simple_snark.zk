@@ -1,10 +1,10 @@
 /* Let's make a SNARK.
 
-  The SNARK will function as follows: 
+  The SNARK will function as follows:
   Public-input:
     two field elements x and z
 
-  Proves: 
+  Proves:
     z = x^8
 */
 

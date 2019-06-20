@@ -13,7 +13,7 @@
 
    This means that is impossible in the verifier scope to branch on
    the value of a field element. In the prover scope, one can convert
-   a field element to bools (not booleans!) 
+   a field element to bools (not booleans!)
 */
 
 /* Verifier scope */
@@ -77,7 +77,7 @@ module Field : {
      The length argument is optional and defaults to Field.size_in_bits.
      If you have a field element which you know (or want to assert) is smaller
      than a given length, you can give an explicit value.
-     
+
      For example, let's say you know x is less than 2^32. Then you can write
 
         let bits = Field.to_bits(~length=32, x);

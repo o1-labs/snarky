@@ -41,7 +41,7 @@ let x = my_if_then_else(false, "it was true :)", "it was false :(");
 /* Ok, that was bool. Now how about boolean?
 
   As mentioned, boolean is the type of field elements that are
-  either 0 or 1. We write them as 0b or 1b. 
+  either 0 or 1. We write them as 0b or 1b.
 */
 
 let main = fun () => {

@@ -1,7 +1,7 @@
 /* Let's talk a bit more about requests. */
 
 /* Requests let you "ask for help" in computing something.
-   Specifically, if you know a function f such that it's 
+   Specifically, if you know a function f such that it's
    easier to check if f(x) = y than to compute it, you can
    use requests to replace computing by checking. */
 
@@ -30,7 +30,7 @@
 request(field) Div(field, field);
 
 let div = fun (x, y) => {
-  /* Here we actually make the request. 
+  /* Here we actually make the request.
      Later, we'll define a handler to respond to this
      request by providing a value.
    */
@@ -44,7 +44,7 @@ let div = fun (x, y) => {
   z ;
 };
 
-/* A request can only return values of certain types. 
+/* A request can only return values of certain types.
    In particular, it can only return values which are
    made of field elements and booleans and which have
    a known size. Basically tuples and records.
@@ -55,7 +55,7 @@ request((boolean, field)) Test(field);
 
 let test : unit -> (boolean, field) = fun () => {
   let x : (boolean, field) = request { Test(0); };
-  x ; 
+  x ;
 };
 
 type point = {
@@ -67,10 +67,10 @@ request(point) Get_point;
 
 let test1 = fun () => {
   let x : point = request { Get_point; };
-  x ; 
+  x ;
 };
 
-/* Let's look at how to handle or respond to requests. 
+/* Let's look at how to handle or respond to requests.
 
    First, we need the concepts of "prover scope" and "verifier scope".
 

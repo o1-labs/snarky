@@ -14,7 +14,7 @@ module Extended_lib : {
 
   /* 32 bit unsigned ints, represented as arrays of booleans. */
   module UInt32 : {
-    let length : int; 
+    let length : int;
 
     type t = array(boolean);
 
