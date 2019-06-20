@@ -1151,9 +1151,6 @@ let rec get_expression mode env expected exp =
         ({exp_loc= loc; exp_type= expected; exp_desc= Handler cases}, env)
     | Prover e ->
         let flattened_expected = Envi.Type.flatten expected env in
-        Format.(
-          fprintf err_formatter "%a%a@." Location.print loc Typeprint.type_expr
-            flattened_expected) ;
         let e, env =
           match flattened_expected.type_desc with
           | Tarrow _ ->
