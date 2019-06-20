@@ -1,110 +1,220 @@
-// In verifier scope
+/* The Field module has a "verifier" scope version and a "prover" scope version.
+
+   The "verifier" scope version is in scope everywhere except in "Prover" blocks
+   and request handlers.
+
+   The "Prover" scope version is in scope in "Prover" blocks and request handlers.
+
+   Note that in the verifier scope, all functions return either
+
+   - field
+   - boolean
+   - unit
+
+   This means that is impossible in the verifier scope to branch on
+   the value of a field element. In the prover scope, one can convert
+   a field element to bools (not booleans!) 
+*/
+
+/* Verifier scope */
 module Field : {
   type t = field;
 
+  /* The size of a field element in bits. For the curves included, it has the following values
+
+     Bn128: 254
+     Mnt4: 298
+     Mnt6: 298
+     Mnt4753: 753
+     Mnt6753: 753
+   */
   let size_in_bits : int;
 
+  /* Convert a string to a field element. */
   let of_string : string -> field;
 
+  /* Compute a linear combination.
+
+     linear_combination([(2, x1), (3, x2)] = 2*x1 + 3*x2
+  */
   let linear_combination : list(field , field) -> field;
 
+  /* Sum up a list of field elements. */
   let sum : list(field) -> field;
 
+  /* Add two field elements. The same as (+) below. */
   let add : field -> field -> field;
 
+  /* Subtract two field elements. The same as (-) below. */
   let sub : field -> field -> field;
 
+  /* Convert an int to a field element. */
   let of_int : int -> field;
 
+  /* The same as 1. */
   let one : field;
 
+  /* The same as 0. */
   let zero : field;
 
+  /* Multiply two field elements. The same as ( * ) below. */
   let mul : field -> field -> field;
 
+  /* Square a field element. The same as fun (x) => { mul(x, x); } */
   let square : field -> field;
 
+  /* Divide two field elements. The same as (/) below. */
   let div : field -> field -> field;
 
+  /* Compute 1 / x. */
   let inv : field -> field;
 
+  /* Check if two field elements are equal. */
   let equal : field -> field -> boolean;
 
-  let to_bits : field -> list(boolean);
+  /* Convert a field element to a list of bits (least significant bit first).
 
+     The length argument is optional and defaults to Field.size_in_bits.
+     If you have a field element which you know (or want to assert) is smaller
+     than a given length, you can give an explicit value.
+     
+     For example, let's say you know x is less than 2^32. Then you can write
+
+        let bits = Field.to_bits(~length=32, x);
+
+     which will be more efficient and return a list of length 32. */
+  let to_bits : ?length:int -> field -> list(boolean);
+
+  /* Convert a list of bits (least significant bit first) to a field element. It will
+     throw an exception if the length of the list is >= Field.size_in_bits.
+
+     This is because field elements are not big enough to hold that many bits without
+     overflowing. */
   let of_bits : list(boolean) -> field;
 
+  /* Add two field elements. */
   let (+) : field -> field -> field;
 
+  /* Subtract two field elements. */
   let (-) : field -> field -> field;
 
+  /* Multiply two field elements. */
   let (*) : field -> field -> field;
 
+  /* Divide two field elements. */
   let (/) : field -> field -> field;
 
   module Assert : {
+    /* Assert that one field element is <= another. */
     let lte : field -> field -> unit;
+
+    /* Assert that one field element is >= another. */
     let gte : field -> field -> unit;
+
+    /* Assert that one field element is < another. */
     let lt : field -> field -> unit;
+
+    /* Assert that one field element is > another. */
     let gt : field -> field -> unit;
 
+    /* Assert that two field elements are not equal. */
     let not_equal : field -> field -> unit;
 
+    /* Assert that two field elements are equal. */
     let equal : field -> field -> unit;
 
+    /* Assert that a field element is non-zero. */
     let non_zero : field -> unit;
   };
 };
 
-// In prover scope
+/* Prover scope */
 module Field = {
   type t = field;
 
+  /* Compare two field elements
+
+     compare(x, y) = 0  if x = y
+     compare(x, y) = -1 if x < y
+     compare(x, y) = 1  if x > y
+   */
   let compare : field -> field -> int;
 
+  /* Convert an int to a field element. */
   let of_int : int -> field;
 
+  /* The same as 1. */
   let one : field;
 
+  /* The same as 0. */
   let zero : field;
 
+  /* Add two field elements. The same as (+) below. */
   let add : field -> field -> field;
 
+  /* Subtract two field elements. The same as (-) below. */
   let sub : field -> field -> field;
 
+  /* Multiply two field elements. The same as ( * ) below. */
   let mul : field -> field -> field;
 
+  /* Compute 1 / x. */
   let inv : field -> field -> field;
 
+  /* Square a field element. The same as fun (x) => { mul(x, x); } */
   let square : field -> field;
 
+  /* Compute the square root of a field element. */
   let sqrt : field -> field;
 
+  /* Check if a field element is square. */
   let is_square : field -> bool;
 
+  /* Check if a field element is square. */
   let equal : field -> field -> bool;
 
+  /* The size of a field element in bits. For the curves included, it has the following values
+
+     Bn128: 254
+     Mnt4: 298
+     Mnt6: 298
+     Mnt4753: 753
+     Mnt6753: 753
+   */
   let size_in_bits : int
 
+  /* Print a field element. */
   let print : field -> unit;
 
+  /* Choose a field element at ranodm using /dev/random. */
   let random : unit -> field;
 
+  /* Negate a field element. */
   let negate : field -> field;
 
+  /* Add two field elements. */
   let (+) : field -> field -> field;
 
+  /* Multiply two field elements. */
   let ( * ) : field -> field -> field;
 
+  /* Subtract two field elements. */
   let (-) : field -> field -> field;
 
+  /* Divide two field elements. */
   let (/) : field -> field -> field;
 
+  /* Convert a string to a field element. */
   let of_string : string -> field;
 
+  /* Convert a field element to a string. */
   let to_string : field -> string;
 
+  /* Convert a field element to a list of bits (least significant bit first).
+  */
   let to_bits : field -> list(bool);
 
+  /* Convert a list of bits (least significant bit first) to a field element.
+  */
   let of_bits : list(bool) -> field;
 };

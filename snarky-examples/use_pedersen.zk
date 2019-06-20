@@ -45,9 +45,15 @@ let get_preimage : unit -> list#256(bool) = fun () => {
   pad_to_preimage_length(Blake2.string_to_bool_list(s));
 };
 
+// Just an example...
+let get_field : unit -> Field.Constant.t = fun () => {
+  let s = read_line();
+  Field.Constant.of_string(s);
+};
+
 
 let main = fun (expected_output : field, ()) => {
-  let params = load_pedersen_params("bn128-params");
+  let params = Pedersen.Params.load("./bn128-params");
 
   let preimage : list#256(boolean) = Prover {
     get_preimage();
