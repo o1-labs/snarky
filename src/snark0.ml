@@ -1507,6 +1507,191 @@ module Run = struct
 
       let char = char
 
+      let tuple4 (typ1 : ('var1, 'value1) t) (typ2 : ('var2, 'value2) t)
+          (typ3 : ('var3, 'value3) t) (typ4 : ('var4, 'value4) t) :
+          ( 'var1 * 'var2 * 'var3 * 'var4
+          , 'value1 * 'value2 * 'value3 * 'value4 )
+          t =
+        let alloc =
+          let open Alloc.Let_syntax in
+          let%map x = typ1.alloc
+          and y = typ2.alloc
+          and z = typ3.alloc
+          and a1 = typ4.alloc in
+          (x, y, z, a1)
+        in
+        let read (x, y, z, a1) =
+          let open Read.Let_syntax in
+          let%map x = typ1.read x
+          and y = typ2.read y
+          and z = typ3.read z
+          and a1 = typ4.read a1 in
+          (x, y, z, a1)
+        in
+        let store (x, y, z, a1) =
+          let open Store.Let_syntax in
+          let%map x = typ1.store x
+          and y = typ2.store y
+          and z = typ3.store z
+          and a1 = typ4.store a1 in
+          (x, y, z, a1)
+        in
+        let check (x, y, z, a1) =
+          let open Checked in
+          let%map () = typ1.check x
+          and () = typ2.check y
+          and () = typ3.check z
+          and () = typ4.check a1 in
+          ()
+        in
+        {read; store; alloc; check}
+
+      let tuple5 (typ1 : ('var1, 'value1) t) (typ2 : ('var2, 'value2) t)
+          (typ3 : ('var3, 'value3) t) (typ4 : ('var4, 'value4) t)
+          (typ5 : ('var5, 'value5) t) :
+          ( 'var1 * 'var2 * 'var3 * 'var4 * 'var5
+          , 'value1 * 'value2 * 'value3 * 'value4 * 'value5 )
+          t =
+        let alloc =
+          let open Alloc.Let_syntax in
+          let%map x = typ1.alloc
+          and y = typ2.alloc
+          and z = typ3.alloc
+          and a1 = typ4.alloc
+          and a2 = typ5.alloc in
+          (x, y, z, a1, a2)
+        in
+        let read (x, y, z, a1, a2) =
+          let open Read.Let_syntax in
+          let%map x = typ1.read x
+          and y = typ2.read y
+          and z = typ3.read z
+          and a1 = typ4.read a1
+          and a2 = typ5.read a2 in
+          (x, y, z, a1, a2)
+        in
+        let store (x, y, z, a1, a2) =
+          let open Store.Let_syntax in
+          let%map x = typ1.store x
+          and y = typ2.store y
+          and z = typ3.store z
+          and a1 = typ4.store a1
+          and a2 = typ5.store a2 in
+          (x, y, z, a1, a2)
+        in
+        let check (x, y, z, a1, a2) =
+          let open Checked in
+          let%map () = typ1.check x
+          and () = typ2.check y
+          and () = typ3.check z
+          and () = typ4.check a1
+          and () = typ5.check a2 in
+          ()
+        in
+        {read; store; alloc; check}
+
+      let tuple6 (typ1 : ('var1, 'value1) t) (typ2 : ('var2, 'value2) t)
+          (typ3 : ('var3, 'value3) t) (typ4 : ('var4, 'value4) t)
+          (typ5 : ('var5, 'value5) t) (typ6 : ('var6, 'value6) t) :
+          ( 'var1 * 'var2 * 'var3 * 'var4 * 'var5 * 'var6
+          , 'value1 * 'value2 * 'value3 * 'value4 * 'value5 * 'value6 )
+          t =
+        let alloc =
+          let open Alloc.Let_syntax in
+          let%map x = typ1.alloc
+          and y = typ2.alloc
+          and z = typ3.alloc
+          and a1 = typ4.alloc
+          and a2 = typ5.alloc
+          and a3 = typ6.alloc in
+          (x, y, z, a1, a2, a3)
+        in
+        let read (x, y, z, a1, a2, a3) =
+          let open Read.Let_syntax in
+          let%map x = typ1.read x
+          and y = typ2.read y
+          and z = typ3.read z
+          and a1 = typ4.read a1
+          and a2 = typ5.read a2
+          and a3 = typ6.read a3 in
+          (x, y, z, a1, a2, a3)
+        in
+        let store (x, y, z, a1, a2, a3) =
+          let open Store.Let_syntax in
+          let%map x = typ1.store x
+          and y = typ2.store y
+          and z = typ3.store z
+          and a1 = typ4.store a1
+          and a2 = typ5.store a2
+          and a3 = typ6.store a3 in
+          (x, y, z, a1, a2, a3)
+        in
+        let check (x, y, z, a1, a2, a3) =
+          let open Checked in
+          let%map () = typ1.check x
+          and () = typ2.check y
+          and () = typ3.check z
+          and () = typ4.check a1
+          and () = typ5.check a2
+          and () = typ6.check a3 in
+          ()
+        in
+        {read; store; alloc; check}
+
+      let tuple7 (typ1 : ('var1, 'value1) t) (typ2 : ('var2, 'value2) t)
+          (typ3 : ('var3, 'value3) t) (typ4 : ('var4, 'value4) t)
+          (typ5 : ('var5, 'value5) t) (typ6 : ('var6, 'value6) t)
+          (typ7 : ('var7, 'value7) t) :
+          ( 'var1 * 'var2 * 'var3 * 'var4 * 'var5 * 'var6 * 'var7
+          , 'value1 * 'value2 * 'value3 * 'value4 * 'value5 * 'value6 * 'value7
+          )
+          t =
+        let alloc =
+          let open Alloc.Let_syntax in
+          let%map x = typ1.alloc
+          and y = typ2.alloc
+          and z = typ3.alloc
+          and a1 = typ4.alloc
+          and a2 = typ5.alloc
+          and a3 = typ6.alloc
+          and a4 = typ7.alloc in
+          (x, y, z, a1, a2, a3, a4)
+        in
+        let read (x, y, z, a1, a2, a3, a4) =
+          let open Read.Let_syntax in
+          let%map x = typ1.read x
+          and y = typ2.read y
+          and z = typ3.read z
+          and a1 = typ4.read a1
+          and a2 = typ5.read a2
+          and a3 = typ6.read a3
+          and a4 = typ7.read a4 in
+          (x, y, z, a1, a2, a3, a4)
+        in
+        let store (x, y, z, a1, a2, a3, a4) =
+          let open Store.Let_syntax in
+          let%map x = typ1.store x
+          and y = typ2.store y
+          and z = typ3.store z
+          and a1 = typ4.store a1
+          and a2 = typ5.store a2
+          and a3 = typ6.store a3
+          and a4 = typ7.store a4 in
+          (x, y, z, a1, a2, a3, a4)
+        in
+        let check (x, y, z, a1, a2, a3, a4) =
+          let open Checked in
+          let%map () = typ1.check x
+          and () = typ2.check y
+          and () = typ3.check z
+          and () = typ4.check a1
+          and () = typ5.check a2
+          and () = typ6.check a3
+          and () = typ7.check a4 in
+          ()
+        in
+        {read; store; alloc; check}
+
       let list0 t = list ~length:0 t
 
       let list1 t = list ~length:1 t

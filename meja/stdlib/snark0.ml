@@ -145,6 +145,44 @@ let ocaml =
       -> {t('var3, 'value3)}
       -> t(('var1, 'var2, 'var3), ('value1, 'value2, 'value3));
 
+    instance tuple4 :
+         {t('var1, 'value1)}
+      -> {t('var2, 'value2)}
+      -> {t('var3, 'value3)}
+      -> {t('var4, 'value4)}
+      -> t(('var1, 'var2, 'var3, 'var4),
+           ('value1, 'value2, 'value3, 'value4));
+
+    instance tuple5 :
+         {t('var1, 'value1)}
+      -> {t('var2, 'value2)}
+      -> {t('var3, 'value3)}
+      -> {t('var4, 'value4)}
+      -> {t('var5, 'value5)}
+      -> t(('var1, 'var2, 'var3, 'var4, 'var5),
+           ('value1, 'value2, 'value3, 'value4, 'value5));
+
+    instance tuple6 :
+         {t('var1, 'value1)}
+      -> {t('var2, 'value2)}
+      -> {t('var3, 'value3)}
+      -> {t('var4, 'value4)}
+      -> {t('var5, 'value5)}
+      -> {t('var6, 'value6)}
+      -> t(('var1, 'var2, 'var3, 'var4, 'var5, 'var6),
+           ('value1, 'value2, 'value3, 'value4, 'value5, 'value6));
+
+    instance tuple7 :
+         {t('var1, 'value1)}
+      -> {t('var2, 'value2)}
+      -> {t('var3, 'value3)}
+      -> {t('var4, 'value4)}
+      -> {t('var5, 'value5)}
+      -> {t('var6, 'value6)}
+      -> {t('var7, 'value7)}
+      -> t(('var1, 'var2, 'var3, 'var4, 'var5, 'var6, 'var7),
+           ('value1, 'value2, 'value3, 'value4, 'value5, 'value6, 'value7));
+
     instance int : t(int, int);
 
     instance string : t(string, string);
@@ -1193,6 +1231,14 @@ let prover =
     instance ( * ) = Typ.( * );
 
     instance tuple3 = Typ.tuple3;
+
+    instance tuple4 = Typ.tuple4;
+
+    instance tuple5 = Typ.tuple5;
+
+    instance tuple6 = Typ.tuple6;
+
+    instance tuple7 = Typ.tuple7;
 
     instance int = Typ.int;
 
