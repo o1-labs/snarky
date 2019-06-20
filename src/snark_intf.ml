@@ -375,6 +375,8 @@ module type Basic = sig
     val int : (int, int) t
 
     val string : (string, string) t
+
+    val char : (char, char) t
   end
 
   (** Representation of booleans within a field.
@@ -1509,6 +1511,49 @@ module type Run_basic = sig
       -> ('var3, 'value3) t
       -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
 
+    val tuple4 :
+         ('var1, 'value1) t
+      -> ('var2, 'value2) t
+      -> ('var3, 'value3) t
+      -> ('var4, 'value4) t
+      -> ( 'var1 * 'var2 * 'var3 * 'var4
+         , 'value1 * 'value2 * 'value3 * 'value4 )
+         t
+
+    val tuple5 :
+         ('var1, 'value1) t
+      -> ('var2, 'value2) t
+      -> ('var3, 'value3) t
+      -> ('var4, 'value4) t
+      -> ('var5, 'value5) t
+      -> ( 'var1 * 'var2 * 'var3 * 'var4 * 'var5
+         , 'value1 * 'value2 * 'value3 * 'value4 * 'value5 )
+         t
+
+    val tuple6 :
+         ('var1, 'value1) t
+      -> ('var2, 'value2) t
+      -> ('var3, 'value3) t
+      -> ('var4, 'value4) t
+      -> ('var5, 'value5) t
+      -> ('var6, 'value6) t
+      -> ( 'var1 * 'var2 * 'var3 * 'var4 * 'var5 * 'var6
+         , 'value1 * 'value2 * 'value3 * 'value4 * 'value5 * 'value6 )
+         t
+
+    val tuple7 :
+         ('var1, 'value1) t
+      -> ('var2, 'value2) t
+      -> ('var3, 'value3) t
+      -> ('var4, 'value4) t
+      -> ('var5, 'value5) t
+      -> ('var6, 'value6) t
+      -> ('var7, 'value7) t
+      -> ( 'var1 * 'var2 * 'var3 * 'var4 * 'var5 * 'var6 * 'var7
+         , 'value1 * 'value2 * 'value3 * 'value4 * 'value5 * 'value6 * 'value7
+         )
+         t
+
     val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
 
     val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
@@ -1552,6 +1597,8 @@ module type Run_basic = sig
     val int : (int, int) t
 
     val string : (string, string) t
+
+    val char : (char, char) t
 
     val list0 : ('a, 'b) t -> ('a list, 'b list) t
 
