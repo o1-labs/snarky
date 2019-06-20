@@ -8,7 +8,7 @@ open Extended_lib;
 
    Compute the Pedersen hash by running
 
-   $ dune exec crypto_util/crypto_util.exe 'hello world'
+   $ dune exec crypto_util/crypto_util.exe pedersen 'hello world'
 
    where 'hello world' is whatever string you like.
 

@@ -2,7 +2,7 @@
    of field elements. There is a module "Field" which has useful
    functions for doing stuff with field elements. */
 
-/* The default arithmetic operators work with ints. 
+/* The default arithmetic operators work with ints.
 
    ints are suffixed with the letter i
 */
