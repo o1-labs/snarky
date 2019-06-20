@@ -1366,7 +1366,9 @@ let add_deferred_module mode name path env =
       |> Envi.add_deferred_module Prover name path
       |> Envi.add_deferred_module OCaml name path
   | Prover ->
-      env |> Envi.add_deferred_module Prover name path |> Envi.add_deferred_module OCaml name path
+      env
+      |> Envi.add_deferred_module Prover name path
+      |> Envi.add_deferred_module OCaml name path
   | OCaml ->
       Envi.add_deferred_module OCaml name path env
 
