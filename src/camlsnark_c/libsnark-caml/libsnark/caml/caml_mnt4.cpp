@@ -12,7 +12,7 @@ void camlsnark_mnt4_protoboard_delete(protoboard<FieldT>* pb) {
 }
 
 void camlsnark_mnt4_protoboard_set_input_sizes(protoboard<FieldT>* pb, int primary_input_size) {
-  std::cout << "protoboard_set_input_sizes: " << primary_input_size << "\n";
+  /*std::cout << "protoboard_set_input_sizes: " << primary_input_size << "\n";*/
   return pb->set_input_sizes(primary_input_size);
 }
 
@@ -166,7 +166,7 @@ variable<FieldT>* camlsnark_mnt4_var_create(int i) {
 }
 
 void camlsnark_mnt4_var_delete(variable<FieldT>* v) {
-  std::cout << "camlsnark_mnt4_var_delete\n" << v;
+  /*std::cout << "camlsnark_mnt4_var_delete\n" << v;*/
   delete v;
 }
 
@@ -458,12 +458,12 @@ r1cs_constraint<FieldT>* camlsnark_mnt4_r1cs_constraint_create(
     linear_combination<FieldT>* a,
     linear_combination<FieldT>* b,
     linear_combination<FieldT>* c) {
-  std::cout << "r1cs_constraint_create\n";
+  /*std::cout << "r1cs_constraint_create\n";*/
   return new r1cs_constraint<FieldT>(*a, *b, *c);
 }
 
 void camlsnark_mnt4_r1cs_constraint_delete(r1cs_constraint<FieldT>* c) {
-  std::cout << "r1cs_constraint_delete\n";
+  /*std::cout << "r1cs_constraint_delete\n";*/
   delete c;
 }
 
@@ -495,7 +495,7 @@ bool camlsnark_mnt4_r1cs_constraint_system_equal(
 
 
 void camlsnark_mnt4_r1cs_constraint_system_clear(r1cs_constraint_system<FieldT>* sys) {
-  std::cout << "r1cs_constraint_system_clear\n";
+  /*std::cout << "r1cs_constraint_system_clear\n";*/
   sys->primary_input_size = 0;
   sys->auxiliary_input_size = 0;
   sys->num_square_constraints = 0;
@@ -568,7 +568,7 @@ bool camlsnark_mnt4_r1cs_constraint_system_check(r1cs_constraint_system<FieldT>*
 }
 
 void camlsnark_mnt4_r1cs_constraint_system_delete(r1cs_constraint_system<FieldT>* sys) {
-  std::cout << "r1cs_constraint_system_delete\n";
+  //std::cout << "r1cs_constraint_system_delete\n";
   delete sys;
 }
 
@@ -584,7 +584,7 @@ void camlsnark_mnt4_r1cs_constraint_system_swap_AB_if_beneficial(
 void camlsnark_mnt4_r1cs_constraint_system_add_constraint(
     r1cs_constraint_system<FieldT>* sys, 
     r1cs_constraint<FieldT>* c) {
-  std::cout << "r1cs_constraint_system_add_constraint\n" << *c;
+  /* std::cout << "r1cs_constraint_system_add_constraint\n" << *c;*/
   sys->add_constraint(*c);
 }
 
@@ -592,7 +592,7 @@ void camlsnark_mnt4_r1cs_constraint_system_add_constraint_with_annotation(
     r1cs_constraint_system<FieldT>* sys, 
     r1cs_constraint<FieldT>* c,
     char* s) {
-  std::cout << "r1cs_constraint_system_add_constraint_with annotation\n" << *c;
+  /*std::cout << "r1cs_constraint_system_add_constraint_with annotation\n" << *c;*/
   std::string str(s);
   sys->add_constraint(*c, str);
 }
@@ -600,14 +600,14 @@ void camlsnark_mnt4_r1cs_constraint_system_add_constraint_with_annotation(
 void camlsnark_mnt4_r1cs_constraint_system_set_primary_input_size(
     r1cs_constraint_system<FieldT>* sys, 
     int n) {
-  std::cout << "r1cs_constraint_system_set_primary_input_size: " << n << "\n";
+  //std::cout << "r1cs_constraint_system_set_primary_input_size: " << n << "\n";
   sys->primary_input_size = n;
 }
 
 void camlsnark_mnt4_r1cs_constraint_system_set_auxiliary_input_size(
     r1cs_constraint_system<FieldT>* sys, 
     int n) {
-  std::cout << "r1cs_constraint_system_auxiliary_input_size: " << n << "\n";
+  //std::cout << "r1cs_constraint_system_auxiliary_input_size: " << n << "\n";
   sys->auxiliary_input_size = n;
 }
 
