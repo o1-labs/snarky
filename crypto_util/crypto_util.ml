@@ -78,9 +78,7 @@ let cmd =
       (optional_with_default Bn128 (Arg_type.create curve_of_string))
       ~doc:"Curve to use"
   and padded_length =
-    flag "padded-length"
-      (optional_with_default 256 int)
-      ~doc:"Length in bits to pad input to"
+    flag "padded-length" (optional int) ~doc:"Length in bits to pad input to"
   and params = flag "params" (optional string) ~doc:"Path to params file"
   and binary = flag "binary" no_arg ~doc:"Pass input as a string of 0s and 1s"
   and str = anon ("INPUT" %: string) in
@@ -94,15 +92,19 @@ let cmd =
         params
       |> P.Params.load
     in
-    assert (padded_length >= String.length str) ;
     let s, bit_length =
       if binary then (parse_as_binary str, String.length str)
       else (Fold.string_bits str, 8 * String.length str)
     in
-    P.digest_fold (P.State.create params)
-      Fold.(
-        group3 ~default:false
-          (s +> init (padded_length - bit_length) ~f:(fun _ -> false)))
+    let padded =
+      match padded_length with
+      | None ->
+          s
+      | Some padded_length ->
+          assert (padded_length >= String.length str) ;
+          Fold.(s +> init (padded_length - bit_length) ~f:(fun _ -> false))
+    in
+    P.digest_fold (P.State.create params) Fold.(group3 ~default:false padded)
     |> Field.to_string |> print_endline
 
 let cmd =
