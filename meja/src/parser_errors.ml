@@ -13,7 +13,8 @@ let report_error ppf = function
   | Fun_no_fat_arrow ->
       fprintf ppf "Expected => before {@."
   | Missing_semi ->
-      fprintf ppf "Missing semicolon."
+      (* TODO: make other errors not emit this. *)
+      fprintf ppf "Syntax error"
   | Unexpected_character x ->
       fprintf ppf "Unexpected character '%s'" x
   | Expecting desc ->
