@@ -5,29 +5,41 @@ module Impl =
 open Impl
 
 module Alias_alias = struct
-  type ('a, 'b) u = 'a -> 'a
+  include struct
+    type ('a, 'b) u = 'a -> 'a
 
-  type ('a, 'b) v = ('a, 'a) u
+    type ('a, 'b) u_var = 'a -> 'a
+  end
 
-  let f (x : (int, bool) u) : (int, int) u = x
+  include struct
+    type ('a, 'b) v = ('a, 'a) u
 
-  let g (x : (int, int) v) : (int, bool) v = x
+    type ('a, 'b) v_var = ('a, 'a) u_var
+  end
 
-  let h (x : (int, bool) v) : (int, int) u = x
+  let f (x : (int, bool) u_var) : (int, int) u_var = x
 
-  let i (x : (bool, bool) u) : (bool, unit) v = x
+  let g (x : (int, int) v_var) : (int, bool) v_var = x
+
+  let h (x : (int, bool) v_var) : (int, int) u_var = x
+
+  let i (x : (bool, bool) u_var) : (bool, unit) v_var = x
 end
 
 module Alias_opaque = struct
   type ('a, 'b) u
 
-  type ('a, 'b) v = ('a, 'a) u
+  include struct
+    type ('a, 'b) v = ('a, 'a) u
 
-  let f (x : (int, int) v) : (int, bool) v = x
+    type ('a, 'b) v_var = ('a, 'a) u
+  end
 
-  let g (x : (int, bool) v) : (int, int) u = x
+  let f (x : (int, int) v_var) : (int, bool) v_var = x
 
-  let h (x : (bool, bool) u) : (bool, unit) v = x
+  let g (x : (int, bool) v_var) : (int, int) u = x
+
+  let h (x : (bool, bool) u) : (bool, unit) v_var = x
 end
 
 module Alias_record = struct
@@ -57,23 +69,31 @@ module Alias_record = struct
       }
   end
 
-  type ('a, 'b) v = ('a, 'a) u
+  include struct
+    type ('a, 'b) v = ('a, 'a) u
 
-  let f (x : (int, int) v) : (int, bool) v = x
+    type ('a, 'b) v_var = ('a, 'a) u
+  end
 
-  let g (x : (int, bool) v) : (int, int) u = x
+  let f (x : (int, int) v_var) : (int, bool) v_var = x
 
-  let h (x : (bool, bool) u) : (bool, unit) v = x
+  let g (x : (int, bool) v_var) : (int, int) u = x
+
+  let h (x : (bool, bool) u) : (bool, unit) v_var = x
 end
 
 module Alias_variant = struct
   type ('a, 'b) u = A | B | C of 'a | D of 'b
 
-  type ('a, 'b) v = ('a, 'a) u
+  include struct
+    type ('a, 'b) v = ('a, 'a) u
 
-  let f (x : (int, int) v) : (int, bool) v = x
+    type ('a, 'b) v_var = ('a, 'a) u
+  end
 
-  let g (x : (int, bool) v) : (int, int) u = x
+  let f (x : (int, int) v_var) : (int, bool) v_var = x
 
-  let h (x : (bool, bool) u) : (bool, unit) v = x
+  let g (x : (int, bool) v_var) : (int, int) u = x
+
+  let h (x : (bool, bool) u) : (bool, unit) v_var = x
 end

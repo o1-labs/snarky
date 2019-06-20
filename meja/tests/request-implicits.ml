@@ -4,7 +4,11 @@ module Impl =
   Snarky.Snark.Run.Make (Snarky.Backends.Mnt4.Default) (Core_kernel.Unit)
 open Impl
 
-type 'a tuple = 'a * 'a * 'a
+include struct
+  type 'a tuple = 'a * 'a * 'a
+
+  type 'a tuple_var = 'a * 'a * 'a
+end
 
 include struct
   type _ Snarky.Request.t +=
@@ -13,19 +17,20 @@ end
 
 type foo = Foo
 
-let get_path __implicit1__ __implicit2__ (addr : Boolean.var tuple) : foo =
+let get_path __implicit1__ (addr : Boolean.var tuple_var) : foo =
   exists __implicit1__ ~request:(fun () ->
-      Get_path ((As_prover.read __implicit2__) addr) )
+      Get_path
+        ((As_prover.read (Typ.tuple3 Boolean.typ Boolean.typ Boolean.typ)) addr)
+  )
 
 let (get_path :
-         (_, Field.Constant.t tuple) Typ.t
-      -> (Boolean.var tuple, bool tuple) Typ.t
-      -> Boolean.var tuple
-      -> unit) =
- fun __implicit3__ __implicit4__ (addr : Boolean.var tuple) ->
+      (_, Field.Constant.t tuple) Typ.t -> Boolean.var tuple_var -> unit) =
+ fun __implicit6__ (addr : Boolean.var tuple_var) ->
   ( let path =
-      exists __implicit3__ ~request:(fun () ->
-          Get_path ((As_prover.read __implicit4__) addr) )
+      exists __implicit6__ ~request:(fun () ->
+          Get_path
+            ((As_prover.read (Typ.tuple3 Boolean.typ Boolean.typ Boolean.typ))
+               addr) )
     in
     ()
     : unit )

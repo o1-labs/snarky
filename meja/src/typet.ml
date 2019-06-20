@@ -303,7 +303,7 @@ module TypeDecl = struct
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
                 let scope, env = pop_expr_scope env in
-                let ctor_ret, env, must_find, ctor_ret_params =
+                let ctor_ret, env, must_find =
                   match ctor.ctor_ret with
                   | Some ret ->
                       let env = open_expr_scope mode env in
@@ -329,16 +329,9 @@ module TypeDecl = struct
                       let ret, env =
                         Type.import mode ~must_find:false ret env
                       in
-                      let ctor_ret_params =
-                        match ret.type_desc with
-                        | Tctor {var_params; _} ->
-                            var_params
-                        | _ ->
-                            []
-                      in
-                      (Some ret, env, None, ctor_ret_params)
+                      (Some ret, env, None)
                   | None ->
-                      (None, push_scope scope env, Some true, decl.tdec_params)
+                      (None, push_scope scope env, Some true)
                 in
                 let env, ctor_args =
                   match ctor.ctor_args with
@@ -356,9 +349,19 @@ module TypeDecl = struct
                         List.fold_map ~init:env fields
                           ~f:(import_field mode ?must_find)
                       in
+                      (* Extract the type variables from the fields' types, use
+                         them as effective type parameters.
+                      *)
+                      let params =
+                        List.fold
+                          ~init:(Set.empty (module Envi.Type))
+                          fields
+                          ~f:(fun set {fld_type; _} ->
+                            Set.union set (Envi.Type.type_vars fld_type) )
+                        |> Set.to_list
+                      in
                       let decl =
-                        mk ~name:ctor.ctor_ident ~params:ctor_ret_params
-                          (TRecord fields) env
+                        mk ~name:ctor.ctor_ident ~params (TRecord fields) env
                       in
                       (env, Type0.Ctor_record decl)
                 in

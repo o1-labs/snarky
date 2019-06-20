@@ -1,0 +1,9 @@
+request(boolean) Request
+with handler (_) => {
+  respond(Provide(0b));
+};
+
+request(field) Request2
+with handler (_) => {
+  respond(Provide(0));
+};

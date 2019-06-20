@@ -5,11 +5,15 @@ module Impl =
 open Impl
 
 module A = struct
-  type t = int
+  include struct
+    type t = int
+
+    type var = int
+  end
 end
 
-let (x : A.t) = 15
+let (x : A.var) = 15
 
 open A
 
-let (y : A.t) = 20
+let (y : var) = 20

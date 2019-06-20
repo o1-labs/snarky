@@ -4,21 +4,45 @@ module Impl =
   Snarky.Snark.Run.Make (Snarky.Backends.Mnt4.Default) (Core_kernel.Unit)
 open Impl
 
-type t = int
+include struct
+  type t = int
 
-type u = int * bool
+  type var = int
+end
 
-type 'a v = 'a
+include struct
+  type u = int * bool
+
+  type u_var = int * bool
+end
+
+include struct
+  type 'a v = 'a
+
+  type 'a v_var = 'a
+end
 
 type _ w = A of int | B : 'a -> 'a w
 
 type 'a x = {a: 'a; b: int; c: bool}
 
-type y = unit x
+include struct
+  type y = unit x
 
-type z = bool x
+  type y_var = unit x
+end
 
-type a = t x w x x x
+include struct
+  type z = bool x
+
+  type z_var = bool x
+end
+
+include struct
+  type a = t x w x x x
+
+  type a_var = var x w x x x
+end
 
 type ('a, 'b, 'c) b =
   | First : 'a -> ('a, 'a, 'a) b

@@ -428,14 +428,13 @@ let get_ctor mode (name : lid) env =
               Longident.Lident tdec_ident.txt )
           tdec_ident.loc
       in
-      let typ, params =
+      let typ =
         match ctor.ctor_ret with
-        | Some ({type_desc= Tctor {var_params; _}; _} as typ) ->
-            (typ, var_params)
+        | Some typ ->
+            typ
         | _ ->
-            ( Envi.TypeDecl.mk_typ mode ~params:tdec_params
-                ~ident:(make_name tdec_ident) decl env
-            , tdec_params )
+            Envi.TypeDecl.mk_typ mode ~params:tdec_params
+              ~ident:(make_name tdec_ident) decl env
       in
       let args_typ =
         match ctor.ctor_args with
@@ -443,7 +442,7 @@ let get_ctor mode (name : lid) env =
             Envi.Type.mk mode
               (Tctor
                  { var_ident= make_name ctor.ctor_ident
-                 ; var_params= params
+                 ; var_params= decl.tdec_params
                  ; var_implicit_params= tdec_implicit_params
                  ; var_decl= decl
                  ; var_length= None })
@@ -1367,7 +1366,9 @@ let add_deferred_module mode name path env =
       |> Envi.add_deferred_module Prover name path
       |> Envi.add_deferred_module OCaml name path
   | Prover ->
-      env |> Envi.add_deferred_module Prover name path |> Envi.add_deferred_module OCaml name path
+      env
+      |> Envi.add_deferred_module Prover name path
+      |> Envi.add_deferred_module OCaml name path
   | OCaml ->
       Envi.add_deferred_module OCaml name path env
 
