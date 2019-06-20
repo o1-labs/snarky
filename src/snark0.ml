@@ -104,6 +104,8 @@ struct
     let int : (int, int) t = int ()
 
     let string : (string, string) t = string ()
+
+    let char : (char, char) t = any '\''
   end
 
   module As_prover = struct
@@ -1502,6 +1504,8 @@ module Run = struct
       let int = int
 
       let string = string
+
+      let char = char
 
       let list0 t = list ~length:0 t
 

@@ -149,6 +149,8 @@ let ocaml =
 
     instance string : t(string, string);
 
+    instance char : t(char, char);
+
     let list :
       length:int -> {t('var, 'value)} -> t(list('var), list('value));
 
@@ -1195,6 +1197,8 @@ let prover =
     instance int = Typ.int;
 
     instance string = Typ.string;
+
+    instance char = Typ.char;
 
     instance list0 = Typ.list0;
     instance list1 = Typ.list1;
