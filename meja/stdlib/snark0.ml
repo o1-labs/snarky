@@ -191,6 +191,8 @@ let ocaml =
 
     instance big_int : t(Big_int.big_int, Big_int.big_int);
 
+    instance float : t(float, float);
+
     let list :
       length:int -> {t('var, 'value)} -> t(list('var), list('value));
 
@@ -1249,6 +1251,8 @@ let prover =
     instance char = Typ.char;
 
     instance big_int = Typ.big_int;
+
+    instance float = Typ.big_int;
 
     instance list0 = Typ.list0;
     instance list1 = Typ.list1;

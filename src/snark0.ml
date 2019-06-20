@@ -108,6 +108,8 @@ struct
     let char : (char, char) t = any '\''
 
     let big_int : (Big_int.big_int, Big_int.big_int) t = any (Big_int.zero_big_int)
+
+    let float : (float, float) t = any Float.zero
   end
 
   module As_prover = struct
@@ -1510,6 +1512,8 @@ module Run = struct
       let char = char
 
       let big_int = big_int
+
+      let float = float
 
       let tuple4 (typ1 : ('var1, 'value1) t) (typ2 : ('var2, 'value2) t)
           (typ3 : ('var3, 'value3) t) (typ4 : ('var4, 'value4) t) :
