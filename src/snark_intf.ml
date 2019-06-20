@@ -371,6 +371,10 @@ module type Basic = sig
     end
 
     include module type of Types.Typ.T
+
+    val int : (int, int) t
+
+    val string : (string, string) t
   end
 
   (** Representation of booleans within a field.
@@ -1544,6 +1548,10 @@ module type Run_basic = sig
     end
 
     include module type of Types.Typ.T
+
+    val int : (int, int) t
+
+    val string : (string, string) t
 
     val list0 : ('a, 'b) t -> ('a list, 'b list) t
 

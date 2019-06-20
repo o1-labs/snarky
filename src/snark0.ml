@@ -100,6 +100,10 @@ struct
     let unit : (unit, unit) t = unit ()
 
     let field : (Cvar.t, Field.t) t = field ()
+
+    let int : (int, int) t = int ()
+
+    let string : (string, string) t = string ()
   end
 
   module As_prover = struct
@@ -1494,6 +1498,10 @@ module Run = struct
 
       module Of_traversable = Of_traversable
       include Types.Typ.T
+
+      let int = int
+
+      let string = string
 
       let list0 t = list ~length:0 t
 
