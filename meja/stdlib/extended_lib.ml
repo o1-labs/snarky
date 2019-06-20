@@ -386,7 +386,6 @@ module Extended_lib = {
     module Params = {
       type t = array(quadruple((field, field)));
 
-    /*
       let load = fun (path) => {
         let comma = char_of_int(44i);
         let semi_colon = char_of_int(59i);
@@ -405,7 +404,7 @@ module Extended_lib = {
             | [x1, x2, x3, x4] => (x1, x2, x3, x4)
           };
         }, strs);
-      }; */
+      };
     };
 
     /* 4 * 2 = 2 * 4 */
