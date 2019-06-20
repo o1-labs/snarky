@@ -12,14 +12,14 @@ module Float = {
 
   let take = 
     fun (n, xs) => {
-      loop(fun (self, (n, xs)) => {
+      loop(fun (take, (n, xs)) => {
         if (n = 0i) {
           [] ;
         } else {
           switch(xs) {
             | [] => []
             | x :: xs' => x :: take(n-1i, xs')
-          }
+          };
         };
       }, (n, xs));
     };
@@ -32,18 +32,18 @@ module Float = {
   // TODO!
   let ( * ) = fun (t1, t2) => {
     if (t1.m + t2.m < Field.size_in_bits) {
-      { k: t1.k + t2.k,
-      , m: t1.m + t2.m,
+      { k: t1.k + t2.k
+      , m: t1.m + t2.m
       , x: Field.( * )( t1.x , t2.x ) };
     } else {
       /* We could reduce just one but for ease of implementation we
          just reduce both. */
       let x1_trunc = low_bits(t1);
       let x2_trunc = low_bits(t2);
-      { x = Field.( * )(x1_trunc, x2_trunc)
-      , m  = base_precision + base_precision
-      , k = t1.
-      }
+      { x: Field.( * )(x1_trunc, x2_trunc)
+      , m: base_precision + base_precision
+      , k: t1
+      };
     };
   };
 
@@ -52,6 +52,6 @@ module Float = {
   };
 
   let ( + ) = fun (t1, t2) => {
-    0
+    0;
   };
 };
