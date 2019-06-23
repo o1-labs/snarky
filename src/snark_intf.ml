@@ -377,6 +377,10 @@ module type Basic = sig
     val string : (string, string) t
 
     val char : (char, char) t
+
+    val big_int : (Big_int.big_int, Big_int.big_int) t
+
+    val float : (float, float) t
   end
 
   (** Representation of booleans within a field.
@@ -1599,6 +1603,10 @@ module type Run_basic = sig
     val string : (string, string) t
 
     val char : (char, char) t
+
+    val big_int : (Big_int.big_int, Big_int.big_int) t
+
+    val float : (float, float) t
 
     val list0 : ('a, 'b) t -> ('a list, 'b list) t
 

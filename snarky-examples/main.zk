@@ -42,13 +42,13 @@ module UInt32 = {
       List.fold_left(
         fun (acc, x) => {
           Field.(+)(Field.of_bits(Array.to_list(x)), acc);
-        }, 
+        },
         0,
         xs);
     take(
       32i,
       // TODO: Shouldn't have to put Some here
-      Field.to_bits(~length=max_bit_length, ?allow_overflow=Some(false), xs_sum))
+      Field.to_bits(~length=max_bit_length, xs_sum))
     |> Array.of_list;
   };
 
@@ -65,7 +65,7 @@ module UInt32 = {
   };
 
   let of_int : int -> t = fun (n) => {
-    loop( 
+    loop(
       fun (self, (i, acc)) => {
         switch (i) {
           | 32i => acc
@@ -192,7 +192,7 @@ module Blake2 = {
     let n = Array.length(bs);
     switch (mod(n, block_size_in_bits)) {
       | 0i => bs
-      | k => 
+      | k =>
         Array.append(bs,
           Array.create(block_size_in_bits - k, 0b))
     };
@@ -287,7 +287,7 @@ module Curve = {
   with handler (x, y) => { respond(Provide(x / y)); };
 
   let div_unsafe = fun (x, y) => {
-    let z : field =  request { Div(x, y); };
+    let z : field = handle (fun () => {request { Div(x, y); }; }, handle_Div);
     assert_r1(x, y, z) ;
     z;
     /* It would be nice if this were a special syntax but that's
@@ -306,15 +306,24 @@ module Curve = {
     let res = (lambda * (ax - cx)) - ay;
     respond(Provide(res));
   };
-  
+
   let add_unsafe = fun ((ax, ay), (bx, by)) => {
     let lambda = div_unsafe(Field.(-)(by, ay), Field.(-)(bx, ax));
-    let cx = request { Addx { lambda, ax, bx }; };
-    let cy = request { Addy { lambda, ax, ay, cx }; };
+    let cx = handle (fun () => { request { Addx { lambda, ax, bx }; }; }, handle_Addx);
+    let cy = handle (fun () => { request { Addy { lambda, ax, ay, cx }; }; }, handle_Addy);
     assert_r1(lambda, lambda, cx + ax + bx);
     assert_r1(lambda, (ax - cx) , (cy + ay));
     (cx, cy);
   };
+};
+
+let read_lines = fun (name : string) : list(string) => {
+  let infile = Stdlib.open_in("bn128-params");
+  let len = Stdlib.in_channel_length(infile);
+  let str = Stdlib.really_input_string(infile, len);
+  let strs = String.split_on_char (String.get("\n",0i), str);
+  Stdlib.close_in(infile);
+  strs;
 };
 
 module Pedersen = {
@@ -337,7 +346,7 @@ let params = {
       };
     };
 
-    let strs = Array.of_list(In_channel.read_lines("bn128-params"));
+    let strs = Array.of_list(read_lines("bn128-params"));
 
     Array.map(fun (s) => {
       switch ( List.map(read_pair, String.split_on_char(semi_colon, s)) ) {

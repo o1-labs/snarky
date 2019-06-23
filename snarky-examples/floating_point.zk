@@ -10,7 +10,7 @@ module Float = {
     , x : field
     };
 
-  let take = 
+  let take =
     fun (n, xs) => {
       loop(fun (take, (n, xs)) => {
         if (n = 0i) {

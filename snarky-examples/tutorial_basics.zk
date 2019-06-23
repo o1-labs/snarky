@@ -16,7 +16,7 @@ let add = fun (x, y) => {
 // We can also declare the function with a type. This type says the
 // function takes two ints and returns an int
 let add : int -> int -> int = fun (x, y) => {
-  x + y; 
+  x + y;
 };
 
 // We can partially apply functions, providing only some of the arguments.

@@ -1146,9 +1146,18 @@ module Type = struct
     | _ ->
         false
 
+  let rec strip_implicits typ =
+    match typ.type_desc with
+    | Tarrow (_, typ, Implicit, _) ->
+        strip_implicits typ
+    | _ ->
+        typ
+
   (* Invariant: This assumes that typ1 is a known concrete Typ.t. *)
   let is_same_concrete_typ_t env typ1 typ2 =
-    match ((flatten typ1 env).type_desc, (flatten typ2 env).type_desc) with
+    let typ1 = flatten typ1 env in
+    let typ2 = strip_implicits (flatten typ2 env) in
+    match (typ1.type_desc, typ2.type_desc) with
     | ( Tctor {var_params= [typ1a; typ1b]; _}
       , Tctor {var_decl; var_params= [typ2a; typ2b]; _} ) -> (
       match find_preferred_name OCaml var_decl.tdec_id env with
