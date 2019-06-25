@@ -8,26 +8,16 @@ include struct
       (('a2, 'b2, 'c2) t, ('a1, 'b1, 'c1) t) Typ.t =
     { Typ.store=
         (fun {a; b; c; _} ->
-          Typ.Store.bind
-            ((Typ.store __implicit1__) c)
-            (fun c ->
-              Typ.Store.bind
-                ((Typ.store __implicit2__) b)
-                (fun b ->
-                  Typ.Store.bind
-                    ((Typ.store __implicit3__) a)
-                    (fun a -> Typ.Store.return {a; b; c}) ) ) )
+          Typ.Store.bind (Typ.store __implicit1__ c) (fun c ->
+              Typ.Store.bind (Typ.store __implicit2__ b) (fun b ->
+                  Typ.Store.bind (Typ.store __implicit3__ a) (fun a ->
+                      Typ.Store.return {a; b; c} ) ) ) )
     ; Typ.read=
         (fun {a; b; c; _} ->
-          Typ.Read.bind
-            ((Typ.read __implicit1__) c)
-            (fun c ->
-              Typ.Read.bind
-                ((Typ.read __implicit2__) b)
-                (fun b ->
-                  Typ.Read.bind
-                    ((Typ.read __implicit3__) a)
-                    (fun a -> Typ.Read.return {a; b; c}) ) ) )
+          Typ.Read.bind (Typ.read __implicit1__ c) (fun c ->
+              Typ.Read.bind (Typ.read __implicit2__ b) (fun b ->
+                  Typ.Read.bind (Typ.read __implicit3__ a) (fun a ->
+                      Typ.Read.return {a; b; c} ) ) ) )
     ; Typ.alloc=
         Typ.Alloc.bind (Typ.alloc __implicit1__) (fun c ->
             Typ.Alloc.bind (Typ.alloc __implicit2__) (fun b ->
@@ -35,9 +25,9 @@ include struct
                     Typ.Alloc.return {a; b; c} ) ) )
     ; Typ.check=
         (fun {a; b; c; _} ->
-          (Typ.check __implicit1__) c ;
-          (Typ.check __implicit2__) b ;
-          (Typ.check __implicit3__) a ;
+          Typ.check __implicit1__ c ;
+          Typ.check __implicit2__ b ;
+          Typ.check __implicit3__ a ;
           () ) }
 end
 
@@ -54,26 +44,16 @@ module X = struct
     let typ __implicit13__ : ('a2 t, 'a1 t) Typ.t =
       { Typ.store=
           (fun {a; b; c; _} ->
-            Typ.Store.bind
-              ((Typ.store __implicit13__) c)
-              (fun c ->
-                Typ.Store.bind
-                  ((Typ.store __implicit13__) b)
-                  (fun b ->
-                    Typ.Store.bind
-                      ((Typ.store __implicit13__) a)
-                      (fun a -> Typ.Store.return {a; b; c}) ) ) )
+            Typ.Store.bind (Typ.store __implicit13__ c) (fun c ->
+                Typ.Store.bind (Typ.store __implicit13__ b) (fun b ->
+                    Typ.Store.bind (Typ.store __implicit13__ a) (fun a ->
+                        Typ.Store.return {a; b; c} ) ) ) )
       ; Typ.read=
           (fun {a; b; c; _} ->
-            Typ.Read.bind
-              ((Typ.read __implicit13__) c)
-              (fun c ->
-                Typ.Read.bind
-                  ((Typ.read __implicit13__) b)
-                  (fun b ->
-                    Typ.Read.bind
-                      ((Typ.read __implicit13__) a)
-                      (fun a -> Typ.Read.return {a; b; c}) ) ) )
+            Typ.Read.bind (Typ.read __implicit13__ c) (fun c ->
+                Typ.Read.bind (Typ.read __implicit13__ b) (fun b ->
+                    Typ.Read.bind (Typ.read __implicit13__ a) (fun a ->
+                        Typ.Read.return {a; b; c} ) ) ) )
       ; Typ.alloc=
           Typ.Alloc.bind (Typ.alloc __implicit13__) (fun c ->
               Typ.Alloc.bind (Typ.alloc __implicit13__) (fun b ->
@@ -81,9 +61,9 @@ module X = struct
                       Typ.Alloc.return {a; b; c} ) ) )
       ; Typ.check=
           (fun {a; b; c; _} ->
-            (Typ.check __implicit13__) c ;
-            (Typ.check __implicit13__) b ;
-            (Typ.check __implicit13__) a ;
+            Typ.check __implicit13__ c ;
+            Typ.check __implicit13__ b ;
+            Typ.check __implicit13__ a ;
             () ) }
   end
 
