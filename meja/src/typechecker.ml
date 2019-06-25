@@ -30,28 +30,28 @@ let bind_none x f = match x with Some x -> x | None -> f ()
 let unpack_decls ~loc typ ctyp env =
   if Int.equal typ.type_id ctyp.type_id then Some (typ, ctyp)
   else
-  let unfold_typ () =
-    Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
-        (typ, ctyp) )
-  in
-  let unfold_ctyp () =
-    Option.map (Envi.TypeDecl.unfold_alias ~loc ctyp env) ~f:(fun ctyp ->
-        (typ, ctyp) )
-  in
-  match (typ.type_desc, ctyp.type_desc) with
-  | Tctor variant, Tctor cvariant ->
-      let decl_id, cdecl_id =
-        (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
-      in
-      (* Try to unfold the oldest type definition first. *)
-      if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
-      else bind_none (Some (unfold_typ ())) unfold_ctyp
-  | Tctor _, _ ->
-      unfold_typ ()
-  | _, Tctor _ ->
-      unfold_ctyp ()
-  | _ ->
-      None
+    let unfold_typ () =
+      Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
+          (typ, ctyp) )
+    in
+    let unfold_ctyp () =
+      Option.map (Envi.TypeDecl.unfold_alias ~loc ctyp env) ~f:(fun ctyp ->
+          (typ, ctyp) )
+    in
+    match (typ.type_desc, ctyp.type_desc) with
+    | Tctor variant, Tctor cvariant ->
+        let decl_id, cdecl_id =
+          (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
+        in
+        (* Try to unfold the oldest type definition first. *)
+        if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
+        else bind_none (Some (unfold_typ ())) unfold_ctyp
+    | Tctor _, _ ->
+        unfold_typ ()
+    | _, Tctor _ ->
+        unfold_ctyp ()
+    | _ ->
+        None
 
 let rec check_type_aux ~loc typ ctyp env =
   let check_type_aux = check_type_aux ~loc in
