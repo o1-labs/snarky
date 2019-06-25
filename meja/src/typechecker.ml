@@ -577,7 +577,7 @@ let rec get_expression env expected exp =
                   e_typ
             in
             let e, env = get_expression env e_typ e in
-            ((res_typ, env), (label, e)) )
+            ((Envi.Type.flatten res_typ env, env), (label, e)) )
       in
       let typ =
         Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
