@@ -583,10 +583,20 @@ let rec get_expression env expected exp =
       let e = Envi.Type.generate_implicits e env in
       check_type ~loc env expected e.exp_type ;
       (e, env)
-  | Int i ->
+  | Literal (Int i) ->
       let typ = Initial_env.Type.int in
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
+      check_type ~loc env expected typ ;
+      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (Int i)}, env)
+  | Literal (Bool b) ->
+      failwith "Unhandled boolean literal"
+  | Literal (Field f) ->
+      failwith "Unhandled field literal"
+  | Literal (String s) ->
+      let typ = Initial_env.Type.string in
+      check_type ~loc env expected typ ;
+      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (String s)}, env)
   | Fun (label, p, body, explicit) ->
       let env = Envi.open_expr_scope env in
       let p_typ = Envi.Type.mkvar None env in

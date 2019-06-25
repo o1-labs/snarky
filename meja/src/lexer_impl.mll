@@ -43,8 +43,14 @@ rule token = parse
   { token lexbuf }
   | newline
     { new_line lexbuf; token lexbuf }
-  | number
-    { INT (int_of_string (Lexing.lexeme lexbuf)) }
+  | number as n
+    { INT (int_of_string n) }
+  | "0b"
+    { BOOL false }
+  | "1b"
+    { BOOL true }
+  | number as n 'f'
+    { FIELD n }
   | "fun" { FUN }
   | "let" { LET }
   | "instance" { INSTANCE }
