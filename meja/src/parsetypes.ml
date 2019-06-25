@@ -48,8 +48,7 @@ and type_decl_desc =
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
-type pattern =
-  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: Type0.type_expr}
+type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
 and pattern_desc =
   | PAny
@@ -61,8 +60,7 @@ and pattern_desc =
   | PRecord of (lid * pattern) list
   | PCtor of lid * pattern option
 
-type expression =
-  {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
+type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 
 and expression_desc =
   | Apply of expression * (Asttypes.arg_label * expression) list

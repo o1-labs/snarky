@@ -31,7 +31,7 @@ module TypeEnvi = struct
     ; type_decl_id: int
     ; instance_id: int
     ; variable_instances: type_expr Int.Map.t
-    ; implicit_vars: Parsetypes.expression list
+    ; implicit_vars: Typedast.expression list
     ; implicit_id: int
     ; instances: (int * type_expr) list
     ; predeclared_types:
@@ -892,7 +892,7 @@ module Type = struct
 
   let new_implicit_var ?(loc = Location.none) typ env =
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.resolve_env.type_env in
-    let mk exp_loc exp_desc = {Parsetypes.exp_loc; exp_desc; exp_type= typ} in
+    let mk exp_loc exp_desc = {Typedast.exp_loc; exp_desc; exp_type= typ} in
     let name = Location.mkloc (sprintf "__implicit%i__" implicit_id) loc in
     let new_exp =
       mk loc (Unifiable {expression= None; name; id= implicit_id})
@@ -916,7 +916,7 @@ module Type = struct
         else None )
 
   let generate_implicits e env =
-    let loc = e.Parsetypes.exp_loc in
+    let loc = e.Typedast.exp_loc in
     let implicits, typ = get_implicits [] e.exp_type in
     match implicits with
     | [] ->
@@ -934,7 +934,7 @@ module Type = struct
     <- {env.resolve_env.type_env with implicit_vars= []} ;
     let implicit_vars =
       List.filter implicit_vars
-        ~f:(fun ({Parsetypes.exp_loc; exp_type; _} as exp) ->
+        ~f:(fun ({Typedast.exp_loc; exp_type; _} as exp) ->
           match implicit_instances ~loc ~is_subtype exp_type env with
           | [(name, instance_typ)] ->
               let name = Location.mkloc name exp_loc in
@@ -979,9 +979,7 @@ module Type = struct
     in
     let implicit_vars =
       List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
-          let cmp =
-            compare exp1.Parsetypes.exp_type exp2.Parsetypes.exp_type
-          in
+          let cmp = compare exp1.Typedast.exp_type exp2.Typedast.exp_type in
           ( if Int.equal cmp 0 then
             match (exp1.exp_desc, exp2.exp_desc) with
             | Unifiable desc1, Unifiable desc2 ->
