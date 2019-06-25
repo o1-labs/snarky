@@ -586,12 +586,10 @@ let rec get_expression env expected exp =
   | Literal (Int i) ->
       let typ = Initial_env.Type.int in
       check_type ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
-      check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Literal (Int i)}, env)
-  | Literal (Bool b) ->
+  | Literal (Bool _b) ->
       failwith "Unhandled boolean literal"
-  | Literal (Field f) ->
+  | Literal (Field _f) ->
       failwith "Unhandled field literal"
   | Literal (String s) ->
       let typ = Initial_env.Type.string in

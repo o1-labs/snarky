@@ -97,7 +97,7 @@ let of_literal ?loc = function
       failwith "Unhandled boolean literal"
   | Int i ->
       Exp.constant ?loc (Const.int i)
-  | Field f ->
+  | Field _f ->
       failwith "Unhandled field literal"
   | String s ->
       Exp.constant ?loc (Const.string s)
