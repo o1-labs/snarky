@@ -276,7 +276,9 @@ let free_type_vars ?depth typ =
         in
         Set.union set (Set.diff (free_type_vars empty typ) poly_vars)
     | Tarrow (typ1, typ2, _, _) ->
-        Set.union (Envi.Type.type_vars ?depth typ1) (Envi.Type.type_vars ?depth typ2)
+        Set.union
+          (Envi.Type.type_vars ?depth typ1)
+          (Envi.Type.type_vars ?depth typ2)
     | _ ->
         fold ~init:set typ ~f:free_type_vars
   in
