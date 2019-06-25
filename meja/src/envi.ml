@@ -1080,9 +1080,7 @@ module Type = struct
         let typ2 = constr_map env ~f typ2 in
         mk (Tarrow (typ1, typ2, explicit, label)) env
     | Tctor variant ->
-        let var_params =
-          List.map ~f:(constr_map env ~f) variant.var_params
-        in
+        let var_params = List.map ~f:(constr_map env ~f) variant.var_params in
         let var_implicit_params =
           List.map ~f:(constr_map env ~f) variant.var_implicit_params
         in
