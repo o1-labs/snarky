@@ -561,6 +561,9 @@ let add_implicit_instance name typ env =
   env.resolve_env.type_env <- TypeEnvi.add_implicit_instance id typ type_env ;
   env
 
+let add_type_declaration_raw decl =
+  map_current_scope ~f:(Scope.add_type_declaration decl)
+
 let find_of_lident ~kind ~get_name (lid : lid) env =
   let loc = lid.loc in
   let full_get_name =
@@ -623,7 +626,8 @@ let raw_find_type_declaration (lid : lid) env =
         ; tdec_params= []
         ; tdec_implicit_params= []
         ; tdec_desc= TForward num_args
-        ; tdec_id= id }
+        ; tdec_id= id
+        ; tdec_is_newtype= false }
     | _ ->
         raise (Error (lid.loc, Unbound_type lid.txt)) )
 
@@ -764,7 +768,8 @@ module Type = struct
     type_vars empty typ
 
   let rec update_depths env typ =
-    Type0.update_depth env.depth typ ;
+    if typ.type_depth <> Type0.generic_depth then
+      Type0.update_depth env.depth typ ;
     match typ.type_desc with
     | Tvar _ ->
         Option.iter ~f:(update_depths env) (instance env typ)
@@ -1156,7 +1161,8 @@ module TypeDecl = struct
     ; tdec_params= params
     ; tdec_implicit_params= implicit_params
     ; tdec_desc= desc
-    ; tdec_id }
+    ; tdec_id
+    ; tdec_is_newtype= false }
 
   let mk_typ ~params ?ident decl =
     let ident = Option.value ident ~default:(mk_lid decl.tdec_ident) in

@@ -66,7 +66,9 @@ let rec check_type_aux ~loc typ ctyp env =
     | None ->
         None
   in
-  Type0.unify_depths typ ctyp ;
+  (* Don't change the depth if one of the types is generic. *)
+  if not (Type0.is_generic typ || Type0.is_generic ctyp) then
+    Type0.unify_depths typ ctyp ;
   match (typ.type_desc, ctyp.type_desc) with
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
@@ -81,9 +83,10 @@ let rec check_type_aux ~loc typ ctyp env =
           bind_none
             (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
             (fun () ->
-              (* Add the outermost (in terms of lexical scope) of the variables as
-                 the instance for the other. We do this by chosing the type of
-                 lowest ID, to ensure strict ordering and thus no cycles. *)
+              (* Add the outermost (in terms of lexical scope) of the variables
+                 as the instance for the other. We do this by chosing the type
+                 of lowest ID, to ensure strict ordering and thus no cycles.
+              *)
               if ctyp.type_id < typ.type_id then
                 Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
@@ -367,14 +370,15 @@ let get_ctor (name : lid) env =
               Longident.Lident tdec_ident.txt )
           tdec_ident.loc
       in
-      let typ, params =
+      let typ, params, is_gadt =
         match ctor.ctor_ret with
         | Some ({type_desc= Tctor {var_params; _}; _} as typ) ->
-            (typ, var_params)
+            (typ, var_params, true)
         | _ ->
             ( Envi.TypeDecl.mk_typ ~params:tdec_params
                 ~ident:(make_name tdec_ident) decl env
-            , tdec_params )
+            , tdec_params
+            , false )
       in
       let args_typ =
         match ctor.ctor_args with
@@ -400,7 +404,7 @@ let get_ctor (name : lid) env =
       in
       let args_typ = Envi.Type.copy ~loc args_typ bound_vars env in
       let typ = Envi.Type.copy ~loc typ bound_vars env in
-      (typ, args_typ)
+      (typ, args_typ, is_gadt)
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
 
@@ -516,8 +520,27 @@ let rec check_pattern ~add env typ pat =
       in
       ({pat_loc= loc; pat_type= typ; pat_desc= PRecord fields}, env)
   | PCtor (name, arg) ->
-      let typ', args_typ = get_ctor name env in
+      let typ', args_typ, is_gadt = get_ctor name env in
       check_type ~loc env typ typ' ;
+      if is_gadt then
+        (* Lower any generalised values *within the current type* to the
+          current level.
+          The enclosing expression should check that the newtypes have had
+          their levels adjusted if they unified; if not, the newtype was not
+          unified with GADT type variables.
+          Note: We don't generalise the type itself, otherwise we would be able
+          to inspect a newtype by unifying it with a constructor of a GADT.
+         *)
+        Type0.iter typ
+          ~f:
+            (let rec ungeneralise typ =
+               Type0.ungeneralise env.Envi.depth typ ;
+               Option.iter
+                 ~f:(Type0.iter ~f:ungeneralise)
+                 (Envi.Type.instance env typ) ;
+               Type0.iter ~f:ungeneralise typ
+             in
+             ungeneralise) ;
       let arg, env =
         match arg with
         | Some arg ->
@@ -610,18 +633,16 @@ let rec get_expression env expected exp =
       , env )
   | Newtype (name, body) ->
       let env = Envi.open_expr_scope env in
-      let decl =
-        { tdec_ident= name
-        ; tdec_params= []
-        ; tdec_implicit_params= []
-        ; tdec_desc= TUnfold (Ast_build.Type.none ())
-        ; tdec_loc= loc }
-      in
-      let decl, env = Typet.TypeDecl.import decl env in
-      let typ =
-        match decl.tdec_desc with TUnfold typ -> typ | _ -> assert false
-      in
-      (* Create a self-referencing type declaration. *)
+      let typ = Envi.Type.mkvar (Some name) env in
+      typ.type_depth <- Type0.generic_depth ;
+      let decl = Envi.TypeDecl.mk ~name ~params:[] (TUnfold typ) env in
+      let decl = {decl with tdec_is_newtype= true} in
+      let env = Envi.add_type_declaration_raw decl env in
+      (* HACK: Unfold to a recursive self instance.
+         This ensures that, regardless of any copying etc. all of the
+         instances of this type will resolve to [typ], and thus we can update
+         them all by updating only [typ].
+      *)
       typ.type_desc
       <- Tctor
            { var_ident= mk_lid name
@@ -629,9 +650,10 @@ let rec get_expression env expected exp =
            ; var_implicit_params= []
            ; var_decl= decl } ;
       let body, env = get_expression env expected body in
+      let env = Envi.close_expr_scope env in
       (* Substitute the self-reference for a type variable. *)
       typ.type_desc <- Tvar (Some name, Explicit) ;
-      let env = Envi.close_expr_scope env in
+      typ.type_depth <- env.Envi.depth ;
       Envi.Type.update_depths env body.exp_type ;
       ( {exp_loc= loc; exp_type= body.exp_type; exp_desc= Newtype (name, body)}
       , env )
@@ -678,8 +700,52 @@ let rec get_expression env expected exp =
       let env, cases =
         List.fold_map ~init:env cases ~f:(fun env (p, e) ->
             let env = Envi.open_expr_scope env in
-            let p, env = check_pattern ~add:add_polymorphised env typ p in
-            let e, env = get_expression env expected e in
+            (* Cache all newtypes at generic depth. *)
+            let rec cache acc typ =
+              match typ.type_desc with
+              | desc when Type0.is_generic typ && Type0.is_newtype typ ->
+                  typ.type_desc <- Tvar (None, Explicit) ;
+                  (typ, desc) :: acc
+              | _ ->
+                  Type0.fold ~init:acc typ ~f:cache
+            in
+            let newtypes = cache [] typ in
+            let newtypes = cache newtypes expected in
+            let restore_newtypes restore_all =
+              (* Restore the previous state of the newtypes. *)
+              List.iter newtypes ~f:(fun (typ, type_desc) ->
+                  if restore_all || Option.is_none (Envi.Type.instance env typ)
+                  then (
+                    Type0.make_generic typ ;
+                    typ.type_desc <- type_desc ;
+                    Envi.Type.clear_instance typ env ) )
+            in
+            let p, e, env =
+              try
+                let p, env = check_pattern ~add:add_polymorphised env typ p in
+                (* Check any instances provided by GADTs. *)
+                List.iter newtypes ~f:(fun (typ, _) ->
+                    match Envi.Type.instance env typ with
+                    | Some typ' ->
+                        if Type0.is_generic typ then
+                          (* This type wasn't instantiated by a GADT parameter,
+                             throw a type error.
+                          *)
+                          (* TODO: Find a way to bubble the exact location of a
+                                   candidate bad unification.
+                          *)
+                          raise (Error (p.pat_loc, Cannot_unify (typ, typ')))
+                    | _ ->
+                        () ) ;
+                (* Restore all non-instantiated newtypes. *)
+                restore_newtypes false ;
+                let e, env = get_expression env expected e in
+                (* Restore the remaining newtypes. *)
+                restore_newtypes true ; (p, e, env)
+              with err ->
+                (* Restore newtypes to give the right error message. *)
+                restore_newtypes true ; raise err
+            in
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )
       in
@@ -846,7 +912,7 @@ let rec get_expression env expected exp =
             raise (Error (loc, Missing_fields names)) ) ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Record (fields, ext)}, !env)
   | Ctor (name, arg) ->
-      let typ, arg_typ = get_ctor name env in
+      let typ, arg_typ, _ = get_ctor name env in
       check_type ~loc env expected typ ;
       let arg, env =
         match arg with

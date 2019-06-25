@@ -1,0 +1,6 @@
+let f = fun (type t, x : t) => {
+  switch (x) {
+    | 1 => 15
+    | _ => 20
+  };
+};
