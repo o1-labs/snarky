@@ -8,3 +8,5 @@ let y = if true then ()
 let z x y z = if x then y else if true then z else y
 
 let a x y z = if x then y else if true then z else y
+
+let b () = if true then () else if false then ()

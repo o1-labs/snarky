@@ -33,3 +33,11 @@ let a = fun (x, y, z) => {
     y;
   };
 };
+
+let b = fun () => {
+  if (true) {
+    ();
+  } else if (false) {
+    ();
+  };
+};
