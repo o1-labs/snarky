@@ -874,8 +874,7 @@ let rec get_expression env expected exp =
       let e1, env = get_expression env Initial_env.Type.bool e1 in
       let e2, env = get_expression env expected e2 in
       let e3, env = get_expression env expected e3 in
-      ( {exp_loc= loc; exp_type= expected; exp_desc= If (e1, e2, Some e3)}
-      , env )
+      ({exp_loc= loc; exp_type= expected; exp_desc= If (e1, e2, Some e3)}, env)
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in

@@ -216,9 +216,8 @@ let rec expression_desc fmt = function
         expression e2
   | If (e1, e2, Some ({exp_desc= If _; _} as e3)) ->
       (* `if (...) {...} else if (...) {...} ...` printing *)
-      fprintf fmt
-        "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else %a"
-        expression e1 expression e2 expression e3
+      fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else %a" expression
+        e1 expression e2 expression e3
   | If (e1, e2, Some e3) ->
       fprintf fmt
         "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else@ {@[<hv2>@,%a@,@]}"
