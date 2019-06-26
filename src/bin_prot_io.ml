@@ -3,7 +3,7 @@ open Core
 let read (type t) (module R : Bin_prot.Binable.Minimal.S with type t = t)
     filename =
   let buffer =
-    In_channel.with_file filename ~f:(fun channel ->
+    In_channel.with_file filename ~binary:true ~f:(fun channel ->
         let length =
           match Int64.to_int (In_channel.length channel) with
           | Some length ->
@@ -21,7 +21,7 @@ let read (type t) (module R : Bin_prot.Binable.Minimal.S with type t = t)
 
 let write (type t) (module R : Bin_prot.Binable.Minimal.S with type t = t)
     filename ~data =
-  Out_channel.with_file filename ~f:(fun channel ->
+  Out_channel.with_file filename ~binary:true ~f:(fun channel ->
       let buffer = Bigstring.create (R.bin_size_t data) in
       ignore (R.bin_write_t buffer ~pos:0 data) ;
       Bigstring.really_output channel buffer )
