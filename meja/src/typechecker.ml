@@ -873,6 +873,19 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
   | Unifiable _ ->
       raise (Error (loc, Unifiable_expr))
+  | If (e1, e2, None) ->
+      check_type ~loc env Initial_env.Type.unit expected ;
+      let e1, env = get_expression env Initial_env.Type.bool e1 in
+      let e2, env = get_expression env Initial_env.Type.unit e2 in
+      ( { exp_loc= loc
+        ; exp_type= Initial_env.Type.unit
+        ; exp_desc= If (e1, e2, None) }
+      , env )
+  | If (e1, e2, Some e3) ->
+      let e1, env = get_expression env Initial_env.Type.bool e1 in
+      let e2, env = get_expression env expected e2 in
+      let e3, env = get_expression env expected e3 in
+      ({exp_loc= loc; exp_type= expected; exp_desc= If (e1, e2, Some e3)}, env)
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
