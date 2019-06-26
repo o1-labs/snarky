@@ -1,0 +1,3 @@
+let x : int = {
+  if (true) { 15; };
+};
