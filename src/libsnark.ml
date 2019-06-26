@@ -1272,12 +1272,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
         (typ @-> returning M.R1CS_constraint_system.typ)
 
     let to_cpp_string_stub : t -> Cpp_string.t =
-      let stub =
-        foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
-      in
-      fun t ->
-        M.R1CS_constraint_system.clear (r1cs_constraint_system t) ;
-        stub t
+      foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
 
     let to_string : t -> string =
      fun t ->
