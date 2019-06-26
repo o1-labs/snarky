@@ -155,8 +155,8 @@ int CURVE_PREFIX(field_size_in_bits)() {
   return n;
 }
 
-libff::bigint<libff::mnt4753_r_limbs>* CURVE_PREFIX(field_size)() {
-  libff::bigint<libff::mnt4753_r_limbs>* x = new libff::bigint<libff::mnt4753_r_limbs>(FieldT::field_char());
+libff::bigint<R_LIMBS>* CURVE_PREFIX(field_size)() {
+  libff::bigint<R_LIMBS>* x = new libff::bigint<R_LIMBS>(FieldT::field_char());
   return x;
 }
 
@@ -238,28 +238,28 @@ void CURVE_PREFIX(field_print)(FieldT* f) {
 }
 
 // bigint mnt4753_r
-libff::bigint<libff::mnt4753_r_limbs>* CURVE_PREFIX(bigint_r_of_field)(FieldT* x) {
-  return new libff::bigint<libff::mnt4753_r_limbs>(x->as_bigint());
+libff::bigint<R_LIMBS>* CURVE_PREFIX(bigint_r_of_field)(FieldT* x) {
+  return new libff::bigint<R_LIMBS>(x->as_bigint());
 }
 
-libff::bigint<libff::mnt4753_r_limbs>* CURVE_PREFIX(bigint_r_of_decimal_string)(char* x) {
-  return new libff::bigint<libff::mnt4753_r_limbs>(x);
+libff::bigint<R_LIMBS>* CURVE_PREFIX(bigint_r_of_decimal_string)(char* x) {
+  return new libff::bigint<R_LIMBS>(x);
 }
 
 int CURVE_PREFIX(bigint_r_num_limbs)() {
-  return libff::mnt4753_r_limbs;
+  return R_LIMBS;
 }
 
-char* CURVE_PREFIX(bigint_r_to_data)(libff::bigint<libff::mnt4753_r_limbs>* x) {
+char* CURVE_PREFIX(bigint_r_to_data)(libff::bigint<R_LIMBS>* x) {
   return (char *) x->data;
 }
 
-libff::bigint<libff::mnt4753_r_limbs>* CURVE_PREFIX(bigint_r_of_data)(char* s) {
-  libff::bigint<libff::mnt4753_r_limbs>* result = new libff::bigint<libff::mnt4753_r_limbs>();
+libff::bigint<R_LIMBS>* CURVE_PREFIX(bigint_r_of_data)(char* s) {
+  libff::bigint<R_LIMBS>* result = new libff::bigint<R_LIMBS>();
 
   mp_limb_t* arr = (mp_limb_t *) s;
 
-  for (int i = 0; i < libff::mnt4753_r_limbs; ++i) {
+  for (int i = 0; i < R_LIMBS; ++i) {
     result->data[i] = arr[i];
   }
 
@@ -270,71 +270,71 @@ int CURVE_PREFIX(bigint_r_bytes_per_limb)() {
   return sizeof(mp_limb_t);
 }
 
-libff::bigint<libff::mnt4753_r_limbs>* CURVE_PREFIX(bigint_r_div)(
-  libff::bigint<libff::mnt4753_r_limbs>* x,
-  libff::bigint<libff::mnt4753_r_limbs>* y) {
+libff::bigint<R_LIMBS>* CURVE_PREFIX(bigint_r_div)(
+  libff::bigint<R_LIMBS>* x,
+  libff::bigint<R_LIMBS>* y) {
   mpz_t n; mpz_init(n); x->to_mpz(n);
   mpz_t d; mpz_init(d); y->to_mpz(d);
   mpz_t q; mpz_init(q);
 
   mpz_fdiv_q(q, n, d);
 
-  return new libff::bigint<libff::mnt4753_r_limbs>(q);
+  return new libff::bigint<R_LIMBS>(q);
 }
 
-FieldT* CURVE_PREFIX(bigint_r_to_field)(libff::bigint<libff::mnt4753_r_limbs>* n) {
+FieldT* CURVE_PREFIX(bigint_r_to_field)(libff::bigint<R_LIMBS>* n) {
   return new FieldT(*n);
 }
 
-libff::bigint<libff::mnt4753_r_limbs>* CURVE_PREFIX(bigint_r_of_numeral)(const unsigned char* s, int s_length, int base) {
-  libff::bigint<libff::mnt4753_r_limbs>* res = new libff::bigint<libff::mnt4753_r_limbs>();
+libff::bigint<R_LIMBS>* CURVE_PREFIX(bigint_r_of_numeral)(const unsigned char* s, int s_length, int base) {
+  libff::bigint<R_LIMBS>* res = new libff::bigint<R_LIMBS>();
 
   assert (base >= 2 && base <= 256);
 
   mp_size_t limbs_written = mpn_set_str(res->data, s, s_length, base);
-  assert(limbs_written <= libff::mnt4753_r_limbs);
+  assert(limbs_written <= R_LIMBS);
 
   return res;
 }
 
 int CURVE_PREFIX(bigint_r_compare)(
-    libff::bigint<libff::mnt4753_r_limbs>* n1,
-    libff::bigint<libff::mnt4753_r_limbs>* n2) {
-  return mpn_cmp(n1->data, n2->data, libff::mnt4753_r_limbs);
+    libff::bigint<R_LIMBS>* n1,
+    libff::bigint<R_LIMBS>* n2) {
+  return mpn_cmp(n1->data, n2->data, R_LIMBS);
 }
 
-bool CURVE_PREFIX(bigint_r_test_bit)(libff::bigint<libff::mnt4753_r_limbs>* n, int i) {
+bool CURVE_PREFIX(bigint_r_test_bit)(libff::bigint<R_LIMBS>* n, int i) {
   return n->test_bit(i);
 }
 
-void CURVE_PREFIX(bigint_r_delete)(libff::bigint<libff::mnt4753_r_limbs>* n) {
+void CURVE_PREFIX(bigint_r_delete)(libff::bigint<R_LIMBS>* n) {
   delete n;
 }
 
-void CURVE_PREFIX(bigint_r_print)(libff::bigint<libff::mnt4753_r_limbs>* n) {
+void CURVE_PREFIX(bigint_r_print)(libff::bigint<R_LIMBS>* n) {
   n->print();
 }
 
 std::vector<long>* CURVE_PREFIX(bigint_r_find_wnaf)(
-    size_t window_size, libff::bigint<libff::mnt4753_r_limbs>* scalar) {
+    size_t window_size, libff::bigint<R_LIMBS>* scalar) {
   return new std::vector<long>(libff::find_wnaf(window_size, *scalar));
 }
 
 // bigint mnt4753_q
-bool CURVE_PREFIX(bigint_q_test_bit)(libff::bigint<libff::mnt4753_q_limbs>* n, int i) {
+bool CURVE_PREFIX(bigint_q_test_bit)(libff::bigint<Q_LIMBS>* n, int i) {
   return n->test_bit(i);
 }
 
-void CURVE_PREFIX(bigint_q_delete)(libff::bigint<libff::mnt4753_q_limbs>* n) {
+void CURVE_PREFIX(bigint_q_delete)(libff::bigint<Q_LIMBS>* n) {
   delete n;
 }
 
-void CURVE_PREFIX(bigint_q_print)(libff::bigint<libff::mnt4753_q_limbs>* n) {
+void CURVE_PREFIX(bigint_q_print)(libff::bigint<Q_LIMBS>* n) {
   n->print();
 }
 
 std::vector<long>* CURVE_PREFIX(bigint_q_find_wnaf)(
-    size_t window_size, libff::bigint<libff::mnt4753_q_limbs>* scalar) {
+    size_t window_size, libff::bigint<Q_LIMBS>* scalar) {
   return new std::vector<long>(libff::find_wnaf(window_size, *scalar));
 }
 
@@ -493,7 +493,7 @@ void CURVE_PREFIX(r1cs_constraint_system_clear)(r1cs_constraint_system<FieldT>* 
 void CURVE_PREFIX(linear_combination_update_digest)(
     linear_combination<FieldT>& lc,
     MD5_CTX* ctx) {
-  long coeff_size_in_bytes = libff::mnt4753_r_limbs * sizeof(mp_limb_t);
+  long coeff_size_in_bytes = R_LIMBS * sizeof(mp_limb_t);
 
   std::vector<linear_term<FieldT>>& terms = lc.terms;
   for (size_t i = 0; i < terms.size(); ++i) {

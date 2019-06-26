@@ -25,3 +25,7 @@ typedef other_curve_ppT::G2_type other_curve_G2;
 typedef other_curve_ppT::Fqe_type other_curve_Fqe;
 
 #define CURVE_PREFIX(name) camlsnark_mnt6_ ## name
+
+#define R_LIMBS libff::mnt6_r_limbs
+
+#define Q_LIMBS libff::mnt6_q_limbs
