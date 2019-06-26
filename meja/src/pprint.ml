@@ -144,6 +144,19 @@ let arg_label fmt = function
   | Optional a ->
       fprintf fmt "?%s=@," a
 
+let literal fmt = function
+  | Int i ->
+      pp_print_int fmt i
+  | Bool false ->
+      fprintf fmt "0b"
+  | Bool true ->
+      fprintf fmt "1b"
+  | Field f ->
+      fprintf fmt "%sf" f
+  | String s ->
+      (* TODO: escaping *)
+      fprintf fmt "\"%s\"" s
+
 let rec expression_desc fmt = function
   | Apply
       (e, [(Asttypes.Nolabel, {exp_desc= Variable {txt= Lident "()"; _}; _})])
@@ -156,8 +169,8 @@ let rec expression_desc fmt = function
         args
   | Variable lid ->
       Longident.pp fmt lid.txt
-  | Int i ->
-      pp_print_int fmt i
+  | Literal l ->
+      literal fmt l
   | Fun (label, p, e, explicitness) ->
       fprintf fmt "fun@ " ;
       ( match explicitness with
@@ -229,7 +242,7 @@ and expression_desc_bracket fmt exp =
       expression_bracket fmt e
   | Apply _
   | Variable _
-  | Int _
+  | Literal _
   | Constraint _
   | Tuple _
   | Field _

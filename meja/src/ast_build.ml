@@ -152,4 +152,6 @@ module Exp = struct
   let constraint_ ?loc e typ = mk ?loc (Constraint (e, typ))
 
   let seq ?loc e1 e2 = mk ?loc (Seq (e1, e2))
+
+  let literal ?loc l = mk ?loc (Literal l)
 end
