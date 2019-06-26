@@ -18,3 +18,5 @@ typedef libff::bn128_pp ppT;
 typedef libff::Fr<ppT> FieldT;
 typedef ppT::G1_type G1;
 typedef ppT::G2_type G2;
+
+#define CURVE_PREFIX(name) camlsnark_bn128_ ## name

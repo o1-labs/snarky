@@ -23,3 +23,5 @@ typedef libff::Fr<ppT> FieldT;
 typedef other_curve_ppT::G1_type other_curve_G1;
 typedef other_curve_ppT::G2_type other_curve_G2;
 typedef other_curve_ppT::Fqe_type other_curve_Fqe;
+
+#define CURVE_PREFIX(name) camlsnark_mnt4753_ ## name
