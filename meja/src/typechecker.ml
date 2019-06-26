@@ -28,28 +28,30 @@ exception Error of Location.t * error
 let bind_none x f = match x with Some x -> x | None -> f ()
 
 let unpack_decls ~loc typ ctyp env =
-  let unfold_typ () =
-    Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
-        (typ, ctyp) )
-  in
-  let unfold_ctyp () =
-    Option.map (Envi.TypeDecl.unfold_alias ~loc ctyp env) ~f:(fun ctyp ->
-        (typ, ctyp) )
-  in
-  match (typ.type_desc, ctyp.type_desc) with
-  | Tctor variant, Tctor cvariant ->
-      let decl_id, cdecl_id =
-        (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
-      in
-      (* Try to unfold the oldest type definition first. *)
-      if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
-      else bind_none (Some (unfold_typ ())) unfold_ctyp
-  | Tctor _, _ ->
-      unfold_typ ()
-  | _, Tctor _ ->
-      unfold_ctyp ()
-  | _ ->
-      None
+  if Int.equal typ.type_id ctyp.type_id then Some (typ, ctyp)
+  else
+    let unfold_typ () =
+      Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
+          (typ, ctyp) )
+    in
+    let unfold_ctyp () =
+      Option.map (Envi.TypeDecl.unfold_alias ~loc ctyp env) ~f:(fun ctyp ->
+          (typ, ctyp) )
+    in
+    match (typ.type_desc, ctyp.type_desc) with
+    | Tctor variant, Tctor cvariant ->
+        let decl_id, cdecl_id =
+          (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
+        in
+        (* Try to unfold the oldest type definition first. *)
+        if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
+        else bind_none (Some (unfold_typ ())) unfold_ctyp
+    | Tctor _, _ ->
+        unfold_typ ()
+    | _, Tctor _ ->
+        unfold_ctyp ()
+    | _ ->
+        None
 
 let rec check_type_aux ~loc typ ctyp env =
   let check_type_aux = check_type_aux ~loc in
@@ -237,22 +239,31 @@ let rec is_subtype ~loc env typ ~of_:ctyp =
           false )
       && is_subtype typ1 ~of_:ctyp1 && is_subtype typ2 ~of_:ctyp2
   | Tctor variant, Tctor constr_variant -> (
-      if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-      then
-        match
-          List.for_all2 variant.var_params constr_variant.var_params
-            ~f:(fun param constr_param -> is_subtype param ~of_:constr_param)
-        with
-        | Ok x ->
-            x
-        | Unequal_lengths ->
-            false
-      else
-        match unpack_decls ~loc typ ctyp env with
-        | Some (typ, ctyp) ->
-            is_subtype typ ~of_:ctyp
-        | None ->
-            false )
+    (* Always try to unfold first, so that type aliases with phantom
+         parameters can unify, as in OCaml.
+      *)
+    match unpack_decls ~loc typ ctyp env with
+    | Some (typ, ctyp) ->
+        is_subtype typ ~of_:ctyp
+    | None ->
+        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
+        then
+          match
+            List.for_all2 variant.var_params constr_variant.var_params
+              ~f:(fun param constr_param -> is_subtype param ~of_:constr_param)
+          with
+          | Ok x ->
+              x
+          | Unequal_lengths ->
+              false
+        else false )
+  | Tctor _, _ | _, Tctor _ -> (
+    (* Unfold an alias and compare again *)
+    match unpack_decls ~loc typ ctyp env with
+    | Some (typ, ctyp) ->
+        is_subtype typ ~of_:ctyp
+    | None ->
+        false )
   | _, _ ->
       false
 
@@ -276,7 +287,9 @@ let free_type_vars ?depth typ =
         in
         Set.union set (Set.diff (free_type_vars empty typ) poly_vars)
     | Tarrow (typ1, typ2, _, _) ->
-        Set.union (Envi.Type.type_vars ?depth typ1) (free_type_vars set typ2)
+        Set.union
+          (Envi.Type.type_vars ?depth typ1)
+          (Envi.Type.type_vars ?depth typ2)
     | _ ->
         fold ~init:set typ ~f:free_type_vars
   in
@@ -575,6 +588,21 @@ let rec get_expression env expected exp =
       let typ =
         Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
       in
+      (* Squash nested applies from implicit arguments. *)
+      let f, es =
+        match f.exp_desc with
+        | Apply (f', args) ->
+            if
+              List.for_all args ~f:(function
+                | _, {exp_desc= Unifiable _; _} ->
+                    true
+                | _ ->
+                    false )
+            then (f', args @ es)
+            else (f, es)
+        | _ ->
+            (f, es)
+      in
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
   | Variable name ->
@@ -583,10 +611,18 @@ let rec get_expression env expected exp =
       let e = Envi.Type.generate_implicits e env in
       check_type ~loc env expected e.exp_type ;
       (e, env)
-  | Int i ->
+  | Literal (Int i) ->
       let typ = Initial_env.Type.int in
       check_type ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Int i}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (Int i)}, env)
+  | Literal (Bool _b) ->
+      failwith "Unhandled boolean literal"
+  | Literal (Field _f) ->
+      failwith "Unhandled field literal"
+  | Literal (String s) ->
+      let typ = Initial_env.Type.string in
+      check_type ~loc env expected typ ;
+      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (String s)}, env)
   | Fun (label, p, body, explicit) ->
       let env = Envi.open_expr_scope env in
       let p_typ = Envi.Type.mkvar None env in
@@ -862,6 +898,19 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
   | Unifiable _ ->
       raise (Error (loc, Unifiable_expr))
+  | If (e1, e2, None) ->
+      check_type ~loc env Initial_env.Type.unit expected ;
+      let e1, env = get_expression env Initial_env.Type.bool e1 in
+      let e2, env = get_expression env Initial_env.Type.unit e2 in
+      ( { exp_loc= loc
+        ; exp_type= Initial_env.Type.unit
+        ; exp_desc= If (e1, e2, None) }
+      , env )
+  | If (e1, e2, Some e3) ->
+      let e1, env = get_expression env Initial_env.Type.bool e1 in
+      let e2, env = get_expression env expected e2 in
+      let e3, env = get_expression env expected e3 in
+      ({exp_loc= loc; exp_type= expected; exp_desc= If (e1, e2, Some e3)}, env)
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
@@ -1086,10 +1135,13 @@ let rec check_statement env stmt =
       let env = Envi.join_expr_scope env scope in
       (env, {stmt with stmt_desc= Value (p, e)})
   | Instance (name, e) ->
+      let env = Envi.open_expr_scope env in
       let p =
         {pat_desc= PVariable name; pat_loc= name.loc; pat_type= Type0.none}
       in
       let _, e, env = check_binding ~toplevel:true env p e in
+      let scope, env = Envi.pop_expr_scope env in
+      let env = Envi.join_expr_scope env scope in
       let env = Envi.add_implicit_instance name.txt e.exp_type env in
       (env, {stmt with stmt_desc= Instance (name, e)})
   | TypeDecl decl when !in_decl ->

@@ -92,14 +92,24 @@ let rec of_pattern_desc ?loc = function
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
+let of_literal ?loc = function
+  | Bool _ ->
+      failwith "Unhandled boolean literal"
+  | Int i ->
+      Exp.constant ?loc (Const.int i)
+  | Field _f ->
+      failwith "Unhandled field literal"
+  | String s ->
+      Exp.constant ?loc (Const.string s)
+
 let rec of_expression_desc ?loc = function
   | Apply (f, es) ->
       Exp.apply ?loc (of_expression f)
         (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
   | Variable name ->
       Exp.ident ?loc name
-  | Int i ->
-      Exp.constant ?loc (Const.int i)
+  | Literal l ->
+      of_literal ?loc l
   | Fun (label, p, body, _) ->
       Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
   | Newtype (name, body) ->
@@ -130,6 +140,32 @@ let rec of_expression_desc ?loc = function
       of_expression e
   | Unifiable {name; _} ->
       Exp.ident ?loc (mk_lid name)
+  | If (e1, e2, e3) ->
+      Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
+        (Option.map ~f:of_expression e3)
+
+and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
+  Parsetree.(
+    [%expr
+      function
+      | With
+          { request=
+              [%p
+                match ctor_ident with
+                | Some ctor_ident ->
+                    Pat.construct ~loc (mk_lid ctor_ident)
+                      (Option.map ~f:of_pattern args)
+                | None -> (
+                  match args with
+                  | Some args ->
+                      of_pattern args
+                  | None ->
+                      Pat.any () )]
+          ; respond } ->
+          let unhandled = Snarky.Request.unhandled in
+          [%e of_expression body]
+      | _ ->
+          Snarky.Request.unhandled])
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 

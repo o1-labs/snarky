@@ -144,6 +144,19 @@ let arg_label fmt = function
   | Optional a ->
       fprintf fmt "?%s=@," a
 
+let literal fmt = function
+  | Int i ->
+      pp_print_int fmt i
+  | Bool false ->
+      fprintf fmt "0b"
+  | Bool true ->
+      fprintf fmt "1b"
+  | Field f ->
+      fprintf fmt "%sf" f
+  | String s ->
+      (* TODO: escaping *)
+      fprintf fmt "\"%s\"" s
+
 let rec expression_desc fmt = function
   | Apply
       (e, [(Asttypes.Nolabel, {exp_desc= Variable {txt= Lident "()"; _}; _})])
@@ -156,8 +169,8 @@ let rec expression_desc fmt = function
         args
   | Variable lid ->
       Longident.pp fmt lid.txt
-  | Int i ->
-      pp_print_int fmt i
+  | Literal l ->
+      literal fmt l
   | Fun (label, p, e, explicitness) ->
       fprintf fmt "fun@ " ;
       ( match explicitness with
@@ -211,6 +224,17 @@ let rec expression_desc fmt = function
       expression fmt e
   | Unifiable {expression= None; name; _} ->
       fprintf fmt "(%s /* implicit */)" name.txt
+  | If (e1, e2, None) ->
+      fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}" expression e1
+        expression e2
+  | If (e1, e2, Some ({exp_desc= If _; _} as e3)) ->
+      (* `if (...) {...} else if (...) {...} ...` printing *)
+      fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else %a" expression
+        e1 expression e2 expression e3
+  | If (e1, e2, Some e3) ->
+      fprintf fmt
+        "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else@ {@[<hv2>@,%a@,@]}"
+        expression e1 expression e2 expression e3
 
 and expression_desc_bracket fmt exp =
   match exp with
@@ -218,7 +242,7 @@ and expression_desc_bracket fmt exp =
       expression_bracket fmt e
   | Apply _
   | Variable _
-  | Int _
+  | Literal _
   | Constraint _
   | Tuple _
   | Field _

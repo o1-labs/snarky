@@ -28,7 +28,10 @@ let consexp ~pos hd tl =
   mkexp ~pos (Ctor
     ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Tuple [hd; tl]))))
 %}
+%token <string> FIELD
 %token <int> INT
+%token <bool> BOOL
+%token <string> STRING
 %token <string> LIDENT
 %token <string> UIDENT
 %token FUN
@@ -43,6 +46,8 @@ let consexp ~pos hd tl =
 %token REQUEST
 %token WITH
 %token HANDLER
+%token IF
+%token ELSE
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -315,7 +320,11 @@ simpl_expr:
   | x = as_loc(val_longident)
     { mkexp ~pos:$loc (Variable x) }
   | x = INT
-    { mkexp ~pos:$loc (Int x) }
+    { mkexp ~pos:$loc (Literal (Int x)) }
+  | x = BOOL
+    { mkexp ~pos:$loc (Literal (Bool x)) }
+  | x = FIELD
+    { mkexp ~pos:$loc (Literal (Field x)) }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { e }
   | LBRACKET es = list(expr, COMMA) RBRACKET
@@ -328,6 +337,8 @@ simpl_expr:
     { e }
   | e = simpl_expr DOT field = as_loc(longident(lident, UIDENT))
     { mkexp ~pos:$loc (Field (e, field)) }
+  | s = STRING
+    { mkexp ~pos:$loc (Literal (String s)) }
 
 expr:
   | x = simpl_expr
@@ -361,6 +372,20 @@ expr:
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Ctor (id, args)) }
+  | e = if_expr
+    { e }
+
+if_expr:
+  | IF e1 = expr LBRACE e2 = block RBRACE
+    { mkexp ~pos:$loc (If (e1, e2, None)) }
+  | IF e1 = expr LBRACE e2 = block RBRACE ELSE e3 = if_expr_or_block
+    { mkexp ~pos:$loc (If (e1, e2, Some e3)) }
+
+if_expr_or_block:
+  | e = if_expr
+    { e }
+  | LBRACE e = block RBRACE
+    { e }
 
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE
