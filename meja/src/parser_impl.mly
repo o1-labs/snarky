@@ -43,6 +43,8 @@ let consexp ~pos hd tl =
 %token REQUEST
 %token WITH
 %token HANDLER
+%token IF
+%token ELSE
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -362,6 +364,20 @@ expr:
     { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Ctor (id, args)) }
+  | e = if_expr
+    { e }
+
+if_expr:
+  | IF e1 = expr LBRACE e2 = block RBRACE
+    { mkexp ~pos:$loc (If (e1, e2, None)) }
+  | IF e1 = expr LBRACE e2 = block RBRACE ELSE e3 = if_expr_or_block
+    { mkexp ~pos:$loc (If (e1, e2, Some e3)) }
+
+if_expr_or_block:
+  | e = if_expr
+    { e }
+  | LBRACE e = block RBRACE
+    { e }
 
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE

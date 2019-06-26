@@ -1,0 +1,3 @@
+File "tests/if-then-error.meja", line 2, characters 14-16:
+Error: Incompatable types unit and int:
+       Cannot unify unit and int
