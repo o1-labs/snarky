@@ -224,6 +224,17 @@ let rec expression_desc fmt = function
       expression fmt e
   | Unifiable {expression= None; name; _} ->
       fprintf fmt "(%s /* implicit */)" name.txt
+  | If (e1, e2, None) ->
+      fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}" expression e1
+        expression e2
+  | If (e1, e2, Some ({exp_desc= If _; _} as e3)) ->
+      (* `if (...) {...} else if (...) {...} ...` printing *)
+      fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else %a" expression
+        e1 expression e2 expression e3
+  | If (e1, e2, Some e3) ->
+      fprintf fmt
+        "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else@ {@[<hv2>@,%a@,@]}"
+        expression e1 expression e2 expression e3
 
 and expression_desc_bracket fmt exp =
   match exp with

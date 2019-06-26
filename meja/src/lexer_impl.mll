@@ -69,6 +69,8 @@ rule token = parse
   | "request" { REQUEST }
   | "with" { WITH }
   | "handler" { HANDLER }
+  | "if" { IF }
+  | "else" { ELSE }
   | ';' { SEMI }
   | '{' { LBRACE }
   | '}' { RBRACE }
