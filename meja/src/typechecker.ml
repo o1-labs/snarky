@@ -1122,7 +1122,7 @@ and check_module_sig env path msig =
       let env = Envi.open_absolute_module (Some path) env in
       let env, signature = check_signature env signature in
       let m, env = Envi.pop_module ~loc env in
-      ( {Typedast.msig_desc= Signature signature; msig_loc= loc}
+      ( {Typedast.msig_desc= Tmty_sig signature; msig_loc= loc}
       , Envi.Scope.Immediate m
       , env )
   | SigName lid ->
@@ -1133,11 +1133,11 @@ and check_module_sig env path msig =
         | None ->
             Envi.Scope.Deferred lid.txt
       in
-      ({Typedast.msig_desc= SigName lid; msig_loc= loc}, m, env)
+      ({Typedast.msig_desc= Tmty_name lid; msig_loc= loc}, m, env)
   | SigAbstract ->
       let env = Envi.open_absolute_module (Some path) env in
       let m, env = Envi.pop_module ~loc env in
-      ( {Typedast.msig_desc= SigAbstract; msig_loc= loc}
+      ( {Typedast.msig_desc= Tmty_abstract; msig_loc= loc}
       , Envi.Scope.Immediate m
       , env )
   | SigFunctor (f_name, f, msig) ->
@@ -1165,7 +1165,7 @@ and check_module_sig env path msig =
       (* Check that f_mty builds the functor as expected. *)
       let _, msig = ftor (Lapply (path, Lident f_name.txt)) f_mty in
       let m = Envi.make_functor path (fun path f -> fst (ftor path f)) in
-      ( {Typedast.msig_desc= SigFunctor (f_name, f, msig); msig_loc= loc}
+      ( {Typedast.msig_desc= Tmty_functor (f_name, f, msig); msig_loc= loc}
       , Envi.Scope.Immediate m
       , env )
 

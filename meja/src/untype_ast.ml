@@ -164,13 +164,13 @@ and signature_item s =
   {Parsetypes.sig_desc= signature_desc s.Typedast.sig_desc; sig_loc= s.sig_loc}
 
 and module_sig_desc = function
-  | Typedast.Signature sigs ->
+  | Typedast.Tmty_sig sigs ->
       Parsetypes.Signature (List.map ~f:signature_item sigs)
-  | SigName path ->
+  | Tmty_name path ->
       SigName path
-  | SigAbstract ->
+  | Tmty_abstract ->
       SigAbstract
-  | SigFunctor (name, fsig, msig) ->
+  | Tmty_functor (name, fsig, msig) ->
       Parsetypes.SigFunctor (name, module_sig fsig, module_sig msig)
 
 and module_sig msig =
