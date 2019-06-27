@@ -214,13 +214,13 @@ and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
 and of_signature sig_ = List.map ~f:of_signature_item sig_
 
 and of_module_sig_desc ?loc = function
-  | Signature signature ->
+  | Pmty_sig signature ->
       Some (Mty.signature ?loc (of_signature signature))
-  | SigName name ->
+  | Pmty_name name ->
       Some (Mty.alias ?loc name)
-  | SigAbstract ->
+  | Pmty_abstract ->
       None
-  | SigFunctor (name, f, msig) ->
+  | Pmty_functor (name, f, msig) ->
       let msig =
         match of_module_sig msig with
         | Some msig ->

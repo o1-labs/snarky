@@ -1120,14 +1120,14 @@ and check_signature env signature =
 and check_module_sig env path msig =
   let loc = msig.msig_loc in
   match msig.msig_desc with
-  | Signature signature ->
+  | Pmty_sig signature ->
       let env = Envi.open_absolute_module (Some path) env in
       let env, signature = check_signature env signature in
       let m, env = Envi.pop_module ~loc env in
       ( {Typedast.msig_desc= Tmty_sig signature; msig_loc= loc}
       , Envi.Scope.Immediate m
       , env )
-  | SigName lid ->
+  | Pmty_name lid ->
       let m =
         match Envi.find_module_deferred ~loc lid env with
         | Some m ->
@@ -1136,13 +1136,13 @@ and check_module_sig env path msig =
             Envi.Scope.Deferred lid.txt
       in
       ({Typedast.msig_desc= Tmty_name lid; msig_loc= loc}, m, env)
-  | SigAbstract ->
+  | Pmty_abstract ->
       let env = Envi.open_absolute_module (Some path) env in
       let m, env = Envi.pop_module ~loc env in
       ( {Typedast.msig_desc= Tmty_abstract; msig_loc= loc}
       , Envi.Scope.Immediate m
       , env )
-  | SigFunctor (f_name, f, msig) ->
+  | Pmty_functor (f_name, f, msig) ->
       let f, f_mty, env = check_module_sig env (Lident f_name.txt) f in
       let ftor path f_instance =
         (* We want the functored module to be accessible only in un-prefixed

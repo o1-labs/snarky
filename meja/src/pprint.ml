@@ -302,14 +302,14 @@ and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 and signature fmt sigs = List.iter (signature_item fmt) sigs
 
 and module_sig_desc ~prefix fmt = function
-  | Signature msig ->
+  | Pmty_sig msig ->
       prefix fmt ;
       fprintf fmt "{@[<hv1>@;%a@]}" signature msig
-  | SigName name ->
+  | Pmty_name name ->
       prefix fmt ; Longident.pp fmt name.txt
-  | SigAbstract ->
+  | Pmty_abstract ->
       ()
-  | SigFunctor (name, f, m) ->
+  | Pmty_functor (name, f, m) ->
       let pp = module_sig ~prefix:(fun _ -> ()) in
       fprintf fmt "/* @[functor@ (%s :@ %a)@ =>@ %a@] */" name.txt pp f pp m
 

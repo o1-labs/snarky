@@ -177,7 +177,7 @@ signature_item:
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
     { mksig ~pos:$loc (Psig_module (x, m)) }
   | MODULE x = as_loc(UIDENT)
-    { mksig ~pos:$loc (Psig_module (x, mkmty ~pos:$loc SigAbstract)) }
+    { mksig ~pos:$loc (Psig_module (x, mkmty ~pos:$loc Pmty_abstract)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
     { mksig ~pos:$loc (Psig_modtype (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
@@ -203,9 +203,9 @@ module_expr:
 
 module_sig:
   | LBRACE s = signature RBRACE
-    { mkmty ~pos:$loc (Signature s) }
+    { mkmty ~pos:$loc (Pmty_sig s) }
   | x = as_loc(longident(UIDENT, UIDENT))
-    { mkmty ~pos:$loc (SigName x) }
+    { mkmty ~pos:$loc (Pmty_name x) }
 
 %inline decl_type(X):
   | x = as_loc(X)

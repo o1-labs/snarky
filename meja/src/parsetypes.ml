@@ -100,10 +100,10 @@ and signature_desc =
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
 and module_sig_desc =
-  | Signature of signature_item list
-  | SigName of lid
-  | SigAbstract
-  | SigFunctor of str * module_sig * module_sig
+  | Pmty_sig of signature_item list
+  | Pmty_name of lid
+  | Pmty_abstract
+  | Pmty_functor of str * module_sig * module_sig
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 

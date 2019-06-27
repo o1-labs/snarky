@@ -165,13 +165,13 @@ and signature_item s =
 
 and module_sig_desc = function
   | Typedast.Tmty_sig sigs ->
-      Parsetypes.Signature (List.map ~f:signature_item sigs)
+      Parsetypes.Pmty_sig (List.map ~f:signature_item sigs)
   | Tmty_name path ->
-      SigName path
+      Pmty_name path
   | Tmty_abstract ->
-      SigAbstract
+      Pmty_abstract
   | Tmty_functor (name, fsig, msig) ->
-      Parsetypes.SigFunctor (name, module_sig fsig, module_sig msig)
+      Pmty_functor (name, module_sig fsig, module_sig msig)
 
 and module_sig msig =
   { Parsetypes.msig_desc= module_sig_desc msig.Typedast.msig_desc

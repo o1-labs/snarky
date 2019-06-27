@@ -126,13 +126,13 @@ and to_signature items =
 and to_module_sig_desc ~loc decl =
   match decl with
   | None ->
-      SigAbstract
+      Pmty_abstract
   | Some (Mty_ident path | Mty_alias (_, path)) ->
-      SigName (mkloc (longident_of_path path) loc)
+      Pmty_name (mkloc (longident_of_path path) loc)
   | Some (Mty_signature signature) ->
-      Signature (to_signature signature)
+      Pmty_sig (to_signature signature)
   | Some (Mty_functor (name, f, mty)) ->
-      SigFunctor
+      Pmty_functor
         ( mkloc (Ident.name name) loc
         , to_module_sig ~loc f
         , to_module_sig ~loc (Some mty) )
