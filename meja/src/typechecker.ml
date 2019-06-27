@@ -590,10 +590,10 @@ let rec get_expression env expected exp =
       (* Squash nested applies from implicit arguments. *)
       let f, es =
         match f.exp_desc with
-        | Apply (f', args) ->
+        | Texp_apply (f', args) ->
             if
               List.for_all args ~f:(function
-                | _, {exp_desc= Unifiable _; _} ->
+                | _, {exp_desc= Texp_unifiable _; _} ->
                     true
                 | _ ->
                     false )
@@ -603,7 +603,7 @@ let rec get_expression env expected exp =
             (f, es)
       in
       check_type ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Apply (f, es)}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (f, es)}, env)
   | Variable name ->
       let typ = Envi.find_name ~loc name env in
       let implicits, result_typ = Envi.Type.get_implicits [] typ in
@@ -613,20 +613,20 @@ let rec get_expression env expected exp =
             (label, Envi.Type.new_implicit_var ~loc typ env) )
       in
       let e =
-        {Typedast.exp_loc= loc; exp_type= typ; exp_desc= Variable name}
+        {Typedast.exp_loc= loc; exp_type= typ; exp_desc= Texp_variable name}
       in
       let e =
         if List.is_empty implicits then e
         else
           { Typedast.exp_loc= loc
           ; exp_type= result_typ
-          ; exp_desc= Apply (e, implicits) }
+          ; exp_desc= Texp_apply (e, implicits) }
       in
       (e, env)
   | Literal (Int i) ->
       let typ = Initial_env.Type.int in
       check_type ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (Int i)}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_literal (Int i)}, env)
   | Literal (Bool _b) ->
       failwith "Unhandled boolean literal"
   | Literal (Field _f) ->
@@ -634,7 +634,7 @@ let rec get_expression env expected exp =
   | Literal (String s) ->
       let typ = Initial_env.Type.string in
       check_type ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Literal (String s)}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_literal (String s)}, env)
   | Fun (label, p, body, explicit) ->
       let env = Envi.open_expr_scope env in
       let p_typ = Envi.Type.mkvar None env in
@@ -654,7 +654,9 @@ let rec get_expression env expected exp =
       let body, env = get_expression env body_typ body in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ ;
-      ( {exp_loc= loc; exp_type= typ; exp_desc= Fun (label, p, body, explicit)}
+      ( { exp_loc= loc
+        ; exp_type= typ
+        ; exp_desc= Texp_fun (label, p, body, explicit) }
       , env )
   | Newtype (name, body) ->
       let env = Envi.open_expr_scope env in
@@ -681,19 +683,22 @@ let rec get_expression env expected exp =
       typ.type_desc <- Tvar (Some name, Explicit) ;
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env body.exp_type ;
-      ( {exp_loc= loc; exp_type= body.exp_type; exp_desc= Newtype (name, body)}
+      ( { exp_loc= loc
+        ; exp_type= body.exp_type
+        ; exp_desc= Texp_newtype (name, body) }
       , env )
   | Seq (e1, e2) ->
       let e1, env = get_expression env Initial_env.Type.unit e1 in
       let e2, env = get_expression env expected e2 in
-      ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Seq (e1, e2)}, env)
+      ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Texp_seq (e1, e2)}, env)
   | Let (p, e1, e2) ->
       let env = Envi.open_expr_scope env in
       let p, e1, env = check_binding env p e1 in
       let e2, env = get_expression env expected e2 in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env e2.exp_type ;
-      ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Let (p, e1, e2)}, env)
+      ( {exp_loc= loc; exp_type= e2.exp_type; exp_desc= Texp_let (p, e1, e2)}
+      , env )
   | Constraint (e, typ') ->
       let typ, env = Typet.Type.import typ' env in
       check_type ~loc env expected typ ;
@@ -703,7 +708,7 @@ let rec get_expression env expected exp =
         Untype_ast.type_expr ~loc:typ'.type_loc
           (Envi.Type.normalise_constr_names env typ)
       in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Constraint (e, typ')}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_constraint (e, typ')}, env)
   | Tuple es ->
       let typs = List.map es ~f:(fun _ -> Envi.Type.mkvar None env) in
       let typ = Envi.Type.mk (Ttuple typs) env in
@@ -718,7 +723,7 @@ let rec get_expression env expected exp =
       let typ =
         Envi.Type.mk (Ttuple (List.map es ~f:(fun {exp_type= t; _} -> t))) !env
       in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Tuple es}, !env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_tuple es}, !env)
   | Match (e, cases) ->
       let e_typ = Envi.Type.mkvar None env in
       let e, env = get_expression env e_typ e in
@@ -732,7 +737,7 @@ let rec get_expression env expected exp =
             (env, (p, e)) )
       in
       Envi.Type.update_depths env expected ;
-      ({exp_loc= loc; exp_type= expected; exp_desc= Match (e, cases)}, env)
+      ({exp_loc= loc; exp_type= expected; exp_desc= Texp_match (e, cases)}, env)
   | Field (e, field) ->
       let field_info =
         match field.txt with
@@ -820,7 +825,7 @@ let rec get_expression env expected exp =
             | _ ->
                 raise (Error (loc, Unbound ("record field", field))) )
       in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Field (e, field)}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_field (e, field)}, env)
   | Record ([], _) ->
       raise (Error (loc, Empty_record))
   | Record (((field, _) :: _ as fields), ext) ->
@@ -892,7 +897,7 @@ let rec get_expression env expected exp =
           in
           if not (List.is_empty names) then
             raise (Error (loc, Missing_fields names)) ) ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Record (fields, ext)}, !env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_record (fields, ext)}, !env)
   | Ctor (name, arg) ->
       let typ, arg_typ = get_ctor name env in
       check_type ~loc env expected typ ;
@@ -907,7 +912,7 @@ let rec get_expression env expected exp =
               with _ -> raise (Error (loc, Argument_expected name.txt)) ) ;
             (None, env)
       in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Ctor (name, arg)}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_ctor (name, arg)}, env)
   | Unifiable _ ->
       raise (Error (loc, Unifiable_expr))
   | If (e1, e2, None) ->
@@ -916,13 +921,14 @@ let rec get_expression env expected exp =
       let e2, env = get_expression env Initial_env.Type.unit e2 in
       ( { exp_loc= loc
         ; exp_type= Initial_env.Type.unit
-        ; exp_desc= If (e1, e2, None) }
+        ; exp_desc= Texp_if (e1, e2, None) }
       , env )
   | If (e1, e2, Some e3) ->
       let e1, env = get_expression env Initial_env.Type.bool e1 in
       let e2, env = get_expression env expected e2 in
       let e3, env = get_expression env expected e3 in
-      ({exp_loc= loc; exp_type= expected; exp_desc= If (e1, e2, Some e3)}, env)
+      ( {exp_loc= loc; exp_type= expected; exp_desc= Texp_if (e1, e2, Some e3)}
+      , env )
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
@@ -942,7 +948,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let e, env =
     List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
         match var.exp_desc with
-        | Unifiable {expression= None; name; _} ->
+        | Texp_unifiable {expression= None; name; _} ->
             let exp_type =
               Envi.Type.mk
                 (Tarrow (var.exp_type, e.exp_type, Implicit, Nolabel))
@@ -953,7 +959,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
               ; pat_loc= loc
               ; pat_type= var.exp_type }
             in
-            ( { Typedast.exp_desc= Fun (Nolabel, p, e, Implicit)
+            ( { Typedast.exp_desc= Texp_fun (Nolabel, p, e, Implicit)
               ; exp_type
               ; exp_loc= loc }
             , env )
@@ -1284,15 +1290,15 @@ let rec check_statement env stmt =
             let pat, body =
               match e with
               | { exp_desc=
-                    Fun
+                    Texp_fun
                       ( Nolabel
                       , _
                       , { exp_desc=
-                            Let
+                            Texp_let
                               ( _
                               , _
                               , { exp_desc=
-                                    Match
+                                    Texp_match
                                       ( _
                                       , [ ( {pat_desc= Tpat_ctor (_, pat); _}
                                           , body )

@@ -20,21 +20,24 @@ type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
 
 and expression_desc =
-  | Apply of expression * (Asttypes.arg_label * expression) list
-  | Variable of lid
-  | Literal of literal
-  | Fun of Asttypes.arg_label * pattern * expression * explicitness
-  | Newtype of str * expression
-  | Seq of expression * expression
-  | Let of pattern * expression * expression
-  | Constraint of expression * type_expr
-  | Tuple of expression list
-  | Match of expression * (pattern * expression) list
-  | Field of expression * lid
-  | Record of (lid * expression) list * expression option
-  | Ctor of lid * expression option
-  | Unifiable of {mutable expression: expression option; name: str; id: int}
-  | If of expression * expression * expression option
+  | Texp_apply of expression * (Asttypes.arg_label * expression) list
+  | Texp_variable of lid
+  | Texp_literal of literal
+  | Texp_fun of Asttypes.arg_label * pattern * expression * explicitness
+  | Texp_newtype of str * expression
+  | Texp_seq of expression * expression
+  | Texp_let of pattern * expression * expression
+  | Texp_constraint of expression * type_expr
+  | Texp_tuple of expression list
+  | Texp_match of expression * (pattern * expression) list
+  | Texp_field of expression * lid
+  | Texp_record of (lid * expression) list * expression option
+  | Texp_ctor of lid * expression option
+  | Texp_unifiable of
+      { mutable expression: expression option
+      ; name: str
+      ; id: int }
+  | Texp_if of expression * expression * expression option
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 

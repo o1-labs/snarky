@@ -895,7 +895,7 @@ module Type = struct
     let mk exp_loc exp_desc = {Typedast.exp_loc; exp_desc; exp_type= typ} in
     let name = Location.mkloc (sprintf "__implicit%i__" implicit_id) loc in
     let new_exp =
-      mk loc (Unifiable {expression= None; name; id= implicit_id})
+      mk loc (Texp_unifiable {expression= None; name; id= implicit_id})
     in
     env.resolve_env.type_env
     <- { env.resolve_env.type_env with
@@ -926,7 +926,7 @@ module Type = struct
           List.map implicits ~f:(fun (label, typ) ->
               (label, new_implicit_var ~loc typ env) )
         in
-        {exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}
+        {exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (e, es)}
 
   let rec instantiate_implicits ~loc ~is_subtype implicit_vars env =
     let env_implicits = env.resolve_env.type_env.implicit_vars in
@@ -940,11 +940,13 @@ module Type = struct
               let name = Location.mkloc name exp_loc in
               let e =
                 generate_implicits
-                  {exp_loc; exp_type= instance_typ; exp_desc= Variable name}
+                  { exp_loc
+                  ; exp_type= instance_typ
+                  ; exp_desc= Texp_variable name }
                   env
               in
               ( match exp.exp_desc with
-              | Unifiable desc ->
+              | Texp_unifiable desc ->
                   desc.expression <- Some e
               | _ ->
                   raise (Error (exp.exp_loc, No_unifiable_implicit)) ) ;
@@ -982,7 +984,7 @@ module Type = struct
           let cmp = compare exp1.Typedast.exp_type exp2.Typedast.exp_type in
           ( if Int.equal cmp 0 then
             match (exp1.exp_desc, exp2.exp_desc) with
-            | Unifiable desc1, Unifiable desc2 ->
+            | Texp_unifiable desc1, Texp_unifiable desc2 ->
                 if desc1.id < desc2.id then desc2.expression <- Some exp1
                 else desc1.expression <- Some exp2
             | _ ->
@@ -1032,7 +1034,7 @@ module Type = struct
                        ignore
                          (is_subtype env e_strong.exp_type ~of_:e_weak.exp_type) ;
                        ( match e_weak.exp_desc with
-                       | Unifiable desc ->
+                       | Texp_unifiable desc ->
                            desc.expression <- Some e_strong
                        | _ ->
                            raise

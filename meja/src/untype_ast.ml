@@ -100,41 +100,41 @@ let literal = function
       String s
 
 let rec expression_desc = function
-  | Typedast.Apply (e, args) ->
+  | Typedast.Texp_apply (e, args) ->
       Parsetypes.Apply
         ( expression e
         , List.map args ~f:(fun (label, e) -> (label, expression e)) )
-  | Variable name ->
+  | Texp_variable name ->
       Variable name
-  | Literal i ->
+  | Texp_literal i ->
       Literal (literal i)
-  | Fun (label, p, e, explicit) ->
+  | Texp_fun (label, p, e, explicit) ->
       Fun (label, pattern p, expression e, explicit)
-  | Newtype (name, e) ->
+  | Texp_newtype (name, e) ->
       Newtype (name, expression e)
-  | Seq (e1, e2) ->
+  | Texp_seq (e1, e2) ->
       Seq (expression e1, expression e2)
-  | Let (p, e1, e2) ->
+  | Texp_let (p, e1, e2) ->
       Let (pattern p, expression e1, expression e2)
-  | Constraint (e, typ) ->
+  | Texp_constraint (e, typ) ->
       Constraint (expression e, typ)
-  | Tuple es ->
+  | Texp_tuple es ->
       Tuple (List.map ~f:expression es)
-  | Match (e, cases) ->
+  | Texp_match (e, cases) ->
       Match
         ( expression e
         , List.map cases ~f:(fun (p, e) -> (pattern p, expression e)) )
-  | Field (e, path) ->
+  | Texp_field (e, path) ->
       Field (expression e, path)
-  | Record (fields, default) ->
+  | Texp_record (fields, default) ->
       Record
         ( List.map fields ~f:(fun (label, e) -> (label, expression e))
         , Option.map ~f:expression default )
-  | Ctor (path, arg) ->
+  | Texp_ctor (path, arg) ->
       Ctor (path, Option.map ~f:expression arg)
-  | Unifiable {expression= e; name; id} ->
+  | Texp_unifiable {expression= e; name; id} ->
       Unifiable {expression= Option.map ~f:expression e; name; id}
-  | If (e1, e2, e3) ->
+  | Texp_if (e1, e2, e3) ->
       If (expression e1, expression e2, Option.map ~f:expression e3)
 
 and expression e =
