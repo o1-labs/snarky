@@ -4,13 +4,13 @@ open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Tvar (None, _) ->
+  | Ptyp_var (None, _) ->
       fprintf fmt "_"
-  | Tvar (Some name, _) ->
+  | Ptyp_var (Some name, _) ->
       fprintf fmt "'%s" name.txt
-  | Ttuple typs ->
+  | Ptyp_tuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
-  | Tarrow (typ1, typ2, implicitness, label) ->
+  | Ptyp_arrow (typ1, typ2, implicitness, label) ->
       if bracket then fprintf fmt "(" ;
       ( match implicitness with
       | Explicit ->
@@ -20,12 +20,12 @@ let rec type_desc ?(bracket = false) fmt = function
       arg_label_box_end fmt label ;
       fprintf fmt "@ -> %a" type_expr typ2 ;
       if bracket then fprintf fmt ")"
-  | Tctor v ->
+  | Ptyp_ctor v ->
       variant fmt v
-  | Tpoly (vars, typ) ->
+  | Ptyp_poly (vars, typ) ->
       if bracket then fprintf fmt "(" ;
-      fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
-        type_expr typ ;
+      fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false)
+        (Ptyp_tuple vars) type_expr typ ;
       if bracket then fprintf fmt ")"
 
 and tuple fmt typs =

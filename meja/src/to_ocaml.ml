@@ -6,19 +6,19 @@ open Parsetypes
 
 let rec of_type_desc ?loc typ =
   match typ with
-  | Tvar (None, _) ->
+  | Ptyp_var (None, _) ->
       Typ.any ?loc ()
-  | Tvar (Some name, _) ->
+  | Ptyp_var (Some name, _) ->
       Typ.var ?loc name.txt
-  | Tpoly (_, typ) ->
+  | Ptyp_poly (_, typ) ->
       of_type_expr typ
-  | Tarrow (typ1, typ2, _, label) ->
+  | Ptyp_arrow (typ1, typ2, _, label) ->
       Typ.arrow ?loc label (of_type_expr typ1) (of_type_expr typ2)
-  | Tctor
+  | Ptyp_ctor
       {var_ident= name; var_params= params; var_implicit_params= implicits; _}
     ->
       Typ.constr ?loc name (List.map ~f:of_type_expr (params @ implicits))
-  | Ttuple typs ->
+  | Ptyp_tuple typs ->
       Typ.tuple ?loc (List.map ~f:of_type_expr typs)
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc

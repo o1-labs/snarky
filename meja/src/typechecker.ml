@@ -1102,7 +1102,9 @@ let rec check_signature_item env item =
         Type.variant ~loc ~params:[Type.none ~loc ()]
           (Lid.of_list ["Snarky__Request"; "t"])
       in
-      let ctor_ret = Type.mk ~loc (Tctor {variant with var_params= [arg]}) in
+      let ctor_ret =
+        Type.mk ~loc (Ptyp_ctor {variant with var_params= [arg]})
+      in
       let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
       let env, _variant, _ctors =
         type_extension ~loc variant [ctor_decl] env
@@ -1237,7 +1239,9 @@ let rec check_statement env stmt =
         Type.variant ~loc ~params:[Type.none ~loc ()]
           (Lid.of_list ["Snarky__Request"; "t"])
       in
-      let ctor_ret = Type.mk ~loc (Tctor {variant with var_params= [arg]}) in
+      let ctor_ret =
+        Type.mk ~loc (Ptyp_ctor {variant with var_params= [arg]})
+      in
       let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
       let env, _, ctors = type_extension ~loc variant [ctor_decl] env in
       let ctor_decl =
@@ -1247,7 +1251,7 @@ let rec check_statement env stmt =
               ctor_ret=
                 Some
                   (Type.mk ~loc
-                     (Tctor
+                     (Ptyp_ctor
                         (Type.variant ~loc ~params:[arg]
                            (Lid.of_list ["Snarky"; "Request"; "t"])))) }
         | _ ->

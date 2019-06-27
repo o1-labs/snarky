@@ -49,20 +49,20 @@ module Type = struct
     ; var_params= params
     ; var_implicit_params= implicits }
 
-  let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, explicit))
+  let none ?loc ?(explicit = Explicit) () = mk ?loc (Ptyp_var (None, explicit))
 
   let var ?loc ?(explicit = Explicit) name =
-    mk ?loc (Tvar (Some (Loc.mk ?loc name), explicit))
+    mk ?loc (Ptyp_var (Some (Loc.mk ?loc name), explicit))
 
   let constr ?loc ?params ?implicits ident =
-    mk ?loc (Tctor (variant ?loc ?params ?implicits ident))
+    mk ?loc (Ptyp_ctor (variant ?loc ?params ?implicits ident))
 
-  let tuple ?loc typs = mk ?loc (Ttuple typs)
+  let tuple ?loc typs = mk ?loc (Ptyp_tuple typs)
 
   let arrow ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) typ1 typ2 =
-    mk ?loc (Tarrow (typ1, typ2, explicit, label))
+    mk ?loc (Ptyp_arrow (typ1, typ2, explicit, label))
 
-  let poly ?loc vars var = mk ?loc (Tpoly (vars, var))
+  let poly ?loc vars var = mk ?loc (Ptyp_poly (vars, var))
 end
 
 module Type_decl = struct

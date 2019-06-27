@@ -217,7 +217,7 @@ decl_type_expr:
   | x = decl_type(longident(lident, UIDENT))
     { let (x, params) = x in
       mktyp ~pos:$loc
-        (Tctor {var_ident= x; var_params= params; var_implicit_params= []}) }
+        (Ptyp_ctor {var_ident= x; var_params= params; var_implicit_params= []}) }
 
 record_field(ID, EXP):
   | id = as_loc(ID) COLON t = EXP
@@ -560,15 +560,15 @@ pat_or_bare_tuple:
 
 simple_type_expr:
   | UNDERSCORE
-    { mktyp ~pos:$loc (Tvar (None, Explicit)) }
+    { mktyp ~pos:$loc (Ptyp_var (None, Explicit)) }
   | QUOT x = as_loc(lident)
-    { mktyp ~pos:$loc (Tvar (Some x, Explicit)) }
+    { mktyp ~pos:$loc (Ptyp_var (Some x, Explicit)) }
   | t = decl_type_expr
     { t }
   | LPAREN x = type_expr RPAREN
     { x }
   | LPAREN xs = tuple(type_expr) RPAREN
-    { mktyp ~pos:$loc (Ttuple (List.rev xs)) }
+    { mktyp ~pos:$loc (Ptyp_tuple (List.rev xs)) }
 
 %inline type_arrow_label:
   | (* Empty *)
@@ -580,11 +580,11 @@ type_expr:
   | x = simple_type_expr
     { x }
   | label = type_arrow_label x = simple_type_expr DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Explicit, label)) }
+    { mktyp ~pos:$loc (Ptyp_arrow (x, y, Explicit, label)) }
   | QUESTION name = LIDENT COLON x = simple_type_expr DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Explicit, Asttypes.Optional name)) }
+    { mktyp ~pos:$loc (Ptyp_arrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Implicit, label)) }
+    { mktyp ~pos:$loc (Ptyp_arrow (x, y, Implicit, label)) }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X
