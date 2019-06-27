@@ -42,15 +42,15 @@ and expression_desc =
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
 and signature_desc =
-  | SValue of str * type_expr
-  | SInstance of str * type_expr
-  | STypeDecl of type_decl
-  | SModule of str * module_sig
-  | SModType of str * module_sig
-  | SOpen of lid
-  | STypeExtension of variant * ctor_decl list
-  | SRequest of type_expr * ctor_decl
-  | SMultiple of signature_item list
+  | Tsig_value of str * type_expr
+  | Tsig_instance of str * type_expr
+  | Tsig_type of type_decl
+  | Tsig_module of str * module_sig
+  | Tsig_modtype of str * module_sig
+  | Tsig_open of lid
+  | Tsig_typeext of variant * ctor_decl list
+  | Tsig_request of type_expr * ctor_decl
+  | Tsig_multiple of signature_item list
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 

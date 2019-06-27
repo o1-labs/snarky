@@ -141,23 +141,23 @@ and expression e =
   {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}
 
 let rec signature_desc = function
-  | Typedast.SValue (name, typ) ->
+  | Typedast.Tsig_value (name, typ) ->
       Parsetypes.SValue (name, typ)
-  | SInstance (name, typ) ->
+  | Tsig_instance (name, typ) ->
       SInstance (name, typ)
-  | STypeDecl decl ->
+  | Tsig_type decl ->
       STypeDecl decl
-  | SModule (name, msig) ->
+  | Tsig_module (name, msig) ->
       SModule (name, module_sig msig)
-  | SModType (name, msig) ->
+  | Tsig_modtype (name, msig) ->
       SModType (name, module_sig msig)
-  | SOpen path ->
+  | Tsig_open path ->
       SOpen path
-  | STypeExtension (typ, ctors) ->
+  | Tsig_typeext (typ, ctors) ->
       STypeExtension (typ, ctors)
-  | SRequest (arg, ctor) ->
+  | Tsig_request (arg, ctor) ->
       SRequest (arg, ctor)
-  | SMultiple sigs ->
+  | Tsig_multiple sigs ->
       SMultiple (List.map ~f:signature_item sigs)
 
 and signature_item s =
