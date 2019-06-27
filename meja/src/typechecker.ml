@@ -421,10 +421,10 @@ let rec check_pattern ~add env typ pat =
   let loc = pat.pat_loc in
   match pat.pat_desc with
   | PAny ->
-      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= PAny}, env)
+      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_any}, env)
   | PVariable str ->
       let env = add str typ env in
-      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= PVariable str}, env)
+      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}, env)
   | PConstraint (p, constr_typ) ->
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp ;
@@ -435,14 +435,15 @@ let rec check_pattern ~add env typ pat =
       in
       ( { Typedast.pat_loc= loc
         ; pat_type= typ
-        ; pat_desc= PConstraint (p, constr_typ) }
+        ; pat_desc= Tpat_constraint (p, constr_typ) }
       , env )
   | PTuple ps ->
       let vars = List.map ps ~f:(fun _ -> Envi.Type.mkvar None env) in
       let tuple_typ = Envi.Type.mk (Ttuple vars) env in
       check_type ~loc env typ tuple_typ ;
       let ps, env = check_patterns ~add env vars ps in
-      ({Typedast.pat_loc= loc; pat_type= tuple_typ; pat_desc= PTuple ps}, env)
+      ( {Typedast.pat_loc= loc; pat_type= tuple_typ; pat_desc= Tpat_tuple ps}
+      , env )
   | POr (p1, p2) ->
       let env = Envi.open_expr_scope env in
       let p1, env = check_pattern ~add env typ p1 in
@@ -478,10 +479,10 @@ let rec check_pattern ~add env typ pat =
           ~instances:(fun ~key:_ ~data:_ () -> ())
       in
       let env = Envi.push_scope scope2 env in
-      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= POr (p1, p2)}, env)
+      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_or (p1, p2)}, env)
   | PInt i ->
       check_type ~loc env typ Initial_env.Type.int ;
-      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= PInt i}, env)
+      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_int i}, env)
   | PRecord [] ->
       raise (Error (loc, Empty_record))
   | PRecord ((field, _) :: _ as fields) ->
@@ -531,7 +532,8 @@ let rec check_pattern ~add env typ pat =
       let fields =
         List.map2_exn fields ps ~f:(fun (field, _) p -> (field, p))
       in
-      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= PRecord fields}, env)
+      ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_record fields}
+      , env )
   | PCtor (name, arg) ->
       let typ', args_typ = get_ctor name env in
       check_type ~loc env typ typ' ;
@@ -545,7 +547,7 @@ let rec check_pattern ~add env typ pat =
             check_type ~loc env args_typ typ ;
             (None, env)
       in
-      ( {Typedast.pat_loc= loc; pat_type= typ'; pat_desc= PCtor (name, arg)}
+      ( {Typedast.pat_loc= loc; pat_type= typ'; pat_desc= Tpat_ctor (name, arg)}
       , env )
 
 and check_patterns ~add env typs pats =
@@ -947,7 +949,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
                 env
             in
             let p =
-              { Typedast.pat_desc= PVariable name
+              { Typedast.pat_desc= Tpat_variable name
               ; pat_loc= loc
               ; pat_type= var.exp_type }
             in
@@ -967,7 +969,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       in
       let env = Envi.add_name str typ env in
       let p =
-        {Typedast.pat_loc= loc; pat_type= typ; pat_desc= PVariable str}
+        {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}
       in
       (p, e, env)
   | PConstraint (({pat_desc= PVariable str; _} as p'), typ), _ ->
@@ -979,7 +981,9 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       in
       let env = Envi.add_name str ctyp env in
       let p' =
-        {Typedast.pat_loc= p'.pat_loc; pat_type= ctyp; pat_desc= PVariable str}
+        { Typedast.pat_loc= p'.pat_loc
+        ; pat_type= ctyp
+        ; pat_desc= Tpat_variable str }
       in
       let typ =
         Untype_ast.type_expr ~loc (Envi.Type.normalise_constr_names env ctyp)
@@ -987,7 +991,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let p =
         { Typedast.pat_loc= p.pat_loc
         ; pat_type= ctyp
-        ; pat_desc= PConstraint (p', typ) }
+        ; pat_desc= Tpat_constraint (p', typ) }
       in
       (p, e, env)
   | _, [] ->
@@ -1290,7 +1294,8 @@ let rec check_statement env stmt =
                               , { exp_desc=
                                     Match
                                       ( _
-                                      , [ ({pat_desc= PCtor (_, pat); _}, body)
+                                      , [ ( {pat_desc= Tpat_ctor (_, pat); _}
+                                          , body )
                                         ; _ ] )
                                 ; _ } )
                         ; _ }

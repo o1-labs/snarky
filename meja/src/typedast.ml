@@ -7,14 +7,14 @@ type pattern =
   {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: Type0.type_expr}
 
 and pattern_desc =
-  | PAny
-  | PVariable of str
-  | PConstraint of pattern * type_expr
-  | PTuple of pattern list
-  | POr of pattern * pattern
-  | PInt of int
-  | PRecord of (lid * pattern) list
-  | PCtor of lid * pattern option
+  | Tpat_any
+  | Tpat_variable of str
+  | Tpat_constraint of pattern * type_expr
+  | Tpat_tuple of pattern list
+  | Tpat_or of pattern * pattern
+  | Tpat_int of int
+  | Tpat_record of (lid * pattern) list
+  | Tpat_ctor of lid * pattern option
 
 type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
