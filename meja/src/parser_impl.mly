@@ -163,33 +163,33 @@ structure_item:
 
 signature_item:
   | LET x = as_loc(val_ident) COLON typ = type_expr
-    { mksig ~pos:$loc (SValue (x, typ)) }
+    { mksig ~pos:$loc (Psig_value (x, typ)) }
   | INSTANCE x = as_loc(val_ident) COLON typ = type_expr
-    { mksig ~pos:$loc (SInstance (x, typ)) }
+    { mksig ~pos:$loc (Psig_instance (x, typ)) }
   | TYPE x = decl_type(lident) k = type_kind
     { let (x, args) = x in
-      mksig ~pos:$loc (STypeDecl
+      mksig ~pos:$loc (Psig_type
         { tdec_ident= x
         ; tdec_params= args
         ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
-    { mksig ~pos:$loc (SModule (x, m)) }
+    { mksig ~pos:$loc (Psig_module (x, m)) }
   | MODULE x = as_loc(UIDENT)
-    { mksig ~pos:$loc (SModule (x, mkmty ~pos:$loc SigAbstract)) }
+    { mksig ~pos:$loc (Psig_module (x, mkmty ~pos:$loc SigAbstract)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
-    { mksig ~pos:$loc (SModType (x, m)) }
+    { mksig ~pos:$loc (Psig_modtype (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
-    { mksig ~pos:$loc (SOpen x) }
+    { mksig ~pos:$loc (Psig_open x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
-      mksig ~pos:$loc (STypeExtension
+      mksig ~pos:$loc (Psig_typeext
         ( {var_ident= x; var_params= params; var_implicit_params= []}
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl
-    { mksig ~pos:$loc (SRequest (arg, x)) }
+    { mksig ~pos:$loc (Psig_request (arg, x)) }
 
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE

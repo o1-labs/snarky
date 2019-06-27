@@ -1052,14 +1052,14 @@ let type_extension ~loc variant ctors env =
 let rec check_signature_item env item =
   let loc = item.sig_loc in
   match item.sig_desc with
-  | SValue (name, typ) ->
+  | Psig_value (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ', env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ' ;
       let env = add_polymorphised name typ' env in
       (env, {Typedast.sig_desc= Tsig_value (name, typ); sig_loc= loc})
-  | SInstance (name, typ) ->
+  | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ', env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
@@ -1067,10 +1067,10 @@ let rec check_signature_item env item =
       let env = add_polymorphised name typ' env in
       let env = Envi.add_implicit_instance name.txt typ' env in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
-  | STypeDecl decl ->
+  | Psig_type decl ->
       let _decl, env = Typet.TypeDecl.import decl env in
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
-  | SModule (name, msig) ->
+  | Psig_module (name, msig) ->
       let msig, m, env =
         check_module_sig env (Envi.relative_path env name.txt) msig
       in
@@ -1082,21 +1082,21 @@ let rec check_signature_item env item =
             Envi.add_deferred_module name path env
       in
       (env, {Typedast.sig_desc= Tsig_module (name, msig); sig_loc= loc})
-  | SModType (name, signature) ->
+  | Psig_modtype (name, signature) ->
       let env = Envi.open_module name.txt env in
       let signature, m_env, env =
         check_module_sig env (Envi.relative_path env name.txt) signature
       in
       let env = Envi.add_module_type name.txt m_env env in
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
-  | SOpen name ->
+  | Psig_open name ->
       let m = Envi.find_module ~loc name env in
       let env = Envi.open_namespace_scope m env in
       (env, {Typedast.sig_desc= Tsig_open name; sig_loc= loc})
-  | STypeExtension (variant, ctors) ->
+  | Psig_typeext (variant, ctors) ->
       let env, _variant, _ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.sig_desc= Tsig_typeext (variant, ctors); sig_loc= loc})
-  | SRequest (arg, ctor_decl) ->
+  | Psig_request (arg, ctor_decl) ->
       let open Ast_build in
       let variant =
         Type.variant ~loc ~params:[Type.none ~loc ()]
@@ -1110,7 +1110,7 @@ let rec check_signature_item env item =
         type_extension ~loc variant [ctor_decl] env
       in
       (env, {Typedast.sig_desc= Tsig_request (arg, ctor_decl); sig_loc= loc})
-  | SMultiple sigs ->
+  | Psig_multiple sigs ->
       let env, sigs = check_signature env sigs in
       (env, {Typedast.sig_desc= Tsig_multiple sigs; sig_loc= loc})
 

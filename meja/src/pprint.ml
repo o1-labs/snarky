@@ -269,32 +269,32 @@ and expression_field fmt (label, e) =
   fprintf fmt "%a:@ %a" Longident.pp label.txt expression e
 
 let rec signature_desc fmt = function
-  | SValue (name, typ) ->
+  | Psig_value (name, typ) ->
       fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt
         type_expr typ
-  | SInstance (name, typ) ->
+  | Psig_instance (name, typ) ->
       fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" pp_name name.txt
         type_expr typ
-  | STypeDecl decl ->
+  | Psig_type decl ->
       fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
-  | SModule (name, msig) ->
+  | Psig_module (name, msig) ->
       let prefix fmt = fprintf fmt ":@ " in
       fprintf fmt "@[<hov2>module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
         msig
-  | SModType (name, msig) ->
+  | Psig_modtype (name, msig) ->
       let prefix fmt = fprintf fmt "=@ " in
       fprintf fmt "@[<hov2>module type@ %s@ %a;@]@;@;" name.txt
         (module_sig ~prefix) msig
-  | SOpen name ->
+  | Psig_open name ->
       fprintf fmt "@[<2>open %a@]@;@;" Longident.pp name.txt
-  | STypeExtension (typ, ctors) ->
+  | Psig_typeext (typ, ctors) ->
       fprintf fmt "@[<2>type %a +=@[<hv2>@ %a@]@]@;@;" variant typ
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
-  | SRequest (typ, ctor) ->
+  | Psig_request (typ, ctor) ->
       fprintf fmt "@[<2>request (%a)@[<hv2>@ %a@]@]@;@;" type_expr typ
         ctor_decl ctor
-  | SMultiple sigs ->
+  | Psig_multiple sigs ->
       signature fmt sigs
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc

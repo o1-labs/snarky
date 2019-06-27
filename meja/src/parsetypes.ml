@@ -87,15 +87,15 @@ and expression_desc =
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
 and signature_desc =
-  | SValue of str * type_expr
-  | SInstance of str * type_expr
-  | STypeDecl of type_decl
-  | SModule of str * module_sig
-  | SModType of str * module_sig
-  | SOpen of lid
-  | STypeExtension of variant * ctor_decl list
-  | SRequest of type_expr * ctor_decl
-  | SMultiple of signature_item list
+  | Psig_value of str * type_expr
+  | Psig_instance of str * type_expr
+  | Psig_type of type_decl
+  | Psig_module of str * module_sig
+  | Psig_modtype of str * module_sig
+  | Psig_open of lid
+  | Psig_typeext of variant * ctor_decl list
+  | Psig_request of type_expr * ctor_decl
+  | Psig_multiple of signature_item list
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 

@@ -87,7 +87,7 @@ let rec to_signature_item item =
   match item with
   | Sig_value (ident, {val_type; val_loc; _}) ->
       { sig_desc=
-          SValue
+          Psig_value
             ( mkloc (Ident.name ident) val_loc
             , to_type_expr ~loc:val_loc val_type )
       ; sig_loc= val_loc }
@@ -95,7 +95,7 @@ let rec to_signature_item item =
       (* TODO: handle rec_status *)
       let tdec_desc = to_type_decl_desc decl in
       { sig_desc=
-          STypeDecl
+          Psig_type
             { tdec_ident= mkloc (Ident.name ident) decl.type_loc
             ; tdec_params=
                 List.map ~f:(to_type_expr ~loc:decl.type_loc) decl.type_params
@@ -105,13 +105,13 @@ let rec to_signature_item item =
       ; sig_loc= decl.type_loc }
   | Sig_module (ident, decl, _) ->
       { sig_desc=
-          SModule
+          Psig_module
             ( mkloc (Ident.name ident) decl.md_loc
             , to_module_sig ~loc:decl.md_loc (Some decl.md_type) )
       ; sig_loc= decl.md_loc }
   | Sig_modtype (ident, decl) ->
       { sig_desc=
-          SModType
+          Psig_modtype
             ( mkloc (Ident.name ident) decl.mtd_loc
             , to_module_sig ~loc:decl.mtd_loc decl.mtd_type )
       ; sig_loc= decl.mtd_loc }

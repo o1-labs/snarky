@@ -170,11 +170,11 @@ and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
 let rec of_signature_desc ?loc = function
-  | SValue (name, typ) | SInstance (name, typ) ->
+  | Psig_value (name, typ) | Psig_instance (name, typ) ->
       Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
-  | STypeDecl decl ->
+  | Psig_type decl ->
       Sig.type_ ?loc Recursive [of_type_decl decl]
-  | SModule (name, msig) ->
+  | Psig_module (name, msig) ->
       let msig =
         match of_module_sig msig with
         | Some msig ->
@@ -184,18 +184,18 @@ let rec of_signature_desc ?loc = function
               "Cannot generate OCaml for a module with an abstract signature"
       in
       Sig.module_ ?loc (Md.mk ?loc name msig)
-  | SModType (name, msig) ->
+  | Psig_modtype (name, msig) ->
       Sig.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
-  | SOpen name ->
+  | Psig_open name ->
       Sig.open_ ?loc (Opn.mk ?loc name)
-  | STypeExtension (variant, ctors) ->
+  | Psig_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
         )
       in
       let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Sig.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
-  | SRequest (_, ctor) ->
+  | Psig_request (_, ctor) ->
       let params = [(Typ.any ?loc (), Invariant)] in
       let ident =
         Location.mkloc
@@ -203,7 +203,7 @@ let rec of_signature_desc ?loc = function
           (Option.value ~default:Location.none loc)
       in
       Sig.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
-  | SMultiple sigs ->
+  | Psig_multiple sigs ->
       Sig.include_ ?loc
         { pincl_mod= Mty.signature ?loc (of_signature sigs)
         ; pincl_loc= Option.value ~default:Location.none loc
