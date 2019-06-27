@@ -70,21 +70,21 @@ and type_decl ?loc decl =
 
 let rec pattern_desc = function
   | Typedast.Tpat_any ->
-      Parsetypes.PAny
+      Parsetypes.Ppat_any
   | Tpat_variable str ->
-      PVariable str
+      Ppat_variable str
   | Tpat_constraint (p, typ) ->
-      PConstraint (pattern p, typ)
+      Ppat_constraint (pattern p, typ)
   | Tpat_tuple ps ->
-      PTuple (List.map ~f:pattern ps)
+      Ppat_tuple (List.map ~f:pattern ps)
   | Tpat_or (p1, p2) ->
-      POr (pattern p1, pattern p2)
+      Ppat_or (pattern p1, pattern p2)
   | Tpat_int i ->
-      PInt i
+      Ppat_int i
   | Tpat_record fields ->
-      PRecord (List.map fields ~f:(fun (label, p) -> (label, pattern p)))
+      Ppat_record (List.map fields ~f:(fun (label, p) -> (label, pattern p)))
   | Tpat_ctor (name, arg) ->
-      PCtor (name, Option.map ~f:pattern arg)
+      Ppat_ctor (name, Option.map ~f:pattern arg)
 
 and pattern p =
   {Parsetypes.pat_desc= pattern_desc p.Typedast.pat_desc; pat_loc= p.pat_loc}

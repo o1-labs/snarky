@@ -21,8 +21,8 @@ let mkmod ~pos d = {mod_desc= d; mod_loc= Loc.of_pos pos}
 let mkmty ~pos d = {msig_desc= d; msig_loc= Loc.of_pos pos}
 
 let conspat ~pos hd tl =
-  mkpat ~pos (PCtor
-    ( mkloc ~pos (Lident "::"), Some (mkpat ~pos (PTuple [hd; tl]))))
+  mkpat ~pos (Ppat_ctor
+    ( mkloc ~pos (Lident "::"), Some (mkpat ~pos (Ppat_tuple [hd; tl]))))
 
 let consexp ~pos hd tl =
   mkexp ~pos (Pexp_ctor
@@ -347,7 +347,7 @@ expr:
     { mkexp ~pos:$loc (Pexp_constraint (x, typ)) }
   | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
     { let unit_pat =
-        mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
+        mkpat ~pos:$loc (Ppat_ctor (mkloc (Lident "()") ~pos:$loc, None))
       in
       mkexp ~pos:$loc (Pexp_fun (Nolabel, unit_pat, body, Explicit)) }
   | FUN LPAREN f = function_from_args
@@ -437,21 +437,21 @@ pat_arg:
   | p = pat
     { (Asttypes.Nolabel, p) }
   | TILDE name = as_loc(LIDENT)
-    { (Asttypes.Labelled name.txt, mkpat ~pos:$loc (PVariable name)) }
+    { (Asttypes.Labelled name.txt, mkpat ~pos:$loc (Ppat_variable name)) }
   | TILDE name = as_loc(LIDENT) COLON typ = type_expr
     { ( Asttypes.Labelled name.txt
       , mkpat ~pos:$loc
-          (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
+          (Ppat_constraint (mkpat ~pos:$loc(name) (Ppat_variable name), typ)) ) }
 
 pat_arg_opt:
   | p = pat_arg
     { p }
   | QUESTION name = as_loc(LIDENT)
-    { (Asttypes.Optional name.txt, mkpat ~pos:$loc (PVariable name)) }
+    { (Asttypes.Optional name.txt, mkpat ~pos:$loc (Ppat_variable name)) }
   | QUESTION name = as_loc(LIDENT) COLON typ = type_expr
     { ( Asttypes.Optional name.txt
       , mkpat ~pos:$loc
-          (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
+          (Ppat_constraint (mkpat ~pos:$loc(name) (Ppat_variable name), typ)) ) }
 
 function_body:
  | EQUALGT LBRACE body = block RBRACE
@@ -510,11 +510,11 @@ pat_field:
   | x = record_field(longident(lident, UIDENT), pat)
     { x }
   | x = as_loc(longident(lident, UIDENT))
-    { (x, mkpat ~pos:$loc (PVariable (lid_last x))) }
+    { (x, mkpat ~pos:$loc (Ppat_variable (lid_last x))) }
 
 pat_record:
   | LBRACE fields = list(pat_field, COMMA) RBRACE
-    { mkpat ~pos:$loc (PRecord (List.rev fields)) }
+    { mkpat ~pos:$loc (Ppat_record (List.rev fields)) }
 
 pat_ctor_args:
   | (* empty *)
@@ -526,37 +526,37 @@ pat_ctor_args:
 
 pat_no_bar:
   | UNDERSCORE
-    { mkpat ~pos:$loc PAny }
+    { mkpat ~pos:$loc Ppat_any }
   | LPAREN p = pat_or_bare_tuple RPAREN
     { p }
   | LBRACKET ps = list(pat, COMMA) RBRACKET
     { List.fold
-        ~init:(mkpat ~pos:$loc (PCtor (mkloc ~pos:$loc (Lident "[]"), None)))
+        ~init:(mkpat ~pos:$loc (Ppat_ctor (mkloc ~pos:$loc (Lident "[]"), None)))
         ps ~f:(fun acc p -> conspat ~pos:$loc p acc) }
   | hd = pat_no_bar COLONCOLON tl = pat_no_bar
     { conspat ~pos:$loc hd tl }
   | p = pat_no_bar COLON typ = type_expr
-    { mkpat ~pos:$loc (PConstraint (p, typ)) }
+    { mkpat ~pos:$loc (Ppat_constraint (p, typ)) }
   | x = as_loc(val_ident)
-    { mkpat ~pos:$loc (PVariable x) }
+    { mkpat ~pos:$loc (Ppat_variable x) }
   | i = INT
-    { mkpat ~pos:$loc (PInt i) }
+    { mkpat ~pos:$loc (Ppat_int i) }
   | p = pat_record
     { p }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = pat_ctor_args
-    { mkpat ~pos:$loc (PCtor (id, args)) }
+    { mkpat ~pos:$loc (Ppat_ctor (id, args)) }
 
 pat:
   | p = pat_no_bar
     { p }
   | p1 = pat_no_bar BAR p2 = pat
-    { mkpat ~pos:$loc (POr (p1, p2)) }
+    { mkpat ~pos:$loc (Ppat_or (p1, p2)) }
 
 pat_or_bare_tuple:
   | x = pat
     { x }
   | ps = tuple(pat)
-    { mkpat ~pos:$loc (PTuple (List.rev ps)) }
+    { mkpat ~pos:$loc (Ppat_tuple (List.rev ps)) }
 
 simple_type_expr:
   | UNDERSCORE

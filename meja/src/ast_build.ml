@@ -115,13 +115,13 @@ module Pat = struct
   let mk ?(loc = Location.none) d : Parsetypes.pattern =
     {pat_desc= d; pat_loc= loc}
 
-  let any ?loc () = mk ?loc PAny
+  let any ?loc () = mk ?loc Ppat_any
 
-  let var ?loc ident = mk ?loc (PVariable (Loc.mk ?loc ident))
+  let var ?loc ident = mk ?loc (Ppat_variable (Loc.mk ?loc ident))
 
-  let ctor ?loc ?args name = mk ?loc (PCtor (Loc.mk ?loc name, args))
+  let ctor ?loc ?args name = mk ?loc (Ppat_ctor (Loc.mk ?loc name, args))
 
-  let record ?loc fields = mk ?loc (PRecord fields)
+  let record ?loc fields = mk ?loc (Ppat_record fields)
 
   let field ?loc ?eq name =
     let eq =

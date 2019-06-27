@@ -420,12 +420,12 @@ let get_ctor (name : lid) env =
 let rec check_pattern ~add env typ pat =
   let loc = pat.pat_loc in
   match pat.pat_desc with
-  | PAny ->
+  | Ppat_any ->
       ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_any}, env)
-  | PVariable str ->
+  | Ppat_variable str ->
       let env = add str typ env in
       ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}, env)
-  | PConstraint (p, constr_typ) ->
+  | Ppat_constraint (p, constr_typ) ->
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp ;
       let p, env = check_pattern ~add env ctyp p in
@@ -437,14 +437,14 @@ let rec check_pattern ~add env typ pat =
         ; pat_type= typ
         ; pat_desc= Tpat_constraint (p, constr_typ) }
       , env )
-  | PTuple ps ->
+  | Ppat_tuple ps ->
       let vars = List.map ps ~f:(fun _ -> Envi.Type.mkvar None env) in
       let tuple_typ = Envi.Type.mk (Ttuple vars) env in
       check_type ~loc env typ tuple_typ ;
       let ps, env = check_patterns ~add env vars ps in
       ( {Typedast.pat_loc= loc; pat_type= tuple_typ; pat_desc= Tpat_tuple ps}
       , env )
-  | POr (p1, p2) ->
+  | Ppat_or (p1, p2) ->
       let env = Envi.open_expr_scope env in
       let p1, env = check_pattern ~add env typ p1 in
       let scope1, env = Envi.pop_expr_scope env in
@@ -480,12 +480,12 @@ let rec check_pattern ~add env typ pat =
       in
       let env = Envi.push_scope scope2 env in
       ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_or (p1, p2)}, env)
-  | PInt i ->
+  | Ppat_int i ->
       check_type ~loc env typ Initial_env.Type.int ;
       ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_int i}, env)
-  | PRecord [] ->
+  | Ppat_record [] ->
       raise (Error (loc, Empty_record))
-  | PRecord ((field, _) :: _ as fields) ->
+  | Ppat_record ((field, _) :: _ as fields) ->
       let typ, field_decls, bound_vars, env =
         match Envi.TypeDecl.find_unaliased_of_type ~loc typ env with
         | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) ->
@@ -534,7 +534,7 @@ let rec check_pattern ~add env typ pat =
       in
       ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_record fields}
       , env )
-  | PCtor (name, arg) ->
+  | Ppat_ctor (name, arg) ->
       let typ', args_typ = get_ctor name env in
       check_type ~loc env typ typ' ;
       let arg, env =
@@ -968,7 +968,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   in
   let loc = p.pat_loc in
   match (p.pat_desc, implicit_vars) with
-  | PVariable str, _ ->
+  | Ppat_variable str, _ ->
       let typ =
         if Set.is_empty typ_vars then e.exp_type
         else Envi.Type.mk (Tpoly (Set.to_list typ_vars, e.exp_type)) env
@@ -978,7 +978,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}
       in
       (p, e, env)
-  | PConstraint (({pat_desc= PVariable str; _} as p'), typ), _ ->
+  | Ppat_constraint (({pat_desc= Ppat_variable str; _} as p'), typ), _ ->
       let ctyp, env = Typet.Type.import typ env in
       check_type ~loc env e.exp_type ctyp ;
       let ctyp =
@@ -1186,7 +1186,7 @@ let rec check_statement env stmt =
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_value (p, e)})
   | Instance (name, e) ->
       let env = Envi.open_expr_scope env in
-      let p = {pat_desc= PVariable name; pat_loc= name.loc} in
+      let p = {pat_desc= Ppat_variable name; pat_loc= name.loc} in
       let _, e, env = check_binding ~toplevel:true env p e in
       let scope, env = Envi.pop_expr_scope env in
       let env = Envi.join_expr_scope env scope in

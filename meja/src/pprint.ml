@@ -97,34 +97,39 @@ let type_decl fmt decl =
   type_decl_desc fmt decl.tdec_desc
 
 let rec pattern_desc fmt = function
-  | PAny ->
+  | Ppat_any ->
       fprintf fmt "_"
-  | PVariable str ->
+  | Ppat_variable str ->
       fprintf fmt "%s" str.txt
-  | PConstraint (p, typ) ->
+  | Ppat_constraint (p, typ) ->
       fprintf fmt "%a@ : @[<hv2>%a@]" pattern_bracket p type_expr typ
-  | PTuple pats ->
+  | Ppat_tuple pats ->
       fprintf fmt "(@[<hv1>@,%a@,@])"
         (pp_print_list ~pp_sep:comma_sep pattern)
         pats
-  | POr (p1, p2) ->
+  | Ppat_or (p1, p2) ->
       fprintf fmt "@[<hv0>%a@]@ | @[<hv0>%a@]" pattern p1 pattern p2
-  | PInt i ->
+  | Ppat_int i ->
       pp_print_int fmt i
-  | PRecord fields ->
+  | Ppat_record fields ->
       fprintf fmt "{@[<hv2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep pattern_field)
         fields
-  | PCtor (path, None) ->
+  | Ppat_ctor (path, None) ->
       Longident.pp fmt path.txt
-  | PCtor (path, Some ({pat_desc= PTuple _; _} as arg)) ->
+  | Ppat_ctor (path, Some ({pat_desc= Ppat_tuple _; _} as arg)) ->
       fprintf fmt "%a@ %a" Longident.pp path.txt pattern arg
-  | PCtor (path, Some arg) ->
+  | Ppat_ctor (path, Some arg) ->
       fprintf fmt "%a@ (@[<hv1>@,%a@,@])" Longident.pp path.txt pattern arg
 
 and pattern_desc_bracket fmt pat =
   match pat with
-  | PAny | PVariable _ | PTuple _ | PInt _ | PRecord _ | PCtor _ ->
+  | Ppat_any
+  | Ppat_variable _
+  | Ppat_tuple _
+  | Ppat_int _
+  | Ppat_record _
+  | Ppat_ctor _ ->
       pattern_desc fmt pat
   | _ ->
       fprintf fmt "(@[<hv1>@,%a@,@])" pattern_desc pat

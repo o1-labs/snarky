@@ -53,14 +53,14 @@ type literal = Int of int | Bool of bool | Field of string | String of string
 type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
 and pattern_desc =
-  | PAny
-  | PVariable of str
-  | PConstraint of pattern * type_expr
-  | PTuple of pattern list
-  | POr of pattern * pattern
-  | PInt of int
-  | PRecord of (lid * pattern) list
-  | PCtor of lid * pattern option
+  | Ppat_any
+  | Ppat_variable of str
+  | Ppat_constraint of pattern * type_expr
+  | Ppat_tuple of pattern list
+  | Ppat_or of pattern * pattern
+  | Ppat_int of int
+  | Ppat_record of (lid * pattern) list
+  | Ppat_ctor of lid * pattern option
 
 type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 

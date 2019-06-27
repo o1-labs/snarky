@@ -71,23 +71,23 @@ let of_type_decl decl =
       failwith "Cannot convert TForward to OCaml"
 
 let rec of_pattern_desc ?loc = function
-  | PAny ->
+  | Ppat_any ->
       Pat.any ?loc ()
-  | PVariable str ->
+  | Ppat_variable str ->
       Pat.var ?loc str
-  | PConstraint (p, typ) ->
+  | Ppat_constraint (p, typ) ->
       Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)
-  | PTuple ps ->
+  | Ppat_tuple ps ->
       Pat.tuple ?loc (List.map ~f:of_pattern ps)
-  | POr (p1, p2) ->
+  | Ppat_or (p1, p2) ->
       Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
-  | PInt i ->
+  | Ppat_int i ->
       Pat.constant ?loc (Const.int i)
-  | PRecord fields ->
+  | Ppat_record fields ->
       Pat.record ?loc
         (List.map fields ~f:(fun (f, p) -> (f, of_pattern p)))
         Open
-  | PCtor (name, arg) ->
+  | Ppat_ctor (name, arg) ->
       Pat.construct ?loc name (Option.map ~f:of_pattern arg)
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
