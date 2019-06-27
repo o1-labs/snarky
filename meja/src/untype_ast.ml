@@ -179,28 +179,28 @@ and module_sig msig =
 
 let rec statement_desc = function
   | Typedast.Tstmt_value (p, e) ->
-      Parsetypes.Value (pattern p, expression e)
+      Parsetypes.Pstmt_value (pattern p, expression e)
   | Tstmt_instance (name, e) ->
-      Instance (name, expression e)
+      Pstmt_instance (name, expression e)
   | Tstmt_type decl ->
-      TypeDecl decl
+      Pstmt_type decl
   | Tstmt_module (name, m) ->
-      Module (name, module_expr m)
+      Pstmt_module (name, module_expr m)
   | Tstmt_modtype (name, msig) ->
-      ModType (name, module_sig msig)
+      Pstmt_modtype (name, module_sig msig)
   | Tstmt_open path ->
-      Open path
+      Pstmt_open path
   | Tstmt_typeext (typ, ctors) ->
-      TypeExtension (typ, ctors)
+      Pstmt_typeext (typ, ctors)
   | Tstmt_request (arg, ctor, handler) ->
-      Request
+      Pstmt_request
         ( arg
         , ctor
         , Option.map
             ~f:(fun (p, e) -> (Option.map ~f:pattern p, expression e))
             handler )
   | Tstmt_multiple stmts ->
-      Multiple (List.map ~f:statement stmts)
+      Pstmt_multiple (List.map ~f:statement stmts)
 
 and statement s =
   { Parsetypes.stmt_desc= statement_desc s.Typedast.stmt_desc

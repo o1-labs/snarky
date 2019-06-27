@@ -108,15 +108,16 @@ and module_sig_desc =
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
 and statement_desc =
-  | Value of pattern * expression
-  | Instance of str * expression
-  | TypeDecl of type_decl
-  | Module of str * module_expr
-  | ModType of str * module_sig
-  | Open of lid
-  | TypeExtension of variant * ctor_decl list
-  | Request of type_expr * ctor_decl * (pattern option * expression) option
-  | Multiple of statement list
+  | Pstmt_value of pattern * expression
+  | Pstmt_instance of str * expression
+  | Pstmt_type of type_decl
+  | Pstmt_module of str * module_expr
+  | Pstmt_modtype of str * module_sig
+  | Pstmt_open of lid
+  | Pstmt_typeext of variant * ctor_decl list
+  | Pstmt_request of
+      type_expr * ctor_decl * (pattern option * expression) option
+  | Pstmt_multiple of statement list
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 

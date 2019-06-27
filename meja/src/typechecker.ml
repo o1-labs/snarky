@@ -1176,7 +1176,7 @@ let in_decl = ref false
 let rec check_statement env stmt =
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
-  | Value (p, e) ->
+  | Pstmt_value (p, e) ->
       let env = Envi.open_expr_scope env in
       let p, e, env = check_binding ~toplevel:true env p e in
       let scope, env = Envi.pop_expr_scope env in
@@ -1184,7 +1184,7 @@ let rec check_statement env stmt =
          its associated type variables etc. *)
       let env = Envi.join_expr_scope env scope in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_value (p, e)})
-  | Instance (name, e) ->
+  | Pstmt_instance (name, e) ->
       let env = Envi.open_expr_scope env in
       let p = {pat_desc= Ppat_variable name; pat_loc= name.loc} in
       let _, e, env = check_binding ~toplevel:true env p e in
@@ -1192,20 +1192,20 @@ let rec check_statement env stmt =
       let env = Envi.join_expr_scope env scope in
       let env = Envi.add_implicit_instance name.txt e.exp_type env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e)})
-  | TypeDecl decl when !in_decl ->
+  | Pstmt_type decl when !in_decl ->
       let decl, env = Typet.TypeDecl.import decl env in
       let stmt =
         { Typedast.stmt_loc= loc
         ; stmt_desc= Tstmt_type (Untype_ast.type_decl ~loc decl) }
       in
       (env, stmt)
-  | TypeDecl decl ->
+  | Pstmt_type decl ->
       in_decl := true ;
       let ret =
         let stmt =
           match Codegen.typ_of_decl ~loc decl with
           | Some typ_stmts ->
-              {stmt with stmt_desc= Multiple typ_stmts}
+              {stmt with stmt_desc= Pstmt_multiple typ_stmts}
           | None ->
               stmt
         in
@@ -1213,27 +1213,27 @@ let rec check_statement env stmt =
       in
       in_decl := false ;
       ret
-  | Module (name, m) ->
+  | Pstmt_module (name, m) ->
       let env = Envi.open_module name.txt env in
       let env, m = check_module_expr env m in
       let m_env, env = Envi.pop_module ~loc env in
       let env = Envi.add_module name m_env env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_module (name, m)})
-  | ModType (name, signature) ->
+  | Pstmt_modtype (name, signature) ->
       let signature, m_env, env =
         check_module_sig env (Envi.relative_path env name.txt) signature
       in
       let env = Envi.add_module_type name.txt m_env env in
       ( env
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
-  | Open name ->
+  | Pstmt_open name ->
       let m = Envi.find_module ~loc name env in
       ( Envi.open_namespace_scope m env
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_open name} )
-  | TypeExtension (variant, ctors) ->
+  | Pstmt_typeext (variant, ctors) ->
       let env, _variant, _ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_typeext (variant, ctors)})
-  | Request (arg, ctor_decl, handler) ->
+  | Pstmt_request (arg, ctor_decl, handler) ->
       let open Ast_build in
       let variant =
         Type.variant ~loc ~params:[Type.none ~loc ()]
@@ -1321,7 +1321,7 @@ let rec check_statement env stmt =
             (None, env)
       in
       (env, {stmt_loc= loc; stmt_desc= Tstmt_request (arg, ctor_decl, handler)})
-  | Multiple stmts ->
+  | Pstmt_multiple stmts ->
       let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
       (env, {stmt_loc= loc; stmt_desc= Tstmt_multiple stmts})
 

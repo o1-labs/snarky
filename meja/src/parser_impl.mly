@@ -135,31 +135,31 @@ signature:
 
 structure_item:
   | LET x = pat EQUAL e = expr
-    { mkstmt ~pos:$loc (Value (x, e)) }
+    { mkstmt ~pos:$loc (Pstmt_value (x, e)) }
   | INSTANCE x = as_loc(val_ident) EQUAL e = expr
-    { mkstmt ~pos:$loc (Instance (x, e)) }
+    { mkstmt ~pos:$loc (Pstmt_instance (x, e)) }
   | TYPE x = decl_type(lident) k = type_kind
     { let (x, args) = x in
-      mkstmt ~pos:$loc (TypeDecl
+      mkstmt ~pos:$loc (Pstmt_type
         { tdec_ident= x
         ; tdec_params= args
         ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
-    { mkstmt ~pos:$loc (Module (x, m)) }
+    { mkstmt ~pos:$loc (Pstmt_module (x, m)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
-    { mkstmt ~pos:$loc (ModType (x, m)) }
+    { mkstmt ~pos:$loc (Pstmt_modtype (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
-    { mkstmt ~pos:$loc (Open x) }
+    { mkstmt ~pos:$loc (Pstmt_open x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
-      mkstmt ~pos:$loc (TypeExtension
+      mkstmt ~pos:$loc (Pstmt_typeext
         ( {var_ident= x; var_params= params; var_implicit_params= []}
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
-    { mkstmt ~pos:$loc (Request (arg, x, handler)) }
+    { mkstmt ~pos:$loc (Pstmt_request (arg, x, handler)) }
 
 signature_item:
   | LET x = as_loc(val_ident) COLON typ = type_expr

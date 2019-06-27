@@ -235,26 +235,26 @@ and of_module_sig_desc ?loc = function
 and of_module_sig msig = of_module_sig_desc ~loc:msig.msig_loc msig.msig_desc
 
 let rec of_statement_desc ?loc = function
-  | Value (p, e) ->
+  | Pstmt_value (p, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
-  | Instance (name, e) ->
+  | Pstmt_instance (name, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (Pat.var ?loc name) (of_expression e)]
-  | TypeDecl decl ->
+  | Pstmt_type decl ->
       Str.type_ ?loc Recursive [of_type_decl decl]
-  | Module (name, m) ->
+  | Pstmt_module (name, m) ->
       Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
-  | ModType (name, msig) ->
+  | Pstmt_modtype (name, msig) ->
       Str.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
-  | Open name ->
+  | Pstmt_open name ->
       Str.open_ ?loc (Opn.mk ?loc name)
-  | TypeExtension (variant, ctors) ->
+  | Pstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
         )
       in
       let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Str.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
-  | Request (_, ctor, handler) ->
+  | Pstmt_request (_, ctor, handler) ->
       let params = [(Typ.any ?loc (), Invariant)] in
       let ident =
         Location.mkloc
@@ -288,7 +288,7 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
-  | Multiple stmts ->
+  | Pstmt_multiple stmts ->
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc

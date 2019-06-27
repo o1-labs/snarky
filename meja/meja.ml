@@ -44,11 +44,11 @@ let add_preamble impl_mod curve proofs ast =
   in
   let snarky_impl_path = mkloc (Lapply (snarky_make, backend_path)) in
   let snarky_impl =
-    Module
+    Pstmt_module
       ( mkloc impl_mod
       , {mod_desc= ModName snarky_impl_path; mod_loc= Location.none} )
   in
-  let snarky_open = Open (mkloc (Lident impl_mod)) in
+  let snarky_open = Pstmt_open (mkloc (Lident impl_mod)) in
   let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in
   mk_stmt snarky_impl :: mk_stmt snarky_open :: ast
 
