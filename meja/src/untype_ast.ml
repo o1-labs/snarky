@@ -207,11 +207,11 @@ and statement s =
   ; stmt_loc= s.stmt_loc }
 
 and module_desc = function
-  | Typedast.Structure stmts ->
+  | Typedast.Tmod_struct stmts ->
       Parsetypes.Structure (List.map ~f:statement stmts)
-  | ModName path ->
+  | Tmod_name path ->
       ModName path
-  | Functor (name, fsig, m) ->
+  | Tmod_functor (name, fsig, m) ->
       Functor (name, module_sig fsig, module_expr m)
 
 and module_expr m =

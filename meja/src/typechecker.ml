@@ -1326,14 +1326,14 @@ and check_module_expr env m =
   match m.mod_desc with
   | Structure stmts ->
       let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
-      (env, {Typedast.mod_loc= loc; mod_desc= Structure stmts})
+      (env, {Typedast.mod_loc= loc; mod_desc= Tmod_struct stmts})
   | ModName name ->
       let path = Envi.current_path env in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
       let m' = Envi.find_module ~loc name env in
       let env = Envi.push_scope {m' with path} env in
-      (env, {Typedast.mod_loc= loc; mod_desc= ModName name})
+      (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
   | Functor (f_name, f, m) ->
       let path = Option.value_exn (Envi.current_path env) in
       (* Remove the module placed on the stack by the caller. *)
@@ -1364,7 +1364,7 @@ and check_module_expr env m =
           (Envi.make_functor path (fun path f -> fst (ftor path f)))
           env
       in
-      (env, {m with mod_desc= Functor (f_name, f, m)})
+      (env, {m with mod_desc= Tmod_functor (f_name, f, m)})
 
 let check_signature env signature =
   Envi.set_type_predeclaring env ;

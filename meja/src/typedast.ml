@@ -77,6 +77,6 @@ and statement_desc =
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc =
-  | Structure of statement list
-  | ModName of lid
-  | Functor of str * module_sig * module_expr
+  | Tmod_struct of statement list
+  | Tmod_name of lid
+  | Tmod_functor of str * module_sig * module_expr
