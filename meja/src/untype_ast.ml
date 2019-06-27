@@ -67,3 +67,152 @@ and type_decl ?loc decl =
     ~params:(List.map ~f:type_expr decl.tdec_params)
     ~implicits:(List.map ~f:type_expr decl.tdec_implicit_params)
     decl.tdec_ident.txt decl.tdec_desc
+
+let rec pattern_desc = function
+  | Typedast.Tpat_any ->
+      Parsetypes.Ppat_any
+  | Tpat_variable str ->
+      Ppat_variable str
+  | Tpat_constraint (p, typ) ->
+      Ppat_constraint (pattern p, typ)
+  | Tpat_tuple ps ->
+      Ppat_tuple (List.map ~f:pattern ps)
+  | Tpat_or (p1, p2) ->
+      Ppat_or (pattern p1, pattern p2)
+  | Tpat_int i ->
+      Ppat_int i
+  | Tpat_record fields ->
+      Ppat_record (List.map fields ~f:(fun (label, p) -> (label, pattern p)))
+  | Tpat_ctor (name, arg) ->
+      Ppat_ctor (name, Option.map ~f:pattern arg)
+
+and pattern p =
+  {Parsetypes.pat_desc= pattern_desc p.Typedast.pat_desc; pat_loc= p.pat_loc}
+
+let literal = function
+  | Typedast.Int i ->
+      Parsetypes.Int i
+  | Bool b ->
+      Bool b
+  | Field f ->
+      Field f
+  | String s ->
+      String s
+
+let rec expression_desc = function
+  | Typedast.Texp_apply (e, args) ->
+      Parsetypes.Pexp_apply
+        ( expression e
+        , List.map args ~f:(fun (label, e) -> (label, expression e)) )
+  | Texp_variable name ->
+      Pexp_variable name
+  | Texp_literal i ->
+      Pexp_literal (literal i)
+  | Texp_fun (label, p, e, explicit) ->
+      Pexp_fun (label, pattern p, expression e, explicit)
+  | Texp_newtype (name, e) ->
+      Pexp_newtype (name, expression e)
+  | Texp_seq (e1, e2) ->
+      Pexp_seq (expression e1, expression e2)
+  | Texp_let (p, e1, e2) ->
+      Pexp_let (pattern p, expression e1, expression e2)
+  | Texp_constraint (e, typ) ->
+      Pexp_constraint (expression e, typ)
+  | Texp_tuple es ->
+      Pexp_tuple (List.map ~f:expression es)
+  | Texp_match (e, cases) ->
+      Pexp_match
+        ( expression e
+        , List.map cases ~f:(fun (p, e) -> (pattern p, expression e)) )
+  | Texp_field (e, path) ->
+      Pexp_field (expression e, path)
+  | Texp_record (fields, default) ->
+      Pexp_record
+        ( List.map fields ~f:(fun (label, e) -> (label, expression e))
+        , Option.map ~f:expression default )
+  | Texp_ctor (path, arg) ->
+      Pexp_ctor (path, Option.map ~f:expression arg)
+  | Texp_unifiable {expression= e; name; id} ->
+      Pexp_unifiable {expression= Option.map ~f:expression e; name; id}
+  | Texp_if (e1, e2, e3) ->
+      Pexp_if (expression e1, expression e2, Option.map ~f:expression e3)
+
+and expression e =
+  {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}
+
+let rec signature_desc = function
+  | Typedast.Tsig_value (name, typ) ->
+      Parsetypes.Psig_value (name, typ)
+  | Tsig_instance (name, typ) ->
+      Psig_instance (name, typ)
+  | Tsig_type decl ->
+      Psig_type decl
+  | Tsig_module (name, msig) ->
+      Psig_module (name, module_sig msig)
+  | Tsig_modtype (name, msig) ->
+      Psig_modtype (name, module_sig msig)
+  | Tsig_open path ->
+      Psig_open path
+  | Tsig_typeext (typ, ctors) ->
+      Psig_typeext (typ, ctors)
+  | Tsig_request (arg, ctor) ->
+      Psig_request (arg, ctor)
+  | Tsig_multiple sigs ->
+      Psig_multiple (List.map ~f:signature_item sigs)
+
+and signature_item s =
+  {Parsetypes.sig_desc= signature_desc s.Typedast.sig_desc; sig_loc= s.sig_loc}
+
+and module_sig_desc = function
+  | Typedast.Tmty_sig sigs ->
+      Parsetypes.Pmty_sig (List.map ~f:signature_item sigs)
+  | Tmty_name path ->
+      Pmty_name path
+  | Tmty_abstract ->
+      Pmty_abstract
+  | Tmty_functor (name, fsig, msig) ->
+      Pmty_functor (name, module_sig fsig, module_sig msig)
+
+and module_sig msig =
+  { Parsetypes.msig_desc= module_sig_desc msig.Typedast.msig_desc
+  ; msig_loc= msig.msig_loc }
+
+let rec statement_desc = function
+  | Typedast.Tstmt_value (p, e) ->
+      Parsetypes.Pstmt_value (pattern p, expression e)
+  | Tstmt_instance (name, e) ->
+      Pstmt_instance (name, expression e)
+  | Tstmt_type decl ->
+      Pstmt_type decl
+  | Tstmt_module (name, m) ->
+      Pstmt_module (name, module_expr m)
+  | Tstmt_modtype (name, msig) ->
+      Pstmt_modtype (name, module_sig msig)
+  | Tstmt_open path ->
+      Pstmt_open path
+  | Tstmt_typeext (typ, ctors) ->
+      Pstmt_typeext (typ, ctors)
+  | Tstmt_request (arg, ctor, handler) ->
+      Pstmt_request
+        ( arg
+        , ctor
+        , Option.map
+            ~f:(fun (p, e) -> (Option.map ~f:pattern p, expression e))
+            handler )
+  | Tstmt_multiple stmts ->
+      Pstmt_multiple (List.map ~f:statement stmts)
+
+and statement s =
+  { Parsetypes.stmt_desc= statement_desc s.Typedast.stmt_desc
+  ; stmt_loc= s.stmt_loc }
+
+and module_desc = function
+  | Typedast.Tmod_struct stmts ->
+      Parsetypes.Pmod_struct (List.map ~f:statement stmts)
+  | Tmod_name path ->
+      Pmod_name path
+  | Tmod_functor (name, fsig, m) ->
+      Pmod_functor (name, module_sig fsig, module_expr m)
+
+and module_expr m =
+  {Parsetypes.mod_desc= module_desc m.Typedast.mod_desc; mod_loc= m.mod_loc}
