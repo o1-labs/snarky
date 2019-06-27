@@ -1,6 +1,8 @@
 open Ast_types
 open Parsetypes
 
+type literal = Int of int | Bool of bool | Field of string | String of string
+
 type pattern =
   {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: Type0.type_expr}
 
@@ -20,7 +22,7 @@ type expression =
 and expression_desc =
   | Apply of expression * (Asttypes.arg_label * expression) list
   | Variable of lid
-  | Int of int
+  | Literal of literal
   | Fun of Asttypes.arg_label * pattern * expression * explicitness
   | Newtype of str * expression
   | Seq of expression * expression

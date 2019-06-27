@@ -69,25 +69,35 @@ and type_decl ?loc decl =
     decl.tdec_ident.txt decl.tdec_desc
 
 let rec pattern_desc = function
-  | Typedast.PAny ->
+  | Typedast.Tpat_any ->
       Parsetypes.PAny
-  | PVariable str ->
+  | Tpat_variable str ->
       PVariable str
-  | PConstraint (p, typ) ->
+  | Tpat_constraint (p, typ) ->
       PConstraint (pattern p, typ)
-  | PTuple ps ->
+  | Tpat_tuple ps ->
       PTuple (List.map ~f:pattern ps)
-  | POr (p1, p2) ->
+  | Tpat_or (p1, p2) ->
       POr (pattern p1, pattern p2)
-  | PInt i ->
+  | Tpat_int i ->
       PInt i
-  | PRecord fields ->
+  | Tpat_record fields ->
       PRecord (List.map fields ~f:(fun (label, p) -> (label, pattern p)))
-  | PCtor (name, arg) ->
+  | Tpat_ctor (name, arg) ->
       PCtor (name, Option.map ~f:pattern arg)
 
 and pattern p =
   {Parsetypes.pat_desc= pattern_desc p.Typedast.pat_desc; pat_loc= p.pat_loc}
+
+let literal = function
+  | Typedast.Int i ->
+      Parsetypes.Int i
+  | Bool b ->
+      Bool b
+  | Field f ->
+      Field f
+  | String s ->
+      String s
 
 let rec expression_desc = function
   | Typedast.Apply (e, args) ->
@@ -96,8 +106,8 @@ let rec expression_desc = function
         , List.map args ~f:(fun (label, e) -> (label, expression e)) )
   | Variable name ->
       Variable name
-  | Int i ->
-      Int i
+  | Literal i ->
+      Literal (literal i)
   | Fun (label, p, e, explicit) ->
       Fun (label, pattern p, expression e, explicit)
   | Newtype (name, e) ->
