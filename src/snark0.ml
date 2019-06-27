@@ -985,7 +985,7 @@ struct
               let r = collect_input_constraints next_input t k in
               let run_in_run x state =
                 let state, _x = Checked.run r state in
-                assert (Int.equal !next_input (Field.Vector.length primary)) ;
+                assert (Int.equal !next_input (Field.Vector.length primary + 1)) ;
                 run x state
               in
               run_in_run
