@@ -124,6 +124,8 @@ let rec expression_desc = function
       Ctor (path, Option.map ~f:expression arg)
   | Unifiable {expression= e; name; id} ->
       Unifiable {expression= Option.map ~f:expression e; name; id}
+  | If (e1, e2, e3) ->
+      If (expression e1, expression e2, Option.map ~f:expression e3)
 
 and expression e =
   {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}
