@@ -135,23 +135,23 @@ module Exp = struct
     {exp_desc= d; exp_loc= loc}
 
   let fun_ ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) p body =
-    mk ?loc (Fun (label, p, body, explicit))
+    mk ?loc (Pexp_fun (label, p, body, explicit))
 
-  let apply ?loc e es = mk ?loc (Apply (e, es))
+  let apply ?loc e es = mk ?loc (Pexp_apply (e, es))
 
-  let match_ ?loc e cases = mk ?loc (Match (e, cases))
+  let match_ ?loc e cases = mk ?loc (Pexp_match (e, cases))
 
-  let var ?loc name = mk ?loc (Variable (Loc.mk ?loc name))
+  let var ?loc name = mk ?loc (Pexp_variable (Loc.mk ?loc name))
 
-  let ctor ?loc ?args name = mk ?loc (Ctor (Loc.mk ?loc name, args))
+  let ctor ?loc ?args name = mk ?loc (Pexp_ctor (Loc.mk ?loc name, args))
 
-  let record ?loc ?default fields = mk ?loc (Record (fields, default))
+  let record ?loc ?default fields = mk ?loc (Pexp_record (fields, default))
 
-  let let_ ?loc p e_eq e = mk ?loc (Let (p, e_eq, e))
+  let let_ ?loc p e_eq e = mk ?loc (Pexp_let (p, e_eq, e))
 
-  let constraint_ ?loc e typ = mk ?loc (Constraint (e, typ))
+  let constraint_ ?loc e typ = mk ?loc (Pexp_constraint (e, typ))
 
-  let seq ?loc e1 e2 = mk ?loc (Seq (e1, e2))
+  let seq ?loc e1 e2 = mk ?loc (Pexp_seq (e1, e2))
 
-  let literal ?loc l = mk ?loc (Literal l)
+  let literal ?loc l = mk ?loc (Pexp_literal l)
 end

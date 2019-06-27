@@ -65,21 +65,24 @@ and pattern_desc =
 type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 
 and expression_desc =
-  | Apply of expression * (Asttypes.arg_label * expression) list
-  | Variable of lid
-  | Literal of literal
-  | Fun of Asttypes.arg_label * pattern * expression * explicitness
-  | Newtype of str * expression
-  | Seq of expression * expression
-  | Let of pattern * expression * expression
-  | Constraint of expression * type_expr
-  | Tuple of expression list
-  | Match of expression * (pattern * expression) list
-  | Field of expression * lid
-  | Record of (lid * expression) list * expression option
-  | Ctor of lid * expression option
-  | Unifiable of {mutable expression: expression option; name: str; id: int}
-  | If of expression * expression * expression option
+  | Pexp_apply of expression * (Asttypes.arg_label * expression) list
+  | Pexp_variable of lid
+  | Pexp_literal of literal
+  | Pexp_fun of Asttypes.arg_label * pattern * expression * explicitness
+  | Pexp_newtype of str * expression
+  | Pexp_seq of expression * expression
+  | Pexp_let of pattern * expression * expression
+  | Pexp_constraint of expression * type_expr
+  | Pexp_tuple of expression list
+  | Pexp_match of expression * (pattern * expression) list
+  | Pexp_field of expression * lid
+  | Pexp_record of (lid * expression) list * expression option
+  | Pexp_ctor of lid * expression option
+  | Pexp_unifiable of
+      { mutable expression: expression option
+      ; name: str
+      ; id: int }
+  | Pexp_if of expression * expression * expression option
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 

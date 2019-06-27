@@ -103,44 +103,44 @@ let of_literal ?loc = function
       Exp.constant ?loc (Const.string s)
 
 let rec of_expression_desc ?loc = function
-  | Apply (f, es) ->
+  | Pexp_apply (f, es) ->
       Exp.apply ?loc (of_expression f)
         (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
-  | Variable name ->
+  | Pexp_variable name ->
       Exp.ident ?loc name
-  | Literal l ->
+  | Pexp_literal l ->
       of_literal ?loc l
-  | Fun (label, p, body, _) ->
+  | Pexp_fun (label, p, body, _) ->
       Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
-  | Newtype (name, body) ->
+  | Pexp_newtype (name, body) ->
       Exp.newtype ?loc name (of_expression body)
-  | Constraint (e, typ) ->
+  | Pexp_constraint (e, typ) ->
       Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
-  | Seq (e1, e2) ->
+  | Pexp_seq (e1, e2) ->
       Exp.sequence ?loc (of_expression e1) (of_expression e2)
-  | Let (p, e_rhs, e) ->
+  | Pexp_let (p, e_rhs, e) ->
       Exp.let_ ?loc Nonrecursive
         [Vb.mk (of_pattern p) (of_expression e_rhs)]
         (of_expression e)
-  | Tuple es ->
+  | Pexp_tuple es ->
       Exp.tuple ?loc (List.map ~f:of_expression es)
-  | Match (e, cases) ->
+  | Pexp_match (e, cases) ->
       Exp.match_ ?loc (of_expression e)
         (List.map cases ~f:(fun (p, e) ->
              Exp.case (of_pattern p) (of_expression e) ))
-  | Field (e, field) ->
+  | Pexp_field (e, field) ->
       Exp.field ?loc (of_expression e) field
-  | Record (fields, ext) ->
+  | Pexp_record (fields, ext) ->
       Exp.record ?loc
         (List.map fields ~f:(fun (f, e) -> (f, of_expression e)))
         (Option.map ~f:of_expression ext)
-  | Ctor (name, arg) ->
+  | Pexp_ctor (name, arg) ->
       Exp.construct ?loc name (Option.map ~f:of_expression arg)
-  | Unifiable {expression= Some e; _} ->
+  | Pexp_unifiable {expression= Some e; _} ->
       of_expression e
-  | Unifiable {name; _} ->
+  | Pexp_unifiable {name; _} ->
       Exp.ident ?loc (mk_lid name)
-  | If (e1, e2, e3) ->
+  | Pexp_if (e1, e2, e3) ->
       Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
         (Option.map ~f:of_expression e3)
 

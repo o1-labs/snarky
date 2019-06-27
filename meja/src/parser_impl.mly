@@ -25,8 +25,8 @@ let conspat ~pos hd tl =
     ( mkloc ~pos (Lident "::"), Some (mkpat ~pos (PTuple [hd; tl]))))
 
 let consexp ~pos hd tl =
-  mkexp ~pos (Ctor
-    ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Tuple [hd; tl]))))
+  mkexp ~pos (Pexp_ctor
+    ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Pexp_tuple [hd; tl]))))
 %}
 %token <string> FIELD
 %token <int> INT
@@ -314,72 +314,72 @@ expr_field:
   | x = record_field(longident(lident, UIDENT), expr)
     { x }
   | x = as_loc(longident(lident, UIDENT))
-    { (x, mkexp ~pos:$loc (Variable (mk_lid (lid_last x)))) }
+    { (x, mkexp ~pos:$loc (Pexp_variable (mk_lid (lid_last x)))) }
 
 simpl_expr:
   | x = as_loc(val_longident)
-    { mkexp ~pos:$loc (Variable x) }
+    { mkexp ~pos:$loc (Pexp_variable x) }
   | x = INT
-    { mkexp ~pos:$loc (Literal (Int x)) }
+    { mkexp ~pos:$loc (Pexp_literal (Int x)) }
   | x = BOOL
-    { mkexp ~pos:$loc (Literal (Bool x)) }
+    { mkexp ~pos:$loc (Pexp_literal (Bool x)) }
   | x = FIELD
-    { mkexp ~pos:$loc (Literal (Field x)) }
+    { mkexp ~pos:$loc (Pexp_literal (Field x)) }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { e }
   | LBRACKET es = list(expr, COMMA) RBRACKET
     { List.fold
-        ~init:(mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "[]"), None)))
+        ~init:(mkexp ~pos:$loc (Pexp_ctor (mkloc ~pos:$loc (Lident "[]"), None)))
         es ~f:(fun acc e -> consexp ~pos:$loc e acc) }
   | LBRACE es = block RBRACE
     { es }
   | e = expr_record
     { e }
   | e = simpl_expr DOT field = as_loc(longident(lident, UIDENT))
-    { mkexp ~pos:$loc (Field (e, field)) }
+    { mkexp ~pos:$loc (Pexp_field (e, field)) }
   | s = STRING
-    { mkexp ~pos:$loc (Literal (String s)) }
+    { mkexp ~pos:$loc (Pexp_literal (String s)) }
 
 expr:
   | x = simpl_expr
     { x }
   | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
-    { mkexp ~pos:$loc (Constraint (x, typ)) }
+    { mkexp ~pos:$loc (Pexp_constraint (x, typ)) }
   | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
     { let unit_pat =
         mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
       in
-      mkexp ~pos:$loc (Fun (Nolabel, unit_pat, body, Explicit)) }
+      mkexp ~pos:$loc (Pexp_fun (Nolabel, unit_pat, body, Explicit)) }
   | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
     { f }
   | f = expr LPAREN es = expr_arg_list RPAREN
-    { mkexp ~pos:$loc (Apply (f, List.rev es)) }
+    { mkexp ~pos:$loc (Pexp_apply (f, List.rev es)) }
   | hd = expr COLONCOLON tl = expr
     { consexp ~pos:$loc hd tl }
   | e1 = expr op = infix_operator e2 = expr %prec above_infix
     { let op = mkloc (Lident op) ~pos:$loc(op) in
       mkexp ~pos:$loc
-        (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e1; Nolabel, e2])) }
+        (Pexp_apply (mkexp ~pos:$loc (Pexp_variable op), [Nolabel, e1; Nolabel, e2])) }
   | op = PREFIXOP e = expr
     { let op = mkloc (Lident op) ~pos:$loc(op) in
-      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e])) }
+      mkexp ~pos:$loc (Pexp_apply (mkexp ~pos:$loc (Pexp_variable op), [Nolabel, e])) }
   | _op = MINUS e = expr
     { let op = mkloc (Lident "~-") ~pos:$loc(_op) in
-      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e])) }
+      mkexp ~pos:$loc (Pexp_apply (mkexp ~pos:$loc (Pexp_variable op), [Nolabel, e])) }
   | SWITCH LPAREN e = expr_or_bare_tuple RPAREN LBRACE rev_cases = list(match_case, {}) RBRACE
-    { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
+    { mkexp ~pos:$loc (Pexp_match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
-    { mkexp ~pos:$loc (Ctor (id, args)) }
+    { mkexp ~pos:$loc (Pexp_ctor (id, args)) }
   | e = if_expr
     { e }
 
 if_expr:
   | IF e1 = expr LBRACE e2 = block RBRACE
-    { mkexp ~pos:$loc (If (e1, e2, None)) }
+    { mkexp ~pos:$loc (Pexp_if (e1, e2, None)) }
   | IF e1 = expr LBRACE e2 = block RBRACE ELSE e3 = if_expr_or_block
-    { mkexp ~pos:$loc (If (e1, e2, Some e3)) }
+    { mkexp ~pos:$loc (Pexp_if (e1, e2, Some e3)) }
 
 if_expr_or_block:
   | e = if_expr
@@ -389,15 +389,15 @@ if_expr_or_block:
 
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE
-    { mkexp ~pos:$loc (Record(List.rev fields, None)) }
+    { mkexp ~pos:$loc (Pexp_record(List.rev fields, None)) }
   | LBRACE DOTDOTDOT e = expr COMMA fields = list(expr_field, COMMA) RBRACE
-    { mkexp ~pos:$loc (Record(List.rev fields, Some e)) }
+    { mkexp ~pos:$loc (Pexp_record(List.rev fields, Some e)) }
 
 expr_or_bare_tuple:
   | x = expr
     { x }
   | es = tuple(expr)
-    { mkexp ~pos:$loc (Tuple (List.rev es)) }
+    { mkexp ~pos:$loc (Pexp_tuple (List.rev es)) }
 
 expr_ctor_args:
   | (* empty *)
@@ -416,18 +416,18 @@ expr_arg:
     { (Asttypes.Nolabel, e) }
   | TILDE name = LIDENT
     { (Asttypes.Labelled name, mkexp ~pos:$loc
-        (Variable (mkloc ~pos:$loc (Lident name)))) }
+        (Pexp_variable (mkloc ~pos:$loc (Lident name)))) }
   | TILDE name = LIDENT EQUAL e = expr
     { (Asttypes.Labelled name, e) }
   | QUESTION name = LIDENT
     { (Asttypes.Optional name, mkexp ~pos:$loc
-        (Variable (mkloc ~pos:$loc (Lident name)))) }
+        (Pexp_variable (mkloc ~pos:$loc (Lident name)))) }
   | QUESTION name = LIDENT EQUAL e = expr
     { (Asttypes.Optional name, e) }
 
 expr_arg_list:
   | (* empty *)
-    { [Nolabel, mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "()"), None))] }
+    { [Nolabel, mkexp ~pos:$loc (Pexp_ctor (mkloc ~pos:$loc (Lident "()"), None))] }
   | e = expr_arg
     { [e] }
   | es = expr_arg_list COMMA e = expr_arg
@@ -462,35 +462,35 @@ function_body:
 function_from_args:
   | p = pat_arg_opt RPAREN body = function_body
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, body, Explicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, body, Explicit)) }
   | p = pat_arg_opt RPAREN COLON typ = type_expr body = function_body
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, mkexp ~pos:$loc(typ)
-        (Constraint (body, typ)), Explicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, mkexp ~pos:$loc(typ)
+        (Pexp_constraint (body, typ)), Explicit)) }
   | p = pat_arg_opt COMMA f = function_from_args
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, f, Explicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, f, Explicit)) }
   | TYPE t = as_loc(lident) RPAREN body = function_body
-    { mkexp ~pos:$loc (Newtype (t, body)) }
+    { mkexp ~pos:$loc (Pexp_newtype (t, body)) }
   | TYPE t = as_loc(lident) COMMA f = function_from_args
-    { mkexp ~pos:$loc (Newtype (t, f)) }
+    { mkexp ~pos:$loc (Pexp_newtype (t, f)) }
   | pat_arg_opt RPAREN err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
 
 function_from_implicit_args:
   | p = pat_arg RBRACE LPAREN f = function_from_args
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, f, Implicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, f, Implicit)) }
   | p = pat_arg RBRACE EQUALGT LBRACE body = block RBRACE
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, body, Implicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, body, Implicit)) }
   | p = pat_arg RBRACE COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, mkexp ~pos:$loc(typ)
-        (Constraint (body, typ)), Implicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, mkexp ~pos:$loc(typ)
+        (Pexp_constraint (body, typ)), Implicit)) }
   | p = pat_arg COMMA f = function_from_implicit_args
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, f, Implicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, f, Implicit)) }
   | pat_arg RBRACE err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
 
@@ -498,9 +498,9 @@ block:
   | e = expr SEMI
     { e }
   | e1 = expr SEMI rest = block
-    { mkexp ~pos:$loc (Seq (e1, rest)) }
+    { mkexp ~pos:$loc (Pexp_seq (e1, rest)) }
   | LET x = pat EQUAL lhs = expr SEMI rhs = block
-    { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
+    { mkexp ~pos:$loc (Pexp_let (x, lhs, rhs)) }
   | LET pat EQUAL expr err = err
     { raise (Error (err, Missing_semi)) }
   | expr err = err

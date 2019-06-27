@@ -158,20 +158,21 @@ let literal fmt = function
       fprintf fmt "\"%s\"" s
 
 let rec expression_desc fmt = function
-  | Apply
-      (e, [(Asttypes.Nolabel, {exp_desc= Variable {txt= Lident "()"; _}; _})])
-    ->
+  | Pexp_apply
+      ( e
+      , [(Asttypes.Nolabel, {exp_desc= Pexp_variable {txt= Lident "()"; _}; _})]
+      ) ->
       fprintf fmt "@[<hv2>@[<hv2>%a@]@,()@]" expression_bracket e
-  | Apply (e, args) ->
+  | Pexp_apply (e, args) ->
       fprintf fmt "@[<hv2>@[<hv2>%a@]@,(@[<hv1>@,%a@,@])@]" expression_bracket
         e
         (pp_print_list ~pp_sep:comma_sep expression_args)
         args
-  | Variable lid ->
+  | Pexp_variable lid ->
       Longident.pp fmt lid.txt
-  | Literal l ->
+  | Pexp_literal l ->
       literal fmt l
-  | Fun (label, p, e, explicitness) ->
+  | Pexp_fun (label, p, e, explicitness) ->
       fprintf fmt "fun@ " ;
       ( match explicitness with
       | Explicit ->
@@ -185,69 +186,69 @@ let rec expression_desc fmt = function
       | Implicit ->
           pp_print_char fmt '}' ) ;
       fprintf fmt "@ =>@ {@[<hv2>@ %a;@ @]}" expression e
-  | Newtype (name, e) ->
+  | Pexp_newtype (name, e) ->
       fprintf fmt "fun@ (@[<hv2>type@ %s@])@ =>@ {@[<hv2>@ %a;@ @]}" name.txt
         expression e
-  | Seq (e1, e2) ->
+  | Pexp_seq (e1, e2) ->
       fprintf fmt "%a;@;%a" expression e1 expression e2
-  | Let (p, e1, e2) ->
+  | Pexp_let (p, e1, e2) ->
       fprintf fmt "let@[<hv2>@ %a@] =@ @[<hv2>%a@];@;@]@ %a" pattern p
         expression e1 expression e2
-  | Constraint (e, typ) ->
+  | Pexp_constraint (e, typ) ->
       fprintf fmt "(@[<hv1>%a :@ %a@])" expression e type_expr typ
-  | Tuple es ->
+  | Pexp_tuple es ->
       fprintf fmt "(@[<hv1>@,%a@,@])"
         (pp_print_list ~pp_sep:comma_sep expression)
         es
-  | Match (e, cases) ->
+  | Pexp_match (e, cases) ->
       fprintf fmt "@[<hv2>@[<h>switch@ (@[<hv1>@,%a@,@])@] {@;@[<hv>%a@]@;}@]"
         expression e
         (pp_print_list ~pp_sep:pp_print_space (fun fmt (p, e) ->
              fprintf fmt "| @[<hv2>%a@] =>@;<1 4>@[<hv2>%a@]" pattern p
                expression e ))
         cases
-  | Field (e, lid) ->
+  | Pexp_field (e, lid) ->
       fprintf fmt "@[<hv2>%a@,@].%a" expression_bracket e Longident.pp lid.txt
-  | Record (fields, None) ->
+  | Pexp_record (fields, None) ->
       fprintf fmt "@[<hv2>{@,@[<hv2>%a@]@,}@]"
         (pp_print_list ~pp_sep:comma_sep expression_field)
         fields
-  | Record (fields, Some default) ->
+  | Pexp_record (fields, Some default) ->
       fprintf fmt "@[<hv2>{@,@[<hv2>...%a@,%a@]@,}@]" expression default
         (pp_print_list ~pp_sep:comma_sep expression_field)
         fields
-  | Ctor (path, None) ->
+  | Pexp_ctor (path, None) ->
       Longident.pp fmt path.txt
-  | Ctor (path, Some args) ->
+  | Pexp_ctor (path, Some args) ->
       fprintf fmt "%a(@[<hv2>%a@,@])" Longident.pp path.txt expression args
-  | Unifiable {expression= Some e; _} ->
+  | Pexp_unifiable {expression= Some e; _} ->
       expression fmt e
-  | Unifiable {expression= None; name; _} ->
+  | Pexp_unifiable {expression= None; name; _} ->
       fprintf fmt "(%s /* implicit */)" name.txt
-  | If (e1, e2, None) ->
+  | Pexp_if (e1, e2, None) ->
       fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}" expression e1
         expression e2
-  | If (e1, e2, Some ({exp_desc= If _; _} as e3)) ->
+  | Pexp_if (e1, e2, Some ({exp_desc= Pexp_if _; _} as e3)) ->
       (* `if (...) {...} else if (...) {...} ...` printing *)
       fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else %a" expression
         e1 expression e2 expression e3
-  | If (e1, e2, Some e3) ->
+  | Pexp_if (e1, e2, Some e3) ->
       fprintf fmt
         "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else@ {@[<hv2>@,%a@,@]}"
         expression e1 expression e2 expression e3
 
 and expression_desc_bracket fmt exp =
   match exp with
-  | Unifiable {expression= Some e; _} ->
+  | Pexp_unifiable {expression= Some e; _} ->
       expression_bracket fmt e
-  | Apply _
-  | Variable _
-  | Literal _
-  | Constraint _
-  | Tuple _
-  | Field _
-  | Record _
-  | Ctor _ ->
+  | Pexp_apply _
+  | Pexp_variable _
+  | Pexp_literal _
+  | Pexp_constraint _
+  | Pexp_tuple _
+  | Pexp_field _
+  | Pexp_record _
+  | Pexp_ctor _ ->
       expression_desc fmt exp
   | _ ->
       fprintf fmt "(@[<hv1>@,%a@,@])" expression_desc exp

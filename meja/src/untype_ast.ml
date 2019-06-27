@@ -101,41 +101,41 @@ let literal = function
 
 let rec expression_desc = function
   | Typedast.Texp_apply (e, args) ->
-      Parsetypes.Apply
+      Parsetypes.Pexp_apply
         ( expression e
         , List.map args ~f:(fun (label, e) -> (label, expression e)) )
   | Texp_variable name ->
-      Variable name
+      Pexp_variable name
   | Texp_literal i ->
-      Literal (literal i)
+      Pexp_literal (literal i)
   | Texp_fun (label, p, e, explicit) ->
-      Fun (label, pattern p, expression e, explicit)
+      Pexp_fun (label, pattern p, expression e, explicit)
   | Texp_newtype (name, e) ->
-      Newtype (name, expression e)
+      Pexp_newtype (name, expression e)
   | Texp_seq (e1, e2) ->
-      Seq (expression e1, expression e2)
+      Pexp_seq (expression e1, expression e2)
   | Texp_let (p, e1, e2) ->
-      Let (pattern p, expression e1, expression e2)
+      Pexp_let (pattern p, expression e1, expression e2)
   | Texp_constraint (e, typ) ->
-      Constraint (expression e, typ)
+      Pexp_constraint (expression e, typ)
   | Texp_tuple es ->
-      Tuple (List.map ~f:expression es)
+      Pexp_tuple (List.map ~f:expression es)
   | Texp_match (e, cases) ->
-      Match
+      Pexp_match
         ( expression e
         , List.map cases ~f:(fun (p, e) -> (pattern p, expression e)) )
   | Texp_field (e, path) ->
-      Field (expression e, path)
+      Pexp_field (expression e, path)
   | Texp_record (fields, default) ->
-      Record
+      Pexp_record
         ( List.map fields ~f:(fun (label, e) -> (label, expression e))
         , Option.map ~f:expression default )
   | Texp_ctor (path, arg) ->
-      Ctor (path, Option.map ~f:expression arg)
+      Pexp_ctor (path, Option.map ~f:expression arg)
   | Texp_unifiable {expression= e; name; id} ->
-      Unifiable {expression= Option.map ~f:expression e; name; id}
+      Pexp_unifiable {expression= Option.map ~f:expression e; name; id}
   | Texp_if (e1, e2, e3) ->
-      If (expression e1, expression e2, Option.map ~f:expression e3)
+      Pexp_if (expression e1, expression e2, Option.map ~f:expression e3)
 
 and expression e =
   {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}
