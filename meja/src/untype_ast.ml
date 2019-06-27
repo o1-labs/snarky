@@ -178,28 +178,28 @@ and module_sig msig =
   ; msig_loc= msig.msig_loc }
 
 let rec statement_desc = function
-  | Typedast.Value (p, e) ->
+  | Typedast.Tstmt_value (p, e) ->
       Parsetypes.Value (pattern p, expression e)
-  | Instance (name, e) ->
+  | Tstmt_instance (name, e) ->
       Instance (name, expression e)
-  | TypeDecl decl ->
+  | Tstmt_type decl ->
       TypeDecl decl
-  | Module (name, m) ->
+  | Tstmt_module (name, m) ->
       Module (name, module_expr m)
-  | ModType (name, msig) ->
+  | Tstmt_modtype (name, msig) ->
       ModType (name, module_sig msig)
-  | Open path ->
+  | Tstmt_open path ->
       Open path
-  | TypeExtension (typ, ctors) ->
+  | Tstmt_typeext (typ, ctors) ->
       TypeExtension (typ, ctors)
-  | Request (arg, ctor, handler) ->
+  | Tstmt_request (arg, ctor, handler) ->
       Request
         ( arg
         , ctor
         , Option.map
             ~f:(fun (p, e) -> (Option.map ~f:pattern p, expression e))
             handler )
-  | Multiple stmts ->
+  | Tstmt_multiple stmts ->
       Multiple (List.map ~f:statement stmts)
 
 and statement s =
