@@ -122,9 +122,9 @@ and statement_desc =
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc =
-  | Structure of statement list
-  | ModName of lid
-  | Functor of str * module_sig * module_expr
+  | Pmod_struct of statement list
+  | Pmod_name of lid
+  | Pmod_functor of str * module_sig * module_expr
 
 let rec typ_debug_print fmt typ =
   let open Format in

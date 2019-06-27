@@ -1328,17 +1328,17 @@ let rec check_statement env stmt =
 and check_module_expr env m =
   let loc = m.mod_loc in
   match m.mod_desc with
-  | Structure stmts ->
+  | Pmod_struct stmts ->
       let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_struct stmts})
-  | ModName name ->
+  | Pmod_name name ->
       let path = Envi.current_path env in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
       let m' = Envi.find_module ~loc name env in
       let env = Envi.push_scope {m' with path} env in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
-  | Functor (f_name, f, m) ->
+  | Pmod_functor (f_name, f, m) ->
       let path = Option.value_exn (Envi.current_path env) in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in

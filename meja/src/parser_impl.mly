@@ -197,9 +197,9 @@ default_request_handler:
 
 module_expr:
   | LBRACE s = structure RBRACE
-    { mkmod ~pos:$loc (Structure s) }
+    { mkmod ~pos:$loc (Pmod_struct s) }
   | x = as_loc(longident(UIDENT, UIDENT))
-    { mkmod ~pos:$loc (ModName x) }
+    { mkmod ~pos:$loc (Pmod_name x) }
 
 module_sig:
   | LBRACE s = signature RBRACE

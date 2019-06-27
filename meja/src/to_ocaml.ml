@@ -299,11 +299,11 @@ and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 and of_module_expr m = of_module_desc ~loc:m.mod_loc m.mod_desc
 
 and of_module_desc ?loc = function
-  | Structure stmts ->
+  | Pmod_struct stmts ->
       Mod.structure ?loc (List.map ~f:of_statement stmts)
-  | ModName name ->
+  | Pmod_name name ->
       Mod.ident ?loc name
-  | Functor (name, f, m) ->
+  | Pmod_functor (name, f, m) ->
       Mod.functor_ ?loc name (of_module_sig f) (of_module_expr m)
 
 let of_file = List.map ~f:of_statement

@@ -46,7 +46,7 @@ let add_preamble impl_mod curve proofs ast =
   let snarky_impl =
     Pstmt_module
       ( mkloc impl_mod
-      , {mod_desc= ModName snarky_impl_path; mod_loc= Location.none} )
+      , {mod_desc= Pmod_name snarky_impl_path; mod_loc= Location.none} )
   in
   let snarky_open = Pstmt_open (mkloc (Lident impl_mod)) in
   let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in

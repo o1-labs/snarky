@@ -208,11 +208,11 @@ and statement s =
 
 and module_desc = function
   | Typedast.Tmod_struct stmts ->
-      Parsetypes.Structure (List.map ~f:statement stmts)
+      Parsetypes.Pmod_struct (List.map ~f:statement stmts)
   | Tmod_name path ->
-      ModName path
+      Pmod_name path
   | Tmod_functor (name, fsig, m) ->
-      Functor (name, module_sig fsig, module_expr m)
+      Pmod_functor (name, module_sig fsig, module_expr m)
 
 and module_expr m =
   {Parsetypes.mod_desc= module_desc m.Typedast.mod_desc; mod_loc= m.mod_loc}
