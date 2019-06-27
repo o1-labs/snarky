@@ -48,6 +48,8 @@ and type_decl_desc =
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
+type literal = Int of int | Bool of bool | Field of string | String of string
+
 type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
 and pattern_desc =
@@ -65,7 +67,7 @@ type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 and expression_desc =
   | Apply of expression * (Asttypes.arg_label * expression) list
   | Variable of lid
-  | Int of int
+  | Literal of literal
   | Fun of Asttypes.arg_label * pattern * expression * explicitness
   | Newtype of str * expression
   | Seq of expression * expression
