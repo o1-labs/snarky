@@ -1,4 +1,5 @@
 open Core_kernel
+open Ast_types
 open Type0
 open Ast_build
 
@@ -152,9 +153,9 @@ let rec signature_desc = function
   | Tsig_type decl ->
       Psig_type decl
   | Tsig_module (name, msig) ->
-      Psig_module (name, module_sig msig)
+      Psig_module (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_modtype (name, msig) ->
-      Psig_modtype (name, module_sig msig)
+      Psig_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_open path ->
       Psig_open path
   | Tsig_typeext (typ, ctors) ->
@@ -189,9 +190,9 @@ let rec statement_desc = function
   | Tstmt_type decl ->
       Pstmt_type decl
   | Tstmt_module (name, m) ->
-      Pstmt_module (name, module_expr m)
+      Pstmt_module (map_loc ~f:Ident.name name, module_expr m)
   | Tstmt_modtype (name, msig) ->
-      Pstmt_modtype (name, module_sig msig)
+      Pstmt_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tstmt_open path ->
       Pstmt_open path
   | Tstmt_typeext (typ, ctors) ->

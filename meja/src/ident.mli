@@ -57,4 +57,29 @@ module Table : sig
 
   val keys : 'a t -> ident list
   (** Returns a list of the bound identifiers. *)
+
+  val fold2_names :
+       'v1 t
+    -> 'v2 t
+    -> init:'a
+    -> f:(   key:string
+          -> data:[`Both of 'v1 * 'v2 | `Left of 'v1 | `Right of 'v2]
+          -> 'a
+          -> 'a)
+    -> 'a
+  (** Fold over names in the two tables, in order of increasing key. *)
+
+  val merge_skewed_names :
+       'v t
+    -> 'v t
+    -> combine:(key:string -> ident * 'v -> ident * 'v -> ident * 'v)
+    -> 'v t
+  (** Merge the bindings in the two tables. When the same name is bound in
+      both, [combine] is used to decide the preferred binding.
+      Throws [Failure] if the result of [combine] has a different name to
+      [key].
+
+      When an [ident] is bound in both tables but does not appear in
+      [find_name] for its name, the bound value from the first table is chosen.
+  *)
 end

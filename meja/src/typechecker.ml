@@ -1070,8 +1070,11 @@ let rec check_signature_item env item =
       let _decl, env = Typet.TypeDecl.import decl env in
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
   | Psig_module (name, msig) ->
+      let name = map_loc ~f:Ident.create name in
       let msig, m, env =
-        check_module_sig env (Envi.relative_path env name.txt) msig
+        check_module_sig env
+          (Envi.relative_path env (Ident.name name.txt))
+          msig
       in
       let env =
         match m with
@@ -1086,6 +1089,7 @@ let rec check_signature_item env item =
       let signature, m_env, env =
         check_module_sig env (Envi.relative_path env name.txt) signature
       in
+      let name = map_loc ~f:Ident.create name in
       let env = Envi.add_module_type name.txt m_env env in
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
   | Psig_open name ->
@@ -1148,6 +1152,10 @@ and check_module_sig env path msig =
            space.
         *)
         let env = Envi.open_absolute_module None env in
+        (* TODO: This name should be constant, and the underlying module
+           substituted.
+        *)
+        let f_name = map_loc ~f:Ident.create f_name in
         let env =
           match f_instance with
           | Envi.Scope.Immediate f ->
@@ -1216,12 +1224,14 @@ let rec check_statement env stmt =
       let env = Envi.open_module name.txt env in
       let env, m = check_module_expr env m in
       let m_env, env = Envi.pop_module ~loc env in
+      let name = map_loc ~f:Ident.create name in
       let env = Envi.add_module name m_env env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_module (name, m)})
   | Pstmt_modtype (name, signature) ->
       let signature, m_env, env =
         check_module_sig env (Envi.relative_path env name.txt) signature
       in
+      let name = map_loc ~f:Ident.create name in
       let env = Envi.add_module_type name.txt m_env env in
       ( env
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
@@ -1347,6 +1357,10 @@ and check_module_expr env m =
            space.
         *)
         let env = Envi.open_absolute_module None env in
+        (* TODO: This name should be constant, and the underlying module
+           substituted.
+        *)
+        let f_name = map_loc ~f:Ident.create f_name in
         let env =
           match f_instance with
           | Envi.Scope.Immediate f ->

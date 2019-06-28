@@ -101,8 +101,8 @@ module Scope = struct
     ; type_decls: type_decl String.Map.t
     ; fields: (type_decl * int) String.Map.t
     ; ctors: (type_decl * int) String.Map.t
-    ; modules: t or_path String.Map.t
-    ; module_types: t or_path String.Map.t
+    ; modules: t or_path IdTbl.t
+    ; module_types: t or_path IdTbl.t
     ; instances: Longident.t Int.Map.t
     ; paths: paths }
 
@@ -121,8 +121,8 @@ module Scope = struct
     ; type_decls= String.Map.empty
     ; fields= String.Map.empty
     ; ctors= String.Map.empty
-    ; modules= String.Map.empty
-    ; module_types= Map.empty (module String)
+    ; modules= IdTbl.empty
+    ; module_types= IdTbl.empty
     ; instances= Int.Map.empty
     ; paths= empty_paths }
 
@@ -217,9 +217,9 @@ module Scope = struct
     let acc = Map.fold2 type_decls1 type_decls2 ~init:acc ~f:type_decls in
     let acc = Map.fold2 ctors1 ctors2 ~init:acc ~f:ctors in
     let acc = Map.fold2 fields1 fields2 ~init:acc ~f:fields in
-    let acc = Map.fold2 modules1 modules2 ~init:acc ~f:modules in
+    let acc = IdTbl.fold2_names modules1 modules2 ~init:acc ~f:modules in
     let acc =
-      Map.fold2 module_types1 module_types2 ~init:acc ~f:module_types
+      IdTbl.fold2_names module_types1 module_types2 ~init:acc ~f:module_types
     in
     let acc = Map.fold2 instances1 instances2 ~init:acc ~f:instances in
     let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
@@ -275,10 +275,11 @@ module Scope = struct
     ; fields= Map.merge_skewed fields1 fields2 ~combine:(fun ~key:_ _ v -> v)
     ; ctors= Map.merge_skewed ctors1 ctors2 ~combine:(fun ~key:_ _ v -> v)
     ; modules=
-        Map.merge_skewed modules1 modules2 ~combine:(fun ~key _ _ ->
+        IdTbl.merge_skewed_names modules1 modules2 ~combine:(fun ~key _ _ ->
             raise (Error (loc, Multiple_definition ("module", key))) )
     ; module_types=
-        Map.merge_skewed module_types1 module_types2 ~combine:(fun ~key _ _ ->
+        IdTbl.merge_skewed_names module_types1 module_types2
+          ~combine:(fun ~key _ _ ->
             raise (Error (loc, Multiple_definition ("module type", key))) )
     ; instances=
         Map.merge_skewed instances1 instances2 ~combine:(fun ~key:_ _ v -> v)
@@ -288,12 +289,12 @@ module Scope = struct
     {type_paths= Map.map ~f:(add_outer_module name) type_paths}
 
   let add_module name m scope =
-    {scope with modules= Map.set scope.modules ~key:name ~data:m}
+    {scope with modules= IdTbl.add scope.modules ~key:name ~data:m}
 
   let add_module_type name m scope =
-    {scope with module_types= Map.set scope.module_types ~key:name ~data:m}
+    {scope with module_types= IdTbl.add scope.module_types ~key:name ~data:m}
 
-  let get_module_type name scope = Map.find scope.module_types name
+  let get_module_type name scope = IdTbl.find_name name scope.module_types
 
   let rec outer_mod_name ~loc lid =
     let outer_mod_name = outer_mod_name ~loc in
@@ -339,10 +340,10 @@ module Scope = struct
     f fpath (Immediate m)
 
   and get_module ~loc ~scopes resolve_env name scope =
-    match Map.find scope.modules name with
-    | Some (Immediate m) ->
+    match IdTbl.find_name name scope.modules with
+    | Some (_ident, Immediate m) ->
         Some m
-    | Some (Deferred lid) ->
+    | Some (_ident, Deferred lid) ->
         get_global_module ~loc ~scopes resolve_env lid
     | None ->
         None
@@ -390,11 +391,11 @@ module Scope = struct
   let rec find_module_deferred ~loc ~scopes resolve_env lid scope =
     match lid with
     | Lident name ->
-        Map.find scope.modules name
+        Option.map ~f:snd (IdTbl.find_name name scope.modules)
     | Ldot (path, name) -> (
       match find_module_deferred ~loc ~scopes resolve_env path scope with
       | Some (Immediate m) ->
-          Map.find m.modules name
+          Option.map ~f:snd (IdTbl.find_name name m.modules)
       | Some (Deferred lid) ->
           Some (Deferred (Ldot (lid, name)))
       | None ->
@@ -522,10 +523,10 @@ let add_type_variable name typ =
 let find_type_variable name env =
   List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
 
-let add_module (name : str) m =
+let add_module (name : ident) m =
   map_current_scope ~f:(fun scope ->
       let scope = Scope.add_module name.txt (Scope.Immediate m) scope in
-      let paths = Scope.extend_paths name.txt m.Scope.paths in
+      let paths = Scope.extend_paths (Ident.name name.txt) m.Scope.paths in
       { scope with
         instances=
           Map.merge scope.instances m.instances ~f:(fun ~key:_ data ->
@@ -533,12 +534,12 @@ let add_module (name : str) m =
               | `Left x ->
                   Some x
               | `Both (_, x) | `Right x ->
-                  Some (Longident.add_outer_module name.txt x) )
+                  Some (Longident.add_outer_module (Ident.name name.txt) x) )
       ; (* Prefer the shorter paths in the current module to those in the
            module we are adding. *)
         paths= Scope.join_paths paths scope.paths } )
 
-let add_deferred_module (name : str) lid =
+let add_deferred_module (name : ident) lid =
   map_current_scope ~f:(Scope.add_module name.txt (Scope.Deferred lid))
 
 let register_external_module name x env =
