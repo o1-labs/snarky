@@ -19,8 +19,7 @@ let rec to_type_desc ~loc desc =
   | Tvar x | Tunivar x ->
       Ptyp_var (Option.map ~f:(fun x -> mkloc x loc) x, Explicit)
   | Tarrow (label, typ1, typ2, _) ->
-      Ptyp_arrow
-        (to_type_expr typ1, to_type_expr typ2, Explicit, label)
+      Ptyp_arrow (to_type_expr typ1, to_type_expr typ2, Explicit, label)
   | Ttuple typs ->
       Ptyp_tuple (List.map ~f:to_type_expr typs)
   | Tconstr (path, params, _) ->
