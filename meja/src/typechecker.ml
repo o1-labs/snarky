@@ -13,8 +13,8 @@ type error =
   | Pattern_declaration of string * string
   | Empty_record
   | Wrong_record_field of Longident.t * type_expr
-  | Repeated_field of string
-  | Missing_fields of string list
+  | Repeated_field of Ident.t
+  | Missing_fields of Ident.t list
   | Wrong_type_description of string * str
   | Unifiable_expr
   | No_unifiable_expr
@@ -325,9 +325,9 @@ let get_field (field : lid) env =
       let name =
         match field.txt with
         | Longident.Ldot (m, _) ->
-            Longident.Ldot (m, tdec_ident)
+            Longident.Ldot (m, Ident.name tdec_ident)
         | _ ->
-            Longident.Lident tdec_ident
+            Longident.Lident (Ident.name tdec_ident)
       in
       let rcd_type = Envi.TypeDecl.mk_typ ~params:vars ~ident:name decl env in
       let {fld_type; _} = List.nth_exn field_decls i in
@@ -343,7 +343,7 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
   | {txt= Longident.Lident name; _} -> (
     match
       List.findi field_decls ~f:(fun _ {fld_ident; _} ->
-          String.equal fld_ident name )
+          String.equal (Ident.name fld_ident) name )
     with
     | Some (i, {fld_type; _}) ->
         let typ = Envi.Type.copy ~loc typ bound_vars env in
@@ -387,14 +387,15 @@ let get_ctor (name : lid) env =
             typ
         | _ ->
             Envi.TypeDecl.mk_typ ~params:tdec_params
-              ~ident:(make_name tdec_ident) decl env
+              ~ident:(make_name (Ident.name tdec_ident))
+              decl env
       in
       let args_typ =
         match ctor.ctor_args with
         | Ctor_record decl ->
             Envi.Type.mk
               (Tctor
-                 { var_ident= make_name ctor.ctor_ident
+                 { var_ident= make_name (Ident.name ctor.ctor_ident)
                  ; var_params= decl.tdec_params
                  ; var_implicit_params= tdec_implicit_params
                  ; var_decl= decl })
@@ -501,9 +502,9 @@ let rec check_pattern ~add env typ pat =
                 Longident.(
                   match field.txt with
                   | Lident _ ->
-                      Lident decl.tdec_ident
+                      Lident (Ident.name decl.tdec_ident)
                   | Ldot (path, _) ->
-                      Ldot (path, decl.tdec_ident)
+                      Ldot (path, Ident.name decl.tdec_ident)
                   | _ ->
                       failwith "Unhandled Lapply in field name")
               in
@@ -750,7 +751,7 @@ let rec get_expression env expected exp =
               let vars, bound_vars, env =
                 Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
-              let ident = Longident.Ldot (path, decl.tdec_ident) in
+              let ident = Longident.Ldot (path, Ident.name decl.tdec_ident) in
               let decl_type =
                 Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
               in
@@ -782,7 +783,7 @@ let rec get_expression env expected exp =
               List.find field_decls ~f:(fun {fld_ident; _} ->
                   match field.txt with
                   | Lident field ->
-                      String.equal fld_ident field
+                      String.equal (Ident.name fld_ident) field
                   | _ ->
                       false
                   (* This case shouldn't happen! *) )
@@ -806,9 +807,9 @@ let rec get_expression env expected exp =
                   Longident.(
                     match field.txt with
                     | Lident _ ->
-                        Lident decl.tdec_ident
+                        Lident (Ident.name decl.tdec_ident)
                     | Ldot (path, _) ->
-                        Ldot (path, decl.tdec_ident)
+                        Ldot (path, Ident.name decl.tdec_ident)
                     | _ ->
                         failwith "Unhandled Lapply in field name")
                 in
@@ -850,9 +851,9 @@ let rec get_expression env expected exp =
                 Longident.(
                   match field.txt with
                   | Lident _ ->
-                      Lident decl.tdec_ident
+                      Lident (Ident.name decl.tdec_ident)
                   | Ldot (path, _) ->
-                      Ldot (path, decl.tdec_ident)
+                      Ldot (path, Ident.name decl.tdec_ident)
                   | _ ->
                       failwith "Unhandled Lapply in field name")
               in
@@ -1024,7 +1025,7 @@ let type_extension ~loc variant ctors env =
   | Unequal_lengths ->
       raise (Error (loc, Extension_different_arity var_ident.txt)) ) ;
   let decl =
-    { Parsetypes.tdec_ident= Location.mkloc tdec_ident loc
+    { Parsetypes.tdec_ident= Location.mkloc (Ident.name tdec_ident) loc
     ; tdec_params= var_params
     ; tdec_implicit_params=
         List.map ~f:(Untype_ast.type_expr ~loc) tdec_implicit_params
@@ -1416,11 +1417,11 @@ let rec report_error ppf = function
          @[<h>%a@]@;The field %a does not belong to type@ @[<h>%a@].@]"
         pp_typ typ Longident.pp field pp_typ typ
   | Repeated_field field ->
-      fprintf ppf "@[<hov>The record field %s is defined several times.@]"
-        field
+      fprintf ppf "@[<hov>The record field %a is defined several times.@]"
+        Ident.pprint field
   | Missing_fields fields ->
       fprintf ppf "@[<hov>Some record fields are undefined:@ %a@]"
-        (pp_print_list ~pp_sep:pp_print_space pp_print_string)
+        (pp_print_list ~pp_sep:pp_print_space Ident.pprint)
         fields
   | Wrong_type_description (kind, name) ->
       fprintf ppf

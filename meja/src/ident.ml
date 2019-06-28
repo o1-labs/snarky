@@ -14,8 +14,17 @@ let name {ident_name= name; _} = name
 
 let compare {ident_id= id1; _} {ident_id= id2; _} = Int.compare id1 id2
 
+let pprint fmt {ident_name; _} = Ast_types.pp_name fmt ident_name
+
+let debug_print fmt {ident_name; ident_id} =
+  Format.fprintf fmt "%s/%i" ident_name ident_id
+
 module Table = struct
   type 'a t = (ident * 'a) list String.Map.t
+
+  let empty = String.Map.empty
+
+  let is_empty = String.Map.is_empty
 
   let add ~key:ident ~data tbl =
     Map.change tbl (name ident) ~f:(function
@@ -29,7 +38,7 @@ module Table = struct
       | Some row ->
           let row =
             List.filter row ~f:(fun (ident2, _) ->
-                Int.equal (compare ident ident2) 0 )
+                not (Int.equal (compare ident ident2) 0) )
           in
           if List.is_empty row then None else Some row
       | None ->
@@ -44,4 +53,8 @@ module Table = struct
         None
 
   let find_name name tbl = Option.bind ~f:List.hd (Map.find tbl name)
+
+  let first_exn tbl = List.hd_exn (snd (Map.min_elt_exn tbl))
+
+  let keys tbl = List.concat_map ~f:(List.map ~f:fst) (Map.data tbl)
 end

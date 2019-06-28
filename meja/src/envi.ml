@@ -3,6 +3,7 @@ open Ast_types
 open Type0
 open Ast_build.Loc
 open Longident
+module IdTbl = Ident.Table
 
 type error =
   | No_open_scopes
@@ -19,7 +20,7 @@ type error =
   | No_unifiable_implicit
   | Multiple_instances of type_expr
   | Recursive_load of string
-  | Predeclared_types of string list
+  | Predeclared_types of Ident.t list
   | Functor_in_module_sig
   | Not_a_functor
 
@@ -35,8 +36,7 @@ module TypeEnvi = struct
     ; implicit_id: int
     ; instances: (int * type_expr) list
     ; predeclared_types:
-        (int (* id *) * int option ref (* num. args *) * Location.t)
-        String.Map.t }
+        (int (* id *) * int option ref (* num. args *) * Location.t) IdTbl.t }
 
   let empty =
     { type_id= 1
@@ -46,7 +46,7 @@ module TypeEnvi = struct
     ; implicit_id= 1
     ; implicit_vars= []
     ; instances= []
-    ; predeclared_types= String.Map.empty }
+    ; predeclared_types= IdTbl.empty }
 
   let instance env (typ : type_expr) =
     Map.find env.variable_instances typ.type_id
@@ -140,15 +140,19 @@ module Scope = struct
 
   let add_field decl index scope field_decl =
     { scope with
-      fields= Map.set scope.fields ~key:field_decl.fld_ident ~data:(decl, index)
-    }
+      fields=
+        Map.set scope.fields
+          ~key:(Ident.name field_decl.fld_ident)
+          ~data:(decl, index) }
 
   let get_field name scope = Map.find scope.fields name
 
   let add_ctor decl index scope ctor_decl =
     { scope with
-      ctors= Map.set scope.ctors ~key:ctor_decl.ctor_ident ~data:(decl, index)
-    }
+      ctors=
+        Map.set scope.ctors
+          ~key:(Ident.name ctor_decl.ctor_ident)
+          ~data:(decl, index) }
 
   let get_ctor name scope = Map.find scope.ctors name
 
@@ -160,10 +164,12 @@ module Scope = struct
 
   let add_type_declaration decl scope =
     { scope with
-      type_decls= Map.set scope.type_decls ~key:decl.tdec_ident ~data:decl
+      type_decls=
+        Map.set scope.type_decls ~key:(Ident.name decl.tdec_ident) ~data:decl
     ; paths=
-        add_preferred_type_name (Lident decl.tdec_ident) decl.tdec_id
-          scope.paths }
+        add_preferred_type_name
+          (Lident (Ident.name decl.tdec_ident))
+          decl.tdec_id scope.paths }
 
   let get_type_declaration name scope = Map.find scope.type_decls name
 
@@ -492,13 +498,13 @@ let close_expr_scope env = snd (pop_expr_scope env)
 let set_type_predeclaring env = env.resolve_env.predeclare_types <- true
 
 let unset_type_predeclaring env =
-  if Map.is_empty env.resolve_env.type_env.predeclared_types then
+  if IdTbl.is_empty env.resolve_env.type_env.predeclared_types then
     env.resolve_env.predeclare_types <- false
   else
     let _, (_, _, loc) =
-      Map.min_elt_exn env.resolve_env.type_env.predeclared_types
+      IdTbl.first_exn env.resolve_env.type_env.predeclared_types
     in
-    let predeclared = Map.keys env.resolve_env.type_env.predeclared_types in
+    let predeclared = IdTbl.keys env.resolve_env.type_env.predeclared_types in
     raise (Error (loc, Predeclared_types predeclared))
 
 let map_current_scope ~f env =
@@ -600,24 +606,25 @@ let raw_find_type_declaration (lid : lid) env =
     match lid.txt with
     | Lident name when env.resolve_env.predeclare_types ->
         let {type_env; _} = env.resolve_env in
-        let id, num_args =
-          match Map.find type_env.predeclared_types name with
-          | Some (id, num_args, _loc) ->
-              (id, num_args)
+        let ident, id, num_args =
+          match IdTbl.find_name name type_env.predeclared_types with
+          | Some (ident, (id, num_args, _loc)) ->
+              (ident, id, num_args)
           | None ->
               let id, type_env = TypeEnvi.next_decl_id type_env in
               let num_args = ref None in
+              let ident = Ident.create name in
               let type_env =
                 { type_env with
                   predeclared_types=
-                    Map.add_exn ~key:name
+                    IdTbl.add ~key:ident
                       ~data:(id, ref None, lid.loc)
                       type_env.predeclared_types }
               in
               env.resolve_env.type_env <- type_env ;
-              (id, num_args)
+              (ident, id, num_args)
         in
-        { tdec_ident= name
+        { tdec_ident= ident
         ; tdec_params= []
         ; tdec_implicit_params= []
         ; tdec_desc= TForward num_args
@@ -1153,7 +1160,8 @@ module TypeDecl = struct
 
   let mk_typ ~params ?ident decl =
     let ident =
-      Option.value ident ~default:(Longident.Lident decl.tdec_ident)
+      Option.value ident
+        ~default:(Longident.Lident (Ident.name decl.tdec_ident))
     in
     Type.mk
       (Tctor
@@ -1243,7 +1251,7 @@ let pp_decl_typ ppf decl =
   pp_typ ppf
     { type_desc=
         Tctor
-          { var_ident= Longident.Lident decl.tdec_ident
+          { var_ident= Longident.Lident (Ident.name decl.tdec_ident)
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl= decl }
@@ -1297,7 +1305,7 @@ let report_error ppf = function
         filename
   | Predeclared_types types ->
       fprintf ppf "@[<hov>Could not find declarations for some types:@]@;%a@"
-        (pp_print_list ~pp_sep:pp_print_space pp_print_string)
+        (pp_print_list ~pp_sep:pp_print_space Ident.pprint)
         types
   | Functor_in_module_sig ->
       fprintf ppf

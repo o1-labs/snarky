@@ -178,18 +178,19 @@ module TypeDecl = struct
 
   let import_field ?must_find env {fld_ident; fld_type; fld_loc= _} =
     let fld_type, env = Type.import ?must_find fld_type env in
-    (env, {Type0.fld_ident= fld_ident.txt; fld_type})
+    (env, {Type0.fld_ident= Ident.create fld_ident.txt; fld_type})
 
   let import decl' env =
     let {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc= _}
         =
       decl'
     in
-    let tdec_id =
+    let tdec_ident, tdec_id =
       match
-        Map.find env.resolve_env.type_env.predeclared_types tdec_ident.txt
+        IdTbl.find_name tdec_ident.txt
+          env.resolve_env.type_env.predeclared_types
       with
-      | Some (id, num_args, loc) ->
+      | Some (ident, (id, num_args, loc)) ->
           ( match !num_args with
           | Some num_args ->
               let given = List.length tdec_params in
@@ -204,11 +205,11 @@ module TypeDecl = struct
           let {type_env; _} = env.resolve_env in
           env.resolve_env.type_env
           <- { type_env with
-               predeclared_types=
-                 Map.remove type_env.predeclared_types tdec_ident.txt } ;
-          id
+               predeclared_types= IdTbl.remove ident type_env.predeclared_types
+             } ;
+          (Location.mkloc ident tdec_ident.loc, id)
       | None ->
-          next_id env
+          (map_loc ~f:Ident.create tdec_ident, next_id env)
     in
     let env = open_expr_scope env in
     let import_params env =
@@ -288,7 +289,7 @@ module TypeDecl = struct
                       let name =
                         match tdec_desc with
                         | TVariant _ ->
-                            Lident tdec_ident.txt
+                            Lident (Ident.name tdec_ident.txt)
                         | TExtend (lid, _, _) ->
                             lid.txt
                         | _ ->
@@ -333,15 +334,17 @@ module TypeDecl = struct
                         |> Set.to_list
                       in
                       let decl =
-                        mk ~name:ctor.ctor_ident.txt ~params (TRecord fields)
-                          env
+                        mk
+                          ~name:(Ident.create ctor.ctor_ident.txt)
+                          ~params (TRecord fields) env
                       in
                       (env, Type0.Ctor_record decl)
                 in
                 let env = push_scope scope (close_expr_scope env) in
                 ( env
-                , {Type0.ctor_ident= ctor.ctor_ident.txt; ctor_args; ctor_ret}
-                ) )
+                , { Type0.ctor_ident= Ident.create ctor.ctor_ident.txt
+                  ; ctor_args
+                  ; ctor_ret } ) )
           in
           let tdec_desc =
             match tdec_desc with
