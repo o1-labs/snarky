@@ -1,8 +1,8 @@
 open Core_kernel
 open Asttypes
-open Ast_types
+open Meja_lib.Ast_types
 open Ast_helper
-open Parsetypes
+open Meja_lib.Parsetypes
 
 let rec of_type_desc ?loc typ =
   match typ with
