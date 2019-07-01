@@ -646,6 +646,9 @@ module Type = struct
   let mkvar ?(explicitness = Explicit) name env =
     mk (Tvar (name, explicitness)) env
 
+  let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
+    ref (fun _ -> failwith "mk_option not initialised")
+
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
@@ -1111,7 +1114,7 @@ module Type = struct
                String.equal lbl arr_lbl
            | _ ->
                false ->
-        (Some (typ1, explicit, label), typ2)
+        (Some (!mk_option typ1, explicit, arr_label), typ2)
     | Tarrow (typ1, typ2, explicit, arr_label) -> (
       match bubble_label_aux env label typ2 with
       | None, _ ->

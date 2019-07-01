@@ -168,9 +168,15 @@ end) : sig
 
   val one : t
 
-  val to_affine_coordinates : t -> Fq.t * Fq.t
+  module Affine : sig
+    type t = Fq.t * Fq.t [@@deriving bin_io]
+  end
 
-  val of_affine_coordinates : Fq.t * Fq.t -> t
+  val to_affine_exn : t -> Affine.t
+
+  val to_affine : t -> Affine.t option
+
+  val of_affine : Affine.t -> t
 
   val equal : t -> t -> bool
 
@@ -204,14 +210,6 @@ end = struct
     fun () ->
       let x = stub () in
       schedule_delete x ; x
-
-  let of_affine_coordinates =
-    let stub =
-      foreign (func_name "of_coords") (Fq.typ @-> Fq.typ @-> returning typ)
-    in
-    fun (x, y) ->
-      let t = stub x y in
-      schedule_delete t ; t
 
   let double =
     let stub = foreign (func_name "double") (typ @-> returning typ) in
@@ -251,7 +249,23 @@ end = struct
 
   let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
 
-  let to_affine_coordinates =
+  module Affine = struct
+    type t = Fq.t * Fq.t [@@deriving bin_io]
+  end
+
+  let of_affine =
+    let stub =
+      foreign (func_name "of_coords") (Fq.typ @-> Fq.typ @-> returning typ)
+    in
+    fun (x, y) ->
+      let t = stub x y in
+      schedule_delete t ; t
+
+  let is_zero = foreign (func_name "is_zero") (typ @-> returning bool)
+
+  (* This function hits an ugly C++ assertion failure in the zero case, so
+   we wrap it with to_affine_exn *)
+  let to_affine' =
     let stub_to_affine =
       foreign (func_name "to_affine_coordinates") (typ @-> returning void)
     in
@@ -265,22 +279,22 @@ end = struct
       Caml.Gc.finalise Fq.delete y ;
       (x, y)
 
+  let to_affine t = if is_zero t then None else Some (to_affine' t)
+
+  let to_affine_exn t =
+    if is_zero t then
+      failwithf "to_affine_exn (%s): Got a zero curve point" P.prefix ()
+    else to_affine' t
+
   module Repr = struct
-    type t = Zero | Non_zero of {x: Fq.t; y: Fq.t} [@@deriving bin_io]
+    type t = Zero | Non_zero of Affine.t [@@deriving bin_io]
   end
 
   let to_repr t : Repr.t =
-    if equal zero t then Zero
-    else
-      let x, y = to_affine_coordinates t in
-      Non_zero {x; y}
+    match to_affine t with None -> Zero | Some t -> Non_zero t
 
   let of_repr (r : Repr.t) =
-    match r with
-    | Zero ->
-        zero
-    | Non_zero {x; y} ->
-        of_affine_coordinates (x, y)
+    match r with Zero -> zero | Non_zero t -> of_affine t
 
   module B =
     Binable.Of_binable
@@ -1272,7 +1286,12 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
         (typ @-> returning M.R1CS_constraint_system.typ)
 
     let to_cpp_string_stub : t -> Cpp_string.t =
-      foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+      let stub =
+        foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+      in
+      fun t ->
+        M.R1CS_constraint_system.clear (r1cs_constraint_system t) ;
+        stub t
 
     let to_string : t -> string =
      fun t ->
@@ -1959,7 +1978,7 @@ struct
           let ( * ) = Field.mul in
           let x = Field.random () in
           let f = (x * x * x) + (Coefficients.a * x) + Coefficients.b in
-          if Field.is_square f then of_affine_coordinates (x, Field.sqrt f)
+          if Field.is_square f then of_affine (x, Field.sqrt f)
           else random_curve_point ()
         in
         let g = random_curve_point () in
@@ -1968,7 +1987,7 @@ struct
         equal (Window_table.scale table s) g
 
       let%test "coefficients correct" =
-        let x, y = to_affine_coordinates one in
+        let x, y = to_affine_exn one in
         let open Mnt6_0.Field in
         let ( + ) = add in
         let ( * ) = mul in
@@ -2057,7 +2076,7 @@ struct
         equal (Window_table.scale table s) (scale one s)
 
       let%test "coefficients correct" =
-        let x, y = to_affine_coordinates one in
+        let x, y = to_affine_exn one in
         let open Mnt4_0.Field in
         let ( + ) = add in
         let ( * ) = mul in

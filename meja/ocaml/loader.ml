@@ -1,5 +1,6 @@
 open Core_kernel
 open Cmt_format
+open Meja_lib
 
 let load ~loc ~name resolve_env filename =
   (*Format.(fprintf err_formatter "Loading %s from %s...@." name filename) ;*)
