@@ -733,13 +733,6 @@ module Type = struct
     let sexp_of_t typ = Int.sexp_of_t typ.type_id
   end
 
-  module Comparator = struct
-    include T
-    include Comparator.Make (T)
-  end
-
-  include Comparator
-
   let type_vars ?depth typ =
     let deep_enough =
       match depth with
@@ -748,7 +741,7 @@ module Type = struct
       | None ->
           fun _ -> true
     in
-    let empty = Set.empty (module Comparator) in
+    let empty = Typeset.empty in
     let rec type_vars set typ =
       match typ.type_desc with
       | Tvar _ when deep_enough typ ->
@@ -782,9 +775,7 @@ module Type = struct
           typ )
     | Tpoly (vars, typ) ->
         let var_set =
-          Set.union_list
-            (module Comparator)
-            (List.map vars ~f:(type_vars ~depth:env.depth))
+          Typeset.union_list (List.map vars ~f:(type_vars ~depth:env.depth))
         in
         let typ = flatten typ env in
         mk' (Tpoly (Set.to_list var_set, typ))
@@ -993,14 +984,12 @@ module Type = struct
       (* Eliminate unifiable implicit variables containing 'weak type
          variables'. *)
       let consider_weak = ref true in
-      let weak_vars_set = ref (Set.empty (module Comparator)) in
+      let weak_vars_set = ref Typeset.empty in
       let strong_implicit_vars, weak_implicit_vars =
         List.partition_tf implicit_vars ~f:(fun {exp_type; _} ->
             if !consider_weak then
               let weak_vars =
-                weak_variables env.depth
-                  (Set.empty (module Comparator))
-                  exp_type
+                weak_variables env.depth Typeset.empty exp_type
               in
               if Set.is_empty weak_vars then true
               else (
@@ -1064,7 +1053,7 @@ module Type = struct
       | _ ->
           fold ~init:set typ ~f:implicit_params
     in
-    implicit_params (Set.empty (module Comparator)) typ
+    implicit_params Typeset.empty typ
 
   let rec constr_map env ~f typ =
     match typ.type_desc with

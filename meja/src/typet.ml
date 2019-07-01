@@ -233,9 +233,8 @@ module TypeDecl = struct
     let add_implicits implicit_params =
       if Set.is_empty implicit_params then tdec_implicit_params
       else
-        tdec_implicit_params
-        |> Set.of_list (module Envi.Type.Comparator)
-        |> Set.union implicit_params |> Set.to_list
+        tdec_implicit_params |> Typeset.of_list |> Set.union implicit_params
+        |> Set.to_list
     in
     (* Make sure the declaration is available to lookup for recursive types. *)
     let env =
@@ -273,8 +272,7 @@ module TypeDecl = struct
           in
           let tdec_implicit_params =
             add_implicits
-              (Set.union_list
-                 (module Envi.Type)
+              (Typeset.union_list
                  (List.map fields ~f:(fun {fld_type; _} ->
                       Envi.Type.implicit_params env fld_type )))
           in
@@ -354,8 +352,7 @@ module TypeDecl = struct
           in
           let tdec_implicit_params =
             add_implicits
-              (Set.union_list
-                 (module Envi.Type)
+              (Typeset.union_list
                  (List.map ctors ~f:(fun ctor ->
                       let typs =
                         match ctor.ctor_args with
@@ -373,8 +370,7 @@ module TypeDecl = struct
                         | None ->
                             typs
                       in
-                      Set.union_list
-                        (module Envi.Type)
+                      Typeset.union_list
                         (List.map typs ~f:(Envi.Type.implicit_params env)) )))
           in
           ({decl with tdec_desc; tdec_implicit_params}, env)
