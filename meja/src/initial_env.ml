@@ -115,3 +115,5 @@ module Type = struct
 
   let list a = TypeDecl.mk_typ list ~params:[a] env
 end
+
+let () = Envi.Type.mk_option := Type.option
