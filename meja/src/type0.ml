@@ -45,8 +45,6 @@ and type_decl_desc =
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
-let none = {type_desc= Tvar (None, Explicit); type_id= -1; type_depth= -1}
-
 let rec typ_debug_print fmt typ =
   let open Format in
   let print i = fprintf fmt i in
