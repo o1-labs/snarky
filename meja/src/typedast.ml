@@ -1,0 +1,82 @@
+open Ast_types
+open Parsetypes
+
+type literal = Int of int | Bool of bool | Field of string | String of string
+
+type pattern =
+  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: Type0.type_expr}
+
+and pattern_desc =
+  | Tpat_any
+  | Tpat_variable of str
+  | Tpat_constraint of pattern * type_expr
+  | Tpat_tuple of pattern list
+  | Tpat_or of pattern * pattern
+  | Tpat_int of int
+  | Tpat_record of (lid * pattern) list
+  | Tpat_ctor of lid * pattern option
+
+type expression =
+  {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
+
+and expression_desc =
+  | Texp_apply of expression * (Asttypes.arg_label * expression) list
+  | Texp_variable of lid
+  | Texp_literal of literal
+  | Texp_fun of Asttypes.arg_label * pattern * expression * explicitness
+  | Texp_newtype of str * expression
+  | Texp_seq of expression * expression
+  | Texp_let of pattern * expression * expression
+  | Texp_constraint of expression * type_expr
+  | Texp_tuple of expression list
+  | Texp_match of expression * (pattern * expression) list
+  | Texp_field of expression * lid
+  | Texp_record of (lid * expression) list * expression option
+  | Texp_ctor of lid * expression option
+  | Texp_unifiable of
+      { mutable expression: expression option
+      ; name: str
+      ; id: int }
+  | Texp_if of expression * expression * expression option
+
+type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
+
+and signature_desc =
+  | Tsig_value of str * type_expr
+  | Tsig_instance of str * type_expr
+  | Tsig_type of type_decl
+  | Tsig_module of str * module_sig
+  | Tsig_modtype of str * module_sig
+  | Tsig_open of lid
+  | Tsig_typeext of variant * ctor_decl list
+  | Tsig_request of type_expr * ctor_decl
+  | Tsig_multiple of signature_item list
+
+and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
+
+and module_sig_desc =
+  | Tmty_sig of signature_item list
+  | Tmty_name of lid
+  | Tmty_abstract
+  | Tmty_functor of str * module_sig * module_sig
+
+type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
+
+and statement_desc =
+  | Tstmt_value of pattern * expression
+  | Tstmt_instance of str * expression
+  | Tstmt_type of type_decl
+  | Tstmt_module of str * module_expr
+  | Tstmt_modtype of str * module_sig
+  | Tstmt_open of lid
+  | Tstmt_typeext of variant * ctor_decl list
+  | Tstmt_request of
+      type_expr * ctor_decl * (pattern option * expression) option
+  | Tstmt_multiple of statement list
+
+and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
+
+and module_desc =
+  | Tmod_struct of statement list
+  | Tmod_name of lid
+  | Tmod_functor of str * module_sig * module_expr

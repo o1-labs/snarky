@@ -49,20 +49,20 @@ module Type = struct
     ; var_params= params
     ; var_implicit_params= implicits }
 
-  let none ?loc ?(explicit = Explicit) () = mk ?loc (Tvar (None, explicit))
+  let none ?loc ?(explicit = Explicit) () = mk ?loc (Ptyp_var (None, explicit))
 
   let var ?loc ?(explicit = Explicit) name =
-    mk ?loc (Tvar (Some (Loc.mk ?loc name), explicit))
+    mk ?loc (Ptyp_var (Some (Loc.mk ?loc name), explicit))
 
   let constr ?loc ?params ?implicits ident =
-    mk ?loc (Tctor (variant ?loc ?params ?implicits ident))
+    mk ?loc (Ptyp_ctor (variant ?loc ?params ?implicits ident))
 
-  let tuple ?loc typs = mk ?loc (Ttuple typs)
+  let tuple ?loc typs = mk ?loc (Ptyp_tuple typs)
 
   let arrow ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) typ1 typ2 =
-    mk ?loc (Tarrow (typ1, typ2, explicit, label))
+    mk ?loc (Ptyp_arrow (typ1, typ2, explicit, label))
 
-  let poly ?loc vars var = mk ?loc (Tpoly (vars, var))
+  let poly ?loc vars var = mk ?loc (Ptyp_poly (vars, var))
 end
 
 module Type_decl = struct
@@ -113,15 +113,15 @@ end
 
 module Pat = struct
   let mk ?(loc = Location.none) d : Parsetypes.pattern =
-    {pat_desc= d; pat_loc= loc; pat_type= Type0.none}
+    {pat_desc= d; pat_loc= loc}
 
-  let any ?loc () = mk ?loc PAny
+  let any ?loc () = mk ?loc Ppat_any
 
-  let var ?loc ident = mk ?loc (PVariable (Loc.mk ?loc ident))
+  let var ?loc ident = mk ?loc (Ppat_variable (Loc.mk ?loc ident))
 
-  let ctor ?loc ?args name = mk ?loc (PCtor (Loc.mk ?loc name, args))
+  let ctor ?loc ?args name = mk ?loc (Ppat_ctor (Loc.mk ?loc name, args))
 
-  let record ?loc fields = mk ?loc (PRecord fields)
+  let record ?loc fields = mk ?loc (Ppat_record fields)
 
   let field ?loc ?eq name =
     let eq =
@@ -132,24 +132,26 @@ end
 
 module Exp = struct
   let mk ?(loc = Location.none) d : Parsetypes.expression =
-    {exp_desc= d; exp_loc= loc; exp_type= Type0.none}
+    {exp_desc= d; exp_loc= loc}
 
   let fun_ ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) p body =
-    mk ?loc (Fun (label, p, body, explicit))
+    mk ?loc (Pexp_fun (label, p, body, explicit))
 
-  let apply ?loc e es = mk ?loc (Apply (e, es))
+  let apply ?loc e es = mk ?loc (Pexp_apply (e, es))
 
-  let match_ ?loc e cases = mk ?loc (Match (e, cases))
+  let match_ ?loc e cases = mk ?loc (Pexp_match (e, cases))
 
-  let var ?loc name = mk ?loc (Variable (Loc.mk ?loc name))
+  let var ?loc name = mk ?loc (Pexp_variable (Loc.mk ?loc name))
 
-  let ctor ?loc ?args name = mk ?loc (Ctor (Loc.mk ?loc name, args))
+  let ctor ?loc ?args name = mk ?loc (Pexp_ctor (Loc.mk ?loc name, args))
 
-  let record ?loc ?default fields = mk ?loc (Record (fields, default))
+  let record ?loc ?default fields = mk ?loc (Pexp_record (fields, default))
 
-  let let_ ?loc p e_eq e = mk ?loc (Let (p, e_eq, e))
+  let let_ ?loc p e_eq e = mk ?loc (Pexp_let (p, e_eq, e))
 
-  let constraint_ ?loc e typ = mk ?loc (Constraint (e, typ))
+  let constraint_ ?loc e typ = mk ?loc (Pexp_constraint (e, typ))
 
-  let seq ?loc e1 e2 = mk ?loc (Seq (e1, e2))
+  let seq ?loc e1 e2 = mk ?loc (Pexp_seq (e1, e2))
+
+  let literal ?loc l = mk ?loc (Pexp_literal l)
 end
