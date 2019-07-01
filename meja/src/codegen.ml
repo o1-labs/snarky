@@ -74,16 +74,16 @@ let typ_of_decl ~loc (decl : type_decl) =
         let var_decl =
           let rec change_names typ =
             match typ.type_desc with
-            | Tctor ({var_ident; _} as variant) ->
+            | Ptyp_ctor ({var_ident; _} as variant) ->
                 has_constr := true ;
                 Typet.Type.map ~loc ~f:change_names
                   { typ with
                     type_desc=
-                      Tctor
+                      Ptyp_ctor
                         { variant with
                           var_ident=
                             Loc.mk ~loc (var_type_lident var_ident.txt) } }
-            | Tarrow _ ->
+            | Ptyp_arrow _ ->
                 (* We don't support generating [Typ.t]s on [_ -> _]. *)
                 assert false
             | _ ->
@@ -171,7 +171,7 @@ let typ_of_decl ~loc (decl : type_decl) =
                 fresh_names
                   (List.map decl.tdec_params ~f:(fun param ->
                        match param.type_desc with
-                       | Tvar (Some name, _) ->
+                       | Ptyp_var (Some name, _) ->
                            name.txt
                        | _ ->
                            "a" ))
@@ -199,16 +199,16 @@ let typ_of_decl ~loc (decl : type_decl) =
             in
             Exp.constraint_ ~loc body target_type
           in
-          Instance (Location.mkloc (typ_name name) loc, typ_body)
+          Pstmt_instance (Location.mkloc (typ_name name) loc, typ_body)
         in
         let mk_stmt stmt_desc = {stmt_loc= loc; stmt_desc} in
         if !has_constr then
           Some
-            [ mk_stmt (TypeDecl poly_decl)
-            ; mk_stmt (TypeDecl t_decl)
-            ; mk_stmt (TypeDecl var_decl)
+            [ mk_stmt (Pstmt_type poly_decl)
+            ; mk_stmt (Pstmt_type t_decl)
+            ; mk_stmt (Pstmt_type var_decl)
             ; mk_stmt typ_instance ]
-        else Some [mk_stmt (TypeDecl decl); mk_stmt typ_instance]
+        else Some [mk_stmt (Pstmt_type decl); mk_stmt typ_instance]
     | _ ->
         None
   with _ -> None

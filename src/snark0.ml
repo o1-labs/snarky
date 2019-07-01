@@ -975,6 +975,21 @@ struct
             if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
             else None
           in
+          let run =
+            if Option.is_none system then run
+            else
+              (* If we're regenerating the R1CS, we need to collect and
+                 evaluate the constraints for the inputs.
+              *)
+              let next_input = ref 1 in
+              let r = collect_input_constraints next_input t k in
+              let run_in_run x state =
+                let state, _x = Checked.run r state in
+                assert (Int.equal !next_input (Field.Vector.length primary + 1)) ;
+                run x state
+              in
+              run_in_run
+          in
           let auxiliary =
             Checked.auxiliary_input ?system ~run ?handlers
               ~num_inputs:(Field.Vector.length primary)

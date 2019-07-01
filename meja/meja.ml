@@ -44,11 +44,11 @@ let add_preamble impl_mod curve proofs ast =
   in
   let snarky_impl_path = mkloc (Lapply (snarky_make, backend_path)) in
   let snarky_impl =
-    Module
+    Pstmt_module
       ( mkloc impl_mod
-      , {mod_desc= ModName snarky_impl_path; mod_loc= Location.none} )
+      , {mod_desc= Pmod_name snarky_impl_path; mod_loc= Location.none} )
   in
-  let snarky_open = Open (mkloc (Lident impl_mod)) in
+  let snarky_open = Pstmt_open (mkloc (Lident impl_mod)) in
   let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in
   mk_stmt snarky_impl :: mk_stmt snarky_open :: ast
 
@@ -215,7 +215,7 @@ let main =
           let env =
             Envi.open_absolute_module (Some (Longident.Lident module_name)) env
           in
-          let env = Typechecker.check_signature env parse_ast in
+          let env, _typed_ast = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:Location.none env in
           let name = Location.(mkloc module_name none) in
           Envi.add_module name m env )
@@ -232,6 +232,7 @@ let main =
       read_file (Parser_impl.implementation Lexer_impl.token) file
     in
     let _env, ast = Typechecker.check parse_ast env in
+    let ast = List.map ~f:Untype_ast.statement ast in
     let ast =
       if !snarky_preamble then add_preamble !impl_mod !curve !proofs ast
       else ast

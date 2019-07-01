@@ -13,22 +13,25 @@ let lid_last x = mkloc (last x.txt) x.loc
 let mkloc ~pos x = mkloc x (Loc.of_pos pos)
 
 let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= Loc.of_pos pos}
-let mkpat ~pos d = {pat_desc= d; pat_loc= Loc.of_pos pos; pat_type= Type0.none}
-let mkexp ~pos d = {exp_desc= d; exp_loc= Loc.of_pos pos; exp_type= Type0.none}
+let mkpat ~pos d = {pat_desc= d; pat_loc= Loc.of_pos pos}
+let mkexp ~pos d = {exp_desc= d; exp_loc= Loc.of_pos pos}
 let mkstmt ~pos d = {stmt_desc= d; stmt_loc= Loc.of_pos pos}
 let mksig ~pos d = {sig_desc= d; sig_loc= Loc.of_pos pos}
 let mkmod ~pos d = {mod_desc= d; mod_loc= Loc.of_pos pos}
 let mkmty ~pos d = {msig_desc= d; msig_loc= Loc.of_pos pos}
 
 let conspat ~pos hd tl =
-  mkpat ~pos (PCtor
-    ( mkloc ~pos (Lident "::"), Some (mkpat ~pos (PTuple [hd; tl]))))
+  mkpat ~pos (Ppat_ctor
+    ( mkloc ~pos (Lident "::"), Some (mkpat ~pos (Ppat_tuple [hd; tl]))))
 
 let consexp ~pos hd tl =
-  mkexp ~pos (Ctor
-    ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Tuple [hd; tl]))))
+  mkexp ~pos (Pexp_ctor
+    ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Pexp_tuple [hd; tl]))))
 %}
+%token <string> FIELD
 %token <int> INT
+%token <bool> BOOL
+%token <string> STRING
 %token <string> LIDENT
 %token <string> UIDENT
 %token FUN
@@ -43,6 +46,8 @@ let consexp ~pos hd tl =
 %token REQUEST
 %token WITH
 %token HANDLER
+%token IF
+%token ELSE
 %token SEMI
 %token LBRACE
 %token RBRACE
@@ -130,61 +135,61 @@ signature:
 
 structure_item:
   | LET x = pat EQUAL e = expr
-    { mkstmt ~pos:$loc (Value (x, e)) }
+    { mkstmt ~pos:$loc (Pstmt_value (x, e)) }
   | INSTANCE x = as_loc(val_ident) EQUAL e = expr
-    { mkstmt ~pos:$loc (Instance (x, e)) }
+    { mkstmt ~pos:$loc (Pstmt_instance (x, e)) }
   | TYPE x = decl_type(lident) k = type_kind
     { let (x, args) = x in
-      mkstmt ~pos:$loc (TypeDecl
+      mkstmt ~pos:$loc (Pstmt_type
         { tdec_ident= x
         ; tdec_params= args
         ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
-    { mkstmt ~pos:$loc (Module (x, m)) }
+    { mkstmt ~pos:$loc (Pstmt_module (x, m)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
-    { mkstmt ~pos:$loc (ModType (x, m)) }
+    { mkstmt ~pos:$loc (Pstmt_modtype (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
-    { mkstmt ~pos:$loc (Open x) }
+    { mkstmt ~pos:$loc (Pstmt_open x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
-      mkstmt ~pos:$loc (TypeExtension
+      mkstmt ~pos:$loc (Pstmt_typeext
         ( {var_ident= x; var_params= params; var_implicit_params= []}
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
-    { mkstmt ~pos:$loc (Request (arg, x, handler)) }
+    { mkstmt ~pos:$loc (Pstmt_request (arg, x, handler)) }
 
 signature_item:
   | LET x = as_loc(val_ident) COLON typ = type_expr
-    { mksig ~pos:$loc (SValue (x, typ)) }
+    { mksig ~pos:$loc (Psig_value (x, typ)) }
   | INSTANCE x = as_loc(val_ident) COLON typ = type_expr
-    { mksig ~pos:$loc (SInstance (x, typ)) }
+    { mksig ~pos:$loc (Psig_instance (x, typ)) }
   | TYPE x = decl_type(lident) k = type_kind
     { let (x, args) = x in
-      mksig ~pos:$loc (STypeDecl
+      mksig ~pos:$loc (Psig_type
         { tdec_ident= x
         ; tdec_params= args
         ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
-    { mksig ~pos:$loc (SModule (x, m)) }
+    { mksig ~pos:$loc (Psig_module (x, m)) }
   | MODULE x = as_loc(UIDENT)
-    { mksig ~pos:$loc (SModule (x, mkmty ~pos:$loc SigAbstract)) }
+    { mksig ~pos:$loc (Psig_module (x, mkmty ~pos:$loc Pmty_abstract)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
-    { mksig ~pos:$loc (SModType (x, m)) }
+    { mksig ~pos:$loc (Psig_modtype (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
-    { mksig ~pos:$loc (SOpen x) }
+    { mksig ~pos:$loc (Psig_open x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
-      mksig ~pos:$loc (STypeExtension
+      mksig ~pos:$loc (Psig_typeext
         ( {var_ident= x; var_params= params; var_implicit_params= []}
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl
-    { mksig ~pos:$loc (SRequest (arg, x)) }
+    { mksig ~pos:$loc (Psig_request (arg, x)) }
 
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
@@ -192,15 +197,15 @@ default_request_handler:
 
 module_expr:
   | LBRACE s = structure RBRACE
-    { mkmod ~pos:$loc (Structure s) }
+    { mkmod ~pos:$loc (Pmod_struct s) }
   | x = as_loc(longident(UIDENT, UIDENT))
-    { mkmod ~pos:$loc (ModName x) }
+    { mkmod ~pos:$loc (Pmod_name x) }
 
 module_sig:
   | LBRACE s = signature RBRACE
-    { mkmty ~pos:$loc (Signature s) }
+    { mkmty ~pos:$loc (Pmty_sig s) }
   | x = as_loc(longident(UIDENT, UIDENT))
-    { mkmty ~pos:$loc (SigName x) }
+    { mkmty ~pos:$loc (Pmty_name x) }
 
 %inline decl_type(X):
   | x = as_loc(X)
@@ -212,7 +217,7 @@ decl_type_expr:
   | x = decl_type(longident(lident, UIDENT))
     { let (x, params) = x in
       mktyp ~pos:$loc
-        (Tctor {var_ident= x; var_params= params; var_implicit_params= []}) }
+        (Ptyp_ctor {var_ident= x; var_params= params; var_implicit_params= []}) }
 
 record_field(ID, EXP):
   | id = as_loc(ID) COLON t = EXP
@@ -309,70 +314,90 @@ expr_field:
   | x = record_field(longident(lident, UIDENT), expr)
     { x }
   | x = as_loc(longident(lident, UIDENT))
-    { (x, mkexp ~pos:$loc (Variable (mk_lid (lid_last x)))) }
+    { (x, mkexp ~pos:$loc (Pexp_variable (mk_lid (lid_last x)))) }
 
 simpl_expr:
   | x = as_loc(val_longident)
-    { mkexp ~pos:$loc (Variable x) }
+    { mkexp ~pos:$loc (Pexp_variable x) }
   | x = INT
-    { mkexp ~pos:$loc (Int x) }
+    { mkexp ~pos:$loc (Pexp_literal (Int x)) }
+  | x = BOOL
+    { mkexp ~pos:$loc (Pexp_literal (Bool x)) }
+  | x = FIELD
+    { mkexp ~pos:$loc (Pexp_literal (Field x)) }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { e }
   | LBRACKET es = list(expr, COMMA) RBRACKET
     { List.fold
-        ~init:(mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "[]"), None)))
+        ~init:(mkexp ~pos:$loc (Pexp_ctor (mkloc ~pos:$loc (Lident "[]"), None)))
         es ~f:(fun acc e -> consexp ~pos:$loc e acc) }
   | LBRACE es = block RBRACE
     { es }
   | e = expr_record
     { e }
   | e = simpl_expr DOT field = as_loc(longident(lident, UIDENT))
-    { mkexp ~pos:$loc (Field (e, field)) }
+    { mkexp ~pos:$loc (Pexp_field (e, field)) }
+  | s = STRING
+    { mkexp ~pos:$loc (Pexp_literal (String s)) }
 
 expr:
   | x = simpl_expr
     { x }
   | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
-    { mkexp ~pos:$loc (Constraint (x, typ)) }
+    { mkexp ~pos:$loc (Pexp_constraint (x, typ)) }
   | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
     { let unit_pat =
-        mkpat ~pos:$loc (PCtor (mkloc (Lident "()") ~pos:$loc, None))
+        mkpat ~pos:$loc (Ppat_ctor (mkloc (Lident "()") ~pos:$loc, None))
       in
-      mkexp ~pos:$loc (Fun (Nolabel, unit_pat, body, Explicit)) }
+      mkexp ~pos:$loc (Pexp_fun (Nolabel, unit_pat, body, Explicit)) }
   | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
     { f }
   | f = expr LPAREN es = expr_arg_list RPAREN
-    { mkexp ~pos:$loc (Apply (f, List.rev es)) }
+    { mkexp ~pos:$loc (Pexp_apply (f, List.rev es)) }
   | hd = expr COLONCOLON tl = expr
     { consexp ~pos:$loc hd tl }
   | e1 = expr op = infix_operator e2 = expr %prec above_infix
     { let op = mkloc (Lident op) ~pos:$loc(op) in
       mkexp ~pos:$loc
-        (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e1; Nolabel, e2])) }
+        (Pexp_apply (mkexp ~pos:$loc (Pexp_variable op), [Nolabel, e1; Nolabel, e2])) }
   | op = PREFIXOP e = expr
     { let op = mkloc (Lident op) ~pos:$loc(op) in
-      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e])) }
+      mkexp ~pos:$loc (Pexp_apply (mkexp ~pos:$loc (Pexp_variable op), [Nolabel, e])) }
   | _op = MINUS e = expr
     { let op = mkloc (Lident "~-") ~pos:$loc(_op) in
-      mkexp ~pos:$loc (Apply (mkexp ~pos:$loc (Variable op), [Nolabel, e])) }
+      mkexp ~pos:$loc (Pexp_apply (mkexp ~pos:$loc (Pexp_variable op), [Nolabel, e])) }
   | SWITCH LPAREN e = expr_or_bare_tuple RPAREN LBRACE rev_cases = list(match_case, {}) RBRACE
-    { mkexp ~pos:$loc (Match (e, List.rev rev_cases)) }
+    { mkexp ~pos:$loc (Pexp_match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
-    { mkexp ~pos:$loc (Ctor (id, args)) }
+    { mkexp ~pos:$loc (Pexp_ctor (id, args)) }
+  | e = if_expr
+    { e }
+
+if_expr:
+  | IF e1 = expr LBRACE e2 = block RBRACE
+    { mkexp ~pos:$loc (Pexp_if (e1, e2, None)) }
+  | IF e1 = expr LBRACE e2 = block RBRACE ELSE e3 = if_expr_or_block
+    { mkexp ~pos:$loc (Pexp_if (e1, e2, Some e3)) }
+
+if_expr_or_block:
+  | e = if_expr
+    { e }
+  | LBRACE e = block RBRACE
+    { e }
 
 expr_record:
   | LBRACE fields = list(expr_field, COMMA) RBRACE
-    { mkexp ~pos:$loc (Record(List.rev fields, None)) }
+    { mkexp ~pos:$loc (Pexp_record(List.rev fields, None)) }
   | LBRACE DOTDOTDOT e = expr COMMA fields = list(expr_field, COMMA) RBRACE
-    { mkexp ~pos:$loc (Record(List.rev fields, Some e)) }
+    { mkexp ~pos:$loc (Pexp_record(List.rev fields, Some e)) }
 
 expr_or_bare_tuple:
   | x = expr
     { x }
   | es = tuple(expr)
-    { mkexp ~pos:$loc (Tuple (List.rev es)) }
+    { mkexp ~pos:$loc (Pexp_tuple (List.rev es)) }
 
 expr_ctor_args:
   | (* empty *)
@@ -391,18 +416,18 @@ expr_arg:
     { (Asttypes.Nolabel, e) }
   | TILDE name = LIDENT
     { (Asttypes.Labelled name, mkexp ~pos:$loc
-        (Variable (mkloc ~pos:$loc (Lident name)))) }
+        (Pexp_variable (mkloc ~pos:$loc (Lident name)))) }
   | TILDE name = LIDENT EQUAL e = expr
     { (Asttypes.Labelled name, e) }
   | QUESTION name = LIDENT
     { (Asttypes.Optional name, mkexp ~pos:$loc
-        (Variable (mkloc ~pos:$loc (Lident name)))) }
+        (Pexp_variable (mkloc ~pos:$loc (Lident name)))) }
   | QUESTION name = LIDENT EQUAL e = expr
     { (Asttypes.Optional name, e) }
 
 expr_arg_list:
   | (* empty *)
-    { [Nolabel, mkexp ~pos:$loc (Ctor (mkloc ~pos:$loc (Lident "()"), None))] }
+    { [Nolabel, mkexp ~pos:$loc (Pexp_ctor (mkloc ~pos:$loc (Lident "()"), None))] }
   | e = expr_arg
     { [e] }
   | es = expr_arg_list COMMA e = expr_arg
@@ -412,21 +437,21 @@ pat_arg:
   | p = pat
     { (Asttypes.Nolabel, p) }
   | TILDE name = as_loc(LIDENT)
-    { (Asttypes.Labelled name.txt, mkpat ~pos:$loc (PVariable name)) }
+    { (Asttypes.Labelled name.txt, mkpat ~pos:$loc (Ppat_variable name)) }
   | TILDE name = as_loc(LIDENT) COLON typ = type_expr
     { ( Asttypes.Labelled name.txt
       , mkpat ~pos:$loc
-          (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
+          (Ppat_constraint (mkpat ~pos:$loc(name) (Ppat_variable name), typ)) ) }
 
 pat_arg_opt:
   | p = pat_arg
     { p }
   | QUESTION name = as_loc(LIDENT)
-    { (Asttypes.Optional name.txt, mkpat ~pos:$loc (PVariable name)) }
+    { (Asttypes.Optional name.txt, mkpat ~pos:$loc (Ppat_variable name)) }
   | QUESTION name = as_loc(LIDENT) COLON typ = type_expr
     { ( Asttypes.Optional name.txt
       , mkpat ~pos:$loc
-          (PConstraint (mkpat ~pos:$loc(name) (PVariable name), typ)) ) }
+          (Ppat_constraint (mkpat ~pos:$loc(name) (Ppat_variable name), typ)) ) }
 
 function_body:
  | EQUALGT LBRACE body = block RBRACE
@@ -437,35 +462,35 @@ function_body:
 function_from_args:
   | p = pat_arg_opt RPAREN body = function_body
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, body, Explicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, body, Explicit)) }
   | p = pat_arg_opt RPAREN COLON typ = type_expr body = function_body
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, mkexp ~pos:$loc(typ)
-        (Constraint (body, typ)), Explicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, mkexp ~pos:$loc(typ)
+        (Pexp_constraint (body, typ)), Explicit)) }
   | p = pat_arg_opt COMMA f = function_from_args
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, f, Explicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, f, Explicit)) }
   | TYPE t = as_loc(lident) RPAREN body = function_body
-    { mkexp ~pos:$loc (Newtype (t, body)) }
+    { mkexp ~pos:$loc (Pexp_newtype (t, body)) }
   | TYPE t = as_loc(lident) COMMA f = function_from_args
-    { mkexp ~pos:$loc (Newtype (t, f)) }
+    { mkexp ~pos:$loc (Pexp_newtype (t, f)) }
   | pat_arg_opt RPAREN err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
 
 function_from_implicit_args:
   | p = pat_arg RBRACE LPAREN f = function_from_args
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, f, Implicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, f, Implicit)) }
   | p = pat_arg RBRACE EQUALGT LBRACE body = block RBRACE
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, body, Implicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, body, Implicit)) }
   | p = pat_arg RBRACE COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, mkexp ~pos:$loc(typ)
-        (Constraint (body, typ)), Implicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, mkexp ~pos:$loc(typ)
+        (Pexp_constraint (body, typ)), Implicit)) }
   | p = pat_arg COMMA f = function_from_implicit_args
     { let (label, p) = p in
-      mkexp ~pos:$loc (Fun (label, p, f, Implicit)) }
+      mkexp ~pos:$loc (Pexp_fun (label, p, f, Implicit)) }
   | pat_arg RBRACE err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
 
@@ -473,9 +498,9 @@ block:
   | e = expr SEMI
     { e }
   | e1 = expr SEMI rest = block
-    { mkexp ~pos:$loc (Seq (e1, rest)) }
+    { mkexp ~pos:$loc (Pexp_seq (e1, rest)) }
   | LET x = pat EQUAL lhs = expr SEMI rhs = block
-    { mkexp ~pos:$loc (Let (x, lhs, rhs)) }
+    { mkexp ~pos:$loc (Pexp_let (x, lhs, rhs)) }
   | LET pat EQUAL expr err = err
     { raise (Error (err, Missing_semi)) }
   | expr err = err
@@ -485,11 +510,11 @@ pat_field:
   | x = record_field(longident(lident, UIDENT), pat)
     { x }
   | x = as_loc(longident(lident, UIDENT))
-    { (x, mkpat ~pos:$loc (PVariable (lid_last x))) }
+    { (x, mkpat ~pos:$loc (Ppat_variable (lid_last x))) }
 
 pat_record:
   | LBRACE fields = list(pat_field, COMMA) RBRACE
-    { mkpat ~pos:$loc (PRecord (List.rev fields)) }
+    { mkpat ~pos:$loc (Ppat_record (List.rev fields)) }
 
 pat_ctor_args:
   | (* empty *)
@@ -501,49 +526,49 @@ pat_ctor_args:
 
 pat_no_bar:
   | UNDERSCORE
-    { mkpat ~pos:$loc PAny }
+    { mkpat ~pos:$loc Ppat_any }
   | LPAREN p = pat_or_bare_tuple RPAREN
     { p }
   | LBRACKET ps = list(pat, COMMA) RBRACKET
     { List.fold
-        ~init:(mkpat ~pos:$loc (PCtor (mkloc ~pos:$loc (Lident "[]"), None)))
+        ~init:(mkpat ~pos:$loc (Ppat_ctor (mkloc ~pos:$loc (Lident "[]"), None)))
         ps ~f:(fun acc p -> conspat ~pos:$loc p acc) }
   | hd = pat_no_bar COLONCOLON tl = pat_no_bar
     { conspat ~pos:$loc hd tl }
   | p = pat_no_bar COLON typ = type_expr
-    { mkpat ~pos:$loc (PConstraint (p, typ)) }
+    { mkpat ~pos:$loc (Ppat_constraint (p, typ)) }
   | x = as_loc(val_ident)
-    { mkpat ~pos:$loc (PVariable x) }
+    { mkpat ~pos:$loc (Ppat_variable x) }
   | i = INT
-    { mkpat ~pos:$loc (PInt i) }
+    { mkpat ~pos:$loc (Ppat_int i) }
   | p = pat_record
     { p }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = pat_ctor_args
-    { mkpat ~pos:$loc (PCtor (id, args)) }
+    { mkpat ~pos:$loc (Ppat_ctor (id, args)) }
 
 pat:
   | p = pat_no_bar
     { p }
   | p1 = pat_no_bar BAR p2 = pat
-    { mkpat ~pos:$loc (POr (p1, p2)) }
+    { mkpat ~pos:$loc (Ppat_or (p1, p2)) }
 
 pat_or_bare_tuple:
   | x = pat
     { x }
   | ps = tuple(pat)
-    { mkpat ~pos:$loc (PTuple (List.rev ps)) }
+    { mkpat ~pos:$loc (Ppat_tuple (List.rev ps)) }
 
 simple_type_expr:
   | UNDERSCORE
-    { mktyp ~pos:$loc (Tvar (None, Explicit)) }
+    { mktyp ~pos:$loc (Ptyp_var (None, Explicit)) }
   | QUOT x = as_loc(lident)
-    { mktyp ~pos:$loc (Tvar (Some x, Explicit)) }
+    { mktyp ~pos:$loc (Ptyp_var (Some x, Explicit)) }
   | t = decl_type_expr
     { t }
   | LPAREN x = type_expr RPAREN
     { x }
   | LPAREN xs = tuple(type_expr) RPAREN
-    { mktyp ~pos:$loc (Ttuple (List.rev xs)) }
+    { mktyp ~pos:$loc (Ptyp_tuple (List.rev xs)) }
 
 %inline type_arrow_label:
   | (* Empty *)
@@ -555,11 +580,11 @@ type_expr:
   | x = simple_type_expr
     { x }
   | label = type_arrow_label x = simple_type_expr DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Explicit, label)) }
+    { mktyp ~pos:$loc (Ptyp_arrow (x, y, Explicit, label)) }
   | QUESTION name = LIDENT COLON x = simple_type_expr DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Explicit, Asttypes.Optional name)) }
+    { mktyp ~pos:$loc (Ptyp_arrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
-    { mktyp ~pos:$loc (Tarrow (x, y, Implicit, label)) }
+    { mktyp ~pos:$loc (Ptyp_arrow (x, y, Implicit, label)) }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X
