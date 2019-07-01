@@ -175,7 +175,7 @@ module TypeDecl = struct
 
   let import_field ?must_find env {fld_ident; fld_type; fld_loc= _} =
     let fld_type, env = Type.import ?must_find fld_type env in
-    (env, {Type0.fld_ident; fld_type; fld_id= -1})
+    (env, {Type0.fld_ident; fld_type})
 
   let import decl' env =
     let {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc= _}

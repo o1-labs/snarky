@@ -19,7 +19,7 @@ and variant =
   ; var_implicit_params: type_expr list
   ; var_decl: type_decl }
 
-and field_decl = {fld_ident: str; fld_type: type_expr; fld_id: int}
+and field_decl = {fld_ident: str; fld_type: type_expr}
 
 and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 
