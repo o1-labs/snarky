@@ -7,13 +7,13 @@ let name = "snarkydef"
 
 let located_label_expr expr =
   let loc = expr.pexp_loc in
-  [%expr Pervasives.( ^ ) [%e expr] (Pervasives.( ^ ) ": " Pervasives.__LOC__)]
+  [%expr Stdlib.( ^ ) [%e expr] (Stdlib.( ^ ) ": " Stdlib.__LOC__)]
 
 let located_label_string ~loc str =
   [%expr
-    Pervasives.( ^ )
+    Stdlib.( ^ )
       [%e Exp.constant ~loc (Const.string (str ^ ": "))]
-      Pervasives.__LOC__]
+      Stdlib.__LOC__]
 
 let with_label ~local ~loc exprs =
   let with_label_expr =
