@@ -3,28 +3,33 @@ open Ast_types
 
 type type_expr =
   {mutable type_desc: type_desc; type_id: int; mutable type_depth: int}
+[@@deriving sexp]
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
   | Tvar of string option * explicitness
   | Ttuple of type_expr list
-  | Tarrow of type_expr * type_expr * explicitness * Asttypes.arg_label
+  | Tarrow of type_expr * type_expr * explicitness * Ast_types.arg_label
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
+[@@deriving sexp]
 
 and variant =
   { var_ident: Longident.t
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
   ; var_decl: type_decl }
+[@@deriving sexp]
 
-and field_decl = {fld_ident: string; fld_type: type_expr}
+and field_decl = {fld_ident: string; fld_type: type_expr} [@@deriving sexp]
 
 and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
+[@@deriving sexp]
 
 and ctor_decl =
   {ctor_ident: string; ctor_args: ctor_args; ctor_ret: type_expr option}
+[@@deriving sexp]
 
 and type_decl =
   { tdec_ident: string
@@ -32,6 +37,7 @@ and type_decl =
   ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
   ; tdec_id: int }
+[@@deriving sexp]
 
 and type_decl_desc =
   | TAbstract
@@ -44,6 +50,7 @@ and type_decl_desc =
       (** Internal; this should never be present in the AST. *)
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
+[@@deriving sexp]
 
 let rec typ_debug_print fmt typ =
   let open Format in
