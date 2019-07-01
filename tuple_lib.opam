@@ -10,13 +10,13 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "core_kernel"
+  "core_kernel" {>= "v0.12" & < "v0.13" }
   "ppx_deriving"
   "ppx_jane"
   "bisect_ppx"
-  "jbuilder"                {build & >= "1.0+beta12"}
+  "dune"                {build & >= "1.6"}
 ]
-available: [ ocaml-version >= "4.04.1" ]
+available: [ ocaml-version >= "4.07.0" ]
 descr: "
 A tiny library with names and a useful getter for tuples
 "

@@ -108,18 +108,25 @@ let rec check_type_aux ~loc typ ctyp env =
   | ( Tarrow (typ1, typ2, Explicit, label1)
     , Tarrow (ctyp1, ctyp2, Explicit, label2) )
   | ( Tarrow (typ1, typ2, Implicit, label1)
-    , Tarrow (ctyp1, ctyp2, Implicit, label2) ) ->
-      ( match (label1, label2) with
-      | Nolabel, Nolabel ->
-          ()
-      | Labelled x, Labelled y when String.equal x y ->
-          ()
-      | Optional x, Optional y when String.equal x y ->
-          ()
-      | _ ->
-          raise (Error (loc, Cannot_unify (typ, ctyp))) ) ;
-      check_type_aux typ1 ctyp1 env ;
-      check_type_aux typ2 ctyp2 env
+    , Tarrow (ctyp1, ctyp2, Implicit, label2) ) -> (
+    match (label1, label2) with
+    | Nolabel, Nolabel ->
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Labelled x, Labelled y when String.equal x y ->
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Optional x, Optional y when String.equal x y ->
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Labelled x, Optional y when String.equal x y ->
+        check_type_aux (Initial_env.Type.option typ1) ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Optional x, Labelled y when String.equal x y ->
+        check_type_aux typ1 (Initial_env.Type.option ctyp1) env ;
+        check_type_aux typ2 ctyp2 env
+    | _ ->
+        raise (Error (loc, Cannot_unify (typ, ctyp))) )
   | Tctor variant, Tctor constr_variant -> (
     (* Always try to unfold first, so that type aliases with phantom
          parameters can unify, as in OCaml.
@@ -576,7 +583,7 @@ let rec get_expression env expected exp =
                   e_typ
             in
             let e, env = get_expression env e_typ e in
-            ((res_typ, env), (label, e)) )
+            ((Envi.Type.flatten res_typ env, env), (label, e)) )
       in
       let typ =
         Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
