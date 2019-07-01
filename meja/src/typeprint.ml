@@ -7,7 +7,7 @@ let rec type_desc ?(bracket = false) fmt = function
   | Tvar (None, _) ->
       fprintf fmt "_"
   | Tvar (Some name, _) ->
-      fprintf fmt "'%s" name.txt
+      fprintf fmt "'%s" name
   | Ttuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
   | Tarrow (typ1, typ2, implicitness, label) ->
@@ -38,13 +38,12 @@ and type_expr_b fmt typ = type_desc ~bracket:true fmt typ.type_desc
 and variant fmt v =
   match v.var_params with
   | [] ->
-      Longident.pp fmt v.var_ident.txt
+      Longident.pp fmt v.var_ident
   | _ ->
-      fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple
-        v.var_params
+      fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident tuple v.var_params
 
 let field_decl fmt decl =
-  fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident.txt type_expr decl.fld_type
+  fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident type_expr decl.fld_type
 
 let ctor_args fmt = function
   | Ctor_tuple [] ->
@@ -59,7 +58,7 @@ let ctor_args fmt = function
       assert false
 
 let ctor_decl fmt decl =
-  fprintf fmt "%a%a" pp_name decl.ctor_ident.txt ctor_args decl.ctor_args ;
+  fprintf fmt "%a%a" pp_name decl.ctor_ident ctor_args decl.ctor_args ;
   match decl.ctor_ret with
   | Some typ ->
       fprintf fmt "@ :@ @[<hv>%a@]" type_expr typ
@@ -80,7 +79,7 @@ let type_decl_desc fmt = function
   | TOpen ->
       fprintf fmt "@ =@ .."
   | TExtend (name, _, ctors) ->
-      fprintf fmt "@ /*@[%a +=@ %a@]*/" Longident.pp name.txt
+      fprintf fmt "@ /*@[%a +=@ %a@]*/" Longident.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
   | TForward i ->
@@ -94,6 +93,6 @@ let type_decl_desc fmt = function
       fprintf fmt "@ /* forward declaration %a */" print_id !i
 
 let type_decl fmt decl =
-  fprintf fmt "type %s" decl.tdec_ident.txt ;
+  fprintf fmt "type %s" decl.tdec_ident ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
