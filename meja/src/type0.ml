@@ -6,7 +6,7 @@ type type_expr =
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of str option * explicitness
+  | Tvar of string option * explicitness
   | Ttuple of type_expr list
   | Tarrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
@@ -14,20 +14,20 @@ and type_desc =
   | Tpoly of type_expr list * type_expr
 
 and variant =
-  { var_ident: lid
+  { var_ident: Longident.t
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
   ; var_decl: type_decl }
 
-and field_decl = {fld_ident: str; fld_type: type_expr}
+and field_decl = {fld_ident: string; fld_type: type_expr}
 
 and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 
 and ctor_decl =
-  {ctor_ident: str; ctor_args: ctor_args; ctor_ret: type_expr option}
+  {ctor_ident: string; ctor_args: ctor_args; ctor_ret: type_expr option}
 
 and type_decl =
-  { tdec_ident: str
+  { tdec_ident: string
   ; tdec_params: type_expr list
   ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
@@ -40,7 +40,7 @@ and type_decl_desc =
   | TRecord of field_decl list
   | TVariant of ctor_decl list
   | TOpen
-  | TExtend of lid * type_decl * ctor_decl list
+  | TExtend of Longident.t * type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
@@ -65,11 +65,11 @@ let rec typ_debug_print fmt typ =
   | Tvar (None, Explicit) ->
       print "var _"
   | Tvar (Some name, Explicit) ->
-      print "var %s@" name.txt
+      print "var %s@" name
   | Tvar (None, Implicit) ->
       print "implicit_var _"
   | Tvar (Some name, Implicit) ->
-      print "implicit_var %s" name.txt
+      print "implicit_var %s" name
   | Tpoly (typs, typ) ->
       print "poly [%a] %a"
         (print_list typ_debug_print)
@@ -81,7 +81,7 @@ let rec typ_debug_print fmt typ =
       print "%a{%a} -> %a" print_label label typ_debug_print typ1
         typ_debug_print typ2
   | Tctor {var_ident= name; var_params= params; _} ->
-      print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
+      print "%a (%a)" Longident.pp name (print_list typ_debug_print) params
   | Ttuple typs ->
       print "(%a)" (print_list typ_debug_print) typs ) ;
   print " @%i)" typ.type_depth
