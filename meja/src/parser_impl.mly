@@ -89,6 +89,7 @@ let consexp ~pos hd tl =
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
+%right    DASHGT
 %nonassoc LPAREN
 
 %start implementation
@@ -414,15 +415,15 @@ match_case:
 expr_arg:
   | e = expr
     { (Asttypes.Nolabel, e) }
-  | TILDE name = LIDENT
+  | TILDE name = lident
     { (Asttypes.Labelled name, mkexp ~pos:$loc
         (Pexp_variable (mkloc ~pos:$loc (Lident name)))) }
-  | TILDE name = LIDENT EQUAL e = expr
+  | TILDE name = lident EQUAL e = expr
     { (Asttypes.Labelled name, e) }
-  | QUESTION name = LIDENT
+  | QUESTION name = lident
     { (Asttypes.Optional name, mkexp ~pos:$loc
         (Pexp_variable (mkloc ~pos:$loc (Lident name)))) }
-  | QUESTION name = LIDENT EQUAL e = expr
+  | QUESTION name = lident EQUAL e = expr
     { (Asttypes.Optional name, e) }
 
 expr_arg_list:
@@ -436,9 +437,9 @@ expr_arg_list:
 pat_arg:
   | p = pat
     { (Asttypes.Nolabel, p) }
-  | TILDE name = as_loc(LIDENT)
+  | TILDE name = as_loc(lident)
     { (Asttypes.Labelled name.txt, mkpat ~pos:$loc (Ppat_variable name)) }
-  | TILDE name = as_loc(LIDENT) COLON typ = type_expr
+  | TILDE name = as_loc(lident) COLON typ = type_expr
     { ( Asttypes.Labelled name.txt
       , mkpat ~pos:$loc
           (Ppat_constraint (mkpat ~pos:$loc(name) (Ppat_variable name), typ)) ) }
@@ -446,9 +447,9 @@ pat_arg:
 pat_arg_opt:
   | p = pat_arg
     { p }
-  | QUESTION name = as_loc(LIDENT)
+  | QUESTION name = as_loc(lident)
     { (Asttypes.Optional name.txt, mkpat ~pos:$loc (Ppat_variable name)) }
-  | QUESTION name = as_loc(LIDENT) COLON typ = type_expr
+  | QUESTION name = as_loc(lident) COLON typ = type_expr
     { ( Asttypes.Optional name.txt
       , mkpat ~pos:$loc
           (Ppat_constraint (mkpat ~pos:$loc(name) (Ppat_variable name), typ)) ) }
@@ -573,7 +574,7 @@ simple_type_expr:
 %inline type_arrow_label:
   | (* Empty *)
     { Asttypes.Nolabel }
-  | name = LIDENT COLON
+  | name = lident COLON
     { Asttypes.Labelled name }
 
 type_expr:
@@ -581,7 +582,7 @@ type_expr:
     { x }
   | label = type_arrow_label x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Explicit, label)) }
-  | QUESTION name = LIDENT COLON x = simple_type_expr DASHGT y = type_expr
+  | QUESTION name = lident COLON x = simple_type_expr DASHGT y = type_expr
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Implicit, label)) }

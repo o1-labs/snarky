@@ -108,18 +108,25 @@ let rec check_type_aux ~loc typ ctyp env =
   | ( Tarrow (typ1, typ2, Explicit, label1)
     , Tarrow (ctyp1, ctyp2, Explicit, label2) )
   | ( Tarrow (typ1, typ2, Implicit, label1)
-    , Tarrow (ctyp1, ctyp2, Implicit, label2) ) ->
-      ( match (label1, label2) with
-      | Nolabel, Nolabel ->
-          ()
-      | Labelled x, Labelled y when String.equal x y ->
-          ()
-      | Optional x, Optional y when String.equal x y ->
-          ()
-      | _ ->
-          raise (Error (loc, Cannot_unify (typ, ctyp))) ) ;
-      check_type_aux typ1 ctyp1 env ;
-      check_type_aux typ2 ctyp2 env
+    , Tarrow (ctyp1, ctyp2, Implicit, label2) ) -> (
+    match (label1, label2) with
+    | Nolabel, Nolabel ->
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Labelled x, Labelled y when String.equal x y ->
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Optional x, Optional y when String.equal x y ->
+        check_type_aux typ1 ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Labelled x, Optional y when String.equal x y ->
+        check_type_aux (Initial_env.Type.option typ1) ctyp1 env ;
+        check_type_aux typ2 ctyp2 env
+    | Optional x, Labelled y when String.equal x y ->
+        check_type_aux typ1 (Initial_env.Type.option ctyp1) env ;
+        check_type_aux typ2 ctyp2 env
+    | _ ->
+        raise (Error (loc, Cannot_unify (typ, ctyp))) )
   | Tctor variant, Tctor constr_variant -> (
     (* Always try to unfold first, so that type aliases with phantom
          parameters can unify, as in OCaml.
@@ -276,14 +283,12 @@ let rec add_implicits ~loc implicits typ env =
       Envi.Type.mk (Tarrow (typ', typ, Implicit, Nolabel)) env
 
 let free_type_vars ?depth typ =
-  let empty = Set.empty (module Envi.Type) in
+  let empty = Typeset.empty in
   let rec free_type_vars set typ =
     match typ.type_desc with
     | Tpoly (vars, typ) ->
         let poly_vars =
-          Set.union_list
-            (module Envi.Type)
-            (List.map ~f:(Envi.Type.type_vars ?depth) vars)
+          Typeset.union_list (List.map ~f:(Envi.Type.type_vars ?depth) vars)
         in
         Set.union set (Set.diff (free_type_vars empty typ) poly_vars)
     | Tarrow (typ1, typ2, _, _) ->
@@ -318,13 +323,11 @@ let get_field (field : lid) env =
         Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
       in
       let name =
-        Location.mkloc
-          ( match field.txt with
-          | Longident.Ldot (m, _) ->
-              Longident.Ldot (m, tdec_ident.txt)
-          | _ ->
-              Longident.Lident tdec_ident.txt )
-          tdec_ident.loc
+        match field.txt with
+        | Longident.Ldot (m, _) ->
+            Longident.Ldot (m, tdec_ident)
+        | _ ->
+            Longident.Lident tdec_ident
       in
       let rcd_type = Envi.TypeDecl.mk_typ ~params:vars ~ident:name decl env in
       let {fld_type; _} = List.nth_exn field_decls i in
@@ -340,7 +343,7 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
   | {txt= Longident.Lident name; _} -> (
     match
       List.findi field_decls ~f:(fun _ {fld_ident; _} ->
-          String.equal fld_ident.txt name )
+          String.equal fld_ident name )
     with
     | Some (i, {fld_type; _}) ->
         let typ = Envi.Type.copy ~loc typ bound_vars env in
@@ -353,7 +356,7 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
 
 let get_ctor (name : lid) env =
   let loc = name.loc in
-  match (Envi.TypeDecl.find_of_constructor name env, name) with
+  match (Envi.TypeDecl.find_of_constructor name env, name.txt) with
   | ( Some
         ( ( { tdec_desc= TVariant ctors
             ; tdec_ident
@@ -371,14 +374,12 @@ let get_ctor (name : lid) env =
         , i )
     , _ ) ->
       let ctor = List.nth_exn ctors i in
-      let make_name (tdec_ident : str) =
-        Location.mkloc
-          ( match name.txt with
-          | Longident.Ldot (m, _) ->
-              Longident.Ldot (m, tdec_ident.txt)
-          | _ ->
-              Longident.Lident tdec_ident.txt )
-          tdec_ident.loc
+      let make_name tdec_ident =
+        match name with
+        | Longident.Ldot (m, _) ->
+            Longident.Ldot (m, tdec_ident)
+        | _ ->
+            Longident.Lident tdec_ident
       in
       let typ, params =
         match ctor.ctor_ret with
@@ -501,9 +502,9 @@ let rec check_pattern ~add env typ pat =
                 Longident.(
                   match field.txt with
                   | Lident _ ->
-                      Location.mkloc (Lident decl.tdec_ident.txt) loc
+                      Lident decl.tdec_ident
                   | Ldot (path, _) ->
-                      Location.mkloc (Ldot (path, decl.tdec_ident.txt)) loc
+                      Ldot (path, decl.tdec_ident)
                   | _ ->
                       failwith "Unhandled Lapply in field name")
               in
@@ -582,7 +583,7 @@ let rec get_expression env expected exp =
                   e_typ
             in
             let e, env = get_expression env e_typ e in
-            ((res_typ, env), (label, e)) )
+            ((Envi.Type.flatten res_typ env, env), (label, e)) )
       in
       let typ =
         Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
@@ -674,13 +675,13 @@ let rec get_expression env expected exp =
       (* Create a self-referencing type declaration. *)
       typ.type_desc
       <- Tctor
-           { var_ident= mk_lid name
+           { var_ident= Longident.Lident name.txt
            ; var_params= []
            ; var_implicit_params= []
            ; var_decl= decl } ;
       let body, env = get_expression env expected body in
       (* Substitute the self-reference for a type variable. *)
-      typ.type_desc <- Tvar (Some name, Explicit) ;
+      typ.type_desc <- Tvar (Some name.txt, Explicit) ;
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env body.exp_type ;
       ( { exp_loc= loc
@@ -750,9 +751,7 @@ let rec get_expression env expected exp =
               let vars, bound_vars, env =
                 Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
-              let ident =
-                Location.mkloc (Longident.Ldot (path, decl.tdec_ident.txt)) loc
-              in
+              let ident = Longident.Ldot (path, decl.tdec_ident) in
               let decl_type =
                 Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
               in
@@ -784,7 +783,7 @@ let rec get_expression env expected exp =
               List.find field_decls ~f:(fun {fld_ident; _} ->
                   match field.txt with
                   | Lident field ->
-                      String.equal fld_ident.txt field
+                      String.equal fld_ident field
                   | _ ->
                       false
                   (* This case shouldn't happen! *) )
@@ -808,9 +807,9 @@ let rec get_expression env expected exp =
                   Longident.(
                     match field.txt with
                     | Lident _ ->
-                        Location.mkloc (Lident decl.tdec_ident.txt) loc
+                        Lident decl.tdec_ident
                     | Ldot (path, _) ->
-                        Location.mkloc (Ldot (path, decl.tdec_ident.txt)) loc
+                        Ldot (path, decl.tdec_ident)
                     | _ ->
                         failwith "Unhandled Lapply in field name")
                 in
@@ -852,9 +851,9 @@ let rec get_expression env expected exp =
                 Longident.(
                   match field.txt with
                   | Lident _ ->
-                      Location.mkloc (Lident decl.tdec_ident.txt) loc
+                      Lident decl.tdec_ident
                   | Ldot (path, _) ->
-                      Location.mkloc (Ldot (path, decl.tdec_ident.txt)) loc
+                      Ldot (path, decl.tdec_ident)
                   | _ ->
                       failwith "Unhandled Lapply in field name")
               in
@@ -879,7 +878,7 @@ let rec get_expression env expected exp =
             ) ;
             let e, env' = get_expression !env field_typ e in
             ( if fields_filled.(i) then
-              let name = (List.nth_exn field_decls i).fld_ident.txt in
+              let name = (List.nth_exn field_decls i).fld_ident in
               raise (Error (field.loc, Repeated_field name)) ) ;
             fields_filled.(i) <- true ;
             env := env' ;
@@ -893,7 +892,7 @@ let rec get_expression env expected exp =
           let names =
             List.fold2_exn ~init:[] fields_filled field_decls
               ~f:(fun names filled {fld_ident; _} ->
-                if filled then names else fld_ident.txt :: names )
+                if filled then names else fld_ident :: names )
           in
           if not (List.is_empty names) then
             raise (Error (loc, Missing_fields names)) ) ;
@@ -1026,7 +1025,7 @@ let type_extension ~loc variant ctors env =
   | Unequal_lengths ->
       raise (Error (loc, Extension_different_arity var_ident.txt)) ) ;
   let decl =
-    { Parsetypes.tdec_ident
+    { Parsetypes.tdec_ident= Location.mkloc tdec_ident loc
     ; tdec_params= var_params
     ; tdec_implicit_params=
         List.map ~f:(Untype_ast.type_expr ~loc) tdec_implicit_params
@@ -1042,7 +1041,7 @@ let type_extension ~loc variant ctors env =
         failwith "Expected a TExtend."
   in
   let variant =
-    { var_ident
+    { var_ident= var_ident.txt
     ; var_implicit_params= decl.tdec_implicit_params
     ; var_decl= decl
     ; var_params= decl.tdec_params }

@@ -6,7 +6,7 @@ let rec type_desc ?loc = function
   | Tvar (None, explicit) ->
       Type.none ?loc ~explicit ()
   | Tvar (Some name, explicit) ->
-      Type.var ?loc ~explicit name.txt
+      Type.var ?loc ~explicit name
   | Ttuple typs ->
       Type.tuple ?loc (List.map ~f:(type_expr ?loc) typs)
   | Tarrow (typ1, typ2, explicit, label) ->
@@ -19,14 +19,14 @@ let rec type_desc ?loc = function
       ; var_decl= _ } ->
       let params = List.map ~f:(type_expr ?loc) params in
       let implicits = List.map ~f:(type_expr ?loc) implicits in
-      Type.constr ?loc ~params ~implicits ident.txt
+      Type.constr ?loc ~params ~implicits ident
   | Tpoly (vars, var) ->
       Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
 
 and type_expr ?loc typ = type_desc ?loc typ.type_desc
 
 let field_decl ?loc fld =
-  Type_decl.Field.mk ?loc fld.fld_ident.txt (type_expr ?loc fld.fld_type)
+  Type_decl.Field.mk ?loc fld.fld_ident (type_expr ?loc fld.fld_type)
 
 let ctor_args ?loc ?ret name = function
   | Ctor_tuple typs ->
@@ -39,7 +39,7 @@ let ctor_args ?loc ?ret name = function
       assert false
 
 let ctor_decl ?loc ctor =
-  ctor_args ?loc ctor.ctor_ident.txt ctor.ctor_args
+  ctor_args ?loc ctor.ctor_ident ctor.ctor_args
     ?ret:(Option.map ~f:(type_expr ?loc) ctor.ctor_ret)
 
 let rec type_decl_desc ?loc ?params ?implicits name = function
@@ -66,7 +66,7 @@ and type_decl ?loc decl =
   type_decl_desc ?loc
     ~params:(List.map ~f:type_expr decl.tdec_params)
     ~implicits:(List.map ~f:type_expr decl.tdec_implicit_params)
-    decl.tdec_ident.txt decl.tdec_desc
+    decl.tdec_ident decl.tdec_desc
 
 let rec pattern_desc = function
   | Typedast.Tpat_any ->

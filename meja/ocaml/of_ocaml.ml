@@ -1,7 +1,7 @@
 open Path
 open Longident
 open Core_kernel
-open Parsetypes
+open Meja_lib.Parsetypes
 open Types
 open Location
 
@@ -17,35 +17,34 @@ let rec to_type_desc ~loc desc =
   let to_type_expr = to_type_expr ~loc in
   match desc with
   | Tvar x | Tunivar x ->
-      Parsetypes.Ptyp_var (Option.map ~f:(fun x -> mkloc x loc) x, Explicit)
+      Ptyp_var (Option.map ~f:(fun x -> mkloc x loc) x, Explicit)
   | Tarrow (label, typ1, typ2, _) ->
-      Parsetypes.Ptyp_arrow
-        (to_type_expr typ1, to_type_expr typ2, Explicit, label)
+      Ptyp_arrow (to_type_expr typ1, to_type_expr typ2, Explicit, label)
   | Ttuple typs ->
-      Parsetypes.Ptyp_tuple (List.map ~f:to_type_expr typs)
+      Ptyp_tuple (List.map ~f:to_type_expr typs)
   | Tconstr (path, params, _) ->
       let var_ident = mkloc (longident_of_path path) loc in
-      Parsetypes.Ptyp_ctor
+      Ptyp_ctor
         { var_ident
         ; var_params= List.map ~f:to_type_expr params
         ; var_implicit_params= [] }
   | Tlink typ | Tsubst typ ->
       (to_type_expr typ).type_desc
   | Tpoly (typ, typs) ->
-      Parsetypes.Ptyp_poly (List.map ~f:to_type_expr typs, to_type_expr typ)
+      Ptyp_poly (List.map ~f:to_type_expr typs, to_type_expr typ)
   | Tpackage (path, _bound_names, typs) ->
       (* We don't have packaged module types implemented here, but we can treat
          them as if they were [Tctor]s; there is no overlap between valid paths
          to packages and valid paths to type constructors. *)
       let var_ident = mkloc (longident_of_path path) loc in
-      Parsetypes.Ptyp_ctor
+      Ptyp_ctor
         { var_ident
         ; var_params= List.map ~f:to_type_expr typs
         ; var_implicit_params= [] }
   | Tobject _ | Tfield _ | Tnil | Tvariant _ ->
       (* This type isn't supported here. For now, just replace it with a
          variable, so we can still manipulate values including it. *)
-      Parsetypes.Ptyp_var (None, Explicit)
+      Ptyp_var (None, Explicit)
 
 and to_type_expr ~loc typ =
   {type_desc= to_type_desc ~loc typ.desc; type_id= -1; type_loc= loc}

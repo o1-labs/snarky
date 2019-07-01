@@ -140,16 +140,14 @@ module Scope = struct
 
   let add_field decl index scope field_decl =
     { scope with
-      fields=
-        Map.set scope.fields ~key:field_decl.fld_ident.txt ~data:(decl, index)
+      fields= Map.set scope.fields ~key:field_decl.fld_ident ~data:(decl, index)
     }
 
   let get_field name scope = Map.find scope.fields name
 
   let add_ctor decl index scope ctor_decl =
     { scope with
-      ctors=
-        Map.set scope.ctors ~key:ctor_decl.ctor_ident.txt ~data:(decl, index)
+      ctors= Map.set scope.ctors ~key:ctor_decl.ctor_ident ~data:(decl, index)
     }
 
   let get_ctor name scope = Map.find scope.ctors name
@@ -162,9 +160,9 @@ module Scope = struct
 
   let add_type_declaration decl scope =
     { scope with
-      type_decls= Map.set scope.type_decls ~key:decl.tdec_ident.txt ~data:decl
+      type_decls= Map.set scope.type_decls ~key:decl.tdec_ident ~data:decl
     ; paths=
-        add_preferred_type_name (Lident decl.tdec_ident.txt) decl.tdec_id
+        add_preferred_type_name (Lident decl.tdec_ident) decl.tdec_id
           scope.paths }
 
   let get_type_declaration name scope = Map.find scope.type_decls name
@@ -619,7 +617,7 @@ let raw_find_type_declaration (lid : lid) env =
               env.resolve_env.type_env <- type_env ;
               (id, num_args)
         in
-        { tdec_ident= Location.mkloc name lid.loc
+        { tdec_ident= name
         ; tdec_params= []
         ; tdec_implicit_params= []
         ; tdec_desc= TForward num_args
@@ -646,6 +644,9 @@ module Type = struct
   let mkvar ?(explicitness = Explicit) name env =
     mk (Tvar (name, explicitness)) env
 
+  let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
+    ref (fun _ -> failwith "mk_option not initialised")
+
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
@@ -662,7 +663,7 @@ module Type = struct
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
           (env, mkvar ~explicitness None env) )
-    | Tvar ((Some {txt= x; _} as name), explicitness) -> (
+    | Tvar ((Some x as name), explicitness) -> (
         let var =
           match must_find with
           | Some true ->
@@ -735,13 +736,6 @@ module Type = struct
     let sexp_of_t typ = Int.sexp_of_t typ.type_id
   end
 
-  module Comparator = struct
-    include T
-    include Comparator.Make (T)
-  end
-
-  include Comparator
-
   let type_vars ?depth typ =
     let deep_enough =
       match depth with
@@ -750,7 +744,7 @@ module Type = struct
       | None ->
           fun _ -> true
     in
-    let empty = Set.empty (module Comparator) in
+    let empty = Typeset.empty in
     let rec type_vars set typ =
       match typ.type_desc with
       | Tvar _ when deep_enough typ ->
@@ -784,9 +778,7 @@ module Type = struct
           typ )
     | Tpoly (vars, typ) ->
         let var_set =
-          Set.union_list
-            (module Comparator)
-            (List.map vars ~f:(type_vars ~depth:env.depth))
+          Typeset.union_list (List.map vars ~f:(type_vars ~depth:env.depth))
         in
         let typ = flatten typ env in
         mk' (Tpoly (Set.to_list var_set, typ))
@@ -995,14 +987,12 @@ module Type = struct
       (* Eliminate unifiable implicit variables containing 'weak type
          variables'. *)
       let consider_weak = ref true in
-      let weak_vars_set = ref (Set.empty (module Comparator)) in
+      let weak_vars_set = ref Typeset.empty in
       let strong_implicit_vars, weak_implicit_vars =
         List.partition_tf implicit_vars ~f:(fun {exp_type; _} ->
             if !consider_weak then
               let weak_vars =
-                weak_variables env.depth
-                  (Set.empty (module Comparator))
-                  exp_type
+                weak_variables env.depth Typeset.empty exp_type
               in
               if Set.is_empty weak_vars then true
               else (
@@ -1066,7 +1056,7 @@ module Type = struct
       | _ ->
           fold ~init:set typ ~f:implicit_params
     in
-    implicit_params (Set.empty (module Comparator)) typ
+    implicit_params Typeset.empty typ
 
   let rec constr_map env ~f typ =
     match typ.type_desc with
@@ -1095,8 +1085,7 @@ module Type = struct
             ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)
         with
         | Some ident ->
-            Tctor
-              {variant with var_ident= {txt= ident; loc= variant.var_ident.loc}}
+            Tctor {variant with var_ident= ident}
         | None ->
             Tctor variant )
 
@@ -1111,7 +1100,7 @@ module Type = struct
                String.equal lbl arr_lbl
            | _ ->
                false ->
-        (Some (typ1, explicit, label), typ2)
+        (Some (!mk_option typ1, explicit, arr_label), typ2)
     | Tarrow (typ1, typ2, explicit, arr_label) -> (
       match bubble_label_aux env label typ2 with
       | None, _ ->
@@ -1163,7 +1152,9 @@ module TypeDecl = struct
     ; tdec_id }
 
   let mk_typ ~params ?ident decl =
-    let ident = Option.value ident ~default:(mk_lid decl.tdec_ident) in
+    let ident =
+      Option.value ident ~default:(Longident.Lident decl.tdec_ident)
+    in
     Type.mk
       (Tctor
          { var_ident= ident
@@ -1190,7 +1181,7 @@ module TypeDecl = struct
             (Error
                ( loc
                , Wrong_number_args
-                   ( variant.var_ident.txt
+                   ( variant.var_ident
                    , List.length decl.tdec_params
                    , List.length variant.var_params ) ))
     in
@@ -1252,7 +1243,7 @@ let pp_decl_typ ppf decl =
   pp_typ ppf
     { type_desc=
         Tctor
-          { var_ident= mk_lid decl.tdec_ident
+          { var_ident= Longident.Lident decl.tdec_ident
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl= decl }
