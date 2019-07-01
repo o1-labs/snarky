@@ -10,7 +10,7 @@ build: [
   ["jbuilder" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "core_kernel" {>= "v0.12" & < "v0.13" }
+  "core" {>= "v0.12" & < "v0.13" }
   "snarky"
   "ppx_jane"
   "ppx_bench"
