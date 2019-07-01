@@ -31,7 +31,7 @@ module TypeEnvi = struct
     ; type_decl_id: int
     ; instance_id: int
     ; variable_instances: type_expr Int.Map.t
-    ; implicit_vars: Parsetypes.expression list
+    ; implicit_vars: Typedast.expression list
     ; implicit_id: int
     ; instances: (int * type_expr) list
     ; predeclared_types:
@@ -895,10 +895,10 @@ module Type = struct
 
   let new_implicit_var ?(loc = Location.none) typ env =
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.resolve_env.type_env in
-    let mk exp_loc exp_desc = {Parsetypes.exp_loc; exp_desc; exp_type= typ} in
+    let mk exp_loc exp_desc = {Typedast.exp_loc; exp_desc; exp_type= typ} in
     let name = Location.mkloc (sprintf "__implicit%i__" implicit_id) loc in
     let new_exp =
-      mk loc (Unifiable {expression= None; name; id= implicit_id})
+      mk loc (Texp_unifiable {expression= None; name; id= implicit_id})
     in
     env.resolve_env.type_env
     <- { env.resolve_env.type_env with
@@ -919,7 +919,7 @@ module Type = struct
         else None )
 
   let generate_implicits e env =
-    let loc = e.Parsetypes.exp_loc in
+    let loc = e.Typedast.exp_loc in
     let implicits, typ = get_implicits [] e.exp_type in
     match implicits with
     | [] ->
@@ -929,7 +929,7 @@ module Type = struct
           List.map implicits ~f:(fun (label, typ) ->
               (label, new_implicit_var ~loc typ env) )
         in
-        {exp_loc= loc; exp_type= typ; exp_desc= Apply (e, es)}
+        {exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (e, es)}
 
   let rec instantiate_implicits ~loc ~is_subtype implicit_vars env =
     let env_implicits = env.resolve_env.type_env.implicit_vars in
@@ -937,17 +937,19 @@ module Type = struct
     <- {env.resolve_env.type_env with implicit_vars= []} ;
     let implicit_vars =
       List.filter implicit_vars
-        ~f:(fun ({Parsetypes.exp_loc; exp_type; _} as exp) ->
+        ~f:(fun ({Typedast.exp_loc; exp_type; _} as exp) ->
           match implicit_instances ~loc ~is_subtype exp_type env with
           | [(name, instance_typ)] ->
               let name = Location.mkloc name exp_loc in
               let e =
                 generate_implicits
-                  {exp_loc; exp_type= instance_typ; exp_desc= Variable name}
+                  { exp_loc
+                  ; exp_type= instance_typ
+                  ; exp_desc= Texp_variable name }
                   env
               in
               ( match exp.exp_desc with
-              | Unifiable desc ->
+              | Texp_unifiable desc ->
                   desc.expression <- Some e
               | _ ->
                   raise (Error (exp.exp_loc, No_unifiable_implicit)) ) ;
@@ -982,12 +984,10 @@ module Type = struct
     in
     let implicit_vars =
       List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
-          let cmp =
-            compare exp1.Parsetypes.exp_type exp2.Parsetypes.exp_type
-          in
+          let cmp = compare exp1.Typedast.exp_type exp2.Typedast.exp_type in
           ( if Int.equal cmp 0 then
             match (exp1.exp_desc, exp2.exp_desc) with
-            | Unifiable desc1, Unifiable desc2 ->
+            | Texp_unifiable desc1, Texp_unifiable desc2 ->
                 if desc1.id < desc2.id then desc2.expression <- Some exp1
                 else desc1.expression <- Some exp2
             | _ ->
@@ -1037,7 +1037,7 @@ module Type = struct
                        ignore
                          (is_subtype env e_strong.exp_type ~of_:e_weak.exp_type) ;
                        ( match e_weak.exp_desc with
-                       | Unifiable desc ->
+                       | Texp_unifiable desc ->
                            desc.expression <- Some e_strong
                        | _ ->
                            raise
@@ -1083,7 +1083,11 @@ module Type = struct
         let typ2 = constr_map env ~f typ2 in
         mk (Tarrow (typ1, typ2, explicit, label)) env
     | Tctor variant ->
-        mk (f variant) env
+        let var_params = List.map ~f:(constr_map env ~f) variant.var_params in
+        let var_implicit_params =
+          List.map ~f:(constr_map env ~f) variant.var_implicit_params
+        in
+        mk (f {variant with var_params; var_implicit_params}) env
     | Tpoly (typs, typ) ->
         mk (Tpoly (typs, constr_map env ~f typ)) env
 

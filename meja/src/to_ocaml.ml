@@ -6,19 +6,19 @@ open Parsetypes
 
 let rec of_type_desc ?loc typ =
   match typ with
-  | Tvar (None, _) ->
+  | Ptyp_var (None, _) ->
       Typ.any ?loc ()
-  | Tvar (Some name, _) ->
+  | Ptyp_var (Some name, _) ->
       Typ.var ?loc name.txt
-  | Tpoly (_, typ) ->
+  | Ptyp_poly (_, typ) ->
       of_type_expr typ
-  | Tarrow (typ1, typ2, _, label) ->
+  | Ptyp_arrow (typ1, typ2, _, label) ->
       Typ.arrow ?loc label (of_type_expr typ1) (of_type_expr typ2)
-  | Tctor
+  | Ptyp_ctor
       {var_ident= name; var_params= params; var_implicit_params= implicits; _}
     ->
       Typ.constr ?loc name (List.map ~f:of_type_expr (params @ implicits))
-  | Ttuple typs ->
+  | Ptyp_tuple typs ->
       Typ.tuple ?loc (List.map ~f:of_type_expr typs)
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
@@ -71,74 +71,110 @@ let of_type_decl decl =
       failwith "Cannot convert TForward to OCaml"
 
 let rec of_pattern_desc ?loc = function
-  | PAny ->
+  | Ppat_any ->
       Pat.any ?loc ()
-  | PVariable str ->
+  | Ppat_variable str ->
       Pat.var ?loc str
-  | PConstraint (p, typ) ->
+  | Ppat_constraint (p, typ) ->
       Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)
-  | PTuple ps ->
+  | Ppat_tuple ps ->
       Pat.tuple ?loc (List.map ~f:of_pattern ps)
-  | POr (p1, p2) ->
+  | Ppat_or (p1, p2) ->
       Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
-  | PInt i ->
+  | Ppat_int i ->
       Pat.constant ?loc (Const.int i)
-  | PRecord fields ->
+  | Ppat_record fields ->
       Pat.record ?loc
         (List.map fields ~f:(fun (f, p) -> (f, of_pattern p)))
         Open
-  | PCtor (name, arg) ->
+  | Ppat_ctor (name, arg) ->
       Pat.construct ?loc name (Option.map ~f:of_pattern arg)
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
-let rec of_expression_desc ?loc = function
-  | Apply (f, es) ->
-      Exp.apply ?loc (of_expression f)
-        (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
-  | Variable name ->
-      Exp.ident ?loc name
+let of_literal ?loc = function
+  | Bool _ ->
+      failwith "Unhandled boolean literal"
   | Int i ->
       Exp.constant ?loc (Const.int i)
-  | Fun (label, p, body, _) ->
+  | Field _f ->
+      failwith "Unhandled field literal"
+  | String s ->
+      Exp.constant ?loc (Const.string s)
+
+let rec of_expression_desc ?loc = function
+  | Pexp_apply (f, es) ->
+      Exp.apply ?loc (of_expression f)
+        (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
+  | Pexp_variable name ->
+      Exp.ident ?loc name
+  | Pexp_literal l ->
+      of_literal ?loc l
+  | Pexp_fun (label, p, body, _) ->
       Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
-  | Newtype (name, body) ->
+  | Pexp_newtype (name, body) ->
       Exp.newtype ?loc name (of_expression body)
-  | Constraint (e, typ) ->
+  | Pexp_constraint (e, typ) ->
       Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
-  | Seq (e1, e2) ->
+  | Pexp_seq (e1, e2) ->
       Exp.sequence ?loc (of_expression e1) (of_expression e2)
-  | Let (p, e_rhs, e) ->
+  | Pexp_let (p, e_rhs, e) ->
       Exp.let_ ?loc Nonrecursive
         [Vb.mk (of_pattern p) (of_expression e_rhs)]
         (of_expression e)
-  | Tuple es ->
+  | Pexp_tuple es ->
       Exp.tuple ?loc (List.map ~f:of_expression es)
-  | Match (e, cases) ->
+  | Pexp_match (e, cases) ->
       Exp.match_ ?loc (of_expression e)
         (List.map cases ~f:(fun (p, e) ->
              Exp.case (of_pattern p) (of_expression e) ))
-  | Field (e, field) ->
+  | Pexp_field (e, field) ->
       Exp.field ?loc (of_expression e) field
-  | Record (fields, ext) ->
+  | Pexp_record (fields, ext) ->
       Exp.record ?loc
         (List.map fields ~f:(fun (f, e) -> (f, of_expression e)))
         (Option.map ~f:of_expression ext)
-  | Ctor (name, arg) ->
+  | Pexp_ctor (name, arg) ->
       Exp.construct ?loc name (Option.map ~f:of_expression arg)
-  | Unifiable {expression= Some e; _} ->
+  | Pexp_unifiable {expression= Some e; _} ->
       of_expression e
-  | Unifiable {name; _} ->
+  | Pexp_unifiable {name; _} ->
       Exp.ident ?loc (mk_lid name)
+  | Pexp_if (e1, e2, e3) ->
+      Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
+        (Option.map ~f:of_expression e3)
+
+and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
+  Parsetree.(
+    [%expr
+      function
+      | With
+          { request=
+              [%p
+                match ctor_ident with
+                | Some ctor_ident ->
+                    Pat.construct ~loc (mk_lid ctor_ident)
+                      (Option.map ~f:of_pattern args)
+                | None -> (
+                  match args with
+                  | Some args ->
+                      of_pattern args
+                  | None ->
+                      Pat.any () )]
+          ; respond } ->
+          let unhandled = Snarky.Request.unhandled in
+          [%e of_expression body]
+      | _ ->
+          Snarky.Request.unhandled])
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
 let rec of_signature_desc ?loc = function
-  | SValue (name, typ) | SInstance (name, typ) ->
+  | Psig_value (name, typ) | Psig_instance (name, typ) ->
       Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
-  | STypeDecl decl ->
+  | Psig_type decl ->
       Sig.type_ ?loc Recursive [of_type_decl decl]
-  | SModule (name, msig) ->
+  | Psig_module (name, msig) ->
       let msig =
         match of_module_sig msig with
         | Some msig ->
@@ -148,18 +184,18 @@ let rec of_signature_desc ?loc = function
               "Cannot generate OCaml for a module with an abstract signature"
       in
       Sig.module_ ?loc (Md.mk ?loc name msig)
-  | SModType (name, msig) ->
+  | Psig_modtype (name, msig) ->
       Sig.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
-  | SOpen name ->
+  | Psig_open name ->
       Sig.open_ ?loc (Opn.mk ?loc name)
-  | STypeExtension (variant, ctors) ->
+  | Psig_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
         )
       in
       let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Sig.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
-  | SRequest (_, ctor) ->
+  | Psig_request (_, ctor) ->
       let params = [(Typ.any ?loc (), Invariant)] in
       let ident =
         Location.mkloc
@@ -167,7 +203,7 @@ let rec of_signature_desc ?loc = function
           (Option.value ~default:Location.none loc)
       in
       Sig.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
-  | SMultiple sigs ->
+  | Psig_multiple sigs ->
       Sig.include_ ?loc
         { pincl_mod= Mty.signature ?loc (of_signature sigs)
         ; pincl_loc= Option.value ~default:Location.none loc
@@ -178,13 +214,13 @@ and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
 and of_signature sig_ = List.map ~f:of_signature_item sig_
 
 and of_module_sig_desc ?loc = function
-  | Signature signature ->
+  | Pmty_sig signature ->
       Some (Mty.signature ?loc (of_signature signature))
-  | SigName name ->
+  | Pmty_name name ->
       Some (Mty.alias ?loc name)
-  | SigAbstract ->
+  | Pmty_abstract ->
       None
-  | SigFunctor (name, f, msig) ->
+  | Pmty_functor (name, f, msig) ->
       let msig =
         match of_module_sig msig with
         | Some msig ->
@@ -199,26 +235,26 @@ and of_module_sig_desc ?loc = function
 and of_module_sig msig = of_module_sig_desc ~loc:msig.msig_loc msig.msig_desc
 
 let rec of_statement_desc ?loc = function
-  | Value (p, e) ->
+  | Pstmt_value (p, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
-  | Instance (name, e) ->
+  | Pstmt_instance (name, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (Pat.var ?loc name) (of_expression e)]
-  | TypeDecl decl ->
+  | Pstmt_type decl ->
       Str.type_ ?loc Recursive [of_type_decl decl]
-  | Module (name, m) ->
+  | Pstmt_module (name, m) ->
       Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
-  | ModType (name, msig) ->
+  | Pstmt_modtype (name, msig) ->
       Str.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
-  | Open name ->
+  | Pstmt_open name ->
       Str.open_ ?loc (Opn.mk ?loc name)
-  | TypeExtension (variant, ctors) ->
+  | Pstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
         )
       in
       let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Str.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
-  | Request (_, ctor, handler) ->
+  | Pstmt_request (_, ctor, handler) ->
       let params = [(Typ.any ?loc (), Invariant)] in
       let ident =
         Location.mkloc
@@ -252,7 +288,7 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
-  | Multiple stmts ->
+  | Pstmt_multiple stmts ->
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc
@@ -263,11 +299,11 @@ and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 and of_module_expr m = of_module_desc ~loc:m.mod_loc m.mod_desc
 
 and of_module_desc ?loc = function
-  | Structure stmts ->
+  | Pmod_struct stmts ->
       Mod.structure ?loc (List.map ~f:of_statement stmts)
-  | ModName name ->
+  | Pmod_name name ->
       Mod.ident ?loc name
-  | Functor (name, f, m) ->
+  | Pmod_functor (name, f, m) ->
       Mod.functor_ ?loc name (of_module_sig f) (of_module_expr m)
 
 let of_file = List.map ~f:of_statement

@@ -5,12 +5,12 @@ type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of str option * explicitness
-  | Ttuple of type_expr list
-  | Tarrow of type_expr * type_expr * explicitness * Asttypes.arg_label
+  | Ptyp_var of str option * explicitness
+  | Ptyp_tuple of type_expr list
+  | Ptyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
-  | Tctor of variant
-  | Tpoly of type_expr list * type_expr
+  | Ptyp_ctor of variant
+  | Ptyp_poly of type_expr list * type_expr
 
 and variant =
   { var_ident: lid
@@ -48,78 +48,83 @@ and type_decl_desc =
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
-type pattern =
-  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: Type0.type_expr}
+type literal = Int of int | Bool of bool | Field of string | String of string
+
+type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
 and pattern_desc =
-  | PAny
-  | PVariable of str
-  | PConstraint of pattern * type_expr
-  | PTuple of pattern list
-  | POr of pattern * pattern
-  | PInt of int
-  | PRecord of (lid * pattern) list
-  | PCtor of lid * pattern option
+  | Ppat_any
+  | Ppat_variable of str
+  | Ppat_constraint of pattern * type_expr
+  | Ppat_tuple of pattern list
+  | Ppat_or of pattern * pattern
+  | Ppat_int of int
+  | Ppat_record of (lid * pattern) list
+  | Ppat_ctor of lid * pattern option
 
-type expression =
-  {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
+type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 
 and expression_desc =
-  | Apply of expression * (Asttypes.arg_label * expression) list
-  | Variable of lid
-  | Int of int
-  | Fun of Asttypes.arg_label * pattern * expression * explicitness
-  | Newtype of str * expression
-  | Seq of expression * expression
-  | Let of pattern * expression * expression
-  | Constraint of expression * type_expr
-  | Tuple of expression list
-  | Match of expression * (pattern * expression) list
-  | Field of expression * lid
-  | Record of (lid * expression) list * expression option
-  | Ctor of lid * expression option
-  | Unifiable of {mutable expression: expression option; name: str; id: int}
+  | Pexp_apply of expression * (Asttypes.arg_label * expression) list
+  | Pexp_variable of lid
+  | Pexp_literal of literal
+  | Pexp_fun of Asttypes.arg_label * pattern * expression * explicitness
+  | Pexp_newtype of str * expression
+  | Pexp_seq of expression * expression
+  | Pexp_let of pattern * expression * expression
+  | Pexp_constraint of expression * type_expr
+  | Pexp_tuple of expression list
+  | Pexp_match of expression * (pattern * expression) list
+  | Pexp_field of expression * lid
+  | Pexp_record of (lid * expression) list * expression option
+  | Pexp_ctor of lid * expression option
+  | Pexp_unifiable of
+      { mutable expression: expression option
+      ; name: str
+      ; id: int }
+  | Pexp_if of expression * expression * expression option
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
 and signature_desc =
-  | SValue of str * type_expr
-  | SInstance of str * type_expr
-  | STypeDecl of type_decl
-  | SModule of str * module_sig
-  | SModType of str * module_sig
-  | SOpen of lid
-  | STypeExtension of variant * ctor_decl list
-  | SRequest of type_expr * ctor_decl
-  | SMultiple of signature_item list
+  | Psig_value of str * type_expr
+  | Psig_instance of str * type_expr
+  | Psig_type of type_decl
+  | Psig_module of str * module_sig
+  | Psig_modtype of str * module_sig
+  | Psig_open of lid
+  | Psig_typeext of variant * ctor_decl list
+  | Psig_request of type_expr * ctor_decl
+  | Psig_multiple of signature_item list
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
 and module_sig_desc =
-  | Signature of signature_item list
-  | SigName of lid
-  | SigAbstract
-  | SigFunctor of str * module_sig * module_sig
+  | Pmty_sig of signature_item list
+  | Pmty_name of lid
+  | Pmty_abstract
+  | Pmty_functor of str * module_sig * module_sig
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
 and statement_desc =
-  | Value of pattern * expression
-  | Instance of str * expression
-  | TypeDecl of type_decl
-  | Module of str * module_expr
-  | ModType of str * module_sig
-  | Open of lid
-  | TypeExtension of variant * ctor_decl list
-  | Request of type_expr * ctor_decl * (pattern option * expression) option
-  | Multiple of statement list
+  | Pstmt_value of pattern * expression
+  | Pstmt_instance of str * expression
+  | Pstmt_type of type_decl
+  | Pstmt_module of str * module_expr
+  | Pstmt_modtype of str * module_sig
+  | Pstmt_open of lid
+  | Pstmt_typeext of variant * ctor_decl list
+  | Pstmt_request of
+      type_expr * ctor_decl * (pattern option * expression) option
+  | Pstmt_multiple of statement list
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc =
-  | Structure of statement list
-  | ModName of lid
-  | Functor of str * module_sig * module_expr
+  | Pmod_struct of statement list
+  | Pmod_name of lid
+  | Pmod_functor of str * module_sig * module_expr
 
 let rec typ_debug_print fmt typ =
   let open Format in
@@ -136,26 +141,26 @@ let rec typ_debug_print fmt typ =
   in
   print "(%i:" typ.type_id ;
   ( match typ.type_desc with
-  | Tvar (None, Explicit) ->
+  | Ptyp_var (None, Explicit) ->
       print "var _"
-  | Tvar (Some name, Explicit) ->
+  | Ptyp_var (Some name, Explicit) ->
       print "var %s" name.txt
-  | Tvar (None, Implicit) ->
+  | Ptyp_var (None, Implicit) ->
       print "implicit_var _"
-  | Tvar (Some name, Implicit) ->
+  | Ptyp_var (Some name, Implicit) ->
       print "implicit_var %s" name.txt
-  | Tpoly (typs, typ) ->
+  | Ptyp_poly (typs, typ) ->
       print "poly [%a] %a"
         (print_list typ_debug_print)
         typs typ_debug_print typ
-  | Tarrow (typ1, typ2, Explicit, label) ->
+  | Ptyp_arrow (typ1, typ2, Explicit, label) ->
       print "%a%a -> %a" print_label label typ_debug_print typ1 typ_debug_print
         typ2
-  | Tarrow (typ1, typ2, Implicit, label) ->
+  | Ptyp_arrow (typ1, typ2, Implicit, label) ->
       print "%a{%a} -> %a" print_label label typ_debug_print typ1
         typ_debug_print typ2
-  | Tctor {var_ident= name; var_params= params; _} ->
+  | Ptyp_ctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
-  | Ttuple typs ->
+  | Ptyp_tuple typs ->
       print "(%a)" (print_list typ_debug_print) typs ) ;
   print ")"
