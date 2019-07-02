@@ -114,8 +114,7 @@ module Group_coefficients (Fq : Foreign_intf) = struct
   end
 end
 
-module Make_window_table
-    (P : Prefix_intf)
+module Window_table
     (G : Deletable_intf) (Scalar_field : sig
         type t
     end) (Scalar : sig
@@ -126,39 +125,62 @@ module Make_window_table
       include Deletable_intf
 
       include Binable.S with type t := t
-    end) : sig
-  type t [@@deriving bin_io]
+    end) =
+struct
+  module type Bound = sig
+    include Foreign_types
 
-  val create : G.t -> t
+    val create : (G.t -> V.t return) result
 
-  val scale : t -> Scalar.t -> G.t
+    val scale : (V.t -> Scalar.t -> G.t return) result
+  end
 
-  val scale_field : t -> Scalar_field.t -> G.t
-end = struct
-  let func_name = with_prefix P.prefix
+  module type S = sig
+    type t [@@deriving bin_io]
 
-  include V
+    val create : G.t -> t
 
-  let create =
-    let stub =
-      foreign (func_name "create_window_table") (G.typ @-> returning typ)
-    in
-    fun g ->
-      let t = stub g in
-      Caml.Gc.finalise delete t ; t
+    val scale : t -> Scalar.t -> G.t
 
-  let scale =
-    let stub =
+    val scale_field : t -> Scalar_field.t -> G.t
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    let func_name = with_prefix P.prefix
+
+    let create =
+      foreign (func_name "create_window_table") (G.typ @-> returning V.typ)
+
+    let scale =
       foreign
         (func_name "window_scalar_mul")
-        (typ @-> Scalar.typ @-> returning G.typ)
-    in
-    fun tbl s ->
-      let x = stub tbl s in
+        (V.typ @-> Scalar.typ @-> returning G.typ)
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    open Bindings
+    include V
+
+    let create g =
+      let t = create g in
+      Caml.Gc.finalise delete t ; t
+
+    let scale tbl s =
+      let x = scale tbl s in
       Caml.Gc.finalise G.delete x ;
       x
 
-  let scale_field t (x : Scalar_field.t) = scale t (Scalar.of_field x)
+    let scale_field t (x : Scalar_field.t) = scale t (Scalar.of_field x)
+  end
 end
 
 module Make_group (P : sig
@@ -1992,14 +2014,16 @@ struct
                      end))
       end
 
-      module Window_table =
-        Make_window_table (struct
-            let prefix = with_prefix Mnt4_0.prefix "g1"
-          end)
-          (T)
-          (Field)
-          (Bigint.R)
-          (Vector)
+      module Window_table = struct
+        module T = Window_table (T) (Field) (Bigint.R) (Vector)
+
+        include T.Make
+                  (T.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt4_0.prefix "g1"
+                     end))
+      end
 
       let%test "window-scale" =
         let table = Window_table.create one in
@@ -2101,14 +2125,16 @@ struct
                      end))
       end
 
-      module Window_table =
-        Make_window_table (struct
-            let prefix = with_prefix Mnt6_0.prefix "g1"
-          end)
-          (T)
-          (Field)
-          (Bigint.R)
-          (Vector)
+      module Window_table = struct
+        module T = Window_table (T) (Field) (Bigint.R) (Vector)
+
+        include T.Make
+                  (T.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt6_0.prefix "g1"
+                     end))
+      end
 
       let%test "window-scale" =
         let table = Window_table.create one in
