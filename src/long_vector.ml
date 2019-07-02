@@ -1,11 +1,16 @@
 open Ctypes
 
-include Vector.Make (struct
-  let prefix = "camlsnark_long_vector"
+module Bindings =
+  Vector.Bind
+    (Ctypes_foreign)
+    (struct
+      let prefix = "camlsnark_long_vector"
 
-  type t = Signed.Long.t
+      type t = Signed.Long.t
 
-  let typ = long
+      let typ = long
 
-  let schedule_delete _ = ()
-end)
+      let schedule_delete _ = ()
+    end)
+
+include Vector.Make (Bindings)

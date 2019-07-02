@@ -361,17 +361,27 @@ end = struct
 
   include B
 
-  module Vector = Vector.Make_binable (struct
-    type nonrec t = t
+  module Vector = struct
+    module Bindings =
+      Vector.Bind
+        (Ctypes_foreign)
+        (struct
+          type nonrec t = t
 
-    include B
+          let typ = typ
 
-    let typ = typ
+          let prefix = with_prefix prefix "vector"
 
-    let prefix = with_prefix prefix "vector"
+          let schedule_delete = schedule_delete
+        end)
 
-    let schedule_delete = schedule_delete
-  end)
+    include Vector.Make_binable (struct
+                type nonrec t = t
+
+                include B
+              end)
+              (Bindings)
+  end
 end
 
 module Make_common (M : sig
@@ -734,17 +744,27 @@ struct
 
     include B
 
-    module Vector = Vector.Make_binable (struct
-      type t = T.t
+    module Vector = struct
+      module Bindings =
+        Vector.Bind
+          (Ctypes_foreign)
+          (struct
+            type t = T.t
 
-      include B
+            let typ = T.typ
 
-      let typ = T.typ
+            let prefix = with_prefix M.prefix "field_vector"
 
-      let prefix = with_prefix M.prefix "field_vector"
+            let schedule_delete = Caml.Gc.finalise T.delete
+          end)
 
-      let schedule_delete = Caml.Gc.finalise T.delete
-    end)
+      include Vector.Make_binable (struct
+                  type t = T.t
+
+                  include B
+                end)
+                (Bindings)
+    end
 
     include T
   end
@@ -847,28 +867,42 @@ struct
         let stub = foreign (func_name "index") (typ @-> returning int) in
         fun t -> Var.create (stub t)
 
-      module Vector = Vector.Make (struct
-        type nonrec t = t
+      module Vector = struct
+        module Bindings =
+          Vector.Bind
+            (Ctypes_foreign)
+            (struct
+              type nonrec t = t
 
-        let typ = typ
+              let typ = typ
 
-        let prefix = with_prefix prefix "vector"
+              let prefix = with_prefix prefix "vector"
 
-        let schedule_delete = Caml.Gc.finalise delete
-      end)
+              let schedule_delete = Caml.Gc.finalise delete
+            end)
+
+        include Vector.Make (Bindings)
+      end
     end
 
     let schedule_delete t = Caml.Gc.finalise delete t
 
-    module Vector = Vector.Make (struct
-      type nonrec t = t
+    module Vector = struct
+      module Bindings =
+        Vector.Bind
+          (Ctypes_foreign)
+          (struct
+            type nonrec t = t
 
-      let typ = typ
+            let typ = typ
 
-      let prefix = with_prefix prefix "vector"
+            let prefix = with_prefix prefix "vector"
 
-      let schedule_delete = schedule_delete
-    end)
+            let schedule_delete = schedule_delete
+          end)
+
+      include Vector.Make (Bindings)
+    end
 
     let print = foreign (func_name "print") (typ @-> returning void)
 
