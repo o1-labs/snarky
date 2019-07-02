@@ -67,21 +67,51 @@ let set_printing_fun =
 
 let () = set_no_profiling true
 
-module Make_group_coefficients (P : sig
-  val prefix : string
-end)
-(Fq : Foreign_intf) : sig
-  val a : Fq.t
+module type Foreign_types = sig
+  type 'a return
 
-  val b : Fq.t
-end = struct
-  let mk_coeff name =
-    let stub = foreign name (void @-> returning Fq.typ) in
-    stub ()
+  type 'a result
+end
 
-  let a = mk_coeff (with_prefix P.prefix "coeff_a")
+module Group_coefficients (Fq : Foreign_intf) = struct
+  module type Bound = sig
+    include Foreign_types
 
-  let b = mk_coeff (with_prefix P.prefix "coeff_b")
+    val a : (unit -> Fq.t return) result
+
+    val b : (unit -> Fq.t return) result
+  end
+
+  module type S = sig
+    val a : Fq.t
+
+    val b : Fq.t
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    let mk_coeff name = foreign name (void @-> returning Fq.typ)
+
+    let a = mk_coeff (with_prefix P.prefix "coeff_a")
+
+    let b = mk_coeff (with_prefix P.prefix "coeff_b")
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    open Bindings
+
+    let a = a ()
+
+    let b = b ()
+  end
 end
 
 module Make_window_table
@@ -1951,11 +1981,16 @@ struct
         let g = one in
         equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
-      module Coefficients =
-        Make_group_coefficients (struct
-            let prefix = with_prefix Mnt4_0.prefix "g1"
-          end)
-          (Mnt6_0.Field)
+      module Coefficients = struct
+        module T = Group_coefficients (Mnt6_0.Field)
+
+        include T.Make
+                  (T.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt4_0.prefix "g1"
+                     end))
+      end
 
       module Window_table =
         Make_window_table (struct
@@ -2055,11 +2090,16 @@ struct
         let g = one in
         equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
-      module Coefficients =
-        Make_group_coefficients (struct
-            let prefix = with_prefix Mnt6_0.prefix "g1"
-          end)
-          (Mnt4_0.Field)
+      module Coefficients = struct
+        module T = Group_coefficients (Mnt4_0.Field)
+
+        include T.Make
+                  (T.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt6_0.prefix "g1"
+                     end))
+      end
 
       module Window_table =
         Make_window_table (struct
