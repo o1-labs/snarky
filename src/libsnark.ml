@@ -1364,6 +1364,100 @@ module Linear_combination (Field : Foreign_intf) (Var : Foreign_intf) = struct
   end
 end
 
+module R1CS_constraint
+    (Field : Foreign_intf)
+    (Linear_combination : Foreign_intf) =
+struct
+  module type Bound = sig
+    include Foreign_types
+
+    type t = Field.t Backend_types.R1CS_constraint.t
+
+    val typ : t Ctypes.typ
+
+    val delete : (t -> unit return) result
+
+    val create :
+      (   Linear_combination.t
+       -> Linear_combination.t
+       -> Linear_combination.t
+       -> t return)
+      result
+
+    val set_is_square : (t -> bool -> unit return) result
+
+    val a : (t -> Linear_combination.t return) result
+
+    val b : (t -> Linear_combination.t return) result
+
+    val c : (t -> Linear_combination.t return) result
+  end
+
+  module type S = sig
+    type t = Field.t Backend_types.R1CS_constraint.t
+
+    val typ : t Ctypes.typ
+
+    val create :
+      Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
+
+    val set_is_square : t -> bool -> unit
+
+    val a : t -> Linear_combination.t
+
+    val b : t -> Linear_combination.t
+
+    val c : t -> Linear_combination.t
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    include R1CS_constraint.Make
+              (F)
+              (struct
+                let prefix = with_prefix P.prefix "r1cs_constraint"
+
+                type field = Field.t
+              end)
+
+    let create =
+      foreign (func_name "create")
+        ( Linear_combination.typ @-> Linear_combination.typ
+        @-> Linear_combination.typ @-> returning typ )
+
+    let set_is_square =
+      foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
+
+    let a = foreign (func_name "a") (typ @-> returning Linear_combination.typ)
+
+    let b = foreign (func_name "b") (typ @-> returning Linear_combination.typ)
+
+    let c = foreign (func_name "c") (typ @-> returning Linear_combination.typ)
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    include Bindings
+
+    let create a b c =
+      let t = create a b c in
+      Caml.Gc.finalise delete t ; t
+
+    let a t = a t
+
+    let b t = b t
+
+    let c t = c t
+  end
+end
+
 module Make_common (M : sig
   val prefix : string
 end) =
@@ -1420,60 +1514,9 @@ struct
     include T.Make (T.Bind (Ctypes_foreign) (M)) (Field) (Var)
   end
 
-  module R1CS_constraint : sig
-    type t = Field0.t Backend_types.R1CS_constraint.t
-
-    val typ : t Ctypes.typ
-
-    val create :
-      Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
-
-    val set_is_square : t -> bool -> unit
-
-    val a : t -> Linear_combination.t
-
-    val b : t -> Linear_combination.t
-
-    val c : t -> Linear_combination.t
-  end = struct
-    include R1CS_constraint.Make
-              (Ctypes_foreign)
-              (struct
-                let prefix = with_prefix M.prefix "r1cs_constraint"
-
-                type field = Field0.t
-              end)
-
-    let create =
-      let stub =
-        foreign (func_name "create")
-          ( Linear_combination.typ @-> Linear_combination.typ
-          @-> Linear_combination.typ @-> returning typ )
-      in
-      fun a b c ->
-        let t = stub a b c in
-        Caml.Gc.finalise delete t ; t
-
-    let set_is_square =
-      foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
-
-    let a =
-      let stub =
-        foreign (func_name "a") (typ @-> returning Linear_combination.typ)
-      in
-      fun t -> stub t
-
-    let b =
-      let stub =
-        foreign (func_name "b") (typ @-> returning Linear_combination.typ)
-      in
-      fun t -> stub t
-
-    let c =
-      let stub =
-        foreign (func_name "c") (typ @-> returning Linear_combination.typ)
-      in
-      fun t -> stub t
+  module R1CS_constraint = struct
+    module T = R1CS_constraint (Field) (Linear_combination)
+    include T.Make (T.Bind (Ctypes_foreign) (M))
   end
 
   module R1CS_constraint_system : sig
