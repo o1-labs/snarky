@@ -178,21 +178,10 @@ struct
   end
 end
 
-module Group (Field : sig
-  type t
-
-  val typ : t Ctypes.typ
-end) (Bigint_r : sig
-  type t
-
-  val typ : t Ctypes.typ
-end) (Fq : sig
-  type t [@@deriving bin_io]
-
-  val typ : t Ctypes.typ
-
-  val delete : t -> unit
-end) =
+module Group
+    (Field : Foreign_intf)
+    (Bigint_r : Foreign_intf)
+    (Fq : Foreign_intf) =
 struct
   module type Bound = sig
     include Foreign_types
@@ -343,8 +332,13 @@ struct
   end
 
   module Make
-      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
-  struct
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
+      (Fq : sig
+              type t [@@deriving bin_io]
+
+              val delete : t -> unit
+            end
+            with type t = Fq.t) : S = struct
     include (
       Bindings :
         Bound
@@ -2408,6 +2402,7 @@ struct
                    (struct
                      let prefix = with_prefix Mnt4_0.prefix "g2"
                    end))
+                   (Mnt6_0.Field.Vector)
     end
 
     module G1 = struct
@@ -2420,6 +2415,7 @@ struct
                      (struct
                        let prefix = with_prefix Mnt4_0.prefix "g1"
                      end))
+                     (Mnt6_0.Field)
       end
 
       include T
@@ -2528,6 +2524,7 @@ struct
                    (struct
                      let prefix = with_prefix Mnt6_0.prefix "g2"
                    end))
+                   (Mnt4_0.Field.Vector)
     end
 
     module G1 = struct
@@ -2540,6 +2537,7 @@ struct
                      (struct
                        let prefix = with_prefix Mnt6_0.prefix "g1"
                      end))
+                     (Mnt4_0.Field)
       end
 
       include T
