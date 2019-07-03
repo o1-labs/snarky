@@ -451,6 +451,297 @@ struct
   end
 end
 
+module Field = struct
+  module type Bound = sig
+    include Foreign_types
+
+    type t
+
+    val typ : t typ
+
+    val size_in_bits : (unit -> int return) result
+
+    val delete : (t -> unit return) result
+
+    val print : (t -> unit return) result
+
+    val random : (unit -> t return) result
+
+    val square : (t -> t return) result
+
+    val is_square : (t -> bool return) result
+
+    val sqrt : (t -> t return) result
+
+    val of_int : (Long_vector.elt -> t return) result
+
+    val add : (t -> t -> t return) result
+
+    val inv : (t -> t return) result
+
+    val mul : (t -> t -> t return) result
+
+    val sub : (t -> t -> t return) result
+
+    module Mutable : sig
+      val add : (t -> t -> unit return) result
+
+      val sub : (t -> t -> unit return) result
+
+      val mul : (t -> t -> unit return) result
+
+      val copy : (t -> t -> unit return) result
+    end
+
+    val equal : (t -> t -> bool return) result
+
+    module Vector :
+      Vector.Bound
+      with type 'a result = 'a result
+       and type 'a return = 'a return
+       and type elt = t
+  end
+
+  module type S = sig
+    type t [@@deriving sexp, bin_io]
+
+    val typ : t Ctypes.typ
+
+    val add : t -> t -> t
+
+    val sub : t -> t -> t
+
+    val mul : t -> t -> t
+
+    val inv : t -> t
+
+    val is_square : t -> bool
+
+    val sqrt : t -> t
+
+    val square : t -> t
+
+    val of_int : int -> t
+
+    val one : t
+
+    val zero : t
+
+    val equal : t -> t -> bool
+
+    val size_in_bits : int
+
+    val random : unit -> t
+
+    val delete : t -> unit
+
+    val schedule_delete : t -> unit
+
+    val print : t -> unit
+
+    module Mutable : sig
+      val add : t -> other:t -> unit
+
+      val mul : t -> other:t -> unit
+
+      val sub : t -> other:t -> unit
+
+      val copy : over:t -> t -> unit
+    end
+
+    val ( += ) : t -> t -> unit
+
+    val ( -= ) : t -> t -> unit
+
+    val ( *= ) : t -> t -> unit
+
+    module Vector : Vector.S_binable with type elt = t
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          type t
+
+          include Foreign_intf with type t := t
+
+          val func_name : string -> string
+
+          val outer_prefix : string
+      end) :
+    Bound
+    with type 'a return = 'a F.return
+     and type 'a result = 'a F.result
+     and type t = P.t = struct
+    include F
+    include P
+
+    let size_in_bits =
+      foreign (func_name "size_in_bits") (void @-> returning int)
+
+    let delete = foreign (func_name "delete") (typ @-> returning void)
+
+    let print = foreign (func_name "print") (typ @-> returning void)
+
+    let random = foreign (func_name "random") (void @-> returning typ)
+
+    let square = foreign (func_name "square") (typ @-> returning typ)
+
+    let is_square = foreign (func_name "is_square") (typ @-> returning bool)
+
+    let sqrt = foreign (func_name "sqrt") (typ @-> returning typ)
+
+    let of_int = foreign (func_name "of_int") (long @-> returning typ)
+
+    let add = foreign (func_name "add") (typ @-> typ @-> returning typ)
+
+    let inv = foreign (func_name "inv") (typ @-> returning typ)
+
+    let mul = foreign (func_name "mul") (typ @-> typ @-> returning typ)
+
+    let sub = foreign (func_name "sub") (typ @-> typ @-> returning typ)
+
+    module Mutable = struct
+      let make name =
+        foreign (func_name ("mut_" ^ name)) (typ @-> typ @-> returning void)
+
+      let add = make "add"
+
+      let sub = make "sub"
+
+      let mul = make "mul"
+
+      let copy = foreign (func_name "copy") (typ @-> typ @-> returning void)
+    end
+
+    let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
+
+    module Vector =
+      Vector.Bind
+        (F)
+        (struct
+          type nonrec t = t
+
+          let typ = typ
+
+          let prefix = with_prefix outer_prefix "field_vector"
+        end)
+  end
+
+  module Make (Field0 : sig
+    type t [@@deriving sexp]
+
+    include Deletable_intf with type t := t
+  end) (R : sig
+    include Binable.Minimal.S
+
+    val to_field : t -> Field0.t
+
+    val of_field : Field0.t -> t
+  end)
+  (Bindings : Bound
+              with type 'a return = 'a
+               and type 'a result = 'a
+               and type t = Field0.t) : S with type t = Bindings.t = struct
+    module T = struct
+      include Field0
+
+      include (
+        Bindings :
+          Bound
+          with type 'a return = 'a
+           and type 'a result = 'a
+           and type t := Field0.t
+          with module Vector := Bindings.Vector
+          with module Mutable := Bindings.Mutable )
+
+      let size_in_bits = size_in_bits ()
+
+      let schedule_delete t = Caml.Gc.finalise delete t
+
+      let random () =
+        let x = random () in
+        schedule_delete x ; x
+
+      let square x =
+        let y = square x in
+        schedule_delete y ; y
+
+      let sqrt x =
+        let y = sqrt x in
+        schedule_delete y ; y
+
+      let of_int n =
+        let x = of_int (Signed.Long.of_int n) in
+        schedule_delete x ; x
+
+      let add x y =
+        let z = add x y in
+        schedule_delete z ; z
+
+      let inv x =
+        let y = inv x in
+        schedule_delete y ; y
+
+      let mul x y =
+        let z = mul x y in
+        schedule_delete z ; z
+
+      let sub x y =
+        let z = sub x y in
+        schedule_delete z ; z
+
+      module Mutable = struct
+        open Bindings.Mutable
+
+        let make stub x ~other = stub x other
+
+        let add = make add
+
+        let sub = make sub
+
+        let mul = make mul
+
+        let copy ~over x = copy over x
+      end
+
+      let ( += ) t other = Mutable.add t ~other
+
+      let ( -= ) t other = Mutable.sub t ~other
+
+      let ( *= ) t other = Mutable.mul t ~other
+
+      let one = of_int 1
+
+      let zero = of_int 0
+    end
+
+    module B =
+      Binable.Of_binable
+        (R)
+        (struct
+          type t = T.t
+
+          let to_binable = R.of_field
+
+          let of_binable = R.to_field
+        end)
+
+    include B
+
+    module Vector =
+      Vector.Make_binable (struct
+          type t = T.t
+
+          include B
+
+          let schedule_delete = Caml.Gc.finalise T.delete
+        end)
+        (Bindings.Vector)
+
+    include T
+  end
+end
+
 module Make_common (M : sig
   val prefix : string
 end) =
@@ -645,195 +936,15 @@ struct
     end)
   end
 
-  module Field : sig
-    type t = Field0.t [@@deriving sexp, bin_io]
+  module Field = struct
+    include Field.Make (Field0) (Bigint.R)
+              (Field.Bind
+                 (Ctypes_foreign)
+                 (struct
+                   include Field0
 
-    val typ : t Ctypes.typ
-
-    val add : t -> t -> t
-
-    val sub : t -> t -> t
-
-    val mul : t -> t -> t
-
-    val inv : t -> t
-
-    val is_square : t -> bool
-
-    val sqrt : t -> t
-
-    val square : t -> t
-
-    val of_int : int -> t
-
-    val one : t
-
-    val zero : t
-
-    val equal : t -> t -> bool
-
-    val size_in_bits : int
-
-    val random : unit -> t
-
-    val delete : t -> unit
-
-    val schedule_delete : t -> unit
-
-    val print : t -> unit
-
-    module Mutable : sig
-      val add : t -> other:t -> unit
-
-      val mul : t -> other:t -> unit
-
-      val sub : t -> other:t -> unit
-
-      val copy : over:t -> t -> unit
-    end
-
-    val ( += ) : t -> t -> unit
-
-    val ( -= ) : t -> t -> unit
-
-    val ( *= ) : t -> t -> unit
-
-    module Vector : Vector.S_binable with type elt = t
-  end = struct
-    module T = struct
-      include Field0
-
-      let size_in_bits =
-        let stub =
-          foreign (func_name "size_in_bits") (void @-> returning int)
-        in
-        stub ()
-
-      let delete = foreign (func_name "delete") (typ @-> returning void)
-
-      let schedule_delete t = Caml.Gc.finalise delete t
-
-      let print = foreign (func_name "print") (typ @-> returning void)
-
-      let random =
-        let stub = foreign (func_name "random") (void @-> returning typ) in
-        fun () ->
-          let x = stub () in
-          schedule_delete x ; x
-
-      let square =
-        let stub = foreign (func_name "square") (typ @-> returning typ) in
-        fun x ->
-          let y = stub x in
-          schedule_delete y ; y
-
-      let is_square = foreign (func_name "is_square") (typ @-> returning bool)
-
-      let sqrt =
-        let stub = foreign (func_name "sqrt") (typ @-> returning typ) in
-        fun x ->
-          let y = stub x in
-          schedule_delete y ; y
-
-      let of_int =
-        let stub = foreign (func_name "of_int") (long @-> returning typ) in
-        fun n ->
-          let x = stub (Signed.Long.of_int n) in
-          schedule_delete x ; x
-
-      let add =
-        let stub = foreign (func_name "add") (typ @-> typ @-> returning typ) in
-        fun x y ->
-          let z = stub x y in
-          schedule_delete z ; z
-
-      let inv =
-        let stub = foreign (func_name "inv") (typ @-> returning typ) in
-        fun x ->
-          let y = stub x in
-          schedule_delete y ; y
-
-      let mul =
-        let stub = foreign (func_name "mul") (typ @-> typ @-> returning typ) in
-        fun x y ->
-          let z = stub x y in
-          schedule_delete z ; z
-
-      let sub =
-        let stub = foreign (func_name "sub") (typ @-> typ @-> returning typ) in
-        fun x y ->
-          let z = stub x y in
-          schedule_delete z ; z
-
-      module Mutable = struct
-        let make name =
-          let stub =
-            foreign (func_name ("mut_" ^ name)) (typ @-> typ @-> returning void)
-          in
-          fun x ~other -> stub x other
-
-        let add = make "add"
-
-        let sub = make "sub"
-
-        let mul = make "mul"
-
-        let copy =
-          let stub =
-            foreign (func_name "copy") (typ @-> typ @-> returning void)
-          in
-          fun ~over x -> stub over x
-      end
-
-      let ( += ) t other = Mutable.add t ~other
-
-      let ( -= ) t other = Mutable.sub t ~other
-
-      let ( *= ) t other = Mutable.mul t ~other
-
-      let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
-
-      let one = of_int 1
-
-      let zero = of_int 0
-    end
-
-    module B =
-      Binable.Of_binable
-        (Bigint.R)
-        (struct
-          type t = T.t
-
-          let to_binable = Bigint.R.of_field
-
-          let of_binable = Bigint.R.to_field
-        end)
-
-    include B
-
-    module Vector = struct
-      module Bindings =
-        Vector.Bind
-          (Ctypes_foreign)
-          (struct
-            type t = T.t
-
-            let typ = T.typ
-
-            let prefix = with_prefix M.prefix "field_vector"
-          end)
-
-      include Vector.Make_binable (struct
-                  type t = T.t
-
-                  include B
-
-                  let schedule_delete = Caml.Gc.finalise T.delete
-                end)
-                (Bindings)
-    end
-
-    include T
+                   let outer_prefix = M.prefix
+                 end))
   end
 
   module Var : sig
