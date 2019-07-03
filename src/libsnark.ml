@@ -371,14 +371,14 @@ end = struct
           let typ = typ
 
           let prefix = with_prefix prefix "vector"
-
-          let schedule_delete = schedule_delete
         end)
 
     include Vector.Make_binable (struct
                 type nonrec t = t
 
                 include B
+
+                let schedule_delete = schedule_delete
               end)
               (Bindings)
   end
@@ -754,14 +754,14 @@ struct
             let typ = T.typ
 
             let prefix = with_prefix M.prefix "field_vector"
-
-            let schedule_delete = Caml.Gc.finalise T.delete
           end)
 
       include Vector.Make_binable (struct
                   type t = T.t
 
                   include B
+
+                  let schedule_delete = Caml.Gc.finalise T.delete
                 end)
                 (Bindings)
     end
@@ -877,11 +877,14 @@ struct
               let typ = typ
 
               let prefix = with_prefix prefix "vector"
-
-              let schedule_delete = Caml.Gc.finalise delete
             end)
 
-        include Vector.Make (Bindings)
+        include Vector.Make (struct
+                    type nonrec t = t
+
+                    let schedule_delete = Caml.Gc.finalise delete
+                  end)
+                  (Bindings)
       end
     end
 
@@ -897,11 +900,14 @@ struct
             let typ = typ
 
             let prefix = with_prefix prefix "vector"
-
-            let schedule_delete = schedule_delete
           end)
 
-      include Vector.Make (Bindings)
+      include Vector.Make (struct
+                  type nonrec t = t
+
+                  let schedule_delete = schedule_delete
+                end)
+                (Bindings)
     end
 
     let print = foreign (func_name "print") (typ @-> returning void)

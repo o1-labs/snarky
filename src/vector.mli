@@ -24,8 +24,6 @@ module type Bound = sig
   val length : (t -> int return) result
 
   val emplace_back : (t -> elt -> unit return) result
-
-  val elt_schedule_delete : (elt -> unit return) result
 end
 
 module type S = sig
@@ -58,8 +56,6 @@ module Bind
 
         val typ : t Ctypes.typ
 
-        val schedule_delete : (t -> unit F.return) F.result
-
         val prefix : string
     end) :
   Bound
@@ -67,11 +63,20 @@ module Bind
    and type 'a result = 'a F.result
    and type elt = Elt.t
 
-module Make (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) :
-  S with type elt = Bindings.elt
+module Make (Elt : sig
+  type t
+
+  val schedule_delete : t -> unit
+end)
+(Bindings : Bound
+            with type 'a return = 'a
+             and type 'a result = 'a
+             and type elt = Elt.t) : S with type elt = Bindings.elt
 
 module Make_binable (Elt : sig
   type t [@@deriving bin_io]
+
+  val schedule_delete : t -> unit
 end)
 (Bindings : Bound
             with type 'a return = 'a

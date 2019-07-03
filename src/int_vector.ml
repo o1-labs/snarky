@@ -9,8 +9,11 @@ module Bindings =
       type t = int
 
       let typ = int
-
-      let schedule_delete _ = ()
     end)
 
-include Vector.Make (Bindings)
+include Vector.Make (struct
+            type t = int
+
+            let schedule_delete _ = ()
+          end)
+          (Bindings)

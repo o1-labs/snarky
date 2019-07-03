@@ -25,8 +25,6 @@ module type Bound = sig
   val length : (t -> int return) result
 
   val emplace_back : (t -> elt -> unit return) result
-
-  val elt_schedule_delete : (elt -> unit return) result
 end
 
 let with_prefix prefix s = sprintf "%s_%s" prefix s
@@ -36,8 +34,6 @@ module Bind
         type t
 
         val typ : t Ctypes.typ
-
-        val schedule_delete : (t -> unit F.return) F.result
 
         val prefix : string
     end) :
@@ -65,8 +61,6 @@ module Bind
 
   let emplace_back =
     foreign (func_name "emplace_back") (typ @-> Elt.typ @-> returning void)
-
-  let elt_schedule_delete = Elt.schedule_delete
 end
 
 module type S = sig
@@ -93,8 +87,15 @@ module type S_binable = sig
   include Binable.S with type t := t
 end
 
-module Make (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) :
-  S with type elt = Bindings.elt = struct
+module Make (Elt : sig
+  type t
+
+  val schedule_delete : t -> unit
+end)
+(Bindings : Bound
+            with type 'a return = 'a
+             and type 'a result = 'a
+             and type elt = Elt.t) : S with type elt = Bindings.elt = struct
   include Bindings
 
   let create () =
@@ -103,17 +104,19 @@ module Make (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) 
 
   let get t i =
     let x = get t i in
-    elt_schedule_delete x ; x
+    Elt.schedule_delete x ; x
 end
 
 module Make_binable (Elt : sig
   type t [@@deriving bin_io]
+
+  val schedule_delete : t -> unit
 end)
 (Bindings : Bound
             with type 'a return = 'a
              and type 'a result = 'a
              and type elt = Elt.t) : S_binable with type elt = Elt.t = struct
-  include Make (Bindings)
+  include Make (Elt) (Bindings)
 
   module Minmal = struct
     type nonrec t = t
