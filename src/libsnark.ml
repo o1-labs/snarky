@@ -1034,7 +1034,7 @@ module Bigint = struct
   end
 end
 
-module Var (Field0 : Deletable_intf) = struct
+module Var (Field0 : Foreign_intf) = struct
   module type Bound = sig
     include Foreign_types
 
