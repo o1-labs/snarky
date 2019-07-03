@@ -1042,6 +1042,67 @@ module Bigint = struct
   end
 end
 
+module Var (Field0 : Deletable_intf) = struct
+  module type Bound = sig
+    include Foreign_types
+
+    type t = Field0.t Backend_types.Var.t
+
+    val typ : t Ctypes.typ
+
+    (* TODO(Matt): This should be created via Ctypes.FOREIGN. *)
+    val delete : t -> unit
+
+    val index : (t -> Unsigned.size_t return) result
+
+    val create : (int -> t return) result
+  end
+
+  module type S = sig
+    type t = Field0.t Backend_types.Var.t
+
+    val typ : t Ctypes.typ
+
+    val index : t -> int
+
+    val create : int -> t
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    include Var.Make (struct
+      let prefix = with_prefix P.prefix "var"
+
+      type field = Field0.t
+    end)
+
+    let create = foreign (func_name "create") (int @-> returning typ)
+
+    let index = foreign (func_name "index") (typ @-> returning size_t)
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    include Bindings
+
+    let create n =
+      let v = create n in
+      Caml.Gc.finalise delete v ; v
+
+    let index v =
+      let r = index v in
+      (* TODO: Use size_t *)
+      Unsigned.Size_t.to_int r
+  end
+end
+
 module Make_common (M : sig
   val prefix : string
 end) =
@@ -1085,33 +1146,9 @@ struct
                  end))
   end
 
-  module Var : sig
-    type t = Field0.t Backend_types.Var.t
-
-    val typ : t Ctypes.typ
-
-    val index : t -> int
-
-    val create : int -> t
-  end = struct
-    include Var.Make (struct
-      let prefix = with_prefix M.prefix "var"
-
-      type field = Field0.t
-    end)
-
-    let create =
-      (* TODO: Use size_t *)
-      let stub = foreign (func_name "create") (int @-> returning typ) in
-      fun n ->
-        let v = stub n in
-        Caml.Gc.finalise delete v ; v
-
-    let index =
-      let stub = foreign (func_name "index") (typ @-> returning size_t) in
-      fun v ->
-        let r = stub v in
-        Unsigned.Size_t.to_int r
+  module Var = struct
+    module T = Var (Field0)
+    include T.Make (T.Bind (Ctypes_foreign) (M))
   end
 
   module Linear_combination : sig
