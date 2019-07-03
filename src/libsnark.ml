@@ -1277,7 +1277,12 @@ module Linear_combination (Field : Foreign_intf) (Var : Foreign_intf) = struct
                 type field = Field.t
               end)
 
-    module Term = Term.Bind (F) (P)
+    module Term =
+      Term.Bind
+        (F)
+        (struct
+          let prefix = prefix
+        end)
 
     module Vector =
       Vector.Bind
