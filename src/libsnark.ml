@@ -1463,6 +1463,194 @@ struct
   end
 end
 
+module R1CS_constraint_system
+    (Field : Foreign_intf)
+    (Field_vector : Foreign_intf)
+    (R1CS_constraint : Foreign_intf) =
+struct
+  module type Bound = sig
+    include Foreign_types
+
+    type t = Field.t Backend_types.R1CS_constraint_system.t
+
+    val typ : t typ
+
+    val func_name : string -> string
+
+    val delete : (t -> unit return) result
+
+    val report_statistics : (t -> unit return) result
+
+    val swap_AB_if_beneficial : (t -> unit return) result
+
+    val check : (t -> bool return) result
+
+    val create : (unit -> t return) result
+
+    val clear : (t -> unit return) result
+
+    val add_constraint : (t -> R1CS_constraint.t -> unit return) result
+
+    val add_constraint_with_annotation :
+      (t -> R1CS_constraint.t -> string -> unit return) result
+
+    val set_primary_input_size : (t -> int -> unit return) result
+
+    val set_auxiliary_input_size : (t -> int -> unit return) result
+
+    val get_primary_input_size : (t -> int return) result
+
+    val get_auxiliary_input_size : (t -> int return) result
+
+    val is_satisfied : (t -> Field_vector.t -> Field_vector.t -> bool return) result
+
+    val digest : (t -> Cpp_string.t return) result
+  end
+
+  module type S = sig
+    type t = Field.t Backend_types.R1CS_constraint_system.t
+
+    val typ : t Ctypes.typ
+
+    val create : unit -> t
+
+    val clear : t -> unit
+
+    val delete : t -> unit
+
+    val report_statistics : t -> unit
+
+    val swap_AB_if_beneficial : t -> unit
+
+    val add_constraint : t -> R1CS_constraint.t -> unit
+
+    val add_constraint_with_annotation :
+      t -> R1CS_constraint.t -> string -> unit
+
+    val set_primary_input_size : t -> int -> unit
+
+    val set_auxiliary_input_size : t -> int -> unit
+
+    val get_primary_input_size : t -> int
+
+    val get_auxiliary_input_size : t -> int
+
+    val check_exn : t -> unit
+
+    val is_satisfied :
+         t
+      -> primary_input:Field_vector.t
+      -> auxiliary_input:Field_vector.t
+      -> bool
+
+    val digest : t -> Md5.t
+
+    val iter_constraints : f:(R1CS_constraint.t -> unit) -> t -> unit
+
+    val fold_constraints :
+      f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    include R1CS_constraint_system.Make
+              (F)
+              (struct
+                let prefix = with_prefix P.prefix "r1cs_constraint_system"
+
+                type field = Field.t
+              end)
+
+    let report_statistics =
+      foreign (func_name "report_statistics") (typ @-> returning void)
+
+    let swap_AB_if_beneficial =
+      foreign (func_name "swap_AB_if_beneficial") (typ @-> returning void)
+
+    let check = foreign (func_name "check") (typ @-> returning bool)
+
+    let create = foreign (func_name "create") (void @-> returning typ)
+
+    let clear = foreign (func_name "clear") (typ @-> returning void)
+
+    let add_constraint =
+      foreign
+        (func_name "add_constraint")
+        (typ @-> R1CS_constraint.typ @-> returning void)
+
+    let add_constraint_with_annotation =
+      foreign
+        (func_name "add_constraint_with_annotation")
+        (typ @-> R1CS_constraint.typ @-> string @-> returning void)
+
+    let set_primary_input_size =
+      foreign
+        (func_name "set_primary_input_size")
+        (typ @-> int @-> returning void)
+
+    let set_auxiliary_input_size =
+      foreign
+        (func_name "set_auxiliary_input_size")
+        (typ @-> int @-> returning void)
+
+    let get_primary_input_size =
+      foreign (func_name "get_primary_input_size") (typ @-> returning int)
+
+    let get_auxiliary_input_size =
+      foreign (func_name "get_auxiliary_input_size") (typ @-> returning int)
+
+    let is_satisfied =
+      foreign (func_name "is_satisfied")
+        ( typ @-> Field_vector.typ @-> Field_vector.typ
+        @-> returning Ctypes.bool )
+
+    let digest = foreign (func_name "digest") (typ @-> returning Cpp_string.typ)
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    include Bindings
+
+    let check_exn sys =
+      if not (check sys) then failwith "R1CS_constraint_system.check_exn"
+
+    let create () =
+      let t = create () in
+      Caml.Gc.finalise delete t ; t
+
+    let is_satisfied t ~primary_input ~auxiliary_input =
+      is_satisfied t primary_input auxiliary_input
+
+    let digest t =
+      let s = digest t in
+      let r = Cpp_string.to_string s in
+      Cpp_string.delete s ; Md5.of_binary_exn r
+
+    (* NOTE: This has to use libffi because Ctypes.FOREIGN doesn't support
+       [funptr]. *)
+    let iter_constraints =
+      let stub =
+        foreign (func_name "iter")
+          ( typ
+          @-> funptr (R1CS_constraint.typ @-> returning void)
+          @-> returning void )
+      in
+      fun ~f t -> stub t f
+
+    let fold_constraints ~f ~init t =
+      let a = ref init in
+      let f c = a := f !a c in
+      iter_constraints ~f t ; !a
+  end
+end
+
 module Make_common (M : sig
   val prefix : string
 end) =
@@ -1524,133 +1712,9 @@ struct
     include T.Make (T.Bind (Ctypes_foreign) (M))
   end
 
-  module R1CS_constraint_system : sig
-    type t = Field0.t Backend_types.R1CS_constraint_system.t
-
-    val typ : t Ctypes.typ
-
-    val create : unit -> t
-
-    val clear : t -> unit
-
-    val delete : t -> unit
-
-    val report_statistics : t -> unit
-
-    val swap_AB_if_beneficial : t -> unit
-
-    val add_constraint : t -> R1CS_constraint.t -> unit
-
-    val add_constraint_with_annotation :
-      t -> R1CS_constraint.t -> string -> unit
-
-    val set_primary_input_size : t -> int -> unit
-
-    val set_auxiliary_input_size : t -> int -> unit
-
-    val get_primary_input_size : t -> int
-
-    val get_auxiliary_input_size : t -> int
-
-    val check_exn : t -> unit
-
-    val is_satisfied :
-         t
-      -> primary_input:Field.Vector.t
-      -> auxiliary_input:Field.Vector.t
-      -> bool
-
-    val digest : t -> Md5.t
-
-    val iter_constraints : f:(R1CS_constraint.t -> unit) -> t -> unit
-
-    val fold_constraints :
-      f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
-  end = struct
-    include R1CS_constraint_system.Make
-              (Ctypes_foreign)
-              (struct
-                let prefix = with_prefix M.prefix "r1cs_constraint_system"
-
-                type field = Field0.t
-              end)
-
-    let report_statistics =
-      foreign (func_name "report_statistics") (typ @-> returning void)
-
-    let swap_AB_if_beneficial =
-      foreign (func_name "swap_AB_if_beneficial") (typ @-> returning void)
-
-    let check_exn =
-      let stub = foreign (func_name "check") (typ @-> returning bool) in
-      fun sys ->
-        if not (stub sys) then failwith "R1CS_constraint_system.check_exn"
-
-    let create =
-      let stub = foreign (func_name "create") (void @-> returning typ) in
-      fun () ->
-        let t = stub () in
-        Caml.Gc.finalise delete t ; t
-
-    let clear = foreign (func_name "clear") (typ @-> returning void)
-
-    let add_constraint =
-      foreign
-        (func_name "add_constraint")
-        (typ @-> R1CS_constraint.typ @-> returning void)
-
-    let add_constraint_with_annotation =
-      foreign
-        (func_name "add_constraint_with_annotation")
-        (typ @-> R1CS_constraint.typ @-> string @-> returning void)
-
-    let set_primary_input_size =
-      foreign
-        (func_name "set_primary_input_size")
-        (typ @-> int @-> returning void)
-
-    let set_auxiliary_input_size =
-      foreign
-        (func_name "set_auxiliary_input_size")
-        (typ @-> int @-> returning void)
-
-    let get_primary_input_size =
-      foreign (func_name "get_primary_input_size") (typ @-> returning int)
-
-    let get_auxiliary_input_size =
-      foreign (func_name "get_auxiliary_input_size") (typ @-> returning int)
-
-    let is_satisfied =
-      let stub =
-        foreign (func_name "is_satisfied")
-          ( typ @-> Field.Vector.typ @-> Field.Vector.typ
-          @-> returning Ctypes.bool )
-      in
-      fun t ~primary_input ~auxiliary_input ->
-        stub t primary_input auxiliary_input
-
-    let digest =
-      let stub =
-        foreign (func_name "digest") (typ @-> returning Cpp_string.typ)
-      in
-      fun t ->
-        let s = stub t in
-        let r = Cpp_string.to_string s in
-        Cpp_string.delete s ; Md5.of_binary_exn r
-
-    let iter_constraints =
-      let stub =
-        foreign (func_name "iter")
-          ( typ
-          @-> funptr (R1CS_constraint.typ @-> returning void)
-          @-> returning void )
-      in
-      fun ~f t -> stub t f
-
-    let fold_constraints ~f ~init t =
-      let a = ref init in
-      let f c = a := f !a c in
-      iter_constraints ~f t ; !a
+  module R1CS_constraint_system = struct
+    module T = R1CS_constraint_system (Field) (Field.Vector) (R1CS_constraint)
+    include T.Make (T.Bind (Ctypes_foreign) (M))
   end
 
   module Protoboard : sig
