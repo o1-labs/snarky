@@ -740,6 +740,10 @@ module Field = struct
   end
 end
 
+(* NOTE: This isn't functored over Field0 because Common is field-agnostic.
+   Probably the relationship should be inverted, and Field should get
+   to/of_bigint instead.
+*)
 module Bigint = struct
   module Common = struct
     module type Bound = sig
