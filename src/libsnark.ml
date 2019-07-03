@@ -1096,6 +1096,274 @@ module Var (Field0 : Foreign_intf) = struct
   end
 end
 
+module Linear_combination (Field : Foreign_intf) (Var : Foreign_intf) = struct
+  module Term = struct
+    module type Bound = sig
+      include Foreign_types
+
+      type t = Field.t Linear_combination.Term.t
+
+      val typ : t typ
+
+      val delete : (t -> unit return) result
+
+      val create : (Field.t -> Var.t -> t return) result
+
+      val coeff : (t -> Field.t return) result
+
+      val index : (t -> int return) result
+
+      module Vector :
+        Vector.Bound
+        with type 'a result = 'a result
+         and type 'a return = 'a return
+         and type elt = t
+    end
+
+    module type S = sig
+      type t = Field.t Backend_types.Linear_combination.Term.t
+
+      val create : Field.t -> Var.t -> t
+
+      val coeff : t -> Field.t
+
+      val var : t -> Var.t
+
+      module Vector : Vector.S with type elt = t
+    end
+
+    module Bind
+        (F : Ctypes.FOREIGN) (P : sig
+            val prefix : string
+        end) :
+      Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+    struct
+      include F
+
+      let prefix = with_prefix P.prefix "term"
+
+      include Linear_combination.Term.Make
+                (F)
+                (struct
+                  let prefix = prefix
+
+                  type field = Field.t
+                end)
+
+      let create =
+        foreign (func_name "create") (Field.typ @-> Var.typ @-> returning typ)
+
+      let coeff = foreign (func_name "coeff") (typ @-> returning Field.typ)
+
+      let index = foreign (func_name "index") (typ @-> returning int)
+
+      module Vector =
+        Vector.Bind
+          (F)
+          (struct
+            type nonrec t = t
+
+            let typ = typ
+
+            let prefix = with_prefix prefix "vector"
+          end)
+    end
+
+    module Make
+        (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
+        (Field : Deletable_intf with type t = Field.t) (Var : sig
+            val create : int -> Var.t
+        end) : S = struct
+      include (
+        Bindings :
+          Bound
+          with type 'a return = 'a
+           and type 'a result = 'a
+          with module Vector := Bindings.Vector )
+
+      let create x v =
+        let t = create x v in
+        Caml.Gc.finalise delete t ; t
+
+      let coeff t =
+        let x = coeff t in
+        Caml.Gc.finalise Field.delete x ;
+        x
+
+      let var t = Var.create (index t)
+
+      module Vector =
+        Vector.Make (struct
+            type nonrec t = t
+
+            let schedule_delete = Caml.Gc.finalise delete
+          end)
+          (Bindings.Vector)
+    end
+  end
+
+  module type Bound = sig
+    include Foreign_types
+
+    type t = Field.t Backend_types.Linear_combination.t
+
+    val typ : t typ
+
+    val delete : (t -> unit return) result
+
+    module Term :
+      Term.Bound with type 'a result = 'a result and type 'a return = 'a return
+
+    module Vector :
+      Vector.Bound
+      with type 'a result = 'a result
+       and type 'a return = 'a return
+       and type elt = t
+
+    val print : (t -> unit return) result
+
+    val create : (unit -> t return) result
+
+    val of_var : (Var.t -> t return) result
+
+    val of_int : (int -> t return) result
+
+    val add_term : (t -> Field.t -> Var.t -> unit return) result
+
+    val terms : (t -> Term.Vector.t return) result
+
+    val of_field : (Field.t -> t return) result
+  end
+
+  module type S = sig
+    type t = Field.t Backend_types.Linear_combination.t
+
+    val typ : t Ctypes.typ
+
+    val create : unit -> t
+
+    val of_var : Var.t -> t
+
+    val of_int : int -> t
+
+    val of_field : Field.t -> t
+
+    val print : t -> unit
+
+    module Term : Term.S
+
+    val terms : t -> Term.Vector.t
+
+    module Vector : Vector.S with type elt = t
+
+    val add_term : t -> Field.t -> Var.t -> unit
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    let prefix = with_prefix P.prefix "linear_combination"
+
+    include Linear_combination.Make
+              (F)
+              (struct
+                let prefix = prefix
+
+                type field = Field.t
+              end)
+
+    module Term = Term.Bind (F) (P)
+
+    module Vector =
+      Vector.Bind
+        (F)
+        (struct
+          type nonrec t = t
+
+          let typ = typ
+
+          let prefix = with_prefix prefix "vector"
+        end)
+
+    let print = foreign (func_name "print") (typ @-> returning void)
+
+    (*
+    let substitute =
+      foreign (func_name "substitute")
+        (typ @-> Var.typ @-> Term.Vector.typ @-> returning void)
+    ;; *)
+
+    let create = foreign (func_name "create") (void @-> returning typ)
+
+    let of_var = foreign (func_name "of_var") (Var.typ @-> returning typ)
+
+    let of_int = foreign (func_name "of_int") (int @-> returning typ)
+
+    let add_term =
+      foreign (func_name "add_term")
+        (typ @-> Field.typ @-> Var.typ @-> returning void)
+
+    let terms = foreign (func_name "terms") (typ @-> returning Term.Vector.typ)
+
+    let of_field = foreign (func_name "of_field") (Field.typ @-> returning typ)
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
+      (Field : Deletable_intf with type t = Field.t) (Var : sig
+          val create : int -> Var.t
+      end) : S = struct
+    include (
+      Bindings :
+        Bound
+        with type 'a return = 'a
+         and type 'a result = 'a
+        with module Term := Bindings.Term
+        with module Vector := Bindings.Vector )
+
+    module Term = Term.Make (Bindings.Term) (Field) (Var)
+
+    let schedule_delete t = Caml.Gc.finalise delete t
+
+    module Vector =
+      Vector.Make (struct
+          type nonrec t = t
+
+          let schedule_delete = schedule_delete
+        end)
+        (Bindings.Vector)
+
+    let create : unit -> t =
+     fun () ->
+      let t = create () in
+      schedule_delete t ; t
+
+    let of_var v =
+      let t = of_var v in
+      schedule_delete t ; t
+
+    let of_int : int -> t =
+     fun n ->
+      let t = of_int n in
+      schedule_delete t ; t
+
+    let terms t =
+      let v = terms t in
+      Caml.Gc.finalise Term.Vector.delete v ;
+      v
+
+    let of_field : Field.t -> t =
+     fun n ->
+      let t = of_field n in
+      schedule_delete t ; t
+  end
+end
+
 module Make_common (M : sig
   val prefix : string
 end) =
@@ -1147,168 +1415,9 @@ struct
     include T.Make (T.Bind (Ctypes_foreign) (M))
   end
 
-  module Linear_combination : sig
-    type t = Field0.t Backend_types.Linear_combination.t
-
-    val typ : t Ctypes.typ
-
-    val create : unit -> t
-
-    val of_var : Var.t -> t
-
-    val of_int : int -> t
-
-    val of_field : Field.t -> t
-
-    val print : t -> unit
-
-    module Term : sig
-      type t = Field0.t Backend_types.Linear_combination.Term.t
-
-      val create : Field.t -> Var.t -> t
-
-      val coeff : t -> Field.t
-
-      val var : t -> Var.t
-
-      module Vector : Vector.S with type elt = t
-    end
-
-    val terms : t -> Term.Vector.t
-
-    module Vector : Vector.S with type elt = t
-
-    val add_term : t -> Field.t -> Var.t -> unit
-  end = struct
-    let prefix = with_prefix M.prefix "linear_combination"
-
-    include Linear_combination.Make
-              (Ctypes_foreign)
-              (struct
-                let prefix = prefix
-
-                type field = Field0.t
-              end)
-
-    module Term = struct
-      let prefix = with_prefix prefix "term"
-
-      include Linear_combination.Term.Make
-                (Ctypes_foreign)
-                (struct
-                  let prefix = prefix
-
-                  type field = Field0.t
-                end)
-
-      let create =
-        let stub =
-          foreign (func_name "create") (Field.typ @-> Var.typ @-> returning typ)
-        in
-        fun x v ->
-          let t = stub x v in
-          Caml.Gc.finalise delete t ; t
-
-      let coeff =
-        let stub = foreign (func_name "coeff") (typ @-> returning Field.typ) in
-        fun t ->
-          let x = stub t in
-          Caml.Gc.finalise Field.delete x ;
-          x
-
-      let var =
-        let stub = foreign (func_name "index") (typ @-> returning int) in
-        fun t -> Var.create (stub t)
-
-      module Vector = struct
-        module Bindings =
-          Vector.Bind
-            (Ctypes_foreign)
-            (struct
-              type nonrec t = t
-
-              let typ = typ
-
-              let prefix = with_prefix prefix "vector"
-            end)
-
-        include Vector.Make (struct
-                    type nonrec t = t
-
-                    let schedule_delete = Caml.Gc.finalise delete
-                  end)
-                  (Bindings)
-      end
-    end
-
-    let schedule_delete t = Caml.Gc.finalise delete t
-
-    module Vector = struct
-      module Bindings =
-        Vector.Bind
-          (Ctypes_foreign)
-          (struct
-            type nonrec t = t
-
-            let typ = typ
-
-            let prefix = with_prefix prefix "vector"
-          end)
-
-      include Vector.Make (struct
-                  type nonrec t = t
-
-                  let schedule_delete = schedule_delete
-                end)
-                (Bindings)
-    end
-
-    let print = foreign (func_name "print") (typ @-> returning void)
-
-    (*
-    let substitute =
-      foreign (func_name "substitute")
-        (typ @-> Var.typ @-> Term.Vector.typ @-> returning void)
-    ;; *)
-
-    let create : unit -> t =
-      let stub = foreign (func_name "create") (void @-> returning typ) in
-      fun () ->
-        let t = stub () in
-        schedule_delete t ; t
-
-    let of_var : Var.t -> t =
-      let stub = foreign (func_name "of_var") (Var.typ @-> returning typ) in
-      fun v ->
-        let t = stub v in
-        schedule_delete t ; t
-
-    let of_int : int -> t =
-      let stub = foreign (func_name "of_int") (int @-> returning typ) in
-      fun n ->
-        let t = stub n in
-        schedule_delete t ; t
-
-    let add_term =
-      foreign (func_name "add_term")
-        (typ @-> Field.typ @-> Var.typ @-> returning void)
-
-    let terms =
-      let stub =
-        foreign (func_name "terms") (typ @-> returning Term.Vector.typ)
-      in
-      fun t ->
-        let v = stub t in
-        Caml.Gc.finalise Term.Vector.delete v ;
-        v
-
-    let of_field : Field.t -> t =
-      let stub =
-        foreign (func_name "of_field") (Field.typ @-> returning typ)
-      in
-      fun n ->
-        let t = stub n in
-        schedule_delete t ; t
+  module Linear_combination = struct
+    module T = Linear_combination (Field) (Var)
+    include T.Make (T.Bind (Ctypes_foreign) (M)) (Field) (Var)
   end
 
   module R1CS_constraint : sig
