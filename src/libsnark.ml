@@ -67,12 +67,6 @@ let set_printing_fun =
 
 let () = set_no_profiling true
 
-module type Foreign_types = sig
-  type 'a return
-
-  type 'a result
-end
-
 module Group_coefficients (Fq : Foreign_intf) = struct
   module type Bound = sig
     include Foreign_types
@@ -297,7 +291,7 @@ struct
   struct
     include F
     include P
-    include Make_foreign (P)
+    include Make_foreign (F) (P)
 
     let zero = foreign (func_name "zero") (void @-> returning typ)
 
@@ -755,7 +749,7 @@ module Bigint = struct
 
       val func_name : string -> string
 
-      val delete : t -> unit
+      val delete : (t -> unit return) result
 
       val test_bit : (t -> int -> bool return) result
 
@@ -782,9 +776,12 @@ module Bigint = struct
     struct
       include F
 
-      include Make_foreign (struct
-        let prefix = with_prefix (with_prefix P.outer_prefix "bigint") P.prefix
-      end)
+      include Make_foreign
+                (F)
+                (struct
+                  let prefix =
+                    with_prefix (with_prefix P.outer_prefix "bigint") P.prefix
+                end)
 
       let test_bit =
         foreign (func_name "test_bit") (typ @-> int @-> returning bool)
@@ -1050,8 +1047,7 @@ module Var (Field0 : Deletable_intf) = struct
 
     val typ : t Ctypes.typ
 
-    (* TODO(Matt): This should be created via Ctypes.FOREIGN. *)
-    val delete : t -> unit
+    val delete : (t -> unit return) result
 
     val index : (t -> Unsigned.size_t return) result
 
@@ -1076,11 +1072,13 @@ module Var (Field0 : Deletable_intf) = struct
   struct
     include F
 
-    include Var.Make (struct
-      let prefix = with_prefix P.prefix "var"
+    include Var.Make
+              (F)
+              (struct
+                let prefix = with_prefix P.prefix "var"
 
-      type field = Field0.t
-    end)
+                type field = Field0.t
+              end)
 
     let create = foreign (func_name "create") (int @-> returning typ)
 
@@ -1123,9 +1121,12 @@ struct
 
     val func_name : string -> string
   end = struct
-    module F = Make_foreign (struct
-      let prefix = with_prefix prefix "field"
-    end)
+    module F =
+      Make_foreign
+        (Ctypes_foreign)
+        (struct
+          let prefix = with_prefix prefix "field"
+        end)
 
     type t = F.t sexp_opaque [@@deriving sexp]
 
@@ -1186,20 +1187,24 @@ struct
   end = struct
     let prefix = with_prefix M.prefix "linear_combination"
 
-    include Linear_combination.Make (struct
-      let prefix = prefix
+    include Linear_combination.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = prefix
 
-      type field = Field0.t
-    end)
+                type field = Field0.t
+              end)
 
     module Term = struct
       let prefix = with_prefix prefix "term"
 
-      include Linear_combination.Term.Make (struct
-        let prefix = prefix
+      include Linear_combination.Term.Make
+                (Ctypes_foreign)
+                (struct
+                  let prefix = prefix
 
-        type field = Field0.t
-      end)
+                  type field = Field0.t
+                end)
 
       let create =
         let stub =
@@ -1327,11 +1332,13 @@ struct
 
     val c : t -> Linear_combination.t
   end = struct
-    include R1CS_constraint.Make (struct
-      let prefix = with_prefix M.prefix "r1cs_constraint"
+    include R1CS_constraint.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "r1cs_constraint"
 
-      type field = Field0.t
-    end)
+                type field = Field0.t
+              end)
 
     let create =
       let stub =
@@ -1408,11 +1415,13 @@ struct
     val fold_constraints :
       f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
   end = struct
-    include R1CS_constraint_system.Make (struct
-      let prefix = with_prefix M.prefix "r1cs_constraint_system"
+    include R1CS_constraint_system.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "r1cs_constraint_system"
 
-      type field = Field0.t
-    end)
+                type field = Field0.t
+              end)
 
     let report_statistics =
       foreign (func_name "report_statistics") (typ @-> returning void)
@@ -1548,9 +1557,11 @@ struct
 
     val augment_variable_annotation : t -> Variable.t -> string -> unit
   end = struct
-    include Make_foreign (struct
-      let prefix = with_prefix M.prefix "protoboard"
-    end)
+    include Make_foreign
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "protoboard"
+              end)
 
     module Variable : sig
       type t
@@ -1563,9 +1574,11 @@ struct
 
       val index : t -> int
     end = struct
-      include Make_foreign (struct
-        let prefix = with_prefix M.prefix "protoboard_variable"
-      end)
+      include Make_foreign
+                (Ctypes_foreign)
+                (struct
+                  let prefix = with_prefix M.prefix "protoboard_variable"
+                end)
 
       let of_int =
         let stub = foreign (func_name "of_int") (int @-> returning typ) in
@@ -1577,9 +1590,11 @@ struct
     end
 
     module Variable_array = struct
-      include Make_foreign (struct
-        let prefix = with_prefix M.prefix "protoboard_variable_array"
-      end)
+      include Make_foreign
+                (Ctypes_foreign)
+                (struct
+                  let prefix = with_prefix M.prefix "protoboard_variable_array"
+                end)
 
       let create =
         let stub = foreign (func_name "create") (void @-> returning typ) in
@@ -1721,9 +1736,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val of_bigstring : Bigstring.t -> t
   end = struct
-    include Proving_key.Make (struct
-      let prefix = with_prefix M.prefix "proving_key"
-    end)
+    include Proving_key.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "proving_key"
+              end)
 
     let r1cs_constraint_system =
       foreign
@@ -1843,9 +1860,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val size_in_bits : t -> int
   end = struct
-    include Verification_key.Make (struct
-      let prefix = with_prefix M.prefix "verification_key"
-    end)
+    include Verification_key.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "verification_key"
+              end)
 
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)
@@ -1910,9 +1929,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val create : M.R1CS_constraint_system.t -> t
   end = struct
-    include Keypair.Make (struct
-      let prefix = with_prefix M.prefix "keypair"
-    end)
+    include Keypair.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "keypair"
+              end)
 
     let pk =
       let stub =
@@ -1986,9 +2007,11 @@ struct
 
     include Binable.S with type t := t
   end = struct
-    include Proof.Make (struct
-      let prefix = with_prefix M.prefix "proof"
-    end)
+    include Proof.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "proof"
+              end)
 
     type message = unit
 
@@ -2235,7 +2258,7 @@ struct
       end
 
       module T = struct
-        include Make_foreign (Prefix)
+        include Make_foreign (Ctypes_foreign) (Prefix)
       end
 
       include T
@@ -2346,9 +2369,11 @@ struct
           module Vector : Deletable_intf
       end) =
   struct
-    include Make_foreign (struct
-      let prefix = with_prefix Prefix.prefix "fqk"
-    end)
+    include Make_foreign
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix Prefix.prefix "fqk"
+              end)
 
     let one =
       let stub = foreign (func_name "one") (void @-> returning typ) in
