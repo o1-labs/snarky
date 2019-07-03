@@ -560,9 +560,7 @@ module Field = struct
 
   module Bind
       (F : Ctypes.FOREIGN) (P : sig
-          type t
-
-          include Foreign_intf with type t := t
+          include Foreign_intf
 
           val func_name : string -> string
 
@@ -742,6 +740,304 @@ module Field = struct
   end
 end
 
+module Bigint = struct
+  module Common = struct
+    module type Bound = sig
+      include Foreign_types
+
+      type t
+
+      val typ : t typ
+
+      val func_name : string -> string
+
+      val delete : t -> unit
+
+      val test_bit : (t -> int -> bool return) result
+
+      val find_wnaf : (Unsigned.size_t -> t -> Long_vector.t return) result
+    end
+
+    module type S = sig
+      type t
+
+      val typ : t Ctypes.typ
+
+      val test_bit : t -> int -> bool
+
+      val find_wnaf : Unsigned.Size_t.t -> t -> Long_vector.t
+    end
+
+    module Bind
+        (F : Ctypes.FOREIGN) (P : sig
+            val prefix : string
+
+            val outer_prefix : string
+        end) :
+      Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+    struct
+      include F
+
+      include Make_foreign (struct
+        let prefix = with_prefix (with_prefix P.outer_prefix "bigint") P.prefix
+      end)
+
+      let test_bit =
+        foreign (func_name "test_bit") (typ @-> int @-> returning bool)
+
+      let find_wnaf =
+        foreign (func_name "find_wnaf")
+          (size_t @-> typ @-> returning Long_vector.typ)
+    end
+
+    module Make
+        (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) :
+      S with type t = Bindings.t = struct
+      include Bindings
+
+      let find_wnaf x y =
+        let v = find_wnaf x y in
+        Caml.Gc.finalise Long_vector.delete v ;
+        v
+    end
+  end
+
+  module R = struct
+    module type Bound = sig
+      include Common.Bound
+
+      type field
+
+      val div : (t -> t -> t return) result
+
+      val of_numeral : (string -> int -> int -> t return) result
+
+      val of_decimal_string : (string -> t return) result
+
+      val compare : (t -> t -> int return) result
+
+      val of_field : (field -> t return) result
+
+      val num_limbs : (unit -> int return) result
+
+      val bytes_per_limb : (unit -> int return) result
+
+      val to_data : (t -> char Ctypes_static.ptr return) result
+
+      val of_data : (char Ctypes_static.ptr -> t return) result
+
+      val to_field : (t -> field return) result
+    end
+
+    module type S = sig
+      type t [@@deriving bin_io]
+
+      type field
+
+      val typ : t Ctypes.typ
+
+      val of_decimal_string : string -> t
+
+      val of_numeral : string -> base:int -> t
+
+      val of_field : field -> t
+
+      val of_data : Bigstring.t -> bitcount:int -> t
+
+      val length_in_bytes : int
+
+      val div : t -> t -> t
+
+      val to_field : t -> field
+
+      val to_bigstring : t -> Bigstring.t
+
+      val compare : t -> t -> int
+
+      val test_bit : t -> int -> bool
+
+      val find_wnaf : Unsigned.Size_t.t -> t -> Long_vector.t
+    end
+
+    module Bind
+        (F : Ctypes.FOREIGN) (P : sig
+            val prefix : string
+        end)
+        (Field0 : Foreign_intf) :
+      Bound
+      with type 'a return = 'a F.return
+       and type 'a result = 'a F.result
+       and type field = Field0.t = struct
+      open F
+
+      include Common.Bind
+                (F)
+                (struct
+                  let outer_prefix = P.prefix
+
+                  let prefix = "r"
+                end)
+
+      type field = Field0.t
+
+      let div = foreign (func_name "div") (typ @-> typ @-> returning typ)
+
+      let of_numeral =
+        foreign (func_name "of_numeral")
+          (string @-> int @-> int @-> returning typ)
+
+      let of_decimal_string =
+        foreign (func_name "of_decimal_string") (string @-> returning typ)
+
+      let compare =
+        foreign (func_name "compare") (typ @-> typ @-> returning int)
+
+      let of_field =
+        foreign (func_name "of_field") (Field0.typ @-> returning typ)
+
+      let num_limbs = foreign (func_name "num_limbs") (void @-> returning int)
+
+      let bytes_per_limb =
+        foreign (func_name "bytes_per_limb") (void @-> returning int)
+
+      let to_data = foreign (func_name "to_data") (typ @-> returning (ptr char))
+
+      let of_data = foreign (func_name "of_data") (ptr char @-> returning typ)
+
+      let to_field =
+        foreign (func_name "to_field") (typ @-> returning Field0.typ)
+    end
+
+    module Make
+        (Field0 : Deletable_intf)
+        (Bindings : Bound
+                    with type 'a return = 'a
+                     and type 'a result = 'a
+                     and type field = Field0.t) :
+      S with type field = Field0.t = struct
+      include Bindings
+
+      include (Common.Make (Bindings) : Common.S with type t := t)
+
+      let div x y =
+        let z = div x y in
+        Caml.Gc.finalise delete z ; z
+
+      let of_numeral s ~base =
+        let n = of_numeral s (String.length s) base in
+        Caml.Gc.finalise delete n ; n
+
+      let of_decimal_string s =
+        let n = of_decimal_string s in
+        Caml.Gc.finalise delete n ; n
+
+      let of_field x =
+        let n = of_field x in
+        Caml.Gc.finalise delete n ; n
+
+      let num_limbs = num_limbs ()
+
+      let bytes_per_limb =
+        let res = bytes_per_limb () in
+        assert (res = 8) ;
+        res
+
+      let length_in_bytes = num_limbs * bytes_per_limb
+
+      let to_bigstring t =
+        let limbs = to_data t in
+        Bigstring.init length_in_bytes ~f:(fun i -> Ctypes.(!@(limbs +@ i)))
+
+      let of_bigstring s =
+        let ptr = Ctypes.bigarray_start Ctypes.array1 s in
+        let t = of_data ptr in
+        Caml.Gc.finalise delete t ; t
+
+      let of_data bs ~bitcount =
+        assert (bitcount <= length_in_bytes * 8) ;
+        of_bigstring bs
+
+      include Binable.Of_binable
+                (Bigstring.Stable.V1)
+                (struct
+                  type nonrec t = t
+
+                  let to_binable = to_bigstring
+
+                  let of_binable = of_bigstring
+                end)
+
+      let to_field n =
+        let x = to_field n in
+        Caml.Gc.finalise Field0.delete x ;
+        x
+    end
+  end
+
+  module type Bound = sig
+    include Foreign_types
+
+    type field
+
+    module R :
+      R.Bound
+      with type 'a return = 'a return
+       and type 'a result = 'a result
+       and type field = field
+
+    module Q :
+      Common.Bound
+      with type 'a return = 'a return
+       and type 'a result = 'a result
+  end
+
+  module type S = sig
+    type field
+
+    module R : R.S with type field = field
+
+    module Q : Common.S
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end)
+      (Field0 : Foreign_intf) :
+    Bound
+    with type 'a return = 'a F.return
+     and type 'a result = 'a F.result
+     and type field = Field0.t = struct
+    include F
+
+    type field = Field0.t
+
+    module R = R.Bind (F) (P) (Field0)
+
+    module Q =
+      Common.Bind
+        (F)
+        (struct
+          let prefix = "q"
+
+          let outer_prefix = P.prefix
+        end)
+  end
+
+  module Make
+      (Field0 : Deletable_intf)
+      (Bindings : Bound
+                  with type 'a return = 'a
+                   and type 'a result = 'a
+                   and type field = Field0.t) : S with type field = Field0.t =
+  struct
+    type field = Field0.t
+
+    module R = R.Make (Field0) (Bindings.R)
+    module Q = Common.Make (Bindings.Q)
+  end
+end
+
 module Make_common (M : sig
   val prefix : string
 end) =
@@ -771,170 +1067,8 @@ struct
     include (F : module type of F with type t := t)
   end
 
-  module Bigint : sig
-    module R : sig
-      type t [@@deriving bin_io]
-
-      val typ : t Ctypes.typ
-
-      val of_decimal_string : string -> t
-
-      val of_numeral : string -> base:int -> t
-
-      val of_field : Field0.t -> t
-
-      val of_data : Bigstring.t -> bitcount:int -> t
-
-      val length_in_bytes : int
-
-      val div : t -> t -> t
-
-      val to_field : t -> Field0.t
-
-      val to_bigstring : t -> Bigstring.t
-
-      val compare : t -> t -> int
-
-      val test_bit : t -> int -> bool
-
-      val find_wnaf : Unsigned.Size_t.t -> t -> Long_vector.t
-    end
-
-    module Q : sig
-      type t
-
-      val typ : t Ctypes.typ
-
-      val test_bit : t -> int -> bool
-
-      val find_wnaf : Unsigned.Size_t.t -> t -> Long_vector.t
-    end
-  end = struct
-    module Common (N : sig
-      val prefix : string
-    end) =
-    struct
-      include Make_foreign (struct
-        let prefix = with_prefix (with_prefix M.prefix "bigint") N.prefix
-      end)
-
-      let test_bit =
-        foreign (func_name "test_bit") (typ @-> int @-> returning bool)
-
-      let find_wnaf =
-        let stub =
-          foreign (func_name "find_wnaf")
-            (size_t @-> typ @-> returning Long_vector.typ)
-        in
-        fun x y ->
-          let v = stub x y in
-          Caml.Gc.finalise Long_vector.delete v ;
-          v
-    end
-
-    module R = struct
-      let prefix = "r"
-
-      include Common (struct
-        let prefix = prefix
-      end)
-
-      let func_name =
-        with_prefix (with_prefix (with_prefix M.prefix "bigint") prefix)
-
-      let div =
-        let stub = foreign (func_name "div") (typ @-> typ @-> returning typ) in
-        fun x y ->
-          let z = stub x y in
-          Caml.Gc.finalise delete z ; z
-
-      let of_numeral =
-        let stub =
-          foreign (func_name "of_numeral")
-            (string @-> int @-> int @-> returning typ)
-        in
-        fun s ~base ->
-          let n = stub s (String.length s) base in
-          Caml.Gc.finalise delete n ; n
-
-      let of_decimal_string =
-        let stub =
-          foreign (func_name "of_decimal_string") (string @-> returning typ)
-        in
-        fun s ->
-          let n = stub s in
-          Caml.Gc.finalise delete n ; n
-
-      let compare =
-        foreign (func_name "compare") (typ @-> typ @-> returning int)
-
-      let of_field =
-        let stub =
-          foreign (func_name "of_field") (Field0.typ @-> returning typ)
-        in
-        fun x ->
-          let n = stub x in
-          Caml.Gc.finalise delete n ; n
-
-      let num_limbs =
-        let stub = foreign (func_name "num_limbs") (void @-> returning int) in
-        stub ()
-
-      let bytes_per_limb =
-        let stub =
-          foreign (func_name "bytes_per_limb") (void @-> returning int)
-        in
-        let res = stub () in
-        assert (res = 8) ;
-        res
-
-      let length_in_bytes = num_limbs * bytes_per_limb
-
-      let to_bigstring =
-        let stub =
-          foreign (func_name "to_data") (typ @-> returning (ptr char))
-        in
-        fun t ->
-          let limbs = stub t in
-          Bigstring.init length_in_bytes ~f:(fun i -> Ctypes.(!@(limbs +@ i)))
-
-      let of_bigstring =
-        let stub =
-          foreign (func_name "of_data") (ptr char @-> returning typ)
-        in
-        fun s ->
-          let ptr = Ctypes.bigarray_start Ctypes.array1 s in
-          let t = stub ptr in
-          Caml.Gc.finalise delete t ; t
-
-      let of_data bs ~bitcount =
-        assert (bitcount <= length_in_bytes * 8) ;
-        of_bigstring bs
-
-      include Binable.Of_binable
-                (Bigstring.Stable.V1)
-                (struct
-                  type nonrec t = t
-
-                  let to_binable = to_bigstring
-
-                  let of_binable = of_bigstring
-                end)
-
-      let to_field =
-        let stub =
-          foreign (func_name "to_field") (typ @-> returning Field0.typ)
-        in
-        fun n ->
-          let x = stub n in
-          Caml.Gc.finalise Field0.delete x ;
-          x
-    end
-
-    module Q = Common (struct
-      let prefix = "q"
-    end)
-  end
+  module Bigint =
+    Bigint.Make (Field0) (Bigint.Bind (Ctypes_foreign) (M) (Field0))
 
   module Field = struct
     include Field.Make (Field0) (Bigint.R)
