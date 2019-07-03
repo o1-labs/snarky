@@ -183,9 +183,7 @@ struct
   end
 end
 
-module Make_group (P : sig
-  val prefix : string
-end) (Field : sig
+module Group (Field : sig
   type t
 
   val typ : t Ctypes.typ
@@ -199,172 +197,147 @@ end) (Fq : sig
   val typ : t Ctypes.typ
 
   val delete : t -> unit
-end) : sig
-  type t [@@deriving bin_io]
+end) =
+struct
+  module type Bound = sig
+    include Foreign_types
 
-  val typ : t Ctypes.typ
+    type t
 
-  val add : t -> t -> t
+    val typ : t Ctypes.typ
 
-  val ( + ) : t -> t -> t
+    val zero : (unit -> t return) result
 
-  val negate : t -> t
+    val one : (unit -> t return) result
 
-  val double : t -> t
+    val delete : (t -> unit return) result
 
-  val scale : t -> Bigint_r.t -> t
+    val print : (t -> unit return) result
 
-  val scale_field : t -> Field.t -> t
+    val random : (unit -> t return) result
 
-  val zero : t
+    val double : (t -> t return) result
 
-  val one : t
+    val negate : (t -> t return) result
 
-  module Affine : sig
-    type t = Fq.t * Fq.t [@@deriving bin_io]
+    val add : (t -> t -> t return) result
+
+    val scale : (Bigint_r.t -> t -> t return) result
+
+    val scale_field : (Field.t -> t -> t return) result
+
+    val equal : (t -> t -> bool return) result
+
+    val of_affine : (Fq.t -> Fq.t -> t return) result
+
+    val is_zero : (t -> bool return) result
+
+    val to_affine' : (t -> unit return) result
+
+    val x : (t -> Fq.t return) result
+
+    val y : (t -> Fq.t return) result
+
+    val prefix : string
+
+    module Vector :
+      Vector.Bound
+      with type 'a result = 'a result
+       and type 'a return = 'a return
+       and type elt = t
   end
 
-  val to_affine_exn : t -> Affine.t
+  module type S = sig
+    type t [@@deriving bin_io]
 
-  val to_affine : t -> Affine.t option
+    val typ : t Ctypes.typ
 
-  val of_affine : Affine.t -> t
+    val add : t -> t -> t
 
-  val equal : t -> t -> bool
+    val ( + ) : t -> t -> t
 
-  val random : unit -> t
+    val negate : t -> t
 
-  val delete : t -> unit
+    val double : t -> t
 
-  val print : t -> unit
+    val scale : t -> Bigint_r.t -> t
 
-  module Vector : Vector.S_binable with type elt := t
-end = struct
-  include P
-  include Make_foreign (P)
+    val scale_field : t -> Field.t -> t
 
-  let zero =
-    let stub = foreign (func_name "zero") (void @-> returning typ) in
-    stub ()
+    val zero : t
 
-  let one =
-    let stub = foreign (func_name "one") (void @-> returning typ) in
-    stub ()
+    val one : t
 
-  let delete = foreign (func_name "delete") (typ @-> returning void)
+    module Affine : sig
+      type t = Fq.t * Fq.t [@@deriving bin_io]
+    end
 
-  let schedule_delete t = Caml.Gc.finalise delete t
+    val to_affine_exn : t -> Affine.t
 
-  let print = foreign (func_name "print") (typ @-> returning void)
+    val to_affine : t -> Affine.t option
 
-  let random =
-    let stub = foreign (func_name "random") (void @-> returning typ) in
-    fun () ->
-      let x = stub () in
-      schedule_delete x ; x
+    val of_affine : Affine.t -> t
 
-  let double =
-    let stub = foreign (func_name "double") (typ @-> returning typ) in
-    fun x ->
-      let z = stub x in
-      schedule_delete z ; z
+    val equal : t -> t -> bool
 
-  let negate =
-    let stub = foreign (func_name "negate") (typ @-> returning typ) in
-    fun x ->
-      let z = stub x in
-      schedule_delete z ; z
+    val random : unit -> t
 
-  let add =
-    let stub = foreign (func_name "add") (typ @-> typ @-> returning typ) in
-    fun x y ->
-      let z = stub x y in
-      schedule_delete z ; z
+    val delete : t -> unit
 
-  let ( + ) = add
+    val print : t -> unit
 
-  let scale =
-    let stub =
+    module Vector : Vector.S_binable with type elt := t
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+    include P
+    include Make_foreign (P)
+
+    let zero = foreign (func_name "zero") (void @-> returning typ)
+
+    let one = foreign (func_name "one") (void @-> returning typ)
+
+    let delete = foreign (func_name "delete") (typ @-> returning void)
+
+    let print = foreign (func_name "print") (typ @-> returning void)
+
+    let random = foreign (func_name "random") (void @-> returning typ)
+
+    let double = foreign (func_name "double") (typ @-> returning typ)
+
+    let negate = foreign (func_name "negate") (typ @-> returning typ)
+
+    let add = foreign (func_name "add") (typ @-> typ @-> returning typ)
+
+    let scale =
       foreign (func_name "scale") (Bigint_r.typ @-> typ @-> returning typ)
-    in
-    fun y x ->
-      let z = stub x y in
-      schedule_delete z ; z
 
-  let scale_field =
-    let stub =
+    let scale_field =
       foreign (func_name "scale_field") (Field.typ @-> typ @-> returning typ)
-    in
-    fun y x ->
-      let z = stub x y in
-      schedule_delete z ; z
 
-  let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
+    let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
 
-  module Affine = struct
-    type t = Fq.t * Fq.t [@@deriving bin_io]
-  end
-
-  let of_affine =
-    let stub =
+    let of_affine =
       foreign (func_name "of_coords") (Fq.typ @-> Fq.typ @-> returning typ)
-    in
-    fun (x, y) ->
-      let t = stub x y in
-      schedule_delete t ; t
 
-  let is_zero = foreign (func_name "is_zero") (typ @-> returning bool)
+    let is_zero = foreign (func_name "is_zero") (typ @-> returning bool)
 
-  (* This function hits an ugly C++ assertion failure in the zero case, so
-   we wrap it with to_affine_exn *)
-  let to_affine' =
-    let stub_to_affine =
+    let to_affine' =
       foreign (func_name "to_affine_coordinates") (typ @-> returning void)
-    in
-    let stub_x = foreign (func_name "x") (typ @-> returning Fq.typ) in
-    let stub_y = foreign (func_name "y") (typ @-> returning Fq.typ) in
-    fun t ->
-      let () = stub_to_affine t in
-      let x = stub_x t in
-      Caml.Gc.finalise Fq.delete x ;
-      let y = stub_y t in
-      Caml.Gc.finalise Fq.delete y ;
-      (x, y)
 
-  let to_affine t = if is_zero t then None else Some (to_affine' t)
+    let x = foreign (func_name "x") (typ @-> returning Fq.typ)
 
-  let to_affine_exn t =
-    if is_zero t then
-      failwithf "to_affine_exn (%s): Got a zero curve point" P.prefix ()
-    else to_affine' t
+    let y = foreign (func_name "y") (typ @-> returning Fq.typ)
 
-  module Repr = struct
-    type t = Zero | Non_zero of Affine.t [@@deriving bin_io]
-  end
-
-  let to_repr t : Repr.t =
-    match to_affine t with None -> Zero | Some t -> Non_zero t
-
-  let of_repr (r : Repr.t) =
-    match r with Zero -> zero | Non_zero t -> of_affine t
-
-  module B =
-    Binable.Of_binable
-      (Repr)
-      (struct
-        type nonrec t = t
-
-        let to_binable = to_repr
-
-        let of_binable = of_repr
-      end)
-
-  include B
-
-  module Vector = struct
-    module Bindings =
+    module Vector =
       Vector.Bind
-        (Ctypes_foreign)
+        (F)
         (struct
           type nonrec t = t
 
@@ -372,15 +345,109 @@ end = struct
 
           let prefix = with_prefix prefix "vector"
         end)
+  end
 
-    include Vector.Make_binable (struct
-                type nonrec t = t
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    include (
+      Bindings :
+        Bound
+        with type 'a return = 'a
+         and type 'a result = 'a
+         and type t = Bindings.t
+        with module Vector := Bindings.Vector )
 
-                include B
+    let zero = zero ()
 
-                let schedule_delete = schedule_delete
-              end)
-              (Bindings)
+    let one = one ()
+
+    let schedule_delete t = Caml.Gc.finalise delete t
+
+    let random () =
+      let x = random () in
+      schedule_delete x ; x
+
+    let double x =
+      let z = double x in
+      schedule_delete z ; z
+
+    let negate x =
+      let z = negate x in
+      schedule_delete z ; z
+
+    let add x y =
+      let z = add x y in
+      schedule_delete z ; z
+
+    let ( + ) = add
+
+    let scale y x =
+      let z = scale x y in
+      schedule_delete z ; z
+
+    let scale_field y x =
+      let z = scale_field x y in
+      schedule_delete z ; z
+
+    module Affine = struct
+      type t = Fq.t * Fq.t [@@deriving bin_io]
+    end
+
+    let of_affine (x, y) =
+      let t = of_affine x y in
+      schedule_delete t ; t
+
+    (* This function hits an ugly C++ assertion failure in the zero case, so
+   we wrap it with to_affine_exn *)
+    let to_affine' t =
+      let () = to_affine' t in
+      let x = x t in
+      Caml.Gc.finalise Fq.delete x ;
+      let y = y t in
+      Caml.Gc.finalise Fq.delete y ;
+      (x, y)
+
+    let to_affine t = if is_zero t then None else Some (to_affine' t)
+
+    let to_affine_exn t =
+      if is_zero t then
+        failwithf "to_affine_exn (%s): Got a zero curve point" Bindings.prefix
+          ()
+      else to_affine' t
+
+    module Repr = struct
+      type t = Zero | Non_zero of Affine.t [@@deriving bin_io]
+    end
+
+    let to_repr t : Repr.t =
+      match to_affine t with None -> Zero | Some t -> Non_zero t
+
+    let of_repr (r : Repr.t) =
+      match r with Zero -> zero | Non_zero t -> of_affine t
+
+    module B =
+      Binable.Of_binable
+        (Repr)
+        (struct
+          type nonrec t = t
+
+          let to_binable = to_repr
+
+          let of_binable = of_repr
+        end)
+
+    include B
+
+    module Vector =
+      Vector.Make_binable (struct
+          type nonrec t = t
+
+          include B
+
+          let schedule_delete = schedule_delete
+        end)
+        (Bindings.Vector)
   end
 end
 
@@ -2020,22 +2087,28 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt6_0.Field.Vector.length v = 4
 
-    module G2 =
-      Make_group (struct
-          let prefix = with_prefix Mnt4_0.prefix "g2"
-        end)
-        (Mnt4_0.Field)
-        (Mnt4_0.Bigint.R)
-        (Mnt6_0.Field.Vector)
+    module G2 = struct
+      module T = Group (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field.Vector)
+
+      include T.Make
+                (T.Bind
+                   (Ctypes_foreign)
+                   (struct
+                     let prefix = with_prefix Mnt4_0.prefix "g2"
+                   end))
+    end
 
     module G1 = struct
-      module T =
-        Make_group (struct
-            let prefix = with_prefix Mnt4_0.prefix "g1"
-          end)
-          (Mnt4_0.Field)
-          (Mnt4_0.Bigint.R)
-          (Mnt6_0.Field)
+      module T = struct
+        module T' = Group (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field)
+
+        include T'.Make
+                  (T'.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt4_0.prefix "g1"
+                     end))
+      end
 
       include T
 
@@ -2131,22 +2204,28 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt4_0.Field.Vector.length v = 6
 
-    module G2 =
-      Make_group (struct
-          let prefix = with_prefix Mnt6_0.prefix "g2"
-        end)
-        (Mnt6_0.Field)
-        (Mnt6_0.Bigint.R)
-        (Mnt4_0.Field.Vector)
+    module G2 = struct
+      module T = Group (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field.Vector)
+
+      include T.Make
+                (T.Bind
+                   (Ctypes_foreign)
+                   (struct
+                     let prefix = with_prefix Mnt6_0.prefix "g2"
+                   end))
+    end
 
     module G1 = struct
-      module T =
-        Make_group (struct
-            let prefix = with_prefix Mnt6_0.prefix "g1"
-          end)
-          (Mnt6_0.Field)
-          (Mnt6_0.Bigint.R)
-          (Mnt4_0.Field)
+      module T = struct
+        module T' = Group (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field)
+
+        include T'.Make
+                  (T'.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt6_0.prefix "g1"
+                     end))
+      end
 
       include T
 
