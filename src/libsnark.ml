@@ -109,17 +109,10 @@ module Group_coefficients (Fq : Foreign_intf) = struct
 end
 
 module Window_table
-    (G : Deletable_intf) (Scalar_field : sig
-        type t
-    end) (Scalar : sig
-      include Foreign_intf
-
-      val of_field : Scalar_field.t -> t
-    end) (V : sig
-      include Deletable_intf
-
-      include Binable.S with type t := t
-    end) =
+    (G : Foreign_intf)
+    (Scalar_field : Foreign_intf)
+    (Scalar : Foreign_intf)
+    (V : Foreign_intf) =
 struct
   module type Bound = sig
     include Foreign_types
@@ -159,8 +152,16 @@ struct
   end
 
   module Make
-      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
-  struct
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
+                                                                        (G : sig
+          val delete : G.t -> unit
+      end) (Scalar : sig
+        val of_field : Scalar_field.t -> Scalar.t
+      end) (V : sig
+        val delete : V.t -> unit
+
+        include Binable.S with type t = V.t
+      end) : S = struct
     open Bindings
     include V
 
@@ -2439,14 +2440,17 @@ struct
       end
 
       module Window_table = struct
-        module T = Window_table (T) (Field) (Bigint.R) (Vector)
+        module T' = Window_table (T) (Field) (Bigint.R) (Vector)
 
-        include T.Make
-                  (T.Bind
+        include T'.Make
+                  (T'.Bind
                      (Ctypes_foreign)
                      (struct
                        let prefix = with_prefix Mnt4_0.prefix "g1"
                      end))
+                     (T)
+                  (Bigint.R)
+                  (Vector)
       end
 
       let%test "window-scale" =
@@ -2556,14 +2560,17 @@ struct
       end
 
       module Window_table = struct
-        module T = Window_table (T) (Field) (Bigint.R) (Vector)
+        module T' = Window_table (T) (Field) (Bigint.R) (Vector)
 
-        include T.Make
-                  (T.Bind
+        include T'.Make
+                  (T'.Bind
                      (Ctypes_foreign)
                      (struct
                        let prefix = with_prefix Mnt6_0.prefix "g1"
                      end))
+                     (T)
+                  (Bigint.R)
+                  (Vector)
       end
 
       let%test "window-scale" =
