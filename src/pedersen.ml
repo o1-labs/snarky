@@ -35,7 +35,7 @@ module Make
                Impl.Checked.t
         end
     end) (Params : sig
-      val params : Weierstrass_curve.t Quadruple.t array
+      val params : Weierstrass_curve.t Quadruple.t array Lazy.t
     end) : sig
   open Impl
 
@@ -222,7 +222,9 @@ end = struct
     let to_initial_segment_digest_exn t =
       Or_error.ok_exn (to_initial_segment_digest t)
 
-    let get_term i bits = lookup bits Params.params.(i)
+    let get_term i bits =
+      let params = Lazy.force Params.params in
+      lookup bits params.(i)
 
     let extend t triples ~start =
       let open Let_syntax in
