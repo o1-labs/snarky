@@ -1,15 +1,4 @@
-open Ctypes
-
-module Bindings =
-  Vector.Bind
-    (Ctypes_foreign)
-    (struct
-      let prefix = "camlsnark_bool_vector"
-
-      type t = bool
-
-      let typ = bool
-    end)
+module Bindings = Vector.Bound.Bool
 
 include Vector.Make (struct
             type t = bool

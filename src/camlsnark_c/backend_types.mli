@@ -1,4 +1,5 @@
 open Ctypes
+open Bindings_base
 
 val with_prefix : string -> string -> string
 
@@ -43,28 +44,17 @@ module type Field_constrained = sig
      and type 'a result := 'a F.result
 end
 
-module Var :
-  Field_constrained with type 'field t = 'field Camlsnark_c.Backend_types.Var.t
+module Var : Field_constrained
 
 module Linear_combination : sig
-  include
-    Field_constrained
-    with type 'field t = 'field Camlsnark_c.Backend_types.Linear_combination.t
+  include Field_constrained
 
-  module Term :
-    Field_constrained
-    with type 'field t =
-                'field Camlsnark_c.Backend_types.Linear_combination.Term.t
+  module Term : Field_constrained
 end
 
-module R1CS_constraint :
-  Field_constrained
-  with type 'field t = 'field Camlsnark_c.Backend_types.R1CS_constraint.t
+module R1CS_constraint : Field_constrained
 
-module R1CS_constraint_system :
-  Field_constrained
-  with type 'field t =
-              'field Camlsnark_c.Backend_types.R1CS_constraint_system.t
+module R1CS_constraint_system : Field_constrained
 
 module Proving_key : sig
   module Make (F : Ctypes.FOREIGN) (M : Prefix_intf) :
@@ -85,3 +75,5 @@ module Proof : sig
   module Make (F : Ctypes.FOREIGN) (M : Prefix_intf) :
     S with type 'a return := 'a F.return and type 'a result := 'a F.result
 end
+
+module Cpp_string : Foreign_intf
