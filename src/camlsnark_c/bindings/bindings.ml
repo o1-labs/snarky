@@ -881,10 +881,10 @@ module Common = struct
     val field_size : (unit -> Bigint.R.t return) result
   end
 
-  module Bind
-      (P : sig
-          val prefix : string
-      end) (F : Ctypes.FOREIGN) :
+  module Bind (P : sig
+    val prefix : string
+  end)
+  (F : Ctypes.FOREIGN) :
     Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
   struct
     include F

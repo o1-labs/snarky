@@ -1517,8 +1517,7 @@ module Make_full (M : sig
 end) =
 struct
   module Common_bindings =
-    Common.Bind
-      (struct
+    Common.Bind (struct
         let prefix = M.prefix
       end)
       (Ctypes_foreign)
