@@ -17,7 +17,7 @@
 
 (library
  (name camlsnark_c)
- (libraries core ctypes ctypes.foreign)
+ (libraries core ctypes ctypes.foreign camlsnark_c_bindings)
  (no_dynlink)
  (modes native)
  (modules :standard \ camlsnark_linker_flags_gen)

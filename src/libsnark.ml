@@ -1518,10 +1518,10 @@ end) =
 struct
   module Common_bindings =
     Common.Bind
-      (Ctypes_foreign)
       (struct
         let prefix = M.prefix
       end)
+      (Ctypes_foreign)
 
   module Common = Common.Make (Common_bindings)
   module Prefix = M

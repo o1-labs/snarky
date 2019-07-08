@@ -882,9 +882,9 @@ module Common = struct
   end
 
   module Bind
-      (F : Ctypes.FOREIGN) (P : sig
+      (P : sig
           val prefix : string
-      end) :
+      end) (F : Ctypes.FOREIGN) :
     Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
   struct
     include F

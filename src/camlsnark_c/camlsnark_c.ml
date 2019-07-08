@@ -1,5 +1,3 @@
-module Bindings = Bindings
-module Backend_types = Backend_types
-module Vector = Vector
+include Camlsnark_c_bindings
 
 let linkme = ()
