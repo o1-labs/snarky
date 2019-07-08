@@ -15,12 +15,22 @@
  (action
   (run ./camlsnark_linker_flags_gen.exe)))
 
+(executable
+ (name camlsnark_ctypes_stubs)
+ (libraries camlsnark_c_bindings ctypes ctypes.stubs core_kernel)
+ (modules camlsnark_ctypes_stubs))
+
+(rule
+ (targets caml_bindings.c snarky_common.ml)
+ (action
+  (run ./camlsnark_ctypes_stubs.exe)))
+
 (library
  (name camlsnark_c)
  (libraries core ctypes ctypes.foreign camlsnark_c_bindings)
  (no_dynlink)
  (modes native)
- (modules :standard \ camlsnark_linker_flags_gen)
+ (modules :standard \ camlsnark_linker_flags_gen camlsnark_ctypes_stubs snarky_common)
  (public_name snarky.c)
  (preprocess no_preprocessing)
  (c_library_flags
