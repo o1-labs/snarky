@@ -1,3 +1,17 @@
+module Ignored = struct
+  (* Statically link the libsnark symbols at the library level. *)
+  external name : unit -> unit = "camlsnark_mnt4_fqk_delete"
+
+  external name : unit -> unit = "camlsnark_mnt6_fqk_delete"
+
+  external name : unit -> unit = "camlsnark_mnt4753_fqk_delete"
+
+  external name : unit -> unit = "camlsnark_mnt6753_fqk_delete"
+
+  let name () = ()
+end
+[@@warning "-32"]
+
 module Bignum_bigint = Bigint
 open Core
 open Backend_types
@@ -1520,7 +1534,7 @@ struct
     Common.Bind (struct
         let prefix = M.prefix
       end)
-      (Ctypes_foreign)
+      (Libsnark_ffi_bindings)
 
   module Common = Common.Make (Common_bindings)
   module Prefix = M

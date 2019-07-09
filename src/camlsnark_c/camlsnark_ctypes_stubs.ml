@@ -42,7 +42,40 @@ let with_formatter name ~f =
       f fmt )
 
 let () =
-  with_formatter "caml_bindings.c" ~f:(fun fmt ->
+  with_formatter "libsnark_ffi_bindings.c" ~f:(fun fmt ->
+      Format.pp_print_string fmt
+        {c|
+#define CURVE_PREFIX(name) camlsnark_bn128_ ## name
+
+#include "caml_curve.h.template"
+
+#undef CURVE_PREFIX
+
+#define CURVE_PREFIX(name) camlsnark_mnt4_ ## name
+
+#include "caml_curve.h.template"
+
+#undef CURVE_PREFIX
+
+#define CURVE_PREFIX(name) camlsnark_mnt6_ ## name
+
+#include "caml_curve.h.template"
+
+#undef CURVE_PREFIX
+
+#define CURVE_PREFIX(name) camlsnark_mnt4753_ ## name
+
+#include "caml_curve.h.template"
+
+#undef CURVE_PREFIX
+
+#define CURVE_PREFIX(name) camlsnark_mnt6753_ ## name
+
+#include "caml_curve.h.template"
+
+#undef CURVE_PREFIX
+|c} ;
       write_c ~prefix:"snarky_common" fmt (module Common) ) ;
-  with_formatter "snarky_common.ml" ~f:(fun fmt ->
+  with_formatter "libsnark_ffi_bindings.ml" ~f:(fun fmt ->
+      Format.pp_print_string fmt "[@@@warning \"-11\"]\n" ;
       write_ml ~prefix:"snarky_common" fmt (module Common) )

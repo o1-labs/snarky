@@ -17,9 +17,8 @@ let () =
         ; "-lstdc++" ]
     | "Linux" ->
         [ "-Wl,-E"
-        ; "-Wl,--push-state,-whole-archive"
+        ; "-g"
         ; "-lcamlsnark_c_stubs"
-        ; "-Wl,--pop-state"
         ; "-fopenmp"
         ; "-lssl"
         ; "-lcrypto"

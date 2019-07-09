@@ -10,4 +10,16 @@
   (-I re2_c/libre2))
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
-    -conditional)))
+    -conditional))
+ (c_names libsnark_ffi_bindings))
+
+(rule
+ (targets libsnark_ffi_bindings.c libsnark_ffi_bindings.ml)
+ (deps caml_curve.h.template)
+ (action
+  (run camlsnark_c/camlsnark_ctypes_stubs.exe)))
+
+(rule
+ (targets caml_curve.h.template)
+ (action
+  (run cp camlsnark_c/libsnark-caml/libsnark/caml/caml_curve.h.template .)))
