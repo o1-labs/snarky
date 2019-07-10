@@ -1,0 +1,15 @@
+type t = A {x : 'a} : t;
+
+let x = A {x: 15};
+
+let y = A {x: true};
+
+type u(_) = Int(int) : u(int) | Bool(bool) : u(bool) | Unit : u(unit);
+
+type v = B {x : u('a)} : v;
+
+let a = B {x: Int(15)};
+
+let b = B {x: Bool(true)};
+
+let c = B {x: Unit};
