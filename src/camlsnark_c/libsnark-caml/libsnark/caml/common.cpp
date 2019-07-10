@@ -38,7 +38,7 @@ int json_printf(const char* filename,
             0);
     fprintf (file, "\",\"level\":\"%s\"", "DEBUG");
     fprintf (file,
-             ",\"source\":{\"module\":\"%s\",\"location\":\"File \"%s\", line %d, characters 0-1\"},\"message\":\"",
+             ",\"source\":{\"module\":\"%s\",\"location\":\"File \\\"%s\\\", line %d, characters 0-1\"},\"message\":\"",
              "Snarky__Libsnark",
              filename,
              line);
