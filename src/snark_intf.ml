@@ -500,8 +500,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
-    include
-      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Checked0.t
+    include Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Checked0.t
 
     module List :
       Monad_sequence.S
