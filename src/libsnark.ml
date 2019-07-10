@@ -2228,7 +2228,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val create : M.R1CS_constraint_system.t -> t
 
-    val of_keys : Proving_key.t -> Verification_key.t -> t
+    val check_keys : Proving_key.t -> Verification_key.t -> bool
 
     val check : t -> bool
   end = struct
@@ -2265,14 +2265,9 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
         let t = stub sys in
         Caml.Gc.finalise delete t ; t
 
-    let of_keys =
-      let stub =
-        foreign (func_name "of_keys")
-          (Proving_key.typ @-> Verification_key.typ @-> returning typ)
-      in
-      fun pk vk ->
-        let t = stub pk vk in
-        Caml.Gc.finalise delete t ; t
+    let check_keys =
+      foreign (func_name "check_keys")
+        (Proving_key.typ @-> Verification_key.typ @-> returning bool)
 
     let check = foreign (func_name "check") (typ @-> returning bool)
   end

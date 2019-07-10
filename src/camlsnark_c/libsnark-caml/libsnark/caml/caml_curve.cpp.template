@@ -718,16 +718,14 @@ r1cs_gg_ppzksnark_keypair<ppT>* CURVE_PREFIX(keypair_create)(
   return new r1cs_gg_ppzksnark_keypair<ppT>(res);
 }
 
-r1cs_gg_ppzksnark_keypair<ppT>* CURVE_PREFIX(keypair_of_keys)(
+bool CURVE_PREFIX(keypair_check_keys)(
     r1cs_gg_ppzksnark_proving_key<ppT>* pk,
     r1cs_gg_ppzksnark_verification_key<ppT>* vk) {
-  r1cs_gg_ppzksnark_proving_key<ppT> pk_(*pk);
-  r1cs_gg_ppzksnark_verification_key<ppT> vk_(*vk);
-  return new r1cs_gg_ppzksnark_keypair<ppT>(std::move(pk_), std::move(vk_));
+  return pk->delta_g2 == vk->delta_g2;
 }
 
 bool CURVE_PREFIX(keypair_check)(r1cs_gg_ppzksnark_keypair<ppT>* keypair) {
-  return keypair->pk.delta_g2 == keypair->vk.delta_g2;
+  return CURVE_PREFIX(keypair_check_keys)(&keypair->pk, &keypair->vk);
 }
 
 std::string* CURVE_PREFIX(proof_to_string)(
@@ -890,17 +888,15 @@ r1cs_se_ppzksnark_keypair<ppT>* CURVE_PREFIX(gm_keypair_create)(
   return new r1cs_se_ppzksnark_keypair<ppT>(res);
 }
 
-r1cs_se_ppzksnark_keypair<ppT>* CURVE_PREFIX(gm_keypair_of_keys)(
+// TODO: Replace this stub with an actual test.
+bool CURVE_PREFIX(gm_keypair_check_keys)(
     r1cs_se_ppzksnark_proving_key<ppT>* pk,
     r1cs_se_ppzksnark_verification_key<ppT>* vk) {
-  r1cs_se_ppzksnark_proving_key<ppT> pk_(*pk);
-  r1cs_se_ppzksnark_verification_key<ppT> vk_(*vk);
-  return new r1cs_se_ppzksnark_keypair<ppT>(std::move(pk_), std::move(vk_));
+  return true;
 }
 
-// TODO: Replace this stub with an actual test.
 bool CURVE_PREFIX(gm_keypair_check)(r1cs_se_ppzksnark_keypair<ppT>* keypair) {
-  return true;
+  return CURVE_PREFIX(gm_keypair_check_keys)(&keypair->pk, &keypair->vk);
 }
 
 std::string* CURVE_PREFIX(gm_proof_to_string)(
@@ -1035,16 +1031,14 @@ r1cs_bg_ppzksnark_keypair<ppT>* CURVE_PREFIX(bg_keypair_create)(
   return new r1cs_bg_ppzksnark_keypair<ppT>(res);
 }
 
-r1cs_bg_ppzksnark_keypair<ppT>* CURVE_PREFIX(bg_keypair_of_keys)(
+bool CURVE_PREFIX(bg_keypair_check_keys)(
     r1cs_bg_ppzksnark_proving_key<ppT>* pk,
     r1cs_bg_ppzksnark_verification_key<ppT>* vk) {
-  r1cs_bg_ppzksnark_proving_key<ppT> pk_(*pk);
-  r1cs_bg_ppzksnark_verification_key<ppT> vk_(*vk);
-  return new r1cs_bg_ppzksnark_keypair<ppT>(std::move(pk_), std::move(vk_));
+  return pk->delta_g2 == vk->delta_g2;
 }
 
 bool CURVE_PREFIX(bg_keypair_check)(r1cs_bg_ppzksnark_keypair<ppT>* keypair) {
-  return keypair->pk.delta_g2 == keypair->vk.delta_g2;
+  return CURVE_PREFIX(bg_keypair_check_keys)(&keypair->pk, &keypair->vk);
 }
 
 std::string* CURVE_PREFIX(bg_proof_to_string)(

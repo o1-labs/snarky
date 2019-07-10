@@ -147,7 +147,7 @@ module type S = sig
 
     val create : R1CS_constraint_system.t -> t
 
-    val of_keys : Proving_key.t -> Verification_key.t -> t
+    val check_keys : Proving_key.t -> Verification_key.t -> bool
 
     val check : t -> bool
   end
