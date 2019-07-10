@@ -2,6 +2,54 @@ open Core_kernel
 
 let eval_constraints = ref true
 
+module Basic = struct
+  open Run_state
+
+  let with_label lab t s =
+    let {stack; _} = s in
+    let s', y = t {s with stack= lab :: stack} in
+    ({s' with stack}, y)
+
+  let with_handler h t s =
+    let {handler; _} = s in
+    let s', y = t {s with handler= Request.Handler.push handler h} in
+    ({s' with handler}, y)
+
+  let clear_handler t s =
+    let {handler; _} = s in
+    let s', y = t {s with handler= Request.Handler.fail} in
+    ({s' with handler}, y)
+
+  let with_lens (lens : ('whole, 'view) Lens.t) t rs =
+    let s = rs.prover_state in
+    let s' = Option.map ~f:(Lens.get lens) s in
+    let rs, a = t (set_prover_state s' rs) in
+    let s = Option.map2 ~f:(Lens.set lens) s s' in
+    (set_prover_state s rs, a)
+
+  let constraint_count ?log:_ t =
+    (* TODO: Integrate log with log_constraint *)
+    let count = ref 0 in
+    let log_constraint c = count := !count + List.length c in
+    let state =
+      Run_state.
+        { system= None
+        ; input= Vector.null
+        ; aux= Vector.null
+        ; eval_constraints= false
+        ; num_inputs= 0
+        ; next_auxiliary= ref 1
+        ; prover_state= None
+        ; stack= []
+        ; handler= Request.Handler.fail
+        ; is_running= true
+        ; as_prover= ref false
+        ; log_constraint= Some log_constraint }
+    in
+    let _ = t state in
+    !count
+end
+
 module Make_checked
     (Backend : Backend_extended.S)
     (As_prover : As_prover_intf.S with type 'f field := Backend.Field.t) =
@@ -52,6 +100,7 @@ struct
       f a s
   end)
 
+  include Basic
   open Constraint
   open Backend
   open Run_state
@@ -88,11 +137,6 @@ struct
   let as_prover x s =
     let s', (_ : unit option) = run_as_prover (Some x) s in
     (s', ())
-
-  let with_label lab t s =
-    let {stack; _} = s in
-    let s', y = t {s with stack= lab :: stack} in
-    ({s' with stack}, y)
 
   let log_constraint c s =
     String.concat ~sep:"\n"
@@ -149,16 +193,6 @@ struct
     in
     (s, y)
 
-  let with_handler h t s =
-    let {handler; _} = s in
-    let s', y = t {s with handler= Request.Handler.push handler h} in
-    ({s' with handler}, y)
-
-  let clear_handler t s =
-    let {handler; _} = s in
-    let s', y = t {s with handler= Request.Handler.fail} in
-    ({s' with handler}, y)
-
   let exists {Types.Typ.store; alloc; check; _} p s =
     if !(s.as_prover) then
       failwith
@@ -183,35 +217,6 @@ struct
         (set_prover_state None s, {Handle.var; value= None})
 
   let next_auxiliary s = (s, !(s.next_auxiliary))
-
-  let with_lens (lens : ('whole, 'view) Lens.t) t rs =
-    let s = rs.prover_state in
-    let s' = Option.map ~f:(Lens.get lens) s in
-    let rs, a = t (set_prover_state s' rs) in
-    let s = Option.map2 ~f:(Lens.set lens) s s' in
-    (set_prover_state s rs, a)
-
-  let constraint_count ?log:_ t =
-    (* TODO: Integrate log with log_constraint *)
-    let count = ref 0 in
-    let log_constraint c = count := !count + List.length c in
-    let state =
-      Run_state.
-        { system= None
-        ; input= Vector.null
-        ; aux= Vector.null
-        ; eval_constraints= false
-        ; num_inputs= 0
-        ; next_auxiliary= ref 1
-        ; prover_state= None
-        ; stack= []
-        ; handler= Request.Handler.fail
-        ; is_running= true
-        ; as_prover= ref false
-        ; log_constraint= Some log_constraint }
-    in
-    let _ = t state in
-    !count
 end
 
 module type Run_extras = sig
