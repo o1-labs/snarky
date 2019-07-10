@@ -1,5 +1,96 @@
 open Core_kernel
 
+module Types = struct
+  module Checked = struct
+    type ('a, 's, 'f) t = ('s, 'f) Run_state.t -> ('s, 'f) Run_state.t * 'a
+  end
+
+  module As_prover = struct
+    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+  end
+
+  module Typ = struct
+    include Types.Typ.T
+
+    type ('var, 'value, 'f) t =
+      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) typ
+  end
+
+  module Provider = struct
+    include Types.Provider.T
+
+    type ('a, 'f, 's) t =
+      (('a Request.t, 'f, 's) As_prover0.t, ('a, 'f, 's) As_prover0.t) provider
+  end
+end
+
+type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+
+(* Non-field-dependent interface, used for ppx's. *)
+module Basic = struct
+  open Run_state
+
+  let with_label lab t s =
+    let {stack; _} = s in
+    let s', y = t {s with stack= lab :: stack} in
+    ({s' with stack}, y)
+
+  let with_handler h t s =
+    let {handler; _} = s in
+    let s', y = t {s with handler= Request.Handler.push handler h} in
+    ({s' with handler}, y)
+
+  let clear_handler t s =
+    let {handler; _} = s in
+    let s', y = t {s with handler= Request.Handler.fail} in
+    ({s' with handler}, y)
+
+  let with_lens (lens : ('whole, 'view) Lens.t) t rs =
+    let s = rs.prover_state in
+    let s' = Option.map ~f:(Lens.get lens) s in
+    let rs, a = t (set_prover_state s' rs) in
+    let s = Option.map2 ~f:(Lens.set lens) s s' in
+    (set_prover_state s rs, a)
+
+  let constraint_count ?log:_ t =
+    (* TODO: Integrate log with log_constraint *)
+    let count = ref 0 in
+    let log_constraint c = count := !count + List.length c in
+    let state =
+      Run_state.
+        { system= None
+        ; input= Vector.null
+        ; aux= Vector.null
+        ; eval_constraints= false
+        ; num_inputs= 0
+        ; next_auxiliary= ref 1
+        ; prover_state= None
+        ; stack= []
+        ; handler= Request.Handler.fail
+        ; is_running= true
+        ; as_prover= ref false
+        ; log_constraint= Some log_constraint }
+    in
+    let _ = t state in
+    !count
+
+  include Monad_let.Make3 (struct
+    type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+
+    let return x s = (s, x)
+
+    let map =
+      `Custom
+        (fun x ~f s ->
+          let s, a = x s in
+          (s, f a) )
+
+    let bind x ~f s =
+      let s, a = x s in
+      f a s
+  end)
+end
+
 module Make
     (Basic : Checked_intf.Basic)
     (As_prover : As_prover_intf.Basic
@@ -95,3 +186,5 @@ module Make
 
   let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
 end
+
+include Basic

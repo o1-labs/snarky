@@ -3,6 +3,7 @@ open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
 module Typ0 = Typ
+module Checked0 = Checked
 
 (** Yojson-compatible JSON type. *)
 type 'a json =
@@ -167,7 +168,13 @@ module type Basic = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , field
+      , (unit, unit) Checked.t )
+      Typ0.Data_spec0.data_spec
 
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
@@ -494,7 +501,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type 'prover_state run_state = ('prover_state, Field.t) Run_state.t
 
     include
-      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Types.Checked.t
+      Monad_let.S2 with type ('a, 's) t = ('a, 's, Field.t) Checked0.t
 
     module List :
       Monad_sequence.S
@@ -1432,7 +1439,13 @@ module type Run_basic = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , field
+      , (unit, unit, field) Checked0.t )
+      Typ0.Data_spec0.data_spec
 
     val size : (_, _, _, _) t -> int
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
@@ -1462,7 +1475,7 @@ module type Run_basic = sig
     end
 
     type ('var, 'value) t =
-      ('var, 'value, field, (unit, unit, field) Checked_ast.t) Types.Typ.t
+      ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -1918,7 +1931,7 @@ module type Run_basic = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
-  val make_checked : (unit -> 'a) -> ('a, prover_state, field) Types.Checked.t
+  val make_checked : (unit -> 'a) -> ('a, prover_state, field) Checked0.t
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t

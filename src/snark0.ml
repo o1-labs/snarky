@@ -1368,30 +1368,36 @@ end
 
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
-  module Runner0 = Runner.Make (Backend_extended)
+  module Runner0 = Runner.Make_runner (Backend_extended)
+  module Checked0 = Checked_runner.Make_checked (Backend_extended) (As_prover0)
+  module Checked1 = Checked.Make (Checked0) (As_prover0)
+  module As_prover1 = As_prover.Make (Checked1) (As_prover0)
+
+  module As_prover2 =
+    As_prover.Make_extended (struct
+        type field = Backend_extended.Field.t
+      end)
+      (Checked1)
+      (As_prover1)
 
   module Basic =
     Make_basic
       (Backend_extended)
       (struct
         include (
-          Checked_ast :
+          Checked1 :
             Checked_intf.S
-            with module Types = Checked_ast.Types
-            with type ('a, 's, 'f) t := ('a, 's, 'f) Checked_ast.t
-             and type 'f field := 'f )
+            with module Types = Checked.Types
+            with type ('a, 's, 'f) t := ('a, 's, 'f) Checked.t
+             and type 'f field := Backend_extended.Field.t )
 
         type field = Backend_extended.Field.t
 
-        type ('a, 's) t = ('a, 's, field) Types.Checked.t
+        type ('a, 's) t = ('a, 's, field) Checked.t
 
-        let run = Runner0.run
+        let run x = x
       end)
-      (As_prover.Make_extended (struct
-           type field = Backend_extended.Field.t
-         end)
-         (Checked_ast)
-         (As_prover.Make (Checked_ast) (As_prover0)))
+      (As_prover2)
       (Runner0)
 
   include Basic
@@ -1937,7 +1943,9 @@ module Run = struct
       state := {!state with stack} ;
       a
 
-    let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
+    (* TODO: Add [make_checked] to the Checked interface. *)
+    (*let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)*)
+    let make_checked x = as_stateful x
 
     let constraint_system ~exposing x =
       Perform.constraint_system ~run:as_stateful ~exposing x
