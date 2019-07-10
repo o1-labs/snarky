@@ -11,8 +11,6 @@ module Make
 
         type t [@@deriving eq]
 
-        val to_affine_exn : t -> Impl.Field.t * Impl.Field.t
-
         val add : t -> t -> t
 
         val zero : t
@@ -35,7 +33,9 @@ module Make
                Impl.Checked.t
         end
     end) (Params : sig
-      val params : Weierstrass_curve.t Quadruple.t array
+      open Impl
+
+      val params : (Field.t * Field.t) Quadruple.t array
     end) : sig
   open Impl
 
@@ -97,18 +97,15 @@ module Make
 end = struct
   open Impl
 
+  type affine_point = Field.t * Field.t
+
   let coords :
-         Weierstrass_curve.t Quadruple.t
-      -> Field.t Quadruple.t * Field.t Quadruple.t =
-   fun (t1, t2, t3, t4) ->
-    let x1, y1 = Weierstrass_curve.to_affine_exn t1
-    and x2, y2 = Weierstrass_curve.to_affine_exn t2
-    and x3, y3 = Weierstrass_curve.to_affine_exn t3
-    and x4, y4 = Weierstrass_curve.to_affine_exn t4 in
+      affine_point Quadruple.t -> Field.t Quadruple.t * Field.t Quadruple.t =
+   fun ((x1, y1), (x2, y2), (x3, y3), (x4, y4)) ->
     ((x1, x2, x3, x4), (y1, y2, y3, y4))
 
   let lookup ((s0, s1, s2) : Boolean.var Triple.t)
-      (q : Weierstrass_curve.t Quadruple.t) =
+      (q : affine_point Quadruple.t) =
     let%bind s_and = Boolean.(s0 && s1) in
     let open Field.Checked in
     let lookup_one (a1, a2, a3, a4) =
