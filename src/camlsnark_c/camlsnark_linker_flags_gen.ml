@@ -8,7 +8,7 @@ let () =
   C.Flags.write_sexp "flags.sexp"
     ( match l with
     | "Darwin" ->
-        [ sprintf "-Wl,-force_load,%s/libcamlsnark_c_stubs.a" cwd
+        [ sprintf "-l%s/libcamlsnark_c_stubs.a" cwd
         ; "-L/usr/local/opt/openssl/lib"
         ; "-lssl"
         ; "-lcrypto"
