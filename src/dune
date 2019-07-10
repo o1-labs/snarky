@@ -11,15 +11,18 @@
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
     -conditional))
- (c_names libsnark_ffi_bindings))
+ (c_names libsnark_ffi_bindings vector_ffi_bindings))
 
 (rule
- (targets libsnark_ffi_bindings.c libsnark_ffi_bindings.ml)
+ (targets libsnark_ffi_bindings.c libsnark_ffi_bindings.ml vector_ffi_bindings.c vector_ffi_bindings.ml)
  (deps caml_curve.h.template)
  (action
   (run camlsnark_c/camlsnark_ctypes_stubs.exe)))
 
 (rule
- (targets caml_curve.h.template)
+ (targets caml_curve.h.template common.h)
+ (deps
+   camlsnark_c/libsnark-caml/libsnark/caml/caml_curve.h.template
+   camlsnark_c/libsnark-caml/libsnark/caml/common.h)
  (action
-  (run cp camlsnark_c/libsnark-caml/libsnark/caml/caml_curve.h.template .)))
+  (run cp %{deps} .)))

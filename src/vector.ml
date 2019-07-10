@@ -1,6 +1,6 @@
 open Core
 include Camlsnark_c.Vector
-module Bound = Bindings (Ctypes_foreign)
+module Bound = Bindings (Vector_ffi_bindings)
 
 module type S = sig
   type elt
