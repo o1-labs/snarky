@@ -2,13 +2,12 @@ open Printf
 module C = Configurator.V1
 
 let () =
-  let cwd = Unix.getcwd () in
   let uname_chan = Unix.open_process_in "uname" in
   let l = input_line uname_chan in
   C.Flags.write_sexp "flags.sexp"
     ( match l with
     | "Darwin" ->
-        [ sprintf "-l%s/libcamlsnark_c_stubs.a" cwd
+        [ sprintf "-lcamlsnark_c_stubs"
         ; "-L/usr/local/opt/openssl/lib"
         ; "-lssl"
         ; "-lcrypto"
