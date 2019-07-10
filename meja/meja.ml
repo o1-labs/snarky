@@ -1,5 +1,6 @@
 open Core_kernel
 open Meja_lib
+open Meja_ocaml
 
 let print_position outx lexbuf =
   let pos = lexbuf.Lexing.lex_curr_p in
@@ -44,11 +45,11 @@ let add_preamble impl_mod curve proofs ast =
   in
   let snarky_impl_path = mkloc (Lapply (snarky_make, backend_path)) in
   let snarky_impl =
-    Module
+    Pstmt_module
       ( mkloc impl_mod
-      , {mod_desc= ModName snarky_impl_path; mod_loc= Location.none} )
+      , {mod_desc= Pmod_name snarky_impl_path; mod_loc= Location.none} )
   in
-  let snarky_open = Open (mkloc (Lident impl_mod)) in
+  let snarky_open = Pstmt_open (mkloc (Lident impl_mod)) in
   let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in
   mk_stmt snarky_impl :: mk_stmt snarky_open :: ast
 
@@ -162,8 +163,8 @@ let main =
             let m, env =
               let loc = Location.none in
               let mkloc s = Location.mkloc s loc in
-              let env = Envi.open_module env in
-              let env = Envi.open_module env in
+              let env = Envi.open_absolute_module None env in
+              let env = Envi.open_absolute_module None env in
               let m =
                 try
                   Envi.find_module ~loc
@@ -202,16 +203,22 @@ let main =
       List.fold ~init:env cmi_scopes ~f:(fun env scope ->
           Envi.open_namespace_scope scope env )
     in
-    let meji_files = List.rev !meji_files in
+    let meji_files =
+      "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
+      :: List.rev !meji_files
+    in
     let env =
       List.fold ~init:env meji_files ~f:(fun env file ->
           let parse_ast =
             read_file (Parser_impl.interface Lexer_impl.token) file
           in
-          let env = Envi.open_module env in
-          let env = Typechecker.check_signature env parse_ast in
+          let module_name = Loader.modname_of_filename file in
+          let env =
+            Envi.open_absolute_module (Some (Longident.Lident module_name)) env
+          in
+          let env, _typed_ast = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:Location.none env in
-          let name = Location.(mkloc (Loader.modname_of_filename file) none) in
+          let name = Location.(mkloc module_name none) in
           Envi.add_module name m env )
     in
     let file =
@@ -226,6 +233,7 @@ let main =
       read_file (Parser_impl.implementation Lexer_impl.token) file
     in
     let _env, ast = Typechecker.check parse_ast env in
+    let ast = List.map ~f:Untype_ast.statement ast in
     let ast =
       if !snarky_preamble then add_preamble !impl_mod !curve !proofs ast
       else ast

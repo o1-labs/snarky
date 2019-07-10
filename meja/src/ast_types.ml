@@ -5,12 +5,18 @@ let pp_name ppf name =
   if
     (Char.compare c 'a' >= 0 && Char.compare c 'z' <= 0)
     || (Char.compare c 'A' >= 0 && Char.compare c 'z' <= 0)
-    || Char.equal c '_'
+    || Char.equal c '_' || String.equal name "()"
   then Format.pp_print_string ppf name
   else Format.fprintf ppf "(%s)" name
 
 module Longident = struct
-  include Longident
+  type t = (Longident.t[@sexp.opaque]) =
+    | Lident of string
+    | Ldot of t * string
+    | Lapply of t * t
+  [@@deriving sexp]
+
+  include (Longident : module type of Longident with type t := t)
 
   let rec compare lid1 lid2 =
     let nonzero_or x f = if Int.equal x 0 then f () else x in
@@ -65,13 +71,34 @@ module Longident = struct
         Ldot (add_outer_module name lid, name2)
     | Lapply _ ->
         failwith "Unhandled Lapply in add_outer_module"
+
+  let rec join lid1 lid2 =
+    match lid2 with
+    | Lident name ->
+        Ldot (lid1, name)
+    | Ldot (lid2, name) ->
+        Ldot (join lid1 lid2, name)
+    | Lapply (lid2, lid_apply) ->
+        Lapply (join lid1 lid2, lid_apply)
+
+  let join_name lid name =
+    match lid with Some lid -> Ldot (lid, name) | None -> Lident name
+
+  let join_path lid1 lid2 =
+    match lid1 with Some lid1 -> join lid1 lid2 | None -> lid2
 end
+
+type arg_label = Asttypes.arg_label =
+  | Nolabel
+  | Labelled of string
+  | Optional of string
+[@@deriving sexp]
 
 type str = string Location.loc
 
 type lid = Longident.t Location.loc
 
-type explicitness = Implicit | Explicit
+type explicitness = Implicit | Explicit [@@deriving sexp]
 
 let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
 

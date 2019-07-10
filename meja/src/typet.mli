@@ -11,6 +11,20 @@ module Type : sig
     -> Parsetypes.type_expr
     -> Envi.t
     -> Type0.type_expr * Envi.t
+
+  val fold :
+       init:'a
+    -> f:('a -> Parsetypes.type_expr -> 'a)
+    -> Parsetypes.type_expr
+    -> 'a
+
+  val iter : f:(Parsetypes.type_expr -> unit) -> Parsetypes.type_expr -> unit
+
+  val map :
+       loc:Location.t
+    -> f:(Parsetypes.type_expr -> Parsetypes.type_expr)
+    -> Parsetypes.type_expr
+    -> Parsetypes.type_expr
 end
 
 module TypeDecl : sig

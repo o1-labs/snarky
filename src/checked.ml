@@ -116,6 +116,54 @@ module Basic :
 
   let next_auxiliary = Next_auxiliary return
 
+  let rec with_lens : type a whole view.
+      (whole, view) Lens.t -> (a, view, 'field) t -> (a, whole, 'field) t =
+   fun lens t ->
+    match t with
+    | Pure x ->
+        Pure x
+    | Direct (d, k) ->
+        let d rs =
+          let s = rs.Run_state.prover_state in
+          let s' = Option.map ~f:(Lens.get lens) s in
+          let rs, a = d (Run_state.set_prover_state s' rs) in
+          let s = Option.map2 ~f:(Lens.set lens) s s' in
+          (Run_state.set_prover_state s rs, a)
+        in
+        Direct (d, fun b -> with_lens lens (k b))
+    | Reduced (t, d, res, k) ->
+        let d rs =
+          let s = rs.Run_state.prover_state in
+          let s' = Option.map ~f:(Lens.get lens) s in
+          let rs = d (Run_state.set_prover_state s' rs) in
+          let s = Option.map2 ~f:(Lens.set lens) s s' in
+          Run_state.set_prover_state s rs
+        in
+        Reduced (with_lens lens t, d, res, fun b -> with_lens lens (k b))
+    | With_label (s, t, k) ->
+        With_label (s, with_lens lens t, fun b -> with_lens lens (k b))
+    | As_prover (x, k) ->
+        As_prover (As_prover0.with_lens lens x, with_lens lens k)
+    | Add_constraint (c, t1) ->
+        Add_constraint (c, with_lens lens t1)
+    | With_state (p, and_then, t_sub, k) ->
+        With_state
+          ( As_prover0.with_lens lens p
+          , (fun s -> As_prover0.with_lens lens (and_then s))
+          , t_sub
+          , fun b -> with_lens lens (k b) )
+    | With_handler (h, t, k) ->
+        With_handler (h, with_lens lens t, fun b -> with_lens lens (k b))
+    | Clear_handler (t, k) ->
+        Clear_handler (with_lens lens t, fun b -> with_lens lens (k b))
+    | Exists (typ, c, k) ->
+        Exists
+          ( typ
+          , As_prover0.Provider.with_lens lens c
+          , fun b -> with_lens lens (k b) )
+    | Next_auxiliary k ->
+        Next_auxiliary (fun b -> with_lens lens (k b))
+
   let rec constraint_count_aux : type a s.
          log:(?start:_ -> _)
       -> auxc:_

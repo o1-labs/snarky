@@ -61,6 +61,10 @@ bool camlsnark_mnt6753_g1_equal(libff::G1<ppT>* a, libff::G1<ppT>* b) {
   return *a == *b;
 }
 
+bool camlsnark_mnt6753_g1_is_zero(libff::G1<ppT>* a) {
+  return a->is_zero();
+}
+
 void camlsnark_mnt6753_g1_delete(libff::G1<ppT>* a) {
   delete a;
 }
@@ -148,6 +152,10 @@ void camlsnark_mnt6753_g2_print(libff::G2<ppT>* x) {
 
 bool camlsnark_mnt6753_g2_equal(libff::G2<ppT>* a, libff::G2<ppT>* b) {
   return *a == *b;
+}
+
+bool camlsnark_mnt6753_g2_is_zero(libff::G2<ppT>* a) {
+  return a->is_zero();
 }
 
 void camlsnark_mnt6753_g2_delete(libff::G2<ppT>* a) {

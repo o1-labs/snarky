@@ -22,9 +22,9 @@ depends: [
   "ppx_jane" {>= "v0.12" & < "v0.13"}
   "ppx_deriving" {>= "4.2.1" & < "4.3"}
   "bisect_ppx" {>= "1.4.1" & < "1.5"}
-  "dune"                {build & >= "1.0"}
+  "dune"                {build & >= "1.6"}
 ]
-available: [ ocaml-version >= "4.04.1" ]
+available: [ ocaml-version >= "4.07.0" ]
 descr: "
 A snarks DSL
 "

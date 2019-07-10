@@ -24,7 +24,7 @@ let cmp_modinfo x y =
   | ModuleName x, ModuleName y
   | IdentName x, IdentName y
   | BaseModule x, BaseModule y ->
-      Pervasives.compare x.txt y.txt
+      compare x.txt y.txt
   | ModuleName _, _ ->
       -1
   | _, ModuleName _ ->

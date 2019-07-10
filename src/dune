@@ -1,10 +1,9 @@
 (library
  (name snarky)
  (public_name snarky)
- (flags :standard -short-paths -safe-string -warn-error -27-32-9)
  (inline_tests)
  (libraries core_kernel fold_lib tuple_lib bitstring_lib interval_union
-   bignum camlsnark_c)
+   bignum camlsnark_c ctypes)
  (c_library_flags :standard -lstdc++ -lpthread)
  (cxx_flags
   (:standard \ -pedantic)

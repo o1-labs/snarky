@@ -57,7 +57,7 @@ type ('hash, 'a) t =
   ; compress: 'hash -> 'hash -> 'hash }
 [@@deriving sexp]
 
-let check_exn {tree; depth; count; hash; compress} =
+let check_exn {tree; hash; compress; _} =
   let default = hash None in
   let rec check_hash = function
     | Non_empty t ->
@@ -78,8 +78,6 @@ let non_empty_hash = function Node (h, _, _) -> h | Leaf (h, _) -> h
 
 let depth {depth; _} = depth
 
-let hash {tree; _} = non_empty_hash tree
-
 let tree_hash ~default = function
   | Empty ->
       default
@@ -92,7 +90,7 @@ let to_list : ('hash, 'a) t -> 'a list =
         acc
     | Non_empty (Leaf (_, x)) ->
         x :: acc
-    | Non_empty (Node (h, l, r)) ->
+    | Non_empty (Node (_h, l, r)) ->
         let acc' = go acc r in
         go acc' l
   in
@@ -129,7 +127,7 @@ let insert hash compress t0 mask0 address x =
           else
             let t_r' = go mask' Empty in
             Node (compress default (non_empty_hash t_r'), Empty, Non_empty t_r')
-      | Non_empty (Node (h, t_l, t_r)) ->
+      | Non_empty (Node (_h, t_l, t_r)) ->
           if go_left then
             let t_l' = go mask' t_l in
             Node
@@ -211,7 +209,7 @@ let set_dirty default tree addr x =
   in
   go_non_empty tree (List.rev addr)
 
-let recompute_hashes {tree; depth; count; hash; compress} =
+let recompute_hashes {tree; hash; compress; _} =
   let h =
     let default = hash None in
     fun t -> tree_hash ~default t
@@ -361,7 +359,7 @@ let implied_free_root addr0 x path0 =
 type ('hash, 'a) merkle_tree = ('hash, 'a) t
 
 module Checked
-    (Impl : Snark_intf.S) (Hash : sig
+    (Impl : Snark_intf.Basic) (Hash : sig
         type var
 
         type value
@@ -524,4 +522,105 @@ struct
         modify_state (fun t -> update t addr next))
     in
     implied_root next_entry_hash addr0 prev_path
+end
+
+module Run = struct
+  module Make
+      (Impl : Snark_intf.Run_basic) (Hash : sig
+          type var
+
+          type value
+
+          val typ : (var, value) Impl.Typ.t
+
+          val hash : height:int -> var -> var -> var
+
+          val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var
+
+          val assert_equal : var -> var -> unit
+
+          val prover_state : Impl.prover_state
+          (** The prover state to run the checked computations above with.
+              This state will *always* be passed to the above unchanged.
+
+              NOTE: This is equivalent to the condition on the monadic
+                    interface that the computations are not constrained in
+                    their prover-state type: the type is abstract from the
+                    perspective of the functions, and so they cannot have any
+                    effect on the state.
+          *)
+      end) (Elt : sig
+        type var
+
+        type value
+
+        val typ : (var, value) Impl.Typ.t
+
+        val hash : var -> Hash.var
+
+        val prover_state : Impl.prover_state
+        (** The prover state to run the checked computations above with.
+              This state will *always* be passed to the above unchanged.
+
+              NOTE: This is equivalent to the condition on the monadic
+                    interface that the computations are not constrained in
+                    their prover-state type: the type is abstract from the
+                    perspective of the functions, and so they cannot have any
+                    effect on the state.
+          *)
+
+        val lens : (Impl.prover_state, (Hash.value, value) merkle_tree) Lens.t
+        (** A lens to give access to the [(Hash.value, Elt.value) merkle_tree]
+            state that [update] uses. *)
+      end) =
+  struct
+    open Impl
+
+    include Checked
+              (Impl.Internal_Basic)
+              (struct
+                include Hash
+
+                let make_checked x =
+                  Internal_Basic.with_lens
+                    (Lens.constant prover_state)
+                    (make_checked x)
+
+                let hash ~height x y =
+                  make_checked (fun () -> hash ~height x y)
+
+                let if_ x ~then_ ~else_ =
+                  make_checked (fun () -> if_ x ~then_ ~else_)
+
+                let assert_equal x y =
+                  make_checked (fun () -> assert_equal x y)
+              end)
+              (struct
+                include Elt
+
+                let make_checked x =
+                  Internal_Basic.with_lens
+                    (Lens.constant prover_state)
+                    (make_checked x)
+
+                let hash var = make_checked (fun () -> hash var)
+              end)
+
+    let implied_root entry_hash addr0 path0 =
+      run_checked (implied_root entry_hash addr0 path0)
+
+    let modify_req ~depth root addr0 ~f =
+      run_checked
+        (modify_req ~depth root addr0 ~f:(fun x -> make_checked (fun () -> f x)))
+
+    let get_req ~depth root addr0 = run_checked (get_req ~depth root addr0)
+
+    let update_req ~depth ~root ~prev ~next addr0 =
+      run_checked (update_req ~depth ~root ~prev ~next addr0)
+
+    let update ~depth ~root ~prev ~next addr0 =
+      run_checked
+        (Internal_Basic.with_lens Elt.lens
+           (update ~depth ~root ~prev ~next addr0))
+  end
 end
