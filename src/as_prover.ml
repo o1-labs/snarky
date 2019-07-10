@@ -40,8 +40,8 @@ struct
   end
 end
 
-module T : S with module Types = Checked.Types with type 'f field := 'f =
-  Make (Checked) (As_prover0)
+module T : S with module Types = Checked_ast.Types with type 'f field := 'f =
+  Make (Checked_ast) (As_prover0)
 
 include T
 

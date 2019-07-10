@@ -104,7 +104,7 @@ struct
   open Constraint
   open Backend
   open Run_state
-  open Checked
+  open Checked_ast
 
   let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
     let get_one i =
@@ -272,12 +272,12 @@ module Make (Backend : Backend_extended.S) = struct
            and type cvar := Backend.Cvar.t
       end )
 
-  module Types = Checked.Types
+  module Types = Checked_ast.Types
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
   let rec run : type a s.
-      (a, s, Field.t) Checked.t -> s run_state -> s run_state * a =
+      (a, s, Field.t) Checked_ast.t -> s run_state -> s run_state * a =
    fun t s ->
     match t with
     | As_prover (x, k) ->
@@ -342,7 +342,7 @@ module Make (Backend : Backend_extended.S) = struct
   let rec flatten_as_prover : type a s.
          int ref
       -> string list
-      -> (a, s, Field.t) Checked.t
+      -> (a, s, Field.t) Checked_ast.t
       -> (s run_state -> s run_state) * a =
    fun next_auxiliary stack t ->
     match t with
@@ -438,9 +438,9 @@ module Make (Backend : Backend_extended.S) = struct
         flatten_as_prover next_auxiliary stack (k !next_auxiliary)
 
   let reduce_to_prover (type a s) next_auxiliary
-      (t : (a, s, Field.t) Checked.t) : (a, s, Field.t) Checked.t =
+      (t : (a, s, Field.t) Checked_ast.t) : (a, s, Field.t) Checked_ast.t =
     let f, a = flatten_as_prover next_auxiliary [] t in
-    Reduced (t, f, a, Checked.return)
+    Reduced (t, f, a, Checked_ast.return)
 
   module State = struct
     let make ~num_inputs ~input ~next_auxiliary ~aux ?system

@@ -1462,7 +1462,7 @@ module type Run_basic = sig
     end
 
     type ('var, 'value) t =
-      ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
+      ('var, 'value, field, (unit, unit, field) Checked_ast.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 

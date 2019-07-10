@@ -1,5 +1,4 @@
 module Bignum_bigint = Bigint
-module Checked_ast = Checked
 open Core_kernel
 
 let () = Camlsnark_c.linkme
@@ -1376,10 +1375,10 @@ module Make (Backend : Backend_intf.S) = struct
       (Backend_extended)
       (struct
         include (
-          Checked :
+          Checked_ast :
             Checked_intf.S
-            with module Types = Checked.Types
-            with type ('a, 's, 'f) t := ('a, 's, 'f) Checked.t
+            with module Types = Checked_ast.Types
+            with type ('a, 's, 'f) t := ('a, 's, 'f) Checked_ast.t
              and type 'f field := 'f )
 
         type field = Backend_extended.Field.t
@@ -1391,8 +1390,8 @@ module Make (Backend : Backend_intf.S) = struct
       (As_prover.Make_extended (struct
            type field = Backend_extended.Field.t
          end)
-         (Checked)
-         (As_prover.Make (Checked) (As_prover0)))
+         (Checked_ast)
+         (As_prover.Make (Checked_ast) (As_prover0)))
       (Runner0)
 
   include Basic
