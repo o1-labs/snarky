@@ -67,443 +67,432 @@ let set_printing_fun =
 
 let () = set_no_profiling true
 
-module Make_group_coefficients (P : sig
-  val prefix : string
-end)
-(Fq : Foreign_intf) : sig
-  val a : Fq.t
+module Group_coefficients (Fq : Foreign_intf) = struct
+  module type Bound = sig
+    include Foreign_types
 
-  val b : Fq.t
-end = struct
-  let mk_coeff name =
-    let stub = foreign name (void @-> returning Fq.typ) in
-    stub ()
+    val a : (unit -> Fq.t return) result
 
-  let a = mk_coeff (with_prefix P.prefix "coeff_a")
+    val b : (unit -> Fq.t return) result
+  end
 
-  let b = mk_coeff (with_prefix P.prefix "coeff_b")
+  module type S = sig
+    val a : Fq.t
+
+    val b : Fq.t
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    let mk_coeff name = foreign name (void @-> returning Fq.typ)
+
+    let a = mk_coeff (with_prefix P.prefix "coeff_a")
+
+    let b = mk_coeff (with_prefix P.prefix "coeff_b")
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    open Bindings
+
+    let a = a ()
+
+    let b = b ()
+  end
 end
 
-module Make_window_table
-    (P : Prefix_intf)
-    (G : Deletable_intf) (Scalar_field : sig
-        type t
-    end) (Scalar : sig
-      include Foreign_intf
+module Window_table
+    (G : Foreign_intf)
+    (Scalar_field : Foreign_intf)
+    (Scalar : Foreign_intf)
+    (V : Foreign_intf) =
+struct
+  module type Bound = sig
+    include Foreign_types
 
-      val of_field : Scalar_field.t -> t
-    end) (V : sig
-      include Deletable_intf
+    val create : (G.t -> V.t return) result
 
-      include Binable.S with type t := t
-    end) : sig
-  type t [@@deriving bin_io]
+    val scale : (V.t -> Scalar.t -> G.t return) result
+  end
 
-  val create : G.t -> t
+  module type S = sig
+    type t [@@deriving bin_io]
 
-  val scale : t -> Scalar.t -> G.t
+    val create : G.t -> t
 
-  val scale_field : t -> Scalar_field.t -> G.t
-end = struct
-  let func_name = with_prefix P.prefix
+    val scale : t -> Scalar.t -> G.t
 
-  include V
+    val scale_field : t -> Scalar_field.t -> G.t
+  end
 
-  let create =
-    let stub =
-      foreign (func_name "create_window_table") (G.typ @-> returning typ)
-    in
-    fun g ->
-      let t = stub g in
-      Caml.Gc.finalise delete t ; t
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
 
-  let scale =
-    let stub =
+    let func_name = with_prefix P.prefix
+
+    let create =
+      foreign (func_name "create_window_table") (G.typ @-> returning V.typ)
+
+    let scale =
       foreign
         (func_name "window_scalar_mul")
-        (typ @-> Scalar.typ @-> returning G.typ)
-    in
-    fun tbl s ->
-      let x = stub tbl s in
+        (V.typ @-> Scalar.typ @-> returning G.typ)
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
+                                                                        (G : sig
+          val delete : G.t -> unit
+      end) (Scalar : sig
+        val of_field : Scalar_field.t -> Scalar.t
+      end) (V : sig
+        val delete : V.t -> unit
+
+        include Binable.S with type t = V.t
+      end) : S = struct
+    open Bindings
+    include V
+
+    let create g =
+      let t = create g in
+      Caml.Gc.finalise delete t ; t
+
+    let scale tbl s =
+      let x = scale tbl s in
       Caml.Gc.finalise G.delete x ;
       x
 
-  let scale_field t (x : Scalar_field.t) = scale t (Scalar.of_field x)
+    let scale_field t (x : Scalar_field.t) = scale t (Scalar.of_field x)
+  end
 end
 
-module Make_group (P : sig
-  val prefix : string
-end) (Field : sig
-  type t
+module Group
+    (Field : Foreign_intf)
+    (Bigint_r : Foreign_intf)
+    (Fq : Foreign_intf) =
+struct
+  module type Bound = sig
+    include Foreign_types
 
-  val typ : t Ctypes.typ
-end) (Bigint_r : sig
-  type t
+    type t
 
-  val typ : t Ctypes.typ
-end) (Fq : sig
-  type t [@@deriving bin_io]
+    val typ : t Ctypes.typ
 
-  val typ : t Ctypes.typ
+    val zero : (unit -> t return) result
 
-  val delete : t -> unit
-end) : sig
-  type t [@@deriving bin_io]
+    val one : (unit -> t return) result
 
-  val typ : t Ctypes.typ
+    val delete : (t -> unit return) result
 
-  val add : t -> t -> t
+    val print : (t -> unit return) result
 
-  val ( + ) : t -> t -> t
+    val random : (unit -> t return) result
 
-  val negate : t -> t
+    val double : (t -> t return) result
 
-  val double : t -> t
+    val negate : (t -> t return) result
 
-  val scale : t -> Bigint_r.t -> t
+    val add : (t -> t -> t return) result
 
-  val scale_field : t -> Field.t -> t
+    val scale : (Bigint_r.t -> t -> t return) result
 
-  val zero : t
+    val scale_field : (Field.t -> t -> t return) result
 
-  val one : t
+    val equal : (t -> t -> bool return) result
 
-  val to_affine_coordinates : t -> Fq.t * Fq.t
+    val of_affine : (Fq.t -> Fq.t -> t return) result
 
-  val of_affine_coordinates : Fq.t * Fq.t -> t
+    val is_zero : (t -> bool return) result
 
-  val equal : t -> t -> bool
+    val to_affine' : (t -> unit return) result
 
-  val random : unit -> t
+    val x : (t -> Fq.t return) result
 
-  val delete : t -> unit
+    val y : (t -> Fq.t return) result
 
-  val print : t -> unit
+    val prefix : string
 
-  module Vector : Vector.S_binable with type elt := t
-end = struct
-  include P
-  include Make_foreign (P)
+    module Vector :
+      Vector.Bound
+      with type 'a result = 'a result
+       and type 'a return = 'a return
+       and type elt = t
+  end
 
-  let zero =
-    let stub = foreign (func_name "zero") (void @-> returning typ) in
-    stub ()
+  module type S = sig
+    type t [@@deriving bin_io]
 
-  let one =
-    let stub = foreign (func_name "one") (void @-> returning typ) in
-    stub ()
+    val typ : t Ctypes.typ
 
-  let delete = foreign (func_name "delete") (typ @-> returning void)
+    val add : t -> t -> t
 
-  let schedule_delete t = Caml.Gc.finalise delete t
+    val ( + ) : t -> t -> t
 
-  let print = foreign (func_name "print") (typ @-> returning void)
+    val negate : t -> t
 
-  let random =
-    let stub = foreign (func_name "random") (void @-> returning typ) in
-    fun () ->
-      let x = stub () in
+    val double : t -> t
+
+    val scale : t -> Bigint_r.t -> t
+
+    val scale_field : t -> Field.t -> t
+
+    val zero : t
+
+    val one : t
+
+    module Affine : sig
+      type t = Fq.t * Fq.t [@@deriving bin_io]
+    end
+
+    val to_affine_exn : t -> Affine.t
+
+    val to_affine : t -> Affine.t option
+
+    val of_affine : Affine.t -> t
+
+    val equal : t -> t -> bool
+
+    val random : unit -> t
+
+    val delete : t -> unit
+
+    val print : t -> unit
+
+    module Vector : Vector.S_binable with type elt := t
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+    include P
+    include Make_foreign (F) (P)
+
+    let zero = foreign (func_name "zero") (void @-> returning typ)
+
+    let one = foreign (func_name "one") (void @-> returning typ)
+
+    let delete = foreign (func_name "delete") (typ @-> returning void)
+
+    let print = foreign (func_name "print") (typ @-> returning void)
+
+    let random = foreign (func_name "random") (void @-> returning typ)
+
+    let double = foreign (func_name "double") (typ @-> returning typ)
+
+    let negate = foreign (func_name "negate") (typ @-> returning typ)
+
+    let add = foreign (func_name "add") (typ @-> typ @-> returning typ)
+
+    let scale =
+      foreign (func_name "scale") (Bigint_r.typ @-> typ @-> returning typ)
+
+    let scale_field =
+      foreign (func_name "scale_field") (Field.typ @-> typ @-> returning typ)
+
+    let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
+
+    let of_affine =
+      foreign (func_name "of_coords") (Fq.typ @-> Fq.typ @-> returning typ)
+
+    let is_zero = foreign (func_name "is_zero") (typ @-> returning bool)
+
+    let to_affine' =
+      foreign (func_name "to_affine_coordinates") (typ @-> returning void)
+
+    let x = foreign (func_name "x") (typ @-> returning Fq.typ)
+
+    let y = foreign (func_name "y") (typ @-> returning Fq.typ)
+
+    module Vector =
+      Vector.Bind
+        (F)
+        (struct
+          type nonrec t = t
+
+          let typ = typ
+
+          let prefix = with_prefix prefix "vector"
+        end)
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
+      (Fq : sig
+              type t [@@deriving bin_io]
+
+              val delete : t -> unit
+            end
+            with type t = Fq.t) : S = struct
+    include (
+      Bindings :
+        Bound
+        with type 'a return = 'a
+         and type 'a result = 'a
+         and type t = Bindings.t
+        with module Vector := Bindings.Vector )
+
+    let zero = zero ()
+
+    let one = one ()
+
+    let schedule_delete t = Caml.Gc.finalise delete t
+
+    let random () =
+      let x = random () in
       schedule_delete x ; x
 
-  let of_affine_coordinates =
-    let stub =
-      foreign (func_name "of_coords") (Fq.typ @-> Fq.typ @-> returning typ)
-    in
-    fun (x, y) ->
-      let t = stub x y in
+    let double x =
+      let z = double x in
+      schedule_delete z ; z
+
+    let negate x =
+      let z = negate x in
+      schedule_delete z ; z
+
+    let add x y =
+      let z = add x y in
+      schedule_delete z ; z
+
+    let ( + ) = add
+
+    let scale y x =
+      let z = scale x y in
+      schedule_delete z ; z
+
+    let scale_field y x =
+      let z = scale_field x y in
+      schedule_delete z ; z
+
+    module Affine = struct
+      type t = Fq.t * Fq.t [@@deriving bin_io]
+    end
+
+    let of_affine (x, y) =
+      let t = of_affine x y in
       schedule_delete t ; t
 
-  let double =
-    let stub = foreign (func_name "double") (typ @-> returning typ) in
-    fun x ->
-      let z = stub x in
-      schedule_delete z ; z
-
-  let negate =
-    let stub = foreign (func_name "negate") (typ @-> returning typ) in
-    fun x ->
-      let z = stub x in
-      schedule_delete z ; z
-
-  let add =
-    let stub = foreign (func_name "add") (typ @-> typ @-> returning typ) in
-    fun x y ->
-      let z = stub x y in
-      schedule_delete z ; z
-
-  let ( + ) = add
-
-  let scale =
-    let stub =
-      foreign (func_name "scale") (Bigint_r.typ @-> typ @-> returning typ)
-    in
-    fun y x ->
-      let z = stub x y in
-      schedule_delete z ; z
-
-  let scale_field =
-    let stub =
-      foreign (func_name "scale_field") (Field.typ @-> typ @-> returning typ)
-    in
-    fun y x ->
-      let z = stub x y in
-      schedule_delete z ; z
-
-  let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
-
-  let to_affine_coordinates =
-    let stub_to_affine =
-      foreign (func_name "to_affine_coordinates") (typ @-> returning void)
-    in
-    let stub_x = foreign (func_name "x") (typ @-> returning Fq.typ) in
-    let stub_y = foreign (func_name "y") (typ @-> returning Fq.typ) in
-    fun t ->
-      let () = stub_to_affine t in
-      let x = stub_x t in
+    (* This function hits an ugly C++ assertion failure in the zero case, so
+   we wrap it with to_affine_exn *)
+    let to_affine' t =
+      let () = to_affine' t in
+      let x = x t in
       Caml.Gc.finalise Fq.delete x ;
-      let y = stub_y t in
+      let y = y t in
       Caml.Gc.finalise Fq.delete y ;
       (x, y)
 
-  module Repr = struct
-    type t = Zero | Non_zero of {x: Fq.t; y: Fq.t} [@@deriving bin_io]
-  end
+    let to_affine t = if is_zero t then None else Some (to_affine' t)
 
-  let to_repr t : Repr.t =
-    if equal zero t then Zero
-    else
-      let x, y = to_affine_coordinates t in
-      Non_zero {x; y}
+    let to_affine_exn t =
+      if is_zero t then
+        failwithf "to_affine_exn (%s): Got a zero curve point" Bindings.prefix
+          ()
+      else to_affine' t
 
-  let of_repr (r : Repr.t) =
-    match r with
-    | Zero ->
-        zero
-    | Non_zero {x; y} ->
-        of_affine_coordinates (x, y)
+    module Repr = struct
+      type t = Zero | Non_zero of Affine.t [@@deriving bin_io]
+    end
 
-  module B =
-    Binable.Of_binable
-      (Repr)
-      (struct
-        type nonrec t = t
+    let to_repr t : Repr.t =
+      match to_affine t with None -> Zero | Some t -> Non_zero t
 
-        let to_binable = to_repr
+    let of_repr (r : Repr.t) =
+      match r with Zero -> zero | Non_zero t -> of_affine t
 
-        let of_binable = of_repr
-      end)
+    module B =
+      Binable.Of_binable
+        (Repr)
+        (struct
+          type nonrec t = t
 
-  include B
+          let to_binable = to_repr
 
-  module Vector = Vector.Make_binable (struct
-    type nonrec t = t
+          let of_binable = of_repr
+        end)
 
     include B
 
-    let typ = typ
+    module Vector =
+      Vector.Make_binable (struct
+          type nonrec t = t
 
-    let prefix = with_prefix prefix "vector"
+          include B
 
-    let schedule_delete = schedule_delete
-  end)
+          let schedule_delete = schedule_delete
+        end)
+        (Bindings.Vector)
+  end
 end
 
-module Make_common (M : sig
-  val prefix : string
-end) =
-struct
-  let prefix = M.prefix
+module Field = struct
+  module type Bound = sig
+    include Foreign_types
 
-  let init =
-    foreign
-      (with_prefix M.prefix "init_public_params")
-      (void @-> returning void)
+    type t
 
-  let () = init ()
+    val typ : t typ
 
-  module Field0 : sig
-    type t [@@deriving sexp]
+    val size_in_bits : (unit -> int return) result
 
-    include Deletable_intf with type t := t
+    val delete : (t -> unit return) result
 
-    val func_name : string -> string
-  end = struct
-    module F = Make_foreign (struct
-      let prefix = with_prefix prefix "field"
-    end)
+    val print : (t -> unit return) result
 
-    type t = F.t sexp_opaque [@@deriving sexp]
+    val random : (unit -> t return) result
 
-    include (F : module type of F with type t := t)
+    val square : (t -> t return) result
+
+    val is_square : (t -> bool return) result
+
+    val sqrt : (t -> t return) result
+
+    val of_int : (Long_vector.elt -> t return) result
+
+    val add : (t -> t -> t return) result
+
+    val inv : (t -> t return) result
+
+    val mul : (t -> t -> t return) result
+
+    val sub : (t -> t -> t return) result
+
+    module Mutable : sig
+      val add : (t -> t -> unit return) result
+
+      val sub : (t -> t -> unit return) result
+
+      val mul : (t -> t -> unit return) result
+
+      val copy : (t -> t -> unit return) result
+    end
+
+    val equal : (t -> t -> bool return) result
+
+    module Vector :
+      Vector.Bound
+      with type 'a result = 'a result
+       and type 'a return = 'a return
+       and type elt = t
   end
 
-  module Bigint : sig
-    module R : sig
-      type t [@@deriving bin_io]
-
-      val typ : t Ctypes.typ
-
-      val of_decimal_string : string -> t
-
-      val of_numeral : string -> base:int -> t
-
-      val of_field : Field0.t -> t
-
-      val of_data : Bigstring.t -> bitcount:int -> t
-
-      val length_in_bytes : int
-
-      val div : t -> t -> t
-
-      val to_field : t -> Field0.t
-
-      val to_bigstring : t -> Bigstring.t
-
-      val compare : t -> t -> int
-
-      val test_bit : t -> int -> bool
-
-      val find_wnaf : Unsigned.Size_t.t -> t -> Long_vector.t
-    end
-
-    module Q : sig
-      type t
-
-      val typ : t Ctypes.typ
-
-      val test_bit : t -> int -> bool
-
-      val find_wnaf : Unsigned.Size_t.t -> t -> Long_vector.t
-    end
-  end = struct
-    module Common (N : sig
-      val prefix : string
-    end) =
-    struct
-      include Make_foreign (struct
-        let prefix = with_prefix (with_prefix M.prefix "bigint") N.prefix
-      end)
-
-      let test_bit =
-        foreign (func_name "test_bit") (typ @-> int @-> returning bool)
-
-      let find_wnaf =
-        let stub =
-          foreign (func_name "find_wnaf")
-            (size_t @-> typ @-> returning Long_vector.typ)
-        in
-        fun x y ->
-          let v = stub x y in
-          Caml.Gc.finalise Long_vector.delete v ;
-          v
-    end
-
-    module R = struct
-      let prefix = "r"
-
-      include Common (struct
-        let prefix = prefix
-      end)
-
-      let func_name =
-        with_prefix (with_prefix (with_prefix M.prefix "bigint") prefix)
-
-      let div =
-        let stub = foreign (func_name "div") (typ @-> typ @-> returning typ) in
-        fun x y ->
-          let z = stub x y in
-          Caml.Gc.finalise delete z ; z
-
-      let of_numeral =
-        let stub =
-          foreign (func_name "of_numeral")
-            (string @-> int @-> int @-> returning typ)
-        in
-        fun s ~base ->
-          let n = stub s (String.length s) base in
-          Caml.Gc.finalise delete n ; n
-
-      let of_decimal_string =
-        let stub =
-          foreign (func_name "of_decimal_string") (string @-> returning typ)
-        in
-        fun s ->
-          let n = stub s in
-          Caml.Gc.finalise delete n ; n
-
-      let compare =
-        foreign (func_name "compare") (typ @-> typ @-> returning int)
-
-      let of_field =
-        let stub =
-          foreign (func_name "of_field") (Field0.typ @-> returning typ)
-        in
-        fun x ->
-          let n = stub x in
-          Caml.Gc.finalise delete n ; n
-
-      let num_limbs =
-        let stub = foreign (func_name "num_limbs") (void @-> returning int) in
-        stub ()
-
-      let bytes_per_limb =
-        let stub =
-          foreign (func_name "bytes_per_limb") (void @-> returning int)
-        in
-        let res = stub () in
-        assert (res = 8) ;
-        res
-
-      let length_in_bytes = num_limbs * bytes_per_limb
-
-      let to_bigstring =
-        let stub =
-          foreign (func_name "to_data") (typ @-> returning (ptr char))
-        in
-        fun t ->
-          let limbs = stub t in
-          Bigstring.init length_in_bytes ~f:(fun i -> Ctypes.(!@(limbs +@ i)))
-
-      let of_bigstring =
-        let stub =
-          foreign (func_name "of_data") (ptr char @-> returning typ)
-        in
-        fun s ->
-          let ptr = Ctypes.bigarray_start Ctypes.array1 s in
-          let t = stub ptr in
-          Caml.Gc.finalise delete t ; t
-
-      let of_data bs ~bitcount =
-        assert (bitcount <= length_in_bytes * 8) ;
-        of_bigstring bs
-
-      include Binable.Of_binable
-                (Bigstring.Stable.V1)
-                (struct
-                  type nonrec t = t
-
-                  let to_binable = to_bigstring
-
-                  let of_binable = of_bigstring
-                end)
-
-      let to_field =
-        let stub =
-          foreign (func_name "to_field") (typ @-> returning Field0.typ)
-        in
-        fun n ->
-          let x = stub n in
-          Caml.Gc.finalise Field0.delete x ;
-          x
-    end
-
-    module Q = Common (struct
-      let prefix = "q"
-    end)
-  end
-
-  module Field : sig
-    type t = Field0.t [@@deriving sexp, bin_io]
+  module type S = sig
+    type t [@@deriving sexp, bin_io]
 
     val typ : t Ctypes.typ
 
@@ -556,90 +545,150 @@ struct
     val ( *= ) : t -> t -> unit
 
     module Vector : Vector.S_binable with type elt = t
-  end = struct
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          include Foreign_intf
+
+          val func_name : string -> string
+
+          val outer_prefix : string
+      end) :
+    Bound
+    with type 'a return = 'a F.return
+     and type 'a result = 'a F.result
+     and type t = P.t = struct
+    include F
+    include P
+
+    let size_in_bits =
+      foreign (func_name "size_in_bits") (void @-> returning int)
+
+    let delete = foreign (func_name "delete") (typ @-> returning void)
+
+    let print = foreign (func_name "print") (typ @-> returning void)
+
+    let random = foreign (func_name "random") (void @-> returning typ)
+
+    let square = foreign (func_name "square") (typ @-> returning typ)
+
+    let is_square = foreign (func_name "is_square") (typ @-> returning bool)
+
+    let sqrt = foreign (func_name "sqrt") (typ @-> returning typ)
+
+    let of_int = foreign (func_name "of_int") (long @-> returning typ)
+
+    let add = foreign (func_name "add") (typ @-> typ @-> returning typ)
+
+    let inv = foreign (func_name "inv") (typ @-> returning typ)
+
+    let mul = foreign (func_name "mul") (typ @-> typ @-> returning typ)
+
+    let sub = foreign (func_name "sub") (typ @-> typ @-> returning typ)
+
+    module Mutable = struct
+      let make name =
+        foreign (func_name ("mut_" ^ name)) (typ @-> typ @-> returning void)
+
+      let add = make "add"
+
+      let sub = make "sub"
+
+      let mul = make "mul"
+
+      let copy = foreign (func_name "copy") (typ @-> typ @-> returning void)
+    end
+
+    let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
+
+    module Vector =
+      Vector.Bind
+        (F)
+        (struct
+          type nonrec t = t
+
+          let typ = typ
+
+          let prefix = with_prefix outer_prefix "field_vector"
+        end)
+  end
+
+  module Make (Field0 : sig
+    type t [@@deriving sexp]
+
+    include Deletable_intf with type t := t
+  end) (R : sig
+    include Binable.Minimal.S
+
+    val to_field : t -> Field0.t
+
+    val of_field : Field0.t -> t
+  end)
+  (Bindings : Bound
+              with type 'a return = 'a
+               and type 'a result = 'a
+               and type t = Field0.t) : S with type t = Bindings.t = struct
     module T = struct
       include Field0
 
-      let size_in_bits =
-        let stub =
-          foreign (func_name "size_in_bits") (void @-> returning int)
-        in
-        stub ()
+      include (
+        Bindings :
+          Bound
+          with type 'a return = 'a
+           and type 'a result = 'a
+           and type t := Field0.t
+          with module Vector := Bindings.Vector
+          with module Mutable := Bindings.Mutable )
 
-      let delete = foreign (func_name "delete") (typ @-> returning void)
+      let size_in_bits = size_in_bits ()
 
       let schedule_delete t = Caml.Gc.finalise delete t
 
-      let print = foreign (func_name "print") (typ @-> returning void)
+      let random () =
+        let x = random () in
+        schedule_delete x ; x
 
-      let random =
-        let stub = foreign (func_name "random") (void @-> returning typ) in
-        fun () ->
-          let x = stub () in
-          schedule_delete x ; x
+      let square x =
+        let y = square x in
+        schedule_delete y ; y
 
-      let square =
-        let stub = foreign (func_name "square") (typ @-> returning typ) in
-        fun x ->
-          let y = stub x in
-          schedule_delete y ; y
+      let sqrt x =
+        let y = sqrt x in
+        schedule_delete y ; y
 
-      let is_square = foreign (func_name "is_square") (typ @-> returning bool)
+      let of_int n =
+        let x = of_int (Signed.Long.of_int n) in
+        schedule_delete x ; x
 
-      let sqrt =
-        let stub = foreign (func_name "sqrt") (typ @-> returning typ) in
-        fun x ->
-          let y = stub x in
-          schedule_delete y ; y
+      let add x y =
+        let z = add x y in
+        schedule_delete z ; z
 
-      let of_int =
-        let stub = foreign (func_name "of_int") (long @-> returning typ) in
-        fun n ->
-          let x = stub (Signed.Long.of_int n) in
-          schedule_delete x ; x
+      let inv x =
+        let y = inv x in
+        schedule_delete y ; y
 
-      let add =
-        let stub = foreign (func_name "add") (typ @-> typ @-> returning typ) in
-        fun x y ->
-          let z = stub x y in
-          schedule_delete z ; z
+      let mul x y =
+        let z = mul x y in
+        schedule_delete z ; z
 
-      let inv =
-        let stub = foreign (func_name "inv") (typ @-> returning typ) in
-        fun x ->
-          let y = stub x in
-          schedule_delete y ; y
-
-      let mul =
-        let stub = foreign (func_name "mul") (typ @-> typ @-> returning typ) in
-        fun x y ->
-          let z = stub x y in
-          schedule_delete z ; z
-
-      let sub =
-        let stub = foreign (func_name "sub") (typ @-> typ @-> returning typ) in
-        fun x y ->
-          let z = stub x y in
-          schedule_delete z ; z
+      let sub x y =
+        let z = sub x y in
+        schedule_delete z ; z
 
       module Mutable = struct
-        let make name =
-          let stub =
-            foreign (func_name ("mut_" ^ name)) (typ @-> typ @-> returning void)
-          in
-          fun x ~other -> stub x other
+        open Bindings.Mutable
 
-        let add = make "add"
+        let make stub x ~other = stub x other
 
-        let sub = make "sub"
+        let add = make add
 
-        let mul = make "mul"
+        let sub = make sub
 
-        let copy =
-          let stub =
-            foreign (func_name "copy") (typ @-> typ @-> returning void)
-          in
-          fun ~over x -> stub over x
+        let mul = make mul
+
+        let copy ~over x = copy over x
       end
 
       let ( += ) t other = Mutable.add t ~other
@@ -648,8 +697,6 @@ struct
 
       let ( *= ) t other = Mutable.mul t ~other
 
-      let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
-
       let one = of_int 1
 
       let zero = of_int 0
@@ -657,33 +704,348 @@ struct
 
     module B =
       Binable.Of_binable
-        (Bigint.R)
+        (R)
         (struct
           type t = T.t
 
-          let to_binable = Bigint.R.of_field
+          let to_binable = R.of_field
 
-          let of_binable = Bigint.R.to_field
+          let of_binable = R.to_field
         end)
 
     include B
 
-    module Vector = Vector.Make_binable (struct
-      type t = T.t
+    module Vector =
+      Vector.Make_binable (struct
+          type t = T.t
 
-      include B
+          include B
 
-      let typ = T.typ
-
-      let prefix = with_prefix M.prefix "field_vector"
-
-      let schedule_delete = Caml.Gc.finalise T.delete
-    end)
+          let schedule_delete = Caml.Gc.finalise T.delete
+        end)
+        (Bindings.Vector)
 
     include T
   end
+end
 
-  module Var : sig
+(* NOTE: This isn't functored over Field0 because Common is field-agnostic.
+   Probably the relationship should be inverted, and Field should get
+   to/of_bigint instead.
+*)
+module Bigint = struct
+  module Common = struct
+    module type Bound = sig
+      include Foreign_types
+
+      type t
+
+      val typ : t typ
+
+      val func_name : string -> string
+
+      val delete : (t -> unit return) result
+
+      val test_bit : (t -> int -> bool return) result
+
+      val find_wnaf : (Unsigned.size_t -> t -> Long_vector.t return) result
+    end
+
+    module type S = sig
+      type t
+
+      val typ : t Ctypes.typ
+
+      val test_bit : t -> int -> bool
+
+      val find_wnaf : Unsigned.Size_t.t -> t -> Long_vector.t
+    end
+
+    module Bind
+        (F : Ctypes.FOREIGN) (P : sig
+            val prefix : string
+
+            val outer_prefix : string
+        end) :
+      Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+    struct
+      include F
+
+      include Make_foreign
+                (F)
+                (struct
+                  let prefix =
+                    with_prefix (with_prefix P.outer_prefix "bigint") P.prefix
+                end)
+
+      let test_bit =
+        foreign (func_name "test_bit") (typ @-> int @-> returning bool)
+
+      let find_wnaf =
+        foreign (func_name "find_wnaf")
+          (size_t @-> typ @-> returning Long_vector.typ)
+    end
+
+    module Make
+        (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) :
+      S with type t = Bindings.t = struct
+      include Bindings
+
+      let find_wnaf x y =
+        let v = find_wnaf x y in
+        Caml.Gc.finalise Long_vector.delete v ;
+        v
+    end
+  end
+
+  module R = struct
+    module type Bound = sig
+      include Common.Bound
+
+      type field
+
+      val div : (t -> t -> t return) result
+
+      val of_numeral : (string -> int -> int -> t return) result
+
+      val of_decimal_string : (string -> t return) result
+
+      val compare : (t -> t -> int return) result
+
+      val of_field : (field -> t return) result
+
+      val num_limbs : (unit -> int return) result
+
+      val bytes_per_limb : (unit -> int return) result
+
+      val to_data : (t -> char Ctypes_static.ptr return) result
+
+      val of_data : (char Ctypes_static.ptr -> t return) result
+
+      val to_field : (t -> field return) result
+    end
+
+    module type S = sig
+      type t [@@deriving bin_io]
+
+      type field
+
+      val typ : t Ctypes.typ
+
+      val of_decimal_string : string -> t
+
+      val of_numeral : string -> base:int -> t
+
+      val of_field : field -> t
+
+      val of_data : Bigstring.t -> bitcount:int -> t
+
+      val length_in_bytes : int
+
+      val div : t -> t -> t
+
+      val to_field : t -> field
+
+      val to_bigstring : t -> Bigstring.t
+
+      val compare : t -> t -> int
+
+      val test_bit : t -> int -> bool
+
+      val find_wnaf : Unsigned.Size_t.t -> t -> Long_vector.t
+    end
+
+    module Bind
+        (F : Ctypes.FOREIGN) (P : sig
+            val prefix : string
+        end)
+        (Field0 : Foreign_intf) :
+      Bound
+      with type 'a return = 'a F.return
+       and type 'a result = 'a F.result
+       and type field := Field0.t = struct
+      open F
+
+      include Common.Bind
+                (F)
+                (struct
+                  let outer_prefix = P.prefix
+
+                  let prefix = "r"
+                end)
+
+      let div = foreign (func_name "div") (typ @-> typ @-> returning typ)
+
+      let of_numeral =
+        foreign (func_name "of_numeral")
+          (string @-> int @-> int @-> returning typ)
+
+      let of_decimal_string =
+        foreign (func_name "of_decimal_string") (string @-> returning typ)
+
+      let compare =
+        foreign (func_name "compare") (typ @-> typ @-> returning int)
+
+      let of_field =
+        foreign (func_name "of_field") (Field0.typ @-> returning typ)
+
+      let num_limbs = foreign (func_name "num_limbs") (void @-> returning int)
+
+      let bytes_per_limb =
+        foreign (func_name "bytes_per_limb") (void @-> returning int)
+
+      let to_data = foreign (func_name "to_data") (typ @-> returning (ptr char))
+
+      let of_data = foreign (func_name "of_data") (ptr char @-> returning typ)
+
+      let to_field =
+        foreign (func_name "to_field") (typ @-> returning Field0.typ)
+    end
+
+    module Make
+        (Field0 : Deletable_intf)
+        (Bindings : Bound
+                    with type 'a return = 'a
+                     and type 'a result = 'a
+                     and type field := Field0.t) :
+      S with type field := Field0.t and type t = Bindings.t = struct
+      include Bindings
+
+      include (Common.Make (Bindings) : Common.S with type t := t)
+
+      let div x y =
+        let z = div x y in
+        Caml.Gc.finalise delete z ; z
+
+      let of_numeral s ~base =
+        let n = of_numeral s (String.length s) base in
+        Caml.Gc.finalise delete n ; n
+
+      let of_decimal_string s =
+        let n = of_decimal_string s in
+        Caml.Gc.finalise delete n ; n
+
+      let of_field x =
+        let n = of_field x in
+        Caml.Gc.finalise delete n ; n
+
+      let num_limbs = num_limbs ()
+
+      let bytes_per_limb =
+        let res = bytes_per_limb () in
+        assert (res = 8) ;
+        res
+
+      let length_in_bytes = num_limbs * bytes_per_limb
+
+      let to_bigstring t =
+        let limbs = to_data t in
+        Bigstring.init length_in_bytes ~f:(fun i -> Ctypes.(!@(limbs +@ i)))
+
+      let of_bigstring s =
+        let ptr = Ctypes.bigarray_start Ctypes.array1 s in
+        let t = of_data ptr in
+        Caml.Gc.finalise delete t ; t
+
+      let of_data bs ~bitcount =
+        assert (bitcount <= length_in_bytes * 8) ;
+        of_bigstring bs
+
+      include Binable.Of_binable
+                (Bigstring.Stable.V1)
+                (struct
+                  type nonrec t = t
+
+                  let to_binable = to_bigstring
+
+                  let of_binable = of_bigstring
+                end)
+
+      let to_field n =
+        let x = to_field n in
+        Caml.Gc.finalise Field0.delete x ;
+        x
+    end
+  end
+
+  module type Bound = sig
+    include Foreign_types
+
+    type field
+
+    module R :
+      R.Bound
+      with type 'a return = 'a return
+       and type 'a result = 'a result
+       and type field := field
+
+    module Q :
+      Common.Bound
+      with type 'a return = 'a return
+       and type 'a result = 'a result
+  end
+
+  module type S = sig
+    type field
+
+    module R : R.S with type field := field
+
+    module Q : Common.S
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end)
+      (Field0 : Foreign_intf) :
+    Bound
+    with type 'a return = 'a F.return
+     and type 'a result = 'a F.result
+     and type field := Field0.t = struct
+    include F
+    module R = R.Bind (F) (P) (Field0)
+
+    module Q =
+      Common.Bind
+        (F)
+        (struct
+          let prefix = "q"
+
+          let outer_prefix = P.prefix
+        end)
+  end
+
+  module Make
+      (Field0 : Deletable_intf)
+      (Bindings : Bound
+                  with type 'a return = 'a
+                   and type 'a result = 'a
+                   and type field := Field0.t) :
+    S
+    with type field := Field0.t
+     and type R.t = Bindings.R.t
+     and type Q.t = Bindings.Q.t = struct
+    module R = R.Make (Field0) (Bindings.R)
+    module Q = Common.Make (Bindings.Q)
+  end
+end
+
+module Var (Field0 : Foreign_intf) = struct
+  module type Bound = sig
+    include Foreign_types
+
+    type t = Field0.t Backend_types.Var.t
+
+    val typ : t Ctypes.typ
+
+    val delete : (t -> unit return) result
+
+    val index : (t -> Unsigned.size_t return) result
+
+    val create : (int -> t return) result
+  end
+
+  module type S = sig
     type t = Field0.t Backend_types.Var.t
 
     val typ : t Ctypes.typ
@@ -691,29 +1053,186 @@ struct
     val index : t -> int
 
     val create : int -> t
-  end = struct
-    include Var.Make (struct
-      let prefix = with_prefix M.prefix "var"
-
-      type field = Field0.t
-    end)
-
-    let create =
-      (* TODO: Use size_t *)
-      let stub = foreign (func_name "create") (int @-> returning typ) in
-      fun n ->
-        let v = stub n in
-        Caml.Gc.finalise delete v ; v
-
-    let index =
-      let stub = foreign (func_name "index") (typ @-> returning size_t) in
-      fun v ->
-        let r = stub v in
-        Unsigned.Size_t.to_int r
   end
 
-  module Linear_combination : sig
-    type t = Field0.t Backend_types.Linear_combination.t
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    include Var.Make
+              (F)
+              (struct
+                let prefix = with_prefix P.prefix "var"
+
+                type field = Field0.t
+              end)
+
+    let create = foreign (func_name "create") (int @-> returning typ)
+
+    let index = foreign (func_name "index") (typ @-> returning size_t)
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    include Bindings
+
+    let create n =
+      let v = create n in
+      Caml.Gc.finalise delete v ; v
+
+    let index v =
+      let r = index v in
+      (* TODO: Use size_t *)
+      Unsigned.Size_t.to_int r
+  end
+end
+
+module Linear_combination (Field : Foreign_intf) (Var : Foreign_intf) = struct
+  module Term = struct
+    module type Bound = sig
+      include Foreign_types
+
+      type t = Field.t Linear_combination.Term.t
+
+      val typ : t typ
+
+      val delete : (t -> unit return) result
+
+      val create : (Field.t -> Var.t -> t return) result
+
+      val coeff : (t -> Field.t return) result
+
+      val index : (t -> int return) result
+
+      module Vector :
+        Vector.Bound
+        with type 'a result = 'a result
+         and type 'a return = 'a return
+         and type elt = t
+    end
+
+    module type S = sig
+      type t = Field.t Backend_types.Linear_combination.Term.t
+
+      val create : Field.t -> Var.t -> t
+
+      val coeff : t -> Field.t
+
+      val var : t -> Var.t
+
+      module Vector : Vector.S with type elt = t
+    end
+
+    module Bind
+        (F : Ctypes.FOREIGN) (P : sig
+            val prefix : string
+        end) :
+      Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+    struct
+      include F
+
+      let prefix = with_prefix P.prefix "term"
+
+      include Linear_combination.Term.Make
+                (F)
+                (struct
+                  let prefix = prefix
+
+                  type field = Field.t
+                end)
+
+      let create =
+        foreign (func_name "create") (Field.typ @-> Var.typ @-> returning typ)
+
+      let coeff = foreign (func_name "coeff") (typ @-> returning Field.typ)
+
+      let index = foreign (func_name "index") (typ @-> returning int)
+
+      module Vector =
+        Vector.Bind
+          (F)
+          (struct
+            type nonrec t = t
+
+            let typ = typ
+
+            let prefix = with_prefix prefix "vector"
+          end)
+    end
+
+    module Make
+        (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
+        (Field : Deletable_intf with type t = Field.t) (Var : sig
+            val create : int -> Var.t
+        end) : S = struct
+      include (
+        Bindings :
+          Bound
+          with type 'a return = 'a
+           and type 'a result = 'a
+          with module Vector := Bindings.Vector )
+
+      let create x v =
+        let t = create x v in
+        Caml.Gc.finalise delete t ; t
+
+      let coeff t =
+        let x = coeff t in
+        Caml.Gc.finalise Field.delete x ;
+        x
+
+      let var t = Var.create (index t)
+
+      module Vector =
+        Vector.Make (struct
+            type nonrec t = t
+
+            let schedule_delete = Caml.Gc.finalise delete
+          end)
+          (Bindings.Vector)
+    end
+  end
+
+  module type Bound = sig
+    include Foreign_types
+
+    type t = Field.t Backend_types.Linear_combination.t
+
+    val typ : t typ
+
+    val delete : (t -> unit return) result
+
+    module Term :
+      Term.Bound with type 'a result = 'a result and type 'a return = 'a return
+
+    module Vector :
+      Vector.Bound
+      with type 'a result = 'a result
+       and type 'a return = 'a return
+       and type elt = t
+
+    val print : (t -> unit return) result
+
+    val create : (unit -> t return) result
+
+    val of_var : (Var.t -> t return) result
+
+    val of_int : (int -> t return) result
+
+    val add_term : (t -> Field.t -> Var.t -> unit return) result
+
+    val terms : (t -> Term.Vector.t return) result
+
+    val of_field : (Field.t -> t return) result
+  end
+
+  module type S = sig
+    type t = Field.t Backend_types.Linear_combination.t
 
     val typ : t Ctypes.typ
 
@@ -727,82 +1246,50 @@ struct
 
     val print : t -> unit
 
-    module Term : sig
-      type t = Field0.t Backend_types.Linear_combination.Term.t
-
-      val create : Field.t -> Var.t -> t
-
-      val coeff : t -> Field.t
-
-      val var : t -> Var.t
-
-      module Vector : Vector.S with type elt = t
-    end
+    module Term : Term.S
 
     val terms : t -> Term.Vector.t
 
     module Vector : Vector.S with type elt = t
 
     val add_term : t -> Field.t -> Var.t -> unit
-  end = struct
-    let prefix = with_prefix M.prefix "linear_combination"
+  end
 
-    include Linear_combination.Make (struct
-      let prefix = prefix
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
 
-      type field = Field0.t
-    end)
+    let prefix = with_prefix P.prefix "linear_combination"
 
-    module Term = struct
-      let prefix = with_prefix prefix "term"
+    include Linear_combination.Make
+              (F)
+              (struct
+                let prefix = prefix
 
-      include Linear_combination.Term.Make (struct
-        let prefix = prefix
+                type field = Field.t
+              end)
 
-        type field = Field0.t
-      end)
+    module Term =
+      Term.Bind
+        (F)
+        (struct
+          let prefix = prefix
+        end)
 
-      let create =
-        let stub =
-          foreign (func_name "create") (Field.typ @-> Var.typ @-> returning typ)
-        in
-        fun x v ->
-          let t = stub x v in
-          Caml.Gc.finalise delete t ; t
+    module Vector =
+      Vector.Bind
+        (F)
+        (struct
+          type nonrec t = t
 
-      let coeff =
-        let stub = foreign (func_name "coeff") (typ @-> returning Field.typ) in
-        fun t ->
-          let x = stub t in
-          Caml.Gc.finalise Field.delete x ;
-          x
+          let typ = typ
 
-      let var =
-        let stub = foreign (func_name "index") (typ @-> returning int) in
-        fun t -> Var.create (stub t)
-
-      module Vector = Vector.Make (struct
-        type nonrec t = t
-
-        let typ = typ
-
-        let prefix = with_prefix prefix "vector"
-
-        let schedule_delete = Caml.Gc.finalise delete
-      end)
-    end
-
-    let schedule_delete t = Caml.Gc.finalise delete t
-
-    module Vector = Vector.Make (struct
-      type nonrec t = t
-
-      let typ = typ
-
-      let prefix = with_prefix prefix "vector"
-
-      let schedule_delete = schedule_delete
-    end)
+          let prefix = with_prefix prefix "vector"
+        end)
 
     let print = foreign (func_name "print") (typ @-> returning void)
 
@@ -812,48 +1299,103 @@ struct
         (typ @-> Var.typ @-> Term.Vector.typ @-> returning void)
     ;; *)
 
-    let create : unit -> t =
-      let stub = foreign (func_name "create") (void @-> returning typ) in
-      fun () ->
-        let t = stub () in
-        schedule_delete t ; t
+    let create = foreign (func_name "create") (void @-> returning typ)
 
-    let of_var : Var.t -> t =
-      let stub = foreign (func_name "of_var") (Var.typ @-> returning typ) in
-      fun v ->
-        let t = stub v in
-        schedule_delete t ; t
+    let of_var = foreign (func_name "of_var") (Var.typ @-> returning typ)
 
-    let of_int : int -> t =
-      let stub = foreign (func_name "of_int") (int @-> returning typ) in
-      fun n ->
-        let t = stub n in
-        schedule_delete t ; t
+    let of_int = foreign (func_name "of_int") (int @-> returning typ)
 
     let add_term =
       foreign (func_name "add_term")
         (typ @-> Field.typ @-> Var.typ @-> returning void)
 
-    let terms =
-      let stub =
-        foreign (func_name "terms") (typ @-> returning Term.Vector.typ)
-      in
-      fun t ->
-        let v = stub t in
-        Caml.Gc.finalise Term.Vector.delete v ;
-        v
+    let terms = foreign (func_name "terms") (typ @-> returning Term.Vector.typ)
 
-    let of_field : Field.t -> t =
-      let stub =
-        foreign (func_name "of_field") (Field.typ @-> returning typ)
-      in
-      fun n ->
-        let t = stub n in
-        schedule_delete t ; t
+    let of_field = foreign (func_name "of_field") (Field.typ @-> returning typ)
   end
 
-  module R1CS_constraint : sig
-    type t = Field0.t Backend_types.R1CS_constraint.t
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
+      (Field : Deletable_intf with type t = Field.t) (Var : sig
+          val create : int -> Var.t
+      end) : S = struct
+    include (
+      Bindings :
+        Bound
+        with type 'a return = 'a
+         and type 'a result = 'a
+        with module Term := Bindings.Term
+        with module Vector := Bindings.Vector )
+
+    module Term = Term.Make (Bindings.Term) (Field) (Var)
+
+    let schedule_delete t = Caml.Gc.finalise delete t
+
+    module Vector =
+      Vector.Make (struct
+          type nonrec t = t
+
+          let schedule_delete = schedule_delete
+        end)
+        (Bindings.Vector)
+
+    let create : unit -> t =
+     fun () ->
+      let t = create () in
+      schedule_delete t ; t
+
+    let of_var v =
+      let t = of_var v in
+      schedule_delete t ; t
+
+    let of_int : int -> t =
+     fun n ->
+      let t = of_int n in
+      schedule_delete t ; t
+
+    let terms t =
+      let v = terms t in
+      Caml.Gc.finalise Term.Vector.delete v ;
+      v
+
+    let of_field : Field.t -> t =
+     fun n ->
+      let t = of_field n in
+      schedule_delete t ; t
+  end
+end
+
+module R1CS_constraint
+    (Field : Foreign_intf)
+    (Linear_combination : Foreign_intf) =
+struct
+  module type Bound = sig
+    include Foreign_types
+
+    type t = Field.t Backend_types.R1CS_constraint.t
+
+    val typ : t Ctypes.typ
+
+    val delete : (t -> unit return) result
+
+    val create :
+      (   Linear_combination.t
+       -> Linear_combination.t
+       -> Linear_combination.t
+       -> t return)
+      result
+
+    val set_is_square : (t -> bool -> unit return) result
+
+    val a : (t -> Linear_combination.t return) result
+
+    val b : (t -> Linear_combination.t return) result
+
+    val c : (t -> Linear_combination.t return) result
+  end
+
+  module type S = sig
+    type t = Field.t Backend_types.R1CS_constraint.t
 
     val typ : t Ctypes.typ
 
@@ -867,47 +1409,103 @@ struct
     val b : t -> Linear_combination.t
 
     val c : t -> Linear_combination.t
-  end = struct
-    include R1CS_constraint.Make (struct
-      let prefix = with_prefix M.prefix "r1cs_constraint"
+  end
 
-      type field = Field0.t
-    end)
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    include R1CS_constraint.Make
+              (F)
+              (struct
+                let prefix = with_prefix P.prefix "r1cs_constraint"
+
+                type field = Field.t
+              end)
 
     let create =
-      let stub =
-        foreign (func_name "create")
-          ( Linear_combination.typ @-> Linear_combination.typ
-          @-> Linear_combination.typ @-> returning typ )
-      in
-      fun a b c ->
-        let t = stub a b c in
-        Caml.Gc.finalise delete t ; t
+      foreign (func_name "create")
+        ( Linear_combination.typ @-> Linear_combination.typ
+        @-> Linear_combination.typ @-> returning typ )
 
     let set_is_square =
       foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
 
-    let a =
-      let stub =
-        foreign (func_name "a") (typ @-> returning Linear_combination.typ)
-      in
-      fun t -> stub t
+    let a = foreign (func_name "a") (typ @-> returning Linear_combination.typ)
 
-    let b =
-      let stub =
-        foreign (func_name "b") (typ @-> returning Linear_combination.typ)
-      in
-      fun t -> stub t
+    let b = foreign (func_name "b") (typ @-> returning Linear_combination.typ)
 
-    let c =
-      let stub =
-        foreign (func_name "c") (typ @-> returning Linear_combination.typ)
-      in
-      fun t -> stub t
+    let c = foreign (func_name "c") (typ @-> returning Linear_combination.typ)
   end
 
-  module R1CS_constraint_system : sig
-    type t = Field0.t Backend_types.R1CS_constraint_system.t
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    include Bindings
+
+    let create a b c =
+      let t = create a b c in
+      Caml.Gc.finalise delete t ; t
+
+    let a t = a t
+
+    let b t = b t
+
+    let c t = c t
+  end
+end
+
+module R1CS_constraint_system
+    (Field : Foreign_intf)
+    (Field_vector : Foreign_intf)
+    (R1CS_constraint : Foreign_intf) =
+struct
+  module type Bound = sig
+    include Foreign_types
+
+    type t = Field.t Backend_types.R1CS_constraint_system.t
+
+    val typ : t typ
+
+    val func_name : string -> string
+
+    val delete : (t -> unit return) result
+
+    val report_statistics : (t -> unit return) result
+
+    val swap_AB_if_beneficial : (t -> unit return) result
+
+    val check : (t -> bool return) result
+
+    val create : (unit -> t return) result
+
+    val clear : (t -> unit return) result
+
+    val add_constraint : (t -> R1CS_constraint.t -> unit return) result
+
+    val add_constraint_with_annotation :
+      (t -> R1CS_constraint.t -> string -> unit return) result
+
+    val set_primary_input_size : (t -> int -> unit return) result
+
+    val set_auxiliary_input_size : (t -> int -> unit return) result
+
+    val get_primary_input_size : (t -> int return) result
+
+    val get_auxiliary_input_size : (t -> int return) result
+
+    val is_satisfied :
+      (t -> Field_vector.t -> Field_vector.t -> bool return) result
+
+    val digest : (t -> Cpp_string.t return) result
+  end
+
+  module type S = sig
+    type t = Field.t Backend_types.R1CS_constraint_system.t
 
     val typ : t Ctypes.typ
 
@@ -938,8 +1536,8 @@ struct
 
     val is_satisfied :
          t
-      -> primary_input:Field.Vector.t
-      -> auxiliary_input:Field.Vector.t
+      -> primary_input:Field_vector.t
+      -> auxiliary_input:Field_vector.t
       -> bool
 
     val digest : t -> Md5.t
@@ -948,12 +1546,23 @@ struct
 
     val fold_constraints :
       f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
-  end = struct
-    include R1CS_constraint_system.Make (struct
-      let prefix = with_prefix M.prefix "r1cs_constraint_system"
+  end
 
-      type field = Field0.t
-    end)
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    include R1CS_constraint_system.Make
+              (F)
+              (struct
+                let prefix = with_prefix P.prefix "r1cs_constraint_system"
+
+                type field = Field.t
+              end)
 
     let report_statistics =
       foreign (func_name "report_statistics") (typ @-> returning void)
@@ -961,16 +1570,9 @@ struct
     let swap_AB_if_beneficial =
       foreign (func_name "swap_AB_if_beneficial") (typ @-> returning void)
 
-    let check_exn =
-      let stub = foreign (func_name "check") (typ @-> returning bool) in
-      fun sys ->
-        if not (stub sys) then failwith "R1CS_constraint_system.check_exn"
+    let check = foreign (func_name "check") (typ @-> returning bool)
 
-    let create =
-      let stub = foreign (func_name "create") (void @-> returning typ) in
-      fun () ->
-        let t = stub () in
-        Caml.Gc.finalise delete t ; t
+    let create = foreign (func_name "create") (void @-> returning typ)
 
     let clear = foreign (func_name "clear") (typ @-> returning void)
 
@@ -1001,23 +1603,35 @@ struct
       foreign (func_name "get_auxiliary_input_size") (typ @-> returning int)
 
     let is_satisfied =
-      let stub =
-        foreign (func_name "is_satisfied")
-          ( typ @-> Field.Vector.typ @-> Field.Vector.typ
-          @-> returning Ctypes.bool )
-      in
-      fun t ~primary_input ~auxiliary_input ->
-        stub t primary_input auxiliary_input
+      foreign (func_name "is_satisfied")
+        ( typ @-> Field_vector.typ @-> Field_vector.typ
+        @-> returning Ctypes.bool )
 
-    let digest =
-      let stub =
-        foreign (func_name "digest") (typ @-> returning Cpp_string.typ)
-      in
-      fun t ->
-        let s = stub t in
-        let r = Cpp_string.to_string s in
-        Cpp_string.delete s ; Md5.of_binary_exn r
+    let digest = foreign (func_name "digest") (typ @-> returning Cpp_string.typ)
+  end
 
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) : S =
+  struct
+    include Bindings
+
+    let check_exn sys =
+      if not (check sys) then failwith "R1CS_constraint_system.check_exn"
+
+    let create () =
+      let t = create () in
+      Caml.Gc.finalise delete t ; t
+
+    let is_satisfied t ~primary_input ~auxiliary_input =
+      is_satisfied t primary_input auxiliary_input
+
+    let digest t =
+      let s = digest t in
+      let r = Cpp_string.to_string s in
+      Cpp_string.delete s ; Md5.of_binary_exn r
+
+    (* NOTE: This has to use libffi because Ctypes.FOREIGN doesn't support
+       [funptr]. *)
     let iter_constraints =
       let stub =
         foreign (func_name "iter")
@@ -1032,95 +1646,288 @@ struct
       let f c = a := f !a c in
       iter_constraints ~f t ; !a
   end
+end
 
-  module Protoboard : sig
-    type t
+module Common = struct
+  module type Bound = sig
+    include Foreign_types
 
-    val typ : t Ctypes.typ
+    val prefix : string
 
-    val create : unit -> t
+    val init : (unit -> unit return) result
 
-    val auxiliary_input : t -> Field.Vector.t
+    module Field0 : sig
+      type t [@@deriving sexp]
 
-    val num_variables : t -> int
+      val typ : t typ
 
-    val set_input_sizes : t -> int -> unit
+      val delete : (t -> unit return) result
 
-    val renumber_and_append_constraints :
-         t
-      -> R1CS_constraint_system.t
-      -> Linear_combination.Vector.t
-      -> int
-      -> unit
-
-    module Variable : sig
-      type t
-
-      val typ : t Ctypes.typ
-
-      val delete : t -> unit
-
-      val index : t -> int
-
-      val of_int : int -> t
+      val func_name : string -> string
     end
 
-    module Variable_array : sig
+    module Bigint :
+      Bigint.Bound
+      with type 'a return = 'a return
+       and type 'a result = 'a result
+       and type field := Field0.t
+
+    module Field :
+      Field.Bound
+      with type 'a return = 'a return
+       and type 'a result = 'a result
+       and type t = Field0.t
+
+    module Var : sig
+      module T : module type of Var (Field0)
+
+      include
+        T.Bound with type 'a return = 'a return and type 'a result = 'a result
+    end
+
+    module Linear_combination : sig
+      module T : module type of Linear_combination (Field) (Var)
+
+      include
+        T.Bound with type 'a return = 'a return and type 'a result = 'a result
+    end
+
+    module R1CS_constraint : sig
+      module T : module type of R1CS_constraint (Field) (Linear_combination)
+
+      include
+        T.Bound with type 'a return = 'a return and type 'a result = 'a result
+    end
+
+    module R1CS_constraint_system : sig
+      module T :
+          module type of
+            R1CS_constraint_system (Field0) (Field.Vector) (R1CS_constraint)
+
+      include
+        T.Bound with type 'a return = 'a return and type 'a result = 'a result
+    end
+
+    val field_size : (unit -> Bigint.R.t return) result
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end) :
+    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
+  struct
+    include F
+
+    let prefix = P.prefix
+
+    let init =
+      foreign
+        (with_prefix P.prefix "init_public_params")
+        (void @-> returning void)
+
+    module Field0 = struct
+      module F =
+        Make_foreign
+          (F)
+          (struct
+            let prefix = with_prefix prefix "field"
+          end)
+
+      type t = F.t sexp_opaque [@@deriving sexp]
+
+      include (F : module type of F with type t := t)
+    end
+
+    module Bigint = Bigint.Bind (F) (P) (Field0)
+
+    module Field =
+      Field.Bind
+        (F)
+        (struct
+          include Field0
+
+          let outer_prefix = P.prefix
+        end)
+
+    module Var = struct
+      module T = Var (Field0)
+      include T.Bind (F) (P)
+    end
+
+    module Linear_combination = struct
+      module T = Linear_combination (Field) (Var)
+      include T.Bind (F) (P)
+    end
+
+    module R1CS_constraint = struct
+      module T = R1CS_constraint (Field) (Linear_combination)
+      include T.Bind (F) (P)
+    end
+
+    module R1CS_constraint_system = struct
+      module T =
+        R1CS_constraint_system (Field) (Field.Vector) (R1CS_constraint)
+      include T.Bind (F) (P)
+    end
+
+    let field_size =
+      foreign
+        (with_prefix P.prefix "field_size")
+        (void @-> returning Bigint.R.typ)
+  end
+
+  module Make
+      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a) =
+  struct
+    let prefix = Bindings.prefix
+
+    let () = Bindings.init ()
+
+    module Field0 = Bindings.Field0
+    module Bigint = Bigint.Make (Field0) (Bindings.Bigint)
+    module Field = Field.Make (Field0) (Bigint.R) (Bindings.Field)
+    module Var = Bindings.Var.T.Make (Bindings.Var)
+    module Linear_combination =
+      Bindings.Linear_combination.T.Make
+        (Bindings.Linear_combination)
+        (Bindings.Field)
+        (Bindings.Var)
+    module R1CS_constraint =
+      Bindings.R1CS_constraint.T.Make (Bindings.R1CS_constraint)
+    module R1CS_constraint_system =
+      Bindings.R1CS_constraint_system.T.Make (Bindings.R1CS_constraint_system)
+
+    (* This is not currently used anywhere, so porting it won't give us any speed
+     improvements..
+  *)
+    module Protoboard : sig
       type t
 
       val typ : t Ctypes.typ
-
-      val emplace_back : t -> Variable.t -> unit
 
       val create : unit -> t
 
-      val delete : t -> unit
+      val auxiliary_input : t -> Field.Vector.t
 
-      val get : t -> int -> Variable.t
-    end
+      val num_variables : t -> int
 
-    val set_variable : t -> Variable.t -> Field.t -> unit
+      val set_input_sizes : t -> int -> unit
 
-    val get_variable : t -> Variable.t -> Field.t
+      val renumber_and_append_constraints :
+           t
+        -> R1CS_constraint_system.t
+        -> Linear_combination.Vector.t
+        -> int
+        -> unit
 
-    val allocate_variable : t -> Variable.t
+      module Variable : sig
+        type t
 
-    val allocate_variable_array : t -> int -> Variable_array.t
+        val typ : t Ctypes.typ
 
-    val augment_variable_annotation : t -> Variable.t -> string -> unit
-  end = struct
-    include Make_foreign (struct
-      let prefix = with_prefix M.prefix "protoboard"
-    end)
+        val delete : t -> unit
 
-    module Variable : sig
-      type t
+        val index : t -> int
 
-      val typ : t Ctypes.typ
+        val of_int : int -> t
+      end
 
-      val delete : t -> unit
+      module Variable_array : sig
+        type t
 
-      val of_int : int -> t
+        val typ : t Ctypes.typ
 
-      val index : t -> int
+        val emplace_back : t -> Variable.t -> unit
+
+        val create : unit -> t
+
+        val delete : t -> unit
+
+        val get : t -> int -> Variable.t
+      end
+
+      val set_variable : t -> Variable.t -> Field.t -> unit
+
+      val get_variable : t -> Variable.t -> Field.t
+
+      val allocate_variable : t -> Variable.t
+
+      val allocate_variable_array : t -> int -> Variable_array.t
+
+      val augment_variable_annotation : t -> Variable.t -> string -> unit
     end = struct
-      include Make_foreign (struct
-        let prefix = with_prefix M.prefix "protoboard_variable"
-      end)
+      include Make_foreign
+                (Ctypes_foreign)
+                (struct
+                  let prefix = with_prefix Bindings.prefix "protoboard"
+                end)
 
-      let of_int =
-        let stub = foreign (func_name "of_int") (int @-> returning typ) in
-        fun i ->
-          let t = stub i in
-          Caml.Gc.finalise delete t ; t
+      module Variable : sig
+        type t
 
-      let index = foreign (func_name "index") (typ @-> returning int)
-    end
+        val typ : t Ctypes.typ
 
-    module Variable_array = struct
-      include Make_foreign (struct
-        let prefix = with_prefix M.prefix "protoboard_variable_array"
-      end)
+        val delete : t -> unit
+
+        val of_int : int -> t
+
+        val index : t -> int
+      end = struct
+        include Make_foreign
+                  (Ctypes_foreign)
+                  (struct
+                    let prefix =
+                      with_prefix Bindings.prefix "protoboard_variable"
+                  end)
+
+        let of_int =
+          let stub = foreign (func_name "of_int") (int @-> returning typ) in
+          fun i ->
+            let t = stub i in
+            Caml.Gc.finalise delete t ; t
+
+        let index = foreign (func_name "index") (typ @-> returning int)
+      end
+
+      module Variable_array = struct
+        include Make_foreign
+                  (Ctypes_foreign)
+                  (struct
+                    let prefix =
+                      with_prefix Bindings.prefix "protoboard_variable_array"
+                  end)
+
+        let create =
+          let stub = foreign (func_name "create") (void @-> returning typ) in
+          fun () ->
+            let t = stub () in
+            Caml.Gc.finalise delete t ; t
+
+        let emplace_back =
+          foreign (func_name "emplace_back")
+            (typ @-> Variable.typ @-> returning void)
+
+        let get =
+          let stub =
+            foreign (func_name "get") (typ @-> int @-> returning Variable.typ)
+          in
+          fun t i ->
+            let v = stub t i in
+            Caml.Gc.finalise Variable.delete v ;
+            v
+      end
+
+      let renumber_and_append_constraints =
+        foreign
+          (func_name "renumber_and_append_constraints")
+          ( typ @-> R1CS_constraint_system.typ @-> Linear_combination.Vector.typ
+          @-> int @-> returning void )
+
+      let augment_variable_annotation =
+        foreign
+          (func_name "augment_variable_annotation")
+          (typ @-> Variable.typ @-> string @-> returning void)
 
       let create =
         let stub = foreign (func_name "create") (void @-> returning typ) in
@@ -1128,96 +1935,62 @@ struct
           let t = stub () in
           Caml.Gc.finalise delete t ; t
 
-      let emplace_back =
-        foreign (func_name "emplace_back")
-          (typ @-> Variable.typ @-> returning void)
+      let num_variables =
+        foreign (func_name "num_variables") (typ @-> returning int)
 
-      let get =
+      let set_input_sizes =
+        foreign (func_name "set_input_sizes") (typ @-> int @-> returning void)
+
+      let set_variable =
+        foreign (func_name "set_variable")
+          (typ @-> Variable.typ @-> Field.typ @-> returning void)
+
+      let get_variable =
         let stub =
-          foreign (func_name "get") (typ @-> int @-> returning Variable.typ)
+          foreign (func_name "get_variable")
+            (typ @-> Variable.typ @-> returning Field.typ)
         in
-        fun t i ->
-          let v = stub t i in
+        fun t v ->
+          let x = stub t v in
+          Caml.Gc.finalise Field.delete x ;
+          x
+
+      let allocate_variable =
+        let stub =
+          foreign
+            (func_name "allocate_variable")
+            (typ @-> returning Variable.typ)
+        in
+        fun t ->
+          let v = stub t in
           Caml.Gc.finalise Variable.delete v ;
+          v
+
+      let allocate_variable_array =
+        let stub =
+          foreign
+            (func_name "allocate_variable_array")
+            (typ @-> int @-> returning Variable_array.typ)
+        in
+        fun t n ->
+          let v = stub t n in
+          Caml.Gc.finalise Variable_array.delete v ;
+          v
+
+      let auxiliary_input =
+        let stub =
+          foreign
+            (func_name "auxiliary_input")
+            (typ @-> returning Field.Vector.typ)
+        in
+        fun t ->
+          let v = stub t in
+          Caml.Gc.finalise Field.Vector.delete v ;
           v
     end
 
-    let renumber_and_append_constraints =
-      foreign
-        (func_name "renumber_and_append_constraints")
-        ( typ @-> R1CS_constraint_system.typ @-> Linear_combination.Vector.typ
-        @-> int @-> returning void )
-
-    let augment_variable_annotation =
-      foreign
-        (func_name "augment_variable_annotation")
-        (typ @-> Variable.typ @-> string @-> returning void)
-
-    let create =
-      let stub = foreign (func_name "create") (void @-> returning typ) in
-      fun () ->
-        let t = stub () in
-        Caml.Gc.finalise delete t ; t
-
-    let num_variables =
-      foreign (func_name "num_variables") (typ @-> returning int)
-
-    let set_input_sizes =
-      foreign (func_name "set_input_sizes") (typ @-> int @-> returning void)
-
-    let set_variable =
-      foreign (func_name "set_variable")
-        (typ @-> Variable.typ @-> Field.typ @-> returning void)
-
-    let get_variable =
-      let stub =
-        foreign (func_name "get_variable")
-          (typ @-> Variable.typ @-> returning Field.typ)
-      in
-      fun t v ->
-        let x = stub t v in
-        Caml.Gc.finalise Field.delete x ;
-        x
-
-    let allocate_variable =
-      let stub =
-        foreign (func_name "allocate_variable") (typ @-> returning Variable.typ)
-      in
-      fun t ->
-        let v = stub t in
-        Caml.Gc.finalise Variable.delete v ;
-        v
-
-    let allocate_variable_array =
-      let stub =
-        foreign
-          (func_name "allocate_variable_array")
-          (typ @-> int @-> returning Variable_array.typ)
-      in
-      fun t n ->
-        let v = stub t n in
-        Caml.Gc.finalise Variable_array.delete v ;
-        v
-
-    let auxiliary_input =
-      let stub =
-        foreign
-          (func_name "auxiliary_input")
-          (typ @-> returning Field.Vector.typ)
-      in
-      fun t ->
-        let v = stub t in
-        Caml.Gc.finalise Field.Vector.delete v ;
-        v
+    let field_size : Bigint.R.t = Bindings.field_size ()
   end
-
-  let field_size =
-    let stub =
-      foreign
-        (with_prefix M.prefix "field_size")
-        (void @-> returning Bigint.R.typ)
-    in
-    stub ()
 end
 
 module type Proof_system_inputs_intf = sig
@@ -1262,9 +2035,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val of_bigstring : Bigstring.t -> t
   end = struct
-    include Proving_key.Make (struct
-      let prefix = with_prefix M.prefix "proving_key"
-    end)
+    include Proving_key.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "proving_key"
+              end)
 
     let r1cs_constraint_system =
       foreign
@@ -1384,9 +2159,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val size_in_bits : t -> int
   end = struct
-    include Verification_key.Make (struct
-      let prefix = with_prefix M.prefix "verification_key"
-    end)
+    include Verification_key.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "verification_key"
+              end)
 
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)
@@ -1451,9 +2228,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val create : M.R1CS_constraint_system.t -> t
   end = struct
-    include Keypair.Make (struct
-      let prefix = with_prefix M.prefix "keypair"
-    end)
+    include Keypair.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "keypair"
+              end)
 
     let pk =
       let stub =
@@ -1527,9 +2306,11 @@ struct
 
     include Binable.S with type t := t
   end = struct
-    include Proof.Make (struct
-      let prefix = with_prefix M.prefix "proof"
-    end)
+    include Proof.Make
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix M.prefix "proof"
+              end)
 
     type message = unit
 
@@ -1582,10 +2363,14 @@ module Make_full (M : sig
   val prefix : string
 end) =
 struct
-  module Common = Make_common (struct
-    let prefix = M.prefix
-  end)
+  module Common_bindings =
+    Common.Bind
+      (Ctypes_foreign)
+      (struct
+        let prefix = M.prefix
+      end)
 
+  module Common = Common.Make (Common_bindings)
   module Prefix = M
 
   module type Common_intf = module type of Common
@@ -1776,7 +2561,7 @@ struct
       end
 
       module T = struct
-        include Make_foreign (Prefix)
+        include Make_foreign (Ctypes_foreign) (Prefix)
       end
 
       include T
@@ -1887,9 +2672,11 @@ struct
           module Vector : Deletable_intf
       end) =
   struct
-    include Make_foreign (struct
-      let prefix = with_prefix Prefix.prefix "fqk"
-    end)
+    include Make_foreign
+              (Ctypes_foreign)
+              (struct
+                let prefix = with_prefix Prefix.prefix "fqk"
+              end)
 
     let one =
       let stub = foreign (func_name "one") (void @-> returning typ) in
@@ -1914,22 +2701,30 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt6_0.Field.Vector.length v = 4
 
-    module G2 =
-      Make_group (struct
-          let prefix = with_prefix Mnt4_0.prefix "g2"
-        end)
-        (Mnt4_0.Field)
-        (Mnt4_0.Bigint.R)
-        (Mnt6_0.Field.Vector)
+    module G2 = struct
+      module T = Group (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field.Vector)
+
+      include T.Make
+                (T.Bind
+                   (Ctypes_foreign)
+                   (struct
+                     let prefix = with_prefix Mnt4_0.prefix "g2"
+                   end))
+                   (Mnt6_0.Field.Vector)
+    end
 
     module G1 = struct
-      module T =
-        Make_group (struct
-            let prefix = with_prefix Mnt4_0.prefix "g1"
-          end)
-          (Mnt4_0.Field)
-          (Mnt4_0.Bigint.R)
-          (Mnt6_0.Field)
+      module T = struct
+        module T' = Group (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field)
+
+        include T'.Make
+                  (T'.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt4_0.prefix "g1"
+                     end))
+                     (Mnt6_0.Field)
+      end
 
       include T
 
@@ -1937,20 +2732,30 @@ struct
         let g = one in
         equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
-      module Coefficients =
-        Make_group_coefficients (struct
-            let prefix = with_prefix Mnt4_0.prefix "g1"
-          end)
-          (Mnt6_0.Field)
+      module Coefficients = struct
+        module T = Group_coefficients (Mnt6_0.Field)
 
-      module Window_table =
-        Make_window_table (struct
-            let prefix = with_prefix Mnt4_0.prefix "g1"
-          end)
-          (T)
-          (Field)
-          (Bigint.R)
-          (Vector)
+        include T.Make
+                  (T.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt4_0.prefix "g1"
+                     end))
+      end
+
+      module Window_table = struct
+        module T' = Window_table (T) (Field) (Bigint.R) (Vector)
+
+        include T'.Make
+                  (T'.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt4_0.prefix "g1"
+                     end))
+                     (T)
+                  (Bigint.R)
+                  (Vector)
+      end
 
       let%test "window-scale" =
         let table = Window_table.create one in
@@ -1964,7 +2769,7 @@ struct
           let ( * ) = Field.mul in
           let x = Field.random () in
           let f = (x * x * x) + (Coefficients.a * x) + Coefficients.b in
-          if Field.is_square f then of_affine_coordinates (x, Field.sqrt f)
+          if Field.is_square f then of_affine (x, Field.sqrt f)
           else random_curve_point ()
         in
         let g = random_curve_point () in
@@ -1973,7 +2778,7 @@ struct
         equal (Window_table.scale table s) g
 
       let%test "coefficients correct" =
-        let x, y = to_affine_coordinates one in
+        let x, y = to_affine_exn one in
         let open Mnt6_0.Field in
         let ( + ) = add in
         let ( * ) = mul in
@@ -2018,22 +2823,30 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt4_0.Field.Vector.length v = 6
 
-    module G2 =
-      Make_group (struct
-          let prefix = with_prefix Mnt6_0.prefix "g2"
-        end)
-        (Mnt6_0.Field)
-        (Mnt6_0.Bigint.R)
-        (Mnt4_0.Field.Vector)
+    module G2 = struct
+      module T = Group (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field.Vector)
+
+      include T.Make
+                (T.Bind
+                   (Ctypes_foreign)
+                   (struct
+                     let prefix = with_prefix Mnt6_0.prefix "g2"
+                   end))
+                   (Mnt4_0.Field.Vector)
+    end
 
     module G1 = struct
-      module T =
-        Make_group (struct
-            let prefix = with_prefix Mnt6_0.prefix "g1"
-          end)
-          (Mnt6_0.Field)
-          (Mnt6_0.Bigint.R)
-          (Mnt4_0.Field)
+      module T = struct
+        module T' = Group (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field)
+
+        include T'.Make
+                  (T'.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt6_0.prefix "g1"
+                     end))
+                     (Mnt4_0.Field)
+      end
 
       include T
 
@@ -2041,20 +2854,30 @@ struct
         let g = one in
         equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
-      module Coefficients =
-        Make_group_coefficients (struct
-            let prefix = with_prefix Mnt6_0.prefix "g1"
-          end)
-          (Mnt4_0.Field)
+      module Coefficients = struct
+        module T = Group_coefficients (Mnt4_0.Field)
 
-      module Window_table =
-        Make_window_table (struct
-            let prefix = with_prefix Mnt6_0.prefix "g1"
-          end)
-          (T)
-          (Field)
-          (Bigint.R)
-          (Vector)
+        include T.Make
+                  (T.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt6_0.prefix "g1"
+                     end))
+      end
+
+      module Window_table = struct
+        module T' = Window_table (T) (Field) (Bigint.R) (Vector)
+
+        include T'.Make
+                  (T'.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt6_0.prefix "g1"
+                     end))
+                     (T)
+                  (Bigint.R)
+                  (Vector)
+      end
 
       let%test "window-scale" =
         let table = Window_table.create one in
@@ -2062,7 +2885,7 @@ struct
         equal (Window_table.scale table s) (scale one s)
 
       let%test "coefficients correct" =
-        let x, y = to_affine_coordinates one in
+        let x, y = to_affine_exn one in
         let open Mnt4_0.Field in
         let ( + ) = add in
         let ( * ) = mul in
