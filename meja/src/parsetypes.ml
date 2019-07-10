@@ -1,101 +1,23 @@
 open Core_kernel
-
-let pp_name ppf name =
-  let c = name.[0] in
-  if
-    (Char.compare c 'a' >= 0 && Char.compare c 'z' <= 0)
-    || (Char.compare c 'A' >= 0 && Char.compare c 'z' <= 0)
-    || Char.equal c '_'
-  then Format.pp_print_string ppf name
-  else Format.fprintf ppf "(%s)" name
-
-module Longident = struct
-  include Longident
-
-  let rec compare lid1 lid2 =
-    let nonzero_or x f = if Int.equal x 0 then f () else x in
-    match (lid1, lid2) with
-    | Lident name1, Lident name2 ->
-        String.compare name1 name2
-    | Ldot (lid1, name1), Ldot (lid2, name2) ->
-        nonzero_or (String.compare name1 name2) (fun () -> compare lid1 lid2)
-    | Lapply (lid1a, lid1b), Lapply (lid2a, lid2b) ->
-        nonzero_or (compare lid1a lid2a) (fun () -> compare lid1b lid2b)
-    | Lident _, _ ->
-        -1
-    | _, Lident _ ->
-        1
-    | Ldot _, _ ->
-        -1
-    | _, Ldot _ ->
-        1
-
-  let rec sexp_of_t lid =
-    match lid with
-    | Lident name ->
-        Sexp.Atom name
-    | Ldot (lid, name) ->
-        Sexp.List [sexp_of_t lid; Atom name]
-    | Lapply (lid1, lid2) ->
-        Sexp.List [sexp_of_t lid1; sexp_of_t lid2]
-
-  include Comparator.Make (struct
-    type nonrec t = t
-
-    let compare = compare
-
-    let sexp_of_t = sexp_of_t
-  end)
-
-  let rec pp ppf lid =
-    let open Format in
-    match lid with
-    | Lident name ->
-        pp_name ppf name
-    | Ldot (lid, name) ->
-        fprintf ppf "%a.%s" pp lid name
-    | Lapply (lid1, lid2) ->
-        fprintf ppf "%a(%a)" pp lid1 pp lid2
-
-  let rec add_outer_module name lid =
-    match lid with
-    | Lident name2 ->
-        Ldot (Lident name, name2)
-    | Ldot (lid, name2) ->
-        Ldot (add_outer_module name lid, name2)
-    | Lapply _ ->
-        failwith "Unhandled Lapply in add_outer_module"
-end
-
-type str = string Location.loc
-
-type lid = Longident.t Location.loc
-
-type explicitness = Implicit | Explicit
-
-let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
-
-let mk_lid (str : str) = map_loc str ~f:(fun x -> Longident.Lident x)
+open Ast_types
 
 type type_expr = {type_desc: type_desc; type_id: int; type_loc: Location.t}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of str option * (* depth *) int * explicitness
-  | Ttuple of type_expr list
-  | Tarrow of type_expr * type_expr * explicitness * Asttypes.arg_label
+  | Ptyp_var of str option * explicitness
+  | Ptyp_tuple of type_expr list
+  | Ptyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
-  | Tctor of variant
-  | Tpoly of type_expr list * type_expr
+  | Ptyp_ctor of variant
+  | Ptyp_poly of type_expr list * type_expr
 
 and variant =
   { var_ident: lid
   ; var_params: type_expr list
-  ; var_implicit_params: type_expr list
-  ; var_decl_id: int }
+  ; var_implicit_params: type_expr list }
 
-type field_decl =
-  {fld_ident: str; fld_type: type_expr; fld_id: int; fld_loc: Location.t}
+type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
 type ctor_args =
   | Ctor_tuple of type_expr list
@@ -112,7 +34,6 @@ type type_decl =
   ; tdec_params: type_expr list
   ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
-  ; tdec_id: int
   ; tdec_loc: Location.t }
 
 and type_decl_desc =
@@ -122,77 +43,88 @@ and type_decl_desc =
   | TRecord of field_decl list
   | TVariant of ctor_decl list
   | TOpen
-  | TExtend of lid * type_decl * ctor_decl list
+  | TExtend of lid * Type0.type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
-type pattern =
-  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: type_expr}
+type literal = Int of int | Bool of bool | Field of string | String of string
+
+type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
 and pattern_desc =
-  | PAny
-  | PVariable of str
-  | PConstraint of pattern * type_expr
-  | PTuple of pattern list
-  | POr of pattern * pattern
-  | PInt of int
-  | PRecord of (lid * pattern) list
-  | PCtor of lid * pattern option
+  | Ppat_any
+  | Ppat_variable of str
+  | Ppat_constraint of pattern * type_expr
+  | Ppat_tuple of pattern list
+  | Ppat_or of pattern * pattern
+  | Ppat_int of int
+  | Ppat_record of (lid * pattern) list
+  | Ppat_ctor of lid * pattern option
 
-type expression =
-  {exp_desc: expression_desc; exp_loc: Location.t; exp_type: type_expr}
+type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 
 and expression_desc =
-  | Apply of expression * (Asttypes.arg_label * expression) list
-  | Variable of lid
-  | Int of int
-  | Fun of Asttypes.arg_label * pattern * expression * explicitness
-  | Seq of expression * expression
-  | Let of pattern * expression * expression
-  | Constraint of expression * type_expr
-  | Tuple of expression list
-  | Match of expression * (pattern * expression) list
-  | Field of expression * lid
-  | Record of (lid * expression) list * expression option
-  | Ctor of lid * expression option
-  | Unifiable of {mutable expression: expression option; name: str; id: int}
+  | Pexp_apply of expression * (Asttypes.arg_label * expression) list
+  | Pexp_variable of lid
+  | Pexp_literal of literal
+  | Pexp_fun of Asttypes.arg_label * pattern * expression * explicitness
+  | Pexp_newtype of str * expression
+  | Pexp_seq of expression * expression
+  | Pexp_let of pattern * expression * expression
+  | Pexp_constraint of expression * type_expr
+  | Pexp_tuple of expression list
+  | Pexp_match of expression * (pattern * expression) list
+  | Pexp_field of expression * lid
+  | Pexp_record of (lid * expression) list * expression option
+  | Pexp_ctor of lid * expression option
+  | Pexp_unifiable of
+      { mutable expression: expression option
+      ; name: str
+      ; id: int }
+  | Pexp_if of expression * expression * expression option
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
 and signature_desc =
-  | SValue of str * type_expr
-  | SInstance of str * type_expr
-  | STypeDecl of type_decl
-  | SModule of str * module_sig
-  | SModType of str * module_sig
+  | Psig_value of str * type_expr
+  | Psig_instance of str * type_expr
+  | Psig_type of type_decl
+  | Psig_module of str * module_sig
+  | Psig_modtype of str * module_sig
+  | Psig_open of lid
+  | Psig_typeext of variant * ctor_decl list
+  | Psig_request of type_expr * ctor_decl
+  | Psig_multiple of signature_item list
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
 and module_sig_desc =
-  | Signature of signature_item list
-  | SigName of lid
-  | SigAbstract
-  | SigFunctor of str * module_sig * module_sig
+  | Pmty_sig of signature_item list
+  | Pmty_name of lid
+  | Pmty_abstract
+  | Pmty_functor of str * module_sig * module_sig
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
 and statement_desc =
-  | Value of pattern * expression
-  | Instance of str * expression
-  | TypeDecl of type_decl
-  | Module of str * module_expr
-  | Open of lid
-  | TypeExtension of variant * ctor_decl list
-  | Request of type_expr * ctor_decl * (pattern option * expression) option
-  | Multiple of statement list
+  | Pstmt_value of pattern * expression
+  | Pstmt_instance of str * expression
+  | Pstmt_type of type_decl
+  | Pstmt_module of str * module_expr
+  | Pstmt_modtype of str * module_sig
+  | Pstmt_open of lid
+  | Pstmt_typeext of variant * ctor_decl list
+  | Pstmt_request of
+      type_expr * ctor_decl * (pattern option * expression) option
+  | Pstmt_multiple of statement list
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc =
-  | Structure of statement list
-  | ModName of lid
-  | Functor of str * module_sig * module_expr
+  | Pmod_struct of statement list
+  | Pmod_name of lid
+  | Pmod_functor of str * module_sig * module_expr
 
 let rec typ_debug_print fmt typ =
   let open Format in
@@ -209,26 +141,26 @@ let rec typ_debug_print fmt typ =
   in
   print "(%i:" typ.type_id ;
   ( match typ.type_desc with
-  | Tvar (None, i, Explicit) ->
-      print "var _@%i" i
-  | Tvar (Some name, i, Explicit) ->
-      print "var %s@%i" name.txt i
-  | Tvar (None, i, Implicit) ->
-      print "implicit_var _@%i" i
-  | Tvar (Some name, i, Implicit) ->
-      print "implicit_var %s@%i" name.txt i
-  | Tpoly (typs, typ) ->
+  | Ptyp_var (None, Explicit) ->
+      print "var _"
+  | Ptyp_var (Some name, Explicit) ->
+      print "var %s" name.txt
+  | Ptyp_var (None, Implicit) ->
+      print "implicit_var _"
+  | Ptyp_var (Some name, Implicit) ->
+      print "implicit_var %s" name.txt
+  | Ptyp_poly (typs, typ) ->
       print "poly [%a] %a"
         (print_list typ_debug_print)
         typs typ_debug_print typ
-  | Tarrow (typ1, typ2, Explicit, label) ->
+  | Ptyp_arrow (typ1, typ2, Explicit, label) ->
       print "%a%a -> %a" print_label label typ_debug_print typ1 typ_debug_print
         typ2
-  | Tarrow (typ1, typ2, Implicit, label) ->
+  | Ptyp_arrow (typ1, typ2, Implicit, label) ->
       print "%a{%a} -> %a" print_label label typ_debug_print typ1
         typ_debug_print typ2
-  | Tctor {var_ident= name; var_params= params; _} ->
+  | Ptyp_ctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Longident.pp name.txt (print_list typ_debug_print) params
-  | Ttuple typs ->
+  | Ptyp_tuple typs ->
       print "(%a)" (print_list typ_debug_print) typs ) ;
   print ")"

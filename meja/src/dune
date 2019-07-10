@@ -2,8 +2,7 @@
  (name meja_lib)
  (public_name meja.lib)
  (libraries core_kernel ocaml-compiler-libs.common)
- (flags :standard -warn-error -39-21)
- (preprocess (pps ppxlib.metaquot ppx_jane)))
+ (preprocess (pps ppx_jane)))
 
 (menhir
   (flags --explain --unused-tokens)

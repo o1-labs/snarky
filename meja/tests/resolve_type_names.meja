@@ -1,0 +1,9 @@
+module A = {
+  type t = int;
+};
+
+let x : A.t = 15;
+
+open A;
+
+let y : A.t = 20;

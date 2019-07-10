@@ -10,11 +10,13 @@ build: [
   ["jbuilder" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "core_kernel"
+  "core_kernel" {>= "v0.12" & < "v0.13" }
   "ocaml-compiler-libs"
-  "dune"                {build & >= "1.0+beta12"}
+  "ppxlib"
+  "ppx_jane"
+  "dune"                {build & >= "1.6"}
 ]
-available: [ ocaml-version >= "4.04.1" ]
+available: [ ocaml-version >= "4.07.0" ]
 descr: "
 A Reason-ML style language with baked-in support for Snarky
 "

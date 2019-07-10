@@ -1,6 +1,6 @@
 open Core_kernel
 
-module Make (Impl : Snark_intf.S) = struct
+module Make (Impl : Snark_intf.Basic) = struct
   open Impl
 
   type t =
@@ -23,7 +23,7 @@ module Make (Impl : Snark_intf.S) = struct
     in
     go [] xs ys
 
-  let hash_to_field {dimension; max_input_length; coefficients} xs =
+  let hash_to_field {coefficients; _} xs =
     let sum = List.fold ~init:Field.zero ~f:Field.add in
     List.map coefficients ~f:(fun cs ->
         sum (map2_lax cs xs ~f:(fun c b -> if b then c else Field.zero)) )
@@ -35,7 +35,7 @@ module Make (Impl : Snark_intf.S) = struct
         List.init Field.size_in_bits ~f:(fun i -> Bigint.test_bit n i) )
 
   module Checked = struct
-    let hash_to_field ({dimension; max_input_length; coefficients} : t)
+    let hash_to_field ({max_input_length; coefficients; _} : t)
         (vs : Boolean.var list) : (Field.Var.t list, _) Checked.t =
       let vs = (vs :> Field.Var.t list) in
       let input_len = List.length vs in
@@ -107,18 +107,44 @@ module Make (Impl : Snark_intf.S) = struct
     let hash (h1 : var) (h2 : var) =
       with_label "Knapsack.hash" (Checked.hash_to_bits knapsack (h1 @ h2))
 
-    let map2i_exn xs ys ~f =
-      let rec go acc i xs ys =
-        match (xs, ys) with
-        | [], [] ->
-            List.rev acc
-        | x :: xs, y :: ys ->
-            go (f i x y :: acc) (i + 1) xs ys
-        | _, _ ->
-            failwith "mapi_exn: Invalid lengths"
-      in
-      go [] 0 xs ys
-
     let assert_equal = Impl.Bitstring_checked.Assert.equal
+  end
+end
+
+module Run = struct
+  module Make (Intf : Snark_intf.Run_basic) = struct
+    open Intf
+    module Impl = Make (Intf.Internal_Basic)
+    open Impl
+
+    type t = Impl.t
+
+    let create = create
+
+    let hash_to_field = hash_to_field
+
+    let hash_to_bits = hash_to_bits
+
+    module Hash (M : sig
+      val knapsack : t
+    end) =
+    struct
+      include Impl.Hash (M)
+
+      let if_ b ~(then_ : var) ~(else_ : var) =
+        run_checked (if_ b ~then_ ~else_)
+
+      let hash h1 h2 = run_checked (hash h1 h2)
+
+      let assert_equal h1 h2 = run_checked (assert_equal h1 h2)
+    end
+
+    module Checked = struct
+      include Impl.Checked
+
+      let hash_to_field h vs = run_checked (hash_to_field h vs)
+
+      let hash_to_bits h vs = run_checked (hash_to_bits h vs)
+    end
   end
 end

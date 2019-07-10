@@ -1,6 +1,5 @@
 open Core
 open Ctypes
-open Foreign
 
 let with_prefix prefix s = sprintf "%s_%s" prefix s
 
@@ -8,17 +7,27 @@ module type Prefix_intf = sig
   val prefix : string
 end
 
+module type Foreign_types = sig
+  type 'a return
+
+  type 'a result
+end
+
 module type S = sig
+  include Foreign_types
+
   type t
 
   val typ : t typ
 
   val func_name : string -> string
 
-  val delete : t -> unit
+  val delete : (t -> unit return) result
 end
 
-module Make_foreign (M : Prefix_intf) = struct
+module Make_foreign (F : Ctypes.FOREIGN) (M : Prefix_intf) = struct
+  include F
+
   type t = unit ptr
 
   let typ = ptr void
@@ -37,14 +46,22 @@ end
 module type Field_constrained = sig
   type 'field t
 
-  module Make (M : Field_prefix_intf) : S with type t = M.field t
+  module Make (F : Ctypes.FOREIGN) (M : Field_prefix_intf) :
+    S
+    with type t = M.field t
+     and type 'a return := 'a F.return
+     and type 'a result := 'a F.result
 end
 
 module Field_constrained = struct
   type 'field t = unit ptr
 
-  module Make (M : Field_prefix_intf) : S with type t = M.field t =
-    Make_foreign (M)
+  module Make (F : Ctypes.FOREIGN) (M : Field_prefix_intf) :
+    S
+    with type t = M.field t
+     and type 'a return := 'a F.return
+     and type 'a result := 'a F.result =
+    Make_foreign (F) (M)
 end
 
 module Var = Field_constrained
