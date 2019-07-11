@@ -41,8 +41,7 @@ struct
           res += scratch
       | Var v ->
           let v = context v in
-          v *= scale ;
-          res += v
+          v *= scale ; res += v
       | Scale (s, t) when !can_mutate_scale ->
           scale *= s ; go scale t
       | Scale (s, t) ->

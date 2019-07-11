@@ -53,7 +53,8 @@ module type S = sig
       val of_index : int -> t
     end
 
-    val eval : [`Return_values_will_be_mutated of (int -> Field.t)] -> t -> Field.t
+    val eval :
+      [`Return_values_will_be_mutated of int -> Field.t] -> t -> Field.t
 
     val constant : Field.t -> t
 

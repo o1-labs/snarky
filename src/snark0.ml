@@ -1,3 +1,4 @@
+module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked
 open Core_kernel
@@ -1020,14 +1021,20 @@ struct
   module Cvar1 = struct
     include Cvar
 
-    let project (vars : Checked.Boolean.var list) =
-      let rec go c acc = function
+    let project =
+      let two = Field.of_int 2 in
+      fun (vars : Checked.Boolean.var list) ->
+        let rec go res = function
+          | [] ->
+              res
+          | v :: vs ->
+              go Cvar0.(Add (v, Scale (two, res))) vs
+        in
+        match List.rev (vars :> Cvar.t list) with
         | [] ->
-            List.rev acc
+            Cvar0.Constant Field.zero
         | v :: vs ->
-            go (Field.add c c) ((c, v) :: acc) vs
-      in
-      Cvar.linear_combination (go Field.one [] (vars :> Cvar.t list))
+            go v vs
 
     let pack vars =
       assert (List.length vars < Field.size_in_bits) ;
