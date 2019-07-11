@@ -204,28 +204,32 @@ struct
 
     let check ~run t s = run_and_check' ~run t s |> Result.map ~f:(Fn.const ())
 
+    (* [equal_constraints z z_inv r] asserts that
+       if z = 0 then r = 1, or
+       if z <> 0 then r = 0 and z * z_inv = 1
+    *)
+    let equal_constraints (z : Cvar.t) (z_inv : Cvar.t) (r : Cvar.t) =
+      let open Constraint in
+      let open Cvar in
+      assert_all
+        [ r1cs ~label:"equals_1" z_inv z (Cvar.constant Field.one - r)
+        ; r1cs ~label:"equals_2" r z (Cvar.constant Field.zero) ]
+
+    (* [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
+       [equal_constraints z z_inv r].
+
+       In particular, [r] is [1] if [z = 0] and [0] otherwise.
+    *)
+    let equal_vars (z : Cvar.t) : (Field.t * Field.t, _) As_prover.t =
+      let open As_prover in
+      let%map z = read_var z in
+      if Field.equal z Field.zero then (Field.one, Field.zero)
+      else (Field.zero, Field.inv z)
+
     let equal (x : Cvar.t) (y : Cvar.t) : (Cvar.t Boolean.t, _) t =
-      let open Let_syntax in
-      let%bind inv =
-        exists Typ.field
-          ~compute:
-            (let open As_prover.Let_syntax in
-            let%map x = As_prover.read_var x and y = As_prover.read_var y in
-            if Field.equal x y then Field.zero else Field.inv (Field.sub x y))
-      and r =
-        exists Typ.field
-          ~compute:
-            (let open As_prover.Let_syntax in
-            let%map x = As_prover.read_var x and y = As_prover.read_var y in
-            if Field.equal x y then Field.one else Field.zero)
-      in
-      let%map () =
-        let open Constraint in
-        let open Cvar in
-        assert_all
-          [ r1cs ~label:"equals_1" inv (x - y) (Cvar.constant Field.one - r)
-          ; r1cs ~label:"equals_2" r (x - y) (Cvar.constant Field.zero) ]
-      in
+      let z = Cvar.(x - y) in
+      let%bind r, inv = exists Typ.(field * field) ~compute:(equal_vars z) in
+      let%map () = equal_constraints z inv r in
       Boolean.Unsafe.create r
 
     let mul ?(label = "Checked.mul") (x : Cvar.t) (y : Cvar.t) =
@@ -1216,7 +1220,7 @@ struct
         | _, _ ->
             let t1_a, t1_b = List.split_n t1 chunk_size in
             let t2_a, t2_b = List.split_n t2 chunk_size in
-            go ((Cvar1.pack t1_a, Cvar1.pack t2_a) :: acc) t1_b t2_b
+            go ((t1_a, t2_a) :: acc) t1_b t2_b
       in
       go [] t1 t2
 
@@ -1224,14 +1228,45 @@ struct
       let open Checked in
       all
         (Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
-             equal x1 x2 ))
+             equal (Cvar1.pack x1) (Cvar1.pack x2) ))
+      >>= Boolean.all
+
+    let equal_expect_true t1 t2 =
+      let open Checked in
+      all
+        (Core_kernel.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
+             (* Inlined [Field.equal], but skip creating the field element for
+                this chunk if possible.
+             *)
+             let z = Cvar1.(pack x1 - pack x2) in
+             let%bind r, inv =
+               exists
+                 Typ.(field * field)
+                 ~compute:
+                   As_prover.(
+                     match
+                       Core_kernel.List.map2 x1 x2 ~f:(fun x1 x2 ->
+                           let%map x1 = read_var (x1 :> Cvar.t)
+                           and x2 = read_var (x2 :> Cvar.t) in
+                           Field.equal x1 x2 )
+                     with
+                     | Ok res ->
+                         let%bind res = all res in
+                         if Core_kernel.List.for_all ~f:Fn.id res then
+                           return (Field.one, Field.zero)
+                         else equal_vars z
+                     | _ ->
+                         equal_vars z)
+             in
+             let%map () = equal_constraints z inv r in
+             Boolean.Unsafe.of_cvar r ))
       >>= Boolean.all
 
     module Assert = struct
       let equal t1 t2 =
         let open Checked in
         Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
-            Constraint.equal x1 x2 )
+            Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2) )
         |> assert_all ~label:"Bitstring.Assert.equal"
     end
   end
