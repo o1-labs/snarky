@@ -169,7 +169,7 @@ struct
       let system = R1CS_constraint_system.create () in
       let get_value : Cvar.t -> Field.t =
         let get_one v = Field.Vector.get aux (v - 1) in
-        Cvar.eval get_one
+        Cvar.eval (`Return_values_will_be_mutated get_one)
       in
       let state =
         Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
