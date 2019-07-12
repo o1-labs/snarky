@@ -228,6 +228,9 @@ struct
       in
       Boolean.Unsafe.create r
 
+    let not_equal (x : Cvar.t) (y : Cvar.t) : Cvar.t Truthy.t =
+      Truthy.Unsafe.create Cvar.(x - y)
+
     let mul ?(label = "Checked.mul") (x : Cvar.t) (y : Cvar.t) =
       match (x, y) with
       | Constant x, Constant y ->
@@ -511,6 +514,104 @@ struct
         let any xs = Or xs
 
         let all xs = And xs
+      end
+    end
+
+    (** Truthy values. 0 is false, any other number is true. *)
+    module Truthy = struct
+      open Truthy.Unsafe
+
+      type var = Cvar.t Truthy.t
+
+      type value = bool
+
+      let true_ : var = create (Cvar.constant Field.one)
+
+      let false_ : var = create (Cvar.constant Field.zero)
+
+      let of_boolean (x : Boolean.var) = create (x :> Cvar.t)
+
+      let to_boolean (x : var) =
+        let open Let_syntax in
+        let%map b = equal (x :> Cvar.t) (false_ :> Cvar.t) in
+        Boolean.not b
+
+      let ( && ) (x : var) (y : var) =
+        let open Let_syntax in
+        let%map z = mul ~label:"Truthy.( && )" (x :> Cvar.t) (y :> Cvar.t) in
+        create z
+
+      let rec all = function
+        | [] ->
+            Checked.return true_
+        | [x] ->
+            Checked.return x
+        | x :: y :: l ->
+            let open Let_syntax in
+            let%bind z = x && y in
+            all (z :: l)
+
+      let to_constant (b : var) =
+        Option.map
+          (Cvar.to_constant (b :> Cvar.t))
+          ~f:(fun x -> not Field.(equal zero x))
+
+      let var_of_value b = if b then true_ else false_
+
+      let typ : (var, value) Typ.t =
+        let open Typ in
+        let store b =
+          Store.(map (store (if b then Field.one else Field.zero)) ~f:create)
+        in
+        let read (v : var) =
+          let open Read.Let_syntax in
+          let%map x = Read.read (v :> Cvar.t) in
+          if Field.equal x Field.zero then false else true
+        in
+        let alloc = Alloc.(map alloc ~f:create) in
+        let check _ = Checked.return () in
+        {read; store; alloc; check}
+
+      let of_field (t : Cvar.t) : var = create t
+
+      module Assert = struct
+        let is_false ?(or_ : var option) (v : var) =
+          match or_ with
+          | Some v' ->
+              assert_r1cs ~label:"Truthy.Assert.is_false"
+                (v :> Cvar.t)
+                (v' :> Cvar.t)
+                (false_ :> Cvar.t)
+          | None ->
+              assert_equal ~label:"Truthy.Assert.is_false"
+                (v :> Cvar.t)
+                (false_ :> Cvar.t)
+
+        let%snarkydef_ is_true (v : var) = assert_non_zero (v :> Cvar.t)
+
+        let%snarkydef_ all (bs : var list) =
+          let open Let_syntax in
+          let rec all bs =
+            match bs with
+            | [] ->
+                Checked.return ()
+            | b :: bs ->
+                let%bind () = is_true b in
+                all bs
+          in
+          all bs
+
+        let%snarkydef_ none ?or_ (bs : var list) =
+          let open Let_syntax in
+          let rec none bs =
+            match bs with
+            | [] ->
+                Checked.return ()
+            | b :: bs ->
+                let%bind () = is_false ?or_ b in
+                none bs
+          in
+          none bs
       end
     end
 
@@ -1060,6 +1161,8 @@ struct
       include Cvar1
 
       let equal = Checked.equal
+
+      let not_equal = Checked.not_equal
 
       let mul x y = Checked.mul ~label:"Field.Checked.mul" x y
 
