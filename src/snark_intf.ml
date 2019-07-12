@@ -521,7 +521,11 @@ module type Basic = sig
 
     module Assert : sig
       val is_false : ?or_:var -> var -> (unit, _) Checked.t
-      (** Cost: 1 constraint. *)
+      (** Asserts that the variable is false.
+          If [or_] is provided, then this asserts that either variable is
+          false.
+          Cost: 1 constraint.
+      *)
 
       val is_true : var -> (unit, _) Checked.t
       (** Cost: 1 constraint. *)
@@ -530,7 +534,11 @@ module type Basic = sig
       (** Cost: n constraints for list[n]. *)
 
       val none : ?or_:var -> var list -> (unit, _) Checked.t
-      (** Cost: n constraints for list[n]. *)
+      (** Asserts that all of the variables in the list are false.
+          If [or_] is provided, then this asserts that either [or_] is false or
+          every variable in the list is false.
+          Cost: n constraints for list[n].
+      *)
     end
   end
 
@@ -834,6 +842,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     val equal : t -> t -> (Boolean.var, _) Checked.t
 
+    val not_equal : t -> t -> Truthy.var list
+    (** Returns a list of truthy values, corresponding to whether each 'chunk'
+        of the two lists are equal or not.
+
+        The bitstrings are 'chunked' into a series of field elements that arise
+        from those bits.
+    *)
+
     val lt_value :
          Boolean.var Bitstring_lib.Bitstring.Msb_first.t
       -> bool Bitstring_lib.Bitstring.Msb_first.t
@@ -841,6 +857,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     module Assert : sig
       val equal : t -> t -> (unit, _) Checked.t
+
+      val either_equal : or_not:Truthy.var -> t -> t -> (unit, _) Checked.t
+      (**
+          Assert that either the two lists are equal, or [or_not] is false.
+          Uses the same number of constraints as [equal].
+      *)
     end
   end
 

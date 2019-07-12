@@ -1330,12 +1330,21 @@ struct
              equal x1 x2 ))
       >>= Boolean.all
 
+    let not_equal t1 t2 =
+      Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
+          Checked.not_equal x1 x2 )
+
     module Assert = struct
       let equal t1 t2 =
         let open Checked in
         Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
             Constraint.equal x1 x2 )
         |> assert_all ~label:"Bitstring.Assert.equal"
+
+      let either_equal ~or_not t1 t2 =
+        Checked.Truthy.Assert.none ~or_:or_not
+          (Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
+               Checked.not_equal x1 x2 ))
     end
   end
 
