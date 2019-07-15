@@ -1,4 +1,5 @@
 #include <libsnark/caml/caml_mnt4.hpp>
+#include <libsnark/caml/caml_mnt.cpp.template>
 
 extern "C" {
 using namespace libsnark;
@@ -111,6 +112,14 @@ void camlsnark_mnt4_g1_vector_delete(std::vector<libff::G1<ppT>>* v) {
 // End g1 code
 
 // Start g2 code
+libff::Fqe<ppT>* camlsnark_mnt4_g2_coeff_a () {
+  return &libff::G2<ppT>::coeff_a;
+}
+
+libff::Fqe<ppT>* camlsnark_mnt4_g2_coeff_b () {
+  return &libff::G2<ppT>::coeff_b;
+}
+
 libff::G2<ppT>* camlsnark_mnt4_g2_of_coords (
     std::vector<libff::Fq<ppT>>* x,
     std::vector<libff::Fq<ppT>>* y) {

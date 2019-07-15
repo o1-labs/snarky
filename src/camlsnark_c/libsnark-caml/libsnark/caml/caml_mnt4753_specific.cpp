@@ -1,4 +1,5 @@
 #include <libsnark/caml/caml_mnt4753.hpp>
+#include <libsnark/caml/caml_mnt.cpp.template>
 
 extern "C" {
 using namespace libsnark;
