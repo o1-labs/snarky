@@ -112,21 +112,6 @@ void camlsnark_mnt4_g1_vector_delete(std::vector<libff::G1<ppT>>* v) {
 // End g1 code
 
 // Start g2 code
-libff::Fqe<ppT>* camlsnark_mnt4_g2_coeff_a () {
-  return &libff::G2<ppT>::coeff_a;
-}
-
-libff::Fqe<ppT>* camlsnark_mnt4_g2_coeff_b () {
-  return &libff::G2<ppT>::coeff_b;
-}
-
-libff::G2<ppT>* camlsnark_mnt4_g2_of_coords (
-    std::vector<libff::Fq<ppT>>* x,
-    std::vector<libff::Fq<ppT>>* y) {
-  return new libff::G2<ppT>(
-      libff::Fqe<ppT>(*x), libff::Fqe<ppT>(*y), libff::Fqe<ppT>::one() );
-}
-
 libff::G2<ppT>* camlsnark_mnt4_g2_negate (libff::G2<ppT>* a) {
   return new libff::G2<ppT>(- *a);
 }
@@ -177,16 +162,6 @@ libff::G2<ppT>* camlsnark_mnt4_g2_random() {
 
 void camlsnark_mnt4_g2_to_affine_coordinates(libff::G2<ppT>* a) {
   a->to_affine_coordinates();
-}
-
-std::vector<libff::Fq<ppT>>* camlsnark_mnt4_g2_x(libff::G2<ppT>* a) {
-  assert(a->Z() == libff::Fqe<ppT>::one());
-  return new std::vector< libff::Fq<ppT> >(a->X().all_base_field_elements());
-}
-
-std::vector<libff::Fq<ppT>>* camlsnark_mnt4_g2_y(libff::G2<ppT>* a) {
-  assert(a->Z() == libff::Fqe<ppT>::one());
-  return new std::vector< libff::Fq<ppT> >(a->Y().all_base_field_elements());
 }
 
 std::vector<libff::G2<ppT>>* camlsnark_mnt4_g2_vector_create() {
