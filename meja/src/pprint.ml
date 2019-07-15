@@ -65,23 +65,23 @@ let ctor_decl fmt decl =
       ()
 
 let type_decl_desc fmt = function
-  | TAbstract ->
+  | Pdec_abstract ->
       ()
-  | TAlias typ | TUnfold typ ->
+  | Pdec_alias typ | Pdec_unfold typ ->
       fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
-  | TRecord fields ->
+  | Pdec_record fields ->
       fprintf fmt "@ =@ {@[<hv2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
-  | TOpen ->
+  | Pdec_open ->
       fprintf fmt "@ =@ .."
-  | TExtend (name, _, ctors) ->
+  | Pdec_extend (name, _, ctors) ->
       fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name.txt
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
-  | TForward i ->
+  | Pdec_forward i ->
       let print_id fmt i =
         match i with
         | Some i ->

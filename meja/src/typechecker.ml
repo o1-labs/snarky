@@ -677,7 +677,7 @@ let rec get_expression env expected exp =
         { tdec_ident= name
         ; tdec_params= []
         ; tdec_implicit_params= []
-        ; tdec_desc= TUnfold (Ast_build.Type.none ())
+        ; tdec_desc= Pdec_unfold (Ast_build.Type.none ())
         ; tdec_loc= loc }
       in
       let decl, env = Typet.TypeDecl.import decl env in
@@ -1064,7 +1064,7 @@ let type_extension ~loc variant ctors env =
     ; tdec_params= var_params
     ; tdec_implicit_params=
         List.map ~f:(Untype_ast.Type0.type_expr ~loc) tdec_implicit_params
-    ; tdec_desc= TExtend (Location.mkloc path var_ident.loc, decl, ctors)
+    ; tdec_desc= Pdec_extend (Location.mkloc path var_ident.loc, decl, ctors)
     ; tdec_loc= loc }
   in
   let decl, env = Typet.TypeDecl.import decl env in

@@ -93,23 +93,23 @@ let type_decl iter
   iter.type_decl_desc iter tdec_desc
 
 let type_decl_desc iter = function
-  | Parsetypes.TAbstract ->
+  | Parsetypes.Pdec_abstract ->
       ()
-  | TAlias typ ->
+  | Pdec_alias typ ->
       iter.type_expr iter typ
-  | TUnfold typ ->
+  | Pdec_unfold typ ->
       iter.type_expr iter typ
-  | TRecord fields ->
+  | Pdec_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       List.iter ~f:(iter.ctor_decl iter) ctors
-  | TOpen ->
+  | Pdec_open ->
       ()
-  | TExtend (name, decl, ctors) ->
+  | Pdec_extend (name, decl, ctors) ->
       path iter name ;
       iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors
-  | TForward _ ->
+  | Pdec_forward _ ->
       ()
 
 let literal (_iter : iterator) (_ : literal) = ()

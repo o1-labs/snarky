@@ -237,7 +237,7 @@ module TypeDecl = struct
       let scope, env = Envi.pop_expr_scope env in
       let env =
         match tdec_desc with
-        | TExtend _ ->
+        | Pdec_extend _ ->
             env
         | _ ->
             map_current_scope ~f:(Scope.add_type_declaration decl) env
@@ -246,23 +246,23 @@ module TypeDecl = struct
     in
     let decl, env =
       match tdec_desc with
-      | TAbstract ->
+      | Pdec_abstract ->
           ({decl with tdec_implicit_params}, env)
-      | TAlias typ ->
+      | Pdec_alias typ ->
           let typ, env = Type.import ~must_find:true typ env in
           let tdec_implicit_params =
             add_implicits (Envi.Type.implicit_params env typ)
           in
           ({decl with tdec_desc= TAlias typ; tdec_implicit_params}, env)
-      | TUnfold typ ->
+      | Pdec_unfold typ ->
           let typ, env = Type.import ~must_find:false typ env in
           let tdec_implicit_params =
             add_implicits (Envi.Type.implicit_params env typ)
           in
           ({decl with tdec_desc= TUnfold typ; tdec_implicit_params}, env)
-      | TOpen ->
+      | Pdec_open ->
           ({decl with tdec_desc= TOpen}, env)
-      | TRecord fields ->
+      | Pdec_record fields ->
           let env, fields =
             List.fold_map ~init:env fields ~f:(import_field ~must_find:true)
           in
@@ -273,7 +273,7 @@ module TypeDecl = struct
                       Envi.Type.implicit_params env fld_type )))
           in
           ({decl with tdec_desc= TRecord fields; tdec_implicit_params}, env)
-      | TVariant ctors | TExtend (_, _, ctors) ->
+      | Pdec_variant ctors | Pdec_extend (_, _, ctors) ->
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
                 let scope, env = pop_expr_scope env in
@@ -283,9 +283,9 @@ module TypeDecl = struct
                       let env = open_expr_scope env in
                       let name =
                         match tdec_desc with
-                        | TVariant _ ->
+                        | Pdec_variant _ ->
                             Path.Pident tdec_ident.txt
-                        | TExtend (lid, _, _) ->
+                        | Pdec_extend (lid, _, _) ->
                             lid.txt
                         | _ ->
                             failwith
@@ -343,9 +343,9 @@ module TypeDecl = struct
           in
           let tdec_desc =
             match tdec_desc with
-            | TVariant _ ->
+            | Pdec_variant _ ->
                 Type0.TVariant ctors
-            | TExtend (id, decl, _) ->
+            | Pdec_extend (id, decl, _) ->
                 Type0.TExtend (id.txt, decl, ctors)
             | _ ->
                 failwith "Expected a TVariant or a TExtend"
@@ -374,7 +374,7 @@ module TypeDecl = struct
                         (List.map typs ~f:(Envi.Type.implicit_params env)) )))
           in
           ({decl with tdec_desc; tdec_implicit_params}, env)
-      | TForward _ ->
+      | Pdec_forward _ ->
           failwith "Cannot import a forward type declaration"
     in
     let env = close_expr_scope env in
