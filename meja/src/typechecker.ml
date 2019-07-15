@@ -438,7 +438,7 @@ let rec check_pattern ~add env typ pat =
       let p, env = check_pattern ~add env ctyp p in
       let normalised_ctyp = Envi.Type.normalise_constr_names env ctyp in
       let constr_typ =
-        Untype_ast.type_expr ~loc:constr_typ.type_loc normalised_ctyp
+        Untype_ast.Type0.type_expr ~loc:constr_typ.type_loc normalised_ctyp
       in
       ( { Typedast.pat_loc= loc
         ; pat_type= typ
@@ -719,7 +719,7 @@ let rec get_expression env expected exp =
       let e, env = get_expression env typ e in
       check_type ~loc env e.exp_type typ ;
       let typ' =
-        Untype_ast.type_expr ~loc:typ'.type_loc
+        Untype_ast.Type0.type_expr ~loc:typ'.type_loc
           (Envi.Type.normalise_constr_names env typ)
       in
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_constraint (e, typ')}, env)
@@ -1022,7 +1022,8 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         ; pat_desc= Tpat_variable name }
       in
       let typ =
-        Untype_ast.type_expr ~loc (Envi.Type.normalise_constr_names env ctyp)
+        Untype_ast.Type0.type_expr ~loc
+          (Envi.Type.normalise_constr_names env ctyp)
       in
       let p =
         { Typedast.pat_loc= p.pat_loc
@@ -1062,7 +1063,7 @@ let type_extension ~loc variant ctors env =
     { Parsetypes.tdec_ident= Location.mkloc (Ident.name tdec_ident) loc
     ; tdec_params= var_params
     ; tdec_implicit_params=
-        List.map ~f:(Untype_ast.type_expr ~loc) tdec_implicit_params
+        List.map ~f:(Untype_ast.Type0.type_expr ~loc) tdec_implicit_params
     ; tdec_desc= TExtend (Location.mkloc path var_ident.loc, decl, ctors)
     ; tdec_loc= loc }
   in
@@ -1269,7 +1270,7 @@ let rec check_statement env stmt =
       let decl, env = Typet.TypeDecl.import decl env in
       let stmt =
         { Typedast.stmt_loc= loc
-        ; stmt_desc= Tstmt_type (Untype_ast.type_decl ~loc decl) }
+        ; stmt_desc= Tstmt_type (Untype_ast.Type0.type_decl ~loc decl) }
       in
       (env, stmt)
   | Pstmt_type decl ->
@@ -1323,7 +1324,7 @@ let rec check_statement env stmt =
       let ctor_decl =
         match ctors with
         | [ctor] ->
-            { (Untype_ast.ctor_decl ~loc ctor) with
+            { (Untype_ast.Type0.ctor_decl ~loc ctor) with
               ctor_ret=
                 Some
                   (Type.mk ~loc
