@@ -74,7 +74,7 @@ module Type0 = struct
     | TExtend _ ->
         failwith "Cannot convert TExtend to a parsetree equivalent"
     | TForward _ ->
-        Type_decl.forward ?loc ?params ?implicits name
+        failwith "Cannot convert TForward to a parsetree equivalent"
 
   and type_decl ?loc decl =
     type_decl_desc ?loc
@@ -130,8 +130,6 @@ let type_decl_desc = function
       Pdec_open
   | Tdec_extend (lid, typ, ctor) ->
       Pdec_extend (lid, typ, List.map ~f:ctor_decl ctor)
-  | Tdec_forward i ->
-      Pdec_forward i
 
 let type_decl
     { Typedast.tdec_ident

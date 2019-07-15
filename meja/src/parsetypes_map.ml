@@ -114,8 +114,6 @@ let type_decl_desc mapper = function
         ( path mapper name
         , mapper.type0.type_decl mapper.type0 decl
         , List.map ~f:(mapper.ctor_decl mapper) ctors )
-  | Pdec_forward i ->
-      Pdec_forward i
 
 let literal (_iter : mapper) (l : literal) = l
 

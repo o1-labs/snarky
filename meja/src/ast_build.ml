@@ -92,9 +92,6 @@ module Type_decl = struct
   let open_ ?loc ?params ?implicits name =
     mk ?loc ?params ?implicits name Pdec_open
 
-  let forward ?loc ?params ?implicits name =
-    mk ?loc ?params ?implicits name (Pdec_forward (ref None))
-
   module Field = struct
     let mk ?(loc = Location.none) name typ : Parsetypes.field_decl =
       {fld_ident= Loc.mk ~loc name; fld_type= typ; fld_loc= loc}

@@ -48,8 +48,6 @@ and type_decl_desc =
   | Tdec_open
   | Tdec_extend of path * Type0.type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
-  | Tdec_forward of int option ref
-      (** Forward declaration for types loaded from cmi files. *)
 
 open Parsetypes
 

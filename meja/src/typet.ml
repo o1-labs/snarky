@@ -374,8 +374,6 @@ module TypeDecl = struct
                         (List.map typs ~f:(Envi.Type.implicit_params env)) )))
           in
           ({decl with tdec_desc; tdec_implicit_params}, env)
-      | Pdec_forward _ ->
-          failwith "Cannot import a forward type declaration"
     in
     let env = close_expr_scope env in
     let () =

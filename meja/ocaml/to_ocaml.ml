@@ -67,8 +67,6 @@ let of_type_decl decl =
       failwith "Cannot convert TExtend to OCaml"
   | Pdec_unfold _ ->
       failwith "Cannot convert TUnfold to OCaml"
-  | Pdec_forward _ ->
-      failwith "Cannot convert TForward to OCaml"
 
 let rec of_pattern_desc ?loc = function
   | Ppat_any ->

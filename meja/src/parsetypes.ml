@@ -1,4 +1,3 @@
-open Core_kernel
 open Ast_types
 
 type type_expr = {type_desc: type_desc; type_loc: Location.t}
@@ -45,8 +44,6 @@ and type_decl_desc =
   | Pdec_open
   | Pdec_extend of Path.t Location.loc * Type0.type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
-  | Pdec_forward of int option ref
-      (** Forward declaration for types loaded from cmi files. *)
 
 type literal = Int of int | Bool of bool | Field of string | String of string
 

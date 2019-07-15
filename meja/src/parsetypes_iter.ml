@@ -101,8 +101,6 @@ let type_decl_desc iter = function
       (*lid iter name ;
       iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors*)
-  | Pdec_forward _ ->
-      ()
 
 let literal (_iter : iterator) (_ : literal) = ()
 
