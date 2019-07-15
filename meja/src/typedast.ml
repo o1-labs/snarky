@@ -1,4 +1,52 @@
 open Ast_types
+
+type type_expr = {type_desc: type_desc; type_loc: Location.t}
+
+and type_desc =
+  (* A type variable. Name is None when not yet chosen. *)
+  | Ttyp_var of str option * explicitness
+  | Ttyp_tuple of type_expr list
+  | Ttyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
+  (* A type name. *)
+  | Ttyp_ctor of variant
+  | Ttyp_poly of type_expr list * type_expr
+
+and variant =
+  { var_ident: lid
+  ; var_params: type_expr list
+  ; var_implicit_params: type_expr list }
+
+type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
+
+type ctor_args =
+  | Ttor_tuple of type_expr list
+  | Ttor_record of int * field_decl list
+
+type ctor_decl =
+  { ctor_ident: str
+  ; ctor_args: ctor_args
+  ; ctor_ret: type_expr option
+  ; ctor_loc: Location.t }
+
+type type_decl =
+  { tdec_ident: str
+  ; tdec_params: type_expr list
+  ; tdec_implicit_params: type_expr list
+  ; tdec_desc: type_decl_desc
+  ; tdec_loc: Location.t }
+
+and type_decl_desc =
+  | Tdec_abstract
+  | Tdec_alias of type_expr
+  | Tdec_unfold of type_expr
+  | Tdec_record of field_decl list
+  | Tdec_variant of ctor_decl list
+  | Tdec_open
+  | Tdec_extend of lid * Type0.type_decl * ctor_decl list
+      (** Internal; this should never be present in the AST. *)
+  | Tdec_forward of int option ref
+      (** Forward declaration for types loaded from cmi files. *)
+
 open Parsetypes
 
 type ident = Ident.t Location.loc
