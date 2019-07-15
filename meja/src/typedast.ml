@@ -4,7 +4,8 @@ type ident = Ident.t Location.loc
 
 type path = Path.t Location.loc
 
-type type_expr = {type_desc: type_desc; type_loc: Location.t}
+type type_expr =
+  {type_desc: type_desc; type_loc: Location.t; type_type: Type0.type_expr}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)

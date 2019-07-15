@@ -98,7 +98,8 @@ let rec type_desc = function
   | Ttyp_poly (vars, var) ->
       Ptyp_poly (List.map ~f:type_expr vars, type_expr var)
 
-and type_expr {type_desc= typ; type_loc} = {type_desc= type_desc typ; type_loc}
+and type_expr {type_desc= typ; type_loc; type_type= _} =
+  {type_desc= type_desc typ; type_loc}
 
 let field_decl {Typedast.fld_ident; fld_type; fld_loc} =
   {Parsetypes.fld_ident; fld_type= type_expr fld_type; fld_loc}
