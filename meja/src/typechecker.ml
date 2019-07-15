@@ -434,6 +434,7 @@ let rec check_pattern ~add env typ pat =
       , env )
   | Ppat_constraint (p, constr_typ) ->
       let ctyp, env = Typet.Type.import constr_typ env in
+      let ctyp = ctyp.type_type in
       check_type ~loc env typ ctyp ;
       let p, env = check_pattern ~add env ctyp p in
       let normalised_ctyp = Envi.Type.normalise_constr_names env ctyp in
@@ -715,6 +716,7 @@ let rec get_expression env expected exp =
       , env )
   | Pexp_constraint (e, typ') ->
       let typ, env = Typet.Type.import typ' env in
+      let typ = typ.type_type in
       check_type ~loc env expected typ ;
       let e, env = get_expression env typ e in
       check_type ~loc env e.exp_type typ ;
@@ -1009,6 +1011,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       (p, e, env)
   | Ppat_constraint (({pat_desc= Ppat_variable str; _} as p'), typ), _ ->
       let ctyp, env = Typet.Type.import typ env in
+      let ctyp = ctyp.type_type in
       check_type ~loc env e.exp_type ctyp ;
       let ctyp =
         if Set.is_empty typ_vars then ctyp
@@ -1090,6 +1093,7 @@ let rec check_signature_item env item =
   | Psig_value (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ', env = Typet.Type.import typ env in
+      let typ' = typ'.type_type in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ' ;
       let name = map_loc ~f:(Ident.create ~mode) name in
@@ -1098,6 +1102,7 @@ let rec check_signature_item env item =
   | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ', env = Typet.Type.import typ env in
+      let typ' = typ'.type_type in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ' ;
       let name = map_loc ~f:(Ident.create ~mode) name in
