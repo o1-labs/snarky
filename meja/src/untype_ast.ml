@@ -91,15 +91,18 @@ let rec type_desc = function
       Ptyp_tuple (List.map ~f:type_expr typs)
   | Ttyp_arrow (typ1, typ2, explicit, label) ->
       Ptyp_arrow (type_expr typ1, type_expr typ2, explicit, label)
-  | Ttyp_ctor {var_ident; var_params; var_implicit_params} ->
-      let var_params = List.map ~f:type_expr var_params in
-      let var_implicit_params = List.map ~f:type_expr var_implicit_params in
-      Ptyp_ctor {var_ident; var_params; var_implicit_params}
+  | Ttyp_ctor var ->
+      Ptyp_ctor (variant var)
   | Ttyp_poly (vars, var) ->
       Ptyp_poly (List.map ~f:type_expr vars, type_expr var)
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}
+
+and variant {Typedast.var_ident; var_params; var_implicit_params} =
+  let var_params = List.map ~f:type_expr var_params in
+  let var_implicit_params = List.map ~f:type_expr var_implicit_params in
+  {Parsetypes.var_ident; var_params; var_implicit_params}
 
 let field_decl {Typedast.fld_ident; fld_type; fld_loc} =
   {Parsetypes.fld_ident; fld_type= type_expr fld_type; fld_loc}
