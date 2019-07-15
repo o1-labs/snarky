@@ -19,8 +19,8 @@ and variant =
 type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
 type ctor_args =
-  | Ttor_tuple of type_expr list
-  | Ttor_record of int * field_decl list
+  | Tctor_tuple of type_expr list
+  | Tctor_record of int * field_decl list
 
 type ctor_decl =
   { ctor_ident: str

@@ -84,6 +84,67 @@ module Type0 = struct
       decl.tdec_desc
 end
 
+let rec type_desc = function
+  | Typedast.Ttyp_var (name, explicit) ->
+      Parsetypes.Ptyp_var (name, explicit)
+  | Ttyp_tuple typs ->
+      Ptyp_tuple (List.map ~f:type_expr typs)
+  | Ttyp_arrow (typ1, typ2, explicit, label) ->
+      Ptyp_arrow (type_expr typ1, type_expr typ2, explicit, label)
+  | Ttyp_ctor {var_ident; var_params; var_implicit_params} ->
+      let var_params = List.map ~f:type_expr var_params in
+      let var_implicit_params = List.map ~f:type_expr var_implicit_params in
+      Ptyp_ctor {var_ident; var_params; var_implicit_params}
+  | Ttyp_poly (vars, var) ->
+      Ptyp_poly (List.map ~f:type_expr vars, type_expr var)
+
+and type_expr {type_desc= typ; type_loc} = {type_desc= type_desc typ; type_loc}
+
+let field_decl {Typedast.fld_ident; fld_type; fld_loc} =
+  {Parsetypes.fld_ident; fld_type= type_expr fld_type; fld_loc}
+
+let ctor_args = function
+  | Typedast.Tctor_tuple typs ->
+      Parsetypes.Ctor_tuple (List.map ~f:type_expr typs)
+  | Tctor_record (i, fld) ->
+      Ctor_record (i, List.map ~f:field_decl fld)
+
+let ctor_decl {Typedast.ctor_ident; ctor_args= args; ctor_ret; ctor_loc} =
+  { Parsetypes.ctor_ident
+  ; ctor_args= ctor_args args
+  ; ctor_ret= Option.map ~f:type_expr ctor_ret
+  ; ctor_loc }
+
+let type_decl_desc = function
+  | Typedast.Tdec_abstract ->
+      Parsetypes.Pdec_abstract
+  | Tdec_alias typ ->
+      Pdec_alias (type_expr typ)
+  | Tdec_unfold typ ->
+      Pdec_unfold (type_expr typ)
+  | Tdec_record fields ->
+      Pdec_record (List.map ~f:field_decl fields)
+  | Tdec_variant ctors ->
+      Pdec_variant (List.map ~f:ctor_decl ctors)
+  | Tdec_open ->
+      Pdec_open
+  | Tdec_extend (lid, typ, ctor) ->
+      Pdec_extend (lid, typ, List.map ~f:ctor_decl ctor)
+  | Tdec_forward i ->
+      Pdec_forward i
+
+let type_decl
+    { Typedast.tdec_ident
+    ; tdec_params
+    ; tdec_implicit_params
+    ; tdec_desc
+    ; tdec_loc } =
+  { Parsetypes.tdec_ident
+  ; tdec_params= List.map ~f:type_expr tdec_params
+  ; tdec_implicit_params= List.map ~f:type_expr tdec_implicit_params
+  ; tdec_desc= type_decl_desc tdec_desc
+  ; tdec_loc }
+
 let rec pattern_desc = function
   | Typedast.Tpat_any ->
       Parsetypes.Ppat_any
