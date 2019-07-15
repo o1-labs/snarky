@@ -16,6 +16,10 @@ module type Deletable_intf = sig
   val delete : t -> unit
 end
 
+let bin_io_id m x = Binable.of_string m (Binable.to_string m x)
+
+let bin_io_round_trip equal m x = equal x (bin_io_id m x)
+
 let set_no_profiling =
   foreign "camlsnark_set_profiling" (bool @-> returning void)
 
@@ -334,11 +338,16 @@ struct
   module Make
       (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
       (Fq : sig
-              type t [@@deriving bin_io]
+              type t [@@deriving bin_io, sexp]
 
               val delete : t -> unit
             end
-            with type t = Fq.t) : S = struct
+            with type t = Fq.t) (Checks : sig
+          val on_curve : Fq.t * Fq.t -> bool
+
+          val subgroup :
+            [`Check_subgroup_with_order of Bigint_r.t | `No_check_required]
+      end) : S = struct
     include (
       Bindings :
         Bound
@@ -412,8 +421,28 @@ struct
     let to_repr t : Repr.t =
       match to_affine t with None -> Zero | Some t -> Non_zero t
 
+    let subgroup_check t =
+      match Checks.subgroup with
+      | `No_check_required ->
+          ()
+      | `Check_subgroup_with_order p ->
+          if not (equal (scale t p) zero) then
+            failwith "Point was not on the prime order subgroup"
+
+    let on_curve_check t =
+      if not (Checks.on_curve t) then
+        failwithf
+          !"Point %{sexp:Fq.t * Fq.t} was not on the curve (%s)"
+          t Bindings.prefix ()
+
     let of_repr (r : Repr.t) =
-      match r with Zero -> zero | Non_zero t -> of_affine t
+      match r with
+      | Zero ->
+          zero
+      | Non_zero t ->
+          on_curve_check t ;
+          let p = of_affine t in
+          subgroup_check p ; p
 
     module B =
       Binable.Of_binable
@@ -427,6 +456,14 @@ struct
         end)
 
     include B
+
+    let%test "group bin_io roundtrip" =
+      let module B = struct
+        type nonrec t = t
+
+        include B
+      end in
+      bin_io_round_trip equal (module B) one
 
     module Vector =
       Vector.Make_binable (struct
@@ -544,7 +581,7 @@ module Field = struct
 
     val ( *= ) : t -> t -> unit
 
-    module Vector : Vector.S_binable with type elt = t
+    module Vector : Vector.S_binable_sexpable with type elt = t
   end
 
   module Bind
@@ -716,9 +753,8 @@ module Field = struct
     include B
 
     module Vector =
-      Vector.Make_binable (struct
-          type t = T.t
-
+      Vector.Make_binable_sexpable (struct
+          include T
           include B
 
           let schedule_delete = Caml.Gc.finalise T.delete
@@ -726,6 +762,205 @@ module Field = struct
         (Bindings.Vector)
 
     include T
+
+    let%test "field bin_io roundtrip" =
+      let module B = struct
+        type nonrec t = t
+
+        include B
+      end in
+      bin_io_round_trip equal (module B) (random ())
+  end
+end
+
+module Fqe = struct
+  module type Bound = sig
+    include Foreign_types
+
+    type fq_vector
+
+    type t
+
+    val typ : t typ
+
+    val delete : (t -> unit return) result
+
+    val print : (t -> unit return) result
+
+    val random : (unit -> t return) result
+
+    val square : (t -> t return) result
+
+    val sqrt : (t -> t return) result
+
+    val create_zero : (unit -> t return) result
+
+    val ( + ) : (t -> t -> t return) result
+
+    val inv : (t -> t return) result
+
+    val ( * ) : (t -> t -> t return) result
+
+    val sub : (t -> t -> t return) result
+
+    val equal : (t -> t -> bool return) result
+
+    val to_vector : (t -> fq_vector return) result
+
+    val of_vector : (fq_vector -> t return) result
+  end
+
+  module type S = sig
+    type t [@@deriving bin_io, sexp]
+
+    include
+      Bound with type t := t and type 'a return := 'a and type 'a result := 'a
+
+    val schedule_delete : t -> unit
+  end
+
+  module Bind
+      (F : Ctypes.FOREIGN) (P : sig
+          val prefix : string
+      end)
+      (Fq_vector : Foreign_intf) :
+    Bound
+    with type 'a return = 'a F.return
+     and type 'a result = 'a F.result
+     and type fq_vector := Fq_vector.t = struct
+    include F
+    include P
+    include Make_foreign (F) (P)
+
+    let delete = foreign (func_name "delete") (typ @-> returning void)
+
+    let print = foreign (func_name "print") (typ @-> returning void)
+
+    let random = foreign (func_name "random") (void @-> returning typ)
+
+    let square = foreign (func_name "square") (typ @-> returning typ)
+
+    let sqrt = foreign (func_name "sqrt") (typ @-> returning typ)
+
+    let create_zero = foreign (func_name "create_zero") (void @-> returning typ)
+
+    let ( + ) = foreign (func_name "add") (typ @-> typ @-> returning typ)
+
+    let inv = foreign (func_name "inv") (typ @-> returning typ)
+
+    let ( * ) = foreign (func_name "mul") (typ @-> typ @-> returning typ)
+
+    let sub = foreign (func_name "sub") (typ @-> typ @-> returning typ)
+
+    let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
+
+    let to_vector =
+      foreign (func_name "to_vector") (typ @-> returning Fq_vector.typ)
+
+    let of_vector =
+      foreign (func_name "of_vector") (Fq_vector.typ @-> returning typ)
+  end
+
+  module Make (Fq_vector : sig
+    type t [@@deriving bin_io, sexp]
+
+    include Deletable_intf with type t := t
+  end)
+  (Bindings : Bound
+              with type 'a return = 'a
+               and type 'a result = 'a
+               and type fq_vector := Fq_vector.t) :
+    S with type t = Bindings.t and type fq_vector := Fq_vector.t = struct
+    module T = struct
+      include (
+        Bindings :
+          Bound
+          with type 'a return = 'a
+           and type 'a result = 'a
+           and type fq_vector := Fq_vector.t
+           and type t = Bindings.t )
+
+      let schedule_delete t = Caml.Gc.finalise delete t
+
+      let random () =
+        let x = random () in
+        schedule_delete x ; x
+
+      let square x =
+        let y = square x in
+        schedule_delete y ; y
+
+      let sqrt x =
+        let y = sqrt x in
+        schedule_delete y ; y
+
+      let create_zero () =
+        let x = create_zero () in
+        schedule_delete x ; x
+
+      let ( + ) x y =
+        let z = x + y in
+        schedule_delete z ; z
+
+      let inv x =
+        let y = inv x in
+        schedule_delete y ; y
+
+      let ( * ) x y =
+        let z = x * y in
+        schedule_delete z ; z
+
+      let sub x y =
+        let z = sub x y in
+        schedule_delete z ; z
+
+      let to_vector t =
+        let v = to_vector t in
+        Caml.Gc.finalise Fq_vector.delete v ;
+        v
+
+      let of_vector v =
+        let t = of_vector v in
+        schedule_delete t ; t
+    end
+
+    module B =
+      Binable.Of_binable
+        (Fq_vector)
+        (struct
+          type t = T.t
+
+          let to_binable = T.to_vector
+
+          let of_binable = T.of_vector
+        end)
+
+    include B
+
+    include Sexpable.Of_sexpable
+              (Fq_vector)
+              (struct
+                type t = T.t
+
+                let to_sexpable = T.to_vector
+
+                let of_sexpable = T.of_vector
+              end)
+
+    include T
+
+    let%test "fqe vector roundtrip" =
+      let x = random () in
+      let y = of_vector (to_vector x) in
+      equal x y
+
+    let%test "fqe bin_io roundtrip" =
+      let module B = struct
+        type nonrec t = t
+
+        include B
+      end in
+      bin_io_round_trip equal (module B) (random ())
   end
 end
 
@@ -1292,12 +1527,6 @@ module Linear_combination (Field : Foreign_intf) (Var : Foreign_intf) = struct
         end)
 
     let print = foreign (func_name "print") (typ @-> returning void)
-
-    (*
-    let substitute =
-      foreign (func_name "substitute")
-        (typ @-> Var.typ @-> Term.Vector.typ @-> returning void)
-    ;; *)
 
     let create = foreign (func_name "create") (void @-> returning typ)
 
@@ -2701,8 +2930,29 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt6_0.Field.Vector.length v = 4
 
+    module Fqe =
+      Fqe.Make
+        (Mnt6_0.Field.Vector)
+        (Fqe.Bind
+           (Ctypes_foreign)
+           (struct
+             let prefix = with_prefix Mnt4_0.prefix "fqe"
+           end)
+           (Mnt6_0.Field.Vector))
+
     module G2 = struct
-      module T = Group (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field.Vector)
+      module T = Group (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Fqe)
+
+      module Coefficients = struct
+        module T = Group_coefficients (Fqe)
+
+        include T.Make
+                  (T.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt4_0.prefix "g2"
+                     end))
+      end
 
       include T.Make
                 (T.Bind
@@ -2710,28 +2960,18 @@ struct
                    (struct
                      let prefix = with_prefix Mnt4_0.prefix "g2"
                    end))
-                   (Mnt6_0.Field.Vector)
+                   (Fqe)
+                (struct
+                  let subgroup = `Check_subgroup_with_order Mnt4_0.field_size
+
+                  let on_curve (x, y) =
+                    let open Fqe in
+                    equal (square y)
+                      ((x * (square x + Coefficients.a)) + Coefficients.b)
+                end)
     end
 
     module G1 = struct
-      module T = struct
-        module T' = Group (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field)
-
-        include T'.Make
-                  (T'.Bind
-                     (Ctypes_foreign)
-                     (struct
-                       let prefix = with_prefix Mnt4_0.prefix "g1"
-                     end))
-                     (Mnt6_0.Field)
-      end
-
-      include T
-
-      let%test "scalar_mul" =
-        let g = one in
-        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
-
       module Coefficients = struct
         module T = Group_coefficients (Mnt6_0.Field)
 
@@ -2742,6 +2982,38 @@ struct
                        let prefix = with_prefix Mnt4_0.prefix "g1"
                      end))
       end
+
+      module T = struct
+        module T' = Group (Mnt4_0.Field) (Mnt4_0.Bigint.R) (Mnt6_0.Field)
+
+        include T'.Make
+                  (T'.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt4_0.prefix "g1"
+                     end))
+                     (Mnt6_0.Field)
+                  (struct
+                    let subgroup = `No_check_required
+
+                    let on_curve (x, y) =
+                      let open Mnt6_0.Field in
+                      let z = square x in
+                      z += Coefficients.a ;
+                      (* z = x^2 + a *)
+                      z *= x ;
+                      (* z = x^3 + a x *)
+                      z += Coefficients.b ;
+                      (* z = x^3 + a x + b *)
+                      equal z (square y)
+                  end)
+      end
+
+      include T
+
+      let%test "scalar_mul" =
+        let g = one in
+        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
       module Window_table = struct
         module T' = Window_table (T) (Field) (Bigint.R) (Vector)
@@ -2823,8 +3095,29 @@ struct
       let v = Fqk.to_elts Fqk.one in
       Mnt4_0.Field.Vector.length v = 6
 
+    module Fqe =
+      Fqe.Make
+        (Mnt4_0.Field.Vector)
+        (Fqe.Bind
+           (Ctypes_foreign)
+           (struct
+             let prefix = with_prefix Mnt6_0.prefix "fqe"
+           end)
+           (Mnt4_0.Field.Vector))
+
     module G2 = struct
-      module T = Group (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field.Vector)
+      module Coefficients = struct
+        module T = Group_coefficients (Fqe)
+
+        include T.Make
+                  (T.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt6_0.prefix "g2"
+                     end))
+      end
+
+      module T = Group (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Fqe)
 
       include T.Make
                 (T.Bind
@@ -2832,28 +3125,19 @@ struct
                    (struct
                      let prefix = with_prefix Mnt6_0.prefix "g2"
                    end))
-                   (Mnt4_0.Field.Vector)
+                   (Fqe)
+                (* TODO: Unify this with the Mnt4 code *)
+                (struct
+                  let subgroup = `Check_subgroup_with_order Mnt6_0.field_size
+
+                  let on_curve (x, y) =
+                    let open Fqe in
+                    equal (square y)
+                      ((x * (square x + Coefficients.a)) + Coefficients.b)
+                end)
     end
 
     module G1 = struct
-      module T = struct
-        module T' = Group (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field)
-
-        include T'.Make
-                  (T'.Bind
-                     (Ctypes_foreign)
-                     (struct
-                       let prefix = with_prefix Mnt6_0.prefix "g1"
-                     end))
-                     (Mnt4_0.Field)
-      end
-
-      include T
-
-      let%test "scalar_mul" =
-        let g = one in
-        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
-
       module Coefficients = struct
         module T = Group_coefficients (Mnt4_0.Field)
 
@@ -2864,6 +3148,39 @@ struct
                        let prefix = with_prefix Mnt6_0.prefix "g1"
                      end))
       end
+
+      module T = struct
+        module T' = Group (Mnt6_0.Field) (Mnt6_0.Bigint.R) (Mnt4_0.Field)
+
+        include T'.Make
+                  (T'.Bind
+                     (Ctypes_foreign)
+                     (struct
+                       let prefix = with_prefix Mnt6_0.prefix "g1"
+                     end))
+                     (Mnt4_0.Field)
+                  (struct
+                    (* TODO: Unify this with the Mnt4 code *)
+                    let subgroup = `No_check_required
+
+                    let on_curve (x, y) =
+                      let open Mnt4_0.Field in
+                      let z = square x in
+                      z += Coefficients.a ;
+                      (* z = x^2 + a *)
+                      z *= x ;
+                      (* z = x^3 + a x *)
+                      z += Coefficients.b ;
+                      (* z = x^3 + a x + b *)
+                      equal z (square y)
+                  end)
+      end
+
+      include T
+
+      let%test "scalar_mul" =
+        let g = one in
+        equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
       module Window_table = struct
         module T' = Window_table (T) (Field) (Bigint.R) (Vector)
