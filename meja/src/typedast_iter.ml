@@ -95,6 +95,7 @@ let type_decl_desc iter = function
       ()
   | TExtend (name, decl, ctors) ->
       iter.location iter name.loc ;
+      iter.longident iter name.txt ;
       iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors
   | TForward _ ->
