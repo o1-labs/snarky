@@ -316,7 +316,7 @@ module TypeDecl = struct
                             (env, arg) )
                       in
                       (env, Type0.Ctor_tuple args)
-                  | Ctor_record (_, fields) ->
+                  | Ctor_record fields ->
                       let env, fields =
                         List.fold_map ~init:env fields
                           ~f:(import_field ?must_find)

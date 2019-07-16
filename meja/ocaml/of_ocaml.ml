@@ -58,7 +58,7 @@ let to_ctor_args ~loc = function
   | Cstr_tuple typs ->
       Ctor_tuple (List.map ~f:(to_type_expr ~loc) typs)
   | Cstr_record labels ->
-      Ctor_record (0, List.map ~f:to_field_decl labels)
+      Ctor_record (List.map ~f:to_field_decl labels)
 
 let to_ctor_decl {cd_id; cd_args; cd_res; cd_loc; _} =
   { ctor_ident= mkloc (Ident.name cd_id) cd_loc

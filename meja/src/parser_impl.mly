@@ -251,7 +251,7 @@ ctor_decl_args:
   | LPAREN rev_args = list(type_expr, COMMA) RPAREN
     { Ctor_tuple (List.rev rev_args) }
   | LBRACE fields = list(field_decl, COMMA) RBRACE
-    { Ctor_record (0, List.rev fields) }
+    { Ctor_record (List.rev fields) }
 
 %inline type_lident:
   | id = lident

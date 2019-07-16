@@ -21,7 +21,7 @@ type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
 type ctor_args =
   | Ctor_tuple of type_expr list
-  | Ctor_record of int * field_decl list
+  | Ctor_record of field_decl list
 
 type ctor_decl =
   { ctor_ident: str

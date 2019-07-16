@@ -107,7 +107,7 @@ module Type_decl = struct
     let with_args ?loc ?ret name args = mk ?loc ?ret name (Ctor_tuple args)
 
     let with_record ?loc ?ret name fields =
-      mk ?loc ?ret name (Ctor_record (-1, fields))
+      mk ?loc ?ret name (Ctor_record fields)
   end
 end
 
