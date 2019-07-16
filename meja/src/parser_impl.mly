@@ -12,7 +12,7 @@ let lid_last x = mkloc (last x.txt) x.loc
 
 let mkloc ~pos x = mkloc x (Loc.of_pos pos)
 
-let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= Loc.of_pos pos}
+let mktyp ~pos d = {type_desc= d; type_loc= Loc.of_pos pos}
 let mkpat ~pos d = {pat_desc= d; pat_loc= Loc.of_pos pos}
 let mkexp ~pos d = {exp_desc= d; exp_loc= Loc.of_pos pos}
 let mkstmt ~pos d = {stmt_desc= d; stmt_loc= Loc.of_pos pos}

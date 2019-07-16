@@ -47,7 +47,7 @@ let rec to_type_desc ~loc desc =
       Ptyp_var (None, Explicit)
 
 and to_type_expr ~loc typ =
-  {type_desc= to_type_desc ~loc typ.desc; type_id= -1; type_loc= loc}
+  {type_desc= to_type_desc ~loc typ.desc; type_loc= loc}
 
 let to_field_decl {ld_id; ld_type; ld_loc; _} =
   { fld_ident= mkloc (Ident.name ld_id) ld_loc
