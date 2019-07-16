@@ -1378,6 +1378,13 @@ module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
   module Runner0 = Runner.Make (Backend_extended)
 
+  module As_prover0 =
+    As_prover.Make_extended (struct
+        type field = Backend_extended.Field.t
+      end)
+      (Checked)
+      (As_prover.Make (Checked) (As_prover0))
+
   module Basic =
     Make_basic
       (Backend_extended)
@@ -1395,11 +1402,7 @@ module Make (Backend : Backend_intf.S) = struct
 
         let run = Runner0.run
       end)
-      (As_prover.Make_extended (struct
-           type field = Backend_extended.Field.t
-         end)
-         (Checked)
-         (As_prover.Make (Checked) (As_prover0)))
+      (As_prover0)
       (Runner0)
 
   include Basic
@@ -1485,6 +1488,10 @@ module Run = struct
       let unit = unit
 
       let field = field
+
+      let snarkless = snarkless
+
+      let ref = ref
 
       let tuple2 = tuple2
 
@@ -1791,6 +1798,8 @@ module Run = struct
     module As_prover = struct
       type 'a t = 'a
 
+      type 'a as_prover = 'a t
+
       let eval_as_prover f =
         if !(!state.as_prover) && Option.is_some !state.prover_state then (
           let s = Option.value_exn !state.prover_state in
@@ -1812,6 +1821,16 @@ module Run = struct
       let read typ var = eval_as_prover (As_prover.read typ var)
 
       include Field.Constant.T
+
+      module Ref = struct
+        type 'a t = 'a As_prover.Ref.t
+
+        let create f = run As_prover.(Ref.create (map (return ()) ~f))
+
+        let get r = eval_as_prover (As_prover.Ref.get r)
+
+        let set r x = eval_as_prover (As_prover.Ref.set r x)
+      end
 
       let run_prover f _tbl s =
         let old = !(!state.as_prover) in
