@@ -86,6 +86,8 @@ and expression_desc =
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
+and signature = signature_item list
+
 and signature_desc =
   | Psig_value of str * type_expr
   | Psig_instance of str * type_expr
@@ -97,8 +99,6 @@ and signature_desc =
   | Psig_request of type_expr * ctor_decl
   | Psig_multiple of signature
 
-and signature = signature_item list
-
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
 and module_sig_desc =
@@ -108,6 +108,8 @@ and module_sig_desc =
   | Pmty_functor of str * module_sig * module_sig
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
+
+and statements = statement list
 
 and statement_desc =
   | Pstmt_value of pattern * expression
@@ -119,11 +121,11 @@ and statement_desc =
   | Pstmt_typeext of variant * ctor_decl list
   | Pstmt_request of
       type_expr * ctor_decl * (pattern option * expression) option
-  | Pstmt_multiple of statement list
+  | Pstmt_multiple of statements
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc =
-  | Pmod_struct of statement list
+  | Pmod_struct of statements
   | Pmod_name of lid
   | Pmod_functor of str * module_sig * module_expr
