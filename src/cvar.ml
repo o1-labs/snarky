@@ -28,7 +28,7 @@ struct
 
   let scratch = Field.of_int 0
 
-  let eval context t0 =
+  let eval (`Return_values_will_be_mutated context) t0 =
     let open Field in
     let res = of_int 0 in
     let can_mutate_scale = ref false in
@@ -39,13 +39,9 @@ struct
           Mutable.copy ~over:scratch c ;
           scratch *= scale ;
           res += scratch
-      | Var v when !can_mutate_scale ->
-          scale *= context v ;
-          res += scale
       | Var v ->
-          Mutable.copy ~over:scratch (context v) ;
-          scratch *= scale ;
-          res += scratch
+          let v = context v in
+          v *= scale ; res += v
       | Scale (s, t) when !can_mutate_scale ->
           scale *= s ; go scale t
       | Scale (s, t) ->
