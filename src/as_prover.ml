@@ -37,6 +37,12 @@ struct
     let set (r : 'a t) x =
       let%map () = As_prover.return () in
       r := Some x
+
+    let store x = Typ_monads.Store.return (ref (Some x))
+
+    let read r = Typ_monads.Read.return (Option.value_exn !r)
+
+    let alloc () = Typ_monads.Alloc.return (ref None)
   end
 end
 
