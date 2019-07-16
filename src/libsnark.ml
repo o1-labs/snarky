@@ -881,6 +881,12 @@ struct
 
     val fold_constraints :
       f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
+
+    val evaluations :
+         t
+      -> full_assignment:Field_vector.t
+      -> degree:int
+      -> Field_vector.t * Field_vector.t * Field_vector.t
   end
 
   module Make
@@ -902,6 +908,20 @@ struct
       let s = digest t in
       let r = Cpp_string.to_string s in
       Cpp_string.delete s ; Md5.of_binary_exn r
+
+    let evaluations =
+      let evals_struct = structure "r1cs_evalutions" in
+      let a = field evals_struct "a" Field_vector.typ in
+      let b = field evals_struct "b" Field_vector.typ in
+      let c = field evals_struct "c" Field_vector.typ in
+      seal evals_struct ;
+      let stub =
+        foreign (func_name "")
+          (typ @-> Field_vector.typ @-> size_t @-> returning evals_struct)
+      in
+      fun t ~full_assignment ~degree ->
+        let res = stub t full_assignment (Unsigned.Size_t.of_int degree) in
+        (getf res a, getf res b, getf res c)
 
     (* NOTE: This has to use libffi because Ctypes.FOREIGN doesn't support
        [funptr]. *)

@@ -170,6 +170,10 @@ size_t CURVE_PREFIX(var_index)(variable<FieldT>* v) {
   return v->index;
 }
 
+char* CURVE_PREFIX(field_montgomery_representation)(FieldT* x) {
+  return (char *) x->mont_repr.data;
+}
+
 bool CURVE_PREFIX(field_is_square)(FieldT* x) {
   FieldT y = *x ^ FieldT::euler;
   return y == FieldT::one();
@@ -475,6 +479,40 @@ const linear_combination<FieldT>* CURVE_PREFIX(r1cs_constraint_b)(const r1cs_con
 
 const linear_combination<FieldT>* CURVE_PREFIX(r1cs_constraint_c)(const r1cs_constraint<FieldT>* c) {
   return &c->c;
+}
+
+typedef struct CURVE_PREFIX(r1cs_evaluations) {
+  std::vector<FieldT>* a;
+  std::vector<FieldT>* b;
+  std::vector<FieldT>* c;
+} r1cs_evaluations;
+
+r1cs_evaluations CURVE_PREFIX(r1cs_constraint_system_evalutions)(
+    const r1cs_constraint_system<FieldT>* sys,
+    const std::vector<FieldT>* full_variable_assignment,
+    const size_t degree)
+{
+    const size_t d_plus_1 = degree + 1;
+    std::vector<FieldT>* ca = new std::vector<FieldT>(d_plus_1, FieldT::zero());
+    std::vector<FieldT>* cb = new std::vector<FieldT>(d_plus_1, FieldT::zero());
+    std::vector<FieldT>* cc = new std::vector<FieldT>(d_plus_1, FieldT::zero());
+
+    for (size_t i = 0; i <= sys->num_inputs(); ++i)
+    {
+        ca->at(i + sys->num_constraints()) = (i > 0 ? full_variable_assignment->at(i-1) : FieldT::one());
+    }
+    for (size_t i = 0; i < sys->num_constraints(); ++i)
+    {
+        ca->at(i) += sys->constraints[i].a.evaluate(*full_variable_assignment);
+        cb->at(i) += sys->constraints[i].b.evaluate(*full_variable_assignment);
+    }
+    for (size_t i = 0; i < sys->num_constraints(); ++i)
+    {
+        cc->at(i) += sys->constraints[i].c.evaluate(*full_variable_assignment);
+    }
+
+    CURVE_PREFIX(r1cs_evaluations) e = { ca, cb, cc };
+    return e;
 }
 
 r1cs_constraint_system<FieldT>* CURVE_PREFIX(r1cs_constraint_system_create)() {

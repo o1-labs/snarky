@@ -223,6 +223,8 @@ module Field = struct
       with type 'a result = 'a result
        and type 'a return = 'a return
        and type elt = t
+
+    val montgomery_representation : (t -> char Ctypes_static.ptr return) result
   end
 
   module Bind
@@ -279,6 +281,11 @@ module Field = struct
     end
 
     let equal = foreign (func_name "equal") (typ @-> typ @-> returning bool)
+
+    let montgomery_representation =
+      foreign
+        (func_name "montgomery_representation")
+        (typ @-> returning (ptr char))
 
     module Vector =
       Vector.Bind
