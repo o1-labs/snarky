@@ -26,6 +26,12 @@ module type S_binable = sig
   include Binable.S with type t := t
 end
 
+module type S_binable_sexpable = sig
+  include S_binable
+
+  include Sexpable.S with type t := t
+end
+
 module Make (Elt : sig
   type t
 
@@ -120,4 +126,31 @@ end)
   end
 
   include Bin_prot.Utils.Of_minimal (Minmal)
+end
+
+module Make_binable_sexpable (Elt : sig
+  type t [@@deriving bin_io, sexp]
+
+  val schedule_delete : t -> unit
+end)
+(Bindings : Bound
+            with type 'a return = 'a
+             and type 'a result = 'a
+             and type elt = Elt.t) : S_binable_sexpable with type elt = Elt.t =
+struct
+  include Make_binable (Elt) (Bindings)
+
+  include Sexpable.Of_sexpable (struct
+              type t = Elt.t array [@@deriving sexp]
+            end)
+            (struct
+              type nonrec t = t
+
+              let to_sexpable t = Array.init (length t) ~f:(get t)
+
+              let of_sexpable a =
+                let t = create () in
+                Array.iter a ~f:(emplace_back t) ;
+                t
+            end)
 end
