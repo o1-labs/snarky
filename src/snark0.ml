@@ -1489,10 +1489,6 @@ module Run = struct
 
       let field = field
 
-      let snarkless = snarkless
-
-      let ref = ref
-
       let tuple2 = tuple2
 
       let ( * ) = ( * )
@@ -1511,6 +1507,7 @@ module Run = struct
 
       let of_hlistable = of_hlistable
 
+      module Internal = Internal
       module Of_traversable = Of_traversable
     end
 

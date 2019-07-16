@@ -114,23 +114,25 @@ struct
       ; alloc= Alloc.alloc
       ; check= (fun _ -> Checked.return ()) }
 
-    let snarkless value =
-      { store=
-          (fun value' ->
-            assert (phys_equal value value') ;
-            Store.return value )
-      ; read=
-          (fun value' ->
-            assert (phys_equal value value') ;
-            Read.return value )
-      ; check= (fun _ -> Checked.return ())
-      ; alloc= Alloc.return value }
+    module Internal = struct
+      let snarkless value =
+        { store=
+            (fun value' ->
+              assert (phys_equal value value') ;
+              Store.return value )
+        ; read=
+            (fun value' ->
+              assert (phys_equal value value') ;
+              Read.return value )
+        ; check= (fun _ -> Checked.return ())
+        ; alloc= Alloc.return value }
 
-    let ref () =
-      { store= As_prover.Ref.store
-      ; read= As_prover.Ref.read
-      ; check= (fun _ -> Checked.return ())
-      ; alloc= As_prover.Ref.alloc () }
+      let ref () =
+        { store= As_prover.Ref.store
+        ; read= As_prover.Ref.read
+        ; check= (fun _ -> Checked.return ())
+        ; alloc= As_prover.Ref.alloc () }
+    end
 
     let transport ({read; store; alloc; check} : ('var1, 'value1, 'field) t)
         ~(there : 'value2 -> 'value1) ~(back : 'value1 -> 'value2) :

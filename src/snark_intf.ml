@@ -290,27 +290,6 @@ module type Basic = sig
 
     val field : (Field.Var.t, field) t
 
-    val snarkless : 'a -> ('a, 'a) t
-    (** A do-nothing [Typ.t] that returns the input value for all modes. This
-        may be used to convert objects from the [Checked] world into and
-        through [As_prover] blocks.
-
-        This is the dual of [ref], which allows [OCaml] values from [As_prover]
-        blocks to pass through the [Checked] world.
-
-        Reading or writing using this [Typ.t] will assert that the argument and
-        the value stored are physically equal -- ie. that they refer to the
-        same object.
-    *)
-
-    val ref : unit -> ('a As_prover.Ref.t, 'a) t
-    (** A [Typ.t] for marshalling OCaml values generated in [As_prover] blocks,
-        while keeping them opaque to the [Checked] world.
-
-        This is the dual of [snarkless], which allows [OCaml] values from the
-        [Checked] world to pass through [As_prover] blocks.
-    *)
-
     (** Common constructors: *)
 
     val tuple2 :
@@ -386,6 +365,34 @@ module type Basic = sig
         describes the relationship between ['var] and ['value] in terms of a
         {!type:Data_spec.t}.
     *)
+
+    (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
+        and normal OCaml data.
+
+        Using this module is not recommended.
+    *)
+    module Internal : sig
+      val snarkless : 'a -> ('a, 'a) t
+      (** A do-nothing [Typ.t] that returns the input value for all modes. This
+          may be used to convert objects from the [Checked] world into and
+          through [As_prover] blocks.
+
+          This is the dual of [ref], which allows [OCaml] values from
+          [As_prover] blocks to pass through the [Checked] world.
+
+          Note: Reading or writing using this [Typ.t] will assert that the
+          argument and the value stored are physically equal -- ie. that they
+          refer to the same object.
+      *)
+
+      val ref : unit -> ('a As_prover.Ref.t, 'a) t
+      (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
+          blocks, while keeping them opaque to the [Checked] world.
+
+          This is the dual of [snarkless], which allows [OCaml] values from the
+          [Checked] world to pass through [As_prover] blocks.
+    *)
+    end
 
     module Of_traversable (T : Traversable.S) : sig
       val typ :
@@ -1502,22 +1509,6 @@ module type Run_basic = sig
 
     val field : (Field.t, field) t
 
-    val snarkless : 'a -> ('a, 'a) t
-    (** A do-nothing [Typ.t] that returns the input value for all modes.
-
-        reading or writing using this [Typ.t] will assert that the argument and
-        the value stored are physically equal -- ie. that they refer to the
-        same object.
-    *)
-
-    val ref : unit -> ('a As_prover.Ref.t, 'a) t
-    (** A [Typ.t] for marshalling OCaml values generated in [As_prover] blocks,
-        while keeping them opaque to the [Checked] world.
-
-        This is the dual of [snarkless], which allows [OCaml] values from the
-        [Checked] world to pass through [As_prover] blocks.
-    *)
-
     (** Common constructors: *)
 
     val tuple2 :
@@ -1569,6 +1560,32 @@ module type Run_basic = sig
       -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
       -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
       -> ('var, 'value) t
+
+    (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
+        and normal OCaml data.
+
+        Using this module is not recommended.
+    *)
+    module Internal : sig
+      val snarkless : 'a -> ('a, 'a) t
+      (** A do-nothing [Typ.t] that returns the input value for all modes.
+
+          This is the dual of [ref], which allows [OCaml] values from
+          [As_prover] blocks to pass through the [Checked] world.
+
+          Note: Reading or writing using this [Typ.t] will assert that the
+          argument and the value stored are physically equal -- ie. that they
+          refer to the same object.
+      *)
+
+      val ref : unit -> ('a As_prover.Ref.t, 'a) t
+      (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
+          blocks, while keeping them opaque to the [Checked] world.
+
+          This is the dual of [snarkless], which allows [OCaml] values from the
+          [Checked] world to pass through [As_prover] blocks.
+      *)
+    end
 
     module Of_traversable (T : Traversable.S) : sig
       val typ :
