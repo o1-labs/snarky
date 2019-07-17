@@ -359,20 +359,22 @@ let get_ctor (name : lid) env =
   let loc = name.loc in
   match (Envi.TypeDecl.find_of_constructor name env, name.txt) with
   | ( Some
-        ( ( { tdec_desc= TVariant ctors
+        ( _
+        , ( ( { tdec_desc= TVariant ctors
+              ; tdec_ident
+              ; tdec_params
+              ; tdec_implicit_params
+              ; _ } as decl )
+          , i ) )
+    , name )
+  | ( Some
+        ( _
+        , ( { tdec_desc= TExtend (name, decl, ctors)
             ; tdec_ident
             ; tdec_params
             ; tdec_implicit_params
-            ; _ } as decl )
-        , i )
-    , name )
-  | ( Some
-        ( { tdec_desc= TExtend (name, decl, ctors)
-          ; tdec_ident
-          ; tdec_params
-          ; tdec_implicit_params
-          ; _ }
-        , i )
+            ; _ }
+          , i ) )
     , _ ) ->
       let ctor = List.nth_exn ctors i in
       let make_name tdec_ident =

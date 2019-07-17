@@ -100,7 +100,7 @@ module Scope = struct
     ; type_variables: type_expr String.Map.t
     ; type_decls: type_decl String.Map.t
     ; fields: (type_decl * int) IdTbl.t
-    ; ctors: (type_decl * int) String.Map.t
+    ; ctors: (type_decl * int) IdTbl.t
     ; modules: t or_path IdTbl.t
     ; module_types: t or_path IdTbl.t
     ; instances: Longident.t Int.Map.t
@@ -120,7 +120,7 @@ module Scope = struct
     ; type_variables= String.Map.empty
     ; type_decls= String.Map.empty
     ; fields= IdTbl.empty
-    ; ctors= String.Map.empty
+    ; ctors= IdTbl.empty
     ; modules= IdTbl.empty
     ; module_types= IdTbl.empty
     ; instances= Int.Map.empty
@@ -149,12 +149,12 @@ module Scope = struct
 
   let add_ctor decl index scope ctor_decl =
     { scope with
-      ctors=
-        Map.set scope.ctors
-          ~key:(Ident.name ctor_decl.ctor_ident)
-          ~data:(decl, index) }
+      ctors= IdTbl.add scope.ctors ~key:ctor_decl.ctor_ident ~data:(decl, index)
+    }
 
-  let get_ctor name scope = Map.find scope.ctors name
+  let get_ctor name scope = IdTbl.find name scope.ctors
+
+  let find_ctor name scope = IdTbl.find_name name scope.ctors
 
   let add_preferred_type_name path decl_id {type_paths} =
     {type_paths= Map.set type_paths ~key:decl_id ~data:path}
@@ -215,7 +215,7 @@ module Scope = struct
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
     in
     let acc = Map.fold2 type_decls1 type_decls2 ~init:acc ~f:type_decls in
-    let acc = Map.fold2 ctors1 ctors2 ~init:acc ~f:ctors in
+    let acc = IdTbl.fold2_names ctors1 ctors2 ~init:acc ~f:ctors in
     let acc = IdTbl.fold2_names fields1 fields2 ~init:acc ~f:fields in
     let acc = IdTbl.fold2_names modules1 modules2 ~init:acc ~f:modules in
     let acc =
@@ -274,7 +274,8 @@ module Scope = struct
             raise (Error (loc, Multiple_definition ("type", key))) )
     ; fields=
         IdTbl.merge_skewed_names fields1 fields2 ~combine:(fun ~key:_ _ v -> v)
-    ; ctors= Map.merge_skewed ctors1 ctors2 ~combine:(fun ~key:_ _ v -> v)
+    ; ctors=
+        IdTbl.merge_skewed_names ctors1 ctors2 ~combine:(fun ~key:_ _ v -> v)
     ; modules=
         IdTbl.merge_skewed_names modules1 modules2 ~combine:(fun ~key _ _ ->
             raise (Error (loc, Multiple_definition ("module", key))) )
@@ -1201,7 +1202,7 @@ module TypeDecl = struct
     find_of_lident ~kind:"field" ~get_name:Scope.find_field field env
 
   let find_of_constructor (ctor : lid) env =
-    find_of_lident ~kind:"constructor" ~get_name:Scope.get_ctor ctor env
+    find_of_lident ~kind:"constructor" ~get_name:Scope.find_ctor ctor env
 
   let unfold_alias ~loc typ env =
     match find_of_type ~loc typ env with
