@@ -335,6 +335,29 @@ module Scope = struct
           (* You can't apply a toplevel module, so we just error out instead. *)
           raise (Error (loc, Unbound_module lid)) )
 
+  let get_global_module ~mode ~loc resolve_env name =
+    match
+      IdTbl.find_name ~modes:(modes_of_mode mode) name
+        resolve_env.external_modules
+    with
+    | Some (name, Immediate m) ->
+        Some (name, m)
+    | Some (name, Deferred filename) ->
+        resolve_env.external_modules
+        <- IdTbl.add resolve_env.external_modules ~key:name
+             ~data:(In_flight filename) ;
+        let m =
+          !load_module ~loc ~name:(Ident.name name) resolve_env filename
+        in
+        resolve_env.external_modules
+        <- IdTbl.add resolve_env.external_modules ~key:name
+             ~data:(Immediate m : _ or_deferred) ;
+        Some (name, m)
+    | Some (_name, In_flight filename) ->
+        raise (Error (loc, Recursive_load filename))
+    | None ->
+        None
+
   let rec find_module_ ~mode ~loc ~scopes resolve_env lid scope =
     let open Option.Let_syntax in
     match lid with
@@ -373,36 +396,14 @@ module Scope = struct
     | Some (ident, Immediate m) ->
         Some (ident, m)
     | Some (ident, Deferred lid) ->
-        Option.map (get_global_module ~mode ~loc ~scopes resolve_env lid)
+        Option.map (find_global_module ~mode ~loc ~scopes resolve_env lid)
           ~f:(fun (_ident, m) -> (ident, m))
     | None ->
         None
 
-  and get_global_module ~mode ~loc ~scopes resolve_env lid =
+  and find_global_module ~mode ~loc ~scopes resolve_env lid =
     let name, lid = outer_mod_name ~loc lid in
-    let m =
-      match
-        IdTbl.find_name ~modes:(modes_of_mode mode) name
-          resolve_env.external_modules
-      with
-      | Some (name, Immediate m) ->
-          Some (name, m)
-      | Some (name, Deferred filename) ->
-          resolve_env.external_modules
-          <- IdTbl.add resolve_env.external_modules ~key:name
-               ~data:(In_flight filename) ;
-          let m =
-            !load_module ~loc ~name:(Ident.name name) resolve_env filename
-          in
-          resolve_env.external_modules
-          <- IdTbl.add resolve_env.external_modules ~key:name
-               ~data:(Immediate m : _ or_deferred) ;
-          Some (name, m)
-      | Some (_name, In_flight filename) ->
-          raise (Error (loc, Recursive_load filename))
-      | None ->
-          None
-    in
+    let m = get_global_module ~mode ~loc resolve_env name in
     match (m, lid) with
     | Some (ident, m), Some lid ->
         Option.map (find_module_ ~mode ~loc ~scopes resolve_env lid m)
@@ -419,7 +420,7 @@ module Scope = struct
     | Some m ->
         m
     | None -> (
-      match get_global_module ~mode ~loc ~scopes resolve_env lid with
+      match find_global_module ~mode ~loc ~scopes resolve_env lid with
       | Some m ->
           m
       | None ->
@@ -658,7 +659,7 @@ let find_of_lident ~mode ~kind ~get_name (lid : lid) env =
     match lid.txt with
     | Ldot (path, name) ->
         let%bind path, m =
-          Scope.get_global_module ~mode ~loc ~scopes:env.scope_stack
+          Scope.find_global_module ~mode ~loc ~scopes:env.scope_stack
             env.resolve_env path
         in
         let%map ident, data = get_name ~mode name m in
