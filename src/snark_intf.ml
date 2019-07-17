@@ -1058,6 +1058,17 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
        [verification_key] overrides the argument given to {!val:create}, if
        any.
     *)
+
+    val generate_witness :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handlers:Handler.t list
+      -> ?reduce:bool
+      -> ('a, 's, 'public_input) t
+      -> 's
+      -> Field.Vector.t * Field.Vector.t
+    (** Generate a pair [(public_input, auxiliary_input)] of vectors of field
+        elements from which a proof may be created.
+    *)
   end
 
   (** Utility functions for running different representations of checked
@@ -1092,6 +1103,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> Proof.t
       -> Verification_key.t
       -> (_, bool, _, 'k_value) Data_spec.t
+      -> 'k_value
+
+    val generate_witness :
+         run:('a, 's, 't) t
+      -> ('t, Field.Vector.t * Field.Vector.t, 'k_var, 'k_value) Data_spec.t
+      -> 'k_var
+      -> 's
       -> 'k_value
 
     val run_unchecked : run:('a, 's, 't) t -> 't -> 's -> 's * 'a
@@ -1268,6 +1286,19 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> (_, bool, _, 'k_value) Data_spec.t
     -> 'k_value
   (** Verify a {!type:Proof.t} generated from a checked computation. *)
+
+  val generate_witness :
+       ( (unit, 's) Checked.t
+       , Field.Vector.t * Field.Vector.t
+       , 'k_var
+       , 'k_value )
+       Data_spec.t
+    -> 's
+    -> 'k_var
+    -> 'k_value
+  (** Generate a pair [(public_input, auxiliary_input)] of vectors of field
+      elements from which a proof may be created.
+  *)
 
   val run_unchecked : ('a, 's) Checked.t -> 's -> 's * 'a
   (** Run a checked computation as the prover, without checking the
@@ -1944,6 +1975,13 @@ module type Run_basic = sig
       -> ('a, 'public_input) t
       -> Proof.t
       -> bool
+
+    val generate_witness :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handlers:Handler.t list
+      -> ('a, 'public_input) t
+      -> prover_state
+      -> Field.Constant.Vector.t * Field.Constant.Vector.t
   end
 
   val assert_ : ?label:string -> Constraint.t -> unit
@@ -2011,6 +2049,16 @@ module type Run_basic = sig
     -> Proof.t
     -> Verification_key.t
     -> (_, bool, _, 'k_value) Data_spec.t
+    -> 'k_value
+
+  val generate_witness :
+       ( unit -> 'a
+       , Field.Constant.Vector.t * Field.Constant.Vector.t
+       , 'k_var
+       , 'k_value )
+       Data_spec.t
+    -> 'k_var
+    -> prover_state
     -> 'k_value
 
   val run_unchecked : (unit -> 'a) -> prover_state -> prover_state * 'a

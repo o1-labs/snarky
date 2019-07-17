@@ -863,6 +863,14 @@ struct
                    provided." ) ]
         in
         Proof.verify ?message proof verification_key input
+
+      let generate_witness ~run ~public_input ?handlers ?reduce proof_system s
+          =
+        let _, _, state =
+          run_with_input ~run ?reduce ~public_input ?handlers proof_system s
+        in
+        let {input; aux; _} = state in
+        (input, aux)
     end
 
     let rec collect_input_constraints : type checked s r2 k1 k2.
@@ -1015,6 +1023,24 @@ struct
               c s primary
           in
           ignore auxiliary )
+        t k
+
+    let generate_witness :
+           run:('a, 's, 'checked) Checked.Runner.run
+        -> ('checked, Field.Vector.t * Field.Vector.t, 'k_var, 'k_value) t
+        -> ?handlers:Handler.t list
+        -> 's
+        -> 'k_var
+        -> 'k_value =
+     fun ~run t ?handlers s k ->
+      conv
+        (fun c primary ->
+          let auxiliary =
+            Checked.auxiliary_input ~run ?handlers
+              ~num_inputs:(Field.Vector.length primary)
+              c s primary
+          in
+          (primary, auxiliary) )
         t k
   end
 
@@ -1305,6 +1331,10 @@ struct
 
     let verify ~public_input ?verification_key ?message (proof_system : _ t) =
       verify ~public_input ?verification_key ?message proof_system
+
+    let generate_witness ~public_input ?handlers ?reduce (proof_system : _ t) =
+      generate_witness ~run:Checked.run ~public_input ?handlers ?reduce
+        proof_system
   end
 
   module Perform = struct
@@ -1317,6 +1347,8 @@ struct
     let prove ~run ?message key t k s = Run.prove ~run ?message key t s k
 
     let verify = Run.verify
+
+    let generate_witness ~run t k s = Run.generate_witness ~run t s k
 
     let constraint_system = Run.constraint_system
 
@@ -1338,6 +1370,8 @@ struct
     Run.generate_auxiliary_input ~run:Checked.run t s k
 
   let verify = Run.verify
+
+  let generate_witness t s k = Run.generate_witness ~run:Checked.run t s k
 
   let constraint_system ~exposing k =
     Run.constraint_system ~run:Checked.run ~exposing k
@@ -1893,6 +1927,9 @@ module Run = struct
       let verify ~public_input ?verification_key ?message (proof_system : _ t)
           =
         verify ~public_input ?verification_key ?message proof_system
+
+      let generate_witness ~public_input ?handlers (proof_system : _ t) s =
+        generate_witness ~run ~public_input ?handlers proof_system s
     end
 
     let assert_ ?label c = run (assert_ ?label c)
@@ -1972,6 +2009,8 @@ module Run = struct
     let prove ?message pk x = Perform.prove ~run:as_stateful ?message pk x
 
     let verify ?message pf vk spec = verify ?message pf vk spec
+
+    let generate_witness x = Perform.generate_witness ~run:as_stateful x
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 
