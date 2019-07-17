@@ -15,6 +15,7 @@ type error =
   | Unbound_type of Longident.t
   | Unbound_module of Longident.t
   | Unbound_value of Longident.t
+  | Unbound of string * Longident.t
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Lident_unhandled of string * Longident.t
@@ -366,12 +367,15 @@ module Scope = struct
           get_module ~mode ~loc ~scopes resolve_env name scope
         in
         (Path.Pident ident, m)
-    | Ldot (path, name) ->
-        let%bind path, m =
+    | Ldot (path, name) -> (
+        let%map path, m =
           find_module_ ~mode ~loc ~scopes resolve_env path scope
         in
-        let%map ident, m = get_module ~mode ~loc ~scopes resolve_env name m in
-        (Path.dot path ident, m)
+        match get_module ~mode ~loc ~scopes resolve_env name m with
+        | Some (ident, m) ->
+            (Path.dot path ident, m)
+        | None ->
+            raise (Error (loc, Unbound_module lid)) )
     | Lapply (fpath, path) ->
         let%map fpath, m =
           find_module_ ~mode ~loc ~scopes resolve_env fpath scope
@@ -435,9 +439,12 @@ module Scope = struct
         (Path.Pident ident, m)
     | Ldot (lid, name) -> (
       match find_module_deferred ~mode ~loc ~scopes resolve_env lid scope with
-      | Some (path, Immediate m) ->
-          let%map ident, m = IdTbl.find_name ~modes name m.modules in
-          (Path.dot path ident, m)
+      | Some (path, Immediate m) -> (
+        match IdTbl.find_name ~modes name m.modules with
+        | Some (ident, m) ->
+            Some (Path.dot path ident, m)
+        | None ->
+            raise (Error (loc, Unbound_module lid)) )
       | Some (path, Deferred lid) ->
           (* TODO: Rework this. We need to know whether deferred modules are
              Prover or Checked mode.
@@ -641,14 +648,17 @@ let find_of_lident ~mode ~kind ~get_name (lid : lid) env =
         fun scope ->
           let%map ident, data = get_name ~mode name scope in
           (Path.Pident ident, data)
-    | Ldot (path, name) ->
+    | Ldot (path, name) -> (
         fun scope ->
-          let%bind path, m =
+          let%map path, m =
             Scope.find_module_ ~mode ~loc ~scopes:env.scope_stack
               env.resolve_env path scope
           in
-          let%map ident, data = get_name ~mode name m in
-          (Path.dot path ident, data)
+          match get_name ~mode name m with
+          | Some (ident, data) ->
+              (Path.dot path ident, data)
+          | None ->
+              raise (Error (loc, Unbound (kind, lid.txt))) )
     | Lapply _ ->
         raise (Error (loc, Lident_unhandled (kind, lid.txt)))
   in
@@ -1225,6 +1235,8 @@ let report_error ppf = function
       fprintf ppf "@[<hov>Unbound module @[<h>%a@].@]" Longident.pp lid
   | Unbound_value lid ->
       fprintf ppf "@[<hov>Unbound value @[<h>%a@].@]" Longident.pp lid
+  | Unbound (kind, lid) ->
+      fprintf ppf "@[<hov>Unbound %s @[<h>%a@].@]" kind Longident.pp lid
   | Wrong_number_args (path, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \
