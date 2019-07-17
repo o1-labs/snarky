@@ -96,7 +96,7 @@ module Scope = struct
   type t =
     { kind: t kind
     ; path: Longident.t option
-    ; names: type_expr String.Map.t
+    ; names: type_expr IdTbl.t
     ; type_variables: type_expr String.Map.t
     ; type_decls: type_decl String.Map.t
     ; fields: (type_decl * int) IdTbl.t
@@ -116,7 +116,7 @@ module Scope = struct
   let empty path kind =
     { kind
     ; path
-    ; names= String.Map.empty
+    ; names= IdTbl.empty
     ; type_variables= String.Map.empty
     ; type_decls= String.Map.empty
     ; fields= IdTbl.empty
@@ -129,9 +129,11 @@ module Scope = struct
   let set_path path env = {env with path= Some path}
 
   let add_name key typ scope =
-    {scope with names= Map.set scope.names ~key ~data:typ}
+    {scope with names= IdTbl.add scope.names ~key ~data:typ}
 
-  let get_name name {names; _} = Map.find names name
+  let get_name name {names; _} = IdTbl.find name names
+
+  let find_name name {names; _} = IdTbl.find_name name names
 
   let add_type_variable key typ scope =
     {scope with type_variables= Map.set scope.type_variables ~key ~data:typ}
@@ -222,7 +224,7 @@ module Scope = struct
       IdTbl.fold2_names module_types1 module_types2 ~init:acc ~f:module_types
     in
     let acc = Map.fold2 instances1 instances2 ~init:acc ~f:instances in
-    let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
+    let acc = IdTbl.fold2_names names1 names2 ~init:acc ~f:names in
     acc
 
   (* Extend the paths in the first argument with those in the second,
@@ -265,7 +267,8 @@ module Scope = struct
       ; paths= paths2 } =
     { kind
     ; path
-    ; names= Map.merge_skewed names1 names2 ~combine:(fun ~key:_ _ v -> v)
+    ; names=
+        IdTbl.merge_skewed_names names1 names2 ~combine:(fun ~key:_ _ v -> v)
     ; type_variables=
         Map.merge_skewed type_variables1 type_variables2
           ~combine:(fun ~key:_ _ v -> v)
@@ -412,8 +415,9 @@ module Scope = struct
     assert (expr_scope.kind = Expr) ;
     let select_new ~key:_ _ new_value = new_value in
     { scope with
-      names= Map.merge_skewed scope.names expr_scope.names ~combine:select_new
-    }
+      names=
+        IdTbl.merge_skewed_names scope.names expr_scope.names
+          ~combine:select_new }
 end
 
 let empty_resolve_env : Scope.t resolve_env =
@@ -1226,20 +1230,19 @@ module TypeDecl = struct
         ret
 end
 
-let add_name (name : str) typ =
-  map_current_scope ~f:(Scope.add_name name.txt typ)
+let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
 
 let get_name (name : str) env =
   let loc = name.loc in
-  match List.find_map ~f:(Scope.get_name name.txt) env.scope_stack with
-  | Some typ ->
+  match List.find_map ~f:(Scope.find_name name.txt) env.scope_stack with
+  | Some (_ident, typ) ->
       Type.copy typ Int.Map.empty env
   | None ->
       raise (Error (loc, Unbound_value (Lident name.txt)))
 
 let find_name (lid : lid) env =
-  match find_of_lident ~kind:"name" ~get_name:Scope.get_name lid env with
-  | Some typ ->
+  match find_of_lident ~kind:"name" ~get_name:Scope.find_name lid env with
+  | Some (_ident, typ) ->
       Type.copy typ Int.Map.empty env
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))

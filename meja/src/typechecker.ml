@@ -427,7 +427,8 @@ let rec check_pattern ~add env typ pat =
   | Ppat_any ->
       ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_any}, env)
   | Ppat_variable str ->
-      let env = add str typ env in
+      let name = map_loc ~f:Ident.create str in
+      let env = add name.txt typ env in
       ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}, env)
   | Ppat_constraint (p, constr_typ) ->
       let ctyp, env = Typet.Type.import constr_typ env in
@@ -982,7 +983,8 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         if Set.is_empty typ_vars then e.exp_type
         else Envi.Type.mk (Tpoly (Set.to_list typ_vars, e.exp_type)) env
       in
-      let env = Envi.add_name str typ env in
+      let name = map_loc ~f:Ident.create str in
+      let env = Envi.add_name name.txt typ env in
       let p =
         {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}
       in
@@ -994,7 +996,8 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         if Set.is_empty typ_vars then ctyp
         else Envi.Type.mk (Tpoly (Set.to_list typ_vars, ctyp)) env
       in
-      let env = Envi.add_name str ctyp env in
+      let name = map_loc ~f:Ident.create str in
+      let env = Envi.add_name name.txt ctyp env in
       let p' =
         { Typedast.pat_loc= p'.pat_loc
         ; pat_type= ctyp
@@ -1066,14 +1069,16 @@ let rec check_signature_item env item =
       let typ', env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ' ;
-      let env = add_polymorphised name typ' env in
+      let name' = map_loc ~f:Ident.create name in
+      let env = add_polymorphised name'.txt typ' env in
       (env, {Typedast.sig_desc= Tsig_value (name, typ); sig_loc= loc})
   | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ', env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ' ;
-      let env = add_polymorphised name typ' env in
+      let name' = map_loc ~f:Ident.create name in
+      let env = add_polymorphised name'.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ' env in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
   | Psig_type decl ->
