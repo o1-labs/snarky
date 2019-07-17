@@ -317,8 +317,9 @@ let get_field (field : lid) env =
   let loc = field.loc in
   match Envi.TypeDecl.find_of_field field env with
   | Some
-      ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
-      , i ) ->
+      ( _ident
+      , ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
+        , i ) ) ->
       let vars, bound_vars, _ =
         Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
       in
@@ -493,8 +494,10 @@ let rec check_pattern ~add env typ pat =
             (typ, field_decls, bound_vars, env)
         | _ -> (
           match Envi.TypeDecl.find_of_field field env with
-          | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
-            ->
+          | Some
+              ( _ident
+              , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
+              ) ->
               let vars, bound_vars, env =
                 Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
@@ -746,8 +749,10 @@ let rec get_expression env expected exp =
             None
         | Ldot (path, _) -> (
           match Envi.TypeDecl.find_of_field field env with
-          | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
-            ->
+          | Some
+              ( _ident
+              , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
+              ) ->
               let vars, bound_vars, env =
                 Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
@@ -798,8 +803,9 @@ let rec get_expression env expected exp =
           | _ -> (
             match Envi.TypeDecl.find_of_field field env with
             | Some
-                (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
-              ->
+                ( _ident
+                , ( ({tdec_desc= TRecord field_decls; tdec_params; _} as decl)
+                  , i ) ) ->
                 let vars, bound_vars, env =
                   Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
                 in
@@ -842,8 +848,10 @@ let rec get_expression env expected exp =
             (typ, field_decls, bound_vars, env)
         | _ -> (
           match Envi.TypeDecl.find_of_field field env with
-          | Some (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
-            ->
+          | Some
+              ( _ident
+              , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
+              ) ->
               let vars, bound_vars, env =
                 Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in

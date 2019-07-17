@@ -99,7 +99,7 @@ module Scope = struct
     ; names: type_expr String.Map.t
     ; type_variables: type_expr String.Map.t
     ; type_decls: type_decl String.Map.t
-    ; fields: (type_decl * int) String.Map.t
+    ; fields: (type_decl * int) IdTbl.t
     ; ctors: (type_decl * int) String.Map.t
     ; modules: t or_path IdTbl.t
     ; module_types: t or_path IdTbl.t
@@ -119,7 +119,7 @@ module Scope = struct
     ; names= String.Map.empty
     ; type_variables= String.Map.empty
     ; type_decls= String.Map.empty
-    ; fields= String.Map.empty
+    ; fields= IdTbl.empty
     ; ctors= String.Map.empty
     ; modules= IdTbl.empty
     ; module_types= IdTbl.empty
@@ -141,11 +141,11 @@ module Scope = struct
   let add_field decl index scope field_decl =
     { scope with
       fields=
-        Map.set scope.fields
-          ~key:(Ident.name field_decl.fld_ident)
-          ~data:(decl, index) }
+        IdTbl.add scope.fields ~key:field_decl.fld_ident ~data:(decl, index) }
 
-  let get_field name scope = Map.find scope.fields name
+  let get_field ident scope = IdTbl.find ident scope.fields
+
+  let find_field name scope = IdTbl.find_name name scope.fields
 
   let add_ctor decl index scope ctor_decl =
     { scope with
@@ -216,7 +216,7 @@ module Scope = struct
     in
     let acc = Map.fold2 type_decls1 type_decls2 ~init:acc ~f:type_decls in
     let acc = Map.fold2 ctors1 ctors2 ~init:acc ~f:ctors in
-    let acc = Map.fold2 fields1 fields2 ~init:acc ~f:fields in
+    let acc = IdTbl.fold2_names fields1 fields2 ~init:acc ~f:fields in
     let acc = IdTbl.fold2_names modules1 modules2 ~init:acc ~f:modules in
     let acc =
       IdTbl.fold2_names module_types1 module_types2 ~init:acc ~f:module_types
@@ -272,7 +272,8 @@ module Scope = struct
     ; type_decls=
         Map.merge_skewed type_decls1 type_decls2 ~combine:(fun ~key _ _ ->
             raise (Error (loc, Multiple_definition ("type", key))) )
-    ; fields= Map.merge_skewed fields1 fields2 ~combine:(fun ~key:_ _ v -> v)
+    ; fields=
+        IdTbl.merge_skewed_names fields1 fields2 ~combine:(fun ~key:_ _ v -> v)
     ; ctors= Map.merge_skewed ctors1 ctors2 ~combine:(fun ~key:_ _ v -> v)
     ; modules=
         IdTbl.merge_skewed_names modules1 modules2 ~combine:(fun ~key _ _ ->
@@ -1197,7 +1198,7 @@ module TypeDecl = struct
     (decl, bound_vars, env)
 
   let find_of_field (field : lid) env =
-    find_of_lident ~kind:"field" ~get_name:Scope.get_field field env
+    find_of_lident ~kind:"field" ~get_name:Scope.find_field field env
 
   let find_of_constructor (ctor : lid) env =
     find_of_lident ~kind:"constructor" ~get_name:Scope.get_ctor ctor env
