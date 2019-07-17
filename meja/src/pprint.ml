@@ -255,6 +255,8 @@ and expression_desc_bracket fmt exp =
   | Pexp_record _
   | Pexp_ctor _ ->
       expression_desc fmt exp
+  | Pexp_seq _ | Pexp_let _ ->
+      fprintf fmt "{@[<hv1>@,%a@,@]}" expression_desc exp
   | _ ->
       fprintf fmt "(@[<hv1>@,%a@,@])" expression_desc exp
 
