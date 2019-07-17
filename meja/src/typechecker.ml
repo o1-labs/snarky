@@ -1079,9 +1079,9 @@ let rec check_signature_item env item =
       let env =
         match m with
         | Envi.Scope.Immediate m ->
-            Envi.add_module name m env
+            Envi.add_module name.txt m env
         | Envi.Scope.Deferred path ->
-            Envi.add_deferred_module name path env
+            Envi.add_deferred_module name.txt path env
       in
       (env, {Typedast.sig_desc= Tsig_module (name, msig); sig_loc= loc})
   | Psig_modtype (name, signature) ->
@@ -1159,9 +1159,9 @@ and check_module_sig env path msig =
         let env =
           match f_instance with
           | Envi.Scope.Immediate f ->
-              Envi.add_module f_name f env
+              Envi.add_module f_name.txt f env
           | Envi.Scope.Deferred path ->
-              Envi.add_deferred_module f_name path env
+              Envi.add_deferred_module f_name.txt path env
         in
         (* TODO: check that f_instance matches f_mty *)
         let msig, m, _env = check_module_sig env path msig in
@@ -1225,7 +1225,7 @@ let rec check_statement env stmt =
       let env, m = check_module_expr env m in
       let m_env, env = Envi.pop_module ~loc env in
       let name = map_loc ~f:Ident.create name in
-      let env = Envi.add_module name m_env env in
+      let env = Envi.add_module name.txt m_env env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_module (name, m)})
   | Pstmt_modtype (name, signature) ->
       let signature, m_env, env =
@@ -1364,9 +1364,9 @@ and check_module_expr env m =
         let env =
           match f_instance with
           | Envi.Scope.Immediate f ->
-              Envi.add_module f_name f env
+              Envi.add_module f_name.txt f env
           | Envi.Scope.Deferred path ->
-              Envi.add_deferred_module f_name path env
+              Envi.add_deferred_module f_name.txt path env
         in
         (* TODO: check that f_instance matches f' *)
         let env = Envi.open_absolute_module (Some path) env in

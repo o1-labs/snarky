@@ -523,10 +523,10 @@ let add_type_variable name typ =
 let find_type_variable name env =
   List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
 
-let add_module (name : ident) m =
+let add_module (name : Ident.t) m =
   map_current_scope ~f:(fun scope ->
-      let scope = Scope.add_module name.txt (Scope.Immediate m) scope in
-      let paths = Scope.extend_paths (Ident.name name.txt) m.Scope.paths in
+      let scope = Scope.add_module name (Scope.Immediate m) scope in
+      let paths = Scope.extend_paths (Ident.name name) m.Scope.paths in
       { scope with
         instances=
           Map.merge scope.instances m.instances ~f:(fun ~key:_ data ->
@@ -534,13 +534,13 @@ let add_module (name : ident) m =
               | `Left x ->
                   Some x
               | `Both (_, x) | `Right x ->
-                  Some (Longident.add_outer_module (Ident.name name.txt) x) )
+                  Some (Longident.add_outer_module (Ident.name name) x) )
       ; (* Prefer the shorter paths in the current module to those in the
            module we are adding. *)
         paths= Scope.join_paths paths scope.paths } )
 
-let add_deferred_module (name : ident) lid =
-  map_current_scope ~f:(Scope.add_module name.txt (Scope.Deferred lid))
+let add_deferred_module (name : Ident.t) lid =
+  map_current_scope ~f:(Scope.add_module name (Scope.Deferred lid))
 
 let register_external_module name x env =
   env.resolve_env.external_modules
