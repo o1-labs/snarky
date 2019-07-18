@@ -18,6 +18,13 @@ let map_list ~same ~f =
       if not (phys_equal x y) then same := false ;
       y )
 
+(** The default mapper (and the functions that it contains) are careful to
+    preserve equality unless some subvalue changes, to ensure that we don't
+    perform unnecessary allocations/GCs during mapping.
+    This also makes it much less likely that we might replace a variant which
+    we planned to mutate later.
+*)
+
 let type_expr mapper ({type_desc= desc; type_id; type_depth} as typ) =
   let type_desc = mapper.type_desc mapper desc in
   if phys_equal type_desc desc then typ else {type_desc; type_id; type_depth}
