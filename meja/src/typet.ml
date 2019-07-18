@@ -216,6 +216,52 @@ module TypeDecl = struct
     , { Type0.fld_ident= Ident.create ~mode fld_ident.txt
       ; fld_type= fld_type.type_type } )
 
+  let import_ctor env ctor =
+    let mode = current_mode env in
+    let scope, env = pop_expr_scope env in
+    let ctor_ret, env, must_find =
+      match ctor.ctor_ret with
+      | Some ret ->
+          let env = open_expr_scope env in
+          let ret, env = Type.import ~must_find:false ret env in
+          (Some ret.type_type, env, None)
+      | None ->
+          (None, push_scope scope env, Some true)
+    in
+    let env, ctor_args =
+      match ctor.ctor_args with
+      | Ctor_tuple args ->
+          let env, args =
+            List.fold_map ~init:env args ~f:(fun env arg ->
+                let arg, env = Type.import ?must_find arg env in
+                (env, arg.type_type) )
+          in
+          (env, Type0.Ctor_tuple args)
+      | Ctor_record fields ->
+          let env, fields =
+            List.fold_map ~init:env fields ~f:(import_field ?must_find)
+          in
+          (* Extract the type variables from the fields' types, use
+             them as effective type parameters.
+          *)
+          let params =
+            List.fold ~init:Typeset.empty fields ~f:(fun set {fld_type; _} ->
+                Set.union set (Envi.Type.type_vars fld_type) )
+            |> Set.to_list
+          in
+          let decl =
+            mk
+              ~name:(Ident.create ~mode ctor.ctor_ident.txt)
+              ~params (TRecord fields) env
+          in
+          (env, Type0.Ctor_record decl)
+    in
+    let env = push_scope scope (close_expr_scope env) in
+    ( env
+    , { Type0.ctor_ident= Ident.create ~mode ctor.ctor_ident.txt
+      ; ctor_args
+      ; ctor_ret } )
+
   let import decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc= _}
@@ -316,72 +362,32 @@ module TypeDecl = struct
           in
           ({decl with tdec_desc= TRecord fields; tdec_implicit_params}, env)
       | Pdec_variant ctors | Pdec_extend (_, _, ctors) ->
+          let name =
+            match tdec_desc with
+            | Pdec_variant _ ->
+                Path.Pident tdec_ident.txt
+            | Pdec_extend (lid, _, _) ->
+                lid.txt
+            | _ ->
+                failwith "Could not find name for TVariant/TExtend."
+          in
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
-                let scope, env = pop_expr_scope env in
-                let ctor_ret, env, must_find =
-                  match ctor.ctor_ret with
-                  | Some ret' ->
-                      let env = open_expr_scope env in
-                      let name =
-                        match tdec_desc with
-                        | Pdec_variant _ ->
-                            Path.Pident tdec_ident.txt
-                        | Pdec_extend (lid, _, _) ->
-                            lid.txt
-                        | _ ->
-                            failwith
-                              "Could not find name for TVariant/TExtend."
-                      in
-                      let ret, env = Type.import ~must_find:false ret' env in
-                      ( match ret.type_type.type_desc with
-                      | Tctor {var_ident= path; _}
-                        when Path.compare path name = 0 ->
-                          ()
-                      | _ ->
-                          raise
-                            (Error
-                               ( ret.type_loc
-                               , Constraints_not_satisfied (ret', decl') )) ) ;
-                      (Some ret.type_type, env, None)
-                  | None ->
-                      (None, push_scope scope env, Some true)
-                in
-                let env, ctor_args =
-                  match ctor.ctor_args with
-                  | Ctor_tuple args ->
-                      let env, args =
-                        List.fold_map ~init:env args ~f:(fun env arg ->
-                            let arg, env = Type.import ?must_find arg env in
-                            (env, arg.type_type) )
-                      in
-                      (env, Type0.Ctor_tuple args)
-                  | Ctor_record fields ->
-                      let env, fields =
-                        List.fold_map ~init:env fields
-                          ~f:(import_field ?must_find)
-                      in
-                      (* Extract the type variables from the fields' types, use
-                         them as effective type parameters.
-                      *)
-                      let params =
-                        List.fold ~init:Typeset.empty fields
-                          ~f:(fun set {fld_type; _} ->
-                            Set.union set (Envi.Type.type_vars fld_type) )
-                        |> Set.to_list
-                      in
-                      let decl =
-                        mk
-                          ~name:(Ident.create ~mode ctor.ctor_ident.txt)
-                          ~params (TRecord fields) env
-                      in
-                      (env, Type0.Ctor_record decl)
-                in
-                let env = push_scope scope (close_expr_scope env) in
-                ( env
-                , { Type0.ctor_ident= Ident.create ~mode ctor.ctor_ident.txt
-                  ; ctor_args
-                  ; ctor_ret } ) )
+                let ret = ctor.ctor_ret in
+                let env, ctor = import_ctor env ctor in
+                ( match (ctor.ctor_ret, ret) with
+                | Some {type_desc= Tctor {var_ident= path; _}; _}, _
+                  when Path.compare path name = 0 ->
+                    ()
+                | Some _, Some ret ->
+                    raise
+                      (Error
+                         (ret.type_loc, Constraints_not_satisfied (ret, decl')))
+                | Some _, None ->
+                    assert false
+                | _ ->
+                    () ) ;
+                (env, ctor) )
           in
           let tdec_desc =
             match tdec_desc with
