@@ -51,7 +51,7 @@ let ctor_args fmt = function
       ()
   | Ctor_tuple typs ->
       tuple fmt typs
-  | Ctor_record (_, fields) ->
+  | Ctor_record fields ->
       fprintf fmt "{@[<2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
