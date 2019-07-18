@@ -146,7 +146,7 @@ module Type = struct
               in
               (mk (Tctor variant) env, env)
         in
-        ( { type_desc= Ttyp_ctor {var_params; var_ident= variant.var_ident; var_implicit_params}
+        ( { type_desc= Ttyp_ctor {var_params; var_ident; var_implicit_params}
           ; type_loc= loc
           ; type_type= typ }
         , env )
@@ -212,7 +212,9 @@ module TypeDecl = struct
   let import_field ?must_find env {fld_ident; fld_type; fld_loc= _} =
     let mode = Envi.current_mode env in
     let fld_type, env = Type.import ?must_find fld_type env in
-    (env, {Type0.fld_ident= Ident.create ~mode fld_ident.txt; fld_type= fld_type.type_type })
+    ( env
+    , { Type0.fld_ident= Ident.create ~mode fld_ident.txt
+      ; fld_type= fld_type.type_type } )
 
   let import decl' env =
     let mode = Envi.current_mode env in

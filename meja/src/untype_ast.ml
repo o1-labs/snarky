@@ -100,9 +100,9 @@ and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}
 
 and variant {Typedast.var_ident; var_params; var_implicit_params} =
-  let var_params = List.map ~f:type_expr var_params in
-  let var_implicit_params = List.map ~f:type_expr var_implicit_params in
-  {Parsetypes.var_ident; var_params; var_implicit_params}
+  { Parsetypes.var_ident= map_loc ~f:longident_of_path var_ident
+  ; var_params= List.map ~f:type_expr var_params
+  ; var_implicit_params= List.map ~f:type_expr var_implicit_params }
 
 let field_decl {Typedast.fld_ident; fld_type; fld_loc} =
   {Parsetypes.fld_ident; fld_type= type_expr fld_type; fld_loc}
@@ -153,7 +153,7 @@ let rec pattern_desc = function
   | Tpat_variable str ->
       Ppat_variable (map_loc ~f:Ident.name str)
   | Tpat_constraint (p, typ) ->
-      Ppat_constraint (pattern p, typ)
+      Ppat_constraint (pattern p, type_expr typ)
   | Tpat_tuple ps ->
       Ppat_tuple (List.map ~f:pattern ps)
   | Tpat_or (p1, p2) ->
@@ -198,7 +198,7 @@ let rec expression_desc = function
   | Texp_let (p, e1, e2) ->
       Pexp_let (pattern p, expression e1, expression e2)
   | Texp_constraint (e, typ) ->
-      Pexp_constraint (expression e, typ)
+      Pexp_constraint (expression e, type_expr typ)
   | Texp_tuple es ->
       Pexp_tuple (List.map ~f:expression es)
   | Texp_match (e, cases) ->
@@ -228,9 +228,9 @@ and expression e =
 
 let rec signature_desc = function
   | Typedast.Tsig_value (name, typ) ->
-      Parsetypes.Psig_value (map_loc ~f:Ident.name name, typ)
+      Parsetypes.Psig_value (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_instance (name, typ) ->
-      Psig_instance (map_loc ~f:Ident.name name, typ)
+      Psig_instance (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_type decl ->
       Psig_type decl
   | Tsig_module (name, msig) ->

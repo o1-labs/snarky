@@ -97,8 +97,9 @@ let type_decl_desc iter = function
       ()
   | Pdec_extend (_name, _decl, _ctors) ->
       assert false
-      (* TODO: re-enable this when the Type0 iterator is merged. *)
-      (*lid iter name ;
+
+(* TODO: re-enable this when the Type0 iterator is merged. *)
+(*lid iter name ;
       iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors*)
 

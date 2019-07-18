@@ -66,7 +66,7 @@ let type_desc iter = function
       iter.type_expr iter typ
 
 let variant iter {var_ident; var_params; var_implicit_params} =
-  lid iter var_ident ;
+  path iter var_ident ;
   List.iter ~f:(iter.type_expr iter) var_params ;
   List.iter ~f:(iter.type_expr iter) var_implicit_params
 
@@ -150,7 +150,7 @@ let pattern_desc iter = function
   | Tpat_variable name ->
       ident iter name
   | Tpat_constraint (pat, typ) ->
-      iter.ptype_expr iter typ ; iter.pattern iter pat
+      iter.type_expr iter typ ; iter.pattern iter pat
   | Tpat_tuple pats ->
       List.iter ~f:(iter.pattern iter) pats
   | Tpat_or (p1, p2) ->
@@ -186,7 +186,7 @@ let expression_desc iter = function
   | Texp_let (p, e1, e2) ->
       iter.pattern iter p ; iter.expression iter e1 ; iter.expression iter e2
   | Texp_constraint (e, typ) ->
-      iter.ptype_expr iter typ ; iter.expression iter e
+      iter.type_expr iter typ ; iter.expression iter e
   | Texp_tuple es ->
       List.iter ~f:(iter.expression iter) es
   | Texp_match (e, cases) ->
@@ -218,7 +218,7 @@ let signature_item iter {sig_desc; sig_loc} =
 
 let signature_desc iter = function
   | Tsig_value (name, typ) | Tsig_instance (name, typ) ->
-      ident iter name ; iter.ptype_expr iter typ
+      ident iter name ; iter.type_expr iter typ
   | Tsig_type decl ->
       iter.type_decl iter decl
   | Tsig_module (name, msig) | Tsig_modtype (name, msig) ->
