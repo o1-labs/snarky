@@ -182,6 +182,8 @@ module Field = struct
 
     val typ : t typ
 
+    val func_name : string -> string
+
     val size_in_bits : (unit -> int return) result
 
     val delete : (t -> unit return) result
@@ -760,6 +762,8 @@ struct
       (t -> Field_vector.t -> Field_vector.t -> bool return) result
 
     val digest : (t -> Cpp_string.t return) result
+
+    val num_constraints : (t -> int return) result
   end
 
   module Bind
@@ -789,6 +793,9 @@ struct
     let create = foreign (func_name "create") (void @-> returning typ)
 
     let clear = foreign (func_name "clear") (typ @-> returning void)
+
+    let num_constraints =
+      foreign (func_name "num_constraints") (typ @-> returning int)
 
     let add_constraint =
       foreign
@@ -886,6 +893,8 @@ module Common = struct
     end
 
     val field_size : (unit -> Bigint.R.t return) result
+
+    val domain_size : (int -> int return) result
   end
 
   module Bind (P : sig
@@ -902,6 +911,9 @@ module Common = struct
       foreign
         (with_prefix P.prefix "init_public_params")
         (void @-> returning void)
+
+    let domain_size =
+      foreign (with_prefix prefix "domain_size") (int @-> returning int)
 
     module Field0 =
       Make_foreign

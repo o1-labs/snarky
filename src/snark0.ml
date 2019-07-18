@@ -1001,7 +1001,7 @@ struct
 
     let generate_auxiliary_input :
            run:('a, 's, 'checked) Checked.Runner.run
-        -> ('checked, unit, 'k_var, 'k_value) t
+        -> ('checked, Field.Vector.t, 'k_var, 'k_value) t
         -> ?handlers:Handler.t list
         -> 's
         -> 'k_var
@@ -1014,7 +1014,7 @@ struct
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
-          ignore auxiliary )
+          auxiliary )
         t k
   end
 

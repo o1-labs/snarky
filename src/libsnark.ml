@@ -360,13 +360,21 @@ module Field = struct
 
     val ( *= ) : t -> t -> unit
 
-    module Vector : Vector.S_binable with type elt = t
+    module Vector : sig
+      include Vector.S_binable with type elt = t
+
+      val iter : t -> f:(elt -> unit) -> unit
+    end
+
+    val montgomery_representation : t -> char Ctypes_static.ptr
   end
 
   module Make (Field0 : sig
     type t [@@deriving sexp]
 
     include Deletable_intf with type t := t
+
+    val func_name : string -> string
   end) (R : sig
     include Binable.Minimal.S
 
@@ -464,15 +472,26 @@ module Field = struct
 
     include B
 
-    module Vector =
-      Vector.Make_binable (struct
-          type t = T.t
+    module Vector = struct
+      include Vector.Make_binable (struct
+                  type t = T.t
 
-          include B
+                  include B
 
-          let schedule_delete = Caml.Gc.finalise T.delete
-        end)
-        (Bindings.Vector)
+                  let schedule_delete = Caml.Gc.finalise T.delete
+                end)
+                (Bindings.Vector)
+
+      (* NOTE: This has to use libffi because Ctypes.FOREIGN doesn't support
+        [funptr]. *)
+      let iter =
+        let stub =
+          foreign
+            (Field0.func_name "vector_iter")
+            (typ @-> funptr (Field0.typ @-> returning void) @-> returning void)
+        in
+        fun t ~f -> stub t f
+    end
 
     include T
   end
@@ -887,6 +906,8 @@ struct
       -> full_assignment:Field_vector.t
       -> degree:int
       -> Field_vector.t * Field_vector.t * Field_vector.t
+
+    val num_constraints : t -> int
   end
 
   module Make
@@ -916,7 +937,8 @@ struct
       let c = field evals_struct "c" Field_vector.typ in
       seal evals_struct ;
       let stub =
-        foreign (func_name "")
+        foreign
+          (func_name "r1cs_evaluations")
           (typ @-> Field_vector.typ @-> size_t @-> returning evals_struct)
       in
       fun t ~full_assignment ~degree ->
@@ -950,6 +972,8 @@ module Common = struct
     let prefix = Bindings.prefix
 
     let () = Bindings.init ()
+
+    let domain_size = Bindings.domain_size
 
     module Field0 = struct
       module F = Bindings.Field0

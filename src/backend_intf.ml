@@ -1,7 +1,11 @@
 open Core_kernel
 
 module type S = sig
-  module Field : Field_intf.S
+  module Field : sig
+    include Field_intf.S
+
+    val montgomery_representation : t -> char Ctypes_static.ptr
+  end
 
   module Bigint : sig
     module R : Bigint_intf.Extended with type field := Field.t
@@ -94,7 +98,17 @@ module type S = sig
 
     val fold_constraints :
       f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
+
+    val evaluations :
+         t
+      -> full_assignment:Field.Vector.t
+      -> degree:int
+      -> Field.Vector.t * Field.Vector.t * Field.Vector.t
+
+    val num_constraints : t -> int
   end
+
+  val domain_size : int -> int
 
   module Proving_key : sig
     type t [@@deriving bin_io]

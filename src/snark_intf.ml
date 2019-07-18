@@ -1253,7 +1253,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       constraints are all satisfied, or [false] otherwise. *)
 
   val generate_auxiliary_input :
-       (('a, 's) Checked.t, unit, 'k_var, 'k_value) Data_spec.t
+       (('a, 's) Checked.t, Field.Vector.t, 'k_var, 'k_value) Data_spec.t
     -> 's
     -> 'k_var
     -> 'k_value

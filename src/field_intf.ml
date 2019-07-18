@@ -45,7 +45,11 @@ module type S = sig
 
   val ( *= ) : t -> t -> unit
 
-  module Vector : Vector.S with type elt = t
+  module Vector : sig
+    include Vector.S with type elt = t
+
+    val iter : t -> f:(elt -> unit) -> unit
+  end
 end
 
 module type Extended = sig

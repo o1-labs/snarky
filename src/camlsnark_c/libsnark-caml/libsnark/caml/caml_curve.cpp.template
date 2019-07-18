@@ -649,6 +649,11 @@ void CURVE_PREFIX(r1cs_constraint_system_iter)(
   }
 }
 
+int CURVE_PREFIX(r1cs_constraint_system_num_constraints)(
+    r1cs_constraint_system<FieldT>* sys) {
+  return sys->constraints.size();
+}
+
 std::vector<FieldT>* CURVE_PREFIX(field_vector_create)() {
   return new std::vector<FieldT>();
 }
@@ -669,6 +674,14 @@ FieldT* CURVE_PREFIX(field_vector_get)(std::vector<FieldT>* v, int i) {
 
 void CURVE_PREFIX(field_vector_delete)(std::vector<FieldT>* v) {
   delete v;
+}
+
+void CURVE_PREFIX(field_vector_iter)(
+    std::vector<FieldT>* v,
+    void (*f)(const r1cs_constraint<FieldT> *)) {
+  for (std::vector<FieldT>::const_iterator i = v.cbegin(); i != v.cend(); i++) {
+    f(&*i);
+  }
 }
 
 // Begin ppzksnark specific code
@@ -1168,6 +1181,11 @@ libff::G1<ppT>* CURVE_PREFIX(g1_window_scalar_mul)(
   return new libff::G1<ppT>(
       libff::window_scalar_mul< libff::G1<ppT>, libff::Fr<ppT>::num_limbs >(
         *table, *scalar));
+}
+
+int CURVE_PREFIX(domain_size)(int min_size) {
+  auto domain = libfqfft::get_evaluation_domain<FieldT>(min_size);
+  return domain->m;
 }
 
 }
