@@ -69,6 +69,12 @@ module type S = sig
     val get : 'a t -> ('a, 'f field, _) Types.As_prover.t
 
     val set : 'a t -> 'a -> (unit, 'f field, _) Types.As_prover.t
+
+    val store : 'a -> ('a t, 'f field) Typ_monads.Store.t
+
+    val read : 'a t -> ('a, 'f field) Typ_monads.Read.t
+
+    val alloc : unit -> ('a t, 'f field) Typ_monads.Alloc.t
   end
 end
 

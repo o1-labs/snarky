@@ -50,6 +50,12 @@ module type S_binable = sig
   include Binable.S with type t := t
 end
 
+module type S_binable_sexpable = sig
+  include S_binable
+
+  include Sexpable.S with type t := t
+end
+
 module Bind
     (F : Ctypes.FOREIGN) (Elt : sig
         type t
@@ -116,3 +122,13 @@ end)
             with type 'a return = 'a
              and type 'a result = 'a
              and type elt = Elt.t) : S_binable with type elt = Elt.t
+
+module Make_binable_sexpable (Elt : sig
+  type t [@@deriving bin_io, sexp]
+
+  val schedule_delete : t -> unit
+end)
+(Bindings : Bound
+            with type 'a return = 'a
+             and type 'a result = 'a
+             and type elt = Elt.t) : S_binable_sexpable with type elt = Elt.t
