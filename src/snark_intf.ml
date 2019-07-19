@@ -838,6 +838,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     *)
   end
 
+  (** The complete set of inputs needed to generate a zero-knowledge proof. *)
+  and Proof_inputs : sig
+    type t = {public_inputs: Field.Vector.t; auxiliary_inputs: Field.Vector.t}
+  end
+
   module Let_syntax :
     Monad_let.Syntax2 with type ('a, 's) t := ('a, 's) Checked.t
 
@@ -847,6 +852,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     (** The type of messages that can be associated with a proof. *)
     type message
+
+    val of_inputs : ?message:message -> Proving_key.t -> Proof_inputs.t -> t
+    (** Build a proof directly from the given proof inputs. *)
 
     include Binable.S with type t := t
   end
@@ -1065,10 +1073,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?reduce:bool
       -> ('a, 's, 'public_input) t
       -> 's
-      -> Field.Vector.t * Field.Vector.t
+      -> Proof_inputs.t
     (** Generate a witness (auxiliary input) for the given public input.
 
-        Returns a pair of field vectors [(public_input, auxiliary_input)],
+        Returns a record of field vectors [{public_inputs; auxiliary_inputs}],
         corresponding to the given public input and generated auxiliary input.
     *)
   end
@@ -1109,7 +1117,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     val generate_witness :
          run:('a, 's, 't) t
-      -> ('t, Field.Vector.t * Field.Vector.t, 'k_var, 'k_value) Data_spec.t
+      -> ('t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
       -> 'k_var
       -> 's
       -> 'k_value
@@ -1290,17 +1298,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** Verify a {!type:Proof.t} generated from a checked computation. *)
 
   val generate_witness :
-       ( (unit, 's) Checked.t
-       , Field.Vector.t * Field.Vector.t
-       , 'k_var
-       , 'k_value )
-       Data_spec.t
+       ((unit, 's) Checked.t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
     -> 's
     -> 'k_var
     -> 'k_value
   (** Generate a witness (auxiliary input) for the given public input.
 
-      Returns a pair of field vectors [(public_input, auxiliary_input)],
+      Returns a record of field vectors [{public_inputs; auxiliary_inputs}],
       corresponding to the given public input and generated auxiliary input.
   *)
 
@@ -1874,10 +1878,18 @@ module type Run_basic = sig
     *)
   end
 
+  and Proof_inputs : sig
+    type t =
+      { public_inputs: Field.Constant.Vector.t
+      ; auxiliary_inputs: Field.Constant.Vector.t }
+  end
+
   module Proof : sig
     type t
 
     type message
+
+    val of_inputs : ?message:message -> Proving_key.t -> Proof_inputs.t -> t
 
     include Binable.S with type t := t
   end
@@ -1985,7 +1997,7 @@ module type Run_basic = sig
       -> ?handlers:Handler.t list
       -> ('a, 'public_input) t
       -> prover_state
-      -> Field.Constant.Vector.t * Field.Constant.Vector.t
+      -> Proof_inputs.t
   end
 
   val assert_ : ?label:string -> Constraint.t -> unit
@@ -2056,11 +2068,7 @@ module type Run_basic = sig
     -> 'k_value
 
   val generate_witness :
-       ( unit -> 'a
-       , Field.Constant.Vector.t * Field.Constant.Vector.t
-       , 'k_var
-       , 'k_value )
-       Data_spec.t
+       (unit -> 'a, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
     -> prover_state
     -> 'k_value

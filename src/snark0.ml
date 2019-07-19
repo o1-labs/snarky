@@ -35,8 +35,20 @@ struct
 
   type field = Field.t
 
+  module Proof_inputs = struct
+    type t = {public_inputs: Field.Vector.t; auxiliary_inputs: Field.Vector.t}
+  end
+
   module Bigint = Bigint
-  module Proof = Proof
+
+  module Proof = struct
+    include Proof
+
+    let of_inputs ?message key
+        {Proof_inputs.public_inputs= primary; auxiliary_inputs= auxiliary} =
+      create ?message key ~primary ~auxiliary
+  end
+
   module Verification_key = Verification_key
   module Proving_key = Proving_key
   module Keypair = Keypair
@@ -870,7 +882,7 @@ struct
           run_with_input ~run ?reduce ~public_input ?handlers proof_system s
         in
         let {input; aux; _} = state in
-        (input, aux)
+        {Proof_inputs.public_inputs= input; auxiliary_inputs= aux}
     end
 
     let rec collect_input_constraints : type checked s r2 k1 k2.
@@ -1027,7 +1039,7 @@ struct
 
     let generate_witness :
            run:('a, 's, 'checked) Checked.Runner.run
-        -> ('checked, Field.Vector.t * Field.Vector.t, 'k_var, 'k_value) t
+        -> ('checked, Proof_inputs.t, 'k_var, 'k_value) t
         -> ?handlers:Handler.t list
         -> 's
         -> 'k_var
@@ -1040,7 +1052,7 @@ struct
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
-          (primary, auxiliary) )
+          {Proof_inputs.public_inputs= primary; auxiliary_inputs= auxiliary} )
         t k
   end
 
@@ -1808,6 +1820,7 @@ module Run = struct
       let typ = typ
     end
 
+    module Proof_inputs = Proof_inputs
     module Proof = Proof
 
     module Bitstring_checked = struct
