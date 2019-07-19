@@ -1174,7 +1174,7 @@ struct
       seal evals_struct ;
       let stub =
         foreign
-          (func_name "r1cs_evaluations")
+          (func_name "evaluations")
           (typ @-> Field_vector.typ @-> size_t @-> returning evals_struct)
       in
       fun t ~full_assignment ~degree ->
