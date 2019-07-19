@@ -29,7 +29,7 @@ let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
 let of_ctor_args = function
   | Ctor_tuple args ->
       Parsetree.Pcstr_tuple (List.map ~f:of_type_expr args)
-  | Ctor_record (_, fields) ->
+  | Ctor_record fields ->
       Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
 
 let of_ctor_decl

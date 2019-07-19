@@ -156,21 +156,19 @@ module Type = struct
         {typ with type_loc= loc}
     | Ptyp_tuple typs ->
         let typs = List.map ~f typs in
-        {typ with type_desc= Ptyp_tuple typs; type_loc= loc}
+        {type_desc= Ptyp_tuple typs; type_loc= loc}
     | Ptyp_arrow (typ1, typ2, explicit, label) ->
-        { typ with
-          type_desc= Ptyp_arrow (f typ1, f typ2, explicit, label)
-        ; type_loc= loc }
+        {type_desc= Ptyp_arrow (f typ1, f typ2, explicit, label); type_loc= loc}
     | Ptyp_ctor variant ->
         let variant =
           { variant with
             var_params= List.map ~f variant.var_params
           ; var_implicit_params= List.map ~f variant.var_implicit_params }
         in
-        {typ with type_desc= Ptyp_ctor variant; type_loc= loc}
+        {type_desc= Ptyp_ctor variant; type_loc= loc}
     | Ptyp_poly (typs, typ) ->
         let typs = List.map ~f typs in
-        {typ with type_desc= Ptyp_poly (typs, f typ); type_loc= loc}
+        {type_desc= Ptyp_poly (typs, f typ); type_loc= loc}
 end
 
 module TypeDecl = struct
@@ -318,7 +316,7 @@ module TypeDecl = struct
                             (env, arg) )
                       in
                       (env, Type0.Ctor_tuple args)
-                  | Ctor_record (_, fields) ->
+                  | Ctor_record fields ->
                       let env, fields =
                         List.fold_map ~init:env fields
                           ~f:(import_field ?must_find)
@@ -446,7 +444,6 @@ let pp_decl_typ ppf decl =
           { var_ident= mk_lid decl.tdec_ident
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params }
-    ; type_id= -1
     ; type_loc= Location.none }
 
 let report_error ppf = function
