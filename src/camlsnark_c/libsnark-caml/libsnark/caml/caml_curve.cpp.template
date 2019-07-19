@@ -678,8 +678,8 @@ void CURVE_PREFIX(field_vector_delete)(std::vector<FieldT>* v) {
 
 void CURVE_PREFIX(field_vector_iter)(
     std::vector<FieldT>* v,
-    void (*f)(const r1cs_constraint<FieldT> *)) {
-  for (std::vector<FieldT>::const_iterator i = v.cbegin(); i != v.cend(); i++) {
+    void (*f)(const FieldT *)) {
+  for (std::vector<FieldT>::const_iterator i = v->cbegin(); i != v->cend(); i++) {
     f(&*i);
   }
 }
