@@ -497,6 +497,18 @@ module type Basic = sig
 
       val exactly_one : var list -> (unit, _) Checked.t
     end
+
+    module Array : sig
+      val any : var array -> (var, _) Checked.t
+
+      val all : var array -> (var, _) Checked.t
+
+      module Assert : sig
+        val any : var array -> (unit, _) Checked.t
+
+        val all : var array -> (unit, _) Checked.t
+      end
+    end
   end
 
   (** Checked computations.
@@ -529,6 +541,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       Monad_sequence.S
       with type ('a, 's) monad := ('a, 's) t
        and type 'a t = 'a list
+       and type boolean := Boolean.var
+
+    module Array :
+      Monad_sequence.S
+      with type ('a, 's) monad := ('a, 's) t
+       and type 'a t = 'a array
        and type boolean := Boolean.var
 
     (** [Choose_preimage] is the request issued by
@@ -1663,15 +1681,27 @@ module type Run_basic = sig
     end
 
     module Assert : sig
-      val ( = ) : Boolean.var -> Boolean.var -> unit
+      val ( = ) : var -> var -> unit
 
-      val is_true : Boolean.var -> unit
+      val is_true : var -> unit
 
       val any : var list -> unit
 
       val all : var list -> unit
 
       val exactly_one : var list -> unit
+    end
+
+    module Array : sig
+      val any : var array -> var
+
+      val all : var array -> var
+
+      module Assert : sig
+        val any : var array -> unit
+
+        val all : var array -> unit
+      end
     end
   end
 

@@ -456,6 +456,46 @@ struct
             in
             res
 
+      module Array = struct
+        let num_true (bs : var array) =
+          Array.fold bs ~init:(Cvar.constant Field.zero) ~f:(fun x y ->
+              Cvar.add x (y :> Cvar.t) )
+
+        let any = function
+          | [||] ->
+              return false_
+          | [|b1|] ->
+              return b1
+          | [|b1; b2|] ->
+              b1 || b2
+          | bs ->
+              let open Let_syntax in
+              let%map all_zero =
+                equal (num_true bs) (Cvar.constant Field.zero)
+              in
+              not all_zero
+
+        let all = function
+          | [||] ->
+              return true_
+          | [|b1|] ->
+              return b1
+          | [|b1; b2|] ->
+              b1 && b2
+          | bs ->
+              equal
+                (Cvar.constant (Field.of_int (Array.length bs)))
+                (num_true bs)
+
+        module Assert = struct
+          let any bs = assert_non_zero (num_true bs)
+
+          let all bs =
+            assert_equal (num_true bs)
+              (Cvar.constant (Field.of_int (Array.length bs)))
+        end
+      end
+
       let equal (a : var) (b : var) = a lxor b >>| not
 
       let of_field x =
@@ -562,20 +602,23 @@ struct
       (bits, `Success success)
 
     module List =
-      Monad_sequence.List (struct
-          type nonrec ('a, 's) t = ('a, 's) t
-
-          include (
-            Checked_S :
-              Checked_intf.S
-              with module Types := Checked_S.Types
-              with type ('a, 's, 'f) t :=
-                          ('a, 's, 'f) Checked_S.Types.Checked.t )
-        end)
+      Monad_sequence.List
+        (Checked)
         (struct
           type t = Boolean.var
 
           include Boolean
+        end)
+
+    module Array =
+      Monad_sequence.Array
+        (Checked)
+        (struct
+          type t = Boolean.var
+
+          let any = Boolean.Array.any
+
+          let all = Boolean.Array.all
         end)
   end
 
@@ -1582,6 +1625,20 @@ module Run = struct
         let all l = run (all l)
 
         let exactly_one l = run (exactly_one l)
+      end
+
+      module Array = struct
+        open Snark.Boolean.Array
+
+        let any x = run (any x)
+
+        let all x = run (all x)
+
+        module Assert = struct
+          let any x = run (Assert.any x)
+
+          let all x = run (Assert.all x)
+        end
       end
     end
 
