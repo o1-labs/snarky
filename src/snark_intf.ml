@@ -1066,8 +1066,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ('a, 's, 'public_input) t
       -> 's
       -> Field.Vector.t * Field.Vector.t
-    (** Generate a pair [(public_input, auxiliary_input)] of vectors of field
-        elements from which a proof may be created.
+    (** Generate a witness (auxiliary input) for the given public input.
+
+        Returns a pair of field vectors [(public_input, auxiliary_input)],
+        corresponding to the given public input and generated auxiliary input.
     *)
   end
 
@@ -1296,8 +1298,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> 's
     -> 'k_var
     -> 'k_value
-  (** Generate a pair [(public_input, auxiliary_input)] of vectors of field
-      elements from which a proof may be created.
+  (** Generate a witness (auxiliary input) for the given public input.
+
+      Returns a pair of field vectors [(public_input, auxiliary_input)],
+      corresponding to the given public input and generated auxiliary input.
   *)
 
   val run_unchecked : ('a, 's) Checked.t -> 's -> 's * 'a
