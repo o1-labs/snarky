@@ -2100,6 +2100,8 @@ let%test_module "snark0-test" =
 
       let field_size = Full.field_size
 
+      let domain_size = Full.domain_size
+
       include Libsnark.Make_bowe_gabizon
                 (Backends.Mnt4)
                 (struct
