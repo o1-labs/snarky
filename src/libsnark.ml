@@ -511,7 +511,7 @@ module Field = struct
 
     module Vector = struct
       include Vector.Make_binable_sexpable (struct
-                  type t = T.t
+                  type t = T.t [@@deriving sexp]
 
                   include B
 
