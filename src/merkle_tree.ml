@@ -5,7 +5,7 @@ module Address = struct
 end
 
 module Free_hash = struct
-  type 'a t = Hash_value of 'a | Hash_empty | Compress of 'a t * 'a t
+  type 'a t = Hash_value of 'a | Hash_empty | Merge of 'a t * 'a t
   [@@deriving sexp]
 
   let diff t1 t2 =
@@ -18,28 +18,28 @@ module Free_hash = struct
           None
       | Hash_value x, Hash_value y ->
           if x = y then None else raise (M.Done path)
-      | Compress (l1, r1), Compress (l2, r2) ->
+      | Merge (l1, r1), Merge (l2, r2) ->
           ignore (go (false :: path) l1 l2) ;
           ignore (go (true :: path) r1 r2) ;
           None
       | Hash_empty, Hash_value _
-      | Hash_empty, Compress _
+      | Hash_empty, Merge _
       | Hash_value _, Hash_empty
-      | Hash_value _, Compress _
-      | Compress _, Hash_empty
-      | Compress _, Hash_value _ ->
+      | Hash_value _, Merge _
+      | Merge _, Hash_empty
+      | Merge _, Hash_value _ ->
           raise (M.Done path)
     in
     try go [] t1 t2 with M.Done addr -> Some addr
 
-  let rec run t ~hash ~compress =
+  let rec run t ~hash ~merge =
     match t with
     | Hash_value x ->
         hash (Some x)
     | Hash_empty ->
         hash None
-    | Compress (l, r) ->
-        compress (run ~hash ~compress l) (run ~hash ~compress r)
+    | Merge (l, r) ->
+        merge (run ~hash ~merge l) (run ~hash ~merge r)
 end
 
 type ('hash, 'a) non_empty_tree =
@@ -54,10 +54,10 @@ type ('hash, 'a) t =
   ; depth: int
   ; count: int
   ; hash: 'a option -> 'hash
-  ; compress: 'hash -> 'hash -> 'hash }
+  ; merge: 'hash -> 'hash -> 'hash }
 [@@deriving sexp]
 
-let check_exn {tree; hash; compress; _} =
+let check_exn {tree; hash; merge; _} =
   let default = hash None in
   let rec check_hash = function
     | Non_empty t ->
@@ -69,7 +69,7 @@ let check_exn {tree; hash; compress; _} =
         assert (h = hash (Some x)) ;
         h
     | Node (h, l, r) ->
-        assert (compress (check_hash l) (check_hash r) = h) ;
+        assert (merge (check_hash l) (check_hash r) = h) ;
         h
   in
   ignore (check_hash_non_empty tree)
@@ -96,18 +96,18 @@ let to_list : ('hash, 'a) t -> 'a list =
   in
   fun t -> go [] (Non_empty t.tree)
 
-let left_tree hash compress depth x =
+let left_tree hash merge depth x =
   let empty_hash = hash None in
   let rec go i h acc =
     if i = depth then (h, acc)
     else
-      let h' = compress h empty_hash in
+      let h' = merge h empty_hash in
       go (i + 1) h' (Node (h', Non_empty acc, Empty))
   in
   let h = hash (Some x) in
   go 0 h (Leaf (h, x))
 
-let insert hash compress t0 mask0 address x =
+let insert hash merge t0 mask0 address x =
   let default = hash None in
   let rec go mask t =
     if mask = 0 then
@@ -123,21 +123,21 @@ let insert hash compress t0 mask0 address x =
       | Empty ->
           if go_left then
             let t_l' = go mask' Empty in
-            Node (compress (non_empty_hash t_l') default, Non_empty t_l', Empty)
+            Node (merge (non_empty_hash t_l') default, Non_empty t_l', Empty)
           else
             let t_r' = go mask' Empty in
-            Node (compress default (non_empty_hash t_r'), Empty, Non_empty t_r')
+            Node (merge default (non_empty_hash t_r'), Empty, Non_empty t_r')
       | Non_empty (Node (_h, t_l, t_r)) ->
           if go_left then
             let t_l' = go mask' t_l in
             Node
-              ( compress (non_empty_hash t_l') (tree_hash ~default t_r)
+              ( merge (non_empty_hash t_l') (tree_hash ~default t_r)
               , Non_empty t_l'
               , t_r )
           else
             let t_r' = go mask' t_r in
             Node
-              ( compress (tree_hash ~default t_l) (non_empty_hash t_r')
+              ( merge (tree_hash ~default t_l) (non_empty_hash t_r')
               , t_l
               , Non_empty t_r' )
       | Non_empty (Leaf _) ->
@@ -147,7 +147,7 @@ let insert hash compress t0 mask0 address x =
 
 let ith_bit n i = (n lsr i) land 1 = 1
 
-let update ({hash; compress; tree= tree0; depth; _} as t) addr0 x =
+let update ({hash; merge; tree= tree0; depth; _} as t) addr0 x =
   let tree_hash = tree_hash ~default:(hash None) in
   let rec go_non_empty tree i =
     match tree with
@@ -158,7 +158,7 @@ let update ({hash; compress; tree= tree0; depth; _} as t) addr0 x =
         let t_l', t_r' =
           if b then (t_l, go t_r (i - 1)) else (go t_l (i - 1), t_r)
         in
-        Node (compress (tree_hash t_l') (tree_hash t_r'), t_l', t_r')
+        Node (merge (tree_hash t_l') (tree_hash t_r'), t_l', t_r')
   and go tree i =
     match tree with
     | Non_empty tree ->
@@ -209,7 +209,7 @@ let set_dirty default tree addr x =
   in
   go_non_empty tree (List.rev addr)
 
-let recompute_hashes {tree; hash; compress; _} =
+let recompute_hashes {tree; hash; merge; _} =
   let h =
     let default = hash None in
     fun t -> tree_hash ~default t
@@ -225,7 +225,7 @@ let recompute_hashes {tree; hash; compress; _} =
     | Node (_, l, r) ->
         let l' = go l in
         let r' = go r in
-        Node (compress (h l') (h r'), l', r')
+        Node (merge (h l') (h r'), l', r')
   in
   go_non_empty tree
 
@@ -241,44 +241,44 @@ let add_many t xs =
     in
     go 0 (Leaf (default, x))
   in
-  let add_one_dirty {tree; depth; count; hash; compress} x =
+  let add_one_dirty {tree; depth; count; hash; merge} x =
     if count = 1 lsl depth then
       let t_r = left_tree_dirty depth x in
       { tree= Node (default, Non_empty tree, Non_empty t_r)
       ; count= count + 1
       ; depth= depth + 1
       ; hash
-      ; compress }
+      ; merge }
     else
       { tree= set_dirty default tree (address_of_int ~depth count) x
       ; count= count + 1
       ; depth
       ; hash
-      ; compress }
+      ; merge }
   in
   let t = List.fold_left xs ~init:t ~f:add_one_dirty in
   {t with tree= recompute_hashes t}
 
-let add {tree; depth; count; hash; compress} x =
+let add {tree; depth; count; hash; merge} x =
   if count = 1 lsl depth then
-    let h_r, t_r = left_tree hash compress depth x in
+    let h_r, t_r = left_tree hash merge depth x in
     let h_l = non_empty_hash tree in
-    { tree= Node (compress h_l h_r, Non_empty tree, Non_empty t_r)
+    { tree= Node (merge h_l h_r, Non_empty tree, Non_empty t_r)
     ; count= count + 1
     ; depth= depth + 1
     ; hash
-    ; compress }
+    ; merge }
   else
-    { tree= insert hash compress (Non_empty tree) (1 lsl (depth - 1)) count x
+    { tree= insert hash merge (Non_empty tree) (1 lsl (depth - 1)) count x
     ; count= count + 1
     ; depth
     ; hash
-    ; compress }
+    ; merge }
 
 let root {tree; _} = non_empty_hash tree
 
-let create ~hash ~compress x =
-  {tree= Leaf (hash (Some x), x); count= 1; depth= 0; hash; compress}
+let create ~hash ~merge x =
+  {tree= Leaf (hash (Some x), x); count= 1; depth= 0; hash; merge}
 
 let get_path {tree; hash; depth; _} addr0 =
   let default = hash None in
@@ -305,14 +305,14 @@ let get_path {tree; hash; depth; _} addr0 =
   in
   go [] tree (depth - 1)
 
-let implied_root ~compress addr0 entry_hash path0 =
+let implied_root ~merge addr0 entry_hash path0 =
   let rec go acc i path =
     match path with
     | [] ->
         acc
     | h :: hs ->
         go
-          (if ith_bit addr0 i then compress h acc else compress acc h)
+          (if ith_bit addr0 i then merge h acc else merge acc h)
           (i + 1) hs
   in
   go entry_hash 0 path0
@@ -323,7 +323,7 @@ let rec free_tree_hash = function
   | Non_empty (Leaf (_, x)) ->
       Hash_value x
   | Non_empty (Node (_, l, r)) ->
-      Compress (free_tree_hash l, free_tree_hash r)
+      Merge (free_tree_hash l, free_tree_hash r)
 
 let free_root {tree; _} = free_tree_hash (Non_empty tree)
 
@@ -353,7 +353,7 @@ let get_free_path {tree; depth; _} addr0 =
 
 let implied_free_root addr0 x path0 =
   implied_root
-    ~compress:(fun a b -> Free_hash.Compress (a, b))
+    ~merge:(fun a b -> Free_hash.Merge (a, b))
     addr0 (Hash_value x) path0
 
 type ('hash, 'a) merkle_tree = ('hash, 'a) t
@@ -366,7 +366,7 @@ module Checked
 
         val typ : (var, value) Impl.Typ.t
 
-        val hash : height:int -> var -> var -> (var, _) Impl.Checked.t
+        val merge : height:int -> var -> var -> (var, _) Impl.Checked.t
 
         val if_ :
           Impl.Boolean.var -> then_:var -> else_:var -> (var, _) Impl.Checked.t
@@ -415,7 +415,7 @@ struct
       | b :: bs, h :: hs ->
           let%bind l = Hash.if_ b ~then_:h ~else_:acc
           and r = Hash.if_ b ~then_:acc ~else_:h in
-          let%bind acc' = Hash.hash ~height l r in
+          let%bind acc' = Hash.merge ~height l r in
           go (height + 1) acc' bs hs
       | _, _ ->
           failwith
@@ -533,7 +533,7 @@ module Run = struct
 
           val typ : (var, value) Impl.Typ.t
 
-          val hash : height:int -> var -> var -> var
+          val merge : height:int -> var -> var -> var
 
           val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var
 
@@ -586,8 +586,8 @@ module Run = struct
                     (Lens.constant prover_state)
                     (make_checked x)
 
-                let hash ~height x y =
-                  make_checked (fun () -> hash ~height x y)
+                let merge ~height x y =
+                  make_checked (fun () -> merge ~height x y)
 
                 let if_ x ~then_ ~else_ =
                   make_checked (fun () -> if_ x ~then_ ~else_)

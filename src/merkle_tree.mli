@@ -7,7 +7,7 @@ module Address : sig
 end
 
 module Free_hash : sig
-  type 'a t = Hash_value of 'a | Hash_empty | Compress of 'a t * 'a t
+  type 'a t = Hash_value of 'a | Hash_empty | Merge of 'a t * 'a t
   [@@deriving sexp]
 
   val diff : 'a t -> 'a t -> bool list option
@@ -15,7 +15,7 @@ module Free_hash : sig
   val run :
        'a t
     -> hash:('a option -> 'hash)
-    -> compress:('hash -> 'hash -> 'hash)
+    -> merge:('hash -> 'hash -> 'hash)
     -> 'hash
 end
 
@@ -23,7 +23,7 @@ val depth : (_, _) t -> int
 
 val create :
      hash:('a option -> 'hash)
-  -> compress:('hash -> 'hash -> 'hash)
+  -> merge:('hash -> 'hash -> 'hash)
   -> 'a
   -> ('hash, 'a) t
 
@@ -40,7 +40,7 @@ val get_exn : (_, 'a) t -> Address.t -> 'a
 val get_path : ('hash, 'a) t -> Address.t -> 'hash list
 
 val implied_root :
-     compress:('hash -> 'hash -> 'hash)
+     merge:('hash -> 'hash -> 'hash)
   -> Address.t
   -> 'hash
   -> 'hash list
@@ -67,7 +67,7 @@ module Checked
 
         val typ : (var, value) Impl.Typ.t
 
-        val hash : height:int -> var -> var -> (var, _) Impl.Checked.t
+        val merge : height:int -> var -> var -> (var, _) Impl.Checked.t
 
         val if_ :
           Impl.Boolean.var -> then_:var -> else_:var -> (var, _) Impl.Checked.t
@@ -156,7 +156,7 @@ module Run : sig
 
           val typ : (var, value) Impl.Typ.t
 
-          val hash : height:int -> var -> var -> var
+          val merge : height:int -> var -> var -> var
 
           val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var
 
