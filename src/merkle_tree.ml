@@ -311,9 +311,7 @@ let implied_root ~merge addr0 entry_hash path0 =
     | [] ->
         acc
     | h :: hs ->
-        go
-          (if ith_bit addr0 i then merge h acc else merge acc h)
-          (i + 1) hs
+        go (if ith_bit addr0 i then merge h acc else merge acc h) (i + 1) hs
   in
   go entry_hash 0 path0
 

@@ -40,11 +40,7 @@ val get_exn : (_, 'a) t -> Address.t -> 'a
 val get_path : ('hash, 'a) t -> Address.t -> 'hash list
 
 val implied_root :
-     merge:('hash -> 'hash -> 'hash)
-  -> Address.t
-  -> 'hash
-  -> 'hash list
-  -> 'hash
+  merge:('hash -> 'hash -> 'hash) -> Address.t -> 'hash -> 'hash list -> 'hash
 
 val get_free_path : (_, 'a) t -> Address.t -> 'a Free_hash.t list
 
