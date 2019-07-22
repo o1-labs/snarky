@@ -1,4 +1,5 @@
 open Compiler_internals
+
 type error =
   | Fun_no_fat_arrow
   | Missing_semi

@@ -127,7 +127,7 @@ and to_module_sig_desc ~loc decl =
   match decl with
   | None ->
       Pmty_abstract
-  | Some (Mty_ident path | Mty_alias (path)) ->
+  | Some (Mty_ident path | Mty_alias path) ->
       Pmty_name (mkloc (longident_of_path path) loc)
   | Some (Mty_signature signature) ->
       Pmty_sig (to_signature signature)
@@ -141,4 +141,7 @@ and to_module_sig ~loc decl =
   {msig_loc= loc; msig_desc= to_module_sig_desc ~loc decl}
 
 (** Versioned utility function for to_ocaml. *)
-let open_of_name name = {Parsetree.pmod_desc= Pmod_ident name; pmod_loc= name.loc; pmod_attributes= []}
+let open_of_name name =
+  { Parsetree.pmod_desc= Pmod_ident name
+  ; pmod_loc= name.loc
+  ; pmod_attributes= [] }
