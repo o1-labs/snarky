@@ -6,4 +6,4 @@
 
 (rule
  (targets of_ocaml.ml)
- (action (copy of_ocaml_%{ocaml_version}.ml of_ocaml.ml)))
+ (action (copy# of_ocaml_%{ocaml_version}.ml of_ocaml.ml)))

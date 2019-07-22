@@ -8,7 +8,7 @@ open Location
 let rec longident_of_path = function
   | Pident ident ->
       Lident (Ident.name ident)
-  | Pdot (path, ident, _) ->
+  | Pdot (path, ident) ->
       Ldot (longident_of_path path, ident)
   | Papply (path1, path2) ->
       Lapply (longident_of_path path1, longident_of_path path2)
@@ -82,15 +82,16 @@ let to_type_decl_desc decl =
 let can_create_signature_item item =
   match item with Sig_typext _ | Sig_class _ -> false | _ -> true
 
+(** TODO: Handle the new visibility parameter. *)
 let rec to_signature_item item =
   match item with
-  | Sig_value (ident, {val_type; val_loc; _}) ->
+  | Sig_value (ident, {val_type; val_loc; _}, _visibility) ->
       { sig_desc=
           Psig_value
             ( mkloc (Ident.name ident) val_loc
             , to_type_expr ~loc:val_loc val_type )
       ; sig_loc= val_loc }
-  | Sig_type (ident, decl, _rec_status) ->
+  | Sig_type (ident, decl, _rec_status, _visibility) ->
       (* TODO: handle rec_status *)
       let tdec_desc = to_type_decl_desc decl in
       { sig_desc=
@@ -102,13 +103,13 @@ let rec to_signature_item item =
             ; tdec_desc
             ; tdec_loc= decl.type_loc }
       ; sig_loc= decl.type_loc }
-  | Sig_module (ident, decl, _) ->
+  | Sig_module (ident, _module_presence, decl, _, _visibility) ->
       { sig_desc=
           Psig_module
             ( mkloc (Ident.name ident) decl.md_loc
             , to_module_sig ~loc:decl.md_loc (Some decl.md_type) )
       ; sig_loc= decl.md_loc }
-  | Sig_modtype (ident, decl) ->
+  | Sig_modtype (ident, decl, _visibility) ->
       { sig_desc=
           Psig_modtype
             ( mkloc (Ident.name ident) decl.mtd_loc
@@ -126,7 +127,7 @@ and to_module_sig_desc ~loc decl =
   match decl with
   | None ->
       Pmty_abstract
-  | Some (Mty_ident path | Mty_alias (_, path)) ->
+  | Some (Mty_ident path | Mty_alias (path)) ->
       Pmty_name (mkloc (longident_of_path path) loc)
   | Some (Mty_signature signature) ->
       Pmty_sig (to_signature signature)
@@ -140,4 +141,4 @@ and to_module_sig ~loc decl =
   {msig_loc= loc; msig_desc= to_module_sig_desc ~loc decl}
 
 (** Versioned utility function for to_ocaml. *)
-let open_of_name name = name
+let open_of_name name = {Parsetree.pmod_desc= Pmod_ident name; pmod_loc= name.loc; pmod_attributes= []}

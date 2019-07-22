@@ -1,3 +1,4 @@
+open Compiler_internals
 type error =
   | Fun_no_fat_arrow
   | Missing_semi
@@ -21,6 +22,6 @@ let report_error ppf = function
 let () =
   Location.register_error_of_exn (function
     | Error (loc, err) ->
-        Some (Location.error_of_printer loc report_error err)
+        Some (Location.error_of_printer ~loc report_error err)
     | _ ->
         None )
