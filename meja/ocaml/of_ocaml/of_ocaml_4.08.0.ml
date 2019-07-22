@@ -1,3 +1,13 @@
+(** Convert from the OCaml typed tree to a Meja parsetree.
+
+    This code is heavily dependent on OCaml's internals, and a new copy of this
+    file should be added for each supported version.
+
+    NOTE: When modifying this file, ensure that corresponding changes are made
+          the other of_ocaml_*.ml files, and test compilation with all
+          supported OCaml versions.
+*)
+
 open Path
 open Longident
 open Core_kernel
@@ -140,7 +150,7 @@ and to_module_sig_desc ~loc decl =
 and to_module_sig ~loc decl =
   {msig_loc= loc; msig_desc= to_module_sig_desc ~loc decl}
 
-(** Versioned utility function for to_ocaml. *)
+(** Versioned utility function for the To_ocaml module. *)
 let open_of_name name =
   { Parsetree.pmod_desc= Pmod_ident name
   ; pmod_loc= name.loc
