@@ -1,3 +1,4 @@
+open Compiler_internals
 open Core_kernel
 open Ast_types
 open Type0
@@ -1322,6 +1323,6 @@ let report_error ppf = function
 let () =
   Location.register_error_of_exn (function
     | Error (loc, err) ->
-        Some (Location.error_of_printer loc report_error err)
+        Some (Location.error_of_printer ~loc report_error err)
     | _ ->
         None )
