@@ -1,6 +1,8 @@
 open Ast_types
 open Parsetypes
 
+type ident = Ident.t Location.loc
+
 type literal = Int of int | Bool of bool | Field of string | String of string
 
 type pattern =
@@ -47,8 +49,8 @@ and signature_desc =
   | Tsig_value of str * type_expr
   | Tsig_instance of str * type_expr
   | Tsig_type of type_decl
-  | Tsig_module of str * module_sig
-  | Tsig_modtype of str * module_sig
+  | Tsig_module of ident * module_sig
+  | Tsig_modtype of ident * module_sig
   | Tsig_open of lid
   | Tsig_typeext of variant * ctor_decl list
   | Tsig_request of type_expr * ctor_decl
@@ -70,8 +72,8 @@ and statement_desc =
   | Tstmt_value of pattern * expression
   | Tstmt_instance of str * expression
   | Tstmt_type of type_decl
-  | Tstmt_module of str * module_expr
-  | Tstmt_modtype of str * module_sig
+  | Tstmt_module of ident * module_expr
+  | Tstmt_modtype of ident * module_sig
   | Tstmt_open of lid
   | Tstmt_typeext of variant * ctor_decl list
   | Tstmt_request of

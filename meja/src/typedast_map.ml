@@ -29,6 +29,7 @@ type mapper =
   ; module_desc: mapper -> module_desc -> module_desc
   ; location: mapper -> Location.t -> Location.t
   ; longident: mapper -> Longident.t -> Longident.t
+  ; ident: mapper -> Ident.t -> Ident.t
   ; type0_decl: mapper -> Type0.type_decl -> Type0.type_decl
   ; type0_expr: mapper -> Type0.type_expr -> Type0.type_expr }
 
@@ -37,6 +38,9 @@ let lid mapper {Location.txt; loc} =
 
 let str mapper ({Location.txt; loc} : str) =
   {Location.txt; loc= mapper.location mapper loc}
+
+let ident mapper ({Location.txt; loc} : Ident.t Location.loc) =
+  {Location.txt= mapper.ident mapper txt; loc= mapper.location mapper loc}
 
 let type_expr mapper Parsetypes.{type_desc; type_loc} =
   let type_loc = mapper.location mapper type_loc in
@@ -213,9 +217,9 @@ let signature_desc mapper = function
   | Tsig_type decl ->
       Tsig_type (mapper.type_decl mapper decl)
   | Tsig_module (name, msig) ->
-      Tsig_module (str mapper name, mapper.module_sig mapper msig)
+      Tsig_module (ident mapper name, mapper.module_sig mapper msig)
   | Tsig_modtype (name, msig) ->
-      Tsig_modtype (str mapper name, mapper.module_sig mapper msig)
+      Tsig_modtype (ident mapper name, mapper.module_sig mapper msig)
   | Tsig_open name ->
       Tsig_open (lid mapper name)
   | Tsig_typeext (typ, ctors) ->
@@ -257,9 +261,9 @@ let statement_desc mapper = function
   | Tstmt_type decl ->
       Tstmt_type (mapper.type_decl mapper decl)
   | Tstmt_module (name, me) ->
-      Tstmt_module (str mapper name, mapper.module_expr mapper me)
+      Tstmt_module (ident mapper name, mapper.module_expr mapper me)
   | Tstmt_modtype (name, mty) ->
-      Tstmt_modtype (str mapper name, mapper.module_sig mapper mty)
+      Tstmt_modtype (ident mapper name, mapper.module_sig mapper mty)
   | Tstmt_open name ->
       Tstmt_open (lid mapper name)
   | Tstmt_typeext (typ, ctors) ->
@@ -290,7 +294,7 @@ let module_desc mapper = function
         , mapper.module_sig mapper fsig
         , mapper.module_expr mapper me )
 
-let location (_iter : mapper) (loc : Location.t) = loc
+let location (_mapper : mapper) (loc : Location.t) = loc
 
 let longident mapper = function
   | Longident.Lident str ->
@@ -299,6 +303,8 @@ let longident mapper = function
       Ldot (mapper.longident mapper l, str)
   | Lapply (l1, l2) ->
       Lapply (mapper.longident mapper l1, mapper.longident mapper l2)
+
+let ident (_mapper : mapper) (ident : Ident.t) = ident
 
 (** Stub. This isn't part of the parsetypes, so we don't do anything by
     default.
@@ -336,5 +342,6 @@ let default_iterator =
   ; module_desc
   ; location
   ; longident
+  ; ident
   ; type0_decl
   ; type0_expr }
