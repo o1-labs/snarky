@@ -3,6 +3,14 @@ open Ast_types
 open Type0
 open Ast_build
 
+let rec longident_of_path = function
+  | Path.Pident ident ->
+      Longident.Lident (Ident.name ident)
+  | Pdot (path, name) ->
+      Ldot (longident_of_path path, name)
+  | Papply (path1, path2) ->
+      Lapply (longident_of_path path1, longident_of_path path2)
+
 let rec type_desc ?loc = function
   | Tvar (None, explicit) ->
       Type.none ?loc ~explicit ()

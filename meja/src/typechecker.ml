@@ -1109,7 +1109,7 @@ let rec check_signature_item env item =
       let env = Envi.add_module_type name.txt m_env env in
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
   | Psig_open name ->
-      let m = Envi.find_module ~loc name env in
+      let _path, m = Envi.find_module ~loc name env in
       let env = Envi.open_namespace_scope m env in
       (env, {Typedast.sig_desc= Tsig_open name; sig_loc= loc})
   | Psig_typeext (variant, ctors) ->
@@ -1147,12 +1147,17 @@ and check_module_sig env path msig =
       , Envi.Scope.Immediate m
       , env )
   | Pmty_name lid ->
-      let m =
+      let _path, m =
         match Envi.find_module_deferred ~loc lid env with
         | Some m ->
             m
         | None ->
-            Envi.Scope.Deferred lid.txt
+            (* TODO: This is a hack. We should set up the environment for
+               interface files before typechecking them, so that all of the
+               names are available and we can find those that aren't.
+            *)
+            ( Path.Pident (Ident.create "NOT_FOUND")
+            , Envi.Scope.Deferred lid.txt )
       in
       ({Typedast.msig_desc= Tmty_name lid; msig_loc= loc}, m, env)
   | Pmty_abstract ->
@@ -1185,7 +1190,7 @@ and check_module_sig env path msig =
         | Envi.Scope.Immediate m ->
             (m, msig)
         | Envi.Scope.Deferred path ->
-            (Envi.find_module ~loc (Location.mkloc path loc) env, msig)
+            (snd (Envi.find_module ~loc (Location.mkloc path loc) env), msig)
       in
       (* Check that f_mty builds the functor as expected. *)
       let _, msig = ftor (Lapply (path, Lident f_name.txt)) f_mty in
@@ -1252,7 +1257,7 @@ let rec check_statement env stmt =
       ( env
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
   | Pstmt_open name ->
-      let m = Envi.find_module ~loc name env in
+      let _path, m = Envi.find_module ~loc name env in
       ( Envi.open_namespace_scope m env
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_open name} )
   | Pstmt_typeext (variant, ctors) ->
@@ -1360,7 +1365,7 @@ and check_module_expr env m =
       let path = Envi.current_path env in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
-      let m' = Envi.find_module ~loc name env in
+      let _path, m' = Envi.find_module ~loc name env in
       let env = Envi.push_scope {m' with path} env in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
   | Pmod_functor (f_name, f, m) ->
