@@ -29,6 +29,7 @@ type iterator =
   ; location: iterator -> Location.t -> unit
   ; longident: iterator -> Longident.t -> unit
   ; ident: iterator -> Ident.t -> unit
+  ; path: iterator -> Path.t -> unit
   ; type0_expr: iterator -> Type0.type_expr -> unit
   ; type0_decl: iterator -> Type0.type_decl -> unit }
 
@@ -39,6 +40,9 @@ let str iter ({Location.txt= _; loc} : str) = iter.location iter loc
 
 let ident iter ({Location.txt; loc} : Ident.t Location.loc) =
   iter.ident iter txt ; iter.location iter loc
+
+let path iter ({Location.txt; loc} : Path.t Location.loc) =
+  iter.location iter loc ; iter.path iter txt
 
 let type_expr iter Parsetypes.{type_desc; type_loc} =
   iter.location iter type_loc ;
@@ -195,7 +199,7 @@ let signature_desc iter = function
   | Tsig_module (name, msig) | Tsig_modtype (name, msig) ->
       ident iter name ; iter.module_sig iter msig
   | Tsig_open name ->
-      lid iter name
+      path iter name
   | Tsig_typeext (typ, ctors) ->
       iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors
@@ -236,7 +240,7 @@ let statement_desc iter = function
   | Tstmt_modtype (name, mty) ->
       ident iter name ; iter.module_sig iter mty
   | Tstmt_open name ->
-      lid iter name
+      path iter name
   | Tstmt_typeext (typ, ctors) ->
       iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors
@@ -270,6 +274,14 @@ let longident iter = function
       iter.longident iter l
   | Lapply (l1, l2) ->
       iter.longident iter l1 ; iter.longident iter l2
+
+let path iter = function
+  | Path.Pident ident ->
+      iter.ident iter ident
+  | Path.Pdot (path, _) ->
+      iter.path iter path
+  | Path.Papply (path1, path2) ->
+      iter.path iter path1 ; iter.path iter path2
 
 let ident (_iter : iterator) (_ : Ident.t) = ()
 
@@ -308,5 +320,6 @@ let default_iterator =
   ; location
   ; longident
   ; ident
+  ; path
   ; type0_decl
   ; type0_expr }

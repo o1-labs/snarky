@@ -30,6 +30,7 @@ type mapper =
   ; location: mapper -> Location.t -> Location.t
   ; longident: mapper -> Longident.t -> Longident.t
   ; ident: mapper -> Ident.t -> Ident.t
+  ; path: mapper -> Path.t -> Path.t
   ; type0_decl: mapper -> Type0.type_decl -> Type0.type_decl
   ; type0_expr: mapper -> Type0.type_expr -> Type0.type_expr }
 
@@ -41,6 +42,9 @@ let str mapper ({Location.txt; loc} : str) =
 
 let ident mapper ({Location.txt; loc} : Ident.t Location.loc) =
   {Location.txt= mapper.ident mapper txt; loc= mapper.location mapper loc}
+
+let path mapper ({Location.txt; loc} : Path.t Location.loc) =
+  {Location.txt= mapper.path mapper txt; loc= mapper.location mapper loc}
 
 let type_expr mapper Parsetypes.{type_desc; type_loc} =
   let type_loc = mapper.location mapper type_loc in
@@ -221,7 +225,7 @@ let signature_desc mapper = function
   | Tsig_modtype (name, msig) ->
       Tsig_modtype (ident mapper name, mapper.module_sig mapper msig)
   | Tsig_open name ->
-      Tsig_open (lid mapper name)
+      Tsig_open (path mapper name)
   | Tsig_typeext (typ, ctors) ->
       Tsig_typeext
         (mapper.variant mapper typ, List.map ~f:(mapper.ctor_decl mapper) ctors)
@@ -265,7 +269,7 @@ let statement_desc mapper = function
   | Tstmt_modtype (name, mty) ->
       Tstmt_modtype (ident mapper name, mapper.module_sig mapper mty)
   | Tstmt_open name ->
-      Tstmt_open (lid mapper name)
+      Tstmt_open (path mapper name)
   | Tstmt_typeext (typ, ctors) ->
       Tstmt_typeext
         (mapper.variant mapper typ, List.map ~f:(mapper.ctor_decl mapper) ctors)
@@ -303,6 +307,14 @@ let longident mapper = function
       Ldot (mapper.longident mapper l, str)
   | Lapply (l1, l2) ->
       Lapply (mapper.longident mapper l1, mapper.longident mapper l2)
+
+let path mapper = function
+  | Path.Pident ident ->
+      Path.Pident (mapper.ident mapper ident)
+  | Path.Pdot (path, str) ->
+      Path.Pdot (mapper.path mapper path, str)
+  | Path.Papply (path1, path2) ->
+      Path.Papply (mapper.path mapper path1, mapper.path mapper path2)
 
 let ident (_mapper : mapper) (ident : Ident.t) = ident
 
@@ -343,5 +355,6 @@ let default_iterator =
   ; location
   ; longident
   ; ident
+  ; path
   ; type0_decl
   ; type0_expr }

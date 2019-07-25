@@ -1109,9 +1109,11 @@ let rec check_signature_item env item =
       let env = Envi.add_module_type name.txt m_env env in
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
   | Psig_open name ->
-      let _path, m = Envi.find_module ~loc name env in
+      let path, m = Envi.find_module ~loc name env in
       let env = Envi.open_namespace_scope m env in
-      (env, {Typedast.sig_desc= Tsig_open name; sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_open (Location.mkloc path name.loc)
+        ; sig_loc= loc } )
   | Psig_typeext (variant, ctors) ->
       let env, _variant, _ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.sig_desc= Tsig_typeext (variant, ctors); sig_loc= loc})
@@ -1257,9 +1259,10 @@ let rec check_statement env stmt =
       ( env
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
   | Pstmt_open name ->
-      let _path, m = Envi.find_module ~loc name env in
+      let path, m = Envi.find_module ~loc name env in
       ( Envi.open_namespace_scope m env
-      , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_open name} )
+      , { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
   | Pstmt_typeext (variant, ctors) ->
       let env, _variant, _ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_typeext (variant, ctors)})

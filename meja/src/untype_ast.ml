@@ -165,7 +165,7 @@ let rec signature_desc = function
   | Tsig_modtype (name, msig) ->
       Psig_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_open path ->
-      Psig_open path
+      Psig_open (map_loc ~f:longident_of_path path)
   | Tsig_typeext (typ, ctors) ->
       Psig_typeext (typ, ctors)
   | Tsig_request (arg, ctor) ->
@@ -202,7 +202,7 @@ let rec statement_desc = function
   | Tstmt_modtype (name, msig) ->
       Pstmt_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tstmt_open path ->
-      Pstmt_open path
+      Pstmt_open (map_loc ~f:longident_of_path path)
   | Tstmt_typeext (typ, ctors) ->
       Pstmt_typeext (typ, ctors)
   | Tstmt_request (arg, ctor, handler) ->
