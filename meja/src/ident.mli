@@ -82,4 +82,7 @@ module Table : sig
       When an [ident] is bound in both tables but does not appear in
       [find_name] for its name, the bound value from the first table is chosen.
   *)
+
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+  (** Map over each of the values in the table. *)
 end

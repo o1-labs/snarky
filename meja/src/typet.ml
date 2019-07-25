@@ -7,7 +7,7 @@ open Longident
 
 type error =
   | Unbound_type_var of type_expr
-  | Wrong_number_args of Longident.t * int * int
+  | Wrong_number_args of Path.t * int * int
   | Wrong_number_implicit_args of Longident.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
@@ -59,7 +59,7 @@ module Type = struct
         (mk (Tpoly (vars, typ)) env, env)
     | Ptyp_ctor variant -> (
         let {var_ident; var_params; var_implicit_params; _} = variant in
-        let decl = raw_find_type_declaration var_ident env in
+        let var_ident, decl = raw_find_type_declaration var_ident env in
         let import_implicits () =
           List.fold_map ~init:env decl.tdec_implicit_params
             ~f:(Envi.Type.refresh_var ~loc ?must_find)
@@ -107,18 +107,14 @@ module Type = struct
                 (Error
                    ( loc
                    , Wrong_number_args
-                       (var_ident.txt, given_args_length, expected_args_length)
-                   )) ;
+                       (var_ident, given_args_length, expected_args_length) )) ;
             let env, var_params =
               List.fold_map ~init:env var_params ~f:(fun env param ->
                   let param, env = import param env in
                   (env, param) )
             in
             let variant =
-              { Type0.var_params
-              ; var_ident= var_ident.txt
-              ; var_decl= decl
-              ; var_implicit_params }
+              {Type0.var_params; var_ident; var_decl= decl; var_implicit_params}
             in
             (mk (Tctor variant) env, env) )
     | Ptyp_tuple typs ->
@@ -196,9 +192,7 @@ module TypeDecl = struct
               if not (Int.equal given num_args) then
                 raise
                   (Error
-                     ( loc
-                     , Wrong_number_args
-                         (Lident tdec_ident.txt, given, num_args) ))
+                     (loc, Wrong_number_args (Pident ident, given, num_args)))
           | None ->
               () ) ;
           let {type_env; _} = env.resolve_env in
@@ -453,11 +447,11 @@ let pp_decl_typ ppf decl =
 let report_error ppf = function
   | Unbound_type_var var ->
       fprintf ppf "@[<hov>Unbound type parameter@ @[<h>%a@].@]" pp_typ var
-  | Wrong_number_args (lid, given, expected) ->
+  | Wrong_number_args (path, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \
          applied to %d argument(s).@]"
-        Longident.pp lid expected given
+        Path.pp path expected given
   | Wrong_number_implicit_args (lid, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d implicit argument(s)@ \

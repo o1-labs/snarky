@@ -14,7 +14,7 @@ type error =
   | Unbound_type of Longident.t
   | Unbound_module of Longident.t
   | Unbound_value of Longident.t
-  | Wrong_number_args of Longident.t * int * int
+  | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Lident_unhandled of string * Longident.t
   | Constraints_not_satisfied of type_expr * type_decl
@@ -92,14 +92,14 @@ module Scope = struct
     | Continue
     | Functor of (Longident.t -> 't or_path -> 't)
 
-  type paths = {type_paths: Longident.t Int.Map.t}
+  type paths = {type_paths: Path.t Int.Map.t}
 
   type t =
     { kind: t kind
     ; path: Longident.t option
     ; names: type_expr IdTbl.t
     ; type_variables: type_expr String.Map.t
-    ; type_decls: type_decl String.Map.t
+    ; type_decls: type_decl IdTbl.t
     ; fields: (type_decl * int) IdTbl.t
     ; ctors: (type_decl * int) IdTbl.t
     ; modules: t or_path IdTbl.t
@@ -119,7 +119,7 @@ module Scope = struct
     ; path
     ; names= IdTbl.empty
     ; type_variables= String.Map.empty
-    ; type_decls= String.Map.empty
+    ; type_decls= IdTbl.empty
     ; fields= IdTbl.empty
     ; ctors= IdTbl.empty
     ; modules= IdTbl.empty
@@ -167,14 +167,14 @@ module Scope = struct
 
   let add_type_declaration decl scope =
     { scope with
-      type_decls=
-        Map.set scope.type_decls ~key:(Ident.name decl.tdec_ident) ~data:decl
+      type_decls= IdTbl.add scope.type_decls ~key:decl.tdec_ident ~data:decl
     ; paths=
-        add_preferred_type_name
-          (Lident (Ident.name decl.tdec_ident))
-          decl.tdec_id scope.paths }
+        add_preferred_type_name (Pident decl.tdec_ident) decl.tdec_id
+          scope.paths }
 
-  let get_type_declaration name scope = Map.find scope.type_decls name
+  let get_type_declaration name scope = IdTbl.find name scope.type_decls
+
+  let find_type_declaration name scope = IdTbl.find_name name scope.type_decls
 
   let register_type_declaration decl scope =
     let scope' = scope in
@@ -217,7 +217,9 @@ module Scope = struct
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
     in
-    let acc = Map.fold2 type_decls1 type_decls2 ~init:acc ~f:type_decls in
+    let acc =
+      IdTbl.fold2_names type_decls1 type_decls2 ~init:acc ~f:type_decls
+    in
     let acc = IdTbl.fold2_names ctors1 ctors2 ~init:acc ~f:ctors in
     let acc = IdTbl.fold2_names fields1 fields2 ~init:acc ~f:fields in
     let acc = IdTbl.fold2_names modules1 modules2 ~init:acc ~f:modules in
@@ -274,7 +276,8 @@ module Scope = struct
         Map.merge_skewed type_variables1 type_variables2
           ~combine:(fun ~key:_ _ v -> v)
     ; type_decls=
-        Map.merge_skewed type_decls1 type_decls2 ~combine:(fun ~key _ _ ->
+        IdTbl.merge_skewed_names type_decls1 type_decls2
+          ~combine:(fun ~key _ _ ->
             raise (Error (loc, Multiple_definition ("type", key))) )
     ; fields=
         IdTbl.merge_skewed_names fields1 fields2 ~combine:(fun ~key:_ _ v -> v)
@@ -292,7 +295,7 @@ module Scope = struct
     ; paths= join_paths paths1 paths2 }
 
   let extend_paths name {type_paths} =
-    {type_paths= Map.map ~f:(add_outer_module name) type_paths}
+    {type_paths= Map.map ~f:(Path.add_outer_module name) type_paths}
 
   let add_module name m scope =
     {scope with modules= IdTbl.add scope.modules ~key:name ~data:m}
@@ -546,7 +549,7 @@ let find_type_variable name env =
 let add_module (name : Ident.t) m =
   map_current_scope ~f:(fun scope ->
       let scope = Scope.add_module name (Scope.Immediate m) scope in
-      let paths = Scope.extend_paths (Ident.name name) m.Scope.paths in
+      let paths = Scope.extend_paths name m.Scope.paths in
       { scope with
         instances=
           Map.merge scope.instances m.instances ~f:(fun ~key:_ data ->
@@ -587,17 +590,22 @@ let add_implicit_instance name typ env =
   env
 
 let find_of_lident ~kind ~get_name (lid : lid) env =
+  let open Option.Let_syntax in
   let loc = lid.loc in
   let full_get_name =
     match lid.txt with
     | Lident name ->
-        fun scope -> get_name name scope
+        fun scope ->
+          let%map ident, data = get_name name scope in
+          (Path.Pident ident, data)
     | Ldot (path, name) ->
         fun scope ->
-          Option.bind
-            ~f:(Fn.compose (get_name name) snd)
-            (Scope.find_module_ ~loc ~scopes:env.scope_stack env.resolve_env
-               path scope)
+          let%bind path, m =
+            Scope.find_module_ ~loc ~scopes:env.scope_stack env.resolve_env
+              path scope
+          in
+          let%map ident, data = get_name name m in
+          (Path.Pdot (path, Ident.name ident), data)
     | Lapply _ ->
         raise (Error (loc, Lident_unhandled (kind, lid.txt)))
   in
@@ -607,11 +615,12 @@ let find_of_lident ~kind ~get_name (lid : lid) env =
   | None -> (
     match lid.txt with
     | Ldot (path, name) ->
-        let m =
+        let%bind path, m =
           Scope.get_global_module ~loc ~scopes:env.scope_stack env.resolve_env
             path
         in
-        Option.bind m ~f:(Fn.compose (get_name name) snd)
+        let%map ident, data = get_name name m in
+        (Path.Pdot (path, Ident.name ident), data)
     | _ ->
         None )
 
@@ -620,7 +629,7 @@ let join_expr_scope env expr_scope =
 
 let raw_find_type_declaration (lid : lid) env =
   match
-    find_of_lident ~kind:"type" ~get_name:Scope.get_type_declaration lid env
+    find_of_lident ~kind:"type" ~get_name:Scope.find_type_declaration lid env
   with
   | Some v ->
       v
@@ -646,11 +655,12 @@ let raw_find_type_declaration (lid : lid) env =
               env.resolve_env.type_env <- type_env ;
               (ident, id, num_args)
         in
-        { tdec_ident= ident
-        ; tdec_params= []
-        ; tdec_implicit_params= []
-        ; tdec_desc= TForward num_args
-        ; tdec_id= id }
+        ( Pident ident
+        , { tdec_ident= ident
+          ; tdec_params= []
+          ; tdec_implicit_params= []
+          ; tdec_desc= TForward num_args
+          ; tdec_id= id } )
     | _ ->
         raise (Error (lid.loc, Unbound_type lid.txt)) )
 
@@ -1181,10 +1191,7 @@ module TypeDecl = struct
     ; tdec_id }
 
   let mk_typ ~params ?ident decl =
-    let ident =
-      Option.value ident
-        ~default:(Longident.Lident (Ident.name decl.tdec_ident))
-    in
+    let ident = Option.value ident ~default:(Path.Pident decl.tdec_ident) in
     Type.mk
       (Tctor
          { var_ident= ident
@@ -1272,7 +1279,7 @@ let pp_decl_typ ppf decl =
   pp_typ ppf
     { type_desc=
         Tctor
-          { var_ident= Longident.Lident (Ident.name decl.tdec_ident)
+          { var_ident= Pident decl.tdec_ident
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl= decl }
@@ -1296,11 +1303,11 @@ let report_error ppf = function
       fprintf ppf "@[<hov>Unbound module @[<h>%a@].@]" Longident.pp lid
   | Unbound_value lid ->
       fprintf ppf "@[<hov>Unbound value @[<h>%a@].@]" Longident.pp lid
-  | Wrong_number_args (lid, given, expected) ->
+  | Wrong_number_args (path, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \
          applied to %d argument(s).@]"
-        Longident.pp lid expected given
+        Path.pp path expected given
   | Expected_type_var typ ->
       fprintf ppf
         "@[<hov>Syntax error: Expected a type parameter, but got @[<h>%a@].@]"

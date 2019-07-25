@@ -81,4 +81,7 @@ module Table = struct
             "merge_skewed_names: The name provided by combine does not match \
              the key" ;
         (res :: v1) @ v2 )
+
+  let map tbl ~f =
+    Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f data))) tbl
 end

@@ -28,7 +28,7 @@ let rec type_desc ?loc = function
       ; var_decl= _ } ->
       let params = List.map ~f:(type_expr ?loc) params in
       let implicits = List.map ~f:(type_expr ?loc) implicits in
-      Type.constr ?loc ~params ~implicits ident
+      Type.constr ?loc ~params ~implicits (longident_of_path ident)
   | Tpoly (vars, var) ->
       Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
 
