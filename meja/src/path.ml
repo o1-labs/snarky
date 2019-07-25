@@ -1,8 +1,12 @@
 open Core_kernel
 
+(** Paths formed from unique identifiers. *)
 type t = Pident of Ident.t | Pdot of t * string | Papply of t * t
 [@@deriving sexp]
 
+(** Pretty print. Identifiers that do not begin with a letter or underscore
+    will be surrounded by parentheses.
+*)
 let rec pp ppf lid =
   let open Format in
   match lid with
@@ -13,6 +17,7 @@ let rec pp ppf lid =
   | Papply (path1, path2) ->
       fprintf ppf "%a(%a)" pp path1 pp path2
 
+(** Create a new path by prefixing the path with [name]. *)
 let rec add_outer_module name path =
   match path with
   | Pident name2 ->
@@ -22,6 +27,9 @@ let rec add_outer_module name path =
   | Papply _ ->
       failwith "Unhandled Papply in add_outer_module"
 
+(** Compare two paths. This can be 0 only when the two values' [Ident.t]
+    children were created in the same call to [Ident.create].
+*)
 let rec compare lid1 lid2 =
   let nonzero_or x f = if Int.equal x 0 then f () else x in
   match (lid1, lid2) with
