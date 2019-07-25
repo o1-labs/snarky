@@ -335,7 +335,7 @@ let get_field (field : lid) env =
       let {fld_type; _} = List.nth_exn field_decls i in
       let rcd_type = Envi.Type.copy ~loc rcd_type bound_vars env in
       let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
-      (i, fld_type, rcd_type)
+      (ident, i, fld_type, rcd_type)
   | _ ->
       raise (Error (loc, Unbound ("record field", field)))
 
@@ -347,10 +347,10 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
       List.findi field_decls ~f:(fun _ {fld_ident; _} ->
           String.equal (Ident.name fld_ident) name )
     with
-    | Some (i, {fld_type; _}) ->
+    | Some (i, {fld_type; fld_ident; _}) ->
         let typ = Envi.Type.copy ~loc typ bound_vars env in
         let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
-        (i, fld_type, typ)
+        (Path.Pident fld_ident, i, fld_type, typ)
     | None ->
         get_field field env )
   | _ ->
@@ -523,22 +523,24 @@ let rec check_pattern ~add env typ pat =
           | _ ->
               raise (Error (loc, Unbound ("record field", field))) )
       in
-      let field_typs =
+      let field_infos =
         List.map fields ~f:(fun (field, _p) ->
-            let _, field_typ, record_typ =
+            let path, _, field_typ, record_typ =
               get_field_of_decl typ bound_vars field_decls field env
             in
             ( try check_type ~loc:field.loc env record_typ typ
               with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->
                 raise (Error (field.loc, Wrong_record_field (field.txt, typ)))
             ) ;
-            field_typ )
+            (field_typ, Location.mkloc path field.loc) )
       in
       let ps, env =
-        check_patterns ~add env field_typs (List.map ~f:snd fields)
+        check_patterns ~add env
+          (List.map ~f:fst field_infos)
+          (List.map ~f:snd fields)
       in
       let fields =
-        List.map2_exn fields ps ~f:(fun (field, _) p -> (field, p))
+        List.map2_exn field_infos ps ~f:(fun (_, field) p -> (field, p))
       in
       ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_record fields}
       , env )
@@ -892,7 +894,7 @@ let rec get_expression env expected exp =
       let fields_filled = Array.create ~len:(List.length field_decls) false in
       let fields =
         List.map fields ~f:(fun (field, e) ->
-            let i, field_typ, record_typ =
+            let path, i, field_typ, record_typ =
               get_field_of_decl typ bound_vars field_decls field !env
             in
             ( try check_type ~loc:field.loc !env record_typ typ
@@ -905,7 +907,7 @@ let rec get_expression env expected exp =
               raise (Error (field.loc, Repeated_field name)) ) ;
             fields_filled.(i) <- true ;
             env := env' ;
-            (field, e) )
+            (Location.mkloc path field.loc, e) )
       in
       ( match ext with
       | Some _ ->

@@ -147,7 +147,7 @@ let pattern_desc mapper = function
   | Tpat_record fields ->
       Tpat_record
         (List.map fields ~f:(fun (name, pat) ->
-             (lid mapper name, mapper.pattern mapper pat) ))
+             (path mapper name, mapper.pattern mapper pat) ))
   | Tpat_ctor (name, arg) ->
       Tpat_ctor (lid mapper name, Option.map ~f:(mapper.pattern mapper) arg)
 
@@ -192,7 +192,7 @@ let expression_desc mapper = function
   | Texp_record (bindings, default) ->
       Texp_record
         ( List.map bindings ~f:(fun (name, e) ->
-              (lid mapper name, mapper.expression mapper e) )
+              (path mapper name, mapper.expression mapper e) )
         , Option.map ~f:(mapper.expression mapper) default )
   | Texp_ctor (name, arg) ->
       Texp_ctor (lid mapper name, Option.map ~f:(mapper.expression mapper) arg)

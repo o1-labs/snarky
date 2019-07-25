@@ -95,7 +95,9 @@ let rec pattern_desc = function
   | Tpat_int i ->
       Ppat_int i
   | Tpat_record fields ->
-      Ppat_record (List.map fields ~f:(fun (label, p) -> (label, pattern p)))
+      Ppat_record
+        (List.map fields ~f:(fun (label, p) ->
+             (map_loc ~f:longident_of_path label, pattern p) ))
   | Tpat_ctor (name, arg) ->
       Ppat_ctor (name, Option.map ~f:pattern arg)
 
@@ -141,7 +143,8 @@ let rec expression_desc = function
       Pexp_field (expression e, map_loc ~f:longident_of_path path)
   | Texp_record (fields, default) ->
       Pexp_record
-        ( List.map fields ~f:(fun (label, e) -> (label, expression e))
+        ( List.map fields ~f:(fun (label, e) ->
+              (map_loc ~f:longident_of_path label, expression e) )
         , Option.map ~f:expression default )
   | Texp_ctor (path, arg) ->
       Pexp_ctor (path, Option.map ~f:expression arg)

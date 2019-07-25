@@ -17,7 +17,7 @@ and pattern_desc =
   | Tpat_tuple of pattern list
   | Tpat_or of pattern * pattern
   | Tpat_int of int
-  | Tpat_record of (lid * pattern) list
+  | Tpat_record of (path * pattern) list
   | Tpat_ctor of lid * pattern option
 
 type expression =
@@ -35,7 +35,7 @@ and expression_desc =
   | Texp_tuple of expression list
   | Texp_match of expression * (pattern * expression) list
   | Texp_field of expression * path
-  | Texp_record of (lid * expression) list * expression option
+  | Texp_record of (path * expression) list * expression option
   | Texp_ctor of lid * expression option
   | Texp_unifiable of
       { mutable expression: expression option

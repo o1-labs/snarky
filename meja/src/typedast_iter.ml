@@ -134,7 +134,7 @@ let pattern_desc iter = function
       ()
   | Tpat_record fields ->
       List.iter fields ~f:(fun (name, pat) ->
-          lid iter name ; iter.pattern iter pat )
+          path iter name ; iter.pattern iter pat )
   | Tpat_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.pattern iter) arg
@@ -173,7 +173,7 @@ let expression_desc iter = function
   | Texp_record (bindings, default) ->
       Option.iter ~f:(iter.expression iter) default ;
       List.iter bindings ~f:(fun (name, e) ->
-          lid iter name ; iter.expression iter e )
+          path iter name ; iter.expression iter e )
   | Texp_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.expression iter) arg
