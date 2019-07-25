@@ -756,14 +756,14 @@ let rec get_expression env expected exp =
         | Ldot _ -> (
           match Envi.TypeDecl.find_of_field field env with
           | Some
-              ( ident
+              ( fld_ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
               ) ->
               let vars, bound_vars, env =
                 Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
               let ident =
-                match ident with
+                match fld_ident with
                 | Pdot (path, _) ->
                     Path.Pdot (path, Ident.name decl.tdec_ident)
                 | _ ->
@@ -775,24 +775,24 @@ let rec get_expression env expected exp =
               let {fld_type; _} = List.nth_exn field_decls i in
               let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
               check_type ~loc env expected fld_type ;
-              Some (fld_type, decl_type, env)
+              Some (fld_type, decl_type, env, fld_ident)
           | _ ->
               None )
         | Lapply _ ->
             failwith "Unhandled Lapply in field name"
       in
-      let typ, decl_type, env, resolved =
+      let typ, decl_type, env, fld_ident, resolved =
         match field_info with
-        | Some (fld_type, decl_type, env) ->
-            (fld_type, decl_type, env, true)
+        | Some (fld_type, decl_type, env, fld_ident) ->
+            (fld_type, decl_type, env, Some fld_ident, true)
         | None ->
             let fld_type = expected in
             let decl_type = Envi.Type.mkvar None env in
-            (fld_type, decl_type, env, false)
+            (fld_type, decl_type, env, None, false)
       in
       let e, env = get_expression env decl_type e in
-      let typ, env =
-        if resolved then (typ, env)
+      let fld_ident, typ, env =
+        if resolved then (Option.value_exn fld_ident, typ, env)
         else
           match Envi.TypeDecl.find_unaliased_of_type ~loc e.exp_type env with
           | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) -> (
@@ -805,17 +805,17 @@ let rec get_expression env expected exp =
                       false
                   (* This case shouldn't happen! *) )
             with
-            | Some {fld_type; _} ->
+            | Some {fld_type; fld_ident; _} ->
                 let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
                 check_type ~loc env typ fld_type ;
-                (fld_type, env)
+                (Path.Pident fld_ident, fld_type, env)
             | None ->
                 raise (Error (loc, Wrong_record_field (field.txt, e.exp_type)))
             )
           | _ -> (
             match Envi.TypeDecl.find_of_field field env with
             | Some
-                ( ident
+                ( fld_ident
                 , ( ({tdec_desc= TRecord field_decls; tdec_params; _} as decl)
                   , i ) ) ->
                 let vars, bound_vars, env =
@@ -823,7 +823,7 @@ let rec get_expression env expected exp =
                 in
                 let ident =
                   Path.(
-                    match ident with
+                    match fld_ident with
                     | Pident _ ->
                         Pident decl.tdec_ident
                     | Pdot (path, _) ->
@@ -838,11 +838,14 @@ let rec get_expression env expected exp =
                 let {fld_type; _} = List.nth_exn field_decls i in
                 let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
                 let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
-                (fld_type, env)
+                (fld_ident, fld_type, env)
             | _ ->
                 raise (Error (loc, Unbound ("record field", field))) )
       in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_field (e, field)}, env)
+      ( { exp_loc= loc
+        ; exp_type= typ
+        ; exp_desc= Texp_field (e, Location.mkloc fld_ident field.loc) }
+      , env )
   | Pexp_record ([], _) ->
       raise (Error (loc, Empty_record))
   | Pexp_record (((field, _) :: _ as fields), ext) ->

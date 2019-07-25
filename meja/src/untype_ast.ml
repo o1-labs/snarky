@@ -138,7 +138,7 @@ let rec expression_desc = function
         ( expression e
         , List.map cases ~f:(fun (p, e) -> (pattern p, expression e)) )
   | Texp_field (e, path) ->
-      Pexp_field (expression e, path)
+      Pexp_field (expression e, map_loc ~f:longident_of_path path)
   | Texp_record (fields, default) ->
       Pexp_record
         ( List.map fields ~f:(fun (label, e) -> (label, expression e))

@@ -34,7 +34,7 @@ and expression_desc =
   | Texp_constraint of expression * type_expr
   | Texp_tuple of expression list
   | Texp_match of expression * (pattern * expression) list
-  | Texp_field of expression * lid
+  | Texp_field of expression * path
   | Texp_record of (lid * expression) list * expression option
   | Texp_ctor of lid * expression option
   | Texp_unifiable of

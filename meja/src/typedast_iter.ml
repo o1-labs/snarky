@@ -169,7 +169,7 @@ let expression_desc iter = function
       List.iter cases ~f:(fun (p, e) ->
           iter.pattern iter p ; iter.expression iter e )
   | Texp_field (e, name) ->
-      lid iter name ; iter.expression iter e
+      path iter name ; iter.expression iter e
   | Texp_record (bindings, default) ->
       Option.iter ~f:(iter.expression iter) default ;
       List.iter bindings ~f:(fun (name, e) ->

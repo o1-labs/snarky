@@ -188,7 +188,7 @@ let expression_desc mapper = function
         , List.map cases ~f:(fun (p, e) ->
               (mapper.pattern mapper p, mapper.expression mapper e) ) )
   | Texp_field (e, name) ->
-      Texp_field (mapper.expression mapper e, lid mapper name)
+      Texp_field (mapper.expression mapper e, path mapper name)
   | Texp_record (bindings, default) ->
       Texp_record
         ( List.map bindings ~f:(fun (name, e) ->
