@@ -216,7 +216,7 @@ let module_sig_desc iter = function
   | Tmty_sig sigs ->
       iter.signature iter sigs
   | Tmty_name name ->
-      lid iter name
+      path iter name
   | Tmty_abstract ->
       ()
   | Tmty_functor (name, fsig, msig) ->
@@ -261,7 +261,7 @@ let module_desc iter = function
   | Tmod_struct stmts ->
       iter.statements iter stmts
   | Tmod_name name ->
-      lid iter name
+      path iter name
   | Tmod_functor (name, fsig, me) ->
       str iter name ; iter.module_sig iter fsig ; iter.module_expr iter me
 

@@ -183,7 +183,7 @@ and module_sig_desc = function
   | Typedast.Tmty_sig sigs ->
       Parsetypes.Pmty_sig (List.map ~f:signature_item sigs)
   | Tmty_name path ->
-      Pmty_name path
+      Pmty_name (map_loc ~f:longident_of_path path)
   | Tmty_abstract ->
       Pmty_abstract
   | Tmty_functor (name, fsig, msig) ->
@@ -226,7 +226,7 @@ and module_desc = function
   | Typedast.Tmod_struct stmts ->
       Parsetypes.Pmod_struct (List.map ~f:statement stmts)
   | Tmod_name path ->
-      Pmod_name path
+      Pmod_name (map_loc ~f:longident_of_path path)
   | Tmod_functor (name, fsig, m) ->
       Pmod_functor (name, module_sig fsig, module_expr m)
 

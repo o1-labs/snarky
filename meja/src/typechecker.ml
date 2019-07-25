@@ -1159,7 +1159,7 @@ and check_module_sig env path msig =
       , Envi.Scope.Immediate m
       , env )
   | Pmty_name lid ->
-      let _path, m =
+      let path, m =
         match Envi.find_module_deferred ~loc lid env with
         | Some m ->
             m
@@ -1171,7 +1171,10 @@ and check_module_sig env path msig =
             ( Path.Pident (Ident.create "NOT_FOUND")
             , Envi.Scope.Deferred lid.txt )
       in
-      ({Typedast.msig_desc= Tmty_name lid; msig_loc= loc}, m, env)
+      ( { Typedast.msig_desc= Tmty_name (Location.mkloc path lid.loc)
+        ; msig_loc= loc }
+      , m
+      , env )
   | Pmty_abstract ->
       let env = Envi.open_absolute_module (Some path) env in
       let m, env = Envi.pop_module ~loc env in
@@ -1395,7 +1398,8 @@ and check_module_expr env m =
       let path = Envi.current_path env in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
-      let _path, m' = Envi.find_module ~loc name env in
+      let name', m' = Envi.find_module ~loc name env in
+      let name = Location.mkloc name' name.loc in
       let env = Envi.push_scope {m' with path} env in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
   | Pmod_functor (f_name, f, m) ->

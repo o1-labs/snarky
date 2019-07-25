@@ -62,7 +62,7 @@ and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
 and module_sig_desc =
   | Tmty_sig of signature
-  | Tmty_name of lid
+  | Tmty_name of path
   | Tmty_abstract
   | Tmty_functor of str * module_sig * module_sig
 
@@ -86,5 +86,5 @@ and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc =
   | Tmod_struct of statements
-  | Tmod_name of lid
+  | Tmod_name of path
   | Tmod_functor of str * module_sig * module_expr

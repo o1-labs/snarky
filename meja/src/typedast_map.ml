@@ -242,7 +242,7 @@ let module_sig_desc mapper = function
   | Tmty_sig sigs ->
       Tmty_sig (mapper.signature mapper sigs)
   | Tmty_name name ->
-      Tmty_name (lid mapper name)
+      Tmty_name (path mapper name)
   | Tmty_abstract ->
       Tmty_abstract
   | Tmty_functor (name, fsig, msig) ->
@@ -291,7 +291,7 @@ let module_desc mapper = function
   | Tmod_struct stmts ->
       Tmod_struct (mapper.statements mapper stmts)
   | Tmod_name name ->
-      Tmod_name (lid mapper name)
+      Tmod_name (path mapper name)
   | Tmod_functor (name, fsig, me) ->
       Tmod_functor
         ( str mapper name
