@@ -79,7 +79,7 @@ type 'a or_deferred =
 
 type 'a resolve_env =
   { mutable type_env: TypeEnvi.t
-  ; mutable external_modules: 'a or_deferred String.Map.t
+  ; mutable external_modules: 'a or_deferred IdTbl.t
   ; mutable predeclare_types: bool }
 
 module Scope = struct
@@ -357,18 +357,21 @@ module Scope = struct
   and get_global_module ~loc ~scopes resolve_env lid =
     let name, lid = outer_mod_name ~loc lid in
     let m =
-      match Map.find resolve_env.external_modules name with
-      | Some (Immediate m) ->
+      match IdTbl.find_name name resolve_env.external_modules with
+      | Some (_name, Immediate m) ->
           Some m
-      | Some (Deferred filename) ->
+      | Some (name, Deferred filename) ->
           resolve_env.external_modules
-          <- Map.set resolve_env.external_modules ~key:name
+          <- IdTbl.add resolve_env.external_modules ~key:name
                ~data:(In_flight filename) ;
-          let m = !load_module ~loc ~name resolve_env filename in
+          let m =
+            !load_module ~loc ~name:(Ident.name name) resolve_env filename
+          in
           resolve_env.external_modules
-          <- Map.set resolve_env.external_modules ~key:name ~data:(Immediate m) ;
+          <- IdTbl.add resolve_env.external_modules ~key:name
+               ~data:(Immediate m : _ or_deferred) ;
           Some m
-      | Some (In_flight filename) ->
+      | Some (_name, In_flight filename) ->
           raise (Error (loc, Recursive_load filename))
       | None ->
           None
@@ -423,7 +426,7 @@ end
 
 let empty_resolve_env : Scope.t resolve_env =
   { type_env= TypeEnvi.empty
-  ; external_modules= String.Map.empty
+  ; external_modules= IdTbl.empty
   ; predeclare_types= false }
 
 type t =
@@ -551,7 +554,7 @@ let add_deferred_module (name : Ident.t) lid =
 
 let register_external_module name x env =
   env.resolve_env.external_modules
-  <- Map.set ~key:name ~data:x env.resolve_env.external_modules
+  <- IdTbl.add ~key:name ~data:x env.resolve_env.external_modules
 
 let find_module ~loc (lid : lid) env =
   Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack
