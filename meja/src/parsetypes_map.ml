@@ -105,11 +105,13 @@ let type_decl_desc mapper = function
       TVariant (List.map ~f:(mapper.ctor_decl mapper) ctors)
   | TOpen ->
       TOpen
-  | TExtend (name, decl, ctors) ->
-      TExtend
+  | TExtend (_name, _decl, _ctors) ->
+      assert false
+      (* TODO: re-enable this when the Type0 iterator is merged. *)
+      (*TExtend
         ( lid mapper name
         , mapper.type0_decl mapper decl
-        , List.map ~f:(mapper.ctor_decl mapper) ctors )
+        , List.map ~f:(mapper.ctor_decl mapper) ctors )*)
   | TForward i ->
       TForward i
 

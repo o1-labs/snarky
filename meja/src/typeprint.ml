@@ -80,7 +80,7 @@ let type_decl_desc fmt = function
   | TOpen ->
       fprintf fmt "@ =@ .."
   | TExtend (name, _, ctors) ->
-      fprintf fmt "@ /*@[%a +=@ %a@]*/" Longident.pp name
+      fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
   | TForward i ->

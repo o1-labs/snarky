@@ -3,7 +3,6 @@ open Core_kernel
 open Ast_types
 open Parsetypes
 open Envi
-open Longident
 
 type error =
   | Unbound_type_var of type_expr
@@ -277,28 +276,28 @@ module TypeDecl = struct
                 let scope, env = pop_expr_scope env in
                 let ctor_ret, env, must_find =
                   match ctor.ctor_ret with
-                  | Some ret ->
+                  | Some ret' ->
                       let env = open_expr_scope env in
                       let name =
                         match tdec_desc with
                         | TVariant _ ->
-                            Lident (Ident.name tdec_ident.txt)
+                            Path.Pident tdec_ident.txt
                         | TExtend (lid, _, _) ->
                             lid.txt
                         | _ ->
                             failwith
                               "Could not find name for TVariant/TExtend."
                       in
+                      let ret, env = Type.import ~must_find:false ret' env in
                       ( match ret.type_desc with
-                      | Ptyp_ctor {var_ident= {txt= lid; _}; _}
-                        when Longident.compare lid name = 0 ->
+                      | Tctor {var_ident= path; _}
+                        when Path.compare path name = 0 ->
                           ()
                       | _ ->
                           raise
                             (Error
-                               ( ret.type_loc
-                               , Constraints_not_satisfied (ret, decl') )) ) ;
-                      let ret, env = Type.import ~must_find:false ret env in
+                               ( ret'.type_loc
+                               , Constraints_not_satisfied (ret', decl') )) ) ;
                       (Some ret, env, None)
                   | None ->
                       (None, push_scope scope env, Some true)

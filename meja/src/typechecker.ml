@@ -1029,7 +1029,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
 
 let type_extension ~loc variant ctors env =
   let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
-  let ( _path
+  let ( path
       , ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl)
       ) =
     match Envi.raw_find_type_declaration var_ident env with
@@ -1053,7 +1053,7 @@ let type_extension ~loc variant ctors env =
     ; tdec_params= var_params
     ; tdec_implicit_params=
         List.map ~f:(Untype_ast.type_expr ~loc) tdec_implicit_params
-    ; tdec_desc= TExtend (var_ident, decl, ctors)
+    ; tdec_desc= TExtend (Location.mkloc path var_ident.loc, decl, ctors)
     ; tdec_loc= loc }
   in
   let decl, env = Typet.TypeDecl.import decl env in

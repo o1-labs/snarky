@@ -106,7 +106,7 @@ let type_decl_desc iter = function
   | TOpen ->
       ()
   | TExtend (name, decl, ctors) ->
-      lid iter name ;
+      path iter name ;
       iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors
   | TForward _ ->

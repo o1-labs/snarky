@@ -118,7 +118,7 @@ let type_decl_desc mapper = function
       TOpen
   | TExtend (name, decl, ctors) ->
       TExtend
-        ( lid mapper name
+        ( path mapper name
         , mapper.type0_decl mapper decl
         , List.map ~f:(mapper.ctor_decl mapper) ctors )
   | TForward i ->
