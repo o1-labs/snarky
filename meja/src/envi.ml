@@ -104,7 +104,7 @@ module Scope = struct
     ; ctors: (type_decl * int) IdTbl.t
     ; modules: t or_path IdTbl.t
     ; module_types: t or_path IdTbl.t
-    ; instances: Longident.t Int.Map.t
+    ; instances: Path.t Int.Map.t
     ; paths: paths }
 
   let load_module :
@@ -557,7 +557,7 @@ let add_module (name : Ident.t) m =
               | `Left x ->
                   Some x
               | `Both (_, x) | `Right x ->
-                  Some (Longident.add_outer_module (Ident.name name) x) )
+                  Some (Path.add_outer_module name x) )
       ; (* Prefer the shorter paths in the current module to those in the
            module we are adding. *)
         paths= Scope.join_paths paths scope.paths } )
@@ -580,7 +580,7 @@ let find_module_deferred ~loc (lid : lid) env =
     env.scope_stack
 
 let add_implicit_instance name typ env =
-  let path = Lident name in
+  let path = Path.Pident name in
   let id, type_env = TypeEnvi.next_instance_id env.resolve_env.type_env in
   let env =
     map_current_scope env ~f:(fun scope ->
@@ -924,7 +924,9 @@ module Type = struct
   let new_implicit_var ?(loc = Location.none) typ env =
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.resolve_env.type_env in
     let mk exp_loc exp_desc = {Typedast.exp_loc; exp_desc; exp_type= typ} in
-    let name = Location.mkloc (sprintf "__implicit%i__" implicit_id) loc in
+    let name =
+      Location.mkloc (Ident.create (sprintf "__implicit%i__" implicit_id)) loc
+    in
     let new_exp =
       mk loc (Texp_unifiable {expression= None; name; id= implicit_id})
     in
@@ -1257,15 +1259,15 @@ let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
 let get_name (name : str) env =
   let loc = name.loc in
   match List.find_map ~f:(Scope.find_name name.txt) env.scope_stack with
-  | Some (_ident, typ) ->
-      Type.copy typ Int.Map.empty env
+  | Some (ident, typ) ->
+      (ident, Type.copy typ Int.Map.empty env)
   | None ->
       raise (Error (loc, Unbound_value (Lident name.txt)))
 
-let find_name (lid : lid) env =
+let find_name ~loc (lid : lid) env =
   match find_of_lident ~kind:"name" ~get_name:Scope.find_name lid env with
-  | Some (_ident, typ) ->
-      Type.copy typ Int.Map.empty env
+  | Some (ident, typ) ->
+      (ident, Type.copy ~loc typ Int.Map.empty env)
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
 

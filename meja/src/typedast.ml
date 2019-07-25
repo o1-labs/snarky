@@ -12,7 +12,7 @@ type pattern =
 
 and pattern_desc =
   | Tpat_any
-  | Tpat_variable of str
+  | Tpat_variable of ident
   | Tpat_constraint of pattern * type_expr
   | Tpat_tuple of pattern list
   | Tpat_or of pattern * pattern
@@ -25,7 +25,7 @@ type expression =
 
 and expression_desc =
   | Texp_apply of expression * (Asttypes.arg_label * expression) list
-  | Texp_variable of lid
+  | Texp_variable of path
   | Texp_literal of literal
   | Texp_fun of Asttypes.arg_label * pattern * expression * explicitness
   | Texp_newtype of str * expression
@@ -39,7 +39,7 @@ and expression_desc =
   | Texp_ctor of lid * expression option
   | Texp_unifiable of
       { mutable expression: expression option
-      ; name: str
+      ; name: ident
       ; id: int }
   | Texp_if of expression * expression * expression option
 
@@ -48,8 +48,8 @@ type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 and signature = signature_item list
 
 and signature_desc =
-  | Tsig_value of str * type_expr
-  | Tsig_instance of str * type_expr
+  | Tsig_value of ident * type_expr
+  | Tsig_instance of ident * type_expr
   | Tsig_type of type_decl
   | Tsig_module of ident * module_sig
   | Tsig_modtype of ident * module_sig
@@ -72,7 +72,7 @@ and statements = statement list
 
 and statement_desc =
   | Tstmt_value of pattern * expression
-  | Tstmt_instance of str * expression
+  | Tstmt_instance of ident * expression
   | Tstmt_type of type_decl
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig

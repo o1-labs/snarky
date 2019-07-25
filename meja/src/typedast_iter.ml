@@ -123,7 +123,7 @@ let pattern_desc iter = function
   | Tpat_any ->
       ()
   | Tpat_variable name ->
-      str iter name
+      ident iter name
   | Tpat_constraint (pat, typ) ->
       iter.type_expr iter typ ; iter.pattern iter pat
   | Tpat_tuple pats ->
@@ -149,7 +149,7 @@ let expression_desc iter = function
       iter.expression iter e ;
       List.iter args ~f:(fun (_label, e) -> iter.expression iter e)
   | Texp_variable name ->
-      lid iter name
+      path iter name
   | Texp_literal l ->
       iter.literal iter l
   | Texp_fun (_label, p, e, _explicit) ->
@@ -178,7 +178,7 @@ let expression_desc iter = function
       lid iter name ;
       Option.iter ~f:(iter.expression iter) arg
   | Texp_unifiable {expression; name; id= _} ->
-      str iter name ;
+      ident iter name ;
       Option.iter ~f:(iter.expression iter) expression
   | Texp_if (e1, e2, e3) ->
       iter.expression iter e1 ;
@@ -193,7 +193,7 @@ let signature_item iter {sig_desc; sig_loc} =
 
 let signature_desc iter = function
   | Tsig_value (name, typ) | Tsig_instance (name, typ) ->
-      str iter name ; iter.type_expr iter typ
+      ident iter name ; iter.type_expr iter typ
   | Tsig_type decl ->
       iter.type_decl iter decl
   | Tsig_module (name, msig) | Tsig_modtype (name, msig) ->
@@ -232,7 +232,7 @@ let statement_desc iter = function
   | Tstmt_value (p, e) ->
       iter.pattern iter p ; iter.expression iter e
   | Tstmt_instance (name, e) ->
-      str iter name ; iter.expression iter e
+      ident iter name ; iter.expression iter e
   | Tstmt_type decl ->
       iter.type_decl iter decl
   | Tstmt_module (name, me) ->

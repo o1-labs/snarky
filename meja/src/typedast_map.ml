@@ -135,7 +135,7 @@ let pattern_desc mapper = function
   | Tpat_any ->
       Tpat_any
   | Tpat_variable name ->
-      Tpat_variable (str mapper name)
+      Tpat_variable (ident mapper name)
   | Tpat_constraint (pat, typ) ->
       Tpat_constraint (mapper.pattern mapper pat, mapper.type_expr mapper typ)
   | Tpat_tuple pats ->
@@ -163,7 +163,7 @@ let expression_desc mapper = function
         , List.map args ~f:(fun (label, e) ->
               (label, mapper.expression mapper e) ) )
   | Texp_variable name ->
-      Texp_variable (lid mapper name)
+      Texp_variable (path mapper name)
   | Texp_literal l ->
       Texp_literal (mapper.literal mapper l)
   | Texp_fun (label, p, e, explicit) ->
@@ -199,7 +199,7 @@ let expression_desc mapper = function
   | Texp_unifiable {expression; name; id} ->
       Texp_unifiable
         { id
-        ; name= str mapper name
+        ; name= ident mapper name
         ; expression= Option.map ~f:(mapper.expression mapper) expression }
   | Texp_if (e1, e2, e3) ->
       Texp_if
@@ -215,9 +215,9 @@ let signature_item mapper {sig_desc; sig_loc} =
 
 let signature_desc mapper = function
   | Tsig_value (name, typ) ->
-      Tsig_value (str mapper name, mapper.type_expr mapper typ)
+      Tsig_value (ident mapper name, mapper.type_expr mapper typ)
   | Tsig_instance (name, typ) ->
-      Tsig_instance (str mapper name, mapper.type_expr mapper typ)
+      Tsig_instance (ident mapper name, mapper.type_expr mapper typ)
   | Tsig_type decl ->
       Tsig_type (mapper.type_decl mapper decl)
   | Tsig_module (name, msig) ->
@@ -261,7 +261,7 @@ let statement_desc mapper = function
   | Tstmt_value (p, e) ->
       Tstmt_value (mapper.pattern mapper p, mapper.expression mapper e)
   | Tstmt_instance (name, e) ->
-      Tstmt_instance (str mapper name, mapper.expression mapper e)
+      Tstmt_instance (ident mapper name, mapper.expression mapper e)
   | Tstmt_type decl ->
       Tstmt_type (mapper.type_decl mapper decl)
   | Tstmt_module (name, me) ->

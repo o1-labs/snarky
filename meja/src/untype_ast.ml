@@ -85,7 +85,7 @@ let rec pattern_desc = function
   | Typedast.Tpat_any ->
       Parsetypes.Ppat_any
   | Tpat_variable str ->
-      Ppat_variable str
+      Ppat_variable (map_loc ~f:Ident.name str)
   | Tpat_constraint (p, typ) ->
       Ppat_constraint (pattern p, typ)
   | Tpat_tuple ps ->
@@ -118,7 +118,7 @@ let rec expression_desc = function
         ( expression e
         , List.map args ~f:(fun (label, e) -> (label, expression e)) )
   | Texp_variable name ->
-      Pexp_variable name
+      Pexp_variable (map_loc ~f:longident_of_path name)
   | Texp_literal i ->
       Pexp_literal (literal i)
   | Texp_fun (label, p, e, explicit) ->
@@ -146,7 +146,10 @@ let rec expression_desc = function
   | Texp_ctor (path, arg) ->
       Pexp_ctor (path, Option.map ~f:expression arg)
   | Texp_unifiable {expression= e; name; id} ->
-      Pexp_unifiable {expression= Option.map ~f:expression e; name; id}
+      Pexp_unifiable
+        { expression= Option.map ~f:expression e
+        ; name= map_loc ~f:Ident.name name
+        ; id }
   | Texp_if (e1, e2, e3) ->
       Pexp_if (expression e1, expression e2, Option.map ~f:expression e3)
 
@@ -155,9 +158,9 @@ and expression e =
 
 let rec signature_desc = function
   | Typedast.Tsig_value (name, typ) ->
-      Parsetypes.Psig_value (name, typ)
+      Parsetypes.Psig_value (map_loc ~f:Ident.name name, typ)
   | Tsig_instance (name, typ) ->
-      Psig_instance (name, typ)
+      Psig_instance (map_loc ~f:Ident.name name, typ)
   | Tsig_type decl ->
       Psig_type decl
   | Tsig_module (name, msig) ->
@@ -194,7 +197,7 @@ let rec statement_desc = function
   | Typedast.Tstmt_value (p, e) ->
       Parsetypes.Pstmt_value (pattern p, expression e)
   | Tstmt_instance (name, e) ->
-      Pstmt_instance (name, expression e)
+      Pstmt_instance (map_loc ~f:Ident.name name, expression e)
   | Tstmt_type decl ->
       Pstmt_type decl
   | Tstmt_module (name, m) ->

@@ -429,7 +429,8 @@ let rec check_pattern ~add env typ pat =
   | Ppat_variable str ->
       let name = map_loc ~f:Ident.create str in
       let env = add name.txt typ env in
-      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}, env)
+      ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable name}
+      , env )
   | Ppat_constraint (p, constr_typ) ->
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp ;
@@ -612,7 +613,8 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (f, es)}, env)
   | Pexp_variable name ->
-      let typ = Envi.find_name ~loc name env in
+      let path, typ = Envi.find_name ~loc name env in
+      let path = Location.mkloc path name.loc in
       let implicits, result_typ = Envi.Type.get_implicits [] typ in
       check_type ~loc env expected result_typ ;
       let implicits =
@@ -620,7 +622,7 @@ let rec get_expression env expected exp =
             (label, Envi.Type.new_implicit_var ~loc typ env) )
       in
       let e =
-        {Typedast.exp_loc= loc; exp_type= typ; exp_desc= Texp_variable name}
+        {Typedast.exp_loc= loc; exp_type= typ; exp_desc= Texp_variable path}
       in
       let e =
         if List.is_empty implicits then e
@@ -992,7 +994,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let name = map_loc ~f:Ident.create str in
       let env = Envi.add_name name.txt typ env in
       let p =
-        {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}
+        {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable name}
       in
       (p, e, env)
   | Ppat_constraint (({pat_desc= Ppat_variable str; _} as p'), typ), _ ->
@@ -1007,7 +1009,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let p' =
         { Typedast.pat_loc= p'.pat_loc
         ; pat_type= ctyp
-        ; pat_desc= Tpat_variable str }
+        ; pat_desc= Tpat_variable name }
       in
       let typ =
         Untype_ast.type_expr ~loc (Envi.Type.normalise_constr_names env ctyp)
@@ -1077,16 +1079,16 @@ let rec check_signature_item env item =
       let typ', env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ' ;
-      let name' = map_loc ~f:Ident.create name in
-      let env = add_polymorphised name'.txt typ' env in
+      let name = map_loc ~f:Ident.create name in
+      let env = add_polymorphised name.txt typ' env in
       (env, {Typedast.sig_desc= Tsig_value (name, typ); sig_loc= loc})
   | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ', env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ' ;
-      let name' = map_loc ~f:Ident.create name in
-      let env = add_polymorphised name'.txt typ' env in
+      let name = map_loc ~f:Ident.create name in
+      let env = add_polymorphised name.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ' env in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
   | Psig_type decl ->
@@ -1224,7 +1226,24 @@ let rec check_statement env stmt =
   | Pstmt_instance (name, e) ->
       let env = Envi.open_expr_scope env in
       let p = {pat_desc= Ppat_variable name; pat_loc= name.loc} in
-      let _, e, env = check_binding ~toplevel:true env p e in
+      let p, e, env = check_binding ~toplevel:true env p e in
+      let name =
+        let exception Ret of Ident.t Location.loc in
+        let iter =
+          { Typedast_iter.default_iterator with
+            pattern_desc=
+              (fun iter p ->
+                match p with
+                | Tpat_variable name ->
+                    raise (Ret name)
+                | _ ->
+                    Typedast_iter.default_iterator.pattern_desc iter p ) }
+        in
+        try
+          iter.pattern iter p ;
+          assert false
+        with Ret name -> name
+      in
       let scope, env = Envi.pop_expr_scope env in
       let env = Envi.join_expr_scope env scope in
       let env = Envi.add_implicit_instance name.txt e.exp_type env in
