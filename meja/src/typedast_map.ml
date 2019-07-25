@@ -149,7 +149,7 @@ let pattern_desc mapper = function
         (List.map fields ~f:(fun (name, pat) ->
              (path mapper name, mapper.pattern mapper pat) ))
   | Tpat_ctor (name, arg) ->
-      Tpat_ctor (lid mapper name, Option.map ~f:(mapper.pattern mapper) arg)
+      Tpat_ctor (path mapper name, Option.map ~f:(mapper.pattern mapper) arg)
 
 let expression mapper {exp_desc; exp_loc; exp_type} =
   { exp_loc= mapper.location mapper exp_loc
@@ -195,7 +195,7 @@ let expression_desc mapper = function
               (path mapper name, mapper.expression mapper e) )
         , Option.map ~f:(mapper.expression mapper) default )
   | Texp_ctor (name, arg) ->
-      Texp_ctor (lid mapper name, Option.map ~f:(mapper.expression mapper) arg)
+      Texp_ctor (path mapper name, Option.map ~f:(mapper.expression mapper) arg)
   | Texp_unifiable {expression; name; id} ->
       Texp_unifiable
         { id

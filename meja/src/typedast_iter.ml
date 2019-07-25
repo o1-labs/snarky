@@ -136,7 +136,7 @@ let pattern_desc iter = function
       List.iter fields ~f:(fun (name, pat) ->
           path iter name ; iter.pattern iter pat )
   | Tpat_ctor (name, arg) ->
-      lid iter name ;
+      path iter name ;
       Option.iter ~f:(iter.pattern iter) arg
 
 let expression iter {exp_desc; exp_loc; exp_type} =
@@ -175,7 +175,7 @@ let expression_desc iter = function
       List.iter bindings ~f:(fun (name, e) ->
           path iter name ; iter.expression iter e )
   | Texp_ctor (name, arg) ->
-      lid iter name ;
+      path iter name ;
       Option.iter ~f:(iter.expression iter) arg
   | Texp_unifiable {expression; name; id= _} ->
       ident iter name ;

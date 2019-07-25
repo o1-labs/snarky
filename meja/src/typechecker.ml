@@ -417,7 +417,7 @@ let get_ctor (name : lid) env =
       in
       let args_typ = Envi.Type.copy ~loc args_typ bound_vars env in
       let typ = Envi.Type.copy ~loc typ bound_vars env in
-      (typ, args_typ)
+      (name, typ, args_typ)
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
 
@@ -545,7 +545,8 @@ let rec check_pattern ~add env typ pat =
       ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_record fields}
       , env )
   | Ppat_ctor (name, arg) ->
-      let typ', args_typ = get_ctor name env in
+      let name', typ', args_typ = get_ctor name env in
+      let name = Location.mkloc name' name.loc in
       check_type ~loc env typ typ' ;
       let arg, env =
         match arg with
@@ -923,7 +924,8 @@ let rec get_expression env expected exp =
             raise (Error (loc, Missing_fields names)) ) ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_record (fields, ext)}, !env)
   | Pexp_ctor (name, arg) ->
-      let typ, arg_typ = get_ctor name env in
+      let name', typ, arg_typ = get_ctor name env in
+      let name' = Location.mkloc name' name.loc in
       check_type ~loc env expected typ ;
       let arg, env =
         match arg with
@@ -936,7 +938,7 @@ let rec get_expression env expected exp =
               with _ -> raise (Error (loc, Argument_expected name.txt)) ) ;
             (None, env)
       in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_ctor (name, arg)}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_ctor (name', arg)}, env)
   | Pexp_unifiable _ ->
       raise (Error (loc, Unifiable_expr))
   | Pexp_if (e1, e2, None) ->

@@ -99,7 +99,7 @@ let rec pattern_desc = function
         (List.map fields ~f:(fun (label, p) ->
              (map_loc ~f:longident_of_path label, pattern p) ))
   | Tpat_ctor (name, arg) ->
-      Ppat_ctor (name, Option.map ~f:pattern arg)
+      Ppat_ctor (map_loc ~f:longident_of_path name, Option.map ~f:pattern arg)
 
 and pattern p =
   {Parsetypes.pat_desc= pattern_desc p.Typedast.pat_desc; pat_loc= p.pat_loc}
@@ -147,7 +147,8 @@ let rec expression_desc = function
               (map_loc ~f:longident_of_path label, expression e) )
         , Option.map ~f:expression default )
   | Texp_ctor (path, arg) ->
-      Pexp_ctor (path, Option.map ~f:expression arg)
+      Pexp_ctor
+        (map_loc ~f:longident_of_path path, Option.map ~f:expression arg)
   | Texp_unifiable {expression= e; name; id} ->
       Pexp_unifiable
         { expression= Option.map ~f:expression e
