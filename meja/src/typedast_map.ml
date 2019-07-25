@@ -170,7 +170,7 @@ let expression_desc mapper = function
       Texp_fun
         (label, mapper.pattern mapper p, mapper.expression mapper e, explicit)
   | Texp_newtype (name, e) ->
-      Texp_newtype (str mapper name, mapper.expression mapper e)
+      Texp_newtype (ident mapper name, mapper.expression mapper e)
   | Texp_seq (e1, e2) ->
       Texp_seq (mapper.expression mapper e1, mapper.expression mapper e2)
   | Texp_let (p, e1, e2) ->

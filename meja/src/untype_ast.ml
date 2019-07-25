@@ -124,7 +124,7 @@ let rec expression_desc = function
   | Texp_fun (label, p, e, explicit) ->
       Pexp_fun (label, pattern p, expression e, explicit)
   | Texp_newtype (name, e) ->
-      Pexp_newtype (name, expression e)
+      Pexp_newtype (map_loc ~f:Ident.name name, expression e)
   | Texp_seq (e1, e2) ->
       Pexp_seq (expression e1, expression e2)
   | Texp_let (p, e1, e2) ->

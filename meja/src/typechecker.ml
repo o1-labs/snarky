@@ -694,7 +694,8 @@ let rec get_expression env expected exp =
       Envi.Type.update_depths env body.exp_type ;
       ( { exp_loc= loc
         ; exp_type= body.exp_type
-        ; exp_desc= Texp_newtype (name, body) }
+        ; exp_desc= Texp_newtype (Location.mkloc decl.tdec_ident name.loc, body)
+        }
       , env )
   | Pexp_seq (e1, e2) ->
       let e1, env = get_expression env Initial_env.Type.unit e1 in

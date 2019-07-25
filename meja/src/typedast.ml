@@ -28,7 +28,7 @@ and expression_desc =
   | Texp_variable of path
   | Texp_literal of literal
   | Texp_fun of Asttypes.arg_label * pattern * expression * explicitness
-  | Texp_newtype of str * expression
+  | Texp_newtype of ident * expression
   | Texp_seq of expression * expression
   | Texp_let of pattern * expression * expression
   | Texp_constraint of expression * type_expr

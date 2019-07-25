@@ -155,7 +155,7 @@ let expression_desc iter = function
   | Texp_fun (_label, p, e, _explicit) ->
       iter.pattern iter p ; iter.expression iter e
   | Texp_newtype (name, e) ->
-      str iter name ; iter.expression iter e
+      ident iter name ; iter.expression iter e
   | Texp_seq (e1, e2) ->
       iter.expression iter e1 ; iter.expression iter e2
   | Texp_let (p, e1, e2) ->
