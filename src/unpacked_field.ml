@@ -99,7 +99,6 @@ module Make (Snark : Snark_intf.Basic) :
   end
 
   let to_bitstring l =
-    assert (List.length l <= Field.size_in_bits) ;
     l
 
   let unpack f =
