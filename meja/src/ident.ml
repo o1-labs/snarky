@@ -1,23 +1,27 @@
 open Core_kernel
 
-type t = {ident_id: int; ident_name: string} [@@deriving sexp]
+type t = {ident_id: int; ident_name: string; ident_mode: Ast_types.mode}
+[@@deriving sexp]
 
 type ident = t
 
 let current_id = ref 0
 
-let create name =
+let create ~mode name =
   incr current_id ;
-  {ident_id= !current_id; ident_name= name}
+  {ident_id= !current_id; ident_name= name; ident_mode= mode}
 
 let name {ident_name= name; _} = name
+
+let mode {ident_mode= mode; _} = mode
 
 let compare {ident_id= id1; _} {ident_id= id2; _} = Int.compare id1 id2
 
 let pprint fmt {ident_name; _} = Ast_types.pp_name fmt ident_name
 
-let debug_print fmt {ident_name; ident_id} =
-  Format.fprintf fmt "%s/%i" ident_name ident_id
+let debug_print fmt {ident_name; ident_id; ident_mode} =
+  Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.pp_mode ident_mode
+    ident_id
 
 module Table = struct
   type 'a t = (ident * 'a) list String.Map.t

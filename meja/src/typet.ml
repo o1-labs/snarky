@@ -18,6 +18,7 @@ module Type = struct
   open Type
 
   let rec import ?must_find (typ : type_expr) env : Type0.type_expr * env =
+    let mode = Envi.current_mode env in
     let import' = import in
     let import = import ?must_find in
     let loc = typ.type_loc in
@@ -59,7 +60,7 @@ module Type = struct
         (mk (Tpoly (vars, typ)) env, env)
     | Ptyp_ctor variant -> (
         let {var_ident; var_params; var_implicit_params; _} = variant in
-        let decl = raw_find_type_declaration var_ident env in
+        let decl = raw_find_type_declaration ~mode var_ident env in
         let import_implicits () =
           List.fold_map ~init:env decl.tdec_implicit_params
             ~f:(Envi.Type.refresh_var ~loc ?must_find)
@@ -176,10 +177,12 @@ module TypeDecl = struct
   open TypeDecl
 
   let import_field ?must_find env {fld_ident; fld_type; fld_loc= _} =
+    let mode = Envi.current_mode env in
     let fld_type, env = Type.import ?must_find fld_type env in
-    (env, {Type0.fld_ident= Ident.create fld_ident.txt; fld_type})
+    (env, {Type0.fld_ident= Ident.create ~mode fld_ident.txt; fld_type})
 
   let import decl' env =
+    let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc= _}
         =
       decl'
@@ -208,7 +211,7 @@ module TypeDecl = struct
              } ;
           (Location.mkloc ident tdec_ident.loc, id)
       | None ->
-          (map_loc ~f:Ident.create tdec_ident, next_id env)
+          (map_loc ~f:(Ident.create ~mode) tdec_ident, next_id env)
     in
     let env = open_expr_scope env in
     let import_params env =
@@ -334,14 +337,14 @@ module TypeDecl = struct
                       in
                       let decl =
                         mk
-                          ~name:(Ident.create ctor.ctor_ident.txt)
+                          ~name:(Ident.create ~mode ctor.ctor_ident.txt)
                           ~params (TRecord fields) env
                       in
                       (env, Type0.Ctor_record decl)
                 in
                 let env = push_scope scope (close_expr_scope env) in
                 ( env
-                , { Type0.ctor_ident= Ident.create ctor.ctor_ident.txt
+                , { Type0.ctor_ident= Ident.create ~mode ctor.ctor_ident.txt
                   ; ctor_args
                   ; ctor_ret } ) )
           in

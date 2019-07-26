@@ -3,11 +3,14 @@ type t [@@deriving sexp]
 
 type ident = t
 
-val create : string -> t
+val create : mode:Ast_types.mode -> string -> t
 (** Create a new unique name. *)
 
 val name : t -> string
 (** Retrieve the name passed to [create]. *)
+
+val mode : t -> Ast_types.mode
+(** Retrieve the mode passed to [create]. *)
 
 val compare : t -> t -> int
 (** Compare two names. This is 0 iff they originate from the same call to

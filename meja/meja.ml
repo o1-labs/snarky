@@ -177,9 +177,13 @@ let main =
                        Snarky.@.") ;
                   exit 1
               in
-              let env = Envi.add_module (Ident.create "Request") m env in
+              let env =
+                Envi.add_module (Ident.create ~mode:Checked "Request") m env
+              in
               let m, env = Envi.pop_module ~loc env in
-              let env = Envi.add_module (Ident.create "Snarky") m env in
+              let env =
+                Envi.add_module (Ident.create ~mode:Checked "Snarky") m env
+              in
               Envi.pop_module ~loc env
             in
             Envi.open_namespace_scope m env
@@ -218,7 +222,7 @@ let main =
           in
           let env, _typed_ast = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:Location.none env in
-          let name = Ident.create module_name in
+          let name = Ident.create ~mode:Checked module_name in
           Envi.add_module name m env )
     in
     let file =
