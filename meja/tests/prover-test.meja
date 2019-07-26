@@ -1,0 +1,36 @@
+module type P = {
+  Prover {
+    let x : int;
+
+    let f : bool -> bool;
+  };
+};
+
+module P = {
+  Prover {
+    let x = 15;
+    let f = fun (b) => { b; };
+  };
+};
+
+let f = Prover {
+  fun (x) => { x; };
+};
+
+Prover {
+  let g = fun (x) => { f(x); };
+};
+
+let h = fun (x) => { Prover { g(x); }; };
+
+let i = fun () => {
+  let f = Prover {
+    fun (x) => {
+      x;
+    };
+  };
+  let i = Prover {
+    f(15);
+  };
+  i;
+};
