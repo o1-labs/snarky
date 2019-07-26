@@ -202,6 +202,8 @@ let expression_desc mapper = function
         ( mapper.expression mapper e1
         , mapper.expression mapper e2
         , Option.map ~f:(mapper.expression mapper) e3 )
+  | Texp_prover e ->
+      Texp_prover (mapper.expression mapper e)
 
 let signature mapper = List.map ~f:(mapper.signature_item mapper)
 
@@ -229,6 +231,8 @@ let signature_desc mapper = function
       Tsig_request (mapper.type_expr mapper typ, mapper.ctor_decl mapper ctor)
   | Tsig_multiple sigs ->
       Tsig_multiple (mapper.signature mapper sigs)
+  | Tsig_prover sigs ->
+      Tsig_prover (mapper.signature mapper sigs)
 
 let module_sig mapper {msig_desc; msig_loc} =
   { msig_loc= mapper.location mapper msig_loc
@@ -278,6 +282,8 @@ let statement_desc mapper = function
               , mapper.expression mapper e ) ) )
   | Tstmt_multiple stmts ->
       Tstmt_multiple (mapper.statements mapper stmts)
+  | Tstmt_prover stmts ->
+      Tstmt_prover (mapper.statements mapper stmts)
 
 let module_expr mapper {mod_desc; mod_loc} =
   { mod_loc= mapper.location mapper mod_loc

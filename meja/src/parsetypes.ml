@@ -83,6 +83,7 @@ and expression_desc =
       ; name: str
       ; id: int }
   | Pexp_if of expression * expression * expression option
+  | Pexp_prover of expression
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
@@ -98,6 +99,7 @@ and signature_desc =
   | Psig_typeext of variant * ctor_decl list
   | Psig_request of type_expr * ctor_decl
   | Psig_multiple of signature
+  | Psig_prover of signature
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
@@ -122,6 +124,7 @@ and statement_desc =
   | Pstmt_request of
       type_expr * ctor_decl * (pattern option * expression) option
   | Pstmt_multiple of statements
+  | Pstmt_prover of statements
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 

@@ -940,6 +940,9 @@ let rec get_expression env expected exp =
       let e3, env = get_expression env expected e3 in
       ( {exp_loc= loc; exp_type= expected; exp_desc= Texp_if (e1, e2, Some e3)}
       , env )
+  | Pexp_prover e ->
+      let e, env = get_expression env expected e in
+      ({exp_loc= loc; exp_type= expected; exp_desc= Texp_prover e}, env)
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
@@ -1132,6 +1135,9 @@ let rec check_signature_item env item =
   | Psig_multiple sigs ->
       let env, sigs = check_signature env sigs in
       (env, {Typedast.sig_desc= Tsig_multiple sigs; sig_loc= loc})
+  | Psig_prover sigs ->
+      let env, sigs = check_signature env sigs in
+      (env, {Typedast.sig_desc= Tsig_prover sigs; sig_loc= loc})
 
 and check_signature env signature =
   List.fold_map ~init:env signature ~f:check_signature_item
@@ -1349,6 +1355,9 @@ let rec check_statement env stmt =
   | Pstmt_multiple stmts ->
       let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
       (env, {stmt_loc= loc; stmt_desc= Tstmt_multiple stmts})
+  | Pstmt_prover stmts ->
+      let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
+      (env, {stmt_loc= loc; stmt_desc= Tstmt_prover stmts})
 
 and check_module_expr env m =
   let loc = m.mod_loc in

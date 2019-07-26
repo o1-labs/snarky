@@ -241,6 +241,8 @@ let rec expression_desc fmt = function
       fprintf fmt
         "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else@ {@[<hv2>@,%a@,@]}"
         expression e1 expression e2 expression e3
+  | Pexp_prover e ->
+      fprintf fmt "@[<hv2>Prover {@,%a@,}@]" expression e
 
 and expression_desc_bracket fmt exp =
   match exp with
@@ -298,6 +300,8 @@ let rec signature_desc fmt = function
         ctor_decl ctor
   | Psig_multiple sigs ->
       signature fmt sigs
+  | Psig_prover sigs ->
+      fprintf fmt "@[<2>Prover {@,%a@,}@]@;@;" signature sigs
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 
