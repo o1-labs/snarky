@@ -84,14 +84,18 @@ module Make (Snark : Snark_intf.Basic) :
 
   let constant x = List.map ~f:Boolean.var_of_value (Field.unpack x)
 
+  let rec pad n x = if n > 0 then pad (n - 1) (Boolean.false_ :: x) else x
+
   module Unsafe = struct
     let of_bits l =
-      assert (List.length l <= Field.size_in_bits) ;
-      List.map ~f:Boolean.var_of_value l
+      let pad_size = Field.size_in_bits - List.length l in
+      assert (pad_size >= 0) ;
+      pad pad_size (List.map ~f:Boolean.var_of_value l)
 
     let of_bitstring l =
-      assert (List.length l <= Field.size_in_bits) ;
-      l
+      let pad_size = Field.size_in_bits - List.length l in
+      assert (pad_size >= 0) ;
+      pad pad_size l
   end
 
   let to_bitstring l =
