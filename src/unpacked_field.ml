@@ -98,8 +98,7 @@ module Make (Snark : Snark_intf.Basic) :
       pad pad_size l
   end
 
-  let to_bitstring l =
-    l
+  let to_bitstring l = l
 
   let unpack f =
     let open Checked in
