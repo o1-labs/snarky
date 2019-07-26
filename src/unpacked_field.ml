@@ -56,6 +56,11 @@ module type S = sig
 
   val pack : t -> field_var
   (** Convert an unpacked field variable into a field variable. *)
+
+  val if_ : bool_var -> then_:t -> else_:t -> (t, _) checked
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+      otherwise.
+  *)
 end
 
 open Core_kernel
@@ -99,6 +104,13 @@ module Make (Snark : Snark_intf.Basic) :
     (Bitstring_lib.Bitstring.Msb_first.of_lsb_first x :> Bitstring_checked.t)
 
   let pack x = Field.Var.project x
+
+  (* TODO: We could do this bit-by-bit to save a constraint. *)
+  let if_ b ~then_ ~else_ =
+    let%bind res =
+      Field.Checked.if_ b ~then_:(pack then_) ~else_:(pack else_)
+    in
+    unpack res
 end
 
 module Run = struct
@@ -159,6 +171,11 @@ module Run = struct
 
     val pack : t -> field_var
     (** Convert an unpacked field variable into a field variable. *)
+
+    val if_ : bool_var -> then_:t -> else_:t -> t
+    (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+        otherwise.
+    *)
   end
 
   module Make (Snark : Snark_intf.Run_basic) :
@@ -171,5 +188,7 @@ module Run = struct
     include Make (Snark.Internal_Basic)
 
     let unpack f = Snark.run_checked (unpack f)
+
+    let if_ b ~then_ ~else_ = Snark.run_checked (if_ b ~then_ ~else_)
   end
 end
