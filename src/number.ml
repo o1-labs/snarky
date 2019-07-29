@@ -115,7 +115,7 @@ module Make (Impl : Snark_intf.Basic) = struct
       x     [ ]
       y [ ]
     *)
-    with_label "Number.(<)"
+    with_label "Number.(<=)"
       ( if x.upper_bound <= y.lower_bound then return Boolean.true_
       else if x.lower_bound > y.upper_bound then return Boolean.false_
       else
@@ -124,8 +124,10 @@ module Make (Impl : Snark_intf.Basic) = struct
             (bigint_num_bits x.upper_bound)
             (bigint_num_bits y.upper_bound)
         in
-        let%map {less; _} = Field.Checked.compare ~bit_length x.var y.var in
-        less )
+        let%map {less_or_equal; _} =
+          Field.Checked.compare ~bit_length x.var y.var
+        in
+        less_or_equal )
 
   let ( > ) x y = y < x
 
