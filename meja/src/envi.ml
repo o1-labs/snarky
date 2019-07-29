@@ -1084,38 +1084,6 @@ module Type = struct
     env.resolve_env.type_env <- {env.resolve_env.type_env with implicit_vars} ;
     local_implicit_vars
 
-  let implicit_params _env typ =
-    let rec implicit_params set typ =
-      match typ.type_desc with
-      | Tvar (_, Implicit) ->
-          Set.add set typ
-      | Tpoly (_, typ) ->
-          implicit_params set typ
-      | _ ->
-          fold ~init:set typ ~f:implicit_params
-    in
-    implicit_params Typeset.empty typ
-
-  let rec constr_map env ~f typ =
-    match typ.type_desc with
-    | Tvar _ ->
-        typ
-    | Ttuple typs ->
-        let typs = List.map ~f:(constr_map env ~f) typs in
-        mk (Ttuple typs) env
-    | Tarrow (typ1, typ2, explicit, label) ->
-        let typ1 = constr_map env ~f typ1 in
-        let typ2 = constr_map env ~f typ2 in
-        mk (Tarrow (typ1, typ2, explicit, label)) env
-    | Tctor variant ->
-        let var_params = List.map ~f:(constr_map env ~f) variant.var_params in
-        let var_implicit_params =
-          List.map ~f:(constr_map env ~f) variant.var_implicit_params
-        in
-        mk (f {variant with var_params; var_implicit_params}) env
-    | Tpoly (typs, typ) ->
-        mk (Tpoly (typs, constr_map env ~f typ)) env
-
   let get_preferred_constr_name env typ =
     match typ.type_desc with
     | Tctor variant ->
@@ -1125,7 +1093,7 @@ module Type = struct
         None
 
   let normalise_constr_names env typ =
-    constr_map env typ ~f:(fun variant ->
+    constr_map typ ~f:(fun variant ->
         match
           List.find_map env.scope_stack
             ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)

@@ -167,6 +167,39 @@ let bubble_label label typ =
   | None, typ ->
       typ
 
+let implicit_params typ =
+  let rec implicit_params set typ =
+    match typ.type_desc with
+    | Tvar (_, Implicit) ->
+        Set.add set typ
+    | Tpoly (_, typ) ->
+        implicit_params set typ
+    | _ ->
+        fold ~init:set typ ~f:implicit_params
+  in
+  implicit_params Typeset.empty typ
+
+let rec constr_map ~f typ =
+  let {type_depth; _} = typ in
+  match typ.type_desc with
+  | Tvar _ ->
+      typ
+  | Ttuple typs ->
+      let typs = List.map ~f:(constr_map ~f) typs in
+      mk type_depth (Ttuple typs)
+  | Tarrow (typ1, typ2, explicit, label) ->
+      let typ1 = constr_map ~f typ1 in
+      let typ2 = constr_map ~f typ2 in
+      mk type_depth (Tarrow (typ1, typ2, explicit, label))
+  | Tctor variant ->
+      let var_params = List.map ~f:(constr_map ~f) variant.var_params in
+      let var_implicit_params =
+        List.map ~f:(constr_map ~f) variant.var_implicit_params
+      in
+      mk type_depth (f {variant with var_params; var_implicit_params})
+  | Tpoly (typs, typ) ->
+      mk type_depth (Tpoly (typs, constr_map ~f typ))
+
 let discard_optional_labels typ =
   let rec go typ' =
     match typ'.type_desc with
