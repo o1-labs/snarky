@@ -246,7 +246,7 @@ module TypeDecl = struct
           *)
           let params =
             List.fold ~init:Typeset.empty fields ~f:(fun set {fld_type; _} ->
-                Set.union set (Envi.Type.type_vars fld_type) )
+                Set.union set (Type1.type_vars fld_type) )
             |> Set.to_list
           in
           let decl =

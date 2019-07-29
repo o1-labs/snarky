@@ -810,27 +810,6 @@ module Type = struct
     let sexp_of_t typ = Int.sexp_of_t typ.type_id
   end
 
-  let type_vars ?depth typ =
-    let deep_enough =
-      match depth with
-      | Some depth ->
-          fun typ -> depth <= typ.type_depth
-      | None ->
-          fun _ -> true
-    in
-    let empty = Typeset.empty in
-    let rec type_vars set typ =
-      match typ.type_desc with
-      | Tvar _ when deep_enough typ ->
-          Set.add set typ
-      | Tpoly (vars, typ) ->
-          let poly_vars = List.fold ~init:empty vars ~f:type_vars in
-          Set.union set (Set.diff (type_vars empty typ) poly_vars)
-      | _ ->
-          fold ~init:set typ ~f:type_vars
-    in
-    type_vars empty typ
-
   let rec update_depths env typ =
     Type1.update_depth env.depth typ ;
     match typ.type_desc with

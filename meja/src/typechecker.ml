@@ -290,13 +290,13 @@ let free_type_vars ?depth typ =
     match typ.type_desc with
     | Tpoly (vars, typ) ->
         let poly_vars =
-          Typeset.union_list (List.map ~f:(Envi.Type.type_vars ?depth) vars)
+          Typeset.union_list (List.map ~f:(Type1.type_vars ?depth) vars)
         in
         Set.union set (Set.diff (free_type_vars empty typ) poly_vars)
     | Tarrow (typ1, typ2, _, _) ->
         Set.union
-          (Envi.Type.type_vars ?depth typ1)
-          (Envi.Type.type_vars ?depth typ2)
+          (Type1.type_vars ?depth typ1)
+          (Type1.type_vars ?depth typ2)
     | _ ->
         fold ~init:set typ ~f:free_type_vars
   in
@@ -413,7 +413,7 @@ let get_ctor (name : lid) env =
       in
       let bound_vars =
         Set.to_list
-          (Set.union (Envi.Type.type_vars typ) (Envi.Type.type_vars args_typ))
+          (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
       in
       let _, bound_vars, _ =
         Envi.Type.refresh_vars ~loc bound_vars Int.Map.empty env
