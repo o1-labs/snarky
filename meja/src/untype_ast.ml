@@ -1,4 +1,5 @@
 open Core_kernel
+open Ast_types
 open Type0
 open Ast_build
 
@@ -26,7 +27,8 @@ let rec type_desc ?loc = function
 and type_expr ?loc typ = type_desc ?loc typ.type_desc
 
 let field_decl ?loc fld =
-  Type_decl.Field.mk ?loc fld.fld_ident (type_expr ?loc fld.fld_type)
+  Type_decl.Field.mk ?loc (Ident.name fld.fld_ident)
+    (type_expr ?loc fld.fld_type)
 
 let ctor_args ?loc ?ret name = function
   | Ctor_tuple typs ->
@@ -39,7 +41,9 @@ let ctor_args ?loc ?ret name = function
       assert false
 
 let ctor_decl ?loc ctor =
-  ctor_args ?loc ctor.ctor_ident ctor.ctor_args
+  ctor_args ?loc
+    (Ident.name ctor.ctor_ident)
+    ctor.ctor_args
     ?ret:(Option.map ~f:(type_expr ?loc) ctor.ctor_ret)
 
 let rec type_decl_desc ?loc ?params ?implicits name = function
@@ -66,7 +70,8 @@ and type_decl ?loc decl =
   type_decl_desc ?loc
     ~params:(List.map ~f:type_expr decl.tdec_params)
     ~implicits:(List.map ~f:type_expr decl.tdec_implicit_params)
-    decl.tdec_ident decl.tdec_desc
+    (Ident.name decl.tdec_ident)
+    decl.tdec_desc
 
 let rec pattern_desc = function
   | Typedast.Tpat_any ->
@@ -148,9 +153,9 @@ let rec signature_desc = function
   | Tsig_type decl ->
       Psig_type decl
   | Tsig_module (name, msig) ->
-      Psig_module (name, module_sig msig)
+      Psig_module (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_modtype (name, msig) ->
-      Psig_modtype (name, module_sig msig)
+      Psig_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_open path ->
       Psig_open path
   | Tsig_typeext (typ, ctors) ->
@@ -185,9 +190,9 @@ let rec statement_desc = function
   | Tstmt_type decl ->
       Pstmt_type decl
   | Tstmt_module (name, m) ->
-      Pstmt_module (name, module_expr m)
+      Pstmt_module (map_loc ~f:Ident.name name, module_expr m)
   | Tstmt_modtype (name, msig) ->
-      Pstmt_modtype (name, module_sig msig)
+      Pstmt_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tstmt_open path ->
       Pstmt_open path
   | Tstmt_typeext (typ, ctors) ->
