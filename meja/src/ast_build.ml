@@ -42,7 +42,7 @@ end
 
 module Type = struct
   let mk ?(loc = Location.none) d : Parsetypes.type_expr =
-    {type_desc= d; type_id= -1; type_loc= loc}
+    {type_desc= d; type_loc= loc}
 
   let variant ?loc ?(params = []) ?(implicits = []) ident =
     { var_ident= Loc.mk ident ?loc
@@ -107,7 +107,7 @@ module Type_decl = struct
     let with_args ?loc ?ret name args = mk ?loc ?ret name (Ctor_tuple args)
 
     let with_record ?loc ?ret name fields =
-      mk ?loc ?ret name (Ctor_record (-1, fields))
+      mk ?loc ?ret name (Ctor_record fields)
   end
 end
 

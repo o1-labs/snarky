@@ -1,4 +1,4 @@
-type t
+type t = Camlsnark_c.Backend_types.Cpp_string.t
 
 val typ : t Ctypes.typ
 

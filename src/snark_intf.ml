@@ -3,6 +3,7 @@ open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
 module Typ0 = Typ
+module As_prover0 = As_prover
 
 (** Yojson-compatible JSON type. *)
 type 'a json =
@@ -364,6 +365,34 @@ module type Basic = sig
         describes the relationship between ['var] and ['value] in terms of a
         {!type:Data_spec.t}.
     *)
+
+    (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
+        and normal OCaml data.
+
+        Using this module is not recommended.
+    *)
+    module Internal : sig
+      val snarkless : 'a -> ('a, 'a) t
+      (** A do-nothing [Typ.t] that returns the input value for all modes. This
+          may be used to convert objects from the [Checked] world into and
+          through [As_prover] blocks.
+
+          This is the dual of [ref], which allows [OCaml] values from
+          [As_prover] blocks to pass through the [Checked] world.
+
+          Note: Reading or writing using this [Typ.t] will assert that the
+          argument and the value stored are physically equal -- ie. that they
+          refer to the same object.
+      *)
+
+      val ref : unit -> ('a As_prover.Ref.t, 'a) t
+      (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
+          blocks, while keeping them opaque to the [Checked] world.
+
+          This is the dual of [snarkless], which allows [OCaml] values from the
+          [Checked] world to pass through [As_prover] blocks.
+    *)
+    end
 
     module Of_traversable (T : Traversable.S) : sig
       val typ :
@@ -749,55 +778,18 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** Describes how to convert between {!type:t} and {!type:Var.t} values. *)
   end
 
-  module Let_syntax :
-    Monad_let.Syntax2 with type ('a, 's) t := ('a, 's) Checked.t
-
-  (** Zero-knowledge proofs generated from checked computations. *)
-  module Proof : sig
-    type t
-
-    (** The type of messages that can be associated with a proof. *)
-    type message
-
-    include Binable.S with type t := t
-  end
-
-  (** Utility functions for dealing with lists of bits in the R1CS. *)
-  module Bitstring_checked : sig
-    type t = Boolean.var list
-
-    val equal : t -> t -> (Boolean.var, _) Checked.t
-
-    val equal_expect_true : t -> t -> (Boolean.var, _) Checked.t
-    (** Equivalent to [equal], but avoids computing field elements to represent
-        chunks of the list when not necessary.
-
-        NOTE: This will do extra (wasted) work before falling back to the
-              behaviour of [equal] when the values are not equal.
-    *)
-
-    val lt_value :
-         Boolean.var Bitstring_lib.Bitstring.Msb_first.t
-      -> bool Bitstring_lib.Bitstring.Msb_first.t
-      -> (Boolean.var, _) Checked.t
-
-    module Assert : sig
-      val equal : t -> t -> (unit, _) Checked.t
-    end
-  end
-
   (** Code that can be run by the prover only, using 'superpowers' like looking
       at the contents of R1CS variables and creating new variables from other
       OCaml values.
   *)
-  module As_prover : sig
+  and As_prover : sig
     (** An [('a, 'prover_state) t] value uses the current ['prover_state] to
         generate a value of type ['a], and update the ['prover_state] as
         necessary, within a checked computation.
 
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
-    type ('a, 'prover_state) t = ('a, field, 'prover_state) As_prover.t
+    type ('a, 'prover_state) t = ('a, field, 'prover_state) As_prover0.t
 
     type ('a, 'prover_state) as_prover = ('a, 'prover_state) t
 
@@ -844,6 +836,43 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** [with_lens lens as_prover] uses the {!type:Lens.t} provided to lift the
         prover state of [as_prover] to ['whole] from a sub-type ['lens].
     *)
+  end
+
+  module Let_syntax :
+    Monad_let.Syntax2 with type ('a, 's) t := ('a, 's) Checked.t
+
+  (** Zero-knowledge proofs generated from checked computations. *)
+  module Proof : sig
+    type t
+
+    (** The type of messages that can be associated with a proof. *)
+    type message
+
+    include Binable.S with type t := t
+  end
+
+  (** Utility functions for dealing with lists of bits in the R1CS. *)
+  module Bitstring_checked : sig
+    type t = Boolean.var list
+
+    val equal : t -> t -> (Boolean.var, _) Checked.t
+
+    val equal_expect_true : t -> t -> (Boolean.var, _) Checked.t
+    (** Equivalent to [equal], but avoids computing field elements to represent
+        chunks of the list when not necessary.
+
+        NOTE: This will do extra (wasted) work before falling back to the
+              behaviour of [equal] when the values are not equal.
+    *)
+
+    val lt_value :
+         Boolean.var Bitstring_lib.Bitstring.Msb_first.t
+      -> bool Bitstring_lib.Bitstring.Msb_first.t
+      -> (Boolean.var, _) Checked.t
+
+    module Assert : sig
+      val equal : t -> t -> (unit, _) Checked.t
+    end
   end
 
   (** Representation of an R1CS value and an OCaml value (if running as the
@@ -1540,6 +1569,32 @@ module type Run_basic = sig
       -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
       -> ('var, 'value) t
 
+    (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
+        and normal OCaml data.
+
+        Using this module is not recommended.
+    *)
+    module Internal : sig
+      val snarkless : 'a -> ('a, 'a) t
+      (** A do-nothing [Typ.t] that returns the input value for all modes.
+
+          This is the dual of [ref], which allows [OCaml] values from
+          [As_prover] blocks to pass through the [Checked] world.
+
+          Note: Reading or writing using this [Typ.t] will assert that the
+          argument and the value stored are physically equal -- ie. that they
+          refer to the same object.
+      *)
+
+      val ref : unit -> ('a As_prover.Ref.t, 'a) t
+      (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
+          blocks, while keeping them opaque to the [Checked] world.
+
+          This is the dual of [snarkless], which allows [OCaml] values from the
+          [Checked] world to pass through [As_prover] blocks.
+      *)
+    end
+
     module Of_traversable (T : Traversable.S) : sig
       val typ :
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
@@ -1742,37 +1797,29 @@ module type Run_basic = sig
     val typ : (t, Constant.t) Typ.t
   end
 
-  module Proof : sig
-    type t
-
-    type message
-
-    include Binable.S with type t := t
-  end
-
-  module Bitstring_checked : sig
-    type t = Boolean.var list
-
-    val equal : t -> t -> Boolean.var
-
-    val lt_value :
-         Boolean.var Bitstring_lib.Bitstring.Msb_first.t
-      -> bool Bitstring_lib.Bitstring.Msb_first.t
-      -> Boolean.var
-
-    module Assert : sig
-      val equal : t -> t -> unit
-    end
-  end
-
   (** The functions in this module may only be run as the prover; trying to
       run them outside of functions that refer to [As_prover.t] will result in
       a runtime error. *)
-  module As_prover : sig
+  and As_prover : sig
     (** This type marks function arguments that can include function calls from
         this module. Using these functions outside of these will result in a
         runtime error. *)
     type 'a t = 'a
+
+    type 'a as_prover = 'a t
+
+    (** Opaque references for use by the prover in a checked computation. *)
+    module Ref : sig
+      (** A mutable reference to an ['a] value, which may be used in checked
+          computations. *)
+      type 'a t
+
+      val create : (unit -> 'a) as_prover -> 'a t
+
+      val get : 'a t -> 'a as_prover
+
+      val set : 'a t -> 'a -> unit as_prover
+    end
 
     val in_prover_block : unit -> bool
 
@@ -1794,10 +1841,41 @@ module type Run_basic = sig
     val project : bool list -> field
 
     val with_lens :
-      (prover_state, 'lens) Lens.t -> ('a, field, 'lens) As_prover.t -> 'a t
+      (prover_state, 'lens) Lens.t -> ('a, field, 'lens) As_prover0.t -> 'a t
     (** Lift the monadic {!type:As_prover.t} defined with state ['lens] to an
         as-prover computation using [prover_state].
     *)
+  end
+
+  module Proof : sig
+    type t
+
+    type message
+
+    include Binable.S with type t := t
+  end
+
+  module Bitstring_checked : sig
+    type t = Boolean.var list
+
+    val equal : t -> t -> Boolean.var
+
+    val equal_expect_true : t -> t -> Boolean.var
+    (** Equivalent to [equal], but avoids computing field elements to represent
+        chunks of the list when not necessary.
+
+        NOTE: This will do extra (wasted) work before falling back to the
+              behaviour of [equal] when the values are not equal.
+    *)
+
+    val lt_value :
+         Boolean.var Bitstring_lib.Bitstring.Msb_first.t
+      -> bool Bitstring_lib.Bitstring.Msb_first.t
+      -> Boolean.var
+
+    module Assert : sig
+      val equal : t -> t -> unit
+    end
   end
 
   module Handle : sig
@@ -1967,7 +2045,10 @@ module type Run_basic = sig
 
   val clear_constraint_logger : unit -> unit
 
-  module Internal_Basic : Basic with type field = field
+  module Internal_Basic :
+    Basic
+    with type field = field
+     and type 'a As_prover.Ref.t = 'a As_prover.Ref.t
 
   val run_checked : ('a, prover_state) Internal_Basic.Checked.t -> 'a
 end

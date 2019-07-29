@@ -1,3 +1,4 @@
+open Compiler_internals
 open Core_kernel
 open Ast_types
 open Parsetypes
@@ -156,21 +157,19 @@ module Type = struct
         {typ with type_loc= loc}
     | Ptyp_tuple typs ->
         let typs = List.map ~f typs in
-        {typ with type_desc= Ptyp_tuple typs; type_loc= loc}
+        {type_desc= Ptyp_tuple typs; type_loc= loc}
     | Ptyp_arrow (typ1, typ2, explicit, label) ->
-        { typ with
-          type_desc= Ptyp_arrow (f typ1, f typ2, explicit, label)
-        ; type_loc= loc }
+        {type_desc= Ptyp_arrow (f typ1, f typ2, explicit, label); type_loc= loc}
     | Ptyp_ctor variant ->
         let variant =
           { variant with
             var_params= List.map ~f variant.var_params
           ; var_implicit_params= List.map ~f variant.var_implicit_params }
         in
-        {typ with type_desc= Ptyp_ctor variant; type_loc= loc}
+        {type_desc= Ptyp_ctor variant; type_loc= loc}
     | Ptyp_poly (typs, typ) ->
         let typs = List.map ~f typs in
-        {typ with type_desc= Ptyp_poly (typs, f typ); type_loc= loc}
+        {type_desc= Ptyp_poly (typs, f typ); type_loc= loc}
 end
 
 module TypeDecl = struct
@@ -178,18 +177,19 @@ module TypeDecl = struct
 
   let import_field ?must_find env {fld_ident; fld_type; fld_loc= _} =
     let fld_type, env = Type.import ?must_find fld_type env in
-    (env, {Type0.fld_ident= fld_ident.txt; fld_type})
+    (env, {Type0.fld_ident= Ident.create fld_ident.txt; fld_type})
 
   let import decl' env =
     let {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc= _}
         =
       decl'
     in
-    let tdec_id =
+    let tdec_ident, tdec_id =
       match
-        Map.find env.resolve_env.type_env.predeclared_types tdec_ident.txt
+        IdTbl.find_name tdec_ident.txt
+          env.resolve_env.type_env.predeclared_types
       with
-      | Some (id, num_args, loc) ->
+      | Some (ident, (id, num_args, loc)) ->
           ( match !num_args with
           | Some num_args ->
               let given = List.length tdec_params in
@@ -204,11 +204,11 @@ module TypeDecl = struct
           let {type_env; _} = env.resolve_env in
           env.resolve_env.type_env
           <- { type_env with
-               predeclared_types=
-                 Map.remove type_env.predeclared_types tdec_ident.txt } ;
-          id
+               predeclared_types= IdTbl.remove ident type_env.predeclared_types
+             } ;
+          (Location.mkloc ident tdec_ident.loc, id)
       | None ->
-          next_id env
+          (map_loc ~f:Ident.create tdec_ident, next_id env)
     in
     let env = open_expr_scope env in
     let import_params env =
@@ -288,7 +288,7 @@ module TypeDecl = struct
                       let name =
                         match tdec_desc with
                         | TVariant _ ->
-                            Lident tdec_ident.txt
+                            Lident (Ident.name tdec_ident.txt)
                         | TExtend (lid, _, _) ->
                             lid.txt
                         | _ ->
@@ -318,7 +318,7 @@ module TypeDecl = struct
                             (env, arg) )
                       in
                       (env, Type0.Ctor_tuple args)
-                  | Ctor_record (_, fields) ->
+                  | Ctor_record fields ->
                       let env, fields =
                         List.fold_map ~init:env fields
                           ~f:(import_field ?must_find)
@@ -333,15 +333,17 @@ module TypeDecl = struct
                         |> Set.to_list
                       in
                       let decl =
-                        mk ~name:ctor.ctor_ident.txt ~params (TRecord fields)
-                          env
+                        mk
+                          ~name:(Ident.create ctor.ctor_ident.txt)
+                          ~params (TRecord fields) env
                       in
                       (env, Type0.Ctor_record decl)
                 in
                 let env = push_scope scope (close_expr_scope env) in
                 ( env
-                , {Type0.ctor_ident= ctor.ctor_ident.txt; ctor_args; ctor_ret}
-                ) )
+                , { Type0.ctor_ident= Ident.create ctor.ctor_ident.txt
+                  ; ctor_args
+                  ; ctor_ret } ) )
           in
           let tdec_desc =
             match tdec_desc with
@@ -446,7 +448,6 @@ let pp_decl_typ ppf decl =
           { var_ident= mk_lid decl.tdec_ident
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params }
-    ; type_id= -1
     ; type_loc= Location.none }
 
 let report_error ppf = function
@@ -475,6 +476,6 @@ let report_error ppf = function
 let () =
   Location.register_error_of_exn (function
     | Error (loc, err) ->
-        Some (Location.error_of_printer loc report_error err)
+        Some (Location.error_of_printer ~loc report_error err)
     | _ ->
         None )

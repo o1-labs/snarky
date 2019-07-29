@@ -62,7 +62,7 @@ struct
       if i <= num_inputs then Field.Vector.get input (i - 1)
       else Field.Vector.get aux (i - num_inputs - 1)
     in
-    Cvar.eval get_one
+    Cvar.eval (`Return_values_will_be_mutated get_one)
 
   let store_field_elt {next_auxiliary; aux; _} x =
     let v = !next_auxiliary in
