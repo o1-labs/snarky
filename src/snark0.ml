@@ -1326,6 +1326,9 @@ struct
     in
     let res = ref res in
     let ret =
+      (* Run the typ's allocator, providing the values from the Cvar.t list
+         [res].
+      *)
       Typ_monads0.Alloc.run typ.alloc (fun () ->
           match !res with
           | hd :: tl ->
