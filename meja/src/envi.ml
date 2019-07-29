@@ -839,7 +839,7 @@ module Type = struct
     type_vars empty typ
 
   let rec update_depths env typ =
-    Type0.update_depth env.depth typ ;
+    Type1.update_depth env.depth typ ;
     match typ.type_desc with
     | Tvar _ ->
         Option.iter ~f:(update_depths env) (instance env typ)
@@ -1104,7 +1104,7 @@ module Type = struct
               not
                 (List.exists strong_implicit_vars ~f:(fun e_strong ->
                      if
-                       Type0.equal_at_depth ~depth:env.depth e_weak.exp_type
+                       Type1.equal_at_depth ~depth:env.depth e_weak.exp_type
                          e_strong.exp_type
                      then (
                        ignore

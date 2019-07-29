@@ -69,7 +69,7 @@ let rec check_type_aux ~loc typ ctyp env =
     | None ->
         None
   in
-  Type0.unify_depths typ ctyp ;
+  Type1.unify_depths typ ctyp ;
   match (typ.type_desc, ctyp.type_desc) with
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
