@@ -92,7 +92,7 @@ type arg_label = Asttypes.arg_label =
   | Nolabel
   | Labelled of string
   | Optional of string
-[@@deriving sexp, equal]
+[@@deriving sexp, equal, compare]
 
 type str = string Location.loc
 

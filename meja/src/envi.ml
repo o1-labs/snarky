@@ -853,23 +853,6 @@ module Type = struct
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
-  let compare_label label1 label2 =
-    match (label1, label2) with
-    | Asttypes.Nolabel, Asttypes.Nolabel ->
-        0
-    | Nolabel, _ ->
-        -1
-    | _, Nolabel ->
-        1
-    | Labelled x, Labelled y ->
-        String.compare x y
-    | Labelled _, _ ->
-        -1
-    | _, Labelled _ ->
-        1
-    | Optional x, Optional y ->
-        String.compare x y
-
   let rec compare typ1 typ2 =
     if Int.equal typ1.type_id typ2.type_id then 0
     else
@@ -902,7 +885,7 @@ module Type = struct
         , Tarrow (typ2a, typ2b, Explicit, label2) )
       | ( Tarrow (typ1a, typ1b, Implicit, label1)
         , Tarrow (typ2a, typ2b, Implicit, label2) ) ->
-          or_compare (compare_label label1 label2) ~f:(fun () ->
+          or_compare (compare_arg_label label1 label2) ~f:(fun () ->
               or_compare (compare typ1a typ2a) ~f:(fun () ->
                   compare typ1b typ2b ) )
       | Tarrow (_, _, Explicit, _), _ ->
@@ -1158,7 +1141,7 @@ module Type = struct
   let rec bubble_label_aux env label typ =
     match typ.type_desc with
     | Tarrow (typ1, typ2, explicit, arr_label)
-      when Int.equal (compare_label label arr_label) 0 ->
+      when Int.equal (compare_arg_label label arr_label) 0 ->
         (Some (typ1, explicit, arr_label), typ2)
     | Tarrow (typ1, typ2, explicit, arr_label)
       when match (label, arr_label) with
