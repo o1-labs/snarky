@@ -857,6 +857,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     val equal : t -> t -> (Boolean.var, _) Checked.t
 
+    val equal_expect_true : t -> t -> (Boolean.var, _) Checked.t
+    (** Equivalent to [equal], but avoids computing field elements to represent
+        chunks of the list when not necessary.
+
+        NOTE: This will do extra (wasted) work before falling back to the
+              behaviour of [equal] when the values are not equal.
+    *)
+
     val lt_value :
          Boolean.var Bitstring_lib.Bitstring.Msb_first.t
       -> bool Bitstring_lib.Bitstring.Msb_first.t
@@ -1853,6 +1861,14 @@ module type Run_basic = sig
     type t = Boolean.var list
 
     val equal : t -> t -> Boolean.var
+
+    val equal_expect_true : t -> t -> Boolean.var
+    (** Equivalent to [equal], but avoids computing field elements to represent
+        chunks of the list when not necessary.
+
+        NOTE: This will do extra (wasted) work before falling back to the
+              behaviour of [equal] when the values are not equal.
+    *)
 
     val lt_value :
          Boolean.var Bitstring_lib.Bitstring.Msb_first.t
