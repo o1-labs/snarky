@@ -716,8 +716,7 @@ module Type = struct
 
   let mk type_desc env = Type1.mk env.depth type_desc
 
-  let mkvar ?(explicitness = Explicit) name env =
-    mk (Tvar (name, explicitness)) env
+  let mkvar ?explicitness name env = Type1.mkvar ?explicitness env.depth name
 
   let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
     ref (fun _ -> failwith "mk_option not initialised")
