@@ -2,6 +2,12 @@ open Core_kernel
 open Ast_types
 open Type0
 
+let type_id = ref 0
+
+let mk depth type_desc =
+  incr type_id ;
+  {type_desc; type_id= !type_id; type_depth= depth}
+
 let rec typ_debug_print fmt typ =
   let open Format in
   let print i = fprintf fmt i in

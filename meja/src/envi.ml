@@ -30,8 +30,7 @@ exception Error of Location.t * error
 
 module TypeEnvi = struct
   type t =
-    { type_id: int
-    ; type_decl_id: int
+    { type_decl_id: int
     ; instance_id: int
     ; variable_instances: type_expr Int.Map.t
     ; implicit_vars: Typedast.expression list
@@ -41,8 +40,7 @@ module TypeEnvi = struct
         (int (* id *) * int option ref (* num. args *) * Location.t) IdTbl.t }
 
   let empty =
-    { type_id= 1
-    ; type_decl_id= 1
+    { type_decl_id= 1
     ; instance_id= 1
     ; variable_instances= Int.Map.empty
     ; implicit_id= 1
@@ -716,12 +714,7 @@ let find_module_type =
 module Type = struct
   type env = t
 
-  let mk' env depth type_desc =
-    let type_id, type_env = TypeEnvi.next_type_id env.resolve_env.type_env in
-    env.resolve_env.type_env <- type_env ;
-    {type_desc; type_id; type_depth= depth}
-
-  let mk type_desc env = mk' env env.depth type_desc
+  let mk type_desc env = Type1.mk env.depth type_desc
 
   let mkvar ?(explicitness = Explicit) name env =
     mk (Tvar (name, explicitness)) env
@@ -848,7 +841,7 @@ module Type = struct
         Type1.iter ~f:(update_depths env) typ
 
   let rec flatten typ env =
-    let mk' = mk' env typ.type_depth in
+    let mk' = Type1.mk typ.type_depth in
     match typ.type_desc with
     | Tvar _ -> (
       match instance env typ with
