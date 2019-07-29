@@ -294,9 +294,7 @@ let free_type_vars ?depth typ =
         in
         Set.union set (Set.diff (free_type_vars empty typ) poly_vars)
     | Tarrow (typ1, typ2, _, _) ->
-        Set.union
-          (Type1.type_vars ?depth typ1)
-          (Type1.type_vars ?depth typ2)
+        Set.union (Type1.type_vars ?depth typ1) (Type1.type_vars ?depth typ2)
     | _ ->
         fold ~init:set typ ~f:free_type_vars
   in
@@ -601,7 +599,7 @@ let rec get_expression env expected exp =
       let (typ, env), es =
         List.fold_map ~init:(f.Typedast.exp_type, env) es
           ~f:(fun (f_typ, env) (label, e) ->
-            let f_typ = Envi.Type.bubble_label env label f_typ in
+            let f_typ = Type1.bubble_label label f_typ in
             let e_typ = Envi.Type.mkvar None env in
             let res_typ = Envi.Type.mkvar None env in
             let arrow =

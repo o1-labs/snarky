@@ -133,3 +133,36 @@ let type_vars ?depth typ =
         fold ~init:set typ ~f:type_vars
   in
   type_vars empty typ
+
+let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
+  ref (fun _ -> failwith "mk_option not initialised")
+
+let rec bubble_label_aux label typ =
+  let {type_depth; _} = typ in
+  match typ.type_desc with
+  | Tarrow (typ1, typ2, explicit, arr_label)
+    when Int.equal (compare_arg_label label arr_label) 0 ->
+      (Some (typ1, explicit, arr_label), typ2)
+  | Tarrow (typ1, typ2, explicit, arr_label)
+    when match (label, arr_label) with
+         | Labelled lbl, Optional arr_lbl ->
+             String.equal lbl arr_lbl
+         | _ ->
+             false ->
+      (Some (!mk_option typ1, explicit, arr_label), typ2)
+  | Tarrow (typ1, typ2, explicit, arr_label) -> (
+    match bubble_label_aux label typ2 with
+    | None, _ ->
+        (None, typ)
+    | res, typ2 ->
+        (res, mk type_depth (Tarrow (typ1, typ2, explicit, arr_label))) )
+  | _ ->
+      (None, typ)
+
+let bubble_label label typ =
+  let {type_depth; _} = typ in
+  match bubble_label_aux label typ with
+  | Some (typ1, explicit, arr_label), typ2 ->
+      mk type_depth (Tarrow (typ1, typ2, explicit, arr_label))
+  | None, typ ->
+      typ

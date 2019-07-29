@@ -718,9 +718,6 @@ module Type = struct
 
   let mkvar ?explicitness name env = Type1.mkvar ?explicitness env.depth name
 
-  let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
-    ref (fun _ -> failwith "mk_option not initialised")
-
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
@@ -1137,34 +1134,6 @@ module Type = struct
             Tctor {variant with var_ident= ident}
         | None ->
             Tctor variant )
-
-  let rec bubble_label_aux env label typ =
-    match typ.type_desc with
-    | Tarrow (typ1, typ2, explicit, arr_label)
-      when Int.equal (compare_arg_label label arr_label) 0 ->
-        (Some (typ1, explicit, arr_label), typ2)
-    | Tarrow (typ1, typ2, explicit, arr_label)
-      when match (label, arr_label) with
-           | Labelled lbl, Optional arr_lbl ->
-               String.equal lbl arr_lbl
-           | _ ->
-               false ->
-        (Some (!mk_option typ1, explicit, arr_label), typ2)
-    | Tarrow (typ1, typ2, explicit, arr_label) -> (
-      match bubble_label_aux env label typ2 with
-      | None, _ ->
-          (None, typ)
-      | res, typ2 ->
-          (res, mk (Tarrow (typ1, typ2, explicit, arr_label)) env) )
-    | _ ->
-        (None, typ)
-
-  let bubble_label env label typ =
-    match bubble_label_aux env label typ with
-    | Some (typ1, explicit, arr_label), typ2 ->
-        mk (Tarrow (typ1, typ2, explicit, arr_label)) env
-    | None, typ ->
-        typ
 
   let discard_optional_labels typ =
     let rec go typ' =

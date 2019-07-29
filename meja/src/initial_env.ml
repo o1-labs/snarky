@@ -118,4 +118,4 @@ module Type = struct
     {(TypeDecl.mk_typ list ~params:[a] env) with type_depth= a.type_depth}
 end
 
-let () = Envi.Type.mk_option := Type.option
+let () = Type1.mk_option := Type.option
