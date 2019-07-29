@@ -43,7 +43,8 @@ and variant fmt v =
       fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident tuple v.var_params
 
 let field_decl fmt decl =
-  fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident type_expr decl.fld_type
+  fprintf fmt "%a:@ @[<hv>%a@]" Ident.pprint decl.fld_ident type_expr
+    decl.fld_type
 
 let ctor_args fmt = function
   | Ctor_tuple [] ->
@@ -58,7 +59,7 @@ let ctor_args fmt = function
       assert false
 
 let ctor_decl fmt decl =
-  fprintf fmt "%a%a" pp_name decl.ctor_ident ctor_args decl.ctor_args ;
+  fprintf fmt "%a%a" Ident.pprint decl.ctor_ident ctor_args decl.ctor_args ;
   match decl.ctor_ret with
   | Some typ ->
       fprintf fmt "@ :@ @[<hv>%a@]" type_expr typ
@@ -93,6 +94,6 @@ let type_decl_desc fmt = function
       fprintf fmt "@ /* forward declaration %a */" print_id !i
 
 let type_decl fmt decl =
-  fprintf fmt "type %s" decl.tdec_ident ;
+  fprintf fmt "type %a" Ident.pprint decl.tdec_ident ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc

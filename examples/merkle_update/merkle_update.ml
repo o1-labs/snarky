@@ -40,7 +40,7 @@ module Hash = struct
   end)
 
   (* Don't do this at home *)
-  let hash ~height:_ x y = hash x y
+  let merge ~height:_ x y = hash x y
 end
 
 (* Second, we specify the type of values which we'll store in the merkle tree.
@@ -133,7 +133,7 @@ let tree_start =
     Merkle_tree.create (Value.random ())
       ~hash:(fun xo ->
         Knapsack.hash_to_bits knapsack (Option.value ~default:[] xo) )
-      ~compress:(fun x y -> Knapsack.hash_to_bits knapsack (x @ y))
+      ~merge:(fun x y -> Knapsack.hash_to_bits knapsack (x @ y))
   in
   Merkle_tree.add_many t0
     (List.init (num_entries - 1) ~f:(fun _ -> Value.random ()))
