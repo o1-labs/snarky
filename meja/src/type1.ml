@@ -185,3 +185,26 @@ let is_arrow typ =
       true
   | _ ->
       false
+
+module Decl = struct
+  let decl_id = ref 0
+
+  let typ_mk = mk
+
+  let mk ~name ~params ?(implicit_params = []) desc =
+    incr decl_id ;
+    { tdec_ident= name
+    ; tdec_params= params
+    ; tdec_implicit_params= implicit_params
+    ; tdec_desc= desc
+    ; tdec_id= !decl_id }
+
+  let mk_typ ~params ?ident depth decl =
+    let ident = Option.value ident ~default:(Path.Pident decl.tdec_ident) in
+    typ_mk depth
+      (Tctor
+         { var_ident= ident
+         ; var_params= params
+         ; var_implicit_params= []
+         ; var_decl= decl })
+end

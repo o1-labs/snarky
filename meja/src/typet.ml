@@ -252,7 +252,7 @@ module TypeDecl = struct
           let decl =
             mk
               ~name:(Ident.create ~mode ctor.ctor_ident.txt)
-              ~params (TRecord fields) env
+              ~params (TRecord fields)
           in
           (env, Type0.Ctor_record decl)
     in

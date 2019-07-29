@@ -1142,22 +1142,10 @@ module TypeDecl = struct
     env.resolve_env.type_env <- type_env ;
     tdec_id
 
-  let mk ~name ~params ?(implicit_params = []) desc env =
-    let tdec_id = next_id env in
-    { tdec_ident= name
-    ; tdec_params= params
-    ; tdec_implicit_params= implicit_params
-    ; tdec_desc= desc
-    ; tdec_id }
+  let mk = Type1.Decl.mk
 
-  let mk_typ ~params ?ident decl =
-    let ident = Option.value ident ~default:(Path.Pident decl.tdec_ident) in
-    Type.mk
-      (Tctor
-         { var_ident= ident
-         ; var_params= params
-         ; var_implicit_params= []
-         ; var_decl= decl })
+  let mk_typ ~params ?ident decl env =
+    Type1.Decl.mk_typ ~params ?ident env.depth decl
 
   let find_of_type ~loc typ env =
     let open Option.Let_syntax in
