@@ -303,7 +303,7 @@ let longident iter = function
 let path iter = function
   | Path.Pident ident ->
       iter.ident iter ident
-  | Path.Pdot (path, _) ->
+  | Path.Pdot (path, _, _) ->
       iter.path iter path
   | Path.Papply (path1, path2) ->
       iter.path iter path1 ; iter.path iter path2

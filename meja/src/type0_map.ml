@@ -146,8 +146,8 @@ let type_decl_desc mapper desc =
 let path mapper = function
   | Path.Pident ident ->
       Path.Pident (mapper.ident mapper ident)
-  | Path.Pdot (path, str) ->
-      Path.Pdot (mapper.path mapper path, str)
+  | Path.Pdot (path, mode, str) ->
+      Path.Pdot (mapper.path mapper path, mode, str)
   | Path.Papply (path1, path2) ->
       Path.Papply (mapper.path mapper path1, mapper.path mapper path2)
 
