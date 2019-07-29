@@ -166,3 +166,22 @@ let bubble_label label typ =
       mk type_depth (Tarrow (typ1, typ2, explicit, arr_label))
   | None, typ ->
       typ
+
+let discard_optional_labels typ =
+  let rec go typ' =
+    match typ'.type_desc with
+    | Tarrow (_, typ2, _, Optional _) ->
+        go typ2
+    | Tarrow (_, _, _, _) ->
+        typ
+    | _ ->
+        typ'
+  in
+  go typ
+
+let is_arrow typ =
+  match typ.type_desc with
+  | Tarrow _ | Tpoly (_, {type_desc= Tarrow _; _}) ->
+      true
+  | _ ->
+      false

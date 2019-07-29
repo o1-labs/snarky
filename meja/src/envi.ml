@@ -1134,25 +1134,6 @@ module Type = struct
             Tctor {variant with var_ident= ident}
         | None ->
             Tctor variant )
-
-  let discard_optional_labels typ =
-    let rec go typ' =
-      match typ'.type_desc with
-      | Tarrow (_, typ2, _, Optional _) ->
-          go typ2
-      | Tarrow (_, _, _, _) ->
-          typ
-      | _ ->
-          typ'
-    in
-    go typ
-
-  let is_arrow typ =
-    match typ.type_desc with
-    | Tarrow _ | Tpoly (_, {type_desc= Tarrow _; _}) ->
-        true
-    | _ ->
-        false
 end
 
 module TypeDecl = struct

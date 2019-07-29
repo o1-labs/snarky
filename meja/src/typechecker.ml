@@ -616,9 +616,7 @@ let rec get_expression env expected exp =
             let e, env = get_expression env e_typ e in
             ((Envi.Type.flatten res_typ env, env), (label, e)) )
       in
-      let typ =
-        Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
-      in
+      let typ = Type1.discard_optional_labels @@ Envi.Type.flatten typ env in
       (* Squash nested applies from implicit arguments. *)
       let f, es =
         match f.exp_desc with
