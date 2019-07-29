@@ -3,6 +3,7 @@ open Core_kernel
 open Ast_types
 open Parsetypes
 open Type0
+open Type1
 
 type error =
   | Check_failed of type_expr * type_expr * error

@@ -2,6 +2,7 @@ open Compiler_internals
 open Core_kernel
 open Ast_types
 open Type0
+open Type1
 open Ast_build.Loc
 open Longident
 module IdTbl = Ident.Table
@@ -844,7 +845,7 @@ module Type = struct
     | Tvar _ ->
         Option.iter ~f:(update_depths env) (instance env typ)
     | _ ->
-        Type0.iter ~f:(update_depths env) typ
+        Type1.iter ~f:(update_depths env) typ
 
   let rec flatten typ env =
     let mk' = mk' env typ.type_depth in
@@ -954,7 +955,7 @@ module Type = struct
     | Tvar _ when typ.type_depth > depth ->
         Set.add set typ
     | _ ->
-        Type0.fold ~init:set ~f:(weak_variables depth) typ
+        Type1.fold ~init:set ~f:(weak_variables depth) typ
 
   let rec get_implicits acc typ =
     match typ.type_desc with

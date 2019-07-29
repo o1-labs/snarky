@@ -440,7 +440,7 @@ module TypeDecl = struct
                    ; var_decl= decl }
           | _ ->
               () ) ;
-          Type0.iter ~f:iter_type typ
+          Type1.iter ~f:iter_type typ
         in
         let iter_field field = iter_type field.fld_type in
         let iter_ctor_args = function
