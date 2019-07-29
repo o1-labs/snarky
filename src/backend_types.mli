@@ -43,17 +43,28 @@ module type Field_constrained = sig
      and type 'a result := 'a F.result
 end
 
-module Var : Field_constrained
+module Var :
+  Field_constrained with type 'field t = 'field Camlsnark_c.Backend_types.Var.t
 
 module Linear_combination : sig
-  include Field_constrained
+  include
+    Field_constrained
+    with type 'field t = 'field Camlsnark_c.Backend_types.Linear_combination.t
 
-  module Term : Field_constrained
+  module Term :
+    Field_constrained
+    with type 'field t =
+                'field Camlsnark_c.Backend_types.Linear_combination.Term.t
 end
 
-module R1CS_constraint : Field_constrained
+module R1CS_constraint :
+  Field_constrained
+  with type 'field t = 'field Camlsnark_c.Backend_types.R1CS_constraint.t
 
-module R1CS_constraint_system : Field_constrained
+module R1CS_constraint_system :
+  Field_constrained
+  with type 'field t =
+              'field Camlsnark_c.Backend_types.R1CS_constraint_system.t
 
 module Proving_key : sig
   module Make (F : Ctypes.FOREIGN) (M : Prefix_intf) :

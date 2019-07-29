@@ -1,3 +1,4 @@
+module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked
 open Core_kernel
@@ -169,7 +170,7 @@ struct
       let system = R1CS_constraint_system.create () in
       let get_value : Cvar.t -> Field.t =
         let get_one v = Field.Vector.get aux (v - 1) in
-        Cvar.eval get_one
+        Cvar.eval (`Return_values_will_be_mutated get_one)
       in
       let state =
         Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
@@ -1121,14 +1122,20 @@ struct
   module Cvar1 = struct
     include Cvar
 
-    let project (vars : Checked.Boolean.var list) =
-      let rec go c acc = function
+    let project =
+      let two = Field.of_int 2 in
+      fun (vars : Checked.Boolean.var list) ->
+        let rec go res = function
+          | [] ->
+              res
+          | v :: vs ->
+              go Cvar0.(Add (v, Scale (two, res))) vs
+        in
+        match List.rev (vars :> Cvar.t list) with
         | [] ->
-            List.rev acc
+            Cvar0.Constant Field.zero
         | v :: vs ->
-            go (Field.add c c) ((c, v) :: acc) vs
-      in
-      Cvar.linear_combination (go Field.one [] (vars :> Cvar.t list))
+            go v vs
 
     let pack vars =
       assert (List.length vars < Field.size_in_bits) ;
@@ -1483,6 +1490,13 @@ module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
   module Runner0 = Runner.Make (Backend_extended)
 
+  module As_prover0 =
+    As_prover.Make_extended (struct
+        type field = Backend_extended.Field.t
+      end)
+      (Checked)
+      (As_prover.Make (Checked) (As_prover0))
+
   module Basic =
     Make_basic
       (Backend_extended)
@@ -1500,11 +1514,7 @@ module Make (Backend : Backend_intf.S) = struct
 
         let run = Runner0.run
       end)
-      (As_prover.Make_extended (struct
-           type field = Backend_extended.Field.t
-         end)
-         (Checked)
-         (As_prover.Make (Checked) (As_prover0)))
+      (As_prover0)
       (Runner0)
 
   include Basic
@@ -1609,6 +1619,7 @@ module Run = struct
 
       let of_hlistable = of_hlistable
 
+      module Internal = Internal
       module Of_traversable = Of_traversable
     end
 
@@ -1683,6 +1694,46 @@ module Run = struct
         let all l = run (all l)
 
         let exactly_one l = run (exactly_one l)
+      end
+    end
+
+    module Truthy = struct
+      open Snark.Truthy
+
+      type nonrec var = var
+
+      type nonrec value = value
+
+      let true_ = true_
+
+      let false_ = false_
+
+      let of_boolean = of_boolean
+
+      let to_boolean x = run (to_boolean x)
+
+      let ( && ) x y = run (x && y)
+
+      let all l = run (all l)
+
+      let to_constant = to_constant
+
+      let var_of_value = var_of_value
+
+      let typ = typ
+
+      let of_field = of_field
+
+      module Assert = struct
+        open Snark.Truthy.Assert
+
+        let is_false ?or_ x = run (is_false ?or_ x)
+
+        let is_true x = run (is_true x)
+
+        let all x = run (all x)
+
+        let none ?or_ x = run (none ?or_ x)
       end
     end
 
@@ -1884,17 +1935,23 @@ module Run = struct
 
       let equal x y = run (equal x y)
 
+      let not_equal = not_equal
+
       let lt_value x y = run (lt_value x y)
 
       module Assert = struct
         open Snark.Bitstring_checked.Assert
 
         let equal x y = run (equal x y)
+
+        let either_equal ~or_not x y = run (either_equal ~or_not x y)
       end
     end
 
     module As_prover = struct
       type 'a t = 'a
+
+      type 'a as_prover = 'a t
 
       let eval_as_prover f =
         if !(!state.as_prover) && Option.is_some !state.prover_state then (
@@ -1917,6 +1974,16 @@ module Run = struct
       let read typ var = eval_as_prover (As_prover.read typ var)
 
       include Field.Constant.T
+
+      module Ref = struct
+        type 'a t = 'a As_prover.Ref.t
+
+        let create f = run As_prover.(Ref.create (map (return ()) ~f))
+
+        let get r = eval_as_prover (As_prover.Ref.get r)
+
+        let set r x = eval_as_prover (As_prover.Ref.set r x)
+      end
 
       let run_prover f _tbl s =
         let old = !(!state.as_prover) in

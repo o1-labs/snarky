@@ -1,6 +1,8 @@
 open Ast_types
 open Parsetypes
 
+type ident = Ident.t Location.loc
+
 type literal = Int of int | Bool of bool | Field of string | String of string
 
 type pattern =
@@ -41,42 +43,46 @@ and expression_desc =
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
+and signature = signature_item list
+
 and signature_desc =
   | Tsig_value of str * type_expr
   | Tsig_instance of str * type_expr
   | Tsig_type of type_decl
-  | Tsig_module of str * module_sig
-  | Tsig_modtype of str * module_sig
+  | Tsig_module of ident * module_sig
+  | Tsig_modtype of ident * module_sig
   | Tsig_open of lid
   | Tsig_typeext of variant * ctor_decl list
   | Tsig_request of type_expr * ctor_decl
-  | Tsig_multiple of signature_item list
+  | Tsig_multiple of signature
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
 and module_sig_desc =
-  | Tmty_sig of signature_item list
+  | Tmty_sig of signature
   | Tmty_name of lid
   | Tmty_abstract
   | Tmty_functor of str * module_sig * module_sig
 
 type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 
+and statements = statement list
+
 and statement_desc =
   | Tstmt_value of pattern * expression
   | Tstmt_instance of str * expression
   | Tstmt_type of type_decl
-  | Tstmt_module of str * module_expr
-  | Tstmt_modtype of str * module_sig
+  | Tstmt_module of ident * module_expr
+  | Tstmt_modtype of ident * module_sig
   | Tstmt_open of lid
   | Tstmt_typeext of variant * ctor_decl list
   | Tstmt_request of
       type_expr * ctor_decl * (pattern option * expression) option
-  | Tstmt_multiple of statement list
+  | Tstmt_multiple of statements
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
 and module_desc =
-  | Tmod_struct of statement list
+  | Tmod_struct of statements
   | Tmod_name of lid
   | Tmod_functor of str * module_sig * module_expr
