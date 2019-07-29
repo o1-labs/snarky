@@ -1,4 +1,5 @@
 open Core_kernel
+open Ast_types
 open Type0
 
 let rec equal_at_depth ~depth typ1 typ2 =
@@ -17,8 +18,8 @@ let rec equal_at_depth ~depth typ1 typ2 =
           false )
     | ( Tarrow (typ1a, typ1b, explicitness1, label1)
       , Tarrow (typ2a, typ2b, explicitness2, label2) ) ->
-        explicitness_equal explicitness1 explicitness2
-        && arg_label_equal label1 label2
+        equal_explicitness explicitness1 explicitness2
+        && equal_arg_label label1 label2
         && equal_at_depth ~depth typ1a typ2a
         && equal_at_depth ~depth typ1b typ2b
     | ( Tctor ({var_decl= decl1; _} as variant1)

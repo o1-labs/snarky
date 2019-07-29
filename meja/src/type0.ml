@@ -108,19 +108,3 @@ let fold ~init ~f typ =
       f acc typ
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
-
-let explicitness_equal e1 e2 =
-  match (e1, e2) with
-  | Explicit, Explicit | Implicit, Implicit ->
-      true
-  | _, _ ->
-      false
-
-let arg_label_equal lbl1 lbl2 =
-  match (lbl1, lbl2) with
-  | Asttypes.Nolabel, Asttypes.Nolabel ->
-      true
-  | Labelled str1, Labelled str2 | Optional str1, Optional str2 ->
-      String.equal str1 str2
-  | _, _ ->
-      false

@@ -92,13 +92,13 @@ type arg_label = Asttypes.arg_label =
   | Nolabel
   | Labelled of string
   | Optional of string
-[@@deriving sexp]
+[@@deriving sexp, equal]
 
 type str = string Location.loc
 
 type lid = Longident.t Location.loc
 
-type explicitness = Implicit | Explicit [@@deriving sexp]
+type explicitness = Implicit | Explicit [@@deriving sexp, equal]
 
 let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
 
