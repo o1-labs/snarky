@@ -22,17 +22,17 @@ and variant =
   ; var_decl: type_decl }
 [@@deriving sexp]
 
-and field_decl = {fld_ident: string; fld_type: type_expr} [@@deriving sexp]
+and field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
 
 and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 [@@deriving sexp]
 
 and ctor_decl =
-  {ctor_ident: string; ctor_args: ctor_args; ctor_ret: type_expr option}
+  {ctor_ident: Ident.t; ctor_args: ctor_args; ctor_ret: type_expr option}
 [@@deriving sexp]
 
 and type_decl =
-  { tdec_ident: string
+  { tdec_ident: Ident.t
   ; tdec_params: type_expr list
   ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc

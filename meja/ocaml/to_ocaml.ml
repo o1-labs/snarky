@@ -246,7 +246,7 @@ let rec of_statement_desc ?loc = function
   | Pstmt_modtype (name, msig) ->
       Str.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
   | Pstmt_open name ->
-      Str.open_ ?loc (Opn.mk ?loc name)
+      Str.open_ ?loc (Opn.mk ?loc (Of_ocaml.open_of_name name))
   | Pstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
