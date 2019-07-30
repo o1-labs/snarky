@@ -1,5 +1,9 @@
 open Ast_types
 
+type ident = Ident.t Location.loc
+
+type path = Path.t Location.loc
+
 type type_expr = {type_desc: type_desc; type_loc: Location.t}
 
 and type_desc =
@@ -20,7 +24,7 @@ type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
 type ctor_args =
   | Tctor_tuple of type_expr list
-  | Tctor_record of int * field_decl list
+  | Tctor_record of field_decl list
 
 type ctor_decl =
   { ctor_ident: str
@@ -42,16 +46,12 @@ and type_decl_desc =
   | Tdec_record of field_decl list
   | Tdec_variant of ctor_decl list
   | Tdec_open
-  | Tdec_extend of lid * Type0.type_decl * ctor_decl list
+  | Tdec_extend of path * Type0.type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
   | Tdec_forward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
 
 open Parsetypes
-
-type ident = Ident.t Location.loc
-
-type path = Path.t Location.loc
 
 type literal = Int of int | Bool of bool | Field of string | String of string
 

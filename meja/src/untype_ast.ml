@@ -106,8 +106,8 @@ let field_decl {Typedast.fld_ident; fld_type; fld_loc} =
 let ctor_args = function
   | Typedast.Tctor_tuple typs ->
       Parsetypes.Ctor_tuple (List.map ~f:type_expr typs)
-  | Tctor_record (i, fld) ->
-      Ctor_record (i, List.map ~f:field_decl fld)
+  | Tctor_record fld ->
+      Ctor_record (List.map ~f:field_decl fld)
 
 let ctor_decl {Typedast.ctor_ident; ctor_args= args; ctor_ret; ctor_loc} =
   { Parsetypes.ctor_ident
