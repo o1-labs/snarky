@@ -31,8 +31,7 @@ type mapper =
   ; longident: mapper -> Longident.t -> Longident.t
   ; ident: mapper -> Ident.t -> Ident.t
   ; path: mapper -> Path.t -> Path.t
-  ; type0_decl: mapper -> Type0.type_decl -> Type0.type_decl
-  ; type0_expr: mapper -> Type0.type_expr -> Type0.type_expr }
+  ; type0: Type0_map.mapper }
 
 let lid mapper {Location.txt; loc} =
   {Location.txt= mapper.longident mapper txt; loc= mapper.location mapper loc}
@@ -119,7 +118,7 @@ let type_decl_desc mapper = function
   | TExtend (name, decl, ctors) ->
       TExtend
         ( path mapper name
-        , mapper.type0_decl mapper decl
+        , mapper.type0.type_decl mapper.type0 decl
         , List.map ~f:(mapper.ctor_decl mapper) ctors )
   | TForward i ->
       TForward i
@@ -129,7 +128,7 @@ let literal (_iter : mapper) (l : literal) = l
 let pattern mapper {pat_desc; pat_loc; pat_type} =
   { pat_loc= mapper.location mapper pat_loc
   ; pat_desc= mapper.pattern_desc mapper pat_desc
-  ; pat_type= mapper.type0_expr mapper pat_type }
+  ; pat_type= mapper.type0.type_expr mapper.type0 pat_type }
 
 let pattern_desc mapper = function
   | Tpat_any ->
@@ -154,7 +153,7 @@ let pattern_desc mapper = function
 let expression mapper {exp_desc; exp_loc; exp_type} =
   { exp_loc= mapper.location mapper exp_loc
   ; exp_desc= mapper.expression_desc mapper exp_desc
-  ; exp_type= mapper.type0_expr mapper exp_type }
+  ; exp_type= mapper.type0.type_expr mapper.type0 exp_type }
 
 let expression_desc mapper = function
   | Texp_apply (e, args) ->
@@ -318,16 +317,6 @@ let path mapper = function
 
 let ident (_mapper : mapper) (ident : Ident.t) = ident
 
-(** Stub. This isn't part of the parsetypes, so we don't do anything by
-    default.
-*)
-let type0_decl (_iter : mapper) (decl : Type0.type_decl) = decl
-
-(** Stub. This isn't part of the parsetypes, so we don't do anything by
-    default.
-*)
-let type0_expr (_iter : mapper) (typ : Type0.type_expr) = typ
-
 let default_iterator =
   { type_expr
   ; type_desc
@@ -356,5 +345,4 @@ let default_iterator =
   ; longident
   ; ident
   ; path
-  ; type0_decl
-  ; type0_expr }
+  ; type0= Type0_map.default_mapper }

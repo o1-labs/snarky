@@ -28,13 +28,17 @@ type mapper =
   ; module_desc: mapper -> module_desc -> module_desc
   ; location: mapper -> Location.t -> Location.t
   ; longident: mapper -> Longident.t -> Longident.t
-  ; type0_decl: mapper -> Type0.type_decl -> Type0.type_decl }
+  ; type0: Type0_map.mapper }
 
 let lid mapper {Location.txt; loc} =
   {Location.txt= mapper.longident mapper txt; loc= mapper.location mapper loc}
 
 let str mapper ({Location.txt; loc} : str) =
   {Location.txt; loc= mapper.location mapper loc}
+
+let path mapper ({Location.txt; loc} : Path.t Location.loc) =
+  { Location.txt= mapper.type0.path mapper.type0 txt
+  ; loc= mapper.location mapper loc }
 
 let type_expr mapper {type_desc; type_loc} =
   let type_loc = mapper.location mapper type_loc in
@@ -105,13 +109,11 @@ let type_decl_desc mapper = function
       TVariant (List.map ~f:(mapper.ctor_decl mapper) ctors)
   | TOpen ->
       TOpen
-  | TExtend (_name, _decl, _ctors) ->
-      assert false
-      (* TODO: re-enable this when the Type0 iterator is merged. *)
-      (*TExtend
-        ( lid mapper name
-        , mapper.type0_decl mapper decl
-        , List.map ~f:(mapper.ctor_decl mapper) ctors )*)
+  | TExtend (name, decl, ctors) ->
+      TExtend
+        ( path mapper name
+        , mapper.type0.type_decl mapper.type0 decl
+        , List.map ~f:(mapper.ctor_decl mapper) ctors )
   | TForward i ->
       TForward i
 
@@ -297,11 +299,6 @@ let longident mapper = function
   | Lapply (l1, l2) ->
       Lapply (mapper.longident mapper l1, mapper.longident mapper l2)
 
-(** Stub. This isn't part of the parsetypes, so we don't do anything by
-    default.
-*)
-let type0_decl (_iter : mapper) (decl : Type0.type_decl) = decl
-
 let default_iterator =
   { type_expr
   ; type_desc
@@ -328,4 +325,4 @@ let default_iterator =
   ; module_desc
   ; location
   ; longident
-  ; type0_decl }
+  ; type0= Type0_map.default_mapper }
