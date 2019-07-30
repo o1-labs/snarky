@@ -83,26 +83,25 @@ let type_decl iter
   iter.type_decl_desc iter tdec_desc
 
 let type_decl_desc iter = function
-  | TAbstract ->
+  | Pdec_abstract ->
       ()
-  | TAlias typ ->
+  | Pdec_alias typ ->
       iter.type_expr iter typ
-  | TUnfold typ ->
+  | Pdec_unfold typ ->
       iter.type_expr iter typ
-  | TRecord fields ->
+  | Pdec_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       List.iter ~f:(iter.ctor_decl iter) ctors
-  | TOpen ->
+  | Pdec_open ->
       ()
-  | TExtend (_name, _decl, _ctors) ->
+  | Pdec_extend (_name, _decl, _ctors) ->
       assert false
-      (* TODO: re-enable this when the Type0 iterator is merged. *)
-      (*lid iter name ;
+
+(* TODO: re-enable this when the Type0 iterator is merged. *)
+(*lid iter name ;
       iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors*)
-  | TForward _ ->
-      ()
 
 let literal (_iter : iterator) (_ : literal) = ()
 

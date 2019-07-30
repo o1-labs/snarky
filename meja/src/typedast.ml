@@ -1,9 +1,54 @@
 open Ast_types
-open Parsetypes
 
 type ident = Ident.t Location.loc
 
 type path = Path.t Location.loc
+
+type type_expr =
+  {type_desc: type_desc; type_loc: Location.t; type_type: Type0.type_expr}
+
+and type_desc =
+  (* A type variable. Name is None when not yet chosen. *)
+  | Ttyp_var of str option * explicitness
+  | Ttyp_tuple of type_expr list
+  | Ttyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
+  (* A type name. *)
+  | Ttyp_ctor of variant
+  | Ttyp_poly of type_expr list * type_expr
+
+and variant =
+  { var_ident: path
+  ; var_params: type_expr list
+  ; var_implicit_params: type_expr list }
+
+type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
+
+type ctor_args =
+  | Tctor_tuple of type_expr list
+  | Tctor_record of field_decl list
+
+type ctor_decl =
+  { ctor_ident: str
+  ; ctor_args: ctor_args
+  ; ctor_ret: type_expr option
+  ; ctor_loc: Location.t }
+
+type type_decl =
+  { tdec_ident: str
+  ; tdec_params: type_expr list
+  ; tdec_implicit_params: type_expr list
+  ; tdec_desc: type_decl_desc
+  ; tdec_loc: Location.t }
+
+and type_decl_desc =
+  | Tdec_abstract
+  | Tdec_alias of type_expr
+  | Tdec_unfold of type_expr
+  | Tdec_record of field_decl list
+  | Tdec_variant of ctor_decl list
+  | Tdec_open
+  | Tdec_extend of path * Type0.type_decl * ctor_decl list
+      (** Internal; this should never be present in the AST. *)
 
 type literal = Int of int | Bool of bool | Field of string | String of string
 
@@ -50,12 +95,12 @@ and signature = signature_item list
 and signature_desc =
   | Tsig_value of ident * type_expr
   | Tsig_instance of ident * type_expr
-  | Tsig_type of type_decl
+  | Tsig_type of Parsetypes.type_decl
   | Tsig_module of ident * module_sig
   | Tsig_modtype of ident * module_sig
   | Tsig_open of path
-  | Tsig_typeext of variant * ctor_decl list
-  | Tsig_request of type_expr * ctor_decl
+  | Tsig_typeext of Parsetypes.variant * Parsetypes.ctor_decl list
+  | Tsig_request of Parsetypes.type_expr * Parsetypes.ctor_decl
   | Tsig_multiple of signature
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
@@ -73,13 +118,15 @@ and statements = statement list
 and statement_desc =
   | Tstmt_value of pattern * expression
   | Tstmt_instance of ident * expression
-  | Tstmt_type of type_decl
+  | Tstmt_type of Parsetypes.type_decl
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig
   | Tstmt_open of path
-  | Tstmt_typeext of variant * ctor_decl list
+  | Tstmt_typeext of Parsetypes.variant * Parsetypes.ctor_decl list
   | Tstmt_request of
-      type_expr * ctor_decl * (pattern option * expression) option
+      Parsetypes.type_expr
+      * Parsetypes.ctor_decl
+      * (pattern option * expression) option
   | Tstmt_multiple of statements
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}

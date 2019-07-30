@@ -1,6 +1,5 @@
 open Core_kernel
 open Ast_types
-open Type0
 open Ast_build
 
 let rec longident_of_path = function
@@ -11,75 +10,142 @@ let rec longident_of_path = function
   | Papply (path1, path2) ->
       Lapply (longident_of_path path1, longident_of_path path2)
 
-let rec type_desc ?loc = function
-  | Tvar (None, explicit) ->
-      Type.none ?loc ~explicit ()
-  | Tvar (Some name, explicit) ->
-      Type.var ?loc ~explicit name
-  | Ttuple typs ->
-      Type.tuple ?loc (List.map ~f:(type_expr ?loc) typs)
-  | Tarrow (typ1, typ2, explicit, label) ->
-      Type.arrow ?loc ~explicit ~label (type_expr ?loc typ1)
-        (type_expr ?loc typ2)
-  | Tctor
-      { var_ident= ident
-      ; var_params= params
-      ; var_implicit_params= implicits
-      ; var_decl= _ } ->
-      let params = List.map ~f:(type_expr ?loc) params in
-      let implicits = List.map ~f:(type_expr ?loc) implicits in
-      Type.constr ?loc ~params ~implicits (longident_of_path ident)
-  | Tpoly (vars, var) ->
-      Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
+module Type0 = struct
+  open Type0
 
-and type_expr ?loc typ = type_desc ?loc typ.type_desc
+  let rec type_desc ?loc = function
+    | Tvar (None, explicit) ->
+        Type.none ?loc ~explicit ()
+    | Tvar (Some name, explicit) ->
+        Type.var ?loc ~explicit name
+    | Ttuple typs ->
+        Type.tuple ?loc (List.map ~f:(type_expr ?loc) typs)
+    | Tarrow (typ1, typ2, explicit, label) ->
+        Type.arrow ?loc ~explicit ~label (type_expr ?loc typ1)
+          (type_expr ?loc typ2)
+    | Tctor
+        { var_ident= ident
+        ; var_params= params
+        ; var_implicit_params= implicits
+        ; var_decl= _ } ->
+        let params = List.map ~f:(type_expr ?loc) params in
+        let implicits = List.map ~f:(type_expr ?loc) implicits in
+        Type.constr ?loc ~params ~implicits (longident_of_path ident)
+    | Tpoly (vars, var) ->
+        Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
 
-let field_decl ?loc fld =
-  Type_decl.Field.mk ?loc (Ident.name fld.fld_ident)
-    (type_expr ?loc fld.fld_type)
+  and type_expr ?loc typ = type_desc ?loc typ.type_desc
 
-let ctor_args ?loc ?ret name = function
-  | Ctor_tuple typs ->
-      Type_decl.Ctor.with_args ?loc ?ret name
-        (List.map ~f:(type_expr ?loc) typs)
-  | Ctor_record {tdec_desc= TRecord fields; _} ->
-      Type_decl.Ctor.with_record ?loc ?ret name
-        (List.map ~f:(field_decl ?loc) fields)
-  | Ctor_record _ ->
-      assert false
+  let field_decl ?loc fld =
+    Type_decl.Field.mk ?loc (Ident.name fld.fld_ident)
+      (type_expr ?loc fld.fld_type)
 
-let ctor_decl ?loc ctor =
-  ctor_args ?loc
-    (Ident.name ctor.ctor_ident)
-    ctor.ctor_args
-    ?ret:(Option.map ~f:(type_expr ?loc) ctor.ctor_ret)
+  let ctor_args ?loc ?ret name = function
+    | Ctor_tuple typs ->
+        Type_decl.Ctor.with_args ?loc ?ret name
+          (List.map ~f:(type_expr ?loc) typs)
+    | Ctor_record {tdec_desc= TRecord fields; _} ->
+        Type_decl.Ctor.with_record ?loc ?ret name
+          (List.map ~f:(field_decl ?loc) fields)
+    | Ctor_record _ ->
+        assert false
 
-let rec type_decl_desc ?loc ?params ?implicits name = function
-  | TAbstract ->
-      Type_decl.abstract ?loc ?params ?implicits name
-  | TAlias typ ->
-      Type_decl.alias ?loc ?params ?implicits name (type_expr typ)
-  | TUnfold typ ->
-      Type_decl.unfold ?loc ?params ?implicits name (type_expr typ)
-  | TRecord fields ->
-      Type_decl.record ?loc ?params ?implicits name
-        (List.map ~f:field_decl fields)
-  | TVariant ctors ->
-      Type_decl.variant ?loc ?params ?implicits name
-        (List.map ~f:ctor_decl ctors)
-  | TOpen ->
-      Type_decl.open_ ?loc ?params ?implicits name
-  | TExtend _ ->
-      failwith "Cannot convert TExtend to a parsetree equivalent"
-  | TForward _ ->
-      Type_decl.forward ?loc ?params ?implicits name
+  let ctor_decl ?loc ctor =
+    ctor_args ?loc
+      (Ident.name ctor.ctor_ident)
+      ctor.ctor_args
+      ?ret:(Option.map ~f:(type_expr ?loc) ctor.ctor_ret)
 
-and type_decl ?loc decl =
-  type_decl_desc ?loc
-    ~params:(List.map ~f:type_expr decl.tdec_params)
-    ~implicits:(List.map ~f:type_expr decl.tdec_implicit_params)
-    (Ident.name decl.tdec_ident)
-    decl.tdec_desc
+  let rec type_decl_desc ?loc ?params ?implicits name = function
+    | TAbstract ->
+        Type_decl.abstract ?loc ?params ?implicits name
+    | TAlias typ ->
+        Type_decl.alias ?loc ?params ?implicits name (type_expr typ)
+    | TUnfold typ ->
+        Type_decl.unfold ?loc ?params ?implicits name (type_expr typ)
+    | TRecord fields ->
+        Type_decl.record ?loc ?params ?implicits name
+          (List.map ~f:field_decl fields)
+    | TVariant ctors ->
+        Type_decl.variant ?loc ?params ?implicits name
+          (List.map ~f:ctor_decl ctors)
+    | TOpen ->
+        Type_decl.open_ ?loc ?params ?implicits name
+    | TExtend _ ->
+        failwith "Cannot convert TExtend to a parsetree equivalent"
+    | TForward _ ->
+        failwith "Cannot convert TForward to a parsetree equivalent"
+
+  and type_decl ?loc decl =
+    type_decl_desc ?loc
+      ~params:(List.map ~f:type_expr decl.tdec_params)
+      ~implicits:(List.map ~f:type_expr decl.tdec_implicit_params)
+      (Ident.name decl.tdec_ident)
+      decl.tdec_desc
+end
+
+let rec type_desc = function
+  | Typedast.Ttyp_var (name, explicit) ->
+      Parsetypes.Ptyp_var (name, explicit)
+  | Ttyp_tuple typs ->
+      Ptyp_tuple (List.map ~f:type_expr typs)
+  | Ttyp_arrow (typ1, typ2, explicit, label) ->
+      Ptyp_arrow (type_expr typ1, type_expr typ2, explicit, label)
+  | Ttyp_ctor var ->
+      Ptyp_ctor (variant var)
+  | Ttyp_poly (vars, var) ->
+      Ptyp_poly (List.map ~f:type_expr vars, type_expr var)
+
+and type_expr {type_desc= typ; type_loc; type_type= _} =
+  {type_desc= type_desc typ; type_loc}
+
+and variant {Typedast.var_ident; var_params; var_implicit_params} =
+  { Parsetypes.var_ident= map_loc ~f:longident_of_path var_ident
+  ; var_params= List.map ~f:type_expr var_params
+  ; var_implicit_params= List.map ~f:type_expr var_implicit_params }
+
+let field_decl {Typedast.fld_ident; fld_type; fld_loc} =
+  {Parsetypes.fld_ident; fld_type= type_expr fld_type; fld_loc}
+
+let ctor_args = function
+  | Typedast.Tctor_tuple typs ->
+      Parsetypes.Ctor_tuple (List.map ~f:type_expr typs)
+  | Tctor_record fld ->
+      Ctor_record (List.map ~f:field_decl fld)
+
+let ctor_decl {Typedast.ctor_ident; ctor_args= args; ctor_ret; ctor_loc} =
+  { Parsetypes.ctor_ident
+  ; ctor_args= ctor_args args
+  ; ctor_ret= Option.map ~f:type_expr ctor_ret
+  ; ctor_loc }
+
+let type_decl_desc = function
+  | Typedast.Tdec_abstract ->
+      Parsetypes.Pdec_abstract
+  | Tdec_alias typ ->
+      Pdec_alias (type_expr typ)
+  | Tdec_unfold typ ->
+      Pdec_unfold (type_expr typ)
+  | Tdec_record fields ->
+      Pdec_record (List.map ~f:field_decl fields)
+  | Tdec_variant ctors ->
+      Pdec_variant (List.map ~f:ctor_decl ctors)
+  | Tdec_open ->
+      Pdec_open
+  | Tdec_extend (lid, typ, ctor) ->
+      Pdec_extend (lid, typ, List.map ~f:ctor_decl ctor)
+
+let type_decl
+    { Typedast.tdec_ident
+    ; tdec_params
+    ; tdec_implicit_params
+    ; tdec_desc
+    ; tdec_loc } =
+  { Parsetypes.tdec_ident
+  ; tdec_params= List.map ~f:type_expr tdec_params
+  ; tdec_implicit_params= List.map ~f:type_expr tdec_implicit_params
+  ; tdec_desc= type_decl_desc tdec_desc
+  ; tdec_loc }
 
 let rec pattern_desc = function
   | Typedast.Tpat_any ->
@@ -87,7 +153,7 @@ let rec pattern_desc = function
   | Tpat_variable str ->
       Ppat_variable (map_loc ~f:Ident.name str)
   | Tpat_constraint (p, typ) ->
-      Ppat_constraint (pattern p, typ)
+      Ppat_constraint (pattern p, type_expr typ)
   | Tpat_tuple ps ->
       Ppat_tuple (List.map ~f:pattern ps)
   | Tpat_or (p1, p2) ->
@@ -132,7 +198,7 @@ let rec expression_desc = function
   | Texp_let (p, e1, e2) ->
       Pexp_let (pattern p, expression e1, expression e2)
   | Texp_constraint (e, typ) ->
-      Pexp_constraint (expression e, typ)
+      Pexp_constraint (expression e, type_expr typ)
   | Texp_tuple es ->
       Pexp_tuple (List.map ~f:expression es)
   | Texp_match (e, cases) ->
@@ -162,9 +228,9 @@ and expression e =
 
 let rec signature_desc = function
   | Typedast.Tsig_value (name, typ) ->
-      Parsetypes.Psig_value (map_loc ~f:Ident.name name, typ)
+      Parsetypes.Psig_value (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_instance (name, typ) ->
-      Psig_instance (map_loc ~f:Ident.name name, typ)
+      Psig_instance (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_type decl ->
       Psig_type decl
   | Tsig_module (name, msig) ->

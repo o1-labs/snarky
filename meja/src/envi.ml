@@ -1143,6 +1143,14 @@ module Type = struct
     | Tpoly (typs, typ) ->
         mk (Tpoly (typs, constr_map env ~f typ)) env
 
+  let get_preferred_constr_name env typ =
+    match typ.type_desc with
+    | Tctor variant ->
+        List.find_map env.scope_stack
+          ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)
+    | _ ->
+        None
+
   let normalise_constr_names env typ =
     constr_map env typ ~f:(fun variant ->
         match

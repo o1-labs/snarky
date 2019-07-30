@@ -97,25 +97,23 @@ let type_decl mapper
   ; tdec_desc= mapper.type_decl_desc mapper tdec_desc }
 
 let type_decl_desc mapper = function
-  | TAbstract ->
-      TAbstract
-  | TAlias typ ->
-      TAlias (mapper.type_expr mapper typ)
-  | TUnfold typ ->
-      TUnfold (mapper.type_expr mapper typ)
-  | TRecord fields ->
-      TRecord (List.map ~f:(mapper.field_decl mapper) fields)
-  | TVariant ctors ->
-      TVariant (List.map ~f:(mapper.ctor_decl mapper) ctors)
-  | TOpen ->
-      TOpen
-  | TExtend (name, decl, ctors) ->
-      TExtend
+  | Pdec_abstract ->
+      Pdec_abstract
+  | Pdec_alias typ ->
+      Pdec_alias (mapper.type_expr mapper typ)
+  | Pdec_unfold typ ->
+      Pdec_unfold (mapper.type_expr mapper typ)
+  | Pdec_record fields ->
+      Pdec_record (List.map ~f:(mapper.field_decl mapper) fields)
+  | Pdec_variant ctors ->
+      Pdec_variant (List.map ~f:(mapper.ctor_decl mapper) ctors)
+  | Pdec_open ->
+      Pdec_open
+  | Pdec_extend (name, decl, ctors) ->
+      Pdec_extend
         ( path mapper name
         , mapper.type0.type_decl mapper.type0 decl
         , List.map ~f:(mapper.ctor_decl mapper) ctors )
-  | TForward i ->
-      TForward i
 
 let literal (_iter : mapper) (l : literal) = l
 
