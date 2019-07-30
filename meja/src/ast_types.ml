@@ -109,3 +109,9 @@ type mode = Checked | Prover [@@deriving sexp]
 let string_of_mode = function Checked -> "Checked" | Prover -> "Prover"
 
 let pp_mode ppf mode = Format.pp_print_string ppf (string_of_mode mode)
+
+let modes_of_mode = function
+  | Checked -> (
+      function Checked -> true | Prover -> false )
+  | Prover -> (
+      function Checked -> true | Prover -> true )

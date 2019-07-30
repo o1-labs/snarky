@@ -315,8 +315,9 @@ let add_polymorphised name typ env =
   Envi.add_name name typ env
 
 let get_field (field : lid) env =
+  let mode = Envi.current_mode env in
   let loc = field.loc in
-  match Envi.TypeDecl.find_of_field field env with
+  match Envi.TypeDecl.find_of_field ~mode field env with
   | Some
       ( ident
       , ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
@@ -357,8 +358,9 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
       get_field field env
 
 let get_ctor (name : lid) env =
+  let mode = Envi.current_mode env in
   let loc = name.loc in
-  match (Envi.TypeDecl.find_of_constructor name env, name.txt) with
+  match (Envi.TypeDecl.find_of_constructor ~mode name env, name.txt) with
   | ( Some
         ( name
         , ( ( { tdec_desc= TVariant ctors
@@ -516,7 +518,7 @@ let rec check_pattern ~add env typ pat =
         | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) ->
             (typ, field_decls, bound_vars, env)
         | _ -> (
-          match Envi.TypeDecl.find_of_field field env with
+          match Envi.TypeDecl.find_of_field ~mode field env with
           | Some
               ( ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
@@ -589,6 +591,7 @@ and check_patterns ~add env typs pats =
   (List.rev rev_pats, env)
 
 let rec get_expression env expected exp =
+  let mode = Envi.current_mode env in
   let loc = exp.exp_loc in
   match exp.exp_desc with
   | Pexp_apply (f, es) ->
@@ -635,7 +638,7 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (f, es)}, env)
   | Pexp_variable name ->
-      let path, typ = Envi.find_name ~loc name env in
+      let path, typ = Envi.find_name ~mode ~loc name env in
       let path = Location.mkloc path name.loc in
       let implicits, result_typ = Envi.Type.get_implicits [] typ in
       check_type ~loc env expected result_typ ;
@@ -779,7 +782,7 @@ let rec get_expression env expected exp =
         | Lident _ ->
             None
         | Ldot _ -> (
-          match Envi.TypeDecl.find_of_field field env with
+          match Envi.TypeDecl.find_of_field ~mode field env with
           | Some
               ( fld_ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
@@ -838,7 +841,7 @@ let rec get_expression env expected exp =
                 raise (Error (loc, Wrong_record_field (field.txt, e.exp_type)))
             )
           | _ -> (
-            match Envi.TypeDecl.find_of_field field env with
+            match Envi.TypeDecl.find_of_field ~mode field env with
             | Some
                 ( fld_ident
                 , ( ({tdec_desc= TRecord field_decls; tdec_params; _} as decl)
@@ -887,7 +890,7 @@ let rec get_expression env expected exp =
         | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) ->
             (typ, field_decls, bound_vars, env)
         | _ -> (
-          match Envi.TypeDecl.find_of_field field env with
+          match Envi.TypeDecl.find_of_field ~mode field env with
           | Some
               ( ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
@@ -1164,7 +1167,7 @@ let rec check_signature_item env item =
       let env = Envi.add_module_type name.txt m_env env in
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
   | Psig_open name ->
-      let path, m = Envi.find_module ~loc name env in
+      let path, m = Envi.find_module ~mode ~loc name env in
       let env = Envi.open_namespace_scope m env in
       ( env
       , { Typedast.sig_desc= Tsig_open (Location.mkloc path name.loc)
@@ -1209,7 +1212,7 @@ and check_module_sig env path msig =
       , env )
   | Pmty_name lid ->
       let path, m =
-        match Envi.find_module_deferred ~loc lid env with
+        match Envi.find_module_deferred ~mode ~loc lid env with
         | Some m ->
             m
         | None ->
@@ -1254,7 +1257,8 @@ and check_module_sig env path msig =
         | Envi.Scope.Immediate m ->
             (m, msig)
         | Envi.Scope.Deferred path ->
-            (snd (Envi.find_module ~loc (Location.mkloc path loc) env), msig)
+            ( snd (Envi.find_module ~mode ~loc (Location.mkloc path loc) env)
+            , msig )
       in
       (* Check that f_mty builds the functor as expected. *)
       let _, msig = ftor (Lapply (path, Lident f_name.txt)) f_mty in
@@ -1339,7 +1343,7 @@ let rec check_statement env stmt =
       ( env
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
   | Pstmt_open name ->
-      let path, m = Envi.find_module ~loc name env in
+      let path, m = Envi.find_module ~mode ~loc name env in
       ( Envi.open_namespace_scope m env
       , { Typedast.stmt_loc= loc
         ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
@@ -1452,7 +1456,7 @@ and check_module_expr env m =
       let path = Envi.current_path env in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
-      let name', m' = Envi.find_module ~loc name env in
+      let name', m' = Envi.find_module ~mode ~loc name env in
       let name = Location.mkloc name' name.loc in
       let env = Envi.push_scope {m' with path} env in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
