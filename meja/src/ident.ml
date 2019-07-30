@@ -56,7 +56,10 @@ module Table = struct
     | None ->
         None
 
-  let find_name name tbl = Option.bind ~f:List.hd (Map.find tbl name)
+  let find_name name ~modes tbl =
+    Option.bind
+      ~f:(List.find ~f:(fun (ident, _) -> modes (mode ident)))
+      (Map.find tbl name)
 
   let first_exn tbl = List.hd_exn (snd (Map.min_elt_exn tbl))
 

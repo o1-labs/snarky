@@ -270,7 +270,7 @@ module TypeDecl = struct
     in
     let tdec_ident, tdec_id =
       match
-        IdTbl.find_name tdec_ident.txt
+        IdTbl.find_name ~modes:(modes_of_mode mode) tdec_ident.txt
           env.resolve_env.type_env.predeclared_types
       with
       | Some (ident, (id, num_args, loc)) ->

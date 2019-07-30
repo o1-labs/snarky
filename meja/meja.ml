@@ -167,7 +167,7 @@ let main =
               let env = Envi.open_absolute_module None env in
               let _path, m =
                 try
-                  Envi.find_module ~loc
+                  Envi.find_module ~mode:Checked ~loc
                     (mkloc (Longident.Lident "Snarky__Request"))
                     env
                 with _ ->
