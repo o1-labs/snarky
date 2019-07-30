@@ -26,6 +26,17 @@ module Read = struct
 
   let rec run t f =
     match t with Pure x -> x | Free (T.Read (x, k)) -> run (k (f x)) f
+
+  (** Aggregate [Cvar.t]s used in the underlying monad. *)
+  let make_cvars t =
+    let rec make_cvars acc t =
+      match t with
+      | Pure _ ->
+          Pure (List.rev acc)
+      | Free (T.Read (x, k)) ->
+          Free (T.Read (x, fun y -> make_cvars (x :: acc) (k y)))
+    in
+    make_cvars [] t
 end
 
 module Alloc = struct
