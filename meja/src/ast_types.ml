@@ -115,3 +115,10 @@ let modes_of_mode = function
       function Checked -> true | Prover -> false )
   | Prover -> (
       function Checked -> true | Prover -> true )
+
+let weakest_mode mode1 mode2 =
+  match (mode1, mode2) with
+  | Checked, _ | _, Checked ->
+      Checked
+  | Prover, Prover ->
+      Prover

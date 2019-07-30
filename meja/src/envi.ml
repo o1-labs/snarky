@@ -278,7 +278,6 @@ module Scope = struct
       ; instances= instances2
       ; paths= paths2
       ; mode= mode2 } =
-    assert (mode1 = mode2) ;
     { kind
     ; path
     ; names=
@@ -304,7 +303,7 @@ module Scope = struct
     ; instances=
         Map.merge_skewed instances1 instances2 ~combine:(fun ~key:_ _ v -> v)
     ; paths= join_paths paths1 paths2
-    ; mode= mode1 }
+    ; mode= weakest_mode mode1 mode2 }
 
   let extend_paths name {type_paths} =
     {type_paths= Map.map ~f:(Path.add_outer_module name) type_paths}
@@ -513,6 +512,9 @@ let open_namespace_scope ?mode scope env =
   env
   |> push_scope {scope with kind= Scope.Open}
   |> push_scope Scope.(empty ~mode (current_scope env).path Continue)
+
+let open_mode_module_scope mode env =
+  push_scope Scope.(empty ~mode (current_scope env).path Continue) env
 
 let pop_scope env =
   match env.scope_stack with
