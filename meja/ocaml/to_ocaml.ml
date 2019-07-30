@@ -141,6 +141,8 @@ let rec of_expression_desc ?loc = function
   | Pexp_if (e1, e2, e3) ->
       Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
         (Option.map ~f:of_expression e3)
+  | Pexp_prover e ->
+      of_expression e
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(
@@ -201,7 +203,7 @@ let rec of_signature_desc ?loc = function
           (Option.value ~default:Location.none loc)
       in
       Sig.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
-  | Psig_multiple sigs ->
+  | Psig_multiple sigs | Psig_prover sigs ->
       Sig.include_ ?loc
         { pincl_mod= Mty.signature ?loc (of_signature sigs)
         ; pincl_loc= Option.value ~default:Location.none loc
@@ -286,7 +288,7 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
-  | Pstmt_multiple stmts ->
+  | Pstmt_multiple stmts | Pstmt_prover stmts ->
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc
