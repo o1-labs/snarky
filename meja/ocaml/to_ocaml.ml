@@ -51,24 +51,22 @@ let of_type_decl decl =
       (decl.tdec_params @ decl.tdec_implicit_params)
   in
   match decl.tdec_desc with
-  | TAbstract ->
+  | Pdec_abstract ->
       Type.mk name ~loc ~params
-  | TAlias typ ->
+  | Pdec_alias typ ->
       Type.mk name ~loc ~params ~manifest:(of_type_expr typ)
-  | TRecord fields ->
+  | Pdec_record fields ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_record (List.map ~f:of_field_decl fields))
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_variant (List.map ~f:of_ctor_decl ctors))
-  | TOpen ->
+  | Pdec_open ->
       Type.mk name ~loc ~params ~kind:Parsetree.Ptype_open
-  | TExtend _ ->
+  | Pdec_extend _ ->
       failwith "Cannot convert TExtend to OCaml"
-  | TUnfold _ ->
+  | Pdec_unfold _ ->
       failwith "Cannot convert TUnfold to OCaml"
-  | TForward _ ->
-      failwith "Cannot convert TForward to OCaml"
 
 let rec of_pattern_desc ?loc = function
   | Ppat_any ->

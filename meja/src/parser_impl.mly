@@ -236,19 +236,19 @@ field_decl:
 
 type_kind:
   | (* empty *)
-    { TAbstract }
+    { Pdec_abstract }
   | EQUAL k = type_kind_body
     { k }
 
 type_kind_body:
   | t = type_expr
-    { TAlias t }
+    { Pdec_alias t }
   | LBRACE fields = list(field_decl, COMMA) RBRACE
-    { TRecord (List.rev fields) }
+    { Pdec_record (List.rev fields) }
   | maybe(BAR) ctors = list(ctor_decl, BAR)
-    { TVariant (List.rev ctors) }
+    { Pdec_variant (List.rev ctors) }
   | DOTDOT
-    { TOpen }
+    { Pdec_open }
 
 ctor_decl_args:
   | (* empty *)

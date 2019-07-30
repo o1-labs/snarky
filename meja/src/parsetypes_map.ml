@@ -28,13 +28,17 @@ type mapper =
   ; module_desc: mapper -> module_desc -> module_desc
   ; location: mapper -> Location.t -> Location.t
   ; longident: mapper -> Longident.t -> Longident.t
-  ; type0_decl: mapper -> Type0.type_decl -> Type0.type_decl }
+  ; type0: Type0_map.mapper }
 
 let lid mapper {Location.txt; loc} =
   {Location.txt= mapper.longident mapper txt; loc= mapper.location mapper loc}
 
 let str mapper ({Location.txt; loc} : str) =
   {Location.txt; loc= mapper.location mapper loc}
+
+let path mapper ({Location.txt; loc} : Path.t Location.loc) =
+  { Location.txt= mapper.type0.path mapper.type0 txt
+  ; loc= mapper.location mapper loc }
 
 let type_expr mapper {type_desc; type_loc} =
   let type_loc = mapper.location mapper type_loc in
@@ -93,25 +97,23 @@ let type_decl mapper
   ; tdec_desc= mapper.type_decl_desc mapper tdec_desc }
 
 let type_decl_desc mapper = function
-  | TAbstract ->
-      TAbstract
-  | TAlias typ ->
-      TAlias (mapper.type_expr mapper typ)
-  | TUnfold typ ->
-      TUnfold (mapper.type_expr mapper typ)
-  | TRecord fields ->
-      TRecord (List.map ~f:(mapper.field_decl mapper) fields)
-  | TVariant ctors ->
-      TVariant (List.map ~f:(mapper.ctor_decl mapper) ctors)
-  | TOpen ->
-      TOpen
-  | TExtend (name, decl, ctors) ->
-      TExtend
-        ( lid mapper name
-        , mapper.type0_decl mapper decl
+  | Pdec_abstract ->
+      Pdec_abstract
+  | Pdec_alias typ ->
+      Pdec_alias (mapper.type_expr mapper typ)
+  | Pdec_unfold typ ->
+      Pdec_unfold (mapper.type_expr mapper typ)
+  | Pdec_record fields ->
+      Pdec_record (List.map ~f:(mapper.field_decl mapper) fields)
+  | Pdec_variant ctors ->
+      Pdec_variant (List.map ~f:(mapper.ctor_decl mapper) ctors)
+  | Pdec_open ->
+      Pdec_open
+  | Pdec_extend (name, decl, ctors) ->
+      Pdec_extend
+        ( path mapper name
+        , mapper.type0.type_decl mapper.type0 decl
         , List.map ~f:(mapper.ctor_decl mapper) ctors )
-  | TForward i ->
-      TForward i
 
 let literal (_iter : mapper) (l : literal) = l
 
@@ -301,11 +303,6 @@ let longident mapper = function
   | Lapply (l1, l2) ->
       Lapply (mapper.longident mapper l1, mapper.longident mapper l2)
 
-(** Stub. This isn't part of the parsetypes, so we don't do anything by
-    default.
-*)
-let type0_decl (_iter : mapper) (decl : Type0.type_decl) = decl
-
 let default_iterator =
   { type_expr
   ; type_desc
@@ -332,4 +329,4 @@ let default_iterator =
   ; module_desc
   ; location
   ; longident
-  ; type0_decl }
+  ; type0= Type0_map.default_mapper }

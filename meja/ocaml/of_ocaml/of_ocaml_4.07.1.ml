@@ -79,15 +79,15 @@ let to_ctor_decl {cd_id; cd_args; cd_res; cd_loc; _} =
 let to_type_decl_desc decl =
   match (decl.type_manifest, decl.type_kind) with
   | Some typ, _ ->
-      TAlias (to_type_expr ~loc:decl.type_loc typ)
+      Pdec_alias (to_type_expr ~loc:decl.type_loc typ)
   | None, Type_abstract ->
-      TAbstract
+      Pdec_abstract
   | None, Type_open ->
-      TOpen
+      Pdec_open
   | None, Type_record (labels, _) ->
-      TRecord (List.map labels ~f:to_field_decl)
+      Pdec_record (List.map labels ~f:to_field_decl)
   | None, Type_variant ctors ->
-      TVariant (List.map ctors ~f:to_ctor_decl)
+      Pdec_variant (List.map ctors ~f:to_ctor_decl)
 
 let can_create_signature_item item =
   match item with Sig_typext _ | Sig_class _ -> false | _ -> true
