@@ -3,6 +3,14 @@ open Ast_types
 open Type0
 open Ast_build
 
+let rec longident_of_path = function
+  | Path.Pident ident ->
+      Longident.Lident (Ident.name ident)
+  | Pdot (path, name) ->
+      Ldot (longident_of_path path, name)
+  | Papply (path1, path2) ->
+      Lapply (longident_of_path path1, longident_of_path path2)
+
 let rec type_desc ?loc = function
   | Tvar (None, explicit) ->
       Type.none ?loc ~explicit ()
@@ -20,7 +28,7 @@ let rec type_desc ?loc = function
       ; var_decl= _ } ->
       let params = List.map ~f:(type_expr ?loc) params in
       let implicits = List.map ~f:(type_expr ?loc) implicits in
-      Type.constr ?loc ~params ~implicits ident
+      Type.constr ?loc ~params ~implicits (longident_of_path ident)
   | Tpoly (vars, var) ->
       Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
 
@@ -77,7 +85,7 @@ let rec pattern_desc = function
   | Typedast.Tpat_any ->
       Parsetypes.Ppat_any
   | Tpat_variable str ->
-      Ppat_variable str
+      Ppat_variable (map_loc ~f:Ident.name str)
   | Tpat_constraint (p, typ) ->
       Ppat_constraint (pattern p, typ)
   | Tpat_tuple ps ->
@@ -87,9 +95,11 @@ let rec pattern_desc = function
   | Tpat_int i ->
       Ppat_int i
   | Tpat_record fields ->
-      Ppat_record (List.map fields ~f:(fun (label, p) -> (label, pattern p)))
+      Ppat_record
+        (List.map fields ~f:(fun (label, p) ->
+             (map_loc ~f:longident_of_path label, pattern p) ))
   | Tpat_ctor (name, arg) ->
-      Ppat_ctor (name, Option.map ~f:pattern arg)
+      Ppat_ctor (map_loc ~f:longident_of_path name, Option.map ~f:pattern arg)
 
 and pattern p =
   {Parsetypes.pat_desc= pattern_desc p.Typedast.pat_desc; pat_loc= p.pat_loc}
@@ -110,13 +120,13 @@ let rec expression_desc = function
         ( expression e
         , List.map args ~f:(fun (label, e) -> (label, expression e)) )
   | Texp_variable name ->
-      Pexp_variable name
+      Pexp_variable (map_loc ~f:longident_of_path name)
   | Texp_literal i ->
       Pexp_literal (literal i)
   | Texp_fun (label, p, e, explicit) ->
       Pexp_fun (label, pattern p, expression e, explicit)
   | Texp_newtype (name, e) ->
-      Pexp_newtype (name, expression e)
+      Pexp_newtype (map_loc ~f:Ident.name name, expression e)
   | Texp_seq (e1, e2) ->
       Pexp_seq (expression e1, expression e2)
   | Texp_let (p, e1, e2) ->
@@ -130,15 +140,20 @@ let rec expression_desc = function
         ( expression e
         , List.map cases ~f:(fun (p, e) -> (pattern p, expression e)) )
   | Texp_field (e, path) ->
-      Pexp_field (expression e, path)
+      Pexp_field (expression e, map_loc ~f:longident_of_path path)
   | Texp_record (fields, default) ->
       Pexp_record
-        ( List.map fields ~f:(fun (label, e) -> (label, expression e))
+        ( List.map fields ~f:(fun (label, e) ->
+              (map_loc ~f:longident_of_path label, expression e) )
         , Option.map ~f:expression default )
   | Texp_ctor (path, arg) ->
-      Pexp_ctor (path, Option.map ~f:expression arg)
+      Pexp_ctor
+        (map_loc ~f:longident_of_path path, Option.map ~f:expression arg)
   | Texp_unifiable {expression= e; name; id} ->
-      Pexp_unifiable {expression= Option.map ~f:expression e; name; id}
+      Pexp_unifiable
+        { expression= Option.map ~f:expression e
+        ; name= map_loc ~f:Ident.name name
+        ; id }
   | Texp_if (e1, e2, e3) ->
       Pexp_if (expression e1, expression e2, Option.map ~f:expression e3)
 
@@ -147,9 +162,9 @@ and expression e =
 
 let rec signature_desc = function
   | Typedast.Tsig_value (name, typ) ->
-      Parsetypes.Psig_value (name, typ)
+      Parsetypes.Psig_value (map_loc ~f:Ident.name name, typ)
   | Tsig_instance (name, typ) ->
-      Psig_instance (name, typ)
+      Psig_instance (map_loc ~f:Ident.name name, typ)
   | Tsig_type decl ->
       Psig_type decl
   | Tsig_module (name, msig) ->
@@ -157,7 +172,7 @@ let rec signature_desc = function
   | Tsig_modtype (name, msig) ->
       Psig_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_open path ->
-      Psig_open path
+      Psig_open (map_loc ~f:longident_of_path path)
   | Tsig_typeext (typ, ctors) ->
       Psig_typeext (typ, ctors)
   | Tsig_request (arg, ctor) ->
@@ -172,7 +187,7 @@ and module_sig_desc = function
   | Typedast.Tmty_sig sigs ->
       Parsetypes.Pmty_sig (List.map ~f:signature_item sigs)
   | Tmty_name path ->
-      Pmty_name path
+      Pmty_name (map_loc ~f:longident_of_path path)
   | Tmty_abstract ->
       Pmty_abstract
   | Tmty_functor (name, fsig, msig) ->
@@ -186,7 +201,7 @@ let rec statement_desc = function
   | Typedast.Tstmt_value (p, e) ->
       Parsetypes.Pstmt_value (pattern p, expression e)
   | Tstmt_instance (name, e) ->
-      Pstmt_instance (name, expression e)
+      Pstmt_instance (map_loc ~f:Ident.name name, expression e)
   | Tstmt_type decl ->
       Pstmt_type decl
   | Tstmt_module (name, m) ->
@@ -194,7 +209,7 @@ let rec statement_desc = function
   | Tstmt_modtype (name, msig) ->
       Pstmt_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tstmt_open path ->
-      Pstmt_open path
+      Pstmt_open (map_loc ~f:longident_of_path path)
   | Tstmt_typeext (typ, ctors) ->
       Pstmt_typeext (typ, ctors)
   | Tstmt_request (arg, ctor, handler) ->
@@ -215,7 +230,7 @@ and module_desc = function
   | Typedast.Tmod_struct stmts ->
       Parsetypes.Pmod_struct (List.map ~f:statement stmts)
   | Tmod_name path ->
-      Pmod_name path
+      Pmod_name (map_loc ~f:longident_of_path path)
   | Tmod_functor (name, fsig, m) ->
       Pmod_functor (name, module_sig fsig, module_expr m)
 

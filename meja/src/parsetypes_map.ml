@@ -36,6 +36,10 @@ let lid mapper {Location.txt; loc} =
 let str mapper ({Location.txt; loc} : str) =
   {Location.txt; loc= mapper.location mapper loc}
 
+let path mapper ({Location.txt; loc} : Path.t Location.loc) =
+  { Location.txt= mapper.type0.path mapper.type0 txt
+  ; loc= mapper.location mapper loc }
+
 let type_expr mapper {type_desc; type_loc} =
   let type_loc = mapper.location mapper type_loc in
   let type_desc = mapper.type_desc mapper type_desc in
@@ -107,7 +111,7 @@ let type_decl_desc mapper = function
       TOpen
   | TExtend (name, decl, ctors) ->
       TExtend
-        ( lid mapper name
+        ( path mapper name
         , mapper.type0.type_decl mapper.type0 decl
         , List.map ~f:(mapper.ctor_decl mapper) ctors )
   | TForward i ->
