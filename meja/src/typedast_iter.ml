@@ -29,6 +29,7 @@ type iterator =
   ; location: iterator -> Location.t -> unit
   ; longident: iterator -> Longident.t -> unit
   ; ident: iterator -> Ident.t -> unit
+  ; path: iterator -> Path.t -> unit
   ; type0_expr: iterator -> Type0.type_expr -> unit
   ; type0_decl: iterator -> Type0.type_decl -> unit }
 
@@ -39,6 +40,9 @@ let str iter ({Location.txt= _; loc} : str) = iter.location iter loc
 
 let ident iter ({Location.txt; loc} : Ident.t Location.loc) =
   iter.ident iter txt ; iter.location iter loc
+
+let path iter ({Location.txt; loc} : Path.t Location.loc) =
+  iter.location iter loc ; iter.path iter txt
 
 let type_expr iter Parsetypes.{type_desc; type_loc} =
   iter.location iter type_loc ;
@@ -102,7 +106,7 @@ let type_decl_desc iter = function
   | TOpen ->
       ()
   | TExtend (name, decl, ctors) ->
-      lid iter name ;
+      path iter name ;
       iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors
   | TForward _ ->
@@ -119,7 +123,7 @@ let pattern_desc iter = function
   | Tpat_any ->
       ()
   | Tpat_variable name ->
-      str iter name
+      ident iter name
   | Tpat_constraint (pat, typ) ->
       iter.type_expr iter typ ; iter.pattern iter pat
   | Tpat_tuple pats ->
@@ -130,9 +134,9 @@ let pattern_desc iter = function
       ()
   | Tpat_record fields ->
       List.iter fields ~f:(fun (name, pat) ->
-          lid iter name ; iter.pattern iter pat )
+          path iter name ; iter.pattern iter pat )
   | Tpat_ctor (name, arg) ->
-      lid iter name ;
+      path iter name ;
       Option.iter ~f:(iter.pattern iter) arg
 
 let expression iter {exp_desc; exp_loc; exp_type} =
@@ -145,13 +149,13 @@ let expression_desc iter = function
       iter.expression iter e ;
       List.iter args ~f:(fun (_label, e) -> iter.expression iter e)
   | Texp_variable name ->
-      lid iter name
+      path iter name
   | Texp_literal l ->
       iter.literal iter l
   | Texp_fun (_label, p, e, _explicit) ->
       iter.pattern iter p ; iter.expression iter e
   | Texp_newtype (name, e) ->
-      str iter name ; iter.expression iter e
+      ident iter name ; iter.expression iter e
   | Texp_seq (e1, e2) ->
       iter.expression iter e1 ; iter.expression iter e2
   | Texp_let (p, e1, e2) ->
@@ -165,16 +169,16 @@ let expression_desc iter = function
       List.iter cases ~f:(fun (p, e) ->
           iter.pattern iter p ; iter.expression iter e )
   | Texp_field (e, name) ->
-      lid iter name ; iter.expression iter e
+      path iter name ; iter.expression iter e
   | Texp_record (bindings, default) ->
       Option.iter ~f:(iter.expression iter) default ;
       List.iter bindings ~f:(fun (name, e) ->
-          lid iter name ; iter.expression iter e )
+          path iter name ; iter.expression iter e )
   | Texp_ctor (name, arg) ->
-      lid iter name ;
+      path iter name ;
       Option.iter ~f:(iter.expression iter) arg
   | Texp_unifiable {expression; name; id= _} ->
-      str iter name ;
+      ident iter name ;
       Option.iter ~f:(iter.expression iter) expression
   | Texp_if (e1, e2, e3) ->
       iter.expression iter e1 ;
@@ -189,13 +193,13 @@ let signature_item iter {sig_desc; sig_loc} =
 
 let signature_desc iter = function
   | Tsig_value (name, typ) | Tsig_instance (name, typ) ->
-      str iter name ; iter.type_expr iter typ
+      ident iter name ; iter.type_expr iter typ
   | Tsig_type decl ->
       iter.type_decl iter decl
   | Tsig_module (name, msig) | Tsig_modtype (name, msig) ->
       ident iter name ; iter.module_sig iter msig
   | Tsig_open name ->
-      lid iter name
+      path iter name
   | Tsig_typeext (typ, ctors) ->
       iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors
@@ -212,7 +216,7 @@ let module_sig_desc iter = function
   | Tmty_sig sigs ->
       iter.signature iter sigs
   | Tmty_name name ->
-      lid iter name
+      path iter name
   | Tmty_abstract ->
       ()
   | Tmty_functor (name, fsig, msig) ->
@@ -228,7 +232,7 @@ let statement_desc iter = function
   | Tstmt_value (p, e) ->
       iter.pattern iter p ; iter.expression iter e
   | Tstmt_instance (name, e) ->
-      str iter name ; iter.expression iter e
+      ident iter name ; iter.expression iter e
   | Tstmt_type decl ->
       iter.type_decl iter decl
   | Tstmt_module (name, me) ->
@@ -236,7 +240,7 @@ let statement_desc iter = function
   | Tstmt_modtype (name, mty) ->
       ident iter name ; iter.module_sig iter mty
   | Tstmt_open name ->
-      lid iter name
+      path iter name
   | Tstmt_typeext (typ, ctors) ->
       iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors
@@ -257,7 +261,7 @@ let module_desc iter = function
   | Tmod_struct stmts ->
       iter.statements iter stmts
   | Tmod_name name ->
-      lid iter name
+      path iter name
   | Tmod_functor (name, fsig, me) ->
       str iter name ; iter.module_sig iter fsig ; iter.module_expr iter me
 
@@ -270,6 +274,14 @@ let longident iter = function
       iter.longident iter l
   | Lapply (l1, l2) ->
       iter.longident iter l1 ; iter.longident iter l2
+
+let path iter = function
+  | Path.Pident ident ->
+      iter.ident iter ident
+  | Path.Pdot (path, _) ->
+      iter.path iter path
+  | Path.Papply (path1, path2) ->
+      iter.path iter path1 ; iter.path iter path2
 
 let ident (_iter : iterator) (_ : Ident.t) = ()
 
@@ -308,5 +320,6 @@ let default_iterator =
   ; location
   ; longident
   ; ident
+  ; path
   ; type0_decl
   ; type0_expr }

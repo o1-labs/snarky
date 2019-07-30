@@ -318,24 +318,24 @@ let get_field (field : lid) env =
   let loc = field.loc in
   match Envi.TypeDecl.find_of_field field env with
   | Some
-      ( _ident
+      ( ident
       , ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
         , i ) ) ->
       let vars, bound_vars, _ =
         Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
       in
       let name =
-        match field.txt with
-        | Longident.Ldot (m, _) ->
-            Longident.Ldot (m, Ident.name tdec_ident)
+        match ident with
+        | Path.Pdot (m, _) ->
+            Path.Pdot (m, Ident.name tdec_ident)
         | _ ->
-            Longident.Lident (Ident.name tdec_ident)
+            Path.Pident tdec_ident
       in
       let rcd_type = Envi.TypeDecl.mk_typ ~params:vars ~ident:name decl env in
       let {fld_type; _} = List.nth_exn field_decls i in
       let rcd_type = Envi.Type.copy ~loc rcd_type bound_vars env in
       let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
-      (i, fld_type, rcd_type)
+      (ident, i, fld_type, rcd_type)
   | _ ->
       raise (Error (loc, Unbound ("record field", field)))
 
@@ -347,10 +347,10 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
       List.findi field_decls ~f:(fun _ {fld_ident; _} ->
           String.equal (Ident.name fld_ident) name )
     with
-    | Some (i, {fld_type; _}) ->
+    | Some (i, {fld_type; fld_ident; _}) ->
         let typ = Envi.Type.copy ~loc typ bound_vars env in
         let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
-        (i, fld_type, typ)
+        (Path.Pident fld_ident, i, fld_type, typ)
     | None ->
         get_field field env )
   | _ ->
@@ -360,17 +360,17 @@ let get_ctor (name : lid) env =
   let loc = name.loc in
   match (Envi.TypeDecl.find_of_constructor name env, name.txt) with
   | ( Some
-        ( _
+        ( name
         , ( ( { tdec_desc= TVariant ctors
               ; tdec_ident
               ; tdec_params
               ; tdec_implicit_params
               ; _ } as decl )
           , i ) )
-    , name )
+    , _ )
   | ( Some
-        ( _
-        , ( { tdec_desc= TExtend (name, decl, ctors)
+        ( name
+        , ( { tdec_desc= TExtend (_, decl, ctors)
             ; tdec_ident
             ; tdec_params
             ; tdec_implicit_params
@@ -380,10 +380,10 @@ let get_ctor (name : lid) env =
       let ctor = List.nth_exn ctors i in
       let make_name tdec_ident =
         match name with
-        | Longident.Ldot (m, _) ->
-            Longident.Ldot (m, tdec_ident)
+        | Path.Pdot (m, _) ->
+            Path.Pdot (m, Ident.name tdec_ident)
         | _ ->
-            Longident.Lident tdec_ident
+            Path.Pident tdec_ident
       in
       let typ =
         match ctor.ctor_ret with
@@ -391,15 +391,14 @@ let get_ctor (name : lid) env =
             typ
         | _ ->
             Envi.TypeDecl.mk_typ ~params:tdec_params
-              ~ident:(make_name (Ident.name tdec_ident))
-              decl env
+              ~ident:(make_name tdec_ident) decl env
       in
       let args_typ =
         match ctor.ctor_args with
         | Ctor_record decl ->
             Envi.Type.mk
               (Tctor
-                 { var_ident= make_name (Ident.name ctor.ctor_ident)
+                 { var_ident= make_name ctor.ctor_ident
                  ; var_params= decl.tdec_params
                  ; var_implicit_params= tdec_implicit_params
                  ; var_decl= decl })
@@ -418,7 +417,7 @@ let get_ctor (name : lid) env =
       in
       let args_typ = Envi.Type.copy ~loc args_typ bound_vars env in
       let typ = Envi.Type.copy ~loc typ bound_vars env in
-      (typ, args_typ)
+      (name, typ, args_typ)
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
 
@@ -431,7 +430,8 @@ let rec check_pattern ~add env typ pat =
   | Ppat_variable str ->
       let name = map_loc ~f:(Ident.create ~mode) str in
       let env = add name.txt typ env in
-      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}, env)
+      ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable name}
+      , env )
   | Ppat_constraint (p, constr_typ) ->
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp ;
@@ -500,21 +500,21 @@ let rec check_pattern ~add env typ pat =
         | _ -> (
           match Envi.TypeDecl.find_of_field field env with
           | Some
-              ( _ident
+              ( ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
               ) ->
               let vars, bound_vars, env =
                 Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
               let ident =
-                Longident.(
-                  match field.txt with
-                  | Lident _ ->
-                      Lident (Ident.name decl.tdec_ident)
-                  | Ldot (path, _) ->
-                      Ldot (path, Ident.name decl.tdec_ident)
+                Path.(
+                  match ident with
+                  | Pident _ ->
+                      Pident decl.tdec_ident
+                  | Pdot (path, _) ->
+                      Pdot (path, Ident.name decl.tdec_ident)
                   | _ ->
-                      failwith "Unhandled Lapply in field name")
+                      failwith "Unhandled Papply in field name")
               in
               let decl_type =
                 Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
@@ -524,27 +524,30 @@ let rec check_pattern ~add env typ pat =
           | _ ->
               raise (Error (loc, Unbound ("record field", field))) )
       in
-      let field_typs =
+      let field_infos =
         List.map fields ~f:(fun (field, _p) ->
-            let _, field_typ, record_typ =
+            let path, _, field_typ, record_typ =
               get_field_of_decl typ bound_vars field_decls field env
             in
             ( try check_type ~loc:field.loc env record_typ typ
               with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->
                 raise (Error (field.loc, Wrong_record_field (field.txt, typ)))
             ) ;
-            field_typ )
+            (field_typ, Location.mkloc path field.loc) )
       in
       let ps, env =
-        check_patterns ~add env field_typs (List.map ~f:snd fields)
+        check_patterns ~add env
+          (List.map ~f:fst field_infos)
+          (List.map ~f:snd fields)
       in
       let fields =
-        List.map2_exn fields ps ~f:(fun (field, _) p -> (field, p))
+        List.map2_exn field_infos ps ~f:(fun (_, field) p -> (field, p))
       in
       ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_record fields}
       , env )
   | Ppat_ctor (name, arg) ->
-      let typ', args_typ = get_ctor name env in
+      let name', typ', args_typ = get_ctor name env in
+      let name = Location.mkloc name' name.loc in
       check_type ~loc env typ typ' ;
       let arg, env =
         match arg with
@@ -614,7 +617,8 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (f, es)}, env)
   | Pexp_variable name ->
-      let typ = Envi.find_name ~loc name env in
+      let path, typ = Envi.find_name ~loc name env in
+      let path = Location.mkloc path name.loc in
       let implicits, result_typ = Envi.Type.get_implicits [] typ in
       check_type ~loc env expected result_typ ;
       let implicits =
@@ -622,7 +626,7 @@ let rec get_expression env expected exp =
             (label, Envi.Type.new_implicit_var ~loc typ env) )
       in
       let e =
-        {Typedast.exp_loc= loc; exp_type= typ; exp_desc= Texp_variable name}
+        {Typedast.exp_loc= loc; exp_type= typ; exp_desc= Texp_variable path}
       in
       let e =
         if List.is_empty implicits then e
@@ -683,7 +687,7 @@ let rec get_expression env expected exp =
       (* Create a self-referencing type declaration. *)
       typ.type_desc
       <- Tctor
-           { var_ident= Longident.Lident name.txt
+           { var_ident= Path.Pident decl.tdec_ident
            ; var_params= []
            ; var_implicit_params= []
            ; var_decl= decl } ;
@@ -694,7 +698,8 @@ let rec get_expression env expected exp =
       Envi.Type.update_depths env body.exp_type ;
       ( { exp_loc= loc
         ; exp_type= body.exp_type
-        ; exp_desc= Texp_newtype (name, body) }
+        ; exp_desc= Texp_newtype (Location.mkloc decl.tdec_ident name.loc, body)
+        }
       , env )
   | Pexp_seq (e1, e2) ->
       let e1, env = get_expression env Initial_env.Type.unit e1 in
@@ -752,40 +757,46 @@ let rec get_expression env expected exp =
         match field.txt with
         | Lident _ ->
             None
-        | Ldot (path, _) -> (
+        | Ldot _ -> (
           match Envi.TypeDecl.find_of_field field env with
           | Some
-              ( _ident
+              ( fld_ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
               ) ->
               let vars, bound_vars, env =
                 Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
-              let ident = Longident.Ldot (path, Ident.name decl.tdec_ident) in
+              let ident =
+                match fld_ident with
+                | Pdot (path, _) ->
+                    Path.Pdot (path, Ident.name decl.tdec_ident)
+                | _ ->
+                    Path.Pident decl.tdec_ident
+              in
               let decl_type =
                 Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
               in
               let {fld_type; _} = List.nth_exn field_decls i in
               let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
               check_type ~loc env expected fld_type ;
-              Some (fld_type, decl_type, env)
+              Some (fld_type, decl_type, env, fld_ident)
           | _ ->
               None )
         | Lapply _ ->
             failwith "Unhandled Lapply in field name"
       in
-      let typ, decl_type, env, resolved =
+      let typ, decl_type, env, fld_ident, resolved =
         match field_info with
-        | Some (fld_type, decl_type, env) ->
-            (fld_type, decl_type, env, true)
+        | Some (fld_type, decl_type, env, fld_ident) ->
+            (fld_type, decl_type, env, Some fld_ident, true)
         | None ->
             let fld_type = expected in
             let decl_type = Envi.Type.mkvar None env in
-            (fld_type, decl_type, env, false)
+            (fld_type, decl_type, env, None, false)
       in
       let e, env = get_expression env decl_type e in
-      let typ, env =
-        if resolved then (typ, env)
+      let fld_ident, typ, env =
+        if resolved then (Option.value_exn fld_ident, typ, env)
         else
           match Envi.TypeDecl.find_unaliased_of_type ~loc e.exp_type env with
           | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) -> (
@@ -798,31 +809,31 @@ let rec get_expression env expected exp =
                       false
                   (* This case shouldn't happen! *) )
             with
-            | Some {fld_type; _} ->
+            | Some {fld_type; fld_ident; _} ->
                 let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
                 check_type ~loc env typ fld_type ;
-                (fld_type, env)
+                (Path.Pident fld_ident, fld_type, env)
             | None ->
                 raise (Error (loc, Wrong_record_field (field.txt, e.exp_type)))
             )
           | _ -> (
             match Envi.TypeDecl.find_of_field field env with
             | Some
-                ( _ident
+                ( fld_ident
                 , ( ({tdec_desc= TRecord field_decls; tdec_params; _} as decl)
                   , i ) ) ->
                 let vars, bound_vars, env =
                   Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
                 in
                 let ident =
-                  Longident.(
-                    match field.txt with
-                    | Lident _ ->
-                        Lident (Ident.name decl.tdec_ident)
-                    | Ldot (path, _) ->
-                        Ldot (path, Ident.name decl.tdec_ident)
+                  Path.(
+                    match fld_ident with
+                    | Pident _ ->
+                        Pident decl.tdec_ident
+                    | Pdot (path, _) ->
+                        Pdot (path, Ident.name decl.tdec_ident)
                     | _ ->
-                        failwith "Unhandled Lapply in field name")
+                        failwith "Unhandled Papply in field name")
                 in
                 let e_typ =
                   Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
@@ -831,11 +842,14 @@ let rec get_expression env expected exp =
                 let {fld_type; _} = List.nth_exn field_decls i in
                 let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
                 let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
-                (fld_type, env)
+                (fld_ident, fld_type, env)
             | _ ->
                 raise (Error (loc, Unbound ("record field", field))) )
       in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_field (e, field)}, env)
+      ( { exp_loc= loc
+        ; exp_type= typ
+        ; exp_desc= Texp_field (e, Location.mkloc fld_ident field.loc) }
+      , env )
   | Pexp_record ([], _) ->
       raise (Error (loc, Empty_record))
   | Pexp_record (((field, _) :: _ as fields), ext) ->
@@ -854,21 +868,21 @@ let rec get_expression env expected exp =
         | _ -> (
           match Envi.TypeDecl.find_of_field field env with
           | Some
-              ( _ident
+              ( ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
               ) ->
               let vars, bound_vars, env =
                 Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
               in
               let ident =
-                Longident.(
-                  match field.txt with
-                  | Lident _ ->
-                      Lident (Ident.name decl.tdec_ident)
-                  | Ldot (path, _) ->
-                      Ldot (path, Ident.name decl.tdec_ident)
+                Path.(
+                  match ident with
+                  | Pident _ ->
+                      Pident decl.tdec_ident
+                  | Pdot (path, _) ->
+                      Pdot (path, Ident.name decl.tdec_ident)
                   | _ ->
-                      failwith "Unhandled Lapply in field name")
+                      failwith "Unhandled Papply in field name")
               in
               let decl_type =
                 Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
@@ -882,7 +896,7 @@ let rec get_expression env expected exp =
       let fields_filled = Array.create ~len:(List.length field_decls) false in
       let fields =
         List.map fields ~f:(fun (field, e) ->
-            let i, field_typ, record_typ =
+            let path, i, field_typ, record_typ =
               get_field_of_decl typ bound_vars field_decls field !env
             in
             ( try check_type ~loc:field.loc !env record_typ typ
@@ -895,7 +909,7 @@ let rec get_expression env expected exp =
               raise (Error (field.loc, Repeated_field name)) ) ;
             fields_filled.(i) <- true ;
             env := env' ;
-            (field, e) )
+            (Location.mkloc path field.loc, e) )
       in
       ( match ext with
       | Some _ ->
@@ -911,7 +925,8 @@ let rec get_expression env expected exp =
             raise (Error (loc, Missing_fields names)) ) ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_record (fields, ext)}, !env)
   | Pexp_ctor (name, arg) ->
-      let typ, arg_typ = get_ctor name env in
+      let name', typ, arg_typ = get_ctor name env in
+      let name' = Location.mkloc name' name.loc in
       check_type ~loc env expected typ ;
       let arg, env =
         match arg with
@@ -924,7 +939,7 @@ let rec get_expression env expected exp =
               with _ -> raise (Error (loc, Argument_expected name.txt)) ) ;
             (None, env)
       in
-      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_ctor (name, arg)}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_ctor (name', arg)}, env)
   | Pexp_unifiable _ ->
       raise (Error (loc, Unifiable_expr))
   | Pexp_if (e1, e2, None) ->
@@ -989,7 +1004,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let name = map_loc ~f:(Ident.create ~mode) str in
       let env = Envi.add_name name.txt typ env in
       let p =
-        {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable str}
+        {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable name}
       in
       (p, e, env)
   | Ppat_constraint (({pat_desc= Ppat_variable str; _} as p'), typ), _ ->
@@ -1004,7 +1019,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let p' =
         { Typedast.pat_loc= p'.pat_loc
         ; pat_type= ctyp
-        ; pat_desc= Tpat_variable str }
+        ; pat_desc= Tpat_variable name }
       in
       let typ =
         Untype_ast.type_expr ~loc (Envi.Type.normalise_constr_names env ctyp)
@@ -1024,7 +1039,9 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
 let type_extension ~loc variant ctors env =
   let mode = Envi.current_mode env in
   let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
-  let ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl) =
+  let ( path
+      , ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl)
+      ) =
     match Envi.raw_find_type_declaration ~mode var_ident env with
     | open_decl ->
         open_decl
@@ -1046,7 +1063,7 @@ let type_extension ~loc variant ctors env =
     ; tdec_params= var_params
     ; tdec_implicit_params=
         List.map ~f:(Untype_ast.type_expr ~loc) tdec_implicit_params
-    ; tdec_desc= TExtend (var_ident, decl, ctors)
+    ; tdec_desc= TExtend (Location.mkloc path var_ident.loc, decl, ctors)
     ; tdec_loc= loc }
   in
   let decl, env = Typet.TypeDecl.import decl env in
@@ -1058,7 +1075,7 @@ let type_extension ~loc variant ctors env =
         failwith "Expected a TExtend."
   in
   let variant =
-    { var_ident= var_ident.txt
+    { var_ident= Pident tdec_ident
     ; var_implicit_params= decl.tdec_implicit_params
     ; var_decl= decl
     ; var_params= decl.tdec_params }
@@ -1074,16 +1091,16 @@ let rec check_signature_item env item =
       let typ', env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ' ;
-      let name' = map_loc ~f:(Ident.create ~mode) name in
-      let env = add_polymorphised name'.txt typ' env in
+      let name = map_loc ~f:(Ident.create ~mode) name in
+      let env = add_polymorphised name.txt typ' env in
       (env, {Typedast.sig_desc= Tsig_value (name, typ); sig_loc= loc})
   | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ', env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ' ;
-      let name' = map_loc ~f:(Ident.create ~mode) name in
-      let env = add_polymorphised name'.txt typ' env in
+      let name = map_loc ~f:(Ident.create ~mode) name in
+      let env = add_polymorphised name.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ' env in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
   | Psig_type decl ->
@@ -1113,9 +1130,11 @@ let rec check_signature_item env item =
       let env = Envi.add_module_type name.txt m_env env in
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
   | Psig_open name ->
-      let m = Envi.find_module ~loc name env in
+      let path, m = Envi.find_module ~loc name env in
       let env = Envi.open_namespace_scope m env in
-      (env, {Typedast.sig_desc= Tsig_open name; sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_open (Location.mkloc path name.loc)
+        ; sig_loc= loc } )
   | Psig_typeext (variant, ctors) ->
       let env, _variant, _ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.sig_desc= Tsig_typeext (variant, ctors); sig_loc= loc})
@@ -1152,14 +1171,22 @@ and check_module_sig env path msig =
       , Envi.Scope.Immediate m
       , env )
   | Pmty_name lid ->
-      let m =
+      let path, m =
         match Envi.find_module_deferred ~loc lid env with
         | Some m ->
             m
         | None ->
-            Envi.Scope.Deferred lid.txt
+            (* TODO: This is a hack. We should set up the environment for
+               interface files before typechecking them, so that all of the
+               names are available and we can find those that aren't.
+            *)
+            ( Path.Pident (Ident.create ~mode:Checked "NOT_FOUND")
+            , Envi.Scope.Deferred lid.txt )
       in
-      ({Typedast.msig_desc= Tmty_name lid; msig_loc= loc}, m, env)
+      ( { Typedast.msig_desc= Tmty_name (Location.mkloc path lid.loc)
+        ; msig_loc= loc }
+      , m
+      , env )
   | Pmty_abstract ->
       let env = Envi.open_absolute_module (Some path) env in
       let m, env = Envi.pop_module ~loc env in
@@ -1190,7 +1217,7 @@ and check_module_sig env path msig =
         | Envi.Scope.Immediate m ->
             (m, msig)
         | Envi.Scope.Deferred path ->
-            (Envi.find_module ~loc (Location.mkloc path loc) env, msig)
+            (snd (Envi.find_module ~loc (Location.mkloc path loc) env), msig)
       in
       (* Check that f_mty builds the functor as expected. *)
       let _, msig = ftor (Lapply (path, Lident f_name.txt)) f_mty in
@@ -1216,7 +1243,24 @@ let rec check_statement env stmt =
   | Pstmt_instance (name, e) ->
       let env = Envi.open_expr_scope env in
       let p = {pat_desc= Ppat_variable name; pat_loc= name.loc} in
-      let _, e, env = check_binding ~toplevel:true env p e in
+      let p, e, env = check_binding ~toplevel:true env p e in
+      let name =
+        let exception Ret of Ident.t Location.loc in
+        let iter =
+          { Typedast_iter.default_iterator with
+            pattern_desc=
+              (fun iter p ->
+                match p with
+                | Tpat_variable name ->
+                    raise (Ret name)
+                | _ ->
+                    Typedast_iter.default_iterator.pattern_desc iter p ) }
+        in
+        try
+          iter.pattern iter p ;
+          assert false
+        with Ret name -> name
+      in
       let scope, env = Envi.pop_expr_scope env in
       let env = Envi.join_expr_scope env scope in
       let env = Envi.add_implicit_instance name.txt e.exp_type env in
@@ -1258,9 +1302,10 @@ let rec check_statement env stmt =
       ( env
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
   | Pstmt_open name ->
-      let m = Envi.find_module ~loc name env in
+      let path, m = Envi.find_module ~loc name env in
       ( Envi.open_namespace_scope m env
-      , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_open name} )
+      , { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
   | Pstmt_typeext (variant, ctors) ->
       let env, _variant, _ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_typeext (variant, ctors)})
@@ -1367,7 +1412,8 @@ and check_module_expr env m =
       let path = Envi.current_path env in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
-      let m' = Envi.find_module ~loc name env in
+      let name', m' = Envi.find_module ~loc name env in
+      let name = Location.mkloc name' name.loc in
       let env = Envi.push_scope {m' with path} env in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
   | Pmod_functor (f_name, f, m) ->

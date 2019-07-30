@@ -30,8 +30,8 @@ type mapper =
   ; location: mapper -> Location.t -> Location.t
   ; longident: mapper -> Longident.t -> Longident.t
   ; ident: mapper -> Ident.t -> Ident.t
-  ; type0_decl: mapper -> Type0.type_decl -> Type0.type_decl
-  ; type0_expr: mapper -> Type0.type_expr -> Type0.type_expr }
+  ; path: mapper -> Path.t -> Path.t
+  ; type0: Type0_map.mapper }
 
 let lid mapper {Location.txt; loc} =
   {Location.txt= mapper.longident mapper txt; loc= mapper.location mapper loc}
@@ -41,6 +41,9 @@ let str mapper ({Location.txt; loc} : str) =
 
 let ident mapper ({Location.txt; loc} : Ident.t Location.loc) =
   {Location.txt= mapper.ident mapper txt; loc= mapper.location mapper loc}
+
+let path mapper ({Location.txt; loc} : Path.t Location.loc) =
+  {Location.txt= mapper.path mapper txt; loc= mapper.location mapper loc}
 
 let type_expr mapper Parsetypes.{type_desc; type_loc} =
   let type_loc = mapper.location mapper type_loc in
@@ -114,8 +117,8 @@ let type_decl_desc mapper = function
       TOpen
   | TExtend (name, decl, ctors) ->
       TExtend
-        ( lid mapper name
-        , mapper.type0_decl mapper decl
+        ( path mapper name
+        , mapper.type0.type_decl mapper.type0 decl
         , List.map ~f:(mapper.ctor_decl mapper) ctors )
   | TForward i ->
       TForward i
@@ -125,13 +128,13 @@ let literal (_iter : mapper) (l : literal) = l
 let pattern mapper {pat_desc; pat_loc; pat_type} =
   { pat_loc= mapper.location mapper pat_loc
   ; pat_desc= mapper.pattern_desc mapper pat_desc
-  ; pat_type= mapper.type0_expr mapper pat_type }
+  ; pat_type= mapper.type0.type_expr mapper.type0 pat_type }
 
 let pattern_desc mapper = function
   | Tpat_any ->
       Tpat_any
   | Tpat_variable name ->
-      Tpat_variable (str mapper name)
+      Tpat_variable (ident mapper name)
   | Tpat_constraint (pat, typ) ->
       Tpat_constraint (mapper.pattern mapper pat, mapper.type_expr mapper typ)
   | Tpat_tuple pats ->
@@ -143,14 +146,14 @@ let pattern_desc mapper = function
   | Tpat_record fields ->
       Tpat_record
         (List.map fields ~f:(fun (name, pat) ->
-             (lid mapper name, mapper.pattern mapper pat) ))
+             (path mapper name, mapper.pattern mapper pat) ))
   | Tpat_ctor (name, arg) ->
-      Tpat_ctor (lid mapper name, Option.map ~f:(mapper.pattern mapper) arg)
+      Tpat_ctor (path mapper name, Option.map ~f:(mapper.pattern mapper) arg)
 
 let expression mapper {exp_desc; exp_loc; exp_type} =
   { exp_loc= mapper.location mapper exp_loc
   ; exp_desc= mapper.expression_desc mapper exp_desc
-  ; exp_type= mapper.type0_expr mapper exp_type }
+  ; exp_type= mapper.type0.type_expr mapper.type0 exp_type }
 
 let expression_desc mapper = function
   | Texp_apply (e, args) ->
@@ -159,14 +162,14 @@ let expression_desc mapper = function
         , List.map args ~f:(fun (label, e) ->
               (label, mapper.expression mapper e) ) )
   | Texp_variable name ->
-      Texp_variable (lid mapper name)
+      Texp_variable (path mapper name)
   | Texp_literal l ->
       Texp_literal (mapper.literal mapper l)
   | Texp_fun (label, p, e, explicit) ->
       Texp_fun
         (label, mapper.pattern mapper p, mapper.expression mapper e, explicit)
   | Texp_newtype (name, e) ->
-      Texp_newtype (str mapper name, mapper.expression mapper e)
+      Texp_newtype (ident mapper name, mapper.expression mapper e)
   | Texp_seq (e1, e2) ->
       Texp_seq (mapper.expression mapper e1, mapper.expression mapper e2)
   | Texp_let (p, e1, e2) ->
@@ -184,18 +187,18 @@ let expression_desc mapper = function
         , List.map cases ~f:(fun (p, e) ->
               (mapper.pattern mapper p, mapper.expression mapper e) ) )
   | Texp_field (e, name) ->
-      Texp_field (mapper.expression mapper e, lid mapper name)
+      Texp_field (mapper.expression mapper e, path mapper name)
   | Texp_record (bindings, default) ->
       Texp_record
         ( List.map bindings ~f:(fun (name, e) ->
-              (lid mapper name, mapper.expression mapper e) )
+              (path mapper name, mapper.expression mapper e) )
         , Option.map ~f:(mapper.expression mapper) default )
   | Texp_ctor (name, arg) ->
-      Texp_ctor (lid mapper name, Option.map ~f:(mapper.expression mapper) arg)
+      Texp_ctor (path mapper name, Option.map ~f:(mapper.expression mapper) arg)
   | Texp_unifiable {expression; name; id} ->
       Texp_unifiable
         { id
-        ; name= str mapper name
+        ; name= ident mapper name
         ; expression= Option.map ~f:(mapper.expression mapper) expression }
   | Texp_if (e1, e2, e3) ->
       Texp_if
@@ -211,9 +214,9 @@ let signature_item mapper {sig_desc; sig_loc} =
 
 let signature_desc mapper = function
   | Tsig_value (name, typ) ->
-      Tsig_value (str mapper name, mapper.type_expr mapper typ)
+      Tsig_value (ident mapper name, mapper.type_expr mapper typ)
   | Tsig_instance (name, typ) ->
-      Tsig_instance (str mapper name, mapper.type_expr mapper typ)
+      Tsig_instance (ident mapper name, mapper.type_expr mapper typ)
   | Tsig_type decl ->
       Tsig_type (mapper.type_decl mapper decl)
   | Tsig_module (name, msig) ->
@@ -221,7 +224,7 @@ let signature_desc mapper = function
   | Tsig_modtype (name, msig) ->
       Tsig_modtype (ident mapper name, mapper.module_sig mapper msig)
   | Tsig_open name ->
-      Tsig_open (lid mapper name)
+      Tsig_open (path mapper name)
   | Tsig_typeext (typ, ctors) ->
       Tsig_typeext
         (mapper.variant mapper typ, List.map ~f:(mapper.ctor_decl mapper) ctors)
@@ -238,7 +241,7 @@ let module_sig_desc mapper = function
   | Tmty_sig sigs ->
       Tmty_sig (mapper.signature mapper sigs)
   | Tmty_name name ->
-      Tmty_name (lid mapper name)
+      Tmty_name (path mapper name)
   | Tmty_abstract ->
       Tmty_abstract
   | Tmty_functor (name, fsig, msig) ->
@@ -257,7 +260,7 @@ let statement_desc mapper = function
   | Tstmt_value (p, e) ->
       Tstmt_value (mapper.pattern mapper p, mapper.expression mapper e)
   | Tstmt_instance (name, e) ->
-      Tstmt_instance (str mapper name, mapper.expression mapper e)
+      Tstmt_instance (ident mapper name, mapper.expression mapper e)
   | Tstmt_type decl ->
       Tstmt_type (mapper.type_decl mapper decl)
   | Tstmt_module (name, me) ->
@@ -265,7 +268,7 @@ let statement_desc mapper = function
   | Tstmt_modtype (name, mty) ->
       Tstmt_modtype (ident mapper name, mapper.module_sig mapper mty)
   | Tstmt_open name ->
-      Tstmt_open (lid mapper name)
+      Tstmt_open (path mapper name)
   | Tstmt_typeext (typ, ctors) ->
       Tstmt_typeext
         (mapper.variant mapper typ, List.map ~f:(mapper.ctor_decl mapper) ctors)
@@ -287,7 +290,7 @@ let module_desc mapper = function
   | Tmod_struct stmts ->
       Tmod_struct (mapper.statements mapper stmts)
   | Tmod_name name ->
-      Tmod_name (lid mapper name)
+      Tmod_name (path mapper name)
   | Tmod_functor (name, fsig, me) ->
       Tmod_functor
         ( str mapper name
@@ -304,17 +307,15 @@ let longident mapper = function
   | Lapply (l1, l2) ->
       Lapply (mapper.longident mapper l1, mapper.longident mapper l2)
 
+let path mapper = function
+  | Path.Pident ident ->
+      Path.Pident (mapper.ident mapper ident)
+  | Path.Pdot (path, str) ->
+      Path.Pdot (mapper.path mapper path, str)
+  | Path.Papply (path1, path2) ->
+      Path.Papply (mapper.path mapper path1, mapper.path mapper path2)
+
 let ident (_mapper : mapper) (ident : Ident.t) = ident
-
-(** Stub. This isn't part of the parsetypes, so we don't do anything by
-    default.
-*)
-let type0_decl (_iter : mapper) (decl : Type0.type_decl) = decl
-
-(** Stub. This isn't part of the parsetypes, so we don't do anything by
-    default.
-*)
-let type0_expr (_iter : mapper) (typ : Type0.type_expr) = typ
 
 let default_iterator =
   { type_expr
@@ -343,5 +344,5 @@ let default_iterator =
   ; location
   ; longident
   ; ident
-  ; type0_decl
-  ; type0_expr }
+  ; path
+  ; type0= Type0_map.default_mapper }

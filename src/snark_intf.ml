@@ -857,6 +857,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     val equal : t -> t -> (Boolean.var, _) Checked.t
 
+    val equal_expect_true : t -> t -> (Boolean.var, _) Checked.t
+    (** Equivalent to [equal], but avoids computing field elements to represent
+        chunks of the list when not necessary.
+
+        NOTE: This will do extra (wasted) work before falling back to the
+              behaviour of [equal] when the values are not equal.
+    *)
+
     val lt_value :
          Boolean.var Bitstring_lib.Bitstring.Msb_first.t
       -> bool Bitstring_lib.Bitstring.Msb_first.t
@@ -1214,6 +1222,19 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** Generate a handler using the {!module:As_prover} 'superpowers', and use
       it for {!val:request_witness}, {!val:perform}, {!val:request} or
       {!val:exists} calls in the wrapped checked computation.
+  *)
+
+  val if_ :
+       Boolean.var
+    -> typ:('var, _) Typ.t
+    -> then_:'var
+    -> else_:'var
+    -> ('var, _) Checked.t
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+      otherwise.
+
+      WARNING: The [Typ.t]'s [read] field must be able to construct values from
+      a series of field zeros.
   *)
 
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
@@ -1852,6 +1873,14 @@ module type Run_basic = sig
 
     val equal : t -> t -> Boolean.var
 
+    val equal_expect_true : t -> t -> Boolean.var
+    (** Equivalent to [equal], but avoids computing field elements to represent
+        chunks of the list when not necessary.
+
+        NOTE: This will do extra (wasted) work before falling back to the
+              behaviour of [equal] when the values are not equal.
+    *)
+
     val lt_value :
          Boolean.var Bitstring_lib.Bitstring.Msb_first.t
       -> bool Bitstring_lib.Bitstring.Msb_first.t
@@ -1985,6 +2014,15 @@ module type Run_basic = sig
   val handle : (unit -> 'a) -> Handler.t -> 'a
 
   val handle_as_prover : (unit -> 'a) -> (unit -> Handler.t As_prover.t) -> 'a
+
+  val if_ :
+    Boolean.var -> typ:('var, _) Typ.t -> then_:'var -> else_:'var -> 'var
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+      otherwise.
+
+      WARNING: The [Typ.t]'s [read] field must be able to construct values from
+      a series of field zeros.
+  *)
 
   val with_label : string -> (unit -> 'a) -> 'a
 
