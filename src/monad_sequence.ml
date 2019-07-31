@@ -190,6 +190,14 @@ module Array
 
   let all_unit = iter ~f:(fun x -> x)
 
+  (* The following functions need to evaluate on every element, since
+     * we can't shortcut in the snark -- every constraint is either always
+       present or always absent -- so we need to evaluate [f] on every element
+     * [Bool.any]/[Bool.all] operate by calculating the sum of the array,
+       which requires an R1CS variable representing each element to be
+       available.
+  *)
+
   let existsi t ~f = mapi t ~f >>= Bool.any
 
   let exists t ~f = map t ~f >>= Bool.any
