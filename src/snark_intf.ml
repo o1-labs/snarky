@@ -1242,6 +1242,19 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       {!val:exists} calls in the wrapped checked computation.
   *)
 
+  val if_ :
+       Boolean.var
+    -> typ:('var, _) Typ.t
+    -> then_:'var
+    -> else_:'var
+    -> ('var, _) Checked.t
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+      otherwise.
+
+      WARNING: The [Typ.t]'s [read] field must be able to construct values from
+      a series of field zeros.
+  *)
+
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
   (** Add a label to all of the constraints added in the checked computation.
       If a constraint is checked and isn't satisfied, this label will be shown
@@ -2031,6 +2044,15 @@ module type Run_basic = sig
   val handle : (unit -> 'a) -> Handler.t -> 'a
 
   val handle_as_prover : (unit -> 'a) -> (unit -> Handler.t As_prover.t) -> 'a
+
+  val if_ :
+    Boolean.var -> typ:('var, _) Typ.t -> then_:'var -> else_:'var -> 'var
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+      otherwise.
+
+      WARNING: The [Typ.t]'s [read] field must be able to construct values from
+      a series of field zeros.
+  *)
 
   val with_label : string -> (unit -> 'a) -> 'a
 

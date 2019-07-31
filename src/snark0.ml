@@ -1,6 +1,7 @@
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked
+module Typ_monads0 = Typ_monads
 open Core_kernel
 
 let () = Camlsnark_c.linkme
@@ -323,6 +324,16 @@ struct
       let open Let_syntax in
       let%map _ = inv v in
       ()
+
+    (** Read the [Cvar.t]s that represent the value [x].
+
+        WARNING: This assumes that reading zero will not cause an error within
+        the [read] function.
+    *)
+    let unsafe_read_cvars {Typ.read; _} x =
+      Typ_monads0.Read.run
+        (Typ_monads0.Read.make_cvars (read x))
+        (fun _ -> Field.zero)
 
     module Boolean = struct
       open Boolean.Unsafe
@@ -1347,6 +1358,31 @@ struct
 
   include Checked
 
+  let%snarkydef_ if_ (b : Boolean.var) ~(typ : ('var, _) Typ.t) ~(then_ : 'var)
+      ~(else_ : 'var) =
+    let then_ = unsafe_read_cvars typ then_ in
+    let else_ = unsafe_read_cvars typ else_ in
+    let%map res =
+      all
+        (Core_kernel.List.map2_exn then_ else_ ~f:(fun then_ else_ ->
+             if_ b ~then_ ~else_ ))
+    in
+    let res = ref res in
+    let ret =
+      (* Run the typ's allocator, providing the values from the Cvar.t list
+         [res].
+      *)
+      Typ_monads0.Alloc.run typ.alloc (fun () ->
+          match !res with
+          | hd :: tl ->
+              res := tl ;
+              hd
+          | _ ->
+              assert false )
+    in
+    assert (!res = []) ;
+    ret
+
   module Proof_system = struct
     open Run.Proof_system
 
@@ -2047,6 +2083,8 @@ module Run = struct
     let handle_as_prover x h =
       let h = h () in
       handle x h
+
+    let if_ b ~typ ~then_ ~else_ = run (if_ b ~typ ~then_ ~else_)
 
     let with_label lbl x =
       let {stack; _} = !state in
