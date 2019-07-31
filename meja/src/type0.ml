@@ -16,23 +16,23 @@ and type_desc =
 [@@deriving sexp]
 
 and variant =
-  { var_ident: Longident.t
+  { var_ident: Path.t
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list
   ; var_decl: type_decl }
 [@@deriving sexp]
 
-and field_decl = {fld_ident: string; fld_type: type_expr} [@@deriving sexp]
+and field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
 
 and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 [@@deriving sexp]
 
 and ctor_decl =
-  {ctor_ident: string; ctor_args: ctor_args; ctor_ret: type_expr option}
+  {ctor_ident: Ident.t; ctor_args: ctor_args; ctor_ret: type_expr option}
 [@@deriving sexp]
 
 and type_decl =
-  { tdec_ident: string
+  { tdec_ident: Ident.t
   ; tdec_params: type_expr list
   ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
@@ -46,7 +46,7 @@ and type_decl_desc =
   | TRecord of field_decl list
   | TVariant of ctor_decl list
   | TOpen
-  | TExtend of Longident.t * type_decl * ctor_decl list
+  | TExtend of Path.t * type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
   | TForward of int option ref
       (** Forward declaration for types loaded from cmi files. *)
@@ -86,7 +86,7 @@ let rec typ_debug_print fmt typ =
       print "%a{%a} -> %a" print_label label typ_debug_print typ1
         typ_debug_print typ2
   | Tctor {var_ident= name; var_params= params; _} ->
-      print "%a (%a)" Longident.pp name (print_list typ_debug_print) params
+      print "%a (%a)" Path.pp name (print_list typ_debug_print) params
   | Ttuple typs ->
       print "(%a)" (print_list typ_debug_print) typs ) ;
   print " @%i)" typ.type_depth

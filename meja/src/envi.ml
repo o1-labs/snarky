@@ -1,8 +1,10 @@
+open Compiler_internals
 open Core_kernel
 open Ast_types
 open Type0
 open Ast_build.Loc
 open Longident
+module IdTbl = Ident.Table
 
 type error =
   | No_open_scopes
@@ -12,14 +14,14 @@ type error =
   | Unbound_type of Longident.t
   | Unbound_module of Longident.t
   | Unbound_value of Longident.t
-  | Wrong_number_args of Longident.t * int * int
+  | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Lident_unhandled of string * Longident.t
   | Constraints_not_satisfied of type_expr * type_decl
   | No_unifiable_implicit
   | Multiple_instances of type_expr
   | Recursive_load of string
-  | Predeclared_types of string list
+  | Predeclared_types of Ident.t list
   | Functor_in_module_sig
   | Not_a_functor
 
@@ -35,8 +37,7 @@ module TypeEnvi = struct
     ; implicit_id: int
     ; instances: (int * type_expr) list
     ; predeclared_types:
-        (int (* id *) * int option ref (* num. args *) * Location.t)
-        String.Map.t }
+        (int (* id *) * int option ref (* num. args *) * Location.t) IdTbl.t }
 
   let empty =
     { type_id= 1
@@ -46,7 +47,7 @@ module TypeEnvi = struct
     ; implicit_id= 1
     ; implicit_vars= []
     ; instances= []
-    ; predeclared_types= String.Map.empty }
+    ; predeclared_types= IdTbl.empty }
 
   let instance env (typ : type_expr) =
     Map.find env.variable_instances typ.type_id
@@ -78,7 +79,7 @@ type 'a or_deferred =
 
 type 'a resolve_env =
   { mutable type_env: TypeEnvi.t
-  ; mutable external_modules: 'a or_deferred String.Map.t
+  ; mutable external_modules: 'a or_deferred IdTbl.t
   ; mutable predeclare_types: bool }
 
 module Scope = struct
@@ -91,20 +92,21 @@ module Scope = struct
     | Continue
     | Functor of (Longident.t -> 't or_path -> 't)
 
-  type paths = {type_paths: Longident.t Int.Map.t}
+  type paths = {type_paths: Path.t Int.Map.t}
 
   type t =
     { kind: t kind
     ; path: Longident.t option
-    ; names: type_expr String.Map.t
+    ; names: type_expr IdTbl.t
     ; type_variables: type_expr String.Map.t
-    ; type_decls: type_decl String.Map.t
-    ; fields: (type_decl * int) String.Map.t
-    ; ctors: (type_decl * int) String.Map.t
-    ; modules: t or_path String.Map.t
-    ; module_types: t or_path String.Map.t
-    ; instances: Longident.t Int.Map.t
-    ; paths: paths }
+    ; type_decls: type_decl IdTbl.t
+    ; fields: (type_decl * int) IdTbl.t
+    ; ctors: (type_decl * int) IdTbl.t
+    ; modules: t or_path IdTbl.t
+    ; module_types: t or_path IdTbl.t
+    ; instances: Path.t Int.Map.t
+    ; paths: paths
+    ; mode: mode }
 
   let load_module :
       (loc:Location.t -> name:string -> t resolve_env -> string -> t) ref =
@@ -113,25 +115,28 @@ module Scope = struct
 
   let empty_paths = {type_paths= Int.Map.empty}
 
-  let empty path kind =
+  let empty ~mode path kind =
     { kind
     ; path
-    ; names= String.Map.empty
+    ; names= IdTbl.empty
     ; type_variables= String.Map.empty
-    ; type_decls= String.Map.empty
-    ; fields= String.Map.empty
-    ; ctors= String.Map.empty
-    ; modules= String.Map.empty
-    ; module_types= Map.empty (module String)
+    ; type_decls= IdTbl.empty
+    ; fields= IdTbl.empty
+    ; ctors= IdTbl.empty
+    ; modules= IdTbl.empty
+    ; module_types= IdTbl.empty
     ; instances= Int.Map.empty
-    ; paths= empty_paths }
+    ; paths= empty_paths
+    ; mode }
 
   let set_path path env = {env with path= Some path}
 
   let add_name key typ scope =
-    {scope with names= Map.set scope.names ~key ~data:typ}
+    {scope with names= IdTbl.add scope.names ~key ~data:typ}
 
-  let get_name name {names; _} = Map.find names name
+  let get_name name {names; _} = IdTbl.find name names
+
+  let find_name name {names; _} = IdTbl.find_name name names
 
   let add_type_variable key typ scope =
     {scope with type_variables= Map.set scope.type_variables ~key ~data:typ}
@@ -140,17 +145,21 @@ module Scope = struct
 
   let add_field decl index scope field_decl =
     { scope with
-      fields= Map.set scope.fields ~key:field_decl.fld_ident ~data:(decl, index)
-    }
+      fields=
+        IdTbl.add scope.fields ~key:field_decl.fld_ident ~data:(decl, index) }
 
-  let get_field name scope = Map.find scope.fields name
+  let get_field ident scope = IdTbl.find ident scope.fields
+
+  let find_field name scope = IdTbl.find_name name scope.fields
 
   let add_ctor decl index scope ctor_decl =
     { scope with
-      ctors= Map.set scope.ctors ~key:ctor_decl.ctor_ident ~data:(decl, index)
+      ctors= IdTbl.add scope.ctors ~key:ctor_decl.ctor_ident ~data:(decl, index)
     }
 
-  let get_ctor name scope = Map.find scope.ctors name
+  let get_ctor name scope = IdTbl.find name scope.ctors
+
+  let find_ctor name scope = IdTbl.find_name name scope.ctors
 
   let add_preferred_type_name path decl_id {type_paths} =
     {type_paths= Map.set type_paths ~key:decl_id ~data:path}
@@ -160,12 +169,14 @@ module Scope = struct
 
   let add_type_declaration decl scope =
     { scope with
-      type_decls= Map.set scope.type_decls ~key:decl.tdec_ident ~data:decl
+      type_decls= IdTbl.add scope.type_decls ~key:decl.tdec_ident ~data:decl
     ; paths=
-        add_preferred_type_name (Lident decl.tdec_ident) decl.tdec_id
+        add_preferred_type_name (Pident decl.tdec_ident) decl.tdec_id
           scope.paths }
 
-  let get_type_declaration name scope = Map.find scope.type_decls name
+  let get_type_declaration name scope = IdTbl.find name scope.type_decls
+
+  let find_type_declaration name scope = IdTbl.find_name name scope.type_decls
 
   let register_type_declaration decl scope =
     let scope' = scope in
@@ -193,7 +204,8 @@ module Scope = struct
       ; modules= modules1
       ; module_types= module_types1
       ; instances= instances1
-      ; paths= _ }
+      ; paths= _
+      ; mode= _ }
       { kind= _
       ; path= _
       ; names= names2
@@ -204,19 +216,22 @@ module Scope = struct
       ; modules= modules2
       ; module_types= module_types2
       ; instances= instances2
-      ; paths= _ } =
+      ; paths= _
+      ; mode= _ } =
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
     in
-    let acc = Map.fold2 type_decls1 type_decls2 ~init:acc ~f:type_decls in
-    let acc = Map.fold2 ctors1 ctors2 ~init:acc ~f:ctors in
-    let acc = Map.fold2 fields1 fields2 ~init:acc ~f:fields in
-    let acc = Map.fold2 modules1 modules2 ~init:acc ~f:modules in
     let acc =
-      Map.fold2 module_types1 module_types2 ~init:acc ~f:module_types
+      IdTbl.fold2_names type_decls1 type_decls2 ~init:acc ~f:type_decls
+    in
+    let acc = IdTbl.fold2_names ctors1 ctors2 ~init:acc ~f:ctors in
+    let acc = IdTbl.fold2_names fields1 fields2 ~init:acc ~f:fields in
+    let acc = IdTbl.fold2_names modules1 modules2 ~init:acc ~f:modules in
+    let acc =
+      IdTbl.fold2_names module_types1 module_types2 ~init:acc ~f:module_types
     in
     let acc = Map.fold2 instances1 instances2 ~init:acc ~f:instances in
-    let acc = Map.fold2 names1 names2 ~init:acc ~f:names in
+    let acc = IdTbl.fold2_names names1 names2 ~init:acc ~f:names in
     acc
 
   (* Extend the paths in the first argument with those in the second,
@@ -245,7 +260,8 @@ module Scope = struct
       ; modules= modules1
       ; module_types= module_types1
       ; instances= instances1
-      ; paths= paths1 }
+      ; paths= paths1
+      ; mode= mode1 }
       { kind= _
       ; path= _
       ; names= names2
@@ -256,38 +272,46 @@ module Scope = struct
       ; modules= modules2
       ; module_types= module_types2
       ; instances= instances2
-      ; paths= paths2 } =
+      ; paths= paths2
+      ; mode= mode2 } =
+    assert (mode1 = mode2) ;
     { kind
     ; path
-    ; names= Map.merge_skewed names1 names2 ~combine:(fun ~key:_ _ v -> v)
+    ; names=
+        IdTbl.merge_skewed_names names1 names2 ~combine:(fun ~key:_ _ v -> v)
     ; type_variables=
         Map.merge_skewed type_variables1 type_variables2
           ~combine:(fun ~key:_ _ v -> v)
     ; type_decls=
-        Map.merge_skewed type_decls1 type_decls2 ~combine:(fun ~key _ _ ->
+        IdTbl.merge_skewed_names type_decls1 type_decls2
+          ~combine:(fun ~key _ _ ->
             raise (Error (loc, Multiple_definition ("type", key))) )
-    ; fields= Map.merge_skewed fields1 fields2 ~combine:(fun ~key:_ _ v -> v)
-    ; ctors= Map.merge_skewed ctors1 ctors2 ~combine:(fun ~key:_ _ v -> v)
+    ; fields=
+        IdTbl.merge_skewed_names fields1 fields2 ~combine:(fun ~key:_ _ v -> v)
+    ; ctors=
+        IdTbl.merge_skewed_names ctors1 ctors2 ~combine:(fun ~key:_ _ v -> v)
     ; modules=
-        Map.merge_skewed modules1 modules2 ~combine:(fun ~key _ _ ->
+        IdTbl.merge_skewed_names modules1 modules2 ~combine:(fun ~key _ _ ->
             raise (Error (loc, Multiple_definition ("module", key))) )
     ; module_types=
-        Map.merge_skewed module_types1 module_types2 ~combine:(fun ~key _ _ ->
+        IdTbl.merge_skewed_names module_types1 module_types2
+          ~combine:(fun ~key _ _ ->
             raise (Error (loc, Multiple_definition ("module type", key))) )
     ; instances=
         Map.merge_skewed instances1 instances2 ~combine:(fun ~key:_ _ v -> v)
-    ; paths= join_paths paths1 paths2 }
+    ; paths= join_paths paths1 paths2
+    ; mode= mode1 }
 
   let extend_paths name {type_paths} =
-    {type_paths= Map.map ~f:(add_outer_module name) type_paths}
+    {type_paths= Map.map ~f:(Path.add_outer_module name) type_paths}
 
   let add_module name m scope =
-    {scope with modules= Map.set scope.modules ~key:name ~data:m}
+    {scope with modules= IdTbl.add scope.modules ~key:name ~data:m}
 
   let add_module_type name m scope =
-    {scope with module_types= Map.set scope.module_types ~key:name ~data:m}
+    {scope with module_types= IdTbl.add scope.module_types ~key:name ~data:m}
 
-  let get_module_type name scope = Map.find scope.module_types name
+  let get_module_type name scope = IdTbl.find_name name scope.module_types
 
   let rec outer_mod_name ~loc lid =
     let outer_mod_name = outer_mod_name ~loc in
@@ -309,17 +333,18 @@ module Scope = struct
           raise (Error (loc, Unbound_module lid)) )
 
   let rec find_module_ ~loc ~scopes resolve_env lid scope =
+    let open Option.Let_syntax in
     match lid with
     | Lident name ->
-        get_module ~loc ~scopes resolve_env name scope
+        let%map ident, m = get_module ~loc ~scopes resolve_env name scope in
+        (Path.Pident ident, m)
     | Ldot (path, name) ->
-        Option.bind
-          (find_module_ ~loc ~scopes resolve_env path scope)
-          ~f:(get_module ~loc ~scopes resolve_env name)
+        let%bind path, m = find_module_ ~loc ~scopes resolve_env path scope in
+        let%map ident, m = get_module ~loc ~scopes resolve_env name m in
+        (Path.Pdot (path, Ident.name ident), m)
     | Lapply (fpath, path) ->
-        Option.map
-          (find_module_ ~loc ~scopes resolve_env fpath scope)
-          ~f:(apply_functor ~loc ~scopes resolve_env fpath path)
+        let%map fpath, m = find_module_ ~loc ~scopes resolve_env fpath scope in
+        apply_functor ~loc ~scopes resolve_env fpath path m
 
   and apply_functor ~loc ~scopes resolve_env fpath lid scope =
     let f =
@@ -329,42 +354,49 @@ module Scope = struct
       | _ ->
           raise (Error (loc, Not_a_functor))
     in
-    let m = find_module ~loc lid resolve_env scopes in
-    f fpath (Immediate m)
+    let path, m = find_module ~loc lid resolve_env scopes in
+    (* HACK *)
+    let flid = Untype_ast.longident_of_path fpath in
+    (Path.Papply (fpath, path), f flid (Immediate m))
 
   and get_module ~loc ~scopes resolve_env name scope =
-    match Map.find scope.modules name with
-    | Some (Immediate m) ->
-        Some m
-    | Some (Deferred lid) ->
-        get_global_module ~loc ~scopes resolve_env lid
+    match IdTbl.find_name name scope.modules with
+    | Some (ident, Immediate m) ->
+        Some (ident, m)
+    | Some (ident, Deferred lid) ->
+        Option.map (get_global_module ~loc ~scopes resolve_env lid)
+          ~f:(fun (_ident, m) -> (ident, m))
     | None ->
         None
 
   and get_global_module ~loc ~scopes resolve_env lid =
     let name, lid = outer_mod_name ~loc lid in
     let m =
-      match Map.find resolve_env.external_modules name with
-      | Some (Immediate m) ->
-          Some m
-      | Some (Deferred filename) ->
+      match IdTbl.find_name name resolve_env.external_modules with
+      | Some (name, Immediate m) ->
+          Some (name, m)
+      | Some (name, Deferred filename) ->
           resolve_env.external_modules
-          <- Map.set resolve_env.external_modules ~key:name
+          <- IdTbl.add resolve_env.external_modules ~key:name
                ~data:(In_flight filename) ;
-          let m = !load_module ~loc ~name resolve_env filename in
+          let m =
+            !load_module ~loc ~name:(Ident.name name) resolve_env filename
+          in
           resolve_env.external_modules
-          <- Map.set resolve_env.external_modules ~key:name ~data:(Immediate m) ;
-          Some m
-      | Some (In_flight filename) ->
+          <- IdTbl.add resolve_env.external_modules ~key:name
+               ~data:(Immediate m : _ or_deferred) ;
+          Some (name, m)
+      | Some (_name, In_flight filename) ->
           raise (Error (loc, Recursive_load filename))
       | None ->
           None
     in
     match (m, lid) with
-    | Some m, Some lid ->
-        find_module_ ~loc ~scopes resolve_env lid m
-    | Some m, None ->
-        Some m
+    | Some (ident, m), Some lid ->
+        Option.map (find_module_ ~loc ~scopes resolve_env lid m)
+          ~f:(fun (path, m) -> (Path.add_outer_module ident path, m))
+    | Some (ident, m), None ->
+        Some (Pident ident, m)
     | None, _ ->
         None
 
@@ -382,41 +414,49 @@ module Scope = struct
           raise (Error (loc, Unbound_module lid)) )
 
   let rec find_module_deferred ~loc ~scopes resolve_env lid scope =
+    let open Option.Let_syntax in
     match lid with
     | Lident name ->
-        Map.find scope.modules name
-    | Ldot (path, name) -> (
-      match find_module_deferred ~loc ~scopes resolve_env path scope with
-      | Some (Immediate m) ->
-          Map.find m.modules name
-      | Some (Deferred lid) ->
-          Some (Deferred (Ldot (lid, name)))
+        let%map ident, m = IdTbl.find_name name scope.modules in
+        (Path.Pident ident, m)
+    | Ldot (lid, name) -> (
+      match find_module_deferred ~loc ~scopes resolve_env lid scope with
+      | Some (path, Immediate m) ->
+          let%map ident, m = IdTbl.find_name name m.modules in
+          (Path.Pdot (path, Ident.name ident), m)
+      | Some (path, Deferred lid) ->
+          Some (Path.Pdot (path, name), Deferred (Ldot (lid, name)))
       | None ->
           None )
     | Lapply (lid1, lid2) ->
         (* Don't defer functor applications *)
-        let m_functor = find_module ~loc lid1 resolve_env scopes in
-        let m = apply_functor ~loc ~scopes resolve_env lid1 lid2 m_functor in
-        Some (Immediate m)
+        let fpath, m_functor = find_module ~loc lid1 resolve_env scopes in
+        let path, m =
+          apply_functor ~loc ~scopes resolve_env fpath lid2 m_functor
+        in
+        Some (path, Immediate m)
 
   let join_expr_scope (expr_scope : t) (scope : t) =
     assert (expr_scope.kind = Expr) ;
     let select_new ~key:_ _ new_value = new_value in
     { scope with
-      names= Map.merge_skewed scope.names expr_scope.names ~combine:select_new
-    }
+      names=
+        IdTbl.merge_skewed_names scope.names expr_scope.names
+          ~combine:select_new }
 end
 
 let empty_resolve_env : Scope.t resolve_env =
   { type_env= TypeEnvi.empty
-  ; external_modules= String.Map.empty
+  ; external_modules= IdTbl.empty
   ; predeclare_types= false }
 
 type t =
   {scope_stack: Scope.t list; depth: int; resolve_env: Scope.t resolve_env}
 
 let empty resolve_env =
-  {scope_stack= [Scope.empty None Scope.Module]; depth= 0; resolve_env}
+  { scope_stack= [Scope.empty ~mode:Checked None Scope.Module]
+  ; depth= 0
+  ; resolve_env }
 
 let current_scope {scope_stack; _} =
   match List.hd scope_stack with
@@ -432,19 +472,30 @@ let current_path env = (current_scope env).path
 
 let relative_path env name = join_name (current_path env) name
 
-let make_functor path f = Scope.empty (Some path) (Functor f)
+let current_mode env = (current_scope env).mode
 
-let open_expr_scope env = push_scope Scope.(empty (current_path env) Expr) env
+let mode_or_default mode env =
+  match mode with Some mode -> mode | None -> current_mode env
 
-let open_module name env =
-  push_scope Scope.(empty (Some (relative_path env name)) Module) env
+let make_functor ~mode path f = Scope.empty ~mode (Some path) (Functor f)
 
-let open_absolute_module path env = push_scope Scope.(empty path Module) env
+let open_expr_scope ?mode env =
+  let mode = mode_or_default mode env in
+  push_scope Scope.(empty ~mode (current_path env) Expr) env
 
-let open_namespace_scope scope env =
+let open_module ?mode name env =
+  let mode = mode_or_default mode env in
+  push_scope Scope.(empty ~mode (Some (relative_path env name)) Module) env
+
+let open_absolute_module ?mode path env =
+  let mode = mode_or_default mode env in
+  push_scope Scope.(empty ~mode path Module) env
+
+let open_namespace_scope ?mode scope env =
+  let mode = mode_or_default mode env in
   env
   |> push_scope {scope with kind= Scope.Open}
-  |> push_scope Scope.(empty (current_scope env).path Continue)
+  |> push_scope Scope.(empty ~mode (current_scope env).path Continue)
 
 let pop_scope env =
   match env.scope_stack with
@@ -492,13 +543,13 @@ let close_expr_scope env = snd (pop_expr_scope env)
 let set_type_predeclaring env = env.resolve_env.predeclare_types <- true
 
 let unset_type_predeclaring env =
-  if Map.is_empty env.resolve_env.type_env.predeclared_types then
+  if IdTbl.is_empty env.resolve_env.type_env.predeclared_types then
     env.resolve_env.predeclare_types <- false
   else
     let _, (_, _, loc) =
-      Map.min_elt_exn env.resolve_env.type_env.predeclared_types
+      IdTbl.first_exn env.resolve_env.type_env.predeclared_types
     in
-    let predeclared = Map.keys env.resolve_env.type_env.predeclared_types in
+    let predeclared = IdTbl.keys env.resolve_env.type_env.predeclared_types in
     raise (Error (loc, Predeclared_types predeclared))
 
 let map_current_scope ~f env =
@@ -516,10 +567,10 @@ let add_type_variable name typ =
 let find_type_variable name env =
   List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
 
-let add_module (name : str) m =
+let add_module (name : Ident.t) m =
   map_current_scope ~f:(fun scope ->
-      let scope = Scope.add_module name.txt (Scope.Immediate m) scope in
-      let paths = Scope.extend_paths name.txt m.Scope.paths in
+      let scope = Scope.add_module name (Scope.Immediate m) scope in
+      let paths = Scope.extend_paths name m.Scope.paths in
       { scope with
         instances=
           Map.merge scope.instances m.instances ~f:(fun ~key:_ data ->
@@ -527,17 +578,17 @@ let add_module (name : str) m =
               | `Left x ->
                   Some x
               | `Both (_, x) | `Right x ->
-                  Some (Longident.add_outer_module name.txt x) )
+                  Some (Path.add_outer_module name x) )
       ; (* Prefer the shorter paths in the current module to those in the
            module we are adding. *)
         paths= Scope.join_paths paths scope.paths } )
 
-let add_deferred_module (name : str) lid =
-  map_current_scope ~f:(Scope.add_module name.txt (Scope.Deferred lid))
+let add_deferred_module (name : Ident.t) lid =
+  map_current_scope ~f:(Scope.add_module name (Scope.Deferred lid))
 
 let register_external_module name x env =
   env.resolve_env.external_modules
-  <- Map.set ~key:name ~data:x env.resolve_env.external_modules
+  <- IdTbl.add ~key:name ~data:x env.resolve_env.external_modules
 
 let find_module ~loc (lid : lid) env =
   Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack
@@ -550,7 +601,7 @@ let find_module_deferred ~loc (lid : lid) env =
     env.scope_stack
 
 let add_implicit_instance name typ env =
-  let path = Lident name in
+  let path = Path.Pident name in
   let id, type_env = TypeEnvi.next_instance_id env.resolve_env.type_env in
   let env =
     map_current_scope env ~f:(fun scope ->
@@ -560,16 +611,22 @@ let add_implicit_instance name typ env =
   env
 
 let find_of_lident ~kind ~get_name (lid : lid) env =
+  let open Option.Let_syntax in
   let loc = lid.loc in
   let full_get_name =
     match lid.txt with
     | Lident name ->
-        fun scope -> get_name name scope
+        fun scope ->
+          let%map ident, data = get_name name scope in
+          (Path.Pident ident, data)
     | Ldot (path, name) ->
         fun scope ->
-          Option.bind ~f:(get_name name)
-            (Scope.find_module_ ~loc ~scopes:env.scope_stack env.resolve_env
-               path scope)
+          let%bind path, m =
+            Scope.find_module_ ~loc ~scopes:env.scope_stack env.resolve_env
+              path scope
+          in
+          let%map ident, data = get_name name m in
+          (Path.Pdot (path, Ident.name ident), data)
     | Lapply _ ->
         raise (Error (loc, Lident_unhandled (kind, lid.txt)))
   in
@@ -579,20 +636,21 @@ let find_of_lident ~kind ~get_name (lid : lid) env =
   | None -> (
     match lid.txt with
     | Ldot (path, name) ->
-        let m =
+        let%bind path, m =
           Scope.get_global_module ~loc ~scopes:env.scope_stack env.resolve_env
             path
         in
-        Option.bind m ~f:(get_name name)
+        let%map ident, data = get_name name m in
+        (Path.Pdot (path, Ident.name ident), data)
     | _ ->
         None )
 
 let join_expr_scope env expr_scope =
   map_current_scope ~f:(Scope.join_expr_scope expr_scope) env
 
-let raw_find_type_declaration (lid : lid) env =
+let raw_find_type_declaration ~mode (lid : lid) env =
   match
-    find_of_lident ~kind:"type" ~get_name:Scope.get_type_declaration lid env
+    find_of_lident ~kind:"type" ~get_name:Scope.find_type_declaration lid env
   with
   | Some v ->
       v
@@ -600,28 +658,30 @@ let raw_find_type_declaration (lid : lid) env =
     match lid.txt with
     | Lident name when env.resolve_env.predeclare_types ->
         let {type_env; _} = env.resolve_env in
-        let id, num_args =
-          match Map.find type_env.predeclared_types name with
-          | Some (id, num_args, _loc) ->
-              (id, num_args)
+        let ident, id, num_args =
+          match IdTbl.find_name name type_env.predeclared_types with
+          | Some (ident, (id, num_args, _loc)) ->
+              (ident, id, num_args)
           | None ->
               let id, type_env = TypeEnvi.next_decl_id type_env in
               let num_args = ref None in
+              let ident = Ident.create ~mode name in
               let type_env =
                 { type_env with
                   predeclared_types=
-                    Map.add_exn ~key:name
+                    IdTbl.add ~key:ident
                       ~data:(id, ref None, lid.loc)
                       type_env.predeclared_types }
               in
               env.resolve_env.type_env <- type_env ;
-              (id, num_args)
+              (ident, id, num_args)
         in
-        { tdec_ident= name
-        ; tdec_params= []
-        ; tdec_implicit_params= []
-        ; tdec_desc= TForward num_args
-        ; tdec_id= id }
+        ( Pident ident
+        , { tdec_ident= ident
+          ; tdec_params= []
+          ; tdec_implicit_params= []
+          ; tdec_desc= TForward num_args
+          ; tdec_id= id } )
     | _ ->
         raise (Error (lid.loc, Unbound_type lid.txt)) )
 
@@ -883,9 +943,14 @@ module Type = struct
         (List.rev acc, typ)
 
   let new_implicit_var ?(loc = Location.none) typ env =
+    let mode = current_mode env in
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.resolve_env.type_env in
     let mk exp_loc exp_desc = {Typedast.exp_loc; exp_desc; exp_type= typ} in
-    let name = Location.mkloc (sprintf "__implicit%i__" implicit_id) loc in
+    let name =
+      Location.mkloc
+        (Ident.create ~mode (sprintf "__implicit%i__" implicit_id))
+        loc
+    in
     let new_exp =
       mk loc (Texp_unifiable {expression= None; name; id= implicit_id})
     in
@@ -1078,6 +1143,14 @@ module Type = struct
     | Tpoly (typs, typ) ->
         mk (Tpoly (typs, constr_map env ~f typ)) env
 
+  let get_preferred_constr_name env typ =
+    match typ.type_desc with
+    | Tctor variant ->
+        List.find_map env.scope_stack
+          ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)
+    | _ ->
+        None
+
   let normalise_constr_names env typ =
     constr_map env typ ~f:(fun variant ->
         match
@@ -1152,9 +1225,7 @@ module TypeDecl = struct
     ; tdec_id }
 
   let mk_typ ~params ?ident decl =
-    let ident =
-      Option.value ident ~default:(Longident.Lident decl.tdec_ident)
-    in
+    let ident = Option.value ident ~default:(Path.Pident decl.tdec_ident) in
     Type.mk
       (Tctor
          { var_ident= ident
@@ -1188,10 +1259,10 @@ module TypeDecl = struct
     (decl, bound_vars, env)
 
   let find_of_field (field : lid) env =
-    find_of_lident ~kind:"field" ~get_name:Scope.get_field field env
+    find_of_lident ~kind:"field" ~get_name:Scope.find_field field env
 
   let find_of_constructor (ctor : lid) env =
-    find_of_lident ~kind:"constructor" ~get_name:Scope.get_ctor ctor env
+    find_of_lident ~kind:"constructor" ~get_name:Scope.find_ctor ctor env
 
   let unfold_alias ~loc typ env =
     match find_of_type ~loc typ env with
@@ -1215,21 +1286,20 @@ module TypeDecl = struct
         ret
 end
 
-let add_name (name : str) typ =
-  map_current_scope ~f:(Scope.add_name name.txt typ)
+let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
 
 let get_name (name : str) env =
   let loc = name.loc in
-  match List.find_map ~f:(Scope.get_name name.txt) env.scope_stack with
-  | Some typ ->
-      Type.copy typ Int.Map.empty env
+  match List.find_map ~f:(Scope.find_name name.txt) env.scope_stack with
+  | Some (ident, typ) ->
+      (ident, Type.copy typ Int.Map.empty env)
   | None ->
       raise (Error (loc, Unbound_value (Lident name.txt)))
 
-let find_name (lid : lid) env =
-  match find_of_lident ~kind:"name" ~get_name:Scope.get_name lid env with
-  | Some typ ->
-      Type.copy typ Int.Map.empty env
+let find_name ~loc (lid : lid) env =
+  match find_of_lident ~kind:"name" ~get_name:Scope.find_name lid env with
+  | Some (ident, typ) ->
+      (ident, Type.copy ~loc typ Int.Map.empty env)
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
 
@@ -1243,7 +1313,7 @@ let pp_decl_typ ppf decl =
   pp_typ ppf
     { type_desc=
         Tctor
-          { var_ident= Longident.Lident decl.tdec_ident
+          { var_ident= Pident decl.tdec_ident
           ; var_params= decl.tdec_params
           ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl= decl }
@@ -1267,11 +1337,11 @@ let report_error ppf = function
       fprintf ppf "@[<hov>Unbound module @[<h>%a@].@]" Longident.pp lid
   | Unbound_value lid ->
       fprintf ppf "@[<hov>Unbound value @[<h>%a@].@]" Longident.pp lid
-  | Wrong_number_args (lid, given, expected) ->
+  | Wrong_number_args (path, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \
          applied to %d argument(s).@]"
-        Longident.pp lid expected given
+        Path.pp path expected given
   | Expected_type_var typ ->
       fprintf ppf
         "@[<hov>Syntax error: Expected a type parameter, but got @[<h>%a@].@]"
@@ -1297,7 +1367,7 @@ let report_error ppf = function
         filename
   | Predeclared_types types ->
       fprintf ppf "@[<hov>Could not find declarations for some types:@]@;%a@"
-        (pp_print_list ~pp_sep:pp_print_space pp_print_string)
+        (pp_print_list ~pp_sep:pp_print_space Ident.pprint)
         types
   | Functor_in_module_sig ->
       fprintf ppf
@@ -1308,6 +1378,6 @@ let report_error ppf = function
 let () =
   Location.register_error_of_exn (function
     | Error (loc, err) ->
-        Some (Location.error_of_printer loc report_error err)
+        Some (Location.error_of_printer ~loc report_error err)
     | _ ->
         None )

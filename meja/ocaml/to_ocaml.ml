@@ -29,7 +29,7 @@ let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
 let of_ctor_args = function
   | Ctor_tuple args ->
       Parsetree.Pcstr_tuple (List.map ~f:of_type_expr args)
-  | Ctor_record (_, fields) ->
+  | Ctor_record fields ->
       Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
 
 let of_ctor_decl
@@ -51,24 +51,22 @@ let of_type_decl decl =
       (decl.tdec_params @ decl.tdec_implicit_params)
   in
   match decl.tdec_desc with
-  | TAbstract ->
+  | Pdec_abstract ->
       Type.mk name ~loc ~params
-  | TAlias typ ->
+  | Pdec_alias typ ->
       Type.mk name ~loc ~params ~manifest:(of_type_expr typ)
-  | TRecord fields ->
+  | Pdec_record fields ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_record (List.map ~f:of_field_decl fields))
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_variant (List.map ~f:of_ctor_decl ctors))
-  | TOpen ->
+  | Pdec_open ->
       Type.mk name ~loc ~params ~kind:Parsetree.Ptype_open
-  | TExtend _ ->
+  | Pdec_extend _ ->
       failwith "Cannot convert TExtend to OCaml"
-  | TUnfold _ ->
+  | Pdec_unfold _ ->
       failwith "Cannot convert TUnfold to OCaml"
-  | TForward _ ->
-      failwith "Cannot convert TForward to OCaml"
 
 let rec of_pattern_desc ?loc = function
   | Ppat_any ->
@@ -246,7 +244,7 @@ let rec of_statement_desc ?loc = function
   | Pstmt_modtype (name, msig) ->
       Str.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
   | Pstmt_open name ->
-      Str.open_ ?loc (Opn.mk ?loc name)
+      Str.open_ ?loc (Opn.mk ?loc (Of_ocaml.open_of_name name))
   | Pstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)

@@ -1,3 +1,13 @@
+(** Convert from the OCaml typed tree to a Meja parsetree.
+
+    This code is heavily dependent on OCaml's internals, and a new copy of this
+    file should be added for each supported version.
+
+    NOTE: When modifying this file, ensure that corresponding changes are made
+          the other of_ocaml_*.ml files, and test compilation with all
+          supported OCaml versions.
+*)
+
 open Path
 open Longident
 open Core_kernel
@@ -8,7 +18,7 @@ open Location
 let rec longident_of_path = function
   | Pident ident ->
       Lident (Ident.name ident)
-  | Pdot (path, ident, _) ->
+  | Pdot (path, ident) ->
       Ldot (longident_of_path path, ident)
   | Papply (path1, path2) ->
       Lapply (longident_of_path path1, longident_of_path path2)
@@ -47,7 +57,7 @@ let rec to_type_desc ~loc desc =
       Ptyp_var (None, Explicit)
 
 and to_type_expr ~loc typ =
-  {type_desc= to_type_desc ~loc typ.desc; type_id= -1; type_loc= loc}
+  {type_desc= to_type_desc ~loc typ.desc; type_loc= loc}
 
 let to_field_decl {ld_id; ld_type; ld_loc; _} =
   { fld_ident= mkloc (Ident.name ld_id) ld_loc
@@ -58,7 +68,7 @@ let to_ctor_args ~loc = function
   | Cstr_tuple typs ->
       Ctor_tuple (List.map ~f:(to_type_expr ~loc) typs)
   | Cstr_record labels ->
-      Ctor_record (0, List.map ~f:to_field_decl labels)
+      Ctor_record (List.map ~f:to_field_decl labels)
 
 let to_ctor_decl {cd_id; cd_args; cd_res; cd_loc; _} =
   { ctor_ident= mkloc (Ident.name cd_id) cd_loc
@@ -82,15 +92,16 @@ let to_type_decl_desc decl =
 let can_create_signature_item item =
   match item with Sig_typext _ | Sig_class _ -> false | _ -> true
 
+(** TODO: Handle the new visibility parameter. *)
 let rec to_signature_item item =
   match item with
-  | Sig_value (ident, {val_type; val_loc; _}) ->
+  | Sig_value (ident, {val_type; val_loc; _}, _visibility) ->
       { sig_desc=
           Psig_value
             ( mkloc (Ident.name ident) val_loc
             , to_type_expr ~loc:val_loc val_type )
       ; sig_loc= val_loc }
-  | Sig_type (ident, decl, _rec_status) ->
+  | Sig_type (ident, decl, _rec_status, _visibility) ->
       (* TODO: handle rec_status *)
       let tdec_desc = to_type_decl_desc decl in
       { sig_desc=
@@ -102,13 +113,13 @@ let rec to_signature_item item =
             ; tdec_desc
             ; tdec_loc= decl.type_loc }
       ; sig_loc= decl.type_loc }
-  | Sig_module (ident, decl, _) ->
+  | Sig_module (ident, _module_presence, decl, _, _visibility) ->
       { sig_desc=
           Psig_module
             ( mkloc (Ident.name ident) decl.md_loc
             , to_module_sig ~loc:decl.md_loc (Some decl.md_type) )
       ; sig_loc= decl.md_loc }
-  | Sig_modtype (ident, decl) ->
+  | Sig_modtype (ident, decl, _visibility) ->
       { sig_desc=
           Psig_modtype
             ( mkloc (Ident.name ident) decl.mtd_loc
@@ -126,7 +137,7 @@ and to_module_sig_desc ~loc decl =
   match decl with
   | None ->
       Pmty_abstract
-  | Some (Mty_ident path | Mty_alias (_, path)) ->
+  | Some (Mty_ident path | Mty_alias path) ->
       Pmty_name (mkloc (longident_of_path path) loc)
   | Some (Mty_signature signature) ->
       Pmty_sig (to_signature signature)
@@ -138,3 +149,9 @@ and to_module_sig_desc ~loc decl =
 
 and to_module_sig ~loc decl =
   {msig_loc= loc; msig_desc= to_module_sig_desc ~loc decl}
+
+(** Versioned utility function for the To_ocaml module. *)
+let open_of_name name =
+  { Parsetree.pmod_desc= Pmod_ident name
+  ; pmod_loc= name.loc
+  ; pmod_attributes= [] }

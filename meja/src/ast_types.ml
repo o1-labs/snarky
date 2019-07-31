@@ -103,3 +103,9 @@ type explicitness = Implicit | Explicit [@@deriving sexp]
 let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
 
 let mk_lid (str : str) = map_loc str ~f:(fun x -> Longident.Lident x)
+
+type mode = Checked | Prover [@@deriving sexp]
+
+let string_of_mode = function Checked -> "Checked" | Prover -> "Prover"
+
+let pp_mode ppf mode = Format.pp_print_string ppf (string_of_mode mode)
