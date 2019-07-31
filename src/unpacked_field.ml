@@ -46,10 +46,13 @@ module type S = sig
     *)
   end
 
-  val to_bitstring : t -> bitstring
-  (** Convert an unpacked field to a bitstring. *)
+  val to_bitstring : t -> (bitstring, _) checked
+  (** Convert an unpacked field to a bitstring.
+      Requires 1 constraint for each bit in the field size for the first call,
+      but the result is cached for subsequent calls.
+  *)
 
-  val unpack : field_var -> (t, _) checked
+  val unpack : field_var -> t
   (** Convert a field variable into an unpacked field variable.
       Requires 1 constraint for each bit in the field size.
   *)
@@ -75,14 +78,39 @@ module Make (Snark : Snark_intf.Basic) :
    and type bitstring := Snark.Bitstring_checked.t = struct
   open Snark
 
-  type t = Bitstring_checked.t
+  type t = {field: Field.Var.t option; mutable bits: Bitstring_checked.t option}
+
+  let pack {field; bits} =
+    match (field, bits) with
+    | Some field, _ ->
+        field
+    | None, Some bits ->
+        Field.Var.project bits
+    | None, None ->
+        assert false
+
+  let unpack x = {field= Some x; bits= None}
+
+  let constant x =
+    { field= Some (Field.Var.constant x)
+    ; bits= Some (List.map ~f:Boolean.var_of_value (Field.unpack x)) }
+
+  let to_bitstring x =
+    match x.bits with
+    | Some bits ->
+        Checked.return bits
+    | None ->
+        let open Checked in
+        let%map y = Field.Checked.unpack_full (Option.value_exn x.field) in
+        let bits =
+          ( Bitstring_lib.Bitstring.Msb_first.of_lsb_first y
+            :> Bitstring_checked.t )
+        in
+        x.bits <- Some bits ;
+        bits
 
   let typ : (t, Field.t) Typ.t =
-    Typ.transport
-      (Typ.list ~length:Field.size_in_bits Boolean.typ)
-      ~there:Field.unpack ~back:Field.project
-
-  let constant x = List.map ~f:Boolean.var_of_value (Field.unpack x)
+    Typ.transport_var Field.typ ~there:pack ~back:unpack
 
   let rec pad n x = if n > 0 then pad (n - 1) (Boolean.false_ :: x) else x
 
@@ -90,26 +118,18 @@ module Make (Snark : Snark_intf.Basic) :
     let of_bits l =
       let pad_size = Field.size_in_bits - List.length l in
       assert (pad_size >= 0) ;
-      pad pad_size (List.map ~f:Boolean.var_of_value l)
+      { field= None
+      ; bits= Some (pad pad_size (List.map ~f:Boolean.var_of_value l)) }
 
     let of_bitstring l =
       let pad_size = Field.size_in_bits - List.length l in
       assert (pad_size >= 0) ;
-      pad pad_size l
+      {field= None; bits= Some (pad pad_size l)}
   end
-
-  let to_bitstring l = l
-
-  let unpack f =
-    let open Checked in
-    let%map x = Field.Checked.unpack_full f in
-    (Bitstring_lib.Bitstring.Msb_first.of_lsb_first x :> Bitstring_checked.t)
-
-  let pack x = Field.Var.project x
 
   (* TODO: We could do this bit-by-bit to save a constraint. *)
   let if_ b ~then_ ~else_ =
-    let%bind res =
+    let%map res =
       Field.Checked.if_ b ~then_:(pack then_) ~else_:(pack else_)
     in
     unpack res
@@ -189,7 +209,7 @@ module Run = struct
      and type bitstring := Snark.Bitstring_checked.t = struct
     include Make (Snark.Internal_Basic)
 
-    let unpack f = Snark.run_checked (unpack f)
+    let to_bitstring f = Snark.run_checked (to_bitstring f)
 
     let if_ b ~then_ ~else_ = Snark.run_checked (if_ b ~then_ ~else_)
   end
