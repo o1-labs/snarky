@@ -38,9 +38,9 @@ and type_expr_b fmt typ = type_desc ~bracket:true fmt typ.type_desc
 and variant fmt v =
   match v.var_params with
   | [] ->
-      Longident.pp fmt v.var_ident
+      Path.pp fmt v.var_ident
   | _ ->
-      fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident tuple v.var_params
+      fprintf fmt "@[<hv2>%a%a@]" Path.pp v.var_ident tuple v.var_params
 
 let field_decl fmt decl =
   fprintf fmt "%a:@ @[<hv>%a@]" Ident.pprint decl.fld_ident type_expr
@@ -80,7 +80,7 @@ let type_decl_desc fmt = function
   | TOpen ->
       fprintf fmt "@ =@ .."
   | TExtend (name, _, ctors) ->
-      fprintf fmt "@ /*@[%a +=@ %a@]*/" Longident.pp name
+      fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
   | TForward i ->

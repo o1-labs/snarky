@@ -1,6 +1,7 @@
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked
+module Typ_monads0 = Typ_monads
 open Core_kernel
 
 let () = Camlsnark_c.linkme
@@ -324,6 +325,16 @@ struct
       let%map _ = inv v in
       ()
 
+    (** Read the [Cvar.t]s that represent the value [x].
+
+        WARNING: This assumes that reading zero will not cause an error within
+        the [read] function.
+    *)
+    let unsafe_read_cvars {Typ.read; _} x =
+      Typ_monads0.Read.run
+        (Typ_monads0.Read.make_cvars (read x))
+        (fun _ -> Field.zero)
+
     module Boolean = struct
       open Boolean.Unsafe
 
@@ -460,6 +471,46 @@ struct
             in
             res
 
+      module Array = struct
+        let num_true (bs : var array) =
+          Array.fold bs ~init:(Cvar.constant Field.zero) ~f:(fun x y ->
+              Cvar.add x (y :> Cvar.t) )
+
+        let any = function
+          | [||] ->
+              return false_
+          | [|b1|] ->
+              return b1
+          | [|b1; b2|] ->
+              b1 || b2
+          | bs ->
+              let open Let_syntax in
+              let%map all_zero =
+                equal (num_true bs) (Cvar.constant Field.zero)
+              in
+              not all_zero
+
+        let all = function
+          | [||] ->
+              return true_
+          | [|b1|] ->
+              return b1
+          | [|b1; b2|] ->
+              b1 && b2
+          | bs ->
+              equal
+                (Cvar.constant (Field.of_int (Array.length bs)))
+                (num_true bs)
+
+        module Assert = struct
+          let any bs = assert_non_zero (num_true bs)
+
+          let all bs =
+            assert_equal (num_true bs)
+              (Cvar.constant (Field.of_int (Array.length bs)))
+        end
+      end
+
       let equal (a : var) (b : var) = a lxor b >>| not
 
       let of_field x =
@@ -566,20 +617,23 @@ struct
       (bits, `Success success)
 
     module List =
-      Monad_sequence.List (struct
-          type nonrec ('a, 's) t = ('a, 's) t
-
-          include (
-            Checked_S :
-              Checked_intf.S
-              with module Types := Checked_S.Types
-              with type ('a, 's, 'f) t :=
-                          ('a, 's, 'f) Checked_S.Types.Checked.t )
-        end)
+      Monad_sequence.List
+        (Checked)
         (struct
           type t = Boolean.var
 
           include Boolean
+        end)
+
+    module Array =
+      Monad_sequence.Array
+        (Checked)
+        (struct
+          type t = Boolean.var
+
+          let any = Boolean.Array.any
+
+          let all = Boolean.Array.all
         end)
   end
 
@@ -1304,6 +1358,31 @@ struct
 
   include Checked
 
+  let%snarkydef_ if_ (b : Boolean.var) ~(typ : ('var, _) Typ.t) ~(then_ : 'var)
+      ~(else_ : 'var) =
+    let then_ = unsafe_read_cvars typ then_ in
+    let else_ = unsafe_read_cvars typ else_ in
+    let%map res =
+      all
+        (Core_kernel.List.map2_exn then_ else_ ~f:(fun then_ else_ ->
+             if_ b ~then_ ~else_ ))
+    in
+    let res = ref res in
+    let ret =
+      (* Run the typ's allocator, providing the values from the Cvar.t list
+         [res].
+      *)
+      Typ_monads0.Alloc.run typ.alloc (fun () ->
+          match !res with
+          | hd :: tl ->
+              res := tl ;
+              hd
+          | _ ->
+              assert false )
+    in
+    assert (!res = []) ;
+    ret
+
   module Proof_system = struct
     open Run.Proof_system
 
@@ -1617,6 +1696,20 @@ module Run = struct
         let all l = run (all l)
 
         let exactly_one l = run (exactly_one l)
+      end
+
+      module Array = struct
+        open Snark.Boolean.Array
+
+        let any x = run (any x)
+
+        let all x = run (all x)
+
+        module Assert = struct
+          let any x = run (Assert.any x)
+
+          let all x = run (Assert.all x)
+        end
       end
     end
 
@@ -1990,6 +2083,8 @@ module Run = struct
     let handle_as_prover x h =
       let h = h () in
       handle x h
+
+    let if_ b ~typ ~then_ ~else_ = run (if_ b ~typ ~then_ ~else_)
 
     let with_label lbl x =
       let {stack; _} = !state in
