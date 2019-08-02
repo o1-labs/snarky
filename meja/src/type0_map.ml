@@ -143,13 +143,19 @@ let type_decl_desc mapper desc =
       if !same && phys_equal path' path && phys_equal decl' decl then desc
       else TExtend (path', decl', ctors)
 
-let path mapper = function
+let path mapper path =
+  match path with
   | Path.Pident ident ->
-      Path.Pident (mapper.ident mapper ident)
-  | Path.Pdot (path, str) ->
-      Path.Pdot (mapper.path mapper path, str)
+      let ident' = mapper.ident mapper ident in
+      if phys_equal ident' ident then path else Path.Pident ident'
+  | Path.Pdot (path1, str) ->
+      let path1' = mapper.path mapper path1 in
+      if phys_equal path1' path1 then path else Path.Pdot (path1', str)
   | Path.Papply (path1, path2) ->
-      Path.Papply (mapper.path mapper path1, mapper.path mapper path2)
+      let path1' = mapper.path mapper path1 in
+      let path2' = mapper.path mapper path2 in
+      if phys_equal path1' path1 && phys_equal path2' path2 then path
+      else Path.Papply (path1', path2')
 
 let ident (_mapper : mapper) (ident : Ident.t) = ident
 
