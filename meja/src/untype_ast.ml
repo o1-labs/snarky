@@ -222,6 +222,8 @@ let rec expression_desc = function
         ; id }
   | Texp_if (e1, e2, e3) ->
       Pexp_if (expression e1, expression e2, Option.map ~f:expression e3)
+  | Texp_prover e ->
+      Pexp_prover (expression e)
 
 and expression e =
   {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}
@@ -245,6 +247,8 @@ let rec signature_desc = function
       Psig_request (arg, ctor)
   | Tsig_multiple sigs ->
       Psig_multiple (List.map ~f:signature_item sigs)
+  | Tsig_prover sigs ->
+      Psig_prover (List.map ~f:signature_item sigs)
 
 and signature_item s =
   {Parsetypes.sig_desc= signature_desc s.Typedast.sig_desc; sig_loc= s.sig_loc}
@@ -287,6 +291,8 @@ let rec statement_desc = function
             handler )
   | Tstmt_multiple stmts ->
       Pstmt_multiple (List.map ~f:statement stmts)
+  | Tstmt_prover stmts ->
+      Pstmt_prover (List.map ~f:statement stmts)
 
 and statement s =
   { Parsetypes.stmt_desc= statement_desc s.Typedast.stmt_desc
