@@ -67,6 +67,7 @@ public:
     Fp4_model cyclotomic_squared() const;
 
     std::vector<my_Fp> all_base_field_elements() { return { c0.c0, c0.c1, c1.c0, c1.c1 }; }
+    Fp4_model(const std::vector<my_Fp>& v) : c0(my_Fp2(v[0], v[1])), c1(my_Fp2(v[2], v[3])) {};
 
     static my_Fp2 mul_by_non_residue(const my_Fp2 &elt);
 
