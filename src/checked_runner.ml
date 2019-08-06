@@ -318,6 +318,16 @@ module Make (Backend : Backend_extended.S) = struct
         let s, y = next_auxiliary s in
         run (k y) s
 
+  let run t s =
+    try run t s
+    with exn ->
+      Printf.eprintf fmt
+        "Encountered an error while evaluating the checked computation.\n\
+         Stack trace:\n\
+         %s"
+        (Constraint.stack_to_string s.stack) ;
+      raise exn
+
   let dummy_vector = Field.Vector.create ()
 
   let fake_state next_auxiliary stack =
