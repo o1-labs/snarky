@@ -87,7 +87,7 @@ let to_interval = function
       Ok i
   | [] ->
       Or_error.error_string "Interval_union.to_interval: the union is empty\n"
-  | (_ :: _ :: _) as xs ->
+  | _ :: _ :: _ as xs ->
       Or_error.error_string
         (Printf.sprintf
            !"Interval_union.to_interval: expected a single interval in the \
