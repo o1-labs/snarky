@@ -321,7 +321,7 @@ module Make (Backend : Backend_extended.S) = struct
   let run t s =
     try run t s
     with exn ->
-      Printf.eprintf fmt
+      Printf.eprintf
         "Encountered an error while evaluating the checked computation.\n\
          Stack trace:\n\
          %s"
