@@ -4,6 +4,8 @@ module Checked_ast = Checked
 module Typ_monads0 = Typ_monads
 open Core_kernel
 
+exception Runtime_error = Checked_runner.Runtime_error
+
 let () = Camlsnark_c.linkme
 
 module Runner = Checked_runner

@@ -1,5 +1,26 @@
 open Core_kernel
 
+exception Runtime_error of string * string list * exn * string
+
+(* Register a printer for [Runtime_error], so that the user sees a useful,
+   well-formatted message. This will contain all of the information that
+   raising the original error would have raised, along with the extra
+   information added to [Runtime_error].
+
+   NOTE: The message in its entirety is included in [Runtime_error], so that
+         all of the information will be visible to the user in some form even
+         if they don't use the [Print_exc] pretty-printer.
+*)
+let () =
+  Stdlib.Printexc.register_printer (fun exn ->
+      match exn with
+      | Runtime_error (message, _, _, _) ->
+          Some
+            (Printf.sprintf
+               "Snarky.Checked_runner.Runtime_error(_, _, _, _)\n\n%s" message)
+      | _ ->
+          None )
+
 let eval_constraints = ref true
 
 module Make_checked
@@ -274,49 +295,75 @@ module Make (Backend : Backend_extended.S) = struct
   let rec run : type a s.
       (a, s, Field.t) Checked.t -> s run_state -> s run_state * a =
    fun t s ->
-    match t with
-    | As_prover (x, k) ->
-        let s, () = as_prover x s in
-        run k s
-    | Pure x ->
-        (s, x)
-    | Direct (d, k) ->
-        let s, y = d s in
-        run (k y) s
-    | Reduced (t, d, res, k) ->
-        let s, y =
-          if Option.is_some s.prover_state && Option.is_none s.system then
-            (d s, res)
-          else run t s
-        in
-        run (k y) s
-    | With_label (lab, t, k) ->
-        let s, y = with_label lab (run t) s in
-        run (k y) s
-    | Add_constraint (c, t) ->
-        let s, () = add_constraint c s in
-        run t s
-    | With_state (p, and_then, t_sub, k) ->
-        let s, y = with_state p and_then (run t_sub) s in
-        run (k y) s
-    | With_handler (h, t, k) ->
-        let s, y = with_handler h (run t) s in
-        run (k y) s
-    | Clear_handler (t, k) ->
-        let s, y = clear_handler (run t) s in
-        run (k y) s
-    | Exists (typ, p, k) ->
-        let typ =
-          { Types.Typ.store= typ.store
-          ; read= typ.read
-          ; alloc= typ.alloc
-          ; check= (fun var -> run (typ.check var)) }
-        in
-        let s, y = exists typ p s in
-        run (k y) s
-    | Next_auxiliary k ->
-        let s, y = next_auxiliary s in
-        run (k y) s
+    try
+      match t with
+      | As_prover (x, k) ->
+          let s, () = as_prover x s in
+          run k s
+      | Pure x ->
+          (s, x)
+      | Direct (d, k) ->
+          let s, y = d s in
+          run (k y) s
+      | Reduced (t, d, res, k) ->
+          let s, y =
+            if Option.is_some s.prover_state && Option.is_none s.system then
+              (d s, res)
+            else run t s
+          in
+          run (k y) s
+      | With_label (lab, t, k) ->
+          let s, y = with_label lab (run t) s in
+          run (k y) s
+      | Add_constraint (c, t) ->
+          let s, () = add_constraint c s in
+          run t s
+      | With_state (p, and_then, t_sub, k) ->
+          let s, y = with_state p and_then (run t_sub) s in
+          run (k y) s
+      | With_handler (h, t, k) ->
+          let s, y = with_handler h (run t) s in
+          run (k y) s
+      | Clear_handler (t, k) ->
+          let s, y = clear_handler (run t) s in
+          run (k y) s
+      | Exists (typ, p, k) ->
+          let typ =
+            { Types.Typ.store= typ.store
+            ; read= typ.read
+            ; alloc= typ.alloc
+            ; check= (fun var -> run (typ.check var)) }
+          in
+          let s, y = exists typ p s in
+          run (k y) s
+      | Next_auxiliary k ->
+          let s, y = next_auxiliary s in
+          run (k y) s
+    with
+    | Runtime_error (message, stack, exn, bt) ->
+        (* NOTE: We create a new [Runtime_error] instead of re-using the old
+                 one. Re-using the old one will fill the backtrace with call
+                 and re-raise messages, one per iteration of this function,
+                 which are irrelevant to the user.
+        *)
+        raise (Runtime_error (message, stack, exn, bt))
+    | exn ->
+        let bt = Printexc.get_backtrace () in
+        raise
+          (Runtime_error
+             ( Printf.sprintf
+                 "Encountered an error while evaluating the checked \
+                  computation:\n\
+                 \  %s\n\n\
+                  Label stack trace:\n\
+                  %s\n\n\n\
+                  %s"
+                 (Exn.to_string exn)
+                 (Constraint.stack_to_string s.stack)
+                 bt
+             , s.stack
+             , exn
+             , bt ))
 
   let dummy_vector = Field.Vector.create ()
 
