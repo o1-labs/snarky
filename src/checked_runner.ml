@@ -17,7 +17,7 @@ let () =
       | Runtime_error (message, _, _, _) ->
           Some
             (Printf.sprintf
-               "Snarky.Checked_runner.Runtime_error(_, _, _)\n\n%s" message)
+               "Snarky.Checked_runner.Runtime_error(_, _, _, _)\n\n%s" message)
       | _ ->
           None )
 
