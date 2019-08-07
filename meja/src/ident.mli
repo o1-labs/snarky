@@ -50,9 +50,11 @@ module Table : sig
       [None] otherwise.
   *)
 
-  val find_name : string -> 'a t -> (ident * 'a) option
-  (** [find_name name tbl] returns the most recently bound [ident] and its
-      associated value if it exists, or [None] otherwise.
+  val find_name :
+    string -> modes:(Ast_types.mode -> bool) -> 'a t -> (ident * 'a) option
+  (** [find_name name ~modes tbl] returns the most recently bound [ident] and its
+      associated value if it exists, or [None] otherwise. Any [ident]
+      satisfying [modes (Ident.mode ident)] will be skipped.
   *)
 
   val first_exn : 'a t -> ident * 'a

@@ -78,4 +78,36 @@ libff::G2<ppT>* CURVE_PREFIX(g2_of_coords)(
   return new libff::G2<ppT>(*x, *y, libff::Fqe<ppT>::one());
 }
 
+r1cs_gg_ppzksnark_verification_key<ppT>* CURVE_PREFIX(verification_key_dummy)(int input_size) {
+  return new r1cs_gg_ppzksnark_verification_key<ppT>(
+    libff::Fqk<ppT>(
+      std::vector<libff::Fq<ppT>>(
+      libff::Fqk<ppT>::extension_degree(),
+      libff::Fq<ppT>::one())),
+    libff::G2<ppT>::one(),
+    accumulation_vector<libff::G1<ppT>>(libff::G1<ppT>::one(), libff::G1_vector<ppT>(input_size, libff::G1<ppT>::one()))
+  );
+}
+
+r1cs_se_ppzksnark_verification_key<ppT>* CURVE_PREFIX(gm_verification_key_dummy)(int input_size) {
+  return new r1cs_se_ppzksnark_verification_key<ppT>(
+      libff::G2<ppT>::one(),
+      libff::G1<ppT>::one(),
+      libff::G2<ppT>::one(),
+      libff::G1<ppT>::one(),
+      libff::G2<ppT>::one(),
+      std::vector<libff::G1<ppT>>(input_size + 1, libff::G1<ppT>::one()));
+}
+
+r1cs_bg_ppzksnark_verification_key<ppT>* CURVE_PREFIX(bg_verification_key_dummy)(int input_size) {
+  return new r1cs_bg_ppzksnark_verification_key<ppT>(
+    libff::Fqk<ppT>(
+      std::vector<libff::Fq<ppT>>(
+      libff::Fqk<ppT>::extension_degree(),
+      libff::Fq<ppT>::one())),
+    libff::G2<ppT>::one(),
+    accumulation_vector<libff::G1<ppT>>(libff::G1<ppT>::one(), libff::G1_vector<ppT>(input_size, libff::G1<ppT>::one()))
+  );
+}
+
 }
