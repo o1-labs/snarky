@@ -326,8 +326,8 @@ let get_field (field : lid) env =
       in
       let name =
         match ident with
-        | Path.Pdot (m, _) ->
-            Path.Pdot (m, Ident.name tdec_ident)
+        | Path.Pdot (m, _, _) ->
+            Path.dot m tdec_ident
         | _ ->
             Path.Pident tdec_ident
       in
@@ -381,8 +381,8 @@ let get_ctor (name : lid) env =
       let ctor = List.nth_exn ctors i in
       let make_name tdec_ident =
         match name with
-        | Path.Pdot (m, _) ->
-            Path.Pdot (m, Ident.name tdec_ident)
+        | Path.Pdot (m, _, _) ->
+            Path.dot m tdec_ident
         | _ ->
             Path.Pident tdec_ident
       in
@@ -530,8 +530,8 @@ let rec check_pattern ~add env typ pat =
                   match ident with
                   | Pident _ ->
                       Pident decl.tdec_ident
-                  | Pdot (path, _) ->
-                      Pdot (path, Ident.name decl.tdec_ident)
+                  | Pdot (path, _, _) ->
+                      dot path decl.tdec_ident
                   | _ ->
                       failwith "Unhandled Papply in field name")
               in
@@ -789,8 +789,8 @@ let rec get_expression env expected exp =
               in
               let ident =
                 match fld_ident with
-                | Pdot (path, _) ->
-                    Path.Pdot (path, Ident.name decl.tdec_ident)
+                | Pdot (path, _, _) ->
+                    Path.dot path decl.tdec_ident
                 | _ ->
                     Path.Pident decl.tdec_ident
               in
@@ -851,8 +851,8 @@ let rec get_expression env expected exp =
                     match fld_ident with
                     | Pident _ ->
                         Pident decl.tdec_ident
-                    | Pdot (path, _) ->
-                        Pdot (path, Ident.name decl.tdec_ident)
+                    | Pdot (path, _, _) ->
+                        dot path decl.tdec_ident
                     | _ ->
                         failwith "Unhandled Papply in field name")
                 in
@@ -900,8 +900,8 @@ let rec get_expression env expected exp =
                   match ident with
                   | Pident _ ->
                       Pident decl.tdec_ident
-                  | Pdot (path, _) ->
-                      Pdot (path, Ident.name decl.tdec_ident)
+                  | Pdot (path, _, _) ->
+                      dot path decl.tdec_ident
                   | _ ->
                       failwith "Unhandled Papply in field name")
               in
