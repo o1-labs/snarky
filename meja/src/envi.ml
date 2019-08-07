@@ -349,7 +349,7 @@ module Scope = struct
           find_module_ ~mode ~loc ~scopes resolve_env path scope
         in
         let%map ident, m = get_module ~mode ~loc ~scopes resolve_env name m in
-        (Path.Pdot (path, Ident.name ident), m)
+        (Path.dot path ident, m)
     | Lapply (fpath, path) ->
         let%map fpath, m =
           find_module_ ~mode ~loc ~scopes resolve_env fpath scope
@@ -437,9 +437,12 @@ module Scope = struct
       match find_module_deferred ~mode ~loc ~scopes resolve_env lid scope with
       | Some (path, Immediate m) ->
           let%map ident, m = IdTbl.find_name ~modes name m.modules in
-          (Path.Pdot (path, Ident.name ident), m)
+          (Path.dot path ident, m)
       | Some (path, Deferred lid) ->
-          Some (Path.Pdot (path, name), Deferred (Ldot (lid, name)))
+          (* TODO: Rework this. We need to know whether deferred modules are
+             Prover or Checked mode.
+          *)
+          Some (Path.Pdot (path, Checked, name), Deferred (Ldot (lid, name)))
       | None ->
           None )
     | Lapply (lid1, lid2) ->
@@ -645,7 +648,7 @@ let find_of_lident ~mode ~kind ~get_name (lid : lid) env =
               env.resolve_env path scope
           in
           let%map ident, data = get_name ~mode name m in
-          (Path.Pdot (path, Ident.name ident), data)
+          (Path.dot path ident, data)
     | Lapply _ ->
         raise (Error (loc, Lident_unhandled (kind, lid.txt)))
   in
@@ -660,7 +663,7 @@ let find_of_lident ~mode ~kind ~get_name (lid : lid) env =
             env.resolve_env path
         in
         let%map ident, data = get_name ~mode name m in
-        (Path.Pdot (path, Ident.name ident), data)
+        (Path.dot path ident, data)
     | _ ->
         None )
 
