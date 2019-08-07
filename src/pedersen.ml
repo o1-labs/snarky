@@ -1,4 +1,5 @@
 open Core_kernel
+open Bitstring_lib
 open Tuple_lib
 
 let local_function ~negate quad (b0, b1, b2) =
@@ -43,9 +44,9 @@ module Make
     type var = Field.Var.t
 
     module Unpacked : sig
-      type var = private Boolean.var list
+      type var = Boolean.var Bitstring.Lsb_first.t
 
-      type t = bool list
+      type t = bool Bitstring.Lsb_first.t
 
       val typ : (var, t) Typ.t
 
@@ -130,15 +131,22 @@ end = struct
     let length_in_bits = Field.size_in_bits
 
     module Unpacked = struct
-      type var = Boolean.var list
+      open Bitstring.Lsb_first
 
-      type t = bool list
+      type var = Boolean.var t
 
-      let typ : (var, t) Typ.t = Typ.list Boolean.typ ~length:length_in_bits
+      type t = bool Bitstring.Lsb_first.t
 
-      let project = Field.Var.project
+      let typ : (var, t) Typ.t =
+        let there = to_list in
+        let back = of_list in
+        Typ.list Boolean.typ ~length:length_in_bits
+        |> Typ.transport ~there ~back
+        |> Typ.transport_var ~there ~back
 
-      let constant = List.map ~f:Boolean.var_of_value
+      let project = Fn.compose Field.Var.project to_list
+
+      let constant bs = of_list (List.map ~f:Boolean.var_of_value (to_list bs))
     end
 
     type var = Field.Var.t
@@ -150,6 +158,7 @@ end = struct
     let choose_preimage x =
       with_label "Pedersen.Digest.choose_preimage"
         (Field.Checked.choose_preimage_var ~length:Field.size_in_bits x)
+      |> Checked.map ~f:Bitstring.Lsb_first.of_list
   end
 
   let digest (x, _) = x
