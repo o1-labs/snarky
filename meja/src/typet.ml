@@ -246,13 +246,13 @@ module TypeDecl = struct
           *)
           let params =
             List.fold ~init:Typeset.empty fields ~f:(fun set {fld_type; _} ->
-                Set.union set (Envi.Type.type_vars fld_type) )
+                Set.union set (Type1.type_vars fld_type) )
             |> Set.to_list
           in
           let decl =
             mk
               ~name:(Ident.create ~mode ctor.ctor_ident.txt)
-              ~params (TRecord fields) env
+              ~params (TRecord fields)
           in
           (env, Type0.Ctor_record decl)
     in
@@ -338,14 +338,14 @@ module TypeDecl = struct
           let typ, env = Type.import ~must_find:true typ env in
           let typ = typ.type_type in
           let tdec_implicit_params =
-            add_implicits (Envi.Type.implicit_params env typ)
+            add_implicits (Type1.implicit_params typ)
           in
           ({decl with tdec_desc= TAlias typ; tdec_implicit_params}, env)
       | Pdec_unfold typ ->
           let typ, env = Type.import ~must_find:false typ env in
           let typ = typ.type_type in
           let tdec_implicit_params =
-            add_implicits (Envi.Type.implicit_params env typ)
+            add_implicits (Type1.implicit_params typ)
           in
           ({decl with tdec_desc= TUnfold typ; tdec_implicit_params}, env)
       | Pdec_open ->
@@ -358,7 +358,7 @@ module TypeDecl = struct
             add_implicits
               (Typeset.union_list
                  (List.map fields ~f:(fun {fld_type; _} ->
-                      Envi.Type.implicit_params env fld_type )))
+                      Type1.implicit_params fld_type )))
           in
           ({decl with tdec_desc= TRecord fields; tdec_implicit_params}, env)
       | Pdec_variant ctors | Pdec_extend (_, _, ctors) ->
@@ -419,7 +419,7 @@ module TypeDecl = struct
                             typs
                       in
                       Typeset.union_list
-                        (List.map typs ~f:(Envi.Type.implicit_params env)) )))
+                        (List.map typs ~f:Type1.implicit_params) )))
           in
           ({decl with tdec_desc; tdec_implicit_params}, env)
     in
@@ -440,7 +440,7 @@ module TypeDecl = struct
                    ; var_decl= decl }
           | _ ->
               () ) ;
-          Type0.iter ~f:iter_type typ
+          Type1.iter ~f:iter_type typ
         in
         let iter_field field = iter_type field.fld_type in
         let iter_ctor_args = function

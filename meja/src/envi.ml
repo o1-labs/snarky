@@ -2,6 +2,7 @@ open Compiler_internals
 open Core_kernel
 open Ast_types
 open Type0
+open Type1
 open Ast_build.Loc
 open Longident
 module IdTbl = Ident.Table
@@ -29,8 +30,7 @@ exception Error of Location.t * error
 
 module TypeEnvi = struct
   type t =
-    { type_id: int
-    ; type_decl_id: int
+    { type_decl_id: int
     ; instance_id: int
     ; variable_instances: type_expr Int.Map.t
     ; implicit_vars: Typedast.expression list
@@ -40,8 +40,7 @@ module TypeEnvi = struct
         (int (* id *) * int option ref (* num. args *) * Location.t) IdTbl.t }
 
   let empty =
-    { type_id= 1
-    ; type_decl_id= 1
+    { type_decl_id= 1
     ; instance_id= 1
     ; variable_instances= Int.Map.empty
     ; implicit_id= 1
@@ -349,7 +348,7 @@ module Scope = struct
           find_module_ ~mode ~loc ~scopes resolve_env path scope
         in
         let%map ident, m = get_module ~mode ~loc ~scopes resolve_env name m in
-        (Path.Pdot (path, Ident.name ident), m)
+        (Path.dot path ident, m)
     | Lapply (fpath, path) ->
         let%map fpath, m =
           find_module_ ~mode ~loc ~scopes resolve_env fpath scope
@@ -437,9 +436,12 @@ module Scope = struct
       match find_module_deferred ~mode ~loc ~scopes resolve_env lid scope with
       | Some (path, Immediate m) ->
           let%map ident, m = IdTbl.find_name ~modes name m.modules in
-          (Path.Pdot (path, Ident.name ident), m)
+          (Path.dot path ident, m)
       | Some (path, Deferred lid) ->
-          Some (Path.Pdot (path, name), Deferred (Ldot (lid, name)))
+          (* TODO: Rework this. We need to know whether deferred modules are
+             Prover or Checked mode.
+          *)
+          Some (Path.Pdot (path, Checked, name), Deferred (Ldot (lid, name)))
       | None ->
           None )
     | Lapply (lid1, lid2) ->
@@ -645,7 +647,7 @@ let find_of_lident ~mode ~kind ~get_name (lid : lid) env =
               env.resolve_env path scope
           in
           let%map ident, data = get_name ~mode name m in
-          (Path.Pdot (path, Ident.name ident), data)
+          (Path.dot path ident, data)
     | Lapply _ ->
         raise (Error (loc, Lident_unhandled (kind, lid.txt)))
   in
@@ -660,7 +662,7 @@ let find_of_lident ~mode ~kind ~get_name (lid : lid) env =
             env.resolve_env path
         in
         let%map ident, data = get_name ~mode name m in
-        (Path.Pdot (path, Ident.name ident), data)
+        (Path.dot path ident, data)
     | _ ->
         None )
 
@@ -715,18 +717,9 @@ let find_module_type =
 module Type = struct
   type env = t
 
-  let mk' env depth type_desc =
-    let type_id, type_env = TypeEnvi.next_type_id env.resolve_env.type_env in
-    env.resolve_env.type_env <- type_env ;
-    {type_desc; type_id; type_depth= depth}
+  let mk type_desc env = Type1.mk env.depth type_desc
 
-  let mk type_desc env = mk' env env.depth type_desc
-
-  let mkvar ?(explicitness = Explicit) name env =
-    mk (Tvar (name, explicitness)) env
-
-  let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
-    ref (fun _ -> failwith "mk_option not initialised")
+  let mkvar ?explicitness name env = Type1.mkvar ?explicitness env.depth name
 
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
@@ -817,37 +810,16 @@ module Type = struct
     let sexp_of_t typ = Int.sexp_of_t typ.type_id
   end
 
-  let type_vars ?depth typ =
-    let deep_enough =
-      match depth with
-      | Some depth ->
-          fun typ -> depth <= typ.type_depth
-      | None ->
-          fun _ -> true
-    in
-    let empty = Typeset.empty in
-    let rec type_vars set typ =
-      match typ.type_desc with
-      | Tvar _ when deep_enough typ ->
-          Set.add set typ
-      | Tpoly (vars, typ) ->
-          let poly_vars = List.fold ~init:empty vars ~f:type_vars in
-          Set.union set (Set.diff (type_vars empty typ) poly_vars)
-      | _ ->
-          fold ~init:set typ ~f:type_vars
-    in
-    type_vars empty typ
-
   let rec update_depths env typ =
-    Type0.update_depth env.depth typ ;
+    Type1.update_depth env.depth typ ;
     match typ.type_desc with
     | Tvar _ ->
         Option.iter ~f:(update_depths env) (instance env typ)
     | _ ->
-        Type0.iter ~f:(update_depths env) typ
+        Type1.iter ~f:(update_depths env) typ
 
   let rec flatten typ env =
-    let mk' = mk' env typ.type_depth in
+    let mk' = Type1.mk typ.type_depth in
     match typ.type_desc with
     | Tvar _ -> (
       match instance env typ with
@@ -881,23 +853,6 @@ module Type = struct
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
-  let compare_label label1 label2 =
-    match (label1, label2) with
-    | Asttypes.Nolabel, Asttypes.Nolabel ->
-        0
-    | Nolabel, _ ->
-        -1
-    | _, Nolabel ->
-        1
-    | Labelled x, Labelled y ->
-        String.compare x y
-    | Labelled _, _ ->
-        -1
-    | _, Labelled _ ->
-        1
-    | Optional x, Optional y ->
-        String.compare x y
-
   let rec compare typ1 typ2 =
     if Int.equal typ1.type_id typ2.type_id then 0
     else
@@ -930,7 +885,7 @@ module Type = struct
         , Tarrow (typ2a, typ2b, Explicit, label2) )
       | ( Tarrow (typ1a, typ1b, Implicit, label1)
         , Tarrow (typ2a, typ2b, Implicit, label2) ) ->
-          or_compare (compare_label label1 label2) ~f:(fun () ->
+          or_compare (compare_arg_label label1 label2) ~f:(fun () ->
               or_compare (compare typ1a typ2a) ~f:(fun () ->
                   compare typ1b typ2b ) )
       | Tarrow (_, _, Explicit, _), _ ->
@@ -954,7 +909,7 @@ module Type = struct
     | Tvar _ when typ.type_depth > depth ->
         Set.add set typ
     | _ ->
-        Type0.fold ~init:set ~f:(weak_variables depth) typ
+        Type1.fold ~init:set ~f:(weak_variables depth) typ
 
   let rec get_implicits acc typ =
     match typ.type_desc with
@@ -1104,7 +1059,7 @@ module Type = struct
               not
                 (List.exists strong_implicit_vars ~f:(fun e_strong ->
                      if
-                       Type0.equal_at_depth ~depth:env.depth e_weak.exp_type
+                       Type1.equal_at_depth ~depth:env.depth e_weak.exp_type
                          e_strong.exp_type
                      then (
                        ignore
@@ -1132,38 +1087,6 @@ module Type = struct
     env.resolve_env.type_env <- {env.resolve_env.type_env with implicit_vars} ;
     local_implicit_vars
 
-  let implicit_params _env typ =
-    let rec implicit_params set typ =
-      match typ.type_desc with
-      | Tvar (_, Implicit) ->
-          Set.add set typ
-      | Tpoly (_, typ) ->
-          implicit_params set typ
-      | _ ->
-          fold ~init:set typ ~f:implicit_params
-    in
-    implicit_params Typeset.empty typ
-
-  let rec constr_map env ~f typ =
-    match typ.type_desc with
-    | Tvar _ ->
-        typ
-    | Ttuple typs ->
-        let typs = List.map ~f:(constr_map env ~f) typs in
-        mk (Ttuple typs) env
-    | Tarrow (typ1, typ2, explicit, label) ->
-        let typ1 = constr_map env ~f typ1 in
-        let typ2 = constr_map env ~f typ2 in
-        mk (Tarrow (typ1, typ2, explicit, label)) env
-    | Tctor variant ->
-        let var_params = List.map ~f:(constr_map env ~f) variant.var_params in
-        let var_implicit_params =
-          List.map ~f:(constr_map env ~f) variant.var_implicit_params
-        in
-        mk (f {variant with var_params; var_implicit_params}) env
-    | Tpoly (typs, typ) ->
-        mk (Tpoly (typs, constr_map env ~f typ)) env
-
   let get_preferred_constr_name env typ =
     match typ.type_desc with
     | Tctor variant ->
@@ -1173,7 +1096,7 @@ module Type = struct
         None
 
   let normalise_constr_names env typ =
-    constr_map env typ ~f:(fun variant ->
+    constr_map typ ~f:(fun variant ->
         match
           List.find_map env.scope_stack
             ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)
@@ -1182,53 +1105,6 @@ module Type = struct
             Tctor {variant with var_ident= ident}
         | None ->
             Tctor variant )
-
-  let rec bubble_label_aux env label typ =
-    match typ.type_desc with
-    | Tarrow (typ1, typ2, explicit, arr_label)
-      when Int.equal (compare_label label arr_label) 0 ->
-        (Some (typ1, explicit, arr_label), typ2)
-    | Tarrow (typ1, typ2, explicit, arr_label)
-      when match (label, arr_label) with
-           | Labelled lbl, Optional arr_lbl ->
-               String.equal lbl arr_lbl
-           | _ ->
-               false ->
-        (Some (!mk_option typ1, explicit, arr_label), typ2)
-    | Tarrow (typ1, typ2, explicit, arr_label) -> (
-      match bubble_label_aux env label typ2 with
-      | None, _ ->
-          (None, typ)
-      | res, typ2 ->
-          (res, mk (Tarrow (typ1, typ2, explicit, arr_label)) env) )
-    | _ ->
-        (None, typ)
-
-  let bubble_label env label typ =
-    match bubble_label_aux env label typ with
-    | Some (typ1, explicit, arr_label), typ2 ->
-        mk (Tarrow (typ1, typ2, explicit, arr_label)) env
-    | None, typ ->
-        typ
-
-  let discard_optional_labels typ =
-    let rec go typ' =
-      match typ'.type_desc with
-      | Tarrow (_, typ2, _, Optional _) ->
-          go typ2
-      | Tarrow (_, _, _, _) ->
-          typ
-      | _ ->
-          typ'
-    in
-    go typ
-
-  let is_arrow typ =
-    match typ.type_desc with
-    | Tarrow _ | Tpoly (_, {type_desc= Tarrow _; _}) ->
-        true
-    | _ ->
-        false
 end
 
 module TypeDecl = struct
@@ -1237,22 +1113,10 @@ module TypeDecl = struct
     env.resolve_env.type_env <- type_env ;
     tdec_id
 
-  let mk ~name ~params ?(implicit_params = []) desc env =
-    let tdec_id = next_id env in
-    { tdec_ident= name
-    ; tdec_params= params
-    ; tdec_implicit_params= implicit_params
-    ; tdec_desc= desc
-    ; tdec_id }
+  let mk = Type1.Decl.mk
 
-  let mk_typ ~params ?ident decl =
-    let ident = Option.value ident ~default:(Path.Pident decl.tdec_ident) in
-    Type.mk
-      (Tctor
-         { var_ident= ident
-         ; var_params= params
-         ; var_implicit_params= []
-         ; var_decl= decl })
+  let mk_typ ~params ?ident decl env =
+    Type1.Decl.mk_typ ~params ?ident env.depth decl
 
   let find_of_type ~loc typ env =
     let open Option.Let_syntax in

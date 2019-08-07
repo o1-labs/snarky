@@ -3,6 +3,7 @@ open Core_kernel
 open Ast_types
 open Parsetypes
 open Type0
+open Type1
 
 type error =
   | Check_failed of type_expr * type_expr * error
@@ -69,7 +70,7 @@ let rec check_type_aux ~loc typ ctyp env =
     | None ->
         None
   in
-  Type0.unify_depths typ ctyp ;
+  Type1.unify_depths typ ctyp ;
   match (typ.type_desc, ctyp.type_desc) with
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
@@ -289,13 +290,11 @@ let free_type_vars ?depth typ =
     match typ.type_desc with
     | Tpoly (vars, typ) ->
         let poly_vars =
-          Typeset.union_list (List.map ~f:(Envi.Type.type_vars ?depth) vars)
+          Typeset.union_list (List.map ~f:(Type1.type_vars ?depth) vars)
         in
         Set.union set (Set.diff (free_type_vars empty typ) poly_vars)
     | Tarrow (typ1, typ2, _, _) ->
-        Set.union
-          (Envi.Type.type_vars ?depth typ1)
-          (Envi.Type.type_vars ?depth typ2)
+        Set.union (Type1.type_vars ?depth typ1) (Type1.type_vars ?depth typ2)
     | _ ->
         fold ~init:set typ ~f:free_type_vars
   in
@@ -327,8 +326,8 @@ let get_field (field : lid) env =
       in
       let name =
         match ident with
-        | Path.Pdot (m, _) ->
-            Path.Pdot (m, Ident.name tdec_ident)
+        | Path.Pdot (m, _, _) ->
+            Path.dot m tdec_ident
         | _ ->
             Path.Pident tdec_ident
       in
@@ -382,8 +381,8 @@ let get_ctor (name : lid) env =
       let ctor = List.nth_exn ctors i in
       let make_name tdec_ident =
         match name with
-        | Path.Pdot (m, _) ->
-            Path.Pdot (m, Ident.name tdec_ident)
+        | Path.Pdot (m, _, _) ->
+            Path.dot m tdec_ident
         | _ ->
             Path.Pident tdec_ident
       in
@@ -412,7 +411,7 @@ let get_ctor (name : lid) env =
       in
       let bound_vars =
         Set.to_list
-          (Set.union (Envi.Type.type_vars typ) (Envi.Type.type_vars args_typ))
+          (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
       in
       let _, bound_vars, _ =
         Envi.Type.refresh_vars ~loc bound_vars Int.Map.empty env
@@ -531,8 +530,8 @@ let rec check_pattern ~add env typ pat =
                   match ident with
                   | Pident _ ->
                       Pident decl.tdec_ident
-                  | Pdot (path, _) ->
-                      Pdot (path, Ident.name decl.tdec_ident)
+                  | Pdot (path, _, _) ->
+                      dot path decl.tdec_ident
                   | _ ->
                       failwith "Unhandled Papply in field name")
               in
@@ -600,7 +599,7 @@ let rec get_expression env expected exp =
       let (typ, env), es =
         List.fold_map ~init:(f.Typedast.exp_type, env) es
           ~f:(fun (f_typ, env) (label, e) ->
-            let f_typ = Envi.Type.bubble_label env label f_typ in
+            let f_typ = Type1.bubble_label label f_typ in
             let e_typ = Envi.Type.mkvar None env in
             let res_typ = Envi.Type.mkvar None env in
             let arrow =
@@ -617,9 +616,7 @@ let rec get_expression env expected exp =
             let e, env = get_expression env e_typ e in
             ((Envi.Type.flatten res_typ env, env), (label, e)) )
       in
-      let typ =
-        Envi.Type.discard_optional_labels @@ Envi.Type.flatten typ env
-      in
+      let typ = Type1.discard_optional_labels @@ Envi.Type.flatten typ env in
       (* Squash nested applies from implicit arguments. *)
       let f, es =
         match f.exp_desc with
@@ -792,8 +789,8 @@ let rec get_expression env expected exp =
               in
               let ident =
                 match fld_ident with
-                | Pdot (path, _) ->
-                    Path.Pdot (path, Ident.name decl.tdec_ident)
+                | Pdot (path, _, _) ->
+                    Path.dot path decl.tdec_ident
                 | _ ->
                     Path.Pident decl.tdec_ident
               in
@@ -854,8 +851,8 @@ let rec get_expression env expected exp =
                     match fld_ident with
                     | Pident _ ->
                         Pident decl.tdec_ident
-                    | Pdot (path, _) ->
-                        Pdot (path, Ident.name decl.tdec_ident)
+                    | Pdot (path, _, _) ->
+                        dot path decl.tdec_ident
                     | _ ->
                         failwith "Unhandled Papply in field name")
                 in
@@ -903,8 +900,8 @@ let rec get_expression env expected exp =
                   match ident with
                   | Pident _ ->
                       Pident decl.tdec_ident
-                  | Pdot (path, _) ->
-                      Pdot (path, Ident.name decl.tdec_ident)
+                  | Pdot (path, _, _) ->
+                      dot path decl.tdec_ident
                   | _ ->
                       failwith "Unhandled Papply in field name")
               in
