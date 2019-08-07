@@ -341,9 +341,10 @@ module Make (Backend : Backend_extended.S) = struct
           run (k y) s
     with
     | Runtime_error (message, stack, exn, bt) ->
-        (* Using the same exn makes the exception backtrace accumulate a
-           re-raised message for every iteration of this loop, so we construct
-           a new exception of the same format instead.
+        (* NOTE: We create a new [Runtime_error] instead of re-using the old
+                 one. Re-using the old one will fill the backtrace with call
+                 and re-raise messages, one per iteration of this function,
+                 which are irrelevant to the user.
         *)
         raise (Runtime_error (message, stack, exn, bt))
     | exn ->
