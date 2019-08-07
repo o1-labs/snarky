@@ -209,6 +209,8 @@ let expression_desc iter = function
       iter.expression iter e1 ;
       iter.expression iter e2 ;
       Option.iter ~f:(iter.expression iter) e3
+  | Texp_prover e ->
+      iter.expression iter e
 
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
@@ -231,6 +233,8 @@ let signature_desc iter = function
   | Tsig_request (typ, ctor) ->
       iter.ptype_expr iter typ ; iter.ctor_decl iter ctor
   | Tsig_multiple sigs ->
+      iter.signature iter sigs
+  | Tsig_prover sigs ->
       iter.signature iter sigs
 
 let module_sig iter {msig_desc; msig_loc} =
@@ -276,6 +280,8 @@ let statement_desc iter = function
           Option.iter ~f:(iter.pattern iter) p ;
           iter.expression iter e )
   | Tstmt_multiple stmts ->
+      iter.statements iter stmts
+  | Tstmt_prover stmts ->
       iter.statements iter stmts
 
 let module_expr iter {mod_desc; mod_loc} =
