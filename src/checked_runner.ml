@@ -290,56 +290,8 @@ module Make (Backend : Backend_extended.S) = struct
 
   module Types = Checked.Types
 
-  (* INVARIANT: run _ s = (s', _) gives
-       (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
-  let rec run : type a s.
-      (a, s, Field.t) Checked.t -> s run_state -> s run_state * a =
-   fun t s ->
-    try
-      match t with
-      | As_prover (x, k) ->
-          let s, () = as_prover x s in
-          run k s
-      | Pure x ->
-          (s, x)
-      | Direct (d, k) ->
-          let s, y = d s in
-          run (k y) s
-      | Reduced (t, d, res, k) ->
-          let s, y =
-            if Option.is_some s.prover_state && Option.is_none s.system then
-              (d s, res)
-            else run t s
-          in
-          run (k y) s
-      | With_label (lab, t, k) ->
-          let s, y = with_label lab (run t) s in
-          run (k y) s
-      | Add_constraint (c, t) ->
-          let s, () = add_constraint c s in
-          run t s
-      | With_state (p, and_then, t_sub, k) ->
-          let s, y = with_state p and_then (run t_sub) s in
-          run (k y) s
-      | With_handler (h, t, k) ->
-          let s, y = with_handler h (run t) s in
-          run (k y) s
-      | Clear_handler (t, k) ->
-          let s, y = clear_handler (run t) s in
-          run (k y) s
-      | Exists (typ, p, k) ->
-          let typ =
-            { Types.Typ.store= typ.store
-            ; read= typ.read
-            ; alloc= typ.alloc
-            ; check= (fun var -> run (typ.check var)) }
-          in
-          let s, y = exists typ p s in
-          run (k y) s
-      | Next_auxiliary k ->
-          let s, y = next_auxiliary s in
-          run (k y) s
-    with
+  let handle_error s f =
+    try f () with
     | Runtime_error (message, stack, exn, bt) ->
         (* NOTE: We create a new [Runtime_error] instead of re-using the old
                  one. Re-using the old one will fill the backtrace with call
@@ -364,6 +316,64 @@ module Make (Backend : Backend_extended.S) = struct
              , s.stack
              , exn
              , bt ))
+
+  (* INVARIANT: run _ s = (s', _) gives
+       (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
+  let rec run : type a s.
+      (a, s, Field.t) Checked.t -> s run_state -> s run_state * a =
+   fun t s ->
+    match t with
+    | As_prover (x, k) ->
+        let s, () = handle_error s (fun () -> as_prover x s) in
+        run k s
+    | Pure x ->
+        (s, x)
+    | Direct (d, k) ->
+        let s, y = handle_error s (fun () -> d s) in
+        let k = handle_error s (fun () -> k y) in
+        run k s
+    | Reduced (t, d, res, k) ->
+        let s, y =
+          if Option.is_some s.prover_state && Option.is_none s.system then
+            (handle_error s (fun () -> d s), res)
+          else run t s
+        in
+        let k = handle_error s (fun () -> k y) in
+        run k s
+    | With_label (lab, t, k) ->
+        let s, y = with_label lab (run t) s in
+        let k = handle_error s (fun () -> k y) in
+        run k s
+    | Add_constraint (c, t) ->
+        let s, () = handle_error s (fun () -> add_constraint c s) in
+        run t s
+    | With_state (p, and_then, t_sub, k) ->
+        let t_sub = run t_sub in
+        let s, y = handle_error s (fun () -> with_state p and_then t_sub s) in
+        let k = handle_error s (fun () -> k y) in
+        run k s
+    | With_handler (h, t, k) ->
+        let s, y = with_handler h (run t) s in
+        let k = handle_error s (fun () -> k y) in
+        run k s
+    | Clear_handler (t, k) ->
+        let s, y = clear_handler (run t) s in
+        let k = handle_error s (fun () -> k y) in
+        run k s
+    | Exists (typ, p, k) ->
+        let typ =
+          { Types.Typ.store= typ.store
+          ; read= typ.read
+          ; alloc= typ.alloc
+          ; check= (fun var -> run (typ.check var)) }
+        in
+        let s, y = handle_error s (fun () -> exists typ p s) in
+        let k = handle_error s (fun () -> k y) in
+        run k s
+    | Next_auxiliary k ->
+        let s, y = next_auxiliary s in
+        let k = handle_error s (fun () -> k y) in
+        run k s
 
   let dummy_vector = Field.Vector.create ()
 
