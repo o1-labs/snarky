@@ -1142,6 +1142,25 @@ struct
       let if_ = Checked.if_
 
       let compare ~bit_length a b =
+        (* Overview of the logic:
+           let n = bit_length
+           We have 0 <= a < 2^n, 0 <= b < 2^n, and so
+             -2^n < b - a < 2^n
+           If (b - a) >= 0, then
+             2^n <= 2^n + b - a < 2^{n+1},
+           and so the n-th bit must be set.
+           If (b - a) < 0 then
+             0 < 2^n + b - a < 2^n
+           and so the n-th bit must not be set.
+           Thus, we can use the n-th bit of 2^n + b - a to determine whether
+             (b - a) >= 0 <-> a <= b.
+
+           We also need that the maximum value
+             2^n + (2^n - 1) - 0 = 2^{n+1} - 1
+           fits inside the field, so for the max field element f,
+             2^{n+1} - 1 <= f -> n+1 <= log2(f) = size_in_bits - 1
+        *)
+        assert Stdlib.(bit_length <= size_in_bits - 2) ;
         let open Checked in
         let open Let_syntax in
         [%with_label_ "compare"]
