@@ -35,6 +35,8 @@ module Lsb_first = struct
   let of_msb_first = List.rev
 
   let pad ~padding_length ~zero xs =
+    if Int.(padding_length < 0)
+    then raise (Invalid_argument (sprintf "padding_length %d < 0" padding_length));
     xs @ List.init padding_length ~f:(fun _ -> zero)
 end
 
