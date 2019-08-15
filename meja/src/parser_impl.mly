@@ -34,6 +34,7 @@ let consexp ~pos hd tl =
 %token <string> STRING
 %token <string> LIDENT
 %token <string> UIDENT
+%token PROVER
 %token FUN
 %token LET
 %token INSTANCE
@@ -161,6 +162,8 @@ structure_item:
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Pstmt_request (arg, x, handler)) }
+  | PROVER LBRACE stmts = structure RBRACE
+    { mkstmt ~pos:$loc (Pstmt_prover stmts) }
 
 signature_item:
   | LET x = as_loc(val_ident) COLON typ = type_expr
@@ -191,6 +194,8 @@ signature_item:
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl
     { mksig ~pos:$loc (Psig_request (arg, x)) }
+  | PROVER LBRACE sigs = signature RBRACE
+    { mksig ~pos:$loc (Psig_prover sigs) }
 
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
@@ -231,19 +236,19 @@ field_decl:
 
 type_kind:
   | (* empty *)
-    { TAbstract }
+    { Pdec_abstract }
   | EQUAL k = type_kind_body
     { k }
 
 type_kind_body:
   | t = type_expr
-    { TAlias t }
+    { Pdec_alias t }
   | LBRACE fields = list(field_decl, COMMA) RBRACE
-    { TRecord (List.rev fields) }
+    { Pdec_record (List.rev fields) }
   | maybe(BAR) ctors = list(ctor_decl, BAR)
-    { TVariant (List.rev ctors) }
+    { Pdec_variant (List.rev ctors) }
   | DOTDOT
-    { TOpen }
+    { Pdec_open }
 
 ctor_decl_args:
   | (* empty *)
@@ -340,6 +345,8 @@ simpl_expr:
     { mkexp ~pos:$loc (Pexp_field (e, field)) }
   | s = STRING
     { mkexp ~pos:$loc (Pexp_literal (String s)) }
+  | PROVER LBRACE e = block RBRACE
+    { mkexp ~pos:$loc (Pexp_prover e) }
 
 expr:
   | x = simpl_expr

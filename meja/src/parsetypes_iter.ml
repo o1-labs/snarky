@@ -83,24 +83,25 @@ let type_decl iter
   iter.type_decl_desc iter tdec_desc
 
 let type_decl_desc iter = function
-  | TAbstract ->
+  | Pdec_abstract ->
       ()
-  | TAlias typ ->
+  | Pdec_alias typ ->
       iter.type_expr iter typ
-  | TUnfold typ ->
+  | Pdec_unfold typ ->
       iter.type_expr iter typ
-  | TRecord fields ->
+  | Pdec_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       List.iter ~f:(iter.ctor_decl iter) ctors
-  | TOpen ->
+  | Pdec_open ->
       ()
-  | TExtend (name, decl, ctors) ->
-      lid iter name ;
+  | Pdec_extend (_name, _decl, _ctors) ->
+      assert false
+
+(* TODO: re-enable this when the Type0 iterator is merged. *)
+(*lid iter name ;
       iter.type0_decl iter decl ;
-      List.iter ~f:(iter.ctor_decl iter) ctors
-  | TForward _ ->
-      ()
+      List.iter ~f:(iter.ctor_decl iter) ctors*)
 
 let literal (_iter : iterator) (_ : literal) = ()
 
@@ -172,6 +173,8 @@ let expression_desc iter = function
       iter.expression iter e1 ;
       iter.expression iter e2 ;
       Option.iter ~f:(iter.expression iter) e3
+  | Pexp_prover e ->
+      iter.expression iter e
 
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
@@ -194,6 +197,8 @@ let signature_desc iter = function
   | Psig_request (typ, ctor) ->
       iter.type_expr iter typ ; iter.ctor_decl iter ctor
   | Psig_multiple sigs ->
+      iter.signature iter sigs
+  | Psig_prover sigs ->
       iter.signature iter sigs
 
 let module_sig iter {msig_desc; msig_loc} =
@@ -239,6 +244,8 @@ let statement_desc iter = function
           Option.iter ~f:(iter.pattern iter) p ;
           iter.expression iter e )
   | Pstmt_multiple stmts ->
+      iter.statements iter stmts
+  | Pstmt_prover stmts ->
       iter.statements iter stmts
 
 let module_expr iter {mod_desc; mod_loc} =

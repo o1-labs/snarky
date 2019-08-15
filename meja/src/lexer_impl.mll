@@ -56,6 +56,7 @@ rule token = parse
     { BOOL true }
   | number as n 'f'
     { FIELD n }
+  | "Prover" { PROVER }
   | "fun" { FUN }
   | "let" { LET }
   | "instance" { INSTANCE }

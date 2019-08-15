@@ -1,23 +1,27 @@
 open Core_kernel
 
-type t = {ident_id: int; ident_name: string} [@@deriving sexp]
+type t = {ident_id: int; ident_name: string; ident_mode: Ast_types.mode}
+[@@deriving sexp]
 
 type ident = t
 
 let current_id = ref 0
 
-let create name =
+let create ~mode name =
   incr current_id ;
-  {ident_id= !current_id; ident_name= name}
+  {ident_id= !current_id; ident_name= name; ident_mode= mode}
 
 let name {ident_name= name; _} = name
+
+let mode {ident_mode= mode; _} = mode
 
 let compare {ident_id= id1; _} {ident_id= id2; _} = Int.compare id1 id2
 
 let pprint fmt {ident_name; _} = Ast_types.pp_name fmt ident_name
 
-let debug_print fmt {ident_name; ident_id} =
-  Format.fprintf fmt "%s/%i" ident_name ident_id
+let debug_print fmt {ident_name; ident_id; ident_mode} =
+  Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.pp_mode ident_mode
+    ident_id
 
 module Table = struct
   type 'a t = (ident * 'a) list String.Map.t
@@ -52,7 +56,10 @@ module Table = struct
     | None ->
         None
 
-  let find_name name tbl = Option.bind ~f:List.hd (Map.find tbl name)
+  let find_name name ~modes tbl =
+    Option.bind
+      ~f:(List.find ~f:(fun (ident, _) -> modes (mode ident)))
+      (Map.find tbl name)
 
   let first_exn tbl = List.hd_exn (snd (Map.min_elt_exn tbl))
 
@@ -81,4 +88,7 @@ module Table = struct
             "merge_skewed_names: The name provided by combine does not match \
              the key" ;
         (res :: v1) @ v2 )
+
+  let map tbl ~f =
+    Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f data))) tbl
 end

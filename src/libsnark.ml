@@ -1560,12 +1560,17 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     val of_bigstring : Bigstring.t -> t
 
     val size_in_bits : t -> int
+
+    val dummy : input_size:int -> t
   end = struct
     include Verification_key.Make
               (Ctypes_foreign)
               (struct
                 let prefix = with_prefix M.prefix "verification_key"
               end)
+
+    let dummy ~input_size =
+      foreign (func_name "dummy") (int @-> returning typ) input_size
 
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)

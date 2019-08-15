@@ -11,6 +11,8 @@ module type S = sig
   val init : int -> f:(int -> 'a) -> 'a t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
+
+  val pad : padding_length:int -> zero:'a -> 'a t -> 'a t
 end
 
 module rec Msb_first : sig
