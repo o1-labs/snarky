@@ -141,26 +141,27 @@ struct
 
   let add_constraint c s =
     if !(s.as_prover) then
-      failwith
-        "Cannot add a constraint as the prover: the verifier's constraint \
-         system will not match." ;
-    Option.iter s.log_constraint ~f:(fun f -> f c) ;
-    if s.eval_constraints && not (Constraint.eval c (get_value s)) then
-      failwithf
-        "Constraint unsatisfied (unreduced):\n\
-         %s\n\
-         %s\n\n\
-         Constraint:\n\
-         %s\n\
-         Data:\n\
-         %s"
-        (Constraint.annotation c)
-        (Constraint.stack_to_string s.stack)
-        (Sexp.to_string (Constraint.sexp_of_t c))
-        (log_constraint c s) () ;
-    Option.iter s.system ~f:(fun system ->
-        Constraint.add ~stack:s.stack c system ) ;
-    (s, ())
+      (* Don't add constraints as the prover, or the constraint system won't match! *)
+      (s, ())
+    else (
+      Option.iter s.log_constraint ~f:(fun f -> f c) ;
+      if s.eval_constraints && not (Constraint.eval c (get_value s)) then
+        failwithf
+          "Constraint unsatisfied (unreduced):\n\
+           %s\n\
+           %s\n\n\
+           Constraint:\n\
+           %s\n\
+           Data:\n\
+           %s"
+          (Constraint.annotation c)
+          (Constraint.stack_to_string s.stack)
+          (Sexp.to_string (Constraint.sexp_of_t c))
+          (log_constraint c s) () ;
+      if not !(s.as_prover) then
+        Option.iter s.system ~f:(fun system ->
+            Constraint.add ~stack:s.stack c system ) ;
+      (s, ()) )
 
   let with_state p and_then t_sub s =
     let s, s_sub = run_as_prover (Some p) s in
@@ -181,10 +182,6 @@ struct
     ({s' with handler}, y)
 
   let exists {Types.Typ.store; alloc; check; _} p s =
-    if !(s.as_prover) then
-      failwith
-        "Cannot create a variable as the prover: the verifier's constraint \
-         system will not match." ;
     match s.prover_state with
     | Some ps ->
         let old = !(s.as_prover) in
@@ -193,7 +190,14 @@ struct
           As_prover.Provider.run p s.stack (get_value s) ps s.handler
         in
         s.as_prover := old ;
-        let var = Typ_monads.Store.run (store value) (store_field_elt s) in
+        let var =
+          if !(s.as_prover) then
+            (* If we're nested in a prover block, create constants instead of
+               storing.
+            *)
+            Typ_monads.Store.run (store value) Cvar.constant
+          else Typ_monads.Store.run (store value) (store_field_elt s)
+        in
         (* TODO: Push a label onto the stack here *)
         let s, () = check var (set_prover_state (Some ()) s) in
         (set_prover_state (Some ps) s, {Handle.var; value= Some value})
@@ -471,6 +475,10 @@ module Make (Backend : Backend_extended.S) = struct
         let handle = {Handle.var; value= None} in
         let g, a = flatten_as_prover next_auxiliary stack (k handle) in
         ( (fun s ->
+            if !(s.as_prover) then
+              failwith
+                "Cannot add a constraint as the prover: the verifier's \
+                 constraint system will not match." ;
             let old = !(s.as_prover) in
             s.as_prover := true ;
             let ps, value =
