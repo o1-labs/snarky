@@ -1604,10 +1604,6 @@ module Run = struct
         ; log_constraint= None }
 
     let run checked =
-      if !(!state.as_prover) then
-        failwith
-          "Can't run checked code as the prover: the verifier's constraint \
-           system will not match." ;
       if not !state.is_running then
         failwith "This function can't be run outside of a checked computation." ;
       let state', x = Runner.run checked !state in
