@@ -1160,7 +1160,7 @@ struct
            fits inside the field, so for the max field element f,
              2^{n+1} - 1 <= f -> n+1 <= log2(f) = size_in_bits - 1
         *)
-        assert Stdlib.(bit_length <= size_in_bits - 2) ;
+        assert (Stdlib.(bit_length <= size_in_bits - 2)) ;
         let open Checked in
         let open Let_syntax in
         [%with_label_ "compare"]
