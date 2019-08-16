@@ -1,23 +1,13 @@
-(data_only_dirs cuda-fixnum cuda_prover_piecewise depends libsnark multiexp)
-
-(executable
- (name test)
- (libraries groth16_gpu_prover snarky)
- (modes native)
- (modules test)
- (preprocess (pps ppx_jane)))
-
 (library
  (name groth16_gpu_prover)
  (public_name snarky.groth16_gpu_prover)
- (libraries snarky)
+ (libraries snarky snarky_cuda)
  (no_dynlink)
- (modules (:standard \ test))
  (modes native)
  (c_library_flags :standard -lgroth16_gpu_prover_stubs -L/usr/local/cuda/lib64 -lcudart -lomp -lstdc++)
  (self_build_stubs_archive (groth16_gpu_prover))
- ; The stubs archive depends on the system-installed CUDA library. If this
- ; cannot be found, this annotation should stop the library from being installed.
+ ; Declare that this library should not be installed unless snarky-cuda is
+ ; available.
  (optional))
 
 (rule
