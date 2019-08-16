@@ -1,7 +1,8 @@
 (library
  (name groth16_gpu_prover)
  (public_name snarky.groth16_gpu_prover)
- (libraries snarky snarky_cuda)
+ (libraries snarky)
+ (virtual_deps snarky_cuda)
  (no_dynlink)
  (modes native)
  (c_library_flags :standard -lgroth16_gpu_prover_stubs -L/usr/local/cuda/lib64 -lcudart -lomp -lstdc++)
