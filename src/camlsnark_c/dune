@@ -120,3 +120,34 @@
      exit 1
  fi
 ")))
+
+(rule
+ (targets libgroth16_gpu_prover_stubs.a)
+ (deps
+  (source_tree libsnark-caml)
+  (env_var SNARKY_PERFORMANCE)
+  (glob_files /usr/local/cuda/lib64))
+ (action (bash "
+ if [ ! -v SNARKY_PERFORMANCE ] ||
+    [ \"$SNARKY_PERFORMANCE\" = \"off\" ] ||
+    [ \"$SNARKY_PERFORMANCE\" = \"OFF\" ] ||
+    [ \"$SNARKY_PERFORMANCE\" = \"false\" ] ||
+    [ \"$SNARKY_PERFORMANCE\" = \"FALSE\" ]
+ then
+   SNARKY_PERFORMANCE=\"OFF\"
+ else
+   SNARKY_PERFORMANCE=\"ON\"
+ fi
+ pushd libsnark-caml
+   mkdir -p build
+   pushd build
+     cmake -DPERFORMANCE=$SNARKY_PERFORMANCE \\
+       -DMULTICORE=ON \\
+       -DUSE_PT_COMPRESSION=OFF \\
+       -DUSE_ASM=ON \\
+       -DOPT_FLAGS='-ggdb3 -O2' ..
+     make -j$(nproc) caml_cuda_prover
+   popd
+ popd
+ cp libsnark-caml/build/cuda_prover/libcaml_cuda_prover.a libgroth16_gpu_prover_stubs.a
+")))
