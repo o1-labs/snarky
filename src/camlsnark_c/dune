@@ -58,7 +58,7 @@
        -DUSE_PT_COMPRESSION=OFF \\
        -DUSE_ASM=ON \\
        -DOPT_FLAGS='-ggdb3 -O2' ..
-     make -j$(nproc)
+     make -j$(nproc) ff zm snark
  
      mkdir _stubs_build
  
