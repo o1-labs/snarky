@@ -38,6 +38,7 @@
  (deps
   (source_tree libsnark-caml)
   (env_var SNARKY_PERFORMANCE))
+ (locks libsnark-cmake)
  (action (bash "
  if [ ! -v SNARKY_PERFORMANCE ] ||
     [ \"$SNARKY_PERFORMANCE\" = \"off\" ] ||
@@ -127,6 +128,7 @@
   (source_tree libsnark-caml)
   (env_var SNARKY_PERFORMANCE)
   (glob_files /usr/local/cuda/lib64))
+ (locks libsnark-cmake)
  (action (bash "
  if [ ! -v SNARKY_PERFORMANCE ] ||
     [ \"$SNARKY_PERFORMANCE\" = \"off\" ] ||
