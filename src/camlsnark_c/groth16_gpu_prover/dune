@@ -1,13 +1,12 @@
 (library
  (name groth16_gpu_prover)
  (public_name snarky.groth16_gpu_prover)
- (libraries snarky snarky_cuda)
- (virtual_deps snarky_cuda)
+ (libraries snarky)
  (no_dynlink)
  (modes native)
  (c_library_flags :standard -lgroth16_gpu_prover_stubs -L/usr/local/cuda/lib64 -lcudart -lomp -lstdc++)
  (self_build_stubs_archive (groth16_gpu_prover))
- ; Declare that this library should not be installed unless snarky-cuda is
+ ; Declare that this library should not be installed unless the stubs are
  ; available.
  (optional))
 
