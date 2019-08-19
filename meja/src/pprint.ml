@@ -67,7 +67,7 @@ let ctor_decl fmt decl =
 let type_decl_desc fmt = function
   | Pdec_abstract ->
       ()
-  | Pdec_alias typ | Pdec_unfold typ ->
+  | Pdec_alias typ ->
       fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
   | Pdec_record fields ->
       fprintf fmt "@ =@ {@[<hv2>%a@]}"

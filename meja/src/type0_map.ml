@@ -122,11 +122,6 @@ let type_decl_desc mapper desc =
   | TAlias typ ->
       let typ' = mapper.type_expr mapper typ in
       if phys_equal typ' typ then desc else TAlias typ'
-  | TUnfold _typ ->
-      (* This can cause infinite recursion with newtypes, disabled for now. *)
-      (*let typ' = mapper.type_expr mapper typ in
-      if phys_equal typ' typ then desc else TUnfold typ'*)
-      desc
   | TRecord flds ->
       let same = ref true in
       let flds = map_list flds ~same ~f:(mapper.field_decl mapper) in

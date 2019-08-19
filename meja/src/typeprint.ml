@@ -69,7 +69,7 @@ let ctor_decl fmt decl =
 let type_decl_desc fmt = function
   | TAbstract ->
       ()
-  | TAlias typ | TUnfold typ ->
+  | TAlias typ ->
       fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
   | TRecord fields ->
       fprintf fmt "@ =@ {@[<hv2>%a@]}"

@@ -65,8 +65,6 @@ let of_type_decl decl =
       Type.mk name ~loc ~params ~kind:Parsetree.Ptype_open
   | Pdec_extend _ ->
       failwith "Cannot convert TExtend to OCaml"
-  | Pdec_unfold _ ->
-      failwith "Cannot convert TUnfold to OCaml"
 
 let rec of_pattern_desc ?loc = function
   | Ppat_any ->

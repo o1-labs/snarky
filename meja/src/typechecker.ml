@@ -689,7 +689,10 @@ let rec get_expression env expected exp =
         ; exp_type= typ
         ; exp_desc= Texp_fun (label, p, body, explicit) }
       , env )
-  | Pexp_newtype (name, body) ->
+  | Pexp_newtype (_name, _body) ->
+      assert false
+      (* Temporarily disabled. *)
+      (*
       let env = Envi.open_expr_scope env in
       let decl =
         { tdec_ident= name
@@ -719,6 +722,7 @@ let rec get_expression env expected exp =
         ; exp_desc= Texp_newtype (Location.mkloc decl.tdec_ident name.loc, body)
         }
       , env )
+      *)
   | Pexp_seq (e1, e2) ->
       let e1, env = get_expression env Initial_env.Type.unit e1 in
       let e2, env = get_expression env expected e2 in

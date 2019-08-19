@@ -38,7 +38,6 @@ type type_decl =
 and type_decl_desc =
   | Pdec_abstract
   | Pdec_alias of type_expr
-  | Pdec_unfold of type_expr
   | Pdec_record of field_decl list
   | Pdec_variant of ctor_decl list
   | Pdec_open

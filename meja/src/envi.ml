@@ -185,7 +185,7 @@ module Scope = struct
     let scope' = scope in
     let scope = add_type_declaration decl scope in
     match decl.tdec_desc with
-    | TAbstract | TAlias _ | TUnfold _ | TOpen | TForward _ ->
+    | TAbstract | TAlias _ | TOpen | TForward _ ->
         scope
     | TRecord fields ->
         List.foldi ~f:(add_field decl) ~init:scope fields
@@ -784,8 +784,6 @@ module Type = struct
           refresh_vars ~loc vars new_vars_map env
         in
         copy typ new_vars_map env
-    | Tctor {var_decl= {tdec_desc= TUnfold typ; _}; _} ->
-        typ
     | Tctor ({var_params; var_implicit_params; _} as variant) ->
         let var_params =
           List.map var_params ~f:(fun t -> copy t new_vars_map env)
@@ -1151,9 +1149,6 @@ module TypeDecl = struct
 
   let unfold_alias ~loc typ env =
     match find_of_type ~loc typ env with
-    | Some ({tdec_desc= TUnfold typ'; _}, _, _) when not (phys_equal typ typ')
-      ->
-        Some typ'
     | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
         Some (Type.copy ~loc alias_typ bound_vars env)
     | _ ->
@@ -1161,9 +1156,6 @@ module TypeDecl = struct
 
   let rec find_unaliased_of_type ~loc typ env =
     match find_of_type ~loc typ env with
-    | Some ({tdec_desc= TUnfold typ'; _}, _, _) when not (phys_equal typ typ')
-      ->
-        find_unaliased_of_type ~loc typ' env
     | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
         let typ = Type.copy ~loc alias_typ bound_vars env in
         find_unaliased_of_type ~loc typ env

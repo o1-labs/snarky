@@ -47,7 +47,7 @@ module TypeDecls = struct
 
   (** Meja-specific built-ins. *)
 
-  let field = unfold "field" (var ~explicit:Implicit "field")
+  let field = abstract "field"
 end
 
 (** Empty environment. *)
