@@ -13,5 +13,6 @@ depexts: [
 post-messages: [
   "This package requires CUDA" {failure}
 ]
+flags: [ conf ]
 synopsis: "Virtual package to enable the GPU prover in snarky"
 
