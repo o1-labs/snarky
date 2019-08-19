@@ -98,7 +98,7 @@
          -DCMAKE_LIBRARY_PATH=/usr/local/opt/gmp/lib \\
          -DCMAKE_RULE_MESSAGES:BOOL=OFF \\
          -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ..
-       make -j$(sysctl -n hw.ncpu)
+       make -j$(sysctl -n hw.ncpu) ff zm snark
 
        mkdir _stubs_build
 
