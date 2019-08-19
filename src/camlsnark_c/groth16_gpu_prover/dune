@@ -1,7 +1,7 @@
 (library
  (name groth16_gpu_prover)
  (public_name snarky.groth16_gpu_prover)
- (libraries snarky)
+ (libraries snarky snarky_cuda)
  (virtual_deps snarky_cuda)
  (no_dynlink)
  (modes native)
