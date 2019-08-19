@@ -251,6 +251,11 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 
 add_subdirectory(depends)
 add_subdirectory(libsnark)
-add_subdirectory(cuda-fixnum)
-add_subdirectory(cuda_prover)
 add_subdirectory(prover_reference_functions)
+
+include(CheckLanguage)
+set(CUDA_FOUND check_language(CUDA))
+if(CUDA_FOUND)
+  add_subdirectory(cuda-fixnum)
+  add_subdirectory(cuda_prover)
+endif()
