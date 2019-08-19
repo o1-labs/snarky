@@ -706,12 +706,16 @@ let rec get_expression env expected exp =
       let free_var = Envi.Type.mkvar None env in
       let res =
         (* Substitute instances of the type for [free_var]. *)
-        let mapper = { Type0_map.default_mapper with type_expr= fun mapper typ ->
-          match typ.type_desc with
-          | Tctor {var_ident= Pident ident'; _} when Ident.compare ident ident' = 0 ->
-              free_var
-          | _ -> Type0_map.default_mapper.type_expr mapper typ
-        }
+        let mapper =
+          { Type0_map.default_mapper with
+            type_expr=
+              (fun mapper typ ->
+                match typ.type_desc with
+                | Tctor {var_ident= Pident ident'; _}
+                  when Ident.compare ident ident' = 0 ->
+                    free_var
+                | _ ->
+                    Type0_map.default_mapper.type_expr mapper typ ) }
         in
         mapper.type_expr mapper (Envi.Type.flatten res env)
       in
