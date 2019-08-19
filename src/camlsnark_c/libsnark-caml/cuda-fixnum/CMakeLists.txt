@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.8.0)
 include(CheckLanguage)
 set(CUDA_FOUND check_language(CUDA))
 if(CUDA_FOUND)
