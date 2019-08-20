@@ -199,3 +199,9 @@ module Make_Mnt6753 = Make (struct
   module Backend = Libsnark.Mnt6753
   include Mnt6753_backend
 end)
+
+let%test_module "gpu-test" =
+  ( module struct
+    module M4753 = Make_Mnt4753 (Snark0.Make (Libsnark.Mnt4753.Default))
+    module M6753 = Make_Mnt6753 (Snark0.Make (Libsnark.Mnt6753.Default))
+  end )
