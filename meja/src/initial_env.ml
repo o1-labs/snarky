@@ -111,9 +111,11 @@ module Type = struct
 
   let exn = TypeDecl.mk_typ exn ~params:[] env
 
-  let option a = TypeDecl.mk_typ option ~params:[a] env
+  let option a =
+    {(TypeDecl.mk_typ option ~params:[a] env) with type_depth= a.type_depth}
 
-  let list a = TypeDecl.mk_typ list ~params:[a] env
+  let list a =
+    {(TypeDecl.mk_typ list ~params:[a] env) with type_depth= a.type_depth}
 end
 
-let () = Envi.Type.mk_option := Type.option
+let () = Type1.mk_option := Type.option
