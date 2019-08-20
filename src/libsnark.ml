@@ -1758,6 +1758,8 @@ struct
 
     val typ : t Ctypes.typ
 
+    val delete : t -> unit
+
     val create :
          ?message:message
       -> Proving_key.t
