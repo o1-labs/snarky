@@ -12,6 +12,7 @@
  (cxx_flags
   (:standard \ -pedantic)
   (-I re2_c/libre2))
+ (modules (:standard \ gpu no_gpu))
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
     -conditional))
