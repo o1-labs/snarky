@@ -78,11 +78,56 @@ module type Snarky_intf = sig
   end
 end
 
+module type Prover_intf = sig
+  module Backend : Snarky_intf
+
+  module Raw_vector : sig
+    module G1 : sig
+      type nonrec t = Backend.G1.t Raw.t
+
+      val typ : t typ
+    end
+
+    module G2 : sig
+      type nonrec t = Backend.G2.t Raw.t
+
+      val typ : t typ
+    end
+  end
+
+  module Preprocess : sig
+    val a : int -> Backend.Default.Proving_key.t -> Backend.G1.Vector.t
+
+    val b1 : int -> Backend.Default.Proving_key.t -> Backend.G1.Vector.t
+
+    val b2 : int -> Backend.Default.Proving_key.t -> Backend.G2.Vector.t
+
+    val l : int -> Backend.Default.Proving_key.t -> Backend.G1.Vector.t
+
+    val h : int -> Backend.Default.Proving_key.t -> Backend.G1.Vector.t
+
+    val reduce_g1_vector : Backend.G1.Vector.t -> Raw_vector.G1.t
+
+    val reduce_g2_vector : Backend.G2.Vector.t -> Raw_vector.G2.t
+  end
+
+  val make_groth16_proof :
+       b1_mults:Raw_vector.G1.t
+    -> b2_mults:Raw_vector.G2.t
+    -> l_mults:Raw_vector.G1.t
+    -> public_input:Backend.Field.Vector.t
+    -> auxiliary_input:Backend.Field.Vector.t
+    -> Backend.Default.Proving_key.t
+    -> Backend.Default.Proof.t
+end
+
 module Make (M : sig
   val prefix : string
 end)
 (Backend : Snarky_intf) =
 struct
+  module Backend = Backend
+
   let with_prefix s = M.prefix ^ "_" ^ s
 
   let foreign_prefixed s = foreign (with_prefix s)
