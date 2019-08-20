@@ -71,14 +71,14 @@ struct
         ; b1= b1_mults
         ; b2= b2_mults
         ; l= l_mults
-        ; h= () } data_spec state k =
+        ; h= () } =
       ignore message ;
-      let { Basic.Proof_inputs.public_inputs= public_input
-          ; auxiliary_inputs= auxiliary_input } =
-        Basic.generate_witness data_spec state k
-      in
-      Backend.make_groth16_proof ~b1_mults ~b2_mults ~l_mults ~public_input
-        ~auxiliary_input pk
+      Basic.generate_witness_conv
+        ~f:(fun { Basic.Proof_inputs.public_inputs= public_input
+                ; auxiliary_inputs= auxiliary_input }
+           ->
+          Backend.make_groth16_proof ~b1_mults ~b2_mults ~l_mults ~public_input
+            ~auxiliary_input pk )
   end
 
   module Perform = struct
@@ -87,14 +87,14 @@ struct
         ; b1= b1_mults
         ; b2= b2_mults
         ; l= l_mults
-        ; h= () } data_spec state k =
+        ; h= () } =
       ignore message ;
-      let { Basic.Proof_inputs.public_inputs= public_input
-          ; auxiliary_inputs= auxiliary_input } =
-        Basic.Perform.generate_witness ~run data_spec state k
-      in
-      Backend.make_groth16_proof ~b1_mults ~b2_mults ~l_mults ~public_input
-        ~auxiliary_input pk
+      Basic.Perform.generate_witness_conv ~run
+        ~f:(fun { Basic.Proof_inputs.public_inputs= public_input
+                ; auxiliary_inputs= auxiliary_input }
+           ->
+          Backend.make_groth16_proof ~b1_mults ~b2_mults ~l_mults ~public_input
+            ~auxiliary_input pk )
   end
 
   (*module Proof_system = struct
