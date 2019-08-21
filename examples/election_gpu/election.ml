@@ -152,7 +152,8 @@ let tally_and_prove (ballots : Ballot.Opened.t array) =
         | _ ->
             unhandled )
   in
-  let proof = gpu_prove (Keypair.pk keypair) raw_preprocessed_pk (exposed ()) ()
+  let proof =
+    gpu_prove (Keypair.pk keypair) raw_preprocessed_pk (exposed ()) ()
       handled_check commitments winner
   in
   (commitments, winner, proof)
