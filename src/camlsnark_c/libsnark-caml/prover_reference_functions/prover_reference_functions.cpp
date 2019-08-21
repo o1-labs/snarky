@@ -168,7 +168,10 @@ mnt4753_libsnark::groth16_input::groth16_input(
   r1cs_variable_assignment<Fr<mnt4753_pp>> variable_assignment(*public_input);
   variable_assignment.insert(variable_assignment.end(), auxiliary_input->begin(), auxiliary_input->end());
 
-  size_t d_plus_1 = r1cs->num_constraints() + r1cs->primary_input_size + 1;
+  // Retrieve the actual size of the evaluation domain that will be used for
+  // the FFTs, which may be bigger than d + 1.
+  auto domain = libfqfft::get_evaluation_domain<libff::Fr<mnt4753_pp>>(r1cs->num_constraints() + r1cs->primary_input_size + 1);
+  size_t d_plus_1 = domain->m;
 
   ca = std::make_shared<std::vector<libff::Fr<mnt4753_pp>>>(
       std::vector<libff::Fr<mnt4753_pp>>(d_plus_1, Fr<mnt4753_pp>::zero()));
@@ -225,7 +228,12 @@ mnt4753_libsnark::groth16_params::groth16_params(FILE *params, size_t dd, size_t
 }
 
 mnt4753_libsnark::groth16_params::groth16_params(libsnark::r1cs_gg_ppzksnark_proving_key<libff::mnt4753_pp> *pk) {
-  d = pk->constraint_system.num_constraints() + pk->constraint_system.primary_input_size;
+  // Retrieve the actual size of the evaluation domain that will be used for
+  // the FFTs, which may be bigger than d + 1.
+  auto domain = libfqfft::get_evaluation_domain<libff::Fr<mnt4753_pp>>(pk->constraint_system.num_constraints() + pk->constraint_system.primary_input_size + 1);
+  size_t d_plus_1 = domain->m;
+  d = d_plus_1 - 1;
+
   m = pk->constraint_system.num_variables();
   A = std::make_shared<std::vector<libff::G1<mnt4753_pp>>>(
       std::vector<libff::G1<mnt4753_pp>>(pk->A_query));
@@ -503,7 +511,10 @@ mnt6753_libsnark::groth16_input::groth16_input(
   r1cs_variable_assignment<Fr<mnt6753_pp>> variable_assignment(*public_input);
   variable_assignment.insert(variable_assignment.end(), auxiliary_input->begin(), auxiliary_input->end());
 
-  size_t d_plus_1 = r1cs->num_constraints() + r1cs->primary_input_size + 1;
+  // Retrieve the actual size of the evaluation domain that will be used for
+  // the FFTs, which may be bigger than d + 1.
+  auto domain = libfqfft::get_evaluation_domain<libff::Fr<mnt6753_pp>>(r1cs->num_constraints() + r1cs->primary_input_size + 1);
+  size_t d_plus_1 = domain->m;
 
   ca = std::make_shared<std::vector<libff::Fr<mnt6753_pp>>>(
       std::vector<libff::Fr<mnt6753_pp>>(d_plus_1, Fr<mnt6753_pp>::zero()));
@@ -560,7 +571,12 @@ mnt6753_libsnark::groth16_params::groth16_params(FILE *params, size_t dd, size_t
 }
 
 mnt6753_libsnark::groth16_params::groth16_params(libsnark::r1cs_gg_ppzksnark_proving_key<libff::mnt6753_pp> *pk) {
-  d = pk->constraint_system.num_constraints() + pk->constraint_system.primary_input_size;
+  // Retrieve the actual size of the evaluation domain that will be used for
+  // the FFTs, which may be bigger than d + 1.
+  auto domain = libfqfft::get_evaluation_domain<libff::Fr<mnt6753_pp>>(pk->constraint_system.num_constraints() + pk->constraint_system.primary_input_size + 1);
+  size_t d_plus_1 = domain->m;
+  d = d_plus_1 - 1;
+
   m = pk->constraint_system.num_variables();
   A = std::make_shared<std::vector<libff::G1<mnt6753_pp>>>(
       std::vector<libff::G1<mnt6753_pp>>(pk->A_query));
