@@ -119,8 +119,6 @@ void CURVE_PREFIX(protoboard_renumber_and_append_constraints)(
   r1cs_constraint_system<FieldT> source = pb->get_constraint_system();
   int num_source_constraints = source.constraints.size();
 
-  std::vector<linear_combination<FieldT>>& changesv = *changes;
-
   for (int i = 0; i < num_source_constraints; ++i) {
     r1cs_constraint<FieldT> c = source.constraints[i];
     c.a = CURVE_PREFIX(linear_combination_renumber)(c.a, *changes, aux_shift);
