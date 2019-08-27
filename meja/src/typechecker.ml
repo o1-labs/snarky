@@ -984,9 +984,15 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= expected; exp_desc= Texp_prover e}, env)
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
-  let mode = Envi.current_mode env in
   let loc = e.exp_loc in
   let typ = Envi.Type.mkvar None env in
+  let pattern_variables = ref [] in
+  let p, env =
+    check_pattern env typ p ~add:(fun name typ env ->
+        pattern_variables := (name, typ) :: !pattern_variables ;
+        env )
+  in
+  let typ = Envi.Type.flatten typ env in
   let env = Envi.open_expr_scope env in
   let e, env = get_expression env typ e in
   let env = Envi.close_expr_scope env in
@@ -999,70 +1005,70 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       ~is_subtype:(is_subtype ~loc:e.exp_loc)
       typ_vars env
   in
-  let e, env =
-    List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
-        match var.exp_desc with
-        | Texp_unifiable {expression= None; name; _} ->
-            let exp_type =
-              Envi.Type.mk
-                (Tarrow (var.exp_type, e.exp_type, Implicit, Nolabel))
-                env
-            in
-            let p =
-              { Typedast.pat_desc= Tpat_variable name
-              ; pat_loc= loc
-              ; pat_type= var.exp_type }
-            in
-            ( { Typedast.exp_desc= Texp_fun (Nolabel, p, e, Implicit)
-              ; exp_type
-              ; exp_loc= loc }
-            , env )
-        | _ ->
-            raise (Error (var.exp_loc, No_unifiable_expr)) )
-  in
-  let loc = p.pat_loc in
-  match (p.pat_desc, implicit_vars) with
-  | Ppat_variable str, _ ->
-      let typ =
-        if Set.is_empty typ_vars then e.exp_type
-        else Envi.Type.mk (Tpoly (Set.to_list typ_vars, e.exp_type)) env
-      in
-      let name = map_loc ~f:(Ident.create ~mode) str in
-      let env = Envi.add_name name.txt typ env in
-      let p =
-        {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_variable name}
+  match implicit_vars with
+  | [] ->
+      let pattern_variables = List.rev !pattern_variables in
+      let env =
+        List.fold ~init:env
+          ~f:(Fn.flip @@ Tuple2.uncurry add_polymorphised)
+          pattern_variables
       in
       (p, e, env)
-  | Ppat_constraint (({pat_desc= Ppat_variable str; _} as p'), typ), _ ->
-      let ctyp, env = Typet.Type.import typ env in
-      let typ = ctyp.type_type in
-      check_type ~loc env e.exp_type typ ;
-      let typ =
-        if Set.is_empty typ_vars then typ
-        else Envi.Type.mk (Tpoly (Set.to_list typ_vars, typ)) env
+  | implicit :: _ ->
+      let name, typ =
+        match !pattern_variables with
+        | [(name, typ)] ->
+            (name, Envi.Type.flatten typ env)
+        | _ ->
+            raise (Error (loc, No_instance implicit.exp_type))
       in
-      let name = map_loc ~f:(Ident.create ~mode) str in
-      let env = Envi.add_name name.txt typ env in
-      let p' =
-        { Typedast.pat_loc= p'.pat_loc
-        ; pat_type= typ
-        ; pat_desc= Tpat_variable name }
+      let e =
+        match p.pat_desc with
+        | Tpat_variable _ ->
+            e
+        | _ ->
+            (* Use a let-expression to extract the variable from the expression. *)
+            { exp_loc= p.pat_loc
+            ; exp_type= typ
+            ; exp_desc=
+                Texp_let
+                  ( p
+                  , e
+                  , { exp_loc= p.pat_loc
+                    ; exp_type= typ
+                    ; exp_desc=
+                        Texp_variable
+                          (Location.mkloc (Path.Pident name) p.pat_loc) } ) }
       in
-      let ctyp =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} ctyp
+      (* Write function arguments for the implicit vars. *)
+      let e, env =
+        List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
+            match var.exp_desc with
+            | Texp_unifiable {expression= None; name; _} ->
+                let exp_type =
+                  Envi.Type.mk
+                    (Tarrow (var.exp_type, e.exp_type, Implicit, Nolabel))
+                    env
+                in
+                let p =
+                  { Typedast.pat_desc= Tpat_variable name
+                  ; pat_loc= loc
+                  ; pat_type= var.exp_type }
+                in
+                ( { Typedast.exp_desc= Texp_fun (Nolabel, p, e, Implicit)
+                  ; exp_type
+                  ; exp_loc= loc }
+                , env )
+            | _ ->
+                raise (Error (var.exp_loc, No_unifiable_expr)) )
       in
       let p =
         { Typedast.pat_loc= p.pat_loc
-        ; pat_type= typ
-        ; pat_desc= Tpat_constraint (p', ctyp) }
+        ; pat_type= e.exp_type
+        ; pat_desc= Tpat_variable (Location.mkloc name p.pat_loc) }
       in
+      let env = add_polymorphised name e.exp_type env in
       (p, e, env)
-  | _, [] ->
-      let p, env = check_pattern ~add:add_polymorphised env e.exp_type p in
-      (p, e, env)
-  | _, implicit :: _ ->
-      raise (Error (loc, No_instance implicit.exp_type))
 
 let type_extension ~loc variant ctors env =
   let mode = Envi.current_mode env in
