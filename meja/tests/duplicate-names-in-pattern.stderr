@@ -1,0 +1,2 @@
+File "tests/duplicate-names-in-pattern.meja", line 1, characters 8-9:
+Error: Variable a is bound several times in this matching.
