@@ -51,24 +51,22 @@ let of_type_decl decl =
       (decl.tdec_params @ decl.tdec_implicit_params)
   in
   match decl.tdec_desc with
-  | TAbstract ->
+  | Pdec_abstract ->
       Type.mk name ~loc ~params
-  | TAlias typ ->
+  | Pdec_alias typ ->
       Type.mk name ~loc ~params ~manifest:(of_type_expr typ)
-  | TRecord fields ->
+  | Pdec_record fields ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_record (List.map ~f:of_field_decl fields))
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_variant (List.map ~f:of_ctor_decl ctors))
-  | TOpen ->
+  | Pdec_open ->
       Type.mk name ~loc ~params ~kind:Parsetree.Ptype_open
-  | TExtend _ ->
+  | Pdec_extend _ ->
       failwith "Cannot convert TExtend to OCaml"
-  | TUnfold _ ->
+  | Pdec_unfold _ ->
       failwith "Cannot convert TUnfold to OCaml"
-  | TForward _ ->
-      failwith "Cannot convert TForward to OCaml"
 
 let rec of_pattern_desc ?loc = function
   | Ppat_any ->
@@ -143,6 +141,8 @@ let rec of_expression_desc ?loc = function
   | Pexp_if (e1, e2, e3) ->
       Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
         (Option.map ~f:of_expression e3)
+  | Pexp_prover e ->
+      of_expression e
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(
@@ -203,7 +203,7 @@ let rec of_signature_desc ?loc = function
           (Option.value ~default:Location.none loc)
       in
       Sig.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
-  | Psig_multiple sigs ->
+  | Psig_multiple sigs | Psig_prover sigs ->
       Sig.include_ ?loc
         { pincl_mod= Mty.signature ?loc (of_signature sigs)
         ; pincl_loc= Option.value ~default:Location.none loc
@@ -246,7 +246,7 @@ let rec of_statement_desc ?loc = function
   | Pstmt_modtype (name, msig) ->
       Str.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
   | Pstmt_open name ->
-      Str.open_ ?loc (Opn.mk ?loc name)
+      Str.open_ ?loc (Opn.mk ?loc (Of_ocaml.open_of_name name))
   | Pstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
@@ -288,7 +288,7 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
-  | Pstmt_multiple stmts ->
+  | Pstmt_multiple stmts | Pstmt_prover stmts ->
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc

@@ -30,13 +30,18 @@ type iterator =
   ; longident: iterator -> Longident.t -> unit
   ; type0_decl: iterator -> Type0.type_decl -> unit }
 
+let lid iter {Location.txt; loc} =
+  iter.longident iter txt ; iter.location iter loc
+
+let str iter ({Location.txt= _; loc} : str) = iter.location iter loc
+
 let type_expr iter {type_desc; type_loc} =
   iter.location iter type_loc ;
   iter.type_desc iter type_desc
 
 let type_desc iter = function
   | Ptyp_var (name, _) ->
-      Option.iter ~f:(fun name -> iter.location iter name.Location.loc) name
+      Option.iter ~f:(str iter) name
   | Ptyp_tuple typs ->
       List.iter ~f:(iter.type_expr iter) typs
   | Ptyp_arrow (typ1, typ2, _, _) ->
@@ -48,14 +53,13 @@ let type_desc iter = function
       iter.type_expr iter typ
 
 let variant iter {var_ident; var_params; var_implicit_params} =
-  iter.location iter var_ident.loc ;
-  iter.longident iter var_ident.txt ;
+  lid iter var_ident ;
   List.iter ~f:(iter.type_expr iter) var_params ;
   List.iter ~f:(iter.type_expr iter) var_implicit_params
 
 let field_decl iter {fld_ident; fld_type; fld_loc} =
   iter.location iter fld_loc ;
-  iter.location iter fld_ident.loc ;
+  str iter fld_ident ;
   iter.type_expr iter fld_type
 
 let ctor_args iter = function
@@ -66,38 +70,38 @@ let ctor_args iter = function
 
 let ctor_decl iter {ctor_ident; ctor_args; ctor_ret; ctor_loc} =
   iter.location iter ctor_loc ;
-  iter.location iter ctor_ident.loc ;
+  str iter ctor_ident ;
   iter.ctor_args iter ctor_args ;
   Option.iter ~f:(iter.type_expr iter) ctor_ret
 
 let type_decl iter
     {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc} =
   iter.location iter tdec_loc ;
-  iter.location iter tdec_ident.loc ;
+  str iter tdec_ident ;
   List.iter ~f:(iter.type_expr iter) tdec_params ;
   List.iter ~f:(iter.type_expr iter) tdec_implicit_params ;
   iter.type_decl_desc iter tdec_desc
 
 let type_decl_desc iter = function
-  | TAbstract ->
+  | Pdec_abstract ->
       ()
-  | TAlias typ ->
+  | Pdec_alias typ ->
       iter.type_expr iter typ
-  | TUnfold typ ->
+  | Pdec_unfold typ ->
       iter.type_expr iter typ
-  | TRecord fields ->
+  | Pdec_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       List.iter ~f:(iter.ctor_decl iter) ctors
-  | TOpen ->
+  | Pdec_open ->
       ()
-  | TExtend (name, decl, ctors) ->
-      iter.location iter name.loc ;
-      iter.longident iter name.txt ;
+  | Pdec_extend (_name, _decl, _ctors) ->
+      assert false
+
+(* TODO: re-enable this when the Type0 iterator is merged. *)
+(*lid iter name ;
       iter.type0_decl iter decl ;
-      List.iter ~f:(iter.ctor_decl iter) ctors
-  | TForward _ ->
-      ()
+      List.iter ~f:(iter.ctor_decl iter) ctors*)
 
 let literal (_iter : iterator) (_ : literal) = ()
 
@@ -109,7 +113,7 @@ let pattern_desc iter = function
   | Ppat_any ->
       ()
   | Ppat_variable name ->
-      iter.location iter name.loc
+      str iter name
   | Ppat_constraint (pat, typ) ->
       iter.type_expr iter typ ; iter.pattern iter pat
   | Ppat_tuple pats ->
@@ -120,12 +124,9 @@ let pattern_desc iter = function
       ()
   | Ppat_record fields ->
       List.iter fields ~f:(fun (name, pat) ->
-          iter.location iter name.loc ;
-          iter.longident iter name.txt ;
-          iter.pattern iter pat )
+          lid iter name ; iter.pattern iter pat )
   | Ppat_ctor (name, arg) ->
-      iter.location iter name.loc ;
-      iter.longident iter name.txt ;
+      lid iter name ;
       Option.iter ~f:(iter.pattern iter) arg
 
 let expression iter {exp_desc; exp_loc} =
@@ -137,15 +138,13 @@ let expression_desc iter = function
       iter.expression iter e ;
       List.iter args ~f:(fun (_label, e) -> iter.expression iter e)
   | Pexp_variable name ->
-      iter.location iter name.loc ;
-      iter.longident iter name.txt
+      lid iter name
   | Pexp_literal l ->
       iter.literal iter l
   | Pexp_fun (_label, p, e, _explicit) ->
       iter.pattern iter p ; iter.expression iter e
   | Pexp_newtype (name, e) ->
-      iter.location iter name.loc ;
-      iter.expression iter e
+      str iter name ; iter.expression iter e
   | Pexp_seq (e1, e2) ->
       iter.expression iter e1 ; iter.expression iter e2
   | Pexp_let (p, e1, e2) ->
@@ -159,26 +158,23 @@ let expression_desc iter = function
       List.iter cases ~f:(fun (p, e) ->
           iter.pattern iter p ; iter.expression iter e )
   | Pexp_field (e, name) ->
-      iter.location iter name.loc ;
-      iter.longident iter name.txt ;
-      iter.expression iter e
+      lid iter name ; iter.expression iter e
   | Pexp_record (bindings, default) ->
       Option.iter ~f:(iter.expression iter) default ;
       List.iter bindings ~f:(fun (name, e) ->
-          iter.location iter name.loc ;
-          iter.longident iter name.txt ;
-          iter.expression iter e )
+          lid iter name ; iter.expression iter e )
   | Pexp_ctor (name, arg) ->
-      iter.location iter name.loc ;
-      iter.longident iter name.txt ;
+      lid iter name ;
       Option.iter ~f:(iter.expression iter) arg
   | Pexp_unifiable {expression; name; id= _} ->
-      iter.location iter name.loc ;
+      str iter name ;
       Option.iter ~f:(iter.expression iter) expression
   | Pexp_if (e1, e2, e3) ->
       iter.expression iter e1 ;
       iter.expression iter e2 ;
       Option.iter ~f:(iter.expression iter) e3
+  | Pexp_prover e ->
+      iter.expression iter e
 
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
@@ -188,22 +184,21 @@ let signature_item iter {sig_desc; sig_loc} =
 
 let signature_desc iter = function
   | Psig_value (name, typ) | Psig_instance (name, typ) ->
-      iter.location iter name.loc ;
-      iter.type_expr iter typ
+      str iter name ; iter.type_expr iter typ
   | Psig_type decl ->
       iter.type_decl iter decl
   | Psig_module (name, msig) | Psig_modtype (name, msig) ->
-      iter.location iter name.loc ;
-      iter.module_sig iter msig
+      str iter name ; iter.module_sig iter msig
   | Psig_open name ->
-      iter.location iter name.loc ;
-      iter.longident iter name.txt
+      lid iter name
   | Psig_typeext (typ, ctors) ->
       iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors
   | Psig_request (typ, ctor) ->
       iter.type_expr iter typ ; iter.ctor_decl iter ctor
   | Psig_multiple sigs ->
+      iter.signature iter sigs
+  | Psig_prover sigs ->
       iter.signature iter sigs
 
 let module_sig iter {msig_desc; msig_loc} =
@@ -214,14 +209,11 @@ let module_sig_desc iter = function
   | Pmty_sig sigs ->
       iter.signature iter sigs
   | Pmty_name name ->
-      iter.location iter name.loc ;
-      iter.longident iter name.txt
+      lid iter name
   | Pmty_abstract ->
       ()
   | Pmty_functor (name, fsig, msig) ->
-      iter.location iter name.loc ;
-      iter.module_sig iter fsig ;
-      iter.module_sig iter msig
+      str iter name ; iter.module_sig iter fsig ; iter.module_sig iter msig
 
 let statements iter = List.iter ~f:(iter.statement iter)
 
@@ -233,19 +225,15 @@ let statement_desc iter = function
   | Pstmt_value (p, e) ->
       iter.pattern iter p ; iter.expression iter e
   | Pstmt_instance (name, e) ->
-      iter.location iter name.loc ;
-      iter.expression iter e
+      str iter name ; iter.expression iter e
   | Pstmt_type decl ->
       iter.type_decl iter decl
   | Pstmt_module (name, me) ->
-      iter.location iter name.loc ;
-      iter.module_expr iter me
+      str iter name ; iter.module_expr iter me
   | Pstmt_modtype (name, mty) ->
-      iter.location iter name.loc ;
-      iter.module_sig iter mty
+      str iter name ; iter.module_sig iter mty
   | Pstmt_open name ->
-      iter.location iter name.loc ;
-      iter.longident iter name.txt
+      lid iter name
   | Pstmt_typeext (typ, ctors) ->
       iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors
@@ -257,6 +245,8 @@ let statement_desc iter = function
           iter.expression iter e )
   | Pstmt_multiple stmts ->
       iter.statements iter stmts
+  | Pstmt_prover stmts ->
+      iter.statements iter stmts
 
 let module_expr iter {mod_desc; mod_loc} =
   iter.location iter mod_loc ;
@@ -266,12 +256,9 @@ let module_desc iter = function
   | Pmod_struct stmts ->
       iter.statements iter stmts
   | Pmod_name name ->
-      iter.location iter name.loc ;
-      iter.longident iter name.txt
+      lid iter name
   | Pmod_functor (name, fsig, me) ->
-      iter.location iter name.loc ;
-      iter.module_sig iter fsig ;
-      iter.module_expr iter me
+      str iter name ; iter.module_sig iter fsig ; iter.module_expr iter me
 
 let location (_iter : iterator) (_ : Location.t) = ()
 

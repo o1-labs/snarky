@@ -17,7 +17,7 @@ module type S = sig
        'a t
     -> init:'b
     -> f:('b -> 'a -> ('b * 'c, 's) monad)
-    -> ('b * 'c list, 's) monad
+    -> ('b * 'c t, 's) monad
 
   val exists : 'a t -> f:('a -> (boolean, 's) monad) -> (boolean, 's) monad
 
@@ -116,6 +116,95 @@ module List
     go 0 [] t
 
   let map t ~f = mapi t ~f:(fun _i x -> f x)
+
+  (* The following functions use [map] to evaluate [f] on every element, since
+     * we can't shortcut in the snark -- every constraint is either always
+       present or always absent -- so we need to apply [f] to all of them
+     * [Bool.any]/[Bool.all] operate by calculating the sum of the array,
+       which requires an R1CS variable representing each element to be
+       available.
+  *)
+
+  let existsi t ~f = mapi t ~f >>= Bool.any
+
+  let exists t ~f = map t ~f >>= Bool.any
+
+  let for_alli t ~f = mapi t ~f >>= Bool.all
+
+  let for_all t ~f = map t ~f >>= Bool.all
+end
+
+module Array
+    (M : Monad_let.S2) (Bool : sig
+        type t
+
+        val any : t array -> (t, _) M.t
+
+        val all : t array -> (t, _) M.t
+    end) :
+  S
+  with type 'a t = 'a array
+   and type ('a, 's) monad := ('a, 's) M.t
+   and type boolean := Bool.t = struct
+  type 'a t = 'a array
+
+  open M.Let_syntax
+
+  let foldi t ~init ~f =
+    Array.foldi t ~init:(M.return init) ~f:(fun i acc x ->
+        let%bind acc = acc in
+        f i acc x )
+
+  let fold t ~init ~f =
+    Array.fold t ~init:(M.return init) ~f:(fun acc x ->
+        let%bind acc = acc in
+        f acc x )
+
+  let iteri t ~f = foldi t ~init:() ~f:(fun i () x -> f i x)
+
+  let iter t ~f = fold t ~init:() ~f:(fun () x -> f x)
+
+  let init n ~f =
+    let rec go arr i =
+      if i < 0 then M.return arr
+      else
+        let%bind x = f i in
+        Array.unsafe_set arr i x ;
+        go arr (i - 1)
+    in
+    if n < 0 then invalid_arg "Monad_sequence.Array.init"
+    else if n = 0 then M.return [||]
+    else
+      let%bind last = f (n - 1) in
+      let arr = Array.create ~len:n last in
+      go arr (n - 2)
+
+  let mapi t ~f =
+    init (Array.length t) ~f:(fun i -> f i (Array.unsafe_get t i))
+
+  let map t ~f = mapi t ~f:(fun _i x -> f x)
+
+  let fold_map t ~init ~f =
+    let res = ref init in
+    let%map t =
+      map t ~f:(fun x ->
+          let%map acc, y = f !res x in
+          res := acc ;
+          y )
+    in
+    (!res, t)
+
+  let all = map ~f:(fun x -> x)
+
+  let all_unit = iter ~f:(fun x -> x)
+
+  (* The following functions use [map] to evaluate [f] on every element, since
+     * we can't shortcut in the snark -- every constraint is either always
+       present or always absent -- so we need to apply [f] to all of them
+     * [Bool.any]/[Bool.all] operate by calculating the sum of the array,
+       which requires an R1CS variable representing each element to be
+       available.
+  *)
 
   let existsi t ~f = mapi t ~f >>= Bool.any
 

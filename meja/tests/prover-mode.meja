@@ -1,0 +1,17 @@
+module A = {
+  let x = 15;
+  let y = 20;
+
+  Prover {
+    let x = true;
+    let y = false;
+  };
+};
+
+let z = A.x + A.y;
+
+Prover {
+  let z = A.x && A.y;
+};
+
+let z : int = if (Prover {A.x && A.y;}) { A.x; } else { A.y; };

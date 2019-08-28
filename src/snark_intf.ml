@@ -497,6 +497,18 @@ module type Basic = sig
 
       val exactly_one : var list -> (unit, _) Checked.t
     end
+
+    module Array : sig
+      val any : var array -> (var, _) Checked.t
+
+      val all : var array -> (var, _) Checked.t
+
+      module Assert : sig
+        val any : var array -> (unit, _) Checked.t
+
+        val all : var array -> (unit, _) Checked.t
+      end
+    end
   end
 
   (** Checked computations.
@@ -529,6 +541,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       Monad_sequence.S
       with type ('a, 's) monad := ('a, 's) t
        and type 'a t = 'a list
+       and type boolean := Boolean.var
+
+    module Array :
+      Monad_sequence.S
+      with type ('a, 's) monad := ('a, 's) t
+       and type 'a t = 'a array
        and type boolean := Boolean.var
 
     (** [Choose_preimage] is the request issued by
@@ -732,10 +750,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       val compare :
         bit_length:int -> Var.t -> Var.t -> (comparison_result, _) Checked.t
       (** [compare ~bit_length x y] compares the [bit_length] lowest bits of
-          [x] and [y].
+          [x] and [y]. [bit_length] must be [<= size_in_bits - 2].
 
-          This requires converting the R1CS variables [x] and [y] into a list
-          of bits.
+          This requires converting an R1CS variable into a list of bits.
+
+          WARNING: [x] and [y] must be known to be less than [2^{bit_length}]
+                   already, otherwise this function may not return the correct
+                   result.
       *)
 
       val if_ :
@@ -838,6 +859,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     *)
   end
 
+  (** The complete set of inputs needed to generate a zero-knowledge proof. *)
+  and Proof_inputs : sig
+    type t = {public_inputs: Field.Vector.t; auxiliary_inputs: Field.Vector.t}
+  end
+
   module Let_syntax :
     Monad_let.Syntax2 with type ('a, 's) t := ('a, 's) Checked.t
 
@@ -848,6 +874,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** The type of messages that can be associated with a proof. *)
     type message
 
+    val of_inputs : ?message:message -> Proving_key.t -> Proof_inputs.t -> t
+    (** Build a proof directly from the given proof inputs. *)
+
     include Binable.S with type t := t
   end
 
@@ -856,6 +885,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type t = Boolean.var list
 
     val equal : t -> t -> (Boolean.var, _) Checked.t
+
+    val equal_expect_true : t -> t -> (Boolean.var, _) Checked.t
+    (** Equivalent to [equal], but avoids computing field elements to represent
+        chunks of the list when not necessary.
+
+        NOTE: This will do extra (wasted) work before falling back to the
+              behaviour of [equal] when the values are not equal.
+    *)
 
     val lt_value :
          Boolean.var Bitstring_lib.Bitstring.Msb_first.t
@@ -956,7 +993,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         - [handlers] -- optional, the list of handlers that should be used to
           handle requests made from the checked computation
         - [reduce] -- optional, default [false], whether to perform the
-          [reduce_to_caller] optimisation while creating the proof system
+          [reduce_to_prover] optimisation while creating the proof system
         - [public_input] -- the {!type:Data_spec.t} that describes the form
           that the public inputs must take
         - ['computation] -- a checked computation that takes as arguments
@@ -1058,6 +1095,19 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
        [verification_key] overrides the argument given to {!val:create}, if
        any.
     *)
+
+    val generate_witness :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handlers:Handler.t list
+      -> ?reduce:bool
+      -> ('a, 's, 'public_input) t
+      -> 's
+      -> Proof_inputs.t
+    (** Generate a witness (auxiliary input) for the given public input.
+
+        Returns a record of field vectors [{public_inputs; auxiliary_inputs}],
+        corresponding to the given public input and generated auxiliary input.
+    *)
   end
 
   (** Utility functions for running different representations of checked
@@ -1092,6 +1142,21 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> Proof.t
       -> Verification_key.t
       -> (_, bool, _, 'k_value) Data_spec.t
+      -> 'k_value
+
+    val generate_witness :
+         run:('a, 's, 't) t
+      -> ('t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+      -> 'k_var
+      -> 's
+      -> 'k_value
+
+    val generate_witness_conv :
+         run:('a, 's, 't) t
+      -> f:(Proof_inputs.t -> 'out)
+      -> ('t, 'out, 'k_var, 'k_value) Data_spec.t
+      -> 'k_var
+      -> 's
       -> 'k_value
 
     val run_unchecked : run:('a, 's, 't) t -> 't -> 's -> 's * 'a
@@ -1216,6 +1281,19 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       {!val:exists} calls in the wrapped checked computation.
   *)
 
+  val if_ :
+       Boolean.var
+    -> typ:('var, _) Typ.t
+    -> then_:'var
+    -> else_:'var
+    -> ('var, _) Checked.t
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+      otherwise.
+
+      WARNING: The [Typ.t]'s [read] field must be able to construct values from
+      a series of field zeros.
+  *)
+
   val with_label : string -> ('a, 's) Checked.t -> ('a, 's) Checked.t
   (** Add a label to all of the constraints added in the checked computation.
       If a constraint is checked and isn't satisfied, this label will be shown
@@ -1268,6 +1346,31 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> (_, bool, _, 'k_value) Data_spec.t
     -> 'k_value
   (** Verify a {!type:Proof.t} generated from a checked computation. *)
+
+  val generate_witness :
+       ((unit, 's) Checked.t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+    -> 's
+    -> 'k_var
+    -> 'k_value
+  (** Generate a witness (auxiliary input) for the given public input.
+
+      Returns a record of field vectors [{public_inputs; auxiliary_inputs}],
+      corresponding to the given public input and generated auxiliary input.
+  *)
+
+  val generate_witness_conv :
+       f:(Proof_inputs.t -> 'out)
+    -> ((unit, 's) Checked.t, 'out, 'k_var, 'k_value) Data_spec.t
+    -> 's
+    -> 'k_var
+    -> 'k_value
+  (** Generate a witness (auxiliary input) for the given public input and pass
+      the result to a function.
+
+      Returns the result of applying [f] to the record of field vectors
+      [{public_inputs; auxiliary_inputs}], corresponding to the given public
+      input and generated auxiliary input.
+  *)
 
   val run_unchecked : ('a, 's) Checked.t -> 's -> 's * 'a
   (** Run a checked computation as the prover, without checking the
@@ -1663,15 +1766,27 @@ module type Run_basic = sig
     end
 
     module Assert : sig
-      val ( = ) : Boolean.var -> Boolean.var -> unit
+      val ( = ) : var -> var -> unit
 
-      val is_true : Boolean.var -> unit
+      val is_true : var -> unit
 
       val any : var list -> unit
 
       val all : var list -> unit
 
       val exactly_one : var list -> unit
+    end
+
+    module Array : sig
+      val any : var array -> var
+
+      val all : var array -> var
+
+      module Assert : sig
+        val any : var array -> unit
+
+        val all : var array -> unit
+      end
     end
   end
 
@@ -1839,10 +1954,18 @@ module type Run_basic = sig
     *)
   end
 
+  and Proof_inputs : sig
+    type t =
+      { public_inputs: Field.Constant.Vector.t
+      ; auxiliary_inputs: Field.Constant.Vector.t }
+  end
+
   module Proof : sig
     type t
 
     type message
+
+    val of_inputs : ?message:message -> Proving_key.t -> Proof_inputs.t -> t
 
     include Binable.S with type t := t
   end
@@ -1851,6 +1974,14 @@ module type Run_basic = sig
     type t = Boolean.var list
 
     val equal : t -> t -> Boolean.var
+
+    val equal_expect_true : t -> t -> Boolean.var
+    (** Equivalent to [equal], but avoids computing field elements to represent
+        chunks of the list when not necessary.
+
+        NOTE: This will do extra (wasted) work before falling back to the
+              behaviour of [equal] when the values are not equal.
+    *)
 
     val lt_value :
          Boolean.var Bitstring_lib.Bitstring.Msb_first.t
@@ -1944,6 +2075,13 @@ module type Run_basic = sig
       -> ('a, 'public_input) t
       -> Proof.t
       -> bool
+
+    val generate_witness :
+         public_input:(unit, 'public_input) H_list.t
+      -> ?handlers:Handler.t list
+      -> ('a, 'public_input) t
+      -> prover_state
+      -> Proof_inputs.t
   end
 
   val assert_ : ?label:string -> Constraint.t -> unit
@@ -1986,6 +2124,15 @@ module type Run_basic = sig
 
   val handle_as_prover : (unit -> 'a) -> (unit -> Handler.t As_prover.t) -> 'a
 
+  val if_ :
+    Boolean.var -> typ:('var, _) Typ.t -> then_:'var -> else_:'var -> 'var
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+      otherwise.
+
+      WARNING: The [Typ.t]'s [read] field must be able to construct values from
+      a series of field zeros.
+  *)
+
   val with_label : string -> (unit -> 'a) -> 'a
 
   val make_checked : (unit -> 'a) -> ('a, prover_state, field) Types.Checked.t
@@ -2011,6 +2158,19 @@ module type Run_basic = sig
     -> Proof.t
     -> Verification_key.t
     -> (_, bool, _, 'k_value) Data_spec.t
+    -> 'k_value
+
+  val generate_witness :
+       (unit -> 'a, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+    -> 'k_var
+    -> prover_state
+    -> 'k_value
+
+  val generate_witness_conv :
+       f:(Proof_inputs.t -> 'out)
+    -> (unit -> 'a, 'out, 'k_var, 'k_value) Data_spec.t
+    -> 'k_var
+    -> prover_state
     -> 'k_value
 
   val run_unchecked : (unit -> 'a) -> prover_state -> prover_state * 'a

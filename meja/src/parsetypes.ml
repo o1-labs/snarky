@@ -1,4 +1,3 @@
-open Core_kernel
 open Ast_types
 
 type type_expr = {type_desc: type_desc; type_loc: Location.t}
@@ -37,16 +36,14 @@ type type_decl =
   ; tdec_loc: Location.t }
 
 and type_decl_desc =
-  | TAbstract
-  | TAlias of type_expr
-  | TUnfold of type_expr
-  | TRecord of field_decl list
-  | TVariant of ctor_decl list
-  | TOpen
-  | TExtend of lid * Type0.type_decl * ctor_decl list
+  | Pdec_abstract
+  | Pdec_alias of type_expr
+  | Pdec_unfold of type_expr
+  | Pdec_record of field_decl list
+  | Pdec_variant of ctor_decl list
+  | Pdec_open
+  | Pdec_extend of Path.t Location.loc * Type0.type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
-  | TForward of int option ref
-      (** Forward declaration for types loaded from cmi files. *)
 
 type literal = Int of int | Bool of bool | Field of string | String of string
 
@@ -83,6 +80,7 @@ and expression_desc =
       ; name: str
       ; id: int }
   | Pexp_if of expression * expression * expression option
+  | Pexp_prover of expression
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
@@ -98,6 +96,7 @@ and signature_desc =
   | Psig_typeext of variant * ctor_decl list
   | Psig_request of type_expr * ctor_decl
   | Psig_multiple of signature
+  | Psig_prover of signature
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
@@ -122,6 +121,7 @@ and statement_desc =
   | Pstmt_request of
       type_expr * ctor_decl * (pattern option * expression) option
   | Pstmt_multiple of statements
+  | Pstmt_prover of statements
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 

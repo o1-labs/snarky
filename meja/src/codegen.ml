@@ -36,7 +36,7 @@ let typ_of_decl ~loc (decl : type_decl) =
   let name = decl.tdec_ident.txt in
   try
     match decl.tdec_desc with
-    | TRecord fields ->
+    | Pdec_record fields ->
         let vars = ref String.Set.empty in
         let find_name name =
           let rec find_name i =

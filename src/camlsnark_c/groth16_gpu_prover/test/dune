@@ -1,0 +1,6 @@
+(executable
+ (name test)
+ (libraries snarky snarky.groth16_gpu_prover)
+ (modes native)
+ (modules test)
+ (preprocess (pps ppx_jane)))

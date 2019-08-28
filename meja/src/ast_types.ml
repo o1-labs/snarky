@@ -92,14 +92,33 @@ type arg_label = Asttypes.arg_label =
   | Nolabel
   | Labelled of string
   | Optional of string
-[@@deriving sexp]
+[@@deriving sexp, equal, compare]
 
 type str = string Location.loc
 
 type lid = Longident.t Location.loc
 
-type explicitness = Implicit | Explicit [@@deriving sexp]
+type explicitness = Implicit | Explicit [@@deriving sexp, equal]
 
 let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
 
 let mk_lid (str : str) = map_loc str ~f:(fun x -> Longident.Lident x)
+
+type mode = Checked | Prover [@@deriving sexp, compare]
+
+let string_of_mode = function Checked -> "Checked" | Prover -> "Prover"
+
+let pp_mode ppf mode = Format.pp_print_string ppf (string_of_mode mode)
+
+let modes_of_mode = function
+  | Checked -> (
+      function Checked -> true | Prover -> false )
+  | Prover -> (
+      function Checked -> true | Prover -> true )
+
+let weakest_mode mode1 mode2 =
+  match (mode1, mode2) with
+  | Checked, _ | _, Checked ->
+      Checked
+  | Prover, Prover ->
+      Prover

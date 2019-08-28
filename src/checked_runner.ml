@@ -1,5 +1,26 @@
 open Core_kernel
 
+exception Runtime_error of string * string list * exn * string
+
+(* Register a printer for [Runtime_error], so that the user sees a useful,
+   well-formatted message. This will contain all of the information that
+   raising the original error would have raised, along with the extra
+   information added to [Runtime_error].
+
+   NOTE: The message in its entirety is included in [Runtime_error], so that
+         all of the information will be visible to the user in some form even
+         if they don't use the [Print_exc] pretty-printer.
+*)
+let () =
+  Stdlib.Printexc.register_printer (fun exn ->
+      match exn with
+      | Runtime_error (message, _, _, _) ->
+          Some
+            (Printf.sprintf
+               "Snarky.Checked_runner.Runtime_error(_, _, _, _)\n\n%s" message)
+      | _ ->
+          None )
+
 let eval_constraints = ref true
 
 module Make_checked
@@ -120,26 +141,27 @@ struct
 
   let add_constraint c s =
     if !(s.as_prover) then
-      failwith
-        "Cannot add a constraint as the prover: the verifier's constraint \
-         system will not match." ;
-    Option.iter s.log_constraint ~f:(fun f -> f c) ;
-    if s.eval_constraints && not (Constraint.eval c (get_value s)) then
-      failwithf
-        "Constraint unsatisfied (unreduced):\n\
-         %s\n\
-         %s\n\n\
-         Constraint:\n\
-         %s\n\
-         Data:\n\
-         %s"
-        (Constraint.annotation c)
-        (Constraint.stack_to_string s.stack)
-        (Sexp.to_string (Constraint.sexp_of_t c))
-        (log_constraint c s) () ;
-    Option.iter s.system ~f:(fun system ->
-        Constraint.add ~stack:s.stack c system ) ;
-    (s, ())
+      (* Don't add constraints as the prover, or the constraint system won't match! *)
+      (s, ())
+    else (
+      Option.iter s.log_constraint ~f:(fun f -> f c) ;
+      if s.eval_constraints && not (Constraint.eval c (get_value s)) then
+        failwithf
+          "Constraint unsatisfied (unreduced):\n\
+           %s\n\
+           %s\n\n\
+           Constraint:\n\
+           %s\n\
+           Data:\n\
+           %s"
+          (Constraint.annotation c)
+          (Constraint.stack_to_string s.stack)
+          (Sexp.to_string (Constraint.sexp_of_t c))
+          (log_constraint c s) () ;
+      if not !(s.as_prover) then
+        Option.iter s.system ~f:(fun system ->
+            Constraint.add ~stack:s.stack c system ) ;
+      (s, ()) )
 
   let with_state p and_then t_sub s =
     let s, s_sub = run_as_prover (Some p) s in
@@ -160,10 +182,6 @@ struct
     ({s' with handler}, y)
 
   let exists {Types.Typ.store; alloc; check; _} p s =
-    if !(s.as_prover) then
-      failwith
-        "Cannot create a variable as the prover: the verifier's constraint \
-         system will not match." ;
     match s.prover_state with
     | Some ps ->
         let old = !(s.as_prover) in
@@ -172,7 +190,14 @@ struct
           As_prover.Provider.run p s.stack (get_value s) ps s.handler
         in
         s.as_prover := old ;
-        let var = Typ_monads.Store.run (store value) (store_field_elt s) in
+        let var =
+          if !(s.as_prover) then
+            (* If we're nested in a prover block, create constants instead of
+               storing.
+            *)
+            Typ_monads.Store.run (store value) Cvar.constant
+          else Typ_monads.Store.run (store value) (store_field_elt s)
+        in
         (* TODO: Push a label onto the stack here *)
         let s, () = check var (set_prover_state (Some ()) s) in
         (set_prover_state (Some ps) s, {Handle.var; value= Some value})
@@ -269,6 +294,33 @@ module Make (Backend : Backend_extended.S) = struct
 
   module Types = Checked.Types
 
+  let handle_error s f =
+    try f () with
+    | Runtime_error (message, stack, exn, bt) ->
+        (* NOTE: We create a new [Runtime_error] instead of re-using the old
+                 one. Re-using the old one will fill the backtrace with call
+                 and re-raise messages, one per iteration of this function,
+                 which are irrelevant to the user.
+        *)
+        raise (Runtime_error (message, stack, exn, bt))
+    | exn ->
+        let bt = Printexc.get_backtrace () in
+        raise
+          (Runtime_error
+             ( Printf.sprintf
+                 "Encountered an error while evaluating the checked \
+                  computation:\n\
+                 \  %s\n\n\
+                  Label stack trace:\n\
+                  %s\n\n\n\
+                  %s"
+                 (Exn.to_string exn)
+                 (Constraint.stack_to_string s.stack)
+                 bt
+             , s.stack
+             , exn
+             , bt ))
+
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
   let rec run : type a s.
@@ -276,35 +328,58 @@ module Make (Backend : Backend_extended.S) = struct
    fun t s ->
     match t with
     | As_prover (x, k) ->
-        let s, () = as_prover x s in
+        let s, () = handle_error s (fun () -> as_prover x s) in
         run k s
     | Pure x ->
         (s, x)
     | Direct (d, k) ->
-        let s, y = d s in
-        run (k y) s
+        let s, y = handle_error s (fun () -> d s) in
+        let k = handle_error s (fun () -> k y) in
+        run k s
     | Reduced (t, d, res, k) ->
         let s, y =
-          if Option.is_some s.prover_state && Option.is_none s.system then
-            (d s, res)
+          if
+            (not !(s.as_prover))
+            && Option.is_some s.prover_state
+            && Option.is_none s.system
+          then
+            (* In reduced mode, we only evaluate prover code and use it to fill
+               the public and auxiliary input vectors. Thus, these three
+               conditions are important:
+               - if there is no prover state, we can't run the prover code
+               - if there is an R1CS to be filled, we need to run the original
+                 computation to add the constraints to it
+               - if we are running a checked computation inside a prover block,
+                 we need to be sure that we aren't allocating R1CS variables
+                 that aren't present in the original constraint system.
+                 See the comment in the [Exists] branch of [flatten_as_prover]
+                 below for more context.
+            *)
+            (handle_error s (fun () -> d s), res)
           else run t s
         in
-        run (k y) s
+        let k = handle_error s (fun () -> k y) in
+        run k s
     | With_label (lab, t, k) ->
         let s, y = with_label lab (run t) s in
-        run (k y) s
+        let k = handle_error s (fun () -> k y) in
+        run k s
     | Add_constraint (c, t) ->
-        let s, () = add_constraint c s in
+        let s, () = handle_error s (fun () -> add_constraint c s) in
         run t s
     | With_state (p, and_then, t_sub, k) ->
-        let s, y = with_state p and_then (run t_sub) s in
-        run (k y) s
+        let t_sub = run t_sub in
+        let s, y = handle_error s (fun () -> with_state p and_then t_sub s) in
+        let k = handle_error s (fun () -> k y) in
+        run k s
     | With_handler (h, t, k) ->
         let s, y = with_handler h (run t) s in
-        run (k y) s
+        let k = handle_error s (fun () -> k y) in
+        run k s
     | Clear_handler (t, k) ->
         let s, y = clear_handler (run t) s in
-        run (k y) s
+        let k = handle_error s (fun () -> k y) in
+        run k s
     | Exists (typ, p, k) ->
         let typ =
           { Types.Typ.store= typ.store
@@ -312,11 +387,13 @@ module Make (Backend : Backend_extended.S) = struct
           ; alloc= typ.alloc
           ; check= (fun var -> run (typ.check var)) }
         in
-        let s, y = exists typ p s in
-        run (k y) s
+        let s, y = handle_error s (fun () -> exists typ p s) in
+        let k = handle_error s (fun () -> k y) in
+        run k s
     | Next_auxiliary k ->
         let s, y = next_auxiliary s in
-        run (k y) s
+        let k = handle_error s (fun () -> k y) in
+        run k s
 
   let dummy_vector = Field.Vector.create ()
 
@@ -414,6 +491,32 @@ module Make (Backend : Backend_extended.S) = struct
         let handle = {Handle.var; value= None} in
         let g, a = flatten_as_prover next_auxiliary stack (k handle) in
         ( (fun s ->
+            if !(s.as_prover) then
+              (* If we are running inside a prover block, any call to [exists]
+                 will cause a difference between the expected layout in the
+                 R1CS and the actual layout that the prover puts data into:
+
+                 R1CS layout:
+                        next R1CS variable to be allocated
+                                      \/
+                 ... [ var{n-1} ] [ var{n} ] [ var{n+1} ] [ var{n+2} ] ...
+
+                 Prover block layout:
+                                 prover writes values here due to [exists]
+                                         \/         ...        \/
+                 ... [ var{n-1} ] [ prover_var{1} ] ... [ prover_var{k} ] [ var{n} ] ...
+
+                 To avoid a divergent layout (and thus unsatisfied constraint
+                 system), we run the original checked computation instead.
+
+                 Note: this currently should never happen, because this
+                 function is only invoked on a complete end-to-end checked
+                 computation using the proving API.
+                 By definition, this cannot be wrapped in a prover block.
+              *)
+              failwith
+                "Internal error: attempted to store field elements for a \
+                 variable that is not known to the constraint system." ;
             let old = !(s.as_prover) in
             s.as_prover := true ;
             let ps, value =

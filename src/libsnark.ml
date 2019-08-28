@@ -1560,12 +1560,17 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     val of_bigstring : Bigstring.t -> t
 
     val size_in_bits : t -> int
+
+    val dummy : input_size:int -> t
   end = struct
     include Verification_key.Make
               (Ctypes_foreign)
               (struct
                 let prefix = with_prefix M.prefix "verification_key"
               end)
+
+    let dummy ~input_size =
+      foreign (func_name "dummy") (int @-> returning typ) input_size
 
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)
@@ -1665,6 +1670,63 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
   end
 end
 
+module Make_proving_key_preprocessor (M : sig
+  val prefix : string
+end)
+(Proving_key : Foreign_intf) (G1 : sig
+    module Vector : Deletable_intf
+end) (G2 : sig
+  module Vector : Deletable_intf
+end) =
+struct
+  let func_name = with_prefix (M.prefix ^ "proving_key_preprocess")
+
+  let a =
+    let stub =
+      foreign (func_name "A") (Proving_key.typ @-> returning G1.Vector.typ)
+    in
+    fun pk ->
+      let t = stub pk in
+      Caml.Gc.finalise G1.Vector.delete t ;
+      t
+
+  let b1 =
+    let stub =
+      foreign (func_name "B1") (Proving_key.typ @-> returning G1.Vector.typ)
+    in
+    fun pk ->
+      let t = stub pk in
+      Caml.Gc.finalise G1.Vector.delete t ;
+      t
+
+  let b2 =
+    let stub =
+      foreign (func_name "B2") (Proving_key.typ @-> returning G2.Vector.typ)
+    in
+    fun pk ->
+      let t = stub pk in
+      Caml.Gc.finalise G2.Vector.delete t ;
+      t
+
+  let l =
+    let stub =
+      foreign (func_name "L") (Proving_key.typ @-> returning G1.Vector.typ)
+    in
+    fun pk ->
+      let t = stub pk in
+      Caml.Gc.finalise G1.Vector.delete t ;
+      t
+
+  let h =
+    let stub =
+      foreign (func_name "H") (Proving_key.typ @-> returning G1.Vector.typ)
+    in
+    fun pk ->
+      let t = stub pk in
+      Caml.Gc.finalise G1.Vector.delete t ;
+      t
+end
+
 module Make_proof_system (M : sig
   val prefix : string
 
@@ -1695,6 +1757,8 @@ struct
     type t
 
     val typ : t Ctypes.typ
+
+    val delete : t -> unit
 
     val create :
          ?message:message
@@ -2257,6 +2321,7 @@ struct
         (G1)
         (G2)
         (Fqk)
+    module Preprocess = Make_proving_key_preprocessor (Prefix) (G1) (G2)
   end
 
   module Mnt6 = struct
@@ -2409,6 +2474,7 @@ struct
         (G1)
         (G2)
         (Fqk)
+    module Preprocess = Make_proving_key_preprocessor (Prefix) (G1) (G2)
   end
 end
 
