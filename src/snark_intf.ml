@@ -750,10 +750,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       val compare :
         bit_length:int -> Var.t -> Var.t -> (comparison_result, _) Checked.t
       (** [compare ~bit_length x y] compares the [bit_length] lowest bits of
-          [x] and [y].
+          [x] and [y]. [bit_length] must be [<= size_in_bits - 2].
 
-          This requires converting the R1CS variables [x] and [y] into a list
-          of bits.
+          This requires converting an R1CS variable into a list of bits.
+
+          WARNING: [x] and [y] must be known to be less than [2^{bit_length}]
+                   already, otherwise this function may not return the correct
+                   result.
       *)
 
       val if_ :
