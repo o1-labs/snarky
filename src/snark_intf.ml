@@ -750,10 +750,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       val compare :
         bit_length:int -> Var.t -> Var.t -> (comparison_result, _) Checked.t
       (** [compare ~bit_length x y] compares the [bit_length] lowest bits of
-          [x] and [y].
+          [x] and [y]. [bit_length] must be [<= size_in_bits - 2].
 
-          This requires converting the R1CS variables [x] and [y] into a list
-          of bits.
+          This requires converting an R1CS variable into a list of bits.
+
+          WARNING: [x] and [y] must be known to be less than [2^{bit_length}]
+                   already, otherwise this function may not return the correct
+                   result.
       *)
 
       val if_ :
@@ -990,7 +993,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         - [handlers] -- optional, the list of handlers that should be used to
           handle requests made from the checked computation
         - [reduce] -- optional, default [false], whether to perform the
-          [reduce_to_caller] optimisation while creating the proof system
+          [reduce_to_prover] optimisation while creating the proof system
         - [public_input] -- the {!type:Data_spec.t} that describes the form
           that the public inputs must take
         - ['computation] -- a checked computation that takes as arguments
@@ -1144,6 +1147,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val generate_witness :
          run:('a, 's, 't) t
       -> ('t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+      -> 'k_var
+      -> 's
+      -> 'k_value
+
+    val generate_witness_conv :
+         run:('a, 's, 't) t
+      -> f:(Proof_inputs.t -> 'out)
+      -> ('t, 'out, 'k_var, 'k_value) Data_spec.t
       -> 'k_var
       -> 's
       -> 'k_value
@@ -1345,6 +1356,20 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
       Returns a record of field vectors [{public_inputs; auxiliary_inputs}],
       corresponding to the given public input and generated auxiliary input.
+  *)
+
+  val generate_witness_conv :
+       f:(Proof_inputs.t -> 'out)
+    -> ((unit, 's) Checked.t, 'out, 'k_var, 'k_value) Data_spec.t
+    -> 's
+    -> 'k_var
+    -> 'k_value
+  (** Generate a witness (auxiliary input) for the given public input and pass
+      the result to a function.
+
+      Returns the result of applying [f] to the record of field vectors
+      [{public_inputs; auxiliary_inputs}], corresponding to the given public
+      input and generated auxiliary input.
   *)
 
   val run_unchecked : ('a, 's) Checked.t -> 's -> 's * 'a
@@ -2137,6 +2162,13 @@ module type Run_basic = sig
 
   val generate_witness :
        (unit -> 'a, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+    -> 'k_var
+    -> prover_state
+    -> 'k_value
+
+  val generate_witness_conv :
+       f:(Proof_inputs.t -> 'out)
+    -> (unit -> 'a, 'out, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
     -> prover_state
     -> 'k_value
