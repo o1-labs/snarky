@@ -1,0 +1,125 @@
+import hashlib
+from itertools import izip
+
+MNT4r = 41898490967918953402344214791240637128170709919953949071783502921025352812571106773058893763790338921418070971888458477323173057491593855069696241854796396165721416325350064441470418137846398469611935719059908164220784476160001
+MNT4q = 41898490967918953402344214791240637128170709919953949071783502921025352812571106773058893763790338921418070971888253786114353726529584385201591605722013126468931404347949840543007986327743462853720628051692141265303114721689601
+MNT4Fr = FiniteField(MNT4r)
+MNT4Fq = FiniteField(MNT4q)
+MNT4Fq2.<A2> = GF(MNT4q**2, name='A2', modulus=x^2 - 13)
+
+MNT4a  = MNT4Fq(2)
+MNT4b  = MNT4Fq(28798803903456388891410036793299405764940372360099938340752576406393880372126970068421383312482853541572780087363938442377933706865252053507077543420534380486492786626556269083255657125025963825610840222568694137138741554679540)
+
+MNT4_twist_a = MNT4Fq2(MNT4a * 13)
+MNT4_twist_b = MNT4b * 13 * A2
+
+MNT4G1 = EllipticCurve(MNT4Fq, [MNT4a, MNT4b])
+MNT4G2 = EllipticCurve(MNT4Fq2, [MNT4_twist_a, MNT4_twist_b])
+
+field_size_in_bytes = 95
+def random_field_elements(prefix, F):
+    i = 0
+    while True:
+# Sample 760 bits
+        s = ''.join(hashlib.sha512('-'.join([prefix, str(i), part])).digest() for part in ['0', '1'])[:field_size_in_bytes]
+# Set the top 7 bits to 0
+        s = [ord(c) for c in s]
+        s[-1] = s[-1] & 1
+
+        x = sum(c << (8 * i) for i, c in enumerate(s))
+        if x < F.order():
+            yield F(x)
+        i += 1
+
+def random_bits(prefix):
+    i = 0
+    while True:
+        s = hashlib.sha512('-'.join([prefix, str(i)])).digest()
+        for c in s:
+            c = ord(c)
+            for j in range(8):
+                yield ((c >> j) & 1)
+        i += 1
+
+def parity(n):
+    return n % 2 == 1
+
+def random_extension_field(base, gens):
+    while True:
+        yield sum(base.next() * g for g in gens)
+
+def random_point_prefix(prefix, field_elts, G, a, b, cofactor, base_elt):
+    for x, bit in izip(
+            field_elts,
+            random_bits(prefix + '-bit')):
+        t = x*x*x + a*x + b
+        if t.is_square():
+            y = sqrt(t)
+            if parity(int(base_elt(y))) != bit:
+                y = -y
+            P = G((x, y))
+            yield (cofactor * P)
+
+MNT4_G1_cofactor = 1
+MNT4_G2_order = 1755483545388786116744270475466687259186947712032004459714210070280389500116987496124098574823389466285978151140129779880473941566986064523874032812554001388754406832203678555787480693761694100603526668957377103500617895632245595170616424076193013069812655758706590804941865916654955161997668012879640089484267319662922323100918044574497880923438974476743556836643394916941627035296377155451512923542277406843394136761402218172188221567330050123715379201
+MNT4_G2_cofactor = int(MNT4_G2_order / MNT4r)
+
+MNT6r = MNT4q
+MNT6q = MNT4r
+MNT6Fr = MNT4Fq
+MNT6Fq = MNT4Fr
+MNT6Fq3.<A3> = GF(MNT6q**3, name='A3', modulus=x^3 - 11)
+
+MNT6a  = MNT6Fq(11)
+MNT6b  = MNT6Fq(11625908999541321152027340224010374716841167701783584648338908235410859267060079819722747939267925389062611062156601938166010098747920378738927832658133625454260115409075816187555055859490253375704728027944315501122723426879114)
+
+MNT6_twist_a = MNT6Fq3(MNT6a * A3 * A3)
+MNT6_twist_b = MNT6Fq3(MNT6b * 11)
+
+MNT6G1 = EllipticCurve(MNT6Fq, [MNT6a, MNT6b])
+MNT6G2 = EllipticCurve(MNT6Fq3, [MNT6_twist_a, MNT6_twist_b])
+
+MNT6_G1_cofactor = 1
+MNT6_G2_order = 73552111470802397192299133782080682301728710523587802164414953272757803714910813694725910843025422137965798141905885753593004512240463847384721096903595933283458847264288566388732113787639043399649361805852639267190950507912358376074097539843068006508773746266871144243740553087382752422866473030888088548173965683919212921358833994558678853355172509356520991433316263176882890942286357544906938949829579371370459287502330781592320903149388678948211503762056389148978998668559030669244035030070029532088840675255439951794614401514977987414319720539166454247426672790008063108319880391951786373973900019019538024651026784431794445884182058882094901834289642271616024218938900480000
+MNT6_G2_cofactor = int(MNT6_G2_order / MNT6r)
+
+MNT4_g1 = random_point_prefix('MNT4753-G1',
+        random_field_elements('MNT4753-G1-field', MNT4Fq),
+        MNT4G1,
+        MNT4a,
+        MNT4b,
+        MNT4_G1_cofactor,
+        lambda x: x).next()
+
+MNT4_g2 = random_point_prefix('MNT4753-G2',
+        random_extension_field(
+            random_field_elements('MNT4753-G2-field', MNT4Fq),
+            [MNT4Fq2(1), A2]),
+        MNT4G2,
+        MNT4_twist_a,
+        MNT4_twist_b,
+        MNT4_G2_cofactor,
+        lambda x: x._vector_()[0]).next()
+
+MNT6_g1 = random_point_prefix('MNT6753-G1',
+        random_field_elements('MNT6753-G1-field', MNT6Fq),
+        MNT6G1,
+        MNT6a,
+        MNT6b,
+        MNT6_G1_cofactor,
+        lambda x: x).next()
+MNT6_g2 = random_point_prefix('MNT6753-G2',
+        random_extension_field(
+            random_field_elements('MNT6753-G2-field', MNT6Fq),
+            [MNT6Fq3(1), A3, A3 * A3]),
+        MNT6G2,
+        MNT6_twist_a,
+        MNT6_twist_b,
+        MNT6_G2_cofactor,
+        lambda x: x._vector_()[0]).next()
+
+print 'mnt4 G1', MNT4_g1
+print 'mnt4 G2', MNT4_g2
+
+print 'mnt6 G1', MNT6_g1
+print 'mnt6 G2', MNT6_g2
