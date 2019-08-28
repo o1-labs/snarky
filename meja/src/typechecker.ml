@@ -576,21 +576,19 @@ let rec check_pattern env typ pat =
       , env )
 
 and check_patterns env typs pats =
-  let names_set = ref String.Map.empty in
+  let names_table = String.Table.create () in
   let rev_pats, rev_names, env =
     List.fold2_exn ~init:([], [], env) typs pats
       ~f:(fun (rev_pats, rev_names, env) typ pat ->
         let pat, names, env = check_pattern env typ pat in
         (* Check that a variable name hasn't been multiply assigned. *)
-        names_set :=
-          List.fold ~init:!names_set names ~f:(fun names_set (name, _typ) ->
-              let loc = name.loc in
-              let name = Ident.name name.txt in
-              Map.update names_set name ~f:(function
-                | Some _ ->
-                    raise (Error (loc, Repeated_pattern_variable name))
-                | None ->
-                    () ) ) ;
+        List.iter names ~f:(fun ({loc; txt= name}, _typ) ->
+            let name = Ident.name name in
+            String.Table.update names_table name ~f:(function
+              | Some _ ->
+                  raise (Error (loc, Repeated_pattern_variable name))
+              | None ->
+                  () ) ) ;
         (pat :: rev_pats, List.rev_append names rev_names, env) )
   in
   (List.rev rev_pats, List.rev rev_names, env)
