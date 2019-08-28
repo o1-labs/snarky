@@ -4,6 +4,8 @@ module Checked_ast = Checked
 module Typ_monads0 = Typ_monads
 open Core_kernel
 
+exception Runtime_error = Checked_runner.Runtime_error
+
 let () = Camlsnark_c.linkme
 
 module Runner = Checked_runner
@@ -36,8 +38,20 @@ struct
 
   type field = Field.t
 
+  module Proof_inputs = struct
+    type t = {public_inputs: Field.Vector.t; auxiliary_inputs: Field.Vector.t}
+  end
+
   module Bigint = Bigint
-  module Proof = Proof
+
+  module Proof = struct
+    include Proof
+
+    let of_inputs ?message key
+        {Proof_inputs.public_inputs= primary; auxiliary_inputs= auxiliary} =
+      create ?message key ~primary ~auxiliary
+  end
+
   module Verification_key = Verification_key
   module Proving_key = Proving_key
   module Keypair = Keypair
@@ -921,6 +935,14 @@ struct
                    provided." ) ]
         in
         Proof.verify ?message proof verification_key input
+
+      let generate_witness ~run ~public_input ?handlers ?reduce proof_system s
+          =
+        let _, _, state =
+          run_with_input ~run ?reduce ~public_input ?handlers proof_system s
+        in
+        let {input; aux; _} = state in
+        {Proof_inputs.public_inputs= input; auxiliary_inputs= aux}
     end
 
     let rec collect_input_constraints : type checked s r2 k1 k2.
@@ -1074,6 +1096,28 @@ struct
           in
           ignore auxiliary )
         t k
+
+    let generate_witness_conv :
+           run:('a, 's, 'checked) Checked.Runner.run
+        -> f:(Proof_inputs.t -> 'out)
+        -> ('checked, 'out, 'k_var, 'k_value) t
+        -> ?handlers:Handler.t list
+        -> 's
+        -> 'k_var
+        -> 'k_value =
+     fun ~run ~f t ?handlers s k ->
+      conv
+        (fun c primary ->
+          let auxiliary =
+            Checked.auxiliary_input ~run ?handlers
+              ~num_inputs:(Field.Vector.length primary)
+              c s primary
+          in
+          f {Proof_inputs.public_inputs= primary; auxiliary_inputs= auxiliary}
+          )
+        t k
+
+    let generate_witness = generate_witness_conv ~f:Fn.id
   end
 
   module Cvar1 = struct
@@ -1438,6 +1482,10 @@ struct
 
     let verify ~public_input ?verification_key ?message (proof_system : _ t) =
       verify ~public_input ?verification_key ?message proof_system
+
+    let generate_witness ~public_input ?handlers ?reduce (proof_system : _ t) =
+      generate_witness ~run:Checked.run ~public_input ?handlers ?reduce
+        proof_system
   end
 
   module Perform = struct
@@ -1450,6 +1498,11 @@ struct
     let prove ~run ?message key t k s = Run.prove ~run ?message key t s k
 
     let verify = Run.verify
+
+    let generate_witness ~run t k s = Run.generate_witness ~run t s k
+
+    let generate_witness_conv ~run ~f t k s =
+      Run.generate_witness_conv ~run ~f t s k
 
     let constraint_system = Run.constraint_system
 
@@ -1471,6 +1524,11 @@ struct
     Run.generate_auxiliary_input ~run:Checked.run t s k
 
   let verify = Run.verify
+
+  let generate_witness t s k = Run.generate_witness ~run:Checked.run t s k
+
+  let generate_witness_conv ~f t s k =
+    Run.generate_witness_conv ~run:Checked.run ~f t s k
 
   let constraint_system ~exposing k =
     Run.constraint_system ~run:Checked.run ~exposing k
@@ -1575,10 +1633,6 @@ module Run = struct
         ; log_constraint= None }
 
     let run checked =
-      if !(!state.as_prover) then
-        failwith
-          "Can't run checked code as the prover: the verifier's constraint \
-           system will not match." ;
       if not !state.is_running then
         failwith "This function can't be run outside of a checked computation." ;
       let state', x = Runner.run checked !state in
@@ -1921,6 +1975,7 @@ module Run = struct
       let typ = typ
     end
 
+    module Proof_inputs = Proof_inputs
     module Proof = Proof
 
     module Bitstring_checked = struct
@@ -2042,6 +2097,9 @@ module Run = struct
       let verify ~public_input ?verification_key ?message (proof_system : _ t)
           =
         verify ~public_input ?verification_key ?message proof_system
+
+      let generate_witness ~public_input ?handlers (proof_system : _ t) s =
+        generate_witness ~run ~public_input ?handlers proof_system s
     end
 
     let assert_ ?label c = run (assert_ ?label c)
@@ -2123,6 +2181,11 @@ module Run = struct
     let prove ?message pk x = Perform.prove ~run:as_stateful ?message pk x
 
     let verify ?message pf vk spec = verify ?message pf vk spec
+
+    let generate_witness x = Perform.generate_witness ~run:as_stateful x
+
+    let generate_witness_conv ~f x =
+      Perform.generate_witness_conv ~run:as_stateful ~f x
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 

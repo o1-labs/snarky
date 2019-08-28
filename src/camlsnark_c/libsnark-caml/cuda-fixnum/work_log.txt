@@ -1,0 +1,88 @@
+
+11:56
+- went to console.cloud.google.com
+- created new instance
+  - ubuntu 18.04
+  - 8-cpu
+  - 30GB ram
+  - 1 K80
+12:00
+  - requested increase of K80 quota
+12:05
+  - created with a P100 instead (we have quota for that)
+12:09
+  - https://cloud.google.com/compute/docs/gpus/add-gpus
+    - sudo apt-get install build-essential dkms
+    - sudo apt-get update
+    - sudo apt-get install freeglut3 freeglut3-dev libxi-dev libxmu-dev
+    - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-repo-ubuntu1804_10.1.168-1_amd64.deb
+    - sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+    - sudo dpkg -i ./cuda-repo-ubuntu1804_10.1.168-1_amd64.deb
+    - sudo apt-get update
+    - sudo apt-get install cuda-10-1 -y
+    - nvidia-smi -pm 1
+12:16
+  - verified install
+    - nvidia-smi
+    +-----------------------------------------------------------------------------+
+    | NVIDIA-SMI 418.67       Driver Version: 418.67       CUDA Version: 10.1     |
+    |-------------------------------+----------------------+----------------------+
+    | GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+    | Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+    |===============================+======================+======================|
+    |   0  Tesla P100-PCIE...  On   | 00000000:00:04.0 Off |                    0 |
+    | N/A   36C    P0    34W / 250W |      0MiB / 16280MiB |      0%      Default |
+    +-------------------------------+----------------------+----------------------+
+                                                                                   
+    +-----------------------------------------------------------------------------+
+    | Processes:                                                       GPU Memory |
+    |  GPU       PID   Type   Process name                             Usage      |
+    |=============================================================================|
+    |  No running processes found                                                 |
+    +-----------------------------------------------------------------------------+
+12:17
+  - looked up cuda example to install
+  - sudo apt install nvidia-cuda-toolkit
+  - googled "nvcc hello world"
+  - opened http://www.math.uaa.alaska.edu/~afkjm/cs448/handouts/cuda-firstprograms.pdf
+12:20 
+  - got error while running nvcc, nvcc fatal   : Path to libdevice library not specified
+  - sudo apt-get remove nvidia-cuda-toolkit
+  - sudo apt install cuda-toolkit-10-1
+12:31
+  - add to bashrc
+    export PATH=$PATH:/usr/local/cuda/bin:/usr/local/cuda-10.1/bin/
+    export CUDADIR=/usr/local/cuda
+    export export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-10.1/lib64
+  - nvcc hello.cu
+  - ./a.out works
+12:34
+  - go to challenge
+  - found https://github.com/CodaProtocol/snark-challenge-cuda-starter at bottom of field arithmetic
+  - outputted all zeros... can't be right, trying to fix
+  - removed "gpu-architucture and gpu-code" flags and now it works (see GENCODES comment in the readme)
+12:45
+  - decide to build reference01
+  - clone snark challenge folder
+  - install cmake
+  - install libcrypto++ (don't think ended up being needed)
+  - install libssl-dev 
+  - install libprocps-dev
+  - install libboost-all-dev
+12:50
+  - finally ./build.sh succeeds
+  - looked at libff/main.cpp
+12:58
+  - decide to get fixnum building
+  - clone fixnum, make bench
+  - rebuild with gencodes 60
+  - works!
+1:05
+  - add a new example to fixnum that adds 2 numbers
+  - copy bench/bench.cu to bench/test753.cu
+1:30 - 1:50
+  - meeting
+3:15
+  - figured out modular arithmetic with montgomery in fixnum
+3:25
+  - documented progress and pushed to github
