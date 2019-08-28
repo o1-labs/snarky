@@ -352,29 +352,8 @@ module Make (Backend : Backend_extended.S) = struct
                - if we are running a checked computation inside a prover block,
                  we need to be sure that we aren't allocating R1CS variables
                  that aren't present in the original constraint system.
-
-               In particular, if we are running inside a prover block, any call
-               to [exists] will cause a difference between the expected layout
-               in the R1CS and the actual layout that the prover puts data
-               into:
-
-               R1CS layout:
-                      next R1CS variable to be allocated
-                                    \/
-               ... [ var{n-1} ] [ var{n} ] [ var{n+1} ] [ var{n+2} ] ...
-
-               Prover block layout:
-                      prover writes values here due to [exists]
-                                       \/
-               ... [ var{n-1} ] [ prover_var{1} ] ... [ prover_var{k} ] [ var{n} ] ...
-
-               To avoid a divergent layout (and thus unsatisfied constraint
-               system), we run the original checked computation instead.
-
-               (Note: this currently should never happen, because
-                [reduce_to_prover] should only be able to be invoked on a
-                complete end-to-end checked computation used to create a proof.
-                By definition, this cannot be wrapped in a prover block.)
+                 See the comment in the [Exists] branch of [flatten_as_prover]
+                 below for more context.
             *)
             (handle_error s (fun () -> d s), res)
           else run t s
@@ -513,15 +492,31 @@ module Make (Backend : Backend_extended.S) = struct
         let g, a = flatten_as_prover next_auxiliary stack (k handle) in
         ( (fun s ->
             if !(s.as_prover) then
-              (* This should never happen: both the exposed APIs and the normal
-                 checked runner try to make this impossible.
+              (* If we are running inside a prover block, any call to [exists]
+                 will cause a difference between the expected layout in the
+                 R1CS and the actual layout that the prover puts data into:
 
-                 See the comment above the [Reduced] in [run] above for more
-                 context.
+                 R1CS layout:
+                        next R1CS variable to be allocated
+                                      \/
+                 ... [ var{n-1} ] [ var{n} ] [ var{n+1} ] [ var{n+2} ] ...
+
+                 Prover block layout:
+                                 prover writes values here due to [exists]
+                                         \/         ...        \/
+                 ... [ var{n-1} ] [ prover_var{1} ] ... [ prover_var{k} ] [ var{n} ] ...
+
+                 To avoid a divergent layout (and thus unsatisfied constraint
+                 system), we run the original checked computation instead.
+
+                 Note: this currently should never happen, because this
+                 function is only invoked on a complete end-to-end checked
+                 computation using the proving API.
+                 By definition, this cannot be wrapped in a prover block.
               *)
               failwith
-                "Cannot add a constraint as the prover: the verifier's \
-                 constraint system will not match." ;
+                "Internal error: attempted to store field elements for a \
+                 variable that is not known to the constraint system." ;
             let old = !(s.as_prover) in
             s.as_prover := true ;
             let ps, value =
