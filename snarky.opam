@@ -24,6 +24,9 @@ depends: [
   "bisect_ppx" {>= "1.4.1" & < "1.5"}
   "dune"                {build & >= "1.6"}
 ]
+depopts: [
+  "snarky_cuda"
+]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
 A snarks DSL

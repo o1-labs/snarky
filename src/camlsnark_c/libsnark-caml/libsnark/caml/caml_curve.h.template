@@ -155,11 +155,11 @@ void CURVE_PREFIX(r1cs_constraint_delete)(void* c);
 
 void CURVE_PREFIX(r1cs_constraint_set_is_square)(void* c, bool is_square);
 
-const void* CURVE_PREFIX(r1cs_constraint_a)(const void* c);
+void* CURVE_PREFIX(r1cs_constraint_a)(void* c);
 
-const void* CURVE_PREFIX(r1cs_constraint_b)(const void* c);
+void* CURVE_PREFIX(r1cs_constraint_b)(void* c);
 
-const void* CURVE_PREFIX(r1cs_constraint_c)(const void* c);
+void* CURVE_PREFIX(r1cs_constraint_c)(void* c);
 
 void* CURVE_PREFIX(r1cs_constraint_system_create)();
 

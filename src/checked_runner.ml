@@ -141,26 +141,27 @@ struct
 
   let add_constraint c s =
     if !(s.as_prover) then
-      failwith
-        "Cannot add a constraint as the prover: the verifier's constraint \
-         system will not match." ;
-    Option.iter s.log_constraint ~f:(fun f -> f c) ;
-    if s.eval_constraints && not (Constraint.eval c (get_value s)) then
-      failwithf
-        "Constraint unsatisfied (unreduced):\n\
-         %s\n\
-         %s\n\n\
-         Constraint:\n\
-         %s\n\
-         Data:\n\
-         %s"
-        (Constraint.annotation c)
-        (Constraint.stack_to_string s.stack)
-        (Sexp.to_string (Constraint.sexp_of_t c))
-        (log_constraint c s) () ;
-    Option.iter s.system ~f:(fun system ->
-        Constraint.add ~stack:s.stack c system ) ;
-    (s, ())
+      (* Don't add constraints as the prover, or the constraint system won't match! *)
+      (s, ())
+    else (
+      Option.iter s.log_constraint ~f:(fun f -> f c) ;
+      if s.eval_constraints && not (Constraint.eval c (get_value s)) then
+        failwithf
+          "Constraint unsatisfied (unreduced):\n\
+           %s\n\
+           %s\n\n\
+           Constraint:\n\
+           %s\n\
+           Data:\n\
+           %s"
+          (Constraint.annotation c)
+          (Constraint.stack_to_string s.stack)
+          (Sexp.to_string (Constraint.sexp_of_t c))
+          (log_constraint c s) () ;
+      if not !(s.as_prover) then
+        Option.iter s.system ~f:(fun system ->
+            Constraint.add ~stack:s.stack c system ) ;
+      (s, ()) )
 
   let with_state p and_then t_sub s =
     let s, s_sub = run_as_prover (Some p) s in
@@ -181,10 +182,6 @@ struct
     ({s' with handler}, y)
 
   let exists {Types.Typ.store; alloc; check; _} p s =
-    if !(s.as_prover) then
-      failwith
-        "Cannot create a variable as the prover: the verifier's constraint \
-         system will not match." ;
     match s.prover_state with
     | Some ps ->
         let old = !(s.as_prover) in
@@ -193,7 +190,14 @@ struct
           As_prover.Provider.run p s.stack (get_value s) ps s.handler
         in
         s.as_prover := old ;
-        let var = Typ_monads.Store.run (store value) (store_field_elt s) in
+        let var =
+          if !(s.as_prover) then
+            (* If we're nested in a prover block, create constants instead of
+               storing.
+            *)
+            Typ_monads.Store.run (store value) Cvar.constant
+          else Typ_monads.Store.run (store value) (store_field_elt s)
+        in
         (* TODO: Push a label onto the stack here *)
         let s, () = check var (set_prover_state (Some ()) s) in
         (set_prover_state (Some ps) s, {Handle.var; value= Some value})
@@ -334,7 +338,23 @@ module Make (Backend : Backend_extended.S) = struct
         run k s
     | Reduced (t, d, res, k) ->
         let s, y =
-          if Option.is_some s.prover_state && Option.is_none s.system then
+          if
+            (not !(s.as_prover))
+            && Option.is_some s.prover_state
+            && Option.is_none s.system
+          then
+            (* In reduced mode, we only evaluate prover code and use it to fill
+               the public and auxiliary input vectors. Thus, these three
+               conditions are important:
+               - if there is no prover state, we can't run the prover code
+               - if there is an R1CS to be filled, we need to run the original
+                 computation to add the constraints to it
+               - if we are running a checked computation inside a prover block,
+                 we need to be sure that we aren't allocating R1CS variables
+                 that aren't present in the original constraint system.
+                 See the comment in the [Exists] branch of [flatten_as_prover]
+                 below for more context.
+            *)
             (handle_error s (fun () -> d s), res)
           else run t s
         in
@@ -471,6 +491,32 @@ module Make (Backend : Backend_extended.S) = struct
         let handle = {Handle.var; value= None} in
         let g, a = flatten_as_prover next_auxiliary stack (k handle) in
         ( (fun s ->
+            if !(s.as_prover) then
+              (* If we are running inside a prover block, any call to [exists]
+                 will cause a difference between the expected layout in the
+                 R1CS and the actual layout that the prover puts data into:
+
+                 R1CS layout:
+                        next R1CS variable to be allocated
+                                      \/
+                 ... [ var{n-1} ] [ var{n} ] [ var{n+1} ] [ var{n+2} ] ...
+
+                 Prover block layout:
+                                 prover writes values here due to [exists]
+                                         \/         ...        \/
+                 ... [ var{n-1} ] [ prover_var{1} ] ... [ prover_var{k} ] [ var{n} ] ...
+
+                 To avoid a divergent layout (and thus unsatisfied constraint
+                 system), we run the original checked computation instead.
+
+                 Note: this currently should never happen, because this
+                 function is only invoked on a complete end-to-end checked
+                 computation using the proving API.
+                 By definition, this cannot be wrapped in a prover block.
+              *)
+              failwith
+                "Internal error: attempted to store field elements for a \
+                 variable that is not known to the constraint system." ;
             let old = !(s.as_prover) in
             s.as_prover := true ;
             let ps, value =
