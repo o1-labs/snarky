@@ -463,15 +463,15 @@ void CURVE_PREFIX(r1cs_constraint_set_is_square)(r1cs_constraint<FieldT>* c, boo
   c->is_square = is_square;
 }
 
-const linear_combination<FieldT>* CURVE_PREFIX(r1cs_constraint_a)(const r1cs_constraint<FieldT>* c) {
+linear_combination<FieldT>* CURVE_PREFIX(r1cs_constraint_a)(r1cs_constraint<FieldT>* c) {
   return &c->a;
 }
 
-const linear_combination<FieldT>* CURVE_PREFIX(r1cs_constraint_b)(const r1cs_constraint<FieldT>* c) {
+linear_combination<FieldT>* CURVE_PREFIX(r1cs_constraint_b)(r1cs_constraint<FieldT>* c) {
   return &c->b;
 }
 
-const linear_combination<FieldT>* CURVE_PREFIX(r1cs_constraint_c)(const r1cs_constraint<FieldT>* c) {
+linear_combination<FieldT>* CURVE_PREFIX(r1cs_constraint_c)(r1cs_constraint<FieldT>* c) {
   return &c->c;
 }
 
