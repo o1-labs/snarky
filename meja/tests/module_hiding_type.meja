@@ -1,0 +1,16 @@
+module A = {
+  type t;
+};
+
+module B = {
+  module A = {
+    type u;
+  };
+};
+
+open B;
+
+let f = fun (x : A.u) => { x; };
+
+/* Expect an error, A should be out of scope. */
+let g = fun (x : A.t) => { x; };
