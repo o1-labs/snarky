@@ -43,7 +43,6 @@ type type_decl =
 and type_decl_desc =
   | Tdec_abstract
   | Tdec_alias of type_expr
-  | Tdec_unfold of type_expr
   | Tdec_record of field_decl list
   | Tdec_variant of ctor_decl list
   | Tdec_open

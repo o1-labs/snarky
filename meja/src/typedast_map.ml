@@ -141,8 +141,6 @@ let type_decl_desc mapper = function
       Parsetypes.Pdec_abstract
   | Pdec_alias typ ->
       Pdec_alias (mapper.ptype_expr mapper typ)
-  | Pdec_unfold typ ->
-      Pdec_unfold (mapper.ptype_expr mapper typ)
   | Pdec_record fields ->
       Pdec_record (List.map ~f:(mapper.field_decl mapper) fields)
   | Pdec_variant ctors ->

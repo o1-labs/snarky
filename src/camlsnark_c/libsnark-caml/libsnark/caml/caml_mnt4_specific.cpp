@@ -187,7 +187,7 @@ void camlsnark_mnt4_g2_vector_delete(std::vector<libff::G2<ppT>>* v) {
 
 // End g2 code
 
-libff::Fqk<ppT>* camlsnark_mnt4_fqk_one(libff::Fqk<ppT>* a) {
+libff::Fqk<ppT>* camlsnark_mnt4_fqk_one() {
   return new libff::Fqk<ppT>(libff::Fqk<ppT>::one());
 }
 

@@ -42,7 +42,6 @@ and type_decl =
 and type_decl_desc =
   | TAbstract
   | TAlias of type_expr
-  | TUnfold of type_expr
   | TRecord of field_decl list
   | TVariant of ctor_decl list
   | TOpen

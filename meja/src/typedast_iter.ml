@@ -124,8 +124,6 @@ let type_decl_desc iter = function
       ()
   | Pdec_alias typ ->
       iter.ptype_expr iter typ
-  | Pdec_unfold typ ->
-      iter.ptype_expr iter typ
   | Pdec_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
   | Pdec_variant ctors ->

@@ -1,0 +1,12 @@
+/* The series of unifications below will create a recursive type
+   'b = (_, 'b)
+   This should be handled gracefully by the typechecker.
+
+   The staged unification
+     'b = ('x, 'y) = ('z, 'b) = ('z, ('x, 'y))
+   must be stopped before entering an infinite co-recursion on
+     ('x, 'y) = ('z, ('x, 'y))
+*/
+let f = fun (f : 'a -> 'a -> 'a -> 'a, i : 'b, j : (_, _), k : (_, 'b)) => {
+  f(i, j, k);
+};

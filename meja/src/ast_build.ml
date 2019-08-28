@@ -80,9 +80,6 @@ module Type_decl = struct
   let alias ?loc ?params ?implicits name typ =
     mk ?loc ?params ?implicits name (Pdec_alias typ)
 
-  let unfold ?loc ?params ?implicits name typ =
-    mk ?loc ?params ?implicits name (Pdec_unfold typ)
-
   let record ?loc ?params ?implicits name fields =
     mk ?loc ?params ?implicits name (Pdec_record fields)
 
