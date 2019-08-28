@@ -338,7 +338,44 @@ module Make (Backend : Backend_extended.S) = struct
         run k s
     | Reduced (t, d, res, k) ->
         let s, y =
-          if Option.is_some s.prover_state && Option.is_none s.system then
+          if
+            (not !(s.as_prover))
+            && Option.is_some s.prover_state
+            && Option.is_none s.system
+          then
+            (* In reduced mode, we only evaluate prover code and use it to fill
+               the public and auxiliary input vectors. Thus, these three
+               conditions are important:
+               - if there is no prover state, we can't run the prover code
+               - if there is an R1CS to be filled, we need to run the original
+                 computation to add the constraints to it
+               - if we are running a checked computation inside a prover block,
+                 we need to be sure that we aren't allocating R1CS variables
+                 that aren't present in the original constraint system.
+
+               In particular, if we are running inside a prover block, any call
+               to [exists] will cause a difference between the expected layout
+               in the R1CS and the actual layout that the prover puts data
+               into:
+
+               R1CS layout:
+                      next R1CS variable to be allocated
+                                    \/
+               ... [ var{n-1} ] [ var{n} ] [ var{n+1} ] [ var{n+2} ] ...
+
+               Prover block layout:
+                      prover writes values here due to [exists]
+                                       \/
+               ... [ var{n-1} ] [ prover_var{1} ] ... [ prover_var{k} ] [ var{n} ] ...
+
+               To avoid a divergent layout (and thus unsatisfied constraint
+               system), we run the original checked computation instead.
+
+               (Note: this currently should never happen, because
+                [reduce_to_prover] should only be able to be invoked on a
+                complete end-to-end checked computation used to create a proof.
+                By definition, this cannot be wrapped in a prover block.)
+            *)
             (handle_error s (fun () -> d s), res)
           else run t s
         in
@@ -476,6 +513,12 @@ module Make (Backend : Backend_extended.S) = struct
         let g, a = flatten_as_prover next_auxiliary stack (k handle) in
         ( (fun s ->
             if !(s.as_prover) then
+              (* This should never happen: both the exposed APIs and the normal
+                 checked runner try to make this impossible.
+
+                 See the comment above the [Reduced] in [run] above for more
+                 context.
+              *)
               failwith
                 "Cannot add a constraint as the prover: the verifier's \
                  constraint system will not match." ;
