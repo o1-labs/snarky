@@ -19,7 +19,7 @@ int snarky_printf(const char* format, ...)
     return ret;
 }
 
-int no_print(const char* format, va_list args) {
+int no_print(const char*, va_list) {
     return 0;
 }
 

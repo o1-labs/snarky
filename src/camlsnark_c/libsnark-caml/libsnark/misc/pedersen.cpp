@@ -39,7 +39,7 @@ void update_with_bits(
   auto shift = state.bits_consumed;
   auto n = input.size();
   auto acc = state.acc;
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     if (input[i]) {
       acc = acc + coeffs[i + shift];
     }
@@ -62,7 +62,7 @@ void update_with_g1(
   auto shift = state.bits_consumed;
   // Probably don't need to update with both X and Y actually
   auto n = Fr::size_in_bits();
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     if (X.test_bit(i)) {
       acc = acc + coeffs[shift + i];
     }

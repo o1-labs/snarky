@@ -1097,14 +1097,15 @@ struct
           ignore auxiliary )
         t k
 
-    let generate_witness :
+    let generate_witness_conv :
            run:('a, 's, 'checked) Checked.Runner.run
-        -> ('checked, Proof_inputs.t, 'k_var, 'k_value) t
+        -> f:(Proof_inputs.t -> 'out)
+        -> ('checked, 'out, 'k_var, 'k_value) t
         -> ?handlers:Handler.t list
         -> 's
         -> 'k_var
         -> 'k_value =
-     fun ~run t ?handlers s k ->
+     fun ~run ~f t ?handlers s k ->
       conv
         (fun c primary ->
           let auxiliary =
@@ -1112,8 +1113,11 @@ struct
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
-          {Proof_inputs.public_inputs= primary; auxiliary_inputs= auxiliary} )
+          f {Proof_inputs.public_inputs= primary; auxiliary_inputs= auxiliary}
+          )
         t k
+
+    let generate_witness = generate_witness_conv ~f:Fn.id
   end
 
   module Cvar1 = struct
@@ -1478,6 +1482,9 @@ struct
 
     let generate_witness ~run t k s = Run.generate_witness ~run t s k
 
+    let generate_witness_conv ~run ~f t k s =
+      Run.generate_witness_conv ~run ~f t s k
+
     let constraint_system = Run.constraint_system
 
     let run_unchecked = run_unchecked
@@ -1500,6 +1507,9 @@ struct
   let verify = Run.verify
 
   let generate_witness t s k = Run.generate_witness ~run:Checked.run t s k
+
+  let generate_witness_conv ~f t s k =
+    Run.generate_witness_conv ~run:Checked.run ~f t s k
 
   let constraint_system ~exposing k =
     Run.constraint_system ~run:Checked.run ~exposing k
@@ -2154,6 +2164,9 @@ module Run = struct
     let verify ?message pf vk spec = verify ?message pf vk spec
 
     let generate_witness x = Perform.generate_witness ~run:as_stateful x
+
+    let generate_witness_conv ~f x =
+      Perform.generate_witness_conv ~run:as_stateful ~f x
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 
