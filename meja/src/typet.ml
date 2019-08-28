@@ -119,32 +119,19 @@ module Type = struct
               (env, param) )
         in
         let typ, env =
-          match decl with
-          | {tdec_desc= TUnfold typ; tdec_implicit_params; _} ->
-              let new_vars_map =
-                if List.is_empty var_implicit_params then Int.Map.empty
-                else
-                  List.fold2_exn ~init:Int.Map.empty tdec_implicit_params
-                    var_implicit_params ~f:(fun new_vars_map var param ->
-                      Map.set new_vars_map ~key:var.type_id
-                        ~data:param.type_type )
-              in
-              let typ = Envi.Type.copy ~loc typ new_vars_map env in
-              (typ, env)
-          | _ ->
-              let env, implicit_params =
-                if Int.equal given_implicits_length 0 then
-                  List.fold_map ~init:env decl.tdec_implicit_params
-                    ~f:(Envi.Type.refresh_var ~loc ?must_find)
-                else (env, List.map ~f:type0 var_implicit_params)
-              in
-              let variant =
-                { Type0.var_params= List.map ~f:type0 var_params
-                ; var_ident= var_ident.txt
-                ; var_decl= decl
-                ; var_implicit_params= implicit_params }
-              in
-              (mk (Tctor variant) env, env)
+          let env, implicit_params =
+            if Int.equal given_implicits_length 0 then
+              List.fold_map ~init:env decl.tdec_implicit_params
+                ~f:(Envi.Type.refresh_var ~loc ?must_find)
+            else (env, List.map ~f:type0 var_implicit_params)
+          in
+          let variant =
+            { Type0.var_params= List.map ~f:type0 var_params
+            ; var_ident= var_ident.txt
+            ; var_decl= decl
+            ; var_implicit_params= implicit_params }
+          in
+          (mk (Tctor variant) env, env)
         in
         ( { type_desc= Ttyp_ctor {var_params; var_ident; var_implicit_params}
           ; type_loc= loc
@@ -341,13 +328,6 @@ module TypeDecl = struct
             add_implicits (Type1.implicit_params typ)
           in
           ({decl with tdec_desc= TAlias typ; tdec_implicit_params}, env)
-      | Pdec_unfold typ ->
-          let typ, env = Type.import ~must_find:false typ env in
-          let typ = typ.type_type in
-          let tdec_implicit_params =
-            add_implicits (Type1.implicit_params typ)
-          in
-          ({decl with tdec_desc= TUnfold typ; tdec_implicit_params}, env)
       | Pdec_open ->
           ({decl with tdec_desc= TOpen}, env)
       | Pdec_record fields ->
@@ -459,8 +439,6 @@ module TypeDecl = struct
         | TAbstract | TOpen ->
             ()
         | TAlias typ ->
-            iter_type typ
-        | TUnfold typ ->
             iter_type typ
         | TRecord fields ->
             List.iter ~f:iter_field fields

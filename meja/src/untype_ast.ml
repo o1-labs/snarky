@@ -61,8 +61,6 @@ module Type0 = struct
         Type_decl.abstract ?loc ?params ?implicits name
     | TAlias typ ->
         Type_decl.alias ?loc ?params ?implicits name (type_expr typ)
-    | TUnfold typ ->
-        Type_decl.unfold ?loc ?params ?implicits name (type_expr typ)
     | TRecord fields ->
         Type_decl.record ?loc ?params ?implicits name
           (List.map ~f:field_decl fields)
@@ -124,8 +122,6 @@ let type_decl_desc = function
       Parsetypes.Pdec_abstract
   | Tdec_alias typ ->
       Pdec_alias (type_expr typ)
-  | Tdec_unfold typ ->
-      Pdec_unfold (type_expr typ)
   | Tdec_record fields ->
       Pdec_record (List.map ~f:field_decl fields)
   | Tdec_variant ctors ->

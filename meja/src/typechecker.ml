@@ -690,27 +690,34 @@ let rec get_expression env expected exp =
         { tdec_ident= name
         ; tdec_params= []
         ; tdec_implicit_params= []
-        ; tdec_desc= Pdec_unfold (Ast_build.Type.none ())
+        ; tdec_desc= Pdec_abstract
         ; tdec_loc= loc }
       in
       let decl, env = Typet.TypeDecl.import decl env in
-      let typ =
-        match decl.tdec_desc with TUnfold typ -> typ | _ -> assert false
-      in
-      (* Create a self-referencing type declaration. *)
-      typ.type_desc
-      <- Tctor
-           { var_ident= Path.Pident decl.tdec_ident
-           ; var_params= []
-           ; var_implicit_params= []
-           ; var_decl= decl } ;
-      let body, env = get_expression env expected body in
-      (* Substitute the self-reference for a type variable. *)
-      typ.type_desc <- Tvar (Some name.txt, Explicit) ;
+      let res = Envi.Type.mkvar None env in
+      let body, env = get_expression env res body in
       let env = Envi.close_expr_scope env in
-      Envi.Type.update_depths env body.exp_type ;
+      let ident = decl.tdec_ident in
+      let free_var = Envi.Type.mkvar None env in
+      let res =
+        (* Substitute instances of the type for [free_var]. *)
+        let mapper =
+          { Type0_map.default_mapper with
+            type_expr=
+              (fun mapper typ ->
+                match typ.type_desc with
+                | Tctor {var_ident= Pident ident'; _}
+                  when Ident.compare ident ident' = 0 ->
+                    free_var
+                | _ ->
+                    Type0_map.default_mapper.type_expr mapper typ ) }
+        in
+        mapper.type_expr mapper (Envi.Type.flatten res env)
+      in
+      check_type ~loc env expected res ;
+      Envi.Type.update_depths env res ;
       ( { exp_loc= loc
-        ; exp_type= body.exp_type
+        ; exp_type= res
         ; exp_desc= Texp_newtype (Location.mkloc decl.tdec_ident name.loc, body)
         }
       , env )
