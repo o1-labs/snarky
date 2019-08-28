@@ -1097,14 +1097,15 @@ struct
           ignore auxiliary )
         t k
 
-    let generate_witness :
+    let generate_witness_conv :
            run:('a, 's, 'checked) Checked.Runner.run
-        -> ('checked, Proof_inputs.t, 'k_var, 'k_value) t
+        -> f:(Proof_inputs.t -> 'out)
+        -> ('checked, 'out, 'k_var, 'k_value) t
         -> ?handlers:Handler.t list
         -> 's
         -> 'k_var
         -> 'k_value =
-     fun ~run t ?handlers s k ->
+     fun ~run ~f t ?handlers s k ->
       conv
         (fun c primary ->
           let auxiliary =
@@ -1112,8 +1113,11 @@ struct
               ~num_inputs:(Field.Vector.length primary)
               c s primary
           in
-          {Proof_inputs.public_inputs= primary; auxiliary_inputs= auxiliary} )
+          f {Proof_inputs.public_inputs= primary; auxiliary_inputs= auxiliary}
+          )
         t k
+
+    let generate_witness = generate_witness_conv ~f:Fn.id
   end
 
   module Cvar1 = struct
@@ -1182,6 +1186,25 @@ struct
       let if_ = Checked.if_
 
       let compare ~bit_length a b =
+        (* Overview of the logic:
+           let n = bit_length
+           We have 0 <= a < 2^n, 0 <= b < 2^n, and so
+             -2^n < b - a < 2^n
+           If (b - a) >= 0, then
+             2^n <= 2^n + b - a < 2^{n+1},
+           and so the n-th bit must be set.
+           If (b - a) < 0 then
+             0 < 2^n + b - a < 2^n
+           and so the n-th bit must not be set.
+           Thus, we can use the n-th bit of 2^n + b - a to determine whether
+             (b - a) >= 0 <-> a <= b.
+
+           We also need that the maximum value
+             2^n + (2^n - 1) - 0 = 2^{n+1} - 1
+           fits inside the field, so for the max field element f,
+             2^{n+1} - 1 <= f -> n+1 <= log2(f) = size_in_bits - 1
+        *)
+        assert (Int.(bit_length <= size_in_bits - 2)) ;
         let open Checked in
         let open Let_syntax in
         [%with_label_ "compare"]
@@ -1478,6 +1501,9 @@ struct
 
     let generate_witness ~run t k s = Run.generate_witness ~run t s k
 
+    let generate_witness_conv ~run ~f t k s =
+      Run.generate_witness_conv ~run ~f t s k
+
     let constraint_system = Run.constraint_system
 
     let run_unchecked = run_unchecked
@@ -1500,6 +1526,9 @@ struct
   let verify = Run.verify
 
   let generate_witness t s k = Run.generate_witness ~run:Checked.run t s k
+
+  let generate_witness_conv ~f t s k =
+    Run.generate_witness_conv ~run:Checked.run ~f t s k
 
   let constraint_system ~exposing k =
     Run.constraint_system ~run:Checked.run ~exposing k
@@ -1604,10 +1633,6 @@ module Run = struct
         ; log_constraint= None }
 
     let run checked =
-      if !(!state.as_prover) then
-        failwith
-          "Can't run checked code as the prover: the verifier's constraint \
-           system will not match." ;
       if not !state.is_running then
         failwith "This function can't be run outside of a checked computation." ;
       let state', x = Runner.run checked !state in
@@ -2158,6 +2183,9 @@ module Run = struct
     let verify ?message pf vk spec = verify ?message pf vk spec
 
     let generate_witness x = Perform.generate_witness ~run:as_stateful x
+
+    let generate_witness_conv ~f x =
+      Perform.generate_witness_conv ~run:as_stateful ~f x
 
     let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
 

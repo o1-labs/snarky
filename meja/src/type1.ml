@@ -219,6 +219,29 @@ let is_arrow typ =
   | _ ->
       false
 
+(** Returns [true] if [typ] is a strict subtype of [in_]
+    (i.e. excluding [typ == in_]), or [false] otherwise.
+*)
+let rec contains typ ~in_ =
+  let equal = phys_equal typ in
+  let contains in_ = contains typ ~in_ in
+  match in_.type_desc with
+  | Tvar _ ->
+      false
+  | Ttuple typs ->
+      List.exists ~f:equal typs || List.exists ~f:contains typs
+  | Tarrow (typ1, typ2, _explicit, _label) ->
+      equal typ1 || equal typ2 || contains typ1 || contains typ2
+  | Tctor variant ->
+      List.exists ~f:equal variant.var_params
+      || List.exists ~f:equal variant.var_implicit_params
+      || List.exists ~f:contains variant.var_params
+      || List.exists ~f:contains variant.var_implicit_params
+  | Tpoly (typs, typ) ->
+      List.exists ~f:equal typs || equal typ
+      || List.exists ~f:contains typs
+      || contains typ
+
 module Decl = struct
   let decl_id = ref 0
 

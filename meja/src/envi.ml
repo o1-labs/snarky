@@ -56,9 +56,6 @@ module TypeEnvi = struct
       variable_instances=
         Map.set env.variable_instances ~key:typ.type_id ~data:typ' }
 
-  let clear_instance (typ : type_expr) env =
-    {env with variable_instances= Map.remove env.variable_instances typ.type_id}
-
   let next_type_id env = (env.type_id, {env with type_id= env.type_id + 1})
 
   let next_decl_id env =
@@ -727,8 +724,6 @@ module Type = struct
 
   let add_instance typ typ' = map_env ~f:(TypeEnvi.add_instance typ typ')
 
-  let clear_instance typ = map_env ~f:(TypeEnvi.clear_instance typ)
-
   let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
     | Tvar (None, explicitness) -> (
@@ -824,7 +819,6 @@ module Type = struct
     | Tvar _ -> (
       match instance env typ with
       | Some typ' ->
-          clear_instance typ env ;
           let flattened_typ = flatten typ' env in
           add_instance typ typ' env ; flattened_typ
       | None ->

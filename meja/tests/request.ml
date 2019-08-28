@@ -23,7 +23,11 @@ include struct
   let handle_Request3 = function
     | With {request= Request3 x; respond} -> (
         let unhandled = Snarky.Request.unhandled in
-        match x with None -> unhandled | Some x -> respond x )
+        match x with
+        | None ->
+            unhandled
+        | Some x ->
+            respond (Snarky.Request.Response.Provide x) )
     | _ ->
         Snarky.Request.unhandled
 end

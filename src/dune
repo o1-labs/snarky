@@ -2,12 +2,17 @@
  (name snarky)
  (public_name snarky)
  (inline_tests)
+ (modes native)
  (libraries core_kernel fold_lib tuple_lib bitstring_lib interval_union
-   bignum camlsnark_c ctypes)
+   bignum camlsnark_c ctypes
+   (select gpu_prover.ml from
+    (groth16_gpu_prover -> gpu.ml)
+    (-> no_gpu.ml)))
  (c_library_flags :standard -lstdc++ -lpthread)
  (cxx_flags
   (:standard \ -pedantic)
   (-I re2_c/libre2))
+ (modules (:standard \ gpu no_gpu))
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
     -conditional))
