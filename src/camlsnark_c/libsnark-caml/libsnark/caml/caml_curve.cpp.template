@@ -42,7 +42,7 @@ pb_variable_array<FieldT>* CURVE_PREFIX(protoboard_allocate_variable_array)(prot
   return x;
 }
 
-pb_variable<FieldT>* 
+pb_variable<FieldT>*
 CURVE_PREFIX(protoboard_variable_of_int)(int i) {
   return new pb_variable<FieldT>(i);
 }
@@ -565,13 +565,13 @@ void CURVE_PREFIX(r1cs_constraint_system_swap_AB_if_beneficial)(
 }
 
 void CURVE_PREFIX(r1cs_constraint_system_add_constraint)(
-    r1cs_constraint_system<FieldT>* sys, 
+    r1cs_constraint_system<FieldT>* sys,
     r1cs_constraint<FieldT>* c) {
   sys->add_constraint(*c);
 }
 
 void CURVE_PREFIX(r1cs_constraint_system_add_constraint_with_annotation)(
-    r1cs_constraint_system<FieldT>* sys, 
+    r1cs_constraint_system<FieldT>* sys,
     r1cs_constraint<FieldT>* c,
     char* s) {
   std::string str(s);
@@ -579,13 +579,13 @@ void CURVE_PREFIX(r1cs_constraint_system_add_constraint_with_annotation)(
 }
 
 void CURVE_PREFIX(r1cs_constraint_system_set_primary_input_size)(
-    r1cs_constraint_system<FieldT>* sys, 
+    r1cs_constraint_system<FieldT>* sys,
     int n) {
   sys->primary_input_size = n;
 }
 
 void CURVE_PREFIX(r1cs_constraint_system_set_auxiliary_input_size)(
-    r1cs_constraint_system<FieldT>* sys, 
+    r1cs_constraint_system<FieldT>* sys,
     int n) {
   sys->auxiliary_input_size = n;
 }
@@ -648,6 +648,111 @@ r1cs_gg_ppzksnark_proving_key<ppT>* CURVE_PREFIX(proving_key_of_string)(std::str
   std::stringstream stream(*s);
   stream >> *pk;
   return pk;
+}
+
+}
+
+template<typename G>
+void generate_multiples(int C, const std::vector<G> &vec, std::vector<G> *multiples) {
+    // If vec = [P0, ..., Pn], then multiples holds an array
+    //
+    // [    P0, ...,     Pn,
+    //     2P0, ...,    2Pn,
+    //     3P0, ...,    3Pn,
+    //          ...,
+    //  2^(C-1) P0, ..., 2^(C-1) Pn]
+    size_t len = vec.size();
+    multiples->resize(len * ((1U << C) - 1));
+    std::copy(vec.begin(), vec.end(), multiples->begin());
+
+    for (size_t i = 1; i < (1U << C) - 1; ++i) {
+        size_t prev_row_offset = (i-1)*len;
+        size_t curr_row_offset = i*len;
+#ifdef MULTICORE
+#pragma omp parallel for
+#endif
+        for (size_t j = 0; j < len; ++j)
+           (*multiples)[curr_row_offset + j] = vec[j] + (*multiples)[prev_row_offset + j];
+    }
+
+    if (multiples->size() != ((1U << C) - 1)*len) {
+        fprintf(stderr, "Broken preprocessing table: got %zu, expected %zu\n",
+                multiples->size(), ((1U << C) - 1) * len);
+        abort();
+    }
+}
+
+extern "C" {
+
+std::vector<libff::G1<ppT>> *CURVE_PREFIX(proving_key_preprocess_A)(
+    int C,
+    r1cs_gg_ppzksnark_proving_key<ppT> *pk)
+{
+    std::vector<libff::G1<ppT>> *ret = new std::vector<libff::G1<ppT>>();
+    generate_multiples<libff::G1<ppT>>(C, pk->A_query, ret);
+    return ret;
+}
+
+std::vector<libff::G1<ppT>> *CURVE_PREFIX(proving_key_preprocess_B1)(
+    int C,
+    libsnark::r1cs_gg_ppzksnark_proving_key<ppT> *pk)
+{
+    std::vector<libff::G1<ppT>> *ret = new std::vector<libff::G1<ppT>>();
+    std::vector<libff::G1<ppT>> B1;
+    for (size_t i = 0; i < pk->B_query.size(); i++) {
+        B1.emplace_back(pk->B_query[i].h);
+    }
+    /* Pad to the size of A_query.
+
+       TODO(Matt): Dig into what exactly is going on here.
+       We're reading past the end of the vector, but we *have to* to get the
+       values that we need. Omitting them or just padding with zeros both fail.
+    */
+    for (size_t i = pk->B_query.size(); i < pk->A_query.size(); i++) {
+        B1.emplace_back(pk->B_query[i].h);
+    }
+    generate_multiples<libff::G1<ppT>>(C, B1, ret);
+    return ret;
+}
+
+std::vector<libff::G2<ppT>> *CURVE_PREFIX(proving_key_preprocess_B2)(
+    int C,
+    libsnark::r1cs_gg_ppzksnark_proving_key<ppT> *pk)
+{
+    std::vector<libff::G2<ppT>> *ret = new std::vector<libff::G2<ppT>>();
+    std::vector<libff::G2<ppT>> B2;
+    for (size_t i = 0; i < pk->B_query.size(); i++) {
+        B2.emplace_back(pk->B_query[i].g);
+    }
+    /* Pad to the size of A_query.
+
+       TODO(Matt): Dig into what exactly is going on here.
+       We're reading past the end of the vector, but we *have to* to get the
+       values that we need. Omitting them or just padding with zeros both fail.
+    */
+    for (size_t i = pk->B_query.size(); i < pk->A_query.size(); i++) {
+        B2.emplace_back(pk->B_query[i].g);
+    }
+    generate_multiples<libff::G2<ppT>>(C, B2, ret);
+    return ret;
+}
+
+std::vector<libff::G1<ppT>> *CURVE_PREFIX(proving_key_preprocess_L)(
+    int C,
+    libsnark::r1cs_gg_ppzksnark_proving_key<ppT> *pk)
+{
+    std::vector<libff::G1<ppT>> *ret = new std::vector<libff::G1<ppT>>();
+    generate_multiples<libff::G1<ppT>>(C, pk->L_query, ret);
+    return ret;
+}
+
+std::vector<libff::G1<ppT>> *CURVE_PREFIX(proving_key_preprocess_H)(
+    int C,
+    libsnark::r1cs_gg_ppzksnark_proving_key<ppT> *pk)
+{
+    std::vector<libff::G1<ppT>> *ret = new std::vector<libff::G1<ppT>>();
+    generate_multiples<libff::G1<ppT>>(C, pk->H_query, ret);
+    return ret;
 }
 
 void CURVE_PREFIX(proving_key_delete)(r1cs_gg_ppzksnark_proving_key<ppT>* pk) {
@@ -796,42 +901,42 @@ int CURVE_PREFIX(gm_verification_key_size_in_bits)(
   return vk->size_in_bits();
 }
 
-libff::G2<ppT>* 
+libff::G2<ppT>*
 CURVE_PREFIX(gm_verification_key_h)(
     r1cs_se_ppzksnark_verification_key<ppT>* vk
 ) {
   return new libff::G2<ppT>(vk->H);
 }
 
-libff::G1<ppT>* 
+libff::G1<ppT>*
 CURVE_PREFIX(gm_verification_key_g_alpha)(
     r1cs_se_ppzksnark_verification_key<ppT>* vk
 ) {
   return new libff::G1<ppT>(vk->G_alpha);
 }
 
-libff::G2<ppT>* 
+libff::G2<ppT>*
 CURVE_PREFIX(gm_verification_key_h_beta)(
     r1cs_se_ppzksnark_verification_key<ppT>* vk
 ) {
   return new libff::G2<ppT>(vk->H_beta);
 }
 
-libff::G1<ppT>* 
+libff::G1<ppT>*
 CURVE_PREFIX(gm_verification_key_g_gamma) (
     r1cs_se_ppzksnark_verification_key<ppT>* vk
 ) {
   return new libff::G1<ppT>(vk->G_gamma);
 }
 
-libff::G2<ppT>* 
+libff::G2<ppT>*
 CURVE_PREFIX(gm_verification_key_h_gamma) (
     r1cs_se_ppzksnark_verification_key<ppT>* vk
 ) {
   return new libff::G2<ppT>(vk->H_gamma);
 }
 
-libff::Fqk<ppT>* 
+libff::Fqk<ppT>*
 CURVE_PREFIX(gm_verification_key_g_alpha_h_beta) (
     r1cs_se_ppzksnark_verification_key<ppT>* vk
 ) {

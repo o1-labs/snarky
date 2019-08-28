@@ -1148,6 +1148,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> 's
       -> 'k_value
 
+    val generate_witness_conv :
+         run:('a, 's, 't) t
+      -> f:(Proof_inputs.t -> 'out)
+      -> ('t, 'out, 'k_var, 'k_value) Data_spec.t
+      -> 'k_var
+      -> 's
+      -> 'k_value
+
     val run_unchecked : run:('a, 's, 't) t -> 't -> 's -> 's * 'a
 
     val run_and_check :
@@ -1345,6 +1353,20 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
       Returns a record of field vectors [{public_inputs; auxiliary_inputs}],
       corresponding to the given public input and generated auxiliary input.
+  *)
+
+  val generate_witness_conv :
+       f:(Proof_inputs.t -> 'out)
+    -> ((unit, 's) Checked.t, 'out, 'k_var, 'k_value) Data_spec.t
+    -> 's
+    -> 'k_var
+    -> 'k_value
+  (** Generate a witness (auxiliary input) for the given public input and pass
+      the result to a function.
+
+      Returns the result of applying [f] to the record of field vectors
+      [{public_inputs; auxiliary_inputs}], corresponding to the given public
+      input and generated auxiliary input.
   *)
 
   val run_unchecked : ('a, 's) Checked.t -> 's -> 's * 'a
@@ -2137,6 +2159,13 @@ module type Run_basic = sig
 
   val generate_witness :
        (unit -> 'a, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+    -> 'k_var
+    -> prover_state
+    -> 'k_value
+
+  val generate_witness_conv :
+       f:(Proof_inputs.t -> 'out)
+    -> (unit -> 'a, 'out, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
     -> prover_state
     -> 'k_value
