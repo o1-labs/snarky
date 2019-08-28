@@ -591,7 +591,7 @@ and check_patterns env typs pats =
                     raise (Error (loc, Repeated_pattern_variable name))
                 | None ->
                     () ) ) ;
-        (pat :: rev_pats, List.rev names @ rev_names, env) )
+        (pat :: rev_pats, List.rev_append names rev_names, env) )
   in
   (List.rev rev_pats, List.rev rev_names, env)
 
