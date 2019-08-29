@@ -18,7 +18,7 @@ let () =
         [ "-Wl,-E"
         ; "-g"
         ; "-lcamlsnark_c_stubs"
-        ; "-fopenmp"
+        ; "-lgomp"
         ; "-lssl"
         ; "-lcrypto"
         ; "-lprocps"
