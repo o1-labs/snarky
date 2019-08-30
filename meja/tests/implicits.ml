@@ -37,11 +37,3 @@ module T = struct
 end
 
 let j (i : int) (f : bool -> 'a) = f (conv T.conv_int_bool i)
-
-type ('a, 'b) equiv = Equiv of ('a -> 'b) * ('b -> 'a)
-
-let equiv_eq = Equiv ((fun x -> x), fun x -> x)
-
-let conv_equiv (Equiv (conv, _)) = {conv}
-
-let k (i : int) (f : 'a -> 'a -> 'a) = f i (conv (conv_equiv equiv_eq) i)
