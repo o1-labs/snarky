@@ -1148,8 +1148,10 @@ let rec check_signature_item env item =
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ.type_type ;
       let name = map_loc ~f:(Ident.create ~mode) name in
-      let env = add_polymorphised name.txt typ.type_type env in
-      let env = Envi.add_implicit_instance name.txt typ.type_type env in
+      let typ' = Envi.Type.flatten typ.type_type env in
+      let typ' = polymorphise typ' env in
+      let env = Envi.add_name name.txt typ' env in
+      let env = Envi.add_implicit_instance name.txt typ' env in
       let typ =
         let type_expr = normalise_type_expr_names env in
         type_expr {Typedast_map.default_iterator with type_expr} typ
@@ -1321,7 +1323,9 @@ let rec check_statement env stmt =
       in
       let scope, env = Envi.pop_expr_scope env in
       let env = Envi.join_expr_scope env scope in
-      let env = Envi.add_implicit_instance name.txt e.exp_type env in
+      let typ = Envi.Type.flatten e.exp_type env in
+      let typ = polymorphise typ env in
+      let env = Envi.add_implicit_instance name.txt typ env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e)})
   | Pstmt_type decl when !in_decl ->
       let decl, env = Typet.TypeDecl.import decl env in
