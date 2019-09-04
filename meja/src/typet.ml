@@ -196,6 +196,48 @@ end
 module TypeDecl = struct
   open TypeDecl
 
+  let generalise decl =
+    let poly_name =
+      map_loc decl.tdec_ident ~f:(fun name ->
+          if name = "t" then "poly" else name ^ "_poly" )
+    in
+    match decl.tdec_desc with
+    | Pdec_record fields ->
+        let field_vars =
+          List.map fields ~f:(fun {fld_ident; fld_type= _; fld_loc} ->
+              { type_desc= Ptyp_var (Some fld_ident, Explicit)
+              ; type_loc= fld_loc } )
+        in
+        let poly_decl =
+          { tdec_ident= poly_name
+          ; tdec_params= field_vars
+          ; tdec_implicit_params= []
+          ; tdec_desc=
+              Pdec_record
+                (List.map2_exn fields field_vars ~f:(fun fld fld_type ->
+                     {fld with fld_type} ))
+          ; tdec_loc= decl.tdec_loc }
+        in
+        let alias_typ =
+          { type_desc=
+              Ptyp_ctor
+                { var_ident=
+                    map_loc poly_name ~f:(fun name -> Longident.Lident name)
+                ; var_params=
+                    List.map fields ~f:(fun {fld_type; _} -> fld_type)
+                ; var_implicit_params= decl.tdec_implicit_params }
+          ; type_loc= decl.tdec_loc }
+        in
+        (poly_decl, {decl with tdec_desc= Pdec_alias alias_typ})
+    | Pdec_variant _ ->
+        (* Not sure what the right thing to do here is. GADTs make this
+           complicated.
+        *)
+        assert false
+    | _ ->
+        (* We don't have enough information about the type to generalise it. *)
+        assert false
+
   let import_field ?must_find env {fld_ident; fld_type; fld_loc= _} =
     let mode = Envi.current_mode env in
     let fld_type, env = Type.import ?must_find fld_type env in
