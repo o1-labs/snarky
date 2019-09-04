@@ -799,12 +799,8 @@ let get_of_path ~loc ~kind ~get_name ~find_name (path : Path.t) env =
               -> 'a option =
    fun ~kind ~get_name ~find_name path scope ->
     match path with
-    | Path.Pident ident -> (
-      match get_name ident scope with
-      | Some v ->
-          Some v
-      | None ->
-          raise (Error (loc, Unbound_path (kind, path))) )
+    | Path.Pident ident ->
+        get_name ident scope
     | Path.Pdot (path', mode, name) -> (
         let%map scope =
           find ~kind:"module" ~get_name:Scope.get_module_by_ident
@@ -894,6 +890,10 @@ let raw_find_type_declaration ~mode (lid : lid) env =
           ; tdec_id= id } )
     | _ ->
         raise (Error (lid.loc, Unbound_type lid.txt)) )
+
+let raw_get_type_declaration =
+  get_of_path ~kind:"type" ~get_name:Scope.get_type_declaration
+    ~find_name:Scope.find_type_declaration
 
 let add_module_type name m =
   map_current_scope ~f:(Scope.add_module_type name m)
