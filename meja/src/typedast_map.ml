@@ -6,15 +6,11 @@ type mapper =
   { type_expr: mapper -> type_expr -> type_expr
   ; type_desc: mapper -> type_desc -> type_desc
   ; variant: mapper -> variant -> variant
-  ; ptype_expr: mapper -> Parsetypes.type_expr -> Parsetypes.type_expr
-  ; ptype_desc: mapper -> Parsetypes.type_desc -> Parsetypes.type_desc
-  ; pvariant: mapper -> Parsetypes.variant -> Parsetypes.variant
-  ; field_decl: mapper -> Parsetypes.field_decl -> Parsetypes.field_decl
-  ; ctor_args: mapper -> Parsetypes.ctor_args -> Parsetypes.ctor_args
-  ; ctor_decl: mapper -> Parsetypes.ctor_decl -> Parsetypes.ctor_decl
-  ; type_decl: mapper -> Parsetypes.type_decl -> Parsetypes.type_decl
-  ; type_decl_desc:
-      mapper -> Parsetypes.type_decl_desc -> Parsetypes.type_decl_desc
+  ; field_decl: mapper -> field_decl -> field_decl
+  ; ctor_args: mapper -> ctor_args -> ctor_args
+  ; ctor_decl: mapper -> ctor_decl -> ctor_decl
+  ; type_decl: mapper -> type_decl -> type_decl
+  ; type_decl_desc: mapper -> type_decl_desc -> type_decl_desc
   ; literal: mapper -> literal -> literal
   ; pattern: mapper -> pattern -> pattern
   ; pattern_desc: mapper -> pattern_desc -> pattern_desc
@@ -77,71 +73,46 @@ let variant mapper {var_ident; var_params} =
   { var_ident= path mapper var_ident
   ; var_params= List.map ~f:(mapper.type_expr mapper) var_params }
 
-let ptype_expr mapper Parsetypes.{type_desc; type_loc} =
-  let type_loc = mapper.location mapper type_loc in
-  let type_desc = mapper.ptype_desc mapper type_desc in
-  {Parsetypes.type_desc; type_loc}
-
-let ptype_desc mapper typ =
-  match typ with
-  | Parsetypes.Ptyp_var (name, explicit) ->
-      Parsetypes.Ptyp_var (Option.map ~f:(str mapper) name, explicit)
-  | Ptyp_tuple typs ->
-      Ptyp_tuple (List.map ~f:(mapper.ptype_expr mapper) typs)
-  | Ptyp_arrow (typ1, typ2, explicit, label) ->
-      Ptyp_arrow
-        ( mapper.ptype_expr mapper typ1
-        , mapper.ptype_expr mapper typ2
-        , explicit
-        , label )
-  | Ptyp_ctor variant ->
-      Ptyp_ctor (mapper.pvariant mapper variant)
-  | Ptyp_poly (vars, typ) ->
-      Ptyp_poly
-        ( List.map ~f:(mapper.ptype_expr mapper) vars
-        , mapper.ptype_expr mapper typ )
-
-let pvariant mapper Parsetypes.{var_ident; var_params} =
-  { Parsetypes.var_ident= lid mapper var_ident
-  ; var_params= List.map ~f:(mapper.ptype_expr mapper) var_params }
-
-let field_decl mapper Parsetypes.{fld_ident; fld_type; fld_loc} =
-  { Parsetypes.fld_loc= mapper.location mapper fld_loc
-  ; fld_ident= str mapper fld_ident
-  ; fld_type= mapper.ptype_expr mapper fld_type }
+let field_decl mapper {fld_ident; fld_type; fld_loc; fld_fld} =
+  { fld_loc= mapper.location mapper fld_loc
+  ; fld_ident= ident mapper fld_ident
+  ; fld_type= mapper.type_expr mapper fld_type
+  ; fld_fld= mapper.type0.field_decl mapper.type0 fld_fld }
 
 let ctor_args mapper = function
-  | Parsetypes.Ctor_tuple typs ->
-      Parsetypes.Ctor_tuple (List.map ~f:(mapper.ptype_expr mapper) typs)
-  | Ctor_record fields ->
-      Ctor_record (List.map ~f:(mapper.field_decl mapper) fields)
+  | Tctor_tuple typs ->
+      Tctor_tuple (List.map ~f:(mapper.type_expr mapper) typs)
+  | Tctor_record fields ->
+      Tctor_record (List.map ~f:(mapper.field_decl mapper) fields)
 
-let ctor_decl mapper Parsetypes.{ctor_ident; ctor_args; ctor_ret; ctor_loc} =
-  { Parsetypes.ctor_loc= mapper.location mapper ctor_loc
-  ; ctor_ident= str mapper ctor_ident
+let ctor_decl mapper {ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor} =
+  { ctor_loc= mapper.location mapper ctor_loc
+  ; ctor_ident= ident mapper ctor_ident
   ; ctor_args= mapper.ctor_args mapper ctor_args
-  ; ctor_ret= Option.map ~f:(mapper.ptype_expr mapper) ctor_ret }
+  ; ctor_ret= Option.map ~f:(mapper.type_expr mapper) ctor_ret
+  ; ctor_ctor= mapper.type0.ctor_decl mapper.type0 ctor_ctor }
 
-let type_decl mapper Parsetypes.{tdec_ident; tdec_params; tdec_desc; tdec_loc}
+let type_decl mapper {tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec}
     =
-  { Parsetypes.tdec_loc= mapper.location mapper tdec_loc
-  ; tdec_ident= str mapper tdec_ident
-  ; tdec_params= List.map ~f:(mapper.ptype_expr mapper) tdec_params
-  ; tdec_desc= mapper.type_decl_desc mapper tdec_desc }
+  { tdec_loc= mapper.location mapper tdec_loc
+  ; tdec_ident= ident mapper tdec_ident
+  ; tdec_params= List.map ~f:(mapper.type_expr mapper) tdec_params
+  ; tdec_desc= mapper.type_decl_desc mapper tdec_desc
+  ; tdec_tdec= mapper.type0.type_decl mapper.type0 tdec_tdec }
 
 let type_decl_desc mapper = function
-  | Parsetypes.Pdec_abstract ->
-      Parsetypes.Pdec_abstract
-  | Pdec_alias typ ->
-      Pdec_alias (mapper.ptype_expr mapper typ)
-  | Pdec_record fields ->
-      Pdec_record (List.map ~f:(mapper.field_decl mapper) fields)
-  | Pdec_variant ctors ->
-      Pdec_variant (List.map ~f:(mapper.ctor_decl mapper) ctors)
-  | Pdec_open ->
-      Pdec_open
-  | Pdec_extend (name, decl, ctors) ->
-      Pdec_extend
+  | Tdec_abstract ->
+      Tdec_abstract
+  | Tdec_alias typ ->
+      Tdec_alias (mapper.type_expr mapper typ)
+  | Tdec_record fields ->
+      Tdec_record (List.map ~f:(mapper.field_decl mapper) fields)
+  | Tdec_variant ctors ->
+      Tdec_variant (List.map ~f:(mapper.ctor_decl mapper) ctors)
+  | Tdec_open ->
+      Tdec_open
+  | Tdec_extend (name, decl, ctors) ->
+      Tdec_extend
         ( path mapper name
         , mapper.type0.type_decl mapper.type0 decl
         , List.map ~f:(mapper.ctor_decl mapper) ctors )
@@ -252,10 +223,9 @@ let signature_desc mapper = function
       Tsig_open (path mapper name)
   | Tsig_typeext (typ, ctors) ->
       Tsig_typeext
-        ( mapper.pvariant mapper typ
-        , List.map ~f:(mapper.ctor_decl mapper) ctors )
+        (mapper.variant mapper typ, List.map ~f:(mapper.ctor_decl mapper) ctors)
   | Tsig_request (typ, ctor) ->
-      Tsig_request (mapper.ptype_expr mapper typ, mapper.ctor_decl mapper ctor)
+      Tsig_request (mapper.type_expr mapper typ, mapper.ctor_decl mapper ctor)
   | Tsig_multiple sigs ->
       Tsig_multiple (mapper.signature mapper sigs)
   | Tsig_prover sigs ->
@@ -299,11 +269,10 @@ let statement_desc mapper = function
       Tstmt_open (path mapper name)
   | Tstmt_typeext (typ, ctors) ->
       Tstmt_typeext
-        ( mapper.pvariant mapper typ
-        , List.map ~f:(mapper.ctor_decl mapper) ctors )
+        (mapper.variant mapper typ, List.map ~f:(mapper.ctor_decl mapper) ctors)
   | Tstmt_request (typ, ctor, handler) ->
       Tstmt_request
-        ( mapper.ptype_expr mapper typ
+        ( mapper.type_expr mapper typ
         , mapper.ctor_decl mapper ctor
         , Option.map handler ~f:(fun (p, e) ->
               ( Option.map ~f:(mapper.pattern mapper) p
@@ -352,9 +321,6 @@ let default_iterator =
   { type_expr
   ; type_desc
   ; variant
-  ; ptype_expr
-  ; ptype_desc
-  ; pvariant
   ; field_decl
   ; ctor_args
   ; ctor_decl

@@ -97,12 +97,12 @@ and signature = signature_item list
 and signature_desc =
   | Tsig_value of ident * type_expr
   | Tsig_instance of ident * type_expr
-  | Tsig_type of Parsetypes.type_decl
+  | Tsig_type of type_decl
   | Tsig_module of ident * module_sig
   | Tsig_modtype of ident * module_sig
   | Tsig_open of path
-  | Tsig_typeext of Parsetypes.variant * Parsetypes.ctor_decl list
-  | Tsig_request of Parsetypes.type_expr * Parsetypes.ctor_decl
+  | Tsig_typeext of variant * ctor_decl list
+  | Tsig_request of type_expr * ctor_decl
   | Tsig_multiple of signature
   | Tsig_prover of signature
 
@@ -121,15 +121,13 @@ and statements = statement list
 and statement_desc =
   | Tstmt_value of pattern * expression
   | Tstmt_instance of ident * expression
-  | Tstmt_type of Parsetypes.type_decl
+  | Tstmt_type of type_decl
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig
   | Tstmt_open of path
-  | Tstmt_typeext of Parsetypes.variant * Parsetypes.ctor_decl list
+  | Tstmt_typeext of variant * ctor_decl list
   | Tstmt_request of
-      Parsetypes.type_expr
-      * Parsetypes.ctor_decl
-      * (pattern option * expression) option
+      type_expr * ctor_decl * (pattern option * expression) option
   | Tstmt_multiple of statements
   | Tstmt_prover of statements
 

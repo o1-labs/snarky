@@ -1096,16 +1096,16 @@ let type_extension ~loc variant ctors env =
     ; tdec_loc= loc }
   in
   let decl, env = Typet.TypeDecl.import decl env in
-  let decl = decl.tdec_tdec in
   let ctors =
     match decl.tdec_desc with
-    | TExtend (_, _, ctors) ->
+    | Tdec_extend (_, _, ctors) ->
         ctors
     | _ ->
         failwith "Expected a TExtend."
   in
   let variant =
-    {var_ident= Pident tdec_ident; var_decl= decl; var_params= decl.tdec_params}
+    { Typedast.var_ident= Location.mkloc path var_ident.loc
+    ; var_params= decl.tdec_params }
   in
   (env, variant, ctors)
 
@@ -1139,7 +1139,7 @@ let rec check_signature_item env item =
       in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
   | Psig_type decl ->
-      let _decl, env = Typet.TypeDecl.import decl env in
+      let decl, env = Typet.TypeDecl.import decl env in
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
@@ -1171,7 +1171,7 @@ let rec check_signature_item env item =
       , { Typedast.sig_desc= Tsig_open (Location.mkloc path name.loc)
         ; sig_loc= loc } )
   | Psig_typeext (variant, ctors) ->
-      let env, _variant, _ctors = type_extension ~loc variant ctors env in
+      let env, variant, ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.sig_desc= Tsig_typeext (variant, ctors); sig_loc= loc})
   | Psig_request (arg, ctor_decl) ->
       let open Ast_build in
@@ -1183,8 +1183,14 @@ let rec check_signature_item env item =
         Type.mk ~loc (Ptyp_ctor {variant with var_params= [arg]})
       in
       let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
-      let env, _variant, _ctors =
-        type_extension ~loc variant [ctor_decl] env
+      let env, _variant, ctors = type_extension ~loc variant [ctor_decl] env in
+      let ctor_decl, arg =
+        match ctors with
+        | [ ( { ctor_ret= Some {type_desc= Ttyp_ctor {var_params= [arg]; _}; _}
+              ; _ } as ctor_decl ) ] ->
+            (ctor_decl, arg)
+        | _ ->
+            assert false
       in
       (env, {Typedast.sig_desc= Tsig_request (arg, ctor_decl); sig_loc= loc})
   | Psig_multiple sigs ->
@@ -1310,7 +1316,7 @@ let rec check_statement env stmt =
       let decl, env = Typet.TypeDecl.import decl env in
       let stmt =
         { Typedast.stmt_loc= loc
-        ; stmt_desc= Tstmt_type (Untype_ast.type_decl decl) }
+        ; stmt_desc= Tstmt_type decl }
       in
       (env, stmt)
   | Pstmt_type decl ->
@@ -1348,29 +1354,32 @@ let rec check_statement env stmt =
       , { Typedast.stmt_loc= loc
         ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
   | Pstmt_typeext (variant, ctors) ->
-      let env, _variant, _ctors = type_extension ~loc variant ctors env in
+      let env, variant, ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_typeext (variant, ctors)})
   | Pstmt_request (arg, ctor_decl, handler) ->
       let open Ast_build in
       let variant =
         Type.variant ~loc ~params:[Type.none ~loc ()]
-          (Lid.of_list ["Snarky__Request"; "t"])
+          (Lid.of_list ["Snarky"; "Request"; "t"])
       in
       let ctor_ret =
         Type.mk ~loc (Ptyp_ctor {variant with var_params= [arg]})
       in
       let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
       let env, _, ctors = type_extension ~loc variant [ctor_decl] env in
-      let ctor_decl =
+      let ctor_decl, arg =
         match ctors with
-        | [ctor] ->
-            { (Untype_ast.Type0.ctor_decl ~loc ctor) with
+        | [ ( { ctor_ret= Some {type_desc= Ttyp_ctor {var_params= [arg]; _}; _}
+              ; _ } as ctor ) ] ->
+            (ctor, arg)
+            (*match Envi.raw_find_type_declaration ~mode (Lid.of_list ["Snarky"; "Request"; "t"])
+            { (Untype_ast.ctor_decl ctor) with
               ctor_ret=
                 Some
                   (Type.mk ~loc
                      (Ptyp_ctor
                         (Type.variant ~loc ~params:[arg]
-                           (Lid.of_list ["Snarky"; "Request"; "t"])))) }
+                           (Lid.of_list ["Snarky"; "Request"; "t"])))) }, arg'*)
         | _ ->
             failwith "Wrong number of constructors returned for Request."
       in
@@ -1387,20 +1396,23 @@ let rec check_statement env stmt =
                 | None ->
                     (body.exp_loc, body.exp_loc))
             in
-            let p = Pat.var ~loc ("handle_" ^ name) in
+            let p = Pat.var ~loc ("handle_" ^ Ident.name name) in
             let e =
               let request = Lid.of_name "request" in
               let respond = Lid.of_name "respond" in
               let body =
                 Exp.let_ ~loc (Pat.var "unhandled")
-                  (Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
+                  (Exp.var (Lid.of_list ["Snarky"; "Request"; "unhandled"]))
                   (Exp.match_ ~loc:stmt.stmt_loc
                      (Exp.var ~loc (Lid.of_name "request"))
-                     [ ( Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat
+                     [ ( Pat.ctor ~loc:pat_loc
+                           (Lid.of_name (Ident.name name))
+                           ?args:pat
                        , body )
                      ; ( Pat.any ()
-                       , Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"])
-                       ) ])
+                       , Exp.var
+                           (Lid.of_list ["Snarky"; "Request"; "unhandled"]) )
+                     ])
               in
               Exp.fun_
                 (Pat.ctor

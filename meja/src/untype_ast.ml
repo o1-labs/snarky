@@ -219,7 +219,7 @@ let rec signature_desc = function
   | Tsig_instance (name, typ) ->
       Psig_instance (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_type decl ->
-      Psig_type decl
+      Psig_type (type_decl decl)
   | Tsig_module (name, msig) ->
       Psig_module (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_modtype (name, msig) ->
@@ -227,9 +227,9 @@ let rec signature_desc = function
   | Tsig_open path ->
       Psig_open (map_loc ~f:longident_of_path path)
   | Tsig_typeext (typ, ctors) ->
-      Psig_typeext (typ, ctors)
+      Psig_typeext (variant typ, List.map ~f:ctor_decl ctors)
   | Tsig_request (arg, ctor) ->
-      Psig_request (arg, ctor)
+      Psig_request (type_expr arg, ctor_decl ctor)
   | Tsig_multiple sigs ->
       Psig_multiple (List.map ~f:signature_item sigs)
   | Tsig_prover sigs ->
@@ -258,7 +258,7 @@ let rec statement_desc = function
   | Tstmt_instance (name, e) ->
       Pstmt_instance (map_loc ~f:Ident.name name, expression e)
   | Tstmt_type decl ->
-      Pstmt_type decl
+      Pstmt_type (type_decl decl)
   | Tstmt_module (name, m) ->
       Pstmt_module (map_loc ~f:Ident.name name, module_expr m)
   | Tstmt_modtype (name, msig) ->
@@ -266,11 +266,11 @@ let rec statement_desc = function
   | Tstmt_open path ->
       Pstmt_open (map_loc ~f:longident_of_path path)
   | Tstmt_typeext (typ, ctors) ->
-      Pstmt_typeext (typ, ctors)
+      Pstmt_typeext (variant typ, List.map ~f:ctor_decl ctors)
   | Tstmt_request (arg, ctor, handler) ->
       Pstmt_request
-        ( arg
-        , ctor
+        ( type_expr arg
+        , ctor_decl ctor
         , Option.map
             ~f:(fun (p, e) -> (Option.map ~f:pattern p, expression e))
             handler )

@@ -190,7 +190,7 @@ let rec of_signature_desc ?loc = function
   | Tsig_value (name, typ) | Tsig_instance (name, typ) ->
       Sig.value ?loc (Val.mk ?loc (of_ident_loc name) (of_type_expr typ))
   | Tsig_type decl ->
-      Sig.type_ ?loc Recursive [To_ocaml.of_type_decl decl]
+      Sig.type_ ?loc Recursive [of_type_decl decl]
   | Tsig_module (name, msig) ->
       let msig =
         match of_module_sig msig with
@@ -208,18 +208,18 @@ let rec of_signature_desc ?loc = function
       Sig.open_ ?loc (Opn.mk ?loc (of_path_loc name))
   | Tsig_typeext (variant, ctors) ->
       let params =
-        List.map variant.var_params ~f:(fun typ ->
-            (To_ocaml.of_type_expr typ, Invariant) )
+        List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
+        )
       in
-      let ctors = List.map ~f:To_ocaml.of_ctor_decl_ext ctors in
-      Sig.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
+      let ctors = List.map ~f:of_ctor_decl_ext ctors in
+      Sig.type_extension ?loc
+        (Te.mk ~params (of_path_loc variant.var_ident) ctors)
   | Tsig_request (_, ctor) ->
       let params = [(Typ.any ?loc (), Invariant)] in
       let ident =
         mk_loc ?loc Longident.(Ldot (Ldot (Lident "Snarky", "Request"), "t"))
       in
-      Sig.type_extension ?loc
-        (Te.mk ~params ident [To_ocaml.of_ctor_decl_ext ctor])
+      Sig.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
   | Tsig_multiple sigs | Tsig_prover sigs ->
       Sig.include_ ?loc
         { pincl_mod= Mty.signature ?loc (of_signature sigs)
@@ -258,7 +258,7 @@ let rec of_statement_desc ?loc = function
       Str.value ?loc Nonrecursive
         [Vb.mk (Pat.var ?loc (of_ident_loc name)) (of_expression e)]
   | Tstmt_type decl ->
-      Str.type_ ?loc Recursive [To_ocaml.of_type_decl decl]
+      Str.type_ ?loc Recursive [of_type_decl decl]
   | Tstmt_module (name, m) ->
       Str.module_ ?loc (Mb.mk ?loc (of_ident_loc name) (of_module_expr m))
   | Tstmt_modtype (name, msig) ->
@@ -268,19 +268,19 @@ let rec of_statement_desc ?loc = function
       Str.open_ ?loc (Opn.mk ?loc (Of_ocaml.open_of_name (of_path_loc name)))
   | Tstmt_typeext (variant, ctors) ->
       let params =
-        List.map variant.var_params ~f:(fun typ ->
-            (To_ocaml.of_type_expr typ, Invariant) )
+        List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
+        )
       in
-      let ctors = List.map ~f:To_ocaml.of_ctor_decl_ext ctors in
-      Str.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
+      let ctors = List.map ~f:of_ctor_decl_ext ctors in
+      Str.type_extension ?loc
+        (Te.mk ~params (of_path_loc variant.var_ident) ctors)
   | Tstmt_request (_, ctor, handler) ->
       let params = [(Typ.any ?loc (), Invariant)] in
       let ident =
         mk_loc ?loc Longident.(Ldot (Ldot (Lident "Snarky", "Request"), "t"))
       in
       let typ_ext =
-        Str.type_extension ?loc
-          (Te.mk ~params ident [To_ocaml.of_ctor_decl_ext ctor])
+        Str.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
       in
       let handler =
         Option.map handler
@@ -289,12 +289,14 @@ let rec of_statement_desc ?loc = function
               fun (args, body) ->
                 let {txt= name; loc} = ctor.ctor_ident in
                 [%stri
-                  let [%p Pat.var ~loc (mk_loc ~loc ("handle_" ^ name))] =
-                    function
+                  let [%p
+                        Pat.var ~loc (mk_loc ~loc ("handle_" ^ of_ident name))]
+                      = function
                     | With
                         { request=
                             [%p
-                              Pat.construct ~loc (mk_lid ctor.ctor_ident)
+                              Pat.construct ~loc
+                                (mk_lid (of_ident_loc ctor.ctor_ident))
                                 (Option.map ~f:of_pattern args)]
                         ; respond } ->
                         let unhandled = Snarky.Request.unhandled in
