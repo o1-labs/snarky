@@ -16,6 +16,7 @@ type error =
   | Unbound_module of Longident.t
   | Unbound_value of Longident.t
   | Unbound of string * Longident.t
+  | Unbound_path of string * Path.t
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Lident_unhandled of string * Longident.t
@@ -523,6 +524,32 @@ module Scope = struct
       names=
         IdTbl.merge_skewed_names scope.names expr_scope.names
           ~combine:select_new }
+
+  (** Get the module referred to by the given [Ident.t].
+
+      This skips over any modules which are not immediate. As such, this should
+      only be used to retrieve sub-values of the module, which must have forced
+      the loading of the module at their creation time.
+  *)
+  let get_module_by_ident (ident : Ident.t) (scope : t) =
+    match IdTbl.find ident scope.modules with
+    | Some (Immediate m) ->
+        Some m
+    | _ ->
+        None
+
+  (** Get the module referred to by the given name for the given mode.
+
+      This skips over any modules which are not immediate. As such, this should
+      only be used to retrieve sub-values of the module, which must have forced
+      the loading of the module at their creation time.
+  *)
+  let get_module_no_load ~mode name scope =
+    match IdTbl.find_name name ~modes:(modes_of_mode mode) scope.modules with
+    | Some (ident, Immediate m) ->
+        Some (ident, m)
+    | _ ->
+        None
 end
 
 let empty_resolve_env : Scope.t resolve_env =
@@ -760,6 +787,72 @@ let find_of_lident ~mode ~kind ~get_name (lid : lid) env =
         (Path.dot path ident, data)
     | _ ->
         None )
+
+let get_of_path ~loc ~kind ~get_name ~find_name (path : Path.t) env =
+  let open Option.Let_syntax in
+  let rec find
+            : 'a.    kind:string -> get_name:(Ident.t -> Scope.t -> 'a option)
+              -> find_name:(   mode:mode
+                            -> string
+                            -> Scope.t
+                            -> (Ident.t * 'a) option) -> Path.t -> Scope.t
+              -> 'a option =
+   fun ~kind ~get_name ~find_name path scope ->
+    match path with
+    | Path.Pident ident -> (
+      match get_name ident scope with
+      | Some v ->
+          Some v
+      | None ->
+          raise (Error (loc, Unbound_path (kind, path))) )
+    | Path.Pdot (path', mode, name) -> (
+        let%map scope =
+          find ~kind:"module" ~get_name:Scope.get_module_by_ident
+            ~find_name:Scope.get_module_no_load path' scope
+        in
+        match find_name ~mode name scope with
+        | Some (_ident, v) ->
+            v
+        | None ->
+            raise (Error (loc, Unbound_path (kind, path))) )
+    | Path.Papply _ ->
+        raise (Error (loc, Unbound_path (kind, path)))
+  in
+  match
+    List.find_map ~f:(find ~kind ~get_name ~find_name path) env.scope_stack
+  with
+  | Some v ->
+      v
+  | None -> (
+      let path', mode, name =
+        match path with
+        | Path.Pdot (path, mode, name) ->
+            (path, mode, name)
+        | _ ->
+            raise (Error (loc, Unbound_path (kind, path)))
+      in
+      let get_external_module ident _ =
+        match IdTbl.find ident env.resolve_env.external_modules with
+        | Some (Immediate v) ->
+            Some v
+        | _ ->
+            None
+      in
+      match
+        let%bind scope =
+          find ~kind:"module" ~get_name:get_external_module
+            ~find_name:Scope.get_module_no_load path'
+            (* This scope will never be used, we're just filling the type hole
+             here.
+          *)
+            (current_scope env)
+        in
+        find_name ~mode name scope
+      with
+      | Some (_path, v) ->
+          v
+      | None ->
+          raise (Error (loc, Unbound_path (kind, path))) )
 
 let join_expr_scope env expr_scope =
   map_current_scope ~f:(Scope.join_expr_scope expr_scope) env
@@ -1303,6 +1396,9 @@ let report_error ppf = function
       fprintf ppf "@[<hov>Unbound value @[<h>%a@].@]" Longident.pp lid
   | Unbound (kind, lid) ->
       fprintf ppf "@[<hov>Unbound %s @[<h>%a@].@]" kind Longident.pp lid
+  | Unbound_path (kind, path) ->
+      fprintf ppf "@[<hov>Internal error: Could not resolve %s @[<h>%a@].@]"
+        kind Path.pp path
   | Wrong_number_args (path, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \
