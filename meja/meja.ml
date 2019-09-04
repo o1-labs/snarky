@@ -240,13 +240,12 @@ let main =
       read_file (Parser_impl.implementation Lexer_impl.token) file
     in
     let _env, ast = Typechecker.check parse_ast env in
-    let ast = List.map ~f:Untype_ast.statement ast in
     let preamble =
       if !snarky_preamble then
         Some (To_ocaml.of_file (make_preamble !impl_mod !curve !proofs))
       else None
     in
-    let ocaml_ast = To_ocaml.of_file ast in
+    let ocaml_ast = Of_typedast.of_file ast in
     let ocaml_formatter =
       match (!ocaml_file, !default) with
       | Some filename, _ ->
