@@ -73,11 +73,9 @@ let type_desc mapper typ =
         ( List.map ~f:(mapper.type_expr mapper) vars
         , mapper.type_expr mapper typ )
 
-let variant mapper {var_ident; var_params; var_implicit_params} =
+let variant mapper {var_ident; var_params} =
   { var_ident= path mapper var_ident
-  ; var_params= List.map ~f:(mapper.type_expr mapper) var_params
-  ; var_implicit_params=
-      List.map ~f:(mapper.type_expr mapper) var_implicit_params }
+  ; var_params= List.map ~f:(mapper.type_expr mapper) var_params }
 
 let ptype_expr mapper Parsetypes.{type_desc; type_loc} =
   let type_loc = mapper.location mapper type_loc in
@@ -103,11 +101,9 @@ let ptype_desc mapper typ =
         ( List.map ~f:(mapper.ptype_expr mapper) vars
         , mapper.ptype_expr mapper typ )
 
-let pvariant mapper Parsetypes.{var_ident; var_params; var_implicit_params} =
+let pvariant mapper Parsetypes.{var_ident; var_params} =
   { Parsetypes.var_ident= lid mapper var_ident
-  ; var_params= List.map ~f:(mapper.ptype_expr mapper) var_params
-  ; var_implicit_params=
-      List.map ~f:(mapper.ptype_expr mapper) var_implicit_params }
+  ; var_params= List.map ~f:(mapper.ptype_expr mapper) var_params }
 
 let field_decl mapper Parsetypes.{fld_ident; fld_type; fld_loc} =
   { Parsetypes.fld_loc= mapper.location mapper fld_loc
@@ -126,14 +122,11 @@ let ctor_decl mapper Parsetypes.{ctor_ident; ctor_args; ctor_ret; ctor_loc} =
   ; ctor_args= mapper.ctor_args mapper ctor_args
   ; ctor_ret= Option.map ~f:(mapper.ptype_expr mapper) ctor_ret }
 
-let type_decl mapper
-    Parsetypes.
-      {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc} =
+let type_decl mapper Parsetypes.{tdec_ident; tdec_params; tdec_desc; tdec_loc}
+    =
   { Parsetypes.tdec_loc= mapper.location mapper tdec_loc
   ; tdec_ident= str mapper tdec_ident
   ; tdec_params= List.map ~f:(mapper.ptype_expr mapper) tdec_params
-  ; tdec_implicit_params=
-      List.map ~f:(mapper.ptype_expr mapper) tdec_implicit_params
   ; tdec_desc= mapper.type_decl_desc mapper tdec_desc }
 
 let type_decl_desc mapper = function

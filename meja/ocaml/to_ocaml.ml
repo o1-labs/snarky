@@ -14,10 +14,8 @@ let rec of_type_desc ?loc typ =
       of_type_expr typ
   | Ptyp_arrow (typ1, typ2, _, label) ->
       Typ.arrow ?loc label (of_type_expr typ1) (of_type_expr typ2)
-  | Ptyp_ctor
-      {var_ident= name; var_params= params; var_implicit_params= implicits; _}
-    ->
-      Typ.constr ?loc name (List.map ~f:of_type_expr (params @ implicits))
+  | Ptyp_ctor {var_ident= name; var_params= params; _} ->
+      Typ.constr ?loc name (List.map ~f:of_type_expr params)
   | Ptyp_tuple typs ->
       Typ.tuple ?loc (List.map ~f:of_type_expr typs)
 
@@ -46,9 +44,7 @@ let of_type_decl decl =
   let loc = decl.tdec_loc in
   let name = decl.tdec_ident in
   let params =
-    List.map
-      ~f:(fun t -> (of_type_expr t, Invariant))
-      (decl.tdec_params @ decl.tdec_implicit_params)
+    List.map ~f:(fun t -> (of_type_expr t, Invariant)) decl.tdec_params
   in
   match decl.tdec_desc with
   | Pdec_abstract ->

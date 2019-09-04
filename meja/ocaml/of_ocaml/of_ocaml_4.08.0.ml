@@ -34,10 +34,7 @@ let rec to_type_desc ~loc desc =
       Ptyp_tuple (List.map ~f:to_type_expr typs)
   | Tconstr (path, params, _) ->
       let var_ident = mkloc (longident_of_path path) loc in
-      Ptyp_ctor
-        { var_ident
-        ; var_params= List.map ~f:to_type_expr params
-        ; var_implicit_params= [] }
+      Ptyp_ctor {var_ident; var_params= List.map ~f:to_type_expr params}
   | Tlink typ | Tsubst typ ->
       (to_type_expr typ).type_desc
   | Tpoly (typ, typs) ->
@@ -47,10 +44,7 @@ let rec to_type_desc ~loc desc =
          them as if they were [Tctor]s; there is no overlap between valid paths
          to packages and valid paths to type constructors. *)
       let var_ident = mkloc (longident_of_path path) loc in
-      Ptyp_ctor
-        { var_ident
-        ; var_params= List.map ~f:to_type_expr typs
-        ; var_implicit_params= [] }
+      Ptyp_ctor {var_ident; var_params= List.map ~f:to_type_expr typs}
   | Tobject _ | Tfield _ | Tnil | Tvariant _ ->
       (* This type isn't supported here. For now, just replace it with a
          variable, so we can still manipulate values including it. *)
@@ -109,7 +103,6 @@ let rec to_signature_item item =
             { tdec_ident= mkloc (Ident.name ident) decl.type_loc
             ; tdec_params=
                 List.map ~f:(to_type_expr ~loc:decl.type_loc) decl.type_params
-            ; tdec_implicit_params= []
             ; tdec_desc
             ; tdec_loc= decl.type_loc }
       ; sig_loc= decl.type_loc }

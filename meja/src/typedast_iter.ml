@@ -65,10 +65,9 @@ let type_desc iter = function
       List.iter ~f:(iter.type_expr iter) vars ;
       iter.type_expr iter typ
 
-let variant iter {var_ident; var_params; var_implicit_params} =
+let variant iter {var_ident; var_params} =
   path iter var_ident ;
-  List.iter ~f:(iter.type_expr iter) var_params ;
-  List.iter ~f:(iter.type_expr iter) var_implicit_params
+  List.iter ~f:(iter.type_expr iter) var_params
 
 let ptype_expr iter Parsetypes.{type_desc; type_loc} =
   iter.location iter type_loc ;
@@ -87,11 +86,10 @@ let ptype_desc iter = function
       List.iter ~f:(iter.ptype_expr iter) vars ;
       iter.ptype_expr iter typ
 
-let pvariant iter Parsetypes.{var_ident; var_params; var_implicit_params} =
+let pvariant iter Parsetypes.{var_ident; var_params} =
   iter.location iter var_ident.loc ;
   iter.longident iter var_ident.txt ;
-  List.iter ~f:(iter.ptype_expr iter) var_params ;
-  List.iter ~f:(iter.ptype_expr iter) var_implicit_params
+  List.iter ~f:(iter.ptype_expr iter) var_params
 
 let field_decl iter Parsetypes.{fld_ident; fld_type; fld_loc} =
   iter.location iter fld_loc ;
@@ -110,13 +108,10 @@ let ctor_decl iter Parsetypes.{ctor_ident; ctor_args; ctor_ret; ctor_loc} =
   iter.ctor_args iter ctor_args ;
   Option.iter ~f:(iter.ptype_expr iter) ctor_ret
 
-let type_decl iter
-    Parsetypes.
-      {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc} =
+let type_decl iter Parsetypes.{tdec_ident; tdec_params; tdec_desc; tdec_loc} =
   iter.location iter tdec_loc ;
   str iter tdec_ident ;
   List.iter ~f:(iter.ptype_expr iter) tdec_params ;
-  List.iter ~f:(iter.ptype_expr iter) tdec_implicit_params ;
   iter.type_decl_desc iter tdec_desc
 
 let type_decl_desc iter = function

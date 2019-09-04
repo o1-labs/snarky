@@ -52,10 +52,9 @@ let type_desc iter = function
       List.iter ~f:(iter.type_expr iter) vars ;
       iter.type_expr iter typ
 
-let variant iter {var_ident; var_params; var_implicit_params} =
+let variant iter {var_ident; var_params} =
   lid iter var_ident ;
-  List.iter ~f:(iter.type_expr iter) var_params ;
-  List.iter ~f:(iter.type_expr iter) var_implicit_params
+  List.iter ~f:(iter.type_expr iter) var_params
 
 let field_decl iter {fld_ident; fld_type; fld_loc} =
   iter.location iter fld_loc ;
@@ -74,12 +73,10 @@ let ctor_decl iter {ctor_ident; ctor_args; ctor_ret; ctor_loc} =
   iter.ctor_args iter ctor_args ;
   Option.iter ~f:(iter.type_expr iter) ctor_ret
 
-let type_decl iter
-    {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc} =
+let type_decl iter {tdec_ident; tdec_params; tdec_desc; tdec_loc} =
   iter.location iter tdec_loc ;
   str iter tdec_ident ;
   List.iter ~f:(iter.type_expr iter) tdec_params ;
-  List.iter ~f:(iter.type_expr iter) tdec_implicit_params ;
   iter.type_decl_desc iter tdec_desc
 
 let type_decl_desc iter = function

@@ -358,21 +358,13 @@ let get_ctor (name : lid) env =
   match (Envi.TypeDecl.find_of_constructor ~mode name env, name.txt) with
   | ( Some
         ( name
-        , ( ( { tdec_desc= TVariant ctors
-              ; tdec_ident
-              ; tdec_params
-              ; tdec_implicit_params
-              ; _ } as decl )
-          , i ) )
+        , (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
+        )
     , _ )
   | ( Some
         ( name
-        , ( { tdec_desc= TExtend (_, decl, ctors)
-            ; tdec_ident
-            ; tdec_params
-            ; tdec_implicit_params
-            ; _ }
-          , i ) )
+        , ({tdec_desc= TExtend (_, decl, ctors); tdec_ident; tdec_params; _}, i)
+        )
     , _ ) ->
       let ctor = List.nth_exn ctors i in
       let make_name tdec_ident =
@@ -397,7 +389,6 @@ let get_ctor (name : lid) env =
               (Tctor
                  { var_ident= make_name ctor.ctor_ident
                  ; var_params= decl.tdec_params
-                 ; var_implicit_params= tdec_implicit_params
                  ; var_decl= decl })
               env
         | Ctor_tuple [typ] ->
@@ -699,7 +690,6 @@ let rec get_expression env expected exp =
       let decl =
         { tdec_ident= name
         ; tdec_params= []
-        ; tdec_implicit_params= []
         ; tdec_desc= Pdec_abstract
         ; tdec_loc= loc }
       in
@@ -1082,10 +1072,8 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
 
 let type_extension ~loc variant ctors env =
   let mode = Envi.current_mode env in
-  let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
-  let ( path
-      , ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl)
-      ) =
+  let {Parsetypes.var_ident; var_params} = variant in
+  let path, ({tdec_ident; tdec_params; tdec_desc; _} as decl) =
     match Envi.raw_find_type_declaration ~mode var_ident env with
     | open_decl ->
         open_decl
@@ -1105,8 +1093,6 @@ let type_extension ~loc variant ctors env =
   let decl =
     { Parsetypes.tdec_ident= Location.mkloc (Ident.name tdec_ident) loc
     ; tdec_params= var_params
-    ; tdec_implicit_params=
-        List.map ~f:(Untype_ast.Type0.type_expr ~loc) tdec_implicit_params
     ; tdec_desc= Pdec_extend (Location.mkloc path var_ident.loc, decl, ctors)
     ; tdec_loc= loc }
   in
@@ -1119,10 +1105,7 @@ let type_extension ~loc variant ctors env =
         failwith "Expected a TExtend."
   in
   let variant =
-    { var_ident= Pident tdec_ident
-    ; var_implicit_params= decl.tdec_implicit_params
-    ; var_decl= decl
-    ; var_params= decl.tdec_params }
+    {var_ident= Pident tdec_ident; var_decl= decl; var_params= decl.tdec_params}
   in
   (env, variant, ctors)
 

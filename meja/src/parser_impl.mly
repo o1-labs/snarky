@@ -145,7 +145,6 @@ structure_item:
       mkstmt ~pos:$loc (Pstmt_type
         { tdec_ident= x
         ; tdec_params= args
-        ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
@@ -158,7 +157,7 @@ structure_item:
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
       mkstmt ~pos:$loc (Pstmt_typeext
-        ( {var_ident= x; var_params= params; var_implicit_params= []}
+        ( {var_ident= x; var_params= params}
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Pstmt_request (arg, x, handler)) }
@@ -175,7 +174,6 @@ signature_item:
       mksig ~pos:$loc (Psig_type
         { tdec_ident= x
         ; tdec_params= args
-        ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
@@ -190,7 +188,7 @@ signature_item:
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
       mksig ~pos:$loc (Psig_typeext
-        ( {var_ident= x; var_params= params; var_implicit_params= []}
+        ( {var_ident= x; var_params= params}
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl
     { mksig ~pos:$loc (Psig_request (arg, x)) }
@@ -223,7 +221,7 @@ decl_type_expr:
   | x = decl_type(longident(lident, UIDENT))
     { let (x, params) = x in
       mktyp ~pos:$loc
-        (Ptyp_ctor {var_ident= x; var_params= params; var_implicit_params= []}) }
+        (Ptyp_ctor {var_ident= x; var_params= params}) }
 
 record_field(ID, EXP):
   | id = as_loc(ID) COLON t = EXP
