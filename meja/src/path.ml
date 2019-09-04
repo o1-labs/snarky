@@ -64,3 +64,11 @@ let rec compare lid1 lid2 =
       -1
   | _, Pdot _ ->
       1
+
+let rec to_longident = function
+  | Pident name ->
+      Longident.Lident (Ident.name name)
+  | Pdot (path, _, name) ->
+      Longident.Ldot (to_longident path, name)
+  | Papply (path1, path2) ->
+      Longident.Lapply (to_longident path1, to_longident path2)
