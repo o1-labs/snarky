@@ -248,6 +248,12 @@ module Scope = struct
       ; module_types= module_types2
       ; instances= instances2
       ; mode= mode2 } =
+    let multiple_definition kind ~key (ident1, _) ((ident2, _) as v) =
+      (* Don't consider the same name in different modes to be the same. *)
+      if Ident.mode ident1 = Ident.mode ident2 then
+        raise (Error (loc, Multiple_definition (kind, key))) ;
+      v
+    in
     { kind
     ; path
     ; names=
@@ -257,19 +263,17 @@ module Scope = struct
           ~combine:(fun ~key:_ _ v -> v)
     ; type_decls=
         IdTbl.merge_skewed_names type_decls1 type_decls2
-          ~combine:(fun ~key _ _ ->
-            raise (Error (loc, Multiple_definition ("type", key))) )
+          ~combine:(multiple_definition "type")
     ; fields=
         IdTbl.merge_skewed_names fields1 fields2 ~combine:(fun ~key:_ _ v -> v)
     ; ctors=
         IdTbl.merge_skewed_names ctors1 ctors2 ~combine:(fun ~key:_ _ v -> v)
     ; modules=
-        IdTbl.merge_skewed_names modules1 modules2 ~combine:(fun ~key _ _ ->
-            raise (Error (loc, Multiple_definition ("module", key))) )
+        IdTbl.merge_skewed_names modules1 modules2
+          ~combine:(multiple_definition "module")
     ; module_types=
         IdTbl.merge_skewed_names module_types1 module_types2
-          ~combine:(fun ~key _ _ ->
-            raise (Error (loc, Multiple_definition ("module type", key))) )
+          ~combine:(multiple_definition "module type")
     ; instances=
         Map.merge_skewed instances1 instances2 ~combine:(fun ~key:_ _ v -> v)
     ; mode= weakest_mode mode1 mode2 }
