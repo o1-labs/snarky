@@ -36,10 +36,11 @@ type ctor_decl =
   ; ctor_ctor: Type0.ctor_decl }
 
 type type_decl =
-  { tdec_ident: str
+  { tdec_ident: ident
   ; tdec_params: type_expr list
   ; tdec_desc: type_decl_desc
-  ; tdec_loc: Location.t }
+  ; tdec_loc: Location.t
+  ; tdec_tdec: Type0.type_decl }
 
 and type_decl_desc =
   | Tdec_abstract

@@ -65,7 +65,7 @@ let of_ctor_decl_ext
 
 let of_type_decl decl =
   let loc = decl.tdec_loc in
-  let name = decl.tdec_ident in
+  let name = of_ident_loc decl.tdec_ident in
   let params =
     List.map ~f:(fun t -> (of_type_expr t, Invariant)) decl.tdec_params
   in

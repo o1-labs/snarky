@@ -707,7 +707,7 @@ let rec get_expression env expected exp =
               (fun mapper typ ->
                 match typ.type_desc with
                 | Tctor {var_ident= Pident ident'; _}
-                  when Ident.compare ident ident' = 0 ->
+                  when Ident.compare ident.txt ident' = 0 ->
                     free_var
                 | _ ->
                     Type0_map.default_mapper.type_expr mapper typ ) }
@@ -718,8 +718,7 @@ let rec get_expression env expected exp =
       Envi.Type.update_depths env res ;
       ( { exp_loc= loc
         ; exp_type= res
-        ; exp_desc= Texp_newtype (Location.mkloc decl.tdec_ident name.loc, body)
-        }
+        ; exp_desc= Texp_newtype (decl.tdec_ident, body) }
       , env )
   | Pexp_seq (e1, e2) ->
       let e1, env = get_expression env Initial_env.Type.unit e1 in
@@ -1097,6 +1096,7 @@ let type_extension ~loc variant ctors env =
     ; tdec_loc= loc }
   in
   let decl, env = Typet.TypeDecl.import decl env in
+  let decl = decl.tdec_tdec in
   let ctors =
     match decl.tdec_desc with
     | TExtend (_, _, ctors) ->
@@ -1310,7 +1310,7 @@ let rec check_statement env stmt =
       let decl, env = Typet.TypeDecl.import decl env in
       let stmt =
         { Typedast.stmt_loc= loc
-        ; stmt_desc= Tstmt_type (Untype_ast.Type0.type_decl ~loc decl) }
+        ; stmt_desc= Tstmt_type (Untype_ast.type_decl decl) }
       in
       (env, stmt)
   | Pstmt_type decl ->

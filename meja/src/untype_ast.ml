@@ -125,8 +125,9 @@ let type_decl_desc = function
   | Tdec_extend (lid, typ, ctor) ->
       Pdec_extend (lid, typ, List.map ~f:ctor_decl ctor)
 
-let type_decl {Typedast.tdec_ident; tdec_params; tdec_desc; tdec_loc} =
-  { Parsetypes.tdec_ident
+let type_decl
+    {Typedast.tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec= _} =
+  { Parsetypes.tdec_ident= map_loc ~f:Ident.name tdec_ident
   ; tdec_params= List.map ~f:type_expr tdec_params
   ; tdec_desc= type_decl_desc tdec_desc
   ; tdec_loc }

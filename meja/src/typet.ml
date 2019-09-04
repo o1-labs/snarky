@@ -278,7 +278,7 @@ module TypeDecl = struct
 
   let import decl' env =
     let mode = Envi.current_mode env in
-    let {tdec_ident; tdec_params; tdec_desc; tdec_loc= _} = decl' in
+    let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
     let tdec_ident, tdec_id =
       match
         IdTbl.find_name ~modes:(modes_of_mode mode) tdec_ident.txt
@@ -309,14 +309,17 @@ module TypeDecl = struct
           match param.type_desc with
           | Ptyp_var _ ->
               let var, env = Type.import ~must_find:false param env in
-              (env, var.type_type)
+              (env, var)
           | _ ->
               raise (Error (param.type_loc, Expected_type_var param)) )
     in
     let env, tdec_params = import_params env tdec_params in
     let decl =
       Type0.
-        {tdec_ident= tdec_ident.txt; tdec_params; tdec_desc= TAbstract; tdec_id}
+        { tdec_ident= tdec_ident.txt
+        ; tdec_params= List.map ~f:type0 tdec_params
+        ; tdec_desc= TAbstract
+        ; tdec_id }
     in
     (* Make sure the declaration is available to lookup for recursive types. *)
     let env =
@@ -330,24 +333,43 @@ module TypeDecl = struct
       in
       Envi.push_scope scope env
     in
+    let typedast_decl =
+      { Typedast.tdec_ident
+      ; tdec_params
+      ; tdec_desc= Tdec_abstract
+      ; tdec_loc
+      ; tdec_tdec= decl }
+    in
     let decl, env =
       match tdec_desc with
       | Pdec_abstract ->
-          (decl, env)
+          (typedast_decl, env)
       | Pdec_alias typ ->
           let typ, env = Type.import ~must_find:true typ env in
-          let typ = typ.type_type in
-          ({decl with tdec_desc= TAlias typ}, env)
+          let decl = {decl with tdec_desc= TAlias typ.type_type} in
+          let typedast_decl =
+            {typedast_decl with tdec_desc= Tdec_alias typ; tdec_tdec= decl}
+          in
+          (typedast_decl, env)
       | Pdec_open ->
-          ({decl with tdec_desc= TOpen}, env)
+          let decl = {decl with tdec_desc= TOpen} in
+          let typedast_decl =
+            {typedast_decl with tdec_desc= Tdec_open; tdec_tdec= decl}
+          in
+          (typedast_decl, env)
       | Pdec_record fields ->
           let env, fields =
             List.fold_map ~init:env fields ~f:(import_field ~must_find:true)
           in
-          ( { decl with
+          let decl =
+            { decl with
               tdec_desc=
                 TRecord (List.map ~f:(fun {fld_fld= f; _} -> f) fields) }
-          , env )
+          in
+          let typedast_decl =
+            {typedast_decl with tdec_desc= Tdec_record fields; tdec_tdec= decl}
+          in
+          (typedast_decl, env)
       | Pdec_variant ctors | Pdec_extend (_, _, ctors) ->
           let name =
             match tdec_desc with
@@ -374,22 +396,32 @@ module TypeDecl = struct
                     assert false
                 | _ ->
                     () ) ;
-                (env, ctor.ctor_ctor) )
+                (env, ctor) )
           in
-          let tdec_desc =
+          let typedast_tdec_desc, tdec_desc =
             match tdec_desc with
             | Pdec_variant _ ->
-                Type0.TVariant ctors
+                ( Typedast.Tdec_variant ctors
+                , Type0.TVariant
+                    (List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors) )
             | Pdec_extend (id, decl, _) ->
-                Type0.TExtend (id.txt, decl, ctors)
+                ( Typedast.Tdec_extend (id, decl, ctors)
+                , Type0.TExtend
+                    ( id.txt
+                    , decl
+                    , List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors ) )
             | _ ->
                 failwith "Expected a TVariant or a TExtend"
           in
-          ({decl with tdec_desc}, env)
+          let decl = {decl with tdec_desc} in
+          let typedast_decl =
+            {typedast_decl with tdec_desc= typedast_tdec_desc; tdec_tdec= decl}
+          in
+          (typedast_decl, env)
     in
     let env = close_expr_scope env in
     let env =
-      map_current_scope ~f:(Scope.register_type_declaration decl) env
+      map_current_scope ~f:(Scope.register_type_declaration decl.tdec_tdec) env
     in
     (decl, env)
 end

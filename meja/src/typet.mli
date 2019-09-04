@@ -30,5 +30,5 @@ module TypeDecl : sig
   val generalise :
     Parsetypes.type_decl -> Parsetypes.type_decl * Parsetypes.type_decl
 
-  val import : Parsetypes.type_decl -> Envi.t -> Type0.type_decl * Envi.t
+  val import : Parsetypes.type_decl -> Envi.t -> Typedast.type_decl * Envi.t
 end

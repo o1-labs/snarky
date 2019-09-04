@@ -59,37 +59,37 @@ open TypeDecls
     the environment [env] each time.
 *)
 
-let int, env = import int env
+let {Typedast.tdec_tdec= int; _}, env = import int env
 
-let unit, env = import unit env
+let {Typedast.tdec_tdec= unit; _}, env = import unit env
 
-let bool, env = import bool env
+let {Typedast.tdec_tdec= bool; _}, env = import bool env
 
-let char, env = import char env
+let {Typedast.tdec_tdec= char; _}, env = import char env
 
-let string, env = import string env
+let {Typedast.tdec_tdec= string; _}, env = import string env
 
-let float, env = import float env
+let {Typedast.tdec_tdec= float; _}, env = import float env
 
-let exn, env = import exn env
+let {Typedast.tdec_tdec= exn; _}, env = import exn env
 
-let option, env = import option env
+let {Typedast.tdec_tdec= option; _}, env = import option env
 
-let list, env = import list env
+let {Typedast.tdec_tdec= list; _}, env = import list env
 
-let bytes, env = import bytes env
+let {Typedast.tdec_tdec= bytes; _}, env = import bytes env
 
-let int32, env = import int32 env
+let {Typedast.tdec_tdec= int32; _}, env = import int32 env
 
-let int64, env = import int64 env
+let {Typedast.tdec_tdec= int64; _}, env = import int64 env
 
-let nativeint, env = import nativeint env
+let {Typedast.tdec_tdec= nativeint; _}, env = import nativeint env
 
-let field, env = import field env
+let {Typedast.tdec_tdec= field; _}, env = import field env
 
-let lazy_t, env = import lazy_t env
+let {Typedast.tdec_tdec= lazy_t; _}, env = import lazy_t env
 
-let array, env = import array env
+let {Typedast.tdec_tdec= array; _}, env = import array env
 
 (** Canonical references for each of the built-in types that the typechecker
     refers to.
