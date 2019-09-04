@@ -102,8 +102,10 @@ and variant {Typedast.var_ident; var_params; var_implicit_params} =
   ; var_params= List.map ~f:type_expr var_params
   ; var_implicit_params= List.map ~f:type_expr var_implicit_params }
 
-let field_decl {Typedast.fld_ident; fld_type; fld_loc} =
-  {Parsetypes.fld_ident; fld_type= type_expr fld_type; fld_loc}
+let field_decl {Typedast.fld_ident; fld_type; fld_loc; fld_fld= _} =
+  { Parsetypes.fld_ident= map_loc ~f:Ident.name fld_ident
+  ; fld_type= type_expr fld_type
+  ; fld_loc }
 
 let ctor_args = function
   | Typedast.Tctor_tuple typs ->

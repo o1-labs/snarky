@@ -21,7 +21,11 @@ and variant =
   ; var_params: type_expr list
   ; var_implicit_params: type_expr list }
 
-type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
+type field_decl =
+  { fld_ident: ident
+  ; fld_type: type_expr
+  ; fld_loc: Location.t
+  ; fld_fld: Type0.field_decl }
 
 type ctor_args =
   | Tctor_tuple of type_expr list

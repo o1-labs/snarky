@@ -238,12 +238,16 @@ module TypeDecl = struct
         (* We don't have enough information about the type to generalise it. *)
         assert false
 
-  let import_field ?must_find env {fld_ident; fld_type; fld_loc= _} =
+  let import_field ?must_find env {fld_ident; fld_type; fld_loc} =
     let mode = Envi.current_mode env in
     let fld_type, env = Type.import ?must_find fld_type env in
+    let fld_ident = map_loc ~f:(Ident.create ~mode) fld_ident in
     ( env
-    , { Type0.fld_ident= Ident.create ~mode fld_ident.txt
-      ; fld_type= fld_type.type_type } )
+    , { Typedast.fld_ident
+      ; fld_type
+      ; fld_loc
+      ; fld_fld= {Type0.fld_ident= fld_ident.txt; fld_type= fld_type.type_type}
+      } )
 
   let import_ctor env ctor =
     let mode = current_mode env in
@@ -274,14 +278,16 @@ module TypeDecl = struct
              them as effective type parameters.
           *)
           let params =
-            List.fold ~init:Typeset.empty fields ~f:(fun set {fld_type; _} ->
+            List.fold ~init:Typeset.empty fields
+              ~f:(fun set {fld_fld= {fld_type; _}; _} ->
                 Set.union set (Type1.type_vars fld_type) )
             |> Set.to_list
           in
           let decl =
             mk
               ~name:(Ident.create ~mode ctor.ctor_ident.txt)
-              ~params (TRecord fields)
+              ~params
+              (TRecord (List.map ~f:(fun {fld_fld= f; _} -> f) fields))
           in
           (env, Type0.Ctor_record decl)
     in
@@ -379,10 +385,14 @@ module TypeDecl = struct
           let tdec_implicit_params =
             add_implicits
               (Typeset.union_list
-                 (List.map fields ~f:(fun {fld_type; _} ->
+                 (List.map fields ~f:(fun {fld_fld= {fld_type; _}; _} ->
                       Type1.implicit_params fld_type )))
           in
-          ({decl with tdec_desc= TRecord fields; tdec_implicit_params}, env)
+          ( { decl with
+              tdec_desc=
+                TRecord (List.map ~f:(fun {fld_fld= f; _} -> f) fields)
+            ; tdec_implicit_params }
+          , env )
       | Pdec_variant ctors | Pdec_extend (_, _, ctors) ->
           let name =
             match tdec_desc with

@@ -40,7 +40,7 @@ let rec of_type_desc ?loc typ =
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 
 let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
-  Type.field ~loc name (of_type_expr typ)
+  Type.field ~loc (of_ident_loc name) (of_type_expr typ)
 
 let of_ctor_args = function
   | Tctor_tuple args ->
