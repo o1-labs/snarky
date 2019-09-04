@@ -257,7 +257,7 @@ module TypeDecl = struct
       | Some ret ->
           let env = open_expr_scope env in
           let ret, env = Type.import ~must_find:false ret env in
-          (Some ret.type_type, env, None)
+          (Some ret, env, None)
       | None ->
           (None, push_scope scope env, Some true)
     in
@@ -267,13 +267,20 @@ module TypeDecl = struct
           let env, args =
             List.fold_map ~init:env args ~f:(fun env arg ->
                 let arg, env = Type.import ?must_find arg env in
-                (env, arg.type_type) )
+                (env, arg) )
           in
-          (env, Type0.Ctor_tuple args)
+          (env, Typedast.Tctor_tuple args)
       | Ctor_record fields ->
           let env, fields =
             List.fold_map ~init:env fields ~f:(import_field ?must_find)
           in
+          (env, Typedast.Tctor_record fields)
+    in
+    let type0_ctor_args =
+      match ctor_args with
+      | Tctor_tuple args ->
+          Type0.Ctor_tuple (List.map ~f:type0 args)
+      | Tctor_record fields ->
           (* Extract the type variables from the fields' types, use
              them as effective type parameters.
           *)
@@ -289,13 +296,19 @@ module TypeDecl = struct
               ~params
               (TRecord (List.map ~f:(fun {fld_fld= f; _} -> f) fields))
           in
-          (env, Type0.Ctor_record decl)
+          Type0.Ctor_record decl
     in
     let env = push_scope scope (close_expr_scope env) in
+    let ctor_ident = map_loc ~f:(Ident.create ~mode) ctor.ctor_ident in
     ( env
-    , { Type0.ctor_ident= Ident.create ~mode ctor.ctor_ident.txt
+    , { Typedast.ctor_ident
       ; ctor_args
-      ; ctor_ret } )
+      ; ctor_ret
+      ; ctor_loc= ctor.ctor_loc
+      ; ctor_ctor=
+          { Type0.ctor_ident= ctor_ident.txt
+          ; ctor_args= type0_ctor_args
+          ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
 
   let import decl' env =
     let mode = Envi.current_mode env in
@@ -408,8 +421,8 @@ module TypeDecl = struct
                 let ret = ctor.ctor_ret in
                 let env, ctor = import_ctor env ctor in
                 ( match (ctor.ctor_ret, ret) with
-                | Some {type_desc= Tctor {var_ident= path; _}; _}, _
-                  when Path.compare path name = 0 ->
+                | Some {type_desc= Ttyp_ctor {var_ident= path; _}; _}, _
+                  when Path.compare path.txt name = 0 ->
                     ()
                 | Some _, Some ret ->
                     raise
@@ -419,7 +432,7 @@ module TypeDecl = struct
                     assert false
                 | _ ->
                     () ) ;
-                (env, ctor) )
+                (env, ctor.ctor_ctor) )
           in
           let tdec_desc =
             match tdec_desc with

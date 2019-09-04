@@ -113,8 +113,9 @@ let ctor_args = function
   | Tctor_record fld ->
       Ctor_record (List.map ~f:field_decl fld)
 
-let ctor_decl {Typedast.ctor_ident; ctor_args= args; ctor_ret; ctor_loc} =
-  { Parsetypes.ctor_ident
+let ctor_decl
+    {Typedast.ctor_ident; ctor_args= args; ctor_ret; ctor_loc; ctor_ctor= _} =
+  { Parsetypes.ctor_ident= map_loc ~f:Ident.name ctor_ident
   ; ctor_args= ctor_args args
   ; ctor_ret= Option.map ~f:type_expr ctor_ret
   ; ctor_loc }

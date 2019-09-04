@@ -49,13 +49,21 @@ let of_ctor_args = function
       Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
 
 let of_ctor_decl
-    {ctor_ident= name; ctor_args= args; ctor_ret= ret; ctor_loc= loc} =
-  Type.constructor name ~loc ~args:(of_ctor_args args)
+    { ctor_ident= name
+    ; ctor_args= args
+    ; ctor_ret= ret
+    ; ctor_loc= loc
+    ; ctor_ctor= _ } =
+  Type.constructor (of_ident_loc name) ~loc ~args:(of_ctor_args args)
     ?res:(Option.map ~f:of_type_expr ret)
 
 let of_ctor_decl_ext
-    {ctor_ident= name; ctor_args= args; ctor_ret= ret; ctor_loc= loc} =
-  Te.decl ~loc ~args:(of_ctor_args args) name
+    { ctor_ident= name
+    ; ctor_args= args
+    ; ctor_ret= ret
+    ; ctor_loc= loc
+    ; ctor_ctor= _ } =
+  Te.decl ~loc ~args:(of_ctor_args args) (of_ident_loc name)
     ?res:(Option.map ~f:of_type_expr ret)
 
 let of_type_decl decl =

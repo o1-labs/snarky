@@ -32,10 +32,11 @@ type ctor_args =
   | Tctor_record of field_decl list
 
 type ctor_decl =
-  { ctor_ident: str
+  { ctor_ident: ident
   ; ctor_args: ctor_args
   ; ctor_ret: type_expr option
-  ; ctor_loc: Location.t }
+  ; ctor_loc: Location.t
+  ; ctor_ctor: Type0.ctor_decl }
 
 type type_decl =
   { tdec_ident: str
