@@ -1183,7 +1183,7 @@ let rec check_signature_item env item =
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
   | Psig_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
-      let env = Envi.open_namespace_scope m env in
+      let env = Envi.open_namespace_scope path m env in
       ( env
       , { Typedast.sig_desc= Tsig_open (Location.mkloc path name.loc)
         ; sig_loc= loc } )
@@ -1361,7 +1361,7 @@ let rec check_statement env stmt =
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
   | Pstmt_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
-      ( Envi.open_namespace_scope m env
+      ( Envi.open_namespace_scope path m env
       , { Typedast.stmt_loc= loc
         ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
   | Pstmt_typeext (variant, ctors) ->

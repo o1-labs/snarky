@@ -141,12 +141,16 @@ let main =
             let lib_path = Filename.concat opam_path "lib" in
             (* Load OCaml stdlib *)
             Loader.load_directory env (Filename.concat lib_path "ocaml") ;
+            let stdlib = Ident.create ~mode:Checked "Stdlib" in
             let stdlib_scope =
               Loader.load ~loc:Location.none ~name:"Stdlib"
                 env.Envi.resolve_env
                 (Filename.concat lib_path "ocaml/stdlib.cmi")
             in
-            let env = Envi.open_namespace_scope stdlib_scope env in
+            Envi.register_external_module stdlib (Immediate stdlib_scope) env ;
+            let env =
+              Envi.open_namespace_scope (Pident stdlib) stdlib_scope env
+            in
             (* Load Snarky.Request *)
             let snarky_build_path =
               Filename.(
@@ -160,33 +164,18 @@ let main =
               (Filename.concat snarky_build_path "native") ;
             Loader.load_directory env snarky_build_path ;
             (* Set up module structure for Snarky.Request *)
-            let m, env =
-              let loc = Location.none in
-              let mkloc s = Location.mkloc s loc in
-              let env = Envi.open_absolute_module None env in
-              let env = Envi.open_absolute_module None env in
-              let _path, m =
-                try
-                  Envi.find_module ~mode:Checked ~loc
-                    (mkloc (Longident.Lident "Snarky__Request"))
-                    env
-                with _ ->
-                  Format.(
-                    fprintf err_formatter
-                      "Could not find the compiled interface files for \
-                       Snarky.@.") ;
-                  exit 1
-              in
-              let env =
-                Envi.add_module (Ident.create ~mode:Checked "Request") m env
-              in
-              let m, env = Envi.pop_module ~loc env in
-              let env =
-                Envi.add_module (Ident.create ~mode:Checked "Snarky") m env
-              in
-              Envi.pop_module ~loc env
+            let snarky, m =
+              try
+                Envi.find_module ~mode:Checked ~loc:Location.none
+                  (Location.mknoloc (Longident.Lident "Snarky"))
+                  env
+              with _ ->
+                Format.(
+                  fprintf err_formatter
+                    "Could not find the compiled interface files for Snarky.@.") ;
+                exit 1
             in
-            Envi.open_namespace_scope m env
+            Envi.open_namespace_scope snarky m env
         | None ->
             Format.(
               fprintf err_formatter
@@ -199,13 +188,15 @@ let main =
     let cmi_files = List.rev !cmi_files in
     let cmi_scopes =
       List.map cmi_files ~f:(fun filename ->
-          Loader.load ~loc:Location.none
-            ~name:(Loader.modname_of_filename filename)
-            env.Envi.resolve_env filename )
+          let modname = Loader.modname_of_filename filename in
+          let modident = Ident.create ~mode:Checked modname in
+          ( modident
+          , Loader.load ~loc:Location.none ~name:modname env.Envi.resolve_env
+              filename ) )
     in
     let env =
-      List.fold ~init:env cmi_scopes ~f:(fun env scope ->
-          Envi.open_namespace_scope scope env )
+      List.fold ~init:env cmi_scopes ~f:(fun env (name, scope) ->
+          Envi.open_namespace_scope (Path.Pident name) scope env )
     in
     let meji_files =
       "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"

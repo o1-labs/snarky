@@ -85,7 +85,7 @@ module Scope = struct
   type 't kind =
     | Module
     | Expr
-    | Open
+    | Open of Path.t
     | Continue
     | Functor of (Longident.t -> 't or_path -> 't)
 
@@ -577,10 +577,10 @@ let open_absolute_module ?mode path env =
   let mode = mode_or_default mode env in
   push_scope Scope.(empty ~mode path Module) env
 
-let open_namespace_scope ?mode scope env =
+let open_namespace_scope ?mode path scope env =
   let mode = mode_or_default mode env in
   env
-  |> push_scope {scope with kind= Scope.Open}
+  |> push_scope {scope with kind= Scope.Open path}
   |> push_scope Scope.(empty ~mode (current_scope env).path Continue)
 
 let open_mode_module_scope mode env =
@@ -609,7 +609,7 @@ let pop_module ~loc env =
         (scope :: scopes, env)
     | Expr ->
         raise (Error (of_prim __POS__, Wrong_scope_kind "module"))
-    | Open ->
+    | Open _path ->
         all_scopes scopes env
     | Continue ->
         all_scopes (scope :: scopes) env
