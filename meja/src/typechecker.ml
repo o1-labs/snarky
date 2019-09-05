@@ -1314,10 +1314,7 @@ let rec check_statement env stmt =
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e)})
   | Pstmt_type decl when !in_decl ->
       let decl, env = Typet.TypeDecl.import decl env in
-      let stmt =
-        { Typedast.stmt_loc= loc
-        ; stmt_desc= Tstmt_type decl }
-      in
+      let stmt = {Typedast.stmt_loc= loc; stmt_desc= Tstmt_type decl} in
       (env, stmt)
   | Pstmt_type decl ->
       in_decl := true ;
