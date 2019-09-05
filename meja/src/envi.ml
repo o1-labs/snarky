@@ -578,6 +578,12 @@ let open_absolute_module ?mode path env =
   push_scope Scope.(empty ~mode path Module) env
 
 let open_namespace_scope ?mode path scope env =
+  let add_name ident = (Path.dot path ident, Path.Pident ident) in
+  let subst =
+    Scope.build_subst Subst.empty scope ~type_subst:add_name
+      ~module_subst:add_name
+  in
+  let scope = Scope.subst subst scope in
   let mode = mode_or_default mode env in
   env
   |> push_scope {scope with kind= Scope.Open path}
@@ -609,7 +615,13 @@ let pop_module ~loc env =
         (scope :: scopes, env)
     | Expr ->
         raise (Error (of_prim __POS__, Wrong_scope_kind "module"))
-    | Open _path ->
+    | Open path ->
+        let add_name ident = (Path.Pident ident, Path.dot path ident) in
+        let subst =
+          Scope.build_subst Subst.empty scope ~type_subst:add_name
+            ~module_subst:add_name
+        in
+        let scopes = List.map ~f:(Scope.subst subst) scopes in
         all_scopes scopes env
     | Continue ->
         all_scopes (scope :: scopes) env
