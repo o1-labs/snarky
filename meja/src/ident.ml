@@ -65,6 +65,16 @@ module Table = struct
 
   let keys tbl = List.concat_map ~f:(List.map ~f:fst) (Map.data tbl)
 
+  let foldi tbl ~init ~f =
+    Map.fold tbl ~init ~f:(fun ~key:_ ~data init ->
+        List.fold ~init data ~f:(fun init (ident, data) -> f ident init data)
+    )
+
+  let fold tbl ~init ~f = foldi tbl ~init ~f:(fun _key -> f)
+
+  let fold_keys tbl ~init ~f =
+    foldi tbl ~init ~f:(fun key init _value -> f init key)
+
   let fold2_names tbl1 tbl2 ~init ~f =
     Map.fold2 tbl1 tbl2 ~init ~f:(fun ~key ~data acc ->
         let data =

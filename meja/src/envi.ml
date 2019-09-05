@@ -466,6 +466,69 @@ module Scope = struct
       names=
         IdTbl.merge_skewed_names scope.names expr_scope.names
           ~combine:select_new }
+
+  let subst s =
+    let subst_type_expr = Subst.type_expr s in
+    let subst_type_decl = Subst.type_decl s in
+    let rec subst
+        { kind
+        ; path
+        ; names
+        ; type_variables
+        ; type_decls
+        ; fields
+        ; ctors
+        ; modules
+        ; module_types
+        ; instances
+        ; paths
+        ; mode } =
+      { kind
+      ; path
+      ; names= IdTbl.map ~f:subst_type_expr names
+      ; type_variables
+      ; type_decls= IdTbl.map ~f:subst_type_decl type_decls
+      ; fields=
+          IdTbl.map fields ~f:(fun (decl, i) -> (subst_type_decl decl, i))
+      ; ctors= IdTbl.map ctors ~f:(fun (decl, i) -> (subst_type_decl decl, i))
+      ; modules= IdTbl.map ~f:subst_scope_or_path modules
+      ; module_types= IdTbl.map ~f:subst_scope_or_path module_types
+      ; instances
+      ; paths (* TODO: Think about what to do here. *)
+      ; mode }
+    and subst_scope_or_path = function
+      | Immediate scope ->
+          Immediate (subst scope)
+      | Deferred _ as deferred ->
+          (* TODO: This is not the desired behaviour.. *)
+          deferred
+    in
+    subst
+
+  let build_subst ~type_subst ~module_subst s
+      { kind= _
+      ; path= _
+      ; names= _
+      ; type_variables= _
+      ; type_decls
+      ; fields= _
+      ; ctors= _
+      ; modules
+      ; module_types= _
+      ; instances= _
+      ; paths= _
+      ; mode= _ } =
+    let s =
+      IdTbl.fold_keys ~init:s type_decls ~f:(fun s ident ->
+          let src_path, dst_path = type_subst ident in
+          Subst.with_type src_path dst_path s )
+    in
+    let s =
+      IdTbl.fold_keys ~init:s modules ~f:(fun s ident ->
+          let src_path, dst_path = module_subst ident in
+          Subst.with_module src_path dst_path s )
+    in
+    s
 end
 
 let empty_resolve_env : Scope.t resolve_env =
@@ -594,6 +657,11 @@ let find_type_variable name env =
   List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
 
 let add_module (name : Ident.t) m =
+  let add_name ident = (Path.Pident ident, Path.dot (Pident name) ident) in
+  let subst =
+    Scope.build_subst Subst.empty m ~type_subst:add_name ~module_subst:add_name
+  in
+  let m = Scope.subst subst m in
   map_current_scope ~f:(fun scope ->
       let scope = Scope.add_module name (Scope.Immediate m) scope in
       let paths = Scope.extend_paths name m.Scope.paths in
