@@ -81,7 +81,7 @@ type 'a resolve_env =
   ; mutable predeclare_types: bool }
 
 module Scope = struct
-  type 'a or_path = Immediate of 'a | Deferred of Longident.t
+  type 'a or_path = Immediate of 'a | Deferred of string
 
   type 't kind =
     | Module
@@ -442,7 +442,8 @@ module Scope = struct
     | Some (ident, Immediate m) ->
         Some (ident, m)
     | Some (ident, Deferred lid) ->
-        Option.map (find_global_module ~mode ~loc ~scopes resolve_env lid)
+        Option.map
+          (find_global_module ~mode ~loc ~scopes resolve_env (Lident lid))
           ~f:(fun (_ident, m) -> (ident, m))
     | None ->
         None
@@ -703,7 +704,7 @@ let find_module_deferred ~mode ~loc (lid : lid) env =
           env.resolve_env.external_modules
       with
       | Some (ident, _) ->
-          Some (Pident ident, Deferred lid.txt)
+          Some (Pident ident, Deferred name)
       | None ->
           None )
     | _ ->

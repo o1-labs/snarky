@@ -1149,7 +1149,10 @@ and check_module_sig env msig =
         | Envi.Scope.Immediate m ->
             (m, msig)
         | Envi.Scope.Deferred path ->
-            ( snd (Envi.find_module ~mode ~loc (Location.mkloc path loc) env)
+            ( snd
+                (Envi.find_module ~mode ~loc
+                   (Location.mkloc (Longident.Lident path) loc)
+                   env)
             , msig )
       in
       (* Check that f_mty builds the functor as expected. *)
