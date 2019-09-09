@@ -387,15 +387,7 @@ module Scope = struct
     | Some (name, Immediate m) ->
         Some (name, m)
     | Some (name, Deferred filename) ->
-        resolve_env.external_modules
-        <- IdTbl.add resolve_env.external_modules ~key:name
-             ~data:(In_flight filename) ;
-        let m =
-          !load_module ~loc ~name:(Ident.name name) resolve_env filename
-        in
-        resolve_env.external_modules
-        <- IdTbl.add resolve_env.external_modules ~key:name
-             ~data:(Immediate m : _ or_deferred) ;
+        let m = load_external_module ~loc filename name resolve_env in
         Some (name, m)
     | Some (_name, In_flight filename) ->
         raise (Error (loc, Recursive_load filename))
@@ -514,10 +506,17 @@ module Scope = struct
       only be used to retrieve sub-values of the module, which must have forced
       the loading of the module at their creation time.
   *)
-  let get_module_by_ident (ident : Ident.t) (scope : t) =
+  let get_module_by_ident ~loc resolve_env (ident : Ident.t) (scope : t) =
     match IdTbl.find ident scope.modules with
     | Some (Immediate m) ->
         Some m
+    | Some (Deferred path) -> (
+      (* Use Prover mode so that we pick up all the modules. *)
+      match get_global_module ~mode:Prover ~loc resolve_env path with
+      | Some (_, m) ->
+          Some m
+      | None ->
+          None )
     | _ ->
         None
 
@@ -527,12 +526,29 @@ module Scope = struct
       only be used to retrieve sub-values of the module, which must have forced
       the loading of the module at their creation time.
   *)
-  let get_module_no_load ~mode name scope =
+  let get_module_no_load ~loc resolve_env ~mode name scope =
     match IdTbl.find_name name ~modes:(modes_of_mode mode) scope.modules with
     | Some (ident, Immediate m) ->
         Some (ident, m)
+    | Some (ident, Deferred path) -> (
+      (* Use Prover mode so that we pick up all the modules. *)
+      match get_global_module ~mode:Prover ~loc resolve_env path with
+      | Some (_, m) ->
+          Some (ident, m)
+      | None ->
+          None )
     | _ ->
         None
+
+  let global {external_modules; _} =
+    { (empty ~mode:Checked Module) with
+      modules=
+        IdTbl.mapi external_modules ~f:(fun ident m ->
+            match m with
+            | Immediate v ->
+                Immediate v
+            | _ ->
+                Deferred (Ident.name ident) ) }
 end
 
 let empty_resolve_env : Scope.t resolve_env =
@@ -774,8 +790,10 @@ let get_of_path ~loc ~kind ~get_name ~find_name (path : Path.t) env =
         get_name ident scope
     | Path.Pdot (path', mode, name) -> (
         let%map scope =
-          find ~kind:"module" ~get_name:Scope.get_module_by_ident
-            ~find_name:Scope.get_module_no_load path' scope
+          find ~kind:"module"
+            ~get_name:(Scope.get_module_by_ident ~loc env.resolve_env)
+            ~find_name:(Scope.get_module_no_load ~loc env.resolve_env)
+            path' scope
         in
         match find_name ~mode name scope with
         | Some (_ident, v) ->
@@ -791,35 +809,13 @@ let get_of_path ~loc ~kind ~get_name ~find_name (path : Path.t) env =
   | Some v ->
       v
   | None -> (
-      let path', mode, name =
-        match path with
-        | Path.Pdot (path, mode, name) ->
-            (path, mode, name)
-        | _ ->
-            raise (Error (loc, Unbound_path (kind, path)))
-      in
-      let get_external_module ident _ =
-        match IdTbl.find ident env.resolve_env.external_modules with
-        | Some (Immediate v) ->
-            Some v
-        | _ ->
-            None
-      in
-      match
-        let%bind scope =
-          find ~kind:"module" ~get_name:get_external_module
-            ~find_name:Scope.get_module_no_load path'
-            (* This scope will never be used, we're just filling the type hole
-             here.
-          *)
-            (current_scope env)
-        in
-        find_name ~mode name scope
-      with
-      | Some (_path, v) ->
-          v
-      | None ->
-          raise (Error (loc, Unbound_path (kind, path))) )
+    match
+      find ~kind ~get_name ~find_name path (Scope.global env.resolve_env)
+    with
+    | Some v ->
+        v
+    | None ->
+        raise (Error (loc, Unbound_path (kind, path))) )
 
 let join_expr_scope env expr_scope =
   map_current_scope ~f:(Scope.join_expr_scope expr_scope) env
