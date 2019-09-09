@@ -1007,7 +1007,9 @@ module Type = struct
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
-  let rec compare typ1 typ2 =
+  let rec compare ~loc env typ1 typ2 =
+    let compare = compare ~loc env in
+    let compare_all = compare_all ~loc env in
     if Int.equal typ1.type_id typ2.type_id then 0
     else
       match ((repr typ1).type_desc, (repr typ2).type_desc) with
@@ -1023,9 +1025,11 @@ module Type = struct
           -1
       | _, Tvar _ ->
           1
-      | ( Tctor {var_decl= {tdec_id= id1; _}; var_params= params1; _}
-        , Tctor {var_decl= {tdec_id= id2; _}; var_params= params2; _} ) ->
-          or_compare (Int.compare id1 id2) ~f:(fun () ->
+      | ( Tctor {var_params= params1; var_ident= path1; _}
+        , Tctor {var_params= params2; var_ident= path2; _} ) ->
+          let decl1 = raw_get_type_declaration ~loc path1 env in
+          let decl2 = raw_get_type_declaration ~loc path2 env in
+          or_compare (Int.compare decl1.tdec_id decl2.tdec_id) ~f:(fun () ->
               compare_all params1 params2 )
       | Tctor _, _ ->
           -1
@@ -1049,7 +1053,7 @@ module Type = struct
       | _, Tarrow (_, _, Explicit, _) ->
           1
 
-  and compare_all typs1 typs2 =
+  and compare_all ~loc env typs1 typs2 =
     match (typs1, typs2) with
     | [], [] ->
         0
@@ -1058,7 +1062,8 @@ module Type = struct
     | _, [] ->
         1
     | typ1 :: typs1, typ2 :: typs2 ->
-        or_compare (compare typ1 typ2) ~f:(fun () -> compare_all typs1 typs2)
+        or_compare (compare ~loc env typ1 typ2) ~f:(fun () ->
+            compare_all ~loc env typs1 typs2 )
 
   let rec weak_variables depth set typ =
     match typ.type_desc with
@@ -1178,7 +1183,9 @@ module Type = struct
     in
     let implicit_vars =
       List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
-          let cmp = compare exp1.Typedast.exp_type exp2.Typedast.exp_type in
+          let cmp =
+            compare ~loc env exp1.Typedast.exp_type exp2.Typedast.exp_type
+          in
           ( if Int.equal cmp 0 then
             match (exp1.exp_desc, exp2.exp_desc) with
             | Texp_unifiable desc1, Texp_unifiable desc2 ->
@@ -1223,8 +1230,10 @@ module Type = struct
               not
                 (List.exists strong_implicit_vars ~f:(fun e_strong ->
                      if
-                       Type1.equal_at_depth ~depth:env.depth e_weak.exp_type
-                         e_strong.exp_type
+                       Type1.equal_at_depth
+                         ~get_decl:(fun path ->
+                           raw_get_type_declaration ~loc path env )
+                         ~depth:env.depth e_weak.exp_type e_strong.exp_type
                      then (
                        ignore (unifies env e_strong.exp_type e_weak.exp_type) ;
                        ( match e_weak.exp_desc with
@@ -1262,11 +1271,8 @@ module TypeDecl = struct
   let mk_typ ~params ?ident decl env =
     Type1.Decl.mk_typ ~params ?ident env.depth decl
 
-  (* NOTE: the unused parameters here will be used when [var_decl] is removed
-     from [variant] and we need to search through the environment for the type
-     based on its path.
-  *)
-  let find_of_variant ~loc:_ variant _env = variant.var_decl
+  let find_of_variant ~loc variant env =
+    raw_get_type_declaration ~loc variant.var_ident env
 
   let find_of_field (field : lid) env =
     find_of_lident ~kind:"field" ~get_name:Scope.find_field field env
@@ -1337,10 +1343,7 @@ let pp_typ = Typeprint.type_expr
 let pp_decl_typ ppf decl =
   pp_typ ppf
     { type_desc=
-        Tctor
-          { var_ident= Pident decl.tdec_ident
-          ; var_params= decl.tdec_params
-          ; var_decl= decl }
+        Tctor {var_ident= Pident decl.tdec_ident; var_params= decl.tdec_params}
     ; type_id= -1
     ; type_depth= -1 }
 

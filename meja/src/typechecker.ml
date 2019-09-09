@@ -45,8 +45,11 @@ let unpack_decls ~loc typ ctyp env =
     in
     match (typ.type_desc, ctyp.type_desc) with
     | Tctor variant, Tctor cvariant ->
-        let decl_id, cdecl_id =
-          (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
+        let decl_id =
+          (Envi.raw_get_type_declaration ~loc variant.var_ident env).tdec_id
+        in
+        let cdecl_id =
+          (Envi.raw_get_type_declaration ~loc cvariant.var_ident env).tdec_id
         in
         (* Try to unfold the oldest type definition first. *)
         if decl_id < cdecl_id then bind_none (unfold_ctyp ()) unfold_typ
@@ -138,8 +141,14 @@ let rec check_type_aux ~loc typ ctyp env =
     | Some (typ, ctyp) ->
         check_type_aux typ ctyp env
     | None ->
-        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-        then
+        let decl_id =
+          (Envi.raw_get_type_declaration ~loc variant.var_ident env).tdec_id
+        in
+        let cdecl_id =
+          (Envi.raw_get_type_declaration ~loc constr_variant.var_ident env)
+            .tdec_id
+        in
+        if Int.equal decl_id cdecl_id then
           match
             List.iter2 variant.var_params constr_variant.var_params
               ~f:(fun param constr_param ->
@@ -298,9 +307,9 @@ let get_ctor (name : lid) env =
         let ident, decl =
           match decl.tdec_desc with
           | TVariant _ ->
-              make_name name decl.tdec_ident, decl
+              (make_name name decl.tdec_ident, decl)
           | TExtend (name, decl, _) ->
-              make_name name decl.tdec_ident, decl
+              (make_name name decl.tdec_ident, decl)
           | _ ->
               assert false
         in
@@ -312,8 +321,7 @@ let get_ctor (name : lid) env =
         Envi.Type.mk
           (Tctor
              { var_ident= make_name name ctor.ctor_ident
-             ; var_params= decl.tdec_params
-             ; var_decl= decl })
+             ; var_params= decl.tdec_params })
           env
     | Ctor_tuple [typ] ->
         typ

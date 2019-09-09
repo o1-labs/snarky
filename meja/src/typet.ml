@@ -96,8 +96,7 @@ module Type = struct
         let typ =
           let variant =
             { Type0.var_params= List.map ~f:type0 var_params
-            ; var_ident= var_ident.txt
-            ; var_decl= decl }
+            ; var_ident= var_ident.txt }
           in
           mk (Tctor variant) env
         in
