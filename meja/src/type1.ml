@@ -29,7 +29,7 @@ let rec typ_debug_print fmt typ =
   | Tvar (None, Explicit) ->
       print "var _"
   | Tvar (Some name, Explicit) ->
-      print "var %s@" name
+      print "var %s" name
   | Tvar (None, Implicit) ->
       print "implicit_var _"
   | Tvar (Some name, Implicit) ->
