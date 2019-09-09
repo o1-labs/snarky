@@ -620,11 +620,29 @@ let find_module ~loc (lid : lid) env =
   Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack
 
 let find_module_deferred ~mode ~loc (lid : lid) env =
-  List.find_map
-    ~f:
-      (Scope.find_module_deferred ~mode ~loc ~scopes:env.scope_stack
-         env.resolve_env lid.txt)
-    env.scope_stack
+  match
+    List.find_map
+      ~f:
+        (Scope.find_module_deferred ~mode ~loc ~scopes:env.scope_stack
+           env.resolve_env lid.txt)
+      env.scope_stack
+  with
+  | Some m ->
+      Some m
+  | None -> (
+    match lid.txt with
+    | Lident name -> (
+      match
+        IdTbl.find_name name ~modes:(modes_of_mode mode)
+          env.resolve_env.external_modules
+      with
+      | Some (ident, _) ->
+          Some (Pident ident, Deferred lid.txt)
+      | None ->
+          None )
+    | _ ->
+        let path, m = find_module ~mode ~loc lid env in
+        Some (path, Immediate m) )
 
 let add_implicit_instance name typ env =
   let path = Path.Pident name in

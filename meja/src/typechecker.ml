@@ -1229,18 +1229,25 @@ and check_module_sig env path msig =
       , env )
   | Pmty_name lid ->
       let path, m =
-        match Envi.find_module_deferred ~mode ~loc lid env with
+        match Envi.find_module_type ~mode lid env with
         | Some m ->
             m
         | None ->
-            (* TODO: This is a hack. We should set up the environment for
-               interface files before typechecking them, so that all of the
-               names are available and we can find those that aren't.
-            *)
-            ( Path.Pident (Ident.create ~mode:Checked "NOT_FOUND")
-            , Envi.Scope.Deferred lid.txt )
+            raise (Envi.Error (loc, Unbound ("module type", lid.txt)))
       in
       ( { Typedast.msig_desc= Tmty_name (Location.mkloc path lid.loc)
+        ; msig_loc= loc }
+      , m
+      , env )
+  | Pmty_alias lid ->
+      let path, m =
+        match Envi.find_module_deferred ~loc ~mode lid env with
+        | Some m ->
+            m
+        | None ->
+            raise (Envi.Error (loc, Unbound ("module", lid.txt)))
+      in
+      ( { Typedast.msig_desc= Tmty_alias (Location.mkloc path lid.loc)
         ; msig_loc= loc }
       , m
       , env )

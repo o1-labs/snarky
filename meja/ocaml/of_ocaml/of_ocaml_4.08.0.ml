@@ -137,8 +137,10 @@ and to_module_sig_desc ~loc decl =
   match decl with
   | None ->
       Pmty_abstract
-  | Some (Mty_ident path | Mty_alias path) ->
+  | Some (Mty_ident path) ->
       Pmty_name (mkloc (longident_of_path path) loc)
+  | Some (Mty_alias (_, path)) ->
+      Pmty_alias (mkloc (longident_of_path path) loc)
   | Some (Mty_signature signature) ->
       Pmty_sig (to_signature signature)
   | Some (Mty_functor (name, f, mty)) ->

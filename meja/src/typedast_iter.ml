@@ -244,6 +244,8 @@ let module_sig_desc iter = function
       iter.signature iter sigs
   | Tmty_name name ->
       path iter name
+  | Tmty_alias name ->
+      path iter name
   | Tmty_abstract ->
       ()
   | Tmty_functor (name, fsig, msig) ->

@@ -208,6 +208,8 @@ let module_sig_desc iter = function
       iter.signature iter sigs
   | Pmty_name name ->
       lid iter name
+  | Pmty_alias name ->
+      lid iter name
   | Pmty_abstract ->
       ()
   | Pmty_functor (name, fsig, msig) ->
