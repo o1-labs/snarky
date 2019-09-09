@@ -1089,7 +1089,7 @@ and check_module_sig env msig =
   let loc = msig.msig_loc in
   match msig.msig_desc with
   | Pmty_sig signature ->
-      let env = Envi.open_absolute_module env in
+      let env = Envi.open_module env in
       let env, signature = check_signature env signature in
       let m, env = Envi.pop_module ~loc env in
       ( {Typedast.msig_desc= Tmty_sig signature; msig_loc= loc}
@@ -1120,7 +1120,7 @@ and check_module_sig env msig =
       , m
       , env )
   | Pmty_abstract ->
-      let env = Envi.open_absolute_module env in
+      let env = Envi.open_module env in
       let m, env = Envi.pop_module ~loc env in
       ( {Typedast.msig_desc= Tmty_abstract; msig_loc= loc}
       , Envi.Scope.Immediate m
@@ -1131,7 +1131,7 @@ and check_module_sig env msig =
         (* We want the functored module to be accessible only in un-prefixed
            space.
         *)
-        let env = Envi.open_absolute_module env in
+        let env = Envi.open_module env in
         (* TODO: This name should be constant, and the underlying module
            substituted.
         *)
@@ -1362,7 +1362,7 @@ and check_module_expr env m =
         (* We want the functored module to be accessible only in un-prefixed
            space.
         *)
-        let env = Envi.open_absolute_module env in
+        let env = Envi.open_module env in
         (* TODO: This name should be constant, and the underlying module
            substituted.
         *)
@@ -1375,7 +1375,7 @@ and check_module_expr env m =
               Envi.add_deferred_module f_name.txt path env
         in
         (* TODO: check that f_instance matches f' *)
-        let env = Envi.open_absolute_module env in
+        let env = Envi.open_module env in
         let env, m' = check_module_expr env m in
         let m, _env = Envi.pop_module ~loc env in
         (m, m')

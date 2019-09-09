@@ -575,10 +575,6 @@ let open_module ?mode env =
   let mode = mode_or_default mode env in
   push_scope Scope.(empty ~mode Module) env
 
-let open_absolute_module ?mode env =
-  let mode = mode_or_default mode env in
-  push_scope Scope.(empty ~mode Module) env
-
 let open_namespace_scope ?mode path scope env =
   let add_name ident = (Path.dot path ident, Path.Pident ident) in
   let subst =
