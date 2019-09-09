@@ -199,9 +199,7 @@ let main =
             read_file (Parser_impl.interface Lexer_impl.token) file
           in
           let module_name = Loader.modname_of_filename file in
-          let env =
-            Envi.open_absolute_module (Some (Longident.Lident module_name)) env
-          in
+          let env = Envi.open_absolute_module env in
           let env, _typed_ast = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:Location.none env in
           let name = Ident.create ~mode:Checked module_name in

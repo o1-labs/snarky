@@ -1028,11 +1028,7 @@ let rec check_signature_item env item =
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
-      let msig, m, env =
-        check_module_sig env
-          (Envi.relative_path env (Ident.name name.txt))
-          msig
-      in
+      let msig, m, env = check_module_sig env msig in
       let env =
         match m with
         | Envi.Scope.Immediate m ->
@@ -1042,10 +1038,8 @@ let rec check_signature_item env item =
       in
       (env, {Typedast.sig_desc= Tsig_module (name, msig); sig_loc= loc})
   | Psig_modtype (name, signature) ->
-      let env = Envi.open_module name.txt env in
-      let signature, m_env, env =
-        check_module_sig env (Envi.relative_path env name.txt) signature
-      in
+      let env = Envi.open_module env in
+      let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
@@ -1090,12 +1084,12 @@ let rec check_signature_item env item =
 and check_signature env signature =
   List.fold_map ~init:env signature ~f:check_signature_item
 
-and check_module_sig env path msig =
+and check_module_sig env msig =
   let mode = Envi.current_mode env in
   let loc = msig.msig_loc in
   match msig.msig_desc with
   | Pmty_sig signature ->
-      let env = Envi.open_absolute_module (Some path) env in
+      let env = Envi.open_absolute_module env in
       let env, signature = check_signature env signature in
       let m, env = Envi.pop_module ~loc env in
       ( {Typedast.msig_desc= Tmty_sig signature; msig_loc= loc}
@@ -1126,18 +1120,18 @@ and check_module_sig env path msig =
       , m
       , env )
   | Pmty_abstract ->
-      let env = Envi.open_absolute_module (Some path) env in
+      let env = Envi.open_absolute_module env in
       let m, env = Envi.pop_module ~loc env in
       ( {Typedast.msig_desc= Tmty_abstract; msig_loc= loc}
       , Envi.Scope.Immediate m
       , env )
   | Pmty_functor (f_name, f, msig) ->
-      let f, f_mty, env = check_module_sig env (Lident f_name.txt) f in
-      let ftor path f_instance =
+      let f, f_mty, env = check_module_sig env f in
+      let ftor f_instance =
         (* We want the functored module to be accessible only in un-prefixed
            space.
         *)
-        let env = Envi.open_absolute_module None env in
+        let env = Envi.open_absolute_module env in
         (* TODO: This name should be constant, and the underlying module
            substituted.
         *)
@@ -1150,7 +1144,7 @@ and check_module_sig env path msig =
               Envi.add_deferred_module f_name.txt path env
         in
         (* TODO: check that f_instance matches f_mty *)
-        let msig, m, _env = check_module_sig env path msig in
+        let msig, m, _env = check_module_sig env msig in
         match m with
         | Envi.Scope.Immediate m ->
             (m, msig)
@@ -1159,8 +1153,8 @@ and check_module_sig env path msig =
             , msig )
       in
       (* Check that f_mty builds the functor as expected. *)
-      let _, msig = ftor (Lapply (path, Lident f_name.txt)) f_mty in
-      let m = Envi.make_functor ~mode path (fun path f -> fst (ftor path f)) in
+      let _, msig = ftor f_mty in
+      let m = Envi.make_functor ~mode (fun f -> fst (ftor f)) in
       ( {Typedast.msig_desc= Tmty_functor (f_name, f, msig); msig_loc= loc}
       , Envi.Scope.Immediate m
       , env )
@@ -1223,16 +1217,14 @@ let rec check_statement env stmt =
       in_decl := false ;
       ret
   | Pstmt_module (name, m) ->
-      let env = Envi.open_module name.txt env in
+      let env = Envi.open_module env in
       let env, m = check_module_expr env m in
       let m_env, env = Envi.pop_module ~loc env in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module name.txt m_env env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_module (name, m)})
   | Pstmt_modtype (name, signature) ->
-      let signature, m_env, env =
-        check_module_sig env (Envi.relative_path env name.txt) signature
-      in
+      let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
       ( env
@@ -1356,23 +1348,21 @@ and check_module_expr env m =
       let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_struct stmts})
   | Pmod_name name ->
-      let path = Envi.current_path env in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
       let name', m' = Envi.find_module ~mode ~loc name env in
       let name = Location.mkloc name' name.loc in
-      let env = Envi.push_scope {m' with path} env in
+      let env = Envi.push_scope m' env in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
   | Pmod_functor (f_name, f, m) ->
-      let path = Option.value_exn (Envi.current_path env) in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
-      let f, f', env = check_module_sig env (Lident f_name.txt) f in
-      let ftor path f_instance =
+      let f, f', env = check_module_sig env f in
+      let ftor f_instance =
         (* We want the functored module to be accessible only in un-prefixed
            space.
         *)
-        let env = Envi.open_absolute_module None env in
+        let env = Envi.open_absolute_module env in
         (* TODO: This name should be constant, and the underlying module
            substituted.
         *)
@@ -1385,17 +1375,15 @@ and check_module_expr env m =
               Envi.add_deferred_module f_name.txt path env
         in
         (* TODO: check that f_instance matches f' *)
-        let env = Envi.open_absolute_module (Some path) env in
+        let env = Envi.open_absolute_module env in
         let env, m' = check_module_expr env m in
         let m, _env = Envi.pop_module ~loc env in
         (m, m')
       in
       (* Check that f builds the functor as expected. *)
-      let _, m = ftor (Lapply (path, Lident f_name.txt)) f' in
+      let _, m = ftor f' in
       let env =
-        Envi.push_scope
-          (Envi.make_functor ~mode path (fun path f -> fst (ftor path f)))
-          env
+        Envi.push_scope (Envi.make_functor ~mode (fun f -> fst (ftor f))) env
       in
       (env, {m with mod_desc= Tmod_functor (f_name, f, m)})
 

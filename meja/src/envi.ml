@@ -88,11 +88,10 @@ module Scope = struct
     | Expr
     | Open of Path.t
     | Continue
-    | Functor of (Longident.t -> 't or_path -> 't)
+    | Functor of ('t or_path -> 't)
 
   type t =
     { kind: t kind
-    ; path: Longident.t option
     ; names: type_expr IdTbl.t
     ; type_variables: type_expr String.Map.t
     ; type_decls: type_decl IdTbl.t
@@ -108,9 +107,8 @@ module Scope = struct
     ref (fun ~loc ~name _env _filename ->
         raise (Error (loc, Unbound_module (Lident name))) )
 
-  let empty ~mode path kind =
+  let empty ~mode kind =
     { kind
-    ; path
     ; names= IdTbl.empty
     ; type_variables= String.Map.empty
     ; type_decls= IdTbl.empty
@@ -120,8 +118,6 @@ module Scope = struct
     ; module_types= IdTbl.empty
     ; instances= Int.Map.empty
     ; mode }
-
-  let set_path path env = {env with path= Some path}
 
   let add_name key typ scope =
     {scope with names= IdTbl.add scope.names ~key ~data:typ}
@@ -182,7 +178,6 @@ module Scope = struct
   let fold_over ~init:acc ~names ~type_variables ~type_decls ~fields ~ctors
       ~modules ~module_types ~instances
       { kind= _
-      ; path= _
       ; names= names1
       ; type_variables= type_variables1
       ; type_decls= type_decls1
@@ -193,7 +188,6 @@ module Scope = struct
       ; instances= instances1
       ; mode= _ }
       { kind= _
-      ; path= _
       ; names= names2
       ; type_variables= type_variables2
       ; type_decls= type_decls2
@@ -228,7 +222,6 @@ module Scope = struct
   *)
   let join ~loc
       { kind
-      ; path
       ; names= names1
       ; type_variables= type_variables1
       ; type_decls= type_decls1
@@ -239,7 +232,6 @@ module Scope = struct
       ; instances= instances1
       ; mode= mode1 }
       { kind= _
-      ; path= _
       ; names= names2
       ; type_variables= type_variables2
       ; type_decls= type_decls2
@@ -256,7 +248,6 @@ module Scope = struct
       v
     in
     { kind
-    ; path
     ; names=
         IdTbl.merge_skewed_names names1 names2 ~combine:(fun ~key:_ _ v -> v)
     ; type_variables=
@@ -312,7 +303,6 @@ module Scope = struct
     let subst_type_decl = Subst.type_decl s in
     let rec subst
         { kind
-        ; path
         ; names
         ; type_variables
         ; type_decls
@@ -323,7 +313,6 @@ module Scope = struct
         ; instances
         ; mode } =
       { kind
-      ; path
       ; names= IdTbl.map ~f:subst_type_expr names
       ; type_variables
       ; type_decls= IdTbl.map ~f:subst_type_decl type_decls
@@ -345,7 +334,6 @@ module Scope = struct
 
   let build_subst ~type_subst ~module_subst s
       { kind= _
-      ; path= _
       ; names= _
       ; type_variables= _
       ; type_decls
@@ -447,8 +435,7 @@ module Scope = struct
     in
     let path, m = find_module ~mode ~loc lid resolve_env scopes in
     (* HACK *)
-    let flid = Untype_ast.longident_of_path fpath in
-    (Path.Papply (fpath, path), f flid (Immediate m))
+    (Path.Papply (fpath, path), f (Immediate m))
 
   and get_module ~mode ~loc ~scopes resolve_env name scope =
     match IdTbl.find_name ~modes:(modes_of_mode mode) name scope.modules with
@@ -561,9 +548,7 @@ type t =
   {scope_stack: Scope.t list; depth: int; resolve_env: Scope.t resolve_env}
 
 let empty resolve_env =
-  { scope_stack= [Scope.empty ~mode:Checked None Scope.Module]
-  ; depth= 0
-  ; resolve_env }
+  {scope_stack= [Scope.empty ~mode:Checked Scope.Module]; depth= 0; resolve_env}
 
 let current_scope {scope_stack; _} =
   match List.hd scope_stack with
@@ -575,28 +560,24 @@ let current_scope {scope_stack; _} =
 let push_scope scope env =
   {env with scope_stack= scope :: env.scope_stack; depth= env.depth + 1}
 
-let current_path env = (current_scope env).path
-
-let relative_path env name = join_name (current_path env) name
-
 let current_mode env = (current_scope env).mode
 
 let mode_or_default mode env =
   match mode with Some mode -> mode | None -> current_mode env
 
-let make_functor ~mode path f = Scope.empty ~mode (Some path) (Functor f)
+let make_functor ~mode f = Scope.empty ~mode (Functor f)
 
 let open_expr_scope ?mode env =
   let mode = mode_or_default mode env in
-  push_scope Scope.(empty ~mode (current_path env) Expr) env
+  push_scope Scope.(empty ~mode Expr) env
 
-let open_module ?mode name env =
+let open_module ?mode env =
   let mode = mode_or_default mode env in
-  push_scope Scope.(empty ~mode (Some (relative_path env name)) Module) env
+  push_scope Scope.(empty ~mode Module) env
 
-let open_absolute_module ?mode path env =
+let open_absolute_module ?mode env =
   let mode = mode_or_default mode env in
-  push_scope Scope.(empty ~mode path Module) env
+  push_scope Scope.(empty ~mode Module) env
 
 let open_namespace_scope ?mode path scope env =
   let add_name ident = (Path.dot path ident, Path.Pident ident) in
@@ -608,10 +589,10 @@ let open_namespace_scope ?mode path scope env =
   let mode = mode_or_default mode env in
   env
   |> push_scope {scope with kind= Scope.Open path}
-  |> push_scope Scope.(empty ~mode (current_scope env).path Continue)
+  |> push_scope Scope.(empty ~mode Continue)
 
 let open_mode_module_scope mode env =
-  push_scope Scope.(empty ~mode (current_scope env).path Continue) env
+  push_scope Scope.(empty ~mode Continue) env
 
 let pop_scope env =
   match env.scope_stack with
@@ -680,8 +661,6 @@ let map_current_scope ~f env =
       {env with scope_stack= f current_scope :: scope_stack}
   | [] ->
       raise (Error (of_prim __POS__, No_open_scopes))
-
-let set_path path = map_current_scope ~f:(Scope.set_path path)
 
 let add_type_variable name typ =
   map_current_scope ~f:(Scope.add_type_variable name typ)
