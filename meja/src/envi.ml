@@ -333,6 +333,91 @@ module Scope = struct
           (* You can't apply a toplevel module, so we just error out instead. *)
           raise (Error (loc, Unbound_module lid)) )
 
+  let subst s =
+    let subst_type_expr = Subst.type_expr s in
+    let subst_type_decl = Subst.type_decl s in
+    let rec subst
+        { kind
+        ; path
+        ; names
+        ; type_variables
+        ; type_decls
+        ; fields
+        ; ctors
+        ; modules
+        ; module_types
+        ; instances
+        ; paths
+        ; mode } =
+      { kind
+      ; path
+      ; names= IdTbl.map ~f:subst_type_expr names
+      ; type_variables
+      ; type_decls= IdTbl.map ~f:subst_type_decl type_decls
+      ; fields=
+          IdTbl.map fields ~f:(fun (decl, i) -> (subst_type_decl decl, i))
+      ; ctors= IdTbl.map ctors ~f:(fun (decl, i) -> (subst_type_decl decl, i))
+      ; modules= IdTbl.map ~f:subst_scope_or_path modules
+      ; module_types= IdTbl.map ~f:subst_scope_or_path module_types
+      ; instances
+      ; paths (* TODO: Think about what to do here. *)
+      ; mode }
+    and subst_scope_or_path = function
+      | Immediate scope ->
+          Immediate (subst scope)
+      | Deferred _ as deferred ->
+          (* TODO: This is not the desired behaviour.. *)
+          deferred
+    in
+    subst
+
+  let build_subst ~type_subst ~module_subst s
+      { kind= _
+      ; path= _
+      ; names= _
+      ; type_variables= _
+      ; type_decls
+      ; fields= _
+      ; ctors= _
+      ; modules
+      ; module_types= _
+      ; instances= _
+      ; paths= _
+      ; mode= _ } =
+    let s =
+      IdTbl.fold_keys ~init:s type_decls ~f:(fun s ident ->
+          let src_path, dst_path = type_subst ident in
+          Subst.with_type src_path dst_path s )
+    in
+    let s =
+      IdTbl.fold_keys ~init:s modules ~f:(fun s ident ->
+          let src_path, dst_path = module_subst ident in
+          Subst.with_module src_path dst_path s )
+    in
+    s
+
+  let register_external_module name x resolve_env =
+    let x =
+      match x with
+      | In_flight _ | Deferred _ ->
+          x
+      | Immediate x ->
+          let add_name ident = (Path.Pident ident, Path.dot (Pident name) ident) in
+          let name_subst =
+            build_subst Subst.empty x ~type_subst:add_name
+              ~module_subst:add_name
+          in
+          Immediate (subst name_subst x)
+    in
+    resolve_env.external_modules
+    <- IdTbl.add ~key:name ~data:x resolve_env.external_modules
+
+  let load_external_module ~loc filename name resolve_env =
+    register_external_module name (In_flight filename) resolve_env ;
+    let m = !load_module ~loc ~name:(Ident.name name) resolve_env filename in
+    register_external_module name (Immediate m : _ or_deferred) resolve_env ;
+    m
+
   let get_global_module ~mode ~loc resolve_env name =
     match
       IdTbl.find_name ~modes:(modes_of_mode mode) name
@@ -466,69 +551,6 @@ module Scope = struct
       names=
         IdTbl.merge_skewed_names scope.names expr_scope.names
           ~combine:select_new }
-
-  let subst s =
-    let subst_type_expr = Subst.type_expr s in
-    let subst_type_decl = Subst.type_decl s in
-    let rec subst
-        { kind
-        ; path
-        ; names
-        ; type_variables
-        ; type_decls
-        ; fields
-        ; ctors
-        ; modules
-        ; module_types
-        ; instances
-        ; paths
-        ; mode } =
-      { kind
-      ; path
-      ; names= IdTbl.map ~f:subst_type_expr names
-      ; type_variables
-      ; type_decls= IdTbl.map ~f:subst_type_decl type_decls
-      ; fields=
-          IdTbl.map fields ~f:(fun (decl, i) -> (subst_type_decl decl, i))
-      ; ctors= IdTbl.map ctors ~f:(fun (decl, i) -> (subst_type_decl decl, i))
-      ; modules= IdTbl.map ~f:subst_scope_or_path modules
-      ; module_types= IdTbl.map ~f:subst_scope_or_path module_types
-      ; instances
-      ; paths (* TODO: Think about what to do here. *)
-      ; mode }
-    and subst_scope_or_path = function
-      | Immediate scope ->
-          Immediate (subst scope)
-      | Deferred _ as deferred ->
-          (* TODO: This is not the desired behaviour.. *)
-          deferred
-    in
-    subst
-
-  let build_subst ~type_subst ~module_subst s
-      { kind= _
-      ; path= _
-      ; names= _
-      ; type_variables= _
-      ; type_decls
-      ; fields= _
-      ; ctors= _
-      ; modules
-      ; module_types= _
-      ; instances= _
-      ; paths= _
-      ; mode= _ } =
-    let s =
-      IdTbl.fold_keys ~init:s type_decls ~f:(fun s ident ->
-          let src_path, dst_path = type_subst ident in
-          Subst.with_type src_path dst_path s )
-    in
-    let s =
-      IdTbl.fold_keys ~init:s modules ~f:(fun s ident ->
-          let src_path, dst_path = module_subst ident in
-          Subst.with_module src_path dst_path s )
-    in
-    s
 end
 
 let empty_resolve_env : Scope.t resolve_env =
@@ -693,8 +715,7 @@ let add_deferred_module (name : Ident.t) lid =
   map_current_scope ~f:(Scope.add_module name (Scope.Deferred lid))
 
 let register_external_module name x env =
-  env.resolve_env.external_modules
-  <- IdTbl.add ~key:name ~data:x env.resolve_env.external_modules
+  Scope.register_external_module name x env.resolve_env
 
 let find_module ~loc (lid : lid) env =
   Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack
