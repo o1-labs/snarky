@@ -472,7 +472,7 @@ module Scope = struct
       | None ->
           raise (Error (loc, Unbound_module lid)) )
 
-  let rec find_module_deferred ~mode ~loc ~scopes resolve_env lid scope =
+  let find_module_deferred ~mode ~loc ~scopes resolve_env lid scope =
     let open Option.Let_syntax in
     let modes = modes_of_mode mode in
     match lid with
@@ -480,18 +480,13 @@ module Scope = struct
         let%map ident, m = IdTbl.find_name ~modes name scope.modules in
         (Path.Pident ident, m)
     | Ldot (lid, name) -> (
-      match find_module_deferred ~mode ~loc ~scopes resolve_env lid scope with
-      | Some (path, Immediate m) -> (
+      match find_module_ ~mode ~loc ~scopes resolve_env lid scope with
+      | Some (path, m) -> (
         match IdTbl.find_name ~modes name m.modules with
         | Some (ident, m) ->
             Some (Path.dot path ident, m)
         | None ->
             raise (Error (loc, Unbound_module lid)) )
-      | Some (path, Deferred lid) ->
-          (* TODO: Rework this. We need to know whether deferred modules are
-             Prover or Checked mode.
-          *)
-          Some (Path.Pdot (path, Checked, name), Deferred (Ldot (lid, name)))
       | None ->
           None )
     | Lapply (lid1, lid2) ->
