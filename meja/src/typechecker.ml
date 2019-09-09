@@ -266,58 +266,68 @@ let get_field_of_decl typ decl_vars params field_decls (field : lid) env =
 let get_ctor (name : lid) env =
   let mode = Envi.current_mode env in
   let loc = name.loc in
-  match (Envi.TypeDecl.find_of_constructor ~mode name env, name.txt) with
-  | ( Some
-        ( name
-        , (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
-        )
-    , _ )
-  | ( Some
-        ( name
-        , ({tdec_desc= TExtend (_, decl, ctors); tdec_ident; tdec_params; _}, i)
-        )
-    , _ ) ->
-      let ctor = List.nth_exn ctors i in
-      let make_name tdec_ident =
-        match name with
-        | Path.Pdot (m, _, _) ->
-            Path.dot m tdec_ident
-        | _ ->
-            Path.Pident tdec_ident
-      in
-      let typ =
-        match ctor.ctor_ret with
-        | Some typ ->
-            typ
-        | _ ->
-            Envi.TypeDecl.mk_typ ~params:tdec_params
-              ~ident:(make_name tdec_ident) decl env
-      in
-      let args_typ =
-        match ctor.ctor_args with
-        | Ctor_record decl ->
-            Envi.Type.mk
-              (Tctor
-                 { var_ident= make_name ctor.ctor_ident
-                 ; var_params= decl.tdec_params
-                 ; var_decl= decl })
-              env
-        | Ctor_tuple [typ] ->
-            typ
-        | Ctor_tuple typs ->
-            Envi.Type.mk (Ttuple typs) env
-      in
-      let bound_vars =
-        Set.to_list
-          (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
-      in
-      let bound_vars = Envi.Type.refresh_vars bound_vars env in
-      let args_typ = Envi.Type.copy args_typ env in
-      let typ = Envi.Type.copy typ env in
-      List.iter ~f:Envi.Type.restore_desc bound_vars ;
-      (name, typ, args_typ)
-  | _ ->
-      raise (Error (loc, Unbound ("constructor", name)))
+  let name, (decl, index) =
+    match Envi.TypeDecl.find_of_constructor ~mode name env with
+    | Some x ->
+        x
+    | None ->
+        raise (Error (loc, Unbound ("constructor", name)))
+  in
+  let ctors =
+    match decl.tdec_desc with
+    | TVariant ctors ->
+        ctors
+    | TExtend (_, _, ctors) ->
+        ctors
+    | _ ->
+        assert false
+  in
+  let ctor = List.nth_exn ctors index in
+  let make_name name tdec_ident =
+    match name with
+    | Path.Pdot (m, _, _) ->
+        Path.dot m tdec_ident
+    | _ ->
+        Path.Pident tdec_ident
+  in
+  let typ =
+    match ctor.ctor_ret with
+    | Some typ ->
+        typ
+    | _ ->
+        let ident, decl =
+          match decl.tdec_desc with
+          | TVariant _ ->
+              make_name name decl.tdec_ident, decl
+          | TExtend (name, decl, _) ->
+              make_name name decl.tdec_ident, decl
+          | _ ->
+              assert false
+        in
+        Envi.TypeDecl.mk_typ ~params:decl.tdec_params ~ident decl env
+  in
+  let args_typ =
+    match ctor.ctor_args with
+    | Ctor_record decl ->
+        Envi.Type.mk
+          (Tctor
+             { var_ident= make_name name ctor.ctor_ident
+             ; var_params= decl.tdec_params
+             ; var_decl= decl })
+          env
+    | Ctor_tuple [typ] ->
+        typ
+    | Ctor_tuple typs ->
+        Envi.Type.mk (Ttuple typs) env
+  in
+  let bound_vars =
+    Set.to_list (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
+  in
+  let bound_vars = Envi.Type.refresh_vars bound_vars env in
+  let args_typ = Envi.Type.copy args_typ env in
+  let typ = Envi.Type.copy typ env in
+  List.iter ~f:Envi.Type.restore_desc bound_vars ;
+  (name, typ, args_typ)
 
 let rec check_pattern env typ pat =
   let mode = Envi.current_mode env in

@@ -238,10 +238,11 @@ module TypeDecl = struct
           in
           (env, Typedast.Tctor_record fields)
     in
-    let type0_ctor_args =
+    let ctor_ident = map_loc ~f:(Ident.create ~mode) ctor.ctor_ident in
+    let env, type0_ctor_args =
       match ctor_args with
       | Tctor_tuple args ->
-          Type0.Ctor_tuple (List.map ~f:type0 args)
+          (env, Type0.Ctor_tuple (List.map ~f:type0 args))
       | Tctor_record fields ->
           (* Extract the type variables from the fields' types, use
              them as effective type parameters.
@@ -253,15 +254,18 @@ module TypeDecl = struct
             |> Set.to_list
           in
           let decl =
-            mk
-              ~name:(Ident.create ~mode ctor.ctor_ident.txt)
-              ~params
+            mk ~name:ctor_ident.txt ~params
               (TRecord (List.map ~f:(fun {fld_fld= f; _} -> f) fields))
           in
-          Type0.Ctor_record decl
+          (* Add the type declaration to the outer scope. *)
+          let scope, env = Envi.pop_scope env in
+          let env =
+            map_current_scope ~f:(Scope.add_type_declaration decl) env
+          in
+          let env = Envi.push_scope scope env in
+          (env, Type0.Ctor_record decl)
     in
     let env = push_scope scope (close_expr_scope env) in
-    let ctor_ident = map_loc ~f:(Ident.create ~mode) ctor.ctor_ident in
     ( env
     , { Typedast.ctor_ident
       ; ctor_args
@@ -296,8 +300,12 @@ module TypeDecl = struct
                predeclared_types= IdTbl.remove ident type_env.predeclared_types
              } ;
           (Location.mkloc ident tdec_ident.loc, id)
-      | None ->
-          (map_loc ~f:(Ident.create ~mode) tdec_ident, next_id env)
+      | None -> (
+        match tdec_desc with
+        | Pdec_extend (path, {tdec_ident; _}, _) ->
+            (map_loc ~f:(fun _ -> tdec_ident) path, next_id env)
+        | _ ->
+            (map_loc ~f:(Ident.create ~mode) tdec_ident, next_id env) )
     in
     let env = open_expr_scope env in
     let import_params env =
