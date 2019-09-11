@@ -402,7 +402,9 @@ module Scope = struct
       | In_flight _ | Deferred _ ->
           x
       | Immediate x ->
-          let add_name ident = (Path.Pident ident, Path.dot (Pident name) ident) in
+          let add_name ident =
+            (Path.Pident ident, Path.dot (Pident name) ident)
+          in
           let name_subst =
             build_subst Subst.empty x ~type_subst:add_name
               ~module_subst:add_name
