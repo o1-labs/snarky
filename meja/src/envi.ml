@@ -89,8 +89,6 @@ module Scope = struct
     | Continue
     | Functor of (Longident.t -> 't or_path -> 't)
 
-  type paths = {type_paths: Path.t Int.Map.t}
-
   type t =
     { kind: t kind
     ; path: Longident.t option
@@ -102,15 +100,12 @@ module Scope = struct
     ; modules: t or_path IdTbl.t
     ; module_types: t or_path IdTbl.t
     ; instances: Path.t Int.Map.t
-    ; paths: paths
     ; mode: mode }
 
   let load_module :
       (loc:Location.t -> name:string -> t resolve_env -> string -> t) ref =
     ref (fun ~loc ~name _env _filename ->
         raise (Error (loc, Unbound_module (Lident name))) )
-
-  let empty_paths = {type_paths= Int.Map.empty}
 
   let empty ~mode path kind =
     { kind
@@ -123,7 +118,6 @@ module Scope = struct
     ; modules= IdTbl.empty
     ; module_types= IdTbl.empty
     ; instances= Int.Map.empty
-    ; paths= empty_paths
     ; mode }
 
   let set_path path env = {env with path= Some path}
@@ -161,18 +155,9 @@ module Scope = struct
   let find_ctor ~mode name scope =
     IdTbl.find_name ~modes:(modes_of_mode mode) name scope.ctors
 
-  let add_preferred_type_name path decl_id {type_paths} =
-    {type_paths= Map.set type_paths ~key:decl_id ~data:path}
-
-  let get_preferred_type_name decl_id {paths= {type_paths}; _} =
-    Map.find type_paths decl_id
-
   let add_type_declaration decl scope =
     { scope with
-      type_decls= IdTbl.add scope.type_decls ~key:decl.tdec_ident ~data:decl
-    ; paths=
-        add_preferred_type_name (Pident decl.tdec_ident) decl.tdec_id
-          scope.paths }
+      type_decls= IdTbl.add scope.type_decls ~key:decl.tdec_ident ~data:decl }
 
   let get_type_declaration name scope = IdTbl.find name scope.type_decls
 
@@ -205,7 +190,6 @@ module Scope = struct
       ; modules= modules1
       ; module_types= module_types1
       ; instances= instances1
-      ; paths= _
       ; mode= _ }
       { kind= _
       ; path= _
@@ -217,7 +201,6 @@ module Scope = struct
       ; modules= modules2
       ; module_types= module_types2
       ; instances= instances2
-      ; paths= _
       ; mode= _ } =
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
@@ -234,14 +217,6 @@ module Scope = struct
     let acc = Map.fold2 instances1 instances2 ~init:acc ~f:instances in
     let acc = IdTbl.fold2_names names1 names2 ~init:acc ~f:names in
     acc
-
-  (* Extend the paths in the first argument with those in the second,
-     overwriting them where both exist.
-  *)
-  let join_paths {type_paths= type_paths1} {type_paths= type_paths2} =
-    { type_paths=
-        Map.merge_skewed type_paths1 type_paths2 ~combine:(fun ~key:_ _ v -> v)
-    }
 
   (* [join ~loc scope1 scope2] attaches the definitions in [scope2] to
      [scope1], raising an error at [loc] if a name is defined in both scopes
@@ -261,7 +236,6 @@ module Scope = struct
       ; modules= modules1
       ; module_types= module_types1
       ; instances= instances1
-      ; paths= paths1
       ; mode= mode1 }
       { kind= _
       ; path= _
@@ -273,7 +247,6 @@ module Scope = struct
       ; modules= modules2
       ; module_types= module_types2
       ; instances= instances2
-      ; paths= paths2
       ; mode= mode2 } =
     { kind
     ; path
@@ -299,11 +272,7 @@ module Scope = struct
             raise (Error (loc, Multiple_definition ("module type", key))) )
     ; instances=
         Map.merge_skewed instances1 instances2 ~combine:(fun ~key:_ _ v -> v)
-    ; paths= join_paths paths1 paths2
     ; mode= weakest_mode mode1 mode2 }
-
-  let extend_paths name {type_paths} =
-    {type_paths= Map.map ~f:(Path.add_outer_module name) type_paths}
 
   let add_module name m scope =
     {scope with modules= IdTbl.add scope.modules ~key:name ~data:m}
@@ -596,7 +565,6 @@ let find_type_variable name env =
 let add_module (name : Ident.t) m =
   map_current_scope ~f:(fun scope ->
       let scope = Scope.add_module name (Scope.Immediate m) scope in
-      let paths = Scope.extend_paths name m.Scope.paths in
       { scope with
         instances=
           Map.merge scope.instances m.instances ~f:(fun ~key:_ data ->
@@ -604,10 +572,7 @@ let add_module (name : Ident.t) m =
               | `Left x ->
                   Some x
               | `Both (_, x) | `Right x ->
-                  Some (Path.add_outer_module name x) )
-      ; (* Prefer the shorter paths in the current module to those in the
-           module we are adding. *)
-        paths= Scope.join_paths paths scope.paths } )
+                  Some (Path.add_outer_module name x) ) } )
 
 let add_deferred_module (name : Ident.t) lid =
   map_current_scope ~f:(Scope.add_module name (Scope.Deferred lid))
@@ -1089,25 +1054,6 @@ module Type = struct
     in
     env.resolve_env.type_env <- {env.resolve_env.type_env with implicit_vars} ;
     local_implicit_vars
-
-  let get_preferred_constr_name env typ =
-    match typ.type_desc with
-    | Tctor variant ->
-        List.find_map env.scope_stack
-          ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)
-    | _ ->
-        None
-
-  let normalise_constr_names env typ =
-    constr_map typ ~f:(fun variant ->
-        match
-          List.find_map env.scope_stack
-            ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)
-        with
-        | Some ident ->
-            Tctor {variant with var_ident= ident}
-        | None ->
-            Tctor variant )
 end
 
 module TypeDecl = struct
