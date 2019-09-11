@@ -92,9 +92,7 @@ end
 
 let backtrack snap =
   let changes = Snapshot.backtrack snap in
-  List.iter changes ~f:(function
-    | Depth (typ, depth) ->
-        typ.type_depth <- depth)
+  List.iter changes ~f:(function Depth (typ, depth) -> typ.type_depth <- depth )
 
 let rec typ_debug_print fmt typ =
   let open Format in
