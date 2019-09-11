@@ -292,15 +292,9 @@ module TypeDecl = struct
       Type0.
         { tdec_ident= tdec_ident.txt
         ; tdec_params
-        ; tdec_implicit_params= []
+        ; tdec_implicit_params
         ; tdec_desc= TAbstract
         ; tdec_id }
-    in
-    let add_implicits implicit_params =
-      if Set.is_empty implicit_params then tdec_implicit_params
-      else
-        tdec_implicit_params |> Typeset.of_list |> Set.union implicit_params
-        |> Set.to_list
     in
     (* Make sure the declaration is available to lookup for recursive types. *)
     let env =
@@ -317,27 +311,18 @@ module TypeDecl = struct
     let decl, env =
       match tdec_desc with
       | Pdec_abstract ->
-          ({decl with tdec_implicit_params}, env)
+          (decl, env)
       | Pdec_alias typ ->
           let typ, env = Type.import ~must_find:true typ env in
           let typ = typ.type_type in
-          let tdec_implicit_params =
-            add_implicits (Type1.implicit_params typ)
-          in
-          ({decl with tdec_desc= TAlias typ; tdec_implicit_params}, env)
+          ({decl with tdec_desc= TAlias typ}, env)
       | Pdec_open ->
           ({decl with tdec_desc= TOpen}, env)
       | Pdec_record fields ->
           let env, fields =
             List.fold_map ~init:env fields ~f:(import_field ~must_find:true)
           in
-          let tdec_implicit_params =
-            add_implicits
-              (Typeset.union_list
-                 (List.map fields ~f:(fun {fld_type; _} ->
-                      Type1.implicit_params fld_type )))
-          in
-          ({decl with tdec_desc= TRecord fields; tdec_implicit_params}, env)
+          ({decl with tdec_desc= TRecord fields}, env)
       | Pdec_variant ctors | Pdec_extend (_, _, ctors) ->
           let name =
             match tdec_desc with
@@ -375,77 +360,9 @@ module TypeDecl = struct
             | _ ->
                 failwith "Expected a TVariant or a TExtend"
           in
-          let tdec_implicit_params =
-            add_implicits
-              (Typeset.union_list
-                 (List.map ctors ~f:(fun ctor ->
-                      let typs =
-                        match ctor.ctor_args with
-                        | Ctor_tuple typs ->
-                            typs
-                        | Ctor_record {tdec_desc= TRecord fields; _} ->
-                            List.map ~f:(fun {fld_type; _} -> fld_type) fields
-                        | Ctor_record _ ->
-                            assert false
-                      in
-                      let typs =
-                        match ctor.ctor_ret with
-                        | Some ctor_ret ->
-                            ctor_ret :: typs
-                        | None ->
-                            typs
-                      in
-                      Typeset.union_list
-                        (List.map typs ~f:Type1.implicit_params) )))
-          in
-          ({decl with tdec_desc; tdec_implicit_params}, env)
+          ({decl with tdec_desc}, env)
     in
     let env = close_expr_scope env in
-    let () =
-      let open Type0 in
-      (* Insert the implicit arguments in all nested references to this type. *)
-      if List.is_empty decl.tdec_implicit_params then ()
-      else
-        let rec iter_type typ =
-          ( match typ.type_desc with
-          | Tctor variant when Int.equal variant.var_decl.tdec_id decl.tdec_id
-            ->
-              typ.type_desc
-              <- Tctor
-                   { variant with
-                     var_implicit_params= decl.tdec_implicit_params
-                   ; var_decl= decl }
-          | _ ->
-              () ) ;
-          Type1.iter ~f:iter_type typ
-        in
-        let iter_field field = iter_type field.fld_type in
-        let iter_ctor_args = function
-          | Ctor_tuple typs ->
-              List.iter ~f:iter_type typs
-          | Ctor_record {tdec_desc= TRecord fields; _} ->
-              List.iter ~f:iter_field fields
-          | Ctor_record _ ->
-              assert false
-        in
-        let iter_ctor ctor =
-          iter_ctor_args ctor.ctor_args ;
-          Option.iter ~f:iter_type ctor.ctor_ret
-        in
-        match decl.tdec_desc with
-        | TAbstract | TOpen ->
-            ()
-        | TAlias typ ->
-            iter_type typ
-        | TRecord fields ->
-            List.iter ~f:iter_field fields
-        | TVariant ctors ->
-            List.iter ~f:iter_ctor ctors
-        | TExtend (_lid, _base_decl, ctors) ->
-            List.iter ~f:iter_ctor ctors
-        | TForward _ ->
-            failwith "Cannot import a forward type declaration"
-    in
     let env =
       map_current_scope ~f:(Scope.register_type_declaration decl) env
     in

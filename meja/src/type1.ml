@@ -162,8 +162,6 @@ let bubble_label label typ =
   | None, typ ->
       typ
 
-let implicit_params _typ = Typeset.empty
-
 let rec constr_map ~f typ =
   let {type_depth; _} = typ in
   match typ.type_desc with
