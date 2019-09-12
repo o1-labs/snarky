@@ -1540,7 +1540,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
             (Bigstring.length bs)
         in
         let t = stub str in
-        Caml.Gc.finalise (fun _ -> delete t) t ;
+        Caml.Gc.finalise delete t ;
         t
   end
 
@@ -1627,7 +1627,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
             (Bigstring.length bs)
         in
         let t = stub str in
-        Caml.Gc.finalise (fun _ -> delete t) t ;
+        Caml.Gc.finalise delete t ;
         t
   end
 
