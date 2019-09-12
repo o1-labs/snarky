@@ -1570,10 +1570,16 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
               end)
 
     let dummy =
-      let stub = foreign (func_name "dummy") (int @-> returning typ) in
-      fun ~input_size ->
-        let s = stub input_size in
-        delete s ; s
+      (* TODO *)
+      if String.is_prefix (func_name "") ~prefix:"camlsnark_bn128_" then (
+        fun ~input_size ->
+        ignore input_size ;
+        failwith "dummy verification keys are unimplemented for bn128" )
+      else
+        let stub = foreign (func_name "dummy") (int @-> returning typ) in
+        fun ~input_size ->
+          let s = stub input_size in
+          delete s ; s
 
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)
