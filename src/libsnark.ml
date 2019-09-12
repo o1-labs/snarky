@@ -1579,7 +1579,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
         let stub = foreign (func_name "dummy") (int @-> returning typ) in
         fun ~input_size ->
           let s = stub input_size in
-          delete s ; s
+          Caml.GC.finalise delete s ; s
 
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)
