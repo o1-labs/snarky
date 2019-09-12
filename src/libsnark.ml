@@ -1569,8 +1569,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
                 let prefix = with_prefix M.prefix "verification_key"
               end)
 
-    let dummy ~input_size =
-      foreign (func_name "dummy") (int @-> returning typ) input_size
+    let dummy =
+      let stub = foreign (func_name "dummy") (int @-> returning typ) in
+      fun ~input_size ->
+        let s = stub input_size in
+        delete s ; s
 
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)
