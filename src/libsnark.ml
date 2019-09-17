@@ -355,6 +355,12 @@ module Field = struct
 
     val mul : t -> t -> t
 
+    val ( + ) : t -> t -> t
+
+    val ( - ) : t -> t -> t
+
+    val ( * ) : t -> t -> t
+
     val inv : t -> t
 
     val is_square : t -> bool
@@ -462,6 +468,12 @@ module Field = struct
       let sub x y =
         let z = sub x y in
         schedule_delete z ; z
+
+      let ( + ) = add
+
+      let ( - ) = sub
+
+      let ( * ) = mul
 
       module Mutable = struct
         open Bindings.Mutable
