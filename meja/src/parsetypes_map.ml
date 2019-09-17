@@ -47,8 +47,8 @@ let type_expr mapper {type_desc; type_loc} =
 
 let type_desc mapper typ =
   match typ with
-  | Ptyp_var (name, explicit) ->
-      Ptyp_var (Option.map ~f:(str mapper) name, explicit)
+  | Ptyp_var name ->
+      Ptyp_var (Option.map ~f:(str mapper) name)
   | Ptyp_tuple typs ->
       Ptyp_tuple (List.map ~f:(mapper.type_expr mapper) typs)
   | Ptyp_arrow (typ1, typ2, explicit, label) ->

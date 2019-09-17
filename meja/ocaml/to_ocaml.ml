@@ -6,9 +6,9 @@ open Meja_lib.Parsetypes
 
 let rec of_type_desc ?loc typ =
   match typ with
-  | Ptyp_var (None, _) ->
+  | Ptyp_var None ->
       Typ.any ?loc ()
-  | Ptyp_var (Some name, _) ->
+  | Ptyp_var (Some name) ->
       Typ.var ?loc name.txt
   | Ptyp_poly (_, typ) ->
       of_type_expr typ
