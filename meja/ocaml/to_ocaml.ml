@@ -215,6 +215,8 @@ and of_module_sig_desc ?loc = function
   | Pmty_sig signature ->
       Some (Mty.signature ?loc (of_signature signature))
   | Pmty_name name ->
+      Some (Mty.ident ?loc name)
+  | Pmty_alias name ->
       Some (Mty.alias ?loc name)
   | Pmty_abstract ->
       None

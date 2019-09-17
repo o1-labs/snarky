@@ -102,6 +102,7 @@ and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 and module_sig_desc =
   | Pmty_sig of signature
   | Pmty_name of lid
+  | Pmty_alias of lid
   | Pmty_abstract
   | Pmty_functor of str * module_sig * module_sig
 
