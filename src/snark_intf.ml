@@ -735,8 +735,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
       val unpack_full :
         Var.t -> (Boolean.var Bitstring_lib.Bitstring.Lsb_first.t, _) Checked.t
-      (** [unpack x ~length] returns a list of R1CS variables containing the
-          bits of [x].
+      (** [unpack_full x] returns a list of R1CS variables containing the bits
+          of [x], with the least significant bit of x first.
       *)
 
       val parity : ?length:int -> Var.t -> (Boolean.var, _) Checked.t
@@ -1531,6 +1531,8 @@ module type Run_basic = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
+  module Internal_Basic : Basic with type field = field
+
   (** Rank-1 constraints over {!type:Field.t}s. *)
   module rec Constraint : sig
     type t = Field.t Constraint0.t
@@ -1602,7 +1604,7 @@ module type Run_basic = sig
     end
 
     type ('var, 'value) t =
-      ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
+      ('var, 'value, field, (unit, unit) Internal_Basic.Checked.t) Types.Typ.t
 
     (** Accessors for {!type:Types.Typ.t} fields: *)
 
@@ -1932,7 +1934,7 @@ module type Run_basic = sig
     module Ref : sig
       (** A mutable reference to an ['a] value, which may be used in checked
           computations. *)
-      type 'a t
+      type 'a t = 'a Internal_Basic.As_prover.Ref.t
 
       val create : (unit -> 'a) as_prover -> 'a t
 
@@ -2201,11 +2203,6 @@ module type Run_basic = sig
   val set_constraint_logger : (Constraint.t -> unit) -> unit
 
   val clear_constraint_logger : unit -> unit
-
-  module Internal_Basic :
-    Basic
-    with type field = field
-     and type 'a As_prover.Ref.t = 'a As_prover.Ref.t
 
   val run_checked : ('a, prover_state) Internal_Basic.Checked.t -> 'a
 end
