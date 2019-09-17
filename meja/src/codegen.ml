@@ -171,7 +171,7 @@ let typ_of_decl ~loc (decl : type_decl) =
                 fresh_names
                   (List.map decl.tdec_params ~f:(fun param ->
                        match param.type_desc with
-                       | Ptyp_var (Some name, _) ->
+                       | Ptyp_var (Some name) ->
                            name.txt
                        | _ ->
                            "a" ))

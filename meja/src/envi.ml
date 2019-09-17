@@ -585,11 +585,29 @@ let find_module ~loc (lid : lid) env =
   Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack
 
 let find_module_deferred ~mode ~loc (lid : lid) env =
-  List.find_map
-    ~f:
-      (Scope.find_module_deferred ~mode ~loc ~scopes:env.scope_stack
-         env.resolve_env lid.txt)
-    env.scope_stack
+  match
+    List.find_map
+      ~f:
+        (Scope.find_module_deferred ~mode ~loc ~scopes:env.scope_stack
+           env.resolve_env lid.txt)
+      env.scope_stack
+  with
+  | Some m ->
+      Some m
+  | None -> (
+    match lid.txt with
+    | Lident name -> (
+      match
+        IdTbl.find_name name ~modes:(modes_of_mode mode)
+          env.resolve_env.external_modules
+      with
+      | Some (ident, _) ->
+          Some (Pident ident, Deferred lid.txt)
+      | None ->
+          None )
+    | _ ->
+        let path, m = find_module ~mode ~loc lid env in
+        Some (path, Immediate m) )
 
 let add_implicit_instance name typ env =
   let path = Path.Pident name in
@@ -692,7 +710,7 @@ module Type = struct
 
   let mk type_desc env = Type1.mk env.depth type_desc
 
-  let mkvar ?explicitness name env = Type1.mkvar ?explicitness env.depth name
+  let mkvar name env = Type1.mkvar env.depth name
 
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
@@ -702,18 +720,18 @@ module Type = struct
 
   let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
-    | Tvar (None, explicitness) -> (
-      match (must_find, explicitness) with
-      | Some true, Explicit ->
+    | Tvar None -> (
+      match must_find with
+      | Some true ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (env, mkvar ~explicitness None env) )
-    | Tvar ((Some x as name), explicitness) -> (
+          (env, mkvar None env) )
+    | Tvar (Some x as name) -> (
         let var =
           match must_find with
           | Some true ->
               let var = find_type_variable x env in
-              if (not (Option.is_some var)) && explicitness = Explicit then
+              if Option.is_none var then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
@@ -725,7 +743,7 @@ module Type = struct
         | Some var ->
             (env, var)
         | None ->
-            let var = mkvar ~explicitness name env in
+            let var = mkvar name env in
             (add_type_variable x var env, var) )
     | _ ->
         raise (Error (loc, Expected_type_var typ))
@@ -905,15 +923,26 @@ module Type = struct
     new_exp
 
   let implicit_instances ~loc
-      ~(is_subtype : env -> type_expr -> of_:type_expr -> bool)
-      (typ : type_expr) env =
+      ~(unifies : env -> type_expr -> type_expr -> bool) (typ : type_expr)
+      typ_vars env =
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, instance_typ) ->
         let instance_typ = copy ~loc instance_typ Int.Map.empty env in
-        if is_subtype env typ ~of_:instance_typ then
-          List.find_map env.scope_stack ~f:(fun {instances; _} ->
-              Option.map (Map.find instances id) ~f:(fun path ->
-                  (path, instance_typ) ) )
+        let snapshot = Snapshot.create () in
+        let {TypeEnvi.variable_instances; _} = env.resolve_env.type_env in
+        if unifies env typ instance_typ then
+          if
+            Set.exists typ_vars ~f:(fun var ->
+                Option.is_some (instance env var) )
+          then (
+            backtrack snapshot ;
+            env.resolve_env.type_env
+            <- {env.resolve_env.type_env with variable_instances} ;
+            None )
+          else
+            List.find_map env.scope_stack ~f:(fun {instances; _} ->
+                Option.map (Map.find instances id) ~f:(fun path ->
+                    (path, instance_typ) ) )
         else None )
 
   let generate_implicits e env =
@@ -929,14 +958,16 @@ module Type = struct
         in
         {exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (e, es)}
 
-  let rec instantiate_implicits ~loc ~is_subtype implicit_vars env =
+  let rec instantiate_implicits ~loc ~unifies implicit_vars env =
     let env_implicits = env.resolve_env.type_env.implicit_vars in
     env.resolve_env.type_env
     <- {env.resolve_env.type_env with implicit_vars= []} ;
     let implicit_vars =
       List.filter implicit_vars
         ~f:(fun ({Typedast.exp_loc; exp_type; _} as exp) ->
-          match implicit_instances ~loc ~is_subtype exp_type env with
+          let exp_type = flatten exp_type env in
+          let typ_vars = type_vars exp_type in
+          match implicit_instances ~loc ~unifies exp_type typ_vars env with
           | [(name, instance_typ)] ->
               let name = Location.mkloc name exp_loc in
               let e =
@@ -964,21 +995,17 @@ module Type = struct
     | [] ->
         implicit_vars
     | _ ->
-        instantiate_implicits ~loc ~is_subtype
-          (new_implicits @ implicit_vars)
-          env
+        instantiate_implicits ~loc ~unifies (new_implicits @ implicit_vars) env
 
-  let flattened_implicit_vars ~loc ~toplevel ~is_subtype typ_vars env =
-    let is_subtype env typ ~of_:ctyp =
-      is_subtype env typ ~of_:(snd (get_implicits [] ctyp))
-    in
+  let flattened_implicit_vars ~loc ~toplevel ~unifies typ_vars env =
+    let unifies env typ ctyp = unifies env typ (snd (get_implicits [] ctyp)) in
     let {TypeEnvi.implicit_vars; _} = env.resolve_env.type_env in
     let implicit_vars =
       List.map implicit_vars ~f:(fun exp ->
           {exp with exp_type= flatten exp.exp_type env} )
     in
     let implicit_vars =
-      instantiate_implicits ~loc ~is_subtype implicit_vars env
+      instantiate_implicits ~loc ~unifies implicit_vars env
     in
     let implicit_vars =
       List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
@@ -1030,8 +1057,7 @@ module Type = struct
                        Type1.equal_at_depth ~depth:env.depth e_weak.exp_type
                          e_strong.exp_type
                      then (
-                       ignore
-                         (is_subtype env e_strong.exp_type ~of_:e_weak.exp_type) ;
+                       ignore (unifies env e_strong.exp_type e_weak.exp_type) ;
                        ( match e_weak.exp_desc with
                        | Texp_unifiable desc ->
                            desc.expression <- Some e_strong

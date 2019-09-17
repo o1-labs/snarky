@@ -41,6 +41,14 @@ module Make (Backend : Backend_intf.S) :
    and type Proof.message = Backend.Proof.message
 
 module Run : sig
+  val throw_on_id : int -> unit
+  (** [throw_on_id id] set an internal flag that causes [Make] to throw an
+      error if its internal id would be the same as [id].
+
+      This can be used to identify where different instances come from, so that
+      the same instance can be used for creating and calling functions.
+  *)
+
   module Make
       (Backend : Backend_intf.S) (Prover_state : sig
           type t
