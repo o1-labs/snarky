@@ -1620,6 +1620,25 @@ module Make (Backend : Backend_intf.S) = struct
 end
 
 module Run = struct
+  let functor_counter = ref 0
+
+  let active_counters = ref []
+
+  let is_active_functor_id num =
+    match !active_counters with
+    | [] ->
+        (* Show the usual error, the functor isn't wrong as far as we can tell.
+        *)
+        true
+    | active :: _ ->
+        Int.equal active num
+
+  let active_functor_id () = List.hd_exn !active_counters
+
+  let error_on_counter = ref None
+
+  let throw_on_id id = error_on_counter := Some id
+
   module Make_basic
       (Backend : Backend_intf.S) (Prover_state : sig
           type t
@@ -1634,6 +1653,17 @@ module Run = struct
     let set_constraint_logger = set_constraint_logger
 
     let clear_constraint_logger = clear_constraint_logger
+
+    let this_functor_id =
+      incr functor_counter ;
+      let id = !functor_counter in
+      match !error_on_counter with
+      | Some id' when Int.equal id id' ->
+          failwithf
+            "Attempted to create Snarky.Snark.Run.Make functor with ID %i" id
+            ()
+      | _ ->
+          id
 
     let state =
       ref
@@ -1651,7 +1681,14 @@ module Run = struct
         ; log_constraint= None }
 
     let run checked =
-      if not !state.is_running then
+      if not (is_active_functor_id this_functor_id) then
+        failwithf
+          "Could not run this function.\n\n\
+           Hint: The module used to create this function had internal ID %i, \
+           but the module used to run it had internal ID %i. The same \
+           instance of Snarky.Snark.Run.Make must be used for both."
+          this_functor_id (active_functor_id ()) ()
+      else if not !state.is_running then
         failwith "This function can't be run outside of a checked computation." ;
       let state', x = Runner.run checked !state in
       state := state' ;
@@ -2089,39 +2126,54 @@ module Run = struct
           ?proving_key ?verification_key ?proving_key_path
           ?verification_key_path ?handlers ~public_input checked
 
+      let mark_active ~f =
+        let counters = !active_counters in
+        active_counters := this_functor_id :: counters ;
+        let ret = f () in
+        active_counters := counters ;
+        ret
+
       let run = as_stateful
 
       let constraint_system (proof_system : _ t) =
-        constraint_system ~run proof_system
+        mark_active ~f:(fun () -> constraint_system ~run proof_system)
 
-      let digest (proof_system : _ t) = digest ~run proof_system
+      let digest (proof_system : _ t) =
+        mark_active ~f:(fun () -> digest ~run proof_system)
 
       let generate_keypair (proof_system : _ t) =
-        generate_keypair ~run proof_system
+        mark_active ~f:(fun () -> generate_keypair ~run proof_system)
 
       let run_unchecked ~public_input ?handlers (proof_system : _ t) s =
-        run_unchecked ~run ~public_input ?handlers proof_system
-          (fun a _ s -> (s, a))
-          s
+        mark_active ~f:(fun () ->
+            run_unchecked ~run ~public_input ?handlers proof_system
+              (fun a _ s -> (s, a))
+              s )
 
       let run_checked ~public_input ?handlers (proof_system : _ t) s =
-        Or_error.map (run_checked' ~run ~public_input ?handlers proof_system s)
-          ~f:(fun (s, x, _state) -> (s, x))
+        mark_active ~f:(fun () ->
+            Or_error.map
+              (run_checked' ~run ~public_input ?handlers proof_system s)
+              ~f:(fun (s, x, _state) -> (s, x)) )
 
       let check ~public_input ?handlers (proof_system : _ t) s =
-        Or_error.map ~f:(Fn.const ())
-          (run_checked' ~run ~public_input ?handlers proof_system s)
+        mark_active ~f:(fun () ->
+            Or_error.map ~f:(Fn.const ())
+              (run_checked' ~run ~public_input ?handlers proof_system s) )
 
       let prove ~public_input ?proving_key ?handlers ?message
           (proof_system : _ t) s =
-        prove ~run ~public_input ?proving_key ?handlers ?message proof_system s
+        mark_active ~f:(fun () ->
+            prove ~run ~public_input ?proving_key ?handlers ?message
+              proof_system s )
 
       let verify ~public_input ?verification_key ?message (proof_system : _ t)
           =
         verify ~public_input ?verification_key ?message proof_system
 
       let generate_witness ~public_input ?handlers (proof_system : _ t) s =
-        generate_witness ~run ~public_input ?handlers proof_system s
+        mark_active ~f:(fun () ->
+            generate_witness ~run ~public_input ?handlers proof_system s )
     end
 
     let assert_ ?label c = run (assert_ ?label c)
@@ -2194,29 +2246,61 @@ module Run = struct
 
     let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
 
+    let rec inject_wrapper : type r_var r_value k_var k_value.
+           (r_var, r_value, k_var, k_value) Data_spec.t
+        -> f:(r_var -> r_var)
+        -> k_var
+        -> k_var =
+     fun spec ~f ->
+      match spec with
+      | [] ->
+          fun x -> f x
+      | _ :: spec ->
+          fun x a -> inject_wrapper spec ~f (x a)
+
     let constraint_system ~exposing x =
+      let x =
+        inject_wrapper exposing x ~f:(fun x () -> Proof_system.mark_active ~f:x)
+      in
       Perform.constraint_system ~run:as_stateful ~exposing x
 
     let generate_keypair ~exposing x =
+      let x =
+        inject_wrapper exposing x ~f:(fun x () -> Proof_system.mark_active ~f:x)
+      in
       Perform.generate_keypair ~run:as_stateful ~exposing x
 
-    let prove ?message pk x = Perform.prove ~run:as_stateful ?message pk x
+    let prove ?message pk spec x =
+      let x =
+        inject_wrapper spec x ~f:(fun x () -> Proof_system.mark_active ~f:x)
+      in
+      Perform.prove ~run:as_stateful ?message pk spec x
 
     let verify ?message pf vk spec = verify ?message pf vk spec
 
-    let generate_witness x = Perform.generate_witness ~run:as_stateful x
+    let generate_witness spec x =
+      let x =
+        inject_wrapper spec x ~f:(fun x () -> Proof_system.mark_active ~f:x)
+      in
+      Perform.generate_witness ~run:as_stateful spec x
 
-    let generate_witness_conv ~f x =
-      Perform.generate_witness_conv ~run:as_stateful ~f x
+    let generate_witness_conv ~f spec x =
+      let x =
+        inject_wrapper spec x ~f:(fun x () -> Proof_system.mark_active ~f:x)
+      in
+      Perform.generate_witness_conv ~run:as_stateful ~f spec x
 
-    let run_unchecked x = Perform.run_unchecked ~run:as_stateful x
+    let run_unchecked x =
+      Perform.run_unchecked ~run:as_stateful (fun () ->
+          Proof_system.mark_active ~f:x )
 
     let run_and_check x =
       let res =
         Perform.run_and_check ~run:as_stateful (fun () ->
-            let prover_block = x () in
-            !state.as_prover := true ;
-            As_prover.run_prover prover_block )
+            Proof_system.mark_active ~f:(fun () ->
+                let prover_block = x () in
+                !state.as_prover := true ;
+                As_prover.run_prover prover_block ) )
       in
       !state.as_prover := true ;
       res
@@ -2233,7 +2317,7 @@ module Run = struct
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
           ~next_auxiliary:(ref 1) ~eval_constraints:false None ;
       state := {!state with log_constraint= Some log_constraint} ;
-      ignore (x ()) ;
+      ignore (Proof_system.mark_active ~f:x) ;
       state := old ;
       !count
 

@@ -234,6 +234,8 @@ let module_sig_desc mapper = function
       Pmty_sig (mapper.signature mapper sigs)
   | Pmty_name name ->
       Pmty_name (lid mapper name)
+  | Pmty_alias name ->
+      Pmty_alias (lid mapper name)
   | Pmty_abstract ->
       Pmty_abstract
   | Pmty_functor (name, fsig, msig) ->

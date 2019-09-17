@@ -277,6 +277,8 @@ let module_sig_desc mapper = function
       Tmty_sig (mapper.signature mapper sigs)
   | Tmty_name name ->
       Tmty_name (path mapper name)
+  | Tmty_alias name ->
+      Tmty_alias (path mapper name)
   | Tmty_abstract ->
       Tmty_abstract
   | Tmty_functor (name, fsig, msig) ->

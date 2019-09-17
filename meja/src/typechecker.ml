@@ -328,24 +328,6 @@ let get_ctor (name : lid) env =
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
 
-(** Replace the AST type names with normalised names, when available.
-    Should be called through Typedast_map.
-*)
-let normalise_type_expr_names env mapper typ =
-  let typ =
-    match typ.Typedast.type_desc with
-    | Ttyp_ctor variant -> (
-      match Envi.Type.get_preferred_constr_name env typ.type_type with
-      | Some ident ->
-          let var_ident = Location.mkloc ident variant.var_ident.loc in
-          {typ with type_desc= Ttyp_ctor {variant with var_ident}}
-      | _ ->
-          typ )
-    | _ ->
-        typ
-  in
-  Typedast_map.default_iterator.type_expr mapper typ
-
 let rec check_pattern env typ pat =
   let mode = Envi.current_mode env in
   let loc = pat.pat_loc in
@@ -361,10 +343,6 @@ let rec check_pattern env typ pat =
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp.type_type ;
       let p, names, env = check_pattern env ctyp.type_type p in
-      let ctyp =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} ctyp
-      in
       ( { Typedast.pat_loc= loc
         ; pat_type= typ
         ; pat_desc= Tpat_constraint (p, ctyp) }
@@ -658,10 +636,6 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ.type_type ;
       let e, env = get_expression env typ.type_type e in
       check_type ~loc env e.exp_type typ.type_type ;
-      let typ =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} typ
-      in
       ( { exp_loc= loc
         ; exp_type= typ.type_type
         ; exp_desc= Texp_constraint (e, typ) }
@@ -1045,10 +1019,6 @@ let rec check_signature_item env item =
       Envi.Type.update_depths env typ.type_type ;
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = add_polymorphised name.txt typ.type_type env in
-      let typ =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} typ
-      in
       (env, {Typedast.sig_desc= Tsig_value (name, typ); sig_loc= loc})
   | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
@@ -1058,10 +1028,6 @@ let rec check_signature_item env item =
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = add_polymorphised name.txt typ.type_type env in
       let env = Envi.add_implicit_instance name.txt typ.type_type env in
-      let typ =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} typ
-      in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
   | Psig_type decl ->
       let _decl, env = Typet.TypeDecl.import decl env in
@@ -1137,18 +1103,25 @@ and check_module_sig env path msig =
       , env )
   | Pmty_name lid ->
       let path, m =
-        match Envi.find_module_deferred ~mode ~loc lid env with
+        match Envi.find_module_type ~mode lid env with
         | Some m ->
             m
         | None ->
-            (* TODO: This is a hack. We should set up the environment for
-               interface files before typechecking them, so that all of the
-               names are available and we can find those that aren't.
-            *)
-            ( Path.Pident (Ident.create ~mode:Checked "NOT_FOUND")
-            , Envi.Scope.Deferred lid.txt )
+            raise (Envi.Error (loc, Unbound ("module type", lid.txt)))
       in
       ( { Typedast.msig_desc= Tmty_name (Location.mkloc path lid.loc)
+        ; msig_loc= loc }
+      , m
+      , env )
+  | Pmty_alias lid ->
+      let path, m =
+        match Envi.find_module_deferred ~loc ~mode lid env with
+        | Some m ->
+            m
+        | None ->
+            raise (Envi.Error (loc, Unbound ("module", lid.txt)))
+      in
+      ( { Typedast.msig_desc= Tmty_alias (Location.mkloc path lid.loc)
         ; msig_loc= loc }
       , m
       , env )

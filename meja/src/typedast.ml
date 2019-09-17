@@ -109,6 +109,7 @@ and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 and module_sig_desc =
   | Tmty_sig of signature
   | Tmty_name of path
+  | Tmty_alias of path
   | Tmty_abstract
   | Tmty_functor of str * module_sig * module_sig
 

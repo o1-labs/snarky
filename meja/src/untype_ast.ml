@@ -254,6 +254,8 @@ and module_sig_desc = function
       Parsetypes.Pmty_sig (List.map ~f:signature_item sigs)
   | Tmty_name path ->
       Pmty_name (map_loc ~f:longident_of_path path)
+  | Tmty_alias path ->
+      Pmty_alias (map_loc ~f:longident_of_path path)
   | Tmty_abstract ->
       Pmty_abstract
   | Tmty_functor (name, fsig, msig) ->
