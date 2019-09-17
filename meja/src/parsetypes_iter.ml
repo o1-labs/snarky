@@ -40,7 +40,7 @@ let type_expr iter {type_desc; type_loc} =
   iter.type_desc iter type_desc
 
 let type_desc iter = function
-  | Ptyp_var (name, _) ->
+  | Ptyp_var name ->
       Option.iter ~f:(str iter) name
   | Ptyp_tuple typs ->
       List.iter ~f:(iter.type_expr iter) typs
@@ -204,6 +204,8 @@ let module_sig_desc iter = function
   | Pmty_sig sigs ->
       iter.signature iter sigs
   | Pmty_name name ->
+      lid iter name
+  | Pmty_alias name ->
       lid iter name
   | Pmty_abstract ->
       ()

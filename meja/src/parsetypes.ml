@@ -4,7 +4,7 @@ type type_expr = {type_desc: type_desc; type_loc: Location.t}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Ptyp_var of str option * explicitness
+  | Ptyp_var of str option
   | Ptyp_tuple of type_expr list
   | Ptyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
@@ -98,6 +98,7 @@ and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 and module_sig_desc =
   | Pmty_sig of signature
   | Pmty_name of lid
+  | Pmty_alias of lid
   | Pmty_abstract
   | Pmty_functor of str * module_sig * module_sig
 

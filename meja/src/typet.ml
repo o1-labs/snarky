@@ -23,21 +23,19 @@ module Type = struct
     let import = import ?must_find in
     let loc = typ.type_loc in
     match typ.type_desc with
-    | Ptyp_var (None, explicitness) -> (
-      match (must_find, explicitness) with
-      | Some true, Explicit ->
+    | Ptyp_var None -> (
+      match must_find with
+      | Some true ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          ( { type_desc= Ttyp_var (None, explicitness)
-            ; type_loc= loc
-            ; type_type= mkvar ~explicitness None env }
+          ( {type_desc= Ttyp_var None; type_loc= loc; type_type= mkvar None env}
           , env ) )
-    | Ptyp_var ((Some {txt= x; _} as name), explicitness) ->
+    | Ptyp_var (Some {txt= x; _} as name) ->
         let var =
           match must_find with
           | Some true ->
               let var = find_type_variable x env in
-              if (not (Option.is_some var)) && explicitness = Explicit then
+              if Option.is_none var then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
@@ -50,11 +48,10 @@ module Type = struct
           | Some var ->
               (var, env)
           | None ->
-              let var = mkvar ~explicitness (Some x) env in
+              let var = mkvar (Some x) env in
               (var, add_type_variable x var env)
         in
-        ( {type_desc= Ttyp_var (name, explicitness); type_loc= loc; type_type}
-        , env )
+        ({type_desc= Ttyp_var name; type_loc= loc; type_type}, env)
     | Ptyp_poly (vars, typ) ->
         let env = open_expr_scope env in
         let env, vars =
@@ -173,7 +170,7 @@ module TypeDecl = struct
     | Pdec_record fields ->
         let field_vars =
           List.map fields ~f:(fun {fld_ident; fld_type= _; fld_loc} ->
-              { type_desc= Ptyp_var (Some fld_ident, Explicit)
+              { type_desc= Ptyp_var (Some fld_ident)
               ; type_loc= fld_loc } )
         in
         let poly_decl =

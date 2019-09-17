@@ -566,9 +566,9 @@ pat_or_bare_tuple:
 
 simple_type_expr:
   | UNDERSCORE
-    { mktyp ~pos:$loc (Ptyp_var (None, Explicit)) }
+    { mktyp ~pos:$loc (Ptyp_var None) }
   | QUOT x = as_loc(lident)
-    { mktyp ~pos:$loc (Ptyp_var (Some x, Explicit)) }
+    { mktyp ~pos:$loc (Ptyp_var (Some x)) }
   | t = decl_type_expr
     { t }
   | LPAREN x = type_expr RPAREN

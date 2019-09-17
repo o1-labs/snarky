@@ -9,7 +9,7 @@ type type_expr =
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Ttyp_var of str option * explicitness
+  | Ttyp_var of str option
   | Ttyp_tuple of type_expr list
   | Ttyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
@@ -111,6 +111,7 @@ and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 and module_sig_desc =
   | Tmty_sig of signature
   | Tmty_name of path
+  | Tmty_alias of path
   | Tmty_abstract
   | Tmty_functor of str * module_sig * module_sig
 

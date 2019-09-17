@@ -47,10 +47,9 @@ module Type = struct
   let variant ?loc ?(params = []) ident =
     {var_ident= Loc.mk ident ?loc; var_params= params}
 
-  let none ?loc ?(explicit = Explicit) () = mk ?loc (Ptyp_var (None, explicit))
+  let none ?loc () = mk ?loc (Ptyp_var None)
 
-  let var ?loc ?(explicit = Explicit) name =
-    mk ?loc (Ptyp_var (Some (Loc.mk ?loc name), explicit))
+  let var ?loc name = mk ?loc (Ptyp_var (Some (Loc.mk ?loc name)))
 
   let constr ?loc ?params ident =
     mk ?loc (Ptyp_ctor (variant ?loc ?params ident))

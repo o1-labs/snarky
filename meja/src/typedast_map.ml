@@ -52,8 +52,8 @@ let type_expr mapper {type_desc; type_loc; type_type} =
 
 let type_desc mapper typ =
   match typ with
-  | Ttyp_var (name, explicit) ->
-      Ttyp_var (Option.map ~f:(str mapper) name, explicit)
+  | Ttyp_var name ->
+      Ttyp_var (Option.map ~f:(str mapper) name)
   | Ttyp_tuple typs ->
       Ttyp_tuple (List.map ~f:(mapper.type_expr mapper) typs)
   | Ttyp_arrow (typ1, typ2, explicit, label) ->
@@ -240,6 +240,8 @@ let module_sig_desc mapper = function
       Tmty_sig (mapper.signature mapper sigs)
   | Tmty_name name ->
       Tmty_name (path mapper name)
+  | Tmty_alias name ->
+      Tmty_alias (path mapper name)
   | Tmty_abstract ->
       Tmty_abstract
   | Tmty_functor (name, fsig, msig) ->

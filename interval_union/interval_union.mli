@@ -17,3 +17,7 @@ val disjoint_union_exn : t -> t -> t
 val disjoint : t -> t -> bool
 
 val to_interval : t -> Interval.t Or_error.t
+
+val right_endpoint : t -> int option
+
+val left_endpoint : t -> int option
