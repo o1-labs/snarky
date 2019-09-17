@@ -1533,7 +1533,7 @@ let pp_typ = Typeprint.type_expr
 let rec report_error ppf = function
   | Check_failed (typ, constr_typ, err) ->
       fprintf ppf
-        "@[<v>@[<hov>Incompatable types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
+        "@[<v>@[<hov>Incompatible types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
         pp_typ typ pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
       fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" pp_typ typ
