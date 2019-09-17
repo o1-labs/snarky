@@ -62,7 +62,7 @@ let j : a:{int} -> b:{option(int)} -> int = fun {~a, ~b} => {
 
 instance x = 0;
 
-let k : {option(int)} -> int = j;
+let k : int = j;
 
 instance y = Some(0);
 

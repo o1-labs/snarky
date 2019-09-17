@@ -49,10 +49,9 @@ module Type = struct
     ; var_params= params
     ; var_implicit_params= implicits }
 
-  let none ?loc ?(explicit = Explicit) () = mk ?loc (Ptyp_var (None, explicit))
+  let none ?loc () = mk ?loc (Ptyp_var None)
 
-  let var ?loc ?(explicit = Explicit) name =
-    mk ?loc (Ptyp_var (Some (Loc.mk ?loc name), explicit))
+  let var ?loc name = mk ?loc (Ptyp_var (Some (Loc.mk ?loc name)))
 
   let constr ?loc ?params ?implicits ident =
     mk ?loc (Ptyp_ctor (variant ?loc ?params ?implicits ident))
@@ -79,9 +78,6 @@ module Type_decl = struct
 
   let alias ?loc ?params ?implicits name typ =
     mk ?loc ?params ?implicits name (Pdec_alias typ)
-
-  let unfold ?loc ?params ?implicits name typ =
-    mk ?loc ?params ?implicits name (Pdec_unfold typ)
 
   let record ?loc ?params ?implicits name fields =
     mk ?loc ?params ?implicits name (Pdec_record fields)

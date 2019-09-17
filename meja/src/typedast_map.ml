@@ -56,8 +56,8 @@ let type_expr mapper {type_desc; type_loc; type_type} =
 
 let type_desc mapper typ =
   match typ with
-  | Ttyp_var (name, explicit) ->
-      Ttyp_var (Option.map ~f:(str mapper) name, explicit)
+  | Ttyp_var name ->
+      Ttyp_var (Option.map ~f:(str mapper) name)
   | Ttyp_tuple typs ->
       Ttyp_tuple (List.map ~f:(mapper.type_expr mapper) typs)
   | Ttyp_arrow (typ1, typ2, explicit, label) ->
@@ -86,8 +86,8 @@ let ptype_expr mapper Parsetypes.{type_desc; type_loc} =
 
 let ptype_desc mapper typ =
   match typ with
-  | Parsetypes.Ptyp_var (name, explicit) ->
-      Parsetypes.Ptyp_var (Option.map ~f:(str mapper) name, explicit)
+  | Parsetypes.Ptyp_var name ->
+      Parsetypes.Ptyp_var (Option.map ~f:(str mapper) name)
   | Ptyp_tuple typs ->
       Ptyp_tuple (List.map ~f:(mapper.ptype_expr mapper) typs)
   | Ptyp_arrow (typ1, typ2, explicit, label) ->
@@ -141,8 +141,6 @@ let type_decl_desc mapper = function
       Parsetypes.Pdec_abstract
   | Pdec_alias typ ->
       Pdec_alias (mapper.ptype_expr mapper typ)
-  | Pdec_unfold typ ->
-      Pdec_unfold (mapper.ptype_expr mapper typ)
   | Pdec_record fields ->
       Pdec_record (List.map ~f:(mapper.field_decl mapper) fields)
   | Pdec_variant ctors ->

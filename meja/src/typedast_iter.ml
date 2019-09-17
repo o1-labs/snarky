@@ -53,7 +53,7 @@ let type_expr iter {type_desc; type_loc; type_type} =
   iter.type_desc iter type_desc
 
 let type_desc iter = function
-  | Ttyp_var (name, _) ->
+  | Ttyp_var name ->
       Option.iter ~f:(str iter) name
   | Ttyp_tuple typs ->
       List.iter ~f:(iter.type_expr iter) typs
@@ -75,7 +75,7 @@ let ptype_expr iter Parsetypes.{type_desc; type_loc} =
   iter.ptype_desc iter type_desc
 
 let ptype_desc iter = function
-  | Parsetypes.Ptyp_var (name, _) ->
+  | Parsetypes.Ptyp_var name ->
       Option.iter ~f:(fun name -> iter.location iter name.Location.loc) name
   | Ptyp_tuple typs ->
       List.iter ~f:(iter.ptype_expr iter) typs
@@ -123,8 +123,6 @@ let type_decl_desc iter = function
   | Parsetypes.Pdec_abstract ->
       ()
   | Pdec_alias typ ->
-      iter.ptype_expr iter typ
-  | Pdec_unfold typ ->
       iter.ptype_expr iter typ
   | Pdec_record fields ->
       List.iter ~f:(iter.field_decl iter) fields

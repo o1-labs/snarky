@@ -9,7 +9,7 @@ type type_expr =
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Ttyp_var of str option * explicitness
+  | Ttyp_var of str option
   | Ttyp_tuple of type_expr list
   | Ttyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
@@ -43,7 +43,6 @@ type type_decl =
 and type_decl_desc =
   | Tdec_abstract
   | Tdec_alias of type_expr
-  | Tdec_unfold of type_expr
   | Tdec_record of field_decl list
   | Tdec_variant of ctor_decl list
   | Tdec_open

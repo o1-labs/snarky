@@ -7,7 +7,7 @@ type type_expr =
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of string option * explicitness
+  | Tvar of string option
   | Ttuple of type_expr list
   | Tarrow of type_expr * type_expr * explicitness * Ast_types.arg_label
   (* A type name. *)
@@ -42,7 +42,6 @@ and type_decl =
 and type_decl_desc =
   | TAbstract
   | TAlias of type_expr
-  | TUnfold of type_expr
   | TRecord of field_decl list
   | TVariant of ctor_decl list
   | TOpen

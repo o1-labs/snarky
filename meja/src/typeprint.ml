@@ -4,9 +4,9 @@ open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Tvar (None, _) ->
+  | Tvar None ->
       fprintf fmt "_"
-  | Tvar (Some name, _) ->
+  | Tvar (Some name) ->
       fprintf fmt "'%s" name
   | Ttuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
@@ -69,7 +69,7 @@ let ctor_decl fmt decl =
 let type_decl_desc fmt = function
   | TAbstract ->
       ()
-  | TAlias typ | TUnfold typ ->
+  | TAlias typ ->
       fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
   | TRecord fields ->
       fprintf fmt "@ =@ {@[<hv2>%a@]}"

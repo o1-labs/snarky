@@ -14,10 +14,10 @@ module Type0 = struct
   open Type0
 
   let rec type_desc ?loc = function
-    | Tvar (None, explicit) ->
-        Type.none ?loc ~explicit ()
-    | Tvar (Some name, explicit) ->
-        Type.var ?loc ~explicit name
+    | Tvar None ->
+        Type.none ?loc ()
+    | Tvar (Some name) ->
+        Type.var ?loc name
     | Ttuple typs ->
         Type.tuple ?loc (List.map ~f:(type_expr ?loc) typs)
     | Tarrow (typ1, typ2, explicit, label) ->
@@ -61,8 +61,6 @@ module Type0 = struct
         Type_decl.abstract ?loc ?params ?implicits name
     | TAlias typ ->
         Type_decl.alias ?loc ?params ?implicits name (type_expr typ)
-    | TUnfold typ ->
-        Type_decl.unfold ?loc ?params ?implicits name (type_expr typ)
     | TRecord fields ->
         Type_decl.record ?loc ?params ?implicits name
           (List.map ~f:field_decl fields)
@@ -85,8 +83,8 @@ module Type0 = struct
 end
 
 let rec type_desc = function
-  | Typedast.Ttyp_var (name, explicit) ->
-      Parsetypes.Ptyp_var (name, explicit)
+  | Typedast.Ttyp_var name ->
+      Parsetypes.Ptyp_var name
   | Ttyp_tuple typs ->
       Ptyp_tuple (List.map ~f:type_expr typs)
   | Ttyp_arrow (typ1, typ2, explicit, label) ->
@@ -124,8 +122,6 @@ let type_decl_desc = function
       Parsetypes.Pdec_abstract
   | Tdec_alias typ ->
       Pdec_alias (type_expr typ)
-  | Tdec_unfold typ ->
-      Pdec_unfold (type_expr typ)
   | Tdec_record fields ->
       Pdec_record (List.map ~f:field_decl fields)
   | Tdec_variant ctors ->

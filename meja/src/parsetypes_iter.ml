@@ -40,7 +40,7 @@ let type_expr iter {type_desc; type_loc} =
   iter.type_desc iter type_desc
 
 let type_desc iter = function
-  | Ptyp_var (name, _) ->
+  | Ptyp_var name ->
       Option.iter ~f:(str iter) name
   | Ptyp_tuple typs ->
       List.iter ~f:(iter.type_expr iter) typs
@@ -86,8 +86,6 @@ let type_decl_desc iter = function
   | Pdec_abstract ->
       ()
   | Pdec_alias typ ->
-      iter.type_expr iter typ
-  | Pdec_unfold typ ->
       iter.type_expr iter typ
   | Pdec_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
