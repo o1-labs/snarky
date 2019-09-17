@@ -10,6 +10,89 @@ let mk depth type_desc =
 
 let mkvar depth name = mk depth (Tvar name)
 
+type change = Depth of (type_expr * int)
+
+(** Implements a weak, mutable linked-list containing the history of changes.
+
+    Every change is added to the same list, and the snapshots correspond to
+    cuts of this list.
+    We gain several advantages from using a weak, mutable linked-list:
+    * if there are no active snapshots, the whole list will be GC'd and any
+      changes don't need to be stored at all
+    * if there are active snapshots, OCaml will GC the history of changes up to
+      the first active snapshot
+    * all simultaneously active snapshots point to a part of the same physical
+      list
+    * the snapshots can be erased during backtracking, so that different
+      snapshots can't be used out of order to 'restore' a state that didn't
+      exist previously
+*)
+module Snapshot : sig
+  type t
+
+  val create : unit -> t
+  (** Get a new snapshot. *)
+
+  val add_to_history : change -> unit
+  (** Add a change to the history of all active snapshots. *)
+
+  val backtrack : t -> change list
+  (** Erase the history back to the snapshot, and return the list of changes
+      that occurred since, ordered from newest to oldest.
+  *)
+end = struct
+  type node = Some of (change * t) | None
+
+  and t = node ref
+
+  (* Points to the end of the current history list.
+
+     If multiple snapshots are captured before the next change, they will all
+     point to the value held here.
+
+     If there are no snapshots active, OCaml is free to GC the value held here.
+  *)
+  let current = Weak.create 1
+
+  (* Update the value held by [current] to represent the given change, and set
+     current to be a new empty value.
+  *)
+  let add_to_history change =
+    match Weak.get current 0 with
+    | Some ptr ->
+        let new_ptr = ref None in
+        ptr := Some (change, new_ptr) ;
+        Weak.set current 0 (Some new_ptr)
+    | None ->
+        (* No snapshots active, no list to add to. *)
+        ()
+
+  let create () =
+    match Weak.get current 0 with
+    | Some ptr ->
+        ptr
+    | None ->
+        let new_ptr = ref None in
+        Weak.set current 0 (Some new_ptr) ;
+        new_ptr
+
+  let backtrack snap =
+    let rec backtrack changes ptr =
+      match !ptr with
+      | Some (change, ptr) ->
+          (* Clear this snapshot so that it can't be re-used. *)
+          snap := None ;
+          backtrack (change :: changes) ptr
+      | None ->
+          changes
+    in
+    backtrack [] snap
+end
+
+let backtrack snap =
+  let changes = Snapshot.backtrack snap in
+  List.iter changes ~f:(function Depth (typ, depth) -> typ.type_depth <- depth )
+
 let rec typ_debug_print fmt typ =
   let open Format in
   let print i = fprintf fmt i in
@@ -99,8 +182,9 @@ let rec equal_at_depth ~depth typ1 typ2 =
     | _, _ ->
         false
 
-(* TODO: integrate with a backtrack mechanism for unification errors. *)
-let set_depth depth typ = typ.type_depth <- depth
+let set_depth depth typ =
+  Snapshot.add_to_history (Depth (typ, typ.type_depth)) ;
+  typ.type_depth <- depth
 
 let update_depth depth typ = if typ.type_depth > depth then set_depth depth typ
 
