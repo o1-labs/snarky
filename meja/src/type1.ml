@@ -11,6 +11,11 @@ let mk depth type_desc =
 let mkvar ?(explicitness = Explicit) depth name =
   mk depth (Tvar (name, explicitness))
 
+(** The representative of a type. This unfolds any [Tref] values that are
+    present to get to the true underlying type.
+*)
+let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
+
 let rec typ_debug_print fmt typ =
   let open Format in
   let print i = fprintf fmt i in
@@ -47,7 +52,10 @@ let rec typ_debug_print fmt typ =
   | Tctor {var_ident= name; var_params= params; _} ->
       print "%a (%a)" Path.pp name (print_list typ_debug_print) params
   | Ttuple typs ->
-      print "(%a)" (print_list typ_debug_print) typs ) ;
+      print "(%a)" (print_list typ_debug_print) typs
+  | Tref typ ->
+      print "= " ;
+      typ_debug_print fmt typ ) ;
   print " @%i)" typ.type_depth
 
 let fold ~init ~f typ =
@@ -65,10 +73,34 @@ let fold ~init ~f typ =
   | Tpoly (typs, typ) ->
       let acc = List.fold ~init ~f typs in
       f acc typ
+  | Tref typ ->
+      f init typ
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
 
+(** Make a copy of the [type_desc], using [f] as a recursor. Unfolds any
+    references to make a copy of the representative's description.
+*)
+let rec copy_desc ~f = function
+  | Tvar _ as typ ->
+      typ
+  | Ttuple typs ->
+      Ttuple (List.map ~f typs)
+  | Tarrow (typ1, typ2, explicitness, label) ->
+      Tarrow (f typ1, f typ2, explicitness, label)
+  | Tctor ({var_params; var_implicit_params; _} as variant) ->
+      Tctor
+        { variant with
+          var_params= List.map ~f var_params
+        ; var_implicit_params= List.map ~f var_implicit_params }
+  | Tpoly (typs, typ) ->
+      Tpoly (List.map ~f typs, f typ)
+  | Tref typ ->
+      copy_desc ~f typ.type_desc
+
 let rec equal_at_depth ~depth typ1 typ2 =
+  let typ1 = repr typ1 in
+  let typ2 = repr typ2 in
   if Int.equal typ1.type_id typ2.type_id then true
   else
     match (typ1.type_desc, typ2.type_desc) with
@@ -139,7 +171,7 @@ let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
 
 let rec bubble_label_aux label typ =
   let {type_depth; _} = typ in
-  match typ.type_desc with
+  match (repr typ).type_desc with
   | Tarrow (typ1, typ2, explicit, arr_label)
     when Int.equal (compare_arg_label label arr_label) 0 ->
       (Some (typ1, explicit, arr_label), typ2)
@@ -181,27 +213,21 @@ let implicit_params typ =
 
 let rec constr_map ~f typ =
   let {type_depth; _} = typ in
-  match typ.type_desc with
+  match (repr typ).type_desc with
   | Tvar _ ->
-      typ
-  | Ttuple typs ->
-      let typs = List.map ~f:(constr_map ~f) typs in
-      mk type_depth (Ttuple typs)
-  | Tarrow (typ1, typ2, explicit, label) ->
-      let typ1 = constr_map ~f typ1 in
-      let typ2 = constr_map ~f typ2 in
-      mk type_depth (Tarrow (typ1, typ2, explicit, label))
+      repr typ
   | Tctor variant ->
       let var_params = List.map ~f:(constr_map ~f) variant.var_params in
       let var_implicit_params =
         List.map ~f:(constr_map ~f) variant.var_implicit_params
       in
       mk type_depth (f {variant with var_params; var_implicit_params})
-  | Tpoly (typs, typ) ->
-      mk type_depth (Tpoly (typs, constr_map ~f typ))
+  | _ ->
+      mk type_depth (copy_desc ~f:(constr_map ~f) typ.type_desc)
 
 let discard_optional_labels typ =
   let rec go typ' =
+    let typ' = repr typ' in
     match typ'.type_desc with
     | Tarrow (_, typ2, _, Optional _) ->
         go typ2
@@ -213,7 +239,7 @@ let discard_optional_labels typ =
   go typ
 
 let is_arrow typ =
-  match typ.type_desc with
+  match (repr typ).type_desc with
   | Tarrow _ | Tpoly (_, {type_desc= Tarrow _; _}) ->
       true
   | _ ->
@@ -222,25 +248,31 @@ let is_arrow typ =
 (** Returns [true] if [typ] is a strict subtype of [in_]
     (i.e. excluding [typ == in_]), or [false] otherwise.
 *)
-let rec contains typ ~in_ =
+let contains typ ~in_ =
+  let typ = repr typ in
   let equal = phys_equal typ in
-  let contains in_ = contains typ ~in_ in
-  match in_.type_desc with
-  | Tvar _ ->
-      false
-  | Ttuple typs ->
-      List.exists ~f:equal typs || List.exists ~f:contains typs
-  | Tarrow (typ1, typ2, _explicit, _label) ->
-      equal typ1 || equal typ2 || contains typ1 || contains typ2
-  | Tctor variant ->
-      List.exists ~f:equal variant.var_params
-      || List.exists ~f:equal variant.var_implicit_params
-      || List.exists ~f:contains variant.var_params
-      || List.exists ~f:contains variant.var_implicit_params
-  | Tpoly (typs, typ) ->
-      List.exists ~f:equal typs || equal typ
-      || List.exists ~f:contains typs
-      || contains typ
+  let rec contains in_ =
+    let in_ = repr in_ in
+    match in_.type_desc with
+    | Tvar _ ->
+        false
+    | Ttuple typs ->
+        List.exists ~f:equal typs || List.exists ~f:contains typs
+    | Tarrow (typ1, typ2, _explicit, _label) ->
+        equal typ1 || equal typ2 || contains typ1 || contains typ2
+    | Tctor variant ->
+        List.exists ~f:equal variant.var_params
+        || List.exists ~f:equal variant.var_implicit_params
+        || List.exists ~f:contains variant.var_params
+        || List.exists ~f:contains variant.var_implicit_params
+    | Tpoly (typs, typ) ->
+        List.exists ~f:equal typs || equal typ
+        || List.exists ~f:contains typs
+        || contains typ
+    | Tref _ ->
+        assert false
+  in
+  contains in_
 
 module Decl = struct
   let decl_id = ref 0

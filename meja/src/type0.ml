@@ -13,6 +13,7 @@ and type_desc =
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
+  | Tref of type_expr
 [@@deriving sexp]
 
 and variant =
