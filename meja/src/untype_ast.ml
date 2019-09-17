@@ -14,10 +14,10 @@ module Type0 = struct
   open Type0
 
   let rec type_desc ?loc = function
-    | Tvar (None, explicit) ->
-        Type.none ?loc ~explicit ()
-    | Tvar (Some name, explicit) ->
-        Type.var ?loc ~explicit name
+    | Tvar None ->
+        Type.none ?loc ()
+    | Tvar (Some name) ->
+        Type.var ?loc name
     | Ttuple typs ->
         Type.tuple ?loc (List.map ~f:(type_expr ?loc) typs)
     | Tarrow (typ1, typ2, explicit, label) ->
@@ -83,8 +83,8 @@ module Type0 = struct
 end
 
 let rec type_desc = function
-  | Typedast.Ttyp_var (name, explicit) ->
-      Parsetypes.Ptyp_var (name, explicit)
+  | Typedast.Ttyp_var name ->
+      Parsetypes.Ptyp_var name
   | Ttyp_tuple typs ->
       Ptyp_tuple (List.map ~f:type_expr typs)
   | Ttyp_arrow (typ1, typ2, explicit, label) ->

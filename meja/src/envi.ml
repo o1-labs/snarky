@@ -727,7 +727,7 @@ module Type = struct
 
   let mk type_desc env = Type1.mk env.depth type_desc
 
-  let mkvar ?explicitness name env = Type1.mkvar ?explicitness env.depth name
+  let mkvar name env = Type1.mkvar env.depth name
 
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
@@ -737,18 +737,18 @@ module Type = struct
 
   let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
-    | Tvar (None, explicitness) -> (
-      match (must_find, explicitness) with
-      | Some true, Explicit ->
+    | Tvar None -> (
+      match must_find with
+      | Some true ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (env, mkvar ~explicitness None env) )
-    | Tvar ((Some x as name), explicitness) -> (
+          (env, mkvar None env) )
+    | Tvar (Some x as name) -> (
         let var =
           match must_find with
           | Some true ->
               let var = find_type_variable x env in
-              if (not (Option.is_some var)) && explicitness = Explicit then
+              if Option.is_none var then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
@@ -760,7 +760,7 @@ module Type = struct
         | Some var ->
             (env, var)
         | None ->
-            let var = mkvar ~explicitness name env in
+            let var = mkvar name env in
             (add_type_variable x var env, var) )
     | _ ->
         raise (Error (loc, Expected_type_var typ))

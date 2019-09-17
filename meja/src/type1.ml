@@ -8,8 +8,7 @@ let mk depth type_desc =
   incr type_id ;
   {type_desc; type_id= !type_id; type_depth= depth}
 
-let mkvar ?(explicitness = Explicit) depth name =
-  mk depth (Tvar (name, explicitness))
+let mkvar depth name = mk depth (Tvar name)
 
 type change = Depth of (type_expr * int)
 
@@ -109,14 +108,10 @@ let rec typ_debug_print fmt typ =
   in
   print "(%i:" typ.type_id ;
   ( match typ.type_desc with
-  | Tvar (None, Explicit) ->
+  | Tvar None ->
       print "var _"
-  | Tvar (Some name, Explicit) ->
+  | Tvar (Some name) ->
       print "var %s@" name
-  | Tvar (None, Implicit) ->
-      print "implicit_var _"
-  | Tvar (Some name, Implicit) ->
-      print "implicit_var %s" name
   | Tpoly (typs, typ) ->
       print "poly [%a] %a"
         (print_list typ_debug_print)
@@ -250,18 +245,6 @@ let bubble_label label typ =
       mk type_depth (Tarrow (typ1, typ2, explicit, arr_label))
   | None, typ ->
       typ
-
-let implicit_params typ =
-  let rec implicit_params set typ =
-    match typ.type_desc with
-    | Tvar (_, Implicit) ->
-        Set.add set typ
-    | Tpoly (_, typ) ->
-        implicit_params set typ
-    | _ ->
-        fold ~init:set typ ~f:implicit_params
-  in
-  implicit_params Typeset.empty typ
 
 let rec constr_map ~f typ =
   let {type_depth; _} = typ in

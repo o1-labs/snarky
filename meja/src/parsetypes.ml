@@ -4,7 +4,7 @@ type type_expr = {type_desc: type_desc; type_loc: Location.t}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Ptyp_var of str option * explicitness
+  | Ptyp_var of str option
   | Ptyp_tuple of type_expr list
   | Ptyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)

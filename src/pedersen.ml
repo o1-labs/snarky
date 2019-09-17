@@ -76,6 +76,8 @@ module Make
     val extend :
       t -> Boolean.var Triple.t list -> start:int -> (t, _) Checked.t
 
+    val append : t -> Boolean.var Triple.t list -> (t, _) Checked.t
+
     val acc : t -> Weierstrass_curve.var
 
     val support : t -> Interval_union.t
@@ -269,6 +271,12 @@ end = struct
                 hash start v (x :: xs)
           in
           {support; acc= `Var acc}
+
+    let append t triples =
+      let start =
+        Option.value (Interval_union.right_endpoint t.support) ~default:0
+      in
+      extend t triples ~start
   end
 
   let hash ~init:(start, acc) triples =
