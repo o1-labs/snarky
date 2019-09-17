@@ -69,7 +69,8 @@ let rec check_type_aux ~loc typ ctyp env =
   in
   Type1.unify_depths typ ctyp ;
   match (typ.type_desc, ctyp.type_desc) with
-  | Tref _, _ | _, Tref _ -> assert false
+  | Tref _, _ | _, Tref _ ->
+      assert false
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
   | Tpoly (_, typ), _ ->
@@ -196,7 +197,8 @@ let rec is_subtype ~loc env typ ~of_:ctyp =
     false
   else
     match (typ.type_desc, ctyp.type_desc) with
-  | Tref _, _ | _, Tref _ -> assert false
+    | Tref _, _ | _, Tref _ ->
+        assert false
     | Tpoly (_, typ), _ ->
         is_subtype typ ~of_:ctyp
     | _, Tpoly (_, ctyp) ->

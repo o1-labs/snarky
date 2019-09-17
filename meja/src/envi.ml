@@ -783,9 +783,9 @@ module Type = struct
   let restore_desc (typ, desc) = typ.type_desc <- desc
 
   let copy typ env =
-    let typ = repr typ in
     let restores = ref [] in
     let rec copy typ =
+      let typ = repr typ in
       match typ.type_desc with
       | Tvar _ ->
           (* Don't copy variables! *)
@@ -793,7 +793,7 @@ module Type = struct
       | Tpoly (vars, typ) ->
           (* Make fresh variables to instantiate [Tpoly]s. *)
           restores := refresh_vars vars env :: !restores ;
-          mk (copy_desc ~f:copy typ.type_desc) env
+          copy typ
       | _ ->
           mk (copy_desc ~f:copy typ.type_desc) env
     in
@@ -839,18 +839,18 @@ module Type = struct
     let typ = repr typ in
     let restores = ref [] in
     let rec flatten typ =
-      match typ.type_desc with
+      match (repr typ).type_desc with
       | Tvar _ -> (
         match instance env typ with
         | Some typ' ->
-           (* Replace variables with their instances. *)
+            (* Replace variables with their instances. *)
             let typ' = repr typ' in
             restores := (typ, typ.type_desc) :: !restores ;
             typ.type_desc <- Tref typ' ;
             flatten typ'
         | None ->
             (* Don't copy variables! *)
-            typ )
+            repr typ )
       | _ ->
           Type1.mk typ.type_depth (copy_desc ~f:flatten typ.type_desc)
     in

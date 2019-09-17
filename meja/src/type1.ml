@@ -54,8 +54,7 @@ let rec typ_debug_print fmt typ =
   | Ttuple typs ->
       print "(%a)" (print_list typ_debug_print) typs
   | Tref typ ->
-      print "= " ;
-      typ_debug_print fmt typ ) ;
+      print "= " ; typ_debug_print fmt typ ) ;
   print " @%i)" typ.type_depth
 
 let fold ~init ~f typ =
