@@ -1165,6 +1165,8 @@ struct
 
     module Var = Cvar1
 
+    let parity x = Bigint.(test_bit (of_field x) 0)
+
     module Checked = struct
       include Cvar1
 
@@ -1327,6 +1329,22 @@ struct
           >>= Checked.Boolean.Assert.is_true
         in
         res
+
+      let parity ?length x =
+        let open Checked in
+        let unpack =
+          let unpack_full x =
+            unpack_full x >>| Bitstring_lib.Bitstring.Lsb_first.to_list
+          in
+          match length with
+          | None ->
+              unpack_full
+          | Some length ->
+              let length = Int.min length Field.size_in_bits in
+              if Int.equal length Field.size_in_bits then unpack_full
+              else choose_preimage_var ~length
+        in
+        unpack x >>| Core.List.hd_exn
     end
   end
 
@@ -1876,6 +1894,8 @@ module Run = struct
           let unpack = unpack
 
           let project = project
+
+          let parity = parity
         end
 
         include T
@@ -1934,6 +1954,8 @@ module Run = struct
       let unpack_flagged x ~length = run (unpack_flagged x ~length)
 
       let unpack_full x = run (unpack_full x)
+
+      let parity ?length x = run (parity ?length x)
 
       let choose_preimage_var x ~length = run (choose_preimage_var x ~length)
 
