@@ -28,7 +28,9 @@ type error =
 
 exception Error of Location.t * error
 
-let bind_none x f = match x with Some x -> x | None -> f ()
+let map_none x f = match x with Some x -> x | None -> f ()
+
+let bind_none x f = match x with Some x -> Some x | None -> f ()
 
 let unpack_decls ~loc typ ctyp env =
   if Int.equal typ.type_id ctyp.type_id then Some (typ, ctyp)
@@ -47,8 +49,8 @@ let unpack_decls ~loc typ ctyp env =
           (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
         in
         (* Try to unfold the oldest type definition first. *)
-        if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
-        else bind_none (Some (unfold_typ ())) unfold_ctyp
+        if decl_id < cdecl_id then bind_none (unfold_ctyp ()) unfold_typ
+        else bind_none (unfold_typ ()) unfold_ctyp
     | Tctor _, _ ->
         unfold_typ ()
     | _, Tctor _ ->
@@ -76,10 +78,10 @@ let rec check_type_aux ~loc typ ctyp env =
   | _, Tpoly (_, ctyp) ->
       check_type_aux typ ctyp env
   | Tvar _, Tvar _ ->
-      bind_none
+      map_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () ->
-          bind_none
+          map_none
             (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
             (fun () ->
               (* Add the outermost (in terms of lexical scope) of the variables as
@@ -89,11 +91,11 @@ let rec check_type_aux ~loc typ ctyp env =
                 Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
   | Tvar _, _ ->
-      bind_none
+      map_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance typ ctyp env)
   | _, Tvar _ ->
-      bind_none
+      map_none
         (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance ctyp typ env)
   | Ttuple typs, Ttuple ctyps -> (
