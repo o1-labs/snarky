@@ -85,7 +85,7 @@ module Scope = struct
   type 't kind =
     | Module
     | Expr
-    | Open
+    | Open of Path.t
     | Continue
     | Functor of (Longident.t -> 't or_path -> 't)
 
@@ -302,6 +302,90 @@ module Scope = struct
           (* You can't apply a toplevel module, so we just error out instead. *)
           raise (Error (loc, Unbound_module lid)) )
 
+  let subst s =
+    let subst_type_expr = Subst.type_expr s in
+    let subst_type_decl = Subst.type_decl s in
+    let rec subst
+        { kind
+        ; path
+        ; names
+        ; type_variables
+        ; type_decls
+        ; fields
+        ; ctors
+        ; modules
+        ; module_types
+        ; instances
+        ; mode } =
+      { kind
+      ; path
+      ; names= IdTbl.map ~f:subst_type_expr names
+      ; type_variables
+      ; type_decls= IdTbl.map ~f:subst_type_decl type_decls
+      ; fields=
+          IdTbl.map fields ~f:(fun (decl, i) -> (subst_type_decl decl, i))
+      ; ctors= IdTbl.map ctors ~f:(fun (decl, i) -> (subst_type_decl decl, i))
+      ; modules= IdTbl.map ~f:subst_scope_or_path modules
+      ; module_types= IdTbl.map ~f:subst_scope_or_path module_types
+      ; instances
+      ; mode }
+    and subst_scope_or_path = function
+      | Immediate scope ->
+          Immediate (subst scope)
+      | Deferred _ as deferred ->
+          (* TODO: This is not the desired behaviour.. *)
+          deferred
+    in
+    subst
+
+  let build_subst ~type_subst ~module_subst s
+      { kind= _
+      ; path= _
+      ; names= _
+      ; type_variables= _
+      ; type_decls
+      ; fields= _
+      ; ctors= _
+      ; modules
+      ; module_types= _
+      ; instances= _
+      ; mode= _ } =
+    let s =
+      IdTbl.fold_keys ~init:s type_decls ~f:(fun s ident ->
+          let src_path, dst_path = type_subst ident in
+          Subst.with_type src_path dst_path s )
+    in
+    let s =
+      IdTbl.fold_keys ~init:s modules ~f:(fun s ident ->
+          let src_path, dst_path = module_subst ident in
+          Subst.with_module src_path dst_path s )
+    in
+    s
+
+  let register_external_module name x resolve_env =
+    let x =
+      match x with
+      | In_flight _ | Deferred _ ->
+          x
+      | Immediate x ->
+          let add_name ident =
+            (Path.Pident ident, Path.dot (Pident name) ident)
+          in
+          let name_subst =
+            build_subst Subst.empty x ~type_subst:add_name
+              ~module_subst:add_name
+          in
+          Immediate (subst name_subst x)
+    in
+    resolve_env.external_modules
+    <- IdTbl.add ~key:name ~data:x resolve_env.external_modules
+
+  let load_external_module ~loc filename name resolve_env =
+    register_external_module name (In_flight filename) resolve_env ;
+    let m = !load_module ~loc ~name:(Ident.name name) resolve_env filename in
+    register_external_module name (Immediate m : _ or_deferred) resolve_env ;
+    m
+
   let get_global_module ~mode ~loc resolve_env name =
     match
       IdTbl.find_name ~modes:(modes_of_mode mode) name
@@ -483,10 +567,16 @@ let open_absolute_module ?mode path env =
   let mode = mode_or_default mode env in
   push_scope Scope.(empty ~mode path Module) env
 
-let open_namespace_scope ?mode scope env =
+let open_namespace_scope ?mode path scope env =
+  let add_name ident = (Path.dot path ident, Path.Pident ident) in
+  let subst =
+    Scope.build_subst Subst.empty scope ~type_subst:add_name
+      ~module_subst:add_name
+  in
+  let scope = Scope.subst subst scope in
   let mode = mode_or_default mode env in
   env
-  |> push_scope {scope with kind= Scope.Open}
+  |> push_scope {scope with kind= Scope.Open path}
   |> push_scope Scope.(empty ~mode (current_scope env).path Continue)
 
 let open_mode_module_scope mode env =
@@ -515,7 +605,13 @@ let pop_module ~loc env =
         (scope :: scopes, env)
     | Expr ->
         raise (Error (of_prim __POS__, Wrong_scope_kind "module"))
-    | Open ->
+    | Open path ->
+        let add_name ident = (Path.Pident ident, Path.dot path ident) in
+        let subst =
+          Scope.build_subst Subst.empty scope ~type_subst:add_name
+            ~module_subst:add_name
+        in
+        let scopes = List.map ~f:(Scope.subst subst) scopes in
         all_scopes scopes env
     | Continue ->
         all_scopes (scope :: scopes) env
@@ -563,6 +659,11 @@ let find_type_variable name env =
   List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
 
 let add_module (name : Ident.t) m =
+  let add_name ident = (Path.Pident ident, Path.dot (Pident name) ident) in
+  let subst =
+    Scope.build_subst Subst.empty m ~type_subst:add_name ~module_subst:add_name
+  in
+  let m = Scope.subst subst m in
   map_current_scope ~f:(fun scope ->
       let scope = Scope.add_module name (Scope.Immediate m) scope in
       { scope with
@@ -578,8 +679,7 @@ let add_deferred_module (name : Ident.t) lid =
   map_current_scope ~f:(Scope.add_module name (Scope.Deferred lid))
 
 let register_external_module name x env =
-  env.resolve_env.external_modules
-  <- IdTbl.add ~key:name ~data:x env.resolve_env.external_modules
+  Scope.register_external_module name x env.resolve_env
 
 let find_module ~loc (lid : lid) env =
   Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack

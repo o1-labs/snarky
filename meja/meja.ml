@@ -144,12 +144,16 @@ let main =
             let lib_path = Filename.concat opam_path "lib" in
             (* Load OCaml stdlib *)
             Loader.load_directory env (Filename.concat lib_path "ocaml") ;
+            let stdlib = Ident.create ~mode:Checked "Stdlib" in
             let stdlib_scope =
               Loader.load ~loc:Location.none ~name:"Stdlib"
                 env.Envi.resolve_env
                 (Filename.concat lib_path "ocaml/stdlib.cmi")
             in
-            let env = Envi.open_namespace_scope stdlib_scope env in
+            Envi.register_external_module stdlib (Immediate stdlib_scope) env ;
+            let env =
+              Envi.open_namespace_scope (Pident stdlib) stdlib_scope env
+            in
             (* Load Snarky.Request *)
             let snarky_build_path =
               Filename.(
@@ -175,13 +179,15 @@ let main =
     let cmi_files = List.rev !cmi_files in
     let cmi_scopes =
       List.map cmi_files ~f:(fun filename ->
-          Loader.load ~loc:Location.none
-            ~name:(Loader.modname_of_filename filename)
-            env.Envi.resolve_env filename )
+          let modname = Loader.modname_of_filename filename in
+          let modident = Ident.create ~mode:Checked modname in
+          ( modident
+          , Loader.load ~loc:Location.none ~name:modname env.Envi.resolve_env
+              filename ) )
     in
     let env =
-      List.fold ~init:env cmi_scopes ~f:(fun env scope ->
-          Envi.open_namespace_scope scope env )
+      List.fold ~init:env cmi_scopes ~f:(fun env (name, scope) ->
+          Envi.open_namespace_scope (Path.Pident name) scope env )
     in
     let meji_files =
       "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
