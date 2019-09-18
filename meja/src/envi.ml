@@ -929,9 +929,8 @@ module Type = struct
        ; implicit_id= implicit_id + 1 } ;
     new_exp
 
-  let implicit_instances
-      ~(unifies : env -> type_expr -> type_expr -> bool) (typ : type_expr)
-      typ_vars env =
+  let implicit_instances ~(unifies : env -> type_expr -> type_expr -> bool)
+      (typ : type_expr) typ_vars env =
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, instance_typ) ->
         let instance_typ = copy instance_typ env in
