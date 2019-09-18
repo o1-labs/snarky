@@ -1,4 +1,4 @@
 File "tests/module-scoping.meja", line 33, characters 14-15:
-Error: Incompatable types B.t -> B.A.t -> B.B.t -> _ and
+Error: Incompatible types B.t -> B.A.t -> B.B.t -> _ and
        t -> A.t -> B.t -> _:
        Cannot unify B.t and t
