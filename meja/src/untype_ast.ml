@@ -23,14 +23,9 @@ module Type0 = struct
     | Tarrow (typ1, typ2, explicit, label) ->
         Type.arrow ?loc ~explicit ~label (type_expr ?loc typ1)
           (type_expr ?loc typ2)
-    | Tctor
-        { var_ident= ident
-        ; var_params= params
-        ; var_implicit_params= implicits
-        ; var_decl= _ } ->
+    | Tctor {var_ident= ident; var_params= params; var_decl= _} ->
         let params = List.map ~f:(type_expr ?loc) params in
-        let implicits = List.map ~f:(type_expr ?loc) implicits in
-        Type.constr ?loc ~params ~implicits (longident_of_path ident)
+        Type.constr ?loc ~params (longident_of_path ident)
     | Tpoly (vars, var) ->
         Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
 
@@ -56,19 +51,17 @@ module Type0 = struct
       ctor.ctor_args
       ?ret:(Option.map ~f:(type_expr ?loc) ctor.ctor_ret)
 
-  let rec type_decl_desc ?loc ?params ?implicits name = function
+  let rec type_decl_desc ?loc ?params name = function
     | TAbstract ->
-        Type_decl.abstract ?loc ?params ?implicits name
+        Type_decl.abstract ?loc ?params name
     | TAlias typ ->
-        Type_decl.alias ?loc ?params ?implicits name (type_expr typ)
+        Type_decl.alias ?loc ?params name (type_expr typ)
     | TRecord fields ->
-        Type_decl.record ?loc ?params ?implicits name
-          (List.map ~f:field_decl fields)
+        Type_decl.record ?loc ?params name (List.map ~f:field_decl fields)
     | TVariant ctors ->
-        Type_decl.variant ?loc ?params ?implicits name
-          (List.map ~f:ctor_decl ctors)
+        Type_decl.variant ?loc ?params name (List.map ~f:ctor_decl ctors)
     | TOpen ->
-        Type_decl.open_ ?loc ?params ?implicits name
+        Type_decl.open_ ?loc ?params name
     | TExtend _ ->
         failwith "Cannot convert TExtend to a parsetree equivalent"
     | TForward _ ->
@@ -77,7 +70,6 @@ module Type0 = struct
   and type_decl ?loc decl =
     type_decl_desc ?loc
       ~params:(List.map ~f:type_expr decl.tdec_params)
-      ~implicits:(List.map ~f:type_expr decl.tdec_implicit_params)
       (Ident.name decl.tdec_ident)
       decl.tdec_desc
 end
@@ -97,13 +89,14 @@ let rec type_desc = function
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}
 
-and variant {Typedast.var_ident; var_params; var_implicit_params} =
+and variant {Typedast.var_ident; var_params} =
   { Parsetypes.var_ident= map_loc ~f:longident_of_path var_ident
-  ; var_params= List.map ~f:type_expr var_params
-  ; var_implicit_params= List.map ~f:type_expr var_implicit_params }
+  ; var_params= List.map ~f:type_expr var_params }
 
-let field_decl {Typedast.fld_ident; fld_type; fld_loc} =
-  {Parsetypes.fld_ident; fld_type= type_expr fld_type; fld_loc}
+let field_decl {Typedast.fld_ident; fld_type; fld_loc; fld_fld= _} =
+  { Parsetypes.fld_ident= map_loc ~f:Ident.name fld_ident
+  ; fld_type= type_expr fld_type
+  ; fld_loc }
 
 let ctor_args = function
   | Typedast.Tctor_tuple typs ->
@@ -111,8 +104,9 @@ let ctor_args = function
   | Tctor_record fld ->
       Ctor_record (List.map ~f:field_decl fld)
 
-let ctor_decl {Typedast.ctor_ident; ctor_args= args; ctor_ret; ctor_loc} =
-  { Parsetypes.ctor_ident
+let ctor_decl
+    {Typedast.ctor_ident; ctor_args= args; ctor_ret; ctor_loc; ctor_ctor= _} =
+  { Parsetypes.ctor_ident= map_loc ~f:Ident.name ctor_ident
   ; ctor_args= ctor_args args
   ; ctor_ret= Option.map ~f:type_expr ctor_ret
   ; ctor_loc }
@@ -132,14 +126,9 @@ let type_decl_desc = function
       Pdec_extend (lid, typ, List.map ~f:ctor_decl ctor)
 
 let type_decl
-    { Typedast.tdec_ident
-    ; tdec_params
-    ; tdec_implicit_params
-    ; tdec_desc
-    ; tdec_loc } =
-  { Parsetypes.tdec_ident
+    {Typedast.tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec= _} =
+  { Parsetypes.tdec_ident= map_loc ~f:Ident.name tdec_ident
   ; tdec_params= List.map ~f:type_expr tdec_params
-  ; tdec_implicit_params= List.map ~f:type_expr tdec_implicit_params
   ; tdec_desc= type_decl_desc tdec_desc
   ; tdec_loc }
 
@@ -230,7 +219,7 @@ let rec signature_desc = function
   | Tsig_instance (name, typ) ->
       Psig_instance (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_type decl ->
-      Psig_type decl
+      Psig_type (type_decl decl)
   | Tsig_module (name, msig) ->
       Psig_module (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_modtype (name, msig) ->
@@ -238,9 +227,9 @@ let rec signature_desc = function
   | Tsig_open path ->
       Psig_open (map_loc ~f:longident_of_path path)
   | Tsig_typeext (typ, ctors) ->
-      Psig_typeext (typ, ctors)
+      Psig_typeext (variant typ, List.map ~f:ctor_decl ctors)
   | Tsig_request (arg, ctor) ->
-      Psig_request (arg, ctor)
+      Psig_request (type_expr arg, ctor_decl ctor)
   | Tsig_multiple sigs ->
       Psig_multiple (List.map ~f:signature_item sigs)
   | Tsig_prover sigs ->
@@ -271,7 +260,7 @@ let rec statement_desc = function
   | Tstmt_instance (name, e) ->
       Pstmt_instance (map_loc ~f:Ident.name name, expression e)
   | Tstmt_type decl ->
-      Pstmt_type decl
+      Pstmt_type (type_decl decl)
   | Tstmt_module (name, m) ->
       Pstmt_module (map_loc ~f:Ident.name name, module_expr m)
   | Tstmt_modtype (name, msig) ->
@@ -279,11 +268,11 @@ let rec statement_desc = function
   | Tstmt_open path ->
       Pstmt_open (map_loc ~f:longident_of_path path)
   | Tstmt_typeext (typ, ctors) ->
-      Pstmt_typeext (typ, ctors)
+      Pstmt_typeext (variant typ, List.map ~f:ctor_decl ctors)
   | Tstmt_request (arg, ctor, handler) ->
       Pstmt_request
-        ( arg
-        , ctor
+        ( type_expr arg
+        , ctor_decl ctor
         , Option.map
             ~f:(fun (p, e) -> (Option.map ~f:pattern p, expression e))
             handler )

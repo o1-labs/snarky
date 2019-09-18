@@ -34,7 +34,7 @@ let do_output filename f =
   | None ->
       ()
 
-let add_preamble impl_mod curve proofs ast =
+let make_preamble impl_mod curve proofs =
   let open Parsetypes in
   let open Longident in
   let mkloc x = Location.(mkloc x none) in
@@ -51,7 +51,10 @@ let add_preamble impl_mod curve proofs ast =
   in
   let snarky_open = Pstmt_open (mkloc (Lident impl_mod)) in
   let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in
-  mk_stmt snarky_impl :: mk_stmt snarky_open :: ast
+  [mk_stmt snarky_impl; mk_stmt snarky_open]
+
+let add_preamble impl_mod curve proofs ast =
+  make_preamble impl_mod curve proofs @ ast
 
 let main =
   let file = ref None in
@@ -210,12 +213,12 @@ let main =
       read_file (Parser_impl.implementation Lexer_impl.token) file
     in
     let _env, ast = Typechecker.check parse_ast env in
-    let ast = List.map ~f:Untype_ast.statement ast in
-    let ast =
-      if !snarky_preamble then add_preamble !impl_mod !curve !proofs ast
-      else ast
+    let preamble =
+      if !snarky_preamble then
+        Some (To_ocaml.of_file (make_preamble !impl_mod !curve !proofs))
+      else None
     in
-    let ocaml_ast = To_ocaml.of_file ast in
+    let ocaml_ast = Of_typedast.of_file ast in
     let ocaml_formatter =
       match (!ocaml_file, !default) with
       | Some filename, _ ->
@@ -226,10 +229,14 @@ let main =
           None
     in
     do_output !ast_file (fun output ->
+        Option.iter ~f:(Printast.structure 2 output) preamble ;
+        Format.pp_print_newline output () ;
         Printast.structure 2 output ocaml_ast ;
         Format.pp_print_newline output () ) ;
     ( match ocaml_formatter with
     | Some output ->
+        Option.iter ~f:(Pprintast.structure output) preamble ;
+        Format.pp_print_newline output () ;
         Pprintast.structure output ocaml_ast ;
         Format.pp_print_newline output ()
     | None ->

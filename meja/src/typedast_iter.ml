@@ -6,14 +6,11 @@ type iterator =
   { type_expr: iterator -> type_expr -> unit
   ; type_desc: iterator -> type_desc -> unit
   ; variant: iterator -> variant -> unit
-  ; ptype_expr: iterator -> Parsetypes.type_expr -> unit
-  ; ptype_desc: iterator -> Parsetypes.type_desc -> unit
-  ; pvariant: iterator -> Parsetypes.variant -> unit
-  ; field_decl: iterator -> Parsetypes.field_decl -> unit
-  ; ctor_args: iterator -> Parsetypes.ctor_args -> unit
-  ; ctor_decl: iterator -> Parsetypes.ctor_decl -> unit
-  ; type_decl: iterator -> Parsetypes.type_decl -> unit
-  ; type_decl_desc: iterator -> Parsetypes.type_decl_desc -> unit
+  ; field_decl: iterator -> field_decl -> unit
+  ; ctor_args: iterator -> ctor_args -> unit
+  ; ctor_decl: iterator -> ctor_decl -> unit
+  ; type_decl: iterator -> type_decl -> unit
+  ; type_decl_desc: iterator -> type_decl_desc -> unit
   ; literal: iterator -> literal -> unit
   ; pattern: iterator -> pattern -> unit
   ; pattern_desc: iterator -> pattern_desc -> unit
@@ -65,72 +62,51 @@ let type_desc iter = function
       List.iter ~f:(iter.type_expr iter) vars ;
       iter.type_expr iter typ
 
-let variant iter {var_ident; var_params; var_implicit_params} =
+let variant iter {var_ident; var_params} =
   path iter var_ident ;
-  List.iter ~f:(iter.type_expr iter) var_params ;
-  List.iter ~f:(iter.type_expr iter) var_implicit_params
+  List.iter ~f:(iter.type_expr iter) var_params
 
-let ptype_expr iter Parsetypes.{type_desc; type_loc} =
-  iter.location iter type_loc ;
-  iter.ptype_desc iter type_desc
-
-let ptype_desc iter = function
-  | Parsetypes.Ptyp_var name ->
-      Option.iter ~f:(fun name -> iter.location iter name.Location.loc) name
-  | Ptyp_tuple typs ->
-      List.iter ~f:(iter.ptype_expr iter) typs
-  | Ptyp_arrow (typ1, typ2, _, _) ->
-      iter.ptype_expr iter typ1 ; iter.ptype_expr iter typ2
-  | Ptyp_ctor variant ->
-      iter.pvariant iter variant
-  | Ptyp_poly (vars, typ) ->
-      List.iter ~f:(iter.ptype_expr iter) vars ;
-      iter.ptype_expr iter typ
-
-let pvariant iter Parsetypes.{var_ident; var_params; var_implicit_params} =
-  iter.location iter var_ident.loc ;
-  iter.longident iter var_ident.txt ;
-  List.iter ~f:(iter.ptype_expr iter) var_params ;
-  List.iter ~f:(iter.ptype_expr iter) var_implicit_params
-
-let field_decl iter Parsetypes.{fld_ident; fld_type; fld_loc} =
+let field_decl iter {fld_ident; fld_type; fld_loc; fld_fld} =
   iter.location iter fld_loc ;
-  str iter fld_ident ;
-  iter.ptype_expr iter fld_type
+  ident iter fld_ident ;
+  iter.type_expr iter fld_type ;
+  (* TODO: Type0_iterator *)
+  ignore fld_fld
 
 let ctor_args iter = function
-  | Parsetypes.Ctor_tuple typs ->
-      List.iter ~f:(iter.ptype_expr iter) typs
-  | Ctor_record fields ->
+  | Tctor_tuple typs ->
+      List.iter ~f:(iter.type_expr iter) typs
+  | Tctor_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
 
-let ctor_decl iter Parsetypes.{ctor_ident; ctor_args; ctor_ret; ctor_loc} =
+let ctor_decl iter {ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor} =
   iter.location iter ctor_loc ;
-  str iter ctor_ident ;
+  ident iter ctor_ident ;
   iter.ctor_args iter ctor_args ;
-  Option.iter ~f:(iter.ptype_expr iter) ctor_ret
+  Option.iter ~f:(iter.type_expr iter) ctor_ret ;
+  (* TODO: Type0_iterator *)
+  ignore ctor_ctor
 
-let type_decl iter
-    Parsetypes.
-      {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc} =
+let type_decl iter {tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec} =
   iter.location iter tdec_loc ;
-  str iter tdec_ident ;
-  List.iter ~f:(iter.ptype_expr iter) tdec_params ;
-  List.iter ~f:(iter.ptype_expr iter) tdec_implicit_params ;
-  iter.type_decl_desc iter tdec_desc
+  ident iter tdec_ident ;
+  List.iter ~f:(iter.type_expr iter) tdec_params ;
+  iter.type_decl_desc iter tdec_desc ;
+  (* TODO: Type0_iterator *)
+  ignore tdec_tdec
 
 let type_decl_desc iter = function
-  | Parsetypes.Pdec_abstract ->
+  | Tdec_abstract ->
       ()
-  | Pdec_alias typ ->
-      iter.ptype_expr iter typ
-  | Pdec_record fields ->
+  | Tdec_alias typ ->
+      iter.type_expr iter typ
+  | Tdec_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
-  | Pdec_variant ctors ->
+  | Tdec_variant ctors ->
       List.iter ~f:(iter.ctor_decl iter) ctors
-  | Pdec_open ->
+  | Tdec_open ->
       ()
-  | Pdec_extend (name, decl, ctors) ->
+  | Tdec_extend (name, decl, ctors) ->
       path iter name ;
       iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors
@@ -226,10 +202,10 @@ let signature_desc iter = function
   | Tsig_open name ->
       path iter name
   | Tsig_typeext (typ, ctors) ->
-      iter.pvariant iter typ ;
+      iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors
   | Tsig_request (typ, ctor) ->
-      iter.ptype_expr iter typ ; iter.ctor_decl iter ctor
+      iter.type_expr iter typ ; iter.ctor_decl iter ctor
   | Tsig_multiple sigs ->
       iter.signature iter sigs
   | Tsig_prover sigs ->
@@ -271,10 +247,10 @@ let statement_desc iter = function
   | Tstmt_open name ->
       path iter name
   | Tstmt_typeext (typ, ctors) ->
-      iter.pvariant iter typ ;
+      iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors
   | Tstmt_request (typ, ctor, handler) ->
-      iter.ptype_expr iter typ ;
+      iter.type_expr iter typ ;
       iter.ctor_decl iter ctor ;
       Option.iter handler ~f:(fun (p, e) ->
           Option.iter ~f:(iter.pattern iter) p ;
@@ -328,9 +304,6 @@ let default_iterator =
   { type_expr
   ; type_desc
   ; variant
-  ; ptype_expr
-  ; ptype_desc
-  ; pvariant
   ; field_decl
   ; ctor_args
   ; ctor_decl
