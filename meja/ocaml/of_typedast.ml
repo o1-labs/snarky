@@ -21,9 +21,9 @@ let mk_loc ?loc x =
 
 let rec of_type_desc ?loc typ =
   match typ with
-  | Ttyp_var (None, _) ->
+  | Ttyp_var None ->
       Typ.any ?loc ()
-  | Ttyp_var (Some name, _) ->
+  | Ttyp_var (Some name) ->
       Typ.var ?loc name.txt
   | Ttyp_poly (_, typ) ->
       of_type_expr typ
@@ -234,6 +234,8 @@ and of_module_sig_desc ?loc = function
   | Tmty_sig signature ->
       Some (Mty.signature ?loc (of_signature signature))
   | Tmty_name name ->
+      Some (Mty.ident ?loc (of_path_loc name))
+  | Tmty_alias name ->
       Some (Mty.alias ?loc (of_path_loc name))
   | Tmty_abstract ->
       None

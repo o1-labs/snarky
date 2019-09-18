@@ -170,8 +170,7 @@ module TypeDecl = struct
     | Pdec_record fields ->
         let field_vars =
           List.map fields ~f:(fun {fld_ident; fld_type= _; fld_loc} ->
-              { type_desc= Ptyp_var (Some fld_ident)
-              ; type_loc= fld_loc } )
+              {type_desc= Ptyp_var (Some fld_ident); type_loc= fld_loc} )
         in
         let poly_decl =
           { tdec_ident= poly_name
