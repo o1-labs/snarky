@@ -48,6 +48,11 @@ module TypeDecls = struct
   (** Meja-specific built-ins. *)
 
   let field = abstract "field"
+
+  (** TODO: This is tragic, but hacks.. *)
+  let field_var = abstract "field_var"
+
+  let bool_var = abstract "bool_var"
 end
 
 (** Empty environment. *)
@@ -85,11 +90,15 @@ let {Typedast.tdec_tdec= int64; _}, env = import int64 env
 
 let {Typedast.tdec_tdec= nativeint; _}, env = import nativeint env
 
-let {Typedast.tdec_tdec= field; _}, env = import field env
-
 let {Typedast.tdec_tdec= lazy_t; _}, env = import lazy_t env
 
 let {Typedast.tdec_tdec= array; _}, env = import array env
+
+let {Typedast.tdec_tdec= field; _}, env = import field env
+
+let {Typedast.tdec_tdec= field_var; _}, env = import field_var env
+
+let {Typedast.tdec_tdec= bool_var; _}, env = import bool_var env
 
 (** Canonical references for each of the built-in types that the typechecker
     refers to.
