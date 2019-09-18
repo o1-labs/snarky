@@ -89,8 +89,6 @@ module Scope = struct
     | Continue
     | Functor of (Longident.t -> 't or_path -> 't)
 
-  type paths = {type_paths: Path.t Int.Map.t}
-
   type t =
     { kind: t kind
     ; path: Longident.t option
@@ -102,15 +100,12 @@ module Scope = struct
     ; modules: t or_path IdTbl.t
     ; module_types: t or_path IdTbl.t
     ; instances: Path.t Int.Map.t
-    ; paths: paths
     ; mode: mode }
 
   let load_module :
       (loc:Location.t -> name:string -> t resolve_env -> string -> t) ref =
     ref (fun ~loc ~name _env _filename ->
         raise (Error (loc, Unbound_module (Lident name))) )
-
-  let empty_paths = {type_paths= Int.Map.empty}
 
   let empty ~mode path kind =
     { kind
@@ -123,7 +118,6 @@ module Scope = struct
     ; modules= IdTbl.empty
     ; module_types= IdTbl.empty
     ; instances= Int.Map.empty
-    ; paths= empty_paths
     ; mode }
 
   let set_path path env = {env with path= Some path}
@@ -161,18 +155,9 @@ module Scope = struct
   let find_ctor ~mode name scope =
     IdTbl.find_name ~modes:(modes_of_mode mode) name scope.ctors
 
-  let add_preferred_type_name path decl_id {type_paths} =
-    {type_paths= Map.set type_paths ~key:decl_id ~data:path}
-
-  let get_preferred_type_name decl_id {paths= {type_paths}; _} =
-    Map.find type_paths decl_id
-
   let add_type_declaration decl scope =
     { scope with
-      type_decls= IdTbl.add scope.type_decls ~key:decl.tdec_ident ~data:decl
-    ; paths=
-        add_preferred_type_name (Pident decl.tdec_ident) decl.tdec_id
-          scope.paths }
+      type_decls= IdTbl.add scope.type_decls ~key:decl.tdec_ident ~data:decl }
 
   let get_type_declaration name scope = IdTbl.find name scope.type_decls
 
@@ -205,7 +190,6 @@ module Scope = struct
       ; modules= modules1
       ; module_types= module_types1
       ; instances= instances1
-      ; paths= _
       ; mode= _ }
       { kind= _
       ; path= _
@@ -217,7 +201,6 @@ module Scope = struct
       ; modules= modules2
       ; module_types= module_types2
       ; instances= instances2
-      ; paths= _
       ; mode= _ } =
     let acc =
       Map.fold2 type_variables1 type_variables2 ~init:acc ~f:type_variables
@@ -234,14 +217,6 @@ module Scope = struct
     let acc = Map.fold2 instances1 instances2 ~init:acc ~f:instances in
     let acc = IdTbl.fold2_names names1 names2 ~init:acc ~f:names in
     acc
-
-  (* Extend the paths in the first argument with those in the second,
-     overwriting them where both exist.
-  *)
-  let join_paths {type_paths= type_paths1} {type_paths= type_paths2} =
-    { type_paths=
-        Map.merge_skewed type_paths1 type_paths2 ~combine:(fun ~key:_ _ v -> v)
-    }
 
   (* [join ~loc scope1 scope2] attaches the definitions in [scope2] to
      [scope1], raising an error at [loc] if a name is defined in both scopes
@@ -261,7 +236,6 @@ module Scope = struct
       ; modules= modules1
       ; module_types= module_types1
       ; instances= instances1
-      ; paths= paths1
       ; mode= mode1 }
       { kind= _
       ; path= _
@@ -273,7 +247,6 @@ module Scope = struct
       ; modules= modules2
       ; module_types= module_types2
       ; instances= instances2
-      ; paths= paths2
       ; mode= mode2 } =
     { kind
     ; path
@@ -299,11 +272,7 @@ module Scope = struct
             raise (Error (loc, Multiple_definition ("module type", key))) )
     ; instances=
         Map.merge_skewed instances1 instances2 ~combine:(fun ~key:_ _ v -> v)
-    ; paths= join_paths paths1 paths2
     ; mode= weakest_mode mode1 mode2 }
-
-  let extend_paths name {type_paths} =
-    {type_paths= Map.map ~f:(Path.add_outer_module name) type_paths}
 
   let add_module name m scope =
     {scope with modules= IdTbl.add scope.modules ~key:name ~data:m}
@@ -596,7 +565,6 @@ let find_type_variable name env =
 let add_module (name : Ident.t) m =
   map_current_scope ~f:(fun scope ->
       let scope = Scope.add_module name (Scope.Immediate m) scope in
-      let paths = Scope.extend_paths name m.Scope.paths in
       { scope with
         instances=
           Map.merge scope.instances m.instances ~f:(fun ~key:_ data ->
@@ -604,10 +572,7 @@ let add_module (name : Ident.t) m =
               | `Left x ->
                   Some x
               | `Both (_, x) | `Right x ->
-                  Some (Path.add_outer_module name x) )
-      ; (* Prefer the shorter paths in the current module to those in the
-           module we are adding. *)
-        paths= Scope.join_paths paths scope.paths } )
+                  Some (Path.add_outer_module name x) ) } )
 
 let add_deferred_module (name : Ident.t) lid =
   map_current_scope ~f:(Scope.add_module name (Scope.Deferred lid))
@@ -620,11 +585,29 @@ let find_module ~loc (lid : lid) env =
   Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack
 
 let find_module_deferred ~mode ~loc (lid : lid) env =
-  List.find_map
-    ~f:
-      (Scope.find_module_deferred ~mode ~loc ~scopes:env.scope_stack
-         env.resolve_env lid.txt)
-    env.scope_stack
+  match
+    List.find_map
+      ~f:
+        (Scope.find_module_deferred ~mode ~loc ~scopes:env.scope_stack
+           env.resolve_env lid.txt)
+      env.scope_stack
+  with
+  | Some m ->
+      Some m
+  | None -> (
+    match lid.txt with
+    | Lident name -> (
+      match
+        IdTbl.find_name name ~modes:(modes_of_mode mode)
+          env.resolve_env.external_modules
+      with
+      | Some (ident, _) ->
+          Some (Pident ident, Deferred lid.txt)
+      | None ->
+          None )
+    | _ ->
+        let path, m = find_module ~mode ~loc lid env in
+        Some (path, Immediate m) )
 
 let add_implicit_instance name typ env =
   let path = Path.Pident name in
@@ -727,7 +710,7 @@ module Type = struct
 
   let mk type_desc env = Type1.mk env.depth type_desc
 
-  let mkvar ?explicitness name env = Type1.mkvar ?explicitness env.depth name
+  let mkvar name env = Type1.mkvar env.depth name
 
   let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
 
@@ -737,18 +720,18 @@ module Type = struct
 
   let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
-    | Tvar (None, explicitness) -> (
-      match (must_find, explicitness) with
-      | Some true, Explicit ->
+    | Tvar None -> (
+      match must_find with
+      | Some true ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (env, mkvar ~explicitness None env) )
-    | Tvar ((Some x as name), explicitness) -> (
+          (env, mkvar None env) )
+    | Tvar (Some x as name) -> (
         let var =
           match must_find with
           | Some true ->
               let var = find_type_variable x env in
-              if (not (Option.is_some var)) && explicitness = Explicit then
+              if Option.is_none var then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
@@ -760,7 +743,7 @@ module Type = struct
         | Some var ->
             (env, var)
         | None ->
-            let var = mkvar ~explicitness name env in
+            let var = mkvar name env in
             (add_type_variable x var env, var) )
     | _ ->
         raise (Error (loc, Expected_type_var typ))
@@ -940,15 +923,26 @@ module Type = struct
     new_exp
 
   let implicit_instances ~loc
-      ~(is_subtype : env -> type_expr -> of_:type_expr -> bool)
-      (typ : type_expr) env =
+      ~(unifies : env -> type_expr -> type_expr -> bool) (typ : type_expr)
+      typ_vars env =
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, instance_typ) ->
         let instance_typ = copy ~loc instance_typ Int.Map.empty env in
-        if is_subtype env typ ~of_:instance_typ then
-          List.find_map env.scope_stack ~f:(fun {instances; _} ->
-              Option.map (Map.find instances id) ~f:(fun path ->
-                  (path, instance_typ) ) )
+        let snapshot = Snapshot.create () in
+        let {TypeEnvi.variable_instances; _} = env.resolve_env.type_env in
+        if unifies env typ instance_typ then
+          if
+            Set.exists typ_vars ~f:(fun var ->
+                Option.is_some (instance env var) )
+          then (
+            backtrack snapshot ;
+            env.resolve_env.type_env
+            <- {env.resolve_env.type_env with variable_instances} ;
+            None )
+          else
+            List.find_map env.scope_stack ~f:(fun {instances; _} ->
+                Option.map (Map.find instances id) ~f:(fun path ->
+                    (path, instance_typ) ) )
         else None )
 
   let generate_implicits e env =
@@ -964,14 +958,16 @@ module Type = struct
         in
         {exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (e, es)}
 
-  let rec instantiate_implicits ~loc ~is_subtype implicit_vars env =
+  let rec instantiate_implicits ~loc ~unifies implicit_vars env =
     let env_implicits = env.resolve_env.type_env.implicit_vars in
     env.resolve_env.type_env
     <- {env.resolve_env.type_env with implicit_vars= []} ;
     let implicit_vars =
       List.filter implicit_vars
         ~f:(fun ({Typedast.exp_loc; exp_type; _} as exp) ->
-          match implicit_instances ~loc ~is_subtype exp_type env with
+          let exp_type = flatten exp_type env in
+          let typ_vars = type_vars exp_type in
+          match implicit_instances ~loc ~unifies exp_type typ_vars env with
           | [(name, instance_typ)] ->
               let name = Location.mkloc name exp_loc in
               let e =
@@ -999,21 +995,17 @@ module Type = struct
     | [] ->
         implicit_vars
     | _ ->
-        instantiate_implicits ~loc ~is_subtype
-          (new_implicits @ implicit_vars)
-          env
+        instantiate_implicits ~loc ~unifies (new_implicits @ implicit_vars) env
 
-  let flattened_implicit_vars ~loc ~toplevel ~is_subtype typ_vars env =
-    let is_subtype env typ ~of_:ctyp =
-      is_subtype env typ ~of_:(snd (get_implicits [] ctyp))
-    in
+  let flattened_implicit_vars ~loc ~toplevel ~unifies typ_vars env =
+    let unifies env typ ctyp = unifies env typ (snd (get_implicits [] ctyp)) in
     let {TypeEnvi.implicit_vars; _} = env.resolve_env.type_env in
     let implicit_vars =
       List.map implicit_vars ~f:(fun exp ->
           {exp with exp_type= flatten exp.exp_type env} )
     in
     let implicit_vars =
-      instantiate_implicits ~loc ~is_subtype implicit_vars env
+      instantiate_implicits ~loc ~unifies implicit_vars env
     in
     let implicit_vars =
       List.dedup_and_sort implicit_vars ~compare:(fun exp1 exp2 ->
@@ -1065,8 +1057,7 @@ module Type = struct
                        Type1.equal_at_depth ~depth:env.depth e_weak.exp_type
                          e_strong.exp_type
                      then (
-                       ignore
-                         (is_subtype env e_strong.exp_type ~of_:e_weak.exp_type) ;
+                       ignore (unifies env e_strong.exp_type e_weak.exp_type) ;
                        ( match e_weak.exp_desc with
                        | Texp_unifiable desc ->
                            desc.expression <- Some e_strong
@@ -1089,25 +1080,6 @@ module Type = struct
     in
     env.resolve_env.type_env <- {env.resolve_env.type_env with implicit_vars} ;
     local_implicit_vars
-
-  let get_preferred_constr_name env typ =
-    match typ.type_desc with
-    | Tctor variant ->
-        List.find_map env.scope_stack
-          ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)
-    | _ ->
-        None
-
-  let normalise_constr_names env typ =
-    constr_map typ ~f:(fun variant ->
-        match
-          List.find_map env.scope_stack
-            ~f:(Scope.get_preferred_type_name variant.var_decl.tdec_id)
-        with
-        | Some ident ->
-            Tctor {variant with var_ident= ident}
-        | None ->
-            Tctor variant )
 end
 
 module TypeDecl = struct
