@@ -1040,7 +1040,7 @@ let rec check_signature_item env item =
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
   | Psig_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
-      let env = Envi.open_namespace_scope m env in
+      let env = Envi.open_namespace_scope path m env in
       ( env
       , { Typedast.sig_desc= Tsig_open (Location.mkloc path name.loc)
         ; sig_loc= loc } )
@@ -1228,7 +1228,7 @@ let rec check_statement env stmt =
       , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
   | Pstmt_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
-      ( Envi.open_namespace_scope m env
+      ( Envi.open_namespace_scope path m env
       , { Typedast.stmt_loc= loc
         ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
   | Pstmt_typeext (variant, ctors) ->
@@ -1406,7 +1406,7 @@ let pp_typ = Typeprint.type_expr
 let rec report_error ppf = function
   | Check_failed (typ, constr_typ, err) ->
       fprintf ppf
-        "@[<v>@[<hov>Incompatable types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
+        "@[<v>@[<hov>Incompatible types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
         pp_typ typ pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
       fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" pp_typ typ
