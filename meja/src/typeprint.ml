@@ -27,6 +27,9 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
         type_expr typ ;
       if bracket then fprintf fmt ")"
+  | Tref typ ->
+      let typ = Type1.repr typ in
+      if bracket then type_expr_b fmt typ else type_expr fmt typ
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs

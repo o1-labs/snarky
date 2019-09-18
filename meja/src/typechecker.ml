@@ -71,6 +71,8 @@ let rec check_type_aux ~loc typ ctyp env =
   in
   Type1.unify_depths typ ctyp ;
   match (typ.type_desc, ctyp.type_desc) with
+  | Tref _, _ | _, Tref _ ->
+      assert false
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
   | Tpoly (_, typ), _ ->
@@ -227,9 +229,7 @@ let get_field (field : lid) env =
       ( ident
       , ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
         , i ) ) ->
-      let vars, bound_vars, _ =
-        Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
-      in
+      let bound_vars = Envi.Type.refresh_vars tdec_params env in
       let name =
         match ident with
         | Path.Pdot (m, _, _) ->
@@ -237,16 +237,18 @@ let get_field (field : lid) env =
         | _ ->
             Path.Pident tdec_ident
       in
-      let rcd_type = Envi.TypeDecl.mk_typ ~params:vars ~ident:name decl env in
+      let rcd_type =
+        Envi.TypeDecl.mk_typ ~params:tdec_params ~ident:name decl env
+      in
       let {fld_type; _} = List.nth_exn field_decls i in
-      let rcd_type = Envi.Type.copy ~loc rcd_type bound_vars env in
-      let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
+      let rcd_type = Envi.Type.copy rcd_type env in
+      let fld_type = Envi.Type.copy fld_type env in
+      List.iter ~f:Envi.Type.restore_desc bound_vars ;
       (ident, i, fld_type, rcd_type)
   | _ ->
       raise (Error (loc, Unbound ("record field", field)))
 
-let get_field_of_decl typ bound_vars field_decls (field : lid) env =
-  let loc = field.loc in
+let get_field_of_decl typ decl_vars params field_decls (field : lid) env =
   match field with
   | {txt= Longident.Lident name; _} -> (
     match
@@ -254,8 +256,7 @@ let get_field_of_decl typ bound_vars field_decls (field : lid) env =
           String.equal (Ident.name fld_ident) name )
     with
     | Some (i, {fld_type; fld_ident; _}) ->
-        let typ = Envi.Type.copy ~loc typ bound_vars env in
-        let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
+        let fld_type = Envi.Type.instantiate decl_vars params fld_type env in
         (Path.Pident fld_ident, i, fld_type, typ)
     | None ->
         get_field field env )
@@ -310,11 +311,10 @@ let get_ctor (name : lid) env =
         Set.to_list
           (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
       in
-      let _, bound_vars, _ =
-        Envi.Type.refresh_vars ~loc bound_vars Int.Map.empty env
-      in
-      let args_typ = Envi.Type.copy ~loc args_typ bound_vars env in
-      let typ = Envi.Type.copy ~loc typ bound_vars env in
+      let bound_vars = Envi.Type.refresh_vars bound_vars env in
+      let args_typ = Envi.Type.copy args_typ env in
+      let typ = Envi.Type.copy typ env in
+      List.iter ~f:Envi.Type.restore_desc bound_vars ;
       (name, typ, args_typ)
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
@@ -378,18 +378,20 @@ let rec check_pattern env typ pat =
   | Ppat_record [] ->
       raise (Error (loc, Empty_record))
   | Ppat_record ((field, _) :: _ as fields) ->
-      let typ, field_decls, bound_vars, env =
+      let typ, field_decls, decl_vars, type_params =
         match Envi.TypeDecl.find_unaliased_of_type ~loc typ env with
-        | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) ->
-            (typ, field_decls, bound_vars, env)
+        | Some
+            ( {tdec_desc= TRecord field_decls; tdec_params; _}
+            , ({type_desc= Tctor {var_params; _}; _} as typ) ) ->
+            (typ, field_decls, tdec_params, var_params)
         | _ -> (
           match Envi.TypeDecl.find_of_field ~mode field env with
           | Some
               ( ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
               ) ->
-              let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
+              let vars =
+                List.map ~f:(fun _ -> Envi.Type.mkvar None env) tdec_params
               in
               let ident =
                 Path.(
@@ -405,14 +407,14 @@ let rec check_pattern env typ pat =
                 Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
               in
               check_type ~loc env typ decl_type ;
-              (decl_type, field_decls, bound_vars, env)
+              (decl_type, field_decls, tdec_params, vars)
           | _ ->
               raise (Error (loc, Unbound ("record field", field))) )
       in
       let field_infos =
         List.map fields ~f:(fun (field, _p) ->
-            let path, _, field_typ, record_typ =
-              get_field_of_decl typ bound_vars field_decls field env
+            let path, _index, field_typ, record_typ =
+              get_field_of_decl typ decl_vars type_params field_decls field env
             in
             ( try check_type ~loc:field.loc env record_typ typ
               with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->
@@ -513,7 +515,7 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (f, es)}, env)
   | Pexp_variable name ->
-      let path, typ = Envi.find_name ~mode ~loc name env in
+      let path, typ = Envi.find_name ~mode name env in
       let path = Location.mkloc path name.loc in
       let implicits, result_typ = Envi.Type.get_implicits [] typ in
       check_type ~loc env expected result_typ ;
@@ -673,8 +675,8 @@ let rec get_expression env expected exp =
               ( fld_ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), i)
               ) ->
-              let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
+              let vars =
+                List.map ~f:(fun _ -> Envi.Type.mkvar None env) tdec_params
               in
               let ident =
                 match fld_ident with
@@ -687,42 +689,47 @@ let rec get_expression env expected exp =
                 Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
               in
               let {fld_type; _} = List.nth_exn field_decls i in
-              let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
+              let fld_type =
+                Envi.Type.instantiate tdec_params vars fld_type env
+              in
               check_type ~loc env expected fld_type ;
-              Some (fld_type, decl_type, env, fld_ident)
+              Some (fld_type, decl_type, fld_ident)
           | _ ->
               None )
         | Lapply _ ->
             failwith "Unhandled Lapply in field name"
       in
-      let typ, decl_type, env, fld_ident, resolved =
+      let typ, decl_type, fld_ident, resolved =
         match field_info with
-        | Some (fld_type, decl_type, env, fld_ident) ->
-            (fld_type, decl_type, env, Some fld_ident, true)
+        | Some (fld_type, decl_type, fld_ident) ->
+            (fld_type, decl_type, Some fld_ident, true)
         | None ->
             let fld_type = expected in
             let decl_type = Envi.Type.mkvar None env in
-            (fld_type, decl_type, env, None, false)
+            (fld_type, decl_type, None, false)
       in
       let e, env = get_expression env decl_type e in
-      let fld_ident, typ, env =
-        if resolved then (Option.value_exn fld_ident, typ, env)
+      let fld_ident, typ =
+        if resolved then (Option.value_exn fld_ident, typ)
         else
           match Envi.TypeDecl.find_unaliased_of_type ~loc e.exp_type env with
-          | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) -> (
+          | Some
+              ( {tdec_desc= TRecord field_decls; tdec_params; _}
+              , {type_desc= Tctor {var_params; _}; _} ) -> (
             match
               List.find field_decls ~f:(fun {fld_ident; _} ->
                   match field.txt with
                   | Lident field ->
                       String.equal (Ident.name fld_ident) field
                   | _ ->
-                      false
-                  (* This case shouldn't happen! *) )
+                      assert false )
             with
             | Some {fld_type; fld_ident; _} ->
-                let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
+                let fld_type =
+                  Envi.Type.instantiate tdec_params var_params fld_type env
+                in
                 check_type ~loc env typ fld_type ;
-                (Path.Pident fld_ident, fld_type, env)
+                (Path.Pident fld_ident, fld_type)
             | None ->
                 raise (Error (loc, Wrong_record_field (field.txt, e.exp_type)))
             )
@@ -732,8 +739,8 @@ let rec get_expression env expected exp =
                 ( fld_ident
                 , ( ({tdec_desc= TRecord field_decls; tdec_params; _} as decl)
                   , i ) ) ->
-                let vars, bound_vars, env =
-                  Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
+                let vars =
+                  List.map ~f:(fun _ -> Envi.Type.mkvar None env) tdec_params
                 in
                 let ident =
                   Path.(
@@ -750,9 +757,10 @@ let rec get_expression env expected exp =
                 in
                 check_type ~loc env e.exp_type e_typ ;
                 let {fld_type; _} = List.nth_exn field_decls i in
-                let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
-                let fld_type = Envi.Type.copy ~loc fld_type bound_vars env in
-                (fld_ident, fld_type, env)
+                let fld_type =
+                  Envi.Type.instantiate tdec_params vars fld_type env
+                in
+                (fld_ident, fld_type)
             | _ ->
                 raise (Error (loc, Unbound ("record field", field))) )
       in
@@ -771,18 +779,21 @@ let rec get_expression env expected exp =
         | None ->
             (expected, None, env)
       in
-      let typ, field_decls, bound_vars, env =
+      let typ = Envi.Type.flatten typ env in
+      let typ, field_decls, type_vars, bound_vars =
         match Envi.TypeDecl.find_unaliased_of_type ~loc typ env with
-        | Some ({tdec_desc= TRecord field_decls; _}, bound_vars, env) ->
-            (typ, field_decls, bound_vars, env)
+        | Some
+            ( {tdec_desc= TRecord field_decls; tdec_params; _}
+            , {type_desc= Tctor {var_params; _}; _} ) ->
+            (typ, field_decls, tdec_params, var_params)
         | _ -> (
           match Envi.TypeDecl.find_of_field ~mode field env with
           | Some
               ( ident
               , (({tdec_desc= TRecord field_decls; tdec_params; _} as decl), _)
               ) ->
-              let vars, bound_vars, env =
-                Envi.Type.refresh_vars ~loc tdec_params Int.Map.empty env
+              let vars =
+                List.map ~f:(fun _ -> Envi.Type.mkvar None env) tdec_params
               in
               let ident =
                 Path.(
@@ -798,7 +809,7 @@ let rec get_expression env expected exp =
                 Envi.TypeDecl.mk_typ ~params:vars ~ident decl env
               in
               check_type ~loc env typ decl_type ;
-              (decl_type, field_decls, bound_vars, env)
+              (decl_type, field_decls, tdec_params, vars)
           | _ ->
               raise (Error (loc, Unbound ("record field", field))) )
       in
@@ -807,7 +818,7 @@ let rec get_expression env expected exp =
       let fields =
         List.map fields ~f:(fun (field, e) ->
             let path, i, field_typ, record_typ =
-              get_field_of_decl typ bound_vars field_decls field !env
+              get_field_of_decl typ type_vars bound_vars field_decls field !env
             in
             ( try check_type ~loc:field.loc !env record_typ typ
               with Error (_, Check_failed (_, _, Cannot_unify (typ, _))) ->

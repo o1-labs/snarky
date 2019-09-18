@@ -28,6 +28,8 @@ module Type0 = struct
         Type.constr ?loc ~params (longident_of_path ident)
     | Tpoly (vars, var) ->
         Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
+    | Tref typ ->
+        type_expr ?loc (Type1.repr typ)
 
   and type_expr ?loc typ = type_desc ?loc typ.type_desc
 

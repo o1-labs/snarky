@@ -51,6 +51,9 @@ let type_desc mapper desc =
       let vars = map_list vars ~same ~f:(mapper.type_expr mapper) in
       let typ' = mapper.type_expr mapper typ in
       if !same && phys_equal typ' typ then desc else Tpoly (vars, typ')
+  | Tref typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then desc else Tref typ'
 
 let variant mapper ({var_ident= ident; var_params; var_decl= decl} as variant)
     =

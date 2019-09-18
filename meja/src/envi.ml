@@ -847,43 +847,59 @@ module Type = struct
     | _ ->
         raise (Error (loc, Expected_type_var typ))
 
-  let refresh_vars ~loc vars new_vars_map env =
-    let env, new_vars =
-      List.fold_map vars ~init:env ~f:(refresh_var ~loc ~must_find:false)
-    in
-    let new_vars_map =
-      List.fold2_exn ~init:new_vars_map vars new_vars
-        ~f:(fun map var new_var -> Map.set map ~key:var.type_id ~data:new_var
-      )
-    in
-    (new_vars, new_vars_map, env)
+  (** Replace the representatives of each of list of variables with a fresh
+      variable.
 
-  let rec copy ~loc typ new_vars_map env =
-    let copy = copy ~loc in
-    match typ.type_desc with
-    | Tvar _ -> (
-      match Map.find new_vars_map typ.type_id with
-      | Some var ->
-          var
-      | None ->
-          typ )
-    | Tpoly (vars, typ) ->
-        let _vars, new_vars_map, env =
-          refresh_vars ~loc vars new_vars_map env
-        in
-        copy typ new_vars_map env
-    | Tctor ({var_params; _} as variant) ->
-        let var_params =
-          List.map var_params ~f:(fun t -> copy t new_vars_map env)
-        in
-        mk (Tctor {variant with var_params}) env
-    | Ttuple typs ->
-        let typs = List.map typs ~f:(fun t -> copy t new_vars_map env) in
-        mk (Ttuple typs) env
-    | Tarrow (typ1, typ2, explicit, label) ->
-        let typ1 = copy typ1 new_vars_map env in
-        let typ2 = copy typ2 new_vars_map env in
-        mk (Tarrow (typ1, typ2, explicit, label)) env
+      Once the representatives have been used, the variables must be restored
+      to their previous representatives using [List.iter ~f:restore_desc] on
+      the return value.
+  *)
+  let refresh_vars vars env =
+    List.map vars ~f:(fun var ->
+        let {type_desc; _} = var in
+        (* Sanity check. *)
+        (match (repr var).type_desc with Tvar _ -> () | _ -> assert false) ;
+        var.type_desc <- Tref (mkvar None env) ;
+        (var, type_desc) )
+
+  let restore_desc (typ, desc) = typ.type_desc <- desc
+
+  let copy typ env =
+    let restores = ref [] in
+    let rec copy typ =
+      let typ = repr typ in
+      match typ.type_desc with
+      | Tvar _ ->
+          (* Don't copy variables! *)
+          typ
+      | Tpoly (vars, typ) ->
+          (* Make fresh variables to instantiate [Tpoly]s. *)
+          restores := refresh_vars vars env :: !restores ;
+          copy typ
+      | _ ->
+          mk (copy_desc ~f:copy typ.type_desc) env
+    in
+    let typ = copy typ in
+    (* Restore the original variables back into the [Tpoly]s. *)
+    List.iter !restores ~f:(List.iter ~f:restore_desc) ;
+    typ
+
+  (** [instantiate params typs typ env] creates a new type by replacing the
+      each of the type variables in [params] with the corresponding instance
+      from [typs] in [typ].
+  *)
+  let instantiate params typs typ env =
+    let restores =
+      List.map2_exn params typs ~f:(fun param typ ->
+          let {type_desc; _} = param in
+          (* Sanity check. *)
+          (match (repr param).type_desc with Tvar _ -> () | _ -> assert false) ;
+          param.type_desc <- Tref typ ;
+          (param, type_desc) )
+    in
+    let typ = copy typ env in
+    List.iter restores ~f:restore_desc ;
+    typ
 
   module T = struct
     type t = type_expr
@@ -901,41 +917,38 @@ module Type = struct
     | _ ->
         Type1.iter ~f:(update_depths env) typ
 
-  let rec flatten typ env =
-    let mk' = Type1.mk typ.type_depth in
-    match typ.type_desc with
-    | Tvar _ -> (
-      match instance env typ with
-      | Some typ' ->
-          let flattened_typ = flatten typ' env in
-          add_instance typ typ' env ; flattened_typ
-      | None ->
-          typ )
-    | Tpoly (vars, typ) ->
-        let var_set =
-          Typeset.union_list (List.map vars ~f:(type_vars ~depth:env.depth))
-        in
-        let typ = flatten typ env in
-        mk' (Tpoly (Set.to_list var_set, typ))
-    | Tctor variant ->
-        let var_params =
-          List.map variant.var_params ~f:(fun typ -> flatten typ env)
-        in
-        mk' (Tctor {variant with var_params})
-    | Ttuple typs ->
-        let typs = List.map typs ~f:(fun typ -> flatten typ env) in
-        mk' (Ttuple typs)
-    | Tarrow (typ1, typ2, explicit, label) ->
-        let typ1 = flatten typ1 env in
-        let typ2 = flatten typ2 env in
-        mk' (Tarrow (typ1, typ2, explicit, label))
+  let flatten typ env =
+    let typ = repr typ in
+    let restores = ref [] in
+    let rec flatten typ =
+      match (repr typ).type_desc with
+      | Tvar _ -> (
+        match instance env typ with
+        | Some typ' ->
+            (* Replace variables with their instances. *)
+            let typ' = repr typ' in
+            restores := (typ, typ.type_desc) :: !restores ;
+            typ.type_desc <- Tref typ' ;
+            flatten typ'
+        | None ->
+            (* Don't copy variables! *)
+            repr typ )
+      | _ ->
+          Type1.mk typ.type_depth (copy_desc ~f:flatten typ.type_desc)
+    in
+    let typ = flatten typ in
+    (* Restore variables back without their instances. *)
+    List.iter !restores ~f:restore_desc ;
+    typ
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
   let rec compare typ1 typ2 =
     if Int.equal typ1.type_id typ2.type_id then 0
     else
-      match (typ1.type_desc, typ2.type_desc) with
+      match ((repr typ1).type_desc, (repr typ2).type_desc) with
+      | Tref _, _ | _, Tref _ ->
+          assert false
       | Tpoly (_, typ1), _ ->
           compare typ1 typ2
       | _, Tpoly (_, typ2) ->
@@ -1015,12 +1028,11 @@ module Type = struct
        ; implicit_id= implicit_id + 1 } ;
     new_exp
 
-  let implicit_instances ~loc
-      ~(unifies : env -> type_expr -> type_expr -> bool) (typ : type_expr)
-      typ_vars env =
+  let implicit_instances ~(unifies : env -> type_expr -> type_expr -> bool)
+      (typ : type_expr) typ_vars env =
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, instance_typ) ->
-        let instance_typ = copy ~loc instance_typ Int.Map.empty env in
+        let instance_typ = copy instance_typ env in
         let snapshot = Snapshot.create () in
         let {TypeEnvi.variable_instances; _} = env.resolve_env.type_env in
         if unifies env typ instance_typ then
@@ -1060,7 +1072,7 @@ module Type = struct
         ~f:(fun ({Typedast.exp_loc; exp_type; _} as exp) ->
           let exp_type = flatten exp_type env in
           let typ_vars = type_vars exp_type in
-          match implicit_instances ~loc ~unifies exp_type typ_vars env with
+          match implicit_instances ~unifies exp_type typ_vars env with
           | [(name, instance_typ)] ->
               let name = Location.mkloc name exp_loc in
               let e =
@@ -1186,30 +1198,11 @@ module TypeDecl = struct
   let mk_typ ~params ?ident decl env =
     Type1.Decl.mk_typ ~params ?ident env.depth decl
 
-  let find_of_type ~loc typ env =
-    let open Option.Let_syntax in
-    let%map variant =
-      match typ.type_desc with Tctor variant -> Some variant | _ -> None
-    in
-    let decl = variant.var_decl in
-    let bound_vars =
-      match
-        List.fold2 ~init:Int.Map.empty variant.var_params decl.tdec_params
-          ~f:(fun bound_vars param var ->
-            Map.set bound_vars ~key:var.type_id ~data:param )
-      with
-      | Ok bound_vars ->
-          bound_vars
-      | Unequal_lengths ->
-          raise
-            (Error
-               ( loc
-               , Wrong_number_args
-                   ( variant.var_ident
-                   , List.length decl.tdec_params
-                   , List.length variant.var_params ) ))
-    in
-    (decl, bound_vars, env)
+  (* NOTE: the unused parameters here will be used when [var_decl] is removed
+     from [variant] and we need to search through the environment for the type
+     based on its path.
+  *)
+  let find_of_variant ~loc:_ variant _env = variant.var_decl
 
   let find_of_field (field : lid) env =
     find_of_lident ~kind:"field" ~get_name:Scope.find_field field env
@@ -1217,20 +1210,39 @@ module TypeDecl = struct
   let find_of_constructor (ctor : lid) env =
     find_of_lident ~kind:"constructor" ~get_name:Scope.find_ctor ctor env
 
-  let unfold_alias ~loc typ env =
-    match find_of_type ~loc typ env with
-    | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
-        Some (Type.copy ~loc alias_typ bound_vars env)
+  let unfold_alias_aux ~loc typ env =
+    match (repr typ).type_desc with
+    | Tctor variant -> (
+      match find_of_variant ~loc variant env with
+      | {tdec_desc= TAlias alias_typ; tdec_params; _} as desc ->
+          (* NOTE: Ignoring tdec_implicit_params; they are never used and
+               will be removed.
+            *)
+          Some
+            ( desc
+            , Some
+                (Type.instantiate tdec_params variant.var_params alias_typ env)
+            )
+      | desc ->
+          Some (desc, None) )
     | _ ->
         None
 
+  let unfold_alias ~loc typ env =
+    match unfold_alias_aux ~loc typ env with
+    | Some (_desc, typ) ->
+        typ
+    | None ->
+        None
+
   let rec find_unaliased_of_type ~loc typ env =
-    match find_of_type ~loc typ env with
-    | Some ({tdec_desc= TAlias alias_typ; _}, bound_vars, env) ->
-        let typ = Type.copy ~loc alias_typ bound_vars env in
+    match unfold_alias_aux ~loc typ env with
+    | Some (_desc, Some typ) ->
         find_unaliased_of_type ~loc typ env
-    | ret ->
-        ret
+    | Some (desc, None) ->
+        Some (desc, typ)
+    | None ->
+        None
 end
 
 let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
@@ -1239,16 +1251,16 @@ let get_name ~mode (name : str) env =
   let loc = name.loc in
   match List.find_map ~f:(Scope.find_name ~mode name.txt) env.scope_stack with
   | Some (ident, typ) ->
-      (ident, Type.copy typ Int.Map.empty env)
+      (ident, Type.copy typ env)
   | None ->
       raise (Error (loc, Unbound_value (Lident name.txt)))
 
-let find_name ~mode ~loc (lid : lid) env =
+let find_name ~mode (lid : lid) env =
   match
     find_of_lident ~mode ~kind:"name" ~get_name:Scope.find_name lid env
   with
   | Some (ident, typ) ->
-      (ident, Type.copy ~loc typ Int.Map.empty env)
+      (ident, Type.copy typ env)
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
 
