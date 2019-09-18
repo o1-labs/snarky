@@ -316,7 +316,6 @@ module Scope = struct
         ; modules
         ; module_types
         ; instances
-        ; paths
         ; mode } =
       { kind
       ; path
@@ -329,7 +328,6 @@ module Scope = struct
       ; modules= IdTbl.map ~f:subst_scope_or_path modules
       ; module_types= IdTbl.map ~f:subst_scope_or_path module_types
       ; instances
-      ; paths (* TODO: Think about what to do here. *)
       ; mode }
     and subst_scope_or_path = function
       | Immediate scope ->
@@ -351,7 +349,6 @@ module Scope = struct
       ; modules
       ; module_types= _
       ; instances= _
-      ; paths= _
       ; mode= _ } =
     let s =
       IdTbl.fold_keys ~init:s type_decls ~f:(fun s ident ->
