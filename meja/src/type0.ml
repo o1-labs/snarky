@@ -17,10 +17,7 @@ and type_desc =
 [@@deriving sexp]
 
 and variant =
-  { var_ident: Path.t
-  ; var_params: type_expr list
-  ; var_implicit_params: type_expr list
-  ; var_decl: type_decl }
+  {var_ident: Path.t; var_params: type_expr list; var_decl: type_decl}
 [@@deriving sexp]
 
 and field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
@@ -35,7 +32,6 @@ and ctor_decl =
 and type_decl =
   { tdec_ident: Ident.t
   ; tdec_params: type_expr list
-  ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
   ; tdec_id: int }
 [@@deriving sexp]

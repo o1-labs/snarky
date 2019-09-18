@@ -269,21 +269,13 @@ let get_ctor (name : lid) env =
   match (Envi.TypeDecl.find_of_constructor ~mode name env, name.txt) with
   | ( Some
         ( name
-        , ( ( { tdec_desc= TVariant ctors
-              ; tdec_ident
-              ; tdec_params
-              ; tdec_implicit_params
-              ; _ } as decl )
-          , i ) )
+        , (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
+        )
     , _ )
   | ( Some
         ( name
-        , ( { tdec_desc= TExtend (_, decl, ctors)
-            ; tdec_ident
-            ; tdec_params
-            ; tdec_implicit_params
-            ; _ }
-          , i ) )
+        , ({tdec_desc= TExtend (_, decl, ctors); tdec_ident; tdec_params; _}, i)
+        )
     , _ ) ->
       let ctor = List.nth_exn ctors i in
       let make_name tdec_ident =
@@ -308,7 +300,6 @@ let get_ctor (name : lid) env =
               (Tctor
                  { var_ident= make_name ctor.ctor_ident
                  ; var_params= decl.tdec_params
-                 ; var_implicit_params= tdec_implicit_params
                  ; var_decl= decl })
               env
         | Ctor_tuple [typ] ->
@@ -589,7 +580,6 @@ let rec get_expression env expected exp =
       let decl =
         { tdec_ident= name
         ; tdec_params= []
-        ; tdec_implicit_params= []
         ; tdec_desc= Pdec_abstract
         ; tdec_loc= loc }
       in
@@ -607,7 +597,7 @@ let rec get_expression env expected exp =
               (fun mapper typ ->
                 match typ.type_desc with
                 | Tctor {var_ident= Pident ident'; _}
-                  when Ident.compare ident ident' = 0 ->
+                  when Ident.compare ident.txt ident' = 0 ->
                     free_var
                 | _ ->
                     Type0_map.default_mapper.type_expr mapper typ ) }
@@ -618,8 +608,7 @@ let rec get_expression env expected exp =
       Envi.Type.update_depths env res ;
       ( { exp_loc= loc
         ; exp_type= res
-        ; exp_desc= Texp_newtype (Location.mkloc decl.tdec_ident name.loc, body)
-        }
+        ; exp_desc= Texp_newtype (decl.tdec_ident, body) }
       , env )
   | Pexp_seq (e1, e2) ->
       let e1, env = get_expression env Initial_env.Type.unit e1 in
@@ -975,10 +964,8 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
 
 let type_extension ~loc variant ctors env =
   let mode = Envi.current_mode env in
-  let {Parsetypes.var_ident; var_params; var_implicit_params= _} = variant in
-  let ( path
-      , ({tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; _} as decl)
-      ) =
+  let {Parsetypes.var_ident; var_params} = variant in
+  let path, ({tdec_ident; tdec_params; tdec_desc; _} as decl) =
     match Envi.raw_find_type_declaration ~mode var_ident env with
     | open_decl ->
         open_decl
@@ -998,23 +985,19 @@ let type_extension ~loc variant ctors env =
   let decl =
     { Parsetypes.tdec_ident= Location.mkloc (Ident.name tdec_ident) loc
     ; tdec_params= var_params
-    ; tdec_implicit_params=
-        List.map ~f:(Untype_ast.Type0.type_expr ~loc) tdec_implicit_params
     ; tdec_desc= Pdec_extend (Location.mkloc path var_ident.loc, decl, ctors)
     ; tdec_loc= loc }
   in
   let decl, env = Typet.TypeDecl.import decl env in
   let ctors =
     match decl.tdec_desc with
-    | TExtend (_, _, ctors) ->
+    | Tdec_extend (_, _, ctors) ->
         ctors
     | _ ->
         failwith "Expected a TExtend."
   in
   let variant =
-    { var_ident= Pident tdec_ident
-    ; var_implicit_params= decl.tdec_implicit_params
-    ; var_decl= decl
+    { Typedast.var_ident= Location.mkloc path var_ident.loc
     ; var_params= decl.tdec_params }
   in
   (env, variant, ctors)
@@ -1041,7 +1024,7 @@ let rec check_signature_item env item =
       let env = Envi.add_implicit_instance name.txt typ.type_type env in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
   | Psig_type decl ->
-      let _decl, env = Typet.TypeDecl.import decl env in
+      let decl, env = Typet.TypeDecl.import decl env in
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
@@ -1073,7 +1056,7 @@ let rec check_signature_item env item =
       , { Typedast.sig_desc= Tsig_open (Location.mkloc path name.loc)
         ; sig_loc= loc } )
   | Psig_typeext (variant, ctors) ->
-      let env, _variant, _ctors = type_extension ~loc variant ctors env in
+      let env, variant, ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.sig_desc= Tsig_typeext (variant, ctors); sig_loc= loc})
   | Psig_request (arg, ctor_decl) ->
       let open Ast_build in
@@ -1085,8 +1068,14 @@ let rec check_signature_item env item =
         Type.mk ~loc (Ptyp_ctor {variant with var_params= [arg]})
       in
       let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
-      let env, _variant, _ctors =
-        type_extension ~loc variant [ctor_decl] env
+      let env, _variant, ctors = type_extension ~loc variant [ctor_decl] env in
+      let ctor_decl, arg =
+        match ctors with
+        | [ ( { ctor_ret= Some {type_desc= Ttyp_ctor {var_params= [arg]; _}; _}
+              ; _ } as ctor_decl ) ] ->
+            (ctor_decl, arg)
+        | _ ->
+            assert false
       in
       (env, {Typedast.sig_desc= Tsig_request (arg, ctor_decl); sig_loc= loc})
   | Psig_multiple sigs ->
@@ -1217,10 +1206,7 @@ let rec check_statement env stmt =
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e)})
   | Pstmt_type decl when !in_decl ->
       let decl, env = Typet.TypeDecl.import decl env in
-      let stmt =
-        { Typedast.stmt_loc= loc
-        ; stmt_desc= Tstmt_type (Untype_ast.Type0.type_decl ~loc decl) }
-      in
+      let stmt = {Typedast.stmt_loc= loc; stmt_desc= Tstmt_type decl} in
       (env, stmt)
   | Pstmt_type decl ->
       in_decl := true ;
@@ -1257,29 +1243,32 @@ let rec check_statement env stmt =
       , { Typedast.stmt_loc= loc
         ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
   | Pstmt_typeext (variant, ctors) ->
-      let env, _variant, _ctors = type_extension ~loc variant ctors env in
+      let env, variant, ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_typeext (variant, ctors)})
   | Pstmt_request (arg, ctor_decl, handler) ->
       let open Ast_build in
       let variant =
         Type.variant ~loc ~params:[Type.none ~loc ()]
-          (Lid.of_list ["Snarky__Request"; "t"])
+          (Lid.of_list ["Snarky"; "Request"; "t"])
       in
       let ctor_ret =
         Type.mk ~loc (Ptyp_ctor {variant with var_params= [arg]})
       in
       let ctor_decl = {ctor_decl with ctor_ret= Some ctor_ret} in
       let env, _, ctors = type_extension ~loc variant [ctor_decl] env in
-      let ctor_decl =
+      let ctor_decl, arg =
         match ctors with
-        | [ctor] ->
-            { (Untype_ast.Type0.ctor_decl ~loc ctor) with
+        | [ ( { ctor_ret= Some {type_desc= Ttyp_ctor {var_params= [arg]; _}; _}
+              ; _ } as ctor ) ] ->
+            (ctor, arg)
+            (*match Envi.raw_find_type_declaration ~mode (Lid.of_list ["Snarky"; "Request"; "t"])
+            { (Untype_ast.ctor_decl ctor) with
               ctor_ret=
                 Some
                   (Type.mk ~loc
                      (Ptyp_ctor
                         (Type.variant ~loc ~params:[arg]
-                           (Lid.of_list ["Snarky"; "Request"; "t"])))) }
+                           (Lid.of_list ["Snarky"; "Request"; "t"])))) }, arg'*)
         | _ ->
             failwith "Wrong number of constructors returned for Request."
       in
@@ -1296,20 +1285,23 @@ let rec check_statement env stmt =
                 | None ->
                     (body.exp_loc, body.exp_loc))
             in
-            let p = Pat.var ~loc ("handle_" ^ name) in
+            let p = Pat.var ~loc ("handle_" ^ Ident.name name) in
             let e =
               let request = Lid.of_name "request" in
               let respond = Lid.of_name "respond" in
               let body =
                 Exp.let_ ~loc (Pat.var "unhandled")
-                  (Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"]))
+                  (Exp.var (Lid.of_list ["Snarky"; "Request"; "unhandled"]))
                   (Exp.match_ ~loc:stmt.stmt_loc
                      (Exp.var ~loc (Lid.of_name "request"))
-                     [ ( Pat.ctor ~loc:pat_loc (Lid.of_name name) ?args:pat
+                     [ ( Pat.ctor ~loc:pat_loc
+                           (Lid.of_name (Ident.name name))
+                           ?args:pat
                        , body )
                      ; ( Pat.any ()
-                       , Exp.var (Lid.of_list ["Snarky__Request"; "unhandled"])
-                       ) ])
+                       , Exp.var
+                           (Lid.of_list ["Snarky"; "Request"; "unhandled"]) )
+                     ])
               in
               Exp.fun_
                 (Pat.ctor

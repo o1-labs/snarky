@@ -55,19 +55,15 @@ let type_desc mapper desc =
       let typ' = mapper.type_expr mapper typ in
       if phys_equal typ' typ then desc else Tref typ'
 
-let variant mapper
-    ( {var_ident= ident; var_params; var_implicit_params; var_decl= decl} as
-    variant ) =
+let variant mapper ({var_ident= ident; var_params; var_decl= decl} as variant)
+    =
   let var_ident = mapper.path mapper ident in
   let same = ref true in
   let var_params = map_list var_params ~same ~f:(mapper.type_expr mapper) in
-  let var_implicit_params =
-    map_list var_implicit_params ~same ~f:(mapper.type_expr mapper)
-  in
   let var_decl = mapper.type_decl mapper decl in
   if !same && phys_equal var_ident ident && phys_equal var_decl decl then
     variant
-  else {var_ident; var_params; var_implicit_params; var_decl}
+  else {var_ident; var_params; var_decl}
 
 let field_decl mapper ({fld_ident= ident; fld_type= typ} as fld) =
   let fld_type = mapper.type_expr mapper typ in
@@ -102,21 +98,15 @@ let ctor_decl mapper ({ctor_ident; ctor_args= args; ctor_ret} as decl) =
       else {ctor_ident; ctor_args; ctor_ret= Some ctor_ret}
 
 let type_decl mapper
-    ( { tdec_ident= ident
-      ; tdec_params= params
-      ; tdec_implicit_params= implicits
-      ; tdec_desc= desc
-      ; tdec_id } as decl ) =
+    ({tdec_ident= ident; tdec_params= params; tdec_desc= desc; tdec_id} as decl)
+    =
   let same = ref true in
   let tdec_params = map_list params ~same ~f:(mapper.type_expr mapper) in
-  let tdec_implicit_params =
-    map_list implicits ~same ~f:(mapper.type_expr mapper)
-  in
   let tdec_desc = mapper.type_decl_desc mapper desc in
   let tdec_ident = mapper.ident mapper ident in
   if !same && phys_equal tdec_desc desc && phys_equal tdec_ident ident then
     decl
-  else {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_id}
+  else {tdec_ident; tdec_params; tdec_desc; tdec_id}
 
 let type_decl_desc mapper desc =
   match desc with

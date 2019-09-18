@@ -693,7 +693,6 @@ let raw_find_type_declaration ~mode (lid : lid) env =
         ( Pident ident
         , { tdec_ident= ident
           ; tdec_params= []
-          ; tdec_implicit_params= []
           ; tdec_desc= TForward num_args
           ; tdec_id= id } )
     | _ ->
@@ -1177,7 +1176,6 @@ let pp_decl_typ ppf decl =
         Tctor
           { var_ident= Pident decl.tdec_ident
           ; var_params= decl.tdec_params
-          ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl= decl }
     ; type_id= -1
     ; type_depth= -1 }

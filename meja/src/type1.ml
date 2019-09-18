@@ -145,8 +145,7 @@ let fold ~init ~f typ =
       let acc = f init typ1 in
       f acc typ2
   | Tctor variant ->
-      let acc = List.fold ~init ~f variant.var_params in
-      List.fold ~init:acc ~f variant.var_implicit_params
+      List.fold ~init ~f variant.var_params
   | Tpoly (typs, typ) ->
       let acc = List.fold ~init ~f typs in
       f acc typ
@@ -165,11 +164,8 @@ let rec copy_desc ~f = function
       Ttuple (List.map ~f typs)
   | Tarrow (typ1, typ2, explicitness, label) ->
       Tarrow (f typ1, f typ2, explicitness, label)
-  | Tctor ({var_params; var_implicit_params; _} as variant) ->
-      Tctor
-        { variant with
-          var_params= List.map ~f var_params
-        ; var_implicit_params= List.map ~f var_implicit_params }
+  | Tctor ({var_params; _} as variant) ->
+      Tctor {variant with var_params= List.map ~f var_params}
   | Tpoly (typs, typ) ->
       Tpoly (List.map ~f typs, f typ)
   | Tref typ ->
@@ -202,8 +198,6 @@ let rec equal_at_depth ~depth typ1 typ2 =
       when Int.equal decl1.tdec_id decl2.tdec_id ->
         List.for_all2_exn ~f:(equal_at_depth ~depth) variant1.var_params
           variant2.var_params
-        && List.for_all2_exn ~f:(equal_at_depth ~depth)
-             variant1.var_implicit_params variant2.var_implicit_params
     | Tpoly (typs1, typ1), Tpoly (typs2, typ2) -> (
       match List.for_all2 typs1 typs2 ~f:(equal_at_depth ~depth) with
       | Ok true ->
@@ -284,10 +278,7 @@ let rec constr_map ~f typ =
       repr typ
   | Tctor variant ->
       let var_params = List.map ~f:(constr_map ~f) variant.var_params in
-      let var_implicit_params =
-        List.map ~f:(constr_map ~f) variant.var_implicit_params
-      in
-      mk type_depth (f {variant with var_params; var_implicit_params})
+      mk type_depth (f {variant with var_params})
   | _ ->
       mk type_depth (copy_desc ~f:(constr_map ~f) typ.type_desc)
 
@@ -328,9 +319,7 @@ let contains typ ~in_ =
         equal typ1 || equal typ2 || contains typ1 || contains typ2
     | Tctor variant ->
         List.exists ~f:equal variant.var_params
-        || List.exists ~f:equal variant.var_implicit_params
         || List.exists ~f:contains variant.var_params
-        || List.exists ~f:contains variant.var_implicit_params
     | Tpoly (typs, typ) ->
         List.exists ~f:equal typs || equal typ
         || List.exists ~f:contains typs
@@ -345,20 +334,11 @@ module Decl = struct
 
   let typ_mk = mk
 
-  let mk ~name ~params ?(implicit_params = []) desc =
+  let mk ~name ~params desc =
     incr decl_id ;
-    { tdec_ident= name
-    ; tdec_params= params
-    ; tdec_implicit_params= implicit_params
-    ; tdec_desc= desc
-    ; tdec_id= !decl_id }
+    {tdec_ident= name; tdec_params= params; tdec_desc= desc; tdec_id= !decl_id}
 
   let mk_typ ~params ?ident depth decl =
     let ident = Option.value ident ~default:(Path.Pident decl.tdec_ident) in
-    typ_mk depth
-      (Tctor
-         { var_ident= ident
-         ; var_params= params
-         ; var_implicit_params= []
-         ; var_decl= decl })
+    typ_mk depth (Tctor {var_ident= ident; var_params= params; var_decl= decl})
 end
