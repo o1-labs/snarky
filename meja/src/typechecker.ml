@@ -28,7 +28,9 @@ type error =
 
 exception Error of Location.t * error
 
-let bind_none x f = match x with Some x -> x | None -> f ()
+let map_none x f = match x with Some x -> x | None -> f ()
+
+let bind_none x f = match x with Some x -> Some x | None -> f ()
 
 let unpack_decls ~loc typ ctyp env =
   if Int.equal typ.type_id ctyp.type_id then Some (typ, ctyp)
@@ -47,8 +49,8 @@ let unpack_decls ~loc typ ctyp env =
           (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
         in
         (* Try to unfold the oldest type definition first. *)
-        if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
-        else bind_none (Some (unfold_typ ())) unfold_ctyp
+        if decl_id < cdecl_id then bind_none (unfold_ctyp ()) unfold_typ
+        else bind_none (unfold_typ ()) unfold_ctyp
     | Tctor _, _ ->
         unfold_typ ()
     | _, Tctor _ ->
@@ -76,10 +78,10 @@ let rec check_type_aux ~loc typ ctyp env =
   | _, Tpoly (_, ctyp) ->
       check_type_aux typ ctyp env
   | Tvar _, Tvar _ ->
-      bind_none
+      map_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () ->
-          bind_none
+          map_none
             (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
             (fun () ->
               (* Add the outermost (in terms of lexical scope) of the variables as
@@ -89,11 +91,11 @@ let rec check_type_aux ~loc typ ctyp env =
                 Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
   | Tvar _, _ ->
-      bind_none
+      map_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance typ ctyp env)
   | _, Tvar _ ->
-      bind_none
+      map_none
         (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance ctyp typ env)
   | Ttuple typs, Ttuple ctyps -> (
@@ -317,24 +319,6 @@ let get_ctor (name : lid) env =
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
 
-(** Replace the AST type names with normalised names, when available.
-    Should be called through Typedast_map.
-*)
-let normalise_type_expr_names env mapper typ =
-  let typ =
-    match typ.Typedast.type_desc with
-    | Ttyp_ctor variant -> (
-      match Envi.Type.get_preferred_constr_name env typ.type_type with
-      | Some ident ->
-          let var_ident = Location.mkloc ident variant.var_ident.loc in
-          {typ with type_desc= Ttyp_ctor {variant with var_ident}}
-      | _ ->
-          typ )
-    | _ ->
-        typ
-  in
-  Typedast_map.default_iterator.type_expr mapper typ
-
 let rec check_pattern env typ pat =
   let mode = Envi.current_mode env in
   let loc = pat.pat_loc in
@@ -350,10 +334,6 @@ let rec check_pattern env typ pat =
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp.type_type ;
       let p, names, env = check_pattern env ctyp.type_type p in
-      let ctyp =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} ctyp
-      in
       ( { Typedast.pat_loc= loc
         ; pat_type= typ
         ; pat_desc= Tpat_constraint (p, ctyp) }
@@ -645,10 +625,6 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ.type_type ;
       let e, env = get_expression env typ.type_type e in
       check_type ~loc env e.exp_type typ.type_type ;
-      let typ =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} typ
-      in
       ( { exp_loc= loc
         ; exp_type= typ.type_type
         ; exp_desc= Texp_constraint (e, typ) }
@@ -1026,10 +1002,6 @@ let rec check_signature_item env item =
       Envi.Type.update_depths env typ.type_type ;
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = add_polymorphised name.txt typ.type_type env in
-      let typ =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} typ
-      in
       (env, {Typedast.sig_desc= Tsig_value (name, typ); sig_loc= loc})
   | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
@@ -1039,10 +1011,6 @@ let rec check_signature_item env item =
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = add_polymorphised name.txt typ.type_type env in
       let env = Envi.add_implicit_instance name.txt typ.type_type env in
-      let typ =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} typ
-      in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
   | Psig_type decl ->
       let decl, env = Typet.TypeDecl.import decl env in
