@@ -27,7 +27,7 @@ let rec to_type_desc ~loc desc =
   let to_type_expr = to_type_expr ~loc in
   match desc with
   | Tvar x | Tunivar x ->
-      Ptyp_var (Option.map ~f:(fun x -> mkloc x loc) x, Explicit)
+      Ptyp_var (Option.map ~f:(fun x -> mkloc x loc) x)
   | Tarrow (label, typ1, typ2, _) ->
       Ptyp_arrow (to_type_expr typ1, to_type_expr typ2, Explicit, label)
   | Ttuple typs ->
@@ -54,7 +54,7 @@ let rec to_type_desc ~loc desc =
   | Tobject _ | Tfield _ | Tnil | Tvariant _ ->
       (* This type isn't supported here. For now, just replace it with a
          variable, so we can still manipulate values including it. *)
-      Ptyp_var (None, Explicit)
+      Ptyp_var None
 
 and to_type_expr ~loc typ =
   {type_desc= to_type_desc ~loc typ.desc; type_loc= loc}
@@ -137,8 +137,10 @@ and to_module_sig_desc ~loc decl =
   match decl with
   | None ->
       Pmty_abstract
-  | Some (Mty_ident path | Mty_alias path) ->
+  | Some (Mty_ident path) ->
       Pmty_name (mkloc (longident_of_path path) loc)
+  | Some (Mty_alias (_, path)) ->
+      Pmty_alias (mkloc (longident_of_path path) loc)
   | Some (Mty_signature signature) ->
       Pmty_sig (to_signature signature)
   | Some (Mty_functor (name, f, mty)) ->
