@@ -28,7 +28,9 @@ type error =
 
 exception Error of Location.t * error
 
-let bind_none x f = match x with Some x -> x | None -> f ()
+let map_none x f = match x with Some x -> x | None -> f ()
+
+let bind_none x f = match x with Some x -> Some x | None -> f ()
 
 let unpack_decls ~loc typ ctyp env =
   if Int.equal typ.type_id ctyp.type_id then Some (typ, ctyp)
@@ -47,8 +49,8 @@ let unpack_decls ~loc typ ctyp env =
           (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
         in
         (* Try to unfold the oldest type definition first. *)
-        if decl_id < cdecl_id then bind_none (Some (unfold_ctyp ())) unfold_typ
-        else bind_none (Some (unfold_typ ())) unfold_ctyp
+        if decl_id < cdecl_id then bind_none (unfold_ctyp ()) unfold_typ
+        else bind_none (unfold_typ ()) unfold_ctyp
     | Tctor _, _ ->
         unfold_typ ()
     | _, Tctor _ ->
@@ -76,10 +78,10 @@ let rec check_type_aux ~loc typ ctyp env =
   | _, Tpoly (_, ctyp) ->
       check_type_aux typ ctyp env
   | Tvar _, Tvar _ ->
-      bind_none
+      map_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () ->
-          bind_none
+          map_none
             (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
             (fun () ->
               (* Add the outermost (in terms of lexical scope) of the variables as
@@ -89,11 +91,11 @@ let rec check_type_aux ~loc typ ctyp env =
                 Envi.Type.add_instance typ ctyp env
               else Envi.Type.add_instance ctyp typ env ) )
   | Tvar _, _ ->
-      bind_none
+      map_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance typ ctyp env)
   | _, Tvar _ ->
-      bind_none
+      map_none
         (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
         (fun () -> Envi.Type.add_instance ctyp typ env)
   | Ttuple typs, Ttuple ctyps -> (
@@ -168,109 +170,17 @@ let check_type ~loc env typ constr_typ =
   | () ->
       ()
 
-(** [is_subtype ~loc env typ ~of_:ctyp] returns whether [typ] is a subtype of
-    [ctyp], instantiating any variables in [ctyp] to those they match with in
-    [typ].
-
-    If this function returns [false], the [ctyp] value *must not* be used,
-    since its variables may have been instantiated incorrectly. A type
-    containing only fresh variables should be used.
-
-    The type variables within [typ] will remain unchanged.
-    *)
-let rec is_subtype ~loc env typ ~of_:ctyp =
-  let is_subtype = is_subtype ~loc env in
-  let without_instance ~f (typ : type_expr) =
-    match Envi.Type.instance env typ with
-    | Some typ' ->
-        Some (f typ')
-    | None ->
-        None
-  in
-  if Int.equal typ.type_id ctyp.type_id then true
-  else if Type1.contains typ ~in_:ctyp || Type1.contains ctyp ~in_:typ then
-    (* Unifying the type will create a recursive type, which isn't ever what we
-       want. Bail out here.
-    *)
-    false
-  else
-    match (typ.type_desc, ctyp.type_desc) with
-    | Tpoly (_, typ), _ ->
-        is_subtype typ ~of_:ctyp
-    | _, Tpoly (_, ctyp) ->
-        is_subtype typ ~of_:ctyp
-    | Tvar _, Tvar _ ->
-        bind_none
-          (without_instance typ ~f:(fun typ -> is_subtype typ ~of_:ctyp))
-          (fun () ->
-            bind_none
-              (without_instance ctyp ~f:(fun ctyp -> is_subtype typ ~of_:ctyp))
-              (fun () ->
-                Envi.Type.add_instance ctyp typ env ;
-                true ) )
-    | Tvar _, _ ->
-        (* [typ] is more general than [ctyp] *)
-        bind_none
-          (without_instance typ ~f:(fun typ -> is_subtype typ ~of_:ctyp))
-          (fun () -> false)
-    | _, Tvar _ ->
-        (* [ctyp] is more general than [typ] *)
-        bind_none
-          (without_instance ctyp ~f:(fun ctyp -> is_subtype typ ~of_:ctyp))
-          (fun () ->
-            Envi.Type.add_instance ctyp typ env ;
-            true )
-    | Ttuple typs, Ttuple ctyps -> (
-      match
-        List.for_all2 typs ctyps ~f:(fun typ ctyp -> is_subtype typ ~of_:ctyp)
-      with
-      | Ok x ->
-          x
-      | Unequal_lengths ->
-          false )
-    | ( Tarrow (typ1, typ2, Explicit, label1)
-      , Tarrow (ctyp1, ctyp2, Explicit, label2) )
-    | ( Tarrow (typ1, typ2, Implicit, label1)
-      , Tarrow (ctyp1, ctyp2, Implicit, label2) ) ->
-        ( match (label1, label2) with
-        | Nolabel, Nolabel ->
-            true
-        | Labelled x, Labelled y when String.equal x y ->
-            true
-        | Optional x, Optional y when String.equal x y ->
-            true
-        | _ ->
-            false )
-        && is_subtype typ1 ~of_:ctyp1 && is_subtype typ2 ~of_:ctyp2
-    | Tctor variant, Tctor constr_variant -> (
-      (* Always try to unfold first, so that type aliases with phantom
-         parameters can unify, as in OCaml.
-      *)
-      match unpack_decls ~loc typ ctyp env with
-      | Some (typ, ctyp) ->
-          is_subtype typ ~of_:ctyp
-      | None ->
-          if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-          then
-            match
-              List.for_all2 variant.var_params constr_variant.var_params
-                ~f:(fun param constr_param ->
-                  is_subtype param ~of_:constr_param )
-            with
-            | Ok x ->
-                x
-            | Unequal_lengths ->
-                false
-          else false )
-    | Tctor _, _ | _, Tctor _ -> (
-      (* Unfold an alias and compare again *)
-      match unpack_decls ~loc typ ctyp env with
-      | Some (typ, ctyp) ->
-          is_subtype typ ~of_:ctyp
-      | None ->
-          false )
-    | _, _ ->
-        false
+let unifies env typ constr_typ =
+  let snapshot = Snapshot.create () in
+  let {Envi.TypeEnvi.variable_instances; _} = env.Envi.resolve_env.type_env in
+  match check_type ~loc:Location.none env typ constr_typ with
+  | () ->
+      true
+  | exception Error _ ->
+      env.resolve_env.type_env
+      <- {env.resolve_env.type_env with variable_instances} ;
+      backtrack snapshot ;
+      false
 
 let rec add_implicits ~loc implicits typ env =
   match implicits with
@@ -418,24 +328,6 @@ let get_ctor (name : lid) env =
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
 
-(** Replace the AST type names with normalised names, when available.
-    Should be called through Typedast_map.
-*)
-let normalise_type_expr_names env mapper typ =
-  let typ =
-    match typ.Typedast.type_desc with
-    | Ttyp_ctor variant -> (
-      match Envi.Type.get_preferred_constr_name env typ.type_type with
-      | Some ident ->
-          let var_ident = Location.mkloc ident variant.var_ident.loc in
-          {typ with type_desc= Ttyp_ctor {variant with var_ident}}
-      | _ ->
-          typ )
-    | _ ->
-        typ
-  in
-  Typedast_map.default_iterator.type_expr mapper typ
-
 let rec check_pattern env typ pat =
   let mode = Envi.current_mode env in
   let loc = pat.pat_loc in
@@ -451,10 +343,6 @@ let rec check_pattern env typ pat =
       let ctyp, env = Typet.Type.import constr_typ env in
       check_type ~loc env typ ctyp.type_type ;
       let p, names, env = check_pattern env ctyp.type_type p in
-      let ctyp =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} ctyp
-      in
       ( { Typedast.pat_loc= loc
         ; pat_type= typ
         ; pat_desc= Tpat_constraint (p, ctyp) }
@@ -748,10 +636,6 @@ let rec get_expression env expected exp =
       check_type ~loc env expected typ.type_type ;
       let e, env = get_expression env typ.type_type e in
       check_type ~loc env e.exp_type typ.type_type ;
-      let typ =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} typ
-      in
       ( { exp_loc= loc
         ; exp_type= typ.type_type
         ; exp_desc= Texp_constraint (e, typ) }
@@ -1012,9 +896,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let e = {e with exp_type} in
   let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
   let implicit_vars =
-    Envi.Type.flattened_implicit_vars ~loc ~toplevel
-      ~is_subtype:(is_subtype ~loc:e.exp_loc)
-      typ_vars env
+    Envi.Type.flattened_implicit_vars ~loc ~toplevel ~unifies typ_vars env
   in
   match implicit_vars with
   | [] ->
@@ -1137,10 +1019,6 @@ let rec check_signature_item env item =
       Envi.Type.update_depths env typ.type_type ;
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = add_polymorphised name.txt typ.type_type env in
-      let typ =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} typ
-      in
       (env, {Typedast.sig_desc= Tsig_value (name, typ); sig_loc= loc})
   | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
@@ -1150,10 +1028,6 @@ let rec check_signature_item env item =
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = add_polymorphised name.txt typ.type_type env in
       let env = Envi.add_implicit_instance name.txt typ.type_type env in
-      let typ =
-        let type_expr = normalise_type_expr_names env in
-        type_expr {Typedast_map.default_iterator with type_expr} typ
-      in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
   | Psig_type decl ->
       let _decl, env = Typet.TypeDecl.import decl env in
@@ -1229,18 +1103,25 @@ and check_module_sig env path msig =
       , env )
   | Pmty_name lid ->
       let path, m =
-        match Envi.find_module_deferred ~mode ~loc lid env with
+        match Envi.find_module_type ~mode lid env with
         | Some m ->
             m
         | None ->
-            (* TODO: This is a hack. We should set up the environment for
-               interface files before typechecking them, so that all of the
-               names are available and we can find those that aren't.
-            *)
-            ( Path.Pident (Ident.create ~mode:Checked "NOT_FOUND")
-            , Envi.Scope.Deferred lid.txt )
+            raise (Envi.Error (loc, Unbound ("module type", lid.txt)))
       in
       ( { Typedast.msig_desc= Tmty_name (Location.mkloc path lid.loc)
+        ; msig_loc= loc }
+      , m
+      , env )
+  | Pmty_alias lid ->
+      let path, m =
+        match Envi.find_module_deferred ~loc ~mode lid env with
+        | Some m ->
+            m
+        | None ->
+            raise (Envi.Error (loc, Unbound ("module", lid.txt)))
+      in
+      ( { Typedast.msig_desc= Tmty_alias (Location.mkloc path lid.loc)
         ; msig_loc= loc }
       , m
       , env )

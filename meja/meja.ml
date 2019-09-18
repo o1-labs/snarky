@@ -163,19 +163,7 @@ let main =
             Loader.load_directory env
               (Filename.concat snarky_build_path "native") ;
             Loader.load_directory env snarky_build_path ;
-            (* Set up module structure for Snarky.Request *)
-            let snarky, m =
-              try
-                Envi.find_module ~mode:Checked ~loc:Location.none
-                  (Location.mknoloc (Longident.Lident "Snarky"))
-                  env
-              with _ ->
-                Format.(
-                  fprintf err_formatter
-                    "Could not find the compiled interface files for Snarky.@.") ;
-                exit 1
-            in
-            Envi.open_namespace_scope snarky m env
+            env
         | None ->
             Format.(
               fprintf err_formatter
