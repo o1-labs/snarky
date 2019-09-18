@@ -518,7 +518,10 @@ module Scope = struct
     { scope with
       names=
         IdTbl.merge_skewed_names scope.names expr_scope.names
-          ~combine:select_new }
+          ~combine:select_new
+    ; type_variables=
+        Map.merge_skewed scope.type_variables expr_scope.type_variables
+          ~combine:(fun ~key:_ _ v -> v) }
 end
 
 let empty_resolve_env : Scope.t resolve_env =

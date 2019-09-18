@@ -51,6 +51,8 @@ let type_desc iter = function
   | Ptyp_poly (vars, typ) ->
       List.iter ~f:(iter.type_expr iter) vars ;
       iter.type_expr iter typ
+  | Ptyp_prover typ ->
+      iter.type_expr iter typ
 
 let variant iter {var_ident; var_params} =
   lid iter var_ident ;

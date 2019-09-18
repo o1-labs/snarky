@@ -61,6 +61,8 @@ let type_desc iter = function
   | Ttyp_poly (vars, typ) ->
       List.iter ~f:(iter.type_expr iter) vars ;
       iter.type_expr iter typ
+  | Ttyp_prover typ ->
+      iter.type_expr iter typ
 
 let variant iter {var_ident; var_params} =
   path iter var_ident ;

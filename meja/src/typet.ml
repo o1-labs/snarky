@@ -121,6 +121,14 @@ module Type = struct
           ; type_loc= loc
           ; type_type= typ }
         , env )
+    | Ptyp_prover typ ->
+        let env = open_expr_scope ~mode:Prover env in
+        let typ, env = import typ env in
+        let env =
+          let scope, env = pop_expr_scope env in
+          join_expr_scope env scope
+        in
+        (typ, env)
 
   let fold ~init ~f typ =
     match typ.type_desc with
@@ -136,6 +144,8 @@ module Type = struct
     | Ptyp_poly (typs, typ) ->
         let acc = List.fold ~init ~f typs in
         f acc typ
+    | Ptyp_prover typ ->
+        f init typ
 
   let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -156,6 +166,8 @@ module Type = struct
     | Ptyp_poly (typs, typ) ->
         let typs = List.map ~f typs in
         {type_desc= Ptyp_poly (typs, f typ); type_loc= loc}
+    | Ptyp_prover typ ->
+        {type_desc= Ptyp_prover (f typ); type_loc= loc}
 end
 
 module TypeDecl = struct
