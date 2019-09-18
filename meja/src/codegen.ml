@@ -66,7 +66,6 @@ let typ_of_decl ~loc (decl : type_decl) =
         let t_decl =
           let type_vars = List.map fields ~f:(fun {fld_type; _} -> fld_type) in
           Type_decl.alias name ~loc ~params:decl.tdec_params
-            ~implicits:decl.tdec_implicit_params
             (Type.constr ~loc ~params:type_vars (Lid.of_name poly_name))
         in
         let var_name = var_type_name name in
@@ -93,7 +92,6 @@ let typ_of_decl ~loc (decl : type_decl) =
             List.map fields ~f:(fun {fld_type; _} -> change_names fld_type)
           in
           Type_decl.alias var_name ~loc ~params:decl.tdec_params
-            ~implicits:decl.tdec_implicit_params
             (Type.constr ~loc ~params:type_vars (Lid.of_name poly_name))
         in
         let typ_instance =

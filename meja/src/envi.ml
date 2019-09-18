@@ -793,7 +793,6 @@ let raw_find_type_declaration ~mode (lid : lid) env =
         ( Pident ident
         , { tdec_ident= ident
           ; tdec_params= []
-          ; tdec_implicit_params= []
           ; tdec_desc= TForward num_args
           ; tdec_id= id } )
     | _ ->
@@ -873,14 +872,11 @@ module Type = struct
           refresh_vars ~loc vars new_vars_map env
         in
         copy typ new_vars_map env
-    | Tctor ({var_params; var_implicit_params; _} as variant) ->
+    | Tctor ({var_params; _} as variant) ->
         let var_params =
           List.map var_params ~f:(fun t -> copy t new_vars_map env)
         in
-        let var_implicit_params =
-          List.map var_implicit_params ~f:(fun t -> copy t new_vars_map env)
-        in
-        mk (Tctor {variant with var_params; var_implicit_params}) env
+        mk (Tctor {variant with var_params}) env
     | Ttuple typs ->
         let typs = List.map typs ~f:(fun t -> copy t new_vars_map env) in
         mk (Ttuple typs) env
@@ -925,10 +921,7 @@ module Type = struct
         let var_params =
           List.map variant.var_params ~f:(fun typ -> flatten typ env)
         in
-        let var_implicit_params =
-          List.map variant.var_implicit_params ~f:(fun typ -> flatten typ env)
-        in
-        mk' (Tctor {variant with var_params; var_implicit_params})
+        mk' (Tctor {variant with var_params})
     | Ttuple typs ->
         let typs = List.map typs ~f:(fun typ -> flatten typ env) in
         mk' (Ttuple typs)
@@ -1271,7 +1264,6 @@ let pp_decl_typ ppf decl =
         Tctor
           { var_ident= Pident decl.tdec_ident
           ; var_params= decl.tdec_params
-          ; var_implicit_params= decl.tdec_implicit_params
           ; var_decl= decl }
     ; type_id= -1
     ; type_depth= -1 }
