@@ -1552,7 +1552,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
             (Bigstring.length bs)
         in
         let t = stub str in
-        Caml.Gc.finalise (fun _ -> delete t) t ;
+        Caml.Gc.finalise delete t ;
         t
   end
 
@@ -1581,8 +1581,17 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
                 let prefix = with_prefix M.prefix "verification_key"
               end)
 
-    let dummy ~input_size =
-      foreign (func_name "dummy") (int @-> returning typ) input_size
+    let dummy =
+      (* TODO *)
+      if String.is_prefix (func_name "") ~prefix:"camlsnark_bn128_" then (
+        fun ~input_size ->
+        ignore input_size ;
+        failwith "dummy verification keys are unimplemented for bn128" )
+      else
+        let stub = foreign (func_name "dummy") (int @-> returning typ) in
+        fun ~input_size ->
+          let s = stub input_size in
+          Caml.Gc.finalise delete s ; s
 
     let size_in_bits =
       foreign (func_name "size_in_bits") (typ @-> returning int)
@@ -1630,7 +1639,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
             (Bigstring.length bs)
         in
         let t = stub str in
-        Caml.Gc.finalise (fun _ -> delete t) t ;
+        Caml.Gc.finalise delete t ;
         t
   end
 
