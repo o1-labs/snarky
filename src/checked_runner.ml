@@ -117,18 +117,19 @@ struct
           let {stack; prover_state; _} = s in
           let prover_state = Option.map prover_state ~f:ignore in
           let s = Run_state.set_prover_state prover_state s in
-          (* Add a label to indicate that the new stack is the point at which this
-         was forced. When printed for errors, this will split the stack into
+          (* Add a label to indicate that the new stack is the point at which
+             this was forced. When printed for errors, this will split the
+             stack into
 
-         ...
-         stack to lazy
-         ...
+             ...
+             stack to lazy
+             ...
 
-         Lazy value forced at:
-         ...
-         stack to lazy forcing point
-         ...
-      *)
+             Lazy value forced at:
+             ...
+             stack to lazy forcing point
+             ...
+          *)
           let label = "\nLazy value forced at:" in
           let _s', y = x {s with stack= old_stack @ (label :: stack)} in
           y ) )
