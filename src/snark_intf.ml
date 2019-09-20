@@ -1207,6 +1207,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val as_prover : (unit, 's) As_prover.t -> (unit, 's) Checked.t
   (** Run an {!module:As_prover} block. *)
 
+  val mk_lazy : ('a, unit) Checked.t -> ('a Lazy.t, 's) Checked.t
+  (** Lazily evaluate a checked computation.
+
+      Any constraints within the checked computation are not added to the
+      constraint system unless the lazy value is forced.
+  *)
+
   val with_state :
        ?and_then:('s1 -> (unit, 's) As_prover.t)
     -> ('s1, 's) As_prover.t

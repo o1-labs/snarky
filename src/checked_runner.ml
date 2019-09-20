@@ -110,6 +110,29 @@ struct
     let s', (_ : unit option) = run_as_prover (Some x) s in
     (s', ())
 
+  let mk_lazy x s =
+    let old_stack = s.stack in
+    ( s
+    , Lazy.from_fun (fun () ->
+          let {stack; prover_state; _} = s in
+          let prover_state = Option.map prover_state ~f:ignore in
+          let s = Run_state.set_prover_state prover_state s in
+          (* Add a label to indicate that the new stack is the point at which this
+         was forced. When printed for errors, this will split the stack into
+
+         ...
+         stack to lazy
+         ...
+
+         Lazy value forced at:
+         ...
+         stack to lazy forcing point
+         ...
+      *)
+          let label = "\nLazy value forced at:" in
+          let _s', y = x {s with stack= old_stack @ (label :: stack)} in
+          y ) )
+
   let with_label lab t s =
     let {stack; _} = s in
     let s', y = t {s with stack= lab :: stack} in
@@ -360,6 +383,10 @@ module Make (Backend : Backend_extended.S) = struct
         in
         let k = handle_error s (fun () -> k y) in
         run k s
+    | Lazy (x, k) ->
+        let s, y = mk_lazy (run x) s in
+        let k = handle_error s (fun () -> k y) in
+        run k s
     | With_label (lab, t, k) ->
         let s, y = with_label lab (run t) s in
         let k = handle_error s (fun () -> k y) in
@@ -436,6 +463,30 @@ module Make (Backend : Backend_extended.S) = struct
         , a )
     | Reduced (t, _d, _res, k) ->
         let f, y = flatten_as_prover next_auxiliary stack t in
+        let g, a = flatten_as_prover next_auxiliary stack (k y) in
+        ((fun s -> g (f s)), a)
+    | Lazy (x, k) ->
+        let flattened =
+          Lazy.from_fun (fun () ->
+              (* We don't know the stack at forcing time, so just announce that
+                 we're forcing.
+              *)
+              let label = "Lazy value forced (reduced):" in
+              flatten_as_prover next_auxiliary (label :: stack) x )
+        in
+        let y = Lazy.map ~f:snd flattened in
+        let f s =
+          if Lazy.is_val flattened then
+            (* The lazy value has been forced somewhere later in the checked
+               computation, so we need to do the prover parts of it.
+            *)
+            let f, _ = Lazy.force flattened in
+            let {prover_state; _} = s in
+            let prover_state' = Option.map prover_state ~f:ignore in
+            let s = f (set_prover_state prover_state' s) in
+            set_prover_state prover_state s
+          else s
+        in
         let g, a = flatten_as_prover next_auxiliary stack (k y) in
         ((fun s -> g (f s)), a)
     | With_label (lab, t, k) ->
