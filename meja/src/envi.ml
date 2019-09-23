@@ -865,23 +865,30 @@ module Type = struct
   let restore_desc (typ, desc) = typ.type_desc <- desc
 
   let copy typ env =
-    let restores = ref [] in
     let rec copy typ =
       let typ = repr typ in
       match typ.type_desc with
       | Tvar _ ->
           (* Don't copy variables! *)
           typ
-      | Tpoly (vars, typ) ->
-          (* Make fresh variables to instantiate [Tpoly]s. *)
-          restores := refresh_vars vars env :: !restores ;
-          copy typ
+      | Tpoly _ ->
+          (* Tpoly should only ever appear at the top level of a type. *)
+          assert false
       | _ ->
           mk (copy_desc ~f:copy typ.type_desc) env
     in
+    let typ = repr typ in
+    let restores, typ =
+      match typ.type_desc with
+      | Tpoly (vars, typ) ->
+          (* Make fresh variables to instantiate [Tpoly]s. *)
+          (refresh_vars vars env, typ)
+      | _ ->
+          ([], typ)
+    in
     let typ = copy typ in
     (* Restore the original variables back into the [Tpoly]s. *)
-    List.iter !restores ~f:(List.iter ~f:restore_desc) ;
+    List.iter ~f:restore_desc restores ;
     typ
 
   (** [instantiate params typs typ env] creates a new type by replacing the
@@ -918,10 +925,10 @@ module Type = struct
         Type1.iter ~f:(update_depths env) typ
 
   let flatten typ env =
-    let typ = repr typ in
     let restores = ref [] in
     let rec flatten typ =
-      match (repr typ).type_desc with
+      let typ = repr typ in
+      match typ.type_desc with
       | Tvar _ -> (
         match instance env typ with
         | Some typ' ->
@@ -932,11 +939,33 @@ module Type = struct
             flatten typ'
         | None ->
             (* Don't copy variables! *)
-            repr typ )
+            typ )
+      | Tpoly _ ->
+          (* Tpoly should only ever appear at the top level of a type. *)
+          assert false
       | _ ->
           Type1.mk typ.type_depth (copy_desc ~f:flatten typ.type_desc)
     in
-    let typ = flatten typ in
+    let typ = repr typ in
+    let assert_is_var typ =
+      match typ.type_desc with Tvar _ -> () | _ -> assert false
+    in
+    let typ =
+      match typ.type_desc with
+      | Tpoly (vars, typ') ->
+          (* Handle [Tpoly] specially, since it should only appear at the top
+             level of a type.
+          *)
+          (* Sanity check: variables should not have instances. *)
+          List.iter ~f:assert_is_var vars ;
+          let typ' = flatten typ' in
+          (* Sanity check: should not have found instances for these variables.
+          *)
+          List.iter ~f:assert_is_var vars ;
+          Type1.mk typ.type_depth (Tpoly (vars, typ'))
+      | _ ->
+          flatten typ
+    in
     (* Restore variables back without their instances. *)
     List.iter !restores ~f:restore_desc ;
     typ
