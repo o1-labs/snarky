@@ -225,10 +225,31 @@ let set_desc typ desc =
   Snapshot.add_to_history (Desc (typ, typ.type_desc)) ;
   typ.type_desc <- desc
 
+(** [set_repr typ typ'] sets the representative of [typ] to be [typ']. *)
 let set_repr typ typ' = set_desc typ (Tref typ')
 
-let add_instance = set_repr
+(** [add_instance var typ'] changes the representative of the type variable
+    [var] to [typ']. If [typ'] is also a type variable, then the user-provided
+    of [var] is added to [typ'], unless [typ'] already has a user-provided name
+    of its own.
 
+    Raises [AssertionError] if [var] is not a type variable.
+*)
+let add_instance typ typ' =
+  ( match (typ.type_desc, typ'.type_desc) with
+  | Tvar (Some name), Tvar None ->
+      (* We would lose the user-provided name associated with [typ], so promote
+         it to be the name of [typ'].
+      *)
+      set_desc typ' (Tvar (Some name))
+  | Tvar _, _ ->
+      ()
+  | _ ->
+      (* Sanity check: we should be adding an instance to a type variable. *)
+      assert false ) ;
+  set_repr typ typ'
+
+(** Create an equivalent type by unfolding all of the type representatives. *)
 let flatten typ =
   let rec flatten typ =
     let typ = repr typ in
