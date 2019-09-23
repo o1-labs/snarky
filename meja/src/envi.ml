@@ -852,14 +852,22 @@ module Type = struct
       | Tvar _ ->
           (* Don't copy variables! *)
           typ
+      | Tpoly _ ->
+          (* Tpoly should only ever appear at the top level of a type. *)
+          assert false
+      | _ ->
+          mk (copy_desc ~f:copy typ.type_desc) env
+    in
+    let typ = repr typ in
+    let snap = Snapshot.create () in
+    let typ =
+      match typ.type_desc with
       | Tpoly (vars, typ) ->
           (* Make fresh variables to instantiate [Tpoly]s. *)
           refresh_vars vars env ; copy typ
       | _ ->
-          mk (copy_desc ~f:copy typ.type_desc) env
+          copy typ
     in
-    let snap = Snapshot.create () in
-    let typ = copy typ in
     (* Restore the values of 'refreshed' variables. *)
     backtrack snap ; typ
 
