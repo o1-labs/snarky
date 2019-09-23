@@ -317,17 +317,6 @@ let bubble_label label typ =
   | None, typ ->
       typ
 
-let rec constr_map ~f typ =
-  let {type_depth; _} = typ in
-  match (repr typ).type_desc with
-  | Tvar _ ->
-      repr typ
-  | Tctor variant ->
-      let var_params = List.map ~f:(constr_map ~f) variant.var_params in
-      mk type_depth (f {variant with var_params})
-  | _ ->
-      mk type_depth (copy_desc ~f:(constr_map ~f) typ.type_desc)
-
 let discard_optional_labels typ =
   let rec go typ' =
     let typ' = repr typ' in
