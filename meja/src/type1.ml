@@ -10,7 +10,7 @@ let mk depth type_desc =
 
 let mkvar depth name = mk depth (Tvar name)
 
-type change = Depth of (type_expr * int)
+type change = Depth of (type_expr * int) | Desc of (type_expr * type_desc)
 
 (** Implements a weak, mutable linked-list containing the history of changes.
 
@@ -91,7 +91,11 @@ end
 
 let backtrack snap =
   let changes = Snapshot.backtrack snap in
-  List.iter changes ~f:(function Depth (typ, depth) -> typ.type_depth <- depth )
+  List.iter changes ~f:(function
+    | Depth (typ, depth) ->
+        typ.type_depth <- depth
+    | Desc (typ, desc) ->
+        typ.type_desc <- desc )
 
 (** The representative of a type. This unfolds any [Tref] values that are
     present to get to the true underlying type.
@@ -218,6 +222,12 @@ let update_depth depth typ = if typ.type_depth > depth then set_depth depth typ
 let unify_depths typ1 typ2 =
   iter ~f:(update_depth typ1.type_depth) typ2 ;
   iter ~f:(update_depth typ2.type_depth) typ1
+
+let set_desc typ desc =
+  Snapshot.add_to_history (Desc (typ, typ.type_desc)) ;
+  typ.type_desc <- desc
+
+let set_repr typ typ' = set_desc typ (Tref typ')
 
 let type_vars ?depth typ =
   let deep_enough =
