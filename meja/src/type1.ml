@@ -227,6 +227,21 @@ let set_desc typ desc =
 
 let set_repr typ typ' = set_desc typ (Tref typ')
 
+let add_instance = set_repr
+
+let flatten typ =
+  let rec flatten typ =
+    let typ = repr typ in
+    match typ.type_desc with
+    | Tvar _ ->
+        (* Don't copy variables! *)
+        typ
+    | _ ->
+        mk typ.type_depth (copy_desc ~f:flatten typ.type_desc)
+  in
+  let typ = flatten typ in
+  typ
+
 let type_vars ?depth typ =
   let deep_enough =
     match depth with
