@@ -40,8 +40,13 @@ module Snapshot : sig
   (** Erase the history back to the snapshot, and return the list of changes
       that occurred since, ordered from newest to oldest.
   *)
+
+  val filtered_backtrack : f:(change -> bool) -> t -> change list
+  (** Erase all changes matching the filter [f] back to the snapshot, and
+      return the erased changes, ordered from newest to oldest.
+  *)
 end = struct
-  type node = Some of (change * t) | None
+  type node = Change of (change * t) | LinkedChange of t | NoChange
 
   and t = node ref
 
@@ -60,8 +65,8 @@ end = struct
   let add_to_history change =
     match Weak.get current 0 with
     | Some ptr ->
-        let new_ptr = ref None in
-        ptr := Some (change, new_ptr) ;
+        let new_ptr = ref NoChange in
+        ptr := Change (change, new_ptr) ;
         Weak.set current 0 (Some new_ptr)
     | None ->
         (* No snapshots active, no list to add to. *)
@@ -72,30 +77,56 @@ end = struct
     | Some ptr ->
         ptr
     | None ->
-        let new_ptr = ref None in
+        let new_ptr = ref NoChange in
         Weak.set current 0 (Some new_ptr) ;
         new_ptr
 
   let backtrack snap =
     let rec backtrack changes ptr =
       match !ptr with
-      | Some (change, ptr) ->
+      | Change (change, ptr') ->
           (* Clear this snapshot so that it can't be re-used. *)
-          snap := None ;
-          backtrack (change :: changes) ptr
-      | None ->
+          ptr := NoChange ;
+          backtrack (change :: changes) ptr'
+      | LinkedChange ptr' ->
+          (* Clear this snapshot so that it can't be re-used. *)
+          ptr := NoChange ;
+          backtrack changes ptr'
+      | NoChange ->
           changes
     in
     backtrack [] snap
+
+  let filtered_backtrack ~f snap =
+    let rec backtrack changes ptrs_to_clear ptr =
+      match !ptr with
+      | Change (change, ptr') when f change ->
+          backtrack (change :: changes) (ptr :: ptrs_to_clear) ptr'
+      | Change (_change, ptr') ->
+          List.iter ptrs_to_clear ~f:(fun ptr' -> ptr' := LinkedChange ptr) ;
+          backtrack changes [] ptr'
+      | LinkedChange ptr' ->
+          backtrack changes ptrs_to_clear ptr'
+      | NoChange ->
+          List.iter ptrs_to_clear ~f:(fun ptr' -> ptr' := NoChange) ;
+          changes
+    in
+    backtrack [] [] snap
 end
+
+let revert = function
+  | Depth (typ, depth) ->
+      typ.type_depth <- depth
+  | Desc (typ, desc) ->
+      typ.type_desc <- desc
 
 let backtrack snap =
   let changes = Snapshot.backtrack snap in
-  List.iter changes ~f:(function
-    | Depth (typ, depth) ->
-        typ.type_depth <- depth
-    | Desc (typ, desc) ->
-        typ.type_desc <- desc )
+  List.iter ~f:revert changes
+
+let filtered_backtrack ~f snap =
+  let changes = Snapshot.filtered_backtrack ~f snap in
+  List.iter ~f:revert changes
 
 (** The representative of a type. This unfolds any [Tref] values that are
     present to get to the true underlying type.
