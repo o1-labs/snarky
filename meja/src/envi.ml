@@ -1,10 +1,10 @@
 open Compiler_internals
 open Core_kernel
 open Ast_types
+open Longident
 open Type0
 open Type1
 open Ast_build.Loc
-open Longident
 module IdTbl = Ident.Table
 
 type error =
@@ -34,7 +34,6 @@ module TypeEnvi = struct
   type t =
     { type_decl_id: int
     ; instance_id: int
-    ; variable_instances: type_expr Int.Map.t
     ; implicit_vars: Typedast.expression list
     ; implicit_id: int
     ; instances: (int * type_expr) list
@@ -44,19 +43,10 @@ module TypeEnvi = struct
   let empty =
     { type_decl_id= 1
     ; instance_id= 1
-    ; variable_instances= Int.Map.empty
     ; implicit_id= 1
     ; implicit_vars= []
     ; instances= []
     ; predeclared_types= IdTbl.empty }
-
-  let instance env (typ : type_expr) =
-    Map.find env.variable_instances typ.type_id
-
-  let add_instance (typ : type_expr) typ' env =
-    { env with
-      variable_instances=
-        Map.set env.variable_instances ~key:typ.type_id ~data:typ' }
 
   let next_type_id env = (env.type_id, {env with type_id= env.type_id + 1})
 
@@ -869,11 +859,7 @@ module Type = struct
 
   let mkvar name env = Type1.mkvar env.depth name
 
-  let instance env typ = TypeEnvi.instance env.resolve_env.type_env typ
-
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
-
-  let add_instance typ typ' = map_env ~f:(TypeEnvi.add_instance typ typ')
 
   let refresh_var ~loc ?must_find env typ =
     match typ.type_desc with
@@ -967,36 +953,7 @@ module Type = struct
 
   let rec update_depths env typ =
     Type1.update_depth env.depth typ ;
-    match typ.type_desc with
-    | Tvar _ ->
-        Option.iter ~f:(update_depths env) (instance env typ)
-    | _ ->
-        Type1.iter ~f:(update_depths env) typ
-
-  let flatten typ env =
-    let rec flatten typ =
-      let typ = repr typ in
-      match typ.type_desc with
-      | Tvar _ -> (
-        match instance env typ with
-        | Some typ' ->
-            (* Replace variables with their instances. *)
-            let typ' = repr typ' in
-            set_repr typ typ' ; flatten typ'
-        | None ->
-            (* Don't copy variables! *)
-            typ )
-      | Tpoly _ ->
-          (* Tpoly should only ever appear at the top level of a type. *)
-          assert false
-      | _ ->
-          Type1.mk typ.type_depth (copy_desc ~f:flatten typ.type_desc)
-    in
-    let snap = Snapshot.create () in
-    let typ = repr typ in
-    let typ = flatten typ in
-    (* Restore variables back without their instances. *)
-    backtrack snap ; typ
+    Type1.iter ~f:(update_depths env) typ
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 
@@ -1096,15 +1053,17 @@ module Type = struct
       ~f:(fun (id, instance_typ) ->
         let instance_typ = copy instance_typ env in
         let snapshot = Snapshot.create () in
-        let {TypeEnvi.variable_instances; _} = env.resolve_env.type_env in
         if unifies env typ instance_typ then
           if
-            Set.exists typ_vars ~f:(fun var ->
-                Option.is_some (instance env var) )
+            Set.exists typ_vars ~f:(fun var -> not (phys_equal var (repr var)))
           then (
+            (* There is at least one variable that hasn't been instantiated.
+               In particular, this must mean that it was less general than the
+               variable that it unified with, or that a parent type expression
+               instantiated a type variable in the target type, and so this
+               instance isn't general enough to satisfy the target type.
+            *)
             backtrack snapshot ;
-            env.resolve_env.type_env
-            <- {env.resolve_env.type_env with variable_instances} ;
             None )
           else
             List.find_map env.scope_stack ~f:(fun {instances; _} ->
@@ -1132,7 +1091,7 @@ module Type = struct
     let implicit_vars =
       List.filter implicit_vars
         ~f:(fun ({Typedast.exp_loc; exp_type; _} as exp) ->
-          let exp_type = flatten exp_type env in
+          let exp_type = flatten exp_type in
           let typ_vars = type_vars exp_type in
           match implicit_instances ~unifies exp_type typ_vars env with
           | [(name, instance_typ)] ->
@@ -1169,7 +1128,7 @@ module Type = struct
     let {TypeEnvi.implicit_vars; _} = env.resolve_env.type_env in
     let implicit_vars =
       List.map implicit_vars ~f:(fun exp ->
-          {exp with exp_type= flatten exp.exp_type env} )
+          {exp with exp_type= flatten exp.exp_type} )
     in
     let implicit_vars =
       instantiate_implicits ~loc ~unifies implicit_vars env
