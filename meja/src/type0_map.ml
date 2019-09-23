@@ -26,9 +26,11 @@ let map_list ~same ~f =
     we planned to mutate later.
 *)
 
-let type_expr mapper ({type_desc= desc; type_id; type_depth} as typ) =
+let type_expr mapper ({type_desc= desc; type_id; type_depth; type_mode} as typ)
+    =
   let type_desc = mapper.type_desc mapper desc in
-  if phys_equal type_desc desc then typ else {type_desc; type_id; type_depth}
+  if phys_equal type_desc desc then typ
+  else {type_desc; type_id; type_depth; type_mode}
 
 let type_desc mapper desc =
   match desc with

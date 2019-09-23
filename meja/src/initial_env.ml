@@ -97,25 +97,27 @@ let {Typedast.tdec_tdec= array; _}, env = import array env
 module Type = struct
   open Envi
 
-  let int = TypeDecl.mk_typ int ~params:[] env
+  let int = TypeDecl.mk_typ ~mode:Checked int ~params:[] env
 
-  let unit = TypeDecl.mk_typ unit ~params:[] env
+  let unit = TypeDecl.mk_typ ~mode:Checked unit ~params:[] env
 
-  let bool = TypeDecl.mk_typ bool ~params:[] env
+  let bool = TypeDecl.mk_typ ~mode:Checked bool ~params:[] env
 
-  let char = TypeDecl.mk_typ char ~params:[] env
+  let char = TypeDecl.mk_typ ~mode:Checked char ~params:[] env
 
-  let string = TypeDecl.mk_typ string ~params:[] env
+  let string = TypeDecl.mk_typ ~mode:Checked string ~params:[] env
 
-  let float = TypeDecl.mk_typ float ~params:[] env
+  let float = TypeDecl.mk_typ ~mode:Checked float ~params:[] env
 
-  let exn = TypeDecl.mk_typ exn ~params:[] env
+  let exn = TypeDecl.mk_typ ~mode:Checked exn ~params:[] env
 
   let option a =
-    {(TypeDecl.mk_typ option ~params:[a] env) with type_depth= a.type_depth}
+    { (TypeDecl.mk_typ ~mode:Checked option ~params:[a] env) with
+      type_depth= a.type_depth }
 
   let list a =
-    {(TypeDecl.mk_typ list ~params:[a] env) with type_depth= a.type_depth}
+    { (TypeDecl.mk_typ ~mode:Checked list ~params:[a] env) with
+      type_depth= a.type_depth }
 end
 
 let () = Type1.mk_option := Type.option

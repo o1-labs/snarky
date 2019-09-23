@@ -4,11 +4,11 @@ open Type0
 
 let type_id = ref 0
 
-let mk depth type_desc =
+let mk ~mode depth type_desc =
   incr type_id ;
-  {type_desc; type_id= !type_id; type_depth= depth}
+  {type_desc; type_id= !type_id; type_depth= depth; type_mode= mode}
 
-let mkvar depth name = mk depth (Tvar name)
+let mkvar ~mode depth name = mk ~mode depth (Tvar name)
 
 type change = Depth of (type_expr * int) | Desc of (type_expr * type_desc)
 
@@ -258,7 +258,8 @@ let flatten typ =
         (* Don't copy variables! *)
         typ
     | _ ->
-        mk typ.type_depth (copy_desc ~f:flatten typ.type_desc)
+        mk ~mode:typ.type_mode typ.type_depth
+          (copy_desc ~f:flatten typ.type_desc)
   in
   let typ = flatten typ in
   typ
@@ -288,7 +289,7 @@ let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
   ref (fun _ -> failwith "mk_option not initialised")
 
 let rec bubble_label_aux label typ =
-  let {type_depth; _} = typ in
+  let {type_depth; type_mode= mode; _} = typ in
   match (repr typ).type_desc with
   | Tarrow (typ1, typ2, explicit, arr_label)
     when Int.equal (compare_arg_label label arr_label) 0 ->
@@ -305,15 +306,15 @@ let rec bubble_label_aux label typ =
     | None, _ ->
         (None, typ)
     | res, typ2 ->
-        (res, mk type_depth (Tarrow (typ1, typ2, explicit, arr_label))) )
+        (res, mk ~mode type_depth (Tarrow (typ1, typ2, explicit, arr_label))) )
   | _ ->
       (None, typ)
 
 let bubble_label label typ =
-  let {type_depth; _} = typ in
+  let {type_depth; type_mode= mode; _} = typ in
   match bubble_label_aux label typ with
   | Some (typ1, explicit, arr_label), typ2 ->
-      mk type_depth (Tarrow (typ1, typ2, explicit, arr_label))
+      mk ~mode type_depth (Tarrow (typ1, typ2, explicit, arr_label))
   | None, typ ->
       typ
 

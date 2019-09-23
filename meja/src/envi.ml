@@ -123,7 +123,9 @@ module Scope = struct
   let add_type_variable key typ scope =
     {scope with type_variables= Map.set scope.type_variables ~key ~data:typ}
 
-  let find_type_variable name scope = Map.find scope.type_variables name
+  (* TODO: Use mode to get the correct variable. *)
+  let find_type_variable ~mode:_ name scope =
+    Map.find scope.type_variables name
 
   let add_field decl index scope field_decl =
     { scope with
@@ -645,8 +647,8 @@ let set_path path = map_current_scope ~f:(Scope.set_path path)
 let add_type_variable name typ =
   map_current_scope ~f:(Scope.add_type_variable name typ)
 
-let find_type_variable name env =
-  List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
+let find_type_variable ~mode name env =
+  List.find_map ~f:(Scope.find_type_variable ~mode name) env.scope_stack
 
 let add_module (name : Ident.t) m =
   let add_name ident = (Path.Pident ident, Path.dot (Pident name) ident) in
@@ -804,31 +806,32 @@ module Type = struct
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
 
   let refresh_var ~loc ?must_find env typ =
+    let mode = typ.type_mode in
     match typ.type_desc with
     | Tvar None -> (
       match must_find with
       | Some true ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (env, mkvar None env) )
+          (env, mkvar ~mode None env) )
     | Tvar (Some x as name) -> (
         let var =
           match must_find with
           | Some true ->
-              let var = find_type_variable x env in
+              let var = find_type_variable ~mode x env in
               if Option.is_none var then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
               None
           | None ->
-              find_type_variable x env
+              find_type_variable ~mode x env
         in
         match var with
         | Some var ->
             (env, var)
         | None ->
-            let var = mkvar name env in
+            let var = mkvar ~mode name env in
             (add_type_variable x var env, var) )
     | _ ->
         raise (Error (loc, Expected_type_var typ))
@@ -843,7 +846,7 @@ module Type = struct
     List.iter vars ~f:(fun var ->
         (* Sanity check. *)
         (match var.type_desc with Tvar _ -> () | _ -> assert false) ;
-        set_repr var (mkvar None env) )
+        set_repr var (mkvar ~mode:var.type_mode None env) )
 
   let copy typ env =
     let rec copy typ =
@@ -856,7 +859,7 @@ module Type = struct
           (* Tpoly should only ever appear at the top level of a type. *)
           assert false
       | _ ->
-          mk (copy_desc ~f:copy typ.type_desc) env
+          mk ~mode:typ.type_mode (copy_desc ~f:copy typ.type_desc) env
     in
     let typ = repr typ in
     let snap = Snapshot.create () in
@@ -1153,8 +1156,9 @@ module TypeDecl = struct
 
   let mk = Type1.Decl.mk
 
-  let mk_typ ~params ?ident decl env =
-    Type1.Decl.mk_typ ~params ?ident env.depth decl
+  (* TODO: Deal with [mode] properly. *)
+  let mk_typ ~mode ~params ?ident decl env =
+    Type1.Decl.mk_typ ~mode ~params ?ident env.depth decl
 
   (* NOTE: the unused parameters here will be used when [var_decl] is removed
      from [variant] and we need to search through the environment for the type
@@ -1236,7 +1240,8 @@ let pp_decl_typ ppf decl =
           ; var_params= decl.tdec_params
           ; var_decl= decl }
     ; type_id= -1
-    ; type_depth= -1 }
+    ; type_depth= -1
+    ; type_mode= Ident.mode decl.tdec_ident }
 
 let report_error ppf = function
   | No_open_scopes ->

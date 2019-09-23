@@ -2,7 +2,10 @@ open Core_kernel
 open Ast_types
 
 type type_expr =
-  {mutable type_desc: type_desc; type_id: int; mutable type_depth: int}
+  { mutable type_desc: type_desc
+  ; type_id: int
+  ; mutable type_depth: int
+  ; type_mode: mode }
 [@@deriving sexp]
 
 and type_desc =

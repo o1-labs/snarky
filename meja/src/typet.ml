@@ -28,27 +28,29 @@ module Type = struct
       | Some true ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          ( {type_desc= Ttyp_var None; type_loc= loc; type_type= mkvar None env}
+          ( { type_desc= Ttyp_var None
+            ; type_loc= loc
+            ; type_type= mkvar ~mode None env }
           , env ) )
     | Ptyp_var (Some {txt= x; _} as name) ->
         let var =
           match must_find with
           | Some true ->
-              let var = find_type_variable x env in
+              let var = find_type_variable ~mode x env in
               if Option.is_none var then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
               None
           | None ->
-              find_type_variable x env
+              find_type_variable ~mode x env
         in
         let type_type, env =
           match var with
           | Some var ->
               (var, env)
           | None ->
-              let var = mkvar (Some x) env in
+              let var = mkvar ~mode (Some x) env in
               (var, add_type_variable x var env)
         in
         ({type_desc= Ttyp_var name; type_loc= loc; type_type}, env)
@@ -63,7 +65,8 @@ module Type = struct
         let env = close_expr_scope env in
         ( { type_desc= Ttyp_poly (vars, typ)
           ; type_loc= loc
-          ; type_type= mk (Tpoly (List.map ~f:type0 vars, type0 typ)) env }
+          ; type_type= mk ~mode (Tpoly (List.map ~f:type0 vars, type0 typ)) env
+          }
         , env )
     | Ptyp_ctor variant ->
         let {var_ident; var_params} = variant in
@@ -99,7 +102,7 @@ module Type = struct
             ; var_ident= var_ident.txt
             ; var_decl= decl }
           in
-          mk (Tctor variant) env
+          mk ~mode (Tctor variant) env
         in
         ( { type_desc= Ttyp_ctor {var_params; var_ident}
           ; type_loc= loc
@@ -111,12 +114,14 @@ module Type = struct
               let t, e = import t e in
               (e, t) )
         in
-        let typ = mk (Ttuple (List.map ~f:type0 typs)) env in
+        let typ = mk ~mode (Ttuple (List.map ~f:type0 typs)) env in
         ({type_desc= Ttyp_tuple typs; type_loc= loc; type_type= typ}, env)
     | Ptyp_arrow (typ1, typ2, explicit, label) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
-        let typ = mk (Tarrow (type0 typ1, type0 typ2, explicit, label)) env in
+        let typ =
+          mk ~mode (Tarrow (type0 typ1, type0 typ2, explicit, label)) env
+        in
         ( { type_desc= Ttyp_arrow (typ1, typ2, explicit, label)
           ; type_loc= loc
           ; type_type= typ }
