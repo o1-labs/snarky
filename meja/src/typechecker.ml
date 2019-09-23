@@ -62,13 +62,9 @@ let rec check_type_aux ~loc typ ctyp env =
   if Type1.contains typ ~in_:ctyp || Type1.contains ctyp ~in_:typ then
     raise (Error (loc, Recursive_variable typ)) ;
   let check_type_aux = check_type_aux ~loc in
-  let without_instance ~f (typ : type_expr) env =
-    match Envi.Type.instance env typ with
-    | Some typ ->
-        Some (f typ env)
-    | None ->
-        None
-  in
+  Type1.unify_depths typ ctyp ;
+  let typ = repr typ in
+  let ctyp = repr ctyp in
   Type1.unify_depths typ ctyp ;
   match (typ.type_desc, ctyp.type_desc) with
   | Tref _, _ | _, Tref _ ->
@@ -80,26 +76,15 @@ let rec check_type_aux ~loc typ ctyp env =
   | _, Tpoly (_, ctyp) ->
       check_type_aux typ ctyp env
   | Tvar _, Tvar _ ->
-      map_none
-        (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
-        (fun () ->
-          map_none
-            (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
-            (fun () ->
-              (* Add the outermost (in terms of lexical scope) of the variables as
+      (* Add the outermost (in terms of lexical scope) of the variables as
                  the instance for the other. We do this by chosing the type of
                  lowest ID, to ensure strict ordering and thus no cycles. *)
-              if ctyp.type_id < typ.type_id then
-                Envi.Type.add_instance typ ctyp env
-              else Envi.Type.add_instance ctyp typ env ) )
+      if ctyp.type_id < typ.type_id then Type1.add_instance typ ctyp
+      else Type1.add_instance ctyp typ
   | Tvar _, _ ->
-      map_none
-        (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
-        (fun () -> Envi.Type.add_instance typ ctyp env)
+      Type1.add_instance typ ctyp
   | _, Tvar _ ->
-      map_none
-        (without_instance ctyp env ~f:(fun ctyp -> check_type_aux typ ctyp))
-        (fun () -> Envi.Type.add_instance ctyp typ env)
+      Type1.add_instance ctyp typ
   | Ttuple typs, Ttuple ctyps -> (
     match
       List.iter2 typs ctyps ~f:(fun typ ctyp -> check_type_aux typ ctyp env)
@@ -166,23 +151,19 @@ let rec check_type_aux ~loc typ ctyp env =
 let check_type ~loc env typ constr_typ =
   match check_type_aux ~loc typ constr_typ env with
   | exception Error (_, err) ->
-      let typ = Envi.Type.flatten typ env in
-      let constr_typ = Envi.Type.flatten constr_typ env in
+      let typ = Type1.flatten typ in
+      let constr_typ = Type1.flatten constr_typ in
       raise (Error (loc, Check_failed (typ, constr_typ, err)))
   | () ->
       ()
 
 let unifies env typ constr_typ =
   let snapshot = Snapshot.create () in
-  let {Envi.TypeEnvi.variable_instances; _} = env.Envi.resolve_env.type_env in
   match check_type ~loc:Location.none env typ constr_typ with
   | () ->
       true
   | exception Error _ ->
-      env.resolve_env.type_env
-      <- {env.resolve_env.type_env with variable_instances} ;
-      backtrack snapshot ;
-      false
+      backtrack snapshot ; false
 
 let rec add_implicits ~loc implicits typ env =
   match implicits with
@@ -217,7 +198,7 @@ let polymorphise typ env =
       Envi.Type.mk (Tpoly (typ_vars, typ)) env
 
 let add_polymorphised name typ env =
-  let typ = Envi.Type.flatten typ env in
+  let typ = Type1.flatten typ in
   let typ = polymorphise typ env in
   Envi.add_name name typ env
 
@@ -229,7 +210,8 @@ let get_field (field : lid) env =
       ( ident
       , ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
         , i ) ) ->
-      let bound_vars = Envi.Type.refresh_vars tdec_params env in
+      let snap = Snapshot.create () in
+      Envi.Type.refresh_vars tdec_params env ;
       let name =
         match ident with
         | Path.Pdot (m, _, _) ->
@@ -243,7 +225,7 @@ let get_field (field : lid) env =
       let {fld_type; _} = List.nth_exn field_decls i in
       let rcd_type = Envi.Type.copy rcd_type env in
       let fld_type = Envi.Type.copy fld_type env in
-      List.iter ~f:Envi.Type.restore_desc bound_vars ;
+      backtrack snap ;
       (ident, i, fld_type, rcd_type)
   | _ ->
       raise (Error (loc, Unbound ("record field", field)))
@@ -311,11 +293,11 @@ let get_ctor (name : lid) env =
         Set.to_list
           (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
       in
-      let bound_vars = Envi.Type.refresh_vars bound_vars env in
+      let snap = Snapshot.create () in
+      Envi.Type.refresh_vars bound_vars env ;
       let args_typ = Envi.Type.copy args_typ env in
       let typ = Envi.Type.copy typ env in
-      List.iter ~f:Envi.Type.restore_desc bound_vars ;
-      (name, typ, args_typ)
+      backtrack snap ; (name, typ, args_typ)
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
 
@@ -494,9 +476,9 @@ let rec get_expression env expected exp =
                   e_typ
             in
             let e, env = get_expression env e_typ e in
-            ((Envi.Type.flatten res_typ env, env), (label, e)) )
+            ((Type1.flatten res_typ, env), (label, e)) )
       in
-      let typ = Type1.discard_optional_labels @@ Envi.Type.flatten typ env in
+      let typ = Type1.discard_optional_labels @@ Type1.flatten typ in
       (* Squash nested applies from implicit arguments. *)
       let f, es =
         match f.exp_desc with
@@ -602,7 +584,7 @@ let rec get_expression env expected exp =
                 | _ ->
                     Type0_map.default_mapper.type_expr mapper typ ) }
         in
-        mapper.type_expr mapper (Envi.Type.flatten res env)
+        mapper.type_expr mapper (Type1.flatten res)
       in
       check_type ~loc env expected res ;
       Envi.Type.update_depths env res ;
@@ -779,7 +761,7 @@ let rec get_expression env expected exp =
         | None ->
             (expected, None, env)
       in
-      let typ = Envi.Type.flatten typ env in
+      let typ = Type1.flatten typ in
       let typ, field_decls, type_vars, bound_vars =
         match Envi.TypeDecl.find_unaliased_of_type ~loc typ env with
         | Some
@@ -887,12 +869,12 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
   let typ = Envi.Type.mkvar None env in
   let p, pattern_variables, env = check_pattern env typ p in
-  let typ = Envi.Type.flatten typ env in
+  let typ = Type1.flatten typ in
   let env = Envi.open_expr_scope env in
   let e, env = get_expression env typ e in
   let env = Envi.close_expr_scope env in
   Envi.Type.update_depths env e.exp_type ;
-  let exp_type = Envi.Type.flatten e.exp_type env in
+  let exp_type = Type1.flatten e.exp_type in
   let e = {e with exp_type} in
   let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
   let implicit_vars =
@@ -909,7 +891,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
       let name, typ =
         match pattern_variables with
         | [(name, typ)] ->
-            (name, Envi.Type.flatten typ env)
+            (name, Type1.flatten typ)
         | _ ->
             raise (Error (loc, No_instance implicit.exp_type))
       in

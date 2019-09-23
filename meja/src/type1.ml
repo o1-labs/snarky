@@ -10,7 +10,7 @@ let mk depth type_desc =
 
 let mkvar depth name = mk depth (Tvar name)
 
-type change = Depth of (type_expr * int)
+type change = Depth of (type_expr * int) | Desc of (type_expr * type_desc)
 
 (** Implements a weak, mutable linked-list containing the history of changes.
 
@@ -91,7 +91,11 @@ end
 
 let backtrack snap =
   let changes = Snapshot.backtrack snap in
-  List.iter changes ~f:(function Depth (typ, depth) -> typ.type_depth <- depth )
+  List.iter changes ~f:(function
+    | Depth (typ, depth) ->
+        typ.type_depth <- depth
+    | Desc (typ, desc) ->
+        typ.type_desc <- desc )
 
 (** The representative of a type. This unfolds any [Tref] values that are
     present to get to the true underlying type.
@@ -216,6 +220,48 @@ let update_depth depth typ = if typ.type_depth > depth then set_depth depth typ
 let unify_depths typ1 typ2 =
   iter ~f:(update_depth typ1.type_depth) typ2 ;
   iter ~f:(update_depth typ2.type_depth) typ1
+
+let set_desc typ desc =
+  Snapshot.add_to_history (Desc (typ, typ.type_desc)) ;
+  typ.type_desc <- desc
+
+(** [set_repr typ typ'] sets the representative of [typ] to be [typ']. *)
+let set_repr typ typ' = set_desc typ (Tref typ')
+
+(** [add_instance var typ'] changes the representative of the type variable
+    [var] to [typ']. If [typ'] is also a type variable, then the user-provided
+    of [var] is added to [typ'], unless [typ'] already has a user-provided name
+    of its own.
+
+    Raises [AssertionError] if [var] is not a type variable.
+*)
+let add_instance typ typ' =
+  ( match (typ.type_desc, typ'.type_desc) with
+  | Tvar (Some name), Tvar None ->
+      (* We would lose the user-provided name associated with [typ], so promote
+         it to be the name of [typ'].
+      *)
+      set_desc typ' (Tvar (Some name))
+  | Tvar _, _ ->
+      ()
+  | _ ->
+      (* Sanity check: we should be adding an instance to a type variable. *)
+      assert false ) ;
+  set_repr typ typ'
+
+(** Create an equivalent type by unfolding all of the type representatives. *)
+let flatten typ =
+  let rec flatten typ =
+    let typ = repr typ in
+    match typ.type_desc with
+    | Tvar _ ->
+        (* Don't copy variables! *)
+        typ
+    | _ ->
+        mk typ.type_depth (copy_desc ~f:flatten typ.type_desc)
+  in
+  let typ = flatten typ in
+  typ
 
 let type_vars ?depth typ =
   let deep_enough =
