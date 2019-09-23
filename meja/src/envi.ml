@@ -850,22 +850,16 @@ module Type = struct
   (** Replace the representatives of each of list of variables with a fresh
       variable.
 
-      Once the representatives have been used, the variables must be restored
-      to their previous representatives using [List.iter ~f:restore_desc] on
-      the return value.
+      The old values can be restored by taking a snapshot before calling this
+      and backtracking to it once the new values have been used.
   *)
   let refresh_vars vars env =
-    List.map vars ~f:(fun var ->
-        let {type_desc; _} = var in
+    List.iter vars ~f:(fun var ->
         (* Sanity check. *)
-        (match (repr var).type_desc with Tvar _ -> () | _ -> assert false) ;
-        var.type_desc <- Tref (mkvar None env) ;
-        (var, type_desc) )
-
-  let restore_desc (typ, desc) = typ.type_desc <- desc
+        (match var.type_desc with Tvar _ -> () | _ -> assert false) ;
+        set_repr var (mkvar None env) )
 
   let copy typ env =
-    let restores = ref [] in
     let rec copy typ =
       let typ = repr typ in
       match typ.type_desc with
@@ -874,32 +868,28 @@ module Type = struct
           typ
       | Tpoly (vars, typ) ->
           (* Make fresh variables to instantiate [Tpoly]s. *)
-          restores := refresh_vars vars env :: !restores ;
-          copy typ
+          refresh_vars vars env ; copy typ
       | _ ->
           mk (copy_desc ~f:copy typ.type_desc) env
     in
+    let snap = Snapshot.create () in
     let typ = copy typ in
-    (* Restore the original variables back into the [Tpoly]s. *)
-    List.iter !restores ~f:(List.iter ~f:restore_desc) ;
-    typ
+    (* Restore the values of 'refreshed' variables. *)
+    backtrack snap ; typ
 
   (** [instantiate params typs typ env] creates a new type by replacing the
       each of the type variables in [params] with the corresponding instance
       from [typs] in [typ].
   *)
   let instantiate params typs typ env =
-    let restores =
-      List.map2_exn params typs ~f:(fun param typ ->
-          let {type_desc; _} = param in
-          (* Sanity check. *)
-          (match (repr param).type_desc with Tvar _ -> () | _ -> assert false) ;
-          param.type_desc <- Tref typ ;
-          (param, type_desc) )
-    in
+    let snap = Snapshot.create () in
+    List.iter2_exn params typs ~f:(fun param typ ->
+        (* Sanity check. *)
+        (match param.type_desc with Tvar _ -> () | _ -> assert false) ;
+        set_repr param typ ) ;
     let typ = copy typ env in
-    List.iter restores ~f:restore_desc ;
-    typ
+    (* Restore the original values of the parameters. *)
+    backtrack snap ; typ
 
   module T = struct
     type t = type_expr
@@ -918,8 +908,6 @@ module Type = struct
         Type1.iter ~f:(update_depths env) typ
 
   let flatten typ env =
-    let typ = repr typ in
-    let restores = ref [] in
     let rec flatten typ =
       match (repr typ).type_desc with
       | Tvar _ -> (
@@ -927,19 +915,18 @@ module Type = struct
         | Some typ' ->
             (* Replace variables with their instances. *)
             let typ' = repr typ' in
-            restores := (typ, typ.type_desc) :: !restores ;
-            typ.type_desc <- Tref typ' ;
-            flatten typ'
+            set_repr typ typ' ; flatten typ'
         | None ->
             (* Don't copy variables! *)
             repr typ )
       | _ ->
           Type1.mk typ.type_depth (copy_desc ~f:flatten typ.type_desc)
     in
+    let snap = Snapshot.create () in
+    let typ = repr typ in
     let typ = flatten typ in
     (* Restore variables back without their instances. *)
-    List.iter !restores ~f:restore_desc ;
-    typ
+    backtrack snap ; typ
 
   let or_compare cmp ~f = if Int.equal cmp 0 then f () else cmp
 

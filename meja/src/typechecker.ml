@@ -229,7 +229,8 @@ let get_field (field : lid) env =
       ( ident
       , ( ({tdec_desc= TRecord field_decls; tdec_ident; tdec_params; _} as decl)
         , i ) ) ->
-      let bound_vars = Envi.Type.refresh_vars tdec_params env in
+      let snap = Snapshot.create () in
+      Envi.Type.refresh_vars tdec_params env ;
       let name =
         match ident with
         | Path.Pdot (m, _, _) ->
@@ -243,7 +244,7 @@ let get_field (field : lid) env =
       let {fld_type; _} = List.nth_exn field_decls i in
       let rcd_type = Envi.Type.copy rcd_type env in
       let fld_type = Envi.Type.copy fld_type env in
-      List.iter ~f:Envi.Type.restore_desc bound_vars ;
+      backtrack snap ;
       (ident, i, fld_type, rcd_type)
   | _ ->
       raise (Error (loc, Unbound ("record field", field)))
@@ -311,11 +312,11 @@ let get_ctor (name : lid) env =
         Set.to_list
           (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
       in
-      let bound_vars = Envi.Type.refresh_vars bound_vars env in
+      let snap = Snapshot.create () in
+      Envi.Type.refresh_vars bound_vars env ;
       let args_typ = Envi.Type.copy args_typ env in
       let typ = Envi.Type.copy typ env in
-      List.iter ~f:Envi.Type.restore_desc bound_vars ;
-      (name, typ, args_typ)
+      backtrack snap ; (name, typ, args_typ)
   | _ ->
       raise (Error (loc, Unbound ("constructor", name)))
 
