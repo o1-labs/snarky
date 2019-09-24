@@ -75,10 +75,13 @@ let rec check_type_aux ~loc typ ctyp env =
       assert false
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
-  | Tpoly (_, typ), _ ->
-      check_type_aux typ ctyp env
-  | _, Tpoly (_, ctyp) ->
-      check_type_aux typ ctyp env
+  | Tpoly _, _ | _, Tpoly _ ->
+      (* We don't (yet) have a unification algorithm for [Tpoly], and unifying
+         naively is clearly wrong: we don't want to instantiate the variables
+         that [Tpoly] is over, otherwise we fundamentally change the meaning of
+         the type!
+      *)
+      assert false
   | Tvar _, Tvar _ ->
       map_none
         (without_instance typ env ~f:(fun typ -> check_type_aux typ ctyp))
