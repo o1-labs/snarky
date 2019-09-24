@@ -112,6 +112,12 @@ let string_of_mode = function Checked -> "Checked" | Prover -> "Prover"
 
 let pp_mode ppf mode = Format.pp_print_string ppf (string_of_mode mode)
 
+let mode_debug_print ppf = function
+  | Checked ->
+      Format.pp_print_string ppf "C"
+  | Prover ->
+      Format.pp_print_string ppf "P"
+
 let modes_of_mode = function
   | Checked -> (
       function Checked -> true | Prover -> false )
