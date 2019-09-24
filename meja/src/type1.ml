@@ -10,7 +10,13 @@ let mk ~mode depth type_desc =
 
 let mkvar ~mode depth name = mk ~mode depth (Tvar name)
 
-type change = Depth of (type_expr * int) | Desc of (type_expr * type_desc)
+type change =
+  | Depth of (type_expr * int)
+  | Desc of (type_expr * type_desc)
+  (* This is equivalent to [Desc], but allows for filtering the backtrace
+       when [Treplace] has been set for recursion-breaking.
+    *)
+  | Replace of (type_expr * type_desc)
 
 (** Implements a weak, mutable linked-list containing the history of changes.
 
@@ -119,6 +125,8 @@ let revert = function
       typ.type_depth <- depth
   | Desc (typ, desc) ->
       typ.type_desc <- desc
+  | Replace (typ, desc) ->
+      typ.type_desc <- desc
 
 let backtrack snap =
   let changes = Snapshot.backtrack snap in
@@ -180,7 +188,9 @@ let rec typ_debug_print fmt typ =
       | Ttuple typs ->
           print "(%a)" (print_list typ_debug_print) typs
       | Tref typ ->
-          print "= " ; typ_debug_print fmt typ ) ;
+          print "= " ; typ_debug_print fmt typ
+      | Treplace typ ->
+          print "=== " ; typ_debug_print fmt typ ) ;
     Hash_set.remove hashtbl typ.type_id ) ;
   print " @%i)" typ.type_depth
 
@@ -200,6 +210,8 @@ let fold ~init ~f typ =
       f acc typ
   | Tref typ ->
       f init typ
+  | Treplace _ ->
+      assert false
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -219,6 +231,9 @@ let rec copy_desc ~f = function
       Tpoly (List.map ~f typs, f typ)
   | Tref typ ->
       copy_desc ~f typ.type_desc
+  | Treplace typ ->
+      (* Recursion breaking. *)
+      typ.type_desc
 
 let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
   let equal_at_depth = equal_at_depth ~get_decl ~depth in
@@ -271,6 +286,14 @@ let unify_depths typ1 typ2 =
 let set_desc typ desc =
   Snapshot.add_to_history (Desc (typ, typ.type_desc)) ;
   typ.type_desc <- desc
+
+let set_replacement typ typ' =
+  Snapshot.add_to_history (Replace (typ, typ.type_desc)) ;
+  typ.type_desc <- Treplace typ'
+
+(** Backtrack only undoing the [Replace] operations since the last snapshot. *)
+let backtrack_replace =
+  filtered_backtrack ~f:(function Replace _ -> true | _ -> false)
 
 (** [set_repr typ typ'] sets the representative of [typ] to be [typ']. *)
 let set_repr typ typ' = set_desc typ (Tref typ')
@@ -408,6 +431,8 @@ let contains typ ~in_ =
         || List.exists ~f:contains typs
         || contains typ
     | Tref _ ->
+        assert false
+    | Treplace _ ->
         assert false
   in
   contains in_

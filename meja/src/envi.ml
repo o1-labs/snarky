@@ -322,7 +322,10 @@ module Scope = struct
           (* TODO: This is not the desired behaviour.. *)
           deferred
     in
-    subst
+    fun scope ->
+      let snap = Snapshot.create () in
+      let scope = subst scope in
+      backtrack_replace snap ; scope
 
   let build_subst ~type_subst ~module_subst s
       { kind= _
@@ -967,6 +970,8 @@ module Type = struct
     else
       match ((repr typ1).type_desc, (repr typ2).type_desc) with
       | Tref _, _ | _, Tref _ ->
+          assert false
+      | Treplace _, _ | _, Treplace _ ->
           assert false
       | Tpoly (_, typ1), _ ->
           compare typ1 typ2

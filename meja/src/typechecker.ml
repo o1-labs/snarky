@@ -72,6 +72,8 @@ let rec check_type_aux ~loc typ ctyp env =
   match (typ.type_desc, ctyp.type_desc) with
   | Tref _, _ | _, Tref _ ->
       assert false
+  | Treplace _, _ | _, Treplace _ ->
+      assert false
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
   | Tpoly _, _ | _, Tpoly _ ->
@@ -611,7 +613,9 @@ let rec get_expression env expected exp =
                 | _ ->
                     Type0_map.default_mapper.type_expr mapper typ ) }
         in
-        mapper.type_expr mapper (Type1.flatten res)
+        let snap = Snapshot.create () in
+        let res = mapper.type_expr mapper (Type1.flatten res) in
+        backtrack_replace snap ; res
       in
       check_type ~loc env expected res ;
       Envi.Type.update_depths env res ;

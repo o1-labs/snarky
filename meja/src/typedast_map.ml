@@ -32,6 +32,12 @@ type mapper =
   ; path: mapper -> Path.t -> Path.t
   ; type0: Type0_map.mapper }
 
+let with_backtrack_replace f =
+  let snap = Type1.Snapshot.create () in
+  let ret = f () in
+  Type1.backtrack_replace snap ;
+  ret
+
 let lid mapper {Location.txt; loc} =
   {Location.txt= mapper.longident mapper txt; loc= mapper.location mapper loc}
 
@@ -47,7 +53,10 @@ let path mapper ({Location.txt; loc} : Path.t Location.loc) =
 let type_expr mapper {type_desc; type_loc; type_type} =
   let type_loc = mapper.location mapper type_loc in
   let type_desc = mapper.type_desc mapper type_desc in
-  let type_type = mapper.type0.type_expr mapper.type0 type_type in
+  let type_type =
+    with_backtrack_replace (fun () ->
+        mapper.type0.type_expr mapper.type0 type_type )
+  in
   {type_desc; type_loc; type_type}
 
 let type_desc mapper typ =
@@ -79,7 +88,9 @@ let field_decl mapper {fld_ident; fld_type; fld_loc; fld_fld} =
   { fld_loc= mapper.location mapper fld_loc
   ; fld_ident= ident mapper fld_ident
   ; fld_type= mapper.type_expr mapper fld_type
-  ; fld_fld= mapper.type0.field_decl mapper.type0 fld_fld }
+  ; fld_fld=
+      with_backtrack_replace (fun () ->
+          mapper.type0.field_decl mapper.type0 fld_fld ) }
 
 let ctor_args mapper = function
   | Tctor_tuple typs ->
@@ -92,7 +103,9 @@ let ctor_decl mapper {ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor} =
   ; ctor_ident= ident mapper ctor_ident
   ; ctor_args= mapper.ctor_args mapper ctor_args
   ; ctor_ret= Option.map ~f:(mapper.type_expr mapper) ctor_ret
-  ; ctor_ctor= mapper.type0.ctor_decl mapper.type0 ctor_ctor }
+  ; ctor_ctor=
+      with_backtrack_replace (fun () ->
+          mapper.type0.ctor_decl mapper.type0 ctor_ctor ) }
 
 let type_decl mapper {tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec}
     =
@@ -100,7 +113,9 @@ let type_decl mapper {tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec}
   ; tdec_ident= ident mapper tdec_ident
   ; tdec_params= List.map ~f:(mapper.type_expr mapper) tdec_params
   ; tdec_desc= mapper.type_decl_desc mapper tdec_desc
-  ; tdec_tdec= mapper.type0.type_decl mapper.type0 tdec_tdec }
+  ; tdec_tdec=
+      with_backtrack_replace (fun () ->
+          mapper.type0.type_decl mapper.type0 tdec_tdec ) }
 
 let type_decl_desc mapper = function
   | Tdec_abstract ->
@@ -116,7 +131,8 @@ let type_decl_desc mapper = function
   | Tdec_extend (name, decl, ctors) ->
       Tdec_extend
         ( path mapper name
-        , mapper.type0.type_decl mapper.type0 decl
+        , with_backtrack_replace (fun () ->
+              mapper.type0.type_decl mapper.type0 decl )
         , List.map ~f:(mapper.ctor_decl mapper) ctors )
 
 let literal (_iter : mapper) (l : literal) = l
@@ -124,7 +140,9 @@ let literal (_iter : mapper) (l : literal) = l
 let pattern mapper {pat_desc; pat_loc; pat_type} =
   { pat_loc= mapper.location mapper pat_loc
   ; pat_desc= mapper.pattern_desc mapper pat_desc
-  ; pat_type= mapper.type0.type_expr mapper.type0 pat_type }
+  ; pat_type=
+      with_backtrack_replace (fun () ->
+          mapper.type0.type_expr mapper.type0 pat_type ) }
 
 let pattern_desc mapper = function
   | Tpat_any ->
@@ -149,7 +167,9 @@ let pattern_desc mapper = function
 let expression mapper {exp_desc; exp_loc; exp_type} =
   { exp_loc= mapper.location mapper exp_loc
   ; exp_desc= mapper.expression_desc mapper exp_desc
-  ; exp_type= mapper.type0.type_expr mapper.type0 exp_type }
+  ; exp_type=
+      with_backtrack_replace (fun () ->
+          mapper.type0.type_expr mapper.type0 exp_type ) }
 
 let expression_desc mapper = function
   | Texp_apply (e, args) ->
