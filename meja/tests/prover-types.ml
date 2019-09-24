@@ -4,9 +4,13 @@ open Impl
 type t
 
 include struct
-  type t
+  type t1
 
-  type s
+  type t2
 end
 
-let f (f : t -> t -> s) x y = f x y
+let f (f : t -> t1 -> t2) x y = f x y
+
+include struct
+  let f (f : t -> t1 -> t2) x y = f x y
+end
