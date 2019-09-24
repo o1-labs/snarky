@@ -15,6 +15,7 @@ and type_desc =
   (* A type name. *)
   | Ttyp_ctor of variant
   | Ttyp_poly of type_expr list * type_expr
+  | Ttyp_prover of type_expr
 
 and variant = {var_ident: path; var_params: type_expr list}
 

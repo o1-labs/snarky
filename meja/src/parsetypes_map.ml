@@ -63,6 +63,8 @@ let type_desc mapper typ =
       Ptyp_poly
         ( List.map ~f:(mapper.type_expr mapper) vars
         , mapper.type_expr mapper typ )
+  | Ptyp_prover typ ->
+      Ptyp_prover (mapper.type_expr mapper typ)
 
 let variant mapper {var_ident; var_params} =
   { var_ident= lid mapper var_ident

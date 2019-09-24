@@ -57,15 +57,12 @@ let type_desc mapper desc =
       let typ' = mapper.type_expr mapper typ in
       if phys_equal typ' typ then desc else Tref typ'
 
-let variant mapper ({var_ident= ident; var_params; var_decl= decl} as variant)
-    =
+let variant mapper ({var_ident= ident; var_params} as variant) =
   let var_ident = mapper.path mapper ident in
   let same = ref true in
   let var_params = map_list var_params ~same ~f:(mapper.type_expr mapper) in
-  let var_decl = mapper.type_decl mapper decl in
-  if !same && phys_equal var_ident ident && phys_equal var_decl decl then
-    variant
-  else {var_ident; var_params; var_decl}
+  if !same && phys_equal var_ident ident then variant
+  else {var_ident; var_params}
 
 let field_decl mapper ({fld_ident= ident; fld_type= typ} as fld) =
   let fld_type = mapper.type_expr mapper typ in

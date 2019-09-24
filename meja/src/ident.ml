@@ -101,4 +101,7 @@ module Table = struct
 
   let map tbl ~f =
     Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f data))) tbl
+
+  let mapi tbl ~f =
+    Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f ident data))) tbl
 end

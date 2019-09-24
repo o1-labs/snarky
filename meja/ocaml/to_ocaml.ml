@@ -18,6 +18,8 @@ let rec of_type_desc ?loc typ =
       Typ.constr ?loc name (List.map ~f:of_type_expr params)
   | Ptyp_tuple typs ->
       Typ.tuple ?loc (List.map ~f:of_type_expr typs)
+  | Ptyp_prover typ ->
+      of_type_expr typ
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 

@@ -206,7 +206,8 @@ let rec copy_desc ~f = function
   | Tref typ ->
       copy_desc ~f typ.type_desc
 
-let rec equal_at_depth ~depth typ1 typ2 =
+let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
+  let equal_at_depth = equal_at_depth ~get_decl ~depth in
   let typ1 = repr typ1 in
   let typ2 = repr typ2 in
   if Int.equal typ1.type_id typ2.type_id then true
@@ -217,7 +218,7 @@ let rec equal_at_depth ~depth typ1 typ2 =
     | _, Tvar _ when typ2.type_depth > depth ->
         true
     | Ttuple typs1, Ttuple typs2 -> (
-      match List.for_all2 typs1 typs2 ~f:(equal_at_depth ~depth) with
+      match List.for_all2 typs1 typs2 ~f:equal_at_depth with
       | Ok b ->
           b
       | Unequal_lengths ->
@@ -226,17 +227,18 @@ let rec equal_at_depth ~depth typ1 typ2 =
       , Tarrow (typ2a, typ2b, explicitness2, label2) ) ->
         equal_explicitness explicitness1 explicitness2
         && equal_arg_label label1 label2
-        && equal_at_depth ~depth typ1a typ2a
-        && equal_at_depth ~depth typ1b typ2b
-    | ( Tctor ({var_decl= decl1; _} as variant1)
-      , Tctor ({var_decl= decl2; _} as variant2) )
-      when Int.equal decl1.tdec_id decl2.tdec_id ->
-        List.for_all2_exn ~f:(equal_at_depth ~depth) variant1.var_params
-          variant2.var_params
+        && equal_at_depth typ1a typ2a && equal_at_depth typ1b typ2b
+    | ( Tctor ({var_ident= path1; _} as variant1)
+      , Tctor ({var_ident= path2; _} as variant2) ) ->
+        let decl1 = get_decl path1 in
+        let decl2 = get_decl path2 in
+        Int.equal decl1.tdec_id decl2.tdec_id
+        && List.for_all2_exn ~f:equal_at_depth variant1.var_params
+             variant2.var_params
     | Tpoly (typs1, typ1), Tpoly (typs2, typ2) -> (
-      match List.for_all2 typs1 typs2 ~f:(equal_at_depth ~depth) with
+      match List.for_all2 typs1 typs2 ~f:equal_at_depth with
       | Ok true ->
-          equal_at_depth ~depth typ1 typ2
+          equal_at_depth typ1 typ2
       | _ ->
           false )
     | _, _ ->
@@ -407,5 +409,5 @@ module Decl = struct
 
   let mk_typ ~params ?ident depth decl =
     let ident = Option.value ident ~default:(Path.Pident decl.tdec_ident) in
-    typ_mk depth (Tctor {var_ident= ident; var_params= params; var_decl= decl})
+    typ_mk depth (Tctor {var_ident= ident; var_params= params})
 end

@@ -23,7 +23,7 @@ module Type0 = struct
     | Tarrow (typ1, typ2, explicit, label) ->
         Type.arrow ?loc ~explicit ~label (type_expr ?loc typ1)
           (type_expr ?loc typ2)
-    | Tctor {var_ident= ident; var_params= params; var_decl= _} ->
+    | Tctor {var_ident= ident; var_params= params} ->
         let params = List.map ~f:(type_expr ?loc) params in
         Type.constr ?loc ~params (longident_of_path ident)
     | Tpoly (vars, var) ->
@@ -87,6 +87,8 @@ let rec type_desc = function
       Ptyp_ctor (variant var)
   | Ttyp_poly (vars, var) ->
       Ptyp_poly (List.map ~f:type_expr vars, type_expr var)
+  | Ttyp_prover typ ->
+      Ptyp_prover (type_expr typ)
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}

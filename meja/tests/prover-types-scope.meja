@@ -1,0 +1,11 @@
+type t;
+
+Prover {
+  type t1;
+
+  type t2;
+};
+
+let f = fun (f : t -> t1 -> t2, x, y) => {
+  f(x, y);
+};
