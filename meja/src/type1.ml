@@ -133,7 +133,13 @@ let filtered_backtrack ~f snap =
 *)
 let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
 
+(** Hash set to track types printed in [typ_debug_print], to ensure that we
+    don't get stuck in a recursion loop.
+*)
+let typ_debug_print_hash_tbl = Hash_set.create (module Int) ()
+
 let rec typ_debug_print fmt typ =
+  let hashtbl = typ_debug_print_hash_tbl in
   let open Format in
   let print i = fprintf fmt i in
   let print_comma fmt () = pp_print_char fmt ',' in
@@ -147,27 +153,35 @@ let rec typ_debug_print fmt typ =
         fprintf fmt "?%s:" str
   in
   print "(%i:" typ.type_id ;
-  ( match typ.type_desc with
-  | Tvar None ->
-      print "var _"
-  | Tvar (Some name) ->
-      print "var %s" name
-  | Tpoly (typs, typ) ->
-      print "poly [%a] %a"
-        (print_list typ_debug_print)
-        typs typ_debug_print typ
-  | Tarrow (typ1, typ2, Explicit, label) ->
-      print "%a%a -> %a" print_label label typ_debug_print typ1 typ_debug_print
-        typ2
-  | Tarrow (typ1, typ2, Implicit, label) ->
-      print "%a{%a} -> %a" print_label label typ_debug_print typ1
-        typ_debug_print typ2
-  | Tctor {var_ident= name; var_params= params; _} ->
-      print "%a (%a)" Path.debug_print name (print_list typ_debug_print) params
-  | Ttuple typs ->
-      print "(%a)" (print_list typ_debug_print) typs
-  | Tref typ ->
-      print "= " ; typ_debug_print fmt typ ) ;
+  if Hash_set.mem hashtbl typ.type_id then
+    (* Recursion breaking. *)
+    print "RECURSIVE"
+  else (
+    ( Hash_set.add hashtbl typ.type_id ;
+      match typ.type_desc with
+      | Tvar None ->
+          print "var _"
+      | Tvar (Some name) ->
+          print "var %s" name
+      | Tpoly (typs, typ) ->
+          print "poly [%a] %a"
+            (print_list typ_debug_print)
+            typs typ_debug_print typ
+      | Tarrow (typ1, typ2, Explicit, label) ->
+          print "%a%a -> %a" print_label label typ_debug_print typ1
+            typ_debug_print typ2
+      | Tarrow (typ1, typ2, Implicit, label) ->
+          print "%a{%a} -> %a" print_label label typ_debug_print typ1
+            typ_debug_print typ2
+      | Tctor {var_ident= name; var_params= params; _} ->
+          print "%a (%a)" Path.debug_print name
+            (print_list typ_debug_print)
+            params
+      | Ttuple typs ->
+          print "(%a)" (print_list typ_debug_print) typs
+      | Tref typ ->
+          print "= " ; typ_debug_print fmt typ ) ;
+    Hash_set.remove hashtbl typ.type_id ) ;
   print " @%i)" typ.type_depth
 
 let fold ~init ~f typ =
