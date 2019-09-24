@@ -16,9 +16,7 @@ and type_desc =
   | Tref of type_expr
 [@@deriving sexp]
 
-and variant =
-  {var_ident: Path.t; var_params: type_expr list; var_decl: type_decl}
-[@@deriving sexp]
+and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]
 
 and field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
 
