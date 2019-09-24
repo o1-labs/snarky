@@ -23,7 +23,7 @@ module Type0 = struct
     | Tarrow (typ1, typ2, explicit, label) ->
         Type.arrow ?loc ~explicit ~label (type_expr ?loc typ1)
           (type_expr ?loc typ2)
-    | Tctor {var_ident= ident; var_params= params; var_decl= _} ->
+    | Tctor {var_ident= ident; var_params= params} ->
         let params = List.map ~f:(type_expr ?loc) params in
         Type.constr ?loc ~params (longident_of_path ident)
     | Tpoly (vars, var) ->

@@ -45,8 +45,11 @@ let unpack_decls ~loc typ ctyp env =
     in
     match (typ.type_desc, ctyp.type_desc) with
     | Tctor variant, Tctor cvariant ->
-        let decl_id, cdecl_id =
-          (variant.var_decl.tdec_id, cvariant.var_decl.tdec_id)
+        let decl_id =
+          (Envi.raw_get_type_declaration ~loc variant.var_ident env).tdec_id
+        in
+        let cdecl_id =
+          (Envi.raw_get_type_declaration ~loc cvariant.var_ident env).tdec_id
         in
         (* Try to unfold the oldest type definition first. *)
         if decl_id < cdecl_id then bind_none (unfold_ctyp ()) unfold_typ
@@ -141,8 +144,14 @@ let rec check_type_aux ~loc typ ctyp env =
     | Some (typ, ctyp) ->
         check_type_aux typ ctyp env
     | None ->
-        if Int.equal variant.var_decl.tdec_id constr_variant.var_decl.tdec_id
-        then
+        let decl_id =
+          (Envi.raw_get_type_declaration ~loc variant.var_ident env).tdec_id
+        in
+        let cdecl_id =
+          (Envi.raw_get_type_declaration ~loc constr_variant.var_ident env)
+            .tdec_id
+        in
+        if Int.equal decl_id cdecl_id then
           match
             List.iter2 variant.var_params constr_variant.var_params
               ~f:(fun param constr_param ->
@@ -269,58 +278,67 @@ let get_field_of_decl typ decl_vars params field_decls (field : lid) env =
 let get_ctor (name : lid) env =
   let mode = Envi.current_mode env in
   let loc = name.loc in
-  match (Envi.TypeDecl.find_of_constructor ~mode name env, name.txt) with
-  | ( Some
-        ( name
-        , (({tdec_desc= TVariant ctors; tdec_ident; tdec_params; _} as decl), i)
-        )
-    , _ )
-  | ( Some
-        ( name
-        , ({tdec_desc= TExtend (_, decl, ctors); tdec_ident; tdec_params; _}, i)
-        )
-    , _ ) ->
-      let ctor = List.nth_exn ctors i in
-      let make_name tdec_ident =
-        match name with
-        | Path.Pdot (m, _, _) ->
-            Path.dot m tdec_ident
-        | _ ->
-            Path.Pident tdec_ident
-      in
-      let typ =
-        match ctor.ctor_ret with
-        | Some typ ->
-            typ
-        | _ ->
-            Envi.TypeDecl.mk_typ ~params:tdec_params
-              ~ident:(make_name tdec_ident) decl env
-      in
-      let args_typ =
-        match ctor.ctor_args with
-        | Ctor_record decl ->
-            Envi.Type.mk
-              (Tctor
-                 { var_ident= make_name ctor.ctor_ident
-                 ; var_params= decl.tdec_params
-                 ; var_decl= decl })
-              env
-        | Ctor_tuple [typ] ->
-            typ
-        | Ctor_tuple typs ->
-            Envi.Type.mk (Ttuple typs) env
-      in
-      let bound_vars =
-        Set.to_list
-          (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
-      in
-      let bound_vars = Envi.Type.refresh_vars bound_vars env in
-      let args_typ = Envi.Type.copy args_typ env in
-      let typ = Envi.Type.copy typ env in
-      List.iter ~f:Envi.Type.restore_desc bound_vars ;
-      (name, typ, args_typ)
-  | _ ->
-      raise (Error (loc, Unbound ("constructor", name)))
+  let name, (decl, index) =
+    match Envi.TypeDecl.find_of_constructor ~mode name env with
+    | Some x ->
+        x
+    | None ->
+        raise (Error (loc, Unbound ("constructor", name)))
+  in
+  let ctors =
+    match decl.tdec_desc with
+    | TVariant ctors ->
+        ctors
+    | TExtend (_, _, ctors) ->
+        ctors
+    | _ ->
+        assert false
+  in
+  let ctor = List.nth_exn ctors index in
+  let make_name name tdec_ident =
+    match name with
+    | Path.Pdot (m, _, _) ->
+        Path.dot m tdec_ident
+    | _ ->
+        Path.Pident tdec_ident
+  in
+  let typ =
+    match ctor.ctor_ret with
+    | Some typ ->
+        typ
+    | _ ->
+        let ident, decl =
+          match decl.tdec_desc with
+          | TVariant _ ->
+              (make_name name decl.tdec_ident, decl)
+          | TExtend (name, decl, _) ->
+              (make_name name decl.tdec_ident, decl)
+          | _ ->
+              assert false
+        in
+        Envi.TypeDecl.mk_typ ~params:decl.tdec_params ~ident decl env
+  in
+  let args_typ =
+    match ctor.ctor_args with
+    | Ctor_record decl ->
+        Envi.Type.mk
+          (Tctor
+             { var_ident= make_name name ctor.ctor_ident
+             ; var_params= decl.tdec_params })
+          env
+    | Ctor_tuple [typ] ->
+        typ
+    | Ctor_tuple typs ->
+        Envi.Type.mk (Ttuple typs) env
+  in
+  let bound_vars =
+    Set.to_list (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
+  in
+  let bound_vars = Envi.Type.refresh_vars bound_vars env in
+  let args_typ = Envi.Type.copy args_typ env in
+  let typ = Envi.Type.copy typ env in
+  List.iter ~f:Envi.Type.restore_desc bound_vars ;
+  (name, typ, args_typ)
 
 let rec check_pattern env typ pat =
   let mode = Envi.current_mode env in
@@ -1031,11 +1049,7 @@ let rec check_signature_item env item =
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
-      let msig, m, env =
-        check_module_sig env
-          (Envi.relative_path env (Ident.name name.txt))
-          msig
-      in
+      let msig, m, env = check_module_sig env msig in
       let env =
         match m with
         | Envi.Scope.Immediate m ->
@@ -1045,10 +1059,8 @@ let rec check_signature_item env item =
       in
       (env, {Typedast.sig_desc= Tsig_module (name, msig); sig_loc= loc})
   | Psig_modtype (name, signature) ->
-      let env = Envi.open_module name.txt env in
-      let signature, m_env, env =
-        check_module_sig env (Envi.relative_path env name.txt) signature
-      in
+      let env = Envi.open_module env in
+      let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
       (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
@@ -1093,12 +1105,12 @@ let rec check_signature_item env item =
 and check_signature env signature =
   List.fold_map ~init:env signature ~f:check_signature_item
 
-and check_module_sig env path msig =
+and check_module_sig env msig =
   let mode = Envi.current_mode env in
   let loc = msig.msig_loc in
   match msig.msig_desc with
   | Pmty_sig signature ->
-      let env = Envi.open_absolute_module (Some path) env in
+      let env = Envi.open_module env in
       let env, signature = check_signature env signature in
       let m, env = Envi.pop_module ~loc env in
       ( {Typedast.msig_desc= Tmty_sig signature; msig_loc= loc}
@@ -1129,18 +1141,18 @@ and check_module_sig env path msig =
       , m
       , env )
   | Pmty_abstract ->
-      let env = Envi.open_absolute_module (Some path) env in
+      let env = Envi.open_module env in
       let m, env = Envi.pop_module ~loc env in
       ( {Typedast.msig_desc= Tmty_abstract; msig_loc= loc}
       , Envi.Scope.Immediate m
       , env )
   | Pmty_functor (f_name, f, msig) ->
-      let f, f_mty, env = check_module_sig env (Lident f_name.txt) f in
-      let ftor path f_instance =
+      let f, f_mty, env = check_module_sig env f in
+      let ftor f_instance =
         (* We want the functored module to be accessible only in un-prefixed
            space.
         *)
-        let env = Envi.open_absolute_module None env in
+        let env = Envi.open_module env in
         (* TODO: This name should be constant, and the underlying module
            substituted.
         *)
@@ -1153,17 +1165,20 @@ and check_module_sig env path msig =
               Envi.add_deferred_module f_name.txt path env
         in
         (* TODO: check that f_instance matches f_mty *)
-        let msig, m, _env = check_module_sig env path msig in
+        let msig, m, _env = check_module_sig env msig in
         match m with
         | Envi.Scope.Immediate m ->
             (m, msig)
         | Envi.Scope.Deferred path ->
-            ( snd (Envi.find_module ~mode ~loc (Location.mkloc path loc) env)
+            ( snd
+                (Envi.find_module ~mode ~loc
+                   (Location.mkloc (Longident.Lident path) loc)
+                   env)
             , msig )
       in
       (* Check that f_mty builds the functor as expected. *)
-      let _, msig = ftor (Lapply (path, Lident f_name.txt)) f_mty in
-      let m = Envi.make_functor ~mode path (fun path f -> fst (ftor path f)) in
+      let _, msig = ftor f_mty in
+      let m = Envi.make_functor ~mode (fun f -> fst (ftor f)) in
       ( {Typedast.msig_desc= Tmty_functor (f_name, f, msig); msig_loc= loc}
       , Envi.Scope.Immediate m
       , env )
@@ -1226,16 +1241,14 @@ let rec check_statement env stmt =
       in_decl := false ;
       ret
   | Pstmt_module (name, m) ->
-      let env = Envi.open_module name.txt env in
+      let env = Envi.open_module env in
       let env, m = check_module_expr env m in
       let m_env, env = Envi.pop_module ~loc env in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module name.txt m_env env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_module (name, m)})
   | Pstmt_modtype (name, signature) ->
-      let signature, m_env, env =
-        check_module_sig env (Envi.relative_path env name.txt) signature
-      in
+      let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
       ( env
@@ -1359,23 +1372,21 @@ and check_module_expr env m =
       let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_struct stmts})
   | Pmod_name name ->
-      let path = Envi.current_path env in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
       let name', m' = Envi.find_module ~mode ~loc name env in
       let name = Location.mkloc name' name.loc in
-      let env = Envi.push_scope {m' with path} env in
+      let env = Envi.push_scope m' env in
       (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
   | Pmod_functor (f_name, f, m) ->
-      let path = Option.value_exn (Envi.current_path env) in
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
-      let f, f', env = check_module_sig env (Lident f_name.txt) f in
-      let ftor path f_instance =
+      let f, f', env = check_module_sig env f in
+      let ftor f_instance =
         (* We want the functored module to be accessible only in un-prefixed
            space.
         *)
-        let env = Envi.open_absolute_module None env in
+        let env = Envi.open_module env in
         (* TODO: This name should be constant, and the underlying module
            substituted.
         *)
@@ -1388,17 +1399,15 @@ and check_module_expr env m =
               Envi.add_deferred_module f_name.txt path env
         in
         (* TODO: check that f_instance matches f' *)
-        let env = Envi.open_absolute_module (Some path) env in
+        let env = Envi.open_module env in
         let env, m' = check_module_expr env m in
         let m, _env = Envi.pop_module ~loc env in
         (m, m')
       in
       (* Check that f builds the functor as expected. *)
-      let _, m = ftor (Lapply (path, Lident f_name.txt)) f' in
+      let _, m = ftor f' in
       let env =
-        Envi.push_scope
-          (Envi.make_functor ~mode path (fun path f -> fst (ftor path f)))
-          env
+        Envi.push_scope (Envi.make_functor ~mode (fun f -> fst (ftor f))) env
       in
       (env, {m with mod_desc= Tmod_functor (f_name, f, m)})
 
