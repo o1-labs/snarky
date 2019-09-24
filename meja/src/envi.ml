@@ -510,13 +510,10 @@ module Scope = struct
     match IdTbl.find ident scope.modules with
     | Some (Immediate m) ->
         Some m
-    | Some (Deferred path) -> (
-      (* Use Prover mode so that we pick up all the modules. *)
-      match get_global_module ~mode:Prover ~loc resolve_env path with
-      | Some (_, m) ->
-          Some m
-      | None ->
-          None )
+    | Some (Deferred path) ->
+        (* Use Prover mode so that we pick up all the modules. *)
+        Option.map ~f:snd
+          (get_global_module ~mode:Prover ~loc resolve_env path)
     | _ ->
         None
 
@@ -530,13 +527,10 @@ module Scope = struct
     match IdTbl.find_name name ~modes:(modes_of_mode mode) scope.modules with
     | Some (ident, Immediate m) ->
         Some (ident, m)
-    | Some (ident, Deferred path) -> (
-      (* Use Prover mode so that we pick up all the modules. *)
-      match get_global_module ~mode:Prover ~loc resolve_env path with
-      | Some (_, m) ->
-          Some (ident, m)
-      | None ->
-          None )
+    | Some (ident, Deferred path) ->
+        (* Use Prover mode so that we pick up all the modules. *)
+        Option.map (get_global_module ~mode:Prover ~loc resolve_env path)
+          ~f:(fun (_, m) -> (ident, m))
     | _ ->
         None
 
