@@ -1977,6 +1977,10 @@ module Make_bowe_gabizon (M : sig
     end
   end
 
+  module Fq : sig
+    type t
+  end
+
   module Fqk : Deletable_intf
 
   module G1 : sig
@@ -1998,7 +2002,7 @@ end) (H : sig
   open M
 
   val hash :
-       ?message:bool array
+       ?message:Fq.t array
     -> a:G1.t
     -> b:G2.t
     -> c:G1.t
@@ -2065,12 +2069,12 @@ struct
         Caml.Gc.finalise delete t ; t
     end
 
-    type message = bool array
+    type message = Fq.t array
 
     type t = {a: G1.t; b: G2.t; c: G1.t; delta_prime: G2.t; z: G1.t}
     [@@deriving bin_io]
 
-    let create ?message proving_key ~primary ~auxiliary =
+    let create ?(message : message option) proving_key ~primary ~auxiliary =
       let d = Field.random () in
       let pre = Pre.create proving_key ~primary ~auxiliary ~d in
       let a = Pre.a pre in
@@ -2177,6 +2181,8 @@ struct
     let%test "fqk4" =
       let v = Fqk.to_elts Fqk.one in
       Mnt6_0.Field.Vector.length v = 4
+
+    module Fq = Mnt6_0.Field
 
     module Fqe =
       Fqe.Make
@@ -2343,6 +2349,8 @@ struct
     let%test "fqk6" =
       let v = Fqk.to_elts Fqk.one in
       Mnt4_0.Field.Vector.length v = 6
+
+    module Fq = Mnt4_0.Field
 
     module Fqe =
       Fqe.Make
