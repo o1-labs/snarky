@@ -913,14 +913,25 @@ module Type = struct
     let rec copy typ =
       let typ = repr typ in
       match typ.type_desc with
+      | Treplace typ ->
+          (* Recursion breaking. *)
+          typ
       | Tvar _ ->
           (* Don't copy variables! *)
           typ
       | Tpoly _ ->
           (* Tpoly should only ever appear at the top level of a type. *)
           assert false
-      | _ ->
-          mk ~mode:typ.type_mode (copy_desc ~f:copy typ.type_desc) env
+      | desc ->
+          let typ' = mkvar ~mode:typ.type_mode None env in
+          set_replacement typ typ' ;
+          (* NOTE: the variable description of [typ'] was just a placeholder,
+                   so we want this new value to be preserved after
+                   backtracking.
+             DO NOT replace this with a [Type1.set_repr] or equivalent call.
+          *)
+          typ'.type_desc <- copy_desc ~f:copy desc ;
+          typ'
     in
     let typ = repr typ in
     let snap = Snapshot.create () in

@@ -231,9 +231,8 @@ let rec copy_desc ~f = function
       Tpoly (List.map ~f typs, f typ)
   | Tref typ ->
       copy_desc ~f typ.type_desc
-  | Treplace typ ->
-      (* Recursion breaking. *)
-      typ.type_desc
+  | Treplace _ ->
+      assert false
 
 let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
   let equal_at_depth = equal_at_depth ~get_decl ~depth in
