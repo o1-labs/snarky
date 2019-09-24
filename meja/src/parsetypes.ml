@@ -10,6 +10,7 @@ and type_desc =
   (* A type name. *)
   | Ptyp_ctor of variant
   | Ptyp_poly of type_expr list * type_expr
+  | Ptyp_prover of type_expr
 
 and variant = {var_ident: lid; var_params: type_expr list}
 

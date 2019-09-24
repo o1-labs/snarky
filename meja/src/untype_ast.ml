@@ -87,6 +87,8 @@ let rec type_desc = function
       Ptyp_ctor (variant var)
   | Ttyp_poly (vars, var) ->
       Ptyp_poly (List.map ~f:type_expr vars, type_expr var)
+  | Ttyp_prover typ ->
+      Ptyp_prover (type_expr typ)
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}
