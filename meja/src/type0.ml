@@ -5,7 +5,8 @@ type type_expr =
   { mutable type_desc: type_desc
   ; type_id: int
   ; mutable type_depth: int
-  ; type_mode: mode }
+  ; type_mode: mode
+  ; mutable type_alternate: type_expr }
 [@@deriving sexp]
 
 and type_desc =

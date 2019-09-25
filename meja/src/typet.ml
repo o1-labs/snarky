@@ -65,7 +65,7 @@ module Type = struct
         let env = close_expr_scope env in
         ( { type_desc= Ttyp_poly (vars, typ)
           ; type_loc= loc
-          ; type_type= mk ~mode (Tpoly (List.map ~f:type0 vars, type0 typ)) env
+          ; type_type= Mk.poly ~mode (List.map ~f:type0 vars) (type0 typ) env
           }
         , env )
     | Ptyp_ctor variant ->
@@ -97,11 +97,7 @@ module Type = struct
               (env, param) )
         in
         let typ =
-          let variant =
-            { Type0.var_params= List.map ~f:type0 var_params
-            ; var_ident= var_ident.txt }
-          in
-          mk ~mode (Tctor variant) env
+          Mk.ctor ~mode var_ident.txt (List.map ~f:type0 var_params) env
         in
         ( { type_desc= Ttyp_ctor {var_params; var_ident}
           ; type_loc= loc
@@ -113,13 +109,13 @@ module Type = struct
               let t, e = import t e in
               (e, t) )
         in
-        let typ = mk ~mode (Ttuple (List.map ~f:type0 typs)) env in
+        let typ = Mk.tuple ~mode (List.map ~f:type0 typs) env in
         ({type_desc= Ttyp_tuple typs; type_loc= loc; type_type= typ}, env)
     | Ptyp_arrow (typ1, typ2, explicit, label) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
         let typ =
-          mk ~mode (Tarrow (type0 typ1, type0 typ2, explicit, label)) env
+          Mk.arrow ~mode ~explicit ~label (type0 typ1) (type0 typ2) env
         in
         ( { type_desc= Ttyp_arrow (typ1, typ2, explicit, label)
           ; type_loc= loc
@@ -132,7 +128,10 @@ module Type = struct
           let scope, env = pop_expr_scope env in
           join_expr_scope env scope
         in
-        (typ, env)
+        ( { type_desc= Ttyp_prover typ
+          ; type_loc= loc
+          ; type_type= Type1.get_mode mode typ.type_type }
+        , env )
 
   let fold ~init ~f typ =
     match typ.type_desc with

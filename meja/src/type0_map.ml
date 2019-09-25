@@ -38,19 +38,28 @@ let map_list ~same ~f =
       DO NOT recurse into [Treplace] values: they will often be self-recursive.
 *)
 
-let type_expr mapper ({type_desc= desc; type_id; type_depth; type_mode} as typ)
-    =
-  match typ.type_desc with
+let type_expr mapper typ =
+  match typ.Type0.type_desc with
   | Treplace typ ->
       (* Recursion breaking. *)
       typ
-  | _ ->
-      let type_desc = mapper.type_desc mapper desc in
-      let typ' =
-        if phys_equal type_desc desc then typ
-        else {type_desc; type_id; type_depth; type_mode}
-      in
+  | desc ->
+      (* Dummy type variable. *)
+      let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
+      let alt_desc = typ.type_alternate.type_desc in
       Type1.set_replacement typ typ' ;
+      let type_desc = mapper.type_desc mapper desc in
+      let alt_type_desc = mapper.type_desc mapper alt_desc in
+      let typ' =
+        if phys_equal type_desc desc && phys_equal alt_type_desc alt_desc then (
+          typ'.type_desc <- Tref typ ;
+          typ'.type_alternate.type_desc <- Tref typ ;
+          typ )
+        else (
+          typ'.type_desc <- type_desc ;
+          typ'.type_alternate.type_desc <- alt_type_desc ;
+          typ' )
+      in
       typ'
 
 let type_desc mapper desc =
