@@ -97,7 +97,17 @@ module Type = struct
               (env, param) )
         in
         let typ =
-          Mk.ctor ~mode var_ident.txt (List.map ~f:type0 var_params) env
+          match decl.tdec_desc with
+          | TForward _ ->
+              (* HACK! *)
+              Envi.Type.Mk.ctor ~mode var_ident.txt
+                (List.map ~f:type0 var_params)
+                env
+          | _ ->
+              Envi.Type.instantiate decl.tdec_params
+                (List.map ~f:type0 var_params)
+                (Type1.get_mode mode decl.tdec_ret)
+                env
         in
         ( { type_desc= Ttyp_ctor {var_params; var_ident}
           ; type_loc= loc
@@ -333,12 +343,17 @@ module TypeDecl = struct
               raise (Error (param.type_loc, Expected_type_var param)) )
     in
     let env, tdec_params = import_params env tdec_params in
+    let params = List.map ~f:type0 tdec_params in
+    let tdec_ret =
+      Type1.Mk.ctor ~mode 10000 (Path.Pident tdec_ident.txt) params
+    in
     let decl =
       Type0.
         { tdec_ident= tdec_ident.txt
-        ; tdec_params= List.map ~f:type0 tdec_params
+        ; tdec_params= params
         ; tdec_desc= TAbstract
-        ; tdec_id }
+        ; tdec_id
+        ; tdec_ret }
     in
     (* Make sure the declaration is available to lookup for recursive types. *)
     let env =

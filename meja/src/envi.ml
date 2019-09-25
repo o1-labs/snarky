@@ -819,6 +819,9 @@ let raw_find_type_declaration ~mode (lid : lid) env =
   | None -> (
     match lid.txt with
     | Lident name when env.resolve_env.predeclare_types ->
+        (* TODO: This is a hack. Preparse the signature to get a list of type
+                 names first and then we won't have to do this!
+        *)
         let {type_env; _} = env.resolve_env in
         let ident, id, num_args =
           match IdTbl.find_name ~modes name type_env.predeclared_types with
@@ -842,7 +845,10 @@ let raw_find_type_declaration ~mode (lid : lid) env =
         , { tdec_ident= ident
           ; tdec_params= []
           ; tdec_desc= TForward num_args
-          ; tdec_id= id } )
+          ; tdec_id=
+              id
+              (* This isn't what we want. Remove when we do the TODO above. *)
+          ; tdec_ret= Type1.mkvar ~mode 10000 None } )
     | _ ->
         raise (Error (lid.loc, Unbound_type lid.txt)) )
 
@@ -969,7 +975,7 @@ module Type = struct
     List.iter2_exn params typs ~f:(fun param typ ->
         (* Sanity check. *)
         (match (repr param).type_desc with Tvar _ -> () | _ -> assert false) ;
-        set_repr param typ ) ;
+        set_replacement param typ ) ;
     let typ = copy typ env in
     (* Restore the original values of the parameters. *)
     backtrack snap ; typ
@@ -1253,9 +1259,12 @@ module TypeDecl = struct
 
   let mk = Type1.Decl.mk
 
-  (* TODO: Deal with [mode] properly. *)
   let mk_typ ~mode ~params ?ident decl env =
-    Type1.Decl.mk_typ ~mode ~params ?ident env.depth decl
+    ignore ident ;
+    let vars = List.map ~f:(Type1.get_mode mode) decl.tdec_params in
+    let params = List.map ~f:(Type1.get_mode mode) params in
+    let typ = Type1.get_mode mode decl.tdec_ret in
+    Type.instantiate vars params typ env
 
   let find_of_variant ~loc variant env =
     raw_get_type_declaration ~loc variant.var_ident env

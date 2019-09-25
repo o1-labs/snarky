@@ -37,7 +37,8 @@ and type_decl =
   { tdec_ident: Ident.t
   ; tdec_params: type_expr list
   ; tdec_desc: type_decl_desc
-  ; tdec_id: int }
+  ; tdec_id: int
+  ; tdec_ret: type_expr }
 [@@deriving sexp]
 
 and type_decl_desc =
