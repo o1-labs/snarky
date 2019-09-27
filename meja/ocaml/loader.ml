@@ -2,12 +2,12 @@ open Core_kernel
 open Cmt_format
 open Meja_lib
 
-let load ~loc ~name resolve_env filename =
+let load ~loc ~name:_ resolve_env filename =
   (*Format.(fprintf err_formatter "Loading %s from %s...@." name filename) ;*)
   let cmi_info = read_cmi filename in
   let signature = Of_ocaml.to_signature cmi_info.cmi_sign in
   let env = {Initial_env.env with resolve_env} in
-  let env = Envi.open_absolute_module (Some (Longident.Lident name)) env in
+  let env = Envi.open_module env in
   let env, _ = Typechecker.check_signature env signature in
   (*Format.(fprintf err_formatter "Loaded@.") ;*)
   let m, _ = Envi.pop_module ~loc env in

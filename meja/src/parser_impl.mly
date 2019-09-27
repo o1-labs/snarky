@@ -575,6 +575,10 @@ simple_type_expr:
     { x }
   | LPAREN xs = tuple(type_expr) RPAREN
     { mktyp ~pos:$loc (Ptyp_tuple (List.rev xs)) }
+  | PROVER LPAREN x = type_expr RPAREN
+    { mktyp ~pos:$loc (Ptyp_prover x) }
+  | PROVER LBRACE x = type_expr RBRACE
+    { mktyp ~pos:$loc (Ptyp_prover x) }
 
 %inline type_arrow_label:
   | (* Empty *)

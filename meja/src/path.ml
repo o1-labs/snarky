@@ -29,6 +29,17 @@ let rec debug_print ppf path =
   | Papply (path1, path2) ->
       fprintf ppf "(%a)(%a)" debug_print path1 debug_print path2
 
+let dot (path : t) (ident : Ident.t) =
+  Pdot (path, Ident.mode ident, Ident.name ident)
+
+(** Create a path from a list of [Ident.t]s. *)
+let of_idents idents =
+  match idents with
+  | [] ->
+      failwith "Path.of_idents: Empty list."
+  | ident :: idents ->
+      List.fold ~f:dot ~init:(Pident ident) idents
+
 (** Create a new path by prefixing the path with [name]. *)
 let rec add_outer_module name path =
   match path with
@@ -37,10 +48,7 @@ let rec add_outer_module name path =
   | Pdot (path, mode, name2) ->
       Pdot (add_outer_module name path, mode, name2)
   | Papply _ ->
-      failwith "Unhandled Papply in add_outer_module"
-
-let dot (path : t) (ident : Ident.t) =
-  Pdot (path, Ident.mode ident, Ident.name ident)
+      failwith "Path.add_outer_module: Unhandled Papply."
 
 include Comparable.Make (struct
   type nonrec t = t
