@@ -143,6 +143,22 @@ module Mk = struct
          ( List.map ~f:(get_mode (other_mode mode)) vars
          , get_mode (other_mode mode) typ ) ;
     typ'
+
+  let conv ~mode depth typ1 typ2 =
+    let typ1 = get_mode Checked typ1 in
+    let typ2 = get_mode Prover typ2 in
+    let typ_stitched =
+      if are_stitched typ1 typ2 then typ1
+      else
+        let typ = mkvar ~mode:Checked depth None in
+        typ.type_desc <- typ1.type_desc ;
+        typ.type_alternate.type_desc <- typ2.type_desc ;
+        typ
+    in
+    let typ = mkvar ~mode:Checked depth None in
+    typ.type_desc <- Tconv typ_stitched ;
+    typ.type_alternate.type_desc <- Tconv typ_stitched.type_alternate ;
+    get_mode mode typ
 end
 
 type change =
@@ -325,6 +341,10 @@ let rec typ_debug_print fmt typ =
           print "(%a)" (print_list typ_debug_print) typs
       | Tref typ ->
           print "= " ; typ_debug_print fmt typ
+      | Tconv typ ->
+          typ_debug_print fmt (get_mode Checked typ) ;
+          print " --> " ;
+          typ_debug_print fmt (get_mode Prover typ)
       | Treplace typ ->
           print "=== " ; typ_debug_print fmt typ ) ;
     Hash_set.remove hashtbl typ.type_id ) ;
@@ -345,6 +365,8 @@ let fold ~init ~f typ =
       let acc = List.fold ~init ~f typs in
       f acc typ
   | Tref typ ->
+      f init typ
+  | Tconv typ ->
       f init typ
   | Treplace _ ->
       assert false
@@ -367,6 +389,8 @@ let rec copy_desc ~f = function
       Tpoly (List.map ~f typs, f typ)
   | Tref typ ->
       copy_desc ~f typ.type_desc
+  | Tconv typ ->
+      Tconv (f typ)
   | Treplace _ ->
       assert false
 
@@ -587,6 +611,9 @@ let contains typ ~in_ =
         List.exists ~f:equal typs || equal typ
         || List.exists ~f:contains typs
         || contains typ
+    | Tconv typ' ->
+        let typ' = get_mode typ.type_mode typ' in
+        equal typ' || contains typ'
     | Tref _ ->
         assert false
     | Treplace _ ->

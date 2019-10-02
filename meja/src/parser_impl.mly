@@ -59,6 +59,7 @@ let consexp ~pos hd tl =
 %token TILDE
 %token QUESTION
 %token DASHGT
+%token DASHDASHGT
 %token EQUALGT
 %token PLUSEQUAL
 %token EQUAL
@@ -595,6 +596,8 @@ type_expr:
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Implicit, label)) }
+  | x = simple_type_expr DASHDASHGT y = type_expr
+    { mktyp ~pos:$loc (Ptyp_conv (x, y)) }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X

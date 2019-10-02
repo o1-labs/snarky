@@ -35,8 +35,20 @@ let rec of_type_desc ?loc typ =
       Typ.tuple ?loc (List.map ~f:of_type_expr typs)
   | Ttyp_prover typ ->
       of_type_expr typ
+  | Ttyp_conv (typ1, typ2) ->
+      mk_typ_t ?loc typ1 typ2
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
+
+and mk_typ_t ?(loc = Location.none) typ1 typ2 =
+  let typ1 = of_type_expr typ1 in
+  let typ2 = of_type_expr typ2 in
+  let typ_t =
+    Option.value_exn (Longident.unflatten ["Snarky"; "Types"; "Typ"; "t"])
+  in
+  let typ_t = Location.mkloc typ_t loc in
+  (* Arguments are [var, value, field, checked]. *)
+  Typ.constr ~loc typ_t [typ1; typ2; Typ.any ~loc (); Typ.any ~loc ()]
 
 let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
   Type.field ~loc (of_ident_loc name) (of_type_expr typ)

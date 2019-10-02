@@ -132,6 +132,22 @@ module Type = struct
           ; type_loc= loc
           ; type_type= Type1.get_mode mode typ.type_type }
         , env )
+    | Ptyp_conv (typ1, typ2) ->
+        let env = open_expr_scope ~mode:Checked env in
+        let typ1, env = import typ1 env in
+        let env =
+          let scope, env = pop_expr_scope env in
+          join_expr_scope env scope
+        in
+        let env = open_expr_scope ~mode:Prover env in
+        let typ2, env = import typ2 env in
+        let env =
+          let scope, env = pop_expr_scope env in
+          join_expr_scope env scope
+        in
+        let typ = Envi.Type.Mk.conv ~mode (type0 typ1) (type0 typ2) env in
+        ( {type_desc= Ttyp_conv (typ1, typ2); type_loc= loc; type_type= typ}
+        , env )
 
   let fold ~init ~f typ =
     match typ.type_desc with
@@ -149,6 +165,9 @@ module Type = struct
         f acc typ
     | Ptyp_prover typ ->
         f init typ
+    | Ptyp_conv (typ1, typ2) ->
+        let acc = f init typ1 in
+        f acc typ2
 
   let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -171,6 +190,8 @@ module Type = struct
         {type_desc= Ptyp_poly (typs, f typ); type_loc= loc}
     | Ptyp_prover typ ->
         {type_desc= Ptyp_prover (f typ); type_loc= loc}
+    | Ptyp_conv (typ1, typ2) ->
+        {type_desc= Ptyp_conv (f typ1, f typ2); type_loc= loc}
 end
 
 module TypeDecl = struct

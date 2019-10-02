@@ -86,6 +86,9 @@ let type_desc mapper desc =
   | Tref typ ->
       let typ' = mapper.type_expr mapper typ in
       if phys_equal typ' typ then desc else Tref typ'
+  | Tconv typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then desc else Tconv typ
   | Treplace typ ->
       (* Recursion breaking. *)
       typ.type_desc

@@ -30,6 +30,10 @@ module Type0 = struct
         Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
     | Tref typ ->
         type_expr ?loc (Type1.repr typ)
+    | Tconv typ ->
+        Type.conv
+          (type_expr ?loc (Type1.get_mode Checked typ))
+          (type_expr ?loc (Type1.get_mode Prover typ))
     | Treplace _ ->
         assert false
 
@@ -91,6 +95,8 @@ let rec type_desc = function
       Ptyp_poly (List.map ~f:type_expr vars, type_expr var)
   | Ttyp_prover typ ->
       Ptyp_prover (type_expr typ)
+  | Ttyp_conv (typ1, typ2) ->
+      Ptyp_conv (type_expr typ1, type_expr typ2)
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}

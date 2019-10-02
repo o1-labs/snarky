@@ -11,6 +11,7 @@ and type_desc =
   | Ptyp_ctor of variant
   | Ptyp_poly of type_expr list * type_expr
   | Ptyp_prover of type_expr
+  | Ptyp_conv of type_expr * type_expr
 
 and variant = {var_ident: lid; var_params: type_expr list}
 

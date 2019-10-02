@@ -874,6 +874,8 @@ module Type = struct
     let ctor ~mode path params env = ctor ~mode env.depth path params
 
     let poly ~mode vars typ env = poly ~mode env.depth vars typ
+
+    let conv ~mode typ1 typ2 env = conv ~mode env.depth typ1 typ2
   end
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
@@ -1035,6 +1037,12 @@ module Type = struct
           -1
       | _, Tarrow (_, _, Explicit, _) ->
           1
+      | Tarrow (_, _, Implicit, _), _ ->
+          -1
+      | _, Tarrow (_, _, Implicit, _) ->
+          1
+      | Tconv typ1, Tconv typ2 ->
+          compare typ1 typ2
 
   and compare_all ~loc env typs1 typs2 =
     match (typs1, typs2) with
