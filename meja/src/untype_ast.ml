@@ -245,6 +245,8 @@ let rec signature_desc = function
       Psig_multiple (List.map ~f:signature_item sigs)
   | Tsig_prover sigs ->
       Psig_prover (List.map ~f:signature_item sigs)
+  | Tsig_convert (name, typ) ->
+      Psig_convert (map_loc ~f:Ident.name name, type_expr typ)
 
 and signature_item s =
   {Parsetypes.sig_desc= signature_desc s.Typedast.sig_desc; sig_loc= s.sig_loc}
@@ -291,6 +293,8 @@ let rec statement_desc = function
       Pstmt_multiple (List.map ~f:statement stmts)
   | Tstmt_prover stmts ->
       Pstmt_prover (List.map ~f:statement stmts)
+  | Tstmt_convert (name, typ, _conv) ->
+      Pstmt_convert (map_loc ~f:Ident.name name, type_expr typ)
 
 and statement s =
   { Parsetypes.stmt_desc= statement_desc s.Typedast.stmt_desc

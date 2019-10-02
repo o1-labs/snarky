@@ -216,6 +216,8 @@ let rec of_signature_desc ?loc = function
         { pincl_mod= Mty.signature ?loc (of_signature sigs)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Psig_convert (name, typ) ->
+      Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
 
 and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
 
@@ -303,6 +305,11 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Pstmt_convert _ ->
+      (* Not enough information here to build a conversion. Typechecking must
+         generate this conversion before we can generate the code for it.
+      *)
+      assert false
 
 and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 

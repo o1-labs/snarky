@@ -447,6 +447,8 @@ and check_patterns env typs pats =
   in
   (List.rev rev_pats, List.rev rev_names, env)
 
+let get_conversion _typ _env = failwith "TODO: get_conversion"
+
 let rec get_expression env expected exp =
   let mode = Envi.current_mode env in
   let loc = exp.exp_loc in
@@ -1050,6 +1052,16 @@ let rec check_signature_item env item =
       let env, sigs = check_signature env sigs in
       let env = Envi.open_mode_module_scope mode env in
       (env, {Typedast.sig_desc= Tsig_prover sigs; sig_loc= loc})
+  | Psig_convert (name, typ) ->
+      let env = Envi.open_expr_scope env in
+      let typ, env = Typet.Type.import typ env in
+      let env = Envi.close_expr_scope env in
+      Envi.Type.update_depths env typ.type_type ;
+      let name = map_loc ~f:(Ident.create ~mode) name in
+      let typ' = polymorphise (Type1.flatten typ.type_type) env in
+      let env = Envi.add_name name.txt typ' env in
+      let env = Envi.add_implicit_instance name.txt typ' env in
+      (env, {Typedast.sig_desc= Tsig_convert (name, typ); sig_loc= loc})
 
 and check_signature env signature =
   List.fold_map ~init:env signature ~f:check_signature_item
@@ -1312,6 +1324,18 @@ let rec check_statement env stmt =
       let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
       let env = Envi.open_mode_module_scope mode env in
       (env, {stmt_loc= loc; stmt_desc= Tstmt_prover stmts})
+  | Pstmt_convert (name, typ) ->
+      let env = Envi.open_expr_scope env in
+      let typ, env = Typet.Type.import typ env in
+      let env = Envi.close_expr_scope env in
+      Envi.Type.update_depths env typ.type_type ;
+      let conv = get_conversion typ.type_type env in
+      let name = map_loc ~f:(Ident.create ~mode) name in
+      let typ' = polymorphise (Type1.flatten typ.type_type) env in
+      let env = Envi.add_name name.txt typ' env in
+      let env = Envi.add_implicit_instance name.txt typ' env in
+      ( env
+      , {Typedast.stmt_desc= Tstmt_convert (name, typ, conv); stmt_loc= loc} )
 
 and check_module_expr env m =
   let mode = Envi.current_mode env in

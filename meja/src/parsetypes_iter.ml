@@ -199,6 +199,8 @@ let signature_desc iter = function
       iter.signature iter sigs
   | Psig_prover sigs ->
       iter.signature iter sigs
+  | Psig_convert (name, typ) ->
+      str iter name ; iter.type_expr iter typ
 
 let module_sig iter {msig_desc; msig_loc} =
   iter.location iter msig_loc ;
@@ -248,6 +250,8 @@ let statement_desc iter = function
       iter.statements iter stmts
   | Pstmt_prover stmts ->
       iter.statements iter stmts
+  | Pstmt_convert (name, typ) ->
+      str iter name ; iter.type_expr iter typ
 
 let module_expr iter {mod_desc; mod_loc} =
   iter.location iter mod_loc ;

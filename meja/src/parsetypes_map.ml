@@ -223,6 +223,8 @@ let signature_desc mapper = function
       Psig_multiple (mapper.signature mapper sigs)
   | Psig_prover sigs ->
       Psig_prover (mapper.signature mapper sigs)
+  | Psig_convert (name, typ) ->
+      Psig_convert (str mapper name, mapper.type_expr mapper typ)
 
 let module_sig mapper {msig_desc; msig_loc} =
   { msig_loc= mapper.location mapper msig_loc
@@ -276,6 +278,8 @@ let statement_desc mapper = function
       Pstmt_multiple (mapper.statements mapper stmts)
   | Pstmt_prover stmts ->
       Pstmt_prover (mapper.statements mapper stmts)
+  | Pstmt_convert (name, typ) ->
+      Pstmt_convert (str mapper name, mapper.type_expr mapper typ)
 
 let module_expr mapper {mod_desc; mod_loc} =
   { mod_loc= mapper.location mapper mod_loc

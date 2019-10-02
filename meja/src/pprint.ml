@@ -299,6 +299,9 @@ let rec signature_desc fmt = function
       signature fmt sigs
   | Psig_prover sigs ->
       fprintf fmt "@[<2>Prover {@,%a@,}@]@;@;" signature sigs
+  | Psig_convert (name, typ) ->
+      (* TODO: review to make sure this is what we really want. *)
+      signature_desc fmt (Psig_instance (name, typ))
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 

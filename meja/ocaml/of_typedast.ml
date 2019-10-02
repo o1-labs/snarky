@@ -518,6 +518,8 @@ let rec of_signature_desc ?loc = function
         { pincl_mod= Mty.signature ?loc (of_signature sigs)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Tsig_convert (name, typ) ->
+      Sig.value ?loc (Val.mk ?loc (of_ident_loc name) (of_type_expr typ))
 
 and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
 
@@ -608,6 +610,13 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Tstmt_convert (name, typ, conv) ->
+      Str.value ?loc Nonrecursive
+        [ Vb.mk
+            (Pat.constraint_ ~loc:typ.type_loc
+               (Pat.var ~loc:name.loc (of_ident_loc name))
+               (of_type_expr typ))
+            (of_convert conv) ]
 
 and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 

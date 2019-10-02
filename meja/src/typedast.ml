@@ -124,6 +124,7 @@ and signature_desc =
   | Tsig_request of type_expr * ctor_decl
   | Tsig_multiple of signature
   | Tsig_prover of signature
+  | Tsig_convert of ident * type_expr
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
@@ -150,6 +151,7 @@ and statement_desc =
       type_expr * ctor_decl * (pattern option * expression) option
   | Tstmt_multiple of statements
   | Tstmt_prover of statements
+  | Tstmt_convert of ident * type_expr * convert
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
