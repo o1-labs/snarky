@@ -301,7 +301,8 @@ module TypeDecl = struct
           ; ctor_args= type0_ctor_args
           ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
 
-  let import decl' env =
+  (* TODO: Make prover mode declarations stitch to opaque types. *)
+  let import ?other_name decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
     let tdec_ident, tdec_id =
@@ -345,7 +346,19 @@ module TypeDecl = struct
     let env, tdec_params = import_params env tdec_params in
     let params = List.map ~f:type0 tdec_params in
     let tdec_ret =
-      Type1.Mk.ctor ~mode 10000 (Path.Pident tdec_ident.txt) params
+      match other_name with
+      | None ->
+          Type1.Mk.ctor ~mode 10000 (Path.Pident tdec_ident.txt) params
+      | Some path ->
+          let tmp = Type1.mkvar ~mode 10000 None in
+          tmp.type_desc
+          <- Tctor {var_ident= Path.Pident tdec_ident.txt; var_params= params} ;
+          tmp.type_alternate.type_desc
+          <- Tctor
+               { var_ident= path
+               ; var_params=
+                   List.map params ~f:(fun param -> param.type_alternate) } ;
+          tmp
     in
     let decl =
       Type0.
