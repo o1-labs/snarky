@@ -1434,9 +1434,9 @@ let rec report_error ppf = function
         pp_typ constr_typ
   | Recursive_variable typ ->
       fprintf ppf
-        "@[<hov>The variable@ @[<h>%a@](%d) would have an instance that \
-         contains itself.@]"
-        pp_typ typ typ.type_id
+        "@[<hov>The variable@ @[<h>%a@] would have an instance that contains \
+         itself.@]"
+        pp_typ typ
   | Unbound (kind, value) ->
       fprintf ppf "@[<hov>Unbound %s@ %a.@]" kind Longident.pp value.txt
   | Unbound_value value ->
