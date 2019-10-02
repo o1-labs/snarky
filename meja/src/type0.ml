@@ -2,7 +2,11 @@ open Core_kernel
 open Ast_types
 
 type type_expr =
-  {mutable type_desc: type_desc; type_id: int; mutable type_depth: int}
+  { mutable type_desc: type_desc
+  ; type_id: int
+  ; mutable type_depth: int
+  ; type_mode: mode
+  ; mutable type_alternate: type_expr }
 [@@deriving sexp]
 
 and type_desc =
@@ -14,6 +18,8 @@ and type_desc =
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
   | Tref of type_expr
+  (* Cache the current value to break recursion. *)
+  | Treplace of type_expr
 [@@deriving sexp]
 
 and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]

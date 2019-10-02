@@ -30,6 +30,8 @@ let rec type_desc ?(bracket = false) fmt = function
   | Tref typ ->
       let typ = Type1.repr typ in
       if bracket then type_expr_b fmt typ else type_expr fmt typ
+  | Treplace _ ->
+      assert false
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs

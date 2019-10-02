@@ -30,6 +30,8 @@ module Type0 = struct
         Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
     | Tref typ ->
         type_expr ?loc (Type1.repr typ)
+    | Treplace _ ->
+        assert false
 
   and type_expr ?loc typ = type_desc ?loc typ.type_desc
 

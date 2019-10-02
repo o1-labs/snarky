@@ -120,7 +120,8 @@ module Scope = struct
   let add_type_variable key typ scope =
     {scope with type_variables= Map.set scope.type_variables ~key ~data:typ}
 
-  let find_type_variable name scope = Map.find scope.type_variables name
+  let find_type_variable ~mode name scope =
+    Option.map ~f:(Type1.get_mode mode) (Map.find scope.type_variables name)
 
   let add_field decl index scope field_decl =
     { scope with
@@ -320,7 +321,10 @@ module Scope = struct
           (* TODO: This is not the desired behaviour.. *)
           deferred
     in
-    subst
+    fun scope ->
+      let snap = Snapshot.create () in
+      let scope = subst scope in
+      backtrack_replace snap ; scope
 
   let build_subst ~type_subst ~module_subst s
       { kind= _
@@ -657,8 +661,8 @@ let map_current_scope ~f env =
 let add_type_variable name typ =
   map_current_scope ~f:(Scope.add_type_variable name typ)
 
-let find_type_variable name env =
-  List.find_map ~f:(Scope.find_type_variable name) env.scope_stack
+let find_type_variable ~mode name env =
+  List.find_map ~f:(Scope.find_type_variable ~mode name) env.scope_stack
 
 let add_module (name : Ident.t) m =
   let add_name ident = (Path.Pident ident, Path.dot (Pident name) ident) in
@@ -855,38 +859,52 @@ let find_module_type =
 module Type = struct
   type env = t
 
-  let mk type_desc env = Type1.mk env.depth type_desc
+  let mkvar ~mode name env = Type1.mkvar ~mode env.depth name
 
-  let mkvar name env = Type1.mkvar env.depth name
+  module Mk = struct
+    open Type1.Mk
+
+    let var ~mode name env = var ~mode env.depth name
+
+    let tuple ~mode typs env = tuple ~mode env.depth typs
+
+    let arrow ~mode ?explicit ?label typ1 typ2 env =
+      arrow ~mode ?explicit ?label env.depth typ1 typ2
+
+    let ctor ~mode path params env = ctor ~mode env.depth path params
+
+    let poly ~mode vars typ env = poly ~mode env.depth vars typ
+  end
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
 
   let refresh_var ~loc ?must_find env typ =
+    let mode = typ.type_mode in
     match typ.type_desc with
     | Tvar None -> (
       match must_find with
       | Some true ->
           raise (Error (loc, Unbound_type_var typ))
       | _ ->
-          (env, mkvar None env) )
+          (env, mkvar ~mode None env) )
     | Tvar (Some x as name) -> (
         let var =
           match must_find with
           | Some true ->
-              let var = find_type_variable x env in
+              let var = find_type_variable ~mode x env in
               if Option.is_none var then
                 raise (Error (loc, Unbound_type_var typ)) ;
               var
           | Some false ->
               None
           | None ->
-              find_type_variable x env
+              find_type_variable ~mode x env
         in
         match var with
         | Some var ->
             (env, var)
         | None ->
-            let var = mkvar name env in
+            let var = mkvar ~mode name env in
             (add_type_variable x var env, var) )
     | _ ->
         raise (Error (loc, Expected_type_var typ))
@@ -900,24 +918,37 @@ module Type = struct
   let refresh_vars vars env =
     List.iter vars ~f:(fun var ->
         (* Sanity check. *)
-        (match var.type_desc with Tvar _ -> () | _ -> assert false) ;
-        set_repr var (mkvar None env) )
+        (match (repr var).type_desc with Tvar _ -> () | _ -> assert false) ;
+        set_repr var (mkvar ~mode:var.type_mode None env) )
 
   let copy typ env =
     let rec copy typ =
       let typ = repr typ in
       match typ.type_desc with
+      | Treplace typ ->
+          (* Recursion breaking. *)
+          typ
       | Tvar _ ->
           (* Don't copy variables! *)
           typ
       | Tpoly _ ->
           (* Tpoly should only ever appear at the top level of a type. *)
           assert false
-      | _ ->
-          mk (copy_desc ~f:copy typ.type_desc) env
+      | desc ->
+          let typ' = mkvar ~mode:typ.type_mode None env in
+          let alt_desc = typ.type_alternate.type_desc in
+          set_replacement typ typ' ;
+          (* NOTE: the variable description of [typ'] was just a placeholder,
+                   so we want this new value to be preserved after
+                   backtracking.
+             DO NOT replace this with a [Type1.set_repr] or equivalent call.
+          *)
+          typ'.type_desc <- copy_desc ~f:copy desc ;
+          typ'.type_alternate.type_desc <- copy_desc ~f:copy alt_desc ;
+          typ'
     in
-    let snap = Snapshot.create () in
     let typ = repr typ in
+    let snap = Snapshot.create () in
     let typ =
       match typ.type_desc with
       | Tpoly (vars, typ) ->
@@ -937,7 +968,7 @@ module Type = struct
     let snap = Snapshot.create () in
     List.iter2_exn params typs ~f:(fun param typ ->
         (* Sanity check. *)
-        (match param.type_desc with Tvar _ -> () | _ -> assert false) ;
+        (match (repr param).type_desc with Tvar _ -> () | _ -> assert false) ;
         set_repr param typ ) ;
     let typ = copy typ env in
     (* Restore the original values of the parameters. *)
@@ -964,6 +995,8 @@ module Type = struct
     else
       match ((repr typ1).type_desc, (repr typ2).type_desc) with
       | Tref _, _ | _, Tref _ ->
+          assert false
+      | Treplace _, _ | _, Treplace _ ->
           assert false
       | Tpoly (_, typ1), _ ->
           compare typ1 typ2
@@ -1220,8 +1253,9 @@ module TypeDecl = struct
 
   let mk = Type1.Decl.mk
 
-  let mk_typ ~params ?ident decl env =
-    Type1.Decl.mk_typ ~params ?ident env.depth decl
+  (* TODO: Deal with [mode] properly. *)
+  let mk_typ ~mode ~params ?ident decl env =
+    Type1.Decl.mk_typ ~mode ~params ?ident env.depth decl
 
   let find_of_variant ~loc variant env =
     raw_get_type_declaration ~loc variant.var_ident env
@@ -1273,7 +1307,7 @@ let get_name ~mode (name : str) env =
   let loc = name.loc in
   match List.find_map ~f:(Scope.find_name ~mode name.txt) env.scope_stack with
   | Some (ident, typ) ->
-      (ident, Type.copy typ env)
+      (ident, Type1.get_mode mode (Type.copy typ env))
   | None ->
       raise (Error (loc, Unbound_value (Lident name.txt)))
 
@@ -1282,7 +1316,7 @@ let find_name ~mode (lid : lid) env =
     find_of_lident ~mode ~kind:"name" ~get_name:Scope.find_name lid env
   with
   | Some (ident, typ) ->
-      (ident, Type.copy typ env)
+      (ident, Type1.get_mode mode (Type.copy typ env))
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
 
@@ -1297,7 +1331,9 @@ let pp_decl_typ ppf decl =
     { type_desc=
         Tctor {var_ident= Pident decl.tdec_ident; var_params= decl.tdec_params}
     ; type_id= -1
-    ; type_depth= -1 }
+    ; type_depth= -1
+    ; type_mode= Ident.mode decl.tdec_ident
+    ; type_alternate= checked_none }
 
 let report_error ppf = function
   | No_open_scopes ->
