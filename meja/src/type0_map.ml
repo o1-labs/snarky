@@ -24,11 +24,43 @@ let map_list ~same ~f =
     perform unnecessary allocations/GCs during mapping.
     This also makes it much less likely that we might replace a variant which
     we planned to mutate later.
+
+    CAUTION:
+      In order to break recursion, the default [type_expr] mapper replaces the
+      [type_desc] with [Treplace typ], where [typ] is its return value. Any
+      partial-override of this function should ensure that this behaviour is
+      kept using [Type1.set_replacement].
+
+      To restore the previous values, a snapshot should be taken before with
+      [Type1.Snapshot.create], and then a call to [Type1.backtrack_replace]
+      with the snapshot will undo the [Treplace] changes.
+
+      DO NOT recurse into [Treplace] values: they will often be self-recursive.
 *)
 
-let type_expr mapper ({type_desc= desc; type_id; type_depth} as typ) =
-  let type_desc = mapper.type_desc mapper desc in
-  if phys_equal type_desc desc then typ else {type_desc; type_id; type_depth}
+let type_expr mapper typ =
+  match typ.Type0.type_desc with
+  | Treplace typ ->
+      (* Recursion breaking. *)
+      typ
+  | desc ->
+      (* Dummy type variable. *)
+      let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
+      let alt_desc = typ.type_alternate.type_desc in
+      Type1.set_replacement typ typ' ;
+      let type_desc = mapper.type_desc mapper desc in
+      let alt_type_desc = mapper.type_desc mapper alt_desc in
+      let typ' =
+        if phys_equal type_desc desc && phys_equal alt_type_desc alt_desc then (
+          typ'.type_desc <- Tref typ ;
+          typ'.type_alternate.type_desc <- Tref typ ;
+          typ )
+        else (
+          typ'.type_desc <- type_desc ;
+          typ'.type_alternate.type_desc <- alt_type_desc ;
+          typ' )
+      in
+      typ'
 
 let type_desc mapper desc =
   match desc with
@@ -54,6 +86,9 @@ let type_desc mapper desc =
   | Tref typ ->
       let typ' = mapper.type_expr mapper typ in
       if phys_equal typ' typ then desc else Tref typ'
+  | Treplace typ ->
+      (* Recursion breaking. *)
+      typ.type_desc
 
 let variant mapper ({var_ident= ident; var_params} as variant) =
   let var_ident = mapper.path mapper ident in

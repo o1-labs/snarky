@@ -20,8 +20,8 @@ let compare {ident_id= id1; _} {ident_id= id2; _} = Int.compare id1 id2
 let pprint fmt {ident_name; _} = Ast_types.pp_name fmt ident_name
 
 let debug_print fmt {ident_name; ident_id; ident_mode} =
-  Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.pp_mode ident_mode
-    ident_id
+  Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.mode_debug_print
+    ident_mode ident_id
 
 module Table = struct
   type 'a t = (ident * 'a) list String.Map.t

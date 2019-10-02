@@ -25,7 +25,7 @@ let rec debug_print ppf path =
   | Pident name ->
       Ident.debug_print ppf name
   | Pdot (path, mode, name) ->
-      fprintf ppf "(%a).%s/%a" debug_print path name pp_mode mode
+      fprintf ppf "(%a).%s/%a" debug_print path name mode_debug_print mode
   | Papply (path1, path2) ->
       fprintf ppf "(%a)(%a)" debug_print path1 debug_print path2
 

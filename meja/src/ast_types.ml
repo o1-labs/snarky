@@ -104,11 +104,19 @@ let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
 
 let mk_lid (str : str) = map_loc str ~f:(fun x -> Longident.Lident x)
 
-type mode = Checked | Prover [@@deriving sexp, compare]
+type mode = Checked | Prover [@@deriving sexp, equal, compare]
+
+let other_mode = function Checked -> Prover | Prover -> Checked
 
 let string_of_mode = function Checked -> "Checked" | Prover -> "Prover"
 
 let pp_mode ppf mode = Format.pp_print_string ppf (string_of_mode mode)
+
+let mode_debug_print ppf = function
+  | Checked ->
+      Format.pp_print_string ppf "C"
+  | Prover ->
+      Format.pp_print_string ppf "P"
 
 let modes_of_mode = function
   | Checked -> (

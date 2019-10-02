@@ -4,13 +4,154 @@ open Type0
 
 let type_id = ref 0
 
-let mk depth type_desc =
+(** An invalid [type_expr] in checked mode. *)
+let rec checked_none =
+  { type_desc= Tvar None
+  ; type_id= -1
+  ; type_depth= 0
+  ; type_mode= Checked
+  ; type_alternate= prover_none }
+
+(** An invalid [type_expr] in prover mode. *)
+and prover_none =
+  { type_desc= Tvar None
+  ; type_id= -2
+  ; type_depth= 0
+  ; type_mode= Prover
+  ; type_alternate= checked_none }
+
+(** Chose an invalid [type_expr] based on the given mode. *)
+let none = function Checked -> checked_none | Prover -> prover_none
+
+(** Chose an invalid [type_expr] for the other mode to the one given.
+
+    [other_none mode = none (other_mode mode)]
+*)
+let other_none = function Checked -> prover_none | Prover -> checked_none
+
+(** Returns [true] if the [type_expr] argument is valid, false otherwise.
+   Can be used to check that a type-stitching has been created or modified
+   correctly.
+*)
+let is_valid {type_id; _} = type_id > 0
+
+(** Equivalent to [not (is_valid typ)]. *)
+let is_invalid {type_id; _} = type_id <= 0
+
+(** Make a new type at the given mode and depth.
+
+    The [type_alternate] field is set to the invalid value
+    [none (other_mode mode)].
+*)
+let mk' ~mode depth type_desc =
   incr type_id ;
-  {type_desc; type_id= !type_id; type_depth= depth}
+  { type_desc
+  ; type_id= !type_id
+  ; type_depth= depth
+  ; type_mode= mode
+  ; type_alternate= other_none mode }
 
-let mkvar depth name = mk depth (Tvar name)
+(** [stitch typ typ'] sets [typ] and [typ'] as eachothers [type_alternate]s.
+    Returns the first argument [typ].
 
-type change = Depth of (type_expr * int) | Desc of (type_expr * type_desc)
+    Raises [AssertionError] if the types have different modes, or if either
+    type has an already-initialised [type_alternate].
+*)
+let stitch typ typ' =
+  (* Check that the types have distinct modes. *)
+  assert (equal_mode typ.type_mode (other_mode typ'.type_mode)) ;
+  (* Check that the [type_alternate]s are uninitialised. *)
+  assert (is_invalid typ.type_alternate) ;
+  assert (is_invalid typ'.type_alternate) ;
+  typ.type_alternate <- typ' ;
+  typ'.type_alternate <- typ ;
+  typ
+
+(** Returns [true] if the types are stitched together, [false] otherwise. *)
+let are_stitched typ typ' =
+  phys_equal typ typ'.type_alternate && phys_equal typ' typ.type_alternate
+
+(** Create a new type variable with the given name.
+
+    The returned type is properly stitched to an equivalent type in the other
+    mode.
+*)
+let mkvar ~mode depth name =
+  let typ = mk' ~mode depth (Tvar name) in
+  let other_typ = mk' ~mode:(other_mode mode) depth (Tvar name) in
+  stitch typ other_typ
+
+(** Get the stitched [type_expr] in the given mode. *)
+let get_mode mode typ =
+  if equal_mode typ.type_mode mode then typ
+  else
+    let typ = typ.type_alternate in
+    (* Sanity check. *)
+    assert (equal_mode typ.type_mode mode) ;
+    typ
+
+(** Constructors for stitched types. *)
+module Mk = struct
+  let var = mkvar
+
+  let tuple ~mode depth typs =
+    (* Create a dummy type variable to get proper stitching. *)
+    let typ = mkvar ~mode depth None in
+    let typs = List.map ~f:(get_mode mode) typs in
+    typ.type_desc <- Ttuple typs ;
+    let alt_typs = List.map ~f:(get_mode (other_mode mode)) typs in
+    typ.type_alternate.type_desc <- Ttuple alt_typs ;
+    typ
+
+  let arrow ~mode ?(explicit = Explicit) ?(label = Nolabel) depth typ1 typ2 =
+    (* Create a dummy type variable to get proper stitching. *)
+    let typ = mkvar ~mode depth None in
+    typ.type_desc
+    <- Tarrow (get_mode mode typ1, get_mode mode typ2, explicit, label) ;
+    let other_mode = other_mode mode in
+    typ.type_alternate.type_desc
+    <- Tarrow
+         (get_mode other_mode typ1, get_mode other_mode typ2, explicit, label) ;
+    typ
+
+  (* TODO: This isn't really what we want. Integrate with proper type
+           declaration stitching. *)
+  let ctor ~mode depth path params =
+    (* Create a dummy type variable to get proper stitching. *)
+    let typ = mkvar ~mode depth None in
+    typ.type_desc
+    <- Tctor {var_ident= path; var_params= List.map ~f:(get_mode mode) params} ;
+    (* This is usually not what we want. *)
+    typ.type_alternate.type_desc
+    <- Tctor
+         { var_ident= path
+         ; var_params= List.map ~f:(get_mode (other_mode mode)) params } ;
+    typ
+
+  (* TODO: This should be seperated out so that each mode is polymorphised over
+           the type variables present in its mode.
+           This will become important when we make some types opaque in Checked
+           mode.
+  *)
+  let poly ~mode depth vars typ =
+    (* Create a dummy type variable to get proper stitching. *)
+    let typ' = mkvar ~mode depth None in
+    typ'.type_desc
+    <- Tpoly (List.map ~f:(get_mode mode) vars, get_mode mode typ) ;
+    typ'.type_alternate.type_desc
+    <- Tpoly
+         ( List.map ~f:(get_mode (other_mode mode)) vars
+         , get_mode (other_mode mode) typ ) ;
+    typ'
+end
+
+type change =
+  | Depth of (type_expr * int)
+  | Desc of (type_expr * type_desc)
+  (* This is equivalent to [Desc], but allows for filtering the backtrace
+       when [Treplace] has been set for recursion-breaking.
+    *)
+  | Replace of (type_expr * type_desc)
 
 (** Implements a weak, mutable linked-list containing the history of changes.
 
@@ -40,8 +181,13 @@ module Snapshot : sig
   (** Erase the history back to the snapshot, and return the list of changes
       that occurred since, ordered from newest to oldest.
   *)
+
+  val filtered_backtrack : f:(change -> bool) -> t -> change list
+  (** Erase all changes matching the filter [f] back to the snapshot, and
+      return the erased changes, ordered from newest to oldest.
+  *)
 end = struct
-  type node = Some of (change * t) | None
+  type node = Change of (change * t) | LinkedChange of t | NoChange
 
   and t = node ref
 
@@ -60,8 +206,8 @@ end = struct
   let add_to_history change =
     match Weak.get current 0 with
     | Some ptr ->
-        let new_ptr = ref None in
-        ptr := Some (change, new_ptr) ;
+        let new_ptr = ref NoChange in
+        ptr := Change (change, new_ptr) ;
         Weak.set current 0 (Some new_ptr)
     | None ->
         (* No snapshots active, no list to add to. *)
@@ -72,37 +218,72 @@ end = struct
     | Some ptr ->
         ptr
     | None ->
-        let new_ptr = ref None in
+        let new_ptr = ref NoChange in
         Weak.set current 0 (Some new_ptr) ;
         new_ptr
 
   let backtrack snap =
     let rec backtrack changes ptr =
       match !ptr with
-      | Some (change, ptr) ->
+      | Change (change, ptr') ->
           (* Clear this snapshot so that it can't be re-used. *)
-          snap := None ;
-          backtrack (change :: changes) ptr
-      | None ->
+          ptr := NoChange ;
+          backtrack (change :: changes) ptr'
+      | LinkedChange ptr' ->
+          (* Clear this snapshot so that it can't be re-used. *)
+          ptr := NoChange ;
+          backtrack changes ptr'
+      | NoChange ->
           changes
     in
     backtrack [] snap
+
+  let filtered_backtrack ~f snap =
+    let rec backtrack changes ptrs_to_clear ptr =
+      match !ptr with
+      | Change (change, ptr') when f change ->
+          backtrack (change :: changes) (ptr :: ptrs_to_clear) ptr'
+      | Change (_change, ptr') ->
+          List.iter ptrs_to_clear ~f:(fun ptr' -> ptr' := LinkedChange ptr) ;
+          backtrack changes [] ptr'
+      | LinkedChange ptr' ->
+          backtrack changes ptrs_to_clear ptr'
+      | NoChange ->
+          List.iter ptrs_to_clear ~f:(fun ptr' -> ptr' := NoChange) ;
+          changes
+    in
+    backtrack [] [] snap
 end
+
+let revert = function
+  | Depth (typ, depth) ->
+      typ.type_depth <- depth ;
+      typ.type_alternate.type_depth <- depth
+  | Desc (typ, desc) ->
+      typ.type_desc <- desc
+  | Replace (typ, desc) ->
+      typ.type_desc <- desc
 
 let backtrack snap =
   let changes = Snapshot.backtrack snap in
-  List.iter changes ~f:(function
-    | Depth (typ, depth) ->
-        typ.type_depth <- depth
-    | Desc (typ, desc) ->
-        typ.type_desc <- desc )
+  List.iter ~f:revert changes
+
+let filtered_backtrack ~f snap =
+  let changes = Snapshot.filtered_backtrack ~f snap in
+  List.iter ~f:revert changes
 
 (** The representative of a type. This unfolds any [Tref] values that are
     present to get to the true underlying type.
 *)
 let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
 
+(** Hash set to track types printed in [typ_debug_print], to ensure that we
+    don't get stuck in a recursion loop.
+*)
+let typ_debug_print_hash_tbl = Hash_set.create (module Int) ()
+
 let rec typ_debug_print fmt typ =
+  let hashtbl = typ_debug_print_hash_tbl in
   let open Format in
   let print i = fprintf fmt i in
   let print_comma fmt () = pp_print_char fmt ',' in
@@ -115,28 +296,38 @@ let rec typ_debug_print fmt typ =
     | Asttypes.Optional str ->
         fprintf fmt "?%s:" str
   in
-  print "(%i:" typ.type_id ;
-  ( match typ.type_desc with
-  | Tvar None ->
-      print "var _"
-  | Tvar (Some name) ->
-      print "var %s" name
-  | Tpoly (typs, typ) ->
-      print "poly [%a] %a"
-        (print_list typ_debug_print)
-        typs typ_debug_print typ
-  | Tarrow (typ1, typ2, Explicit, label) ->
-      print "%a%a -> %a" print_label label typ_debug_print typ1 typ_debug_print
-        typ2
-  | Tarrow (typ1, typ2, Implicit, label) ->
-      print "%a{%a} -> %a" print_label label typ_debug_print typ1
-        typ_debug_print typ2
-  | Tctor {var_ident= name; var_params= params; _} ->
-      print "%a (%a)" Path.debug_print name (print_list typ_debug_print) params
-  | Ttuple typs ->
-      print "(%a)" (print_list typ_debug_print) typs
-  | Tref typ ->
-      print "= " ; typ_debug_print fmt typ ) ;
+  print "(%i%a:" typ.type_id mode_debug_print typ.type_mode ;
+  if Hash_set.mem hashtbl typ.type_id then
+    (* Recursion breaking. *)
+    print "RECURSIVE"
+  else (
+    ( Hash_set.add hashtbl typ.type_id ;
+      match typ.type_desc with
+      | Tvar None ->
+          print "var _"
+      | Tvar (Some name) ->
+          print "var %s" name
+      | Tpoly (typs, typ) ->
+          print "poly [%a] %a"
+            (print_list typ_debug_print)
+            typs typ_debug_print typ
+      | Tarrow (typ1, typ2, Explicit, label) ->
+          print "%a%a -> %a" print_label label typ_debug_print typ1
+            typ_debug_print typ2
+      | Tarrow (typ1, typ2, Implicit, label) ->
+          print "%a{%a} -> %a" print_label label typ_debug_print typ1
+            typ_debug_print typ2
+      | Tctor {var_ident= name; var_params= params; _} ->
+          print "%a (%a)" Path.debug_print name
+            (print_list typ_debug_print)
+            params
+      | Ttuple typs ->
+          print "(%a)" (print_list typ_debug_print) typs
+      | Tref typ ->
+          print "= " ; typ_debug_print fmt typ
+      | Treplace typ ->
+          print "=== " ; typ_debug_print fmt typ ) ;
+    Hash_set.remove hashtbl typ.type_id ) ;
   print " @%i)" typ.type_depth
 
 let fold ~init ~f typ =
@@ -155,6 +346,8 @@ let fold ~init ~f typ =
       f acc typ
   | Tref typ ->
       f init typ
+  | Treplace _ ->
+      assert false
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -174,6 +367,8 @@ let rec copy_desc ~f = function
       Tpoly (List.map ~f typs, f typ)
   | Tref typ ->
       copy_desc ~f typ.type_desc
+  | Treplace _ ->
+      assert false
 
 let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
   let equal_at_depth = equal_at_depth ~get_decl ~depth in
@@ -215,7 +410,8 @@ let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
 
 let set_depth depth typ =
   Snapshot.add_to_history (Depth (typ, typ.type_depth)) ;
-  typ.type_depth <- depth
+  typ.type_depth <- depth ;
+  typ.type_alternate.type_depth <- depth
 
 let update_depth depth typ = if typ.type_depth > depth then set_depth depth typ
 
@@ -227,8 +423,23 @@ let set_desc typ desc =
   Snapshot.add_to_history (Desc (typ, typ.type_desc)) ;
   typ.type_desc <- desc
 
+let set_replacement typ typ' =
+  Snapshot.add_to_history (Replace (typ, typ.type_desc)) ;
+  typ.type_desc <- Treplace typ' ;
+  Snapshot.add_to_history
+    (Replace (typ.type_alternate, typ.type_alternate.type_desc)) ;
+  typ.type_alternate.type_desc <- Treplace typ'.type_alternate
+
+(** Backtrack only undoing the [Replace] operations since the last snapshot. *)
+let backtrack_replace =
+  filtered_backtrack ~f:(function Replace _ -> true | _ -> false)
+
 (** [set_repr typ typ'] sets the representative of [typ] to be [typ']. *)
-let set_repr typ typ' = set_desc typ (Tref typ')
+let set_repr typ typ' =
+  (* Sanity check. *)
+  assert (equal_mode typ.type_mode typ'.type_mode) ;
+  set_desc typ (Tref typ') ;
+  set_desc typ.type_alternate (Tref typ'.type_alternate)
 
 (** [add_instance var typ'] changes the representative of the type variable
     [var] to [typ']. If [typ'] is also a type variable, then the user-provided
@@ -238,17 +449,21 @@ let set_repr typ typ' = set_desc typ (Tref typ')
     Raises [AssertionError] if [var] is not a type variable.
 *)
 let add_instance typ typ' =
-  ( match (typ.type_desc, typ'.type_desc) with
-  | Tvar (Some name), Tvar None ->
-      (* We would lose the user-provided name associated with [typ], so promote
+  let choose_name typ typ' =
+    match (typ.type_desc, typ'.type_desc) with
+    | Tvar (Some name), Tvar None ->
+        (* We would lose the user-provided name associated with [typ], so promote
          it to be the name of [typ'].
       *)
-      set_desc typ' (Tvar (Some name))
-  | Tvar _, _ ->
-      ()
-  | _ ->
-      (* Sanity check: we should be adding an instance to a type variable. *)
-      assert false ) ;
+        set_desc typ' (Tvar (Some name))
+    | Tvar _, _ ->
+        ()
+    | _ ->
+        (* Sanity check: we should be adding an instance to a type variable. *)
+        assert false
+  in
+  choose_name typ typ' ;
+  choose_name typ.type_alternate typ'.type_alternate ;
   set_repr typ typ'
 
 (** Create an equivalent type by unfolding all of the type representatives. *)
@@ -256,14 +471,25 @@ let flatten typ =
   let rec flatten typ =
     let typ = repr typ in
     match typ.type_desc with
+    | Treplace typ ->
+        (* Recursion breaking. *)
+        typ
     | Tvar _ ->
         (* Don't copy variables! *)
         typ
-    | _ ->
-        mk typ.type_depth (copy_desc ~f:flatten typ.type_desc)
+    | desc ->
+        (* Placeholder variable. *)
+        let typ' = mkvar ~mode:typ.type_mode typ.type_depth None in
+        let alt_desc = typ.type_alternate.type_desc in
+        set_replacement typ typ' ;
+        (* Overwrite placeholder. *)
+        typ'.type_desc <- copy_desc ~f:flatten desc ;
+        typ'.type_alternate.type_desc <- copy_desc ~f:flatten alt_desc ;
+        typ'
   in
+  let snap = Snapshot.create () in
   let typ = flatten typ in
-  typ
+  backtrack snap ; typ
 
 let type_vars ?depth typ =
   let deep_enough =
@@ -290,7 +516,7 @@ let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
   ref (fun _ -> failwith "mk_option not initialised")
 
 let rec bubble_label_aux label typ =
-  let {type_depth; _} = typ in
+  let {type_depth; type_mode= mode; _} = typ in
   match (repr typ).type_desc with
   | Tarrow (typ1, typ2, explicit, arr_label)
     when Int.equal (compare_arg_label label arr_label) 0 ->
@@ -307,28 +533,17 @@ let rec bubble_label_aux label typ =
     | None, _ ->
         (None, typ)
     | res, typ2 ->
-        (res, mk type_depth (Tarrow (typ1, typ2, explicit, arr_label))) )
+        (res, Mk.arrow ~mode ~explicit ~label:arr_label type_depth typ1 typ2) )
   | _ ->
       (None, typ)
 
 let bubble_label label typ =
-  let {type_depth; _} = typ in
+  let {type_depth; type_mode= mode; _} = typ in
   match bubble_label_aux label typ with
-  | Some (typ1, explicit, arr_label), typ2 ->
-      mk type_depth (Tarrow (typ1, typ2, explicit, arr_label))
+  | Some (typ1, explicit, label), typ2 ->
+      Mk.arrow ~mode ~explicit ~label type_depth typ1 typ2
   | None, typ ->
       typ
-
-let rec constr_map ~f typ =
-  let {type_depth; _} = typ in
-  match (repr typ).type_desc with
-  | Tvar _ ->
-      repr typ
-  | Tctor variant ->
-      let var_params = List.map ~f:(constr_map ~f) variant.var_params in
-      mk type_depth (f {variant with var_params})
-  | _ ->
-      mk type_depth (copy_desc ~f:(constr_map ~f) typ.type_desc)
 
 let discard_optional_labels typ =
   let rec go typ' =
@@ -374,19 +589,19 @@ let contains typ ~in_ =
         || contains typ
     | Tref _ ->
         assert false
+    | Treplace _ ->
+        assert false
   in
   contains in_
 
 module Decl = struct
   let decl_id = ref 0
 
-  let typ_mk = mk
-
   let mk ~name ~params desc =
     incr decl_id ;
     {tdec_ident= name; tdec_params= params; tdec_desc= desc; tdec_id= !decl_id}
 
-  let mk_typ ~params ?ident depth decl =
+  let mk_typ ~mode ~params ?ident depth decl =
     let ident = Option.value ident ~default:(Path.Pident decl.tdec_ident) in
-    typ_mk depth (Tctor {var_ident= ident; var_params= params})
+    Mk.ctor ~mode depth ident params
 end
