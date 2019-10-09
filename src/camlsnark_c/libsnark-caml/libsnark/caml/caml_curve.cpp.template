@@ -854,6 +854,10 @@ bool CURVE_PREFIX(proof_verify)(
   return r1cs_gg_ppzksnark_verifier_weak_IC(*key, *primary_input, *proof);
 }
 
+r1cs_gg_ppzksnark_proof<ppT>* CURVE_PREFIX(proof_dummy)() {
+  return new r1cs_gg_ppzksnark_proof<ppT>();
+}
+
 libff::G1<ppT>* CURVE_PREFIX(proof_a)(r1cs_gg_ppzksnark_proof<ppT>* proof) {
   return new libff::G1<ppT>(proof->g_A);
 }
@@ -1014,6 +1018,10 @@ bool CURVE_PREFIX(gm_proof_verify)(
   return r1cs_se_ppzksnark_verifier_weak_IC(*key, *primary_input, *proof);
 }
 
+r1cs_se_ppzksnark_proof<ppT>* CURVE_PREFIX(gm_proof_dummy)() {
+  return new r1cs_se_ppzksnark_proof<ppT>();
+}
+
 libff::G1<ppT>* CURVE_PREFIX(gm_proof_a)(r1cs_se_ppzksnark_proof<ppT>* proof) {
   return new libff::G1<ppT>(proof->A);
 }
@@ -1157,6 +1165,10 @@ bool CURVE_PREFIX(bg_proof_verify_components)(
 
 void CURVE_PREFIX(bg_proof_delete)(r1cs_bg_ppzksnark_proof<ppT>* proof) {
   delete proof;
+}
+
+r1cs_bg_ppzksnark_proof<ppT>* CURVE_PREFIX(bg_proof_dummy)() {
+  return new r1cs_bg_ppzksnark_proof<ppT>();
 }
 
 libff::G1<ppT>* CURVE_PREFIX(bg_proof_a)(r1cs_bg_ppzksnark_proof<ppT>* proof) {

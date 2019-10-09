@@ -1782,6 +1782,8 @@ struct
     val verify :
       ?message:message -> t -> Verification_key.t -> M.Field.Vector.t -> bool
 
+    val dummy : unit -> t
+
     include Binable.S with type t := t
   end = struct
     include Proof.Make
@@ -1834,6 +1836,8 @@ struct
           @-> returning bool )
       in
       fun ?message:_ t k primary -> stub t k primary
+
+    let dummy = foreign (func_name "dummy") (void @-> returning typ)
   end
 end
 
@@ -1990,6 +1994,8 @@ module Make_bowe_gabizon (M : sig
 
     module Vector : Deletable_intf
 
+    val one : t
+
     val scale_field : t -> Field.t -> t
   end
 
@@ -1997,6 +2003,8 @@ module Make_bowe_gabizon (M : sig
     include Deletable_intf
 
     include Binable.S with type t := t
+
+    val one : t
   end
 end) (H : sig
   open M
@@ -2067,6 +2075,8 @@ struct
         in
         let t = stub proving_key d primary auxiliary in
         Caml.Gc.finalise delete t ; t
+
+      let dummy = foreign (func_name "dummy") (void @-> returning typ)
     end
 
     type message = Fq.t array
@@ -2083,11 +2093,14 @@ struct
       let delta_prime = Pre.delta_prime pre in
       let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
       let z = G1.scale_field y_s d in
-      {a= Pre.a pre; b= Pre.b pre; c= Pre.c pre; z; delta_prime}
+      {a; b; c; z; delta_prime}
 
     let verify ?message {a; b; c; z; delta_prime} vk input =
       let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
       Pre.verify_components ~a ~b ~c ~delta_prime ~y_s ~z vk input
+
+    let dummy () =
+      {a= G1.one; b= G2.one; c= G1.one; z= G1.one; delta_prime= G2.one}
   end
 end
 
@@ -2854,3 +2867,36 @@ module type S = sig
     include Binable.S with type t := t
   end
 end
+
+let%test_module "dummy-proofs" =
+  ( module struct
+    module Hash = struct
+      let hash ?message:_ ~a:_ ~b:_ ~c:_ ~delta_prime:_ = assert false
+    end
+
+    module BG = struct
+      module Mnt4 = Make_bowe_gabizon (Mnt4) (Hash)
+      module Mnt6 = Make_bowe_gabizon (Mnt6) (Hash)
+      module Mnt4753 = Make_bowe_gabizon (Mnt4753) (Hash)
+      module Mnt6753 = Make_bowe_gabizon (Mnt6753) (Hash)
+    end
+
+    let _proofs =
+      ( Mnt4.Default.Proof.dummy ()
+      , Mnt4.GM.Proof.dummy ()
+      , Mnt6.Default.Proof.dummy ()
+      , Mnt6.GM.Proof.dummy ()
+      , Mnt4753.Default.Proof.dummy ()
+      , Mnt4753.GM.Proof.dummy ()
+      , Mnt6753.Default.Proof.dummy ()
+      , Mnt6753.GM.Proof.dummy ()
+      , Bn128.Default.Proof.dummy ()
+      , BG.Mnt4.Proof.Pre.dummy ()
+      , BG.Mnt6.Proof.Pre.dummy ()
+      , BG.Mnt4753.Proof.Pre.dummy ()
+      , BG.Mnt6753.Proof.Pre.dummy ()
+      , BG.Mnt4.Proof.dummy ()
+      , BG.Mnt6.Proof.dummy ()
+      , BG.Mnt4753.Proof.dummy ()
+      , BG.Mnt6753.Proof.dummy () )
+  end )
