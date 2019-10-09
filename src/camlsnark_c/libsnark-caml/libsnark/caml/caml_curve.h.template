@@ -284,6 +284,8 @@ bool CURVE_PREFIX(proof_verify)(
     void* key,
     void* primary_input);
 
+void* CURVE_PREFIX(proof_dummy)();
+
 void* CURVE_PREFIX(proof_a)(void* proof);
 
 void* CURVE_PREFIX(proof_b)(void* proof);
@@ -372,6 +374,8 @@ bool CURVE_PREFIX(gm_proof_verify)(
     void* key,
     void* primary_input);
 
+void* CURVE_PREFIX(gm_proof_dummy)();
+
 void* CURVE_PREFIX(gm_proof_a)(void* proof);
 
 void* CURVE_PREFIX(gm_proof_b)(void* proof);
@@ -440,6 +444,8 @@ bool CURVE_PREFIX(bg_proof_verify_components)(
     void* primary_input);
 
 void CURVE_PREFIX(bg_proof_delete)(void* proof);
+
+void* CURVE_PREFIX(bg_proof_dummy)();
 
 void* CURVE_PREFIX(bg_proof_a)(void* proof);
 
