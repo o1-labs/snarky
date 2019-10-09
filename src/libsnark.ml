@@ -1573,7 +1573,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val size_in_bits : t -> int
 
-    val dummy : input_size:int -> t
+    val get_dummy : input_size:int -> t
   end = struct
     include Verification_key.Make
               (Ctypes_foreign)
@@ -1581,7 +1581,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
                 let prefix = with_prefix M.prefix "verification_key"
               end)
 
-    let dummy ~input_size =
+    let get_dummy ~input_size =
       foreign (func_name "dummy") (int @-> returning typ) input_size
 
     let size_in_bits =
@@ -1782,7 +1782,7 @@ struct
     val verify :
       ?message:message -> t -> Verification_key.t -> M.Field.Vector.t -> bool
 
-    val dummy : unit -> t
+    val get_dummy : unit -> t
 
     include Binable.S with type t := t
   end = struct
@@ -1837,7 +1837,7 @@ struct
       in
       fun ?message:_ t k primary -> stub t k primary
 
-    let dummy = foreign (func_name "dummy") (void @-> returning typ)
+    let get_dummy = foreign (func_name "dummy") (void @-> returning typ)
   end
 end
 
@@ -2076,7 +2076,7 @@ struct
         let t = stub proving_key d primary auxiliary in
         Caml.Gc.finalise delete t ; t
 
-      let dummy = foreign (func_name "dummy") (void @-> returning typ)
+      let get_dummy = foreign (func_name "dummy") (void @-> returning typ)
     end
 
     type message = Fq.t array
@@ -2099,7 +2099,7 @@ struct
       let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
       Pre.verify_components ~a ~b ~c ~delta_prime ~y_s ~z vk input
 
-    let dummy () =
+    let get_dummy () =
       {a= G1.one; b= G2.one; c= G1.one; z= G1.one; delta_prime= G2.one}
   end
 end
@@ -2882,21 +2882,21 @@ let%test_module "dummy-proofs" =
     end
 
     let _proofs =
-      ( Mnt4.Default.Proof.dummy ()
-      , Mnt4.GM.Proof.dummy ()
-      , Mnt6.Default.Proof.dummy ()
-      , Mnt6.GM.Proof.dummy ()
-      , Mnt4753.Default.Proof.dummy ()
-      , Mnt4753.GM.Proof.dummy ()
-      , Mnt6753.Default.Proof.dummy ()
-      , Mnt6753.GM.Proof.dummy ()
-      , Bn128.Default.Proof.dummy ()
-      , BG.Mnt4.Proof.Pre.dummy ()
-      , BG.Mnt6.Proof.Pre.dummy ()
-      , BG.Mnt4753.Proof.Pre.dummy ()
-      , BG.Mnt6753.Proof.Pre.dummy ()
-      , BG.Mnt4.Proof.dummy ()
-      , BG.Mnt6.Proof.dummy ()
-      , BG.Mnt4753.Proof.dummy ()
-      , BG.Mnt6753.Proof.dummy () )
+      ( Mnt4.Default.Proof.get_dummy ()
+      , Mnt4.GM.Proof.get_dummy ()
+      , Mnt6.Default.Proof.get_dummy ()
+      , Mnt6.GM.Proof.get_dummy ()
+      , Mnt4753.Default.Proof.get_dummy ()
+      , Mnt4753.GM.Proof.get_dummy ()
+      , Mnt6753.Default.Proof.get_dummy ()
+      , Mnt6753.GM.Proof.get_dummy ()
+      , Bn128.Default.Proof.get_dummy ()
+      , BG.Mnt4.Proof.Pre.get_dummy ()
+      , BG.Mnt6.Proof.Pre.get_dummy ()
+      , BG.Mnt4753.Proof.Pre.get_dummy ()
+      , BG.Mnt6753.Proof.Pre.get_dummy ()
+      , BG.Mnt4.Proof.get_dummy ()
+      , BG.Mnt6.Proof.get_dummy ()
+      , BG.Mnt4753.Proof.get_dummy ()
+      , BG.Mnt6753.Proof.get_dummy () )
   end )
