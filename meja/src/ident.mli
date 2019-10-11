@@ -17,6 +17,11 @@ val compare : t -> t -> int
     [create].
 *)
 
+val equal : t -> t -> bool
+(** Check equality between two names. This is true iff they originate from the
+    same call to [create].
+*)
+
 val pprint : Format.formatter -> t -> unit
 (** Pretty print. Identifiers that do not begin with a letter or underscore
     will be surrounded by parentheses.
@@ -24,6 +29,11 @@ val pprint : Format.formatter -> t -> unit
 
 val debug_print : Format.formatter -> t -> unit
 (** Debug print. Prints the identifier and its internal ID. *)
+
+val fresh : Ast_types.mode -> t
+(** HACK: Call a variable ["x___" ^ id] where [id] is the identifier's internal
+   id.
+*)
 
 module Table : sig
   (** An associative map from [ident]s, with direct name lookups. *)

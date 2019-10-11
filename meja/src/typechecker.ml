@@ -25,6 +25,8 @@ type error =
   | Argument_expected of Longident.t
   | Not_extensible of Longident.t
   | Extension_different_arity of Longident.t
+  | Convert_failed of type_expr * error
+  | Cannot_create_conversion of type_expr
 
 exception Error of Location.t * error
 
@@ -447,7 +449,138 @@ and check_patterns env typs pats =
   in
   (List.rev rev_pats, List.rev rev_names, env)
 
-let get_conversion _typ _env = failwith "TODO: get_conversion"
+let rec get_conversion_body ~can_add_args ~loc env free_vars typ =
+  let get_conversion_body = get_conversion_body ~can_add_args ~loc env in
+  let get_conversion_bodies = get_conversion_bodies ~can_add_args ~loc env in
+  let typ = repr typ in
+  (* Sanity check. *)
+  assert (are_stitched typ typ.type_alternate) ;
+  let mode = Envi.current_mode env in
+  let conv_body_type = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
+  match Envi.find_conversion typ env with
+  | Some (path, conv_args) ->
+      let free_vars, args = get_conversion_bodies free_vars conv_args in
+      ( free_vars
+      , { Typedast.conv_body_desc= Tconv_ctor (path, args)
+        ; conv_body_loc= loc
+        ; conv_body_type } )
+  | None -> (
+    match (typ.type_desc, typ.type_alternate.type_desc) with
+    | Ttuple typs, Ttuple alts ->
+        (* Sanity check: The types within stitched tuples should always be
+             stitched.
+          *)
+        ( match
+            List.iter2 typs alts ~f:(fun typ1 typ2 ->
+                assert (Type1.are_stitched typ1 typ2) )
+          with
+        | Unequal_lengths ->
+            assert false
+        | Ok () ->
+            () ) ;
+        let free_vars, convs = get_conversion_bodies free_vars typs in
+        ( free_vars
+        , { conv_body_desc= Tconv_tuple convs
+          ; conv_body_loc= loc
+          ; conv_body_type } )
+    | Tvar _, Tvar _ ->
+        let free_vars, ident =
+          match List.Assoc.find ~equal:Type1.equal free_vars typ with
+          | Some ident ->
+              (free_vars, ident)
+          | None when can_add_args ->
+              (* TODO: Better unique identifiers. *)
+              let ident = Ident.fresh mode in
+              ((typ, ident) :: free_vars, ident)
+          | None ->
+              raise (Error (loc, Cannot_create_conversion typ))
+        in
+        ( free_vars
+        , { conv_body_desc=
+              Tconv_ctor (Location.mkloc (Path.Pident ident) loc, [])
+          ; conv_body_loc= loc
+          ; conv_body_type } )
+    | Tctor variant1, Tctor variant2 -> (
+      match Envi.TypeDecl.unfold_alias_aux ~loc typ env with
+      | Some (_desc, Some typ') ->
+          (* Type declaration is an alias. *)
+          if unifies env typ.type_alternate typ'.type_alternate then
+            get_conversion_body free_vars typ'
+          else assert false
+      | Some ({tdec_desc= TRecord fields1; tdec_params= params1; _}, None) -> (
+        match Envi.TypeDecl.unfold_alias_aux ~loc typ.type_alternate env with
+        | Some ({tdec_desc= TRecord fields2; tdec_params= params2; _}, None) ->
+            let free_vars = ref free_vars in
+            let conv_field {fld_ident= ident1; fld_type= typ1}
+                {fld_ident= ident2; fld_type= typ2} =
+              if not (String.equal (Ident.name ident1) (Ident.name ident2))
+              then raise (Error (loc, Cannot_create_conversion typ)) ;
+              let typ1 =
+                Envi.Type.instantiate params1 variant1.var_params typ1 env
+              in
+              let typ2 =
+                Envi.Type.instantiate params2 variant2.var_params typ2 env
+              in
+              if not (unifies env typ1.type_alternate typ2) then
+                (* The types of the fields don't match. *)
+                raise (Error (loc, Cannot_create_conversion typ)) ;
+              let free_vars', conv = get_conversion_body !free_vars typ1 in
+              free_vars := free_vars' ;
+              (Location.mkloc (Path.Pident ident1) loc, conv)
+            in
+            let fields =
+              match List.map2 ~f:conv_field fields1 fields2 with
+              | Ok x ->
+                  x
+              | Unequal_lengths ->
+                  raise (Error (loc, Cannot_create_conversion typ))
+            in
+            ( !free_vars
+            , { conv_body_desc= Tconv_record fields
+              ; conv_body_loc= loc
+              ; conv_body_type } )
+        | _ ->
+            assert false )
+      | _ ->
+          raise (Error (loc, Cannot_create_conversion typ)) )
+    | _ ->
+        raise (Error (loc, Cannot_create_conversion typ)) )
+
+and get_conversion_bodies ~can_add_args ~loc env free_vars typs =
+  List.fold_map
+    ~f:(get_conversion_body ~can_add_args ~loc env)
+    ~init:free_vars typs
+
+let get_conversion ~can_add_args ~loc env typ =
+  let mode = Envi.current_mode env in
+  let rev_arguments, typ = get_rev_arrow_args typ in
+  let rev_arguments =
+    List.map rev_arguments ~f:(fun (typ', _, _) ->
+        match typ'.type_desc with
+        | Tconv typ' ->
+            (typ', Ident.fresh mode)
+        | _ ->
+            raise (Error (loc, Cannot_create_conversion typ)) )
+  in
+  let typ = match typ.type_desc with Tconv typ -> typ | _ -> typ in
+  match get_conversion_body ~can_add_args ~loc env rev_arguments typ with
+  | free_vars, conv ->
+      let conv =
+        { Typedast.conv_desc= Tconv_body conv
+        ; conv_loc= loc
+        ; conv_type= conv.conv_body_type }
+      in
+      List.fold ~init:conv free_vars ~f:(fun conv (typ, ident) ->
+          let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
+          let conv_type =
+            Envi.Type.Mk.arrow ~mode ~explicit:Implicit typ conv.conv_type env
+          in
+          { conv_desc= Tconv_fun (Location.mkloc ident loc, conv)
+          ; conv_loc= loc
+          ; conv_type } )
+  | exception Error (_, err) ->
+      let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
+      raise (Error (loc, Convert_failed (typ, err)))
 
 let rec get_expression env expected exp =
   let mode = Envi.current_mode env in
@@ -1329,7 +1462,7 @@ let rec check_statement env stmt =
       let typ, env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ.type_type ;
-      let conv = get_conversion typ.type_type env in
+      let conv = get_conversion ~can_add_args:false ~loc env typ.type_type in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let typ' = polymorphise (Type1.flatten typ.type_type) env in
       let env = Envi.add_name name.txt typ' env in
@@ -1467,6 +1600,13 @@ let rec report_error ppf = function
         "@[<hov>This extension does not match the definition of type %a@;They \
          have different arities.@]"
         Longident.pp lid
+  | Convert_failed (typ, err) ->
+      fprintf ppf
+        "@[<v>@[<hov>Could not find a conversion@ @[<h>%a@]@:@]@;%a@]" pp_typ
+        typ report_error err
+  | Cannot_create_conversion typ ->
+      fprintf ppf "@[<hov>@[<h>%a@] and@ @[<h>%a@]@ are not convertible.@]"
+        pp_typ typ pp_typ typ.type_alternate
 
 let () =
   Location.register_error_of_exn (function

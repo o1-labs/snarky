@@ -1286,9 +1286,6 @@ module TypeDecl = struct
     | Tctor variant -> (
       match find_of_variant ~loc variant env with
       | {tdec_desc= TAlias alias_typ; tdec_params; _} as desc ->
-          (* NOTE: Ignoring tdec_implicit_params; they are never used and
-               will be removed.
-            *)
           Some
             ( desc
             , Some
@@ -1334,6 +1331,8 @@ let find_name ~mode (lid : lid) env =
       (ident, Type1.get_mode mode (Type.copy typ env))
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
+
+let find_conversion _typ _env = None
 
 (* Error handling *)
 

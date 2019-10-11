@@ -38,6 +38,9 @@ let is_valid {type_id; _} = type_id > 0
 (** Equivalent to [not (is_valid typ)]. *)
 let is_invalid {type_id; _} = type_id <= 0
 
+(** Judge equality based on type id. *)
+let equal {type_id= id1; _} {type_id= id2; _} = Int.equal id1 id2
+
 (** Make a new type at the given mode and depth.
 
     The [type_alternate] field is set to the invalid value
@@ -588,6 +591,17 @@ let is_arrow typ =
       true
   | _ ->
       false
+
+let get_rev_arrow_args typ =
+  let rec go args typ =
+    let typ = repr typ in
+    match typ.type_desc with
+    | Tarrow (typ1, typ2, explicit, label) ->
+        go ((typ1, explicit, label) :: args) typ2
+    | _ ->
+        (args, typ)
+  in
+  go [] typ
 
 (** Returns [true] if [typ] is a strict subtype of [in_]
     (i.e. excluding [typ == in_]), or [false] otherwise.
