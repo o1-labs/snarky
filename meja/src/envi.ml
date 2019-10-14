@@ -32,23 +32,18 @@ exception Error of Location.t * error
 
 module TypeEnvi = struct
   type t =
-    { type_decl_id: int
-    ; instance_id: int
+    { instance_id: int
     ; implicit_vars: Typedast.expression list
     ; implicit_id: int
     ; instances: (int * type_expr) list
     ; predeclared_types: int IdTbl.t }
 
   let empty =
-    { type_decl_id= 1
-    ; instance_id= 1
+    { instance_id= 1
     ; implicit_id= 1
     ; implicit_vars= []
     ; instances= []
     ; predeclared_types= IdTbl.empty }
-
-  let next_decl_id env =
-    (env.type_decl_id, {env with type_decl_id= env.type_decl_id + 1})
 
   let next_instance_id env =
     (env.instance_id, {env with instance_id= env.instance_id + 1})
@@ -1200,10 +1195,7 @@ module Type = struct
 end
 
 module TypeDecl = struct
-  let next_id env =
-    let tdec_id, type_env = TypeEnvi.next_decl_id env.resolve_env.type_env in
-    env.resolve_env.type_env <- type_env ;
-    tdec_id
+  let next_id = Type1.Decl.next_id
 
   let mk = Type1.Decl.mk
 

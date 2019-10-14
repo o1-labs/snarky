@@ -212,7 +212,7 @@ module TypeDecl = struct
       ; tdec_params=
           List.map tdec_params ~f:(fun _ -> Envi.Type.mkvar ~mode None env)
       ; tdec_desc= TAbstract
-      ; tdec_id= next_id env }
+      ; tdec_id= next_id () }
     in
     Envi.TypeDecl.predeclare decl env ;
     map_current_scope ~f:(Scope.add_type_declaration decl) env
@@ -306,9 +306,9 @@ module TypeDecl = struct
       | None -> (
         match tdec_desc with
         | Pdec_extend (path, {tdec_ident; _}, _) ->
-            (map_loc ~f:(fun _ -> tdec_ident) path, next_id env)
+            (map_loc ~f:(fun _ -> tdec_ident) path, next_id ())
         | _ ->
-            (map_loc ~f:(Ident.create ~mode) tdec_ident, next_id env) )
+            (map_loc ~f:(Ident.create ~mode) tdec_ident, next_id ()) )
     in
     let env = open_expr_scope env in
     let import_params env =
