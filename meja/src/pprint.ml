@@ -89,6 +89,11 @@ let type_decl fmt decl =
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
 
+let and_type_decl fmt decl =
+  fprintf fmt "and %s" decl.tdec_ident.txt ;
+  (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
+  type_decl_desc fmt decl.tdec_desc
+
 let rec pattern_desc fmt = function
   | Ppat_any ->
       fprintf fmt "_"
@@ -274,8 +279,13 @@ let rec signature_desc fmt = function
         type_expr typ
   | Psig_type decl ->
       fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
-  | Psig_rectype _decls ->
-      (* TODO: Add syntax. *)
+  | Psig_rectype (decl :: decls) ->
+      let print_and_decls =
+        let pp_sep fmt () = pp_print_char fmt ';' ; pp_print_cut fmt () in
+        pp_print_list ~pp_sep and_type_decl
+      in
+      fprintf fmt "@[<2>%a;%a@]@;@;" type_decl decl print_and_decls decls
+  | Psig_rectype [] ->
       assert false
   | Psig_module (name, msig) ->
       let prefix fmt = fprintf fmt ":@ " in

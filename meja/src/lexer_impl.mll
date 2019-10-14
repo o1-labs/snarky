@@ -60,6 +60,7 @@ rule token = parse
   | "fun" { FUN }
   | "let" { LET }
   | "instance" { INSTANCE }
+  | "and" { AND }
   | "type" { TYPE }
   | "true" { TRUE }
   | "false" { FALSE }

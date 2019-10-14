@@ -1,0 +1,4 @@
+module type T = {
+  type t('a, 'b) = U(u('a, 'b)) | A('a)
+  and u('a, 'b) = T(t('a, 'b)) | B('b);
+};
