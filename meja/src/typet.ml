@@ -319,7 +319,7 @@ module TypeDecl = struct
           (map_loc ~f:(fun _ -> ident) tdec_ident, Path.Pident ident, id)
       | None -> (
         match tdec_desc with
-        | Pdec_extend (path, _, _) ->
+        | Pdec_extend (path, _) ->
             let tdec_ident, _ =
               Envi.raw_get_type_declaration ~loc:path.loc path.txt env
             in
@@ -394,12 +394,12 @@ module TypeDecl = struct
             {typedast_decl with tdec_desc= Tdec_record fields; tdec_tdec= decl}
           in
           (typedast_decl, env)
-      | Pdec_variant ctors | Pdec_extend (_, _, ctors) ->
+      | Pdec_variant ctors | Pdec_extend (_, ctors) ->
           let name =
             match tdec_desc with
             | Pdec_variant _ ->
                 Path.Pident tdec_ident.txt
-            | Pdec_extend (lid, _, _) ->
+            | Pdec_extend (lid, _) ->
                 lid.txt
             | _ ->
                 failwith "Could not find name for TVariant/TExtend."
@@ -430,12 +430,10 @@ module TypeDecl = struct
                 ( Typedast.Tdec_variant ctors
                 , Type0.TVariant
                     (List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors) )
-            | Pdec_extend (id, decl, _) ->
-                ( Typedast.Tdec_extend (id, decl, ctors)
+            | Pdec_extend (id, _) ->
+                ( Typedast.Tdec_extend (id, ctors)
                 , Type0.TExtend
-                    ( id.txt
-                    , decl
-                    , List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors ) )
+                    (id.txt, List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors) )
             | _ ->
                 failwith "Expected a TVariant or a TExtend"
           in

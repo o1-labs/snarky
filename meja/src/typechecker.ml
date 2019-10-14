@@ -270,7 +270,7 @@ let get_ctor (name : lid) env =
     match decl.tdec_desc with
     | TVariant ctors ->
         ctors
-    | TExtend (_, _, ctors) ->
+    | TExtend (_, ctors) ->
         ctors
     | _ ->
         assert false
@@ -926,7 +926,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
 let type_extension ~loc variant ctors env =
   let mode = Envi.current_mode env in
   let {Parsetypes.var_ident; var_params} = variant in
-  let path, ({tdec_params; tdec_desc; _} as decl) =
+  let path, {tdec_params; tdec_desc; _} =
     match Envi.raw_find_type_declaration ~mode var_ident env with
     | open_decl ->
         open_decl
@@ -955,7 +955,7 @@ let type_extension ~loc variant ctors env =
   let decl =
     { Parsetypes.tdec_ident= Location.mkloc tdec_ident loc
     ; tdec_params= var_params
-    ; tdec_desc= Pdec_extend (Location.mkloc path var_ident.loc, decl, ctors)
+    ; tdec_desc= Pdec_extend (Location.mkloc path var_ident.loc, ctors)
     ; tdec_loc= loc }
   in
   let decl, env =
@@ -967,7 +967,7 @@ let type_extension ~loc variant ctors env =
   in
   let ctors =
     match decl.tdec_desc with
-    | Tdec_extend (_, _, ctors) ->
+    | Tdec_extend (_, ctors) ->
         ctors
     | _ ->
         failwith "Expected a TExtend."

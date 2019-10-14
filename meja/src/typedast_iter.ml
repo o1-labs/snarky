@@ -108,9 +108,8 @@ let type_decl_desc iter = function
       List.iter ~f:(iter.ctor_decl iter) ctors
   | Tdec_open ->
       ()
-  | Tdec_extend (name, decl, ctors) ->
+  | Tdec_extend (name, ctors) ->
       path iter name ;
-      iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors
 
 let literal (_iter : iterator) (_ : literal) = ()

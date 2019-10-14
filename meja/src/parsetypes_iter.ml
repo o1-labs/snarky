@@ -92,7 +92,7 @@ let type_decl_desc iter = function
       List.iter ~f:(iter.ctor_decl iter) ctors
   | Pdec_open ->
       ()
-  | Pdec_extend (_name, _decl, _ctors) ->
+  | Pdec_extend (_name, _ctors) ->
       assert false
 
 (* TODO: re-enable this when the Type0 iterator is merged. *)

@@ -38,7 +38,7 @@ and type_decl_desc =
   | Pdec_record of field_decl list
   | Pdec_variant of ctor_decl list
   | Pdec_open
-  | Pdec_extend of Path.t Location.loc * Type0.type_decl * ctor_decl list
+  | Pdec_extend of Path.t Location.loc * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
 type literal = Int of int | Bool of bool | Field of string | String of string

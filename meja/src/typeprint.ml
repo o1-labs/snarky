@@ -84,7 +84,7 @@ let type_decl_desc fmt = function
       fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
   | TOpen ->
       fprintf fmt "@ =@ .."
-  | TExtend (name, _, ctors) ->
+  | TExtend (name, ctors) ->
       fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors

@@ -128,12 +128,9 @@ let type_decl_desc mapper = function
       Tdec_variant (List.map ~f:(mapper.ctor_decl mapper) ctors)
   | Tdec_open ->
       Tdec_open
-  | Tdec_extend (name, decl, ctors) ->
+  | Tdec_extend (name, ctors) ->
       Tdec_extend
-        ( path mapper name
-        , with_backtrack_replace (fun () ->
-              mapper.type0.type_decl mapper.type0 decl )
-        , List.map ~f:(mapper.ctor_decl mapper) ctors )
+        (path mapper name, List.map ~f:(mapper.ctor_decl mapper) ctors)
 
 let literal (_iter : mapper) (l : literal) = l
 

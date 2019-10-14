@@ -79,7 +79,7 @@ let type_decl_desc fmt = function
       fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
   | Pdec_open ->
       fprintf fmt "@ =@ .."
-  | Pdec_extend (name, _, ctors) ->
+  | Pdec_extend (name, ctors) ->
       fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name.txt
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors

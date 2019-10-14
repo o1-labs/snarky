@@ -152,7 +152,7 @@ module Scope = struct
         List.foldi ~f:(add_field decl) ~init:scope fields
     | TVariant ctors ->
         List.foldi ~f:(add_ctor decl) ~init:scope ctors
-    | TExtend (_, _, ctors) ->
+    | TExtend (_, ctors) ->
         (* Use [scope'] to avoid adding the type name. *)
         List.foldi ~f:(add_ctor decl) ~init:scope' ctors
 

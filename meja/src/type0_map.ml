@@ -153,13 +153,11 @@ let type_decl_desc mapper desc =
       let same = ref true in
       let ctors = map_list ctors ~same ~f:(mapper.ctor_decl mapper) in
       if !same then desc else TVariant ctors
-  | TExtend (path, decl, ctors) ->
+  | TExtend (path, ctors) ->
       let path' = mapper.path mapper path in
-      let decl' = mapper.type_decl mapper decl in
       let same = ref true in
       let ctors = map_list ctors ~same ~f:(mapper.ctor_decl mapper) in
-      if !same && phys_equal path' path && phys_equal decl' decl then desc
-      else TExtend (path', decl', ctors)
+      if !same && phys_equal path' path then desc else TExtend (path', ctors)
 
 let path mapper path =
   match path with

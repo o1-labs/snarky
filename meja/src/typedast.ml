@@ -49,7 +49,7 @@ and type_decl_desc =
   | Tdec_record of field_decl list
   | Tdec_variant of ctor_decl list
   | Tdec_open
-  | Tdec_extend of path * Type0.type_decl * ctor_decl list
+  | Tdec_extend of path * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
 type literal = Int of int | Bool of bool | Field of string | String of string

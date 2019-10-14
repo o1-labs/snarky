@@ -125,8 +125,8 @@ let type_decl_desc = function
       Pdec_variant (List.map ~f:ctor_decl ctors)
   | Tdec_open ->
       Pdec_open
-  | Tdec_extend (lid, typ, ctor) ->
-      Pdec_extend (lid, typ, List.map ~f:ctor_decl ctor)
+  | Tdec_extend (lid, ctor) ->
+      Pdec_extend (lid, List.map ~f:ctor_decl ctor)
 
 let type_decl
     {Typedast.tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec= _} =
