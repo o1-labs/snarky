@@ -1007,7 +1007,11 @@ let type_extension ~loc variant ctors env =
     ; tdec_desc= Pdec_extend (Location.mkloc path var_ident.loc, decl, ctors)
     ; tdec_loc= loc }
   in
-  let decl, env = Typet.TypeDecl.import decl env in
+  let decl, env =
+    match Typet.TypeDecl.import_rec [decl] env with
+    | [decl], env -> decl, env
+    | _ -> assert false
+  in
   let ctors =
     match decl.tdec_desc with
     | Tdec_extend (_, _, ctors) ->
@@ -1046,13 +1050,7 @@ let rec check_signature_item env item =
       let decl, env = Typet.TypeDecl.import decl env in
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
   | Psig_rectype decls ->
-      let env = List.fold ~f:Typet.TypeDecl.predeclare ~init:env decls in
-      let env, decls =
-        List.fold_map ~init:env decls ~f:(fun env decl ->
-            let decl, env = Typet.TypeDecl.import decl env in
-            (env, decl) )
-      in
-      Envi.TypeDecl.clear_predeclared env ;
+      let decls, env = Typet.TypeDecl.import_rec decls env in
       (env, {Typedast.sig_desc= Tsig_rectype decls; sig_loc= loc})
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
@@ -1247,6 +1245,9 @@ let rec check_statement env stmt =
       in
       in_decl := false ;
       ret
+  | Pstmt_rectype decls ->
+      let decls, env = Typet.TypeDecl.import_rec decls env in
+      (env, {Typedast.stmt_desc= Tstmt_rectype decls; stmt_loc= loc})
   | Pstmt_module (name, m) ->
       let env = Envi.open_module env in
       let env, m = check_module_expr env m in

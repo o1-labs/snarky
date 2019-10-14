@@ -244,6 +244,8 @@ let statement_desc iter = function
       ident iter name ; iter.expression iter e
   | Tstmt_type decl ->
       iter.type_decl iter decl
+  | Tstmt_rectype decls ->
+      List.iter ~f:(iter.type_decl iter) decls
   | Tstmt_module (name, me) ->
       ident iter name ; iter.module_expr iter me
   | Tstmt_modtype (name, mty) ->

@@ -112,6 +112,7 @@ and statement_desc =
   | Pstmt_value of pattern * expression
   | Pstmt_instance of str * expression
   | Pstmt_type of type_decl
+  | Pstmt_rectype of type_decl list
   | Pstmt_module of str * module_expr
   | Pstmt_modtype of str * module_sig
   | Pstmt_open of lid

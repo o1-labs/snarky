@@ -3,6 +3,7 @@ type error =
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
+  | GADT_in_nonrec_type
 
 module Type : sig
   val import :
@@ -33,4 +34,7 @@ module TypeDecl : sig
   val predeclare : Envi.t -> Parsetypes.type_decl -> Envi.t
 
   val import : Parsetypes.type_decl -> Envi.t -> Typedast.type_decl * Envi.t
+
+  val import_rec :
+    Parsetypes.type_decl list -> Envi.t -> Typedast.type_decl list * Envi.t
 end

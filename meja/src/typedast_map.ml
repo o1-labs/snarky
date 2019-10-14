@@ -287,6 +287,8 @@ let statement_desc mapper = function
       Tstmt_instance (ident mapper name, mapper.expression mapper e)
   | Tstmt_type decl ->
       Tstmt_type (mapper.type_decl mapper decl)
+  | Tstmt_rectype decls ->
+      Tstmt_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Tstmt_module (name, me) ->
       Tstmt_module (ident mapper name, mapper.module_expr mapper me)
   | Tstmt_modtype (name, mty) ->

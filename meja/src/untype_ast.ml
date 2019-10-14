@@ -267,6 +267,8 @@ let rec statement_desc = function
       Pstmt_instance (map_loc ~f:Ident.name name, expression e)
   | Tstmt_type decl ->
       Pstmt_type (type_decl decl)
+  | Tstmt_rectype decls ->
+      Pstmt_rectype (List.map ~f:type_decl decls)
   | Tstmt_module (name, m) ->
       Pstmt_module (map_loc ~f:Ident.name name, module_expr m)
   | Tstmt_modtype (name, msig) ->

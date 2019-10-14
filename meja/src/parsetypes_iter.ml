@@ -229,6 +229,8 @@ let statement_desc iter = function
       str iter name ; iter.expression iter e
   | Pstmt_type decl ->
       iter.type_decl iter decl
+  | Pstmt_rectype decls ->
+      List.iter ~f:(iter.type_decl iter) decls
   | Pstmt_module (name, me) ->
       str iter name ; iter.module_expr iter me
   | Pstmt_modtype (name, mty) ->

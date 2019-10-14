@@ -43,6 +43,7 @@ let consexp ~pos hd tl =
 %token FALSE
 %token SWITCH
 %token TYPE
+%token REC
 %token MODULE
 %token OPEN
 %token REQUEST
@@ -143,6 +144,8 @@ structure_item:
     { mkstmt ~pos:$loc (Pstmt_instance (x, e)) }
   | decl = type_decl(TYPE)
     { mkstmt ~pos:$loc (Pstmt_type decl) }
+  | decls = type_decls
+    { mkstmt ~pos:$loc (Pstmt_rectype decls) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
     { mkstmt ~pos:$loc (Pstmt_module (x, m)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
@@ -165,6 +168,8 @@ signature_item:
     { mksig ~pos:$loc (Psig_value (x, typ)) }
   | INSTANCE x = as_loc(val_ident) COLON typ = type_expr
     { mksig ~pos:$loc (Psig_instance (x, typ)) }
+  | decl = type_decl(TYPE)
+    { mksig ~pos:$loc (Psig_type decl) }
   | decls = type_decls
     { mksig ~pos:$loc (Psig_rectype decls) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
@@ -201,7 +206,7 @@ and_type_decls(type_keyword):
     { decl :: decls }
 
 type_decls:
-  | decls = and_type_decls(TYPE)
+  | decls = and_type_decls(TYPE REC {})
     { decls }
 
 default_request_handler:

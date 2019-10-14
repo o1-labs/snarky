@@ -264,7 +264,9 @@ let rec of_statement_desc ?loc = function
       Str.value ?loc Nonrecursive
         [Vb.mk (Pat.var ?loc (of_ident_loc name)) (of_expression e)]
   | Tstmt_type decl ->
-      Str.type_ ?loc Recursive [of_type_decl decl]
+      Str.type_ ?loc Nonrecursive [of_type_decl decl]
+  | Tstmt_rectype decls ->
+      Str.type_ ?loc Recursive (List.map ~f:of_type_decl decls)
   | Tstmt_module (name, m) ->
       Str.module_ ?loc (Mb.mk ?loc (of_ident_loc name) (of_module_expr m))
   | Tstmt_modtype (name, msig) ->

@@ -1,7 +1,7 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-type 'a showable = {show: 'a -> string}
+type nonrec 'a showable = {show: 'a -> string}
 
 let show {show; _} = show
 
@@ -24,7 +24,7 @@ let h __implicit17__ __implicit9__ __implicit10__ (x : int) (y : bool)
   , g __implicit9__ __implicit10__ __implicit9__ y y
   , g __implicit9__ __implicit10__ __implicit17__ z z )
 
-type ('a, 'b) conv = {conv: 'a -> 'b}
+type nonrec ('a, 'b) conv = {conv: 'a -> 'b}
 
 let conv {conv; _} = conv
 
@@ -38,7 +38,7 @@ end
 
 let j (i : int) (f : bool -> 'a) = f (conv T.conv_int_bool i)
 
-type ('a, 'b) equiv = Equiv of ('a -> 'b) * ('b -> 'a)
+type nonrec ('a, 'b) equiv = Equiv of ('a -> 'b) * ('b -> 'a)
 
 let equiv_eq = Equiv ((fun x -> x), fun x -> x)
 

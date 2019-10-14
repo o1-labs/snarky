@@ -62,6 +62,7 @@ rule token = parse
   | "instance" { INSTANCE }
   | "and" { AND }
   | "type" { TYPE }
+  | "rec" { REC }
   | "true" { TRUE }
   | "false" { FALSE }
   | "switch" { SWITCH }

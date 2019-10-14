@@ -256,6 +256,8 @@ let statement_desc mapper = function
       Pstmt_instance (str mapper name, mapper.expression mapper e)
   | Pstmt_type decl ->
       Pstmt_type (mapper.type_decl mapper decl)
+  | Pstmt_rectype decls ->
+      Pstmt_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Pstmt_module (name, me) ->
       Pstmt_module (str mapper name, mapper.module_expr mapper me)
   | Pstmt_modtype (name, mty) ->

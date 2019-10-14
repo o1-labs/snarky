@@ -126,6 +126,7 @@ and statement_desc =
   | Tstmt_value of pattern * expression
   | Tstmt_instance of ident * expression
   | Tstmt_type of type_decl
+  | Tstmt_rectype of type_decl list
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig
   | Tstmt_open of path

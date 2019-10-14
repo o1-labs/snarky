@@ -120,8 +120,10 @@ let rec to_signature_item item =
             ( mkloc (Ident.name ident) val_loc
             , to_type_expr ~loc:val_loc val_type )
       ; sig_loc= val_loc }
-  | Sig_type (_ident, decl, _rec_status) ->
+  | Sig_type (_ident, decl, Trec_not) ->
       {sig_desc= Psig_type (type_decl_of_sigi item); sig_loc= decl.type_loc}
+  | Sig_type (_ident, decl, _) ->
+      {sig_desc= Psig_rectype [type_decl_of_sigi item]; sig_loc= decl.type_loc}
   | Sig_module (ident, decl, _) ->
       { sig_desc=
           Psig_module

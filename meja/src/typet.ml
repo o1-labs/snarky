@@ -9,6 +9,7 @@ type error =
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
+  | GADT_in_nonrec_type
 
 exception Error of Location.t * error
 
@@ -205,17 +206,21 @@ module TypeDecl = struct
         assert false
 
   let predeclare env
-      {Parsetypes.tdec_ident; tdec_params; tdec_desc= _; tdec_loc= _} =
-    let mode = Envi.current_mode env in
-    let decl =
-      { Type0.tdec_ident= Ident.create ~mode tdec_ident.txt
-      ; tdec_params=
-          List.map tdec_params ~f:(fun _ -> Envi.Type.mkvar ~mode None env)
-      ; tdec_desc= TAbstract
-      ; tdec_id= next_id () }
-    in
-    Envi.TypeDecl.predeclare decl env ;
-    map_current_scope ~f:(Scope.add_type_declaration decl) env
+      {Parsetypes.tdec_ident; tdec_params; tdec_desc; tdec_loc= _} =
+    match tdec_desc with
+    | Pdec_extend _ ->
+        env
+    | _ ->
+        let mode = Envi.current_mode env in
+        let decl =
+          { Type0.tdec_ident= Ident.create ~mode tdec_ident.txt
+          ; tdec_params=
+              List.map tdec_params ~f:(fun _ -> Envi.Type.mkvar ~mode None env)
+          ; tdec_desc= TAbstract
+          ; tdec_id= next_id () }
+        in
+        Envi.TypeDecl.predeclare decl env ;
+        map_current_scope ~f:(Scope.add_type_declaration decl) env
 
   let import_field ?must_find env {fld_ident; fld_type; fld_loc} =
     let mode = Envi.current_mode env in
@@ -293,7 +298,7 @@ module TypeDecl = struct
           ; ctor_args= type0_ctor_args
           ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
 
-  let import decl' env =
+  let import ~recursive decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
     let tdec_ident, tdec_id =
@@ -327,18 +332,6 @@ module TypeDecl = struct
         ; tdec_params= List.map ~f:type0 tdec_params
         ; tdec_desc= TAbstract
         ; tdec_id }
-    in
-    (* Make sure the declaration is available to lookup for recursive types. *)
-    let env =
-      let scope, env = Envi.pop_expr_scope env in
-      let env =
-        match tdec_desc with
-        | Pdec_extend _ ->
-            env
-        | _ ->
-            map_current_scope ~f:(Scope.add_type_declaration decl) env
-      in
-      Envi.push_scope scope env
     in
     let typedast_decl =
       { Typedast.tdec_ident
@@ -390,6 +383,8 @@ module TypeDecl = struct
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
                 let ret = ctor.ctor_ret in
+                if (not recursive) && Option.is_some ctor.ctor_ret then
+                  raise (Error (ctor.ctor_loc, GADT_in_nonrec_type)) ;
                 let env, ctor = import_ctor env ctor in
                 ( match (ctor.ctor_ret, ret) with
                 | Some {type_desc= Ttyp_ctor {var_ident= path; _}; _}, _
@@ -431,6 +426,18 @@ module TypeDecl = struct
       map_current_scope ~f:(Scope.register_type_declaration decl.tdec_tdec) env
     in
     (decl, env)
+
+  let import_rec decls env =
+    let env = List.fold ~f:predeclare ~init:env decls in
+    let env, decls =
+      List.fold_map ~init:env decls ~f:(fun env decl ->
+          let decl, env = import ~recursive:true decl env in
+          (env, decl) )
+    in
+    Envi.TypeDecl.clear_predeclared env ;
+    (decls, env)
+
+  let import = import ~recursive:false
 end
 
 (* Error handling *)
@@ -463,6 +470,10 @@ let report_error ppf = function
         "@[<hov>Constraints are not satisfied in this type.@ Type @[<h>%a@] \
          should be an instance of @[<h>%a@].@]"
         pp_typ typ pp_decl_typ decl
+  | GADT_in_nonrec_type ->
+      fprintf ppf
+        "@[<hov>GADT case syntax cannot be used in a non-recursive type.@ To \
+         use this syntax, use 'type rec' for this type definition.@]@."
 
 let () =
   Location.register_error_of_exn (function
