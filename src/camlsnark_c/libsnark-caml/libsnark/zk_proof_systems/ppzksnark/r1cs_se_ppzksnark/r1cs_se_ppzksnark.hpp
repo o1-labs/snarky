@@ -335,7 +335,12 @@ public:
     libff::G1<ppT> C;
 
     r1cs_se_ppzksnark_proof()
-    {}
+    {
+        // invalid proof with valid curve points
+        this->A = libff::G1<ppT>::one();
+        this->B = libff::G2<ppT>::one();
+        this->C = libff::G1<ppT>::one();
+    }
     r1cs_se_ppzksnark_proof(libff::G1<ppT> &&A,
         libff::G2<ppT> &&B,
         libff::G1<ppT> &&C) :
