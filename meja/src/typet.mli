@@ -30,5 +30,15 @@ module TypeDecl : sig
   val generalise :
     Parsetypes.type_decl -> Parsetypes.type_decl * Parsetypes.type_decl
 
-  val import : Parsetypes.type_decl -> Envi.t -> Typedast.type_decl * Envi.t
+  val import :
+       ?other_name:Path.t
+    -> Parsetypes.type_decl
+    -> Envi.t
+    -> Typedast.type_decl * Envi.t
+  (** Import a type declaration.
+
+      If [other_name] is specified, then the type declaration will be stitched
+      to the type with that name; otherwise, the type is stitched to a type of
+      its own name in the other mode.
+  *)
 end

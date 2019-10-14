@@ -75,11 +75,10 @@ module Type0 = struct
     | TForward _ ->
         failwith "Cannot convert TForward to a parsetree equivalent"
 
-  and type_decl ?loc decl =
+  and type_decl ?loc name decl =
     type_decl_desc ?loc
       ~params:(List.map ~f:type_expr decl.tdec_params)
-      (Ident.name decl.tdec_ident)
-      decl.tdec_desc
+      name decl.tdec_desc
 end
 
 let rec type_desc = function
