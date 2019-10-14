@@ -1009,8 +1009,10 @@ let type_extension ~loc variant ctors env =
   in
   let decl, env =
     match Typet.TypeDecl.import_rec [decl] env with
-    | [decl], env -> decl, env
-    | _ -> assert false
+    | [decl], env ->
+        (decl, env)
+    | _ ->
+        assert false
   in
   let ctors =
     match decl.tdec_desc with
