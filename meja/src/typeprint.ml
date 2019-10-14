@@ -88,15 +88,6 @@ let type_decl_desc fmt = function
       fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
-  | TForward i ->
-      let print_id fmt i =
-        match i with
-        | Some i ->
-            pp_print_int fmt i
-        | None ->
-            pp_print_char fmt '?'
-      in
-      fprintf fmt "@ /* forward declaration %a */" print_id !i
 
 let type_decl fmt decl =
   fprintf fmt "type %a" Ident.pprint decl.tdec_ident ;

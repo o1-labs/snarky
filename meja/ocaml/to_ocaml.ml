@@ -170,6 +170,8 @@ let rec of_signature_desc ?loc = function
       Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
   | Psig_type decl ->
       Sig.type_ ?loc Recursive [of_type_decl decl]
+  | Psig_rectype decls ->
+      Sig.type_ ?loc Recursive (List.map ~f:of_type_decl decls)
   | Psig_module (name, msig) ->
       let msig =
         match of_module_sig msig with

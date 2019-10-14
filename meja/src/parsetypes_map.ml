@@ -206,6 +206,8 @@ let signature_desc mapper = function
       Psig_instance (str mapper name, mapper.type_expr mapper typ)
   | Psig_type decl ->
       Psig_type (mapper.type_decl mapper decl)
+  | Psig_rectype decls ->
+      Psig_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Psig_module (name, msig) ->
       Psig_module (str mapper name, mapper.module_sig mapper msig)
   | Psig_modtype (name, msig) ->

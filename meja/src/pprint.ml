@@ -274,6 +274,9 @@ let rec signature_desc fmt = function
         type_expr typ
   | Psig_type decl ->
       fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
+  | Psig_rectype _decls ->
+      (* TODO: Add syntax. *)
+      assert false
   | Psig_module (name, msig) ->
       let prefix fmt = fprintf fmt ":@ " in
       fprintf fmt "@[<hov2>module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)

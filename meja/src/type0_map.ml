@@ -142,7 +142,7 @@ let type_decl mapper
 
 let type_decl_desc mapper desc =
   match desc with
-  | TAbstract | TOpen | TForward _ ->
+  | TAbstract | TOpen ->
       desc
   | TAlias typ ->
       let typ' = mapper.type_expr mapper typ in

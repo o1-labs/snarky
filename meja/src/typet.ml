@@ -73,18 +73,7 @@ module Type = struct
         let var_ident, decl = raw_find_type_declaration ~mode var_ident env in
         let var_ident = Location.mkloc var_ident variant.var_ident.loc in
         let given_args_length = List.length var_params in
-        let expected_args_length =
-          match decl.tdec_desc with
-          | TForward num_args -> (
-            match !num_args with
-            | Some l ->
-                l
-            | None ->
-                num_args := Some given_args_length ;
-                given_args_length )
-          | _ ->
-              List.length decl.tdec_params
-        in
+        let expected_args_length = List.length decl.tdec_params in
         if not (Int.equal given_args_length expected_args_length) then
           raise
             (Error
@@ -215,6 +204,19 @@ module TypeDecl = struct
         (* We don't have enough information about the type to generalise it. *)
         assert false
 
+  let predeclare env
+      {Parsetypes.tdec_ident; tdec_params; tdec_desc= _; tdec_loc= _} =
+    let mode = Envi.current_mode env in
+    let decl =
+      { Type0.tdec_ident= Ident.create ~mode tdec_ident.txt
+      ; tdec_params=
+          List.map tdec_params ~f:(fun _ -> Envi.Type.mkvar ~mode None env)
+      ; tdec_desc= TAbstract
+      ; tdec_id= next_id env }
+    in
+    Envi.TypeDecl.predeclare decl env ;
+    map_current_scope ~f:(Scope.add_type_declaration decl) env
+
   let import_field ?must_find env {fld_ident; fld_type; fld_loc} =
     let mode = Envi.current_mode env in
     let fld_type, env = Type.import ?must_find fld_type env in
@@ -299,22 +301,8 @@ module TypeDecl = struct
         IdTbl.find_name ~modes:(modes_of_mode mode) tdec_ident.txt
           env.resolve_env.type_env.predeclared_types
       with
-      | Some (ident, (id, num_args, loc)) ->
-          ( match !num_args with
-          | Some num_args ->
-              let given = List.length tdec_params in
-              if not (Int.equal given num_args) then
-                raise
-                  (Error
-                     (loc, Wrong_number_args (Pident ident, given, num_args)))
-          | None ->
-              () ) ;
-          let {type_env; _} = env.resolve_env in
-          env.resolve_env.type_env
-          <- { type_env with
-               predeclared_types= IdTbl.remove ident type_env.predeclared_types
-             } ;
-          (Location.mkloc ident tdec_ident.loc, id)
+      | Some (ident, id) ->
+          (map_loc ~f:(fun _ -> ident) tdec_ident, id)
       | None -> (
         match tdec_desc with
         | Pdec_extend (path, {tdec_ident; _}, _) ->

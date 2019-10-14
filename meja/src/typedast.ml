@@ -99,6 +99,8 @@ and signature_desc =
   | Tsig_value of ident * type_expr
   | Tsig_instance of ident * type_expr
   | Tsig_type of type_decl
+  (* Note: no syntax support yet.. *)
+  | Tsig_rectype of type_decl list
   | Tsig_module of ident * module_sig
   | Tsig_modtype of ident * module_sig
   | Tsig_open of path

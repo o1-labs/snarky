@@ -1045,6 +1045,15 @@ let rec check_signature_item env item =
   | Psig_type decl ->
       let decl, env = Typet.TypeDecl.import decl env in
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
+  | Psig_rectype decls ->
+      let env = List.fold ~f:Typet.TypeDecl.predeclare ~init:env decls in
+      let env, decls =
+        List.fold_map ~init:env decls ~f:(fun env decl ->
+            let decl, env = Typet.TypeDecl.import decl env in
+            (env, decl) )
+      in
+      Envi.TypeDecl.clear_predeclared env ;
+      (env, {Typedast.sig_desc= Tsig_rectype decls; sig_loc= loc})
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
       let msig, m, env = check_module_sig env msig in
@@ -1409,11 +1418,7 @@ and check_module_expr env m =
       in
       (env, {m with mod_desc= Tmod_functor (f_name, f, m)})
 
-let check_signature env signature =
-  Envi.set_type_predeclaring env ;
-  let ret = check_signature env signature in
-  Envi.unset_type_predeclaring env ;
-  ret
+let check_signature env signature = check_signature env signature
 
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:check_statement

@@ -184,6 +184,8 @@ let signature_desc iter = function
       str iter name ; iter.type_expr iter typ
   | Psig_type decl ->
       iter.type_decl iter decl
+  | Psig_rectype decl ->
+      List.iter ~f:(iter.type_decl iter) decl
   | Psig_module (name, msig) | Psig_modtype (name, msig) ->
       str iter name ; iter.module_sig iter msig
   | Psig_open name ->

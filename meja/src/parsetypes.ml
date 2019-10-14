@@ -86,6 +86,8 @@ and signature_desc =
   | Psig_value of str * type_expr
   | Psig_instance of str * type_expr
   | Psig_type of type_decl
+  (* Note: no syntax support yet.. *)
+  | Psig_rectype of type_decl list
   | Psig_module of str * module_sig
   | Psig_modtype of str * module_sig
   | Psig_open of lid

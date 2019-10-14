@@ -37,8 +37,7 @@ module TypeEnvi = struct
     ; implicit_vars: Typedast.expression list
     ; implicit_id: int
     ; instances: (int * type_expr) list
-    ; predeclared_types:
-        (int (* id *) * int option ref (* num. args *) * Location.t) IdTbl.t }
+    ; predeclared_types: int IdTbl.t }
 
   let empty =
     { type_decl_id= 1
@@ -47,8 +46,6 @@ module TypeEnvi = struct
     ; implicit_vars= []
     ; instances= []
     ; predeclared_types= IdTbl.empty }
-
-  let next_type_id env = (env.type_id, {env with type_id= env.type_id + 1})
 
   let next_decl_id env =
     (env.type_decl_id, {env with type_decl_id= env.type_decl_id + 1})
@@ -67,8 +64,7 @@ type 'a or_deferred =
 
 type 'a resolve_env =
   { mutable type_env: TypeEnvi.t
-  ; mutable external_modules: 'a or_deferred IdTbl.t
-  ; mutable predeclare_types: bool }
+  ; mutable external_modules: 'a or_deferred IdTbl.t }
 
 module Scope = struct
   type 'a or_path = Immediate of 'a | Deferred of string
@@ -156,7 +152,7 @@ module Scope = struct
     let scope' = scope in
     let scope = add_type_declaration decl scope in
     match decl.tdec_desc with
-    | TAbstract | TAlias _ | TOpen | TForward _ ->
+    | TAbstract | TAlias _ | TOpen ->
         scope
     | TRecord fields ->
         List.foldi ~f:(add_field decl) ~init:scope fields
@@ -540,9 +536,7 @@ module Scope = struct
 end
 
 let empty_resolve_env : Scope.t resolve_env =
-  { type_env= TypeEnvi.empty
-  ; external_modules= IdTbl.empty
-  ; predeclare_types= false }
+  {type_env= TypeEnvi.empty; external_modules= IdTbl.empty}
 
 type t =
   {scope_stack: Scope.t list; depth: int; resolve_env: Scope.t resolve_env}
@@ -638,18 +632,6 @@ let pop_module ~loc env =
   (m, env)
 
 let close_expr_scope env = snd (pop_expr_scope env)
-
-let set_type_predeclaring env = env.resolve_env.predeclare_types <- true
-
-let unset_type_predeclaring env =
-  if IdTbl.is_empty env.resolve_env.type_env.predeclared_types then
-    env.resolve_env.predeclare_types <- false
-  else
-    let _, (_, _, loc) =
-      IdTbl.first_exn env.resolve_env.type_env.predeclared_types
-    in
-    let predeclared = IdTbl.keys env.resolve_env.type_env.predeclared_types in
-    raise (Error (loc, Predeclared_types predeclared))
 
 let map_current_scope ~f env =
   match env.scope_stack with
@@ -809,42 +791,14 @@ let join_expr_scope env expr_scope =
   map_current_scope ~f:(Scope.join_expr_scope expr_scope) env
 
 let raw_find_type_declaration ~mode (lid : lid) env =
-  let modes = modes_of_mode mode in
   match
     find_of_lident ~mode ~kind:"type" ~get_name:Scope.find_type_declaration lid
       env
   with
   | Some v ->
       v
-  | None -> (
-    match lid.txt with
-    | Lident name when env.resolve_env.predeclare_types ->
-        let {type_env; _} = env.resolve_env in
-        let ident, id, num_args =
-          match IdTbl.find_name ~modes name type_env.predeclared_types with
-          | Some (ident, (id, num_args, _loc)) ->
-              (ident, id, num_args)
-          | None ->
-              let id, type_env = TypeEnvi.next_decl_id type_env in
-              let num_args = ref None in
-              let ident = Ident.create ~mode name in
-              let type_env =
-                { type_env with
-                  predeclared_types=
-                    IdTbl.add ~key:ident
-                      ~data:(id, ref None, lid.loc)
-                      type_env.predeclared_types }
-              in
-              env.resolve_env.type_env <- type_env ;
-              (ident, id, num_args)
-        in
-        ( Pident ident
-        , { tdec_ident= ident
-          ; tdec_params= []
-          ; tdec_desc= TForward num_args
-          ; tdec_id= id } )
-    | _ ->
-        raise (Error (lid.loc, Unbound_type lid.txt)) )
+  | None ->
+      raise (Error (lid.loc, Unbound_type lid.txt))
 
 let raw_get_type_declaration =
   get_of_path ~kind:"type" ~get_name:Scope.get_type_declaration
@@ -1256,6 +1210,17 @@ module TypeDecl = struct
   (* TODO: Deal with [mode] properly. *)
   let mk_typ ~mode ~params ?ident decl env =
     Type1.Decl.mk_typ ~mode ~params ?ident env.depth decl
+
+  let predeclare decl env =
+    env.resolve_env.type_env
+    <- { env.resolve_env.type_env with
+         predeclared_types=
+           Ident.Table.add ~key:decl.tdec_ident ~data:decl.tdec_id
+             env.resolve_env.type_env.predeclared_types }
+
+  let clear_predeclared env =
+    env.resolve_env.type_env
+    <- {env.resolve_env.type_env with predeclared_types= Ident.Table.empty}
 
   let find_of_variant ~loc variant env =
     raw_get_type_declaration ~loc variant.var_ident env

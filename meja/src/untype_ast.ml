@@ -68,8 +68,6 @@ module Type0 = struct
         Type_decl.open_ ?loc ?params name
     | TExtend _ ->
         failwith "Cannot convert TExtend to a parsetree equivalent"
-    | TForward _ ->
-        failwith "Cannot convert TForward to a parsetree equivalent"
 
   and type_decl ?loc decl =
     type_decl_desc ?loc
@@ -226,6 +224,8 @@ let rec signature_desc = function
       Psig_instance (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_type decl ->
       Psig_type (type_decl decl)
+  | Tsig_rectype decls ->
+      Psig_rectype (List.map ~f:type_decl decls)
   | Tsig_module (name, msig) ->
       Psig_module (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_modtype (name, msig) ->

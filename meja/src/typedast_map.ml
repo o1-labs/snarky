@@ -237,6 +237,8 @@ let signature_desc mapper = function
       Tsig_instance (ident mapper name, mapper.type_expr mapper typ)
   | Tsig_type decl ->
       Tsig_type (mapper.type_decl mapper decl)
+  | Tsig_rectype decls ->
+      Tsig_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Tsig_module (name, msig) ->
       Tsig_module (ident mapper name, mapper.module_sig mapper msig)
   | Tsig_modtype (name, msig) ->

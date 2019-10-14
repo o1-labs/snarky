@@ -48,6 +48,4 @@ and type_decl_desc =
   | TOpen
   | TExtend of Path.t * type_decl * ctor_decl list
       (** Internal; this should never be present in the AST. *)
-  | TForward of int option ref
-      (** Forward declaration for types loaded from cmi files. *)
 [@@deriving sexp]
