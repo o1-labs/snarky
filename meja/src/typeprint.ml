@@ -89,7 +89,7 @@ let type_decl_desc fmt = function
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
 
-let type_decl fmt decl =
-  fprintf fmt "type %a" Ident.pprint decl.tdec_ident ;
+let type_decl ident fmt decl =
+  fprintf fmt "type %a" Ident.pprint ident ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc

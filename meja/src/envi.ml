@@ -134,18 +134,17 @@ module Scope = struct
   let find_ctor ~mode name scope =
     IdTbl.find_name ~modes:(modes_of_mode mode) name scope.ctors
 
-  let add_type_declaration decl scope =
-    { scope with
-      type_decls= IdTbl.add scope.type_decls ~key:decl.tdec_ident ~data:decl }
+  let add_type_declaration ident decl scope =
+    {scope with type_decls= IdTbl.add scope.type_decls ~key:ident ~data:decl}
 
   let get_type_declaration name scope = IdTbl.find name scope.type_decls
 
   let find_type_declaration ~mode name scope =
     IdTbl.find_name ~modes:(modes_of_mode mode) name scope.type_decls
 
-  let register_type_declaration decl scope =
+  let register_type_declaration ident decl scope =
     let scope' = scope in
-    let scope = add_type_declaration decl scope in
+    let scope = add_type_declaration ident decl scope in
     match decl.tdec_desc with
     | TAbstract | TAlias _ | TOpen ->
         scope
@@ -748,21 +747,21 @@ let get_of_path ~loc ~kind ~get_name ~find_name (path : Path.t) env =
                             -> string
                             -> Scope.t
                             -> (Ident.t * 'a) option) -> Path.t -> Scope.t
-              -> 'a option =
+              -> (Ident.t * 'a) option =
    fun ~kind ~get_name ~find_name path scope ->
     match path with
     | Path.Pident ident ->
-        get_name ident scope
+        Option.map (get_name ident scope) ~f:(fun x -> (ident, x))
     | Path.Pdot (path', mode, name) -> (
-        let%map scope =
+        let%map _, scope =
           find ~kind:"module"
             ~get_name:(Scope.get_module_by_ident ~loc env.resolve_env)
             ~find_name:(Scope.get_module_no_load ~loc env.resolve_env)
             path' scope
         in
         match find_name ~mode name scope with
-        | Some (_ident, v) ->
-            v
+        | Some ret ->
+            ret
         | None ->
             raise (Error (loc, Unbound_path (kind, path))) )
     | Path.Papply _ ->
@@ -918,7 +917,7 @@ module Type = struct
     List.iter2_exn params typs ~f:(fun param typ ->
         (* Sanity check. *)
         (match (repr param).type_desc with Tvar _ -> () | _ -> assert false) ;
-        set_repr param typ ) ;
+        set_replacement param typ ) ;
     let typ = copy typ env in
     (* Restore the original values of the parameters. *)
     backtrack snap ; typ
@@ -959,8 +958,8 @@ module Type = struct
           1
       | ( Tctor {var_params= params1; var_ident= path1; _}
         , Tctor {var_params= params2; var_ident= path2; _} ) ->
-          let decl1 = raw_get_type_declaration ~loc path1 env in
-          let decl2 = raw_get_type_declaration ~loc path2 env in
+          let _, decl1 = raw_get_type_declaration ~loc path1 env in
+          let _, decl2 = raw_get_type_declaration ~loc path2 env in
           or_compare (Int.compare decl1.tdec_id decl2.tdec_id) ~f:(fun () ->
               compare_all params1 params2 )
       | Tctor _, _ ->
@@ -1166,7 +1165,7 @@ module Type = struct
                      if
                        Type1.equal_at_depth
                          ~get_decl:(fun path ->
-                           raw_get_type_declaration ~loc path env )
+                           snd (raw_get_type_declaration ~loc path env) )
                          ~depth:env.depth e_weak.exp_type e_strong.exp_type
                      then (
                        ignore (unifies env e_strong.exp_type e_weak.exp_type) ;
@@ -1199,15 +1198,18 @@ module TypeDecl = struct
 
   let mk = Type1.Decl.mk
 
-  (* TODO: Deal with [mode] properly. *)
   let mk_typ ~mode ~params ?ident decl env =
-    Type1.Decl.mk_typ ~mode ~params ?ident env.depth decl
+    ignore ident ;
+    let vars = List.map ~f:(Type1.get_mode mode) decl.tdec_params in
+    let params = List.map ~f:(Type1.get_mode mode) params in
+    let typ = Type1.get_mode mode decl.tdec_ret in
+    Type.instantiate vars params typ env
 
-  let predeclare decl env =
+  let predeclare ident decl env =
     env.resolve_env.type_env
     <- { env.resolve_env.type_env with
          predeclared_types=
-           Ident.Table.add ~key:decl.tdec_ident ~data:decl.tdec_id
+           Ident.Table.add ~key:ident ~data:decl.tdec_id
              env.resolve_env.type_env.predeclared_types }
 
   let clear_predeclared env =
@@ -1215,7 +1217,7 @@ module TypeDecl = struct
     <- {env.resolve_env.type_env with predeclared_types= Ident.Table.empty}
 
   let find_of_variant ~loc variant env =
-    raw_get_type_declaration ~loc variant.var_ident env
+    snd (raw_get_type_declaration ~loc variant.var_ident env)
 
   let find_of_field (field : lid) env =
     find_of_lident ~kind:"field" ~get_name:Scope.find_field field env
@@ -1283,14 +1285,7 @@ open Format
 
 let pp_typ = Typeprint.type_expr
 
-let pp_decl_typ ppf decl =
-  pp_typ ppf
-    { type_desc=
-        Tctor {var_ident= Pident decl.tdec_ident; var_params= decl.tdec_params}
-    ; type_id= -1
-    ; type_depth= -1
-    ; type_mode= Ident.mode decl.tdec_ident
-    ; type_alternate= checked_none }
+let pp_decl_typ ppf decl = pp_typ ppf decl.tdec_ret
 
 let report_error ppf = function
   | No_open_scopes ->
