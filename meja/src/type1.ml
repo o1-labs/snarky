@@ -599,9 +599,8 @@ module Decl = struct
 
   let mk ~name ~params desc =
     incr decl_id ;
-    {tdec_ident= name; tdec_params= params; tdec_desc= desc; tdec_id= !decl_id}
-
-  let mk_typ ~mode ~params ?ident depth decl =
-    let ident = Option.value ident ~default:(Path.Pident decl.tdec_ident) in
-    Mk.ctor ~mode depth ident params
+    let tdec_ret =
+      Mk.ctor ~mode:(Ident.mode name) 10000 (Path.Pident name) params
+    in
+    {tdec_params= params; tdec_desc= desc; tdec_id= !decl_id; tdec_ret}
 end
