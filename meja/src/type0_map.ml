@@ -130,22 +130,13 @@ let ctor_decl mapper ({ctor_ident; ctor_args= args; ctor_ret} as decl) =
       else {ctor_ident; ctor_args; ctor_ret= Some ctor_ret}
 
 let type_decl mapper
-    ( { tdec_ident= ident
-      ; tdec_params= params
-      ; tdec_desc= desc
-      ; tdec_id
-      ; tdec_ret= ret } as decl ) =
+    ({tdec_params= params; tdec_desc= desc; tdec_id; tdec_ret= ret} as decl) =
   let same = ref true in
   let tdec_params = map_list params ~same ~f:(mapper.type_expr mapper) in
   let tdec_desc = mapper.type_decl_desc mapper desc in
-  let tdec_ident = mapper.ident mapper ident in
   let tdec_ret = mapper.type_expr mapper ret in
-  if
-    !same && phys_equal tdec_desc desc
-    && phys_equal tdec_ident ident
-    && phys_equal tdec_ret ret
-  then decl
-  else {tdec_ident; tdec_params; tdec_desc; tdec_id; tdec_ret}
+  if !same && phys_equal tdec_desc desc && phys_equal tdec_ret ret then decl
+  else {tdec_params; tdec_desc; tdec_id; tdec_ret}
 
 let type_decl_desc mapper desc =
   match desc with

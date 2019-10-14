@@ -602,9 +602,5 @@ module Decl = struct
     let tdec_ret =
       Mk.ctor ~mode:(Ident.mode name) 10000 (Path.Pident name) params
     in
-    { tdec_ident= name
-    ; tdec_params= params
-    ; tdec_desc= desc
-    ; tdec_id= !decl_id
-    ; tdec_ret }
+    {tdec_params= params; tdec_desc= desc; tdec_id= !decl_id; tdec_ret}
 end

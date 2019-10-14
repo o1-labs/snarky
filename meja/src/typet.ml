@@ -285,7 +285,9 @@ module TypeDecl = struct
           (* Add the type declaration to the outer scope. *)
           let scope, env = Envi.pop_scope env in
           let env =
-            map_current_scope ~f:(Scope.add_type_declaration decl) env
+            map_current_scope
+              ~f:(Scope.add_type_declaration ctor_ident.txt decl)
+              env
           in
           let env = Envi.push_scope scope env in
           (env, Type0.Ctor_record decl)
@@ -305,7 +307,7 @@ module TypeDecl = struct
   let import ?other_name decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
-    let tdec_ident, tdec_id =
+    let tdec_ident, path, tdec_id =
       match
         IdTbl.find_name ~modes:(modes_of_mode mode) tdec_ident.txt
           env.resolve_env.type_env.predeclared_types
@@ -325,13 +327,17 @@ module TypeDecl = struct
           <- { type_env with
                predeclared_types= IdTbl.remove ident type_env.predeclared_types
              } ;
-          (Location.mkloc ident tdec_ident.loc, id)
+          (Location.mkloc ident tdec_ident.loc, Path.Pident ident, id)
       | None -> (
         match tdec_desc with
-        | Pdec_extend (path, {tdec_ident; _}, _) ->
-            (map_loc ~f:(fun _ -> tdec_ident) path, next_id env)
+        | Pdec_extend (path, _, _) ->
+            let tdec_ident, _ =
+              Envi.raw_get_type_declaration ~loc:path.loc path.txt env
+            in
+            (map_loc ~f:(fun _ -> tdec_ident) path, path.txt, next_id env)
         | _ ->
-            (map_loc ~f:(Ident.create ~mode) tdec_ident, next_id env) )
+            let ident = map_loc ~f:(Ident.create ~mode) tdec_ident in
+            (ident, Path.Pident ident.txt, next_id env) )
     in
     let env = open_expr_scope env in
     let import_params env =
@@ -348,25 +354,19 @@ module TypeDecl = struct
     let tdec_ret =
       match other_name with
       | None ->
-          Type1.Mk.ctor ~mode 10000 (Path.Pident tdec_ident.txt) params
-      | Some path ->
+          Type1.Mk.ctor ~mode 10000 path params
+      | Some path' ->
           let tmp = Type1.mkvar ~mode 10000 None in
-          tmp.type_desc
-          <- Tctor {var_ident= Path.Pident tdec_ident.txt; var_params= params} ;
+          tmp.type_desc <- Tctor {var_ident= path; var_params= params} ;
           tmp.type_alternate.type_desc
           <- Tctor
-               { var_ident= path
+               { var_ident= path'
                ; var_params=
                    List.map params ~f:(fun param -> param.type_alternate) } ;
           tmp
     in
     let decl =
-      Type0.
-        { tdec_ident= tdec_ident.txt
-        ; tdec_params= params
-        ; tdec_desc= TAbstract
-        ; tdec_id
-        ; tdec_ret }
+      Type0.{tdec_params= params; tdec_desc= TAbstract; tdec_id; tdec_ret}
     in
     (* Make sure the declaration is available to lookup for recursive types. *)
     let env =
@@ -376,7 +376,9 @@ module TypeDecl = struct
         | Pdec_extend _ ->
             env
         | _ ->
-            map_current_scope ~f:(Scope.add_type_declaration decl) env
+            map_current_scope
+              ~f:(Scope.add_type_declaration tdec_ident.txt decl)
+              env
       in
       Envi.push_scope scope env
     in
@@ -468,7 +470,9 @@ module TypeDecl = struct
     in
     let env = close_expr_scope env in
     let env =
-      map_current_scope ~f:(Scope.register_type_declaration decl.tdec_tdec) env
+      map_current_scope
+        ~f:(Scope.register_type_declaration tdec_ident.txt decl.tdec_tdec)
+        env
     in
     (decl, env)
 end
