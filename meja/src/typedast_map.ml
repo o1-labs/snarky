@@ -16,6 +16,10 @@ type mapper =
   ; pattern_desc: mapper -> pattern_desc -> pattern_desc
   ; expression: mapper -> expression -> expression
   ; expression_desc: mapper -> expression_desc -> expression_desc
+  ; convert: mapper -> convert -> convert
+  ; convert_desc: mapper -> convert_desc -> convert_desc
+  ; convert_body: mapper -> convert_body -> convert_body
+  ; convert_body_desc: mapper -> convert_body_desc -> convert_body_desc
   ; signature_item: mapper -> signature_item -> signature_item
   ; signature: mapper -> signature -> signature
   ; signature_desc: mapper -> signature_desc -> signature_desc
@@ -165,6 +169,33 @@ let pattern_desc mapper = function
              (path mapper name, mapper.pattern mapper pat) ))
   | Tpat_ctor (name, arg) ->
       Tpat_ctor (path mapper name, Option.map ~f:(mapper.pattern mapper) arg)
+
+let convert_body mapper {conv_body_desc; conv_body_loc; conv_body_type} =
+  { conv_body_loc= mapper.location mapper conv_body_loc
+  ; conv_body_desc= mapper.convert_body_desc mapper conv_body_desc
+  ; conv_body_type= mapper.type0.type_expr mapper.type0 conv_body_type }
+
+let convert_body_desc mapper = function
+  | Tconv_record fields ->
+      Tconv_record
+        (List.map fields ~f:(fun (name, conv) ->
+             (path mapper name, mapper.convert_body mapper conv) ))
+  | Tconv_ctor (name, args) ->
+      Tconv_ctor
+        (path mapper name, List.map ~f:(mapper.convert_body mapper) args)
+  | Tconv_tuple convs ->
+      Tconv_tuple (List.map ~f:(mapper.convert_body mapper) convs)
+
+let convert mapper {conv_desc; conv_loc; conv_type} =
+  { conv_loc= mapper.location mapper conv_loc
+  ; conv_desc= mapper.convert_desc mapper conv_desc
+  ; conv_type= mapper.type0.type_expr mapper.type0 conv_type }
+
+let convert_desc mapper = function
+  | Tconv_fun (name, conv) ->
+      Tconv_fun (ident mapper name, mapper.convert mapper conv)
+  | Tconv_body conv ->
+      Tconv_body (mapper.convert_body mapper conv)
 
 let expression mapper {exp_desc; exp_loc; exp_type} =
   { exp_loc= mapper.location mapper exp_loc
@@ -357,6 +388,10 @@ let default_iterator =
   ; pattern_desc
   ; expression
   ; expression_desc
+  ; convert_body
+  ; convert_body_desc
+  ; convert
+  ; convert_desc
   ; signature_item
   ; signature
   ; signature_desc
