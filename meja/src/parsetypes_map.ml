@@ -65,6 +65,8 @@ let type_desc mapper typ =
         , mapper.type_expr mapper typ )
   | Ptyp_prover typ ->
       Ptyp_prover (mapper.type_expr mapper typ)
+  | Ptyp_conv (typ1, typ2) ->
+      Ptyp_conv (mapper.type_expr mapper typ1, mapper.type_expr mapper typ2)
 
 let variant mapper {var_ident; var_params} =
   { var_ident= lid mapper var_ident

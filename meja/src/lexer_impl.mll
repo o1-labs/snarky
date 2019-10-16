@@ -80,6 +80,7 @@ rule token = parse
   | '[' { LBRACKET }
   | ']' { RBRACKET }
   | "->" { DASHGT }
+  | "-->" { DASHDASHGT }
   | "=>" { EQUALGT }
   | "~" { TILDE }
   | "?" { QUESTION }

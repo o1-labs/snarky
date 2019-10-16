@@ -79,6 +79,8 @@ let type_desc mapper typ =
         , mapper.type_expr mapper typ )
   | Ttyp_prover typ ->
       Ttyp_prover (mapper.type_expr mapper typ)
+  | Ttyp_conv (typ1, typ2) ->
+      Ttyp_conv (mapper.type_expr mapper typ1, mapper.type_expr mapper typ2)
 
 let variant mapper {var_ident; var_params} =
   { var_ident= path mapper var_ident

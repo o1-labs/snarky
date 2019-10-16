@@ -32,6 +32,12 @@ let rec type_desc ?(bracket = false) fmt = function
       if bracket then type_expr_b fmt typ else type_expr fmt typ
   | Treplace _ ->
       assert false
+  | Tconv typ ->
+      let typ1 = Type1.get_mode Checked typ in
+      let typ2 = Type1.get_mode Prover typ in
+      if bracket then fprintf fmt "(" ;
+      fprintf fmt "%a@ --> %a" type_expr_b typ1 type_expr typ2 ;
+      if bracket then fprintf fmt ")"
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
