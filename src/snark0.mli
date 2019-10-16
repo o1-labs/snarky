@@ -16,6 +16,18 @@ val set_reduce_to_prover : bool -> unit
     computation, to speed up subsequent calls. *DO NOT USE* if your checked
     computation uses mutability outside of [As_prover] blocks. *)
 
+(** The exception raised when evaluating a checked computation raises an
+    exception.
+
+    The arguments are:
+    1. a generic error message, with a presentation of the backtrace
+    2. the backtrace of all active labels at the point in the checked
+       computation when the exception was raised
+    3. the original exception that was raised
+    4. the backtrace of the original exception
+*)
+exception Runtime_error of string * string list * exn * string
+
 module Make (Backend : Backend_intf.S) :
   Snark_intf.S
   with type field = Backend.Field.t
@@ -29,6 +41,14 @@ module Make (Backend : Backend_intf.S) :
    and type Proof.message = Backend.Proof.message
 
 module Run : sig
+  val throw_on_id : int -> unit
+  (** [throw_on_id id] set an internal flag that causes [Make] to throw an
+      error if its internal id would be the same as [id].
+
+      This can be used to identify where different instances come from, so that
+      the same instance can be used for creating and calling functions.
+  *)
+
   module Make
       (Backend : Backend_intf.S) (Prover_state : sig
           type t

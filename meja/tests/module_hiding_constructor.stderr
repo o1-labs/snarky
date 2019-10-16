@@ -1,0 +1,2 @@
+File "tests/module_hiding_constructor.meja", line 16, characters 8-11:
+Error: Unbound constructor A.X.

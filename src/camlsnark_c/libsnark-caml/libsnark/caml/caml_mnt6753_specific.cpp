@@ -1,4 +1,5 @@
 #include <libsnark/caml/caml_mnt6753.hpp>
+#include <libsnark/caml/caml_mnt.cpp.template>
 
 extern "C" {
 using namespace libsnark;
@@ -111,13 +112,6 @@ void camlsnark_mnt6753_g1_vector_delete(std::vector<libff::G1<ppT>>* v) {
 // End g1 code
 
 // Start g2 code
-libff::G2<ppT>* camlsnark_mnt6753_g2_of_coords (
-    std::vector<libff::Fq<ppT>>* x,
-    std::vector<libff::Fq<ppT>>* y) {
-  return new libff::G2<ppT>(
-      libff::Fqe<ppT>(*x), libff::Fqe<ppT>(*y), libff::Fqe<ppT>::one() );
-}
-
 libff::G2<ppT>* camlsnark_mnt6753_g2_negate (libff::G2<ppT>* a) {
   return new libff::G2<ppT>(- *a);
 }
@@ -170,16 +164,6 @@ void camlsnark_mnt6753_g2_to_affine_coordinates(libff::G2<ppT>* a) {
   a->to_affine_coordinates();
 }
 
-std::vector<libff::Fq<ppT>>* camlsnark_mnt6753_g2_x(libff::G2<ppT>* a) {
-  assert(a->Z() == libff::Fqe<ppT>::one());
-  return new std::vector< libff::Fq<ppT> >(a->X().all_base_field_elements());
-}
-
-std::vector<libff::Fq<ppT>>* camlsnark_mnt6753_g2_y(libff::G2<ppT>* a) {
-  assert(a->Z() == libff::Fqe<ppT>::one());
-  return new std::vector< libff::Fq<ppT> >(a->Y().all_base_field_elements());
-}
-
 std::vector<libff::G2<ppT>>* camlsnark_mnt6753_g2_vector_create() {
   return new std::vector<libff::G2<ppT>>();
 }
@@ -203,7 +187,7 @@ void camlsnark_mnt6753_g2_vector_delete(std::vector<libff::G2<ppT>>* v) {
 
 // End g2 code
 
-libff::Fqk<ppT>* camlsnark_mnt6753_fqk_one(libff::Fqk<ppT>* a) {
+libff::Fqk<ppT>* camlsnark_mnt6753_fqk_one() {
   return new libff::Fqk<ppT>(libff::Fqk<ppT>::one());
 }
 

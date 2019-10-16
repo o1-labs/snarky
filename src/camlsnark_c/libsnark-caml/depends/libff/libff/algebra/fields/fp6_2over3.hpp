@@ -46,6 +46,7 @@ public:
     my_Fp3 c0, c1;
     Fp6_2over3_model() {};
     Fp6_2over3_model(const my_Fp3& c0, const my_Fp3& c1) : c0(c0), c1(c1) {};
+    Fp6_2over3_model(const std::vector<my_Fp>& v) : c0(my_Fp3(v[0], v[1], v[2])), c1(my_Fp3(v[3], v[4], v[5])) {};
 
     void print() const { printf("c0/c1:\n"); c0.print(); c1.print(); }
     void clear() { c0.clear(); c1.clear(); }

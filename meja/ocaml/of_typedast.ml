@@ -1,0 +1,333 @@
+open Core_kernel
+open Asttypes
+open Meja_lib.Ast_types
+open Ast_helper
+open Meja_lib.Typedast
+
+let of_ident = Meja_lib.Ident.name
+
+let of_ident_loc = map_loc ~f:of_ident
+
+let of_path = Meja_lib.Path.to_longident
+
+let of_path_loc = map_loc ~f:of_path
+
+let mk_loc ?loc x =
+  match loc with
+  | Some loc ->
+      Location.mkloc x loc
+  | None ->
+      Location.mknoloc x
+
+let rec of_type_desc ?loc typ =
+  match typ with
+  | Ttyp_var None ->
+      Typ.any ?loc ()
+  | Ttyp_var (Some name) ->
+      Typ.var ?loc name.txt
+  | Ttyp_poly (_, typ) ->
+      of_type_expr typ
+  | Ttyp_arrow (typ1, typ2, _, label) ->
+      Typ.arrow ?loc label (of_type_expr typ1) (of_type_expr typ2)
+  | Ttyp_ctor {var_ident= name; var_params= params; _} ->
+      Typ.constr ?loc (of_path_loc name) (List.map ~f:of_type_expr params)
+  | Ttyp_tuple typs ->
+      Typ.tuple ?loc (List.map ~f:of_type_expr typs)
+  | Ttyp_prover typ ->
+      of_type_expr typ
+
+and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
+
+let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
+  Type.field ~loc (of_ident_loc name) (of_type_expr typ)
+
+let of_ctor_args = function
+  | Tctor_tuple args ->
+      Parsetree.Pcstr_tuple (List.map ~f:of_type_expr args)
+  | Tctor_record fields ->
+      Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
+
+let of_ctor_decl
+    { ctor_ident= name
+    ; ctor_args= args
+    ; ctor_ret= ret
+    ; ctor_loc= loc
+    ; ctor_ctor= _ } =
+  Type.constructor (of_ident_loc name) ~loc ~args:(of_ctor_args args)
+    ?res:(Option.map ~f:of_type_expr ret)
+
+let of_ctor_decl_ext
+    { ctor_ident= name
+    ; ctor_args= args
+    ; ctor_ret= ret
+    ; ctor_loc= loc
+    ; ctor_ctor= _ } =
+  Te.decl ~loc ~args:(of_ctor_args args) (of_ident_loc name)
+    ?res:(Option.map ~f:of_type_expr ret)
+
+let of_type_decl decl =
+  let loc = decl.tdec_loc in
+  let name = of_ident_loc decl.tdec_ident in
+  let params =
+    List.map ~f:(fun t -> (of_type_expr t, Invariant)) decl.tdec_params
+  in
+  match decl.tdec_desc with
+  | Tdec_abstract ->
+      Type.mk name ~loc ~params
+  | Tdec_alias typ ->
+      Type.mk name ~loc ~params ~manifest:(of_type_expr typ)
+  | Tdec_record fields ->
+      Type.mk name ~loc ~params
+        ~kind:(Parsetree.Ptype_record (List.map ~f:of_field_decl fields))
+  | Tdec_variant ctors ->
+      Type.mk name ~loc ~params
+        ~kind:(Parsetree.Ptype_variant (List.map ~f:of_ctor_decl ctors))
+  | Tdec_open ->
+      Type.mk name ~loc ~params ~kind:Parsetree.Ptype_open
+  | Tdec_extend _ ->
+      failwith "Cannot convert TExtend to OCaml"
+
+let rec of_pattern_desc ?loc = function
+  | Tpat_any ->
+      Pat.any ?loc ()
+  | Tpat_variable str ->
+      Pat.var ?loc (of_ident_loc str)
+  | Tpat_constraint (p, typ) ->
+      Pat.constraint_ ?loc (of_pattern p) (of_type_expr typ)
+  | Tpat_tuple ps ->
+      Pat.tuple ?loc (List.map ~f:of_pattern ps)
+  | Tpat_or (p1, p2) ->
+      Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
+  | Tpat_int i ->
+      Pat.constant ?loc (Const.int i)
+  | Tpat_record fields ->
+      Pat.record ?loc
+        (List.map fields ~f:(fun (f, p) -> (of_path_loc f, of_pattern p)))
+        Open
+  | Tpat_ctor (name, arg) ->
+      Pat.construct ?loc (of_path_loc name) (Option.map ~f:of_pattern arg)
+
+and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
+
+let of_literal ?loc = function
+  | Bool _ ->
+      failwith "Unhandled boolean literal"
+  | Int i ->
+      Exp.constant ?loc (Const.int i)
+  | Field _f ->
+      failwith "Unhandled field literal"
+  | String s ->
+      Exp.constant ?loc (Const.string s)
+
+let rec of_expression_desc ?loc = function
+  | Texp_apply (f, es) ->
+      Exp.apply ?loc (of_expression f)
+        (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
+  | Texp_variable name ->
+      Exp.ident ?loc (of_path_loc name)
+  | Texp_literal l ->
+      of_literal ?loc l
+  | Texp_fun (label, p, body, _) ->
+      Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
+  | Texp_newtype (name, body) ->
+      Exp.newtype ?loc (of_ident_loc name) (of_expression body)
+  | Texp_constraint (e, typ) ->
+      Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
+  | Texp_seq (e1, e2) ->
+      Exp.sequence ?loc (of_expression e1) (of_expression e2)
+  | Texp_let (p, e_rhs, e) ->
+      Exp.let_ ?loc Nonrecursive
+        [Vb.mk (of_pattern p) (of_expression e_rhs)]
+        (of_expression e)
+  | Texp_tuple es ->
+      Exp.tuple ?loc (List.map ~f:of_expression es)
+  | Texp_match (e, cases) ->
+      Exp.match_ ?loc (of_expression e)
+        (List.map cases ~f:(fun (p, e) ->
+             Exp.case (of_pattern p) (of_expression e) ))
+  | Texp_field (e, field) ->
+      Exp.field ?loc (of_expression e) (of_path_loc field)
+  | Texp_record (fields, ext) ->
+      Exp.record ?loc
+        (List.map fields ~f:(fun (f, e) -> (of_path_loc f, of_expression e)))
+        (Option.map ~f:of_expression ext)
+  | Texp_ctor (name, arg) ->
+      Exp.construct ?loc (of_path_loc name) (Option.map ~f:of_expression arg)
+  | Texp_unifiable {expression= Some e; _} ->
+      of_expression e
+  | Texp_unifiable {name; _} ->
+      Exp.ident ?loc (mk_lid @@ of_ident_loc name)
+  | Texp_if (e1, e2, e3) ->
+      Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
+        (Option.map ~f:of_expression e3)
+  | Texp_prover e ->
+      of_expression e
+
+and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
+  Parsetree.(
+    [%expr
+      function
+      | With
+          { request=
+              [%p
+                match ctor_ident with
+                | Some ctor_ident ->
+                    Pat.construct ~loc (mk_lid ctor_ident)
+                      (Option.map ~f:of_pattern args)
+                | None -> (
+                  match args with
+                  | Some args ->
+                      of_pattern args
+                  | None ->
+                      Pat.any () )]
+          ; respond } ->
+          let unhandled = Snarky.Request.unhandled in
+          [%e of_expression body]
+      | _ ->
+          Snarky.Request.unhandled])
+
+and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
+
+let rec of_signature_desc ?loc = function
+  | Tsig_value (name, typ) | Tsig_instance (name, typ) ->
+      Sig.value ?loc (Val.mk ?loc (of_ident_loc name) (of_type_expr typ))
+  | Tsig_type decl ->
+      Sig.type_ ?loc Recursive [of_type_decl decl]
+  | Tsig_module (name, msig) ->
+      let msig =
+        match of_module_sig msig with
+        | Some msig ->
+            msig
+        | None ->
+            failwith
+              "Cannot generate OCaml for a module with an abstract signature"
+      in
+      Sig.module_ ?loc (Md.mk ?loc (of_ident_loc name) msig)
+  | Tsig_modtype (name, msig) ->
+      Sig.modtype ?loc
+        (Mtd.mk ?loc ?typ:(of_module_sig msig) (of_ident_loc name))
+  | Tsig_open name ->
+      Sig.open_ ?loc (Opn.mk ?loc (of_path_loc name))
+  | Tsig_typeext (variant, ctors) ->
+      let params =
+        List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
+        )
+      in
+      let ctors = List.map ~f:of_ctor_decl_ext ctors in
+      Sig.type_extension ?loc
+        (Te.mk ~params (of_path_loc variant.var_ident) ctors)
+  | Tsig_request (_, ctor) ->
+      let params = [(Typ.any ?loc (), Invariant)] in
+      let ident =
+        mk_loc ?loc Longident.(Ldot (Ldot (Lident "Snarky", "Request"), "t"))
+      in
+      Sig.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
+  | Tsig_multiple sigs | Tsig_prover sigs ->
+      Sig.include_ ?loc
+        { pincl_mod= Mty.signature ?loc (of_signature sigs)
+        ; pincl_loc= Option.value ~default:Location.none loc
+        ; pincl_attributes= [] }
+
+and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
+
+and of_signature sig_ = List.map ~f:of_signature_item sig_
+
+and of_module_sig_desc ?loc = function
+  | Tmty_sig signature ->
+      Some (Mty.signature ?loc (of_signature signature))
+  | Tmty_name name ->
+      Some (Mty.ident ?loc (of_path_loc name))
+  | Tmty_alias name ->
+      Some (Mty.alias ?loc (of_path_loc name))
+  | Tmty_abstract ->
+      None
+  | Tmty_functor (name, f, msig) ->
+      let msig =
+        match of_module_sig msig with
+        | Some msig ->
+            msig
+        | None ->
+            failwith
+              "Cannot generate OCaml for a functor signature with an abstract \
+               signature"
+      in
+      Some (Mty.functor_ ?loc name (of_module_sig f) msig)
+
+and of_module_sig msig = of_module_sig_desc ~loc:msig.msig_loc msig.msig_desc
+
+let rec of_statement_desc ?loc = function
+  | Tstmt_value (p, e) ->
+      Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
+  | Tstmt_instance (name, e) ->
+      Str.value ?loc Nonrecursive
+        [Vb.mk (Pat.var ?loc (of_ident_loc name)) (of_expression e)]
+  | Tstmt_type decl ->
+      Str.type_ ?loc Recursive [of_type_decl decl]
+  | Tstmt_module (name, m) ->
+      Str.module_ ?loc (Mb.mk ?loc (of_ident_loc name) (of_module_expr m))
+  | Tstmt_modtype (name, msig) ->
+      Str.modtype ?loc
+        (Mtd.mk ?loc ?typ:(of_module_sig msig) (of_ident_loc name))
+  | Tstmt_open name ->
+      Str.open_ ?loc (Opn.mk ?loc (Of_ocaml.open_of_name (of_path_loc name)))
+  | Tstmt_typeext (variant, ctors) ->
+      let params =
+        List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
+        )
+      in
+      let ctors = List.map ~f:of_ctor_decl_ext ctors in
+      Str.type_extension ?loc
+        (Te.mk ~params (of_path_loc variant.var_ident) ctors)
+  | Tstmt_request (_, ctor, handler) ->
+      let params = [(Typ.any ?loc (), Invariant)] in
+      let ident =
+        mk_loc ?loc Longident.(Ldot (Ldot (Lident "Snarky", "Request"), "t"))
+      in
+      let typ_ext =
+        Str.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
+      in
+      let handler =
+        Option.map handler
+          ~f:
+            Parsetree.(
+              fun (args, body) ->
+                let {txt= name; loc} = ctor.ctor_ident in
+                [%stri
+                  let [%p
+                        Pat.var ~loc (mk_loc ~loc ("handle_" ^ of_ident name))]
+                      = function
+                    | With
+                        { request=
+                            [%p
+                              Pat.construct ~loc
+                                (mk_lid (of_ident_loc ctor.ctor_ident))
+                                (Option.map ~f:of_pattern args)]
+                        ; respond } ->
+                        let unhandled = Snarky.Request.unhandled in
+                        [%e of_expression body]
+                    | _ ->
+                        Snarky.Request.unhandled])
+      in
+      Str.include_ ?loc
+        { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
+        ; pincl_loc= Option.value ~default:Location.none loc
+        ; pincl_attributes= [] }
+  | Tstmt_multiple stmts | Tstmt_prover stmts ->
+      Str.include_ ?loc
+        { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
+        ; pincl_loc= Option.value ~default:Location.none loc
+        ; pincl_attributes= [] }
+
+and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
+
+and of_module_expr m = of_module_desc ~loc:m.mod_loc m.mod_desc
+
+and of_module_desc ?loc = function
+  | Tmod_struct stmts ->
+      Mod.structure ?loc (List.map ~f:of_statement stmts)
+  | Tmod_name name ->
+      Mod.ident ?loc (of_path_loc name)
+  | Tmod_functor (name, f, m) ->
+      Mod.functor_ ?loc name (of_module_sig f) (of_module_expr m)
+
+let of_file = List.map ~f:of_statement

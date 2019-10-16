@@ -42,20 +42,17 @@ end
 
 module Type = struct
   let mk ?(loc = Location.none) d : Parsetypes.type_expr =
-    {type_desc= d; type_id= -1; type_loc= loc}
+    {type_desc= d; type_loc= loc}
 
-  let variant ?loc ?(params = []) ?(implicits = []) ident =
-    { var_ident= Loc.mk ident ?loc
-    ; var_params= params
-    ; var_implicit_params= implicits }
+  let variant ?loc ?(params = []) ident =
+    {var_ident= Loc.mk ident ?loc; var_params= params}
 
-  let none ?loc ?(explicit = Explicit) () = mk ?loc (Ptyp_var (None, explicit))
+  let none ?loc () = mk ?loc (Ptyp_var None)
 
-  let var ?loc ?(explicit = Explicit) name =
-    mk ?loc (Ptyp_var (Some (Loc.mk ?loc name), explicit))
+  let var ?loc name = mk ?loc (Ptyp_var (Some (Loc.mk ?loc name)))
 
-  let constr ?loc ?params ?implicits ident =
-    mk ?loc (Ptyp_ctor (variant ?loc ?params ?implicits ident))
+  let constr ?loc ?params ident =
+    mk ?loc (Ptyp_ctor (variant ?loc ?params ident))
 
   let tuple ?loc typs = mk ?loc (Ptyp_tuple typs)
 
@@ -66,34 +63,23 @@ module Type = struct
 end
 
 module Type_decl = struct
-  let mk ?(loc = Location.none) ?(params = []) ?(implicits = []) name d :
-      Parsetypes.type_decl =
+  let mk ?(loc = Location.none) ?(params = []) name d : Parsetypes.type_decl =
     { tdec_ident= Loc.mk ~loc name
     ; tdec_params= params
-    ; tdec_implicit_params= implicits
     ; tdec_desc= d
     ; tdec_loc= loc }
 
-  let abstract ?loc ?params ?implicits name =
-    mk ?loc ?params ?implicits name TAbstract
+  let abstract ?loc ?params name = mk ?loc ?params name Pdec_abstract
 
-  let alias ?loc ?params ?implicits name typ =
-    mk ?loc ?params ?implicits name (TAlias typ)
+  let alias ?loc ?params name typ = mk ?loc ?params name (Pdec_alias typ)
 
-  let unfold ?loc ?params ?implicits name typ =
-    mk ?loc ?params ?implicits name (TUnfold typ)
+  let record ?loc ?params name fields =
+    mk ?loc ?params name (Pdec_record fields)
 
-  let record ?loc ?params ?implicits name fields =
-    mk ?loc ?params ?implicits name (TRecord fields)
+  let variant ?loc ?params name ctors =
+    mk ?loc ?params name (Pdec_variant ctors)
 
-  let variant ?loc ?params ?implicits name ctors =
-    mk ?loc ?params ?implicits name (TVariant ctors)
-
-  let open_ ?loc ?params ?implicits name =
-    mk ?loc ?params ?implicits name TOpen
-
-  let forward ?loc ?params ?implicits name =
-    mk ?loc ?params ?implicits name (TForward (ref None))
+  let open_ ?loc ?params name = mk ?loc ?params name Pdec_open
 
   module Field = struct
     let mk ?(loc = Location.none) name typ : Parsetypes.field_decl =
@@ -107,7 +93,7 @@ module Type_decl = struct
     let with_args ?loc ?ret name args = mk ?loc ?ret name (Ctor_tuple args)
 
     let with_record ?loc ?ret name fields =
-      mk ?loc ?ret name (Ctor_record (-1, fields))
+      mk ?loc ?ret name (Ctor_record fields)
   end
 end
 

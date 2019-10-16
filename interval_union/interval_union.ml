@@ -85,12 +85,18 @@ let of_intervals_exn is =
 let to_interval = function
   | [i] ->
       Ok i
-  | ([] | _ :: _ :: _) as xs ->
+  | [] ->
+      Or_error.error_string "Interval_union.to_interval: the union is empty\n"
+  | _ :: _ :: _ as xs ->
       Or_error.error_string
         (Printf.sprintf
-           !"Interval_union.to_interval: was not an interval %{sexp: \
-             Interval.t list}\n"
+           !"Interval_union.to_interval: expected a single interval in the \
+             union, got multiple disjoint intervals %{sexp: Interval.t list}\n"
            xs)
+
+let right_endpoint t = Option.map ~f:snd (List.last t)
+
+let left_endpoint t = Option.map ~f:fst (List.hd t)
 
 let invariant t =
   let rec go = function

@@ -1,4 +1,5 @@
 open Core_kernel
+open Bitstring_lib
 open Tuple_lib
 
 let local_function ~negate quad (b0, b1, b2) =
@@ -10,8 +11,6 @@ module Make
         type var = Impl.Field.Var.t * Impl.Field.Var.t
 
         type t [@@deriving eq]
-
-        val to_affine_exn : t -> Impl.Field.t * Impl.Field.t
 
         val add : t -> t -> t
 
@@ -35,7 +34,9 @@ module Make
                Impl.Checked.t
         end
     end) (Params : sig
-      val params : Weierstrass_curve.t Quadruple.t array
+      open Impl
+
+      val params : (Field.t * Field.t) Quadruple.t array
     end) : sig
   open Impl
 
@@ -43,9 +44,9 @@ module Make
     type var = Field.Var.t
 
     module Unpacked : sig
-      type var = private Boolean.var list
+      type var = Boolean.var Bitstring.Lsb_first.t
 
-      type t = bool list
+      type t = bool Bitstring.Lsb_first.t
 
       val typ : (var, t) Typ.t
 
@@ -75,6 +76,8 @@ module Make
     val extend :
       t -> Boolean.var Triple.t list -> start:int -> (t, _) Checked.t
 
+    val append : t -> Boolean.var Triple.t list -> (t, _) Checked.t
+
     val acc : t -> Weierstrass_curve.var
 
     val support : t -> Interval_union.t
@@ -97,18 +100,15 @@ module Make
 end = struct
   open Impl
 
+  type affine_point = Field.t * Field.t
+
   let coords :
-         Weierstrass_curve.t Quadruple.t
-      -> Field.t Quadruple.t * Field.t Quadruple.t =
-   fun (t1, t2, t3, t4) ->
-    let x1, y1 = Weierstrass_curve.to_affine_exn t1
-    and x2, y2 = Weierstrass_curve.to_affine_exn t2
-    and x3, y3 = Weierstrass_curve.to_affine_exn t3
-    and x4, y4 = Weierstrass_curve.to_affine_exn t4 in
+      affine_point Quadruple.t -> Field.t Quadruple.t * Field.t Quadruple.t =
+   fun ((x1, y1), (x2, y2), (x3, y3), (x4, y4)) ->
     ((x1, x2, x3, x4), (y1, y2, y3, y4))
 
   let lookup ((s0, s1, s2) : Boolean.var Triple.t)
-      (q : Weierstrass_curve.t Quadruple.t) =
+      (q : affine_point Quadruple.t) =
     let%bind s_and = Boolean.(s0 && s1) in
     let open Field.Checked in
     let lookup_one (a1, a2, a3, a4) =
@@ -133,15 +133,22 @@ end = struct
     let length_in_bits = Field.size_in_bits
 
     module Unpacked = struct
-      type var = Boolean.var list
+      open Bitstring.Lsb_first
 
-      type t = bool list
+      type var = Boolean.var t
 
-      let typ : (var, t) Typ.t = Typ.list Boolean.typ ~length:length_in_bits
+      type t = bool Bitstring.Lsb_first.t
 
-      let project = Field.Var.project
+      let typ : (var, t) Typ.t =
+        let there = to_list in
+        let back = of_list in
+        Typ.list Boolean.typ ~length:length_in_bits
+        |> Typ.transport ~there ~back
+        |> Typ.transport_var ~there ~back
 
-      let constant = List.map ~f:Boolean.var_of_value
+      let project = Fn.compose Field.Var.project to_list
+
+      let constant bs = of_list (List.map ~f:Boolean.var_of_value (to_list bs))
     end
 
     type var = Field.Var.t
@@ -153,6 +160,7 @@ end = struct
     let choose_preimage x =
       with_label "Pedersen.Digest.choose_preimage"
         (Field.Checked.choose_preimage_var ~length:Field.size_in_bits x)
+      |> Checked.map ~f:Bitstring.Lsb_first.of_list
   end
 
   let digest (x, _) = x
@@ -263,6 +271,12 @@ end = struct
                 hash start v (x :: xs)
           in
           {support; acc= `Var acc}
+
+    let append t triples =
+      let start =
+        Option.value (Interval_union.right_endpoint t.support) ~default:0
+      in
+      extend t triples ~start
   end
 
   let hash ~init:(start, acc) triples =

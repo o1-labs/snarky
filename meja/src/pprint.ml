@@ -4,9 +4,9 @@ open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Ptyp_var (None, _) ->
+  | Ptyp_var None ->
       fprintf fmt "_"
-  | Ptyp_var (Some name, _) ->
+  | Ptyp_var (Some name) ->
       fprintf fmt "'%s" name.txt
   | Ptyp_tuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
@@ -27,6 +27,8 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false)
         (Ptyp_tuple vars) type_expr typ ;
       if bracket then fprintf fmt ")"
+  | Ptyp_prover typ ->
+      fprintf fmt "@[<2>Prover {@ %a@ }@]" type_expr typ
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -51,7 +53,7 @@ let ctor_args fmt = function
       ()
   | Ctor_tuple typs ->
       tuple fmt typs
-  | Ctor_record (_, fields) ->
+  | Ctor_record fields ->
       fprintf fmt "{@[<2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
@@ -65,31 +67,22 @@ let ctor_decl fmt decl =
       ()
 
 let type_decl_desc fmt = function
-  | TAbstract ->
+  | Pdec_abstract ->
       ()
-  | TAlias typ | TUnfold typ ->
+  | Pdec_alias typ ->
       fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
-  | TRecord fields ->
+  | Pdec_record fields ->
       fprintf fmt "@ =@ {@[<hv2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
-  | TOpen ->
+  | Pdec_open ->
       fprintf fmt "@ =@ .."
-  | TExtend (name, _, ctors) ->
-      fprintf fmt "@ /*@[%a +=@ %a@]*/" Longident.pp name.txt
+  | Pdec_extend (name, _, ctors) ->
+      fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name.txt
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
-  | TForward i ->
-      let print_id fmt i =
-        match i with
-        | Some i ->
-            pp_print_int fmt i
-        | None ->
-            pp_print_char fmt '?'
-      in
-      fprintf fmt "@ /* forward declaration %a */" print_id !i
 
 let type_decl fmt decl =
   fprintf fmt "type %s" decl.tdec_ident.txt ;
@@ -241,6 +234,8 @@ let rec expression_desc fmt = function
       fprintf fmt
         "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else@ {@[<hv2>@,%a@,@]}"
         expression e1 expression e2 expression e3
+  | Pexp_prover e ->
+      fprintf fmt "@[<hv2>Prover {@,%a@,}@]" expression e
 
 and expression_desc_bracket fmt exp =
   match exp with
@@ -255,6 +250,8 @@ and expression_desc_bracket fmt exp =
   | Pexp_record _
   | Pexp_ctor _ ->
       expression_desc fmt exp
+  | Pexp_seq _ | Pexp_let _ ->
+      fprintf fmt "{@[<hv1>@,%a@,@]}" expression_desc exp
   | _ ->
       fprintf fmt "(@[<hv1>@,%a@,@])" expression_desc exp
 
@@ -296,6 +293,8 @@ let rec signature_desc fmt = function
         ctor_decl ctor
   | Psig_multiple sigs ->
       signature fmt sigs
+  | Psig_prover sigs ->
+      fprintf fmt "@[<2>Prover {@,%a@,}@]@;@;" signature sigs
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 
@@ -307,6 +306,8 @@ and module_sig_desc ~prefix fmt = function
       fprintf fmt "{@[<hv1>@;%a@]}" signature msig
   | Pmty_name name ->
       prefix fmt ; Longident.pp fmt name.txt
+  | Pmty_alias name ->
+      fprintf fmt "=@ " ; Longident.pp fmt name.txt
   | Pmty_abstract ->
       ()
   | Pmty_functor (name, f, m) ->

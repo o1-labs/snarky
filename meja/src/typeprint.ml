@@ -4,9 +4,9 @@ open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Tvar (None, _) ->
+  | Tvar None ->
       fprintf fmt "_"
-  | Tvar (Some name, _) ->
+  | Tvar (Some name) ->
       fprintf fmt "'%s" name
   | Ttuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
@@ -27,6 +27,11 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
         type_expr typ ;
       if bracket then fprintf fmt ")"
+  | Tref typ ->
+      let typ = Type1.repr typ in
+      if bracket then type_expr_b fmt typ else type_expr fmt typ
+  | Treplace _ ->
+      assert false
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -38,12 +43,13 @@ and type_expr_b fmt typ = type_desc ~bracket:true fmt typ.type_desc
 and variant fmt v =
   match v.var_params with
   | [] ->
-      Longident.pp fmt v.var_ident
+      Path.pp fmt v.var_ident
   | _ ->
-      fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident tuple v.var_params
+      fprintf fmt "@[<hv2>%a%a@]" Path.pp v.var_ident tuple v.var_params
 
 let field_decl fmt decl =
-  fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident type_expr decl.fld_type
+  fprintf fmt "%a:@ @[<hv>%a@]" Ident.pprint decl.fld_ident type_expr
+    decl.fld_type
 
 let ctor_args fmt = function
   | Ctor_tuple [] ->
@@ -58,7 +64,7 @@ let ctor_args fmt = function
       assert false
 
 let ctor_decl fmt decl =
-  fprintf fmt "%a%a" pp_name decl.ctor_ident ctor_args decl.ctor_args ;
+  fprintf fmt "%a%a" Ident.pprint decl.ctor_ident ctor_args decl.ctor_args ;
   match decl.ctor_ret with
   | Some typ ->
       fprintf fmt "@ :@ @[<hv>%a@]" type_expr typ
@@ -68,7 +74,7 @@ let ctor_decl fmt decl =
 let type_decl_desc fmt = function
   | TAbstract ->
       ()
-  | TAlias typ | TUnfold typ ->
+  | TAlias typ ->
       fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
   | TRecord fields ->
       fprintf fmt "@ =@ {@[<hv2>%a@]}"
@@ -79,7 +85,7 @@ let type_decl_desc fmt = function
   | TOpen ->
       fprintf fmt "@ =@ .."
   | TExtend (name, _, ctors) ->
-      fprintf fmt "@ /*@[%a +=@ %a@]*/" Longident.pp name
+      fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
   | TForward i ->
@@ -92,7 +98,7 @@ let type_decl_desc fmt = function
       in
       fprintf fmt "@ /* forward declaration %a */" print_id !i
 
-let type_decl fmt decl =
-  fprintf fmt "type %s" decl.tdec_ident ;
+let type_decl ident fmt decl =
+  fprintf fmt "type %a" Ident.pprint ident ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc

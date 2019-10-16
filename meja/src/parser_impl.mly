@@ -12,7 +12,7 @@ let lid_last x = mkloc (last x.txt) x.loc
 
 let mkloc ~pos x = mkloc x (Loc.of_pos pos)
 
-let mktyp ~pos d = {type_desc= d; type_id= -1; type_loc= Loc.of_pos pos}
+let mktyp ~pos d = {type_desc= d; type_loc= Loc.of_pos pos}
 let mkpat ~pos d = {pat_desc= d; pat_loc= Loc.of_pos pos}
 let mkexp ~pos d = {exp_desc= d; exp_loc= Loc.of_pos pos}
 let mkstmt ~pos d = {stmt_desc= d; stmt_loc= Loc.of_pos pos}
@@ -34,6 +34,7 @@ let consexp ~pos hd tl =
 %token <string> STRING
 %token <string> LIDENT
 %token <string> UIDENT
+%token PROVER
 %token FUN
 %token LET
 %token INSTANCE
@@ -144,7 +145,6 @@ structure_item:
       mkstmt ~pos:$loc (Pstmt_type
         { tdec_ident= x
         ; tdec_params= args
-        ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
@@ -157,10 +157,12 @@ structure_item:
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
       mkstmt ~pos:$loc (Pstmt_typeext
-        ( {var_ident= x; var_params= params; var_implicit_params= []}
+        ( {var_ident= x; var_params= params}
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl handler = maybe(default_request_handler)
     { mkstmt ~pos:$loc (Pstmt_request (arg, x, handler)) }
+  | PROVER LBRACE stmts = structure RBRACE
+    { mkstmt ~pos:$loc (Pstmt_prover stmts) }
 
 signature_item:
   | LET x = as_loc(val_ident) COLON typ = type_expr
@@ -172,7 +174,6 @@ signature_item:
       mksig ~pos:$loc (Psig_type
         { tdec_ident= x
         ; tdec_params= args
-        ; tdec_implicit_params= []
         ; tdec_desc= k
         ; tdec_loc= Loc.of_pos $loc }) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
@@ -187,10 +188,12 @@ signature_item:
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
       mksig ~pos:$loc (Psig_typeext
-        ( {var_ident= x; var_params= params; var_implicit_params= []}
+        ( {var_ident= x; var_params= params}
         , ctors)) }
   | REQUEST LPAREN arg = type_expr RPAREN x = ctor_decl
     { mksig ~pos:$loc (Psig_request (arg, x)) }
+  | PROVER LBRACE sigs = signature RBRACE
+    { mksig ~pos:$loc (Psig_prover sigs) }
 
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
@@ -218,7 +221,7 @@ decl_type_expr:
   | x = decl_type(longident(lident, UIDENT))
     { let (x, params) = x in
       mktyp ~pos:$loc
-        (Ptyp_ctor {var_ident= x; var_params= params; var_implicit_params= []}) }
+        (Ptyp_ctor {var_ident= x; var_params= params}) }
 
 record_field(ID, EXP):
   | id = as_loc(ID) COLON t = EXP
@@ -231,19 +234,19 @@ field_decl:
 
 type_kind:
   | (* empty *)
-    { TAbstract }
+    { Pdec_abstract }
   | EQUAL k = type_kind_body
     { k }
 
 type_kind_body:
   | t = type_expr
-    { TAlias t }
+    { Pdec_alias t }
   | LBRACE fields = list(field_decl, COMMA) RBRACE
-    { TRecord (List.rev fields) }
+    { Pdec_record (List.rev fields) }
   | maybe(BAR) ctors = list(ctor_decl, BAR)
-    { TVariant (List.rev ctors) }
+    { Pdec_variant (List.rev ctors) }
   | DOTDOT
-    { TOpen }
+    { Pdec_open }
 
 ctor_decl_args:
   | (* empty *)
@@ -251,7 +254,7 @@ ctor_decl_args:
   | LPAREN rev_args = list(type_expr, COMMA) RPAREN
     { Ctor_tuple (List.rev rev_args) }
   | LBRACE fields = list(field_decl, COMMA) RBRACE
-    { Ctor_record (0, List.rev fields) }
+    { Ctor_record (List.rev fields) }
 
 %inline type_lident:
   | id = lident
@@ -340,6 +343,8 @@ simpl_expr:
     { mkexp ~pos:$loc (Pexp_field (e, field)) }
   | s = STRING
     { mkexp ~pos:$loc (Pexp_literal (String s)) }
+  | PROVER LBRACE e = block RBRACE
+    { mkexp ~pos:$loc (Pexp_prover e) }
 
 expr:
   | x = simpl_expr
@@ -561,15 +566,19 @@ pat_or_bare_tuple:
 
 simple_type_expr:
   | UNDERSCORE
-    { mktyp ~pos:$loc (Ptyp_var (None, Explicit)) }
+    { mktyp ~pos:$loc (Ptyp_var None) }
   | QUOT x = as_loc(lident)
-    { mktyp ~pos:$loc (Ptyp_var (Some x, Explicit)) }
+    { mktyp ~pos:$loc (Ptyp_var (Some x)) }
   | t = decl_type_expr
     { t }
   | LPAREN x = type_expr RPAREN
     { x }
   | LPAREN xs = tuple(type_expr) RPAREN
     { mktyp ~pos:$loc (Ptyp_tuple (List.rev xs)) }
+  | PROVER LPAREN x = type_expr RPAREN
+    { mktyp ~pos:$loc (Ptyp_prover x) }
+  | PROVER LBRACE x = type_expr RBRACE
+    { mktyp ~pos:$loc (Ptyp_prover x) }
 
 %inline type_arrow_label:
   | (* Empty *)

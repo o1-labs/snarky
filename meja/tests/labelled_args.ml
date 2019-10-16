@@ -41,7 +41,9 @@ let (j : a:int -> b:int option -> int) =
 
 let x = 0
 
-let (k : int option -> int) = fun __implicit2__ -> j ~a:x ~b:__implicit2__
+let k __implicit2__ =
+  let (k : int) = j ~a:x ~b:__implicit2__ in
+  k
 
 let y = Some 0
 

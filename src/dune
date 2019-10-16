@@ -2,12 +2,32 @@
  (name snarky)
  (public_name snarky)
  (inline_tests)
+ (modes native)
  (libraries core_kernel fold_lib tuple_lib bitstring_lib interval_union
-   bignum camlsnark_c ctypes)
+   bignum camlsnark_c ctypes
+   (select gpu_prover.ml from
+    (groth16_gpu_prover -> gpu.ml)
+    (-> no_gpu.ml)))
  (c_library_flags :standard -lstdc++ -lpthread)
  (cxx_flags
   (:standard \ -pedantic)
   (-I re2_c/libre2))
+ (modules (:standard \ gpu no_gpu))
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
-    -conditional)))
+    -conditional))
+ (c_names libsnark_ffi_bindings vector_ffi_bindings))
+
+(rule
+ (targets libsnark_ffi_bindings.c libsnark_ffi_bindings.ml vector_ffi_bindings.c vector_ffi_bindings.ml)
+ (deps caml_curve.h.template)
+ (action
+  (run camlsnark_c/camlsnark_ctypes_stubs.exe)))
+
+(rule
+ (targets caml_curve.h.template common.h)
+ (deps
+   camlsnark_c/libsnark-caml/libsnark/caml/caml_curve.h.template
+   camlsnark_c/libsnark-caml/libsnark/caml/common.h)
+ (action
+  (run cp %{deps} .)))

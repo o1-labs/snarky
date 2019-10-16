@@ -6,20 +6,20 @@ open Meja_lib.Parsetypes
 
 let rec of_type_desc ?loc typ =
   match typ with
-  | Ptyp_var (None, _) ->
+  | Ptyp_var None ->
       Typ.any ?loc ()
-  | Ptyp_var (Some name, _) ->
+  | Ptyp_var (Some name) ->
       Typ.var ?loc name.txt
   | Ptyp_poly (_, typ) ->
       of_type_expr typ
   | Ptyp_arrow (typ1, typ2, _, label) ->
       Typ.arrow ?loc label (of_type_expr typ1) (of_type_expr typ2)
-  | Ptyp_ctor
-      {var_ident= name; var_params= params; var_implicit_params= implicits; _}
-    ->
-      Typ.constr ?loc name (List.map ~f:of_type_expr (params @ implicits))
+  | Ptyp_ctor {var_ident= name; var_params= params; _} ->
+      Typ.constr ?loc name (List.map ~f:of_type_expr params)
   | Ptyp_tuple typs ->
       Typ.tuple ?loc (List.map ~f:of_type_expr typs)
+  | Ptyp_prover typ ->
+      of_type_expr typ
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 
@@ -29,7 +29,7 @@ let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
 let of_ctor_args = function
   | Ctor_tuple args ->
       Parsetree.Pcstr_tuple (List.map ~f:of_type_expr args)
-  | Ctor_record (_, fields) ->
+  | Ctor_record fields ->
       Parsetree.Pcstr_record (List.map ~f:of_field_decl fields)
 
 let of_ctor_decl
@@ -46,29 +46,23 @@ let of_type_decl decl =
   let loc = decl.tdec_loc in
   let name = decl.tdec_ident in
   let params =
-    List.map
-      ~f:(fun t -> (of_type_expr t, Invariant))
-      (decl.tdec_params @ decl.tdec_implicit_params)
+    List.map ~f:(fun t -> (of_type_expr t, Invariant)) decl.tdec_params
   in
   match decl.tdec_desc with
-  | TAbstract ->
+  | Pdec_abstract ->
       Type.mk name ~loc ~params
-  | TAlias typ ->
+  | Pdec_alias typ ->
       Type.mk name ~loc ~params ~manifest:(of_type_expr typ)
-  | TRecord fields ->
+  | Pdec_record fields ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_record (List.map ~f:of_field_decl fields))
-  | TVariant ctors ->
+  | Pdec_variant ctors ->
       Type.mk name ~loc ~params
         ~kind:(Parsetree.Ptype_variant (List.map ~f:of_ctor_decl ctors))
-  | TOpen ->
+  | Pdec_open ->
       Type.mk name ~loc ~params ~kind:Parsetree.Ptype_open
-  | TExtend _ ->
+  | Pdec_extend _ ->
       failwith "Cannot convert TExtend to OCaml"
-  | TUnfold _ ->
-      failwith "Cannot convert TUnfold to OCaml"
-  | TForward _ ->
-      failwith "Cannot convert TForward to OCaml"
 
 let rec of_pattern_desc ?loc = function
   | Ppat_any ->
@@ -143,6 +137,8 @@ let rec of_expression_desc ?loc = function
   | Pexp_if (e1, e2, e3) ->
       Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
         (Option.map ~f:of_expression e3)
+  | Pexp_prover e ->
+      of_expression e
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(
@@ -203,7 +199,7 @@ let rec of_signature_desc ?loc = function
           (Option.value ~default:Location.none loc)
       in
       Sig.type_extension ?loc (Te.mk ~params ident [of_ctor_decl_ext ctor])
-  | Psig_multiple sigs ->
+  | Psig_multiple sigs | Psig_prover sigs ->
       Sig.include_ ?loc
         { pincl_mod= Mty.signature ?loc (of_signature sigs)
         ; pincl_loc= Option.value ~default:Location.none loc
@@ -217,6 +213,8 @@ and of_module_sig_desc ?loc = function
   | Pmty_sig signature ->
       Some (Mty.signature ?loc (of_signature signature))
   | Pmty_name name ->
+      Some (Mty.ident ?loc name)
+  | Pmty_alias name ->
       Some (Mty.alias ?loc name)
   | Pmty_abstract ->
       None
@@ -246,7 +244,7 @@ let rec of_statement_desc ?loc = function
   | Pstmt_modtype (name, msig) ->
       Str.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
   | Pstmt_open name ->
-      Str.open_ ?loc (Opn.mk ?loc name)
+      Str.open_ ?loc (Opn.mk ?loc (Of_ocaml.open_of_name name))
   | Pstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
@@ -288,7 +286,7 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (typ_ext :: Option.to_list handler)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
-  | Pstmt_multiple stmts ->
+  | Pstmt_multiple stmts | Pstmt_prover stmts ->
       Str.include_ ?loc
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc

@@ -1,0 +1,4 @@
+(library
+ (name camlsnark_c_bindings)
+ (libraries core ctypes ctypes.foreign)
+ (public_name snarky.c_bindings))

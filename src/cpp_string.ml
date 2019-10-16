@@ -1,10 +1,7 @@
 open Core
 open Ctypes
 open Foreign
-
-type t = unit ptr
-
-let typ = ptr void
+include Camlsnark_c.Backend_types.Cpp_string
 
 let func_name s = sprintf "camlsnark_string_%s" s
 

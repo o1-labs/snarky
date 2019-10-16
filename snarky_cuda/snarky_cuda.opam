@@ -1,0 +1,18 @@
+opam-version: "2.0"
+name: "snarky_cuda"
+version: "dev"
+maintainer: "opensource@o1labs.org"
+authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
+homepage: "https://github.com/o1labs/snarky"
+bug-reports: "https://github.com/o1labs/snarky/issues"
+dev-repo: "git+https://github.com/o1labs/snarky.git"
+depexts: [
+  [ ["debian"] [ "cuda" ] ]
+  [ ["ubuntu"] [ "cuda" ] ]
+ ]
+post-messages: [
+  "This package requires CUDA" {failure}
+]
+flags: [ conf ]
+synopsis: "Virtual package to enable the GPU prover in snarky"
+

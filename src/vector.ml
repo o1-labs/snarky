@@ -1,67 +1,6 @@
-open Ctypes
 open Core
-
-type 'a t = unit ptr
-
-let null = null
-
-module type Bound = sig
-  type 'a return
-
-  type 'a result
-
-  type elt
-
-  type nonrec t = elt t
-
-  val typ : t Ctypes.typ
-
-  val delete : (t -> unit return) result
-
-  val create : (unit -> t return) result
-
-  val get : (t -> int -> elt return) result
-
-  val length : (t -> int return) result
-
-  val emplace_back : (t -> elt -> unit return) result
-end
-
-let with_prefix prefix s = sprintf "%s_%s" prefix s
-
-module Bind
-    (F : Ctypes.FOREIGN) (Elt : sig
-        type t
-
-        val typ : t Ctypes.typ
-
-        val prefix : string
-    end) :
-  Bound
-  with type 'a return = 'a F.return
-   and type 'a result = 'a F.result
-   and type elt = Elt.t = struct
-  include F
-
-  type elt = Elt.t
-
-  type nonrec t = elt t
-
-  let typ = ptr void
-
-  let func_name = with_prefix Elt.prefix
-
-  let delete = foreign (func_name "delete") (typ @-> returning void)
-
-  let create = foreign (func_name "create") (void @-> returning typ)
-
-  let get = foreign (func_name "get") (typ @-> int @-> returning Elt.typ)
-
-  let length = foreign (func_name "length") (typ @-> returning int)
-
-  let emplace_back =
-    foreign (func_name "emplace_back") (typ @-> Elt.typ @-> returning void)
-end
+include Camlsnark_c.Vector
+module Bound = Bindings (Vector_ffi_bindings)
 
 module type S = sig
   type elt
@@ -85,6 +24,12 @@ module type S_binable = sig
   include S
 
   include Binable.S with type t := t
+end
+
+module type S_binable_sexpable = sig
+  include S_binable
+
+  include Sexpable.S with type t := t
 end
 
 module Make (Elt : sig
@@ -181,4 +126,31 @@ end)
   end
 
   include Bin_prot.Utils.Of_minimal (Minmal)
+end
+
+module Make_binable_sexpable (Elt : sig
+  type t [@@deriving bin_io, sexp]
+
+  val schedule_delete : t -> unit
+end)
+(Bindings : Bound
+            with type 'a return = 'a
+             and type 'a result = 'a
+             and type elt = Elt.t) : S_binable_sexpable with type elt = Elt.t =
+struct
+  include Make_binable (Elt) (Bindings)
+
+  include Sexpable.Of_sexpable (struct
+              type t = Elt.t array [@@deriving sexp]
+            end)
+            (struct
+              type nonrec t = t
+
+              let to_sexpable t = Array.init (length t) ~f:(get t)
+
+              let of_sexpable a =
+                let t = create () in
+                Array.iter a ~f:(emplace_back t) ;
+                t
+            end)
 end
