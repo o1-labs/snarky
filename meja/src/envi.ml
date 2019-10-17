@@ -924,7 +924,7 @@ module Type = struct
   let refresh_vars vars env =
     List.iter vars ~f:(fun var ->
         (* Sanity check. *)
-        (match (repr var).type_desc with Tvar _ -> () | _ -> assert false) ;
+        assert (is_var var) ;
         set_repr var (mkvar ~mode:var.type_mode None env) )
 
   let copy typ env =
@@ -941,8 +941,11 @@ module Type = struct
           (* Tpoly should only ever appear at the top level of a type. *)
           assert false
       | desc ->
-          let typ' = mkvar ~mode:typ.type_mode None env in
           let alt_desc = typ.type_alternate.type_desc in
+          let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
+          let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
+          let stitched = phys_equal typ typ.type_alternate.type_alternate in
+          if stitched then typ'.type_alternate.type_alternate <- typ' ;
           set_replacement typ typ' ;
           (* NOTE: the variable description of [typ'] was just a placeholder,
                    so we want this new value to be preserved after
@@ -951,6 +954,10 @@ module Type = struct
           *)
           typ'.type_desc <- copy_desc ~f:copy desc ;
           typ'.type_alternate.type_desc <- copy_desc ~f:copy alt_desc ;
+          if not stitched then
+            (* tri-stitched *)
+            typ'.type_alternate.type_alternate.type_desc
+            <- copy_desc ~f:copy alt_alt_desc ;
           typ'
     in
     let typ = repr typ in
@@ -974,7 +981,7 @@ module Type = struct
     let snap = Snapshot.create () in
     List.iter2_exn params typs ~f:(fun param typ ->
         (* Sanity check. *)
-        (match (repr param).type_desc with Tvar _ -> () | _ -> assert false) ;
+        assert (is_var param) ;
         set_replacement param typ ) ;
     let typ = copy typ env in
     (* Restore the original values of the parameters. *)
@@ -1265,10 +1272,14 @@ module TypeDecl = struct
 
   let mk = Type1.Decl.mk
 
-  let mk_typ ~mode ~params ?ident decl env =
-    ignore ident ;
-    let vars = List.map ~f:(Type1.get_mode mode) decl.tdec_params in
-    let params = List.map ~f:(Type1.get_mode mode) params in
+  let mk_typ ~mode ~params decl env =
+    (* Sanity check. *)
+    List.iter params ~f:(fun param -> assert (equal_mode mode param.type_mode)) ;
+    let vars =
+      List.map decl.tdec_params ~f:(fun var ->
+          assert (Type1.is_var var) ;
+          Type1.get_mode mode var )
+    in
     let typ = Type1.get_mode mode decl.tdec_ret in
     Type.instantiate vars params typ env
 
@@ -1363,7 +1374,7 @@ let report_error ppf = function
       fprintf ppf "@[<hov>Unbound %s @[<h>%a@].@]" kind Longident.pp lid
   | Unbound_path (kind, path) ->
       fprintf ppf "@[<hov>Internal error: Could not resolve %s @[<h>%a@].@]"
-        kind Path.pp path
+        kind Path.debug_print path
   | Wrong_number_args (path, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \

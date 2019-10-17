@@ -165,6 +165,9 @@ let rec check_type_aux ~loc typ ctyp env =
             raise (Error (loc, Cannot_unify (typ, ctyp)))
       in
       check_type_aux typ ctyp env
+  | Tconv typ, Tconv ctyp ->
+      check_type_aux typ ctyp env ;
+      check_type_aux typ.type_alternate ctyp.type_alternate env
   | _, _ ->
       raise (Error (loc, Cannot_unify (typ, ctyp)))
 
@@ -174,6 +177,11 @@ let check_type ~loc env typ constr_typ =
       let typ = Type1.flatten typ in
       let constr_typ = Type1.flatten constr_typ in
       raise (Error (loc, Check_failed (typ, constr_typ, err)))
+  (*| exception err ->
+      Format.(
+        fprintf err_formatter "checking:%a@.%a@." typ_debug_print typ
+          typ_debug_print constr_typ) ;
+      raise err*)
   | () ->
       ()
 
@@ -558,6 +566,9 @@ let get_conversion ~can_add_args ~loc env typ =
     List.map rev_arguments ~f:(fun (typ', _, _) ->
         match typ'.type_desc with
         | Tconv typ' ->
+            (typ', Ident.fresh mode)
+        | Tvar _ ->
+            (* Free type variables. *)
             (typ', Ident.fresh mode)
         | _ ->
             raise (Error (loc, Cannot_create_conversion typ)) )
@@ -1601,9 +1612,8 @@ let rec report_error ppf = function
          have different arities.@]"
         Longident.pp lid
   | Convert_failed (typ, err) ->
-      fprintf ppf
-        "@[<v>@[<hov>Could not find a conversion@ @[<h>%a@]@:@]@;%a@]" pp_typ
-        typ report_error err
+      fprintf ppf "@[<v>@[<hov>Could not find a conversion@ @[<h>%a@]:@]@;%a@]"
+        pp_typ typ report_error err
   | Cannot_create_conversion typ ->
       fprintf ppf "@[<hov>@[<h>%a@] and@ @[<h>%a@]@ are not convertible.@]"
         pp_typ typ pp_typ typ.type_alternate

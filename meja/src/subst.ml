@@ -17,8 +17,8 @@ let with_module src dst s =
 
 let rec module_path s path =
   match Map.find s.modules path with
-  | Some path ->
-      path
+  | Some path' ->
+      path'
   | None -> (
     match path with
     | Pident _ ->
@@ -30,8 +30,8 @@ let rec module_path s path =
 
 let type_path s path =
   match Map.find s.types path with
-  | Some path ->
-      path
+  | Some path' ->
+      path'
   | None -> (
     match path with
     | Pident _ ->

@@ -2,6 +2,15 @@ open Core_kernel
 open Ast_types
 open Type0
 
+(** Get the stitched [type_expr] in the given mode. *)
+let get_mode mode typ =
+  if equal_mode typ.type_mode mode then typ
+  else
+    let typ = typ.type_alternate in
+    (* Sanity check. *)
+    assert (equal_mode typ.type_mode mode) ;
+    typ
+
 let type_id = ref 0
 
 (** An invalid [type_expr] in checked mode. *)
@@ -28,6 +37,8 @@ let none = function Checked -> checked_none | Prover -> prover_none
     [other_none mode = none (other_mode mode)]
 *)
 let other_none = function Checked -> prover_none | Prover -> checked_none
+
+let type_alternate {type_alternate= typ; _} = typ
 
 (** Returns [true] if the [type_expr] argument is valid, false otherwise.
    Can be used to check that a type-stitching has been created or modified
@@ -57,8 +68,8 @@ let mk' ~mode depth type_desc =
 (** [stitch typ typ'] sets [typ] and [typ'] as eachothers [type_alternate]s.
     Returns the first argument [typ].
 
-    Raises [AssertionError] if the types have different modes, or if either
-    type has an already-initialised [type_alternate].
+    Raises [AssertionError] if the types have the same modes, or if either type
+    has an already-initialised [type_alternate].
 *)
 let stitch typ typ' =
   (* Check that the types have distinct modes. *)
@@ -70,9 +81,115 @@ let stitch typ typ' =
   typ'.type_alternate <- typ ;
   typ
 
+(** [tri_stitch in_typ ptyp ctyp] stitches the prover-mode type [ptyp] to the
+    checked-mode [ctyp], and sets the [type_alternate] of the checked-mode type
+    [in_typ] to [ptyp].
+
+    This allows [in_typ] to be the [tdec_ret] for a type defined in checked
+    mode, so that a round-trip [Checked -> Prover -> Checked] conversion chain
+    may start and end with different types.
+
+    The canonical example of this is [bool -> bool -> boolean].
+*)
+let tri_stitch in_typ ptyp ctyp =
+  assert (equal_mode in_typ.type_mode Checked) ;
+  assert (equal_mode ptyp.type_mode Prover) ;
+  assert (equal_mode ctyp.type_mode Checked) ;
+  assert (is_invalid in_typ.type_alternate) ;
+  assert (is_invalid ptyp.type_alternate) ;
+  assert (is_invalid ctyp.type_alternate) ;
+  in_typ.type_alternate <- ptyp ;
+  ptyp.type_alternate <- ctyp ;
+  ctyp.type_alternate <- ptyp ;
+  in_typ
+
 (** Returns [true] if the types are stitched together, [false] otherwise. *)
 let are_stitched typ typ' =
-  phys_equal typ typ'.type_alternate && phys_equal typ' typ.type_alternate
+  (phys_equal typ typ'.type_alternate && phys_equal typ' typ.type_alternate)
+  ||
+  (* Tri-stitching check. ctyp -> ptyp -> _ -> ptyp *)
+  let ctyp, ptyp, modes_match =
+    match (typ.type_mode, typ'.type_mode) with
+    | Checked, Prover ->
+        (typ, typ', true)
+    | Prover, Checked ->
+        (typ', typ, true)
+    | _ ->
+        (* Dummy ordering of types. The [false] value will shortcut the
+           tri-stitching check.
+        *)
+        (typ, typ', false)
+  in
+  modes_match
+  && phys_equal ctyp.type_alternate ptyp
+  && phys_equal ptyp ptyp.type_alternate.type_alternate
+
+(** Hash set to track types printed in [typ_debug_print], to ensure that we
+    don't get stuck in a recursion loop.
+*)
+let typ_debug_print_hash_tbl = Hash_set.create (module Int) ()
+
+let rec typ_debug_print fmt typ =
+  let hashtbl = typ_debug_print_hash_tbl in
+  let open Format in
+  let print i = fprintf fmt i in
+  let print_comma fmt () = pp_print_char fmt ',' in
+  let print_list pp = pp_print_list ~pp_sep:print_comma pp in
+  let print_label fmt = function
+    | Asttypes.Nolabel ->
+        ()
+    | Asttypes.Labelled str ->
+        fprintf fmt "~%s:" str
+    | Asttypes.Optional str ->
+        fprintf fmt "?%s:" str
+  in
+  print "(%i%a:" typ.type_id mode_debug_print typ.type_mode ;
+  if Hash_set.mem hashtbl typ.type_id then
+    (* Recursion breaking. *)
+    print "RECURSIVE"
+  else (
+    ( Hash_set.add hashtbl typ.type_id ;
+      match typ.type_desc with
+      | Tvar None ->
+          print "var _"
+      | Tvar (Some name) ->
+          print "var %s" name
+      | Tpoly (typs, typ) ->
+          print "poly [%a] %a"
+            (print_list typ_debug_print)
+            typs typ_debug_print typ
+      | Tarrow (typ1, typ2, Explicit, label) ->
+          print "%a%a -> %a" print_label label typ_debug_print typ1
+            typ_debug_print typ2
+      | Tarrow (typ1, typ2, Implicit, label) ->
+          print "%a{%a} -> %a" print_label label typ_debug_print typ1
+            typ_debug_print typ2
+      | Tctor {var_ident= name; var_params= params; _} ->
+          print "%a (%a)" Path.debug_print name
+            (print_list typ_debug_print)
+            params
+      | Ttuple typs ->
+          print "(%a)" (print_list typ_debug_print) typs
+      | Tref typ ->
+          print "= " ; typ_debug_print fmt typ
+      | Tconv typ ->
+          typ_debug_print fmt (get_mode Checked typ) ;
+          print " --> " ;
+          typ_debug_print fmt (get_mode Prover typ)
+      | Treplace typ ->
+          print "=== " ; typ_debug_print fmt typ ) ;
+    Hash_set.remove hashtbl typ.type_id ) ;
+  print " @%i)" typ.type_depth
+
+let typ_debug_print_alts fmt typ =
+  let open Format in
+  if phys_equal typ typ.type_alternate.type_alternate then
+    fprintf fmt "@[<hov>(stitched@ (%a)@ (%a))@]" typ_debug_print typ
+      typ_debug_print typ.type_alternate
+  else
+    fprintf fmt "@[<hov>(tri-stitched@ (%a)@ (%a)@ (%a))@]" typ_debug_print typ
+      typ_debug_print typ.type_alternate typ_debug_print
+      typ.type_alternate.type_alternate
 
 (** Create a new type variable with the given name.
 
@@ -82,85 +199,122 @@ let are_stitched typ typ' =
 let mkvar ~mode depth name =
   let typ = mk' ~mode depth (Tvar name) in
   let other_typ = mk' ~mode:(other_mode mode) depth (Tvar name) in
-  stitch typ other_typ
-
-(** Get the stitched [type_expr] in the given mode. *)
-let get_mode mode typ =
-  if equal_mode typ.type_mode mode then typ
-  else
-    let typ = typ.type_alternate in
-    (* Sanity check. *)
-    assert (equal_mode typ.type_mode mode) ;
-    typ
+  if equal_mode mode Checked then
+    let tri_typ = mk' ~mode depth (Tvar name) in
+    tri_stitch typ other_typ tri_typ
+  else stitch typ other_typ
 
 (** Constructors for stitched types. *)
 module Mk = struct
   let var = mkvar
 
+  let stitch ~mode depth desc1 desc2 =
+    stitch (mk' ~mode depth desc1) (mk' ~mode:(other_mode mode) depth desc2)
+
+  let tri_stitch ~mode depth desc1 desc2 desc3 =
+    assert (equal_mode mode Checked) ;
+    tri_stitch
+      (mk' ~mode:Checked depth desc1)
+      (mk' ~mode:Prover depth desc2)
+      (mk' ~mode:Checked depth desc3)
+
   let tuple ~mode depth typs =
-    (* Create a dummy type variable to get proper stitching. *)
-    let typ = mkvar ~mode depth None in
-    let typs = List.map ~f:(get_mode mode) typs in
-    typ.type_desc <- Ttuple typs ;
-    let alt_typs = List.map ~f:(get_mode (other_mode mode)) typs in
-    typ.type_alternate.type_desc <- Ttuple alt_typs ;
-    typ
+    let alts = List.map ~f:type_alternate typs in
+    let alt_alts = List.map ~f:type_alternate alts in
+    if
+      List.for_all2_exn typs alt_alts ~f:(fun typ alt ->
+          (* Sanity check. *)
+          assert (equal_mode mode typ.type_mode) ;
+          phys_equal typ alt )
+    then stitch ~mode depth (Ttuple typs) (Ttuple alts)
+    else
+      (* One or more types is tri-stitched, so tri-stitch here too. *)
+      tri_stitch ~mode depth (Ttuple typs) (Ttuple alts) (Ttuple alt_alts)
 
   let arrow ~mode ?(explicit = Explicit) ?(label = Nolabel) depth typ1 typ2 =
-    (* Create a dummy type variable to get proper stitching. *)
-    let typ = mkvar ~mode depth None in
-    typ.type_desc
-    <- Tarrow (get_mode mode typ1, get_mode mode typ2, explicit, label) ;
-    let other_mode = other_mode mode in
-    typ.type_alternate.type_desc
-    <- Tarrow
-         (get_mode other_mode typ1, get_mode other_mode typ2, explicit, label) ;
-    typ
+    let alt1 = type_alternate typ1 in
+    let alt2 = type_alternate typ2 in
+    let alt_alt1 = type_alternate alt1 in
+    let alt_alt2 = type_alternate alt2 in
+    if
+      List.for_all2_exn [typ1; typ2] [alt_alt1; alt_alt2] ~f:(fun typ alt ->
+          (* Sanity check. *)
+          assert (equal_mode mode typ.type_mode) ;
+          phys_equal typ alt )
+    then
+      stitch ~mode depth
+        (Tarrow (typ1, typ2, explicit, label))
+        (Tarrow (alt1, alt2, explicit, label))
+    else
+      (* One or more types is tri-stitched, so tri-stitch here too. *)
+      tri_stitch ~mode depth
+        (Tarrow (typ1, typ2, explicit, label))
+        (Tarrow (alt_alt1, alt_alt2, explicit, label))
+        (Tarrow (alt1, alt2, explicit, label))
 
-  (* TODO: This isn't really what we want. Integrate with proper type
-           declaration stitching. *)
-  let ctor ~mode depth path params =
-    (* Create a dummy type variable to get proper stitching. *)
-    let typ = mkvar ~mode depth None in
-    typ.type_desc
-    <- Tctor {var_ident= path; var_params= List.map ~f:(get_mode mode) params} ;
-    (* This is usually not what we want. *)
-    typ.type_alternate.type_desc
-    <- Tctor
-         { var_ident= path
-         ; var_params= List.map ~f:(get_mode (other_mode mode)) params } ;
-    typ
+  let ctor ~mode depth path ?other_path ?tri_path params =
+    let other_path, tri_path =
+      match (other_path, tri_path) with
+      | None, None ->
+          (path, path)
+      | Some other_path, None ->
+          (other_path, path)
+      | Some other_path, Some tri_path ->
+          (other_path, tri_path)
+      | None, Some _ ->
+          assert false
+    in
+    let alts = List.map ~f:type_alternate params in
+    let alt_alts = List.map ~f:type_alternate alts in
+    if
+      List.for_all2_exn params alt_alts ~f:(fun typ alt ->
+          (* Sanity check. *)
+          assert (equal_mode mode typ.type_mode) ;
+          phys_equal typ alt )
+      && Path.equal path tri_path
+    then
+      stitch ~mode depth
+        (Tctor {var_ident= path; var_params= params})
+        (Tctor {var_ident= other_path; var_params= alts})
+    else
+      (* There is a distinguished third type, so tri-stitch. *)
+      tri_stitch ~mode depth
+        (Tctor {var_ident= path; var_params= params})
+        (Tctor {var_ident= other_path; var_params= alts})
+        (Tctor {var_ident= tri_path; var_params= alt_alts})
 
-  (* TODO: This should be seperated out so that each mode is polymorphised over
-           the type variables present in its mode.
-           This will become important when we make some types opaque in Checked
-           mode.
-  *)
   let poly ~mode depth vars typ =
-    (* Create a dummy type variable to get proper stitching. *)
-    let typ' = mkvar ~mode depth None in
-    typ'.type_desc
-    <- Tpoly (List.map ~f:(get_mode mode) vars, get_mode mode typ) ;
-    typ'.type_alternate.type_desc
-    <- Tpoly
-         ( List.map ~f:(get_mode (other_mode mode)) vars
-         , get_mode (other_mode mode) typ ) ;
-    typ'
+    let alt = type_alternate typ in
+    let alts = List.map ~f:type_alternate vars in
+    let alt_alt = type_alternate alt in
+    let alt_alts = List.map ~f:type_alternate alts in
+    (* Sanity check: [vars] is a list of type variables. *)
+    if
+      List.for_all2_exn vars alt_alts ~f:(fun typ alt ->
+          (* Sanity check. *)
+          assert (equal_mode mode typ.type_mode) ;
+          (match typ.type_desc with Tvar _ -> () | _ -> assert false) ;
+          phys_equal typ alt )
+      && phys_equal alts alt_alts
+    then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (alts, alt))
+    else
+      (* The type is tri-stitched, so tri-stitch this type too. *)
+      tri_stitch ~mode depth
+        (Tpoly (vars, typ))
+        (Tpoly (alts, alt))
+        (Tpoly (alt_alts, alt_alt))
 
   let conv ~mode depth typ1 typ2 =
     let typ1 = get_mode Checked typ1 in
     let typ2 = get_mode Prover typ2 in
     let typ_stitched =
       if are_stitched typ1 typ2 then typ1
-      else
-        let typ = mkvar ~mode:Checked depth None in
-        typ.type_desc <- typ1.type_desc ;
-        typ.type_alternate.type_desc <- typ2.type_desc ;
-        typ
+      else stitch ~mode:Checked depth typ1.type_desc typ2.type_desc
     in
-    let typ = mkvar ~mode:Checked depth None in
-    typ.type_desc <- Tconv typ_stitched ;
-    typ.type_alternate.type_desc <- Tconv typ_stitched.type_alternate ;
+    let typ =
+      stitch ~mode:Checked depth (Tconv typ_stitched)
+        (Tconv typ_stitched.type_alternate)
+    in
     get_mode mode typ
 end
 
@@ -277,7 +431,8 @@ end
 let revert = function
   | Depth (typ, depth) ->
       typ.type_depth <- depth ;
-      typ.type_alternate.type_depth <- depth
+      typ.type_alternate.type_depth <- depth ;
+      typ.type_alternate.type_alternate.type_depth <- depth
   | Desc (typ, desc) ->
       typ.type_desc <- desc
   | Replace (typ, desc) ->
@@ -295,63 +450,6 @@ let filtered_backtrack ~f snap =
     present to get to the true underlying type.
 *)
 let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
-
-(** Hash set to track types printed in [typ_debug_print], to ensure that we
-    don't get stuck in a recursion loop.
-*)
-let typ_debug_print_hash_tbl = Hash_set.create (module Int) ()
-
-let rec typ_debug_print fmt typ =
-  let hashtbl = typ_debug_print_hash_tbl in
-  let open Format in
-  let print i = fprintf fmt i in
-  let print_comma fmt () = pp_print_char fmt ',' in
-  let print_list pp = pp_print_list ~pp_sep:print_comma pp in
-  let print_label fmt = function
-    | Asttypes.Nolabel ->
-        ()
-    | Asttypes.Labelled str ->
-        fprintf fmt "~%s:" str
-    | Asttypes.Optional str ->
-        fprintf fmt "?%s:" str
-  in
-  print "(%i%a:" typ.type_id mode_debug_print typ.type_mode ;
-  if Hash_set.mem hashtbl typ.type_id then
-    (* Recursion breaking. *)
-    print "RECURSIVE"
-  else (
-    ( Hash_set.add hashtbl typ.type_id ;
-      match typ.type_desc with
-      | Tvar None ->
-          print "var _"
-      | Tvar (Some name) ->
-          print "var %s" name
-      | Tpoly (typs, typ) ->
-          print "poly [%a] %a"
-            (print_list typ_debug_print)
-            typs typ_debug_print typ
-      | Tarrow (typ1, typ2, Explicit, label) ->
-          print "%a%a -> %a" print_label label typ_debug_print typ1
-            typ_debug_print typ2
-      | Tarrow (typ1, typ2, Implicit, label) ->
-          print "%a{%a} -> %a" print_label label typ_debug_print typ1
-            typ_debug_print typ2
-      | Tctor {var_ident= name; var_params= params; _} ->
-          print "%a (%a)" Path.debug_print name
-            (print_list typ_debug_print)
-            params
-      | Ttuple typs ->
-          print "(%a)" (print_list typ_debug_print) typs
-      | Tref typ ->
-          print "= " ; typ_debug_print fmt typ
-      | Tconv typ ->
-          typ_debug_print fmt (get_mode Checked typ) ;
-          print " --> " ;
-          typ_debug_print fmt (get_mode Prover typ)
-      | Treplace typ ->
-          print "=== " ; typ_debug_print fmt typ ) ;
-    Hash_set.remove hashtbl typ.type_id ) ;
-  print " @%i)" typ.type_depth
 
 let fold ~init ~f typ =
   match typ.type_desc with
@@ -438,7 +536,8 @@ let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
 let set_depth depth typ =
   Snapshot.add_to_history (Depth (typ, typ.type_depth)) ;
   typ.type_depth <- depth ;
-  typ.type_alternate.type_depth <- depth
+  typ.type_alternate.type_depth <- depth ;
+  typ.type_alternate.type_alternate.type_depth <- depth
 
 let update_depth depth typ = if typ.type_depth > depth then set_depth depth typ
 
@@ -451,11 +550,16 @@ let set_desc typ desc =
   typ.type_desc <- desc
 
 let set_replacement typ typ' =
-  Snapshot.add_to_history (Replace (typ, typ.type_desc)) ;
-  typ.type_desc <- Treplace typ' ;
-  Snapshot.add_to_history
-    (Replace (typ.type_alternate, typ.type_alternate.type_desc)) ;
-  typ.type_alternate.type_desc <- Treplace typ'.type_alternate
+  let replace_one typ typ' =
+    Snapshot.add_to_history (Replace (typ, typ.type_desc)) ;
+    typ.type_desc <- Treplace typ'
+  in
+  replace_one typ typ' ;
+  replace_one typ.type_alternate typ'.type_alternate ;
+  let alt_alt = typ.type_alternate.type_alternate in
+  let alt_alt' = typ'.type_alternate.type_alternate in
+  if (not (phys_equal typ alt_alt)) || not (phys_equal typ' alt_alt') then
+    replace_one alt_alt alt_alt'
 
 (** Backtrack only undoing the [Replace] operations since the last snapshot. *)
 let backtrack_replace =
@@ -465,8 +569,13 @@ let backtrack_replace =
 let set_repr typ typ' =
   (* Sanity check. *)
   assert (equal_mode typ.type_mode typ'.type_mode) ;
+  (* Stitching is compatible. *)
+  assert (
+    phys_equal typ typ.type_alternate = phys_equal typ' typ'.type_alternate ) ;
   set_desc typ (Tref typ') ;
-  set_desc typ.type_alternate (Tref typ'.type_alternate)
+  set_desc typ.type_alternate (Tref typ'.type_alternate) ;
+  set_desc typ.type_alternate.type_alternate
+    (Tref typ'.type_alternate.type_alternate)
 
 (** [add_instance var typ'] changes the representative of the type variable
     [var] to [typ']. If [typ'] is also a type variable, then the user-provided
@@ -489,8 +598,24 @@ let add_instance typ typ' =
         (* Sanity check: we should be adding an instance to a type variable. *)
         assert false
   in
+  (* Sanity check. *)
+  assert (equal_mode typ.type_mode typ'.type_mode) ;
   choose_name typ typ' ;
   choose_name typ.type_alternate typ'.type_alternate ;
+  choose_name typ.type_alternate.type_alternate
+    typ'.type_alternate.type_alternate ;
+  (* Chose again in case [typ.type_alternate.type_alternate] found a new name
+     that could be propagated back to [typ].
+  *)
+  choose_name typ typ' ;
+  assert (not (phys_equal typ typ.type_alternate.type_alternate)) ;
+  let typ =
+    if phys_equal typ' typ'.type_alternate.type_alternate then (
+      (* [typ'] is stitched, set up [typ] for normal stitching. *)
+      set_desc typ (Tref typ.type_alternate.type_alternate) ;
+      typ.type_alternate.type_alternate )
+    else typ
+  in
   set_repr typ typ'
 
 (** Create an equivalent type by unfolding all of the type representatives. *)
@@ -505,13 +630,18 @@ let flatten typ =
         (* Don't copy variables! *)
         typ
     | desc ->
-        (* Placeholder variable. *)
-        let typ' = mkvar ~mode:typ.type_mode typ.type_depth None in
         let alt_desc = typ.type_alternate.type_desc in
+        let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
+        let typ' = mkvar ~mode:typ.type_mode typ.type_depth None in
+        let stitched = phys_equal typ typ.type_alternate.type_alternate in
+        if stitched then typ'.type_alternate.type_alternate <- typ' ;
         set_replacement typ typ' ;
-        (* Overwrite placeholder. *)
         typ'.type_desc <- copy_desc ~f:flatten desc ;
         typ'.type_alternate.type_desc <- copy_desc ~f:flatten alt_desc ;
+        if not stitched then
+          (* tri-stitched *)
+          typ'.type_alternate.type_alternate.type_desc
+          <- copy_desc ~f:flatten alt_alt_desc ;
         typ'
   in
   let snap = Snapshot.create () in
@@ -591,6 +721,8 @@ let is_arrow typ =
       true
   | _ ->
       false
+
+let is_var typ = match (repr typ).type_desc with Tvar _ -> true | _ -> false
 
 let get_rev_arrow_args typ =
   let rec go args typ =

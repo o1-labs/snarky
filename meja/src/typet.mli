@@ -31,14 +31,22 @@ module TypeDecl : sig
     Parsetypes.type_decl -> Parsetypes.type_decl * Parsetypes.type_decl
 
   val import :
-       ?other_name:Path.t
+       ?name:Ident.t
+    -> ?other_name:Path.t
+    -> ?tri_name:Path.t
     -> Parsetypes.type_decl
     -> Envi.t
     -> Typedast.type_decl * Envi.t
   (** Import a type declaration.
 
+      The [name] parameter can be used to specify an existing identifier for
+      the type, instead of generating a fresh one.
+
       If [other_name] is specified, then the type declaration will be stitched
       to the type with that name; otherwise, the type is stitched to a type of
       its own name in the other mode.
+
+      If [tri_name] is specified in addition to [other_name], then the type
+      will be tri-stitched as [name -> other_name <-> tri_name].
   *)
 end
