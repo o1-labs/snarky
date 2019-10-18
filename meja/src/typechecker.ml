@@ -771,11 +771,19 @@ let rec get_expression env expected exp =
         ; tdec_desc= Pdec_abstract
         ; tdec_loc= loc }
       in
-      let decl, env = Typet.TypeDecl.import decl env in
+      let ident = map_loc ~f:(Ident.create ~mode) name in
+      let decl, env =
+        let name = ident.txt in
+        let other_name = Path.Pident name in
+        (* Create a tri-stitched type in checked mode. *)
+        let tri_name =
+          match mode with Checked -> Some other_name | Prover -> None
+        in
+        Typet.TypeDecl.import ~name ~other_name ?tri_name decl env
+      in
       let res = Envi.Type.mkvar ~mode None env in
       let body, env = get_expression env res body in
       let env = Envi.close_expr_scope env in
-      let ident = decl.tdec_ident in
       let free_var = Envi.Type.mkvar ~mode None env in
       let res =
         (* Substitute instances of the type for [free_var]. *)
@@ -786,6 +794,7 @@ let rec get_expression env expected exp =
                 match typ.type_desc with
                 | Tctor {var_ident= Pident ident'; _}
                   when Ident.compare ident.txt ident' = 0 ->
+                    Type1.set_replacement typ free_var ;
                     free_var
                 | _ ->
                     Type0_map.default_mapper.type_expr mapper typ ) }

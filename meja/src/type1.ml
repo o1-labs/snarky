@@ -255,17 +255,8 @@ module Mk = struct
         (Tarrow (alt_alt1, alt_alt2, explicit, label))
 
   let ctor ~mode depth path ?other_path ?tri_path params =
-    let other_path, tri_path =
-      match (other_path, tri_path) with
-      | None, None ->
-          (path, path)
-      | Some other_path, None ->
-          (other_path, path)
-      | Some other_path, Some tri_path ->
-          (other_path, tri_path)
-      | None, Some _ ->
-          assert false
-    in
+    assert (Option.is_some other_path || Option.is_none tri_path) ;
+    let other_path = Option.value ~default:path other_path in
     let alts = List.map ~f:type_alternate params in
     let alt_alts = List.map ~f:type_alternate alts in
     if
@@ -274,13 +265,14 @@ module Mk = struct
           assert (equal_mode mode typ.type_mode) ;
           assert (equal_mode mode alt.type_mode) ;
           phys_equal typ alt )
-      && Path.equal path tri_path
+      && Option.is_none tri_path
     then
       stitch ~mode depth
         (Tctor {var_ident= path; var_params= params})
         (Tctor {var_ident= other_path; var_params= alts})
     else
       (* There is a distinguished third type, so tri-stitch. *)
+      let tri_path = Option.value ~default:path tri_path in
       tri_stitch ~mode depth
         (Tctor {var_ident= path; var_params= params})
         (Tctor {var_ident= other_path; var_params= alts})
