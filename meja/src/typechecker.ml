@@ -215,6 +215,8 @@ let rec check_type_aux ~loc typ ctyp env =
   | Tconv typ, Tconv ctyp ->
       check_type_aux typ ctyp env ;
       check_type_aux typ.type_alternate ctyp.type_alternate env
+  | Topaque typ, Topaque ctyp ->
+      check_type_aux typ ctyp env
   | _, _ ->
       raise (Error (loc, Cannot_unify (typ, ctyp)))
 
