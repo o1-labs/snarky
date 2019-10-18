@@ -11,4 +11,18 @@ include struct
   type prover = A
 end
 
-type t = (_, prover) Snarky.Handle.t
+type w = (_, prover) Snarky.Handle.t
+
+module A = struct
+  type ('a, 'b) opaque = 'a * 'b
+
+  type t = (int, bool) opaque
+
+  include struct
+    type u = (int, bool) opaque
+  end
+
+  let opaque = ()
+end
+
+type x = (_, prover) Snarky.Handle.t

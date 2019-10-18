@@ -6,4 +6,30 @@ Prover {
   type prover = A;
 };
 
-type t = opaque(prover);
+/* opaque should resolve within prover types. */
+type w = opaque(prover);
+
+/* The user should still be able to use the `opaque` identifier. */
+module A = {
+  type opaque('a, 'b) = ('a, 'b);
+
+  type t = opaque(int, bool);
+
+  Prover {
+    type u = opaque(int, bool);
+  };
+
+  let opaque = ();
+};
+
+/* The magic opaque should still work when user-defined `opaque` types are out
+   of scope.
+*/
+type x = opaque(prover);
+
+/*let f = fun (i : opaque(int)) => {
+  Prover {
+    let x = i + 1;
+    ignore(x);
+  };
+};*/
