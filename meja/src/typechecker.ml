@@ -73,8 +73,12 @@ let rec check_type_aux ~loc typ ctyp env =
   let typ = repr typ in
   let ctyp = repr ctyp in
   Type1.unify_depths typ ctyp ;
+  (* Ensure modes match. *)
+  assert (equal_mode typ.type_mode ctyp.type_mode) ;
+  (* Reject tri-stitchings with bad modes. *)
   assert (equal_mode typ.type_mode typ.type_alternate.type_alternate.type_mode) ;
-  assert (equal_mode ctyp.type_mode ctyp.type_alternate.type_alternate.type_mode) ;
+  assert (
+    equal_mode ctyp.type_mode ctyp.type_alternate.type_alternate.type_mode ) ;
   (* If the type stitchings differ, lower the tri-stitched one to a stitched
      one.
   *)
