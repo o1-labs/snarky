@@ -702,6 +702,8 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (f, es)}, env)
   | Pexp_variable name ->
       let path, typ = Envi.find_name ~mode name env in
+      (* TODO: conv! *)
+      let typ = get_mode mode typ in
       let path = Location.mkloc path name.loc in
       let implicits, result_typ = Envi.Type.get_implicits [] typ in
       check_type ~loc env expected result_typ ;
@@ -974,6 +976,7 @@ let rec get_expression env expected exp =
                   ~f:(fun _ -> Envi.Type.mkvar ~mode None env)
                   tdec_params
               in
+              let tdec_ret = get_mode mode tdec_ret in
               let decl_type =
                 Envi.Type.instantiate tdec_params vars tdec_ret env
               in
@@ -1051,6 +1054,7 @@ let rec get_expression env expected exp =
   | Pexp_prover e ->
       let env = Envi.open_expr_scope ~mode:Prover env in
       let e, env = get_expression env (Type1.get_mode Prover expected) e in
+      check_type ~loc env expected (Type1.get_mode mode e.exp_type) ;
       let _, env = Envi.pop_expr_scope env in
       ({exp_loc= loc; exp_type= expected; exp_desc= Texp_prover e}, env)
 
