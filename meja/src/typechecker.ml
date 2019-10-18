@@ -791,11 +791,16 @@ let rec get_expression env expected exp =
           { Type0_map.default_mapper with
             type_expr=
               (fun mapper typ ->
-                match typ.type_desc with
-                | Tctor {var_ident= Pident ident'; _}
+                match (typ.type_desc, typ.type_mode) with
+                | Tctor {var_ident= Pident ident'; _}, Checked
                   when Ident.compare ident.txt ident' = 0 ->
-                    Type1.set_replacement typ free_var ;
-                    free_var
+                    if phys_equal typ typ.type_alternate.type_alternate then
+                      (Type1.get_mode Checked free_var).type_alternate
+                        .type_alternate
+                    else Type1.get_mode Checked free_var
+                | Tctor {var_ident= Pident ident'; _}, Prover
+                  when Ident.compare ident.txt ident' = 0 ->
+                    Type1.get_mode Prover free_var
                 | _ ->
                     Type0_map.default_mapper.type_expr mapper typ ) }
         in
