@@ -18,6 +18,9 @@ let type0 {Typedast.type_type; _} = type_type
 module Type = struct
   open Type
 
+  (* Unique identifier to refer to the fake `opaque` type constructor. *)
+  let opaque = Ident.create ~mode:Checked "opaque"
+
   let rec import ?must_find (typ : type_expr) env : Typedast.type_expr * env =
     let mode = Envi.current_mode env in
     let import' = import in
@@ -69,6 +72,22 @@ module Type = struct
           ; type_type= Mk.poly ~mode (List.map ~f:type0 vars) (type0 typ) env
           }
         , env )
+    | Ptyp_ctor {var_ident= {txt= Lident "opaque"; _} as var_ident; var_params}
+      when not (Envi.has_type_declaration ~mode var_ident env) -> (
+      (* Special-case the [opaque] type constructor when it's not otherwise
+           bound in the environment. This avoids the need for an extra keyword
+           or any specific reserved syntax.
+        *)
+      match var_params with
+      | [typ'] ->
+          import {typ with type_desc= Ptyp_opaque typ'} env
+      | _ ->
+          raise
+            (Error
+               ( loc
+               , Wrong_number_args
+                   (Path.Pident opaque, List.length var_params, 1)
+               )) )
     | Ptyp_ctor variant ->
         let {var_ident; var_params} = variant in
         let var_ident, decl = raw_find_type_declaration ~mode var_ident env in

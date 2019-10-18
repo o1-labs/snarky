@@ -1,0 +1,9 @@
+type t = opaque(int);
+type u('a) = opaque(option('a));
+type v('a, 'b) = opaque(('a, 'b));
+
+Prover {
+  type prover = A;
+};
+
+type t = opaque(prover);

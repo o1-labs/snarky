@@ -807,6 +807,11 @@ let get_of_path ~loc ~kind ~get_name ~find_name (path : Path.t) env =
 let join_expr_scope env expr_scope =
   map_current_scope ~f:(Scope.join_expr_scope expr_scope) env
 
+let has_type_declaration ~mode (lid : lid) env =
+  Option.is_some
+    (find_of_lident ~mode ~kind:"type" ~get_name:Scope.find_type_declaration
+       lid env)
+
 let raw_find_type_declaration ~mode (lid : lid) env =
   let modes = modes_of_mode mode in
   match

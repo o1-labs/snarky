@@ -33,9 +33,8 @@ let rec type_desc ?(bracket = false) fmt = function
       if bracket then fprintf fmt "(" ;
       fprintf fmt "%a@ --> %a" type_expr_b typ1 type_expr typ2 ;
       if bracket then fprintf fmt ")"
-  | Ptyp_opaque _ ->
-      (* TODO *)
-      assert false
+  | Ptyp_opaque typ ->
+      fprintf fmt "@[<hv2>opaque(@,%a@,)@]" type_expr typ
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
