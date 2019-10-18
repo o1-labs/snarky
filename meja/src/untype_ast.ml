@@ -13,7 +13,7 @@ let rec longident_of_path = function
 module Type0 = struct
   open Type0
 
-  let rec type_desc ?loc = function
+  let rec type_desc ~mode ?loc = function
     | Tvar None ->
         Type.none ?loc ()
     | Tvar (Some name) ->
@@ -34,12 +34,16 @@ module Type0 = struct
         Type.conv
           (type_expr ?loc (Type1.get_mode Checked typ))
           (type_expr ?loc (Type1.get_mode Prover typ))
-    | Topaque typ ->
-        Type.opaque (type_expr ?loc typ)
+    | Topaque typ -> (
+      match mode with
+      | Checked ->
+          Type.opaque (type_expr ?loc typ)
+      | Prover ->
+          type_expr ?loc typ )
     | Treplace _ ->
         assert false
 
-  and type_expr ?loc typ = type_desc ?loc typ.type_desc
+  and type_expr ?loc typ = type_desc ~mode:typ.type_mode ?loc typ.type_desc
 
   let field_decl ?loc fld =
     Type_decl.Field.mk ?loc (Ident.name fld.fld_ident)

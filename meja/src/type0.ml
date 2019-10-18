@@ -20,6 +20,10 @@ and type_desc =
   | Tref of type_expr
   (* Defines a conversion between the two stitched types in the argument. *)
   | Tconv of type_expr
+  (* Denotes that the checked part of the stitching is opaque. The prover part
+     also uses the [Topaque] constructor, but only to keep the stitching in
+     sync structurally.
+  *)
   | Topaque of type_expr
   (* Cache the current value to break recursion. *)
   | Treplace of type_expr

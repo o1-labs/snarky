@@ -886,7 +886,7 @@ module Type = struct
 
     let conv ~mode typ1 typ2 env = conv ~mode env.depth typ1 typ2
 
-    let opaque typ env = opaque env.depth typ
+    let opaque ~mode typ env = opaque ~mode env.depth typ
   end
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env

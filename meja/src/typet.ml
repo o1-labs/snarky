@@ -86,8 +86,7 @@ module Type = struct
             (Error
                ( loc
                , Wrong_number_args
-                   (Path.Pident opaque, List.length var_params, 1)
-               )) )
+                   (Path.Pident opaque, List.length var_params, 1) )) )
     | Ptyp_ctor variant ->
         let {var_ident; var_params} = variant in
         let var_ident, decl = raw_find_type_declaration ~mode var_ident env in
@@ -187,7 +186,7 @@ module Type = struct
           let scope, env = pop_expr_scope env in
           join_expr_scope env scope
         in
-        let type_type = Envi.Type.Mk.opaque (type0 typ) env in
+        let type_type = Envi.Type.Mk.opaque ~mode:Checked (type0 typ) env in
         ({type_desc= Ttyp_opaque typ; type_loc= loc; type_type}, env)
 
   let fold ~init ~f typ =

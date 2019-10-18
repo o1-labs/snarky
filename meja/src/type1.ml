@@ -210,8 +210,6 @@ let mkvar ~mode depth name =
 module Mk = struct
   let var = mkvar
 
-  let stitch' = stitch
-
   let stitch ~mode depth desc1 desc2 =
     stitch (mk' ~mode depth desc1) (mk' ~mode:(other_mode mode) depth desc2)
 
@@ -317,10 +315,9 @@ module Mk = struct
     in
     get_mode mode typ
 
-  let opaque depth typ =
-    let typ = mk' ~mode:Prover depth typ.type_desc in
-    let opaque = mk' ~mode:Checked depth (Topaque typ) in
-    stitch' opaque typ
+  let opaque ~mode depth typ =
+    assert (equal_mode Prover typ.type_mode) ;
+    stitch ~mode depth (Topaque typ) (Topaque typ)
 end
 
 type change =
@@ -769,7 +766,7 @@ let contains typ ~in_ =
         let typ' = get_mode typ.type_mode typ' in
         equal typ' || contains typ'
     | Topaque typ' ->
-        equal_mode typ.type_mode Prover && (equal typ' || contains typ')
+        equal typ' || contains typ'
     | Tref _ ->
         assert false
     | Treplace _ ->

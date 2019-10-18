@@ -202,6 +202,32 @@ let rec check_type_aux ~loc typ ctyp env =
           | Unequal_lengths ->
               raise (Error (loc, Cannot_unify (typ, ctyp)))
         else raise (Error (loc, Cannot_unify (typ, ctyp))) )
+  | Topaque typ, Topaque ctyp ->
+      check_type_aux typ ctyp env
+  | Topaque typ', _ when typ.type_mode = Prover ->
+      (* Viral opacity, make sure that if one type is opaque then they both
+         are.
+      *)
+      let ctyp' =
+        (* New type with identical contents to [typ]. *)
+        Mk.stitch ~mode:ctyp.type_mode ctyp.type_depth ctyp.type_desc
+          ctyp.type_alternate.type_desc
+      in
+      set_desc ctyp (Topaque ctyp') ;
+      set_desc ctyp.type_alternate (Topaque ctyp') ;
+      check_type_aux typ' ctyp' env
+  | _, Topaque ctyp' when ctyp.type_mode = Prover ->
+      (* Viral opacity, make sure that if one type is opaque then they both
+         are.
+      *)
+      let typ' =
+        (* New type with identical contents to [typ]. *)
+        Mk.stitch ~mode:typ.type_mode typ.type_depth typ.type_desc
+          typ.type_alternate.type_desc
+      in
+      set_desc typ (Topaque typ') ;
+      set_desc typ.type_alternate (Topaque typ') ;
+      check_type_aux typ' ctyp' env
   | Tctor _, _ | _, Tctor _ ->
       (* Unfold an alias and compare again *)
       let typ, ctyp =
@@ -215,8 +241,6 @@ let rec check_type_aux ~loc typ ctyp env =
   | Tconv typ, Tconv ctyp ->
       check_type_aux typ ctyp env ;
       check_type_aux typ.type_alternate ctyp.type_alternate env
-  | Topaque typ, Topaque ctyp ->
-      check_type_aux typ ctyp env
   | _, _ ->
       raise (Error (loc, Cannot_unify (typ, ctyp)))
 
