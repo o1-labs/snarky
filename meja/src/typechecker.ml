@@ -73,6 +73,42 @@ let rec check_type_aux ~loc typ ctyp env =
   let typ = repr typ in
   let ctyp = repr ctyp in
   Type1.unify_depths typ ctyp ;
+  assert (equal_mode typ.type_mode typ.type_alternate.type_alternate.type_mode) ;
+  assert (equal_mode ctyp.type_mode ctyp.type_alternate.type_alternate.type_mode) ;
+  (* If the type stitchings differ, lower the tri-stitched one to a stitched
+     one.
+  *)
+  let typ, ctyp =
+    if
+      phys_equal typ.type_alternate.type_alternate ctyp
+      || phys_equal ctyp.type_alternate.type_alternate typ
+    then
+      (* Recursion breaking: these types differ in stitching, but are
+         tri-stitched together.
+      *)
+      (typ, ctyp)
+    else
+      try (
+      match
+        ( phys_equal typ typ.type_alternate.type_alternate
+        , phys_equal ctyp ctyp.type_alternate.type_alternate )
+      with
+      | true, false ->
+          stitch_tri_stitched ~loc ctyp env ;
+          (typ, repr ctyp)
+      | false, true ->
+          stitch_tri_stitched ~loc typ env ;
+          (repr typ, ctyp)
+      | _ ->
+          (typ, ctyp))
+      with Error (_, Cannot_unify _) ->
+        (* The stitching error tells us that the type will not be compatible,
+           but the incompatibility between the stitched types is not useful to
+           the user. Instead, throw an error about the types that triggered the
+           unification.
+        *)
+        raise (Error (loc, Cannot_unify (typ, ctyp)))
+  in
   match (typ.type_desc, ctyp.type_desc) with
   | Tref _, _ | _, Tref _ ->
       assert false
@@ -89,9 +125,16 @@ let rec check_type_aux ~loc typ ctyp env =
       assert false
   | Tvar _, Tvar _ ->
       (* Add the outermost (in terms of lexical scope) of the variables as
-                 the instance for the other. We do this by chosing the type of
-                 lowest ID, to ensure strict ordering and thus no cycles. *)
-      if ctyp.type_id < typ.type_id then Type1.add_instance typ ctyp
+         the instance for the other. We do this by chosing the type of lowest
+         ID, to ensure strict ordering and thus no cycles.
+
+         If the types are related by a tri-stitching, we instead collapse it.
+      *)
+      if phys_equal typ.type_alternate.type_alternate ctyp then
+        stitch_tri_stitched ~loc typ env
+      else if phys_equal ctyp.type_alternate.type_alternate typ then
+        stitch_tri_stitched ~loc ctyp env
+      else if ctyp.type_id < typ.type_id then Type1.add_instance typ ctyp
       else Type1.add_instance ctyp typ
   | Tvar _, _ ->
       Type1.add_instance typ ctyp
@@ -170,6 +213,23 @@ let rec check_type_aux ~loc typ ctyp env =
       check_type_aux typ.type_alternate ctyp.type_alternate env
   | _, _ ->
       raise (Error (loc, Cannot_unify (typ, ctyp)))
+
+and stitch_tri_stitched ~loc typ env =
+  ( match typ.type_desc with
+  | Tvar _ ->
+      (* Ensure that we properly lift any user-provided type variable names
+         before erasing the description of [typ].
+      *)
+      Type1.choose_variable_name typ typ.type_alternate.type_alternate
+  | _ ->
+      (* Check that [typ] is properly compatible with its stitched conterpart
+         before erasing its description.
+      *)
+      check_type_aux ~loc typ typ.type_alternate.type_alternate env ) ;
+  (* Set the representative of the tri-stitched type to the corresponding
+     stitched type.
+  *)
+  Type1.set_desc typ (Tref typ.type_alternate.type_alternate)
 
 let check_type ~loc env typ constr_typ =
   match check_type_aux ~loc typ constr_typ env with

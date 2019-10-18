@@ -581,6 +581,23 @@ let set_repr typ typ' =
   set_desc typ.type_alternate.type_alternate
     (Tref typ'.type_alternate.type_alternate)
 
+(** [choose_variable_name var typ] lifts the type variable name for [var] into
+    the [type_desc] for [typ] when it is also a variable.
+
+    Raises [AssertionError] if [var] is not a type variable.
+*)
+let choose_variable_name typ typ' =
+  match (typ.type_desc, typ'.type_desc) with
+  | Tvar (Some name), Tvar None ->
+      (* We would lose the user-provided name associated with [typ], so promote
+         it to be the name of [typ'].
+      *)
+      set_desc typ' (Tvar (Some name))
+  | Tvar _, _ ->
+      ()
+  | _ ->
+      assert false
+
 (** [add_instance var typ'] changes the representative of the type variable
     [var] to [typ']. If [typ'] is also a type variable, then the user-provided
     of [var] is added to [typ'], unless [typ'] already has a user-provided name
@@ -589,37 +606,19 @@ let set_repr typ typ' =
     Raises [AssertionError] if [var] is not a type variable.
 *)
 let add_instance typ typ' =
-  let choose_name typ typ' =
-    match (typ.type_desc, typ'.type_desc) with
-    | Tvar (Some name), Tvar None ->
-        (* We would lose the user-provided name associated with [typ], so promote
-         it to be the name of [typ'].
-      *)
-        set_desc typ' (Tvar (Some name))
-    | Tvar _, _ ->
-        ()
-    | _ ->
-        (* Sanity check: we should be adding an instance to a type variable. *)
-        assert false
-  in
   (* Sanity check. *)
   assert (equal_mode typ.type_mode typ'.type_mode) ;
-  choose_name typ typ' ;
-  choose_name typ.type_alternate typ'.type_alternate ;
-  choose_name typ.type_alternate.type_alternate
+  assert (
+    phys_equal typ typ.type_alternate.type_alternate
+    = phys_equal typ' typ'.type_alternate.type_alternate ) ;
+  choose_variable_name typ typ' ;
+  choose_variable_name typ.type_alternate typ'.type_alternate ;
+  choose_variable_name typ.type_alternate.type_alternate
     typ'.type_alternate.type_alternate ;
   (* Chose again in case [typ.type_alternate.type_alternate] found a new name
      that could be propagated back to [typ].
   *)
-  choose_name typ typ' ;
-  assert (not (phys_equal typ typ.type_alternate.type_alternate)) ;
-  let typ =
-    if phys_equal typ' typ'.type_alternate.type_alternate then (
-      (* [typ'] is stitched, set up [typ] for normal stitching. *)
-      set_desc typ (Tref typ.type_alternate.type_alternate) ;
-      typ.type_alternate.type_alternate )
-    else typ
-  in
+  choose_variable_name typ typ' ;
   set_repr typ typ'
 
 (** Create an equivalent type by unfolding all of the type representatives. *)
