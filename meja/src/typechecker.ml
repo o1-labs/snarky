@@ -529,11 +529,11 @@ let rec get_conversion_body ~can_add_args ~loc env free_vars typ =
   assert (are_stitched typ typ.type_alternate) ;
   let mode = Envi.current_mode env in
   let conv_body_type = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
-  match Envi.find_conversion typ env with
+  match Envi.find_conversion ~unifies typ env with
   | Some (path, conv_args) ->
       let free_vars, args = get_conversion_bodies free_vars conv_args in
       ( free_vars
-      , { Typedast.conv_body_desc= Tconv_ctor (path, args)
+      , { Typedast.conv_body_desc= Tconv_ctor (Location.mkloc path loc, args)
         ; conv_body_loc= loc
         ; conv_body_type } )
   | None -> (

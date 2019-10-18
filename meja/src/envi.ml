@@ -1343,7 +1343,7 @@ let find_name ~mode (lid : lid) env =
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
 
-let find_conversion _typ _env = None
+let find_conversion ~unifies:_ _typ _env = None
 
 (* Error handling *)
 
