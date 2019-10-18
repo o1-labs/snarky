@@ -379,35 +379,8 @@ module TypeDecl = struct
     let env, tdec_params = import_params env tdec_params in
     let params = List.map ~f:type0 tdec_params in
     let tdec_ret =
-      match (other_name, tri_name) with
-      | None, _ ->
-          Type1.Mk.ctor ~mode 10000 path params
-      | Some path', None ->
-          let tmp = Type1.mkvar ~mode 10000 None in
-          tmp.type_desc <- Tctor {var_ident= path; var_params= params} ;
-          tmp.type_alternate.type_desc
-          <- Tctor
-               { var_ident= path'
-               ; var_params=
-                   List.map params ~f:(fun param -> param.type_alternate) } ;
-          tmp
-      | Some other_path, Some tri_path ->
-          (* This doesn't make sense to do in Prover mode. *)
-          assert (equal_mode mode Checked) ;
-          (* Base stitching of [other_name <-> tri_name]. *)
-          let alt = Type1.mkvar ~mode:Prover 10000 None in
-          alt.type_desc
-          <- Tctor
-               { var_ident= other_path
-               ; var_params=
-                   List.map params ~f:(fun param -> param.type_alternate) } ;
-          alt.type_alternate.type_desc
-          <- Tctor {var_ident= tri_path; var_params= params} ;
-          (* Complete tri-stitching of [name -> other_name <-> tri_name]. *)
-          let tmp = Type1.mk' ~mode:Checked 10000 (Tvar None) in
-          tmp.type_desc <- Tctor {var_ident= path; var_params= params} ;
-          tmp.type_alternate <- alt ;
-          tmp
+      Type1.Mk.ctor ~mode 10000 path ?other_path:other_name ?tri_path:tri_name
+        params
     in
     let decl =
       Type0.{tdec_params= params; tdec_desc= TAbstract; tdec_id; tdec_ret}
