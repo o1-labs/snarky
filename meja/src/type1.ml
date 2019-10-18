@@ -251,8 +251,8 @@ module Mk = struct
       (* One or more types is tri-stitched, so tri-stitch here too. *)
       tri_stitch ~mode depth
         (Tarrow (typ1, typ2, explicit, label))
-        (Tarrow (alt_alt1, alt_alt2, explicit, label))
         (Tarrow (alt1, alt2, explicit, label))
+        (Tarrow (alt_alt1, alt_alt2, explicit, label))
 
   let ctor ~mode depth path ?other_path ?tri_path params =
     let other_path, tri_path =
