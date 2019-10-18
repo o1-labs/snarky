@@ -225,6 +225,7 @@ module Mk = struct
       List.for_all2_exn typs alt_alts ~f:(fun typ alt ->
           (* Sanity check. *)
           assert (equal_mode mode typ.type_mode) ;
+          assert (equal_mode mode alt.type_mode) ;
           phys_equal typ alt )
     then stitch ~mode depth (Ttuple typs) (Ttuple alts)
     else
@@ -240,6 +241,7 @@ module Mk = struct
       List.for_all2_exn [typ1; typ2] [alt_alt1; alt_alt2] ~f:(fun typ alt ->
           (* Sanity check. *)
           assert (equal_mode mode typ.type_mode) ;
+          assert (equal_mode mode alt.type_mode) ;
           phys_equal typ alt )
     then
       stitch ~mode depth
@@ -270,6 +272,7 @@ module Mk = struct
       List.for_all2_exn params alt_alts ~f:(fun typ alt ->
           (* Sanity check. *)
           assert (equal_mode mode typ.type_mode) ;
+          assert (equal_mode mode alt.type_mode) ;
           phys_equal typ alt )
       && Path.equal path tri_path
     then
@@ -293,6 +296,7 @@ module Mk = struct
       List.for_all2_exn vars alt_alts ~f:(fun typ alt ->
           (* Sanity check. *)
           assert (equal_mode mode typ.type_mode) ;
+          assert (equal_mode mode alt.type_mode) ;
           (match typ.type_desc with Tvar _ -> () | _ -> assert false) ;
           phys_equal typ alt )
       && phys_equal alts alt_alts
