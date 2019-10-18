@@ -176,6 +176,8 @@ let rec typ_debug_print fmt typ =
           typ_debug_print fmt (get_mode Checked typ) ;
           print " --> " ;
           typ_debug_print fmt (get_mode Prover typ)
+      | Topaque typ ->
+          print "opaque " ; typ_debug_print fmt typ
       | Treplace typ ->
           print "=== " ; typ_debug_print fmt typ ) ;
     Hash_set.remove hashtbl typ.type_id ) ;
@@ -207,6 +209,8 @@ let mkvar ~mode depth name =
 (** Constructors for stitched types. *)
 module Mk = struct
   let var = mkvar
+
+  let stitch' = stitch
 
   let stitch ~mode depth desc1 desc2 =
     stitch (mk' ~mode depth desc1) (mk' ~mode:(other_mode mode) depth desc2)
@@ -312,6 +316,11 @@ module Mk = struct
         (Tconv typ_stitched.type_alternate)
     in
     get_mode mode typ
+
+  let opaque depth typ =
+    let typ = mk' ~mode:Prover depth typ.type_desc in
+    let opaque = mk' ~mode:Checked depth (Topaque typ) in
+    stitch' opaque typ
 end
 
 type change =
@@ -465,6 +474,8 @@ let fold ~init ~f typ =
       f init typ
   | Tconv typ ->
       f init typ
+  | Topaque typ ->
+      f init typ
   | Treplace _ ->
       assert false
 
@@ -488,6 +499,8 @@ let rec copy_desc ~f = function
       copy_desc ~f typ.type_desc
   | Tconv typ ->
       Tconv (f typ)
+  | Topaque typ ->
+      Topaque (f typ)
   | Treplace _ ->
       assert false
 
@@ -755,6 +768,8 @@ let contains typ ~in_ =
     | Tconv typ' ->
         let typ' = get_mode typ.type_mode typ' in
         equal typ' || contains typ'
+    | Topaque typ' ->
+        equal_mode typ.type_mode Prover && (equal typ' || contains typ')
     | Tref _ ->
         assert false
     | Treplace _ ->

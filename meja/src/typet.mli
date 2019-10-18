@@ -3,6 +3,7 @@ type error =
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
+  | Opaque_type_in_prover_mode of Parsetypes.type_expr
 
 module Type : sig
   val import :

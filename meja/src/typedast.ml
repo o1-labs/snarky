@@ -17,6 +17,7 @@ and type_desc =
   | Ttyp_poly of type_expr list * type_expr
   | Ttyp_prover of type_expr
   | Ttyp_conv of type_expr * type_expr
+  | Ttyp_opaque of type_expr
 
 and variant = {var_ident: path; var_params: type_expr list}
 

@@ -34,6 +34,8 @@ module Type0 = struct
         Type.conv
           (type_expr ?loc (Type1.get_mode Checked typ))
           (type_expr ?loc (Type1.get_mode Prover typ))
+    | Topaque typ ->
+        Type.opaque (type_expr ?loc typ)
     | Treplace _ ->
         assert false
 
@@ -96,6 +98,8 @@ let rec type_desc = function
       Ptyp_prover (type_expr typ)
   | Ttyp_conv (typ1, typ2) ->
       Ptyp_conv (type_expr typ1, type_expr typ2)
+  | Ttyp_opaque typ ->
+      Ptyp_opaque (type_expr typ)
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}

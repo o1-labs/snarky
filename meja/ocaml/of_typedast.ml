@@ -37,6 +37,12 @@ let rec of_type_desc ?loc typ =
       of_type_expr typ
   | Ttyp_conv (typ1, typ2) ->
       mk_typ_t ?loc typ1 typ2
+  | Ttyp_opaque typ ->
+      Typ.constr ?loc
+        (Location.mkloc
+           (Option.value_exn (Longident.unflatten ["Snarky"; "Handle"; "t"]))
+           (Option.value ~default:Location.none loc))
+        [Typ.any ?loc (); of_type_expr typ]
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 

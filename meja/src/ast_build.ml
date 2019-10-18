@@ -62,6 +62,8 @@ module Type = struct
   let poly ?loc vars var = mk ?loc (Ptyp_poly (vars, var))
 
   let conv ?loc typ1 typ2 = mk ?loc (Ptyp_conv (typ1, typ2))
+
+  let opaque ?loc typ = mk ?loc (Ptyp_opaque typ)
 end
 
 module Type_decl = struct

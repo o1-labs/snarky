@@ -880,6 +880,8 @@ module Type = struct
     let poly ~mode vars typ env = poly ~mode env.depth vars typ
 
     let conv ~mode typ1 typ2 env = conv ~mode env.depth typ1 typ2
+
+    let opaque typ env = opaque env.depth typ
   end
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
@@ -1053,6 +1055,12 @@ module Type = struct
       | _, Tarrow (_, _, Implicit, _) ->
           1
       | Tconv typ1, Tconv typ2 ->
+          compare typ1 typ2
+      | _, Tconv _ ->
+          -1
+      | Tconv _, _ ->
+          1
+      | Topaque typ1, Topaque typ2 ->
           compare typ1 typ2
 
   and compare_all ~loc env typs1 typs2 =

@@ -55,6 +55,8 @@ let type_desc iter = function
       iter.type_expr iter typ
   | Ptyp_conv (typ1, typ2) ->
       iter.type_expr iter typ1 ; iter.type_expr iter typ2
+  | Ptyp_opaque typ ->
+      iter.type_expr iter typ
 
 let variant iter {var_ident; var_params} =
   lid iter var_ident ;

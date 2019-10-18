@@ -20,6 +20,7 @@ and type_desc =
   | Tref of type_expr
   (* Defines a conversion between the two stitched types in the argument. *)
   | Tconv of type_expr
+  | Topaque of type_expr
   (* Cache the current value to break recursion. *)
   | Treplace of type_expr
 [@@deriving sexp]

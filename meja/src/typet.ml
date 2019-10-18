@@ -9,6 +9,7 @@ type error =
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
+  | Opaque_type_in_prover_mode of type_expr
 
 exception Error of Location.t * error
 
@@ -158,6 +159,17 @@ module Type = struct
         let typ = Envi.Type.Mk.conv ~mode (type0 typ1) (type0 typ2) env in
         ( {type_desc= Ttyp_conv (typ1, typ2); type_loc= loc; type_type= typ}
         , env )
+    | Ptyp_opaque typ' ->
+        if equal_mode Prover mode then
+          raise (Error (loc, Opaque_type_in_prover_mode typ)) ;
+        let env = open_expr_scope ~mode:Prover env in
+        let typ, env = import typ' env in
+        let env =
+          let scope, env = pop_expr_scope env in
+          join_expr_scope env scope
+        in
+        let type_type = Envi.Type.Mk.opaque (type0 typ) env in
+        ({type_desc= Ttyp_opaque typ; type_loc= loc; type_type}, env)
 
   let fold ~init ~f typ =
     match typ.type_desc with
@@ -178,6 +190,8 @@ module Type = struct
     | Ptyp_conv (typ1, typ2) ->
         let acc = f init typ1 in
         f acc typ2
+    | Ptyp_opaque typ ->
+        f init typ
 
   let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -202,6 +216,8 @@ module Type = struct
         {type_desc= Ptyp_prover (f typ); type_loc= loc}
     | Ptyp_conv (typ1, typ2) ->
         {type_desc= Ptyp_conv (f typ1, f typ2); type_loc= loc}
+    | Ptyp_opaque typ ->
+        {type_desc= Ptyp_opaque (f typ); type_loc= loc}
 end
 
 module TypeDecl = struct
@@ -524,6 +540,11 @@ let report_error ppf = function
         "@[<hov>Constraints are not satisfied in this type.@ Type @[<h>%a@] \
          should be an instance of @[<h>%a@].@]"
         pp_typ typ pp_decl_typ decl
+  | Opaque_type_in_prover_mode typ ->
+      fprintf ppf
+        "@[<hov>The type @[<h>%a@] is not valid in this mode:@ opaque types \
+         cannot be created in Prover mode.@]"
+        pp_typ typ
 
 let () =
   Location.register_error_of_exn (function
