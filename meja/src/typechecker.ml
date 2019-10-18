@@ -92,19 +92,19 @@ let rec check_type_aux ~loc typ ctyp env =
       *)
       (typ, ctyp)
     else
-      try (
-      match
-        ( phys_equal typ typ.type_alternate.type_alternate
-        , phys_equal ctyp ctyp.type_alternate.type_alternate )
-      with
-      | true, false ->
-          stitch_tri_stitched ~loc ctyp env ;
-          (typ, repr ctyp)
-      | false, true ->
-          stitch_tri_stitched ~loc typ env ;
-          (repr typ, ctyp)
-      | _ ->
-          (typ, ctyp))
+      try
+        match
+          ( phys_equal typ typ.type_alternate.type_alternate
+          , phys_equal ctyp ctyp.type_alternate.type_alternate )
+        with
+        | true, false ->
+            stitch_tri_stitched ~loc ctyp env ;
+            (typ, repr ctyp)
+        | false, true ->
+            stitch_tri_stitched ~loc typ env ;
+            (repr typ, ctyp)
+        | _ ->
+            (typ, ctyp)
       with Error (_, Cannot_unify _) ->
         (* The stitching error tells us that the type will not be compatible,
            but the incompatibility between the stitched types is not useful to
