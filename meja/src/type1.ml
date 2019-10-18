@@ -299,7 +299,7 @@ module Mk = struct
           assert (equal_mode mode alt.type_mode) ;
           (match typ.type_desc with Tvar _ -> () | _ -> assert false) ;
           phys_equal typ alt )
-      && phys_equal alts alt_alts
+      && phys_equal typ alt_alt
     then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (alts, alt))
     else
       (* The type is tri-stitched, so tri-stitch this type too. *)
