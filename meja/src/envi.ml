@@ -1103,7 +1103,7 @@ module Type = struct
       (typ : type_expr) typ_vars env =
     List.filter_map env.resolve_env.type_env.instances
       ~f:(fun (id, instance_typ) ->
-        let instance_typ = copy instance_typ env in
+        let instance_typ = get_mode typ.type_mode (copy instance_typ env) in
         let snapshot = Snapshot.create () in
         if unifies env typ instance_typ then
           if
