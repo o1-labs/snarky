@@ -59,7 +59,7 @@ let type_expr mapper typ =
         <- Treplace typ'.type_alternate.type_alternate ;
       Type1.set_replacement typ typ' ;
       let type_desc = mapper.type_desc mapper desc in
-      let alt_type_desc = mapper.type_desc mapper desc in
+      let alt_type_desc = mapper.type_desc mapper alt_desc in
       let alt_alt_type_desc =
         if is_stitched then type_desc else mapper.type_desc mapper alt_alt_desc
       in
