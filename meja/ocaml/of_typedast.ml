@@ -40,7 +40,8 @@ let rec of_type_desc ?loc typ =
   | Ttyp_opaque typ ->
       Typ.constr ?loc
         (Location.mkloc
-           (Option.value_exn (Longident.unflatten ["Snarky"; "Handle"; "t"]))
+           (Option.value_exn
+              (Longident.unflatten ["Snarky"; "As_prover"; "Ref"; "t"]))
            (Option.value ~default:Location.none loc))
         [Typ.any ?loc (); of_type_expr typ]
 
