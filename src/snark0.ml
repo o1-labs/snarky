@@ -1794,10 +1794,11 @@ module Run = struct
                         | None ->
                             (* In prover mode, this can't happen. *)
                             assert false) ) )
-          ; alloc= Alloc.return (fun _ -> run (exists typ2))
-            (* NOTE: There are no variables allocated, so there is nothing to
-                     check here. The relevant checks are done in the [exists]
-                     call in [store] above, once for each function call.
+          ; alloc=
+              Alloc.return (fun _ -> run (exists typ2))
+              (* NOTE: There are no variables allocated, so there is nothing to
+                       check here. The relevant checks are done in the [exists]
+                       call in [store] above, once for each function call.
             *)
           ; check= (fun _ -> Checked.return ()) }
       end
