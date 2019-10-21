@@ -413,8 +413,40 @@ module TypeDecl = struct
     let env, tdec_params = import_params env tdec_params in
     let params = List.map ~f:type0 tdec_params in
     let tdec_ret =
-      Type1.Mk.ctor ~mode 10000 path ?other_path:other_name ?tri_path:tri_name
-        params
+      match (other_name, tri_name, mode) with
+      | Some other_path, Some tri_path, Checked ->
+          Type1.Mk.ctor ~mode:Checked 10000 path ~other_path ~tri_path params
+      | Some _, Some _, Prover ->
+          (* Invalid stitching. *)
+          assert false
+      | Some other_path, None, Checked ->
+          let pparams = List.map ~f:(Type1.get_mode Prover) params in
+          let ptyp = Type1.Mk.ctor ~mode:Prover 10000 other_path pparams in
+          let opaque = Type1.Mk.opaque ~mode:Prover 10000 ptyp in
+          let typ =
+            Type1.mk' ~mode:Checked 10000
+              (Tctor {var_ident= path; var_params= params})
+          in
+          typ.type_alternate <- opaque ;
+          typ
+      | Some other_path, None, Prover ->
+          Type1.Mk.ctor ~mode:Prover 10000 path ~other_path params
+      | None, Some _, _ ->
+          (* Invalid path combination. *)
+          assert false
+      | None, None, Checked ->
+          let pparams = List.map ~f:(Type1.get_mode Prover) params in
+          let ptyp = Type1.Mk.ctor ~mode:Prover 10000 path pparams in
+          let opaque = Type1.Mk.opaque ~mode:Prover 10000 ptyp in
+          let typ =
+            Type1.mk' ~mode:Checked 10000
+              (Tctor {var_ident= path; var_params= params})
+          in
+          typ.type_alternate <- opaque ;
+          typ
+      | None, None, Prover ->
+          let ptyp = Type1.Mk.ctor ~mode:Prover 10000 path params in
+          Type1.Mk.opaque ~mode:Prover 10000 ptyp
     in
     let decl =
       Type0.{tdec_params= params; tdec_desc= TAbstract; tdec_id; tdec_ret}
