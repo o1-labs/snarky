@@ -40,6 +40,10 @@ let other_none = function Checked -> prover_none | Prover -> checked_none
 
 let type_alternate {type_alternate= typ; _} = typ
 
+let is_poly = function
+  | {type_desc= Tpoly _; _} -> true
+  | _ -> false
+
 (** Returns [true] if the [type_expr] argument is valid, false otherwise.
    Can be used to check that a type-stitching has been created or modified
    correctly.
@@ -59,6 +63,7 @@ let equal {type_id= id1; _} {type_id= id2; _} = Int.equal id1 id2
 *)
 let mk' ~mode depth type_desc =
   incr type_id ;
+  (*assert (!type_id <> 36600) ;*)
   { type_desc
   ; type_id= !type_id
   ; type_depth= depth
@@ -228,6 +233,7 @@ module Mk = struct
           (* Sanity check. *)
           assert (equal_mode mode typ.type_mode) ;
           assert (equal_mode mode alt.type_mode) ;
+          assert (not (is_poly typ)) ;
           phys_equal typ alt )
     then stitch ~mode depth (Ttuple typs) (Ttuple alts)
     else
@@ -244,6 +250,7 @@ module Mk = struct
           (* Sanity check. *)
           assert (equal_mode mode typ.type_mode) ;
           assert (equal_mode mode alt.type_mode) ;
+          assert (not (is_poly typ)) ;
           phys_equal typ alt )
     then
       stitch ~mode depth
@@ -266,6 +273,7 @@ module Mk = struct
           (* Sanity check. *)
           assert (equal_mode mode typ.type_mode) ;
           assert (equal_mode mode alt.type_mode) ;
+          assert (not (is_poly typ)) ;
           phys_equal typ alt )
       && Option.is_none tri_path
     then
@@ -281,6 +289,7 @@ module Mk = struct
         (Tctor {var_ident= tri_path; var_params= alt_alts})
 
   let poly ~mode depth vars typ =
+    assert (not (is_poly typ)) ;
     let alt = type_alternate typ in
     let alts = List.map ~f:type_alternate vars in
     let alt_alt = type_alternate alt in
@@ -291,6 +300,7 @@ module Mk = struct
           (* Sanity check. *)
           assert (equal_mode mode typ.type_mode) ;
           assert (equal_mode mode alt.type_mode) ;
+          assert (not (is_poly typ)) ;
           (match typ.type_desc with Tvar _ -> () | _ -> assert false) ;
           phys_equal typ alt )
       && phys_equal typ alt_alt
@@ -303,6 +313,7 @@ module Mk = struct
         (Tpoly (alt_alts, alt_alt))
 
   let conv ~mode depth typ1 typ2 =
+    assert (not (is_poly typ1 || is_poly typ2)) ;
     let typ1 = get_mode Checked typ1 in
     let typ2 = get_mode Prover typ2 in
     let typ_stitched =
@@ -317,6 +328,7 @@ module Mk = struct
 
   let opaque ~mode depth typ =
     assert (equal_mode Prover typ.type_mode) ;
+    assert (not (is_poly typ)) ;
     stitch ~mode depth (Topaque typ) (Topaque typ)
 end
 
