@@ -624,6 +624,8 @@ let contains typ ~in_ =
 module Decl = struct
   let decl_id = ref 0
 
+  let next_id () = incr decl_id ; !decl_id
+
   let mk ~name ~params desc =
     incr decl_id ;
     let tdec_ret =

@@ -39,7 +39,7 @@ and type_decl_desc =
   | Pdec_record of field_decl list
   | Pdec_variant of ctor_decl list
   | Pdec_open
-  | Pdec_extend of Path.t Location.loc * Type0.type_decl * ctor_decl list
+  | Pdec_extend of Path.t Location.loc * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
 type literal = Int of int | Bool of bool | Field of string | String of string
@@ -87,6 +87,7 @@ and signature_desc =
   | Psig_value of str * type_expr
   | Psig_instance of str * type_expr
   | Psig_type of type_decl
+  | Psig_rectype of type_decl list
   | Psig_module of str * module_sig
   | Psig_modtype of str * module_sig
   | Psig_open of lid
@@ -112,6 +113,7 @@ and statement_desc =
   | Pstmt_value of pattern * expression
   | Pstmt_instance of str * expression
   | Pstmt_type of type_decl
+  | Pstmt_rectype of type_decl list
   | Pstmt_module of str * module_expr
   | Pstmt_modtype of str * module_sig
   | Pstmt_open of lid

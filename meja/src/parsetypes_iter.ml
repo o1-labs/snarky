@@ -94,7 +94,7 @@ let type_decl_desc iter = function
       List.iter ~f:(iter.ctor_decl iter) ctors
   | Pdec_open ->
       ()
-  | Pdec_extend (_name, _decl, _ctors) ->
+  | Pdec_extend (_name, _ctors) ->
       assert false
 
 (* TODO: re-enable this when the Type0 iterator is merged. *)
@@ -186,6 +186,8 @@ let signature_desc iter = function
       str iter name ; iter.type_expr iter typ
   | Psig_type decl ->
       iter.type_decl iter decl
+  | Psig_rectype decl ->
+      List.iter ~f:(iter.type_decl iter) decl
   | Psig_module (name, msig) | Psig_modtype (name, msig) ->
       str iter name ; iter.module_sig iter msig
   | Psig_open name ->
@@ -229,6 +231,8 @@ let statement_desc iter = function
       str iter name ; iter.expression iter e
   | Pstmt_type decl ->
       iter.type_decl iter decl
+  | Pstmt_rectype decls ->
+      List.iter ~f:(iter.type_decl iter) decls
   | Pstmt_module (name, me) ->
       str iter name ; iter.module_expr iter me
   | Pstmt_modtype (name, mty) ->

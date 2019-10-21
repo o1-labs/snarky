@@ -181,7 +181,9 @@ let rec of_signature_desc ?loc = function
   | Psig_value (name, typ) | Psig_instance (name, typ) ->
       Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
   | Psig_type decl ->
-      Sig.type_ ?loc Recursive [of_type_decl decl]
+      Sig.type_ ?loc Nonrecursive [of_type_decl decl]
+  | Psig_rectype decls ->
+      Sig.type_ ?loc Recursive (List.map ~f:of_type_decl decls)
   | Psig_module (name, msig) ->
       let msig =
         match of_module_sig msig with
@@ -250,7 +252,9 @@ let rec of_statement_desc ?loc = function
   | Pstmt_instance (name, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (Pat.var ?loc name) (of_expression e)]
   | Pstmt_type decl ->
-      Str.type_ ?loc Recursive [of_type_decl decl]
+      Str.type_ ?loc Nonrecursive [of_type_decl decl]
+  | Pstmt_rectype decls ->
+      Str.type_ ?loc Recursive (List.map ~f:of_type_decl decls)
   | Pstmt_module (name, m) ->
       Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
   | Pstmt_modtype (name, msig) ->

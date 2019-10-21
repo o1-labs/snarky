@@ -7,7 +7,7 @@ let g : 'a -> 'b = fun (x : bool) => {
 };
 
 module X = {
-  type t('a) = A('a) | B(int) | C(bool) : t(bool);
+  type rec t('a) = A('a) | B(int) | C(bool) : t(bool);
 
   let a : t('int) = A(15);
 

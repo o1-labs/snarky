@@ -3,6 +3,7 @@ type error =
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
+  | GADT_in_nonrec_type
 
 module Type : sig
   val import :
@@ -30,6 +31,13 @@ module TypeDecl : sig
   val generalise :
     Parsetypes.type_decl -> Parsetypes.type_decl * Parsetypes.type_decl
 
+  val predeclare : Envi.t -> Parsetypes.type_decl -> Envi.t
+  (** Add the type to the environment as an abstract type.
+
+      This can be used to set up the environment for recursive or co-recursive
+      types, which need to find their own identifier in scope.
+  *)
+
   val import :
        ?other_name:Path.t
     -> Parsetypes.type_decl
@@ -41,4 +49,8 @@ module TypeDecl : sig
       to the type with that name; otherwise, the type is stitched to a type of
       its own name in the other mode.
   *)
+
+  val import_rec :
+    Parsetypes.type_decl list -> Envi.t -> Typedast.type_decl list * Envi.t
+  (** Import the given type declarations recursively. *)
 end

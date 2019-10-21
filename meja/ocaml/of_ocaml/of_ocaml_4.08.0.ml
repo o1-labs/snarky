@@ -86,6 +86,32 @@ let to_type_decl_desc decl =
 let can_create_signature_item item =
   match item with Sig_typext _ | Sig_class _ -> false | _ -> true
 
+let type_decl_of_sigi = function
+  | Sig_type (ident, decl, _rec_status, _visibility) ->
+      { tdec_ident= mkloc (Ident.name ident) decl.type_loc
+      ; tdec_params=
+          List.map ~f:(to_type_expr ~loc:decl.type_loc) decl.type_params
+      ; tdec_desc
+      ; tdec_loc= decl.type_loc }
+  | _ ->
+      assert false
+
+let rec group_signature_items current_group signature =
+  match signature with
+  | (Sig_type (_, _, Trec_first, _visibility) as sigi) :: signature ->
+      (* Start of new recursive type group. *)
+      if current_group = [] then group_signature_items [sigi] signature
+      else List.rev current_group :: group_signature_items [sigi] signature
+  | (Sig_type (_, _, Trec_next, _visibility) as sigi) :: signature ->
+      (* Continuation of recursive type group. *)
+      group_signature_items (sigi :: current_group) signature
+  | sigi :: signature ->
+      if current_group = [] then [sigi] :: group_signature_items [] signature
+      else
+        List.rev current_group :: [sigi] :: group_signature_items [] signature
+  | [] ->
+      []
+
 (** TODO: Handle the new visibility parameter. *)
 let rec to_signature_item item =
   match item with
@@ -95,17 +121,10 @@ let rec to_signature_item item =
             ( mkloc (Ident.name ident) val_loc
             , to_type_expr ~loc:val_loc val_type )
       ; sig_loc= val_loc }
-  | Sig_type (ident, decl, _rec_status, _visibility) ->
-      (* TODO: handle rec_status *)
-      let tdec_desc = to_type_decl_desc decl in
-      { sig_desc=
-          Psig_type
-            { tdec_ident= mkloc (Ident.name ident) decl.type_loc
-            ; tdec_params=
-                List.map ~f:(to_type_expr ~loc:decl.type_loc) decl.type_params
-            ; tdec_desc
-            ; tdec_loc= decl.type_loc }
-      ; sig_loc= decl.type_loc }
+  | Sig_type (_ident, decl, Trec_not, _visibility) ->
+      {sig_desc= Psig_type (type_decl_of_sigi item); sig_loc= decl.type_loc}
+  | Sig_type (_ident, decl, _, _visibility) ->
+      {sig_desc= Psig_rectype [type_decl_of_sigi item]; sig_loc= decl.type_loc}
   | Sig_module (ident, _module_presence, decl, _, _visibility) ->
       { sig_desc=
           Psig_module
@@ -122,9 +141,16 @@ let rec to_signature_item item =
       failwith "Cannot create a signature item from this OCaml signature item."
 
 and to_signature items =
-  List.filter_map items ~f:(fun item ->
-      if can_create_signature_item item then Some (to_signature_item item)
-      else None )
+  let items = List.filter ~f:can_create_signature_item item in
+  let grouped_items = group_signature_items [] items in
+  List.map items ~f:(function
+    | [item] ->
+        to_signature_item item
+    | Sig_type (_, {type_loc; _}, _, _) :: _ as items ->
+        let decls = List.map ~f:type_decl_of_sigi items in
+        {sig_desc= Psig_rectype decls; sig_loc= type_loc}
+    | _ ->
+        assert false )
 
 and to_module_sig_desc ~loc decl =
   match decl with

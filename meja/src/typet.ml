@@ -9,6 +9,7 @@ type error =
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
+  | GADT_in_nonrec_type
 
 exception Error of Location.t * error
 
@@ -73,18 +74,7 @@ module Type = struct
         let var_ident, decl = raw_find_type_declaration ~mode var_ident env in
         let var_ident = Location.mkloc var_ident variant.var_ident.loc in
         let given_args_length = List.length var_params in
-        let expected_args_length =
-          match decl.tdec_desc with
-          | TForward num_args -> (
-            match !num_args with
-            | Some l ->
-                l
-            | None ->
-                num_args := Some given_args_length ;
-                given_args_length )
-          | _ ->
-              List.length decl.tdec_params
-        in
+        let expected_args_length = List.length decl.tdec_params in
         if not (Int.equal given_args_length expected_args_length) then
           raise
             (Error
@@ -97,17 +87,10 @@ module Type = struct
               (env, param) )
         in
         let typ =
-          match decl.tdec_desc with
-          | TForward _ ->
-              (* HACK! *)
-              Envi.Type.Mk.ctor ~mode var_ident.txt
-                (List.map ~f:type0 var_params)
-                env
-          | _ ->
-              Envi.Type.instantiate decl.tdec_params
-                (List.map ~f:type0 var_params)
-                (Type1.get_mode mode decl.tdec_ret)
-                env
+          Envi.Type.instantiate decl.tdec_params
+            (List.map ~f:type0 var_params)
+            (Type1.get_mode mode decl.tdec_ret)
+            env
         in
         ( { type_desc= Ttyp_ctor {var_params; var_ident}
           ; type_loc= loc
@@ -246,6 +229,26 @@ module TypeDecl = struct
         (* We don't have enough information about the type to generalise it. *)
         assert false
 
+  let predeclare env
+      {Parsetypes.tdec_ident; tdec_params; tdec_desc; tdec_loc= _} =
+    match tdec_desc with
+    | Pdec_extend _ ->
+        env
+    | _ ->
+        let mode = Envi.current_mode env in
+        let ident = Ident.create ~mode tdec_ident.txt in
+        let params =
+          List.map tdec_params ~f:(fun _ -> Envi.Type.mkvar ~mode None env)
+        in
+        let decl =
+          { Type0.tdec_params= params
+          ; tdec_desc= TAbstract
+          ; tdec_id= next_id ()
+          ; tdec_ret= Envi.Type.Mk.ctor ~mode (Path.Pident ident) params env }
+        in
+        Envi.TypeDecl.predeclare ident decl env ;
+        map_current_scope ~f:(Scope.add_type_declaration ident decl) env
+
   let import_field ?must_find env {fld_ident; fld_type; fld_loc} =
     let mode = Envi.current_mode env in
     let fld_type, env = Type.import ?must_find fld_type env in
@@ -325,7 +328,7 @@ module TypeDecl = struct
           ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
 
   (* TODO: Make prover mode declarations stitch to opaque types. *)
-  let import ?other_name decl' env =
+  let import ?other_name ~recursive decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
     let tdec_ident, path, tdec_id =
@@ -333,32 +336,18 @@ module TypeDecl = struct
         IdTbl.find_name ~modes:(modes_of_mode mode) tdec_ident.txt
           env.resolve_env.type_env.predeclared_types
       with
-      | Some (ident, (id, num_args, loc)) ->
-          ( match !num_args with
-          | Some num_args ->
-              let given = List.length tdec_params in
-              if not (Int.equal given num_args) then
-                raise
-                  (Error
-                     (loc, Wrong_number_args (Pident ident, given, num_args)))
-          | None ->
-              () ) ;
-          let {type_env; _} = env.resolve_env in
-          env.resolve_env.type_env
-          <- { type_env with
-               predeclared_types= IdTbl.remove ident type_env.predeclared_types
-             } ;
-          (Location.mkloc ident tdec_ident.loc, Path.Pident ident, id)
+      | Some (ident, id) ->
+          (map_loc ~f:(fun _ -> ident) tdec_ident, Path.Pident ident, id)
       | None -> (
         match tdec_desc with
-        | Pdec_extend (path, _, _) ->
+        | Pdec_extend (path, _) ->
             let tdec_ident, _ =
               Envi.raw_get_type_declaration ~loc:path.loc path.txt env
             in
-            (map_loc ~f:(fun _ -> tdec_ident) path, path.txt, next_id env)
+            (map_loc ~f:(fun _ -> tdec_ident) path, path.txt, next_id ())
         | _ ->
             let ident = map_loc ~f:(Ident.create ~mode) tdec_ident in
-            (ident, Path.Pident ident.txt, next_id env) )
+            (ident, Path.Pident ident.txt, next_id ()) )
     in
     let env = open_expr_scope env in
     let import_params env =
@@ -388,20 +377,6 @@ module TypeDecl = struct
     in
     let decl =
       Type0.{tdec_params= params; tdec_desc= TAbstract; tdec_id; tdec_ret}
-    in
-    (* Make sure the declaration is available to lookup for recursive types. *)
-    let env =
-      let scope, env = Envi.pop_expr_scope env in
-      let env =
-        match tdec_desc with
-        | Pdec_extend _ ->
-            env
-        | _ ->
-            map_current_scope
-              ~f:(Scope.add_type_declaration tdec_ident.txt decl)
-              env
-      in
-      Envi.push_scope scope env
     in
     let typedast_decl =
       { Typedast.tdec_ident
@@ -440,12 +415,12 @@ module TypeDecl = struct
             {typedast_decl with tdec_desc= Tdec_record fields; tdec_tdec= decl}
           in
           (typedast_decl, env)
-      | Pdec_variant ctors | Pdec_extend (_, _, ctors) ->
+      | Pdec_variant ctors | Pdec_extend (_, ctors) ->
           let name =
             match tdec_desc with
             | Pdec_variant _ ->
                 Path.Pident tdec_ident.txt
-            | Pdec_extend (lid, _, _) ->
+            | Pdec_extend (lid, _) ->
                 lid.txt
             | _ ->
                 failwith "Could not find name for TVariant/TExtend."
@@ -453,6 +428,8 @@ module TypeDecl = struct
           let env, ctors =
             List.fold_map ~init:env ctors ~f:(fun env ctor ->
                 let ret = ctor.ctor_ret in
+                if (not recursive) && Option.is_some ctor.ctor_ret then
+                  raise (Error (ctor.ctor_loc, GADT_in_nonrec_type)) ;
                 let env, ctor = import_ctor env ctor in
                 ( match (ctor.ctor_ret, ret) with
                 | Some {type_desc= Ttyp_ctor {var_ident= path; _}; _}, _
@@ -474,12 +451,10 @@ module TypeDecl = struct
                 ( Typedast.Tdec_variant ctors
                 , Type0.TVariant
                     (List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors) )
-            | Pdec_extend (id, decl, _) ->
-                ( Typedast.Tdec_extend (id, decl, ctors)
+            | Pdec_extend (id, _) ->
+                ( Typedast.Tdec_extend (id, ctors)
                 , Type0.TExtend
-                    ( id.txt
-                    , decl
-                    , List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors ) )
+                    (id.txt, List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors) )
             | _ ->
                 failwith "Expected a TVariant or a TExtend"
           in
@@ -496,6 +471,18 @@ module TypeDecl = struct
         env
     in
     (decl, env)
+
+  let import_rec decls env =
+    let env = List.fold ~f:predeclare ~init:env decls in
+    let env, decls =
+      List.fold_map ~init:env decls ~f:(fun env decl ->
+          let decl, env = import ~recursive:true decl env in
+          (env, decl) )
+    in
+    Envi.TypeDecl.clear_predeclared env ;
+    (decls, env)
+
+  let import ?other_name = import ?other_name ~recursive:false
 end
 
 (* Error handling *)
@@ -528,6 +515,10 @@ let report_error ppf = function
         "@[<hov>Constraints are not satisfied in this type.@ Type @[<h>%a@] \
          should be an instance of @[<h>%a@].@]"
         pp_typ typ pp_decl_typ decl
+  | GADT_in_nonrec_type ->
+      fprintf ppf
+        "@[<hov>GADT case syntax cannot be used in a non-recursive type.@ To \
+         use this syntax, use 'type rec' for this type definition.@]@."
 
 let () =
   Location.register_error_of_exn (function
