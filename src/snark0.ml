@@ -1795,12 +1795,20 @@ module Run = struct
                             (* In prover mode, this can't happen. *)
                             assert false) ) )
           ; alloc=
+              (* NOTE: We don't do any allocations here; the [exists] call
+                       below sets up new variables and constraints on each
+                       function call, ensuring that the return values are
+                       distinct in the constraint system.
+              *)
               Alloc.return (fun _ -> run (exists typ2))
-              (* NOTE: There are no variables allocated, so there is nothing to
+          ; check=
+              (fun _ ->
+                (* NOTE: There are no variables allocated, so there is nothing to
                        check here. The relevant checks are done in the [exists]
-                       call in [store] above, once for each function call.
-            *)
-          ; check= (fun _ -> Checked.return ()) }
+                       call in [store]/[alloc] above, once for each function
+                       call.
+                *)
+                Checked.return () ) }
       end
 
       module Of_traversable = Of_traversable
