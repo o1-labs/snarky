@@ -131,6 +131,285 @@ let of_literal ?loc = function
   | String s ->
       Exp.constant ?loc (Const.string s)
 
+(** Code generation for [Typ.t] store/read fields from [convert_body_desc]s. *)
+let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
+  let mapper_of_convert_body = mapper_of_convert_body ~field ~bind ~return in
+  match desc with
+  | Tconv_record fields ->
+      let bind = Exp.ident ?loc bind in
+      let return = Exp.ident ?loc return in
+      let fields =
+        List.map fields ~f:(fun (name, conv) ->
+            let name = of_path_loc name in
+            let short_name = map_loc ~f:Longident.last name in
+            let pat = Pat.var ~loc:name.loc short_name in
+            let exp = Exp.ident ~loc:name.loc (mk_lid short_name) in
+            let conv = mapper_of_convert_body conv in
+            (name, pat, exp, conv) )
+      in
+      let record_exp =
+        let fields =
+          List.map fields ~f:(fun (name, _, exp, _) -> (name, exp))
+        in
+        (* Return the re-constructed record. *)
+        Exp.apply ?loc return [(Nolabel, Exp.record ?loc fields None)]
+      in
+      let record_pat =
+        let fields =
+          List.map fields ~f:(fun (name, pat, _, _) -> (name, pat))
+        in
+        Pat.record ?loc fields Closed
+      in
+      let binds =
+        List.fold ~init:record_exp fields ~f:(fun exp (_, pat, var, conv) ->
+            let apply_conv = Exp.apply ?loc conv [(Nolabel, var)] in
+            let rest = Exp.fun_ ?loc Nolabel None pat exp in
+            Exp.apply ?loc bind [(Nolabel, apply_conv); (Labelled "f", rest)]
+        )
+      in
+      Exp.fun_ ?loc Nolabel None record_pat binds
+  | Tconv_ctor (name, []) ->
+      Exp.field ?loc (Exp.ident ~loc:name.loc (of_path_loc name)) field
+  | Tconv_ctor (name, args) ->
+      (* TODO: Lift this case as a let in [convert], just apply the name. *)
+      let args =
+        List.map args ~f:(fun arg ->
+            (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
+        )
+      in
+      let name = of_path_loc name in
+      Exp.field ?loc (Exp.apply ?loc (Exp.ident ~loc:name.loc name) args) field
+  | Tconv_tuple convs ->
+      let bind = Exp.ident ?loc bind in
+      let return = Exp.ident ?loc return in
+      let convs =
+        List.mapi convs ~f:(fun i conv ->
+            let loc = conv.conv_body_loc in
+            let name = mk_loc ~loc (sprintf "x%i" i) in
+            let exp = Exp.ident ~loc (mk_lid name) in
+            let pat = Pat.var ~loc name in
+            let conv = mapper_of_convert_body conv in
+            (pat, exp, conv) )
+      in
+      let tuple_exp =
+        (* Return the re-constructed tuple. *)
+        Exp.apply ?loc return
+          [(Nolabel, Exp.tuple ?loc (List.map convs ~f:(fun (_, e, _) -> e)))]
+      in
+      let tuple_pat =
+        Pat.tuple ?loc (List.map convs ~f:(fun (p, _, _) -> p))
+      in
+      let binds =
+        List.fold ~init:tuple_exp convs ~f:(fun exp (pat, var, conv) ->
+            let apply_conv = Exp.apply ?loc conv [(Nolabel, var)] in
+            let rest = Exp.fun_ ?loc Nolabel None pat exp in
+            Exp.apply ?loc bind [(Nolabel, apply_conv); (Labelled "f", rest)]
+        )
+      in
+      Exp.fun_ ?loc Nolabel None tuple_pat binds
+
+(** Code generation for [Typ.t] store/read fields from [convert_body]s. *)
+and mapper_of_convert_body ~field ~bind ~return
+    {conv_body_desc; conv_body_loc= loc; conv_body_type= _} =
+  mapper_of_convert_body_desc ~field ~bind ~return ~loc conv_body_desc
+
+(** Code generation for [Typ.t] alloc fields from [convert_body_desc]s. *)
+and alloc_of_convert_body_desc ?loc desc =
+  let lid x = mk_loc ?loc (Option.value_exn (Longident.unflatten x)) in
+  let return = lid ["Snarky"; "Typ_monads"; "Alloc"; "return"] in
+  let bind = lid ["Snarky"; "Typ_mondas"; "Alloc"; "bind"] in
+  let field = lid ["Snarky"; "Types"; "Typ"; "alloc"] in
+  match desc with
+  | Tconv_record fields ->
+      let bind = Exp.ident ?loc bind in
+      let return = Exp.ident ?loc return in
+      let fields =
+        List.map fields ~f:(fun (name, conv) ->
+            let name = of_path_loc name in
+            let short_name = map_loc ~f:Longident.last name in
+            let pat = Pat.var ~loc:name.loc short_name in
+            let exp = Exp.ident ~loc:name.loc (mk_lid short_name) in
+            let conv = alloc_of_convert_body conv in
+            (name, pat, exp, conv) )
+      in
+      let record_exp =
+        let fields =
+          List.map fields ~f:(fun (name, _, exp, _) -> (name, exp))
+        in
+        (* Return the re-constructed record. *)
+        Exp.apply ?loc return [(Nolabel, Exp.record ?loc fields None)]
+      in
+      let binds =
+        List.fold ~init:record_exp fields ~f:(fun exp (_, pat, _, conv) ->
+            let rest = Exp.fun_ ?loc Nolabel None pat exp in
+            Exp.apply ?loc bind [(Nolabel, conv); (Labelled "f", rest)] )
+      in
+      binds
+  | Tconv_ctor (name, []) ->
+      Exp.field ?loc (Exp.ident ~loc:name.loc (of_path_loc name)) field
+  | Tconv_ctor (name, args) ->
+      (* TODO: Lift this case as a let in [convert], just apply the name. *)
+      let args =
+        List.map args ~f:(fun arg ->
+            (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
+        )
+      in
+      let name = of_path_loc name in
+      Exp.field ?loc (Exp.apply ?loc (Exp.ident ~loc:name.loc name) args) field
+  | Tconv_tuple convs ->
+      let bind = Exp.ident ?loc bind in
+      let return = Exp.ident ?loc return in
+      let convs =
+        List.mapi convs ~f:(fun i conv ->
+            let loc = conv.conv_body_loc in
+            let name = mk_loc ~loc (sprintf "x%i" i) in
+            let exp = Exp.ident ~loc (mk_lid name) in
+            let pat = Pat.var ~loc name in
+            let conv = alloc_of_convert_body conv in
+            (pat, exp, conv) )
+      in
+      let tuple_exp =
+        (* Return the re-constructed tuple. *)
+        Exp.apply ?loc return
+          [(Nolabel, Exp.tuple ?loc (List.map convs ~f:(fun (_, e, _) -> e)))]
+      in
+      let binds =
+        List.fold ~init:tuple_exp convs ~f:(fun exp (pat, _, conv) ->
+            let rest = Exp.fun_ ?loc Nolabel None pat exp in
+            Exp.apply ?loc bind [(Nolabel, conv); (Labelled "f", rest)] )
+      in
+      binds
+
+(** Code generation for [Typ.t] alloc fields from [convert_body]s. *)
+and alloc_of_convert_body
+    {conv_body_desc; conv_body_loc= loc; conv_body_type= _} =
+  alloc_of_convert_body_desc ~loc conv_body_desc
+
+(** Code generation for [Typ.t] check fields from [convert_body_desc]s. *)
+and check_of_convert_body_desc ?loc desc =
+  let lid x = mk_loc ?loc (Option.value_exn (Longident.unflatten x)) in
+  let return = lid ["Snarky"; "Checked"; "return"] in
+  let bind = lid ["Snarky"; "Checked"; "bind"] in
+  let field = lid ["Snarky"; "Types"; "Typ"; "check"] in
+  match desc with
+  | Tconv_record fields ->
+      let bind = Exp.ident ?loc bind in
+      let return = Exp.ident ?loc return in
+      let fields =
+        List.map fields ~f:(fun (name, conv) ->
+            let name = of_path_loc name in
+            let short_name = map_loc ~f:Longident.last name in
+            let pat = Pat.var ~loc:name.loc short_name in
+            let exp = Exp.ident ~loc:name.loc (mk_lid short_name) in
+            let conv = check_of_convert_body conv in
+            (name, pat, exp, conv) )
+      in
+      let unit_exp =
+        (* Return unit. *)
+        Exp.apply ?loc return [(Nolabel, Exp.construct ?loc (lid ["()"]) None)]
+      in
+      let unit_pat = Pat.construct ?loc (lid ["()"]) None in
+      let record_pat =
+        let fields =
+          List.map fields ~f:(fun (name, pat, _, _) -> (name, pat))
+        in
+        Pat.record ?loc fields Closed
+      in
+      let binds =
+        List.fold ~init:unit_exp fields ~f:(fun exp (_, _, var, conv) ->
+            let apply_conv = Exp.apply ?loc conv [(Nolabel, var)] in
+            let rest = Exp.fun_ ?loc Nolabel None unit_pat exp in
+            Exp.apply ?loc bind [(Nolabel, apply_conv); (Labelled "f", rest)]
+        )
+      in
+      Exp.fun_ ?loc Nolabel None record_pat binds
+  | Tconv_ctor (name, []) ->
+      Exp.field ?loc (Exp.ident ~loc:name.loc (of_path_loc name)) field
+  | Tconv_ctor (name, args) ->
+      (* TODO: Lift this case as a let in [convert], just apply the name. *)
+      let args =
+        List.map args ~f:(fun arg ->
+            (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
+        )
+      in
+      let name = of_path_loc name in
+      Exp.field ?loc (Exp.apply ?loc (Exp.ident ~loc:name.loc name) args) field
+  | Tconv_tuple convs ->
+      let bind = Exp.ident ?loc bind in
+      let return = Exp.ident ?loc return in
+      let convs =
+        List.mapi convs ~f:(fun i conv ->
+            let loc = conv.conv_body_loc in
+            let name = mk_loc ~loc (sprintf "x%i" i) in
+            let exp = Exp.ident ~loc (mk_lid name) in
+            let pat = Pat.var ~loc name in
+            let conv = check_of_convert_body conv in
+            (pat, exp, conv) )
+      in
+      let unit_exp =
+        (* Return unit. *)
+        Exp.apply ?loc return [(Nolabel, Exp.construct ?loc (lid ["()"]) None)]
+      in
+      let unit_pat = Pat.construct ?loc (lid ["()"]) None in
+      let tuple_pat =
+        Pat.tuple ?loc (List.map convs ~f:(fun (p, _, _) -> p))
+      in
+      let binds =
+        List.fold ~init:unit_exp convs ~f:(fun exp (_, var, conv) ->
+            let apply_conv = Exp.apply ?loc conv [(Nolabel, var)] in
+            let rest = Exp.fun_ ?loc Nolabel None unit_pat exp in
+            Exp.apply ?loc bind [(Nolabel, apply_conv); (Labelled "f", rest)]
+        )
+      in
+      Exp.fun_ ?loc Nolabel None tuple_pat binds
+
+(** Code generation for [Typ.t] store/read fields from [convert_body]s. *)
+and check_of_convert_body
+    {conv_body_desc; conv_body_loc= loc; conv_body_type= _} =
+  check_of_convert_body_desc ~loc conv_body_desc
+
+(** Code generation for [Typ.t]s from [convert_desc]s. *)
+and of_convert_desc ?loc = function
+  | Tconv_fun (name, body) ->
+      Exp.fun_ ?loc Nolabel None
+        (Pat.var ~loc:name.loc (of_ident_loc name))
+        (of_convert body)
+  | Tconv_body {conv_body_desc= Tconv_ctor (name, []); conv_body_loc= loc; _}
+    ->
+      Exp.ident ~loc (of_path_loc name)
+  | Tconv_body {conv_body_desc= Tconv_ctor (name, args); conv_body_loc= loc; _}
+    ->
+      let args =
+        List.map args ~f:(fun arg ->
+            (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
+        )
+      in
+      Exp.apply ~loc (Exp.ident ~loc:name.loc (of_path_loc name)) args
+  | Tconv_body body ->
+      let mk_lid x = mk_loc ?loc (Option.value_exn (Longident.unflatten x)) in
+      let store_bind = mk_lid ["Snarky"; "Typ_monads"; "Store"; "bind"] in
+      let store_return = mk_lid ["Snarky"; "Typ_monads"; "Store"; "return"] in
+      let store_field = mk_lid ["Snarky"; "Types"; "Typ"; "store"] in
+      let read_bind = mk_lid ["Snarky"; "Typ_monads"; "Read"; "bind"] in
+      let read_return = mk_lid ["Snarky"; "Typ_monads"; "Read"; "return"] in
+      let read_field = mk_lid ["Snarky"; "Types"; "Typ"; "read"] in
+      Exp.record ?loc
+        [ ( mk_lid ["Snarky"; "Types"; "Typ"; "store"]
+          , mapper_of_convert_body ~field:store_field ~bind:store_bind
+              ~return:store_return body )
+        ; ( mk_lid ["Snarky"; "Types"; "Typ"; "read"]
+          , mapper_of_convert_body ~field:read_field ~bind:read_bind
+              ~return:read_return body )
+        ; ( mk_lid ["Snarky"; "Types"; "Typ"; "alloc"]
+          , alloc_of_convert_body body )
+        ; ( mk_lid ["Snarky"; "Types"; "Typ"; "check"]
+          , check_of_convert_body body ) ]
+        None
+
+(** Code generation for [Typ.t]s from [convert]s. *)
+and of_convert {conv_desc; conv_loc= loc; conv_type= _} =
+  of_convert_desc ~loc conv_desc
+
 let rec of_expression_desc ?loc = function
   | Texp_apply (f, es) ->
       Exp.apply ?loc (of_expression f)
