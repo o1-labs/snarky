@@ -51,6 +51,8 @@ let j = fun (i : int, f : bool -> 'a) => {
   f (conv (i));
 };
 
+/*
+/* Disabled. We need type parameter variance to make this work properly. */
 type equiv ('a, 'b) = Equiv('a -> 'b, 'b -> 'a);
 
 instance equiv_eq = Equiv(fun (x) => {x;}, fun (x) => {x;});
@@ -60,3 +62,12 @@ instance conv_equiv = fun {Equiv(conv, _)} => { {conv}; };
 let k = fun (i : int, f : 'a -> 'a -> 'a) => {
   f (i, conv(i));
 };
+
+let l = fun (b : bool, f : 'a -> 'a -> 'a) => {
+  f (b, conv(b));
+};
+
+let m = fun (f : 'a -> 'a -> 'a) => {
+  f ((), conv());
+};
+*/
