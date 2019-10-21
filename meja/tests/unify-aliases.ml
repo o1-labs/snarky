@@ -1,7 +1,7 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-type 'a t = int
+type nonrec 'a t = int
 
 let x : bool t = 15
 

@@ -75,7 +75,10 @@ let {Typedast.tdec_tdec= exn; _}, env = import exn env
 
 let {Typedast.tdec_tdec= option; _}, env = import option env
 
-let {Typedast.tdec_tdec= list; _}, env = import list env
+(* NOTE: list is a recursive type. *)
+let {Typedast.tdec_tdec= list; _}, env =
+  let decls, env = import_rec [list] env in
+  (List.hd decls, env)
 
 let {Typedast.tdec_tdec= bytes; _}, env = import bytes env
 

@@ -38,7 +38,7 @@ let c : _ -> v (int, bool) = fun (x : v ('a, 'b)) => {
   };
 };
 
-type w('a) = A | B(int, int) : w(int) | C (w('b)) : w('b);
+type rec w('a) = A | B(int, int) : w(int) | C (w('b)) : w('b);
 
 let d = fun (x) => {
   switch (x) {

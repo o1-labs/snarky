@@ -2,9 +2,9 @@ module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
 module Alias_alias = struct
-  type ('a, 'b) u = 'a -> 'a
+  type nonrec ('a, 'b) u = 'a -> 'a
 
-  type ('a, 'b) v = ('a, 'a) u
+  type nonrec ('a, 'b) v = ('a, 'a) u
 
   let f (x : (int, bool) u) : (int, int) u = x
 
@@ -16,9 +16,9 @@ module Alias_alias = struct
 end
 
 module Alias_opaque = struct
-  type ('a, 'b) u
+  type nonrec ('a, 'b) u
 
-  type ('a, 'b) v = ('a, 'a) u
+  type nonrec ('a, 'b) v = ('a, 'a) u
 
   let f (x : (int, int) v) : (int, bool) v = x
 
@@ -29,7 +29,7 @@ end
 
 module Alias_record = struct
   include struct
-    type ('a, 'b) u = {a: 'a; b: 'b}
+    type nonrec ('a, 'b) u = {a: 'a; b: 'b}
 
     let u_typ __implicit1__ __implicit2__ : (('a2, 'b2) u, ('a1, 'b1) u) Typ.t
         =
@@ -52,7 +52,7 @@ module Alias_record = struct
             Typ.check __implicit1__ b ; Typ.check __implicit2__ a ; () ) }
   end
 
-  type ('a, 'b) v = ('a, 'a) u
+  type nonrec ('a, 'b) v = ('a, 'a) u
 
   let f (x : (int, int) v) : (int, bool) v = x
 
@@ -62,9 +62,9 @@ module Alias_record = struct
 end
 
 module Alias_variant = struct
-  type ('a, 'b) u = A | B | C of 'a | D of 'b
+  type nonrec ('a, 'b) u = A | B | C of 'a | D of 'b
 
-  type ('a, 'b) v = ('a, 'a) u
+  type nonrec ('a, 'b) v = ('a, 'a) u
 
   let f (x : (int, int) v) : (int, bool) v = x
 

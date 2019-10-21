@@ -1,7 +1,7 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-type t = ..
+type nonrec t = ..
 
 type t += A
 
@@ -12,7 +12,7 @@ let (a : t) = A
 let (b : t) = B
 
 module T = struct
-  type t = ..
+  type nonrec t = ..
 
   type t += C
 end
@@ -23,7 +23,7 @@ type T.t += D
 
 let (d : T.t) = D
 
-type ('a, 'b) u = ..
+type nonrec ('a, 'b) u = ..
 
 type ('a, 'b) u += F of 'a | E of 'a * 'b
 
