@@ -1749,7 +1749,59 @@ module Run = struct
 
       let of_hlistable = of_hlistable
 
-      module Internal = Internal
+      module Internal = struct
+        include Internal
+
+        (* Warning: Don't try this at home! *)
+        let fn (typ1 : ('var1, 'value1) t) (typ2 : ('var2, 'value2) t) :
+            ('var1 -> 'var2, 'value1 -> 'value2) t =
+          { store=
+              (fun f ->
+                (* NOTE: We don't do any storing here; the [exists] call below
+                         sets up new variables and constraints on each function
+                         call, ensuring that the return values are distinct in
+                         the constraint system.
+                *)
+                Store.return (fun a ->
+                    run
+                      (Checked_S.exists typ2
+                         ~compute:As_prover.(map ~f (read typ1 a))) ) )
+          ; read=
+              (fun f ->
+                Read.return (fun a ->
+                    (* Sanity check: The read monad should only be evaluated as
+                       the prover.
+                    *)
+                    assert !(!state.as_prover) ;
+                    let ret = Stdlib.ref None in
+                    run
+                      Checked_S.(
+                        (* NOTE: This [exists] is safe: no variables are
+                                 allocated or constraints added in prover mode.
+                        *)
+                        let%bind a =
+                          exists typ1 ~compute:(As_prover.return a)
+                        in
+                        let%map () =
+                          as_prover
+                            As_prover.(
+                              let%map x = read typ2 (f a) in
+                              ret := Some x)
+                        in
+                        match !ret with
+                        | Some ret ->
+                            ret
+                        | None ->
+                            (* In prover mode, this can't happen. *)
+                            assert false) ) )
+          ; alloc= Alloc.return (fun _ -> run (exists typ2))
+            (* NOTE: There are no variables allocated, so there is nothing to
+                     check here. The relevant checks are done in the [exists]
+                     call in [store] above, once for each function call.
+            *)
+          ; check= (fun _ -> Checked.return ()) }
+      end
+
       module Of_traversable = Of_traversable
     end
 
