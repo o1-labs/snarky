@@ -16,6 +16,10 @@ type iterator =
   ; pattern_desc: iterator -> pattern_desc -> unit
   ; expression: iterator -> expression -> unit
   ; expression_desc: iterator -> expression_desc -> unit
+  ; convert_body: iterator -> convert_body -> unit
+  ; convert_body_desc: iterator -> convert_body_desc -> unit
+  ; convert: iterator -> convert -> unit
+  ; convert_desc: iterator -> convert_desc -> unit
   ; signature_item: iterator -> signature_item -> unit
   ; signature: iterator -> signature -> unit
   ; signature_desc: iterator -> signature_desc -> unit
@@ -187,6 +191,33 @@ let expression_desc iter = function
   | Texp_prover e ->
       iter.expression iter e
 
+let convert_body iter {conv_body_desc; conv_body_loc; conv_body_type} =
+  iter.location iter conv_body_loc ;
+  iter.type0_expr iter conv_body_type ;
+  iter.convert_body_desc iter conv_body_desc
+
+let convert_body_desc iter = function
+  | Tconv_record fields ->
+      List.iter fields ~f:(fun (field, conv) ->
+          path iter field ;
+          iter.convert_body iter conv )
+  | Tconv_ctor (name, args) ->
+      path iter name ;
+      List.iter ~f:(iter.convert_body iter) args
+  | Tconv_tuple convs ->
+      List.iter ~f:(iter.convert_body iter) convs
+
+let convert iter {conv_desc; conv_loc; conv_type} =
+  iter.location iter conv_loc ;
+  iter.type0_expr iter conv_type ;
+  iter.convert_desc iter conv_desc
+
+let convert_desc iter = function
+  | Tconv_fun (name, body) ->
+      ident iter name ; iter.convert iter body
+  | Tconv_body body ->
+      iter.convert_body iter body
+
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
 let signature_item iter {sig_desc; sig_loc} =
@@ -319,6 +350,10 @@ let default_iterator =
   ; pattern_desc
   ; expression
   ; expression_desc
+  ; convert_body
+  ; convert_body_desc
+  ; convert
+  ; convert_desc
   ; signature_item
   ; signature
   ; signature_desc

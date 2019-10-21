@@ -67,6 +67,23 @@ and pattern_desc =
   | Tpat_record of (path * pattern) list
   | Tpat_ctor of path * pattern option
 
+type convert_body =
+  { conv_body_desc: convert_body_desc
+  ; conv_body_loc: Location.t
+  ; conv_body_type: Type0.type_expr }
+
+(** AST for generating [Typ.t] instances. *)
+and convert_body_desc =
+  | Tconv_record of (path * convert_body) list
+  | Tconv_ctor of path * convert_body list
+  | Tconv_tuple of convert_body list
+
+and convert =
+  {conv_desc: convert_desc; conv_loc: Location.t; conv_type: Type0.type_expr}
+
+(** AST for generating [Typ.t] instances from other [Typ.t] instances. *)
+and convert_desc = Tconv_fun of ident * convert | Tconv_body of convert_body
+
 type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
 
