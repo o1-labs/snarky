@@ -584,6 +584,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val project_reference : bool list -> t
     (** [project], but slow. Exposed for benchmarks. *)
 
+    val parity : t -> bool
+    (** Get the least significant bit of a field element. *)
+
     type var' = Var.t
 
     module Var : sig
@@ -734,6 +737,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         Var.t -> (Boolean.var Bitstring_lib.Bitstring.Lsb_first.t, _) Checked.t
       (** [unpack x ~length] returns a list of R1CS variables containing the
           bits of [x].
+      *)
+
+      val parity : ?length:int -> Var.t -> (Boolean.var, _) Checked.t
+      (** Get the least significant bit of a field element [x].
+          Pass a value for [length] if you know that [x] fits in [length] many bits.
       *)
 
       val choose_preimage_var :
@@ -1198,6 +1206,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   val as_prover : (unit, 's) As_prover.t -> (unit, 's) Checked.t
   (** Run an {!module:As_prover} block. *)
+
+  val mk_lazy : ('a, unit) Checked.t -> ('a Lazy.t, 's) Checked.t
+  (** Lazily evaluate a checked computation.
+
+      Any constraints within the checked computation are not added to the
+      constraint system unless the lazy value is forced.
+  *)
 
   val with_state :
        ?and_then:('s1 -> (unit, 's) As_prover.t)
@@ -1807,6 +1822,9 @@ module type Run_basic = sig
 
       val project : bool list -> t
       (** Convert a list of bits into a field element. *)
+
+      val parity : t -> bool
+      (** Get the least significant bit of a field element. *)
     end
 
     type t = field Cvar.t
@@ -1864,6 +1882,8 @@ module type Run_basic = sig
       t -> length:int -> Boolean.var list * [`Success of Boolean.var]
 
     val unpack_full : t -> Boolean.var Bitstring_lib.Bitstring.Lsb_first.t
+
+    val parity : ?length:int -> t -> Boolean.var
 
     val choose_preimage_var : t -> length:int -> Boolean.var list
 

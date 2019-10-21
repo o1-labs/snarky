@@ -355,6 +355,12 @@ module Field = struct
 
     val mul : t -> t -> t
 
+    val ( + ) : t -> t -> t
+
+    val ( - ) : t -> t -> t
+
+    val ( * ) : t -> t -> t
+
     val inv : t -> t
 
     val is_square : t -> bool
@@ -462,6 +468,12 @@ module Field = struct
       let sub x y =
         let z = sub x y in
         schedule_delete z ; z
+
+      let ( + ) = add
+
+      let ( - ) = sub
+
+      let ( * ) = mul
 
       module Mutable = struct
         open Bindings.Mutable
@@ -1561,7 +1573,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val size_in_bits : t -> int
 
-    val dummy : input_size:int -> t
+    val get_dummy : input_size:int -> t
   end = struct
     include Verification_key.Make
               (Ctypes_foreign)
@@ -1569,7 +1581,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
                 let prefix = with_prefix M.prefix "verification_key"
               end)
 
-    let dummy ~input_size =
+    let get_dummy ~input_size =
       foreign (func_name "dummy") (int @-> returning typ) input_size
 
     let size_in_bits =
@@ -1770,6 +1782,8 @@ struct
     val verify :
       ?message:message -> t -> Verification_key.t -> M.Field.Vector.t -> bool
 
+    val get_dummy : unit -> t
+
     include Binable.S with type t := t
   end = struct
     include Proof.Make
@@ -1822,6 +1836,8 @@ struct
           @-> returning bool )
       in
       fun ?message:_ t k primary -> stub t k primary
+
+    let get_dummy = foreign (func_name "dummy") (void @-> returning typ)
   end
 end
 
@@ -1965,6 +1981,10 @@ module Make_bowe_gabizon (M : sig
     end
   end
 
+  module Fq : sig
+    type t
+  end
+
   module Fqk : Deletable_intf
 
   module G1 : sig
@@ -1974,6 +1994,8 @@ module Make_bowe_gabizon (M : sig
 
     module Vector : Deletable_intf
 
+    val one : t
+
     val scale_field : t -> Field.t -> t
   end
 
@@ -1981,12 +2003,14 @@ module Make_bowe_gabizon (M : sig
     include Deletable_intf
 
     include Binable.S with type t := t
+
+    val one : t
   end
 end) (H : sig
   open M
 
   val hash :
-       ?message:bool array
+       ?message:Fq.t array
     -> a:G1.t
     -> b:G2.t
     -> c:G1.t
@@ -2051,14 +2075,16 @@ struct
         in
         let t = stub proving_key d primary auxiliary in
         Caml.Gc.finalise delete t ; t
+
+      let get_dummy = foreign (func_name "dummy") (void @-> returning typ)
     end
 
-    type message = bool array
+    type message = Fq.t array
 
     type t = {a: G1.t; b: G2.t; c: G1.t; delta_prime: G2.t; z: G1.t}
     [@@deriving bin_io]
 
-    let create ?message proving_key ~primary ~auxiliary =
+    let create ?(message : message option) proving_key ~primary ~auxiliary =
       let d = Field.random () in
       let pre = Pre.create proving_key ~primary ~auxiliary ~d in
       let a = Pre.a pre in
@@ -2067,11 +2093,14 @@ struct
       let delta_prime = Pre.delta_prime pre in
       let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
       let z = G1.scale_field y_s d in
-      {a= Pre.a pre; b= Pre.b pre; c= Pre.c pre; z; delta_prime}
+      {a; b; c; z; delta_prime}
 
     let verify ?message {a; b; c; z; delta_prime} vk input =
       let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
       Pre.verify_components ~a ~b ~c ~delta_prime ~y_s ~z vk input
+
+    let get_dummy () =
+      {a= G1.one; b= G2.one; c= G1.one; z= G1.one; delta_prime= G2.one}
   end
 end
 
@@ -2165,6 +2194,8 @@ struct
     let%test "fqk4" =
       let v = Fqk.to_elts Fqk.one in
       Mnt6_0.Field.Vector.length v = 4
+
+    module Fq = Mnt6_0.Field
 
     module Fqe =
       Fqe.Make
@@ -2331,6 +2362,8 @@ struct
     let%test "fqk6" =
       let v = Fqk.to_elts Fqk.one in
       Mnt4_0.Field.Vector.length v = 6
+
+    module Fq = Mnt4_0.Field
 
     module Fqe =
       Fqe.Make
@@ -2834,3 +2867,36 @@ module type S = sig
     include Binable.S with type t := t
   end
 end
+
+let%test_module "dummy-proofs" =
+  ( module struct
+    module Hash = struct
+      let hash ?message:_ ~a:_ ~b:_ ~c:_ ~delta_prime:_ = assert false
+    end
+
+    module BG = struct
+      module Mnt4 = Make_bowe_gabizon (Mnt4) (Hash)
+      module Mnt6 = Make_bowe_gabizon (Mnt6) (Hash)
+      module Mnt4753 = Make_bowe_gabizon (Mnt4753) (Hash)
+      module Mnt6753 = Make_bowe_gabizon (Mnt6753) (Hash)
+    end
+
+    let _proofs =
+      ( Mnt4.Default.Proof.get_dummy ()
+      , Mnt4.GM.Proof.get_dummy ()
+      , Mnt6.Default.Proof.get_dummy ()
+      , Mnt6.GM.Proof.get_dummy ()
+      , Mnt4753.Default.Proof.get_dummy ()
+      , Mnt4753.GM.Proof.get_dummy ()
+      , Mnt6753.Default.Proof.get_dummy ()
+      , Mnt6753.GM.Proof.get_dummy ()
+      , Bn128.Default.Proof.get_dummy ()
+      , BG.Mnt4.Proof.Pre.get_dummy ()
+      , BG.Mnt6.Proof.Pre.get_dummy ()
+      , BG.Mnt4753.Proof.Pre.get_dummy ()
+      , BG.Mnt6753.Proof.Pre.get_dummy ()
+      , BG.Mnt4.Proof.get_dummy ()
+      , BG.Mnt6.Proof.get_dummy ()
+      , BG.Mnt4753.Proof.get_dummy ()
+      , BG.Mnt6753.Proof.get_dummy () )
+  end )

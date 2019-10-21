@@ -4,9 +4,9 @@ open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Ptyp_var (None, _) ->
+  | Ptyp_var None ->
       fprintf fmt "_"
-  | Ptyp_var (Some name, _) ->
+  | Ptyp_var (Some name) ->
       fprintf fmt "'%s" name.txt
   | Ptyp_tuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
@@ -27,6 +27,8 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false)
         (Ptyp_tuple vars) type_expr typ ;
       if bracket then fprintf fmt ")"
+  | Ptyp_prover typ ->
+      fprintf fmt "@[<2>Prover {@ %a@ }@]" type_expr typ
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -304,6 +306,8 @@ and module_sig_desc ~prefix fmt = function
       fprintf fmt "{@[<hv1>@;%a@]}" signature msig
   | Pmty_name name ->
       prefix fmt ; Longident.pp fmt name.txt
+  | Pmty_alias name ->
+      fprintf fmt "=@ " ; Longident.pp fmt name.txt
   | Pmty_abstract ->
       ()
   | Pmty_functor (name, f, m) ->

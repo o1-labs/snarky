@@ -22,6 +22,8 @@ module T0 = struct
         With_label (s, t, fun b -> map (k b) ~f)
     | As_prover (x, k) ->
         As_prover (x, map k ~f)
+    | Lazy (x, k) ->
+        Lazy (x, fun b -> map (k b) ~f)
     | Add_constraint (c, t1) ->
         Add_constraint (c, map t1 ~f)
     | With_state (p, and_then, t_sub, k) ->
@@ -51,6 +53,8 @@ module T0 = struct
         With_label (s, t, fun b -> bind (k b) ~f)
     | As_prover (x, k) ->
         As_prover (x, bind k ~f)
+    | Lazy (x, k) ->
+        Lazy (x, fun b -> bind (k b) ~f)
     (* Someday: This case is probably a performance bug *)
     | Add_constraint (c, t1) ->
         Add_constraint (c, bind t1 ~f)
@@ -104,6 +108,8 @@ module Basic :
 
   let as_prover x = As_prover (x, return ())
 
+  let mk_lazy x = Lazy (x, return)
+
   let with_label lbl x = With_label (lbl, x, return)
 
   let with_state p and_then sub = With_state (p, and_then, sub, return)
@@ -144,6 +150,8 @@ module Basic :
         With_label (s, with_lens lens t, fun b -> with_lens lens (k b))
     | As_prover (x, k) ->
         As_prover (As_prover0.with_lens lens x, with_lens lens k)
+    | Lazy (x, k) ->
+        Lazy (x, fun b -> with_lens lens (k b))
     | Add_constraint (c, t1) ->
         Add_constraint (c, with_lens lens t1)
     | With_state (p, and_then, t_sub, k) ->
@@ -199,6 +207,16 @@ module Basic :
         constraint_count_aux ~log ~auxc count (k y)
     | As_prover (_x, k) ->
         constraint_count_aux ~log ~auxc count k
+    | Lazy (x, k) ->
+        let lazy_count, x = constraint_count_aux ~log ~auxc count x in
+        let forced = ref false in
+        let x =
+          Lazy.from_fun (fun () ->
+              forced := true ;
+              x )
+        in
+        let count, y = constraint_count_aux ~log ~auxc count (k x) in
+        ((if !forced then count + lazy_count else count), y)
     | Add_constraint (c, t) ->
         constraint_count_aux ~log ~auxc (count + List.length c) t
     | Next_auxiliary k ->

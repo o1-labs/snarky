@@ -94,6 +94,10 @@ let to_interval = function
              union, got multiple disjoint intervals %{sexp: Interval.t list}\n"
            xs)
 
+let right_endpoint t = Option.map ~f:snd (List.last t)
+
+let left_endpoint t = Option.map ~f:fst (List.hd t)
+
 let invariant t =
   let rec go = function
     | [(a, b)] ->

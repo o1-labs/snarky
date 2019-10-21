@@ -9,36 +9,39 @@ type type_expr =
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Ttyp_var of str option * explicitness
+  | Ttyp_var of str option
   | Ttyp_tuple of type_expr list
   | Ttyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
   | Ttyp_ctor of variant
   | Ttyp_poly of type_expr list * type_expr
+  | Ttyp_prover of type_expr
 
-and variant =
-  { var_ident: path
-  ; var_params: type_expr list
-  ; var_implicit_params: type_expr list }
+and variant = {var_ident: path; var_params: type_expr list}
 
-type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
+type field_decl =
+  { fld_ident: ident
+  ; fld_type: type_expr
+  ; fld_loc: Location.t
+  ; fld_fld: Type0.field_decl }
 
 type ctor_args =
   | Tctor_tuple of type_expr list
   | Tctor_record of field_decl list
 
 type ctor_decl =
-  { ctor_ident: str
+  { ctor_ident: ident
   ; ctor_args: ctor_args
   ; ctor_ret: type_expr option
-  ; ctor_loc: Location.t }
+  ; ctor_loc: Location.t
+  ; ctor_ctor: Type0.ctor_decl }
 
 type type_decl =
-  { tdec_ident: str
+  { tdec_ident: ident
   ; tdec_params: type_expr list
-  ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
-  ; tdec_loc: Location.t }
+  ; tdec_loc: Location.t
+  ; tdec_tdec: Type0.type_decl }
 
 and type_decl_desc =
   | Tdec_abstract
@@ -63,6 +66,23 @@ and pattern_desc =
   | Tpat_int of int
   | Tpat_record of (path * pattern) list
   | Tpat_ctor of path * pattern option
+
+type convert_body =
+  { conv_body_desc: convert_body_desc
+  ; conv_body_loc: Location.t
+  ; conv_body_type: Type0.type_expr }
+
+(** AST for generating [Typ.t] instances. *)
+and convert_body_desc =
+  | Tconv_record of (path * convert_body) list
+  | Tconv_ctor of path * convert_body list
+  | Tconv_tuple of convert_body list
+
+and convert =
+  {conv_desc: convert_desc; conv_loc: Location.t; conv_type: Type0.type_expr}
+
+(** AST for generating [Typ.t] instances from other [Typ.t] instances. *)
+and convert_desc = Tconv_fun of ident * convert | Tconv_body of convert_body
 
 type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
@@ -95,12 +115,12 @@ and signature = signature_item list
 and signature_desc =
   | Tsig_value of ident * type_expr
   | Tsig_instance of ident * type_expr
-  | Tsig_type of Parsetypes.type_decl
+  | Tsig_type of type_decl
   | Tsig_module of ident * module_sig
   | Tsig_modtype of ident * module_sig
   | Tsig_open of path
-  | Tsig_typeext of Parsetypes.variant * Parsetypes.ctor_decl list
-  | Tsig_request of Parsetypes.type_expr * Parsetypes.ctor_decl
+  | Tsig_typeext of variant * ctor_decl list
+  | Tsig_request of type_expr * ctor_decl
   | Tsig_multiple of signature
   | Tsig_prover of signature
 
@@ -109,6 +129,7 @@ and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 and module_sig_desc =
   | Tmty_sig of signature
   | Tmty_name of path
+  | Tmty_alias of path
   | Tmty_abstract
   | Tmty_functor of str * module_sig * module_sig
 
@@ -119,15 +140,13 @@ and statements = statement list
 and statement_desc =
   | Tstmt_value of pattern * expression
   | Tstmt_instance of ident * expression
-  | Tstmt_type of Parsetypes.type_decl
+  | Tstmt_type of type_decl
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig
   | Tstmt_open of path
-  | Tstmt_typeext of Parsetypes.variant * Parsetypes.ctor_decl list
+  | Tstmt_typeext of variant * ctor_decl list
   | Tstmt_request of
-      Parsetypes.type_expr
-      * Parsetypes.ctor_decl
-      * (pattern option * expression) option
+      type_expr * ctor_decl * (pattern option * expression) option
   | Tstmt_multiple of statements
   | Tstmt_prover of statements
 

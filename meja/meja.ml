@@ -34,7 +34,7 @@ let do_output filename f =
   | None ->
       ()
 
-let add_preamble impl_mod curve proofs ast =
+let make_preamble impl_mod curve proofs =
   let open Parsetypes in
   let open Longident in
   let mkloc x = Location.(mkloc x none) in
@@ -51,7 +51,10 @@ let add_preamble impl_mod curve proofs ast =
   in
   let snarky_open = Pstmt_open (mkloc (Lident impl_mod)) in
   let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in
-  mk_stmt snarky_impl :: mk_stmt snarky_open :: ast
+  [mk_stmt snarky_impl; mk_stmt snarky_open]
+
+let add_preamble impl_mod curve proofs ast =
+  make_preamble impl_mod curve proofs @ ast
 
 let main =
   let file = ref None in
@@ -141,12 +144,16 @@ let main =
             let lib_path = Filename.concat opam_path "lib" in
             (* Load OCaml stdlib *)
             Loader.load_directory env (Filename.concat lib_path "ocaml") ;
+            let stdlib = Ident.create ~mode:Checked "Stdlib" in
             let stdlib_scope =
               Loader.load ~loc:Location.none ~name:"Stdlib"
                 env.Envi.resolve_env
                 (Filename.concat lib_path "ocaml/stdlib.cmi")
             in
-            let env = Envi.open_namespace_scope stdlib_scope env in
+            Envi.register_external_module stdlib (Immediate stdlib_scope) env ;
+            let env =
+              Envi.open_namespace_scope (Pident stdlib) stdlib_scope env
+            in
             (* Load Snarky.Request *)
             let snarky_build_path =
               Filename.(
@@ -159,34 +166,7 @@ let main =
             Loader.load_directory env
               (Filename.concat snarky_build_path "native") ;
             Loader.load_directory env snarky_build_path ;
-            (* Set up module structure for Snarky.Request *)
-            let m, env =
-              let loc = Location.none in
-              let mkloc s = Location.mkloc s loc in
-              let env = Envi.open_absolute_module None env in
-              let env = Envi.open_absolute_module None env in
-              let _path, m =
-                try
-                  Envi.find_module ~mode:Checked ~loc
-                    (mkloc (Longident.Lident "Snarky__Request"))
-                    env
-                with _ ->
-                  Format.(
-                    fprintf err_formatter
-                      "Could not find the compiled interface files for \
-                       Snarky.@.") ;
-                  exit 1
-              in
-              let env =
-                Envi.add_module (Ident.create ~mode:Checked "Request") m env
-              in
-              let m, env = Envi.pop_module ~loc env in
-              let env =
-                Envi.add_module (Ident.create ~mode:Checked "Snarky") m env
-              in
-              Envi.pop_module ~loc env
-            in
-            Envi.open_namespace_scope m env
+            env
         | None ->
             Format.(
               fprintf err_formatter
@@ -199,13 +179,15 @@ let main =
     let cmi_files = List.rev !cmi_files in
     let cmi_scopes =
       List.map cmi_files ~f:(fun filename ->
-          Loader.load ~loc:Location.none
-            ~name:(Loader.modname_of_filename filename)
-            env.Envi.resolve_env filename )
+          let modname = Loader.modname_of_filename filename in
+          let modident = Ident.create ~mode:Checked modname in
+          ( modident
+          , Loader.load ~loc:Location.none ~name:modname env.Envi.resolve_env
+              filename ) )
     in
     let env =
-      List.fold ~init:env cmi_scopes ~f:(fun env scope ->
-          Envi.open_namespace_scope scope env )
+      List.fold ~init:env cmi_scopes ~f:(fun env (name, scope) ->
+          Envi.open_namespace_scope (Path.Pident name) scope env )
     in
     let meji_files =
       "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
@@ -217,9 +199,7 @@ let main =
             read_file (Parser_impl.interface Lexer_impl.token) file
           in
           let module_name = Loader.modname_of_filename file in
-          let env =
-            Envi.open_absolute_module (Some (Longident.Lident module_name)) env
-          in
+          let env = Envi.open_module env in
           let env, _typed_ast = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:Location.none env in
           let name = Ident.create ~mode:Checked module_name in
@@ -237,12 +217,12 @@ let main =
       read_file (Parser_impl.implementation Lexer_impl.token) file
     in
     let _env, ast = Typechecker.check parse_ast env in
-    let ast = List.map ~f:Untype_ast.statement ast in
-    let ast =
-      if !snarky_preamble then add_preamble !impl_mod !curve !proofs ast
-      else ast
+    let preamble =
+      if !snarky_preamble then
+        Some (To_ocaml.of_file (make_preamble !impl_mod !curve !proofs))
+      else None
     in
-    let ocaml_ast = To_ocaml.of_file ast in
+    let ocaml_ast = Of_typedast.of_file ast in
     let ocaml_formatter =
       match (!ocaml_file, !default) with
       | Some filename, _ ->
@@ -253,10 +233,14 @@ let main =
           None
     in
     do_output !ast_file (fun output ->
+        Option.iter ~f:(Printast.structure 2 output) preamble ;
+        Format.pp_print_newline output () ;
         Printast.structure 2 output ocaml_ast ;
         Format.pp_print_newline output () ) ;
     ( match ocaml_formatter with
     | Some output ->
+        Option.iter ~f:(Pprintast.structure output) preamble ;
+        Format.pp_print_newline output () ;
         Pprintast.structure output ocaml_ast ;
         Format.pp_print_newline output ()
     | None ->

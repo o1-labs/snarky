@@ -4,17 +4,15 @@ type type_expr = {type_desc: type_desc; type_loc: Location.t}
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Ptyp_var of str option * explicitness
+  | Ptyp_var of str option
   | Ptyp_tuple of type_expr list
   | Ptyp_arrow of type_expr * type_expr * explicitness * Asttypes.arg_label
   (* A type name. *)
   | Ptyp_ctor of variant
   | Ptyp_poly of type_expr list * type_expr
+  | Ptyp_prover of type_expr
 
-and variant =
-  { var_ident: lid
-  ; var_params: type_expr list
-  ; var_implicit_params: type_expr list }
+and variant = {var_ident: lid; var_params: type_expr list}
 
 type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
@@ -31,7 +29,6 @@ type ctor_decl =
 type type_decl =
   { tdec_ident: str
   ; tdec_params: type_expr list
-  ; tdec_implicit_params: type_expr list
   ; tdec_desc: type_decl_desc
   ; tdec_loc: Location.t }
 
@@ -102,6 +99,7 @@ and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 and module_sig_desc =
   | Pmty_sig of signature
   | Pmty_name of lid
+  | Pmty_alias of lid
   | Pmty_abstract
   | Pmty_functor of str * module_sig * module_sig
 

@@ -2,25 +2,27 @@ open Core_kernel
 open Ast_types
 
 type type_expr =
-  {mutable type_desc: type_desc; type_id: int; mutable type_depth: int}
+  { mutable type_desc: type_desc
+  ; type_id: int
+  ; mutable type_depth: int
+  ; type_mode: mode
+  ; mutable type_alternate: type_expr }
 [@@deriving sexp]
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
-  | Tvar of string option * explicitness
+  | Tvar of string option
   | Ttuple of type_expr list
   | Tarrow of type_expr * type_expr * explicitness * Ast_types.arg_label
   (* A type name. *)
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
+  | Tref of type_expr
+  (* Cache the current value to break recursion. *)
+  | Treplace of type_expr
 [@@deriving sexp]
 
-and variant =
-  { var_ident: Path.t
-  ; var_params: type_expr list
-  ; var_implicit_params: type_expr list
-  ; var_decl: type_decl }
-[@@deriving sexp]
+and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]
 
 and field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
 
@@ -32,11 +34,10 @@ and ctor_decl =
 [@@deriving sexp]
 
 and type_decl =
-  { tdec_ident: Ident.t
-  ; tdec_params: type_expr list
-  ; tdec_implicit_params: type_expr list
+  { tdec_params: type_expr list
   ; tdec_desc: type_decl_desc
-  ; tdec_id: int }
+  ; tdec_id: int
+  ; tdec_ret: type_expr }
 [@@deriving sexp]
 
 and type_decl_desc =
