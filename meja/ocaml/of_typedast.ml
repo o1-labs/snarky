@@ -168,7 +168,8 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
         Pat.record ?loc fields Closed
       in
       let binds =
-        List.fold ~init:record_exp fields ~f:(fun exp (_, pat, var, conv) ->
+        List.fold_right fields ~init:record_exp
+          ~f:(fun (_, pat, var, conv) exp ->
             let apply_conv = Exp.apply ?loc conv [(Nolabel, var)] in
             let rest = Exp.fun_ ?loc Nolabel None pat exp in
             Exp.apply ?loc bind [(Nolabel, apply_conv); (Labelled "f", rest)]
@@ -207,7 +208,7 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
         Pat.tuple ?loc (List.map convs ~f:(fun (p, _, _) -> p))
       in
       let binds =
-        List.fold ~init:tuple_exp convs ~f:(fun exp (pat, var, conv) ->
+        List.fold_right convs ~init:tuple_exp ~f:(fun (pat, var, conv) exp ->
             let apply_conv = Exp.apply ?loc conv [(Nolabel, var)] in
             let rest = Exp.fun_ ?loc Nolabel None pat exp in
             Exp.apply ?loc bind [(Nolabel, apply_conv); (Labelled "f", rest)]
@@ -250,7 +251,8 @@ and alloc_of_convert_body_desc ?loc desc =
         Exp.apply ?loc return [(Nolabel, Exp.record ?loc fields None)]
       in
       let binds =
-        List.fold ~init:record_exp fields ~f:(fun exp (_, pat, _, conv) ->
+        List.fold_right fields ~init:record_exp
+          ~f:(fun (_, pat, _, conv) exp ->
             let rest = Exp.fun_ ?loc Nolabel None pat exp in
             Exp.apply ?loc bind [(Nolabel, conv); (Labelled "f", rest)] )
       in
@@ -284,7 +286,7 @@ and alloc_of_convert_body_desc ?loc desc =
           [(Nolabel, Exp.tuple ?loc (List.map convs ~f:(fun (_, e, _) -> e)))]
       in
       let binds =
-        List.fold ~init:tuple_exp convs ~f:(fun exp (pat, _, conv) ->
+        List.fold_right convs ~init:tuple_exp ~f:(fun (pat, _, conv) exp ->
             let rest = Exp.fun_ ?loc Nolabel None pat exp in
             Exp.apply ?loc bind [(Nolabel, conv); (Labelled "f", rest)] )
       in
@@ -329,7 +331,7 @@ and check_of_convert_body_desc ?loc desc =
         Pat.record ?loc fields Closed
       in
       let binds =
-        List.fold ~init:unit_exp fields ~f:(fun exp (_, _, var, conv) ->
+        List.fold_right fields ~init:unit_exp ~f:(fun (_, _, var, conv) exp ->
             let apply_conv = Exp.apply ?loc conv [(Nolabel, var)] in
             let rest = Exp.fun_ ?loc Nolabel None unit_pat exp in
             Exp.apply ?loc bind [(Nolabel, apply_conv); (Labelled "f", rest)]
@@ -368,7 +370,7 @@ and check_of_convert_body_desc ?loc desc =
         Pat.tuple ?loc (List.map convs ~f:(fun (p, _, _) -> p))
       in
       let binds =
-        List.fold ~init:unit_exp convs ~f:(fun exp (_, var, conv) ->
+        List.fold_right convs ~init:unit_exp ~f:(fun (_, var, conv) exp ->
             let apply_conv = Exp.apply ?loc conv [(Nolabel, var)] in
             let rest = Exp.fun_ ?loc Nolabel None unit_pat exp in
             Exp.apply ?loc bind [(Nolabel, apply_conv); (Labelled "f", rest)]
