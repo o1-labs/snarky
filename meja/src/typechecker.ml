@@ -685,6 +685,7 @@ let get_conversion ~can_add_args ~loc env typ =
 
 let rec get_expression env expected exp =
   let mode = Envi.current_mode env in
+  assert (equal_mode expected.type_mode mode) ;
   let loc = exp.exp_loc in
   match exp.exp_desc with
   | Pexp_apply (f, es) ->
