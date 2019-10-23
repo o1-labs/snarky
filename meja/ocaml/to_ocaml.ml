@@ -28,7 +28,7 @@ let rec of_type_desc ?loc typ =
            (Option.value_exn
               (Longident.unflatten ["Snarky"; "As_prover"; "Ref"; "t"]))
            (Option.value ~default:Location.none loc))
-        [Typ.any ?loc (); of_type_expr typ]
+        [of_type_expr typ]
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 
