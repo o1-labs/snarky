@@ -258,3 +258,6 @@ if(CUDA_FOUND)
   add_subdirectory(cuda-fixnum)
   add_subdirectory(cuda_prover)
 endif()
+
+# TODO: Make optional as with CUDA
+add_subdirectory(libiop)
