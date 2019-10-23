@@ -61,6 +61,10 @@ rule token = parse
   | "let" { LET }
   | "instance" { INSTANCE }
   | "type" { TYPE }
+  | "convertible" { CONVERTIBLE }
+  | "by" { BY }
+  | "to" { TO }
+  | "prover" { LPROVER }
   | "true" { TRUE }
   | "false" { FALSE }
   | "switch" { SWITCH }

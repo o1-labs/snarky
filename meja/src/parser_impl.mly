@@ -42,6 +42,10 @@ let consexp ~pos hd tl =
 %token FALSE
 %token SWITCH
 %token TYPE
+%token CONVERTIBLE
+%token BY
+%token TO
+%token LPROVER
 %token MODULE
 %token OPEN
 %token REQUEST
@@ -141,13 +145,11 @@ structure_item:
     { mkstmt ~pos:$loc (Pstmt_value (x, e)) }
   | INSTANCE x = as_loc(val_ident) EQUAL e = expr
     { mkstmt ~pos:$loc (Pstmt_instance (x, e)) }
-  | TYPE x = decl_type(lident) k = type_kind
-    { let (x, args) = x in
-      mkstmt ~pos:$loc (Pstmt_type
-        { tdec_ident= x
-        ; tdec_params= args
-        ; tdec_desc= k
-        ; tdec_loc= Loc.of_pos $loc }) }
+  | TYPE decl = type_decl
+    { mkstmt ~pos:$loc (Pstmt_type decl) }
+  | CONVERTIBLE TYPE decl = type_decl c = conv_type
+    named = maybe (BY l = as_loc(val_ident) { l })
+    { mkstmt ~pos:$loc (Pstmt_convtype (decl, c, named)) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
     { mkstmt ~pos:$loc (Pstmt_module (x, m)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
@@ -170,13 +172,11 @@ signature_item:
     { mksig ~pos:$loc (Psig_value (x, typ)) }
   | INSTANCE x = as_loc(val_ident) COLON typ = type_expr
     { mksig ~pos:$loc (Psig_instance (x, typ)) }
-  | TYPE x = decl_type(lident) k = type_kind
-    { let (x, args) = x in
-      mksig ~pos:$loc (Psig_type
-        { tdec_ident= x
-        ; tdec_params= args
-        ; tdec_desc= k
-        ; tdec_loc= Loc.of_pos $loc }) }
+  | TYPE decl = type_decl
+    { mksig ~pos:$loc (Psig_type decl) }
+  | CONVERTIBLE TYPE decl = type_decl c = conv_type
+    named = maybe (BY l = as_loc(val_ident) { l })
+    { mksig ~pos:$loc (Psig_convtype (decl, c, named)) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
     { mksig ~pos:$loc (Psig_module (x, m)) }
   | MODULE x = as_loc(UIDENT)
@@ -196,9 +196,25 @@ signature_item:
   | PROVER LBRACE sigs = signature RBRACE
     { mksig ~pos:$loc (Psig_prover sigs) }
 
+type_decl:
+  | x = decl_type(lident) k = type_kind
+    { let (x, args) = x in
+      { tdec_ident= x
+      ; tdec_params= args
+      ; tdec_desc= k
+      ; tdec_loc= Loc.of_pos $loc } }
+
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
     { (p, body) }
+
+conv_type:
+  | WITH decl = type_decl
+    { Ptconv_with (Checked, decl) }
+  | WITH LPROVER decl = type_decl
+    { Ptconv_with (Prover, decl) }
+  | TO typ = type_expr
+    { Ptconv_to typ }
 
 module_expr:
   | LBRACE s = structure RBRACE
