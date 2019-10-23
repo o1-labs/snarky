@@ -113,6 +113,8 @@ let consexp ~pos hd tl =
     { "request" }
   | HANDLER
     { "handler" }
+  | LPROVER
+    { "prover" }
 
 implementation:
   | s = structure EOF
