@@ -4,6 +4,7 @@ type error =
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
   | Opaque_type_in_prover_mode of Parsetypes.type_expr
+  | Convertible_arities_differ of string * int * string * int
 
 module Type : sig
   val mk_poly :

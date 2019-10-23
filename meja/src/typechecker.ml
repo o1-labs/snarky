@@ -27,6 +27,7 @@ type error =
   | Extension_different_arity of Longident.t
   | Convert_failed of type_expr * error
   | Cannot_create_conversion of type_expr
+  | Convertible_not_in_checked
 
 exception Error of Location.t * error
 
@@ -1267,7 +1268,8 @@ let rec check_signature_item env item =
       let decl, env = Typet.TypeDecl.import decl env in
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
   | Psig_convtype (decl, tconv, convname) ->
-      if not (equal_mode mode Checked) then failwith "TODO: Proper error." ;
+      if not (equal_mode mode Checked) then
+        raise (Error (loc, Convertible_not_in_checked)) ;
       let decl, tconv, env =
         Typet.TypeDecl.import_convertible decl tconv env
       in
@@ -1544,7 +1546,8 @@ let rec check_statement env stmt =
       in_decl := false ;
       ret
   | Pstmt_convtype (decl, tconv, convname) ->
-      if not (equal_mode mode Checked) then failwith "TODO: Proper error." ;
+      if not (equal_mode mode Checked) then
+        raise (Error (loc, Convertible_not_in_checked)) ;
       let decl, tconv, env =
         Typet.TypeDecl.import_convertible decl tconv env
       in
@@ -1847,6 +1850,8 @@ let rec report_error ppf = function
   | Cannot_create_conversion typ ->
       fprintf ppf "@[<hov>@[<h>%a@] and@ @[<h>%a@]@ are not convertible.@]"
         pp_typ typ pp_typ typ.type_alternate
+  | Convertible_not_in_checked ->
+      fprintf ppf "Cannot create a convertible type in a Prover block."
 
 let () =
   Location.register_error_of_exn (function

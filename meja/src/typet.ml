@@ -10,6 +10,7 @@ type error =
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
   | Opaque_type_in_prover_mode of type_expr
+  | Convertible_arities_differ of string * int * string * int
 
 exception Error of Location.t * error
 
@@ -586,8 +587,17 @@ module TypeDecl = struct
     assert (equal_mode mode Checked) ;
     match type_conv with
     | Ptconv_with (other_mode, conv_decl) -> (
-        if List.length decl.tdec_params <> List.length conv_decl.tdec_params
-        then failwith "TODO: Dedicated error here." ;
+        let decl_len = List.length decl.tdec_params in
+        let conv_len = List.length conv_decl.tdec_params in
+        if not (Int.equal decl_len conv_len) then
+          raise
+            (Error
+               ( conv_decl.tdec_loc
+               , Convertible_arities_differ
+                   ( decl.tdec_ident.txt
+                   , decl_len
+                   , conv_decl.tdec_ident.txt
+                   , conv_len ) )) ;
         let name = Ident.create ~mode decl.tdec_ident.txt in
         let other_name =
           Ident.create ~mode:other_mode conv_decl.tdec_ident.txt
@@ -675,6 +685,11 @@ let report_error ppf = function
         "@[<hov>The type @[<h>%a@] is not valid in this mode:@ opaque types \
          cannot be created in Prover mode.@]"
         pp_typ typ
+  | Convertible_arities_differ (name, len, conv_name, conv_len) ->
+      fprintf ppf
+        "@[<hov>Cannot associate type %s of arity %i@ with type %s of arity \
+         %i:@ their arities must be equal.@]"
+        name len conv_name conv_len
 
 let () =
   Location.register_error_of_exn (function
