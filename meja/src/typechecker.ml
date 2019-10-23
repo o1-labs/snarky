@@ -1499,8 +1499,6 @@ and check_module_sig env msig =
       , Envi.Scope.Immediate m
       , env )
 
-let in_decl = ref false
-
 let rec check_statement env stmt =
   let mode = Envi.current_mode env in
   let loc = stmt.stmt_loc in
@@ -1540,24 +1538,65 @@ let rec check_statement env stmt =
       let typ = polymorphise typ env in
       let env = Envi.add_implicit_instance name.txt typ env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e)})
-  | Pstmt_type decl when !in_decl ->
+  | Pstmt_type decl -> (
+    try
+      (* Bail if we're not in checked mode. *)
+      assert (equal_mode Checked mode) ;
+      let name = Ident.create ~mode:Checked decl.tdec_ident.txt in
+      let alt_name = Ident.create ~mode:Prover decl.tdec_ident.txt in
+      let decl, env =
+        Typet.TypeDecl.import ~name ~other_name:(Path.Pident alt_name) decl env
+      in
+      let alt_decl =
+        let mapper =
+          { Type0_map.default_mapper with
+            type_expr= (fun _mapper typ -> typ.type_alternate) }
+        in
+        let decl =
+          Untype_ast.Type0.type_decl ~loc
+            (Ident.name decl.tdec_ident.txt)
+            (mapper.type_decl mapper decl.tdec_tdec)
+        in
+        decl
+      in
+      let env = Envi.open_mode_module_scope Prover env in
+      let alt_decl, env =
+        Typet.TypeDecl.import ~name:alt_name ~other_name:(Path.Pident name)
+          alt_decl env
+      in
+      let env = Envi.open_mode_module_scope Checked env in
+      let convname =
+        let name = Ident.name name in
+        let name = if name = "t" then "typ" else sprintf "%s_typ" name in
+        Location.mkloc (Ident.create ~mode name) loc
+      in
+      let typ = decl.tdec_tdec.tdec_ret in
+      let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
+      let typ =
+        List.fold_right decl.tdec_tdec.tdec_params ~init:typ
+          ~f:(fun param typ ->
+            let param =
+              Envi.Type.Mk.conv ~mode param param.type_alternate env
+            in
+            Envi.Type.Mk.arrow ~mode param typ env )
+      in
+      let conv = get_conversion ~can_add_args:false ~loc env typ in
+      let typ = polymorphise (Type1.flatten typ) env in
+      Envi.Type.update_depths env typ ;
+      let env = Envi.add_name convname.txt typ env in
+      let env = Envi.add_implicit_instance convname.txt typ env in
+      let stmt =
+        { Typedast.stmt_loc= loc
+        ; stmt_desc=
+            Tstmt_convtype
+              (decl, Ttconv_with (Prover, alt_decl), convname, conv) }
+      in
+      (env, stmt)
+    with _err ->
+      (*Location.report_exception Format.err_formatter err ;*)
       let decl, env = Typet.TypeDecl.import decl env in
       let stmt = {Typedast.stmt_loc= loc; stmt_desc= Tstmt_type decl} in
-      (env, stmt)
-  | Pstmt_type decl ->
-      in_decl := true ;
-      let ret =
-        let stmt =
-          match Codegen.typ_of_decl ~loc decl with
-          | Some typ_stmts ->
-              {stmt with stmt_desc= Pstmt_multiple typ_stmts}
-          | None ->
-              stmt
-        in
-        check_statement env stmt
-      in
-      in_decl := false ;
-      ret
+      (env, stmt) )
   | Pstmt_convtype (decl, tconv, convname) ->
       if not (equal_mode mode Checked) then
         raise (Error (loc, Convertible_not_in_checked)) ;
