@@ -19,4 +19,7 @@ include struct
   let z = A.x && A.y
 end
 
-let (z : int) = if A.x && A.y then A.x else A.y
+let (z : (_, int) Snarky.As_prover.Ref.t) =
+  let x = A.x in
+  let y = A.y in
+  if A.x && A.y then x else y

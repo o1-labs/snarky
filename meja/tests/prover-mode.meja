@@ -14,4 +14,10 @@ Prover {
   let z = A.x && A.y;
 };
 
-let z : int = if (Prover {A.x && A.y;}) { A.x; } else { A.y; };
+let z : opaque(int) = {
+  let x = A.x;
+  let y = A.y;
+  Prover {
+    if (A.x && A.y) { x; } else { y; };
+  };
+};

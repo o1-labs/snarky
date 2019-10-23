@@ -1,17 +1,17 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-type t = (_, int) Snarky.Handle.t
+type t = (_, int) Snarky.As_prover.Ref.t
 
-type 'a u = (_, 'a option) Snarky.Handle.t
+type 'a u = (_, 'a option) Snarky.As_prover.Ref.t
 
-type ('a, 'b) v = (_, 'a * 'b) Snarky.Handle.t
+type ('a, 'b) v = (_, 'a * 'b) Snarky.As_prover.Ref.t
 
 include struct
   type prover = A
 end
 
-type w = (_, prover) Snarky.Handle.t
+type w = (_, prover) Snarky.As_prover.Ref.t
 
 module A = struct
   type ('a, 'b) opaque = 'a * 'b
@@ -25,4 +25,4 @@ module A = struct
   let opaque = ()
 end
 
-type x = (_, prover) Snarky.Handle.t
+type x = (_, prover) Snarky.As_prover.Ref.t
