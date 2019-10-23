@@ -60,11 +60,13 @@ rule token = parse
   | "fun" { FUN }
   | "let" { LET }
   | "instance" { INSTANCE }
+  | "and" { AND }
   | "type" { TYPE }
   | "convertible" { CONVERTIBLE }
   | "by" { BY }
   | "to" { TO }
   | "prover" { LPROVER }
+  | "rec" { REC }
   | "true" { TRUE }
   | "false" { FALSE }
   | "switch" { SWITCH }

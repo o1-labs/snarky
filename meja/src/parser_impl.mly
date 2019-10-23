@@ -38,6 +38,7 @@ let consexp ~pos hd tl =
 %token FUN
 %token LET
 %token INSTANCE
+%token AND
 %token TRUE
 %token FALSE
 %token SWITCH
@@ -46,6 +47,7 @@ let consexp ~pos hd tl =
 %token BY
 %token TO
 %token LPROVER
+%token REC
 %token MODULE
 %token OPEN
 %token REQUEST
@@ -152,6 +154,8 @@ structure_item:
   | CONVERTIBLE TYPE decl = type_decl c = conv_type
     named = maybe (BY l = as_loc(val_ident) { l })
     { mkstmt ~pos:$loc (Pstmt_convtype (decl, c, named)) }
+  | decls = type_decls
+    { mkstmt ~pos:$loc (Pstmt_rectype decls) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
     { mkstmt ~pos:$loc (Pstmt_module (x, m)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
@@ -179,6 +183,8 @@ signature_item:
   | CONVERTIBLE TYPE decl = type_decl c = conv_type
     named = maybe (BY l = as_loc(val_ident) { l })
     { mksig ~pos:$loc (Psig_convtype (decl, c, named)) }
+  | decls = type_decls
+    { mksig ~pos:$loc (Psig_rectype decls) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
     { mksig ~pos:$loc (Psig_module (x, m)) }
   | MODULE x = as_loc(UIDENT)
@@ -205,6 +211,16 @@ type_decl:
       ; tdec_params= args
       ; tdec_desc= k
       ; tdec_loc= Loc.of_pos $loc } }
+
+and_type_decls(type_keyword):
+  | type_keyword decl = type_decl
+    { [decl] }
+  | type_keyword decl = type_decl decls = and_type_decls(AND)
+    { decl :: decls }
+
+type_decls:
+  | decls = and_type_decls(TYPE REC {})
+    { decls }
 
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE

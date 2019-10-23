@@ -5,6 +5,7 @@ type error =
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
   | Opaque_type_in_prover_mode of Parsetypes.type_expr
   | Convertible_arities_differ of string * int * string * int
+  | GADT_in_nonrec_type
 
 module Type : sig
   val mk_poly :
@@ -74,6 +75,13 @@ module TypeDecl : sig
   val generalise :
     Parsetypes.type_decl -> Parsetypes.type_decl * Parsetypes.type_decl
 
+  val predeclare : Envi.t -> Parsetypes.type_decl -> Envi.t
+  (** Add the type to the environment as an abstract type.
+
+      This can be used to set up the environment for recursive or co-recursive
+      types, which need to find their own identifier in scope.
+  *)
+
   val import :
        ?name:Ident.t
     -> ?other_name:Path.t
@@ -107,4 +115,8 @@ module TypeDecl : sig
   (** Import a type declaration, stitching it to the type described by the
       [conv_type] argument.
   *)
+
+  val import_rec :
+    Parsetypes.type_decl list -> Envi.t -> Typedast.type_decl list * Envi.t
+  (** Import the given type declarations recursively. *)
 end

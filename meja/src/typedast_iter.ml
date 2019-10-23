@@ -116,9 +116,8 @@ let type_decl_desc iter = function
       List.iter ~f:(iter.ctor_decl iter) ctors
   | Tdec_open ->
       ()
-  | Tdec_extend (name, decl, ctors) ->
+  | Tdec_extend (name, ctors) ->
       path iter name ;
-      iter.type0_decl iter decl ;
       List.iter ~f:(iter.ctor_decl iter) ctors
 
 let literal (_iter : iterator) (_ : literal) = ()
@@ -247,6 +246,8 @@ let signature_desc iter = function
       type_conv iter tconv ;
       ident iter convname ;
       iter.type_expr iter typ
+  | Tsig_rectype decls ->
+      List.iter ~f:(iter.type_decl iter) decls
   | Tsig_module (name, msig) | Tsig_modtype (name, msig) ->
       ident iter name ; iter.module_sig iter msig
   | Tsig_open name ->
@@ -297,6 +298,8 @@ let statement_desc iter = function
       type_conv iter tconv ;
       ident iter convname ;
       iter.convert iter conv
+  | Tstmt_rectype decls ->
+      List.iter ~f:(iter.type_decl iter) decls
   | Tstmt_module (name, me) ->
       ident iter name ; iter.module_expr iter me
   | Tstmt_modtype (name, mty) ->

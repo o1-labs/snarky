@@ -2,11 +2,11 @@ module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
 include struct
-  type ('a, 'b) poly = {a: 'a; b: 'b}
+  type nonrec ('a, 'b) poly = {a: 'a; b: 'b}
 
-  type t = (bool, field) poly
+  type nonrec t = (bool, field) poly
 
-  type var = (Boolean.var, Field.Var.t) poly
+  type nonrec var = (Boolean.var, Field.Var.t) poly
 
   let typ __implicit1__ __implicit2__ : (('a1, 'b1) poly, ('a, 'b) poly) Typ.t
       =
@@ -30,11 +30,11 @@ include struct
 end
 
 include struct
-  type ('a1, 'b1) u_poly = {a1: 'a1; b1: 'b1}
+  type nonrec ('a1, 'b1) u_poly = {a1: 'a1; b1: 'b1}
 
-  type 'a u = ('a, bool) u_poly
+  type nonrec 'a u = ('a, bool) u_poly
 
-  type 'a u_var = ('a, Boolean.var) u_poly
+  type nonrec 'a u_var = ('a, Boolean.var) u_poly
 
   let u_typ __implicit9__ __implicit10__ :
       (('a11, 'b11) u_poly, ('a1, 'b1) u_poly) Typ.t =
@@ -60,7 +60,7 @@ include struct
 end
 
 include struct
-  type ('a, 'b) v = {a2: 'a; b2: 'b}
+  type nonrec ('a, 'b) v = {a2: 'a; b2: 'b}
 
   let v_typ __implicit17__ __implicit18__ : (('a1, 'b1) v, ('a, 'b) v) Typ.t =
     { Typ.store=

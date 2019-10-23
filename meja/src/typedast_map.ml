@@ -136,12 +136,9 @@ let type_decl_desc mapper = function
       Tdec_variant (List.map ~f:(mapper.ctor_decl mapper) ctors)
   | Tdec_open ->
       Tdec_open
-  | Tdec_extend (name, decl, ctors) ->
+  | Tdec_extend (name, ctors) ->
       Tdec_extend
-        ( path mapper name
-        , with_backtrack_replace (fun () ->
-              mapper.type0.type_decl mapper.type0 decl )
-        , List.map ~f:(mapper.ctor_decl mapper) ctors )
+        (path mapper name, List.map ~f:(mapper.ctor_decl mapper) ctors)
 
 let literal (_iter : mapper) (l : literal) = l
 
@@ -286,6 +283,8 @@ let signature_desc mapper = function
         , type_conv mapper tconv
         , ident mapper convname
         , mapper.type_expr mapper typ )
+  | Tsig_rectype decls ->
+      Tsig_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Tsig_module (name, msig) ->
       Tsig_module (ident mapper name, mapper.module_sig mapper msig)
   | Tsig_modtype (name, msig) ->
@@ -342,6 +341,8 @@ let statement_desc mapper = function
         , type_conv mapper tconv
         , ident mapper convname
         , mapper.convert mapper conv )
+  | Tstmt_rectype decls ->
+      Tstmt_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Tstmt_module (name, me) ->
       Tstmt_module (ident mapper name, mapper.module_expr mapper me)
   | Tstmt_modtype (name, mty) ->

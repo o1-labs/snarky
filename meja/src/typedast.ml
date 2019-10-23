@@ -51,7 +51,7 @@ and type_decl_desc =
   | Tdec_record of field_decl list
   | Tdec_variant of ctor_decl list
   | Tdec_open
-  | Tdec_extend of path * Type0.type_decl * ctor_decl list
+  | Tdec_extend of path * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
 type literal = Int of int | Bool of bool | Field of string | String of string
@@ -126,6 +126,7 @@ and signature_desc =
   | Tsig_instance of ident * type_expr
   | Tsig_type of type_decl
   | Tsig_convtype of type_decl * conv_type * ident * type_expr
+  | Tsig_rectype of type_decl list
   | Tsig_module of ident * module_sig
   | Tsig_modtype of ident * module_sig
   | Tsig_open of path
@@ -153,6 +154,7 @@ and statement_desc =
   | Tstmt_instance of ident * expression
   | Tstmt_type of type_decl
   | Tstmt_convtype of type_decl * conv_type * ident * convert
+  | Tstmt_rectype of type_decl list
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig
   | Tstmt_open of path

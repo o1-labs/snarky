@@ -53,8 +53,6 @@ and type_decl_desc =
   | TRecord of field_decl list
   | TVariant of ctor_decl list
   | TOpen
-  | TExtend of Path.t * type_decl * ctor_decl list
+  | TExtend of Path.t * ctor_decl list
       (** Internal; this should never be present in the AST. *)
-  | TForward of int option ref
-      (** Forward declaration for types loaded from cmi files. *)
 [@@deriving sexp]

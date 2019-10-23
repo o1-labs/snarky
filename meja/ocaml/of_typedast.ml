@@ -501,7 +501,7 @@ let rec of_signature_desc ?loc = function
   | Tsig_value (name, typ) | Tsig_instance (name, typ) ->
       Sig.value ?loc (Val.mk ?loc (of_ident_loc name) (of_type_expr typ))
   | Tsig_type decl ->
-      Sig.type_ ?loc Recursive [of_type_decl decl]
+      Sig.type_ ?loc Nonrecursive [of_type_decl decl]
   | Tsig_convtype (decl, tconv, convname, typ) ->
       let decls =
         match tconv with
@@ -519,6 +519,8 @@ let rec of_signature_desc ?loc = function
         { pincl_mod= Mty.signature ?loc sigs
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Tsig_rectype decls ->
+      Sig.type_ ?loc Recursive (List.map ~f:of_type_decl decls)
   | Tsig_module (name, msig) ->
       let msig =
         match of_module_sig msig with
@@ -590,7 +592,7 @@ let rec of_statement_desc ?loc = function
       Str.value ?loc Nonrecursive
         [Vb.mk (Pat.var ?loc (of_ident_loc name)) (of_expression e)]
   | Tstmt_type decl ->
-      Str.type_ ?loc Recursive [of_type_decl decl]
+      Str.type_ ?loc Nonrecursive [of_type_decl decl]
   | Tstmt_convtype (decl, tconv, convname, conv) ->
       let decls =
         match tconv with
@@ -608,6 +610,8 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc strs
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Tstmt_rectype decls ->
+      Str.type_ ?loc Recursive (List.map ~f:of_type_decl decls)
   | Tstmt_module (name, m) ->
       Str.module_ ?loc (Mb.mk ?loc (of_ident_loc name) (of_module_expr m))
   | Tstmt_modtype (name, msig) ->

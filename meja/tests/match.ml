@@ -5,11 +5,11 @@ let x (y : int) (z : bool) = match y with i -> z
 
 let y (f : int -> int -> int -> _) = match (1, 2, 3) with i, j, k -> f i j k
 
-type t = {a: int; b: bool}
+type nonrec t = {a: int; b: bool}
 
-type u = {f: int -> int}
+type nonrec u = {f: int -> int}
 
-type ('a, 'b) v = {x: 'a; y: 'b; g: 'a -> 'b}
+type nonrec ('a, 'b) v = {x: 'a; y: 'b; g: 'a -> 'b}
 
 let z x {f; _} = match x with {a= x; b; _} -> f x
 
