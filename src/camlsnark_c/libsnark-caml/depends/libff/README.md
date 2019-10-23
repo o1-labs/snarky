@@ -53,7 +53,6 @@ The library has the following dependencies:
 * [Boost](http://www.boost.org/)
 * [CMake](http://cmake.org/)
 * [GMP](http://gmplib.org/)
-* libcrypto
 * [libprocps](http://packages.ubuntu.com/trusty/libprocps-dev)
 
 The library has been tested on Linux, but it is compatible with Windows and Mac OS X.
@@ -98,6 +97,14 @@ To execute the tests for this library, run:
 ```
 make check
 ```
+
+## Profile
+
+To compile the multi-exponentiation profiler in this library, run:
+```
+make profile
+```
+The resulting profiler is named `multiexp_profile` and can be found in the `libff` folder under the build directory.
 
 [SCIPR Lab]: http://www.scipr-lab.org/ (Succinct Computational Integrity and Privacy Research Lab)
 

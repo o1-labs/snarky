@@ -98,8 +98,6 @@ module type S = sig
 
     val create :
       Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
-
-    val set_is_square : t -> bool -> unit
   end
 
   module R1CS_constraint_system : sig
@@ -437,7 +435,6 @@ module Make (Backend : Backend_intf.S) :
       | Boolean v ->
           let lc = of_var v in
           let constr = R1CS_constraint.create lc lc lc in
-          R1CS_constraint.set_is_square constr true ;
           constr
       | Equal (v1, v2) ->
           (* 0 * 0 = (v1 - v2) *)
@@ -446,18 +443,15 @@ module Make (Backend : Backend_intf.S) :
               Linear_combination.zero
               (of_var (Cvar.sub v1 v2))
           in
-          R1CS_constraint.set_is_square constr true ;
           constr
       | Square (a, c) ->
           let a = of_var a in
           let constr = R1CS_constraint.create a a (of_var c) in
-          R1CS_constraint.set_is_square constr true ;
           constr
       | R1CS (a, b, c) ->
           let constr =
             R1CS_constraint.create (of_var a) (of_var b) (of_var c)
           in
-          R1CS_constraint.set_is_square constr false ;
           constr
 
     let stack_to_string = String.concat ~sep:"\n"

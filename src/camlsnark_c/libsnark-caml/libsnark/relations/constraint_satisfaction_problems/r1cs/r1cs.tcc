@@ -31,15 +31,14 @@ template<typename FieldT>
 r1cs_constraint<FieldT>::r1cs_constraint(const linear_combination<FieldT> &a,
                                          const linear_combination<FieldT> &b,
                                          const linear_combination<FieldT> &c) :
-    a(a), b(b), c(c), is_square(false)
+    a(a), b(b), c(c)
 {
 }
 
 template<typename FieldT>
 r1cs_constraint<FieldT>::r1cs_constraint(const std::initializer_list<linear_combination<FieldT> > &A,
                                          const std::initializer_list<linear_combination<FieldT> > &B,
-                                         const std::initializer_list<linear_combination<FieldT> > &C) :
-  is_square (false)
+                                         const std::initializer_list<linear_combination<FieldT> > &C)
 {
     for (auto lc_A : A)
     {
@@ -69,8 +68,6 @@ std::ostream& operator<<(std::ostream &out, const r1cs_constraint<FieldT> &c)
     out << c.a;
     out << c.b;
     out << c.c;
-    unsigned char x = c.is_square ? '1' : '0';
-    out << x;
 
     return out;
 }
@@ -81,9 +78,6 @@ std::istream& operator>>(std::istream &in, r1cs_constraint<FieldT> &c)
     in >> c.a;
     in >> c.b;
     in >> c.c;
-    unsigned char x;
-    in >> x;
-    c.is_square = x == '1';
 
     return in;
 }
@@ -173,9 +167,6 @@ template<typename FieldT>
 void r1cs_constraint_system<FieldT>::add_constraint(const r1cs_constraint<FieldT> &c)
 {
     constraints.emplace_back(c);
-    if (c.is_square) {
-      num_square_constraints += 1;
-    }
 }
 
 template<typename FieldT>
@@ -185,9 +176,6 @@ void r1cs_constraint_system<FieldT>::add_constraint(const r1cs_constraint<FieldT
     constraint_annotations[constraints.size()] = annotation;
 #endif
     constraints.emplace_back(c);
-    if (c.is_square) {
-      num_square_constraints += 1;
-    }
 }
 
 template<typename FieldT>
@@ -262,25 +250,12 @@ std::ostream& operator<<(std::ostream &out, const r1cs_constraint_system<FieldT>
         out << c;
     }
 
-#ifdef DEBUG
-    out << cs.constraint_annotations.size() << "\n";
-    for (std::pair<size_t, std::string> annot : cs.constraint_annotations) {
-        size_t c = annot.first;
-        out << c << "\n";
-
-        std::string word = annot.second;
-        out << word.size() << "\n";
-        out << word;
-    }
-#endif
-
     return out;
 }
 
 template<typename FieldT>
 std::istream& operator>>(std::istream &in, r1cs_constraint_system<FieldT> &cs)
 {
-    cs.num_square_constraints = 0;
     in >> cs.primary_input_size;
     in >> cs.auxiliary_input_size;
 
@@ -299,31 +274,7 @@ std::istream& operator>>(std::istream &in, r1cs_constraint_system<FieldT> &cs)
         r1cs_constraint<FieldT> c;
         in >> c;
         cs.constraints.emplace_back(c);
-        if (c.is_square) {
-          cs.num_square_constraints += 1;
-        }
     }
-#ifdef DEBUG
-    size_t num_constraint_annotations;
-    in >> num_constraint_annotations;
-    char bb;
-    in.read(&bb, 1);
-
-    for (size_t i = 0; i < num_constraint_annotations; ++i) {
-      size_t c;
-      in >> c;
-      in.read(&bb, 1);
-      size_t len;
-      in >> len;
-      in.read(&bb, 1);
-
-      std::vector<char> tmp(len);
-      std::string s;
-      in.read(tmp.data(), len);
-      s.assign(tmp.data(), len);
-      cs.constraint_annotations[c] = s;
-    }
-#endif
 
     return in;
 }

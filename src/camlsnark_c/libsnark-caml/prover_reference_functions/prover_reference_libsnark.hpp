@@ -9,6 +9,7 @@
 // done with them.
 
 #include <vector>
+#include <memory>
 #include <libff/algebra/curves/mnt753/mnt4753/mnt4753_pp.hpp>
 #include <libff/algebra/curves/mnt753/mnt6753/mnt6753_pp.hpp>
 #include <omp.h>

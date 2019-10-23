@@ -194,9 +194,6 @@ public:
     // H^{gamma}
     libff::G2<ppT> H_gamma;
 
-    // e (G^{alpha}, H^{beta})
-    libff::Fqk<ppT> G_alpha_H_beta;
-
     // G^{gamma * A_i(t) + (alpha + beta) * A_i(t)}
     // for 0 <= i <= sap.num_inputs()
     libff::G1_vector<ppT> query;
@@ -213,8 +210,7 @@ public:
         H_beta(H_beta),
         G_gamma(G_gamma),
         H_gamma(H_gamma),
-        query(std::move(query)),
-        G_alpha_H_beta(ppT::reduced_pairing(G_alpha, H_beta))
+        query(std::move(query))
     {};
 
     size_t G1_size() const
@@ -227,7 +223,6 @@ public:
         return 3;
     }
 
-    // TODO: The GT size also
     size_t size_in_bits() const
     {
         return (G1_size() * libff::G1<ppT>::size_in_bits() +
@@ -274,7 +269,7 @@ class r1cs_se_ppzksnark_processed_verification_key {
 public:
     libff::G1<ppT> G_alpha;
     libff::G2<ppT> H_beta;
-    libff::Fqk<ppT> G_alpha_H_beta;
+    libff::Fqk<ppT> G_alpha_H_beta_ml;
     libff::G1_precomp<ppT> G_gamma_pc;
     libff::G2_precomp<ppT> H_gamma_pc;
     libff::G2_precomp<ppT> H_pc;
@@ -324,7 +319,7 @@ std::istream& operator>>(std::istream &in, r1cs_se_ppzksnark_proof<ppT> &proof);
  * A proof for the R1CS SEppzkSNARK.
  *
  * While the proof has a structure, externally one merely opaquely produces,
- * seralizes/deserializes, and verifies proofs. We only expose some information
+ * serializes/deserializes, and verifies proofs. We only expose some information
  * about the structure for statistics purposes.
  */
 template<typename ppT>
@@ -335,12 +330,7 @@ public:
     libff::G1<ppT> C;
 
     r1cs_se_ppzksnark_proof()
-    {
-        // invalid proof with valid curve points
-        this->A = libff::G1<ppT>::one();
-        this->B = libff::G2<ppT>::one();
-        this->C = libff::G1<ppT>::one();
-    }
+    {}
     r1cs_se_ppzksnark_proof(libff::G1<ppT> &&A,
         libff::G2<ppT> &&B,
         libff::G1<ppT> &&C) :

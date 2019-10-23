@@ -669,8 +669,6 @@ struct
        -> t return)
       result
 
-    val set_is_square : (t -> bool -> unit return) result
-
     val a : (t -> Linear_combination.t return) result
 
     val b : (t -> Linear_combination.t return) result
@@ -698,9 +696,6 @@ struct
       foreign (func_name "create")
         ( Linear_combination.typ @-> Linear_combination.typ
         @-> Linear_combination.typ @-> returning typ )
-
-    let set_is_square =
-      foreign (func_name "set_is_square") (typ @-> bool @-> returning void)
 
     let a = foreign (func_name "a") (typ @-> returning Linear_combination.typ)
 
