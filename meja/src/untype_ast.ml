@@ -232,6 +232,12 @@ let rec expression_desc = function
 and expression e =
   {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}
 
+let conv_type = function
+  | Typedast.Ttconv_with (mode, decl) ->
+      Parsetypes.Ptconv_with (mode, type_decl decl)
+  | Ttconv_to typ ->
+      Ptconv_to (type_expr typ)
+
 let rec signature_desc = function
   | Typedast.Tsig_value (name, typ) ->
       Parsetypes.Psig_value (map_loc ~f:Ident.name name, type_expr typ)
@@ -239,6 +245,9 @@ let rec signature_desc = function
       Psig_instance (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_type decl ->
       Psig_type (type_decl decl)
+  | Tsig_convtype (decl, tconv, convname, _typ) ->
+      Psig_convtype
+        (type_decl decl, conv_type tconv, Some (map_loc ~f:Ident.name convname))
   | Tsig_module (name, msig) ->
       Psig_module (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_modtype (name, msig) ->
@@ -282,6 +291,9 @@ let rec statement_desc = function
       Pstmt_instance (map_loc ~f:Ident.name name, expression e)
   | Tstmt_type decl ->
       Pstmt_type (type_decl decl)
+  | Tstmt_convtype (decl, tconv, convname, _conv) ->
+      Pstmt_convtype
+        (type_decl decl, conv_type tconv, Some (map_loc ~f:Ident.name convname))
   | Tstmt_module (name, m) ->
       Pstmt_module (map_loc ~f:Ident.name name, module_expr m)
   | Tstmt_modtype (name, msig) ->

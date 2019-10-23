@@ -177,6 +177,12 @@ let expression_desc iter = function
   | Pexp_prover e ->
       iter.expression iter e
 
+let type_conv iter = function
+  | Ptconv_with (_mode, decl) ->
+      iter.type_decl iter decl
+  | Ptconv_to typ ->
+      iter.type_expr iter typ
+
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
 let signature_item iter {sig_desc; sig_loc} =
@@ -188,6 +194,10 @@ let signature_desc iter = function
       str iter name ; iter.type_expr iter typ
   | Psig_type decl ->
       iter.type_decl iter decl
+  | Psig_convtype (decl, tconv, conv) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      Option.iter ~f:(str iter) conv
   | Psig_module (name, msig) | Psig_modtype (name, msig) ->
       str iter name ; iter.module_sig iter msig
   | Psig_open name ->
@@ -233,6 +243,10 @@ let statement_desc iter = function
       str iter name ; iter.expression iter e
   | Pstmt_type decl ->
       iter.type_decl iter decl
+  | Pstmt_convtype (decl, tconv, conv) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      Option.iter ~f:(str iter) conv
   | Pstmt_module (name, me) ->
       str iter name ; iter.module_expr iter me
   | Pstmt_modtype (name, mty) ->

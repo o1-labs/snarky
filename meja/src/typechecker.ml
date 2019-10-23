@@ -801,11 +801,17 @@ let rec get_expression env expected exp =
       let decl, env =
         let name = ident.txt in
         let other_name = Path.Pident name in
-        (* Create a tri-stitched type in checked mode. *)
-        let tri_name =
-          match mode with Checked -> Some other_name | Prover -> None
-        in
-        Typet.TypeDecl.import ~name ~other_name ?tri_name decl env
+        match mode with
+        | Checked ->
+            (* Tri-stitch with itself. *)
+            let tri_stitched =
+              Type1.Mk.ctor ~mode:Prover 10000 other_name []
+            in
+            let tri_stitched _ _ = tri_stitched in
+            Typet.TypeDecl.import ~name ~tri_stitched decl env
+        | Prover ->
+            (* Normal stitching. *)
+            Typet.TypeDecl.import ~name ~other_name decl env
       in
       let res = Envi.Type.mkvar ~mode None env in
       let body, env = get_expression env res body in
@@ -1250,6 +1256,80 @@ let rec check_signature_item env item =
   | Psig_type decl ->
       let decl, env = Typet.TypeDecl.import decl env in
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
+  | Psig_convtype (decl, tconv, convname) ->
+      if not (equal_mode mode Checked) then failwith "TODO: Proper error." ;
+      let decl, tconv, env =
+        Typet.TypeDecl.import_convertible decl tconv env
+      in
+      let typ =
+        (* Build the type corresponding to the conversion. *)
+        let open Typedast in
+        let params =
+          List.mapi decl.tdec_params ~f:(fun i typ ->
+              { typ with
+                type_desc=
+                  Ttyp_var
+                    (Some
+                       (Location.mkloc (sprintf "var_%i" (i + 1)) typ.type_loc))
+              } )
+        in
+        let conv_params =
+          List.mapi decl.tdec_params ~f:(fun i typ ->
+              { typ with
+                type_desc=
+                  Ttyp_var
+                    (Some
+                       (Location.mkloc
+                          (sprintf "value_%i" (i + 1))
+                          typ.type_loc))
+              ; type_type= typ.type_type.type_alternate } )
+        in
+        let mk_ctor path params type_type =
+          { type_desc= Ttyp_ctor {var_ident= path; var_params= params}
+          ; type_loc= loc
+          ; type_type }
+        in
+        let typ =
+          mk_ctor
+            (map_loc ~f:(fun x -> Path.Pident x) decl.tdec_ident)
+            params decl.tdec_tdec.tdec_ret
+        in
+        let other_typ =
+          match tconv with
+          | Ttconv_with (_, other_decl) ->
+              mk_ctor
+                (map_loc ~f:(fun x -> Path.Pident x) decl.tdec_ident)
+                params
+                (get_mode Prover other_decl.tdec_tdec.tdec_ret)
+          | Ttconv_to typ ->
+              typ
+        in
+        let loc =
+          Option.value_map convname ~default:loc ~f:(fun {Location.loc; _} ->
+              loc )
+        in
+        let typ = Typet.Type.mk_conv ~loc ~mode typ other_typ env in
+        List.fold2_exn (List.rev params) (List.rev conv_params) ~init:typ
+          ~f:(fun typ param conv_param ->
+            let param = Typet.Type.mk_conv ~loc ~mode param conv_param env in
+            Typet.Type.mk_arrow ~loc ~mode ~explicit:Implicit param typ env )
+      in
+      let typ' = polymorphise (Type1.flatten typ.type_type) env in
+      Envi.Type.update_depths env typ' ;
+      let convname =
+        match convname with
+        | Some convname ->
+            map_loc ~f:(Ident.create ~mode) convname
+        | None ->
+            let name = Ident.name decl.tdec_ident.txt in
+            let name = if name = "t" then "typ" else sprintf "%s_typ" name in
+            Location.mkloc (Ident.create ~mode name) loc
+      in
+      let env = Envi.add_name convname.txt typ' env in
+      let env = Envi.add_implicit_instance convname.txt typ' env in
+      ( env
+      , { Typedast.sig_desc= Tsig_convtype (decl, tconv, convname, typ)
+        ; sig_loc= loc } )
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
       let msig, m, env = check_module_sig env msig in
@@ -1453,6 +1533,38 @@ let rec check_statement env stmt =
       in
       in_decl := false ;
       ret
+  | Pstmt_convtype (decl, tconv, convname) ->
+      if not (equal_mode mode Checked) then failwith "TODO: Proper error." ;
+      let decl, tconv, env =
+        Typet.TypeDecl.import_convertible decl tconv env
+      in
+      let typ = decl.tdec_tdec.tdec_ret in
+      let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
+      let typ =
+        List.fold_right decl.tdec_tdec.tdec_params ~init:typ
+          ~f:(fun param typ ->
+            let param =
+              Envi.Type.Mk.conv ~mode param param.type_alternate env
+            in
+            Envi.Type.Mk.arrow ~mode param typ env )
+      in
+      let conv = get_conversion ~can_add_args:false ~loc env typ in
+      let typ = polymorphise (Type1.flatten typ) env in
+      Envi.Type.update_depths env typ ;
+      let convname =
+        match convname with
+        | Some convname ->
+            map_loc ~f:(Ident.create ~mode) convname
+        | None ->
+            let name = Ident.name decl.tdec_ident.txt in
+            let name = if name = "t" then "typ" else sprintf "%s_typ" name in
+            Location.mkloc (Ident.create ~mode name) loc
+      in
+      let env = Envi.add_name convname.txt typ env in
+      let env = Envi.add_implicit_instance convname.txt typ env in
+      ( env
+      , { Typedast.stmt_desc= Tstmt_convtype (decl, tconv, convname, conv)
+        ; stmt_loc= loc } )
   | Pstmt_module (name, m) ->
       let env = Envi.open_module env in
       let env, m = check_module_expr env m in

@@ -21,6 +21,38 @@ module Type = struct
   (* Unique identifier to refer to the fake `opaque` type constructor. *)
   let opaque = Ident.create ~mode:Checked "opaque"
 
+  let mk_poly ~loc ~mode vars typ env =
+    { Typedast.type_desc= Ttyp_poly (vars, typ)
+    ; type_loc= loc
+    ; type_type= Mk.poly ~mode (List.map ~f:type0 vars) (type0 typ) env }
+
+  let mk_tuple ~loc ~mode typs env =
+    { Typedast.type_desc= Ttyp_tuple typs
+    ; type_loc= loc
+    ; type_type= Mk.tuple ~mode (List.map ~f:type0 typs) env }
+
+  let mk_arrow ~loc ~mode ?(explicit = Explicit) ?(label = Nolabel) typ1 typ2
+      env =
+    { Typedast.type_desc= Ttyp_arrow (typ1, typ2, explicit, label)
+    ; type_loc= loc
+    ; type_type= Mk.arrow ~mode ~explicit ~label (type0 typ1) (type0 typ2) env
+    }
+
+  let mk_prover ~loc ~mode typ =
+    { Typedast.type_desc= Ttyp_prover typ
+    ; type_loc= loc
+    ; type_type= Type1.get_mode mode typ.type_type }
+
+  let mk_conv ~loc ~mode typ1 typ2 env =
+    { Typedast.type_desc= Ttyp_conv (typ1, typ2)
+    ; type_loc= loc
+    ; type_type= Envi.Type.Mk.conv ~mode (type0 typ1) (type0 typ2) env }
+
+  let mk_opaque ~loc typ env =
+    { Typedast.type_desc= Ttyp_opaque typ
+    ; type_loc= loc
+    ; type_type= Envi.Type.Mk.opaque ~mode:Checked (type0 typ) env }
+
   let rec import ?must_find (typ : type_expr) env : Typedast.type_expr * env =
     let mode = Envi.current_mode env in
     let import' = import in
@@ -67,11 +99,7 @@ module Type = struct
         in
         let typ, env = import typ env in
         let env = close_expr_scope env in
-        ( { type_desc= Ttyp_poly (vars, typ)
-          ; type_loc= loc
-          ; type_type= Mk.poly ~mode (List.map ~f:type0 vars) (type0 typ) env
-          }
-        , env )
+        (mk_poly ~loc ~mode vars typ env, env)
     | Ptyp_ctor {var_ident= {txt= Lident "opaque"; _} as var_ident; var_params}
       when not (Envi.has_type_declaration ~mode var_ident env) -> (
       (* Special-case the [opaque] type constructor when it's not otherwise
@@ -138,18 +166,11 @@ module Type = struct
               let t, e = import t e in
               (e, t) )
         in
-        let typ = Mk.tuple ~mode (List.map ~f:type0 typs) env in
-        ({type_desc= Ttyp_tuple typs; type_loc= loc; type_type= typ}, env)
+        (mk_tuple ~loc ~mode typs env, env)
     | Ptyp_arrow (typ1, typ2, explicit, label) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
-        let typ =
-          Mk.arrow ~mode ~explicit ~label (type0 typ1) (type0 typ2) env
-        in
-        ( { type_desc= Ttyp_arrow (typ1, typ2, explicit, label)
-          ; type_loc= loc
-          ; type_type= typ }
-        , env )
+        (mk_arrow ~loc ~mode ~explicit ~label typ1 typ2 env, env)
     | Ptyp_prover typ ->
         let env = open_expr_scope ~mode:Prover env in
         let typ, env = import typ env in
@@ -157,10 +178,7 @@ module Type = struct
           let scope, env = pop_expr_scope env in
           join_expr_scope env scope
         in
-        ( { type_desc= Ttyp_prover typ
-          ; type_loc= loc
-          ; type_type= Type1.get_mode mode typ.type_type }
-        , env )
+        (mk_prover ~loc ~mode typ, env)
     | Ptyp_conv (typ1, typ2) ->
         let env = open_expr_scope ~mode:Checked env in
         let typ1, env = import typ1 env in
@@ -174,9 +192,7 @@ module Type = struct
           let scope, env = pop_expr_scope env in
           join_expr_scope env scope
         in
-        let typ = Envi.Type.Mk.conv ~mode (type0 typ1) (type0 typ2) env in
-        ( {type_desc= Ttyp_conv (typ1, typ2); type_loc= loc; type_type= typ}
-        , env )
+        (mk_conv ~loc ~mode typ1 typ2 env, env)
     | Ptyp_opaque typ' ->
         if equal_mode Prover mode then
           raise (Error (loc, Opaque_type_in_prover_mode typ)) ;
@@ -186,8 +202,7 @@ module Type = struct
           let scope, env = pop_expr_scope env in
           join_expr_scope env scope
         in
-        let type_type = Envi.Type.Mk.opaque ~mode:Checked (type0 typ) env in
-        ({type_desc= Ttyp_opaque typ; type_loc= loc; type_type}, env)
+        (mk_opaque ~loc typ env, env)
 
   let fold ~init ~f typ =
     match typ.type_desc with
@@ -359,7 +374,7 @@ module TypeDecl = struct
           ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
 
   (* TODO: Make prover mode declarations stitch to opaque types. *)
-  let import ?name ?other_name ?tri_name decl' env =
+  let import ?name ?other_name ?tri_stitched decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
     let tdec_ident, path, tdec_id =
@@ -413,40 +428,46 @@ module TypeDecl = struct
     let env, tdec_params = import_params env tdec_params in
     let params = List.map ~f:type0 tdec_params in
     let tdec_ret =
-      match (other_name, tri_name, mode) with
-      | Some other_path, Some tri_path, Checked ->
-          Type1.Mk.ctor ~mode:Checked 10000 path ~other_path ~tri_path params
-      | Some _, Some _, Prover ->
-          (* Invalid stitching. *)
+      match (other_name, tri_stitched) with
+      | Some _, Some _ ->
+          (* Disallowed. *)
           assert false
-      | Some other_path, None, Checked ->
-          let pparams = List.map ~f:(Type1.get_mode Prover) params in
-          let ptyp = Type1.Mk.ctor ~mode:Prover 10000 other_path pparams in
-          let opaque = Type1.Mk.opaque ~mode:Prover 10000 ptyp in
+      | Some other_path, None ->
+          (* Directly stitched types. *)
+          Type1.Mk.ctor ~mode 10000 path ~other_path params
+      | None, Some tri_typ ->
+          (* Tri-stitched types. *)
+          assert (equal_mode mode Checked) ;
+          (* Evaluate [tri_typ] in the current environment so that it has
+             access to the type parameters.
+          *)
+          let tri_typ = tri_typ env params in
+          assert (equal_mode tri_typ.Type0.type_mode Prover) ;
           let typ =
             Type1.mk' ~mode:Checked 10000
               (Tctor {var_ident= path; var_params= params})
           in
-          typ.type_alternate <- opaque ;
+          typ.type_alternate <- tri_typ ;
           typ
-      | Some other_path, None, Prover ->
-          Type1.Mk.ctor ~mode:Prover 10000 path ~other_path params
-      | None, Some _, _ ->
-          (* Invalid path combination. *)
-          assert false
-      | None, None, Checked ->
-          let pparams = List.map ~f:(Type1.get_mode Prover) params in
-          let ptyp = Type1.Mk.ctor ~mode:Prover 10000 path pparams in
-          let opaque = Type1.Mk.opaque ~mode:Prover 10000 ptyp in
-          let typ =
-            Type1.mk' ~mode:Checked 10000
-              (Tctor {var_ident= path; var_params= params})
+      | None, None -> (
+          (* This type doesn't have a proper alternate, make it opaque. *)
+          let opaque =
+            Type1.Mk.(opaque ~mode 10000 (ctor ~mode 10000 path params))
           in
-          typ.type_alternate <- opaque ;
-          typ
-      | None, None, Prover ->
-          let ptyp = Type1.Mk.ctor ~mode:Prover 10000 path params in
-          Type1.Mk.opaque ~mode:Prover 10000 ptyp
+          match mode with
+          | Prover ->
+              (* Prover-mode 'opaque' types aren't really opaque, so leave as
+                 is.
+              *)
+              opaque
+          | Checked ->
+              (* Tri-stitch to ensure that [tdec_ret] isn't opaque itself. *)
+              let typ =
+                Type1.mk' ~mode:Checked 10000
+                  (Tctor {var_ident= path; var_params= params})
+              in
+              typ.type_alternate <- Type1.get_mode Prover opaque ;
+              typ )
     in
     let decl =
       Type0.{tdec_params= params; tdec_desc= TAbstract; tdec_id; tdec_ret}
@@ -558,6 +579,64 @@ module TypeDecl = struct
         env
     in
     (decl, env)
+
+  let import_convertible decl type_conv env =
+    let mode = current_mode env in
+    assert (equal_mode mode Checked) ;
+    match type_conv with
+    | Ptconv_with (other_mode, conv_decl) -> (
+        if List.length decl.tdec_params <> List.length conv_decl.tdec_params
+        then failwith "TODO: Dedicated error here." ;
+        let name = Ident.create ~mode decl.tdec_ident.txt in
+        let other_name =
+          Ident.create ~mode:other_mode conv_decl.tdec_ident.txt
+        in
+        let decl, env =
+          import ~name ~other_name:(Path.Pident other_name) decl env
+        in
+        match other_mode with
+        | Checked ->
+            (* Tri-stitch. The types are related as
+               [other_name@{C} -> other_name@{P} <-> name@{C}].
+            *)
+            let tri_stitched env params =
+              Envi.Type.instantiate decl.tdec_tdec.tdec_params params
+                (Type1.get_mode Prover decl.tdec_tdec.tdec_ret)
+                env
+            in
+            let conv_decl, env =
+              import ~name:other_name ~tri_stitched conv_decl env
+            in
+            (decl, Typedast.Ttconv_with (other_mode, conv_decl), env)
+        | Prover ->
+            (* Stitch. The types are related as
+               [name@{C} <-> other_name@{P}].
+            *)
+            let env = Envi.open_mode_module_scope other_mode env in
+            let conv_decl, env =
+              import ~name:other_name ~other_name:(Path.Pident name) conv_decl
+                env
+            in
+            let env = Envi.open_mode_module_scope mode env in
+            (decl, Typedast.Ttconv_with (other_mode, conv_decl), env) )
+    | Ptconv_to typ ->
+        (* Tri-stitch to an existing stitching as
+           [decl@{C} -> typ@{P} <-> typ@{C}].
+        *)
+        (* Sad hack, but we need to evaluate in the declaration environment to
+           find the type variables, and also be able to return the type.
+        *)
+        let typ' = ref None in
+        let tri_stitched env _params =
+          (* Interpret in prover mode. *)
+          let env = Envi.open_expr_scope ~mode:Prover env in
+          let typ, _env = Type.import ~must_find:true typ env in
+          typ' := Some typ ;
+          typ.type_type
+        in
+        let decl, env = import ~tri_stitched decl env in
+        let typ = Option.value_exn !typ' in
+        (decl, Ttconv_to typ, env)
 end
 
 (* Error handling *)

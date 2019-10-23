@@ -223,6 +223,12 @@ let convert_desc iter = function
   | Tconv_body body ->
       iter.convert_body iter body
 
+let type_conv iter = function
+  | Ttconv_with (_mode, decl) ->
+      iter.type_decl iter decl
+  | Ttconv_to typ ->
+      iter.type_expr iter typ
+
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
 let signature_item iter {sig_desc; sig_loc} =
@@ -234,6 +240,11 @@ let signature_desc iter = function
       ident iter name ; iter.type_expr iter typ
   | Tsig_type decl ->
       iter.type_decl iter decl
+  | Tsig_convtype (decl, tconv, convname, typ) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      ident iter convname ;
+      iter.type_expr iter typ
   | Tsig_module (name, msig) | Tsig_modtype (name, msig) ->
       ident iter name ; iter.module_sig iter msig
   | Tsig_open name ->
@@ -279,6 +290,11 @@ let statement_desc iter = function
       ident iter name ; iter.expression iter e
   | Tstmt_type decl ->
       iter.type_decl iter decl
+  | Tstmt_convtype (decl, tconv, convname, conv) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      ident iter convname ;
+      iter.convert iter conv
   | Tstmt_module (name, me) ->
       ident iter name ; iter.module_expr iter me
   | Tstmt_modtype (name, mty) ->

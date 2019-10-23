@@ -184,11 +184,19 @@ and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
+let of_conv_type = function
+  | Ptconv_with (_mode, decl) ->
+      Some (of_type_decl decl)
+  | Ptconv_to _ ->
+      None
+
 let rec of_signature_desc ?loc = function
   | Psig_value (name, typ) | Psig_instance (name, typ) ->
       Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
   | Psig_type decl ->
       Sig.type_ ?loc Recursive [of_type_decl decl]
+  | Psig_convtype _ ->
+      assert false
   | Psig_module (name, msig) ->
       let msig =
         match of_module_sig msig with
@@ -260,6 +268,8 @@ let rec of_statement_desc ?loc = function
       Str.value ?loc Nonrecursive [Vb.mk (Pat.var ?loc name) (of_expression e)]
   | Pstmt_type decl ->
       Str.type_ ?loc Recursive [of_type_decl decl]
+  | Pstmt_convtype _ ->
+      assert false
   | Pstmt_module (name, m) ->
       Str.module_ ?loc (Mb.mk ?loc name (of_module_expr m))
   | Pstmt_modtype (name, msig) ->

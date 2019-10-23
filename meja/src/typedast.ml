@@ -110,6 +110,12 @@ and expression_desc =
   | Texp_if of expression * expression * expression option
   | Texp_prover of expression
 
+type conv_type =
+  (* Other mode stitched declaration. *)
+  | Ttconv_with of mode * type_decl
+  (* Tri-stitching to existing declaration. *)
+  | Ttconv_to of type_expr
+
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
 and signature = signature_item list
@@ -118,6 +124,7 @@ and signature_desc =
   | Tsig_value of ident * type_expr
   | Tsig_instance of ident * type_expr
   | Tsig_type of type_decl
+  | Tsig_convtype of type_decl * conv_type * ident * type_expr
   | Tsig_module of ident * module_sig
   | Tsig_modtype of ident * module_sig
   | Tsig_open of path
@@ -144,6 +151,7 @@ and statement_desc =
   | Tstmt_value of pattern * expression
   | Tstmt_instance of ident * expression
   | Tstmt_type of type_decl
+  | Tstmt_convtype of type_decl * conv_type * ident * convert
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig
   | Tstmt_open of path

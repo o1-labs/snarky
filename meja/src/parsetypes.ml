@@ -80,6 +80,12 @@ and expression_desc =
   | Pexp_if of expression * expression * expression option
   | Pexp_prover of expression
 
+type conv_type =
+  (* Other mode stitched declaration. *)
+  | Ptconv_with of mode * type_decl
+  (* Tri-stitching to existing declaration. *)
+  | Ptconv_to of type_expr
+
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
 and signature = signature_item list
@@ -88,6 +94,7 @@ and signature_desc =
   | Psig_value of str * type_expr
   | Psig_instance of str * type_expr
   | Psig_type of type_decl
+  | Psig_convtype of type_decl * conv_type * str option
   | Psig_module of str * module_sig
   | Psig_modtype of str * module_sig
   | Psig_open of lid
@@ -114,6 +121,7 @@ and statement_desc =
   | Pstmt_value of pattern * expression
   | Pstmt_instance of str * expression
   | Pstmt_type of type_decl
+  | Pstmt_convtype of type_decl * conv_type * str option
   | Pstmt_module of str * module_expr
   | Pstmt_modtype of str * module_sig
   | Pstmt_open of lid

@@ -197,6 +197,12 @@ let expression_desc mapper = function
   | Pexp_prover e ->
       Pexp_prover (mapper.expression mapper e)
 
+let type_conv mapper = function
+  | Ptconv_with (mode, decl) ->
+      Ptconv_with (mode, mapper.type_decl mapper decl)
+  | Ptconv_to typ ->
+      Ptconv_to (mapper.type_expr mapper typ)
+
 let signature mapper = List.map ~f:(mapper.signature_item mapper)
 
 let signature_item mapper {sig_desc; sig_loc} =
@@ -210,6 +216,11 @@ let signature_desc mapper = function
       Psig_instance (str mapper name, mapper.type_expr mapper typ)
   | Psig_type decl ->
       Psig_type (mapper.type_decl mapper decl)
+  | Psig_convtype (decl, tconv, conv) ->
+      Psig_convtype
+        ( mapper.type_decl mapper decl
+        , type_conv mapper tconv
+        , Option.map ~f:(str mapper) conv )
   | Psig_module (name, msig) ->
       Psig_module (str mapper name, mapper.module_sig mapper msig)
   | Psig_modtype (name, msig) ->
@@ -260,6 +271,11 @@ let statement_desc mapper = function
       Pstmt_instance (str mapper name, mapper.expression mapper e)
   | Pstmt_type decl ->
       Pstmt_type (mapper.type_decl mapper decl)
+  | Pstmt_convtype (decl, tconv, conv) ->
+      Pstmt_convtype
+        ( mapper.type_decl mapper decl
+        , type_conv mapper tconv
+        , Option.map ~f:(str mapper) conv )
   | Pstmt_module (name, me) ->
       Pstmt_module (str mapper name, mapper.module_expr mapper me)
   | Pstmt_modtype (name, mty) ->

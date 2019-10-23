@@ -1,3 +1,4 @@
+open Core_kernel
 open Ast_types
 open Parsetypes
 open Format
@@ -90,8 +91,8 @@ let type_decl_desc fmt = function
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
 
-let type_decl fmt decl =
-  fprintf fmt "type %s" decl.tdec_ident.txt ;
+let type_decl type_keyword fmt decl =
+  fprintf fmt "%s %s" type_keyword decl.tdec_ident.txt ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
 
@@ -271,6 +272,15 @@ and expression_args fmt (label, e) =
 and expression_field fmt (label, e) =
   fprintf fmt "%a:@ %a" Longident.pp label.txt expression e
 
+let conv_type fmt = function
+  | Ptconv_with (mode, decl) ->
+      let str =
+        match mode with Checked -> "with" | Prover -> "with prover"
+      in
+      type_decl str fmt decl
+  | Ptconv_to typ ->
+      fprintf fmt "to @[<hv>%a@]" type_expr typ
+
 let rec signature_desc fmt = function
   | Psig_value (name, typ) ->
       fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt
@@ -279,7 +289,13 @@ let rec signature_desc fmt = function
       fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" pp_name name.txt
         type_expr typ
   | Psig_type decl ->
-      fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
+      fprintf fmt "@[<2>%a;@]@;@;" (type_decl "type") decl
+  | Psig_convtype (decl, tconv, conv) ->
+      fprintf fmt "@[<2>%a@ %a"
+        (type_decl "convertible type")
+        decl conv_type tconv ;
+      Option.iter conv ~f:(fun conv -> fprintf fmt "@ by %s" conv.txt) ;
+      fprintf fmt "@];"
   | Psig_module (name, msig) ->
       let prefix fmt = fprintf fmt ":@ " in
       fprintf fmt "@[<hov2>module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
@@ -307,7 +323,7 @@ let rec signature_desc fmt = function
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 
-and signature fmt sigs = List.iter (signature_item fmt) sigs
+and signature fmt sigs = List.iter ~f:(signature_item fmt) sigs
 
 and module_sig_desc ~prefix fmt = function
   | Pmty_sig msig ->

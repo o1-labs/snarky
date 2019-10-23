@@ -40,9 +40,7 @@ let other_none = function Checked -> prover_none | Prover -> checked_none
 
 let type_alternate {type_alternate= typ; _} = typ
 
-let is_poly = function
-  | {type_desc= Tpoly _; _} -> true
-  | _ -> false
+let is_poly = function {type_desc= Tpoly _; _} -> true | _ -> false
 
 (** Returns [true] if the [type_expr] argument is valid, false otherwise.
    Can be used to check that a type-stitching has been created or modified
@@ -314,8 +312,8 @@ module Mk = struct
 
   let conv ~mode depth typ1 typ2 =
     assert (not (is_poly typ1 || is_poly typ2)) ;
-    let typ1 = get_mode Checked typ1 in
-    let typ2 = get_mode Prover typ2 in
+    assert (equal_mode typ1.type_mode Checked) ;
+    assert (equal_mode typ2.type_mode Prover) ;
     let typ_stitched =
       if are_stitched typ1 typ2 then typ1
       else stitch ~mode:Checked depth typ1.type_desc typ2.type_desc
@@ -327,7 +325,6 @@ module Mk = struct
     get_mode mode typ
 
   let opaque ~mode depth typ =
-    assert (equal_mode Prover typ.type_mode) ;
     assert (not (is_poly typ)) ;
     stitch ~mode depth (Topaque typ) (Topaque typ)
 end

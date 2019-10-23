@@ -259,6 +259,12 @@ let expression_desc mapper = function
   | Texp_prover e ->
       Texp_prover (mapper.expression mapper e)
 
+let type_conv mapper = function
+  | Ttconv_with (mode, decl) ->
+      Ttconv_with (mode, mapper.type_decl mapper decl)
+  | Ttconv_to typ ->
+      Ttconv_to (mapper.type_expr mapper typ)
+
 let signature mapper = List.map ~f:(mapper.signature_item mapper)
 
 let signature_item mapper {sig_desc; sig_loc} =
@@ -272,6 +278,12 @@ let signature_desc mapper = function
       Tsig_instance (ident mapper name, mapper.type_expr mapper typ)
   | Tsig_type decl ->
       Tsig_type (mapper.type_decl mapper decl)
+  | Tsig_convtype (decl, tconv, convname, typ) ->
+      Tsig_convtype
+        ( mapper.type_decl mapper decl
+        , type_conv mapper tconv
+        , ident mapper convname
+        , mapper.type_expr mapper typ )
   | Tsig_module (name, msig) ->
       Tsig_module (ident mapper name, mapper.module_sig mapper msig)
   | Tsig_modtype (name, msig) ->
@@ -322,6 +334,12 @@ let statement_desc mapper = function
       Tstmt_instance (ident mapper name, mapper.expression mapper e)
   | Tstmt_type decl ->
       Tstmt_type (mapper.type_decl mapper decl)
+  | Tstmt_convtype (decl, tconv, convname, conv) ->
+      Tstmt_convtype
+        ( mapper.type_decl mapper decl
+        , type_conv mapper tconv
+        , ident mapper convname
+        , mapper.convert mapper conv )
   | Tstmt_module (name, me) ->
       Tstmt_module (ident mapper name, mapper.module_expr mapper me)
   | Tstmt_modtype (name, mty) ->
