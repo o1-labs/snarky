@@ -459,7 +459,7 @@ let rec check_pattern env typ pat =
       , names1
       , env )
   | Ppat_int i ->
-      check_type ~loc env typ Initial_env.Type.int ;
+      check_type ~loc env typ (get_mode mode Initial_env.Type.int) ;
       ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_int i}, [], env)
   | Ppat_record [] ->
       raise (Error (loc, Empty_record))
@@ -1093,7 +1093,7 @@ let rec get_expression env expected exp =
         get_expression env (get_mode mode Initial_env.Type.unit) e2
       in
       ( { exp_loc= loc
-        ; exp_type= Initial_env.Type.unit
+        ; exp_type= get_mode mode Initial_env.Type.unit
         ; exp_desc= Texp_if (e1, e2, None) }
       , env )
   | Pexp_if (e1, e2, Some e3) ->

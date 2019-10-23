@@ -128,11 +128,11 @@ module Type = struct
   let exn = TypeDecl.mk_typ ~mode:Checked exn ~params:[] env
 
   let option a =
-    { (TypeDecl.mk_typ ~mode:Checked option ~params:[a] env) with
+    { (TypeDecl.mk_typ ~mode:a.Type0.type_mode option ~params:[a] env) with
       type_depth= a.type_depth }
 
   let list a =
-    { (TypeDecl.mk_typ ~mode:Checked list ~params:[a] env) with
+    { (TypeDecl.mk_typ ~mode:a.Type0.type_mode list ~params:[a] env) with
       type_depth= a.type_depth }
 end
 
