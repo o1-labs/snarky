@@ -452,7 +452,8 @@ module TypeDecl = struct
       | None, None -> (
           (* This type doesn't have a proper alternate, make it opaque. *)
           let opaque =
-            Type1.Mk.(opaque ~mode 10000 (ctor ~mode 10000 path params))
+            let ctor = Type1.Mk.ctor ~mode 10000 path params in
+            Type1.Mk.opaque ~mode 10000 (Type1.get_mode Prover ctor)
           in
           match mode with
           | Prover ->
