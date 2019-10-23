@@ -45,17 +45,6 @@ add_library(
   algebra/curves/mnt/mnt6/mnt6_init.cpp
   algebra/curves/mnt/mnt6/mnt6_pairing.cpp
   algebra/curves/mnt/mnt6/mnt6_pp.cpp
-  algebra/curves/mnt753/mnt4753/mnt4753_g1.cpp
-  algebra/curves/mnt753/mnt4753/mnt4753_g2.cpp
-  algebra/curves/mnt753/mnt4753/mnt4753_init.cpp
-  algebra/curves/mnt753/mnt4753/mnt4753_pairing.cpp
-  algebra/curves/mnt753/mnt4753/mnt4753_pp.cpp
-  algebra/curves/mnt753/mnt46753_common.cpp
-  algebra/curves/mnt753/mnt6753/mnt6753_g1.cpp
-  algebra/curves/mnt753/mnt6753/mnt6753_g2.cpp
-  algebra/curves/mnt753/mnt6753/mnt6753_init.cpp
-  algebra/curves/mnt753/mnt6753/mnt6753_pairing.cpp
-  algebra/curves/mnt753/mnt6753/mnt6753_pp.cpp
   common/double.cpp
   common/profiling.cpp
   common/utils.cpp
@@ -65,11 +54,13 @@ add_library(
 target_link_libraries(
   ff
 
-  ${GMP_LIBRARIES}
-  ${GMPXX_LIBRARIES}
-  ${CRYPTO_LIBRARIES}
+  GMP::gmp
   ${PROCPS_LIBRARIES}
   ${FF_EXTRALIBS}
+)
+target_include_directories(
+  ff
+  PUBLIC ..
 )
 
 install(
@@ -83,18 +74,6 @@ install(
 
 install(
   TARGETS ff DESTINATION lib
-)
-
-add_executable(
-  multiexp_profile
-  EXCLUDE_FROM_ALL
-
-  algebra/scalar_multiplication/multiexp_profile.cpp
-)
-target_link_libraries(
-  multiexp_profile
-
-  ff
 )
 
 # Tests
@@ -152,4 +131,19 @@ if ("${IS_LIBFF_PARENT}")
   add_dependencies(check algebra_bilinearity_test)
   add_dependencies(check algebra_groups_test)
   add_dependencies(check algebra_fields_test)
+
+  add_executable(
+    multiexp_profile
+    EXCLUDE_FROM_ALL
+
+    algebra/scalar_multiplication/multiexp_profile.cpp
+  )
+  target_link_libraries(
+    multiexp_profile
+
+    ${OPENSSL_LIBRARIES}
+    ff
+  )
+
+  add_dependencies(profile multiexp_profile)
 endif()

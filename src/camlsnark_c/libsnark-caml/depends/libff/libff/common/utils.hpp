@@ -25,11 +25,7 @@ size_t get_power_of_two(size_t n);
 /// returns ceil(log2(n)), so 1ul<<log2(n) is the smallest power of 2, that is not less than n
 size_t log2(size_t n);
 
-size_t k_adicity(size_t k, size_t n);
-size_t pow_int(size_t base, size_t exp);
-size_t mixed_radix_FFT_permute(size_t two_adicity, size_t q_adicity, size_t q, size_t N, size_t i);
-
-inline size_t exp2(size_t k) { return 1ul << k; }
+inline size_t exp2(size_t k) { return size_t(1) << k; }
 
 size_t to_twos_complement(int i, size_t w);
 int from_twos_complement(size_t i, size_t w);
@@ -61,10 +57,6 @@ size_t size_in_bits(const std::vector<T> &v);
 #define ARRAY_SIZE(arr) (sizeof(arr)/sizeof(arr[0]))
 
 } // libff
-
-int snarky_printf (const char* format, ...);
-
-#define printf(...) snarky_printf(__VA_ARGS__)
 
 #include <libff/common/utils.tcc> /* note that utils has a templatized part (utils.tcc) and non-templatized part (utils.cpp) */
 #endif // UTILS_HPP_

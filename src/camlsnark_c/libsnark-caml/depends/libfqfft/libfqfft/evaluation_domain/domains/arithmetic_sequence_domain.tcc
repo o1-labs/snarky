@@ -24,19 +24,11 @@
 namespace libfqfft {
 
 template<typename FieldT>
-arithmetic_sequence_domain<FieldT>::arithmetic_sequence_domain(const size_t m, bool &err) : evaluation_domain<FieldT>(m)
+arithmetic_sequence_domain<FieldT>::arithmetic_sequence_domain(const size_t m) : evaluation_domain<FieldT>(m)
 {
-  if (m <= 1) {
-    err = true;
-    precomputation_sentinel = false;
-    return;
-  }
-
-  if (FieldT::arithmetic_generator() == FieldT::zero()) {
-    err = true;
-    precomputation_sentinel = false;
-    return;
-  }
+  if (m <= 1) throw InvalidSizeException("arithmetic(): expected m > 1");
+  if (FieldT::arithmetic_generator() == FieldT::zero())
+    throw InvalidSizeException("arithmetic(): expected FieldT::arithmetic_generator() != FieldT::zero()");
 
   precomputation_sentinel = 0;
 }
