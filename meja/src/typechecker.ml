@@ -758,7 +758,7 @@ let rec get_expression env expected exp =
   | Pexp_literal (Field _f) ->
       failwith "Unhandled field literal"
   | Pexp_literal (String s) ->
-      let typ = Initial_env.Type.string in
+      let typ = get_mode mode Initial_env.Type.string in
       check_type ~loc env expected typ ;
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_literal (String s)}, env)
   | Pexp_fun (label, p, body, explicit) ->
@@ -1085,15 +1085,21 @@ let rec get_expression env expected exp =
   | Pexp_unifiable _ ->
       raise (Error (loc, Unifiable_expr))
   | Pexp_if (e1, e2, None) ->
-      check_type ~loc env Initial_env.Type.unit expected ;
-      let e1, env = get_expression env Initial_env.Type.bool e1 in
-      let e2, env = get_expression env Initial_env.Type.unit e2 in
+      check_type ~loc env (get_mode mode Initial_env.Type.unit) expected ;
+      let e1, env =
+        get_expression env (get_mode mode Initial_env.Type.bool) e1
+      in
+      let e2, env =
+        get_expression env (get_mode mode Initial_env.Type.unit) e2
+      in
       ( { exp_loc= loc
         ; exp_type= Initial_env.Type.unit
         ; exp_desc= Texp_if (e1, e2, None) }
       , env )
   | Pexp_if (e1, e2, Some e3) ->
-      let e1, env = get_expression env Initial_env.Type.bool e1 in
+      let e1, env =
+        get_expression env (get_mode mode Initial_env.Type.bool) e1
+      in
       let e2, env = get_expression env expected e2 in
       let e3, env = get_expression env expected e3 in
       ( {exp_loc= loc; exp_type= expected; exp_desc= Texp_if (e1, e2, Some e3)}
