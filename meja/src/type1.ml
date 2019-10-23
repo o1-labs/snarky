@@ -326,6 +326,7 @@ module Mk = struct
 
   let opaque ~mode depth typ =
     assert (not (is_poly typ)) ;
+    assert (equal_mode Prover typ.type_mode) ;
     stitch ~mode depth (Topaque typ) (Topaque typ)
 end
 
