@@ -641,6 +641,9 @@ let rec get_conversion_body ~can_add_args ~loc env free_vars typ =
             assert false )
       | _ ->
           raise (Error (loc, Cannot_create_conversion typ)) )
+    | Topaque typ1, Topaque typ2 when phys_equal typ1 typ2 ->
+        ( free_vars
+        , {conv_body_desc= Tconv_opaque; conv_body_loc= loc; conv_body_type} )
     | _ ->
         raise (Error (loc, Cannot_create_conversion typ)) )
 

@@ -214,6 +214,9 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
         )
       in
       Exp.fun_ ?loc Nolabel None tuple_pat binds
+  | Tconv_opaque ->
+      let loc = Option.value ~default:Location.none loc in
+      Exp.field ~loc [%expr Snarky.Typ.Internal.ref ()] field
 
 (** Code generation for [Typ.t] store/read fields from [convert_body]s. *)
 and mapper_of_convert_body ~field ~bind ~return
@@ -286,6 +289,9 @@ and alloc_of_convert_body_desc ?loc desc =
             Exp.apply ?loc bind [(Nolabel, conv); (Labelled "f", rest)] )
       in
       binds
+  | Tconv_opaque ->
+      let loc = Option.value ~default:Location.none loc in
+      Exp.field ~loc [%expr Snarky.Typ.Internal.ref ()] field
 
 (** Code generation for [Typ.t] alloc fields from [convert_body]s. *)
 and alloc_of_convert_body
@@ -369,6 +375,9 @@ and check_of_convert_body_desc ?loc desc =
         )
       in
       Exp.fun_ ?loc Nolabel None tuple_pat binds
+  | Tconv_opaque ->
+      let loc = Option.value ~default:Location.none loc in
+      Exp.field ~loc [%expr Snarky.Typ.Internal.ref ()] field
 
 (** Code generation for [Typ.t] store/read fields from [convert_body]s. *)
 and check_of_convert_body
@@ -392,6 +401,8 @@ and of_convert_desc ?loc = function
         )
       in
       Exp.apply ~loc (Exp.ident ~loc:name.loc (of_path_loc name)) args
+  | Tconv_body {conv_body_desc= Tconv_opaque; conv_body_loc= loc; _} ->
+      [%expr Snarky.Typ.Internal.ref ()]
   | Tconv_body body ->
       let mk_lid x = mk_loc ?loc (Option.value_exn (Longident.unflatten x)) in
       let store_bind = mk_lid ["Snarky"; "Typ_monads"; "Store"; "bind"] in

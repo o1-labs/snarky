@@ -187,6 +187,8 @@ let convert_body_desc mapper = function
         (path mapper name, List.map ~f:(mapper.convert_body mapper) args)
   | Tconv_tuple convs ->
       Tconv_tuple (List.map ~f:(mapper.convert_body mapper) convs)
+  | Tconv_opaque ->
+      Tconv_opaque
 
 let convert mapper {conv_desc; conv_loc; conv_type} =
   { conv_loc= mapper.location mapper conv_loc

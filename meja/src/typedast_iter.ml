@@ -211,6 +211,8 @@ let convert_body_desc iter = function
       List.iter ~f:(iter.convert_body iter) args
   | Tconv_tuple convs ->
       List.iter ~f:(iter.convert_body iter) convs
+  | Tconv_opaque ->
+      ()
 
 let convert iter {conv_desc; conv_loc; conv_type} =
   iter.location iter conv_loc ;

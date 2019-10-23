@@ -79,6 +79,7 @@ and convert_body_desc =
   | Tconv_record of (path * convert_body) list
   | Tconv_ctor of path * convert_body list
   | Tconv_tuple of convert_body list
+  | Tconv_opaque
 
 and convert =
   {conv_desc: convert_desc; conv_loc: Location.t; conv_type: Type0.type_expr}
