@@ -81,6 +81,8 @@ module type Basic = sig
     include Comparable.S
 
     val create : int -> t
+
+    val index : t -> int
   end
 
   module Bigint : sig
@@ -1525,6 +1527,8 @@ module type Run_basic = sig
     include Comparable.S
 
     val create : int -> t
+
+    val index : t -> int
   end
 
   (** The finite field over which the R1CS operates. *)
