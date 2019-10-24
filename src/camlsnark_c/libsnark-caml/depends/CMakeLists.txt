@@ -42,3 +42,6 @@ add_subdirectory(libff)
 
 OPTION(IS_LIBFQFFT_PARENT OFF)
 add_subdirectory(libfqfft)
+
+OPTION(BENCHMARK_ENABLE_TESTING OFF)
+add_subdirectory(benchmark)
