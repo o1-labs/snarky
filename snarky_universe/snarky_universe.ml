@@ -100,61 +100,65 @@ end)
   module Field = struct
     open Field
 
-    type t = Field.t
+    module Checked = struct
+      type t = Field.t
 
-    let typ = typ
+      let typ = typ
 
-    let ( = ) = equal
+      let ( = ) = equal
 
-    let equal = ( = )
+      let equal = ( = )
 
-    let ( * ) = ( * )
+      let ( * ) = ( * )
 
-    let ( + ) = ( + )
+      let ( + ) = ( + )
 
-    let ( - ) = ( - )
+      let ( - ) = ( - )
 
-    let ( / ) = ( / )
+      let ( / ) = ( / )
 
-    let mul = mul
+      let mul = mul
 
-    let add = add
+      let add = add
 
-    let sub = sub
+      let sub = sub
 
-    let div = div
+      let div = div
 
-    let negate x = scale x Constant.(negate one)
+      let negate x = scale x Constant.(negate one)
 
-    let square = square
+      let square = square
 
-    let sqrt x =
-      let y =
-        exists typ ~compute:(fun () -> Constant.sqrt (As_prover.read_var x))
-      in
-      assert_square y x ; y
+      let sqrt x =
+        let y =
+          exists typ ~compute:(fun () -> Constant.sqrt (As_prover.read_var x))
+        in
+        assert_square y x ; y
 
-    let invert = inv
+      let invert = inv
 
-    let one = one
+      let one = one
 
-    let zero = zero
+      let zero = zero
 
-    let ofString x = constant (Constant.of_string x)
+      let ofString x = constant (Constant.of_string x)
 
-    let ofInt = of_int
+      let ofInt = of_int
 
-    let ofBits arr = project (Array.to_list arr)
+      let ofBits arr = project (Array.to_list arr)
 
-    let toBits ?length x =
-      let length = match length with None -> size_in_bits | Some n -> n in
-      Array.of_list (choose_preimage_var ~length x)
+      let toBits ?length x =
+        let length = match length with None -> size_in_bits | Some n -> n in
+        Array.of_list (choose_preimage_var ~length x)
 
-    let assertEqual x y = Field.Assert.equal x y
+      let assertEqual x y = Field.Assert.equal x y
 
-    let assertR1 a b c = assert_r1cs a b c
+      let assertR1 a b c = assert_r1cs a b c
 
-    include Cond (Impl) (Field)
+      include Cond (Impl) (Field)
+    end
+
+    include Checked
 
     module Constant = struct
       open Field.Constant
@@ -213,7 +217,16 @@ end)
     end
   end
 
-  module Hash = Hash.Make (Impl) (C)
+  module Hash = struct
+    module T = Hash.Make (Impl) (C)
+    include Field.Checked
+
+    let hash = T.hash
+
+    module Constant = struct
+      type t = Field.Constant.t [@@deriving yojson]
+    end
+  end
 
   module MerkleTree = struct
     module Index = struct

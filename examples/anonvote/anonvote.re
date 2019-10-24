@@ -15,8 +15,7 @@ module Voter = {
     attributes: array('attr),
   };
 
-  /* TODO: Make this hash */
-  module Attribute_commitment = Field;
+  module Attribute_commitment = Hash;
 
   type t = t_(Field.t, Attribute_commitment.t);
 
