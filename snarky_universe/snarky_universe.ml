@@ -18,23 +18,44 @@ struct
   let ( -: ) (c, x) y = if_ c ~then_:x ~else_:y
 end
 
-let impl_of_curve = function
-  | Curve.Bn128 ->
-      let module Backend = Snarky.Backends.Bn128.Default in
-      let module Run =
-        Snarky.Snark.Run.Make
-          (Backend)
-          (struct
-            type t = unit
-          end)
-      in
-      (module Run : Snarky.Snark_intf.Run with type prover_state = unit)
+type proof_system = Groth16 | GrothMaller17
+
+let impl (curve : Curve.t) system =
+  let open Snarky in
+  let module M (B : Backend_intf.S) =
+    Snark.Run.Make
+      (B)
+      (struct
+        type t = unit
+      end)
+  in
+  let f (module B : Backend_intf.S) =
+    ( module Snark.Run.Make
+               (B)
+               (struct
+                 type t = unit
+               end)
+    : Snark_intf.Run
+      with type prover_state = unit )
+  in
+  let system =
+    match curve with
+    | Bn128 -> (
+      match system with
+      | Groth16 ->
+          (module Backends.Bn128.Default : Backend_intf.S)
+      | GrothMaller17 ->
+          (module Backends.Bn128.GM) )
+  in
+  f system
 
 module Make (C : sig
   val curve : Curve.t
+
+  val system : proof_system
 end)
 () : Intf.S = struct
-  module Impl = (val impl_of_curve C.curve)
+  module Impl = (val impl C.curve C.system)
 
   open Impl
 
@@ -79,61 +100,65 @@ end)
   module Field = struct
     open Field
 
-    type t = Field.t
+    module Checked = struct
+      type t = Field.t
 
-    let typ = typ
+      let typ = typ
 
-    let ( = ) = equal
+      let ( = ) = equal
 
-    let equal = ( = )
+      let equal = ( = )
 
-    let ( * ) = ( * )
+      let ( * ) = ( * )
 
-    let ( + ) = ( + )
+      let ( + ) = ( + )
 
-    let ( - ) = ( - )
+      let ( - ) = ( - )
 
-    let ( / ) = ( / )
+      let ( / ) = ( / )
 
-    let mul = mul
+      let mul = mul
 
-    let add = add
+      let add = add
 
-    let sub = sub
+      let sub = sub
 
-    let div = div
+      let div = div
 
-    let negate x = scale x Constant.(negate one)
+      let negate x = scale x Constant.(negate one)
 
-    let square = square
+      let square = square
 
-    let sqrt x =
-      let y =
-        exists typ ~compute:(fun () -> Constant.sqrt (As_prover.read_var x))
-      in
-      assert_square y x ; y
+      let sqrt x =
+        let y =
+          exists typ ~compute:(fun () -> Constant.sqrt (As_prover.read_var x))
+        in
+        assert_square y x ; y
 
-    let invert = inv
+      let invert = inv
 
-    let one = one
+      let one = one
 
-    let zero = zero
+      let zero = zero
 
-    let ofString x = constant (Constant.of_string x)
+      let ofString x = constant (Constant.of_string x)
 
-    let ofInt = of_int
+      let ofInt = of_int
 
-    let ofBits arr = project (Array.to_list arr)
+      let ofBits arr = project (Array.to_list arr)
 
-    let toBits ?length x =
-      let length = match length with None -> size_in_bits | Some n -> n in
-      Array.of_list (choose_preimage_var ~length x)
+      let toBits ?length x =
+        let length = match length with None -> size_in_bits | Some n -> n in
+        Array.of_list (choose_preimage_var ~length x)
 
-    let assertEqual x y = Field.Assert.equal x y
+      let assertEqual x y = Field.Assert.equal x y
 
-    let assertR1 a b c = assert_r1cs a b c
+      let assertR1 a b c = assert_r1cs a b c
 
-    include Cond (Impl) (Field)
+      include Cond (Impl) (Field)
+    end
+
+    include Checked
 
     module Constant = struct
       open Field.Constant
@@ -192,7 +217,16 @@ end)
     end
   end
 
-  module Hash = Hash.Make (Impl) (C)
+  module Hash = struct
+    module T = Hash.Make (Impl) (C)
+    include Field.Checked
+
+    let hash = T.hash
+
+    module Constant = struct
+      type t = Field.Constant.t [@@deriving yojson]
+    end
+  end
 
   module MerkleTree = struct
     module Index = struct
@@ -266,6 +300,21 @@ end)
   end
 end
 
+let create curve system =
+  let module M =
+    Make (struct
+        let curve = curve
+
+        let system = system
+      end)
+      ()
+  in
+  (module M : Intf.S)
+
+let default () = create Bn128 Groth16
+
 module Bn128 = Make (struct
   let curve = Curve.Bn128
+
+  let system = Groth16
 end)

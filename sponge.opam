@@ -1,5 +1,5 @@
 opam-version: "1.2"
-name: "tuple_lib"
+name: "sponge"
 maintainer: "opensource@o1labs.org"
 authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
 homepage: "https://github.com/o1labs/snarky"
@@ -18,5 +18,5 @@ depends: [
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
-A tiny library with names and a useful getter for tuples
+A library implementing the arithmetic sponge construction and several sponge-based hash functions.
 "

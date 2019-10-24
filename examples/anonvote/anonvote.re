@@ -1,8 +1,7 @@
-module Universe =
-  Snarky_universe.Bn128({});
+module Universe = (val Snarky_universe.default());
 
-open Universe.Impl;
-open Universe;
+open! Universe.Impl;
+open! Universe;
 module PrivateKey = Field;
 
 let attributeCount = 10;
@@ -16,8 +15,7 @@ module Voter = {
     attributes: array('attr),
   };
 
-  /* TODO: Make this hash */
-  module Attribute_commitment = Field;
+  module Attribute_commitment = Hash;
 
   type t = t_(Field.t, Attribute_commitment.t);
 

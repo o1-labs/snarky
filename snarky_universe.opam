@@ -1,5 +1,5 @@
 opam-version: "1.2"
-name: "tuple_lib"
+name: "snarky_universe"
 maintainer: "opensource@o1labs.org"
 authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
 homepage: "https://github.com/o1labs/snarky"
@@ -15,8 +15,10 @@ depends: [
   "ppx_jane"
   "bisect_ppx"
   "dune"                {build & >= "1.6"}
+  "snarky"
+  "sponge"
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
-A tiny library with names and a useful getter for tuples
+A wrapper library around snarky providing some useful modules.
 "

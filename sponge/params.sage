@@ -56,37 +56,3 @@ for name, r in [  ('Bn128', BN128_r), ('Mnt4_298', MNT4298_r), ('Mnt4_753', MNT4
           + '{ Params.mds=' + matrix_str(mds(F)) + ';'
           + 'round_constants= ' + matrix_str(round_constants(F))
           + '}' )
-
-#F_small= FiniteField(BN128)
-#F_medium = FiniteField(MNT4r_medium)
-#
-#print ('''[%%import
-#"../../config.mlh"]''')
-#print ('''
-#open Curve_choice.Tick0
-#
-#[%%if
-#curve_size = 298]''')
-#print ('let inv_alpha = "432656623790237568866681136048225865041022616866203195957516123399240588461280445963602851"')
-#print ('let mds =')
-#print (matrix_str(mds(F_small)))
-#print ('let round_constants =')
-#print (matrix_str(round_constants(F_small)))
-#print ('''
-#[%%elif
-#curve_size = 753]''')
-#print ('let inv_alpha = "38089537243562684911222013446582397389246099927230862792530457200932138920519187975508085239809399019470973610807689524839248234083267140972451128958905814696110378477590967674064016488951271336010850653690825603837076796509091"')
-#print ('let mds =')
-#print (matrix_str(mds(F_medium)))
-#print ('let round_constants =')
-#print (matrix_str(round_constants(F_medium)))
-#print ('''
-#[%%else]
-#
-#[%%show
-#curve_size]
-#
-#[%%error
-#"invalid value for \\"curve_size\\""]
-#
-#[%%endif]''')

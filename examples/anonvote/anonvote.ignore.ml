@@ -1,7 +1,7 @@
-module Universe = Snarky_universe.Bn128 ()
+module Universe = (val Snarky_universe.default ())
 
-open Universe.Impl
-open Universe
+open! Universe.Impl
+open! Universe
 module PrivateKey = Field
 
 let attributeCount = 10
@@ -12,8 +12,7 @@ module Voter = struct
   type ('priv_key, 'attr) t_ = {privateKey: 'priv_key; attributes: 'attr array}
   [@@deriving yojson]
 
-  (* TODO: Make this hash *)
-  module Attribute_commitment = Field
+  module Attribute_commitment = Hash
 
   type t = (Field.t, Attribute_commitment.t) t_
 

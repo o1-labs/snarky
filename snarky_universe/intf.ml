@@ -142,11 +142,19 @@ module type S = sig
   module Hash : sig
     type t = Field.t
 
+    val equal : t -> t -> Bool.t
+
+    val assertEqual : t -> t -> unit
+
     val hash : Field.t array -> t
 
+    include Cond_intf with type bool := Bool.t and type t := t
+
     module Constant : sig
-      type t = Field.Constant.t
+      type t = Field.Constant.t [@@deriving yojson]
     end
+
+    val typ : (t, Constant.t) Impl.Typ.t
   end
 
   module MerkleTree : sig
