@@ -1,8 +1,7 @@
-module Universe =
-  Snarky_universe.Bn128({});
+module Universe = (val Snarky_universe.default());
 
-open Universe.Impl;
-open Universe;
+open! Universe.Impl;
+open! Universe;
 module PrivateKey = Field;
 
 let attributeCount = 10;

@@ -18,23 +18,44 @@ struct
   let ( -: ) (c, x) y = if_ c ~then_:x ~else_:y
 end
 
-let impl_of_curve = function
-  | Curve.Bn128 ->
-      let module Backend = Snarky.Backends.Bn128.Default in
-      let module Run =
-        Snarky.Snark.Run.Make
-          (Backend)
-          (struct
-            type t = unit
-          end)
-      in
-      (module Run : Snarky.Snark_intf.Run with type prover_state = unit)
+type proof_system = Groth16 | GrothMaller17
+
+let impl (curve : Curve.t) system =
+  let open Snarky in
+  let module M (B : Backend_intf.S) =
+    Snark.Run.Make
+      (B)
+      (struct
+        type t = unit
+      end)
+  in
+  let f (module B : Backend_intf.S) =
+    ( module Snark.Run.Make
+               (B)
+               (struct
+                 type t = unit
+               end)
+    : Snark_intf.Run
+      with type prover_state = unit )
+  in
+  let system =
+    match curve with
+    | Bn128 -> (
+      match system with
+      | Groth16 ->
+          (module Backends.Bn128.Default : Backend_intf.S)
+      | GrothMaller17 ->
+          (module Backends.Bn128.GM) )
+  in
+  f system
 
 module Make (C : sig
   val curve : Curve.t
+
+  val system : proof_system
 end)
 () : Intf.S = struct
-  module Impl = (val impl_of_curve C.curve)
+  module Impl = (val impl C.curve C.system)
 
   open Impl
 
@@ -266,6 +287,21 @@ end)
   end
 end
 
+let create curve system =
+  let module M =
+    Make (struct
+        let curve = curve
+
+        let system = system
+      end)
+      ()
+  in
+  (module M : Intf.S)
+
+let default () = create Bn128 Groth16
+
 module Bn128 = Make (struct
   let curve = Curve.Bn128
+
+  let system = Groth16
 end)
