@@ -1062,7 +1062,8 @@ module Type = struct
       ~f:(fun (id, instance_typ) ->
         let instance_typ = get_mode typ.type_mode (copy instance_typ env) in
         let snapshot = Snapshot.create () in
-        if unifies env typ instance_typ then
+        let _, base_typ = get_implicits [] instance_typ in
+        if unifies env typ base_typ then
           if
             Set.exists typ_vars ~f:(fun var -> not (phys_equal var (repr var)))
           then (
@@ -1308,7 +1309,17 @@ let find_name ~mode (lid : lid) env =
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
 
-let find_conversion ~unifies:_ _typ _env = None
+let find_conversion ~unifies typ env =
+  let typ_vars = Type1.type_vars typ in
+  let typ =
+    Mk.conv ~mode:typ.type_mode typ.type_depth typ typ.type_alternate
+  in
+  match Type.implicit_instances ~unifies typ typ_vars env with
+  | [] ->
+      None
+  | (path, typ) :: _ ->
+      let args, _ = Type.get_implicits [] typ in
+      Some (path, List.map ~f:snd args)
 
 (* Error handling *)
 

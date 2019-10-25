@@ -565,6 +565,8 @@ let rec get_conversion_body ~can_add_args ~loc env free_vars typ =
         ; conv_body_type } )
   | None -> (
     match (typ.type_desc, typ.type_alternate.type_desc) with
+    | Tconv typ, Tconv alt when phys_equal typ.type_alternate alt ->
+        get_conversion_body free_vars typ
     | Ttuple typs, Ttuple alts ->
         (* Sanity check: The types within stitched tuples should always be
              stitched.
@@ -657,7 +659,8 @@ let get_conversion ~can_add_args ~loc env typ =
   let mode = Envi.current_mode env in
   let rev_arguments, typ = get_rev_arrow_args typ in
   let rev_arguments =
-    List.map rev_arguments ~f:(fun (typ', _, _) ->
+    List.map rev_arguments ~f:(fun (typ', explicit, _) ->
+        assert (explicit = Implicit) ;
         match typ'.type_desc with
         | Tconv typ' ->
             (typ', Ident.fresh mode)
@@ -683,7 +686,8 @@ let get_conversion ~can_add_args ~loc env typ =
           { conv_desc= Tconv_fun (Location.mkloc ident loc, conv)
           ; conv_loc= loc
           ; conv_type } )
-  | exception Error (_, err) ->
+  | exception (Error (_, err) as _exn) ->
+      (*Location.report_exception Format.err_formatter exn ;*)
       let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
       raise (Error (loc, Convert_failed (typ, err)))
 
@@ -1570,15 +1574,21 @@ let rec check_statement env stmt =
         let name = if name = "t" then "typ" else sprintf "%s_typ" name in
         Location.mkloc (Ident.create ~mode name) loc
       in
-      let typ = decl.tdec_tdec.tdec_ret in
+      let typ, typ_params =
+        let decl = decl.tdec_tdec in
+        let snap = Snapshot.create () in
+        Envi.Type.refresh_vars decl.tdec_params env ;
+        let typ_params = List.map ~f:repr decl.tdec_params in
+        let typ = Envi.Type.copy decl.tdec_ret env in
+        backtrack snap ; (typ, typ_params)
+      in
       let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
       let typ =
-        List.fold_right decl.tdec_tdec.tdec_params ~init:typ
-          ~f:(fun param typ ->
+        List.fold_right typ_params ~init:typ ~f:(fun param typ ->
             let param =
               Envi.Type.Mk.conv ~mode param param.type_alternate env
             in
-            Envi.Type.Mk.arrow ~mode param typ env )
+            Envi.Type.Mk.arrow ~mode ~explicit:Implicit param typ env )
       in
       let conv = get_conversion ~can_add_args:false ~loc env typ in
       let typ = polymorphise (Type1.flatten typ) env in
