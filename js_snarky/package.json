@@ -1,0 +1,23 @@
+{
+  "name": "js_snarky",
+  "version": "1.0.0",
+  "description": "Snarky project setup",
+  "main": "./bin/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "js_snarky_init": "./bin/index.js init"
+  },
+  "bin": {
+    "js_snarky": "./bin/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/o1-labs/snarky.git"
+  },
+  "author": "O(1) Labs",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/o1-labs/snarky/issues"
+  },
+  "homepage": "https://github.com/o1-labs/snarky#readme"
+}
