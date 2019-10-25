@@ -1,4 +1,4 @@
-module Universe = Snarky_universe.Bn128 ()
+module Universe = (val Snarky_universe.default ())
 open Universe.Impl
 open Universe
 
