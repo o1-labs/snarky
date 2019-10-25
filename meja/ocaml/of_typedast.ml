@@ -433,7 +433,7 @@ and of_convert {conv_desc; conv_loc= loc; conv_type= _} =
 let rec of_expression_desc ?loc = function
   | Texp_apply (f, es) ->
       Exp.apply ?loc (of_expression f)
-        (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
+        (List.map ~f:(fun (_explicit, label, x) -> (label, of_expression x)) es)
   | Texp_variable name ->
       Exp.ident ?loc (of_path_loc name)
   | Texp_literal l ->

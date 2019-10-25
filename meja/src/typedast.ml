@@ -91,7 +91,8 @@ type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
 
 and expression_desc =
-  | Texp_apply of expression * (Asttypes.arg_label * expression) list
+  | Texp_apply of
+      expression * (explicitness * Asttypes.arg_label * expression) list
   | Texp_variable of path
   | Texp_literal of literal
   | Texp_fun of Asttypes.arg_label * pattern * expression * explicitness

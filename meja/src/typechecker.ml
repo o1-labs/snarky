@@ -711,7 +711,7 @@ let rec get_expression env expected exp =
                   e_typ
             in
             let e, env = get_expression env e_typ e in
-            ((Type1.flatten res_typ, env), (label, e)) )
+            ((Type1.flatten res_typ, env), (Explicit, label, e)) )
       in
       let typ = Type1.discard_optional_labels @@ Type1.flatten typ in
       (* Squash nested applies from implicit arguments. *)
@@ -720,7 +720,7 @@ let rec get_expression env expected exp =
         | Texp_apply (f', args) ->
             if
               List.for_all args ~f:(function
-                | _, {exp_desc= Texp_unifiable _; _} ->
+                | Implicit, _, _ ->
                     true
                 | _ ->
                     false )
@@ -740,7 +740,7 @@ let rec get_expression env expected exp =
       check_type ~loc env expected result_typ ;
       let implicits =
         List.map implicits ~f:(fun (label, typ) ->
-            (label, Envi.Type.new_implicit_var ~loc typ env) )
+            (Implicit, label, Envi.Type.new_implicit_var ~loc typ env) )
       in
       let e =
         {Typedast.exp_loc= loc; exp_type= typ; exp_desc= Texp_variable path}

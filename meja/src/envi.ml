@@ -1089,7 +1089,7 @@ module Type = struct
     | _ ->
         let es =
           List.map implicits ~f:(fun (label, typ) ->
-              (label, new_implicit_var ~loc typ env) )
+              (Implicit, label, new_implicit_var ~loc typ env) )
         in
         {exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (e, es)}
 

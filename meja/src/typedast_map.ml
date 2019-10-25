@@ -209,8 +209,8 @@ let expression_desc mapper = function
   | Texp_apply (e, args) ->
       Texp_apply
         ( mapper.expression mapper e
-        , List.map args ~f:(fun (label, e) ->
-              (label, mapper.expression mapper e) ) )
+        , List.map args ~f:(fun (explicit, label, e) ->
+              (explicit, label, mapper.expression mapper e) ) )
   | Texp_variable name ->
       Texp_variable (path mapper name)
   | Texp_literal l ->

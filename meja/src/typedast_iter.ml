@@ -155,7 +155,7 @@ let expression iter {exp_desc; exp_loc; exp_type} =
 let expression_desc iter = function
   | Texp_apply (e, args) ->
       iter.expression iter e ;
-      List.iter args ~f:(fun (_label, e) -> iter.expression iter e)
+      List.iter args ~f:(fun (_explicit, _label, e) -> iter.expression iter e)
   | Texp_variable name ->
       path iter name
   | Texp_literal l ->

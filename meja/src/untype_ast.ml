@@ -186,7 +186,12 @@ let rec expression_desc = function
   | Typedast.Texp_apply (e, args) ->
       Parsetypes.Pexp_apply
         ( expression e
-        , List.map args ~f:(fun (label, e) -> (label, expression e)) )
+        , List.filter_map args ~f:(fun (explicit, label, e) ->
+              match explicit with
+              | Explicit ->
+                  Some (label, expression e)
+              | Implicit ->
+                  None ) )
   | Texp_variable name ->
       Pexp_variable (map_loc ~f:longident_of_path name)
   | Texp_literal i ->
