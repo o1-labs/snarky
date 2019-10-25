@@ -8,8 +8,13 @@ if [ $0 ]; then
 else
   echo "Installing opam..."
   sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+  eval $(opam env)
   echo "Installed opam."
 fi
+
+echo "Switching to OCaml version 4.07.1..."
+opam switch 4.07.1 || opam switch create 4.07.1
+eval $(opam env)
 
 OS_NAME=$(uname)
 if [ "$OS_NAME" = 'Linux' ]; then
