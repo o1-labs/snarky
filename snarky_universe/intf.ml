@@ -213,4 +213,40 @@ module type S = sig
       end
     end
   end
+
+  module Integer : sig
+    type t
+
+    val one : t
+
+    val ofBigint : Bigint.t -> t
+
+    val ( + ) : t -> t -> t
+
+    val ( * ) : t -> t -> t
+
+    val add : t -> t -> t
+
+    val mul : t -> t -> t
+
+    val divMod : t -> t -> t * t
+
+    val equal : t -> t -> Bool.t
+
+    val ( = ) : t -> t -> Bool.t
+
+    val ( <= ) : t -> t -> Bool.t
+
+    val ( >= ) : t -> t -> Bool.t
+
+    val ( < ) : t -> t -> Bool.t
+
+    val ( > ) : t -> t -> Bool.t
+
+    val toField : t -> Field.t
+
+    val ofBits : Bool.t array -> t
+
+    val toBits : ?length:int -> t -> Bool.t array
+  end
 end

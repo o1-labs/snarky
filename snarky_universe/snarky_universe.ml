@@ -1,3 +1,5 @@
+module B = Bigint
+
 module Cond (Impl : sig
   module Boolean : sig
     type var
@@ -306,6 +308,49 @@ end)
     let ofRoot hashElt root = {hashElt; root}
 
     module Constant = Merkle_tree_unchecked.Make (Hash.Constant)
+  end
+
+  module Integer = struct
+    open Snarky_integer.Integer
+
+    type nonrec t = field t
+
+    let m : field Snarky.Snark.m = (module Impl)
+
+    let ofBigint = constant ~m
+
+    let one = ofBigint B.one
+
+    let equal = equal ~m
+
+    let ( = ) = equal
+
+    let ( <= ) = lte ~m
+
+    let ( < ) = lt ~m
+
+    let ( >= ) = gte ~m
+
+    let ( > ) = gt ~m
+
+    let toBits ?length t =
+      Bitstring_lib.Bitstring.Lsb_first.to_array (to_bits ?length ~m t)
+
+    let ofBits bits =
+      of_bits ~m
+        (Bitstring_lib.Bitstring.Lsb_first.of_list (Array.to_list bits))
+
+    let toField = to_field
+
+    let add = add ~m
+
+    let mul = mul ~m
+
+    let ( + ) = add
+
+    let ( * ) = mul
+
+    let divMod = div_mod ~m
   end
 end
 
