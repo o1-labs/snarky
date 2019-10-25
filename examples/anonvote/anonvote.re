@@ -82,7 +82,7 @@ let main =
       (),
     ) => {
   let comm = Voter.commit(voter);
-  MerkleTree.MembershipProof.check(merkleProof, votersRoot, comm);
+  Bool.assertTrue(MerkleTree.MembershipProof.check(merkleProof, votersRoot, comm));
   for (i in 0 to attributeCount - 1) {
     let claimedAttr = maskedAttributes[i];
     let attr = voter.attributes[i];
