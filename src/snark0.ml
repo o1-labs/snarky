@@ -1180,6 +1180,90 @@ struct
 
       let inv x = Checked.inv ~label:"Field.Checked.inv" x
 
+      let sqrt x =
+        let open Checked in
+        let open Let_syntax in
+        let%bind y =
+          exists ~compute:As_prover.(map (read_var x) ~f:Field.sqrt) typ
+        in
+        let%map () = assert_square y x in
+        y
+
+      let quadratic_nonresidue =
+        lazy
+          (let rec go i =
+             let x = Field.of_int i in
+             if not (Field.is_square x) then x else go Int.(i + 1)
+           in
+           go 2)
+
+      (* The trick here is the following.
+
+    Let beta be a known non-square.
+
+    x is not a square iff beta*x is a square
+
+    So we guess the result [is_square] and y a sqrt of one of {x, beta*x} and assert
+
+    y * y = is_square * x + (1 - is_square) * (beta * x)
+
+    which, letting B = beta*x holds iff
+
+    y * y
+    = is_square * x + B - is_square * B
+    = is_square * (x - B) + B
+  *)
+      let sqrt_check x =
+        let open Checked in
+        let open Let_syntax in
+        let%bind is_square =
+          exists
+            ~compute:As_prover.(map (read_var x) ~f:Field.is_square)
+            Boolean.typ
+        in
+        let%bind y =
+          exists typ
+            ~compute:
+              As_prover.(
+                Let_syntax.(
+                  let%map is_square = read Boolean.typ is_square
+                  and x = read_var x in
+                  if is_square then Field.sqrt x
+                  else Field.(sqrt (Lazy.force quadratic_nonresidue * x))))
+        in
+        let b = scale x (Lazy.force quadratic_nonresidue) in
+        let%bind t = mul (is_square :> Var.t) (x - b) in
+        let%map () = assert_square y (t + b) in
+        (y, is_square)
+
+      let is_square x =
+        let open Checked.Let_syntax in
+        let%map _, b = sqrt_check x in
+        b
+
+      let%test_unit "is_square" =
+        let x = Field.random () in
+        let typf = Typ.field in
+        let x2 = Field.square x in
+        let run elt =
+          let (), answer =
+            Checked.run_and_check ~run:Checked.run
+              (Checked.map
+                 ~f:(As_prover.read Checked.Boolean.typ)
+                 Checked.(
+                   Let_syntax.(
+                     let%bind x =
+                       exists typf ~compute:(As_prover.return elt)
+                     in
+                     is_square x)))
+              ()
+            |> Or_error.ok_exn
+          in
+          answer
+        in
+        assert (run x2) ;
+        assert (not (run (Field.mul (Lazy.force quadratic_nonresidue) x2)))
+
       let choose_preimage_var = Checked.choose_preimage
 
       type comparison_result =
@@ -1983,6 +2067,12 @@ module Run = struct
       let div x y = run (div x y)
 
       let inv x = run (inv x)
+
+      let is_square x = run (is_square x)
+
+      let sqrt x = run (sqrt x)
+
+      let sqrt_check x = run (sqrt_check x)
 
       let equal x y = run (equal x y)
 

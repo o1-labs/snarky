@@ -86,6 +86,8 @@ end)
 
     let not = not
 
+    let negate = not
+
     let exactlyOne (bs : t list) =
       Field.equal Field.one
         (Core_kernel.List.reduce_exn ~f:Field.add (bs :> Field.t list))
@@ -135,11 +137,11 @@ end)
 
       let square = square
 
-      let sqrt x =
-        let y =
-          exists typ ~compute:(fun () -> Constant.sqrt (As_prover.read_var x))
-        in
-        assert_square y x ; y
+      let sqrt = sqrt
+
+      let isSquare = is_square
+
+      let sqrtCheck = sqrt_check
 
       let invert = inv
 
