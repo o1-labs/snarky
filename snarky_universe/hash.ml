@@ -40,8 +40,10 @@ struct
   open Core_kernel
   open Impl
 
+  module Rounds = (val Poseidion_rounds.of_alpha (alpha_of_curve C.curve))
+
   module Inputs = struct
-    include (val Poseidion_rounds.of_alpha (alpha_of_curve C.curve))
+    include Rounds
 
     module Field = struct
       (* The linear combinations involved in computing Poseidon do not involve very many
@@ -115,14 +117,48 @@ struct
 
   type t = Field.t
 
-  let params =
-    Sponge.Params.map (params_of_curve C.curve)
-      ~f:(Fn.compose Inputs.Field.constant Field.Constant.of_string)
+  let params_constant =
+    Sponge.Params.map (params_of_curve C.curve) ~f:Field.Constant.of_string
+
+  let params = Sponge.Params.map params_constant ~f:Inputs.Field.constant
 
   let hash xs =
     hash params (Array.map xs ~f:Inputs.Field.of_cvar) |> Inputs.Field.to_cvar
 
   module Constant = struct
     type t = Field.Constant.t
+
+    module Inputs = struct
+      include Rounds
+      module Field = Field.Constant
+
+      let alpha = 5
+
+      let to_the_alpha x =
+        let open Field in
+        let res = square x in
+        res *= res ; (* x^4 *)
+                     res *= x ; res
+
+      module Operations = struct
+        let apply_matrix rows v =
+          Array.map rows ~f:(fun row ->
+              let open Field in
+              let res = zero + zero in
+              Array.iteri row ~f:(fun i r -> res += (r * v.(i))) ;
+              res )
+
+        let add_block ~state block =
+          Array.iteri block ~f:(fun i b ->
+              let open Field in
+              state.(i) += b )
+
+        let copy a = Array.map a ~f:(fun x -> Field.(x + zero))
+      end
+    end
+
+    include Sponge.Make (Sponge.Poseidon (Inputs))
+
+    let hash xs = hash params_constant xs
   end
 end

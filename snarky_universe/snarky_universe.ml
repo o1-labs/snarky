@@ -90,6 +90,10 @@ end)
 
     let assertEqual (x : t) (y : t) = Field.(Assert.equal (x :> t) (y :> t))
 
+    let assertTrue = assertEqual true_
+
+    let assertFalse = assertEqual false_
+
     let assertAny = Assert.any
 
     let assertAll = Assert.all
@@ -224,7 +228,9 @@ end)
     let hash = T.hash
 
     module Constant = struct
-      type t = Field.Constant.t [@@deriving yojson]
+      type t = Field.Constant.t [@@deriving yojson, eq]
+
+      let hash = T.Constant.hash
     end
   end
 
@@ -256,7 +262,8 @@ end)
     end
 
     module MembershipProof = struct
-      type ('index, 'hash) t_ = {index: 'index; path: 'hash array}
+      type ('index, 'hash) t_ = ('index, 'hash) Membership_proof.t_ =
+        {index: 'index; path: 'hash array}
       [@@deriving yojson]
 
       type t = (Index.t, Hash.t) t_
@@ -291,12 +298,14 @@ end)
         go 0 entry_hash
 
       let check {index; path} root elt_hash =
-        Field.assertEqual (implied_root elt_hash index path) root
+        Field.equal (implied_root elt_hash index path) root
     end
 
     type 'a t = {hashElt: 'a -> Hash.t; root: Hash.t}
 
     let ofRoot hashElt root = {hashElt; root}
+
+    module Constant = Merkle_tree_unchecked.Make (Hash.Constant)
   end
 end
 
