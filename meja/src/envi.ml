@@ -1319,7 +1319,7 @@ let find_conversion ~unifies typ env =
       None
   | (path, typ) :: _ ->
       let args, _ = Type.get_implicits [] typ in
-      Some (path, List.map ~f:snd args)
+      Some (path, args)
 
 (* Error handling *)
 

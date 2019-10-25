@@ -181,9 +181,8 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
   | Tconv_ctor (name, args) ->
       (* TODO: Lift this case as a let in [convert], just apply the name. *)
       let args =
-        List.map args ~f:(fun arg ->
-            (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
-        )
+        List.map args ~f:(fun (label, arg) ->
+            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)) )
       in
       let name = of_path_loc name in
       Exp.field ?loc (Exp.apply ?loc (Exp.ident ~loc:name.loc name) args) field
@@ -262,9 +261,8 @@ and alloc_of_convert_body_desc ?loc desc =
   | Tconv_ctor (name, args) ->
       (* TODO: Lift this case as a let in [convert], just apply the name. *)
       let args =
-        List.map args ~f:(fun arg ->
-            (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
-        )
+        List.map args ~f:(fun (label, arg) ->
+            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)) )
       in
       let name = of_path_loc name in
       Exp.field ?loc (Exp.apply ?loc (Exp.ident ~loc:name.loc name) args) field
@@ -343,9 +341,8 @@ and check_of_convert_body_desc ?loc desc =
   | Tconv_ctor (name, args) ->
       (* TODO: Lift this case as a let in [convert], just apply the name. *)
       let args =
-        List.map args ~f:(fun arg ->
-            (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
-        )
+        List.map args ~f:(fun (label, arg) ->
+            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)) )
       in
       let name = of_path_loc name in
       Exp.field ?loc (Exp.apply ?loc (Exp.ident ~loc:name.loc name) args) field
@@ -398,9 +395,8 @@ and of_convert_desc ?loc = function
   | Tconv_body {conv_body_desc= Tconv_ctor (name, args); conv_body_loc= loc; _}
     ->
       let args =
-        List.map args ~f:(fun arg ->
-            (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
-        )
+        List.map args ~f:(fun (label, arg) ->
+            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)) )
       in
       Exp.apply ~loc (Exp.ident ~loc:name.loc (of_path_loc name)) args
   | Tconv_body {conv_body_desc= Tconv_opaque; conv_body_loc= loc; _} ->

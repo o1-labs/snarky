@@ -77,7 +77,7 @@ type convert_body =
 (** AST for generating [Typ.t] instances. *)
 and convert_body_desc =
   | Tconv_record of (path * convert_body) list
-  | Tconv_ctor of path * convert_body list
+  | Tconv_ctor of path * (Asttypes.arg_label * convert_body) list
   | Tconv_tuple of convert_body list
   | Tconv_opaque
 

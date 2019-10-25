@@ -207,7 +207,7 @@ let convert_body_desc iter = function
           iter.convert_body iter conv )
   | Tconv_ctor (name, args) ->
       path iter name ;
-      List.iter ~f:(iter.convert_body iter) args
+      List.iter args ~f:(fun (_label, conv) -> iter.convert_body iter conv)
   | Tconv_tuple convs ->
       List.iter ~f:(iter.convert_body iter) convs
   | Tconv_opaque ->
