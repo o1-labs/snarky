@@ -1052,8 +1052,6 @@ struct
     val create :
       Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
 
-    val set_is_square : t -> bool -> unit
-
     val a : t -> Linear_combination.t
 
     val b : t -> Linear_combination.t
@@ -2156,7 +2154,8 @@ struct
 
     let query = func "query" G1.Vector.typ G1.Vector.delete
 
-    let g_alpha_h_beta = func "g_alpha_h_beta" Fqk.typ Fqk.delete
+    (* deleted in libsnark upgrade *)
+    (* let g_alpha_h_beta = func "g_alpha_h_beta" Fqk.typ Fqk.delete *)
   end
 
   module Make_fqk

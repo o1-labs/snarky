@@ -57,7 +57,6 @@ public:
     Fp3_variable<Fp3T> operator*(const FieldT &coeff) const;
     Fp3_variable<Fp3T> operator+(const Fp3_variable<Fp3T> &other) const;
     Fp3_variable<Fp3T> operator+(const Fp3T &other) const;
-    Fp3_variable<Fp3T> operator-(const Fp3_variable<Fp3T> &other) const;
     Fp3_variable<Fp3T> mul_by_X() const;
     void evaluate() const;
     bool is_constant() const;
@@ -87,7 +86,6 @@ public:
                    const Fp3_variable<Fp3T> &result,
                    const std::string &annotation_prefix);
     void generate_r1cs_constraints();
-    void generate_r1cs_witness_internal();
     void generate_r1cs_witness();
 };
 

@@ -1,5 +1,4 @@
 set(SNARK_EXTRALIBS)
-find_package(OpenSSL)
 if(${CURVE} STREQUAL "BN128")
   set(
     SNARK_EXTRALIBS
@@ -53,24 +52,37 @@ add_library(
   relations/ram_computations/rams/fooram/fooram_aux.cpp
   relations/ram_computations/rams/tinyram/tinyram_aux.cpp
 )
-target_link_libraries(
-  snark
-  
-  ff
-  ${GMP_LIBRARIES}
-  ${GMPXX_LIBRARIES}
-  ${CRYPTO_LIBRARIES}
-  ${PROCPS_LIBRARIES}
-  ${SNARK_EXTRALIBS}
-)
-target_include_directories(
-  snark
+if("${USE_LINKED_LIBRARIES}")
+  target_link_libraries(
+    snark
+    
+    ff
+    ${GMP_LIBRARIES}
+    ${GMPXX_LIBRARIES}
+    ${CRYPTO_LIBRARIES}
+    ${PROCPS_LIBRARIES}
+    ${LIBFF_LIBRARIES}
+    ${SNARK_EXTRALIBS}
+  )
+else()
+  target_link_libraries(
+    snark
+    
+    ff
+    ${GMP_LIBRARIES}
+    ${GMPXX_LIBRARIES}
+    ${CRYPTO_LIBRARIES}
+    ${PROCPS_LIBRARIES}
+    ${SNARK_EXTRALIBS}
+  )
+  target_include_directories(
+    snark
 
-  PUBLIC
-  ${OPENSSL_INCLUDE_DIR}
-  ${DEPENDS_DIR}/libff
-  ${DEPENDS_DIR}/libfqfft
-)
+    PUBLIC
+    ${DEPENDS_DIR}/libff
+    ${DEPENDS_DIR}/libfqfft
+  )
+endif()
 
 install(
   DIRECTORY "" DESTINATION "include/libsnark"
@@ -286,18 +298,6 @@ target_link_libraries(
 )
 
 add_executable(
-  profile_r1cs_bg_ppzksnark
-  EXCLUDE_FROM_ALL
-
-  zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark/profiling/profile_r1cs_bg_ppzksnark.cpp
-)
-target_link_libraries(
-  profile_r1cs_bg_ppzksnark
-
-  snark
-)
-
-add_executable(
   profile_ram_ppzksnark
   EXCLUDE_FROM_ALL
 
@@ -386,18 +386,6 @@ target_link_libraries(
 )
 
 add_executable(
-  gadgetlib1_r1cs_se_ppzksnark_verifier_gadget_test
-  EXCLUDE_FROM_ALL
-
-  gadgetlib1/gadgets/verifiers/tests/test_r1cs_se_ppzksnark_verifier_gadget.cpp
-)
-target_link_libraries(
-  gadgetlib1_r1cs_se_ppzksnark_verifier_gadget_test
-
-  snark
-)
-
-add_executable(
   gadgetlib1_r1cs_ppzksnark_verifier_gadget_test
   EXCLUDE_FROM_ALL
 
@@ -408,17 +396,7 @@ target_link_libraries(
 
   snark
 )
-add_executable(
-  gadgetlib1_r1cs_gg_ppzksnark_verifier_gadget_test
-  EXCLUDE_FROM_ALL
 
-  gadgetlib1/gadgets/verifiers/tests/test_r1cs_gg_ppzksnark_verifier_gadget.cpp
-)
-target_link_libraries(
-  gadgetlib1_r1cs_gg_ppzksnark_verifier_gadget_test
-
-  snark
-)
 add_executable(
   gadgetlib2_adapters_test
   EXCLUDE_FROM_ALL
@@ -614,18 +592,6 @@ target_link_libraries(
 )
 
 add_executable(
-  zk_proof_systems_r1cs_bg_ppzksnark_test
-  EXCLUDE_FROM_ALL
-
-  zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark/tests/test_r1cs_bg_ppzksnark.cpp
-)
-target_link_libraries(
-  zk_proof_systems_r1cs_bg_ppzksnark_test
-
-  snark
-)
-
-add_executable(
   zk_proof_systems_ram_ppzksnark_test
   EXCLUDE_FROM_ALL
 
@@ -787,10 +753,6 @@ add_test(
   COMMAND zk_proof_systems_r1cs_gg_ppzksnark_test
 )
 add_test(
-  NAME zk_proof_systems_r1cs_bg_ppzksnark_test
-  COMMAND zk_proof_systems_r1cs_bg_ppzksnark_test
-)
-add_test(
   NAME zk_proof_systems_ram_ppzksnark_test
   COMMAND zk_proof_systems_ram_ppzksnark_test
 )
@@ -822,7 +784,6 @@ add_test(
 add_dependencies(check common_routing_algorithms_test)
 add_dependencies(check gadgetlib1_simple_test)
 add_dependencies(check gadgetlib1_r1cs_ppzksnark_verifier_gadget_test)
-add_dependencies(check gadgetlib1_r1cs_gg_ppzksnark_verifier_gadget_test)
 add_dependencies(check gadgetlib2_adapters_test)
 add_dependencies(check gadgetlib2_constraint_test)
 add_dependencies(check gadgetlib2_gadget_test)
@@ -836,7 +797,6 @@ add_dependencies(check zk_proof_systems_bacs_ppzksnark_test)
 add_dependencies(check zk_proof_systems_r1cs_ppzksnark_test)
 add_dependencies(check zk_proof_systems_r1cs_se_ppzksnark_test)
 add_dependencies(check zk_proof_systems_r1cs_gg_ppzksnark_test)
-add_dependencies(check zk_proof_systems_r1cs_bg_ppzksnark_test)
 add_dependencies(check zk_proof_systems_ram_ppzksnark_test)
 add_dependencies(check zk_proof_systems_tbcs_ppzksnark_test)
 add_dependencies(check zk_proof_systems_uscs_ppzksnark_test)

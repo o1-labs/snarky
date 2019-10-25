@@ -459,9 +459,10 @@ void CURVE_PREFIX(r1cs_constraint_delete)(r1cs_constraint<FieldT>* c) {
   delete c;
 }
 
-void CURVE_PREFIX(r1cs_constraint_set_is_square)(r1cs_constraint<FieldT>* c, bool is_square) {
-  c->is_square = is_square;
-}
+// new libsnark version doesn't keep track of squareness I think (EN 2019-10-24)
+// void CURVE_PREFIX(r1cs_constraint_set_is_square)(r1cs_constraint<FieldT>* c, bool is_square) {
+//   c->is_square = is_square;
+// }
 
 linear_combination<FieldT>* CURVE_PREFIX(r1cs_constraint_a)(r1cs_constraint<FieldT>* c) {
   return &c->a;
@@ -482,7 +483,7 @@ r1cs_constraint_system<FieldT>* CURVE_PREFIX(r1cs_constraint_system_create)() {
 void CURVE_PREFIX(r1cs_constraint_system_clear)(r1cs_constraint_system<FieldT>* sys) {
   sys->primary_input_size = 0;
   sys->auxiliary_input_size = 0;
-  sys->num_square_constraints = 0;
+  // EN 2019-10-24 sys->num_square_constraints = 0;
   sys->constraints.clear();
 }
 
@@ -940,12 +941,13 @@ CURVE_PREFIX(gm_verification_key_h_gamma) (
   return new libff::G2<ppT>(vk->H_gamma);
 }
 
-libff::Fqk<ppT>*
-CURVE_PREFIX(gm_verification_key_g_alpha_h_beta) (
-    r1cs_se_ppzksnark_verification_key<ppT>* vk
-) {
-  return new libff::Fqk<ppT>(vk->G_alpha_H_beta);
-}
+// EN 2019-10-24 this function was removed in libsnark, though it is still available in the processed_verification_key type
+// libff::Fqk<ppT>*
+// CURVE_PREFIX(gm_verification_key_g_alpha_h_beta) (
+//     r1cs_se_ppzksnark_verification_key<ppT>* vk
+// ) {
+//   return new libff::Fqk<ppT>(vk->G_alpha_H_beta);
+// }
 
 std::vector< libff::G1<ppT> >*
 CURVE_PREFIX(gm_verification_key_query)(

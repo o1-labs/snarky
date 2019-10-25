@@ -153,8 +153,6 @@ void* CURVE_PREFIX(r1cs_constraint_create)(
 
 void CURVE_PREFIX(r1cs_constraint_delete)(void* c);
 
-void CURVE_PREFIX(r1cs_constraint_set_is_square)(void* c, bool is_square);
-
 void* CURVE_PREFIX(r1cs_constraint_a)(void* c);
 
 void* CURVE_PREFIX(r1cs_constraint_b)(void* c);
@@ -335,10 +333,11 @@ CURVE_PREFIX(gm_verification_key_h_gamma) (
     void* vk
 );
 
-void* 
-CURVE_PREFIX(gm_verification_key_g_alpha_h_beta) (
-    void* vk
-);
+// EN 2019-10-25 g_alpha_h_beta was deleted for some reason
+// void* 
+// CURVE_PREFIX(gm_verification_key_g_alpha_h_beta) (
+//     void* vk
+// );
 
 void*
 CURVE_PREFIX(gm_verification_key_query)(
