@@ -16,6 +16,7 @@ depends: [
   "bisect_ppx"
   "dune"                {build & >= "1.6"}
   "snarky"
+  "snarky_integer"
   "sponge"
 ]
 available: [ ocaml-version >= "4.07.0" ]
