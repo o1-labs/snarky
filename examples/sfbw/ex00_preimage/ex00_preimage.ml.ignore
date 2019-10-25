@@ -1,6 +1,6 @@
 module Universe = (val Snarky_universe.default ())
-open Universe.Impl
-open Universe
+open! Universe.Impl
+open! Universe
 
 module Witness = Field
 
