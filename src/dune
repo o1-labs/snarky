@@ -4,7 +4,7 @@
  (inline_tests)
  (modes native)
  (libraries core_kernel fold_lib tuple_lib bitstring_lib interval_union
-   bignum camlsnark_c ctypes
+   bignum camlsnark_c ctypes yojson
    (select gpu_prover.ml from
     (groth16_gpu_prover -> gpu.ml)
     (-> no_gpu.ml)))
