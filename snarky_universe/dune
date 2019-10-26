@@ -5,6 +5,9 @@
   (inline_tests)
   (libraries
     sponge
+    snarkette
     snarky_integer
+    snarky_curve
+    snarky_signature
     snarky
     core ))
