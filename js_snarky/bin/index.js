@@ -37,11 +37,14 @@ else if (arguments[0] === "init") {
       const main = `open Snarky
 module Backend = Backends.Bn128.Default
 
+(* The type of information passed for the prover to use. *)
+type prover_state = {field_elt: Backend.Field.t}
+
 module Snark =
   Snark.Run.Make
     (Backend)
     (struct
-      type t = unit
+      type t = prover_state
     end)
 
 open Snark
@@ -59,29 +62,47 @@ type public_input = Field.Constant.t -> unit
 *)
 let public_input = Data_spec.[Typ.field]
 
-(* Convert the string read on the command line to the public inputs. *)
-let read_input : string -> (unit, public_input) H_list.t =
- fun s -> H_list.[Field.Constant.of_string s]
+let field_of_json = function
+  | \`Int i ->
+      Field.Constant.of_int i
+  | \`String s ->
+      Field.Constant.of_string s
+  | _ ->
+      failwith "Could not read JSON as a field element."
 
-(* The main function. This is executed to build a proof *)
-let main field_elt () =
+(* Convert the string read on the command line to the public inputs. *)
+let read_input : Yojson.Basic.json -> (unit, public_input) H_list.t =
+ fun json -> H_list.[field_of_json json]
+
+let read_prover_state : Yojson.Basic.json -> prover_state =
+ fun json -> {field_elt= field_of_json json}
+
+(* Test function, asserts that [Field.( * )] and [Field.inv] commute. *)
+let assert_inverse_square_commutes field_elt =
   let field_elt_2 = Field.(field_elt * field_elt) in
   let field_elt_inv = Field.inv field_elt in
   let field_elt_inv_2 = Field.(field_elt_inv * field_elt_inv) in
   let product = Field.(field_elt_2 * field_elt_inv_2) in
   Field.Assert.equal product Field.one
+
+(* The main function. This is executed to build a proof *)
+let main field_elt () =
+  assert_inverse_square_commutes field_elt ;
+  let prover_field_elt =
+    exists Field.typ
+      ~compute:
+        As_prover.(
+          fun () ->
+            (* Read the contents of the current prover state. *)
+            let state : prover_state = get_state () in
+            state.field_elt)
+  in
+  assert_inverse_square_commutes prover_field_elt
 `;
       fs.writeFile("src/main.ml", main, fail);
     }
     if (!fs.existsSync("src/run_snarky.ml")) {
-      const run_snarky = `module Run =
-  Snarky.Toplevel.Make
-    (Main.Snark)
-    (struct
-      include Main
-
-      let compute = main
-    end)
+      const run_snarky = `module Run = Snarky.Toplevel.Make_json (Main.Snark) (Main)
 
 let () = Run.main ()
 `;
