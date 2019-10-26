@@ -357,16 +357,16 @@ module Make_json
         val public_input :
           (unit -> result, unit, computation, public_input) Intf.Data_spec.t
 
-        val compute : computation
+        val read_input : Yojson.Basic.json -> (unit, public_input) H_list.t
 
-        val read_input : Yojson.Safe.json -> (unit, public_input) H_list.t
+        val read_prover_state : Yojson.Basic.json -> Intf.prover_state
 
-        val read_prover_state : Yojson.Safe.json -> Intf.prover_state
+        val main : computation
     end) =
 struct
   open Intf
 
-  let bad_object str : Yojson.Safe.json =
+  let bad_object str =
     `Assoc [("name", `String "error"); ("message", `String str)]
 
   let print_key fmt str = Format.(fprintf fmt "'%s'" str)
@@ -397,16 +397,16 @@ struct
     let proof_system =
       Proof_system.create ~proving_key_path:"proving_key.pk"
         ~verification_key_path:"verification_key.vk"
-        ~public_input:M.public_input M.compute
+        ~public_input:M.public_input M.main
     in
     let public_input_keys = ["statement"; "public_input"; "data"] in
     let prover_state_keys =
       ["witness"; "prover_state"; "auxiliary_input"; "auxiliary"]
     in
     let proof_keys = ["proof"] in
-    let rec loop () =
-      ( try
-          let json = Yojson.Safe.from_channel In_channel.stdin in
+    Stream.iter
+      (fun json ->
+        try
           let l =
             match json with
             | `Assoc l ->
@@ -473,18 +473,16 @@ struct
               report_error ~full:"there is no key 'command' in the object."
                 ~json:"Missing key 'command'"
         with
-      | Failure str ->
-          Yojson.Safe.pretty_to_channel stdout (bad_object str)
-      | Yojson.Json_error str ->
-          Format.(fprintf err_formatter "JSON error: %s@." str) ;
-          Yojson.Safe.pretty_to_channel stdout
-            (bad_object (sprintf "Parse error: %s" str))
-      | exn ->
-          let exn = Exn.to_string exn in
-          Format.(fprintf err_formatter "Unknown error:@.%s@." exn) ;
-          Yojson.Safe.pretty_to_channel stdout
-            (bad_object (sprintf "Unknown error:\n%s" exn)) ) ;
-      loop ()
-    in
-    loop ()
+        | Failure str ->
+            Yojson.Safe.pretty_to_channel stdout (bad_object str)
+        | Yojson.Json_error str ->
+            Format.(fprintf err_formatter "JSON error: %s@." str) ;
+            Yojson.Safe.pretty_to_channel stdout
+              (bad_object (sprintf "Parse error: %s" str))
+        | exn ->
+            let exn = Exn.to_string exn in
+            Format.(fprintf err_formatter "Unknown error:@.%s@." exn) ;
+            Yojson.Safe.pretty_to_channel stdout
+              (bad_object (sprintf "Unknown error:\n%s" exn)) )
+      (Yojson.Basic.stream_from_channel In_channel.stdin)
 end
