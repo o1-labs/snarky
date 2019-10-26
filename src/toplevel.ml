@@ -394,6 +394,8 @@ struct
         if List.mem ~equal:String.equal keys key then Some value else None )
 
   let main () =
+    (* We're communicating over stdout, don't log to it! *)
+    Libsnark.set_printing_off () ;
     let proof_system =
       Proof_system.create ~proving_key_path:"proving_key.pk"
         ~verification_key_path:"verification_key.vk"
@@ -436,7 +438,7 @@ struct
                 let size = Proof.bin_size_t proof in
                 let buf = Bigstring.create size in
                 ignore (Proof.bin_write_t buf ~pos:0 proof) ;
-                Bigstring.to_string buf
+                Base64.encode_string (Bigstring.to_string buf)
               in
               Yojson.Safe.pretty_to_channel stdout
                 (`Assoc
@@ -452,7 +454,7 @@ struct
               let proof =
                 match find_key ~keys:proof_keys l with
                 | Some (`String str) ->
-                    let buf = Bigstring.of_string str in
+                    let buf = Bigstring.of_string (Base64.decode_exn str) in
                     Proof.bin_read_t buf ~pos_ref:(ref 0)
                 | Some _ ->
                     report_error
