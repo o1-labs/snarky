@@ -885,15 +885,17 @@ struct
 
       let read_proving_key proof_system =
         match proof_system.proving_key_path with
-        | Some path ->
-            Some (Proving_key.of_string (In_channel.read_all path))
+        | Some path -> (
+          try Some (Proving_key.of_string (In_channel.read_all path))
+          with _ -> None )
         | None ->
             None
 
       let read_verification_key proof_system =
         match proof_system.verification_key_path with
-        | Some path ->
-            Some (Verification_key.of_string (In_channel.read_all path))
+        | Some path -> (
+          try Some (Verification_key.of_string (In_channel.read_all path))
+          with _ -> None )
         | None ->
             None
 
