@@ -1,5 +1,3 @@
-open Core_kernel
-
 let ( = ) = `Don't_use_polymorphic_compare
 
 module Make (N : sig

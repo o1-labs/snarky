@@ -30,6 +30,8 @@ module Field = struct
 
     type t
 
+    val size_in_bits : int
+
     val ( = ) : t -> t -> bool
 
     val equal : t -> t -> bool
@@ -282,7 +284,20 @@ module type S = sig
         type t [@@deriving yojson]
       end
 
+      val typ : (t, Constant.t) Impl.Typ.t
+
       val check : t -> PublicKey.t -> Field.t array -> Bool.t
+    end
+
+    module Constant : sig
+      val sign :
+        PrivateKey.Constant.t -> Field.Constant.t array -> Signature.Constant.t
+
+      val check :
+           Signature.Constant.t
+        -> PublicKey.Constant.t
+        -> Field.Constant.t array
+        -> bool
     end
   end
 end

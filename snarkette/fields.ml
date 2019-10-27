@@ -67,6 +67,8 @@ module type Fp_intf = sig
 
   val to_bigint : t -> Nat.t
 
+  val of_bigint : Nat.t -> t
+
   val fold_bits : t -> bool Fold.t
 
   val fold : t -> bool Triple.t Fold.t
@@ -180,7 +182,7 @@ end
 module Make_fp
     (N : Nat_intf.S) (Info : sig
         val order : N.t
-    end) : Fp_intf with module Nat = N = struct
+    end) : Fp_intf with module Nat = N and type t = private N.t = struct
   include Info
 
   module T = struct
@@ -222,6 +224,8 @@ module Make_fp
 
   include Extend (T)
   include T
+
+  let of_bigint x = N.(x % Info.order)
 
   let to_bigint = Fn.id
 

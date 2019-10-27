@@ -169,6 +169,8 @@ end)
 
       let parity = parity
 
+      let size_in_bits = size_in_bits
+
       include Cond (Impl) (Field)
     end
 
@@ -176,6 +178,8 @@ end)
 
     module Constant = struct
       open Field.Constant
+
+      let size_in_bits = size_in_bits
 
       type t = Constant.t
 
@@ -376,25 +380,22 @@ end)
       include Group.Scalar
 
       module Constant = struct
-        open B
-
-        type nonrec t = t
-
-        let to_yojson x = `String (to_string x)
-
-        let of_yojson = function
-          | `String s ->
-              Ok (of_string s)
-          | _ ->
-              Error "Scalar.of_yojson: expected string"
+        include Group.Constant.Scalar
       end
+
+      let typ =
+        Typ.transport
+          (Typ.list ~length:Constant.size_in_bits Boolean.typ)
+          ~there:Constant.to_bits ~back:Constant.of_bits
+        |> Typ.transport_var ~there:Bitstring_lib.Bitstring.Lsb_first.to_list
+             ~back:Bitstring_lib.Bitstring.Lsb_first.of_list
     end
 
     module T = struct
       include Snarky_signature.Signature.Make0 (struct
         module Bool = Bool
         module Hash = Hash
-        module Scalar = Scalar
+        module Scalar = Group.Scalar
         module Group = Group
 
         module Field = struct
@@ -413,6 +414,8 @@ end)
       module Constant = struct
         type t = Field.Constant.t * Scalar.Constant.t [@@deriving yojson]
       end
+
+      let typ = Typ.tuple2 Field.typ Scalar.typ
     end
 
     module PublicKey = struct
@@ -433,7 +436,29 @@ end)
       end
     end
 
-    module Signer = Snarky_signature.Signature.Make_signer ()
+    module Constant = struct
+      module Signer = Snarky_signature.Signature.Make_signer (struct
+        module Hash = Hash.Constant
+        module Group = Group.Constant
+        module Scalar = Scalar.Constant
+
+        module Field = struct
+          include Field.Constant
+
+          let is_even t = not (parity t)
+        end
+
+        module Bool = struct
+          type t = bool
+
+          let ( && ) = ( && )
+        end
+      end)
+
+      let sign = Signer.sign
+
+      let check = Signer.check
+    end
   end
 end
 

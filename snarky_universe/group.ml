@@ -17,68 +17,50 @@ let params_of_curve : type f. f Curve.t -> string params = function
 module Bn128 = struct
   module B = Snarky.Backend_extended.Make (Snarky.Backends.Bn128.Default)
 
+  type field = B.Field.t
+
   module Str = struct
     type t = string [@@deriving yojson]
   end
 
-  module Nat = struct
-    (* It's sort of an abuse to use this, but it is a bigint of the appropriate size. *)
-    include B.Bigint
+  module Scalar = struct
+    module T =
+      Snarkette.Fields.Make_fp
+        (Snarkette.Nat)
+        (struct
+          let order =
+            Snarkette.Nat.of_string
+              "2736030358979909402780800718157159386076813972158567259200215660948447373041"
+        end)
 
-    let num_bits _ = 254
-
-    let op f x y =
-      B.Bigint.(of_bignum_bigint (f (to_bignum_bigint x) (to_bignum_bigint y)))
-
-    let op1 f x y = B.Bigint.(of_bignum_bigint (f (to_bignum_bigint x) y))
-
-    let fn f x = B.Bigint.(f (to_bignum_bigint x))
-
-    let nf f y = B.Bigint.(of_bignum_bigint (f y))
-
-    let ( + ) = op Bigint.( + )
-
-    let ( * ) = op Bigint.( * )
-
-    let ( - ) = op Bigint.( - )
-
-    let ( // ) = op Bigint.( / )
-
-    let ( % ) = op Bigint.( % )
-
-    let log_or = op Bigint.( lor )
-
-    let log_and = op Bigint.( land )
-
-    let shift_left = op1 Bigint.shift_left
-
-    let shift_right = op1 Bigint.shift_right
-
-    let ( < ) x y = compare x y < 0
-
-    let equal x y = compare x y = 0
-
-    module T = struct
-      let to_string = fn Bigint.to_string
-
-      let of_string = nf Bigint.of_string
-    end
+    let size_in_bits = 251
 
     include T
 
-    include Core_kernel.Sexpable.Of_stringable (struct
-      type nonrec t = t
+    let num_bits (t : t) = Snarkette.Nat.num_bits (t :> Nat.t)
 
-      include T
-    end)
+    let test_bit (t : t) i = Snarkette.Nat.test_bit (t :> Nat.t) i
 
-    let to_int_exn = fn Bigint.to_int_exn
+    let to_bits t = List.init size_in_bits (test_bit t)
 
-    let of_int = nf Bigint.of_int
+    let of_bits bits =
+      let _, res =
+        let nat1 = Snarkette.Nat.of_int 1 in
+        List.fold_left
+          (fun (i, acc) b ->
+            let acc =
+              if b then Snarkette.Nat.(log_or acc (shift_left nat1 i)) else acc
+            in
+            (Core_kernel.Int.(i + 1), acc) )
+          (0, Snarkette.Nat.of_int 0)
+          bits
+      in
+      of_bigint res
 
-    let to_yojson x = Str.to_yojson (to_string x)
+    let to_field (t : t) = B.Field.of_string (to_string t)
 
-    let of_yojson s = Core_kernel.Result.map (Str.of_yojson s) ~f:of_string
+    let of_field (t : B.Field.t) =
+      B.Field.to_string t |> Snarkette.Nat.of_string |> of_bigint
   end
 
   module Params = struct
@@ -88,7 +70,7 @@ module Bn128 = struct
   end
 
   include Snarkette.Elliptic_curve.Make
-            (Nat)
+            (Scalar)
             (struct
               include B.Field
 
@@ -98,6 +80,14 @@ module Bn128 = struct
                 Core_kernel.Result.map (Str.of_yojson s) ~f:of_string
             end)
             (Params)
+
+  let one = of_affine (Tuple_lib.Double.map bn128.one ~f:B.Field.of_string)
+
+  let scale ?init t s =
+    let p = scale t s in
+    match init with None -> p | Some init -> p + init
+
+  let add_exn = ( + )
 
   let random () =
     (* y^2 = x^3 + ax + b *)
@@ -116,14 +106,40 @@ module Bn128 = struct
       if is_square y2 then of_affine (x, sqrt y2) else go (x + one)
     in
     go (B.Field.random ())
-
-  type field = B.Field.t
 end
 
 module type Constant_intf = sig
   type t [@@deriving yojson]
 
   include Snarky_curve.Constant_intf with type t := t
+
+  val negate : t -> t
+
+  val one : t
+
+  val add_exn : t -> t -> t
+
+  module Scalar : sig
+    type t [@@deriving yojson]
+
+    val size_in_bits : int
+
+    val to_field : t -> field
+
+    val of_field : field -> t
+
+    val ( + ) : t -> t -> t
+
+    val ( * ) : t -> t -> t
+
+    val negate : t -> t
+
+    val to_bits : t -> bool list
+
+    val of_bits : bool list -> t
+  end
+
+  val scale : ?init:t -> t -> Scalar.t -> t
 end
 
 let constant (type f) (c : f Curve.t) :
@@ -167,6 +183,7 @@ struct
 
       let scale = T.scale
 
+      (* TODO: Check the cofactor! *)
       let typ = T.typ
 
       let square = T.square
