@@ -1,0 +1,5 @@
+(executable
+  (name ex02_merkle_list)
+  (modes native)
+  (libraries snarky snarky_universe core)
+  (preprocess (pps ppx_deriving_yojson ppx_jane ppx_deriving.std)) )
