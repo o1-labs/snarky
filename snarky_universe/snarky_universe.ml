@@ -62,6 +62,10 @@ end)
   module Bool = struct
     open Boolean
 
+    module Constant = struct
+      type t = bool [@@deriving yojson]
+    end
+
     type t = var
 
     let typ = typ
@@ -298,6 +302,8 @@ end)
 
     let ofRoot hashElt root = {hashElt; root}
   end
+
+  module InputSpec = Input_spec.Make (Impl)
 end
 
 let create curve system =
