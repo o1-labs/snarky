@@ -347,21 +347,33 @@ let%test_unit "toplevel_functor" =
   ()
 
 module Make_json
-    (Intf : Snark_intf.Run_basic) (M : sig
-        type result
+    (Intf : Snark_intf.Run_basic with type prover_state = unit) (M : sig
+        type arg0
 
-        type computation
+        type computation0
+
+        type computation = arg0 -> computation0
 
         type public_input
 
         val public_input :
-          (unit -> result, unit, computation, public_input) Intf.Data_spec.t
+          (unit -> unit, unit, computation, public_input) Intf.Data_spec.t
 
-        val read_input : Yojson.Basic.json -> (unit, public_input) H_list.t
+        val read_input : Yojson.Safe.json -> (unit, public_input) H_list.t
 
-        val read_prover_state : Yojson.Basic.json -> Intf.prover_state
+        module Witness : sig
+          type t
 
-        val main : computation
+          module Constant : sig
+            type t
+
+            val of_yojson : Yojson.Safe.json -> (t, string) Result.t
+          end
+
+          val typ : (t, Constant.t) Intf.Typ.t
+        end
+
+        val main : Witness.t -> computation
     end) =
 struct
   open Intf
@@ -396,10 +408,17 @@ struct
   let main () =
     (* We're communicating over stdout, don't log to it! *)
     Libsnark.set_printing_off () ;
+    let module W = struct
+      type _ Request.t += Witness : M.Witness.Constant.t Request.t
+    end in
+    let main arg0 =
+      let w = Intf.exists ~request:(fun () -> W.Witness) M.Witness.typ in
+      M.main w arg0
+    in
     let proof_system =
       Proof_system.create ~proving_key_path:"proving_key.pk"
         ~verification_key_path:"verification_key.vk"
-        ~public_input:M.public_input M.main
+        ~public_input:M.public_input main
     in
     let public_input_keys = ["statement"; "public_input"; "data"] in
     let prover_state_keys =
@@ -417,7 +436,7 @@ struct
                 report_error ~full:"expected an object." ~json:"Not an object"
           in
           match List.Assoc.find ~equal:String.equal l "command" with
-          | Some (`String "prove") ->
+          | Some (`String "prove") -> (
               let public_input =
                 match find_key ~keys:public_input_keys l with
                 | Some public_input ->
@@ -425,24 +444,36 @@ struct
                 | None ->
                     report_no_key public_input_keys
               in
-              let prover_state =
-                M.read_prover_state
+              match
+                M.Witness.Constant.of_yojson
                   (Option.value
                      (find_key ~keys:prover_state_keys l)
                      ~default:(`Assoc []))
-              in
-              let proof =
-                Proof_system.prove ~public_input proof_system prover_state
-              in
-              let proof_string =
-                let size = Proof.bin_size_t proof in
-                let buf = Bigstring.create size in
-                ignore (Proof.bin_write_t buf ~pos:0 proof) ;
-                Base64.encode_string (Bigstring.to_string buf)
-              in
-              Yojson.Safe.pretty_to_channel stdout
-                (`Assoc
-                  [("name", `String "proof"); ("proof", `String proof_string)])
+              with
+              | Error e ->
+                  report_error ~json:"Could not parse witness."
+                    ~full:(sprintf "Could not parse witness: %s" e)
+              | Ok witness ->
+                  let proof =
+                    Proof_system.prove ~public_input proof_system ()
+                      ~handlers:
+                        [ (fun (With {request; respond}) ->
+                            match request with
+                            | W.Witness ->
+                                respond (Provide witness)
+                            | _ ->
+                                failwith "Unhandled" ) ]
+                  in
+                  let proof_string =
+                    let size = Proof.bin_size_t proof in
+                    let buf = Bigstring.create size in
+                    ignore (Proof.bin_write_t buf ~pos:0 proof) ;
+                    Base64.encode_string (Bigstring.to_string buf)
+                  in
+                  Yojson.Safe.pretty_to_channel stdout
+                    (`Assoc
+                      [ ("name", `String "proof")
+                      ; ("proof", `String proof_string) ]) )
           | Some (`String "verify") ->
               let public_input =
                 match find_key ~keys:public_input_keys l with
@@ -486,5 +517,5 @@ struct
             Format.(fprintf err_formatter "Unknown error:@.%s@." exn) ;
             Yojson.Safe.pretty_to_channel stdout
               (bad_object (sprintf "Unknown error:\n%s" exn)) )
-      (Yojson.Basic.stream_from_channel In_channel.stdin)
+      (Yojson.Safe.stream_from_channel In_channel.stdin)
 end
