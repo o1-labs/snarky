@@ -21,19 +21,6 @@ let assertSpecial = (x) => {
   ]);
 };
 
-/*
-Exercise ideas
-- arithmetiziation: implement boolean ops
-- internal handlers
-
-Examples with integers
-- 
-
-/* Floating point arithmetic */
-Fun exercises to give people to do
-- 
-*/
-
 /* Proves that we know a preimage to the given hash which is special */
 let main = (preimage: Witness.t, h) => {
   Field.assertEqual(Hash.hash([|preimage|]), h);
