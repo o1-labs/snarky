@@ -30,6 +30,8 @@ module Field = struct
 
     type t
 
+    val size_in_bits : int
+
     val ( = ) : t -> t -> bool
 
     val equal : t -> t -> bool
@@ -76,6 +78,8 @@ module Field = struct
 
     val toBits : ?length:int -> t -> bool array
 
+    val parity : ?length:int -> t -> bool
+
     val assertEqual : t -> t -> unit
 
     val assertR1 : t -> t -> t -> unit
@@ -93,6 +97,8 @@ module Field = struct
     type t [@@deriving yojson]
 
     include Basic with type bool := bool and type t := t
+
+    val parity : t -> bool
 
     val toString : t -> string
 
@@ -258,5 +264,50 @@ module type S = sig
     val ofBits : Bool.t array -> t
 
     val toBits : ?length:int -> t -> Bool.t array
+  end
+
+  module Schnorr : sig
+    module PrivateKey : sig
+      type t
+
+      module Constant : sig
+        type t [@@deriving yojson]
+      end
+    end
+
+    module PublicKey : sig
+      type t
+
+      val ofPrivateKey : PrivateKey.t -> t
+
+      module Constant : sig
+        type t [@@deriving yojson]
+      end
+
+      val typ : (t, Constant.t) Impl.Typ.t
+    end
+
+    module Signature : sig
+      type t
+
+      module Constant : sig
+        type t [@@deriving yojson]
+      end
+
+      val typ : (t, Constant.t) Impl.Typ.t
+
+      val check : t -> PublicKey.t -> Field.t array -> Bool.t
+    end
+
+    module Constant : sig
+      val sign :
+        PrivateKey.Constant.t -> Field.Constant.t array -> Signature.Constant.t
+
+      val check :
+           Signature.Constant.t
+        -> PublicKey.Constant.t
+        -> Field.Constant.t array
+        -> bool
+    end
   end
 end

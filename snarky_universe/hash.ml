@@ -1,9 +1,9 @@
 type alpha = [`_5 | `_11]
 
-let alpha_of_curve = function Curve.Bn128 -> `_5
+let alpha_of_curve = function Curve.E Bn128 -> `_5
 
-let params_of_curve : Curve.t -> string Sponge.Params.t = function
-  | Bn128 ->
+let params_of_curve : Curve.e -> string Sponge.Params.t = function
+  | E Bn128 ->
       Sponge.Params.bn128
 
 module Poseidion_rounds = struct
@@ -34,7 +34,7 @@ end
 
 module Make
     (Impl : Snarky.Snark_intf.Run) (C : sig
-        val curve : Curve.t
+        val curve : Curve.e
     end) =
 struct
   open Core_kernel
