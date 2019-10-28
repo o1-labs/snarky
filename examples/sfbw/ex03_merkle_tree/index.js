@@ -1,58 +1,47 @@
-const Snarky = require("js_snarky");
+const { bn128 } = require('snarkyjs-crypto');
+const Snarky = require("snarkyjs");
 const snarky = new Snarky("./ex03_merkle_tree.exe");
 
+const depth = 8;
+const numElts = 1 << depth;
+const data = []
+
+for (let i = 0; i < numElts; ++i) {
+  data.push(bn128.Field.ofInt(i));
+}
+
+/* No need to hash leaves which are already field elements */
+const hashElt = (x) => x;
+const defaultElt = bn128.Field.ofInt(0);
+
+const tree = bn128.MerkleTree.ofArray(hashElt, defaultElt, data);
+
+const root = bn128.MerkleTree.root(tree);
+const indexToProve = 17;
+const proof = bn128.MerkleTree.MembershipProof.create(tree, indexToProve);
+
+console.log(root);
+console.log(data[indexToProve]);
+console.log(bn128.MerkleTree.MembershipProof.check(proof, root, hashElt(data[indexToProve])));
+
+const statement = [
+  /* Root hash */
+  bn128.Field.toString(root),
+  /* Data */
+  bn128.Field.toString(data[indexToProve])
+];
+
 snarky.prove({
-  "statement": [
-    /* Hash */
-    "13233041925772981287263381855432307403434594187545931284654254679248761729236",
-    /* Data */
-    "255"
-  ],
-  "witness": [
-    65535,
-    [
-      "64",
-      "62",
-      "60",
-      "58",
-      "56",
-      "54",
-      "52",
-      "50",
-      "48",
-      "46",
-      "44",
-      "42",
-      "40",
-      "38",
-      "36",
-      "34",
-      "32",
-      "30",
-      "28",
-      "26",
-      "24",
-      "22",
-      "20",
-      "18",
-      "16",
-      "14",
-      "12",
-      "10",
-      "8",
-      "6",
-      "4",
-      "2"
-    ]
+  statement: statement,
+  witness: [
+    proof.index,
+    proof.path.map(bn128.Field.toString)
   ]
 }).then(function(proof) {
   console.log("Created proof:\n" + proof + "\n");
   return snarky.verify({
-    "statement": [
-      "13233041925772981287263381855432307403434594187545931284654254679248761729236",
-      "255"
-    ],
-    "proof": proof
+    statement: statement,
+    proof: proof
   });
 }, console.log).then(function(verified) {
   console.log("Was the proof verified? " + verified);

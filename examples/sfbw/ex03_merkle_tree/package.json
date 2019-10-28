@@ -10,7 +10,8 @@
   },
   "author": "you",
   "license": "UNLICENSED",
-  "dependencies": {
-    "js_snarky": "file:../../../js_snarky"
-  }
+  "dependencies": [
+    "snarkyjs-crypto",
+    "snarkyjs"
+  ]
 }
