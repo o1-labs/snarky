@@ -27,6 +27,8 @@ module type S = sig
 
   val print : t -> unit
 
+  val to_string : t -> string
+
   val random : unit -> t
 
   module Mutable : sig
@@ -50,8 +52,6 @@ end
 
 module type Extended = sig
   include S
-
-  val to_string : t -> string
 
   val negate : t -> t
 

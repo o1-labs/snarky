@@ -47,6 +47,8 @@ void CURVE_PREFIX(field_delete)(void* f);
 
 void CURVE_PREFIX(field_print)(void* f);
 
+char* CURVE_PREFIX(field_to_string)(void* f);
+
 // bigint r
 void* CURVE_PREFIX(bigint_r_of_field)(void* x);
 

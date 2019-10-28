@@ -95,6 +95,8 @@ public:
 
     void print() const;
 
+    char *to_string();
+
     Fp_model& operator+=(const Fp_model& other);
     Fp_model& operator-=(const Fp_model& other);
     Fp_model& operator*=(const Fp_model& other);

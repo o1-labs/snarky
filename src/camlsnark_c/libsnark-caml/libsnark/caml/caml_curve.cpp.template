@@ -233,6 +233,10 @@ void CURVE_PREFIX(field_print)(FieldT* f) {
   f->print();
 }
 
+char *CURVE_PREFIX(field_to_string)(FieldT* f) {
+  return f->to_string();
+}
+
 // bigint r
 libff::bigint<R_LIMBS>* CURVE_PREFIX(bigint_r_of_field)(FieldT* x) {
   return new libff::bigint<R_LIMBS>(x->as_bigint());

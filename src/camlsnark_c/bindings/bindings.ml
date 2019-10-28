@@ -192,6 +192,8 @@ module Field = struct
 
     val print : (t -> unit return) result
 
+    val to_string : (t -> string return) result
+
     val random : (unit -> t return) result
 
     val square : (t -> t return) result
@@ -250,6 +252,8 @@ module Field = struct
     let delete = foreign (func_name "delete") (typ @-> returning void)
 
     let print = foreign (func_name "print") (typ @-> returning void)
+
+    let to_string = foreign (func_name "to_string") (typ @-> returning string)
 
     let random = foreign (func_name "random") (void @-> returning typ)
 

@@ -12,7 +12,6 @@
  *****************************************************************************/
 
 #include <libff/algebra/curves/mnt753/mnt4753/mnt4753_g1.hpp>
-#include <iomanip>
 
 namespace libff {
 

@@ -389,6 +389,8 @@ module Field = struct
 
     val print : t -> unit
 
+    val to_string : t -> string
+
     module Mutable : sig
       val add : t -> other:t -> unit
 
