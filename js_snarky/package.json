@@ -2,7 +2,7 @@
   "name": "js_snarky",
   "version": "1.0.0",
   "description": "Snarky project setup",
-  "main": "./bin/index.js",
+  "main": "./index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "js_snarky": "bin/index.js",
@@ -20,5 +20,8 @@
   "bugs": {
     "url": "https://github.com/o1-labs/snarky/issues"
   },
-  "homepage": "https://github.com/o1-labs/snarky#readme"
+  "homepage": "https://github.com/o1-labs/snarky#readme",
+  "dependencies": {
+    "child-process": "^1.0.2"
+  }
 }

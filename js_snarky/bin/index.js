@@ -16,6 +16,9 @@ if (arguments.length === 0) {
   process.exit(1);
 }
 else if (arguments[0] === "init") {
+/*****************************************************************************
+ * dune-project
+ *****************************************************************************/
   /* Create dune-project file so that `dune build` doesn't walk out of this
    * directory. */
   if (!fs.existsSync("dune-project")) {
@@ -24,6 +27,9 @@ else if (arguments[0] === "init") {
   }
   let mk_src = function(err) {
     fail(err);
+/*****************************************************************************
+ * src/dune
+ *****************************************************************************/
     if (!fs.existsSync("src/dune")) {
       const dune = `(executable
  (name run_snarky)
@@ -33,6 +39,9 @@ else if (arguments[0] === "init") {
 `;
       fs.writeFile("src/dune", dune, fail);
     }
+/*****************************************************************************
+ * src/main.ml
+ *****************************************************************************/
     if (!fs.existsSync("src/main.ml")) {
       const main = `module Universe = (val Snarky_universe.default ())
 
@@ -67,6 +76,9 @@ let main witness field_elt _bit () =
 `;
       fs.writeFile("src/main.ml", main, fail);
     }
+/*****************************************************************************
+ * src/run_snarky.ml
+ *****************************************************************************/
     if (!fs.existsSync("src/run_snarky.ml")) {
       const run_snarky = `let () =
   Main.Universe.InputSpec.run_main Main.input (module Main.Witness) Main.main
@@ -79,11 +91,43 @@ let main witness field_elt _bit () =
   } else {
     fs.mkdir("src", mk_src);
   }
+/*****************************************************************************
+ * index.js
+ *****************************************************************************/
   if (!fs.existsSync("index.js")) {
-    /* TODO. */
-    const index = "";
+    const index = `const Snarky = require("js_snarky");
+const snarky = new Snarky("src/run_snarky.exe");
+
+var prove_and_verify = function(statement, witness) {
+  return snarky.prove({
+    "statement": statement,
+    "witness": witness
+  }).then(function(proof) {
+    console.log("Created proof for statement " + JSON.stringify(statement) + ":\\n" + proof + "\\n");
+    return snarky.verify({
+      "statement": statement,
+      "proof": proof
+    });
+  }, console.log).then(function (verified) {
+    console.log("Was the proof verified as correct? " + verified);
+  }, console.log);
+};
+
+prove_and_verify(["2", true], "9").then(function() {
+  return prove_and_verify(["4", true], "10");
+}, console.log).then(function() {
+  return prove_and_verify(["8", true], "12");
+}, console.log).then(function() {
+  process.exit(0);
+}, function() {
+  process.exit(1);
+});
+`;
     fs.writeFile("index.js", index, fail);
   }
+/*****************************************************************************
+ * package.json
+ *****************************************************************************/
   if (!fs.existsSync("package.json")) {
     const pkg = `{
   "name": "your-package-name",
@@ -100,6 +144,13 @@ let main witness field_elt _bit () =
 }
 `;
     fs.writeFile("package.json", pkg, fail);
+  }
+/*****************************************************************************
+ * dune
+ *****************************************************************************/
+  if (!fs.existsSync("dune")) {
+    const pkg = "(data_only_dirs node_modules)"
+    fs.writeFile("dune", pkg, fail);
   }
 } else {
   console.log("Unrecognised command " + arguments[0] + ".\nPossible commands are:\n  init\t\tInitialize a js_snarky project");
