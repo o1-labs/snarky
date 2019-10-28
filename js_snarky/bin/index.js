@@ -28,83 +28,48 @@ else if (arguments[0] === "init") {
       const dune = `(executable
  (name run_snarky)
  (modes native)
- (libraries core_kernel snarky)
- (preprocess (pps ppx_snarky ppx_jane)))
+ (libraries core_kernel snarky snarky_universe)
+ (preprocess (pps ppx_snarky ppx_jane ppx_deriving ppx_deriving_yojson)))
 `;
       fs.writeFile("src/dune", dune, fail);
     }
     if (!fs.existsSync("src/main.ml")) {
-      const main = `open Snarky
-module Backend = Backends.Bn128.Default
+      const main = `module Universe = (val Snarky_universe.default ())
 
-(* The type of information passed for the prover to use. *)
-type prover_state = {field_elt: Backend.Field.t}
+open! Universe.Impl
+open! Universe
 
-module Snark =
-  Snark.Run.Make
-    (Backend)
-    (struct
-      type t = prover_state
-    end)
+(* Each input needs a jsonifier and a type *)
+let input : _ InputSpec.t = [(module Field); (module Bool)]
 
-open Snark
+module Witness = struct
+  type t = Field.t
 
-(* The return type of main. *)
-type result = unit
+  module Constant = struct
+    type t = Field.Constant.t [@@deriving yojson]
+  end
 
-(* The type of main. Note: The final [unit -> unit] is required. *)
-type computation = Field.t -> unit -> unit
-
-(* The public inputs to be passed to main, as a type. *)
-type public_input = Field.Constant.t -> unit
-
-(* The list of [Typ.t]s describing how to store the public input in the snark.
-*)
-let public_input = Data_spec.[Typ.field]
-
-let field_of_json = function
-  | \`Int i ->
-      Field.Constant.of_int i
-  | \`String s ->
-      Field.Constant.of_string s
-  | _ ->
-      failwith "Could not read JSON as a field element."
-
-(* Convert the string read on the command line to the public inputs. *)
-let read_input : Yojson.Basic.json -> (unit, public_input) H_list.t =
- fun json -> H_list.[field_of_json json]
-
-let read_prover_state : Yojson.Basic.json -> prover_state =
- fun json -> {field_elt= field_of_json json}
+  let typ = Field.typ
+end
 
 (* Test function, asserts that [Field.( * )] and [Field.inv] commute. *)
 let assert_inverse_square_commutes field_elt =
   let field_elt_2 = Field.(field_elt * field_elt) in
-  let field_elt_inv = Field.inv field_elt in
+  let field_elt_inv = Field.invert field_elt in
   let field_elt_inv_2 = Field.(field_elt_inv * field_elt_inv) in
   let product = Field.(field_elt_2 * field_elt_inv_2) in
-  Field.Assert.equal product Field.one
+  Field.assertEqual product Field.one
 
 (* The main function. This is executed to build a proof *)
-let main field_elt () =
+let main witness field_elt _bit () =
   assert_inverse_square_commutes field_elt ;
-  let prover_field_elt =
-    exists Field.typ
-      ~compute:
-        As_prover.(
-          fun () ->
-            (* Read the contents of the current prover state. *)
-            let state : prover_state = get_state () in
-            state.field_elt)
-  in
-  assert_inverse_square_commutes prover_field_elt
+  assert_inverse_square_commutes witness
 `;
       fs.writeFile("src/main.ml", main, fail);
     }
     if (!fs.existsSync("src/run_snarky.ml")) {
-      const run_snarky = `module Run = Snarky.Toplevel.Make_json (Main.Snark) (Main)
-
-let () = Run.main ()
+      const run_snarky = `let () =
+  Main.Universe.InputSpec.run_main Main.input (module Main.Witness) Main.main
 `;
       fs.writeFile("src/run_snarky.ml", run_snarky, fail);
     }
