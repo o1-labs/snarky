@@ -241,6 +241,10 @@ module type S = sig
 
     val ofBigint : Bigint.t -> t
 
+    val ofInt : int -> t
+
+    val ofString : string -> t
+
     val ( + ) : t -> t -> t
 
     val ( * ) : t -> t -> t
