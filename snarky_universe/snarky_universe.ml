@@ -22,7 +22,10 @@ end
 
 type proof_system = Groth16 | GrothMaller17
 
-let impl (curve : Curve.t) system =
+let impl (type f) (curve : f Curve.t) system :
+    (module Snarky.Snark_intf.Run
+       with type prover_state = unit
+        and type field = f) =
   let open Snarky in
   let module M (B : Backend_intf.S) =
     Snark.Run.Make
@@ -31,32 +34,35 @@ let impl (curve : Curve.t) system =
         type t = unit
       end)
   in
-  let f (module B : Backend_intf.S) =
+  let f (module B : Backend_intf.S with type Field.t = f) =
     ( module Snark.Run.Make
                (B)
                (struct
                  type t = unit
                end)
     : Snark_intf.Run
-      with type prover_state = unit )
+      with type prover_state = unit
+       and type field = f )
   in
-  let system =
+  let system : (module Backend_intf.S with type Field.t = f) =
     match curve with
     | Bn128 -> (
       match system with
       | Groth16 ->
-          (module Backends.Bn128.Default : Backend_intf.S)
+          (module Backends.Bn128.Default)
       | GrothMaller17 ->
           (module Backends.Bn128.GM) )
   in
   f system
 
 module Make (C : sig
-  val curve : Curve.t
+  type field
+
+  val curve : field Curve.t
 
   val system : proof_system
 end)
-() : Intf.S = struct
+() : Intf.S with type Impl.field = C.field = struct
   module Impl = (val impl C.curve C.system)
 
   open Impl
@@ -167,6 +173,10 @@ end)
 
       let assertR1 a b c = assert_r1cs a b c
 
+      let parity = parity
+
+      let size_in_bits = size_in_bits
+
       include Cond (Impl) (Field)
     end
 
@@ -174,6 +184,8 @@ end)
 
     module Constant = struct
       open Field.Constant
+
+      let size_in_bits = size_in_bits
 
       type t = Constant.t
 
@@ -226,11 +238,19 @@ end)
       let toBits x = Array.of_list (unpack x)
 
       let toString = to_string
+
+      let parity = parity
     end
   end
 
   module Hash = struct
-    module T = Hash.Make (Impl) (C)
+    module T =
+      Hash.Make
+        (Impl)
+        (struct
+          let curve = Curve.E C.curve
+        end)
+
     include Field.Checked
 
     let hash = T.hash
@@ -360,22 +380,114 @@ end)
   end
 
   module InputSpec = Input_spec.Make (Impl)
+
+  module Group = Group.Make (C) (Impl) ()
+
+  module Schnorr = struct
+    module Scalar = struct
+      include Group.Scalar
+
+      module Constant = struct
+        include Group.Constant.Scalar
+      end
+
+      let typ =
+        Typ.transport
+          (Typ.list ~length:Constant.size_in_bits Boolean.typ)
+          ~there:Constant.to_bits ~back:Constant.of_bits
+        |> Typ.transport_var ~there:Bitstring_lib.Bitstring.Lsb_first.to_list
+             ~back:Bitstring_lib.Bitstring.Lsb_first.of_list
+    end
+
+    module T = struct
+      include Snarky_signature.Signature.Make0 (struct
+        module Bool = Bool
+        module Hash = Hash
+        module Scalar = Group.Scalar
+        module Group = Group
+
+        module Field = struct
+          include Impl.Field
+
+          let is_even y = Bool.not (parity y)
+        end
+      end)
+    end
+
+    module Signature = struct
+      include T.Signature
+
+      let check = T.check
+
+      module Constant = struct
+        type t = Field.Constant.t * Scalar.Constant.t [@@deriving yojson]
+      end
+
+      let typ = Typ.tuple2 Field.typ Scalar.typ
+    end
+
+    module PublicKey = struct
+      include T.Public_key
+
+      let ofPrivateKey = of_private_key
+
+      module Constant = Group.Constant
+
+      let typ = Group.typ
+    end
+
+    module PrivateKey = struct
+      include T.Private_key
+
+      module Constant = struct
+        include Scalar.Constant
+      end
+    end
+
+    module Constant = struct
+      module Signer = Snarky_signature.Signature.Make_signer (struct
+        module Hash = Hash.Constant
+        module Group = Group.Constant
+        module Scalar = Scalar.Constant
+
+        module Field = struct
+          include Field.Constant
+
+          let is_even t = not (parity t)
+        end
+
+        module Bool = struct
+          type t = bool
+
+          let ( && ) = ( && )
+        end
+      end)
+
+      let sign = Signer.sign
+
+      let check = Signer.check
+    end
+  end
 end
 
-let create curve system =
+let create (type f) (curve : f Curve.t) system =
   let module M =
     Make (struct
+        type field = f
+
         let curve = curve
 
         let system = system
       end)
       ()
   in
-  (module M : Intf.S)
+  (module M : Intf.S with type Impl.field = f)
 
 let default () = create Bn128 Groth16
 
 module Bn128 = Make (struct
+  type field = Snarky.Backends.Bn128.Field.t
+
   let curve = Curve.Bn128
 
   let system = Groth16

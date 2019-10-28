@@ -1,5 +1,5 @@
 opam-version: "1.2"
-name: "snarky_universe"
+name: "snarky_signature"
 maintainer: "opensource@o1labs.org"
 authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
 homepage: "https://github.com/o1labs/snarky"
@@ -16,13 +16,8 @@ depends: [
   "bisect_ppx"
   "dune"                {build & >= "1.6"}
   "snarky"
-  "snarky_integer"
-  "snarky_curve"
-  "snarky_signature"
-  "sponge"
-  "snarkette"
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
-A wrapper library around snarky providing some useful modules.
+A library for signatures in snarky
 "
