@@ -17,7 +17,10 @@ depends: [
   "dune"                {build & >= "1.6"}
   "snarky"
   "snarky_integer"
+  "snarky_curve"
+  "snarky_signature"
   "sponge"
+  "snarkette"
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
