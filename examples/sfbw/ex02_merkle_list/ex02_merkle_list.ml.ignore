@@ -1,30 +1,36 @@
-module Universe = (val Snarky_universe.default ())
-open! Universe.Impl
-open! Universe
+module rec Universe :
+  (Snarky_universe.Intf.S with type Impl.prover_state = Prover_state.t) =
+  Snarky_universe.Default (Prover_state) ()
 
-module Witness = struct
+and Prover_state : sig
+  type t = Universe.Hash.Constant.t array [@@deriving yojson]
+
+  val length : int
+
+  val typ : (Universe.Hash.t array, t) Universe.Impl.Typ.t
+end = struct
+  open! Universe.Impl
+  open! Universe
+
+  type t = Hash.Constant.t array [@@deriving yojson]
+
   let length = 32
-
-  type t = Hash.t array
-
-  module Constant = struct
-    type t = Hash.Constant.t array [@@deriving yojson]
-  end
 
   let typ = Typ.array ~length Hash.typ
 end
 
+open! Universe.Impl
+open! Universe
+
 let input = InputSpec.[(module Field); (module Field)]
 
-(* Proves that there is a path [hn, ..., h1] such that
-   hash (h1, hash(h2, hash(h3, ..., hash(hn, x) ... ))) = root *)
-let main (path : Witness.t) supposed_root x () =
+let main supposed_root x () =
+  let path =
+    exists Prover_state.typ ~compute:(fun () -> As_prover.get_state ())
+  in
   let actual_root =
-    Array.fold_left (fun acc h ->
-        Hash.hash [| h; acc |])
-        x
-        path
+    Array.fold_left (fun acc h -> Hash.hash [|h; acc|]) x path
   in
   Hash.assertEqual actual_root supposed_root
 
-let () = InputSpec.run_main input (module Witness) main
+let () = InputSpec.run_main input Prover_state.of_yojson main

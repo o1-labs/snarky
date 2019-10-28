@@ -1,12 +1,23 @@
-module Universe = (val Snarky_universe.default ())
+module rec Universe :
+  (Snarky_universe.Intf.S with type Impl.prover_state = Prover_state.t) =
+  Snarky_universe.Default (Prover_state) ()
+
+and Prover_state : sig
+  type t = Universe.Field.Constant.t [@@deriving yojson]
+end = struct
+  type t = Universe.Field.Constant.t [@@deriving yojson]
+end
+
 open! Universe.Impl
 open! Universe
-
 module Witness = Field
 
 let input = InputSpec.[(module Field)]
 
-let main (preimage : Witness.t) h () =
+let main (h : Hash.t) () =
+  let preimage =
+    exists Field.typ ~compute:(fun () -> As_prover.get_state ())
+  in
   Field.assertEqual (Hash.hash [|preimage|]) h
 
-let () = InputSpec.run_main input (module Witness) main
+let () = InputSpec.run_main input Prover_state.of_yojson main

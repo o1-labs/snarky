@@ -1,5 +1,5 @@
 module type S = sig
-  module Impl : Snarky.Snark_intf.Run with type prover_state = unit
+  module Impl : Snarky.Snark_intf.Run
 
   open Impl
 
@@ -33,14 +33,14 @@ module type S = sig
   end
 
   val run_main :
-       (unit -> unit, unit, 'arg0 -> 'computation0, 'public_input) t
-    -> (module Witness_intf with type t = 'witness)
-    -> ('witness -> 'arg0 -> 'computation0)
+       (unit -> 'result, unit, 'computation, 'public_input) t
+    -> (Yojson.Safe.json -> (Impl.prover_state, string) result)
+    -> 'computation
     -> unit
 end
 
-module Make (Impl : Snarky.Snark_intf.Run with type prover_state = unit) :
-  S with module Impl := Impl = struct
+module Make (Impl : Snarky.Snark_intf.Run) : S with module Impl := Impl =
+struct
   open Impl
 
   module type Input = sig
@@ -108,27 +108,26 @@ module Make (Impl : Snarky.Snark_intf.Run with type prover_state = unit) :
     val typ : (t, Constant.t) Typ.t
   end
 
-  let run_main (type witness arg0 computation0 public_input)
-      (input : (unit -> unit, unit, arg0 -> computation0, public_input) t)
-      (module Witness : Witness_intf with type t = witness)
-      (main : witness -> arg0 -> computation0) =
+  let run_main (type result computation public_input)
+      (input : (unit -> result, unit, computation, public_input) t)
+      (read_prover_state :
+        Yojson.Safe.json -> (Impl.prover_state, string) Stdlib.result)
+      (main : computation) =
     let module F =
       Snarky.Toplevel.Make_json
         (Impl)
         (struct
+          type nonrec result = result
+
+          type nonrec computation = computation
+
           type nonrec public_input = public_input
-
-          type nonrec arg0 = arg0
-
-          type nonrec computation0 = computation0
-
-          type computation = arg0 -> computation0
 
           let public_input = to_data_spec input
 
           let read_input = read_input input
 
-          module Witness = Witness
+          let read_prover_state = read_prover_state
 
           let main = main
         end)

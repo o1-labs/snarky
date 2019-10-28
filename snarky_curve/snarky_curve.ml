@@ -45,7 +45,7 @@ module type Constant_intf = sig
 end
 
 module type Inputs_intf = sig
-  module Impl : Snarky.Snark_intf.Run with type prover_state = unit
+  module Impl : Snarky.Snark_intf.Run
 
   module F : sig
     include
@@ -177,7 +177,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
         ~there:Constant.to_affine_exn ~back:Constant.of_affine
     in
     { unchecked with
-      check= (fun t -> make_checked (fun () -> assert_on_curve t)) }
+      check= (fun t -> make_stateless_checked (fun () -> assert_on_curve t)) }
 
   open Bitstring_lib.Bitstring
 

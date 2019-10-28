@@ -1,32 +1,51 @@
-module Universe = (val Snarky_universe.default ())
+module rec Universe :
+  (Snarky_universe.Intf.S with type Impl.prover_state = Prover_state.t) =
+  Snarky_universe.Default (Prover_state) ()
+
+and Prover_state : sig
+  type t = int * Universe.Hash.Constant.t array [@@deriving yojson]
+
+  val depth : int
+
+  val typ :
+    (Universe.Bool.t array * Universe.Hash.t array, t) Universe.Impl.Typ.t
+end = struct
+  open! Universe.Impl
+  open! Universe
+
+  type t = int * Hash.Constant.t array [@@deriving yojson]
+
+  let depth = 32
+
+  let typ =
+    Typ.tuple2 (MerkleTree.Index.typ ~depth) (MerkleTree.Path.typ ~depth)
+end
+
 open! Universe.Impl
 open! Universe
 
-let depth = 32
-
-module Witness = struct
-  type t = Bool.t array * Hash.t array
-
-  module Constant = struct
-    type t = int * Hash.Constant.t array [@@deriving yojson]
-  end
-
-  let typ =
-    Typ.tuple2
-      (MerkleTree.Index.typ ~depth)
-      (MerkleTree.Path.typ ~depth)
-end
+let depth = Prover_state.depth
 
 let input = InputSpec.[(module Hash); (module Field)]
 
-let main ((index, path) : Witness.t) supposed_root elt () =
+let main supposed_root elt () =
+  let index, path =
+    exists Prover_state.typ ~compute:(fun () -> As_prover.get_state ())
+  in
   let acc = ref elt in
   for i = 0 to depth - 1 do
-      let bit = index.(i) in
-      let left = Hash.( bit -? path.(i) -: !acc ) in
-      let right = Hash.( bit -? !acc -: path.(i) ) in
-      acc := Hash.hash [| left; right |]
-  done;
+    let bit = index.(i) in
+    let left =
+      let open Hash in
+      bit -? path.(i) -: !acc
+    in
+    let right =
+      let open Hash in
+      bit -? !acc -: path.(i)
+    in
+    acc := Hash.hash [|left; right|]
+  done ;
   Hash.assertEqual !acc supposed_root
 
-let () = InputSpec.run_main input (module Witness) main
+;;
+InputSpec.run_main input Prover_state.of_yojson main

@@ -107,7 +107,7 @@ module Field = struct
 end
 
 module type S = sig
-  module Impl : Snarky.Snark_intf.Run with type prover_state = unit
+  module Impl : Snarky.Snark_intf.Run
 
   module Bool : sig
     open Impl

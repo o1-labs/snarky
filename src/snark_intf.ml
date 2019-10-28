@@ -2197,6 +2197,9 @@ module type Run_basic = sig
 
   val make_checked : (unit -> 'a) -> ('a, prover_state, field) Types.Checked.t
 
+  val make_stateless_checked :
+    (unit -> 'a) -> ('a, unit, field) Types.Checked.t
+
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
     -> 'k_var
