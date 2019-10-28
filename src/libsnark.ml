@@ -198,6 +198,8 @@ struct
 
     val subgroup_check : t -> unit
 
+    val to_string : t -> string
+
     module Vector : Vector.S_binable with type elt := t
   end
 

@@ -78,6 +78,10 @@ void camlsnark_mnt6_g1_to_affine_coordinates(libff::G1<ppT>* a) {
   a->to_affine_coordinates();
 }
 
+char *camlsnark_mnt6_g1_to_string(libff::G1<ppT>* a) {
+  a->output_pretty();
+}
+
 libff::Fq<ppT>* camlsnark_mnt6_g1_x(libff::G1<ppT>* a) {
   assert(a->Z() == libff::Fq<ppT>::one());
   return new libff::Fq<ppT>(a->X());
@@ -162,6 +166,10 @@ libff::G2<ppT>* camlsnark_mnt6_g2_random() {
 
 void camlsnark_mnt6_g2_to_affine_coordinates(libff::G2<ppT>* a) {
   a->to_affine_coordinates();
+}
+
+char *camlsnark_mnt6_g2_to_string(libff::G2<ppT>* a) {
+  a->output_pretty();
 }
 
 std::vector<libff::G2<ppT>>* camlsnark_mnt6_g2_vector_create() {

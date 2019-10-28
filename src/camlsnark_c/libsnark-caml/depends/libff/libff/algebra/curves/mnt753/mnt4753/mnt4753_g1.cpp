@@ -12,6 +12,7 @@
  *****************************************************************************/
 
 #include <libff/algebra/curves/mnt753/mnt4753/mnt4753_g1.hpp>
+#include <iomanip>
 
 namespace libff {
 
@@ -62,6 +63,25 @@ void mnt4753_G1::print_coordinates() const
                    this->X_.as_bigint().data, mnt4753_Fq::num_limbs,
                    this->Y_.as_bigint().data, mnt4753_Fq::num_limbs,
                    this->Z_.as_bigint().data, mnt4753_Fq::num_limbs);
+    }
+}
+
+char *mnt4753_G1::output_pretty() const
+{
+    if (this->is_zero())
+    {
+        return "O";
+    }
+    else
+    {
+        char *out = NULL;
+        mnt4753_G1 copy(*this);
+        copy.to_affine_coordinates();
+        gmp_asprintf(&out,
+                     "(%Nd , %Nd)",
+                     copy.X_.as_bigint().data, mnt4753_Fq::num_limbs,
+                     copy.Y_.as_bigint().data, mnt4753_Fq::num_limbs);
+        return out;
     }
 }
 

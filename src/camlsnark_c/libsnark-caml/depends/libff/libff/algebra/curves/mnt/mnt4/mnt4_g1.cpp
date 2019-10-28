@@ -65,6 +65,25 @@ void mnt4_G1::print_coordinates() const
     }
 }
 
+char *mnt4_G1::output_pretty() const
+{
+    if (this->is_zero())
+    {
+        return "O";
+    }
+    else
+    {
+        char *out = NULL;
+        mnt4_G1 copy(*this);
+        copy.to_affine_coordinates();
+        gmp_asprintf(&out,
+                     "(%Nd , %Nd)",
+                     copy.X_.as_bigint().data, mnt4_Fq::num_limbs,
+                     copy.Y_.as_bigint().data, mnt4_Fq::num_limbs);
+        return out;
+    }
+}
+
 void mnt4_G1::to_affine_coordinates()
 {
     if (this->is_zero())

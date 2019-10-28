@@ -88,6 +88,10 @@ libff::Fq<ppT>* camlsnark_mnt4753_g1_y(libff::G1<ppT>* a) {
   return new libff::Fq<ppT>(a->Y());
 }
 
+char *camlsnark_mnt4753_g1_to_string(libff::G1<ppT>* a) {
+  return a->output_pretty();
+}
+
 std::vector<libff::G1<ppT>>* camlsnark_mnt4753_g1_vector_create() {
   return new std::vector<libff::G1<ppT>>();
 }
@@ -162,6 +166,10 @@ libff::G2<ppT>* camlsnark_mnt4753_g2_random() {
 
 void camlsnark_mnt4753_g2_to_affine_coordinates(libff::G2<ppT>* a) {
   a->to_affine_coordinates();
+}
+
+char *camlsnark_mnt4753_g2_to_string(libff::G2<ppT>* a) {
+  a->output_pretty();
 }
 
 std::vector<libff::G2<ppT>>* camlsnark_mnt4753_g2_vector_create() {

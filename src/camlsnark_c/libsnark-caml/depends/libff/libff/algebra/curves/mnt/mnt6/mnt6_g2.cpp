@@ -86,6 +86,29 @@ void mnt6_G2::print_coordinates() const
     }
 }
 
+char *mnt6_G2::output_pretty() const
+{
+    if (this->is_zero())
+    {
+        return "O";
+    }
+    else
+    {
+        char *out = NULL;
+        mnt6_G2 copy(*this);
+        copy.to_affine_coordinates();
+        gmp_asprintf(&out,
+                     "(%Nd*z^2 + %Nd*z + %Nd , %Nd*z^2 + %Nd*z + %Nd)",
+                     copy.X_.c2.as_bigint().data, mnt6_Fq::num_limbs,
+                     copy.X_.c1.as_bigint().data, mnt6_Fq::num_limbs,
+                     copy.X_.c0.as_bigint().data, mnt6_Fq::num_limbs,
+                     copy.Y_.c2.as_bigint().data, mnt6_Fq::num_limbs,
+                     copy.Y_.c1.as_bigint().data, mnt6_Fq::num_limbs,
+                     copy.Y_.c0.as_bigint().data, mnt6_Fq::num_limbs);
+        return out;
+    }
+}
+
 void mnt6_G2::to_affine_coordinates()
 {
     if (this->is_zero())

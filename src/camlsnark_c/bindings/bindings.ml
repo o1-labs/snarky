@@ -108,6 +108,8 @@ struct
 
     val prefix : string
 
+    val to_string : (t -> string return) result
+
     module Vector :
       Vector.Bound
       with type 'a result = 'a result
@@ -160,6 +162,8 @@ struct
     let x = foreign (func_name "x") (typ @-> returning Fq.typ)
 
     let y = foreign (func_name "y") (typ @-> returning Fq.typ)
+
+    let to_string = foreign (func_name "to_string") (typ @-> returning string)
 
     module Vector =
       Vector.Bind

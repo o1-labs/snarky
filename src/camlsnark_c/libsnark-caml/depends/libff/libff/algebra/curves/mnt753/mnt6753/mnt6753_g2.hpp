@@ -56,6 +56,7 @@ public:
 
     void print() const;
     void print_coordinates() const;
+    char *output_pretty() const;
 
     void to_affine_coordinates();
     void to_special();
