@@ -9,5 +9,9 @@
     "watch": "dune build -w src/run_snarky.exe"
   },
   "author": "you",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": [
+    "snarkyjs-crypto",
+    "snarkyjs"
+  ]
 }
