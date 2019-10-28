@@ -43,39 +43,47 @@ else if (arguments[0] === "init") {
  * src/js_snarky_project.ml.ignore
  *****************************************************************************/
     if (!fs.existsSync("src/js_snarky_project.ml.ignore")) {
-      const main = `module Universe = (val Snarky_universe.default ())
+      const main = `
+module rec Universe :
+  (Snarky_universe.Intf.S with type Impl.prover_state = Prover_state.t) =
+  Snarky_universe.Default (Prover_state) ()
+
+and Prover_state : sig
+  type t = Universe.Field.Constant.t [@@deriving yojson]
+end = struct
+  type t = Universe.Field.Constant.t [@@deriving yojson]
+end
 
 open! Universe.Impl
 open! Universe
 
 (* Each input needs a jsonifier and a type *)
-let input : _ InputSpec.t = [(module Field); (module Bool)]
-
-module Witness = struct
-  type t = Field.t
-
-  module Constant = struct
-    type t = Field.Constant.t [@@deriving yojson]
-  end
-
-  let typ = Field.typ
-end
+let input : _ InputSpec.t = ([(module Field); (module Bool)] : _ InputSpec.t)
 
 (* Test function, asserts that [Field.( * )] and [Field.inv] commute. *)
 let assert_inverse_square_commutes field_elt =
-  let field_elt_2 = Field.(field_elt * field_elt) in
+  let field_elt_2 =
+    let open Field in
+    field_elt * field_elt
+  in
   let field_elt_inv = Field.invert field_elt in
-  let field_elt_inv_2 = Field.(field_elt_inv * field_elt_inv) in
-  let product = Field.(field_elt_2 * field_elt_inv_2) in
+  let field_elt_inv_2 =
+    let open Field in
+    field_elt_inv * field_elt_inv
+  in
+  let product =
+    let open Field in
+    field_elt_2 * field_elt_inv_2
+  in
   Field.assertEqual product Field.one
 
 (* The main function. This is executed to build a proof *)
-let main witness field_elt _bit () =
+let main field_elt _bit () =
   assert_inverse_square_commutes field_elt ;
+  let witness = exists Field.typ ~compute:(fun () -> As_prover.get_state ()) in
   assert_inverse_square_commutes witness
 
-let () =
-  InputSpec.run_main input (module Witness) main
+let () = InputSpec.run_main input Prover_state.of_yojson main
 `;
       fs.writeFile("src/js_snarky_project.ml.ignore", main, fail);
     }
@@ -83,7 +91,19 @@ let () =
  * src/js_snarky_project.re
  *****************************************************************************/
     if (!fs.existsSync("src/js_snarky_project.re")) {
-      const main = `module Universe = (val Snarky_universe.default());
+      const main = `module rec Universe:
+  Snarky_universe.Intf.S with type Impl.prover_state = Prover_state.t =
+  Snarky_universe.Default(
+    Prover_state,
+    {},
+  )
+and Prover_state: {
+  [@deriving yojson]
+  type t = Universe.Field.Constant.t;
+} = {
+  [@deriving yojson]
+  type t = Universe.Field.Constant.t;
+};
 
 open! Universe.Impl;
 open! Universe;
@@ -92,17 +112,6 @@ open! Universe;
 let input: InputSpec.t(_) = (
   [(module Field), (module Bool)]: InputSpec.t(_)
 );
-
-module Witness = {
-  type t = Field.t;
-
-  module Constant = {
-    [@deriving yojson]
-    type t = Field.Constant.t;
-  };
-
-  let typ = Field.typ;
-};
 
 /* Test function, asserts that [Field.( * )] and [Field.inv] commute. */
 let assert_inverse_square_commutes = field_elt => {
@@ -114,23 +123,15 @@ let assert_inverse_square_commutes = field_elt => {
 };
 
 /* The main function. This is executed to build a proof */
-let main = (witness, field_elt, _bit, ()) => {
+let main = (field_elt, _bit, ()) => {
   assert_inverse_square_commutes(field_elt);
+  let witness = exists(Field.typ, ~compute=() => {As_prover.get_state()});
   assert_inverse_square_commutes(witness);
 };
 
-let () = InputSpec.run_main(input, (module Witness), main);
+let () = InputSpec.run_main(input, Prover_state.of_yojson, main);
 `;
       fs.writeFile("src/js_snarky_project.re", main, fail);
-    }
-/*****************************************************************************
- * src/run_snarky.ml
- *****************************************************************************/
-    if (!fs.existsSync("src/run_snarky.ml")) {
-      const run_snarky = `let () =
-  Main.Universe.InputSpec.run_main Main.input (module Main.Witness) Main.main
-`;
-      fs.writeFile("src/run_snarky.ml", run_snarky, fail);
     }
   };
   if (fs.existsSync("src")) {
