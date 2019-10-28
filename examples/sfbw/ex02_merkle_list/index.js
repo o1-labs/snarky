@@ -1,54 +1,32 @@
-const Snarky = require("js_snarky");
+const { bn128 } = require('snarkyjs-crypto');
+const Snarky = require("snarkyjs");
 const snarky = new Snarky("./ex02_merkle_list.exe");
 
-snarky.prove({
-  "statement": [
-    /* Hash */
-    "7042570718949472988806264380637625507179598854752747064560805511579737198879",
+const merkleListLength = 32;
+const data = [];
+for (let i = 0; i < merkleListLength; ++i) {
+  data.push(bn128.Field.ofInt(i));
+}
+
+const buriedData = bn128.Field.ofInt(0x1234567);
+
+const root = data.reduce((acc, x) =>
+  bn128.Hash.hash([x, acc]), buriedData);
+
+const statement = [
+    /* Merkle list root hash */
+    bn128.Field.toString(root),
     /* Data */
-    "255"
-  ],
-  "witness": [
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "21",
-    "22",
-    "23",
-    "24",
-    "25",
-    "26",
-    "27",
-    "28",
-    "29",
-    "30",
-    "31",
-    "32",
-    "33"
-  ]
+    bn128.Field.toString(buriedData)
+];
+
+snarky.prove({
+  "statement": statement,
+  "witness": data.map(bn128.Field.toString)
 }).then(function(proof) {
   console.log("Created proof:\n" + proof + "\n");
   return snarky.verify({
-    "statement": [
-      "7042570718949472988806264380637625507179598854752747064560805511579737198879",
-      "255"
-    ],
+    "statement": statement,
     "proof": proof
   });
 }, console.log).then(function(verified) {
