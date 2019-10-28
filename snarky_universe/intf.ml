@@ -272,6 +272,12 @@ module type S = sig
 
   module InputSpec : Input_spec.S with module Impl := Impl
 
+  val runMain :
+       (unit -> unit, unit, 'arg0 -> 'computation0, 'public_input) InputSpec.t
+    -> (module InputSpec.Witness_intf with type t = 'witness)
+    -> ('witness -> 'arg0 -> 'computation0)
+    -> unit
+
   module Schnorr : sig
     module PrivateKey : sig
       type t

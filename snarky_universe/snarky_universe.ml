@@ -381,6 +381,8 @@ end)
 
   module InputSpec = Input_spec.Make (Impl)
 
+  let runMain = InputSpec.run_main
+
   module Group = Group.Make (C) (Impl) ()
 
   module Schnorr = struct
