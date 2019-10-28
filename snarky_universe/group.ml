@@ -153,9 +153,7 @@ module Make (C : sig
 
   val curve : field Curve.t
 end)
-(Impl : Snarky.Snark_intf.Run
-        with type prover_state = unit
-         and type field = C.field)
+(Impl : Snarky.Snark_intf.Run with type field = C.field)
 () =
 struct
   let {a; b; one} = params_of_curve C.curve

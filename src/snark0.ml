@@ -1804,9 +1804,12 @@ module Run = struct
       x
 
     let as_stateful x state' =
+      let old_state = !state in
       state := state' ;
       let a = x () in
-      (!state, a)
+      let new_state = !state in
+      state := old_state ;
+      (new_state, a)
 
     module Proving_key = Snark.Proving_key
     module Verification_key = Snark.Verification_key
@@ -2360,6 +2363,20 @@ module Run = struct
       a
 
     let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
+
+    let make_stateless_checked x =
+      let x (state' : (unit, field) Run_state.t) =
+        let old_state = !state in
+        state :=
+          set_prover_state
+            (Option.bind state'.prover_state ~f:(fun _ -> !state.prover_state))
+            state' ;
+        let a = x () in
+        let new_state = set_prover_state state'.prover_state !state in
+        state := old_state ;
+        (new_state, a)
+      in
+      Types.Checked.Direct (x, fun x -> Pure x)
 
     let rec inject_wrapper : type r_var r_value k_var k_value.
            (r_var, r_value, k_var, k_value) Data_spec.t

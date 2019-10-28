@@ -1,23 +1,33 @@
-module Universe = (val Snarky_universe.default ())
-open! Universe.Impl
-open! Universe
+module rec Universe :
+  (Snarky_universe.Intf.S with type Impl.prover_state = Prover_state.t) =
+  Snarky_universe.Default (Prover_state) ()
 
-module Witness = struct
+and Prover_state : sig
+  type t = bool array [@@deriving yojson]
+
+  val length : int
+
+  val typ : (Universe.Bool.t array, t) Universe.Impl.Typ.t
+end = struct
+  open! Universe.Impl
+  open! Universe
+
+  type t = bool array [@@deriving yojson]
+
   let length = 32
-
-  type t = Bool.t array
-
-  module Constant = struct
-    type t = bool array [@@deriving yojson]
-  end
 
   let typ = Typ.array ~length Bool.typ
 end
 
+open! Universe.Impl
+open! Universe
+
 let input = InputSpec.[(module Field)]
 
-(* Proves that there is a 32-bit preimage to the hash *)
-let main (preimage : Witness.t) h () =
+let main h () =
+  let preimage =
+    exists Prover_state.typ ~compute:(fun () -> As_prover.get_state ())
+  in
   Field.assertEqual (Hash.hash [|Field.ofBits preimage|]) h
 
-let () = InputSpec.run_main input (module Witness) main
+let () = InputSpec.run_main input Prover_state.of_yojson main

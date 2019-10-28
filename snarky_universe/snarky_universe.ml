@@ -1,4 +1,5 @@
 module B = Bigint
+module Intf = Intf
 
 module Cond (Impl : sig
   module Boolean : sig
@@ -22,38 +23,15 @@ end
 
 type proof_system = Groth16 | GrothMaller17
 
-let impl (type f) (curve : f Curve.t) system :
-    (module Snarky.Snark_intf.Run
-       with type prover_state = unit
-        and type field = f) =
+let backend_of_curve (type f) (curve : f Curve.t) system =
   let open Snarky in
-  let module M (B : Backend_intf.S) =
-    Snark.Run.Make
-      (B)
-      (struct
-        type t = unit
-      end)
-  in
-  let f (module B : Backend_intf.S with type Field.t = f) =
-    ( module Snark.Run.Make
-               (B)
-               (struct
-                 type t = unit
-               end)
-    : Snark_intf.Run
-      with type prover_state = unit
-       and type field = f )
-  in
-  let system : (module Backend_intf.S with type Field.t = f) =
-    match curve with
-    | Bn128 -> (
-      match system with
-      | Groth16 ->
-          (module Backends.Bn128.Default)
-      | GrothMaller17 ->
-          (module Backends.Bn128.GM) )
-  in
-  f system
+  match curve with
+  | Bn128 -> (
+    match system with
+    | Groth16 ->
+        (module Backends.Bn128.Default : Backend_intf.S with type Field.t = f)
+    | GrothMaller17 ->
+        (module Backends.Bn128.GM : Backend_intf.S with type Field.t = f) )
 
 module Make (C : sig
   type field
@@ -61,10 +39,18 @@ module Make (C : sig
   val curve : field Curve.t
 
   val system : proof_system
+end) (Prover_state : sig
+  type t
 end)
-() : Intf.S with type Impl.field = C.field = struct
-  module Impl = (val impl C.curve C.system)
+() :
+  Intf.S
+  with type Impl.field = C.field
+   and type Impl.prover_state = Prover_state.t = struct
+  module Backend = ( val backend_of_curve C.curve C.system
+                       : Snarky.Backend_intf.S
+                       with type Field.t = C.field )
 
+  module Impl = Snarky.Snark.Run.Make (Backend) (Prover_state)
   open Impl
 
   module Bool = struct
@@ -470,7 +456,7 @@ end)
   end
 end
 
-let create (type f) (curve : f Curve.t) system =
+let create (type f prover_state) (curve : f Curve.t) system =
   let module M =
     Make (struct
         type field = f
@@ -479,9 +465,15 @@ let create (type f) (curve : f Curve.t) system =
 
         let system = system
       end)
+      (struct
+        type t = prover_state
+      end)
       ()
   in
-  (module M : Intf.S with type Impl.field = f)
+  (module M
+  : Intf.S
+    with type Impl.field = f
+     and type Impl.prover_state = prover_state )
 
 let default () = create Bn128 Groth16
 
@@ -492,3 +484,5 @@ module Bn128 = Make (struct
 
   let system = Groth16
 end)
+
+module Default = Bn128
