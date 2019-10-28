@@ -411,9 +411,11 @@ struct
     let module W = struct
       type _ Request.t += Witness : M.Witness.Constant.t Request.t
     end in
-    let main arg0 =
-      let w = Intf.exists ~request:(fun () -> W.Witness) M.Witness.typ in
-      M.main w arg0
+    let main =
+      (* TODO: Really big hack, kill this ASAP. *)
+      Intf.Internal_Basic.conv_never_use
+        (fun () -> Intf.exists ~request:(fun () -> W.Witness) M.Witness.typ)
+        M.public_input M.main
     in
     let proof_system =
       Proof_system.create ~proving_key_path:"proving_key.pk"

@@ -1345,6 +1345,22 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       according to the {!type:Data_spec.t} and passing the R1CS versions.
   *)
 
+  val conv_never_use :
+       (unit -> 'hack)
+    -> (unit -> 'r_var, 'r_value, 'k_var, 'k_value) Data_spec.t
+    -> ('hack -> 'k_var)
+    -> 'k_var
+  (** Internal. Never use this.
+
+      This applies an initial argument to a function, interpreting the argument
+      within the scope of a imperative checked computation, after storing all
+      of the public inputs, but only passing the arguments after computing this
+      initial argument.
+
+      It should always be possible to avoid using this; when this becomes
+      unnecessary, this should be removed.
+  *)
+
   val prove :
        ?message:Proof.message
     -> Proving_key.t
