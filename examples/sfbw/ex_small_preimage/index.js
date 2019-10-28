@@ -1,6 +1,6 @@
 const { bn128 } = require('snarkyjs-crypto');
 const Snarky = require('snarkyjs');
-const snarky = new Snarky("./ex01_small_preimage.exe");
+const snarky = new Snarky("./ex_small_preimage.exe");
 
 const preImage = bn128.Field.ofInt(0x12345678);
 

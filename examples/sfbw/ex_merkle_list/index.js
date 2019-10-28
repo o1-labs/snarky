@@ -1,6 +1,6 @@
 const { bn128 } = require('snarkyjs-crypto');
 const Snarky = require("snarkyjs");
-const snarky = new Snarky("./ex02_merkle_list.exe");
+const snarky = new Snarky("./ex_merkle_list.exe");
 
 const merkleListLength = 32;
 const data = [];

@@ -1,6 +1,6 @@
 const { bn128 } = require('snarkyjs-crypto');
 const Snarky = require("snarkyjs");
-const snarky = new Snarky("./ex03_merkle_tree.exe");
+const snarky = new Snarky("./ex_merkle_tree.exe");
 
 const depth = 8;
 const numElts = 1 << depth;
