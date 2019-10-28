@@ -145,6 +145,14 @@ prove_and_verify(["2", true], "9").then(function() {
 `;
     fs.writeFile("package.json", pkg, fail);
   }
+/*****************************************************************************
+ * dune
+ *****************************************************************************/
+  /* Ensure that symlinked node_modules folders don't kill dune. */
+  if (!fs.existsSync("dune")) {
+    const pkg = "(dirs :standard \ node_modules)"
+    fs.writeFile("dune", pkg, fail);
+  }
 } else {
   console.log("Unrecognised command " + arguments[0] + ".\nPossible commands are:\n  init\t\tInitialize a js_snarky project");
   process.exit(1);
