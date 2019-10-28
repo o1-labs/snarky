@@ -1,13 +1,17 @@
-const Snarky = require("js_snarky");
+const { bn128 } = require('snarkyjs-crypto');
+const Snarky = require('snarkyjs');
 const snarky = new Snarky("./ex00_preimage.exe");
 
+const preImage = bn128.Field.ofInt(5);
+const statement = bn128.Hash.hash([ preImage ]);
+
 snarky.prove({
-  "statement": ["16878804342167538767210670789235150761589353743644181347428772717242652062541"],
-  "witness": "5"
+  "statement": [ bn128.Field.toString(statement) ],
+  "witness": bn128.Field.toString(preImage)
 }).then(function(proof) {
   console.log("Created proof:\n" + proof + "\n");
   return snarky.verify({
-    "statement": ["16878804342167538767210670789235150761589353743644181347428772717242652062541"],
+    "statement": [ bn128.Field.toString(statement) ],
     "proof": proof
   });
 }, console.log).then(function(verified) {
