@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "dune build src/run_snarky.exe",
+    "build": "dune build ex03_merkle_tree.exe",
     "clean": "dune clean",
-    "watch": "dune build -w src/run_snarky.exe"
+    "watch": "dune build -w ex03_merkle_tree.exe"
   },
   "author": "you",
   "license": "UNLICENSED",
