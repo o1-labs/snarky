@@ -2,4 +2,4 @@
  (name run_snarky)
  (modes native)
  (libraries core_kernel snarky snarky_universe)
- (preprocess (pps ppx_snarky ppx_jane ppx_deriving_yojson)))
+ (preprocess (pps ppx_snarky ppx_jane ppx_deriving ppx_deriving_yojson)))
