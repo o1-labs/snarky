@@ -83,6 +83,14 @@ module Field = struct
     val assertEqual : t -> t -> unit
 
     val assertR1 : t -> t -> t -> unit
+
+    val isSquare : t -> bool
+
+    val sqrtCheck : t -> t * bool
+    (** If x is a square in the field and
+    (b, y) = x;
+    If b = true, then y is sqrt(x)
+    If b = false, then y is a value which is not meaningful *)
   end
 
   module type Constant = sig
@@ -117,6 +125,8 @@ module type S = sig
     val ( && ) : t -> t -> t
 
     val not : t -> t
+
+    val negate : t -> t
 
     val ( = ) : t -> t -> t
 

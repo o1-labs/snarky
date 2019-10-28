@@ -12,7 +12,7 @@ module Voter = struct
   type ('priv_key, 'attr) t_ = {privateKey: 'priv_key; attributes: 'attr array}
   [@@deriving yojson]
 
-  module Attribute_commitment = Field
+  module Attribute_commitment = Hash
 
   type t = (Field.t, Attribute_commitment.t) t_
 
