@@ -32,7 +32,7 @@ else if (arguments[0] === "init") {
  *****************************************************************************/
     if (!fs.existsSync("src/dune")) {
       const dune = `(executable
- (name run_snarky)
+ (name js_snarky_project)
  (modes native)
  (libraries core_kernel snarky snarky_universe)
  (preprocess (pps ppx_snarky ppx_jane ppx_deriving ppx_deriving_yojson)))
@@ -40,9 +40,9 @@ else if (arguments[0] === "init") {
       fs.writeFile("src/dune", dune, fail);
     }
 /*****************************************************************************
- * src/main.ml
+ * src/js_snarky_project.ml.ignore
  *****************************************************************************/
-    if (!fs.existsSync("src/main.ml")) {
+    if (!fs.existsSync("src/js_snarky_project.ml.ignore")) {
       const main = `module Universe = (val Snarky_universe.default ())
 
 open! Universe.Impl
@@ -73,8 +73,55 @@ let assert_inverse_square_commutes field_elt =
 let main witness field_elt _bit () =
   assert_inverse_square_commutes field_elt ;
   assert_inverse_square_commutes witness
+
+let () =
+  InputSpec.run_main input (module Witness) main
 `;
-      fs.writeFile("src/main.ml", main, fail);
+      fs.writeFile("src/js_snarky_project.ml.ignore", main, fail);
+    }
+/*****************************************************************************
+ * src/js_snarky_project.re
+ *****************************************************************************/
+    if (!fs.existsSync("src/js_snarky_project.re")) {
+      const main = `module Universe = (val Snarky_universe.default());
+
+open! Universe.Impl;
+open! Universe;
+
+/* Each input needs a jsonifier and a type */
+let input: InputSpec.t(_) = (
+  [(module Field), (module Bool)]: InputSpec.t(_)
+);
+
+module Witness = {
+  type t = Field.t;
+
+  module Constant = {
+    [@deriving yojson]
+    type t = Field.Constant.t;
+  };
+
+  let typ = Field.typ;
+};
+
+/* Test function, asserts that [Field.( * )] and [Field.inv] commute. */
+let assert_inverse_square_commutes = field_elt => {
+  let field_elt_2 = Field.(field_elt * field_elt);
+  let field_elt_inv = Field.invert(field_elt);
+  let field_elt_inv_2 = Field.(field_elt_inv * field_elt_inv);
+  let product = Field.(field_elt_2 * field_elt_inv_2);
+  Field.assertEqual(product, Field.one);
+};
+
+/* The main function. This is executed to build a proof */
+let main = (witness, field_elt, _bit, ()) => {
+  assert_inverse_square_commutes(field_elt);
+  assert_inverse_square_commutes(witness);
+};
+
+let () = InputSpec.run_main(input, (module Witness), main);
+`;
+      fs.writeFile("src/js_snarky_project.re", main, fail);
     }
 /*****************************************************************************
  * src/run_snarky.ml
@@ -96,7 +143,7 @@ let main witness field_elt _bit () =
  *****************************************************************************/
   if (!fs.existsSync("index.js")) {
     const index = `const Snarky = require("js_snarky");
-const snarky = new Snarky("src/run_snarky.exe");
+const snarky = new Snarky("src/js_snarky_project.exe");
 
 var prove_and_verify = function(statement, witness) {
   return snarky.prove({
@@ -135,9 +182,9 @@ prove_and_verify(["2", true], "9").then(function() {
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "dune build src/run_snarky.exe",
+    "build": "dune build src/js_snarky_project.exe",
     "clean": "dune clean",
-    "watch": "dune build -w src/run_snarky.exe"
+    "watch": "dune build -w src/js_snarky_project.exe"
   },
   "author": "you",
   "license": "UNLICENSED"
@@ -150,7 +197,7 @@ prove_and_verify(["2", true], "9").then(function() {
  *****************************************************************************/
   /* Ensure that symlinked node_modules folders don't kill dune. */
   if (!fs.existsSync("dune")) {
-    const pkg = "(dirs :standard \ node_modules)"
+    const pkg = "(dirs :standard \\ node_modules)"
     fs.writeFile("dune", pkg, fail);
   }
 } else {
