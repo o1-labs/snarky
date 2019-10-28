@@ -107,12 +107,16 @@ module Field = struct
 end
 
 module type S = sig
-  module Impl : Snarky.Snark_intf.Run
+  module Impl : Snarky.Snark_intf.Run with type prover_state = unit
 
   module Bool : sig
     open Impl
 
     type t = Boolean.var
+
+    module Constant : sig
+      type t = bool [@@deriving yojson]
+    end
 
     val true_ : t
 
@@ -265,6 +269,8 @@ module type S = sig
 
     val toBits : ?length:int -> t -> Bool.t array
   end
+
+  module InputSpec : Input_spec.S with module Impl := Impl
 
   module Schnorr : sig
     module PrivateKey : sig

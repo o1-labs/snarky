@@ -885,15 +885,17 @@ struct
 
       let read_proving_key proof_system =
         match proof_system.proving_key_path with
-        | Some path ->
-            Some (Proving_key.of_string (In_channel.read_all path))
+        | Some path -> (
+          try Some (Proving_key.of_string (In_channel.read_all path))
+          with _ -> None )
         | None ->
             None
 
       let read_verification_key proof_system =
         match proof_system.verification_key_path with
-        | Some path ->
-            Some (Verification_key.of_string (In_channel.read_all path))
+        | Some path -> (
+          try Some (Verification_key.of_string (In_channel.read_all path))
+          with _ -> None )
         | None ->
             None
 
@@ -1038,6 +1040,27 @@ struct
               go t' (k var)
       in
       go t0 k0
+
+    let conv_never_use : type r_var r_value.
+           (unit -> 'hack)
+        -> (unit -> r_var, r_value, 'k_var, 'k_value) t
+        -> ('hack -> 'k_var)
+        -> 'k_var =
+     fun f t k ->
+      let rec go : type k_var k_value.
+             (unit -> r_var, r_value, k_var, k_value) t
+          -> ('hack -> k_var)
+          -> k_var =
+       fun t ->
+        match t with
+        | [] ->
+            fun k () ->
+              let hack = f () in
+              k hack ()
+        | _ :: t' ->
+            fun k arg -> go t' (fun hack -> k hack arg)
+      in
+      go t k
 
     let prove :
            run:('a, 's, 'checked) Checked.Runner.run
@@ -1619,6 +1642,8 @@ struct
     Run.generate_keypair ~run:Checked.run ~exposing k
 
   let conv f = Run.conv (fun x _ -> f x)
+
+  let conv_never_use = Run.conv_never_use
 
   let prove ?message key t s k = Run.prove ~run:Checked.run ?message key t s k
 

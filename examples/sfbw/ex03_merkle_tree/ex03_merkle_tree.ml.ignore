@@ -17,7 +17,9 @@ module Witness = struct
       (MerkleTree.Path.typ ~depth)
 end
 
-let main ((index, path) : Witness.t) supposed_root elt =
+let input = InputSpec.[(module Hash); (module Field)]
+
+let main ((index, path) : Witness.t) supposed_root elt () =
   let acc = ref elt in
   for i = 0 to depth - 1 do
       let bit = index.(i) in
@@ -26,3 +28,5 @@ let main ((index, path) : Witness.t) supposed_root elt =
       acc := Hash.hash [| left; right |]
   done;
   Hash.assertEqual !acc supposed_root
+
+let () = InputSpec.run_main input (module Witness) main

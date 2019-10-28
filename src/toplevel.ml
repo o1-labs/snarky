@@ -345,3 +345,179 @@ let%test_unit "toplevel_functor" =
     end )
   in
   ()
+
+module Make_json
+    (Intf : Snark_intf.Run_basic with type prover_state = unit) (M : sig
+        type arg0
+
+        type computation0
+
+        type computation = arg0 -> computation0
+
+        type public_input
+
+        val public_input :
+          (unit -> unit, unit, computation, public_input) Intf.Data_spec.t
+
+        val read_input : Yojson.Safe.json -> (unit, public_input) H_list.t
+
+        module Witness : sig
+          type t
+
+          module Constant : sig
+            type t
+
+            val of_yojson : Yojson.Safe.json -> (t, string) Result.t
+          end
+
+          val typ : (t, Constant.t) Intf.Typ.t
+        end
+
+        val main : Witness.t -> computation
+    end) =
+struct
+  open Intf
+
+  let bad_object str =
+    `Assoc [("name", `String "error"); ("message", `String str)]
+
+  let print_key fmt str = Format.(fprintf fmt "'%s'" str)
+
+  let report_error ~json ~full =
+    Format.(fprintf err_formatter "Could not interpret JSON message: %s@.")
+      full ;
+    failwith json
+
+  let report_no_key keys =
+    let open Format in
+    let full =
+      fprintf str_formatter "there is no key matching any of %a"
+        (pp_print_list
+           ~pp_sep:(fun fmt () -> pp_print_string fmt ", ")
+           print_key)
+        keys ;
+      flush_str_formatter ()
+    in
+    let json = sprintf "Missing key '%s'" (List.hd_exn keys) in
+    report_error ~full ~json
+
+  let find_key ~keys l =
+    List.find_map l ~f:(fun (key, value) ->
+        if List.mem ~equal:String.equal keys key then Some value else None )
+
+  let main () =
+    (* We're communicating over stdout, don't log to it! *)
+    Libsnark.set_printing_off () ;
+    let module W = struct
+      type _ Request.t += Witness : M.Witness.Constant.t Request.t
+    end in
+    let main =
+      (* TODO: Really big hack, kill this ASAP. *)
+      Intf.Internal_Basic.conv_never_use
+        (fun () -> Intf.exists ~request:(fun () -> W.Witness) M.Witness.typ)
+        M.public_input M.main
+    in
+    let proof_system =
+      Proof_system.create ~proving_key_path:"proving_key.pk"
+        ~verification_key_path:"verification_key.vk"
+        ~public_input:M.public_input main
+    in
+    let public_input_keys = ["statement"; "public_input"; "data"] in
+    let prover_state_keys =
+      ["witness"; "prover_state"; "auxiliary_input"; "auxiliary"]
+    in
+    let proof_keys = ["proof"] in
+    Stream.iter
+      (fun json ->
+        try
+          let l =
+            match json with
+            | `Assoc l ->
+                l
+            | _ ->
+                report_error ~full:"expected an object." ~json:"Not an object"
+          in
+          match List.Assoc.find ~equal:String.equal l "command" with
+          | Some (`String "prove") -> (
+              let public_input =
+                match find_key ~keys:public_input_keys l with
+                | Some public_input ->
+                    M.read_input public_input
+                | None ->
+                    report_no_key public_input_keys
+              in
+              match
+                M.Witness.Constant.of_yojson
+                  (Option.value
+                     (find_key ~keys:prover_state_keys l)
+                     ~default:(`Assoc []))
+              with
+              | Error e ->
+                  report_error ~json:"Could not parse witness."
+                    ~full:(sprintf "Could not parse witness: %s" e)
+              | Ok witness ->
+                  let proof =
+                    Proof_system.prove ~public_input proof_system ()
+                      ~handlers:
+                        [ (fun (With {request; respond}) ->
+                            match request with
+                            | W.Witness ->
+                                respond (Provide witness)
+                            | _ ->
+                                failwith "Unhandled" ) ]
+                  in
+                  let proof_string =
+                    let size = Proof.bin_size_t proof in
+                    let buf = Bigstring.create size in
+                    ignore (Proof.bin_write_t buf ~pos:0 proof) ;
+                    Base64.encode_string (Bigstring.to_string buf)
+                  in
+                  Yojson.Safe.pretty_to_channel stdout
+                    (`Assoc
+                      [ ("name", `String "proof")
+                      ; ("proof", `String proof_string) ]) )
+          | Some (`String "verify") ->
+              let public_input =
+                match find_key ~keys:public_input_keys l with
+                | Some public_input ->
+                    M.read_input public_input
+                | None ->
+                    report_no_key public_input_keys
+              in
+              let proof =
+                match find_key ~keys:proof_keys l with
+                | Some (`String str) ->
+                    let buf = Bigstring.of_string (Base64.decode_exn str) in
+                    Proof.bin_read_t buf ~pos_ref:(ref 0)
+                | Some _ ->
+                    report_error
+                      ~full:"expected value for key 'proof' to be a string."
+                      ~json:"Bad proof value"
+                | None ->
+                    report_no_key public_input_keys
+              in
+              let verified =
+                Proof_system.verify ~public_input proof_system proof
+              in
+              Yojson.Safe.pretty_to_channel stdout
+                (`Assoc
+                  [("name", `String "verified"); ("verified", `Bool verified)])
+          | Some _ ->
+              report_error ~full:"unknown command." ~json:"Unknown command"
+          | None ->
+              report_error ~full:"there is no key 'command' in the object."
+                ~json:"Missing key 'command'"
+        with
+        | Failure str ->
+            Yojson.Safe.pretty_to_channel stdout (bad_object str)
+        | Yojson.Json_error str ->
+            Format.(fprintf err_formatter "JSON error: %s@." str) ;
+            Yojson.Safe.pretty_to_channel stdout
+              (bad_object (sprintf "Parse error: %s" str))
+        | exn ->
+            let exn = Exn.to_string exn in
+            Format.(fprintf err_formatter "Unknown error:@.%s@." exn) ;
+            Yojson.Safe.pretty_to_channel stdout
+              (bad_object (sprintf "Unknown error:\n%s" exn)) )
+      (Yojson.Safe.stream_from_channel In_channel.stdin)
+end

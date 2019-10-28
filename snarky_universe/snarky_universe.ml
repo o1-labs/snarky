@@ -70,6 +70,10 @@ end)
   module Bool = struct
     open Boolean
 
+    module Constant = struct
+      type t = bool [@@deriving yojson]
+    end
+
     type t = var
 
     let typ = typ
@@ -374,6 +378,8 @@ end)
 
     let divMod = div_mod ~m
   end
+
+  module InputSpec = Input_spec.Make (Impl)
 
   module Group = Group.Make (C) (Impl) ()
 

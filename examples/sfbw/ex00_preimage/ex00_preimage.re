@@ -4,5 +4,9 @@ open! Universe;
 
 module Witness = Field;
 
-let main = (preimage: Witness.t, h) =>
+let input = InputSpec.[(module Field)];
+
+let main = (preimage: Witness.t, h, ()) =>
   Field.assertEqual(Hash.hash([|preimage|]), h);
+
+InputSpec.run_main(input, (module Witness), main);
