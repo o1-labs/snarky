@@ -79,6 +79,14 @@ module Field = struct
     val assertEqual : t -> t -> unit
 
     val assertR1 : t -> t -> t -> unit
+
+    val isSquare : t -> bool
+
+    val sqrtCheck : t -> t * bool
+    (** If x is a square in the field and
+    (b, y) = x;
+    If b = true, then y is sqrt(x)
+    If b = false, then y is a value which is not meaningful *)
   end
 
   module type Constant = sig
@@ -116,6 +124,8 @@ module type S = sig
 
     val not : t -> t
 
+    val negate : t -> t
+
     val ( = ) : t -> t -> t
 
     val equal : t -> t -> t
@@ -125,6 +135,10 @@ module type S = sig
     val any : t list -> t
 
     val exactlyOne : t list -> t
+
+    val assertTrue : t -> unit
+
+    val assertFalse : t -> unit
 
     val assertAll : t list -> unit
 
@@ -156,6 +170,8 @@ module type S = sig
 
     module Constant : sig
       type t = Field.Constant.t [@@deriving yojson]
+
+      val hash : Field.Constant.t array -> t
     end
 
     val typ : (t, Constant.t) Impl.Typ.t
@@ -190,10 +206,62 @@ module type S = sig
       val typ : depth:int -> (t, Constant.t) Typ.t
 
       val check :
-        t -> Hash.t (* root hash *) -> Hash.t (* element hash *) -> unit
+        t -> Hash.t (* root hash *) -> Hash.t (* element hash *) -> Bool.t
     end
 
     val ofRoot : ('a -> Hash.t) -> Hash.t -> 'a t
+
+    module Constant : sig
+      type 'a t
+
+      val root : _ t -> Hash.Constant.t
+
+      val ofArray : ('a -> Hash.Constant.t) -> 'a -> 'a array -> 'a t
+
+      module MembershipProof : sig
+        val create : 'a t -> int -> MembershipProof.Constant.t
+
+        type t = MembershipProof.Constant.t
+
+        val check : t -> Hash.Constant.t -> Hash.Constant.t -> bool
+      end
+    end
+  end
+
+  module Integer : sig
+    type t
+
+    val one : t
+
+    val ofBigint : Bigint.t -> t
+
+    val ( + ) : t -> t -> t
+
+    val ( * ) : t -> t -> t
+
+    val add : t -> t -> t
+
+    val mul : t -> t -> t
+
+    val divMod : t -> t -> t * t
+
+    val equal : t -> t -> Bool.t
+
+    val ( = ) : t -> t -> Bool.t
+
+    val ( <= ) : t -> t -> Bool.t
+
+    val ( >= ) : t -> t -> Bool.t
+
+    val ( < ) : t -> t -> Bool.t
+
+    val ( > ) : t -> t -> Bool.t
+
+    val toField : t -> Field.t
+
+    val ofBits : Bool.t array -> t
+
+    val toBits : ?length:int -> t -> Bool.t array
   end
 
   module InputSpec : Input_spec.S with module Impl := Impl

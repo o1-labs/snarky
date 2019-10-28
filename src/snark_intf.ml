@@ -707,6 +707,20 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           If [x] is 0, this raises a [Failure].
       *)
 
+      val is_square : Var.t -> (Boolean.var, _) Checked.t
+      (** [is_square x] checks if [x] is a square in the field.
+      *)
+
+      val sqrt : Var.t -> (Var.t, _) Checked.t
+      (** [sqrt x] is the square root of [x] if [x] is a square. If not, this
+          raises a [Failure]
+      *)
+
+      val sqrt_check : Var.t -> (Var.t * Boolean.var, _) Checked.t
+      (** If [x] is a square in the field and [(y, b) = sqrt_check x],
+        If b = true, then x is a square and y is sqrt(x)
+        If b = false, then x is not a square y is a value which is not meaningful. *)
+
       val equal : Var.t -> Var.t -> (Boolean.var, 's) Checked.t
       (** [equal x y] returns a R1CS variable containing the value [true] if
           the R1CS variables [x] and [y] are equal, or [false] otherwise.
@@ -1893,6 +1907,12 @@ module type Run_basic = sig
     val div : t -> t -> t
 
     val inv : t -> t
+
+    val is_square : t -> Boolean.var
+
+    val sqrt : t -> t
+
+    val sqrt_check : t -> t * Boolean.var
 
     val equal : t -> t -> Boolean.var
 

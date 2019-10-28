@@ -1,3 +1,5 @@
+module B = Bigint
+
 module Cond (Impl : sig
   module Boolean : sig
     type var
@@ -88,11 +90,17 @@ end)
 
     let not = not
 
+    let negate = not
+
     let exactlyOne (bs : t list) =
       Field.equal Field.one
         (Core_kernel.List.reduce_exn ~f:Field.add (bs :> Field.t list))
 
     let assertEqual (x : t) (y : t) = Field.(Assert.equal (x :> t) (y :> t))
+
+    let assertTrue = assertEqual true_
+
+    let assertFalse = assertEqual false_
 
     let assertAny = Assert.any
 
@@ -133,11 +141,11 @@ end)
 
       let square = square
 
-      let sqrt x =
-        let y =
-          exists typ ~compute:(fun () -> Constant.sqrt (As_prover.read_var x))
-        in
-        assert_square y x ; y
+      let sqrt = sqrt
+
+      let isSquare = is_square
+
+      let sqrtCheck = sqrt_check
 
       let invert = inv
 
@@ -228,7 +236,9 @@ end)
     let hash = T.hash
 
     module Constant = struct
-      type t = Field.Constant.t [@@deriving yojson]
+      type t = Field.Constant.t [@@deriving yojson, eq]
+
+      let hash = T.Constant.hash
     end
   end
 
@@ -260,7 +270,8 @@ end)
     end
 
     module MembershipProof = struct
-      type ('index, 'hash) t_ = {index: 'index; path: 'hash array}
+      type ('index, 'hash) t_ = ('index, 'hash) Membership_proof.t_ =
+        {index: 'index; path: 'hash array}
       [@@deriving yojson]
 
       type t = (Index.t, Hash.t) t_
@@ -295,12 +306,57 @@ end)
         go 0 entry_hash
 
       let check {index; path} root elt_hash =
-        Field.assertEqual (implied_root elt_hash index path) root
+        Field.equal (implied_root elt_hash index path) root
     end
 
     type 'a t = {hashElt: 'a -> Hash.t; root: Hash.t}
 
     let ofRoot hashElt root = {hashElt; root}
+
+    module Constant = Merkle_tree_unchecked.Make (Hash.Constant)
+  end
+
+  module Integer = struct
+    open Snarky_integer.Integer
+
+    type nonrec t = field t
+
+    let m : field Snarky.Snark.m = (module Impl)
+
+    let ofBigint = constant ~m
+
+    let one = ofBigint B.one
+
+    let equal = equal ~m
+
+    let ( = ) = equal
+
+    let ( <= ) = lte ~m
+
+    let ( < ) = lt ~m
+
+    let ( >= ) = gte ~m
+
+    let ( > ) = gt ~m
+
+    let toBits ?length t =
+      Bitstring_lib.Bitstring.Lsb_first.to_array (to_bits ?length ~m t)
+
+    let ofBits bits =
+      of_bits ~m
+        (Bitstring_lib.Bitstring.Lsb_first.of_list (Array.to_list bits))
+
+    let toField = to_field
+
+    let add = add ~m
+
+    let mul = mul ~m
+
+    let ( + ) = add
+
+    let ( * ) = mul
+
+    let divMod = div_mod ~m
   end
 
   module InputSpec = Input_spec.Make (Impl)

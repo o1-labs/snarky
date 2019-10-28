@@ -196,6 +196,8 @@ struct
 
     val print : t -> unit
 
+    val subgroup_check : t -> unit
+
     module Vector : Vector.S_binable with type elt := t
   end
 
@@ -304,9 +306,7 @@ struct
       | Zero ->
           zero
       | Non_zero t ->
-          on_curve_check t ;
-          let p = of_affine t in
-          subgroup_check p ; p
+          on_curve_check t ; of_affine t
 
     module B =
       Binable.Of_binable
@@ -2005,6 +2005,8 @@ module Make_bowe_gabizon (M : sig
     include Binable.S with type t := t
 
     val one : t
+
+    val subgroup_check : t -> unit
   end
 end) (H : sig
   open M
@@ -2097,6 +2099,8 @@ struct
 
     let verify ?message {a; b; c; z; delta_prime} vk input =
       let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
+      G2.subgroup_check b ;
+      G2.subgroup_check delta_prime ;
       Pre.verify_components ~a ~b ~c ~delta_prime ~y_s ~z vk input
 
     let get_dummy () =
