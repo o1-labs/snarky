@@ -1448,6 +1448,8 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    val set_constraint_system : t -> M.R1CS_constraint_system.t -> unit
   end = struct
     include Proving_key.Make
               (Ctypes_foreign)
@@ -1554,6 +1556,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
         let t = stub str in
         Caml.Gc.finalise (fun _ -> delete t) t ;
         t
+
+    let set_constraint_system : t -> M.R1CS_constraint_system.t -> unit =
+      foreign
+        (func_name "set_constraint_system")
+        (typ @-> M.R1CS_constraint_system.typ @-> returning void)
   end
 
   module Verification_key : sig
