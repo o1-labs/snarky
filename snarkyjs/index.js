@@ -47,7 +47,7 @@ module.exports = exports = function (name) {
         return new Promise (function (resolve, reject) {
           var response = JSON.parse(response_json);
           if (response.name == "error") {
-            reject(new Error(response.message));
+            reject(new Error(response.message + "\n\nBacktrace:\n" + response.backtrace));
           } else if (response.name == "proof") {
             resolve(response.proof);
           } else {
