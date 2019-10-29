@@ -18,6 +18,8 @@ struct
   let ( -? ) c x : cond = (c, x)
 
   let ( -: ) (c, x) y = if_ c ~then_:x ~else_:y
+
+  let select b x y = if_ b ~then_:x ~else_:y
 end
 
 type proof_system = Groth16 | GrothMaller17
