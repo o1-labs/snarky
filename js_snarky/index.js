@@ -9,17 +9,17 @@ var shallow_copy = function(obj) {
 };
 
 module.exports = exports = function (name) {
-  var args = ["exec", name, "--"].concat(arguments);
-  var process = child_process.spawn("dune", args,
+  var args = ["exec", "--display=quiet", name, "--"].concat(arguments);
+  var snarky_process = child_process.spawn("dune", args,
       {"stdio": ["pipe", "pipe", "inherit"]});
   var communicate = function (data) {
     return new Promise (function (resolve, reject) {
-      process.on("exit", function (code) {
+      snarky_process.on("exit", function (code) {
         reject(new Error ("Process exited with code " + code + "."));
       });
-      process.stdout.on("error", reject);
-      process.stdout.on("data", resolve);
-      process.stdin.write(data);
+      snarky_process.stdout.on("error", reject);
+      snarky_process.stdout.on("data", resolve);
+      snarky_process.stdin.write(data);
     });
   };
   var prove = function (query) {
@@ -62,5 +62,9 @@ module.exports = exports = function (name) {
         });
       }, function (err) { return err; });
   };
-  return {"prove": prove, "verify": verify};
+  return {
+    prove: prove,
+    verify: verify,
+    kill: function() { snarky_process.kill('SIGINT'); }
+  };
 };
