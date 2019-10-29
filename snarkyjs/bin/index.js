@@ -12,7 +12,7 @@ function fail(err) {
 };
 
 if (arguments.length === 0) {
-  console.log("Expected an argument.\nPossible commands are:\n  init\t\tInitialize a js_snarky project");
+  console.log("Expected an argument.\nPossible commands are:\n  init\t\tInitialize a snarkyjs project");
   process.exit(1);
 }
 else if (arguments[0] === "init") {
@@ -32,7 +32,7 @@ else if (arguments[0] === "init") {
  *****************************************************************************/
     if (!fs.existsSync("src/dune")) {
       const dune = `(executable
- (name js_snarky_project)
+ (name snarkyjs_project)
  (modes native)
  (libraries core_kernel snarky snarky_universe)
  (preprocess (pps ppx_snarky ppx_jane ppx_deriving ppx_deriving_yojson)))
@@ -40,9 +40,9 @@ else if (arguments[0] === "init") {
       fs.writeFile("src/dune", dune, fail);
     }
 /*****************************************************************************
- * src/js_snarky_project.ml.ignore
+ * src/snarkyjs_project.ml.ignore
  *****************************************************************************/
-    if (!fs.existsSync("src/js_snarky_project.ml.ignore")) {
+    if (!fs.existsSync("src/snarkyjs_project.ml.ignore")) {
       const main = `module Universe = (val Snarky_universe.default ())
 
 open! Universe.Impl
@@ -77,12 +77,12 @@ let main witness field_elt _bit () =
 let () =
   InputSpec.run_main input (module Witness) main
 `;
-      fs.writeFile("src/js_snarky_project.ml.ignore", main, fail);
+      fs.writeFile("src/snarkyjs_project.ml.ignore", main, fail);
     }
 /*****************************************************************************
- * src/js_snarky_project.re
+ * src/snarkyjs_project.re
  *****************************************************************************/
-    if (!fs.existsSync("src/js_snarky_project.re")) {
+    if (!fs.existsSync("src/snarkyjs_project.re")) {
       const main = `module Universe = (val Snarky_universe.default());
 
 open! Universe.Impl;
@@ -121,16 +121,7 @@ let main = (witness, field_elt, _bit, ()) => {
 
 let () = InputSpec.run_main(input, (module Witness), main);
 `;
-      fs.writeFile("src/js_snarky_project.re", main, fail);
-    }
-/*****************************************************************************
- * src/run_snarky.ml
- *****************************************************************************/
-    if (!fs.existsSync("src/run_snarky.ml")) {
-      const run_snarky = `let () =
-  Main.Universe.InputSpec.run_main Main.input (module Main.Witness) Main.main
-`;
-      fs.writeFile("src/run_snarky.ml", run_snarky, fail);
+      fs.writeFile("src/snarkyjs_project.re", main, fail);
     }
   };
   if (fs.existsSync("src")) {
@@ -142,8 +133,8 @@ let () = InputSpec.run_main(input, (module Witness), main);
  * index.js
  *****************************************************************************/
   if (!fs.existsSync("index.js")) {
-    const index = `const Snarky = require("js_snarky");
-const snarky = new Snarky("src/js_snarky_project.exe");
+    const index = `const Snarky = require("snarkyjs");
+const snarky = new Snarky("src/snarkyjs_project.exe");
 
 var prove_and_verify = function(statement, witness) {
   return snarky.prove({
@@ -182,9 +173,9 @@ prove_and_verify(["2", true], "9").then(function() {
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "dune build src/js_snarky_project.exe",
+    "build": "dune build src/snarkyjs_project.exe",
     "clean": "dune clean",
-    "watch": "dune build -w src/js_snarky_project.exe"
+    "watch": "dune build -w src/snarkyjs_project.exe"
   },
   "author": "you",
   "license": "UNLICENSED"
@@ -201,6 +192,6 @@ prove_and_verify(["2", true], "9").then(function() {
     fs.writeFile("dune", pkg, fail);
   }
 } else {
-  console.log("Unrecognised command " + arguments[0] + ".\nPossible commands are:\n  init\t\tInitialize a js_snarky project");
+  console.log("Unrecognised command " + arguments[0] + ".\nPossible commands are:\n  init\t\tInitialize a snarkyjs project");
   process.exit(1);
 }

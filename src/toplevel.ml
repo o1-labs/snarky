@@ -505,6 +505,13 @@ struct
               Yojson.Safe.pretty_to_channel stdout
                 (`Assoc
                   [("name", `String "verified"); ("verified", `Bool verified)])
+          | Some (`String "generate_keys") | Some (`String "generate-keys") ->
+              ignore (Proof_system.generate_keypair proof_system) ;
+              Yojson.Safe.pretty_to_channel stdout
+                (`Assoc
+                  [ ("name", `String "keys_generated")
+                  ; ("proving_key_path", `String "proving_key.pk")
+                  ; ("verification_key_path", `String "verification_key.vk") ])
           | Some _ ->
               report_error ~full:"unknown command." ~json:"Unknown command"
           | None ->

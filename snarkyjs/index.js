@@ -78,9 +78,30 @@ module.exports = exports = function (name) {
         });
       }, function (err) { return err; });
   };
+  var generate_keys = function() {
+    var query_json = JSON.stringify({"command": "generate_keys"});
+    return communicate(query_json).then(function (response_json) {
+        return new Promise (function (resolve, reject) {
+          var response = JSON.parse(response_json);
+          if (response.name == "error") {
+            reject(new Error(response.message));
+          } else if (response.name == "keys_generated") {
+            resolve({
+              "proving_key_path": response.proving_key_path,
+              "verification_key_path": response.verification_key_path
+            });
+          } else {
+            reject(new Error(
+              "Expected name 'keys_generated', but received '" + response.name + "' from process."
+            ));
+          }
+        });
+      }, function (err) { return err; });
+  };
   return {
     prove: prove,
     verify: verify,
+    generate_keys: generate_keys,
     kill: function() { snarky_process.kill('SIGINT'); }
   };
 };
