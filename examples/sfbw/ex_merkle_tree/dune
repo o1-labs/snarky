@@ -1,5 +1,5 @@
 (executable
-  (name ex03_merkle_tree)
+  (name ex_merkle_tree)
   (modes native)
   (libraries snarky snarky_universe core)
   (preprocess (pps ppx_deriving_yojson ppx_jane ppx_deriving.std)) )

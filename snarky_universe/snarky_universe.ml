@@ -345,6 +345,10 @@ end)
 
     let ofBigint = constant ~m
 
+    let ofInt n = ofBigint (B.of_int n)
+
+    let ofString s = ofBigint (B.of_string s)
+
     let one = ofBigint B.one
 
     let equal = equal ~m
@@ -380,6 +384,8 @@ end)
   end
 
   module InputSpec = Input_spec.Make (Impl)
+
+  let runMain = InputSpec.run_main
 
   module Group = Group.Make (C) (Impl) ()
 

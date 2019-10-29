@@ -21,4 +21,4 @@ let input = InputSpec.[(module Field)];
 let main = (preimage: Witness.t, h, ()) =>
   Field.assertEqual(Hash.hash([|Field.ofBits(preimage)|]), h);
 
-InputSpec.run_main(input, (module Witness), main);
+runMain(input, (module Witness), main);

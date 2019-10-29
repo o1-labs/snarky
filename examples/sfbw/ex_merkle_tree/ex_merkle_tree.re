@@ -2,7 +2,7 @@ module Universe = (val Snarky_universe.default());
 open! Universe.Impl;
 open! Universe;
 
-let depth = 32;
+let depth = 8;
 
 module Witness = {
   type t = (array(Bool.t), array(Hash.t));
@@ -29,4 +29,9 @@ let main = ((index, path): Witness.t, supposed_root, elt, ()) => {
   Hash.assertEqual(acc^, supposed_root);
 };
 
-InputSpec.run_main(input, (module Witness), main);
+let mainUsingBuiltIn = ((index, path): Witness.t, supposed_root, elt, ()) => {
+  Bool.assertTrue(
+    MerkleTree.MembershipProof.check({ index, path }, supposed_root, elt) );
+};
+
+runMain(input, (module Witness), main);

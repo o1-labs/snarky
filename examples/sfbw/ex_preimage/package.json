@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "dune build ex_bools.exe",
+    "build": "dune build ex00_preimage.exe",
     "clean": "dune clean",
-    "watch": "dune build -w ex_bools.exe"
+    "watch": "dune build -w ex00_preimage.exe"
   },
   "author": "you",
   "license": "UNLICENSED",
