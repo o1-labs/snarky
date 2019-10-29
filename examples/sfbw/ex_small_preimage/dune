@@ -1,5 +1,5 @@
 (executable
-  (name ex00_preimage)
+  (name ex_small_preimage)
   (modes native)
   (libraries snarky snarky_universe core)
   (preprocess (pps ppx_deriving_yojson ppx_jane ppx_deriving.std)) )

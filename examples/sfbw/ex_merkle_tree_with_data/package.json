@@ -4,13 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "dune build src/run_snarky.exe",
+    "build": "dune build ex_merkle_tree_with_data.exe",
     "clean": "dune clean",
-    "watch": "dune build -w src/run_snarky.exe"
+    "watch": "dune build -w ex_merkle_tree_with_data.exe"
   },
   "author": "you",
   "license": "UNLICENSED",
-  "dependencies": {
-    "js_snarky": "file:../../../js_snarky"
-  }
+  "dependencies": [
+    "snarkyjs-crypto",
+    "snarkyjs"
+  ]
 }

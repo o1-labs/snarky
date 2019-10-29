@@ -1,15 +1,24 @@
-const Snarky = require("js_snarky");
+const Snarky = require('snarkyjs');
+const { bn128 } = require('snarkyjs-crypto');
 const snarky = new Snarky("./ex_bools.exe");
 
-let run = function(data) {
-  console.log("Proving preimage " + data.witness + "\n");
-  return snarky.prove({
-    "statement": data.statement,
-    "witness": data.witness
-  }).then(function(proof) {
+const specialNumbers = [ 7, 30, 1024 ].map(bn128.Field.ofInt);
+
+const makeStatementAndWitness = (specialNumber) => {
+  return {
+    statement: [ bn128.Field.toString(bn128.Hash.hash([ specialNumber ])) ],
+    witness: bn128.Field.toString(specialNumber)
+  }
+};
+
+let run = function(specialNumber) {
+  const statementAndWitness = makeStatementAndWitness(specialNumber);
+
+  console.log("Proving preimage " + statementAndWitness.witness + "\n");
+  return snarky.prove(statementAndWitness).then(function(proof) {
     console.log("Created proof:\n" + proof + "\n");
     return snarky.verify({
-      "statement": data.statement,
+      "statement": statementAndWitness.statement,
       "proof": proof
     });
   }, console.log).then(function(verified) {
@@ -17,25 +26,7 @@ let run = function(data) {
   }, function() { process.exit(1); });
 }
 
-run({
-  "statement": [
-    "493360206186551699850930471382527704320153382588025911514311564864447225142"
-  ],
-  "witness": "7"
-}).then(function() {
-  return run({
-    "statement": [
-      "7127756033753096230854631514848773854696474340909605600143755533068927075188"
-    ],
-    "witness": "30"
-  })
-}).then(function() {
-  return run({
-    "statement": [
-      "736172886722736280065715348741339967685234645072191547344310985667416558423"
-    ],
-    "witness": "1024"
-  })
-}, console.log).then(function() {
-  process.exit(0);
-}, function() { process.exit(1); });
+run(specialNumbers[0])
+.then(() => run(specialNumbers[1]), console.log)
+.then(() => run(specialNumbers[2]), console.log)
+.then(() => process.exit(0), () => process.exit(1))

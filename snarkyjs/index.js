@@ -1,9 +1,25 @@
 const child_process = require("child_process");
 
-var shallow_copy = function(obj) {
-  var copy = new Object();
+const processObject = (obj) => {
+  if (typeof obj === 'number') {
+    return obj;
+  }
+  if (typeof obj === 'string') {
+    return obj;
+  }
+  if (typeof obj === 'bigint') {
+    return obj.toString();
+  }
+  if (typeof obj === 'boolean') {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(processObject);
+  }
+
+  const copy = new Object();
   for (var i in obj) {
-    copy[i] = obj[i];
+    copy[i] = processObject(obj[i]);
   }
   return copy;
 };
@@ -24,7 +40,7 @@ module.exports = exports = function (name) {
   };
   var prove = function (query) {
     /* Copy the object instead of mutating. */
-    var query = shallow_copy(query);
+    var query = processObject(query);
     query.command = "prove";
     var query_json = JSON.stringify(query);
     return communicate(query_json).then(function (response_json) {
@@ -44,7 +60,7 @@ module.exports = exports = function (name) {
   };
   var verify = function (query) {
     /* Copy the object instead of mutating. */
-    var query = shallow_copy(query);
+    var query = processObject(query);
     query.command = "verify";
     var query_json = JSON.stringify(query);
     return communicate(query_json).then(function (response_json) {
