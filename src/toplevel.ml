@@ -378,8 +378,11 @@ module Make_json
 struct
   open Intf
 
-  let bad_object str =
-    `Assoc [("name", `String "error"); ("message", `String str)]
+  let bad_object ~backtrace:bt str =
+    `Assoc
+      [ ("name", `String "error")
+      ; ("message", `String str)
+      ; ("backtrace", `String bt) ]
 
   let print_key fmt str = Format.(fprintf fmt "'%s'" str)
 
@@ -502,6 +505,13 @@ struct
               Yojson.Safe.pretty_to_channel stdout
                 (`Assoc
                   [("name", `String "verified"); ("verified", `Bool verified)])
+          | Some (`String "generate_keys") | Some (`String "generate-keys") ->
+              ignore (Proof_system.generate_keypair proof_system) ;
+              Yojson.Safe.pretty_to_channel stdout
+                (`Assoc
+                  [ ("name", `String "keys_generated")
+                  ; ("proving_key_path", `String "proving_key.pk")
+                  ; ("verification_key_path", `String "verification_key.vk") ])
           | Some _ ->
               report_error ~full:"unknown command." ~json:"Unknown command"
           | None ->
@@ -509,15 +519,18 @@ struct
                 ~json:"Missing key 'command'"
         with
         | Failure str ->
-            Yojson.Safe.pretty_to_channel stdout (bad_object str)
+            let backtrace = Printexc.get_backtrace () in
+            Yojson.Safe.pretty_to_channel stdout (bad_object ~backtrace str)
         | Yojson.Json_error str ->
+            let backtrace = Printexc.get_backtrace () in
             Format.(fprintf err_formatter "JSON error: %s@." str) ;
             Yojson.Safe.pretty_to_channel stdout
-              (bad_object (sprintf "Parse error: %s" str))
+              (bad_object ~backtrace (sprintf "Parse error: %s" str))
         | exn ->
+            let backtrace = Printexc.get_backtrace () in
             let exn = Exn.to_string exn in
             Format.(fprintf err_formatter "Unknown error:@.%s@." exn) ;
             Yojson.Safe.pretty_to_channel stdout
-              (bad_object (sprintf "Unknown error:\n%s" exn)) )
+              (bad_object ~backtrace (sprintf "Unknown error:\n%s" exn)) )
       (Yojson.Safe.stream_from_channel In_channel.stdin)
 end

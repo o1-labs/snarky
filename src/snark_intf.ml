@@ -19,6 +19,8 @@ module type Basic = sig
   module Proving_key : sig
     type t [@@deriving bin_io]
 
+    type proving_key = t [@@deriving bin_io]
+
     val to_string : t -> string
 
     val of_string : string -> t
@@ -26,12 +28,18 @@ module type Basic = sig
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    module With_r1cs_hash : sig
+      type t = Md5.t * proving_key [@@deriving bin_io]
+    end
   end
 
   (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
   module Verification_key : sig
     type t [@@deriving bin_io]
 
+    type verification_key = t [@@deriving bin_io]
+
     val to_string : t -> string
 
     val of_string : string -> t
@@ -39,6 +47,10 @@ module type Basic = sig
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    module With_r1cs_hash : sig
+      type t = Md5.t * verification_key [@@deriving bin_io]
+    end
   end
 
   (** The finite field over which the R1CS operates. *)
@@ -989,6 +1001,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
+      -> ?keys_with_hashes:bool
       -> ?handlers:Handler.t list
       -> ?reduce:bool
       -> public_input:( ('a, 's) Checked.t
@@ -1014,6 +1027,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           the verification key can be found. If the file does not exist and no
           [verification_key] argument is given, the generated key will be
           written to this file.
+        - [keys_with_hashes] determines whether keys read from and written to
+          the [proving_key_path] and [verification_key_path] should include a
+          MD5 digest of the constraint system.
+          Default value: [true].
         - [handlers] -- optional, the list of handlers that should be used to
           handle requests made from the checked computation
         - [reduce] -- optional, default [false], whether to perform the
@@ -1508,6 +1525,8 @@ module type Run_basic = sig
   module Proving_key : sig
     type t [@@deriving bin_io]
 
+    type proving_key = t [@@deriving bin_io]
+
     val to_string : t -> string
 
     val of_string : string -> t
@@ -1515,12 +1534,18 @@ module type Run_basic = sig
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    module With_r1cs_hash : sig
+      type t = Md5.t * proving_key [@@deriving bin_io]
+    end
   end
 
   (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
   module Verification_key : sig
     type t [@@deriving bin_io]
 
+    type verification_key = t [@@deriving bin_io]
+
     val to_string : t -> string
 
     val of_string : string -> t
@@ -1528,6 +1553,10 @@ module type Run_basic = sig
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    module With_r1cs_hash : sig
+      type t = Md5.t * verification_key [@@deriving bin_io]
+    end
   end
 
   (** The rank-1 constraint system used by this instance. See
@@ -2083,6 +2112,7 @@ module type Run_basic = sig
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
+      -> ?keys_with_hashes:bool
       -> ?handlers:Handler.t list
       -> public_input:( unit -> 'a
                       , unit
