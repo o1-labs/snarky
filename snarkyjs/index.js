@@ -79,7 +79,7 @@ module.exports = exports = function (name) {
       }, function (err) { return err; });
   };
   var generate_keys = function() {
-    var query_json = JSON.stringify({"command": "verify"});
+    var query_json = JSON.stringify({"command": "generate_keys"});
     return communicate(query_json).then(function (response_json) {
         return new Promise (function (resolve, reject) {
           var response = JSON.parse(response_json);
