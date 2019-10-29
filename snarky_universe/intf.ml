@@ -8,6 +8,8 @@ module type Cond_intf = sig
   val ( -? ) : bool -> t -> cond
 
   val ( -: ) : cond -> t -> t
+
+  val select : bool -> t -> t -> t
 end
 
 module Cond : sig
