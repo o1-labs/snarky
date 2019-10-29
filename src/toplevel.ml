@@ -378,8 +378,11 @@ module Make_json
 struct
   open Intf
 
-  let bad_object str =
-    `Assoc [("name", `String "error"); ("message", `String str)]
+  let bad_object ~backtrace:bt str =
+    `Assoc
+      [ ("name", `String "error")
+      ; ("message", `String str)
+      ; ("backtrace", `String bt) ]
 
   let print_key fmt str = Format.(fprintf fmt "'%s'" str)
 
@@ -509,15 +512,18 @@ struct
                 ~json:"Missing key 'command'"
         with
         | Failure str ->
-            Yojson.Safe.pretty_to_channel stdout (bad_object str)
+            let backtrace = Printexc.get_backtrace () in
+            Yojson.Safe.pretty_to_channel stdout (bad_object ~backtrace str)
         | Yojson.Json_error str ->
+            let backtrace = Printexc.get_backtrace () in
             Format.(fprintf err_formatter "JSON error: %s@." str) ;
             Yojson.Safe.pretty_to_channel stdout
-              (bad_object (sprintf "Parse error: %s" str))
+              (bad_object ~backtrace (sprintf "Parse error: %s" str))
         | exn ->
+            let backtrace = Printexc.get_backtrace () in
             let exn = Exn.to_string exn in
             Format.(fprintf err_formatter "Unknown error:@.%s@." exn) ;
             Yojson.Safe.pretty_to_channel stdout
-              (bad_object (sprintf "Unknown error:\n%s" exn)) )
+              (bad_object ~backtrace (sprintf "Unknown error:\n%s" exn)) )
       (Yojson.Safe.stream_from_channel In_channel.stdin)
 end
