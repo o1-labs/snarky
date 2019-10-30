@@ -1,1 +1,1 @@
-type t('a) = A('a, 'b) : t('a, 'b)
+type rec t('a) = A('a, 'b) : t('a, 'b)

@@ -270,7 +270,7 @@ let get_ctor (name : lid) env =
     match decl.tdec_desc with
     | TVariant ctors ->
         ctors
-    | TExtend (_, _, ctors) ->
+    | TExtend (_, ctors) ->
         ctors
     | _ ->
         assert false
@@ -926,7 +926,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
 let type_extension ~loc variant ctors env =
   let mode = Envi.current_mode env in
   let {Parsetypes.var_ident; var_params} = variant in
-  let path, ({tdec_params; tdec_desc; _} as decl) =
+  let path, {tdec_params; tdec_desc; _} =
     match Envi.raw_find_type_declaration ~mode var_ident env with
     | open_decl ->
         open_decl
@@ -955,13 +955,19 @@ let type_extension ~loc variant ctors env =
   let decl =
     { Parsetypes.tdec_ident= Location.mkloc tdec_ident loc
     ; tdec_params= var_params
-    ; tdec_desc= Pdec_extend (Location.mkloc path var_ident.loc, decl, ctors)
+    ; tdec_desc= Pdec_extend (Location.mkloc path var_ident.loc, ctors)
     ; tdec_loc= loc }
   in
-  let decl, env = Typet.TypeDecl.import decl env in
+  let decl, env =
+    match Typet.TypeDecl.import_rec [decl] env with
+    | [decl], env ->
+        (decl, env)
+    | _ ->
+        assert false
+  in
   let ctors =
     match decl.tdec_desc with
-    | Tdec_extend (_, _, ctors) ->
+    | Tdec_extend (_, ctors) ->
         ctors
     | _ ->
         failwith "Expected a TExtend."
@@ -990,12 +996,17 @@ let rec check_signature_item env item =
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ.type_type ;
       let name = map_loc ~f:(Ident.create ~mode) name in
-      let env = add_polymorphised name.txt typ.type_type env in
-      let env = Envi.add_implicit_instance name.txt typ.type_type env in
+      let typ' = Type1.flatten typ.type_type in
+      let typ' = polymorphise typ' env in
+      let env = Envi.add_name name.txt typ' env in
+      let env = Envi.add_implicit_instance name.txt typ' env in
       (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
   | Psig_type decl ->
       let decl, env = Typet.TypeDecl.import decl env in
       (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
+  | Psig_rectype decls ->
+      let decls, env = Typet.TypeDecl.import_rec decls env in
+      (env, {Typedast.sig_desc= Tsig_rectype decls; sig_loc= loc})
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
       let msig, m, env = check_module_sig env msig in
@@ -1169,7 +1180,9 @@ let rec check_statement env stmt =
       in
       let scope, env = Envi.pop_expr_scope env in
       let env = Envi.join_expr_scope env scope in
-      let env = Envi.add_implicit_instance name.txt e.exp_type env in
+      let typ = Type1.flatten e.exp_type in
+      let typ = polymorphise typ env in
+      let env = Envi.add_implicit_instance name.txt typ env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e)})
   | Pstmt_type decl when !in_decl ->
       let decl, env = Typet.TypeDecl.import decl env in
@@ -1189,6 +1202,9 @@ let rec check_statement env stmt =
       in
       in_decl := false ;
       ret
+  | Pstmt_rectype decls ->
+      let decls, env = Typet.TypeDecl.import_rec decls env in
+      (env, {Typedast.stmt_desc= Tstmt_rectype decls; stmt_loc= loc})
   | Pstmt_module (name, m) ->
       let env = Envi.open_module env in
       let env, m = check_module_expr env m in
@@ -1360,11 +1376,7 @@ and check_module_expr env m =
       in
       (env, {m with mod_desc= Tmod_functor (f_name, f, m)})
 
-let check_signature env signature =
-  Envi.set_type_predeclaring env ;
-  let ret = check_signature env signature in
-  Envi.unset_type_predeclaring env ;
-  ret
+let check_signature env signature = check_signature env signature
 
 let check (ast : statement list) (env : Envi.t) =
   List.fold_map ast ~init:env ~f:check_statement

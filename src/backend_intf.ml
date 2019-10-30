@@ -101,6 +101,8 @@ module type S = sig
 
     val r1cs_constraint_system : t -> R1CS_constraint_system.t
 
+    val set_constraint_system : t -> R1CS_constraint_system.t -> unit
+
     val to_string : t -> string
 
     val of_string : string -> t

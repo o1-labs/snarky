@@ -68,8 +68,6 @@ module Type0 = struct
         Type_decl.open_ ?loc ?params name
     | TExtend _ ->
         failwith "Cannot convert TExtend to a parsetree equivalent"
-    | TForward _ ->
-        failwith "Cannot convert TForward to a parsetree equivalent"
 
   and type_decl ?loc name decl =
     type_decl_desc ?loc
@@ -127,8 +125,8 @@ let type_decl_desc = function
       Pdec_variant (List.map ~f:ctor_decl ctors)
   | Tdec_open ->
       Pdec_open
-  | Tdec_extend (lid, typ, ctor) ->
-      Pdec_extend (lid, typ, List.map ~f:ctor_decl ctor)
+  | Tdec_extend (lid, ctor) ->
+      Pdec_extend (lid, List.map ~f:ctor_decl ctor)
 
 let type_decl
     {Typedast.tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec= _} =
@@ -225,6 +223,8 @@ let rec signature_desc = function
       Psig_instance (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_type decl ->
       Psig_type (type_decl decl)
+  | Tsig_rectype decls ->
+      Psig_rectype (List.map ~f:type_decl decls)
   | Tsig_module (name, msig) ->
       Psig_module (map_loc ~f:Ident.name name, module_sig msig)
   | Tsig_modtype (name, msig) ->
@@ -266,6 +266,8 @@ let rec statement_desc = function
       Pstmt_instance (map_loc ~f:Ident.name name, expression e)
   | Tstmt_type decl ->
       Pstmt_type (type_decl decl)
+  | Tstmt_rectype decls ->
+      Pstmt_rectype (List.map ~f:type_decl decls)
   | Tstmt_module (name, m) ->
       Pstmt_module (map_loc ~f:Ident.name name, module_expr m)
   | Tstmt_modtype (name, msig) ->

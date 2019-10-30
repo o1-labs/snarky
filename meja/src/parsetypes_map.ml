@@ -28,7 +28,7 @@ type mapper =
   ; module_desc: mapper -> module_desc -> module_desc
   ; location: mapper -> Location.t -> Location.t
   ; longident: mapper -> Longident.t -> Longident.t
-  ; type0: Type0_map.mapper }
+  ; path: mapper -> Path.t -> Path.t }
 
 let lid mapper {Location.txt; loc} =
   {Location.txt= mapper.longident mapper txt; loc= mapper.location mapper loc}
@@ -37,8 +37,7 @@ let str mapper ({Location.txt; loc} : str) =
   {Location.txt; loc= mapper.location mapper loc}
 
 let path mapper ({Location.txt; loc} : Path.t Location.loc) =
-  { Location.txt= mapper.type0.path mapper.type0 txt
-  ; loc= mapper.location mapper loc }
+  {Location.txt= mapper.path mapper txt; loc= mapper.location mapper loc}
 
 let type_expr mapper {type_desc; type_loc} =
   let type_loc = mapper.location mapper type_loc in
@@ -104,11 +103,9 @@ let type_decl_desc mapper = function
       Pdec_variant (List.map ~f:(mapper.ctor_decl mapper) ctors)
   | Pdec_open ->
       Pdec_open
-  | Pdec_extend (name, decl, ctors) ->
+  | Pdec_extend (name, ctors) ->
       Pdec_extend
-        ( path mapper name
-        , mapper.type0.type_decl mapper.type0 decl
-        , List.map ~f:(mapper.ctor_decl mapper) ctors )
+        (path mapper name, List.map ~f:(mapper.ctor_decl mapper) ctors)
 
 let literal (_iter : mapper) (l : literal) = l
 
@@ -206,6 +203,8 @@ let signature_desc mapper = function
       Psig_instance (str mapper name, mapper.type_expr mapper typ)
   | Psig_type decl ->
       Psig_type (mapper.type_decl mapper decl)
+  | Psig_rectype decls ->
+      Psig_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Psig_module (name, msig) ->
       Psig_module (str mapper name, mapper.module_sig mapper msig)
   | Psig_modtype (name, msig) ->
@@ -254,6 +253,8 @@ let statement_desc mapper = function
       Pstmt_instance (str mapper name, mapper.expression mapper e)
   | Pstmt_type decl ->
       Pstmt_type (mapper.type_decl mapper decl)
+  | Pstmt_rectype decls ->
+      Pstmt_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Pstmt_module (name, me) ->
       Pstmt_module (str mapper name, mapper.module_expr mapper me)
   | Pstmt_modtype (name, mty) ->
@@ -326,4 +327,4 @@ let default_iterator =
   ; module_desc
   ; location
   ; longident
-  ; type0= Type0_map.default_mapper }
+  ; path= (fun _mapper x -> x) }

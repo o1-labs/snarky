@@ -49,7 +49,7 @@ and type_decl_desc =
   | Tdec_record of field_decl list
   | Tdec_variant of ctor_decl list
   | Tdec_open
-  | Tdec_extend of path * Type0.type_decl * ctor_decl list
+  | Tdec_extend of path * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
 type literal = Int of int | Bool of bool | Field of string | String of string
@@ -66,6 +66,23 @@ and pattern_desc =
   | Tpat_int of int
   | Tpat_record of (path * pattern) list
   | Tpat_ctor of path * pattern option
+
+type convert_body =
+  { conv_body_desc: convert_body_desc
+  ; conv_body_loc: Location.t
+  ; conv_body_type: Type0.type_expr }
+
+(** AST for generating [Typ.t] instances. *)
+and convert_body_desc =
+  | Tconv_record of (path * convert_body) list
+  | Tconv_ctor of path * convert_body list
+  | Tconv_tuple of convert_body list
+
+and convert =
+  {conv_desc: convert_desc; conv_loc: Location.t; conv_type: Type0.type_expr}
+
+(** AST for generating [Typ.t] instances from other [Typ.t] instances. *)
+and convert_desc = Tconv_fun of ident * convert | Tconv_body of convert_body
 
 type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
@@ -99,6 +116,8 @@ and signature_desc =
   | Tsig_value of ident * type_expr
   | Tsig_instance of ident * type_expr
   | Tsig_type of type_decl
+  (* Note: no syntax support yet.. *)
+  | Tsig_rectype of type_decl list
   | Tsig_module of ident * module_sig
   | Tsig_modtype of ident * module_sig
   | Tsig_open of path
@@ -124,6 +143,7 @@ and statement_desc =
   | Tstmt_value of pattern * expression
   | Tstmt_instance of ident * expression
   | Tstmt_type of type_decl
+  | Tstmt_rectype of type_decl list
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig
   | Tstmt_open of path
