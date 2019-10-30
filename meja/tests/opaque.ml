@@ -1,7 +1,13 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-type nonrec t = int Snarky.As_prover.Ref.t
+include struct
+  type nonrec t = int Snarky.As_prover.Ref.t
+
+  and t = int
+
+  let typ = Snarky.Typ.Internal.ref ()
+end
 
 type nonrec 'a u = 'a option Snarky.As_prover.Ref.t
 
@@ -11,7 +17,13 @@ include struct
   type nonrec prover = A
 end
 
-type nonrec w = prover Snarky.As_prover.Ref.t
+include struct
+  type nonrec w = prover Snarky.As_prover.Ref.t
+
+  and w = prover
+
+  let w_typ = Snarky.Typ.Internal.ref ()
+end
 
 module A = struct
   type nonrec ('a, 'b) opaque = 'a * 'b
@@ -25,4 +37,10 @@ module A = struct
   let opaque = ()
 end
 
-type nonrec x = prover Snarky.As_prover.Ref.t
+include struct
+  type nonrec x = prover Snarky.As_prover.Ref.t
+
+  and x = prover
+
+  let x_typ = w_typ
+end

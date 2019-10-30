@@ -31,28 +31,42 @@ module Alias_record = struct
   include struct
     type nonrec ('a, 'b) u = {a: 'a; b: 'b}
 
-    let u_typ __implicit1__ __implicit2__ : (('a2, 'b2) u, ('a1, 'b1) u) Typ.t
-        =
-      { Typ.store=
-          (fun {a; b; _} ->
-            Typ.Store.bind (Typ.store __implicit1__ b) (fun b ->
-                Typ.Store.bind (Typ.store __implicit2__ a) (fun a ->
-                    Typ.Store.return {a; b} ) ) )
-      ; Typ.read=
-          (fun {a; b; _} ->
-            Typ.Read.bind (Typ.read __implicit1__ b) (fun b ->
-                Typ.Read.bind (Typ.read __implicit2__ a) (fun a ->
-                    Typ.Read.return {a; b} ) ) )
-      ; Typ.alloc=
-          Typ.Alloc.bind (Typ.alloc __implicit1__) (fun b ->
-              Typ.Alloc.bind (Typ.alloc __implicit2__) (fun a ->
-                  Typ.Alloc.return {a; b} ) )
-      ; Typ.check=
-          (fun {a; b; _} ->
-            Typ.check __implicit1__ b ; Typ.check __implicit2__ a ; () ) }
+    and ('a, 'b) u = {a: 'a; b: 'b}
+
+    let u_typ x___1050 x___1049 =
+      { Snarky.Types.Typ.store=
+          (fun {a; b} ->
+            Snarky.Typ_monads.Store.bind (x___1050.Snarky.Types.Typ.store a)
+              ~f:(fun a ->
+                Snarky.Typ_monads.Store.bind
+                  (x___1049.Snarky.Types.Typ.store b) ~f:(fun b ->
+                    Snarky.Typ_monads.Store.return {a; b} ) ) )
+      ; Snarky.Types.Typ.read=
+          (fun {a; b} ->
+            Snarky.Typ_monads.Read.bind (x___1050.Snarky.Types.Typ.read a)
+              ~f:(fun a ->
+                Snarky.Typ_monads.Read.bind (x___1049.Snarky.Types.Typ.read b)
+                  ~f:(fun b -> Snarky.Typ_monads.Read.return {a; b}) ) )
+      ; Snarky.Types.Typ.alloc=
+          Snarky.Typ_mondas.Alloc.bind x___1050.Snarky.Types.Typ.alloc
+            ~f:(fun a ->
+              Snarky.Typ_mondas.Alloc.bind x___1049.Snarky.Types.Typ.alloc
+                ~f:(fun b -> Snarky.Typ_monads.Alloc.return {a; b}) )
+      ; Snarky.Types.Typ.check=
+          (fun {a; b} ->
+            Snarky.Checked.bind (x___1050.Snarky.Types.Typ.check a)
+              ~f:(fun () ->
+                Snarky.Checked.bind (x___1049.Snarky.Types.Typ.check b)
+                  ~f:(fun () -> Snarky.Checked.return ()) ) ) }
   end
 
-  type nonrec ('a, 'b) v = ('a, 'a) u
+  include struct
+    type nonrec ('a, 'b) v = ('a, 'a) u
+
+    and ('a, 'b) v = ('a, 'a) u
+
+    let v_typ x___1055 x___1054 = u_typ x___1055 x___1055
+  end
 
   let f (x : (int, int) v) : (int, bool) v = x
 
