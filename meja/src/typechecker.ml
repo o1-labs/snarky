@@ -121,6 +121,12 @@ let rec check_type_aux ~loc typ ctyp env =
       assert false
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
+  | Tprover typ, _ when equal_mode ctyp.type_mode Prover ->
+      (* Ignore [Tprover] annotation when in prover mode. *)
+      check_type_aux typ ctyp env
+  | _, Tprover ctyp when equal_mode typ.type_mode Prover ->
+      (* Ignore [Tprover] annotation when in prover mode. *)
+      check_type_aux typ ctyp env
   | Tpoly _, _ | _, Tpoly _ ->
       (* We don't (yet) have a unification algorithm for [Tpoly], and unifying
          naively is clearly wrong: we don't want to instantiate the variables
@@ -229,6 +235,8 @@ let rec check_type_aux ~loc typ ctyp env =
       set_desc typ (Topaque typ') ;
       set_desc typ.type_alternate (Topaque typ') ;
       check_type_aux typ' ctyp' env
+  | Tprover typ, Tprover ctyp ->
+      check_type_aux typ ctyp env
   | Tctor _, _ | _, Tctor _ ->
       (* Unfold an alias and compare again *)
       let typ, ctyp =

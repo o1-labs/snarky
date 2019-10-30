@@ -40,6 +40,9 @@ module Type0 = struct
           Type.opaque (type_expr ?loc typ)
       | Prover ->
           type_expr ?loc typ )
+    | Tprover _ ->
+        (* TODO: Should we do something else here? *)
+        assert false
     | Treplace _ ->
         assert false
 

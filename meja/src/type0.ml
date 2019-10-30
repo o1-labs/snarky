@@ -25,6 +25,10 @@ and type_desc =
      sync structurally.
   *)
   | Topaque of type_expr
+  (* A type used to transparently expose prover-mode-only types in checked
+     types.
+  *)
+  | Tprover of type_expr
   (* Cache the current value to break recursion. *)
   | Treplace of type_expr
 [@@deriving sexp]

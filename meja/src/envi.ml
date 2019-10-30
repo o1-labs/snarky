@@ -1011,6 +1011,12 @@ module Type = struct
           1
       | Topaque typ1, Topaque typ2 ->
           compare typ1 typ2
+      | Topaque _, _ ->
+          1
+      | _, Topaque _ ->
+          -1
+      | Tprover typ1, Tprover typ2 ->
+          compare typ1 typ2
 
   and compare_all ~loc env typs1 typs2 =
     match (typs1, typs2) with

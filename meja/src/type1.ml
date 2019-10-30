@@ -181,6 +181,8 @@ let rec typ_debug_print fmt typ =
           typ_debug_print fmt (get_mode Prover typ)
       | Topaque typ ->
           print "opaque " ; typ_debug_print fmt typ
+      | Tprover typ ->
+          print "prover " ; typ_debug_print fmt typ
       | Treplace typ ->
           print "=== " ; typ_debug_print fmt typ ) ;
     Hash_set.remove hashtbl typ.type_id ) ;
@@ -328,6 +330,11 @@ module Mk = struct
     assert (not (is_poly typ)) ;
     assert (equal_mode Prover typ.type_mode) ;
     stitch ~mode depth (Topaque typ) (Topaque typ)
+
+  let prover ~mode depth typ =
+    assert (not (is_poly typ)) ;
+    assert (equal_mode Prover typ.type_mode) ;
+    stitch ~mode depth (Tpover typ) (Tprover typ)
 end
 
 type change =
@@ -483,6 +490,8 @@ let fold ~init ~f typ =
       f init typ
   | Topaque typ ->
       f init typ
+  | Tprover typ ->
+      f init typ
   | Treplace _ ->
       assert false
 
@@ -508,6 +517,8 @@ let rec copy_desc ~f = function
       Tconv (f typ)
   | Topaque typ ->
       Topaque (f typ)
+  | Tprover typ ->
+      Tprover (f typ)
   | Treplace _ ->
       assert false
 
@@ -776,6 +787,8 @@ let contains typ ~in_ =
         let typ' = get_mode typ.type_mode typ' in
         equal typ' || contains typ'
     | Topaque typ' ->
+        equal typ' || contains typ'
+    | Tprover typ' ->
         equal typ' || contains typ'
     | Tref _ ->
         assert false
