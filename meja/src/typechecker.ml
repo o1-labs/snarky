@@ -28,6 +28,7 @@ type error =
   | Convert_failed of type_expr * error
   | Cannot_create_conversion of type_expr
   | Convertible_not_in_checked
+  | Type_modes_mismatch of type_expr * type_expr
 
 exception Error of Location.t * error
 
@@ -74,8 +75,41 @@ let rec check_type_aux ~loc typ ctyp env =
   let typ = repr typ in
   let ctyp = repr ctyp in
   Type1.unify_depths typ ctyp ;
-  (* Ensure modes match. *)
-  assert (equal_mode typ.type_mode ctyp.type_mode) ;
+  (* Unpack checked mode [Tprover]s when unifying with a prover mode type,
+     raising an exception if there is any other kind of mismatch.
+  *)
+  let typ, ctyp =
+    match (typ, ctyp) with
+    | {type_mode= Checked; type_desc= Tprover typ; _}, {type_mode= Prover; _}
+      ->
+        (typ, ctyp)
+    | {type_mode= Prover; _}, {type_mode= Checked; type_desc= Tprover typ; _}
+      ->
+        (typ, ctyp)
+    | ({type_desc= Tconv _; _} as typ), ({type_desc= Tconv _; _} as ctyp)
+    | ( {type_desc= Tprover ({type_desc= Tconv _; _} as typ); _}
+      , ({type_desc= Tconv _; _} as ctyp) )
+    | ( ({type_desc= Tconv _; _} as typ)
+      , {type_desc= Tprover ({type_desc= Tconv _; _} as ctyp); _} ) -> (
+      (* Conversions work both ways, so we choose the same mode for each.
+         In particular, we chose Checked mode so that we don't inadvertently
+         throw away a tri-stitching.
+
+         We also have to erase any [Tprover] wrappers around each, otherwise
+         we will end up with a modes mismatch. Currently, it is safe to presume
+         that [Tprover]s will not nest.
+        *)
+      match (typ.type_mode, ctyp.type_mode) with
+      | Checked, Prover ->
+          (typ, ctyp.type_alternate)
+      | Prover, Checked ->
+          (typ.type_alternate, ctyp)
+      | _ ->
+          (typ, ctyp) )
+    | {type_mode= mode1; _}, {type_mode= mode2; _} ->
+        if equal_mode mode1 mode2 then (typ, ctyp)
+        else raise (Error (loc, Type_modes_mismatch (typ, ctyp)))
+  in
   (* Reject tri-stitchings with bad modes. *)
   assert (equal_mode typ.type_mode typ.type_alternate.type_alternate.type_mode) ;
   assert (
@@ -121,12 +155,6 @@ let rec check_type_aux ~loc typ ctyp env =
       assert false
   | _, _ when Int.equal typ.type_id ctyp.type_id ->
       ()
-  | Tprover typ, _ when equal_mode ctyp.type_mode Prover ->
-      (* Ignore [Tprover] annotation when in prover mode. *)
-      check_type_aux typ ctyp env
-  | _, Tprover ctyp when equal_mode typ.type_mode Prover ->
-      (* Ignore [Tprover] annotation when in prover mode. *)
-      check_type_aux typ ctyp env
   | Tpoly _, _ | _, Tpoly _ ->
       (* We don't (yet) have a unification algorithm for [Tpoly], and unifying
          naively is clearly wrong: we don't want to instantiate the variables
@@ -1923,6 +1951,11 @@ let rec report_error ppf = function
         pp_typ typ pp_typ typ.type_alternate
   | Convertible_not_in_checked ->
       fprintf ppf "Cannot create a convertible type in a Prover block."
+  | Type_modes_mismatch (typ1, typ2) ->
+      fprintf ppf
+        "@[<hov>Internal error: the modes of these types do not \
+         match:@;%a@;%a@]"
+        pp_typ typ1 pp_typ typ2
 
 let () =
   Location.register_error_of_exn (function
