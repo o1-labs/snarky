@@ -232,6 +232,8 @@ let rec expression_desc = function
         ; id }
   | Texp_if (e1, e2, e3) ->
       Pexp_if (expression e1, expression e2, Option.map ~f:expression e3)
+  | Texp_read (_conv, _conv_args, e) ->
+      expression_desc e.exp_desc
   | Texp_prover e ->
       Pexp_prover (expression e)
 

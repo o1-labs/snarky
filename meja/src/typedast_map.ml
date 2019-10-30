@@ -257,6 +257,12 @@ let expression_desc mapper = function
         ( mapper.expression mapper e1
         , mapper.expression mapper e2
         , Option.map ~f:(mapper.expression mapper) e3 )
+  | Texp_read (conv, conv_args, e) ->
+      Texp_read
+        ( mapper.convert mapper conv
+        , List.map conv_args ~f:(fun (label, e) ->
+              (label, mapper.expression mapper e) )
+        , mapper.expression mapper e )
   | Texp_prover e ->
       Texp_prover (mapper.expression mapper e)
 

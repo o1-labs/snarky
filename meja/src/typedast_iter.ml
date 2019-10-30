@@ -192,6 +192,10 @@ let expression_desc iter = function
       iter.expression iter e1 ;
       iter.expression iter e2 ;
       Option.iter ~f:(iter.expression iter) e3
+  | Texp_read (conv, conv_args, e) ->
+      iter.convert iter conv ;
+      List.iter conv_args ~f:(fun (_lbl, e) -> iter.expression iter e) ;
+      iter.expression iter e
   | Texp_prover e ->
       iter.expression iter e
 

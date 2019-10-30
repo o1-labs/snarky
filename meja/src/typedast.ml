@@ -110,6 +110,10 @@ and expression_desc =
       ; name: ident
       ; id: int }
   | Texp_if of expression * expression * expression option
+  | Texp_read of
+      convert (* arguments to the conversion *)
+      * (Asttypes.arg_label * expression) list
+      * expression
   | Texp_prover of expression
 
 type conv_type =

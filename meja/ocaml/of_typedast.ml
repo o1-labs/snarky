@@ -467,6 +467,19 @@ let rec of_expression_desc ?loc = function
   | Texp_if (e1, e2, e3) ->
       Exp.ifthenelse ?loc (of_expression e1) (of_expression e2)
         (Option.map ~f:of_expression e3)
+  | Texp_read (conv, conv_args, e) ->
+      let loc = Option.value ~default:Location.none loc in
+      [%expr
+        let typ = [%e of_convert conv] in
+        As_prover.read
+          [%e
+            let typ = Parsetree.([%expr typ]) in
+            if List.is_empty conv_args then typ
+            else
+              Exp.apply ~loc typ
+                (List.map conv_args ~f:(fun (label, e) ->
+                     (label, of_expression e) ))]
+          [%e of_expression e]]
   | Texp_prover e ->
       of_expression e
 
