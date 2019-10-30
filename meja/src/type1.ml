@@ -2,6 +2,17 @@ open Core_kernel
 open Ast_types
 open Type0
 
+type error = Mk_wrong_mode of string * type_expr list * mode * type_expr
+
+exception Error of Location.t * error
+
+let check_mode ~pos ~error_info mode typ =
+  if not (equal_mode mode typ.type_mode) then
+    let kind, typs = error_info () in
+    raise
+      (Error (Ast_build.Loc.of_prim pos, Mk_wrong_mode (kind, typs, mode, typ)))
+  else ()
+
 (** Get the stitched [type_expr] in the given mode. *)
 let get_mode mode typ =
   if equal_mode typ.type_mode mode then typ
@@ -226,13 +237,14 @@ module Mk = struct
       (mk' ~mode:Checked depth desc3)
 
   let tuple ~mode depth typs =
+    let error_info () = ("tuple", typs) in
     let alts = List.map ~f:type_alternate typs in
     let alt_alts = List.map ~f:type_alternate alts in
     if
       List.for_all2_exn typs alt_alts ~f:(fun typ alt ->
           (* Sanity check. *)
-          assert (equal_mode mode typ.type_mode) ;
-          assert (equal_mode mode alt.type_mode) ;
+          check_mode ~pos:__POS__ ~error_info mode typ ;
+          check_mode ~pos:__POS__ ~error_info mode alt ;
           assert (not (is_poly typ)) ;
           phys_equal typ alt )
     then stitch ~mode depth (Ttuple typs) (Ttuple alts)
@@ -241,6 +253,7 @@ module Mk = struct
       tri_stitch ~mode depth (Ttuple typs) (Ttuple alts) (Ttuple alt_alts)
 
   let arrow ~mode ?(explicit = Explicit) ?(label = Nolabel) depth typ1 typ2 =
+    let error_info () = ("arrow", [typ1; typ2]) in
     let alt1 = type_alternate typ1 in
     let alt2 = type_alternate typ2 in
     let alt_alt1 = type_alternate alt1 in
@@ -248,8 +261,8 @@ module Mk = struct
     if
       List.for_all2_exn [typ1; typ2] [alt_alt1; alt_alt2] ~f:(fun typ alt ->
           (* Sanity check. *)
-          assert (equal_mode mode typ.type_mode) ;
-          assert (equal_mode mode alt.type_mode) ;
+          check_mode ~pos:__POS__ ~error_info mode typ ;
+          check_mode ~pos:__POS__ ~error_info mode alt ;
           assert (not (is_poly typ)) ;
           phys_equal typ alt )
     then
@@ -264,6 +277,13 @@ module Mk = struct
         (Tarrow (alt_alt1, alt_alt2, explicit, label))
 
   let ctor ~mode depth path ?other_path ?tri_path params =
+    let error_info () =
+      let desc =
+        Format.(fprintf str_formatter "ctor (%a)" Path.debug_print path) ;
+        Format.flush_str_formatter ()
+      in
+      (desc, params)
+    in
     assert (Option.is_some other_path || Option.is_none tri_path) ;
     let other_path = Option.value ~default:path other_path in
     let alts = List.map ~f:type_alternate params in
@@ -271,8 +291,8 @@ module Mk = struct
     if
       List.for_all2_exn params alt_alts ~f:(fun typ alt ->
           (* Sanity check. *)
-          assert (equal_mode mode typ.type_mode) ;
-          assert (equal_mode mode alt.type_mode) ;
+          check_mode ~pos:__POS__ ~error_info mode typ ;
+          check_mode ~pos:__POS__ ~error_info mode alt ;
           assert (not (is_poly typ)) ;
           phys_equal typ alt )
       && Option.is_none tri_path
@@ -289,7 +309,9 @@ module Mk = struct
         (Tctor {var_ident= tri_path; var_params= alt_alts})
 
   let poly ~mode depth vars typ =
+    let error_info () = ("poly", typ :: vars) in
     assert (not (is_poly typ)) ;
+    check_mode ~pos:__POS__ ~error_info mode typ ;
     let alt = type_alternate typ in
     let alts = List.map ~f:type_alternate vars in
     let alt_alt = type_alternate alt in
@@ -298,8 +320,8 @@ module Mk = struct
     if
       List.for_all2_exn vars alt_alts ~f:(fun typ alt ->
           (* Sanity check. *)
-          assert (equal_mode mode typ.type_mode) ;
-          assert (equal_mode mode alt.type_mode) ;
+          check_mode ~pos:__POS__ ~error_info mode typ ;
+          check_mode ~pos:__POS__ ~error_info mode alt ;
           assert (not (is_poly typ)) ;
           (match typ.type_desc with Tvar _ -> () | _ -> assert false) ;
           phys_equal typ alt )
@@ -313,9 +335,10 @@ module Mk = struct
         (Tpoly (alt_alts, alt_alt))
 
   let conv ~mode depth typ1 typ2 =
+    let error_info () = ("conv", [typ1; typ2]) in
     assert (not (is_poly typ1 || is_poly typ2)) ;
-    assert (equal_mode typ1.type_mode Checked) ;
-    assert (equal_mode typ2.type_mode Prover) ;
+    check_mode ~pos:__POS__ ~error_info Checked typ1 ;
+    check_mode ~pos:__POS__ ~error_info Prover typ2 ;
     let typ_stitched =
       if are_stitched typ1 typ2 then typ1
       else stitch ~mode:Checked depth typ1.type_desc typ2.type_desc
@@ -327,14 +350,16 @@ module Mk = struct
     get_mode mode typ
 
   let opaque ~mode depth typ =
+    let error_info () = ("opaque", [typ]) in
     assert (not (is_poly typ)) ;
-    assert (equal_mode Prover typ.type_mode) ;
+    check_mode ~pos:__POS__ ~error_info Prover typ ;
     stitch ~mode depth (Topaque typ) (Topaque typ)
 
   let prover ~mode depth typ =
+    let error_info () = ("prover", [typ]) in
     assert (not (is_poly typ)) ;
-    assert (equal_mode Prover typ.type_mode) ;
-    stitch ~mode depth (Tpover typ) (Tprover typ)
+    check_mode ~pos:__POS__ ~error_info Prover typ ;
+    stitch ~mode depth (Tprover typ) (Tprover typ)
 end
 
 type change =
@@ -809,3 +834,21 @@ module Decl = struct
     in
     {tdec_params= params; tdec_desc= desc; tdec_id= !decl_id; tdec_ret}
 end
+
+open Format
+
+let report_error ppf = function
+  | Mk_wrong_mode (kind, typs, mode, typ) ->
+      fprintf ppf
+        "@[<hov>Internal error: Could not make a type %s from \
+         types@;@[<hov2>%a@]@;The type %a was expected to have mode %a.@]"
+        kind
+        (pp_print_list ~pp_sep:pp_print_newline typ_debug_print)
+        typs typ_debug_print typ pp_mode mode
+
+let () =
+  Location.register_error_of_exn (function
+    | Error (loc, err) ->
+        Some (Location.error_of_printer loc report_error err)
+    | _ ->
+        None )
