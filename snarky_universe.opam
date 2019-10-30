@@ -21,6 +21,7 @@ depends: [
   "snarky_signature"
   "sponge"
   "snarkette"
+  "ppx_deriving_yojson"
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "

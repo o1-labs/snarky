@@ -17,6 +17,7 @@ depends: [
   "ppx_jane"
   "bisect_ppx"
   "dune"                {build & >= "1.6"}
+  "ppx_deriving_yojson"
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
