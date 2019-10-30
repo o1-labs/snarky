@@ -709,12 +709,17 @@ let type_vars ?depth typ =
   in
   let empty = Typeset.empty in
   let rec type_vars set typ =
+    let mode = typ.type_mode in
     match typ.type_desc with
     | Tvar _ when deep_enough typ ->
         Set.add set typ
     | Tpoly (vars, typ) ->
         let poly_vars = List.fold ~init:empty vars ~f:type_vars in
         Set.union set (Set.diff (type_vars empty typ) poly_vars)
+    | (Tprover typ | Topaque typ) when not (equal_mode mode Prover) ->
+        (* Surface variables of the correct mode. *)
+        let prover_set = type_vars empty typ in
+        Set.union set (Typeset.map ~f:(get_mode mode) prover_set)
     | _ ->
         fold ~init:set typ ~f:type_vars
   in
