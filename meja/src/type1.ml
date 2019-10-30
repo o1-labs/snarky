@@ -601,11 +601,12 @@ let set_desc typ desc =
   Snapshot.add_to_history (Desc (typ, typ.type_desc)) ;
   typ.type_desc <- desc
 
+let unsafe_set_single_replacement typ typ' =
+  Snapshot.add_to_history (Replace (typ, typ.type_desc)) ;
+  typ.type_desc <- Treplace typ'
+
 let set_replacement typ typ' =
-  let replace_one typ typ' =
-    Snapshot.add_to_history (Replace (typ, typ.type_desc)) ;
-    typ.type_desc <- Treplace typ'
-  in
+  let replace_one = unsafe_set_single_replacement in
   replace_one typ typ' ;
   replace_one typ.type_alternate typ'.type_alternate ;
   let alt_alt = typ.type_alternate.type_alternate in
@@ -680,20 +681,38 @@ let flatten typ =
     | Tvar _ ->
         (* Don't copy variables! *)
         typ
-    | desc ->
-        let alt_desc = typ.type_alternate.type_desc in
-        let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
-        let typ' = mkvar ~mode:typ.type_mode typ.type_depth None in
-        let stitched = phys_equal typ typ.type_alternate.type_alternate in
-        if stitched then typ'.type_alternate.type_alternate <- typ' ;
-        set_replacement typ typ' ;
-        typ'.type_desc <- copy_desc ~f:flatten desc ;
-        typ'.type_alternate.type_desc <- copy_desc ~f:flatten alt_desc ;
-        if not stitched then
-          (* tri-stitched *)
-          typ'.type_alternate.type_alternate.type_desc
-          <- copy_desc ~f:flatten alt_alt_desc ;
-        typ'
+    | desc -> (
+      match typ.type_alternate.type_desc with
+      | Treplace alt ->
+          (* Tri-stitching, where the stitched part has already been
+               flattened.
+            *)
+          assert (not (phys_equal typ typ.type_alternate.type_alternate)) ;
+          assert (equal_mode typ.type_mode Checked) ;
+          let typ' = mk' ~mode:typ.type_mode typ.type_depth (Tvar None) in
+          typ'.type_alternate <- alt ;
+          unsafe_set_single_replacement typ typ' ;
+          typ'.type_desc <- copy_desc ~f:flatten desc ;
+          typ'
+      | Tvar _ ->
+          (* If the tri-stitched type isn't a type variable, this should also
+             have been instantiated.
+          *)
+          assert false
+      | _ ->
+          let alt_desc = typ.type_alternate.type_desc in
+          let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
+          let typ' = mkvar ~mode:typ.type_mode typ.type_depth None in
+          let stitched = phys_equal typ typ.type_alternate.type_alternate in
+          if stitched then typ'.type_alternate.type_alternate <- typ' ;
+          set_replacement typ typ' ;
+          typ'.type_desc <- copy_desc ~f:flatten desc ;
+          typ'.type_alternate.type_desc <- copy_desc ~f:flatten alt_desc ;
+          if not stitched then
+            (* tri-stitched *)
+            typ'.type_alternate.type_alternate.type_desc
+            <- copy_desc ~f:flatten alt_alt_desc ;
+          typ' )
   in
   let snap = Snapshot.create () in
   let typ = flatten typ in

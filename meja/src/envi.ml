@@ -893,25 +893,42 @@ module Type = struct
       | Tpoly _ ->
           (* Tpoly should only ever appear at the top level of a type. *)
           assert false
-      | desc ->
-          let alt_desc = typ.type_alternate.type_desc in
-          let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
-          let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
-          let stitched = phys_equal typ typ.type_alternate.type_alternate in
-          if stitched then typ'.type_alternate.type_alternate <- typ' ;
-          set_replacement typ typ' ;
-          (* NOTE: the variable description of [typ'] was just a placeholder,
+      | desc -> (
+        match typ.type_alternate.type_desc with
+        | Treplace alt ->
+            (* Tri-stitching, where the stitched part has already been copied.
+            *)
+            assert (not (phys_equal typ typ.type_alternate.type_alternate)) ;
+            assert (equal_mode typ.type_mode Checked) ;
+            let typ' = mk' ~mode:typ.type_mode typ.type_depth (Tvar None) in
+            typ'.type_alternate <- alt ;
+            unsafe_set_single_replacement typ typ' ;
+            typ'.type_desc <- copy_desc ~f:copy desc ;
+            typ'
+        | Tvar _ ->
+            (* If the tri-stitched type isn't a type variable, this should also
+               have been instantiated.
+            *)
+            assert false
+        | _ ->
+            let alt_desc = typ.type_alternate.type_desc in
+            let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
+            let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
+            let stitched = phys_equal typ typ.type_alternate.type_alternate in
+            if stitched then typ'.type_alternate.type_alternate <- typ' ;
+            set_replacement typ typ' ;
+            (* NOTE: the variable description of [typ'] was just a placeholder,
                    so we want this new value to be preserved after
                    backtracking.
-             DO NOT replace this with a [Type1.set_repr] or equivalent call.
-          *)
-          typ'.type_desc <- copy_desc ~f:copy desc ;
-          typ'.type_alternate.type_desc <- copy_desc ~f:copy alt_desc ;
-          if not stitched then
-            (* tri-stitched *)
-            typ'.type_alternate.type_alternate.type_desc
-            <- copy_desc ~f:copy alt_alt_desc ;
-          typ'
+               DO NOT replace this with a [Type1.set_repr] or equivalent call.
+            *)
+            typ'.type_desc <- copy_desc ~f:copy desc ;
+            typ'.type_alternate.type_desc <- copy_desc ~f:copy alt_desc ;
+            if not stitched then
+              (* tri-stitched *)
+              typ'.type_alternate.type_alternate.type_desc
+              <- copy_desc ~f:copy alt_alt_desc ;
+            typ' )
     in
     let typ = repr typ in
     let snap = Snapshot.create () in
