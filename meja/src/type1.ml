@@ -791,6 +791,19 @@ let get_rev_arrow_args typ =
   in
   go [] typ
 
+let rec get_rev_implicits acc typ =
+  match typ.type_desc with
+  | Tarrow (typ1, typ2, Implicit, label) ->
+      get_rev_implicits ((label, typ1) :: acc) typ2
+  | _ ->
+      (acc, typ)
+
+let get_implicits typ =
+  let implicits, typ = get_rev_implicits [] typ in
+  (List.rev implicits, typ)
+
+let get_rev_implicits typ = get_rev_implicits [] typ
+
 (** Returns [true] if [typ] is a strict subtype of [in_]
     (i.e. excluding [typ == in_]), or [false] otherwise.
 *)

@@ -1039,13 +1039,6 @@ module Type = struct
     | _ ->
         Type1.fold ~init:set ~f:(weak_variables depth) typ
 
-  let rec get_implicits acc typ =
-    match typ.type_desc with
-    | Tarrow (typ1, typ2, Implicit, label) ->
-        get_implicits ((label, typ1) :: acc) typ2
-    | _ ->
-        (List.rev acc, typ)
-
   let new_implicit_var ?(loc = Location.none) typ env =
     let mode = current_mode env in
     let {TypeEnvi.implicit_vars; implicit_id; _} = env.resolve_env.type_env in
@@ -1070,7 +1063,7 @@ module Type = struct
       ~f:(fun (id, instance_typ) ->
         let instance_typ = get_mode typ.type_mode (copy instance_typ env) in
         let snapshot = Snapshot.create () in
-        let _, base_typ = get_implicits [] instance_typ in
+        let _, base_typ = get_implicits instance_typ in
         if unifies env typ base_typ then
           if
             Set.exists typ_vars ~f:(fun var -> not (phys_equal var (repr var)))
@@ -1091,7 +1084,7 @@ module Type = struct
 
   let generate_implicits e env =
     let loc = e.Typedast.exp_loc in
-    let implicits, typ = get_implicits [] e.exp_type in
+    let implicits, typ = get_implicits e.exp_type in
     match implicits with
     | [] ->
         e
@@ -1142,7 +1135,7 @@ module Type = struct
         instantiate_implicits ~loc ~unifies (new_implicits @ implicit_vars) env
 
   let flattened_implicit_vars ~loc ~toplevel ~unifies typ_vars env =
-    let unifies env typ ctyp = unifies env typ (snd (get_implicits [] ctyp)) in
+    let unifies env typ ctyp = unifies env typ (snd (get_implicits ctyp)) in
     let {TypeEnvi.implicit_vars; _} = env.resolve_env.type_env in
     let implicit_vars =
       List.map implicit_vars ~f:(fun exp ->
@@ -1326,7 +1319,7 @@ let find_conversion ~unifies typ env =
   | [] ->
       None
   | (path, typ) :: _ ->
-      let args, _ = Type.get_implicits [] typ in
+      let args, _ = get_implicits typ in
       Some (path, args)
 
 (* Error handling *)

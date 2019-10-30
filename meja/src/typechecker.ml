@@ -668,10 +668,9 @@ and get_conversion_bodies ~can_add_args ~loc env free_vars typs =
 
 let get_conversion ~can_add_args ~loc env typ =
   let mode = Envi.current_mode env in
-  let rev_arguments, typ = get_rev_arrow_args typ in
+  let rev_arguments, typ = get_rev_implicits typ in
   let rev_arguments =
-    List.map rev_arguments ~f:(fun (typ', explicit, _) ->
-        assert (explicit = Implicit) ;
+    List.map rev_arguments ~f:(fun (_, typ') ->
         match typ'.type_desc with
         | Tconv typ' ->
             (typ', Ident.fresh mode)
@@ -751,8 +750,8 @@ let rec get_expression env expected exp =
       (* TODO: conv! *)
       let typ = get_mode mode typ in
       let path = Location.mkloc path name.loc in
-      let implicits, result_typ = Envi.Type.get_implicits [] typ in
-      check_type ~loc env expected result_typ ;
+      let implicits, result_typ = get_implicits typ in
+      check_type ~loc env expected (get_mode mode result_typ) ;
       let implicits =
         List.map implicits ~f:(fun (label, typ) ->
             (Implicit, label, Envi.Type.new_implicit_var ~loc typ env) )

@@ -26,7 +26,7 @@ and type_desc =
   *)
   | Topaque of type_expr
   (* A type used to transparently expose prover-mode-only types in checked
-     types.
+     types. This should only be used for implicit arguments.
   *)
   | Tprover of type_expr
   (* Cache the current value to break recursion. *)
