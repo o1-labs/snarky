@@ -1322,6 +1322,27 @@ let find_conversion ~unifies typ env =
       let args, _ = get_implicits typ in
       Some (path, args)
 
+(** Wrap any prover implicit arguments with [Tprover], so that they may be
+    surfaced as implicit arguments within checked types.
+*)
+let wrap_prover_implicits env =
+  if equal_mode Checked (current_mode env) then
+    let ({type_env; _} as resolve_env) = env.resolve_env in
+    resolve_env.type_env
+    <- { type_env with
+         implicit_vars=
+           List.map type_env.implicit_vars ~f:(fun exp ->
+               let typ = exp.Typedast.exp_type in
+               if equal_mode typ.type_mode Prover then
+                 (* NOTE: This is fine, because the expression overwriting is
+                           done in a subvalue of [exp_desc], which is
+                           preserved.
+                  *)
+                 { exp with
+                   exp_type= Type1.Mk.prover ~mode:Checked typ.type_depth typ
+                 }
+               else exp ) }
+
 (* Error handling *)
 
 open Format

@@ -1155,6 +1155,10 @@ let rec get_expression env expected exp =
       let e, env = get_expression env (Type1.get_mode Prover expected) e in
       check_type ~loc env expected (Type1.get_mode mode e.exp_type) ;
       let _, env = Envi.pop_expr_scope env in
+      (* Convert all prover-mode implicits to checked-mode equivalents if
+        necessary.
+      *)
+      Envi.wrap_prover_implicits env ;
       ({exp_loc= loc; exp_type= expected; exp_desc= Texp_prover e}, env)
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
