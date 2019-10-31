@@ -21,6 +21,8 @@ let b = fun () => {
     instance g = fun (i, j) => {i + j;};
     ignore(a(1));
     ignore(a(true));
+    ignore(a());
+    ignore(a((true, false)));
   };
   ignore(a(1));
   ignore(a(true));

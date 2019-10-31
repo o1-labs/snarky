@@ -616,6 +616,7 @@ let rec get_expression env expected exp =
         pattern {Typedast_iter.default_iterator with pattern} p ;
         Option.value_exn !ret
       in
+      let typ = polymorphise typ env in
       let env = Envi.add_implicit_instance ident.txt typ env in
       let e2, env = get_expression env expected e2 in
       let implicits_instantiated =
