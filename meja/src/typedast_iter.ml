@@ -310,6 +310,8 @@ let statement_desc iter = function
       ident iter name ; iter.module_sig iter mty
   | Tstmt_open name ->
       path iter name
+  | Tstmt_open_instance name ->
+      path iter name
   | Tstmt_typeext (typ, ctors) ->
       iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors

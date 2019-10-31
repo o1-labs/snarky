@@ -55,6 +55,7 @@ module Scope = struct
     | Module
     | Expr
     | Open of Path.t
+    | Open_instance of Path.t
     | Continue
     | Functor of ('t or_path -> 't)
 
@@ -577,6 +578,14 @@ let open_namespace_scope ?mode path scope env =
   |> push_scope {scope with kind= Scope.Open path}
   |> push_scope Scope.(empty ~mode Continue)
 
+let open_instance_scope ?mode path scope env =
+  let scope =
+    { (Scope.empty ~mode:scope.Scope.mode (Open_instance path)) with
+      instances= scope.instances }
+  in
+  let mode = mode_or_default mode env in
+  env |> push_scope scope |> push_scope Scope.(empty ~mode Continue)
+
 let open_mode_module_scope mode env =
   push_scope Scope.(empty ~mode Continue) env
 
@@ -611,6 +620,8 @@ let pop_module ~loc env =
             ~module_subst:add_name ~expr_subst
         in
         let scopes = List.map ~f:(Scope.subst subst) scopes in
+        all_scopes scopes env
+    | Open_instance _ ->
         all_scopes scopes env
     | Continue ->
         all_scopes (scope :: scopes) env

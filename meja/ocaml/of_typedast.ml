@@ -630,6 +630,9 @@ let rec of_statement_desc ?loc = function
         (Mtd.mk ?loc ?typ:(of_module_sig msig) (of_ident_loc name))
   | Tstmt_open name ->
       Str.open_ ?loc (Opn.mk ?loc (Of_ocaml.open_of_name (of_path_loc name)))
+  | Tstmt_open_instance _ ->
+      Str.eval ?loc
+        (Exp.construct ?loc (Location.mknoloc (Longident.Lident "()")) None)
   | Tstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)

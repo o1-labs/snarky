@@ -162,6 +162,8 @@ structure_item:
     { mkstmt ~pos:$loc (Pstmt_modtype (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
     { mkstmt ~pos:$loc (Pstmt_open x) }
+  | OPEN INSTANCE x = as_loc(longident(UIDENT, UIDENT))
+    { mkstmt ~pos:$loc (Pstmt_open_instance x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in

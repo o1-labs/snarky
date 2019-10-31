@@ -257,6 +257,8 @@ let statement_desc iter = function
       str iter name ; iter.module_sig iter mty
   | Pstmt_open name ->
       lid iter name
+  | Pstmt_open_instance name ->
+      lid iter name
   | Pstmt_typeext (typ, ctors) ->
       iter.variant iter typ ;
       List.iter ~f:(iter.ctor_decl iter) ctors

@@ -312,6 +312,8 @@ let rec statement_desc = function
       Pstmt_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tstmt_open path ->
       Pstmt_open (map_loc ~f:longident_of_path path)
+  | Tstmt_open_instance path ->
+      Pstmt_open_instance (map_loc ~f:longident_of_path path)
   | Tstmt_typeext (typ, ctors) ->
       Pstmt_typeext (variant typ, List.map ~f:ctor_decl ctors)
   | Tstmt_request (arg, ctor, handler) ->

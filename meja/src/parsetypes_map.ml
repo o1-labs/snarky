@@ -283,6 +283,8 @@ let statement_desc mapper = function
       Pstmt_modtype (str mapper name, mapper.module_sig mapper mty)
   | Pstmt_open name ->
       Pstmt_open (lid mapper name)
+  | Pstmt_open_instance name ->
+      Pstmt_open_instance (lid mapper name)
   | Pstmt_typeext (typ, ctors) ->
       Pstmt_typeext
         (mapper.variant mapper typ, List.map ~f:(mapper.ctor_decl mapper) ctors)
