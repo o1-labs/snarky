@@ -116,6 +116,7 @@ and statement_desc =
   | Pstmt_module of str * module_expr
   | Pstmt_modtype of str * module_sig
   | Pstmt_open of lid
+  | Pstmt_open_instance of lid
   | Pstmt_typeext of variant * ctor_decl list
   | Pstmt_request of
       type_expr * ctor_decl * (pattern option * expression) option

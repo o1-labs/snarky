@@ -147,6 +147,7 @@ and statement_desc =
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig
   | Tstmt_open of path
+  | Tstmt_open_instance of path
   | Tstmt_typeext of variant * ctor_decl list
   | Tstmt_request of
       type_expr * ctor_decl * (pattern option * expression) option

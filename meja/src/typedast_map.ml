@@ -323,6 +323,8 @@ let statement_desc mapper = function
       Tstmt_modtype (ident mapper name, mapper.module_sig mapper mty)
   | Tstmt_open name ->
       Tstmt_open (path mapper name)
+  | Tstmt_open_instance name ->
+      Tstmt_open_instance (path mapper name)
   | Tstmt_typeext (typ, ctors) ->
       Tstmt_typeext
         (mapper.variant mapper typ, List.map ~f:(mapper.ctor_decl mapper) ctors)

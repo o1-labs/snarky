@@ -1223,6 +1223,11 @@ let rec check_statement env stmt =
       ( Envi.open_namespace_scope path m env
       , { Typedast.stmt_loc= loc
         ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
+  | Pstmt_open_instance name ->
+      let path, m = Envi.find_module ~mode ~loc name env in
+      ( Envi.open_instance_scope path m env
+      , { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_open_instance (Location.mkloc path name.loc) } )
   | Pstmt_typeext (variant, ctors) ->
       let env, variant, ctors = type_extension ~loc variant ctors env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_typeext (variant, ctors)})
