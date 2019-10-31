@@ -544,6 +544,8 @@ block:
     { mkexp ~pos:$loc (Pexp_seq (e1, rest)) }
   | LET x = pat EQUAL lhs = expr SEMI rhs = block
     { mkexp ~pos:$loc (Pexp_let (x, lhs, rhs)) }
+  | INSTANCE x = as_loc(lident) EQUAL lhs = expr SEMI rhs = block
+    { mkexp ~pos:$loc (Pexp_instance (x, lhs, rhs)) }
   | LET pat EQUAL expr err = err
     { raise (Error (err, Missing_semi)) }
   | expr err = err

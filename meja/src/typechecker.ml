@@ -905,6 +905,35 @@ let rec get_expression env expected exp =
       Envi.Type.update_depths env e2.exp_type ;
       ( {exp_loc= loc; exp_type= e2.exp_type; exp_desc= Texp_let (p, e1, e2)}
       , env )
+  | Pexp_instance (name, e1, e2) ->
+      let env = Envi.open_expr_scope env in
+      let p = Ast_build.Pat.var ~loc:name.loc name.txt in
+      let p, e1, env = check_binding env p e1 in
+      let ident, typ =
+        let ret = ref None in
+        let pattern iter pat =
+          match pat.Typedast.pat_desc with
+          | Tpat_variable name ->
+              ret := Some (name, pat.Typedast.pat_type)
+          | _ ->
+              Typedast_iter.default_iterator.pattern iter pat
+        in
+        pattern {Typedast_iter.default_iterator with pattern} p ;
+        Option.value_exn !ret
+      in
+      let env = Envi.add_implicit_instance ident.txt typ env in
+      let e2, env = get_expression env expected e2 in
+      let implicits_instantiated =
+        (* Instantiate any implicits that we can within this scope. *)
+        Envi.Type.flattened_implicit_vars ~loc ~toplevel:false ~unifies Typeset.empty env
+      in
+      assert (List.is_empty implicits_instantiated) ;
+      let env = Envi.close_expr_scope env in
+      Envi.Type.update_depths env e2.exp_type ;
+      ( { exp_loc= loc
+        ; exp_type= e2.exp_type
+        ; exp_desc= Texp_instance (ident, e1, e2) }
+      , env )
   | Pexp_constraint (e, typ') ->
       let typ, env = Typet.Type.import typ' env in
       check_type ~loc env expected typ.type_type ;

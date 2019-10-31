@@ -207,6 +207,8 @@ let rec expression_desc = function
       Pexp_seq (expression e1, expression e2)
   | Texp_let (p, e1, e2) ->
       Pexp_let (pattern p, expression e1, expression e2)
+  | Texp_instance (name, e1, e2) ->
+      Pexp_instance (map_loc ~f:Ident.name name, expression e1, expression e2)
   | Texp_constraint (e, typ) ->
       Pexp_constraint (expression e, type_expr typ)
   | Texp_tuple es ->

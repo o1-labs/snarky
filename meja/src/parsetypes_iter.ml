@@ -150,6 +150,8 @@ let expression_desc iter = function
       iter.expression iter e1 ; iter.expression iter e2
   | Pexp_let (p, e1, e2) ->
       iter.pattern iter p ; iter.expression iter e1 ; iter.expression iter e2
+  | Pexp_instance (name, e1, e2) ->
+      str iter name ; iter.expression iter e1 ; iter.expression iter e2
   | Pexp_constraint (e, typ) ->
       iter.type_expr iter typ ; iter.expression iter e
   | Pexp_tuple es ->

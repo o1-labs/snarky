@@ -229,6 +229,11 @@ let expression_desc mapper = function
         ( mapper.pattern mapper p
         , mapper.expression mapper e1
         , mapper.expression mapper e2 )
+  | Texp_instance (name, e1, e2) ->
+      Texp_instance
+        ( ident mapper name
+        , mapper.expression mapper e1
+        , mapper.expression mapper e2 )
   | Texp_constraint (e, typ) ->
       Texp_constraint (mapper.expression mapper e, mapper.type_expr mapper typ)
   | Texp_tuple es ->
