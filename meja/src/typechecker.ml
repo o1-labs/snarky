@@ -925,7 +925,8 @@ let rec get_expression env expected exp =
       let e2, env = get_expression env expected e2 in
       let implicits_instantiated =
         (* Instantiate any implicits that we can within this scope. *)
-        Envi.Type.flattened_implicit_vars ~loc ~toplevel:false ~unifies Typeset.empty env
+        Envi.Type.flattened_implicit_vars ~loc ~toplevel:false ~unifies
+          Typeset.empty env
       in
       assert (List.is_empty implicits_instantiated) ;
       let env = Envi.close_expr_scope env in

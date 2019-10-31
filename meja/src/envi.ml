@@ -1095,7 +1095,9 @@ module Type = struct
       (typ : type_expr) typ_vars env =
     List.find_map env.scope_stack ~f:(fun scope ->
         List.find_map scope.instances ~f:(fun (_, path, instance_typ) ->
-            let instance_typ = get_mode typ.type_mode (copy instance_typ env) in
+            let instance_typ =
+              get_mode typ.type_mode (copy instance_typ env)
+            in
             let snapshot = Snapshot.create () in
             let _, base_typ = get_implicits instance_typ in
             if unifies env typ base_typ then
