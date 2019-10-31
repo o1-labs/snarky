@@ -197,6 +197,9 @@ let rec expression_desc fmt = function
   | Pexp_let (p, e1, e2) ->
       fprintf fmt "let@[<hv2>@ %a@] =@ @[<hv2>%a@];@;@]@ %a" pattern p
         expression e1 expression e2
+  | Pexp_instance (name, e1, e2) ->
+      fprintf fmt "let@[<hv2>@ %s@] =@ @[<hv2>%a@];@;@]@ %a" name.txt
+        expression e1 expression e2
   | Pexp_constraint (e, typ) ->
       fprintf fmt "(@[<hv1>%a :@ %a@])" expression e type_expr typ
   | Pexp_tuple es ->

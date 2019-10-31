@@ -418,6 +418,12 @@ let rec of_expression_desc ?loc = function
       Exp.let_ ?loc Nonrecursive
         [Vb.mk (of_pattern p) (of_expression e_rhs)]
         (of_expression e)
+  | Texp_instance (name, e_rhs, e) ->
+      Exp.let_ ?loc Nonrecursive
+        [ Vb.mk
+            (Pat.var ~loc:name.loc (of_ident_loc name))
+            (of_expression e_rhs) ]
+        (of_expression e)
   | Texp_tuple es ->
       Exp.tuple ?loc (List.map ~f:of_expression es)
   | Texp_match (e, cases) ->

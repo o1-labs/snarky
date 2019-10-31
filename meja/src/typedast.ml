@@ -95,6 +95,7 @@ and expression_desc =
   | Texp_newtype of ident * expression
   | Texp_seq of expression * expression
   | Texp_let of pattern * expression * expression
+  | Texp_instance of ident * expression * expression
   | Texp_constraint of expression * type_expr
   | Texp_tuple of expression list
   | Texp_match of expression * (pattern * expression) list

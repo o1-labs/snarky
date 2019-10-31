@@ -65,6 +65,7 @@ and expression_desc =
   | Pexp_newtype of str * expression
   | Pexp_seq of expression * expression
   | Pexp_let of pattern * expression * expression
+  | Pexp_instance of str * expression * expression
   | Pexp_constraint of expression * type_expr
   | Pexp_tuple of expression list
   | Pexp_match of expression * (pattern * expression) list

@@ -1,0 +1,27 @@
+let f = fun {x : int} => {
+  x;
+};
+
+let g = fun () => {
+  instance y = 15;
+  f;
+};
+
+let a = fun {f : int -> 'a -> 'a} (x) => {
+  f(12, x);
+};
+
+instance h = fun (_, x) => {
+  x;
+};
+
+let b = fun () => {
+  {
+    instance f = fun (_, x) => {x;};
+    instance g = fun (i, j) => {i + j;};
+    ignore(a(1));
+    ignore(a(true));
+  };
+  ignore(a(1));
+  ignore(a(true));
+};
