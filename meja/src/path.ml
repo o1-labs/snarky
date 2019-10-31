@@ -32,6 +32,27 @@ let rec debug_print ppf path =
 let dot (path : t) (ident : Ident.t) =
   Pdot (path, Ident.mode ident, Ident.name ident)
 
+(** Deconstruct a path to an [Ident.t] and a list of mode, name pairs, from
+    innermost to outermost.
+
+    For example, [deconstruct(A.B.C.d) = (A, [(_, "B"); (_, "C"); (_, "d")])].
+*)
+let deconstruct path =
+  let rec go l = function
+    | Pident ident ->
+        (ident, l)
+    | Pdot (path, mode, name) ->
+        go ((mode, name) :: l) path
+    | Papply _ ->
+        failwith "Path.deconstruct: Unhandled Papply."
+  in
+  go [] path
+
+let pdot (root_path : t) (path : t) =
+  let ident, mode_names = deconstruct path in
+  List.fold ~init:(dot root_path ident) mode_names ~f:(fun path (mode, name) ->
+      Pdot (path, mode, name) )
+
 (** Create a path from a list of [Ident.t]s. *)
 let of_idents idents =
   match idents with
