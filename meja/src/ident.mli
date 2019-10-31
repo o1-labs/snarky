@@ -1,5 +1,5 @@
 (** Unique identifiers. *)
-type t [@@deriving sexp]
+type t [@@deriving sexp, equal, compare]
 
 type ident = t
 
@@ -11,11 +11,6 @@ val name : t -> string
 
 val mode : t -> Ast_types.mode
 (** Retrieve the mode passed to [create]. *)
-
-val compare : t -> t -> int
-(** Compare two names. This is 0 iff they originate from the same call to
-    [create].
-*)
 
 val pprint : Format.formatter -> t -> unit
 (** Pretty print. Identifiers that do not begin with a letter or underscore
