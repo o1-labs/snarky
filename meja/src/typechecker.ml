@@ -584,6 +584,16 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ
   match Envi.find_conversion ~unifies typ env with
   | Some (path, conv_args) ->
       let labels, args = List.unzip conv_args in
+      let args =
+        List.map args ~f:(fun arg ->
+            match arg.type_desc with
+            | Tconv arg ->
+                arg
+            | _ ->
+                Format.eprintf "Found conversion instance. Bad argument:@.%a@."
+                  typ_debug_print_alts arg ;
+                assert false )
+      in
       let free_vars, args = get_conversion_bodies free_vars args in
       let conv_args = List.zip_exn labels args in
       ( free_vars
@@ -773,6 +783,7 @@ and get_conversion_bodies ~may_identity ~can_add_args ~loc env free_vars typs =
 
 let get_conversion ~may_identity ~can_add_args ~loc env typ =
   let mode = Envi.current_mode env in
+  let typ = Type1.flatten typ in
   let rev_arguments, typ = get_rev_implicits typ in
   let rev_arguments =
     List.map rev_arguments ~f:(fun (_, typ') ->
