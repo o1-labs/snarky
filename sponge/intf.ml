@@ -63,3 +63,26 @@ module type Permutation = sig
 
   val block_cipher : Field.t Params.t -> Field.t array -> Field.t array
 end
+
+module type Hash = sig
+  module Field : sig
+    type t
+  end
+
+  module State : sig
+    type _ t
+  end
+
+  val update :
+       Field.t Params.t
+    -> state:Field.t State.t
+    -> Field.t array
+    -> Field.t State.t
+
+  val digest : Field.t State.t -> Field.t
+
+  val initial_state : Field.t State.t
+
+  val hash :
+    ?init:Field.t State.t -> Field.t Params.t -> Field.t array -> Field.t
+end
