@@ -895,7 +895,7 @@ module Type = struct
     List.iter vars ~f:(fun var ->
         (* Sanity check. *)
         assert (is_var var) ;
-        match var.type_alternate.type_alternate.type_desc with
+        match (repr var.type_alternate.type_alternate).type_desc with
         | Tvar _ ->
             set_repr var (mkvar ~mode:var.type_mode None env)
         | _ ->
@@ -1128,9 +1128,8 @@ module Type = struct
                 *)
                 backtrack snapshot ;
                 None )
-              else (
-                (* TODO: Shadowing check. *)
-                Some (path, instance_typ) )
+              else (* TODO: Shadowing check. *)
+                Some (path, instance_typ)
             else None ) )
 
   let generate_implicits e env =

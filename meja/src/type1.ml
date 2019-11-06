@@ -331,15 +331,16 @@ module Mk = struct
     let alt_alts = List.map ~f:(get_alt_var __POS__ mode) vars in
     (* Sanity check: [vars] is a list of type variables. *)
     if
-      List.for_all2_exn vars alt_alts ~f:(fun typ alt ->
-          (* NOTE: Don't check mode here. *)
-          ( match (typ.type_desc, alt.type_desc) with
-          | Tvar _, Tvar _ ->
-              ()
-          | _ ->
-              assert false ) ;
-          phys_equal typ alt )
-      && phys_equal typ alt_alt
+      equal_mode mode Prover
+      || List.for_all2_exn vars alt_alts ~f:(fun typ alt ->
+             (* NOTE: Don't check mode here. *)
+             ( match (typ.type_desc, alt.type_desc) with
+             | Tvar _, Tvar _ ->
+                 ()
+             | _ ->
+                 assert false ) ;
+             phys_equal typ alt )
+         && phys_equal typ alt_alt
     then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (alts, alt))
     else
       (* The type is tri-stitched, so tri-stitch this type too. *)
