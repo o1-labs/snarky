@@ -71,6 +71,14 @@ let rec add_outer_module name path =
   | Papply _ ->
       failwith "Path.add_outer_module: Unhandled Papply."
 
+let mode = function
+  | Pident name ->
+      Ident.mode name
+  | Pdot (_, mode, _) ->
+      mode
+  | Papply _ ->
+      failwith "Path.mode: Unhandled Papply."
+
 include Comparable.Make (struct
   type nonrec t = t
 

@@ -581,19 +581,17 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ
   assert (are_stitched typ typ.type_alternate) ;
   let mode = Envi.current_mode env in
   let conv_body_type = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
-  match Envi.find_conversion ~unifies typ env with
+  let found_conversion =
+    match (typ.type_desc, typ.type_alternate.type_desc) with
+    | Tvar _, Tvar _ ->
+        (* This search will never succeed, avoid doing it. *)
+        None
+    | _ ->
+        Envi.find_conversion ~unifies typ env
+  in
+  match found_conversion with
   | Some (path, conv_args) ->
       let labels, args = List.unzip conv_args in
-      let args =
-        List.map args ~f:(fun arg ->
-            match arg.type_desc with
-            | Tconv arg ->
-                arg
-            | _ ->
-                Format.eprintf "Found conversion instance. Bad argument:@.%a@."
-                  typ_debug_print_alts arg ;
-                assert false )
-      in
       let free_vars, args = get_conversion_bodies free_vars args in
       let conv_args = List.zip_exn labels args in
       ( free_vars
@@ -603,7 +601,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ
         ; conv_body_type } )
   | None -> (
     match (typ.type_desc, typ.type_alternate.type_desc) with
-    | Tconv typ, Tconv alt when phys_equal typ.type_alternate alt ->
+    | Tconv typ, Tconv alt when phys_equal typ alt ->
         get_conversion_body free_vars typ
     | Ttuple typs, Ttuple alts ->
         (* Sanity check: The types within stitched tuples should always be
@@ -1345,7 +1343,9 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let implicit_vars =
     List.filter implicit_vars ~f:(fun var ->
         let exp_type = Type1.remove_mode_changes var.exp_type in
-        match (var.exp_desc, exp_type.type_desc) with
+        match
+          (var.exp_desc, (Type1.remove_mode_changes exp_type).type_desc)
+        with
         | Texp_unifiable unif, Tconv _ -> (
             (* Try to find a conversion. *)
             let snap = Snapshot.create () in
