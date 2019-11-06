@@ -665,7 +665,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ
               (* Type declaration is an alias. *)
               if unifies env typ.type_alternate typ'.type_alternate then
                 get_conversion_body free_vars typ'
-              else assert false
+              else raise (Error (loc, Cannot_create_conversion typ))
           | Some ({tdec_desc= TRecord fields1; tdec_params= params1; _}, None)
             -> (
             match
@@ -1343,17 +1343,16 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let implicit_vars =
     List.filter implicit_vars ~f:(fun var ->
         let exp_type = Type1.remove_mode_changes var.exp_type in
-        match
-          (var.exp_desc, (Type1.remove_mode_changes exp_type).type_desc)
-        with
+        match (var.exp_desc, exp_type.type_desc) with
         | Texp_unifiable unif, Tconv _ -> (
             (* Try to find a conversion. *)
             let snap = Snapshot.create () in
             try
               (* TODO: can_add_args= true *)
               let conv =
-                get_conversion ~may_identity:false ~can_add_args:false
-                  ~loc:var.exp_loc env exp_type
+                get_conversion
+                  ~may_identity:(equal_mode exp_type.type_mode Prover)
+                  ~can_add_args:false ~loc:var.exp_loc env exp_type
               in
               unif.expression
               <- Some
