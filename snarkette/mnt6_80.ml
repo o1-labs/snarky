@@ -133,7 +133,7 @@ end
 
 module Pairing = Pairing.Make (Fq) (Fq3) (Fq6) (G1) (G2) (Pairing_info)
 
-module Groth_maller = Groth_maller.Make (struct
+module Inputs = struct
   module N = N
   module G1 = G1
   module G2 = G2
@@ -141,7 +141,10 @@ module Groth_maller = Groth_maller.Make (struct
   module Fqe = Fq3
   module Fq_target = Fq6
   module Pairing = Pairing
-end)
+end
+
+module Groth_maller = Groth_maller.Make (Inputs)
+module Groth16 = Groth16.Make (Inputs)
 
 module Make_bowe_gabizon (M : sig
   val hash :
@@ -153,13 +156,7 @@ module Make_bowe_gabizon (M : sig
     -> G1.t
 end) =
 Bowe_gabizon.Make (struct
-  module N = N
-  module G1 = G1
-  module G2 = G2
-  module Fq = Fq
-  module Fqe = Fq3
-  module Fq_target = Fq6
-  module Pairing = Pairing
+  include Inputs
 
   let hash = M.hash
 end)
