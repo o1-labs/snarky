@@ -1,4 +1,8 @@
 /* Test that aliases are unfolded when searching for instances. */
+
+/* TODO: This currently generates a Typ.t(int, int) instance. Fix it so that
+   it falls back to opaque(int) as expected.
+*/
 type t('a) = int;
 
 instance x = (15 : t(bool));

@@ -53,4 +53,5 @@ let a = fun (a, b) => {
 
 let a_1 = fun (x: field, b: boolean) => { a(x, b); };
 
+/* TODO: This doesn't find the appropriate identity Typ.t. Investigate. */
 let a_2 = fun (x: field) => { a(x, true); };

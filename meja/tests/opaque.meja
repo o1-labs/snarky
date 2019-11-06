@@ -11,6 +11,7 @@ type w = opaque(prover);
 
 /* The user should still be able to use the `opaque` identifier. */
 module A = {
+  /* TODO: This should generate a Typ.t but doesn't. Investigate. */
   type opaque('a, 'b) = ('a, 'b);
 
   type t = opaque(int, bool);

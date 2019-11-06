@@ -27,6 +27,7 @@ module Alias_opaque = {
 module Alias_record = {
   type u('a, 'b) = {a : 'a, b : 'b};
 
+  /* TODO: This should infer a Typ.t, but it doesn't. Investigate. */
   type v('a, 'b) = u('a, 'a);
 
   let f = fun (x : v(int, int)) : v(int, bool) => { x; };
