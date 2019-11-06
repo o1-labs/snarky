@@ -1306,12 +1306,24 @@ let rec get_expression env expected exp =
       let e, env = get_expression env (Type1.get_mode Prover expected) e in
       check_type ~loc env expected (Type1.get_mode mode e.exp_type) ;
       let _, env = Envi.pop_expr_scope env in
-      (* Convert all prover-mode implicits to checked-mode equivalents if
-        necessary.
-      *)
-      Envi.wrap_prover_implicits env ;
       let conv =
-        get_conversion ~loc ~may_identity:false ~can_add_args:true env expected
+        match mode with
+        | Checked ->
+            (* Convert all prover-mode implicits to checked-mode equivalents if
+               necessary.
+            *)
+            Envi.wrap_prover_implicits env ;
+            get_conversion ~loc ~may_identity:false ~can_add_args:true env
+              expected
+        | Prover ->
+            let dummy_typ = Envi.Type.Mk.var ~mode:Prover None env in
+            { conv_desc=
+                Tconv_body
+                  { conv_body_desc= Tconv_identity
+                  ; conv_body_loc= loc
+                  ; conv_body_type= dummy_typ }
+            ; conv_loc= loc
+            ; conv_type= dummy_typ }
       in
       let implicits =
         (* Instantiate unfilled implicit arguments in [conv]. *)
