@@ -11,7 +11,6 @@ type w = opaque(prover);
 
 /* The user should still be able to use the `opaque` identifier. */
 module A = {
-  /* TODO: This should generate a Typ.t but doesn't. Investigate. */
   type opaque('a, 'b) = ('a, 'b);
 
   type t = opaque(int, bool);
@@ -26,6 +25,7 @@ module A = {
 /* The magic opaque should still work when user-defined `opaque` types are out
    of scope.
 */
+/* TODO: This should generate a Typ.t but doesn't. Investigate. */
 type x = opaque(prover);
 
 /*let f = fun (i : opaque(int)) => {
