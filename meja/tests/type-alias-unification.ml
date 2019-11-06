@@ -2,7 +2,13 @@ module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
 module Alias_alias = struct
-  type nonrec ('a, 'b) u = 'a -> 'a
+  include struct
+    type nonrec ('a, 'b) u = 'a -> 'a
+
+    and ('a, 'b) u = 'a -> 'a
+
+    let u_typ x___1010 x___1009 = Typ.fn x___1010 x___1010
+  end
 
   type nonrec ('a, 'b) v = ('a, 'a) u
 
