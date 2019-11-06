@@ -813,7 +813,8 @@ let get_conversion ~may_identity ~can_add_args ~loc env typ =
           ; conv_loc= loc
           ; conv_type } )
   | exception (Error (_, err) as _exn) ->
-      (*Location.report_exception Format.err_formatter exn ;*)
+      (*Format.eprintf "%s@." (Printexc.get_backtrace ()) ;
+      Location.report_exception Format.err_formatter _exn ;*)
       let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
       raise (Error (loc, Convert_failed (typ, err)))
 
@@ -1863,7 +1864,8 @@ let rec check_statement env stmt =
       in
       (env, stmt)
     with _err ->
-      (*Location.report_exception Format.err_formatter err ;*)
+      (*Format.eprintf "%s@." (Printexc.get_backtrace ()) ;
+      Location.report_exception Format.err_formatter _err ;*)
       let decl, env = Typet.TypeDecl.import decl env in
       let stmt = {Typedast.stmt_loc= loc; stmt_desc= Tstmt_type decl} in
       (env, stmt) )

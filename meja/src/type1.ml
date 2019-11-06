@@ -382,6 +382,14 @@ type change =
     *)
   | Replace of (type_expr * type_desc)
 
+let debug_print_change fmt = function
+  | Depth (typ, depth) ->
+      Format.fprintf fmt "depth(id= %i, %i)" typ.type_id depth
+  | Desc (typ, _) ->
+      Format.fprintf fmt "desc(id= %i, _)" typ.type_id
+  | Replace (typ, _) ->
+      Format.fprintf fmt "replace(id= %i, _)" typ.type_id
+
 (** Implements a weak, mutable linked-list containing the history of changes.
 
     Every change is added to the same list, and the snapshots correspond to
@@ -415,6 +423,10 @@ module Snapshot : sig
   (** Erase all changes matching the filter [f] back to the snapshot, and
       return the erased changes, ordered from newest to oldest.
   *)
+
+  val debug_print : Format.formatter -> t -> unit
+
+  val debug_print_latest : Format.formatter -> unit -> unit
 end = struct
   type node = Change of (change * t) | LinkedChange of t | NoChange
 
@@ -451,16 +463,37 @@ end = struct
         Weak.set current 0 (Some new_ptr) ;
         new_ptr
 
+  let rec collect snap =
+    match !snap with
+    | Change (change, ptr) ->
+        change :: collect ptr
+    | LinkedChange ptr ->
+        collect ptr
+    | NoChange ->
+        []
+
+  let debug_print fmt snap =
+    let open Format in
+    pp_print_list
+      ~pp_sep:(fun fmt () -> fprintf fmt ",@,")
+      debug_print_change fmt (collect snap)
+
+  let debug_print_latest fmt () =
+    match Weak.get current 0 with
+    | Some snap ->
+        debug_print fmt snap
+    | None ->
+        Format.pp_print_list debug_print_change fmt []
+
   let backtrack snap =
+    let current = create () in
     let rec backtrack changes ptr =
       match !ptr with
       | Change (change, ptr') ->
-          (* Clear this snapshot so that it can't be re-used. *)
-          ptr := NoChange ;
+          ptr := LinkedChange current ;
           backtrack (change :: changes) ptr'
       | LinkedChange ptr' ->
-          (* Clear this snapshot so that it can't be re-used. *)
-          ptr := NoChange ;
+          ptr := LinkedChange current ;
           backtrack changes ptr'
       | NoChange ->
           changes
@@ -478,7 +511,8 @@ end = struct
       | LinkedChange ptr' ->
           backtrack changes ptrs_to_clear ptr'
       | NoChange ->
-          List.iter ptrs_to_clear ~f:(fun ptr' -> ptr' := NoChange) ;
+          let current = create () in
+          List.iter ptrs_to_clear ~f:(fun ptr' -> ptr' := LinkedChange current) ;
           changes
     in
     backtrack [] [] snap
@@ -657,8 +691,6 @@ let choose_variable_name typ typ' =
   | Tvar _, _ ->
       ()
   | _ ->
-      Format.eprintf "choose_variable_name:%a@.%a@." typ_debug_print typ
-        typ_debug_print typ' ;
       assert false
 
 (** [add_instance var typ'] changes the representative of the type variable
