@@ -617,11 +617,12 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ
             () ) ;
         let free_vars, convs = get_conversion_bodies free_vars typs in
         if
-          List.for_all convs ~f:(function
-            | {conv_body_desc= Tconv_identity; _} ->
-                true
-            | _ ->
-                false )
+          may_identity
+          && List.for_all convs ~f:(function
+               | {conv_body_desc= Tconv_identity; _} ->
+                   true
+               | _ ->
+                   false )
         then
           ( free_vars
           , {conv_body_desc= Tconv_identity; conv_body_loc= loc; conv_body_type}
@@ -699,11 +700,12 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ
                       raise (Error (loc, Cannot_create_conversion typ))
                 in
                 if
-                  List.for_all fields ~f:(function
-                    | _, {conv_body_desc= Tconv_identity; _} ->
-                        true
-                    | _ ->
-                        false )
+                  may_identity
+                  && List.for_all fields ~f:(function
+                       | _, {conv_body_desc= Tconv_identity; _} ->
+                           true
+                       | _ ->
+                           false )
                 then
                   ( !free_vars
                   , { conv_body_desc= Tconv_identity
@@ -730,7 +732,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ
         let free_vars, conv1 = get_conversion_body free_vars typ1a in
         let free_vars, conv2 = get_conversion_body free_vars typ1b in
         match (conv1.conv_body_desc, conv2.conv_body_desc) with
-        | Tconv_identity, Tconv_identity ->
+        | Tconv_identity, Tconv_identity when may_identity ->
             ( free_vars
             , { conv_body_desc= Tconv_identity
               ; conv_body_loc= loc
@@ -761,11 +763,12 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ
         *)
         let typ2 = Type1.remove_opaques typ2 in
         if
-          phys_equal typ typ2
-          || Type1.equal_at_depth
-               ~get_decl:(fun path ->
-                 snd (Envi.raw_get_type_declaration ~loc path env) )
-               ~depth:10001 typ typ2
+          may_identity
+          && ( phys_equal typ typ2
+             || Type1.equal_at_depth
+                  ~get_decl:(fun path ->
+                    snd (Envi.raw_get_type_declaration ~loc path env) )
+                  ~depth:10001 typ typ2 )
         then
           ( free_vars
           , {conv_body_desc= Tconv_identity; conv_body_loc= loc; conv_body_type}
