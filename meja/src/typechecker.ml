@@ -1824,7 +1824,7 @@ let rec check_statement env stmt =
             Envi.Type.Mk.arrow ~mode ~explicit:Implicit param typ env )
       in
       let conv =
-        get_conversion ~may_identity:true ~can_add_args:false ~loc env typ
+        get_conversion ~may_identity:false ~can_add_args:false ~loc env typ
       in
       let typ = polymorphise (Type1.flatten typ) env in
       Envi.Type.update_depths env typ ;
@@ -1862,7 +1862,7 @@ let rec check_statement env stmt =
             Envi.Type.Mk.arrow ~mode param typ env )
       in
       let conv =
-        get_conversion ~may_identity:true ~can_add_args:false ~loc env typ
+        get_conversion ~may_identity:false ~can_add_args:false ~loc env typ
       in
       let typ = polymorphise (Type1.flatten typ) env in
       Envi.Type.update_depths env typ ;
@@ -2020,7 +2020,7 @@ let rec check_statement env stmt =
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ.type_type ;
       let conv =
-        get_conversion ~may_identity:true ~can_add_args:false ~loc env
+        get_conversion ~may_identity:false ~can_add_args:false ~loc env
           typ.type_type
       in
       let name = map_loc ~f:(Ident.create ~mode) name in
