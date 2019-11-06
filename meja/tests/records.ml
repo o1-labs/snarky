@@ -6,38 +6,38 @@ include struct
 
   and ('a, 'b, 'c) t = {a: 'a; b: 'b; c: 'c}
 
-  let typ x___1013 x___1012 x___1011 =
+  let typ x___1017 x___1016 x___1015 =
     { Snarky.Types.Typ.store=
         (fun {a; b; c} ->
-          Snarky.Typ_monads.Store.bind (x___1013.Snarky.Types.Typ.store a)
+          Snarky.Typ_monads.Store.bind (x___1017.Snarky.Types.Typ.store a)
             ~f:(fun a ->
-              Snarky.Typ_monads.Store.bind (x___1012.Snarky.Types.Typ.store b)
+              Snarky.Typ_monads.Store.bind (x___1016.Snarky.Types.Typ.store b)
                 ~f:(fun b ->
                   Snarky.Typ_monads.Store.bind
-                    (x___1011.Snarky.Types.Typ.store c) ~f:(fun c ->
+                    (x___1015.Snarky.Types.Typ.store c) ~f:(fun c ->
                       Snarky.Typ_monads.Store.return {a; b; c} ) ) ) )
     ; Snarky.Types.Typ.read=
         (fun {a; b; c} ->
-          Snarky.Typ_monads.Read.bind (x___1013.Snarky.Types.Typ.read a)
+          Snarky.Typ_monads.Read.bind (x___1017.Snarky.Types.Typ.read a)
             ~f:(fun a ->
-              Snarky.Typ_monads.Read.bind (x___1012.Snarky.Types.Typ.read b)
+              Snarky.Typ_monads.Read.bind (x___1016.Snarky.Types.Typ.read b)
                 ~f:(fun b ->
                   Snarky.Typ_monads.Read.bind
-                    (x___1011.Snarky.Types.Typ.read c) ~f:(fun c ->
+                    (x___1015.Snarky.Types.Typ.read c) ~f:(fun c ->
                       Snarky.Typ_monads.Read.return {a; b; c} ) ) ) )
     ; Snarky.Types.Typ.alloc=
-        Snarky.Typ_mondas.Alloc.bind x___1013.Snarky.Types.Typ.alloc
+        Snarky.Typ_monads.Alloc.bind x___1017.Snarky.Types.Typ.alloc
           ~f:(fun a ->
-            Snarky.Typ_mondas.Alloc.bind x___1012.Snarky.Types.Typ.alloc
+            Snarky.Typ_monads.Alloc.bind x___1016.Snarky.Types.Typ.alloc
               ~f:(fun b ->
-                Snarky.Typ_mondas.Alloc.bind x___1011.Snarky.Types.Typ.alloc
+                Snarky.Typ_monads.Alloc.bind x___1015.Snarky.Types.Typ.alloc
                   ~f:(fun c -> Snarky.Typ_monads.Alloc.return {a; b; c}) ) )
     ; Snarky.Types.Typ.check=
         (fun {a; b; c} ->
-          Snarky.Checked.bind (x___1013.Snarky.Types.Typ.check a) ~f:(fun () ->
-              Snarky.Checked.bind (x___1012.Snarky.Types.Typ.check b)
+          Snarky.Checked.bind (x___1017.Snarky.Types.Typ.check a) ~f:(fun () ->
+              Snarky.Checked.bind (x___1016.Snarky.Types.Typ.check b)
                 ~f:(fun () ->
-                  Snarky.Checked.bind (x___1011.Snarky.Types.Typ.check c)
+                  Snarky.Checked.bind (x___1015.Snarky.Types.Typ.check c)
                     ~f:(fun () -> Snarky.Checked.return ()) ) ) ) }
 end
 
@@ -53,39 +53,39 @@ module X = struct
 
     and 'a t = {a: 'a; b: 'a; c: 'a}
 
-    let typ x___1026 =
+    let typ x___1030 =
       { Snarky.Types.Typ.store=
           (fun {a; b; c} ->
-            Snarky.Typ_monads.Store.bind (x___1026.Snarky.Types.Typ.store a)
+            Snarky.Typ_monads.Store.bind (x___1030.Snarky.Types.Typ.store a)
               ~f:(fun a ->
                 Snarky.Typ_monads.Store.bind
-                  (x___1026.Snarky.Types.Typ.store b) ~f:(fun b ->
+                  (x___1030.Snarky.Types.Typ.store b) ~f:(fun b ->
                     Snarky.Typ_monads.Store.bind
-                      (x___1026.Snarky.Types.Typ.store c) ~f:(fun c ->
+                      (x___1030.Snarky.Types.Typ.store c) ~f:(fun c ->
                         Snarky.Typ_monads.Store.return {a; b; c} ) ) ) )
       ; Snarky.Types.Typ.read=
           (fun {a; b; c} ->
-            Snarky.Typ_monads.Read.bind (x___1026.Snarky.Types.Typ.read a)
+            Snarky.Typ_monads.Read.bind (x___1030.Snarky.Types.Typ.read a)
               ~f:(fun a ->
-                Snarky.Typ_monads.Read.bind (x___1026.Snarky.Types.Typ.read b)
+                Snarky.Typ_monads.Read.bind (x___1030.Snarky.Types.Typ.read b)
                   ~f:(fun b ->
                     Snarky.Typ_monads.Read.bind
-                      (x___1026.Snarky.Types.Typ.read c) ~f:(fun c ->
+                      (x___1030.Snarky.Types.Typ.read c) ~f:(fun c ->
                         Snarky.Typ_monads.Read.return {a; b; c} ) ) ) )
       ; Snarky.Types.Typ.alloc=
-          Snarky.Typ_mondas.Alloc.bind x___1026.Snarky.Types.Typ.alloc
+          Snarky.Typ_monads.Alloc.bind x___1030.Snarky.Types.Typ.alloc
             ~f:(fun a ->
-              Snarky.Typ_mondas.Alloc.bind x___1026.Snarky.Types.Typ.alloc
+              Snarky.Typ_monads.Alloc.bind x___1030.Snarky.Types.Typ.alloc
                 ~f:(fun b ->
-                  Snarky.Typ_mondas.Alloc.bind x___1026.Snarky.Types.Typ.alloc
+                  Snarky.Typ_monads.Alloc.bind x___1030.Snarky.Types.Typ.alloc
                     ~f:(fun c -> Snarky.Typ_monads.Alloc.return {a; b; c}) ) )
       ; Snarky.Types.Typ.check=
           (fun {a; b; c} ->
-            Snarky.Checked.bind (x___1026.Snarky.Types.Typ.check a)
+            Snarky.Checked.bind (x___1030.Snarky.Types.Typ.check a)
               ~f:(fun () ->
-                Snarky.Checked.bind (x___1026.Snarky.Types.Typ.check b)
+                Snarky.Checked.bind (x___1030.Snarky.Types.Typ.check b)
                   ~f:(fun () ->
-                    Snarky.Checked.bind (x___1026.Snarky.Types.Typ.check c)
+                    Snarky.Checked.bind (x___1030.Snarky.Types.Typ.check c)
                       ~f:(fun () -> Snarky.Checked.return ()) ) ) ) }
   end
 

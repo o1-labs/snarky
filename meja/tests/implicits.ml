@@ -1,7 +1,73 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-type nonrec 'a showable = {show: 'a -> string}
+include struct
+  type nonrec 'a showable = {show: 'a -> string}
+
+  and 'a showable = {show: 'a -> string}
+
+  let showable_typ x___1011 =
+    { Snarky.Types.Typ.store=
+        (fun {show} ->
+          Snarky.Typ_monads.Store.bind
+            ((Typ.fn x___1011
+                { Snarky.Types.Typ.store=
+                    (fun x -> Snarky.Typ_monads.Store.return x)
+                ; Snarky.Types.Typ.read=
+                    (fun x -> Snarky.Typ_monads.Read.return x)
+                ; Snarky.Types.Typ.alloc=
+                    (let open Snarky.Typ_monads.Alloc in
+                    map alloc ~f:(fun _ ->
+                        failwith "cannot allocate this type." ))
+                ; Snarky.Types.Typ.check= (fun _ -> Snarky.Checked.return ())
+                })
+               .Snarky.Types.Typ.store show) ~f:(fun show ->
+              Snarky.Typ_monads.Store.return {show} ) )
+    ; Snarky.Types.Typ.read=
+        (fun {show} ->
+          Snarky.Typ_monads.Read.bind
+            ((Typ.fn x___1011
+                { Snarky.Types.Typ.store=
+                    (fun x -> Snarky.Typ_monads.Store.return x)
+                ; Snarky.Types.Typ.read=
+                    (fun x -> Snarky.Typ_monads.Read.return x)
+                ; Snarky.Types.Typ.alloc=
+                    (let open Snarky.Typ_monads.Alloc in
+                    map alloc ~f:(fun _ ->
+                        failwith "cannot allocate this type." ))
+                ; Snarky.Types.Typ.check= (fun _ -> Snarky.Checked.return ())
+                })
+               .Snarky.Types.Typ.read show) ~f:(fun show ->
+              Snarky.Typ_monads.Read.return {show} ) )
+    ; Snarky.Types.Typ.alloc=
+        Snarky.Typ_monads.Alloc.bind
+          (Typ.fn x___1011
+             { Snarky.Types.Typ.store=
+                 (fun x -> Snarky.Typ_monads.Store.return x)
+             ; Snarky.Types.Typ.read= (fun x -> Snarky.Typ_monads.Read.return x)
+             ; Snarky.Types.Typ.alloc=
+                 (let open Snarky.Typ_monads.Alloc in
+                 map alloc ~f:(fun _ -> failwith "cannot allocate this type."))
+             ; Snarky.Types.Typ.check= (fun _ -> Snarky.Checked.return ()) })
+            .Snarky.Types.Typ.alloc ~f:(fun show ->
+            Snarky.Typ_monads.Alloc.return {show} )
+    ; Snarky.Types.Typ.check=
+        (fun {show} ->
+          Snarky.Checked.bind
+            ((Typ.fn x___1011
+                { Snarky.Types.Typ.store=
+                    (fun x -> Snarky.Typ_monads.Store.return x)
+                ; Snarky.Types.Typ.read=
+                    (fun x -> Snarky.Typ_monads.Read.return x)
+                ; Snarky.Types.Typ.alloc=
+                    (let open Snarky.Typ_monads.Alloc in
+                    map alloc ~f:(fun _ ->
+                        failwith "cannot allocate this type." ))
+                ; Snarky.Types.Typ.check= (fun _ -> Snarky.Checked.return ())
+                })
+               .Snarky.Types.Typ.check show) ~f:(fun () ->
+              Snarky.Checked.return () ) ) }
+end
 
 let show {show; _} = show
 
@@ -24,7 +90,32 @@ let h __implicit17__ __implicit9__ __implicit10__ (x : int) (y : bool)
   , g __implicit9__ __implicit10__ __implicit9__ y y
   , g __implicit9__ __implicit10__ __implicit17__ z z )
 
-type nonrec ('a, 'b) conv = {conv: 'a -> 'b}
+include struct
+  type nonrec ('a, 'b) conv = {conv: 'a -> 'b}
+
+  and ('a, 'b) conv = {conv: 'a -> 'b}
+
+  let conv_typ x___1054 x___1053 =
+    { Snarky.Types.Typ.store=
+        (fun {conv} ->
+          Snarky.Typ_monads.Store.bind
+            ((Typ.fn x___1054 x___1053).Snarky.Types.Typ.store conv)
+            ~f:(fun conv -> Snarky.Typ_monads.Store.return {conv}) )
+    ; Snarky.Types.Typ.read=
+        (fun {conv} ->
+          Snarky.Typ_monads.Read.bind
+            ((Typ.fn x___1054 x___1053).Snarky.Types.Typ.read conv)
+            ~f:(fun conv -> Snarky.Typ_monads.Read.return {conv}) )
+    ; Snarky.Types.Typ.alloc=
+        Snarky.Typ_monads.Alloc.bind
+          (Typ.fn x___1054 x___1053).Snarky.Types.Typ.alloc ~f:(fun conv ->
+            Snarky.Typ_monads.Alloc.return {conv} )
+    ; Snarky.Types.Typ.check=
+        (fun {conv} ->
+          Snarky.Checked.bind
+            ((Typ.fn x___1054 x___1053).Snarky.Types.Typ.check conv)
+            ~f:(fun () -> Snarky.Checked.return ()) ) }
+end
 
 let conv {conv; _} = conv
 
