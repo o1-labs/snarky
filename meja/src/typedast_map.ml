@@ -186,6 +186,11 @@ let convert_body_desc mapper = function
               (label, mapper.convert_body mapper conv) ) )
   | Tconv_tuple convs ->
       Tconv_tuple (List.map ~f:(mapper.convert_body mapper) convs)
+  | Tconv_arrow (conv1, conv2) ->
+      Tconv_arrow
+        (mapper.convert_body mapper conv1, mapper.convert_body mapper conv2)
+  | Tconv_identity ->
+      Tconv_identity
   | Tconv_opaque ->
       Tconv_opaque
 
@@ -268,8 +273,14 @@ let expression_desc mapper = function
         , List.map conv_args ~f:(fun (label, e) ->
               (label, mapper.expression mapper e) )
         , mapper.expression mapper e )
-  | Texp_prover e ->
-      Texp_prover (mapper.expression mapper e)
+  | Texp_prover (conv, conv_args, e) ->
+      Texp_prover
+        ( mapper.convert mapper conv
+        , List.map conv_args ~f:(fun (label, e) ->
+              (label, mapper.expression mapper e) )
+        , mapper.expression mapper e )
+  | Texp_convert conv ->
+      Texp_convert (mapper.convert mapper conv)
 
 let type_conv mapper = function
   | Ttconv_with (mode, decl) ->

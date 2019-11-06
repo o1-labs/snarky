@@ -214,6 +214,18 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
         )
       in
       Exp.fun_ ?loc Nolabel None tuple_pat binds
+  | Tconv_arrow (typ1, typ2) ->
+      (* TODO: Lift this case as a let in [convert], just apply the name. *)
+      let conv arg =
+        (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
+      in
+      let loc = Option.value ~default:Location.none loc in
+      Exp.field ~loc
+        (Exp.apply ~loc [%expr Typ.fn] [conv typ1; conv typ2])
+        field
+  | Tconv_identity ->
+      let loc = Option.value ~default:Location.none loc in
+      [%expr fun x -> [%e Exp.ident ~loc return] x]
   | Tconv_opaque ->
       let loc = Option.value ~default:Location.none loc in
       Exp.field ~loc [%expr Snarky.Typ.Internal.ref ()] field
@@ -227,7 +239,7 @@ and mapper_of_convert_body ~field ~bind ~return
 and alloc_of_convert_body_desc ?loc desc =
   let lid x = mk_loc ?loc (Option.value_exn (Longident.unflatten x)) in
   let return = lid ["Snarky"; "Typ_monads"; "Alloc"; "return"] in
-  let bind = lid ["Snarky"; "Typ_mondas"; "Alloc"; "bind"] in
+  let bind = lid ["Snarky"; "Typ_monads"; "Alloc"; "bind"] in
   let field = lid ["Snarky"; "Types"; "Typ"; "alloc"] in
   match desc with
   | Tconv_record fields ->
@@ -289,6 +301,21 @@ and alloc_of_convert_body_desc ?loc desc =
             Exp.apply ?loc bind [(Nolabel, conv); (Labelled "f", rest)] )
       in
       binds
+  | Tconv_arrow (typ1, typ2) ->
+      (* TODO: Lift this case as a let in [convert], just apply the name. *)
+      let conv arg =
+        (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
+      in
+      let loc = Option.value ~default:Location.none loc in
+      Exp.field ~loc
+        (Exp.apply ~loc [%expr Typ.fn] [conv typ1; conv typ2])
+        field
+  | Tconv_identity ->
+      let loc = Option.value ~default:Location.none loc in
+      (* invalid, will raise an exception if called. *)
+      [%expr
+        Snarky.Typ_monads.Alloc.(
+          map alloc ~f:(fun _ -> failwith "cannot allocate this type."))]
   | Tconv_opaque ->
       let loc = Option.value ~default:Location.none loc in
       Exp.field ~loc [%expr Snarky.Typ.Internal.ref ()] field
@@ -374,6 +401,18 @@ and check_of_convert_body_desc ?loc desc =
         )
       in
       Exp.fun_ ?loc Nolabel None tuple_pat binds
+  | Tconv_arrow (typ1, typ2) ->
+      (* TODO: Lift this case as a let in [convert], just apply the name. *)
+      let conv arg =
+        (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
+      in
+      let loc = Option.value ~default:Location.none loc in
+      Exp.field ~loc
+        (Exp.apply ~loc [%expr Typ.fn] [conv typ1; conv typ2])
+        field
+  | Tconv_identity ->
+      let loc = Option.value ~default:Location.none loc in
+      [%expr fun _ -> Snarky.Checked.return ()]
   | Tconv_opaque ->
       let loc = Option.value ~default:Location.none loc in
       Exp.field ~loc [%expr Snarky.Typ.Internal.ref ()] field
@@ -399,6 +438,12 @@ and of_convert_desc ?loc = function
             (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)) )
       in
       Exp.apply ~loc (Exp.ident ~loc:name.loc (of_path_loc name)) args
+  | Tconv_body {conv_body_desc= Tconv_arrow (typ1, typ2); conv_body_loc= loc; _}
+    ->
+      let conv arg =
+        (Nolabel, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg))
+      in
+      Exp.apply ~loc [%expr Typ.fn] [conv typ1; conv typ2]
   | Tconv_body {conv_body_desc= Tconv_opaque; conv_body_loc= loc; _} ->
       [%expr Snarky.Typ.Internal.ref ()]
   | Tconv_body body ->
@@ -486,8 +531,21 @@ let rec of_expression_desc ?loc = function
                 (List.map conv_args ~f:(fun (label, e) ->
                      (label, of_expression e) ))]
           [%e of_expression e]]
-  | Texp_prover e ->
-      of_expression e
+  | Texp_prover (conv, conv_args, e) ->
+      let loc = Option.value ~default:Location.none loc in
+      [%expr
+        let typ = [%e of_convert conv] in
+        Snarky.exists
+          [%e
+            let typ = Parsetree.([%expr typ]) in
+            if List.is_empty conv_args then typ
+            else
+              Exp.apply ~loc typ
+                (List.map conv_args ~f:(fun (label, e) ->
+                     (label, of_expression e) ))]
+          ~compute:As_prover.(fun () -> [%e of_expression e])]
+  | Texp_convert conv ->
+      of_convert conv
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(

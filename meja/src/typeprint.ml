@@ -45,11 +45,11 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
         fprintf fmt "@[<hv2>opaque(@,%a@,)@]" type_expr typ
     | Prover ->
         type_expr fmt typ )
-  | Tprover typ -> (
-    match mode with
-    | Checked ->
+  | Tother_mode typ -> (
+    match (mode, typ.type_mode) with
+    | Checked, Prover ->
         fprintf fmt "@[<hv2>Prover{@,%a@,}@]" type_expr typ
-    | Prover ->
+    | _ ->
         type_expr fmt typ )
 
 and tuple fmt typs =

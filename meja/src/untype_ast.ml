@@ -40,7 +40,7 @@ module Type0 = struct
           Type.opaque (type_expr ?loc typ)
       | Prover ->
           type_expr ?loc typ )
-    | Tprover _ ->
+    | Tother_mode _ ->
         (* TODO: Should we do something else here? *)
         assert false
     | Treplace _ ->
@@ -236,8 +236,10 @@ let rec expression_desc = function
       Pexp_if (expression e1, expression e2, Option.map ~f:expression e3)
   | Texp_read (_conv, _conv_args, e) ->
       expression_desc e.exp_desc
-  | Texp_prover e ->
+  | Texp_prover (_conv, _conv_args, e) ->
       Pexp_prover (expression e)
+  | Texp_convert _ ->
+      assert false
 
 and expression e =
   {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}

@@ -79,6 +79,8 @@ and convert_body_desc =
   | Tconv_record of (path * convert_body) list
   | Tconv_ctor of path * (Asttypes.arg_label * convert_body) list
   | Tconv_tuple of convert_body list
+  | Tconv_arrow of convert_body * convert_body
+  | Tconv_identity
   | Tconv_opaque
 
 and convert =
@@ -112,10 +114,16 @@ and expression_desc =
       ; id: int }
   | Texp_if of expression * expression * expression option
   | Texp_read of
-      convert (* arguments to the conversion *)
+      convert
       * (Asttypes.arg_label * expression) list
+      (* arguments to the conversion *)
       * expression
-  | Texp_prover of expression
+  | Texp_prover of
+      convert
+      * (Asttypes.arg_label * expression) list
+      (* arguments to the conversion *)
+      * expression
+  | Texp_convert of convert
 
 type conv_type =
   (* Other mode stitched declaration. *)

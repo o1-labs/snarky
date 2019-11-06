@@ -72,7 +72,7 @@ let equal {type_id= id1; _} {type_id= id2; _} = Int.equal id1 id2
 *)
 let mk' ~mode depth type_desc =
   incr type_id ;
-  (*assert (!type_id <> 36600) ;*)
+  (*assert (!type_id <> 51696) ;*)
   { type_desc
   ; type_id= !type_id
   ; type_depth= depth
@@ -192,8 +192,8 @@ let rec typ_debug_print fmt typ =
           typ_debug_print fmt (get_mode Prover typ)
       | Topaque typ ->
           print "opaque " ; typ_debug_print fmt typ
-      | Tprover typ ->
-          print "prover " ; typ_debug_print fmt typ
+      | Tother_mode typ ->
+          print "mode-change " ; typ_debug_print fmt typ
       | Treplace typ ->
           print "=== " ; typ_debug_print fmt typ ) ;
     Hash_set.remove hashtbl typ.type_id ) ;
@@ -313,17 +313,31 @@ module Mk = struct
     assert (not (is_poly typ)) ;
     check_mode ~pos:__POS__ ~error_info mode typ ;
     let alt = type_alternate typ in
-    let alts = List.map ~f:type_alternate vars in
     let alt_alt = type_alternate alt in
-    let alt_alts = List.map ~f:type_alternate alts in
+    let get_alt_var pos mode var =
+      let alt = get_mode mode var in
+      match alt.type_desc with
+      | Tvar _ ->
+          alt
+      | _ ->
+          (* This is a tri-stitched type where the stitched type variables
+             have been instantiated already.
+          *)
+          check_mode ~pos ~error_info Checked var ;
+          assert (not (phys_equal alt.type_alternate var)) ;
+          var
+    in
+    let alts = List.map ~f:(get_alt_var __POS__ (other_mode mode)) vars in
+    let alt_alts = List.map ~f:(get_alt_var __POS__ mode) vars in
     (* Sanity check: [vars] is a list of type variables. *)
     if
       List.for_all2_exn vars alt_alts ~f:(fun typ alt ->
-          (* Sanity check. *)
-          check_mode ~pos:__POS__ ~error_info mode typ ;
-          check_mode ~pos:__POS__ ~error_info mode alt ;
-          assert (not (is_poly typ)) ;
-          (match typ.type_desc with Tvar _ -> () | _ -> assert false) ;
+          (* NOTE: Don't check mode here. *)
+          ( match (typ.type_desc, alt.type_desc) with
+          | Tvar _, Tvar _ ->
+              ()
+          | _ ->
+              assert false ) ;
           phys_equal typ alt )
       && phys_equal typ alt_alt
     then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (alts, alt))
@@ -344,8 +358,7 @@ module Mk = struct
       else stitch ~mode:Checked depth typ1.type_desc typ2.type_desc
     in
     let typ =
-      stitch ~mode:Checked depth (Tconv typ_stitched)
-        (Tconv typ_stitched.type_alternate)
+      stitch ~mode:Checked depth (Tconv typ_stitched) (Tconv typ_stitched)
     in
     get_mode mode typ
 
@@ -355,11 +368,9 @@ module Mk = struct
     check_mode ~pos:__POS__ ~error_info Prover typ ;
     stitch ~mode depth (Topaque typ) (Topaque typ)
 
-  let prover ~mode depth typ =
-    let error_info () = ("prover", [typ]) in
+  let other_mode ~mode depth typ =
     assert (not (is_poly typ)) ;
-    check_mode ~pos:__POS__ ~error_info Prover typ ;
-    stitch ~mode depth (Tprover typ) (Tprover typ)
+    stitch ~mode depth (Tother_mode typ) (Tother_mode typ)
 end
 
 type change =
@@ -515,7 +526,7 @@ let fold ~init ~f typ =
       f init typ
   | Topaque typ ->
       f init typ
-  | Tprover typ ->
+  | Tother_mode typ ->
       f init typ
   | Treplace _ ->
       assert false
@@ -542,8 +553,8 @@ let rec copy_desc ~f = function
       Tconv (f typ)
   | Topaque typ ->
       Topaque (f typ)
-  | Tprover typ ->
-      Tprover (f typ)
+  | Tother_mode typ ->
+      Tother_mode (f typ)
   | Treplace _ ->
       assert false
 
@@ -645,6 +656,8 @@ let choose_variable_name typ typ' =
   | Tvar _, _ ->
       ()
   | _ ->
+      Format.eprintf "choose_variable_name:%a@.%a@." typ_debug_print typ
+        typ_debug_print typ' ;
       assert false
 
 (** [add_instance var typ'] changes the representative of the type variable
@@ -654,21 +667,36 @@ let choose_variable_name typ typ' =
 
     Raises [AssertionError] if [var] is not a type variable.
 *)
-let add_instance typ typ' =
+let add_instance ~unify typ typ' =
+  (*Format.(
+    fprintf err_formatter "add_instance:@.%a@.%a@." typ_debug_print_alts typ
+      typ_debug_print_alts typ') ;*)
   (* Sanity check. *)
   assert (equal_mode typ.type_mode typ'.type_mode) ;
   assert (
     phys_equal typ typ.type_alternate.type_alternate
     = phys_equal typ' typ'.type_alternate.type_alternate ) ;
   choose_variable_name typ typ' ;
-  choose_variable_name typ.type_alternate typ'.type_alternate ;
-  choose_variable_name typ.type_alternate.type_alternate
-    typ'.type_alternate.type_alternate ;
-  (* Chose again in case [typ.type_alternate.type_alternate] found a new name
-     that could be propagated back to [typ].
-  *)
-  choose_variable_name typ typ' ;
-  set_repr typ typ'
+  match typ.type_alternate.type_desc with
+  | Tvar _ ->
+      choose_variable_name typ.type_alternate typ'.type_alternate ;
+      choose_variable_name typ.type_alternate.type_alternate
+        typ'.type_alternate.type_alternate ;
+      (* Chose again in case [typ.type_alternate.type_alternate] found a new name
+       that could be propagated back to [typ].
+    *)
+      choose_variable_name typ typ' ;
+      set_repr typ typ'
+  | _ ->
+      (* Variable is tri-stitched to stitched type variables which have been
+       instantiated.
+    *)
+      assert (equal_mode Checked typ.type_mode) ;
+      set_desc typ (Tref typ') ;
+      unify typ.type_alternate typ'.type_alternate ;
+      if not (phys_equal typ typ.type_alternate.type_alternate) then
+        unify typ.type_alternate.type_alternate
+          typ'.type_alternate.type_alternate
 
 (** Create an equivalent type by unfolding all of the type representatives. *)
 let flatten typ =
@@ -728,17 +756,12 @@ let type_vars ?depth typ =
   in
   let empty = Typeset.empty in
   let rec type_vars set typ =
-    let mode = typ.type_mode in
     match typ.type_desc with
     | Tvar _ when deep_enough typ ->
         Set.add set typ
     | Tpoly (vars, typ) ->
         let poly_vars = List.fold ~init:empty vars ~f:type_vars in
         Set.union set (Set.diff (type_vars empty typ) poly_vars)
-    | (Tprover typ | Topaque typ) when not (equal_mode mode Prover) ->
-        (* Surface variables of the correct mode. *)
-        let prover_set = type_vars empty typ in
-        Set.union set (Typeset.map ~f:(get_mode mode) prover_set)
     | _ ->
         fold ~init:set typ ~f:type_vars
   in
@@ -850,7 +873,7 @@ let contains typ ~in_ =
         equal typ' || contains typ'
     | Topaque typ' ->
         equal typ' || contains typ'
-    | Tprover typ' ->
+    | Tother_mode typ' ->
         equal typ' || contains typ'
     | Tref _ ->
         assert false
@@ -858,6 +881,44 @@ let contains typ ~in_ =
         assert false
   in
   contains in_
+
+(** Collapse any [Tother_mode] types until the modes are the same, if possible.
+
+    Checked mode is always preferred over prover mode, so that tri-stitching is
+    retained whenever possible.
+*)
+let rec get_same_mode typ1 typ2 =
+  let typ1 = repr typ1 in
+  let typ2 = repr typ2 in
+  match (typ1.type_desc, typ2.type_desc) with
+  | Tother_mode typ1', Tother_mode typ2' -> (
+    match (typ1.type_mode, typ2.type_mode) with
+    | Checked, Checked | Prover, Prover ->
+        get_same_mode typ1' typ2'
+    | Checked, Prover ->
+        get_same_mode typ1 typ2'
+    | Prover, Checked ->
+        get_same_mode typ1' typ2 )
+  | Tother_mode typ1, _ when equal_mode typ1.type_mode typ2.type_mode ->
+      (repr typ1, typ2)
+  | _, Tother_mode typ2 when equal_mode typ1.type_mode typ2.type_mode ->
+      (typ1, repr typ2)
+  | _ ->
+      (typ1, typ2)
+
+(** Remove any [Topaque] wrappers, returning the outermost non-opaque type. *)
+let rec remove_opaques typ =
+  let typ = repr typ in
+  match typ.type_desc with Topaque typ -> remove_opaques typ | _ -> typ
+
+(** Remove any [Tother_mode] wrappers. *)
+let rec remove_mode_changes typ =
+  let typ = repr typ in
+  match typ.type_desc with
+  | Tother_mode typ ->
+      remove_mode_changes typ
+  | _ ->
+      typ
 
 module Decl = struct
   let decl_id = ref 0

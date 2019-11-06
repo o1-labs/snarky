@@ -849,7 +849,7 @@ module Type = struct
 
     let opaque ~mode typ env = opaque ~mode env.depth typ
 
-    let prover ~mode typ env = prover ~mode env.depth typ
+    let other_mode ~mode typ env = other_mode ~mode env.depth typ
   end
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
@@ -895,7 +895,17 @@ module Type = struct
     List.iter vars ~f:(fun var ->
         (* Sanity check. *)
         assert (is_var var) ;
-        set_repr var (mkvar ~mode:var.type_mode None env) )
+        match var.type_alternate.type_alternate.type_desc with
+        | Tvar _ ->
+            set_repr var (mkvar ~mode:var.type_mode None env)
+        | _ ->
+            (* Tri-stitched type variable where the stitched types have been
+               instantiated.
+            *)
+            assert (equal_mode Checked var.type_mode) ;
+            let tmp_var = mk' ~mode:Checked env.depth (Tvar None) in
+            tmp_var.type_alternate <- var.type_alternate ;
+            set_desc var (Tref tmp_var) )
 
   let copy typ env =
     let rec copy typ =
@@ -1051,7 +1061,13 @@ module Type = struct
           1
       | _, Topaque _ ->
           -1
-      | Tprover typ1, Tprover typ2 ->
+      | Tother_mode typ1, _ when equal_mode typ1.type_mode typ2.type_mode ->
+          (* The types may be equal underneath the mode conversion. *)
+          compare typ1 typ2
+      | _, Tother_mode typ2 when equal_mode typ1.type_mode typ2.type_mode ->
+          (* The types may be equal underneath the mode conversion. *)
+          compare typ1 typ2
+      | Tother_mode typ1, Tother_mode typ2 ->
           compare typ1 typ2
 
   and compare_all ~loc env typs1 typs2 =
@@ -1095,9 +1111,7 @@ module Type = struct
       (typ : type_expr) typ_vars env =
     List.find_map env.scope_stack ~f:(fun scope ->
         List.find_map scope.instances ~f:(fun (_, path, instance_typ) ->
-            let instance_typ =
-              get_mode typ.type_mode (copy instance_typ env)
-            in
+            let instance_typ = copy instance_typ env in
             let snapshot = Snapshot.create () in
             let _, base_typ = get_implicits instance_typ in
             if unifies env typ base_typ then
@@ -1114,8 +1128,9 @@ module Type = struct
                 *)
                 backtrack snapshot ;
                 None )
-              else (* TODO: Shadowing check. *)
-                Some (path, instance_typ)
+              else (
+                (* TODO: Shadowing check. *)
+                Some (path, instance_typ) )
             else None ) )
 
   let generate_implicits e env =
@@ -1331,7 +1346,7 @@ let get_name ~mode (name : str) env =
   let loc = name.loc in
   match List.find_map ~f:(Scope.find_name ~mode name.txt) env.scope_stack with
   | Some (ident, typ) ->
-      (ident, Type1.get_mode mode (Type.copy typ env))
+      (ident, Type.copy typ env)
   | None ->
       raise (Error (loc, Unbound_value (Lident name.txt)))
 
@@ -1340,7 +1355,7 @@ let find_name ~mode (lid : lid) env =
     find_of_lident ~mode ~kind:"name" ~get_name:Scope.find_name lid env
   with
   | Some (ident, typ) ->
-      (ident, Type1.get_mode mode (Type.copy typ env))
+      (ident, Type.copy typ env)
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
 
@@ -1373,8 +1388,8 @@ let wrap_prover_implicits env =
                            preserved.
                   *)
                  { exp with
-                   exp_type= Type1.Mk.prover ~mode:Checked typ.type_depth typ
-                 }
+                   exp_type=
+                     Type1.Mk.other_mode ~mode:Checked typ.type_depth typ }
                else exp ) }
 
 (* Error handling *)

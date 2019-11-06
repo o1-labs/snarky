@@ -72,44 +72,15 @@ let rec check_type_aux ~loc typ ctyp env =
     raise (Error (loc, Recursive_variable typ)) ;
   let check_type_aux = check_type_aux ~loc in
   Type1.unify_depths typ ctyp ;
-  let typ = repr typ in
-  let ctyp = repr ctyp in
-  Type1.unify_depths typ ctyp ;
+  (* Unfold any [Tother_mode] types so that [typ] and [ctyp] have the same
+     mode, if possible.
+  *)
+  let typ, ctyp = Type1.get_same_mode typ ctyp in
   (* Unpack checked mode [Tprover]s when unifying with a prover mode type,
      raising an exception if there is any other kind of mismatch.
   *)
-  let typ, ctyp =
-    match (typ, ctyp) with
-    | {type_mode= Checked; type_desc= Tprover typ; _}, {type_mode= Prover; _}
-      ->
-        (typ, ctyp)
-    | {type_mode= Prover; _}, {type_mode= Checked; type_desc= Tprover typ; _}
-      ->
-        (typ, ctyp)
-    | ({type_desc= Tconv _; _} as typ), ({type_desc= Tconv _; _} as ctyp)
-    | ( {type_desc= Tprover ({type_desc= Tconv _; _} as typ); _}
-      , ({type_desc= Tconv _; _} as ctyp) )
-    | ( ({type_desc= Tconv _; _} as typ)
-      , {type_desc= Tprover ({type_desc= Tconv _; _} as ctyp); _} ) -> (
-      (* Conversions work both ways, so we choose the same mode for each.
-         In particular, we chose Checked mode so that we don't inadvertently
-         throw away a tri-stitching.
-
-         We also have to erase any [Tprover] wrappers around each, otherwise
-         we will end up with a modes mismatch. Currently, it is safe to presume
-         that [Tprover]s will not nest.
-        *)
-      match (typ.type_mode, ctyp.type_mode) with
-      | Checked, Prover ->
-          (typ, ctyp.type_alternate)
-      | Prover, Checked ->
-          (typ.type_alternate, ctyp)
-      | _ ->
-          (typ, ctyp) )
-    | {type_mode= mode1; _}, {type_mode= mode2; _} ->
-        if equal_mode mode1 mode2 then (typ, ctyp)
-        else raise (Error (loc, Type_modes_mismatch (typ, ctyp)))
-  in
+  if not (equal_mode typ.type_mode ctyp.type_mode) then
+    raise (Error (loc, Type_modes_mismatch (typ, ctyp))) ;
   (* Reject tri-stitchings with bad modes. *)
   assert (equal_mode typ.type_mode typ.type_alternate.type_alternate.type_mode) ;
   assert (
@@ -173,12 +144,22 @@ let rec check_type_aux ~loc typ ctyp env =
         stitch_tri_stitched ~loc typ env
       else if phys_equal ctyp.type_alternate.type_alternate typ then
         stitch_tri_stitched ~loc ctyp env
-      else if ctyp.type_id < typ.type_id then Type1.add_instance typ ctyp
-      else Type1.add_instance ctyp typ
+      else if ctyp.type_id < typ.type_id then
+        Type1.add_instance
+          ~unify:(fun typ1 typ2 -> check_type_aux typ1 typ2 env)
+          typ ctyp
+      else
+        Type1.add_instance
+          ~unify:(fun typ1 typ2 -> check_type_aux typ1 typ2 env)
+          ctyp typ
   | Tvar _, _ ->
-      Type1.add_instance typ ctyp
+      Type1.add_instance
+        ~unify:(fun typ1 typ2 -> check_type_aux typ1 typ2 env)
+        typ ctyp
   | _, Tvar _ ->
-      Type1.add_instance ctyp typ
+      Type1.add_instance
+        ~unify:(fun typ1 typ2 -> check_type_aux typ1 typ2 env)
+        ctyp typ
   | Ttuple typs, Ttuple ctyps -> (
     match
       List.iter2 typs ctyps ~f:(fun typ ctyp -> check_type_aux typ ctyp env)
@@ -263,7 +244,7 @@ let rec check_type_aux ~loc typ ctyp env =
       set_desc typ (Topaque typ') ;
       set_desc typ.type_alternate (Topaque typ') ;
       check_type_aux typ' ctyp' env
-  | Tprover typ, Tprover ctyp ->
+  | Tother_mode typ, Tother_mode ctyp ->
       check_type_aux typ ctyp env
   | Tctor _, _ | _, Tctor _ ->
       (* Unfold an alias and compare again *)
@@ -317,7 +298,10 @@ let unifies env typ constr_typ =
   match check_type ~loc:Location.none env typ constr_typ with
   | () ->
       true
-  | exception Error _ ->
+  | exception (Error _ as _exn) ->
+      (*Format.(
+        fprintf err_formatter "Does not unify:@.%a@." Location.report_exception
+          exn) ;*)
       backtrack snapshot ; false
 
 let rec add_implicits ~loc implicits typ env =
@@ -584,9 +568,14 @@ and check_patterns env typs pats =
   in
   (List.rev rev_pats, List.rev rev_names, env)
 
-let rec get_conversion_body ~can_add_args ~loc env free_vars typ =
-  let get_conversion_body = get_conversion_body ~can_add_args ~loc env in
-  let get_conversion_bodies = get_conversion_bodies ~can_add_args ~loc env in
+let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ
+    =
+  let get_conversion_body =
+    get_conversion_body ~may_identity ~can_add_args ~loc env
+  in
+  let get_conversion_bodies =
+    get_conversion_bodies ~may_identity ~can_add_args ~loc env
+  in
   let typ = repr typ in
   (* Sanity check. *)
   assert (are_stitched typ typ.type_alternate) ;
@@ -619,11 +608,22 @@ let rec get_conversion_body ~can_add_args ~loc env free_vars typ =
         | Ok () ->
             () ) ;
         let free_vars, convs = get_conversion_bodies free_vars typs in
-        ( free_vars
-        , { conv_body_desc= Tconv_tuple convs
-          ; conv_body_loc= loc
-          ; conv_body_type } )
-    | Tvar _, Tvar _ ->
+        if
+          List.for_all convs ~f:(function
+            | {conv_body_desc= Tconv_identity; _} ->
+                true
+            | _ ->
+                false )
+        then
+          ( free_vars
+          , {conv_body_desc= Tconv_identity; conv_body_loc= loc; conv_body_type}
+          )
+        else
+          ( free_vars
+          , { conv_body_desc= Tconv_tuple convs
+            ; conv_body_loc= loc
+            ; conv_body_type } )
+    | Tvar _, _ ->
         let free_vars, ident =
           match List.Assoc.find ~equal:Type1.equal free_vars typ with
           | Some ident ->
@@ -641,60 +641,137 @@ let rec get_conversion_body ~can_add_args ~loc env free_vars typ =
           ; conv_body_loc= loc
           ; conv_body_type } )
     | Tctor variant1, Tctor variant2 -> (
-      match Envi.TypeDecl.unfold_alias_aux ~loc typ env with
-      | Some (_desc, Some typ') ->
-          (* Type declaration is an alias. *)
-          if unifies env typ.type_alternate typ'.type_alternate then
-            get_conversion_body free_vars typ'
-          else assert false
-      | Some ({tdec_desc= TRecord fields1; tdec_params= params1; _}, None) -> (
-        match Envi.TypeDecl.unfold_alias_aux ~loc typ.type_alternate env with
-        | Some ({tdec_desc= TRecord fields2; tdec_params= params2; _}, None) ->
-            let free_vars = ref free_vars in
-            let conv_field {fld_ident= ident1; fld_type= typ1}
-                {fld_ident= ident2; fld_type= typ2} =
-              if not (String.equal (Ident.name ident1) (Ident.name ident2))
-              then raise (Error (loc, Cannot_create_conversion typ)) ;
-              let typ1 =
-                Envi.Type.instantiate params1 variant1.var_params typ1 env
-              in
-              let typ2 =
-                Envi.Type.instantiate params2 variant2.var_params typ2 env
-              in
-              if not (unifies env typ1.type_alternate typ2) then
-                (* The types of the fields don't match. *)
-                raise (Error (loc, Cannot_create_conversion typ)) ;
-              let free_vars', conv = get_conversion_body !free_vars typ1 in
-              free_vars := free_vars' ;
-              (Location.mkloc (Path.Pident ident1) loc, conv)
-            in
-            let fields =
-              match List.map2 ~f:conv_field fields1 fields2 with
-              | Ok x ->
-                  x
-              | Unequal_lengths ->
-                  raise (Error (loc, Cannot_create_conversion typ))
-            in
-            ( !free_vars
-            , { conv_body_desc= Tconv_record fields
+        if
+          may_identity
+          && Type1.equal_at_depth
+               ~get_decl:(fun path ->
+                 snd (Envi.raw_get_type_declaration ~loc path env) )
+               ~depth:10001 typ typ.type_alternate
+        then
+          ( free_vars
+          , {conv_body_desc= Tconv_identity; conv_body_loc= loc; conv_body_type}
+          )
+        else
+          match Envi.TypeDecl.unfold_alias_aux ~loc typ env with
+          | Some (_desc, Some typ') ->
+              (* Type declaration is an alias. *)
+              if unifies env typ.type_alternate typ'.type_alternate then
+                get_conversion_body free_vars typ'
+              else assert false
+          | Some ({tdec_desc= TRecord fields1; tdec_params= params1; _}, None)
+            -> (
+            match
+              Envi.TypeDecl.unfold_alias_aux ~loc typ.type_alternate env
+            with
+            | Some ({tdec_desc= TRecord fields2; tdec_params= params2; _}, None)
+              ->
+                let free_vars = ref free_vars in
+                let conv_field {fld_ident= ident1; fld_type= typ1}
+                    {fld_ident= ident2; fld_type= typ2} =
+                  if not (String.equal (Ident.name ident1) (Ident.name ident2))
+                  then raise (Error (loc, Cannot_create_conversion typ)) ;
+                  let typ1 =
+                    Envi.Type.instantiate params1 variant1.var_params typ1 env
+                  in
+                  let typ2 =
+                    Envi.Type.instantiate params2 variant2.var_params typ2 env
+                  in
+                  if not (unifies env typ1.type_alternate typ2) then
+                    (* The types of the fields don't match. *)
+                    raise (Error (loc, Cannot_create_conversion typ)) ;
+                  let free_vars', conv = get_conversion_body !free_vars typ1 in
+                  free_vars := free_vars' ;
+                  (Location.mkloc (Path.Pident ident1) loc, conv)
+                in
+                let fields =
+                  match List.map2 ~f:conv_field fields1 fields2 with
+                  | Ok x ->
+                      x
+                  | Unequal_lengths ->
+                      raise (Error (loc, Cannot_create_conversion typ))
+                in
+                if
+                  List.for_all fields ~f:(function
+                    | _, {conv_body_desc= Tconv_identity; _} ->
+                        true
+                    | _ ->
+                        false )
+                then
+                  ( !free_vars
+                  , { conv_body_desc= Tconv_identity
+                    ; conv_body_loc= loc
+                    ; conv_body_type } )
+                else
+                  ( !free_vars
+                  , { conv_body_desc= Tconv_record fields
+                    ; conv_body_loc= loc
+                    ; conv_body_type } )
+            | _ ->
+                assert false )
+          | _ ->
+              raise (Error (loc, Cannot_create_conversion typ)) )
+    | ( Tarrow (typ1a, typ1b, Explicit, Nolabel)
+      , Tarrow (typ2a, typ2b, Explicit, Nolabel) ) -> (
+        if
+          not
+            ( unifies env typ1a.type_alternate typ2a
+            && unifies env typ1b.type_alternate typ2b )
+        then
+          (* The types of the arguments don't match. *)
+          raise (Error (loc, Cannot_create_conversion typ)) ;
+        let free_vars, conv1 = get_conversion_body free_vars typ1a in
+        let free_vars, conv2 = get_conversion_body free_vars typ1b in
+        match (conv1.conv_body_desc, conv2.conv_body_desc) with
+        | Tconv_identity, Tconv_identity ->
+            ( free_vars
+            , { conv_body_desc= Tconv_identity
               ; conv_body_loc= loc
               ; conv_body_type } )
         | _ ->
-            assert false )
-      | _ ->
-          raise (Error (loc, Cannot_create_conversion typ)) )
-    | Topaque typ1, Topaque typ2 when phys_equal typ1 typ2 ->
-        ( free_vars
-        , {conv_body_desc= Tconv_opaque; conv_body_loc= loc; conv_body_type} )
+            ( free_vars
+            , { conv_body_desc= Tconv_arrow (conv1, conv2)
+              ; conv_body_loc= loc
+              ; conv_body_type } ) )
+    | Topaque typ1, _ ->
+        (* An opaque conversion. The underlying types should be the same. *)
+        let typ1 = Type1.remove_opaques typ1 in
+        let typ2 = Type1.remove_opaques typ.type_alternate in
+        if
+          phys_equal typ1 typ2
+          || Type1.equal_at_depth
+               ~get_decl:(fun path ->
+                 snd (Envi.raw_get_type_declaration ~loc path env) )
+               ~depth:10001 typ typ2
+        then
+          ( free_vars
+          , {conv_body_desc= Tconv_opaque; conv_body_loc= loc; conv_body_type}
+          )
+        else raise (Error (loc, Cannot_create_conversion typ))
+    | _, Topaque typ2 ->
+        (* A tri-stitching where the stitching is an opaque conversion.
+           The underlying types should be the same.
+        *)
+        let typ2 = Type1.remove_opaques typ2 in
+        if
+          phys_equal typ typ2
+          || Type1.equal_at_depth
+               ~get_decl:(fun path ->
+                 snd (Envi.raw_get_type_declaration ~loc path env) )
+               ~depth:10001 typ typ2
+        then
+          ( free_vars
+          , {conv_body_desc= Tconv_identity; conv_body_loc= loc; conv_body_type}
+          )
+        else raise (Error (loc, Cannot_create_conversion typ))
     | _ ->
         raise (Error (loc, Cannot_create_conversion typ)) )
 
-and get_conversion_bodies ~can_add_args ~loc env free_vars typs =
+and get_conversion_bodies ~may_identity ~can_add_args ~loc env free_vars typs =
   List.fold_map
-    ~f:(get_conversion_body ~can_add_args ~loc env)
+    ~f:(get_conversion_body ~may_identity ~can_add_args ~loc env)
     ~init:free_vars typs
 
-let get_conversion ~can_add_args ~loc env typ =
+let get_conversion ~may_identity ~can_add_args ~loc env typ =
   let mode = Envi.current_mode env in
   let rev_arguments, typ = get_rev_implicits typ in
   let rev_arguments =
@@ -709,7 +786,9 @@ let get_conversion ~can_add_args ~loc env typ =
             raise (Error (loc, Cannot_create_conversion typ)) )
   in
   let typ = match typ.type_desc with Tconv typ -> typ | _ -> typ in
-  match get_conversion_body ~can_add_args ~loc env rev_arguments typ with
+  match
+    get_conversion_body ~may_identity ~can_add_args ~loc env rev_arguments typ
+  with
   | free_vars, conv ->
       let conv =
         { Typedast.conv_desc= Tconv_body conv
@@ -728,6 +807,18 @@ let get_conversion ~can_add_args ~loc env typ =
       (*Location.report_exception Format.err_formatter exn ;*)
       let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
       raise (Error (loc, Convert_failed (typ, err)))
+
+let conversion_body_is_identity = function
+  | {Typedast.conv_body_desc= Tconv_identity; _} ->
+      true
+  | _ ->
+      false
+
+let rec conversion_is_identity = function
+  | {Typedast.conv_desc= Tconv_body conv; _} ->
+      conversion_body_is_identity conv
+  | {conv_desc= Tconv_fun (_, conv); _} ->
+      conversion_is_identity conv
 
 let rec get_expression env expected exp =
   let mode = Envi.current_mode env in
@@ -775,8 +866,6 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_apply (f, es)}, env)
   | Pexp_variable name ->
       let path, typ = Envi.find_name ~mode name env in
-      (* TODO: conv! *)
-      let typ = get_mode mode typ in
       let path = Location.mkloc path name.loc in
       let implicits, result_typ = get_implicits typ in
       check_type ~loc env expected (get_mode mode result_typ) ;
@@ -793,6 +882,29 @@ let rec get_expression env expected exp =
           { Typedast.exp_loc= loc
           ; exp_type= result_typ
           ; exp_desc= Texp_apply (e, implicits) }
+      in
+      let e =
+        match (mode, result_typ.type_mode) with
+        | Checked, Checked | Prover, Prover ->
+            e
+        | Prover, Checked ->
+            let conv =
+              get_conversion ~may_identity:true ~can_add_args:true ~loc env
+                result_typ
+            in
+            if conversion_is_identity conv then {e with exp_type= expected}
+            else
+              let implicits =
+                (* Instantiate unfilled implicit arguments in [conv]. *)
+                let implicits, _ = get_implicits conv.conv_type in
+                List.map implicits ~f:(fun (label, typ) ->
+                    (label, Envi.Type.new_implicit_var ~loc typ env) )
+              in
+              { exp_loc= loc
+              ; exp_type= expected
+              ; exp_desc= Texp_read (conv, implicits, e) }
+        | Checked, Prover ->
+            assert false
       in
       (e, env)
   | Pexp_literal (Int i) ->
@@ -1189,7 +1301,19 @@ let rec get_expression env expected exp =
         necessary.
       *)
       Envi.wrap_prover_implicits env ;
-      ({exp_loc= loc; exp_type= expected; exp_desc= Texp_prover e}, env)
+      let conv =
+        get_conversion ~loc ~may_identity:false ~can_add_args:true env expected
+      in
+      let implicits =
+        (* Instantiate unfilled implicit arguments in [conv]. *)
+        let implicits, _ = get_implicits conv.conv_type in
+        List.map implicits ~f:(fun (label, typ) ->
+            (label, Envi.Type.new_implicit_var ~loc typ env) )
+      in
+      ( { exp_loc= loc
+        ; exp_type= expected
+        ; exp_desc= Texp_prover (conv, implicits, e) }
+      , env )
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in
@@ -1206,6 +1330,27 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
   let implicit_vars =
     Envi.Type.flattened_implicit_vars ~loc ~toplevel ~unifies typ_vars env
+  in
+  let implicit_vars =
+    List.filter implicit_vars ~f:(fun var ->
+        let exp_type = Type1.remove_mode_changes var.exp_type in
+        match (var.exp_desc, exp_type.type_desc) with
+        | Texp_unifiable unif, Tconv _ -> (
+            (* Try to find a conversion. *)
+            let snap = Snapshot.create () in
+            try
+              (* TODO: can_add_args= true *)
+              let conv =
+                get_conversion ~may_identity:false ~can_add_args:false
+                  ~loc:var.exp_loc env exp_type
+              in
+              unif.expression
+              <- Some
+                   {exp_desc= Texp_convert conv; exp_type; exp_loc= var.exp_loc} ;
+              false
+            with _ -> backtrack snap ; true )
+        | _ ->
+            true )
   in
   match implicit_vars with
   | [] ->
@@ -1246,14 +1391,26 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         List.fold ~init:(e, env) implicit_vars ~f:(fun (e, env) var ->
             match var.exp_desc with
             | Texp_unifiable {expression= None; name; _} ->
+                let var_typ, exp_typ = (var.exp_type, e.exp_type) in
+                let var_typ =
+                  match (var_typ.type_mode, exp_typ.type_mode) with
+                  | Checked, Checked | Prover, Prover ->
+                      var_typ
+                  | Prover, Checked ->
+                      Type1.Mk.other_mode ~mode:Checked var_typ.type_depth
+                        var_typ
+                  | Checked, Prover ->
+                      Type1.Mk.other_mode ~mode:Prover var_typ.type_depth
+                        var_typ
+                in
                 let exp_type =
-                  Envi.Type.Mk.arrow ~mode ~explicit:Implicit var.exp_type
-                    e.exp_type env
+                  Envi.Type.Mk.arrow ~mode ~explicit:Implicit var_typ exp_typ
+                    env
                 in
                 let p =
                   { Typedast.pat_desc= Tpat_variable name
                   ; pat_loc= loc
-                  ; pat_type= var.exp_type }
+                  ; pat_type= var_typ }
                 in
                 ( { Typedast.exp_desc= Texp_fun (Nolabel, p, e, Implicit)
                   ; exp_type
@@ -1423,6 +1580,9 @@ let rec check_signature_item env item =
       in
       let env = Envi.add_name convname.txt typ' env in
       let env = Envi.add_implicit_instance convname.txt typ' env in
+      let env =
+        Envi.add_implicit_instance convname.txt typ'.type_alternate env
+      in
       ( env
       , { Typedast.sig_desc= Tsig_convtype (decl, tconv, convname, typ)
         ; sig_loc= loc } )
@@ -1492,6 +1652,7 @@ let rec check_signature_item env item =
       let typ' = polymorphise (Type1.flatten typ.type_type) env in
       let env = Envi.add_name name.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ' env in
+      let env = Envi.add_implicit_instance name.txt typ'.type_alternate env in
       (env, {Typedast.sig_desc= Tsig_convert (name, typ); sig_loc= loc})
 
 and check_signature env signature =
@@ -1662,11 +1823,16 @@ let rec check_statement env stmt =
             in
             Envi.Type.Mk.arrow ~mode ~explicit:Implicit param typ env )
       in
-      let conv = get_conversion ~can_add_args:false ~loc env typ in
+      let conv =
+        get_conversion ~may_identity:true ~can_add_args:false ~loc env typ
+      in
       let typ = polymorphise (Type1.flatten typ) env in
       Envi.Type.update_depths env typ ;
       let env = Envi.add_name convname.txt typ env in
       let env = Envi.add_implicit_instance convname.txt typ env in
+      let env =
+        Envi.add_implicit_instance convname.txt typ.type_alternate env
+      in
       let stmt =
         { Typedast.stmt_loc= loc
         ; stmt_desc=
@@ -1695,7 +1861,9 @@ let rec check_statement env stmt =
             in
             Envi.Type.Mk.arrow ~mode param typ env )
       in
-      let conv = get_conversion ~can_add_args:false ~loc env typ in
+      let conv =
+        get_conversion ~may_identity:true ~can_add_args:false ~loc env typ
+      in
       let typ = polymorphise (Type1.flatten typ) env in
       Envi.Type.update_depths env typ ;
       let convname =
@@ -1709,6 +1877,9 @@ let rec check_statement env stmt =
       in
       let env = Envi.add_name convname.txt typ env in
       let env = Envi.add_implicit_instance convname.txt typ env in
+      let env =
+        Envi.add_implicit_instance convname.txt typ.type_alternate env
+      in
       ( env
       , { Typedast.stmt_desc= Tstmt_convtype (decl, tconv, convname, conv)
         ; stmt_loc= loc } )
@@ -1848,7 +2019,10 @@ let rec check_statement env stmt =
       let typ, env = Typet.Type.import typ env in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env typ.type_type ;
-      let conv = get_conversion ~can_add_args:false ~loc env typ.type_type in
+      let conv =
+        get_conversion ~may_identity:true ~can_add_args:false ~loc env
+          typ.type_type
+      in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let typ' = polymorphise (Type1.flatten typ.type_type) env in
       let env = Envi.add_name name.txt typ' env in

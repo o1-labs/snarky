@@ -198,8 +198,12 @@ let expression_desc iter = function
       iter.convert iter conv ;
       List.iter conv_args ~f:(fun (_lbl, e) -> iter.expression iter e) ;
       iter.expression iter e
-  | Texp_prover e ->
+  | Texp_prover (conv, conv_args, e) ->
+      iter.convert iter conv ;
+      List.iter conv_args ~f:(fun (_lbl, e) -> iter.expression iter e) ;
       iter.expression iter e
+  | Texp_convert conv ->
+      iter.convert iter conv
 
 let convert_body iter {conv_body_desc; conv_body_loc; conv_body_type} =
   iter.location iter conv_body_loc ;
@@ -216,7 +220,10 @@ let convert_body_desc iter = function
       List.iter args ~f:(fun (_label, conv) -> iter.convert_body iter conv)
   | Tconv_tuple convs ->
       List.iter ~f:(iter.convert_body iter) convs
-  | Tconv_opaque ->
+  | Tconv_arrow (conv1, conv2) ->
+      iter.convert_body iter conv1 ;
+      iter.convert_body iter conv2
+  | Tconv_identity | Tconv_opaque ->
       ()
 
 let convert iter {conv_desc; conv_loc; conv_type} =
