@@ -60,7 +60,13 @@ module Alias_record = struct
                   ~f:(fun () -> Snarky.Checked.return ()) ) ) }
   end
 
-  type nonrec ('a, 'b) v = ('a, 'a) u
+  include struct
+    type nonrec ('a, 'b) v = ('a, 'a) u
+
+    and ('a, 'b) v = ('a, 'a) u
+
+    let v_typ x___1059 x___1058 = u_typ x___1059 x___1059
+  end
 
   let f (x : (int, int) v) : (int, bool) v = x
 
