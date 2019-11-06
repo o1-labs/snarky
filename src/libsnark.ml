@@ -1934,7 +1934,7 @@ struct
   let c = func "c" G1.typ G1.delete
 end
 
-module Make_bowe_gabizon (M : sig
+module type Make_proof_system_inputs = sig
   val prefix : string
 
   module R1CS_constraint_system : sig
@@ -1984,17 +1984,98 @@ module Make_bowe_gabizon (M : sig
 
     val subgroup_check : t -> unit
   end
-end) (H : sig
+end
+
+module Make_Groth16 (M : Make_proof_system_inputs) = struct
   open M
 
-  val hash :
-       ?message:Fq.t array
-    -> a:G1.t
-    -> b:G2.t
-    -> c:G1.t
-    -> delta_prime:G2.t
-    -> G1.t
-end) =
+  module Prefix : sig
+    val prefix : string
+  end =
+    M
+
+  module Keys = Make_proof_system_keys (struct
+    include M
+
+    let prefix = M.prefix
+  end)
+
+  module Verification_key = struct
+    include Keys.Verification_key
+    include Make_Groth16_verification_key_accessors
+              (Prefix)
+              (Keys.Verification_key)
+              (G1)
+              (G2)
+              (Fqk)
+  end
+
+  module Proving_key = Keys.Proving_key
+  module Keypair = Keys.Keypair
+
+  (* TODO
+    module Accessors = Make_Groth16_verification_key_accessors(Prefix)(Keys.Verification_key)(G1)(G2)(Fqk) *)
+
+  module Proof = struct
+    module Prefix = struct
+      let prefix = with_prefix M.prefix "proof"
+    end
+
+    module T = Proof.Make (Ctypes_foreign) (Prefix)
+    module Accessors = Make_proof_accessors (Prefix) (T) (G1) (G2)
+
+    type message = unit
+
+    (* This is to have control over how proofs are serialized and to ensure we perform
+    the subgroup check. *)
+    type t = {a: G1.t; b: G2.t; c: G1.t} [@@deriving bin_io]
+
+    let create_ =
+      let stub =
+        foreign (T.func_name "create")
+          ( Proving_key.typ @-> M.Field.Vector.typ @-> M.Field.Vector.typ
+          @-> returning T.typ )
+      in
+      fun k primary auxiliary ->
+        let t = stub k primary auxiliary in
+        Caml.Gc.finalise T.delete t ;
+        t
+
+    let create ?message:_ proving_key ~primary ~auxiliary =
+      let proof = create_ proving_key primary auxiliary in
+      let a = Accessors.a proof in
+      let b = Accessors.b proof in
+      let c = Accessors.c proof in
+      {a; b; c}
+
+    let verify =
+      let stub =
+        foreign
+          (T.func_name "verify_components")
+          ( G1.typ @-> G2.typ @-> G1.typ @-> Verification_key.typ
+          @-> M.Field.Vector.typ @-> returning bool )
+      in
+      fun ?message:_ {a; b; c} k primary -> stub a b c k primary
+
+    let verify ?message:_ ({a= _; b; c= _} as t) vk input =
+      G2.subgroup_check b ; verify t vk input
+
+    let get_dummy () = {a= G1.one; b= G2.one; c= G1.one}
+  end
+end
+
+module Make_bowe_gabizon
+    (M : Make_proof_system_inputs) (H : sig
+        open M
+
+        val hash :
+             ?message:Fq.t array
+          -> a:G1.t
+          -> b:G2.t
+          -> c:G1.t
+          -> delta_prime:G2.t
+          -> G1.t
+    end) =
 struct
   open M
 
@@ -2325,14 +2406,29 @@ struct
         (G1)
         (G2)
 
-    module Groth16_verification_key_accessors =
-      Make_Groth16_verification_key_accessors
-        (Prefix)
-        (Default.Verification_key)
-        (G1)
-        (G2)
-        (Fqk)
     module Preprocess = Make_proving_key_preprocessor (Prefix) (G1) (G2)
+
+    module Groth16 = struct
+      module R1CS_constraint_system = struct
+        include Common.R1CS_constraint_system
+
+        let finalize = Common.R1CS_constraint_system.swap_AB_if_beneficial
+      end
+
+      include (
+        Common :
+          module type of Common
+          with module Field0 := Common.Field0
+           and module R1CS_constraint_system := Common.R1CS_constraint_system )
+
+      include Make_Groth16 (struct
+        include Common
+        module Fq = Fq
+        module Fqk = Fqk
+        module G1 = G1
+        module G2 = G2
+      end)
+    end
   end
 
   module Mnt6 = struct
@@ -2480,13 +2576,28 @@ struct
         (G1)
         (G2)
 
-    module Groth16_verification_key_accessors =
-      Make_Groth16_verification_key_accessors
-        (Prefix)
-        (Default.Verification_key)
-        (G1)
-        (G2)
-        (Fqk)
+    module Groth16 = struct
+      module R1CS_constraint_system = struct
+        include Common.R1CS_constraint_system
+
+        let finalize = Common.R1CS_constraint_system.swap_AB_if_beneficial
+      end
+
+      include (
+        Common :
+          module type of Common
+          with module Field0 := Common.Field0
+           and module R1CS_constraint_system := Common.R1CS_constraint_system )
+
+      include Make_Groth16 (struct
+        include Common
+        module Fq = Fq
+        module Fqk = Fqk
+        module G1 = G1
+        module G2 = G2
+      end)
+    end
+
     module Preprocess = Make_proving_key_preprocessor (Prefix) (G1) (G2)
   end
 end
