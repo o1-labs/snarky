@@ -1850,9 +1850,9 @@ let rec check_statement env stmt =
             Envi.Type.Mk.arrow ~mode ~explicit:Implicit param typ env )
       in
       let conv =
-        get_conversion ~may_identity:false ~can_add_args:false ~loc env typ
+        get_conversion ~may_identity:false ~can_add_args:true ~loc env typ
       in
-      let typ = polymorphise (Type1.flatten typ) env in
+      let typ = polymorphise (Type1.flatten conv.conv_type) env in
       Envi.Type.update_depths env typ ;
       let env = Envi.add_name convname.txt typ env in
       let env = Envi.add_implicit_instance convname.txt typ env in
@@ -1889,9 +1889,9 @@ let rec check_statement env stmt =
             Envi.Type.Mk.arrow ~mode param typ env )
       in
       let conv =
-        get_conversion ~may_identity:false ~can_add_args:false ~loc env typ
+        get_conversion ~may_identity:false ~can_add_args:true ~loc env typ
       in
-      let typ = polymorphise (Type1.flatten typ) env in
+      let typ = polymorphise (Type1.flatten conv.conv_type) env in
       Envi.Type.update_depths env typ ;
       let convname =
         match convname with

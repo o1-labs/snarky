@@ -79,4 +79,10 @@ module A = struct
   let opaque = ()
 end
 
-type nonrec x = prover Snarky.As_prover.Ref.t
+include struct
+  type nonrec x = prover Snarky.As_prover.Ref.t
+
+  and x = prover
+
+  let x_typ = w_typ
+end

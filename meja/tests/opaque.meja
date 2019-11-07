@@ -25,7 +25,6 @@ module A = {
 /* The magic opaque should still work when user-defined `opaque` types are out
    of scope.
 */
-/* TODO: This should generate a Typ.t but doesn't. Investigate. */
 type x = opaque(prover);
 
 /*let f = fun (i : opaque(int)) => {

@@ -10,7 +10,13 @@ module Alias_alias = struct
     let u_typ x___1010 x___1009 = Typ.fn x___1010 x___1010
   end
 
-  type nonrec ('a, 'b) v = ('a, 'a) u
+  include struct
+    type nonrec ('a, 'b) v = ('a, 'a) u
+
+    and ('a, 'b) v = ('a, 'a) u
+
+    let v_typ x___1015 x___1014 x___1016 = u_typ x___1015 x___1016
+  end
 
   let f (x : (int, bool) u) : (int, int) u = x
 
