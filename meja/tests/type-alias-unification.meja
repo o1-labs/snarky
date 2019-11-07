@@ -25,6 +25,7 @@ module Alias_opaque = {
 };
 
 module Alias_record = {
+  /* TODO: This doesn't derive a Typ.t. Investigate. */
   type u('a, 'b) = {a : 'a, b : 'b};
 
   type v('a, 'b) = u('a, 'a);
