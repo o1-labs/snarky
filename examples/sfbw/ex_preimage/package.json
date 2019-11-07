@@ -1,0 +1,17 @@
+{
+  "name": "your-package-name",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "dune build ex00_preimage.exe",
+    "clean": "dune clean",
+    "watch": "dune build -w ex00_preimage.exe"
+  },
+  "author": "you",
+  "license": "UNLICENSED",
+  "dependencies": [
+    "snarkyjs-crypto",
+    "snarkyjs"
+  ]
+}

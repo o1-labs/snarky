@@ -46,42 +46,11 @@ let set_printing_stdout =
 let set_printing_file =
   foreign "camlsnark_set_printing_file" (string @-> returning void)
 
-module Print_func = struct
-  (** Internal: The reference to the user-defined function passed to
-      {!val:set_printing_fun}.
-      OCaml may relocate the function in memory if it is heap-allocated (e.g.
-      using a closure) during its GC cycle, so we store a reference here and
-      call it from the statically-allocated OCaml function {!val:dispatch}
-      below.
-  *)
-  let print = ref (fun str -> str)
+let set_printing_normal =
+  foreign "camlsnark_set_printing_normal" (void @-> returning void)
 
-  (** A reference to the C [puts] function.
-
-      The OCaml stdlib functions use thread-unsafe primitives that may cause a
-      crash if calls from multiple threads overlap, so we use this to avoid
-      their thread-unsafe blocking behaviour.
-  *)
-  let puts = foreign "camlsnark_puts" (string @-> returning void)
-
-  (** The dispatcher passed to the C++ interface in {!val:set_printing_fun}.
-      We cannot pass the user-provided function directly to the C++ side in
-      case of GC relocation, so this provides a statically-allocated wrapper.
-
-      The call to {!val:puts} is made from here instead of the C++ side so that
-      OCaml's GC behaviour is mitigated by the the Ctypes API.
-  *)
-  let dispatch str = puts (!print str)
-end
-
-let set_printing_fun =
-  let stub =
-    foreign "camlsnark_set_printing_fun"
-      (funptr (string @-> returning void) @-> returning void)
-  in
-  fun f ->
-    Print_func.print := f ;
-    stub Print_func.dispatch
+let set_printing_json =
+  foreign "camlsnark_set_printing_json" (void @-> returning void)
 
 let () = set_no_profiling true
 
@@ -196,6 +165,8 @@ struct
 
     val print : t -> unit
 
+    val subgroup_check : t -> unit
+
     module Vector : Vector.S_binable with type elt := t
   end
 
@@ -304,9 +275,7 @@ struct
       | Zero ->
           zero
       | Non_zero t ->
-          on_curve_check t ;
-          let p = of_affine t in
-          subgroup_check p ; p
+          on_curve_check t ; of_affine t
 
     module B =
       Binable.Of_binable
@@ -1448,6 +1417,8 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    val set_constraint_system : t -> M.R1CS_constraint_system.t -> unit
   end = struct
     include Proving_key.Make
               (Ctypes_foreign)
@@ -1554,6 +1525,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
         let t = stub str in
         Caml.Gc.finalise (fun _ -> delete t) t ;
         t
+
+    let set_constraint_system : t -> M.R1CS_constraint_system.t -> unit =
+      foreign
+        (func_name "set_constraint_system")
+        (typ @-> M.R1CS_constraint_system.typ @-> returning void)
   end
 
   module Verification_key : sig
@@ -2005,6 +1981,8 @@ module Make_bowe_gabizon (M : sig
     include Binable.S with type t := t
 
     val one : t
+
+    val subgroup_check : t -> unit
   end
 end) (H : sig
   open M
@@ -2097,6 +2075,8 @@ struct
 
     let verify ?message {a; b; c; z; delta_prime} vk input =
       let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
+      G2.subgroup_check b ;
+      G2.subgroup_check delta_prime ;
       Pre.verify_components ~a ~b ~c ~delta_prime ~y_s ~z vk input
 
     let get_dummy () =

@@ -52,8 +52,26 @@ struct
       create ?message key ~primary ~auxiliary
   end
 
-  module Verification_key = Verification_key
-  module Proving_key = Proving_key
+  module Verification_key = struct
+    include Verification_key
+
+    type verification_key = t [@@deriving bin_io]
+
+    module With_r1cs_hash = struct
+      type t = Md5.t * verification_key [@@deriving bin_io]
+    end
+  end
+
+  module Proving_key = struct
+    include Proving_key
+
+    type proving_key = t [@@deriving bin_io]
+
+    module With_r1cs_hash = struct
+      type t = Md5.t * proving_key [@@deriving bin_io]
+    end
+  end
+
   module Keypair = Keypair
   module Var = Var
   module Field0 = Field
@@ -677,8 +695,10 @@ struct
         ; handler: Request.Handler.t
         ; mutable proving_key: Proving_key.t option
         ; mutable verification_key: Verification_key.t option
+        ; mutable r1cs_digest: Md5.t option
         ; proving_key_path: string option
-        ; verification_key_path: string option }
+        ; verification_key_path: string option
+        ; keys_have_hashes: bool }
 
       let rec allocate_inputs : type checked k1 k2.
              reduce_to_prover:(int ref -> checked -> checked)
@@ -700,8 +720,10 @@ struct
             ; handler= Request.Handler.fail
             ; proving_key= None
             ; verification_key= None
+            ; r1cs_digest= None
             ; proving_key_path= None
-            ; verification_key_path= None }
+            ; verification_key_path= None
+            ; keys_have_hashes= false }
         | {alloc; check; store; _} :: t' ->
             let before_input = !next_input in
             let var = Typ.Alloc.run alloc (alloc_var next_input) in
@@ -719,8 +741,10 @@ struct
                 ; handler
                 ; proving_key
                 ; verification_key
+                ; r1cs_digest
                 ; proving_key_path
-                ; verification_key_path } =
+                ; verification_key_path
+                ; keys_have_hashes } =
               allocate_inputs ~reduce_to_prover check_inputs next_input t'
                 compute
             in
@@ -756,11 +780,13 @@ struct
             ; handler
             ; proving_key
             ; verification_key
+            ; r1cs_digest
             ; proving_key_path
-            ; verification_key_path }
+            ; verification_key_path
+            ; keys_have_hashes }
 
       let create ~reduce_to_prover ?proving_key ?verification_key
-          ?proving_key_path ?verification_key_path
+          ?proving_key_path ?verification_key_path ?(keys_with_hashes = true)
           ?(handlers = ([] : Handler.t list)) ?(reduce = false) ~public_input
           compute =
         let next_input = ref 1 in
@@ -779,7 +805,8 @@ struct
         ; verification_key
         ; proving_key_path
         ; verification_key_path
-        ; handler }
+        ; handler
+        ; keys_have_hashes= keys_with_hashes }
 
       let run_proof_system ~run ?(reduce = !reduce_to_prover) ~input ?system
           ?eval_constraints ?(handlers = ([] : Handler.t list)) proof_system s
@@ -804,6 +831,8 @@ struct
         in
         let prover_state, a = run compute prover_state in
         Option.iter prover_state.system ~f:(fun system ->
+            proof_system.r1cs_digest
+            <- Some (R1CS_constraint_system.digest system) ;
             let aux_input_size =
               !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
@@ -819,20 +848,36 @@ struct
         system
 
       let digest ~run proof_system =
-        let system = constraint_system ~run proof_system in
-        R1CS_constraint_system.digest system
+        match proof_system.r1cs_digest with
+        | Some digest ->
+            (* Use cached digest. *)
+            digest
+        | None ->
+            let system = constraint_system ~run proof_system in
+            R1CS_constraint_system.digest system
 
       let generate_keypair ~run proof_system =
-        let keypair = Keypair.generate (constraint_system ~run proof_system) in
+        let system = constraint_system ~run proof_system in
+        let keypair = Keypair.generate system in
         proof_system.proving_key <- Some keypair.pk ;
         proof_system.verification_key <- Some keypair.vk ;
         (* Write keys to the corresponding files. *)
-        Option.iter proof_system.proving_key_path ~f:(fun path ->
-            Out_channel.write_all path ~data:(Proving_key.to_string keypair.pk)
-        ) ;
-        Option.iter proof_system.verification_key_path ~f:(fun path ->
-            Out_channel.write_all path
-              ~data:(Verification_key.to_string keypair.vk) ) ;
+        if proof_system.keys_have_hashes then (
+          let digest = digest ~run proof_system in
+          Option.iter proof_system.proving_key_path ~f:(fun path ->
+              Bin_prot_io.write
+                (module Proving_key.With_r1cs_hash)
+                path ~data:(digest, keypair.pk) ) ;
+          Option.iter proof_system.verification_key_path ~f:(fun path ->
+              Bin_prot_io.write
+                (module Verification_key.With_r1cs_hash)
+                path ~data:(digest, keypair.vk) ) )
+        else (
+          Option.iter proof_system.proving_key_path ~f:(fun path ->
+              Bin_prot_io.write (module Proving_key) path ~data:keypair.pk ) ;
+          Option.iter proof_system.verification_key_path ~f:(fun path ->
+              Bin_prot_io.write (module Verification_key) path ~data:keypair.vk
+          ) ) ;
         keypair
 
       let run_with_input ~run ?reduce ~public_input ?system ?eval_constraints
@@ -883,17 +928,54 @@ struct
         Or_error.map ~f:(Fn.const ())
           (run_checked' ~run ?reduce ~public_input ?handlers proof_system s)
 
-      let read_proving_key proof_system =
+      let read_proving_key ?r1cs proof_system =
         match proof_system.proving_key_path with
-        | Some path ->
-            Some (Proving_key.of_string (In_channel.read_all path))
+        | Some path -> (
+          try
+            let ret =
+              match r1cs with
+              | Some r1cs ->
+                  let digest = R1CS_constraint_system.digest r1cs in
+                  proof_system.r1cs_digest <- Some digest ;
+                  let digest', pk =
+                    Bin_prot_io.read (module Proving_key.With_r1cs_hash) path
+                  in
+                  if Md5.equal digest digest' then (
+                    (* We don't store the R1CS for keys, so set it here if we
+                       know it.
+                    *)
+                    Backend.Proving_key.set_constraint_system pk r1cs ;
+                    Some pk )
+                  else None
+              | None ->
+                  Some (Bin_prot_io.read (module Proving_key) path)
+            in
+            Option.iter ret ~f:(fun key -> proof_system.proving_key <- Some key) ;
+            ret
+          with _ -> None )
         | None ->
             None
 
-      let read_verification_key proof_system =
+      let read_verification_key ?digest proof_system =
         match proof_system.verification_key_path with
-        | Some path ->
-            Some (Verification_key.of_string (In_channel.read_all path))
+        | Some path -> (
+          try
+            let ret =
+              match digest with
+              | Some digest ->
+                  let digest', vk =
+                    Bin_prot_io.read
+                      (module Verification_key.With_r1cs_hash)
+                      path
+                  in
+                  if Md5.equal digest digest' then Some vk else None
+              | None ->
+                  Some (Bin_prot_io.read (module Verification_key) path)
+            in
+            Option.iter ret ~f:(fun key ->
+                proof_system.verification_key <- Some key ) ;
+            ret
+          with _ -> None )
         | None ->
             None
 
@@ -904,7 +986,13 @@ struct
             ~f:(fun f -> f ())
             [ (fun () -> proving_key)
             ; (fun () -> proof_system.proving_key)
-            ; (fun () -> read_proving_key proof_system)
+            ; (fun () ->
+                let r1cs =
+                  if proof_system.keys_have_hashes then
+                    Some (constraint_system ~run proof_system)
+                  else None
+                in
+                read_proving_key ?r1cs proof_system )
             ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
         let system =
@@ -919,7 +1007,8 @@ struct
         let {input; aux; _} = state in
         Proof.create ?message proving_key ~primary:input ~auxiliary:aux
 
-      let verify ~public_input ?verification_key ?message proof_system proof =
+      let verify ~run ~public_input ?verification_key ?message proof_system
+          proof =
         let input =
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
@@ -928,7 +1017,13 @@ struct
             ~f:(fun f -> f ())
             [ (fun () -> verification_key)
             ; (fun () -> proof_system.verification_key)
-            ; (fun () -> read_verification_key proof_system)
+            ; (fun () ->
+                let digest =
+                  if proof_system.keys_have_hashes then
+                    Some (digest ~run proof_system)
+                  else None
+                in
+                read_verification_key ?digest proof_system )
             ; (fun () ->
                 failwith
                   "Could not verify the proof; no verification key has been \
@@ -1038,6 +1133,27 @@ struct
               go t' (k var)
       in
       go t0 k0
+
+    let conv_never_use : type r_var r_value.
+           (unit -> 'hack)
+        -> (unit -> r_var, r_value, 'k_var, 'k_value) t
+        -> ('hack -> 'k_var)
+        -> 'k_var =
+     fun f t k ->
+      let rec go : type k_var k_value.
+             (unit -> r_var, r_value, k_var, k_value) t
+          -> ('hack -> k_var)
+          -> k_var =
+       fun t ->
+        match t with
+        | [] ->
+            fun k () ->
+              let hack = f () in
+              k hack ()
+        | _ :: t' ->
+            fun k arg -> go t' (fun hack -> k hack arg)
+      in
+      go t k
 
     let prove :
            run:('a, 's, 'checked) Checked.Runner.run
@@ -1179,6 +1295,90 @@ struct
       let div x y = Checked.div ~label:"Field.Checked.div" x y
 
       let inv x = Checked.inv ~label:"Field.Checked.inv" x
+
+      let sqrt x =
+        let open Checked in
+        let open Let_syntax in
+        let%bind y =
+          exists ~compute:As_prover.(map (read_var x) ~f:Field.sqrt) typ
+        in
+        let%map () = assert_square y x in
+        y
+
+      let quadratic_nonresidue =
+        lazy
+          (let rec go i =
+             let x = Field.of_int i in
+             if not (Field.is_square x) then x else go Int.(i + 1)
+           in
+           go 2)
+
+      (* The trick here is the following.
+
+    Let beta be a known non-square.
+
+    x is not a square iff beta*x is a square
+
+    So we guess the result [is_square] and y a sqrt of one of {x, beta*x} and assert
+
+    y * y = is_square * x + (1 - is_square) * (beta * x)
+
+    which, letting B = beta*x holds iff
+
+    y * y
+    = is_square * x + B - is_square * B
+    = is_square * (x - B) + B
+  *)
+      let sqrt_check x =
+        let open Checked in
+        let open Let_syntax in
+        let%bind is_square =
+          exists
+            ~compute:As_prover.(map (read_var x) ~f:Field.is_square)
+            Boolean.typ
+        in
+        let%bind y =
+          exists typ
+            ~compute:
+              As_prover.(
+                Let_syntax.(
+                  let%map is_square = read Boolean.typ is_square
+                  and x = read_var x in
+                  if is_square then Field.sqrt x
+                  else Field.(sqrt (Lazy.force quadratic_nonresidue * x))))
+        in
+        let b = scale x (Lazy.force quadratic_nonresidue) in
+        let%bind t = mul (is_square :> Var.t) (x - b) in
+        let%map () = assert_square y (t + b) in
+        (y, is_square)
+
+      let is_square x =
+        let open Checked.Let_syntax in
+        let%map _, b = sqrt_check x in
+        b
+
+      let%test_unit "is_square" =
+        let x = Field.random () in
+        let typf = Typ.field in
+        let x2 = Field.square x in
+        let run elt =
+          let (), answer =
+            Checked.run_and_check ~run:Checked.run
+              (Checked.map
+                 ~f:(As_prover.read Checked.Boolean.typ)
+                 Checked.(
+                   Let_syntax.(
+                     let%bind x =
+                       exists typf ~compute:(As_prover.return elt)
+                     in
+                     is_square x)))
+              ()
+            |> Or_error.ok_exn
+          in
+          answer
+        in
+        assert (run x2) ;
+        assert (not (run (Field.mul (Lazy.force quadratic_nonresidue) x2)))
 
       let choose_preimage_var = Checked.choose_preimage
 
@@ -1470,10 +1670,11 @@ struct
     type ('a, 's, 'inputs) t = (('a, 's) Checked.t, 'inputs, 's) proof_system
 
     let create ?proving_key ?verification_key ?proving_key_path
-        ?verification_key_path ?handlers ?reduce ~public_input checked =
+        ?verification_key_path ?keys_with_hashes ?handlers ?reduce
+        ~public_input checked =
       create ~reduce_to_prover:Runner.reduce_to_prover ?proving_key
-        ?verification_key ?proving_key_path ?verification_key_path ?handlers
-        ?reduce ~public_input checked
+        ?verification_key ?proving_key_path ?verification_key_path
+        ?keys_with_hashes ?handlers ?reduce ~public_input checked
 
     let constraint_system (proof_system : _ t) =
       constraint_system ~run:Checked.run proof_system
@@ -1499,7 +1700,8 @@ struct
         ?message proof_system
 
     let verify ~public_input ?verification_key ?message (proof_system : _ t) =
-      verify ~public_input ?verification_key ?message proof_system
+      verify ~run:Checked.run ~public_input ?verification_key ?message
+        proof_system
 
     let generate_witness ~public_input ?handlers ?reduce (proof_system : _ t) =
       generate_witness ~run:Checked.run ~public_input ?handlers ?reduce
@@ -1535,6 +1737,8 @@ struct
     Run.generate_keypair ~run:Checked.run ~exposing k
 
   let conv f = Run.conv (fun x _ -> f x)
+
+  let conv_never_use = Run.conv_never_use
 
   let prove ?message key t s k = Run.prove ~run:Checked.run ?message key t s k
 
@@ -1984,6 +2188,12 @@ module Run = struct
 
       let inv x = run (inv x)
 
+      let is_square x = run (is_square x)
+
+      let sqrt x = run (sqrt x)
+
+      let sqrt_check x = run (sqrt_check x)
+
       let equal x y = run (equal x y)
 
       let unpack x ~length = run (unpack x ~length)
@@ -2120,11 +2330,13 @@ module Run = struct
         (unit -> 'a, 'public_input, prover_state) proof_system
 
       let create ?proving_key ?verification_key ?proving_key_path
-          ?verification_key_path ?handlers ~public_input checked =
+          ?verification_key_path ?keys_with_hashes ?handlers ~public_input
+          checked =
         create
           ~reduce_to_prover:(fun _i f -> f)
           ?proving_key ?verification_key ?proving_key_path
-          ?verification_key_path ?handlers ~public_input checked
+          ?verification_key_path ?keys_with_hashes ?handlers ~public_input
+          checked
 
       let mark_active ~f =
         let counters = !active_counters in
@@ -2169,7 +2381,7 @@ module Run = struct
 
       let verify ~public_input ?verification_key ?message (proof_system : _ t)
           =
-        verify ~public_input ?verification_key ?message proof_system
+        verify ~run ~public_input ?verification_key ?message proof_system
 
       let generate_witness ~public_input ?handlers (proof_system : _ t) s =
         mark_active ~f:(fun () ->
