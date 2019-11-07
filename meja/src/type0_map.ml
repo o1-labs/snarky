@@ -105,7 +105,7 @@ let type_desc mapper desc =
       if phys_equal typ' typ then desc else Tref typ'
   | Tconv typ ->
       let typ' = mapper.type_expr mapper typ in
-      if phys_equal typ' typ then desc else Tconv typ
+      if phys_equal typ' typ then desc else Tconv typ'
   | Topaque typ ->
       let typ' = mapper.type_expr mapper typ in
       if phys_equal typ' typ then desc else Topaque typ'
