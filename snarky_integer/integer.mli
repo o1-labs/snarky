@@ -4,7 +4,7 @@ open Bitstring_lib
 
 type 'f t
 
-val constant : m:'f m -> Bigint.t -> 'f t
+val constant : ?length:int -> m:'f m -> Bigint.t -> 'f t
 
 val shift_left : m:'f m -> 'f t -> int -> 'f t
 
