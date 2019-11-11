@@ -634,6 +634,57 @@ let map_current_scope ~f env =
   | [] ->
       raise (Error (of_prim __POS__, No_open_scopes))
 
+let get_var_names env =
+  let rec go map set scope_stack =
+    match scope_stack with
+    | ({Scope.kind= Expr; _} as current_scope) :: scope_stack ->
+        let map, set =
+          Map.fold ~init:(map, set) current_scope.type_variables
+            ~f:(fun ~key ~data (map, set) ->
+              (Map.add_exn map ~key:data ~data:key, Set.add set key) )
+        in
+        go map set scope_stack
+    | _ ->
+        (map, set)
+  in
+  go Typeset.Map.empty String.Set.empty env.scope_stack
+
+let set_var_names env =
+  let typ_map, name_set = get_var_names env in
+  let typ_map = ref typ_map in
+  let name_set = ref name_set in
+  let next_name = ref 0 in
+  let get_next_name () =
+    let id = !next_name in
+    incr next_name ;
+    if id < 26 then String.of_char (Char.of_int_exn (Char.to_int 'a' + id))
+    else sprintf "a%i" (id - 25)
+  in
+  let rec get_fresh_name () =
+    let name = get_next_name () in
+    if Set.mem !name_set name then get_fresh_name ()
+    else (
+      name_set := Set.add !name_set name ;
+      name )
+  in
+  (* This mapper doesn't recurse into type_alternates. *)
+  let type_expr mapper typ =
+    ( match typ.Type0.type_desc with
+    | Tvar _ -> (
+      match Map.find !typ_map typ with
+      | Some name ->
+          Type1.set_desc typ (Tvar (Some name))
+      | None ->
+          let name = get_fresh_name () in
+          typ_map := Map.add_exn !typ_map ~key:typ ~data:name ;
+          Type1.set_desc typ (Tvar (Some name)) )
+    (* TODO: Handle both branches of Tconv when it is merged. *)
+    | _ ->
+        Type1.set_desc typ (mapper.Type0_map.type_desc mapper typ.type_desc) ) ;
+    typ
+  in
+  {Type0_map.default_mapper with type_expr}
+
 let add_type_variable name typ =
   map_current_scope ~f:(Scope.add_type_variable name typ)
 
