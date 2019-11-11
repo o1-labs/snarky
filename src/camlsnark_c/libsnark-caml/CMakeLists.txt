@@ -125,7 +125,7 @@ endif()
 
 set(
   CMAKE_CXX_FLAGS
-  "${CMAKE_CXX_FLAGS} ${OPT_FLAGS}"
+  "${CMAKE_CXX_FLAGS} ${OPT_FLAGS} -fPIC"
 )
 
 find_path(GMP_INCLUDE_DIR NAMES gmp.h)
