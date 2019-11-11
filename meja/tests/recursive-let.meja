@@ -23,6 +23,13 @@ let a = fun () => {
   (a, b, c);
 };
 
+/* Harsher variable non-escape test. */
+let rec f = fun (a) => { if (int_find > 0) { a; } else { failwith("No"); }; };
+
+let a = fun () => {
+  (f(true), f(1), f());
+};
+
 /* Recursive multiple definition with implicit variables. */
 let rec f = fun () => { int_find; }
 and g = fun () => { f() + f(); };

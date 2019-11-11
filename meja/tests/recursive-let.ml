@@ -25,9 +25,15 @@ let a __implicit3__ () =
   let c = f __implicit3__ () in
   (a, b, c)
 
-let rec f __implicit10__ () = int_find __implicit10__
+let rec f __implicit7__ a =
+  if int_find __implicit7__ > 0 then a else failwith "No"
 
-and g __implicit11__ () = f __implicit11__ () + f __implicit11__ ()
+let a __implicit8__ () =
+  (f __implicit8__ true, f __implicit8__ 1, f __implicit8__ ())
+
+let rec f __implicit15__ () = int_find __implicit15__
+
+and g __implicit16__ () = f __implicit16__ () + f __implicit16__ ()
 
 let int_instance = 15
 
