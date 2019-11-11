@@ -848,6 +848,21 @@ r1cs_gg_ppzksnark_proof<ppT>* CURVE_PREFIX(proof_create)(
   return new r1cs_gg_ppzksnark_proof<ppT>(res);
 }
 
+bool CURVE_PREFIX(proof_verify_components)(
+    libff::G1<ppT>* a,
+    libff::G2<ppT>* b,
+    libff::G1<ppT>* c,
+    r1cs_gg_ppzksnark_verification_key<ppT>* key,
+    std::vector<FieldT>* primary_input) {
+
+  r1cs_gg_ppzksnark_proof<ppT> p = r1cs_gg_ppzksnark_proof<ppT>();
+  p.g_A = *a;
+  p.g_B = *b;
+  p.g_C = *c;
+
+  return r1cs_gg_ppzksnark_verifier_weak_IC(*key, *primary_input, p);
+}
+
 void CURVE_PREFIX(proof_delete)(r1cs_gg_ppzksnark_proof<ppT>* proof) {
   delete proof;
 }

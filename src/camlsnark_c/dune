@@ -23,7 +23,6 @@
 (library
  (name camlsnark_c)
  (libraries core ctypes ctypes.foreign camlsnark_c_bindings)
- (no_dynlink)
  (modes native)
  (modules :standard \ camlsnark_linker_flags_gen camlsnark_ctypes_stubs)
  (public_name snarky.c)
