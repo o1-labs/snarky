@@ -345,7 +345,7 @@ end)
 
     let m : field Snarky.Snark.m = (module Impl)
 
-    let ofBigint = constant ~m
+    let ofBigint x = constant ~m x
 
     let ofInt n = ofBigint (B.of_int n)
 
