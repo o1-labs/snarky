@@ -26,3 +26,7 @@ let int_instance = 15
 let h = g int_instance ()
 
 let rec while_ pred body = if pred () then ( body () ; while_ pred body )
+
+let count_down_from i =
+  let rec go i = if i > 0 then go (i - 1) in
+  go i

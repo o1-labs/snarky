@@ -28,3 +28,13 @@ let rec while_ = fun (pred, body) => {
     while_(pred, body);
   };
 };
+
+/* Recursive let in an expression body. */
+let count_down_from = fun (i) => {
+  let rec go = fun (i) => {
+    if (i > 0) {
+      go(i - 1);
+    };
+  };
+  go(i);
+};
