@@ -13,6 +13,16 @@ let rec k = fun (b) => { if (b) { k(false); } else { b; }; };
 
 let int_find = fun {x : int} => { x; };
 
+/* Variable non-escape test. */
+let rec f = fun (_) => { int_find; };
+
+let a = fun () => {
+  let a = f(true);
+  let b = f(1);
+  let c = f();
+  (a, b, c);
+};
+
 /* Recursive multiple definition with implicit variables. */
 let rec f = fun () => { int_find; }
 and g = fun () => { f() + f(); };

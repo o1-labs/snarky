@@ -17,9 +17,17 @@ let rec k b = if b then k false else b
 
 let int_find (x : int) = x
 
-let rec f __implicit5__ () = int_find __implicit5__
+let rec f __implicit2__ _ = int_find __implicit2__
 
-and g __implicit6__ () = f __implicit6__ () + f __implicit6__ ()
+let a __implicit3__ () =
+  let a = f __implicit3__ true in
+  let b = f __implicit3__ 1 in
+  let c = f __implicit3__ () in
+  (a, b, c)
+
+let rec f __implicit10__ () = int_find __implicit10__
+
+and g __implicit11__ () = f __implicit11__ () + f __implicit11__ ()
 
 let int_instance = 15
 
