@@ -1,6 +1,6 @@
 type nil;
 
-type t('a) = [] : t(nil) | ( :: ) ('hd, t('tl)) : t('hd -> 'tl);
+type rec t('a) = [] : t(nil) | ( :: ) ('hd, t('tl)) : t('hd -> 'tl);
 
 let x = [];
 

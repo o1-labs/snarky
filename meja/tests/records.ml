@@ -2,7 +2,7 @@ module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
 include struct
-  type ('a, 'b, 'c) t = {a: 'a; b: 'b; c: 'c}
+  type nonrec ('a, 'b, 'c) t = {a: 'a; b: 'b; c: 'c}
 
   let typ __implicit1__ __implicit2__ __implicit3__ :
       (('a2, 'b2, 'c2) t, ('a1, 'b1, 'c1) t) Typ.t =
@@ -39,7 +39,7 @@ let z = {a= x.a; b= y.b; c= ()}
 
 module X = struct
   include struct
-    type 'a t = {a: 'a; b: 'a; c: 'a}
+    type nonrec 'a t = {a: 'a; b: 'a; c: 'a}
 
     let typ __implicit13__ : ('a2 t, 'a1 t) Typ.t =
       { Typ.store=

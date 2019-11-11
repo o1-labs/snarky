@@ -79,6 +79,7 @@ module Checked = struct
         'f Cvar.t Constraint.t * ('a, 's, 'f) t
         -> ('a, 's, 'f) t
     | As_prover : (unit, 'f, 's) As_prover.t * ('a, 's, 'f) t -> ('a, 's, 'f) t
+    | Lazy : ('a, unit, 'f) t * ('a Lazy.t -> ('b, 's, 'f) t) -> ('b, 's, 'f) t
     | With_label :
         string * ('a, 's, 'f) t * ('a -> ('b, 's, 'f) t)
         -> ('b, 's, 'f) t

@@ -40,7 +40,7 @@ let type_expr iter {type_desc; type_loc} =
   iter.type_desc iter type_desc
 
 let type_desc iter = function
-  | Ptyp_var (name, _) ->
+  | Ptyp_var name ->
       Option.iter ~f:(str iter) name
   | Ptyp_tuple typs ->
       List.iter ~f:(iter.type_expr iter) typs
@@ -51,11 +51,12 @@ let type_desc iter = function
   | Ptyp_poly (vars, typ) ->
       List.iter ~f:(iter.type_expr iter) vars ;
       iter.type_expr iter typ
+  | Ptyp_prover typ ->
+      iter.type_expr iter typ
 
-let variant iter {var_ident; var_params; var_implicit_params} =
+let variant iter {var_ident; var_params} =
   lid iter var_ident ;
-  List.iter ~f:(iter.type_expr iter) var_params ;
-  List.iter ~f:(iter.type_expr iter) var_implicit_params
+  List.iter ~f:(iter.type_expr iter) var_params
 
 let field_decl iter {fld_ident; fld_type; fld_loc} =
   iter.location iter fld_loc ;
@@ -74,12 +75,10 @@ let ctor_decl iter {ctor_ident; ctor_args; ctor_ret; ctor_loc} =
   iter.ctor_args iter ctor_args ;
   Option.iter ~f:(iter.type_expr iter) ctor_ret
 
-let type_decl iter
-    {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_loc} =
+let type_decl iter {tdec_ident; tdec_params; tdec_desc; tdec_loc} =
   iter.location iter tdec_loc ;
   str iter tdec_ident ;
   List.iter ~f:(iter.type_expr iter) tdec_params ;
-  List.iter ~f:(iter.type_expr iter) tdec_implicit_params ;
   iter.type_decl_desc iter tdec_desc
 
 let type_decl_desc iter = function
@@ -93,7 +92,7 @@ let type_decl_desc iter = function
       List.iter ~f:(iter.ctor_decl iter) ctors
   | Pdec_open ->
       ()
-  | Pdec_extend (_name, _decl, _ctors) ->
+  | Pdec_extend (_name, _ctors) ->
       assert false
 
 (* TODO: re-enable this when the Type0 iterator is merged. *)
@@ -185,6 +184,8 @@ let signature_desc iter = function
       str iter name ; iter.type_expr iter typ
   | Psig_type decl ->
       iter.type_decl iter decl
+  | Psig_rectype decl ->
+      List.iter ~f:(iter.type_decl iter) decl
   | Psig_module (name, msig) | Psig_modtype (name, msig) ->
       str iter name ; iter.module_sig iter msig
   | Psig_open name ->
@@ -208,6 +209,8 @@ let module_sig_desc iter = function
       iter.signature iter sigs
   | Pmty_name name ->
       lid iter name
+  | Pmty_alias name ->
+      lid iter name
   | Pmty_abstract ->
       ()
   | Pmty_functor (name, fsig, msig) ->
@@ -226,6 +229,8 @@ let statement_desc iter = function
       str iter name ; iter.expression iter e
   | Pstmt_type decl ->
       iter.type_decl iter decl
+  | Pstmt_rectype decls ->
+      List.iter ~f:(iter.type_decl iter) decls
   | Pstmt_module (name, me) ->
       str iter name ; iter.module_expr iter me
   | Pstmt_modtype (name, mty) ->

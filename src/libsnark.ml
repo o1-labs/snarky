@@ -46,42 +46,11 @@ let set_printing_stdout =
 let set_printing_file =
   foreign "camlsnark_set_printing_file" (string @-> returning void)
 
-module Print_func = struct
-  (** Internal: The reference to the user-defined function passed to
-      {!val:set_printing_fun}.
-      OCaml may relocate the function in memory if it is heap-allocated (e.g.
-      using a closure) during its GC cycle, so we store a reference here and
-      call it from the statically-allocated OCaml function {!val:dispatch}
-      below.
-  *)
-  let print = ref (fun str -> str)
+let set_printing_normal =
+  foreign "camlsnark_set_printing_normal" (void @-> returning void)
 
-  (** A reference to the C [puts] function.
-
-      The OCaml stdlib functions use thread-unsafe primitives that may cause a
-      crash if calls from multiple threads overlap, so we use this to avoid
-      their thread-unsafe blocking behaviour.
-  *)
-  let puts = foreign "camlsnark_puts" (string @-> returning void)
-
-  (** The dispatcher passed to the C++ interface in {!val:set_printing_fun}.
-      We cannot pass the user-provided function directly to the C++ side in
-      case of GC relocation, so this provides a statically-allocated wrapper.
-
-      The call to {!val:puts} is made from here instead of the C++ side so that
-      OCaml's GC behaviour is mitigated by the the Ctypes API.
-  *)
-  let dispatch str = puts (!print str)
-end
-
-let set_printing_fun =
-  let stub =
-    foreign "camlsnark_set_printing_fun"
-      (funptr (string @-> returning void) @-> returning void)
-  in
-  fun f ->
-    Print_func.print := f ;
-    stub Print_func.dispatch
+let set_printing_json =
+  foreign "camlsnark_set_printing_json" (void @-> returning void)
 
 let () = set_no_profiling true
 
@@ -196,6 +165,8 @@ struct
 
     val print : t -> unit
 
+    val subgroup_check : t -> unit
+
     module Vector : Vector.S_binable with type elt := t
   end
 
@@ -304,9 +275,7 @@ struct
       | Zero ->
           zero
       | Non_zero t ->
-          on_curve_check t ;
-          let p = of_affine t in
-          subgroup_check p ; p
+          on_curve_check t ; of_affine t
 
     module B =
       Binable.Of_binable
@@ -354,6 +323,12 @@ module Field = struct
     val sub : t -> t -> t
 
     val mul : t -> t -> t
+
+    val ( + ) : t -> t -> t
+
+    val ( - ) : t -> t -> t
+
+    val ( * ) : t -> t -> t
 
     val inv : t -> t
 
@@ -462,6 +437,12 @@ module Field = struct
       let sub x y =
         let z = sub x y in
         schedule_delete z ; z
+
+      let ( + ) = add
+
+      let ( - ) = sub
+
+      let ( * ) = mul
 
       module Mutable = struct
         open Bindings.Mutable
@@ -1436,6 +1417,8 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    val set_constraint_system : t -> M.R1CS_constraint_system.t -> unit
   end = struct
     include Proving_key.Make
               (Ctypes_foreign)
@@ -1542,6 +1525,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
         let t = stub str in
         Caml.Gc.finalise (fun _ -> delete t) t ;
         t
+
+    let set_constraint_system : t -> M.R1CS_constraint_system.t -> unit =
+      foreign
+        (func_name "set_constraint_system")
+        (typ @-> M.R1CS_constraint_system.typ @-> returning void)
   end
 
   module Verification_key : sig
@@ -1561,7 +1549,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val size_in_bits : t -> int
 
-    val dummy : input_size:int -> t
+    val get_dummy : input_size:int -> t
   end = struct
     include Verification_key.Make
               (Ctypes_foreign)
@@ -1569,7 +1557,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
                 let prefix = with_prefix M.prefix "verification_key"
               end)
 
-    let dummy ~input_size =
+    let get_dummy ~input_size =
       foreign (func_name "dummy") (int @-> returning typ) input_size
 
     let size_in_bits =
@@ -1770,6 +1758,8 @@ struct
     val verify :
       ?message:message -> t -> Verification_key.t -> M.Field.Vector.t -> bool
 
+    val get_dummy : unit -> t
+
     include Binable.S with type t := t
   end = struct
     include Proof.Make
@@ -1822,6 +1812,8 @@ struct
           @-> returning bool )
       in
       fun ?message:_ t k primary -> stub t k primary
+
+    let get_dummy = foreign (func_name "dummy") (void @-> returning typ)
   end
 end
 
@@ -1942,7 +1934,7 @@ struct
   let c = func "c" G1.typ G1.delete
 end
 
-module Make_bowe_gabizon (M : sig
+module type Make_proof_system_inputs = sig
   val prefix : string
 
   module R1CS_constraint_system : sig
@@ -1965,6 +1957,10 @@ module Make_bowe_gabizon (M : sig
     end
   end
 
+  module Fq : sig
+    type t
+  end
+
   module Fqk : Deletable_intf
 
   module G1 : sig
@@ -1974,6 +1970,8 @@ module Make_bowe_gabizon (M : sig
 
     module Vector : Deletable_intf
 
+    val one : t
+
     val scale_field : t -> Field.t -> t
   end
 
@@ -1981,18 +1979,103 @@ module Make_bowe_gabizon (M : sig
     include Deletable_intf
 
     include Binable.S with type t := t
+
+    val one : t
+
+    val subgroup_check : t -> unit
   end
-end) (H : sig
+end
+
+module Make_Groth16 (M : Make_proof_system_inputs) = struct
   open M
 
-  val hash :
-       ?message:bool array
-    -> a:G1.t
-    -> b:G2.t
-    -> c:G1.t
-    -> delta_prime:G2.t
-    -> G1.t
-end) =
+  module Prefix : sig
+    val prefix : string
+  end =
+    M
+
+  module Keys = Make_proof_system_keys (struct
+    include M
+
+    let prefix = M.prefix
+  end)
+
+  module Verification_key = struct
+    include Keys.Verification_key
+    include Make_Groth16_verification_key_accessors
+              (Prefix)
+              (Keys.Verification_key)
+              (G1)
+              (G2)
+              (Fqk)
+  end
+
+  module Proving_key = Keys.Proving_key
+  module Keypair = Keys.Keypair
+
+  (* TODO
+    module Accessors = Make_Groth16_verification_key_accessors(Prefix)(Keys.Verification_key)(G1)(G2)(Fqk) *)
+
+  module Proof = struct
+    module Prefix = struct
+      let prefix = with_prefix M.prefix "proof"
+    end
+
+    module T = Proof.Make (Ctypes_foreign) (Prefix)
+    module Accessors = Make_proof_accessors (Prefix) (T) (G1) (G2)
+
+    type message = unit
+
+    (* This is to have control over how proofs are serialized and to ensure we perform
+    the subgroup check. *)
+    type t = {a: G1.t; b: G2.t; c: G1.t} [@@deriving bin_io]
+
+    let create_ =
+      let stub =
+        foreign (T.func_name "create")
+          ( Proving_key.typ @-> M.Field.Vector.typ @-> M.Field.Vector.typ
+          @-> returning T.typ )
+      in
+      fun k primary auxiliary ->
+        let t = stub k primary auxiliary in
+        Caml.Gc.finalise T.delete t ;
+        t
+
+    let create ?message:_ proving_key ~primary ~auxiliary =
+      let proof = create_ proving_key primary auxiliary in
+      let a = Accessors.a proof in
+      let b = Accessors.b proof in
+      let c = Accessors.c proof in
+      {a; b; c}
+
+    let verify =
+      let stub =
+        foreign
+          (T.func_name "verify_components")
+          ( G1.typ @-> G2.typ @-> G1.typ @-> Verification_key.typ
+          @-> M.Field.Vector.typ @-> returning bool )
+      in
+      fun ?message:_ {a; b; c} k primary -> stub a b c k primary
+
+    let verify ?message:_ ({a= _; b; c= _} as t) vk input =
+      G2.subgroup_check b ; verify t vk input
+
+    let get_dummy () = {a= G1.one; b= G2.one; c= G1.one}
+  end
+end
+
+module Make_bowe_gabizon
+    (M : Make_proof_system_inputs) (H : sig
+        open M
+
+        val hash :
+             ?message:Fq.t array
+          -> a:G1.t
+          -> b:G2.t
+          -> c:G1.t
+          -> delta_prime:G2.t
+          -> G1.t
+    end) =
 struct
   open M
 
@@ -2051,14 +2134,16 @@ struct
         in
         let t = stub proving_key d primary auxiliary in
         Caml.Gc.finalise delete t ; t
+
+      let get_dummy = foreign (func_name "dummy") (void @-> returning typ)
     end
 
-    type message = bool array
+    type message = Fq.t array
 
     type t = {a: G1.t; b: G2.t; c: G1.t; delta_prime: G2.t; z: G1.t}
     [@@deriving bin_io]
 
-    let create ?message proving_key ~primary ~auxiliary =
+    let create ?(message : message option) proving_key ~primary ~auxiliary =
       let d = Field.random () in
       let pre = Pre.create proving_key ~primary ~auxiliary ~d in
       let a = Pre.a pre in
@@ -2067,11 +2152,16 @@ struct
       let delta_prime = Pre.delta_prime pre in
       let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
       let z = G1.scale_field y_s d in
-      {a= Pre.a pre; b= Pre.b pre; c= Pre.c pre; z; delta_prime}
+      {a; b; c; z; delta_prime}
 
     let verify ?message {a; b; c; z; delta_prime} vk input =
       let y_s = H.hash ?message ~a ~b ~c ~delta_prime in
+      G2.subgroup_check b ;
+      G2.subgroup_check delta_prime ;
       Pre.verify_components ~a ~b ~c ~delta_prime ~y_s ~z vk input
+
+    let get_dummy () =
+      {a= G1.one; b= G2.one; c= G1.one; z= G1.one; delta_prime= G2.one}
   end
 end
 
@@ -2165,6 +2255,8 @@ struct
     let%test "fqk4" =
       let v = Fqk.to_elts Fqk.one in
       Mnt6_0.Field.Vector.length v = 4
+
+    module Fq = Mnt6_0.Field
 
     module Fqe =
       Fqe.Make
@@ -2314,14 +2406,29 @@ struct
         (G1)
         (G2)
 
-    module Groth16_verification_key_accessors =
-      Make_Groth16_verification_key_accessors
-        (Prefix)
-        (Default.Verification_key)
-        (G1)
-        (G2)
-        (Fqk)
     module Preprocess = Make_proving_key_preprocessor (Prefix) (G1) (G2)
+
+    module Groth16 = struct
+      module R1CS_constraint_system = struct
+        include Common.R1CS_constraint_system
+
+        let finalize = Common.R1CS_constraint_system.swap_AB_if_beneficial
+      end
+
+      include (
+        Common :
+          module type of Common
+          with module Field0 := Common.Field0
+           and module R1CS_constraint_system := Common.R1CS_constraint_system )
+
+      include Make_Groth16 (struct
+        include Common
+        module Fq = Fq
+        module Fqk = Fqk
+        module G1 = G1
+        module G2 = G2
+      end)
+    end
   end
 
   module Mnt6 = struct
@@ -2331,6 +2438,8 @@ struct
     let%test "fqk6" =
       let v = Fqk.to_elts Fqk.one in
       Mnt4_0.Field.Vector.length v = 6
+
+    module Fq = Mnt4_0.Field
 
     module Fqe =
       Fqe.Make
@@ -2467,13 +2576,28 @@ struct
         (G1)
         (G2)
 
-    module Groth16_verification_key_accessors =
-      Make_Groth16_verification_key_accessors
-        (Prefix)
-        (Default.Verification_key)
-        (G1)
-        (G2)
-        (Fqk)
+    module Groth16 = struct
+      module R1CS_constraint_system = struct
+        include Common.R1CS_constraint_system
+
+        let finalize = Common.R1CS_constraint_system.swap_AB_if_beneficial
+      end
+
+      include (
+        Common :
+          module type of Common
+          with module Field0 := Common.Field0
+           and module R1CS_constraint_system := Common.R1CS_constraint_system )
+
+      include Make_Groth16 (struct
+        include Common
+        module Fq = Fq
+        module Fqk = Fqk
+        module G1 = G1
+        module G2 = G2
+      end)
+    end
+
     module Preprocess = Make_proving_key_preprocessor (Prefix) (G1) (G2)
   end
 end
@@ -2834,3 +2958,36 @@ module type S = sig
     include Binable.S with type t := t
   end
 end
+
+let%test_module "dummy-proofs" =
+  ( module struct
+    module Hash = struct
+      let hash ?message:_ ~a:_ ~b:_ ~c:_ ~delta_prime:_ = assert false
+    end
+
+    module BG = struct
+      module Mnt4 = Make_bowe_gabizon (Mnt4) (Hash)
+      module Mnt6 = Make_bowe_gabizon (Mnt6) (Hash)
+      module Mnt4753 = Make_bowe_gabizon (Mnt4753) (Hash)
+      module Mnt6753 = Make_bowe_gabizon (Mnt6753) (Hash)
+    end
+
+    let _proofs =
+      ( Mnt4.Default.Proof.get_dummy ()
+      , Mnt4.GM.Proof.get_dummy ()
+      , Mnt6.Default.Proof.get_dummy ()
+      , Mnt6.GM.Proof.get_dummy ()
+      , Mnt4753.Default.Proof.get_dummy ()
+      , Mnt4753.GM.Proof.get_dummy ()
+      , Mnt6753.Default.Proof.get_dummy ()
+      , Mnt6753.GM.Proof.get_dummy ()
+      , Bn128.Default.Proof.get_dummy ()
+      , BG.Mnt4.Proof.Pre.get_dummy ()
+      , BG.Mnt6.Proof.Pre.get_dummy ()
+      , BG.Mnt4753.Proof.Pre.get_dummy ()
+      , BG.Mnt6753.Proof.Pre.get_dummy ()
+      , BG.Mnt4.Proof.get_dummy ()
+      , BG.Mnt6.Proof.get_dummy ()
+      , BG.Mnt4753.Proof.get_dummy ()
+      , BG.Mnt6753.Proof.get_dummy () )
+  end )

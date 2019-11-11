@@ -20,8 +20,8 @@ let compare {ident_id= id1; _} {ident_id= id2; _} = Int.compare id1 id2
 let pprint fmt {ident_name; _} = Ast_types.pp_name fmt ident_name
 
 let debug_print fmt {ident_name; ident_id; ident_mode} =
-  Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.pp_mode ident_mode
-    ident_id
+  Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.mode_debug_print
+    ident_mode ident_id
 
 module Table = struct
   type 'a t = (ident * 'a) list String.Map.t
@@ -65,6 +65,16 @@ module Table = struct
 
   let keys tbl = List.concat_map ~f:(List.map ~f:fst) (Map.data tbl)
 
+  let foldi tbl ~init ~f =
+    Map.fold tbl ~init ~f:(fun ~key:_ ~data init ->
+        List.fold ~init data ~f:(fun init (ident, data) -> f ident init data)
+    )
+
+  let fold tbl ~init ~f = foldi tbl ~init ~f:(fun _key -> f)
+
+  let fold_keys tbl ~init ~f =
+    foldi tbl ~init ~f:(fun key init _value -> f init key)
+
   let fold2_names tbl1 tbl2 ~init ~f =
     Map.fold2 tbl1 tbl2 ~init ~f:(fun ~key ~data acc ->
         let data =
@@ -91,4 +101,7 @@ module Table = struct
 
   let map tbl ~f =
     Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f data))) tbl
+
+  let mapi tbl ~f =
+    Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f ident data))) tbl
 end

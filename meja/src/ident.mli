@@ -63,6 +63,14 @@ module Table : sig
   val keys : 'a t -> ident list
   (** Returns a list of the bound identifiers. *)
 
+  val fold_keys :
+    'a t -> init:'accum -> f:('accum -> ident -> 'accum) -> 'accum
+
+  val fold : 'a t -> init:'accum -> f:('accum -> 'a -> 'accum) -> 'accum
+
+  val foldi :
+    'a t -> init:'accum -> f:(ident -> 'accum -> 'a -> 'accum) -> 'accum
+
   val fold2_names :
        'v1 t
     -> 'v2 t
@@ -90,4 +98,7 @@ module Table : sig
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
   (** Map over each of the values in the table. *)
+
+  val mapi : 'a t -> f:(ident -> 'a -> 'b) -> 'b t
+  (** Like [map], but also pass the key to the function. *)
 end

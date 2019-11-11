@@ -12,6 +12,8 @@ module type Basic = sig
   val as_prover :
     (unit, 'f field, 's) Types.As_prover.t -> (unit, 's, 'f field) t
 
+  val mk_lazy : ('a, unit, 'f) t -> ('a Lazy.t, 's, 'f) t
+
   val with_label : string -> ('a, 's, 'f field) t -> ('a, 's, 'f field) t
 
   val with_state :
@@ -50,6 +52,8 @@ module type S = sig
 
   val as_prover :
     (unit, 'f field, 's) Types.As_prover.t -> (unit, 's, 'f field) t
+
+  val mk_lazy : ('a, unit, 'f) t -> ('a Lazy.t, 's, 'f) t
 
   val request_witness :
        ('var, 'value, 'f field) Types.Typ.t

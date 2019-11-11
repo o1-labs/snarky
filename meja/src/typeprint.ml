@@ -4,9 +4,9 @@ open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Tvar (None, _) ->
+  | Tvar None ->
       fprintf fmt "_"
-  | Tvar (Some name, _) ->
+  | Tvar (Some name) ->
       fprintf fmt "'%s" name
   | Ttuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
@@ -27,6 +27,11 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
         type_expr typ ;
       if bracket then fprintf fmt ")"
+  | Tref typ ->
+      let typ = Type1.repr typ in
+      if bracket then type_expr_b fmt typ else type_expr fmt typ
+  | Treplace _ ->
+      assert false
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -79,21 +84,12 @@ let type_decl_desc fmt = function
       fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
   | TOpen ->
       fprintf fmt "@ =@ .."
-  | TExtend (name, _, ctors) ->
+  | TExtend (name, ctors) ->
       fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
-  | TForward i ->
-      let print_id fmt i =
-        match i with
-        | Some i ->
-            pp_print_int fmt i
-        | None ->
-            pp_print_char fmt '?'
-      in
-      fprintf fmt "@ /* forward declaration %a */" print_id !i
 
-let type_decl fmt decl =
-  fprintf fmt "type %a" Ident.pprint decl.tdec_ident ;
+let type_decl ident fmt decl =
+  fprintf fmt "type %a" Ident.pprint ident ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc

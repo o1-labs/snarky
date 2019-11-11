@@ -19,6 +19,8 @@ module type Basic = sig
   module Proving_key : sig
     type t [@@deriving bin_io]
 
+    type proving_key = t [@@deriving bin_io]
+
     val to_string : t -> string
 
     val of_string : string -> t
@@ -26,12 +28,18 @@ module type Basic = sig
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    module With_r1cs_hash : sig
+      type t = Md5.t * proving_key [@@deriving bin_io]
+    end
   end
 
   (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
   module Verification_key : sig
     type t [@@deriving bin_io]
 
+    type verification_key = t [@@deriving bin_io]
+
     val to_string : t -> string
 
     val of_string : string -> t
@@ -39,6 +47,10 @@ module type Basic = sig
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    module With_r1cs_hash : sig
+      type t = Md5.t * verification_key [@@deriving bin_io]
+    end
   end
 
   (** The finite field over which the R1CS operates. *)
@@ -81,6 +93,8 @@ module type Basic = sig
     include Comparable.S
 
     val create : int -> t
+
+    val index : t -> int
   end
 
   module Bigint : sig
@@ -584,6 +598,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val project_reference : bool list -> t
     (** [project], but slow. Exposed for benchmarks. *)
 
+    val parity : t -> bool
+    (** Get the least significant bit of a field element. *)
+
     type var' = Var.t
 
     module Var : sig
@@ -702,6 +719,20 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           If [x] is 0, this raises a [Failure].
       *)
 
+      val is_square : Var.t -> (Boolean.var, _) Checked.t
+      (** [is_square x] checks if [x] is a square in the field.
+      *)
+
+      val sqrt : Var.t -> (Var.t, _) Checked.t
+      (** [sqrt x] is the square root of [x] if [x] is a square. If not, this
+          raises a [Failure]
+      *)
+
+      val sqrt_check : Var.t -> (Var.t * Boolean.var, _) Checked.t
+      (** If [x] is a square in the field and [(y, b) = sqrt_check x],
+        If b = true, then x is a square and y is sqrt(x)
+        If b = false, then x is not a square y is a value which is not meaningful. *)
+
       val equal : Var.t -> Var.t -> (Boolean.var, 's) Checked.t
       (** [equal x y] returns a R1CS variable containing the value [true] if
           the R1CS variables [x] and [y] are equal, or [false] otherwise.
@@ -734,6 +765,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         Var.t -> (Boolean.var Bitstring_lib.Bitstring.Lsb_first.t, _) Checked.t
       (** [unpack x ~length] returns a list of R1CS variables containing the
           bits of [x].
+      *)
+
+      val parity : ?length:int -> Var.t -> (Boolean.var, _) Checked.t
+      (** Get the least significant bit of a field element [x].
+          Pass a value for [length] if you know that [x] fits in [length] many bits.
       *)
 
       val choose_preimage_var :
@@ -965,6 +1001,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
+      -> ?keys_with_hashes:bool
       -> ?handlers:Handler.t list
       -> ?reduce:bool
       -> public_input:( ('a, 's) Checked.t
@@ -990,6 +1027,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           the verification key can be found. If the file does not exist and no
           [verification_key] argument is given, the generated key will be
           written to this file.
+        - [keys_with_hashes] determines whether keys read from and written to
+          the [proving_key_path] and [verification_key_path] should include a
+          MD5 digest of the constraint system.
+          Default value: [true].
         - [handlers] -- optional, the list of handlers that should be used to
           handle requests made from the checked computation
         - [reduce] -- optional, default [false], whether to perform the
@@ -1199,6 +1240,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val as_prover : (unit, 's) As_prover.t -> (unit, 's) Checked.t
   (** Run an {!module:As_prover} block. *)
 
+  val mk_lazy : ('a, unit) Checked.t -> ('a Lazy.t, 's) Checked.t
+  (** Lazily evaluate a checked computation.
+
+      Any constraints within the checked computation are not added to the
+      constraint system unless the lazy value is forced.
+  *)
+
   val with_state :
        ?and_then:('s1 -> (unit, 's) As_prover.t)
     -> ('s1, 's) As_prover.t
@@ -1326,6 +1374,22 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> 'k_value
   (** Internal: supplies arguments to a checked computation by storing them
       according to the {!type:Data_spec.t} and passing the R1CS versions.
+  *)
+
+  val conv_never_use :
+       (unit -> 'hack)
+    -> (unit -> 'r_var, 'r_value, 'k_var, 'k_value) Data_spec.t
+    -> ('hack -> 'k_var)
+    -> 'k_var
+  (** Internal. Never use this.
+
+      This applies an initial argument to a function, interpreting the argument
+      within the scope of a imperative checked computation, after storing all
+      of the public inputs, but only passing the arguments after computing this
+      initial argument.
+
+      It should always be possible to avoid using this; when this becomes
+      unnecessary, this should be removed.
   *)
 
   val prove :
@@ -1461,6 +1525,8 @@ module type Run_basic = sig
   module Proving_key : sig
     type t [@@deriving bin_io]
 
+    type proving_key = t [@@deriving bin_io]
+
     val to_string : t -> string
 
     val of_string : string -> t
@@ -1468,12 +1534,18 @@ module type Run_basic = sig
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    module With_r1cs_hash : sig
+      type t = Md5.t * proving_key [@@deriving bin_io]
+    end
   end
 
   (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
   module Verification_key : sig
     type t [@@deriving bin_io]
 
+    type verification_key = t [@@deriving bin_io]
+
     val to_string : t -> string
 
     val of_string : string -> t
@@ -1481,6 +1553,10 @@ module type Run_basic = sig
     val to_bigstring : t -> Bigstring.t
 
     val of_bigstring : Bigstring.t -> t
+
+    module With_r1cs_hash : sig
+      type t = Md5.t * verification_key [@@deriving bin_io]
+    end
   end
 
   (** The rank-1 constraint system used by this instance. See
@@ -1510,6 +1586,8 @@ module type Run_basic = sig
     include Comparable.S
 
     val create : int -> t
+
+    val index : t -> int
   end
 
   (** The finite field over which the R1CS operates. *)
@@ -1807,6 +1885,9 @@ module type Run_basic = sig
 
       val project : bool list -> t
       (** Convert a list of bits into a field element. *)
+
+      val parity : t -> bool
+      (** Get the least significant bit of a field element. *)
     end
 
     type t = field Cvar.t
@@ -1856,6 +1937,12 @@ module type Run_basic = sig
 
     val inv : t -> t
 
+    val is_square : t -> Boolean.var
+
+    val sqrt : t -> t
+
+    val sqrt_check : t -> t * Boolean.var
+
     val equal : t -> t -> Boolean.var
 
     val unpack : t -> length:int -> Boolean.var list
@@ -1864,6 +1951,8 @@ module type Run_basic = sig
       t -> length:int -> Boolean.var list * [`Success of Boolean.var]
 
     val unpack_full : t -> Boolean.var Bitstring_lib.Bitstring.Lsb_first.t
+
+    val parity : ?length:int -> t -> Boolean.var
 
     val choose_preimage_var : t -> length:int -> Boolean.var list
 
@@ -2023,6 +2112,7 @@ module type Run_basic = sig
       -> ?verification_key:Verification_key.t
       -> ?proving_key_path:string
       -> ?verification_key_path:string
+      -> ?keys_with_hashes:bool
       -> ?handlers:Handler.t list
       -> public_input:( unit -> 'a
                       , unit

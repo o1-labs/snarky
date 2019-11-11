@@ -4,9 +4,9 @@ open Format
 open Ast_print
 
 let rec type_desc ?(bracket = false) fmt = function
-  | Ptyp_var (None, _) ->
+  | Ptyp_var None ->
       fprintf fmt "_"
-  | Ptyp_var (Some name, _) ->
+  | Ptyp_var (Some name) ->
       fprintf fmt "'%s" name.txt
   | Ptyp_tuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
@@ -27,6 +27,8 @@ let rec type_desc ?(bracket = false) fmt = function
       fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false)
         (Ptyp_tuple vars) type_expr typ ;
       if bracket then fprintf fmt ")"
+  | Ptyp_prover typ ->
+      fprintf fmt "@[<2>Prover {@ %a@ }@]" type_expr typ
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -77,13 +79,18 @@ let type_decl_desc fmt = function
       fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
   | Pdec_open ->
       fprintf fmt "@ =@ .."
-  | Pdec_extend (name, _, ctors) ->
+  | Pdec_extend (name, ctors) ->
       fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name.txt
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
 
 let type_decl fmt decl =
   fprintf fmt "type %s" decl.tdec_ident.txt ;
+  (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
+  type_decl_desc fmt decl.tdec_desc
+
+let and_type_decl fmt decl =
+  fprintf fmt "and %s" decl.tdec_ident.txt ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
 
@@ -272,6 +279,14 @@ let rec signature_desc fmt = function
         type_expr typ
   | Psig_type decl ->
       fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
+  | Psig_rectype (decl :: decls) ->
+      let print_and_decls =
+        let pp_sep fmt () = pp_print_char fmt ';' ; pp_print_cut fmt () in
+        pp_print_list ~pp_sep and_type_decl
+      in
+      fprintf fmt "@[<2>%a;%a@]@;@;" type_decl decl print_and_decls decls
+  | Psig_rectype [] ->
+      assert false
   | Psig_module (name, msig) ->
       let prefix fmt = fprintf fmt ":@ " in
       fprintf fmt "@[<hov2>module@ %s@ %a;@]@;@;" name.txt (module_sig ~prefix)
@@ -304,6 +319,8 @@ and module_sig_desc ~prefix fmt = function
       fprintf fmt "{@[<hv1>@;%a@]}" signature msig
   | Pmty_name name ->
       prefix fmt ; Longident.pp fmt name.txt
+  | Pmty_alias name ->
+      fprintf fmt "=@ " ; Longident.pp fmt name.txt
   | Pmty_abstract ->
       ()
   | Pmty_functor (name, f, m) ->

@@ -24,11 +24,43 @@ let map_list ~same ~f =
     perform unnecessary allocations/GCs during mapping.
     This also makes it much less likely that we might replace a variant which
     we planned to mutate later.
+
+    CAUTION:
+      In order to break recursion, the default [type_expr] mapper replaces the
+      [type_desc] with [Treplace typ], where [typ] is its return value. Any
+      partial-override of this function should ensure that this behaviour is
+      kept using [Type1.set_replacement].
+
+      To restore the previous values, a snapshot should be taken before with
+      [Type1.Snapshot.create], and then a call to [Type1.backtrack_replace]
+      with the snapshot will undo the [Treplace] changes.
+
+      DO NOT recurse into [Treplace] values: they will often be self-recursive.
 *)
 
-let type_expr mapper ({type_desc= desc; type_id; type_depth} as typ) =
-  let type_desc = mapper.type_desc mapper desc in
-  if phys_equal type_desc desc then typ else {type_desc; type_id; type_depth}
+let type_expr mapper typ =
+  match typ.Type0.type_desc with
+  | Treplace typ ->
+      (* Recursion breaking. *)
+      typ
+  | desc ->
+      (* Dummy type variable. *)
+      let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
+      let alt_desc = typ.type_alternate.type_desc in
+      Type1.set_replacement typ typ' ;
+      let type_desc = mapper.type_desc mapper desc in
+      let alt_type_desc = mapper.type_desc mapper alt_desc in
+      let typ' =
+        if phys_equal type_desc desc && phys_equal alt_type_desc alt_desc then (
+          typ'.type_desc <- Tref typ ;
+          typ'.type_alternate.type_desc <- Tref typ ;
+          typ )
+        else (
+          typ'.type_desc <- type_desc ;
+          typ'.type_alternate.type_desc <- alt_type_desc ;
+          typ' )
+      in
+      typ'
 
 let type_desc mapper desc =
   match desc with
@@ -51,20 +83,19 @@ let type_desc mapper desc =
       let vars = map_list vars ~same ~f:(mapper.type_expr mapper) in
       let typ' = mapper.type_expr mapper typ in
       if !same && phys_equal typ' typ then desc else Tpoly (vars, typ')
+  | Tref typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then desc else Tref typ'
+  | Treplace typ ->
+      (* Recursion breaking. *)
+      typ.type_desc
 
-let variant mapper
-    ( {var_ident= ident; var_params; var_implicit_params; var_decl= decl} as
-    variant ) =
+let variant mapper ({var_ident= ident; var_params} as variant) =
   let var_ident = mapper.path mapper ident in
   let same = ref true in
   let var_params = map_list var_params ~same ~f:(mapper.type_expr mapper) in
-  let var_implicit_params =
-    map_list var_implicit_params ~same ~f:(mapper.type_expr mapper)
-  in
-  let var_decl = mapper.type_decl mapper decl in
-  if !same && phys_equal var_ident ident && phys_equal var_decl decl then
-    variant
-  else {var_ident; var_params; var_implicit_params; var_decl}
+  if !same && phys_equal var_ident ident then variant
+  else {var_ident; var_params}
 
 let field_decl mapper ({fld_ident= ident; fld_type= typ} as fld) =
   let fld_type = mapper.type_expr mapper typ in
@@ -99,25 +130,17 @@ let ctor_decl mapper ({ctor_ident; ctor_args= args; ctor_ret} as decl) =
       else {ctor_ident; ctor_args; ctor_ret= Some ctor_ret}
 
 let type_decl mapper
-    ( { tdec_ident= ident
-      ; tdec_params= params
-      ; tdec_implicit_params= implicits
-      ; tdec_desc= desc
-      ; tdec_id } as decl ) =
+    ({tdec_params= params; tdec_desc= desc; tdec_id; tdec_ret= ret} as decl) =
   let same = ref true in
   let tdec_params = map_list params ~same ~f:(mapper.type_expr mapper) in
-  let tdec_implicit_params =
-    map_list implicits ~same ~f:(mapper.type_expr mapper)
-  in
   let tdec_desc = mapper.type_decl_desc mapper desc in
-  let tdec_ident = mapper.ident mapper ident in
-  if !same && phys_equal tdec_desc desc && phys_equal tdec_ident ident then
-    decl
-  else {tdec_ident; tdec_params; tdec_implicit_params; tdec_desc; tdec_id}
+  let tdec_ret = mapper.type_expr mapper ret in
+  if !same && phys_equal tdec_desc desc && phys_equal tdec_ret ret then decl
+  else {tdec_params; tdec_desc; tdec_id; tdec_ret}
 
 let type_decl_desc mapper desc =
   match desc with
-  | TAbstract | TOpen | TForward _ ->
+  | TAbstract | TOpen ->
       desc
   | TAlias typ ->
       let typ' = mapper.type_expr mapper typ in
@@ -130,13 +153,11 @@ let type_decl_desc mapper desc =
       let same = ref true in
       let ctors = map_list ctors ~same ~f:(mapper.ctor_decl mapper) in
       if !same then desc else TVariant ctors
-  | TExtend (path, decl, ctors) ->
+  | TExtend (path, ctors) ->
       let path' = mapper.path mapper path in
-      let decl' = mapper.type_decl mapper decl in
       let same = ref true in
       let ctors = map_list ctors ~same ~f:(mapper.ctor_decl mapper) in
-      if !same && phys_equal path' path && phys_equal decl' decl then desc
-      else TExtend (path', decl', ctors)
+      if !same && phys_equal path' path then desc else TExtend (path', ctors)
 
 let path mapper path =
   match path with
