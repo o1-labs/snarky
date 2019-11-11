@@ -1,0 +1,3 @@
+File "tests/recursive-let-destructuring.meja", line 1, characters 9-10:
+Error: Cannot bind x in this recursive let:
+it must have a functional type.
