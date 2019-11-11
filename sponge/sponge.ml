@@ -1,4 +1,5 @@
 open Core_kernel
+module Intf = Intf
 
 module Params = struct
   include Params
