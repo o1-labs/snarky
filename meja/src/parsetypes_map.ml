@@ -154,10 +154,11 @@ let expression_desc mapper = function
       Pexp_newtype (str mapper name, mapper.expression mapper e)
   | Pexp_seq (e1, e2) ->
       Pexp_seq (mapper.expression mapper e1, mapper.expression mapper e2)
-  | Pexp_let (p, e1, e2) ->
+  | Pexp_let (rec_flag, bindings, e2) ->
       Pexp_let
-        ( mapper.pattern mapper p
-        , mapper.expression mapper e1
+        ( rec_flag
+        , List.map bindings ~f:(fun (p, e1) ->
+              (mapper.pattern mapper p, mapper.expression mapper e1) )
         , mapper.expression mapper e2 )
   | Pexp_constraint (e, typ) ->
       Pexp_constraint (mapper.expression mapper e, mapper.type_expr mapper typ)
@@ -247,8 +248,11 @@ let statement mapper {stmt_desc; stmt_loc} =
   ; stmt_desc= mapper.statement_desc mapper stmt_desc }
 
 let statement_desc mapper = function
-  | Pstmt_value (p, e) ->
-      Pstmt_value (mapper.pattern mapper p, mapper.expression mapper e)
+  | Pstmt_value (rec_flag, bindings) ->
+      Pstmt_value
+        ( rec_flag
+        , List.map bindings ~f:(fun (p, e) ->
+              (mapper.pattern mapper p, mapper.expression mapper e) ) )
   | Pstmt_instance (name, e) ->
       Pstmt_instance (str mapper name, mapper.expression mapper e)
   | Pstmt_type decl ->

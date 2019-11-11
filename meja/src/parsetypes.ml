@@ -64,7 +64,7 @@ and expression_desc =
   | Pexp_fun of Asttypes.arg_label * pattern * expression * explicitness
   | Pexp_newtype of str * expression
   | Pexp_seq of expression * expression
-  | Pexp_let of pattern * expression * expression
+  | Pexp_let of Asttypes.rec_flag * (pattern * expression) list * expression
   | Pexp_constraint of expression * type_expr
   | Pexp_tuple of expression list
   | Pexp_match of expression * (pattern * expression) list
@@ -109,7 +109,7 @@ type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 and statements = statement list
 
 and statement_desc =
-  | Pstmt_value of pattern * expression
+  | Pstmt_value of Asttypes.rec_flag * (pattern * expression) list
   | Pstmt_instance of str * expression
   | Pstmt_type of type_decl
   | Pstmt_rectype of type_decl list

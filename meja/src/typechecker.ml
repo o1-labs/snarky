@@ -25,6 +25,8 @@ type error =
   | Argument_expected of Longident.t
   | Not_extensible of Longident.t
   | Extension_different_arity of Longident.t
+  | Recursive_pattern_disallowed
+  | Recursive_bound_non_function of Ident.t
 
 exception Error of Location.t * error
 
@@ -592,13 +594,17 @@ let rec get_expression env expected exp =
       let e1, env = get_expression env Initial_env.Type.unit e1 in
       let e2, env = get_expression env expected e2 in
       ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Texp_seq (e1, e2)}, env)
-  | Pexp_let (p, e1, e2) ->
+  | Pexp_let (rec_flag, bindings, e2) ->
       let env = Envi.open_expr_scope env in
-      let p, e1, env = check_binding env p e1 in
+      let bindings, env =
+        check_bindings ~recursive:(rec_flag = Recursive) env bindings
+      in
       let e2, env = get_expression env expected e2 in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env e2.exp_type ;
-      ( {exp_loc= loc; exp_type= e2.exp_type; exp_desc= Texp_let (p, e1, e2)}
+      ( { exp_loc= loc
+        ; exp_type= e2.exp_type
+        ; exp_desc= Texp_let (rec_flag, bindings, e2) }
       , env )
   | Pexp_constraint (e, typ') ->
       let typ, env = Typet.Type.import typ' env in
@@ -844,29 +850,100 @@ let rec get_expression env expected exp =
       let _, env = Envi.pop_expr_scope env in
       ({exp_loc= loc; exp_type= expected; exp_desc= Texp_prover e}, env)
 
-and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
-  let loc = e.exp_loc in
+and check_bindings ?toplevel ~recursive (env : Envi.t) pes =
   let mode = Envi.current_mode env in
-  let typ = Envi.Type.mkvar ~mode None env in
-  let p, pattern_variables, env = check_pattern env typ p in
-  let typ = Type1.flatten typ in
+  let env, ps =
+    List.fold_map ~init:env pes ~f:(fun env (p, _e) ->
+        let typ = Envi.Type.mkvar ~mode None env in
+        let p, pattern_variables, env = check_pattern env typ p in
+        if recursive && List.length pattern_variables <> 1 then
+          raise (Error (p.pat_loc, Recursive_pattern_disallowed)) ;
+        let typ = Type1.flatten typ in
+        (env, (p, pattern_variables, typ)) )
+  in
+  if recursive then
+    let rec fixpoint pattern_variables =
+      (* Bring all bound variables into scope. *)
+      let env =
+        List.fold ~init:env pattern_variables ~f:(fun env (name, typ) ->
+            add_polymorphised name.Location.txt typ env )
+      in
+      let env = ref env in
+      let pes =
+        List.map2_exn ps pes ~f:(fun (p, pattern_variables, typ) (_p, e) ->
+            let p, e, bindings, env' =
+              check_bound_expression ?toplevel !env p pattern_variables typ e
+            in
+            env := env' ;
+            (p, e, bindings) )
+      in
+      let env = !env in
+      let new_pattern_variables =
+        List.map pes ~f:(fun (_, _, bindings) ->
+            match bindings with [binding] -> binding | _ -> assert false )
+      in
+      let snap = Snapshot.create () in
+      let is_fixedpoint =
+        List.for_all2_exn pattern_variables new_pattern_variables
+          ~f:(fun (_name, typ) (_name', typ') -> unifies env typ typ')
+      in
+      if is_fixedpoint then (
+        (* Check that all bound names are functions. *)
+        List.iter new_pattern_variables
+          ~f:(fun ((name : _ Location.loc), typ) ->
+            match (repr typ).type_desc with
+            | Tarrow _ ->
+                ()
+            | _ ->
+                raise (Error (name.loc, Recursive_bound_non_function name.txt))
+        ) ;
+        (List.map pes ~f:(fun (p, e, _) -> (p, e)), env) )
+      else (
+        backtrack snap ;
+        fixpoint new_pattern_variables )
+    in
+    let pattern_variables =
+      List.concat_map ps ~f:(fun (_p, patvars, _typ) -> patvars)
+    in
+    fixpoint pattern_variables
+  else
+    let env = ref env in
+    let pes =
+      List.map2_exn ps pes ~f:(fun (p, pattern_variables, typ) (_p, e) ->
+          let p, e, bindings, env' =
+            check_bound_expression ?toplevel !env p pattern_variables typ e
+          in
+          env := env' ;
+          (p, e, bindings) )
+    in
+    let env = !env in
+    let env, pes =
+      List.fold_map ~init:env pes ~f:(fun env (p, e, bindings) ->
+          let env =
+            List.fold ~init:env bindings ~f:(fun env (name, typ) ->
+                add_polymorphised name.Location.txt typ env )
+          in
+          (env, (p, e)) )
+    in
+    (pes, env)
+
+and check_bound_expression ?(toplevel = false) env p pattern_variables typ e =
+  let mode = Envi.current_mode env in
   let env = Envi.open_expr_scope env in
   let e, env = get_expression env typ e in
   let env = Envi.close_expr_scope env in
+  let loc = e.exp_loc in
   Envi.Type.update_depths env e.exp_type ;
   let exp_type = Type1.flatten e.exp_type in
   let e = {e with exp_type} in
   let typ_vars = free_type_vars ~depth:env.Envi.depth exp_type in
   let implicit_vars =
-    Envi.Type.flattened_implicit_vars ~loc ~toplevel ~unifies typ_vars env
+    Envi.Type.flattened_implicit_vars ~loc:e.exp_loc ~toplevel ~unifies
+      typ_vars env
   in
   match implicit_vars with
   | [] ->
-      let env =
-        List.fold ~init:env pattern_variables ~f:(fun env (name, typ) ->
-            add_polymorphised name.Location.txt typ env )
-      in
-      (p, e, env)
+      (p, e, pattern_variables, env)
   | implicit :: _ ->
       let name, typ =
         match pattern_variables with
@@ -885,8 +962,8 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
             ; exp_type= typ
             ; exp_desc=
                 Texp_let
-                  ( p
-                  , e
+                  ( Nonrecursive
+                  , [(p, e)]
                   , { exp_loc= p.pat_loc
                     ; exp_type= typ
                     ; exp_desc=
@@ -920,8 +997,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         ; pat_type= e.exp_type
         ; pat_desc= Tpat_variable name }
       in
-      let env = add_polymorphised name.Location.txt e.exp_type env in
-      (p, e, env)
+      (p, e, [(name, e.exp_type)], env)
 
 let type_extension ~loc variant ctors env =
   let mode = Envi.current_mode env in
@@ -1149,18 +1225,29 @@ let rec check_statement env stmt =
   let mode = Envi.current_mode env in
   let loc = stmt.stmt_loc in
   match stmt.stmt_desc with
-  | Pstmt_value (p, e) ->
+  | Pstmt_value (rec_flag, bindings) ->
       let env = Envi.open_expr_scope env in
-      let p, e, env = check_binding ~toplevel:true env p e in
+      let bindings, env =
+        check_bindings ~recursive:(rec_flag = Recursive) ~toplevel:true env
+          bindings
+      in
       let scope, env = Envi.pop_expr_scope env in
       (* Uplift the names from the expression scope, discarding the scope and
          its associated type variables etc. *)
       let env = Envi.join_expr_scope env scope in
-      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_value (p, e)})
+      ( env
+      , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_value (rec_flag, bindings)}
+      )
   | Pstmt_instance (name, e) ->
       let env = Envi.open_expr_scope env in
       let p = {pat_desc= Ppat_variable name; pat_loc= name.loc} in
-      let p, e, env = check_binding ~toplevel:true env p e in
+      let p, e, env =
+        match check_bindings ~recursive:false ~toplevel:true env [(p, e)] with
+        | [(p, e)], env ->
+            (p, e, env)
+        | _ ->
+            assert false
+      in
       let name =
         let exception Ret of Ident.t Location.loc in
         let iter =
@@ -1271,7 +1358,7 @@ let rec check_statement env stmt =
               let request = Lid.of_name "request" in
               let respond = Lid.of_name "respond" in
               let body =
-                Exp.let_ ~loc (Pat.var "unhandled")
+                Exp.let_one ~loc (Pat.var "unhandled")
                   (Exp.var (Lid.of_list ["Snarky"; "Request"; "unhandled"]))
                   (Exp.match_ ~loc:stmt.stmt_loc
                      (Exp.var ~loc (Lid.of_name "request"))
@@ -1290,7 +1377,15 @@ let rec check_statement env stmt =
                    ~args:(Pat.record [Pat.field request; Pat.field respond]))
                 body
             in
-            let _p, e, env = check_binding ~toplevel:true env p e in
+            let e, env =
+              match
+                check_bindings ~toplevel:true ~recursive:false env [(p, e)]
+              with
+              | [(_p, e)], env ->
+                  (e, env)
+              | _ ->
+                  assert false
+            in
             let pat, body =
               match e with
               | { exp_desc=
@@ -1455,6 +1550,14 @@ let rec report_error ppf = function
         "@[<hov>This extension does not match the definition of type %a@;They \
          have different arities.@]"
         Longident.pp lid
+  | Recursive_pattern_disallowed ->
+      fprintf ppf
+        "This pattern is not allowed for recursive bindings:@ too many \
+         variables are bound."
+  | Recursive_bound_non_function name ->
+      fprintf ppf
+        "Cannot bind %a in this recursive let:@ it must have a functional type."
+        Ident.pprint name
 
 let () =
   Location.register_error_of_exn (function

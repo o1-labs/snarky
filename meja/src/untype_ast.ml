@@ -183,8 +183,11 @@ let rec expression_desc = function
       Pexp_newtype (map_loc ~f:Ident.name name, expression e)
   | Texp_seq (e1, e2) ->
       Pexp_seq (expression e1, expression e2)
-  | Texp_let (p, e1, e2) ->
-      Pexp_let (pattern p, expression e1, expression e2)
+  | Texp_let (rec_flag, bindings, e2) ->
+      Pexp_let
+        ( rec_flag
+        , List.map bindings ~f:(fun (p, e1) -> (pattern p, expression e1))
+        , expression e2 )
   | Texp_constraint (e, typ) ->
       Pexp_constraint (expression e, type_expr typ)
   | Texp_tuple es ->
@@ -260,8 +263,10 @@ and module_sig msig =
   ; msig_loc= msig.msig_loc }
 
 let rec statement_desc = function
-  | Typedast.Tstmt_value (p, e) ->
-      Parsetypes.Pstmt_value (pattern p, expression e)
+  | Typedast.Tstmt_value (rec_flag, bindings) ->
+      Parsetypes.Pstmt_value
+        ( rec_flag
+        , List.map bindings ~f:(fun (p, e) -> (pattern p, expression e)) )
   | Tstmt_instance (name, e) ->
       Pstmt_instance (map_loc ~f:Ident.name name, expression e)
   | Tstmt_type decl ->

@@ -162,8 +162,10 @@ let expression_desc iter = function
       ident iter name ; iter.expression iter e
   | Texp_seq (e1, e2) ->
       iter.expression iter e1 ; iter.expression iter e2
-  | Texp_let (p, e1, e2) ->
-      iter.pattern iter p ; iter.expression iter e1 ; iter.expression iter e2
+  | Texp_let (_rec_flag, bindings, e2) ->
+      List.iter bindings ~f:(fun (p, e1) ->
+          iter.pattern iter p ; iter.expression iter e1 ) ;
+      iter.expression iter e2
   | Texp_constraint (e, typ) ->
       iter.type_expr iter typ ; iter.expression iter e
   | Texp_tuple es ->
@@ -268,8 +270,9 @@ let statement iter {stmt_desc; stmt_loc} =
   iter.statement_desc iter stmt_desc
 
 let statement_desc iter = function
-  | Tstmt_value (p, e) ->
-      iter.pattern iter p ; iter.expression iter e
+  | Tstmt_value (_rec_flag, bindings) ->
+      List.iter bindings ~f:(fun (p, e) ->
+          iter.pattern iter p ; iter.expression iter e )
   | Tstmt_instance (name, e) ->
       ident iter name ; iter.expression iter e
   | Tstmt_type decl ->

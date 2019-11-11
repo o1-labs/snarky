@@ -133,7 +133,10 @@ module Exp = struct
 
   let record ?loc ?default fields = mk ?loc (Pexp_record (fields, default))
 
-  let let_ ?loc p e_eq e = mk ?loc (Pexp_let (p, e_eq, e))
+  let let_ ?loc rec_flag bindings e =
+    mk ?loc (Pexp_let (rec_flag, bindings, e))
+
+  let let_one ?loc p e_eq e = mk ?loc (Pexp_let (Nonrecursive, [(p, e_eq)], e))
 
   let constraint_ ?loc e typ = mk ?loc (Pexp_constraint (e, typ))
 

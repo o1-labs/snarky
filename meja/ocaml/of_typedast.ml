@@ -414,9 +414,10 @@ let rec of_expression_desc ?loc = function
       Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
   | Texp_seq (e1, e2) ->
       Exp.sequence ?loc (of_expression e1) (of_expression e2)
-  | Texp_let (p, e_rhs, e) ->
-      Exp.let_ ?loc Nonrecursive
-        [Vb.mk (of_pattern p) (of_expression e_rhs)]
+  | Texp_let (rec_flag, bindings, e) ->
+      Exp.let_ ?loc rec_flag
+        (List.map bindings ~f:(fun (p, e_rhs) ->
+             Vb.mk (of_pattern p) (of_expression e_rhs) ))
         (of_expression e)
   | Texp_tuple es ->
       Exp.tuple ?loc (List.map ~f:of_expression es)
@@ -537,8 +538,10 @@ and of_module_sig_desc ?loc = function
 and of_module_sig msig = of_module_sig_desc ~loc:msig.msig_loc msig.msig_desc
 
 let rec of_statement_desc ?loc = function
-  | Tstmt_value (p, e) ->
-      Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
+  | Tstmt_value (rec_flag, bindings) ->
+      Str.value ?loc rec_flag
+        (List.map bindings ~f:(fun (p, e) ->
+             Vb.mk (of_pattern p) (of_expression e) ))
   | Tstmt_instance (name, e) ->
       Str.value ?loc Nonrecursive
         [Vb.mk (Pat.var ?loc (of_ident_loc name)) (of_expression e)]

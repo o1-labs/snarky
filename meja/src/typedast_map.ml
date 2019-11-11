@@ -216,10 +216,11 @@ let expression_desc mapper = function
       Texp_newtype (ident mapper name, mapper.expression mapper e)
   | Texp_seq (e1, e2) ->
       Texp_seq (mapper.expression mapper e1, mapper.expression mapper e2)
-  | Texp_let (p, e1, e2) ->
+  | Texp_let (rec_flag, bindings, e2) ->
       Texp_let
-        ( mapper.pattern mapper p
-        , mapper.expression mapper e1
+        ( rec_flag
+        , List.map bindings ~f:(fun (p, e1) ->
+              (mapper.pattern mapper p, mapper.expression mapper e1) )
         , mapper.expression mapper e2 )
   | Texp_constraint (e, typ) ->
       Texp_constraint (mapper.expression mapper e, mapper.type_expr mapper typ)
@@ -309,8 +310,11 @@ let statement mapper {stmt_desc; stmt_loc} =
   ; stmt_desc= mapper.statement_desc mapper stmt_desc }
 
 let statement_desc mapper = function
-  | Tstmt_value (p, e) ->
-      Tstmt_value (mapper.pattern mapper p, mapper.expression mapper e)
+  | Tstmt_value (rec_flag, bindings) ->
+      Tstmt_value
+        ( rec_flag
+        , List.map bindings ~f:(fun (p, e) ->
+              (mapper.pattern mapper p, mapper.expression mapper e) ) )
   | Tstmt_instance (name, e) ->
       Tstmt_instance (ident mapper name, mapper.expression mapper e)
   | Tstmt_type decl ->

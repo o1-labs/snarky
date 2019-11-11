@@ -194,9 +194,17 @@ let rec expression_desc fmt = function
         expression e
   | Pexp_seq (e1, e2) ->
       fprintf fmt "%a;@;%a" expression e1 expression e2
-  | Pexp_let (p, e1, e2) ->
-      fprintf fmt "let@[<hv2>@ %a@] =@ @[<hv2>%a@];@;@]@ %a" pattern p
-        expression e1 expression e2
+  | Pexp_let (rec_flag, bindings, e2) ->
+      let aux fmt (p, e1) =
+        fprintf fmt "@[<hv2>@ %a@] =@ @[<hv2>%a@]@;@]" pattern p expression e1
+      in
+      let rec_flag =
+        match rec_flag with Recursive -> " rec" | Nonrecursive -> ""
+      in
+      let pp_and fmt () = fprintf fmt "@ and " in
+      fprintf fmt "let%s@ %a;@ %a" rec_flag
+        (pp_print_list ~pp_sep:pp_and aux)
+        bindings expression e2
   | Pexp_constraint (e, typ) ->
       fprintf fmt "(@[<hv1>%a :@ %a@])" expression e type_expr typ
   | Pexp_tuple es ->
