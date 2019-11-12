@@ -1,15 +1,15 @@
 let f : int -> int;  let g : bool -> bool; 
 module X :
   {
-    type t('a) = A('a) | B(int) | C(bool) : X.t(bool);
+    type t('a) = A('a) | B(int) | C(bool) : t(bool);
     
-    let a : X.t(int);
+    let a : t(int);
     
-    let a1 : X.t(unit);
+    let a1 : t(unit);
     
-    let b : X.t('bool);
+    let b : t('bool);
     
-    let c : X.t(bool);
+    let c : t(bool);
     
     let f : 'int -> 'int -> 'int;
     

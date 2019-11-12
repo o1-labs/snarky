@@ -6,9 +6,9 @@ module X :
   {
     type t('a) = {a: 'a, b: 'a, c: 'a};
     
-    let typ : Typ.t(X.t('a2), X.t('a1));
+    let typ : Typ.t(t('a2), t('a1));
     
-    let x : X.t(int);
+    let x : t(int);
     
     };  let a : X.t(int);  let b : X.t(int);  let c : t(int, int, int); 
 let d : (int, int);  let e : int;  let f : bool;  let g : unit; 

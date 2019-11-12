@@ -1,7 +1,7 @@
 module type T =
   {
-    type t('a, 'b) = U(T.u('a, 'b)) | A('a);type u('a, 'b) = T(T.t('a, 'b))
-      | B('b)
+    type t('a, 'b) = U(u('a, 'b)) | A('a);type u('a, 'b) = T(t('a, 'b)) | B(
+      'b)
     
     }; 
 type t('a, 'b) = U(u('a, 'b)) | A('a);type u('a, 'b) = T(t('a, 'b)) | B('b) 
