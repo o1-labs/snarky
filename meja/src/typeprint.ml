@@ -99,7 +99,10 @@ let and_type_decl fmt (ident, decl) =
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
 
-let rec signature fmt sigs = List.iter (signature_item fmt) sigs
+let rec signature fmt sigs =
+  fprintf fmt "@[<hv>" ;
+  List.iter (signature_item fmt) sigs ;
+  fprintf fmt "@]"
 
 and signature_item fmt = function
   | Svalue (name, typ) ->
@@ -139,7 +142,7 @@ and signature_item fmt = function
 and module_sig ~prefix fmt = function
   | Msig msig ->
       prefix fmt ;
-      fprintf fmt "{@[<hv1>@;%a@]}" signature msig
+      fprintf fmt "{@[<1>@;%a@]}" signature msig
   | Mname name ->
       prefix fmt ; Path.pp fmt name
   | Malias name ->

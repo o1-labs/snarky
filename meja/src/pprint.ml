@@ -311,12 +311,15 @@ let rec signature_desc fmt = function
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 
-and signature fmt sigs = List.iter (signature_item fmt) sigs
+and signature fmt sigs =
+  fprintf fmt "@[<hv>" ;
+  List.iter (signature_item fmt) sigs ;
+  fprintf fmt "@]"
 
 and module_sig_desc ~prefix fmt = function
   | Pmty_sig msig ->
       prefix fmt ;
-      fprintf fmt "{@[<hv1>@;%a@]}" signature msig
+      fprintf fmt "{@[<1>@;%a@]}" signature msig
   | Pmty_name name ->
       prefix fmt ; Longident.pp fmt name.txt
   | Pmty_alias name ->
