@@ -974,7 +974,10 @@ let type_extension ~loc variant ctors env =
   in
   let variant =
     { Typedast.var_ident= Location.mkloc path var_ident.loc
-    ; var_params= decl.tdec_params }
+    ; var_params= decl.tdec_params
+    ; var_var=
+        { var_ident= path
+        ; var_params= List.map decl.tdec_params ~f:(fun x -> x.type_type) } }
   in
   (env, variant, ctors)
 

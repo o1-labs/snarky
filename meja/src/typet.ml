@@ -92,7 +92,13 @@ module Type = struct
             (Type1.get_mode mode decl.tdec_ret)
             env
         in
-        ( { type_desc= Ttyp_ctor {var_params; var_ident}
+        ( { type_desc=
+              Ttyp_ctor
+                { var_params
+                ; var_ident
+                ; var_var=
+                    { var_params= List.map ~f:type0 var_params
+                    ; var_ident= var_ident.txt } }
           ; type_loc= loc
           ; type_type= typ }
         , env )

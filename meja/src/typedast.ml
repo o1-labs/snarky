@@ -17,7 +17,8 @@ and type_desc =
   | Ttyp_poly of type_expr list * type_expr
   | Ttyp_prover of type_expr
 
-and variant = {var_ident: path; var_params: type_expr list}
+and variant =
+  {var_ident: path; var_params: type_expr list; var_var: Type0.variant}
 
 type field_decl =
   { fld_ident: ident

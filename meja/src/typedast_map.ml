@@ -84,9 +84,10 @@ let type_desc mapper typ =
   | Ttyp_prover typ ->
       Ttyp_prover (mapper.type_expr mapper typ)
 
-let variant mapper {var_ident; var_params} =
+let variant mapper {var_ident; var_params; var_var} =
   { var_ident= path mapper var_ident
-  ; var_params= List.map ~f:(mapper.type_expr mapper) var_params }
+  ; var_params= List.map ~f:(mapper.type_expr mapper) var_params
+  ; var_var= mapper.type0.variant mapper.type0 var_var }
 
 let field_decl mapper {fld_ident; fld_type; fld_loc; fld_fld} =
   { fld_loc= mapper.location mapper fld_loc

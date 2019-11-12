@@ -68,8 +68,10 @@ let type_desc iter = function
   | Ttyp_prover typ ->
       iter.type_expr iter typ
 
-let variant iter {var_ident; var_params} =
+let variant iter {var_ident; var_params; var_var} =
   path iter var_ident ;
+  (* No iteration into [var_var]. May be done manually. *)
+  ignore var_var ;
   List.iter ~f:(iter.type_expr iter) var_params
 
 let field_decl iter {fld_ident; fld_type; fld_loc; fld_fld} =

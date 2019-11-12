@@ -92,7 +92,7 @@ let rec type_desc = function
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}
 
-and variant {Typedast.var_ident; var_params} =
+and variant {Typedast.var_ident; var_params; var_var= _} =
   { Parsetypes.var_ident= map_loc ~f:longident_of_path var_ident
   ; var_params= List.map ~f:type_expr var_params }
 
