@@ -1,0 +1,15 @@
+type showable('a) = {show: 'a -> string}; 
+let show : {showable(_)} -> _ -> string;  let f : 'a -> string; 
+let g : 'a -> 'a -> (string, string, string, string, string, string); 
+let h :
+  int
+  -> bool
+  -> float
+  -> ((string, string, string, string, string, string),
+      (string, string, string, string, string, string),
+      (string, string, string, string, string, string)); 
+type conv('a, 'b) = {conv: 'a -> 'b};  let conv : {conv(_, _)} -> _ -> _; 
+let conv_bool_int : conv(bool, int);  let i : bool -> (int -> 'a) -> 'a; 
+module T : { let conv_int_bool : conv(int, bool);  }; 
+let j : int -> (bool -> 'a) -> 'a; 
+

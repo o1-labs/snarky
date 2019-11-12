@@ -1,0 +1,4 @@
+module A :
+  { let x : int;  let y : int;  Prover {let x : bool;  let y : bool;  }  }; 
+let z : int;  Prover {let z : bool;  }  let z : int; 
+

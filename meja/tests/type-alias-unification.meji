@@ -1,0 +1,57 @@
+module Alias_alias :
+  {
+    type u('a, 'b) = 'a -> 'a;
+    
+    type v('a, 'b) = Alias_alias.u('a, 'a);
+    
+    let f : Alias_alias.u(int, bool) -> Alias_alias.u(int, int);
+    
+    let g : Alias_alias.v(int, int) -> Alias_alias.v(int, bool);
+    
+    let h : Alias_alias.v(int, bool) -> Alias_alias.u(int, int);
+    
+    let i : Alias_alias.u(bool, bool) -> Alias_alias.v(bool, unit);
+    
+    }; 
+module Alias_opaque :
+  {
+    type u('a, 'b);
+    
+    type v('a, 'b) = Alias_opaque.u('a, 'a);
+    
+    let f : Alias_opaque.v(int, int) -> Alias_opaque.v(int, bool);
+    
+    let g : Alias_opaque.v(int, bool) -> Alias_opaque.u(int, int);
+    
+    let h : Alias_opaque.u(bool, bool) -> Alias_opaque.v(bool, unit);
+    
+    }; 
+module Alias_record :
+  {
+    type u('a, 'b) = {a: 'a, b: 'b};
+    
+    let u_typ : Typ.t(Alias_record.u('a2, 'b2), Alias_record.u('a1, 'b1));
+    
+    type v('a, 'b) = Alias_record.u('a, 'a);
+    
+    let f : Alias_record.v(int, int) -> Alias_record.v(int, bool);
+    
+    let g : Alias_record.v(int, bool) -> Alias_record.u(int, int);
+    
+    let h : Alias_record.u(bool, bool) -> Alias_record.v(bool, unit);
+    
+    }; 
+module Alias_variant :
+  {
+    type u('a, 'b) = A | B | C('a) | D('b);
+    
+    type v('a, 'b) = Alias_variant.u('a, 'a);
+    
+    let f : Alias_variant.v(int, int) -> Alias_variant.v(int, bool);
+    
+    let g : Alias_variant.v(int, bool) -> Alias_variant.u(int, int);
+    
+    let h : Alias_variant.u(bool, bool) -> Alias_variant.v(bool, unit);
+    
+    }; 
+

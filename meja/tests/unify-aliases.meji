@@ -1,0 +1,3 @@
+type t('a) = int;  let x : t(bool);  let f : {t(int)} -> t(int); 
+let g : t(int); 
+

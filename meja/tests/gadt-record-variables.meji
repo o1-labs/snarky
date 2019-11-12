@@ -1,0 +1,4 @@
+type t = A{x: 'a} : t;  let x : t;  let y : t; 
+type u(_) = Int(int) : u(int) | Bool(bool) : u(bool) | Unit : u(unit); 
+type v = B{x: u('a)} : v;  let a : v;  let b : v;  let c : v; 
+

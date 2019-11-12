@@ -1,0 +1,3 @@
+let x : (int, int, int);  let f : _ -> _;  let y : (int, int, int); 
+let z : int;  let x_ : int;  let z : (int, _, _) -> (int, int); 
+

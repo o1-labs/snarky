@@ -1,0 +1,9 @@
+let a : a:_ -> _;  let b : a:int -> int;  let c : ?a:bool -> unit -> bool; 
+let d : a:bool -> ?b:bool -> bool; 
+let e :
+  unit -> (list(int), int, int, bool, bool, bool, bool, bool, bool, bool); 
+let f : a:int -> ?b:bool -> int -> int;  let g : a:int -> int -> int; 
+let h : a:int -> ?b:bool -> int;  let i : ?b:bool -> int -> int; 
+let j : unit -> int;  let j : a:{int} -> b:{option(int)} -> int; 
+let x : int;  let k : int;  let y : option(int);  let l : int; 
+

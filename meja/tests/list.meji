@@ -1,0 +1,5 @@
+let x : list(int);  let y : list((int, int, int)); 
+let f : list(bool) -> (bool, bool, bool);  let g : (bool, bool, bool); 
+let (!) : bool -> bool;  let (+) : bool -> bool -> bool;  let h : list(bool);
+ let i : list(bool); 
+

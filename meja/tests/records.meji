@@ -1,0 +1,16 @@
+type t('a, 'b, 'c) = {a: 'a, b: 'b, c: 'c}; 
+let typ : Typ.t(t('a2, 'b2, 'c2), t('a1, 'b1, 'c1)); 
+let x : t(int, int, int);  let y : t(bool, bool, bool); 
+let z : t(int, bool, unit); 
+module X :
+  {
+    type t('a) = {a: 'a, b: 'a, c: 'a};
+    
+    let typ : Typ.t(X.t('a2), X.t('a1));
+    
+    let x : X.t(int);
+    
+    };  let a : X.t(int);  let b : X.t(int);  let c : t(int, int, int); 
+let d : (int, int);  let e : int;  let f : bool;  let g : unit; 
+let h : unit; 
+

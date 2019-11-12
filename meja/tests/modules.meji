@@ -1,0 +1,49 @@
+let x : int; 
+module Test1 :
+  {
+    let x : int;
+    
+    let y : int;
+    
+    let z : (int, int);
+    
+    module Test2 : { let a : (int, int);  };
+    
+    };  module Test2 = Test1;  module Test3 = Test1.Test2; 
+module Test4 = Test2.Test2; 
+module Test5 :
+  {
+    module Test :
+      { module Test : { module Test = Test4;  let b : int;  };  };
+    
+    };  let y : int;  let z : ((int, int), (int, int)); 
+let a : ((int, int), (int, int), (int, int));  let b : ((int, int), int); 
+module Test6 :
+  {
+    let a : (int, int);
+    
+    let b : int;
+    
+    let c : int;
+    
+    let b : bool;
+    
+    let d : bool;
+    
+    let e : int;
+    
+    }; 
+module Test7 :
+  {
+    let a : (int, int);
+    
+    let b : bool;
+    
+    let c : int;
+    
+    let d : bool;
+    
+    let e : int;
+    
+    }; 
+

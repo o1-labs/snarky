@@ -1,0 +1,2 @@
+let typ : Typ.t(('var_a, 'var_b), ('value_a, 'value_b)); 
+

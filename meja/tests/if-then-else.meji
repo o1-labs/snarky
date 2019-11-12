@@ -1,0 +1,3 @@
+let x : bool;  let y : unit;  let z : bool -> _ -> _ -> _; 
+let a : bool -> _ -> _ -> _;  let b : unit -> unit; 
+

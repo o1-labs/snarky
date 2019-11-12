@@ -44,7 +44,7 @@ run_test() {
   else
     BACKTRACE_FLAG="--compiler-backtraces"
   fi
-  run_dune exec meja/meja.exe -- $BACKTRACE_FLAG --ml "tests/out/$1.ml" --stderr "tests/out/$1.stderr" "tests/$1.meja" 2> /dev/null
+  run_dune exec meja/meja.exe -- $BACKTRACE_FLAG --ml "tests/out/$1.ml" --meji-out "tests/out/$1.meji" --stderr "tests/out/$1.stderr" "tests/$1.meja" 2> /dev/null
   if [ $? -ne 0 ]; then
     if [ -e "tests/$1.fail" ]; then
       if [[ "$update_output" -eq 0 ]]; then
@@ -79,6 +79,7 @@ run_test() {
     ocamlformat tests/out/$1.ml > tests/out/$1.ml.reformat &&
     mv tests/out/$1.ml.reformat tests/out/$1.ml
     check_diff $1.ml
+    check_diff $1.meji
   fi
     check_diff $1.stderr
 }

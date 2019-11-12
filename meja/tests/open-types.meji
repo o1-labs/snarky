@@ -1,0 +1,5 @@
+type t = ..;  type t += A  type t += B  let a : t;  let b : t; 
+module T : { type t = ..;  type T.t += C  };  let c : T.t;  type T.t += D 
+let d : T.t;  type u('a, 'b) = ..;  type u('a, 'b) += F('a) | E('a, 'b) 
+let e : u(int, bool);  let f : u(int, int);  let g : u(unit, bool); 
+

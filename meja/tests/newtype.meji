@@ -1,0 +1,3 @@
+let f : ('a -> 'a) -> 'a -> 'a;  let g : ('a -> 'a) -> 'a -> 'a; 
+let id : _ -> _;  let a : int;  let d : bool; 
+
