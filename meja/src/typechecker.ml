@@ -594,7 +594,7 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Texp_seq (e1, e2)}, env)
   | Pexp_let (p, e1, e2) ->
       let env = Envi.open_expr_scope env in
-      let p, e1, env = check_binding env p e1 in
+      let p, e1, _pat_vars, env = check_binding env p e1 in
       let e2, env = get_expression env expected e2 in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env e2.exp_type ;
@@ -866,7 +866,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         List.fold ~init:env pattern_variables ~f:(fun env (name, typ) ->
             add_polymorphised name.Location.txt typ env )
       in
-      (p, e, env)
+      (p, e, pattern_variables, env)
   | implicit :: _ ->
       let name, typ =
         match pattern_variables with
@@ -921,7 +921,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         ; pat_desc= Tpat_variable name }
       in
       let env = add_polymorphised name.Location.txt e.exp_type env in
-      (p, e, env)
+      (p, e, pattern_variables, env)
 
 let type_extension ~loc variant ctors env =
   let mode = Envi.current_mode env in
@@ -1151,7 +1151,7 @@ let rec check_statement env stmt =
   match stmt.stmt_desc with
   | Pstmt_value (p, e) ->
       let env = Envi.open_expr_scope env in
-      let p, e, env = check_binding ~toplevel:true env p e in
+      let p, e, _pat_vars, env = check_binding ~toplevel:true env p e in
       let scope, env = Envi.pop_expr_scope env in
       (* Uplift the names from the expression scope, discarding the scope and
          its associated type variables etc. *)
@@ -1160,23 +1160,9 @@ let rec check_statement env stmt =
   | Pstmt_instance (name, e) ->
       let env = Envi.open_expr_scope env in
       let p = {pat_desc= Ppat_variable name; pat_loc= name.loc} in
-      let p, e, env = check_binding ~toplevel:true env p e in
+      let _p, e, pat_vars, env = check_binding ~toplevel:true env p e in
       let name =
-        let exception Ret of Ident.t Location.loc in
-        let iter =
-          { Typedast_iter.default_iterator with
-            pattern_desc=
-              (fun iter p ->
-                match p with
-                | Tpat_variable name ->
-                    raise (Ret name)
-                | _ ->
-                    Typedast_iter.default_iterator.pattern_desc iter p ) }
-        in
-        try
-          iter.pattern iter p ;
-          assert false
-        with Ret name -> name
+        match pat_vars with [(name, _)] -> name | _ -> assert false
       in
       let scope, env = Envi.pop_expr_scope env in
       let env = Envi.join_expr_scope env scope in
@@ -1290,7 +1276,7 @@ let rec check_statement env stmt =
                    ~args:(Pat.record [Pat.field request; Pat.field respond]))
                 body
             in
-            let _p, e, env = check_binding ~toplevel:true env p e in
+            let _p, e, _pat_vars, env = check_binding ~toplevel:true env p e in
             let pat, body =
               match e with
               | { exp_desc=
