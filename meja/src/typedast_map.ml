@@ -255,9 +255,10 @@ let expression_desc mapper = function
 
 let signature mapper = List.map ~f:(mapper.signature_item mapper)
 
-let signature_item mapper {sig_desc; sig_loc} =
+let signature_item mapper {sig_desc; sig_loc; sig_sig} =
   { sig_loc= mapper.location mapper sig_loc
-  ; sig_desc= mapper.signature_desc mapper sig_desc }
+  ; sig_desc= mapper.signature_desc mapper sig_desc
+  ; sig_sig= mapper.type0.signature mapper.type0 sig_sig }
 
 let signature_desc mapper = function
   | Tsig_value (name, typ) ->
@@ -284,9 +285,10 @@ let signature_desc mapper = function
   | Tsig_prover sigs ->
       Tsig_prover (mapper.signature mapper sigs)
 
-let module_sig mapper {msig_desc; msig_loc} =
+let module_sig mapper {msig_desc; msig_loc; msig_msig} =
   { msig_loc= mapper.location mapper msig_loc
-  ; msig_desc= mapper.module_sig_desc mapper msig_desc }
+  ; msig_desc= mapper.module_sig_desc mapper msig_desc
+  ; msig_msig= mapper.type0.module_sig mapper.type0 msig_msig }
 
 let module_sig_desc mapper = function
   | Tmty_sig sigs ->
@@ -305,9 +307,10 @@ let module_sig_desc mapper = function
 
 let statements mapper = List.map ~f:(mapper.statement mapper)
 
-let statement mapper {stmt_desc; stmt_loc} =
+let statement mapper {stmt_desc; stmt_loc; stmt_sig} =
   { stmt_loc= mapper.location mapper stmt_loc
-  ; stmt_desc= mapper.statement_desc mapper stmt_desc }
+  ; stmt_desc= mapper.statement_desc mapper stmt_desc
+  ; stmt_sig= mapper.type0.signature mapper.type0 stmt_sig }
 
 let statement_desc mapper = function
   | Tstmt_value (p, e) ->
@@ -339,9 +342,10 @@ let statement_desc mapper = function
   | Tstmt_prover stmts ->
       Tstmt_prover (mapper.statements mapper stmts)
 
-let module_expr mapper {mod_desc; mod_loc} =
+let module_expr mapper {mod_desc; mod_loc; mod_msig} =
   { mod_loc= mapper.location mapper mod_loc
-  ; mod_desc= mapper.module_desc mapper mod_desc }
+  ; mod_desc= mapper.module_desc mapper mod_desc
+  ; mod_msig= mapper.type0.module_sig mapper.type0 mod_msig }
 
 let module_desc mapper = function
   | Tmod_struct stmts ->

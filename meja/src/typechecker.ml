@@ -992,7 +992,10 @@ let rec check_signature_item env item =
       Envi.Type.update_depths env typ.type_type ;
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = add_polymorphised name.txt typ.type_type env in
-      (env, {Typedast.sig_desc= Tsig_value (name, typ); sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_value (name, typ)
+        ; sig_loc= loc
+        ; sig_sig= [Svalue (name.txt, typ.type_type)] } )
   | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ, env = Typet.Type.import typ env in
@@ -1003,13 +1006,25 @@ let rec check_signature_item env item =
       let typ' = polymorphise typ' env in
       let env = Envi.add_name name.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ' env in
-      (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_instance (name, typ)
+        ; sig_loc= loc
+        ; sig_sig= [Sinstance (name.txt, typ.type_type)] } )
   | Psig_type decl ->
       let decl, env = Typet.TypeDecl.import decl env in
-      (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_type decl
+        ; sig_loc= loc
+        ; sig_sig= [Stype (decl.tdec_ident.txt, decl.tdec_tdec)] } )
   | Psig_rectype decls ->
       let decls, env = Typet.TypeDecl.import_rec decls env in
-      (env, {Typedast.sig_desc= Tsig_rectype decls; sig_loc= loc})
+      let sig_decls =
+        List.map decls ~f:(fun decl -> (decl.tdec_ident.txt, decl.tdec_tdec))
+      in
+      ( env
+      , { Typedast.sig_desc= Tsig_rectype decls
+        ; sig_loc= loc
+        ; sig_sig= [Srectype sig_decls] } )
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
       let msig, m, env = check_module_sig env msig in
@@ -1020,22 +1035,37 @@ let rec check_signature_item env item =
         | Envi.Scope.Deferred path ->
             Envi.add_deferred_module name.txt path env
       in
-      (env, {Typedast.sig_desc= Tsig_module (name, msig); sig_loc= loc})
+      (* TODO: Substitute in msig.msig_msig. *)
+      ( env
+      , { Typedast.sig_desc= Tsig_module (name, msig)
+        ; sig_loc= loc
+        ; sig_sig= [Smodule (name.txt, msig.msig_msig)] } )
   | Psig_modtype (name, signature) ->
       let env = Envi.open_module env in
       let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
-      (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
+      (* TODO: Substitute in signature.msig_msig. *)
+      ( env
+      , { Typedast.sig_desc= Tsig_modtype (name, signature)
+        ; sig_loc= loc
+        ; sig_sig= [Smodtype (name.txt, signature.msig_msig)] } )
   | Psig_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
       let env = Envi.open_namespace_scope path m env in
       ( env
       , { Typedast.sig_desc= Tsig_open (Location.mkloc path name.loc)
-        ; sig_loc= loc } )
+        ; sig_loc= loc
+        ; sig_sig= [] } )
   | Psig_typeext (variant, ctors) ->
       let env, variant, ctors = type_extension ~loc variant ctors env in
-      (env, {Typedast.sig_desc= Tsig_typeext (variant, ctors); sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_typeext (variant, ctors)
+        ; sig_loc= loc
+        ; sig_sig=
+            [ Stypeext
+                (variant.var_var, List.map ctors ~f:(fun x -> x.ctor_ctor)) ]
+        } )
   | Psig_request (arg, ctor_decl) ->
       let open Ast_build in
       let variant =
@@ -1055,15 +1085,25 @@ let rec check_signature_item env item =
         | _ ->
             assert false
       in
-      (env, {Typedast.sig_desc= Tsig_request (arg, ctor_decl); sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_request (arg, ctor_decl)
+        ; sig_loc= loc
+        ; sig_sig= [Srequest (arg.type_type, ctor_decl.ctor_ctor)] } )
   | Psig_multiple sigs ->
       let env, sigs = check_signature env sigs in
-      (env, {Typedast.sig_desc= Tsig_multiple sigs; sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_multiple sigs
+        ; sig_loc= loc
+        ; sig_sig= List.concat_map sigs ~f:(fun x -> x.sig_sig) } )
   | Psig_prover sigs ->
       let env = Envi.open_mode_module_scope Prover env in
       let env, sigs = check_signature env sigs in
       let env = Envi.open_mode_module_scope mode env in
-      (env, {Typedast.sig_desc= Tsig_prover sigs; sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_prover sigs
+        ; sig_loc= loc
+        ; sig_sig= [Sprover (List.concat_map sigs ~f:(fun x -> x.sig_sig))] }
+      )
 
 and check_signature env signature =
   List.fold_map ~init:env signature ~f:check_signature_item
@@ -1076,7 +1116,10 @@ and check_module_sig env msig =
       let env = Envi.open_module env in
       let env, signature = check_signature env signature in
       let m, env = Envi.pop_module ~loc env in
-      ( {Typedast.msig_desc= Tmty_sig signature; msig_loc= loc}
+      ( { Typedast.msig_desc= Tmty_sig signature
+        ; msig_loc= loc
+        ; msig_msig= Msig (List.concat_map signature ~f:(fun x -> x.sig_sig))
+        }
       , Envi.Scope.Immediate m
       , env )
   | Pmty_name lid ->
@@ -1088,7 +1131,8 @@ and check_module_sig env msig =
             raise (Envi.Error (loc, Unbound ("module type", lid.txt)))
       in
       ( { Typedast.msig_desc= Tmty_name (Location.mkloc path lid.loc)
-        ; msig_loc= loc }
+        ; msig_loc= loc
+        ; msig_msig= Mname path }
       , m
       , env )
   | Pmty_alias lid ->
@@ -1100,13 +1144,14 @@ and check_module_sig env msig =
             raise (Envi.Error (loc, Unbound ("module", lid.txt)))
       in
       ( { Typedast.msig_desc= Tmty_alias (Location.mkloc path lid.loc)
-        ; msig_loc= loc }
+        ; msig_loc= loc
+        ; msig_msig= Malias path }
       , m
       , env )
   | Pmty_abstract ->
       let env = Envi.open_module env in
       let m, env = Envi.pop_module ~loc env in
-      ( {Typedast.msig_desc= Tmty_abstract; msig_loc= loc}
+      ( {Typedast.msig_desc= Tmty_abstract; msig_loc= loc; msig_msig= Mabstract}
       , Envi.Scope.Immediate m
       , env )
   | Pmty_functor (f_name, f, msig) ->
@@ -1142,7 +1187,9 @@ and check_module_sig env msig =
       (* Check that f_mty builds the functor as expected. *)
       let _, msig = ftor f_mty in
       let m = Envi.make_functor ~mode (fun f -> fst (ftor f)) in
-      ( {Typedast.msig_desc= Tmty_functor (f_name, f, msig); msig_loc= loc}
+      ( { Typedast.msig_desc= Tmty_functor (f_name, f, msig)
+        ; msig_loc= loc
+        ; msig_msig= Mfunctor (f_name.txt, f.msig_msig, msig.msig_msig) }
       , Envi.Scope.Immediate m
       , env )
 
@@ -1154,12 +1201,15 @@ let rec check_statement env stmt =
   match stmt.stmt_desc with
   | Pstmt_value (p, e) ->
       let env = Envi.open_expr_scope env in
-      let p, e, _pat_vars, env = check_binding ~toplevel:true env p e in
+      let p, e, pat_vars, env = check_binding ~toplevel:true env p e in
       let scope, env = Envi.pop_expr_scope env in
       (* Uplift the names from the expression scope, discarding the scope and
          its associated type variables etc. *)
       let env = Envi.join_expr_scope env scope in
-      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_value (p, e)})
+      let stmt_sig =
+        List.map pat_vars ~f:(fun (name, typ) -> Svalue (name.txt, typ))
+      in
+      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_value (p, e); stmt_sig})
   | Pstmt_instance (name, e) ->
       let env = Envi.open_expr_scope env in
       let p = {pat_desc= Ppat_variable name; pat_loc= name.loc} in
@@ -1172,10 +1222,19 @@ let rec check_statement env stmt =
       let typ = Type1.flatten e.exp_type in
       let typ = polymorphise typ env in
       let env = Envi.add_implicit_instance name.txt typ env in
-      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e)})
+      let stmt_sig =
+        List.map pat_vars ~f:(fun (name, typ) -> Svalue (name.txt, typ))
+      in
+      ( env
+      , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e); stmt_sig}
+      )
   | Pstmt_type decl when !in_decl ->
       let decl, env = Typet.TypeDecl.import decl env in
-      let stmt = {Typedast.stmt_loc= loc; stmt_desc= Tstmt_type decl} in
+      let stmt =
+        { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_type decl
+        ; stmt_sig= [Stype (decl.tdec_ident.txt, decl.tdec_tdec)] }
+      in
       (env, stmt)
   | Pstmt_type decl ->
       in_decl := true ;
@@ -1193,28 +1252,47 @@ let rec check_statement env stmt =
       ret
   | Pstmt_rectype decls ->
       let decls, env = Typet.TypeDecl.import_rec decls env in
-      (env, {Typedast.stmt_desc= Tstmt_rectype decls; stmt_loc= loc})
+      let stmt_sig =
+        [ Srectype
+            (List.map decls ~f:(fun decl ->
+                 (decl.tdec_ident.txt, decl.tdec_tdec) )) ]
+      in
+      (env, {Typedast.stmt_desc= Tstmt_rectype decls; stmt_loc= loc; stmt_sig})
   | Pstmt_module (name, m) ->
       let env = Envi.open_module env in
       let env, m = check_module_expr env m in
       let m_env, env = Envi.pop_module ~loc env in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module name.txt m_env env in
-      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_module (name, m)})
+      (* TODO: Substitute in m.mod_msig. *)
+      ( env
+      , { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_module (name, m)
+        ; stmt_sig= [Smodule (name.txt, m.mod_msig)] } )
   | Pstmt_modtype (name, signature) ->
       let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
+      (* TODO: Substitute in signature.msig_msig. *)
       ( env
-      , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
+      , { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_modtype (name, signature)
+        ; stmt_sig= [Smodtype (name.txt, signature.msig_msig)] } )
   | Pstmt_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
       ( Envi.open_namespace_scope path m env
       , { Typedast.stmt_loc= loc
-        ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
+        ; stmt_desc= Tstmt_open (Location.mkloc path name.loc)
+        ; stmt_sig= [] } )
   | Pstmt_typeext (variant, ctors) ->
       let env, variant, ctors = type_extension ~loc variant ctors env in
-      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_typeext (variant, ctors)})
+      ( env
+      , { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_typeext (variant, ctors)
+        ; stmt_sig=
+            [ Stypeext
+                (variant.var_var, List.map ctors ~f:(fun x -> x.ctor_ctor)) ]
+        } )
   | Pstmt_request (arg, ctor_decl, handler) ->
       let open Ast_build in
       let variant =
@@ -1308,15 +1386,25 @@ let rec check_statement env stmt =
         | None ->
             (None, env)
       in
-      (env, {stmt_loc= loc; stmt_desc= Tstmt_request (arg, ctor_decl, handler)})
+      ( env
+      , { stmt_loc= loc
+        ; stmt_desc= Tstmt_request (arg, ctor_decl, handler)
+        ; stmt_sig= [Srequest (arg.type_type, ctor_decl.ctor_ctor)] } )
   | Pstmt_multiple stmts ->
       let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
-      (env, {stmt_loc= loc; stmt_desc= Tstmt_multiple stmts})
+      ( env
+      , { stmt_loc= loc
+        ; stmt_desc= Tstmt_multiple stmts
+        ; stmt_sig= List.concat_map stmts ~f:(fun x -> x.stmt_sig) } )
   | Pstmt_prover stmts ->
       let env = Envi.open_mode_module_scope Prover env in
       let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
       let env = Envi.open_mode_module_scope mode env in
-      (env, {stmt_loc= loc; stmt_desc= Tstmt_prover stmts})
+      ( env
+      , { stmt_loc= loc
+        ; stmt_desc= Tstmt_prover stmts
+        ; stmt_sig= [Sprover (List.concat_map stmts ~f:(fun x -> x.stmt_sig))]
+        } )
 
 and check_module_expr env m =
   let mode = Envi.current_mode env in
@@ -1324,14 +1412,20 @@ and check_module_expr env m =
   match m.mod_desc with
   | Pmod_struct stmts ->
       let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
-      (env, {Typedast.mod_loc= loc; mod_desc= Tmod_struct stmts})
+      ( env
+      , { Typedast.mod_loc= loc
+        ; mod_desc= Tmod_struct stmts
+        ; mod_msig= Msig (List.concat_map stmts ~f:(fun x -> x.stmt_sig)) } )
   | Pmod_name name ->
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
       let name', m' = Envi.find_module ~mode ~loc name env in
       let name = Location.mkloc name' name.loc in
       let env = Envi.push_scope m' env in
-      (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
+      ( env
+      , { Typedast.mod_loc= loc
+        ; mod_desc= Tmod_name name
+        ; mod_msig= Malias name.txt } )
   | Pmod_functor (f_name, f, m) ->
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
@@ -1363,7 +1457,10 @@ and check_module_expr env m =
       let env =
         Envi.push_scope (Envi.make_functor ~mode (fun f -> fst (ftor f))) env
       in
-      (env, {m with mod_desc= Tmod_functor (f_name, f, m)})
+      ( env
+      , { m with
+          mod_desc= Tmod_functor (f_name, f, m)
+        ; mod_msig= Mfunctor (f_name.txt, f.msig_msig, m.mod_msig) } )
 
 let check_signature env signature = check_signature env signature
 

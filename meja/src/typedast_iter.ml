@@ -78,7 +78,7 @@ let field_decl iter {fld_ident; fld_type; fld_loc; fld_fld} =
   iter.location iter fld_loc ;
   ident iter fld_ident ;
   iter.type_expr iter fld_type ;
-  (* TODO: Type0_iterator *)
+  (* No iteration into [fld_fld]. May be done manually. *)
   ignore fld_fld
 
 let ctor_args iter = function
@@ -92,7 +92,7 @@ let ctor_decl iter {ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor} =
   ident iter ctor_ident ;
   iter.ctor_args iter ctor_args ;
   Option.iter ~f:(iter.type_expr iter) ctor_ret ;
-  (* TODO: Type0_iterator *)
+  (* No iteration into [ctor_ctor]. May be done manually. *)
   ignore ctor_ctor
 
 let type_decl iter {tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec} =
@@ -100,7 +100,7 @@ let type_decl iter {tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec} =
   ident iter tdec_ident ;
   List.iter ~f:(iter.type_expr iter) tdec_params ;
   iter.type_decl_desc iter tdec_desc ;
-  (* TODO: Type0_iterator *)
+  (* No iteration into [tdec_tdec]. May be done manually. *)
   ignore tdec_tdec
 
 let type_decl_desc iter = function
@@ -222,8 +222,10 @@ let convert_desc iter = function
 
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
-let signature_item iter {sig_desc; sig_loc} =
+let signature_item iter {sig_desc; sig_loc; sig_sig} =
   iter.location iter sig_loc ;
+  (* No iteration into [sig_sig]. May be done manually. *)
+  ignore sig_sig ;
   iter.signature_desc iter sig_desc
 
 let signature_desc iter = function
@@ -247,8 +249,10 @@ let signature_desc iter = function
   | Tsig_prover sigs ->
       iter.signature iter sigs
 
-let module_sig iter {msig_desc; msig_loc} =
+let module_sig iter {msig_desc; msig_loc; msig_msig} =
   iter.location iter msig_loc ;
+  (* No iteration into [msig_msig]. May be done manually. *)
+  ignore msig_msig ;
   iter.module_sig_desc iter msig_desc
 
 let module_sig_desc iter = function
@@ -265,8 +269,10 @@ let module_sig_desc iter = function
 
 let statements iter = List.iter ~f:(iter.statement iter)
 
-let statement iter {stmt_desc; stmt_loc} =
+let statement iter {stmt_desc; stmt_loc; stmt_sig} =
   iter.location iter stmt_loc ;
+  (* No iteration into [stmt_sig]. May be done manually. *)
+  ignore stmt_sig ;
   iter.statement_desc iter stmt_desc
 
 let statement_desc iter = function
@@ -298,8 +304,10 @@ let statement_desc iter = function
   | Tstmt_prover stmts ->
       iter.statements iter stmts
 
-let module_expr iter {mod_desc; mod_loc} =
+let module_expr iter {mod_desc; mod_loc; mod_msig} =
   iter.location iter mod_loc ;
+  (* No iteration into [mod_msig]. May be done manually. *)
+  ignore mod_msig ;
   iter.module_desc iter mod_desc
 
 let module_desc iter = function

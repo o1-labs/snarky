@@ -109,7 +109,8 @@ and expression_desc =
   | Texp_if of expression * expression * expression option
   | Texp_prover of expression
 
-type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
+type signature_item =
+  {sig_desc: signature_desc; sig_loc: Location.t; sig_sig: Type0.signature}
 
 and signature = signature_item list
 
@@ -127,7 +128,10 @@ and signature_desc =
   | Tsig_multiple of signature
   | Tsig_prover of signature
 
-and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
+and module_sig =
+  { msig_desc: module_sig_desc
+  ; msig_loc: Location.t
+  ; msig_msig: Type0.module_sig }
 
 and module_sig_desc =
   | Tmty_sig of signature
@@ -136,7 +140,8 @@ and module_sig_desc =
   | Tmty_abstract
   | Tmty_functor of str * module_sig * module_sig
 
-type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
+type statement =
+  {stmt_desc: statement_desc; stmt_loc: Location.t; stmt_sig: Type0.signature}
 
 and statements = statement list
 
@@ -154,7 +159,8 @@ and statement_desc =
   | Tstmt_multiple of statements
   | Tstmt_prover of statements
 
-and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
+and module_expr =
+  {mod_desc: module_desc; mod_loc: Location.t; mod_msig: Type0.module_sig}
 
 and module_desc =
   | Tmod_struct of statements
