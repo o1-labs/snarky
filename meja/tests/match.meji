@@ -1,8 +1,25 @@
-let x : int -> bool -> bool;  let y : (int -> int -> int -> _) -> _; 
-type t = {a: int, b: bool};  type u = {f: int -> int}; 
-type v('a, 'b) = {x: 'a, y: 'b, g: 'a -> 'b};  let z : t -> u -> int; 
-let a : t -> u -> int;  let b : int -> int; 
-let c : v('a, bool) -> v(int, bool); 
-type w('a) = A | B(int, int) : w(int) | C(w('b)) : w('b); 
-let d : w(int) -> int;  let if_ : bool -> 'a -> 'a -> 'a; 
+let x : int -> bool -> bool;
+
+let y : (int -> int -> int -> _) -> _;
+
+type t = {a: int, b: bool};
+
+type u = {f: int -> int};
+
+type v('a, 'b) = {x: 'a, y: 'b, g: 'a -> 'b};
+
+let z : t -> u -> int;
+
+let a : t -> u -> int;
+
+let b : int -> int;
+
+let c : v('a, bool) -> v(int, bool);
+
+type w('a) = A | B(int, int) : w(int) | C(w('b)) : w('b);
+
+let d : w(int) -> int;
+
+let if_ : bool -> 'a -> 'a -> 'a;
+
 

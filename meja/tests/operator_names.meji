@@ -1,4 +1,23 @@
-let (+) : int;  let (-) : int;  let (!) : _ -> int;  let (~-) : _ -> int; 
-let (||) : bool -> bool -> bool;  let a : bool;  let b : bool;  let c : int; 
-let d : int;  let e : int;  let f : (int -> int -> int) -> int; 
+let (+) : int;
+
+let (-) : int;
+
+let (!) : _ -> int;
+
+let (~-) : _ -> int;
+
+let (||) : bool -> bool -> bool;
+
+let a : bool;
+
+let b : bool;
+
+let c : int;
+
+let d : int;
+
+let e : int;
+
+let f : (int -> int -> int) -> int;
+
 

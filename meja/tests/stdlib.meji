@@ -1,3 +1,9 @@
-let test_plus : int;  let test_times : int;  let test_print_int : unit; 
-let fold_list : list(bool) -> bool; 
+let test_plus : int;
+
+let test_times : int;
+
+let test_print_int : unit;
+
+let fold_list : list(bool) -> bool;
+
 

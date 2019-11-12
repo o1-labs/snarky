@@ -1,4 +1,7 @@
-request ('x) Request(list('x)) : Snarky__Request.t('x) 
-request ('x) Request2 : Snarky__Request.t('x) 
-request ('x) Request3(option('x)) : Snarky__Request.t('x) 
+request ('x) Request(list('x)) : Snarky__Request.t('x)
+
+request ('x) Request2 : Snarky__Request.t('x)
+
+request ('x) Request3(option('x)) : Snarky__Request.t('x)
+
 

@@ -12,5 +12,6 @@ module type S =
     
     module Y : { type t = A | B;  type t += H | G | F  };
     
-    }; 
+    };
+
 

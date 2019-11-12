@@ -1,5 +1,27 @@
-let x : int;  let y : int;  let z : int;  let a : int;  let b : int; 
-let c : (int -> unit) -> int;  let d : _ -> _;  let e : int;  let f : _ -> _;
- let g : _ -> _;  let h : (int -> unit) -> int;  let i : unit -> unit; 
-let j : unit; 
+let x : int;
+
+let y : int;
+
+let z : int;
+
+let a : int;
+
+let b : int;
+
+let c : (int -> unit) -> int;
+
+let d : _ -> _;
+
+let e : int;
+
+let f : _ -> _;
+
+let g : _ -> _;
+
+let h : (int -> unit) -> int;
+
+let i : unit -> unit;
+
+let j : unit;
+
 

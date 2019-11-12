@@ -1,4 +1,9 @@
-type t;  Prover {type t1;  type t2;  } 
-let f : (t -> t1 -> t2) -> t -> t1 -> t2; 
-Prover {let f : (t -> t1 -> t2) -> t -> t1 -> t2;  } 
+type t;
+
+Prover {type t1;  type t2;  }
+
+let f : (t -> t1 -> t2) -> t -> t1 -> t2;
+
+Prover {let f : (t -> t1 -> t2) -> t -> t1 -> t2;  }
+
 

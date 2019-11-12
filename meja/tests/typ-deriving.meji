@@ -1,9 +1,21 @@
-type poly('a, 'b) = {a: 'a, b: 'b};  type t = poly(bool, field); 
-type var = poly(Boolean.var, Field.Var.t); 
-let typ : Typ.t(poly('a1, 'b1), poly('a, 'b)); 
-type u_poly('a1, 'b1) = {a1: 'a1, b1: 'b1};  type u('a) = u_poly('a, bool); 
-type u_var('a) = u_poly('a, Boolean.var); 
-let u_typ : Typ.t(u_poly('a11, 'b11), u_poly('a1, 'b1)); 
-type v('a, 'b) = {a2: 'a, b2: 'b}; 
-let v_typ : Typ.t(v('a1, 'b1), v('a, 'b)); 
+type poly('a, 'b) = {a: 'a, b: 'b};
+
+type t = poly(bool, field);
+
+type var = poly(Boolean.var, Field.Var.t);
+
+let typ : Typ.t(poly('a1, 'b1), poly('a, 'b));
+
+type u_poly('a1, 'b1) = {a1: 'a1, b1: 'b1};
+
+type u('a) = u_poly('a, bool);
+
+type u_var('a) = u_poly('a, Boolean.var);
+
+let u_typ : Typ.t(u_poly('a11, 'b11), u_poly('a1, 'b1));
+
+type v('a, 'b) = {a2: 'a, b2: 'b};
+
+let v_typ : Typ.t(v('a1, 'b1), v('a, 'b));
+
 

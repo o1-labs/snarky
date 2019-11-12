@@ -1,6 +1,15 @@
-type nil;  type t('a) = [] : t(nil) | (::)('hd, t('tl)) : t('hd -> 'tl); 
-let x : t(nil);  let y : t(int -> nil); 
-let z : t(int -> bool -> unit -> nil); 
-let z : t(int -> bool -> unit -> nil); 
-module A : { type u('a, 'b) = []('a, 'b);  let x : u(int, bool);  }; 
+type nil;
+
+type t('a) = [] : t(nil) | (::)('hd, t('tl)) : t('hd -> 'tl);
+
+let x : t(nil);
+
+let y : t(int -> nil);
+
+let z : t(int -> bool -> unit -> nil);
+
+let z : t(int -> bool -> unit -> nil);
+
+module A : { type u('a, 'b) = []('a, 'b);  let x : u(int, bool);  };
+
 

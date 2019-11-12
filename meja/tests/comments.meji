@@ -1,3 +1,13 @@
-let x : (int, int, int);  let y : (int, int);  let f : int;  let g : int; 
-let h : unit;  let i : unit; 
+let x : (int, int, int);
+
+let y : (int, int);
+
+let f : int;
+
+let g : int;
+
+let h : unit;
+
+let i : unit;
+
 

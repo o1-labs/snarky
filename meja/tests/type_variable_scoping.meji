@@ -1,4 +1,7 @@
-let f : int -> int;  let g : bool -> bool; 
+let f : int -> int;
+
+let g : bool -> bool;
+
 module X :
   {
     type t('a) = A('a) | B(int) | C(bool) : t(bool);
@@ -13,5 +16,6 @@ module X :
     
     let f : 'int -> 'int -> 'int;
     
-    }; 
+    };
+
 

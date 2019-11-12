@@ -12,7 +12,8 @@ module Alias_alias :
     
     let i : u(bool, bool) -> v(bool, unit);
     
-    }; 
+    };
+
 module Alias_opaque :
   {
     type u('a, 'b);
@@ -25,7 +26,8 @@ module Alias_opaque :
     
     let h : u(bool, bool) -> v(bool, unit);
     
-    }; 
+    };
+
 module Alias_record :
   {
     type u('a, 'b) = {a: 'a, b: 'b};
@@ -40,7 +42,8 @@ module Alias_record :
     
     let h : u(bool, bool) -> v(bool, unit);
     
-    }; 
+    };
+
 module Alias_variant :
   {
     type u('a, 'b) = A | B | C('a) | D('b);
@@ -53,5 +56,6 @@ module Alias_variant :
     
     let h : u(bool, bool) -> v(bool, unit);
     
-    }; 
+    };
+
 

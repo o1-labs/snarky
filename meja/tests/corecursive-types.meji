@@ -3,7 +3,14 @@ module type T =
     type t('a, 'b) = U(u('a, 'b)) | A('a);type u('a, 'b) = T(t('a, 'b)) | B(
       'b)
     
-    }; 
-type t('a, 'b) = U(u('a, 'b)) | A('a);type u('a, 'b) = T(t('a, 'b)) | B('b) 
-let x : t(int, bool);  let y : t(int, bool);  let z : bool -> t(int, bool); 
+    };
+
+type t('a, 'b) = U(u('a, 'b)) | A('a);type u('a, 'b) = T(t('a, 'b)) | B('b)
+
+let x : t(int, bool);
+
+let y : t(int, bool);
+
+let z : bool -> t(int, bool);
+
 

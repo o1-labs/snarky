@@ -1,4 +1,13 @@
-module type P = { Prover {let x : int;  let f : bool -> bool;  }  }; 
-module P : { Prover {let x : int;  let f : _ -> _;  }  };  let f : _ -> _; 
-Prover {let g : _ -> _;  }  let h : _ -> _;  let i : unit -> int; 
+module type P = { Prover {let x : int;  let f : bool -> bool;  }  };
+
+module P : { Prover {let x : int;  let f : _ -> _;  }  };
+
+let f : _ -> _;
+
+Prover {let g : _ -> _;  }
+
+let h : _ -> _;
+
+let i : unit -> int;
+
 
