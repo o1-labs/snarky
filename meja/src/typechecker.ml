@@ -1035,21 +1035,57 @@ let rec check_signature_item env item =
         | Envi.Scope.Deferred path ->
             Envi.add_deferred_module name.txt path env
       in
-      (* TODO: Substitute in msig.msig_msig. *)
+      let msig_msig =
+        let msig_msig = msig.Typedast.msig_msig in
+        match m with
+        | Envi.Scope.Immediate m ->
+            let do_subst ident =
+              (Path.Pident ident, Path.dot (Path.Pident name.txt) ident)
+            in
+            let subst =
+              Envi.Scope.build_subst ~type_subst:do_subst
+                ~module_subst:do_subst Subst.empty m
+            in
+            let mapper = Subst.type0_mapper subst in
+            let snap = Snapshot.create () in
+            let msig_msig = mapper.module_sig mapper msig_msig in
+            backtrack snap ; msig_msig
+        | Envi.Scope.Deferred _ ->
+            (* This is a global module, no need to substitute. *)
+            msig_msig
+      in
       ( env
       , { Typedast.sig_desc= Tsig_module (name, msig)
         ; sig_loc= loc
-        ; sig_sig= [Smodule (name.txt, msig.msig_msig)] } )
+        ; sig_sig= [Smodule (name.txt, msig_msig)] } )
   | Psig_modtype (name, signature) ->
       let env = Envi.open_module env in
       let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
-      (* TODO: Substitute in signature.msig_msig. *)
+      let msig_msig =
+        let msig_msig = signature.msig_msig in
+        match m_env with
+        | Envi.Scope.Immediate m ->
+            let do_subst ident =
+              (Path.Pident ident, Path.dot (Path.Pident name.txt) ident)
+            in
+            let subst =
+              Envi.Scope.build_subst ~type_subst:do_subst
+                ~module_subst:do_subst Subst.empty m
+            in
+            let mapper = Subst.type0_mapper subst in
+            let snap = Snapshot.create () in
+            let msig_msig = mapper.module_sig mapper msig_msig in
+            backtrack snap ; msig_msig
+        | Envi.Scope.Deferred _ ->
+            (* This is a global module, no need to substitute. *)
+            msig_msig
+      in
       ( env
       , { Typedast.sig_desc= Tsig_modtype (name, signature)
         ; sig_loc= loc
-        ; sig_sig= [Smodtype (name.txt, signature.msig_msig)] } )
+        ; sig_sig= [Smodtype (name.txt, msig_msig)] } )
   | Psig_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
       let env = Envi.open_namespace_scope path m env in
@@ -1255,20 +1291,51 @@ let rec check_statement env stmt =
       let m_env, env = Envi.pop_module ~loc env in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module name.txt m_env env in
-      (* TODO: Substitute in m.mod_msig. *)
+      let mod_msig =
+        let mod_msig = m.Typedast.mod_msig in
+        let do_subst ident =
+          (Path.Pident ident, Path.dot (Path.Pident name.txt) ident)
+        in
+        let subst =
+          Envi.Scope.build_subst ~type_subst:do_subst ~module_subst:do_subst
+            Subst.empty m_env
+        in
+        let mapper = Subst.type0_mapper subst in
+        let snap = Snapshot.create () in
+        let mod_msig = mapper.module_sig mapper mod_msig in
+        backtrack snap ; mod_msig
+      in
       ( env
       , { Typedast.stmt_loc= loc
         ; stmt_desc= Tstmt_module (name, m)
-        ; stmt_sig= [Smodule (name.txt, m.mod_msig)] } )
+        ; stmt_sig= [Smodule (name.txt, mod_msig)] } )
   | Pstmt_modtype (name, signature) ->
       let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
-      (* TODO: Substitute in signature.msig_msig. *)
+      let msig_msig =
+        let msig_msig = signature.msig_msig in
+        match m_env with
+        | Envi.Scope.Immediate m ->
+            let do_subst ident =
+              (Path.Pident ident, Path.dot (Path.Pident name.txt) ident)
+            in
+            let subst =
+              Envi.Scope.build_subst ~type_subst:do_subst
+                ~module_subst:do_subst Subst.empty m
+            in
+            let mapper = Subst.type0_mapper subst in
+            let snap = Snapshot.create () in
+            let msig_msig = mapper.module_sig mapper msig_msig in
+            backtrack snap ; msig_msig
+        | Envi.Scope.Deferred _ ->
+            (* This is a global module, no need to substitute. *)
+            msig_msig
+      in
       ( env
       , { Typedast.stmt_loc= loc
         ; stmt_desc= Tstmt_modtype (name, signature)
-        ; stmt_sig= [Smodtype (name.txt, signature.msig_msig)] } )
+        ; stmt_sig= [Smodtype (name.txt, msig_msig)] } )
   | Pstmt_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
       ( Envi.open_namespace_scope path m env
@@ -1424,9 +1491,6 @@ and check_module_expr env m =
       let f_name = map_loc ~f:(Ident.create ~mode) f_name in
       let mscope, m =
         let env = Envi.open_module env in
-        (* TODO: This name should be constant, and the underlying module
-           substituted.
-        *)
         let env =
           match f' with
           | Envi.Scope.Immediate f ->
