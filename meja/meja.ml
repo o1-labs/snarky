@@ -59,6 +59,7 @@ let add_preamble impl_mod curve proofs ast =
 let main =
   let file = ref None in
   let ocaml_file = ref None in
+  let meji_file = ref None in
   let ast_file = ref None in
   let binml_file = ref None in
   let default = ref true in
@@ -89,6 +90,9 @@ let main =
     ; ( "--binml"
       , Arg.String (set_and_clear_default binml_file)
       , "output a binary ml file" )
+    ; ( "--meji-out"
+      , Arg.String (set_and_clear_default meji_file)
+      , "output a meja interface file" )
     ; ( "--meji"
       , Arg.String (fun filename -> meji_files := filename :: !meji_files)
       , "load a .meji interface file" )
@@ -250,6 +254,10 @@ let main =
         Pparse.write_ast Pparse.Structure file ocaml_ast
     | None ->
         () ) ;
+    do_output !meji_file (fun fmt ->
+        Typeprint.signature fmt
+          (List.concat_map ast ~f:(fun stmt -> stmt.stmt_sig)) ;
+        Format.pp_print_newline fmt () ) ;
     exit 0
   with exn ->
     ( if !exn_backtraces then
