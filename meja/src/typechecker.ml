@@ -981,6 +981,19 @@ let type_extension ~loc variant ctors env =
   in
   (env, variant, ctors)
 
+let substitute_module_names m_name m_scope m_sig =
+  let do_subst ident =
+    (Path.Pident ident, Path.dot (Path.Pident m_name) ident)
+  in
+  let subst =
+    Envi.Scope.build_subst ~type_subst:do_subst ~module_subst:do_subst
+      Subst.empty m_scope
+  in
+  let mapper = Subst.type0_mapper subst in
+  let snap = Snapshot.create () in
+  let m_sig = mapper.module_sig mapper m_sig in
+  backtrack snap ; m_sig
+
 let rec check_signature_item env item =
   let mode = Envi.current_mode env in
   let loc = item.sig_loc in
@@ -1036,23 +1049,17 @@ let rec check_signature_item env item =
             Envi.add_deferred_module name.txt path env
       in
       let msig_msig =
-        let msig_msig = msig.Typedast.msig_msig in
-        match m with
+        (* TODO: Review whether we should subst here or not. The balance is
+                 resolution (for) vs. printing (not). Current printing wins
+                 because we're printing and not resolving.
+        *)
+        (*match m with
         | Envi.Scope.Immediate m ->
-            let do_subst ident =
-              (Path.Pident ident, Path.dot (Path.Pident name.txt) ident)
-            in
-            let subst =
-              Envi.Scope.build_subst ~type_subst:do_subst
-                ~module_subst:do_subst Subst.empty m
-            in
-            let mapper = Subst.type0_mapper subst in
-            let snap = Snapshot.create () in
-            let msig_msig = mapper.module_sig mapper msig_msig in
-            backtrack snap ; msig_msig
-        | Envi.Scope.Deferred _ ->
+            substitute_module_names name.txt m msig.Typedast.msig_msig
+        | Deferred _ ->
             (* This is a global module, no need to substitute. *)
-            msig_msig
+            msig.msig_msig*)
+        msig.Typedast.msig_msig
       in
       ( env
       , { Typedast.sig_desc= Tsig_module (name, msig)
@@ -1064,23 +1071,17 @@ let rec check_signature_item env item =
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
       let msig_msig =
-        let msig_msig = signature.msig_msig in
-        match m_env with
+        (* TODO: Review whether we should subst here or not. The balance is
+                 resolution (for) vs. printing (not). Current printing wins
+                 because we're printing and not resolving.
+        *)
+        (*match m_env with
         | Envi.Scope.Immediate m ->
-            let do_subst ident =
-              (Path.Pident ident, Path.dot (Path.Pident name.txt) ident)
-            in
-            let subst =
-              Envi.Scope.build_subst ~type_subst:do_subst
-                ~module_subst:do_subst Subst.empty m
-            in
-            let mapper = Subst.type0_mapper subst in
-            let snap = Snapshot.create () in
-            let msig_msig = mapper.module_sig mapper msig_msig in
-            backtrack snap ; msig_msig
-        | Envi.Scope.Deferred _ ->
+            substitute_module_names name.txt m signature.msig_msig
+        | Deferred _ ->
             (* This is a global module, no need to substitute. *)
-            msig_msig
+            signature.msig_msig*)
+        signature.msig_msig
       in
       ( env
       , { Typedast.sig_desc= Tsig_modtype (name, signature)
@@ -1292,18 +1293,17 @@ let rec check_statement env stmt =
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module name.txt m_env env in
       let mod_msig =
-        let mod_msig = m.Typedast.mod_msig in
-        let do_subst ident =
-          (Path.Pident ident, Path.dot (Path.Pident name.txt) ident)
-        in
-        let subst =
-          Envi.Scope.build_subst ~type_subst:do_subst ~module_subst:do_subst
-            Subst.empty m_env
-        in
-        let mapper = Subst.type0_mapper subst in
-        let snap = Snapshot.create () in
-        let mod_msig = mapper.module_sig mapper mod_msig in
-        backtrack snap ; mod_msig
+        (* TODO: Review whether we should subst here or not. The balance is
+                 resolution (for) vs. printing (not). Current printing wins
+                 because we're printing and not resolving.
+        *)
+        (*match m_env with
+        | Envi.Scope.Immediate m_env ->
+            substitute_module_names name.txt m_env m.Typedast.mod_msig
+        | Deferred _ ->
+            (* This is a global module, no need to substitute. *)
+            m.mod_msig*)
+        m.Typedast.mod_msig
       in
       ( env
       , { Typedast.stmt_loc= loc
@@ -1314,23 +1314,17 @@ let rec check_statement env stmt =
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
       let msig_msig =
-        let msig_msig = signature.msig_msig in
-        match m_env with
+        (* TODO: Review whether we should subst here or not. The balance is
+                 resolution (for) vs. printing (not). Current printing wins
+                 because we're printing and not resolving.
+        *)
+        (*match m_env with
         | Envi.Scope.Immediate m ->
-            let do_subst ident =
-              (Path.Pident ident, Path.dot (Path.Pident name.txt) ident)
-            in
-            let subst =
-              Envi.Scope.build_subst ~type_subst:do_subst
-                ~module_subst:do_subst Subst.empty m
-            in
-            let mapper = Subst.type0_mapper subst in
-            let snap = Snapshot.create () in
-            let msig_msig = mapper.module_sig mapper msig_msig in
-            backtrack snap ; msig_msig
-        | Envi.Scope.Deferred _ ->
+            substitute_module_names name.txt m signature.msig_msig
+        | Deferred _ ->
             (* This is a global module, no need to substitute. *)
-            msig_msig
+            signature.msig_msig*)
+        signature.msig_msig
       in
       ( env
       , { Typedast.stmt_loc= loc
