@@ -532,7 +532,7 @@ and of_module_sig_desc ?loc = function
               "Cannot generate OCaml for a functor signature with an abstract \
                signature"
       in
-      Some (Mty.functor_ ?loc name (of_module_sig f) msig)
+      Some (Mty.functor_ ?loc (of_ident_loc name) (of_module_sig f) msig)
 
 and of_module_sig msig = of_module_sig_desc ~loc:msig.msig_loc msig.msig_desc
 
@@ -611,6 +611,7 @@ and of_module_desc ?loc = function
   | Tmod_name name ->
       Mod.ident ?loc (of_path_loc name)
   | Tmod_functor (name, f, m) ->
-      Mod.functor_ ?loc name (of_module_sig f) (of_module_expr m)
+      Mod.functor_ ?loc (of_ident_loc name) (of_module_sig f)
+        (of_module_expr m)
 
 let of_file = List.map ~f:of_statement

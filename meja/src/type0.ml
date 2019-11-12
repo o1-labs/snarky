@@ -69,6 +69,5 @@ and module_sig =
   | Mname of Path.t
   | Malias of Path.t
   | Mabstract
-  (* TODO: The first argument should be an Ident.t. *)
-  | Mfunctor of string * module_sig * module_sig
+  | Mfunctor of Ident.t * module_sig * module_sig
 [@@deriving sexp]

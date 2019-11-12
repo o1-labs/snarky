@@ -138,7 +138,7 @@ and module_sig_desc =
   | Tmty_name of path
   | Tmty_alias of path
   | Tmty_abstract
-  | Tmty_functor of str * module_sig * module_sig
+  | Tmty_functor of ident * module_sig * module_sig
 
 type statement =
   {stmt_desc: statement_desc; stmt_loc: Location.t; stmt_sig: Type0.signature}
@@ -165,4 +165,4 @@ and module_expr =
 and module_desc =
   | Tmod_struct of statements
   | Tmod_name of path
-  | Tmod_functor of str * module_sig * module_expr
+  | Tmod_functor of ident * module_sig * module_expr

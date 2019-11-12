@@ -1156,6 +1156,7 @@ and check_module_sig env msig =
       , env )
   | Pmty_functor (f_name, f, msig) ->
       let f, f_mty, env = check_module_sig env f in
+      let f_name = map_loc ~f:(Ident.create ~mode) f_name in
       let ftor f_instance =
         (* We want the functored module to be accessible only in un-prefixed
            space.
@@ -1164,7 +1165,6 @@ and check_module_sig env msig =
         (* TODO: This name should be constant, and the underlying module
            substituted.
         *)
-        let f_name = map_loc ~f:(Ident.create ~mode) f_name in
         let env =
           match f_instance with
           | Envi.Scope.Immediate f ->
@@ -1430,6 +1430,7 @@ and check_module_expr env m =
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
       let f, f', env = check_module_sig env f in
+      let f_name = map_loc ~f:(Ident.create ~mode) f_name in
       let ftor f_instance =
         (* We want the functored module to be accessible only in un-prefixed
            space.
@@ -1438,7 +1439,6 @@ and check_module_expr env m =
         (* TODO: This name should be constant, and the underlying module
            substituted.
         *)
-        let f_name = map_loc ~f:(Ident.create ~mode) f_name in
         let env =
           match f_instance with
           | Envi.Scope.Immediate f ->

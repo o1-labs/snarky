@@ -265,7 +265,7 @@ let module_sig_desc iter = function
   | Tmty_abstract ->
       ()
   | Tmty_functor (name, fsig, msig) ->
-      str iter name ; iter.module_sig iter fsig ; iter.module_sig iter msig
+      ident iter name ; iter.module_sig iter fsig ; iter.module_sig iter msig
 
 let statements iter = List.iter ~f:(iter.statement iter)
 
@@ -316,7 +316,7 @@ let module_desc iter = function
   | Tmod_name name ->
       path iter name
   | Tmod_functor (name, fsig, me) ->
-      str iter name ; iter.module_sig iter fsig ; iter.module_expr iter me
+      ident iter name ; iter.module_sig iter fsig ; iter.module_expr iter me
 
 let location (_iter : iterator) (_ : Location.t) = ()
 

@@ -301,7 +301,7 @@ let module_sig_desc mapper = function
       Tmty_abstract
   | Tmty_functor (name, fsig, msig) ->
       Tmty_functor
-        ( str mapper name
+        ( ident mapper name
         , mapper.module_sig mapper fsig
         , mapper.module_sig mapper msig )
 
@@ -354,7 +354,7 @@ let module_desc mapper = function
       Tmod_name (path mapper name)
   | Tmod_functor (name, fsig, me) ->
       Tmod_functor
-        ( str mapper name
+        ( ident mapper name
         , mapper.module_sig mapper fsig
         , mapper.module_expr mapper me )
 

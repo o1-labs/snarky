@@ -253,7 +253,8 @@ and module_sig_desc = function
   | Tmty_abstract ->
       Pmty_abstract
   | Tmty_functor (name, fsig, msig) ->
-      Pmty_functor (name, module_sig fsig, module_sig msig)
+      Pmty_functor
+        (map_loc ~f:Ident.name name, module_sig fsig, module_sig msig)
 
 and module_sig msig =
   { Parsetypes.msig_desc= module_sig_desc msig.Typedast.msig_desc
@@ -298,7 +299,7 @@ and module_desc = function
   | Tmod_name path ->
       Pmod_name (map_loc ~f:longident_of_path path)
   | Tmod_functor (name, fsig, m) ->
-      Pmod_functor (name, module_sig fsig, module_expr m)
+      Pmod_functor (map_loc ~f:Ident.name name, module_sig fsig, module_expr m)
 
 and module_expr m =
   {Parsetypes.mod_desc= module_desc m.Typedast.mod_desc; mod_loc= m.mod_loc}
