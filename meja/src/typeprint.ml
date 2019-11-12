@@ -89,7 +89,64 @@ let type_decl_desc fmt = function
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
 
-let type_decl ident fmt decl =
+let type_decl fmt (ident, decl) =
   fprintf fmt "type %a" Ident.pprint ident ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
+
+let and_type_decl fmt (ident, decl) =
+  fprintf fmt "type %a" Ident.pprint ident ;
+  (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
+  type_decl_desc fmt decl.tdec_desc
+
+let rec signature fmt sigs = List.iter (signature_item fmt) sigs
+
+and signature_item fmt = function
+  | Svalue (name, typ) ->
+      fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" Ident.pprint name
+        type_expr typ
+  | Sinstance (name, typ) ->
+      fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" Ident.pprint name
+        type_expr typ
+  | Stype (ident, decl) ->
+      fprintf fmt "@[<2>%a;@]@;@;" type_decl (ident, decl)
+  | Srectype (decl :: decls) ->
+      let print_and_decls =
+        let pp_sep fmt () = pp_print_char fmt ';' ; pp_print_cut fmt () in
+        pp_print_list ~pp_sep and_type_decl
+      in
+      fprintf fmt "@[<2>%a;%a@]@;@;" type_decl decl print_and_decls decls
+  | Srectype [] ->
+      assert false
+  | Smodule (name, msig) ->
+      let prefix fmt = fprintf fmt ":@ " in
+      fprintf fmt "@[<hov2>module@ %a@ %a;@]@;@;" Ident.pprint name
+        (module_sig ~prefix) msig
+  | Smodtype (name, msig) ->
+      let prefix fmt = fprintf fmt "=@ " in
+      fprintf fmt "@[<hov2>module type@ %a@ %a;@]@;@;" Ident.pprint name
+        (module_sig ~prefix) msig
+  | Stypeext (typ, ctors) ->
+      fprintf fmt "@[<2>type %a +=@[<hv2>@ %a@]@]@;@;" variant typ
+        (pp_print_list ~pp_sep:bar_sep ctor_decl)
+        ctors
+  | Srequest (typ, ctor) ->
+      fprintf fmt "@[<2>request (%a)@[<hv2>@ %a@]@]@;@;" type_expr typ
+        ctor_decl ctor
+  | Sprover sigs ->
+      fprintf fmt "@[<2>Prover {@,%a@,}@]@;@;" signature sigs
+
+and module_sig ~prefix fmt = function
+  | Msig msig ->
+      prefix fmt ;
+      fprintf fmt "{@[<hv1>@;%a@]}" signature msig
+  | Mname name ->
+      prefix fmt ; Path.pp fmt name
+  | Malias name ->
+      fprintf fmt "=@ " ; Path.pp fmt name
+  | Mabstract ->
+      ()
+  | Mfunctor (name, f, m) ->
+      let pp = module_sig ~prefix:(fun _ -> ()) in
+      fprintf fmt "/* @[functor@ (%a :@ %a)@ =>@ %a@] */" Ident.pprint name pp
+        f pp m
