@@ -69,7 +69,7 @@ module Scope = struct
     | Expr
     | Open of Path.t
     | Continue
-    | Functor of ('t or_path -> 't)
+    | Functor of (Ident.t * module_sig)
 
   type t =
     { kind: t kind
@@ -402,7 +402,7 @@ module Scope = struct
         apply_functor ~mode ~loc ~scopes resolve_env fpath path m
 
   and apply_functor ~mode ~loc ~scopes resolve_env fpath lid scope =
-    let f =
+    let ident, msig =
       match scope.kind with
       | Functor f ->
           f
@@ -410,8 +410,12 @@ module Scope = struct
           raise (Error (loc, Not_a_functor))
     in
     let path, m = find_module ~mode ~loc lid resolve_env scopes in
-    (* HACK *)
-    (Path.Papply (fpath, path), f (Immediate m))
+    (* TODO: Check module type against signature. *)
+    ignore (msig, m) ;
+    let scope =
+      subst (Subst.with_module (Path.Pident ident) path Subst.empty) scope
+    in
+    (Path.Papply (fpath, path), scope)
 
   and get_module ~mode ~loc ~scopes resolve_env name scope =
     match IdTbl.find_name ~modes:(modes_of_mode mode) name scope.modules with
@@ -553,7 +557,7 @@ let current_mode env = (current_scope env).mode
 let mode_or_default mode env =
   match mode with Some mode -> mode | None -> current_mode env
 
-let make_functor ~mode f = Scope.empty ~mode (Functor f)
+let make_functor name mty scope = {scope with Scope.kind= Functor (name, mty)}
 
 let open_expr_scope ?mode env =
   let mode = mode_or_default mode env in

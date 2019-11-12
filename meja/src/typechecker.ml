@@ -1157,22 +1157,15 @@ and check_module_sig env msig =
   | Pmty_functor (f_name, f, msig) ->
       let f, f_mty, env = check_module_sig env f in
       let f_name = map_loc ~f:(Ident.create ~mode) f_name in
-      let ftor f_instance =
-        (* We want the functored module to be accessible only in un-prefixed
-           space.
-        *)
+      let mscope, msig =
         let env = Envi.open_module env in
-        (* TODO: This name should be constant, and the underlying module
-           substituted.
-        *)
         let env =
-          match f_instance with
+          match f_mty with
           | Envi.Scope.Immediate f ->
               Envi.add_module f_name.txt f env
           | Envi.Scope.Deferred path ->
               Envi.add_deferred_module f_name.txt path env
         in
-        (* TODO: check that f_instance matches f_mty *)
         let msig, m, _env = check_module_sig env msig in
         match m with
         | Envi.Scope.Immediate m ->
@@ -1184,9 +1177,7 @@ and check_module_sig env msig =
                    env)
             , msig )
       in
-      (* Check that f_mty builds the functor as expected. *)
-      let _, msig = ftor f_mty in
-      let m = Envi.make_functor ~mode (fun f -> fst (ftor f)) in
+      let m = Envi.make_functor f_name.txt f.msig_msig mscope in
       ( { Typedast.msig_desc= Tmty_functor (f_name, f, msig)
         ; msig_loc= loc
         ; msig_msig= Mfunctor (f_name.txt, f.msig_msig, msig.msig_msig) }
@@ -1431,31 +1422,25 @@ and check_module_expr env m =
       let _, env = Envi.pop_module ~loc env in
       let f, f', env = check_module_sig env f in
       let f_name = map_loc ~f:(Ident.create ~mode) f_name in
-      let ftor f_instance =
-        (* We want the functored module to be accessible only in un-prefixed
-           space.
-        *)
+      let mscope, m =
         let env = Envi.open_module env in
         (* TODO: This name should be constant, and the underlying module
            substituted.
         *)
         let env =
-          match f_instance with
+          match f' with
           | Envi.Scope.Immediate f ->
               Envi.add_module f_name.txt f env
           | Envi.Scope.Deferred path ->
               Envi.add_deferred_module f_name.txt path env
         in
-        (* TODO: check that f_instance matches f' *)
         let env = Envi.open_module env in
         let env, m' = check_module_expr env m in
         let m, _env = Envi.pop_module ~loc env in
         (m, m')
       in
-      (* Check that f builds the functor as expected. *)
-      let _, m = ftor f' in
       let env =
-        Envi.push_scope (Envi.make_functor ~mode (fun f -> fst (ftor f))) env
+        Envi.push_scope (Envi.make_functor f_name.txt f.msig_msig mscope) env
       in
       ( env
       , { m with
