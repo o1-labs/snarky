@@ -43,6 +43,9 @@ let set_printing_off =
 let set_printing_stdout =
   foreign "camlsnark_set_printing_stdout" (void @-> returning void)
 
+let set_printing_stderr =
+  foreign "camlsnark_set_printing_stderr" (void @-> returning void)
+
 let set_printing_file =
   foreign "camlsnark_set_printing_file" (string @-> returning void)
 
