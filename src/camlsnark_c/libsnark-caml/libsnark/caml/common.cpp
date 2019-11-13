@@ -121,8 +121,8 @@ void camlsnark_set_printing_stdout() {
 }
 
 void camlsnark_set_printing_stderr() {
-    close_snarky_print_desc();
-    snarky_print_desc = stderr;
+    close_snarky_print_dest();
+    snarky_print_dest = stderr;
 }
 
 void camlsnark_set_printing_file(char *file) {
