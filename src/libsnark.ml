@@ -1986,7 +1986,67 @@ module type Make_proof_system_inputs = sig
   end
 end
 
-module Make_Groth16 (M : Make_proof_system_inputs) = struct
+module type Make_proof_system_inputs_with_keys = sig
+  include Make_proof_system_inputs
+
+  module Proving_key : sig
+    type t [@@deriving bin_io]
+
+    val func_name : string -> string
+
+    val typ : t Ctypes.typ
+
+    val r1cs_constraint_system : t -> R1CS_constraint_system.t
+
+    val delete : t -> unit
+
+    val to_string : t -> string
+
+    val of_string : string -> t
+
+    val to_bigstring : t -> Bigstring.t
+
+    val of_bigstring : Bigstring.t -> t
+
+    val set_constraint_system : t -> R1CS_constraint_system.t -> unit
+  end
+
+  module Verification_key : sig
+    type t
+
+    val typ : t Ctypes.typ
+
+    val delete : t -> unit
+
+    val to_string : t -> string
+
+    val of_string : string -> t
+
+    val to_bigstring : t -> Bigstring.t
+
+    val of_bigstring : Bigstring.t -> t
+
+    val size_in_bits : t -> int
+
+    val get_dummy : input_size:int -> t
+  end
+
+  module Keypair : sig
+    type t
+
+    val typ : t Ctypes.typ
+
+    val delete : t -> unit
+
+    val pk : t -> Proving_key.t
+
+    val vk : t -> Verification_key.t
+
+    val create : R1CS_constraint_system.t -> t
+  end
+end
+
+module Make_Groth16_with_keys (M : Make_proof_system_inputs_with_keys) = struct
   open M
 
   module Prefix : sig
@@ -1994,27 +2054,21 @@ module Make_Groth16 (M : Make_proof_system_inputs) = struct
   end =
     M
 
-  module Keys = Make_proof_system_keys (struct
-    include M
-
-    let prefix = M.prefix
-  end)
-
   module Verification_key = struct
-    include Keys.Verification_key
+    include M.Verification_key
     include Make_Groth16_verification_key_accessors
               (Prefix)
-              (Keys.Verification_key)
+              (M.Verification_key)
               (G1)
               (G2)
               (Fqk)
   end
 
-  module Proving_key = Keys.Proving_key
-  module Keypair = Keys.Keypair
+  module Proving_key = M.Proving_key
+  module Keypair = M.Keypair
 
   (* TODO
-    module Accessors = Make_Groth16_verification_key_accessors(Prefix)(Keys.Verification_key)(G1)(G2)(Fqk) *)
+    module Accessors = Make_Groth16_verification_key_accessors(Prefix)(M.Verification_key)(G1)(G2)(Fqk) *)
 
   module Proof = struct
     module Prefix = struct
@@ -2064,8 +2118,21 @@ module Make_Groth16 (M : Make_proof_system_inputs) = struct
   end
 end
 
-module Make_bowe_gabizon
-    (M : Make_proof_system_inputs) (H : sig
+module Make_Groth16 (M : Make_proof_system_inputs) = struct
+  module Keys = Make_proof_system_keys (struct
+    include M
+
+    let prefix = M.prefix
+  end)
+
+  include Make_Groth16_with_keys (struct
+    include M
+    include Keys
+  end)
+end
+
+module Make_bowe_gabizon_with_keys
+    (M : Make_proof_system_inputs_with_keys) (H : sig
         open M
 
         val hash :
@@ -2081,22 +2148,16 @@ struct
 
   let bg_prefix = with_prefix M.prefix "bg"
 
-  module Keys = Make_proof_system_keys (struct
-    include M
-
-    let prefix = bg_prefix
-  end)
-
-  module Proving_key = Keys.Proving_key
-  module Keypair = Keys.Keypair
+  module Proving_key = M.Proving_key
+  module Keypair = M.Keypair
 
   module Verification_key = struct
-    include Keys.Verification_key
+    include M.Verification_key
 
     include Make_Groth16_verification_key_accessors (struct
                 let prefix = bg_prefix
               end)
-              (Keys.Verification_key)
+              (M.Verification_key)
               (G1)
               (G2)
               (Fqk)
@@ -2163,6 +2224,32 @@ struct
     let get_dummy () =
       {a= G1.one; b= G2.one; c= G1.one; z= G1.one; delta_prime= G2.one}
   end
+end
+
+module Make_bowe_gabizon
+    (M : Make_proof_system_inputs) (H : sig
+        open M
+
+        val hash :
+             ?message:Fq.t array
+          -> a:G1.t
+          -> b:G2.t
+          -> c:G1.t
+          -> delta_prime:G2.t
+          -> G1.t
+    end) =
+struct
+  module Keys = Make_proof_system_keys (struct
+    include M
+
+    let prefix = with_prefix M.prefix "bg"
+  end)
+
+  include Make_bowe_gabizon_with_keys (struct
+              include M
+              include Keys
+            end)
+            (H)
 end
 
 module Make_mnt_cycle (Security_level : sig
@@ -2421,12 +2508,15 @@ struct
           with module Field0 := Common.Field0
            and module R1CS_constraint_system := Common.R1CS_constraint_system )
 
-      include Make_Groth16 (struct
+      include Make_Groth16_with_keys (struct
         include Common
         module Fq = Fq
         module Fqk = Fqk
         module G1 = G1
         module G2 = G2
+        module Proving_key = Default.Proving_key
+        module Verification_key = Default.Verification_key
+        module Keypair = Default.Keypair
       end)
     end
   end
@@ -2589,12 +2679,15 @@ struct
           with module Field0 := Common.Field0
            and module R1CS_constraint_system := Common.R1CS_constraint_system )
 
-      include Make_Groth16 (struct
+      include Make_Groth16_with_keys (struct
         include Common
         module Fq = Fq
         module Fqk = Fqk
         module G1 = G1
         module G2 = G2
+        module Proving_key = Default.Proving_key
+        module Verification_key = Default.Verification_key
+        module Keypair = Default.Keypair
       end)
     end
 
