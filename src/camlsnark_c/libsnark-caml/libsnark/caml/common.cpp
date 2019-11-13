@@ -28,7 +28,7 @@ int json_printf(const char* filename,
     time(&now);
     now_utc = gmtime(&now);
     fprintf(file,
-            "{\"timestamp\":\"%d-%02d-%02d %02d-%02d:%02d:%06dZ",
+            "{\"timestamp\":\"%d-%02d-%02d %02d:%02d:%02d.%06dZ",
             now_utc->tm_year + 1900,
             now_utc->tm_mon,
             now_utc->tm_mday,
