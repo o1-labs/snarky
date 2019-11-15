@@ -188,6 +188,11 @@ let add (type f) ~m:((module M) : f m) a b =
   assert (B.(of_int @@ Interval.bits_needed interval <= M.Field.size)) ;
   {value= M.Field.(a.value + b.value); interval; bits= None}
 
+let sub (type f) ~m:((module M) : f m) a b =
+  let interval = Interval.(lub a.interval b.interval) in
+  assert (B.(of_int @@ Interval.bits_needed interval <= M.Field.size)) ;
+  {value= M.Field.(a.value - b.value); interval; bits= None}
+
 let mul (type f) ~m:((module M) : f m) a b =
   let interval = Interval.(mul a.interval b.interval) in
   assert (B.(of_int @@ Interval.bits_needed interval <= M.Field.size)) ;

@@ -41,4 +41,6 @@ val gte : m:'f m -> 'f t -> 'f t -> 'f Cvar.t Boolean.t
 
 val add : m:'f m -> 'f t -> 'f t -> 'f t
 
+val sub : m:'f m -> 'f t -> 'f t -> 'f t
+
 val mul : m:'f m -> 'f t -> 'f t -> 'f t
