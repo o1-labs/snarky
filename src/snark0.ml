@@ -2062,6 +2062,8 @@ module Run = struct
 
         let gen = gen
 
+        let gen_uniform = gen_uniform
+
         module T = struct
           let bin_shape_t = bin_shape_t
 
