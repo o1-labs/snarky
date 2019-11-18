@@ -209,7 +209,7 @@ module TypeDecl = struct
         assert false
 
   let predeclare env
-      {Parsetypes.tdec_ident; tdec_params; tdec_desc; tdec_loc= _} =
+      {Parsetypes.tdec_ident; tdec_params; tdec_desc; tdec_loc= loc} =
     match tdec_desc with
     | Pdec_extend _ ->
         env
@@ -226,7 +226,7 @@ module TypeDecl = struct
           ; tdec_ret= Envi.Type.Mk.ctor ~mode (Path.Pident ident) params env }
         in
         Envi.TypeDecl.predeclare ident decl env ;
-        map_current_scope ~f:(Scope.add_type_declaration ident decl) env
+        map_current_scope ~f:(Scope.add_type_declaration ~loc ident decl) env
 
   let import_field ?must_find env {fld_ident; fld_type; fld_loc} =
     let mode = Envi.current_mode env in
@@ -289,7 +289,9 @@ module TypeDecl = struct
           let scope, env = Envi.pop_scope env in
           let env =
             map_current_scope
-              ~f:(Scope.add_type_declaration ctor_ident.txt decl)
+              ~f:
+                (Scope.add_type_declaration ~loc:ctor.ctor_loc ~may_shadow:true
+                   ctor_ident.txt decl)
               env
           in
           let env = Envi.push_scope scope env in
@@ -307,7 +309,7 @@ module TypeDecl = struct
           ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
 
   (* TODO: Make prover mode declarations stitch to opaque types. *)
-  let import ?other_name ~recursive decl' env =
+  let import ?(newtype = false) ?other_name ~recursive decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
     let tdec_ident, path, tdec_id =
@@ -446,7 +448,9 @@ module TypeDecl = struct
     let env = close_expr_scope env in
     let env =
       map_current_scope
-        ~f:(Scope.register_type_declaration tdec_ident.txt decl.tdec_tdec)
+        ~f:
+          (Scope.register_type_declaration ~may_shadow:newtype
+             ~loc:tdec_ident.loc tdec_ident.txt decl.tdec_tdec)
         env
     in
     (decl, env)

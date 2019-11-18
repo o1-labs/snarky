@@ -40,6 +40,7 @@ module TypeDecl : sig
 
   val import :
        ?other_name:Path.t
+    -> ?newtype:bool
     -> Parsetypes.type_decl
     -> Envi.t
     -> Typedast.type_decl * Envi.t

@@ -67,3 +67,11 @@ let rec to_longident = function
       Longident.Ldot (to_longident path, name)
   | Papply (path1, path2) ->
       Longident.Lapply (to_longident path1, to_longident path2)
+
+let mode = function
+  | Pident name ->
+      Ident.mode name
+  | Pdot (_path, mode, _name) ->
+      mode
+  | Papply _ ->
+      failwith "Path.mode: Unhandled Papply."

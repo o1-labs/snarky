@@ -123,4 +123,6 @@ module Type = struct
       type_depth= a.type_depth }
 end
 
+let env = Envi.open_module env
+
 let () = Type1.mk_option := Type.option

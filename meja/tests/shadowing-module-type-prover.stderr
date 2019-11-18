@@ -1,0 +1,2 @@
+File "tests/shadowing-module-type-prover.meja", line 6, characters 14-15:
+Error: There is already a module type with name M.

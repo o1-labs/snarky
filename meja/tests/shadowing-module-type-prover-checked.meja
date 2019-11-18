@@ -1,0 +1,11 @@
+module type S = {};
+
+module T = {
+  Prover {
+    module type S = {};
+  };
+};
+
+open T;
+
+module type S' = S;

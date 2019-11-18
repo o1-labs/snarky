@@ -1,0 +1,9 @@
+module M = {
+  type t;
+};
+
+Prover {
+  module M = {
+    type u;
+  };
+};

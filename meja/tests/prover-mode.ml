@@ -7,16 +7,16 @@ module A = struct
   let y = 20
 
   include struct
-    let x = true
+    let a = true
 
-    let y = false
+    let b = false
   end
 end
 
 let z = A.x + A.y
 
 include struct
-  let z = A.x && A.y
+  let z = A.a && A.b
 end
 
-let (z : int) = if A.x && A.y then A.x else A.y
+let (z : int) = if A.a && A.b then A.x else A.y

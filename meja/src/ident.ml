@@ -17,6 +17,8 @@ let mode {ident_mode= mode; _} = mode
 
 let compare {ident_id= id1; _} {ident_id= id2; _} = Int.compare id1 id2
 
+let equal {ident_id= id1; _} {ident_id= id2; _} = Int.equal id1 id2
+
 let pprint fmt {ident_name; _} = Ast_types.pp_name fmt ident_name
 
 let debug_print fmt {ident_name; ident_id; ident_mode} =
