@@ -92,40 +92,28 @@ let run
   try
     let env =
       if stdlib then (
-        match Sys.getenv_opt "OPAM_SWITCH_PREFIX" with
-        | Some opam_path ->
-            let lib_path = Filename.concat opam_path "lib" in
-            (* Load OCaml stdlib *)
-            Loader.load_directory env (Filename.concat lib_path "ocaml") ;
-            let stdlib = Ident.create ~mode:Checked "Stdlib" in
-            let stdlib_scope =
-              Loader.load ~loc:Location.none ~name:"Stdlib"
-                env.Envi.resolve_env
-                (Filename.concat lib_path "ocaml/stdlib.cmi")
-            in
-            Envi.register_external_module stdlib (Immediate stdlib_scope) env ;
-            let env =
-              Envi.open_namespace_scope (Pident stdlib) stdlib_scope env
-            in
-            (* Load Snarky.Request *)
-            let snarky_build_path =
-              Filename.(
-                Sys.executable_name |> dirname
-                |> Fn.flip concat (concat parent_dir_name "src/.snarky.objs/"))
-            in
-            Loader.load_directory env (Filename.concat lib_path "snarky") ;
-            Loader.load_directory env
-              (Filename.concat snarky_build_path "byte") ;
-            Loader.load_directory env
-              (Filename.concat snarky_build_path "native") ;
-            Loader.load_directory env snarky_build_path ;
-            env
-        | None ->
-            Format.(
-              fprintf err_formatter
-                "Warning: OPAM_SWITCH_PREFIX environment variable is not set. \
-                 Not loading the standard library.") ;
-            env )
+        let stdlib_path = Findlib.ocaml_stdlib () in
+        (* Load OCaml stdlib *)
+        Loader.load_directory env stdlib_path ;
+        let stdlib = Ident.create ~mode:Checked "Stdlib" in
+        let stdlib_scope =
+          Loader.load ~loc:Location.none ~name:"Stdlib" env.Envi.resolve_env
+            (Filename.concat stdlib_path "stdlib.cmi")
+        in
+        Envi.register_external_module stdlib (Immediate stdlib_scope) env ;
+        let env = Envi.open_namespace_scope (Pident stdlib) stdlib_scope env in
+        (* Load Snarky *)
+        let snarky_build_path =
+          Filename.(
+            Sys.executable_name |> dirname
+            |> Fn.flip concat (concat parent_dir_name "src/.snarky.objs/"))
+        in
+        ( try Loader.load_directory env (Findlib.package_directory "snarky")
+          with _ -> () ) ;
+        Loader.load_directory env (Filename.concat snarky_build_path "byte") ;
+        Loader.load_directory env (Filename.concat snarky_build_path "native") ;
+        Loader.load_directory env snarky_build_path ;
+        env )
       else env
     in
     List.iter cmi_dirs ~f:(Loader.load_directory env) ;
