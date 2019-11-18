@@ -24,6 +24,20 @@ let read_file parse filename =
   let ast = parse_with_error parse lex in
   In_channel.close file ; ast
 
+let read_string ?at_line parse filename contents =
+  let lex = Lexing.from_string contents in
+  (* Set filename and current line in lex_curr_p. *)
+  let pos = {lex.Lexing.lex_curr_p with Lexing.pos_fname= filename} in
+  let pos =
+    match at_line with
+    | Some line ->
+        {pos with Lexing.pos_lnum= line}
+    | None ->
+        pos
+  in
+  lex.Lexing.lex_curr_p <- pos ;
+  parse_with_error parse lex
+
 let do_output filename f =
   match filename with
   | Some filename ->
@@ -154,18 +168,25 @@ let main =
             let env =
               Envi.open_namespace_scope (Pident stdlib) stdlib_scope env
             in
-            (* Load Snarky.Request *)
-            let snarky_build_path =
-              Filename.(
-                Sys.executable_name |> dirname
-                |> Fn.flip concat (concat parent_dir_name "src/.snarky.objs/"))
+            (* Load Snarky *)
+            let env =
+              let ast =
+                let file, line, text = Meja_stdlib.Snark0.ocaml in
+                read_string ~at_line:line
+                  (Parser_impl.interface Lexer_impl.token)
+                  file text
+              in
+              let env =
+                Envi.open_absolute_module (Some (Longident.Lident !impl_mod))
+                  env
+              in
+              let env, _typed_ast =
+                Typechecker.check_signature env ast
+              in
+              let m, env = Envi.pop_module ~loc:Location.none env in
+              let name = Ident.create ~mode:Checked !impl_mod in
+              Envi.add_module name m env
             in
-            Loader.load_directory env (Filename.concat lib_path "snarky") ;
-            Loader.load_directory env
-              (Filename.concat snarky_build_path "byte") ;
-            Loader.load_directory env
-              (Filename.concat snarky_build_path "native") ;
-            Loader.load_directory env snarky_build_path ;
             env
         | None ->
             Format.(
