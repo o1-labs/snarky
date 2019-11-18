@@ -1,0 +1,4 @@
+(library
+ (name meja_toplevel)
+ (public_name meja.toplevel)
+ (libraries core_kernel meja.lib meja.ocaml))
