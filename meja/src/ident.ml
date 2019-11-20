@@ -3,7 +3,7 @@ open Core_kernel
 type t = {ident_id: int; ident_name: string; ident_mode: Ast_types.mode}
 [@@deriving sexp]
 
-type ident = t
+type ident = t [@@deriving sexp]
 
 let current_id = ref 0
 
@@ -16,6 +16,8 @@ let name {ident_name= name; _} = name
 let mode {ident_mode= mode; _} = mode
 
 let compare {ident_id= id1; _} {ident_id= id2; _} = Int.compare id1 id2
+
+let equal {ident_id= id1; _} {ident_id= id2; _} = Int.equal id1 id2
 
 let pprint fmt {ident_name; _} = Ast_types.pp_name fmt ident_name
 
@@ -105,3 +107,9 @@ module Table = struct
   let mapi tbl ~f =
     Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f ident data))) tbl
 end
+
+module Map = Core_kernel.Map.Make (struct
+  type t = ident [@@deriving sexp]
+
+  let compare = compare
+end)

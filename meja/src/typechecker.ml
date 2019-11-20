@@ -25,6 +25,7 @@ type error =
   | Argument_expected of Longident.t
   | Not_extensible of Longident.t
   | Extension_different_arity of Longident.t
+  | Unmatched_cases of Patmatch.pattern_case list
 
 exception Error of Location.t * error
 
@@ -182,6 +183,8 @@ let unifies env typ constr_typ =
       true
   | exception Error _ ->
       backtrack snapshot ; false
+
+let () = Patmatch.unifies := unifies
 
 let rec add_implicits ~loc implicits typ env =
   match implicits with
@@ -642,6 +645,13 @@ let rec get_expression env expected exp =
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )
       in
+      ( match
+          Patmatch.get_unmatched_cases ~count:4 env typ (List.map ~f:fst cases)
+        with
+      | [] ->
+          ()
+      | cases ->
+          raise (Error (loc, Unmatched_cases cases)) ) ;
       Envi.Type.update_depths env expected ;
       ({exp_loc= loc; exp_type= expected; exp_desc= Texp_match (e, cases)}, env)
   | Pexp_field (e, field) ->
@@ -1455,6 +1465,12 @@ let rec report_error ppf = function
         "@[<hov>This extension does not match the definition of type %a@;They \
          have different arities.@]"
         Longident.pp lid
+  | Unmatched_cases cases ->
+      fprintf ppf
+        "This pattern-matching is not exhausive.@;Here are some examples of \
+         cases that are not matched:@.%a"
+        (pp_print_list ~pp_sep:pp_print_newline Patmatch.pprint_case)
+        cases
 
 let () =
   Location.register_error_of_exn (function

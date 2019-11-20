@@ -1,7 +1,7 @@
 (** Unique identifiers. *)
-type t [@@deriving sexp]
+type t [@@deriving sexp, compare, equal]
 
-type ident = t
+type ident = t [@@deriving sexp]
 
 val create : mode:Ast_types.mode -> string -> t
 (** Create a new unique name. *)
@@ -11,11 +11,6 @@ val name : t -> string
 
 val mode : t -> Ast_types.mode
 (** Retrieve the mode passed to [create]. *)
-
-val compare : t -> t -> int
-(** Compare two names. This is 0 iff they originate from the same call to
-    [create].
-*)
 
 val pprint : Format.formatter -> t -> unit
 (** Pretty print. Identifiers that do not begin with a letter or underscore
@@ -102,3 +97,5 @@ module Table : sig
   val mapi : 'a t -> f:(ident -> 'a -> 'b) -> 'b t
   (** Like [map], but also pass the key to the function. *)
 end
+
+module Map : Core_kernel.Map.S with type Key.t = ident

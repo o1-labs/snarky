@@ -104,6 +104,16 @@ let map_loc x ~f = Location.mkloc (f x.Location.txt) x.loc
 
 let mk_lid (str : str) = map_loc str ~f:(fun x -> Longident.Lident x)
 
+(** Convert the OCaml primitive [__POS__] into a Lexing.position *)
+let loc_of_prim (file, lnum, cnum, enum) =
+  (* Note: We use a fake value for [pos_bol], since we can't get the true
+             value from [__POS__]. *)
+  { Location.loc_start=
+      {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= cnum; pos_bol= 0}
+  ; loc_end=
+      {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= enum; pos_bol= 0}
+  ; loc_ghost= false }
+
 type mode = Checked | Prover [@@deriving sexp, equal, compare]
 
 let other_mode = function Checked -> Prover | Prover -> Checked

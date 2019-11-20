@@ -1,0 +1,7 @@
+File "tests/match-exhaustivity.meja", line 4, characters 2-117:
+Error: This pattern-matching is not exhausive.
+Here are some examples of cases that are not matched:
+{d: Some ({b: _})}
+{c: false, d: Some (_)}
+{a: {a: _}, d: Some (_)}
+{c: false}

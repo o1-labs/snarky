@@ -1,0 +1,8 @@
+type x('a) = {a: 'a, b: int, c: bool, d: option('a)};
+
+let f = fun (x) => {
+  switch (x) {
+    | {a: {a: 15}, b, c: true, d: None} => x
+    | {a: {a: 15}, b, c: true, d: Some({b: 15})} => x
+  };
+};
