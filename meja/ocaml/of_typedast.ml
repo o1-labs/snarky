@@ -44,6 +44,8 @@ let rec of_type_desc ?loc typ =
               (Longident.unflatten ["Snarky"; "As_prover"; "Ref"; "t"]))
            (Option.value ~default:Location.none loc))
         [of_type_expr typ]
+  | Ttyp_alias (typ, name) ->
+      Typ.alias ?loc (of_type_expr typ) name.txt
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 

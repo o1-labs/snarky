@@ -5,7 +5,7 @@ open Parsetypes
 open Envi
 
 type error =
-  | Unbound_type_var of type_expr
+  | Unbound_type_var of string
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
@@ -16,6 +16,8 @@ type error =
 exception Error of Location.t * error
 
 let type0 {Typedast.type_type; _} = type_type
+
+let unify = ref (fun ~loc:_ _env _typ1 _typ2 -> failwith "Undefined")
 
 module Type = struct
   open Type
@@ -64,7 +66,7 @@ module Type = struct
     | Ptyp_var None -> (
       match must_find with
       | Some true ->
-          raise (Error (loc, Unbound_type_var typ))
+          raise (Error (loc, Unbound_type_var "_"))
       | _ ->
           ( { type_desc= Ttyp_var None
             ; type_loc= loc
@@ -76,7 +78,7 @@ module Type = struct
           | Some true ->
               let var = find_type_variable ~mode x env in
               if Option.is_none var then
-                raise (Error (loc, Unbound_type_var typ)) ;
+                raise (Error (loc, Unbound_type_var x)) ;
               var
           | Some false ->
               None
@@ -187,6 +189,33 @@ module Type = struct
           join_expr_scope env scope
         in
         (mk_opaque ~loc typ env, env)
+    | Ptyp_alias (typ, name) ->
+        let var =
+          match must_find with
+          | Some true ->
+              let var = find_type_variable ~mode name.txt env in
+              if Option.is_none var then
+                raise (Error (loc, Unbound_type_var name.txt)) ;
+              var
+          | Some false ->
+              None
+          | None ->
+              find_type_variable ~mode name.txt env
+        in
+        let var, env =
+          match var with
+          | Some var ->
+              (var, env)
+          | None ->
+              let var = mkvar ~mode (Some name.txt) env in
+              (var, add_type_variable name.txt var env)
+        in
+        let typ, env = import typ env in
+        !unify ~loc env typ.type_type var ;
+        ( { Typedast.type_desc= Ttyp_alias (typ, name)
+          ; type_loc= loc
+          ; type_type= typ.type_type }
+        , env )
 
   let fold ~init ~f typ =
     match typ.type_desc with
@@ -208,6 +237,8 @@ module Type = struct
         let acc = f init typ1 in
         f acc typ2
     | Ptyp_opaque typ ->
+        f init typ
+    | Ptyp_alias (typ, _) ->
         f init typ
 
   let iter ~f = fold ~init:() ~f:(fun () -> f)
@@ -235,6 +266,8 @@ module Type = struct
         {type_desc= Ptyp_conv (f typ1, f typ2); type_loc= loc}
     | Ptyp_opaque typ ->
         {type_desc= Ptyp_opaque (f typ); type_loc= loc}
+    | Ptyp_alias (typ, name) ->
+        {type_desc= Ptyp_alias (f typ, name); type_loc= loc}
 end
 
 module TypeDecl = struct
@@ -654,8 +687,9 @@ let pp_decl_typ ppf decl =
     ; type_loc= Location.none }
 
 let report_error ppf = function
-  | Unbound_type_var var ->
-      fprintf ppf "@[<hov>Unbound type parameter@ @[<h>%a@].@]" pp_typ var
+  | Unbound_type_var name ->
+      let quot = match name with "_" -> "" | _ -> "'" in
+      fprintf ppf "@[<hov>Unbound type parameter@ %s%s.@]" quot name
   | Wrong_number_args (path, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \

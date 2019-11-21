@@ -293,6 +293,8 @@ let check_type ~loc env typ constr_typ =
   | () ->
       ()
 
+let () = Typet.unify := check_type
+
 let unifies env typ constr_typ =
   let snapshot = Snapshot.create () in
   match check_type ~loc:Location.none env typ constr_typ with

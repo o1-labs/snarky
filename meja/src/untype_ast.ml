@@ -105,6 +105,8 @@ let rec type_desc = function
       Ptyp_conv (type_expr typ1, type_expr typ2)
   | Ttyp_opaque typ ->
       Ptyp_opaque (type_expr typ)
+  | Ttyp_alias (typ, name) ->
+      Ptyp_alias (type_expr typ, name)
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}

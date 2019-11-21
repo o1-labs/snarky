@@ -46,6 +46,7 @@ let consexp ~pos hd tl =
 %token CONVERTIBLE
 %token BY
 %token TO
+%token AS
 %token LPROVER
 %token REC
 %token MODULE
@@ -97,7 +98,6 @@ let consexp ~pos hd tl =
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
-%right    DASHGT
 %nonassoc LPAREN
 
 %start implementation
@@ -225,7 +225,7 @@ type_decls:
     { decls }
 
 default_request_handler:
-  | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
+  | WITH HANDLER p = pat_ctor_args EQUALGT body = block
     { (p, body) }
 
 conv_type:
@@ -372,7 +372,7 @@ simpl_expr:
     { List.fold
         ~init:(mkexp ~pos:$loc (Pexp_ctor (mkloc ~pos:$loc (Lident "[]"), None)))
         es ~f:(fun acc e -> consexp ~pos:$loc e acc) }
-  | LBRACE es = block RBRACE
+  | es = block
     { es }
   | e = expr_record
     { e }
@@ -380,7 +380,7 @@ simpl_expr:
     { mkexp ~pos:$loc (Pexp_field (e, field)) }
   | s = STRING
     { mkexp ~pos:$loc (Pexp_literal (String s)) }
-  | PROVER LBRACE e = block RBRACE
+  | PROVER e = block
     { mkexp ~pos:$loc (Pexp_prover e) }
 
 expr:
@@ -388,7 +388,7 @@ expr:
     { x }
   | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
     { mkexp ~pos:$loc (Pexp_constraint (x, typ)) }
-  | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
+  | FUN LPAREN RPAREN EQUALGT body = block
     { let unit_pat =
         mkpat ~pos:$loc (Ppat_ctor (mkloc (Lident "()") ~pos:$loc, None))
       in
@@ -419,15 +419,15 @@ expr:
     { e }
 
 if_expr:
-  | IF e1 = expr LBRACE e2 = block RBRACE
+  | IF e1 = expr e2 = block
     { mkexp ~pos:$loc (Pexp_if (e1, e2, None)) }
-  | IF e1 = expr LBRACE e2 = block RBRACE ELSE e3 = if_expr_or_block
+  | IF e1 = expr e2 = block ELSE e3 = if_expr_or_block
     { mkexp ~pos:$loc (Pexp_if (e1, e2, Some e3)) }
 
-if_expr_or_block:
+%inline if_expr_or_block:
   | e = if_expr
     { e }
-  | LBRACE e = block RBRACE
+  | e = block
     { e }
 
 expr_record:
@@ -497,7 +497,7 @@ pat_arg_opt:
           (Ppat_constraint (mkpat ~pos:$loc(name) (Ppat_variable name), typ)) ) }
 
 function_body:
- | EQUALGT LBRACE body = block RBRACE
+ | EQUALGT body = block
    { body }
  | err = err
    { raise (Error (err, Fun_no_fat_arrow)) }
@@ -524,10 +524,10 @@ function_from_implicit_args:
   | p = pat_arg RBRACE LPAREN f = function_from_args
     { let (label, p) = p in
       mkexp ~pos:$loc (Pexp_fun (label, p, f, Implicit)) }
-  | p = pat_arg RBRACE EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg RBRACE EQUALGT body = block
     { let (label, p) = p in
       mkexp ~pos:$loc (Pexp_fun (label, p, body, Implicit)) }
-  | p = pat_arg RBRACE COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg RBRACE COLON typ = type_expr EQUALGT body = block
     { let (label, p) = p in
       mkexp ~pos:$loc (Pexp_fun (label, p, mkexp ~pos:$loc(typ)
         (Pexp_constraint (body, typ)), Implicit)) }
@@ -537,19 +537,25 @@ function_from_implicit_args:
   | pat_arg RBRACE err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
 
-block:
+block_sequence:
   | e = expr SEMI
     { e }
-  | e1 = expr SEMI rest = block
+  | e1 = expr SEMI rest = block_sequence
     { mkexp ~pos:$loc (Pexp_seq (e1, rest)) }
-  | LET x = pat EQUAL lhs = expr SEMI rhs = block
+  | LET x = pat EQUAL lhs = expr SEMI rhs = block_sequence
     { mkexp ~pos:$loc (Pexp_let (x, lhs, rhs)) }
-  | INSTANCE x = as_loc(lident) EQUAL lhs = expr SEMI rhs = block
+  | INSTANCE x = as_loc(lident) EQUAL lhs = expr SEMI rhs = block_sequence
     { mkexp ~pos:$loc (Pexp_instance (x, lhs, rhs)) }
   | LET pat EQUAL expr err = err
     { raise (Error (err, Missing_semi)) }
   | expr err = err
     { raise (Error (err, Missing_semi)) }
+
+block:
+  | LBRACE RBRACE
+    { mkexp ~pos:$loc (Pexp_ctor (mkloc (Lident "()") ~pos:$loc, None)) }
+  | LBRACE body = block_sequence RBRACE
+    { body }
 
 pat_field:
   | x = record_field(longident(lident, UIDENT), pat)
@@ -618,6 +624,8 @@ simple_type_expr:
     { mktyp ~pos:$loc (Ptyp_prover x) }
   | PROVER LBRACE x = type_expr RBRACE
     { mktyp ~pos:$loc (Ptyp_prover x) }
+  | LPAREN typ = type_expr AS QUOT x = as_loc(lident) RPAREN
+    { mktyp ~pos:$loc (Ptyp_alias (typ, x)) }
 
 %inline type_arrow_label:
   | (* Empty *)

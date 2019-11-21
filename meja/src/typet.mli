@@ -1,11 +1,15 @@
 type error =
-  | Unbound_type_var of Parsetypes.type_expr
+  | Unbound_type_var of string
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
   | Opaque_type_in_prover_mode of Parsetypes.type_expr
   | Convertible_arities_differ of string * int * string * int
   | GADT_in_nonrec_type
+
+val unify :
+  (loc:Location.t -> Envi.t -> Type0.type_expr -> Type0.type_expr -> unit) ref
+(** Internal: Import from [Typechecker]. *)
 
 module Type : sig
   val mk_poly :
