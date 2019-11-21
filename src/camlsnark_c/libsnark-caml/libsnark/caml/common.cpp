@@ -28,7 +28,7 @@ int json_printf(const char* filename,
     time(&now);
     now_utc = gmtime(&now);
     fprintf(file,
-            "{\"timestamp\":\"%d-%02d-%02d %02d-%02d:%02d:%06dZ",
+            "{\"timestamp\":\"%d-%02d-%02d %02d:%02d:%02d.%06dZ",
             now_utc->tm_year + 1900,
             now_utc->tm_mon,
             now_utc->tm_mday,
@@ -80,9 +80,15 @@ int (*snarky_printf_deferred)(const char* filename,
 
 FILE *snarky_print_dest = stdout;
 
+int may_close = false;
+
 int close_snarky_print_dest() {
     if (snarky_print_dest) {
-        int ret = fclose(snarky_print_dest);
+        int ret = 0;
+        if (may_close) {
+            ret = fclose(snarky_print_dest);
+            may_close = false;
+        };
         snarky_print_dest = NULL;
         return ret;
     } else {
@@ -114,8 +120,14 @@ void camlsnark_set_printing_stdout() {
     snarky_print_dest = stdout;
 }
 
+void camlsnark_set_printing_stderr() {
+    close_snarky_print_dest();
+    snarky_print_dest = stderr;
+}
+
 void camlsnark_set_printing_file(char *file) {
     close_snarky_print_dest();
+    may_close = true;
     snarky_print_dest = fopen(file, "a");
 }
 

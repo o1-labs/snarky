@@ -1275,6 +1275,11 @@ struct
         Bignum_bigint.(gen_incl zero (size - one))
         ~f:(fun x -> Bigint.(to_field (of_bignum_bigint x)))
 
+    let gen_uniform =
+      Quickcheck.Generator.map
+        Bignum_bigint.(gen_uniform_incl zero (size - one))
+        ~f:(fun x -> Bigint.(to_field (of_bignum_bigint x)))
+
     let typ = Typ.field
 
     type var' = Var.t
@@ -2056,6 +2061,8 @@ module Run = struct
         type t = Snark.Field.t [@@deriving bin_io, sexp, hash, compare, eq]
 
         let gen = gen
+
+        let gen_uniform = gen_uniform
 
         module T = struct
           let bin_shape_t = bin_shape_t

@@ -13,7 +13,7 @@ let rec longident_of_path = function
 module Type0 = struct
   open Type0
 
-  let rec type_desc ?loc = function
+  let rec type_desc ~mode ?loc = function
     | Tvar None ->
         Type.none ?loc ()
     | Tvar (Some name) ->
@@ -30,10 +30,23 @@ module Type0 = struct
         Type.poly ?loc (List.map ~f:(type_expr ?loc) vars) (type_expr ?loc var)
     | Tref typ ->
         type_expr ?loc (Type1.repr typ)
+    | Tconv typ ->
+        Type.conv
+          (type_expr ?loc (Type1.get_mode Checked typ))
+          (type_expr ?loc (Type1.get_mode Prover typ))
+    | Topaque typ -> (
+      match mode with
+      | Checked ->
+          Type.opaque (type_expr ?loc typ)
+      | Prover ->
+          type_expr ?loc typ )
+    | Tother_mode _ ->
+        (* TODO: Should we do something else here? *)
+        assert false
     | Treplace _ ->
         assert false
 
-  and type_expr ?loc typ = type_desc ?loc typ.type_desc
+  and type_expr ?loc typ = type_desc ~mode:typ.type_mode ?loc typ.type_desc
 
   let field_decl ?loc fld =
     Type_decl.Field.mk ?loc (Ident.name fld.fld_ident)
@@ -88,6 +101,10 @@ let rec type_desc = function
       Ptyp_poly (List.map ~f:type_expr vars, type_expr var)
   | Ttyp_prover typ ->
       Ptyp_prover (type_expr typ)
+  | Ttyp_conv (typ1, typ2) ->
+      Ptyp_conv (type_expr typ1, type_expr typ2)
+  | Ttyp_opaque typ ->
+      Ptyp_opaque (type_expr typ)
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}
@@ -172,7 +189,12 @@ let rec expression_desc = function
   | Typedast.Texp_apply (e, args) ->
       Parsetypes.Pexp_apply
         ( expression e
-        , List.map args ~f:(fun (label, e) -> (label, expression e)) )
+        , List.filter_map args ~f:(fun (explicit, label, e) ->
+              match explicit with
+              | Explicit ->
+                  Some (label, expression e)
+              | Implicit ->
+                  None ) )
   | Texp_variable name ->
       Pexp_variable (map_loc ~f:longident_of_path name)
   | Texp_literal i ->
@@ -185,6 +207,8 @@ let rec expression_desc = function
       Pexp_seq (expression e1, expression e2)
   | Texp_let (p, e1, e2) ->
       Pexp_let (pattern p, expression e1, expression e2)
+  | Texp_instance (name, e1, e2) ->
+      Pexp_instance (map_loc ~f:Ident.name name, expression e1, expression e2)
   | Texp_constraint (e, typ) ->
       Pexp_constraint (expression e, type_expr typ)
   | Texp_tuple es ->
@@ -210,11 +234,21 @@ let rec expression_desc = function
         ; id }
   | Texp_if (e1, e2, e3) ->
       Pexp_if (expression e1, expression e2, Option.map ~f:expression e3)
-  | Texp_prover e ->
+  | Texp_read (_conv, _conv_args, e) ->
+      expression_desc e.exp_desc
+  | Texp_prover (_conv, _conv_args, e) ->
       Pexp_prover (expression e)
+  | Texp_convert _ ->
+      assert false
 
 and expression e =
   {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}
+
+let conv_type = function
+  | Typedast.Ttconv_with (mode, decl) ->
+      Parsetypes.Ptconv_with (mode, type_decl decl)
+  | Ttconv_to typ ->
+      Ptconv_to (type_expr typ)
 
 let rec signature_desc = function
   | Typedast.Tsig_value (name, typ) ->
@@ -223,6 +257,9 @@ let rec signature_desc = function
       Psig_instance (map_loc ~f:Ident.name name, type_expr typ)
   | Tsig_type decl ->
       Psig_type (type_decl decl)
+  | Tsig_convtype (decl, tconv, convname, _typ) ->
+      Psig_convtype
+        (type_decl decl, conv_type tconv, Some (map_loc ~f:Ident.name convname))
   | Tsig_rectype decls ->
       Psig_rectype (List.map ~f:type_decl decls)
   | Tsig_module (name, msig) ->
@@ -239,6 +276,8 @@ let rec signature_desc = function
       Psig_multiple (List.map ~f:signature_item sigs)
   | Tsig_prover sigs ->
       Psig_prover (List.map ~f:signature_item sigs)
+  | Tsig_convert (name, typ) ->
+      Psig_convert (map_loc ~f:Ident.name name, type_expr typ)
 
 and signature_item s =
   {Parsetypes.sig_desc= signature_desc s.Typedast.sig_desc; sig_loc= s.sig_loc}
@@ -267,6 +306,9 @@ let rec statement_desc = function
       Pstmt_instance (map_loc ~f:Ident.name name, expression e)
   | Tstmt_type decl ->
       Pstmt_type (type_decl decl)
+  | Tstmt_convtype (decl, tconv, convname, _conv) ->
+      Pstmt_convtype
+        (type_decl decl, conv_type tconv, Some (map_loc ~f:Ident.name convname))
   | Tstmt_rectype decls ->
       Pstmt_rectype (List.map ~f:type_decl decls)
   | Tstmt_module (name, m) ->
@@ -275,6 +317,8 @@ let rec statement_desc = function
       Pstmt_modtype (map_loc ~f:Ident.name name, module_sig msig)
   | Tstmt_open path ->
       Pstmt_open (map_loc ~f:longident_of_path path)
+  | Tstmt_open_instance path ->
+      Pstmt_open_instance (map_loc ~f:longident_of_path path)
   | Tstmt_typeext (typ, ctors) ->
       Pstmt_typeext (variant typ, List.map ~f:ctor_decl ctors)
   | Tstmt_request (arg, ctor, handler) ->
@@ -288,6 +332,8 @@ let rec statement_desc = function
       Pstmt_multiple (List.map ~f:statement stmts)
   | Tstmt_prover stmts ->
       Pstmt_prover (List.map ~f:statement stmts)
+  | Tstmt_convert (name, typ, _conv) ->
+      Pstmt_convert (map_loc ~f:Ident.name name, type_expr typ)
 
 and statement s =
   { Parsetypes.stmt_desc= statement_desc s.Typedast.stmt_desc

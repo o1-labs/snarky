@@ -1,3 +1,4 @@
+open Core_kernel
 open Ast_types
 open Parsetypes
 open Format
@@ -29,6 +30,12 @@ let rec type_desc ?(bracket = false) fmt = function
       if bracket then fprintf fmt ")"
   | Ptyp_prover typ ->
       fprintf fmt "@[<2>Prover {@ %a@ }@]" type_expr typ
+  | Ptyp_conv (typ1, typ2) ->
+      if bracket then fprintf fmt "(" ;
+      fprintf fmt "%a@ --> %a" type_expr_b typ1 type_expr typ2 ;
+      if bracket then fprintf fmt ")"
+  | Ptyp_opaque typ ->
+      fprintf fmt "@[<hv2>opaque(@,%a@,)@]" type_expr typ
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -84,13 +91,8 @@ let type_decl_desc fmt = function
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
 
-let type_decl fmt decl =
-  fprintf fmt "type %s" decl.tdec_ident.txt ;
-  (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
-  type_decl_desc fmt decl.tdec_desc
-
-let and_type_decl fmt decl =
-  fprintf fmt "and %s" decl.tdec_ident.txt ;
+let type_decl type_keyword fmt decl =
+  fprintf fmt "%s %s" type_keyword decl.tdec_ident.txt ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
 
@@ -197,6 +199,9 @@ let rec expression_desc fmt = function
   | Pexp_let (p, e1, e2) ->
       fprintf fmt "let@[<hv2>@ %a@] =@ @[<hv2>%a@];@;@]@ %a" pattern p
         expression e1 expression e2
+  | Pexp_instance (name, e1, e2) ->
+      fprintf fmt "let@[<hv2>@ %s@] =@ @[<hv2>%a@];@;@]@ %a" name.txt
+        expression e1 expression e2
   | Pexp_constraint (e, typ) ->
       fprintf fmt "(@[<hv1>%a :@ %a@])" expression e type_expr typ
   | Pexp_tuple es ->
@@ -270,6 +275,15 @@ and expression_args fmt (label, e) =
 and expression_field fmt (label, e) =
   fprintf fmt "%a:@ %a" Longident.pp label.txt expression e
 
+let conv_type fmt = function
+  | Ptconv_with (mode, decl) ->
+      let str =
+        match mode with Checked -> "with" | Prover -> "with prover"
+      in
+      type_decl str fmt decl
+  | Ptconv_to typ ->
+      fprintf fmt "to @[<hv>%a@]" type_expr typ
+
 let rec signature_desc fmt = function
   | Psig_value (name, typ) ->
       fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" pp_name name.txt
@@ -278,13 +292,20 @@ let rec signature_desc fmt = function
       fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" pp_name name.txt
         type_expr typ
   | Psig_type decl ->
-      fprintf fmt "@[<2>%a;@]@;@;" type_decl decl
+      fprintf fmt "@[<2>%a;@]@;@;" (type_decl "type") decl
+  | Psig_convtype (decl, tconv, conv) ->
+      fprintf fmt "@[<2>%a@ %a"
+        (type_decl "convertible type")
+        decl conv_type tconv ;
+      Option.iter conv ~f:(fun conv -> fprintf fmt "@ by %s" conv.txt) ;
+      fprintf fmt "@];"
   | Psig_rectype (decl :: decls) ->
       let print_and_decls =
         let pp_sep fmt () = pp_print_char fmt ';' ; pp_print_cut fmt () in
-        pp_print_list ~pp_sep and_type_decl
+        pp_print_list ~pp_sep (type_decl "and")
       in
-      fprintf fmt "@[<2>%a;%a@]@;@;" type_decl decl print_and_decls decls
+      fprintf fmt "@[<2>%a;%a@]@;@;" (type_decl "type") decl print_and_decls
+        decls
   | Psig_rectype [] ->
       assert false
   | Psig_module (name, msig) ->
@@ -308,12 +329,15 @@ let rec signature_desc fmt = function
       signature fmt sigs
   | Psig_prover sigs ->
       fprintf fmt "@[<2>Prover {@,%a@,}@]@;@;" signature sigs
+  | Psig_convert (name, typ) ->
+      (* TODO: review to make sure this is what we really want. *)
+      signature_desc fmt (Psig_instance (name, typ))
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 
 and signature fmt sigs =
   fprintf fmt "@[<hv>" ;
-  List.iter (signature_item fmt) sigs ;
+  List.iter ~f:(signature_item fmt) sigs ;
   fprintf fmt "@]"
 
 and module_sig_desc ~prefix fmt = function
