@@ -223,9 +223,25 @@ let alloc : {t('var, _)} -> Alloc.t('var);
 
 let check : {t('var, _)} -> 'var -> unit;
 
-let unit : t(unit, unit);
+/*let unit : t(unit, unit);*/
 
-let field : t(Field.Var.t, field);
+/*let field : t(Field.Var.t, field);*/
+
+/* Hack. These can go away when the stdlib includes the type declarations for
+   these: the conversions will be generated automatically. */
+instance unit : unit --> unit;
+
+instance field : field --> field;
+
+instance boolean : boolean --> bool;
+
+Prover {
+instance unit : unit --> unit;
+
+instance field : field --> field;
+
+instance boolean : boolean --> bool;
+};
 
 let tuple2 :
 t('var1, 'value1) ->
