@@ -8,6 +8,14 @@ Prover {let g : _ -> _;  }
 
 let h : _ -> _;
 
-let i : unit -> int;
+let i : unit -> opaque(int);
+
+type either('a, 'b) = Fst('a) | Snd('b);
+
+let j : _ -> _ -> opaque(either(_, int));
+
+let k : field -> opaque(either(_, int));
+
+let l : boolean -> boolean -> opaque(either(_, int));
 
 

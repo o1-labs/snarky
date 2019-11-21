@@ -1,8 +1,12 @@
 module Alias_alias :
   {
-    type u('a, 'b) = 'a -> 'a;
+    convertible type u('a, 'b) = 'a -> 'a
+    with prover u('a, 'b) = 'a -> 'a
+    by u_typ;
     
-    type v('a, 'b) = u('a, 'a);
+    convertible type v('a, 'b) = u('a, 'a)
+    with prover v('a, 'b) = u('a, 'a)
+    by v_typ;
     
     let f : u(int, bool) -> u(int, int);
     
@@ -30,11 +34,13 @@ module Alias_opaque :
 
 module Alias_record :
   {
-    type u('a, 'b) = {a: 'a, b: 'b};
+    convertible type u('a, 'b) = {a: 'a, b: 'b}
+    with prover u('a, 'b) = {a: 'a, b: 'b}
+    by u_typ;
     
-    let u_typ : Typ.t(u('a2, 'b2), u('a1, 'b1));
-    
-    type v('a, 'b) = u('a, 'a);
+    convertible type v('a, 'b) = u('a, 'a)
+    with prover v('a, 'b) = u('a, 'a)
+    by v_typ;
     
     let f : v(int, int) -> v(int, bool);
     

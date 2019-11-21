@@ -1,21 +1,13 @@
-type poly('a, 'b) = {a: 'a, b: 'b};
+type t = {a: bool, b: field};
 
-type t = poly(bool, field);
+type u('a) = {a1: 'a, b1: bool};
 
-type var = poly(Boolean.var, Field.Var.t);
+convertible type v('a, 'b) = {a2: 'a, b2: 'b}
+with prover v('a, 'b) = {a2: 'a, b2: 'b}
+by v_typ;
 
-let typ : Typ.t(poly('a1, 'b1), poly('a, 'b));
+let x : _ -> v(_, _);
 
-type u_poly('a1, 'b1) = {a1: 'a1, b1: 'b1};
-
-type u('a) = u_poly('a, bool);
-
-type u_var('a) = u_poly('a, Boolean.var);
-
-let u_typ : Typ.t(u_poly('a11, 'b11), u_poly('a1, 'b1));
-
-type v('a, 'b) = {a2: 'a, b2: 'b};
-
-let v_typ : Typ.t(v('a1, 'b1), v('a, 'b));
+let y : unit -> v(boolean, boolean);
 
 

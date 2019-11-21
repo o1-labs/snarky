@@ -2,7 +2,7 @@ type t;
 
 Prover {type t1;  type t2;  }
 
-let f : (t -> t1 -> t2) -> t -> t1 -> t2;
+let f : (t -> opaque(t1) -> opaque(t2)) -> t -> opaque(t1) -> opaque(t2);
 
 Prover {let f : (t -> t1 -> t2) -> t -> t1 -> t2;  }
 

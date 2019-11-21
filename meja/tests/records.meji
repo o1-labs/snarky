@@ -1,6 +1,6 @@
-type t('a, 'b, 'c) = {a: 'a, b: 'b, c: 'c};
-
-let typ : Typ.t(t('a2, 'b2, 'c2), t('a1, 'b1, 'c1));
+convertible type t('a, 'b, 'c) = {a: 'a, b: 'b, c: 'c}
+with prover t('a, 'b, 'c) = {a: 'a, b: 'b, c: 'c}
+by typ;
 
 let x : t(int, int, int);
 
@@ -10,9 +10,9 @@ let z : t(int, bool, unit);
 
 module X :
   {
-    type t('a) = {a: 'a, b: 'a, c: 'a};
-    
-    let typ : Typ.t(t('a2), t('a1));
+    convertible type t('a) = {a: 'a, b: 'a, c: 'a}
+    with prover t('a) = {a: 'a, b: 'a, c: 'a}
+    by typ;
     
     let x : t(int);
     

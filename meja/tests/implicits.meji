@@ -14,7 +14,9 @@ let h :
       (string, string, string, string, string, string),
       (string, string, string, string, string, string));
 
-type conv('a, 'b) = {conv: 'a -> 'b};
+convertible type conv('a, 'b) = {conv: 'a -> 'b}
+with prover conv('a, 'b) = {conv: 'a -> 'b}
+by conv_typ;
 
 let conv : {conv(_, _)} -> _ -> _;
 

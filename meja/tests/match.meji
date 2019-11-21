@@ -6,7 +6,9 @@ type t = {a: int, b: bool};
 
 type u = {f: int -> int};
 
-type v('a, 'b) = {x: 'a, y: 'b, g: 'a -> 'b};
+convertible type v('a, 'b) = {x: 'a, y: 'b, g: 'a -> 'b}
+with prover v('a, 'b) = {x: 'a, y: 'b, g: 'a -> 'b}
+by v_typ;
 
 let z : t -> u -> int;
 
