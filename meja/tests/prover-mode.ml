@@ -26,14 +26,14 @@ let (z : int Snarky.As_prover.Ref.t) =
   Snarky.exists typ
     ~compute:
       (let open As_prover in
-      fun () -> if A.x && A.y then x else y)
+      fun () -> if A.a && A.b then x else y)
 
 let (z : boolean) =
   let typ = Typ.boolean in
   Snarky.exists typ
     ~compute:
       (let open As_prover in
-      fun () -> A.x && A.y)
+      fun () -> A.a && A.b)
 
 include struct
   type nonrec t = {a: field; b: boolean}

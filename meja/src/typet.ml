@@ -380,7 +380,8 @@ module TypeDecl = struct
           ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
 
   (* TODO: Make prover mode declarations stitch to opaque types. *)
-  let import ?(newtype = false) ?name ?other_name ?tri_stitched ~recursive decl' env =
+  let import ?(newtype = false) ?name ?other_name ?tri_stitched ~recursive
+      decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
     let tdec_ident, path, tdec_id =
@@ -553,10 +554,21 @@ module TypeDecl = struct
     in
     let env = close_expr_scope env in
     let env =
+      let may_shadow =
+        match (newtype, name, other_name) with
+        | true, _, _ ->
+            true
+        | _, Some name, Some (Pident other_name)
+          when String.equal (Ident.name name) (Ident.name other_name)
+               && equal_mode mode Prover ->
+            true
+        | _ ->
+            false
+      in
       map_current_scope
         ~f:
-          (Scope.register_type_declaration ~may_shadow:newtype
-             ~loc:tdec_ident.loc tdec_ident.txt decl.tdec_tdec)
+          (Scope.register_type_declaration ~may_shadow ~loc:tdec_ident.loc
+             tdec_ident.txt decl.tdec_tdec)
         env
     in
     (decl, env)

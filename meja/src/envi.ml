@@ -890,7 +890,8 @@ let join_expr_scope env expr_scope =
 
 let has_type_declaration ~mode (lid : lid) env =
   Option.is_some
-    (find_of_lident ~mode ~kind:"type" ~get_name:(Scope.find_type_declaration ~mode)
+    (find_of_lident ~mode ~kind:"type"
+       ~get_name:(Scope.find_type_declaration ~mode)
        lid env)
 
 let raw_find_type_declaration ~mode (lid : lid) env =
