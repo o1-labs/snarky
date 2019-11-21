@@ -1033,6 +1033,13 @@ let rec get_expression env expected exp =
       let e2, env = get_expression env expected e2 in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env e2.exp_type ;
+      ( match
+          Patmatch.get_unmatched_cases ~count:4 env e1.Typedast.exp_type [p]
+        with
+      | [] ->
+          ()
+      | cases ->
+          raise (Error (loc, env, Unmatched_cases cases)) ) ;
       ( {exp_loc= loc; exp_type= e2.exp_type; exp_desc= Texp_let (p, e1, e2)}
       , env )
   | Pexp_instance (name, e1, e2) ->
@@ -1413,6 +1420,11 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         | Tpat_variable _ ->
             e
         | _ ->
+            ( match Patmatch.get_unmatched_cases ~count:4 env typ [p] with
+            | [] ->
+                ()
+            | cases ->
+                raise (Error (loc, env, Unmatched_cases cases)) ) ;
             (* Use a let-expression to extract the variable from the expression. *)
             { exp_loc= p.pat_loc
             ; exp_type= typ
@@ -1784,6 +1796,11 @@ let rec check_statement env stmt =
   | Pstmt_value (p, e) ->
       let env = Envi.open_expr_scope env in
       let p, e, env = check_binding ~toplevel:true env p e in
+      ( match Patmatch.get_unmatched_cases ~count:4 env e.exp_type [p] with
+      | [] ->
+          ()
+      | cases ->
+          raise (Error (loc, env, Unmatched_cases cases)) ) ;
       let scope, env = Envi.pop_expr_scope env in
       (* Uplift the names from the expression scope, discarding the scope and
          its associated type variables etc. *)
