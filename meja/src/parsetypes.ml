@@ -11,6 +11,8 @@ and type_desc =
   | Ptyp_ctor of variant
   | Ptyp_poly of type_expr list * type_expr
   | Ptyp_prover of type_expr
+  | Ptyp_conv of type_expr * type_expr
+  | Ptyp_opaque of type_expr
 
 and variant = {var_ident: lid; var_params: type_expr list}
 
@@ -65,6 +67,7 @@ and expression_desc =
   | Pexp_newtype of str * expression
   | Pexp_seq of expression * expression
   | Pexp_let of pattern * expression * expression
+  | Pexp_instance of str * expression * expression
   | Pexp_constraint of expression * type_expr
   | Pexp_tuple of expression list
   | Pexp_match of expression * (pattern * expression) list
@@ -78,6 +81,12 @@ and expression_desc =
   | Pexp_if of expression * expression * expression option
   | Pexp_prover of expression
 
+type conv_type =
+  (* Other mode stitched declaration. *)
+  | Ptconv_with of mode * type_decl
+  (* Tri-stitching to existing declaration. *)
+  | Ptconv_to of type_expr
+
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
 and signature = signature_item list
@@ -86,6 +95,7 @@ and signature_desc =
   | Psig_value of str * type_expr
   | Psig_instance of str * type_expr
   | Psig_type of type_decl
+  | Psig_convtype of type_decl * conv_type * str option
   | Psig_rectype of type_decl list
   | Psig_module of str * module_sig
   | Psig_modtype of str * module_sig
@@ -94,6 +104,7 @@ and signature_desc =
   | Psig_request of type_expr * ctor_decl
   | Psig_multiple of signature
   | Psig_prover of signature
+  | Psig_convert of str * type_expr
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
@@ -112,15 +123,18 @@ and statement_desc =
   | Pstmt_value of pattern * expression
   | Pstmt_instance of str * expression
   | Pstmt_type of type_decl
+  | Pstmt_convtype of type_decl * conv_type * str option
   | Pstmt_rectype of type_decl list
   | Pstmt_module of str * module_expr
   | Pstmt_modtype of str * module_sig
   | Pstmt_open of lid
+  | Pstmt_open_instance of lid
   | Pstmt_typeext of variant * ctor_decl list
   | Pstmt_request of
       type_expr * ctor_decl * (pattern option * expression) option
   | Pstmt_multiple of statements
   | Pstmt_prover of statements
+  | Pstmt_convert of str * type_expr
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 
