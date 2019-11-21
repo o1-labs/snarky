@@ -1,5 +1,5 @@
 (** Unique identifiers. *)
-type t [@@deriving sexp, compare, equal]
+type t [@@deriving sexp, equal, compare]
 
 type ident = t
 
@@ -19,6 +19,11 @@ val pprint : Format.formatter -> t -> unit
 
 val debug_print : Format.formatter -> t -> unit
 (** Debug print. Prints the identifier and its internal ID. *)
+
+val fresh : Ast_types.mode -> t
+(** HACK: Call a variable ["x___" ^ id] where [id] is the identifier's internal
+   id.
+*)
 
 module Table : sig
   (** An associative map from [ident]s, with direct name lookups. *)
