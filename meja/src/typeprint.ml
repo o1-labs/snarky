@@ -95,24 +95,28 @@ let type_decl_desc fmt = function
   | TAbstract ->
       ()
   | TAlias typ ->
-      fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
+      fprintf fmt " =@ %a" type_expr typ
   | TRecord fields ->
-      fprintf fmt "@ =@ {@[<hv2>%a@]}"
+      fprintf fmt " =@ {@[<hv2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
   | TVariant ctors ->
-      fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
+      fprintf fmt " =@ %a"
+        (pp_print_list ~pp_sep:bar_sep ctor_decl)
+        ctors
   | TOpen ->
-      fprintf fmt "@ =@ .."
+      fprintf fmt " =@ .."
   | TExtend (name, ctors) ->
       fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
 
 let type_decl type_keyword fmt (ident, decl) =
-  fprintf fmt "%s %a" type_keyword Ident.pprint ident ;
+  fprintf fmt "@[<hov2>%s @[<hv>%a@," type_keyword Ident.pprint ident ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
-  type_decl_desc fmt decl.tdec_desc
+  fprintf fmt "@]" ;
+  type_decl_desc fmt decl.tdec_desc ;
+  fprintf fmt "@]"
 
 let conv_type fmt = function
   | Conv_with (ident, mode, decl) ->
