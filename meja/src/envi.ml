@@ -310,7 +310,7 @@ module Scope = struct
       let scope = subst scope in
       backtrack_replace snap ; scope
 
-  let build_subst ~type_subst ~module_subst ~expr_subst s
+  let build_subst ~type_subst ~module_subst ?expr_subst s
       { kind= _
       ; names= _
       ; type_variables= _
@@ -332,9 +332,13 @@ module Scope = struct
           Subst.with_module src_path dst_path s )
     in
     let s =
-      List.fold ~init:s instances ~f:(fun s (local_path, global_path, _) ->
-          let src_path, dst_path = expr_subst ~local_path global_path in
-          Subst.with_expression src_path dst_path s )
+      match expr_subst with
+      | Some expr_subst ->
+          List.fold ~init:s instances ~f:(fun s (local_path, global_path, _) ->
+              let src_path, dst_path = expr_subst ~local_path global_path in
+              Subst.with_expression src_path dst_path s )
+      | None ->
+          s
     in
     s
 

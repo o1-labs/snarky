@@ -10,6 +10,7 @@ type mapper =
   ; ctor_decl: mapper -> ctor_decl -> ctor_decl
   ; type_decl: mapper -> type_decl -> type_decl
   ; type_decl_desc: mapper -> type_decl_desc -> type_decl_desc
+  ; conv_type: mapper -> conv_type -> conv_type
   ; signature_item: mapper -> signature_item -> signature_item
   ; signature: mapper -> signature -> signature
   ; module_sig: mapper -> module_sig -> module_sig
@@ -188,6 +189,17 @@ let type_decl_desc mapper desc =
       let ctors = map_list ctors ~same ~f:(mapper.ctor_decl mapper) in
       if !same && phys_equal path' path then desc else TExtend (path', ctors)
 
+let conv_type mapper conv_type =
+  match conv_type with
+  | Conv_with (ident, mode, decl) ->
+      let ident' = mapper.ident mapper ident in
+      let decl' = mapper.type_decl mapper decl in
+      if phys_equal ident' ident && phys_equal decl' decl then conv_type
+      else Conv_with (ident', mode, decl')
+  | Conv_to typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then conv_type else Conv_to typ'
+
 let signature_item mapper sigi =
   match sigi with
   | Svalue (name, typ) ->
@@ -205,6 +217,19 @@ let signature_item mapper sigi =
       let typ' = mapper.type_decl mapper typ in
       if phys_equal name' name && phys_equal typ' typ then sigi
       else Stype (name', typ')
+  | Sconvtype (name, decl, conv_decl, conv_name, conv_typ) ->
+      let name' = mapper.ident mapper name in
+      let decl' = mapper.type_decl mapper decl in
+      let conv_decl' = mapper.conv_type mapper conv_decl in
+      let conv_name' = mapper.ident mapper conv_name in
+      let conv_typ' = mapper.type_expr mapper conv_typ in
+      if
+        phys_equal name' name && phys_equal decl' decl
+        && phys_equal conv_decl' conv_decl
+        && phys_equal conv_name' conv_name
+        && phys_equal conv_typ' conv_typ
+      then sigi
+      else Sconvtype (name', decl', conv_decl', conv_name', conv_typ')
   | Srectype typs ->
       let same = ref true in
       let typs =
@@ -290,6 +315,7 @@ let default_mapper =
   ; ctor_decl
   ; type_decl
   ; type_decl_desc
+  ; conv_type
   ; signature_item
   ; signature
   ; module_sig

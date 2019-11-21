@@ -109,15 +109,19 @@ let type_decl_desc fmt = function
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
 
-let type_decl fmt (ident, decl) =
-  fprintf fmt "type %a" Ident.pprint ident ;
+let type_decl type_keyword fmt (ident, decl) =
+  fprintf fmt "%s %a" type_keyword Ident.pprint ident ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
 
-let and_type_decl fmt (ident, decl) =
-  fprintf fmt "type %a" Ident.pprint ident ;
-  (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
-  type_decl_desc fmt decl.tdec_desc
+let conv_type fmt = function
+  | Conv_with (ident, mode, decl) ->
+      let str =
+        match mode with Checked -> "with" | Prover -> "with prover"
+      in
+      type_decl str fmt (ident, decl)
+  | Conv_to typ ->
+      fprintf fmt "to @[<hv>%a@]" type_expr typ
 
 let rec signature fmt sigs =
   fprintf fmt "@[<hv>" ;
@@ -132,13 +136,23 @@ and signature_item fmt = function
       fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" Ident.pprint name
         type_expr typ
   | Stype (ident, decl) ->
-      fprintf fmt "@[<2>%a;@]@;@;" type_decl (ident, decl)
+      fprintf fmt "%a;@;@;" (type_decl "type") (ident, decl)
+  | Sconvtype (name, decl, tconv, conv_name, _conv_type) ->
+      fprintf fmt "@[<v>%a@;%a@ by %a@];@;@;"
+        (type_decl "convertible type")
+        (name, decl) conv_type tconv Ident.pprint conv_name
   | Srectype (decl :: decls) ->
       let print_and_decls =
-        let pp_sep fmt () = pp_print_char fmt ';' ; pp_print_cut fmt () in
-        pp_print_list ~pp_sep and_type_decl
+        pp_print_list ~pp_sep:pp_print_cut (type_decl "and")
       in
-      fprintf fmt "@[<2>%a;%a@]@;@;" type_decl decl print_and_decls decls
+      let space_if_not_empty fmt = function
+        | [] ->
+            ()
+        | _ ->
+            fprintf fmt "@;"
+      in
+      fprintf fmt "@[<v>%a%a%a;@]@;@;" (type_decl "type") decl
+        space_if_not_empty decls print_and_decls decls
   | Srectype [] ->
       assert false
   | Smodule (name, msig) ->
