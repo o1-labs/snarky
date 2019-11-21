@@ -35,9 +35,9 @@ and type_desc =
 
 and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]
 
-and field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
+type field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
 
-and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
+type ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 [@@deriving sexp]
 
 and ctor_decl =
