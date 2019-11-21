@@ -85,7 +85,7 @@ include struct
       "no."
 
   let field_plus __implicit1__ (_ : field) =
-    (let typ x___1027 =
+    (let typ x___1028 =
        Typ.fn
          { Snarky.Types.Typ.store= (fun x -> Snarky.Typ_monads.Store.return x)
          ; Snarky.Types.Typ.read= (fun x -> Snarky.Typ_monads.Read.return x)
@@ -93,7 +93,7 @@ include struct
              (let open Snarky.Typ_monads.Alloc in
              map alloc ~f:(fun _ -> failwith "cannot allocate this type."))
          ; Snarky.Types.Typ.check= (fun _ -> Snarky.Checked.return ()) }
-         x___1027
+         x___1028
      in
      As_prover.read (typ __implicit1__) failwith)
       "no."
@@ -118,10 +118,10 @@ let a __implicit4__ __implicit3__ a b =
       (let open As_prover in
       fun () ->
         { a=
-            (let typ x___1037 = x___1037 in
+            (let typ x___1038 = x___1038 in
              As_prover.read (typ __implicit3__) a)
         ; b=
-            (let typ x___1039 = x___1039 in
+            (let typ x___1040 = x___1040 in
              As_prover.read (typ __implicit4__) b) })
 
 let a_1 (x : field) (b : boolean) = a Typ.boolean Typ.field x b

@@ -29,25 +29,25 @@ include struct
 
   and ('a, 'b) conv = {conv: 'a -> 'b}
 
-  let conv_typ x___1056 x___1055 =
+  let conv_typ x___1057 x___1056 =
     { Snarky.Types.Typ.store=
         (fun {conv} ->
           Snarky.Typ_monads.Store.bind
-            ((Typ.fn x___1056 x___1055).Snarky.Types.Typ.store conv)
+            ((Typ.fn x___1057 x___1056).Snarky.Types.Typ.store conv)
             ~f:(fun conv -> Snarky.Typ_monads.Store.return {conv}) )
     ; Snarky.Types.Typ.read=
         (fun {conv} ->
           Snarky.Typ_monads.Read.bind
-            ((Typ.fn x___1056 x___1055).Snarky.Types.Typ.read conv)
+            ((Typ.fn x___1057 x___1056).Snarky.Types.Typ.read conv)
             ~f:(fun conv -> Snarky.Typ_monads.Read.return {conv}) )
     ; Snarky.Types.Typ.alloc=
         Snarky.Typ_monads.Alloc.bind
-          (Typ.fn x___1056 x___1055).Snarky.Types.Typ.alloc ~f:(fun conv ->
+          (Typ.fn x___1057 x___1056).Snarky.Types.Typ.alloc ~f:(fun conv ->
             Snarky.Typ_monads.Alloc.return {conv} )
     ; Snarky.Types.Typ.check=
         (fun {conv} ->
           Snarky.Checked.bind
-            ((Typ.fn x___1056 x___1055).Snarky.Types.Typ.check conv)
+            ((Typ.fn x___1057 x___1056).Snarky.Types.Typ.check conv)
             ~f:(fun () -> Snarky.Checked.return ()) ) }
 end
 
