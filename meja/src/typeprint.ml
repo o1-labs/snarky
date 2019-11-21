@@ -101,9 +101,7 @@ let type_decl_desc fmt = function
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
   | TVariant ctors ->
-      fprintf fmt " =@ %a"
-        (pp_print_list ~pp_sep:bar_sep ctor_decl)
-        ctors
+      fprintf fmt " =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
   | TOpen ->
       fprintf fmt " =@ .."
   | TExtend (name, ctors) ->
