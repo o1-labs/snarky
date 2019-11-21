@@ -1,0 +1,37 @@
+convertible type t = opaque(int)
+with prover t = int
+by typ;
+
+convertible type u('a) = opaque(option('a))
+with prover u('a) = option('a)
+by u_typ;
+
+convertible type v('a, 'b) = opaque(('a, 'b))
+with prover v('a, 'b) = ('a, 'b)
+by v_typ;
+
+Prover {type prover = A;  }
+
+convertible type w = opaque(prover)
+with prover w = prover
+by w_typ;
+
+module A :
+  {
+    convertible type opaque('a, 'b) = ('a, 'b)
+    with prover opaque('a, 'b) = ('a, 'b)
+    by opaque_typ;
+    
+    type t = opaque(int, bool);
+    
+    Prover {type u = opaque(int, bool);  }
+    
+    let opaque : unit;
+    
+    };
+
+convertible type x = opaque(prover)
+with prover x = prover
+by x_typ;
+
+

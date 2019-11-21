@@ -1,0 +1,11 @@
+let f : {int} -> int;
+
+let g : unit -> int;
+
+let a : {int -> 'a -> 'a} -> 'a -> 'a;
+
+let h : _ -> _ -> _;
+
+let b : unit -> unit;
+
+
