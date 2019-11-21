@@ -25,7 +25,9 @@ let debug_print fmt {ident_name; ident_id; ident_mode} =
   Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.mode_debug_print
     ident_mode ident_id
 
-let fresh mode = create ~mode (sprintf "x___%i" (!current_id + 1))
+let fresh_id = ref 0
+
+let fresh mode = create ~mode (sprintf "x___%i" (incr fresh_id ; !fresh_id))
 
 module Table = struct
   type 'a t = (ident * 'a) list String.Map.t

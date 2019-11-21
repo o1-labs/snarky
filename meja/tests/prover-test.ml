@@ -19,7 +19,7 @@ module P = struct
 end
 
 let f __implicit1__ =
-  let typ x___1016 = Typ.fn x___1016 x___1016 in
+  let typ x___1 = Typ.fn x___1 x___1 in
   Snarky.exists (typ __implicit1__)
     ~compute:
       (let open As_prover in
@@ -27,24 +27,24 @@ let f __implicit1__ =
 
 include struct
   let g __implicit2__ x =
-    (let typ x___1021 = Typ.fn x___1021 x___1021 in
+    (let typ x___2 = Typ.fn x___2 x___2 in
      As_prover.read (typ __implicit2__) (f __implicit2__))
       x
 end
 
 let h __implicit6__ __implicit5__ __implicit4__ x =
-  let typ x___1028 = x___1028 in
+  let typ x___4 = x___4 in
   Snarky.exists (typ __implicit6__)
     ~compute:
       (let open As_prover in
       fun () ->
         g __implicit4__
-          (let typ x___1026 = x___1026 in
+          (let typ x___3 = x___3 in
            As_prover.read (typ __implicit5__) x))
 
 let i () =
   let f __implicit7__ =
-    let typ x___1033 = Typ.fn x___1033 x___1033 in
+    let typ x___5 = Typ.fn x___5 x___5 in
     Snarky.exists (typ __implicit7__)
       ~compute:
         (let open As_prover in
@@ -56,7 +56,7 @@ let i () =
       ~compute:
         (let open As_prover in
         fun () ->
-          (let typ x___1037 = Typ.fn x___1037 x___1037 in
+          (let typ x___6 = Typ.fn x___6 x___6 in
            As_prover.read
              (typ (Snarky.Typ.Internal.ref ()))
              (f (Snarky.Typ.Internal.ref ())))
@@ -68,13 +68,13 @@ type nonrec ('a, 'b) either = Fst of 'a | Snd of 'b
 
 let j __implicit12__ __implicit13__ __implicit14__ __implicit10__ b x =
   let f __implicit11__ =
-    let typ x___1058 = Typ.fn x___1058 (Snarky.Typ.Internal.ref ()) in
+    let typ x___10 = Typ.fn x___10 (Snarky.Typ.Internal.ref ()) in
     Snarky.exists (typ __implicit11__)
       ~compute:
         (let open As_prover in
         fun () x ->
           if
-            let typ x___1056 = x___1056 in
+            let typ x___9 = x___9 in
             As_prover.read (typ __implicit10__) b
           then Fst x
           else Snd 15)
@@ -85,9 +85,9 @@ let j __implicit12__ __implicit13__ __implicit14__ __implicit10__ b x =
       ~compute:
         (let open As_prover in
         fun () ->
-          (let typ x___1062 = Typ.fn x___1062 (Snarky.Typ.Internal.ref ()) in
+          (let typ x___11 = Typ.fn x___11 (Snarky.Typ.Internal.ref ()) in
            As_prover.read (typ __implicit13__) (f __implicit12__))
-            (let typ x___1064 = x___1064 in
+            (let typ x___12 = x___12 in
              As_prover.read (typ __implicit14__) x))
   in
   i
