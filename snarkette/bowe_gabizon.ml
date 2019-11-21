@@ -27,6 +27,8 @@ module type Backend_intf = sig
   module G2 : sig
     type t [@@deriving sexp, bin_io]
 
+    val one : t
+
     val to_affine_exn : t -> Fqe.t * Fqe.t
 
     val ( + ) : t -> t -> t
@@ -140,6 +142,8 @@ module Make (Backend : Backend_intf) = struct
       ()
   end
 
+  let one_pc = lazy (Pairing.G2_precomputation.create G2.one)
+
   let verify ?message (vk : Verification_key.Processed.t) input
       ({Proof.a; b; c; delta_prime; z} as proof) =
     let open Or_error.Let_syntax in
@@ -161,7 +165,7 @@ module Make (Backend : Backend_intf) = struct
       let r2 =
         Pairing.miller_loop
           (Pairing.G1_precomputation.create input_acc)
-          vk.delta_pc
+          (Lazy.force one_pc)
       in
       let r3 =
         Pairing.miller_loop (Pairing.G1_precomputation.create c) delta_prime_pc

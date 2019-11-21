@@ -1,3 +1,5 @@
+module Intf = Intf
+
 module Params : sig
   type 'a t = 'a Params.t [@@deriving bin_io]
 
@@ -25,19 +27,5 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) :
 module Make_operations (Field : Intf.Field) :
   Intf.Operations with module Field := Field
 
-module Make (P : Intf.Permutation) : sig
-  open P
-
-  val update :
-       Field.t Params.t
-    -> state:Field.t State.t
-    -> Field.t array
-    -> Field.t State.t
-
-  val digest : Field.t State.t -> Field.t
-
-  val initial_state : Field.t State.t
-
-  val hash :
-    ?init:Field.t State.t -> Field.t Params.t -> Field.t array -> Field.t
-end
+module Make (P : Intf.Permutation) :
+  Intf.Hash with module State := State and module Field := P.Field
