@@ -48,6 +48,8 @@ module TypeDecls = struct
   (** Meja-specific built-ins. *)
 
   let field = abstract "field"
+
+  let boolean = abstract "boolean"
 end
 
 (** Empty environment. *)
@@ -63,7 +65,14 @@ let {Typedast.tdec_tdec= int; _}, env = import int env
 
 let {Typedast.tdec_tdec= unit; _}, env = import unit env
 
-let {Typedast.tdec_tdec= bool; _}, env = import bool env
+let bool, boolean, env =
+  match
+    import_convertible boolean (Parsetypes.Ptconv_with (Checked, bool)) env
+  with
+  | boolean, Ttconv_with (Checked, bool), env ->
+      (bool.tdec_tdec, boolean.tdec_tdec, env)
+  | _ ->
+      assert false
 
 let {Typedast.tdec_tdec= char; _}, env = import char env
 
@@ -88,7 +97,14 @@ let {Typedast.tdec_tdec= int64; _}, env = import int64 env
 
 let {Typedast.tdec_tdec= nativeint; _}, env = import nativeint env
 
-let {Typedast.tdec_tdec= field; _}, env = import field env
+let field, field_var, env =
+  match
+    import_convertible field (Parsetypes.Ptconv_with (Prover, field)) env
+  with
+  | field_var, Ttconv_with (Prover, field), env ->
+      (field.tdec_tdec, field_var.tdec_tdec, env)
+  | _ ->
+      assert false
 
 let {Typedast.tdec_tdec= lazy_t; _}, env = import lazy_t env
 
@@ -115,11 +131,11 @@ module Type = struct
   let exn = TypeDecl.mk_typ ~mode:Checked exn ~params:[] env
 
   let option a =
-    { (TypeDecl.mk_typ ~mode:Checked option ~params:[a] env) with
+    { (TypeDecl.mk_typ ~mode:a.Type0.type_mode option ~params:[a] env) with
       type_depth= a.type_depth }
 
   let list a =
-    { (TypeDecl.mk_typ ~mode:Checked list ~params:[a] env) with
+    { (TypeDecl.mk_typ ~mode:a.Type0.type_mode list ~params:[a] env) with
       type_depth= a.type_depth }
 end
 

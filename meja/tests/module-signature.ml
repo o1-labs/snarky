@@ -4,12 +4,12 @@ open Impl
 module type S = sig
   val x : int
 
-  type x
+  type nonrec x
 
   val x_inst : x
 
   module X : sig
-    type t = ..
+    type nonrec t = ..
 
     type t += B | A
   end
@@ -17,7 +17,7 @@ module type S = sig
   type X.t += E | D | C
 
   module Y : sig
-    type t = A | B
+    type nonrec t = A | B
 
     open X
 

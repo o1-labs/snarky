@@ -580,6 +580,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val gen : t Core_kernel.Quickcheck.Generator.t
     (** A generator for Quickcheck tests. *)
 
+    val gen_uniform : t Core_kernel.Quickcheck.Generator.t
+    (** A uniform generator for Quickcheck tests. *)
+
     include Field_intf.Extended with type t := t
 
     include Stringable.S with type t := t
@@ -1875,6 +1878,9 @@ module type Run_basic = sig
 
       val gen : t Core_kernel.Quickcheck.Generator.t
       (** A generator for Quickcheck tests. *)
+
+      val gen_uniform : t Core_kernel.Quickcheck.Generator.t
+      (** A uniform generator for Quickcheck tests. *)
 
       include Field_intf.Extended with type t := t
 
