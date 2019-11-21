@@ -24,7 +24,32 @@ let h __implicit17__ __implicit9__ __implicit10__ (x : int) (y : bool)
   , g __implicit9__ __implicit10__ __implicit9__ y y
   , g __implicit9__ __implicit10__ __implicit17__ z z )
 
-type nonrec ('a, 'b) conv = {conv: 'a -> 'b}
+include struct
+  type nonrec ('a, 'b) conv = {conv: 'a -> 'b}
+
+  and ('a, 'b) conv = {conv: 'a -> 'b}
+
+  let conv_typ x___3 x___2 =
+    { Snarky.Types.Typ.store=
+        (fun {conv} ->
+          Snarky.Typ_monads.Store.bind
+            ((Typ.fn x___3 x___2).Snarky.Types.Typ.store conv) ~f:(fun conv ->
+              Snarky.Typ_monads.Store.return {conv} ) )
+    ; Snarky.Types.Typ.read=
+        (fun {conv} ->
+          Snarky.Typ_monads.Read.bind
+            ((Typ.fn x___3 x___2).Snarky.Types.Typ.read conv) ~f:(fun conv ->
+              Snarky.Typ_monads.Read.return {conv} ) )
+    ; Snarky.Types.Typ.alloc=
+        Snarky.Typ_monads.Alloc.bind
+          (Typ.fn x___3 x___2).Snarky.Types.Typ.alloc ~f:(fun conv ->
+            Snarky.Typ_monads.Alloc.return {conv} )
+    ; Snarky.Types.Typ.check=
+        (fun {conv} ->
+          Snarky.Checked.bind
+            ((Typ.fn x___3 x___2).Snarky.Types.Typ.check conv) ~f:(fun () ->
+              Snarky.Checked.return () ) ) }
+end
 
 let conv {conv; _} = conv
 
