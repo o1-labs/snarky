@@ -4,31 +4,40 @@ open Impl
 include struct
   type nonrec ('a, 'b, 'c) t = {a: 'a; b: 'b; c: 'c}
 
-  let typ __implicit1__ __implicit2__ __implicit3__ :
-      (('a2, 'b2, 'c2) t, ('a1, 'b1, 'c1) t) Typ.t =
-    { Typ.store=
-        (fun {a; b; c; _} ->
-          Typ.Store.bind (Typ.store __implicit1__ c) (fun c ->
-              Typ.Store.bind (Typ.store __implicit2__ b) (fun b ->
-                  Typ.Store.bind (Typ.store __implicit3__ a) (fun a ->
-                      Typ.Store.return {a; b; c} ) ) ) )
-    ; Typ.read=
-        (fun {a; b; c; _} ->
-          Typ.Read.bind (Typ.read __implicit1__ c) (fun c ->
-              Typ.Read.bind (Typ.read __implicit2__ b) (fun b ->
-                  Typ.Read.bind (Typ.read __implicit3__ a) (fun a ->
-                      Typ.Read.return {a; b; c} ) ) ) )
-    ; Typ.alloc=
-        Typ.Alloc.bind (Typ.alloc __implicit1__) (fun c ->
-            Typ.Alloc.bind (Typ.alloc __implicit2__) (fun b ->
-                Typ.Alloc.bind (Typ.alloc __implicit3__) (fun a ->
-                    Typ.Alloc.return {a; b; c} ) ) )
-    ; Typ.check=
-        (fun {a; b; c; _} ->
-          Typ.check __implicit1__ c ;
-          Typ.check __implicit2__ b ;
-          Typ.check __implicit3__ a ;
-          () ) }
+  and ('a, 'b, 'c) t = {a: 'a; b: 'b; c: 'c}
+
+  let typ x___3 x___2 x___1 =
+    { Snarky.Types.Typ.store=
+        (fun {a; b; c} ->
+          Snarky.Typ_monads.Store.bind (x___3.Snarky.Types.Typ.store a)
+            ~f:(fun a ->
+              Snarky.Typ_monads.Store.bind (x___2.Snarky.Types.Typ.store b)
+                ~f:(fun b ->
+                  Snarky.Typ_monads.Store.bind (x___1.Snarky.Types.Typ.store c)
+                    ~f:(fun c -> Snarky.Typ_monads.Store.return {a; b; c}) ) )
+          )
+    ; Snarky.Types.Typ.read=
+        (fun {a; b; c} ->
+          Snarky.Typ_monads.Read.bind (x___3.Snarky.Types.Typ.read a)
+            ~f:(fun a ->
+              Snarky.Typ_monads.Read.bind (x___2.Snarky.Types.Typ.read b)
+                ~f:(fun b ->
+                  Snarky.Typ_monads.Read.bind (x___1.Snarky.Types.Typ.read c)
+                    ~f:(fun c -> Snarky.Typ_monads.Read.return {a; b; c}) ) )
+          )
+    ; Snarky.Types.Typ.alloc=
+        Snarky.Typ_monads.Alloc.bind x___3.Snarky.Types.Typ.alloc ~f:(fun a ->
+            Snarky.Typ_monads.Alloc.bind x___2.Snarky.Types.Typ.alloc
+              ~f:(fun b ->
+                Snarky.Typ_monads.Alloc.bind x___1.Snarky.Types.Typ.alloc
+                  ~f:(fun c -> Snarky.Typ_monads.Alloc.return {a; b; c}) ) )
+    ; Snarky.Types.Typ.check=
+        (fun {a; b; c} ->
+          Snarky.Checked.bind (x___3.Snarky.Types.Typ.check a) ~f:(fun () ->
+              Snarky.Checked.bind (x___2.Snarky.Types.Typ.check b)
+                ~f:(fun () ->
+                  Snarky.Checked.bind (x___1.Snarky.Types.Typ.check c)
+                    ~f:(fun () -> Snarky.Checked.return ()) ) ) ) }
 end
 
 let x = {a= 15; b= 20; c= 25}
@@ -41,30 +50,41 @@ module X = struct
   include struct
     type nonrec 'a t = {a: 'a; b: 'a; c: 'a}
 
-    let typ __implicit13__ : ('a2 t, 'a1 t) Typ.t =
-      { Typ.store=
-          (fun {a; b; c; _} ->
-            Typ.Store.bind (Typ.store __implicit13__ c) (fun c ->
-                Typ.Store.bind (Typ.store __implicit13__ b) (fun b ->
-                    Typ.Store.bind (Typ.store __implicit13__ a) (fun a ->
-                        Typ.Store.return {a; b; c} ) ) ) )
-      ; Typ.read=
-          (fun {a; b; c; _} ->
-            Typ.Read.bind (Typ.read __implicit13__ c) (fun c ->
-                Typ.Read.bind (Typ.read __implicit13__ b) (fun b ->
-                    Typ.Read.bind (Typ.read __implicit13__ a) (fun a ->
-                        Typ.Read.return {a; b; c} ) ) ) )
-      ; Typ.alloc=
-          Typ.Alloc.bind (Typ.alloc __implicit13__) (fun c ->
-              Typ.Alloc.bind (Typ.alloc __implicit13__) (fun b ->
-                  Typ.Alloc.bind (Typ.alloc __implicit13__) (fun a ->
-                      Typ.Alloc.return {a; b; c} ) ) )
-      ; Typ.check=
-          (fun {a; b; c; _} ->
-            Typ.check __implicit13__ c ;
-            Typ.check __implicit13__ b ;
-            Typ.check __implicit13__ a ;
-            () ) }
+    and 'a t = {a: 'a; b: 'a; c: 'a}
+
+    let typ x___4 =
+      { Snarky.Types.Typ.store=
+          (fun {a; b; c} ->
+            Snarky.Typ_monads.Store.bind (x___4.Snarky.Types.Typ.store a)
+              ~f:(fun a ->
+                Snarky.Typ_monads.Store.bind (x___4.Snarky.Types.Typ.store b)
+                  ~f:(fun b ->
+                    Snarky.Typ_monads.Store.bind
+                      (x___4.Snarky.Types.Typ.store c) ~f:(fun c ->
+                        Snarky.Typ_monads.Store.return {a; b; c} ) ) ) )
+      ; Snarky.Types.Typ.read=
+          (fun {a; b; c} ->
+            Snarky.Typ_monads.Read.bind (x___4.Snarky.Types.Typ.read a)
+              ~f:(fun a ->
+                Snarky.Typ_monads.Read.bind (x___4.Snarky.Types.Typ.read b)
+                  ~f:(fun b ->
+                    Snarky.Typ_monads.Read.bind (x___4.Snarky.Types.Typ.read c)
+                      ~f:(fun c -> Snarky.Typ_monads.Read.return {a; b; c}) )
+            ) )
+      ; Snarky.Types.Typ.alloc=
+          Snarky.Typ_monads.Alloc.bind x___4.Snarky.Types.Typ.alloc
+            ~f:(fun a ->
+              Snarky.Typ_monads.Alloc.bind x___4.Snarky.Types.Typ.alloc
+                ~f:(fun b ->
+                  Snarky.Typ_monads.Alloc.bind x___4.Snarky.Types.Typ.alloc
+                    ~f:(fun c -> Snarky.Typ_monads.Alloc.return {a; b; c}) ) )
+      ; Snarky.Types.Typ.check=
+          (fun {a; b; c} ->
+            Snarky.Checked.bind (x___4.Snarky.Types.Typ.check a) ~f:(fun () ->
+                Snarky.Checked.bind (x___4.Snarky.Types.Typ.check b)
+                  ~f:(fun () ->
+                    Snarky.Checked.bind (x___4.Snarky.Types.Typ.check c)
+                      ~f:(fun () -> Snarky.Checked.return ()) ) ) ) }
   end
 
   let x = {a= 1; b= 1; c= 1}

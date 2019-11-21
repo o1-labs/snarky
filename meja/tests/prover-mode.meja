@@ -14,4 +14,43 @@ Prover {
   let z = A.x && A.y;
 };
 
-let z : int = if (Prover {A.x && A.y;}) { A.x; } else { A.y; };
+let z : opaque(int) = {
+  let x = A.x;
+  let y = A.y;
+  Prover {
+    if (A.x && A.y) { x; } else { y; };
+  };
+};
+
+let z : boolean = Prover {A.x && A.y;};
+
+type t = {a: field, b: boolean};
+
+let failwith_field : string -> field = failwith;
+
+Prover {
+  let field_plus = fun (_: field) => {
+    failwith_field("no.");
+  };
+
+  let field_plus = fun (_: field) => {
+    failwith("no.");
+  };
+};
+
+let in_out = fun (x: t) => {
+  Prover {
+    let {a, b} = x;
+    {a: field_plus(a), b: not(b)};
+  };
+};
+
+let a = fun (a, b) => {
+  Prover {
+    {a, b};
+  };
+};
+
+let a_1 = fun (x: field, b: boolean) => { a(x, b); };
+
+let a_2 = fun (x: field) => { a(x, true); };

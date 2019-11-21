@@ -62,6 +62,10 @@ rule token = parse
   | "instance" { INSTANCE }
   | "and" { AND }
   | "type" { TYPE }
+  | "convertible" { CONVERTIBLE }
+  | "by" { BY }
+  | "to" { TO }
+  | "prover" { LPROVER }
   | "rec" { REC }
   | "true" { TRUE }
   | "false" { FALSE }
@@ -82,6 +86,7 @@ rule token = parse
   | '[' { LBRACKET }
   | ']' { RBRACKET }
   | "->" { DASHGT }
+  | "-->" { DASHDASHGT }
   | "=>" { EQUALGT }
   | "~" { TILDE }
   | "?" { QUESTION }

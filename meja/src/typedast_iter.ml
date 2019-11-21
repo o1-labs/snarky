@@ -67,6 +67,10 @@ let type_desc iter = function
       iter.type_expr iter typ
   | Ttyp_prover typ ->
       iter.type_expr iter typ
+  | Ttyp_conv (typ1, typ2) ->
+      iter.type_expr iter typ1 ; iter.type_expr iter typ2
+  | Ttyp_opaque typ ->
+      iter.type_expr iter typ
 
 let variant iter {var_ident; var_params} =
   path iter var_ident ;
@@ -151,7 +155,7 @@ let expression iter {exp_desc; exp_loc; exp_type} =
 let expression_desc iter = function
   | Texp_apply (e, args) ->
       iter.expression iter e ;
-      List.iter args ~f:(fun (_label, e) -> iter.expression iter e)
+      List.iter args ~f:(fun (_explicit, _label, e) -> iter.expression iter e)
   | Texp_variable name ->
       path iter name
   | Texp_literal l ->
@@ -166,6 +170,8 @@ let expression_desc iter = function
       List.iter bindings ~f:(fun (p, e1) ->
           iter.pattern iter p ; iter.expression iter e1 ) ;
       iter.expression iter e2
+  | Texp_instance (name, e1, e2) ->
+      ident iter name ; iter.expression iter e1 ; iter.expression iter e2
   | Texp_constraint (e, typ) ->
       iter.type_expr iter typ ; iter.expression iter e
   | Texp_tuple es ->
@@ -190,8 +196,16 @@ let expression_desc iter = function
       iter.expression iter e1 ;
       iter.expression iter e2 ;
       Option.iter ~f:(iter.expression iter) e3
-  | Texp_prover e ->
+  | Texp_read (conv, conv_args, e) ->
+      iter.convert iter conv ;
+      List.iter conv_args ~f:(fun (_lbl, e) -> iter.expression iter e) ;
       iter.expression iter e
+  | Texp_prover (conv, conv_args, e) ->
+      iter.convert iter conv ;
+      List.iter conv_args ~f:(fun (_lbl, e) -> iter.expression iter e) ;
+      iter.expression iter e
+  | Texp_convert conv ->
+      iter.convert iter conv
 
 let convert_body iter {conv_body_desc; conv_body_loc; conv_body_type} =
   iter.location iter conv_body_loc ;
@@ -205,9 +219,14 @@ let convert_body_desc iter = function
           iter.convert_body iter conv )
   | Tconv_ctor (name, args) ->
       path iter name ;
-      List.iter ~f:(iter.convert_body iter) args
+      List.iter args ~f:(fun (_label, conv) -> iter.convert_body iter conv)
   | Tconv_tuple convs ->
       List.iter ~f:(iter.convert_body iter) convs
+  | Tconv_arrow (conv1, conv2) ->
+      iter.convert_body iter conv1 ;
+      iter.convert_body iter conv2
+  | Tconv_identity | Tconv_opaque ->
+      ()
 
 let convert iter {conv_desc; conv_loc; conv_type} =
   iter.location iter conv_loc ;
@@ -220,6 +239,12 @@ let convert_desc iter = function
   | Tconv_body body ->
       iter.convert_body iter body
 
+let type_conv iter = function
+  | Ttconv_with (_mode, decl) ->
+      iter.type_decl iter decl
+  | Ttconv_to typ ->
+      iter.type_expr iter typ
+
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
 let signature_item iter {sig_desc; sig_loc} =
@@ -231,6 +256,11 @@ let signature_desc iter = function
       ident iter name ; iter.type_expr iter typ
   | Tsig_type decl ->
       iter.type_decl iter decl
+  | Tsig_convtype (decl, tconv, convname, typ) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      ident iter convname ;
+      iter.type_expr iter typ
   | Tsig_rectype decls ->
       List.iter ~f:(iter.type_decl iter) decls
   | Tsig_module (name, msig) | Tsig_modtype (name, msig) ->
@@ -246,6 +276,8 @@ let signature_desc iter = function
       iter.signature iter sigs
   | Tsig_prover sigs ->
       iter.signature iter sigs
+  | Tsig_convert (name, typ) ->
+      ident iter name ; iter.type_expr iter typ
 
 let module_sig iter {msig_desc; msig_loc} =
   iter.location iter msig_loc ;
@@ -277,6 +309,11 @@ let statement_desc iter = function
       ident iter name ; iter.expression iter e
   | Tstmt_type decl ->
       iter.type_decl iter decl
+  | Tstmt_convtype (decl, tconv, convname, conv) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      ident iter convname ;
+      iter.convert iter conv
   | Tstmt_rectype decls ->
       List.iter ~f:(iter.type_decl iter) decls
   | Tstmt_module (name, me) ->
@@ -284,6 +321,8 @@ let statement_desc iter = function
   | Tstmt_modtype (name, mty) ->
       ident iter name ; iter.module_sig iter mty
   | Tstmt_open name ->
+      path iter name
+  | Tstmt_open_instance name ->
       path iter name
   | Tstmt_typeext (typ, ctors) ->
       iter.variant iter typ ;
@@ -298,6 +337,8 @@ let statement_desc iter = function
       iter.statements iter stmts
   | Tstmt_prover stmts ->
       iter.statements iter stmts
+  | Tstmt_convert (name, typ, conv) ->
+      ident iter name ; iter.type_expr iter typ ; iter.convert iter conv
 
 let module_expr iter {mod_desc; mod_loc} =
   iter.location iter mod_loc ;

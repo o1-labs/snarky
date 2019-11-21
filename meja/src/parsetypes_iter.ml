@@ -53,6 +53,10 @@ let type_desc iter = function
       iter.type_expr iter typ
   | Ptyp_prover typ ->
       iter.type_expr iter typ
+  | Ptyp_conv (typ1, typ2) ->
+      iter.type_expr iter typ1 ; iter.type_expr iter typ2
+  | Ptyp_opaque typ ->
+      iter.type_expr iter typ
 
 let variant iter {var_ident; var_params} =
   lid iter var_ident ;
@@ -148,6 +152,8 @@ let expression_desc iter = function
       List.iter bindings ~f:(fun (p, e1) ->
           iter.pattern iter p ; iter.expression iter e1 ) ;
       iter.expression iter e2
+  | Pexp_instance (name, e1, e2) ->
+      str iter name ; iter.expression iter e1 ; iter.expression iter e2
   | Pexp_constraint (e, typ) ->
       iter.type_expr iter typ ; iter.expression iter e
   | Pexp_tuple es ->
@@ -175,6 +181,12 @@ let expression_desc iter = function
   | Pexp_prover e ->
       iter.expression iter e
 
+let type_conv iter = function
+  | Ptconv_with (_mode, decl) ->
+      iter.type_decl iter decl
+  | Ptconv_to typ ->
+      iter.type_expr iter typ
+
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
 let signature_item iter {sig_desc; sig_loc} =
@@ -186,6 +198,10 @@ let signature_desc iter = function
       str iter name ; iter.type_expr iter typ
   | Psig_type decl ->
       iter.type_decl iter decl
+  | Psig_convtype (decl, tconv, conv) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      Option.iter ~f:(str iter) conv
   | Psig_rectype decl ->
       List.iter ~f:(iter.type_decl iter) decl
   | Psig_module (name, msig) | Psig_modtype (name, msig) ->
@@ -201,6 +217,8 @@ let signature_desc iter = function
       iter.signature iter sigs
   | Psig_prover sigs ->
       iter.signature iter sigs
+  | Psig_convert (name, typ) ->
+      str iter name ; iter.type_expr iter typ
 
 let module_sig iter {msig_desc; msig_loc} =
   iter.location iter msig_loc ;
@@ -232,6 +250,10 @@ let statement_desc iter = function
       str iter name ; iter.expression iter e
   | Pstmt_type decl ->
       iter.type_decl iter decl
+  | Pstmt_convtype (decl, tconv, conv) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      Option.iter ~f:(str iter) conv
   | Pstmt_rectype decls ->
       List.iter ~f:(iter.type_decl iter) decls
   | Pstmt_module (name, me) ->
@@ -239,6 +261,8 @@ let statement_desc iter = function
   | Pstmt_modtype (name, mty) ->
       str iter name ; iter.module_sig iter mty
   | Pstmt_open name ->
+      lid iter name
+  | Pstmt_open_instance name ->
       lid iter name
   | Pstmt_typeext (typ, ctors) ->
       iter.variant iter typ ;
@@ -253,6 +277,8 @@ let statement_desc iter = function
       iter.statements iter stmts
   | Pstmt_prover stmts ->
       iter.statements iter stmts
+  | Pstmt_convert (name, typ) ->
+      str iter name ; iter.type_expr iter typ
 
 let module_expr iter {mod_desc; mod_loc} =
   iter.location iter mod_loc ;
