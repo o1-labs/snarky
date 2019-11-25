@@ -16,6 +16,8 @@ and type_desc =
   | Ttyp_ctor of variant
   | Ttyp_poly of type_expr list * type_expr
   | Ttyp_prover of type_expr
+  | Ttyp_conv of type_expr * type_expr
+  | Ttyp_opaque of type_expr
 
 and variant = {var_ident: path; var_params: type_expr list}
 
@@ -49,7 +51,7 @@ and type_decl_desc =
   | Tdec_record of field_decl list
   | Tdec_variant of ctor_decl list
   | Tdec_open
-  | Tdec_extend of path * Type0.type_decl * ctor_decl list
+  | Tdec_extend of path * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
 type literal = Int of int | Bool of bool | Field of string | String of string
@@ -67,17 +69,39 @@ and pattern_desc =
   | Tpat_record of (path * pattern) list
   | Tpat_ctor of path * pattern option
 
+type convert_body =
+  { conv_body_desc: convert_body_desc
+  ; conv_body_loc: Location.t
+  ; conv_body_type: Type0.type_expr }
+
+(** AST for generating [Typ.t] instances. *)
+and convert_body_desc =
+  | Tconv_record of (path * convert_body) list
+  | Tconv_ctor of path * (Asttypes.arg_label * convert_body) list
+  | Tconv_tuple of convert_body list
+  | Tconv_arrow of convert_body * convert_body
+  | Tconv_identity
+  | Tconv_opaque
+
+and convert =
+  {conv_desc: convert_desc; conv_loc: Location.t; conv_type: Type0.type_expr}
+
+(** AST for generating [Typ.t] instances from other [Typ.t] instances. *)
+and convert_desc = Tconv_fun of ident * convert | Tconv_body of convert_body
+
 type expression =
   {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
 
 and expression_desc =
-  | Texp_apply of expression * (Asttypes.arg_label * expression) list
+  | Texp_apply of
+      expression * (explicitness * Asttypes.arg_label * expression) list
   | Texp_variable of path
   | Texp_literal of literal
   | Texp_fun of Asttypes.arg_label * pattern * expression * explicitness
   | Texp_newtype of ident * expression
   | Texp_seq of expression * expression
   | Texp_let of pattern * expression * expression
+  | Texp_instance of ident * expression * expression
   | Texp_constraint of expression * type_expr
   | Texp_tuple of expression list
   | Texp_match of expression * (pattern * expression) list
@@ -89,7 +113,23 @@ and expression_desc =
       ; name: ident
       ; id: int }
   | Texp_if of expression * expression * expression option
-  | Texp_prover of expression
+  | Texp_read of
+      convert
+      * (Asttypes.arg_label * expression) list
+      (* arguments to the conversion *)
+      * expression
+  | Texp_prover of
+      convert
+      * (Asttypes.arg_label * expression) list
+      (* arguments to the conversion *)
+      * expression
+  | Texp_convert of convert
+
+type conv_type =
+  (* Other mode stitched declaration. *)
+  | Ttconv_with of mode * type_decl
+  (* Tri-stitching to existing declaration. *)
+  | Ttconv_to of type_expr
 
 type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
 
@@ -99,6 +139,8 @@ and signature_desc =
   | Tsig_value of ident * type_expr
   | Tsig_instance of ident * type_expr
   | Tsig_type of type_decl
+  | Tsig_convtype of type_decl * conv_type * ident * type_expr
+  | Tsig_rectype of type_decl list
   | Tsig_module of ident * module_sig
   | Tsig_modtype of ident * module_sig
   | Tsig_open of path
@@ -106,6 +148,7 @@ and signature_desc =
   | Tsig_request of type_expr * ctor_decl
   | Tsig_multiple of signature
   | Tsig_prover of signature
+  | Tsig_convert of ident * type_expr
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
@@ -124,14 +167,18 @@ and statement_desc =
   | Tstmt_value of pattern * expression
   | Tstmt_instance of ident * expression
   | Tstmt_type of type_decl
+  | Tstmt_convtype of type_decl * conv_type * ident * convert
+  | Tstmt_rectype of type_decl list
   | Tstmt_module of ident * module_expr
   | Tstmt_modtype of ident * module_sig
   | Tstmt_open of path
+  | Tstmt_open_instance of path
   | Tstmt_typeext of variant * ctor_decl list
   | Tstmt_request of
       type_expr * ctor_decl * (pattern option * expression) option
   | Tstmt_multiple of statements
   | Tstmt_prover of statements
+  | Tstmt_convert of ident * type_expr * convert
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 

@@ -38,10 +38,16 @@ let consexp ~pos hd tl =
 %token FUN
 %token LET
 %token INSTANCE
+%token AND
 %token TRUE
 %token FALSE
 %token SWITCH
 %token TYPE
+%token CONVERTIBLE
+%token BY
+%token TO
+%token LPROVER
+%token REC
 %token MODULE
 %token OPEN
 %token REQUEST
@@ -59,6 +65,7 @@ let consexp ~pos hd tl =
 %token TILDE
 %token QUESTION
 %token DASHGT
+%token DASHDASHGT
 %token EQUALGT
 %token PLUSEQUAL
 %token EQUAL
@@ -108,6 +115,8 @@ let consexp ~pos hd tl =
     { "request" }
   | HANDLER
     { "handler" }
+  | LPROVER
+    { "prover" }
 
 implementation:
   | s = structure EOF
@@ -140,19 +149,21 @@ structure_item:
     { mkstmt ~pos:$loc (Pstmt_value (x, e)) }
   | INSTANCE x = as_loc(val_ident) EQUAL e = expr
     { mkstmt ~pos:$loc (Pstmt_instance (x, e)) }
-  | TYPE x = decl_type(lident) k = type_kind
-    { let (x, args) = x in
-      mkstmt ~pos:$loc (Pstmt_type
-        { tdec_ident= x
-        ; tdec_params= args
-        ; tdec_desc= k
-        ; tdec_loc= Loc.of_pos $loc }) }
+  | TYPE decl = type_decl
+    { mkstmt ~pos:$loc (Pstmt_type decl) }
+  | CONVERTIBLE TYPE decl = type_decl c = conv_type
+    named = maybe (BY l = as_loc(val_ident) { l })
+    { mkstmt ~pos:$loc (Pstmt_convtype (decl, c, named)) }
+  | decls = type_decls
+    { mkstmt ~pos:$loc (Pstmt_rectype decls) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
     { mkstmt ~pos:$loc (Pstmt_module (x, m)) }
   | MODULE TYPE x = as_loc(UIDENT) EQUAL m = module_sig
     { mkstmt ~pos:$loc (Pstmt_modtype (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
     { mkstmt ~pos:$loc (Pstmt_open x) }
+  | OPEN INSTANCE x = as_loc(longident(UIDENT, UIDENT))
+    { mkstmt ~pos:$loc (Pstmt_open_instance x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
@@ -169,13 +180,13 @@ signature_item:
     { mksig ~pos:$loc (Psig_value (x, typ)) }
   | INSTANCE x = as_loc(val_ident) COLON typ = type_expr
     { mksig ~pos:$loc (Psig_instance (x, typ)) }
-  | TYPE x = decl_type(lident) k = type_kind
-    { let (x, args) = x in
-      mksig ~pos:$loc (Psig_type
-        { tdec_ident= x
-        ; tdec_params= args
-        ; tdec_desc= k
-        ; tdec_loc= Loc.of_pos $loc }) }
+  | TYPE decl = type_decl
+    { mksig ~pos:$loc (Psig_type decl) }
+  | CONVERTIBLE TYPE decl = type_decl c = conv_type
+    named = maybe (BY l = as_loc(val_ident) { l })
+    { mksig ~pos:$loc (Psig_convtype (decl, c, named)) }
+  | decls = type_decls
+    { mksig ~pos:$loc (Psig_rectype decls) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
     { mksig ~pos:$loc (Psig_module (x, m)) }
   | MODULE x = as_loc(UIDENT)
@@ -195,9 +206,35 @@ signature_item:
   | PROVER LBRACE sigs = signature RBRACE
     { mksig ~pos:$loc (Psig_prover sigs) }
 
+type_decl:
+  | x = decl_type(lident) k = type_kind
+    { let (x, args) = x in
+      { tdec_ident= x
+      ; tdec_params= args
+      ; tdec_desc= k
+      ; tdec_loc= Loc.of_pos $loc } }
+
+and_type_decls(type_keyword):
+  | type_keyword decl = type_decl
+    { [decl] }
+  | type_keyword decl = type_decl decls = and_type_decls(AND)
+    { decl :: decls }
+
+type_decls:
+  | decls = and_type_decls(TYPE REC {})
+    { decls }
+
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
     { (p, body) }
+
+conv_type:
+  | WITH decl = type_decl
+    { Ptconv_with (Checked, decl) }
+  | WITH LPROVER decl = type_decl
+    { Ptconv_with (Prover, decl) }
+  | TO typ = type_expr
+    { Ptconv_to typ }
 
 module_expr:
   | LBRACE s = structure RBRACE
@@ -507,6 +544,8 @@ block:
     { mkexp ~pos:$loc (Pexp_seq (e1, rest)) }
   | LET x = pat EQUAL lhs = expr SEMI rhs = block
     { mkexp ~pos:$loc (Pexp_let (x, lhs, rhs)) }
+  | INSTANCE x = as_loc(lident) EQUAL lhs = expr SEMI rhs = block
+    { mkexp ~pos:$loc (Pexp_instance (x, lhs, rhs)) }
   | LET pat EQUAL expr err = err
     { raise (Error (err, Missing_semi)) }
   | expr err = err
@@ -595,6 +634,8 @@ type_expr:
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Implicit, label)) }
+  | x = simple_type_expr DASHDASHGT y = type_expr
+    { mktyp ~pos:$loc (Ptyp_conv (x, y)) }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X

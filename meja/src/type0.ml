@@ -18,6 +18,17 @@ and type_desc =
   | Tctor of variant
   | Tpoly of type_expr list * type_expr
   | Tref of type_expr
+  (* Defines a conversion between the two stitched types in the argument. *)
+  | Tconv of type_expr
+  (* Denotes that the checked part of the stitching is opaque. The prover part
+     also uses the [Topaque] constructor, but only to keep the stitching in
+     sync structurally.
+  *)
+  | Topaque of type_expr
+  (* A type used to transparently expose types from one mode in another mode.
+     This should only be used for implicit arguments.
+  *)
+  | Tother_mode of type_expr
   (* Cache the current value to break recursion. *)
   | Treplace of type_expr
 [@@deriving sexp]
@@ -46,8 +57,6 @@ and type_decl_desc =
   | TRecord of field_decl list
   | TVariant of ctor_decl list
   | TOpen
-  | TExtend of Path.t * type_decl * ctor_decl list
+  | TExtend of Path.t * ctor_decl list
       (** Internal; this should never be present in the AST. *)
-  | TForward of int option ref
-      (** Forward declaration for types loaded from cmi files. *)
 [@@deriving sexp]

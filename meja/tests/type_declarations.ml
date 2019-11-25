@@ -1,21 +1,21 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-type t = int
+type nonrec t = int
 
-type u = int * bool
+type nonrec u = int * bool
 
-type 'a v = 'a
+type nonrec 'a v = 'a
 
 type _ w = A of int | B : 'a -> 'a w
 
-type 'a x = {a: 'a; b: int; c: bool}
+type nonrec 'a x = {a: 'a; b: int; c: bool}
 
-type y = unit x
+type nonrec y = unit x
 
-type z = bool x
+type nonrec z = bool x
 
-type a = t x w x x x
+type nonrec a = t x w x x x
 
 type ('a, 'b, 'c) b =
   | First : 'a -> ('a, 'a, 'a) b
@@ -23,10 +23,10 @@ type ('a, 'b, 'c) b =
   | Third : 'c * ('a, 'b, _) b -> ('a, 'b, 'c) b
   | Rotate : ('a, 'b, 'c) b -> ('b, 'c, 'a) b
 
-type unit = ()
+type nonrec unit = ()
 
 type polycary = A : 'a -> polycary
 
 type 'a c = A of {x: 'a} | B of 'a | C : {x: 'b} -> 'b c
 
-type d
+type nonrec d

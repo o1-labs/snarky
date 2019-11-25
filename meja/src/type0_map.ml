@@ -44,23 +44,40 @@ let type_expr mapper typ =
       (* Recursion breaking. *)
       typ
   | desc ->
-      (* Dummy type variable. *)
-      let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
       let alt_desc = typ.type_alternate.type_desc in
+      let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
+      let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
+      (* Initialise [typ'] as its own recursion-breaking value. *)
+      typ'.type_desc <- Treplace typ' ;
+      typ'.type_alternate.type_desc <- Treplace typ'.type_alternate ;
+      let is_stitched = phys_equal typ typ.type_alternate.type_alternate in
+      if is_stitched then
+        (* Change from tri-stitching to plain stitching. *)
+        typ'.type_alternate.type_alternate <- typ'
+      else
+        typ'.type_alternate.type_alternate.type_desc
+        <- Treplace typ'.type_alternate.type_alternate ;
       Type1.set_replacement typ typ' ;
       let type_desc = mapper.type_desc mapper desc in
       let alt_type_desc = mapper.type_desc mapper alt_desc in
-      let typ' =
-        if phys_equal type_desc desc && phys_equal alt_type_desc alt_desc then (
-          typ'.type_desc <- Tref typ ;
-          typ'.type_alternate.type_desc <- Tref typ ;
-          typ )
-        else (
-          typ'.type_desc <- type_desc ;
-          typ'.type_alternate.type_desc <- alt_type_desc ;
-          typ' )
+      let alt_alt_type_desc =
+        if is_stitched then type_desc else mapper.type_desc mapper alt_alt_desc
       in
-      typ'
+      if
+        phys_equal type_desc desc
+        && phys_equal alt_type_desc alt_desc
+        && phys_equal alt_alt_type_desc alt_alt_desc
+      then (
+        typ'.type_desc <- Tref typ ;
+        typ'.type_alternate.type_desc <- Tref typ.type_alternate ;
+        typ'.type_alternate.type_alternate.type_desc
+        <- Tref typ.type_alternate.type_alternate ;
+        typ )
+      else (
+        typ'.type_desc <- type_desc ;
+        typ'.type_alternate.type_desc <- alt_type_desc ;
+        typ'.type_alternate.type_alternate.type_desc <- alt_alt_type_desc ;
+        typ' )
 
 let type_desc mapper desc =
   match desc with
@@ -86,6 +103,15 @@ let type_desc mapper desc =
   | Tref typ ->
       let typ' = mapper.type_expr mapper typ in
       if phys_equal typ' typ then desc else Tref typ'
+  | Tconv typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then desc else Tconv typ'
+  | Topaque typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then desc else Topaque typ'
+  | Tother_mode typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then desc else Tother_mode typ'
   | Treplace typ ->
       (* Recursion breaking. *)
       typ.type_desc
@@ -140,7 +166,7 @@ let type_decl mapper
 
 let type_decl_desc mapper desc =
   match desc with
-  | TAbstract | TOpen | TForward _ ->
+  | TAbstract | TOpen ->
       desc
   | TAlias typ ->
       let typ' = mapper.type_expr mapper typ in
@@ -153,13 +179,11 @@ let type_decl_desc mapper desc =
       let same = ref true in
       let ctors = map_list ctors ~same ~f:(mapper.ctor_decl mapper) in
       if !same then desc else TVariant ctors
-  | TExtend (path, decl, ctors) ->
+  | TExtend (path, ctors) ->
       let path' = mapper.path mapper path in
-      let decl' = mapper.type_decl mapper decl in
       let same = ref true in
       let ctors = map_list ctors ~same ~f:(mapper.ctor_decl mapper) in
-      if !same && phys_equal path' path && phys_equal decl' decl then desc
-      else TExtend (path', decl', ctors)
+      if !same && phys_equal path' path then desc else TExtend (path', ctors)
 
 let path mapper path =
   match path with

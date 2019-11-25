@@ -3,7 +3,7 @@ open Type0
 open Format
 open Ast_print
 
-let rec type_desc ?(bracket = false) fmt = function
+let rec type_desc ~mode ?(bracket = false) fmt = function
   | Tvar None ->
       fprintf fmt "_"
   | Tvar (Some name) ->
@@ -24,21 +24,41 @@ let rec type_desc ?(bracket = false) fmt = function
       variant fmt v
   | Tpoly (vars, typ) ->
       if bracket then fprintf fmt "(" ;
-      fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
-        type_expr typ ;
+      fprintf fmt "/*@[%a.@]*/@ %a"
+        (type_desc ~mode ~bracket:false)
+        (Ttuple vars) type_expr typ ;
       if bracket then fprintf fmt ")"
   | Tref typ ->
       let typ = Type1.repr typ in
       if bracket then type_expr_b fmt typ else type_expr fmt typ
   | Treplace _ ->
       assert false
+  | Tconv typ ->
+      let typ1 = Type1.get_mode Checked typ in
+      let typ2 = Type1.get_mode Prover typ in
+      if bracket then fprintf fmt "(" ;
+      fprintf fmt "%a@ --> %a" type_expr_b typ1 type_expr typ2 ;
+      if bracket then fprintf fmt ")"
+  | Topaque typ -> (
+    match mode with
+    | Checked ->
+        fprintf fmt "@[<hv2>opaque(@,%a@,)@]" type_expr typ
+    | Prover ->
+        type_expr fmt typ )
+  | Tother_mode typ -> (
+    match (mode, typ.type_mode) with
+    | Checked, Prover ->
+        fprintf fmt "@[<hv2>Prover{@,%a@,}@]" type_expr typ
+    | _ ->
+        type_expr fmt typ )
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
 
-and type_expr fmt typ = type_desc fmt typ.type_desc
+and type_expr fmt typ = type_desc ~mode:typ.type_mode fmt typ.type_desc
 
-and type_expr_b fmt typ = type_desc ~bracket:true fmt typ.type_desc
+and type_expr_b fmt typ =
+  type_desc ~mode:typ.type_mode ~bracket:true fmt typ.type_desc
 
 and variant fmt v =
   match v.var_params with
@@ -84,19 +104,10 @@ let type_decl_desc fmt = function
       fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
   | TOpen ->
       fprintf fmt "@ =@ .."
-  | TExtend (name, _, ctors) ->
+  | TExtend (name, ctors) ->
       fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
-  | TForward i ->
-      let print_id fmt i =
-        match i with
-        | Some i ->
-            pp_print_int fmt i
-        | None ->
-            pp_print_char fmt '?'
-      in
-      fprintf fmt "@ /* forward declaration %a */" print_id !i
 
 let type_decl ident fmt decl =
   fprintf fmt "type %a" Ident.pprint ident ;

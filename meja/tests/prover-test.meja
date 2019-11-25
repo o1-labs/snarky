@@ -34,3 +34,25 @@ let i = fun () => {
   };
   i;
 };
+
+type either('a, 'b) = Fst('a) | Snd('b);
+
+let j = fun (b, x) => {
+  let f = Prover {
+    fun (x) => {
+      if (b) {
+        Fst(x);
+      } else {
+        Snd(15);
+      };
+    };
+  };
+  let i = Prover {
+    f(x);
+  };
+  i;
+};
+
+let k = fun (f: field) => { j(true, f); };
+
+let l = fun (b: boolean, b': boolean) => { j(b, b'); };
