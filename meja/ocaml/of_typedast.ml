@@ -1,6 +1,15 @@
 open Core_kernel
 open Asttypes
 open Meja_lib.Ast_types
+
+module Rf = struct
+  (* This implements the necessary parts of Ast_helper.Rf for older OCaml
+     versions which did not have it. In newer versions, this will be shadowed
+     by [open Ast_helper] below.
+  *)
+  let tag ?loc:_ ?(attrs = []) a b c = Parsetree.Rtag (a, attrs, b, c)
+end
+
 open Ast_helper
 open Meja_lib.Typedast
 
@@ -44,6 +53,20 @@ let rec of_type_desc ?loc typ =
               (Longident.unflatten ["Snarky"; "As_prover"; "Ref"; "t"]))
            (Option.value ~default:Location.none loc))
         [of_type_expr typ]
+  | Ttyp_row (tags, closed, min_tags) ->
+      Typ.variant ?loc
+        (List.map tags ~f:(fun {rtag_ident; rtag_arg; rtag_loc} ->
+             match rtag_arg with
+             | [] ->
+                 Rf.tag ~loc:rtag_loc (of_ident_loc rtag_ident) true []
+             | _ ->
+                 Rf.tag ~loc:rtag_loc (of_ident_loc rtag_ident) false
+                   [Typ.tuple ~loc:rtag_loc (List.map ~f:of_type_expr rtag_arg)]
+         ))
+        closed
+        (Option.map
+           ~f:(List.map ~f:(fun {Location.txt; _} -> of_ident txt))
+           min_tags)
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 

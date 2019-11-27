@@ -45,6 +45,30 @@ module Type0 = struct
         assert false
     | Treplace _ ->
         assert false
+    | Trow {row_tags; row_closed; row_proxy= _} ->
+        let needs_lower_bound = ref false in
+        let tags, min_tags =
+          Map.fold_right row_tags ~init:([], [])
+            ~f:(fun ~key ~data:(_path, pres, args) (tags, min_tags) ->
+              let row () =
+                assert (Ident.is_row key) ;
+                { Parsetypes.rtag_ident= Loc.mk ?loc (Ident.name key)
+                ; rtag_arg= List.map ~f:(type_expr ?loc) args
+                ; rtag_loc= Option.value ~default:Location.none loc }
+              in
+              match pres with
+              | Absent ->
+                  (tags, min_tags)
+              | Present ->
+                  let row = row () in
+                  (row :: tags, row.rtag_ident :: min_tags)
+              | Maybe ->
+                  needs_lower_bound := true ;
+                  (row () :: tags, min_tags) )
+        in
+        if !needs_lower_bound then
+          Type.row ?loc tags row_closed (Some min_tags)
+        else Type.row ?loc tags row_closed None
 
   and type_expr ?loc typ = type_desc ~mode:typ.type_mode ?loc typ.type_desc
 
@@ -105,6 +129,11 @@ let rec type_desc = function
       Ptyp_conv (type_expr typ1, type_expr typ2)
   | Ttyp_opaque typ ->
       Ptyp_opaque (type_expr typ)
+  | Ttyp_row (tags, closed, min_tags) ->
+      Ptyp_row
+        ( List.map ~f:row_tags tags
+        , closed
+        , Option.map ~f:(List.map ~f:(map_loc ~f:Ident.name)) min_tags )
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}
@@ -112,6 +141,11 @@ and type_expr {type_desc= typ; type_loc; type_type= _} =
 and variant {Typedast.var_ident; var_params} =
   { Parsetypes.var_ident= map_loc ~f:longident_of_path var_ident
   ; var_params= List.map ~f:type_expr var_params }
+
+and row_tags {rtag_ident; rtag_arg; rtag_loc} =
+  { Parsetypes.rtag_ident= map_loc ~f:Ident.name rtag_ident
+  ; rtag_arg= List.map ~f:type_expr rtag_arg
+  ; rtag_loc }
 
 let field_decl {Typedast.fld_ident; fld_type; fld_loc; fld_fld= _} =
   { Parsetypes.fld_ident= map_loc ~f:Ident.name fld_ident

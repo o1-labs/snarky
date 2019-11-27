@@ -12,6 +12,8 @@ type error =
   | Opaque_type_in_prover_mode of type_expr
   | Convertible_arities_differ of string * int * string * int
   | GADT_in_nonrec_type
+  | Repeated_row_label of Ident.t
+  | Missing_row_label of Ident.t
 
 exception Error of Location.t * error
 
@@ -187,6 +189,125 @@ module Type = struct
           join_expr_scope env scope
         in
         (mk_opaque ~loc typ env, env)
+    | Ptyp_row (tags, row_closed, min_tags) ->
+        let pres =
+          match (row_closed, min_tags) with
+          | Closed, Some _ ->
+              Type0.Maybe
+          | Open, _ | Closed, None ->
+              Type0.Present
+        in
+        let (env, (row_tags1, row_tags2, row_tags3)), tags =
+          List.fold_map
+            ~init:(env, (Ident.Map.empty, Ident.Map.empty, None))
+            tags
+            ~f:
+              (fun (env, (row_tags1, row_tags2, row_tags3))
+                   {rtag_ident; rtag_arg; rtag_loc} ->
+              let env, rtag_arg =
+                List.fold_map rtag_arg ~init:env ~f:(fun e t ->
+                    let t, e = import t e in
+                    (e, t) )
+              in
+              let rtag_ident = map_loc ~f:Ident.create_row rtag_ident in
+              let needs_tags3 = ref false in
+              let args =
+                List.map rtag_arg ~f:(fun {Typedast.type_type; _} ->
+                    let alt = type_type.type_alternate.type_alternate in
+                    if not (phys_equal type_type alt) then needs_tags3 := true ;
+                    type_type )
+              in
+              let row_tags3 =
+                match (row_tags3, !needs_tags3) with
+                | (Some _ as row_tags3), _ ->
+                    row_tags3
+                | None, true ->
+                    (* All types so far have been stitched; these will be
+                         compatible with tri-stitching.
+                      *)
+                    Some row_tags1
+                | None, false ->
+                    None
+              in
+              let row_tags1 =
+                match
+                  Map.add row_tags1 ~key:rtag_ident.txt
+                    ~data:(Path.Pident rtag_ident.txt, pres, args)
+                with
+                | `Duplicate ->
+                    raise
+                      (Error (rtag_ident.loc, Repeated_row_label rtag_ident.txt))
+                | `Ok row_tags1 ->
+                    row_tags1
+              in
+              let alt_args = List.map ~f:Type1.type_alternate args in
+              let row_tags2 =
+                Map.add_exn row_tags2 ~key:rtag_ident.txt
+                  ~data:(Path.Pident rtag_ident.txt, pres, alt_args)
+              in
+              let row_tags3 =
+                Option.map row_tags3 ~f:(fun row_tags3 ->
+                    Map.add_exn ~key:rtag_ident.txt
+                      ~data:
+                        ( Path.Pident rtag_ident.txt
+                        , pres
+                        , List.map ~f:Type1.type_alternate alt_args )
+                      row_tags3 )
+              in
+              ( (env, (row_tags1, row_tags2, row_tags3))
+              , {Typedast.rtag_ident; rtag_arg; rtag_loc} ) )
+        in
+        let min_tags =
+          Option.map ~f:(List.map ~f:(map_loc ~f:Ident.create_row)) min_tags
+        in
+        let row_tags1, row_tags2, row_tags3 =
+          let set_maybe tag row_tags =
+            Map.change row_tags tag.Location.txt ~f:(function
+              | None ->
+                  raise (Error (tag.loc, Missing_row_label tag.txt))
+              | Some (path, _, args) ->
+                  Some (path, Type0.Present, args) )
+          in
+          Option.fold ~init:(row_tags1, row_tags2, row_tags3) min_tags
+            ~f:(fun init ->
+              List.fold ~init ~f:(fun (row_tags1, row_tags2, row_tags3) tag ->
+                  ( set_maybe tag row_tags1
+                  , set_maybe tag row_tags2
+                  , Option.map ~f:(set_maybe tag) row_tags3 ) ) )
+        in
+        let row_proxy = Envi.Type.mkvar ~mode None env in
+        let type_type =
+          let typ =
+            Type1.mk' ~mode env.depth
+              (Trow {row_tags= row_tags1; row_closed; row_proxy})
+          in
+          let alt =
+            Type1.mk' ~mode:(other_mode mode) env.depth
+              (Trow
+                 { row_tags= row_tags2
+                 ; row_closed
+                 ; row_proxy= row_proxy.type_alternate })
+          in
+          typ.type_alternate <- alt ;
+          ( match row_tags3 with
+          | Some row_tags3 ->
+              let alt_alt =
+                Type1.mk' ~mode env.depth
+                  (Trow
+                     { row_tags= row_tags3
+                     ; row_closed
+                     ; row_proxy= row_proxy.type_alternate.type_alternate })
+              in
+              alt.type_alternate <- alt_alt ;
+              alt_alt.type_alternate <- alt
+          | None ->
+              alt.type_alternate <- typ ) ;
+          typ
+        in
+        ( { Typedast.type_desc= Ttyp_row (tags, row_closed, min_tags)
+          ; type_loc= loc
+          ; type_type }
+        , env )
 
   let fold ~init ~f typ =
     match typ.type_desc with
@@ -209,6 +330,9 @@ module Type = struct
         f acc typ2
     | Ptyp_opaque typ ->
         f init typ
+    | Ptyp_row (tags, _closed, _min_tags) ->
+        List.fold ~init tags ~f:(fun acc {rtag_arg; _} ->
+            List.fold ~f ~init:acc rtag_arg )
 
   let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -235,6 +359,14 @@ module Type = struct
         {type_desc= Ptyp_conv (f typ1, f typ2); type_loc= loc}
     | Ptyp_opaque typ ->
         {type_desc= Ptyp_opaque (f typ); type_loc= loc}
+    | Ptyp_row (tags, closed, min_tags) ->
+        { type_desc=
+            Ptyp_row
+              ( List.map tags ~f:(fun tag ->
+                    {tag with rtag_arg= List.map ~f tag.rtag_arg} )
+              , closed
+              , min_tags )
+        ; type_loc= loc }
 end
 
 module TypeDecl = struct
@@ -684,6 +816,13 @@ let report_error ppf = function
       fprintf ppf
         "@[<hov>GADT case syntax cannot be used in a non-recursive type.@ To \
          use this syntax, use 'type rec' for this type definition.@]@."
+  | Repeated_row_label label ->
+      fprintf ppf
+        "@[<hov>The constructor %a has already appeared in this row.@]@."
+        Ident.pprint label
+  | Missing_row_label label ->
+      fprintf ppf "@[<hov>The constructor %a is not present in this row.@]@."
+        Ident.pprint label
 
 let () =
   Location.register_error_of_exn (function

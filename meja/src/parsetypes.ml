@@ -13,8 +13,20 @@ and type_desc =
   | Ptyp_prover of type_expr
   | Ptyp_conv of type_expr * type_expr
   | Ptyp_opaque of type_expr
+  | Ptyp_row of
+      row_tag list
+      * (* [Closed] if the row_field list is an upper bound,
+           [Open] if the row_field list is a lower bound.
+        *)
+        closed_flag
+      * (* The lower bound of the row, if it differs from the fields in the
+           row_field list.
+        *)
+      str list option
 
 and variant = {var_ident: lid; var_params: type_expr list}
+
+and row_tag = {rtag_ident: str; rtag_arg: type_expr list; rtag_loc: Location.t}
 
 type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 

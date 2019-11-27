@@ -1,6 +1,8 @@
 open Core_kernel
 open Ast_types
 
+type row_presence = Present | Maybe | Absent [@@deriving sexp, compare]
+
 type type_expr =
   { mutable type_desc: type_desc
   ; type_id: int
@@ -31,13 +33,21 @@ and type_desc =
   | Tother_mode of type_expr
   (* Cache the current value to break recursion. *)
   | Treplace of type_expr
+  | Trow of row
 [@@deriving sexp]
 
 and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]
 
-and field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
+and row =
+  { row_tags: (Path.t * row_presence * type_expr list) Ident.Map.t
+  ; row_closed: closed_flag
+        (* A type variable used to signal whether to copy the row or not. *)
+  ; row_proxy: type_expr }
+[@@deriving sexp]
 
-and ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
+type field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
+
+type ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 [@@deriving sexp]
 
 and ctor_decl =

@@ -195,9 +195,82 @@ let rec typ_debug_print fmt typ =
       | Tother_mode typ ->
           print "mode-change " ; typ_debug_print fmt typ
       | Treplace typ ->
-          print "=== " ; typ_debug_print fmt typ ) ;
+          print "=== " ; typ_debug_print fmt typ
+      | Trow row ->
+          print "row " ; row_debug_print fmt row ) ;
     Hash_set.remove hashtbl typ.type_id ) ;
   print " @%i)" typ.type_depth
+
+and row_debug_print fmt {row_tags; row_closed; row_proxy} =
+  let open Format in
+  fprintf fmt "%a as %a" closed_flag_debug_print row_closed typ_debug_print
+    row_proxy ;
+  let is_first = ref true in
+  Map.iteri row_tags ~f:(fun ~key ~data:(path, pres, args) ->
+      if !is_first then (
+        is_first := false ;
+        pp_print_string fmt ": " )
+      else pp_print_string fmt " | " ;
+      let pres =
+        match pres with Present -> "+" | Maybe -> "?" | Absent -> "-"
+      in
+      fprintf fmt "%a(%a)(%s):%a" Path.debug_print path Ident.debug_print key
+        pres
+        (pp_print_list
+           ~pp_sep:(fun fmt () -> pp_print_string fmt ", ")
+           typ_debug_print)
+        args )
+
+let field_decl_debug_print fmt {fld_ident; fld_type} =
+  Format.fprintf fmt "%a: %a" Ident.debug_print fld_ident typ_debug_print
+    fld_type
+
+let rec ctor_args_debug_print fmt args =
+  let open Format in
+  let pp_sep fmt () = pp_print_string fmt "," in
+  match args with
+  | Ctor_tuple typs ->
+      fprintf fmt "(%a)" (pp_print_list ~pp_sep typ_debug_print) typs
+  | Ctor_record {tdec_desc= TRecord fields; _} ->
+      fprintf fmt "{%a}" (pp_print_list ~pp_sep field_decl_debug_print) fields
+  | Ctor_record decl ->
+      (* NOTE: This shouldn't happen, but is useful for debugging when it does.
+      *)
+      type_decl_desc_debug_print fmt decl.tdec_desc
+
+and ctor_decl_debug_print fmt {ctor_ident; ctor_args; ctor_ret} =
+  let open Format in
+  fprintf fmt "%a%a" Ident.debug_print ctor_ident ctor_args_debug_print
+    ctor_args ;
+  match ctor_ret with
+  | Some typ ->
+      fprintf fmt " : %a" typ_debug_print typ
+  | None ->
+      ()
+
+and type_decl_desc_debug_print fmt desc =
+  let open Format in
+  let comma fmt () = pp_print_string fmt ", " in
+  let bar fmt () = pp_print_string fmt " | " in
+  match desc with
+  | TAbstract ->
+      fprintf fmt "Abstract"
+  | TAlias typ ->
+      fprintf fmt "Alias %a" typ_debug_print typ
+  | TRecord fields ->
+      fprintf fmt "Record {%a}"
+        (pp_print_list ~pp_sep:comma field_decl_debug_print)
+        fields
+  | TVariant ctors ->
+      fprintf fmt "Variant (%a)"
+        (pp_print_list ~pp_sep:bar ctor_decl_debug_print)
+        ctors
+  | TOpen ->
+      fprintf fmt "Open"
+  | TExtend (path, ctors) ->
+      fprintf fmt "Extend(%a) (%a)" Path.debug_print path
+        (pp_print_list ~pp_sep:bar ctor_decl_debug_print)
+        ctors
 
 let typ_debug_print_alts fmt typ =
   let open Format in
@@ -565,6 +638,10 @@ let fold ~init ~f typ =
       f init typ
   | Treplace _ ->
       assert false
+  | Trow {row_tags; row_closed= _; row_proxy} ->
+      let acc = f init row_proxy in
+      Map.fold row_tags ~init:acc ~f:(fun ~key:_ ~data:(_, _, args) init ->
+          List.fold ~f ~init args )
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -592,6 +669,15 @@ let rec copy_desc ~f = function
       Tother_mode (f typ)
   | Treplace _ ->
       assert false
+  | Trow row ->
+      Trow (copy_row ~f row)
+
+and copy_row ~f {row_tags; row_closed; row_proxy} =
+  let row_tags =
+    Map.map row_tags ~f:(fun (path, pres, args) ->
+        (path, pres, List.map ~f args) )
+  in
+  {row_tags; row_closed; row_proxy= f row_proxy}
 
 let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
   let equal_at_depth = equal_at_depth ~get_decl ~depth in
@@ -742,6 +828,9 @@ let flatten typ =
     | Tvar _ ->
         (* Don't copy variables! *)
         typ
+    | Trow _ ->
+        (* Don't flatten rows! *)
+        typ
     | desc -> (
       match typ.type_alternate.type_desc with
       | Treplace alt ->
@@ -855,6 +944,9 @@ let is_arrow typ =
 
 let is_var typ = match (repr typ).type_desc with Tvar _ -> true | _ -> false
 
+let is_replace typ =
+  match (repr typ).type_desc with Treplace _ -> true | _ -> false
+
 let get_rev_arrow_args typ =
   let rec go args typ =
     let typ = repr typ in
@@ -912,6 +1004,9 @@ let contains typ ~in_ =
         assert false
     | Treplace _ ->
         assert false
+    | Trow {row_tags; row_closed= _; row_proxy= _} ->
+        Map.exists row_tags ~f:(fun (_path, _pres, args) ->
+            List.exists ~f:equal args || List.exists ~f:contains args )
   in
   contains in_
 

@@ -5,6 +5,7 @@ type mapper =
   { type_expr: mapper -> type_expr -> type_expr
   ; type_desc: mapper -> type_desc -> type_desc
   ; variant: mapper -> variant -> variant
+  ; row: mapper -> row -> row
   ; field_decl: mapper -> field_decl -> field_decl
   ; ctor_args: mapper -> ctor_args -> ctor_args
   ; ctor_decl: mapper -> ctor_decl -> ctor_decl
@@ -115,6 +116,9 @@ let type_desc mapper desc =
   | Treplace typ ->
       (* Recursion breaking. *)
       typ.type_desc
+  | Trow row ->
+      let row' = mapper.row mapper row in
+      if phys_equal row' row then desc else Trow row'
 
 let variant mapper ({var_ident= ident; var_params} as variant) =
   let var_ident = mapper.path mapper ident in
@@ -122,6 +126,20 @@ let variant mapper ({var_ident= ident; var_params} as variant) =
   let var_params = map_list var_params ~same ~f:(mapper.type_expr mapper) in
   if !same && phys_equal var_ident ident then variant
   else {var_ident; var_params}
+
+let row mapper ({row_tags; row_closed; row_proxy} as row) =
+  let same = ref true in
+  let row_tags =
+    Map.fold row_tags ~init:Ident.Map.empty
+      ~f:(fun ~key ~data:(path, pres, args) row_tags ->
+        let key' = mapper.ident mapper key in
+        let path' = mapper.path mapper path in
+        let args = map_list ~f:(mapper.type_expr mapper) ~same args in
+        if not (phys_equal key' key && phys_equal path' path) then
+          same := false ;
+        Map.set row_tags ~key:key' ~data:(path', pres, args) )
+  in
+  if !same then row else {row_tags; row_closed; row_proxy}
 
 let field_decl mapper ({fld_ident= ident; fld_type= typ} as fld) =
   let fld_type = mapper.type_expr mapper typ in
@@ -205,6 +223,7 @@ let default_mapper =
   { type_expr
   ; type_desc
   ; variant
+  ; row
   ; field_decl
   ; ctor_args
   ; ctor_decl

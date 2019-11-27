@@ -19,6 +19,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= Loc.of_pos pos}
 let mksig ~pos d = {sig_desc= d; sig_loc= Loc.of_pos pos}
 let mkmod ~pos d = {mod_desc= d; mod_loc= Loc.of_pos pos}
 let mkmty ~pos d = {msig_desc= d; msig_loc= Loc.of_pos pos}
+let mkrow ~pos d arg = {rtag_ident= d; rtag_arg= arg; rtag_loc= Loc.of_pos pos}
 
 let conspat ~pos hd tl =
   mkpat ~pos (Ppat_ctor
@@ -74,7 +75,10 @@ let consexp ~pos hd tl =
 %token COMMA
 %token UNDERSCORE
 %token BAR
+%token LT
+%token GT
 %token QUOT
+%token TICK
 %token DOTDOTDOT
 %token DOTDOT
 %token DOT
@@ -90,14 +94,13 @@ let consexp ~pos hd tl =
 
 %token EOL
 
-%left     INFIXOP0 EQUAL
+%left     INFIXOP0 LT GT EQUAL
 %right    INFIXOP1
 %right    COLONCOLON
 %left     MINUS INFIXOP2 PLUSEQUAL
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
-%right    DASHGT
 %nonassoc LPAREN
 
 %start implementation
@@ -129,7 +132,7 @@ interface:
 file(item):
   | (* Empty *)
     { [] }
-  | s = item maybe(SEMI)
+  | s = item
     { [s] }
   | s = item SEMI rest = file(item)
     { s :: rest }
@@ -315,6 +318,8 @@ ctor_decl_args:
 
 infix_operator:
   | op = INFIXOP0 { op }
+  | LT            { "<" }
+  | GT            { ">" }
   | EQUAL         { "=" }
   | op = INFIXOP1 { op }
   | MINUS         { "-" }
@@ -517,8 +522,6 @@ function_from_args:
     { mkexp ~pos:$loc (Pexp_newtype (t, body)) }
   | TYPE t = as_loc(lident) COMMA f = function_from_args
     { mkexp ~pos:$loc (Pexp_newtype (t, f)) }
-  | pat_arg_opt RPAREN err = err
-    { raise (Error (err, Fun_no_fat_arrow)) }
 
 function_from_implicit_args:
   | p = pat_arg RBRACE LPAREN f = function_from_args
@@ -618,6 +621,16 @@ simple_type_expr:
     { mktyp ~pos:$loc (Ptyp_prover x) }
   | PROVER LBRACE x = type_expr RBRACE
     { mktyp ~pos:$loc (Ptyp_prover x) }
+  | LBRACKET GT RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row ([], Open, None)) }
+  | LBRACKET tags = row_tags RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, None)) }
+  | LBRACKET GT tags = row_tags RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Open, None)) }
+  | LBRACKET LT tags = row_tags RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, Some [])) }
+  | LBRACKET LT tags = row_tags GT min_tags = list(row_name, BAR) RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, Some (List.rev min_tags))) }
 
 %inline type_arrow_label:
   | (* Empty *)
@@ -636,6 +649,18 @@ type_expr:
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Implicit, label)) }
   | x = simple_type_expr DASHDASHGT y = type_expr
     { mktyp ~pos:$loc (Ptyp_conv (x, y)) }
+
+row_name:
+  | TICK name = as_loc(UIDENT)
+    { name }
+
+row_tag:
+  | name = row_name
+    { mkrow ~pos:$loc name [] }
+  | name = row_name LPAREN args = list(type_expr, COMMA) RPAREN
+    { mkrow ~pos:$loc name args }
+
+row_tags: x = list(row_tag, BAR) { x }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X
@@ -663,6 +688,9 @@ longident(X, M):
     { Lident x }
   | path = longident(M, M) DOT x = X
     { Ldot (path, x) }
+
+%inline loc(X) : _x = X
+  { Loc.of_pos ($symbolstartpos, $endpos) }
 
 %inline err : _x = error
   { Loc.of_pos ($symbolstartpos, $endpos) }

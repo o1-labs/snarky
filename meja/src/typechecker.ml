@@ -29,6 +29,8 @@ type error =
   | Cannot_create_conversion of type_expr
   | Convertible_not_in_checked
   | Type_modes_mismatch of type_expr * type_expr
+  | Missing_row_constructor of Path.t * type_expr * type_expr
+  | Empty_resulting_row of type_expr * type_expr
 
 exception Error of Location.t * Envi.t * error
 
@@ -259,6 +261,102 @@ let rec check_type_aux ~loc typ ctyp env =
   | Tconv typ, Tconv ctyp ->
       check_type_aux typ ctyp env ;
       check_type_aux typ.type_alternate ctyp.type_alternate env
+  | ( Trow {row_tags= row_tags1; row_closed= row_closed1; row_proxy= row_proxy1}
+    , Trow {row_tags= row_tags2; row_closed= row_closed2; row_proxy= row_proxy2}
+    ) ->
+      check_type_aux row_proxy1 row_proxy2 env ;
+      let is_empty = ref true in
+      let row_tags =
+        Map.merge row_tags1 row_tags2 ~f:(fun ~key:_ data ->
+            match (data, row_closed1, row_closed2) with
+            | `Left (path, Present, _), _, Closed
+            | `Right (path, Present, _), Closed, _ ->
+                raise
+                  (Error (loc, env, Missing_row_constructor (path, typ, ctyp)))
+            | `Left (path, Maybe, args), _, Closed
+            | `Right (path, Maybe, args), Closed, _ ->
+                Some (path, Absent, args)
+            | `Left data, _, _ | `Right data, _, _ ->
+                ( match data with
+                | _, Absent, _ ->
+                    ()
+                | _, (Present | Maybe), _ ->
+                    is_empty := false ) ;
+                Some data
+            | `Both ((path1, pres1, args1), (path2, pres2, args2)), _, _ ->
+                let pres =
+                  match (pres1, pres2) with
+                  | Maybe, Maybe ->
+                      is_empty := false ;
+                      Maybe
+                  | (Present | Maybe), (Present | Maybe) ->
+                      is_empty := false ;
+                      Present
+                  | (Absent | Maybe), (Absent | Maybe) ->
+                      Absent
+                  | Present, Absent ->
+                      raise
+                        (Error
+                           ( loc
+                           , env
+                           , Missing_row_constructor (path1, typ, ctyp) ))
+                  | Absent, Present ->
+                      raise
+                        (Error
+                           ( loc
+                           , env
+                           , Missing_row_constructor (path1, typ, ctyp) ))
+                in
+                ( match
+                    List.iter2 args1 args2 ~f:(fun typ ctyp ->
+                        check_type_aux typ ctyp env )
+                  with
+                | Ok () ->
+                    ()
+                | Unequal_lengths ->
+                    raise (Error (loc, env, Cannot_unify (typ, ctyp))) ) ;
+                (* TODO: Decide on how to choose between paths. *)
+                ignore path2 ;
+                Some (path1, pres, args1) )
+      in
+      let row_closed =
+        match (row_closed1, row_closed2) with
+        | Open, Open ->
+            Open
+        | _ ->
+            if !is_empty then
+              raise (Error (loc, env, Empty_resulting_row (typ, ctyp))) ;
+            Closed
+      in
+      let typ_desc = Trow {row_tags; row_closed; row_proxy= row_proxy1} in
+      let alt_desc =
+        let row_tags =
+          Map.map row_tags ~f:(fun (path, pres, args) ->
+              (path, pres, List.map ~f:type_alternate args) )
+        in
+        Trow {row_tags; row_closed; row_proxy= row_proxy1.type_alternate}
+      in
+      let res_type =
+        if ctyp.type_id < typ.type_id then ( set_repr typ ctyp ; ctyp )
+        else ( set_repr ctyp typ ; typ )
+      in
+      set_desc res_type typ_desc ;
+      set_desc res_type.type_alternate alt_desc ;
+      if not (phys_equal typ.type_alternate.type_alternate typ) then
+        let alt_alt_desc =
+          let row_tags =
+            Map.map row_tags ~f:(fun (path, pres, args) ->
+                ( path
+                , pres
+                , List.map ~f:(Fn.compose type_alternate type_alternate) args
+                ) )
+          in
+          Trow
+            { row_tags
+            ; row_closed
+            ; row_proxy= row_proxy1.type_alternate.type_alternate }
+        in
+        set_desc res_type.type_alternate.type_alternate alt_alt_desc
   | _, _ ->
       raise (Error (loc, env, Cannot_unify (typ, ctyp)))
 
@@ -2201,6 +2299,16 @@ let rec report_error ppf = function
         "@[<hov>Internal error: the modes of these types do not \
          match:@;%a@;%a@]"
         !pp_typ typ1 !pp_typ typ2
+  | Missing_row_constructor (path, typ, constr_typ) ->
+      fprintf ppf
+        "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]:@ the constructor %a \
+         is not present in both.@]"
+        !pp_typ typ !pp_typ constr_typ Path.pp path
+  | Empty_resulting_row (typ, constr_typ) ->
+      fprintf ppf
+        "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]:@ the resulting row \
+         would be empty.@]"
+        !pp_typ typ !pp_typ constr_typ
 
 let () =
   Location.register_error_of_exn (function

@@ -6,6 +6,7 @@ type iterator =
   { type_expr: iterator -> type_expr -> unit
   ; type_desc: iterator -> type_desc -> unit
   ; variant: iterator -> variant -> unit
+  ; row_tag: iterator -> row_tag -> unit
   ; field_decl: iterator -> field_decl -> unit
   ; ctor_args: iterator -> ctor_args -> unit
   ; ctor_decl: iterator -> ctor_decl -> unit
@@ -57,10 +58,18 @@ let type_desc iter = function
       iter.type_expr iter typ1 ; iter.type_expr iter typ2
   | Ptyp_opaque typ ->
       iter.type_expr iter typ
+  | Ptyp_row (tags, _closed, min_tags) ->
+      Option.iter ~f:(List.iter ~f:(str iter)) min_tags ;
+      List.iter ~f:(iter.row_tag iter) tags
 
 let variant iter {var_ident; var_params} =
   lid iter var_ident ;
   List.iter ~f:(iter.type_expr iter) var_params
+
+let row_tag iter {rtag_ident; rtag_arg; rtag_loc} =
+  str iter rtag_ident ;
+  iter.location iter rtag_loc ;
+  List.iter ~f:(iter.type_expr iter) rtag_arg
 
 let field_decl iter {fld_ident; fld_type; fld_loc} =
   iter.location iter fld_loc ;
@@ -308,6 +317,7 @@ let default_iterator =
   { type_expr
   ; type_desc
   ; variant
+  ; row_tag
   ; field_decl
   ; ctor_args
   ; ctor_decl

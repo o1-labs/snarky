@@ -6,6 +6,8 @@ type error =
   | Opaque_type_in_prover_mode of Parsetypes.type_expr
   | Convertible_arities_differ of string * int * string * int
   | GADT_in_nonrec_type
+  | Repeated_row_label of Ident.t
+  | Missing_row_label of Ident.t
 
 module Type : sig
   val mk_poly :

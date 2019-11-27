@@ -948,7 +948,7 @@ module Type = struct
         assert (is_var var) ;
         match (repr var.type_alternate.type_alternate).type_desc with
         | Tvar _ ->
-            set_repr var (mkvar ~mode:var.type_mode None env)
+            set_replacement var (mkvar ~mode:var.type_mode None env)
         | _ ->
             (* Tri-stitched type variable where the stitched types have been
                instantiated.
@@ -956,7 +956,7 @@ module Type = struct
             assert (equal_mode Checked var.type_mode) ;
             let tmp_var = mk' ~mode:Checked env.depth (Tvar None) in
             tmp_var.type_alternate <- var.type_alternate ;
-            set_desc var (Tref tmp_var) )
+            unsafe_set_single_replacement var tmp_var )
 
   let copy typ env =
     let rec copy typ =
@@ -967,6 +967,9 @@ module Type = struct
           typ
       | Tvar _ ->
           (* Don't copy variables! *)
+          typ
+      | Trow {row_proxy; _} when not (is_replace row_proxy) ->
+          (* Don't copy rows! *)
           typ
       | Tpoly _ ->
           (* Tpoly should only ever appear at the top level of a type. *)
@@ -1120,6 +1123,12 @@ module Type = struct
           compare typ1 typ2
       | Tother_mode typ1, Tother_mode typ2 ->
           compare typ1 typ2
+      | Tother_mode _, _ ->
+          1
+      | _, Tother_mode _ ->
+          1
+      | Trow row1, Trow row2 ->
+          compare_row ~loc env row1 row2
 
   and compare_all ~loc env typs1 typs2 =
     match (typs1, typs2) with
@@ -1132,6 +1141,15 @@ module Type = struct
     | typ1 :: typs1, typ2 :: typs2 ->
         or_compare (compare ~loc env typ1 typ2) ~f:(fun () ->
             compare_all ~loc env typs1 typs2 )
+
+  and compare_row ~loc env row1 row2 =
+    or_compare (compare_closed_flag row1.row_closed row2.row_closed)
+      ~f:(fun () ->
+        Map.compare_direct
+          (fun (_path1, pres1, args1) (_path2, pres2, args2) ->
+            or_compare (compare_row_presence pres1 pres2) ~f:(fun () ->
+                compare_all ~loc env args1 args2 ) )
+          row1.row_tags row2.row_tags )
 
   let rec weak_variables depth set typ =
     match typ.type_desc with

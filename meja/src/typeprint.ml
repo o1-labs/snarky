@@ -1,3 +1,4 @@
+open Core_kernel
 open Ast_types
 open Type0
 open Format
@@ -51,6 +52,45 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
         fprintf fmt "@[<hv2>Prover{@,%a@,}@]" type_expr typ
     | _ ->
         type_expr fmt typ )
+  | Trow {row_tags; row_closed; row_proxy= _} ->
+      let needs_lower_bound =
+        match row_closed with
+        | Open ->
+            fprintf fmt "[>@[<hv1>@," ; false
+        | Closed ->
+            let is_fixed =
+              Map.for_all row_tags ~f:(function
+                | _, (Present | Absent), _ ->
+                    true
+                | _, Maybe, _ ->
+                    false )
+            in
+            if is_fixed then fprintf fmt "[@[<hv1>@,"
+            else fprintf fmt "[<@[<hv1>@," ;
+            not is_fixed
+      in
+      let is_first = ref true in
+      Map.iteri row_tags ~f:(fun ~key:_ ~data:(path, pres, args) ->
+          match pres with
+          | Present | Maybe ->
+              if !is_first then is_first := false else bar_sep fmt () ;
+              if List.is_empty args then Path.pp fmt path
+              else fprintf fmt "%a@[<hv1>%a@]" Path.pp path tuple args
+          | Absent ->
+              () ) ;
+      ( if needs_lower_bound then
+        let is_first = ref true in
+        Map.iteri row_tags ~f:(fun ~key:_ ~data:(path, pres, _args) ->
+            match pres with
+            | Present ->
+                if !is_first then (
+                  is_first := false ;
+                  fprintf fmt "@ > " )
+                else bar_sep fmt () ;
+                Path.pp fmt path
+            | Maybe | Absent ->
+                () ) ) ;
+      fprintf fmt "@,@]]"
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
