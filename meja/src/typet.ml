@@ -197,112 +197,46 @@ module Type = struct
           | Open, _ | Closed, None ->
               Type0.Present
         in
-        let (env, (row_tags1, row_tags2, row_tags3)), tags =
-          List.fold_map
-            ~init:(env, (Ident.Map.empty, Ident.Map.empty, None))
-            tags
-            ~f:
-              (fun (env, (row_tags1, row_tags2, row_tags3))
-                   {rtag_ident; rtag_arg; rtag_loc} ->
+        let (env, row_tags), tags =
+          List.fold_map ~init:(env, Ident.Map.empty) tags
+            ~f:(fun (env, row_tags) {rtag_ident; rtag_arg; rtag_loc} ->
               let env, rtag_arg =
                 List.fold_map rtag_arg ~init:env ~f:(fun e t ->
                     let t, e = import t e in
                     (e, t) )
               in
               let rtag_ident = map_loc ~f:Ident.create_row rtag_ident in
-              let needs_tags3 = ref false in
-              let args =
-                List.map rtag_arg ~f:(fun {Typedast.type_type; _} ->
-                    let alt = type_type.type_alternate.type_alternate in
-                    if not (phys_equal type_type alt) then needs_tags3 := true ;
-                    type_type )
-              in
-              let row_tags3 =
-                match (row_tags3, !needs_tags3) with
-                | (Some _ as row_tags3), _ ->
-                    row_tags3
-                | None, true ->
-                    (* All types so far have been stitched; these will be
-                         compatible with tri-stitching.
-                      *)
-                    Some row_tags1
-                | None, false ->
-                    None
-              in
-              let row_tags1 =
+              let args = List.map ~f:type0 rtag_arg in
+              let row_tags =
                 match
-                  Map.add row_tags1 ~key:rtag_ident.txt
+                  Map.add row_tags ~key:rtag_ident.txt
                     ~data:(Path.Pident rtag_ident.txt, pres, args)
                 with
                 | `Duplicate ->
                     raise
                       (Error (rtag_ident.loc, Repeated_row_label rtag_ident.txt))
-                | `Ok row_tags1 ->
-                    row_tags1
+                | `Ok row_tags ->
+                    row_tags
               in
-              let alt_args = List.map ~f:Type1.type_alternate args in
-              let row_tags2 =
-                Map.add_exn row_tags2 ~key:rtag_ident.txt
-                  ~data:(Path.Pident rtag_ident.txt, pres, alt_args)
-              in
-              let row_tags3 =
-                Option.map row_tags3 ~f:(fun row_tags3 ->
-                    Map.add_exn ~key:rtag_ident.txt
-                      ~data:
-                        ( Path.Pident rtag_ident.txt
-                        , pres
-                        , List.map ~f:Type1.type_alternate alt_args )
-                      row_tags3 )
-              in
-              ( (env, (row_tags1, row_tags2, row_tags3))
-              , {Typedast.rtag_ident; rtag_arg; rtag_loc} ) )
+              ((env, row_tags), {Typedast.rtag_ident; rtag_arg; rtag_loc}) )
         in
         let min_tags =
           Option.map ~f:(List.map ~f:(map_loc ~f:Ident.create_row)) min_tags
         in
-        let row_tags1, row_tags2, row_tags3 =
-          let set_maybe tag row_tags =
+        let row_tags =
+          let set_maybe row_tags tag =
             Map.change row_tags tag.Location.txt ~f:(function
               | None ->
                   raise (Error (tag.loc, Missing_row_label tag.txt))
               | Some (path, _, args) ->
                   Some (path, Type0.Present, args) )
           in
-          Option.fold ~init:(row_tags1, row_tags2, row_tags3) min_tags
-            ~f:(fun init ->
-              List.fold ~init ~f:(fun (row_tags1, row_tags2, row_tags3) tag ->
-                  ( set_maybe tag row_tags1
-                  , set_maybe tag row_tags2
-                  , Option.map ~f:(set_maybe tag) row_tags3 ) ) )
+          Option.fold ~init:row_tags min_tags ~f:(fun init ->
+              List.fold ~f:set_maybe ~init )
         in
         let row_proxy = Envi.Type.mkvar ~mode None env in
         let type_type =
-          let typ =
-            Type1.mk' ~mode env.depth
-              (Trow {row_tags= row_tags1; row_closed; row_proxy})
-          in
-          let alt =
-            Type1.mk' ~mode:(other_mode mode) env.depth
-              (Trow
-                 { row_tags= row_tags2
-                 ; row_closed
-                 ; row_proxy= row_proxy.type_alternate })
-          in
-          typ.type_alternate <- alt ;
-          ( match row_tags3 with
-          | Some row_tags3 ->
-              let alt_alt =
-                Type1.mk' ~mode env.depth
-                  (Trow
-                     { row_tags= row_tags3
-                     ; row_closed
-                     ; row_proxy= row_proxy.type_alternate.type_alternate })
-              in
-              alt.type_alternate <- alt_alt ;
-              alt_alt.type_alternate <- alt
-          | None ->
-              alt.type_alternate <- typ ) ;
-          typ
+          Envi.Type.Mk.row ~mode {row_tags; row_closed; row_proxy} env
         in
         ( { Typedast.type_desc= Ttyp_row (tags, row_closed, min_tags)
           ; type_loc= loc

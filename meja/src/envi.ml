@@ -901,6 +901,11 @@ module Type = struct
     let opaque ~mode typ env = opaque ~mode env.depth typ
 
     let other_mode ~mode typ env = other_mode ~mode env.depth typ
+
+    let row ~mode row env = Type1.Mk.row ~mode env.depth row
+
+    let row_of_ctor ~mode ident args env =
+      row_of_ctor ~mode env.depth ident args
   end
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
@@ -948,7 +953,7 @@ module Type = struct
         assert (is_var var) ;
         match (repr var.type_alternate.type_alternate).type_desc with
         | Tvar _ ->
-            set_replacement var (mkvar ~mode:var.type_mode None env)
+            set_repr var (mkvar ~mode:var.type_mode None env)
         | _ ->
             (* Tri-stitched type variable where the stitched types have been
                instantiated.
@@ -956,7 +961,7 @@ module Type = struct
             assert (equal_mode Checked var.type_mode) ;
             let tmp_var = mk' ~mode:Checked env.depth (Tvar None) in
             tmp_var.type_alternate <- var.type_alternate ;
-            unsafe_set_single_replacement var tmp_var )
+            set_desc var (Tref tmp_var) )
 
   let copy typ env =
     let rec copy typ =
@@ -968,7 +973,7 @@ module Type = struct
       | Tvar _ ->
           (* Don't copy variables! *)
           typ
-      | Trow {row_proxy; _} when not (is_replace row_proxy) ->
+      | Trow {row_proxy= {type_desc= Tvar _; _}; _} ->
           (* Don't copy rows! *)
           typ
       | Tpoly _ ->

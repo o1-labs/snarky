@@ -261,6 +261,8 @@ let rec expression_desc = function
   | Texp_ctor (path, arg) ->
       Pexp_ctor
         (map_loc ~f:longident_of_path path, Option.map ~f:expression arg)
+  | Texp_row_ctor (ident, arg) ->
+      Pexp_row_ctor (map_loc ~f:Ident.name ident, List.map ~f:expression arg)
   | Texp_unifiable {expression= e; name; id} ->
       Pexp_unifiable
         { expression= Option.map ~f:expression e

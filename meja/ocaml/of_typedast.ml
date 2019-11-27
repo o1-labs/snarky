@@ -534,6 +534,17 @@ let rec of_expression_desc ?loc = function
         (Option.map ~f:of_expression ext)
   | Texp_ctor (name, arg) ->
       Exp.construct ?loc (of_path_loc name) (Option.map ~f:of_expression arg)
+  | Texp_row_ctor (name, args) ->
+      let args =
+        match args with
+        | [] ->
+            None
+        | [arg] ->
+            Some (of_expression arg)
+        | _ ->
+            Some (Exp.tuple ?loc (List.map ~f:of_expression args))
+      in
+      Exp.variant ?loc (of_ident name.txt) args
   | Texp_unifiable {expression= Some e; _} ->
       of_expression e
   | Texp_unifiable {name; _} ->

@@ -420,6 +420,12 @@ expr:
     { mkexp ~pos:$loc (Pexp_match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Pexp_ctor (id, args)) }
+  | id = row_name LPAREN args = tuple(expr) RPAREN
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, List.rev args)) }
+  | id = row_name LPAREN expr = expr RPAREN
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, [expr])) }
+  | id = row_name
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, [])) }
   | e = if_expr
     { e }
 
@@ -650,7 +656,7 @@ type_expr:
   | x = simple_type_expr DASHDASHGT y = type_expr
     { mktyp ~pos:$loc (Ptyp_conv (x, y)) }
 
-row_name:
+%inline row_name:
   | TICK name = as_loc(UIDENT)
     { name }
 

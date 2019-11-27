@@ -257,7 +257,13 @@ let rec expression_desc fmt = function
   | Pexp_ctor (path, None) ->
       Longident.pp fmt path.txt
   | Pexp_ctor (path, Some args) ->
-      fprintf fmt "%a(@[<hv2>%a@,@])" Longident.pp path.txt expression args
+      fprintf fmt "%a%a" Longident.pp path.txt expression args
+  | Pexp_row_ctor (ident, []) ->
+      fprintf fmt "`%a" pp_name ident.txt
+  | Pexp_row_ctor (ident, args) ->
+      fprintf fmt "`%a(@[<hv1>%a@,@])" pp_name ident.txt
+        (pp_print_list ~pp_sep:comma_sep expression)
+        args
   | Pexp_unifiable {expression= Some e; _} ->
       expression fmt e
   | Pexp_unifiable {expression= None; name; _} ->

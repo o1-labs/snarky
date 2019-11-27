@@ -86,6 +86,7 @@ and expression_desc =
   | Pexp_field of expression * lid
   | Pexp_record of (lid * expression) list * expression option
   | Pexp_ctor of lid * expression option
+  | Pexp_row_ctor of str * expression list
   | Pexp_unifiable of
       { mutable expression: expression option
       ; name: str

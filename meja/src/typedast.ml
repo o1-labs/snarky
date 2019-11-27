@@ -121,6 +121,7 @@ and expression_desc =
   | Texp_field of expression * path
   | Texp_record of (path * expression) list * expression option
   | Texp_ctor of path * expression option
+  | Texp_row_ctor of ident * expression list
   | Texp_unifiable of
       { mutable expression: expression option
       ; name: ident

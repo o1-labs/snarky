@@ -264,7 +264,8 @@ let rec check_type_aux ~loc typ ctyp env =
   | ( Trow {row_tags= row_tags1; row_closed= row_closed1; row_proxy= row_proxy1}
     , Trow {row_tags= row_tags2; row_closed= row_closed2; row_proxy= row_proxy2}
     ) ->
-      check_type_aux row_proxy1 row_proxy2 env ;
+      (* TODO: Do we need to do anything with the proxy values? *)
+      ignore (row_proxy1, row_proxy2) ;
       let is_empty = ref true in
       let row_tags =
         Map.merge row_tags1 row_tags2 ~f:(fun ~key:_ data ->
@@ -1386,6 +1387,22 @@ let rec get_expression env expected exp =
             (None, env)
       in
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_ctor (name', arg)}, env)
+  | Pexp_row_ctor (name, args) ->
+      let name = map_loc ~f:Ident.create_row name in
+      let arg_types =
+        List.map args ~f:(fun _ -> Envi.Type.Mk.var ~mode None env)
+      in
+      let typ = Envi.Type.Mk.row_of_ctor ~mode name.txt arg_types env in
+      check_type ~loc env expected typ ;
+      let env = ref env in
+      let args =
+        List.map2_exn args arg_types ~f:(fun arg expected ->
+            let arg, env' = get_expression !env expected arg in
+            env := env' ;
+            arg )
+      in
+      ( {exp_loc= loc; exp_type= typ; exp_desc= Texp_row_ctor (name, args)}
+      , !env )
   | Pexp_unifiable _ ->
       raise (Error (loc, env, Unifiable_expr))
   | Pexp_if (e1, e2, None) ->

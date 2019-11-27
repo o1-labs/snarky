@@ -51,6 +51,13 @@ let other_none = function Checked -> prover_none | Prover -> checked_none
 
 let type_alternate {type_alternate= typ; _} = typ
 
+let row_alternate {row_tags; row_closed; row_proxy} =
+  let row_tags =
+    Map.map row_tags ~f:(fun (path, pres, args) ->
+        (path, pres, List.map ~f:type_alternate args) )
+  in
+  {row_tags; row_closed; row_proxy= row_proxy.type_alternate}
+
 let is_poly = function {type_desc= Tpoly _; _} -> true | _ -> false
 
 (** Returns [true] if the [type_expr] argument is valid, false otherwise.
@@ -445,6 +452,26 @@ module Mk = struct
   let other_mode ~mode depth typ =
     assert (not (is_poly typ)) ;
     stitch ~mode depth (Tother_mode typ) (Tother_mode typ)
+
+  let row ~mode depth row =
+    let row_alt = row_alternate row in
+    match mode with
+    | Prover ->
+        let alt = stitch ~mode:Prover depth (Trow row) (Trow row_alt) in
+        opaque ~mode depth alt
+    | Checked ->
+        let row_alt_alt = row_alternate row in
+        let prover =
+          stitch ~mode:Prover depth (Trow row_alt) (Trow row_alt_alt)
+        in
+        tri_stitch ~mode depth (Trow row) (Topaque prover) (Topaque prover)
+
+  let row_of_ctor ~mode depth ident args =
+    let row_proxy = var ~mode depth None in
+    let row_tags =
+      Ident.Map.singleton ident (Path.Pident ident, Present, args)
+    in
+    row ~mode depth {row_tags; row_closed= Open; row_proxy}
 end
 
 type change =
@@ -946,6 +973,9 @@ let is_var typ = match (repr typ).type_desc with Tvar _ -> true | _ -> false
 
 let is_replace typ =
   match (repr typ).type_desc with Treplace _ -> true | _ -> false
+
+let get_replace typ =
+  match (repr typ).type_desc with Treplace typ -> Some typ | _ -> None
 
 let get_rev_arrow_args typ =
   let rec go args typ =

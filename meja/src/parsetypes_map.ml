@@ -197,6 +197,9 @@ let expression_desc mapper = function
         , Option.map ~f:(mapper.expression mapper) default )
   | Pexp_ctor (name, arg) ->
       Pexp_ctor (lid mapper name, Option.map ~f:(mapper.expression mapper) arg)
+  | Pexp_row_ctor (name, args) ->
+      Pexp_row_ctor
+        (str mapper name, List.map ~f:(mapper.expression mapper) args)
   | Pexp_unifiable {expression; name; id} ->
       Pexp_unifiable
         { id

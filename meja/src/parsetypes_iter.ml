@@ -178,6 +178,9 @@ let expression_desc iter = function
   | Pexp_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.expression iter) arg
+  | Pexp_row_ctor (name, arg) ->
+      str iter name ;
+      List.iter ~f:(iter.expression iter) arg
   | Pexp_unifiable {expression; name; id= _} ->
       str iter name ;
       Option.iter ~f:(iter.expression iter) expression

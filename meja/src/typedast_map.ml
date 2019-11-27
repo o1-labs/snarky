@@ -268,6 +268,9 @@ let expression_desc mapper = function
         , Option.map ~f:(mapper.expression mapper) default )
   | Texp_ctor (name, arg) ->
       Texp_ctor (path mapper name, Option.map ~f:(mapper.expression mapper) arg)
+  | Texp_row_ctor (name, args) ->
+      Texp_row_ctor
+        (ident mapper name, List.map ~f:(mapper.expression mapper) args)
   | Texp_unifiable {expression; name; id} ->
       Texp_unifiable
         { id

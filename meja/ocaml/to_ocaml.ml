@@ -174,6 +174,17 @@ let rec of_expression_desc ?loc = function
         (Option.map ~f:of_expression ext)
   | Pexp_ctor (name, arg) ->
       Exp.construct ?loc name (Option.map ~f:of_expression arg)
+  | Pexp_row_ctor (name, args) ->
+      let args =
+        match args with
+        | [] ->
+            None
+        | [arg] ->
+            Some (of_expression arg)
+        | _ ->
+            Some (Exp.tuple ?loc (List.map ~f:of_expression args))
+      in
+      Exp.variant ?loc name.txt args
   | Pexp_unifiable {expression= Some e; _} ->
       of_expression e
   | Pexp_unifiable {name; _} ->

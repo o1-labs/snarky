@@ -196,6 +196,9 @@ let expression_desc iter = function
   | Texp_ctor (name, arg) ->
       path iter name ;
       Option.iter ~f:(iter.expression iter) arg
+  | Texp_row_ctor (name, args) ->
+      ident iter name ;
+      List.iter ~f:(iter.expression iter) args
   | Texp_unifiable {expression; name; id= _} ->
       ident iter name ;
       Option.iter ~f:(iter.expression iter) expression
