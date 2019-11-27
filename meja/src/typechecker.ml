@@ -31,6 +31,7 @@ type error =
   | Type_modes_mismatch of type_expr * type_expr
   | Missing_row_constructor of Path.t * type_expr * type_expr
   | Empty_resulting_row of type_expr * type_expr
+  | Row_different_arity of Path.t * type_expr * type_expr
 
 exception Error of Location.t * Envi.t * error
 
@@ -315,7 +316,9 @@ let rec check_type_aux ~loc typ ctyp env =
                 | Ok () ->
                     ()
                 | Unequal_lengths ->
-                    raise (Error (loc, env, Cannot_unify (typ, ctyp))) ) ;
+                    raise
+                      (Error (loc, env, Row_different_arity (path1, typ, ctyp)))
+                ) ;
                 (* TODO: Decide on how to choose between paths. *)
                 ignore path2 ;
                 Some (path1, pres, args1) )
@@ -2326,6 +2329,11 @@ let rec report_error ppf = function
         "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]:@ the resulting row \
          would be empty.@]"
         !pp_typ typ !pp_typ constr_typ
+  | Row_different_arity (path, typ, constr_typ) ->
+      fprintf ppf
+        "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]:@ the constructor %a \
+         has different arities.@]"
+        !pp_typ typ !pp_typ constr_typ Path.pp path
 
 let () =
   Location.register_error_of_exn (function
