@@ -653,6 +653,19 @@ let rec check_pattern env typ pat =
       ( {Typedast.pat_loc= loc; pat_type= typ'; pat_desc= Tpat_ctor (name, arg)}
       , names
       , env )
+  | Ppat_row_ctor (name, args) ->
+      let name = map_loc ~f:Ident.create_row name in
+      let arg_types =
+        List.map args ~f:(fun _ -> Envi.Type.Mk.var ~mode None env)
+      in
+      let typ' = Envi.Type.Mk.row_of_ctor ~mode name.txt arg_types env in
+      check_type ~loc env typ typ' ;
+      let args, names, env = check_patterns env arg_types args in
+      ( { Typedast.pat_loc= loc
+        ; pat_type= typ
+        ; pat_desc= Tpat_row_ctor (name, args) }
+      , names
+      , env )
 
 and check_patterns env typs pats =
   let names_table = String.Table.create () in

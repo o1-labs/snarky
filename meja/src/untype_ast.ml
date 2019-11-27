@@ -205,6 +205,8 @@ let rec pattern_desc = function
              (map_loc ~f:longident_of_path label, pattern p) ))
   | Tpat_ctor (name, arg) ->
       Ppat_ctor (map_loc ~f:longident_of_path name, Option.map ~f:pattern arg)
+  | Tpat_row_ctor (name, args) ->
+      Ppat_row_ctor (map_loc ~f:Ident.name name, List.map ~f:pattern args)
 
 and pattern p =
   {Parsetypes.pat_desc= pattern_desc p.Typedast.pat_desc; pat_loc= p.pat_loc}

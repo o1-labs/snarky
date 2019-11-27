@@ -81,6 +81,7 @@ and pattern_desc =
   | Tpat_int of int
   | Tpat_record of (path * pattern) list
   | Tpat_ctor of path * pattern option
+  | Tpat_row_ctor of ident * pattern list
 
 type convert_body =
   { conv_body_desc: convert_body_desc

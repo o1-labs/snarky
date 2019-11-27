@@ -179,6 +179,9 @@ let pattern_desc mapper = function
              (path mapper name, mapper.pattern mapper pat) ))
   | Tpat_ctor (name, arg) ->
       Tpat_ctor (path mapper name, Option.map ~f:(mapper.pattern mapper) arg)
+  | Tpat_row_ctor (name, args) ->
+      Tpat_row_ctor
+        (ident mapper name, List.map ~f:(mapper.pattern mapper) args)
 
 let convert_body mapper {conv_body_desc; conv_body_loc; conv_body_type} =
   { conv_body_loc= mapper.location mapper conv_body_loc

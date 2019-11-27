@@ -123,6 +123,17 @@ let rec of_pattern_desc ?loc = function
         Open
   | Ppat_ctor (name, arg) ->
       Pat.construct ?loc name (Option.map ~f:of_pattern arg)
+  | Ppat_row_ctor (name, args) ->
+      let args =
+        match args with
+        | [] ->
+            None
+        | [arg] ->
+            Some (of_pattern arg)
+        | _ ->
+            Some (Pat.tuple ?loc (List.map ~f:of_pattern args))
+      in
+      Pat.variant ?loc name.txt args
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 

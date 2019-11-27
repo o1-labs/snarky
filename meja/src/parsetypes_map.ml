@@ -147,6 +147,8 @@ let pattern_desc mapper = function
              (lid mapper name, mapper.pattern mapper pat) ))
   | Ppat_ctor (name, arg) ->
       Ppat_ctor (lid mapper name, Option.map ~f:(mapper.pattern mapper) arg)
+  | Ppat_row_ctor (name, args) ->
+      Ppat_row_ctor (str mapper name, List.map ~f:(mapper.pattern mapper) args)
 
 let expression mapper {exp_desc; exp_loc} =
   { exp_loc= mapper.location mapper exp_loc

@@ -138,6 +138,9 @@ let pattern_desc iter = function
   | Ppat_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.pattern iter) arg
+  | Ppat_row_ctor (name, args) ->
+      str iter name ;
+      List.iter ~f:(iter.pattern iter) args
 
 let expression iter {exp_desc; exp_loc} =
   iter.location iter exp_loc ;

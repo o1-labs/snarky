@@ -68,6 +68,7 @@ and pattern_desc =
   | Ppat_int of int
   | Ppat_record of (lid * pattern) list
   | Ppat_ctor of lid * pattern option
+  | Ppat_row_ctor of str * pattern list
 
 type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 

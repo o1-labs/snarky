@@ -155,6 +155,9 @@ let pattern_desc iter = function
   | Tpat_ctor (name, arg) ->
       path iter name ;
       Option.iter ~f:(iter.pattern iter) arg
+  | Tpat_row_ctor (name, args) ->
+      ident iter name ;
+      List.iter ~f:(iter.pattern iter) args
 
 let expression iter {exp_desc; exp_loc; exp_type} =
   iter.location iter exp_loc ;

@@ -149,7 +149,13 @@ let rec pattern_desc fmt = function
   | Ppat_ctor (path, Some ({pat_desc= Ppat_tuple _; _} as arg)) ->
       fprintf fmt "%a@ %a" Longident.pp path.txt pattern arg
   | Ppat_ctor (path, Some arg) ->
-      fprintf fmt "%a@ (@[<hv1>@,%a@,@])" Longident.pp path.txt pattern arg
+      fprintf fmt "%a%a" Longident.pp path.txt pattern arg
+  | Ppat_row_ctor (name, []) ->
+      fprintf fmt "`%a" pp_name name.txt
+  | Ppat_row_ctor (name, args) ->
+      fprintf fmt "`%a(@[<hv1>@,%a@,@]" pp_name name.txt
+        (pp_print_list ~pp_sep:comma_sep pattern)
+        args
 
 and pattern_desc_bracket fmt pat =
   match pat with

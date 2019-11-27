@@ -28,6 +28,10 @@ let conspat ~pos hd tl =
 let consexp ~pos hd tl =
   mkexp ~pos (Pexp_ctor
     ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Pexp_tuple [hd; tl]))))
+
+let unitpat ~pos = mkpat ~pos (Ppat_ctor (mkloc ~pos (Lident "()"), None))
+
+let unitexp ~pos = mkexp ~pos (Pexp_ctor (mkloc ~pos (Lident "()"), None))
 %}
 %token <string> FIELD
 %token <int> INT
@@ -393,11 +397,8 @@ expr:
     { x }
   | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
     { mkexp ~pos:$loc (Pexp_constraint (x, typ)) }
-  | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
-    { let unit_pat =
-        mkpat ~pos:$loc (Ppat_ctor (mkloc (Lident "()") ~pos:$loc, None))
-      in
-      mkexp ~pos:$loc (Pexp_fun (Nolabel, unit_pat, body, Explicit)) }
+  | FUN unit = unit EQUALGT LBRACE body = block RBRACE
+    { mkexp ~pos:$loc (Pexp_fun (Nolabel, unitpat ~pos:unit, body, Explicit)) }
   | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
@@ -420,10 +421,10 @@ expr:
     { mkexp ~pos:$loc (Pexp_match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Pexp_ctor (id, args)) }
-  | id = row_name LPAREN args = tuple(expr) RPAREN
-    { mkexp ~pos:$loc (Pexp_row_ctor (id, List.rev args)) }
-  | id = row_name LPAREN expr = expr RPAREN
-    { mkexp ~pos:$loc (Pexp_row_ctor (id, [expr])) }
+  | id = row_name LPAREN rev_args = list(expr, COMMA) RPAREN
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, List.rev rev_args)) }
+  | id = row_name unit = unit
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, [unitexp ~pos:unit])) }
   | id = row_name
     { mkexp ~pos:$loc (Pexp_row_ctor (id, [])) }
   | e = if_expr
@@ -458,6 +459,8 @@ expr_ctor_args:
     { None }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { Some e }
+  | pos = unit
+    { Some (unitexp ~pos) }
   | e = expr_record
     { Some e }
 
@@ -575,6 +578,8 @@ pat_ctor_args:
     { None }
   | LPAREN p = pat_or_bare_tuple RPAREN
     { Some p }
+  | pos = unit
+    { Some (unitpat ~pos) }
   | p = pat_record
     { Some p }
 
@@ -599,6 +604,12 @@ pat_no_bar:
     { p }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = pat_ctor_args
     { mkpat ~pos:$loc (Ppat_ctor (id, args)) }
+  | id = row_name LPAREN rev_args = list(pat, COMMA) RPAREN
+    { mkpat ~pos:$loc (Ppat_row_ctor (id, List.rev rev_args)) }
+  | id = row_name unit = unit
+    { mkpat ~pos:$loc (Ppat_row_ctor (id, [unitpat ~pos:unit])) }
+  | id = row_name
+    { mkpat ~pos:$loc (Ppat_row_ctor (id, [])) }
 
 pat:
   | p = pat_no_bar
@@ -679,6 +690,10 @@ tuple(X):
     { x :: xs }
   | x1 = X COMMA x2 = X
     { [x2; x1] }
+
+%inline unit:
+  | LPAREN RPAREN
+    { $loc }
 
 %inline as_loc(X): x = X
   { mkloc x ~pos:($symbolstartpos, $endpos) }
