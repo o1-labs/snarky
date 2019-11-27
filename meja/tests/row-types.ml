@@ -90,6 +90,8 @@ module Open_rows = struct
 
   let noarg_arg (x : [> `A | `B of bool]) (y : [> `A | `B of bool]) b =
     if b then x else y
+
+  let extend_rows (x : [> `A]) (y : [> `B]) b = if b then x else y
 end
 
 module Closed_rows = struct
@@ -156,4 +158,28 @@ module Copy_test = struct
   let g (x : [`A | `B | `C | `D | `E]) = f x x x x true
 
   let h (x : [`A | `B | `C | `D | `F]) = f x x x x true
+end
+
+module Expressions = struct
+  let extend_open (x : [> `A]) b = if b then x else `B
+
+  let match_open (x : [> `A]) b = if b then x else `A
+
+  let match_closed (x : [`A]) b = if b then x else `A
+
+  let expand_bounded (x : [< `A | `B > `A]) b = if b then x else `B
+
+  let match_bounded (x : [< `A | `B > `A]) b = if b then x else `A
+
+  let extend_open_arg (x : [> `A of int]) b = if b then x else `B true
+
+  let match_open_arg (x : [> `A of int]) b = if b then x else `A 1
+
+  let match_closed_arg (x : [`A of 'a]) b = if b then x else `A "string"
+
+  let expand_bounded_arg (x : [< `A of int | `B of bool > `A]) b =
+    if b then x else `B true
+
+  let match_bounded_arg (x : [< `A of int | `B of bool > `A]) b =
+    if b then x else `A 15
 end

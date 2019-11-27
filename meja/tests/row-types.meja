@@ -112,6 +112,10 @@ module Open_rows = {
                        b) => {
     if (b) { x; } else { y; };
   };
+
+  let extend_rows = fun (x : [> `A], y : [> `B], b) => {
+    if (b) { x; } else { y; };
+  };
 };
 
 module Closed_rows = {
@@ -246,5 +250,47 @@ module Copy_test = {
 
   let h = fun (x : [`A | `B | `C | `D | `F]) => {
     f(x, x, x, x, true);
+  };
+};
+
+module Expressions = {
+  let extend_open = fun (x : [> `A], b) => {
+    if (b) { x; } else { `B; };
+  };
+
+  let match_open = fun (x : [> `A], b) => {
+    if (b) { x; } else { `A; };
+  };
+
+  let match_closed = fun (x : [`A], b) => {
+    if (b) { x; } else { `A; };
+  };
+
+  let expand_bounded = fun (x : [< `A | `B > `A], b) => {
+    if (b) { x; } else { `B; };
+  };
+
+  let match_bounded = fun (x : [< `A | `B > `A], b) => {
+    if (b) { x; } else { `A; };
+  };
+
+  let extend_open_arg = fun (x : [> `A(int)], b) => {
+    if (b) { x; } else { `B(true); };
+  };
+
+  let match_open_arg = fun (x : [> `A(int)], b) => {
+    if (b) { x; } else { `A(1); };
+  };
+
+  let match_closed_arg = fun (x : [`A('a)], b) => {
+    if (b) { x; } else { `A("string"); };
+  };
+
+  let expand_bounded_arg = fun (x : [< `A(int) | `B(bool) > `A], b) => {
+    if (b) { x; } else { `B(true); };
+  };
+
+  let match_bounded_arg = fun (x : [< `A(int) | `B(bool) > `A], b) => {
+    if (b) { x; } else { `A(15); };
   };
 };
