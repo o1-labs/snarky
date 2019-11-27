@@ -293,4 +293,76 @@ module Expressions = {
   let match_bounded_arg = fun (x : [< `A(int) | `B(bool) > `A], b) => {
     if (b) { x; } else { `A(15); };
   };
+
+  let unit_arg = fun (x : [`A(unit)], b) => {
+    if (b) { x; } else { `A(); };
+  };
+};
+
+module Patterns = {
+  let extend_open = fun (x : [> `A]) => {
+    switch (x) {
+      | `B => `B
+      | x => x
+    };
+  };
+
+  let match_open = fun (x : [> `A]) => {
+    switch (x) {
+      | `A => `A
+      | x => x
+    };
+  };
+
+  let match_closed = fun (x : [`A]) => {
+    switch (x) {
+      | `A => `A
+    };
+  };
+
+  let match_bounded = fun (x : [< `A | `B > `A]) => {
+    switch (x) {
+      | `B => `B
+      | x => x
+    };
+  };
+
+  let extend_open_arg = fun (x : [> `A(int)]) => {
+    switch (x) {
+      | `B(b : bool) => `B(b)
+      | x => x
+    };
+  };
+
+  let match_open_arg = fun (x : [> `A(int)]) => {
+    switch (x) {
+      | `A(i) => `A(i)
+      | x => x
+    };
+  };
+
+  let match_variable_arg = fun (x : [`A('a)]) => {
+    switch (x) {
+      | `A(_) => `A("string")
+    };
+  };
+
+  let match_closed_arg = fun (x : [`A('a)]) => {
+    switch (x) {
+      | `A(_ : string) => ()
+    };
+  };
+
+  let match_bounded_arg = fun (x : [< `A(int) | `B(bool) > `A]) => {
+    switch (x) {
+      | `A(i) => `B(true)
+      | `B(b) => `A(if (b) { 15; } else { 20; })
+    };
+  };
+
+  let unit_arg = fun (x : [`A(unit)], b) => {
+    switch (x) {
+      | `A() => ()
+    };
+  };
 };

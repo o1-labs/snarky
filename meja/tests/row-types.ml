@@ -182,4 +182,30 @@ module Expressions = struct
 
   let match_bounded_arg (x : [< `A of int | `B of bool > `A]) b =
     if b then x else `A 15
+
+  let unit_arg (x : [`A of unit]) b = if b then x else `A ()
+end
+
+module Patterns = struct
+  let extend_open (x : [> `A]) = match x with `B -> `B | x -> x
+
+  let match_open (x : [> `A]) = match x with `A -> `A | x -> x
+
+  let match_closed (x : [`A]) = match x with `A -> `A
+
+  let match_bounded (x : [< `A | `B > `A]) = match x with `B -> `B | x -> x
+
+  let extend_open_arg (x : [> `A of int]) =
+    match x with `B (b : bool) -> `B b | x -> x
+
+  let match_open_arg (x : [> `A of int]) = match x with `A i -> `A i | x -> x
+
+  let match_variable_arg (x : [`A of 'a]) = match x with `A _ -> `A "string"
+
+  let match_closed_arg (x : [`A of 'a]) = match x with `A (_ : string) -> ()
+
+  let match_bounded_arg (x : [< `A of int | `B of bool > `A]) =
+    match x with `A i -> `B true | `B b -> `A (if b then 15 else 20)
+
+  let unit_arg (x : [`A of unit]) b = match x with `A () -> ()
 end
