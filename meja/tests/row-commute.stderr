@@ -1,0 +1,4 @@
+File "tests/row-commute.meja", line 10, characters 33-35:
+Error: Incompatible types [>`A | `B | `C | `D] and [<`A | `B | `C]:
+       Cannot unify [>`A | `B | `C | `D] and [<`A | `B | `C]:
+       the constructor `D is not present in both.
