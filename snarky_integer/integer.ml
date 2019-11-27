@@ -101,6 +101,15 @@ module Interval = struct
         Less_than B.(a + one)
     | Less_than a, Less_than _ ->
         Less_than a
+
+  let gt a b =
+    match (a, b) with
+    | Constant a, Constant b | Less_than a, Less_than b ->
+        B.(a > b)
+    | Less_than a, Constant b ->
+        B.(a > b + one)
+    | Constant a, Less_than b ->
+        B.(a + one > b)
 end
 
 (* TODO: Use <= instead of < for the upper bound *)
@@ -183,6 +192,14 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
     ; interval= Interval.quotient a.interval b.interval
     ; bits= Some q_bits }
   , {value= r; interval= b.interval; bits= Some r_bits} )
+
+let sub (type f) ~m:((module M) : f m) a b =
+  assert (Interval.gt a.interval b.interval) ;
+  let value = M.Field.(sub a.value b.value) in
+  let length = Interval.bits_needed a.interval in
+  (* The constraints added in [unpack] ensure that [0 <= value <= a]. *)
+  let bits = M.Field.unpack value ~length in
+  {value; interval= a.interval; bits= Some bits}
 
 let add (type f) ~m:((module M) as m : f m) a b =
   let interval = Interval.(add ~m a.interval b.interval) in
