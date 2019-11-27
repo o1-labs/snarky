@@ -193,7 +193,7 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
     ; bits= Some q_bits }
   , {value= r; interval= b.interval; bits= Some r_bits} )
 
-let sub (type f) ~m:((module M) : f m) a b =
+let subtract_unpacking (type f) ~m:((module M) : f m) a b =
   assert (Interval.gt a.interval b.interval) ;
   let value = M.Field.(sub a.value b.value) in
   let length = Interval.bits_needed a.interval in

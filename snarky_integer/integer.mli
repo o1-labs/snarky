@@ -108,8 +108,8 @@ val mul : m:'f m -> 'f t -> 'f t -> 'f t
     The result does not carry a cached bit representation.
 *)
 
-val sub : m:'f m -> 'f t -> 'f t -> 'f t
-(** [sub ~m x y] computes [x - y].
+val subtract_unpacking : m:'f m -> 'f t -> 'f t -> 'f t
+(** [subtract_unpacking ~m x y] computes [x - y].
 
     The bit representation is calculated to ensure that [0 <= x - y], and is
     cached in the result.
