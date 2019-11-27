@@ -34,23 +34,25 @@ module Interval = struct
 
   let succ ~m t = map ~m t ~f:B.succ
 
-  let add a b =
-    match (a, b) with
-    | Constant a, Constant b ->
-        Constant B.(a + b)
-    | Less_than a, Less_than b ->
-        Less_than B.(a + b)
-    | Constant c, Less_than bound | Less_than bound, Constant c ->
-        Less_than B.(c + one + bound)
+  let add ~m a b =
+    check ~m
+      ( match (a, b) with
+      | Constant a, Constant b ->
+          Constant B.(a + b)
+      | Less_than a, Less_than b ->
+          Less_than B.(a + b)
+      | Constant c, Less_than bound | Less_than bound, Constant c ->
+          Less_than B.(c + one + bound) )
 
-  let mul a b =
-    match (a, b) with
-    | Constant a, Constant b ->
-        Constant B.(a * b)
-    | Less_than a, Less_than b ->
-        Less_than B.(a * b)
-    | Constant c, Less_than bound | Less_than bound, Constant c ->
-        Less_than B.((c + one) * bound)
+  let mul ~m a b =
+    check ~m
+      ( match (a, b) with
+      | Constant a, Constant b ->
+          Constant B.(a * b)
+      | Less_than a, Less_than b ->
+          Less_than B.(a * b)
+      | Constant c, Less_than bound | Less_than bound, Constant c ->
+          Less_than B.((c + one) * bound) )
 
   let bits_needed = function
     | Constant x ->
@@ -183,14 +185,12 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
     ; bits= Some q_bits }
   , {value= r; interval= b.interval; bits= Some r_bits} )
 
-let add (type f) ~m:((module M) : f m) a b =
-  let interval = Interval.(add a.interval b.interval) in
-  assert (B.(of_int @@ Interval.bits_needed interval <= M.Field.size)) ;
+let add (type f) ~m:((module M) as m : f m) a b =
+  let interval = Interval.(add ~m a.interval b.interval) in
   {value= M.Field.(a.value + b.value); interval; bits= None}
 
-let mul (type f) ~m:((module M) : f m) a b =
-  let interval = Interval.(mul a.interval b.interval) in
-  assert (B.(of_int @@ Interval.bits_needed interval <= M.Field.size)) ;
+let mul (type f) ~m:((module M) as m : f m) a b =
+  let interval = Interval.(mul ~m a.interval b.interval) in
   {value= M.Field.(a.value * b.value); interval; bits= None}
 
 let to_bits ?length (type f) ~m:((module M) : f m) t =
