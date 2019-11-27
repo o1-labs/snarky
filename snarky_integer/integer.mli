@@ -113,4 +113,6 @@ val subtract_unpacking : m:'f m -> 'f t -> 'f t -> 'f t
 
     The bit representation is calculated to ensure that [0 <= x - y], and is
     cached in the result.
+
+    NOTE: This uses approximately [log2(x)] constraints.
 *)
