@@ -467,6 +467,8 @@ expr_ctor_args:
 match_case:
   | BAR p = pat EQUALGT e = expr
     { (p, e) }
+  | BAR pat err = err
+    { raise (Error (err, Expecting "'=>'")); }
 
 expr_arg:
   | e = expr
