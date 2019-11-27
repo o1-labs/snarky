@@ -231,6 +231,8 @@ let to_bits ?length (type f) ~m:((module M) : f m) t =
 
 let to_bits_exn t = Bitstring.Lsb_first.of_list (Option.value_exn t.bits)
 
+let to_bits_opt t = Option.map ~f:Bitstring.Lsb_first.of_list t.bits
+
 let min (type f) ~m:((module M) : f m) (a : f t) (b : f t) =
   let open M in
   let bit_length =

@@ -48,6 +48,11 @@ val to_bits_exn : 'f t -> 'f Cvar.t Boolean.t Bitstring.Lsb_first.t
     representation has not been cached.
 *)
 
+val to_bits_opt : 'f t -> 'f Cvar.t Boolean.t Bitstring.Lsb_first.t option
+(** Returns [Some bs] for [bs] the cached bit representation, or [None] if the
+    bit representation has not been cached.
+*)
+
 val div_mod : m:'f m -> 'f t -> 'f t -> 'f t * 'f t
 (** [div_mod ~m a b = (q, r)] such that [a = q * b + r] and [r < b].
 
