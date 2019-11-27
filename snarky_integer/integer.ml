@@ -175,8 +175,7 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
   let q_bits = Field.choose_preimage_var q ~length:q_bit_length in
   let b_bit_length = Interval.bits_needed b.interval in
   let r_bits = Field.choose_preimage_var r ~length:b_bit_length in
-  let cmp = Field.compare ~bit_length:b_bit_length r b.value in
-  Boolean.Assert.is_true cmp.less ;
+  Field.Assert.lt ~bit_length:b_bit_length r b.value ;
   (* This assertion checkes that the multiplication q * b is safe. *)
   assert (q_bit_length + b_bit_length + 1 < Field.Constant.size_in_bits) ;
   assert_r1cs q b.value Field.(a.value - r) ;
