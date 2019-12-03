@@ -34,23 +34,25 @@ module Interval = struct
 
   let succ ~m t = map ~m t ~f:B.succ
 
-  let add a b =
-    match (a, b) with
-    | Constant a, Constant b ->
-        Constant B.(a + b)
-    | Less_than a, Less_than b ->
-        Less_than B.(a + b)
-    | Constant c, Less_than bound | Less_than bound, Constant c ->
-        Less_than B.(c + one + bound)
+  let add ~m a b =
+    check ~m
+      ( match (a, b) with
+      | Constant a, Constant b ->
+          Constant B.(a + b)
+      | Less_than a, Less_than b ->
+          Less_than B.(a + b)
+      | Constant c, Less_than bound | Less_than bound, Constant c ->
+          Less_than B.(c + one + bound) )
 
-  let mul a b =
-    match (a, b) with
-    | Constant a, Constant b ->
-        Constant B.(a * b)
-    | Less_than a, Less_than b ->
-        Less_than B.(a * b)
-    | Constant c, Less_than bound | Less_than bound, Constant c ->
-        Less_than B.((c + one) * bound)
+  let mul ~m a b =
+    check ~m
+      ( match (a, b) with
+      | Constant a, Constant b ->
+          Constant B.(a * b)
+      | Less_than a, Less_than b ->
+          Less_than B.(a * b)
+      | Constant c, Less_than bound | Less_than bound, Constant c ->
+          Less_than B.((c + one) * bound) )
 
   let bits_needed = function
     | Constant x ->
@@ -99,6 +101,15 @@ module Interval = struct
         Less_than B.(a + one)
     | Less_than a, Less_than _ ->
         Less_than a
+
+  let gt a b =
+    match (a, b) with
+    | Constant a, Constant b | Less_than a, Less_than b ->
+        B.(a > b)
+    | Less_than a, Constant b ->
+        B.(a > b + one)
+    | Constant a, Less_than b ->
+        B.(a + one > b)
 end
 
 (* TODO: Use <= instead of < for the upper bound *)
@@ -173,8 +184,7 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
   let q_bits = Field.choose_preimage_var q ~length:q_bit_length in
   let b_bit_length = Interval.bits_needed b.interval in
   let r_bits = Field.choose_preimage_var r ~length:b_bit_length in
-  let cmp = Field.compare ~bit_length:b_bit_length r b.value in
-  Boolean.Assert.is_true cmp.less ;
+  Field.Assert.lt ~bit_length:b_bit_length r b.value ;
   (* This assertion checkes that the multiplication q * b is safe. *)
   assert (q_bit_length + b_bit_length + 1 < Field.Constant.size_in_bits) ;
   assert_r1cs q b.value Field.(a.value - r) ;
@@ -183,14 +193,20 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
     ; bits= Some q_bits }
   , {value= r; interval= b.interval; bits= Some r_bits} )
 
-let add (type f) ~m:((module M) : f m) a b =
-  let interval = Interval.(add a.interval b.interval) in
-  assert (B.(of_int @@ Interval.bits_needed interval <= M.Field.size)) ;
+let subtract_unpacking (type f) ~m:((module M) : f m) a b =
+  assert (Interval.gt a.interval b.interval) ;
+  let value = M.Field.(sub a.value b.value) in
+  let length = Interval.bits_needed a.interval in
+  (* The constraints added in [unpack] ensure that [0 <= value <= a]. *)
+  let bits = M.Field.unpack value ~length in
+  {value; interval= a.interval; bits= Some bits}
+
+let add (type f) ~m:((module M) as m : f m) a b =
+  let interval = Interval.(add ~m a.interval b.interval) in
   {value= M.Field.(a.value + b.value); interval; bits= None}
 
-let mul (type f) ~m:((module M) : f m) a b =
-  let interval = Interval.(mul a.interval b.interval) in
-  assert (B.(of_int @@ Interval.bits_needed interval <= M.Field.size)) ;
+let mul (type f) ~m:((module M) as m : f m) a b =
+  let interval = Interval.(mul ~m a.interval b.interval) in
   {value= M.Field.(a.value * b.value); interval; bits= None}
 
 let to_bits ?length (type f) ~m:((module M) : f m) t =
@@ -214,6 +230,8 @@ let to_bits ?length (type f) ~m:((module M) : f m) t =
       Bitstring.Lsb_first.of_list bs
 
 let to_bits_exn t = Bitstring.Lsb_first.of_list (Option.value_exn t.bits)
+
+let to_bits_opt t = Option.map ~f:Bitstring.Lsb_first.of_list t.bits
 
 let min (type f) ~m:((module M) : f m) (a : f t) (b : f t) =
   let open M in
