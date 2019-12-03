@@ -10,7 +10,7 @@ and row_presence_desc =
   | RpAbsent
   (* Indirection. The value is deferred to that of the argument's [rp_desc]. *)
   | RpRef of row_presence
-  (* Copying signal. If present, copying should return the argument. *)
+  (* Copying signal. When present, copying should return the argument. *)
   | RpReplace of row_presence
 [@@deriving sexp, compare]
 
