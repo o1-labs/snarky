@@ -134,10 +134,25 @@ let row mapper ({row_tags; row_closed; row_proxy} as row) =
       ~f:(fun ~key ~data:(path, pres, args) row_tags ->
         let key' = mapper.ident mapper key in
         let path' = mapper.path mapper path in
+        let pres' =
+          match pres.rp_desc with
+          | RpReplace pres ->
+              pres
+          | _ ->
+              (* NOTE: This isn't necessarily the right behaviour, but
+                       currently isn't used anywhere. This should be reviewed
+                       if we end up needing to replace [row_presence] values
+                       during mapping.
+              *)
+              pres
+        in
         let args = map_list ~f:(mapper.type_expr mapper) ~same args in
-        if not (phys_equal key' key && phys_equal path' path) then
-          same := false ;
-        Map.set row_tags ~key:key' ~data:(path', pres, args) )
+        if
+          not
+            ( phys_equal key' key && phys_equal pres' pres
+            && phys_equal path' path )
+        then same := false ;
+        Map.set row_tags ~key:key' ~data:(path', pres', args) )
   in
   if !same then row else {row_tags; row_closed; row_proxy}
 

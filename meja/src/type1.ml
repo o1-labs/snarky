@@ -24,6 +24,10 @@ let get_mode mode typ =
 
 let type_id = ref 0
 
+let row_id = ref 0
+
+let mk_rp rp_desc = incr row_id ; {rp_desc; rp_id= !row_id}
+
 (** An invalid [type_expr] in checked mode. *)
 let rec checked_none =
   { type_desc= Tvar None
@@ -71,6 +75,9 @@ let is_invalid {type_id; _} = type_id <= 0
 
 (** Judge equality based on type id. *)
 let equal {type_id= id1; _} {type_id= id2; _} = Int.equal id1 id2
+
+let rec rp_repr pres =
+  match pres.rp_desc with RpRef pres -> rp_repr pres | _ -> pres
 
 (** Make a new type at the given mode and depth.
 
@@ -218,15 +225,28 @@ and row_debug_print fmt {row_tags; row_closed; row_proxy} =
         is_first := false ;
         pp_print_string fmt ": " )
       else pp_print_string fmt " | " ;
-      let pres =
-        match pres with Present -> "+" | Maybe -> "?" | Absent -> "-"
-      in
-      fprintf fmt "%a(%a)(%s):%a" Path.debug_print path Ident.debug_print key
-        pres
+      fprintf fmt "%a(%a)%a:%a" Path.debug_print path Ident.debug_print key
+        row_presence_debug_print pres
         (pp_print_list
            ~pp_sep:(fun fmt () -> pp_print_string fmt ", ")
            typ_debug_print)
         args )
+
+and row_presence_debug_print fmt {rp_desc; rp_id} =
+  let open Format in
+  fprintf fmt "(%i:" rp_id ;
+  ( match rp_desc with
+  | RpPresent ->
+      pp_print_char fmt '+'
+  | RpMaybe ->
+      pp_print_char fmt '?'
+  | RpAbsent ->
+      pp_print_char fmt '-'
+  | RpRef rp ->
+      row_presence_debug_print fmt rp
+  | RpReplace rp ->
+      fprintf fmt "=== %a" row_presence_debug_print rp ) ;
+  pp_print_char fmt ')'
 
 let field_decl_debug_print fmt {fld_ident; fld_type} =
   Format.fprintf fmt "%a: %a" Ident.debug_print fld_ident typ_debug_print
@@ -469,7 +489,7 @@ module Mk = struct
   let row_of_ctor ~mode depth ident args =
     let row_proxy = var ~mode depth None in
     let row_tags =
-      Ident.Map.singleton ident (Path.Pident ident, Present, args)
+      Ident.Map.singleton ident (Path.Pident ident, mk_rp RpPresent, args)
     in
     row ~mode depth {row_tags; row_closed= Open; row_proxy}
 end
@@ -478,9 +498,12 @@ type change =
   | Depth of (type_expr * int)
   | Desc of (type_expr * type_desc)
   (* This is equivalent to [Desc], but allows for filtering the backtrace
-       when [Treplace] has been set for recursion-breaking.
-    *)
+     when [Treplace] has been set for recursion-breaking.
+  *)
   | Replace of (type_expr * type_desc)
+  | Row_presence of (row_presence * row_presence_desc)
+  (* Analogous to [Replace] for [Row_presence]. *)
+  | Row_replace of (row_presence * row_presence_desc)
 
 let debug_print_change fmt = function
   | Depth (typ, depth) ->
@@ -489,6 +512,10 @@ let debug_print_change fmt = function
       Format.fprintf fmt "desc(id= %i, _)" typ.type_id
   | Replace (typ, _) ->
       Format.fprintf fmt "replace(id= %i, _)" typ.type_id
+  | Row_presence (pres, _) ->
+      Format.fprintf fmt "row_presence(id= %i, _)" pres.rp_id
+  | Row_replace (pres, _) ->
+      Format.fprintf fmt "row_replace(id= %i, _)" pres.rp_id
 
 (** Implements a weak, mutable linked-list containing the history of changes.
 
@@ -627,6 +654,8 @@ let revert = function
       typ.type_desc <- desc
   | Replace (typ, desc) ->
       typ.type_desc <- desc
+  | Row_presence (pres, desc) | Row_replace (pres, desc) ->
+      pres.rp_desc <- desc
 
 let backtrack snap =
   let changes = Snapshot.backtrack snap in
@@ -702,6 +731,14 @@ let rec copy_desc ~f = function
 and copy_row ~f {row_tags; row_closed; row_proxy} =
   let row_tags =
     Map.map row_tags ~f:(fun (path, pres, args) ->
+        let pres =
+          let pres = rp_repr pres in
+          match pres.rp_desc with
+          | RpReplace pres ->
+              pres
+          | rp_desc ->
+              mk_rp rp_desc
+        in
         (path, pres, List.map ~f args) )
   in
   {row_tags; row_closed; row_proxy= f row_proxy}
@@ -756,6 +793,10 @@ let unify_depths typ1 typ2 =
   iter ~f:(update_depth typ1.type_depth) typ2 ;
   iter ~f:(update_depth typ2.type_depth) typ1
 
+let set_rp_desc pres desc =
+  Snapshot.add_to_history (Row_presence (pres, pres.rp_desc)) ;
+  pres.rp_desc <- desc
+
 let set_desc typ desc =
   Snapshot.add_to_history (Desc (typ, typ.type_desc)) ;
   typ.type_desc <- desc
@@ -775,7 +816,11 @@ let set_replacement typ typ' =
 
 (** Backtrack only undoing the [Replace] operations since the last snapshot. *)
 let backtrack_replace =
-  filtered_backtrack ~f:(function Replace _ -> true | _ -> false)
+  filtered_backtrack ~f:(function
+    | Replace _ | Row_replace _ ->
+        true
+    | _ ->
+        false )
 
 (** [set_repr typ typ'] sets the representative of [typ] to be [typ']. *)
 let set_repr typ typ' =

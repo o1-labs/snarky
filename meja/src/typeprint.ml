@@ -59,11 +59,14 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
             fprintf fmt "[>@[<hv1>@," ; false
         | Closed ->
             let is_fixed =
-              Map.for_all row_tags ~f:(function
-                | _, (Present | Absent), _ ->
-                    true
-                | _, Maybe, _ ->
-                    false )
+              Map.for_all row_tags ~f:(fun (_, pres, _) ->
+                  match (Type1.rp_repr pres).rp_desc with
+                  | RpPresent | RpAbsent ->
+                      true
+                  | RpMaybe ->
+                      false
+                  | RpRef _ | RpReplace _ ->
+                      assert false )
             in
             if is_fixed then fprintf fmt "[@[<hv1>@,"
             else fprintf fmt "[<@[<hv1>@," ;
@@ -71,25 +74,29 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
       in
       let is_first = ref true in
       Map.iteri row_tags ~f:(fun ~key:_ ~data:(path, pres, args) ->
-          match pres with
-          | Present | Maybe ->
+          match (Type1.rp_repr pres).rp_desc with
+          | RpPresent | RpMaybe ->
               if !is_first then is_first := false else bar_sep fmt () ;
               if List.is_empty args then Path.pp fmt path
               else fprintf fmt "%a@[<hv1>%a@]" Path.pp path tuple args
-          | Absent ->
-              () ) ;
+          | RpAbsent ->
+              ()
+          | RpRef _ | RpReplace _ ->
+              assert false ) ;
       ( if needs_lower_bound then
         let is_first = ref true in
         Map.iteri row_tags ~f:(fun ~key:_ ~data:(path, pres, _args) ->
-            match pres with
-            | Present ->
+            match (Type1.rp_repr pres).rp_desc with
+            | RpPresent ->
                 if !is_first then (
                   is_first := false ;
                   fprintf fmt "@ > " )
                 else bar_sep fmt () ;
                 Path.pp fmt path
-            | Maybe | Absent ->
-                () ) ) ;
+            | RpMaybe | RpAbsent ->
+                ()
+            | RpRef _ | RpReplace _ ->
+                assert false ) ) ;
       fprintf fmt "@,@]]"
 
 and tuple fmt typs =

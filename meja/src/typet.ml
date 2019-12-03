@@ -193,9 +193,9 @@ module Type = struct
         let pres =
           match (row_closed, min_tags) with
           | Closed, Some _ ->
-              Type0.Maybe
+              Type0.RpMaybe
           | Open, _ | Closed, None ->
-              Type0.Present
+              Type0.RpPresent
         in
         let (env, row_tags), tags =
           List.fold_map ~init:(env, Ident.Map.empty) tags
@@ -210,7 +210,7 @@ module Type = struct
               let row_tags =
                 match
                   Map.add row_tags ~key:rtag_ident.txt
-                    ~data:(Path.Pident rtag_ident.txt, pres, args)
+                    ~data:(Path.Pident rtag_ident.txt, Type1.mk_rp pres, args)
                 with
                 | `Duplicate ->
                     raise
@@ -223,17 +223,14 @@ module Type = struct
         let min_tags =
           Option.map ~f:(List.map ~f:(map_loc ~f:Ident.create_row)) min_tags
         in
-        let row_tags =
-          let set_maybe row_tags tag =
-            Map.change row_tags tag.Location.txt ~f:(function
-              | None ->
-                  raise (Error (tag.loc, Missing_row_label tag.txt))
-              | Some (path, _, args) ->
-                  Some (path, Type0.Present, args) )
-          in
-          Option.fold ~init:row_tags min_tags ~f:(fun init ->
-              List.fold ~f:set_maybe ~init )
+        let set_present tag =
+          match Map.find row_tags tag.Location.txt with
+          | None ->
+              raise (Error (tag.loc, Missing_row_label tag.txt))
+          | Some (_path, pres, _args) ->
+              pres.Type0.rp_desc <- RpPresent
         in
+        Option.iter ~f:(List.iter ~f:set_present) min_tags ;
         let row_proxy = Envi.Type.mkvar ~mode None env in
         let type_type =
           Envi.Type.Mk.row ~mode {row_tags; row_closed; row_proxy} env

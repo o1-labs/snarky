@@ -1,7 +1,18 @@
 open Core_kernel
 open Ast_types
 
-type row_presence = Present | Maybe | Absent [@@deriving sexp, compare]
+type row_presence = {mutable rp_desc: row_presence_desc; rp_id: int}
+[@@deriving sexp]
+
+and row_presence_desc =
+  | RpPresent
+  | RpMaybe
+  | RpAbsent
+  (* Indirection. The value is deferred to that of the argument's [rp_desc]. *)
+  | RpRef of row_presence
+  (* Copying signal. If present, copying should return the argument. *)
+  | RpReplace of row_presence
+[@@deriving sexp, compare]
 
 type type_expr =
   { mutable type_desc: type_desc

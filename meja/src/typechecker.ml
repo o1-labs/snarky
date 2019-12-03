@@ -271,44 +271,54 @@ let rec check_type_aux ~loc typ ctyp env =
       let row_tags =
         Map.merge row_tags1 row_tags2 ~f:(fun ~key:_ data ->
             match (data, row_closed1, row_closed2) with
-            | `Left (path, Present, _), _, Closed
-            | `Right (path, Present, _), Closed, _ ->
-                raise
-                  (Error (loc, env, Missing_row_constructor (path, typ, ctyp)))
-            | `Left (path, Maybe, args), _, Closed
-            | `Right (path, Maybe, args), Closed, _ ->
-                Some (path, Absent, args)
-            | `Left data, _, _ | `Right data, _, _ ->
-                ( match data with
-                | _, Absent, _ ->
-                    ()
-                | _, (Present | Maybe), _ ->
-                    is_empty := false ) ;
-                Some data
+            | `Left (path, pres, args), _, row_closed
+            | `Right (path, pres, args), row_closed, _ ->
+                let pres = rp_repr pres in
+                ( match (pres.rp_desc, row_closed) with
+                | (RpRef _ | RpReplace _), _ ->
+                    assert false
+                | RpPresent, Closed ->
+                    raise
+                      (Error
+                         (loc, env, Missing_row_constructor (path, typ, ctyp)))
+                | RpMaybe, Closed ->
+                    set_rp_desc pres RpAbsent
+                | (RpPresent | RpMaybe), Open ->
+                    is_empty := false
+                | RpAbsent, _ ->
+                    () ) ;
+                Some (path, pres, args)
             | `Both ((path1, pres1, args1), (path2, pres2, args2)), _, _ ->
-                let pres =
-                  match (pres1, pres2) with
-                  | Maybe, Maybe ->
+                let pres1 = rp_repr pres1 in
+                let pres2 = rp_repr pres2 in
+                let pres_desc =
+                  match (pres1.rp_desc, pres2.rp_desc) with
+                  | (RpRef _ | RpReplace _), _ | _, (RpRef _ | RpReplace _) ->
+                      assert false
+                  | RpMaybe, RpMaybe ->
                       is_empty := false ;
-                      Maybe
-                  | (Present | Maybe), (Present | Maybe) ->
+                      RpMaybe
+                  | (RpPresent | RpMaybe), (RpPresent | RpMaybe) ->
                       is_empty := false ;
-                      Present
-                  | (Absent | Maybe), (Absent | Maybe) ->
-                      Absent
-                  | Present, Absent ->
+                      RpPresent
+                  | (RpAbsent | RpMaybe), (RpAbsent | RpMaybe) ->
+                      RpAbsent
+                  | RpPresent, RpAbsent ->
                       raise
                         (Error
                            ( loc
                            , env
                            , Missing_row_constructor (path1, typ, ctyp) ))
-                  | Absent, Present ->
+                  | RpAbsent, RpPresent ->
                       raise
                         (Error
                            ( loc
                            , env
                            , Missing_row_constructor (path1, typ, ctyp) ))
                 in
+                let pres = mk_rp pres_desc in
+                set_rp_desc pres1 (RpRef pres) ;
+                set_rp_desc pres2 (RpRef pres) ;
                 ( match
                     List.iter2 args1 args2 ~f:(fun typ ctyp ->
                         check_type_aux typ ctyp env )
@@ -382,10 +392,13 @@ and stitch_tri_stitched ~loc typ env =
   Type1.set_desc typ (Tref typ.type_alternate.type_alternate)
 
 let check_type ~loc env typ constr_typ =
+  let snapshot = Snapshot.create () in
   match check_type_aux ~loc typ constr_typ env with
   | exception Error (_, _, err) ->
       let typ = Type1.flatten typ in
       let constr_typ = Type1.flatten constr_typ in
+      (* Backtrack to restore types to their pre-unification states. *)
+      backtrack snapshot ;
       raise (Error (loc, env, Check_failed (typ, constr_typ, err)))
   (*| exception err ->
       Format.(
@@ -396,7 +409,6 @@ let check_type ~loc env typ constr_typ =
       ()
 
 let unifies env typ constr_typ =
-  let snapshot = Snapshot.create () in
   match check_type ~loc:Location.none env typ constr_typ with
   | () ->
       true
@@ -404,7 +416,7 @@ let unifies env typ constr_typ =
       (*Format.(
         fprintf err_formatter "Does not unify:@.%a@." Location.report_exception
           exn) ;*)
-      backtrack snapshot ; false
+      false
 
 let rec add_implicits ~loc implicits typ env =
   match implicits with

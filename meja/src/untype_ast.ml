@@ -56,15 +56,17 @@ module Type0 = struct
                 ; rtag_arg= List.map ~f:(type_expr ?loc) args
                 ; rtag_loc= Option.value ~default:Location.none loc }
               in
-              match pres with
-              | Absent ->
+              match (Type1.rp_repr pres).rp_desc with
+              | RpAbsent ->
                   (tags, min_tags)
-              | Present ->
+              | RpPresent ->
                   let row = row () in
                   (row :: tags, row.rtag_ident :: min_tags)
-              | Maybe ->
+              | RpMaybe ->
                   needs_lower_bound := true ;
-                  (row () :: tags, min_tags) )
+                  (row () :: tags, min_tags)
+              | RpRef _ | RpReplace _ ->
+                  assert false )
         in
         if !needs_lower_bound then
           Type.row ?loc tags row_closed (Some min_tags)
