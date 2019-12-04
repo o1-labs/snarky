@@ -1,0 +1,13 @@
+module X : { let x : int;  };
+
+let f : {int} -> int;
+
+let a : int;
+
+let y : int;
+
+let b : int;
+
+let c : int;
+
+

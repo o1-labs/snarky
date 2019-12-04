@@ -1,0 +1,67 @@
+module Alias_alias :
+  {
+    convertible type u('a, 'b) = 'a -> 'a
+    with prover u('a, 'b) = 'a -> 'a
+    by u_typ;
+    
+    convertible type v('a, 'b) = u('a, 'a)
+    with prover v('a, 'b) = u('a, 'a)
+    by v_typ;
+    
+    let f : u(int, bool) -> u(int, int);
+    
+    let g : v(int, int) -> v(int, bool);
+    
+    let h : v(int, bool) -> u(int, int);
+    
+    let i : u(bool, bool) -> v(bool, unit);
+    
+    };
+
+module Alias_opaque :
+  {
+    type u('a, 'b);
+    
+    type v('a, 'b) = u('a, 'a);
+    
+    let f : v(int, int) -> v(int, bool);
+    
+    let g : v(int, bool) -> u(int, int);
+    
+    let h : u(bool, bool) -> v(bool, unit);
+    
+    };
+
+module Alias_record :
+  {
+    convertible type u('a, 'b) = {a: 'a, b: 'b}
+    with prover u('a, 'b) = {a: 'a, b: 'b}
+    by u_typ;
+    
+    convertible type v('a, 'b) = u('a, 'a)
+    with prover v('a, 'b) = u('a, 'a)
+    by v_typ;
+    
+    let f : v(int, int) -> v(int, bool);
+    
+    let g : v(int, bool) -> u(int, int);
+    
+    let h : u(bool, bool) -> v(bool, unit);
+    
+    };
+
+module Alias_variant :
+  {
+    type u('a, 'b) = A | B | C('a) | D('b);
+    
+    type v('a, 'b) = u('a, 'a);
+    
+    let f : v(int, int) -> v(int, bool);
+    
+    let g : v(int, bool) -> u(int, int);
+    
+    let h : u(bool, bool) -> v(bool, unit);
+    
+    };
+
+

@@ -19,7 +19,8 @@ and type_desc =
   | Ttyp_conv of type_expr * type_expr
   | Ttyp_opaque of type_expr
 
-and variant = {var_ident: path; var_params: type_expr list}
+and variant =
+  {var_ident: path; var_params: type_expr list; var_var: Type0.variant}
 
 type field_decl =
   { fld_ident: ident
@@ -131,7 +132,8 @@ type conv_type =
   (* Tri-stitching to existing declaration. *)
   | Ttconv_to of type_expr
 
-type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
+type signature_item =
+  {sig_desc: signature_desc; sig_loc: Location.t; sig_sig: Type0.signature}
 
 and signature = signature_item list
 
@@ -150,16 +152,20 @@ and signature_desc =
   | Tsig_prover of signature
   | Tsig_convert of ident * type_expr
 
-and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
+and module_sig =
+  { msig_desc: module_sig_desc
+  ; msig_loc: Location.t
+  ; msig_msig: Type0.module_sig }
 
 and module_sig_desc =
   | Tmty_sig of signature
   | Tmty_name of path
   | Tmty_alias of path
   | Tmty_abstract
-  | Tmty_functor of str * module_sig * module_sig
+  | Tmty_functor of ident * module_sig * module_sig
 
-type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
+type statement =
+  {stmt_desc: statement_desc; stmt_loc: Location.t; stmt_sig: Type0.signature}
 
 and statements = statement list
 
@@ -180,9 +186,10 @@ and statement_desc =
   | Tstmt_prover of statements
   | Tstmt_convert of ident * type_expr * convert
 
-and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
+and module_expr =
+  {mod_desc: module_desc; mod_loc: Location.t; mod_msig: Type0.module_sig}
 
 and module_desc =
   | Tmod_struct of statements
   | Tmod_name of path
-  | Tmod_functor of str * module_sig * module_expr
+  | Tmod_functor of ident * module_sig * module_expr

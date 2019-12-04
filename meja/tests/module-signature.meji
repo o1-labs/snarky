@@ -1,0 +1,17 @@
+module type S =
+  {
+    let x : int;
+    
+    type x;
+    
+    instance x_inst : x;
+    
+    module X : { type t = ..;  type t += B | A  };
+    
+    type X.t += E | D | C
+    
+    module Y : { type t = A | B;  type t += H | G | F  };
+    
+    };
+
+

@@ -60,3 +60,31 @@ and type_decl_desc =
   | TExtend of Path.t * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 [@@deriving sexp]
+
+type conv_type =
+  | Conv_with of Ident.t * mode * type_decl
+  | Conv_to of type_expr
+[@@deriving sexp]
+
+type signature = signature_item list [@@deriving sexp]
+
+and signature_item =
+  | Svalue of Ident.t * type_expr
+  | Sinstance of Ident.t * type_expr
+  | Stype of Ident.t * type_decl
+  | Sconvtype of Ident.t * type_decl * conv_type * Ident.t * type_expr
+  | Srectype of (Ident.t * type_decl) list
+  | Smodule of Ident.t * module_sig
+  | Smodtype of Ident.t * module_sig
+  | Stypeext of variant * ctor_decl list
+  | Srequest of type_expr * ctor_decl
+  | Sprover of signature
+[@@deriving sexp]
+
+and module_sig =
+  | Msig of signature
+  | Mname of Path.t
+  | Malias of Path.t
+  | Mabstract
+  | Mfunctor of Ident.t * module_sig * module_sig
+[@@deriving sexp]

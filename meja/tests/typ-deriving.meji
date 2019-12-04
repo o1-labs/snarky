@@ -1,0 +1,13 @@
+type t = {a: bool, b: field};
+
+type u('a) = {a1: 'a, b1: bool};
+
+convertible type v('a, 'b) = {a2: 'a, b2: 'b}
+with prover v('a, 'b) = {a2: 'a, b2: 'b}
+by v_typ;
+
+let x : _ -> v(_, _);
+
+let y : unit -> v(boolean, boolean);
+
+

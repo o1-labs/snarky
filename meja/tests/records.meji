@@ -1,0 +1,37 @@
+convertible type t('a, 'b, 'c) = {a: 'a, b: 'b, c: 'c}
+with prover t('a, 'b, 'c) = {a: 'a, b: 'b, c: 'c}
+by typ;
+
+let x : t(int, int, int);
+
+let y : t(bool, bool, bool);
+
+let z : t(int, bool, unit);
+
+module X :
+  {
+    convertible type t('a) = {a: 'a, b: 'a, c: 'a}
+    with prover t('a) = {a: 'a, b: 'a, c: 'a}
+    by typ;
+    
+    let x : t(int);
+    
+    };
+
+let a : X.t(int);
+
+let b : X.t(int);
+
+let c : t(int, int, int);
+
+let d : (int, int);
+
+let e : int;
+
+let f : bool;
+
+let g : unit;
+
+let h : unit;
+
+

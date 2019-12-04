@@ -1026,7 +1026,7 @@ let rec get_expression env expected exp =
       ({exp_loc= loc; exp_type= e2.exp_type; exp_desc= Texp_seq (e1, e2)}, env)
   | Pexp_let (p, e1, e2) ->
       let env = Envi.open_expr_scope env in
-      let p, e1, env = check_binding env p e1 in
+      let p, e1, _pat_vars, env = check_binding env p e1 in
       let e2, env = get_expression env expected e2 in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env e2.exp_type ;
@@ -1035,20 +1035,11 @@ let rec get_expression env expected exp =
   | Pexp_instance (name, e1, e2) ->
       let env = Envi.open_expr_scope env in
       let p = Ast_build.Pat.var ~loc:name.loc name.txt in
-      let p, e1, env = check_binding env p e1 in
+      let _p, e1, pat_vars, env = check_binding env p e1 in
       let ident, typ =
-        let ret = ref None in
-        let pattern iter pat =
-          match pat.Typedast.pat_desc with
-          | Tpat_variable name ->
-              ret := Some (name, pat.Typedast.pat_type)
-          | _ ->
-              Typedast_iter.default_iterator.pattern iter pat
-        in
-        pattern {Typedast_iter.default_iterator with pattern} p ;
-        Option.value_exn !ret
+        match pat_vars with [(name, typ)] -> (name, typ) | _ -> assert false
       in
-      let env = Envi.add_implicit_instance ident.txt typ env in
+      let env = Envi.add_implicit_instance ident.Location.txt typ env in
       let e2, env = get_expression env expected e2 in
       let implicits_instantiated =
         (* Instantiate any implicits that we can within this scope. *)
@@ -1389,7 +1380,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         List.fold ~init:env pattern_variables ~f:(fun env (name, typ) ->
             add_polymorphised name.Location.txt typ env )
       in
-      (p, e, env)
+      (p, e, pattern_variables, env)
   | implicit :: _ ->
       let name, typ =
         match pattern_variables with
@@ -1456,7 +1447,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         ; pat_desc= Tpat_variable name }
       in
       let env = add_polymorphised name.Location.txt e.exp_type env in
-      (p, e, env)
+      (p, e, pattern_variables, env)
 
 let type_extension ~loc variant ctors env =
   let mode = Envi.current_mode env in
@@ -1509,9 +1500,25 @@ let type_extension ~loc variant ctors env =
   in
   let variant =
     { Typedast.var_ident= Location.mkloc path var_ident.loc
-    ; var_params= decl.tdec_params }
+    ; var_params= decl.tdec_params
+    ; var_var=
+        { var_ident= path
+        ; var_params= List.map decl.tdec_params ~f:(fun x -> x.type_type) } }
   in
   (env, variant, ctors)
+
+let substitute_module_names m_name m_scope m_sig =
+  let do_subst ident =
+    (Path.Pident ident, Path.dot (Path.Pident m_name) ident)
+  in
+  let subst =
+    Envi.Scope.build_subst ~type_subst:do_subst ~module_subst:do_subst
+      Subst.empty m_scope
+  in
+  let mapper = Subst.type0_mapper subst in
+  let snap = Snapshot.create () in
+  let m_sig = mapper.module_sig mapper m_sig in
+  backtrack snap ; m_sig
 
 let rec check_signature_item env item =
   let mode = Envi.current_mode env in
@@ -1524,7 +1531,10 @@ let rec check_signature_item env item =
       Envi.Type.update_depths env typ.type_type ;
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = add_polymorphised name.txt typ.type_type env in
-      (env, {Typedast.sig_desc= Tsig_value (name, typ); sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_value (name, typ)
+        ; sig_loc= loc
+        ; sig_sig= [Svalue (name.txt, typ.type_type)] } )
   | Psig_instance (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ, env = Typet.Type.import typ env in
@@ -1535,10 +1545,16 @@ let rec check_signature_item env item =
       let typ' = polymorphise typ' env in
       let env = Envi.add_name name.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ' env in
-      (env, {Typedast.sig_desc= Tsig_instance (name, typ); sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_instance (name, typ)
+        ; sig_loc= loc
+        ; sig_sig= [Sinstance (name.txt, typ.type_type)] } )
   | Psig_type decl ->
       let decl, env = Typet.TypeDecl.import decl env in
-      (env, {Typedast.sig_desc= Tsig_type decl; sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_type decl
+        ; sig_loc= loc
+        ; sig_sig= [Stype (decl.tdec_ident.txt, decl.tdec_tdec)] } )
   | Psig_convtype (decl, tconv, convname) ->
       if not (equal_mode mode Checked) then
         raise (Error (loc, env, Convertible_not_in_checked)) ;
@@ -1569,7 +1585,15 @@ let rec check_signature_item env item =
               ; type_type= typ.type_type.type_alternate } )
         in
         let mk_ctor path params type_type =
-          { type_desc= Ttyp_ctor {var_ident= path; var_params= params}
+          { type_desc=
+              Ttyp_ctor
+                { var_ident= path
+                ; var_params= params
+                ; var_var=
+                    { var_ident= path.txt
+                    ; var_params=
+                        List.map decl.tdec_params ~f:(fun x -> x.type_type) }
+                }
           ; type_loc= loc
           ; type_type }
         in
@@ -1614,12 +1638,32 @@ let rec check_signature_item env item =
       let env =
         Envi.add_implicit_instance convname.txt typ'.type_alternate env
       in
+      let tconv0 =
+        match tconv with
+        | Ttconv_with (mode, decl) ->
+            Conv_with (decl.tdec_ident.txt, mode, decl.tdec_tdec)
+        | Ttconv_to typ ->
+            Conv_to typ.type_type
+      in
       ( env
       , { Typedast.sig_desc= Tsig_convtype (decl, tconv, convname, typ)
-        ; sig_loc= loc } )
+        ; sig_loc= loc
+        ; sig_sig=
+            [ Sconvtype
+                ( decl.tdec_ident.txt
+                , decl.tdec_tdec
+                , tconv0
+                , convname.txt
+                , typ.type_type ) ] } )
   | Psig_rectype decls ->
       let decls, env = Typet.TypeDecl.import_rec decls env in
-      (env, {Typedast.sig_desc= Tsig_rectype decls; sig_loc= loc})
+      let sig_decls =
+        List.map decls ~f:(fun decl -> (decl.tdec_ident.txt, decl.tdec_tdec))
+      in
+      ( env
+      , { Typedast.sig_desc= Tsig_rectype decls
+        ; sig_loc= loc
+        ; sig_sig= [Srectype sig_decls] } )
   | Psig_module (name, msig) ->
       let name = map_loc ~f:(Ident.create ~mode) name in
       let msig, m, env = check_module_sig env msig in
@@ -1630,22 +1674,61 @@ let rec check_signature_item env item =
         | Envi.Scope.Deferred path ->
             Envi.add_deferred_module name.txt path env
       in
-      (env, {Typedast.sig_desc= Tsig_module (name, msig); sig_loc= loc})
+      let msig_msig =
+        (* TODO: Review whether we should subst here or not. The balance is
+                 resolution (for) vs. printing (not). Current printing wins
+                 because we're printing and not resolving.
+        *)
+        (*match m with
+        | Envi.Scope.Immediate m ->
+            substitute_module_names name.txt m msig.Typedast.msig_msig
+        | Deferred _ ->
+            (* This is a global module, no need to substitute. *)
+            msig.msig_msig*)
+        msig.Typedast.msig_msig
+      in
+      ( env
+      , { Typedast.sig_desc= Tsig_module (name, msig)
+        ; sig_loc= loc
+        ; sig_sig= [Smodule (name.txt, msig_msig)] } )
   | Psig_modtype (name, signature) ->
       let env = Envi.open_module env in
       let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
-      (env, {Typedast.sig_desc= Tsig_modtype (name, signature); sig_loc= loc})
+      let msig_msig =
+        (* TODO: Review whether we should subst here or not. The balance is
+                 resolution (for) vs. printing (not). Current printing wins
+                 because we're printing and not resolving.
+        *)
+        (*match m_env with
+        | Envi.Scope.Immediate m ->
+            substitute_module_names name.txt m signature.msig_msig
+        | Deferred _ ->
+            (* This is a global module, no need to substitute. *)
+            signature.msig_msig*)
+        signature.msig_msig
+      in
+      ( env
+      , { Typedast.sig_desc= Tsig_modtype (name, signature)
+        ; sig_loc= loc
+        ; sig_sig= [Smodtype (name.txt, msig_msig)] } )
   | Psig_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
       let env = Envi.open_namespace_scope path m env in
       ( env
       , { Typedast.sig_desc= Tsig_open (Location.mkloc path name.loc)
-        ; sig_loc= loc } )
+        ; sig_loc= loc
+        ; sig_sig= [] } )
   | Psig_typeext (variant, ctors) ->
       let env, variant, ctors = type_extension ~loc variant ctors env in
-      (env, {Typedast.sig_desc= Tsig_typeext (variant, ctors); sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_typeext (variant, ctors)
+        ; sig_loc= loc
+        ; sig_sig=
+            [ Stypeext
+                (variant.var_var, List.map ctors ~f:(fun x -> x.ctor_ctor)) ]
+        } )
   | Psig_request (arg, ctor_decl) ->
       let open Ast_build in
       let variant =
@@ -1665,15 +1748,25 @@ let rec check_signature_item env item =
         | _ ->
             assert false
       in
-      (env, {Typedast.sig_desc= Tsig_request (arg, ctor_decl); sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_request (arg, ctor_decl)
+        ; sig_loc= loc
+        ; sig_sig= [Srequest (arg.type_type, ctor_decl.ctor_ctor)] } )
   | Psig_multiple sigs ->
       let env, sigs = check_signature env sigs in
-      (env, {Typedast.sig_desc= Tsig_multiple sigs; sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_multiple sigs
+        ; sig_loc= loc
+        ; sig_sig= List.concat_map sigs ~f:(fun x -> x.sig_sig) } )
   | Psig_prover sigs ->
       let env = Envi.open_mode_module_scope Prover env in
       let env, sigs = check_signature env sigs in
       let env = Envi.open_mode_module_scope mode env in
-      (env, {Typedast.sig_desc= Tsig_prover sigs; sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_prover sigs
+        ; sig_loc= loc
+        ; sig_sig= [Sprover (List.concat_map sigs ~f:(fun x -> x.sig_sig))] }
+      )
   | Psig_convert (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ, env = Typet.Type.import typ env in
@@ -1684,7 +1777,10 @@ let rec check_signature_item env item =
       let env = Envi.add_name name.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ'.type_alternate env in
-      (env, {Typedast.sig_desc= Tsig_convert (name, typ); sig_loc= loc})
+      ( env
+      , { Typedast.sig_desc= Tsig_convert (name, typ)
+        ; sig_loc= loc
+        ; sig_sig= [Sinstance (name.txt, typ.type_type)] } )
 
 and check_signature env signature =
   List.fold_map ~init:env signature ~f:check_signature_item
@@ -1697,7 +1793,10 @@ and check_module_sig env msig =
       let env = Envi.open_module env in
       let env, signature = check_signature env signature in
       let m, env = Envi.pop_module ~loc env in
-      ( {Typedast.msig_desc= Tmty_sig signature; msig_loc= loc}
+      ( { Typedast.msig_desc= Tmty_sig signature
+        ; msig_loc= loc
+        ; msig_msig= Msig (List.concat_map signature ~f:(fun x -> x.sig_sig))
+        }
       , Envi.Scope.Immediate m
       , env )
   | Pmty_name lid ->
@@ -1709,7 +1808,8 @@ and check_module_sig env msig =
             raise (Envi.Error (loc, Unbound ("module type", lid.txt)))
       in
       ( { Typedast.msig_desc= Tmty_name (Location.mkloc path lid.loc)
-        ; msig_loc= loc }
+        ; msig_loc= loc
+        ; msig_msig= Mname path }
       , m
       , env )
   | Pmty_alias lid ->
@@ -1721,34 +1821,28 @@ and check_module_sig env msig =
             raise (Envi.Error (loc, Unbound ("module", lid.txt)))
       in
       ( { Typedast.msig_desc= Tmty_alias (Location.mkloc path lid.loc)
-        ; msig_loc= loc }
+        ; msig_loc= loc
+        ; msig_msig= Malias path }
       , m
       , env )
   | Pmty_abstract ->
       let env = Envi.open_module env in
       let m, env = Envi.pop_module ~loc env in
-      ( {Typedast.msig_desc= Tmty_abstract; msig_loc= loc}
+      ( {Typedast.msig_desc= Tmty_abstract; msig_loc= loc; msig_msig= Mabstract}
       , Envi.Scope.Immediate m
       , env )
   | Pmty_functor (f_name, f, msig) ->
       let f, f_mty, env = check_module_sig env f in
-      let ftor f_instance =
-        (* We want the functored module to be accessible only in un-prefixed
-           space.
-        *)
+      let f_name = map_loc ~f:(Ident.create ~mode) f_name in
+      let mscope, msig =
         let env = Envi.open_module env in
-        (* TODO: This name should be constant, and the underlying module
-           substituted.
-        *)
-        let f_name = map_loc ~f:(Ident.create ~mode) f_name in
         let env =
-          match f_instance with
+          match f_mty with
           | Envi.Scope.Immediate f ->
               Envi.add_module f_name.txt f env
           | Envi.Scope.Deferred path ->
               Envi.add_deferred_module f_name.txt path env
         in
-        (* TODO: check that f_instance matches f_mty *)
         let msig, m, _env = check_module_sig env msig in
         match m with
         | Envi.Scope.Immediate m ->
@@ -1760,10 +1854,10 @@ and check_module_sig env msig =
                    env)
             , msig )
       in
-      (* Check that f_mty builds the functor as expected. *)
-      let _, msig = ftor f_mty in
-      let m = Envi.make_functor ~mode (fun f -> fst (ftor f)) in
-      ( {Typedast.msig_desc= Tmty_functor (f_name, f, msig); msig_loc= loc}
+      let m = Envi.make_functor f_name.txt f.msig_msig mscope in
+      ( { Typedast.msig_desc= Tmty_functor (f_name, f, msig)
+        ; msig_loc= loc
+        ; msig_msig= Mfunctor (f_name.txt, f.msig_msig, msig.msig_msig) }
       , Envi.Scope.Immediate m
       , env )
 
@@ -1773,39 +1867,33 @@ let rec check_statement env stmt =
   match stmt.stmt_desc with
   | Pstmt_value (p, e) ->
       let env = Envi.open_expr_scope env in
-      let p, e, env = check_binding ~toplevel:true env p e in
+      let p, e, pat_vars, env = check_binding ~toplevel:true env p e in
       let scope, env = Envi.pop_expr_scope env in
       (* Uplift the names from the expression scope, discarding the scope and
          its associated type variables etc. *)
       let env = Envi.join_expr_scope env scope in
-      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_value (p, e)})
+      let stmt_sig =
+        List.map pat_vars ~f:(fun (name, typ) -> Svalue (name.txt, typ))
+      in
+      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_value (p, e); stmt_sig})
   | Pstmt_instance (name, e) ->
       let env = Envi.open_expr_scope env in
       let p = {pat_desc= Ppat_variable name; pat_loc= name.loc} in
-      let p, e, env = check_binding ~toplevel:true env p e in
+      let _p, e, pat_vars, env = check_binding ~toplevel:true env p e in
       let name =
-        let exception Ret of Ident.t Location.loc in
-        let iter =
-          { Typedast_iter.default_iterator with
-            pattern_desc=
-              (fun iter p ->
-                match p with
-                | Tpat_variable name ->
-                    raise (Ret name)
-                | _ ->
-                    Typedast_iter.default_iterator.pattern_desc iter p ) }
-        in
-        try
-          iter.pattern iter p ;
-          assert false
-        with Ret name -> name
+        match pat_vars with [(name, _)] -> name | _ -> assert false
       in
       let scope, env = Envi.pop_expr_scope env in
       let env = Envi.join_expr_scope env scope in
       let typ = Type1.flatten e.exp_type in
       let typ = polymorphise typ env in
       let env = Envi.add_implicit_instance name.txt typ env in
-      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e)})
+      let stmt_sig =
+        List.map pat_vars ~f:(fun (name, typ) -> Svalue (name.txt, typ))
+      in
+      ( env
+      , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e); stmt_sig}
+      )
   | Pstmt_type decl -> (
     try
       (* Bail if we're not in checked mode. *)
@@ -1868,14 +1956,26 @@ let rec check_statement env stmt =
         { Typedast.stmt_loc= loc
         ; stmt_desc=
             Tstmt_convtype
-              (decl, Ttconv_with (Prover, alt_decl), convname, conv) }
+              (decl, Ttconv_with (Prover, alt_decl), convname, conv)
+        ; stmt_sig=
+            [ Sconvtype
+                ( decl.tdec_ident.txt
+                , decl.tdec_tdec
+                , Conv_with
+                    (alt_decl.tdec_ident.txt, Prover, alt_decl.tdec_tdec)
+                , convname.txt
+                , conv.conv_type ) ] }
       in
       (env, stmt)
     with _err ->
       (*Format.eprintf "%s@." (Printexc.get_backtrace ()) ;
       Location.report_exception Format.err_formatter _err ;*)
       let decl, env = Typet.TypeDecl.import decl env in
-      let stmt = {Typedast.stmt_loc= loc; stmt_desc= Tstmt_type decl} in
+      let stmt =
+        { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_type decl
+        ; stmt_sig= [Stype (decl.tdec_ident.txt, decl.tdec_tdec)] }
+      in
       (env, stmt) )
   | Pstmt_convtype (decl, tconv, convname) ->
       if not (equal_mode mode Checked) then
@@ -1912,38 +2012,96 @@ let rec check_statement env stmt =
       let env =
         Envi.add_implicit_instance convname.txt typ.type_alternate env
       in
+      let tconv0 =
+        match tconv with
+        | Ttconv_with (mode, decl) ->
+            Conv_with (decl.tdec_ident.txt, mode, decl.tdec_tdec)
+        | Ttconv_to typ ->
+            Conv_to typ.type_type
+      in
       ( env
       , { Typedast.stmt_desc= Tstmt_convtype (decl, tconv, convname, conv)
-        ; stmt_loc= loc } )
+        ; stmt_loc= loc
+        ; stmt_sig=
+            [ Sconvtype
+                ( decl.tdec_ident.txt
+                , decl.tdec_tdec
+                , tconv0
+                , convname.txt
+                , conv.conv_type ) ] } )
   | Pstmt_rectype decls ->
       let decls, env = Typet.TypeDecl.import_rec decls env in
-      (env, {Typedast.stmt_desc= Tstmt_rectype decls; stmt_loc= loc})
+      let stmt_sig =
+        [ Srectype
+            (List.map decls ~f:(fun decl ->
+                 (decl.tdec_ident.txt, decl.tdec_tdec) )) ]
+      in
+      (env, {Typedast.stmt_desc= Tstmt_rectype decls; stmt_loc= loc; stmt_sig})
   | Pstmt_module (name, m) ->
       let env = Envi.open_module env in
       let env, m = check_module_expr env m in
       let m_env, env = Envi.pop_module ~loc env in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module name.txt m_env env in
-      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_module (name, m)})
+      let mod_msig =
+        (* TODO: Review whether we should subst here or not. The balance is
+                 resolution (for) vs. printing (not). Current printing wins
+                 because we're printing and not resolving.
+        *)
+        (*match m_env with
+        | Envi.Scope.Immediate m_env ->
+            substitute_module_names name.txt m_env m.Typedast.mod_msig
+        | Deferred _ ->
+            (* This is a global module, no need to substitute. *)
+            m.mod_msig*)
+        m.Typedast.mod_msig
+      in
+      ( env
+      , { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_module (name, m)
+        ; stmt_sig= [Smodule (name.txt, mod_msig)] } )
   | Pstmt_modtype (name, signature) ->
       let signature, m_env, env = check_module_sig env signature in
       let name = map_loc ~f:(Ident.create ~mode) name in
       let env = Envi.add_module_type name.txt m_env env in
+      let msig_msig =
+        (* TODO: Review whether we should subst here or not. The balance is
+                 resolution (for) vs. printing (not). Current printing wins
+                 because we're printing and not resolving.
+        *)
+        (*match m_env with
+        | Envi.Scope.Immediate m ->
+            substitute_module_names name.txt m signature.msig_msig
+        | Deferred _ ->
+            (* This is a global module, no need to substitute. *)
+            signature.msig_msig*)
+        signature.msig_msig
+      in
       ( env
-      , {Typedast.stmt_loc= loc; stmt_desc= Tstmt_modtype (name, signature)} )
+      , { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_modtype (name, signature)
+        ; stmt_sig= [Smodtype (name.txt, msig_msig)] } )
   | Pstmt_open name ->
       let path, m = Envi.find_module ~mode ~loc name env in
       ( Envi.open_namespace_scope path m env
       , { Typedast.stmt_loc= loc
-        ; stmt_desc= Tstmt_open (Location.mkloc path name.loc) } )
+        ; stmt_desc= Tstmt_open (Location.mkloc path name.loc)
+        ; stmt_sig= [] } )
   | Pstmt_open_instance name ->
       let path, m = Envi.find_module ~mode ~loc name env in
       ( Envi.open_instance_scope path m env
       , { Typedast.stmt_loc= loc
-        ; stmt_desc= Tstmt_open_instance (Location.mkloc path name.loc) } )
+        ; stmt_desc= Tstmt_open_instance (Location.mkloc path name.loc)
+        ; stmt_sig= [] } )
   | Pstmt_typeext (variant, ctors) ->
       let env, variant, ctors = type_extension ~loc variant ctors env in
-      (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_typeext (variant, ctors)})
+      ( env
+      , { Typedast.stmt_loc= loc
+        ; stmt_desc= Tstmt_typeext (variant, ctors)
+        ; stmt_sig=
+            [ Stypeext
+                (variant.var_var, List.map ctors ~f:(fun x -> x.ctor_ctor)) ]
+        } )
   | Pstmt_request (arg, ctor_decl, handler) ->
       let open Ast_build in
       let variant =
@@ -2008,7 +2166,7 @@ let rec check_statement env stmt =
                    ~args:(Pat.record [Pat.field request; Pat.field respond]))
                 body
             in
-            let _p, e, env = check_binding ~toplevel:true env p e in
+            let _p, e, _pat_vars, env = check_binding ~toplevel:true env p e in
             let pat, body =
               match e with
               | { exp_desc=
@@ -2037,15 +2195,25 @@ let rec check_statement env stmt =
         | None ->
             (None, env)
       in
-      (env, {stmt_loc= loc; stmt_desc= Tstmt_request (arg, ctor_decl, handler)})
+      ( env
+      , { stmt_loc= loc
+        ; stmt_desc= Tstmt_request (arg, ctor_decl, handler)
+        ; stmt_sig= [Srequest (arg.type_type, ctor_decl.ctor_ctor)] } )
   | Pstmt_multiple stmts ->
       let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
-      (env, {stmt_loc= loc; stmt_desc= Tstmt_multiple stmts})
+      ( env
+      , { stmt_loc= loc
+        ; stmt_desc= Tstmt_multiple stmts
+        ; stmt_sig= List.concat_map stmts ~f:(fun x -> x.stmt_sig) } )
   | Pstmt_prover stmts ->
       let env = Envi.open_mode_module_scope Prover env in
       let env, stmts = List.fold_map ~init:env stmts ~f:check_statement in
       let env = Envi.open_mode_module_scope mode env in
-      (env, {stmt_loc= loc; stmt_desc= Tstmt_prover stmts})
+      ( env
+      , { stmt_loc= loc
+        ; stmt_desc= Tstmt_prover stmts
+        ; stmt_sig= [Sprover (List.concat_map stmts ~f:(fun x -> x.stmt_sig))]
+        } )
   | Pstmt_convert (name, typ) ->
       let env = Envi.open_expr_scope env in
       let typ, env = Typet.Type.import typ env in
@@ -2060,7 +2228,9 @@ let rec check_statement env stmt =
       let env = Envi.add_name name.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ' env in
       ( env
-      , {Typedast.stmt_desc= Tstmt_convert (name, typ, conv); stmt_loc= loc} )
+      , { Typedast.stmt_desc= Tstmt_convert (name, typ, conv)
+        ; stmt_loc= loc
+        ; stmt_sig= [Sinstance (name.txt, typ.type_type)] } )
 
 and check_module_expr env m =
   let mode = Envi.current_mode env in
@@ -2068,46 +2238,46 @@ and check_module_expr env m =
   match m.mod_desc with
   | Pmod_struct stmts ->
       let env, stmts = List.fold_map ~f:check_statement ~init:env stmts in
-      (env, {Typedast.mod_loc= loc; mod_desc= Tmod_struct stmts})
+      ( env
+      , { Typedast.mod_loc= loc
+        ; mod_desc= Tmod_struct stmts
+        ; mod_msig= Msig (List.concat_map stmts ~f:(fun x -> x.stmt_sig)) } )
   | Pmod_name name ->
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
       let name', m' = Envi.find_module ~mode ~loc name env in
       let name = Location.mkloc name' name.loc in
       let env = Envi.push_scope m' env in
-      (env, {Typedast.mod_loc= loc; mod_desc= Tmod_name name})
+      ( env
+      , { Typedast.mod_loc= loc
+        ; mod_desc= Tmod_name name
+        ; mod_msig= Malias name.txt } )
   | Pmod_functor (f_name, f, m) ->
       (* Remove the module placed on the stack by the caller. *)
       let _, env = Envi.pop_module ~loc env in
       let f, f', env = check_module_sig env f in
-      let ftor f_instance =
-        (* We want the functored module to be accessible only in un-prefixed
-           space.
-        *)
+      let f_name = map_loc ~f:(Ident.create ~mode) f_name in
+      let mscope, m =
         let env = Envi.open_module env in
-        (* TODO: This name should be constant, and the underlying module
-           substituted.
-        *)
-        let f_name = map_loc ~f:(Ident.create ~mode) f_name in
         let env =
-          match f_instance with
+          match f' with
           | Envi.Scope.Immediate f ->
               Envi.add_module f_name.txt f env
           | Envi.Scope.Deferred path ->
               Envi.add_deferred_module f_name.txt path env
         in
-        (* TODO: check that f_instance matches f' *)
         let env = Envi.open_module env in
         let env, m' = check_module_expr env m in
         let m, _env = Envi.pop_module ~loc env in
         (m, m')
       in
-      (* Check that f builds the functor as expected. *)
-      let _, m = ftor f' in
       let env =
-        Envi.push_scope (Envi.make_functor ~mode (fun f -> fst (ftor f))) env
+        Envi.push_scope (Envi.make_functor f_name.txt f.msig_msig mscope) env
       in
-      (env, {m with mod_desc= Tmod_functor (f_name, f, m)})
+      ( env
+      , { m with
+          mod_desc= Tmod_functor (f_name, f, m)
+        ; mod_msig= Mfunctor (f_name.txt, f.msig_msig, m.mod_msig) } )
 
 let check_signature env signature = check_signature env signature
 

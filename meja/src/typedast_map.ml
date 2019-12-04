@@ -88,9 +88,10 @@ let type_desc mapper typ =
   | Ttyp_opaque typ ->
       Ttyp_opaque (mapper.type_expr mapper typ)
 
-let variant mapper {var_ident; var_params} =
+let variant mapper {var_ident; var_params; var_var} =
   { var_ident= path mapper var_ident
-  ; var_params= List.map ~f:(mapper.type_expr mapper) var_params }
+  ; var_params= List.map ~f:(mapper.type_expr mapper) var_params
+  ; var_var= mapper.type0.variant mapper.type0 var_var }
 
 let field_decl mapper {fld_ident; fld_type; fld_loc; fld_fld} =
   { fld_loc= mapper.location mapper fld_loc
@@ -290,9 +291,10 @@ let type_conv mapper = function
 
 let signature mapper = List.map ~f:(mapper.signature_item mapper)
 
-let signature_item mapper {sig_desc; sig_loc} =
+let signature_item mapper {sig_desc; sig_loc; sig_sig} =
   { sig_loc= mapper.location mapper sig_loc
-  ; sig_desc= mapper.signature_desc mapper sig_desc }
+  ; sig_desc= mapper.signature_desc mapper sig_desc
+  ; sig_sig= mapper.type0.signature mapper.type0 sig_sig }
 
 let signature_desc mapper = function
   | Tsig_value (name, typ) ->
@@ -327,9 +329,10 @@ let signature_desc mapper = function
   | Tsig_convert (name, typ) ->
       Tsig_convert (ident mapper name, mapper.type_expr mapper typ)
 
-let module_sig mapper {msig_desc; msig_loc} =
+let module_sig mapper {msig_desc; msig_loc; msig_msig} =
   { msig_loc= mapper.location mapper msig_loc
-  ; msig_desc= mapper.module_sig_desc mapper msig_desc }
+  ; msig_desc= mapper.module_sig_desc mapper msig_desc
+  ; msig_msig= mapper.type0.module_sig mapper.type0 msig_msig }
 
 let module_sig_desc mapper = function
   | Tmty_sig sigs ->
@@ -342,15 +345,16 @@ let module_sig_desc mapper = function
       Tmty_abstract
   | Tmty_functor (name, fsig, msig) ->
       Tmty_functor
-        ( str mapper name
+        ( ident mapper name
         , mapper.module_sig mapper fsig
         , mapper.module_sig mapper msig )
 
 let statements mapper = List.map ~f:(mapper.statement mapper)
 
-let statement mapper {stmt_desc; stmt_loc} =
+let statement mapper {stmt_desc; stmt_loc; stmt_sig} =
   { stmt_loc= mapper.location mapper stmt_loc
-  ; stmt_desc= mapper.statement_desc mapper stmt_desc }
+  ; stmt_desc= mapper.statement_desc mapper stmt_desc
+  ; stmt_sig= mapper.type0.signature mapper.type0 stmt_sig }
 
 let statement_desc mapper = function
   | Tstmt_value (p, e) ->
@@ -395,9 +399,10 @@ let statement_desc mapper = function
         , mapper.type_expr mapper typ
         , mapper.convert mapper conv )
 
-let module_expr mapper {mod_desc; mod_loc} =
+let module_expr mapper {mod_desc; mod_loc; mod_msig} =
   { mod_loc= mapper.location mapper mod_loc
-  ; mod_desc= mapper.module_desc mapper mod_desc }
+  ; mod_desc= mapper.module_desc mapper mod_desc
+  ; mod_msig= mapper.type0.module_sig mapper.type0 mod_msig }
 
 let module_desc mapper = function
   | Tmod_struct stmts ->
@@ -406,7 +411,7 @@ let module_desc mapper = function
       Tmod_name (path mapper name)
   | Tmod_functor (name, fsig, me) ->
       Tmod_functor
-        ( str mapper name
+        ( ident mapper name
         , mapper.module_sig mapper fsig
         , mapper.module_expr mapper me )
 

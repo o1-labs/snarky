@@ -1,0 +1,28 @@
+module A :
+  { let x : int;  let y : int;  Prover {let x : bool;  let y : bool;  }  };
+
+let z : int;
+
+Prover {let z : bool;  }
+
+let z : opaque(int);
+
+let z : boolean;
+
+convertible type t = {a: field, b: boolean}
+with prover t = {a: field, b: bool}
+by typ;
+
+let failwith_field : string -> field;
+
+Prover {let field_plus : field -> field;  let field_plus : field -> _;  }
+
+let in_out : t -> t;
+
+let a : _ -> _ -> t;
+
+let a_1 : field -> boolean -> t;
+
+let a_2 : field -> t;
+
+

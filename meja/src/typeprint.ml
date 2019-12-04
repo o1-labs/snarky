@@ -95,21 +95,97 @@ let type_decl_desc fmt = function
   | TAbstract ->
       ()
   | TAlias typ ->
-      fprintf fmt "@ =@ @[<hv>%a@]" type_expr typ
+      fprintf fmt " =@ %a" type_expr typ
   | TRecord fields ->
-      fprintf fmt "@ =@ {@[<hv2>%a@]}"
+      fprintf fmt " =@ {@[<hv2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields
   | TVariant ctors ->
-      fprintf fmt "@ =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
+      fprintf fmt " =@ %a" (pp_print_list ~pp_sep:bar_sep ctor_decl) ctors
   | TOpen ->
-      fprintf fmt "@ =@ .."
+      fprintf fmt " =@ .."
   | TExtend (name, ctors) ->
       fprintf fmt "@ /*@[%a +=@ %a@]*/" Path.pp name
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
 
-let type_decl ident fmt decl =
-  fprintf fmt "type %a" Ident.pprint ident ;
+let type_decl type_keyword fmt (ident, decl) =
+  fprintf fmt "@[<hov2>%s @[<hv>%a@," type_keyword Ident.pprint ident ;
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
-  type_decl_desc fmt decl.tdec_desc
+  fprintf fmt "@]" ;
+  type_decl_desc fmt decl.tdec_desc ;
+  fprintf fmt "@]"
+
+let conv_type fmt = function
+  | Conv_with (ident, mode, decl) ->
+      let str =
+        match mode with Checked -> "with" | Prover -> "with prover"
+      in
+      type_decl str fmt (ident, decl)
+  | Conv_to typ ->
+      fprintf fmt "to @[<hv>%a@]" type_expr typ
+
+let rec signature fmt sigs =
+  fprintf fmt "@[<hv>" ;
+  List.iter (signature_item fmt) sigs ;
+  fprintf fmt "@]"
+
+and signature_item fmt = function
+  | Svalue (name, typ) ->
+      fprintf fmt "@[<2>let@ %a@ :@ @[<hv>%a;@]@]@;@;" Ident.pprint name
+        type_expr typ
+  | Sinstance (name, typ) ->
+      fprintf fmt "@[<2>instance@ %a@ :@ @[<hv>%a@];@]@;@;" Ident.pprint name
+        type_expr typ
+  | Stype (ident, decl) ->
+      fprintf fmt "%a;@;@;" (type_decl "type") (ident, decl)
+  | Sconvtype (name, decl, tconv, conv_name, _conv_type) ->
+      fprintf fmt "@[<v>%a@;%a@ by %a@];@;@;"
+        (type_decl "convertible type")
+        (name, decl) conv_type tconv Ident.pprint conv_name
+  | Srectype (decl :: decls) ->
+      let print_and_decls =
+        pp_print_list ~pp_sep:pp_print_cut (type_decl "and")
+      in
+      let space_if_not_empty fmt = function
+        | [] ->
+            ()
+        | _ ->
+            fprintf fmt "@;"
+      in
+      fprintf fmt "@[<v>%a%a%a;@]@;@;" (type_decl "type") decl
+        space_if_not_empty decls print_and_decls decls
+  | Srectype [] ->
+      assert false
+  | Smodule (name, msig) ->
+      let prefix fmt = fprintf fmt ":@ " in
+      fprintf fmt "@[<hov2>module@ %a@ %a;@]@;@;" Ident.pprint name
+        (module_sig ~prefix) msig
+  | Smodtype (name, msig) ->
+      let prefix fmt = fprintf fmt "=@ " in
+      fprintf fmt "@[<hov2>module type@ %a@ %a;@]@;@;" Ident.pprint name
+        (module_sig ~prefix) msig
+  | Stypeext (typ, ctors) ->
+      fprintf fmt "@[<2>type %a +=@[<hv2>@ %a@]@]@;@;" variant typ
+        (pp_print_list ~pp_sep:bar_sep ctor_decl)
+        ctors
+  | Srequest (typ, ctor) ->
+      fprintf fmt "@[<2>request (%a)@[<hv2>@ %a@]@]@;@;" type_expr typ
+        ctor_decl ctor
+  | Sprover sigs ->
+      fprintf fmt "@[<2>Prover {@,%a@,}@]@;@;" signature sigs
+
+and module_sig ~prefix fmt = function
+  | Msig msig ->
+      prefix fmt ;
+      fprintf fmt "{@[<1>@;%a@]}" signature msig
+  | Mname name ->
+      prefix fmt ; Path.pp fmt name
+  | Malias name ->
+      fprintf fmt "=@ " ; Path.pp fmt name
+  | Mabstract ->
+      ()
+  | Mfunctor (name, f, m) ->
+      let pp = module_sig ~prefix:(fun _ -> ()) in
+      fprintf fmt "/* @[functor@ (%a :@ %a)@ =>@ %a@] */" Ident.pprint name pp
+        f pp m

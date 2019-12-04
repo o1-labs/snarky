@@ -10,6 +10,10 @@ type mapper =
   ; ctor_decl: mapper -> ctor_decl -> ctor_decl
   ; type_decl: mapper -> type_decl -> type_decl
   ; type_decl_desc: mapper -> type_decl_desc -> type_decl_desc
+  ; conv_type: mapper -> conv_type -> conv_type
+  ; signature_item: mapper -> signature_item -> signature_item
+  ; signature: mapper -> signature -> signature
+  ; module_sig: mapper -> module_sig -> module_sig
   ; ident: mapper -> Ident.t -> Ident.t
   ; path: mapper -> Path.t -> Path.t }
 
@@ -185,6 +189,107 @@ let type_decl_desc mapper desc =
       let ctors = map_list ctors ~same ~f:(mapper.ctor_decl mapper) in
       if !same && phys_equal path' path then desc else TExtend (path', ctors)
 
+let conv_type mapper conv_type =
+  match conv_type with
+  | Conv_with (ident, mode, decl) ->
+      let ident' = mapper.ident mapper ident in
+      let decl' = mapper.type_decl mapper decl in
+      if phys_equal ident' ident && phys_equal decl' decl then conv_type
+      else Conv_with (ident', mode, decl')
+  | Conv_to typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then conv_type else Conv_to typ'
+
+let signature_item mapper sigi =
+  match sigi with
+  | Svalue (name, typ) ->
+      let name' = mapper.ident mapper name in
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal name' name && phys_equal typ' typ then sigi
+      else Svalue (name', typ')
+  | Sinstance (name, typ) ->
+      let name' = mapper.ident mapper name in
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal name' name && phys_equal typ' typ then sigi
+      else Sinstance (name', typ')
+  | Stype (name, typ) ->
+      let name' = mapper.ident mapper name in
+      let typ' = mapper.type_decl mapper typ in
+      if phys_equal name' name && phys_equal typ' typ then sigi
+      else Stype (name', typ')
+  | Sconvtype (name, decl, conv_decl, conv_name, conv_typ) ->
+      let name' = mapper.ident mapper name in
+      let decl' = mapper.type_decl mapper decl in
+      let conv_decl' = mapper.conv_type mapper conv_decl in
+      let conv_name' = mapper.ident mapper conv_name in
+      let conv_typ' = mapper.type_expr mapper conv_typ in
+      if
+        phys_equal name' name && phys_equal decl' decl
+        && phys_equal conv_decl' conv_decl
+        && phys_equal conv_name' conv_name
+        && phys_equal conv_typ' conv_typ
+      then sigi
+      else Sconvtype (name', decl', conv_decl', conv_name', conv_typ')
+  | Srectype typs ->
+      let same = ref true in
+      let typs =
+        map_list typs ~same ~f:(fun x ->
+            let name, typ = x in
+            let name' = mapper.ident mapper name in
+            let typ' = mapper.type_decl mapper typ in
+            if phys_equal name' name && phys_equal typ' typ then x
+            else (name', typ') )
+      in
+      if !same then sigi else Srectype typs
+  | Smodule (name, mty) ->
+      let name' = mapper.ident mapper name in
+      let mty' = mapper.module_sig mapper mty in
+      if phys_equal name' name && phys_equal mty' mty then sigi
+      else Smodule (name', mty')
+  | Smodtype (name, mty) ->
+      let name' = mapper.ident mapper name in
+      let mty' = mapper.module_sig mapper mty in
+      if phys_equal name' name && phys_equal mty' mty then sigi
+      else Smodtype (name', mty')
+  | Stypeext (variant, ctors) ->
+      let variant' = mapper.variant mapper variant in
+      let same = ref true in
+      let ctors = map_list ctors ~same ~f:(mapper.ctor_decl mapper) in
+      if !same && phys_equal variant' variant then sigi
+      else Stypeext (variant', ctors)
+  | Srequest (typ, ctor) ->
+      let typ' = mapper.type_expr mapper typ in
+      let ctor' = mapper.ctor_decl mapper ctor in
+      if phys_equal typ' typ && phys_equal ctor' ctor then sigi
+      else Srequest (typ', ctor')
+  | Sprover sigs ->
+      let sigs' = mapper.signature mapper sigs in
+      if phys_equal sigs' sigs then sigi else Sprover sigs'
+
+let signature mapper sigs =
+  let same = ref true in
+  let sigs' = map_list sigs ~same ~f:(mapper.signature_item mapper) in
+  if !same then sigs else sigs'
+
+let module_sig mapper mty =
+  match mty with
+  | Msig sigs ->
+      let sigs' = mapper.signature mapper sigs in
+      if phys_equal sigs' sigs then mty else Msig sigs'
+  | Mname path ->
+      let path' = mapper.path mapper path in
+      if phys_equal path' path then mty else Mname path'
+  | Malias path ->
+      let path' = mapper.path mapper path in
+      if phys_equal path' path then mty else Malias path'
+  | Mabstract ->
+      mty
+  | Mfunctor (name, fty, mty) ->
+      let fty' = mapper.module_sig mapper fty in
+      let mty' = mapper.module_sig mapper mty in
+      if phys_equal fty' fty && phys_equal mty' mty then mty
+      else Mfunctor (name, fty', mty')
+
 let path mapper path =
   match path with
   | Path.Pident ident ->
@@ -210,5 +315,9 @@ let default_mapper =
   ; ctor_decl
   ; type_decl
   ; type_decl_desc
+  ; conv_type
+  ; signature_item
+  ; signature
+  ; module_sig
   ; ident
   ; path }
