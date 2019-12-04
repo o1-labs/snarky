@@ -982,7 +982,7 @@ module Type = struct
       | Tvar _ ->
           (* Don't copy variables! *)
           typ
-      | Trow {row_proxy= {type_desc= Tvar _; _}; _} ->
+      | Trow {row_proxy= proxy; _} when not (is_replace proxy) ->
           (* Don't copy rows! *)
           typ
       | Tpoly _ ->
