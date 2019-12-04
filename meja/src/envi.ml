@@ -910,37 +910,6 @@ module Type = struct
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
 
-  let refresh_var ~loc ?must_find env typ =
-    let mode = typ.type_mode in
-    match typ.type_desc with
-    | Tvar None -> (
-      match must_find with
-      | Some true ->
-          raise (Error (loc, Unbound_type_var typ))
-      | _ ->
-          (env, mkvar ~mode None env) )
-    | Tvar (Some x as name) -> (
-        let var =
-          match must_find with
-          | Some true ->
-              let var = find_type_variable ~mode x env in
-              if Option.is_none var then
-                raise (Error (loc, Unbound_type_var typ)) ;
-              var
-          | Some false ->
-              None
-          | None ->
-              find_type_variable ~mode x env
-        in
-        match var with
-        | Some var ->
-            (env, var)
-        | None ->
-            let var = mkvar ~mode name env in
-            (add_type_variable x var env, var) )
-    | _ ->
-        raise (Error (loc, Expected_type_var typ))
-
   (** Replace the representatives of each of list of variables with a fresh
       variable.
 
