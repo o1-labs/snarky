@@ -1394,14 +1394,6 @@ end
 
 let add_name name typ = map_current_scope ~f:(Scope.add_name name typ)
 
-let get_name ~mode (name : str) env =
-  let loc = name.loc in
-  match List.find_map ~f:(Scope.find_name ~mode name.txt) env.scope_stack with
-  | Some (ident, typ) ->
-      (ident, Type.copy typ env)
-  | None ->
-      raise (Error (loc, Unbound_value (Lident name.txt)))
-
 let find_name ~mode (lid : lid) env =
   match
     find_of_lident ~mode ~kind:"name" ~get_name:Scope.find_name lid env
