@@ -102,14 +102,14 @@ module Interval = struct
     | Less_than a, Less_than _ ->
         Less_than a
 
-  let gt a b =
+  let gte a b =
     match (a, b) with
     | Constant a, Constant b | Less_than a, Less_than b ->
-        B.(a > b)
+        B.(a >= b)
     | Less_than a, Constant b ->
-        B.(a > b + one)
+        B.(a >= b + one)
     | Constant a, Less_than b ->
-        B.(a + one > b)
+        B.(a + one >= b)
 end
 
 (* TODO: Use <= instead of < for the upper bound *)
@@ -194,7 +194,7 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
   , {value= r; interval= b.interval; bits= Some r_bits} )
 
 let subtract_unpacking (type f) ~m:((module M) : f m) a b =
-  assert (Interval.gt a.interval b.interval) ;
+  assert (Interval.gte a.interval b.interval) ;
   let value = M.Field.(sub a.value b.value) in
   let length = Interval.bits_needed a.interval in
   (* The constraints added in [unpack] ensure that [0 <= value <= a]. *)
