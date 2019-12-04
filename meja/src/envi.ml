@@ -948,20 +948,29 @@ module Type = struct
       and backtracking to it once the new values have been used.
   *)
   let refresh_vars vars env =
-    List.iter vars ~f:(fun var ->
+    List.map vars ~f:(fun var ->
         (* Sanity check. *)
-        assert (is_var var) ;
-        match (repr var.type_alternate.type_alternate).type_desc with
-        | Tvar _ ->
-            set_repr var (mkvar ~mode:var.type_mode None env)
+        let var = repr var in
+        match var.type_desc with
+        | Treplace var ->
+            var
+        | Tvar _ -> (
+          match (repr var.type_alternate.type_alternate).type_desc with
+          | Tvar _ ->
+              let new_var = mkvar ~mode:var.type_mode None env in
+              set_replacement var new_var ;
+              new_var
+          | _ ->
+              (* Tri-stitched type variable where the stitched types have been
+                 instantiated.
+              *)
+              assert (equal_mode Checked var.type_mode) ;
+              let new_var = mk' ~mode:Checked env.depth (Tvar None) in
+              new_var.type_alternate <- var.type_alternate ;
+              unsafe_set_single_replacement var new_var ;
+              new_var )
         | _ ->
-            (* Tri-stitched type variable where the stitched types have been
-               instantiated.
-            *)
-            assert (equal_mode Checked var.type_mode) ;
-            let tmp_var = mk' ~mode:Checked env.depth (Tvar None) in
-            tmp_var.type_alternate <- var.type_alternate ;
-            set_desc var (Tref tmp_var) )
+            assert false )
 
   let copy typ env =
     let rec copy typ =
@@ -1022,7 +1031,8 @@ module Type = struct
       match typ.type_desc with
       | Tpoly (vars, typ) ->
           (* Make fresh variables to instantiate [Tpoly]s. *)
-          refresh_vars vars env ; copy typ
+          ignore (refresh_vars vars env) ;
+          copy typ
       | _ ->
           copy typ
     in

@@ -202,7 +202,7 @@ let rec typ_debug_print fmt typ =
           print "= " ; typ_debug_print fmt typ
       | Tconv typ ->
           typ_debug_print fmt (get_mode Checked typ) ;
-          print " --> " ;
+          print " <-> " ;
           typ_debug_print fmt (get_mode Prover typ)
       | Topaque typ ->
           print "opaque " ; typ_debug_print fmt typ
