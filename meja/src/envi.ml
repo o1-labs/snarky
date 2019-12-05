@@ -905,67 +905,81 @@ module Type = struct
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
 
-  let refresh_var ~loc ?must_find env typ =
-    let mode = typ.type_mode in
-    match typ.type_desc with
-    | Tvar None -> (
-      match must_find with
-      | Some true ->
-          raise (Error (loc, Unbound_type_var typ))
-      | _ ->
-          (env, mkvar ~mode None env) )
-    | Tvar (Some x as name) -> (
-        let var =
-          match must_find with
-          | Some true ->
-              let var = find_type_variable ~mode x env in
-              if Option.is_none var then
-                raise (Error (loc, Unbound_type_var typ)) ;
-              var
-          | Some false ->
-              None
-          | None ->
-              find_type_variable ~mode x env
-        in
-        match var with
-        | Some var ->
-            (env, var)
-        | None ->
-            let var = mkvar ~mode name env in
-            (add_type_variable x var env, var) )
-    | _ ->
-        raise (Error (loc, Expected_type_var typ))
-
   (** Replace the representatives of each of list of variables with a fresh
       variable.
 
       The old values can be restored by taking a snapshot before calling this
       and backtracking to it once the new values have been used.
+
+      [copy] must be called on each of the values, to ensure that a
+      tri-stitching [Tvar -> _ <-> _] (for non-[Tvar] stitched types) is
+      properly instantiated.
   *)
   let refresh_vars vars env =
     List.iter vars ~f:(fun var ->
-        (* Sanity check. *)
-        assert (is_var var) ;
-        match (repr var.type_alternate.type_alternate).type_desc with
-        | Tvar _ ->
-            set_repr var (mkvar ~mode:var.type_mode None env)
-        | _ ->
-            (* Tri-stitched type variable where the stitched types have been
-               instantiated.
+        let var = repr var in
+        match var.type_desc with
+        | Treplace _ ->
+            (* Don't choke if the same variable appears multiple times in the
+               list.
             *)
-            assert (equal_mode Checked var.type_mode) ;
-            let tmp_var = mk' ~mode:Checked env.depth (Tvar None) in
-            tmp_var.type_alternate <- var.type_alternate ;
-            set_desc var (Tref tmp_var) )
+            ()
+        | Tvar _ -> (
+          match (repr var.type_alternate.type_alternate).type_desc with
+          | Tvar _ ->
+              set_replacement var (mkvar ~mode:var.type_mode None env)
+          | _ ->
+              (* Tri-stitched type variable where the stitched types have been
+               instantiated.
+
+               CAUTION: The returned variable has an invalid [type_alternate].
+                        This will be resolved during copying, and must not be
+                        used until this happens.
+              *)
+              assert (equal_mode Checked var.type_mode) ;
+              unsafe_set_single_replacement var
+                (mk' ~mode:Checked env.depth (Tvar None)) )
+        | _ ->
+            assert false )
 
   let copy typ env =
     let rec copy typ =
       let typ = repr typ in
       match typ.type_desc with
-      | Treplace typ ->
-          (* Recursion breaking. *)
-          typ
+      | Treplace typ' -> (
+          let alt = repr typ.type_alternate in
+          match alt.type_desc with
+          | Treplace _ ->
+              (* Recursion breaking. *)
+              typ'
+          | _ ->
+              (* A tri-stitched variable has been replaced by [refresh_vars],
+                 but it is stitched to a non-variable. We check that the
+                 [type_alternate] is invalid attach the copy of the original
+                 [type_alternate] in the node.
+              *)
+              assert (is_invalid typ'.type_alternate) ;
+              typ'.type_alternate <- copy alt ;
+              typ' )
       | Tvar _ ->
+          (* Sanity check: if this is stitched to a non-variable, it must not
+             contain any [Treplace]s.
+             Levels checking should ensure that this is done correctly, but
+             manually setting a replacement can cause a failure here.
+
+             TODO: Row types integration.
+          *)
+          let rec check_replace = function
+            | {type_desc= Treplace _; _} ->
+                Format.eprintf
+                  "Fatal error:@ Found a replaceable type linked to a \
+                   variable.@.%a@."
+                  typ_debug_print_alts typ ;
+                assert false
+            | typ ->
+                iter ~f:check_replace typ
+          in
+          check_replace typ.type_alternate ;
           (* Don't copy variables! *)
           typ
       | Tpoly _ ->
@@ -1030,6 +1044,7 @@ module Type = struct
     List.iter2_exn params typs ~f:(fun param typ ->
         (* Sanity check. *)
         assert (is_var param) ;
+        assert (is_var param.type_alternate.type_alternate) ;
         set_replacement param typ ) ;
     let typ = copy typ env in
     (* Restore the original values of the parameters. *)

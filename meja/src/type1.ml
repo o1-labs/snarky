@@ -246,6 +246,8 @@ module Mk = struct
           check_mode ~pos:__POS__ ~error_info mode typ ;
           check_mode ~pos:__POS__ ~error_info mode alt ;
           assert (not (is_poly typ)) ;
+          assert (is_valid typ) ;
+          assert (is_valid alt) ;
           phys_equal typ alt )
     then stitch ~mode depth (Ttuple typs) (Ttuple alts)
     else
@@ -263,6 +265,8 @@ module Mk = struct
           (* Sanity check. *)
           check_mode ~pos:__POS__ ~error_info mode typ ;
           check_mode ~pos:__POS__ ~error_info mode alt ;
+          assert (is_valid typ) ;
+          assert (is_valid alt) ;
           assert (not (is_poly typ)) ;
           phys_equal typ alt )
     then
@@ -293,6 +297,8 @@ module Mk = struct
           (* Sanity check. *)
           check_mode ~pos:__POS__ ~error_info mode typ ;
           check_mode ~pos:__POS__ ~error_info mode alt ;
+          assert (is_valid typ) ;
+          assert (is_valid alt) ;
           assert (not (is_poly typ)) ;
           phys_equal typ alt )
       && Option.is_none tri_path
@@ -308,14 +314,36 @@ module Mk = struct
         (Tctor {var_ident= other_path; var_params= alts})
         (Tctor {var_ident= tri_path; var_params= alt_alts})
 
+  (* NOTE: The types in [vars] are not modified in their alternates, to ensure
+     that tri-stitchings are preserved, especially for conversions.
+
+     This means that the variable arguments to [Tpoly] may be from a different
+     mode to the type itself (which will match the mode of the polymorphised
+     type).
+
+     This ensures that we don't encounter a particularly heinous bug where we
+     have the tri-stitching ['a -> 'b <-> 'c] and
+       [Tpoly (Tvar "a", Tconv(Tvar "a", Tvar "b"))]
+     is added to the environment along with its prover-mode alternate
+       [Tpoly (Tvar "b", Tconv(Tvar "a", Tvar "b"))].
+     In this scenario, instantiating the prover-mode variable ['b] with a new
+     stitched variable leaks ['a] unchanged. Then, unification clobbers ['a],
+     effectively causing it to become a weak type variable.
+
+     There is now an assertion to avoid this case in [Envi.Type.copy]; see the
+     [Tvar] match branch there for the particular details.
+  *)
   let poly ~mode depth vars typ =
     let error_info () = ("poly", typ :: vars) in
+    assert (is_valid typ) ;
     assert (not (is_poly typ)) ;
     check_mode ~pos:__POS__ ~error_info mode typ ;
     let alt = type_alternate typ in
     let alt_alt = type_alternate alt in
+    assert (is_valid alt_alt) ;
     let get_alt_var pos mode var =
       let alt = get_mode mode var in
+      assert (is_valid alt) ;
       match alt.type_desc with
       | Tvar _ ->
           alt
@@ -328,7 +356,7 @@ module Mk = struct
           var
     in
     let alts = List.map ~f:(get_alt_var __POS__ (other_mode mode)) vars in
-    let alt_alts = List.map ~f:(get_alt_var __POS__ mode) vars in
+    let alt_alts = List.map ~f:(get_alt_var __POS__ mode) alts in
     (* Sanity check: [vars] is a list of type variables. *)
     if
       equal_mode mode Prover
@@ -341,17 +369,20 @@ module Mk = struct
                  assert false ) ;
              phys_equal typ alt )
          && phys_equal typ alt_alt
-    then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (alts, alt))
+    then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (vars, alt))
     else
       (* The type is tri-stitched, so tri-stitch this type too. *)
       tri_stitch ~mode depth
         (Tpoly (vars, typ))
-        (Tpoly (alts, alt))
-        (Tpoly (alt_alts, alt_alt))
+        (Tpoly (vars, alt))
+        (Tpoly (vars, alt_alt))
 
   let conv ~mode depth typ1 typ2 =
     let error_info () = ("conv", [typ1; typ2]) in
-    assert (not (is_poly typ1 || is_poly typ2)) ;
+    assert (is_valid typ1) ;
+    assert (is_valid typ2) ;
+    assert (not (is_poly typ1)) ;
+    assert (not (is_poly typ2)) ;
     check_mode ~pos:__POS__ ~error_info Checked typ1 ;
     check_mode ~pos:__POS__ ~error_info Prover typ2 ;
     let typ_stitched =
@@ -365,11 +396,15 @@ module Mk = struct
 
   let opaque ~mode depth typ =
     let error_info () = ("opaque", [typ]) in
+    assert (is_valid typ) ;
+    assert (is_valid typ.type_alternate.type_alternate) ;
     assert (not (is_poly typ)) ;
     check_mode ~pos:__POS__ ~error_info Prover typ ;
     stitch ~mode depth (Topaque typ) (Topaque typ)
 
   let other_mode ~mode depth typ =
+    assert (is_valid typ) ;
+    assert (is_valid typ.type_alternate.type_alternate) ;
     assert (not (is_poly typ)) ;
     stitch ~mode depth (Tother_mode typ) (Tother_mode typ)
 end
@@ -736,9 +771,17 @@ let flatten typ =
   let rec flatten typ =
     let typ = repr typ in
     match typ.type_desc with
-    | Treplace typ ->
+    | Treplace typ' ->
         (* Recursion breaking. *)
-        typ
+        ( match typ.type_alternate.type_desc with
+        | Treplace _ ->
+            ()
+        | _ ->
+            (* Inconsistent state. [Envi.Type.copy] should be used to resolve
+               replaced type variables in context.
+            *)
+            assert false ) ;
+        typ'
     | Tvar _ ->
         (* Don't copy variables! *)
         typ
