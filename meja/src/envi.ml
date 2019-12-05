@@ -925,9 +925,17 @@ module Type = struct
             *)
             ()
         | Tvar _ -> (
-          match (repr var.type_alternate.type_alternate).type_desc with
+          match (repr var.type_alternate).type_desc with
           | Tvar _ ->
               set_replacement var (mkvar ~mode:var.type_mode None env)
+          | Treplace alt_var ->
+              (* Tri-stitched type variable, where the stitched part has
+                 already been substituted. Tri-stitch to the substitution.
+              *)
+              assert (equal_mode Checked var.type_mode) ;
+              let new_var = mk' ~mode:Checked env.depth (Tvar None) in
+              unsafe_set_single_replacement var new_var ;
+              new_var.type_alternate <- alt_var
           | _ ->
               (* Tri-stitched type variable where the stitched types have been
                instantiated.
