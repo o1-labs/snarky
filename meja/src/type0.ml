@@ -52,8 +52,11 @@ and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]
 and row =
   { row_tags: (Path.t * row_presence * type_expr list) Ident.Map.t
   ; row_closed: closed_flag
-        (* A type variable used to signal whether to copy the row or not. *)
-  ; row_proxy: type_expr }
+  ; (* One of
+       - [Trow] for an expanded row
+       - [Tvar] for the end of a row
+    *)
+    row_rest: type_expr }
 [@@deriving sexp]
 
 type field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]

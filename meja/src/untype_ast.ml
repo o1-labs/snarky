@@ -45,7 +45,8 @@ module Type0 = struct
         assert false
     | Treplace _ ->
         assert false
-    | Trow {row_tags; row_closed; row_proxy= _} ->
+    | Trow row ->
+        let row_tags, _row_rest, row_closed = Type1.row_repr row in
         let needs_lower_bound = ref false in
         let tags, min_tags =
           Map.fold_right row_tags ~init:([], [])

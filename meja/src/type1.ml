@@ -29,6 +29,24 @@ let row_id = ref 0
 
 let mk_rp rp_desc = incr row_id ; {rp_desc; rp_id= !row_id}
 
+(** The representative of a type. This unfolds any [Tref] values that are
+    present to get to the true underlying type.
+*)
+let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
+
+let rec row_repr_aux tags {row_tags; row_rest; row_closed} =
+  let row_rest = repr row_rest in
+  let tags =
+    Map.merge_skewed tags row_tags ~combine:(fun ~key:_ old _new -> old)
+  in
+  match row_rest.type_desc with
+  | Trow row | Topaque {type_desc= Trow row; _} ->
+      row_repr_aux tags row
+  | _ ->
+      (tags, row_rest, row_closed)
+
+let row_repr row = row_repr_aux Ident.Map.empty row
+
 (** An invalid [type_expr] in checked mode. *)
 let rec checked_none =
   { type_desc= Tvar None
@@ -56,12 +74,12 @@ let other_none = function Checked -> prover_none | Prover -> checked_none
 
 let type_alternate {type_alternate= typ; _} = typ
 
-let row_alternate {row_tags; row_closed; row_proxy} =
+let row_alternate {row_tags; row_closed; row_rest} =
   let row_tags =
     Map.map row_tags ~f:(fun (path, pres, args) ->
         (path, pres, List.map ~f:type_alternate args) )
   in
-  {row_tags; row_closed; row_proxy= row_proxy.type_alternate}
+  {row_tags; row_closed; row_rest= row_rest.type_alternate}
 
 let is_poly = function {type_desc= Tpoly _; _} -> true | _ -> false
 
@@ -85,6 +103,13 @@ let check_valid ~pos ~error_info typ =
     let kind, typs = error_info () in
     raise (Error (Ast_build.Loc.of_prim pos, Mk_invalid (kind, typs, typ)))
 
+(* For debugging. We raise an [AssertionError] when we are about to create a
+   type with this ID, so that the backtrace can be used to find its creation
+   point.
+*)
+let failure_type_id =
+  try Some (Int.of_string (Sys.getenv "MEJA_BREAK_TYPE_ID")) with _ -> None
+
 (** Make a new type at the given mode and depth.
 
     The [type_alternate] field is set to the invalid value
@@ -92,7 +117,7 @@ let check_valid ~pos ~error_info typ =
 *)
 let mk' ~mode depth type_desc =
   incr type_id ;
-  (*assert (!type_id <> 51696) ;*)
+  Option.iter failure_type_id ~f:(fun id -> assert (!type_id <> id)) ;
   { type_desc
   ; type_id= !type_id
   ; type_depth= depth
@@ -221,22 +246,28 @@ let rec typ_debug_print fmt typ =
     Hash_set.remove hashtbl typ.type_id ) ;
   print " @%i)" typ.type_depth
 
-and row_debug_print fmt {row_tags; row_closed; row_proxy} =
+and row_debug_print fmt {row_tags; row_closed; row_rest} =
   let open Format in
-  fprintf fmt "%a as %a" closed_flag_debug_print row_closed typ_debug_print
-    row_proxy ;
   let is_first = ref true in
   Map.iteri row_tags ~f:(fun ~key ~data:(path, pres, args) ->
       if !is_first then (
         is_first := false ;
         pp_print_string fmt ": " )
       else pp_print_string fmt " | " ;
-      fprintf fmt "%a(%a)%a:%a" Path.debug_print path Ident.debug_print key
-        row_presence_debug_print pres
+      fprintf fmt "%a%a(%a)%a:%a" row_presence_debug_print pres
+        Path.debug_print path Ident.debug_print key closed_flag_debug_print
+        row_closed
         (pp_print_list
            ~pp_sep:(fun fmt () -> pp_print_string fmt ", ")
            typ_debug_print)
-        args )
+        args ) ;
+  match row_rest.type_desc with
+  | Trow _ ->
+      fprintf fmt "with " ;
+      typ_debug_print fmt row_rest
+  | _ ->
+      fprintf fmt "as " ;
+      typ_debug_print fmt row_rest
 
 and row_presence_debug_print fmt {rp_desc; rp_id} =
   let open Format in
@@ -529,11 +560,11 @@ module Mk = struct
         tri_stitch ~mode depth (Trow row) (Topaque prover) (Topaque prover)
 
   let row_of_ctor ~mode depth ident args =
-    let row_proxy = var ~mode depth None in
+    let row_rest = var ~mode depth None in
     let row_tags =
       Ident.Map.singleton ident (Path.Pident ident, mk_rp RpPresent, args)
     in
-    row ~mode depth {row_tags; row_closed= Open; row_proxy}
+    row ~mode depth {row_tags; row_closed= Open; row_rest}
 end
 
 type change =
@@ -707,11 +738,6 @@ let filtered_backtrack ~f snap =
   let changes = Snapshot.filtered_backtrack ~f snap in
   List.iter ~f:revert changes
 
-(** The representative of a type. This unfolds any [Tref] values that are
-    present to get to the true underlying type.
-*)
-let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
-
 let fold ~init ~f typ =
   match typ.type_desc with
   | Tvar _ ->
@@ -736,10 +762,12 @@ let fold ~init ~f typ =
       f init typ
   | Treplace _ ->
       assert false
-  | Trow {row_tags; row_closed= _; row_proxy} ->
-      let acc = f init row_proxy in
-      Map.fold row_tags ~init:acc ~f:(fun ~key:_ ~data:(_, _, args) init ->
-          List.fold ~f ~init args )
+  | Trow {row_tags; row_closed= _; row_rest} ->
+      let acc =
+        Map.fold row_tags ~init ~f:(fun ~key:_ ~data:(_, _, args) init ->
+            List.fold ~f ~init args )
+      in
+      f acc row_rest
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -767,10 +795,16 @@ let rec copy_desc ~f = function
       Tother_mode (f typ)
   | Treplace _ ->
       assert false
-  | Trow row ->
-      Trow (copy_row ~f row)
+  | Trow _ ->
+      (* Must be handled seperately. *)
+      assert false
 
-and copy_row ~f {row_tags; row_closed; row_proxy} =
+(** Make a fresh copy of a row with new row variables, applying [f] to all
+    constituent types.
+
+    Any [RpReplace] values are resolved to their argument.
+*)
+let copy_row ~f {row_tags; row_closed; row_rest} =
   let row_tags =
     Map.map row_tags ~f:(fun (path, pres, args) ->
         let pres =
@@ -783,7 +817,7 @@ and copy_row ~f {row_tags; row_closed; row_proxy} =
         in
         (path, pres, List.map ~f args) )
   in
-  {row_tags; row_closed; row_proxy= f row_proxy}
+  {row_tags; row_closed; row_rest= f row_rest}
 
 let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
   let equal_at_depth = equal_at_depth ~get_decl ~depth in
@@ -1129,9 +1163,12 @@ let contains typ ~in_ =
         assert false
     | Treplace _ ->
         assert false
-    | Trow {row_tags; row_closed= _; row_proxy= _} ->
-        Map.exists row_tags ~f:(fun (_path, _pres, args) ->
-            List.exists ~f:equal args || List.exists ~f:contains args )
+    | Trow {row_tags; row_closed= _; row_rest} ->
+        Map.exists row_tags ~f:(fun (_, _, args) -> List.exists ~f:equal args)
+        || equal row_rest
+        || Map.exists row_tags ~f:(fun (_, _, args) ->
+               List.exists ~f:contains args )
+        || contains row_rest
   in
   contains in_
 

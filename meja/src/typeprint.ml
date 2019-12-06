@@ -52,7 +52,9 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
         fprintf fmt "@[<hv2>Prover{@,%a@,}@]" type_expr typ
     | _ ->
         type_expr fmt typ )
-  | Trow {row_tags; row_closed; row_proxy= _} ->
+  | Trow row ->
+      (* TODO: Print [row_rest] variable name where applicable. *)
+      let row_tags, _row_rest, row_closed = Type1.row_repr row in
       let needs_lower_bound =
         match row_closed with
         | Open ->

@@ -262,17 +262,18 @@ let rec check_type_aux ~loc typ ctyp env =
   | Tconv typ, Tconv ctyp ->
       check_type_aux typ ctyp env ;
       check_type_aux typ.type_alternate ctyp.type_alternate env
-  | ( Trow {row_tags= row_tags1; row_closed= row_closed1; row_proxy= row_proxy1}
-    , Trow {row_tags= row_tags2; row_closed= row_closed2; row_proxy= row_proxy2}
-    ) ->
-      (* TODO: Do we need to do anything with the proxy values? *)
-      ignore (row_proxy1, row_proxy2) ;
+  | Trow row1, Trow row2 ->
+      let row_tags1, row_rest1, row_closed1 = row_repr row1 in
+      let row_tags2, row_rest2, row_closed2 = row_repr row2 in
+      (*check_type_aux row_rest1 row_rest2 env ;*)
       let is_empty = ref true in
+      let row_extra1 = ref Ident.Map.empty in
+      let row_extra2 = ref Ident.Map.empty in
       let row_tags =
-        Map.merge row_tags1 row_tags2 ~f:(fun ~key:_ data ->
-            match (data, row_closed1, row_closed2) with
-            | `Left (path, pres, args), _, row_closed
-            | `Right (path, pres, args), row_closed, _ ->
+        Map.merge row_tags1 row_tags2 ~f:(fun ~key data ->
+            match (data, row_closed1, row_extra1, row_closed2, row_extra2) with
+            | `Left (path, pres, args), _, _, row_closed, row_extra
+            | `Right (path, pres, args), row_closed, row_extra, _, _ ->
                 let pres = rp_repr pres in
                 ( match (pres.rp_desc, row_closed) with
                 | (RpRef _ | RpReplace _), _ ->
@@ -287,8 +288,11 @@ let rec check_type_aux ~loc typ ctyp env =
                     is_empty := false
                 | RpAbsent, _ ->
                     () ) ;
-                Some (path, pres, args)
-            | `Both ((path1, pres1, args1), (path2, pres2, args2)), _, _ ->
+                let data = (path, pres, args) in
+                row_extra := Map.set !row_extra ~key ~data ;
+                Some data
+            | `Both ((path1, pres1, args1), (path2, pres2, args2)), _, _, _, _
+              ->
                 let pres1 = rp_repr pres1 in
                 let pres2 = rp_repr pres2 in
                 let pres_desc =
@@ -342,35 +346,40 @@ let rec check_type_aux ~loc typ ctyp env =
               raise (Error (loc, env, Empty_resulting_row (typ, ctyp))) ;
             Closed
       in
-      let typ_desc = Trow {row_tags; row_closed; row_proxy= row_proxy1} in
-      let alt_desc =
-        let row_tags =
-          Map.map row_tags ~f:(fun (path, pres, args) ->
-              (path, pres, List.map ~f:type_alternate args) )
+      let row_rest =
+        let row_rest = Type1.Mk.var ~mode:typ.type_mode typ.type_depth None in
+        let expand_row row_rest1 row_extra =
+          match row_rest1.type_desc with
+          | _ when Map.is_empty row_extra ->
+              row_rest1
+          | Tvar _ ->
+              let new_row =
+                Type1.Mk.row ~mode:row_rest1.type_mode
+                  row_rest1.type_depth
+                  {row_tags= row_extra; row_closed; row_rest}
+              in
+              choose_variable_name row_rest1 row_rest ;
+              check_type_aux row_rest1 new_row env ;
+              row_rest
+          | _ ->
+              assert false
         in
-        Trow {row_tags; row_closed; row_proxy= row_proxy1.type_alternate}
+        let row_rest1 = expand_row row_rest1 !row_extra1 in
+        let row_rest2 = expand_row row_rest2 !row_extra2 in
+        check_type_aux row_rest1 row_rest2 env ;
+        repr row_rest1
       in
+      let new_row = {row_tags; row_closed; row_rest} in
+      let alt_row = Type1.row_alternate new_row in
       let res_type =
         if ctyp.type_id < typ.type_id then ( set_repr typ ctyp ; ctyp )
         else ( set_repr ctyp typ ; typ )
       in
-      set_desc res_type typ_desc ;
-      set_desc res_type.type_alternate alt_desc ;
+      set_desc res_type (Trow new_row) ;
+      set_desc res_type.type_alternate (Trow alt_row) ;
       if not (phys_equal typ.type_alternate.type_alternate typ) then
-        let alt_alt_desc =
-          let row_tags =
-            Map.map row_tags ~f:(fun (path, pres, args) ->
-                ( path
-                , pres
-                , List.map ~f:(Fn.compose type_alternate type_alternate) args
-                ) )
-          in
-          Trow
-            { row_tags
-            ; row_closed
-            ; row_proxy= row_proxy1.type_alternate.type_alternate }
-        in
-        set_desc res_type.type_alternate.type_alternate alt_alt_desc
+        set_desc res_type.type_alternate.type_alternate
+          (Trow (Type1.row_alternate alt_row))
   | _, _ ->
       raise (Error (loc, env, Cannot_unify (typ, ctyp)))
 

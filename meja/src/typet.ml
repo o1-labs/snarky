@@ -231,9 +231,9 @@ module Type = struct
               pres.Type0.rp_desc <- RpPresent
         in
         Option.iter ~f:(List.iter ~f:set_present) min_tags ;
-        let row_proxy = Envi.Type.mkvar ~mode None env in
+        let row_rest = Envi.Type.mkvar ~mode None env in
         let type_type =
-          Envi.Type.Mk.row ~mode {row_tags; row_closed; row_proxy} env
+          Envi.Type.Mk.row ~mode {row_tags; row_closed; row_rest} env
         in
         ( { Typedast.type_desc= Ttyp_row (tags, row_closed, min_tags)
           ; type_loc= loc

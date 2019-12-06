@@ -956,9 +956,14 @@ module Type = struct
             assert false )
 
   let copy typ env =
+    (*Format.eprintf "Copying:@.%a@." typ_debug_print typ ;*)
     let rec copy typ =
+      (*Format.eprintf "Copying (step):@.%a@." typ_debug_print typ ;*)
       let typ = repr typ in
       match typ.type_desc with
+      | Tpoly _ ->
+          (* Tpoly should only ever appear at the top level of a type. *)
+          assert false
       | Treplace typ' -> (
           let alt = repr typ.type_alternate in
           match alt.type_desc with
@@ -995,48 +1000,107 @@ module Type = struct
           check_replace typ.type_alternate ;
           (* Don't copy variables! *)
           typ
-      | Trow {row_proxy= proxy; _} when not (is_replace proxy) ->
-          (* Don't copy rows! *)
-          typ
-      | Tpoly _ ->
-          (* Tpoly should only ever appear at the top level of a type. *)
-          assert false
+      | Trow row ->
+          let row_tags, row_rest', row_closed = row_repr row in
+          let row_rest = copy row_rest' in
+          let typ' =
+            Type1.mk' ~mode:typ.type_mode typ.type_depth (Tvar None)
+          in
+          unsafe_set_single_replacement typ typ' ;
+          let replace_desc = typ.type_desc in
+          typ'.type_desc
+          <- ( match (row_rest'.type_desc, row_rest.type_desc) with
+             | Tvar _, Tvar _
+             | Topaque {type_desc= Tvar _; _}, Topaque {type_desc= Tvar _; _}
+               ->
+                 (* Copy arguments only. *)
+                 let row_tags =
+                   Map.map row_tags ~f:(fun (path, pres, args) ->
+                       let pres = rp_repr pres in
+                       let pres =
+                         match pres.rp_desc with
+                         | RpReplace pres ->
+                             pres
+                         | _ ->
+                             pres
+                       in
+                       (path, pres, List.map ~f:copy args) )
+                 in
+                 Trow {row_tags; row_closed; row_rest}
+             | Treplace _, (Tvar _ | Topaque {type_desc= Tvar _; _}) ->
+                 (* Freshen row variables and copy arguments. *)
+                 let row_tags =
+                   Map.map row_tags ~f:(fun (path, pres, args) ->
+                       let pres = rp_repr pres in
+                       let pres =
+                         match pres.rp_desc with
+                         | RpReplace pres ->
+                             pres
+                         | rp_desc ->
+                             let new_pres = mk_rp rp_desc in
+                             set_rp_desc pres (RpReplace new_pres) ;
+                             new_pres
+                       in
+                       (path, pres, List.map ~f:copy args) )
+                 in
+                 Trow {row_tags; row_closed; row_rest}
+             | _ ->
+                 Format.eprintf
+                   "Unexpected value for [row_rest]. \
+                    Original:@.%a@.Copied:@.%a@."
+                   typ_debug_print row_rest' typ_debug_print row_rest ;
+                 assert false ) ;
+          typ'.type_alternate <- copy typ.type_alternate ;
+          (* Sanity check. Copying the alternates should not overwrite the
+             replacement for this type, otherwise we will end up in an
+             inconsistent state.
+          *)
+          assert (phys_equal typ.type_desc replace_desc) ;
+          typ'
       | desc -> (
-        match typ.type_alternate.type_desc with
-        | Treplace alt ->
-            (* Tri-stitching, where the stitched part has already been copied.
+          let alt = repr typ.type_alternate in
+          match alt.type_desc with
+          | Treplace alt ->
+              (* Tri-stitching, where the stitched part has already been copied.
             *)
-            assert (not (phys_equal typ typ.type_alternate.type_alternate)) ;
-            assert (equal_mode typ.type_mode Checked) ;
-            let typ' = mk' ~mode:typ.type_mode typ.type_depth (Tvar None) in
-            typ'.type_alternate <- alt ;
-            unsafe_set_single_replacement typ typ' ;
-            typ'.type_desc <- copy_desc ~f:copy desc ;
-            typ'
-        | Tvar _ ->
-            (* If the tri-stitched type isn't a type variable, this should also
+              assert (not (phys_equal typ typ.type_alternate.type_alternate)) ;
+              assert (equal_mode typ.type_mode Checked) ;
+              let typ' = mk' ~mode:typ.type_mode typ.type_depth (Tvar None) in
+              typ'.type_alternate <- alt ;
+              unsafe_set_single_replacement typ typ' ;
+              typ'.type_desc <- copy_desc ~f:copy desc ;
+              typ'
+          | Tvar _ ->
+              (* If the tri-stitched type isn't a type variable, this should also
                have been instantiated.
             *)
-            assert false
-        | _ ->
-            let alt_desc = typ.type_alternate.type_desc in
-            let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
-            let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
-            let stitched = phys_equal typ typ.type_alternate.type_alternate in
-            if stitched then typ'.type_alternate.type_alternate <- typ' ;
-            set_replacement typ typ' ;
-            (* NOTE: the variable description of [typ'] was just a placeholder,
+              assert false
+          | Trow _ ->
+              (* This should never happen; a row may only ever be stitched to a
+               type variable or a row, both of which are handled above.
+            *)
+              assert false
+          | _ ->
+              let alt_desc = typ.type_alternate.type_desc in
+              let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
+              let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
+              let stitched =
+                phys_equal typ typ.type_alternate.type_alternate
+              in
+              if stitched then typ'.type_alternate.type_alternate <- typ' ;
+              set_replacement typ typ' ;
+              (* NOTE: the variable description of [typ'] was just a placeholder,
                    so we want this new value to be preserved after
                    backtracking.
                DO NOT replace this with a [Type1.set_repr] or equivalent call.
             *)
-            typ'.type_desc <- copy_desc ~f:copy desc ;
-            typ'.type_alternate.type_desc <- copy_desc ~f:copy alt_desc ;
-            if not stitched then
-              (* tri-stitched *)
-              typ'.type_alternate.type_alternate.type_desc
-              <- copy_desc ~f:copy alt_alt_desc ;
-            typ' )
+              typ'.type_desc <- copy_desc ~f:copy desc ;
+              typ'.type_alternate.type_desc <- copy_desc ~f:copy alt_desc ;
+              if not stitched then
+                (* tri-stitched *)
+                typ'.type_alternate.type_alternate.type_desc
+                <- copy_desc ~f:copy alt_alt_desc ;
+              typ' )
     in
     let typ = repr typ in
     let snap = Snapshot.create () in
@@ -1444,7 +1508,10 @@ let find_name ~mode (lid : lid) env =
     find_of_lident ~mode ~kind:"name" ~get_name:Scope.find_name lid env
   with
   | Some (ident, typ) ->
-      (ident, Type.copy typ env)
+      let typ' = Type.copy typ env in
+      (*Format.eprintf "Copying. Original:@.%a@.Copy:@.%a@." typ_debug_print typ
+        typ_debug_print typ' ;*)
+      (ident, typ')
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
 

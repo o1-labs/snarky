@@ -127,7 +127,7 @@ let variant mapper ({var_ident= ident; var_params} as variant) =
   if !same && phys_equal var_ident ident then variant
   else {var_ident; var_params}
 
-let row mapper ({row_tags; row_closed; row_proxy} as row) =
+let row mapper ({row_tags; row_closed; row_rest} as row) =
   let same = ref true in
   let row_tags =
     Map.fold row_tags ~init:Ident.Map.empty
@@ -154,7 +154,9 @@ let row mapper ({row_tags; row_closed; row_proxy} as row) =
         then same := false ;
         Map.set row_tags ~key:key' ~data:(path', pres', args) )
   in
-  if !same then row else {row_tags; row_closed; row_proxy}
+  let row_rest' = mapper.type_expr mapper row_rest in
+  if !same && phys_equal row_rest' row_rest then row
+  else {row_tags; row_closed; row_rest}
 
 let field_decl mapper ({fld_ident= ident; fld_type= typ} as fld) =
   let fld_type = mapper.type_expr mapper typ in
