@@ -194,12 +194,13 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
   , {value= r; interval= b.interval; bits= Some r_bits} )
 
 let subtract_unpacking (type f) ~m:((module M) : f m) a b =
-  assert (Interval.gte a.interval b.interval) ;
-  let value = M.Field.(sub a.value b.value) in
-  let length = Interval.bits_needed a.interval in
-  (* The constraints added in [unpack] ensure that [0 <= value <= a]. *)
-  let bits = M.Field.unpack value ~length in
-  {value; interval= a.interval; bits= Some bits}
+  M.with_label "Integer.subtract_unpacking" (fun () ->
+      assert (Interval.gte a.interval b.interval) ;
+      let value = M.Field.(sub a.value b.value) in
+      let length = Interval.bits_needed a.interval in
+      (* The constraints added in [unpack] ensure that [0 <= value <= a]. *)
+      let bits = M.Field.unpack value ~length in
+      {value; interval= a.interval; bits= Some bits} )
 
 let add (type f) ~m:((module M) as m : f m) a b =
   let interval = Interval.(add ~m a.interval b.interval) in
@@ -274,3 +275,13 @@ let lte (type f) ~m:((module M) : f m) a b =
 let gte (type f) ~m:((module M) as m : f m) a b = M.Boolean.not (lt ~m a b)
 
 let gt (type f) ~m:((module M) as m : f m) a b = M.Boolean.not (lte ~m a b)
+
+let subtract_unpacking_or_zero (type f) ~m:((module M) as m : f m) a b =
+  let flag = lt ~m a b in
+  ( `Underflow flag
+  , { value=
+        M.Field.mul
+          (M.Field.sub a.value b.value)
+          (M.Boolean.not flag :> f Cvar.t)
+    ; interval= a.interval
+    ; bits= None } )
