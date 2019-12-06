@@ -3,5 +3,6 @@
 set -e
 
 cd website/website
-npm install docusaurus
+# Restore packages to the state in package-lock.json
+npm ci
 npm run-script build

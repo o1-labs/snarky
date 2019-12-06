@@ -915,29 +915,43 @@ module Type = struct
 
       The old values can be restored by taking a snapshot before calling this
       and backtracking to it once the new values have been used.
+
+      [copy] must be called on each of the values, to ensure that a
+      tri-stitching [Tvar -> _ <-> _] (for non-[Tvar] stitched types) is
+      properly instantiated.
   *)
   let refresh_vars vars env =
-    List.map vars ~f:(fun var ->
-        (* Sanity check. *)
+    List.iter vars ~f:(fun var ->
         let var = repr var in
         match var.type_desc with
-        | Treplace var ->
-            var
+        | Treplace _ ->
+            (* Don't choke if the same variable appears multiple times in the
+               list.
+            *)
+            ()
         | Tvar _ -> (
-          match (repr var.type_alternate.type_alternate).type_desc with
+          match (repr var.type_alternate).type_desc with
           | Tvar _ ->
-              let new_var = mkvar ~mode:var.type_mode None env in
-              set_replacement var new_var ;
-              new_var
-          | _ ->
-              (* Tri-stitched type variable where the stitched types have been
-                 instantiated.
+              set_replacement var (mkvar ~mode:var.type_mode None env)
+          | Treplace alt_var ->
+              (* Tri-stitched type variable, where the stitched part has
+                 already been substituted. Tri-stitch to the substitution.
               *)
               assert (equal_mode Checked var.type_mode) ;
               let new_var = mk' ~mode:Checked env.depth (Tvar None) in
-              new_var.type_alternate <- var.type_alternate ;
               unsafe_set_single_replacement var new_var ;
-              new_var )
+              new_var.type_alternate <- alt_var
+          | _ ->
+              (* Tri-stitched type variable where the stitched types have been
+               instantiated.
+
+               CAUTION: The returned variable has an invalid [type_alternate].
+                        This will be resolved during copying, and must not be
+                        used until this happens.
+              *)
+              assert (equal_mode Checked var.type_mode) ;
+              unsafe_set_single_replacement var
+                (mk' ~mode:Checked env.depth (Tvar None)) )
         | _ ->
             assert false )
 
@@ -945,10 +959,40 @@ module Type = struct
     let rec copy typ =
       let typ = repr typ in
       match typ.type_desc with
-      | Treplace typ ->
-          (* Recursion breaking. *)
-          typ
+      | Treplace typ' -> (
+          let alt = repr typ.type_alternate in
+          match alt.type_desc with
+          | Treplace _ ->
+              (* Recursion breaking. *)
+              typ'
+          | _ ->
+              (* A tri-stitched variable has been replaced by [refresh_vars],
+                 but it is stitched to a non-variable. We check that the
+                 [type_alternate] is invalid attach the copy of the original
+                 [type_alternate] in the node.
+              *)
+              assert (is_invalid typ'.type_alternate) ;
+              typ'.type_alternate <- copy alt ;
+              typ' )
       | Tvar _ ->
+          (* Sanity check: if this is stitched to a non-variable, it must not
+             contain any [Treplace]s.
+             Levels checking should ensure that this is done correctly, but
+             manually setting a replacement can cause a failure here.
+
+             TODO: Row types integration.
+          *)
+          let rec check_replace = function
+            | {type_desc= Treplace _; _} ->
+                Format.eprintf
+                  "Fatal error:@ Found a replaceable type linked to a \
+                   variable.@.%a@."
+                  typ_debug_print_alts typ ;
+                assert false
+            | typ ->
+                iter ~f:check_replace typ
+          in
+          check_replace typ.type_alternate ;
           (* Don't copy variables! *)
           typ
       | Trow {row_proxy= proxy; _} when not (is_replace proxy) ->
@@ -1017,6 +1061,7 @@ module Type = struct
     List.iter2_exn params typs ~f:(fun param typ ->
         (* Sanity check. *)
         assert (is_var param) ;
+        assert (is_var param.type_alternate.type_alternate) ;
         set_replacement param typ ) ;
     let typ = copy typ env in
     (* Restore the original values of the parameters. *)

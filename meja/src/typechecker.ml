@@ -1984,7 +1984,10 @@ let rec check_statement env stmt =
       let typ, typ_params =
         let decl = decl.tdec_tdec in
         let snap = Snapshot.create () in
-        let typ_params = Envi.Type.refresh_vars decl.tdec_params env in
+        Envi.Type.refresh_vars decl.tdec_params env ;
+        let typ_params =
+          List.map decl.tdec_params ~f:(fun typ -> Envi.Type.copy typ env)
+        in
         let typ = Envi.Type.copy decl.tdec_ret env in
         backtrack snap ; (typ, typ_params)
       in
