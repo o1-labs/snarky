@@ -58,14 +58,32 @@ let rec case_of_type_decl env typ decl =
     | TAbstract | TAlias _ ->
         failwith "Could not generate a pattern case for type."
     | TRecord _fields ->
-        let fields =
-          String.Map.empty
-          (*List.fold ~init:String.Map.empty fields ~f:(fun map field ->
+        (* NOTE: We avoid expanding all of the fields here, so that we don't
+                 contaminate the unmatched examples with fields that aren't
+                 matched anywhere.
+
+           For example, the type
+             type t = {a: int; b: bool; c: bool}
+           is not completely matched by the pattern
+           {b: true}
+           but it is clearer (and less verbose) to show the pattern
+           {b: false}
+           as unmatched instead of
+           {a: _; b: false; c: _}
+
+           When the fields appear in patterns, the map is updated to include
+           them, so we still check record patterns correctly, as expected.
+        *)
+        let fields = String.Map.empty in
+        (* Print all fields for every record case. For debugging only. *)
+        (*let fields =
+          ignore fields ;
+          List.fold ~init:String.Map.empty _fields ~f:(fun map field ->
               let typ = Envi.Type.copy field.fld_type env in
               Map.set map
                 ~key:(Ident.name field.fld_ident)
-                ~data:(Pcase_type typ, typ) )*)
-        in
+                ~data:(Pcase_type typ, typ) )
+        in*)
         Pcase_record fields
     | TVariant ctors ->
         let ctors =
