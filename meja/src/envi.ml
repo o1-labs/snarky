@@ -906,6 +906,8 @@ module Type = struct
 
     let row_of_ctor ~mode ident args env =
       row_of_ctor ~mode env.depth ident args
+
+    let row_subtract ~mode typ tags env = row_subtract ~mode env.depth typ tags
   end
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
@@ -1001,19 +1003,41 @@ module Type = struct
           (* Don't copy variables! *)
           typ
       | Trow row ->
-          let row_tags, row_rest', row_closed = row_repr row in
+          let row_tags, _subtract_tags, row_rest', row_closed = row_repr row in
           let row_rest = copy row_rest' in
           let typ' =
             Type1.mk' ~mode:typ.type_mode typ.type_depth (Tvar None)
           in
           unsafe_set_single_replacement typ typ' ;
           let replace_desc = typ.type_desc in
+          let should_freshen, row_tags, row_rest, row_closed =
+            match (row_rest'.type_desc, row_rest.type_desc) with
+            | Tvar _, Tvar _
+            | Topaque {type_desc= Tvar _; _}, Topaque {type_desc= Tvar _; _} ->
+                false, row_tags, row_rest, row_closed
+            | Treplace _, (Tvar _ | Topaque {type_desc= Tvar _; _}) ->
+                true, row_tags, row_rest, row_closed
+            | Treplace _, (Trow _ | Trow_subtract _) ->
+                let row_tags, _subtract_tags, row_rest, row_closed = row_repr_typ row_rest in
+                let has_replacement = ref None in
+                (* Hack: Use [Map.exists] with unconditional true to inspect a
+                   single value of the map.
+                *)
+                ignore @@ Map.exists row_tags ~f:(fun (_, pres, args) ->
+                  (match pres.rp_desc with
+                  | RpReplace _ -> has_replacement:= Some true
+                  | _ -> has_replacement := Some false) ;
+                  true) ;
+                !has_replacement, row_tags, row_rest, row_closed
+             | _ ->
+                 Format.eprintf
+                   "Unexpected value for [row_rest]. \
+                    Original:@.%a@.Copied:@.%a@."
+                   typ_debug_print row_rest' typ_debug_print row_rest ;
+                 assert false
+          in
           typ'.type_desc
-          <- ( match (row_rest'.type_desc, row_rest.type_desc) with
-             | Tvar _, Tvar _
-             | Topaque {type_desc= Tvar _; _}, Topaque {type_desc= Tvar _; _}
-               ->
-                 (* Copy arguments only. *)
+          <- ( 
                  let row_tags =
                    Map.map row_tags ~f:(fun (path, pres, args) ->
                        let pres = rp_repr pres in
@@ -1021,13 +1045,20 @@ module Type = struct
                          match pres.rp_desc with
                          | RpReplace pres ->
                              pres
+                         | rp_desc when should_freshen ->
+                             (* Freshen row variables and copy arguments. *)
+                             let new_pres = mk_rp rp_desc in
+                             set_rp_desc pres (RpReplace new_pres) ;
+                             new_pres
                          | _ ->
+                             (* Copy arguments only. *)
                              pres
                        in
                        (path, pres, List.map ~f:copy args) )
                  in
                  Trow {row_tags; row_closed; row_rest}
-             | Treplace _, (Tvar _ | Topaque {type_desc= Tvar _; _}) ->
+             | Treplace _, (Tvar _ | Topaque {type_desc= Tvar _; _} | Trow _)
+               ->
                  (* Freshen row variables and copy arguments. *)
                  let row_tags =
                    Map.map row_tags ~f:(fun (path, pres, args) ->
@@ -1072,13 +1103,13 @@ module Type = struct
               typ'
           | Tvar _ ->
               (* If the tri-stitched type isn't a type variable, this should also
-               have been instantiated.
-            *)
+                 have been instantiated.
+              *)
               assert false
           | Trow _ ->
               (* This should never happen; a row may only ever be stitched to a
-               type variable or a row, both of which are handled above.
-            *)
+                 type variable or a row, both of which are handled above.
+              *)
               assert false
           | _ ->
               let alt_desc = typ.type_alternate.type_desc in
@@ -1219,9 +1250,16 @@ module Type = struct
       | Tother_mode _, _ ->
           1
       | _, Tother_mode _ ->
-          1
+          -1
       | Trow row1, Trow row2 ->
           compare_row ~loc env row1 row2
+      | Trow _, _ ->
+          1
+      | _, Trow _ ->
+          -1
+      | Trow_subtract (typ1, tags1), Trow_subtract (typ2, tags2) ->
+          or_compare (compare typ1 typ2) ~f:(fun () ->
+              List.compare Ident.compare tags1 tags2 )
 
   and compare_all ~loc env typs1 typs2 =
     match (typs1, typs2) with

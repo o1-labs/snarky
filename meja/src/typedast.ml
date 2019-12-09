@@ -28,6 +28,7 @@ and type_desc =
            row_field list.
         *)
       ident list option
+  | Ttyp_row_subtract of type_expr * ident list
 
 and variant = {var_ident: path; var_params: type_expr list}
 

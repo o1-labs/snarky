@@ -71,8 +71,11 @@ let unpack_decls ~loc typ ctyp env =
         None
 
 let rec check_type_aux ~loc typ ctyp env =
-  if Type1.contains typ ~in_:ctyp || Type1.contains ctyp ~in_:typ then
+  Format.eprintf "Checking:@.%a@.%a@." typ_debug_print typ typ_debug_print ctyp ;
+  if Type1.contains typ ~in_:ctyp then
     raise (Error (loc, env, Recursive_variable typ)) ;
+  if Type1.contains ctyp ~in_:typ then
+    raise (Error (loc, env, Recursive_variable ctyp)) ;
   let check_type_aux = check_type_aux ~loc in
   Type1.unify_depths typ ctyp ;
   (* Unfold any [Tother_mode] types so that [typ] and [ctyp] have the same
@@ -263,8 +266,8 @@ let rec check_type_aux ~loc typ ctyp env =
       check_type_aux typ ctyp env ;
       check_type_aux typ.type_alternate ctyp.type_alternate env
   | Trow row1, Trow row2 ->
-      let row_tags1, row_rest1, row_closed1 = row_repr row1 in
-      let row_tags2, row_rest2, row_closed2 = row_repr row2 in
+      let row_tags1, _subtract_tags1, row_rest1, row_closed1 = row_repr row1 in
+      let row_tags2, _subtract_tags2, row_rest2, row_closed2 = row_repr row2 in
       (*check_type_aux row_rest1 row_rest2 env ;*)
       let is_empty = ref true in
       let row_extra1 = ref Ident.Map.empty in
@@ -354,14 +357,15 @@ let rec check_type_aux ~loc typ ctyp env =
               row_rest1
           | Tvar _ ->
               let new_row =
-                Type1.Mk.row ~mode:row_rest1.type_mode
-                  row_rest1.type_depth
+                Type1.Mk.row ~mode:row_rest1.type_mode row_rest1.type_depth
                   {row_tags= row_extra; row_closed; row_rest}
               in
               choose_variable_name row_rest1 row_rest ;
               check_type_aux row_rest1 new_row env ;
               row_rest
           | _ ->
+              Format.eprintf "Unexpected row_rest:@.%a@." typ_debug_print
+                row_rest1 ;
               assert false
         in
         let row_rest1 = expand_row row_rest1 !row_extra1 in

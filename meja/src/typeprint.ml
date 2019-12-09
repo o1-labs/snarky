@@ -52,13 +52,14 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
         fprintf fmt "@[<hv2>Prover{@,%a@,}@]" type_expr typ
     | _ ->
         type_expr fmt typ )
-  | Trow row ->
+  | Trow row -> (
       (* TODO: Print [row_rest] variable name where applicable. *)
-      let row_tags, _row_rest, row_closed = Type1.row_repr row in
-      let needs_lower_bound =
+      let row_tags, subtract_tags, row_rest, row_closed = Type1.row_repr row in
+      (match subtract_tags with [] -> () | _ -> fprintf fmt "[@[<hv1>") ;
+      let needs_lower_bound, needs_as =
         match row_closed with
         | Open ->
-            fprintf fmt "[>@[<hv1>@," ; false
+            fprintf fmt "([>@[<hv1>@," ; (false, true)
         | Closed ->
             let is_fixed =
               Map.for_all row_tags ~f:(fun (_, pres, _) ->
@@ -71,8 +72,8 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
                       assert false )
             in
             if is_fixed then fprintf fmt "[@[<hv1>@,"
-            else fprintf fmt "[<@[<hv1>@," ;
-            not is_fixed
+            else fprintf fmt "([<@[<hv1>@," ;
+            (not is_fixed, not is_fixed)
       in
       let is_first = ref true in
       Map.iteri row_tags ~f:(fun ~key:_ ~data:(path, pres, args) ->
@@ -99,7 +100,19 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
                 ()
             | RpRef _ | RpReplace _ ->
                 assert false ) ) ;
-      fprintf fmt "@,@]]"
+      fprintf fmt "@,@]]" ;
+      if needs_as then fprintf fmt " as %a)" type_expr row_rest ;
+      match subtract_tags with
+      | [] ->
+          ()
+      | _ ->
+          fprintf fmt "@ - %a@]]"
+            (pp_print_list ~pp_sep:bar_sep Ident.pprint)
+            subtract_tags )
+  | Trow_subtract (typ, tags) ->
+      fprintf fmt "[@[<hv2>%a - %a@]]" type_expr typ
+        (pp_print_list ~pp_sep:bar_sep Ident.pprint)
+        tags
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs

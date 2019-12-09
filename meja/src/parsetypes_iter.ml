@@ -61,6 +61,9 @@ let type_desc iter = function
   | Ptyp_row (tags, _closed, min_tags) ->
       Option.iter ~f:(List.iter ~f:(str iter)) min_tags ;
       List.iter ~f:(iter.row_tag iter) tags
+  | Ptyp_row_subtract (typ, tags) ->
+      iter.type_expr iter typ ;
+      List.iter ~f:(str iter) tags
 
 let variant iter {var_ident; var_params} =
   lid iter var_ident ;

@@ -58,6 +58,11 @@ let rec type_desc ?(bracket = false) fmt = function
           let print_tag fmt tag = fprintf fmt "`%a" pp_name tag.Location.txt in
           fprintf fmt "@ > " ;
           pp_print_list ~pp_sep:bar_sep print_tag fmt min_tags )
+  | Ptyp_row_subtract (typ, tags) ->
+      let print_tag fmt tag = fprintf fmt "`%a" pp_name tag.Location.txt in
+      fprintf fmt "[@[<hv2>%a - %a@]]" type_expr typ
+        (pp_print_list ~pp_sep:bar_sep print_tag)
+        tags
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs

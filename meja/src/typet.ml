@@ -14,6 +14,7 @@ type error =
   | GADT_in_nonrec_type
   | Repeated_row_label of Ident.t
   | Missing_row_label of Ident.t
+  | Expected_row_type of type_expr
 
 exception Error of Location.t * error
 
@@ -239,6 +240,54 @@ module Type = struct
           ; type_loc= loc
           ; type_type }
         , env )
+    | Ptyp_row_subtract (typ, tags) ->
+        let typ', env = import typ env in
+        let tags = List.map ~f:(map_loc ~f:Ident.create_row) tags in
+        let type_type =
+          let typ' = Type1.repr typ'.type_type in
+          let row_tags, _subtract_tags, row_rest, row_closed =
+            match typ'.type_desc with
+            | Tvar _ ->
+                (Ident.Map.empty, [], typ', Open)
+            | Trow row ->
+                Type1.row_repr row
+            | _ ->
+                raise (Error (typ.type_loc, Expected_row_type typ))
+          in
+          let tags = List.map tags ~f:(fun {txt; _} -> txt) in
+          match row_closed with
+          | Open ->
+              let row_tags =
+                List.fold ~init:row_tags tags ~f:(fun row_tags tag ->
+                    Map.set row_tags ~key:tag
+                      ~data:(Path.Pident tag, Type1.mk_rp RpAbsent, []) )
+              in
+              let row_rest =
+                Envi.Type.Mk.row_subtract ~mode row_rest tags env
+              in
+              Envi.Type.Mk.row ~mode {row_tags; row_closed; row_rest} env
+          | Closed ->
+              let row_tags, tags =
+                List.fold ~init:(row_tags, []) tags
+                  ~f:(fun (row_tags, tags) tag ->
+                    match Map.find row_tags tag with
+                    | Some (path, _pres, args) ->
+                        ( Map.set row_tags ~key:tag
+                            ~data:(path, Type1.mk_rp RpAbsent, args)
+                        , tag :: tags )
+                    | None ->
+                        (row_tags, tags) )
+              in
+              let tags = List.rev tags in
+              let row_rest =
+                Envi.Type.Mk.row_subtract ~mode row_rest tags env
+              in
+              Envi.Type.Mk.row ~mode {row_tags; row_closed; row_rest} env
+        in
+        ( { Typedast.type_desc= Ttyp_row_subtract (typ', tags)
+          ; type_loc= loc
+          ; type_type }
+        , env )
 
   let fold ~init ~f typ =
     match typ.type_desc with
@@ -264,6 +313,8 @@ module Type = struct
     | Ptyp_row (tags, _closed, _min_tags) ->
         List.fold ~init tags ~f:(fun acc {rtag_arg; _} ->
             List.fold ~f ~init:acc rtag_arg )
+    | Ptyp_row_subtract (typ, _tags) ->
+        f init typ
 
   let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -298,6 +349,8 @@ module Type = struct
               , closed
               , min_tags )
         ; type_loc= loc }
+    | Ptyp_row_subtract (typ, tags) ->
+        {type_desc= Ptyp_row_subtract (f typ, tags); type_loc= loc}
 end
 
 module TypeDecl = struct
@@ -754,6 +807,8 @@ let report_error ppf = function
   | Missing_row_label label ->
       fprintf ppf "@[<hov>The constructor %a is not present in this row.@]@."
         Ident.pprint label
+  | Expected_row_type typ ->
+      fprintf ppf "@[<hov>The type %a was expected to be a row.@]@." pp_typ typ
 
 let () =
   Location.register_error_of_exn (function

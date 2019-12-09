@@ -67,6 +67,8 @@ module Type = struct
 
   let row ?loc tags closed min_tags =
     mk ?loc (Ptyp_row (tags, closed, min_tags))
+
+  let row_subtract ?loc typ tags = mk ?loc (Ptyp_row_subtract (typ, tags))
 end
 
 module Type_decl = struct

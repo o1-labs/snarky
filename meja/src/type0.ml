@@ -45,6 +45,7 @@ and type_desc =
   (* Cache the current value to break recursion. *)
   | Treplace of type_expr
   | Trow of row
+  | Trow_subtract of type_expr * Ident.t list
 [@@deriving sexp]
 
 and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]
@@ -56,7 +57,9 @@ and row =
        - [Trow] for an expanded row
        - [Tvar] for the end of a row
     *)
-    row_rest: type_expr }
+    row_rest: type_expr
+  ; (* This should be a row-presence
+    row_presence_proxy }
 [@@deriving sexp]
 
 type field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]

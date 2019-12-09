@@ -34,18 +34,34 @@ let mk_rp rp_desc = incr row_id ; {rp_desc; rp_id= !row_id}
 *)
 let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
 
-let rec row_repr_aux tags {row_tags; row_rest; row_closed} =
-  let row_rest = repr row_rest in
+let rec row_repr_aux (tags, subtract_tags) {row_tags; row_rest; row_closed} =
   let tags =
     Map.merge_skewed tags row_tags ~combine:(fun ~key:_ old _new -> old)
   in
-  match row_rest.type_desc with
-  | Trow row | Topaque {type_desc= Trow row; _} ->
-      row_repr_aux tags row
-  | _ ->
-      (tags, row_rest, row_closed)
+  let rec row_repr_inner subtract_tags typ =
+    let row_rest = repr typ in
+    match typ.type_desc with
+    | Topaque typ ->
+        row_repr_inner subtract_tags typ
+    | Trow_subtract (typ, sub_tags) ->
+        let subtract_tags =
+          List.fold ~f:Set.add ~init:subtract_tags sub_tags
+        in
+        row_repr_inner subtract_tags typ
+    | Trow row ->
+        row_repr_aux (tags, subtract_tags) row
+    | _ ->
+        (tags, subtract_tags, row_rest, row_closed)
+  in
+  row_repr_inner subtract_tags row_rest
 
-let row_repr row = row_repr_aux Ident.Map.empty row
+let row_repr row =
+  let tags, subtract_tags, row_rest, row_closed =
+    row_repr_aux (Ident.Map.empty, Ident.Set.empty) row
+  in
+  (tags, Set.to_list subtract_tags, row_rest, row_closed)
+
+let row_repr_typ typ = row_repr {row_tags= Ident.Map.empty; row_rest= typ; row_closed= Open}
 
 (** An invalid [type_expr] in checked mode. *)
 let rec checked_none =
@@ -242,7 +258,11 @@ let rec typ_debug_print fmt typ =
       | Treplace typ ->
           print "=== " ; typ_debug_print fmt typ
       | Trow row ->
-          print "row " ; row_debug_print fmt row ) ;
+          print "row " ; row_debug_print fmt row
+      | Trow_subtract (typ, tags) ->
+          print "row_subtract %a - @[<hov>%a@]" typ_debug_print typ
+            (pp_print_list ~pp_sep:pp_print_space Ident.debug_print)
+            tags ) ;
     Hash_set.remove hashtbl typ.type_id ) ;
   print " @%i)" typ.type_depth
 
@@ -565,6 +585,25 @@ module Mk = struct
       Ident.Map.singleton ident (Path.Pident ident, mk_rp RpPresent, args)
     in
     row ~mode depth {row_tags; row_closed= Open; row_rest}
+
+  let row_subtract ~mode depth typ tags =
+    match mode with
+    | Prover ->
+        let alt =
+          stitch ~mode:Prover depth
+            (Trow_subtract (typ, tags))
+            (Trow_subtract (typ.type_alternate, tags))
+        in
+        opaque ~mode depth alt
+    | Checked ->
+        let alt =
+          stitch ~mode:Prover depth
+            (Trow_subtract (typ.type_alternate, tags))
+            (Trow_subtract (typ.type_alternate.type_alternate, tags))
+        in
+        tri_stitch ~mode depth
+          (Trow_subtract (typ, tags))
+          (Topaque alt) (Topaque alt)
 end
 
 type change =
@@ -768,6 +807,8 @@ let fold ~init ~f typ =
             List.fold ~f ~init args )
       in
       f acc row_rest
+  | Trow_subtract (typ, _tags) ->
+      f init typ
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -798,6 +839,8 @@ let rec copy_desc ~f = function
   | Trow _ ->
       (* Must be handled seperately. *)
       assert false
+  | Trow_subtract (typ, tags) ->
+      Trow_subtract (f typ, tags)
 
 (** Make a fresh copy of a row with new row variables, applying [f] to all
     constituent types.
@@ -1169,6 +1212,8 @@ let contains typ ~in_ =
         || Map.exists row_tags ~f:(fun (_, _, args) ->
                List.exists ~f:contains args )
         || contains row_rest
+    | Trow_subtract (typ, _tags) ->
+        equal typ || contains typ
   in
   contains in_
 

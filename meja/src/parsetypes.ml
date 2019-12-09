@@ -23,6 +23,7 @@ and type_desc =
            row_field list.
         *)
       str list option
+  | Ptyp_row_subtract of type_expr * str list
 
 and variant = {var_ident: lid; var_params: type_expr list}
 

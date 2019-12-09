@@ -650,6 +650,8 @@ simple_type_expr:
     { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, Some [])) }
   | LBRACKET LT tags = row_tags GT min_tags = list(row_name, BAR) RBRACKET
     { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, Some (List.rev min_tags))) }
+  | LBRACKET typ = type_expr MINUS tags = list(row_name, BAR) RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row_subtract (typ, List.rev tags)) }
 
 %inline type_arrow_label:
   | (* Empty *)

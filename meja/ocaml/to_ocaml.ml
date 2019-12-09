@@ -50,6 +50,11 @@ let rec of_type_desc ?loc typ =
          ))
         closed
         (Option.map ~f:(List.map ~f:(fun {Location.txt; _} -> txt)) min_tags)
+  | Ptyp_row_subtract (typ, _tags) ->
+      (* OCaml doesn't have a concept of row subtraction; we output the
+         underlying row instead.
+      *)
+      of_type_expr typ
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 

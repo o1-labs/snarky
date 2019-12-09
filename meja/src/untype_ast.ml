@@ -45,8 +45,10 @@ module Type0 = struct
         assert false
     | Treplace _ ->
         assert false
-    | Trow row ->
-        let row_tags, _row_rest, row_closed = Type1.row_repr row in
+    | Trow row -> (
+        let row_tags, subtract_tags, _row_rest, row_closed =
+          Type1.row_repr row
+        in
         let needs_lower_bound = ref false in
         let tags, min_tags =
           Map.fold_right row_tags ~init:([], [])
@@ -69,9 +71,21 @@ module Type0 = struct
               | RpRef _ | RpReplace _ ->
                   assert false )
         in
-        if !needs_lower_bound then
-          Type.row ?loc tags row_closed (Some min_tags)
-        else Type.row ?loc tags row_closed None
+        let typ =
+          if !needs_lower_bound then
+            Type.row ?loc tags row_closed (Some min_tags)
+          else Type.row ?loc tags row_closed None
+        in
+        match subtract_tags with
+        | [] ->
+            typ
+        | _ ->
+            Type.row_subtract ?loc typ
+              (List.map subtract_tags ~f:(fun tag ->
+                   Loc.mk ?loc (Ident.name tag) )) )
+    | Trow_subtract (typ, tags) ->
+        Type.row_subtract ?loc (type_expr ?loc typ)
+          (List.map tags ~f:(fun tag -> Loc.mk ?loc (Ident.name tag)))
 
   and type_expr ?loc typ = type_desc ~mode:typ.type_mode ?loc typ.type_desc
 
@@ -137,6 +151,9 @@ let rec type_desc = function
         ( List.map ~f:row_tags tags
         , closed
         , Option.map ~f:(List.map ~f:(map_loc ~f:Ident.name)) min_tags )
+  | Ttyp_row_subtract (typ, tags) ->
+      Ptyp_row_subtract
+        (type_expr typ, List.map ~f:(map_loc ~f:Ident.name) tags)
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}

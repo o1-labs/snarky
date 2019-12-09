@@ -8,6 +8,7 @@ type error =
   | GADT_in_nonrec_type
   | Repeated_row_label of Ident.t
   | Missing_row_label of Ident.t
+  | Expected_row_type of Parsetypes.type_expr
 
 module Type : sig
   val mk_poly :

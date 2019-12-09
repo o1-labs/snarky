@@ -93,6 +93,9 @@ let type_desc mapper typ =
         ( List.map ~f:(mapper.row_tag mapper) tags
         , closed
         , Option.map ~f:(List.map ~f:(ident mapper)) min_tags )
+  | Ttyp_row_subtract (typ, tags) ->
+      Ttyp_row_subtract
+        (mapper.type_expr mapper typ, List.map ~f:(ident mapper) tags)
 
 let variant mapper {var_ident; var_params} =
   { var_ident= path mapper var_ident

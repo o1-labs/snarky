@@ -75,6 +75,9 @@ let type_desc iter = function
   | Ttyp_row (tags, _closed, min_tags) ->
       Option.iter ~f:(List.iter ~f:(ident iter)) min_tags ;
       List.iter ~f:(iter.row_tag iter) tags
+  | Ttyp_row_subtract (typ, tags) ->
+      iter.type_expr iter typ ;
+      List.iter ~f:(ident iter) tags
 
 let variant iter {var_ident; var_params} =
   path iter var_ident ;
