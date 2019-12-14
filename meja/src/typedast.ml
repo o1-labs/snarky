@@ -100,7 +100,7 @@ and expression_desc =
   | Texp_fun of Asttypes.arg_label * pattern * expression * explicitness
   | Texp_newtype of ident * expression
   | Texp_seq of expression * expression
-  | Texp_let of pattern * expression * expression
+  | Texp_let of Asttypes.rec_flag * (pattern * expression) list * expression
   | Texp_instance of ident * expression * expression
   | Texp_constraint of expression * type_expr
   | Texp_tuple of expression list
@@ -164,7 +164,7 @@ type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
 and statements = statement list
 
 and statement_desc =
-  | Tstmt_value of pattern * expression
+  | Tstmt_value of Asttypes.rec_flag * (pattern * expression) list
   | Tstmt_instance of ident * expression
   | Tstmt_type of type_decl
   | Tstmt_convtype of type_decl * conv_type * ident * convert

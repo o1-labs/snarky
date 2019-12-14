@@ -131,9 +131,10 @@ let rec of_expression_desc ?loc = function
       Exp.constraint_ ?loc (of_expression e) (of_type_expr typ)
   | Pexp_seq (e1, e2) ->
       Exp.sequence ?loc (of_expression e1) (of_expression e2)
-  | Pexp_let (p, e_rhs, e) ->
-      Exp.let_ ?loc Nonrecursive
-        [Vb.mk (of_pattern p) (of_expression e_rhs)]
+  | Pexp_let (rec_flag, bindings, e) ->
+      Exp.let_ ?loc rec_flag
+        (List.map bindings ~f:(fun (p, e_rhs) ->
+             Vb.mk (of_pattern p) (of_expression e_rhs) ))
         (of_expression e)
   | Pexp_instance (name, e_rhs, e) ->
       Exp.let_ ?loc Nonrecursive
@@ -268,8 +269,10 @@ and of_module_sig_desc ?loc = function
 and of_module_sig msig = of_module_sig_desc ~loc:msig.msig_loc msig.msig_desc
 
 let rec of_statement_desc ?loc = function
-  | Pstmt_value (p, e) ->
-      Str.value ?loc Nonrecursive [Vb.mk (of_pattern p) (of_expression e)]
+  | Pstmt_value (rec_flag, bindings) ->
+      Str.value ?loc rec_flag
+        (List.map bindings ~f:(fun (p, e) ->
+             Vb.mk (of_pattern p) (of_expression e) ))
   | Pstmt_instance (name, e) ->
       Str.value ?loc Nonrecursive [Vb.mk (Pat.var ?loc name) (of_expression e)]
   | Pstmt_type decl ->

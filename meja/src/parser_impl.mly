@@ -145,8 +145,8 @@ signature:
     { s }
 
 structure_item:
-  | LET x = pat EQUAL e = expr
-    { mkstmt ~pos:$loc (Pstmt_value (x, e)) }
+  | LET rec_flag = rec_flag p = pat EQUAL e = expr rest = and_let
+    { mkstmt ~pos:$loc (Pstmt_value (rec_flag, (p, e) :: rest)) }
   | INSTANCE x = as_loc(val_ident) EQUAL e = expr
     { mkstmt ~pos:$loc (Pstmt_instance (x, e)) }
   | TYPE decl = type_decl
@@ -223,6 +223,19 @@ and_type_decls(type_keyword):
 type_decls:
   | decls = and_type_decls(TYPE REC {})
     { decls }
+
+and_let:
+  | (* empty *)
+    { [] }
+  | AND x = pat EQUAL e = expr rest = and_let
+    { (x, e) :: rest }
+
+rec_flag:
+  | (* empty *)
+    { Nonrecursive }
+  | REC
+    { Recursive }
+
 
 default_request_handler:
   | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
@@ -542,11 +555,11 @@ block:
     { e }
   | e1 = expr SEMI rest = block
     { mkexp ~pos:$loc (Pexp_seq (e1, rest)) }
-  | LET x = pat EQUAL lhs = expr SEMI rhs = block
-    { mkexp ~pos:$loc (Pexp_let (x, lhs, rhs)) }
+  | LET rec_flag = rec_flag p = pat EQUAL e = expr rest = and_let SEMI rhs = block
+    { mkexp ~pos:$loc (Pexp_let (rec_flag, (p, e) :: rest, rhs)) }
   | INSTANCE x = as_loc(lident) EQUAL lhs = expr SEMI rhs = block
     { mkexp ~pos:$loc (Pexp_instance (x, lhs, rhs)) }
-  | LET pat EQUAL expr err = err
+  | LET rec_flag pat EQUAL expr err = err
     { raise (Error (err, Missing_semi)) }
   | expr err = err
     { raise (Error (err, Missing_semi)) }
