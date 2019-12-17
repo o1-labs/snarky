@@ -37,8 +37,6 @@ module type Constant_intf = sig
 
   type t
 
-  val zero : t
-
   val random : unit -> t
 
   val to_affine_exn : t -> field * field
@@ -410,18 +408,6 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     | [x] ->
         [(x, Boolean.false_)]
 
-  (* TODO: Use double and add. *)
-  let scale_int n base =
-    let num_bits = Int.ceil_log2 n in
-    let test_bit i = (n lsr i) land 1 = 1 in
-    let rec go acc i two_to_i =
-      if i = num_bits then acc
-      else
-        let acc = if test_bit i then Constant.(acc + two_to_i) else acc in
-        go acc (i + 1) Constant.(two_to_i + two_to_i)
-    in
-    go Constant.zero 0 base
-
   type shifted = {value: t; shift: Constant.t}
 
   let scale_known (pc : Scaling_precomputation.t) bs =
@@ -449,12 +435,14 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     in
     {value= with_shifts; shift}
 
+  let unshift {value; shift} = add_exn value (constant (Constant.negate shift))
+
   let multiscale_known pairs =
-    let {value; shift} =
-      Array.map pairs ~f:(fun (s, g) -> scale_known g s)
-      |> Array.reduce_exn ~f:(fun t1 t2 ->
-             { value= add_exn t1.value t2.value
-             ; shift= Constant.(t1.shift + t2.shift) } )
-    in
-    add_exn value (constant (Constant.negate shift))
+    Array.map pairs ~f:(fun (s, g) -> scale_known g s)
+    |> Array.reduce_exn ~f:(fun t1 t2 ->
+           { value= add_exn t1.value t2.value
+           ; shift= Constant.(t1.shift + t2.shift) } )
+    |> unshift
+
+  let scale_known pc bs = unshift (scale_known pc bs)
 end
