@@ -46,6 +46,8 @@ module type Constant_intf = sig
   val of_affine : field * field -> t
 
   val ( + ) : t -> t -> t
+
+  val negate : t -> t
 end
 
 module type Inputs_intf = sig
@@ -325,9 +327,8 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
       in
       go window_size
 
-    (* (create g).(i) = ( g + 2^{window_size*i} 0 g, g + 2^{window_size*i} g, g + 2^{window_size*i} (2 g), g + 2^{window_size*i} (3 g) ) *)
-    let create g =
-      (* TODO: Optimize *)
+    (* (create g).(i) = ( unrelated_base^i + 2^{window_size*i} 0 g, unrelated_base^i + 2^{window_size*i} g, unrelated_base^i + 2^{window_size*i} (2 g), unrelated_base^i + 2^{window_size*i} (3 g) ) *)
+    let create ~shifts g =
       let pure_windows =
         (* pure_windows.(i) = 2^{window_size * i} ( g, 2 g, 3 g) *)
         let w0 =
@@ -341,14 +342,29 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
         done ;
         a
       in
-      Array.map pure_windows ~f:(fun (a, b, c) ->
-          Constant.(g, g + a, g + b, g + c) )
+      Array.mapi pure_windows ~f:(fun i (a, b, c) ->
+          let shift = shifts.(i) in
+          Constant.(shift, shift + a, shift + b, shift + c) )
   end
 
-  module Scaling_precomputation = struct
-    type t = {base: Constant.t; table: Window_table.t}
+  let pow2s g =
+    let n = Window_table.windows + 1 in
+    assert (n < Params.group_size_in_bits) ;
+    let a = Array.init n ~f:(fun _ -> g) in
+    for i = 1 to n - 1 do
+      let x = a.(i - 1) in
+      a.(i) <- Constant.(x + x)
+    done ;
+    a
 
-    let create t = {base= t; table= Window_table.create t}
+  module Scaling_precomputation = struct
+    type t = {base: Constant.t; shifts: Constant.t array; table: Window_table.t}
+
+    (* TODO: Compute unrelated_base from g as
+   unrelated_base = group_valued_random_oracle(gx, gy) *)
+    let create ~unrelated_base base =
+      let shifts = pow2s unrelated_base in
+      {base; shifts; table= Window_table.create ~shifts base}
   end
 
   let add_unsafe =
@@ -364,7 +380,6 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     in
     add' ~div:div_unsafe
 
-  (* This is optimized for Marlin-style constraints. *)
   let lookup_point (b0, b1) (t1, t2, t3, t4) =
     let b0_and_b1 = Boolean.( && ) b0 b1 in
     let lookup_one (a1, a2, a3, a4) =
@@ -380,6 +395,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     and x2, y2 = Constant.to_affine_exn t2
     and x3, y3 = Constant.to_affine_exn t3
     and x4, y4 = Constant.to_affine_exn t4 in
+    (* This is optimized for Marlin-style constraints. *)
     let seal a =
       let a' = exists Field.typ ~compute:(fun () -> As_prover.read_var a) in
       Field.Assert.equal a a' ; a'
@@ -406,7 +422,9 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     in
     go Constant.zero 0 base
 
-  let scale_known ?init (pc : Scaling_precomputation.t) bs =
+  type shifted = {value: t; shift: Constant.t}
+
+  let scale_known (pc : Scaling_precomputation.t) bs =
     let bs =
       let bs = Array.of_list bs in
       let num_bits = Array.length bs in
@@ -420,14 +438,8 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     let terms =
       Array.mapi bs ~f:(fun i bit_pair -> lookup_point bit_pair pc.table.(i))
     in
-    let with_excess =
-      let combine =
-        match init with
-        | None ->
-            Array.reduce_exn ~f:add_unsafe
-        | Some init ->
-            Array.fold ~init ~f:add_unsafe
-      in
+    let with_shifts =
+      let combine = Array.reduce_exn ~f:add_unsafe in
       if windows_required < Window_table.windows then combine terms
       else
         (* Chop off the last window and add using add_exn
@@ -438,14 +450,22 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
         in
         add_exn pre terms.(Array.length terms - 1)
     in
-    let excess = scale_int windows_required pc.base in
-    add_exn with_excess (negate (constant excess))
+    let shift =
+      let unrelated_base = pc.shifts.(0) in
+      (* 
+         0b1111... * unrelated_base = (2^windows_required - 1) * unrelated_base
 
-  (* Danger! unrelated_base must be linearly independent of all
-   other bases *)
-  let multiscale_known ~unrelated_base pairs =
-    let init = constant unrelated_base in
-    let excess = scale_int (Array.length pairs) unrelated_base in
-    Array.map pairs ~f:(fun (s, g) -> scale_known ~init g s)
-    |> Array.fold ~init:(negate (constant excess)) ~f:add_exn
+         is what we added and need to take away for the final result. *)
+      Constant.(pc.shifts.(windows_required) + negate unrelated_base)
+    in
+    {value= with_shifts; shift}
+
+  let multiscale_known pairs =
+    let {value; shift} =
+      Array.map pairs ~f:(fun (s, g) -> scale_known g s)
+      |> Array.reduce_exn ~f:(fun t1 t2 ->
+             { value= add_exn t1.value t2.value
+             ; shift= Constant.(t1.shift + t2.shift) } )
+    in
+    add_exn value (constant (Constant.negate shift))
 end
