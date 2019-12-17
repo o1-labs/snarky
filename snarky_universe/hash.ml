@@ -113,7 +113,7 @@ struct
     module Operations = Sponge.Make_operations (Field)
   end
 
-  include Sponge.Make (Sponge.Poseidon (Inputs))
+  include Sponge.Make_hash (Sponge.Poseidon (Inputs))
 
   type t = Field.t
 
@@ -141,11 +141,14 @@ struct
                      res *= x ; res
 
       module Operations = struct
-        let apply_matrix rows v =
-          Array.map rows ~f:(fun row ->
+        let add_assign ~state i x = Field.(state.(i) += x)
+
+        let apply_affine_map (rows, constants) v =
+          Array.mapi rows ~f:(fun i row ->
               let open Field in
               let res = zero + zero in
               Array.iteri row ~f:(fun i r -> res += (r * v.(i))) ;
+              res += constants.(i) ;
               res )
 
         let add_block ~state block =
@@ -157,7 +160,7 @@ struct
       end
     end
 
-    include Sponge.Make (Sponge.Poseidon (Inputs))
+    include Sponge.Make_hash (Sponge.Poseidon (Inputs))
 
     let hash xs = hash params_constant xs
   end
