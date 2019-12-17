@@ -37,11 +37,15 @@ module type Constant_intf = sig
 
   type t
 
+  val zero : t
+
   val random : unit -> t
 
   val to_affine_exn : t -> field * field
 
   val of_affine : field * field -> t
+
+  val ( + ) : t -> t -> t
 end
 
 module type Inputs_intf = sig
@@ -53,7 +57,7 @@ module type Inputs_intf = sig
       with type bool := Impl.Boolean.var
        and type field := Impl.field
 
-    module Constant : Field_intf.Basic
+    module Constant : Field_intf.Constant
 
     val assert_square : t -> t -> unit
 
@@ -69,6 +73,8 @@ module type Inputs_intf = sig
   module Params : sig
     val one : F.Constant.t * F.Constant.t
 
+    val group_size_in_bits : int
+
     val a : F.Constant.t
 
     val b : F.Constant.t
@@ -83,6 +89,9 @@ module Make_checked (Inputs : Inputs_intf) = struct
 
   let double ((ax, ay) : t) : t =
     let open F in
+    (* A: 1
+       B: 1
+       C: 1 *)
     let x_squared = square ax in
     let lambda =
       exists typ
@@ -116,14 +125,36 @@ module Make_checked (Inputs : Inputs_intf) = struct
               F.Constant.((lambda * (ax - bx)) - ay))
     in
     let two = Field.Constant.of_int 2 in
+    (* A: 1
+       B: 1
+       C: 2 *)
     assert_r1cs (F.scale lambda two) ay
       (F.scale x_squared (Field.Constant.of_int 3) + F.constant Params.a) ;
+    (* A: 1
+       B: 1
+       C: 2
+    *)
     assert_square lambda (bx + F.scale ax two) ;
+    (* A: 1
+       B: 2
+       C: 2
+    *)
     assert_r1cs lambda (ax - bx) (by + ay) ;
+    (* Overall:
+       A: 4
+       B: 5
+       C: 7 *)
     (bx, by)
 
   let add' ~div (ax, ay) (bx, by) : t =
     let open F in
+    (* 
+     lambda * (bx - ax) = (by - ay)
+
+      A: 1
+      B: 2
+      C: 2
+    *)
     let lambda = div (by - ay) (bx - ax) in
     let cx =
       exists typ
@@ -136,8 +167,11 @@ module Make_checked (Inputs : Inputs_intf) = struct
               Constant.(square lambda - (ax + bx)))
     in
     (* lambda^2 = cx + ax + bx
-            cx = lambda^2 - (ax + bc)
-        *)
+
+       A: 1
+       B: 1
+       C: 3
+    *)
     assert_square lambda F.(cx + ax + bx) ;
     let cy =
       exists typ
@@ -150,12 +184,23 @@ module Make_checked (Inputs : Inputs_intf) = struct
               and lambda = read typ lambda in
               Constant.((lambda * (ax - cx)) - ay))
     in
+    (* A: 1
+       B: 2
+       C: 2 *)
     assert_r1cs lambda (ax - cx) (cy + ay) ;
+    (* Overall
+       A: 2
+       B: 5
+       C: 7 *)
     (cx, cy)
 
   let add_exn p q = add' ~div:(fun x y -> F.(inv_exn y * x)) p q
 
   let to_affine_exn x = x
+
+  let constant t =
+    let x, y = Constant.to_affine_exn t in
+    (F.constant x, F.constant y)
 
   let negate (x, y) = (x, F.negate y)
 
@@ -247,4 +292,160 @@ module Make_checked (Inputs : Inputs_intf) = struct
       match init with None -> S.zero | Some init -> S.(add zero init)
     in
     S.unshift_nonzero (go 0 c init t)
+end
+
+module type Native_base_field_inputs = sig
+  module Impl : Snarky.Snark_intf.Run with type prover_state = unit
+
+  include
+    Inputs_intf
+    with module Impl := Impl
+     and type F.t = Impl.Field.t
+     and type F.Constant.t = Impl.field
+end
+
+module For_native_base_field (Inputs : Native_base_field_inputs) = struct
+  include Make_checked (Inputs)
+  open Core_kernel
+  open Inputs
+  open Impl
+
+  module Window_table = struct
+    open Tuple_lib
+
+    type t = Constant.t Quadruple.t array
+
+    let window_size = 2
+
+    let windows = (Params.group_size_in_bits + window_size - 1) / window_size
+
+    let shift_left_by_window_size =
+      let rec go i acc =
+        if i = 0 then acc else go (i - 1) Constant.(acc + acc)
+      in
+      go window_size
+
+    (* (create g).(i) = ( g + 2^{window_size*i} 0 g, g + 2^{window_size*i} g, g + 2^{window_size*i} (2 g), g + 2^{window_size*i} (3 g) ) *)
+    let create g =
+      (* TODO: Optimize *)
+      let pure_windows =
+        (* pure_windows.(i) = 2^{window_size * i} ( g, 2 g, 3 g) *)
+        let w0 =
+          let g2 = Constant.(g + g) in
+          let g3 = Constant.(g2 + g) in
+          (g, g2, g3)
+        in
+        let a = Array.init windows ~f:(fun _ -> w0) in
+        for i = 1 to windows - 1 do
+          a.(i) <- Triple.map ~f:shift_left_by_window_size a.(i - 1)
+        done ;
+        a
+      in
+      Array.map pure_windows ~f:(fun (a, b, c) ->
+          Constant.(g, g + a, g + b, g + c) )
+  end
+
+  module Scaling_precomputation = struct
+    type t = {base: Constant.t; table: Window_table.t}
+
+    let create t = {base= t; table= Window_table.create t}
+  end
+
+  let add_unsafe =
+    let div_unsafe x y =
+      let z =
+        exists Field.typ
+          ~compute:
+            As_prover.(
+              fun () -> Field.Constant.( / ) (read_var x) (read_var y))
+      in
+      (* z = x / y <=> z * y = x *)
+      assert_r1cs z y x ; z
+    in
+    add' ~div:div_unsafe
+
+  (* This is optimized for Marlin-style constraints. *)
+  let lookup_point (b0, b1) (t1, t2, t3, t4) =
+    let b0_and_b1 = Boolean.( && ) b0 b1 in
+    let lookup_one (a1, a2, a3, a4) =
+      let open Field.Constant in
+      let ( * ) x b = F.scale b x in
+      let ( +^ ) = Field.( + ) in
+      F.constant a1
+      +^ ((a2 - a1) * (b0 :> Field.t))
+      +^ ((a3 - a1) * (b1 :> Field.t))
+      +^ ((a4 + a1 - a2 - a3) * (b0_and_b1 :> Field.t))
+    in
+    let x1, y1 = Constant.to_affine_exn t1
+    and x2, y2 = Constant.to_affine_exn t2
+    and x3, y3 = Constant.to_affine_exn t3
+    and x4, y4 = Constant.to_affine_exn t4 in
+    let seal a =
+      let a' = exists Field.typ ~compute:(fun () -> As_prover.read_var a) in
+      Field.Assert.equal a a' ; a'
+    in
+    (seal (lookup_one (x1, x2, x3, x4)), seal (lookup_one (y1, y2, y3, y4)))
+
+  let rec pairs = function
+    | [] ->
+        []
+    | x :: y :: xs ->
+        (x, y) :: pairs xs
+    | [x] ->
+        [(x, Boolean.false_)]
+
+  (* TODO: Use double and add. *)
+  let scale_int n base =
+    let num_bits = Int.ceil_log2 n in
+    let test_bit i = (n lsr i) land 1 = 1 in
+    let rec go acc i two_to_i =
+      if i = num_bits then acc
+      else
+        let acc = if test_bit i then Constant.(acc + two_to_i) else acc in
+        go acc (i + 1) Constant.(two_to_i + two_to_i)
+    in
+    go Constant.zero 0 base
+
+  let scale_known ?init (pc : Scaling_precomputation.t) bs =
+    let bs =
+      let bs = Array.of_list bs in
+      let num_bits = Array.length bs in
+      Array.init
+        ((Array.length bs + 1) / 2)
+        ~f:(fun i ->
+          let get j = if j < num_bits then bs.(j) else Boolean.false_ in
+          (get (2 * i), get ((2 * i) + 1)) )
+    in
+    let windows_required = Array.length bs in
+    let terms =
+      Array.mapi bs ~f:(fun i bit_pair -> lookup_point bit_pair pc.table.(i))
+    in
+    let with_excess =
+      let combine =
+        match init with
+        | None ->
+            Array.reduce_exn ~f:add_unsafe
+        | Some init ->
+            Array.fold ~init ~f:add_unsafe
+      in
+      if windows_required < Window_table.windows then combine terms
+      else
+        (* Chop off the last window and add using add_exn
+           to avoid a potential overflow *)
+        let pre =
+          Array.init (Array.length terms - 1) ~f:(fun i -> terms.(i))
+          |> combine
+        in
+        add_exn pre terms.(Array.length terms - 1)
+    in
+    let excess = scale_int windows_required pc.base in
+    add_exn with_excess (negate (constant excess))
+
+  (* Danger! unrelated_base must be linearly independent of all
+   other bases *)
+  let multiscale_known ~unrelated_base pairs =
+    let init = constant unrelated_base in
+    let excess = scale_int (Array.length pairs) unrelated_base in
+    Array.map pairs ~f:(fun (s, g) -> scale_known ~init g s)
+    |> Array.fold ~init:(negate (constant excess)) ~f:add_exn
 end
