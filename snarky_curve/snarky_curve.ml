@@ -438,18 +438,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     let terms =
       Array.mapi bs ~f:(fun i bit_pair -> lookup_point bit_pair pc.table.(i))
     in
-    let with_shifts =
-      let combine = Array.reduce_exn ~f:add_unsafe in
-      if windows_required < Window_table.windows then combine terms
-      else
-        (* Chop off the last window and add using add_exn
-           to avoid a potential overflow *)
-        let pre =
-          Array.init (Array.length terms - 1) ~f:(fun i -> terms.(i))
-          |> combine
-        in
-        add_exn pre terms.(Array.length terms - 1)
-    in
+    let with_shifts = Array.reduce_exn terms ~f:add_unsafe in
     let shift =
       let unrelated_base = pc.shifts.(0) in
       (* 
