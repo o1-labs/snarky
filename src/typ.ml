@@ -250,6 +250,85 @@ struct
       in
       {read; store; alloc; check}
 
+    let tuple4 (typ1 : ('var1, 'value1, 'field) t)
+        (typ2 : ('var2, 'value2, 'field) t) (typ3 : ('var3, 'value3, 'field) t)
+        (typ4 : ('var4, 'value4, 'field) t) =
+      let alloc =
+        let open Alloc.Let_syntax in
+        let%map x = typ1.alloc
+        and y = typ2.alloc
+        and z = typ3.alloc
+        and w = typ4.alloc in
+        (x, y, z, w)
+      in
+      let read (x, y, z, w) =
+        let open Read.Let_syntax in
+        let%map x = typ1.read x
+        and y = typ2.read y
+        and z = typ3.read z
+        and w = typ4.read w in
+        (x, y, z, w)
+      in
+      let store (x, y, z, w) =
+        let open Store.Let_syntax in
+        let%map x = typ1.store x
+        and y = typ2.store y
+        and z = typ3.store z
+        and w = typ4.store w in
+        (x, y, z, w)
+      in
+      let check (x, y, z, w) =
+        let open Checked in
+        let%map () = typ1.check x
+        and () = typ2.check y
+        and () = typ3.check z
+        and () = typ4.check w in
+        ()
+      in
+      {read; store; alloc; check}
+
+    let tuple5 (typ1 : ('var1, 'value1, 'field) t)
+        (typ2 : ('var2, 'value2, 'field) t) (typ3 : ('var3, 'value3, 'field) t)
+        (typ4 : ('var4, 'value4, 'field) t) (typ5 : ('var5, 'value5, 'field) t)
+        =
+      let alloc =
+        let open Alloc.Let_syntax in
+        let%map x1 = typ1.alloc
+        and x2 = typ2.alloc
+        and x3 = typ3.alloc
+        and x4 = typ4.alloc
+        and x5 = typ5.alloc in
+        (x1, x2, x3, x4, x5)
+      in
+      let read (x1, x2, x3, x4, x5) =
+        let open Read.Let_syntax in
+        let%map x1 = typ1.read x1
+        and x2 = typ2.read x2
+        and x3 = typ3.read x3
+        and x4 = typ4.read x4
+        and x5 = typ5.read x5 in
+        (x1, x2, x3, x4, x5)
+      in
+      let store (x1, x2, x3, x4, x5) =
+        let open Store.Let_syntax in
+        let%map x1 = typ1.store x1
+        and x2 = typ2.store x2
+        and x3 = typ3.store x3
+        and x4 = typ4.store x4
+        and x5 = typ5.store x5 in
+        (x1, x2, x3, x4, x5)
+      in
+      let check (x1, x2, x3, x4, x5) =
+        let open Checked in
+        let%map () = typ1.check x1
+        and () = typ2.check x2
+        and () = typ3.check x3
+        and () = typ4.check x4
+        and () = typ5.check x5 in
+        ()
+      in
+      {read; store; alloc; check}
+
     let hlist (type k_var k_value)
         (spec0 : (unit, unit, k_var, k_value, 'f) Data_spec.t) :
         ((unit, k_var) H_list.t, (unit, k_value) H_list.t, 'f) t =
