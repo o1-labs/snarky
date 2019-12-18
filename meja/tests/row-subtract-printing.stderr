@@ -1,0 +1,9 @@
+File "tests/row-subtract-printing.meja", line 8, characters 19-25:
+Error: Incompatible types
+       ([>] as 'b) -> (([>] as 'b) -> [([>] as 'c) - `A])
+       -> (([>] as 'c) -> [([>] as 'c) - `B])
+       -> (([>] as 'c) -> [([>] as 'c) - `C]) -> [([>] as 'b) - `A | `B] and
+       ([>] as 'b) -> (([>] as 'b) -> [([>] as 'c) - `A])
+       -> (([>] as 'c) -> [([>] as 'c) - `B])
+       -> (([>] as 'c) -> [([>] as 'c) - `C]) -> [([>] as 'c) - `C]:
+       Cannot unify ([>] as 'd) and ([>] as 'd)

@@ -1,4 +1,5 @@
 File "tests/row-expression-missing-args.meja", line 1, characters 37-39:
-Error: Incompatible types [<`A(int) | `B | `C > `A] and [>`A]:
-       Cannot unify [<`A(int) | `B | `C > `A] and [>`A]:
+Error: Incompatible types ([<`A(int) | `B | `C > `A] as 'a) and
+       ([>`A] as 'b):
+       Cannot unify ([<`A(int) | `B | `C > `A] as 'a) and ([>`A] as 'b):
        the constructor `A has different arities.

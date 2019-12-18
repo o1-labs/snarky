@@ -1,3 +1,4 @@
 File "tests/row-empty.meja", line 2, characters 23-24:
-Error: Incompatible types [<`A] and [<`B]:
-       Cannot unify [<`A] and [<`B]: the resulting row would be empty.
+Error: Incompatible types ([<`A] as 'a) and ([<`B] as 'b):
+       Cannot unify ([<`A] as 'a) and ([<`B] as 'b):
+       the resulting row would be empty.

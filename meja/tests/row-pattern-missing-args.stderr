@@ -1,4 +1,4 @@
 File "tests/row-pattern-missing-args.meja", line 3, characters 6-8:
-Error: Incompatible types [>`A(int)] and [>`A]:
-       Cannot unify [>`A(int)] and [>`A]:
+Error: Incompatible types ([>`A(int)] as 'a) and ([>`A] as 'b):
+       Cannot unify ([>`A(int)] as 'a) and ([>`A] as 'b):
        the constructor `A has different arities.
