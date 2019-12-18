@@ -53,8 +53,8 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
     | _ ->
         type_expr fmt typ )
   | Trow row -> (
-      (* TODO: Print [row_rest] variable name where applicable. *)
       let row_tags, subtract_tags, row_rest, row_closed = Type1.row_repr row in
+      let subtract_tags_set = Ident.Set.of_list subtract_tags in
       (match subtract_tags with [] -> () | _ -> fprintf fmt "[@[<hv1>") ;
       let needs_lower_bound, needs_as =
         match row_closed with
@@ -76,12 +76,17 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
             (not is_fixed, not is_fixed)
       in
       let is_first = ref true in
-      Map.iteri row_tags ~f:(fun ~key:_ ~data:(path, pres, args) ->
+      Map.iteri row_tags ~f:(fun ~key ~data:(path, pres, args) ->
+          let print_tag () =
+            if !is_first then is_first := false else bar_sep fmt () ;
+            if List.is_empty args then Path.pp fmt path
+            else fprintf fmt "%a@[<hv1>%a@]" Path.pp path tuple args
+          in
           match (Type1.rp_repr pres).rp_desc with
           | RpPresent | RpMaybe ->
-              if !is_first then is_first := false else bar_sep fmt () ;
-              if List.is_empty args then Path.pp fmt path
-              else fprintf fmt "%a@[<hv1>%a@]" Path.pp path tuple args
+              print_tag ()
+          | RpAbsent when Set.mem subtract_tags_set key ->
+              print_tag ()
           | RpAbsent ->
               ()
           | RpRef _ | RpReplace _ ->

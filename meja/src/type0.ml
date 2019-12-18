@@ -58,8 +58,10 @@ and row =
        - [Tvar] for the end of a row
     *)
     row_rest: type_expr
-  ; (* This should be a row-presence
-    row_presence_proxy }
+  ; (* This is used to identify whether to create new [row_presence] values
+       when copying, vs using the existing ones.
+    *)
+    row_presence_proxy: row_presence }
 [@@deriving sexp]
 
 type field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]

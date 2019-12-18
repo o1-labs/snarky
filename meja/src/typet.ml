@@ -20,6 +20,8 @@ exception Error of Location.t * error
 
 let type0 {Typedast.type_type; _} = type_type
 
+let unify = ref (fun ~loc:_ _ _ _ -> assert false)
+
 module Type = struct
   open Type
 
@@ -234,7 +236,12 @@ module Type = struct
         Option.iter ~f:(List.iter ~f:set_present) min_tags ;
         let row_rest = Envi.Type.mkvar ~mode None env in
         let type_type =
-          Envi.Type.Mk.row ~mode {row_tags; row_closed; row_rest} env
+          Envi.Type.Mk.row ~mode
+            { row_tags
+            ; row_closed
+            ; row_rest
+            ; row_presence_proxy= Type1.mk_rp RpPresent }
+            env
         in
         ( { Typedast.type_desc= Ttyp_row (tags, row_closed, min_tags)
           ; type_loc= loc
@@ -245,12 +252,31 @@ module Type = struct
         let tags = List.map ~f:(map_loc ~f:Ident.create_row) tags in
         let type_type =
           let typ' = Type1.repr typ'.type_type in
-          let row_tags, _subtract_tags, row_rest, row_closed =
+          let ( (row_tags, _subtract_tags, row_rest, row_closed)
+              , row_presence_proxy ) =
             match typ'.type_desc with
-            | Tvar _ ->
-                (Ident.Map.empty, [], typ', Open)
+            | Tvar name ->
+                let row_tags = Ident.Map.empty in
+                let row_closed = Open in
+                let row_rest =
+                  Type1.Mk.var ~mode:typ'.type_mode typ'.type_depth name
+                in
+                let row_presence_proxy = Type1.mk_rp RpPresent in
+                let row =
+                  {Type0.row_tags; row_closed; row_rest; row_presence_proxy}
+                in
+                let instance_typ =
+                  Type1.Mk.row ~mode:typ'.type_mode typ'.type_depth row
+                in
+                let instance_typ =
+                  if phys_equal typ' typ'.type_alternate.type_alternate then
+                    instance_typ.type_alternate.type_alternate
+                  else instance_typ
+                in
+                Type1.add_instance ~unify:(!unify ~loc env) typ' instance_typ ;
+                ((row_tags, [], row_rest, row_closed), row_presence_proxy)
             | Trow row ->
-                Type1.row_repr row
+                (Type1.row_repr row, row.row_presence_proxy)
             | _ ->
                 raise (Error (typ.type_loc, Expected_row_type typ))
           in
@@ -265,7 +291,9 @@ module Type = struct
               let row_rest =
                 Envi.Type.Mk.row_subtract ~mode row_rest tags env
               in
-              Envi.Type.Mk.row ~mode {row_tags; row_closed; row_rest} env
+              Envi.Type.Mk.row ~mode
+                {row_tags; row_closed; row_rest; row_presence_proxy}
+                env
           | Closed ->
               let row_tags, tags =
                 List.fold ~init:(row_tags, []) tags
@@ -282,7 +310,9 @@ module Type = struct
               let row_rest =
                 Envi.Type.Mk.row_subtract ~mode row_rest tags env
               in
-              Envi.Type.Mk.row ~mode {row_tags; row_closed; row_rest} env
+              Envi.Type.Mk.row ~mode
+                {row_tags; row_closed; row_rest; row_presence_proxy}
+                env
         in
         ( { Typedast.type_desc= Ttyp_row_subtract (typ', tags)
           ; type_loc= loc

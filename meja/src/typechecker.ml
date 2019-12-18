@@ -71,7 +71,6 @@ let unpack_decls ~loc typ ctyp env =
         None
 
 let rec check_type_aux ~loc typ ctyp env =
-  Format.eprintf "Checking:@.%a@.%a@." typ_debug_print typ typ_debug_print ctyp ;
   if Type1.contains typ ~in_:ctyp then
     raise (Error (loc, env, Recursive_variable typ)) ;
   if Type1.contains ctyp ~in_:typ then
@@ -266,12 +265,15 @@ let rec check_type_aux ~loc typ ctyp env =
       check_type_aux typ ctyp env ;
       check_type_aux typ.type_alternate ctyp.type_alternate env
   | Trow row1, Trow row2 ->
-      let row_tags1, _subtract_tags1, row_rest1, row_closed1 = row_repr row1 in
-      let row_tags2, _subtract_tags2, row_rest2, row_closed2 = row_repr row2 in
-      (*check_type_aux row_rest1 row_rest2 env ;*)
+      let row_tags1, subtract_tags1, row_rest1, row_closed1 = row_repr row1 in
+      let row_tags2, subtract_tags2, row_rest2, row_closed2 = row_repr row2 in
+      let subtract_tags = subtract_tags1 @ subtract_tags2 in
       let is_empty = ref true in
       let row_extra1 = ref Ident.Map.empty in
       let row_extra2 = ref Ident.Map.empty in
+      let row_presence_proxy = mk_rp RpPresent in
+      set_rp_desc row1.row_presence_proxy (RpRef row_presence_proxy) ;
+      set_rp_desc row2.row_presence_proxy (RpRef row_presence_proxy) ;
       let row_tags =
         Map.merge row_tags1 row_tags2 ~f:(fun ~key data ->
             match (data, row_closed1, row_extra1, row_closed2, row_extra2) with
@@ -351,29 +353,98 @@ let rec check_type_aux ~loc typ ctyp env =
       in
       let row_rest =
         let row_rest = Type1.Mk.var ~mode:typ.type_mode typ.type_depth None in
+        (* Tweak errors so that they talk about the row types instead of just
+           their respective [row_rest] parameters.
+        *)
+        let rescope_rest_error exn =
+          match exn with
+          | Error (loc, env, Cannot_unify _) ->
+              Error (loc, env, Cannot_unify (typ, ctyp))
+          | Error (loc, env, Recursive_variable recvar)
+            when phys_equal recvar row_rest1 ->
+              Error (loc, env, Cannot_unify (typ, ctyp))
+          | Error (loc, env, Recursive_variable recvar)
+            when phys_equal recvar row_rest2 ->
+              Error (loc, env, Cannot_unify (typ, ctyp))
+          | Error (loc, env, Recursive_variable recvar)
+            when phys_equal recvar row_rest ->
+              Error (loc, env, Cannot_unify (typ, ctyp))
+          | _ ->
+              exn
+        in
         let expand_row row_rest1 row_extra =
           match row_rest1.type_desc with
-          | _ when Map.is_empty row_extra ->
+          | Tvar _ when Map.is_empty row_extra ->
               row_rest1
-          | Tvar _ ->
+          | Tvar _ | Tref _ ->
               let new_row =
                 Type1.Mk.row ~mode:row_rest1.type_mode row_rest1.type_depth
-                  {row_tags= row_extra; row_closed; row_rest}
+                  { row_tags= row_extra
+                  ; row_closed
+                  ; row_rest
+                  ; row_presence_proxy }
               in
-              choose_variable_name row_rest1 row_rest ;
-              check_type_aux row_rest1 new_row env ;
+              let new_row =
+                if phys_equal row_rest1.type_alternate.type_alternate row_rest1
+                then new_row.type_alternate.type_alternate
+                else new_row
+              in
+              ( match row_rest1.type_desc with
+              | Tvar _ ->
+                  choose_variable_name row_rest1 row_rest ;
+                  add_instance
+                    ~unify:(fun typ1 typ2 -> check_type_aux typ1 typ2 env)
+                    row_rest1 new_row
+              | Tref _ -> (
+                try
+                  (* This type could not have been a reference at definition
+                   time, so it must be equal to the other [row_rest], or must
+                   contain itself.
+                *)
+                  check_type_aux row_rest1 new_row env
+                with exn ->
+                  (* Return a type error that will make sense to the user. *)
+                  raise (rescope_rest_error exn) )
+              | _ ->
+                  assert false ) ;
               row_rest
           | _ ->
-              Format.eprintf "Unexpected row_rest:@.%a@." typ_debug_print
-                row_rest1 ;
               assert false
         in
         let row_rest1 = expand_row row_rest1 !row_extra1 in
         let row_rest2 = expand_row row_rest2 !row_extra2 in
-        check_type_aux row_rest1 row_rest2 env ;
-        repr row_rest1
+        ( try check_type_aux row_rest1 row_rest2 env
+          with exn ->
+            (* Return a type error that will make sense to the user. *)
+            raise (rescope_rest_error exn) ) ;
+        let row_rest = repr row_rest in
+        let ret =
+          if List.is_empty subtract_tags then row_rest
+          else
+            let row_rest' =
+              Type1.Mk.var ~mode:row_rest.type_mode row_rest.type_depth None
+            in
+            choose_variable_name row_rest' row_rest ;
+            let ret =
+              if
+                equal_mode row_rest.type_mode Checked
+                && phys_equal row_rest.type_alternate.type_alternate row_rest
+              then
+                (Type1.Mk.row_subtract ~mode:Prover row_rest.type_depth
+                   row_rest'.type_alternate subtract_tags)
+                  .type_alternate
+              else
+                Type1.Mk.row_subtract ~mode:row_rest.type_mode
+                  row_rest.type_depth row_rest' subtract_tags
+            in
+            add_instance
+              ~unify:(fun typ1 typ2 -> check_type_aux typ1 typ2 env)
+              row_rest ret ;
+            ret
+        in
+        ret
       in
-      let new_row = {row_tags; row_closed; row_rest} in
+      let new_row = {row_tags; row_closed; row_rest; row_presence_proxy} in
       let alt_row = Type1.row_alternate new_row in
       let res_type =
         if ctyp.type_id < typ.type_id then ( set_repr typ ctyp ; ctyp )
@@ -405,6 +476,8 @@ and stitch_tri_stitched ~loc typ env =
   Type1.set_desc typ (Tref typ.type_alternate.type_alternate)
 
 let check_type ~loc env typ constr_typ =
+  Format.eprintf "%a@.%a@.%a@." Location.print loc Typeprint.type_expr typ
+    Typeprint.type_expr constr_typ ;
   let snapshot = Snapshot.create () in
   match check_type_aux ~loc typ constr_typ env with
   | exception Error (_, _, err) ->
@@ -412,6 +485,7 @@ let check_type ~loc env typ constr_typ =
       let constr_typ = Type1.flatten constr_typ in
       (* Backtrack to restore types to their pre-unification states. *)
       backtrack snapshot ;
+      (*Format.eprintf "%s@." (Printexc.get_backtrace ()) ;*)
       raise (Error (loc, env, Check_failed (typ, constr_typ, err)))
   (*| exception err ->
       Format.(
@@ -419,7 +493,11 @@ let check_type ~loc env typ constr_typ =
           typ_debug_print constr_typ) ;
       raise err*)
   | () ->
+      Format.eprintf "%a@.%a@.%a@." Location.print loc Typeprint.type_expr typ
+        Typeprint.type_expr constr_typ ;
       ()
+
+let () = Typet.unify := check_type
 
 let unifies env typ constr_typ =
   match check_type ~loc:Location.none env typ constr_typ with
@@ -979,6 +1057,7 @@ let rec get_expression env expected exp =
   let mode = Envi.current_mode env in
   assert (equal_mode expected.type_mode mode) ;
   let loc = exp.exp_loc in
+  Format.eprintf "%a@.%a@." Location.print loc Typeprint.type_expr expected ;
   match exp.exp_desc with
   | Pexp_apply (f, es) ->
       let f_typ = Envi.Type.mkvar ~mode None env in
@@ -2284,8 +2363,8 @@ let rec report_error ppf = function
         "@[<v>@[<hov>Incompatible types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
         !pp_typ typ !pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
-      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" !pp_typ typ
-        !pp_typ constr_typ
+      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" !pp_typ
+        (*typ_debug_print*) typ !pp_typ (*typ_debug_print*) constr_typ
   | Recursive_variable typ ->
       fprintf ppf
         "@[<hov>The variable@ @[<h>%a@] would have an instance that contains \

@@ -34,26 +34,25 @@ let mk_rp rp_desc = incr row_id ; {rp_desc; rp_id= !row_id}
 *)
 let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
 
-let rec row_repr_aux (tags, subtract_tags) {row_tags; row_rest; row_closed} =
+let rec row_repr_aux (tags, subtract_tags)
+    {row_tags; row_rest; row_closed; row_presence_proxy= _} =
   let tags =
     Map.merge_skewed tags row_tags ~combine:(fun ~key:_ old _new -> old)
   in
-  let rec row_repr_inner subtract_tags typ =
-    let row_rest = repr typ in
-    match typ.type_desc with
-    | Topaque typ ->
-        row_repr_inner subtract_tags typ
-    | Trow_subtract (typ, sub_tags) ->
-        let subtract_tags =
-          List.fold ~f:Set.add ~init:subtract_tags sub_tags
-        in
-        row_repr_inner subtract_tags typ
-    | Trow row ->
-        row_repr_aux (tags, subtract_tags) row
-    | _ ->
-        (tags, subtract_tags, row_rest, row_closed)
-  in
-  row_repr_inner subtract_tags row_rest
+  row_repr_typ_aux (tags, subtract_tags, row_closed) row_rest
+
+and row_repr_typ_aux (tags, subtract_tags, row_closed) typ =
+  let typ = repr typ in
+  match typ.type_desc with
+  | Topaque typ ->
+      row_repr_typ_aux (tags, subtract_tags, row_closed) typ
+  | Trow_subtract (typ, sub_tags) ->
+      let subtract_tags = List.fold ~f:Set.add ~init:subtract_tags sub_tags in
+      row_repr_typ_aux (tags, subtract_tags, row_closed) typ
+  | Trow row ->
+      row_repr_aux (tags, subtract_tags) row
+  | _ ->
+      (tags, subtract_tags, typ, row_closed)
 
 let row_repr row =
   let tags, subtract_tags, row_rest, row_closed =
@@ -61,7 +60,11 @@ let row_repr row =
   in
   (tags, Set.to_list subtract_tags, row_rest, row_closed)
 
-let row_repr_typ typ = row_repr {row_tags= Ident.Map.empty; row_rest= typ; row_closed= Open}
+let row_repr_typ typ =
+  let tags, subtract_tags, row_rest, row_closed =
+    row_repr_typ_aux (Ident.Map.empty, Ident.Set.empty, Open) typ
+  in
+  (tags, Set.to_list subtract_tags, row_rest, row_closed)
 
 (** An invalid [type_expr] in checked mode. *)
 let rec checked_none =
@@ -90,12 +93,12 @@ let other_none = function Checked -> prover_none | Prover -> checked_none
 
 let type_alternate {type_alternate= typ; _} = typ
 
-let row_alternate {row_tags; row_closed; row_rest} =
+let row_alternate {row_tags; row_closed; row_rest; row_presence_proxy} =
   let row_tags =
     Map.map row_tags ~f:(fun (path, pres, args) ->
         (path, pres, List.map ~f:type_alternate args) )
   in
-  {row_tags; row_closed; row_rest= row_rest.type_alternate}
+  {row_tags; row_closed; row_rest= row_rest.type_alternate; row_presence_proxy}
 
 let is_poly = function {type_desc= Tpoly _; _} -> true | _ -> false
 
@@ -266,7 +269,8 @@ let rec typ_debug_print fmt typ =
     Hash_set.remove hashtbl typ.type_id ) ;
   print " @%i)" typ.type_depth
 
-and row_debug_print fmt {row_tags; row_closed; row_rest} =
+and row_debug_print fmt {row_tags; row_closed; row_rest; row_presence_proxy= _}
+    =
   let open Format in
   let is_first = ref true in
   Map.iteri row_tags ~f:(fun ~key ~data:(path, pres, args) ->
@@ -274,19 +278,18 @@ and row_debug_print fmt {row_tags; row_closed; row_rest} =
         is_first := false ;
         pp_print_string fmt ": " )
       else pp_print_string fmt " | " ;
-      fprintf fmt "%a%a(%a)%a:%a" row_presence_debug_print pres
-        Path.debug_print path Ident.debug_print key closed_flag_debug_print
-        row_closed
+      fprintf fmt "%a%a(%a):%a" row_presence_debug_print pres Path.debug_print
+        path Ident.debug_print key
         (pp_print_list
            ~pp_sep:(fun fmt () -> pp_print_string fmt ", ")
            typ_debug_print)
         args ) ;
   match row_rest.type_desc with
   | Trow _ ->
-      fprintf fmt "with " ;
+      fprintf fmt "%a with " closed_flag_debug_print row_closed ;
       typ_debug_print fmt row_rest
   | _ ->
-      fprintf fmt "as " ;
+      fprintf fmt "%a as " closed_flag_debug_print row_closed ;
       typ_debug_print fmt row_rest
 
 and row_presence_debug_print fmt {rp_desc; rp_id} =
@@ -584,7 +587,11 @@ module Mk = struct
     let row_tags =
       Ident.Map.singleton ident (Path.Pident ident, mk_rp RpPresent, args)
     in
-    row ~mode depth {row_tags; row_closed= Open; row_rest}
+    row ~mode depth
+      { row_tags
+      ; row_closed= Open
+      ; row_rest
+      ; row_presence_proxy= mk_rp RpPresent }
 
   let row_subtract ~mode depth typ tags =
     match mode with
@@ -801,7 +808,7 @@ let fold ~init ~f typ =
       f init typ
   | Treplace _ ->
       assert false
-  | Trow {row_tags; row_closed= _; row_rest} ->
+  | Trow {row_tags; row_closed= _; row_rest; row_presence_proxy= _} ->
       let acc =
         Map.fold row_tags ~init ~f:(fun ~key:_ ~data:(_, _, args) init ->
             List.fold ~f ~init args )
@@ -841,26 +848,6 @@ let rec copy_desc ~f = function
       assert false
   | Trow_subtract (typ, tags) ->
       Trow_subtract (f typ, tags)
-
-(** Make a fresh copy of a row with new row variables, applying [f] to all
-    constituent types.
-
-    Any [RpReplace] values are resolved to their argument.
-*)
-let copy_row ~f {row_tags; row_closed; row_rest} =
-  let row_tags =
-    Map.map row_tags ~f:(fun (path, pres, args) ->
-        let pres =
-          let pres = rp_repr pres in
-          match pres.rp_desc with
-          | RpReplace pres ->
-              pres
-          | rp_desc ->
-              mk_rp rp_desc
-        in
-        (path, pres, List.map ~f args) )
-  in
-  {row_tags; row_closed; row_rest= f row_rest}
 
 let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
   let equal_at_depth = equal_at_depth ~get_decl ~depth in
@@ -1206,7 +1193,7 @@ let contains typ ~in_ =
         assert false
     | Treplace _ ->
         assert false
-    | Trow {row_tags; row_closed= _; row_rest} ->
+    | Trow {row_tags; row_closed= _; row_rest; row_presence_proxy= _} ->
         Map.exists row_tags ~f:(fun (_, _, args) -> List.exists ~f:equal args)
         || equal row_rest
         || Map.exists row_tags ~f:(fun (_, _, args) ->

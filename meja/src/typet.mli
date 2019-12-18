@@ -123,3 +123,8 @@ module TypeDecl : sig
     Parsetypes.type_decl list -> Envi.t -> Typedast.type_decl list * Envi.t
   (** Import the given type declarations recursively. *)
 end
+
+(* Forward declaration of [Typechecker.check_type]. *)
+val unify :
+  (loc:Warnings.loc -> Envi.t -> Type0.type_expr -> Type0.type_expr -> unit)
+  ref

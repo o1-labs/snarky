@@ -1002,8 +1002,104 @@ module Type = struct
           check_replace typ.type_alternate ;
           (* Don't copy variables! *)
           typ
-      | Trow row ->
-          let row_tags, _subtract_tags, row_rest', row_closed = row_repr row in
+      | Trow {row_tags; row_closed; row_rest; row_presence_proxy} ->
+          let row_rest' = repr row_rest in
+          let row_rest = copy row_rest' in
+          let row_presence_proxy = rp_repr row_presence_proxy in
+          let () =
+            match (row_rest'.type_desc, row_rest.type_desc) with
+            | Treplace _, Tvar _ | Treplace _, Topaque {type_desc= Tvar _; _}
+              -> (
+              match row_presence_proxy.rp_desc with
+              | RpPresent ->
+                  set_rp_desc row_presence_proxy (RpReplace (mk_rp RpPresent))
+              | RpReplace _ ->
+                  ()
+              | _ ->
+                  (* This can only happen if the proxy has leaked to
+                       represent an actual row. Fail hard.
+                    *)
+                  Format.eprintf "Invalid row_presence_proxy:@.%a@."
+                    row_presence_debug_print row_presence_proxy ;
+                  assert false )
+            | Tvar _, Tvar _
+            | Topaque {type_desc= Tvar _; _}, Topaque {type_desc= Tvar _; _} ->
+                (* Sanity check *)
+                assert (row_presence_proxy.rp_desc = RpPresent)
+            | Treplace _, (Trow_subtract _ | Trow _)
+            | Treplace _, Topaque {type_desc= Trow_subtract _ | Trow _; _} ->
+                (* The copy will have updated (or not) the underlying
+                   [row_presence_proxy], which is shared with this row.
+                   Nothing to do here.
+                *)
+                ()
+            | _ ->
+                Format.eprintf
+                  "Unexpected value for [row_rest]. \
+                   Original:@.%a@.Copied:@.%a@."
+                  typ_debug_print row_rest' typ_debug_print row_rest ;
+                assert false
+          in
+          let row_presence_proxy' = row_presence_proxy in
+          let row_presence_proxy =
+            match row_presence_proxy.rp_desc with
+            | RpReplace pres ->
+                pres
+            | RpPresent ->
+                row_presence_proxy
+            | _ ->
+                (* This can only happen if the proxy has leaked to represent an
+                   actual row. Fail hard.
+                *)
+                Format.eprintf "Invalid row_presence_proxy:@.%a@."
+                  row_presence_debug_print row_presence_proxy ;
+                assert false
+          in
+          let should_freshen =
+            phys_equal row_presence_proxy row_presence_proxy'
+          in
+          let typ' =
+            Type1.mk' ~mode:typ.type_mode typ.type_depth (Tvar None)
+          in
+          unsafe_set_single_replacement typ typ' ;
+          let replace_desc = typ.type_desc in
+          let row_tags' =
+            Map.map row_tags ~f:(fun (path, pres, args) ->
+                let pres = rp_repr pres in
+                let pres =
+                  match pres.rp_desc with
+                  | RpReplace pres ->
+                      pres
+                  | rp_desc when should_freshen ->
+                      (* Freshen row variables and copy arguments. *)
+                      let new_pres = mk_rp rp_desc in
+                      set_rp_desc pres (RpReplace new_pres) ;
+                      new_pres
+                  | _ ->
+                      (* Copy arguments only. *)
+                      pres
+                in
+                (path, pres, List.map ~f:copy args) )
+          in
+          (*let row_tags, _row_closed, row_rest, _row_presence_proxy =
+            row_repr_typ row_rest
+          in
+          let row_tags =
+            Map.merge_skewed row_tags' row_tags
+              ~combine:(fun ~key:_ old _new -> old)
+          in*)
+          let row_tags = row_tags' in
+          typ'.type_desc
+          <- Trow {row_tags; row_closed; row_rest; row_presence_proxy} ;
+          typ'.type_alternate <- copy typ.type_alternate ;
+          (* Sanity check. Copying the alternates should not overwrite the
+             replacement for this type, otherwise we will end up in an
+             inconsistent state.
+          *)
+          assert (phys_equal typ.type_desc replace_desc) ;
+          typ'
+      (*| Trow row ->
+          let row_tags, subtract_tags, row_rest', row_closed = row_repr row in
           let row_rest = copy row_rest' in
           let typ' =
             Type1.mk' ~mode:typ.type_mode typ.type_depth (Tvar None)
@@ -1014,80 +1110,68 @@ module Type = struct
             match (row_rest'.type_desc, row_rest.type_desc) with
             | Tvar _, Tvar _
             | Topaque {type_desc= Tvar _; _}, Topaque {type_desc= Tvar _; _} ->
-                false, row_tags, row_rest, row_closed
+                (false, row_tags, row_rest, row_closed, subtract_tags)
             | Treplace _, (Tvar _ | Topaque {type_desc= Tvar _; _}) ->
-                true, row_tags, row_rest, row_closed
-            | Treplace _, (Trow _ | Trow_subtract _) ->
-                let row_tags, _subtract_tags, row_rest, row_closed = row_repr_typ row_rest in
-                let has_replacement = ref None in
-                (* Hack: Use [Map.exists] with unconditional true to inspect a
-                   single value of the map.
-                *)
-                ignore @@ Map.exists row_tags ~f:(fun (_, pres, args) ->
-                  (match pres.rp_desc with
-                  | RpReplace _ -> has_replacement:= Some true
-                  | _ -> has_replacement := Some false) ;
-                  true) ;
-                !has_replacement, row_tags, row_rest, row_closed
-             | _ ->
-                 Format.eprintf
-                   "Unexpected value for [row_rest]. \
-                    Original:@.%a@.Copied:@.%a@."
-                   typ_debug_print row_rest' typ_debug_print row_rest ;
-                 assert false
+                let rp_proxy = rp_repr row.row_presence_proxy in
+                ( match rp_proxy.rp_desc with
+                | RpReplace _ ->
+                    ()
+                | _ ->
+                    set_rp_desc rp_proxy (RpReplace (mk_rp RpPresent)) ) ;
+                (true, row_tags, row_rest, row_closed, subtract_tags)
+            | Treplace _, _ ->
+                let row_tags, subtract_tags, row_rest, row_closed =
+                  row_repr_typ_aux (row_tags, subtract_tags, row_closed) row_rest
+                in
+                let should_freshen =
+                  match (rp_repr row.row_presence_proxy).rp_desc with
+                  | RpReplace _ ->
+                      true
+                  | _ ->
+                      false
+                in
+                (should_freshen, row_tags, row_rest, row_closed, subtract_tags)
+            | _ ->
+                Format.eprintf
+                  "Unexpected value for [row_rest]. \
+                   Original:@.%a@.Copied:@.%a@."
+                  typ_debug_print row_rest' typ_debug_print row_rest ;
+                assert false
           in
           typ'.type_desc
-          <- ( 
-                 let row_tags =
-                   Map.map row_tags ~f:(fun (path, pres, args) ->
-                       let pres = rp_repr pres in
-                       let pres =
-                         match pres.rp_desc with
-                         | RpReplace pres ->
-                             pres
-                         | rp_desc when should_freshen ->
-                             (* Freshen row variables and copy arguments. *)
-                             let new_pres = mk_rp rp_desc in
-                             set_rp_desc pres (RpReplace new_pres) ;
-                             new_pres
-                         | _ ->
-                             (* Copy arguments only. *)
-                             pres
-                       in
-                       (path, pres, List.map ~f:copy args) )
-                 in
-                 Trow {row_tags; row_closed; row_rest}
-             | Treplace _, (Tvar _ | Topaque {type_desc= Tvar _; _} | Trow _)
-               ->
-                 (* Freshen row variables and copy arguments. *)
-                 let row_tags =
-                   Map.map row_tags ~f:(fun (path, pres, args) ->
-                       let pres = rp_repr pres in
-                       let pres =
-                         match pres.rp_desc with
-                         | RpReplace pres ->
-                             pres
-                         | rp_desc ->
-                             let new_pres = mk_rp rp_desc in
-                             set_rp_desc pres (RpReplace new_pres) ;
-                             new_pres
-                       in
-                       (path, pres, List.map ~f:copy args) )
-                 in
-                 Trow {row_tags; row_closed; row_rest}
-             | _ ->
-                 Format.eprintf
-                   "Unexpected value for [row_rest]. \
-                    Original:@.%a@.Copied:@.%a@."
-                   typ_debug_print row_rest' typ_debug_print row_rest ;
-                 assert false ) ;
+          <- (let row_tags =
+                Map.map row_tags ~f:(fun (path, pres, args) ->
+                    let pres = rp_repr pres in
+                    let pres =
+                      match pres.rp_desc with
+                      | RpReplace pres ->
+                          pres
+                      | rp_desc when should_freshen ->
+                          (* Freshen row variables and copy arguments. *)
+                          let new_pres = mk_rp rp_desc in
+                          set_rp_desc pres (RpReplace new_pres) ;
+                          new_pres
+                      | _ ->
+                          (* Copy arguments only. *)
+                          pres
+                    in
+                    (path, pres, List.map ~f:copy args) )
+              in
+              let row_presence_proxy =
+                match row.row_presence_proxy with
+                | {rp_desc= RpReplace rp_proxy; _} ->
+                    rp_proxy
+                | rp_proxy ->
+                    rp_proxy
+              in
+              Trow {row_tags; row_closed; row_rest; row_presence_proxy}) ;
           typ'.type_alternate <- copy typ.type_alternate ;
           (* Sanity check. Copying the alternates should not overwrite the
              replacement for this type, otherwise we will end up in an
              inconsistent state.
           *)
           assert (phys_equal typ.type_desc replace_desc) ;
-          typ'
+          typ'*)
       | desc -> (
           let alt = repr typ.type_alternate in
           match alt.type_desc with
