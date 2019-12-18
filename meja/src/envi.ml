@@ -906,8 +906,6 @@ module Type = struct
 
     let row_of_ctor ~mode ident args env =
       row_of_ctor ~mode env.depth ident args
-
-    let row_subtract ~mode typ tags env = row_subtract ~mode env.depth typ tags
   end
 
   let map_env ~f env = env.resolve_env.type_env <- f env.resolve_env.type_env
@@ -1026,8 +1024,8 @@ module Type = struct
             | Topaque {type_desc= Tvar _; _}, Topaque {type_desc= Tvar _; _} ->
                 (* Sanity check *)
                 assert (row_presence_proxy.rp_desc = RpPresent)
-            | Treplace _, (Trow_subtract _ | Trow _)
-            | Treplace _, Topaque {type_desc= Trow_subtract _ | Trow _; _} ->
+            | Treplace _, Trow _ | Treplace _, Topaque {type_desc= Trow _; _}
+              ->
                 (* The copy will have updated (or not) the underlying
                    [row_presence_proxy], which is shared with this row.
                    Nothing to do here.
@@ -1337,13 +1335,6 @@ module Type = struct
           -1
       | Trow row1, Trow row2 ->
           compare_row ~loc env row1 row2
-      | Trow _, _ ->
-          1
-      | _, Trow _ ->
-          -1
-      | Trow_subtract (typ1, tags1), Trow_subtract (typ2, tags2) ->
-          or_compare (compare typ1 typ2) ~f:(fun () ->
-              List.compare Ident.compare tags1 tags2 )
 
   and compare_all ~loc env typs1 typs2 =
     match (typs1, typs2) with

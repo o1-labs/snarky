@@ -8,6 +8,13 @@ and row_presence_desc =
   | RpPresent
   | RpMaybe
   | RpAbsent
+  | RpSubtract of row_presence
+  (* An unspecified constructor. Used to mark ambiguous arguments on an open
+     row, so that [RpSubtract] may still be specified.
+     Behaves equivalent to [RpMaybe] on an open row, or [RpAbsent] on a closed
+     row.
+  *)
+  | RpAny
   (* Indirection. The value is deferred to that of the argument's [rp_desc]. *)
   | RpRef of row_presence
   (* Copying signal. When present, copying should return the argument. *)
@@ -45,7 +52,6 @@ and type_desc =
   (* Cache the current value to break recursion. *)
   | Treplace of type_expr
   | Trow of row
-  | Trow_subtract of type_expr * Ident.t list
 [@@deriving sexp]
 
 and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]

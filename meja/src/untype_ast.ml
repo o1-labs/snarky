@@ -46,29 +46,41 @@ module Type0 = struct
     | Treplace _ ->
         assert false
     | Trow row -> (
-        let row_tags, subtract_tags, _row_rest, row_closed =
-          Type1.row_repr row
-        in
+        let row_tags, _row_rest, row_closed = Type1.row_repr row in
         let needs_lower_bound = ref false in
-        let tags, min_tags =
-          Map.fold_right row_tags ~init:([], [])
-            ~f:(fun ~key ~data:(_path, pres, args) (tags, min_tags) ->
+        let tags, min_tags, subtract_tags =
+          Map.fold_right row_tags ~init:([], [], [])
+            ~f:(fun ~key
+               ~data:(_path, pres, args)
+               (tags, min_tags, subtract_tags)
+               ->
               let row () =
                 assert (Ident.is_row key) ;
                 { Parsetypes.rtag_ident= Loc.mk ?loc (Ident.name key)
                 ; rtag_arg= List.map ~f:(type_expr ?loc) args
                 ; rtag_loc= Option.value ~default:Location.none loc }
               in
-              match (Type1.rp_repr pres).rp_desc with
-              | RpAbsent ->
-                  (tags, min_tags)
+              let pres = Type1.rp_repr pres in
+              let pres' = Type1.rp_strip_subtract pres in
+              let subtract_tags =
+                match (pres.rp_desc, pres'.rp_desc) with
+                | RpSubtract _, RpAbsent ->
+                    subtract_tags
+                | RpSubtract _, _ ->
+                    Loc.mk ?loc (Ident.name key) :: subtract_tags
+                | _ ->
+                    subtract_tags
+              in
+              match pres'.rp_desc with
+              | RpAbsent | RpAny ->
+                  (tags, min_tags, subtract_tags)
               | RpPresent ->
                   let row = row () in
-                  (row :: tags, row.rtag_ident :: min_tags)
+                  (row :: tags, row.rtag_ident :: min_tags, subtract_tags)
               | RpMaybe ->
                   needs_lower_bound := true ;
-                  (row () :: tags, min_tags)
-              | RpRef _ | RpReplace _ ->
+                  (row () :: tags, min_tags, subtract_tags)
+              | RpRef _ | RpReplace _ | RpSubtract _ ->
                   assert false )
         in
         let typ =
@@ -80,12 +92,7 @@ module Type0 = struct
         | [] ->
             typ
         | _ ->
-            Type.row_subtract ?loc typ
-              (List.map subtract_tags ~f:(fun tag ->
-                   Loc.mk ?loc (Ident.name tag) )) )
-    | Trow_subtract (typ, tags) ->
-        Type.row_subtract ?loc (type_expr ?loc typ)
-          (List.map tags ~f:(fun tag -> Loc.mk ?loc (Ident.name tag)))
+            Type.row_subtract ?loc typ subtract_tags )
 
   and type_expr ?loc typ = type_desc ~mode:typ.type_mode ?loc typ.type_desc
 

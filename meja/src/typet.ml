@@ -252,8 +252,7 @@ module Type = struct
         let tags = List.map ~f:(map_loc ~f:Ident.create_row) tags in
         let type_type =
           let typ' = Type1.repr typ'.type_type in
-          let ( (row_tags, _subtract_tags, row_rest, row_closed)
-              , row_presence_proxy ) =
+          let (row_tags, row_rest, row_closed), row_presence_proxy =
             match typ'.type_desc with
             | Tvar name ->
                 let row_tags = Ident.Map.empty in
@@ -274,41 +273,40 @@ module Type = struct
                   else instance_typ
                 in
                 Type1.add_instance ~unify:(!unify ~loc env) typ' instance_typ ;
-                ((row_tags, [], row_rest, row_closed), row_presence_proxy)
+                ((row_tags, row_rest, row_closed), row_presence_proxy)
             | Trow row ->
                 (Type1.row_repr row, row.row_presence_proxy)
             | _ ->
                 raise (Error (typ.type_loc, Expected_row_type typ))
           in
-          let tags = List.map tags ~f:(fun {txt; _} -> txt) in
           match row_closed with
           | Open ->
               let row_tags =
-                List.fold ~init:row_tags tags ~f:(fun row_tags tag ->
-                    Map.set row_tags ~key:tag
-                      ~data:(Path.Pident tag, Type1.mk_rp RpAbsent, []) )
-              in
-              let row_rest =
-                Envi.Type.Mk.row_subtract ~mode row_rest tags env
+                List.fold ~init:row_tags tags ~f:(fun row_tags {txt= tag; _} ->
+                    match Map.find row_tags tag with
+                    | Some (path, pres, args) ->
+                        Map.set row_tags ~key:tag
+                          ~data:(path, Type1.mk_rp (RpSubtract pres), args)
+                    | None ->
+                        Map.set row_tags ~key:tag
+                          ~data:
+                            ( Path.Pident tag
+                            , Type1.mk_rp (RpSubtract (Type1.mk_rp RpAny))
+                            , [] ) )
               in
               Envi.Type.Mk.row ~mode
                 {row_tags; row_closed; row_rest; row_presence_proxy}
                 env
           | Closed ->
-              let row_tags, tags =
-                List.fold ~init:(row_tags, []) tags
-                  ~f:(fun (row_tags, tags) tag ->
+              let row_tags =
+                List.fold ~init:row_tags tags
+                  ~f:(fun row_tags {txt= tag; loc} ->
                     match Map.find row_tags tag with
-                    | Some (path, _pres, args) ->
-                        ( Map.set row_tags ~key:tag
-                            ~data:(path, Type1.mk_rp RpAbsent, args)
-                        , tag :: tags )
+                    | Some (path, pres, args) ->
+                        Map.set row_tags ~key:tag
+                          ~data:(path, Type1.mk_rp (RpSubtract pres), args)
                     | None ->
-                        (row_tags, tags) )
-              in
-              let tags = List.rev tags in
-              let row_rest =
-                Envi.Type.Mk.row_subtract ~mode row_rest tags env
+                        raise (Error (loc, Missing_row_label tag)) )
               in
               Envi.Type.Mk.row ~mode
                 {row_tags; row_closed; row_rest; row_presence_proxy}

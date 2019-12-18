@@ -119,11 +119,6 @@ let type_desc mapper desc =
   | Trow row ->
       let row' = mapper.row mapper row in
       if phys_equal row' row then desc else Trow row'
-  | Trow_subtract (typ, tags) ->
-      let same = ref true in
-      let typ' = mapper.type_expr mapper typ in
-      let tags = map_list ~same ~f:(mapper.ident mapper) tags in
-      if !same && phys_equal typ' typ then desc else Trow_subtract (typ', tags)
 
 let variant mapper ({var_ident= ident; var_params} as variant) =
   let var_ident = mapper.path mapper ident in
