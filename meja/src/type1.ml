@@ -1173,7 +1173,7 @@ let get_rev_implicits typ = get_rev_implicits [] typ
 *)
 let contains typ ~in_ =
   let typ = repr typ in
-  let equal = phys_equal typ in
+  let equal in_ = phys_equal typ (repr in_) in
   let rec contains in_ =
     let in_ = repr in_ in
     match in_.type_desc with
