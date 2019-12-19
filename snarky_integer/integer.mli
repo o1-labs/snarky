@@ -116,3 +116,17 @@ val subtract_unpacking : m:'f m -> 'f t -> 'f t -> 'f t
 
     NOTE: This uses approximately [log2(x)] constraints.
 *)
+
+val subtract_unpacking_or_zero :
+  m:'f m -> 'f t -> 'f t -> [`Underflow of 'f Cvar.t Boolean.t] * 'f t
+(** [subtract_unpacking_or_zero ~m x y] computes [x - y].
+
+    - If the argument to [`Underflow] is true, [x < y] and the returned integer
+      value is pinned to [zero].
+    - If the argument to [`Underflow] is false, [x >= y] and the returned
+      integer value is equal to [x - y].
+
+    The bit representation is calculated to check for underflow.
+
+    NOTE: This uses approximately [log2(x)] constraints.
+*)
