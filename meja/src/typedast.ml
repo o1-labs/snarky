@@ -18,8 +18,22 @@ and type_desc =
   | Ttyp_prover of type_expr
   | Ttyp_conv of type_expr * type_expr
   | Ttyp_opaque of type_expr
+  | Ttyp_row of
+      row_tag list
+      * (* [Closed] if the row_field list is an upper bound,
+           [Open] if the row_field list is a lower bound.
+        *)
+        closed_flag
+      * (* The lower bound of the row, if it differs from the fields in the
+           row_field list.
+        *)
+      ident list option
+  | Ttyp_row_subtract of type_expr * ident list
 
 and variant = {var_ident: path; var_params: type_expr list}
+
+and row_tag =
+  {rtag_ident: ident; rtag_arg: type_expr list; rtag_loc: Location.t}
 
 type field_decl =
   { fld_ident: ident
@@ -68,6 +82,7 @@ and pattern_desc =
   | Tpat_int of int
   | Tpat_record of (path * pattern) list
   | Tpat_ctor of path * pattern option
+  | Tpat_row_ctor of ident * pattern list
 
 type convert_body =
   { conv_body_desc: convert_body_desc
@@ -108,6 +123,7 @@ and expression_desc =
   | Texp_field of expression * path
   | Texp_record of (path * expression) list * expression option
   | Texp_ctor of path * expression option
+  | Texp_row_ctor of ident * expression list
   | Texp_unifiable of
       { mutable expression: expression option
       ; name: ident

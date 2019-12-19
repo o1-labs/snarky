@@ -1,6 +1,26 @@
 open Core_kernel
 open Ast_types
 
+type row_presence = {mutable rp_desc: row_presence_desc; rp_id: int}
+[@@deriving sexp]
+
+and row_presence_desc =
+  | RpPresent
+  | RpMaybe
+  | RpAbsent
+  | RpSubtract of row_presence
+  (* An unspecified constructor. Used to mark ambiguous arguments on an open
+     row, so that [RpSubtract] may still be specified.
+     Behaves equivalent to [RpMaybe] on an open row, or [RpAbsent] on a closed
+     row.
+  *)
+  | RpAny
+  (* Indirection. The value is deferred to that of the argument's [rp_desc]. *)
+  | RpRef of row_presence
+  (* Copying signal. When present, copying should return the argument. *)
+  | RpReplace of row_presence
+[@@deriving sexp, compare]
+
 type type_expr =
   { mutable type_desc: type_desc
   ; type_id: int
@@ -31,9 +51,24 @@ and type_desc =
   | Tother_mode of type_expr
   (* Cache the current value to break recursion. *)
   | Treplace of type_expr
+  | Trow of row
 [@@deriving sexp]
 
 and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]
+
+and row =
+  { row_tags: (Path.t * row_presence * type_expr list) Ident.Map.t
+  ; row_closed: closed_flag
+  ; (* One of
+       - [Trow] for an expanded row
+       - [Tvar] for the end of a row
+    *)
+    row_rest: type_expr
+  ; (* This is used to identify whether to create new [row_presence] values
+       when copying, vs using the existing ones.
+    *)
+    row_presence_proxy: row_presence }
+[@@deriving sexp]
 
 type field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
 

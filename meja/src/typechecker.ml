@@ -30,6 +30,9 @@ type error =
   | Cannot_create_conversion of type_expr
   | Convertible_not_in_checked
   | Type_modes_mismatch of type_expr * type_expr
+  | Missing_row_constructor of Path.t * type_expr * type_expr
+  | Empty_resulting_row of type_expr * type_expr
+  | Row_different_arity of Path.t * type_expr * type_expr
 
 exception Error of Location.t * Envi.t * error
 
@@ -69,8 +72,10 @@ let unpack_decls ~loc typ ctyp env =
         None
 
 let rec check_type_aux ~loc typ ctyp env =
-  if Type1.contains typ ~in_:ctyp || Type1.contains ctyp ~in_:typ then
+  if Type1.contains typ ~in_:ctyp then
     raise (Error (loc, env, Recursive_variable typ)) ;
+  if Type1.contains ctyp ~in_:typ then
+    raise (Error (loc, env, Recursive_variable ctyp)) ;
   let check_type_aux = check_type_aux ~loc in
   Type1.unify_depths typ ctyp ;
   (* Unfold any [Tother_mode] types so that [typ] and [ctyp] have the same
@@ -260,6 +265,248 @@ let rec check_type_aux ~loc typ ctyp env =
   | Tconv typ, Tconv ctyp ->
       check_type_aux typ ctyp env ;
       check_type_aux typ.type_alternate ctyp.type_alternate env
+  | Trow row1, Trow row2 ->
+      let row_tags1, row_rest1, row_closed1 = row_repr row1 in
+      let row_tags2, row_rest2, row_closed2 = row_repr row2 in
+      let is_empty = ref true in
+      let row_extra1 = ref Ident.Map.empty in
+      let row_extra2 = ref Ident.Map.empty in
+      let row_presence_proxy = mk_rp RpPresent in
+      set_rp_desc row1.row_presence_proxy (RpRef row_presence_proxy) ;
+      set_rp_desc row2.row_presence_proxy (RpRef row_presence_proxy) ;
+      let row_closed =
+        match (row_closed1, row_closed2) with
+        | Open, Open ->
+            Open
+        | _ ->
+            Closed
+      in
+      let row_tags =
+        Map.merge row_tags1 row_tags2 ~f:(fun ~key data ->
+            match (data, row_closed1, row_extra1, row_closed2, row_extra2) with
+            | `Left (path, pres, args), _, _, row_closed, row_extra
+            | `Right (path, pres, args), row_closed, row_extra, _, _ ->
+                let pres' = rp_strip_subtract pres in
+                ( match (pres'.rp_desc, row_closed) with
+                | (RpRef _ | RpReplace _ | RpSubtract _), _ ->
+                    assert false
+                | RpPresent, Closed ->
+                    raise
+                      (Error
+                         (loc, env, Missing_row_constructor (path, typ, ctyp)))
+                | RpMaybe, Closed ->
+                    set_rp_desc pres' RpAbsent
+                | (RpPresent | RpMaybe), Open ->
+                    is_empty := false
+                | (RpAbsent | RpAny), _ ->
+                    () ) ;
+                let data = (path, pres, args) in
+                row_extra := Map.set !row_extra ~key ~data ;
+                Some data
+            | `Both ((path1, pres1, args1), (path2, pres2, args2)), _, _, _, _
+              ->
+                let pres1 = rp_repr pres1 in
+                let pres2 = rp_repr pres2 in
+                let pres1' = pres1 in
+                let pres2' = pres2 in
+                let pres1, pres2 =
+                  match (pres1.rp_desc, pres2.rp_desc) with
+                  | RpSubtract pres1, RpSubtract pres2 ->
+                      (* Both already marked as subtracted. *)
+                      (rp_strip_subtract pres1, rp_strip_subtract pres2)
+                  | RpSubtract _, RpPresent ->
+                      raise
+                        (Error
+                           ( loc
+                           , env
+                           , Missing_row_constructor (path2, typ, ctyp) ))
+                  | RpPresent, RpSubtract _ ->
+                      raise
+                        (Error
+                           ( loc
+                           , env
+                           , Missing_row_constructor (path1, typ, ctyp) ))
+                  | RpSubtract pres1, desc ->
+                      let pres2' = mk_rp desc in
+                      set_rp_desc pres2 (RpSubtract pres2') ;
+                      (rp_strip_subtract pres1, pres2')
+                  | desc, RpSubtract pres2 ->
+                      let pres1' = mk_rp desc in
+                      set_rp_desc pres1 (RpSubtract pres1') ;
+                      (pres1', rp_strip_subtract pres2)
+                  | _, _ ->
+                      (pres1, pres2)
+                in
+                let with_any pres path =
+                  match row_closed with
+                  | Open -> (
+                    (* Open row, behaves like maybe. *)
+                    match pres.rp_desc with
+                    | (RpPresent | RpMaybe | RpAny) as desc ->
+                        is_empty := false ;
+                        desc
+                    | desc ->
+                        desc )
+                  | Closed -> (
+                    (* Closed row, behaves like absent. *)
+                    match pres.rp_desc with
+                    | RpRef _ | RpReplace _ | RpSubtract _ ->
+                        assert false
+                    | RpAny ->
+                        RpAny
+                    | RpPresent ->
+                        raise
+                          (Error
+                             ( loc
+                             , env
+                             , Missing_row_constructor (path, typ, ctyp) ))
+                    | RpMaybe | RpAbsent ->
+                        RpAbsent )
+                in
+                let pres_desc, args1, args2, path =
+                  match (pres1.rp_desc, pres2.rp_desc) with
+                  | (RpRef _ | RpReplace _ | RpSubtract _), _
+                  | _, (RpRef _ | RpReplace _ | RpSubtract _) ->
+                      assert false
+                  | RpMaybe, RpMaybe ->
+                      is_empty := false ;
+                      (RpMaybe, args1, args2, path1)
+                  | (RpPresent | RpMaybe), (RpPresent | RpMaybe) ->
+                      is_empty := false ;
+                      (RpPresent, args1, args2, path1)
+                  | (RpAbsent | RpMaybe), (RpAbsent | RpMaybe) ->
+                      (RpAbsent, args1, args2, path1)
+                  | RpAny, _ ->
+                      (with_any pres2 path2, args2, args2, path2)
+                  | _, RpAny ->
+                      (with_any pres1 path1, args1, args1, path1)
+                  | RpPresent, RpAbsent ->
+                      raise
+                        (Error
+                           ( loc
+                           , env
+                           , Missing_row_constructor (path1, typ, ctyp) ))
+                  | RpAbsent, RpPresent ->
+                      raise
+                        (Error
+                           ( loc
+                           , env
+                           , Missing_row_constructor (path2, typ, ctyp) ))
+                in
+                let pres =
+                  match (pres1'.rp_desc, pres2'.rp_desc) with
+                  | RpSubtract _, RpSubtract _ ->
+                      mk_rp (RpSubtract (mk_rp pres_desc))
+                  | RpSubtract _, _ | _, RpSubtract _ ->
+                      assert false
+                  | _ ->
+                      mk_rp pres_desc
+                in
+                set_rp_desc pres1 (RpRef pres) ;
+                set_rp_desc pres2 (RpRef pres) ;
+                ( match
+                    List.iter2 args1 args2 ~f:(fun typ ctyp ->
+                        check_type_aux typ ctyp env )
+                  with
+                | Ok () ->
+                    ()
+                | Unequal_lengths ->
+                    raise
+                      (Error (loc, env, Row_different_arity (path, typ, ctyp)))
+                ) ;
+                Some (path, pres, args1) )
+      in
+      if row_closed = Closed && !is_empty then
+        raise (Error (loc, env, Empty_resulting_row (typ, ctyp))) ;
+      let row_rest =
+        let row_rest = Type1.Mk.var ~mode:typ.type_mode typ.type_depth None in
+        (* Tweak errors so that they talk about the row types instead of just
+           their respective [row_rest] parameters.
+        *)
+        let rescope_rest_error exn =
+          match exn with
+          | Error (loc, env, Cannot_unify (typ, ctyp)) ->
+              (*Format.eprintf "Cannot unify:@.%a@.%a@.@." typ_debug_print_alts
+                typ typ_debug_print_alts ctyp;*)
+              Error (loc, env, Cannot_unify (typ, ctyp))
+          | Error (loc, env, Recursive_variable recvar)
+            when phys_equal recvar row_rest1 ->
+              (*Format.eprintf "Recursive variable:@.%a@." typ_debug_print
+                recvar;*)
+              Error (loc, env, Cannot_unify (typ, ctyp))
+          | Error (loc, env, Recursive_variable recvar)
+            when phys_equal recvar row_rest2 ->
+              (*Format.eprintf "Recursive variable:@.%a@." typ_debug_print
+                recvar;*)
+              Error (loc, env, Cannot_unify (typ, ctyp))
+          | Error (loc, env, Recursive_variable recvar)
+            when phys_equal recvar row_rest ->
+              (*Format.eprintf "Recursive variable:@.%a@." typ_debug_print
+                recvar;*)
+              Error (loc, env, Cannot_unify (typ, ctyp))
+          | _ ->
+              exn
+        in
+        let expand_row row_rest1 row_extra =
+          match row_rest1.type_desc with
+          | Tvar _ when Map.is_empty row_extra ->
+              ( try check_type_aux row_rest1 row_rest env
+                with exn ->
+                  (* Return a type error that will make sense to the user. *)
+                  raise (rescope_rest_error exn) ) ;
+              row_rest1
+          | Tvar _ | Tref _ ->
+              let new_row =
+                Type1.Mk.row ~mode:row_rest1.type_mode row_rest1.type_depth
+                  { row_tags= row_extra
+                  ; row_closed
+                  ; row_rest
+                  ; row_presence_proxy }
+              in
+              let new_row =
+                if phys_equal row_rest1.type_alternate.type_alternate row_rest1
+                then new_row.type_alternate.type_alternate
+                else new_row
+              in
+              ( match row_rest1.type_desc with
+              | Tvar _ ->
+                  choose_variable_name row_rest1 row_rest ;
+                  check_type_aux row_rest1 new_row env
+              | Tref _ -> (
+                try
+                  (* This type could not have been a reference at definition
+                     time, so it must be equal to the other [row_rest], or must
+                     contain itself.
+                  *)
+                  check_type_aux row_rest1 new_row env
+                with exn ->
+                  (* Return a type error that will make sense to the user. *)
+                  raise (rescope_rest_error exn) )
+              | _ ->
+                  assert false ) ;
+              row_rest
+          | _ ->
+              assert false
+        in
+        let row_rest1 = expand_row row_rest1 !row_extra1 in
+        let row_rest2 = expand_row row_rest2 !row_extra2 in
+        ( try check_type_aux row_rest1 row_rest2 env
+          with exn ->
+            (* Return a type error that will make sense to the user. *)
+            raise (rescope_rest_error exn) ) ;
+        repr row_rest
+      in
+      let new_row = {row_tags; row_closed; row_rest; row_presence_proxy} in
+      let alt_row = Type1.row_alternate new_row in
+      let res_type =
+        if ctyp.type_id < typ.type_id then ( set_repr typ ctyp ; ctyp )
+        else ( set_repr ctyp typ ; typ )
+      in
+      set_desc res_type (Trow new_row) ;
+      set_desc res_type.type_alternate (Trow alt_row) ;
+      if not (phys_equal typ.type_alternate.type_alternate typ) then
+        set_desc res_type.type_alternate.type_alternate
+          (Trow (Type1.row_alternate alt_row))
   | _, _ ->
       raise (Error (loc, env, Cannot_unify (typ, ctyp)))
 
@@ -281,10 +528,14 @@ and stitch_tri_stitched ~loc typ env =
   Type1.set_desc typ (Tref typ.type_alternate.type_alternate)
 
 let check_type ~loc env typ constr_typ =
+  let snapshot = Snapshot.create () in
   match check_type_aux ~loc typ constr_typ env with
   | exception Error (_, _, err) ->
       let typ = Type1.flatten typ in
       let constr_typ = Type1.flatten constr_typ in
+      (* Backtrack to restore types to their pre-unification states. *)
+      backtrack snapshot ;
+      (*Format.eprintf "%s@." (Printexc.get_backtrace ()) ;*)
       raise (Error (loc, env, Check_failed (typ, constr_typ, err)))
   (*| exception err ->
       Format.(
@@ -294,8 +545,9 @@ let check_type ~loc env typ constr_typ =
   | () ->
       ()
 
+let () = Typet.unify := check_type
+
 let unifies env typ constr_typ =
-  let snapshot = Snapshot.create () in
   match check_type ~loc:Location.none env typ constr_typ with
   | () ->
       true
@@ -303,7 +555,7 @@ let unifies env typ constr_typ =
       (*Format.(
         fprintf err_formatter "Does not unify:@.%a@." Location.report_exception
           exn) ;*)
-      backtrack snapshot ; false
+      false
 
 let () = Patmatch.unifies := unifies
 
@@ -353,7 +605,7 @@ let get_field (field : lid) env =
       (ident, ({tdec_desc= TRecord field_decls; tdec_ret; tdec_params; _}, i))
     ->
       let snap = Snapshot.create () in
-      Envi.Type.refresh_vars tdec_params env ;
+      ignore (Envi.Type.refresh_vars tdec_params env) ;
       let {fld_type; _} = List.nth_exn field_decls i in
       let rcd_type = Envi.Type.copy tdec_ret env in
       let fld_type = Type1.get_mode mode fld_type in
@@ -424,7 +676,7 @@ let get_ctor (name : lid) env =
     Set.to_list (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
   in
   let snap = Snapshot.create () in
-  Envi.Type.refresh_vars bound_vars env ;
+  ignore (Envi.Type.refresh_vars bound_vars env) ;
   let args_typ = Envi.Type.copy args_typ env in
   let typ = Envi.Type.copy typ env in
   backtrack snap ; (name, typ, args_typ)
@@ -552,6 +804,19 @@ let rec check_pattern env typ pat =
             (None, [], env)
       in
       ( {Typedast.pat_loc= loc; pat_type= typ'; pat_desc= Tpat_ctor (name, arg)}
+      , names
+      , env )
+  | Ppat_row_ctor (name, args) ->
+      let name = map_loc ~f:Ident.create_row name in
+      let arg_types =
+        List.map args ~f:(fun _ -> Envi.Type.Mk.var ~mode None env)
+      in
+      let typ' = Envi.Type.Mk.row_of_ctor ~mode name.txt arg_types env in
+      check_type ~loc env typ typ' ;
+      let args, names, env = check_patterns env arg_types args in
+      ( { Typedast.pat_loc= loc
+        ; pat_type= typ
+        ; pat_desc= Tpat_row_ctor (name, args) }
       , names
       , env )
 
@@ -1305,6 +1570,22 @@ let rec get_expression env expected exp =
             (None, env)
       in
       ({exp_loc= loc; exp_type= typ; exp_desc= Texp_ctor (name', arg)}, env)
+  | Pexp_row_ctor (name, args) ->
+      let name = map_loc ~f:Ident.create_row name in
+      let arg_types =
+        List.map args ~f:(fun _ -> Envi.Type.Mk.var ~mode None env)
+      in
+      let typ = Envi.Type.Mk.row_of_ctor ~mode name.txt arg_types env in
+      check_type ~loc env expected typ ;
+      let env = ref env in
+      let args =
+        List.map2_exn args arg_types ~f:(fun arg expected ->
+            let arg, env' = get_expression !env expected arg in
+            env := env' ;
+            arg )
+      in
+      ( {exp_loc= loc; exp_type= typ; exp_desc= Texp_row_ctor (name, args)}
+      , !env )
   | Pexp_unifiable _ ->
       raise (Error (loc, env, Unifiable_expr))
   | Pexp_if (e1, e2, None) ->
@@ -2155,8 +2436,8 @@ let rec report_error ppf = function
         "@[<v>@[<hov>Incompatible types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
         !pp_typ typ !pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
-      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" !pp_typ typ
-        !pp_typ constr_typ
+      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" !pp_typ
+        (*typ_debug_print*) typ !pp_typ (*typ_debug_print*) constr_typ
   | Recursive_variable typ ->
       fprintf ppf
         "@[<hov>The variable@ @[<h>%a@] would have an instance that contains \
@@ -2236,6 +2517,21 @@ let rec report_error ppf = function
         "@[<hov>Internal error: the modes of these types do not \
          match:@;%a@;%a@]"
         !pp_typ typ1 !pp_typ typ2
+  | Missing_row_constructor (path, typ, constr_typ) ->
+      fprintf ppf
+        "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]:@ the constructor %a \
+         is not present in both.@]"
+        !pp_typ typ !pp_typ constr_typ Path.pp path
+  | Empty_resulting_row (typ, constr_typ) ->
+      fprintf ppf
+        "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]:@ the resulting row \
+         would be empty.@]"
+        !pp_typ typ !pp_typ constr_typ
+  | Row_different_arity (path, typ, constr_typ) ->
+      fprintf ppf
+        "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]:@ the constructor %a \
+         has different arities.@]"
+        !pp_typ typ !pp_typ constr_typ Path.pp path
 
 let () =
   Location.register_error_of_exn (function
@@ -2244,7 +2540,7 @@ let () =
         let set_var_names = Envi.set_var_names env in
         (pp_typ :=
            fun fmt typ ->
-             Typeprint.type_expr fmt
+             Format.fprintf fmt "@[<hov>%a@]" Typeprint.type_expr
                (set_var_names.type_expr set_var_names typ)) ;
         let err_msg = Location.error_of_printer ~loc report_error err in
         (pp_typ := fun _fmt _typ -> failwith "Typechecked.pp_typ uninitialised") ;

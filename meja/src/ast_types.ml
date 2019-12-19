@@ -94,6 +94,15 @@ type arg_label = Asttypes.arg_label =
   | Optional of string
 [@@deriving sexp, equal, compare]
 
+type closed_flag = Asttypes.closed_flag = Closed | Open
+[@@deriving sexp, equal, compare]
+
+let closed_flag_debug_print fmt = function
+  | Closed ->
+      Format.pp_print_string fmt "Cl"
+  | Open ->
+      Format.pp_print_string fmt "Op"
+
 type str = string Location.loc
 
 type lid = Longident.t Location.loc
