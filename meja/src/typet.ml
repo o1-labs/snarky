@@ -12,10 +12,15 @@ type error =
   | Opaque_type_in_prover_mode of type_expr
   | Convertible_arities_differ of string * int * string * int
   | GADT_in_nonrec_type
+  | Repeated_row_label of Ident.t
+  | Missing_row_label of Ident.t
+  | Expected_row_type of type_expr
 
 exception Error of Location.t * error
 
 let type0 {Typedast.type_type; _} = type_type
+
+let unify = ref (fun ~loc:_ _ _ _ -> assert false)
 
 module Type = struct
   open Type
@@ -187,6 +192,130 @@ module Type = struct
           join_expr_scope env scope
         in
         (mk_opaque ~loc typ env, env)
+    | Ptyp_row (tags, row_closed, min_tags) ->
+        let pres =
+          match (row_closed, min_tags) with
+          | Closed, Some _ ->
+              Type0.RpMaybe
+          | Open, _ | Closed, None ->
+              Type0.RpPresent
+        in
+        let (env, row_tags), tags =
+          List.fold_map ~init:(env, Ident.Map.empty) tags
+            ~f:(fun (env, row_tags) {rtag_ident; rtag_arg; rtag_loc} ->
+              let env, rtag_arg =
+                List.fold_map rtag_arg ~init:env ~f:(fun e t ->
+                    let t, e = import t e in
+                    (e, t) )
+              in
+              let rtag_ident = map_loc ~f:Ident.create_row rtag_ident in
+              let args = List.map ~f:type0 rtag_arg in
+              let row_tags =
+                match
+                  Map.add row_tags ~key:rtag_ident.txt
+                    ~data:(Path.Pident rtag_ident.txt, Type1.mk_rp pres, args)
+                with
+                | `Duplicate ->
+                    raise
+                      (Error (rtag_ident.loc, Repeated_row_label rtag_ident.txt))
+                | `Ok row_tags ->
+                    row_tags
+              in
+              ((env, row_tags), {Typedast.rtag_ident; rtag_arg; rtag_loc}) )
+        in
+        let min_tags =
+          Option.map ~f:(List.map ~f:(map_loc ~f:Ident.create_row)) min_tags
+        in
+        let set_present tag =
+          match Map.find row_tags tag.Location.txt with
+          | None ->
+              raise (Error (tag.loc, Missing_row_label tag.txt))
+          | Some (_path, pres, _args) ->
+              pres.Type0.rp_desc <- RpPresent
+        in
+        Option.iter ~f:(List.iter ~f:set_present) min_tags ;
+        let row_rest = Envi.Type.mkvar ~mode None env in
+        let type_type =
+          Envi.Type.Mk.row ~mode
+            { row_tags
+            ; row_closed
+            ; row_rest
+            ; row_presence_proxy= Type1.mk_rp RpPresent }
+            env
+        in
+        ( { Typedast.type_desc= Ttyp_row (tags, row_closed, min_tags)
+          ; type_loc= loc
+          ; type_type }
+        , env )
+    | Ptyp_row_subtract (typ, tags) ->
+        let typ', env = import typ env in
+        let tags = List.map ~f:(map_loc ~f:Ident.create_row) tags in
+        let type_type =
+          let typ' = Type1.repr typ'.type_type in
+          let (row_tags, row_rest, row_closed), row_presence_proxy =
+            match typ'.type_desc with
+            | Tvar name ->
+                let row_tags = Ident.Map.empty in
+                let row_closed = Open in
+                let row_rest =
+                  Type1.Mk.var ~mode:typ'.type_mode typ'.type_depth name
+                in
+                let row_presence_proxy = Type1.mk_rp RpPresent in
+                let row =
+                  {Type0.row_tags; row_closed; row_rest; row_presence_proxy}
+                in
+                let instance_typ =
+                  Type1.Mk.row ~mode:typ'.type_mode typ'.type_depth row
+                in
+                let instance_typ =
+                  if phys_equal typ' typ'.type_alternate.type_alternate then
+                    instance_typ.type_alternate.type_alternate
+                  else instance_typ
+                in
+                Type1.add_instance ~unify:(!unify ~loc env) typ' instance_typ ;
+                ((row_tags, row_rest, row_closed), row_presence_proxy)
+            | Trow row ->
+                (Type1.row_repr row, row.row_presence_proxy)
+            | _ ->
+                raise (Error (typ.type_loc, Expected_row_type typ))
+          in
+          match row_closed with
+          | Open ->
+              let row_tags =
+                List.fold ~init:row_tags tags ~f:(fun row_tags {txt= tag; _} ->
+                    match Map.find row_tags tag with
+                    | Some (path, pres, args) ->
+                        Map.set row_tags ~key:tag
+                          ~data:(path, Type1.mk_rp (RpSubtract pres), args)
+                    | None ->
+                        Map.set row_tags ~key:tag
+                          ~data:
+                            ( Path.Pident tag
+                            , Type1.mk_rp (RpSubtract (Type1.mk_rp RpAny))
+                            , [] ) )
+              in
+              Envi.Type.Mk.row ~mode
+                {row_tags; row_closed; row_rest; row_presence_proxy}
+                env
+          | Closed ->
+              let row_tags =
+                List.fold ~init:row_tags tags
+                  ~f:(fun row_tags {txt= tag; loc} ->
+                    match Map.find row_tags tag with
+                    | Some (path, pres, args) ->
+                        Map.set row_tags ~key:tag
+                          ~data:(path, Type1.mk_rp (RpSubtract pres), args)
+                    | None ->
+                        raise (Error (loc, Missing_row_label tag)) )
+              in
+              Envi.Type.Mk.row ~mode
+                {row_tags; row_closed; row_rest; row_presence_proxy}
+                env
+        in
+        ( { Typedast.type_desc= Ttyp_row_subtract (typ', tags)
+          ; type_loc= loc
+          ; type_type }
+        , env )
 
   let fold ~init ~f typ =
     match typ.type_desc with
@@ -208,6 +337,11 @@ module Type = struct
         let acc = f init typ1 in
         f acc typ2
     | Ptyp_opaque typ ->
+        f init typ
+    | Ptyp_row (tags, _closed, _min_tags) ->
+        List.fold ~init tags ~f:(fun acc {rtag_arg; _} ->
+            List.fold ~f ~init:acc rtag_arg )
+    | Ptyp_row_subtract (typ, _tags) ->
         f init typ
 
   let iter ~f = fold ~init:() ~f:(fun () -> f)
@@ -235,6 +369,16 @@ module Type = struct
         {type_desc= Ptyp_conv (f typ1, f typ2); type_loc= loc}
     | Ptyp_opaque typ ->
         {type_desc= Ptyp_opaque (f typ); type_loc= loc}
+    | Ptyp_row (tags, closed, min_tags) ->
+        { type_desc=
+            Ptyp_row
+              ( List.map tags ~f:(fun tag ->
+                    {tag with rtag_arg= List.map ~f tag.rtag_arg} )
+              , closed
+              , min_tags )
+        ; type_loc= loc }
+    | Ptyp_row_subtract (typ, tags) ->
+        {type_desc= Ptyp_row_subtract (f typ, tags); type_loc= loc}
 end
 
 module TypeDecl = struct
@@ -684,6 +828,15 @@ let report_error ppf = function
       fprintf ppf
         "@[<hov>GADT case syntax cannot be used in a non-recursive type.@ To \
          use this syntax, use 'type rec' for this type definition.@]@."
+  | Repeated_row_label label ->
+      fprintf ppf
+        "@[<hov>The constructor %a has already appeared in this row.@]@."
+        Ident.pprint label
+  | Missing_row_label label ->
+      fprintf ppf "@[<hov>The constructor %a is not present in this row.@]@."
+        Ident.pprint label
+  | Expected_row_type typ ->
+      fprintf ppf "@[<hov>The type %a was expected to be a row.@]@." pp_typ typ
 
 let () =
   Location.register_error_of_exn (function

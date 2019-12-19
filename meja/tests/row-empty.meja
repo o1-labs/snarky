@@ -1,0 +1,3 @@
+let f = fun (x : [< `A], y : [< `B], b) => {
+  if (b) { x; } else { y; };
+};
