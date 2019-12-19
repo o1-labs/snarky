@@ -92,8 +92,8 @@ let j __implicit12__ __implicit13__ __implicit14__ __implicit10__ b x =
   in
   i
 
-let k __implicit15__ __implicit16__ (f : field) =
-  j __implicit15__ __implicit16__ Typ.field
+let k (f : field) =
+  j Typ.field Typ.field Typ.field
     { Snarky.Types.Typ.store= (fun x -> Snarky.Typ_monads.Store.return x)
     ; Snarky.Types.Typ.read= (fun x -> Snarky.Typ_monads.Read.return x)
     ; Snarky.Types.Typ.alloc=
@@ -102,5 +102,5 @@ let k __implicit15__ __implicit16__ (f : field) =
     ; Snarky.Types.Typ.check= (fun _ -> Snarky.Checked.return ()) }
     true f
 
-let l __implicit19__ __implicit20__ (b : boolean) (b' : boolean) =
-  j __implicit19__ __implicit20__ Typ.boolean Typ.boolean b b'
+let l (b : boolean) (b' : boolean) =
+  j Typ.boolean Typ.boolean Typ.boolean Typ.boolean b b'

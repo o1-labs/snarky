@@ -6,10 +6,9 @@ type error =
   | Opaque_type_in_prover_mode of Parsetypes.type_expr
   | Convertible_arities_differ of string * int * string * int
   | GADT_in_nonrec_type
-
-val unify :
-  (loc:Location.t -> Envi.t -> Type0.type_expr -> Type0.type_expr -> unit) ref
-(** Internal: Import from [Typechecker]. *)
+  | Repeated_row_label of Ident.t
+  | Missing_row_label of Ident.t
+  | Expected_row_type of Parsetypes.type_expr
 
 module Type : sig
   val mk_poly :
@@ -124,3 +123,8 @@ module TypeDecl : sig
     Parsetypes.type_decl list -> Envi.t -> Typedast.type_decl list * Envi.t
   (** Import the given type declarations recursively. *)
 end
+
+(* Forward declaration of [Typechecker.check_type]. *)
+val unify :
+  (loc:Warnings.loc -> Envi.t -> Type0.type_expr -> Type0.type_expr -> unit)
+  ref

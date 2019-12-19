@@ -19,6 +19,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= Loc.of_pos pos}
 let mksig ~pos d = {sig_desc= d; sig_loc= Loc.of_pos pos}
 let mkmod ~pos d = {mod_desc= d; mod_loc= Loc.of_pos pos}
 let mkmty ~pos d = {msig_desc= d; msig_loc= Loc.of_pos pos}
+let mkrow ~pos d arg = {rtag_ident= d; rtag_arg= arg; rtag_loc= Loc.of_pos pos}
 
 let conspat ~pos hd tl =
   mkpat ~pos (Ppat_ctor
@@ -27,6 +28,10 @@ let conspat ~pos hd tl =
 let consexp ~pos hd tl =
   mkexp ~pos (Pexp_ctor
     ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Pexp_tuple [hd; tl]))))
+
+let unitpat ~pos = mkpat ~pos (Ppat_ctor (mkloc ~pos (Lident "()"), None))
+
+let unitexp ~pos = mkexp ~pos (Pexp_ctor (mkloc ~pos (Lident "()"), None))
 %}
 %token <string> FIELD
 %token <int> INT
@@ -75,7 +80,10 @@ let consexp ~pos hd tl =
 %token COMMA
 %token UNDERSCORE
 %token BAR
+%token LT
+%token GT
 %token QUOT
+%token TICK
 %token DOTDOTDOT
 %token DOTDOT
 %token DOT
@@ -91,7 +99,7 @@ let consexp ~pos hd tl =
 
 %token EOL
 
-%left     INFIXOP0 EQUAL
+%left     INFIXOP0 LT GT EQUAL
 %right    INFIXOP1
 %right    COLONCOLON
 %left     MINUS INFIXOP2 PLUSEQUAL
@@ -129,7 +137,7 @@ interface:
 file(item):
   | (* Empty *)
     { [] }
-  | s = item maybe(SEMI)
+  | s = item
     { [s] }
   | s = item SEMI rest = file(item)
     { s :: rest }
@@ -315,6 +323,8 @@ ctor_decl_args:
 
 infix_operator:
   | op = INFIXOP0 { op }
+  | LT            { "<" }
+  | GT            { ">" }
   | EQUAL         { "=" }
   | op = INFIXOP1 { op }
   | MINUS         { "-" }
@@ -388,11 +398,8 @@ expr:
     { x }
   | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
     { mkexp ~pos:$loc (Pexp_constraint (x, typ)) }
-  | FUN LPAREN RPAREN EQUALGT body = block
-    { let unit_pat =
-        mkpat ~pos:$loc (Ppat_ctor (mkloc (Lident "()") ~pos:$loc, None))
-      in
-      mkexp ~pos:$loc (Pexp_fun (Nolabel, unit_pat, body, Explicit)) }
+  | FUN unit = unit EQUALGT body = block
+    { mkexp ~pos:$loc (Pexp_fun (Nolabel, unitpat ~pos:unit, body, Explicit)) }
   | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
@@ -415,6 +422,12 @@ expr:
     { mkexp ~pos:$loc (Pexp_match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Pexp_ctor (id, args)) }
+  | id = row_name LPAREN rev_args = list(expr, COMMA) RPAREN
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, List.rev rev_args)) }
+  | id = row_name unit = unit
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, [unitexp ~pos:unit])) }
+  | id = row_name
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, [])) }
   | e = if_expr
     { e }
 
@@ -447,12 +460,16 @@ expr_ctor_args:
     { None }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { Some e }
+  | pos = unit
+    { Some (unitexp ~pos) }
   | e = expr_record
     { Some e }
 
 match_case:
   | BAR p = pat EQUALGT e = expr
     { (p, e) }
+  | BAR pat err = err
+    { raise (Error (err, Expecting "'=>'")); }
 
 expr_arg:
   | e = expr
@@ -517,8 +534,6 @@ function_from_args:
     { mkexp ~pos:$loc (Pexp_newtype (t, body)) }
   | TYPE t = as_loc(lident) COMMA f = function_from_args
     { mkexp ~pos:$loc (Pexp_newtype (t, f)) }
-  | pat_arg_opt RPAREN err = err
-    { raise (Error (err, Fun_no_fat_arrow)) }
 
 function_from_implicit_args:
   | p = pat_arg RBRACE LPAREN f = function_from_args
@@ -572,6 +587,8 @@ pat_ctor_args:
     { None }
   | LPAREN p = pat_or_bare_tuple RPAREN
     { Some p }
+  | pos = unit
+    { Some (unitpat ~pos) }
   | p = pat_record
     { Some p }
 
@@ -596,6 +613,12 @@ pat_no_bar:
     { p }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = pat_ctor_args
     { mkpat ~pos:$loc (Ppat_ctor (id, args)) }
+  | id = row_name LPAREN rev_args = list(pat, COMMA) RPAREN
+    { mkpat ~pos:$loc (Ppat_row_ctor (id, List.rev rev_args)) }
+  | id = row_name unit = unit
+    { mkpat ~pos:$loc (Ppat_row_ctor (id, [unitpat ~pos:unit])) }
+  | id = row_name
+    { mkpat ~pos:$loc (Ppat_row_ctor (id, [])) }
 
 pat:
   | p = pat_no_bar
@@ -626,6 +649,18 @@ simple_type_expr:
     { mktyp ~pos:$loc (Ptyp_prover x) }
   | LPAREN typ = type_expr AS QUOT x = as_loc(lident) RPAREN
     { mktyp ~pos:$loc (Ptyp_alias (typ, x)) }
+  | LBRACKET GT RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row ([], Open, None)) }
+  | LBRACKET tags = row_tags RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, None)) }
+  | LBRACKET GT tags = row_tags RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Open, None)) }
+  | LBRACKET LT tags = row_tags RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, Some [])) }
+  | LBRACKET LT tags = row_tags GT min_tags = list(row_name, BAR) RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, Some (List.rev min_tags))) }
+  | LBRACKET typ = type_expr MINUS tags = list(row_name, BAR) RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row_subtract (typ, List.rev tags)) }
 
 %inline type_arrow_label:
   | (* Empty *)
@@ -645,6 +680,18 @@ type_expr:
   | x = simple_type_expr DASHDASHGT y = type_expr
     { mktyp ~pos:$loc (Ptyp_conv (x, y)) }
 
+%inline row_name:
+  | TICK name = as_loc(UIDENT)
+    { name }
+
+row_tag:
+  | name = row_name
+    { mkrow ~pos:$loc name [] }
+  | name = row_name LPAREN args = list(type_expr, COMMA) RPAREN
+    { mkrow ~pos:$loc name args }
+
+row_tags: x = list(row_tag, BAR) { x }
+
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X
     { x :: xs }
@@ -656,6 +703,10 @@ tuple(X):
     { x :: xs }
   | x1 = X COMMA x2 = X
     { [x2; x1] }
+
+%inline unit:
+  | LPAREN RPAREN
+    { $loc }
 
 %inline as_loc(X): x = X
   { mkloc x ~pos:($symbolstartpos, $endpos) }
@@ -671,6 +722,9 @@ longident(X, M):
     { Lident x }
   | path = longident(M, M) DOT x = X
     { Ldot (path, x) }
+
+%inline loc(X) : _x = X
+  { Loc.of_pos ($symbolstartpos, $endpos) }
 
 %inline err : _x = error
   { Loc.of_pos ($symbolstartpos, $endpos) }

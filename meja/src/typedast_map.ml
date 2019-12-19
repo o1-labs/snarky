@@ -6,6 +6,7 @@ type mapper =
   { type_expr: mapper -> type_expr -> type_expr
   ; type_desc: mapper -> type_desc -> type_desc
   ; variant: mapper -> variant -> variant
+  ; row_tag: mapper -> row_tag -> row_tag
   ; field_decl: mapper -> field_decl -> field_decl
   ; ctor_args: mapper -> ctor_args -> ctor_args
   ; ctor_decl: mapper -> ctor_decl -> ctor_decl
@@ -89,10 +90,23 @@ let type_desc mapper typ =
       Ttyp_opaque (mapper.type_expr mapper typ)
   | Ttyp_alias (typ, name) ->
       Ttyp_alias (mapper.type_expr mapper typ, str mapper name)
+  | Ttyp_row (tags, closed, min_tags) ->
+      Ttyp_row
+        ( List.map ~f:(mapper.row_tag mapper) tags
+        , closed
+        , Option.map ~f:(List.map ~f:(ident mapper)) min_tags )
+  | Ttyp_row_subtract (typ, tags) ->
+      Ttyp_row_subtract
+        (mapper.type_expr mapper typ, List.map ~f:(ident mapper) tags)
 
 let variant mapper {var_ident; var_params} =
   { var_ident= path mapper var_ident
   ; var_params= List.map ~f:(mapper.type_expr mapper) var_params }
+
+let row_tag mapper {rtag_ident; rtag_arg; rtag_loc} =
+  { rtag_ident= ident mapper rtag_ident
+  ; rtag_arg= List.map ~f:(mapper.type_expr mapper) rtag_arg
+  ; rtag_loc= mapper.location mapper rtag_loc }
 
 let field_decl mapper {fld_ident; fld_type; fld_loc; fld_fld} =
   { fld_loc= mapper.location mapper fld_loc
@@ -170,6 +184,9 @@ let pattern_desc mapper = function
              (path mapper name, mapper.pattern mapper pat) ))
   | Tpat_ctor (name, arg) ->
       Tpat_ctor (path mapper name, Option.map ~f:(mapper.pattern mapper) arg)
+  | Tpat_row_ctor (name, args) ->
+      Tpat_row_ctor
+        (ident mapper name, List.map ~f:(mapper.pattern mapper) args)
 
 let convert_body mapper {conv_body_desc; conv_body_loc; conv_body_type} =
   { conv_body_loc= mapper.location mapper conv_body_loc
@@ -259,6 +276,9 @@ let expression_desc mapper = function
         , Option.map ~f:(mapper.expression mapper) default )
   | Texp_ctor (name, arg) ->
       Texp_ctor (path mapper name, Option.map ~f:(mapper.expression mapper) arg)
+  | Texp_row_ctor (name, args) ->
+      Texp_row_ctor
+        (ident mapper name, List.map ~f:(mapper.expression mapper) args)
   | Texp_unifiable {expression; name; id} ->
       Texp_unifiable
         { id
@@ -436,6 +456,7 @@ let default_iterator =
   { type_expr
   ; type_desc
   ; variant
+  ; row_tag
   ; field_decl
   ; ctor_args
   ; ctor_decl

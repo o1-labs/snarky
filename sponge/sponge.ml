@@ -18,14 +18,17 @@ let for_ n ~init ~f =
   go 0 init
 
 module Make_operations (Field : Intf.Field) = struct
-  let add_block ~state block =
-    Array.iteri block ~f:(fun i bi -> state.(i) <- Field.( + ) state.(i) bi)
+  let add_assign ~state i x = state.(i) <- Field.( + ) state.(i) x
 
-  let apply_matrix matrix v =
+  let apply_affine_map (matrix, constants) v =
     let dotv row =
       Array.reduce_exn (Array.map2_exn row v ~f:Field.( * )) ~f:Field.( + )
     in
-    Array.map matrix ~f:dotv
+    let res = Array.map matrix ~f:dotv in
+    for i = 0 to Array.length res - 1 do
+      res.(i) <- Field.( + ) res.(i) constants.(i)
+    done ;
+    res
 
   let copy = Array.copy
 end
@@ -63,14 +66,14 @@ should be higher for smaller alpha.
 
   let sbox0, sbox1 = (alphath_root, to_the_alpha)
 
+  let add_block ~state block = Array.iteri block ~f:(add_assign ~state)
+
   let block_cipher {Params.round_constants; mds} state =
     add_block ~state round_constants.(0) ;
     for_ (2 * rounds) ~init:state ~f:(fun r state ->
         let sbox = if Int.(r mod 2 = 0) then sbox0 else sbox1 in
         Array.map_inplace state ~f:sbox ;
-        let state = apply_matrix mds state in
-        add_block ~state round_constants.(r + 1) ;
-        state )
+        apply_affine_map (mds, round_constants.(r + 1)) state )
 end
 
 module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
@@ -82,26 +85,68 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
 
   let%test "rounds_full" = half_rounds_full * 2 = rounds_full
 
-  let for_ n init ~f = for_ n ~init ~f
+  let add_block ~state block = Array.iteri block ~f:(add_assign ~state)
 
+  (* Poseidon goes
+
+      ARK_0 -> SBOX -> MDS
+   -> ARK_1 -> SBOX -> MDS
+   -> ...
+   -> ARK_{half_rounds_full - 1} -> SBOX -> MDS
+   -> ARK_{half_rounds_full} -> SBOX0 -> MDS
+   -> ...
+   -> ARK_{half_rounds_full + rounds_partial - 1} -> SBOX0 -> MDS
+   -> ARK_{half_rounds_full + rounds_partial} -> SBOX -> MDS
+   -> ...
+   -> ARK_{half_rounds_full + rounds_partial + half_rounds_full - 1} -> SBOX -> MDS
+
+   It is best to apply the matrix and add the round constants at the same
+   time for Marlin constraint efficiency, so that is how this implementation does it.
+   Like,
+
+      ARK_0
+   -> SBOX -> (MDS -> ARK_1)
+   -> SBOX -> (MDS -> ARK_2)
+   -> ...
+   -> SBOX -> (MDS -> ARK_{half_rounds_full - 1})
+   -> SBOX -> (MDS -> ARK_{half_rounds_full})
+   -> SBOX0 -> (MDS -> ARK_{half_rounds_full + 1})
+   -> ...
+   -> SBOX0 -> (MDS -> ARK_{half_rounds_full + rounds_partial - 1})
+   -> SBOX0 -> (MDS -> ARK_{half_rounds_full + rounds_partial})
+   -> SBOX -> (MDS -> ARK_{half_rounds_full + rounds_partial + 1})
+   -> ...
+   -> SBOX -> (MDS -> ARK_{half_rounds_full + rounds_partial + half_rounds_full - 1})
+   -> SBOX -> MDS
+*)
   let block_cipher {Params.round_constants; mds} state =
     let sbox = to_the_alpha in
-    let full_half start =
-      for_ half_rounds_full ~f:(fun r state ->
-          add_block ~state round_constants.(start + r) ;
-          Array.map_inplace state ~f:sbox ;
-          apply_matrix mds state )
-    in
-    full_half 0 state
-    |> for_ rounds_partial ~f:(fun r state ->
-           add_block ~state round_constants.(half_rounds_full + r) ;
-           state.(0) <- sbox state.(0) ;
-           apply_matrix mds state )
-    |> full_half (half_rounds_full + rounds_partial)
+    let state = ref state in
+    add_block ~state:!state round_constants.(0) ;
+    for i = 1 to half_rounds_full do
+      (* SBOX -> MDS -> ARK *)
+      Array.map_inplace !state ~f:sbox ;
+      state := apply_affine_map (mds, round_constants.(i)) !state
+    done ;
+    for i = half_rounds_full + 1 to half_rounds_full + rounds_partial do
+      !state.(0) <- sbox !state.(0) ;
+      state := apply_affine_map (mds, round_constants.(i)) !state
+    done ;
+    for
+      i = half_rounds_full + rounds_partial + 1
+      to rounds_full + rounds_partial - 1
+    do
+      Array.map_inplace !state ~f:sbox ;
+      state := apply_affine_map (mds, round_constants.(i)) !state
+    done ;
+    Array.map_inplace ~f:sbox !state ;
+    apply_affine_map (mds, Array.map !state ~f:(fun _ -> Field.zero)) !state
 end
 
-module Make (P : Intf.Permutation) = struct
+module Make_hash (P : Intf.Permutation) = struct
   open P
+
+  let add_block ~state block = Array.iteri block ~f:(add_assign ~state)
 
   let sponge perm blocks ~state =
     Array.fold ~init:state blocks ~f:(fun state block ->
@@ -134,4 +179,89 @@ module Make (P : Intf.Permutation) = struct
 
   let hash ?(init = initial_state) params inputs =
     update params ~state:init inputs |> digest
+end
+
+module Make_sponge (P : Intf.Permutation) = struct
+  open P
+
+  let capacity = 1
+
+  type sponge_state = Absorbed of int | Squeezed of int
+
+  type t =
+    { mutable state: Field.t State.t
+    ; params: Field.t Params.t
+    ; mutable sponge_state: sponge_state }
+
+  let initial_state = Array.init m ~f:(fun _ -> Field.zero)
+
+  let create ?(init = initial_state) params =
+    {state= copy init; sponge_state= Absorbed 0; params}
+
+  let rate = m - capacity
+
+  let absorb t x =
+    match t.sponge_state with
+    | Absorbed n ->
+        if n = rate then (
+          t.state <- block_cipher t.params t.state ;
+          add_assign ~state:t.state 0 x ;
+          t.sponge_state <- Absorbed 1 )
+        else (
+          add_assign ~state:t.state n x ;
+          t.sponge_state <- Absorbed (n + 1) )
+    | Squeezed _ ->
+        add_assign ~state:t.state 0 x ;
+        t.sponge_state <- Absorbed 1
+
+  let squeeze t =
+    match t.sponge_state with
+    | Squeezed n ->
+        if n = rate then (
+          t.state <- block_cipher t.params t.state ;
+          t.sponge_state <- Squeezed 1 ;
+          t.state.(0) )
+        else (
+          t.sponge_state <- Squeezed (n + 1) ;
+          t.state.(n) )
+    | Absorbed _ ->
+        t.state <- block_cipher t.params t.state ;
+        t.sponge_state <- Squeezed 1 ;
+        t.state.(0)
+end
+
+module Make_bit_sponge (Bool : sig
+  type t
+end) (Field : sig
+  type t
+
+  val to_bits : t -> Bool.t list
+end)
+(S : Intf.Sponge
+     with module State := State
+      and module Field := Field
+      and type digest := Field.t
+      and type input := Field.t) =
+struct
+  type t =
+    { underlying: S.t
+          (* TODO: Have to be careful about these bits. They aren't perfectly uniform. *)
+    ; mutable last_squeezed: Bool.t list }
+
+  let create ?init params =
+    {underlying= S.create ?init params; last_squeezed= []}
+
+  let absorb t x =
+    S.absorb t.underlying x ;
+    t.last_squeezed <- []
+
+  let rec squeeze t ~length =
+    if List.length t.last_squeezed >= length then (
+      let digest, remaining = List.split_n t.last_squeezed length in
+      t.last_squeezed <- remaining ;
+      digest )
+    else
+      let x = S.squeeze t.underlying in
+      t.last_squeezed <- t.last_squeezed @ Field.to_bits x ;
+      squeeze ~length t
 end

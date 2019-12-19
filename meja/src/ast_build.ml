@@ -64,6 +64,11 @@ module Type = struct
   let conv ?loc typ1 typ2 = mk ?loc (Ptyp_conv (typ1, typ2))
 
   let opaque ?loc typ = mk ?loc (Ptyp_opaque typ)
+
+  let row ?loc tags closed min_tags =
+    mk ?loc (Ptyp_row (tags, closed, min_tags))
+
+  let row_subtract ?loc typ tags = mk ?loc (Ptyp_row_subtract (typ, tags))
 end
 
 module Type_decl = struct

@@ -1,6 +1,15 @@
 open Core_kernel
 open Asttypes
 open Meja_lib.Ast_types
+
+module Rf = struct
+  (* This implements the necessary parts of Ast_helper.Rf for older OCaml
+     versions which did not have it. In newer versions, this will be shadowed
+     by [open Ast_helper] below.
+  *)
+  let tag ?loc:_ ?(attrs = []) a b c = Parsetree.Rtag (a, attrs, b, c)
+end
+
 open Ast_helper
 open Meja_lib.Typedast
 
@@ -46,6 +55,25 @@ let rec of_type_desc ?loc typ =
         [of_type_expr typ]
   | Ttyp_alias (typ, name) ->
       Typ.alias ?loc (of_type_expr typ) name.txt
+  | Ttyp_row (tags, closed, min_tags) ->
+      Typ.variant ?loc
+        (List.map tags ~f:(fun {rtag_ident; rtag_arg; rtag_loc} ->
+             match rtag_arg with
+             | [] ->
+                 Rf.tag ~loc:rtag_loc (of_ident_loc rtag_ident) true []
+             | _ ->
+                 Rf.tag ~loc:rtag_loc (of_ident_loc rtag_ident) false
+                   [Typ.tuple ~loc:rtag_loc (List.map ~f:of_type_expr rtag_arg)]
+         ))
+        closed
+        (Option.map
+           ~f:(List.map ~f:(fun {Location.txt; _} -> of_ident txt))
+           min_tags)
+  | Ttyp_row_subtract (typ, _tags) ->
+      (* OCaml doesn't have a concept of row subtraction; we output the
+         underlying row instead.
+      *)
+      of_type_expr typ
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
 
@@ -127,6 +155,17 @@ let rec of_pattern_desc ?loc = function
         Open
   | Tpat_ctor (name, arg) ->
       Pat.construct ?loc (of_path_loc name) (Option.map ~f:of_pattern arg)
+  | Tpat_row_ctor (name, args) ->
+      let args =
+        match args with
+        | [] ->
+            None
+        | [arg] ->
+            Some (of_pattern arg)
+        | _ ->
+            Some (Pat.tuple ?loc (List.map ~f:of_pattern args))
+      in
+      Pat.variant ?loc (of_ident name.txt) args
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
@@ -513,6 +552,17 @@ let rec of_expression_desc ?loc = function
         (Option.map ~f:of_expression ext)
   | Texp_ctor (name, arg) ->
       Exp.construct ?loc (of_path_loc name) (Option.map ~f:of_expression arg)
+  | Texp_row_ctor (name, args) ->
+      let args =
+        match args with
+        | [] ->
+            None
+        | [arg] ->
+            Some (of_expression arg)
+        | _ ->
+            Some (Exp.tuple ?loc (List.map ~f:of_expression args))
+      in
+      Exp.variant ?loc (of_ident name.txt) args
   | Texp_unifiable {expression= Some e; _} ->
       of_expression e
   | Texp_unifiable {name; _} ->

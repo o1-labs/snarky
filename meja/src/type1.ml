@@ -2,7 +2,9 @@ open Core_kernel
 open Ast_types
 open Type0
 
-type error = Mk_wrong_mode of string * type_expr list * mode * type_expr
+type error =
+  | Mk_wrong_mode of string * type_expr list * mode * type_expr
+  | Mk_invalid of string * type_expr list * type_expr
 
 exception Error of Location.t * error
 
@@ -11,7 +13,6 @@ let check_mode ~pos ~error_info mode typ =
     let kind, typs = error_info () in
     raise
       (Error (Ast_build.Loc.of_prim pos, Mk_wrong_mode (kind, typs, mode, typ)))
-  else ()
 
 (** Get the stitched [type_expr] in the given mode. *)
 let get_mode mode typ =
@@ -23,6 +24,78 @@ let get_mode mode typ =
     typ
 
 let type_id = ref 0
+
+let row_id = ref 0
+
+let mk_rp rp_desc = incr row_id ; {rp_desc; rp_id= !row_id}
+
+(** The representative of a type. This unfolds any [Tref] values that are
+    present to get to the true underlying type.
+*)
+let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
+
+let rec rp_repr pres =
+  match pres.rp_desc with RpRef pres -> rp_repr pres | _ -> pres
+
+let rec rp_strip_subtract pres =
+  match rp_repr pres with
+  | {rp_desc= RpSubtract pres; _} ->
+      rp_strip_subtract pres
+  | pres ->
+      pres
+
+let set_rp_desc_fwd = ref (fun _ _ -> assert false)
+
+let rec row_repr_aux tags
+    {row_tags; row_rest; row_closed; row_presence_proxy= _} =
+  let tags =
+    Map.merge_skewed tags row_tags
+      ~combine:(fun ~key:_
+               (old_path, old_pres, old_args)
+               (new_path, new_pres, new_args)
+               ->
+        let old_pres = rp_repr old_pres in
+        let new_pres = rp_repr new_pres in
+        let subst_any old_pres' =
+          !set_rp_desc_fwd old_pres' (RpRef new_pres) ;
+          (new_path, old_pres, new_args)
+        in
+        match old_pres.rp_desc with
+        | RpSubtract old -> (
+            let old' = rp_strip_subtract old in
+            (* Flatten subtracts. *)
+            if not (phys_equal old old') then !set_rp_desc_fwd old (RpRef old') ;
+            match old'.rp_desc with
+            | RpAny ->
+                subst_any old'
+            | _ ->
+                (old_path, old_pres, old_args) )
+        | RpAny ->
+            subst_any old_pres
+        | _ ->
+            (old_path, old_pres, old_args) )
+  in
+  row_repr_typ_aux (tags, row_closed) row_rest
+
+and row_repr_typ_aux (tags, row_closed) typ =
+  let typ = repr typ in
+  match typ.type_desc with
+  | Topaque typ ->
+      row_repr_typ_aux (tags, row_closed) typ
+  | Trow row ->
+      row_repr_aux tags row
+  | _ ->
+      (tags, typ, row_closed)
+
+let row_repr row =
+  let tags, row_rest, row_closed = row_repr_aux Ident.Map.empty row in
+  (tags, row_rest, row_closed)
+
+let row_repr_typ typ =
+  let tags, row_rest, row_closed =
+    row_repr_typ_aux (Ident.Map.empty, Open) typ
+  in
+  (tags, row_rest, row_closed)
 
 (** An invalid [type_expr] in checked mode. *)
 let rec checked_none =
@@ -51,6 +124,13 @@ let other_none = function Checked -> prover_none | Prover -> checked_none
 
 let type_alternate {type_alternate= typ; _} = typ
 
+let row_alternate {row_tags; row_closed; row_rest; row_presence_proxy} =
+  let row_tags =
+    Map.map row_tags ~f:(fun (path, pres, args) ->
+        (path, pres, List.map ~f:type_alternate args) )
+  in
+  {row_tags; row_closed; row_rest= row_rest.type_alternate; row_presence_proxy}
+
 let is_poly = function {type_desc= Tpoly _; _} -> true | _ -> false
 
 (** Returns [true] if the [type_expr] argument is valid, false otherwise.
@@ -65,6 +145,18 @@ let is_invalid {type_id; _} = type_id <= 0
 (** Judge equality based on type id. *)
 let equal {type_id= id1; _} {type_id= id2; _} = Int.equal id1 id2
 
+let check_valid ~pos ~error_info typ =
+  if is_invalid typ then
+    let kind, typs = error_info () in
+    raise (Error (Ast_build.Loc.of_prim pos, Mk_invalid (kind, typs, typ)))
+
+(* For debugging. We raise an [AssertionError] when we are about to create a
+   type with this ID, so that the backtrace can be used to find its creation
+   point.
+*)
+let failure_type_id =
+  try Some (Int.of_string (Sys.getenv "MEJA_BREAK_TYPE_ID")) with _ -> None
+
 (** Make a new type at the given mode and depth.
 
     The [type_alternate] field is set to the invalid value
@@ -72,7 +164,7 @@ let equal {type_id= id1; _} {type_id= id2; _} = Int.equal id1 id2
 *)
 let mk' ~mode depth type_desc =
   incr type_id ;
-  (*assert (!type_id <> 51696) ;*)
+  Option.iter failure_type_id ~f:(fun id -> assert (!type_id <> id)) ;
   { type_desc
   ; type_id= !type_id
   ; type_depth= depth
@@ -188,16 +280,113 @@ let rec typ_debug_print fmt typ =
           print "= " ; typ_debug_print fmt typ
       | Tconv typ ->
           typ_debug_print fmt (get_mode Checked typ) ;
-          print " --> " ;
+          print " <-> " ;
           typ_debug_print fmt (get_mode Prover typ)
       | Topaque typ ->
           print "opaque " ; typ_debug_print fmt typ
       | Tother_mode typ ->
           print "mode-change " ; typ_debug_print fmt typ
       | Treplace typ ->
-          print "=== " ; typ_debug_print fmt typ ) ;
+          print "=== " ; typ_debug_print fmt typ
+      | Trow row ->
+          print "row " ; row_debug_print fmt row ) ;
     Hash_set.remove hashtbl typ.type_id ) ;
   print " @%i)" typ.type_depth
+
+and row_debug_print fmt {row_tags; row_closed; row_rest; row_presence_proxy= _}
+    =
+  let open Format in
+  let is_first = ref true in
+  Map.iteri row_tags ~f:(fun ~key ~data:(path, pres, args) ->
+      if !is_first then (
+        is_first := false ;
+        pp_print_string fmt ": " )
+      else pp_print_string fmt " | " ;
+      fprintf fmt "%a%a(%a):%a" row_presence_debug_print pres Path.debug_print
+        path Ident.debug_print key
+        (pp_print_list
+           ~pp_sep:(fun fmt () -> pp_print_string fmt ", ")
+           typ_debug_print)
+        args ) ;
+  match row_rest.type_desc with
+  | Trow _ ->
+      fprintf fmt "%a with " closed_flag_debug_print row_closed ;
+      typ_debug_print fmt row_rest
+  | _ ->
+      fprintf fmt "%a as " closed_flag_debug_print row_closed ;
+      typ_debug_print fmt row_rest
+
+and row_presence_debug_print fmt {rp_desc; rp_id} =
+  let open Format in
+  fprintf fmt "(%i:" rp_id ;
+  ( match rp_desc with
+  | RpPresent ->
+      pp_print_char fmt '+'
+  | RpMaybe ->
+      pp_print_char fmt '?'
+  | RpAbsent ->
+      pp_print_char fmt '-'
+  | RpSubtract rp ->
+      pp_print_char fmt '-' ;
+      row_presence_debug_print fmt rp
+  | RpAny ->
+      pp_print_char fmt '*'
+  | RpRef rp ->
+      row_presence_debug_print fmt rp
+  | RpReplace rp ->
+      fprintf fmt "=== %a" row_presence_debug_print rp ) ;
+  pp_print_char fmt ')'
+
+let field_decl_debug_print fmt {fld_ident; fld_type} =
+  Format.fprintf fmt "%a: %a" Ident.debug_print fld_ident typ_debug_print
+    fld_type
+
+let rec ctor_args_debug_print fmt args =
+  let open Format in
+  let pp_sep fmt () = pp_print_string fmt "," in
+  match args with
+  | Ctor_tuple typs ->
+      fprintf fmt "(%a)" (pp_print_list ~pp_sep typ_debug_print) typs
+  | Ctor_record {tdec_desc= TRecord fields; _} ->
+      fprintf fmt "{%a}" (pp_print_list ~pp_sep field_decl_debug_print) fields
+  | Ctor_record decl ->
+      (* NOTE: This shouldn't happen, but is useful for debugging when it does.
+      *)
+      type_decl_desc_debug_print fmt decl.tdec_desc
+
+and ctor_decl_debug_print fmt {ctor_ident; ctor_args; ctor_ret} =
+  let open Format in
+  fprintf fmt "%a%a" Ident.debug_print ctor_ident ctor_args_debug_print
+    ctor_args ;
+  match ctor_ret with
+  | Some typ ->
+      fprintf fmt " : %a" typ_debug_print typ
+  | None ->
+      ()
+
+and type_decl_desc_debug_print fmt desc =
+  let open Format in
+  let comma fmt () = pp_print_string fmt ", " in
+  let bar fmt () = pp_print_string fmt " | " in
+  match desc with
+  | TAbstract ->
+      fprintf fmt "Abstract"
+  | TAlias typ ->
+      fprintf fmt "Alias %a" typ_debug_print typ
+  | TRecord fields ->
+      fprintf fmt "Record {%a}"
+        (pp_print_list ~pp_sep:comma field_decl_debug_print)
+        fields
+  | TVariant ctors ->
+      fprintf fmt "Variant (%a)"
+        (pp_print_list ~pp_sep:bar ctor_decl_debug_print)
+        ctors
+  | TOpen ->
+      fprintf fmt "Open"
+  | TExtend (path, ctors) ->
+      fprintf fmt "Extend(%a) (%a)" Path.debug_print path
+        (pp_print_list ~pp_sep:bar ctor_decl_debug_print)
+        ctors
 
 let typ_debug_print_alts fmt typ =
   let open Format in
@@ -246,6 +435,8 @@ module Mk = struct
           check_mode ~pos:__POS__ ~error_info mode typ ;
           check_mode ~pos:__POS__ ~error_info mode alt ;
           assert (not (is_poly typ)) ;
+          check_valid ~pos:__POS__ ~error_info typ ;
+          check_valid ~pos:__POS__ ~error_info alt ;
           phys_equal typ alt )
     then stitch ~mode depth (Ttuple typs) (Ttuple alts)
     else
@@ -263,6 +454,8 @@ module Mk = struct
           (* Sanity check. *)
           check_mode ~pos:__POS__ ~error_info mode typ ;
           check_mode ~pos:__POS__ ~error_info mode alt ;
+          check_valid ~pos:__POS__ ~error_info typ ;
+          check_valid ~pos:__POS__ ~error_info alt ;
           assert (not (is_poly typ)) ;
           phys_equal typ alt )
     then
@@ -293,6 +486,8 @@ module Mk = struct
           (* Sanity check. *)
           check_mode ~pos:__POS__ ~error_info mode typ ;
           check_mode ~pos:__POS__ ~error_info mode alt ;
+          check_valid ~pos:__POS__ ~error_info typ ;
+          check_valid ~pos:__POS__ ~error_info alt ;
           assert (not (is_poly typ)) ;
           phys_equal typ alt )
       && Option.is_none tri_path
@@ -308,14 +503,36 @@ module Mk = struct
         (Tctor {var_ident= other_path; var_params= alts})
         (Tctor {var_ident= tri_path; var_params= alt_alts})
 
+  (* NOTE: The types in [vars] are not modified in their alternates, to ensure
+     that tri-stitchings are preserved, especially for conversions.
+
+     This means that the variable arguments to [Tpoly] may be from a different
+     mode to the type itself (which will match the mode of the polymorphised
+     type).
+
+     This ensures that we don't encounter a particularly heinous bug where we
+     have the tri-stitching ['a -> 'b <-> 'c] and
+       [Tpoly (Tvar "a", Tconv(Tvar "a", Tvar "b"))]
+     is added to the environment along with its prover-mode alternate
+       [Tpoly (Tvar "b", Tconv(Tvar "a", Tvar "b"))].
+     In this scenario, instantiating the prover-mode variable ['b] with a new
+     stitched variable leaks ['a] unchanged. Then, unification clobbers ['a],
+     effectively causing it to become a weak type variable.
+
+     There is now an assertion to avoid this case in [Envi.Type.copy]; see the
+     [Tvar] match branch there for the particular details.
+  *)
   let poly ~mode depth vars typ =
     let error_info () = ("poly", typ :: vars) in
+    check_valid ~pos:__POS__ ~error_info typ ;
     assert (not (is_poly typ)) ;
     check_mode ~pos:__POS__ ~error_info mode typ ;
     let alt = type_alternate typ in
     let alt_alt = type_alternate alt in
+    check_valid ~pos:__POS__ ~error_info alt_alt ;
     let get_alt_var pos mode var =
       let alt = get_mode mode var in
+      check_valid ~pos:__POS__ ~error_info alt ;
       match alt.type_desc with
       | Tvar _ ->
           alt
@@ -328,7 +545,7 @@ module Mk = struct
           var
     in
     let alts = List.map ~f:(get_alt_var __POS__ (other_mode mode)) vars in
-    let alt_alts = List.map ~f:(get_alt_var __POS__ mode) vars in
+    let alt_alts = List.map ~f:(get_alt_var __POS__ mode) alts in
     (* Sanity check: [vars] is a list of type variables. *)
     if
       equal_mode mode Prover
@@ -341,17 +558,20 @@ module Mk = struct
                  assert false ) ;
              phys_equal typ alt )
          && phys_equal typ alt_alt
-    then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (alts, alt))
+    then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (vars, alt))
     else
       (* The type is tri-stitched, so tri-stitch this type too. *)
       tri_stitch ~mode depth
         (Tpoly (vars, typ))
-        (Tpoly (alts, alt))
-        (Tpoly (alt_alts, alt_alt))
+        (Tpoly (vars, alt))
+        (Tpoly (vars, alt_alt))
 
   let conv ~mode depth typ1 typ2 =
     let error_info () = ("conv", [typ1; typ2]) in
-    assert (not (is_poly typ1 || is_poly typ2)) ;
+    check_valid ~pos:__POS__ ~error_info typ1 ;
+    check_valid ~pos:__POS__ ~error_info typ2 ;
+    assert (not (is_poly typ1)) ;
+    assert (not (is_poly typ2)) ;
     check_mode ~pos:__POS__ ~error_info Checked typ1 ;
     check_mode ~pos:__POS__ ~error_info Prover typ2 ;
     let typ_stitched =
@@ -365,22 +585,54 @@ module Mk = struct
 
   let opaque ~mode depth typ =
     let error_info () = ("opaque", [typ]) in
+    check_valid ~pos:__POS__ ~error_info typ ;
+    check_valid ~pos:__POS__ ~error_info typ.type_alternate.type_alternate ;
     assert (not (is_poly typ)) ;
     check_mode ~pos:__POS__ ~error_info Prover typ ;
     stitch ~mode depth (Topaque typ) (Topaque typ)
 
   let other_mode ~mode depth typ =
+    let error_info () = ("other_mode", [typ]) in
+    check_valid ~pos:__POS__ ~error_info typ ;
+    check_valid ~pos:__POS__ ~error_info typ.type_alternate.type_alternate ;
     assert (not (is_poly typ)) ;
     stitch ~mode depth (Tother_mode typ) (Tother_mode typ)
+
+  let row ~mode depth row =
+    let row_alt = row_alternate row in
+    match mode with
+    | Prover ->
+        let alt = stitch ~mode:Prover depth (Trow row) (Trow row_alt) in
+        opaque ~mode depth alt
+    | Checked ->
+        let row_alt_alt = row_alternate row in
+        let prover =
+          stitch ~mode:Prover depth (Trow row_alt) (Trow row_alt_alt)
+        in
+        tri_stitch ~mode depth (Trow row) (Topaque prover) (Topaque prover)
+
+  let row_of_ctor ~mode depth ident args =
+    let row_rest = var ~mode depth None in
+    let row_tags =
+      Ident.Map.singleton ident (Path.Pident ident, mk_rp RpPresent, args)
+    in
+    row ~mode depth
+      { row_tags
+      ; row_closed= Open
+      ; row_rest
+      ; row_presence_proxy= mk_rp RpPresent }
 end
 
 type change =
   | Depth of (type_expr * int)
   | Desc of (type_expr * type_desc)
   (* This is equivalent to [Desc], but allows for filtering the backtrace
-       when [Treplace] has been set for recursion-breaking.
-    *)
+     when [Treplace] has been set for recursion-breaking.
+  *)
   | Replace of (type_expr * type_desc)
+  | Row_presence of (row_presence * row_presence_desc)
+  (* Analogous to [Replace] for [Row_presence]. *)
+  | Row_replace of (row_presence * row_presence_desc)
 
 let debug_print_change fmt = function
   | Depth (typ, depth) ->
@@ -389,6 +641,10 @@ let debug_print_change fmt = function
       Format.fprintf fmt "desc(id= %i, _)" typ.type_id
   | Replace (typ, _) ->
       Format.fprintf fmt "replace(id= %i, _)" typ.type_id
+  | Row_presence (pres, _) ->
+      Format.fprintf fmt "row_presence(id= %i, _)" pres.rp_id
+  | Row_replace (pres, _) ->
+      Format.fprintf fmt "row_replace(id= %i, _)" pres.rp_id
 
 (** Implements a weak, mutable linked-list containing the history of changes.
 
@@ -527,6 +783,8 @@ let revert = function
       typ.type_desc <- desc
   | Replace (typ, desc) ->
       typ.type_desc <- desc
+  | Row_presence (pres, desc) | Row_replace (pres, desc) ->
+      pres.rp_desc <- desc
 
 let backtrack snap =
   let changes = Snapshot.backtrack snap in
@@ -535,11 +793,6 @@ let backtrack snap =
 let filtered_backtrack ~f snap =
   let changes = Snapshot.filtered_backtrack ~f snap in
   List.iter ~f:revert changes
-
-(** The representative of a type. This unfolds any [Tref] values that are
-    present to get to the true underlying type.
-*)
-let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
 
 let fold ~init ~f typ =
   match typ.type_desc with
@@ -565,6 +818,12 @@ let fold ~init ~f typ =
       f init typ
   | Treplace _ ->
       assert false
+  | Trow {row_tags; row_closed= _; row_rest; row_presence_proxy= _} ->
+      let acc =
+        Map.fold row_tags ~init ~f:(fun ~key:_ ~data:(_, _, args) init ->
+            List.fold ~f ~init args )
+      in
+      f acc row_rest
 
 let iter ~f = fold ~init:() ~f:(fun () -> f)
 
@@ -591,6 +850,9 @@ let rec copy_desc ~f = function
   | Tother_mode typ ->
       Tother_mode (f typ)
   | Treplace _ ->
+      assert false
+  | Trow _ ->
+      (* Must be handled seperately. *)
       assert false
 
 let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
@@ -643,6 +905,12 @@ let unify_depths typ1 typ2 =
   iter ~f:(update_depth typ1.type_depth) typ2 ;
   iter ~f:(update_depth typ2.type_depth) typ1
 
+let set_rp_desc pres desc =
+  Snapshot.add_to_history (Row_presence (pres, pres.rp_desc)) ;
+  pres.rp_desc <- desc
+
+let () = set_rp_desc_fwd := set_rp_desc
+
 let set_desc typ desc =
   Snapshot.add_to_history (Desc (typ, typ.type_desc)) ;
   typ.type_desc <- desc
@@ -662,7 +930,11 @@ let set_replacement typ typ' =
 
 (** Backtrack only undoing the [Replace] operations since the last snapshot. *)
 let backtrack_replace =
-  filtered_backtrack ~f:(function Replace _ -> true | _ -> false)
+  filtered_backtrack ~f:(function
+    | Replace _ | Row_replace _ ->
+        true
+    | _ ->
+        false )
 
 (** [set_repr typ typ'] sets the representative of [typ] to be [typ']. *)
 let set_repr typ typ' =
@@ -736,11 +1008,22 @@ let flatten typ =
   let rec flatten typ =
     let typ = repr typ in
     match typ.type_desc with
-    | Treplace typ ->
+    | Treplace typ' ->
         (* Recursion breaking. *)
-        typ
+        ( match typ.type_alternate.type_desc with
+        | Treplace _ ->
+            ()
+        | _ ->
+            (* Inconsistent state. [Envi.Type.copy] should be used to resolve
+               replaced type variables in context.
+            *)
+            assert false ) ;
+        typ'
     | Tvar _ ->
         (* Don't copy variables! *)
+        typ
+    | Trow _ ->
+        (* Don't flatten rows! *)
         typ
     | desc -> (
       match typ.type_alternate.type_desc with
@@ -855,6 +1138,12 @@ let is_arrow typ =
 
 let is_var typ = match (repr typ).type_desc with Tvar _ -> true | _ -> false
 
+let is_replace typ =
+  match (repr typ).type_desc with Treplace _ -> true | _ -> false
+
+let get_replace typ =
+  match (repr typ).type_desc with Treplace typ -> Some typ | _ -> None
+
 let get_rev_arrow_args typ =
   let rec go args typ =
     let typ = repr typ in
@@ -884,7 +1173,7 @@ let get_rev_implicits typ = get_rev_implicits [] typ
 *)
 let contains typ ~in_ =
   let typ = repr typ in
-  let equal = phys_equal typ in
+  let equal in_ = phys_equal typ (repr in_) in
   let rec contains in_ =
     let in_ = repr in_ in
     match in_.type_desc with
@@ -912,6 +1201,12 @@ let contains typ ~in_ =
         assert false
     | Treplace _ ->
         assert false
+    | Trow {row_tags; row_closed= _; row_rest; row_presence_proxy= _} ->
+        Map.exists row_tags ~f:(fun (_, _, args) -> List.exists ~f:equal args)
+        || equal row_rest
+        || Map.exists row_tags ~f:(fun (_, _, args) ->
+               List.exists ~f:contains args )
+        || contains row_rest
   in
   contains in_
 
@@ -976,6 +1271,13 @@ let report_error ppf = function
         kind
         (pp_print_list ~pp_sep:pp_print_newline typ_debug_print)
         typs typ_debug_print typ pp_mode mode
+  | Mk_invalid (kind, typs, typ) ->
+      fprintf ppf
+        "@[<hov>Internal error: Could not make a type %s from \
+         types@;@[<hov2>%a@]@;The type %a was invalid.@]"
+        kind
+        (pp_print_list ~pp_sep:pp_print_newline typ_debug_print_alts)
+        typs typ_debug_print_alts typ
 
 let () =
   Location.register_error_of_exn (function

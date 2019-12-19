@@ -6,6 +6,7 @@ type mapper =
   { type_expr: mapper -> type_expr -> type_expr
   ; type_desc: mapper -> type_desc -> type_desc
   ; variant: mapper -> variant -> variant
+  ; row_tag: mapper -> row_tag -> row_tag
   ; field_decl: mapper -> field_decl -> field_decl
   ; ctor_args: mapper -> ctor_args -> ctor_args
   ; ctor_decl: mapper -> ctor_decl -> ctor_decl
@@ -70,10 +71,23 @@ let type_desc mapper typ =
       Ptyp_opaque (mapper.type_expr mapper typ)
   | Ptyp_alias (typ, name) ->
       Ptyp_alias (mapper.type_expr mapper typ, str mapper name)
+  | Ptyp_row (tags, closed, min_tags) ->
+      Ptyp_row
+        ( List.map ~f:(mapper.row_tag mapper) tags
+        , closed
+        , Option.map ~f:(List.map ~f:(str mapper)) min_tags )
+  | Ptyp_row_subtract (typ, tags) ->
+      Ptyp_row_subtract
+        (mapper.type_expr mapper typ, List.map ~f:(str mapper) tags)
 
 let variant mapper {var_ident; var_params} =
   { var_ident= lid mapper var_ident
   ; var_params= List.map ~f:(mapper.type_expr mapper) var_params }
+
+let row_tag mapper {rtag_ident; rtag_arg; rtag_loc} =
+  { rtag_ident= str mapper rtag_ident
+  ; rtag_arg= List.map ~f:(mapper.type_expr mapper) rtag_arg
+  ; rtag_loc= mapper.location mapper rtag_loc }
 
 let field_decl mapper {fld_ident; fld_type; fld_loc} =
   { fld_loc= mapper.location mapper fld_loc
@@ -138,6 +152,8 @@ let pattern_desc mapper = function
              (lid mapper name, mapper.pattern mapper pat) ))
   | Ppat_ctor (name, arg) ->
       Ppat_ctor (lid mapper name, Option.map ~f:(mapper.pattern mapper) arg)
+  | Ppat_row_ctor (name, args) ->
+      Ppat_row_ctor (str mapper name, List.map ~f:(mapper.pattern mapper) args)
 
 let expression mapper {exp_desc; exp_loc} =
   { exp_loc= mapper.location mapper exp_loc
@@ -188,6 +204,9 @@ let expression_desc mapper = function
         , Option.map ~f:(mapper.expression mapper) default )
   | Pexp_ctor (name, arg) ->
       Pexp_ctor (lid mapper name, Option.map ~f:(mapper.expression mapper) arg)
+  | Pexp_row_ctor (name, args) ->
+      Pexp_row_ctor
+        (str mapper name, List.map ~f:(mapper.expression mapper) args)
   | Pexp_unifiable {expression; name; id} ->
       Pexp_unifiable
         { id
@@ -338,6 +357,7 @@ let default_iterator =
   { type_expr
   ; type_desc
   ; variant
+  ; row_tag
   ; field_decl
   ; ctor_args
   ; ctor_decl

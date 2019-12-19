@@ -1,0 +1,4 @@
+File "tests/row-expression-unexpected-args.meja", line 1, characters 32-40:
+Error: Incompatible types ([<`A | `B | `C > `A] as 'a) and ([>`A('b)] as 'c):
+       Cannot unify ([<`A | `B | `C > `A] as 'a) and ([>`A('b)] as 'c):
+       the constructor `A has different arities.

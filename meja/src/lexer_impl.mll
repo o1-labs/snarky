@@ -98,7 +98,10 @@ rule token = parse
   | ',' { COMMA }
   | '_' { UNDERSCORE }
   | '|' { BAR }
+  | '<' { LT }
+  | '>' { GT }
   | ''' { QUOT }
+  | '`' { TICK }
   | "..." { DOTDOTDOT }
   | ".." { DOTDOT }
   | '.' { DOT }
