@@ -285,8 +285,8 @@ let rec check_type_aux ~loc typ ctyp env =
             match (data, row_closed1, row_extra1, row_closed2, row_extra2) with
             | `Left (path, pres, args), _, _, row_closed, row_extra
             | `Right (path, pres, args), row_closed, row_extra, _, _ ->
-                let pres = rp_strip_subtract pres in
-                ( match (pres.rp_desc, row_closed) with
+                let pres' = rp_strip_subtract pres in
+                ( match (pres'.rp_desc, row_closed) with
                 | (RpRef _ | RpReplace _ | RpSubtract _), _ ->
                     assert false
                 | RpPresent, Closed ->
@@ -294,7 +294,7 @@ let rec check_type_aux ~loc typ ctyp env =
                       (Error
                          (loc, env, Missing_row_constructor (path, typ, ctyp)))
                 | RpMaybe, Closed ->
-                    set_rp_desc pres RpAbsent
+                    set_rp_desc pres' RpAbsent
                 | (RpPresent | RpMaybe), Open ->
                     is_empty := false
                 | (RpAbsent | RpAny), _ ->
@@ -306,6 +306,8 @@ let rec check_type_aux ~loc typ ctyp env =
               ->
                 let pres1 = rp_repr pres1 in
                 let pres2 = rp_repr pres2 in
+                let pres1' = pres1 in
+                let pres2' = pres2 in
                 let pres1, pres2 =
                   match (pres1.rp_desc, pres2.rp_desc) with
                   | RpSubtract pres1, RpSubtract pres2 ->
@@ -323,10 +325,6 @@ let rec check_type_aux ~loc typ ctyp env =
                            ( loc
                            , env
                            , Missing_row_constructor (path1, typ, ctyp) ))
-                  | RpSubtract _, RpMaybe ->
-                      set_rp_desc pres2 RpAbsent ; (pres1, pres2)
-                  | RpMaybe, RpSubtract _ ->
-                      set_rp_desc pres1 RpAbsent ; (pres1, pres2)
                   | RpSubtract pres1, desc ->
                       let pres2' = mk_rp desc in
                       set_rp_desc pres2 (RpSubtract pres2') ;
@@ -394,7 +392,15 @@ let rec check_type_aux ~loc typ ctyp env =
                            , env
                            , Missing_row_constructor (path2, typ, ctyp) ))
                 in
-                let pres = mk_rp pres_desc in
+                let pres =
+                  match (pres1'.rp_desc, pres2'.rp_desc) with
+                  | RpSubtract _, RpSubtract _ ->
+                      mk_rp (RpSubtract (mk_rp pres_desc))
+                  | RpSubtract _, _ | _, RpSubtract _ ->
+                      assert false
+                  | _ ->
+                      mk_rp pres_desc
+                in
                 set_rp_desc pres1 (RpRef pres) ;
                 set_rp_desc pres2 (RpRef pres) ;
                 ( match
@@ -419,24 +425,35 @@ let rec check_type_aux ~loc typ ctyp env =
         let rescope_rest_error exn =
           match exn with
           | Error (loc, env, Cannot_unify (typ, ctyp)) ->
-              (*Format.eprintf "Cannot unify:@.%a@.%a@." typ_debug_print_alts typ
-                typ_debug_print_alts typ ;*)
+              (*Format.eprintf "Cannot unify:@.%a@.%a@.@." typ_debug_print_alts
+                typ typ_debug_print_alts ctyp;*)
               Error (loc, env, Cannot_unify (typ, ctyp))
           | Error (loc, env, Recursive_variable recvar)
             when phys_equal recvar row_rest1 ->
+              (*Format.eprintf "Recursive variable:@.%a@." typ_debug_print
+                recvar;*)
               Error (loc, env, Cannot_unify (typ, ctyp))
           | Error (loc, env, Recursive_variable recvar)
             when phys_equal recvar row_rest2 ->
+              (*Format.eprintf "Recursive variable:@.%a@." typ_debug_print
+                recvar;*)
               Error (loc, env, Cannot_unify (typ, ctyp))
           | Error (loc, env, Recursive_variable recvar)
             when phys_equal recvar row_rest ->
+              (*Format.eprintf "Recursive variable:@.%a@." typ_debug_print
+                recvar;*)
               Error (loc, env, Cannot_unify (typ, ctyp))
           | _ ->
               exn
         in
         let expand_row row_rest1 row_extra =
+          Format.eprintf "expand_row:@.%a@." typ_debug_print row_rest1 ;
           match row_rest1.type_desc with
           | Tvar _ when Map.is_empty row_extra ->
+              ( try check_type_aux row_rest1 row_rest env
+                with exn ->
+                  (* Return a type error that will make sense to the user. *)
+                  raise (rescope_rest_error exn) ) ;
               row_rest1
           | Tvar _ | Tref _ ->
               let new_row =
@@ -460,9 +477,9 @@ let rec check_type_aux ~loc typ ctyp env =
               | Tref _ -> (
                 try
                   (* This type could not have been a reference at definition
-                   time, so it must be equal to the other [row_rest], or must
-                   contain itself.
-                *)
+                     time, so it must be equal to the other [row_rest], or must
+                     contain itself.
+                  *)
                   check_type_aux row_rest1 new_row env
                 with exn ->
                   (* Return a type error that will make sense to the user. *)
