@@ -34,10 +34,46 @@ let mk_rp rp_desc = incr row_id ; {rp_desc; rp_id= !row_id}
 *)
 let rec repr typ = match typ.type_desc with Tref typ -> repr typ | _ -> typ
 
+let rec rp_repr pres =
+  match pres.rp_desc with RpRef pres -> rp_repr pres | _ -> pres
+
+let rec rp_strip_subtract pres =
+  match rp_repr pres with
+  | {rp_desc= RpSubtract pres; _} ->
+      rp_strip_subtract pres
+  | pres ->
+      pres
+
+let set_rp_desc_fwd = ref (fun _ _ -> assert false)
+
 let rec row_repr_aux tags
     {row_tags; row_rest; row_closed; row_presence_proxy= _} =
   let tags =
-    Map.merge_skewed tags row_tags ~combine:(fun ~key:_ old _new -> old)
+    Map.merge_skewed tags row_tags
+      ~combine:(fun ~key:_
+               (old_path, old_pres, old_args)
+               (new_path, new_pres, new_args)
+               ->
+        let old_pres = rp_repr old_pres in
+        let new_pres = rp_repr new_pres in
+        let subst_any old_pres' =
+          !set_rp_desc_fwd old_pres' (RpRef new_pres) ;
+          (new_path, old_pres, new_args)
+        in
+        match old_pres.rp_desc with
+        | RpSubtract old -> (
+            let old' = rp_strip_subtract old in
+            (* Flatten subtracts. *)
+            if not (phys_equal old old') then !set_rp_desc_fwd old (RpRef old') ;
+            match old'.rp_desc with
+            | RpAny ->
+                subst_any old'
+            | _ ->
+                (old_path, old_pres, old_args) )
+        | RpAny ->
+            subst_any old_pres
+        | _ ->
+            (old_path, old_pres, old_args) )
   in
   row_repr_typ_aux (tags, row_closed) row_rest
 
@@ -108,16 +144,6 @@ let is_invalid {type_id; _} = type_id <= 0
 
 (** Judge equality based on type id. *)
 let equal {type_id= id1; _} {type_id= id2; _} = Int.equal id1 id2
-
-let rec rp_repr pres =
-  match pres.rp_desc with RpRef pres -> rp_repr pres | _ -> pres
-
-let rec rp_strip_subtract pres =
-  match rp_repr pres with
-  | {rp_desc= RpSubtract pres; _} ->
-      rp_strip_subtract pres
-  | pres ->
-      pres
 
 let check_valid ~pos ~error_info typ =
   if is_invalid typ then
@@ -882,6 +908,8 @@ let unify_depths typ1 typ2 =
 let set_rp_desc pres desc =
   Snapshot.add_to_history (Row_presence (pres, pres.rp_desc)) ;
   pres.rp_desc <- desc
+
+let () = set_rp_desc_fwd := set_rp_desc
 
 let set_desc typ desc =
   Snapshot.add_to_history (Desc (typ, typ.type_desc)) ;
