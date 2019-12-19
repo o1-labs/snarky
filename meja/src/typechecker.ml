@@ -447,7 +447,6 @@ let rec check_type_aux ~loc typ ctyp env =
               exn
         in
         let expand_row row_rest1 row_extra =
-          Format.eprintf "expand_row:@.%a@." typ_debug_print row_rest1 ;
           match row_rest1.type_desc with
           | Tvar _ when Map.is_empty row_extra ->
               ( try check_type_aux row_rest1 row_rest env
@@ -471,9 +470,7 @@ let rec check_type_aux ~loc typ ctyp env =
               ( match row_rest1.type_desc with
               | Tvar _ ->
                   choose_variable_name row_rest1 row_rest ;
-                  add_instance
-                    ~unify:(fun typ1 typ2 -> check_type_aux typ1 typ2 env)
-                    row_rest1 new_row
+                  check_type_aux row_rest1 new_row env
               | Tref _ -> (
                 try
                   (* This type could not have been a reference at definition
