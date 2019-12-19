@@ -53,10 +53,10 @@ let rec case_of_type_decl env typ decl =
   assert (!unifies env typ (get_mode typ.type_mode decl.tdec_ret)) ;
   let ret =
     match decl.Type0.tdec_desc with
-    | TAlias {type_desc= Ttuple typs; _} ->
-        Pcase_tuple (List.map typs ~f:(fun typ -> Pcase_type typ))
-    | TAbstract | TAlias _ ->
-        failwith "Could not generate a pattern case for type."
+    | TAlias typ ->
+        case_of_type env typ
+    | TAbstract ->
+        Pcase_type typ
     | TRecord _fields ->
         (* NOTE: We avoid expanding all of the fields here, so that we don't
                  contaminate the unmatched examples with fields that aren't
@@ -117,19 +117,57 @@ let rec case_of_type_decl env typ decl =
   in
   backtrack snap ; ret
 
-let case_of_type env typ =
+and case_of_type env typ =
   let typ = Type1.repr typ in
   match
     ( Envi.TypeDecl.find_unaliased_of_type typ env
         ~loc:(Ast_types.loc_of_prim __POS__)
     , typ.type_desc )
   with
+  | _, Ttuple typs ->
+      Pcase_tuple (List.map typs ~f:(fun typ -> Pcase_type typ))
+  | _, Trow row -> (
+      let row_tags, _row_rest, row_closed = Type1.row_repr row in
+      match row_closed with
+      | Open ->
+          Pcase_open
+      | Closed ->
+          let ctors =
+            Map.fold_right row_tags ~init:[]
+              ~f:(fun ~key ~data:(_ident, pres, args) cases ->
+                match (Type1.rp_repr pres).rp_desc with
+                | RpRef _ | RpReplace _ ->
+                    assert false
+                | RpAbsent | RpSubtract _ | RpAny ->
+                    cases
+                | RpPresent | RpMaybe -> (
+                  match args with
+                  | [] ->
+                      Pcase_ctor (key, None) :: cases
+                  | [typ] ->
+                      Pcase_ctor (key, Some (Pcase_type typ)) :: cases
+                  | typs ->
+                      Pcase_ctor
+                        ( key
+                        , Some
+                            (Pcase_tuple
+                               (List.map ~f:(fun typ -> Pcase_type typ) typs))
+                        )
+                      :: cases ) )
+          in
+          Pcase_or ctors )
   | Some (decl, typ), _ ->
       case_of_type_decl env typ decl
-  | None, Ttuple typs ->
-      Pcase_tuple (List.map typs ~f:(fun typ -> Pcase_type typ))
   | None, _ ->
-      failwith "Could not find the type to generate a case."
+      Pcase_type typ
+
+let expand_case_of_type env typ =
+  match case_of_type env typ with
+  | Pcase_type typ ->
+      Format.eprintf "%a@." Type1.typ_debug_print typ ;
+      failwith "Could not expand type."
+  | case ->
+      case
 
 let rec intersect_case env case1 case2 =
   match (case1, case2) with
@@ -238,7 +276,7 @@ let rec subtract_case env case sub_case =
       (* Don't explode int. *)
       case
   | Pcase_type typ, _ ->
-      subtract_case env (case_of_type env typ) sub_case
+      subtract_case env (expand_case_of_type env typ) sub_case
   | Pcase_tuple cases, Pcase_tuple sub_cases ->
       let cases =
         List.map2_exn cases sub_cases ~f:(fun case sub_case ->
@@ -363,6 +401,13 @@ let rec case_of_pattern env pat =
           ~loc:(Ast_types.loc_of_prim __POS__)
       in
       Pcase_ctor (name, Option.map ~f:(case_of_pattern env) arg)
+  | Tpat_row_ctor (ident, []) ->
+      Pcase_ctor (ident.txt, None)
+  | Tpat_row_ctor (ident, [pat]) ->
+      Pcase_ctor (ident.txt, Some (case_of_pattern env pat))
+  | Tpat_row_ctor (ident, args) ->
+      Pcase_ctor
+        (ident.txt, Some (Pcase_tuple (List.map ~f:(case_of_pattern env) args)))
 
 (** Returns [Some pcase] for the pattern case that is not matched, if one
     exists, or [None] otherwise.
@@ -385,6 +430,10 @@ let get_unmatched_cases ~count env typ pats =
       | (candidate, sub_cases) :: candidates -> (
         match sub_cases with
         | [] ->
+            let candidates =
+              List.map candidates ~f:(fun (candidate', sub_cases) ->
+                  (candidate', candidate :: sub_cases) )
+            in
             candidate :: go (count - 1) candidates
         | sub_case :: sub_cases -> (
           match subtract_case env candidate sub_case with
