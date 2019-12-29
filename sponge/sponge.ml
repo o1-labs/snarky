@@ -9,6 +9,10 @@ module Params = struct
   let mnt4_298 = Constants.params_Mnt4_298
 
   let mnt4_753 = Constants.params_Mnt4_753
+
+  let bn382_p = Constants.params_Bn382_p
+
+  let bn382_q = Constants.params_Bn382_q
 end
 
 module State = Array
