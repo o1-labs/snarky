@@ -1,0 +1,3 @@
+File "tests/row-pattern-wrong-args.meja", line 4, characters 15-16:
+Error: Incompatible types bool and int:
+       Cannot unify bool and int

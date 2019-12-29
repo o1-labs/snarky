@@ -45,6 +45,54 @@ module Type0 = struct
         assert false
     | Treplace _ ->
         assert false
+    | Trow row -> (
+        let row_tags, _row_rest, row_closed = Type1.row_repr row in
+        let needs_lower_bound = ref false in
+        let tags, min_tags, subtract_tags =
+          Map.fold_right row_tags ~init:([], [], [])
+            ~f:(fun ~key
+               ~data:(_path, pres, args)
+               (tags, min_tags, subtract_tags)
+               ->
+              let row () =
+                assert (Ident.is_row key) ;
+                { Parsetypes.rtag_ident= Loc.mk ?loc (Ident.name key)
+                ; rtag_arg= List.map ~f:(type_expr ?loc) args
+                ; rtag_loc= Option.value ~default:Location.none loc }
+              in
+              let pres = Type1.rp_repr pres in
+              let pres' = Type1.rp_strip_subtract pres in
+              let subtract_tags =
+                match (pres.rp_desc, pres'.rp_desc) with
+                | RpSubtract _, RpAbsent ->
+                    subtract_tags
+                | RpSubtract _, _ ->
+                    Loc.mk ?loc (Ident.name key) :: subtract_tags
+                | _ ->
+                    subtract_tags
+              in
+              match pres'.rp_desc with
+              | RpAbsent | RpAny ->
+                  (tags, min_tags, subtract_tags)
+              | RpPresent ->
+                  let row = row () in
+                  (row :: tags, row.rtag_ident :: min_tags, subtract_tags)
+              | RpMaybe ->
+                  needs_lower_bound := true ;
+                  (row () :: tags, min_tags, subtract_tags)
+              | RpRef _ | RpReplace _ | RpSubtract _ ->
+                  assert false )
+        in
+        let typ =
+          if !needs_lower_bound then
+            Type.row ?loc tags row_closed (Some min_tags)
+          else Type.row ?loc tags row_closed None
+        in
+        match subtract_tags with
+        | [] ->
+            typ
+        | _ ->
+            Type.row_subtract ?loc typ subtract_tags )
 
   and type_expr ?loc typ = type_desc ~mode:typ.type_mode ?loc typ.type_desc
 
@@ -105,6 +153,14 @@ let rec type_desc = function
       Ptyp_conv (type_expr typ1, type_expr typ2)
   | Ttyp_opaque typ ->
       Ptyp_opaque (type_expr typ)
+  | Ttyp_row (tags, closed, min_tags) ->
+      Ptyp_row
+        ( List.map ~f:row_tags tags
+        , closed
+        , Option.map ~f:(List.map ~f:(map_loc ~f:Ident.name)) min_tags )
+  | Ttyp_row_subtract (typ, tags) ->
+      Ptyp_row_subtract
+        (type_expr typ, List.map ~f:(map_loc ~f:Ident.name) tags)
 
 and type_expr {type_desc= typ; type_loc; type_type= _} =
   {type_desc= type_desc typ; type_loc}
@@ -112,6 +168,11 @@ and type_expr {type_desc= typ; type_loc; type_type= _} =
 and variant {Typedast.var_ident; var_params} =
   { Parsetypes.var_ident= map_loc ~f:longident_of_path var_ident
   ; var_params= List.map ~f:type_expr var_params }
+
+and row_tags {rtag_ident; rtag_arg; rtag_loc} =
+  { Parsetypes.rtag_ident= map_loc ~f:Ident.name rtag_ident
+  ; rtag_arg= List.map ~f:type_expr rtag_arg
+  ; rtag_loc }
 
 let field_decl {Typedast.fld_ident; fld_type; fld_loc; fld_fld= _} =
   { Parsetypes.fld_ident= map_loc ~f:Ident.name fld_ident
@@ -171,6 +232,8 @@ let rec pattern_desc = function
              (map_loc ~f:longident_of_path label, pattern p) ))
   | Tpat_ctor (name, arg) ->
       Ppat_ctor (map_loc ~f:longident_of_path name, Option.map ~f:pattern arg)
+  | Tpat_row_ctor (name, args) ->
+      Ppat_row_ctor (map_loc ~f:Ident.name name, List.map ~f:pattern args)
 
 and pattern p =
   {Parsetypes.pat_desc= pattern_desc p.Typedast.pat_desc; pat_loc= p.pat_loc}
@@ -227,6 +290,8 @@ let rec expression_desc = function
   | Texp_ctor (path, arg) ->
       Pexp_ctor
         (map_loc ~f:longident_of_path path, Option.map ~f:expression arg)
+  | Texp_row_ctor (ident, arg) ->
+      Pexp_row_ctor (map_loc ~f:Ident.name ident, List.map ~f:expression arg)
   | Texp_unifiable {expression= e; name; id} ->
       Pexp_unifiable
         { expression= Option.map ~f:expression e

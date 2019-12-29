@@ -1,0 +1,5 @@
+let f = fun (x : [`A], y : [`B], b) => {
+  switch (x, y, b) {
+    | (x, _, true) | (_, x, false) => x
+  };
+};

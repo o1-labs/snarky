@@ -36,6 +36,33 @@ let rec type_desc ?(bracket = false) fmt = function
       if bracket then fprintf fmt ")"
   | Ptyp_opaque typ ->
       fprintf fmt "@[<hv2>opaque(@,%a@,)@]" type_expr typ
+  | Ptyp_row (tags, closed, min_tags) -> (
+      fprintf fmt "[@[<hv2>" ;
+      ( match (closed, min_tags) with
+      | Closed, None ->
+          ()
+      | Closed, Some _ ->
+          pp_print_string fmt "< "
+      | Open, None ->
+          pp_print_string fmt "> "
+      | Open, Some _ ->
+          (* This is a nonsense: we already have a lower bound in [tags], so
+             [min_tags] ought to be absent.
+          *)
+          assert false ) ;
+      pp_print_list ~pp_sep:bar_sep row_tag fmt tags ;
+      match min_tags with
+      | None ->
+          ()
+      | Some min_tags ->
+          let print_tag fmt tag = fprintf fmt "`%a" pp_name tag.Location.txt in
+          fprintf fmt "@ > " ;
+          pp_print_list ~pp_sep:bar_sep print_tag fmt min_tags )
+  | Ptyp_row_subtract (typ, tags) ->
+      let print_tag fmt tag = fprintf fmt "`%a" pp_name tag.Location.txt in
+      fprintf fmt "[@[<hv2>%a - %a@]]" type_expr typ
+        (pp_print_list ~pp_sep:bar_sep print_tag)
+        tags
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
@@ -51,6 +78,13 @@ and variant fmt v =
   | _ ->
       fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple
         v.var_params
+
+and row_tag fmt {rtag_ident; rtag_arg; rtag_loc= _} =
+  match rtag_arg with
+  | [] ->
+      fprintf fmt "`%a" pp_name rtag_ident.txt
+  | _ ->
+      fprintf fmt "@[<hv2>`%a%a@]" pp_name rtag_ident.txt tuple rtag_arg
 
 let field_decl fmt decl =
   fprintf fmt "%s:@ @[<hv>%a@]" decl.fld_ident.txt type_expr decl.fld_type
@@ -120,7 +154,13 @@ let rec pattern_desc fmt = function
   | Ppat_ctor (path, Some ({pat_desc= Ppat_tuple _; _} as arg)) ->
       fprintf fmt "%a@ %a" Longident.pp path.txt pattern arg
   | Ppat_ctor (path, Some arg) ->
-      fprintf fmt "%a@ (@[<hv1>@,%a@,@])" Longident.pp path.txt pattern arg
+      fprintf fmt "%a%a" Longident.pp path.txt pattern arg
+  | Ppat_row_ctor (name, []) ->
+      fprintf fmt "`%a" pp_name name.txt
+  | Ppat_row_ctor (name, args) ->
+      fprintf fmt "`%a(@[<hv1>@,%a@,@]" pp_name name.txt
+        (pp_print_list ~pp_sep:comma_sep pattern)
+        args
 
 and pattern_desc_bracket fmt pat =
   match pat with
@@ -228,7 +268,13 @@ let rec expression_desc fmt = function
   | Pexp_ctor (path, None) ->
       Longident.pp fmt path.txt
   | Pexp_ctor (path, Some args) ->
-      fprintf fmt "%a(@[<hv2>%a@,@])" Longident.pp path.txt expression args
+      fprintf fmt "%a%a" Longident.pp path.txt expression args
+  | Pexp_row_ctor (ident, []) ->
+      fprintf fmt "`%a" pp_name ident.txt
+  | Pexp_row_ctor (ident, args) ->
+      fprintf fmt "`%a(@[<hv1>%a@,@])" pp_name ident.txt
+        (pp_print_list ~pp_sep:comma_sep expression)
+        args
   | Pexp_unifiable {expression= Some e; _} ->
       expression fmt e
   | Pexp_unifiable {expression= None; name; _} ->

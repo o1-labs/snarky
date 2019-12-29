@@ -1,0 +1,1 @@
+let x : [< `A | `B | `C > `A] = `A(bool);

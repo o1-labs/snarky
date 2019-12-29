@@ -1,0 +1,49 @@
+let subtract_fixed = fun (x : [[`A | `B | `C] - `A | `B]) => {
+  switch (x) {
+    | `C => `C
+  };
+};
+
+let subtract_fixed_test = fun () => { subtract_fixed(`C); };
+
+let subtract_closed = fun (x : [[< `A | `B | `C > `A | `B] - `A]) => {
+  switch (x) {
+    | `B => `B
+    | `C => `C
+  };
+};
+
+let subtract_closed_test = fun () => {
+  (subtract_closed(`B), subtract_closed(`C));
+};
+
+let subtract_open = fun (x : [[> `A] - `A]) => {
+  switch (x) {
+    | x => x
+  };
+};
+
+let subtract_open_test = (subtract_open : [>] -> [>]);
+
+let subtract_open_test2 = (subtract_open : [[>] - `A] -> [[>] - `A]);
+
+let subtract_open_test3 = fun () => {
+  (subtract_open(`B), subtract_open(`C));
+};
+
+let refine = fun (x : 'a,
+                  f_A : 'a -> ['a - `A],
+                  f_B : 'b -> ['b - `B],
+                  f_C : 'c -> ['c - `C]) => {
+  f_C(f_B(f_A(x)));
+};
+
+let refine_test = (refine : 'a -> _ -> _ -> _ -> ['a - `A | `B | `C]);
+
+let refine_test2 = fun (x : [> `A | `B | `C], f, g, h) => {
+  refine(x, f, g, h);
+};
+
+let refine_test3 = fun (x : [`B | `C], f, g, h) => {
+  refine(x, f, g, h);
+};

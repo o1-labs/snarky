@@ -13,8 +13,21 @@ and type_desc =
   | Ptyp_prover of type_expr
   | Ptyp_conv of type_expr * type_expr
   | Ptyp_opaque of type_expr
+  | Ptyp_row of
+      row_tag list
+      * (* [Closed] if the row_field list is an upper bound,
+           [Open] if the row_field list is a lower bound.
+        *)
+        closed_flag
+      * (* The lower bound of the row, if it differs from the fields in the
+           row_field list.
+        *)
+      str list option
+  | Ptyp_row_subtract of type_expr * str list
 
 and variant = {var_ident: lid; var_params: type_expr list}
+
+and row_tag = {rtag_ident: str; rtag_arg: type_expr list; rtag_loc: Location.t}
 
 type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
 
@@ -56,6 +69,7 @@ and pattern_desc =
   | Ppat_int of int
   | Ppat_record of (lid * pattern) list
   | Ppat_ctor of lid * pattern option
+  | Ppat_row_ctor of str * pattern list
 
 type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 
@@ -74,6 +88,7 @@ and expression_desc =
   | Pexp_field of expression * lid
   | Pexp_record of (lid * expression) list * expression option
   | Pexp_ctor of lid * expression option
+  | Pexp_row_ctor of str * expression list
   | Pexp_unifiable of
       { mutable expression: expression option
       ; name: str

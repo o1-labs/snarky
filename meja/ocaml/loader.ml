@@ -24,9 +24,7 @@ let load_directory env dirname =
       match Filename.split_extension file with
       | _, Some ("cmi" | "cmti") ->
           let filename = Filename.concat dirname file in
-          let module_name =
-            Ident.create ~mode:Checked (modname_of_filename file)
-          in
+          let module_name = Ident.create_global (modname_of_filename file) in
           Envi.register_external_module module_name (Envi.Deferred filename)
             env
       | _ ->
