@@ -58,6 +58,8 @@ let type_desc iter = function
       iter.type_expr iter typ1 ; iter.type_expr iter typ2
   | Ptyp_opaque typ ->
       iter.type_expr iter typ
+  | Ptyp_alias (typ, name) ->
+      str iter name ; iter.type_expr iter typ
   | Ptyp_row (tags, _closed, min_tags) ->
       Option.iter ~f:(List.iter ~f:(str iter)) min_tags ;
       List.iter ~f:(iter.row_tag iter) tags

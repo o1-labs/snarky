@@ -153,6 +153,8 @@ let rec type_desc = function
       Ptyp_conv (type_expr typ1, type_expr typ2)
   | Ttyp_opaque typ ->
       Ptyp_opaque (type_expr typ)
+  | Ttyp_alias (typ, name) ->
+      Ptyp_alias (type_expr typ, name)
   | Ttyp_row (tags, closed, min_tags) ->
       Ptyp_row
         ( List.map ~f:row_tags tags

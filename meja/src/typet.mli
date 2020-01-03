@@ -1,5 +1,5 @@
 type error =
-  | Unbound_type_var of Parsetypes.type_expr
+  | Unbound_type_var of string
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
