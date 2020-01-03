@@ -88,6 +88,8 @@ let type_desc mapper typ =
       Ttyp_conv (mapper.type_expr mapper typ1, mapper.type_expr mapper typ2)
   | Ttyp_opaque typ ->
       Ttyp_opaque (mapper.type_expr mapper typ)
+  | Ttyp_alias (typ, name) ->
+      Ttyp_alias (mapper.type_expr mapper typ, str mapper name)
   | Ttyp_row (tags, closed, min_tags) ->
       Ttyp_row
         ( List.map ~f:(mapper.row_tag mapper) tags

@@ -18,6 +18,7 @@ and type_desc =
   | Ttyp_prover of type_expr
   | Ttyp_conv of type_expr * type_expr
   | Ttyp_opaque of type_expr
+  | Ttyp_alias of type_expr * str
   | Ttyp_row of
       row_tag list
       * (* [Closed] if the row_field list is an upper bound,
