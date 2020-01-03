@@ -3,26 +3,26 @@ module A = {
   let y = 20;
 
   Prover {
-    let x = true;
-    let y = false;
+    let a = true;
+    let b = false;
   };
 };
 
 let z = A.x + A.y;
 
 Prover {
-  let z = A.x && A.y;
+  let z = A.a && A.b;
 };
 
 let z : opaque(int) = {
   let x = A.x;
   let y = A.y;
   Prover {
-    if (A.x && A.y) { x; } else { y; };
+    if (A.a && A.b) { x; } else { y; };
   };
 };
 
-let z : boolean = Prover {A.x && A.y;};
+let z : boolean = Prover {A.a && A.b;};
 
 type t = {a: field, b: boolean};
 

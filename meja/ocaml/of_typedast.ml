@@ -13,11 +13,11 @@ end
 open Ast_helper
 open Meja_lib.Typedast
 
-let of_ident = Meja_lib.Ident.name
+let of_ident = Meja_lib.Ident.ocaml_name
 
 let of_ident_loc = map_loc ~f:of_ident
 
-let of_path = Meja_lib.Path.to_longident
+let of_path = Meja_lib.Path.to_ocaml_longident
 
 let of_path_loc = map_loc ~f:of_path
 

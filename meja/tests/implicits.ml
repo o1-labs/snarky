@@ -25,7 +25,7 @@ let h __implicit17__ __implicit9__ __implicit10__ (x : int) (y : bool)
   , g __implicit9__ __implicit10__ __implicit17__ z z )
 
 include struct
-  type nonrec ('a, 'b) conv = {conv: 'a -> 'b}
+  type nonrec ('a, 'b) conv_var = {conv: 'a -> 'b}
 
   and ('a, 'b) conv = {conv: 'a -> 'b}
 

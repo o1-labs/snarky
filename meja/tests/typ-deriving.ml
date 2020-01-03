@@ -1,12 +1,12 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-type nonrec t = {a: bool; b: field}
+type nonrec t = {a: bool; b: field_var}
 
 type nonrec 'a u = {a1: 'a; b1: bool}
 
 include struct
-  type nonrec ('a, 'b) v = {a2: 'a; b2: 'b}
+  type nonrec ('a, 'b) v_var = {a2: 'a; b2: 'b}
 
   and ('a, 'b) v = {a2: 'a; b2: 'b}
 

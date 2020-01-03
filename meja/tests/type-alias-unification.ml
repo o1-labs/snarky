@@ -3,7 +3,7 @@ open Impl
 
 module Alias_alias = struct
   include struct
-    type nonrec ('a, 'b) u = 'a -> 'a
+    type nonrec ('a, 'b) u_var = 'a -> 'a
 
     and ('a, 'b) u = 'a -> 'a
 
@@ -11,20 +11,20 @@ module Alias_alias = struct
   end
 
   include struct
-    type nonrec ('a, 'b) v = ('a, 'a) u
+    type nonrec ('a, 'b) v_var = ('a, 'a) u_var
 
     and ('a, 'b) v = ('a, 'a) u
 
     let v_typ x___4 x___3 x___5 = u_typ x___4 x___5
   end
 
-  let f (x : (int, bool) u) : (int, int) u = x
+  let f (x : (int, bool) u_var) : (int, int) u_var = x
 
-  let g (x : (int, int) v) : (int, bool) v = x
+  let g (x : (int, int) v_var) : (int, bool) v_var = x
 
-  let h (x : (int, bool) v) : (int, int) u = x
+  let h (x : (int, bool) v_var) : (int, int) u_var = x
 
-  let i (x : (bool, bool) u) : (bool, unit) v = x
+  let i (x : (bool, bool) u_var) : (bool, unit) v_var = x
 end
 
 module Alias_opaque = struct
@@ -41,7 +41,7 @@ end
 
 module Alias_record = struct
   include struct
-    type nonrec ('a, 'b) u = {a: 'a; b: 'b}
+    type nonrec ('a, 'b) u_var = {a: 'a; b: 'b}
 
     and ('a, 'b) u = {a: 'a; b: 'b}
 
@@ -71,18 +71,18 @@ module Alias_record = struct
   end
 
   include struct
-    type nonrec ('a, 'b) v = ('a, 'a) u
+    type nonrec ('a, 'b) v_var = ('a, 'a) u_var
 
     and ('a, 'b) v = ('a, 'a) u
 
     let v_typ x___13 x___12 = u_typ x___13 x___13
   end
 
-  let f (x : (int, int) v) : (int, bool) v = x
+  let f (x : (int, int) v_var) : (int, bool) v_var = x
 
-  let g (x : (int, bool) v) : (int, int) u = x
+  let g (x : (int, bool) v_var) : (int, int) u_var = x
 
-  let h (x : (bool, bool) u) : (bool, unit) v = x
+  let h (x : (bool, bool) u_var) : (bool, unit) v_var = x
 end
 
 module Alias_variant = struct
