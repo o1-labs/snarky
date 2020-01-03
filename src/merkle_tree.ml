@@ -453,11 +453,57 @@ struct
     let%map new_root = implied_root next_entry_hash addr0 prev_path in
     (new_root, prev)
 
+  (*without computing the  intermediate root*)
+  let%snarkydef_ pair_of_fetch_and_update_req ~(depth : int) root
+      (addr1, addr2) ~f : (Hash.var, 's) Checked.t =
+    let open Let_syntax in
+    let update_tree addr elt =
+      perform
+        (let open As_prover in
+        let open Let_syntax in
+        let%map addr = read (Address.typ ~depth) addr
+        and next = read Elt.typ elt in
+        Set (addr, next))
+    in
+    let%bind prev1, prev_path1 =
+      request_witness
+        Typ.(Elt.typ * Path.typ ~depth)
+        As_prover.(
+          read (Address.typ ~depth) addr1 >>| fun addr -> Get_element addr)
+    in
+    let%bind prev2, _prev_path2 =
+      request_witness
+        Typ.(Elt.typ * Path.typ ~depth)
+        As_prover.(
+          read (Address.typ ~depth) addr2 >>| fun addr -> Get_element addr)
+    in
+    let%bind () =
+      with_label __LOC__
+        (let%bind prev_entry_hash = Elt.hash prev1 in
+         implied_root prev_entry_hash addr1 prev_path1
+         >>= Hash.assert_equal root)
+    in
+    let%bind next1, next2 = with_label __LOC__ (f prev1 prev2) in
+    let%bind () = update_tree addr1 next1 in
+    let%bind () = update_tree addr2 next2 in
+    let%bind next_elt_hash = Elt.hash next2 in
+    (*TODO: generate the path while setting the new value*)
+    let%bind new_path2 =
+      request_witness (Path.typ ~depth)
+        As_prover.(
+          read (Address.typ ~depth) addr2 >>| fun addr -> Get_path addr)
+    in
+    let%map new_root = implied_root next_elt_hash addr2 new_path2 in
+    new_root
+
   (* addr0 should have least significant bit first *)
   let%snarkydef_ modify_req ~(depth : int) root addr0 ~f :
       (Hash.var, 's) Checked.t =
     let open Let_syntax in
     fetch_and_update_req ~depth root addr0 ~f >>| fst
+
+  let%snarkydef_ pair_of_modify_reqs ~(depth : int) root addrs ~f =
+    pair_of_fetch_and_update_req ~depth root addrs ~f
 
   (* addr0 should have least significant bit first *)
   let%snarkydef_ get_req ~(depth : int) root addr0 : (Elt.var, 's) Checked.t =

@@ -113,6 +113,14 @@ module Checked
     -> f:(Elt.var -> (Elt.var, 's) Checked.t)
     -> (Hash.var, 's) Checked.t
 
+  (* performs two modify requests without generating the intermediate root*)
+  val pair_of_modify_reqs :
+       depth:int
+    -> Hash.var
+    -> Address.var * Address.var
+    -> f:(Elt.var -> Elt.var -> (Elt.var * Elt.var, 's) Checked.t)
+    -> (Hash.var, 's) Checked.t
+
   (* This function does the modification and also returns the old value *)
   val fetch_and_update_req :
        depth:int
