@@ -178,7 +178,7 @@ module Scope = struct
              which should be allowed.
           *)
           if not (Ident.equal ident ident') then
-            let generated = Option.is_some (Ident.ocaml_name_ref ident) in
+            let generated = Option.is_some (Ident.ocaml_name_ref ident') in
             raise (Error (loc, Duplicate_name ("type", generated, name)))
       | None ->
           shadow :=
