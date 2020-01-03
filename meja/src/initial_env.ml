@@ -61,7 +61,7 @@ open TypeDecls
     the environment [env] each time.
 *)
 
-let {Typedast.tdec_tdec= int; _}, env = import int env
+let {Typedast.tdec_tdec= int; tdec_ident= int_ident; _}, env = import int env
 
 let {Typedast.tdec_tdec= unit; _}, env = import unit env
 
