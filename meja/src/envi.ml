@@ -1648,9 +1648,10 @@ let find_name ~mode (lid : lid) env =
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))
 
-let get_of_constructor =
-  get_of_path ~kind:"constructor" ~get_name:Scope.get_ctor
-    ~find_name:Scope.find_ctor
+let get_of_constructor ~loc path =
+  get_of_path ~loc ~kind:"constructor" ~get_name:Scope.get_ctor
+    ~find_name:(Scope.find_ctor ~mode:(Path.mode path))
+    path
 
 let find_conversion ~unifies typ env =
   let typ_vars = Type1.type_vars typ in

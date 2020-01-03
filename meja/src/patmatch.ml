@@ -377,7 +377,8 @@ let rec case_of_pattern env pat =
               match path.Location.txt with
               | Path.Pident ident ->
                   Ident.name ident
-              | Pdot (_path, _mode, name) ->
+              | Pdot (_path, _mode, name) | Pocamldot (_path, _mode, name, _)
+                ->
                   name
               | Papply _ ->
                   assert false
