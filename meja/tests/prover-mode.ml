@@ -26,17 +26,17 @@ let (z : int Snarky.As_prover.Ref.t) =
   Snarky.exists typ
     ~compute:
       (let open As_prover in
-      fun () -> if A.x && A.y then x else y)
+      fun () -> if A.a && A.b then x else y)
 
 let (z : boolean) =
   let typ = Typ.boolean in
   Snarky.exists typ
     ~compute:
       (let open As_prover in
-      fun () -> A.x && A.y)
+      fun () -> A.a && A.b)
 
 include struct
-  type nonrec t = {a: field; b: boolean}
+  type nonrec var = {a: field_var; b: boolean}
 
   and t = {a: field; b: bool}
 
@@ -67,7 +67,7 @@ include struct
                 ~f:(fun () -> Snarky.Checked.return ()) ) ) }
 end
 
-let (failwith_field : string -> field) = failwith
+let (failwith_field : string -> field_var) = failwith
 
 include struct
   let field_plus (_ : field) =
@@ -99,7 +99,7 @@ include struct
       "no."
 end
 
-let in_out __implicit2__ (x : t) =
+let in_out __implicit2__ (x : var) =
   let typ = typ in
   Snarky.exists typ
     ~compute:
@@ -124,9 +124,9 @@ let a __implicit4__ __implicit3__ a b =
             (let typ x___3 = x___3 in
              As_prover.read (typ __implicit4__) b) })
 
-let a_1 (x : field) (b : boolean) = a Typ.boolean Typ.field x b
+let a_1 (x : field_var) (b : boolean) = a Typ.boolean Typ.field x b
 
-let a_2 (x : field) =
+let a_2 (x : field_var) =
   a
     { Snarky.Types.Typ.store= (fun x -> Snarky.Typ_monads.Store.return x)
     ; Snarky.Types.Typ.read= (fun x -> Snarky.Typ_monads.Read.return x)

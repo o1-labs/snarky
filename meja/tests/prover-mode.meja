@@ -22,7 +22,7 @@ let z : opaque(int) = {
   };
 };
 
-let z : boolean = Prover {A.x && A.y;};
+let z : boolean = Prover {A.a && A.b;};
 
 type t = {a: field, b: boolean};
 

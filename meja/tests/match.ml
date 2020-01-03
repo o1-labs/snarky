@@ -10,7 +10,7 @@ type nonrec t = {a: int; b: bool}
 type nonrec u = {f: int -> int}
 
 include struct
-  type nonrec ('a, 'b) v = {x: 'a; y: 'b; g: 'a -> 'b}
+  type nonrec ('a, 'b) v_var = {x: 'a; y: 'b; g: 'a -> 'b}
 
   and ('a, 'b) v = {x: 'a; y: 'b; g: 'a -> 'b}
 
@@ -57,8 +57,8 @@ let a (x : t) {f; _} = match x with {a= x; b; _} -> f x
 
 let b = match {f= (fun x -> 12)} with {f; _} -> f
 
-let (c : _ -> (int, bool) v) =
- fun (x : ('a, 'b) v) ->
+let (c : _ -> (int, bool) v_var) =
+ fun (x : ('a, 'b) v_var) ->
   match x with {x; y; g= f; _} -> {x= 12; y; g= (fun _ -> f x)}
 
 type 'a w = A | B : int * int -> int w | C : 'b w -> 'b w
