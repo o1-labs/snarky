@@ -33,6 +33,7 @@ type error =
   | Missing_row_constructor of Path.t * type_expr * type_expr
   | Empty_resulting_row of type_expr * type_expr
   | Row_different_arity of Path.t * type_expr * type_expr
+  | Int_out_of_range of string
 
 exception Error of Location.t * Envi.t * error
 
@@ -681,6 +682,58 @@ let get_ctor (name : lid) env =
   let typ = Envi.Type.copy typ env in
   backtrack snap ; (name, typ, args_typ)
 
+let get_integer ~loc env i suf =
+  let mode = Envi.current_mode env in
+  match suf with
+  | None ->
+      let i =
+        try int_of_string i
+        with _ -> raise (Error (loc, env, Int_out_of_range "int"))
+      in
+      (Type1.get_mode mode Initial_env.Type.int, Int i)
+  | Some 'l' ->
+      let i =
+        try Int32.of_string i
+        with _ -> raise (Error (loc, env, Int_out_of_range "int32"))
+      in
+      (Type1.get_mode mode Initial_env.Type.int32, Int32 i)
+  | Some 'L' ->
+      let i =
+        try Int64.of_string i
+        with _ -> raise (Error (loc, env, Int_out_of_range "int64"))
+      in
+      (Type1.get_mode mode Initial_env.Type.int64, Int64 i)
+  | Some 'n' ->
+      let i =
+        try Nativeint.of_string i
+        with _ -> raise (Error (loc, env, Int_out_of_range "nativeint"))
+      in
+      (Type1.get_mode mode Initial_env.Type.nativeint, Nativeint i)
+  | _ ->
+      assert false
+
+let get_literal env l =
+  let mode = Envi.current_mode env in
+  match l with
+  | Int _ ->
+      Type1.get_mode mode Initial_env.Type.int
+  | Int32 _ ->
+      Type1.get_mode mode Initial_env.Type.int32
+  | Int64 _ ->
+      Type1.get_mode mode Initial_env.Type.int64
+  | Nativeint _ ->
+      Type1.get_mode mode Initial_env.Type.nativeint
+  | Float _ ->
+      Type1.get_mode mode Initial_env.Type.float
+  | Bool _ ->
+      Type1.get_mode mode Initial_env.Type.boolean
+  | Field _ ->
+      Type1.get_mode mode Initial_env.Type.field_var
+  | Char _ ->
+      Type1.get_mode mode Initial_env.Type.char
+  | String _ ->
+      Type1.get_mode mode Initial_env.Type.string
+
 let rec check_pattern env typ pat =
   let mode = Envi.current_mode env in
   let loc = pat.pat_loc in
@@ -734,9 +787,18 @@ let rec check_pattern env typ pat =
       ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_or (p1, p2)}
       , names1
       , env )
-  | Ppat_int i ->
-      check_type ~loc env typ (get_mode mode Initial_env.Type.int) ;
-      ({Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_int i}, [], env)
+  | Ppat_integer (i, suf) ->
+      let ityp, l = get_integer ~loc env i suf in
+      check_type ~loc env typ ityp ;
+      ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_literal l}
+      , []
+      , env )
+  | Ppat_literal l ->
+      let ltyp = get_literal env l in
+      check_type ~loc env typ ltyp ;
+      ( {Typedast.pat_loc= loc; pat_type= typ; pat_desc= Tpat_literal l}
+      , []
+      , env )
   | Ppat_record [] ->
       raise (Error (loc, env, Empty_record))
   | Ppat_record ((field, _) :: _ as fields) ->
@@ -1190,18 +1252,14 @@ let rec get_expression env expected exp =
             assert false
       in
       (e, env)
-  | Pexp_literal (Int i) ->
-      let typ = Type1.get_mode mode Initial_env.Type.int in
+  | Pexp_integer (i, suf) ->
+      let typ, l = get_integer ~loc env i suf in
       check_type ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_literal (Int i)}, env)
-  | Pexp_literal (Bool _b) ->
-      failwith "Unhandled boolean literal"
-  | Pexp_literal (Field _f) ->
-      failwith "Unhandled field literal"
-  | Pexp_literal (String s) ->
-      let typ = get_mode mode Initial_env.Type.string in
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_literal l}, env)
+  | Pexp_literal l ->
+      let typ = get_literal env l in
       check_type ~loc env expected typ ;
-      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_literal (String s)}, env)
+      ({exp_loc= loc; exp_type= typ; exp_desc= Texp_literal l}, env)
   | Pexp_fun (label, p, body, explicit) ->
       let env = Envi.open_expr_scope env in
       let p_typ = Envi.Type.mkvar ~mode None env in
@@ -2542,6 +2600,11 @@ let rec report_error ppf = function
         "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]:@ the constructor %a \
          has different arities.@]"
         !pp_typ typ !pp_typ constr_typ Path.pp path
+  | Int_out_of_range typ ->
+      fprintf ppf
+        "@[<hov>Integer literal exceeds the range of representable integers \
+         of type@ %s.@]"
+        typ
 
 let () =
   Location.register_error_of_exn (function

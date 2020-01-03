@@ -135,8 +135,10 @@ let pattern_desc iter = function
       List.iter ~f:(iter.pattern iter) pats
   | Ppat_or (p1, p2) ->
       iter.pattern iter p1 ; iter.pattern iter p2
-  | Ppat_int _ ->
+  | Ppat_integer _ ->
       ()
+  | Ppat_literal l ->
+      iter.literal iter l
   | Ppat_record fields ->
       List.iter fields ~f:(fun (name, pat) ->
           lid iter name ; iter.pattern iter pat )
@@ -157,6 +159,8 @@ let expression_desc iter = function
       List.iter args ~f:(fun (_label, e) -> iter.expression iter e)
   | Pexp_variable name ->
       lid iter name
+  | Pexp_integer _ ->
+      ()
   | Pexp_literal l ->
       iter.literal iter l
   | Pexp_fun (_label, p, e, _explicit) ->

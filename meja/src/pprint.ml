@@ -132,6 +132,28 @@ let type_decl type_keyword fmt decl =
   (match decl.tdec_params with [] -> () | _ -> tuple fmt decl.tdec_params) ;
   type_decl_desc fmt decl.tdec_desc
 
+let literal fmt = function
+  | Int i ->
+      pp_print_int fmt i
+  | Int32 i ->
+      fprintf fmt "%al" Int32.pp i
+  | Int64 i ->
+      fprintf fmt "%aL" Int64.pp i
+  | Nativeint i ->
+      fprintf fmt "%an" Nativeint.pp i
+  | Float f ->
+      pp_print_float fmt f
+  | Bool false ->
+      fprintf fmt "0b"
+  | Bool true ->
+      fprintf fmt "1b"
+  | Field f ->
+      fprintf fmt "%sf" f
+  | Char c ->
+      fprintf fmt "'%s'" (Char.escaped c)
+  | String s ->
+      fprintf fmt "\"%s\"" (String.escaped s)
+
 let rec pattern_desc fmt = function
   | Ppat_any ->
       fprintf fmt "_"
@@ -145,8 +167,12 @@ let rec pattern_desc fmt = function
         pats
   | Ppat_or (p1, p2) ->
       fprintf fmt "@[<hv0>%a@]@ | @[<hv0>%a@]" pattern p1 pattern p2
-  | Ppat_int i ->
-      pp_print_int fmt i
+  | Ppat_integer (i, None) ->
+      fprintf fmt "%s" i
+  | Ppat_integer (i, Some suf) ->
+      fprintf fmt "%s%c" i suf
+  | Ppat_literal l ->
+      literal fmt l
   | Ppat_record fields ->
       fprintf fmt "{@[<hv2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep pattern_field)
@@ -169,7 +195,7 @@ and pattern_desc_bracket fmt pat =
   | Ppat_any
   | Ppat_variable _
   | Ppat_tuple _
-  | Ppat_int _
+  | Ppat_literal _
   | Ppat_record _
   | Ppat_ctor _ ->
       pattern_desc fmt pat
@@ -191,19 +217,6 @@ let arg_label fmt = function
   | Optional a ->
       fprintf fmt "?%s=@," a
 
-let literal fmt = function
-  | Int i ->
-      pp_print_int fmt i
-  | Bool false ->
-      fprintf fmt "0b"
-  | Bool true ->
-      fprintf fmt "1b"
-  | Field f ->
-      fprintf fmt "%sf" f
-  | String s ->
-      (* TODO: escaping *)
-      fprintf fmt "\"%s\"" s
-
 let rec expression_desc fmt = function
   | Pexp_apply
       ( e
@@ -217,6 +230,10 @@ let rec expression_desc fmt = function
         args
   | Pexp_variable lid ->
       Longident.pp fmt lid.txt
+  | Pexp_integer (i, None) ->
+      fprintf fmt "%s" i
+  | Pexp_integer (i, Some suf) ->
+      fprintf fmt "%s%c" i suf
   | Pexp_literal l ->
       literal fmt l
   | Pexp_fun (label, p, e, explicitness) ->
