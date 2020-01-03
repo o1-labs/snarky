@@ -2165,7 +2165,7 @@ let rec check_statement env stmt =
       with _err ->
         (*Format.eprintf "%s@." (Printexc.get_backtrace ()) ;
         Location.report_exception Format.err_formatter _err ;*)
-        (* Restore previous shadows *)
+        (* Reset used names in the shadows table. *)
         Envi.current_shadow env := shadows ;
         let decl, env = Typet.TypeDecl.import decl env in
         let stmt = {Typedast.stmt_loc= loc; stmt_desc= Tstmt_type decl} in
