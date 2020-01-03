@@ -32,6 +32,8 @@ let rec module_path s path =
         path
     | Pdot (path, mode, name) ->
         Pdot (module_path s path, mode, name)
+    | Pocamldot (path, mode, name, ocaml_name) ->
+        Pocamldot (module_path s path, mode, name, ocaml_name)
     | Papply (path1, path2) ->
         Papply (module_path s path1, module_path s path2) )
 
@@ -45,6 +47,8 @@ let type_path s path =
         path
     | Pdot (path, mode, name) ->
         Pdot (module_path s path, mode, name)
+    | Pocamldot (path, mode, name, ocaml_name) ->
+        Pocamldot (module_path s path, mode, name, ocaml_name)
     | Papply _ ->
         failwith "Subst.type_path: Unhandled Papply" )
 
@@ -58,6 +62,8 @@ let expression_path s path =
         path
     | Pdot (path, mode, name) ->
         Pdot (module_path s path, mode, name)
+    | Pocamldot (path, mode, name, ocaml_name) ->
+        Pocamldot (module_path s path, mode, name, ocaml_name)
     | Papply _ ->
         failwith "Subst.expression_path: Unhandled Papply" )
 

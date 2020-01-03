@@ -651,7 +651,7 @@ let get_ctor (name : lid) env =
   let ctor = List.nth_exn ctors index in
   let make_name name tdec_ident =
     match name with
-    | Path.Pdot (m, _, _) ->
+    | Path.Pdot (m, _, _) | Path.Pocamldot (m, _, _, _) ->
         Path.dot m tdec_ident
     | _ ->
         Path.Pident tdec_ident
@@ -1763,7 +1763,7 @@ let type_extension ~loc variant ctors env =
     match path with
     | Pident name ->
         Ident.name name
-    | Pdot (_, _, name) ->
+    | Pdot (_, _, name) | Pocamldot (_, _, name, _) ->
         name
     | _ ->
         assert false
@@ -2088,78 +2088,76 @@ let rec check_statement env stmt =
       let env = Envi.add_implicit_instance name.txt typ env in
       (env, {Typedast.stmt_loc= loc; stmt_desc= Tstmt_instance (name, e)})
   | Pstmt_type decl -> (
-    try
-      (* Bail if we're not in checked mode. *)
-      assert (equal_mode Checked mode) ;
-      let name = Ident.create ~mode:Checked decl.tdec_ident.txt in
-      let alt_name = Ident.create ~mode:Prover decl.tdec_ident.txt in
-      let decl, env =
-        Typet.TypeDecl.import ~name ~other_name:(Path.Pident alt_name) decl env
-      in
-      let alt_decl =
-        let mapper =
-          { Type0_map.default_mapper with
-            type_expr= (fun _mapper typ -> typ.type_alternate) }
+      let shadows = !(Envi.current_shadow env) in
+      try
+        (* Bail if we're not in checked mode. *)
+        assert (equal_mode Checked mode) ;
+        let name =
+          Ident.create ~mode:Checked ~ocaml:true decl.tdec_ident.txt
         in
-        let decl =
-          Untype_ast.Type0.type_decl ~loc
-            (Ident.name decl.tdec_ident.txt)
-            (mapper.type_decl mapper decl.tdec_tdec)
+        ( Option.value_exn (Ident.ocaml_name_ref name)
+        :=
+        let x = decl.tdec_ident.txt in
+        if x = "t" then "var" else x ^ "_var" ) ;
+        let alt_name = Ident.create ~mode:Prover decl.tdec_ident.txt in
+        let env = Envi.open_mode_module_scope Prover env in
+        let alt_decl, env =
+          Typet.TypeDecl.import ~name:alt_name ~other_name:(Path.Pident name)
+            decl env
         in
-        decl
-      in
-      let env = Envi.open_mode_module_scope Prover env in
-      let alt_decl, env =
-        Typet.TypeDecl.import ~name:alt_name ~other_name:(Path.Pident name)
-          alt_decl env
-      in
-      let env = Envi.open_mode_module_scope Checked env in
-      let convname =
-        let name = Ident.name name in
-        let name = if name = "t" then "typ" else sprintf "%s_typ" name in
-        Location.mkloc (Ident.create ~mode name) loc
-      in
-      let typ, typ_params =
-        let decl = decl.tdec_tdec in
-        let snap = Snapshot.create () in
-        Envi.Type.refresh_vars decl.tdec_params env ;
-        let typ_params =
-          List.map decl.tdec_params ~f:(fun typ -> Envi.Type.copy typ env)
+        let env = Envi.open_mode_module_scope Checked env in
+        let decl, env =
+          Typet.TypeDecl.import ~name ~other_name:(Path.Pident alt_name) decl
+            env
         in
-        let typ = Envi.Type.copy decl.tdec_ret env in
-        backtrack snap ; (typ, typ_params)
-      in
-      let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
-      let typ =
-        List.fold_right typ_params ~init:typ ~f:(fun param typ ->
-            let param =
-              Envi.Type.Mk.conv ~mode param param.type_alternate env
-            in
-            Envi.Type.Mk.arrow ~mode ~explicit:Implicit param typ env )
-      in
-      let conv =
-        get_conversion ~may_identity:false ~can_add_args:true ~loc env typ
-      in
-      let typ = polymorphise (Type1.flatten conv.conv_type) env in
-      Envi.Type.update_depths env typ ;
-      let env = Envi.add_name convname.txt typ env in
-      let env = Envi.add_implicit_instance convname.txt typ env in
-      let env =
-        Envi.add_implicit_instance convname.txt typ.type_alternate env
-      in
-      let stmt =
-        { Typedast.stmt_loc= loc
-        ; stmt_desc=
-            Tstmt_convtype
-              (decl, Ttconv_with (Prover, alt_decl), convname, conv) }
-      in
-      (env, stmt)
-    with _err ->
-      (*Format.eprintf "%s@." (Printexc.get_backtrace ()) ;
-      Location.report_exception Format.err_formatter _err ;*)
-      let decl, env = Typet.TypeDecl.import decl env in
-      let stmt = {Typedast.stmt_loc= loc; stmt_desc= Tstmt_type decl} in
-      (env, stmt) )
+        let convname =
+          let name = Ident.name name in
+          let name = if name = "t" then "typ" else sprintf "%s_typ" name in
+          Location.mkloc (Ident.create ~mode name) loc
+        in
+        let typ, typ_params =
+          let decl = decl.tdec_tdec in
+          let snap = Snapshot.create () in
+          Envi.Type.refresh_vars decl.tdec_params env ;
+          let typ_params =
+            List.map decl.tdec_params ~f:(fun typ -> Envi.Type.copy typ env)
+          in
+          let typ = Envi.Type.copy decl.tdec_ret env in
+          backtrack snap ; (typ, typ_params)
+        in
+        let typ = Envi.Type.Mk.conv ~mode typ typ.type_alternate env in
+        let typ =
+          List.fold_right typ_params ~init:typ ~f:(fun param typ ->
+              let param =
+                Envi.Type.Mk.conv ~mode param param.type_alternate env
+              in
+              Envi.Type.Mk.arrow ~mode ~explicit:Implicit param typ env )
+        in
+        let conv =
+          get_conversion ~may_identity:false ~can_add_args:true ~loc env typ
+        in
+        let typ = polymorphise (Type1.flatten conv.conv_type) env in
+        Envi.Type.update_depths env typ ;
+        let env = Envi.add_name convname.txt typ env in
+        let env = Envi.add_implicit_instance convname.txt typ env in
+        let env =
+          Envi.add_implicit_instance convname.txt typ.type_alternate env
+        in
+        let stmt =
+          { Typedast.stmt_loc= loc
+          ; stmt_desc=
+              Tstmt_convtype
+                (decl, Ttconv_with (Prover, alt_decl), convname, conv) }
+        in
+        (env, stmt)
+      with _err ->
+        (*Format.eprintf "%s@." (Printexc.get_backtrace ()) ;
+        Location.report_exception Format.err_formatter _err ;*)
+        (* Restore previous shadows *)
+        Envi.current_shadow env := shadows ;
+        let decl, env = Typet.TypeDecl.import decl env in
+        let stmt = {Typedast.stmt_loc= loc; stmt_desc= Tstmt_type decl} in
+        (env, stmt) )
   | Pstmt_convtype (decl, tconv, convname) ->
       if not (equal_mode mode Checked) then
         raise (Error (loc, env, Convertible_not_in_checked)) ;

@@ -447,6 +447,8 @@ let path mapper = function
       Path.Pident (mapper.ident mapper ident)
   | Path.Pdot (path, mode, str) ->
       Path.Pdot (mapper.path mapper path, mode, str)
+  | Path.Pocamldot (path, mode, str, ocaml_name) ->
+      Path.Pocamldot (mapper.path mapper path, mode, str, ocaml_name)
   | Path.Papply (path1, path2) ->
       Path.Papply (mapper.path mapper path1, mapper.path mapper path2)
 

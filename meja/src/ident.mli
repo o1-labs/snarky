@@ -3,8 +3,12 @@ type t [@@deriving sexp, equal, compare]
 
 type ident = t
 
-val create : mode:Ast_types.mode -> string -> t
-(** Create a new unique name. *)
+val create : mode:Ast_types.mode -> ?ocaml:bool -> string -> t
+(** Create a new unique name.
+
+    If the [ocaml] argument is true, the identifier is associated with a
+    modifiable 'OCaml name', accessible via [ocaml_name_ref].
+*)
 
 val create_global : string -> t
 (** Create the name of a global (ie. external) module. *)
@@ -22,6 +26,16 @@ val is_row : t -> bool
 
 val name : t -> string
 (** Retrieve the name passed to [create]. *)
+
+val ocaml_name : t -> string
+(** Return the OCaml name for this identifier, which may or may not differ from
+    the name given by [name].
+*)
+
+val ocaml_name_ref : t -> string ref option
+(** Returns a handle to modify the OCaml name, or none if there is no
+    associated OCaml name.
+*)
 
 val mode : t -> Ast_types.mode
 (** Retrieve the mode passed to [create]. *)

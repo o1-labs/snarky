@@ -18,7 +18,7 @@ let z : opaque(int) = {
   let x = A.x;
   let y = A.y;
   Prover {
-    if (A.x && A.y) { x; } else { y; };
+    if (A.a && A.b) { x; } else { y; };
   };
 };
 

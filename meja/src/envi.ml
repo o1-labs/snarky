@@ -26,7 +26,7 @@ type error =
   | Predeclared_types of Ident.t list
   | Functor_in_module_sig
   | Not_a_functor
-  | Duplicate_name of string * string
+  | Duplicate_name of string * bool * string
   | Shadowed_checked of string * Longident.t
 
 exception Error of Location.t * error
@@ -167,18 +167,19 @@ module Scope = struct
     ( if not may_shadow then
       (* The types for type constructor record arguments may shadow because
          they are always unambiguous.
-         This also circumvents an error where newtypes are defined where there
+         This also circumvents an error when newtypes are defined where there
          is no shadowing scope.
       *)
       let shadow = get_shadow scope in
-      let name = Ident.name ident in
+      let name = Ident.ocaml_name ident in
       match Map.find !shadow.types name with
       | Some ident' ->
           (* If the identifiers are equal, we are defining a recursive type,
              which should be allowed.
           *)
           if not (Ident.equal ident ident') then
-            raise (Error (loc, Duplicate_name ("type", name)))
+            let generated = Option.is_some (Ident.ocaml_name_ref ident) in
+            raise (Error (loc, Duplicate_name ("type", generated, name)))
       | None ->
           shadow :=
             {!shadow with types= Map.set !shadow.types ~key:name ~data:ident}
@@ -307,7 +308,7 @@ module Scope = struct
     let shadow = get_shadow scope in
     let name = Ident.name ident in
     if Set.mem !shadow.modules name then
-      raise (Error (loc, Duplicate_name ("module", name)))
+      raise (Error (loc, Duplicate_name ("module", false, name)))
     else shadow := {!shadow with modules= Set.add !shadow.modules name} ;
     {scope with modules= IdTbl.add scope.modules ~key:ident ~data:m}
 
@@ -315,7 +316,7 @@ module Scope = struct
     let shadow = get_shadow scope in
     let name = Ident.name ident in
     if Set.mem !shadow.module_types name then
-      raise (Error (loc, Duplicate_name ("module type", name)))
+      raise (Error (loc, Duplicate_name ("module type", false, name)))
     else
       shadow := {!shadow with module_types= Set.add !shadow.module_types name} ;
     {scope with module_types= IdTbl.add scope.module_types ~key:ident ~data:m}
@@ -903,7 +904,12 @@ let get_of_path ~loc ~kind ~get_name ~find_name (path : Path.t) env =
     match path with
     | Path.Pident ident ->
         Option.map (get_name ident scope) ~f:(fun x -> (ident, x))
-    | Path.Pdot (path', mode, name) -> (
+    | Path.Pdot (path', mode, name) | Path.Pocamldot (path', mode, name, _)
+      -> (
+        (* NOTE: It's safe to ignore ocamldot here because there can be no
+                 shadowing opens for types, and currently it is only used for
+                 those.
+        *)
         let%map _, scope =
           find ~kind:"module"
             ~get_name:(Scope.get_module_by_ident ~loc env.resolve_env)
@@ -1741,8 +1747,10 @@ let report_error ppf = function
         "Internal error: Bare functor found as part of a module signature."
   | Not_a_functor ->
       fprintf ppf "This module is not a functor."
-  | Duplicate_name (kind, name) ->
-      fprintf ppf "@[<hov>There is already a %s@ with name@ %s.@]" kind name
+  | Duplicate_name (kind, generated, name) ->
+      let generated = if generated then "generated " else "" in
+      fprintf ppf "@[<hov>There is already a %s%s@ with name@ %s.@]" generated
+        kind name
   | Shadowed_checked (kind, name) ->
       fprintf ppf
         "@[<hov>Could not find a %s@ %a:@ The current definition is only \

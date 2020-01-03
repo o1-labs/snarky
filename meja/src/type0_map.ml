@@ -228,6 +228,10 @@ let path mapper path =
   | Path.Pdot (path1, mode, str) ->
       let path1' = mapper.path mapper path1 in
       if phys_equal path1' path1 then path else Path.Pdot (path1', mode, str)
+  | Path.Pocamldot (path1, mode, str, ocaml_name) ->
+      let path1' = mapper.path mapper path1 in
+      if phys_equal path1' path1 then path
+      else Path.Pocamldot (path1', mode, str, ocaml_name)
   | Path.Papply (path1, path2) ->
       let path1' = mapper.path mapper path1 in
       let path2' = mapper.path mapper path2 in
