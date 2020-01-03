@@ -165,9 +165,11 @@ type literal =
     If the string is empty, raises an [Invalid_argument] exception.
 *)
 let neg_string s =
-  match String.get s 0 with
-  | '-' -> String.sub s ~pos:1 ~len:(String.length s - 1)
-  | _ -> "-" ^ s
+  match s.[0] with
+  | '-' ->
+      String.sub s ~pos:1 ~len:(String.length s - 1)
+  | _ ->
+      "-" ^ s
 
 let neg_literal = function
   | Int i ->
