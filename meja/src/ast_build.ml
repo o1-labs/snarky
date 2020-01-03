@@ -8,15 +8,7 @@ module Loc = struct
 
   let map x ~f = {Location.loc= x.Location.loc; txt= f x.Location.txt}
 
-  (** Convert the OCaml primitive [__POS__] into a Lexing.position *)
-  let of_prim (file, lnum, cnum, enum) =
-    (* Note: We use a fake value for [pos_bol], since we can't get the true
-             value from [__POS__]. *)
-    { Location.loc_start=
-        {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= cnum; pos_bol= 0}
-    ; loc_end=
-        {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= enum; pos_bol= 0}
-    ; loc_ghost= false }
+  let of_prim = Ast_types.loc_of_prim
 
   let of_pos (loc_start, loc_end) =
     {Location.loc_start; loc_end; loc_ghost= false}

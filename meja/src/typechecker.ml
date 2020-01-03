@@ -25,6 +25,7 @@ type error =
   | Argument_expected of Longident.t
   | Not_extensible of Longident.t
   | Extension_different_arity of Longident.t
+  | Unmatched_cases of Patmatch.pattern_case list
   | Convert_failed of type_expr * error
   | Cannot_create_conversion of type_expr
   | Convertible_not_in_checked
@@ -555,6 +556,8 @@ let unifies env typ constr_typ =
         fprintf err_formatter "Does not unify:@.%a@." Location.report_exception
           exn) ;*)
       false
+
+let () = Patmatch.unifies := unifies
 
 let rec add_implicits ~loc implicits typ env =
   match implicits with
@@ -1295,6 +1298,13 @@ let rec get_expression env expected exp =
       let e2, env = get_expression env expected e2 in
       let env = Envi.close_expr_scope env in
       Envi.Type.update_depths env e2.exp_type ;
+      ( match
+          Patmatch.get_unmatched_cases ~count:4 env e1.Typedast.exp_type [p]
+        with
+      | [] ->
+          ()
+      | cases ->
+          raise (Error (loc, env, Unmatched_cases cases)) ) ;
       ( {exp_loc= loc; exp_type= e2.exp_type; exp_desc= Texp_let (p, e1, e2)}
       , env )
   | Pexp_instance (name, e1, e2) ->
@@ -1369,6 +1379,13 @@ let rec get_expression env expected exp =
             let env = Envi.close_expr_scope env in
             (env, (p, e)) )
       in
+      ( match
+          Patmatch.get_unmatched_cases ~count:4 env typ (List.map ~f:fst cases)
+        with
+      | [] ->
+          ()
+      | cases ->
+          raise (Error (loc, env, Unmatched_cases cases)) ) ;
       Envi.Type.update_depths env expected ;
       ({exp_loc= loc; exp_type= expected; exp_desc= Texp_match (e, cases)}, env)
   | Pexp_field (e, field) ->
@@ -1684,6 +1701,11 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
         | Tpat_variable _ ->
             e
         | _ ->
+            ( match Patmatch.get_unmatched_cases ~count:4 env typ [p] with
+            | [] ->
+                ()
+            | cases ->
+                raise (Error (loc, env, Unmatched_cases cases)) ) ;
             (* Use a let-expression to extract the variable from the expression. *)
             { exp_loc= p.pat_loc
             ; exp_type= typ
@@ -2055,6 +2077,11 @@ let rec check_statement env stmt =
   | Pstmt_value (p, e) ->
       let env = Envi.open_expr_scope env in
       let p, e, env = check_binding ~toplevel:true env p e in
+      ( match Patmatch.get_unmatched_cases ~count:4 env e.exp_type [p] with
+      | [] ->
+          ()
+      | cases ->
+          raise (Error (loc, env, Unmatched_cases cases)) ) ;
       let scope, env = Envi.pop_expr_scope env in
       (* Uplift the names from the expression scope, discarding the scope and
          its associated type variables etc. *)
@@ -2471,6 +2498,12 @@ let rec report_error ppf = function
         "@[<hov>This extension does not match the definition of type %a@;They \
          have different arities.@]"
         Longident.pp lid
+  | Unmatched_cases cases ->
+      fprintf ppf
+        "This pattern-matching is not exhausive.@;Here are some examples of \
+         cases that are not matched:@.%a"
+        (pp_print_list ~pp_sep:pp_print_newline Patmatch.pprint_case)
+        cases
   | Convert_failed (typ, err) ->
       fprintf ppf "@[<v>@[<hov>Could not find a conversion@ @[<h>%a@]:@]@;%a@]"
         !pp_typ typ report_error err

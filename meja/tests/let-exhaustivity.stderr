@@ -1,0 +1,4 @@
+File "tests/let-exhaustivity.meja", line 1, characters 0-15:
+Error: This pattern-matching is not exhausive.
+Here are some examples of cases that are not matched:
+false

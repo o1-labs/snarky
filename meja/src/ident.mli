@@ -1,7 +1,7 @@
 (** Unique identifiers. *)
 type t [@@deriving sexp, equal, compare]
 
-type ident = t
+type ident = t [@@deriving sexp]
 
 val create : mode:Ast_types.mode -> string -> t
 (** Create a new unique name. *)
