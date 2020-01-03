@@ -952,10 +952,6 @@ let has_type_declaration ~mode (lid : lid) env =
        lid env)
 
 let raw_find_type_declaration ~mode (lid : lid) env =
-  (* TODO: This should reject, but only if the found name isn't stitched to a
-           checked-mode name. Need tri-stitching to land before making this
-           change.
-  *)
   match
     find_of_lident ~mode ~kind:"type"
       ~get_name:(Scope.find_type_declaration ~mode)

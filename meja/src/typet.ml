@@ -753,7 +753,17 @@ module TypeDecl = struct
                    , decl_len
                    , conv_decl.tdec_ident.txt
                    , conv_len ) )) ;
-        let name = Ident.create ~mode decl.tdec_ident.txt in
+        let name =
+          match other_mode with
+          | Prover when decl.tdec_ident.txt = conv_decl.tdec_ident.txt ->
+              let name = Ident.create ~mode ~ocaml:true decl.tdec_ident.txt in
+              let name' = decl.tdec_ident.txt in
+              Option.iter (Ident.ocaml_name_ref name) ~f:(fun name ->
+                  name := if name' = "t" then "var" else name' ^ "_var" ) ;
+              name
+          | _ ->
+              Ident.create ~mode decl.tdec_ident.txt
+        in
         let other_name =
           Ident.create ~mode:other_mode conv_decl.tdec_ident.txt
         in

@@ -28,6 +28,9 @@ let rec debug_print ppf path =
   match path with
   | Pident name ->
       Ident.debug_print ppf name
+  | Pocamldot (path, mode, name, ocamlname) when name <> !ocamlname ->
+      fprintf ppf "(%a).(%s=%s)/%a" debug_print path name !ocamlname
+        mode_debug_print mode
   | Pdot (path, mode, name) | Pocamldot (path, mode, name, _) ->
       fprintf ppf "(%a).%s/%a" debug_print path name mode_debug_print mode
   | Papply (path1, path2) ->
@@ -114,7 +117,7 @@ let rec to_longident = function
 
 let rec to_ocaml_longident = function
   | Pident name ->
-      Longident.Lident (Ident.name name)
+      Longident.Lident (Ident.ocaml_name name)
   | Pocamldot (path, _, _, name) ->
       Longident.Ldot (to_ocaml_longident path, !name)
   | Pdot (path, _, name) ->

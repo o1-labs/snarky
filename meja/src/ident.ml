@@ -98,6 +98,10 @@ let pprint fmt = function
       Format.fprintf fmt "`%s" name
 
 let debug_print fmt = function
+  | Regular {ident_name; ident_ocaml= Some ident_ocaml; ident_id; ident_mode}
+    when ident_name <> !ident_ocaml ->
+      Format.fprintf fmt "(%s=%s)/%a.%i" ident_name !ident_ocaml
+        Ast_types.mode_debug_print ident_mode ident_id
   | Regular {ident_name; ident_ocaml= _; ident_id; ident_mode} ->
       Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.mode_debug_print
         ident_mode ident_id

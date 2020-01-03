@@ -2100,16 +2100,28 @@ let rec check_statement env stmt =
         let x = decl.tdec_ident.txt in
         if x = "t" then "var" else x ^ "_var" ) ;
         let alt_name = Ident.create ~mode:Prover decl.tdec_ident.txt in
-        let env = Envi.open_mode_module_scope Prover env in
-        let alt_decl, env =
-          Typet.TypeDecl.import ~name:alt_name ~other_name:(Path.Pident name)
-            decl env
-        in
-        let env = Envi.open_mode_module_scope Checked env in
         let decl, env =
           Typet.TypeDecl.import ~name ~other_name:(Path.Pident alt_name) decl
             env
         in
+        let alt_decl =
+          let mapper =
+            { Type0_map.default_mapper with
+              type_expr= (fun _mapper typ -> typ.type_alternate) }
+          in
+          let decl =
+            Untype_ast.Type0.type_decl ~loc
+              (Ident.name decl.tdec_ident.txt)
+              (mapper.type_decl mapper decl.tdec_tdec)
+          in
+          decl
+        in
+        let env = Envi.open_mode_module_scope Prover env in
+        let alt_decl, env =
+          Typet.TypeDecl.import ~name:alt_name ~other_name:(Path.Pident name)
+            alt_decl env
+        in
+        let env = Envi.open_mode_module_scope Checked env in
         let convname =
           let name = Ident.name name in
           let name = if name = "t" then "typ" else sprintf "%s_typ" name in
