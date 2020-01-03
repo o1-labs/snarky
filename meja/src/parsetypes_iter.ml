@@ -6,6 +6,7 @@ type iterator =
   { type_expr: iterator -> type_expr -> unit
   ; type_desc: iterator -> type_desc -> unit
   ; variant: iterator -> variant -> unit
+  ; row_tag: iterator -> row_tag -> unit
   ; field_decl: iterator -> field_decl -> unit
   ; ctor_args: iterator -> ctor_args -> unit
   ; ctor_decl: iterator -> ctor_decl -> unit
@@ -53,10 +54,27 @@ let type_desc iter = function
       iter.type_expr iter typ
   | Ptyp_prover typ ->
       iter.type_expr iter typ
+  | Ptyp_conv (typ1, typ2) ->
+      iter.type_expr iter typ1 ; iter.type_expr iter typ2
+  | Ptyp_opaque typ ->
+      iter.type_expr iter typ
+  | Ptyp_alias (typ, name) ->
+      str iter name ; iter.type_expr iter typ
+  | Ptyp_row (tags, _closed, min_tags) ->
+      Option.iter ~f:(List.iter ~f:(str iter)) min_tags ;
+      List.iter ~f:(iter.row_tag iter) tags
+  | Ptyp_row_subtract (typ, tags) ->
+      iter.type_expr iter typ ;
+      List.iter ~f:(str iter) tags
 
 let variant iter {var_ident; var_params} =
   lid iter var_ident ;
   List.iter ~f:(iter.type_expr iter) var_params
+
+let row_tag iter {rtag_ident; rtag_arg; rtag_loc} =
+  str iter rtag_ident ;
+  iter.location iter rtag_loc ;
+  List.iter ~f:(iter.type_expr iter) rtag_arg
 
 let field_decl iter {fld_ident; fld_type; fld_loc} =
   iter.location iter fld_loc ;
@@ -125,6 +143,9 @@ let pattern_desc iter = function
   | Ppat_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.pattern iter) arg
+  | Ppat_row_ctor (name, args) ->
+      str iter name ;
+      List.iter ~f:(iter.pattern iter) args
 
 let expression iter {exp_desc; exp_loc} =
   iter.location iter exp_loc ;
@@ -146,6 +167,8 @@ let expression_desc iter = function
       iter.expression iter e1 ; iter.expression iter e2
   | Pexp_let (p, e1, e2) ->
       iter.pattern iter p ; iter.expression iter e1 ; iter.expression iter e2
+  | Pexp_instance (name, e1, e2) ->
+      str iter name ; iter.expression iter e1 ; iter.expression iter e2
   | Pexp_constraint (e, typ) ->
       iter.type_expr iter typ ; iter.expression iter e
   | Pexp_tuple es ->
@@ -163,6 +186,9 @@ let expression_desc iter = function
   | Pexp_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.expression iter) arg
+  | Pexp_row_ctor (name, arg) ->
+      str iter name ;
+      List.iter ~f:(iter.expression iter) arg
   | Pexp_unifiable {expression; name; id= _} ->
       str iter name ;
       Option.iter ~f:(iter.expression iter) expression
@@ -172,6 +198,12 @@ let expression_desc iter = function
       Option.iter ~f:(iter.expression iter) e3
   | Pexp_prover e ->
       iter.expression iter e
+
+let type_conv iter = function
+  | Ptconv_with (_mode, decl) ->
+      iter.type_decl iter decl
+  | Ptconv_to typ ->
+      iter.type_expr iter typ
 
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
@@ -184,6 +216,10 @@ let signature_desc iter = function
       str iter name ; iter.type_expr iter typ
   | Psig_type decl ->
       iter.type_decl iter decl
+  | Psig_convtype (decl, tconv, conv) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      Option.iter ~f:(str iter) conv
   | Psig_rectype decl ->
       List.iter ~f:(iter.type_decl iter) decl
   | Psig_module (name, msig) | Psig_modtype (name, msig) ->
@@ -199,6 +235,8 @@ let signature_desc iter = function
       iter.signature iter sigs
   | Psig_prover sigs ->
       iter.signature iter sigs
+  | Psig_convert (name, typ) ->
+      str iter name ; iter.type_expr iter typ
 
 let module_sig iter {msig_desc; msig_loc} =
   iter.location iter msig_loc ;
@@ -229,6 +267,10 @@ let statement_desc iter = function
       str iter name ; iter.expression iter e
   | Pstmt_type decl ->
       iter.type_decl iter decl
+  | Pstmt_convtype (decl, tconv, conv) ->
+      iter.type_decl iter decl ;
+      type_conv iter tconv ;
+      Option.iter ~f:(str iter) conv
   | Pstmt_rectype decls ->
       List.iter ~f:(iter.type_decl iter) decls
   | Pstmt_module (name, me) ->
@@ -236,6 +278,8 @@ let statement_desc iter = function
   | Pstmt_modtype (name, mty) ->
       str iter name ; iter.module_sig iter mty
   | Pstmt_open name ->
+      lid iter name
+  | Pstmt_open_instance name ->
       lid iter name
   | Pstmt_typeext (typ, ctors) ->
       iter.variant iter typ ;
@@ -250,6 +294,8 @@ let statement_desc iter = function
       iter.statements iter stmts
   | Pstmt_prover stmts ->
       iter.statements iter stmts
+  | Pstmt_convert (name, typ) ->
+      str iter name ; iter.type_expr iter typ
 
 let module_expr iter {mod_desc; mod_loc} =
   iter.location iter mod_loc ;
@@ -282,6 +328,7 @@ let default_iterator =
   { type_expr
   ; type_desc
   ; variant
+  ; row_tag
   ; field_decl
   ; ctor_args
   ; ctor_decl

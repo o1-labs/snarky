@@ -1,9 +1,10 @@
+open Core_kernel
 open Ast_types
 open Type0
 open Format
 open Ast_print
 
-let rec type_desc ?(bracket = false) fmt = function
+let rec type_desc ~mode ?(bracket = false) fmt = function
   | Tvar None ->
       fprintf fmt "_"
   | Tvar (Some name) ->
@@ -11,7 +12,7 @@ let rec type_desc ?(bracket = false) fmt = function
   | Ttuple typs ->
       fprintf fmt "@[<1>%a@]" tuple typs
   | Tarrow (typ1, typ2, implicitness, label) ->
-      if bracket then fprintf fmt "(" ;
+      if bracket then fprintf fmt "(@[" ;
       ( match implicitness with
       | Explicit ->
           fprintf fmt "%a%a" arg_label label type_expr_b typ1
@@ -19,26 +20,115 @@ let rec type_desc ?(bracket = false) fmt = function
           fprintf fmt "%a{%a}" arg_label label type_expr typ1 ) ;
       arg_label_box_end fmt label ;
       fprintf fmt "@ -> %a" type_expr typ2 ;
-      if bracket then fprintf fmt ")"
+      if bracket then fprintf fmt "@])"
   | Tctor v ->
       variant fmt v
   | Tpoly (vars, typ) ->
-      if bracket then fprintf fmt "(" ;
-      fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ttuple vars)
-        type_expr typ ;
-      if bracket then fprintf fmt ")"
+      if bracket then fprintf fmt "(@[" ;
+      fprintf fmt "/*@[%a.@]*/@ %a"
+        (type_desc ~mode ~bracket:false)
+        (Ttuple vars) type_expr typ ;
+      if bracket then fprintf fmt "@])"
   | Tref typ ->
       let typ = Type1.repr typ in
       if bracket then type_expr_b fmt typ else type_expr fmt typ
   | Treplace _ ->
       assert false
+  | Tconv typ ->
+      let typ1 = Type1.get_mode Checked typ in
+      let typ2 = Type1.get_mode Prover typ in
+      if bracket then fprintf fmt "(@[" ;
+      fprintf fmt "%a@ --> %a" type_expr_b typ1 type_expr typ2 ;
+      if bracket then fprintf fmt "@])"
+  | Topaque typ -> (
+    match mode with
+    | Checked ->
+        fprintf fmt "@[<hv2>opaque(@,%a@,)@]" type_expr typ
+    | Prover ->
+        type_expr fmt typ )
+  | Tother_mode typ -> (
+    match (mode, typ.type_mode) with
+    | Checked, Prover ->
+        fprintf fmt "@[<hv2>Prover{@,%a@,}@]" type_expr typ
+    | _ ->
+        type_expr fmt typ )
+  | Trow row -> (
+      let row_tags, row_rest, row_closed = Type1.row_repr row in
+      let subtract_tags =
+        Map.fold_right row_tags ~init:[]
+          ~f:(fun ~key ~data:(_, pres, _) subtract_tags ->
+            match (Type1.rp_repr pres).rp_desc with
+            | RpSubtract pres
+              when (Type1.rp_strip_subtract pres).rp_desc <> RpAbsent ->
+                key :: subtract_tags
+            | _ ->
+                subtract_tags )
+      in
+      (match subtract_tags with [] -> () | _ -> fprintf fmt "[@[<hv1>") ;
+      let needs_lower_bound, needs_as =
+        match row_closed with
+        | Open ->
+            fprintf fmt "([>@[<hv1>@," ; (false, true)
+        | Closed ->
+            let is_fixed =
+              Map.for_all row_tags ~f:(fun (_, pres, _) ->
+                  match (Type1.rp_strip_subtract pres).rp_desc with
+                  | RpPresent | RpAbsent | RpAny ->
+                      true
+                  | RpMaybe ->
+                      false
+                  | RpRef _ | RpReplace _ | RpSubtract _ ->
+                      assert false )
+            in
+            if is_fixed then fprintf fmt "[@[<hv1>@,"
+            else fprintf fmt "([<@[<hv1>@," ;
+            (not is_fixed, not is_fixed)
+      in
+      let is_first = ref true in
+      Map.iteri row_tags ~f:(fun ~key:_ ~data:(path, pres, args) ->
+          let print_tag () =
+            if !is_first then is_first := false else bar_sep fmt () ;
+            if List.is_empty args then Path.pp fmt path
+            else fprintf fmt "%a@[<hv1>%a@]" Path.pp path tuple args
+          in
+          match (Type1.rp_strip_subtract pres).rp_desc with
+          | RpPresent | RpMaybe ->
+              print_tag ()
+          | RpAbsent | RpAny ->
+              ()
+          | RpRef _ | RpReplace _ | RpSubtract _ ->
+              assert false ) ;
+      ( if needs_lower_bound then
+        let is_first = ref true in
+        Map.iteri row_tags ~f:(fun ~key:_ ~data:(path, pres, _args) ->
+            match (Type1.rp_strip_subtract pres).rp_desc with
+            | RpPresent ->
+                if !is_first then (
+                  is_first := false ;
+                  fprintf fmt "@ > " )
+                else bar_sep fmt () ;
+                Path.pp fmt path
+            | RpMaybe | RpAbsent | RpAny ->
+                ()
+            | RpRef _ | RpReplace _ | RpSubtract _ ->
+                assert false ) ) ;
+      fprintf fmt "@,@]]" ;
+      if needs_as then fprintf fmt " as %a)" type_expr row_rest ;
+      match subtract_tags with
+      | [] ->
+          ()
+      | _ ->
+          fprintf fmt "@ - %a@]]"
+            (pp_print_list ~pp_sep:bar_sep Ident.pprint)
+            subtract_tags )
 
 and tuple fmt typs =
   fprintf fmt "(@,%a@,)" (pp_print_list ~pp_sep:comma_sep type_expr) typs
 
-and type_expr fmt typ = type_desc fmt typ.type_desc
+and type_expr fmt typ = type_desc ~mode:typ.type_mode fmt typ.type_desc
 
-and type_expr_b fmt typ = type_desc ~bracket:true fmt typ.type_desc
+and type_expr_b fmt typ =
+  type_desc ~mode:typ.type_mode ~bracket:true fmt typ.type_desc
 
 and variant fmt v =
   match v.var_params with

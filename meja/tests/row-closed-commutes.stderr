@@ -1,0 +1,5 @@
+File "tests/row-closed-commutes.meja", line 8, characters 33-35:
+Error: Incompatible types ([<`A | `B | `C > `A | `B] as 'a) and
+       [`A | `B | `D]:
+       Cannot unify ([<`A | `B | `C > `A | `B] as 'a) and [`A | `B | `D]:
+       the constructor `D is not present in both.

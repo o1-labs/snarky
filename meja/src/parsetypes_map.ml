@@ -6,6 +6,7 @@ type mapper =
   { type_expr: mapper -> type_expr -> type_expr
   ; type_desc: mapper -> type_desc -> type_desc
   ; variant: mapper -> variant -> variant
+  ; row_tag: mapper -> row_tag -> row_tag
   ; field_decl: mapper -> field_decl -> field_decl
   ; ctor_args: mapper -> ctor_args -> ctor_args
   ; ctor_decl: mapper -> ctor_decl -> ctor_decl
@@ -64,10 +65,29 @@ let type_desc mapper typ =
         , mapper.type_expr mapper typ )
   | Ptyp_prover typ ->
       Ptyp_prover (mapper.type_expr mapper typ)
+  | Ptyp_conv (typ1, typ2) ->
+      Ptyp_conv (mapper.type_expr mapper typ1, mapper.type_expr mapper typ2)
+  | Ptyp_opaque typ ->
+      Ptyp_opaque (mapper.type_expr mapper typ)
+  | Ptyp_alias (typ, name) ->
+      Ptyp_alias (mapper.type_expr mapper typ, str mapper name)
+  | Ptyp_row (tags, closed, min_tags) ->
+      Ptyp_row
+        ( List.map ~f:(mapper.row_tag mapper) tags
+        , closed
+        , Option.map ~f:(List.map ~f:(str mapper)) min_tags )
+  | Ptyp_row_subtract (typ, tags) ->
+      Ptyp_row_subtract
+        (mapper.type_expr mapper typ, List.map ~f:(str mapper) tags)
 
 let variant mapper {var_ident; var_params} =
   { var_ident= lid mapper var_ident
   ; var_params= List.map ~f:(mapper.type_expr mapper) var_params }
+
+let row_tag mapper {rtag_ident; rtag_arg; rtag_loc} =
+  { rtag_ident= str mapper rtag_ident
+  ; rtag_arg= List.map ~f:(mapper.type_expr mapper) rtag_arg
+  ; rtag_loc= mapper.location mapper rtag_loc }
 
 let field_decl mapper {fld_ident; fld_type; fld_loc} =
   { fld_loc= mapper.location mapper fld_loc
@@ -132,6 +152,8 @@ let pattern_desc mapper = function
              (lid mapper name, mapper.pattern mapper pat) ))
   | Ppat_ctor (name, arg) ->
       Ppat_ctor (lid mapper name, Option.map ~f:(mapper.pattern mapper) arg)
+  | Ppat_row_ctor (name, args) ->
+      Ppat_row_ctor (str mapper name, List.map ~f:(mapper.pattern mapper) args)
 
 let expression mapper {exp_desc; exp_loc} =
   { exp_loc= mapper.location mapper exp_loc
@@ -159,6 +181,11 @@ let expression_desc mapper = function
         ( mapper.pattern mapper p
         , mapper.expression mapper e1
         , mapper.expression mapper e2 )
+  | Pexp_instance (name, e1, e2) ->
+      Pexp_instance
+        ( str mapper name
+        , mapper.expression mapper e1
+        , mapper.expression mapper e2 )
   | Pexp_constraint (e, typ) ->
       Pexp_constraint (mapper.expression mapper e, mapper.type_expr mapper typ)
   | Pexp_tuple es ->
@@ -177,6 +204,9 @@ let expression_desc mapper = function
         , Option.map ~f:(mapper.expression mapper) default )
   | Pexp_ctor (name, arg) ->
       Pexp_ctor (lid mapper name, Option.map ~f:(mapper.expression mapper) arg)
+  | Pexp_row_ctor (name, args) ->
+      Pexp_row_ctor
+        (str mapper name, List.map ~f:(mapper.expression mapper) args)
   | Pexp_unifiable {expression; name; id} ->
       Pexp_unifiable
         { id
@@ -189,6 +219,12 @@ let expression_desc mapper = function
         , Option.map ~f:(mapper.expression mapper) e3 )
   | Pexp_prover e ->
       Pexp_prover (mapper.expression mapper e)
+
+let type_conv mapper = function
+  | Ptconv_with (mode, decl) ->
+      Ptconv_with (mode, mapper.type_decl mapper decl)
+  | Ptconv_to typ ->
+      Ptconv_to (mapper.type_expr mapper typ)
 
 let signature mapper = List.map ~f:(mapper.signature_item mapper)
 
@@ -203,6 +239,11 @@ let signature_desc mapper = function
       Psig_instance (str mapper name, mapper.type_expr mapper typ)
   | Psig_type decl ->
       Psig_type (mapper.type_decl mapper decl)
+  | Psig_convtype (decl, tconv, conv) ->
+      Psig_convtype
+        ( mapper.type_decl mapper decl
+        , type_conv mapper tconv
+        , Option.map ~f:(str mapper) conv )
   | Psig_rectype decls ->
       Psig_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Psig_module (name, msig) ->
@@ -220,6 +261,8 @@ let signature_desc mapper = function
       Psig_multiple (mapper.signature mapper sigs)
   | Psig_prover sigs ->
       Psig_prover (mapper.signature mapper sigs)
+  | Psig_convert (name, typ) ->
+      Psig_convert (str mapper name, mapper.type_expr mapper typ)
 
 let module_sig mapper {msig_desc; msig_loc} =
   { msig_loc= mapper.location mapper msig_loc
@@ -253,6 +296,11 @@ let statement_desc mapper = function
       Pstmt_instance (str mapper name, mapper.expression mapper e)
   | Pstmt_type decl ->
       Pstmt_type (mapper.type_decl mapper decl)
+  | Pstmt_convtype (decl, tconv, conv) ->
+      Pstmt_convtype
+        ( mapper.type_decl mapper decl
+        , type_conv mapper tconv
+        , Option.map ~f:(str mapper) conv )
   | Pstmt_rectype decls ->
       Pstmt_rectype (List.map ~f:(mapper.type_decl mapper) decls)
   | Pstmt_module (name, me) ->
@@ -261,6 +309,8 @@ let statement_desc mapper = function
       Pstmt_modtype (str mapper name, mapper.module_sig mapper mty)
   | Pstmt_open name ->
       Pstmt_open (lid mapper name)
+  | Pstmt_open_instance name ->
+      Pstmt_open_instance (lid mapper name)
   | Pstmt_typeext (typ, ctors) ->
       Pstmt_typeext
         (mapper.variant mapper typ, List.map ~f:(mapper.ctor_decl mapper) ctors)
@@ -275,6 +325,8 @@ let statement_desc mapper = function
       Pstmt_multiple (mapper.statements mapper stmts)
   | Pstmt_prover stmts ->
       Pstmt_prover (mapper.statements mapper stmts)
+  | Pstmt_convert (name, typ) ->
+      Pstmt_convert (str mapper name, mapper.type_expr mapper typ)
 
 let module_expr mapper {mod_desc; mod_loc} =
   { mod_loc= mapper.location mapper mod_loc
@@ -305,6 +357,7 @@ let default_iterator =
   { type_expr
   ; type_desc
   ; variant
+  ; row_tag
   ; field_decl
   ; ctor_args
   ; ctor_decl

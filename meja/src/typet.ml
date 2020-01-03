@@ -5,18 +5,60 @@ open Parsetypes
 open Envi
 
 type error =
-  | Unbound_type_var of type_expr
+  | Unbound_type_var of string
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
+  | Opaque_type_in_prover_mode of type_expr
+  | Convertible_arities_differ of string * int * string * int
   | GADT_in_nonrec_type
+  | Repeated_row_label of Ident.t
+  | Missing_row_label of Ident.t
+  | Expected_row_type of type_expr
 
 exception Error of Location.t * error
 
 let type0 {Typedast.type_type; _} = type_type
 
+let unify = ref (fun ~loc:_ _env _typ1 _typ2 -> failwith "Undefined")
+
 module Type = struct
   open Type
+
+  (* Unique identifier to refer to the fake `opaque` type constructor. *)
+  let opaque = Ident.create ~mode:Checked "opaque"
+
+  let mk_poly ~loc ~mode vars typ env =
+    { Typedast.type_desc= Ttyp_poly (vars, typ)
+    ; type_loc= loc
+    ; type_type= Mk.poly ~mode (List.map ~f:type0 vars) (type0 typ) env }
+
+  let mk_tuple ~loc ~mode typs env =
+    { Typedast.type_desc= Ttyp_tuple typs
+    ; type_loc= loc
+    ; type_type= Mk.tuple ~mode (List.map ~f:type0 typs) env }
+
+  let mk_arrow ~loc ~mode ?(explicit = Explicit) ?(label = Nolabel) typ1 typ2
+      env =
+    { Typedast.type_desc= Ttyp_arrow (typ1, typ2, explicit, label)
+    ; type_loc= loc
+    ; type_type= Mk.arrow ~mode ~explicit ~label (type0 typ1) (type0 typ2) env
+    }
+
+  let mk_prover ~loc ~mode typ =
+    { Typedast.type_desc= Ttyp_prover typ
+    ; type_loc= loc
+    ; type_type= Type1.get_mode mode typ.type_type }
+
+  let mk_conv ~loc ~mode typ1 typ2 env =
+    { Typedast.type_desc= Ttyp_conv (typ1, typ2)
+    ; type_loc= loc
+    ; type_type= Envi.Type.Mk.conv ~mode (type0 typ1) (type0 typ2) env }
+
+  let mk_opaque ~loc typ env =
+    { Typedast.type_desc= Ttyp_opaque typ
+    ; type_loc= loc
+    ; type_type= Envi.Type.Mk.opaque ~mode:Checked (type0 typ) env }
 
   let rec import ?must_find (typ : type_expr) env : Typedast.type_expr * env =
     let mode = Envi.current_mode env in
@@ -27,7 +69,7 @@ module Type = struct
     | Ptyp_var None -> (
       match must_find with
       | Some true ->
-          raise (Error (loc, Unbound_type_var typ))
+          raise (Error (loc, Unbound_type_var "_"))
       | _ ->
           ( { type_desc= Ttyp_var None
             ; type_loc= loc
@@ -39,7 +81,7 @@ module Type = struct
           | Some true ->
               let var = find_type_variable ~mode x env in
               if Option.is_none var then
-                raise (Error (loc, Unbound_type_var typ)) ;
+                raise (Error (loc, Unbound_type_var x)) ;
               var
           | Some false ->
               None
@@ -64,11 +106,22 @@ module Type = struct
         in
         let typ, env = import typ env in
         let env = close_expr_scope env in
-        ( { type_desc= Ttyp_poly (vars, typ)
-          ; type_loc= loc
-          ; type_type= Mk.poly ~mode (List.map ~f:type0 vars) (type0 typ) env
-          }
-        , env )
+        (mk_poly ~loc ~mode vars typ env, env)
+    | Ptyp_ctor {var_ident= {txt= Lident "opaque"; _} as var_ident; var_params}
+      when not (Envi.has_type_declaration ~mode var_ident env) -> (
+      (* Special-case the [opaque] type constructor when it's not otherwise
+           bound in the environment. This avoids the need for an extra keyword
+           or any specific reserved syntax.
+        *)
+      match var_params with
+      | [typ'] ->
+          import {typ with type_desc= Ptyp_opaque typ'} env
+      | _ ->
+          raise
+            (Error
+               ( loc
+               , Wrong_number_args
+                   (Path.Pident opaque, List.length var_params, 1) )) )
     | Ptyp_ctor variant ->
         let {var_ident; var_params} = variant in
         let var_ident, decl = raw_find_type_declaration ~mode var_ident env in
@@ -102,18 +155,11 @@ module Type = struct
               let t, e = import t e in
               (e, t) )
         in
-        let typ = Mk.tuple ~mode (List.map ~f:type0 typs) env in
-        ({type_desc= Ttyp_tuple typs; type_loc= loc; type_type= typ}, env)
+        (mk_tuple ~loc ~mode typs env, env)
     | Ptyp_arrow (typ1, typ2, explicit, label) ->
         let typ1, env = import typ1 env in
         let typ2, env = import typ2 env in
-        let typ =
-          Mk.arrow ~mode ~explicit ~label (type0 typ1) (type0 typ2) env
-        in
-        ( { type_desc= Ttyp_arrow (typ1, typ2, explicit, label)
-          ; type_loc= loc
-          ; type_type= typ }
-        , env )
+        (mk_arrow ~loc ~mode ~explicit ~label typ1 typ2 env, env)
     | Ptyp_prover typ ->
         let env = open_expr_scope ~mode:Prover env in
         let typ, env = import typ env in
@@ -121,9 +167,181 @@ module Type = struct
           let scope, env = pop_expr_scope env in
           join_expr_scope env scope
         in
-        ( { type_desc= Ttyp_prover typ
+        (mk_prover ~loc ~mode typ, env)
+    | Ptyp_conv (typ1, typ2) ->
+        let env = open_expr_scope ~mode:Checked env in
+        let typ1, env = import typ1 env in
+        let env =
+          let scope, env = pop_expr_scope env in
+          join_expr_scope env scope
+        in
+        let env = open_expr_scope ~mode:Prover env in
+        let typ2, env = import typ2 env in
+        let env =
+          let scope, env = pop_expr_scope env in
+          join_expr_scope env scope
+        in
+        (mk_conv ~loc ~mode typ1 typ2 env, env)
+    | Ptyp_opaque typ' ->
+        if equal_mode Prover mode then
+          raise (Error (loc, Opaque_type_in_prover_mode typ)) ;
+        let env = open_expr_scope ~mode:Prover env in
+        let typ, env = import typ' env in
+        let env =
+          let scope, env = pop_expr_scope env in
+          join_expr_scope env scope
+        in
+        (mk_opaque ~loc typ env, env)
+    | Ptyp_alias (typ, name) ->
+        let var =
+          match must_find with
+          | Some true ->
+              let var = find_type_variable ~mode name.txt env in
+              if Option.is_none var then
+                raise (Error (loc, Unbound_type_var name.txt)) ;
+              var
+          | Some false ->
+              None
+          | None ->
+              find_type_variable ~mode name.txt env
+        in
+        let var, env =
+          match var with
+          | Some var ->
+              (var, env)
+          | None ->
+              let var = mkvar ~mode (Some name.txt) env in
+              (var, add_type_variable name.txt var env)
+        in
+        let typ, env = import typ env in
+        !unify ~loc env typ.type_type var ;
+        ( { Typedast.type_desc= Ttyp_alias (typ, name)
           ; type_loc= loc
-          ; type_type= Type1.get_mode mode typ.type_type }
+          ; type_type= typ.type_type }
+        , env )
+    | Ptyp_row (tags, row_closed, min_tags) ->
+        let pres =
+          match (row_closed, min_tags) with
+          | Closed, Some _ ->
+              Type0.RpMaybe
+          | Open, _ | Closed, None ->
+              Type0.RpPresent
+        in
+        let (env, row_tags), tags =
+          List.fold_map ~init:(env, Ident.Map.empty) tags
+            ~f:(fun (env, row_tags) {rtag_ident; rtag_arg; rtag_loc} ->
+              let env, rtag_arg =
+                List.fold_map rtag_arg ~init:env ~f:(fun e t ->
+                    let t, e = import t e in
+                    (e, t) )
+              in
+              let rtag_ident = map_loc ~f:Ident.create_row rtag_ident in
+              let args = List.map ~f:type0 rtag_arg in
+              let row_tags =
+                match
+                  Map.add row_tags ~key:rtag_ident.txt
+                    ~data:(Path.Pident rtag_ident.txt, Type1.mk_rp pres, args)
+                with
+                | `Duplicate ->
+                    raise
+                      (Error (rtag_ident.loc, Repeated_row_label rtag_ident.txt))
+                | `Ok row_tags ->
+                    row_tags
+              in
+              ((env, row_tags), {Typedast.rtag_ident; rtag_arg; rtag_loc}) )
+        in
+        let min_tags =
+          Option.map ~f:(List.map ~f:(map_loc ~f:Ident.create_row)) min_tags
+        in
+        let set_present tag =
+          match Map.find row_tags tag.Location.txt with
+          | None ->
+              raise (Error (tag.loc, Missing_row_label tag.txt))
+          | Some (_path, pres, _args) ->
+              pres.Type0.rp_desc <- RpPresent
+        in
+        Option.iter ~f:(List.iter ~f:set_present) min_tags ;
+        let row_rest = Envi.Type.mkvar ~mode None env in
+        let type_type =
+          Envi.Type.Mk.row ~mode
+            { row_tags
+            ; row_closed
+            ; row_rest
+            ; row_presence_proxy= Type1.mk_rp RpPresent }
+            env
+        in
+        ( { Typedast.type_desc= Ttyp_row (tags, row_closed, min_tags)
+          ; type_loc= loc
+          ; type_type }
+        , env )
+    | Ptyp_row_subtract (typ, tags) ->
+        let typ', env = import typ env in
+        let tags = List.map ~f:(map_loc ~f:Ident.create_row) tags in
+        let type_type =
+          let typ' = Type1.repr typ'.type_type in
+          let (row_tags, row_rest, row_closed), row_presence_proxy =
+            match typ'.type_desc with
+            | Tvar name ->
+                let row_tags = Ident.Map.empty in
+                let row_closed = Open in
+                let row_rest =
+                  Type1.Mk.var ~mode:typ'.type_mode typ'.type_depth name
+                in
+                let row_presence_proxy = Type1.mk_rp RpPresent in
+                let row =
+                  {Type0.row_tags; row_closed; row_rest; row_presence_proxy}
+                in
+                let instance_typ =
+                  Type1.Mk.row ~mode:typ'.type_mode typ'.type_depth row
+                in
+                let instance_typ =
+                  if phys_equal typ' typ'.type_alternate.type_alternate then
+                    instance_typ.type_alternate.type_alternate
+                  else instance_typ
+                in
+                Type1.add_instance ~unify:(!unify ~loc env) typ' instance_typ ;
+                ((row_tags, row_rest, row_closed), row_presence_proxy)
+            | Trow row ->
+                (Type1.row_repr row, row.row_presence_proxy)
+            | _ ->
+                raise (Error (typ.type_loc, Expected_row_type typ))
+          in
+          match row_closed with
+          | Open ->
+              let row_tags =
+                List.fold ~init:row_tags tags ~f:(fun row_tags {txt= tag; _} ->
+                    match Map.find row_tags tag with
+                    | Some (path, pres, args) ->
+                        Map.set row_tags ~key:tag
+                          ~data:(path, Type1.mk_rp (RpSubtract pres), args)
+                    | None ->
+                        Map.set row_tags ~key:tag
+                          ~data:
+                            ( Path.Pident tag
+                            , Type1.mk_rp (RpSubtract (Type1.mk_rp RpAny))
+                            , [] ) )
+              in
+              Envi.Type.Mk.row ~mode
+                {row_tags; row_closed; row_rest; row_presence_proxy}
+                env
+          | Closed ->
+              let row_tags =
+                List.fold ~init:row_tags tags
+                  ~f:(fun row_tags {txt= tag; loc} ->
+                    match Map.find row_tags tag with
+                    | Some (path, pres, args) ->
+                        Map.set row_tags ~key:tag
+                          ~data:(path, Type1.mk_rp (RpSubtract pres), args)
+                    | None ->
+                        raise (Error (loc, Missing_row_label tag)) )
+              in
+              Envi.Type.Mk.row ~mode
+                {row_tags; row_closed; row_rest; row_presence_proxy}
+                env
+        in
+        ( { Typedast.type_desc= Ttyp_row_subtract (typ', tags)
+          ; type_loc= loc
+          ; type_type }
         , env )
 
   let fold ~init ~f typ =
@@ -141,6 +359,18 @@ module Type = struct
         let acc = List.fold ~init ~f typs in
         f acc typ
     | Ptyp_prover typ ->
+        f init typ
+    | Ptyp_conv (typ1, typ2) ->
+        let acc = f init typ1 in
+        f acc typ2
+    | Ptyp_opaque typ ->
+        f init typ
+    | Ptyp_alias (typ, _) ->
+        f init typ
+    | Ptyp_row (tags, _closed, _min_tags) ->
+        List.fold ~init tags ~f:(fun acc {rtag_arg; _} ->
+            List.fold ~f ~init:acc rtag_arg )
+    | Ptyp_row_subtract (typ, _tags) ->
         f init typ
 
   let iter ~f = fold ~init:() ~f:(fun () -> f)
@@ -164,6 +394,22 @@ module Type = struct
         {type_desc= Ptyp_poly (typs, f typ); type_loc= loc}
     | Ptyp_prover typ ->
         {type_desc= Ptyp_prover (f typ); type_loc= loc}
+    | Ptyp_conv (typ1, typ2) ->
+        {type_desc= Ptyp_conv (f typ1, f typ2); type_loc= loc}
+    | Ptyp_opaque typ ->
+        {type_desc= Ptyp_opaque (f typ); type_loc= loc}
+    | Ptyp_alias (typ, name) ->
+        {type_desc= Ptyp_alias (f typ, name); type_loc= loc}
+    | Ptyp_row (tags, closed, min_tags) ->
+        { type_desc=
+            Ptyp_row
+              ( List.map tags ~f:(fun tag ->
+                    {tag with rtag_arg= List.map ~f tag.rtag_arg} )
+              , closed
+              , min_tags )
+        ; type_loc= loc }
+    | Ptyp_row_subtract (typ, tags) ->
+        {type_desc= Ptyp_row_subtract (f typ, tags); type_loc= loc}
 end
 
 module TypeDecl = struct
@@ -309,7 +555,8 @@ module TypeDecl = struct
           ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
 
   (* TODO: Make prover mode declarations stitch to opaque types. *)
-  let import ?(newtype = false) ?other_name ~recursive decl' env =
+  let import ?name ?other_name ?tri_stitched ?(newtype = false) ~recursive
+      decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
     let tdec_ident, path, tdec_id =
@@ -327,7 +574,13 @@ module TypeDecl = struct
             in
             (map_loc ~f:(fun _ -> tdec_ident) path, path.txt, next_id ())
         | _ ->
-            let ident = map_loc ~f:(Ident.create ~mode) tdec_ident in
+            let ident =
+              match name with
+              | Some name ->
+                  map_loc ~f:(fun _ -> name) tdec_ident
+              | None ->
+                  map_loc ~f:(Ident.create ~mode) tdec_ident
+            in
             (ident, Path.Pident ident.txt, next_id ()) )
     in
     let env = open_expr_scope env in
@@ -343,18 +596,47 @@ module TypeDecl = struct
     let env, tdec_params = import_params env tdec_params in
     let params = List.map ~f:type0 tdec_params in
     let tdec_ret =
-      match other_name with
-      | None ->
-          Type1.Mk.ctor ~mode 10000 path params
-      | Some path' ->
-          let tmp = Type1.mkvar ~mode 10000 None in
-          tmp.type_desc <- Tctor {var_ident= path; var_params= params} ;
-          tmp.type_alternate.type_desc
-          <- Tctor
-               { var_ident= path'
-               ; var_params=
-                   List.map params ~f:(fun param -> param.type_alternate) } ;
-          tmp
+      match (other_name, tri_stitched) with
+      | Some _, Some _ ->
+          (* Disallowed. *)
+          assert false
+      | Some other_path, None ->
+          (* Directly stitched types. *)
+          Type1.Mk.ctor ~mode 10000 path ~other_path params
+      | None, Some tri_typ ->
+          (* Tri-stitched types. *)
+          assert (equal_mode mode Checked) ;
+          (* Evaluate [tri_typ] in the current environment so that it has
+             access to the type parameters.
+          *)
+          let tri_typ = tri_typ env params in
+          assert (equal_mode tri_typ.Type0.type_mode Prover) ;
+          let typ =
+            Type1.mk' ~mode:Checked 10000
+              (Tctor {var_ident= path; var_params= params})
+          in
+          typ.type_alternate <- tri_typ ;
+          typ
+      | None, None -> (
+          (* This type doesn't have a proper alternate, make it opaque. *)
+          let opaque =
+            let ctor = Type1.Mk.ctor ~mode 10000 path params in
+            Type1.Mk.opaque ~mode 10000 (Type1.get_mode Prover ctor)
+          in
+          match mode with
+          | Prover ->
+              (* Prover-mode 'opaque' types aren't really opaque, so leave as
+                 is.
+              *)
+              opaque
+          | Checked ->
+              (* Tri-stitch to ensure that [tdec_ret] isn't opaque itself. *)
+              let typ =
+                Type1.mk' ~mode:Checked 10000
+                  (Tctor {var_ident= path; var_params= params})
+              in
+              typ.type_alternate <- Type1.get_mode Prover opaque ;
+              typ )
     in
     let decl =
       Type0.{tdec_params= params; tdec_desc= TAbstract; tdec_id; tdec_ret}
@@ -455,6 +737,75 @@ module TypeDecl = struct
     in
     (decl, env)
 
+  let import_convertible decl type_conv env =
+    let mode = current_mode env in
+    assert (equal_mode mode Checked) ;
+    match type_conv with
+    | Ptconv_with (other_mode, conv_decl) -> (
+        let decl_len = List.length decl.tdec_params in
+        let conv_len = List.length conv_decl.tdec_params in
+        if not (Int.equal decl_len conv_len) then
+          raise
+            (Error
+               ( conv_decl.tdec_loc
+               , Convertible_arities_differ
+                   ( decl.tdec_ident.txt
+                   , decl_len
+                   , conv_decl.tdec_ident.txt
+                   , conv_len ) )) ;
+        let name = Ident.create ~mode decl.tdec_ident.txt in
+        let other_name =
+          Ident.create ~mode:other_mode conv_decl.tdec_ident.txt
+        in
+        let decl, env =
+          import ~name ~other_name:(Path.Pident other_name) ~recursive:false
+            decl env
+        in
+        match other_mode with
+        | Checked ->
+            (* Tri-stitch. The types are related as
+               [other_name@{C} -> other_name@{P} <-> name@{C}].
+            *)
+            let tri_stitched env params =
+              Envi.Type.instantiate decl.tdec_tdec.tdec_params params
+                (Type1.get_mode Prover decl.tdec_tdec.tdec_ret)
+                env
+            in
+            let conv_decl, env =
+              import ~name:other_name ~tri_stitched ~recursive:false conv_decl
+                env
+            in
+            (decl, Typedast.Ttconv_with (other_mode, conv_decl), env)
+        | Prover ->
+            (* Stitch. The types are related as
+               [name@{C} <-> other_name@{P}].
+            *)
+            let env = Envi.open_mode_module_scope other_mode env in
+            let conv_decl, env =
+              import ~name:other_name ~other_name:(Path.Pident name)
+                ~recursive:false conv_decl env
+            in
+            let env = Envi.open_mode_module_scope mode env in
+            (decl, Typedast.Ttconv_with (other_mode, conv_decl), env) )
+    | Ptconv_to typ ->
+        (* Tri-stitch to an existing stitching as
+           [decl@{C} -> typ@{P} <-> typ@{C}].
+        *)
+        (* Sad hack, but we need to evaluate in the declaration environment to
+           find the type variables, and also be able to return the type.
+        *)
+        let typ' = ref None in
+        let tri_stitched env _params =
+          (* Interpret in prover mode. *)
+          let env = Envi.open_expr_scope ~mode:Prover env in
+          let typ, _env = Type.import ~must_find:true typ env in
+          typ' := Some typ ;
+          typ.type_type
+        in
+        let decl, env = import ~tri_stitched ~recursive:false decl env in
+        let typ = Option.value_exn !typ' in
+        (decl, Ttconv_to typ, env)
+
   let import_rec decls env =
     let env = List.fold ~f:predeclare ~init:env decls in
     let env, decls =
@@ -465,7 +816,8 @@ module TypeDecl = struct
     Envi.TypeDecl.clear_predeclared env ;
     (decls, env)
 
-  let import ?other_name = import ?other_name ~recursive:false
+  let import ?name ?other_name ?tri_stitched =
+    import ?name ?other_name ?tri_stitched ~recursive:false
 end
 
 (* Error handling *)
@@ -482,8 +834,9 @@ let pp_decl_typ ppf decl =
     ; type_loc= Location.none }
 
 let report_error ppf = function
-  | Unbound_type_var var ->
-      fprintf ppf "@[<hov>Unbound type parameter@ @[<h>%a@].@]" pp_typ var
+  | Unbound_type_var name ->
+      let quot = match name with "_" -> "" | _ -> "'" in
+      fprintf ppf "@[<hov>Unbound type parameter@ %s%s.@]" quot name
   | Wrong_number_args (path, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \
@@ -498,10 +851,29 @@ let report_error ppf = function
         "@[<hov>Constraints are not satisfied in this type.@ Type @[<h>%a@] \
          should be an instance of @[<h>%a@].@]"
         pp_typ typ pp_decl_typ decl
+  | Opaque_type_in_prover_mode typ ->
+      fprintf ppf
+        "@[<hov>The type @[<h>%a@] is not valid in this mode:@ opaque types \
+         cannot be created in Prover mode.@]"
+        pp_typ typ
+  | Convertible_arities_differ (name, len, conv_name, conv_len) ->
+      fprintf ppf
+        "@[<hov>Cannot associate type %s of arity %i@ with type %s of arity \
+         %i:@ their arities must be equal.@]"
+        name len conv_name conv_len
   | GADT_in_nonrec_type ->
       fprintf ppf
         "@[<hov>GADT case syntax cannot be used in a non-recursive type.@ To \
          use this syntax, use 'type rec' for this type definition.@]@."
+  | Repeated_row_label label ->
+      fprintf ppf
+        "@[<hov>The constructor %a has already appeared in this row.@]@."
+        Ident.pprint label
+  | Missing_row_label label ->
+      fprintf ppf "@[<hov>The constructor %a is not present in this row.@]@."
+        Ident.pprint label
+  | Expected_row_type typ ->
+      fprintf ppf "@[<hov>The type %a was expected to be a row.@]@." pp_typ typ
 
 let () =
   Location.register_error_of_exn (function

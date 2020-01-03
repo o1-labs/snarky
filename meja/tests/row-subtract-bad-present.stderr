@@ -1,0 +1,4 @@
+File "tests/row-subtract-bad-present.meja", line 2, characters 23-24:
+Error: Incompatible types [[`A | `B] - `A] and [`A | `B]:
+       Cannot unify [[`A | `B] - `A] and [`A | `B]:
+       the constructor `A is not present in both.

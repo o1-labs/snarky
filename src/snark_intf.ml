@@ -580,6 +580,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val gen : t Core_kernel.Quickcheck.Generator.t
     (** A generator for Quickcheck tests. *)
 
+    val gen_uniform : t Core_kernel.Quickcheck.Generator.t
+    (** A uniform generator for Quickcheck tests. *)
+
     include Field_intf.Extended with type t := t
 
     include Stringable.S with type t := t
@@ -1745,7 +1748,7 @@ module type Run_basic = sig
     (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
         and normal OCaml data.
 
-        Using this module is not recommended.
+        Using this module is strongly discouraged.
     *)
     module Internal : sig
       val snarkless : 'a -> ('a, 'a) t
@@ -1765,6 +1768,13 @@ module type Run_basic = sig
 
           This is the dual of [snarkless], which allows [OCaml] values from the
           [Checked] world to pass through [As_prover] blocks.
+      *)
+
+      val fn :
+           ('var1, 'value1) t
+        -> ('var2, 'value2) t
+        -> ('var1 -> 'var2, 'value1 -> 'value2) t
+      (** A [Typ.t] for converting between checked and prover mode functions.
       *)
     end
 
@@ -1875,6 +1885,9 @@ module type Run_basic = sig
 
       val gen : t Core_kernel.Quickcheck.Generator.t
       (** A generator for Quickcheck tests. *)
+
+      val gen_uniform : t Core_kernel.Quickcheck.Generator.t
+      (** A uniform generator for Quickcheck tests. *)
 
       include Field_intf.Extended with type t := t
 

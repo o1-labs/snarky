@@ -1,6 +1,15 @@
 open Core_kernel
 open Asttypes
 open Meja_lib.Ast_types
+
+module Rf = struct
+  (* This implements the necessary parts of Ast_helper.Rf for older OCaml
+     versions which did not have it. In newer versions, this will be shadowed
+     by [open Ast_helper] below.
+  *)
+  let tag ?loc:_ ?(attrs = []) a b c = Parsetree.Rtag (a, attrs, b, c)
+end
+
 open Ast_helper
 open Meja_lib.Parsetypes
 
@@ -20,8 +29,46 @@ let rec of_type_desc ?loc typ =
       Typ.tuple ?loc (List.map ~f:of_type_expr typs)
   | Ptyp_prover typ ->
       of_type_expr typ
+  | Ptyp_conv (typ1, typ2) ->
+      mk_typ_t ?loc typ1 typ2
+  | Ptyp_opaque typ ->
+      Typ.constr ?loc
+        (Location.mkloc
+           (Option.value_exn
+              (Longident.unflatten ["Snarky"; "As_prover"; "Ref"; "t"]))
+           (Option.value ~default:Location.none loc))
+        [of_type_expr typ]
+  | Ptyp_alias (typ, name) ->
+      Typ.alias ?loc (of_type_expr typ) name.txt
+  | Ptyp_row (tags, closed, min_tags) ->
+      Typ.variant ?loc
+        (List.map tags ~f:(fun {rtag_ident; rtag_arg; rtag_loc} ->
+             match rtag_arg with
+             | [] ->
+                 Rf.tag ~loc:rtag_loc rtag_ident true []
+             | _ ->
+                 Rf.tag ~loc:rtag_loc rtag_ident false
+                   [Typ.tuple ~loc:rtag_loc (List.map ~f:of_type_expr rtag_arg)]
+         ))
+        closed
+        (Option.map ~f:(List.map ~f:(fun {Location.txt; _} -> txt)) min_tags)
+  | Ptyp_row_subtract (typ, _tags) ->
+      (* OCaml doesn't have a concept of row subtraction; we output the
+         underlying row instead.
+      *)
+      of_type_expr typ
 
 and of_type_expr typ = of_type_desc ~loc:typ.type_loc typ.type_desc
+
+and mk_typ_t ?(loc = Location.none) typ1 typ2 =
+  let typ1 = of_type_expr typ1 in
+  let typ2 = of_type_expr typ2 in
+  let typ_t =
+    Option.value_exn (Longident.unflatten ["Snarky"; "Types"; "Typ"; "t"])
+  in
+  let typ_t = Location.mkloc typ_t loc in
+  (* Arguments are [var, value, field, checked]. *)
+  Typ.constr ~loc typ_t [typ1; typ2; Typ.any ~loc (); Typ.any ~loc ()]
 
 let of_field_decl {fld_ident= name; fld_type= typ; fld_loc= loc; _} =
   Type.field ~loc name (of_type_expr typ)
@@ -83,6 +130,17 @@ let rec of_pattern_desc ?loc = function
         Open
   | Ppat_ctor (name, arg) ->
       Pat.construct ?loc name (Option.map ~f:of_pattern arg)
+  | Ppat_row_ctor (name, args) ->
+      let args =
+        match args with
+        | [] ->
+            None
+        | [arg] ->
+            Some (of_pattern arg)
+        | _ ->
+            Some (Pat.tuple ?loc (List.map ~f:of_pattern args))
+      in
+      Pat.variant ?loc name.txt args
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
@@ -116,6 +174,10 @@ let rec of_expression_desc ?loc = function
       Exp.let_ ?loc Nonrecursive
         [Vb.mk (of_pattern p) (of_expression e_rhs)]
         (of_expression e)
+  | Pexp_instance (name, e_rhs, e) ->
+      Exp.let_ ?loc Nonrecursive
+        [Vb.mk (Pat.var ~loc:name.loc name) (of_expression e_rhs)]
+        (of_expression e)
   | Pexp_tuple es ->
       Exp.tuple ?loc (List.map ~f:of_expression es)
   | Pexp_match (e, cases) ->
@@ -130,6 +192,17 @@ let rec of_expression_desc ?loc = function
         (Option.map ~f:of_expression ext)
   | Pexp_ctor (name, arg) ->
       Exp.construct ?loc name (Option.map ~f:of_expression arg)
+  | Pexp_row_ctor (name, args) ->
+      let args =
+        match args with
+        | [] ->
+            None
+        | [arg] ->
+            Some (of_expression arg)
+        | _ ->
+            Some (Exp.tuple ?loc (List.map ~f:of_expression args))
+      in
+      Exp.variant ?loc name.txt args
   | Pexp_unifiable {expression= Some e; _} ->
       of_expression e
   | Pexp_unifiable {name; _} ->
@@ -165,11 +238,19 @@ and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
 
 and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
+let of_conv_type = function
+  | Ptconv_with (_mode, decl) ->
+      Some (of_type_decl decl)
+  | Ptconv_to _ ->
+      None
+
 let rec of_signature_desc ?loc = function
   | Psig_value (name, typ) | Psig_instance (name, typ) ->
       Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
   | Psig_type decl ->
-      Sig.type_ ?loc Nonrecursive [of_type_decl decl]
+      Sig.type_ ?loc Recursive [of_type_decl decl]
+  | Psig_convtype _ ->
+      assert false
   | Psig_rectype decls ->
       Sig.type_ ?loc Recursive (List.map ~f:of_type_decl decls)
   | Psig_module (name, msig) ->
@@ -206,6 +287,8 @@ let rec of_signature_desc ?loc = function
         { pincl_mod= Mty.signature ?loc (of_signature sigs)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Psig_convert (name, typ) ->
+      Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
 
 and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
 
@@ -241,6 +324,8 @@ let rec of_statement_desc ?loc = function
       Str.value ?loc Nonrecursive [Vb.mk (Pat.var ?loc name) (of_expression e)]
   | Pstmt_type decl ->
       Str.type_ ?loc Nonrecursive [of_type_decl decl]
+  | Pstmt_convtype _ ->
+      assert false
   | Pstmt_rectype decls ->
       Str.type_ ?loc Recursive (List.map ~f:of_type_decl decls)
   | Pstmt_module (name, m) ->
@@ -249,6 +334,9 @@ let rec of_statement_desc ?loc = function
       Str.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
   | Pstmt_open name ->
       Str.open_ ?loc (Opn.mk ?loc (Of_ocaml.open_of_name name))
+  | Pstmt_open_instance _ ->
+      Str.eval ?loc
+        (Exp.construct ?loc (Location.mknoloc (Longident.Lident "()")) None)
   | Pstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ -> (of_type_expr typ, Invariant)
@@ -295,6 +383,11 @@ let rec of_statement_desc ?loc = function
         { pincl_mod= Mod.structure ?loc (List.map ~f:of_statement stmts)
         ; pincl_loc= Option.value ~default:Location.none loc
         ; pincl_attributes= [] }
+  | Pstmt_convert _ ->
+      (* Not enough information here to build a conversion. Typechecking must
+         generate this conversion before we can generate the code for it.
+      *)
+      assert false
 
 and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 

@@ -206,6 +206,8 @@ struct
     end
 
     module Params = struct
+      let group_size_in_bits = 253
+
       let a = F.Constant.of_string a
 
       let b = F.Constant.of_string b

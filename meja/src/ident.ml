@@ -1,29 +1,94 @@
 open Core_kernel
 
-type t = {ident_id: int; ident_name: string; ident_mode: Ast_types.mode}
+type t =
+  | Regular of {ident_id: int; ident_name: string; ident_mode: Ast_types.mode}
+  | Global of string
+  | Row of string
 [@@deriving sexp]
 
-type ident = t
+type ident = t [@@deriving sexp]
 
 let current_id = ref 0
 
 let create ~mode name =
   incr current_id ;
-  {ident_id= !current_id; ident_name= name; ident_mode= mode}
+  Regular {ident_id= !current_id; ident_name= name; ident_mode= mode}
 
-let name {ident_name= name; _} = name
+let create_global name = Global name
 
-let mode {ident_mode= mode; _} = mode
+let create_row name = Row name
 
-let compare {ident_id= id1; _} {ident_id= id2; _} = Int.compare id1 id2
+let is_global = function Global _ -> true | _ -> false
 
-let equal {ident_id= id1; _} {ident_id= id2; _} = Int.equal id1 id2
+let is_row = function Row _ -> true | _ -> false
 
-let pprint fmt {ident_name; _} = Ast_types.pp_name fmt ident_name
+let name = function
+  | Regular {ident_name= name; _} ->
+      name
+  | Global name ->
+      name
+  | Row name ->
+      name
 
-let debug_print fmt {ident_name; ident_id; ident_mode} =
-  Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.mode_debug_print
-    ident_mode ident_id
+let mode = function
+  | Regular {ident_mode= mode; _} ->
+      mode
+  | Global _ ->
+      Checked
+  | Row _ ->
+      failwith "Cannot derive a mode from row identifiers."
+
+let compare ident1 ident2 =
+  match (ident1, ident2) with
+  | Regular {ident_id= id1; _}, Regular {ident_id= id2; _} ->
+      Int.compare id1 id2
+  | Regular _, _ ->
+      -1
+  | _, Regular _ ->
+      1
+  | Global name1, Global name2 ->
+      String.compare name1 name2
+  | Global _, _ ->
+      -1
+  | _, Global _ ->
+      1
+  | Row name1, Row name2 ->
+      String.compare name1 name2
+
+let equal ident1 ident2 =
+  match (ident1, ident2) with
+  | Regular {ident_id= id1; _}, Regular {ident_id= id2; _} ->
+      Int.equal id1 id2
+  | Global name1, Global name2 ->
+      String.equal name1 name2
+  | Row name1, Row name2 ->
+      String.equal name1 name2
+  | (Regular _ | Global _ | Row _), _ ->
+      (* NOTE: This case is expanded to ensure that the match is not exhaustive
+               if we add new identifier kinds.
+      *)
+      false
+
+let pprint fmt = function
+  | Regular {ident_name= name; _} ->
+      Ast_types.pp_name fmt name
+  | Global name ->
+      Format.pp_print_string fmt name
+  | Row name ->
+      Format.fprintf fmt "`%s" name
+
+let debug_print fmt = function
+  | Regular {ident_name; ident_id; ident_mode} ->
+      Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.mode_debug_print
+        ident_mode ident_id
+  | Global name ->
+      Format.fprintf fmt "%s/G" name
+  | Row name ->
+      Format.fprintf fmt "`%s" name
+
+let fresh_id = ref 0
+
+let fresh mode = create ~mode (sprintf "x___%i" (incr fresh_id ; !fresh_id))
 
 module Table = struct
   type 'a t = (ident * 'a) list String.Map.t
@@ -107,3 +172,12 @@ module Table = struct
   let mapi tbl ~f =
     Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f ident data))) tbl
 end
+
+module T = struct
+  type t = ident [@@deriving sexp]
+
+  let compare = compare
+end
+
+module Set = Set.Make (T)
+module Map = Map.Make (T)

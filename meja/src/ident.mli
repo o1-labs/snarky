@@ -1,10 +1,24 @@
 (** Unique identifiers. *)
-type t [@@deriving sexp, compare, equal]
+type t [@@deriving sexp, equal, compare]
 
 type ident = t
 
 val create : mode:Ast_types.mode -> string -> t
 (** Create a new unique name. *)
+
+val create_global : string -> t
+(** Create the name of a global (ie. external) module. *)
+
+val create_row : string -> t
+(** Create an identifier for a row constructor.
+
+    This kind of identifier will alias with any other row identifier created
+    with the same name.
+*)
+
+val is_global : t -> bool
+
+val is_row : t -> bool
 
 val name : t -> string
 (** Retrieve the name passed to [create]. *)
@@ -19,6 +33,11 @@ val pprint : Format.formatter -> t -> unit
 
 val debug_print : Format.formatter -> t -> unit
 (** Debug print. Prints the identifier and its internal ID. *)
+
+val fresh : Ast_types.mode -> t
+(** HACK: Call a variable ["x___" ^ id] where [id] is the identifier's internal
+   id.
+*)
 
 module Table : sig
   (** An associative map from [ident]s, with direct name lookups. *)
@@ -97,3 +116,7 @@ module Table : sig
   val mapi : 'a t -> f:(ident -> 'a -> 'b) -> 'b t
   (** Like [map], but also pass the key to the function. *)
 end
+
+module Set : Core_kernel.Set.S with type Elt.t = t
+
+module Map : Core_kernel.Map.S with type Key.t = t

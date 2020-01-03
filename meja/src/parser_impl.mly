@@ -19,6 +19,7 @@ let mkstmt ~pos d = {stmt_desc= d; stmt_loc= Loc.of_pos pos}
 let mksig ~pos d = {sig_desc= d; sig_loc= Loc.of_pos pos}
 let mkmod ~pos d = {mod_desc= d; mod_loc= Loc.of_pos pos}
 let mkmty ~pos d = {msig_desc= d; msig_loc= Loc.of_pos pos}
+let mkrow ~pos d arg = {rtag_ident= d; rtag_arg= arg; rtag_loc= Loc.of_pos pos}
 
 let conspat ~pos hd tl =
   mkpat ~pos (Ppat_ctor
@@ -27,6 +28,10 @@ let conspat ~pos hd tl =
 let consexp ~pos hd tl =
   mkexp ~pos (Pexp_ctor
     ( mkloc ~pos (Lident "::"), Some (mkexp ~pos (Pexp_tuple [hd; tl]))))
+
+let unitpat ~pos = mkpat ~pos (Ppat_ctor (mkloc ~pos (Lident "()"), None))
+
+let unitexp ~pos = mkexp ~pos (Pexp_ctor (mkloc ~pos (Lident "()"), None))
 %}
 %token <string> FIELD
 %token <int> INT
@@ -43,6 +48,11 @@ let consexp ~pos hd tl =
 %token FALSE
 %token SWITCH
 %token TYPE
+%token CONVERTIBLE
+%token BY
+%token TO
+%token AS
+%token LPROVER
 %token REC
 %token MODULE
 %token OPEN
@@ -61,6 +71,7 @@ let consexp ~pos hd tl =
 %token TILDE
 %token QUESTION
 %token DASHGT
+%token DASHDASHGT
 %token EQUALGT
 %token PLUSEQUAL
 %token EQUAL
@@ -69,7 +80,10 @@ let consexp ~pos hd tl =
 %token COMMA
 %token UNDERSCORE
 %token BAR
+%token LT
+%token GT
 %token QUOT
+%token TICK
 %token DOTDOTDOT
 %token DOTDOT
 %token DOT
@@ -85,14 +99,13 @@ let consexp ~pos hd tl =
 
 %token EOL
 
-%left     INFIXOP0 EQUAL
+%left     INFIXOP0 LT GT EQUAL
 %right    INFIXOP1
 %right    COLONCOLON
 %left     MINUS INFIXOP2 PLUSEQUAL
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
-%right    DASHGT
 %nonassoc LPAREN
 
 %start implementation
@@ -110,6 +123,8 @@ let consexp ~pos hd tl =
     { "request" }
   | HANDLER
     { "handler" }
+  | LPROVER
+    { "prover" }
 
 implementation:
   | s = structure EOF
@@ -122,7 +137,7 @@ interface:
 file(item):
   | (* Empty *)
     { [] }
-  | s = item maybe(SEMI)
+  | s = item
     { [s] }
   | s = item SEMI rest = file(item)
     { s :: rest }
@@ -142,8 +157,11 @@ structure_item:
     { mkstmt ~pos:$loc (Pstmt_value (x, e)) }
   | INSTANCE x = as_loc(val_ident) EQUAL e = expr
     { mkstmt ~pos:$loc (Pstmt_instance (x, e)) }
-  | decl = type_decl(TYPE)
+  | TYPE decl = type_decl
     { mkstmt ~pos:$loc (Pstmt_type decl) }
+  | CONVERTIBLE TYPE decl = type_decl c = conv_type
+    named = maybe (BY l = as_loc(val_ident) { l })
+    { mkstmt ~pos:$loc (Pstmt_convtype (decl, c, named)) }
   | decls = type_decls
     { mkstmt ~pos:$loc (Pstmt_rectype decls) }
   | MODULE x = as_loc(UIDENT) EQUAL m = module_expr
@@ -152,6 +170,8 @@ structure_item:
     { mkstmt ~pos:$loc (Pstmt_modtype (x, m)) }
   | OPEN x = as_loc(longident(UIDENT, UIDENT))
     { mkstmt ~pos:$loc (Pstmt_open x) }
+  | OPEN INSTANCE x = as_loc(longident(UIDENT, UIDENT))
+    { mkstmt ~pos:$loc (Pstmt_open_instance x) }
   | TYPE x = decl_type(type_lident) PLUSEQUAL
     maybe(BAR) ctors = list(ctor_decl, BAR)
     { let (x, params) = x in
@@ -168,8 +188,11 @@ signature_item:
     { mksig ~pos:$loc (Psig_value (x, typ)) }
   | INSTANCE x = as_loc(val_ident) COLON typ = type_expr
     { mksig ~pos:$loc (Psig_instance (x, typ)) }
-  | decl = type_decl(TYPE)
+  | TYPE decl = type_decl
     { mksig ~pos:$loc (Psig_type decl) }
+  | CONVERTIBLE TYPE decl = type_decl c = conv_type
+    named = maybe (BY l = as_loc(val_ident) { l })
+    { mksig ~pos:$loc (Psig_convtype (decl, c, named)) }
   | decls = type_decls
     { mksig ~pos:$loc (Psig_rectype decls) }
   | MODULE x = as_loc(UIDENT) COLON m = module_sig
@@ -191,18 +214,18 @@ signature_item:
   | PROVER LBRACE sigs = signature RBRACE
     { mksig ~pos:$loc (Psig_prover sigs) }
 
-%inline type_decl(type_keyword):
-  | type_keyword x = decl_type(lident) k = type_kind
-  { let (x, args) = x in
-    { tdec_ident= x
-    ; tdec_params= args
-    ; tdec_desc= k
-    ; tdec_loc= Loc.of_pos $loc } }
+type_decl:
+  | x = decl_type(lident) k = type_kind
+    { let (x, args) = x in
+      { tdec_ident= x
+      ; tdec_params= args
+      ; tdec_desc= k
+      ; tdec_loc= Loc.of_pos $loc } }
 
 and_type_decls(type_keyword):
-  | decl = type_decl(type_keyword)
+  | type_keyword decl = type_decl
     { [decl] }
-  | decl = type_decl(type_keyword) decls = and_type_decls(AND)
+  | type_keyword decl = type_decl decls = and_type_decls(AND)
     { decl :: decls }
 
 type_decls:
@@ -210,8 +233,16 @@ type_decls:
     { decls }
 
 default_request_handler:
-  | WITH HANDLER p = pat_ctor_args EQUALGT LBRACE body = block RBRACE
+  | WITH HANDLER p = pat_ctor_args EQUALGT body = block
     { (p, body) }
+
+conv_type:
+  | WITH decl = type_decl
+    { Ptconv_with (Checked, decl) }
+  | WITH LPROVER decl = type_decl
+    { Ptconv_with (Prover, decl) }
+  | TO typ = type_expr
+    { Ptconv_to typ }
 
 module_expr:
   | LBRACE s = structure RBRACE
@@ -292,6 +323,8 @@ ctor_decl_args:
 
 infix_operator:
   | op = INFIXOP0 { op }
+  | LT            { "<" }
+  | GT            { ">" }
   | EQUAL         { "=" }
   | op = INFIXOP1 { op }
   | MINUS         { "-" }
@@ -349,7 +382,7 @@ simpl_expr:
     { List.fold
         ~init:(mkexp ~pos:$loc (Pexp_ctor (mkloc ~pos:$loc (Lident "[]"), None)))
         es ~f:(fun acc e -> consexp ~pos:$loc e acc) }
-  | LBRACE es = block RBRACE
+  | es = block
     { es }
   | e = expr_record
     { e }
@@ -357,7 +390,7 @@ simpl_expr:
     { mkexp ~pos:$loc (Pexp_field (e, field)) }
   | s = STRING
     { mkexp ~pos:$loc (Pexp_literal (String s)) }
-  | PROVER LBRACE e = block RBRACE
+  | PROVER e = block
     { mkexp ~pos:$loc (Pexp_prover e) }
 
 expr:
@@ -365,11 +398,8 @@ expr:
     { x }
   | LPAREN x = simpl_expr COLON typ = type_expr RPAREN
     { mkexp ~pos:$loc (Pexp_constraint (x, typ)) }
-  | FUN LPAREN RPAREN EQUALGT LBRACE body = block RBRACE
-    { let unit_pat =
-        mkpat ~pos:$loc (Ppat_ctor (mkloc (Lident "()") ~pos:$loc, None))
-      in
-      mkexp ~pos:$loc (Pexp_fun (Nolabel, unit_pat, body, Explicit)) }
+  | FUN unit = unit EQUALGT body = block
+    { mkexp ~pos:$loc (Pexp_fun (Nolabel, unitpat ~pos:unit, body, Explicit)) }
   | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
@@ -392,19 +422,25 @@ expr:
     { mkexp ~pos:$loc (Pexp_match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
     { mkexp ~pos:$loc (Pexp_ctor (id, args)) }
+  | id = row_name LPAREN rev_args = list(expr, COMMA) RPAREN
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, List.rev rev_args)) }
+  | id = row_name unit = unit
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, [unitexp ~pos:unit])) }
+  | id = row_name
+    { mkexp ~pos:$loc (Pexp_row_ctor (id, [])) }
   | e = if_expr
     { e }
 
 if_expr:
-  | IF e1 = expr LBRACE e2 = block RBRACE
+  | IF e1 = expr e2 = block
     { mkexp ~pos:$loc (Pexp_if (e1, e2, None)) }
-  | IF e1 = expr LBRACE e2 = block RBRACE ELSE e3 = if_expr_or_block
+  | IF e1 = expr e2 = block ELSE e3 = if_expr_or_block
     { mkexp ~pos:$loc (Pexp_if (e1, e2, Some e3)) }
 
-if_expr_or_block:
+%inline if_expr_or_block:
   | e = if_expr
     { e }
-  | LBRACE e = block RBRACE
+  | e = block
     { e }
 
 expr_record:
@@ -424,12 +460,16 @@ expr_ctor_args:
     { None }
   | LPAREN e = expr_or_bare_tuple RPAREN
     { Some e }
+  | pos = unit
+    { Some (unitexp ~pos) }
   | e = expr_record
     { Some e }
 
 match_case:
   | BAR p = pat EQUALGT e = expr
     { (p, e) }
+  | BAR pat err = err
+    { raise (Error (err, Expecting "'=>'")); }
 
 expr_arg:
   | e = expr
@@ -474,7 +514,7 @@ pat_arg_opt:
           (Ppat_constraint (mkpat ~pos:$loc(name) (Ppat_variable name), typ)) ) }
 
 function_body:
- | EQUALGT LBRACE body = block RBRACE
+ | EQUALGT body = block
    { body }
  | err = err
    { raise (Error (err, Fun_no_fat_arrow)) }
@@ -494,17 +534,15 @@ function_from_args:
     { mkexp ~pos:$loc (Pexp_newtype (t, body)) }
   | TYPE t = as_loc(lident) COMMA f = function_from_args
     { mkexp ~pos:$loc (Pexp_newtype (t, f)) }
-  | pat_arg_opt RPAREN err = err
-    { raise (Error (err, Fun_no_fat_arrow)) }
 
 function_from_implicit_args:
   | p = pat_arg RBRACE LPAREN f = function_from_args
     { let (label, p) = p in
       mkexp ~pos:$loc (Pexp_fun (label, p, f, Implicit)) }
-  | p = pat_arg RBRACE EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg RBRACE EQUALGT body = block
     { let (label, p) = p in
       mkexp ~pos:$loc (Pexp_fun (label, p, body, Implicit)) }
-  | p = pat_arg RBRACE COLON typ = type_expr EQUALGT LBRACE body = block RBRACE
+  | p = pat_arg RBRACE COLON typ = type_expr EQUALGT body = block
     { let (label, p) = p in
       mkexp ~pos:$loc (Pexp_fun (label, p, mkexp ~pos:$loc(typ)
         (Pexp_constraint (body, typ)), Implicit)) }
@@ -514,17 +552,25 @@ function_from_implicit_args:
   | pat_arg RBRACE err = err
     { raise (Error (err, Fun_no_fat_arrow)) }
 
-block:
+block_sequence:
   | e = expr SEMI
     { e }
-  | e1 = expr SEMI rest = block
+  | e1 = expr SEMI rest = block_sequence
     { mkexp ~pos:$loc (Pexp_seq (e1, rest)) }
-  | LET x = pat EQUAL lhs = expr SEMI rhs = block
+  | LET x = pat EQUAL lhs = expr SEMI rhs = block_sequence
     { mkexp ~pos:$loc (Pexp_let (x, lhs, rhs)) }
+  | INSTANCE x = as_loc(lident) EQUAL lhs = expr SEMI rhs = block_sequence
+    { mkexp ~pos:$loc (Pexp_instance (x, lhs, rhs)) }
   | LET pat EQUAL expr err = err
     { raise (Error (err, Missing_semi)) }
   | expr err = err
     { raise (Error (err, Missing_semi)) }
+
+block:
+  | LBRACE RBRACE
+    { mkexp ~pos:$loc (Pexp_ctor (mkloc (Lident "()") ~pos:$loc, None)) }
+  | LBRACE body = block_sequence RBRACE
+    { body }
 
 pat_field:
   | x = record_field(longident(lident, UIDENT), pat)
@@ -541,6 +587,8 @@ pat_ctor_args:
     { None }
   | LPAREN p = pat_or_bare_tuple RPAREN
     { Some p }
+  | pos = unit
+    { Some (unitpat ~pos) }
   | p = pat_record
     { Some p }
 
@@ -565,6 +613,12 @@ pat_no_bar:
     { p }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = pat_ctor_args
     { mkpat ~pos:$loc (Ppat_ctor (id, args)) }
+  | id = row_name LPAREN rev_args = list(pat, COMMA) RPAREN
+    { mkpat ~pos:$loc (Ppat_row_ctor (id, List.rev rev_args)) }
+  | id = row_name unit = unit
+    { mkpat ~pos:$loc (Ppat_row_ctor (id, [unitpat ~pos:unit])) }
+  | id = row_name
+    { mkpat ~pos:$loc (Ppat_row_ctor (id, [])) }
 
 pat:
   | p = pat_no_bar
@@ -593,6 +647,20 @@ simple_type_expr:
     { mktyp ~pos:$loc (Ptyp_prover x) }
   | PROVER LBRACE x = type_expr RBRACE
     { mktyp ~pos:$loc (Ptyp_prover x) }
+  | LPAREN typ = type_expr AS QUOT x = as_loc(lident) RPAREN
+    { mktyp ~pos:$loc (Ptyp_alias (typ, x)) }
+  | LBRACKET GT RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row ([], Open, None)) }
+  | LBRACKET tags = row_tags RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, None)) }
+  | LBRACKET GT tags = row_tags RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Open, None)) }
+  | LBRACKET LT tags = row_tags RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, Some [])) }
+  | LBRACKET LT tags = row_tags GT min_tags = list(row_name, BAR) RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row (List.rev tags, Closed, Some (List.rev min_tags))) }
+  | LBRACKET typ = type_expr MINUS tags = list(row_name, BAR) RBRACKET
+    { mktyp ~pos:$loc (Ptyp_row_subtract (typ, List.rev tags)) }
 
 %inline type_arrow_label:
   | (* Empty *)
@@ -609,6 +677,20 @@ type_expr:
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Explicit, Asttypes.Optional name)) }
   | label = type_arrow_label LBRACE x = simple_type_expr RBRACE DASHGT y = type_expr
     { mktyp ~pos:$loc (Ptyp_arrow (x, y, Implicit, label)) }
+  | x = simple_type_expr DASHDASHGT y = type_expr
+    { mktyp ~pos:$loc (Ptyp_conv (x, y)) }
+
+%inline row_name:
+  | TICK name = as_loc(UIDENT)
+    { name }
+
+row_tag:
+  | name = row_name
+    { mkrow ~pos:$loc name [] }
+  | name = row_name LPAREN args = list(type_expr, COMMA) RPAREN
+    { mkrow ~pos:$loc name args }
+
+row_tags: x = list(row_tag, BAR) { x }
 
 list(X, SEP):
   | xs = list(X, SEP) SEP x = X
@@ -621,6 +703,10 @@ tuple(X):
     { x :: xs }
   | x1 = X COMMA x2 = X
     { [x2; x1] }
+
+%inline unit:
+  | LPAREN RPAREN
+    { $loc }
 
 %inline as_loc(X): x = X
   { mkloc x ~pos:($symbolstartpos, $endpos) }
@@ -636,6 +722,9 @@ longident(X, M):
     { Lident x }
   | path = longident(M, M) DOT x = X
     { Ldot (path, x) }
+
+%inline loc(X) : _x = X
+  { Loc.of_pos ($symbolstartpos, $endpos) }
 
 %inline err : _x = error
   { Loc.of_pos ($symbolstartpos, $endpos) }

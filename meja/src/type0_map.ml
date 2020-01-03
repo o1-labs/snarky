@@ -5,6 +5,7 @@ type mapper =
   { type_expr: mapper -> type_expr -> type_expr
   ; type_desc: mapper -> type_desc -> type_desc
   ; variant: mapper -> variant -> variant
+  ; row: mapper -> row -> row
   ; field_decl: mapper -> field_decl -> field_decl
   ; ctor_args: mapper -> ctor_args -> ctor_args
   ; ctor_decl: mapper -> ctor_decl -> ctor_decl
@@ -44,23 +45,40 @@ let type_expr mapper typ =
       (* Recursion breaking. *)
       typ
   | desc ->
-      (* Dummy type variable. *)
-      let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
       let alt_desc = typ.type_alternate.type_desc in
+      let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
+      let typ' = Type1.mkvar ~mode:typ.type_mode typ.type_depth None in
+      (* Initialise [typ'] as its own recursion-breaking value. *)
+      typ'.type_desc <- Treplace typ' ;
+      typ'.type_alternate.type_desc <- Treplace typ'.type_alternate ;
+      let is_stitched = phys_equal typ typ.type_alternate.type_alternate in
+      if is_stitched then
+        (* Change from tri-stitching to plain stitching. *)
+        typ'.type_alternate.type_alternate <- typ'
+      else
+        typ'.type_alternate.type_alternate.type_desc
+        <- Treplace typ'.type_alternate.type_alternate ;
       Type1.set_replacement typ typ' ;
       let type_desc = mapper.type_desc mapper desc in
       let alt_type_desc = mapper.type_desc mapper alt_desc in
-      let typ' =
-        if phys_equal type_desc desc && phys_equal alt_type_desc alt_desc then (
-          typ'.type_desc <- Tref typ ;
-          typ'.type_alternate.type_desc <- Tref typ ;
-          typ )
-        else (
-          typ'.type_desc <- type_desc ;
-          typ'.type_alternate.type_desc <- alt_type_desc ;
-          typ' )
+      let alt_alt_type_desc =
+        if is_stitched then type_desc else mapper.type_desc mapper alt_alt_desc
       in
-      typ'
+      if
+        phys_equal type_desc desc
+        && phys_equal alt_type_desc alt_desc
+        && phys_equal alt_alt_type_desc alt_alt_desc
+      then (
+        typ'.type_desc <- Tref typ ;
+        typ'.type_alternate.type_desc <- Tref typ.type_alternate ;
+        typ'.type_alternate.type_alternate.type_desc
+        <- Tref typ.type_alternate.type_alternate ;
+        typ )
+      else (
+        typ'.type_desc <- type_desc ;
+        typ'.type_alternate.type_desc <- alt_type_desc ;
+        typ'.type_alternate.type_alternate.type_desc <- alt_alt_type_desc ;
+        typ' )
 
 let type_desc mapper desc =
   match desc with
@@ -86,9 +104,21 @@ let type_desc mapper desc =
   | Tref typ ->
       let typ' = mapper.type_expr mapper typ in
       if phys_equal typ' typ then desc else Tref typ'
+  | Tconv typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then desc else Tconv typ'
+  | Topaque typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then desc else Topaque typ'
+  | Tother_mode typ ->
+      let typ' = mapper.type_expr mapper typ in
+      if phys_equal typ' typ then desc else Tother_mode typ'
   | Treplace typ ->
       (* Recursion breaking. *)
       typ.type_desc
+  | Trow row ->
+      let row' = mapper.row mapper row in
+      if phys_equal row' row then desc else Trow row'
 
 let variant mapper ({var_ident= ident; var_params} as variant) =
   let var_ident = mapper.path mapper ident in
@@ -96,6 +126,37 @@ let variant mapper ({var_ident= ident; var_params} as variant) =
   let var_params = map_list var_params ~same ~f:(mapper.type_expr mapper) in
   if !same && phys_equal var_ident ident then variant
   else {var_ident; var_params}
+
+let row mapper ({row_tags; row_closed; row_rest; row_presence_proxy} as row) =
+  let same = ref true in
+  let row_tags =
+    Map.fold row_tags ~init:Ident.Map.empty
+      ~f:(fun ~key ~data:(path, pres, args) row_tags ->
+        let key' = mapper.ident mapper key in
+        let path' = mapper.path mapper path in
+        let pres' =
+          match pres.rp_desc with
+          | RpReplace pres ->
+              pres
+          | _ ->
+              (* NOTE: This isn't necessarily the right behaviour, but
+                       currently isn't used anywhere. This should be reviewed
+                       if we end up needing to replace [row_presence] values
+                       during mapping.
+              *)
+              pres
+        in
+        let args = map_list ~f:(mapper.type_expr mapper) ~same args in
+        if
+          not
+            ( phys_equal key' key && phys_equal pres' pres
+            && phys_equal path' path )
+        then same := false ;
+        Map.set row_tags ~key:key' ~data:(path', pres', args) )
+  in
+  let row_rest' = mapper.type_expr mapper row_rest in
+  if !same && phys_equal row_rest' row_rest then row
+  else {row_tags; row_closed; row_rest; row_presence_proxy}
 
 let field_decl mapper ({fld_ident= ident; fld_type= typ} as fld) =
   let fld_type = mapper.type_expr mapper typ in
@@ -179,6 +240,7 @@ let default_mapper =
   { type_expr
   ; type_desc
   ; variant
+  ; row
   ; field_decl
   ; ctor_args
   ; ctor_decl

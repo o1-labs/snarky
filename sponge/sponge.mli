@@ -27,5 +27,30 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) :
 module Make_operations (Field : Intf.Field) :
   Intf.Operations with module Field := Field
 
-module Make (P : Intf.Permutation) :
+module Make_hash (P : Intf.Permutation) :
   Intf.Hash with module State := State and module Field := P.Field
+
+module Make_sponge (P : Intf.Permutation) :
+  Intf.Sponge
+  with module State := State
+   and module Field := P.Field
+   and type digest := P.Field.t
+   and type input := P.Field.t
+
+module Make_bit_sponge (Bool : sig
+  type t
+end) (Field : sig
+  type t
+
+  val to_bits : t -> Bool.t list
+end)
+(S : Intf.Sponge
+     with module State := State
+      and module Field := Field
+      and type digest := Field.t
+      and type input := Field.t) :
+  Intf.Sponge
+  with module State := State
+   and module Field := Field
+   and type digest := length:int -> Bool.t list
+   and type input := Field.t
