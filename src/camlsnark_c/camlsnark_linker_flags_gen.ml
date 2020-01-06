@@ -12,6 +12,7 @@ let () =
         ; "-lssl"
         ; "-lcrypto"
         ; "-lgmp"
+        ; "-lgmpxx"
         ; "-lomp"
         ; "-lstdc++" ]
     | "Linux" ->
@@ -23,6 +24,7 @@ let () =
         ; "-lcrypto"
         ; "-lprocps"
         ; "-lgmp"
+        ; "-lgmpxx"
         ; "-lstdc++" ]
     | s ->
         failwith (sprintf "don't know how to link on %s yet" s) )

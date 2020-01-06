@@ -6,6 +6,8 @@ add_subdirectory(libsnark)
 
 add_subdirectory(prover_reference_functions)
 
+add_subdirectory(caml-bindings)
+
 find_package(CUDA)
 if(CUDA_FOUND)
   add_subdirectory(cuda-fixnum)

@@ -36,16 +36,6 @@ add_library(
   gadgetlib2/pp.cpp
   gadgetlib2/protoboard.cpp
   gadgetlib2/variable.cpp
-  caml/common.cpp
-  caml/caml_bn128.cpp
-  caml/caml_mnt6.cpp
-  caml/caml_mnt4.cpp
-  caml/caml_mnt4_specific.cpp
-  caml/caml_mnt6_specific.cpp
-  caml/caml_mnt6753.cpp
-  caml/caml_mnt4753.cpp
-  caml/caml_mnt4753_specific.cpp
-  caml/caml_mnt6753_specific.cpp
   misc/pedersen.cpp
   relations/circuit_satisfaction_problems/tbcs/tbcs.cpp
   relations/ram_computations/memory/memory_store_trace.cpp

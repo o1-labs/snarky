@@ -58,7 +58,7 @@
        -DUSE_PT_COMPRESSION=OFF \\
        -DUSE_ASM=ON \\
        -DOPT_FLAGS='-ggdb3 -O2' ..
-     make -j$(nproc) ff zm snark
+     make -j$(nproc) ff zm caml-libsnark-bindings
 
      mkdir _stubs_build
 
@@ -68,10 +68,12 @@
      mkdir _stubs_build/libzm
      pushd _stubs_build/libzm/; ar -xv ../../libsnark/depends/libzm.a; popd
 
-     mkdir _stubs_build/libsnark
-     pushd _stubs_build/libsnark/; ar -xv ../../libsnark/libsnark/libsnark.a; popd
+     mkdir _stubs_build/caml-bindings
+     pushd _stubs_build/caml-bindings
+       ar -xv ../../caml-bindings/libcaml-libsnark-bindings.a
+     popd
 
-     ar -rc libcamlsnark_c_stubs.a _stubs_build/libff/*.o _stubs_build/libzm/*.o _stubs_build/libsnark/*.o
+     ar -rc libcamlsnark_c_stubs.a _stubs_build/libff/*.o _stubs_build/libzm/*.o _stubs_build/caml-bindings/*.o
    popd
    popd
    mv libsnark-caml/build/libcamlsnark_c_stubs.a .
@@ -97,7 +99,7 @@
          -DCMAKE_LIBRARY_PATH=/usr/local/opt/gmp/lib \\
          -DCMAKE_RULE_MESSAGES:BOOL=OFF \\
          -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ..
-       make -j$(sysctl -n hw.ncpu) ff zm snark
+       make -j$(sysctl -n hw.ncpu) ff zm caml-libsnark-bindings
 
        mkdir _stubs_build
 
@@ -107,10 +109,12 @@
        mkdir _stubs_build/libzm
        pushd _stubs_build/libzm/; ar -xv ../../depends/libzm.a; popd
 
-       mkdir _stubs_build/libsnark
-       pushd _stubs_build/libsnark/; ar -xv ../../libsnark/libsnark.a; popd
+       mkdir _stubs_build/caml-bindings
+       pushd _stubs_build/caml-bindings
+         ar -xv ../../caml-bindings/libcaml-libsnark-bindings.a
+       popd
 
-       libtool -static -o libcamlsnark_c_stubs.a _stubs_build/libff/*.o _stubs_build/libzm/*.o _stubs_build/libsnark/*.o
+       libtool -static -o libcamlsnark_c_stubs.a _stubs_build/libff/*.o _stubs_build/libzm/*.o _stubs_build/caml-bindings/*.o
      popd
    popd
    mv libsnark-caml/build/libcamlsnark_c_stubs.a .
