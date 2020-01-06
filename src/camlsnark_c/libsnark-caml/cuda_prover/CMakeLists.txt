@@ -12,7 +12,7 @@ endif(CCACHE_FOUND)
 add_library (
     caml_cuda_prover
 
-    ../libsnark/serialization.cpp
+    ../libsnark/libsnark/serialization.cpp
     ../prover_reference_functions/prover_reference_functions.cpp
     cuda_prover_piecewise.cu
     caml_cuda_prover.cpp
@@ -25,14 +25,14 @@ target_include_directories(
   ../depends/libff
   ../depends/libfqfft
   ../prover_reference_functions
-  ../libsnark
+  ../libsnark/libsnark
 )
 
 add_executable (
     cuda_prover_main
     EXCLUDE_FROM_ALL
 
-    ../libsnark/serialization.cpp
+    ../libsnark/libsnark/serialization.cpp
     cuda_prover_main.cu
 )
 target_link_libraries(cuda_prover_main cuda_main prover_reference_functions)
