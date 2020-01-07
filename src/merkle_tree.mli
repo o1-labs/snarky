@@ -119,7 +119,7 @@ module Checked
     -> Hash.var
     -> Address.var
     -> f:(Elt.var -> (Elt.var, 's) Checked.t)
-    -> (Hash.var * Elt.var * Elt.var, 's) Checked.t
+    -> (Hash.var * [`Old of Elt.var] * [`New of Elt.var], 's) Checked.t
 
   val get_req : depth:int -> Hash.var -> Address.var -> (Elt.var, 's) Checked.t
 

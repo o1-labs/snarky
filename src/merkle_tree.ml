@@ -428,7 +428,7 @@ struct
 
   (* addr0 should have least significant bit first *)
   let%snarkydef_ fetch_and_update_req ~(depth : int) root addr0 ~f :
-      (Hash.var * Elt.var * Elt.var, 's) Checked.t =
+      (Hash.var * [`Old of Elt.var] * [`New of Elt.var], 's) Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
       request_witness
@@ -451,7 +451,7 @@ struct
         Set (addr, next))
     in
     let%map new_root = implied_root next_entry_hash addr0 prev_path in
-    (new_root, prev, next)
+    (new_root, `Old prev, `New next)
 
   (* addr0 should have least significant bit first *)
   let%snarkydef_ modify_req ~(depth : int) root addr0 ~f :
