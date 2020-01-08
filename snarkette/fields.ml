@@ -33,6 +33,8 @@ module type Intf = sig
 
   val gen : t Quickcheck.Generator.t
 
+  val gen_uniform : t Quickcheck.Generator.t
+
   val negate : t -> t
 
   val inv : t -> t
@@ -233,17 +235,21 @@ module Make_fp
 
   let length_in_bits = N.num_bits N.(Info.order - one)
 
-  let gen =
+  let make_gen int32_gen =
     let length_in_int32s = Int.((length_in_bits + 31) / 32) in
     Quickcheck.Generator.(
       map
         (list_with_length length_in_int32s
-           (Int32.gen_incl Int32.zero Int32.max_value))
+           (int32_gen Int32.zero Int32.max_value))
         ~f:(fun xs ->
           List.foldi xs ~init:zero ~f:(fun i acc x ->
               N.log_or acc
                 (N.shift_left (N.of_int (Int32.to_int_exn x)) Int.(32 * i)) )
           |> fun x -> N.(x % order) ))
+
+  let gen = make_gen Int32.gen_incl
+
+  let gen_uniform = make_gen Int32.gen_uniform_incl
 
   let fold_bits n : bool Fold_lib.Fold.t =
     { fold=
@@ -424,6 +430,9 @@ end = struct
 
   let gen = Quickcheck.Generator.tuple3 Fp.gen Fp.gen Fp.gen
 
+  let gen_uniform =
+    Quickcheck.Generator.tuple3 Fp.gen_uniform Fp.gen_uniform Fp.gen_uniform
+
   let to_list (x, y, z) = [x; y; z]
 
   let project_to_base (x, _, _) = x
@@ -497,6 +506,8 @@ end = struct
   include Extend (T)
 
   let gen = Quickcheck.Generator.tuple2 Fp.gen Fp.gen
+
+  let gen_uniform = Quickcheck.Generator.tuple2 Fp.gen_uniform Fp.gen_uniform
 
   let to_list (x, y) = [x; y]
 
@@ -587,6 +598,8 @@ end = struct
   type base = Fp3.t
 
   let gen = Quickcheck.Generator.tuple2 Fp3.gen Fp3.gen
+
+  let gen_uniform = Quickcheck.Generator.tuple2 Fp3.gen_uniform Fp3.gen_uniform
 
   let to_list (x, y) = [x; y]
 
