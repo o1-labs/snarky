@@ -296,6 +296,8 @@ let signature_desc iter = function
       iter.signature iter sigs
   | Tsig_convert (name, typ) ->
       ident iter name ; iter.type_expr iter typ
+  | Tsig_exception ctor ->
+      iter.ctor_decl iter ctor
 
 let module_sig iter {msig_desc; msig_loc} =
   iter.location iter msig_loc ;
@@ -356,6 +358,8 @@ let statement_desc iter = function
       iter.statements iter stmts
   | Tstmt_convert (name, typ, conv) ->
       ident iter name ; iter.type_expr iter typ ; iter.convert iter conv
+  | Tstmt_exception ctor ->
+      iter.ctor_decl iter ctor
 
 let module_expr iter {mod_desc; mod_loc} =
   iter.location iter mod_loc ;

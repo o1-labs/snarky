@@ -380,6 +380,8 @@ let rec signature_desc fmt = function
   | Psig_convert (name, typ) ->
       (* TODO: review to make sure this is what we really want. *)
       signature_desc fmt (Psig_instance (name, typ))
+  | Psig_exception ctor ->
+      fprintf fmt "@[<hov2>exception %a;@]@;@;" ctor_decl ctor
 
 and signature_item fmt sigi = signature_desc fmt sigi.sig_desc
 

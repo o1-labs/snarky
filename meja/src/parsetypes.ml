@@ -121,6 +121,7 @@ and signature_desc =
   | Psig_multiple of signature
   | Psig_prover of signature
   | Psig_convert of str * type_expr
+  | Psig_exception of ctor_decl
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
@@ -151,6 +152,7 @@ and statement_desc =
   | Pstmt_multiple of statements
   | Pstmt_prover of statements
   | Pstmt_convert of str * type_expr
+  | Pstmt_exception of ctor_decl
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 

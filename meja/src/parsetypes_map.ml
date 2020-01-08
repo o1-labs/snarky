@@ -263,6 +263,8 @@ let signature_desc mapper = function
       Psig_prover (mapper.signature mapper sigs)
   | Psig_convert (name, typ) ->
       Psig_convert (str mapper name, mapper.type_expr mapper typ)
+  | Psig_exception ctor ->
+      Psig_exception (mapper.ctor_decl mapper ctor)
 
 let module_sig mapper {msig_desc; msig_loc} =
   { msig_loc= mapper.location mapper msig_loc
@@ -327,6 +329,8 @@ let statement_desc mapper = function
       Pstmt_prover (mapper.statements mapper stmts)
   | Pstmt_convert (name, typ) ->
       Pstmt_convert (str mapper name, mapper.type_expr mapper typ)
+  | Pstmt_exception ctor ->
+      Pstmt_exception (mapper.ctor_decl mapper ctor)
 
 let module_expr mapper {mod_desc; mod_loc} =
   { mod_loc= mapper.location mapper mod_loc

@@ -1,0 +1,19 @@
+module type S = {
+  exception X;
+  exception Y(int);
+  exception Z(bool) : exn;
+};
+
+module T = {
+  exception X;
+  exception Y(int);
+  exception Z(bool) : exn;
+};
+
+open T;
+
+let x : exn = X;
+
+let y : exn = Y(15);
+
+let z : exn = Z(true);

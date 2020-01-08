@@ -348,6 +348,8 @@ let signature_desc mapper = function
       Tsig_prover (mapper.signature mapper sigs)
   | Tsig_convert (name, typ) ->
       Tsig_convert (ident mapper name, mapper.type_expr mapper typ)
+  | Tsig_exception ctor ->
+      Tsig_exception (mapper.ctor_decl mapper ctor)
 
 let module_sig mapper {msig_desc; msig_loc} =
   { msig_loc= mapper.location mapper msig_loc
@@ -416,6 +418,8 @@ let statement_desc mapper = function
         ( ident mapper name
         , mapper.type_expr mapper typ
         , mapper.convert mapper conv )
+  | Tstmt_exception ctor ->
+      Tstmt_exception (mapper.ctor_decl mapper ctor)
 
 let module_expr mapper {mod_desc; mod_loc} =
   { mod_loc= mapper.location mapper mod_loc

@@ -53,6 +53,7 @@ let unitexp ~pos = mkexp ~pos (Pexp_ctor (mkloc ~pos (Lident "()"), None))
 %token TO
 %token AS
 %token LPROVER
+%token EXCEPTION
 %token REC
 %token MODULE
 %token OPEN
@@ -182,6 +183,8 @@ structure_item:
     { mkstmt ~pos:$loc (Pstmt_request (arg, x, handler)) }
   | PROVER LBRACE stmts = structure RBRACE
     { mkstmt ~pos:$loc (Pstmt_prover stmts) }
+  | EXCEPTION ctor = ctor_decl
+    { mkstmt ~pos:$loc (Pstmt_exception ctor) }
 
 signature_item:
   | LET x = as_loc(val_ident) COLON typ = type_expr
@@ -213,6 +216,8 @@ signature_item:
     { mksig ~pos:$loc (Psig_request (arg, x)) }
   | PROVER LBRACE sigs = signature RBRACE
     { mksig ~pos:$loc (Psig_prover sigs) }
+  | EXCEPTION ctor = ctor_decl
+    { mksig ~pos:$loc (Psig_exception ctor) }
 
 type_decl:
   | x = decl_type(lident) k = type_kind

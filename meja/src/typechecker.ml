@@ -1988,6 +1988,35 @@ let rec check_signature_item env item =
       let env = Envi.add_implicit_instance name.txt typ' env in
       let env = Envi.add_implicit_instance name.txt typ'.type_alternate env in
       (env, {Typedast.sig_desc= Tsig_convert (name, typ); sig_loc= loc})
+  | Psig_exception ctor ->
+      let exn_ident =
+        match Initial_env.Type.exn.type_desc with
+        | Tctor {var_ident; _} ->
+            var_ident
+        | _ ->
+            assert false
+      in
+      let decl =
+        { Parsetypes.tdec_ident= Location.mknoloc "exn"
+        ; tdec_params= []
+        ; tdec_desc= Pdec_extend (Location.mknoloc exn_ident, [ctor])
+        ; tdec_loc= loc }
+      in
+      let decl, env =
+        match Typet.TypeDecl.import_rec [decl] env with
+        | [decl], env ->
+            (decl, env)
+        | _ ->
+            assert false
+      in
+      let ctor =
+        match decl.tdec_desc with
+        | Tdec_extend (_, [ctors]) ->
+            ctors
+        | _ ->
+            failwith "Expected a TExtend."
+      in
+      (env, {Typedast.sig_desc= Tsig_exception ctor; sig_loc= loc})
 
 and check_signature env signature =
   List.fold_map ~init:env signature ~f:check_signature_item
@@ -2381,6 +2410,35 @@ let rec check_statement env stmt =
       let env = Envi.add_implicit_instance name.txt typ' env in
       ( env
       , {Typedast.stmt_desc= Tstmt_convert (name, typ, conv); stmt_loc= loc} )
+  | Pstmt_exception ctor ->
+      let exn_ident =
+        match Initial_env.Type.exn.type_desc with
+        | Tctor {var_ident; _} ->
+            var_ident
+        | _ ->
+            assert false
+      in
+      let decl =
+        { Parsetypes.tdec_ident= Location.mknoloc "exn"
+        ; tdec_params= []
+        ; tdec_desc= Pdec_extend (Location.mknoloc exn_ident, [ctor])
+        ; tdec_loc= loc }
+      in
+      let decl, env =
+        match Typet.TypeDecl.import_rec [decl] env with
+        | [decl], env ->
+            (decl, env)
+        | _ ->
+            assert false
+      in
+      let ctor =
+        match decl.tdec_desc with
+        | Tdec_extend (_, [ctors]) ->
+            ctors
+        | _ ->
+            failwith "Expected a TExtend."
+      in
+      (env, {Typedast.stmt_desc= Tstmt_exception ctor; stmt_loc= loc})
 
 and check_module_expr env m =
   let mode = Envi.current_mode env in

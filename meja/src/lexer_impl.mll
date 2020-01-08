@@ -67,6 +67,7 @@ rule token = parse
   | "to" { TO }
   | "as" { AS }
   | "prover" { LPROVER }
+  | "exception" { EXCEPTION }
   | "rec" { REC }
   | "true" { TRUE }
   | "false" { FALSE }
