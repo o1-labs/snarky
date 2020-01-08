@@ -62,6 +62,10 @@ include Sexpable.Of_stringable (String_hum)
 
 include (String_hum : Stringable.S with type t := t)
 
+let hash t = Stdlib.Hashtbl.hash t
+
+let hash_fold_t h t = hash_fold_int h (hash t)
+
 let to_yojson t = `String (to_string t)
 
 let of_yojson = function

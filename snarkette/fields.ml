@@ -27,7 +27,7 @@ module type Basic_intf = sig
 end
 
 module type Intf = sig
-  type t [@@deriving bin_io, sexp, yojson, compare]
+  type t [@@deriving bin_io, sexp, yojson, compare, hash]
 
   include Basic_intf with type t := t
 
@@ -194,7 +194,7 @@ module Make_fp
     let order = Info.order
 
     (* TODO version *)
-    type t = N.t [@@deriving eq, bin_io, sexp, yojson, compare]
+    type t = N.t [@@deriving eq, bin_io, sexp, yojson, compare, hash]
 
     let zero = N.of_int 0
 
@@ -378,7 +378,8 @@ end = struct
 
     let order = Nat.(Fp.order * Fp.order * Fp.order)
 
-    type t = Fp.t * Fp.t * Fp.t [@@deriving eq, bin_io, sexp, yojson, compare]
+    type t = Fp.t * Fp.t * Fp.t
+    [@@deriving eq, bin_io, sexp, yojson, compare, hash]
 
     let ( + ) = componentwise Fp.( + )
 
@@ -463,7 +464,7 @@ end = struct
   let componentwise f (x1, x2) (y1, y2) = (f x1 y1, f x2 y2)
 
   module T = struct
-    type t = Fp.t * Fp.t [@@deriving eq, yojson, bin_io, sexp, compare]
+    type t = Fp.t * Fp.t [@@deriving eq, yojson, bin_io, sexp, compare, hash]
 
     module Nat = Fp.Nat
 
@@ -552,7 +553,7 @@ end = struct
 
     let componentwise f (x1, x2) (y1, y2) = (f x1 y1, f x2 y2)
 
-    type t = Fp3.t * Fp3.t [@@deriving eq, yojson, bin_io, sexp, compare]
+    type t = Fp3.t * Fp3.t [@@deriving eq, yojson, bin_io, sexp, compare, hash]
 
     let order =
       let open Nat in
