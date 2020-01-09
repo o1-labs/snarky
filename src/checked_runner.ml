@@ -163,6 +163,16 @@ struct
                    (Field.to_string (get_value s var2))
                    (Field.to_string (get_value s var3))) ))
 
+  let stack_to_string = String.concat ~sep:"\n"
+
+  let add_constraint ~stack (t : Constraint.t)
+      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t)
+      =
+    List.iter t ~f:(fun {basic; annotation} ->
+        let label = Option.value annotation ~default:"<unknown>" in
+        C.add_constraint system basic ~label:(stack_to_string (label :: stack))
+    )
+
   let add_constraint c s =
     if !(s.as_prover) then
       (* Don't add constraints as the prover, or the constraint system won't match! *)
@@ -178,13 +188,12 @@ struct
            %s\n\
            Data:\n\
            %s"
-          (Constraint.annotation c)
-          (Constraint.stack_to_string s.stack)
+          (Constraint.annotation c) (stack_to_string s.stack)
           (Sexp.to_string (Constraint.sexp_of_t c))
           (log_constraint c s) () ;
       if not !(s.as_prover) then
         Option.iter s.system ~f:(fun system ->
-            Constraint.add ~stack:s.stack c system ) ;
+            add_constraint ~stack:s.stack c system ) ;
       (s, ()) )
 
   let with_state p and_then t_sub s =
@@ -338,9 +347,7 @@ module Make (Backend : Backend_extended.S) = struct
                   Label stack trace:\n\
                   %s\n\n\n\
                   %s"
-                 (Exn.to_string exn)
-                 (Constraint.stack_to_string s.stack)
-                 bt
+                 (Exn.to_string exn) (stack_to_string s.stack) bt
              , s.stack
              , exn
              , bt ))
@@ -501,8 +508,7 @@ module Make (Backend : Backend_extended.S) = struct
             if s.eval_constraints && not (Constraint.eval c (get_value s)) then
               failwithf
                 "Constraint unsatisfied:\n%s\n%s\n\nConstraint:\n%s\nData:\n%s"
-                (Constraint.annotation c)
-                (Constraint.stack_to_string stack)
+                (Constraint.annotation c) (stack_to_string stack)
                 (Sexp.to_string (Constraint.sexp_of_t c))
                 (log_constraint c s) () ;
             f s )
@@ -598,8 +604,21 @@ module Make (Backend : Backend_extended.S) = struct
       next_auxiliary := 1 + num_inputs ;
       (* We can't evaluate the constraints if we are not computing over a value. *)
       let eval_constraints = eval_constraints && Option.is_some s0 in
-      Option.iter system ~f:(fun system ->
+      Option.iter
+        (system : R1CS_constraint_system.t option)
+        ~f:(fun system ->
           R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
+      let system =
+        Option.map system ~f:(fun sys ->
+            let module M = struct
+              module Field = struct
+                type nonrec t = Field.t
+              end
+
+              include R1CS_constraint_system
+            end in
+            Constraint_system.T ((module M), sys) )
+      in
       { system
       ; input
       ; aux
