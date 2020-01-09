@@ -953,13 +953,16 @@ let set_repr typ typ' =
 
     Raises [AssertionError] if [var] is not a type variable.
 *)
-let choose_variable_name typ typ' =
+let rec choose_variable_name typ typ' =
   match (typ.type_desc, typ'.type_desc) with
   | Tvar (Some name), Tvar None ->
       (* We would lose the user-provided name associated with [typ], so promote
          it to be the name of [typ'].
       *)
       set_desc typ' (Tvar (Some name))
+  | Tvar (Some _), Trow row ->
+      let _, row_rest, _ = row_repr row in
+      choose_variable_name typ row_rest
   | Tvar _, _ ->
       ()
   | _ ->

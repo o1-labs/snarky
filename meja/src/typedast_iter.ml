@@ -72,6 +72,8 @@ let type_desc iter = function
       iter.type_expr iter typ1 ; iter.type_expr iter typ2
   | Ttyp_opaque typ ->
       iter.type_expr iter typ
+  | Ttyp_alias (typ, name) ->
+      str iter name ; iter.type_expr iter typ
   | Ttyp_row (tags, _closed, min_tags) ->
       Option.iter ~f:(List.iter ~f:(ident iter)) min_tags ;
       List.iter ~f:(iter.row_tag iter) tags
@@ -380,7 +382,7 @@ let longident iter = function
 let path iter = function
   | Path.Pident ident ->
       iter.ident iter ident
-  | Path.Pdot (path, _, _) ->
+  | Path.Pdot (path, _, _) | Path.Pocamldot (path, _, _, _) ->
       iter.path iter path
   | Path.Papply (path1, path2) ->
       iter.path iter path1 ; iter.path iter path2

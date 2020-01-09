@@ -201,9 +201,9 @@ let main =
           let module_name = Loader.modname_of_filename file in
           let env = Envi.open_module env in
           let env, _typed_ast = Typechecker.check_signature env parse_ast in
-          let m, env = Envi.pop_module ~loc:Location.none env in
+          let m, env = Envi.pop_module ~loc:(Location.in_file file) env in
           let name = Ident.create ~mode:Checked module_name in
-          Envi.add_module name m env )
+          Envi.add_module ~loc:(Location.in_file file) name m env )
     in
     let file =
       match !file with

@@ -92,7 +92,7 @@ let j __implicit12__ __implicit13__ __implicit14__ __implicit10__ b x =
   in
   i
 
-let k (f : field) =
+let k (f : field_var) =
   j Typ.field Typ.field Typ.field
     { Snarky.Types.Typ.store= (fun x -> Snarky.Typ_monads.Store.return x)
     ; Snarky.Types.Typ.read= (fun x -> Snarky.Typ_monads.Read.return x)

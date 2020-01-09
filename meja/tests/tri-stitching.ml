@@ -13,7 +13,7 @@ let f __implicit2__ __implicit1__ (x : 'x * 'y) (y : 'b) b =
   in
   if b then x else y
 
-let g __implicit4__ (b : boolean) (x : field) =
+let g __implicit4__ (b : boolean) (x : field_var) =
   ignore
     (f
        { Snarky.Types.Typ.store=

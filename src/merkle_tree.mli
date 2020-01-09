@@ -113,13 +113,13 @@ module Checked
     -> f:(Elt.var -> (Elt.var, 's) Checked.t)
     -> (Hash.var, 's) Checked.t
 
-  (* This function does the modification and also returns the old value *)
+  (* This function does the modification and also returns the old and the new value *)
   val fetch_and_update_req :
        depth:int
     -> Hash.var
     -> Address.var
     -> f:(Elt.var -> (Elt.var, 's) Checked.t)
-    -> (Hash.var * Elt.var, 's) Checked.t
+    -> (Hash.var * [`Old of Elt.var] * [`New of Elt.var], 's) Checked.t
 
   val get_req : depth:int -> Hash.var -> Address.var -> (Elt.var, 's) Checked.t
 

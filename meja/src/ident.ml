@@ -1,7 +1,11 @@
 open Core_kernel
 
 type t =
-  | Regular of {ident_id: int; ident_name: string; ident_mode: Ast_types.mode}
+  | Regular of
+      { ident_id: int
+      ; ident_name: string
+      ; ident_ocaml: string ref option
+      ; ident_mode: Ast_types.mode }
   | Global of string
   | Row of string
 [@@deriving sexp]
@@ -10,9 +14,13 @@ type ident = t [@@deriving sexp]
 
 let current_id = ref 0
 
-let create ~mode name =
+let create ~mode ?(ocaml = false) name =
   incr current_id ;
-  Regular {ident_id= !current_id; ident_name= name; ident_mode= mode}
+  Regular
+    { ident_id= !current_id
+    ; ident_name= name
+    ; ident_ocaml= (if ocaml then Some (ref name) else None)
+    ; ident_mode= mode }
 
 let create_global name = Global name
 
@@ -29,6 +37,18 @@ let name = function
       name
   | Row name ->
       name
+
+let ocaml_name = function
+  | Regular {ident_ocaml= Some name; _} ->
+      !name
+  | id ->
+      name id
+
+let ocaml_name_ref = function
+  | Regular {ident_ocaml; _} ->
+      ident_ocaml
+  | _ ->
+      None
 
 let mode = function
   | Regular {ident_mode= mode; _} ->
@@ -78,7 +98,11 @@ let pprint fmt = function
       Format.fprintf fmt "`%s" name
 
 let debug_print fmt = function
-  | Regular {ident_name; ident_id; ident_mode} ->
+  | Regular {ident_name; ident_ocaml= Some ident_ocaml; ident_id; ident_mode}
+    when ident_name <> !ident_ocaml ->
+      Format.fprintf fmt "(%s=%s)/%a.%i" ident_name !ident_ocaml
+        Ast_types.mode_debug_print ident_mode ident_id
+  | Regular {ident_name; ident_ocaml= _; ident_id; ident_mode} ->
       Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.mode_debug_print
         ident_mode ident_id
   | Global name ->

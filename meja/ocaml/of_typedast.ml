@@ -13,11 +13,11 @@ end
 open Ast_helper
 open Meja_lib.Typedast
 
-let of_ident = Meja_lib.Ident.name
+let of_ident = Meja_lib.Ident.ocaml_name
 
 let of_ident_loc = map_loc ~f:of_ident
 
-let of_path = Meja_lib.Path.to_longident
+let of_path = Meja_lib.Path.to_ocaml_longident
 
 let of_path_loc = map_loc ~f:of_path
 
@@ -53,6 +53,8 @@ let rec of_type_desc ?loc typ =
               (Longident.unflatten ["Snarky"; "As_prover"; "Ref"; "t"]))
            (Option.value ~default:Location.none loc))
         [of_type_expr typ]
+  | Ttyp_alias (typ, name) ->
+      Typ.alias ?loc (of_type_expr typ) name.txt
   | Ttyp_row (tags, closed, min_tags) ->
       Typ.variant ?loc
         (List.map tags ~f:(fun {rtag_ident; rtag_arg; rtag_loc} ->

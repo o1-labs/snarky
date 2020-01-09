@@ -2,7 +2,7 @@ module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
 include struct
-  type nonrec t = int Snarky.As_prover.Ref.t
+  type nonrec var = int Snarky.As_prover.Ref.t
 
   and t = int
 
@@ -10,7 +10,7 @@ include struct
 end
 
 include struct
-  type nonrec 'a u = 'a option Snarky.As_prover.Ref.t
+  type nonrec 'a u_var = 'a option Snarky.As_prover.Ref.t
 
   and 'a u = 'a option
 
@@ -18,7 +18,7 @@ include struct
 end
 
 include struct
-  type nonrec ('a, 'b) v = ('a * 'b) Snarky.As_prover.Ref.t
+  type nonrec ('a, 'b) v_var = ('a * 'b) Snarky.As_prover.Ref.t
 
   and ('a, 'b) v = 'a * 'b
 
@@ -30,7 +30,7 @@ include struct
 end
 
 include struct
-  type nonrec w = prover Snarky.As_prover.Ref.t
+  type nonrec w_var = prover Snarky.As_prover.Ref.t
 
   and w = prover
 
@@ -39,7 +39,7 @@ end
 
 module A = struct
   include struct
-    type nonrec ('a, 'b) opaque = 'a * 'b
+    type nonrec ('a, 'b) opaque_var = 'a * 'b
 
     and ('a, 'b) opaque = 'a * 'b
 
@@ -68,7 +68,7 @@ module A = struct
                   ~f:(fun () -> Snarky.Checked.return ()) ) ) }
   end
 
-  type nonrec t = (int, bool) opaque
+  type nonrec t = (int, bool) opaque_var
 
   include struct
     type nonrec u = (int, bool) opaque
@@ -78,7 +78,7 @@ module A = struct
 end
 
 include struct
-  type nonrec x = prover Snarky.As_prover.Ref.t
+  type nonrec x_var = prover Snarky.As_prover.Ref.t
 
   and x = prover
 
