@@ -1,5 +1,5 @@
 type error =
-  | Unbound_type_var of Parsetypes.type_expr
+  | Unbound_type_var of string
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of Parsetypes.type_expr
   | Constraints_not_satisfied of Parsetypes.type_expr * Parsetypes.type_decl
@@ -89,6 +89,7 @@ module TypeDecl : sig
        ?name:Ident.t
     -> ?other_name:Path.t
     -> ?tri_stitched:(Envi.t -> Type0.type_expr list -> Type0.type_expr)
+    -> ?newtype:bool
     -> Parsetypes.type_decl
     -> Envi.t
     -> Typedast.type_decl * Envi.t

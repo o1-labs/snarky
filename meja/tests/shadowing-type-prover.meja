@@ -1,0 +1,5 @@
+type t = A;
+
+Prover {
+  type t = B;
+};

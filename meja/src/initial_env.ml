@@ -61,7 +61,7 @@ open TypeDecls
     the environment [env] each time.
 *)
 
-let {Typedast.tdec_tdec= int; _}, env = import int env
+let {Typedast.tdec_tdec= int; tdec_ident= int_ident; _}, env = import int env
 
 let {Typedast.tdec_tdec= unit; _}, env = import unit env
 
@@ -138,5 +138,7 @@ module Type = struct
     { (TypeDecl.mk_typ ~mode:a.Type0.type_mode list ~params:[a] env) with
       type_depth= a.type_depth }
 end
+
+let env = Envi.open_module env
 
 let () = Type1.mk_option := Type.option

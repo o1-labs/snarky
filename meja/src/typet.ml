@@ -5,7 +5,7 @@ open Parsetypes
 open Envi
 
 type error =
-  | Unbound_type_var of type_expr
+  | Unbound_type_var of string
   | Wrong_number_args of Path.t * int * int
   | Expected_type_var of type_expr
   | Constraints_not_satisfied of type_expr * type_decl
@@ -20,7 +20,7 @@ exception Error of Location.t * error
 
 let type0 {Typedast.type_type; _} = type_type
 
-let unify = ref (fun ~loc:_ _ _ _ -> assert false)
+let unify = ref (fun ~loc:_ _env _typ1 _typ2 -> failwith "Undefined")
 
 module Type = struct
   open Type
@@ -69,7 +69,7 @@ module Type = struct
     | Ptyp_var None -> (
       match must_find with
       | Some true ->
-          raise (Error (loc, Unbound_type_var typ))
+          raise (Error (loc, Unbound_type_var "_"))
       | _ ->
           ( { type_desc= Ttyp_var None
             ; type_loc= loc
@@ -81,7 +81,7 @@ module Type = struct
           | Some true ->
               let var = find_type_variable ~mode x env in
               if Option.is_none var then
-                raise (Error (loc, Unbound_type_var typ)) ;
+                raise (Error (loc, Unbound_type_var x)) ;
               var
           | Some false ->
               None
@@ -192,6 +192,33 @@ module Type = struct
           join_expr_scope env scope
         in
         (mk_opaque ~loc typ env, env)
+    | Ptyp_alias (typ, name) ->
+        let var =
+          match must_find with
+          | Some true ->
+              let var = find_type_variable ~mode name.txt env in
+              if Option.is_none var then
+                raise (Error (loc, Unbound_type_var name.txt)) ;
+              var
+          | Some false ->
+              None
+          | None ->
+              find_type_variable ~mode name.txt env
+        in
+        let var, env =
+          match var with
+          | Some var ->
+              (var, env)
+          | None ->
+              let var = mkvar ~mode (Some name.txt) env in
+              (var, add_type_variable name.txt var env)
+        in
+        let typ, env = import typ env in
+        !unify ~loc env typ.type_type var ;
+        ( { Typedast.type_desc= Ttyp_alias (typ, name)
+          ; type_loc= loc
+          ; type_type= typ.type_type }
+        , env )
     | Ptyp_row (tags, row_closed, min_tags) ->
         let pres =
           match (row_closed, min_tags) with
@@ -338,6 +365,8 @@ module Type = struct
         f acc typ2
     | Ptyp_opaque typ ->
         f init typ
+    | Ptyp_alias (typ, _) ->
+        f init typ
     | Ptyp_row (tags, _closed, _min_tags) ->
         List.fold ~init tags ~f:(fun acc {rtag_arg; _} ->
             List.fold ~f ~init:acc rtag_arg )
@@ -369,6 +398,8 @@ module Type = struct
         {type_desc= Ptyp_conv (f typ1, f typ2); type_loc= loc}
     | Ptyp_opaque typ ->
         {type_desc= Ptyp_opaque (f typ); type_loc= loc}
+    | Ptyp_alias (typ, name) ->
+        {type_desc= Ptyp_alias (f typ, name); type_loc= loc}
     | Ptyp_row (tags, closed, min_tags) ->
         { type_desc=
             Ptyp_row
@@ -424,7 +455,7 @@ module TypeDecl = struct
         assert false
 
   let predeclare env
-      {Parsetypes.tdec_ident; tdec_params; tdec_desc; tdec_loc= _} =
+      {Parsetypes.tdec_ident; tdec_params; tdec_desc; tdec_loc= loc} =
     match tdec_desc with
     | Pdec_extend _ ->
         env
@@ -441,7 +472,7 @@ module TypeDecl = struct
           ; tdec_ret= Envi.Type.Mk.ctor ~mode (Path.Pident ident) params env }
         in
         Envi.TypeDecl.predeclare ident decl env ;
-        map_current_scope ~f:(Scope.add_type_declaration ident decl) env
+        map_current_scope ~f:(Scope.add_type_declaration ~loc ident decl) env
 
   let import_field ?must_find env {fld_ident; fld_type; fld_loc} =
     let mode = Envi.current_mode env in
@@ -504,7 +535,9 @@ module TypeDecl = struct
           let scope, env = Envi.pop_scope env in
           let env =
             map_current_scope
-              ~f:(Scope.add_type_declaration ctor_ident.txt decl)
+              ~f:
+                (Scope.add_type_declaration ~loc:ctor.ctor_loc ~may_shadow:true
+                   ctor_ident.txt decl)
               env
           in
           let env = Envi.push_scope scope env in
@@ -522,7 +555,8 @@ module TypeDecl = struct
           ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
 
   (* TODO: Make prover mode declarations stitch to opaque types. *)
-  let import ?name ?other_name ?tri_stitched ~recursive decl' env =
+  let import ?name ?other_name ?tri_stitched ?(newtype = false) ~recursive
+      decl' env =
     let mode = Envi.current_mode env in
     let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
     let tdec_ident, path, tdec_id =
@@ -696,7 +730,9 @@ module TypeDecl = struct
     let env = close_expr_scope env in
     let env =
       map_current_scope
-        ~f:(Scope.register_type_declaration tdec_ident.txt decl.tdec_tdec)
+        ~f:
+          (Scope.register_type_declaration ~may_shadow:newtype
+             ~loc:tdec_ident.loc tdec_ident.txt decl.tdec_tdec)
         env
     in
     (decl, env)
@@ -717,7 +753,17 @@ module TypeDecl = struct
                    , decl_len
                    , conv_decl.tdec_ident.txt
                    , conv_len ) )) ;
-        let name = Ident.create ~mode decl.tdec_ident.txt in
+        let name =
+          match other_mode with
+          | Prover when decl.tdec_ident.txt = conv_decl.tdec_ident.txt ->
+              let name = Ident.create ~mode ~ocaml:true decl.tdec_ident.txt in
+              let name' = decl.tdec_ident.txt in
+              Option.iter (Ident.ocaml_name_ref name) ~f:(fun name ->
+                  name := if name' = "t" then "var" else name' ^ "_var" ) ;
+              name
+          | _ ->
+              Ident.create ~mode decl.tdec_ident.txt
+        in
         let other_name =
           Ident.create ~mode:other_mode conv_decl.tdec_ident.txt
         in
@@ -798,8 +844,9 @@ let pp_decl_typ ppf decl =
     ; type_loc= Location.none }
 
 let report_error ppf = function
-  | Unbound_type_var var ->
-      fprintf ppf "@[<hov>Unbound type parameter@ @[<h>%a@].@]" pp_typ var
+  | Unbound_type_var name ->
+      let quot = match name with "_" -> "" | _ -> "'" in
+      fprintf ppf "@[<hov>Unbound type parameter@ %s%s.@]" quot name
   | Wrong_number_args (path, given, expected) ->
       fprintf ppf
         "@[The type constructor @[<h>%a@] expects %d argument(s)@ but is here \

@@ -2,7 +2,7 @@ module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
 include struct
-  type nonrec ('a, 'b, 'c) t = {a: 'a; b: 'b; c: 'c}
+  type nonrec ('a, 'b, 'c) var = {a: 'a; b: 'b; c: 'c}
 
   and ('a, 'b, 'c) t = {a: 'a; b: 'b; c: 'c}
 
@@ -48,7 +48,7 @@ let z = {a= x.a; b= y.b; c= ()}
 
 module X = struct
   include struct
-    type nonrec 'a t = {a: 'a; b: 'a; c: 'a}
+    type nonrec 'a var = {a: 'a; b: 'a; c: 'a}
 
     and 'a t = {a: 'a; b: 'a; c: 'a}
 

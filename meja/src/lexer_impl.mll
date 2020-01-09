@@ -65,6 +65,7 @@ rule token = parse
   | "convertible" { CONVERTIBLE }
   | "by" { BY }
   | "to" { TO }
+  | "as" { AS }
   | "prover" { LPROVER }
   | "rec" { REC }
   | "true" { TRUE }

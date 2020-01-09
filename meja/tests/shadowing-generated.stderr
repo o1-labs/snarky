@@ -1,0 +1,2 @@
+File "tests/shadowing-generated.meja", line 3, characters 5-8:
+Error: There is already a generated type with name var.

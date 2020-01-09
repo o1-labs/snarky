@@ -88,6 +88,8 @@ let type_desc mapper typ =
       Ttyp_conv (mapper.type_expr mapper typ1, mapper.type_expr mapper typ2)
   | Ttyp_opaque typ ->
       Ttyp_opaque (mapper.type_expr mapper typ)
+  | Ttyp_alias (typ, name) ->
+      Ttyp_alias (mapper.type_expr mapper typ, str mapper name)
   | Ttyp_row (tags, closed, min_tags) ->
       Ttyp_row
         ( List.map ~f:(mapper.row_tag mapper) tags
@@ -445,6 +447,8 @@ let path mapper = function
       Path.Pident (mapper.ident mapper ident)
   | Path.Pdot (path, mode, str) ->
       Path.Pdot (mapper.path mapper path, mode, str)
+  | Path.Pocamldot (path, mode, str, ocaml_name) ->
+      Path.Pocamldot (mapper.path mapper path, mode, str, ocaml_name)
   | Path.Papply (path1, path2) ->
       Path.Papply (mapper.path mapper path1, mapper.path mapper path2)
 

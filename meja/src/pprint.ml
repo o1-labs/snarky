@@ -36,6 +36,8 @@ let rec type_desc ?(bracket = false) fmt = function
       if bracket then fprintf fmt ")"
   | Ptyp_opaque typ ->
       fprintf fmt "@[<hv2>opaque(@,%a@,)@]" type_expr typ
+  | Ptyp_alias (typ, name) ->
+      fprintf fmt "(@[<hv1>%a@ as %s@])" type_expr typ name.txt
   | Ptyp_row (tags, closed, min_tags) -> (
       fprintf fmt "[@[<hv2>" ;
       ( match (closed, min_tags) with
