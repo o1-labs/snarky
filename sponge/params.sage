@@ -9,6 +9,9 @@ MNT6753_r = 41898490967918953402344214791240637128170709919953949071783502921025
 
 BN128_r = 21888242871839275222246405745257275088548364400416034343698204186575808495617
 
+BN382_p = 5543634365110765627805495722742127385843376434033820803590214255538854698464778703795540858859767700241957783601153
+BN382_q = 5543634365110765627805495722742127385843376434033820803592568747918351978899288491582778380528407187068941959692289
+
 def random_value(F, prefix, i):
     return F(int(hashlib.sha256('%s%d' % (prefix, i)).hexdigest(), 16))
 
@@ -53,6 +56,7 @@ def mds(F):
             # There are no eigenvalues in the field.
             return mds
 
+curves = [  ('Bn128', BN128_r), ('Mnt4_298', MNT4298_r), ('Mnt4_753', MNT4753_r) ]
 if sys.argv[1] == 'coda':
     def module_strs(name, r_small, r_medium):
         wrap = lambda s: 'str {}'.format(s)
@@ -93,7 +97,7 @@ if sys.argv[1] == 'coda':
     print module_strs('Tock', MNT6298_r, MNT6753_r)
 
 else:
-    for name, r in [  ('Bn128', BN128_r), ('Mnt4_298', MNT4298_r), ('Mnt4_753', MNT4753_r) ]:
+    for name, r in  [ ('Bn382_p', BN382_p), ('Bn382_q', BN382_q) ]:
         wrap = lambda x: x
         F = FiniteField(r)
         print ('let params_{} = '.format(name)
