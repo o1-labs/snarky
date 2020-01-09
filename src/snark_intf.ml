@@ -25,10 +25,6 @@ module type Basic = sig
 
     val of_string : string -> t
 
-    val to_bigstring : t -> Bigstring.t
-
-    val of_bigstring : Bigstring.t -> t
-
     module With_r1cs_hash : sig
       type t = Md5.t * proving_key [@@deriving bin_io]
     end
@@ -44,10 +40,6 @@ module type Basic = sig
 
     val of_string : string -> t
 
-    val to_bigstring : t -> Bigstring.t
-
-    val of_bigstring : Bigstring.t -> t
-
     module With_r1cs_hash : sig
       type t = Md5.t * verification_key [@@deriving bin_io]
     end
@@ -62,9 +54,6 @@ module type Basic = sig
     type t
 
     val digest : t -> Md5.t
-
-    val constraints : t -> field Cvar.t Constraint0.t
-    (** Extract the constraints from the constraint system. *)
 
     val to_json : t -> 'a json
     (** Convert a basic constraint into a JSON representation.
@@ -139,20 +128,6 @@ module type Basic = sig
     val square : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
     (** A constraint that asserts that the first variable squares to the
         second, ie. [square x y] => [x*x = y] within the field.
-    *)
-
-    val basic_to_json : Field.Var.t Constraint0.basic -> 'a json
-    (** Convert a basic constraint into a JSON representation.
-
-        This representation is compatible with the Yojson library, which can be
-        used to print JSON to the screen, write it to a file, etc.
-    *)
-
-    val to_json : t -> 'a json
-    (** Convert a constraint into a JSON representation.
-
-        This representation is compatible with the Yojson library, which can be
-        used to print JSON to the screen, write it to a file, etc.
     *)
   end
 
@@ -1414,6 +1389,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> 'k_value
   (** Verify a {!type:Proof.t} generated from a checked computation. *)
 
+  val generate_public_input :
+    (_, Field.Vector.t, _, 'k_value) Data_spec.t -> 'k_value
+  (** Generate the public input vector for a given statement. *)
+
   val generate_witness :
        ((unit, 's) Checked.t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
     -> 's
@@ -1534,10 +1513,6 @@ module type Run_basic = sig
 
     val of_string : string -> t
 
-    val to_bigstring : t -> Bigstring.t
-
-    val of_bigstring : Bigstring.t -> t
-
     module With_r1cs_hash : sig
       type t = Md5.t * proving_key [@@deriving bin_io]
     end
@@ -1552,10 +1527,6 @@ module type Run_basic = sig
     val to_string : t -> string
 
     val of_string : string -> t
-
-    val to_bigstring : t -> Bigstring.t
-
-    val of_bigstring : Bigstring.t -> t
 
     module With_r1cs_hash : sig
       type t = Md5.t * verification_key [@@deriving bin_io]
@@ -2268,6 +2239,10 @@ module type Run_basic = sig
     -> 'k_var
     -> prover_state
     -> 'k_value
+
+  val generate_public_input :
+    (_, Field.Constant.Vector.t, _, 'k_value) Data_spec.t -> 'k_value
+  (** Generate the public input vector for a given statement. *)
 
   val generate_witness_conv :
        f:(Proof_inputs.t -> 'out)
