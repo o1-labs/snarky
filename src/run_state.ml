@@ -1,6 +1,6 @@
 (** The internal state used to run a checked computation. *)
 type ('prover_state, 'field) t =
-  { system: 'field Backend_types.R1CS_constraint_system.t option
+  { system: 'field Constraint_system.t option
   ; input: 'field Vector.t
   ; aux: 'field Vector.t
   ; eval_constraints: bool
