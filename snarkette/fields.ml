@@ -253,6 +253,8 @@ module Make_fp
 
   let gen_uniform = make_gen Int32.gen_uniform_incl
 
+  let random () = Quickcheck.random_value gen_uniform
+
   let fold_bits n : bool Fold_lib.Fold.t =
     { fold=
         (fun ~init ~f ->
