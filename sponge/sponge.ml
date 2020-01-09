@@ -197,10 +197,15 @@ module Make_sponge (P : Intf.Permutation) = struct
     ; params: Field.t Params.t
     ; mutable sponge_state: sponge_state }
 
+  let state {state; _} = copy state
+
   let initial_state = Array.init m ~f:(fun _ -> Field.zero)
 
   let create ?(init = initial_state) params =
     {state= copy init; sponge_state= Absorbed 0; params}
+
+  let copy {state; params; sponge_state} =
+    {state= copy state; params; sponge_state}
 
   let rate = m - capacity
 
@@ -252,8 +257,15 @@ struct
           (* TODO: Have to be careful about these bits. They aren't perfectly uniform. *)
     ; mutable last_squeezed: Bool.t list }
 
+  let state t = S.state t.underlying
+
+  let high_entropy_bits = 256
+
   let create ?init params =
     {underlying= S.create ?init params; last_squeezed= []}
+
+  let copy {underlying; last_squeezed} =
+    {underlying= S.copy underlying; last_squeezed}
 
   let absorb t x =
     S.absorb t.underlying x ;
@@ -266,6 +278,7 @@ struct
       digest )
     else
       let x = S.squeeze t.underlying in
-      t.last_squeezed <- t.last_squeezed @ Field.to_bits x ;
+      t.last_squeezed
+      <- t.last_squeezed @ List.take (Field.to_bits x) high_entropy_bits ;
       squeeze ~length t
 end
