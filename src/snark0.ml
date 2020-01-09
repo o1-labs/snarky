@@ -76,7 +76,6 @@ struct
   module Var = Var
   module Field0 = Field
   module Cvar = Cvar
-  module Linear_combination = Linear_combination
   module Constraint = Constraint
 
   module Typ_monads = struct
@@ -383,7 +382,9 @@ struct
       let if_ b ~(then_ : var) ~(else_ : var) =
         map ~f:create (if_ b ~then_:(then_ :> Cvar.t) ~else_:(else_ :> Cvar.t))
 
-      let ( && ) (x : var) (y : var) =
+(* This is unused for now as we are not using any square constraint system based
+   backends. *)
+      let _and_for_square_constraint_systems (x : var) (y : var) =
         (* (x + y)^2 = 2 z + x + y
 
            x^2 + 2 x*y + y^2 = 2 z + x + y
@@ -408,6 +409,9 @@ struct
           assert_square x_plus_y Cvar.((Field.of_int 2 * z) + x_plus_y)
         in
         create z
+
+      let ( && ) (x : var) (y : var) : (var, _) Checked.t =
+        Checked.map ~f:create (mul (x :> Cvar.t) (y :> Cvar.t))
 
       let ( || ) x y =
         let open Let_syntax in
@@ -466,6 +470,23 @@ struct
 
       let typ_unchecked : (var, value) Typ.t =
         {typ with check= (fun _ -> Checked.return ())}
+
+      let%test_unit "all" =
+        let gen =
+          let open Quickcheck.Generator in
+          let open Let_syntax in
+          let%bind length = small_positive_int in
+          list_with_length length bool
+        in
+        Quickcheck.test gen ~sexp_of:[%sexp_of: bool list] ~f:(fun x ->
+            let (), r =
+              run_and_check ~run
+                (Checked.map ~f:(As_prover.read typ)
+                   (all (List.map ~f:var_of_value x)))
+                ()
+              |> Or_error.ok_exn
+            in
+            [%test_eq: bool] r (List.for_all x ~f:Fn.id) )
 
       let ( lxor ) b1 b2 =
         match (to_constant b1, to_constant b2) with
@@ -830,15 +851,14 @@ struct
           else proof_system.compute
         in
         let prover_state, a = run compute prover_state in
-        Option.iter prover_state.system ~f:(fun system ->
-            proof_system.r1cs_digest
-            <- Some (R1CS_constraint_system.digest system) ;
+        Option.iter prover_state.system
+          ~f:(fun (T ((module C), system) : Field.t Constraint_system.t) ->
+            proof_system.r1cs_digest <- Some (C.digest system) ;
             let aux_input_size =
               !(prover_state.next_auxiliary) - (1 + num_inputs)
             in
-            R1CS_constraint_system.set_auxiliary_input_size system
-              aux_input_size ;
-            R1CS_constraint_system.finalize system ) ;
+            C.set_auxiliary_input_size system aux_input_size ;
+            C.finalize system ) ;
         (prover_state, a)
 
       let constraint_system ~run proof_system =
@@ -996,9 +1016,11 @@ struct
             ; (fun () -> Some (generate_keypair ~run proof_system).pk) ]
         in
         let system =
-          let s = Proving_key.r1cs_constraint_system proving_key in
-          if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
-          else None
+          match Proving_key.is_initialized proving_key with
+          | `Yes ->
+              None
+          | `No s ->
+              Some s
         in
         let _, _, state =
           run_with_input ~run ?reduce ~public_input ?system ?handlers
@@ -1106,6 +1128,25 @@ struct
       in
       go t0
 
+    let generate_public_input :
+        ('r_var, Field.Vector.t, 'k_var, 'k_value) t -> 'k_value =
+     fun t0 ->
+      let primary_input = Field.Vector.create () in
+      let next_input = ref 1 in
+      let store_field_elt = store_field_elt primary_input next_input in
+      let rec go : type r_var k_var k_value.
+          (r_var, Field.Vector.t, k_var, k_value) t -> k_value =
+       fun t ->
+        match t with
+        | [] ->
+            primary_input
+        | {store; _} :: t' ->
+            fun value ->
+              let _var = Typ.Store.run (store value) store_field_elt in
+              go t'
+      in
+      go t0
+
     let conv : type r_var r_value.
            (r_var -> Field.Vector.t -> r_value)
         -> (r_var, r_value, 'k_var, 'k_value) t
@@ -1168,9 +1209,11 @@ struct
       conv
         (fun c primary ->
           let system =
-            let s = Proving_key.r1cs_constraint_system key in
-            if R1CS_constraint_system.get_primary_input_size s = 0 then Some s
-            else None
+            match Proving_key.is_initialized key with
+            | `Yes ->
+                None
+            | `No s ->
+                Some s
           in
           let run =
             if Option.is_none system then run
@@ -1366,6 +1409,7 @@ struct
         let x = Field.random () in
         let typf = Typ.field in
         let x2 = Field.square x in
+        assert (Field.(equal (x * x) x2)) ;
         let run elt =
           let (), answer =
             Checked.run_and_check ~run:Checked.run
@@ -1751,6 +1795,8 @@ struct
     Run.generate_auxiliary_input ~run:Checked.run t s k
 
   let verify = Run.verify
+
+  let generate_public_input = Run.generate_public_input
 
   let generate_witness t s k = Run.generate_witness ~run:Checked.run t s k
 
@@ -2558,6 +2604,8 @@ module Run = struct
 
     let verify ?message pf vk spec = verify ?message pf vk spec
 
+    let generate_public_input = generate_public_input
+
     let generate_witness spec x =
       let x =
         inject_wrapper spec x ~f:(fun x () -> Proof_system.mark_active ~f:x)
@@ -2688,15 +2736,12 @@ let%test_module "snark0-test" =
       module Field = Full.Field
       module Bigint = Full.Bigint
       module Var = Full.Var
-      module R1CS_constraint = Full.R1CS_constraint
 
       module R1CS_constraint_system = struct
         include Full.R1CS_constraint_system
 
         let finalize = swap_AB_if_beneficial
       end
-
-      module Linear_combination = Full.Linear_combination
 
       let field_size = Full.field_size
 
