@@ -35,6 +35,8 @@ module type Intf = sig
 
   val gen_uniform : t Quickcheck.Generator.t
 
+  val random : unit -> t
+
   val negate : t -> t
 
   val inv : t -> t
