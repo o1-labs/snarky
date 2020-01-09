@@ -14,10 +14,6 @@ module Params : sig
   val mnt4_298 : string t
 
   val mnt4_753 : string t
-
-  val bn382_p : string t
-
-  val bn382_q : string t
 end
 
 module State : sig
