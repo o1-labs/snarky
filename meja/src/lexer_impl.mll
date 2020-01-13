@@ -33,9 +33,21 @@ let get_stored_string () = Buffer.contents string_buffer
 let store_string_char c = Buffer.add_char string_buffer c
 }
 
+(* Accept the '_' separator, since OCaml is doing the parsing and supports it.
+*)
+let num_base10 = ['0'-'9'] ['0'-'9' '_']*
+let num_base16 =
+  '0' ['x' 'X'] ['0'-'9' 'A'-'F' 'a'-'f']['0'-'9' 'A'-'F' 'a'-'f' '_']*
+let num_base8 = '0' ['o' 'O'] ['0'-'7'] ['0'-'7' '_']*
+let num_base2 = '0' ['b' 'B'] ['0'-'1'] ['0'-'1' '_']*
+let number = num_base10 | num_base16 | num_base8 | num_base2
+let float =
+  ['0'-'9'] ['0'-'9' '_']*
+  ('.' ['0'-'9' '_']* )?
+  (['e' 'E'] ['+' '-']? ['0'-'9'] ['0'-'9' '_']* )?
+
 let newline = ('\r'* '\n')
 let whitespace = [' ' '\t']+
-let number = ['0'-'9']+
 let lowercase_alpha = ['a'-'z']
 let uppercase_alpha = ['A'-'Z']
 let ident = ['a'-'z' 'A'-'Z' '_' '\'' '0'-'9']
@@ -48,8 +60,9 @@ rule token = parse
   { token lexbuf }
   | newline
     { new_line lexbuf; token lexbuf }
-  | number as n
-    { INT (int_of_string n) }
+  | (number as n) (['n' 'l' 'L'] as suf) { INT (n, Some suf) }
+  | number as n { INT (n, None) }
+  | float as n { FLOAT (float_of_string n) }
   | "0b"
     { BOOL false }
   | "1b"
@@ -106,6 +119,9 @@ rule token = parse
   | ".." { DOTDOT }
   | '.' { DOT }
   | '-' { MINUS }
+  | "-." { MINUSDOT }
+  | '+' { PLUS }
+  | "+." { PLUSDOT }
   | "//" ([^'\n']* as comment) newline
     { new_line lexbuf; COMMENT (comment) }
   | "//" ([^'\n']* as comment) eof
@@ -126,7 +142,7 @@ rule token = parse
   | ['~' '?'] symbolchar + as op { PREFIXOP op }
   | ['=' '<' '>' '|' '&' '$'] symbolchar * as op { INFIXOP0 op }
   | ['@' '^'] symbolchar * as op { INFIXOP1 op }
-  | ['+' '-'] symbolchar * as op { INFIXOP2 op }
+  | ['+' '-'] symbolchar + as op { INFIXOP2 op }
   | "**" symbolchar * as op { INFIXOP4 op }
   | ['*' '%'] symbolchar * as op { INFIXOP3 op }
   | '/' symbolchar_no_asterisk symbolchar * as op { INFIXOP3 op }

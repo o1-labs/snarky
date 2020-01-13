@@ -6,7 +6,7 @@ type pattern_case =
   | Pcase_type of Type0.type_expr
   | Pcase_tuple of pattern_case list
   | Pcase_ctor of Ident.t * pattern_case option
-  | Pcase_int of int
+  | Pcase_literal of Ast_types.literal
   | Pcase_record of (pattern_case * Type0.type_expr) String.Map.t
   | Pcase_or of pattern_case list
 
@@ -27,8 +27,8 @@ let rec pprint_case fmt case =
       fprintf fmt "%a@ %a" Ident.pprint name pprint_case arg
   | Pcase_ctor (name, Some arg) ->
       fprintf fmt "%a@ (@[<hv1>@,%a@,@])" Ident.pprint name pprint_case arg
-  | Pcase_int i ->
-      pp_print_int fmt i
+  | Pcase_literal l ->
+      Pprint.literal fmt l
   | Pcase_record fields ->
       let first = ref true in
       fprintf fmt "{@[<hv2>" ;
@@ -195,10 +195,12 @@ let rec intersect_case env case1 case2 =
         Pcase_empty
     | case ->
         Pcase_ctor (name1, Some case) )
-  | Pcase_int i, Pcase_int j when i = j ->
+  | Pcase_literal i, Pcase_literal j when i = j ->
       case1
-  | Pcase_int i, _ | _, Pcase_int i ->
-      Pcase_int i
+  | Pcase_literal _, Pcase_literal _ ->
+      Pcase_empty
+  | Pcase_literal l, _ | _, Pcase_literal l ->
+      Pcase_literal l
   | Pcase_record fields1, Pcase_record fields2 ->
       let fields =
         Map.merge fields1 fields2 ~f:(fun ~key:_ data ->
@@ -272,8 +274,8 @@ let rec subtract_case env case sub_case =
       if List.is_empty cases then Pcase_empty else Pcase_or cases
   | _, Pcase_or sub_cases ->
       List.fold ~f:(subtract_case env) ~init:case sub_cases
-  | Pcase_type _, Pcase_int _ ->
-      (* Don't explode int. *)
+  | Pcase_type _, Pcase_literal _ ->
+      (* Don't explode literals. *)
       case
   | Pcase_type typ, _ ->
       subtract_case env (expand_case_of_type env typ) sub_case
@@ -295,7 +297,7 @@ let rec subtract_case env case sub_case =
         Pcase_empty
     | case ->
         Pcase_ctor (name, Some case) )
-  | Pcase_int i, Pcase_int j when i = j ->
+  | Pcase_literal i, Pcase_literal j when i = j ->
       Pcase_empty
   | Pcase_record fields, Pcase_record sub_fields -> (
       let is_empty = ref true in
@@ -368,8 +370,8 @@ let rec case_of_pattern env pat =
           Pcase_or (case :: cases)
       | _ ->
           Pcase_or [case1; case2] )
-  | Tpat_int i ->
-      Pcase_int i
+  | Tpat_literal l ->
+      Pcase_literal l
   | Tpat_record fields ->
       let fields =
         List.fold ~init:String.Map.empty fields ~f:(fun fields (path, pat) ->

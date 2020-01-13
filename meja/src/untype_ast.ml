@@ -226,8 +226,8 @@ let rec pattern_desc = function
       Ppat_tuple (List.map ~f:pattern ps)
   | Tpat_or (p1, p2) ->
       Ppat_or (pattern p1, pattern p2)
-  | Tpat_int i ->
-      Ppat_int i
+  | Tpat_literal l ->
+      Ppat_literal l
   | Tpat_record fields ->
       Ppat_record
         (List.map fields ~f:(fun (label, p) ->
@@ -239,16 +239,6 @@ let rec pattern_desc = function
 
 and pattern p =
   {Parsetypes.pat_desc= pattern_desc p.Typedast.pat_desc; pat_loc= p.pat_loc}
-
-let literal = function
-  | Typedast.Int i ->
-      Parsetypes.Int i
-  | Bool b ->
-      Bool b
-  | Field f ->
-      Field f
-  | String s ->
-      String s
 
 let rec expression_desc = function
   | Typedast.Texp_apply (e, args) ->
@@ -262,8 +252,8 @@ let rec expression_desc = function
                   None ) )
   | Texp_variable name ->
       Pexp_variable (map_loc ~f:longident_of_path name)
-  | Texp_literal i ->
-      Pexp_literal (literal i)
+  | Texp_literal l ->
+      Pexp_literal l
   | Texp_fun (label, p, e, explicit) ->
       Pexp_fun (label, pattern p, expression e, explicit)
   | Texp_newtype (name, e) ->

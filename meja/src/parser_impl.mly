@@ -32,9 +32,38 @@ let consexp ~pos hd tl =
 let unitpat ~pos = mkpat ~pos (Ppat_ctor (mkloc ~pos (Lident "()"), None))
 
 let unitexp ~pos = mkexp ~pos (Pexp_ctor (mkloc ~pos (Lident "()"), None))
+
+(* Transform literals if minus can be applied, or generate an infix operator. *)
+let minusexp ~pos name arg =
+  match name, arg.exp_desc with
+  | "-", Pexp_integer (i, suf) ->
+      Pexp_integer (neg_string i, suf)
+  | "-", (Pexp_literal
+           ((Int _ | Int32 _ | Int64 _ | Nativeint _ | Float _ | Field _ )
+              as l))
+  | "-.",  Pexp_literal ((Float _) as l) ->
+      Pexp_literal (neg_literal l)
+  | _ ->
+      Pexp_apply
+        ( mkexp ~pos (Pexp_variable (mkloc ~pos (Lident ("~" ^ name))))
+        , [Nolabel, arg] )
+
+(* Transform literals if plus can be applied, or generate an infix operator. *)
+let plusexp ~pos name arg =
+  match name, arg.exp_desc with
+  | "+", (Pexp_integer _ |
+          Pexp_literal
+            (Int _ | Int32 _ | Int64 _ | Nativeint _ | Float _ | Field _ ))
+  | "+.",  Pexp_literal (Float _) ->
+      arg.exp_desc
+  | _ ->
+      Pexp_apply
+        ( mkexp ~pos (Pexp_variable (mkloc ~pos (Lident ("~" ^ name))))
+        , [Nolabel, arg] )
 %}
 %token <string> FIELD
-%token <int> INT
+%token <string * char option> INT
+%token <float> FLOAT
 %token <bool> BOOL
 %token <string> STRING
 %token <string> LIDENT
@@ -88,6 +117,9 @@ let unitexp ~pos = mkexp ~pos (Pexp_ctor (mkloc ~pos (Lident "()"), None))
 %token DOTDOT
 %token DOT
 %token MINUS
+%token MINUSDOT
+%token PLUS
+%token PLUSDOT
 %token <string> COMMENT
 %token <string> PREFIXOP
 %token <string> INFIXOP0
@@ -102,7 +134,7 @@ let unitexp ~pos = mkexp ~pos (Pexp_ctor (mkloc ~pos (Lident "()"), None))
 %left     INFIXOP0 LT GT EQUAL
 %right    INFIXOP1
 %right    COLONCOLON
-%left     MINUS INFIXOP2 PLUSEQUAL
+%left     MINUS PLUS INFIXOP2 PLUSEQUAL
 %left     INFIXOP3
 %right    INFIXOP4
 %nonassoc above_infix
@@ -328,6 +360,7 @@ infix_operator:
   | EQUAL         { "=" }
   | op = INFIXOP1 { op }
   | MINUS         { "-" }
+  | PLUS          { "+" }
   | op = INFIXOP2 { op }
   | PLUSEQUAL     { "+=" }
   | op = INFIXOP3 { op }
@@ -371,7 +404,9 @@ simpl_expr:
   | x = as_loc(val_longident)
     { mkexp ~pos:$loc (Pexp_variable x) }
   | x = INT
-    { mkexp ~pos:$loc (Pexp_literal (Int x)) }
+    { mkexp ~pos:$loc (Pexp_integer (fst x, snd x)) }
+  | x = FLOAT
+    { mkexp ~pos:$loc (Pexp_literal (Float x)) }
   | x = BOOL
     { mkexp ~pos:$loc (Pexp_literal (Bool x)) }
   | x = FIELD
@@ -416,8 +451,13 @@ expr:
     { let op = mkloc (Lident op) ~pos:$loc(op) in
       mkexp ~pos:$loc (Pexp_apply (mkexp ~pos:$loc (Pexp_variable op), [Nolabel, e])) }
   | _op = MINUS e = expr
-    { let op = mkloc (Lident "~-") ~pos:$loc(_op) in
-      mkexp ~pos:$loc (Pexp_apply (mkexp ~pos:$loc (Pexp_variable op), [Nolabel, e])) }
+    { mkexp ~pos:$loc (minusexp ~pos:$loc(_op) "-" e) }
+  | _op = MINUSDOT e = expr
+    { mkexp ~pos:$loc (minusexp ~pos:$loc(_op) "-." e) }
+  | _op = PLUS e = expr
+    { mkexp ~pos:$loc (plusexp ~pos:$loc(_op) "+" e) }
+  | _op = PLUSDOT e = expr
+    { mkexp ~pos:$loc (plusexp ~pos:$loc(_op) "+." e) }
   | SWITCH LPAREN e = expr_or_bare_tuple RPAREN LBRACE rev_cases = list(match_case, {}) RBRACE
     { mkexp ~pos:$loc (Pexp_match (e, List.rev rev_cases)) }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = expr_ctor_args
@@ -592,6 +632,17 @@ pat_ctor_args:
   | p = pat_record
     { Some p }
 
+integer:
+  | x = INT { x }
+  | PLUS x = INT { x }
+  | MINUS x = INT
+    { let (i, suf) = x in ("-" ^ i, suf) }
+
+floating:
+  | x = FLOAT { x }
+  | PLUS x = FLOAT { x }
+  | MINUS x = FLOAT { -. x }
+
 pat_no_bar:
   | UNDERSCORE
     { mkpat ~pos:$loc Ppat_any }
@@ -607,8 +658,10 @@ pat_no_bar:
     { mkpat ~pos:$loc (Ppat_constraint (p, typ)) }
   | x = as_loc(val_ident)
     { mkpat ~pos:$loc (Ppat_variable x) }
-  | i = INT
-    { mkpat ~pos:$loc (Ppat_int i) }
+  | i = integer
+    { mkpat ~pos:$loc (Ppat_integer (fst i, snd i)) }
+  | x = floating
+    { mkpat ~pos:$loc (Ppat_literal (Float x)) }
   | p = pat_record
     { p }
   | id = as_loc(longident(ctor_ident, UIDENT)) args = pat_ctor_args

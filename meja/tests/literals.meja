@@ -1,0 +1,553 @@
+module Int = {
+  let decimal_expr = 0123456789;
+  let decimal_expr_neg = -0123456789;
+  let decimal_expr_pos = +0123456789;
+  let decimal_expr_sep = 01_234_567;
+  let binary_expr_neg = -0b10101010;
+  let binary_expr_pos = +0b10101010;
+  let binary_expr_upper = 0B10101010;
+  let binary_expr_sep = 0b01_010_101;
+  let octal_expr_neg = -0o12345670;
+  let octal_expr_pos = +0o12345670;
+  let octal_expr_upper = 0O12345670;
+  let octal_expr_sep = 0o01_234_567;
+  let hex_expr_neg = -0xFedCBa9;
+  let hex_expr_pos = +0xFedCBa9;
+  let hex_expr_upper = 0XfEDcbA9;
+  let hex_expr_sep = 0x01_234_456;
+  let neg_pos_reduce = + - - + - 01234;
+
+  let decimal_pat = fun (x) => {
+    switch (x) {
+      | 0123456789 => true
+      | _ => false
+    };
+  };
+  let decimal_pat_neg = fun (x) => {
+    switch (x) {
+      | -0123456789 => true
+      | _ => false
+    };
+  };
+  let decimal_pat_pos = fun (x) => {
+    switch (x) {
+      | +0123456789 => true
+      | _ => false
+    };
+  };
+  let decimal_pat_sep = fun (x) => {
+    switch (x) {
+      | 01_234_567 => true
+      | _ => false
+    };
+  };
+  let binary_pat_neg = fun (x) => {
+    switch (x) {
+      | -0b10101010 => true
+      | _ => false
+    };
+  };
+  let binary_pat_pos = fun (x) => {
+    switch (x) {
+      | +0b10101010 => true
+      | _ => false
+    };
+  };
+  let binary_pat_upper = fun (x) => {
+    switch (x) {
+      | 0B10101010 => true
+      | _ => false
+    };
+  };
+  let binary_pat_sep = fun (x) => {
+    switch (x) {
+      | 0b01_010_101 => true
+      | _ => false
+    };
+  };
+  let octal_pat_neg = fun (x) => {
+    switch (x) {
+      | -0o12345670 => true
+      | _ => false
+    };
+  };
+  let octal_pat_pos = fun (x) => {
+    switch (x) {
+      | +0o12345670 => true
+      | _ => false
+    };
+  };
+  let octal_pat_upper = fun (x) => {
+    switch (x) {
+      | 0O12345670 => true
+      | _ => false
+    };
+  };
+  let octal_pat_sep = fun (x) => {
+    switch (x) {
+      | 0o01_234_567 => true
+      | _ => false
+    };
+  };
+  let hex_pat_neg = fun (x) => {
+    switch (x) {
+      | -0xFedCBa9 => true
+      | _ => false
+    };
+  };
+  let hex_pat_pos = fun (x) => {
+    switch (x) {
+      | +0xFedCBa9 => true
+      | _ => false
+    };
+  };
+  let hex_pat_upper = fun (x) => {
+    switch (x) {
+      | 0XfEDcbA9 => true
+      | _ => false
+    };
+  };
+  let hex_pat_sep = fun (x) => {
+    switch (x) {
+      | 0x01_234_456 => true
+      | _ => false
+    };
+  };
+};
+
+module Int32 = {
+  let decimal_expr = 0123456789l;
+  let decimal_expr_neg = -0123456789l;
+  let decimal_expr_pos = +0123456789l;
+  let decimal_expr_sep = 01_234_567l;
+  let binary_expr_neg = -0b10101010l;
+  let binary_expr_pos = +0b10101010l;
+  let binary_expr_upper = 0B10101010l;
+  let binary_expr_sep = 0b01_010_101l;
+  let octal_expr_neg = -0o12345670l;
+  let octal_expr_pos = +0o12345670l;
+  let octal_expr_upper = 0O12345670l;
+  let octal_expr_sep = 0o01_234_567l;
+  let hex_expr_neg = -0xFedCBa9l;
+  let hex_expr_pos = +0xFedCBa9l;
+  let hex_expr_upper = 0XfEDcbA9l;
+  let hex_expr_sep = 0x01_234_456l;
+  let neg_pos_reduce = + - - + - 01234l;
+
+  let decimal_pat = fun (x) => {
+    switch (x) {
+      | 0123456789l => true
+      | _ => false
+    };
+  };
+  let decimal_pat_neg = fun (x) => {
+    switch (x) {
+      | -0123456789l => true
+      | _ => false
+    };
+  };
+  let decimal_pat_pos = fun (x) => {
+    switch (x) {
+      | +0123456789l => true
+      | _ => false
+    };
+  };
+  let decimal_pat_sep = fun (x) => {
+    switch (x) {
+      | 01_234_567l => true
+      | _ => false
+    };
+  };
+  let binary_pat_neg = fun (x) => {
+    switch (x) {
+      | -0b10101010l => true
+      | _ => false
+    };
+  };
+  let binary_pat_pos = fun (x) => {
+    switch (x) {
+      | +0b10101010l => true
+      | _ => false
+    };
+  };
+  let binary_pat_upper = fun (x) => {
+    switch (x) {
+      | 0B10101010l => true
+      | _ => false
+    };
+  };
+  let binary_pat_sep = fun (x) => {
+    switch (x) {
+      | 0b01_010_101l => true
+      | _ => false
+    };
+  };
+  let octal_pat_neg = fun (x) => {
+    switch (x) {
+      | -0o12345670l => true
+      | _ => false
+    };
+  };
+  let octal_pat_pos = fun (x) => {
+    switch (x) {
+      | +0o12345670l => true
+      | _ => false
+    };
+  };
+  let octal_pat_upper = fun (x) => {
+    switch (x) {
+      | 0O12345670l => true
+      | _ => false
+    };
+  };
+  let octal_pat_sep = fun (x) => {
+    switch (x) {
+      | 0o01_234_567l => true
+      | _ => false
+    };
+  };
+  let hex_pat_neg = fun (x) => {
+    switch (x) {
+      | -0xFedCBa9l => true
+      | _ => false
+    };
+  };
+  let hex_pat_pos = fun (x) => {
+    switch (x) {
+      | +0xFedCBa9l => true
+      | _ => false
+    };
+  };
+  let hex_pat_upper = fun (x) => {
+    switch (x) {
+      | 0XfEDcbA9l => true
+      | _ => false
+    };
+  };
+  let hex_pat_sep = fun (x) => {
+    switch (x) {
+      | 0x01_234_456l => true
+      | _ => false
+    };
+  };
+};
+
+module Int64 = {
+  let decimal_expr = 0123456789L;
+  let decimal_expr_neg = -0123456789L;
+  let decimal_expr_pos = +0123456789L;
+  let decimal_expr_sep = 01_234_567L;
+  let binary_expr_neg = -0b10101010L;
+  let binary_expr_pos = +0b10101010L;
+  let binary_expr_upper = 0B10101010L;
+  let binary_expr_sep = 0b01_010_101L;
+  let octal_expr_neg = -0o12345670L;
+  let octal_expr_pos = +0o12345670L;
+  let octal_expr_upper = 0O12345670L;
+  let octal_expr_sep = 0o01_234_567L;
+  let hex_expr_neg = -0xFedCBa9L;
+  let hex_expr_pos = +0xFedCBa9L;
+  let hex_expr_upper = 0XfEDcbA9L;
+  let hex_expr_sep = 0x01_234_456L;
+  let neg_pos_reduce = + - - + - 01234L;
+
+  let decimal_pat = fun (x) => {
+    switch (x) {
+      | 0123456789L => true
+      | _ => false
+    };
+  };
+  let decimal_pat_neg = fun (x) => {
+    switch (x) {
+      | -0123456789L => true
+      | _ => false
+    };
+  };
+  let decimal_pat_pos = fun (x) => {
+    switch (x) {
+      | +0123456789L => true
+      | _ => false
+    };
+  };
+  let decimal_pat_sep = fun (x) => {
+    switch (x) {
+      | 01_234_567L => true
+      | _ => false
+    };
+  };
+  let binary_pat_neg = fun (x) => {
+    switch (x) {
+      | -0b10101010L => true
+      | _ => false
+    };
+  };
+  let binary_pat_pos = fun (x) => {
+    switch (x) {
+      | +0b10101010L => true
+      | _ => false
+    };
+  };
+  let binary_pat_upper = fun (x) => {
+    switch (x) {
+      | 0B10101010L => true
+      | _ => false
+    };
+  };
+  let binary_pat_sep = fun (x) => {
+    switch (x) {
+      | 0b01_010_101L => true
+      | _ => false
+    };
+  };
+  let octal_pat_neg = fun (x) => {
+    switch (x) {
+      | -0o12345670L => true
+      | _ => false
+    };
+  };
+  let octal_pat_pos = fun (x) => {
+    switch (x) {
+      | +0o12345670L => true
+      | _ => false
+    };
+  };
+  let octal_pat_upper = fun (x) => {
+    switch (x) {
+      | 0O12345670L => true
+      | _ => false
+    };
+  };
+  let octal_pat_sep = fun (x) => {
+    switch (x) {
+      | 0o01_234_567L => true
+      | _ => false
+    };
+  };
+  let hex_pat_neg = fun (x) => {
+    switch (x) {
+      | -0xFedCBa9L => true
+      | _ => false
+    };
+  };
+  let hex_pat_pos = fun (x) => {
+    switch (x) {
+      | +0xFedCBa9L => true
+      | _ => false
+    };
+  };
+  let hex_pat_upper = fun (x) => {
+    switch (x) {
+      | 0XfEDcbA9L => true
+      | _ => false
+    };
+  };
+  let hex_pat_sep = fun (x) => {
+    switch (x) {
+      | 0x01_234_456L => true
+      | _ => false
+    };
+  };
+};
+
+module Nativeint = {
+  let decimal_expr = 0123456789n;
+  let decimal_expr_neg = -0123456789n;
+  let decimal_expr_pos = +0123456789n;
+  let decimal_expr_sep = 01_234_567n;
+  let binary_expr_neg = -0b10101010n;
+  let binary_expr_pos = +0b10101010n;
+  let binary_expr_upper = 0B10101010n;
+  let binary_expr_sep = 0b01_010_101n;
+  let octal_expr_neg = -0o12345670n;
+  let octal_expr_pos = +0o12345670n;
+  let octal_expr_upper = 0O12345670n;
+  let octal_expr_sep = 0o01_234_567n;
+  let hex_expr_neg = -0xFedCBa9n;
+  let hex_expr_pos = +0xFedCBa9n;
+  let hex_expr_upper = 0XfEDcbA9n;
+  let hex_expr_sep = 0x01_234_456n;
+  let neg_pos_reduce = + - - + - 01234n;
+
+  let decimal_pat = fun (x) => {
+    switch (x) {
+      | 0123456789n => true
+      | _ => false
+    };
+  };
+  let decimal_pat_neg = fun (x) => {
+    switch (x) {
+      | -0123456789n => true
+      | _ => false
+    };
+  };
+  let decimal_pat_pos = fun (x) => {
+    switch (x) {
+      | +0123456789n => true
+      | _ => false
+    };
+  };
+  let decimal_pat_sep = fun (x) => {
+    switch (x) {
+      | 01_234_567n => true
+      | _ => false
+    };
+  };
+  let binary_pat_neg = fun (x) => {
+    switch (x) {
+      | -0b10101010n => true
+      | _ => false
+    };
+  };
+  let binary_pat_pos = fun (x) => {
+    switch (x) {
+      | +0b10101010n => true
+      | _ => false
+    };
+  };
+  let binary_pat_upper = fun (x) => {
+    switch (x) {
+      | 0B10101010n => true
+      | _ => false
+    };
+  };
+  let binary_pat_sep = fun (x) => {
+    switch (x) {
+      | 0b01_010_101n => true
+      | _ => false
+    };
+  };
+  let octal_pat_neg = fun (x) => {
+    switch (x) {
+      | -0o12345670n => true
+      | _ => false
+    };
+  };
+  let octal_pat_pos = fun (x) => {
+    switch (x) {
+      | +0o12345670n => true
+      | _ => false
+    };
+  };
+  let octal_pat_upper = fun (x) => {
+    switch (x) {
+      | 0O12345670n => true
+      | _ => false
+    };
+  };
+  let octal_pat_sep = fun (x) => {
+    switch (x) {
+      | 0o01_234_567n => true
+      | _ => false
+    };
+  };
+  let hex_pat_neg = fun (x) => {
+    switch (x) {
+      | -0xFedCBa9n => true
+      | _ => false
+    };
+  };
+  let hex_pat_pos = fun (x) => {
+    switch (x) {
+      | +0xFedCBa9n => true
+      | _ => false
+    };
+  };
+  let hex_pat_upper = fun (x) => {
+    switch (x) {
+      | 0XfEDcbA9n => true
+      | _ => false
+    };
+  };
+  let hex_pat_sep = fun (x) => {
+    switch (x) {
+      | 0x01_234_456n => true
+      | _ => false
+    };
+  };
+};
+
+module Float = {
+  let decimal_expr = 0.00001;
+  let decimal_expr_neg = -1000.;
+  let decimal_expr_pos = +100.2;
+  let decimal_expr_float_neg = -.1000.;
+  let decimal_expr_float_pos = +.100.2;
+  let decimal_expr_E = 1E-80;
+  let decimal_expr_E_neg = -1E-80;
+  let decimal_expr_E_pos = +1E-80;
+  let decimal_expr_E_float_neg = -.1E-80;
+  let decimal_expr_E_float_pos = +.1E-80;
+  let decimal_expr_sep = 1_000_000.;
+  let neg_pos_reduce = + - -. +. - 01234.;
+
+  let decimal_pat = fun (x) => {
+    switch (x) {
+      | 0.00001 => true
+      | _ => false
+    };
+  };
+  let decimal_pat_neg = fun (x) => {
+    switch (x) {
+      | -1000. => true
+      | _ => false
+    };
+  };
+  let decimal_pat_pos = fun (x) => {
+    switch (x) {
+      | +100.2 => true
+      | _ => false
+    };
+  };
+  let decimal_pat_E = fun (x) => {
+    switch (x) {
+      | 1E-80 => true
+      | _ => false
+    };
+  };
+  let decimal_pat_E_neg = fun (x) => {
+    switch (x) {
+      | -1E-80 => true
+      | _ => false
+    };
+  };
+  let decimal_pat_E_pos = fun (x) => {
+    switch (x) {
+      | +1E-80 => true
+      | _ => false
+    };
+  };
+  let decimal_pat_sep = fun (x) => {
+    switch (x) {
+      | 1_000_000. => true
+      | _ => false
+    };
+  };
+};
+
+module Field_checked = {
+  let zero = 0f;
+  let one = 1f;
+  let plus_one = +1f;
+  let minus_one = -1f;
+};
+
+module Field_prover = {
+  Prover {
+    let zero = 0f;
+    let one = 1f;
+    let plus_one = +1f;
+    let minus_one = -1f;
+  };
+};
+
+module Boolean_checked = {
+  let false_ = 0b;
+  let true_ = 1b;
+};
+
+module Boolean_prover = {
+  Prover {
+    let false_ = 0b;
+    let true_ = 1b;
+  };
+};

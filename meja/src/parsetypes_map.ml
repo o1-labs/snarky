@@ -144,8 +144,10 @@ let pattern_desc mapper = function
       Ppat_tuple (List.map ~f:(mapper.pattern mapper) pats)
   | Ppat_or (p1, p2) ->
       Ppat_or (mapper.pattern mapper p1, mapper.pattern mapper p2)
-  | Ppat_int i ->
-      Ppat_int i
+  | Ppat_integer (i, suf) ->
+      Ppat_integer (i, suf)
+  | Ppat_literal l ->
+      Ppat_literal (mapper.literal mapper l)
   | Ppat_record fields ->
       Ppat_record
         (List.map fields ~f:(fun (name, pat) ->
@@ -167,6 +169,8 @@ let expression_desc mapper = function
               (label, mapper.expression mapper e) ) )
   | Pexp_variable name ->
       Pexp_variable (lid mapper name)
+  | Pexp_integer (i, suf) ->
+      Pexp_integer (i, suf)
   | Pexp_literal l ->
       Pexp_literal (mapper.literal mapper l)
   | Pexp_fun (label, p, e, explicit) ->

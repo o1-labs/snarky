@@ -136,6 +136,25 @@ let of_type_decl decl =
   | Tdec_extend _ ->
       failwith "Cannot convert TExtend to OCaml"
 
+let of_literal = function
+  | Int i ->
+      Const.int i
+  | Int32 i ->
+      Const.int32 i
+  | Int64 i ->
+      Const.int64 i
+  | Nativeint i ->
+      Const.nativeint i
+  | Float f ->
+      Const.float (string_of_float f)
+  | Char c ->
+      Const.char c
+  | String s ->
+      Const.string s
+  | Bool _ | Field _ ->
+      (* Needs type information, see [of_expression]. *)
+      assert false
+
 let rec of_pattern_desc ?loc = function
   | Tpat_any ->
       Pat.any ?loc ()
@@ -147,8 +166,8 @@ let rec of_pattern_desc ?loc = function
       Pat.tuple ?loc (List.map ~f:of_pattern ps)
   | Tpat_or (p1, p2) ->
       Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
-  | Tpat_int i ->
-      Pat.constant ?loc (Const.int i)
+  | Tpat_literal l ->
+      Pat.constant ?loc (of_literal l)
   | Tpat_record fields ->
       Pat.record ?loc
         (List.map fields ~f:(fun (f, p) -> (of_path_loc f, of_pattern p)))
@@ -168,16 +187,6 @@ let rec of_pattern_desc ?loc = function
       Pat.variant ?loc (of_ident name.txt) args
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
-
-let of_literal ?loc = function
-  | Bool _ ->
-      failwith "Unhandled boolean literal"
-  | Int i ->
-      Exp.constant ?loc (Const.int i)
-  | Field _f ->
-      failwith "Unhandled field literal"
-  | String s ->
-      Exp.constant ?loc (Const.string s)
 
 (** Code generation for [Typ.t] store/read fields from [convert_body_desc]s. *)
 let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
@@ -519,7 +528,12 @@ let rec of_expression_desc ?loc = function
   | Texp_variable name ->
       Exp.ident ?loc (of_path_loc name)
   | Texp_literal l ->
-      of_literal ?loc l
+      (* This is unable to handle [Bool] or [Field] literals, because it
+         doesn't know which mode it is in. Instead, this is deferred to
+         [of_expression], which has the type (and thus mode) information that
+         we need.
+      *)
+      Exp.constant ?loc (of_literal l)
   | Texp_fun (label, p, body, _) ->
       Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
   | Texp_newtype (name, body) ->
@@ -622,7 +636,26 @@ and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
       | _ ->
           Snarky.Request.unhandled])
 
-and of_expression exp = of_expression_desc ~loc:exp.exp_loc exp.exp_desc
+and of_expression exp =
+  let loc = exp.exp_loc in
+  (* Handle the expressions that need the specific mode available here. *)
+  match (exp.exp_desc, exp.exp_type.type_mode) with
+  | Texp_literal (Field f), Checked ->
+      [%expr
+        Field.constant
+          (Field.constant.to_string [%e Exp.constant (Const.string f)])]
+  | Texp_literal (Field f), Prover ->
+      [%expr Field.constant.to_string [%e Exp.constant (Const.string f)]]
+  | Texp_literal (Bool true), Checked ->
+      [%expr Boolean.true_]
+  | Texp_literal (Bool false), Checked ->
+      [%expr Boolean.false_]
+  | Texp_literal (Bool true), Prover ->
+      [%expr true]
+  | Texp_literal (Bool false), Prover ->
+      [%expr false]
+  | _ ->
+      of_expression_desc ~loc:exp.exp_loc exp.exp_desc
 
 let rec of_signature_desc ?loc = function
   | Tsig_value (name, typ) | Tsig_instance (name, typ) ->
