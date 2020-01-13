@@ -201,23 +201,27 @@ struct
         ('var1 * 'var2, 'value1 * 'value2, 'field) t =
       let alloc =
         let open Alloc.Let_syntax in
-        let%map x = typ1.alloc and y = typ2.alloc in
-        (x, y)
+        let%bind x = typ1.alloc in
+        let%bind y = typ2.alloc in
+        return (x, y)
       in
       let read (x, y) =
         let open Read.Let_syntax in
-        let%map x = typ1.read x and y = typ2.read y in
-        (x, y)
+        let%bind x = typ1.read x in
+        let%bind y = typ2.read y in
+        return (x, y)
       in
       let store (x, y) =
         let open Store.Let_syntax in
-        let%map x = typ1.store x and y = typ2.store y in
-        (x, y)
+        let%bind x = typ1.store x in
+        let%bind y = typ2.store y in
+        return (x, y)
       in
       let check (x, y) =
         let open Checked in
-        let%map () = typ1.check x and () = typ2.check y in
-        ()
+        let%bind () = typ1.check x in
+        let%bind () = typ2.check y in
+        return ()
       in
       {read; store; alloc; check}
 
@@ -228,25 +232,31 @@ struct
         : ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3, 'field) t =
       let alloc =
         let open Alloc.Let_syntax in
-        let%map x = typ1.alloc and y = typ2.alloc and z = typ3.alloc in
-        (x, y, z)
+        let%bind x = typ1.alloc in
+        let%bind y = typ2.alloc in
+        let%bind z = typ3.alloc in
+        return (x, y, z)
       in
       let read (x, y, z) =
         let open Read.Let_syntax in
-        let%map x = typ1.read x and y = typ2.read y and z = typ3.read z in
-        (x, y, z)
+        let%bind x = typ1.read x in
+        let%bind y = typ2.read y in
+        let%bind z = typ3.read z in
+        return (x, y, z)
       in
       let store (x, y, z) =
         let open Store.Let_syntax in
-        let%map x = typ1.store x and y = typ2.store y and z = typ3.store z in
-        (x, y, z)
+        let%bind x = typ1.store x in
+        let%bind y = typ2.store y in
+        let%bind z = typ3.store z in
+        return (x, y, z)
       in
       let check (x, y, z) =
         let open Checked in
-        let%map () = typ1.check x
-        and () = typ2.check y
-        and () = typ3.check z in
-        ()
+        let%bind () = typ1.check x in
+        let%bind () = typ2.check y in
+        let%bind () = typ3.check z in
+        return ()
       in
       {read; store; alloc; check}
 
@@ -255,35 +265,35 @@ struct
         (typ4 : ('var4, 'value4, 'field) t) =
       let alloc =
         let open Alloc.Let_syntax in
-        let%map x = typ1.alloc
-        and y = typ2.alloc
-        and z = typ3.alloc
-        and w = typ4.alloc in
-        (x, y, z, w)
+        let%bind x = typ1.alloc in
+        let%bind y = typ2.alloc in
+        let%bind z = typ3.alloc in
+        let%bind w = typ4.alloc in
+        return (x, y, z, w)
       in
       let read (x, y, z, w) =
         let open Read.Let_syntax in
-        let%map x = typ1.read x
-        and y = typ2.read y
-        and z = typ3.read z
-        and w = typ4.read w in
-        (x, y, z, w)
+        let%bind x = typ1.read x in
+        let%bind y = typ2.read y in
+        let%bind z = typ3.read z in
+        let%bind w = typ4.read w in
+        return (x, y, z, w)
       in
       let store (x, y, z, w) =
         let open Store.Let_syntax in
-        let%map x = typ1.store x
-        and y = typ2.store y
-        and z = typ3.store z
-        and w = typ4.store w in
-        (x, y, z, w)
+        let%bind x = typ1.store x in
+        let%bind y = typ2.store y in
+        let%bind z = typ3.store z in
+        let%bind w = typ4.store w in
+        return (x, y, z, w)
       in
       let check (x, y, z, w) =
         let open Checked in
-        let%map () = typ1.check x
-        and () = typ2.check y
-        and () = typ3.check z
-        and () = typ4.check w in
-        ()
+        let%bind () = typ1.check x in
+        let%bind () = typ2.check y in
+        let%bind () = typ3.check z in
+        let%bind () = typ4.check w in
+        return ()
       in
       {read; store; alloc; check}
 
@@ -293,39 +303,39 @@ struct
         =
       let alloc =
         let open Alloc.Let_syntax in
-        let%map x1 = typ1.alloc
-        and x2 = typ2.alloc
-        and x3 = typ3.alloc
-        and x4 = typ4.alloc
-        and x5 = typ5.alloc in
-        (x1, x2, x3, x4, x5)
+        let%bind x1 = typ1.alloc in
+        let%bind x2 = typ2.alloc in
+        let%bind x3 = typ3.alloc in
+        let%bind x4 = typ4.alloc in
+        let%bind x5 = typ5.alloc in
+        return (x1, x2, x3, x4, x5)
       in
       let read (x1, x2, x3, x4, x5) =
         let open Read.Let_syntax in
-        let%map x1 = typ1.read x1
-        and x2 = typ2.read x2
-        and x3 = typ3.read x3
-        and x4 = typ4.read x4
-        and x5 = typ5.read x5 in
-        (x1, x2, x3, x4, x5)
+        let%bind x1 = typ1.read x1 in
+        let%bind x2 = typ2.read x2 in
+        let%bind x3 = typ3.read x3 in
+        let%bind x4 = typ4.read x4 in
+        let%bind x5 = typ5.read x5 in
+        return (x1, x2, x3, x4, x5)
       in
       let store (x1, x2, x3, x4, x5) =
         let open Store.Let_syntax in
-        let%map x1 = typ1.store x1
-        and x2 = typ2.store x2
-        and x3 = typ3.store x3
-        and x4 = typ4.store x4
-        and x5 = typ5.store x5 in
-        (x1, x2, x3, x4, x5)
+        let%bind x1 = typ1.store x1 in
+        let%bind x2 = typ2.store x2 in
+        let%bind x3 = typ3.store x3 in
+        let%bind x4 = typ4.store x4 in
+        let%bind x5 = typ5.store x5 in
+        return (x1, x2, x3, x4, x5)
       in
       let check (x1, x2, x3, x4, x5) =
         let open Checked in
-        let%map () = typ1.check x1
-        and () = typ2.check x2
-        and () = typ3.check x3
-        and () = typ4.check x4
-        and () = typ5.check x5 in
-        ()
+        let%bind () = typ1.check x1 in
+        let%bind () = typ2.check x2 in
+        let%bind () = typ3.check x3 in
+        let%bind () = typ4.check x4 in
+        let%bind () = typ5.check x5 in
+        return ()
       in
       {read; store; alloc; check}
 
