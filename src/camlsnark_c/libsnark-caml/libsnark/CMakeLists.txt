@@ -20,22 +20,6 @@ add_library(
   snark
   STATIC
 
-  common/data_structures/integer_permutation.cpp
-  common/data_structures/set_commitment.cpp
-  common/default_types/r1cs_ppzkpcd_pp.cpp
-  common/default_types/tinyram_ppzksnark_pp.cpp
-  common/default_types/tinyram_zksnark_pp.cpp
-  common/routing_algorithms/as_waksman_routing_algorithm.cpp
-  common/routing_algorithms/benes_routing_algorithm.cpp
-  gadgetlib1/constraint_profiling.cpp
-  gadgetlib2/adapters.cpp
-  gadgetlib2/constraint.cpp
-  gadgetlib2/gadget.cpp
-  gadgetlib2/infrastructure.cpp
-  gadgetlib2/integration.cpp
-  gadgetlib2/pp.cpp
-  gadgetlib2/protoboard.cpp
-  gadgetlib2/variable.cpp
   caml/common.cpp
   caml/caml_bn128.cpp
   caml/caml_mnt6.cpp
@@ -46,12 +30,6 @@ add_library(
   caml/caml_mnt4753.cpp
   caml/caml_mnt4753_specific.cpp
   caml/caml_mnt6753_specific.cpp
-  misc/pedersen.cpp
-  relations/circuit_satisfaction_problems/tbcs/tbcs.cpp
-  relations/ram_computations/memory/memory_store_trace.cpp
-  relations/ram_computations/memory/ra_memory.cpp
-  relations/ram_computations/rams/fooram/fooram_aux.cpp
-  relations/ram_computations/rams/tinyram/tinyram_aux.cpp
 )
 target_link_libraries(
   snark
