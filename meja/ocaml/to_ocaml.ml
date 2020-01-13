@@ -111,6 +111,24 @@ let of_type_decl decl =
   | Pdec_extend _ ->
       failwith "Cannot convert TExtend to OCaml"
 
+let of_literal = function
+  | Int i ->
+      Const.int i
+  | Int32 i ->
+      Const.int32 i
+  | Int64 i ->
+      Const.int64 i
+  | Nativeint i ->
+      Const.nativeint i
+  | Float f ->
+      Const.float (string_of_float f)
+  | Char c ->
+      Const.char c
+  | String s ->
+      Const.string s
+  | Bool _ | Field _ ->
+      assert false
+
 let rec of_pattern_desc ?loc = function
   | Ppat_any ->
       Pat.any ?loc ()
@@ -122,8 +140,10 @@ let rec of_pattern_desc ?loc = function
       Pat.tuple ?loc (List.map ~f:of_pattern ps)
   | Ppat_or (p1, p2) ->
       Pat.or_ ?loc (of_pattern p1) (of_pattern p2)
-  | Ppat_int i ->
-      Pat.constant ?loc (Const.int i)
+  | Ppat_integer (i, suffix) ->
+      Pat.constant ?loc (Const.integer i ?suffix)
+  | Ppat_literal l ->
+      Pat.constant ?loc (of_literal l)
   | Ppat_record fields ->
       Pat.record ?loc
         (List.map fields ~f:(fun (f, p) -> (f, of_pattern p)))
@@ -144,15 +164,14 @@ let rec of_pattern_desc ?loc = function
 
 and of_pattern pat = of_pattern_desc ~loc:pat.pat_loc pat.pat_desc
 
-let of_literal ?loc = function
+let exp_of_literal ?loc = function
   | Bool _ ->
       failwith "Unhandled boolean literal"
-  | Int i ->
-      Exp.constant ?loc (Const.int i)
   | Field _f ->
       failwith "Unhandled field literal"
-  | String s ->
-      Exp.constant ?loc (Const.string s)
+  | (Int _ | Int32 _ | Int64 _ | Nativeint _ | Float _ | Char _ | String _) as
+    l ->
+      Exp.constant ?loc (of_literal l)
 
 let rec of_expression_desc ?loc = function
   | Pexp_apply (f, es) ->
@@ -160,8 +179,10 @@ let rec of_expression_desc ?loc = function
         (List.map ~f:(fun (label, x) -> (label, of_expression x)) es)
   | Pexp_variable name ->
       Exp.ident ?loc name
+  | Pexp_integer (i, suffix) ->
+      Exp.constant ?loc (Const.integer i ?suffix)
   | Pexp_literal l ->
-      of_literal ?loc l
+      exp_of_literal ?loc l
   | Pexp_fun (label, p, body, _) ->
       Exp.fun_ ?loc label None (of_pattern p) (of_expression body)
   | Pexp_newtype (name, body) ->

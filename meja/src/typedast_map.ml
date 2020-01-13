@@ -176,8 +176,8 @@ let pattern_desc mapper = function
       Tpat_tuple (List.map ~f:(mapper.pattern mapper) pats)
   | Tpat_or (p1, p2) ->
       Tpat_or (mapper.pattern mapper p1, mapper.pattern mapper p2)
-  | Tpat_int i ->
-      Tpat_int i
+  | Tpat_literal l ->
+      Tpat_literal (mapper.literal mapper l)
   | Tpat_record fields ->
       Tpat_record
         (List.map fields ~f:(fun (name, pat) ->

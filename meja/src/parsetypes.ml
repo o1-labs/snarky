@@ -57,8 +57,6 @@ and type_decl_desc =
   | Pdec_extend of Path.t Location.loc * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
-type literal = Int of int | Bool of bool | Field of string | String of string
-
 type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
 
 and pattern_desc =
@@ -67,7 +65,11 @@ and pattern_desc =
   | Ppat_constraint of pattern * type_expr
   | Ppat_tuple of pattern list
   | Ppat_or of pattern * pattern
-  | Ppat_int of int
+  | Ppat_integer of string * char option
+      (** Delayed parsing of integers so that we can complain about the right
+          bounds mismatch if they overflow.
+      *)
+  | Ppat_literal of literal
   | Ppat_record of (lid * pattern) list
   | Ppat_ctor of lid * pattern option
   | Ppat_row_ctor of str * pattern list
@@ -77,6 +79,10 @@ type expression = {exp_desc: expression_desc; exp_loc: Location.t}
 and expression_desc =
   | Pexp_apply of expression * (Asttypes.arg_label * expression) list
   | Pexp_variable of lid
+  | Pexp_integer of string * char option
+      (** Delayed parsing of integers so that we can complain about the right
+          bounds mismatch if they overflow.
+      *)
   | Pexp_literal of literal
   | Pexp_fun of Asttypes.arg_label * pattern * expression * explicitness
   | Pexp_newtype of str * expression

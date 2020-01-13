@@ -108,4 +108,8 @@ module type Sponge = sig
   val absorb : t -> input -> unit
 
   val squeeze : t -> digest
+
+  val copy : t -> t
+
+  val state : t -> Field.t State.t
 end
