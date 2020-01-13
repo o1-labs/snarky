@@ -35,6 +35,8 @@ module type Intf = sig
 
   val gen_uniform : t Quickcheck.Generator.t
 
+  val random : unit -> t
+
   val negate : t -> t
 
   val inv : t -> t
@@ -251,6 +253,8 @@ module Make_fp
 
   let gen_uniform = make_gen Int32.gen_uniform_incl
 
+  let random () = Quickcheck.random_value gen_uniform
+
   let fold_bits n : bool Fold_lib.Fold.t =
     { fold=
         (fun ~init ~f ->
@@ -434,6 +438,8 @@ end = struct
   let gen_uniform =
     Quickcheck.Generator.tuple3 Fp.gen_uniform Fp.gen_uniform Fp.gen_uniform
 
+  let random () = Quickcheck.random_value gen_uniform
+
   let to_list (x, y, z) = [x; y; z]
 
   let project_to_base (x, _, _) = x
@@ -509,6 +515,8 @@ end = struct
   let gen = Quickcheck.Generator.tuple2 Fp.gen Fp.gen
 
   let gen_uniform = Quickcheck.Generator.tuple2 Fp.gen_uniform Fp.gen_uniform
+
+  let random () = Quickcheck.random_value gen_uniform
 
   let to_list (x, y) = [x; y]
 
@@ -601,6 +609,8 @@ end = struct
   let gen = Quickcheck.Generator.tuple2 Fp3.gen Fp3.gen
 
   let gen_uniform = Quickcheck.Generator.tuple2 Fp3.gen_uniform Fp3.gen_uniform
+
+  let random () = Quickcheck.random_value gen_uniform
 
   let to_list (x, y) = [x; y]
 
