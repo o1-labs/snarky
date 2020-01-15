@@ -80,7 +80,8 @@ let {Typedast.tdec_tdec= string; _}, env = import string env
 
 let {Typedast.tdec_tdec= float; _}, env = import float env
 
-let {Typedast.tdec_tdec= exn; _}, env = import exn env
+let {Typedast.tdec_tdec= exn; tdec_ident= {txt= exn_ident; _}; _}, env =
+  import exn env
 
 let {Typedast.tdec_tdec= option; _}, env = import option env
 
@@ -138,6 +139,32 @@ module Type = struct
     { (TypeDecl.mk_typ ~mode:a.Type0.type_mode list ~params:[a] env) with
       type_depth= a.type_depth }
 end
+
+(* Import OCaml built-in exceptions. *)
+let _, env =
+  let ctor = Ast_build.Type_decl.Ctor.with_args ?loc:None ?ret:None in
+  let string = Ast_build.Type.constr (Lident "string") in
+  let int = Ast_build.Type.constr (Lident "int") in
+  let ctors =
+    [ ctor "Out_of_memory" []
+    ; ctor "Sys_error" [string]
+    ; ctor "Failure" [string]
+    ; ctor "End_of_file" []
+    ; ctor "Not_found" []
+    ; ctor "Match_failure" []
+    ; ctor "Stack_overflow" []
+    ; ctor "Sys_blocked_io" []
+    ; ctor "Assert_failure" [string; int; int] ]
+  in
+  let ext_decl =
+    { Parsetypes.tdec_ident= Location.mknoloc "exn"
+    ; tdec_params= []
+    ; tdec_desc=
+        Parsetypes.Pdec_extend
+          (Location.mknoloc (Path.Pident exn_ident), ctors)
+    ; tdec_loc= Location.none }
+  in
+  import ext_decl env
 
 let env = Envi.open_module env
 
