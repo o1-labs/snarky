@@ -1,0 +1,7 @@
+type t = A;
+
+let x = fun () => {
+  try (failwith("")) {
+    | A => 15
+  };
+};
