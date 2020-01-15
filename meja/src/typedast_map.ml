@@ -303,6 +303,11 @@ let expression_desc mapper = function
         , mapper.expression mapper e )
   | Texp_convert conv ->
       Texp_convert (mapper.convert mapper conv)
+  | Texp_try (e, cases) ->
+      Texp_try
+        ( mapper.expression mapper e
+        , List.map cases ~f:(fun (p, e) ->
+              (mapper.pattern mapper p, mapper.expression mapper e) ) )
 
 let type_conv mapper = function
   | Ttconv_with (mode, decl) ->

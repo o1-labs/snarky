@@ -96,6 +96,7 @@ and expression_desc =
       ; id: int }
   | Pexp_if of expression * expression * expression option
   | Pexp_prover of expression
+  | Pexp_try of expression * (pattern * expression) list
 
 type conv_type =
   (* Other mode stitched declaration. *)

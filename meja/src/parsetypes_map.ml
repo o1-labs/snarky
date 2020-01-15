@@ -219,6 +219,11 @@ let expression_desc mapper = function
         , Option.map ~f:(mapper.expression mapper) e3 )
   | Pexp_prover e ->
       Pexp_prover (mapper.expression mapper e)
+  | Pexp_try (e, cases) ->
+      Pexp_try
+        ( mapper.expression mapper e
+        , List.map cases ~f:(fun (p, e) ->
+              (mapper.pattern mapper p, mapper.expression mapper e) ) )
 
 let type_conv mapper = function
   | Ptconv_with (mode, decl) ->

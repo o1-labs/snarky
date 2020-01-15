@@ -307,6 +307,10 @@ let rec expression_desc = function
       Pexp_prover (expression e)
   | Texp_convert _ ->
       assert false
+  | Texp_try (e, cases) ->
+      Pexp_try
+        ( expression e
+        , List.map cases ~f:(fun (p, e) -> (pattern p, expression e)) )
 
 and expression e =
   {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}

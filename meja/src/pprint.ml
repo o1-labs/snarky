@@ -294,6 +294,13 @@ let rec expression_desc fmt = function
         expression e1 expression e2 expression e3
   | Pexp_prover e ->
       fprintf fmt "@[<hv2>Prover {@,%a@,}@]" expression e
+  | Pexp_try (e, cases) ->
+      fprintf fmt "@[<hv2>@[<h>try@ (@[<hv1>@,%a@,@])@] {@;@[<hv>%a@]@;}@]"
+        expression e
+        (pp_print_list ~pp_sep:pp_print_space (fun fmt (p, e) ->
+             fprintf fmt "| @[<hv2>%a@] =>@;<1 4>@[<hv2>%a@]" pattern p
+               expression e ))
+        cases
 
 and expression_desc_bracket fmt exp =
   match exp with

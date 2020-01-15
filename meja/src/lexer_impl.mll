@@ -72,6 +72,7 @@ rule token = parse
   | "true" { TRUE }
   | "false" { FALSE }
   | "switch" { SWITCH }
+  | "try" { TRY }
   | "type" { TYPE }
   | "module" { MODULE }
   | "open" { OPEN }

@@ -141,6 +141,7 @@ and expression_desc =
       (* arguments to the conversion *)
       * expression
   | Texp_convert of convert
+  | Texp_try of expression * (pattern * expression) list
 
 type conv_type =
   (* Other mode stitched declaration. *)

@@ -160,8 +160,7 @@ let _, env =
     { Parsetypes.tdec_ident= Location.mknoloc "exn"
     ; tdec_params= []
     ; tdec_desc=
-        Parsetypes.Pdec_extend
-          (Location.mknoloc (Path.Pident exn_ident), ctors)
+        Parsetypes.Pdec_extend (Location.mknoloc (Path.Pident exn_ident), ctors)
     ; tdec_loc= Location.none }
   in
   import ext_decl env

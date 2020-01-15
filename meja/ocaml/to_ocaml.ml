@@ -212,6 +212,10 @@ let rec of_expression_desc ?loc = function
         (Option.map ~f:of_expression e3)
   | Pexp_prover e ->
       of_expression e
+  | Pexp_try (e, cases) ->
+      Exp.try_ ?loc (of_expression e)
+        (List.map cases ~f:(fun (p, e) ->
+             Exp.case (of_pattern p) (of_expression e) ))
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(

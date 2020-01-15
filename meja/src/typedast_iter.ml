@@ -224,6 +224,10 @@ let expression_desc iter = function
       iter.expression iter e
   | Texp_convert conv ->
       iter.convert iter conv
+  | Texp_try (e, cases) ->
+      iter.expression iter e ;
+      List.iter cases ~f:(fun (p, e) ->
+          iter.pattern iter p ; iter.expression iter e )
 
 let convert_body iter {conv_body_desc; conv_body_loc; conv_body_type} =
   iter.location iter conv_body_loc ;

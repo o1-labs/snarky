@@ -47,6 +47,7 @@ let unitexp ~pos = mkexp ~pos (Pexp_ctor (mkloc ~pos (Lident "()"), None))
 %token TRUE
 %token FALSE
 %token SWITCH
+%token TRY
 %token TYPE
 %token CONVERTIBLE
 %token BY
@@ -435,6 +436,8 @@ expr:
     { mkexp ~pos:$loc (Pexp_row_ctor (id, [])) }
   | e = if_expr
     { e }
+  | TRY LPAREN e = expr_or_bare_tuple RPAREN LBRACE rev_cases = list(match_case, {}) RBRACE
+    { mkexp ~pos:$loc (Pexp_try (e, List.rev rev_cases)) }
 
 if_expr:
   | IF e1 = expr e2 = block

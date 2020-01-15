@@ -198,6 +198,10 @@ let expression_desc iter = function
       Option.iter ~f:(iter.expression iter) e3
   | Pexp_prover e ->
       iter.expression iter e
+  | Pexp_try (e, cases) ->
+      iter.expression iter e ;
+      List.iter cases ~f:(fun (p, e) ->
+          iter.pattern iter p ; iter.expression iter e )
 
 let type_conv iter = function
   | Ptconv_with (_mode, decl) ->

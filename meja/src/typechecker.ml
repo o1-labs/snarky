@@ -1642,6 +1642,23 @@ let rec get_expression env expected exp =
         ; exp_type= expected
         ; exp_desc= Texp_prover (conv, implicits, e) }
       , env )
+  | Pexp_try (e, cases) ->
+      let e, env = get_expression env expected e in
+      let exn_typ = get_mode mode Initial_env.Type.exn in
+      let env, cases =
+        List.fold_map ~init:env cases ~f:(fun env (p, e) ->
+            let env = Envi.open_expr_scope env in
+            let p, names, env = check_pattern env exn_typ p in
+            let env =
+              List.fold ~init:env names ~f:(fun env (name, typ) ->
+                  add_polymorphised name.Location.txt typ env )
+            in
+            let e, env = get_expression env expected e in
+            let env = Envi.close_expr_scope env in
+            (env, (p, e)) )
+      in
+      Envi.Type.update_depths env expected ;
+      ({exp_loc= loc; exp_type= expected; exp_desc= Texp_try (e, cases)}, env)
 
 and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
   let loc = e.exp_loc in

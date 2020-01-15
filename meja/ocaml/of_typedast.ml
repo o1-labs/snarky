@@ -598,6 +598,10 @@ let rec of_expression_desc ?loc = function
           ~compute:As_prover.(fun () -> [%e of_expression e])]
   | Texp_convert conv ->
       of_convert conv
+  | Texp_try (e, cases) ->
+      Exp.try_ ?loc (of_expression e)
+        (List.map cases ~f:(fun (p, e) ->
+             Exp.case (of_pattern p) (of_expression e) ))
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(
