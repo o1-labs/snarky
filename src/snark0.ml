@@ -382,7 +382,7 @@ struct
       let if_ b ~(then_ : var) ~(else_ : var) =
         map ~f:create (if_ b ~then_:(then_ :> Cvar.t) ~else_:(else_ :> Cvar.t))
 
-(* This is unused for now as we are not using any square constraint system based
+      (* This is unused for now as we are not using any square constraint system based
    backends. *)
       let _and_for_square_constraint_systems (x : var) (y : var) =
         (* (x + y)^2 = 2 z + x + y
