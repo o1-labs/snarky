@@ -2,6 +2,7 @@ module Bignum_bigint = Bigint
 open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
+module Truthy0 = Truthy
 module Typ0 = Typ
 module As_prover0 = As_prover
 
@@ -525,6 +526,77 @@ module type Basic = sig
     end
   end
 
+  (** Values representing [false] as 0 and [true] as any other value. For some
+      purposes, it may be more efficient to use these than [Boolean.var]s.
+  *)
+  and Truthy : sig
+    (** The type of truthy values. *)
+    type var = Field.Var.t Truthy0.t
+
+    type value = sexp_bool
+
+    val true_ : var
+    (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
+
+    val false_ : var
+    (** An R1CS variable containing {!val:Field.zero}, representing [false]. *)
+
+    val of_boolean : Boolean.var -> var
+    (** Convert a boolean value to a truthy value. *)
+
+    val to_boolean : var -> (Boolean.var, _) Checked.t
+    (** Convert a truthy value to a boolean value.
+        Cost: 2 constraints.
+    *)
+
+    val ( && ) : var -> var -> (var, _) Checked.t
+    (** Boolean and.
+        Cost: 1 constraint. *)
+
+    val all : var list -> (var, _) Checked.t
+    (** Returns a truthy value if all value in the list are truthy, false
+        otherwise.
+        Cost: n-1 constraints for list[n].
+    *)
+
+    val to_constant : var -> value option
+    (** [to_constant x] returns [Some b] if x holds only a constant field
+        element representing the boolean [b]. Otherwise, it returns [None].
+    *)
+
+    val var_of_value : value -> var
+    (** Convert an OCaml [bool] into a R1CS variable representing the same
+        value. *)
+
+    val typ : (var, value) Typ.t
+    (** The relationship between {!val:var} and {!val:value}. *)
+
+    val of_field : Field.Var.t -> var
+    (** Convert a field element to a truthy value. *)
+
+    module Assert : sig
+      val is_false : ?or_:var -> var -> (unit, _) Checked.t
+      (** Asserts that the variable is false.
+          If [or_] is provided, then this asserts that either variable is
+          false.
+          Cost: 1 constraint.
+      *)
+
+      val is_true : var -> (unit, _) Checked.t
+      (** Cost: 1 constraint. *)
+
+      val all : var list -> (unit, _) Checked.t
+      (** Cost: n constraints for list[n]. *)
+
+      val none : ?or_:var -> var list -> (unit, _) Checked.t
+      (** Asserts that all of the variables in the list are false.
+          If [or_] is provided, then this asserts that either [or_] is false or
+          every variable in the list is false.
+          Cost: n constraints for list[n].
+      *)
+    end
+  end
+
   (** Checked computations.
 
       These are the values used to generate an R1CS for a computation. *)
@@ -741,6 +813,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           the R1CS variables [x] and [y] are equal, or [false] otherwise.
       *)
 
+      val not_equal : Var.t -> Var.t -> Truthy.var
+
       val unpack : Var.t -> length:int -> (Boolean.var list, _) Checked.t
       (** [unpack x ~length] returns a list of R1CS variables containing the
           [length] lowest bits of [x]. If [length] is greater than the number
@@ -933,6 +1007,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
               behaviour of [equal] when the values are not equal.
     *)
 
+    val not_equal : t -> t -> Truthy.var list
+    (** Returns a list of truthy values, corresponding to whether each 'chunk'
+        of the two lists are equal or not.
+
+        The bitstrings are 'chunked' into a series of field elements that arise
+        from those bits.
+    *)
+
     val lt_value :
          Boolean.var Bitstring_lib.Bitstring.Msb_first.t
       -> bool Bitstring_lib.Bitstring.Msb_first.t
@@ -940,6 +1022,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     module Assert : sig
       val equal : t -> t -> (unit, _) Checked.t
+
+      val either_equal : or_not:Truthy.var -> t -> t -> (unit, _) Checked.t
+      (** Assert that either the two lists are equal, or [or_not] is false.
+          Uses the same number of constraints as [equal].
+      *)
     end
   end
 
@@ -1878,6 +1965,77 @@ module type Run_basic = sig
     end
   end
 
+  (** Values representing [false] as 0 and [true] as any other value. For some
+      purposes, it may be more efficient to use these than [Boolean.var]s.
+  *)
+  and Truthy : sig
+    (** The type of truthy values. *)
+    type var = Field.t Truthy0.t
+
+    type value = sexp_bool
+
+    val true_ : var
+    (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
+
+    val false_ : var
+    (** An R1CS variable containing {!val:Field.zero}, representing [false]. *)
+
+    val of_boolean : Boolean.var -> var
+    (** Convert a boolean value to a truthy value. *)
+
+    val to_boolean : var -> Boolean.var
+    (** Convert a truthy value to a boolean value.
+        Cost: 2 constraints.
+    *)
+
+    val ( && ) : var -> var -> var
+    (** Boolean and.
+        Cost: 1 constraint. *)
+
+    val all : var list -> var
+    (** Returns a truthy value if all value in the list are truthy, false
+        otherwise.
+        Cost: n-1 constraints for list[n].
+    *)
+
+    val to_constant : var -> value option
+    (** [to_constant x] returns [Some b] if x holds only a constant field
+        element representing the boolean [b]. Otherwise, it returns [None].
+    *)
+
+    val var_of_value : value -> var
+    (** Convert an OCaml [bool] into a R1CS variable representing the same
+        value. *)
+
+    val typ : (var, value) Typ.t
+    (** The relationship between {!val:var} and {!val:value}. *)
+
+    val of_field : Field.t -> var
+    (** Convert a field element to a truthy value. *)
+
+    module Assert : sig
+      val is_false : ?or_:var -> var -> unit
+      (** Asserts that the variable is false.
+          If [or_] is provided, then this asserts that either variable is
+          false.
+          Cost: 1 constraint.
+      *)
+
+      val is_true : var -> unit
+      (** Cost: 1 constraint. *)
+
+      val all : var list -> unit
+      (** Cost: n constraints for list[n]. *)
+
+      val none : ?or_:var -> var list -> unit
+      (** Asserts that all of the variables in the list are false.
+          If [or_] is provided, then this asserts that either [or_] is false or
+          every variable in the list is false.
+          Cost: n constraints for list[n].
+      *)
+    end
+  end
+
   and Field : sig
     module Constant : sig
       (** The finite field over which the R1CS operates. *)
@@ -2085,6 +2243,14 @@ module type Run_basic = sig
               behaviour of [equal] when the values are not equal.
     *)
 
+    val not_equal : t -> t -> Truthy.var list
+    (** Returns a list of truthy values, corresponding to whether each 'chunk'
+        of the two lists are equal or not.
+
+        The bitstrings are 'chunked' into a series of field elements that arise
+        from those bits.
+    *)
+
     val lt_value :
          Boolean.var Bitstring_lib.Bitstring.Msb_first.t
       -> bool Bitstring_lib.Bitstring.Msb_first.t
@@ -2092,6 +2258,11 @@ module type Run_basic = sig
 
     module Assert : sig
       val equal : t -> t -> unit
+
+      val either_equal : or_not:Truthy.var -> t -> t -> unit
+      (** Assert that either the two lists are equal, or [or_not] is false.
+          Uses the same number of constraints as [equal].
+      *)
     end
   end
 

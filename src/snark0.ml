@@ -266,6 +266,9 @@ struct
       let%map () = equal_constraints z inv r in
       Boolean.Unsafe.create r
 
+    let not_equal (x : Cvar.t) (y : Cvar.t) : Cvar.t Truthy.t =
+      Truthy.Unsafe.create Cvar.(x - y)
+
     let mul ?(label = "Checked.mul") (x : Cvar.t) (y : Cvar.t) =
       match (x, y) with
       | Constant x, Constant y ->
@@ -599,6 +602,104 @@ struct
         let any xs = Or xs
 
         let all xs = And xs
+      end
+    end
+
+    (** Truthy values. 0 is false, any other number is true. *)
+    module Truthy = struct
+      open Truthy.Unsafe
+
+      type var = Cvar.t Truthy.t
+
+      type value = bool
+
+      let true_ : var = create (Cvar.constant Field.one)
+
+      let false_ : var = create (Cvar.constant Field.zero)
+
+      let of_boolean (x : Boolean.var) = create (x :> Cvar.t)
+
+      let to_boolean (x : var) =
+        let open Let_syntax in
+        let%map b = equal (x :> Cvar.t) (false_ :> Cvar.t) in
+        Boolean.not b
+
+      let ( && ) (x : var) (y : var) =
+        let open Let_syntax in
+        let%map z = mul ~label:"Truthy.( && )" (x :> Cvar.t) (y :> Cvar.t) in
+        create z
+
+      let rec all = function
+        | [] ->
+            Checked.return true_
+        | [x] ->
+            Checked.return x
+        | x :: y :: l ->
+            let open Let_syntax in
+            let%bind z = x && y in
+            all (z :: l)
+
+      let to_constant (b : var) =
+        Option.map
+          (Cvar.to_constant (b :> Cvar.t))
+          ~f:(fun x -> not Field.(equal zero x))
+
+      let var_of_value b = if b then true_ else false_
+
+      let typ : (var, value) Typ.t =
+        let open Typ in
+        let store b =
+          Store.(map (store (if b then Field.one else Field.zero)) ~f:create)
+        in
+        let read (v : var) =
+          let open Read.Let_syntax in
+          let%map x = Read.read (v :> Cvar.t) in
+          if Field.equal x Field.zero then false else true
+        in
+        let alloc = Alloc.(map alloc ~f:create) in
+        let check _ = Checked.return () in
+        {read; store; alloc; check}
+
+      let of_field (t : Cvar.t) : var = create t
+
+      module Assert = struct
+        let is_false ?(or_ : var option) (v : var) =
+          match or_ with
+          | Some v' ->
+              assert_r1cs ~label:"Truthy.Assert.is_false"
+                (v :> Cvar.t)
+                (v' :> Cvar.t)
+                (false_ :> Cvar.t)
+          | None ->
+              assert_equal ~label:"Truthy.Assert.is_false"
+                (v :> Cvar.t)
+                (false_ :> Cvar.t)
+
+        let%snarkydef_ is_true (v : var) = assert_non_zero (v :> Cvar.t)
+
+        let%snarkydef_ all (bs : var list) =
+          let open Let_syntax in
+          let rec all bs =
+            match bs with
+            | [] ->
+                Checked.return ()
+            | b :: bs ->
+                let%bind () = is_true b in
+                all bs
+          in
+          all bs
+
+        let%snarkydef_ none ?or_ (bs : var list) =
+          let open Let_syntax in
+          let rec none bs =
+            match bs with
+            | [] ->
+                Checked.return ()
+            | b :: bs ->
+                let%bind () = is_false ?or_ b in
+                none bs
+          in
+          none bs
       end
     end
 
@@ -1293,6 +1394,8 @@ struct
 
       let equal = Checked.equal
 
+      let not_equal = Checked.not_equal
+
       let mul x y = Checked.mul ~label:"Field.Checked.mul" x y
 
       let square x = Checked.square ~label:"Field.Checked.square" x
@@ -1609,12 +1712,21 @@ struct
              Boolean.Unsafe.of_cvar r ))
       >>= Boolean.all
 
+    let not_equal t1 t2 =
+      Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
+          Checked.not_equal (Cvar1.pack x1) (Cvar1.pack x2) )
+
     module Assert = struct
       let equal t1 t2 =
         let open Checked in
         Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
             Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2) )
         |> assert_all ~label:"Bitstring.Assert.equal"
+
+      let either_equal ~or_not t1 t2 =
+        Checked.Truthy.Assert.none ~or_:or_not
+          (Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
+               Checked.not_equal (Cvar1.pack x1) (Cvar1.pack x2) ))
     end
   end
 
@@ -2111,6 +2223,46 @@ module Run = struct
       end
     end
 
+    module Truthy = struct
+      open Snark.Truthy
+
+      type nonrec var = var
+
+      type nonrec value = value
+
+      let true_ = true_
+
+      let false_ = false_
+
+      let of_boolean = of_boolean
+
+      let to_boolean x = run (to_boolean x)
+
+      let ( && ) x y = run (x && y)
+
+      let all l = run (all l)
+
+      let to_constant = to_constant
+
+      let var_of_value = var_of_value
+
+      let typ = typ
+
+      let of_field = of_field
+
+      module Assert = struct
+        open Snark.Truthy.Assert
+
+        let is_false ?or_ x = run (is_false ?or_ x)
+
+        let is_true x = run (is_true x)
+
+        let all x = run (all x)
+
+        let none ?or_ x = run (none ?or_ x)
+      end
+    end
+
     module Field = struct
       open Snark.Field
 
@@ -2324,12 +2476,16 @@ module Run = struct
 
       let equal_expect_true x y = run (equal_expect_true x y)
 
+      let not_equal = not_equal
+
       let lt_value x y = run (lt_value x y)
 
       module Assert = struct
         open Snark.Bitstring_checked.Assert
 
         let equal x y = run (equal x y)
+
+        let either_equal ~or_not x y = run (either_equal ~or_not x y)
       end
     end
 
