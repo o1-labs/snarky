@@ -10,21 +10,7 @@ type 'a json =
   'a
 
 module type S = sig
-  module Field : sig
-    type t [@@deriving bin_io, sexp, hash, compare]
-
-    include Field_intf.Extended with type t := t
-
-    include Stringable.S with type t := t
-
-    val size : Bigint.t
-
-    val unpack : t -> bool list
-
-    val project_reference : bool list -> t
-
-    val project : bool list -> t
-  end
+  module Field : Field_intf.Full
 
   module Bigint : sig
     include Bigint_intf.Extended with type field := Field.t
@@ -35,7 +21,7 @@ module type S = sig
   end
 
   module Var : sig
-    type t = Field.t Backend_types.Var.t [@@deriving sexp]
+    type t [@@deriving sexp]
 
     include Comparable.S with type t := t
 
@@ -81,86 +67,44 @@ module type S = sig
     val to_constant : t -> Field.t option
   end
 
-  module Linear_combination : sig
-    type t = Field.t Backend_types.Linear_combination.t
+  module R1CS_constraint_system :
+    Backend_intf.Constraint_system_intf with module Field := Field
 
-    val of_constant : Field.t option -> t
+  module Constraint : sig
+    type t = Cvar.t Constraint.t [@@deriving sexp]
 
-    val of_var : Cvar.t -> t
+    type 'k with_constraint_args = ?label:string -> 'k
 
-    val of_field : Field.t -> t
+    val boolean : (Cvar.t -> t) with_constraint_args
 
-    val zero : t
-  end
+    val equal : (Cvar.t -> Cvar.t -> t) with_constraint_args
 
-  module R1CS_constraint : sig
-    type t = Field.t Backend_types.R1CS_constraint.t
+    val r1cs : (Cvar.t -> Cvar.t -> Cvar.t -> t) with_constraint_args
 
-    val create :
-      Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
+    val square : (Cvar.t -> Cvar.t -> t) with_constraint_args
 
-    val set_is_square : t -> bool -> unit
-  end
+    val annotation : t -> string
 
-  module R1CS_constraint_system : sig
-    type t = Field.t Backend_types.R1CS_constraint_system.t
-
-    val create : unit -> t
-
-    val report_statistics : t -> unit
-
-    val finalize : t -> unit
-
-    val add_constraint : t -> R1CS_constraint.t -> unit
-
-    val add_constraint_with_annotation :
-      t -> R1CS_constraint.t -> string -> unit
-
-    val set_primary_input_size : t -> int -> unit
-
-    val set_auxiliary_input_size : t -> int -> unit
-
-    val get_primary_input_size : t -> int
-
-    val get_auxiliary_input_size : t -> int
-
-    val check_exn : t -> unit
-
-    val is_satisfied :
-         t
-      -> primary_input:Field.Vector.t
-      -> auxiliary_input:Field.Vector.t
+    val eval :
+         Cvar.t Constraint.basic_with_annotation list
+      -> (Cvar.t -> Field.t)
       -> bool
-
-    val digest : t -> Md5.t
-
-    val constraints : t -> Cvar.t Constraint.t
-
-    val to_json : t -> 'a json
   end
 
   module Proving_key : sig
     type t [@@deriving bin_io]
 
-    val r1cs_constraint_system : t -> R1CS_constraint_system.t
+    val is_initialized : t -> [`Yes | `No of R1CS_constraint_system.t]
 
     val set_constraint_system : t -> R1CS_constraint_system.t -> unit
 
     include Stringable.S with type t := t
-
-    val to_bigstring : t -> Bigstring.t
-
-    val of_bigstring : Bigstring.t -> t
   end
 
   module Verification_key : sig
     type t [@@deriving bin_io]
 
     include Stringable.S with type t := t
-
-    val to_bigstring : t -> Bigstring.t
-
-    val of_bigstring : Bigstring.t -> t
   end
 
   module Proof : sig
@@ -192,35 +136,6 @@ module type S = sig
 
     val generate : R1CS_constraint_system.t -> t
   end
-
-  module Constraint : sig
-    type t = Cvar.t Constraint.t [@@deriving sexp]
-
-    type 'k with_constraint_args = ?label:string -> 'k
-
-    val boolean : (Cvar.t -> t) with_constraint_args
-
-    val equal : (Cvar.t -> Cvar.t -> t) with_constraint_args
-
-    val r1cs : (Cvar.t -> Cvar.t -> Cvar.t -> t) with_constraint_args
-
-    val square : (Cvar.t -> Cvar.t -> t) with_constraint_args
-
-    val annotation : t -> string
-
-    val stack_to_string : string list -> string
-
-    val add : stack:string list -> t -> R1CS_constraint_system.t -> unit
-
-    val eval :
-         Cvar.t Constraint.basic_with_annotation list
-      -> (Cvar.t -> Field.t)
-      -> bool
-
-    val basic_to_json : Cvar.t Constraint.basic -> 'a json
-
-    val to_json : t -> 'a json
-  end
 end
 
 module Make (Backend : Backend_intf.S) :
@@ -230,7 +145,10 @@ module Make (Backend : Backend_intf.S) :
    and type Proof.message = Backend.Proof.message
    and type Proving_key.t = Backend.Proving_key.t
    and type Verification_key.t = Backend.Verification_key.t
-   and type Proof.t = Backend.Proof.t = struct
+   and type Var.t = Backend.Var.t
+   and type Proof.t = Backend.Proof.t
+   and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
+struct
   open Backend
 
   module Bigint = struct
@@ -383,95 +301,17 @@ module Make (Backend : Backend_intf.S) :
           None
   end
 
-  module Linear_combination = struct
-    type t = Linear_combination.t
-
-    let of_constant = function
-      | None ->
-          Linear_combination.create ()
-      | Some c ->
-          Linear_combination.of_field c
-
-    let of_var (cv : Cvar.t) =
-      let constant, terms = Cvar.to_constant_and_terms cv in
-      let t = of_constant constant in
-      List.iter terms ~f:(fun (c, v) -> Linear_combination.add_term t c v) ;
-      t
-
-    let of_field = Backend.Linear_combination.of_field
-
-    let zero = of_field Field.zero
-
-    let to_var lc =
-      let terms = Linear_combination.terms lc in
-      let l =
-        List.init (Linear_combination.Term.Vector.length terms) ~f:(fun i ->
-            let term = Linear_combination.Term.Vector.get terms i in
-            let coeff = Linear_combination.Term.coeff term in
-            let var = Linear_combination.Term.var term in
-            let index = Backend.Var.index var in
-            let var =
-              if Int.equal index 0 then Cvar.constant Field.one
-              else Cvar.Unsafe.of_index (index - 1)
-            in
-            (coeff, var) )
-      in
-      Cvar.linear_combination l
-  end
-
-  module R1CS_constraint = R1CS_constraint
-
   module Constraint = struct
     open Constraint
     include Constraint.T
-
-    type basic = Cvar.t Constraint.basic
 
     type 'k with_constraint_args = ?label:string -> 'k
 
     type t = Cvar.t Constraint.t [@@deriving sexp]
 
-    let basic_to_r1cs_constraint : basic -> R1CS_constraint.t =
-      let of_var = Linear_combination.of_var in
-      function
-      | Boolean v ->
-          let lc = of_var v in
-          let constr = R1CS_constraint.create lc lc lc in
-          R1CS_constraint.set_is_square constr true ;
-          constr
-      | Equal (v1, v2) ->
-          (* 0 * 0 = (v1 - v2) *)
-          let constr =
-            R1CS_constraint.create Linear_combination.zero
-              Linear_combination.zero
-              (of_var (Cvar.sub v1 v2))
-          in
-          R1CS_constraint.set_is_square constr true ;
-          constr
-      | Square (a, c) ->
-          let a = of_var a in
-          let constr = R1CS_constraint.create a a (of_var c) in
-          R1CS_constraint.set_is_square constr true ;
-          constr
-      | R1CS (a, b, c) ->
-          let constr =
-            R1CS_constraint.create (of_var a) (of_var b) (of_var c)
-          in
-          R1CS_constraint.set_is_square constr false ;
-          constr
-
-    let stack_to_string = String.concat ~sep:"\n"
-
-    let add ~stack (t : t) system =
-      List.iter t ~f:(fun {basic; annotation} ->
-          let label = Option.value annotation ~default:"<unknown>" in
-          let c = basic_to_r1cs_constraint basic in
-          R1CS_constraint_system.add_constraint_with_annotation system c
-            (stack_to_string (label :: stack)) )
-
     let eval_basic t get_value =
       match t with
-      | Boolean v ->
+      | Constraint.Boolean v ->
           let x = get_value v in
           Field.(equal x zero || equal x one)
       | Equal (v1, v2) ->
@@ -483,51 +323,7 @@ module Make (Backend : Backend_intf.S) :
 
     let eval t get_value =
       List.for_all t ~f:(fun {basic; _} -> eval_basic basic get_value)
-
-    let basic_to_json = function
-      | Boolean x ->
-          let fx = Cvar.to_json x in
-          `Assoc [("A", fx); ("B", fx); ("C", fx)]
-      | Equal (x, y) ->
-          `Assoc
-            [ ("A", `Assoc [])
-            ; ("B", `Assoc [])
-            ; ("C", Cvar.to_json (Cvar.sub x y)) ]
-      | Square (a, c) ->
-          let fa = Cvar.to_json a in
-          `Assoc [("A", fa); ("B", fa); ("C", Cvar.to_json c)]
-      | R1CS (a, b, c) ->
-          `Assoc
-            [ ("A", Cvar.to_json a)
-            ; ("B", Cvar.to_json b)
-            ; ("C", Cvar.to_json c) ]
-
-    let to_json x =
-      `List (List.map x ~f:(fun {basic; _} -> basic_to_json basic))
   end
 
-  module R1CS_constraint_system = struct
-    include R1CS_constraint_system
-
-    let constraints : t -> Constraint.t =
-      fold_constraints ~init:[] ~f:(fun acc constr ->
-          let a = Linear_combination.to_var (R1CS_constraint.a constr) in
-          let b = Linear_combination.to_var (R1CS_constraint.b constr) in
-          let c = Linear_combination.to_var (R1CS_constraint.c constr) in
-          Constraint.create_basic (R1CS (a, b, c)) :: acc )
-
-    let to_json system =
-      let open Base in
-      let inputs =
-        List.init (get_primary_input_size system) ~f:(fun i ->
-            `String (sprintf "input%i" (i + 1)) )
-      in
-      let auxiliaries =
-        List.init (get_auxiliary_input_size system) ~f:(fun i ->
-            `String (sprintf "a%i" (i + 1)) )
-      in
-      `Assoc
-        [ ("Variables", `List ((`String "ONE" :: inputs) @ auxiliaries))
-        ; ("constraints", Constraint.to_json (constraints system)) ]
-  end
+  module R1CS_constraint_system = R1CS_constraint_system
 end
