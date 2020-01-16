@@ -17,3 +17,15 @@ let x : exn = X;
 let y : exn = Y(15);
 
 let z : exn = Z(true);
+
+let raise_X = fun () : unit => {
+  raise(X);
+};
+
+let raise_Y = fun (i) : bool => {
+  raise(Y(i));
+};
+
+let raise_Z = fun (b) : int => {
+  raise(Z(b));
+};

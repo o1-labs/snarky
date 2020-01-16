@@ -24,3 +24,9 @@ let (x : exn) = X
 let (y : exn) = Y 15
 
 let (z : exn) = Z true
+
+let raise_X () : unit = raise X
+
+let raise_Y i : bool = raise (Y i)
+
+let raise_Z b : int = raise (Z b)
