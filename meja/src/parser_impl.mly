@@ -406,6 +406,12 @@ expr:
     { mkexp ~pos:$loc (Pexp_constraint (x, typ)) }
   | FUN unit = unit EQUALGT body = block
     { mkexp ~pos:$loc (Pexp_fun (Nolabel, unitpat ~pos:unit, body, Explicit)) }
+  | FUN unit = unit COLON typ = type_expr EQUALGT body = block
+    { mkexp ~pos:$loc (Pexp_fun
+        ( Nolabel
+        , unitpat ~pos:unit
+        , mkexp ~pos:$loc (Pexp_constraint (body, typ))
+        , Explicit) ) }
   | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
