@@ -24,3 +24,9 @@ let z : unit -> int = fun () => {
     | Other(i, _) => i
   };
 };
+
+let a = fun () => {
+  try (raise (Other (15, true))) {
+    | Other(i, b) => (i, b)
+  };
+};

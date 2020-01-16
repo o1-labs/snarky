@@ -10,3 +10,5 @@ exception Other of int * bool
 
 let (z : unit -> int) =
  fun () -> try 15 with Failure _ -> 12 | Other (i, _) -> i
+
+let a () = try raise (Other (15, true)) with Other (i, b) -> (i, b)
