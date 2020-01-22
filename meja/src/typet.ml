@@ -735,7 +735,6 @@ module TypeDecl = struct
              ~loc:tdec_ident.loc tdec_ident.txt decl.tdec_tdec)
         env
     in
-    Format.eprintf "@.%a@." Debug_print.type_decl decl.tdec_tdec ;
     (decl, env)
 
   let import_convertible decl type_conv env =
