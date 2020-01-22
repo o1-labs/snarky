@@ -23,6 +23,8 @@ let get_mode mode typ =
     assert (equal_mode typ.type_mode mode) ;
     typ
 
+let () = Debug_print.get_mode := get_mode
+
 let type_id = ref 0
 
 let row_id = ref 0
@@ -229,174 +231,6 @@ let are_stitched typ typ' =
   modes_match
   && phys_equal ctyp.type_alternate ptyp
   && phys_equal ptyp ptyp.type_alternate.type_alternate
-
-(** Hash set to track types printed in [typ_debug_print], to ensure that we
-    don't get stuck in a recursion loop.
-*)
-let typ_debug_print_hash_tbl = Hash_set.create (module Int) ()
-
-let rec typ_debug_print fmt typ =
-  let hashtbl = typ_debug_print_hash_tbl in
-  let open Format in
-  let print i = fprintf fmt i in
-  let print_comma fmt () = pp_print_char fmt ',' in
-  let print_list pp = pp_print_list ~pp_sep:print_comma pp in
-  let print_label fmt = function
-    | Asttypes.Nolabel ->
-        ()
-    | Asttypes.Labelled str ->
-        fprintf fmt "~%s:" str
-    | Asttypes.Optional str ->
-        fprintf fmt "?%s:" str
-  in
-  print "(%i%a:" typ.type_id mode_debug_print typ.type_mode ;
-  if Hash_set.mem hashtbl typ.type_id then
-    (* Recursion breaking. *)
-    print "RECURSIVE"
-  else (
-    ( Hash_set.add hashtbl typ.type_id ;
-      match typ.type_desc with
-      | Tvar None ->
-          print "var _"
-      | Tvar (Some name) ->
-          print "var %s" name
-      | Tpoly (typs, typ) ->
-          print "poly [%a] %a"
-            (print_list typ_debug_print)
-            typs typ_debug_print typ
-      | Tarrow (typ1, typ2, Explicit, label) ->
-          print "%a%a -> %a" print_label label typ_debug_print typ1
-            typ_debug_print typ2
-      | Tarrow (typ1, typ2, Implicit, label) ->
-          print "%a{%a} -> %a" print_label label typ_debug_print typ1
-            typ_debug_print typ2
-      | Tctor {var_ident= name; var_params= params; _} ->
-          print "%a (%a)" Path.debug_print name
-            (print_list typ_debug_print)
-            params
-      | Ttuple typs ->
-          print "(%a)" (print_list typ_debug_print) typs
-      | Tref typ ->
-          print "= " ; typ_debug_print fmt typ
-      | Tconv typ ->
-          typ_debug_print fmt (get_mode Checked typ) ;
-          print " <-> " ;
-          typ_debug_print fmt (get_mode Prover typ)
-      | Topaque typ ->
-          print "opaque " ; typ_debug_print fmt typ
-      | Tother_mode typ ->
-          print "mode-change " ; typ_debug_print fmt typ
-      | Treplace typ ->
-          print "=== " ; typ_debug_print fmt typ
-      | Trow row ->
-          print "row " ; row_debug_print fmt row ) ;
-    Hash_set.remove hashtbl typ.type_id ) ;
-  print " @%i)" typ.type_depth
-
-and row_debug_print fmt {row_tags; row_closed; row_rest; row_presence_proxy= _}
-    =
-  let open Format in
-  let is_first = ref true in
-  Map.iteri row_tags ~f:(fun ~key ~data:(path, pres, args) ->
-      if !is_first then (
-        is_first := false ;
-        pp_print_string fmt ": " )
-      else pp_print_string fmt " | " ;
-      fprintf fmt "%a%a(%a):%a" row_presence_debug_print pres Path.debug_print
-        path Ident.debug_print key
-        (pp_print_list
-           ~pp_sep:(fun fmt () -> pp_print_string fmt ", ")
-           typ_debug_print)
-        args ) ;
-  match row_rest.type_desc with
-  | Trow _ ->
-      fprintf fmt "%a with " closed_flag_debug_print row_closed ;
-      typ_debug_print fmt row_rest
-  | _ ->
-      fprintf fmt "%a as " closed_flag_debug_print row_closed ;
-      typ_debug_print fmt row_rest
-
-and row_presence_debug_print fmt {rp_desc; rp_id} =
-  let open Format in
-  fprintf fmt "(%i:" rp_id ;
-  ( match rp_desc with
-  | RpPresent ->
-      pp_print_char fmt '+'
-  | RpMaybe ->
-      pp_print_char fmt '?'
-  | RpAbsent ->
-      pp_print_char fmt '-'
-  | RpSubtract rp ->
-      pp_print_char fmt '-' ;
-      row_presence_debug_print fmt rp
-  | RpAny ->
-      pp_print_char fmt '*'
-  | RpRef rp ->
-      row_presence_debug_print fmt rp
-  | RpReplace rp ->
-      fprintf fmt "=== %a" row_presence_debug_print rp ) ;
-  pp_print_char fmt ')'
-
-let field_decl_debug_print fmt {fld_ident; fld_type} =
-  Format.fprintf fmt "%a: %a" Ident.debug_print fld_ident typ_debug_print
-    fld_type
-
-let rec ctor_args_debug_print fmt args =
-  let open Format in
-  let pp_sep fmt () = pp_print_string fmt "," in
-  match args with
-  | Ctor_tuple typs ->
-      fprintf fmt "(%a)" (pp_print_list ~pp_sep typ_debug_print) typs
-  | Ctor_record {tdec_desc= TRecord fields; _} ->
-      fprintf fmt "{%a}" (pp_print_list ~pp_sep field_decl_debug_print) fields
-  | Ctor_record decl ->
-      (* NOTE: This shouldn't happen, but is useful for debugging when it does.
-      *)
-      type_decl_desc_debug_print fmt decl.tdec_desc
-
-and ctor_decl_debug_print fmt {ctor_ident; ctor_args; ctor_ret} =
-  let open Format in
-  fprintf fmt "%a%a" Ident.debug_print ctor_ident ctor_args_debug_print
-    ctor_args ;
-  match ctor_ret with
-  | Some typ ->
-      fprintf fmt " : %a" typ_debug_print typ
-  | None ->
-      ()
-
-and type_decl_desc_debug_print fmt desc =
-  let open Format in
-  let comma fmt () = pp_print_string fmt ", " in
-  let bar fmt () = pp_print_string fmt " | " in
-  match desc with
-  | TAbstract ->
-      fprintf fmt "Abstract"
-  | TAlias typ ->
-      fprintf fmt "Alias %a" typ_debug_print typ
-  | TRecord fields ->
-      fprintf fmt "Record {%a}"
-        (pp_print_list ~pp_sep:comma field_decl_debug_print)
-        fields
-  | TVariant ctors ->
-      fprintf fmt "Variant (%a)"
-        (pp_print_list ~pp_sep:bar ctor_decl_debug_print)
-        ctors
-  | TOpen ->
-      fprintf fmt "Open"
-  | TExtend (path, ctors) ->
-      fprintf fmt "Extend(%a) (%a)" Path.debug_print path
-        (pp_print_list ~pp_sep:bar ctor_decl_debug_print)
-        ctors
-
-let typ_debug_print_alts fmt typ =
-  let open Format in
-  if phys_equal typ typ.type_alternate.type_alternate then
-    fprintf fmt "@[<hov>(stitched@ (%a)@ (%a))@]" typ_debug_print typ
-      typ_debug_print typ.type_alternate
-  else
-    fprintf fmt "@[<hov>(tri-stitched@ (%a)@ (%a)@ (%a))@]" typ_debug_print typ
-      typ_debug_print typ.type_alternate typ_debug_print
-      typ.type_alternate.type_alternate
 
 (** Create a new type variable with the given name.
 
@@ -977,8 +811,8 @@ let rec choose_variable_name typ typ' =
 *)
 let add_instance ~unify typ typ' =
   (*Format.(
-    fprintf err_formatter "add_instance:@.%a@.%a@." typ_debug_print_alts typ
-      typ_debug_print_alts typ') ;*)
+    fprintf err_formatter "add_instance:@.%a@.%a@." Debug_print.type_expr_alts typ
+      Debug_print.type_expr_alts typ') ;*)
   (* Sanity check. *)
   assert (equal_mode typ.type_mode typ'.type_mode) ;
   assert (
@@ -1272,15 +1106,16 @@ let report_error ppf = function
         "@[<hov>Internal error: Could not make a type %s from \
          types@;@[<hov2>%a@]@;The type %a was expected to have mode %a.@]"
         kind
-        (pp_print_list ~pp_sep:pp_print_newline typ_debug_print)
-        typs typ_debug_print typ pp_mode mode
+        (pp_print_list ~pp_sep:pp_print_newline Debug_print.type_expr)
+        typs Debug_print.type_expr typ pp_mode mode
   | Mk_invalid (kind, typs, typ) ->
       fprintf ppf
         "@[<hov>Internal error: Could not make a type %s from \
          types@;@[<hov2>%a@]@;The type %a was invalid.@]"
         kind
-        (pp_print_list ~pp_sep:pp_print_newline typ_debug_print_alts)
-        typs typ_debug_print_alts typ
+        (pp_print_list ~pp_sep:pp_print_newline
+           Debug_print.type_expr_alts)
+        typs Debug_print.type_expr_alts typ
 
 let () =
   Location.register_error_of_exn (function
