@@ -1131,8 +1131,8 @@ module Type = struct
                 Format.eprintf
                   "Unexpected value for [row_rest]. \
                    Original:@.%a@.Copied:@.%a@."
-                  Debug_print.type_expr row_rest'
-                  Debug_print.type_expr row_rest ;
+                  Debug_print.type_expr row_rest' Debug_print.type_expr
+                  row_rest ;
                 assert false
           in
           let row_presence_proxy' = row_presence_proxy in

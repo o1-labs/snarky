@@ -83,8 +83,8 @@ and type_desc fmt = function
   | Tvar name ->
       fprintf fmt "Tvar %a" (option pp_print_string) name
   | Tpoly (typs, typ) ->
-      fprintf fmt "@[<hov1>Tpoly (@,%a,@,%a)@]" (list type_expr') typs type_expr'
-        typ
+      fprintf fmt "@[<hov1>Tpoly (@,%a,@,%a)@]" (list type_expr') typs
+        type_expr' typ
   | Tarrow (typ1, typ2, explicit, label) ->
       fprintf fmt "@[<hov1>Tarrow(@,%a,@,%a,@,%a,@,\"%a\")@]" type_expr' typ1
         type_expr' typ2 explicitness explicit arg_label label

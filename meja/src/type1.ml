@@ -1113,8 +1113,7 @@ let report_error ppf = function
         "@[<hov>Internal error: Could not make a type %s from \
          types@;@[<hov2>%a@]@;The type %a was invalid.@]"
         kind
-        (pp_print_list ~pp_sep:pp_print_newline
-           Debug_print.type_expr_alts)
+        (pp_print_list ~pp_sep:pp_print_newline Debug_print.type_expr_alts)
         typs Debug_print.type_expr_alts typ
 
 let () =
