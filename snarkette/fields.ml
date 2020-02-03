@@ -35,6 +35,8 @@ module type Intf = sig
 
   val gen_uniform : t Quickcheck.Generator.t
 
+  val gen_uniform_incl : t -> t -> t Quickcheck.Generator.t
+
   val random : unit -> t
 
   val negate : t -> t
@@ -196,7 +198,29 @@ module Make_fp
     let order = Info.order
 
     (* TODO version *)
-    type t = N.t [@@deriving eq, bin_io, sexp, yojson, compare, hash]
+    type t = N.t [@@deriving eq, sexp, yojson, compare, hash]
+
+    let pad_for_serialization =
+      let order_len = Core_kernel.String.length @@ N.to_bytes order in
+      (* pad to 64-bit word boundary *)
+      let padded_len = Int.((order_len + 7) / 8 * 8) in
+      fun s ->
+        let len = String.length s in
+        let padding = String.make Int.(padded_len - len) '\x00' in
+        s ^ padding
+
+    (** serialization meant to be identical to field serializations in snarky *)
+    include Binable.Of_binable
+              (Bigstring.Stable.V1)
+              (struct
+                type nonrec t = t
+
+                let of_binable bigstr =
+                  Bigstring.to_string bigstr |> N.of_bytes
+
+                let to_binable t =
+                  N.to_bytes t |> pad_for_serialization |> Bigstring.of_string
+              end)
 
     let zero = N.of_int 0
 
@@ -237,21 +261,23 @@ module Make_fp
 
   let length_in_bits = N.num_bits N.(Info.order - one)
 
-  let make_gen int32_gen =
-    let length_in_int32s = Int.((length_in_bits + 31) / 32) in
-    Quickcheck.Generator.(
-      map
-        (list_with_length length_in_int32s
-           (int32_gen Int32.zero Int32.max_value))
-        ~f:(fun xs ->
-          List.foldi xs ~init:zero ~f:(fun i acc x ->
-              N.log_or acc
-                (N.shift_left (N.of_int (Int32.to_int_exn x)) Int.(32 * i)) )
-          |> fun x -> N.(x % order) ))
+  let make_gen gen lo hi =
+    let t_of_bignum_bigint n = Bigint.to_string n |> N.of_string in
+    Quickcheck.Generator.map (gen lo hi) ~f:t_of_bignum_bigint
 
-  let gen = make_gen Int32.gen_incl
+  (* fix zero, size - 1 bounds *)
+  let make_gen_full gen =
+    let size = order |> N.to_string |> Bigint.of_string in
+    make_gen gen Bigint.zero Bigint.(size - one)
 
-  let gen_uniform = make_gen Int32.gen_uniform_incl
+  let gen = make_gen_full Bigint.gen_incl
+
+  let gen_uniform = make_gen_full Bigint.gen_uniform_incl
+
+  let gen_uniform_incl lo hi =
+    let bignum_bigint_of_t t = N.to_string t |> Bigint.of_string in
+    make_gen Bigint.gen_uniform_incl (bignum_bigint_of_t lo)
+      (bignum_bigint_of_t hi)
 
   let random () = Quickcheck.random_value gen_uniform
 
@@ -438,6 +464,12 @@ end = struct
   let gen_uniform =
     Quickcheck.Generator.tuple3 Fp.gen_uniform Fp.gen_uniform Fp.gen_uniform
 
+  let gen_uniform_incl (lo1, lo2, lo3) (hi1, hi2, hi3) =
+    Quickcheck.Generator.tuple3
+      (Fp.gen_uniform_incl lo1 hi1)
+      (Fp.gen_uniform_incl lo2 hi2)
+      (Fp.gen_uniform_incl lo3 hi3)
+
   let random () = Quickcheck.random_value gen_uniform
 
   let to_list (x, y, z) = [x; y; z]
@@ -515,6 +547,11 @@ end = struct
   let gen = Quickcheck.Generator.tuple2 Fp.gen Fp.gen
 
   let gen_uniform = Quickcheck.Generator.tuple2 Fp.gen_uniform Fp.gen_uniform
+
+  let gen_uniform_incl (lo1, lo2) (hi1, hi2) =
+    Quickcheck.Generator.tuple2
+      (Fp.gen_uniform_incl lo1 hi1)
+      (Fp.gen_uniform_incl lo2 hi2)
 
   let random () = Quickcheck.random_value gen_uniform
 
@@ -609,6 +646,11 @@ end = struct
   let gen = Quickcheck.Generator.tuple2 Fp3.gen Fp3.gen
 
   let gen_uniform = Quickcheck.Generator.tuple2 Fp3.gen_uniform Fp3.gen_uniform
+
+  let gen_uniform_incl (lo1, lo2) (hi1, hi2) =
+    Quickcheck.Generator.tuple2
+      (Fp3.gen_uniform_incl lo1 hi1)
+      (Fp3.gen_uniform_incl lo2 hi2)
 
   let random () = Quickcheck.random_value gen_uniform
 
