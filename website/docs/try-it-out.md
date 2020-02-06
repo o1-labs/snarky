@@ -25,7 +25,7 @@ Also inside `src`, make a new file called `try_me.ml`, and enter the following c
 open Core
 open Snarky
 
-module Impl = Snark.Run.Make (Backends.Bn128.Default)
+module Impl = Snark.Run.Make (Backends.Bn128.Default) (Unit)
 open Impl
 
 let check_product (l : Field.t list) (total : Field.t) () =
@@ -41,7 +41,7 @@ let public_input () = Data_spec.[Typ.list ~length:(List.length my_list) Field.ty
 
 let keypair = generate_keypair ~exposing:(public_input ()) check_product
 
-let proof = prove (Keypair.pk keypair) (public_input ()) check_product my_list total
+let proof = prove (Keypair.pk keypair) (public_input ()) check_product () my_list total
 
 let is_valid = verify proof (Keypair.vk keypair) (public_input ()) my_list total
 

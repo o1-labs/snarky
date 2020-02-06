@@ -69,8 +69,6 @@ and type_decl_desc =
   | Tdec_extend of path * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
-type literal = Int of int | Bool of bool | Field of string | String of string
-
 type pattern =
   {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: Type0.type_expr}
 
@@ -80,7 +78,7 @@ and pattern_desc =
   | Tpat_constraint of pattern * type_expr
   | Tpat_tuple of pattern list
   | Tpat_or of pattern * pattern
-  | Tpat_int of int
+  | Tpat_literal of literal
   | Tpat_record of (path * pattern) list
   | Tpat_ctor of path * pattern option
   | Tpat_row_ctor of ident * pattern list

@@ -32,4 +32,8 @@ module type S = sig
   val test_bit : t -> int -> bool
 
   val num_bits : t -> int
+
+  val of_bytes : string -> t
+
+  val to_bytes : t -> string
 end
