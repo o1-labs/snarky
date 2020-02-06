@@ -118,6 +118,12 @@ module Type = struct
 
   let int = TypeDecl.mk_typ ~mode:Checked int ~params:[] env
 
+  let int32 = TypeDecl.mk_typ ~mode:Checked int32 ~params:[] env
+
+  let int64 = TypeDecl.mk_typ ~mode:Checked int64 ~params:[] env
+
+  let nativeint = TypeDecl.mk_typ ~mode:Checked nativeint ~params:[] env
+
   let unit = TypeDecl.mk_typ ~mode:Checked unit ~params:[] env
 
   let bool = TypeDecl.mk_typ ~mode:Checked bool ~params:[] env
@@ -137,6 +143,10 @@ module Type = struct
   let list a =
     { (TypeDecl.mk_typ ~mode:a.Type0.type_mode list ~params:[a] env) with
       type_depth= a.type_depth }
+
+  let boolean = TypeDecl.mk_typ ~mode:Checked boolean ~params:[] env
+
+  let field_var = TypeDecl.mk_typ ~mode:Checked field_var ~params:[] env
 end
 
 let env = Envi.open_module env

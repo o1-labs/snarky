@@ -1323,6 +1323,13 @@ struct
         Bignum_bigint.(gen_uniform_incl zero (size - one))
         ~f:(fun x -> Bigint.(to_field (of_bignum_bigint x)))
 
+    let gen_uniform_incl lo hi =
+      let lo_bigint = Bigint.(to_bignum_bigint @@ of_field lo) in
+      let hi_bigint = Bigint.(to_bignum_bigint @@ of_field hi) in
+      Quickcheck.Generator.map
+        Bignum_bigint.(gen_uniform_incl lo_bigint hi_bigint)
+        ~f:(fun x -> Bigint.(to_field (of_bignum_bigint x)))
+
     let typ = Typ.field
 
     type var' = Var.t

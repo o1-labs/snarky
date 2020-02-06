@@ -149,3 +149,40 @@ let weakest_mode mode1 mode2 =
       Checked
   | Prover, Prover ->
       Prover
+
+type literal =
+  | Int of int
+  | Int32 of int32
+  | Int64 of int64
+  | Nativeint of nativeint
+  | Float of float
+  | Bool of bool
+  | Field of string
+  | Char of char
+  | String of string
+
+(** Remove a minus sign if one is present, or add one if there is none.
+    If the string is empty, raises an [Invalid_argument] exception.
+*)
+let neg_string s =
+  match s.[0] with
+  | '-' ->
+      String.sub s ~pos:1 ~len:(String.length s - 1)
+  | _ ->
+      "-" ^ s
+
+let neg_literal = function
+  | Int i ->
+      Int (-i)
+  | Int32 i ->
+      Int32 (Int32.neg i)
+  | Int64 i ->
+      Int64 (Int64.neg i)
+  | Nativeint i ->
+      Nativeint (Nativeint.neg i)
+  | Float f ->
+      Float (-.f)
+  | Field f ->
+      Field (neg_string f)
+  | _ ->
+      assert false

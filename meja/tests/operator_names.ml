@@ -17,7 +17,7 @@ let b = true || false
 
 let c = !a
 
-let d = ~-35
+let d = -35
 
 let e = -d
 

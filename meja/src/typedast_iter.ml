@@ -152,8 +152,8 @@ let pattern_desc iter = function
       List.iter ~f:(iter.pattern iter) pats
   | Tpat_or (p1, p2) ->
       iter.pattern iter p1 ; iter.pattern iter p2
-  | Tpat_int _ ->
-      ()
+  | Tpat_literal l ->
+      iter.literal iter l
   | Tpat_record fields ->
       List.iter fields ~f:(fun (name, pat) ->
           path iter name ; iter.pattern iter pat )
