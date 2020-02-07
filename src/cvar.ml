@@ -9,6 +9,22 @@ type 'f t =
 
 type 'f cvar = 'f t [@@deriving sexp]
 
+let to_constant_and_terms ~add ~mul ~zero ~one =
+  let rec go scale constant terms = function
+    | Constant c ->
+        (add constant (mul scale c), terms)
+    | Var v ->
+        (constant, (scale, v) :: terms)
+    | Scale (s, t) ->
+        go (mul s scale) constant terms t
+    | Add (x1, x2) ->
+        let c1, terms1 = go scale constant terms x1 in
+        go scale c1 terms1 x2
+  in
+  fun t ->
+    let c, ts = go one zero [] t in
+    (Some c, ts)
+
 module Make
     (Field : Field_intf.Extended) (Var : sig
         include Comparable.S
@@ -77,19 +93,26 @@ struct
 
   let add x y =
     match (x, y) with
+    | Constant x, _ when Field.(equal x zero) ->
+        y
+    | _, Constant y when Field.(equal y zero) ->
+        x
     | Constant x, Constant y ->
         Constant (Field.add x y)
     | _, _ ->
         Add (x, y)
 
   let scale x s =
-    match x with
-    | Constant x ->
-        Constant (Field.mul x s)
-    | Scale (sx, x) ->
-        Scale (Field.mul sx s, x)
-    | _ ->
-        Scale (s, x)
+    if Field.(equal s zero) then Constant Field.zero
+    else if Field.(equal s one) then x
+    else
+      match x with
+      | Constant x ->
+          Constant (Field.mul x s)
+      | Scale (sx, x) ->
+          Scale (Field.mul sx s, x)
+      | _ ->
+          Scale (s, x)
 
   let neg_one = Field.(sub zero one)
 
