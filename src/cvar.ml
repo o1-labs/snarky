@@ -9,7 +9,7 @@ type 'f t =
 
 type 'f cvar = 'f t [@@deriving sexp]
 
-let to_constant_and_terms ~add ~mul ~zero ~one =
+let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
   let rec go scale constant terms = function
     | Constant c ->
         (add constant (mul scale c), terms)
@@ -23,7 +23,12 @@ let to_constant_and_terms ~add ~mul ~zero ~one =
   in
   fun t ->
     let c, ts = go one zero [] t in
-    (Some c, ts)
+    let c =
+      if equal c zero
+      then None
+      else Some c
+    in
+    (c, ts)
 
 module Make
     (Field : Field_intf.Extended) (Var : sig
@@ -89,7 +94,12 @@ struct
     in
     fun t ->
       let c, ts = go Field.one Field.zero [] t in
-      (Some c, ts)
+      let c =
+        if Field.equal c Field.zero
+        then None
+        else Some c
+      in
+      (c, ts)
 
   let add x y =
     match (x, y) with
