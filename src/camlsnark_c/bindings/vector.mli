@@ -1,4 +1,4 @@
-type 'a t
+type 'a t = unit Ctypes.ptr
 
 val null : 'a t
 
