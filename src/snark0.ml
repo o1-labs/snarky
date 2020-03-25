@@ -38,6 +38,19 @@ struct
 
   type field = Field.t
 
+  let field_vec_id : Field.Vector.t Type_equal.Id.t =
+    Type_equal.Id.create ~name:"field-vector" sexp_of_opaque
+
+  let pack_field_vec v =
+    Run_state.Vector.T ((module Field.Vector), field_vec_id, v)
+
+  let field_vec () = pack_field_vec (Field.Vector.create ())
+
+  let cast_field_vec_exn (T (_, id, v) : _ Run_state.Vector.t) : Field.Vector.t
+      =
+    let T = Type_equal.Id.same_witness_exn id field_vec_id in
+    v
+
   module Proof_inputs = struct
     type t = {public_inputs: Field.Vector.t; auxiliary_inputs: Field.Vector.t}
   end
@@ -160,9 +173,9 @@ struct
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
     let constraint_system ~run ~num_inputs t : R1CS_constraint_system.t =
-      let input = Field.Vector.create () in
+      let input = field_vec () in
       let next_auxiliary = ref (1 + num_inputs) in
-      let aux = Field.Vector.create () in
+      let aux = field_vec () in
       let system = R1CS_constraint_system.create () in
       let state =
         Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system None
@@ -183,8 +196,8 @@ struct
             Request.Handler.(push handler (create_single h)) )
       in
       let state =
-        Runner.State.make ?system ~num_inputs ~input ~next_auxiliary ~aux
-          ~handler (Some s0)
+        Runner.State.make ?system ~num_inputs ~input:(pack_field_vec input)
+          ~next_auxiliary ~aux:(pack_field_vec aux) ~handler (Some s0)
       in
       ignore (run t0 state) ;
       Option.iter system ~f:(fun system ->
@@ -196,7 +209,7 @@ struct
 
     let run_and_check' ~run t0 s0 =
       let num_inputs = 0 in
-      let input = Field.Vector.create () in
+      let input = field_vec () in
       let next_auxiliary = ref 1 in
       let aux = Field.Vector.create () in
       let system = R1CS_constraint_system.create () in
@@ -205,8 +218,8 @@ struct
         Cvar.eval (`Return_values_will_be_mutated get_one)
       in
       let state =
-        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
-          ~eval_constraints:true (Some s0)
+        Runner.State.make ~num_inputs ~input ~next_auxiliary
+          ~aux:(pack_field_vec aux) ~system ~eval_constraints:true (Some s0)
       in
       match run t0 state with
       | exception e ->
@@ -218,9 +231,9 @@ struct
 
     let run_unchecked ~run t0 s0 =
       let num_inputs = 0 in
-      let input = Field.Vector.create () in
+      let input = field_vec () in
       let next_auxiliary = ref 1 in
-      let aux = Field.Vector.create () in
+      let aux = field_vec () in
       let state =
         Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux (Some s0)
       in
@@ -840,7 +853,7 @@ struct
         let prover_state =
           Checked.Runner.State.make ~num_inputs ~input
             ~next_auxiliary:(ref (num_inputs + 1))
-            ~aux:(Field.Vector.create ()) ?system ?eval_constraints ~handler s
+            ~aux:(field_vec ()) ?system ?eval_constraints ~handler s
         in
         let prover_state, () =
           Checked.run proof_system.check_inputs prover_state
@@ -862,7 +875,7 @@ struct
         (prover_state, a)
 
       let constraint_system ~run proof_system =
-        let input = Field.Vector.create () in
+        let input = field_vec () in
         let system = R1CS_constraint_system.create () in
         ignore (run_proof_system ~run ~input ~system proof_system None) ;
         system
@@ -906,8 +919,8 @@ struct
           proof_system.provide_inputs (Field.Vector.create ()) public_input
         in
         let ({prover_state= s; _} as state), a =
-          run_proof_system ~run ?reduce ~input ?system ?eval_constraints
-            ?handlers proof_system (Some s)
+          run_proof_system ~run ?reduce ~input:(pack_field_vec input) ?system
+            ?eval_constraints ?handlers proof_system (Some s)
         in
         match s with
         | Some s ->
@@ -1027,7 +1040,8 @@ struct
             proof_system s
         in
         let {input; aux; _} = state in
-        Proof.create ?message proving_key ~primary:input ~auxiliary:aux
+        Proof.create ?message proving_key ~primary:(cast_field_vec_exn input)
+          ~auxiliary:(cast_field_vec_exn aux)
 
       let verify ~run ~public_input ?verification_key ?message proof_system
           proof =
@@ -1059,7 +1073,8 @@ struct
           run_with_input ~run ?reduce ~public_input ?handlers proof_system s
         in
         let {input; aux; _} = state in
-        {Proof_inputs.public_inputs= input; auxiliary_inputs= aux}
+        { Proof_inputs.public_inputs= cast_field_vec_exn input
+        ; auxiliary_inputs= cast_field_vec_exn aux }
     end
 
     let rec collect_input_constraints : type checked s r2 k1 k2.
@@ -1930,8 +1945,8 @@ module Run = struct
     let state =
       ref
         { system= None
-        ; input= Field.Vector.create ()
-        ; aux= Field.Vector.create ()
+        ; input= field_vec ()
+        ; aux= field_vec ()
         ; eval_constraints= false
         ; num_inputs= 0
         ; next_auxiliary= ref 1

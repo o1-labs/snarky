@@ -1,7 +1,11 @@
 open Core_kernel
 
 module type Inputs_intf = sig
-  module Field : Field_intf.Extended
+  module Field : sig
+    type t
+
+    include Field_intf.Extended with type t := t and type Vector.t = t Vector.t
+  end
 
   module Var : sig
     include Comparable.S
@@ -33,7 +37,7 @@ module type Inputs_intf = sig
 
       val var : t -> Var.t
 
-      module Vector : Vector.S with type elt = t
+      module Vector : Vector.S with type t = t Vector.t and type elt = t
     end
 
     val terms : t -> Term.Vector.t
