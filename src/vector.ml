@@ -5,7 +5,7 @@ module Bound = Bindings (Vector_ffi_bindings)
 module type S = sig
   type elt
 
-  type nonrec t = elt t
+  type t
 
   val typ : t Ctypes.typ
 
@@ -40,7 +40,7 @@ end)
 (Bindings : Bound
             with type 'a return = 'a
              and type 'a result = 'a
-             and type elt = Elt.t) : S with type elt = Bindings.elt = struct
+             and type elt = Elt.t) : S with type t = Elt.t t and type elt = Bindings.elt = struct
   include Bindings
 
   let create () =
@@ -60,7 +60,7 @@ end)
 (Bindings : Bound
             with type 'a return = 'a
              and type 'a result = 'a
-             and type elt = Elt.t) : S_binable with type elt = Elt.t = struct
+             and type elt = Elt.t) : S_binable with type t = Elt.t t and type elt = Elt.t = struct
   include Make (Elt) (Bindings)
 
   module Minmal = struct
@@ -136,7 +136,7 @@ end)
 (Bindings : Bound
             with type 'a return = 'a
              and type 'a result = 'a
-             and type elt = Elt.t) : S_binable_sexpable with type elt = Elt.t =
+             and type elt = Elt.t) : S_binable_sexpable with type t = Elt.t t and type elt = Elt.t =
 struct
   include Make_binable (Elt) (Bindings)
 

@@ -141,6 +141,7 @@ end
 module Make (Backend : Backend_intf.S) :
   S
   with type Field.t = Backend.Field.t
+   and type Field.Vector.t = Backend.Field.Vector.t
    and type Bigint.t = Backend.Bigint.R.t
    and type Proof.message = Backend.Proof.message
    and type Proving_key.t = Backend.Proving_key.t
