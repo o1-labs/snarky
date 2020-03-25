@@ -2,8 +2,7 @@
  (name reformat)
  (public_name reformat-snarky)
  (libraries core async)
- ; same warning list as in src/dune in coda repo
- (flags (:standard -short-paths -w @a-4-29-40-41-42-44-45-48-58-59-60))
+ (package reformat-snarky)
  (preprocess
   (pps ppx_jane))
  (modes native))
