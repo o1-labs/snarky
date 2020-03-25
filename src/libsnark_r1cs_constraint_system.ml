@@ -3,9 +3,8 @@ open Core_kernel
 module type Inputs_intf = sig
   module Field : sig
     type t
-    include Field_intf.Extended
-    with type t := t
-    and type Vector.t = t Vector.t
+
+    include Field_intf.Extended with type t := t and type Vector.t = t Vector.t
   end
 
   module Var : sig

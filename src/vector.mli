@@ -111,7 +111,8 @@ end)
 (Bindings : Bound
             with type 'a return = 'a
              and type 'a result = 'a
-             and type elt = Elt.t) : S with type t = Elt.t t and type elt = Bindings.elt
+             and type elt = Elt.t) :
+  S with type t = Elt.t t and type elt = Bindings.elt
 
 module Make_binable (Elt : sig
   type t [@@deriving bin_io]
@@ -121,7 +122,8 @@ end)
 (Bindings : Bound
             with type 'a return = 'a
              and type 'a result = 'a
-             and type elt = Elt.t) : S_binable with type t = Elt.t t and type elt = Elt.t
+             and type elt = Elt.t) :
+  S_binable with type t = Elt.t t and type elt = Elt.t
 
 module Make_binable_sexpable (Elt : sig
   type t [@@deriving bin_io, sexp]
@@ -131,4 +133,5 @@ end)
 (Bindings : Bound
             with type 'a return = 'a
              and type 'a result = 'a
-             and type elt = Elt.t) : S_binable_sexpable with type t = Elt.t t and type elt = Elt.t
+             and type elt = Elt.t) :
+  S_binable_sexpable with type t = Elt.t t and type elt = Elt.t

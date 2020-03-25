@@ -375,7 +375,8 @@ module Field = struct
 
     val ( *= ) : t -> t -> unit
 
-    module Vector : Vector.S_binable_sexpable with type t = t Vector.t and type elt = t
+    module Vector :
+      Vector.S_binable_sexpable with type t = t Vector.t and type elt = t
   end
 
   module Make (Field0 : sig
