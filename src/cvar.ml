@@ -23,11 +23,7 @@ let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
   in
   fun t ->
     let c, ts = go one zero [] t in
-    let c =
-      if equal c zero
-      then None
-      else Some c
-    in
+    let c = if equal c zero then None else Some c in
     (c, ts)
 
 module Make
@@ -94,11 +90,7 @@ struct
     in
     fun t ->
       let c, ts = go Field.one Field.zero [] t in
-      let c =
-        if Field.equal c Field.zero
-        then None
-        else Some c
-      in
+      let c = if Field.equal c Field.zero then None else Some c in
       (c, ts)
 
   let add x y =
