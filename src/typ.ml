@@ -339,13 +339,10 @@ struct
       in
       {read; store; alloc; check}
 
-      let tuple6
-          (typ1 : ('var1, 'value1, 'field) t)
+    let tuple6 (typ1 : ('var1, 'value1, 'field) t)
         (typ2 : ('var2, 'value2, 'field) t) (typ3 : ('var3, 'value3, 'field) t)
-        (typ4 : ('var4, 'value4, 'field) t)
-        (typ5 : ('var5, 'value5, 'field) t)
-        (typ6 : ('var6, 'value6, 'field) t)
-        =
+        (typ4 : ('var4, 'value4, 'field) t) (typ5 : ('var5, 'value5, 'field) t)
+        (typ6 : ('var6, 'value6, 'field) t) =
       let alloc =
         let open Alloc.Let_syntax in
         let%bind x1 = typ1.alloc in
@@ -387,6 +384,7 @@ struct
         return ()
       in
       {read; store; alloc; check}
+
     let hlist (type k_var k_value)
         (spec0 : (unit, unit, k_var, k_value, 'f) Data_spec.t) :
         ((unit, k_var) H_list.t, (unit, k_value) H_list.t, 'f) t =
