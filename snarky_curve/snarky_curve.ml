@@ -224,6 +224,9 @@ module Make_checked (Inputs : Inputs_intf) = struct
     { unchecked with
       check= (fun t -> make_checked (fun () -> assert_on_curve t)) }
 
+  let if_ c ~then_:(tx, ty) ~else_:(ex, ey) =
+    (F.if_ c ~then_:tx ~else_:ex, F.if_ c ~then_:ty ~else_:ey)
+
   open Bitstring_lib.Bitstring
 
   module Scalar = struct
@@ -258,8 +261,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
 
     let add t pt = add_exn t pt
 
-    let if_ c ~then_:(tx, ty) ~else_:(ex, ey) =
-      (F.if_ c ~then_:tx ~else_:ex, F.if_ c ~then_:ty ~else_:ey)
+    let if_ = if_
   end
 
   let shifted () =
