@@ -132,6 +132,8 @@ find_path(GMP_INCLUDE_DIR NAMES gmp.h)
 find_library(GMP_LIBRARIES NAMES gmp libgmp)
 find_library(GMPXX_LIBRARIES NAMES gmpxx libgmpxx)
 
+find_library(SODIUM_LIBRARIES NAMES sodium libsodium)
+
 include(FindPkgConfig)
 pkg_check_modules(
   CRYPTO
