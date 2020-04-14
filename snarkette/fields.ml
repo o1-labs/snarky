@@ -33,6 +33,8 @@ module type Intf = sig
 
   val gen : t Quickcheck.Generator.t
 
+  val gen_incl : t -> t -> t Quickcheck.Generator.t
+
   val gen_uniform : t Quickcheck.Generator.t
 
   val gen_uniform_incl : t -> t -> t Quickcheck.Generator.t
@@ -272,6 +274,10 @@ module Make_fp
 
   let gen = make_gen_full Bigint.gen_incl
 
+  let gen_incl lo hi =
+    let bignum_bigint_of_t t = N.to_string t |> Bigint.of_string in
+    make_gen Bigint.gen_incl (bignum_bigint_of_t lo) (bignum_bigint_of_t hi)
+
   let gen_uniform = make_gen_full Bigint.gen_uniform_incl
 
   let gen_uniform_incl lo hi =
@@ -461,6 +467,10 @@ end = struct
 
   let gen = Quickcheck.Generator.tuple3 Fp.gen Fp.gen Fp.gen
 
+  let gen_incl (lo1, lo2, lo3) (hi1, hi2, hi3) =
+    Quickcheck.Generator.tuple3 (Fp.gen_incl lo1 hi1) (Fp.gen_incl lo2 hi2)
+      (Fp.gen_incl lo3 hi3)
+
   let gen_uniform =
     Quickcheck.Generator.tuple3 Fp.gen_uniform Fp.gen_uniform Fp.gen_uniform
 
@@ -545,6 +555,9 @@ end = struct
   include Extend (T)
 
   let gen = Quickcheck.Generator.tuple2 Fp.gen Fp.gen
+
+  let gen_incl (lo1, lo2) (hi1, hi2) =
+    Quickcheck.Generator.tuple2 (Fp.gen_incl lo1 hi1) (Fp.gen_incl lo2 hi2)
 
   let gen_uniform = Quickcheck.Generator.tuple2 Fp.gen_uniform Fp.gen_uniform
 
@@ -644,6 +657,9 @@ end = struct
   type base = Fp3.t
 
   let gen = Quickcheck.Generator.tuple2 Fp3.gen Fp3.gen
+
+  let gen_incl (lo1, lo2) (hi1, hi2) =
+    Quickcheck.Generator.tuple2 (Fp3.gen_incl lo1 hi1) (Fp3.gen_incl lo2 hi2)
 
   let gen_uniform = Quickcheck.Generator.tuple2 Fp3.gen_uniform Fp3.gen_uniform
 
