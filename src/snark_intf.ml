@@ -555,6 +555,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** A generator for Quickcheck tests. *)
     val gen : t Core_kernel.Quickcheck.Generator.t
 
+    (** A generator for Quickcheck tests within specified inclusive bounds *)
+    val gen_incl : t -> t -> t Core_kernel.Quickcheck.Generator.t
+
     (** A uniform generator for Quickcheck tests. *)
     val gen_uniform : t Core_kernel.Quickcheck.Generator.t
 
