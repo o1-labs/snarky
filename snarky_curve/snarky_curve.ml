@@ -202,6 +202,10 @@ module Make_checked (Inputs : Inputs_intf) = struct
     let x, y = Constant.to_affine_exn t in
     (F.constant x, F.constant y)
 
+  let constantv (t: Constant.t array) =
+    Array.init (Array.length t)
+      (fun i -> let x, y = Constant.to_affine_exn (Array.get t i) in (F.constant x, F.constant y))
+
   let negate (x, y) = (x, F.negate y)
 
   let one =
