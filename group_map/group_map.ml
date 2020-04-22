@@ -2,8 +2,8 @@
 
    This follows the approach of SvdW06 to construct a "near injection" from
    a field into an elliptic curve defined over that field. WB19 is also a useful
-   reference that details several constructions which are more appropriate in other
-   contexts.
+   reference that details several constructions which are more appropriate in
+   other contexts.
 
    Fix an elliptic curve E given by y^2 = x^3 + ax + b over a field "F"
    Let f(x) = x^3 + ax + b.
@@ -11,11 +11,12 @@
    Define the variety V to be
    (x1, x2, x3, x4) : f(x1) f(x2) f(x3) = x4^2.
 
-   By a not-too-hard we have a map `V -> E`. Thus, a map of type `F -> V` yields a
-   map of type `F -> E` by composing.
+   By a not-too-hard we have a map `V -> E`. Thus, a map of type `F -> V`
+   yields a map of type `F -> E` by composing.
 
-   Our goal is to construct such a map of type `F -> V`. The paper SvdW06 constructs
-   a family of such maps, defined by a collection of values which we'll term `params`.
+   Our goal is to construct such a map of type `F -> V`. The paper SvdW06
+   constructs a family of such maps, defined by a collection of values which
+   we'll term `params`.
 
    Define `params` to be the type of records of the form
     { u: F
@@ -134,15 +135,15 @@ module Params = struct
     ; a= f a
     ; b= f b }
 
-  (* A deterministic function for constructing a valid choice of parameters for a
-     given field.
+  (* A deterministic function for constructing a valid choice of parameters for
+     a given field.
 
-     We start by finding the first `u` satisfying the constraints described above,
-     then find the first `y` satisyfing the condition described above. The other
-     values are derived from these two choices*.
+     We start by finding the first `u` satisfying the constraints described
+     above, then find the first `y` satisyfing the condition described above.
+     The other values are derived from these two choices*.
 
-     *Actually we have one bit of freedom in choosing `z` as z = sqrt(conic_c y^2 - conic_d),
-     since there are two square roots.
+     * Actually we have one bit of freedom in choosing `z` as
+       `z = sqrt(conic_c y^2 - conic_d)`, since there are two square roots.
   *)
 
   let create (type t) (module F : Field_intf.S_unchecked with type t = t) ~a ~b
@@ -163,11 +164,13 @@ module Params = struct
           (not (equal check zero))
           && (not (equal fu zero))
           && not (is_square (negate fu))
-          (* imeckler: I added this condition. It prevents the possibility of having
-   a point (z, 0) on the conic, which is useful because in the map from the
-   conic to S we divide by the "y" coordinate of the conic. It's not strictly
-   necessary when we have a random input in a large field, but it is still nice to avoid the
-   bad case in theory (and for the tests below with a small field). *)
+          (* imeckler: I added this condition. It prevents the possibility of
+             having a point (z, 0) on the conic, which is useful because in the
+             map from the conic to S we divide by the "y" coordinate of the
+             conic. It's not strictly necessary when we have a random input in
+             a large field, but it is still nice to avoid the bad case in
+             theory (and for the tests below with a small field).
+          *)
       )
     in
     (* The coefficients defining the conic z^2 + c y^2 = d
@@ -195,7 +198,8 @@ struct
 
   (* For a curve z^2 + c y^2 = d and a point (z0, y0) on the curve, there
      is one other point on the curve which is also on the line through (z0, y0)
-     with slope t. This function returns that point. *)
+     with slope t. This function returns that point.
+  *)
   let field_to_conic t =
     let z0, y0 =
       ( constant P.params.projection_point.z
@@ -216,7 +220,7 @@ struct
     ; v= (z / y) - constant P.params.u_over_2 (* From (16) *)
     ; y }
 
-  (* This is here for explanatory purposes. See s_to_v_truncated. *)
+  (* This is here for explanatory purposes. See [s_to_v_truncated]. *)
   let _s_to_v {S.u; v; y} : _ V.t =
     let curve_eqn x =
       (x * x * x) + (constant P.params.a * x) + constant P.params.b
@@ -351,10 +355,11 @@ let%test_module "test" =
       let on_v (x1, x2, x3, x4) =
         F.(equal (curve_eqn x1 * curve_eqn x2 * curve_eqn x3) (x4 * x4))
 
-      (* Filter the two points which cause the group-map to blow up. This
-   is not an issue in practice because the points we feed into this function
-   will be the output of blake2s, and thus (modeling blake2s as a random oracle)
-   will not be either of those two points. *)
+      (* Filter the two points which cause the group-map to blow up. This is
+         not an issue in practice because the points we feed into this function
+         will be the output of blake2s, and thus (modeling blake2s as a random
+         oracle) will not be either of those two points.
+      *)
       let gen =
         Quickcheck.Generator.filter F.gen ~f:(fun t ->
             not F.(equal ((params.conic_c * t * t) + one) zero) )
@@ -384,12 +389,14 @@ let%test_module "test" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
             assert (on_s (Fn.compose M.conic_to_s M.field_to_conic t)) )
 
-      (* Schwarz-zippel says if this tests succeeds once, then the probability that
-   the implementation is correct is at least 1 - (D / field-size), where D is
-   the total degree of the polynomial defining_equation_of_V(s_to_v(t)) which should
-   be less than, say, 10. So, this test succeeding gives good evidence of the
-   correctness of the implementation (assuming that the implementation is just a
-   polynomial, which it is by parametricity!) *)
+      (* Schwarz-zippel says if this tests succeeds once, then the probability
+         that the implementation is correct is at least 1 - (D / field-size),
+         where D is the total degree of the polynomial
+         defining_equation_of_V(s_to_v(t)) which should be less than, say, 10.
+         So, this test succeeding gives good evidence of the correctness of the
+         implementation (assuming that the implementation is just a polynomial,
+         which it is by parametricity!)
+      *)
       let%test_unit "field-to-V" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
             let s = M.conic_to_s (M.field_to_conic t) in
