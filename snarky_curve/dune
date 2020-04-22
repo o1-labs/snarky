@@ -5,4 +5,6 @@
   (inline_tests)
   (libraries
     snarky
+    digestif.ocaml
+    group_map
     core_kernel ))

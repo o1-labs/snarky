@@ -360,9 +360,28 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
   module Scaling_precomputation = struct
     type t = {base: Constant.t; shifts: Constant.t array; table: Window_table.t}
 
-    (* TODO: Compute unrelated_base from g as
-   unrelated_base = group_valued_random_oracle(gx, gy) *)
-    let create ~unrelated_base base =
+    let group_map =
+      lazy
+        (let params =
+           Group_map.Params.create
+             (module Field.Constant)
+             ~a:Params.a ~b:Params.b
+         in
+         Group_map.to_group (module Field.Constant) ~params)
+
+    let string_to_bits s =
+      List.concat_map (String.to_list s) ~f:(fun c ->
+          let c = Char.to_int c in
+          List.init 8 ~f:(fun i -> (c lsr i) land 1 = 1) )
+
+    let create base =
+      let unrelated_base =
+        let x, y = Constant.to_affine_exn base in
+        Digestif.BLAKE2S.digest_string
+          Field.Constant.(to_string x ^ "," ^ to_string y)
+        |> Digestif.BLAKE2S.to_raw_string |> string_to_bits
+        |> Field.Constant.project |> Lazy.force group_map |> Constant.of_affine
+      in
       let shifts = pow2s unrelated_base in
       {base; shifts; table= Window_table.create ~shifts base}
   end
