@@ -23,7 +23,7 @@ let () =
         ; "-lssl"
         ; "-lcrypto"
         ; "-Wl,--push-state,-Bstatic"
-        ;  "-lsodium"
+        ; "-lsodium"
         ; "-Wl,--pop-state"
         ; "-lprocps"
         ; "-lgmp"
