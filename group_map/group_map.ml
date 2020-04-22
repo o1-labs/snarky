@@ -202,6 +202,11 @@ struct
       , constant P.params.projection_point.y )
     in
     let ct = constant P.params.conic_c * t in
+    (* (z0 - s)^2 + c(y0 - s * t)^2 = d
+       (c * t^2 + 1) * s^2 - 2 * (c * t * y0 + x0)* s + (z0)^2 + c * (y0)^2 = d
+       (c * t^2 + 1) * s^2 - 2 * (c * t * y0 + x0) * s = 0
+       s = 2 * (c * t * y0 + x0) / (c * t^2 + 1)
+    *)
     let s = of_int 2 * ((ct * y0) + z0) / ((ct * t) + one) in
     {Conic.z= z0 - s; y= y0 - (s * t)}
 
