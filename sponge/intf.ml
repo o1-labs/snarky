@@ -8,6 +8,20 @@ module type Field = sig
   val ( + ) : t -> t -> t
 end
 
+module type Field_mutable = sig
+  include Field
+
+  val square : t -> t
+
+  val ( *= ) : t -> t -> unit
+
+  val ( += ) : t -> t -> unit
+
+  module Mutable : sig
+    val square : t -> unit
+  end
+end
+
 module type Operations = sig
   module Field : sig
     type t

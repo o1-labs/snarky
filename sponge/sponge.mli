@@ -31,6 +31,9 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) :
 module Make_operations (Field : Intf.Field) :
   Intf.Operations with module Field := Field
 
+module Bn382_inputs (Field : Intf.Field_mutable) :
+  Intf.Inputs.Poseidon with module Field := Field
+
 module Make_hash (P : Intf.Permutation) :
   Intf.Hash with module State := State and module Field := P.Field
 
