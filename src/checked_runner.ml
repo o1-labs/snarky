@@ -1,4 +1,5 @@
 open Core_kernel
+module Constraint0 = Constraint
 
 exception Runtime_error of string * string list * exn * string
 
@@ -161,7 +162,11 @@ struct
                  asprintf "R1CS %s %s %s"
                    (Field.to_string (get_value s var1))
                    (Field.to_string (get_value s var2))
-                   (Field.to_string (get_value s var3))) ))
+                   (Field.to_string (get_value s var3)))
+           | _ ->
+               Format.asprintf
+                 !"%{sexp:Field.t Constraint0.basic}"
+                 (Constraint0.Basic.map basic ~f:(get_value s)) ))
 
   let stack_to_string = String.concat ~sep:"\n"
 
