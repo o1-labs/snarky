@@ -310,20 +310,11 @@ struct
 
     type t = Cvar.t Constraint.t [@@deriving sexp]
 
-    let eval_basic t get_value =
-      match t with
-      | Constraint.Boolean v ->
-          let x = get_value v in
-          Field.(equal x zero || equal x one)
-      | Equal (v1, v2) ->
-          Field.equal (get_value v1) (get_value v2)
-      | R1CS (v1, v2, v3) ->
-          Field.(equal (mul (get_value v1) (get_value v2)) (get_value v3))
-      | Square (a, c) ->
-          Field.equal (Field.square (get_value a)) (get_value c)
+    let m = (module Field : Field_intf.S with type t = Field.t)
 
     let eval t get_value =
-      List.for_all t ~f:(fun {basic; _} -> eval_basic basic get_value)
+      List.for_all t ~f:(fun {basic; _} ->
+          Constraint.Basic.eval m get_value basic )
   end
 
   module R1CS_constraint_system = R1CS_constraint_system
