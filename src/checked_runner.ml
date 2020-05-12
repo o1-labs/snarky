@@ -178,16 +178,6 @@ struct
         C.add_constraint system basic ~label:(stack_to_string (label :: stack))
     )
 
-  let stack_to_string = String.concat ~sep:"\n"
-
-  let add_constraint ~stack (t : Constraint.t)
-      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t)
-      =
-    List.iter t ~f:(fun {basic; annotation} ->
-        let label = Option.value annotation ~default:"<unknown>" in
-        C.add_constraint system basic ~label:(stack_to_string (label :: stack))
-    )
-
   let add_constraint c s =
     if !(s.as_prover) then
       (* Don't add constraints as the prover, or the constraint system won't match! *)
