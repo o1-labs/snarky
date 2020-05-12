@@ -1,4 +1,5 @@
 open Core_kernel
+module Constraint0 = Constraint
 
 exception Runtime_error of string * string list * exn * string
 
@@ -80,15 +81,15 @@ struct
 
   let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
     let get_one i =
-      if i <= num_inputs then Field.Vector.get input (i - 1)
-      else Field.Vector.get aux (i - num_inputs - 1)
+      if i <= num_inputs then Run_state.Vector.get input (i - 1)
+      else Run_state.Vector.get aux (i - num_inputs - 1)
     in
     Cvar.eval (`Return_values_will_be_mutated get_one)
 
   let store_field_elt {next_auxiliary; aux; _} x =
     let v = !next_auxiliary in
     incr next_auxiliary ;
-    Field.Vector.emplace_back aux x ;
+    Run_state.Vector.emplace_back aux x ;
     Cvar.Unsafe.of_index v
 
   let alloc_var {next_auxiliary; _} () =
@@ -161,7 +162,21 @@ struct
                  asprintf "R1CS %s %s %s"
                    (Field.to_string (get_value s var1))
                    (Field.to_string (get_value s var2))
-                   (Field.to_string (get_value s var3))) ))
+                   (Field.to_string (get_value s var3)))
+           | _ ->
+               Format.asprintf
+                 !"%{sexp:Field.t Constraint0.basic}"
+                 (Constraint0.Basic.map basic ~f:(get_value s)) ))
+
+  let stack_to_string = String.concat ~sep:"\n"
+
+  let add_constraint ~stack (t : Constraint.t)
+      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t)
+      =
+    List.iter t ~f:(fun {basic; annotation} ->
+        let label = Option.value annotation ~default:"<unknown>" in
+        C.add_constraint system basic ~label:(stack_to_string (label :: stack))
+    )
 
   let stack_to_string = String.concat ~sep:"\n"
 
@@ -430,7 +445,7 @@ module Make (Backend : Backend_extended.S) = struct
         let k = handle_error s (fun () -> k y) in
         run k s
 
-  let dummy_vector = Field.Vector.create ()
+  let dummy_vector = Run_state.Vector.null
 
   let fake_state next_auxiliary stack =
     { system= None
@@ -668,9 +683,9 @@ module type S = sig
   module State : sig
     val make :
          num_inputs:int
-      -> input:field Vector.t
+      -> input:field Run_state.Vector.t
       -> next_auxiliary:int ref
-      -> aux:field Vector.t
+      -> aux:field Run_state.Vector.t
       -> ?system:r1cs
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t

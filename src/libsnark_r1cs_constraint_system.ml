@@ -1,7 +1,11 @@
 open Core_kernel
 
 module type Inputs_intf = sig
-  module Field : Field_intf.Extended
+  module Field : sig
+    type t
+
+    include Field_intf.Extended with type t := t and type Vector.t = t Vector.t
+  end
 
   module Var : sig
     include Comparable.S
@@ -33,7 +37,7 @@ module type Inputs_intf = sig
 
       val var : t -> Var.t
 
-      module Vector : Vector.S with type elt = t
+      module Vector : Vector.S with type t = t Vector.t and type elt = t
     end
 
     val terms : t -> Term.Vector.t
@@ -139,6 +143,7 @@ module Make (Inputs : Inputs_intf) :
 
   let basic_to_r1cs_constraint : Cvar.t Constraint.basic -> R1CS_constraint.t =
     let of_var = Linear_combination.of_var in
+    let open Constraint in
     function
     | Boolean v ->
         let lc = of_var v in
@@ -163,6 +168,8 @@ module Make (Inputs : Inputs_intf) :
         let constr = R1CS_constraint.create (of_var a) (of_var b) (of_var c) in
         R1CS_constraint.set_is_square constr false ;
         constr
+    | _ ->
+        failwith "Unhandled constraint type"
 
   let add_constraint ?label t c =
     let c = basic_to_r1cs_constraint c in
@@ -172,8 +179,10 @@ module Make (Inputs : Inputs_intf) :
     | Some label ->
         add_constraint_with_annotation t c label
 
-  let basic_to_json = function
-    | Constraint.Boolean x ->
+  let basic_to_json =
+    let open Constraint in
+    function
+    | Boolean x ->
         let fx = Cvar.to_json x in
         `Assoc [("A", fx); ("B", fx); ("C", fx)]
     | Equal (x, y) ->
@@ -187,6 +196,8 @@ module Make (Inputs : Inputs_intf) :
     | R1CS (a, b, c) ->
         `Assoc
           [("A", Cvar.to_json a); ("B", Cvar.to_json b); ("C", Cvar.to_json c)]
+    | _ ->
+        `String "unhandled constraint type"
 
   let constraint_to_json x =
     `List (List.map x ~f:(fun {Constraint.basic; _} -> basic_to_json basic))
@@ -197,7 +208,7 @@ module Make (Inputs : Inputs_intf) :
           let a = Linear_combination.to_var (R1CS_constraint.a constr) in
           let b = Linear_combination.to_var (R1CS_constraint.b constr) in
           let c = Linear_combination.to_var (R1CS_constraint.c constr) in
-          Constraint.create_basic (R1CS (a, b, c)) :: acc )
+          Constraint.create_basic (Constraint.R1CS (a, b, c)) :: acc )
     in
     let open Base in
     let inputs =

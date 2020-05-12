@@ -36,9 +36,9 @@ type 'a req = 'a t
     {!type:Response.t}. *)
 type response
 
-val unhandled : response
 (** Indicates an unhandled response. Equivalent to calling {!recfield:respond}
     on {!const:Response.Unhandled}. *)
+val unhandled : response
 
 module Response : sig
   (** The type of responses a handler may return. *)
@@ -60,9 +60,9 @@ module Handler : sig
 
   val create_single : (request -> response) -> single
 
-  val push : t -> single -> t
   (** Add a single handler. *)
+  val push : t -> single -> t
 
-  val run : t -> string list -> 'a req -> 'a
   (** Run the handler on a request. Throws an error on failure. *)
+  val run : t -> string list -> 'a req -> 'a
 end

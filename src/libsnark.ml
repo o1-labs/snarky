@@ -375,7 +375,8 @@ module Field = struct
 
     val ( *= ) : t -> t -> unit
 
-    module Vector : Vector.S_binable_sexpable with type elt = t
+    module Vector :
+      Vector.S_binable_sexpable with type t = t Vector.t and type elt = t
   end
 
   module Make (Field0 : sig
@@ -897,7 +898,7 @@ module Linear_combination (Field : Foreign_intf) (Var : Foreign_intf) = struct
 
       val var : t -> Var.t
 
-      module Vector : Vector.S with type elt = t
+      module Vector : Vector.S with type t = t Vector.t and type elt = t
     end
 
     module Make
@@ -954,7 +955,7 @@ module Linear_combination (Field : Foreign_intf) (Var : Foreign_intf) = struct
 
     val terms : t -> Term.Vector.t
 
-    module Vector : Vector.S with type elt = t
+    module Vector : Vector.S with type t = t Vector.t and type elt = t
 
     val add_term : t -> Field.t -> Var.t -> unit
   end
