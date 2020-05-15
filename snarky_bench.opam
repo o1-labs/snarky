@@ -15,6 +15,7 @@ depends: [
   "ppx_jane"
   "ppx_bench"
   "dune"                {build & >= "1.6"}
+  "jbuilder"            {build}
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
