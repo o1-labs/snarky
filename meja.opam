@@ -16,7 +16,7 @@ depends: [
   "ppx_jane"
   "dune"                {build & >= "1.6"}
 ]
-available: [ ocaml-version >= "4.07.0" ]
+available: [ ocaml-version >= "4.07.1" ]
 descr: "
 A Reason-ML style language with baked-in support for Snarky
 "
