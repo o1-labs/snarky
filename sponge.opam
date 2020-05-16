@@ -18,5 +18,5 @@ depends: [
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
-A library implementing the arithmetic sponge construction and several sponge-based hash functions.
+A library implementing the arithmetic sponge construction and several sponge-based hash functions
 "
