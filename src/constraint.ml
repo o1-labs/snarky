@@ -2,13 +2,6 @@ open Base
 
 type _ basic = ..
 
-module Conv (F : sig
-  type _ t
-end) =
-struct
-  type t = {to_basic: 'v. 'v F.t -> 'v basic; of_basic: 'v. 'v basic -> 'v F.t}
-end
-
 module type S = sig
   type _ t [@@deriving sexp]
 
