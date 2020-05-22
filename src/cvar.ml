@@ -48,9 +48,8 @@ struct
   let eval (`Return_values_will_be_mutated context) t0 =
     let open Field in
     let res = of_int 0 in
-    let can_mutate_scale = ref false in
-    let rec go scale = function
-      | Constant c when !can_mutate_scale ->
+    let rec go ~can_mutate_scale scale = function
+      | Constant c when can_mutate_scale ->
           scale *= c ; res += scale
       | Constant c ->
           Mutable.copy ~over:scratch c ;
@@ -59,20 +58,17 @@ struct
       | Var v ->
           let v = context v in
           v *= scale ; res += v
-      | Scale (s, t) when !can_mutate_scale ->
-          scale *= s ; go scale t
+      | Scale (s, t) when can_mutate_scale ->
+          scale *= s ;
+          go scale ~can_mutate_scale t
       | Scale (s, t) ->
-          can_mutate_scale := true ;
-          go (mul s scale) t ;
-          can_mutate_scale := false
+          go (mul s scale) ~can_mutate_scale:true t
       | Add (t1, t2) ->
-          let cms = !can_mutate_scale in
-          can_mutate_scale := false ;
-          go scale t1 ;
-          can_mutate_scale := cms ;
-          go scale t2
+          go scale ~can_mutate_scale:false t1 ;
+          go scale ~can_mutate_scale t2
     in
-    go one t0 ; res
+    go one ~can_mutate_scale:false t0 ;
+    res
 
   let constant c = Constant c
 
