@@ -46,22 +46,6 @@ module type S = sig
   end
 end
 
-module Make (X : Monad.Basic) : S with type 'a t := 'a X.t = struct
-  include X
-  module M = Monad.Make (X)
-  module Let = M.Let_syntax.Let_syntax
-
-  include (M : S_without_syntax with type 'a t := 'a t)
-
-  module Let_syntax = struct
-    include (M.Let_syntax : Base_syntax with type 'a t := 'a t)
-
-    include (Let : Let_syntax with type 'a t := 'a t)
-
-    module Let_syntax = Let
-  end
-end
-
 module type Let_syntax2 = sig
   type ('a, 'e) t
 
@@ -219,4 +203,10 @@ Make3 (struct
   type ('a, 'd, 'e) t = ('a, 'e) X.t
 
   include (X : Monad.Basic3 with type ('a, 'd, 'e) t := ('a, 'e) X.t)
+end)
+
+module Make (X : Monad.Basic) : S with type 'a t := 'a X.t = Make2 (struct
+  type ('a, 'e) t = 'a X.t
+
+  include (X : Monad.Basic2 with type ('a, 'e) t := 'a X.t)
 end)
