@@ -48,6 +48,8 @@ module type S = sig
 
     val add : t -> t -> t
 
+    val negate : t -> t
+
     val scale : t -> Field.t -> t
 
     val sub : t -> t -> t
