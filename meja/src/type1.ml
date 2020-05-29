@@ -498,21 +498,21 @@ let debug_print_change fmt = function
 module Snapshot : sig
   type t
 
-  val create : unit -> t
   (** Get a new snapshot. *)
+  val create : unit -> t
 
-  val add_to_history : change -> unit
   (** Add a change to the history of all active snapshots. *)
+  val add_to_history : change -> unit
 
-  val backtrack : t -> change list
   (** Erase the history back to the snapshot, and return the list of changes
       that occurred since, ordered from newest to oldest.
   *)
+  val backtrack : t -> change list
 
-  val filtered_backtrack : f:(change -> bool) -> t -> change list
   (** Erase all changes matching the filter [f] back to the snapshot, and
       return the erased changes, ordered from newest to oldest.
   *)
+  val filtered_backtrack : f:(change -> bool) -> t -> change list
 
   val debug_print : Format.formatter -> t -> unit
 

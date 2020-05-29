@@ -7,7 +7,7 @@ bug-reports: "https://github.com/o1labs/snarky/issues"
 dev-repo: "git+https://github.com/o1labs/snarky.git"
 license: "MIT"
 build: [
-  ["jbuilder" "build" "-p" name "-j" jobs]
+  ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
   "core_kernel" {>= "v0.12" & < "v0.13" }
@@ -16,7 +16,7 @@ depends: [
   "ppx_jane"
   "dune"                {build & >= "1.6"}
 ]
-available: [ ocaml-version >= "4.07.0" ]
+available: [ ocaml-version >= "4.07.1" ]
 descr: "
 A Reason-ML style language with baked-in support for Snarky
 "

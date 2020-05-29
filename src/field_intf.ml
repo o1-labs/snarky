@@ -63,3 +63,19 @@ module type Extended = sig
 
   val ( / ) : t -> t -> t
 end
+
+module type Full = sig
+  type t [@@deriving bin_io, sexp, hash, compare]
+
+  include Extended with type t := t
+
+  include Core_kernel.Stringable.S with type t := t
+
+  val size : Bigint.t
+
+  val unpack : t -> bool list
+
+  val project_reference : bool list -> t
+
+  val project : bool list -> t
+end

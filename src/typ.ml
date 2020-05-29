@@ -169,7 +169,7 @@ struct
         ({read; store; alloc; check} : ('elt_var, 'elt_value, 'field) t) :
         ('elt_var array, 'elt_value array, 'field) t =
       let store ts =
-        assert (Array.length ts = length) ;
+        [%test_eq: int] (Array.length ts) length ;
         Store.map ~f:Array.of_list
           (Store.all (List.map ~f:store (Array.to_list ts)))
       in
@@ -179,12 +179,12 @@ struct
         Array.of_list vs
       in
       let read vs =
-        assert (Array.length vs = length) ;
+        [%test_eq: int] (Array.length vs) length ;
         Read.map ~f:Array.of_list
           (Read.all (List.map ~f:read (Array.to_list vs)))
       in
       let check ts =
-        assert (Array.length ts = length) ;
+        [%test_eq: int] (Array.length ts) length ;
         let open Checked in
         let rec go i =
           if i = length then return ()
@@ -335,6 +335,52 @@ struct
         let%bind () = typ3.check x3 in
         let%bind () = typ4.check x4 in
         let%bind () = typ5.check x5 in
+        return ()
+      in
+      {read; store; alloc; check}
+
+    let tuple6 (typ1 : ('var1, 'value1, 'field) t)
+        (typ2 : ('var2, 'value2, 'field) t) (typ3 : ('var3, 'value3, 'field) t)
+        (typ4 : ('var4, 'value4, 'field) t) (typ5 : ('var5, 'value5, 'field) t)
+        (typ6 : ('var6, 'value6, 'field) t) =
+      let alloc =
+        let open Alloc.Let_syntax in
+        let%bind x1 = typ1.alloc in
+        let%bind x2 = typ2.alloc in
+        let%bind x3 = typ3.alloc in
+        let%bind x4 = typ4.alloc in
+        let%bind x5 = typ5.alloc in
+        let%bind x6 = typ6.alloc in
+        return (x1, x2, x3, x4, x5, x6)
+      in
+      let read (x1, x2, x3, x4, x5, x6) =
+        let open Read.Let_syntax in
+        let%bind x1 = typ1.read x1 in
+        let%bind x2 = typ2.read x2 in
+        let%bind x3 = typ3.read x3 in
+        let%bind x4 = typ4.read x4 in
+        let%bind x5 = typ5.read x5 in
+        let%bind x6 = typ6.read x6 in
+        return (x1, x2, x3, x4, x5, x6)
+      in
+      let store (x1, x2, x3, x4, x5, x6) =
+        let open Store.Let_syntax in
+        let%bind x1 = typ1.store x1 in
+        let%bind x2 = typ2.store x2 in
+        let%bind x3 = typ3.store x3 in
+        let%bind x4 = typ4.store x4 in
+        let%bind x5 = typ5.store x5 in
+        let%bind x6 = typ6.store x6 in
+        return (x1, x2, x3, x4, x5, x6)
+      in
+      let check (x1, x2, x3, x4, x5, x6) =
+        let open Checked in
+        let%bind () = typ1.check x1 in
+        let%bind () = typ2.check x2 in
+        let%bind () = typ3.check x3 in
+        let%bind () = typ4.check x4 in
+        let%bind () = typ5.check x5 in
+        let%bind () = typ6.check x6 in
         return ()
       in
       {read; store; alloc; check}

@@ -36,6 +36,7 @@ target_link_libraries(
   
   ff
   ${GMP_LIBRARIES}
+  ${SODIUM_LIBRARIES}
   ${GMPXX_LIBRARIES}
   ${CRYPTO_LIBRARIES}
   ${PROCPS_LIBRARIES}

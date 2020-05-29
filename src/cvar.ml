@@ -9,6 +9,23 @@ type 'f t =
 
 type 'f cvar = 'f t [@@deriving sexp]
 
+let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
+  let rec go scale constant terms = function
+    | Constant c ->
+        (add constant (mul scale c), terms)
+    | Var v ->
+        (constant, (scale, v) :: terms)
+    | Scale (s, t) ->
+        go (mul s scale) constant terms t
+    | Add (x1, x2) ->
+        let c1, terms1 = go scale constant terms x1 in
+        go scale c1 terms1 x2
+  in
+  fun t ->
+    let c, ts = go one zero [] t in
+    let c = if equal c zero then None else Some c in
+    (c, ts)
+
 module Make
     (Field : Field_intf.Extended) (Var : sig
         include Comparable.S
@@ -31,9 +48,8 @@ struct
   let eval (`Return_values_will_be_mutated context) t0 =
     let open Field in
     let res = of_int 0 in
-    let can_mutate_scale = ref false in
-    let rec go scale = function
-      | Constant c when !can_mutate_scale ->
+    let rec go ~can_mutate_scale scale = function
+      | Constant c when can_mutate_scale ->
           scale *= c ; res += scale
       | Constant c ->
           Mutable.copy ~over:scratch c ;
@@ -42,20 +58,17 @@ struct
       | Var v ->
           let v = context v in
           v *= scale ; res += v
-      | Scale (s, t) when !can_mutate_scale ->
-          scale *= s ; go scale t
+      | Scale (s, t) when can_mutate_scale ->
+          scale *= s ;
+          go scale ~can_mutate_scale t
       | Scale (s, t) ->
-          can_mutate_scale := true ;
-          go (mul s scale) t ;
-          can_mutate_scale := false
+          go (mul s scale) ~can_mutate_scale:true t
       | Add (t1, t2) ->
-          let cms = !can_mutate_scale in
-          can_mutate_scale := false ;
-          go scale t1 ;
-          can_mutate_scale := cms ;
-          go scale t2
+          go scale ~can_mutate_scale:false t1 ;
+          go scale ~can_mutate_scale t2
     in
-    go one t0 ; res
+    go one ~can_mutate_scale:false t0 ;
+    res
 
   let constant c = Constant c
 
@@ -73,23 +86,31 @@ struct
     in
     fun t ->
       let c, ts = go Field.one Field.zero [] t in
-      (Some c, ts)
+      let c = if Field.equal c Field.zero then None else Some c in
+      (c, ts)
 
   let add x y =
     match (x, y) with
+    | Constant x, _ when Field.(equal x zero) ->
+        y
+    | _, Constant y when Field.(equal y zero) ->
+        x
     | Constant x, Constant y ->
         Constant (Field.add x y)
     | _, _ ->
         Add (x, y)
 
   let scale x s =
-    match x with
-    | Constant x ->
-        Constant (Field.mul x s)
-    | Scale (sx, x) ->
-        Scale (Field.mul sx s, x)
-    | _ ->
-        Scale (s, x)
+    if Field.(equal s zero) then Constant Field.zero
+    else if Field.(equal s one) then x
+    else
+      match x with
+      | Constant x ->
+          Constant (Field.mul x s)
+      | Scale (sx, x) ->
+          Scale (Field.mul sx s, x)
+      | _ ->
+          Scale (s, x)
 
   let neg_one = Field.(sub zero one)
 

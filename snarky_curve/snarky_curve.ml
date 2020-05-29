@@ -224,6 +224,9 @@ module Make_checked (Inputs : Inputs_intf) = struct
     { unchecked with
       check= (fun t -> make_checked (fun () -> assert_on_curve t)) }
 
+  let if_ c ~then_:(tx, ty) ~else_:(ex, ey) =
+    (F.if_ c ~then_:tx ~else_:ex, F.if_ c ~then_:ty ~else_:ey)
+
   open Bitstring_lib.Bitstring
 
   module Scalar = struct
@@ -258,8 +261,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
 
     let add t pt = add_exn t pt
 
-    let if_ c ~then_:(tx, ty) ~else_:(ex, ey) =
-      (F.if_ c ~then_:tx ~else_:ex, F.if_ c ~then_:ty ~else_:ey)
+    let if_ = if_
   end
 
   let shifted () =
@@ -305,10 +307,10 @@ module type Native_base_field_inputs = sig
 end
 
 module For_native_base_field (Inputs : Native_base_field_inputs) = struct
-  include Make_checked (Inputs)
   open Core_kernel
   open Inputs
   open Impl
+  include Make_checked (Inputs)
 
   module Window_table = struct
     open Tuple_lib
@@ -358,9 +360,28 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
   module Scaling_precomputation = struct
     type t = {base: Constant.t; shifts: Constant.t array; table: Window_table.t}
 
-    (* TODO: Compute unrelated_base from g as
-   unrelated_base = group_valued_random_oracle(gx, gy) *)
-    let create ~unrelated_base base =
+    let group_map =
+      lazy
+        (let params =
+           Group_map.Params.create
+             (module Field.Constant)
+             ~a:Params.a ~b:Params.b
+         in
+         Group_map.to_group (module Field.Constant) ~params)
+
+    let string_to_bits s =
+      List.concat_map (String.to_list s) ~f:(fun c ->
+          let c = Char.to_int c in
+          List.init 8 ~f:(fun i -> (c lsr i) land 1 = 1) )
+
+    let create base =
+      let unrelated_base =
+        let x, y = Constant.to_affine_exn base in
+        Digestif.BLAKE2S.digest_string
+          Field.Constant.(to_string x ^ "," ^ to_string y)
+        |> Digestif.BLAKE2S.to_raw_string |> string_to_bits
+        |> Field.Constant.project |> Lazy.force group_map |> Constant.of_affine
+      in
       let shifts = pow2s unrelated_base in
       {base; shifts; table= Window_table.create ~shifts base}
   end
@@ -445,4 +466,170 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     |> unshift
 
   let scale_known pc bs = unshift (scale_known pc bs)
+
+  (* b ? t : -t *)
+  let conditional_negation (b : Boolean.var) (x, y) =
+    let y' =
+      exists Field.typ
+        ~compute:
+          As_prover.(
+            fun () ->
+              if read Boolean.typ b then read Field.typ y
+              else Field.Constant.negate (read Field.typ y))
+    in
+    assert_r1cs y Field.((of_int 2 * (b :> Field.t)) - of_int 1) y' ;
+    (x, y')
+
+  let p_plus_q_plus_p ((x1, y1) : t) ((x2, y2) : t) =
+    let open Field in
+    let ( ! ) = As_prover.read typ in
+    let lambda_1 =
+      exists typ ~compute:Constant.(fun () -> (!y2 - !y1) / (!x2 - !x1))
+    in
+    let x3 =
+      exists typ
+        ~compute:Constant.(fun () -> (!lambda_1 * !lambda_1) - !x1 - !x2)
+    in
+    let lambda_2 =
+      exists typ
+        ~compute:
+          Constant.(fun () -> (of_int 2 * !y1 / (!x1 - !x3)) - !lambda_1)
+    in
+    let x4 =
+      exists typ
+        ~compute:Constant.(fun () -> (!lambda_2 * !lambda_2) - !x3 - !x1)
+    in
+    let y4 =
+      exists typ ~compute:Constant.(fun () -> ((!x1 - !x4) * !lambda_2) - !y1)
+    in
+    (* Determines lambda_1 *)
+    assert_r1cs (x2 - x1) lambda_1 (y2 - y1) ;
+    (* Determines x_3 *)
+    assert_square lambda_1 (x1 + x2 + x3) ;
+    (* Determines lambda_2 *)
+    assert_r1cs (x1 - x3) (lambda_1 + lambda_2) (of_int 2 * y1) ;
+    (* Determines x4 *)
+    assert_square lambda_2 (x3 + x1 + x4) ;
+    (* Determines y4 *)
+    assert_r1cs (x1 - x4) lambda_2 (y4 + y1) ;
+    (x4, y4)
+
+  (* Input:
+     t, r (LSB)
+
+     Output:
+    (2*r + 1 + 2^len(r)) t
+  *)
+  let scale (t : Field.t * Field.t) (`Times_two_plus_1_plus_2_to_len r) :
+      Field.t * Field.t =
+    let n = Array.length r in
+    let acc = ref (double t) in
+    let () =
+      for i = 0 to n - 1 do
+        let q = conditional_negation r.(i) t in
+        acc := p_plus_q_plus_p !acc q
+      done
+    in
+    !acc
+
+  (* Input:
+     t, k (LSB)
+
+     Output:
+     (k + 2^{len(k) - 1}) t
+
+     Based on [Daira's algorithm](https://github.com/zcash/zcash/issues/3924)
+  *)
+  let scale t (`Plus_two_to_len_minus_1 k) =
+    let m = Array.length k - 1 in
+    let r = Array.init m ~f:(fun i -> k.(i + 1)) in
+    let two_r_plus_1_plus_two_to_m =
+      scale t (`Times_two_plus_1_plus_2_to_len r)
+    in
+    if_ k.(0) ~then_:two_r_plus_1_plus_two_to_m
+      ~else_:(add_exn two_r_plus_1_plus_two_to_m (negate t))
+
+  let%test_unit "scale" =
+    let scale_constant (t, bs) =
+      let rec go acc bs =
+        match bs with
+        | [] ->
+            acc
+        | b :: bs ->
+            let acc = Constant.(acc + acc) in
+            let acc = if b then Constant.(acc + t) else acc in
+            go acc bs
+      in
+      let k = Array.length bs in
+      go Constant.(t + negate t) (List.init k ~f:(fun i -> bs.(k - 1 - i)))
+    in
+    let module A = struct
+      type t = Impl.Field.Constant.t * Impl.Field.Constant.t
+      [@@deriving sexp, compare]
+    end in
+    let one = Constant.of_affine Params.one in
+    [%test_eq: A.t]
+      (Constant.to_affine_exn (scale_constant (one, [|false; false; true|])))
+      Constant.(to_affine_exn (one + one + one + one)) ;
+    [%test_eq: A.t]
+      (Constant.to_affine_exn (scale_constant (one, [|true; false; true|])))
+      Constant.(to_affine_exn (one + one + one + one + one)) ;
+    let g = Typ.tuple2 Field.typ Field.typ in
+    let two_to_the m =
+      scale_constant (one, Array.init (m + 1) ~f:(fun i -> i = m))
+    in
+    [%test_eq: A.t]
+      (Constant.to_affine_exn (two_to_the 2))
+      Constant.(to_affine_exn (one + one + one + one)) ;
+    let n = 4 in
+    let bits = Array.init n ~f:(fun _ -> Random.bool ()) in
+    Internal_Basic.Test.test_equal
+      ~equal:[%eq: Field.Constant.t * Field.Constant.t]
+      ~sexp_of_t:[%sexp_of: Field.Constant.t * Field.Constant.t]
+      (Typ.tuple2 g (Typ.array ~length:n Boolean.typ))
+      g
+      (fun (t, bs) ->
+        make_checked (fun () -> scale t (`Plus_two_to_len_minus_1 bs)) )
+      (fun (t, bs) ->
+        let open Constant in
+        let t = of_affine t in
+        to_affine_exn (scale_constant (t, bs) + two_to_the (n - 1)) )
+      (Params.one, bits)
 end
+
+let%test_unit "mnt4" =
+  let module T = For_native_base_field (struct
+    module Impl =
+      Snarky.Snark.Run.Make (Snarky.Backends.Mnt4.Default) (Core.Unit)
+
+    module F = struct
+      include (
+        Impl.Field :
+          module type of Impl.Field with module Constant := Impl.Field.Constant )
+
+      module Constant = struct
+        include Impl.Field.Constant
+
+        let inv_exn = inv
+      end
+
+      let assert_r1cs a b c = Impl.assert_r1cs a b c
+
+      let assert_square a b = Impl.assert_square a b
+
+      let negate x = zero - x
+
+      let inv_exn = inv
+    end
+
+    module Params = struct
+      let one = Snarky.Backends.Mnt6.G1.(to_affine_exn one)
+
+      include Snarky.Backends.Mnt6.G1.Coefficients
+
+      let group_size_in_bits = Snarky.Backends.Mnt6.Field.size_in_bits
+    end
+
+    module Constant = Snarky.Backends.Mnt6.G1
+  end) in
+  ()

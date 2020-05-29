@@ -77,51 +77,6 @@ module Group_coefficients (Fq : Foreign_intf) = struct
   end
 end
 
-module Window_table
-    (G : Foreign_intf)
-    (Scalar_field : Foreign_intf)
-    (Scalar : Foreign_intf)
-    (V : Foreign_intf) =
-struct
-  include Camlsnark_c.Bindings.Window_table (G) (Scalar_field) (Scalar) (V)
-
-  module type S = sig
-    type t [@@deriving bin_io]
-
-    val create : G.t -> t
-
-    val scale : t -> Scalar.t -> G.t
-
-    val scale_field : t -> Scalar_field.t -> G.t
-  end
-
-  module Make
-      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
-                                                                        (G : sig
-          val delete : G.t -> unit
-      end) (Scalar : sig
-        val of_field : Scalar_field.t -> Scalar.t
-      end) (V : sig
-        val delete : V.t -> unit
-
-        include Binable.S with type t = V.t
-      end) : S = struct
-    open Bindings
-    include V
-
-    let create g =
-      let t = create g in
-      Caml.Gc.finalise delete t ; t
-
-    let scale tbl s =
-      let x = scale tbl s in
-      Caml.Gc.finalise G.delete x ;
-      x
-
-    let scale_field t (x : Scalar_field.t) = scale t (Scalar.of_field x)
-  end
-end
-
 module Group
     (Field : Foreign_intf)
     (Bigint_r : Foreign_intf)
@@ -375,7 +330,8 @@ module Field = struct
 
     val ( *= ) : t -> t -> unit
 
-    module Vector : Vector.S_binable_sexpable with type elt = t
+    module Vector :
+      Vector.S_binable_sexpable with type t = t Vector.t and type elt = t
   end
 
   module Make (Field0 : sig
@@ -897,7 +853,7 @@ module Linear_combination (Field : Foreign_intf) (Var : Foreign_intf) = struct
 
       val var : t -> Var.t
 
-      module Vector : Vector.S with type elt = t
+      module Vector : Vector.S with type t = t Vector.t and type elt = t
     end
 
     module Make
@@ -954,7 +910,7 @@ module Linear_combination (Field : Foreign_intf) (Var : Foreign_intf) = struct
 
     val terms : t -> Term.Vector.t
 
-    module Vector : Vector.S with type elt = t
+    module Vector : Vector.S with type t = t Vector.t and type elt = t
 
     val add_term : t -> Field.t -> Var.t -> unit
   end
@@ -1166,213 +1122,73 @@ module Common = struct
       include T.Make (Bindings.Var)
     end
 
-    module Linear_combination = struct
-      module T = Linear_combination (Bindings.Field) (Bindings.Var)
-      include T.Make (Bindings.Linear_combination) (Bindings.Field)
-                (Bindings.Var)
-    end
-
-    module R1CS_constraint = struct
-      module T = R1CS_constraint (Bindings.Field) (Bindings.Linear_combination)
-      include T.Make (Bindings.R1CS_constraint)
-    end
-
     module R1CS_constraint_system = struct
-      module T =
-        R1CS_constraint_system (Bindings.Field) (Bindings.Field.Vector)
-          (Bindings.R1CS_constraint)
-      include T.Make (Bindings.R1CS_constraint_system)
-    end
-
-    (* This is not currently used anywhere, so porting it won't give us any speed
-     improvements..
-  *)
-    module Protoboard : sig
-      type t
-
-      val typ : t Ctypes.typ
-
-      val create : unit -> t
-
-      val auxiliary_input : t -> Field.Vector.t
-
-      val num_variables : t -> int
-
-      val set_input_sizes : t -> int -> unit
-
-      val renumber_and_append_constraints :
-           t
-        -> R1CS_constraint_system.t
-        -> Linear_combination.Vector.t
-        -> int
-        -> unit
-
-      module Variable : sig
-        type t
-
-        val typ : t Ctypes.typ
-
-        val delete : t -> unit
-
-        val index : t -> int
-
-        val of_int : int -> t
+      module T = struct
+        module T =
+          R1CS_constraint_system (Bindings.Field) (Bindings.Field.Vector)
+            (Bindings.R1CS_constraint)
+        include T.Make (Bindings.R1CS_constraint_system)
       end
 
-      module Variable_array : sig
-        type t
+      include Libsnark_r1cs_constraint_system.Make (struct
+        module Field = struct
+          include Field
 
-        val typ : t Ctypes.typ
+          (* TODO: deduplicate *)
+          let ( / ) x y = x * inv y
 
-        val emplace_back : t -> Variable.t -> unit
+          let negate x = sub zero x
 
-        val create : unit -> t
+          let to_string x =
+            let k = Field.size_in_bits in
+            let n = Bigint.R.of_field x in
+            let bits =
+              List.init k ~f:(fun i -> Bigint.R.test_bit n Int.(k - 1 - i))
+            in
+            List.fold_left bits ~init:Bignum_bigint.zero ~f:(fun acc b ->
+                Bignum_bigint.(shift_left acc 1 lor if b then one else zero) )
+            |> Bignum_bigint.to_string
+        end
 
-        val delete : t -> unit
+        module Var = struct
+          module T0 = struct
+            include Var
 
-        val get : t -> int -> Variable.t
-      end
+            let sexp_of_t t = Int.sexp_of_t (index t)
 
-      val set_variable : t -> Variable.t -> Field.t -> unit
+            let t_of_sexp t = create (Int.t_of_sexp t)
 
-      val get_variable : t -> Variable.t -> Field.t
+            let compare x y = Int.compare (index x) (index y)
+          end
 
-      val allocate_variable : t -> Variable.t
+          include T0
+          include Comparable.Make (T0)
+        end
 
-      val allocate_variable_array : t -> int -> Variable_array.t
+        module Linear_combination = struct
+          module T = Linear_combination (Bindings.Field) (Bindings.Var)
+          include T.Make (Bindings.Linear_combination) (Bindings.Field)
+                    (Bindings.Var)
+        end
 
-      val augment_variable_annotation : t -> Variable.t -> string -> unit
-    end = struct
-      include Make_foreign
-                (Ctypes_foreign)
-                (struct
-                  let prefix = with_prefix Bindings.prefix "protoboard"
-                end)
+        module R1CS_constraint = struct
+          module T =
+            R1CS_constraint (Bindings.Field) (Bindings.Linear_combination)
+          include T.Make (Bindings.R1CS_constraint)
+        end
 
-      module Variable : sig
-        type t
+        module R1CS_constraint_system = struct
+          include T
 
-        val typ : t Ctypes.typ
+          let finalize = ignore
+        end
+      end)
 
-        val delete : t -> unit
+      let typ = T.typ
 
-        val of_int : int -> t
+      let clear = T.clear
 
-        val index : t -> int
-      end = struct
-        include Make_foreign
-                  (Ctypes_foreign)
-                  (struct
-                    let prefix =
-                      with_prefix Bindings.prefix "protoboard_variable"
-                  end)
-
-        let of_int =
-          let stub = foreign (func_name "of_int") (int @-> returning typ) in
-          fun i ->
-            let t = stub i in
-            Caml.Gc.finalise delete t ; t
-
-        let index = foreign (func_name "index") (typ @-> returning int)
-      end
-
-      module Variable_array = struct
-        include Make_foreign
-                  (Ctypes_foreign)
-                  (struct
-                    let prefix =
-                      with_prefix Bindings.prefix "protoboard_variable_array"
-                  end)
-
-        let create =
-          let stub = foreign (func_name "create") (void @-> returning typ) in
-          fun () ->
-            let t = stub () in
-            Caml.Gc.finalise delete t ; t
-
-        let emplace_back =
-          foreign (func_name "emplace_back")
-            (typ @-> Variable.typ @-> returning void)
-
-        let get =
-          let stub =
-            foreign (func_name "get") (typ @-> int @-> returning Variable.typ)
-          in
-          fun t i ->
-            let v = stub t i in
-            Caml.Gc.finalise Variable.delete v ;
-            v
-      end
-
-      let renumber_and_append_constraints =
-        foreign
-          (func_name "renumber_and_append_constraints")
-          ( typ @-> R1CS_constraint_system.typ @-> Linear_combination.Vector.typ
-          @-> int @-> returning void )
-
-      let augment_variable_annotation =
-        foreign
-          (func_name "augment_variable_annotation")
-          (typ @-> Variable.typ @-> string @-> returning void)
-
-      let create =
-        let stub = foreign (func_name "create") (void @-> returning typ) in
-        fun () ->
-          let t = stub () in
-          Caml.Gc.finalise delete t ; t
-
-      let num_variables =
-        foreign (func_name "num_variables") (typ @-> returning int)
-
-      let set_input_sizes =
-        foreign (func_name "set_input_sizes") (typ @-> int @-> returning void)
-
-      let set_variable =
-        foreign (func_name "set_variable")
-          (typ @-> Variable.typ @-> Field.typ @-> returning void)
-
-      let get_variable =
-        let stub =
-          foreign (func_name "get_variable")
-            (typ @-> Variable.typ @-> returning Field.typ)
-        in
-        fun t v ->
-          let x = stub t v in
-          Caml.Gc.finalise Field.delete x ;
-          x
-
-      let allocate_variable =
-        let stub =
-          foreign
-            (func_name "allocate_variable")
-            (typ @-> returning Variable.typ)
-        in
-        fun t ->
-          let v = stub t in
-          Caml.Gc.finalise Variable.delete v ;
-          v
-
-      let allocate_variable_array =
-        let stub =
-          foreign
-            (func_name "allocate_variable_array")
-            (typ @-> int @-> returning Variable_array.typ)
-        in
-        fun t n ->
-          let v = stub t n in
-          Caml.Gc.finalise Variable_array.delete v ;
-          v
-
-      let auxiliary_input =
-        let stub =
-          foreign
-            (func_name "auxiliary_input")
-            (typ @-> returning Field.Vector.typ)
-        in
-        fun t ->
-          let v = stub t in
-          Caml.Gc.finalise Field.Vector.delete v ;
-          v
+      let swap_AB_if_beneficial = T.swap_AB_if_beneficial
     end
 
     let field_size : Bigint.R.t = Bindings.field_size ()
@@ -1388,6 +1204,8 @@ module type Proof_system_inputs_intf = sig
     val typ : t Ctypes.typ
 
     val clear : t -> unit
+
+    val get_primary_input_size : t -> int
   end
 
   module Field : sig
@@ -1409,7 +1227,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     val typ : t Ctypes.typ
 
-    val r1cs_constraint_system : t -> M.R1CS_constraint_system.t
+    val is_initialized : t -> [`Yes | `No of M.R1CS_constraint_system.t]
 
     val delete : t -> unit
 
@@ -1433,6 +1251,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
       foreign
         (func_name "r1cs_constraint_system")
         (typ @-> returning M.R1CS_constraint_system.typ)
+
+    let is_initialized t =
+      let s = r1cs_constraint_system t in
+      if M.R1CS_constraint_system.get_primary_input_size s = 0 then `No s
+      else `Yes
 
     let to_cpp_string_stub : t -> Cpp_string.t =
       let stub =
@@ -1727,6 +1550,8 @@ module Make_proof_system (M : sig
     val typ : t Ctypes.typ
 
     val clear : t -> unit
+
+    val get_primary_input_size : t -> int
   end
 
   module Field : sig
@@ -1839,7 +1664,7 @@ struct
     module R1CS_constraint_system = struct
       include Common.R1CS_constraint_system
 
-      let finalize = Common.R1CS_constraint_system.swap_AB_if_beneficial
+      let finalize = Common.R1CS_constraint_system.T.swap_AB_if_beneficial
     end
 
     include (
@@ -1946,6 +1771,8 @@ module type Make_proof_system_inputs = sig
     val typ : t Ctypes.typ
 
     val clear : t -> unit
+
+    val get_primary_input_size : t -> int
   end
 
   module Field : sig
@@ -1999,7 +1826,7 @@ module type Make_proof_system_inputs_with_keys = sig
 
     val typ : t Ctypes.typ
 
-    val r1cs_constraint_system : t -> R1CS_constraint_system.t
+    val is_initialized : t -> [`Yes | `No of R1CS_constraint_system.t]
 
     val delete : t -> unit
 
@@ -2433,40 +2260,6 @@ struct
         let g = one in
         equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
-      module Window_table = struct
-        module T' = Window_table (T) (Field) (Bigint.R) (Vector)
-
-        include T'.Make
-                  (T'.Bind
-                     (Ctypes_foreign)
-                     (struct
-                       let prefix = with_prefix Mnt4_0.prefix "g1"
-                     end))
-                     (T)
-                  (Bigint.R)
-                  (Vector)
-      end
-
-      let%test "window-scale" =
-        let table = Window_table.create one in
-        let s = Bigint.R.of_field (Field.random ()) in
-        equal (Window_table.scale table s) (scale one s)
-
-      let%test "window-base" =
-        let rec random_curve_point () =
-          let module Field = Mnt6_0.Field in
-          let ( + ) = Field.add in
-          let ( * ) = Field.mul in
-          let x = Field.random () in
-          let f = (x * x * x) + (Coefficients.a * x) + Coefficients.b in
-          if Field.is_square f then of_affine (x, Field.sqrt f)
-          else random_curve_point ()
-        in
-        let g = random_curve_point () in
-        let table = Window_table.create g in
-        let s = Bigint.R.of_field Field.one in
-        equal (Window_table.scale table s) g
-
       let%test "coefficients correct" =
         let x, y = to_affine_exn one in
         let open Mnt6_0.Field in
@@ -2620,25 +2413,6 @@ struct
       let%test "scalar_mul" =
         let g = one in
         equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
-
-      module Window_table = struct
-        module T' = Window_table (T) (Field) (Bigint.R) (Vector)
-
-        include T'.Make
-                  (T'.Bind
-                     (Ctypes_foreign)
-                     (struct
-                       let prefix = with_prefix Mnt6_0.prefix "g1"
-                     end))
-                     (T)
-                  (Bigint.R)
-                  (Vector)
-      end
-
-      let%test "window-scale" =
-        let table = Window_table.create one in
-        let s = Bigint.R.of_field (Field.random ()) in
-        equal (Window_table.scale table s) (scale one s)
 
       let%test "coefficients correct" =
         let x, y = to_affine_exn one in
