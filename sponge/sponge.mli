@@ -51,13 +51,18 @@ end) (Field : sig
 
   val to_bits : t -> Bool.t list
 end)
+(Input : Intf.T)
 (S : Intf.Sponge
      with module State := State
       and module Field := Field
       and type digest := Field.t
-      and type input := Field.t) :
-  Intf.Sponge
-  with module State := State
-   and module Field := Field
-   and type digest := length:int -> Bool.t list
-   and type input := Field.t
+      and type input := Input.t) : sig
+  include
+    Intf.Sponge
+    with module State := State
+     and module Field := Field
+     and type digest := length:int -> Bool.t list
+     and type input := Input.t
+
+  val squeeze_field : t -> Field.t
+end
