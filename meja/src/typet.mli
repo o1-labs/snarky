@@ -78,21 +78,13 @@ module TypeDecl : sig
   val generalise :
     Parsetypes.type_decl -> Parsetypes.type_decl * Parsetypes.type_decl
 
-  val predeclare : Envi.t -> Parsetypes.type_decl -> Envi.t
   (** Add the type to the environment as an abstract type.
 
       This can be used to set up the environment for recursive or co-recursive
       types, which need to find their own identifier in scope.
   *)
+  val predeclare : Envi.t -> Parsetypes.type_decl -> Envi.t
 
-  val import :
-       ?name:Ident.t
-    -> ?other_name:Path.t
-    -> ?tri_stitched:(Envi.t -> Type0.type_expr list -> Type0.type_expr)
-    -> ?newtype:bool
-    -> Parsetypes.type_decl
-    -> Envi.t
-    -> Typedast.type_decl * Envi.t
   (** Import a type declaration.
 
       The [name] parameter can be used to specify an existing identifier for
@@ -110,19 +102,27 @@ module TypeDecl : sig
       This argument may only be used in checked mode, and cannot be used in
       combination with [other_name].
   *)
+  val import :
+       ?name:Ident.t
+    -> ?other_name:Path.t
+    -> ?tri_stitched:(Envi.t -> Type0.type_expr list -> Type0.type_expr)
+    -> ?newtype:bool
+    -> Parsetypes.type_decl
+    -> Envi.t
+    -> Typedast.type_decl * Envi.t
 
+  (** Import a type declaration, stitching it to the type described by the
+      [conv_type] argument.
+  *)
   val import_convertible :
        Parsetypes.type_decl
     -> Parsetypes.conv_type
     -> Envi.t
     -> Typedast.type_decl * Typedast.conv_type * Envi.t
-  (** Import a type declaration, stitching it to the type described by the
-      [conv_type] argument.
-  *)
 
+  (** Import the given type declarations recursively. *)
   val import_rec :
     Parsetypes.type_decl list -> Envi.t -> Typedast.type_decl list * Envi.t
-  (** Import the given type declarations recursively. *)
 end
 
 (* Forward declaration of [Typechecker.check_type]. *)

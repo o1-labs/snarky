@@ -11,6 +11,7 @@ let () =
         ; "-L/usr/local/opt/openssl/lib"
         ; "-lssl"
         ; "-lcrypto"
+        ; "-lsodium"
         ; "-lgmp"
         ; "-lomp"
         ; "-lstdc++" ]
@@ -21,6 +22,9 @@ let () =
         ; "-lgomp"
         ; "-lssl"
         ; "-lcrypto"
+        ; "-Wl,--push-state,-Bstatic"
+        ; "-lsodium"
+        ; "-Wl,--pop-state"
         ; "-lprocps"
         ; "-lgmp"
         ; "-lstdc++" ]

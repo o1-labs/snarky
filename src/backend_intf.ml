@@ -1,20 +1,47 @@
 open Core_kernel
 
-module type S = sig
-  module Field : Field_intf.S
-
-  module Bigint : sig
-    module R : Bigint_intf.Extended with type field := Field.t
+module type Constraint_system_intf = sig
+  module Field : sig
+    type t
   end
 
-  val field_size : Bigint.R.t
+  type t
+
+  val create : unit -> t
+
+  val finalize : t -> unit
+
+  val add_constraint :
+    ?label:string -> t -> Field.t Cvar.t Constraint.basic -> unit
+
+  val digest : t -> Md5.t
+
+  val set_primary_input_size : t -> int -> unit
+
+  val set_auxiliary_input_size : t -> int -> unit
+
+  val get_primary_input_size : t -> int
+
+  val get_auxiliary_input_size : t -> int
+
+  val to_json :
+       t
+    -> ([> `String of string | `Assoc of (string * 'a) list | `List of 'a list]
+        as
+        'a)
+end
+
+module type Libsnark_constraint_system_intf = sig
+  module Field : sig
+    type t
+
+    module Vector : sig
+      type t
+    end
+  end
 
   module Var : sig
-    type t = Field.t Backend_types.Var.t
-
-    val index : t -> int
-
-    val create : int -> t
+    type t
   end
 
   module Linear_combination : sig
@@ -63,14 +90,9 @@ module type S = sig
 
     val create : unit -> t
 
-    val report_statistics : t -> unit
-
     val finalize : t -> unit
 
     val add_constraint : t -> R1CS_constraint.t -> unit
-
-    val add_constraint_with_annotation :
-      t -> R1CS_constraint.t -> string -> unit
 
     val set_primary_input_size : t -> int -> unit
 
@@ -79,6 +101,11 @@ module type S = sig
     val get_primary_input_size : t -> int
 
     val get_auxiliary_input_size : t -> int
+
+    val report_statistics : t -> unit
+
+    val add_constraint_with_annotation :
+      t -> R1CS_constraint.t -> string -> unit
 
     val check_exn : t -> unit
 
@@ -95,31 +122,44 @@ module type S = sig
     val fold_constraints :
       f:('a -> R1CS_constraint.t -> 'a) -> init:'a -> t -> 'a
   end
+end
+
+module type S = sig
+  module Field : Field_intf.S
+
+  module Bigint : sig
+    module R : Bigint_intf.Extended with type field := Field.t
+  end
+
+  val field_size : Bigint.R.t
+
+  module Var : sig
+    type t
+
+    val index : t -> int
+
+    val create : int -> t
+  end
+
+  module R1CS_constraint_system :
+    Constraint_system_intf with module Field := Field
 
   module Proving_key : sig
     type t [@@deriving bin_io]
 
-    val r1cs_constraint_system : t -> R1CS_constraint_system.t
+    val is_initialized : t -> [`Yes | `No of R1CS_constraint_system.t]
 
     val set_constraint_system : t -> R1CS_constraint_system.t -> unit
 
     val to_string : t -> string
 
     val of_string : string -> t
-
-    val to_bigstring : t -> Bigstring.t
-
-    val of_bigstring : Bigstring.t -> t
   end
 
   module Verification_key : sig
     type t
 
     include Stringable.S with type t := t
-
-    val to_bigstring : t -> Bigstring.t
-
-    val of_bigstring : Bigstring.t -> t
   end
 
   module Proof : sig

@@ -88,11 +88,11 @@ module Field = struct
 
     val isSquare : t -> bool
 
-    val sqrtCheck : t -> t * bool
     (** If x is a square in the field and
     (b, y) = x;
     If b = true, then y is sqrt(x)
     If b = false, then y is a value which is not meaningful *)
+    val sqrtCheck : t -> t * bool
   end
 
   module type Constant = sig

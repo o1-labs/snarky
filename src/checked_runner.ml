@@ -1,4 +1,5 @@
 open Core_kernel
+module Constraint0 = Constraint
 
 exception Runtime_error of string * string list * exn * string
 
@@ -80,15 +81,15 @@ struct
 
   let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
     let get_one i =
-      if i <= num_inputs then Field.Vector.get input (i - 1)
-      else Field.Vector.get aux (i - num_inputs - 1)
+      if i <= num_inputs then Run_state.Vector.get input (i - 1)
+      else Run_state.Vector.get aux (i - num_inputs - 1)
     in
     Cvar.eval (`Return_values_will_be_mutated get_one)
 
   let store_field_elt {next_auxiliary; aux; _} x =
     let v = !next_auxiliary in
     incr next_auxiliary ;
-    Field.Vector.emplace_back aux x ;
+    Run_state.Vector.emplace_back aux x ;
     Cvar.Unsafe.of_index v
 
   let alloc_var {next_auxiliary; _} () =
@@ -161,7 +162,21 @@ struct
                  asprintf "R1CS %s %s %s"
                    (Field.to_string (get_value s var1))
                    (Field.to_string (get_value s var2))
-                   (Field.to_string (get_value s var3))) ))
+                   (Field.to_string (get_value s var3)))
+           | _ ->
+               Format.asprintf
+                 !"%{sexp:Field.t Constraint0.basic}"
+                 (Constraint0.Basic.map basic ~f:(get_value s)) ))
+
+  let stack_to_string = String.concat ~sep:"\n"
+
+  let add_constraint ~stack (t : Constraint.t)
+      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t)
+      =
+    List.iter t ~f:(fun {basic; annotation} ->
+        let label = Option.value annotation ~default:"<unknown>" in
+        C.add_constraint system basic ~label:(stack_to_string (label :: stack))
+    )
 
   let add_constraint c s =
     if !(s.as_prover) then
@@ -178,13 +193,12 @@ struct
            %s\n\
            Data:\n\
            %s"
-          (Constraint.annotation c)
-          (Constraint.stack_to_string s.stack)
+          (Constraint.annotation c) (stack_to_string s.stack)
           (Sexp.to_string (Constraint.sexp_of_t c))
           (log_constraint c s) () ;
       if not !(s.as_prover) then
         Option.iter s.system ~f:(fun system ->
-            Constraint.add ~stack:s.stack c system ) ;
+            add_constraint ~stack:s.stack c system ) ;
       (s, ()) )
 
   let with_state p and_then t_sub s =
@@ -338,9 +352,7 @@ module Make (Backend : Backend_extended.S) = struct
                   Label stack trace:\n\
                   %s\n\n\n\
                   %s"
-                 (Exn.to_string exn)
-                 (Constraint.stack_to_string s.stack)
-                 bt
+                 (Exn.to_string exn) (stack_to_string s.stack) bt
              , s.stack
              , exn
              , bt ))
@@ -423,7 +435,7 @@ module Make (Backend : Backend_extended.S) = struct
         let k = handle_error s (fun () -> k y) in
         run k s
 
-  let dummy_vector = Field.Vector.create ()
+  let dummy_vector = Run_state.Vector.null
 
   let fake_state next_auxiliary stack =
     { system= None
@@ -501,8 +513,7 @@ module Make (Backend : Backend_extended.S) = struct
             if s.eval_constraints && not (Constraint.eval c (get_value s)) then
               failwithf
                 "Constraint unsatisfied:\n%s\n%s\n\nConstraint:\n%s\nData:\n%s"
-                (Constraint.annotation c)
-                (Constraint.stack_to_string stack)
+                (Constraint.annotation c) (stack_to_string stack)
                 (Sexp.to_string (Constraint.sexp_of_t c))
                 (log_constraint c s) () ;
             f s )
@@ -598,8 +609,21 @@ module Make (Backend : Backend_extended.S) = struct
       next_auxiliary := 1 + num_inputs ;
       (* We can't evaluate the constraints if we are not computing over a value. *)
       let eval_constraints = eval_constraints && Option.is_some s0 in
-      Option.iter system ~f:(fun system ->
+      Option.iter
+        (system : R1CS_constraint_system.t option)
+        ~f:(fun system ->
           R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
+      let system =
+        Option.map system ~f:(fun sys ->
+            let module M = struct
+              module Field = struct
+                type nonrec t = Field.t
+              end
+
+              include R1CS_constraint_system
+            end in
+            Constraint_system.T ((module M), sys) )
+      in
       { system
       ; input
       ; aux
@@ -649,9 +673,9 @@ module type S = sig
   module State : sig
     val make :
          num_inputs:int
-      -> input:field Vector.t
+      -> input:field Run_state.Vector.t
       -> next_auxiliary:int ref
-      -> aux:field Vector.t
+      -> aux:field Run_state.Vector.t
       -> ?system:r1cs
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t

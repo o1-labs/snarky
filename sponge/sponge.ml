@@ -39,6 +39,40 @@ end
 
 let m = 3
 
+module Bn382_inputs (Field : Intf.Field_mutable) = struct
+  let rounds_full = 8
+
+  let rounds_partial = 30
+
+  module Field = Field
+
+  (* alpha = 17 *)
+  let to_the_alpha x =
+    let open Field in
+    let res = square x in
+    Mutable.square res ;
+    (* x^4 *)
+    Mutable.square res ;
+    (* x^8 *)
+    Mutable.square res ;
+    (* x^16 *)
+    res *= x ;
+    res
+
+  module Operations = struct
+    let add_assign ~state i x = Field.(state.(i) += x)
+
+    (* Sparse pseudo-MDS matrix *)
+    let apply_affine_map (_rows, c) v =
+      let open Field in
+      let res = [|v.(0) + v.(2); v.(0) + v.(1); v.(1) + v.(2)|] in
+      Array.iteri res ~f:(fun i ri -> ri += c.(i)) ;
+      res
+
+    let copy a = Array.map a ~f:(fun x -> Field.(x + zero))
+  end
+end
+
 module Rescue (Inputs : Intf.Inputs.Rescue) = struct
   (*
    We refer below to this paper: https://eprint.iacr.org/2019/426.pdf.
@@ -55,7 +89,7 @@ where
 - m is the state size, which we can choose
 - N is the number of rounds which we can choose
 
-In our case, `alpha = 11`, and I took `m = 3` which is optimal for binary Merkle trees.
+For the MNT curves, `alpha = 11`, and I took `m = 3` which is optimal for binary Merkle trees.
 Evaluating the above formula with these values and `N = 11` and `omega = 2` yields an attack complexity
 of a little over 2^257, which if we take the same factor of 2 security margin as they use in the paper,
 gives us a security level of 257/2 ~= 128.
