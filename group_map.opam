@@ -15,5 +15,5 @@ depends: [
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
-Map from finite field elements to elliptic curves points over the finite field.
+Map from finite field elements to elliptic curves points over the finite field
 "
