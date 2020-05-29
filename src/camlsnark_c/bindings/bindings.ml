@@ -28,40 +28,6 @@ module Group_coefficients (Fq : Foreign_intf) = struct
   end
 end
 
-module Window_table
-    (G : Foreign_intf)
-    (Scalar_field : Foreign_intf)
-    (Scalar : Foreign_intf)
-    (V : Foreign_intf) =
-struct
-  module type Bound = sig
-    include Foreign_types
-
-    val create : (G.t -> V.t return) result
-
-    val scale : (V.t -> Scalar.t -> G.t return) result
-  end
-
-  module Bind
-      (F : Ctypes.FOREIGN) (P : sig
-          val prefix : string
-      end) :
-    Bound with type 'a return = 'a F.return and type 'a result = 'a F.result =
-  struct
-    include F
-
-    let func_name = with_prefix P.prefix
-
-    let create =
-      foreign (func_name "create_window_table") (G.typ @-> returning V.typ)
-
-    let scale =
-      foreign
-        (func_name "window_scalar_mul")
-        (V.typ @-> Scalar.typ @-> returning G.typ)
-  end
-end
-
 module Group
     (Field : Foreign_intf)
     (Bigint_r : Foreign_intf)
