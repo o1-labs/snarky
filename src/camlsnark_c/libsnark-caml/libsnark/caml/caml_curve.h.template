@@ -482,9 +482,3 @@ void CURVE_PREFIX(sha256_compression_function_gadget_generate_r1cs_constraints)(
 
 void CURVE_PREFIX(sha256_compression_function_gadget_generate_r1cs_witness)(
   void* g);
-
-void* CURVE_PREFIX(g1_create_window_table)(void* base);
-
-void* CURVE_PREFIX(g1_window_scalar_mul)(
-    void* table,
-    void* scalar);
