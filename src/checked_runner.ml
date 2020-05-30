@@ -254,10 +254,17 @@ struct
     let s = Option.map2 ~f:(Lens.set lens) s s' in
     (set_prover_state s rs, a)
 
-  let constraint_count ?log:_ t =
+  let constraint_count ?(log = fun ?start:_ _lab _pos -> ()) t =
     (* TODO: Integrate log with log_constraint *)
     let count = ref 0 in
-    let log_constraint c = count := !count + List.length c in
+    let log_constraint ?at_label_boundary c =
+      ( match at_label_boundary with
+      | None ->
+          ()
+      | Some (pos, lab) ->
+          log ~start:(pos = `Start) lab !count ) ;
+      count := !count + List.length c
+    in
     let state =
       Run_state.
         { system= None
@@ -646,7 +653,8 @@ module type S = sig
 
   type r1cs
 
-  val set_constraint_logger : (constr -> unit) -> unit
+  val set_constraint_logger :
+    (?at_label_boundary:[`Start | `End] * string -> constr -> unit) -> unit
 
   val clear_constraint_logger : unit -> unit
 
