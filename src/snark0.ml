@@ -2595,9 +2595,13 @@ module Run = struct
     let if_ b ~typ ~then_ ~else_ = run (if_ b ~typ ~then_ ~else_)
 
     let with_label lbl x =
-      let {stack; _} = !state in
+      let {stack; log_constraint; _} = !state in
       state := {!state with stack= lbl :: stack} ;
+      Option.iter log_constraint ~f:(fun f ->
+          f ~at_label_boundary:(`Start, lbl) [] ) ;
       let a = x () in
+      Option.iter log_constraint ~f:(fun f ->
+          f ~at_label_boundary:(`End, lbl) [] ) ;
       state := {!state with stack} ;
       a
 
@@ -2668,7 +2672,15 @@ module Run = struct
 
     let constraint_count ?log x =
       let count = ref 0 in
-      let log_constraint c = count := !count + Core_kernel.List.length c in
+      let log_constraint ?at_label_boundary c =
+        ( match at_label_boundary with
+        | None ->
+            ()
+        | Some (pos, lab) ->
+            Option.iter log ~f:(fun f ->
+                f ?start:(Some (pos = `Start)) lab !count ) ) ;
+        count := !count + Core_kernel.List.length c
+      in
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
       ignore log ;
       let old = !state in

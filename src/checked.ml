@@ -184,7 +184,14 @@ module Basic :
         (count, x)
     | Direct (d, k) ->
         let count = ref count in
-        let log_constraint c = count := !count + List.length c in
+        let log_constraint ?at_label_boundary c =
+          ( match at_label_boundary with
+          | None ->
+              ()
+          | Some (pos, lab) ->
+              log ~start:(pos = `Start) lab !count ) ;
+          count := !count + List.length c
+        in
         let state =
           Run_state.
             { system= None

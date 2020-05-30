@@ -1482,7 +1482,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> unit
   end
 
-  val set_constraint_logger : (Constraint.t -> unit) -> unit
+  val set_constraint_logger :
+       (?at_label_boundary:[`Start | `End] * string -> Constraint.t -> unit)
+    -> unit
 
   val clear_constraint_logger : unit -> unit
 end
@@ -2275,7 +2277,9 @@ module type Run_basic = sig
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
 
-  val set_constraint_logger : (Constraint.t -> unit) -> unit
+  val set_constraint_logger :
+       (?at_label_boundary:[`Start | `End] * string -> Constraint.t -> unit)
+    -> unit
 
   val clear_constraint_logger : unit -> unit
 
