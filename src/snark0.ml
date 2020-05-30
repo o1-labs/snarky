@@ -2305,6 +2305,8 @@ module Run = struct
 
       let add = add
 
+      let negate = negate
+
       let sub = sub
 
       let scale = scale

@@ -128,6 +128,8 @@ struct
 
   let ( * ) c x = scale x c
 
+  let negate x = scale x neg_one
+
   let to_json x =
     let singleton = Map.singleton (module Int) in
     let join = Map.merge_skewed ~combine:(fun ~key:_ -> Field.add) in

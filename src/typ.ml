@@ -169,7 +169,7 @@ struct
         ({read; store; alloc; check} : ('elt_var, 'elt_value, 'field) t) :
         ('elt_var array, 'elt_value array, 'field) t =
       let store ts =
-        assert (Array.length ts = length) ;
+        [%test_eq: int] (Array.length ts) length ;
         Store.map ~f:Array.of_list
           (Store.all (List.map ~f:store (Array.to_list ts)))
       in
@@ -179,12 +179,12 @@ struct
         Array.of_list vs
       in
       let read vs =
-        assert (Array.length vs = length) ;
+        [%test_eq: int] (Array.length vs) length ;
         Read.map ~f:Array.of_list
           (Read.all (List.map ~f:read (Array.to_list vs)))
       in
       let check ts =
-        assert (Array.length ts = length) ;
+        [%test_eq: int] (Array.length ts) length ;
         let open Checked in
         let rec go i =
           if i = length then return ()

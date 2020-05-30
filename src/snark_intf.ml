@@ -631,6 +631,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       *)
       val add : t -> t -> t
 
+      (** [negate x] returns the additive inverse of x as a field eleement
+      *)
+      val negate : t -> t
+
       (** [sub x y] returns the result of subtracting the R1CS variables [x]
           and [y].
 
@@ -1906,6 +1910,8 @@ module type Run_basic = sig
     val sum : t list -> t
 
     val add : t -> t -> t
+
+    val negate : t -> t
 
     val sub : t -> t -> t
 
