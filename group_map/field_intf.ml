@@ -11,8 +11,6 @@ module type S = sig
 
   val ( / ) : t -> t -> t
 
-  val t_of_sexp : Sexp.t -> t
-
   val of_int : int -> t
 
   val one : t
