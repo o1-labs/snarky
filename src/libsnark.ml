@@ -77,51 +77,6 @@ module Group_coefficients (Fq : Foreign_intf) = struct
   end
 end
 
-module Window_table
-    (G : Foreign_intf)
-    (Scalar_field : Foreign_intf)
-    (Scalar : Foreign_intf)
-    (V : Foreign_intf) =
-struct
-  include Camlsnark_c.Bindings.Window_table (G) (Scalar_field) (Scalar) (V)
-
-  module type S = sig
-    type t [@@deriving bin_io]
-
-    val create : G.t -> t
-
-    val scale : t -> Scalar.t -> G.t
-
-    val scale_field : t -> Scalar_field.t -> G.t
-  end
-
-  module Make
-      (Bindings : Bound with type 'a return = 'a and type 'a result = 'a)
-                                                                        (G : sig
-          val delete : G.t -> unit
-      end) (Scalar : sig
-        val of_field : Scalar_field.t -> Scalar.t
-      end) (V : sig
-        val delete : V.t -> unit
-
-        include Binable.S with type t = V.t
-      end) : S = struct
-    open Bindings
-    include V
-
-    let create g =
-      let t = create g in
-      Caml.Gc.finalise delete t ; t
-
-    let scale tbl s =
-      let x = scale tbl s in
-      Caml.Gc.finalise G.delete x ;
-      x
-
-    let scale_field t (x : Scalar_field.t) = scale t (Scalar.of_field x)
-  end
-end
-
 module Group
     (Field : Foreign_intf)
     (Bigint_r : Foreign_intf)
@@ -2305,40 +2260,6 @@ struct
         let g = one in
         equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
 
-      module Window_table = struct
-        module T' = Window_table (T) (Field) (Bigint.R) (Vector)
-
-        include T'.Make
-                  (T'.Bind
-                     (Ctypes_foreign)
-                     (struct
-                       let prefix = with_prefix Mnt4_0.prefix "g1"
-                     end))
-                     (T)
-                  (Bigint.R)
-                  (Vector)
-      end
-
-      let%test "window-scale" =
-        let table = Window_table.create one in
-        let s = Bigint.R.of_field (Field.random ()) in
-        equal (Window_table.scale table s) (scale one s)
-
-      let%test "window-base" =
-        let rec random_curve_point () =
-          let module Field = Mnt6_0.Field in
-          let ( + ) = Field.add in
-          let ( * ) = Field.mul in
-          let x = Field.random () in
-          let f = (x * x * x) + (Coefficients.a * x) + Coefficients.b in
-          if Field.is_square f then of_affine (x, Field.sqrt f)
-          else random_curve_point ()
-        in
-        let g = random_curve_point () in
-        let table = Window_table.create g in
-        let s = Bigint.R.of_field Field.one in
-        equal (Window_table.scale table s) g
-
       let%test "coefficients correct" =
         let x, y = to_affine_exn one in
         let open Mnt6_0.Field in
@@ -2492,25 +2413,6 @@ struct
       let%test "scalar_mul" =
         let g = one in
         equal (g + g + g + g + g) (scale_field g (Field.of_int 5))
-
-      module Window_table = struct
-        module T' = Window_table (T) (Field) (Bigint.R) (Vector)
-
-        include T'.Make
-                  (T'.Bind
-                     (Ctypes_foreign)
-                     (struct
-                       let prefix = with_prefix Mnt6_0.prefix "g1"
-                     end))
-                     (T)
-                  (Bigint.R)
-                  (Vector)
-      end
-
-      let%test "window-scale" =
-        let table = Window_table.create one in
-        let s = Bigint.R.of_field (Field.random ()) in
-        equal (Window_table.scale table s) (scale one s)
 
       let%test "coefficients correct" =
         let x, y = to_affine_exn one in
