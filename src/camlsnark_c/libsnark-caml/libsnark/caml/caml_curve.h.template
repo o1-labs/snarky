@@ -456,29 +456,3 @@ void* CURVE_PREFIX(bg_proof_c)(void* proof);
 void* CURVE_PREFIX(bg_proof_delta_prime)(void* proof);
 
 // End BG specific code
-
-// begin SHA gadget code
-void CURVE_PREFIX(digest_variable_delete)(
-    void* digest);
-
-void* CURVE_PREFIX(digest_variable_create)(
-    void* pb, int digest_size);
-
-void* CURVE_PREFIX(digest_variable_bits)(
-    void* digest);
-
-void CURVE_PREFIX(sha256_compression_function_gadget_delete)(
-    void* g);
-
-void*
-CURVE_PREFIX(sha256_compression_function_gadget_create)(
-    void* pb,
-    void* prev_output,
-    void* new_block,
-    void* output);
-
-void CURVE_PREFIX(sha256_compression_function_gadget_generate_r1cs_constraints)(
-  void* g);
-
-void CURVE_PREFIX(sha256_compression_function_gadget_generate_r1cs_witness)(
-  void* g);
