@@ -365,7 +365,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
         (let params =
            Group_map.Params.create
              (module Field.Constant)
-             ~a:Params.a ~b:Params.b
+             {a= Params.a; b= Params.b}
          in
          Group_map.to_group (module Field.Constant) ~params)
 
