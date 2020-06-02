@@ -76,11 +76,11 @@ end
 
 module type S = sig
   module Spec : sig
-    type _ t
+    type _ t [@@deriving bin_io]
   end
 
   module Params : sig
-    type 'f t
+    type 'f t [@@deriving bin_io]
 
     val map : 'a t -> f:('a -> 'b) -> 'b t
 

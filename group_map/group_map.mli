@@ -14,11 +14,11 @@ end
 
 module type S = sig
   module Spec : sig
-    type _ t
+    type _ t [@@deriving bin_io]
   end
 
   module Params : sig
-    type 'f t
+    type 'f t [@@deriving bin_io]
 
     val map : 'a t -> f:('a -> 'b) -> 'b t
 
@@ -49,7 +49,7 @@ end
 module Bw19 : S with module Spec = Bw19.Spec
 
 module Spec : sig
-  type 'f t = {a: 'f; b: 'f} [@@deriving fields]
+  type 'f t = {a: 'f; b: 'f} [@@deriving fields, bin_io]
 end
 
 include S with module Spec := Spec

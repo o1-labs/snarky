@@ -3,7 +3,7 @@
 open Core_kernel
 
 module Spec = struct
-  type 'f t = {b: 'f}
+  type 'f t = {b: 'f} [@@deriving bin_io]
 end
 
 module Params = struct
