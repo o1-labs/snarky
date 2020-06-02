@@ -18,14 +18,7 @@ module type S = sig
   end
 
   module Params : sig
-    [%%versioned:
-    module Stable : sig
-      module V1 : sig
-        type _ t [@@deriving bin_io]
-      end
-    end]
-
-    type 'f t = 'f Stable.Latest.t
+    type 'f t
 
     val map : 'a t -> f:('a -> 'b) -> 'b t
 
