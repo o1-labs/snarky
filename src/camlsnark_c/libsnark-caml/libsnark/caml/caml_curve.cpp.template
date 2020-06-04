@@ -1,77 +1,6 @@
 extern "C" {
 using namespace libsnark;
 
-protoboard<FieldT>* CURVE_PREFIX(protoboard_create)() {
-  return new protoboard<FieldT>();
-}
-
-void CURVE_PREFIX(protoboard_delete)(protoboard<FieldT>* pb) {
-  delete pb;
-}
-
-void CURVE_PREFIX(protoboard_set_input_sizes)(protoboard<FieldT>* pb, int primary_input_size) {
-  return pb->set_input_sizes(primary_input_size);
-}
-
-int CURVE_PREFIX(protoboard_num_variables)(protoboard<FieldT>* pb) {
-  return pb->num_variables();
-}
-
-std::vector<FieldT>* CURVE_PREFIX(protoboard_auxiliary_input)(protoboard<FieldT>* pb) {
-  return new std::vector<FieldT>(pb->auxiliary_input());
-}
-
-void CURVE_PREFIX(protoboard_augment_variable_annotation)(
-    protoboard<FieldT>* pb,
-    pb_variable<FieldT>* var,
-    char* annotation
-    ) {
-  std::string str(annotation);
-  pb->augment_variable_annotation(*var, str);
-}
-
-pb_variable<FieldT>* CURVE_PREFIX(protoboard_allocate_variable)(protoboard<FieldT>* pb) {
-  pb_variable<FieldT>* x = new pb_variable<FieldT>();
-  x->allocate(*pb, "pb_var");
-  return x;
-}
-
-pb_variable_array<FieldT>* CURVE_PREFIX(protoboard_allocate_variable_array)(protoboard<FieldT>* pb, int n) {
-  pb_variable_array<FieldT>* x = new pb_variable_array<FieldT>();
-  x->allocate(*pb, n, "pb_var_array");
-  return x;
-}
-
-pb_variable<FieldT>*
-CURVE_PREFIX(protoboard_variable_of_int)(int i) {
-  return new pb_variable<FieldT>(i);
-}
-
-void CURVE_PREFIX(protoboard_variable_delete)(pb_variable<FieldT>* v) {
-  delete v;
-}
-
-int CURVE_PREFIX(protoboard_variable_index)(pb_variable<FieldT>* v) {
-  return v->index;
-}
-
-pb_variable_array<FieldT>* CURVE_PREFIX(protoboard_variable_array_create)() {
-  return new pb_variable_array<FieldT>();
-}
-
-void CURVE_PREFIX(protoboard_variable_array_delete)(pb_variable_array<FieldT>* arr) {
-  delete arr;
-}
-
-void CURVE_PREFIX(protoboard_variable_array_emplace_back)(pb_variable_array<FieldT>* arr, pb_variable<FieldT>* v) {
-  arr->emplace_back(*v);
-}
-
-pb_variable<FieldT>* CURVE_PREFIX(protoboard_variable_array_get)(
-    pb_variable_array<FieldT>* arr, int i) {
-  return new pb_variable<FieldT>((*arr)[i]);
-}
-
 linear_combination<FieldT> CURVE_PREFIX(linear_combination_renumber)(
     linear_combination<FieldT> &lc,
     std::vector< linear_combination<FieldT> > &changes,
@@ -108,38 +37,6 @@ linear_combination<FieldT> CURVE_PREFIX(linear_combination_renumber)(
   }
 
   return result;
-}
-
-void CURVE_PREFIX(protoboard_renumber_and_append_constraints)(
-    protoboard<FieldT>* pb,
-    r1cs_constraint_system<FieldT>* target,
-    std::vector<linear_combination<FieldT>>* changes,
-    int aux_shift
-) {
-  r1cs_constraint_system<FieldT> source = pb->get_constraint_system();
-  int num_source_constraints = source.constraints.size();
-
-  for (int i = 0; i < num_source_constraints; ++i) {
-    r1cs_constraint<FieldT> c = source.constraints[i];
-    c.a = CURVE_PREFIX(linear_combination_renumber)(c.a, *changes, aux_shift);
-    c.b = CURVE_PREFIX(linear_combination_renumber)(c.b, *changes, aux_shift);
-    c.c = CURVE_PREFIX(linear_combination_renumber)(c.c, *changes, aux_shift);
-
-#ifdef DEBUG
-    const std::string annotation = source.constraint_annotations[i];
-    target->add_constraint(c, annotation);
-#else
-    target->add_constraint(c);
-#endif
-  }
-}
-
-void CURVE_PREFIX(protoboard_set_variable)(protoboard<FieldT>* pb, pb_variable<FieldT>* x, FieldT* y) {
-  pb->val(*x) = *y;
-}
-
-FieldT* CURVE_PREFIX(protoboard_get_variable)(protoboard<FieldT>* pb, pb_variable<FieldT>* x) {
-  return new FieldT(pb->val(*x));
 }
 
 void CURVE_PREFIX(init_public_params)() {
@@ -1218,50 +1115,5 @@ libff::G2<ppT>* CURVE_PREFIX(bg_proof_delta_prime)(r1cs_bg_ppzksnark_proof<ppT>*
 }
 
 // End BG specific code
-
-// begin SHA gadget code
-void CURVE_PREFIX(digest_variable_delete)(
-    digest_variable<FieldT>* digest) {
-  delete digest;
-}
-
-digest_variable<FieldT>* CURVE_PREFIX(digest_variable_create)(
-    protoboard<FieldT>* pb, int digest_size) {
-  return new digest_variable<FieldT>(*pb, digest_size, "digest_variable_create");
-}
-
-pb_variable_array<FieldT>* CURVE_PREFIX(digest_variable_bits)(
-    digest_variable<FieldT>* digest) {
-  return new pb_variable_array<FieldT>(digest->bits);
-}
-
-void CURVE_PREFIX(sha256_compression_function_gadget_delete)(
-    sha256_compression_function_gadget<FieldT>* g) {
-  delete g;
-}
-
-sha256_compression_function_gadget<FieldT>*
-CURVE_PREFIX(sha256_compression_function_gadget_create)(
-    protoboard<FieldT>* pb,
-    pb_variable_array<FieldT>* prev_output,
-    pb_variable_array<FieldT>* new_block,
-    digest_variable<FieldT>* output) {
-  return new sha256_compression_function_gadget<FieldT>(
-      *pb,
-      pb_linear_combination_array<FieldT>(*prev_output),
-      *new_block,
-      *output,
-      "sha256_compression_function_gadget_create");
-}
-
-void CURVE_PREFIX(sha256_compression_function_gadget_generate_r1cs_constraints)(
-  sha256_compression_function_gadget<FieldT>* g) {
-  g->generate_r1cs_constraints();
-}
-
-void CURVE_PREFIX(sha256_compression_function_gadget_generate_r1cs_witness)(
-  sha256_compression_function_gadget<FieldT>* g) {
-  g->generate_r1cs_witness();
-}
 
 }

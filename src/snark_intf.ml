@@ -631,6 +631,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       *)
       val add : t -> t -> t
 
+      (** [negate x] returns the additive inverse of x as a field eleement
+      *)
+      val negate : t -> t
+
       (** [sub x y] returns the result of subtracting the R1CS variables [x]
           and [y].
 
@@ -1478,7 +1482,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> unit
   end
 
-  val set_constraint_logger : (Constraint.t -> unit) -> unit
+  val set_constraint_logger :
+       (?at_label_boundary:[`Start | `End] * string -> Constraint.t -> unit)
+    -> unit
 
   val clear_constraint_logger : unit -> unit
 end
@@ -1905,6 +1911,8 @@ module type Run_basic = sig
 
     val add : t -> t -> t
 
+    val negate : t -> t
+
     val sub : t -> t -> t
 
     val scale : t -> field -> t
@@ -2269,7 +2277,9 @@ module type Run_basic = sig
   val constraint_count :
     ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
 
-  val set_constraint_logger : (Constraint.t -> unit) -> unit
+  val set_constraint_logger :
+       (?at_label_boundary:[`Start | `End] * string -> Constraint.t -> unit)
+    -> unit
 
   val clear_constraint_logger : unit -> unit
 

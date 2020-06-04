@@ -48,7 +48,11 @@ type ('prover_state, 'field) t =
   ; handler: Request.Handler.t
   ; is_running: bool
   ; as_prover: bool ref
-  ; log_constraint: ('field Cvar.t Constraint.t -> unit) option }
+  ; log_constraint:
+      (   ?at_label_boundary:[`Start | `End] * string
+       -> 'field Cvar.t Constraint.t
+       -> unit)
+      option }
 
 let set_prover_state prover_state
     { system
