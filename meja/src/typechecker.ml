@@ -427,22 +427,22 @@ let rec check_type_aux ~loc typ ctyp env =
         let rescope_rest_error exn =
           match exn with
           | Error (loc, env, Cannot_unify (typ, ctyp)) ->
-              (*Format.eprintf "Cannot unify:@.%a@.%a@.@." typ_debug_print_alts
-                typ typ_debug_print_alts ctyp;*)
+              (*Format.eprintf "Cannot unify:@.%a@.%a@.@." Debug_print.type_expr_alts
+                typ Debug_print.type_expr_alts ctyp;*)
               Error (loc, env, Cannot_unify (typ, ctyp))
           | Error (loc, env, Recursive_variable recvar)
             when phys_equal recvar row_rest1 ->
-              (*Format.eprintf "Recursive variable:@.%a@." typ_debug_print
+              (*Format.eprintf "Recursive variable:@.%a@." Debug_print.type_expr
                 recvar;*)
               Error (loc, env, Cannot_unify (typ, ctyp))
           | Error (loc, env, Recursive_variable recvar)
             when phys_equal recvar row_rest2 ->
-              (*Format.eprintf "Recursive variable:@.%a@." typ_debug_print
+              (*Format.eprintf "Recursive variable:@.%a@." Debug_print.type_expr
                 recvar;*)
               Error (loc, env, Cannot_unify (typ, ctyp))
           | Error (loc, env, Recursive_variable recvar)
             when phys_equal recvar row_rest ->
-              (*Format.eprintf "Recursive variable:@.%a@." typ_debug_print
+              (*Format.eprintf "Recursive variable:@.%a@." Debug_print.type_expr
                 recvar;*)
               Error (loc, env, Cannot_unify (typ, ctyp))
           | _ ->
@@ -540,8 +540,8 @@ let check_type ~loc env typ constr_typ =
       raise (Error (loc, env, Check_failed (typ, constr_typ, err)))
   (*| exception err ->
       Format.(
-        fprintf err_formatter "checking:%a@.%a@." typ_debug_print typ
-          typ_debug_print constr_typ) ;
+        fprintf err_formatter "checking:%a@.%a@." Debug_print.type_expr typ
+          Debug_print.type_expr constr_typ) ;
       raise err*)
   | () ->
       ()
@@ -2504,8 +2504,8 @@ let rec report_error ppf = function
         "@[<v>@[<hov>Incompatible types@ @[<h>%a@] and@ @[<h>%a@]:@]@;%a@]"
         !pp_typ typ !pp_typ constr_typ report_error err
   | Cannot_unify (typ, constr_typ) ->
-      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" !pp_typ
-        (*typ_debug_print*) typ !pp_typ (*typ_debug_print*) constr_typ
+      fprintf ppf "@[<hov>Cannot unify@ @[<h>%a@] and@ @[<h>%a@]@]" !pp_typ typ
+        !pp_typ constr_typ
   | Recursive_variable typ ->
       fprintf ppf
         "@[<hov>The variable@ @[<h>%a@] would have an instance that contains \

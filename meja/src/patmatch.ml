@@ -164,7 +164,7 @@ and case_of_type env typ =
 let expand_case_of_type env typ =
   match case_of_type env typ with
   | Pcase_type typ ->
-      Format.eprintf "%a@." Type1.typ_debug_print typ ;
+      Format.eprintf "%a@." Debug_print.type_expr typ ;
       failwith "Could not expand type."
   | case ->
       case
