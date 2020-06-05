@@ -1052,9 +1052,9 @@ module Type = struct
             assert false )
 
   let copy typ env =
-    (*Format.eprintf "Copying:@.%a@." typ_debug_print typ ;*)
+    (*Format.eprintf "Copying:@.%a@." Debug_print.type_expr typ ;*)
     let rec copy typ =
-      (*Format.eprintf "Copying (step):@.%a@." typ_debug_print typ ;*)
+      (*Format.eprintf "Copying (step):@.%a@." Debug_print.type_expr typ ;*)
       let typ = repr typ in
       match typ.type_desc with
       | Tpoly _ ->
@@ -1088,7 +1088,7 @@ module Type = struct
                 Format.eprintf
                   "Fatal error:@ Found a replaceable type linked to a \
                    variable.@.%a@."
-                  typ_debug_print_alts typ ;
+                  Debug_print.type_expr_alts typ ;
                 assert false
             | typ ->
                 iter ~f:check_replace typ
@@ -1114,7 +1114,7 @@ module Type = struct
                      an actual row. Fail hard.
                   *)
                   Format.eprintf "Invalid row_presence_proxy:@.%a@."
-                    row_presence_debug_print row_presence_proxy ;
+                    Debug_print.row_presence row_presence_proxy ;
                   assert false )
             | Tvar _, Tvar _
             | Topaque {type_desc= Tvar _; _}, Topaque {type_desc= Tvar _; _} ->
@@ -1131,7 +1131,8 @@ module Type = struct
                 Format.eprintf
                   "Unexpected value for [row_rest]. \
                    Original:@.%a@.Copied:@.%a@."
-                  typ_debug_print row_rest' typ_debug_print row_rest ;
+                  Debug_print.type_expr row_rest' Debug_print.type_expr
+                  row_rest ;
                 assert false
           in
           let row_presence_proxy' = row_presence_proxy in
@@ -1146,7 +1147,7 @@ module Type = struct
                    actual row. Fail hard.
                 *)
                 Format.eprintf "Invalid row_presence_proxy:@.%a@."
-                  row_presence_debug_print row_presence_proxy ;
+                  Debug_print.row_presence row_presence_proxy ;
                 assert false
           in
           let should_freshen =
@@ -1243,7 +1244,7 @@ module Type = struct
       | _ ->
           copy typ
     in
-    (*Format.eprintf "Copied:@.%a@." typ_debug_print typ ;*)
+    (*Format.eprintf "Copied:@.%a@." Debug_print.type_expr typ ;*)
     (* Restore the values of 'refreshed' variables. *)
     backtrack snap ; typ
 
@@ -1642,8 +1643,8 @@ let find_name ~mode (lid : lid) env =
   with
   | Some (ident, typ) ->
       let typ' = Type.copy typ env in
-      (*Format.eprintf "Copying. Original:@.%a@.Copy:@.%a@." typ_debug_print typ
-        typ_debug_print typ' ;*)
+      (*Format.eprintf "Copying. Original:@.%a@.Copy:@.%a@." Debug_print.type_expr typ
+        Debug_print.type_expr typ' ;*)
       (ident, typ')
   | None ->
       raise (Error (lid.loc, Unbound_value lid.txt))

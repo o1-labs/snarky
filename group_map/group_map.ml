@@ -76,18 +76,11 @@ end
 
 module type S = sig
   module Spec : sig
-    type _ t
+    type _ t [@@deriving bin_io]
   end
 
   module Params : sig
-    [%%versioned:
-    module Stable : sig
-      module V1 : sig
-        type _ t [@@deriving bin_io]
-      end
-    end]
-
-    type 'f t = 'f Stable.Latest.t
+    type 'f t [@@deriving bin_io]
 
     val map : 'a t -> f:('a -> 'b) -> 'b t
 
@@ -116,14 +109,7 @@ module type S = sig
 end
 
 module Conic = struct
-  [%%versioned
-  module Stable = struct
-    module V1 = struct
-      type 'f t = {z: 'f; y: 'f}
-    end
-  end]
-
-  type 'f t = 'f Stable.Latest.t = {z: 'f; y: 'f}
+  type 'f t = {z: 'f; y: 'f} [@@deriving bin_io]
 
   let map {z; y} ~f = {z= f z; y= f y}
 end
@@ -143,37 +129,17 @@ module V = struct
 end
 
 module Spec = struct
-  [%%versioned
-  module Stable = struct
-    module V1 = struct
-      type 'f t = {a: 'f; b: 'f} [@@deriving fields, bin_io, version]
-    end
-  end]
-
-  include Stable.Latest
+  type 'f t = {a: 'f; b: 'f} [@@deriving fields, bin_io]
 end
 
 module Params = struct
-  [%%versioned
-  module Stable = struct
-    module V1 = struct
-      type 'f t =
-        { u: 'f
-        ; u_over_2: 'f
-        ; projection_point: 'f Conic.Stable.V1.t
-        ; conic_c: 'f
-        ; spec: 'f Spec.Stable.V1.t }
-      [@@deriving fields, version]
-    end
-  end]
-
-  type 'f t = 'f Stable.Latest.t =
+  type 'f t =
     { u: 'f
     ; u_over_2: 'f
     ; projection_point: 'f Conic.t
     ; conic_c: 'f
     ; spec: 'f Spec.t }
-  [@@deriving fields]
+  [@@deriving fields, bin_io]
 
   let map {u; u_over_2; projection_point; conic_c; spec= {a; b}} ~f =
     { u= f u

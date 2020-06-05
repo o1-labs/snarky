@@ -3,25 +3,18 @@
 open Core_kernel
 
 module Spec = struct
-  type 'f t = {b: 'f}
+  type 'f t = {b: 'f} [@@deriving bin_io]
 end
 
 module Params = struct
-  [%%versioned
-  module Stable = struct
-    module V1 = struct
-      type 'f t =
-        { u: 'f
-        ; fu: 'f
-        ; sqrt_neg_three_u_squared_minus_u_over_2: 'f
-        ; sqrt_neg_three_u_squared: 'f
-        ; inv_three_u_squared: 'f
-        ; b: 'f }
-      [@@deriving fields, bin_io, version]
-    end
-  end]
-
-  include Stable.Latest
+  type 'f t =
+    { u: 'f
+    ; fu: 'f
+    ; sqrt_neg_three_u_squared_minus_u_over_2: 'f
+    ; sqrt_neg_three_u_squared: 'f
+    ; inv_three_u_squared: 'f
+    ; b: 'f }
+  [@@deriving fields, bin_io]
 
   let spec {b; _} = {Spec.b}
 
