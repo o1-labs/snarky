@@ -224,7 +224,7 @@ module Make_sponge (P : Intf.Permutation) = struct
 
   let capacity = 1
 
-  type sponge_state = Absorbed of int | Squeezed of int
+  type sponge_state = Absorbed of int | Squeezed of int [@@deriving sexp]
 
   type t =
     { mutable state: Field.t State.t
@@ -273,18 +273,18 @@ module Make_sponge (P : Intf.Permutation) = struct
         t.state.(0)
 end
 
-module Make_bit_sponge (Bool : sig
-  type t
-end) (Field : sig
-  type t
+module Make_bit_sponge
+    (Bool : Intf.T) (Field : sig
+        type t
 
-  val to_bits : t -> Bool.t list
-end)
-(S : Intf.Sponge
-     with module State := State
-      and module Field := Field
-      and type digest := Field.t
-      and type input := Field.t) =
+        val to_bits : t -> Bool.t list
+    end)
+    (Input : Intf.T)
+    (S : Intf.Sponge
+         with module State := State
+          and module Field := Field
+          and type digest := Field.t
+          and type input := Input.t) =
 struct
   type t =
     { underlying: S.t
@@ -315,4 +315,8 @@ struct
       t.last_squeezed
       <- t.last_squeezed @ List.take (Field.to_bits x) high_entropy_bits ;
       squeeze ~length t
+
+  let squeeze_field t =
+    t.last_squeezed <- [] ;
+    S.squeeze t.underlying
 end
