@@ -363,9 +363,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     let group_map =
       lazy
         (let params =
-           Group_map.Params.create
-             (module Field.Constant)
-             {a= Params.a; b= Params.b}
+           Group_map.Params.create (module Field.Constant) Params.{a; b}
          in
          Group_map.to_group (module Field.Constant) ~params)
 
@@ -520,7 +518,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
      Output:
     (2*r + 1 + 2^len(r)) t
   *)
-  let scale (t : Field.t * Field.t) (`Times_two_plus_1_plus_2_to_len r) :
+  let scale_fast (t : Field.t * Field.t) (`Times_two_plus_1_plus_2_to_len r) :
       Field.t * Field.t =
     let n = Array.length r in
     let acc = ref (double t) in
@@ -540,16 +538,16 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
 
      Based on [Daira's algorithm](https://github.com/zcash/zcash/issues/3924)
   *)
-  let scale t (`Plus_two_to_len_minus_1 k) =
+  let scale_fast t (`Plus_two_to_len_minus_1 k) =
     let m = Array.length k - 1 in
     let r = Array.init m ~f:(fun i -> k.(i + 1)) in
     let two_r_plus_1_plus_two_to_m =
-      scale t (`Times_two_plus_1_plus_2_to_len r)
+      scale_fast t (`Times_two_plus_1_plus_2_to_len r)
     in
     if_ k.(0) ~then_:two_r_plus_1_plus_two_to_m
       ~else_:(add_exn two_r_plus_1_plus_two_to_m (negate t))
 
-  let%test_unit "scale" =
+  let%test_unit "scale_fast" =
     let scale_constant (t, bs) =
       let rec go acc bs =
         match bs with
@@ -568,6 +566,18 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
       [@@deriving sexp, compare]
     end in
     let one = Constant.of_affine Params.one in
+    [%test_eq: A.t]
+      (Constant.to_affine_exn Constant.(one + negate one + one))
+      Constant.(to_affine_exn one) ;
+    [%test_eq: A.t]
+      (Constant.to_affine_exn (scale_constant (one, [|true|])))
+      Constant.(to_affine_exn one) ;
+    [%test_eq: A.t]
+      (Constant.to_affine_exn (scale_constant (one, [|false; true|])))
+      Constant.(to_affine_exn (one + one)) ;
+    [%test_eq: A.t]
+      (Constant.to_affine_exn (scale_constant (one, [|true; true|])))
+      Constant.(to_affine_exn (one + one + one)) ;
     [%test_eq: A.t]
       (Constant.to_affine_exn (scale_constant (one, [|false; false; true|])))
       Constant.(to_affine_exn (one + one + one + one)) ;
@@ -589,7 +599,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
       (Typ.tuple2 g (Typ.array ~length:n Boolean.typ))
       g
       (fun (t, bs) ->
-        make_checked (fun () -> scale t (`Plus_two_to_len_minus_1 bs)) )
+        make_checked (fun () -> scale_fast t (`Plus_two_to_len_minus_1 bs)) )
       (fun (t, bs) ->
         let open Constant in
         let t = of_affine t in
