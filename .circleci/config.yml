@@ -25,7 +25,7 @@ jobs:
                   opam switch create 4.07.1 || true
                   opam switch switch
                   opam switch import opam.export
-            - save_cache
+            - save_cache:
                 name: Save opam cache
                 key: opam-linux-v1-{{ checksum "opam.export" }}
                 paths:
