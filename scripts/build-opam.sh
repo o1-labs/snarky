@@ -2,8 +2,9 @@
 
 set -eo
 
-# Check if the switch is up-to-date
+# Generate opam.test from the current opam switch
 opam switch export opam.test
+# Check if the switch is up-to-date
 if diff opam.test opam.export; then
     exit 0
 fi
