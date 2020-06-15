@@ -31,8 +31,6 @@ jobs:
                 paths:
                     - "/home/opam/.opam"
     build:
-        requires:
-            - build-opam-cache
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
         - image: codaprotocol/coda:toolchain-f8dc1642d4ed1d38a7c726f0f2677f53654e4bfc
@@ -46,8 +44,6 @@ jobs:
             - run: eval `opam config env` && make examples
             - run: eval `opam config env` && make tests
     opam-pin:
-        requires:
-            - build-opam-cache
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
         - image: codaprotocol/coda:toolchain-f8dc1642d4ed1d38a7c726f0f2677f53654e4bfc
@@ -58,8 +54,6 @@ jobs:
                 name: opam pin
                 command: eval `opam config env` && opam pin .
     meja:
-        requires:
-            - build-opam-cache
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
         - image: codaprotocol/coda:toolchain-f8dc1642d4ed1d38a7c726f0f2677f53654e4bfc
@@ -90,5 +84,11 @@ workflows:
         - website
         - build-opam-cache
         - build
+             requires:
+                - build-opam-cache
         - opam-pin
+             requires:
+                - build-opam-cache
         - meja
+             requires:
+                - build-opam-cache
