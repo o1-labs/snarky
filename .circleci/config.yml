@@ -13,18 +13,14 @@ jobs:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
         - image: codaprotocol/coda:toolchain-f8dc1642d4ed1d38a7c726f0f2677f53654e4bfc
         steps:
+            - checkout
             - restore_cache:
                 name: Restore opam cache
                 keys:
                     - opam-linux-v1-{{ checksum "opam.export" }}
             - run:
                 name: Install opam deps
-                command: |
-                  opam init
-                  opam update
-                  opam switch create 4.07.1 || true
-                  opam switch switch
-                  opam switch import opam.export
+                command: scripts/build-opam.sh
             - save_cache:
                 name: Save opam cache
                 key: opam-linux-v1-{{ checksum "opam.export" }}
