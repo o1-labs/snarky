@@ -83,12 +83,12 @@ workflows:
         jobs:
         - website
         - build-opam-cache
-        - build
+        - build:
              requires:
                 - build-opam-cache
-        - opam-pin
+        - opam-pin:
              requires:
                 - build-opam-cache
-        - meja
+        - meja:
              requires:
                 - build-opam-cache
