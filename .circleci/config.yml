@@ -2,9 +2,10 @@ version: 2.1
 commands:
     fetch-opam:
         steps:
-            name: Restore opam cache
-            keys:
-                - opam-linux-v1-{{ checksum "opam.export" }}
+            - restore_cache:
+                name: Restore opam cache
+                keys:
+                    - opam-linux-v1-{{ checksum "opam.export" }}
 
 jobs:
     build-opam-cache:
