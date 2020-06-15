@@ -359,7 +359,7 @@ module Make_json
         val public_input :
           (unit -> unit, unit, computation, public_input) Intf.Data_spec.t
 
-        val read_input : Yojson.Safe.json -> (unit, public_input) H_list.t
+        val read_input : Yojson.Safe.t -> (unit, public_input) H_list.t
 
         module Witness : sig
           type t
@@ -367,7 +367,7 @@ module Make_json
           module Constant : sig
             type t
 
-            val of_yojson : Yojson.Safe.json -> (t, string) Result.t
+            val of_yojson : Yojson.Safe.t -> (t, string) Result.t
           end
 
           val typ : (t, Constant.t) Intf.Typ.t

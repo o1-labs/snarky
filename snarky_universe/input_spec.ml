@@ -64,7 +64,7 @@ module Make (Impl : Snarky.Snark_intf.Run with type prover_state = unit) :
 
   let rec read_input' : type r_var k_var k_value.
          (r_var, unit, k_var, k_value) t
-      -> Yojson.Safe.json list
+      -> Yojson.Safe.t list
       -> (unit, k_value) Snarky.H_list.t =
    fun t json ->
     match (t, json) with
@@ -81,7 +81,7 @@ module Make (Impl : Snarky.Snark_intf.Run with type prover_state = unit) :
 
   let read_input : type r_var k_var k_value.
          (r_var, unit, k_var, k_value) t
-      -> Yojson.Safe.json
+      -> Yojson.Safe.t
       -> (unit, k_value) Snarky.H_list.t =
    fun t json ->
     match json with
