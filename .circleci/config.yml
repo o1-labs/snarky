@@ -1,11 +1,38 @@
-version: 2
+version: 2.1
+commands:
+    fetch-opam:
+        steps:
+            - restore_cache:
+                name: Restore opam cache
+                keys:
+                    - opam-linux-v1-{{ checksum "opam.export" }}
+
 jobs:
+    build-opam-cache:
+        docker:
+        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
+        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
+        steps:
+            - checkout
+            - restore_cache:
+                name: Restore opam cache
+                keys:
+                    - opam-linux-v1-{{ checksum "opam.export" }}
+            - run:
+                name: Install opam deps
+                command: scripts/build-opam.sh
+            - save_cache:
+                name: Save opam cache
+                key: opam-linux-v1-{{ checksum "opam.export" }}
+                paths:
+                    - "/home/opam/.opam"
     build:
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-f8dc1642d4ed1d38a7c726f0f2677f53654e4bfc
+        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
         steps:
             - checkout
+            - fetch-opam
             - run:
                 name: Lint
                 command: eval `opam config env` && make check-format
@@ -15,18 +42,20 @@ jobs:
     opam-pin:
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-f8dc1642d4ed1d38a7c726f0f2677f53654e4bfc
+        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
         steps:
             - checkout
+            - fetch-opam
             - run:
                 name: opam pin
                 command: eval `opam config env` && opam pin .
     meja:
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-f8dc1642d4ed1d38a7c726f0f2677f53654e4bfc
+        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
         steps:
             - checkout
+            - fetch-opam
             - run:
                 name: Build snarky
                 command: eval `opam config env` && make build
@@ -48,7 +77,14 @@ workflows:
     version: 2
     snarky_parallel:
         jobs:
-        - build
-        - opam-pin
-        - meja
         - website
+        - build-opam-cache
+        - build:
+             requires:
+                - build-opam-cache
+        - opam-pin:
+             requires:
+                - build-opam-cache
+        - meja:
+             requires:
+                - build-opam-cache
