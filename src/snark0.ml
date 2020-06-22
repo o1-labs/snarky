@@ -348,21 +348,25 @@ struct
       r - e = b (t - e)
     *)
       let b = (b :> Cvar.t) in
-      match (then_, else_) with
-      | Constant t, Constant e ->
-          return Cvar.((t * b) + (e * (constant Field0.one - b)))
-      | _, _ ->
-          let%bind r =
-            exists Typ.field
-              ~compute:
-                (let open As_prover in
-                let open Let_syntax in
-                let%bind b = read_var b in
-                read Typ.field
-                  (if Field.equal b Field.one then then_ else else_))
-          in
-          let%map () = assert_r1cs b Cvar.(then_ - else_) Cvar.(r - else_) in
-          r
+      match b with
+      | Constant b ->
+          if Field.(equal b one) then return then_ else return else_
+      | _ -> (
+        match (then_, else_) with
+        | Constant t, Constant e ->
+            return Cvar.((t * b) + (e * (constant Field0.one - b)))
+        | _, _ ->
+            let%bind r =
+              exists Typ.field
+                ~compute:
+                  (let open As_prover in
+                  let open Let_syntax in
+                  let%bind b = read_var b in
+                  read Typ.field
+                    (if Field.equal b Field.one then then_ else else_))
+            in
+            let%map () = assert_r1cs b Cvar.(then_ - else_) Cvar.(r - else_) in
+            r )
 
     let%snarkydef_ assert_non_zero (v : Cvar.t) =
       let open Let_syntax in
