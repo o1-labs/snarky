@@ -13,6 +13,10 @@ module Params = struct
   let bn382_p = Constants.params_Bn382_p
 
   let bn382_q = Constants.params_Bn382_q
+
+  let tweedle_p = Constants.params_Tweedle_p
+
+  let tweedle_q = Constants.params_Tweedle_q
 end
 
 module State = Array
@@ -219,17 +223,25 @@ module Make_hash (P : Intf.Permutation) = struct
     update params ~state:init inputs |> digest
 end
 
+type sponge_state = Absorbed of int | Squeezed of int [@@deriving sexp]
+
+type 'f t =
+  { mutable state: 'f State.t
+  ; params: 'f Params.t
+  ; mutable sponge_state: sponge_state }
+
+let make ~state ~params ~sponge_state = {state; params; sponge_state}
+
 module Make_sponge (P : Intf.Permutation) = struct
   open P
+
+  let make = make
 
   let capacity = 1
 
   type sponge_state = Absorbed of int | Squeezed of int [@@deriving sexp]
 
-  type t =
-    { mutable state: Field.t State.t
-    ; params: Field.t Params.t
-    ; mutable sponge_state: sponge_state }
+  type nonrec t = Field.t t
 
   let state {state; _} = copy state
 
@@ -273,50 +285,57 @@ module Make_sponge (P : Intf.Permutation) = struct
         t.state.(0)
 end
 
-module Make_bit_sponge
-    (Bool : Intf.T) (Field : sig
-        type t
-
-        val to_bits : t -> Bool.t list
-    end)
-    (Input : Intf.T)
-    (S : Intf.Sponge
-         with module State := State
-          and module Field := Field
-          and type digest := Field.t
-          and type input := Input.t) =
-struct
-  type t =
-    { underlying: S.t
+module Bit_sponge = struct
+  type ('s, 'bool) t =
+    { underlying: 's
           (* TODO: Have to be careful about these bits. They aren't perfectly uniform. *)
-    ; mutable last_squeezed: Bool.t list }
+    ; mutable last_squeezed: 'bool list }
 
-  let state t = S.state t.underlying
+  let map (type a b) t ~(f : a -> b) : (b, _) t =
+    {t with underlying= f t.underlying}
 
-  let high_entropy_bits = 256
+  module Make
+      (Bool : Intf.T) (Field : sig
+          type t
 
-  let create ?init params =
-    {underlying= S.create ?init params; last_squeezed= []}
+          val to_bits : t -> Bool.t list
+      end)
+      (Input : Intf.T)
+      (S : Intf.Sponge
+           with module State := State
+            and module Field := Field
+            and type digest := Field.t
+            and type input := Input.t) =
+  struct
+    type nonrec t = (S.t, Bool.t) t
 
-  let copy {underlying; last_squeezed} =
-    {underlying= S.copy underlying; last_squeezed}
+    let state t = S.state t.underlying
 
-  let absorb t x =
-    S.absorb t.underlying x ;
-    t.last_squeezed <- []
+    let high_entropy_bits = 128
 
-  let rec squeeze t ~length =
-    if List.length t.last_squeezed >= length then (
-      let digest, remaining = List.split_n t.last_squeezed length in
-      t.last_squeezed <- remaining ;
-      digest )
-    else
-      let x = S.squeeze t.underlying in
-      t.last_squeezed
-      <- t.last_squeezed @ List.take (Field.to_bits x) high_entropy_bits ;
-      squeeze ~length t
+    let create ?init params =
+      {underlying= S.create ?init params; last_squeezed= []}
 
-  let squeeze_field t =
-    t.last_squeezed <- [] ;
-    S.squeeze t.underlying
+    let copy {underlying; last_squeezed} =
+      {underlying= S.copy underlying; last_squeezed}
+
+    let absorb t x =
+      S.absorb t.underlying x ;
+      t.last_squeezed <- []
+
+    let rec squeeze t ~length =
+      if List.length t.last_squeezed >= length then (
+        let digest, remaining = List.split_n t.last_squeezed length in
+        t.last_squeezed <- remaining ;
+        digest )
+      else
+        let x = S.squeeze t.underlying in
+        t.last_squeezed
+        <- t.last_squeezed @ List.take (Field.to_bits x) high_entropy_bits ;
+        squeeze ~length t
+
+    let squeeze_field t =
+      t.last_squeezed <- [] ;
+      S.squeeze t.underlying
+  end
 end
