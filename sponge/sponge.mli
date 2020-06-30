@@ -14,6 +14,10 @@ module Params : sig
   val mnt4_298 : string t
 
   val mnt4_753 : string t
+
+  val tweedle_p : string t
+
+  val tweedle_q : string t
 end
 
 module State : sig
@@ -37,32 +41,58 @@ module Bn382_inputs (Field : Intf.Field_mutable) :
 module Make_hash (P : Intf.Permutation) :
   Intf.Hash with module State := State and module Field := P.Field
 
-module Make_sponge (P : Intf.Permutation) :
-  Intf.Sponge
-  with module State := State
-   and module Field := P.Field
-   and type digest := P.Field.t
-   and type input := P.Field.t
+type sponge_state = Absorbed of int | Squeezed of int [@@deriving sexp]
 
-module Make_bit_sponge (Bool : sig
-  type t
-end) (Field : sig
-  type t
+type 'f t =
+  { mutable state: 'f State.t
+  ; params: 'f Params.t
+  ; mutable sponge_state: sponge_state }
 
-  val to_bits : t -> Bool.t list
-end)
-(Input : Intf.T)
-(S : Intf.Sponge
-     with module State := State
-      and module Field := Field
-      and type digest := Field.t
-      and type input := Input.t) : sig
+val make :
+  state:'f State.t -> params:'f Params.t -> sponge_state:sponge_state -> 'f t
+
+module Make_sponge (P : Intf.Permutation) : sig
   include
     Intf.Sponge
     with module State := State
-     and module Field := Field
-     and type digest := length:int -> Bool.t list
-     and type input := Input.t
+     and module Field := P.Field
+     and type digest := P.Field.t
+     and type input := P.Field.t
+     and type t = P.Field.t t
 
-  val squeeze_field : t -> Field.t
+  val make :
+       state:P.Field.t State.t
+    -> params:P.Field.t Params.t
+    -> sponge_state:sponge_state
+    -> t
+end
+
+module Bit_sponge : sig
+  type ('s, 'bool) t
+
+  val map : ('a, 'x) t -> f:('a -> 'b) -> ('b, 'x) t
+
+  module Make (Bool : sig
+    type t
+  end) (Field : sig
+    type t
+
+    val to_bits : t -> Bool.t list
+  end)
+  (Input : Intf.T)
+  (S : Intf.Sponge
+       with module State := State
+        and module Field := Field
+        and type digest := Field.t
+        and type input := Input.t) : sig
+    include
+      Intf.Sponge
+      with module State := State
+       and module Field := Field
+       and type digest := length:int -> Bool.t list
+       and type input := Input.t
+       and type t = (S.t, Bool.t) t
+
+    val squeeze_field : t -> Field.t
+  end
 end
