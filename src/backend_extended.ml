@@ -233,7 +233,7 @@ struct
       fun bs -> go Field.one Field.zero bs
 
     (* Unused for now as it is incompatible with the zexe backends. *)
-    let project_fast bs =
+    let _project_fast bs =
       (* todo: 32-bit and ARM support. basically this code needs to always match the loop in the C++ of_data implementation. *)
       assert (Sys.word_size = 64 && not Sys.big_endian) ;
       let module R = Backend.Bigint.R in
