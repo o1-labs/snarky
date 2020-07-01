@@ -275,18 +275,6 @@ struct
 
     let of_string = Fn.compose of_bignum_bigint Bignum_bigint.of_string
 
-    (*
-    (* Unused for now as it is incompatible with the zexe backends. *)
-    let%test_unit "project correctness" =
-      Quickcheck.test
-        Quickcheck.Generator.(
-          small_positive_int >>= fun x -> list_with_length x bool)
-        ~f:(fun bs ->
-          [%test_eq: string]
-            (project_fast bs |> to_string)
-            (project_reference bs |> to_string) )
-
-*)
     let ( + ) = add
 
     let ( * ) = mul
