@@ -154,12 +154,24 @@ let main =
             let env =
               Envi.open_namespace_scope (Pident stdlib) stdlib_scope env
             in
+            (* Load H_list *)
+            let h_list_build_path =
+              Filename.(
+                Sys.executable_name |> dirname
+                |> Fn.flip concat
+                     (concat parent_dir_name "h_list/.h_list.objs"))
+            in
             (* Load Snarky.Request *)
             let snarky_build_path =
               Filename.(
                 Sys.executable_name |> dirname
                 |> Fn.flip concat (concat parent_dir_name "src/.snarky.objs/"))
             in
+            Loader.load_directory env (Filename.concat lib_path "h_list") ;
+            Loader.load_directory env
+              (Filename.concat h_list_build_path "byte") ;
+            Loader.load_directory env
+              (Filename.concat h_list_build_path "native") ;
             Loader.load_directory env (Filename.concat lib_path "snarky") ;
             Loader.load_directory env
               (Filename.concat snarky_build_path "byte") ;
