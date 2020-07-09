@@ -840,7 +840,19 @@ let find_module_deferred ~mode ~loc (lid : lid) env =
           Some (Pident ident, Deferred name)
       | None ->
           None )
-    | _ ->
+    | Ldot (lid, name) -> (
+        let path, parent_m =
+          find_module ~mode ~loc (Location.mkloc lid loc) env
+        in
+        match
+          Scope.find_module_deferred ~mode ~loc ~scopes:env.scope_stack
+            env.resolve_env (Lident name) parent_m
+        with
+        | Some (sub_path, m) ->
+            Some (Path.pdot path sub_path, m)
+        | None ->
+            raise (Error (loc, Unbound_module lid)) )
+    | Lapply _ ->
         let path, m = find_module ~mode ~loc lid env in
         Some (path, Immediate m) )
 
