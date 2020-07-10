@@ -299,6 +299,8 @@ module Bit_sponge = struct
           type t
 
           val to_bits : t -> Bool.t list
+
+          val high_entropy_bits : int
       end)
       (Input : Intf.T)
       (S : Intf.Sponge
@@ -311,7 +313,7 @@ module Bit_sponge = struct
 
     let state t = S.state t.underlying
 
-    let high_entropy_bits = 128
+    let high_entropy_bits = Field.high_entropy_bits
 
     let create ?init params =
       {underlying= S.create ?init params; last_squeezed= []}
