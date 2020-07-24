@@ -3,7 +3,7 @@
  (public_name snarky)
  (inline_tests)
  (modes native)
- (libraries core_kernel fold_lib tuple_lib bitstring_lib interval_union
+ (libraries core_kernel h_list fold_lib tuple_lib bitstring_lib interval_union
    bignum camlsnark_c ctypes yojson base64
    (select gpu_prover.ml from
     (groth16_gpu_prover -> gpu.ml)

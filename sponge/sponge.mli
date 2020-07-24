@@ -78,6 +78,8 @@ module Bit_sponge : sig
     type t
 
     val to_bits : t -> Bool.t list
+
+    val high_entropy_bits : int
   end)
   (Input : Intf.T)
   (S : Intf.Sponge
