@@ -45,6 +45,8 @@ module type S = sig
 
   val div_pow_2 : t -> [`Two_to_the of int] -> (t, _) checked
 
+  val ceil_div_pow_2 : t -> [`Two_to_the of int] -> (t, _) checked
+
   val mul_pow_2 : t -> [`Two_to_the of int] -> (t, _) checked
 
   val mod_pow_2 : t -> [`Two_to_the of int] -> (t, _) checked
@@ -98,6 +100,8 @@ module type Run = sig
   val to_bits : t -> bool_var list
 
   val div_pow_2 : t -> [`Two_to_the of int] -> t
+
+  val ceil_div_pow_2 : t -> [`Two_to_the of int] -> t
 
   val mul_pow_2 : t -> [`Two_to_the of int] -> t
 

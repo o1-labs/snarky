@@ -176,6 +176,23 @@ module Make (Impl : Snark_intf.Basic) = struct
       failwithf "Number.+: Potential overflow: (%s + %s > Field.size)"
         (to_string x.upper_bound) (to_string y.upper_bound) ()
 
+  (* Compute (n, k) -> ceil(n / 2^k) using the identity
+
+     ceil(n / m)
+     =
+        if n % m = 0
+        then floor(n / m)
+        else floor(n / m) + 1
+     =
+        if m * floor(n / m) = n
+        then floor(n / m)
+        else floor(n / m) + 1
+  *)
+  let ceil_div_pow2 n m =
+    let%bind floor_div = div_pow_2 n m in
+    let%bind m_divides_n = mul_pow_2 floor_div m >>= ( = ) n in
+    if_ m_divides_n ~then_:floor_div ~else_:(floor_div + one)
+
   let ( - ) x y =
     let open Bignum_bigint in
     (* x_upper_bound >= x >= x_lower_bound >= y_upper_bound >= y >= y_lower_bound *)
@@ -248,6 +265,8 @@ module Run = struct
     let to_bits x = run_checked (to_bits x)
 
     let div_pow_2 x y = run_checked (div_pow_2 x y)
+
+    let ceil_div_pow2 x y = run_checked (ceil_div_pow2 x y)
 
     let mul_pow_2 x y = run_checked (mul_pow_2 x y)
 
