@@ -188,7 +188,7 @@ module Make (Impl : Snark_intf.Basic) = struct
         then floor(n / m)
         else floor(n / m) + 1
   *)
-  let ceil_div_pow2 n m =
+  let ceil_div_pow_2 n m =
     let%bind floor_div = div_pow_2 n m in
     let%bind m_divides_n = mul_pow_2 floor_div m >>= ( = ) n in
     if_ m_divides_n ~then_:floor_div ~else_:(floor_div + one)
@@ -266,7 +266,7 @@ module Run = struct
 
     let div_pow_2 x y = run_checked (div_pow_2 x y)
 
-    let ceil_div_pow2 x y = run_checked (ceil_div_pow2 x y)
+    let ceil_div_pow_2 x y = run_checked (ceil_div_pow_2 x y)
 
     let mul_pow_2 x y = run_checked (mul_pow_2 x y)
 
