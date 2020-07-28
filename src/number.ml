@@ -176,6 +176,23 @@ module Make (Impl : Snark_intf.Basic) = struct
       failwithf "Number.+: Potential overflow: (%s + %s > Field.size)"
         (to_string x.upper_bound) (to_string y.upper_bound) ()
 
+  (* Compute (n, k) -> ceil(n / 2^k) using the identity
+
+     ceil(n / m)
+     =
+        if n % m = 0
+        then floor(n / m)
+        else floor(n / m) + 1
+     =
+        if m * floor(n / m) = n
+        then floor(n / m)
+        else floor(n / m) + 1
+  *)
+  let ceil_div_pow_2 n m =
+    let%bind floor_div = div_pow_2 n m in
+    let%bind m_divides_n = mul_pow_2 floor_div m >>= ( = ) n in
+    if_ m_divides_n ~then_:floor_div ~else_:(floor_div + one)
+
   let ( - ) x y =
     let open Bignum_bigint in
     (* x_upper_bound >= x >= x_lower_bound >= y_upper_bound >= y >= y_lower_bound *)
@@ -201,6 +218,17 @@ module Make (Impl : Snark_intf.Basic) = struct
        else
          failwithf "Number.*: Potential overflow: (%s * %s > Field.size)"
            (to_string x.upper_bound) (to_string y.upper_bound) ())
+
+  (* x mod n = x - n * floor(x / n) *)
+  let mod_pow_2 x n =
+    let%bind x_div_n = div_pow_2 x n in
+    let%map n_x_div_n = mul_pow_2 x_div_n n in
+    let res = x - n_x_div_n in
+    { res with
+      lower_bound= Bignum_bigint.zero
+    ; upper_bound=
+        (let (`Two_to_the k) = n in
+         Bignum_bigint.(pow (of_int 2) (of_int k))) }
 
   let min x y =
     let%bind less = x < y in
@@ -238,7 +266,11 @@ module Run = struct
 
     let div_pow_2 x y = run_checked (div_pow_2 x y)
 
+    let ceil_div_pow_2 x y = run_checked (ceil_div_pow_2 x y)
+
     let mul_pow_2 x y = run_checked (mul_pow_2 x y)
+
+    let mod_pow_2 x y = run_checked (mod_pow_2 x y)
 
     let clamp_to_n_bits x y = run_checked (clamp_to_n_bits x y)
   end
