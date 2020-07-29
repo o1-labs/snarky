@@ -18,7 +18,7 @@ roots: [
   "digestif.0.9.0"
   "menhir.20200624"
   "ocaml-base-compiler.4.07.1"
-  "ocamlformat.0.14.3"
+  "ocamlformat.0.9"
   "ppx_deriving.4.5"
   "ppx_deriving_yojson.3.5.2"
 ]
@@ -75,7 +75,7 @@ installed: [
   "ocaml-migrate-parsetree.1.7.3"
   "ocamlbuild.0.14.0"
   "ocamlfind.1.8.1"
-  "ocamlformat.0.14.3"
+  "ocamlformat.0.9"
   "octavius.1.2.2"
   "odoc.1.5.1"
   "parsexp.v0.12.0"
