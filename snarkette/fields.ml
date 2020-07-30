@@ -194,6 +194,12 @@ module Make_fp
   include Info
 
   module T = struct
+    let zero = N.of_int 0
+
+    let one = N.of_int 1
+
+    let length_in_bits = N.num_bits N.(Info.order - one)
+
     module Nat = N
     open Nat
 
@@ -202,31 +208,46 @@ module Make_fp
     (* TODO version *)
     type t = N.t [@@deriving eq, sexp, yojson, compare, hash]
 
-    let pad_for_serialization =
-      let order_len = Core_kernel.String.length @@ N.to_bytes order in
-      (* pad to 64-bit word boundary *)
-      let padded_len = Int.((order_len + 7) / 8 * 8) in
-      fun s ->
-        let len = String.length s in
-        let padding = String.make Int.(padded_len - len) '\x00' in
-        s ^ padding
+    let length_in_bytes = Int.((length_in_bits + 7) / 8)
 
     (** serialization meant to be identical to field serializations in snarky *)
-    include Binable.Of_binable
-              (Bigstring.Stable.V1)
-              (struct
-                type nonrec t = t
+    include Bin_prot.Utils.Of_minimal (struct
+      type nonrec t = t
 
-                let of_binable bigstr =
-                  Bigstring.to_string bigstr |> N.of_bytes
+      let bin_shape_t =
+        Bin_prot.Shape.basetype
+          (Bin_prot.Shape.Uuid.of_string
+             (sprintf "snarkette_field_%d" length_in_bytes))
+          []
 
-                let to_binable t =
-                  N.to_bytes t |> pad_for_serialization |> Bigstring.of_string
-              end)
+      let __bin_read_t__ _buf ~pos_ref _vint =
+        Bin_prot.Common.raise_variant_wrong_type "Fp.t" !pos_ref
 
-    let zero = N.of_int 0
+      let bin_size_t _ = length_in_bytes
 
-    let one = N.of_int 1
+      let bin_write_t buf ~pos t =
+        let bs = Bigstring.of_string (N.to_bytes t) in
+        let n = Bigstring.length bs in
+        Bigstring.blit ~src:bs ~dst:buf ~src_pos:0 ~dst_pos:pos ~len:n ;
+        if Int.(n < length_in_bytes) then
+          for i = n to Int.(length_in_bytes - 1) do
+            Bigstring.set buf Int.(pos + i) '\000'
+          done ;
+        Int.(pos + length_in_bytes)
+
+      let bin_read_t buf ~pos_ref =
+        let open Int in
+        let remaining_bytes = Bigstring.length buf - !pos_ref in
+        if remaining_bytes < length_in_bytes then
+          failwithf "Field.bin_read_t: Expected %d bytes, got %d"
+            length_in_bytes remaining_bytes () ;
+        let t =
+          N.of_bytes
+            (Bigstring.to_string buf ~pos:!pos_ref ~len:length_in_bytes)
+        in
+        pos_ref := length_in_bytes + !pos_ref ;
+        t
+    end)
 
     let ( + ) x y = (x + y) % Info.order
 
@@ -260,8 +281,6 @@ module Make_fp
   let to_bigint = Fn.id
 
   let parity t = N.test_bit (to_bigint t) 0
-
-  let length_in_bits = N.num_bits N.(Info.order - one)
 
   let make_gen gen lo hi =
     let t_of_bignum_bigint n = Bigint.to_string n |> N.of_string in
