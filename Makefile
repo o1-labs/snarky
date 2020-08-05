@@ -2,7 +2,7 @@
 default : build
 
 build :
-	dune build --root=.
+	dune build --root=. @@install
 
 tests :
 	dune runtest --root=.
