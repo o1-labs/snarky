@@ -21,7 +21,7 @@ end
 module type Foreign_vector_intf = sig
   include Deletable_intf
 
-  module Vector : Deletable_intf with type t = t Camlsnark_c_bindings.Vector.t
+  module Vector : Deletable_intf
 end
 
 module Make_foreign (X : sig end) : Foreign_intf = struct

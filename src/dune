@@ -6,8 +6,8 @@
  (libraries core_kernel h_list fold_lib tuple_lib bitstring_lib interval_union
    bignum camlsnark_c ctypes yojson base64
    (select gpu_prover.ml from
-    (groth16_gpu_prover -> gpu.ml)
-    (-> no_gpu.ml)))
+    (groth16_gpu_prover -> gpu_prover.gpu.ml)
+    (-> gpu_prover.no_gpu.ml)))
  (c_library_flags :standard -lstdc++ -lpthread)
  (cxx_flags
   (:standard \ -pedantic)

@@ -16,6 +16,7 @@ module Base_proof_system
     (Backend : Groth16_gpu_prover.Prover_intf)
     (Basic : Snark_intf.Basic
              with type field = Backend.Backend.Field.t
+              and type Field.Vector.t = Backend.Backend.Field.Vector.t
               and type Proof.t = Backend.Backend.Default.Proof.t
               and type Proving_key.t = Backend.Backend.Default.Proving_key.t) =
 struct
@@ -110,6 +111,7 @@ module Make_basic
     (Backend : Groth16_gpu_prover.Prover_intf)
     (Basic : Snark_intf.Basic
              with type field = Backend.Backend.Field.t
+              and type Field.Vector.t = Backend.Backend.Field.Vector.t
               and type Proof.t = Backend.Backend.Default.Proof.t
               and type Proving_key.t = Backend.Backend.Default.Proving_key.t) =
 struct
@@ -147,6 +149,7 @@ module Make
     (Backend : Groth16_gpu_prover.Prover_intf)
     (Snark : Snark_intf.S
              with type field = Backend.Backend.Field.t
+              and type Field.Vector.t = Backend.Backend.Field.Vector.t
               and type Proof.t = Backend.Backend.Default.Proof.t
               and type Proving_key.t = Backend.Backend.Default.Proving_key.t) =
 struct
