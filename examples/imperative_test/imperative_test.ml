@@ -1,3 +1,4 @@
+open Core_kernel
 open Snarky
 open Snark
 
@@ -52,22 +53,24 @@ let test3 (type f) ((module I) : f m) x = test (module I) x I.Field.one
 
 let prove () =
   let ((module I) as i) = make (module Backends.Mnt4.GM) in
+  let i = ignore_state i in
   let open I in
   let exposing = Data_spec.[Field.typ] in
   let f x () = test2 i x in
   let keys = generate_keypair ~exposing f in
-  let proof = prove (Keypair.pk keys) exposing f (Field.Constant.of_int 17) in
-  (Proof.to_string proof, Verification_key.to_bigstring (Keypair.vk keys))
+  let proof = prove (Keypair.pk keys) exposing f () (Field.Constant.of_int 17) in
+  (Binable.to_string (module Proof) proof,
+   Binable.to_string (module Verification_key) (Keypair.vk keys))
 
 let verify proof vk =
   let (module I) = make (module Backends.Mnt4.GM) in
   let open I in
   let exposing = Data_spec.[Field.typ] in
-  let proof = Proof.of_string proof in
-  let vk = Verification_key.of_bigstring vk in
+  let proof = Binable.of_string (module Proof) proof in
+  let vk = Binable.of_string (module Verification_key) vk in
   verify proof vk exposing (Field.Constant.of_int 17)
 
-module Intf = Snark.Run.Make (Backends.Mnt4.GM)
+module Intf = Snark.Run.Make (Backends.Mnt4.GM) (Unit)
 
 module Old = struct
   module M = Snark.Make (Backends.Mnt4.GM)
@@ -86,13 +89,14 @@ let prove2 () =
   let open Intf in
   let f x () = test3 (module Intf) x in
   let keys = generate_keypair ~exposing f in
-  let proof = prove (Keypair.pk keys) exposing f (Field.Constant.of_int 39) in
-  (Proof.to_string proof, Verification_key.to_bigstring (Keypair.vk keys))
+  let proof = prove (Keypair.pk keys) exposing f () (Field.Constant.of_int 39) in
+  (Binable.to_string (module Proof) proof,
+   Binable.to_string (module Verification_key) (Keypair.vk keys))
 
 let verify2 proof vk =
   let open Intf in
-  let proof = Proof.of_string proof in
-  let vk = Verification_key.of_bigstring vk in
+  let proof = Binable.of_string (module Proof) proof in
+  let vk = Binable.of_string (module Verification_key) vk in
   verify proof vk exposing (Field.Constant.of_int 29)
 
 let main () =

@@ -6,6 +6,6 @@
 
 (executable
  (name cmi_to_meja)
- (libraries core_kernel ocaml-compiler-libs.common meja.lib)
+ (libraries core_kernel ocaml-compiler-libs.common meja.lib meja.ocaml)
  (preprocess (pps ppxlib.metaquot ppx_jane))
  (modules cmi_to_meja))
