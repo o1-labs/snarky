@@ -7,8 +7,7 @@ let () =
   C.Flags.write_sexp "flags.sexp"
     ( match l with
     | "Darwin" ->
-        [ sprintf "-lcamlsnark_c_stubs"
-        ; "-L/usr/local/opt/openssl/lib"
+        [ "-L/usr/local/opt/openssl/lib"
         ; "-lssl"
         ; "-lcrypto"
         ; "-lsodium"
@@ -18,7 +17,6 @@ let () =
     | "Linux" ->
         [ "-Wl,-E"
         ; "-g"
-        ; "-lcamlsnark_c_stubs"
         ; "-lgomp"
         ; "-lssl"
         ; "-lcrypto"

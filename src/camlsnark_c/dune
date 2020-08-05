@@ -22,7 +22,7 @@
 
 (library
  (name camlsnark_c)
- (libraries core ctypes ctypes.foreign camlsnark_c_bindings)
+ (libraries core ctypes ctypes.foreign camlsnark_c_bindings snarky.libsnark_caml_common)
  (modes native)
  (modules :standard \ camlsnark_linker_flags_gen camlsnark_ctypes_stubs)
  (public_name snarky.c)
@@ -34,7 +34,8 @@
  (targets libcamlsnark_c_stubs.a)
  (deps
   (source_tree libsnark-caml)
-  (env_var SNARKY_PERFORMANCE))
+  (env_var SNARKY_PERFORMANCE)
+  (alias snark_caml_common/build_libsnark_common))
  (locks libsnark-cmake)
  (action (bash "
  if [ ! -v SNARKY_PERFORMANCE ] ||
@@ -56,15 +57,9 @@
        -DUSE_PT_COMPRESSION=OFF \\
        -DUSE_ASM=ON \\
        -DOPT_FLAGS='-ggdb3 -O2' ..
-     make -j$(nproc) zm snark_caml_common snark_caml_bn128 snark_caml_mnt298 snark_caml_mnt753
+     make -j$(nproc) snark_caml_bn128 snark_caml_mnt298 snark_caml_mnt753
 
      mkdir _stubs_build
-
-     mkdir _stubs_build/libzm
-     pushd _stubs_build/libzm/; ar -xv ../../depends/libzm.a; popd
-
-     mkdir _stubs_build/libsnark_caml_common
-     pushd _stubs_build/libsnark_caml_common/; ar -xv ../../caml/libsnark_caml_common.a; popd
 
      mkdir _stubs_build/libsnark_caml_bn128
      pushd _stubs_build/libsnark_caml_bn128/; ar -xv ../../caml/libsnark_caml_bn128.a; popd
@@ -76,8 +71,6 @@
      pushd _stubs_build/libsnark_caml_mnt753/; ar -xv ../../caml/libsnark_caml_mnt753.a; popd
 
      ar -rc libcamlsnark_c_stubs.a \\
-       _stubs_build/libzm/*.o \\
-       _stubs_build/libsnark_caml_common/*.o \\
        _stubs_build/libsnark_caml_bn128/*.o \\
        _stubs_build/libsnark_caml_mnt298/*.o \\
        _stubs_build/libsnark_caml_mnt753/*.o
@@ -106,15 +99,9 @@
          -DCMAKE_LIBRARY_PATH=/usr/local/opt/gmp/lib \\
          -DCMAKE_RULE_MESSAGES:BOOL=OFF \\
          -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ..
-       make -j$(sysctl -n hw.ncpu) zm snark_caml_common snark_caml_bn128 snark_caml_mnt298 snark_caml_mnt753
+       make -j$(sysctl -n hw.ncpu) snark_caml_bn128 snark_caml_mnt298 snark_caml_mnt753
 
        mkdir _stubs_build
-
-       mkdir _stubs_build/libzm
-       pushd _stubs_build/libzm/; ar -xv ../../depends/libzm.a; popd
-
-       mkdir _stubs_build/libsnark_caml_common
-       pushd _stubs_build/libsnark_caml_common/; ar -xv ../../caml/libsnark_caml_common.a; popd
 
        mkdir _stubs_build/libsnark_caml_bn128
        pushd _stubs_build/libsnark_caml_bn128/; ar -xv ../../caml/libsnark_caml_bn128.a; popd
@@ -126,8 +113,6 @@
        pushd _stubs_build/libsnark_caml_mnt753/; ar -xv ../../caml/libsnark_caml_mnt753.a; popd
 
      libtool -static -o libcamlsnark_c_stubs.a \\
-       _stubs_build/libzm/*.o \\
-       _stubs_build/libsnark_caml_common/*.o \\
        _stubs_build/libsnark_caml_bn128/*.o \\
        _stubs_build/libsnark_caml_mnt298/*.o \\
        _stubs_build/libsnark_caml_mnt753/*.o
