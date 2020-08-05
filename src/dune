@@ -8,15 +8,14 @@
    (select gpu_prover.ml from
     (groth16_gpu_prover -> gpu_prover.gpu.ml)
     (-> gpu_prover.no_gpu.ml)))
- (c_library_flags :standard -lstdc++ -lpthread)
- (cxx_flags
-  (:standard \ -pedantic)
-  (-I re2_c/libre2))
- (modules (:standard \ gpu no_gpu))
+ (foreign_stubs
+  (language c)
+  (names libsnark_ffi_bindings vector_ffi_bindings)
+  (flags :standard -lstdc++ -lpthread))
+ (c_library_flags (:standard \ -pedantic) (-I re2_c/libre2))
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
-    -conditional))
- (c_names libsnark_ffi_bindings vector_ffi_bindings))
+    -conditional)))
 
 (rule
  (targets libsnark_ffi_bindings.c libsnark_ffi_bindings.ml vector_ffi_bindings.c vector_ffi_bindings.ml)
