@@ -22,8 +22,8 @@ let main =
       (Filename.basename Sys.executable_name)
   in
   Arg.parse arg_spec (fun filename -> files := filename :: !files) usage_text ;
-  let env = Envi.Core.env in
-  List.iter !cmi_dirs ~f:(Loader.load_directory env) ;
+  let env = Initial_env.env in
+  List.iter !cmi_dirs ~f:(Meja_ocaml.Loader.load_directory env) ;
   let files = List.rev !files in
   List.iter files ~f:(fun filename ->
       let cmi_info = Cmt_format.read_cmi filename in

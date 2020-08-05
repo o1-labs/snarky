@@ -27,10 +27,8 @@
  (modules :standard \ camlsnark_linker_flags_gen camlsnark_ctypes_stubs)
  (public_name snarky.c)
  (preprocess no_preprocessing)
- (c_library_flags
-  :standard
-  (:include flags.sexp))
- (self_build_stubs_archive (camlsnark_c)))
+ (foreign_archives camlsnark_c_stubs)
+ (c_library_flags :standard (:include flags.sexp)))
 
 (rule
  (targets libcamlsnark_c_stubs.a)
@@ -126,7 +124,7 @@
  (deps
   (source_tree libsnark-caml)
   (env_var SNARKY_PERFORMANCE)
-  (package snarky_cuda))
+  %{lib:snarky_cuda:snarky_cuda.a})
  (locks libsnark-cmake)
  (action (bash "
  if [ ! -v SNARKY_PERFORMANCE ] ||
