@@ -73,7 +73,8 @@ type ('prover_state, 'field) m' =
      with type field = 'field
       and type prover_state = 'prover_state)
 
-val make : (module Backend_intf.S with type Field.t = 'field) -> (unit, 'field) m'
+val make :
+  (module Backend_intf.S with type Field.t = 'field) -> (unit, 'field) m'
 
 val make' :
      (module Backend_intf.S with type Field.t = 'field)

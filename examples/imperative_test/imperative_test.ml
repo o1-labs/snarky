@@ -58,9 +58,11 @@ let prove () =
   let exposing = Data_spec.[Field.typ] in
   let f x () = test2 i x in
   let keys = generate_keypair ~exposing f in
-  let proof = prove (Keypair.pk keys) exposing f () (Field.Constant.of_int 17) in
-  (Binable.to_string (module Proof) proof,
-   Binable.to_string (module Verification_key) (Keypair.vk keys))
+  let proof =
+    prove (Keypair.pk keys) exposing f () (Field.Constant.of_int 17)
+  in
+  ( Binable.to_string (module Proof) proof
+  , Binable.to_string (module Verification_key) (Keypair.vk keys) )
 
 let verify proof vk =
   let (module I) = make (module Backends.Mnt4.GM) in
@@ -89,9 +91,11 @@ let prove2 () =
   let open Intf in
   let f x () = test3 (module Intf) x in
   let keys = generate_keypair ~exposing f in
-  let proof = prove (Keypair.pk keys) exposing f () (Field.Constant.of_int 39) in
-  (Binable.to_string (module Proof) proof,
-   Binable.to_string (module Verification_key) (Keypair.vk keys))
+  let proof =
+    prove (Keypair.pk keys) exposing f () (Field.Constant.of_int 39)
+  in
+  ( Binable.to_string (module Proof) proof
+  , Binable.to_string (module Verification_key) (Keypair.vk keys) )
 
 let verify2 proof vk =
   let open Intf in

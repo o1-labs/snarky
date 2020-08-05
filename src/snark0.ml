@@ -2721,7 +2721,8 @@ type ('prover_state, 'field) m' =
       and type prover_state = 'prover_state)
 
 let make (type field)
-    (module Backend : Backend_intf.S with type Field.t = field) : (unit, field) m' =
+    (module Backend : Backend_intf.S with type Field.t = field) :
+    (unit, field) m' =
   (module Run.Make (Backend) (Unit))
 
 let make' (type field prover_state)
