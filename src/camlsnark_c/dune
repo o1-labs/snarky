@@ -56,12 +56,9 @@
        -DUSE_PT_COMPRESSION=OFF \\
        -DUSE_ASM=ON \\
        -DOPT_FLAGS='-ggdb3 -O2' ..
-     make -j$(nproc) ff zm snark_caml_common snark_caml_bn128 snark_caml_mnt298 snark_caml_mnt753
+     make -j$(nproc) zm snark_caml_common snark_caml_bn128 snark_caml_mnt298 snark_caml_mnt753
 
      mkdir _stubs_build
-
-     mkdir _stubs_build/libff
-     pushd _stubs_build/libff/; ar -xv ../../depends/libff/libff/libff.a; popd
 
      mkdir _stubs_build/libzm
      pushd _stubs_build/libzm/; ar -xv ../../depends/libzm.a; popd
@@ -79,7 +76,6 @@
      pushd _stubs_build/libsnark_caml_mnt753/; ar -xv ../../caml/libsnark_caml_mnt753.a; popd
 
      ar -rc libcamlsnark_c_stubs.a \\
-       _stubs_build/libff/*.o \\
        _stubs_build/libzm/*.o \\
        _stubs_build/libsnark_caml_common/*.o \\
        _stubs_build/libsnark_caml_bn128/*.o \\
@@ -110,18 +106,12 @@
          -DCMAKE_LIBRARY_PATH=/usr/local/opt/gmp/lib \\
          -DCMAKE_RULE_MESSAGES:BOOL=OFF \\
          -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ..
-       make -j$(sysctl -n hw.ncpu) ff zm snark_caml_common snark_caml_bn128 snark_caml_mnt298 snark_caml_mnt753
+       make -j$(sysctl -n hw.ncpu) zm snark_caml_common snark_caml_bn128 snark_caml_mnt298 snark_caml_mnt753
 
        mkdir _stubs_build
 
-       mkdir _stubs_build/libff
-       pushd _stubs_build/libff/; ar -xv ../../depends/libff/libff/libff.a; popd
-
        mkdir _stubs_build/libzm
        pushd _stubs_build/libzm/; ar -xv ../../depends/libzm.a; popd
-
-       mkdir _stubs_build/libsnark
-       pushd _stubs_build/libsnark/; ar -xv ../../libsnark/libsnark.a; popd
 
        mkdir _stubs_build/libsnark_caml_common
        pushd _stubs_build/libsnark_caml_common/; ar -xv ../../caml/libsnark_caml_common.a; popd
@@ -136,7 +126,6 @@
        pushd _stubs_build/libsnark_caml_mnt753/; ar -xv ../../caml/libsnark_caml_mnt753.a; popd
 
      libtool -static -o libcamlsnark_c_stubs.a \\
-       _stubs_build/libff/*.o \\
        _stubs_build/libzm/*.o \\
        _stubs_build/libsnark_caml_common/*.o \\
        _stubs_build/libsnark_caml_bn128/*.o \\
