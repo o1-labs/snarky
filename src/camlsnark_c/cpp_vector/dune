@@ -12,4 +12,4 @@
 (rule
  (targets vector_ffi_bindings.c vector_ffi_bindings.ml)
  (action
-  (run ../camlsnark_ctypes_stubs.exe)))
+  (run gen/gen_vector_stubs.exe)))
