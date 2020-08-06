@@ -68,12 +68,13 @@ end
 
 type 'field m = (module Snark_intf.Run with type field = 'field)
 
-val make : (module Backend_intf.S with type Field.t = 'field) -> 'field m
-
 type ('prover_state, 'field) m' =
   (module Snark_intf.Run
      with type field = 'field
       and type prover_state = 'prover_state)
+
+val make :
+  (module Backend_intf.S with type Field.t = 'field) -> (unit, 'field) m'
 
 val make' :
      (module Backend_intf.S with type Field.t = 'field)

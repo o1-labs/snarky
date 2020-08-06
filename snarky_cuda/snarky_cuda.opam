@@ -6,6 +6,9 @@ authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
 homepage: "https://github.com/o1labs/snarky"
 bug-reports: "https://github.com/o1labs/snarky/issues"
 dev-repo: "git+https://github.com/o1labs/snarky.git"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]
 depexts: [
   [ ["debian"] [ "cuda" ] ]
   [ ["ubuntu"] [ "cuda" ] ]
