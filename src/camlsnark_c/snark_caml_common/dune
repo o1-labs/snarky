@@ -51,7 +51,6 @@
      pushd _stubs_build/libsnark_caml_common/; ar -xv ../../caml/libsnark_caml_common.a; popd
 
      libtool -static -o libsnark_caml_common_stubs.a \\
-       _stubs_build/libff/*.o \\
        _stubs_build/libzm/*.o \\
        _stubs_build/libsnark_caml_common/*.o
 

@@ -1,0 +1,58 @@
+(library
+ (name snark_caml_bn128)
+ (libraries snarky.libsnark_caml_common)
+ (modes native)
+ (public_name snarky.libsnark_caml_bn128)
+ (preprocess no_preprocessing)
+ (c_library_flags
+  :standard
+  (:include ../flags.sexp))
+ (foreign_archives snark_caml_bn128_stubs))
+
+(rule
+ (targets libsnark_caml_bn128_stubs.a)
+ (deps
+  (source_tree ../libsnark-caml)
+  (env_var SNARKY_PERFORMANCE)
+  ../setup_stubs.sh)
+ (action (bash "
+ pushd ..
+   ./setup_stubs.sh
+ popd
+ if [ $(uname) = 'Linux' ]; then
+   pushd ../libsnark-caml/build
+     make -j$(nproc) snark_caml_bn128
+
+     mkdir -p _stubs_build
+
+     mkdir -p _stubs_build/libsnark_caml_bn128
+     pushd _stubs_build/libsnark_caml_bn128/; ar -xv ../../caml/libsnark_caml_bn128.a; popd
+
+     ar -rc libsnark_caml_bn128_stubs.a \\
+       _stubs_build/libsnark_caml_bn128/*.o
+
+     rm -r _stubs_build
+   popd
+   mv ../libsnark-caml/build/libsnark_caml_bn128_stubs.a .
+ elif [ $(uname) = 'Darwin' ]; then
+   pushd ../libsnark-caml/build
+     make -j$(sysctl -n hw.ncpu) snark_caml_bn128
+
+     mkdir -p _stubs_build
+
+     mkdir -p _stubs_build/libsnark_caml_bn128
+     pushd _stubs_build/libsnark_caml_bn128/; ar -xv ../../caml/libsnark_caml_bn128.a; popd
+
+     libtool -static -o libsnark_caml_bn128_stubs.a \\
+       _stubs_build/libsnark_caml_bn128/*.o \\
+
+
+     rm -r _stubs_build
+   popd
+   mv ../libsnark-caml/build/libsnark_caml_bn128_stubs.a .
+
+ else
+     echo I do not know how to build libsnark on $(uname)
+     exit 1
+ fi
+")))
