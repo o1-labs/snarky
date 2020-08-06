@@ -1244,7 +1244,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     val set_constraint_system : t -> M.R1CS_constraint_system.t -> unit
   end = struct
     include Proving_key.Make
-              (Ctypes_foreign)
+              (Ctypes_foreign_libffi.Ctypes_foreign)
               (struct
                 let prefix = with_prefix M.prefix "proving_key"
               end)
@@ -1385,7 +1385,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     val get_dummy : input_size:int -> t
   end = struct
     include Verification_key.Make
-              (Ctypes_foreign)
+              (Ctypes_foreign_libffi.Ctypes_foreign)
               (struct
                 let prefix = with_prefix M.prefix "verification_key"
               end)
@@ -1462,7 +1462,7 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     val create : M.R1CS_constraint_system.t -> t
   end = struct
     include Keypair.Make
-              (Ctypes_foreign)
+              (Ctypes_foreign_libffi.Ctypes_foreign)
               (struct
                 let prefix = with_prefix M.prefix "keypair"
               end)
@@ -1603,7 +1603,7 @@ struct
     include Binable.S with type t := t
   end = struct
     include Proof.Make
-              (Ctypes_foreign)
+              (Ctypes_foreign_libffi.Ctypes_foreign)
               (struct
                 let prefix = with_prefix M.prefix "proof"
               end)
@@ -1920,7 +1920,7 @@ module Make_Groth16_with_keys (M : Make_proof_system_inputs_with_keys) = struct
       let prefix = with_prefix M.prefix "proof"
     end
 
-    module T = Proof.Make (Ctypes_foreign) (Prefix)
+    module T = Proof.Make (Ctypes_foreign_libffi.Ctypes_foreign) (Prefix)
     module Accessors = Make_proof_accessors (Prefix) (T) (G1) (G2)
 
     type message = unit
@@ -2015,7 +2015,7 @@ struct
       end
 
       module T = struct
-        include Make_foreign (Ctypes_foreign) (Prefix)
+        include Make_foreign (Ctypes_foreign_libffi.Ctypes_foreign) (Prefix)
       end
 
       include T
@@ -2160,7 +2160,7 @@ struct
       end) =
   struct
     include Make_foreign
-              (Ctypes_foreign)
+              (Ctypes_foreign_libffi.Ctypes_foreign)
               (struct
                 let prefix = with_prefix Prefix.prefix "fqk"
               end)
@@ -2194,7 +2194,7 @@ struct
       Fqe.Make
         (Mnt6_0.Field.Vector)
         (Fqe.Bind
-           (Ctypes_foreign)
+           (Ctypes_foreign_libffi.Ctypes_foreign)
            (struct
              let prefix = with_prefix Mnt4_0.prefix "fqe"
            end)
@@ -2208,7 +2208,7 @@ struct
 
         include T.Make
                   (T.Bind
-                     (Ctypes_foreign)
+                     (Ctypes_foreign_libffi.Ctypes_foreign)
                      (struct
                        let prefix = with_prefix Mnt4_0.prefix "g2"
                      end))
@@ -2216,7 +2216,7 @@ struct
 
       include T.Make
                 (T.Bind
-                   (Ctypes_foreign)
+                   (Ctypes_foreign_libffi.Ctypes_foreign)
                    (struct
                      let prefix = with_prefix Mnt4_0.prefix "g2"
                    end))
@@ -2237,7 +2237,7 @@ struct
 
         include T.Make
                   (T.Bind
-                     (Ctypes_foreign)
+                     (Ctypes_foreign_libffi.Ctypes_foreign)
                      (struct
                        let prefix = with_prefix Mnt4_0.prefix "g1"
                      end))
@@ -2248,7 +2248,7 @@ struct
 
         include T'.Make
                   (T'.Bind
-                     (Ctypes_foreign)
+                     (Ctypes_foreign_libffi.Ctypes_foreign)
                      (struct
                        let prefix = with_prefix Mnt4_0.prefix "g1"
                      end))
@@ -2346,7 +2346,7 @@ struct
       Fqe.Make
         (Mnt4_0.Field.Vector)
         (Fqe.Bind
-           (Ctypes_foreign)
+           (Ctypes_foreign_libffi.Ctypes_foreign)
            (struct
              let prefix = with_prefix Mnt6_0.prefix "fqe"
            end)
@@ -2358,7 +2358,7 @@ struct
 
         include T.Make
                   (T.Bind
-                     (Ctypes_foreign)
+                     (Ctypes_foreign_libffi.Ctypes_foreign)
                      (struct
                        let prefix = with_prefix Mnt6_0.prefix "g2"
                      end))
@@ -2368,7 +2368,7 @@ struct
 
       include T.Make
                 (T.Bind
-                   (Ctypes_foreign)
+                   (Ctypes_foreign_libffi.Ctypes_foreign)
                    (struct
                      let prefix = with_prefix Mnt6_0.prefix "g2"
                    end))
@@ -2390,7 +2390,7 @@ struct
 
         include T.Make
                   (T.Bind
-                     (Ctypes_foreign)
+                     (Ctypes_foreign_libffi.Ctypes_foreign)
                      (struct
                        let prefix = with_prefix Mnt6_0.prefix "g1"
                      end))
@@ -2401,7 +2401,7 @@ struct
 
         include T'.Make
                   (T'.Bind
-                     (Ctypes_foreign)
+                     (Ctypes_foreign_libffi.Ctypes_foreign)
                      (struct
                        let prefix = with_prefix Mnt6_0.prefix "g1"
                      end))

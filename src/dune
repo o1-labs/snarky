@@ -10,6 +10,7 @@
    camlsnark_c
    core_kernel
    ctypes
+   ctypes_foreign_libffi
    fold_lib
    h_list
    interval_union
