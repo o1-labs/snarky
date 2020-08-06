@@ -88,7 +88,7 @@ module type Basic = sig
   end
 
   module Bigint : sig
-    include Bigint_intf.Extended with type field := field
+    include Snarky_intf.Bigint_intf.Extended with type field := field
 
     val of_bignum_bigint : Bignum_bigint.t -> t
 
@@ -1581,7 +1581,7 @@ module type Run_basic = sig
   type field
 
   module Bigint : sig
-    include Bigint_intf.Extended with type field := field
+    include Snarky_intf.Bigint_intf.Extended with type field := field
 
     val of_bignum_bigint : Bignum_bigint.t -> t
 

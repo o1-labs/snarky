@@ -15,7 +15,7 @@ module type Extended = sig
 
   val to_field : t -> field
 
-  val of_data : Core.Bigstring.t -> bitcount:int -> t
+  val of_data : Core_kernel.Bigstring.t -> bitcount:int -> t
 
   val length_in_bytes : int
 

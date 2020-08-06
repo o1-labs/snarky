@@ -14,7 +14,7 @@ module type S = sig
   module Field : Snarky_intf.Field.Full
 
   module Bigint : sig
-    include Bigint_intf.Extended with type field := Field.t
+    include Snarky_intf.Bigint_intf.Extended with type field := Field.t
 
     val of_bignum_bigint : Bignum_bigint.t -> t
 
