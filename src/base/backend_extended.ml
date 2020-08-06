@@ -1,5 +1,4 @@
 open Core_kernel
-open Snarky_backendless
 module Bignum_bigint = Bigint
 
 (** Yojson-compatible JSON type. *)
