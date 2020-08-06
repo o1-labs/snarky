@@ -1,4 +1,5 @@
 open Snarky_curve
+
 let%test_unit "mnt4" =
   let module T = For_native_base_field (struct
     module Impl =
