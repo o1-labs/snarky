@@ -1,0 +1,4 @@
+(library
+ (name snarky_cpp_string)
+ (public_name snarky.cpp_string)
+ (libraries core camlsnark_c))

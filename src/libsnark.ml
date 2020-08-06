@@ -1076,8 +1076,8 @@ struct
 
     let digest t =
       let s = digest t in
-      let r = Cpp_string.to_string s in
-      Cpp_string.delete s ; Md5.of_binary_exn r
+      let r = Snarky_cpp_string.to_string s in
+      Snarky_cpp_string.delete s ; Md5.of_binary_exn r
 
     (* NOTE: This has to use libffi because Ctypes.FOREIGN doesn't support
        [funptr]. *)
@@ -1258,9 +1258,10 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
       if M.R1CS_constraint_system.get_primary_input_size s = 0 then `No s
       else `Yes
 
-    let to_cpp_string_stub : t -> Cpp_string.t =
+    let to_cpp_string_stub : t -> Snarky_cpp_string.t =
       let stub =
-        foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+        foreign (func_name "to_string")
+          (typ @-> returning Snarky_cpp_string.typ)
       in
       fun t ->
         M.R1CS_constraint_system.clear (r1cs_constraint_system t) ;
@@ -1269,17 +1270,18 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
     let to_string : t -> string =
      fun t ->
       let s = to_cpp_string_stub t in
-      let r = Cpp_string.to_string s in
-      Cpp_string.delete s ; r
+      let r = Snarky_cpp_string.to_string s in
+      Snarky_cpp_string.delete s ; r
 
     let of_cpp_string_stub =
-      foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
+      foreign (func_name "of_string") (Snarky_cpp_string.typ @-> returning typ)
 
     let of_string : string -> t =
      fun s ->
-      let str = Cpp_string.of_string_don't_delete s in
+      let str = Snarky_cpp_string.of_string_don't_delete s in
       let t = of_cpp_string_stub str in
-      Cpp_string.delete str ; t
+      Snarky_cpp_string.delete str ;
+      t
 
     include Bin_prot.Utils.Of_minimal (struct
       type nonrec t = t
@@ -1288,22 +1290,22 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
       let bin_size_t t =
         let s = to_cpp_string_stub t in
-        let len = Cpp_string.length s in
+        let len = Snarky_cpp_string.length s in
         let plen = Bin_prot.Nat0.of_int len in
         let size_len = Bin_prot.Size.bin_size_nat0 plen in
         let res = size_len + len in
-        Cpp_string.delete s ; res
+        Snarky_cpp_string.delete s ; res
 
       let bin_write_t buf ~pos t =
         let s = to_cpp_string_stub t in
-        let len = Cpp_string.length s in
+        let len = Snarky_cpp_string.length s in
         let plen = Bin_prot.Nat0.unsafe_of_int len in
         let new_pos = Bin_prot.Write.bin_write_nat0 buf ~pos plen in
         let next = new_pos + len in
         Bin_prot.Common.check_next buf next ;
-        let bs = Cpp_string.to_bigstring s in
+        let bs = Snarky_cpp_string.to_bigstring s in
         Bigstring.blit ~src:bs ~dst:buf ~src_pos:0 ~dst_pos:new_pos ~len ;
-        Cpp_string.delete s ;
+        Snarky_cpp_string.delete s ;
         next
 
       let bin_read_t buf ~pos_ref =
@@ -1316,10 +1318,11 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
           let pointer =
             Ctypes.( +@ ) (Ctypes.bigarray_start Ctypes.array1 buf) pos
           in
-          Cpp_string.of_char_pointer_don't_delete pointer len
+          Snarky_cpp_string.of_char_pointer_don't_delete pointer len
         in
         let result = of_cpp_string_stub cpp_str in
-        Cpp_string.delete cpp_str ; result
+        Snarky_cpp_string.delete cpp_str ;
+        result
 
       let __bin_read_t__ _buf ~pos_ref _vint =
         Bin_prot.Common.raise_variant_wrong_type "Proving_key.t" !pos_ref
@@ -1327,26 +1330,28 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     let to_bigstring : t -> Bigstring.t =
       let stub =
-        foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+        foreign (func_name "to_string")
+          (typ @-> returning Snarky_cpp_string.typ)
       in
       fun t ->
         let str = stub t in
-        let length = Cpp_string.length str in
-        let char_star = Cpp_string.to_char_pointer str in
+        let length = Snarky_cpp_string.length str in
+        let char_star = Snarky_cpp_string.to_char_pointer str in
         let bs =
           Ctypes.bigarray_of_ptr Ctypes.array1 length Bigarray.Char char_star
         in
-        Caml.Gc.finalise (fun _ -> Cpp_string.delete str) bs ;
+        Caml.Gc.finalise (fun _ -> Snarky_cpp_string.delete str) bs ;
         bs
 
     let of_bigstring : Bigstring.t -> t =
       let stub =
-        foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
+        foreign (func_name "of_string")
+          (Snarky_cpp_string.typ @-> returning typ)
       in
       fun bs ->
         let char_star = Ctypes.bigarray_start Ctypes.array1 bs in
         let str =
-          Cpp_string.of_char_pointer_don't_delete char_star
+          Snarky_cpp_string.of_char_pointer_don't_delete char_star
             (Bigstring.length bs)
         in
         let t = stub str in
@@ -1392,44 +1397,49 @@ module Make_proof_system_keys (M : Proof_system_inputs_intf) = struct
 
     let to_string : t -> string =
       let stub =
-        foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+        foreign (func_name "to_string")
+          (typ @-> returning Snarky_cpp_string.typ)
       in
       fun t ->
         let s = stub t in
-        let r = Cpp_string.to_string s in
-        Cpp_string.delete s ; r
+        let r = Snarky_cpp_string.to_string s in
+        Snarky_cpp_string.delete s ; r
 
     let of_string : string -> t =
       let stub =
-        foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
+        foreign (func_name "of_string")
+          (Snarky_cpp_string.typ @-> returning typ)
       in
       fun s ->
-        let str = Cpp_string.of_string_don't_delete s in
+        let str = Snarky_cpp_string.of_string_don't_delete s in
         let t = stub str in
-        Cpp_string.delete str ; t
+        Snarky_cpp_string.delete str ;
+        t
 
     let to_bigstring : t -> Bigstring.t =
       let stub =
-        foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+        foreign (func_name "to_string")
+          (typ @-> returning Snarky_cpp_string.typ)
       in
       fun t ->
         let str = stub t in
-        let length = Cpp_string.length str in
-        let char_star = Cpp_string.to_char_pointer str in
+        let length = Snarky_cpp_string.length str in
+        let char_star = Snarky_cpp_string.to_char_pointer str in
         let bs =
           Ctypes.bigarray_of_ptr Ctypes.array1 length Bigarray.Char char_star
         in
-        Caml.Gc.finalise (fun _ -> Cpp_string.delete str) bs ;
+        Caml.Gc.finalise (fun _ -> Snarky_cpp_string.delete str) bs ;
         bs
 
     let of_bigstring : Bigstring.t -> t =
       let stub =
-        foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
+        foreign (func_name "of_string")
+          (Snarky_cpp_string.typ @-> returning typ)
       in
       fun bs ->
         let char_star = Ctypes.bigarray_start Ctypes.array1 bs in
         let str =
-          Cpp_string.of_char_pointer_don't_delete char_star
+          Snarky_cpp_string.of_char_pointer_don't_delete char_star
             (Bigstring.length bs)
         in
         let t = stub str in
@@ -1604,21 +1614,24 @@ struct
 
       let to_string : t -> string =
         let stub =
-          foreign (func_name "to_string") (typ @-> returning Cpp_string.typ)
+          foreign (func_name "to_string")
+            (typ @-> returning Snarky_cpp_string.typ)
         in
         fun t ->
           let s = stub t in
-          let r = Cpp_string.to_string s in
-          Cpp_string.delete s ; r
+          let r = Snarky_cpp_string.to_string s in
+          Snarky_cpp_string.delete s ; r
 
       let of_string : string -> t =
         let stub =
-          foreign (func_name "of_string") (Cpp_string.typ @-> returning typ)
+          foreign (func_name "of_string")
+            (Snarky_cpp_string.typ @-> returning typ)
         in
         fun s ->
-          let str = Cpp_string.of_string_don't_delete s in
+          let str = Snarky_cpp_string.of_string_don't_delete s in
           let t = stub str in
-          Cpp_string.delete str ; t
+          Snarky_cpp_string.delete str ;
+          t
     end)
 
     let create_ =
