@@ -1,4 +1,5 @@
 open Core_kernel
+open Snarky_backendless
 module Constraint0 = Constraint
 
 exception Runtime_error of string * string list * exn * string
