@@ -1,4 +1,3 @@
-open Snarky_backendless
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked
@@ -6,8 +5,6 @@ module Typ_monads0 = Typ_monads
 open Core_kernel
 
 exception Runtime_error = Checked_runner.Runtime_error
-
-let () = Camlsnark_c.linkme
 
 module Runner = Checked_runner
 
@@ -1627,7 +1624,7 @@ struct
               if Int.equal length Field.size_in_bits then unpack_full
               else choose_preimage_var ~length
         in
-        unpack x >>| Core.List.hd_exn
+        unpack x >>| Base.List.hd_exn
     end
   end
 
@@ -1652,7 +1649,7 @@ struct
     let equal t1 t2 =
       let open Checked in
       all
-        (Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
+        (Base.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
              equal (Cvar1.pack x1) (Cvar1.pack x2) ))
       >>= Boolean.all
 
@@ -1690,7 +1687,7 @@ struct
     module Assert = struct
       let equal t1 t2 =
         let open Checked in
-        Core.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
+        Base.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
             Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2) )
         |> assert_all ~label:"Bitstring.Assert.equal"
     end

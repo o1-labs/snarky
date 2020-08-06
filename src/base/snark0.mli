@@ -1,5 +1,3 @@
-open Snarky_backendless
-
 (** Sets the [eval_constraints] state. If [true], {!val:run_unchecked} and
     {!val:prove} will check that the constraint system is satisfied while
     evaluating the {!type:Checked.t}. The default value is [false].

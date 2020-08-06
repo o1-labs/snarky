@@ -8,6 +8,8 @@ module Ignored = struct
 
   external name : unit -> unit = "camlsnark_mnt6753_fqk_delete"
 
+  let () = Camlsnark_c.linkme
+
   let name () = ()
 end
 [@@warning "-32"]
