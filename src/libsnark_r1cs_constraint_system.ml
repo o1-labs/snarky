@@ -4,7 +4,7 @@ module type Inputs_intf = sig
   module Field : sig
     type t
 
-    include Field_intf.Extended with type t := t
+    include Snarky_intf.Field.Extended with type t := t
   end
 
   module Var : sig

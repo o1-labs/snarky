@@ -18,7 +18,10 @@ module type S = sig
 
   (* TODO: Try making this a functor and seeing how it affects performance *)
   val eval :
-    (module Field_intf.S with type t = 'f) -> ('v -> 'f) -> ('v, 'f) t -> bool
+       (module Snarky_intf.Field.S with type t = 'f)
+    -> ('v -> 'f)
+    -> ('v, 'f) t
+    -> bool
 end
 
 module Basic = struct
@@ -49,8 +52,8 @@ module Basic = struct
   let t_of_sexp f1 f2 s =
     case (fun (module M) -> M.to_basic (M.t_of_sexp f1 f2 s))
 
-  let eval (type f) (fm : (module Field_intf.S with type t = f)) (f : 'v -> f)
-      (t : ('v, f) basic) : bool =
+  let eval (type f) (fm : (module Snarky_intf.Field.S with type t = f))
+      (f : 'v -> f) (t : ('v, f) basic) : bool =
     case (fun (module M) -> M.eval fm f (M.of_basic t))
 
   let map t ~f = case (fun (module M) -> M.to_basic (M.map (M.of_basic t) ~f))
@@ -139,7 +142,8 @@ let () =
       | _ ->
           unhandled "map"
 
-    let eval (type f v) (module Field : Field_intf.S with type t = f)
+    let eval (type f v)
+        (module Field : Snarky_intf.Field.S with type t = f)
         (get_value : v -> f) (t : (v, f) basic) : bool =
       match t with
       | Boolean v ->

@@ -125,7 +125,7 @@ module type Libsnark_constraint_system_intf = sig
 end
 
 module type S = sig
-  module Field : Field_intf.S
+  module Field : Snarky_intf.Field.S
 
   module Bigint : sig
     module R : Bigint_intf.Extended with type field := Field.t

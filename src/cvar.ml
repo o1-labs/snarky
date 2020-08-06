@@ -27,7 +27,7 @@ let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
     (c, ts)
 
 module Make
-    (Field : Field_intf.Extended) (Var : sig
+    (Field : Snarky_intf.Field.Extended) (Var : sig
         include Comparable.S
 
         include Sexpable.S with type t := t

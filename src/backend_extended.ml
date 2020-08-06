@@ -10,7 +10,7 @@ type 'a json =
   'a
 
 module type S = sig
-  module Field : Field_intf.Full
+  module Field : Snarky_intf.Field.Full
 
   module Bigint : sig
     include Bigint_intf.Extended with type field := Field.t
@@ -312,7 +312,7 @@ struct
 
     type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
 
-    let m = (module Field : Field_intf.S with type t = Field.t)
+    let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
 
     let eval t get_value =
       List.for_all t ~f:(fun {basic; _} ->

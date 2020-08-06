@@ -564,7 +564,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** A uniform Quickcheck generator within specified inclusive bounds *)
     val gen_uniform_incl : t -> t -> t Core_kernel.Quickcheck.Generator.t
 
-    include Field_intf.Extended with type t := t
+    include Snarky_intf.Field.Extended with type t := t
 
     include Stringable.S with type t := t
 
@@ -1872,7 +1872,7 @@ module type Run_basic = sig
       (** A uniform generator for Quickcheck tests. *)
       val gen_uniform : t Core_kernel.Quickcheck.Generator.t
 
-      include Field_intf.Extended with type t := t
+      include Snarky_intf.Field.Extended with type t := t
 
       include Stringable.S with type t := t
 
@@ -2027,7 +2027,7 @@ module type Run_basic = sig
 
     val modify_state : (prover_state -> prover_state) -> unit
 
-    include Field_intf.Extended with type t := field
+    include Snarky_intf.Field.Extended with type t := field
 
     (** Convert a field element into its constituent bits. *)
     val unpack : field -> bool list
