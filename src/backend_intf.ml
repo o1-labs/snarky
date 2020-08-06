@@ -1,4 +1,5 @@
 open Core_kernel
+open Snarky_backendless
 
 module type Constraint_system_intf = sig
   module Field : sig

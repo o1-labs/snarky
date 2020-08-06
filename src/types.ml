@@ -1,3 +1,4 @@
+open Snarky_backendless
 module As_prover = struct
   type ('a, 'f, 's) t = ('f Cvar.t -> 'f) -> 's -> 's * 'a
 end

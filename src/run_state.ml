@@ -1,3 +1,5 @@
+open Snarky_backendless
+
 module Vector = struct
   open Core_kernel
 

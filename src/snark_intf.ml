@@ -1,5 +1,6 @@
 module Bignum_bigint = Bigint
 open Core_kernel
+open Snarky_backendless
 module Constraint0 = Constraint
 module Boolean0 = Boolean
 module Typ0 = Typ

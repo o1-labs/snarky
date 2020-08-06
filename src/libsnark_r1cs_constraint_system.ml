@@ -1,4 +1,6 @@
 open Core_kernel
+open Snarky_backendless
+open Camlsnark_c_bindings
 
 module type Inputs_intf = sig
   module Field : sig

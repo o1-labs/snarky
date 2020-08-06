@@ -14,6 +14,7 @@ end
 
 module Bignum_bigint = Bigint
 open Core
+open Camlsnark_c_bindings
 open Snarky_cpp_vector
 open Backend_types
 open Ctypes

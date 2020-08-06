@@ -13,9 +13,10 @@
    fold_lib
    h_list
    interval_union
-   snarky.intf
+   snarky.backendless
    snarky.cpp_string
    snarky.cpp_vector
+   snarky.intf
    tuple_lib
    yojson
    (select gpu_prover.ml from

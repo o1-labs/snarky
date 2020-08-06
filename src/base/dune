@@ -1,0 +1,5 @@
+(library
+ (name snarky_backendless)
+ (public_name snarky.backendless)
+ (libraries core_kernel snarky_intf)
+ (preprocess (pps ppx_sexp_conv)))
