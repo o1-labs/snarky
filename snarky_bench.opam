@@ -14,7 +14,7 @@ depends: [
   "snarky"
   "ppx_jane"
   "ppx_bench"
-  "dune"                {build & >= "1.6"}
+  "dune"                {build & >= "2.0"}
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "

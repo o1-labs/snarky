@@ -12,7 +12,7 @@ build: [
 depends: [
   "ctypes"
   "ctypes-foreign"
-  "dune"                {build & >= "1.6"}
+  "dune"                {build & >= "2.0"}
 ]
 descr: "
 An implementation of the Ctypes.FOREIGN interface built on the libffi backend

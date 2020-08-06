@@ -14,7 +14,7 @@ depends: [
   "ppx_deriving"
   "ppx_jane"
   "bisect_ppx"
-  "dune"                {build & >= "1.6"}
+  "dune"                {build & >= "2.0"}
   "snarky"
   "snarky_integer"
   "snarky_curve"

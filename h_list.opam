@@ -10,7 +10,7 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "dune"                {build & >= "1.6"}
+  "dune"                {build & >= "2.0"}
 ]
 descr: "
 Heterogeneous lists
