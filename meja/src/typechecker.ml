@@ -2011,7 +2011,7 @@ let rec check_signature_item env item =
       let open Ast_build in
       let variant =
         Type.variant ~loc ~params:[Type.none ~loc ()]
-          (Lid.of_list ["Snarky__Request"; "t"])
+          (Lid.of_list ["Snarky"; "Request"; "t"])
       in
       let ctor_ret =
         Type.mk ~loc (Ptyp_ctor {variant with var_params= [arg]})
@@ -2382,7 +2382,7 @@ let rec check_statement env stmt =
               in
               Exp.fun_
                 (Pat.ctor
-                   (Lid.of_list ["Snarky__Request"; "With"])
+                   (Lid.of_list ["Snarky"; "Request"; "With"])
                    ~args:(Pat.record [Pat.field request; Pat.field respond]))
                 body
             in
