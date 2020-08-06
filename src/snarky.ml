@@ -27,9 +27,10 @@ module Handle = Handle
 module Int_vector = Snarky_cpp_vector.Int_vector
 module Knapsack = Knapsack
 module Lens = Lens
-module Libsnark = Libsnark
-module Libsnark_ffi_bindings = Libsnark_ffi_bindings
-module Libsnark_r1cs_constraint_system = Libsnark_r1cs_constraint_system
+module Libsnark = Snarky_libsnark_bindings.Libsnark
+module Libsnark_ffi_bindings = Snarky_libsnark_bindings.Libsnark_ffi_bindings
+module Libsnark_r1cs_constraint_system =
+  Snarky_libsnark_bindings.Libsnark_r1cs_constraint_system
 module Long_vector = Snarky_cpp_vector.Long_vector
 module Merkle_tree = Merkle_tree
 module Monad_let = Monad_let

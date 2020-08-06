@@ -2741,6 +2741,8 @@ let ignore_state (type prover_state field)
 
 let%test_module "snark0-test" =
   ( module struct
+    open Snarky_libsnark_bindings
+
     let bin_io_id m = Fn.compose (Binable.of_string m) (Binable.to_string m)
 
     let swap b (x, y) = if b then (y, x) else (x, y)
