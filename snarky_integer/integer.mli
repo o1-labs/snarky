@@ -8,7 +8,7 @@
     it.
 *)
 
-open Snarky
+open Snarky_backendless
 open Snark
 open Bitstring_lib
 

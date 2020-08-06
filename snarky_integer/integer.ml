@@ -1,5 +1,5 @@
-open Core
-open Snarky
+open Core_kernel
+open Snarky_backendless
 open Snark
 open Util
 open Bitstring_lib
