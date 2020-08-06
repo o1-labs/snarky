@@ -46,7 +46,7 @@ module type Libsnark_constraint_system_intf = sig
   end
 
   module Linear_combination : sig
-    type t = Field.t Backend_types.Linear_combination.t
+    type t
 
     val create : unit -> t
 
@@ -72,7 +72,7 @@ module type Libsnark_constraint_system_intf = sig
   end
 
   module R1CS_constraint : sig
-    type t = Field.t Backend_types.R1CS_constraint.t
+    type t
 
     val create :
       Linear_combination.t -> Linear_combination.t -> Linear_combination.t -> t
@@ -87,7 +87,7 @@ module type Libsnark_constraint_system_intf = sig
   end
 
   module R1CS_constraint_system : sig
-    type t = Field.t Backend_types.R1CS_constraint_system.t
+    type t
 
     val create : unit -> t
 
