@@ -1,0 +1,4 @@
+(library
+ (name snarky_intf)
+ (public_name snarky.intf)
+ (libraries core_kernel))

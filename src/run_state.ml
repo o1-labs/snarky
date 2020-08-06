@@ -3,7 +3,7 @@ module Vector = struct
 
   type 'elt t =
     | T :
-        (module Vector.S with type elt = 'elt and type t = 't)
+        (module Snarky_intf.Vector.S with type elt = 'elt and type t = 't)
         * 't Type_equal.Id.t
         * 't
         -> 'elt t
@@ -15,10 +15,6 @@ module Vector = struct
       type elt = a
 
       type t = unit
-
-      let typ = Ctypes.void
-
-      let delete () = ()
 
       let create () = ()
 

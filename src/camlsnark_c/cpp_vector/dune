@@ -1,0 +1,15 @@
+(library
+ (name snarky_cpp_vector)
+ (public_name snarky.cpp_vector)
+ (libraries core camlsnark_c snarky.intf)
+ (foreign_stubs
+  (language c)
+  (names vector_ffi_bindings)
+  (include_dirs ../libsnark-caml/caml)
+  (flags :standard -lstdc++ -lpthread))
+ (preprocess (pps ppx_bin_prot ppx_sexp_conv)))
+
+(rule
+ (targets vector_ffi_bindings.c vector_ffi_bindings.ml)
+ (action
+  (run ../camlsnark_ctypes_stubs.exe)))

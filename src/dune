@@ -3,14 +3,26 @@
  (public_name snarky)
  (inline_tests)
  (modes native)
- (libraries core_kernel h_list fold_lib tuple_lib bitstring_lib interval_union
-   bignum camlsnark_c ctypes yojson base64
+ (libraries
+   base64
+   bignum
+   bitstring_lib
+   camlsnark_c
+   core_kernel
+   ctypes
+   fold_lib
+   h_list
+   interval_union
+   snarky.intf
+   snarky.cpp_vector
+   tuple_lib
+   yojson
    (select gpu_prover.ml from
     (groth16_gpu_prover -> gpu_prover.gpu.ml)
     (-> gpu_prover.no_gpu.ml)))
  (foreign_stubs
   (language c)
-  (names libsnark_ffi_bindings vector_ffi_bindings)
+  (names libsnark_ffi_bindings)
   (flags :standard -lstdc++ -lpthread))
  (c_library_flags (:standard \ -pedantic) (-I re2_c/libre2))
  (preprocess
@@ -18,7 +30,7 @@
     -conditional)))
 
 (rule
- (targets libsnark_ffi_bindings.c libsnark_ffi_bindings.ml vector_ffi_bindings.c vector_ffi_bindings.ml)
+ (targets libsnark_ffi_bindings.c libsnark_ffi_bindings.ml)
  (deps caml_curve.h.template)
  (action
   (run camlsnark_c/camlsnark_ctypes_stubs.exe)))

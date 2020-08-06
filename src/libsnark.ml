@@ -14,6 +14,7 @@ end
 
 module Bignum_bigint = Bigint
 open Core
+open Snarky_cpp_vector
 open Backend_types
 open Ctypes
 open Foreign
@@ -330,8 +331,7 @@ module Field = struct
 
     val ( *= ) : t -> t -> unit
 
-    module Vector :
-      Vector.S_binable_sexpable with type t = t Vector.t and type elt = t
+    module Vector : Vector.S_binable_sexpable with type elt = t
   end
 
   module Make (Field0 : sig
@@ -348,7 +348,8 @@ module Field = struct
   (Bindings : Bound
               with type 'a return = 'a
                and type 'a result = 'a
-               and type t = Field0.t) : S with type t = Bindings.t = struct
+               and type t = Field0.t) :
+    S with type t = Bindings.t and type Vector.t = Bindings.Vector.t = struct
     module T = struct
       include Field0
 

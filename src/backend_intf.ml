@@ -64,7 +64,7 @@ module type Libsnark_constraint_system_intf = sig
 
       val var : t -> Var.t
 
-      module Vector : Vector.S with type elt = t
+      module Vector : Snarky_intf.Vector.S with type elt = t
     end
 
     val terms : t -> Term.Vector.t

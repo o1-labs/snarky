@@ -45,7 +45,7 @@ module type S = sig
 
   val ( *= ) : t -> t -> unit
 
-  module Vector : Vector.S with type elt = t
+  module Vector : Snarky_intf.Vector.S with type elt = t
 end
 
 module type Extended = sig

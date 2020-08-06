@@ -27,21 +27,11 @@ module type Bound = sig
 end
 
 module type S = sig
-  type elt
-
-  type t
+  include Snarky_intf.Vector.S
 
   val typ : t Ctypes.typ
 
   val delete : t -> unit
-
-  val create : unit -> t
-
-  val get : t -> int -> elt
-
-  val emplace_back : t -> elt -> unit
-
-  val length : t -> int
 end
 
 module type S_binable = sig
