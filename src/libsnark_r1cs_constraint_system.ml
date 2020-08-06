@@ -141,7 +141,8 @@ module Make (Inputs : Inputs_intf) :
       Cvar.linear_combination l
   end
 
-  let basic_to_r1cs_constraint : Cvar.t Constraint.basic -> R1CS_constraint.t =
+  let basic_to_r1cs_constraint :
+      (Cvar.t, Field.t) Constraint.basic -> R1CS_constraint.t =
     let of_var = Linear_combination.of_var in
     let open Constraint in
     function

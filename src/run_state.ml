@@ -50,7 +50,7 @@ type ('prover_state, 'field) t =
   ; as_prover: bool ref
   ; log_constraint:
       (   ?at_label_boundary:[`Start | `End] * string
-       -> 'field Cvar.t Constraint.t
+       -> ('field Cvar.t, 'field) Constraint.t
        -> unit)
       option }
 

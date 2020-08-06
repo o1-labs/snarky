@@ -73,7 +73,7 @@ module type S = sig
     Backend_intf.Constraint_system_intf with module Field := Field
 
   module Constraint : sig
-    type t = Cvar.t Constraint.t [@@deriving sexp]
+    type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
 
     type 'k with_constraint_args = ?label:string -> 'k
 
@@ -88,7 +88,7 @@ module type S = sig
     val annotation : t -> string
 
     val eval :
-         Cvar.t Constraint.basic_with_annotation list
+         (Cvar.t, Field.t) Constraint.basic_with_annotation list
       -> (Cvar.t -> Field.t)
       -> bool
   end
@@ -310,7 +310,7 @@ struct
 
     type 'k with_constraint_args = ?label:string -> 'k
 
-    type t = Cvar.t Constraint.t [@@deriving sexp]
+    type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
 
     let m = (module Field : Field_intf.S with type t = Field.t)
 

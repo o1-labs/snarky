@@ -7,7 +7,8 @@ module type Basic = sig
 
   include Monad_let.S3 with type ('a, 's, 'f) t := ('a, 's, 'f) t
 
-  val add_constraint : 'f field Cvar.t Constraint.t -> (unit, 's, 'f field) t
+  val add_constraint :
+    ('f field Cvar.t, 'f field) Constraint.t -> (unit, 's, 'f field) t
 
   val as_prover :
     (unit, 'f field, 's) Types.As_prover.t -> (unit, 's, 'f field) t
@@ -108,7 +109,7 @@ module type S = sig
 
   val assert_ :
        ?label:Base.string
-    -> 'f field Cvar.t Constraint.t
+    -> ('f field Cvar.t, 'f field) Constraint.t
     -> (unit, 's, 'f field) t
 
   val assert_r1cs :
@@ -126,7 +127,7 @@ module type S = sig
 
   val assert_all :
        ?label:Base.string
-    -> 'f field Cvar.t Constraint.t list
+    -> ('f field Cvar.t, 'f field) Constraint.t list
     -> (unit, 's, 'f field) t
 
   val assert_equal :

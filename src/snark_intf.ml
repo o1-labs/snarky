@@ -108,7 +108,7 @@ module type Basic = sig
         any time we want to multiply our *variables*, we need to add a new
         rank-1 constraint.
     *)
-    type t = Field.Var.t Constraint0.t
+    type t = (Field.Var.t, Field.t) Constraint0.t
 
     type 'k with_constraint_args = ?label:string -> 'k
 
@@ -1589,7 +1589,7 @@ module type Run_basic = sig
 
   (** Rank-1 constraints over {!type:Field.t}s. *)
   module rec Constraint : sig
-    type t = Field.t Constraint0.t
+    type t = (Field.t, Field.Constant.t) Constraint0.t
 
     type 'k with_constraint_args = ?label:string -> 'k
 
