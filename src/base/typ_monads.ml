@@ -1,5 +1,3 @@
-open Snarky_backendless
-
 module Store = struct
   module T = struct
     type ('k, 'field) t = Store of 'field * ('field Cvar.t -> 'k)

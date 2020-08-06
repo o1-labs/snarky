@@ -1,5 +1,4 @@
 open Core_kernel
-open Snarky_backendless
 open Types.Typ
 
 module Data_spec0 = struct

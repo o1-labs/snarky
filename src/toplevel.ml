@@ -1,5 +1,6 @@
 open Core_kernel
 open Snarky_libsnark_bindings
+open Snarky_backendless
 
 let path = Filename.chop_extension (Filename.basename Sys.executable_name)
 
