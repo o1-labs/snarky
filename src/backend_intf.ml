@@ -12,7 +12,7 @@ module type Constraint_system_intf = sig
   val finalize : t -> unit
 
   val add_constraint :
-    ?label:string -> t -> Field.t Cvar.t Constraint.basic -> unit
+    ?label:string -> t -> (Field.t Cvar.t, Field.t) Constraint.basic -> unit
 
   val digest : t -> Md5.t
 

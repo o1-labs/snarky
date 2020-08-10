@@ -165,7 +165,7 @@ struct
                    (Field.to_string (get_value s var3)))
            | _ ->
                Format.asprintf
-                 !"%{sexp:Field.t Constraint0.basic}"
+                 !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
                  (Constraint0.Basic.map basic ~f:(get_value s)) ))
 
   let stack_to_string = String.concat ~sep:"\n"

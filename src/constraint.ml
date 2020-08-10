@@ -1,33 +1,35 @@
 open Base
 
-type _ basic = ..
+type ('var, 'field) basic = ..
 
 module Conv (F : sig
-  type _ t
+  type (_, _) t
 end) =
 struct
-  type t = {to_basic: 'v. 'v F.t -> 'v basic; of_basic: 'v. 'v basic -> 'v F.t}
+  type t =
+    { to_basic: 'v 'f. ('v, 'f) F.t -> ('v, 'f) basic
+    ; of_basic: 'v 'f. ('v, 'f) basic -> ('v, 'f) F.t }
 end
 
 module type S = sig
-  type _ t [@@deriving sexp]
+  type (_, _) t [@@deriving sexp]
 
-  val map : 'a t -> f:('a -> 'b) -> 'b t
+  val map : ('a, 'f) t -> f:('a -> 'b) -> ('b, 'f) t
 
   (* TODO: Try making this a functor and seeing how it affects performance *)
   val eval :
-    (module Field_intf.S with type t = 'f) -> ('v -> 'f) -> 'v t -> bool
+    (module Field_intf.S with type t = 'f) -> ('v -> 'f) -> ('v, 'f) t -> bool
 end
 
 module Basic = struct
-  type 'v t = 'v basic
+  type ('v, 'f) t = ('v, 'f) basic
 
   module type S_with_conv = sig
     include S
 
-    val to_basic : 'v t -> 'v basic
+    val to_basic : ('v, 'f) t -> ('v, 'f) basic
 
-    val of_basic : 'v basic -> 'v t
+    val of_basic : ('v, 'f) basic -> ('v, 'f) t
   end
 
   module Entry = struct
@@ -41,21 +43,23 @@ module Basic = struct
   let case f =
     List.find_map_exn !cases ~f:(fun m -> Option.try_with (fun () -> f m))
 
-  let sexp_of_t f t = case (fun (module M) -> M.sexp_of_t f (M.of_basic t))
+  let sexp_of_t f1 f2 t =
+    case (fun (module M) -> M.sexp_of_t f1 f2 (M.of_basic t))
 
-  let t_of_sexp f s = case (fun (module M) -> M.to_basic (M.t_of_sexp f s))
+  let t_of_sexp f1 f2 s =
+    case (fun (module M) -> M.to_basic (M.t_of_sexp f1 f2 s))
 
   let eval (type f) (fm : (module Field_intf.S with type t = f)) (f : 'v -> f)
-      (t : 'v basic) : bool =
+      (t : ('v, f) basic) : bool =
     case (fun (module M) -> M.eval fm f (M.of_basic t))
 
   let map t ~f = case (fun (module M) -> M.to_basic (M.map (M.of_basic t) ~f))
 end
 
 module Add_kind (C : S) : sig
-  type 'v basic += T of 'v C.t
+  type ('v, 'f) basic += T of ('v, 'f) C.t
 end = struct
-  type 'v basic += T of 'v C.t
+  type ('v, 'f) basic += T of ('v, 'f) C.t
 
   module M = struct
     include C
@@ -69,7 +73,7 @@ end = struct
 end
 
 (* We special case these for compatibility with existing code. *)
-type 'var basic +=
+type ('var, _) basic +=
   | Boolean of 'var
   | Equal of 'var * 'var
   | Square of 'var * 'var
@@ -89,7 +93,7 @@ let () =
       | R1CS of 'var * 'var * 'var
     [@@deriving sexp]
 
-    let to_basic : 'v t -> 'v basic = function
+    let to_basic : 'v t -> ('v, _) basic = function
       | Boolean x ->
           Boolean x
       | Equal (x, y) ->
@@ -99,7 +103,7 @@ let () =
       | R1CS (x, y, z) ->
           R1CS (x, y, z)
 
-    let of_basic : 'v basic -> 'v t = function
+    let of_basic : ('v, _) basic -> 'v t = function
       | Boolean x ->
           Boolean x
       | Equal (x, y) ->
@@ -112,11 +116,11 @@ let () =
           unhandled "of_basic"
   end in
   let module M = struct
-    type 'v t = 'v basic
+    type ('v, 'f) t = ('v, 'f) basic
 
-    let sexp_of_t f t = Essential.(sexp_of_t f (of_basic t))
+    let sexp_of_t f _ t = Essential.(sexp_of_t f (of_basic t))
 
-    let t_of_sexp f s = Essential.(to_basic (t_of_sexp f s))
+    let t_of_sexp f _ s = Essential.(to_basic (t_of_sexp f s))
 
     let of_basic = Fn.id
 
@@ -136,7 +140,7 @@ let () =
           unhandled "map"
 
     let eval (type f v) (module Field : Field_intf.S with type t = f)
-        (get_value : v -> f) (t : v basic) : bool =
+        (get_value : v -> f) (t : (v, f) basic) : bool =
       match t with
       | Boolean v ->
           let x = get_value v in
@@ -152,10 +156,11 @@ let () =
   end in
   Basic.add_case (module M)
 
-type 'v basic_with_annotation = {basic: 'v basic; annotation: string option}
+type ('v, 'f) basic_with_annotation =
+  {basic: ('v, 'f) basic; annotation: string option}
 [@@deriving sexp]
 
-type 'v t = 'v basic_with_annotation list [@@deriving sexp]
+type ('v, 'f) t = ('v, 'f) basic_with_annotation list [@@deriving sexp]
 
 module T = struct
   let create_basic ?label basic = {basic; annotation= label}
@@ -171,7 +176,7 @@ module T = struct
 
   let square ?label a c = [create_basic ?label (Square (a, c))]
 
-  let annotation (t : 'a t) =
+  let annotation (t : _ t) =
     String.concat ~sep:"; "
       (List.filter_map t ~f:(fun {annotation; _} -> annotation))
 end
