@@ -34,8 +34,6 @@
      ar -rc libsnark_caml_common_stubs.a \\
        _stubs_build/libzm/*.o \\
        _stubs_build/libsnark_caml_common/*.o
-
-     rm -r _stubs_build
    popd
    mv ../libsnark-caml/build/libsnark_caml_common_stubs.a .
  elif [ $(uname) = 'Darwin' ]; then
@@ -53,9 +51,6 @@
      libtool -static -o libsnark_caml_common_stubs.a \\
        _stubs_build/libzm/*.o \\
        _stubs_build/libsnark_caml_common/*.o
-
-
-     rm -r _stubs_build
    popd
    mv ../libsnark-caml/build/libsnark_caml_common_stubs.a .
 

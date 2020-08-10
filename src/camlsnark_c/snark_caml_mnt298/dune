@@ -30,8 +30,6 @@
 
      ar -rc libsnark_caml_mnt298_stubs.a \\
        _stubs_build/libsnark_caml_mnt298/*.o
-
-     rm -r _stubs_build
    popd
    mv ../libsnark-caml/build/libsnark_caml_mnt298_stubs.a .
  elif [ $(uname) = 'Darwin' ]; then
@@ -45,9 +43,6 @@
 
      libtool -static -o libsnark_caml_mnt298_stubs.a \\
        _stubs_build/libsnark_caml_mnt298/*.o \\
-
-
-     rm -r _stubs_build
    popd
    mv ../libsnark-caml/build/libsnark_caml_mnt298_stubs.a .
 
