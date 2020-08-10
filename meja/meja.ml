@@ -154,30 +154,32 @@ let main =
             let env =
               Envi.open_namespace_scope (Pident stdlib) stdlib_scope env
             in
+            let local_libraries_dir =
+              Filename.(
+                Sys.executable_name |> dirname
+                |> Fn.flip concat parent_dir_name)
+            in
+            let load_library ~build_path ~install_path () =
+              Loader.load_directory env (Filename.concat lib_path install_path) ;
+              let local_path =
+                Filename.concat local_libraries_dir build_path
+              in
+              Loader.load_directory env Filename.(concat local_path "byte") ;
+              Loader.load_directory env Filename.(concat local_path "native") ;
+              Loader.load_directory env local_path
+            in
             (* Load H_list *)
-            let h_list_build_path =
-              Filename.(
-                Sys.executable_name |> dirname
-                |> Fn.flip concat
-                     (concat parent_dir_name "h_list/.h_list.objs"))
-            in
-            (* Load Snarky.Request *)
-            let snarky_build_path =
-              Filename.(
-                Sys.executable_name |> dirname
-                |> Fn.flip concat (concat parent_dir_name "src/.snarky.objs/"))
-            in
-            Loader.load_directory env (Filename.concat lib_path "h_list") ;
-            Loader.load_directory env
-              (Filename.concat h_list_build_path "byte") ;
-            Loader.load_directory env
-              (Filename.concat h_list_build_path "native") ;
-            Loader.load_directory env (Filename.concat lib_path "snarky") ;
-            Loader.load_directory env
-              (Filename.concat snarky_build_path "byte") ;
-            Loader.load_directory env
-              (Filename.concat snarky_build_path "native") ;
-            Loader.load_directory env snarky_build_path ;
+            load_library ~build_path:"h_list/.h_list.objs"
+              ~install_path:"h_list" () ;
+            (* Load Snarky base interfaces *)
+            load_library ~build_path:"src/intf/.snarky_intf.objs"
+              ~install_path:"snarky/intf" () ;
+            (* Load snarky base implementation *)
+            load_library ~build_path:"src/base/.snarky_backendless.objs"
+              ~install_path:"snarky/base" () ;
+            Envi.fake_alias_external_module_exn
+              ~fake_name:(Ident.create_global "Snarky")
+              "Snarky_backendless" env ;
             env
         | None ->
             Format.(

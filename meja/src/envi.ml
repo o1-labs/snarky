@@ -815,6 +815,14 @@ let add_deferred_module ~loc (name : Ident.t) lid =
 let register_external_module name x env =
   Scope.register_external_module name x env.resolve_env
 
+let fake_alias_external_module_exn ~fake_name name env =
+  Scope.register_external_module fake_name
+    ( IdTbl.find_name
+        ~modes:(fun _ -> true)
+        name env.resolve_env.external_modules
+    |> Option.value_exn |> snd )
+    env.resolve_env
+
 let find_module ~loc (lid : lid) env =
   Scope.find_module ~loc lid.txt env.resolve_env env.scope_stack
 

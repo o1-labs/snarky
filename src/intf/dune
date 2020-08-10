@@ -1,0 +1,5 @@
+(library
+ (name snarky_intf)
+ (public_name snarky.intf)
+ (libraries core_kernel bignum)
+ (preprocess (pps ppx_sexp_conv ppx_bin_prot ppx_hash ppx_compare)))

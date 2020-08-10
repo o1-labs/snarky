@@ -49,7 +49,7 @@ module type Constant_intf = sig
 end
 
 module type Inputs_intf = sig
-  module Impl : Snarky.Snark_intf.Run with type prover_state = unit
+  module Impl : Snarky_backendless.Snark_intf.Run with type prover_state = unit
 
   module F : sig
     include
@@ -297,7 +297,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
 end
 
 module type Native_base_field_inputs = sig
-  module Impl : Snarky.Snark_intf.Run with type prover_state = unit
+  module Impl : Snarky_backendless.Snark_intf.Run with type prover_state = unit
 
   include
     Inputs_intf
@@ -606,40 +606,3 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
         to_affine_exn (scale_constant (t, bs) + two_to_the (n - 1)) )
       (Params.one, bits)
 end
-
-let%test_unit "mnt4" =
-  let module T = For_native_base_field (struct
-    module Impl =
-      Snarky.Snark.Run.Make (Snarky.Backends.Mnt4.Default) (Core.Unit)
-
-    module F = struct
-      include (
-        Impl.Field :
-          module type of Impl.Field with module Constant := Impl.Field.Constant )
-
-      module Constant = struct
-        include Impl.Field.Constant
-
-        let inv_exn = inv
-      end
-
-      let assert_r1cs a b c = Impl.assert_r1cs a b c
-
-      let assert_square a b = Impl.assert_square a b
-
-      let negate x = zero - x
-
-      let inv_exn = inv
-    end
-
-    module Params = struct
-      let one = Snarky.Backends.Mnt6.G1.(to_affine_exn one)
-
-      include Snarky.Backends.Mnt6.G1.Coefficients
-
-      let group_size_in_bits = Snarky.Backends.Mnt6.Field.size_in_bits
-    end
-
-    module Constant = Snarky.Backends.Mnt6.G1
-  end) in
-  ()
