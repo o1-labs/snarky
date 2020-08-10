@@ -142,8 +142,7 @@ let () =
       | _ ->
           unhandled "map"
 
-    let eval (type f v)
-        (module Field : Snarky_intf.Field.S with type t = f)
+    let eval (type f v) (module Field : Snarky_intf.Field.S with type t = f)
         (get_value : v -> f) (t : (v, f) basic) : bool =
       match t with
       | Boolean v ->
