@@ -1,6 +1,5 @@
 set(SNARK_EXTRALIBS)
 find_package(OpenSSL)
-
 if(${CURVE} STREQUAL "BN128")
   set(
     SNARK_EXTRALIBS
