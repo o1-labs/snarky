@@ -113,7 +113,7 @@ endif()
 
 set(
   CMAKE_CXX_FLAGS
-  "${CMAKE_CXX_FLAGS} ${OPT_FLAGS}"
+  "${CMAKE_CXX_FLAGS} ${OPT_FLAGS} -Wno-unused-parameter -Wno-unused-variable"
 )
 
 find_path(GMP_INCLUDE_DIR NAMES gmp.h)
