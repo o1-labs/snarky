@@ -1,8 +1,6 @@
 set(SNARK_EXTRALIBS)
 find_package(OpenSSL)
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-unused-variable")
-
 if(${CURVE} STREQUAL "BN128")
   set(
     SNARK_EXTRALIBS
