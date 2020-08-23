@@ -168,6 +168,7 @@ enable_testing()
 include_directories(.)
 
 if(${CURVE} STREQUAL "BN128")
+  include_directories(depends)
   add_definitions(
     -DBN_SUPPORT_SNARK=1
   )
