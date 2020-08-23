@@ -10,7 +10,7 @@
 #include <iostream>
 #include <vector>
 
-#include "depends/ate-pairing/include/bn.h"
+#include "ate-pairing/include/bn.h"
 
 #include <libff/algebra/curves/bn128/bn128_init.hpp>
 #include <libff/algebra/curves/curve_utils.hpp>
