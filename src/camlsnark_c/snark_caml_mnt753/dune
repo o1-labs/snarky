@@ -42,7 +42,7 @@
      pushd _stubs_build/libsnark_caml_mnt753/; ar -xv ../../caml/libsnark_caml_mnt753.a; popd
 
      libtool -static -o libsnark_caml_mnt753_stubs.a \\
-       _stubs_build/libsnark_caml_mnt753/*.o \\
+       _stubs_build/libsnark_caml_mnt753/*.o
    popd
    mv ../libsnark-caml/build/libsnark_caml_mnt753_stubs.a .
 
