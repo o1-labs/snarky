@@ -56,6 +56,7 @@ add_library(
   algebra/curves/mnt753/mnt6753/mnt6753_init.cpp
   algebra/curves/mnt753/mnt6753/mnt6753_pairing.cpp
   algebra/curves/mnt753/mnt6753/mnt6753_pp.cpp
+  common/common.cpp
   common/double.cpp
   common/profiling.cpp
   common/utils.cpp

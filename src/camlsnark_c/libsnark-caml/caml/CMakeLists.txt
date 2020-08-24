@@ -5,7 +5,7 @@ add_library(
   ../depends/libff/libff/common/double.cpp
   ../depends/libff/libff/common/profiling.cpp
   ../depends/libff/libff/common/utils.cpp
-  common.cpp
+  ../depends/libff/libff/common/common.cpp
 )
 target_link_libraries(
   snark_caml_common
