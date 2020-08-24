@@ -1,0 +1,12 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    # used only for testing
+    visibility = ["//test:__pkg__"],
+    name = "cybozu",
+    hdrs = [
+        "inttype.hpp",
+        "test.hpp",
+    ],
+)
+
