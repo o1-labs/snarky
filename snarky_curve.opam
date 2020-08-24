@@ -16,6 +16,7 @@ depends: [
   "bisect_ppx"
   "dune"                {build & >= "2.0"}
   "snarky"
+  "group_map"
 ]
 available: [ ocaml-version >= "4.07.0" ]
 descr: "
