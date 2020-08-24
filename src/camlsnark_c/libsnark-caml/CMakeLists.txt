@@ -134,13 +134,18 @@ find_library(GMPXX_LIBRARIES NAMES gmpxx libgmpxx)
 
 find_library(SODIUM_LIBRARIES NAMES sodium libsodium)
 
-include(FindPkgConfig)
-pkg_check_modules(
-  CRYPTO
-  REQUIRED
-
-  libcrypto
-)
+## MacOS: make sure we use homebrew openssl, not system version
+## from https://stackoverflow.com/questions/58446253/xcode-11-ld-error-your-binary-is-not-an-allowed-client-of-usr-lib-libcrypto-dy
+## see also: https://gist.github.com/llbbl/c54f44d028d014514d5d837f64e60bac
+if (APPLE)
+    # This is a bug in CMake that causes it to prefer the system version over
+    # the one in the specified ROOT folder.
+    set(OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR} /usr/local/Cellar/openssl@1.1/1.1.1g/)
+    set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.dylib CACHE FILEPATH "" FORCE)
+    set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.dylib CACHE FILEPATH "" FORCE)
+endif()
+find_package(OpenSSL REQUIRED)
+INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
 
 if("${WITH_PROCPS}")
   pkg_check_modules(

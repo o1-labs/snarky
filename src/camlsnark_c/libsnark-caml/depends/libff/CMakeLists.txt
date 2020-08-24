@@ -122,13 +122,8 @@ find_library(GMPXX_LIBRARIES NAMES gmpxx libgmpxx)
 
 find_library(SODIUM_LIBRARIES NAMES sodium libsodium)
 
-include(FindPkgConfig)
-pkg_check_modules(
-  CRYPTO
-  REQUIRED
-
-  libcrypto
-)
+find_package(OpenSSL REQUIRED)
+INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
 
 if("${WITH_PROCPS}")
   pkg_check_modules(
