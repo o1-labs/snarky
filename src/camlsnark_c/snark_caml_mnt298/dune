@@ -42,7 +42,7 @@
      pushd _stubs_build/libsnark_caml_mnt298/; ar -xv ../../caml/libsnark_caml_mnt298.a; popd
 
      libtool -static -o libsnark_caml_mnt298_stubs.a \\
-       _stubs_build/libsnark_caml_mnt298/*.o \\
+       _stubs_build/libsnark_caml_mnt298/*.o
    popd
    mv ../libsnark-caml/build/libsnark_caml_mnt298_stubs.a .
 
