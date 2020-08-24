@@ -3,6 +3,7 @@ add_subdirectory(gtest EXCLUDE_FROM_ALL)
 find_package(OpenSSL REQUIRED)
 
 if(${CURVE} STREQUAL "BN128")
+  include_directories(depends)
   include_directories(ate-pairing/include)
   include_directories(xbyak)
   include_directories(${OPENSSL_INCLUDE_DIR})
