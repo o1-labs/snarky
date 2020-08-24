@@ -26,7 +26,7 @@ FieldT coset_shift()
 
 template<typename FieldT>
 typename std::enable_if<std::is_same<FieldT, Double>::value, FieldT>::type
-get_root_of_unity(const size_t n, bool &err)
+get_root_of_unity(const size_t n, [[gnu::unused]] bool &err)
 {
     const double PI = 3.141592653589793238460264338328L;
 
