@@ -1,0 +1,112 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+CFLAGS_WARN = ["-Wall", "-Wextra", "-Wformat=2",
+               "-Wcast-qual", "-Wcast-align",
+               "-Wwrite-strings", "-Wfloat-equal",
+               "-Wpointer-arith"]
+
+CFLAGS = ["-O2", "-fomit-frame-pointer",
+          "-Wall", "-fno-operator-names",
+          "-I.", "-Itest", "-Iexternal/xbyak"] + CFLAGS_WARN #-std=c++0x
+
+test_suite(
+    name = "test",
+    tests = [
+        ":make_nm",
+        ":normalize_prefix",
+        ":jmp",
+        ":address",
+        ":bad_address",
+        ":misc",
+        ":cvt_test",
+        ":cvt_test32"
+    ]
+)
+
+cc_test(
+    name = "make_nm",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS,
+    srcs = ["make_nm.cpp"],
+    deps = ["//xbyak", "//test/cybozu"]
+)
+
+cc_test(
+    name = "normalize_prefix",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS,
+    srcs = ["normalize_prefix.cpp"],
+    deps = ["//xbyak"]
+)
+
+# the source for test_mmx depends on a header that is not in this repo.
+# cc_binary(
+#     name = "test_mmx",
+#     visibility = ["//visibility:public"],
+#     copts = CFLAGS + ["-lpthread"],
+#     srcs = ["test_mmx.cpp"],
+#     deps = ["//xbyak"]
+# )
+
+cc_test(
+    name = "jmp",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS + ["-Iexternal/xbyak/test"],
+    srcs = ["jmp.cpp"],
+    deps = ["//xbyak", "//test/cybozu"]
+)
+
+cc_test(
+    name = "address",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS,
+    srcs = ["address.cpp"],
+    deps = ["//xbyak"]
+)
+
+cc_test(
+    name = "bad_address",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS,
+    srcs = ["bad_address.cpp"],
+    deps = ["//xbyak", "//test/cybozu"]
+)
+
+cc_test(
+    name = "misc",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS + ["-Iexternal/xbyak/test"],
+    srcs = ["misc.cpp"],
+    deps = ["//xbyak", "//test/cybozu"]
+)
+
+cc_test(
+    name = "cvt_test",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS,
+    srcs = ["cvt_test.cpp",
+    ],
+    deps = ["//xbyak", "//test/cybozu"]
+)
+
+cc_test(
+    name = "cvt_test32",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS + ["-DXBYAK32"],
+    srcs = ["cvt_test.cpp",
+    ],
+    deps = ["//xbyak", "//test/cybozu"]
+)
+
+# genrule(
+#     name="test_nm",
+#     tools = [":jmp",
+#             ":bad_address",
+#             ":misc",
+#             ":cvt_test",
+#             ":cvt_test32"]
+#     data = ["test_nm.sh",
+#             "test_address.sh"],
+# )

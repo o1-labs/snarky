@@ -1,0 +1,24 @@
+## Override the WORKSPACE definitions of repos:
+build --override_repository=xbyak=/path/to/xbyak
+query --override_repository=xbyak=/path/to/xbyak
+
+################################################################
+# do not use on macos if you are building shared libs:
+build --symlink_prefix=.bazel/   # use hidden dir .bazel/ instead of top-level symlinks bazel-*
+# When enabled, the `bazel-out` symlink won’t be created if a different name is given to `--symlink_prefix`.
+build --experimental_no_product_name_out_symlink
+
+build --color=yes
+
+# build --subcommands
+build --subcommands=pretty_print
+build --verbose_failures
+build --sandbox_debug
+
+# build --show_timestamps
+# build --keep_going
+build --jobs 600
+# query --keep_going
+
+# build --toolchain_resolution_debug
+
