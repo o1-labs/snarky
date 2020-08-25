@@ -77,7 +77,14 @@ Requirements
 Build instructions
 -------------
 
-### Windows
+### Bazel
+
+See [doc/bazel.md](doc/bazel.md) for instructions.
+
+### Legacy
+
+
+#### Windows
 
     > git clone git://github.com/herumi/xbyak.git
     > git clone git://github.com/herumi/ate-pairing.git
@@ -85,7 +92,7 @@ Build instructions
 
 Open `ate/ate.sln` and compile `test_bn` with Release mode. The produced binary is `ate/x64/Release/test_bn.exe`.
 
-### Cygwin
+#### Cygwin
 
 Install `mingw64-x86_64-gcc-g++` (run Cygwin setup and search `mingw64`). Then use the following commands:
 
@@ -95,7 +102,7 @@ Install `mingw64-x86_64-gcc-g++` (run Cygwin setup and search `mingw64`). Then u
 
 Note that `test/bn.exe` uses `mulx` if possible; if you do not want to use it, run the executable as `test/bn.exe -mulx 0`. (This allows you to verify the difference with/without mulx on Haswell.)
 
-### Linux
+#### Linux
 
 Use the following commands:
 
