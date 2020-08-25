@@ -1,5 +1,5 @@
 #define XBYAK_NO_OP_NAMES
-#include <xbyak/xbyak_util.h>
+#include "xbyak/xbyak_util.h"
 
 #ifdef XBYAK32
 	#error "this sample is for only 64-bit mode"

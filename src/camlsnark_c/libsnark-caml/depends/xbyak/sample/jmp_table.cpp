@@ -3,7 +3,7 @@
 */
 #include <stdio.h>
 #define XBYAK_NO_OP_NAMES
-#include <xbyak/xbyak.h>
+#include "xbyak/xbyak.h"
 
 const int expectTbl[] = {
 	5, 9, 12

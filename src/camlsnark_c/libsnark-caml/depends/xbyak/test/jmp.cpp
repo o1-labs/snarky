@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <string>
-#include <xbyak/xbyak.h>
-#include <cybozu/inttype.hpp>
-#include <cybozu/test.hpp>
+#include "xbyak/xbyak.h"
+#include "cybozu/inttype.hpp"
+#include "cybozu/test.hpp"
 
 using namespace Xbyak;
 
