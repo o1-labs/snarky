@@ -5,7 +5,7 @@
 	@author MITSUNARI Shigeo
 */
 #if defined(_MSC_VER) && (MSC_VER <= 1500)
-	#include <cybozu/inttype.hpp>
+	#include "cybozu/inttype.hpp"
 #else
 	#include <stdint.h>
 #endif
@@ -19,7 +19,7 @@
 	#include <intrin.h>
 #endif
 #else
-	#include <cybozu/time.hpp>
+	#include "cybozu/time.hpp"
 #endif
 
 namespace cybozu {

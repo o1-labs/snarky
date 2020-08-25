@@ -2,7 +2,7 @@
 #include "zm.h"
 #include <iostream>
 #include <sstream>
-#include <cybozu/benchmark.hpp>
+#include "cybozu/benchmark.hpp"
 
 using namespace mie;
 

@@ -8,7 +8,7 @@ extern Xbyak::util::Clock sclk;
 #include "bn.h"
 #include <iostream>
 #include "util.h"
-#include <cybozu/benchmark.hpp>
+#include "cybozu/benchmark.hpp"
 #include "test_point.hpp"
 
 #define NUM_OF_ARRAY(x) (sizeof(x) / sizeof(*x))

@@ -2,8 +2,8 @@
 #ifndef XBYAK_NO_OP_NAMES
 	#define XBYAK_NO_OP_NAMES
 #endif
-#include <xbyak/xbyak.h>
-#include <xbyak/xbyak_util.h>
+#include "xbyak/xbyak.h"
+#include "xbyak/xbyak_util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
