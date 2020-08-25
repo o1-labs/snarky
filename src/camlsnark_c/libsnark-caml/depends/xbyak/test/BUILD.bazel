@@ -11,23 +11,34 @@ CFLAGS = ["-O2", "-fomit-frame-pointer",
           "-Wall", "-fno-operator-names",
           "-I.", "-Itest", "-Iexternal/xbyak"] + CFLAGS_WARN #-std=c++0x
 
+config_setting(
+    name = "is_64bit",
+    constraint_values = ["@platforms//cpu:x86_64"]
+)
+
+config_setting(
+    name = "is_32bit",
+    constraint_values = ["@platforms//cpu:x86_32"]
+)
+
 test_suite(
     name = "test",
     tests = [
-        ":make_nm",
-        ":normalize_prefix",
-        ":jmp",
         ":address",
         ":bad_address",
-        ":misc",
         ":cvt_test",
-        ":cvt_test32"
+        ":cvt_test32",
+        ":jmp",
+        ":make_nm",
+        ":misc",
+        ":normalize_prefix"
     ]
 )
 
 cc_test(
     name = "make_nm",
     visibility = ["//visibility:public"],
+    size = "small",
     copts = CFLAGS,
     srcs = ["make_nm.cpp"],
     deps = ["//xbyak", "//test/cybozu"]
@@ -36,6 +47,7 @@ cc_test(
 cc_test(
     name = "normalize_prefix",
     visibility = ["//visibility:public"],
+    size = "small",
     copts = CFLAGS,
     srcs = ["normalize_prefix.cpp"],
     deps = ["//xbyak"]
@@ -53,7 +65,13 @@ cc_test(
 cc_test(
     name = "jmp",
     visibility = ["//visibility:public"],
-    copts = CFLAGS + ["-Iexternal/xbyak/test"],
+    size = "small",
+    copts = CFLAGS
+    + select({
+        ":is_64bit": ["-m64"],
+        ":is_32bit": ["-m32"],
+        "//conditions:default"   : []
+    }),
     srcs = ["jmp.cpp"],
     deps = ["//xbyak", "//test/cybozu"]
 )
@@ -61,7 +79,13 @@ cc_test(
 cc_test(
     name = "address",
     visibility = ["//visibility:public"],
-    copts = CFLAGS,
+    size = "small",
+    copts = CFLAGS
+    + select({
+        ":is_64bit": ["-m64"],
+        ":is_32bit": ["-m32"],
+        "//conditions:default"   : []
+    }),
     srcs = ["address.cpp"],
     deps = ["//xbyak"]
 )
@@ -69,6 +93,7 @@ cc_test(
 cc_test(
     name = "bad_address",
     visibility = ["//visibility:public"],
+    size = "small",
     copts = CFLAGS,
     srcs = ["bad_address.cpp"],
     deps = ["//xbyak", "//test/cybozu"]
@@ -77,7 +102,8 @@ cc_test(
 cc_test(
     name = "misc",
     visibility = ["//visibility:public"],
-    copts = CFLAGS + ["-Iexternal/xbyak/test"],
+    size = "small",
+    copts = CFLAGS,
     srcs = ["misc.cpp"],
     deps = ["//xbyak", "//test/cybozu"]
 )
@@ -85,21 +111,28 @@ cc_test(
 cc_test(
     name = "cvt_test",
     visibility = ["//visibility:public"],
+    size = "small",
     copts = CFLAGS,
-    srcs = ["cvt_test.cpp",
-    ],
+    defines = select({
+        ":is_32bit": ["XBYAK32"],
+        "//conditions:default"   : []
+    }),
+    srcs = ["cvt_test.cpp"],
     deps = ["//xbyak", "//test/cybozu"]
 )
 
 cc_test(
     name = "cvt_test32",
     visibility = ["//visibility:public"],
+    size = "small",
     copts = CFLAGS + ["-DXBYAK32"],
-    srcs = ["cvt_test.cpp",
-    ],
+    srcs = ["cvt_test.cpp"],
     deps = ["//xbyak", "//test/cybozu"]
 )
 
+## not implemented: test_nm, test_avx, test_avx512
+## these involve shell scripts, see Makefile
+## leaving these here in case we decide to support in future:
 # genrule(
 #     name="test_nm",
 #     tools = [":jmp",
@@ -110,3 +143,11 @@ cc_test(
 #     data = ["test_nm.sh",
 #             "test_address.sh"],
 # )
+
+# sh_test(
+#     name = "nm",
+#     srcs = ["test_nm.sh"],
+#     deps = [":foo_sh_lib"],
+#     data = glob(["testdata/*.txt"]),
+# )
+

@@ -12,7 +12,12 @@ CFLAGS = ["-g", "-O2",
           "-I.",
           "-Wall"] + CFLAGS_WARN
 
-cc_binary( name = "test",
+config_setting(
+    name = "is_32bit",
+    constraint_values = ["@platforms//cpu:arm"],
+)
+
+cc_binary( name = "test0",
            visibility = ["//visibility:public"],
            srcs = ["test0.cpp"],
            copts = CFLAGS,
@@ -30,11 +35,6 @@ cc_binary( name = "bf",
            srcs = ["bf.cpp"],
            copts = CFLAGS,
            deps = ["//xbyak"] )
-
-config_setting(
-    name = "is_32bit",
-    constraint_values = ["@platforms//cpu:arm"],
-)
 
 # generate a dummy file as input to :toyvm on 64-bit platforms
 genrule(
@@ -92,3 +92,18 @@ cc_binary( name = "calc",
                    "@boost//:spirit",
                    "@boost//:bind"]
 )
+
+## error: call to 'ref' is ambiguous
+# cc_binary( name = "calc2",
+#            visibility = ["//visibility:public"],
+#            srcs = ["calc2.cpp"],
+#            copts = ["-Iboost"] + CFLAGS,
+#            deps = ["//xbyak",
+#                    "@boost//:bind",
+#                    "@boost//:foreach",
+#                    "@boost//:function",
+#                    "@boost//:spirit",
+#                    "@boost//:phoenix",
+#                    "@boost//:iostreams",
+#                    "@boost//:variant"]
+# )
