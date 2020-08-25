@@ -1,0 +1,15 @@
+load("@bazel_skylib//rules:common_settings.bzl",
+     "bool_flag", "int_flag", "string_flag"
+)
+# load("@ate_pairing//bzl/config:vars.bzl",
+#      "CFLAGS", "DDEBUG", "DEFINES", "LINK_STATIC_ONLY", "SNARK")
+
+################################################################
+    ######## Extramural (shared) Build Settings ########
+
+bool_flag( name = "snark", build_setting_default = False, visibility = ["//visibility:public"])
+# override xbyak default:
+config_setting( name = "enable_snark", flag_values = { ":snark": str(True) },
+                visibility = ["//visibility:public"])
+
+bool_flag( name = "with_libgmp", build_setting_default = True, visibility = ["//visibility:public"])

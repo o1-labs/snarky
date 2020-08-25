@@ -1,0 +1,10 @@
+load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
+
+configure_make(
+    name = "pcre",
+    configure_env_vars = {"AR": ""},  ## macos
+    lib_source = "@pcre//:all",
+    shared_libraries = ["libpcre.dylib"],
+    static_libraries = ["libpcre.a"],
+    visibility = ["//visibility:public"],
+)
