@@ -92,7 +92,6 @@ cc_binary( name = "calc",
                    "@boost//:spirit",
                    "@boost//:bind"]
 )
-
 ## error: call to 'ref' is ambiguous
 # cc_binary( name = "calc2",
 #            visibility = ["//visibility:public"],
