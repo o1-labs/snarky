@@ -1,0 +1,5 @@
+.bazel
+bazel-*
+user.bazelrc
+
+*~

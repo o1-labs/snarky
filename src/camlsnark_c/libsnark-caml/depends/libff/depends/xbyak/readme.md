@@ -37,6 +37,12 @@ and_(), or_(), xor_(), not_() are always available.
 Install
 -------------
 
+#### Bazel
+
+See [doc/bazel.md](doc/bazel.md) for instructions.
+
+#### Legacy
+
 The following files are necessary. Please add the path to your compile directories.
 
 * xbyak.h

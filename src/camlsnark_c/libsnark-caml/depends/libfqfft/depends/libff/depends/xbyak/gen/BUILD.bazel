@@ -1,0 +1,74 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+CFLAGS = ["-O2",
+         "-DXBYAK_NO_OP_NAMES",
+          "-I.",
+         "-Wall", "-Wextra", "-Wno-missing-field-initializers"]
+
+# windows: copts = /EHsc -I../ /W4 -D_CRT_SECURE_NO_WARNINGS
+
+cc_binary(
+    name = "sortline",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS,
+    srcs = ["sortline.cpp"],
+    deps = ["//xbyak"]
+)
+
+cc_binary(
+    name = "gen_code",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS,
+    srcs = ["gen_code.cpp",
+            "avx_type.hpp"],
+    deps = ["//xbyak"]
+)
+
+cc_binary(
+    name = "gen_avx512",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS,
+    srcs = ["gen_avx512.cpp",
+            "avx_type.hpp"],
+    deps = ["//xbyak"]
+)
+
+cc_binary(
+    name = "b2hex",
+    visibility = ["//visibility:public"],
+    copts = CFLAGS,
+    srcs = ["b2hex.cpp"],
+    deps = ["//xbyak"]
+)
+
+## The xbyak build generates xbyak_mnemonic.h by running a
+## more-or-less complicated set of shell scripts, see gen/Makefile. We
+## currently do not support this, since we are only interested in the
+## finished product, which is under source control. But just in case
+## we decide to support this later, the following genrule is a start.
+# genrule(
+#     name = "mnemonic_hdr",
+#     visibility = ["//visibility:public"],
+#     outs = ["xbyak_mnemonic.h"],
+#     # srcs = glob(["*.c"]),
+#     tools = [
+#         ":sortline",
+#         ":gen_code",
+#         ":gen_avx512"
+#     ],
+#     cmd  = "\n".join([
+#         # "echo $(@D) > $@; echo $@ >> $@"
+#         #"ls -R > $@"
+#         "$(location gen_code) | $(location sortline) > $@",
+#         "echo \"#ifdef XBYAK_ENABLE_OMITTED_OPERAND\" >> $@",
+# 	"$(location gen_code) omit | $(location sortline) >> $@",
+# 	"echo \"#endif\" >>$@",
+# 	"$(location gen_code) fixed >> $@",
+# 	"echo \"#ifndef XBYAK_DISABLE_AVX512\" >> $@",
+# 	"$(location gen_avx512) | $(location sortline) >> $@",
+# 	"echo \"#ifdef XBYAK64\" >> $@",
+# 	"$(location gen_avx512) 64 | $(location sortline) >> $@",
+# 	"echo \"#endif\" >> $@",
+# 	"echo \"#endif\" >> $@"
+#     ])
+# )
