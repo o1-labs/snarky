@@ -1,0 +1,147 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "DDEBUG")
+     # "ATE_PAIRING", "LIBFF", "LIBSNARK", "DEPS_ROOT", "LIBSNARK_ROOT")
+
+exports_files(["caml/caml_curve.h.template.h", "caml/common.h"])
+
+# cc_library(
+cc_binary(
+    linkshared = True,
+    name = "snark-caml",
+    visibility = ["//visibility:public"],
+    srcs = [
+        "caml_bn128.cpp",
+        "caml_bn128.hpp",
+        "caml_mnt4.cpp",
+        "caml_mnt4.hpp",
+        "caml_mnt4753.cpp",
+        "caml_mnt4753.hpp",
+        "caml_mnt4753_specific.cpp",
+        "caml_mnt4_specific.cpp",
+        "caml_mnt6.cpp",
+        "caml_mnt6.hpp",
+        "caml_mnt6753.cpp",
+        "caml_mnt6753.hpp",
+        "caml_mnt6753_specific.cpp",
+        "caml_mnt6_specific.cpp",
+        # "common.cpp",
+        "common.h",
+
+        "caml_curve.cpp.template.h",
+        "caml_curve.h.template.h",
+        "caml_mnt.cpp.template.h",
+
+        # "@libff//libff:ff",
+        "@ate_pairing//libzm"
+    ],
+    copts = ["-I.",
+             "-Iexternal/libsnark",
+             "-Iexternal/libff"
+    ] + CPPFLAGS,
+    # linkopts = [
+        # "-Lbazel-out/darwin-fastbuild/bin/" + DEPS_ROOT + "ate-pairing",
+        # "-late-pairing",
+        # "-Lbazel-out/darwin-fastbuild/bin/" + DEPS_ROOT + "libff/libff/common",
+        # "-lprofiling",
+        # "-Lbazel-out/darwin-fastbuild/bin/" + DEPS_ROOT + "libff/libff/algebra/curves/mnt753/mnt4753",
+        # "-lmnt4753",
+        # "-Lbazel-out/darwin-fastbuild/bin/" + DEPS_ROOT + "libff/libff/algebra/curves/mnt753/mnt6753",
+        # "-lmnt6753",
+        # "-L" + LIBFF + "libff",
+        # "-lff"
+    # ],
+    # linkstatic = True,
+    # alwayslink = True,
+    # features = ["fully_static_link"],
+    defines = DDEBUG,
+    deps = [
+        "//bzl/external/openssl",
+        "//bzl/external/libsodium",
+        "//bzl/external/libgmp",
+        "//bzl/external/openmp",
+        # LIBSNARK,
+        "@libff//libff/common",
+        "@libff//libff/common:profiling",
+        "@libff//libff/algebra/curves/bn128",
+        "@libff//libff/algebra/curves/alt_bn128",
+        "@libff//libff/algebra/curves/edwards",
+        "@libff//libff/algebra/curves/mnt",
+        "@libff//libff/algebra/curves/mnt/mnt4",
+        "@libff//libff/algebra/curves/mnt/mnt6",
+        "@libff//libff/algebra/curves/mnt753/mnt4753",
+        "@libff//libff/algebra/curves/mnt753/mnt6753",
+        "@libsnark//libsnark/gadgetlib1/gadgets/hashes/sha256",
+        "@libsnark//libsnark/reductions/r1cs_to_qap",
+        "@libsnark//libsnark/relations",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
+        "@libsnark//libsnark/relations/constraint_satisfaction_problems/r1cs",
+        "@libsnark//libsnark/gadgetlib1"
+    ],
+)
+
+# cc_library(
+#     name = "libsnark",
+#     visibility = ["//visibility:public"],
+#     srcs = [
+#         "serialization.cpp", "serialization.hpp"
+#     ],
+#     # hdrs = [
+#     # ],
+#     ## linkopts from camlsnark_linker_flags_gen.ml
+#     linkopts = select({
+#         "//bzl/host:linux" : [
+#             "-Wl,-E",
+#             "-g",
+#             "-Wl,--push-state,-Bstatic",
+#             "-lsodium",
+#             "-Wl,--pop-state",
+#         ],
+#         "//bzl/host:macos" : []
+#     }) + ["-lstdc++"],
+#     # alwayslink = True,
+#     linkstatic = True,
+#     deps = [
+#         @libsnark//libsnark/caml",
+#         # @libsnark//libsnark/common/data_structures",
+#         # @libsnark//libsnark/common/default_types",
+#         # @libsnark//libsnark/common/routing_algorithms",
+#         # @libsnark//libsnark/gadgetlib1",
+#         # @libsnark//libsnark/gadgetlib2",
+#         # @libsnark//libsnark/relations/circuit_satisfaction_problems/tbcs",
+#         # @libsnark//libsnark/relations/ram_computations/memory",
+#         # @libsnark//libsnark/relations/ram_computations/rams/fooram",
+#         # @libsnark//libsnark/relations/ram_computations/rams/tinyram",
+#         ATE_PAIRING + "ate-pairing", # if curve = bn128  (Note the hyphenated spelling)
+
+#         # camlsnark_c_stubs
+
+#         "//bzl/external/openssl",
+#         "//bzl/external/libsodium",
+#         "//bzl/external/libgmp",
+#         "//bzl/external/openmp",
+#     ] + select({
+#         ##FIXME: gitlab returns  GET returned 406 Not Acceptable
+#         # "//bzl/host:linux" : ["@//bzl/external/libprocps"],
+#         "//conditions:default" : []
+#     })
+# )
+
+# genrule(
+#     name = "copy_over"
+
+## TODO: implement code gen build target.
+##  Only bn128.cpp and caml_mnt4_specific.cpp need be under VC.
+## TODO: generate headers as well
+
+## copy_over.sh:
+# sed 's/bn128/mnt4/g' < caml_bn128.cpp > caml_mnt4.cpp
+# sed 's/bn128/mnt6/g' < caml_bn128.cpp > caml_mnt6.cpp
+# sed 's/bn128/mnt4753/g' < caml_bn128.cpp > caml_mnt4753.cpp
+# sed 's/bn128/mnt6753/g' < caml_bn128.cpp > caml_mnt6753.cpp
+
+# sed 's/mnt4/mnt6/g' < caml_mnt4_specific.cpp > caml_mnt6_specific.cpp
+# sed 's/mnt4/mnt4753/g' < caml_mnt4_specific.cpp > caml_mnt4753_specific.cpp
+# sed 's/mnt4/mnt6753/g' < caml_mnt4_specific.cpp > caml_mnt6753_specific.cpp
+# )
