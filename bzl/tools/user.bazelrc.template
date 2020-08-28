@@ -5,15 +5,6 @@
 build --override_repository=obazl_rules_ocaml=/path/to/obazl
 query --override_repository=obazl_rules_ocaml=/path/to/obazl
 
-build --override_repository=digestif=/path/to/digestif
-query --override_repository=digestif=/path/to/digestif
-
-build --override_repository=ppx_optcomp=/path/to/ppx_optcomp
-query --override_repository=ppx_optcomp=/path/to/ppx_optcomp
-
-build --override_repository=ppx_version=/path/to/ppx_version
-query --override_repository=ppx_version=/path/to/ppx_version
-
 build --override_repository=libsnark=/path/to/libsnark
 query --override_repository=libsnark=/path/to/libsnark
 
