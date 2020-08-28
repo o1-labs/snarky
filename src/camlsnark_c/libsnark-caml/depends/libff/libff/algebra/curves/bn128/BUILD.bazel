@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@libff//bzl/config:vars.bzl",
-     "CPPFLAGS",
+     "CPPFLAGS", "ALWAYSLINK", "LINKSTATIC",
      "DBINARY_OUTPUT", "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
 
 cc_library(
@@ -29,7 +29,8 @@ cc_library(
     defines = ["BN_SUPPORT_SNARK=1", "CURVE_BN128"] + DBINARY_OUTPUT + DNO_PT_COMPRESSION,
     local_defines = DDEBUG + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/bn128",
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
+    alwayslink = ALWAYSLINK,
     visibility = ["//visibility:public"],
     deps = [
         "//libff/common:profiling_hpp",

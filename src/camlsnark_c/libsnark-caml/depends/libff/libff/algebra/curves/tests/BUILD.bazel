@@ -20,6 +20,7 @@ COMMON_DEPS = [
 cc_test(
     name = "algebra_bilinearity",
     visibility = ["//visibility:public"],
+    timeout = "short",
     srcs = ["test_bilinearity.cpp"],
     copts = ["-I."] + CPPFLAGS,
     linkstatic = select({

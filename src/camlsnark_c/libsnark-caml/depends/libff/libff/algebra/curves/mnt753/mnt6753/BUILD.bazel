@@ -1,5 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@libff//bzl/config:vars.bzl", "CPPFLAGS",
+     "ALWAYSLINK", "LINKSTATIC",
      "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
 
 cc_library(
@@ -21,7 +22,8 @@ cc_library(
     copts = ["-I."] + CPPFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/mnt753/mnt6753",
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
+    alwayslink = ALWAYSLINK,
     visibility = ["//visibility:public"],
     deps = [
         "//libff/common:profiling",
@@ -44,7 +46,7 @@ cc_library(
     copts = ["-I."] + CPPFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/mnt753/mnt6753",
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     visibility = ["//visibility:public"],
     deps = [
         "//libff/algebra/curves",

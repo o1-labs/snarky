@@ -34,6 +34,18 @@ OPTIMIZE_LINKFLAGS = select({
     "//conditions:default": []
 })
 
+LINKSTATIC = select({
+    "@//bzl/host:linux": True,
+    "@//bzl/host:macos": False,
+    "//conditions:default": True
+})
+
+ALWAYSLINK = select({
+    "@//bzl/host:linux": True,
+    "@//bzl/host:macos": False,
+    "//conditions:default": True
+})
+
 CPPFLAGS = ["-Iexternal/libff"] + DEBUG_FLAGS + WARNINGS
 CFLAGS   = []
 CXXFLAGS = OPTIMIZE_CXXFLAGS

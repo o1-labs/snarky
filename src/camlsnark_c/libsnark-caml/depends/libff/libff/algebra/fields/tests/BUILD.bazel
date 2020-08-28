@@ -6,6 +6,7 @@ load("@libff//bzl/config:vars.bzl",
 cc_test(
     name = "tests",
     visibility = ["//visibility:public"],
+    timeout = "short",
     srcs = ["test_fields.cpp"],
     linkstatic = select({
         "//bzl/host:linux": True,
