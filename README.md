@@ -20,6 +20,13 @@ The best place to get started learning how to use the library are the annotated 
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
 - [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
 
+### dependencies
+
+OPAM deps
+
+* ctyles 0.17.1
+* digestif 0.9.0
+
 ## Design
 
 The intention of this library is to allow writing snarks by writing what look

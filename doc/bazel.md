@@ -78,6 +78,23 @@ build --verbose_failures
 build --sandbox_debug
 ```
 
+#### cleaning
+
+Normally you never need to run `bazel clean`, since Bazel keeps track
+of everything. In some cases, e.g. when you delete or rename a source
+file, a built artifact may be left over in Bazel's work areas; Bazel
+does not seem to automatically remove such stuff, which can lead to
+puzzling problems. So if you're seeing unexpected stuff try `$ bazel
+clean` just to be sure.  The downside to this is of course that it forces a complete rebuild, which may be time-consuming.
+
+You may need to clean occasionally if you are working on the Bazel
+code itself, or if you are using `--override-repository` to work with
+different external repos. If you are testing external repos, run `$
+bazel clean --expunge` to wipe out everything and force externals to
+be refetched. See [Cleaning build
+outputs](https://docs.bazel.build/versions/master/user-manual.html#clean)
+for more information.
+
 ## libraries: embedded, submodularized, bazelized
 
 `snarky` depends on the following chain of library dependencies:
