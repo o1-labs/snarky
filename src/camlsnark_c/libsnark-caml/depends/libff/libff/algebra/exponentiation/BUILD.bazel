@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "exponentiation",
+    hdrs = [
+        "exponentiation.hpp",
+        "exponentiation.tcc",
+    ],
+    include_prefix = "libff/algebra/exponentiation",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//bzl/external/libgmp",
+    ],
+)

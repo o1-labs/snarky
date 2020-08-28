@@ -1,0 +1,88 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag", "string_setting")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+#################################################
+####    GLOBAL/SHARED CONFIG SETTING DEPS    ####
+
+# libff:
+config_setting( name = "enable_curve_bn128",      flag_values = { "@//:curve": "bn128" })
+config_setting( name = "enable_curve_alt_bn128",  flag_values = { "@//:curve": "alt_bn128" })
+config_setting( name = "enable_curve_edwards",    flag_values = { "@//:curve": "edwards" })
+config_setting( name = "enable_curve_mnt4",       flag_values = { "@//:curve": "mnt4" })
+config_setting( name = "enable_curve_mnt6",       flag_values = { "@//:curve": "mnt6" })
+
+# libff:
+config_setting( name = "with_openmp",        flag_values = { "@//:with_openmp": str(True) })
+config_setting( name = "without_openmp",       flag_values = { "@//:with_openmp": str(False) })
+
+# ate-pairing:
+config_setting( name = "with_libgmp",             flag_values = { "@//:with_libgmp": str(True) })
+config_setting( name = "without_libgmp",          flag_values = { "@//:with_libgmp": str(False) })
+
+################################################################
+##  Locals
+
+bool_flag( name = "debug", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "enable_debug",  flag_values = { ":debug": str(True) })
+config_setting( name = "disable_debug", flag_values = { ":debug": str(False) })
+selects.config_setting_group( name = "macos_disable_debug",
+                              match_all = ["//bzl/host:macos", ":disable_debug"])
+
+# Enable debugging of C++ STL (does not imply DEBUG)
+bool_flag( name = "cxx_debug", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "enable_cxx_debug",  flag_values = { ":cxx_debug": str(True) })
+selects.config_setting_group( name = "macos_cxx_debug",
+                              match_all = ["//bzl/host:macos", ":enable_cxx_debug"])
+selects.config_setting_group( name = "linux_cxx_debug",
+                              match_all = ["//bzl/host:linux", ":enable_cxx_debug"])
+# config_setting( name = "enable_cxx_debug", flag_values = { ":cxx_debug": str(True) })
+
+
+bool_flag( name = "verbose", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "enable_verbose",  flag_values = { ":verbose": str(True) })
+config_setting( name = "disable_verbose", flag_values = { ":verbose": str(False) })
+
+# "Limit the size of multi-exponentiation tables, for low-memory platforms"
+bool_flag( name = "lowmem", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "enable_lowmem",  flag_values = { ":lowmem": str(True) })
+config_setting( name = "disable_lowmem", flag_values = { ":lowmem": str(False) })
+
+# In serialization, output raw binary data (instead of decimal), which is smaller and faster.
+bool_flag( name = "binary_output", build_setting_default = True, visibility = ["//visibility:public"])
+config_setting( name = "enable_binary_output", flag_values = { ":binary_output": str(True) })
+config_setting( name = "disable_binary_output", flag_values = { ":binary_output": str(False) })
+
+# Serialize Fp elements as their Montgomery representations (faster but not human-readable)
+bool_flag( name = "montgomery_output", build_setting_default = True, visibility = ["//visibility:public"])
+config_setting( name = "enable_montgomery_output", flag_values = { ":montgomery_output": str(True) })
+config_setting( name = "disable_montgomery_output", flag_values = { ":montgomery_output": str(False) })
+
+bool_flag( name = "pt_compression", build_setting_default = True, visibility = ["//visibility:public"])
+config_setting( name = "enable_pt_compression", flag_values = { ":pt_compression": str(True) })
+config_setting( name = "disable_pt_compression", flag_values = { ":pt_compression": str(False) })
+
+# Collect counts for field and curve operations
+bool_flag( name = "profile_op_counts", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "enable_profile_op_counts", flag_values = { ":profile_op_counts": str(True) })
+config_setting( name = "disable_profile_op_counts", flag_values = { ":profile_op_counts": str(False) })
+
+# Convert each element of the key pair to affine coordinates
+bool_flag( name = "mixed_addition", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "enable_mixed_addition", flag_values = { ":mixed_addition": str(True) })
+config_setting( name = "disable_mixed_addition", flag_values = { ":mixed_addition": str(False) })
+
+# Enable link-time and aggressive optimizations
+bool_flag( name = "optimize", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "enable_optimization", flag_values = { ":optimize": str(True) })
+config_setting( name = "disable_optimization", flag_values = { ":optimize": str(False) })
+
+# Use architecture-specific optimized assembly code
+bool_flag( name = "asm", build_setting_default = True, visibility = ["//visibility:public"])
+config_setting( name = "enable_asm",  flag_values = { ":asm": str(True) })
+config_setting( name = "disable_asm", flag_values = { ":asm": str(False) })
+
+# Use procps for memory profiling
+bool_flag( name = "procps", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "with_procps",    flag_values = { ":procps": str(True) })
+config_setting( name = "without_procps", flag_values = { ":procps": str(False) })
+

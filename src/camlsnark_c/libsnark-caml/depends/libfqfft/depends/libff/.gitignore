@@ -1,0 +1,8 @@
+.bazel
+bazel-*
+user.bazelrc
+
+.merlin
+_build
+*.install
+*:*

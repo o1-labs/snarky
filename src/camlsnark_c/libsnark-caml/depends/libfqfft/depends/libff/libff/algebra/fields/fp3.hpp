@@ -49,7 +49,10 @@ public:
 
     my_Fp c0, c1, c2;
     Fp3_model() {};
+    Fp3_model(const std::vector<my_Fp>& v) : c0(v[0]), c1(v[1]), c2(v[2]) {};
     Fp3_model(const my_Fp& c0, const my_Fp& c1, const my_Fp& c2) : c0(c0), c1(c1), c2(c2) {};
+
+    std::vector<my_Fp> all_base_field_elements();
 
     void clear() { c0.clear(); c1.clear(); c2.clear(); }
     void print() const { printf("c0/c1/c2:\n"); c0.print(); c1.print(); c2.print(); }
@@ -73,6 +76,8 @@ public:
 
     template<mp_size_t m>
     Fp3_model operator^(const bigint<m> &other) const;
+
+    static size_t extension_degree() { return 3; }
 
     static size_t size_in_bits() { return 3*my_Fp::size_in_bits(); }
     static bigint<n> base_field_char() { return modulus; }

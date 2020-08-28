@@ -1,0 +1,20 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag", "string_setting")
+
+## Upstream
+string_flag( name = "curve", build_setting_default = "bn128",
+             values = ["bn128", "alt_bn128", "edwards", "mnt4", "mnt6", ""],
+             visibility = ["//bzl/config:__pkg__"])
+             # visibility = ["//visibility:public"])
+
+bool_flag( name = "with_openmp", build_setting_default = False,
+           visibility = ["//visibility:public"])
+
+## Downstream
+# ate-pairing flag:
+bool_flag( name = "with_libgmp", build_setting_default = True,
+           visibility = ["//visibility:public"])
+
+# ate-pairing config setting:
+config_setting( name = "enable_snark", flag_values = { ":curve": "bn128" },
+                visibility = ["//visibility:public"])
+

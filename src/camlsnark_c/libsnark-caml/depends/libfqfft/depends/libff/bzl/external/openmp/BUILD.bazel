@@ -1,0 +1,12 @@
+load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
+
+cmake_external(
+    name = "openmp",
+    lib_source = "@openmp//:all",
+    shared_libraries = select({
+        "//bzl/host:macos": ["libomp.dylib"],
+        "//bzl/host:linux": ["libomp.so"],
+        "//conditions:default": ["libomp.so"],
+    }),
+    visibility = ["//visibility:public"],
+)

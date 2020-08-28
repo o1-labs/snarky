@@ -26,7 +26,7 @@ FieldT coset_shift()
 
 template<typename FieldT>
 typename std::enable_if<std::is_same<FieldT, Double>::value, FieldT>::type
-get_root_of_unity(const size_t n)
+get_root_of_unity(const size_t n, [[gnu::unused]] bool &err)
 {
     const double PI = 3.141592653589793238460264338328L;
 
@@ -39,19 +39,53 @@ get_root_of_unity(const size_t n)
 
 template<typename FieldT>
 typename std::enable_if<!std::is_same<FieldT, Double>::value, FieldT>::type
-get_root_of_unity(const size_t n)
+get_root_of_unity(const size_t n, bool &err)
 {
-    const size_t logn = log2(n);
-    if (n != (1u << logn)) throw std::invalid_argument("libff::get_root_of_unity: expected n == (1u << logn)");
-    if (logn > FieldT::s) throw std::invalid_argument("libff::get_root_of_unity: expected logn <= FieldT::s");
-
-    FieldT omega = FieldT::root_of_unity;
-    for (size_t i = FieldT::s; i > logn; --i)
+    if (FieldT::small_subgroup_defined)
     {
-        omega *= omega;
-    }
+        const size_t q = FieldT::small_subgroup_base;
 
-    return omega;
+        const size_t q_adicity = libff::k_adicity(q, n);
+        const size_t q_part = libff::pow_int(q, q_adicity);
+
+        const size_t two_adicity = libff::k_adicity(2, n);
+        const size_t two_part = 1u << two_adicity;
+
+        if ((n != two_part * q_part) || (two_adicity > FieldT::s) || (q_adicity > FieldT::small_subgroup_power)) {
+          err = true;
+          return FieldT(1);
+        }
+
+        FieldT omega = FieldT::full_root_of_unity;
+        for (size_t i = FieldT::small_subgroup_power; i > q_adicity; --i)
+        {
+            omega = omega ^ q;
+        }
+
+        for (size_t i = FieldT::s; i > two_adicity; --i)
+        {
+            omega *= omega;
+        }
+
+        return omega;
+    }
+    else
+    {
+        const size_t logn = log2(n);
+
+        if (n != (1u << logn) || logn > FieldT::s) {
+          err = true;
+          return FieldT(1);
+        }
+
+        FieldT omega = FieldT::root_of_unity;
+        for (size_t i = FieldT::s; i > logn; --i)
+        {
+            omega *= omega;
+        }
+
+        return omega;
+    }
 }
 
 template<typename FieldT>

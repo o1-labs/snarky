@@ -1,0 +1,42 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libff//bzl/config:vars.bzl",
+     "CPPFLAGS",
+     "DBINARY_OUTPUT", "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
+
+cc_library(
+    name = "bn128",
+    srcs = glob([
+        "bn128_g1.cpp",
+        "bn128_g2.cpp",
+        "bn128_gt.cpp",
+        "bn128_init.cpp",
+        "bn128_pairing.cpp",
+        "bn128_pp.cpp",
+        "bn_utils.cpp",
+        "bn_utils.tcc",
+    ]),
+    hdrs = glob([
+        "bn128_g1.hpp",
+        "bn128_g2.hpp",
+        "bn128_gt.hpp",
+        "bn128_init.hpp",
+        "bn128_pairing.hpp",
+        "bn128_pp.hpp",
+        "bn_utils.hpp",
+        "bn_utils.tcc",
+    ]),
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS,
+    defines = ["BN_SUPPORT_SNARK=1", "CURVE_BN128"] + DBINARY_OUTPUT + DNO_PT_COMPRESSION,
+    local_defines = DDEBUG + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/algebra/curves/bn128",
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/common:profiling_hpp",
+        "//libff/algebra/curves",
+        "//libff/algebra/fields:utils",
+    ] + select(
+        {"//bzl/config:enable_curve_bn128": ["@ate_pairing//libzm"]},
+        no_match_error = "ERROR: target bn128 only builds with --//:curve=bn128"
+    )
+)

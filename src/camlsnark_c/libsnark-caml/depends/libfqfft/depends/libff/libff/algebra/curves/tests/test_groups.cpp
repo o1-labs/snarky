@@ -7,6 +7,8 @@
 #include <libff/algebra/curves/edwards/edwards_pp.hpp>
 #include <libff/algebra/curves/mnt/mnt4/mnt4_pp.hpp>
 #include <libff/algebra/curves/mnt/mnt6/mnt6_pp.hpp>
+#include <libff/algebra/curves/mnt753/mnt4753/mnt4753_pp.hpp>
+#include <libff/algebra/curves/mnt753/mnt6753/mnt6753_pp.hpp>
 #include <libff/common/profiling.hpp>
 #ifdef CURVE_BN128
 #include <libff/algebra/curves/bn128/bn128_pp.hpp>
@@ -158,6 +160,20 @@ int main(void)
     test_group<G2<mnt6_pp> >();
     test_output<G2<mnt6_pp> >();
     test_mul_by_q<G2<mnt6_pp> >();
+
+    mnt4753_pp::init_public_params();
+    test_group<G1<mnt4753_pp> >();
+    test_output<G1<mnt4753_pp> >();
+    test_group<G2<mnt4753_pp> >();
+    test_output<G2<mnt4753_pp> >();
+    test_mul_by_q<G2<mnt4753_pp> >();
+
+    mnt6753_pp::init_public_params();
+    test_group<G1<mnt6753_pp> >();
+    test_output<G1<mnt6753_pp> >();
+    test_group<G2<mnt6753_pp> >();
+    test_output<G2<mnt6753_pp> >();
+    test_mul_by_q<G2<mnt6753_pp> >();
 
     alt_bn128_pp::init_public_params();
     test_group<G1<alt_bn128_pp> >();

@@ -1,0 +1,52 @@
+load("@rules_cc//cc:defs.bzl", "cc_test", "cc_binary")
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "DDEBUG", "DCURVE", "DNO_PROCPS")
+
+COMMON_DEPS = [
+    "//libff/algebra/curves/edwards",
+    "//libff/algebra/curves/mnt/mnt4",
+    "//libff/algebra/curves/mnt/mnt6",
+    "//libff/algebra/curves/mnt753/mnt4753",
+    "//libff/algebra/curves/mnt753/mnt6753",
+    "//libff/algebra/curves/alt_bn128",
+    "//libff/algebra/curves",
+    "//libff/algebra/exponentiation",
+    "//libff/algebra/fields",
+    "//libff/algebra/fields:utils",
+    "//libff/common",
+    "//libff/common:profiling",
+    "//libff/common:serialization",
+]
+
+cc_test(
+    name = "algebra_bilinearity",
+    visibility = ["//visibility:public"],
+    srcs = ["test_bilinearity.cpp"],
+    copts = ["-I."] + CPPFLAGS,
+    linkstatic = select({
+        "//bzl/host:linux": True,
+        "//conditions:default": False,
+    }),
+    local_defines = DDEBUG,
+    deps = COMMON_DEPS
+)
+
+cc_test(
+    name = "algebra_groups",
+    visibility = ["//visibility:public"],
+    srcs = ["test_groups.cpp"],
+    copts = ["-I."] + CPPFLAGS,
+    linkstatic = select({
+        "//bzl/host:linux": True,
+        "//conditions:default": False,
+    }),
+    local_defines = ["DEBUG"] + DCURVE + DNO_PROCPS,
+    deps = COMMON_DEPS + [
+        "//bzl/external/libgmp"
+    ]
+    +
+    select({
+        "//bzl/config:enable_curve_bn128": ["//libff/algebra/curves/bn128"],
+        "//conditions:default" : []
+    })
+)
+

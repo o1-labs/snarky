@@ -1,0 +1,75 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libff//bzl/config:vars.bzl",
+     "CPPFLAGS",
+     "DBINARY_OUTPUT", "DDEBUG", "DPROFILE_OP_COUNTS",
+     "DMONTGOMERY_OUTPUT", "DUSE_ASM")
+
+cc_library(
+    name = "fields",
+    hdrs = [
+        "fp.hpp",
+        "fp.tcc",
+        "fp12_2over3over2.hpp",
+        "fp12_2over3over2.tcc",
+        "fp2.hpp",
+        "fp2.tcc",
+        "fp3.hpp",
+        "fp3.tcc",
+        "fp4.hpp",
+        "fp4.tcc",
+        "fp6_2over3.hpp",
+        "fp6_2over3.tcc",
+        "fp6_3over2.hpp",
+        "fp6_3over2.tcc",
+        "fp_aux.tcc",
+    ],
+    copts = ["-I."] + CPPFLAGS,
+    defines = DMONTGOMERY_OUTPUT + DUSE_ASM,
+    local_defines = DDEBUG + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/algebra/fields",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/algebra/exponentiation",
+        "//libff/algebra/fields:utils",
+        "//libff/algebra/scalar_multiplication",
+        "//libff/common:serialization",
+    ],
+)
+
+cc_library(
+    name = "bigint",
+    hdrs = [
+        "bigint.hpp",
+        "bigint.tcc",
+    ],
+    copts = ["-I."] + CPPFLAGS,
+    defines = DBINARY_OUTPUT,
+    include_prefix = "libff/algebra/fields",
+    visibility = ["//visibility:public"],
+    deps = select({
+        "//bzl/config:with_libgmp": ["//bzl/external/libgmp"],
+        "//conditions:default": []
+    })
+    + ["//libff/common:serialization",
+       "//bzl/external/libsodium"]
+)
+
+cc_library(
+    name = "utils",
+    hdrs = [
+        "field_utils.hpp",
+        "field_utils.tcc",
+        "fp.hpp",
+        "fp.tcc",
+        "fp_aux.tcc",
+    ],
+    copts = ["-I."] + CPPFLAGS,
+    defines = DDEBUG + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/algebra/fields",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/algebra/exponentiation",
+        "//libff/common:double",
+        "//libff/common:serialization",
+    ],
+)

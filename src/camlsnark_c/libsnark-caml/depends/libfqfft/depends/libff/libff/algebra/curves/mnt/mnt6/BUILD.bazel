@@ -1,0 +1,53 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS",
+     "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
+
+cc_library(
+    name = "mnt6",
+    srcs = [
+        "mnt6_g1.cpp",
+        "mnt6_g2.cpp",
+        "mnt6_init.cpp",
+        "mnt6_pairing.cpp",
+        "mnt6_pp.cpp",
+    ],
+    hdrs = glob([
+        "mnt6_g1.hpp",
+        "mnt6_g2.hpp",
+        "mnt6_init.hpp",
+        "mnt6_pairing.hpp",
+        "mnt6_pp.hpp",
+    ]),
+    copts = ["-I."] + CPPFLAGS,
+    local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/algebra/curves/mnt/mnt6",
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/common:profiling",
+        "//libff/algebra/curves",
+        "//libff/algebra/curves/mnt",
+        # "//libff/algebra/curves/mnt/mnt6:public_params",
+    ],
+)
+
+cc_library(
+    name = "public_params",
+    srcs = ["mnt6_pp.cpp"],
+    hdrs = glob([
+        "mnt6_g1.hpp",
+        "mnt6_g2.hpp",
+        "mnt6_init.hpp",
+        "mnt6_pairing.hpp",
+        "mnt6_pp.hpp",
+    ]),
+    copts = ["-I."] + CPPFLAGS,
+    local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/algebra/curves/mnt/mnt6",
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/algebra/curves",
+        "//libff/algebra/curves/mnt",
+    ],
+)

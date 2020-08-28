@@ -1,0 +1,135 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libff//bzl/config:vars.bzl",
+     "CPPFLAGS",
+     "DBINARY_OUTPUT", "DCURVE", "DDEBUG",
+     "DMULTICORE", "DNO_PROCPS", "DPROFILE_OP_COUNTS")
+
+cc_library(
+    name = "common",
+    srcs = ["common.cpp",
+            "double.cpp"],
+    hdrs = ["double.hpp"],
+    copts = select({
+        "//bzl/host:macos": ["-std=c++14", "-stdlib=libc++"],
+        "//conditions:default": []
+    }) + ["-I.", "-Iexternal/libff"] + CPPFLAGS,
+    defines = DDEBUG + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/common",
+    deps = [
+        ":utils",
+        "//libff/algebra/curves/mnt/mnt4",
+        "//libff/algebra/curves/mnt/mnt6",
+        "//libff/algebra/fields:bigint",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "debug_print",
+    srcs = ["debug_print.cpp"],
+    hdrs = ["debug_print.hpp"],
+    copts = select({
+        "//bzl/host:macos": ["-std=c++14", "-stdlib=libc++"],
+        "//conditions:default": []
+    }) + ["-I."] + CPPFLAGS,
+    defines = DDEBUG,
+    include_prefix = "libff/common",
+    deps = [
+        # ":profiling",
+        # "//libff/algebra/curves/mnt/mnt4",
+        # "//libff/algebra/curves/mnt/mnt6",
+        # "//libff/algebra/fields:bigint",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "double",
+    srcs = ["double.cpp"],
+    hdrs = ["double.hpp"],
+    copts = ["-I."] + CPPFLAGS,
+    defines = DDEBUG + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/common",
+    deps = [
+        "//libff/algebra/fields:bigint",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "profiling",
+    srcs = ["profiling.cpp"],
+    hdrs = ["profiling.hpp"],
+    copts = ["-I.", "-Iexternal/libff"] + CPPFLAGS,
+    local_defines = DDEBUG + DNO_PROCPS + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/common",
+    deps = [
+        ":profiling_hpp",
+        "//libff/algebra/fields:bigint",
+        "//libff/common:double",
+        "//libff/common/default_types",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# to avoid cyclic dependency involving default_types/ec_pp.hpp and curves
+cc_library(
+    name = "profiling_hpp",
+    hdrs = ["profiling.hpp"],
+    copts = ["-I."] + CPPFLAGS,
+    defines = DDEBUG,
+    include_prefix = "libff/common",
+    deps = [
+        "//bzl/external/openssl",
+        "//libff/algebra/fields",
+        "//bzl/external/libgmp",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "rng",
+    hdrs = [
+        "rng.hpp",
+        "rng.tcc",
+    ],
+    copts = ["-I."] + CPPFLAGS,
+    defines = DDEBUG,
+    include_prefix = "libff/common",
+    visibility = ["//visibility:public"],
+    deps = ["//bzl/external/openssl"],
+)
+
+## headers only: serialization and ran
+## packaged separately to avoid circurlar deps.
+cc_library(
+    name = "serialization",
+    hdrs = [
+        "serialization.hpp",
+        "serialization.tcc",
+        # "utils.hpp",
+        # "utils.tcc",
+    ],
+    copts = ["-I."] + CPPFLAGS,
+    defines = DDEBUG + DBINARY_OUTPUT,
+    include_prefix = "libff/common",
+    deps = [":utils"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "utils",
+    srcs = ["utils.cpp"],
+    hdrs = [
+        "utils.hpp",
+        "utils.tcc",
+    ],
+    copts = ["-I."] + CPPFLAGS,
+    defines = DDEBUG,
+    include_prefix = "libff/common",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":debug_print",
+        "//bzl/external/openssl"
+    ],
+)

@@ -1,0 +1,53 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libff//bzl/config:vars.bzl", "CFLAGS",
+     "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
+
+cc_library(
+    name = "alt_bn128",
+    srcs = [
+        "alt_bn128_g1.cpp",
+        "alt_bn128_g2.cpp",
+        "alt_bn128_init.cpp",
+        "alt_bn128_pairing.cpp",
+    ],
+    hdrs = [
+        "alt_bn128_g1.hpp",
+        "alt_bn128_g2.hpp",
+        "alt_bn128_init.hpp",
+        "alt_bn128_pairing.hpp",
+    ],
+    copts = ["-I."] + CFLAGS,
+    local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/algebra/curves/alt_bn128",
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/common:profiling",
+        "//libff/algebra/curves",
+        "//libff/algebra/curves/alt_bn128:public_params",
+        "//libff/algebra/fields",
+    ],
+)
+
+cc_library(
+    name = "public_params",
+    srcs = [
+        "alt_bn128_pp.cpp",
+    ],
+    hdrs = [
+        "alt_bn128_g1.hpp",
+        "alt_bn128_g2.hpp",
+        "alt_bn128_init.hpp",
+        "alt_bn128_pairing.hpp",
+        "alt_bn128_pp.hpp",
+    ],
+    copts = ["-I."] + CFLAGS,
+    local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/algebra/curves/alt_bn128",
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/algebra/curves",
+        "//libff/algebra/fields",
+    ],
+)

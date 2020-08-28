@@ -1,0 +1,55 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS",
+     "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
+
+cc_library(
+    name = "mnt4753",
+    srcs = [
+        "mnt4753_g1.cpp",
+        "mnt4753_g2.cpp",
+        "mnt4753_init.cpp",
+        "mnt4753_pairing.cpp",
+        # "mnt4753_pp.cpp",
+    ],
+    hdrs = glob([
+        "mnt4753_g1.hpp",
+        "mnt4753_g2.hpp",
+        "mnt4753_init.hpp",
+        "mnt4753_pairing.hpp",
+        # "mnt4753_pp.hpp",
+    ]),
+    copts = ["-I."] + CPPFLAGS,
+    local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/algebra/curves/mnt753/mnt4753",
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/common:profiling",
+        "//libff/algebra/curves",
+        "//libff/algebra/curves/mnt",
+        ":public_params",
+    ],
+)
+
+cc_library(
+    name = "public_params",
+    srcs = ["mnt4753_pp.cpp",
+            "mnt4753_pp.hpp"],
+    hdrs = glob([
+        "mnt4753_g1.hpp",
+        "mnt4753_g2.hpp",
+        "mnt4753_init.hpp",
+        "mnt4753_pairing.hpp",
+        "mnt4753_pp.hpp",
+    ]),
+    copts = ["-I."] + CPPFLAGS,
+    local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
+    include_prefix = "libff/algebra/curves/mnt753/mnt4753",
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/algebra/curves",
+        "//libff/algebra/fields",
+        "//libff/algebra/curves/mnt753",
+    ],
+)

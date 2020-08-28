@@ -62,9 +62,10 @@ size_t size_in_bits(const std::vector<T> &v);
 
 } // libff
 
-int snarky_printf (const char* filename, int line, const char* format, ...);
+// int snarky_printf (const char* filename, int line, const char* format, ...);
 
-#define printf(...) snarky_printf(__FILE__, __LINE__, __VA_ARGS__)
+// #define printf(...) snarky_printf(__FILE__, __LINE__, __VA_ARGS__)
+#include "libff/common/debug_print.hpp"
 
 #include <libff/common/utils.tcc> /* note that utils has a templatized part (utils.tcc) and non-templatized part (utils.cpp) */
 #endif // UTILS_HPP_

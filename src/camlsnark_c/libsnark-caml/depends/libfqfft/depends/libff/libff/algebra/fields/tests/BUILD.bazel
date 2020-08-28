@@ -1,0 +1,26 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libff//bzl/config:vars.bzl",
+     "CPPFLAGS")
+     # "DBINARY_OUTPUT", "DCURVE", "DDEBUG", "DMONTGOMERY_OUTPUT", "DUSE_ASM")
+
+cc_test(
+    name = "tests",
+    visibility = ["//visibility:public"],
+    srcs = ["test_fields.cpp"],
+    linkstatic = select({
+        "//bzl/host:linux": True,
+        "//conditions:default": False,
+    }),
+    copts = ["-I."] + CPPFLAGS,
+    deps = [
+        "//libff/algebra/curves/edwards",
+        "//libff/algebra/curves/mnt/mnt4",
+        "//libff/algebra/curves/mnt/mnt6",
+        "//libff/algebra/curves/alt_bn128",
+        "//libff/algebra/fields",
+        "//libff/algebra/fields:utils",
+        "//libff/common:profiling",
+        "//libff/common:serialization",
+    ]
+)
+

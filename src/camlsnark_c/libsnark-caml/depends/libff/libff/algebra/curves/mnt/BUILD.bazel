@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "DDEBUG", "DNO_PT_COMPRESSION")
+
+cc_library(
+    name = "mnt",
+    srcs = ["mnt46_common.cpp"],
+    hdrs = ["mnt46_common.hpp"],
+    copts = ["-I."] + CPPFLAGS,
+    include_prefix = "libff/algebra/curves/mnt",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/algebra/fields",
+    ],
+)

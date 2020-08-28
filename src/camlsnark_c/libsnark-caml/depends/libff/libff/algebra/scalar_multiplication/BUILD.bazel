@@ -1,0 +1,38 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@libff//bzl/config:vars.bzl",
+     "CPPFLAGS",
+     "DDEBUG", "DLOWMEM", "DMULTICORE", "DUSE_ASM")
+
+cc_library(
+    name = "scalar_multiplication",
+    hdrs = [
+        "multiexp.hpp",
+        "multiexp.tcc",
+        "wnaf.hpp",
+        "wnaf.tcc",
+    ],
+    copts = ["-I."] + CPPFLAGS,
+    defines = DDEBUG + DLOWMEM + DMULTICORE + DUSE_ASM,
+    include_prefix = "libff/algebra/scalar_multiplication",
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/common:rng",
+        "//libff/common:utils"
+    ],
+)
+
+cc_binary(
+    name = "multiexp_profile",
+    srcs = ["multiexp_profile.cpp"],
+    copts = ["-I."] + CPPFLAGS,
+    local_defines = DDEBUG + DMULTICORE,
+    defines = DLOWMEM,
+    visibility = ["//visibility:public"],
+    deps = [
+        ":scalar_multiplication",
+        "//libff/common:common",
+        "//libff/common:profiling",
+        "//libff/common:utils"
+    ],
+)

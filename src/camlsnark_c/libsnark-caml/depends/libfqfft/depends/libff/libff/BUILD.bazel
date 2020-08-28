@@ -1,0 +1,22 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "libff",
+    visibility = ["//visibility:public"],
+    # hdrs = glob(["external/ate_pairing/include/bn.h",
+    # ]),
+    copts = [
+        "-Iexternal/libff"
+    ],
+    deps = [
+        "//libff/common/default_types",
+        "//libff/algebra/curves/alt_bn128",
+        "//libff/algebra/curves/edwards",
+        "//libff/algebra/curves/mnt/mnt4",
+        "//libff/algebra/curves/mnt/mnt6",
+        # "//libff/algebra/curves/mnt/mnt6:public_params",
+    ] + select({
+        "@//bzl/config:enable_curve_bn128": ["//libff/algebra/curves/bn128"],
+        "//conditions:default": [],
+    })
+)

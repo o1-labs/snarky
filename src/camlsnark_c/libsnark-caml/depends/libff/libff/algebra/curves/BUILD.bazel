@@ -1,0 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "curves",
+    visibility = ["//visibility:public"],
+    hdrs = ["curve_utils.hpp",
+            "curve_utils.tcc",
+            "public_params.hpp"],
+    include_prefix = "libff/algebra/curves",
+    deps = ["//libff/algebra/fields:bigint"]
+)

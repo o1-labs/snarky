@@ -43,6 +43,7 @@ public:
     my_Fp2 c0, c1;
     Fp4_model() {};
     Fp4_model(const my_Fp2& c0, const my_Fp2& c1) : c0(c0), c1(c1) {};
+    Fp4_model(const std::vector<my_Fp>& v) : c0(my_Fp2(v[0], v[1])), c1(my_Fp2(v[2], v[3])) {};
 
     void print() const { printf("c0/c1:\n"); c0.print(); c1.print(); }
     void clear() { c0.clear(); c1.clear(); }
@@ -65,6 +66,8 @@ public:
     Fp4_model Frobenius_map(unsigned long power) const;
     Fp4_model unitary_inverse() const;
     Fp4_model cyclotomic_squared() const;
+
+    std::vector<my_Fp> all_base_field_elements() { return { c0.c0, c0.c1, c1.c0, c1.c1 }; }
 
     static my_Fp2 mul_by_non_residue(const my_Fp2 &elt);
 
