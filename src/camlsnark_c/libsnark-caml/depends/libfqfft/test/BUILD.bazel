@@ -1,0 +1,8 @@
+test_suite(
+    name = "test",
+    tests = [
+        # "//libfqfft/tests:evaluation_domain",  ## known to fail due to outdated code
+        "//libfqfft/tests:polynomial_arithmetic",
+        "//libfqfft/tests:kronecker_substitution",
+    ]
+)

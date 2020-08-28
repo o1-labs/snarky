@@ -1,0 +1,26 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libfqfft//bzl/config:vars.bzl", "DDEBUG", "DMULTICORE")
+
+cc_library(
+    name = "domains",
+    visibility = ["//visibility:public"],
+    include_prefix = "libfqfft/evaluation_domain/domains",
+    hdrs = [
+        "arithmetic_sequence_domain.hpp",
+        "arithmetic_sequence_domain.tcc",
+        "basic_radix2_domain.hpp",
+        "basic_radix2_domain.tcc",
+        "basic_radix2_domain_aux.hpp",
+        "basic_radix2_domain_aux.tcc",
+        "extended_radix2_domain.hpp",
+        "extended_radix2_domain.tcc",
+        "geometric_sequence_domain.hpp",
+        "geometric_sequence_domain.tcc",
+        "step_radix2_domain.hpp",
+        "step_radix2_domain.tcc"
+    ],
+    copts = ["-I.", "-Iexternal"],
+    defines = DDEBUG + DMULTICORE,
+    deps = ["//libfqfft/tools"]
+)
+

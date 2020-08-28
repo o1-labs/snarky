@@ -1,0 +1,60 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag", "string_setting")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+# bool_flag( name = "debug",
+#            build_setting_default = False)
+# # -DDEBUG=1
+# config_setting( name = "enable_debug",
+#                 flag_values = { ":debug": "True" })
+# config_setting( name = "disable_debug",
+#                 flag_values = { ":debug": "False" })
+
+# selects.config_setting_group(
+#     name = "macos_disable_debug",
+#     match_all = ["//bzl/host:macos", ":disable_debug"]
+# )
+
+bool_flag( name = "verbose", build_setting_default = False,
+           visibility = ["//visibility:public"])
+# config_setting( name = "with_verbose",
+#                 flag_values = { ":verbose": "True" })
+# config_setting( name = "without_verbose",
+#                 flag_values = { ":verbose": "False" })
+
+bool_flag( name = "optimize",  # PERFORMANCE
+           build_setting_default = False)
+
+string_flag( name = "curve", build_setting_default = "bn128",
+             values = ["bn128", "alt_bn128", "edwards", "mnt4", "mnt6", ""],
+             visibility = ["//visibility:public"])
+
+# string_setting( name = "bn128", build_setting_default = "bn128",
+#                 visibility = ["//visibility:public"])
+# # transitive to ate_pairing:
+# config_setting( name = "curve_bn128",
+#                 flag_values = { ":curve": "bn128" })
+# # transitive to ate_pairing:
+# config_setting( name = "curve_alt_bn128",
+#                 flag_values = { ":curve": "alt_bn128" })
+# config_setting( name = "curve_edwards",
+#                 flag_values = { ":curve": "edwards" })
+# config_setting( name = "curve_mnt4",
+#                 flag_values = { ":curve": "mnt4" })
+# config_setting( name = "curve_mnt6",
+#                 flag_values = { ":curve": "mnt6" })
+
+bool_flag( name = "binary_output", build_setting_default = True,
+           visibility = ["//bzl/config:__pkg__"])
+
+## Downstream
+# libff c/c++:
+bool_flag( name = "with_openmp", build_setting_default = False,
+           visibility = ["//visibility:public"])
+
+# ate-pairing flag:
+bool_flag( name = "with_libgmp", build_setting_default = True,
+           visibility = ["//visibility:public"])
+
+# ate-pairing config setting:
+config_setting( name = "enable_snark", flag_values = { ":curve": "bn128" },
+                visibility = ["//visibility:public"])

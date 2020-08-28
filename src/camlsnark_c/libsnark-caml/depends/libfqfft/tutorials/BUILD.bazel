@@ -1,0 +1,41 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_binary(
+    name = "polynomial_multiplication",
+    visibility = ["//visibility:public"],
+    srcs = ["polynomial_multiplication_on_fft_example.cpp"],
+    copts = ["-I."],
+    deps = ["//libfqfft/evaluation_domain",
+            "//libfqfft/evaluation_domain/domains",
+            "//libfqfft/polynomial_arithmetic",
+            "//libfqfft/tools",
+            "@libff//libff"]
+)
+
+cc_binary(
+    name = "polynomial_evaluation",
+    visibility = ["//visibility:public"],
+    srcs = ["polynomial_evaluation_example.cpp"],
+    copts = ["-I."],
+    deps = ["//libfqfft/evaluation_domain",
+            "//libfqfft/evaluation_domain/domains",
+            "//libfqfft/polynomial_arithmetic",
+            "//libfqfft/tools",
+            "@libff//libff"]
+)
+
+cc_binary(
+    name = "lagrange_polynomial_evaluation",
+    visibility = ["//visibility:public"],
+    srcs = ["lagrange_polynomial_evaluation_example.cpp"],
+    copts = ["-I."],
+    deps = ["//libfqfft/evaluation_domain",
+            "//libfqfft/evaluation_domain/domains",
+            "//libfqfft/polynomial_arithmetic",
+            "//libfqfft/tools",
+            "@libff//libff"]
+)
+
+
+
+

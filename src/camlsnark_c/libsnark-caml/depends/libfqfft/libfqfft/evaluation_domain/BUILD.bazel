@@ -1,0 +1,18 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "evaluation_domain",
+    visibility = ["//visibility:public"],
+    include_prefix = "libfqfft/evaluation_domain",
+    hdrs = ["evaluation_domain.hpp",
+            "get_evaluation_domain.hpp",
+            "get_evaluation_domain.tcc"],
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "//libfqfft/evaluation_domain/domains"
+    ] + select({
+        "@//bzl/config:with_openmp": ["//bzl/external/openmp"],
+        "//conditions:default": []
+    })
+)
+

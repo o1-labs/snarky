@@ -1,0 +1,15 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libfqfft//bzl/config:vars.bzl", "DBINARY_OUTPUT")
+
+cc_library(
+    name = "tools",
+    visibility = ["//visibility:public"],
+    include_prefix = "libfqfft/tools",
+    hdrs = [
+        "exceptions.hpp",
+        "serialization.hpp",
+        "serialization.tcc"
+    ],
+    defines = DBINARY_OUTPUT
+)
+

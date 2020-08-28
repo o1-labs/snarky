@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+# load("@libfqfft//bzl/config:vars.bzl")
+
+cc_library(
+    name = "kronecker_substitution",
+    visibility = ["//visibility:public"],
+    include_prefix = "libfqfft/kronecker_substitution",
+    hdrs = ["kronecker_substitution.hpp",
+            "kronecker_substitution.tcc"],
+    deps = [
+        "@libff//libff",
+        "//bzl/external/libgmp"
+    ]
+)

@@ -1,0 +1,61 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@libfqfft//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS")
+
+## WARNING: known to fail on macos (outdated)
+cc_test(
+    name = "evaluation_domain",
+    visibility = ["//visibility:public"],
+    srcs = ["init_test.cpp", "evaluation_domain_test.cpp"],
+    copts = [
+        "-I.",
+        "-Iexternal/libff",
+    ] + CPPFLAGS + CXXFLAGS,
+    linkstatic = select({
+        "//bzl/host:linux": True,
+        "//conditions:default": False,
+    }),
+    deps = [
+        "//libfqfft",
+        "@gtest//:gtest_main",
+    ]
+)
+
+cc_test(
+    name = "polynomial_arithmetic",
+    visibility = ["//visibility:public"],
+    size = "small",
+    srcs = ["init_test.cpp", "polynomial_arithmetic_test.cpp"],
+    copts = [
+        "-I.",
+        "-Iexternal/libff",
+    ] + CPPFLAGS + CXXFLAGS,
+    linkstatic = select({
+        "//bzl/host:linux": True,
+        "//conditions:default": False,
+    }),
+    deps = [
+        "//libfqfft",
+        "@gtest//:gtest_main",
+    ]
+)
+
+cc_test(
+    name = "kronecker_substitution",
+    visibility = ["//visibility:public"],
+    size = "small",
+    srcs = ["init_test.cpp", "kronecker_substitution_test.cpp"],
+    copts = [
+        "-I.",
+        "-Iexternal/libff",
+    ] + CPPFLAGS + CXXFLAGS,
+    linkstatic = select({
+        "//bzl/host:linux": True,
+        "//conditions:default": False,
+    }),
+    deps = [
+        "//libfqfft",
+        "@gtest//:gtest_main",
+    ]
+)
+
+

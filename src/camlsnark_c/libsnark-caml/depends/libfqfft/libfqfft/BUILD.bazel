@@ -1,0 +1,66 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load(
+    "@bazel_skylib//rules:common_settings.bzl",
+    "bool_flag",
+    "string_flag",
+)
+
+################################################################
+## command-line parameters
+## e.g. --//libfqfft:curve="edwards" --//libfqfft:multicore
+
+string_flag(
+    name = "curve",
+    build_setting_default = "mnt4",
+    values = [
+        "bn128",
+        "alt_bn128",
+        "edwards",
+        "mnt4",
+        "mnt6",
+        "",
+    ],
+)
+
+config_setting(
+    name = "curve_bn128",
+    flag_values = {":curve": "bn128"},
+)
+
+bool_flag(
+    name = "multicore",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "_multicore",
+    flag_values = {":multicore": "true"},
+)
+
+bool_flag(
+    name = "with-procps",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "_with-procps",
+    flag_values = {":with-procps": "true"},
+)
+
+# Other flags:
+#   PROF_DOUBLE
+#   "Use Double for profiling"
+
+#   IS_LIBFQFFT_PARENT
+#   "Install submodule dependencies if caller originates from here"
+
+cc_library(
+    name = "libfqfft",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libfqfft/evaluation_domain",
+        "//libfqfft/evaluation_domain/domains",
+        "//libfqfft/kronecker_substitution",
+        "//libfqfft/polynomial_arithmetic",
+    ],
+)

@@ -1,0 +1,164 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "int_flag", "string_flag")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+################################################################
+
+config_setting( name = "with_verbose",
+                flag_values = { "//:verbose": "True" })
+config_setting( name = "without_verbose",
+                flag_values = { "//:verbose": "False" })
+
+###############################
+####    LIBFQFFT PARAMS    ####
+
+bool_flag( name = "prof_double",
+           build_setting_default = False)
+config_setting( name = "enable_prof_double",
+                flag_values = { ":prof_double": "True" })
+
+#############################
+####    SHARED PARAMS    ####
+
+#   DEBUG: libfqfft, libff, ate-pairing
+bool_flag( name = "debug",
+           build_setting_default = False)
+config_setting( name = "enable_debug",
+                flag_values = { ":debug": "True" })
+config_setting( name = "disable_debug",
+                flag_values = { ":debug": "False" })
+
+selects.config_setting_group(
+    name = "macos_disable_debug",
+    match_all = ["//bzl/host:macos", ":disable_debug"]
+)
+
+# libff:
+config_setting( name = "enable_curve_bn128",      flag_values = { "@//:curve": "bn128" })
+config_setting( name = "enable_curve_alt_bn128",  flag_values = { "@//:curve": "alt_bn128" })
+config_setting( name = "enable_curve_edwards",    flag_values = { "@//:curve": "edwards" })
+config_setting( name = "enable_curve_mnt4",       flag_values = { "@//:curve": "mnt4" })
+config_setting( name = "enable_curve_mnt6",       flag_values = { "@//:curve": "mnt6" })
+
+# libff:
+config_setting( name = "with_openmp",        flag_values = { "@//:with_openmp": str(True) })
+config_setting( name = "without_openmp",       flag_values = { "@//:with_openmp": str(False) })
+
+# ate-pairing:
+config_setting( name = "with_libgmp",             flag_values = { "@//:with_libgmp": str(True) })
+config_setting( name = "without_libgmp",          flag_values = { "@//:with_libgmp": str(False) })
+
+# ## CURVE: libfqfft, libff
+# string_flag( name = "curve",
+#              values = ["bn128", "alt_bn128", "edwards", "mnt4", "mnt6", ""],
+#              build_setting_default = "bn128")
+# config_setting( name = "curve_bn128",
+#                 flag_values = { ":curve": "bn128" })
+# config_setting( name = "curve_alt_bn128",
+#                 flag_values = { ":curve": "alt_bn128" })
+# config_setting( name = "curve_edwards",
+#                 flag_values = { ":curve": "edwards" })
+# config_setting( name = "curve_mnt4",
+#                 flag_values = { ":curve": "mnt4" })
+# config_setting( name = "curve_mnt6",
+#                 flag_values = { ":curve": "mnt6" })
+
+# ## MULTICORE: libfqfft, libff
+# bool_flag( name = "multicore",
+#            build_setting_default = False)
+# config_setting( name = "enable_multicore",
+#                 flag_values = { ":multicore": "True" })
+# config_setting( name = "disable_multicore",
+#                 flag_values = { ":multicore": "False" })
+
+## PROCPS: libfqfft, libff
+bool_flag( name = "procps",
+           build_setting_default = False)
+# default:    -DNO_PROCPS
+config_setting( name = "enable_procps",
+                flag_values = { ":procps": "True" })
+config_setting( name = "disable_procps",
+                flag_values = { ":procps": "False" })
+
+# ############################
+# ####    LIBFF PARAMS    ####
+# bool_flag( name = "lowmem",
+# # "Limit the size of multi-exponentiation tables, for low-memory platforms"
+#            build_setting_default = False)
+# # -DLOWMEM=1
+# config_setting( name = "enable_lowmem",
+#                 flag_values = { ":lowmem": "true" })
+
+# # In serialization, output raw binary data (instead of decimal),
+# # which is smaller and faster.
+config_setting( name = "enable_binary_output",
+                flag_values = { "@//:binary_output": "true" })
+
+# # Serialize Fp elements as their Montgomery representations (faster
+# # but not human-readable)
+# bool_flag( name = "montgomery_output",
+#            build_setting_default = True)
+# # -DMONTGOMERY_OUTPUT
+# config_setting( name = "enable_montgomery_output",
+#                 flag_values = { ":montgomery_output": "true" })
+
+# bool_flag( name = "use_pt_compression",
+#            build_setting_default = True)
+# config_setting( name = "enable_point_compression",
+#                 flag_values = { ":use_pt_compression": "true" })
+# config_setting( name = "disable_point_compression",
+#                 flag_values = { ":use_pt_compression": "False" })
+# # if false: -DNO_PT_COMPRESSION=1
+
+# # Collect counts for field and curve operations
+# bool_flag( name = "profile_op_counts",
+#            build_setting_default = False)
+# config_setting( name = "enable_profile_op_counts",
+#                 flag_values = { ":profile_op_counts": "true" })
+# # -DPROFILE_OP_COUNTS=1
+
+# # Convert each element of the key pair to affine coordinates
+# bool_flag( name = "use_mixed_addition",
+#            build_setting_default = False)
+# config_setting( name = "enable_mixed_addition",
+#                 flag_values = { ":use_mixed_addition": "true" })
+# # -DUSE_MIXED_ADDITION=1
+
+# # Enable debugging of C++ STL (does not imply DEBUG)
+# bool_flag( name = "cxx_debug",  # CPP_DEBUG
+#            build_setting_default = False)
+# config_setting( name = "enable_cxx_debug",
+#                 flag_values = { ":cxx_debug": "true" })
+# # -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC
+
+# # Enable link-time and aggressive optimizations
+bool_flag( name = "optimize",  # PERFORMANCE
+           build_setting_default = False)
+config_setting( name = "enable_optimization",
+                flag_values = { ":optimize": "true" })
+
+# # Use architecture-specific optimized assembly code
+# bool_flag( name = "use_asm",
+#            build_setting_default = True)
+# # -DUSE_ASM
+# config_setting( name = "enable_asm",
+#                 flag_values = { ":use_asm": "true" })
+
+##################################
+####    ATE-PAIRING PARAMS    ####
+
+# ate-pairing:
+# set -DCURVE_${CURVE}
+# if(${CURVE} STREQUAL "BN128")
+#     -DBN_SUPPORT_SNARK=1
+
+# # Other flags:
+# # transitive setting, for ate_pairing
+# bool_flag( name = "with_libgmp",
+#              build_setting_default = True)
+# config_setting( name = "enable_libgmp",
+#                 flag_values = { ":with_libgmp": str(True) })
+
+# int_flag( name = "vuint_bit_len",
+#           build_setting_default = 0)
+# config_setting( name = "vuint_bit_len_1024",
+#                 flag_values = { ":vuint_bit_len": str(1024) })

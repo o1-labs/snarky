@@ -1,0 +1,21 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libfqfft//bzl/config:vars.bzl", "DMULTICORE")
+
+cc_library(
+    name = "polynomial_arithmetic",
+    hdrs = [
+        "basic_operations.hpp",
+        "basic_operations.tcc",
+        "basis_change.hpp",
+        "basis_change.tcc",
+        "naive_evaluate.hpp",
+        "naive_evaluate.tcc",
+        "xgcd.hpp",
+        "xgcd.tcc",
+    ],
+    copts = ["-I.", "-Iexternal"],
+    defines = DMULTICORE,
+    include_prefix = "libfqfft/polynomial_arithmetic",
+    visibility = ["//visibility:public"],
+    deps = ["//libfqfft/kronecker_substitution"]
+)

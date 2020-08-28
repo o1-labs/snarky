@@ -90,6 +90,8 @@ if ("${IS_LIBFQFFT_PARENT}")
 
     PUBLIC
     ${DEPENDS_DIR}/libff/
+    find_path(GMP_INCLUDE_DIR NAMES gmp.h)
+    include_directories(${GMP_INCLUDE_DIR})
   )
 
   add_executable(
@@ -109,6 +111,8 @@ if ("${IS_LIBFQFFT_PARENT}")
     polynomial_arithmetic_test
 
     PUBLIC
+    find_path(GMP_INCLUDE_DIR NAMES gmp.h)
+    include_directories(${GMP_INCLUDE_DIR})
     ${DEPENDS_DIR}/libff/
   )
 
