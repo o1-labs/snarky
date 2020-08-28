@@ -1,0 +1,121 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "int_flag", "string_flag")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+################################################################
+## command-line config parameters
+## e.g. --//bzl/config:curve="edwards" --no//bzl/config:multicore
+
+###############################
+####    LIBSNARK PARAMS    ####
+
+bool_flag( name = "supercop", build_setting_default = True,
+           visibility = ["//visibility:public"])
+
+config_setting( name = "with_supercop",
+                flag_values = { ":supercop": "True" })
+config_setting( name = "without_supercop",
+                flag_values = { ":supercop": "False" })
+
+###############################
+####    LIBFQFFT PARAMS    ####
+
+bool_flag( name = "prof_double",
+           build_setting_default = False)
+config_setting( name = "enable_prof_double",
+                flag_values = { ":prof_double": "True" })
+
+#############################
+####    SHARED PARAMS    ####
+
+#   DEBUG: libfqfft, libff, ate-pairing
+bool_flag( name = "debug",
+           build_setting_default = False)
+config_setting( name = "enable_debug",
+                flag_values = { ":debug": "True" })
+config_setting( name = "disable_debug",
+                flag_values = { ":debug": "False" })
+
+selects.config_setting_group(
+    name = "macos_disable_debug",
+    match_all = ["//bzl/host:macos", ":disable_debug"]
+)
+
+# libff:
+config_setting( name = "enable_curve_bn128",      flag_values = { "@//:curve": "bn128" })
+config_setting( name = "enable_curve_alt_bn128",  flag_values = { "@//:curve": "alt_bn128" })
+config_setting( name = "enable_curve_edwards",    flag_values = { "@//:curve": "edwards" })
+config_setting( name = "enable_curve_mnt4",       flag_values = { "@//:curve": "mnt4" })
+config_setting( name = "enable_curve_mnt6",       flag_values = { "@//:curve": "mnt6" })
+
+# libff:
+config_setting( name = "with_openmp",        flag_values = { "@//:with_openmp": str(True) })
+config_setting( name = "without_openmp",       flag_values = { "@//:with_openmp": str(False) })
+
+# ate-pairing:
+config_setting( name = "with_libgmp",             flag_values = { "@//:with_libgmp": str(True) })
+config_setting( name = "without_libgmp",          flag_values = { "@//:with_libgmp": str(False) })
+
+# ## MULTICORE: libfqfft, libff
+# bool_flag( name = "multicore",
+#            build_setting_default = False)
+# config_setting( name = "enable_multicore",
+#                 flag_values = { ":multicore": "true" })
+
+# # In serialization, output raw binary data (instead of decimal),
+# # which is smaller and faster.
+config_setting( name = "enable_binary_output",
+                flag_values = { "@//:binary_output": "true" })
+
+## PROCPS: libfqfft, libff
+bool_flag( name = "procps",
+           build_setting_default = False)
+# default:    -DNO_PROCPS
+config_setting( name = "enable_procps",
+                flag_values = { ":procps": "True" })
+config_setting( name = "disable_procps",
+                flag_values = { ":procps": "False" })
+
+# Enable debugging of C++ STL (does not imply DEBUG)
+bool_flag( name = "cxx_debug",  # CPP_DEBUG
+           build_setting_default = False)
+config_setting( name = "enable_cxx_debug",
+                flag_values = { ":cxx_debug": "true" })
+# -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC
+
+# Enable link-time and aggressive optimizations
+bool_flag( name = "optimize",  # PERFORMANCE
+           build_setting_default = False)
+config_setting( name = "enable_optimization",
+                flag_values = { ":optimize": "true" })
+# -DNDEBUG
+#     "${CMAKE_CXX_FLAGS} -flto -fuse-linker-plugin"
+    # "${CMAKE_EXE_LINKER_FLAGS} -flto"
+
+# # Use architecture-specific optimized assembly code
+# bool_flag( name = "use_asm",
+#            build_setting_default = True)
+# # -DUSE_ASM
+# config_setting( name = "enable_asm",
+#                 flag_values = { ":use_asm": "true" })
+
+string_flag( name = "link", build_setting_default = "on_demand",
+             values = ["always", "on_demand"],
+             visibility = ["//visibility:public"])
+
+config_setting( name = "always_link",
+                flag_values = { ":link": "always" })
+
+string_flag( name = "ppx_format", build_setting_default = "binary",
+             values = ["binary", "text"],
+             visibility = ["//visibility:public"])
+config_setting( name = "ppx_text",
+                flag_values = { ":ppx_format": "text" })
+config_setting( name = "ppx_binary",
+                flag_values = { ":ppx_format": "binary" })
+
+bool_flag( name = "verbose", build_setting_default = False,
+           visibility = ["//visibility:public"])
+config_setting( name = "with_verbose",
+                flag_values = { ":verbose": "True" })
+config_setting( name = "without_verbose",
+                flag_values = { ":verbose": "False" })

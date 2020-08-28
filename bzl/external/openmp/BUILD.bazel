@@ -1,0 +1,4 @@
+alias(
+    name = "openmp",
+    actual = "@libff//bzl/external/openmp"
+)

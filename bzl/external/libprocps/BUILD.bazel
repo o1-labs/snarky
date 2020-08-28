@@ -1,0 +1,99 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
+
+load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
+
+filegroup(
+    name = "all",
+    srcs = glob(["**"]), #exclude=["src/**"]),
+    visibility = ["//visibility:public"]
+)
+
+filegroup(
+    name = "all_out",
+    srcs = ["build/" + x for x in glob(["**"])],
+    visibility = ["//visibility:public"]
+)
+
+genrule(
+    name = "autogen",
+    visibility = ["//visibility:public"],
+    message = "Running autogen...",
+    srcs = ["@libprocps//:all"],
+    outs =
+    [
+        "build/aclocal.m4",
+        "build/compile",
+        "build/config.guess",
+        "build/config.h.in",
+        "build/config.rpath",
+        "build/config.sub",
+        "build/configure",
+        "build/configure.ac",
+        "build/create-man-pot.sh",
+        "build/depcomp",
+        "build/install-sh",
+        "build/ltmain.sh",
+        "build/missing",
+        "build/mkinstalldirs",
+        "build/Makefile.am",
+        "build/Makefile.in",
+        "build/include/Makefile.in",
+        "build/man-po/Makefile.in",
+        "build/po/Makefile.in.in",
+        "build/po/POTFILES.in",
+        # "build/proc/libprocps.pc.in",
+        "build/testsuite/Makefile.in",
+        "build/test-driver",
+        ]
+     # ["build/" + x for x in glob(["*"])]
+    + ["build/" + x for x in glob(["*.c"])]
+    # + ["build/" + x for x in glob(["bin/**"])]
+    # + ["build/" + x for x in glob(["build-aux/**"])]
+    # + ["build/" + x for x in glob(["doc/**"])]
+    + ["build/" + x for x in glob(["include/**"])]
+    + ["build/" + x for x in glob(["lib/**"])]
+    + ["build" + x for x in glob(["m4/**"])]
+    + ["build/" + x for x in glob(["misc/**"])]
+    + ["build/" + x for x in glob(["po/**"])]
+    + ["build/" + x for x in glob(["proc/**"])]
+    + ["build/" + x for x in glob(["ps/**"])]
+    + ["build/" + x for x in glob(["testsuite/**"])],
+    ## copy everything to ./build/, run autogen, copy result to outdir
+    cmd  = "\n".join([
+        "cp -R external/libprocps build",
+        "cd build",
+        "./autogen.sh && autoreconf && cd .. && cp -vR build $(@D)",
+        "ls -l",
+    ])
+)
+
+configure_make(
+    name = "libprocps",
+    visibility = ["//visibility:public"],
+    configure_command = "autogen.sh",
+    configure_env_vars = select({
+        # ":darwin": {"AR": ""},
+        "//conditions:default": {"AR": ""}
+    }),
+    #     # cross-compile:
+    #     # "CPPFLAGS": "-P -fPIC -I$COSYSROOT/usr/local/include -I$COSYSROOT/usr/include",
+    #     # "LDFLAGS": "-L$COSYSROOT/usr/lib/x86_64-unknown-linux-gnu",
+    # ],
+    ## local:
+    ## workaround: omission of -Dredacted results in:
+    ## error: invalid suffix on literal; C++11 requires a space
+    ## between literal and identifier [-Wreserved-user-defined-literal]
+    # configure_options = select({
+    #     ":darwin": ["AR=\"\""],
+    #     "//conditions:default": []
+    # configure_options = ["--disable-examples",
+    #                      "--without-ncurses",
+    #                      "CXXFLAGS=-lstdc++"],
+    lib_source = "@libprocps//:all",
+    # out_lib_dir = "lib",
+    # shared_libraries = ["libgmp.dylib"],
+    # shared_libraries = ["libgmp.so"],
+    # static_libraries = ["libgmp.a", "libgmpxx.a"],
+)

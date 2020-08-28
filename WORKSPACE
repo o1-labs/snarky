@@ -1,18 +1,151 @@
+workspace(name = "snarky")
+
+################ setup ################
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
+http_archive(
+    name = "bazel_skylib",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.0.2/bazel-skylib-1.0.2.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.0.2/bazel-skylib-1.0.2.tar.gz",
+    ],
+    sha256 = "97e70364e9249702246c0e9444bccdc4b847bed1eb03c5a3ece4f83dfe6abc44",
+)
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+bazel_skylib_workspace()
+
+http_archive(
+    name = "rules_foreign_cc",
+    strip_prefix="rules_foreign_cc-master",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/master.zip",
+    # sha256 = "3fc764c7084da14cff812ae42327d19c8d6e99379f8b3e310b3213e1d5f0e7e8"
+)
+
+load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
+rules_foreign_cc_dependencies()
+
+# rules_python needed by libsnark
+http_archive(
+    name = "rules_python",
+    url = "https://github.com/bazelbuild/rules_python/releases/download/0.0.2/rules_python-0.0.2.tar.gz",
+    strip_prefix = "rules_python-0.0.2",
+    sha256 = "b5668cde8bb6e3515057ef465a35ad712214962f0b3a314e551204266c7be90c",
+)
+
 #################################
 #### Bazelized external libs ####
+
+local_repository( name = "libsnark" , path = "src/camlsnark_c/libsnark-caml")
+# http_archive(
+#     name = "libsnark",
+#     urls = ["https://github.com/o1-labs/libsnark/archive/bzl-1.0.tar.gz"],
+#     strip_prefix = "libsnark-bzl-1.0",
+#     # sha256 = ...
+# )
+
+local_repository( name = "libfqfft" , path = "src/camlsnark_c/libsnark-caml/depends/libfqfft")
+# http_archive(
+#     name = "libfqfft",
+#     urls = ["https://github.com/o1-labs/libfqfft/archive/bzl-1.0.tar.gz"],
+#     strip_prefix = "libfqfft-bzl-1.0",
+#     sha256 = ...
+# )
+
+local_repository( name = "libff" , path = "src/camlsnark_c/libsnark-caml/depends/libff")
+# http_archive(
+#     name = "libff",
+#     urls = ["https://github.com/o1-labs/libff/archive/bzl-1.0.tar.gz"],
+#     strip_prefix = "libff-bzl-1.0",
+#     sha256 = ...
+# )
+
+# Used only for bn128, in libff/algebra/curves/bn128/BUILD.bazel, target: @ate_pairing//libzm
+local_repository( name = "ate_pairing" , path = "src/camlsnark_c/libsnark-caml/depends/ate-pairing")
+# http_archive(
+#     name = "ate_pairing",
+#     urls = ["https://github.com/o1-labs/ate-pairing/archive/bzl-1.0.tar.gz"],
+#     strip_prefix = "ate-pairing-bzl-1.0",
+#     sha256 = ...
+#     # commit: 8d34a92e92b0c661291dfc177f9e2b61c78597c4
+# )
+
 local_repository( name = "xbyak" , path = "src/camlsnark_c/libsnark-caml/depends/xbyak" )
 # http_archive(
 #     name = "xbyak",
-#     urls = ["https://github.com/obazl/xbyak/archive/bzl-1.0.tar.gz"],
+#     urls = ["https://github.com/o1-labs/xbyak/archive/bzl-1.0.tar.gz"],
 #     strip_prefix = "xbyak-bzl-1.0",
-#     # sha256 = 
+#     # sha256 = ...
 # )
 
 ##########################################
 ######## Non-bazel external repos ########
+all_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])"""
+
+## https://bench.cr.yp.to/supercop.html
+http_archive(
+    name="supercop",
+    url="https://bench.cr.yp.to/supercop/supercop-20200510.tar.xz",
+    sha256="0b69c719f4ceeedb45b3f0f0eb415258ed6fa7b4166ad84f161a1c867c09aa1e",
+    strip_prefix = "supercop-20200510",
+    # build_file_content = all_content
+    # build_file = "@//bzl/external/supercop:BUILD"
+)
+
+# libfqfft:
+http_archive(
+    name="gtest",
+    url="https://github.com/google/googletest/archive/release-1.10.0.tar.gz",
+    sha256="9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb",
+    strip_prefix = "googletest-release-1.10.0",
+)
+
+## build target: //bzl/external/openmp
+http_archive(
+    name="openmp",
+    url="https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/openmp-10.0.0.src.tar.xz",
+    sha256="3b9ff29a45d0509a1e9667a0feb43538ef402ea8cfc7df3758a01f20df08adfa",
+    strip_prefix="openmp-10.0.0.src",
+    build_file_content = all_content
+)
+
+## build target: //bzl/external/openssl
+http_archive(
+    name="openssl",
+    url="https://www.openssl.org/source/openssl-1.1.1g.tar.gz",
+    sha256="ddb04774f1e32f0c49751e21b67216ac87852ceb056b75209af2443400636d46",
+    strip_prefix="openssl-1.1.1g",
+    build_file_content = all_content
+)
+
+## build target: //bzl/external/libsodium
+http_archive(
+    name="libsodium",
+    type="zip",
+    url="https://github.com/jedisct1/libsodium/archive/1.0.18-RELEASE.zip",
+    sha256="7728976ead51b0de60bede2421cd2a455c2bff3f1bc0320a1d61e240e693bce9",
+    strip_prefix = "libsodium-1.0.18-RELEASE",
+    build_file_content = all_content,
+)
+
+## CURRENTLY BROKEN: gitlab returns 406 Not Acceptable
+## build target: @libff//bzl/external/procps
+# http_archive(
+#     name="procps",
+#     url="https://gitlab.com/procps-ng/procps/-/archive/v3.3.16/procps-v3.3.16.tar.gz",
+#     sha256="7f09945e73beac5b12e163a7ee4cae98bcdd9a505163b6a060756f462907ebbc",
+#     strip_prefix = "procps-v3.3.16",
+#     build_file_content = all_content
+# )
+
+## build target: //bzl/external/libgmp alias for @ate_pairing//bzl/external/libgmp
+http_archive(
+    name="libgmp",
+    url="https://gmplib.org/download/gmp/gmp-6.2.0.tar.xz",
+    sha256="258e6cd51b3fbdfc185c716d55f82c08aff57df0c6fbd143cf6ed561267a1526",
+    strip_prefix = "gmp-6.2.0",
+    build_file_content = all_content
+)
 
 ## boost needed by: @xbyak//sample:calc
 git_repository(
