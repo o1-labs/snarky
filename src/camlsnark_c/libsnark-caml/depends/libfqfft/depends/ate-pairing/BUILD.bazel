@@ -1,0 +1,118 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@bazel_skylib//rules:common_settings.bzl",
+     "bool_flag", "int_flag", "string_flag"
+)
+load("@ate_pairing//bzl/config:vars.bzl",
+     "CFLAGS", "DDEBUG", "DEFINES", "LINK_STATIC_ONLY", "SNARK")
+
+################################################################
+    ######## Extramural (shared) Build Settings ########
+
+bool_flag( name = "snark", build_setting_default = False, visibility = ["//visibility:public"])
+# override xbyak default:
+config_setting( name = "enable_snark", flag_values = { ":snark": str(True) },
+                visibility = ["//visibility:public"])
+
+bool_flag( name = "with_libgmp", build_setting_default = True, visibility = ["//visibility:public"])
+
+################################################################
+# we put this here instead of in src because making distinct packages
+# for src and include would break clients like libff that namespace
+# includes, e.g. #include "ate-pairing/include/bn.h".
+cc_library(
+    name = "zm",
+    srcs = [
+        "src/zm.cpp",
+        "src/zm2.cpp",
+        "include/zm.h",
+        "include/zm2.h",
+        "include/bn.h",
+    ],
+    hdrs = [
+        "include/bn.h",
+        "include/zm.h",
+        "include/zm2.h",
+    ],
+    copts = CFLAGS,
+    # some client include directives use this prefix, e.g. #include "ate-pairing/include/bn.h"
+    include_prefix = "ate-pairing",
+    includes = ["include", "src"],
+    defines = DEFINES + ["BN_SUPPORT_SNARK"], # SNARK,
+    local_defines = DDEBUG,
+    linkopts = select({
+        "//bzl/host:macos": ["-Wl,-no_pie"],  # avoid PIE disabled warning
+        "//conditions:default": [],
+    }),
+    linkstatic = LINK_STATIC_ONLY,
+    visibility = ["//visibility:public"],
+    deps = ["@xbyak//xbyak"] + select({
+        "//bzl/config:with_libgmp": ["//bzl/external/libgmp"],
+        "//conditions:default": []
+    })
+)
+
+# these are for testing, with hard-coded snark param
+cc_library(
+    name = "_zm-snark",
+    srcs = [
+        "src/zm.cpp",
+        "src/zm2.cpp",
+        "include/zm.h",
+        "include/zm2.h",
+        "include/bn.h",
+    ],
+    hdrs = [
+        "include/bn.h",
+        "include/zm.h",
+        "include/zm2.h",
+    ],
+    copts = CFLAGS,
+    # some client include directives use this prefix, e.g. #include "ate-pairing/include/bn.h"
+    include_prefix = "ate-pairing",
+    includes = ["include", "src"],
+    defines = DEFINES,
+    local_defines = DDEBUG + ["BN_SUPPORT_SNARK"],
+    linkopts = select({
+        "//bzl/host:macos": ["-Wl,-no_pie"],  # avoid PIE disabled warning
+        "//conditions:default": [],
+    }),
+    linkstatic = LINK_STATIC_ONLY,
+    visibility = ["//visibility:public"],
+    deps = ["@xbyak//xbyak"] + select({
+        "//bzl/config:with_libgmp": ["//bzl/external/libgmp"],
+        "//conditions:default": []
+    })
+)
+
+# for testing - test:mini
+cc_library(
+    name = "_zm-nosnark",
+    srcs = [
+        "src/zm.cpp",
+        "src/zm2.cpp",
+        "include/zm.h",
+        "include/zm2.h",
+        "include/bn.h",
+    ],
+    hdrs = [
+        "include/bn.h",
+        "include/zm.h",
+        "include/zm2.h",
+    ],
+    copts = CFLAGS + ["-UBN_SUPPORT_SNARK"],
+    # some client include directives use this prefix, e.g. #include "ate-pairing/include/bn.h"
+    include_prefix = "ate-pairing",
+    includes = ["include", "src"],
+    defines = DEFINES,
+    local_defines = DDEBUG,
+    linkopts = select({
+        "//bzl/host:macos": ["-Wl,-no_pie"],  # avoid PIE disabled warning
+        "//conditions:default": [],
+    }),
+    linkstatic = LINK_STATIC_ONLY,
+    visibility = ["//visibility:public"],
+    deps = ["@xbyak//xbyak"] + select({
+        "//bzl/config:with_libgmp": ["//bzl/external/libgmp"],
+        "//conditions:default": []
+    })
+)

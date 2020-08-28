@@ -1,0 +1,59 @@
+load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
+
+configure_make(
+    name = "libgmp",
+    configure_env_vars = select({
+        "//bzl/host:macos": {
+            "AR": "",
+            "CXXFLAGS" : "-lstdc++ -m64 -fomit-frame-pointer -Dredacted",
+        },
+        "//bzl/host:linux_x64": {
+            "CXXFLAGS" : "-lstdc++ -m64 -fomit-frame-pointer -fPIC -DPIC",
+        },
+        "//conditions:default": {}
+    }),
+    #     # cross-compile:
+    #     # "CPPFLAGS": "-P -fPIC -I$COSYSROOT/usr/local/include -I$COSYSROOT/usr/include",
+    #     # "LDFLAGS": "-L$COSYSROOT/usr/lib/x86_64-unknown-linux-gnu",
+    # ],
+    configure_options = select({
+        "//bzl/host:linux_x64": [
+            "--disable-shared",
+            "--enable-static"
+        ],
+        "//bzl/host:macos": [
+            "--build=x86_64-apple-darwin",
+            "AR=\"\"",
+            # "-Wl,-no_pie", # avoid PIE disabled warning
+            "--enable-shared",
+            "--enable-static",
+            "--with-pic",
+            ## due to the -D stuff Bazel inserts, omission of -Dredacted results in:
+            ## error: invalid suffix on literal; C++11 requires a space
+            ## between literal and identifier [-Wreserved-user-defined-literal]
+            "CFLAGS=-Dredacted",
+        ],
+        "//conditions:default": [],
+    }) + [
+        "--enable-cxx",
+    ],
+    lib_source = "@libgmp//:all",
+    out_lib_dir = "lib",
+    shared_libraries = select({
+        "//bzl/host:macos": ["libgmp.dylib", "libgmpxx.dylib"],
+        "//bzl/host:linux_x64": [], # "libgmp.so.10.4.0", "libgmpxx.so.4.6.0"],
+        "//conditions:default": ["libgmp.so.10.4.0", "libgmpxx.so.4.6.0"],
+    }),
+    static_libraries = ["libgmpxx.a", "libgmp.a"],
+    # static_libraries = select({
+    #     "//bzl/host:macos": [
+    #         ## IMPORTANT: order matters!  keep libgmpxx before libgmp
+    #         ## or you will get undefined reference errors.
+    #         "libgmpxx.a",
+    #         "libgmp.a",
+    #     ],
+    #     "//bzl/host:linux_x64": ["libgmp.a", "libgmpxx.a"],
+    #     "//conditions:default": ["libgmpxx.a", "libgmp.a"],
+    # }),
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,5 @@
+alias(
+    name = "libzm",
+    actual = "//:zm",
+    visibility = ["//visibility:public"],
+)
