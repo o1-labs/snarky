@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "tbcs",
+    visibility = ["//visibility:public"],
+    srcs = ["tbcs.cpp", "tbcs.hpp"],
+    hdrs = ["tbcs.hpp"],
+    include_prefix = "libsnark/relations/circuit_satisfaction_problems/tbcs",
+    copts = ["-I.", "-Iexternal"],
+    deps = ["//libsnark/relations",
+            "@libff//libff"]
+)
+
+

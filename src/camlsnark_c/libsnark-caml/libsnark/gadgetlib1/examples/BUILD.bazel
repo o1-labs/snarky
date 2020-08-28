@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "examples",
+    visibility = ["//visibility:public"],
+    hdrs = ["simple_example.hpp",
+            "simple_example.tcc"],
+    include_prefix = "libsnark/gadgetlib1/examples",
+    deps = [
+        "//libsnark/gadgetlib1/gadgets",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples"
+    ]
+)
+

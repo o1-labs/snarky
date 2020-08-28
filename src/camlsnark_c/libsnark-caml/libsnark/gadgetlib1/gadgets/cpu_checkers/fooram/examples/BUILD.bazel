@@ -1,0 +1,26 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libsnark//bzl/config:vars.bzl", "CXXFLAGS")
+
+cc_test(
+    name = "examples",
+    timeout = "long",
+    srcs = ["test_fooram.cpp"],
+    copts = [
+        "-I.",
+        "-Iexternal",
+        "-Iexternal/libff"
+    ] + CXXFLAGS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libsnark/common",
+        "//libsnark/common/default_types:r1cs_ppzkpcd",
+        "//libsnark/common/default_types:r1cs_ppzksnark",
+        "//libsnark/gadgetlib1/gadgets/cpu_checkers/fooram",
+        "//libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/components",
+        "//libsnark/relations/ram_computations/rams/fooram",
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples:run_ram_ppzksnark",
+        "//libsnark/zk_proof_systems/zksnark/ram_zksnark/examples",
+        "@libff//libff",
+        # "@libff//libff/common:utils",
+    ],
+)

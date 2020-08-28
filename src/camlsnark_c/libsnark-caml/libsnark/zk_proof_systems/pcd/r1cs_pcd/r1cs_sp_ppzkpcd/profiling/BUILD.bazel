@@ -1,0 +1,16 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "profiling",
+    visibility = ["//visibility:public"],
+    srcs = ["profile_r1cs_sp_ppzkpcd.cpp"],
+    copts = ["-I.", "-Iexternal"],
+    include_prefix = "libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd/profiling",
+    deps = [
+        "@libff//libff/common:profiling",
+        "@libff//libff/common/default_types",
+        "@libff//libff/common",
+        "//libsnark/common/default_types:r1cs_ppzkpcd",
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd/examples"
+    ]
+)

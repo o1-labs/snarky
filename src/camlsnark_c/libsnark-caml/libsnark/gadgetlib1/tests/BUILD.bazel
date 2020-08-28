@@ -1,0 +1,13 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "tests",
+    timeout = "short",
+    visibility = ["//visibility:public"],
+    srcs = ["gadgetlib1_test.cpp"],
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    deps = ["//libsnark/gadgetlib1/examples",
+            "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
+            "@gtest//:gtest_main",
+    ]
+)

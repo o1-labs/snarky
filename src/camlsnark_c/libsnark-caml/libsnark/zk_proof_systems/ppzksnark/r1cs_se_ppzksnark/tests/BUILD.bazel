@@ -1,0 +1,20 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "tests",
+    timeout = "short",
+    visibility = ["//visibility:public"],
+    srcs = ["test_r1cs_se_ppzksnark.cpp"],
+    copts = [
+        "-I.",
+        "-Iexternal",
+        "-Iexternal/libff"
+    ],
+    deps = [
+        "//libsnark/common/default_types:r1cs_se_ppzksnark",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
+        "@libff//libff"
+    ]
+)

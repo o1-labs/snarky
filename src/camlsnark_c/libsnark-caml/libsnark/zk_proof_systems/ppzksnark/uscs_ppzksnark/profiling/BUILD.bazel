@@ -1,0 +1,19 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "profiling",
+    visibility = ["//visibility:public"],
+    srcs = ["profile_uscs_ppzksnark.cpp"],
+    copts = [
+        "-I.",
+        "-Iexternal",
+        "-Iexternal/libff"
+    ],
+    deps = [
+        "//libsnark/common/default_types:uscs_ppzksnark",
+        "//libsnark/relations/constraint_satisfaction_problems/uscs/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/uscs_ppzksnark/examples",
+        "@libff//libff"
+    ]
+)
+

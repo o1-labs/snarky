@@ -1,0 +1,154 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "bacs_ppzksnark",
+    hdrs = ["bacs_ppzksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    deps = ["@libff//libff"],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "r1cs_ppzkpcd",
+    visibility = ["//visibility:public"],
+    srcs = [
+        "r1cs_ppzkpcd_pp.cpp",
+        "r1cs_ppzkpcd_pp.hpp",
+    ],
+    hdrs = ["r1cs_ppzkpcd_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    copts = ["-I.",
+             "-Iexternal",
+             "-Iexternal/libff"
+    ],
+    deps = ["@libff//libff"]
+)
+
+cc_library(
+    name = "r1cs_ppzksnark",
+    hdrs = ["r1cs_ppzksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    copts = ["-I.",
+             "-Iexternal",
+             "-Iexternal/libff"
+    ],
+    deps = ["@libff//libff"],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "r1cs_gg_ppzksnark",
+    hdrs = ["r1cs_gg_ppzksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    deps = ["@libff//libff"],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "r1cs_se_ppzksnark",
+    hdrs = ["r1cs_se_ppzksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    deps = ["@libff//libff"],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "ram_ppzksnark",
+    hdrs = ["ram_ppzksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    deps = [
+        ":tinyram_ppzksnark",
+        "@libff//libff"],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "ram_zksnark",
+    hdrs = ["ram_zksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    deps = [
+        ":tinyram_zksnark",
+        "@libff//libff"
+    ],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "tbcs_ppzksnark",
+    hdrs = ["tbcs_ppzksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    deps = ["@libff//libff"],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "tinyram_ppzksnark",
+    srcs = ["tinyram_ppzksnark_pp.cpp"],
+    hdrs = ["tinyram_ppzksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    copts = ["-I.",
+             "-Iexternal",
+             "-Iexternal/libff"
+    ],
+    deps = [
+        ":r1cs_ppzksnark",
+        "//libsnark/relations/ram_computations/rams/tinyram",
+        "@libff//libff"
+    ],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "tinyram_zksnark",
+    srcs = ["tinyram_zksnark_pp.cpp"],
+    hdrs = ["tinyram_zksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    copts = ["-I.",
+             "-Iexternal",
+             "-Iexternal/libff"
+    ],
+    deps = [
+        ":r1cs_ppzkpcd",
+        "//libsnark/relations/ram_computations/rams/tinyram",
+        "@libff//libff"
+    ],
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "uscs_ppzksnark",
+    hdrs = ["uscs_ppzksnark_pp.hpp"],
+    include_prefix = "libsnark/common/default_types",
+    deps = ["@libff//libff"],
+    visibility = ["//visibility:public"]
+)
+
+alias(
+    ## to match upstream docs, naming this snark_adsnark instead of r1cs_ppadzksnark
+    name = "snark_adsnark",
+    actual = "r1cs_ppzkadsnark"
+)
+
+cc_library(
+    name = "r1cs_ppzkadsnark",
+    visibility = ["//visibility:public"],
+    srcs = [
+        "r1cs_ppzkadsnark_pp.cpp",
+        "r1cs_ppzkadsnark_pp.hpp"
+    ],
+    include_prefix = "libsnark/common/default_types",
+    hdrs = ["r1cs_ppzkadsnark_pp.hpp"],
+    copts = ["-I.",
+             # these -Iexternal paths are needed because libsnark
+             # include directives use < > instead of quotes
+             "-Iexternal",
+             "-Iexternal/libff"
+    ],
+    deps = ["//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/prf",
+            "//libsnark/relations/ram_computations/rams/tinyram",
+            "//libsnark/common/default_types:r1cs_ppzksnark",
+            "@libff//libff",
+            "@libff//libff/common/default_types",
+            # "@supercop//:supercop"
+            ]
+)

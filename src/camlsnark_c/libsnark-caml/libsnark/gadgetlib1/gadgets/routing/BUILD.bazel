@@ -1,0 +1,20 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "routing",
+    visibility = ["//visibility:public"],
+    copts = ["-I.", "-Iexternal"],
+    hdrs = [
+        "as_waksman_routing_gadget.hpp",
+        "as_waksman_routing_gadget.tcc",
+        "benes_routing_gadget.hpp",
+        "benes_routing_gadget.tcc"
+    ],
+    include_prefix = "libsnark/gadgetlib1/gadgets/routing",
+    deps = ["//libsnark/common/data_structures",
+            "//libsnark/common/routing_algorithms",
+            "//libsnark/gadgetlib1/gadgets",
+            "//libsnark/gadgetlib1"]
+)
+
+

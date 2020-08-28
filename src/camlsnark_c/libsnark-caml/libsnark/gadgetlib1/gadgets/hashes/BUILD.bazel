@@ -1,0 +1,22 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "hashes",
+    visibility = ["//visibility:public"],
+    hdrs = ["digest_selector_gadget.hpp",
+            "digest_selector_gadget.tcc",
+            "hash_io.hpp", "hash_io.tcc"],
+    copts = ["-I.", "-Iexternal"],
+    include_prefix = "libsnark/gadgetlib1/gadgets/hashes",
+    deps = ["//libsnark/gadgetlib1/gadgets"]
+)
+
+cc_library(
+    name = "crh_gadget",
+    visibility = ["//visibility:public"],
+    hdrs = ["crh_gadget.hpp"],
+    include_prefix = "libsnark/gadgetlib1/gadgets/hashes",
+    # include_prefix = "libsnark",
+    copts = ["-I.", "-Iexternal"],
+    deps = ["//libsnark/gadgetlib1/gadgets/hashes/knapsack"]
+)

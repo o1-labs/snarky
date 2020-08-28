@@ -1,0 +1,18 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "tests",
+    visibility = ["//visibility:public"],
+    srcs = ["test_set_commitment_gadget.cpp"],
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        #ifdef CURVE_BN128
+        #include <libff/algebra/curves/bn128/bn128_pp.hpp>
+        #endif
+        "//libsnark/gadgetlib1/gadgets/hashes/sha256",
+        "//libsnark/gadgetlib1/gadgets/set_commitment",
+        "@libff//libff/common:profiling",
+        "@libff//libff/common/default_types",
+    ]
+)
+

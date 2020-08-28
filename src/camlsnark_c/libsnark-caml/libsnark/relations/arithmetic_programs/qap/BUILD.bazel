@@ -1,0 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "qap",
+    visibility = ["//visibility:public"],
+    hdrs = ["qap.hpp", "qap.tcc"],
+    include_prefix = "libsnark/relations/arithmetic_programs/qap",
+    copts = ["-I.", "-Iexternal"],
+    deps = ["@libfqfft//libfqfft/evaluation_domain"]
+)
+

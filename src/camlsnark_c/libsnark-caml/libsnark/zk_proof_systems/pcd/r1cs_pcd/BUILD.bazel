@@ -1,0 +1,17 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "r1cs_pcd",
+    visibility = ["//visibility:public"],
+    hdrs = [
+        "ppzkpcd_compliance_predicate.hpp",
+        "r1cs_pcd_params.hpp", "r1cs_pcd_params.tcc"
+    ],
+    include_prefix = "libsnark/zk_proof_systems/pcd/r1cs_pcd",
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/compliance_predicate",
+        "@libff//libff"
+    ]
+)
+

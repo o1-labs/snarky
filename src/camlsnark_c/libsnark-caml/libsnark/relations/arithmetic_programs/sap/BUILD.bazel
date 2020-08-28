@@ -1,0 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "sap",
+    visibility = ["//visibility:public"],
+    copts = ["-I.", "-Iexternal"],
+    include_prefix = "libsnark/relations/arithmetic_programs/sap",
+    hdrs = ["sap.hpp", "sap.tcc"],
+    deps = ["@libfqfft//libfqfft"]
+)
+

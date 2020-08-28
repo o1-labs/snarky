@@ -1,0 +1,19 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "r1cs_ppzkadsnark",
+    visibility = ["//visibility:public"],
+    include_prefix = "libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark",
+    hdrs = [
+        "r1cs_ppzkadsnark.hpp",
+        "r1cs_ppzkadsnark.tcc",
+        "r1cs_ppzkadsnark_params.hpp",
+        "r1cs_ppzkadsnark_prf.hpp",
+        "r1cs_ppzkadsnark_signature.hpp",
+    ],
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/signature"
+    ]
+)
+

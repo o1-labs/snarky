@@ -1,0 +1,26 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "pairing",
+    visibility = ["//visibility:public"],
+    copts = ["-I.", "-Iexternal"],
+    hdrs = [
+        "mnt_pairing_params.hpp",
+        "pairing_checks.hpp", "pairing_checks.tcc",
+        "pairing_params.hpp",
+        "weierstrass_final_exponentiation.hpp",
+        "weierstrass_final_exponentiation.tcc",
+        "weierstrass_final_exponentiation_value.hpp",
+        "weierstrass_final_exponentiation_value.tcc",
+        "weierstrass_miller_loop.hpp",
+        "weierstrass_miller_loop.tcc",
+        "weierstrass_precomputation.hpp",
+        "weierstrass_precomputation.tcc"
+    ],
+    include_prefix = "libsnark/gadgetlib1/gadgets/pairing",
+    deps = [
+        "@libff//libff",
+        "//libsnark/gadgetlib1/gadgets/fields",
+    ]
+)
+

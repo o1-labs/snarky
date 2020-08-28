@@ -1,0 +1,19 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "tests",
+    srcs = ["test_r1cs_ppzksnark_verifier_gadget.cpp"],
+    visibility = ["//visibility:public"],
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "@libff//libff/algebra/curves/mnt/mnt4",
+        "@libff//libff/algebra/curves/mnt/mnt6",
+        "@libff//libff/common",
+        "//libsnark/gadgetlib1/gadgets/fields",
+        "//libsnark/gadgetlib1/gadgets/verifiers",
+        "//libsnark/gadgetlib1/gadgets",
+        "//libsnark/gadgetlib1",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples"
+    ],
+)

@@ -1,0 +1,13 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "uscs_to_ssp",
+    visibility = ["//visibility:public"],
+    hdrs = ["uscs_to_ssp.hpp", "uscs_to_ssp.tcc"],
+    copts = ["-I."],
+    include_prefix = "libsnark/reductions/uscs_to_ssp",
+    deps = [
+        "//libsnark/relations/arithmetic_programs/ssp"
+    ]
+)
+

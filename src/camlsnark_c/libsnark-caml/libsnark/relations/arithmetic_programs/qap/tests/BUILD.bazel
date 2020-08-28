@@ -1,0 +1,16 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "tests",
+    visibility = ["//visibility:public"],
+    srcs = ["test_qap.cpp"],
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "@libff//libff/common:profiling",
+        "@libff//libff/common:utils",
+        "@libfqfft//libfqfft",
+        "//libsnark/reductions/r1cs_to_qap",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples"
+    ]
+)
+

@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "components",
+    hdrs = [
+        "bar_gadget.hpp",
+        "bar_gadget.tcc",
+        "fooram_protoboard.hpp",
+        "fooram_protoboard.tcc"
+    ],
+    include_prefix = "libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/components",
+    copts = ["-I.", "-Iexternal"],
+    visibility = ["//visibility:public"],
+)

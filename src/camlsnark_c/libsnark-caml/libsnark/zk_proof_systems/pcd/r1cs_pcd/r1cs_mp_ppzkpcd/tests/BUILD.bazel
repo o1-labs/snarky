@@ -1,0 +1,22 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libsnark//bzl/config:vars.bzl", "HDR_SEARCH_PATHS")
+
+cc_test(
+    name = "tests",
+    timeout = "eternal",
+    visibility = ["//visibility:public"],
+    srcs = ["test_r1cs_mp_ppzkpcd.cpp"],
+    include_prefix = "libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/tests",
+    copts = HDR_SEARCH_PATHS,
+    deps = [
+        "@libff//libff/common:profiling",
+        "@libff//libff/common/default_types",
+        "//libsnark/common/default_types:r1cs_ppzkpcd",
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/examples"
+    ]
+)
+
+
+
+
+

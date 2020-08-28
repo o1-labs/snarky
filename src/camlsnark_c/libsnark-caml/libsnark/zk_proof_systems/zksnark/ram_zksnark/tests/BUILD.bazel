@@ -1,0 +1,16 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "tests",
+    timeout = "eternal",  # 3600 seconds
+    srcs = ["test_ram_zksnark.cpp"],
+    copts = ["-I.", "-Iexternal"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libsnark/common/default_types:ram_zksnark",
+        "//libsnark/relations/ram_computations/rams/examples",
+        "//libsnark/relations/ram_computations/rams/tinyram",
+        "//libsnark/zk_proof_systems/zksnark/ram_zksnark/examples",
+    ],
+)
+

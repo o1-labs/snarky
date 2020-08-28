@@ -1,0 +1,24 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "libsnark",
+    visibility = ["//visibility:public"],
+    # srcs = [
+
+    # ],
+    # hdrs = [
+    # ],
+    linkstatic = True,
+    deps = [
+        "//libsnark/common/data_structures",
+        "//libsnark/common/routing_algorithms",
+        "//libsnark/gadgetlib1",
+        "//libsnark/gadgetlib2",
+        "//libsnark/relations/circuit_satisfaction_problems/tbcs",
+        "//libsnark/relations/ram_computations/memory",
+        "//libsnark/relations/ram_computations/rams/fooram",
+        "//libsnark/relations/ram_computations/rams/tinyram",
+        "@ate_pairing//libzm"
+    ]
+)
+

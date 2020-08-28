@@ -1,0 +1,9 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "uscs",
+    visibility = ["//visibility:public"],
+    hdrs = ["uscs.hpp", "uscs.tcc"],
+    include_prefix = "libsnark/relations/constraint_satisfaction_problems/uscs",
+    deps = ["//libsnark/relations"]
+)

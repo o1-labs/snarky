@@ -1,0 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "relations",
+    visibility = ["//visibility:public"],
+    hdrs = ["variable.hpp", "variable.tcc"],
+    include_prefix = "libsnark/relations",
+    copts = ["-I.", "-Iexternal/libsnark"],
+    deps = ["@libff//libff"]
+)
+

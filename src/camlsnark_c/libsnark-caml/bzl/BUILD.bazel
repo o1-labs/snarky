@@ -1,0 +1,33 @@
+load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
+
+configure_make(
+    name = "openssl",
+    configure_command = "config",
+    configure_env_vars =
+        select({
+            "//bzl/host:macos": { "AR": "" },
+            "//conditions:default": {}
+        }),
+    configure_options = [
+        "no-shared",
+    ] + select({
+        "//conditions:default": [],
+    }),
+    #   select({
+    #         ":darwin_build": [
+    #           "shared",
+    #           "ARFLAGS=r",
+    #           "enable-ec_nistp_64_gcc_128",
+    #           "no-ssl2", "no-ssl3", "no-comp"
+    #         ],
+    #         "//conditions:default": [
+    #         ]}),
+    # #defines = ["NDEBUG"], Don't know how to use -D; NDEBUG seems to be the default anyway
+    lib_source = "@openssl//:all",
+    static_libraries = [
+        "libssl.a",
+        "libcrypto.a",
+    ],
+    visibility = ["//visibility:public"],
+)
+

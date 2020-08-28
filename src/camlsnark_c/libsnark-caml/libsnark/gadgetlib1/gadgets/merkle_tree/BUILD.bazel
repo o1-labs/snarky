@@ -1,0 +1,21 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "merkle_tree",
+    visibility = ["//visibility:public"],
+    hdrs = ["merkle_authentication_path_variable.hpp",
+            "merkle_authentication_path_variable.tcc",
+            "merkle_tree_check_read_gadget.hpp",
+            "merkle_tree_check_read_gadget.tcc",
+            "merkle_tree_check_update_gadget.hpp",
+            "merkle_tree_check_update_gadget.tcc"
+    ],
+    include_prefix = "libsnark/gadgetlib1/gadgets/merkle_tree",
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+            "//libsnark/common/data_structures",
+            "//libsnark/gadgetlib1",
+            "//libsnark/gadgetlib1/gadgets/hashes:crh_gadget"
+    ]
+)
+

@@ -1,0 +1,45 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "gadgetlib2",
+    visibility = ["//visibility:public"],
+    srcs = [
+        "adapters.cpp",
+        "adapters.hpp",
+        "constraint.cpp",
+        "constraint.hpp",
+        "gadget.cpp",
+        "gadget.hpp",
+        "gadgetMacros.hpp",
+        "infrastructure.cpp",
+        "infrastructure.hpp",
+        "integration.cpp",
+        "integration.hpp",
+        "pp.cpp",
+        "pp.hpp",
+        "protoboard.cpp",
+        "protoboard.hpp",
+        "variable.cpp",
+        "variable.hpp",
+        "variable_operators.hpp",
+    ],
+    hdrs = [
+        "adapters.hpp",
+        "constraint.hpp",
+        "gadget.hpp",
+        "gadgetMacros.hpp",
+        "infrastructure.hpp",
+        "integration.hpp",
+        "pp.hpp",
+        "protoboard.hpp",
+        "variable.hpp",
+        "variable_operators.hpp",
+    ],
+    include_prefix = "libsnark/gadgetlib2",
+    linkstatic = True,
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    deps = ["//libsnark/relations/constraint_satisfaction_problems/r1cs",
+            "@libff//libff/common:profiling",
+            "@libff//libff/common/default_types"]
+)
+

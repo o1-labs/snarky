@@ -1,0 +1,15 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "tests",
+    visibility = ["//visibility:public"],
+    srcs = ["test_ssp.cpp"],
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "//libsnark/reductions/uscs_to_ssp",
+        "//libsnark/relations/constraint_satisfaction_problems/uscs/examples",
+        "@libff//libff/common:profiling",
+        "@libff//libff"
+    ]
+)
+

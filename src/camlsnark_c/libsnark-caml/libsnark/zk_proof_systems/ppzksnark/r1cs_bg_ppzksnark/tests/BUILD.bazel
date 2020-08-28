@@ -1,0 +1,25 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+## not yet supported:
+#  missing file: "//common/default_types:r1cs_bg_ppzksnark",
+
+
+# cc_test(
+#     name = "tests",
+#     timeout = "short",
+#     visibility = ["//visibility:public"],
+#     srcs = ["test_r1cs_bg_ppzksnark.cpp"],
+#     copts = [
+#         "-I.",
+#         "-Iexternal",
+#         "-Iexternal/libff"
+#     ],
+#     deps = [
+#         "//common/default_types:r1cs_bg_ppzksnark",
+#         "//relations/constraint_satisfaction_problems/r1cs/examples",
+#         "//zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark/examples",
+#         "//zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark",
+#         "@libff//libff"
+#     ]
+# )
+

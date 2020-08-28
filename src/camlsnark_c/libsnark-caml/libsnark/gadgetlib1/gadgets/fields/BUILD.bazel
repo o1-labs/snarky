@@ -1,0 +1,18 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "fields",
+    visibility = ["//visibility:public"],
+    hdrs = ["exponentiation_gadget.hpp", "exponentiation_gadget.tcc",
+            "fp2_gadgets.hpp", "fp2_gadgets.tcc",
+            "fp3_gadgets.hpp", "fp3_gadgets.tcc",
+            "fp4_gadgets.hpp", "fp4_gadgets.tcc",
+            "fp6_gadgets.hpp", "fp6_gadgets.tcc",
+    ],
+    include_prefix = "libsnark/gadgetlib1/gadgets/fields",
+    deps = [
+        "//libsnark/gadgetlib1",
+        "@libff//libff",
+    ]
+)
+

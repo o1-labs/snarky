@@ -1,0 +1,22 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "memory",
+    visibility = ["//visibility:public"],
+    srcs = ["memory_store_trace.cpp",
+            "memory_store_trace.hpp",
+            "memory_interface.hpp",
+            "ra_memory.cpp",
+            "ra_memory.hpp"],
+    hdrs = ["delegated_ra_memory.hpp",
+            "delegated_ra_memory.tcc",
+            "memory_interface.hpp",
+            "memory_store_trace.hpp",
+            "ra_memory.hpp"],
+    include_prefix = "libsnark/relations/ram_computations/memory",
+    copts = ["-I.",
+             "-Iexternal"],
+    linkstatic = True,
+)
+
+

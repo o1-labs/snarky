@@ -1,0 +1,17 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "gadgets",
+    visibility = ["//visibility:public"],
+    hdrs = [
+        "memory_checker_gadget.hpp", "memory_checker_gadget.tcc",
+        "ram_universal_gadget.hpp", "ram_universal_gadget.tcc",
+        "trace_lines.hpp", "trace_lines.tcc"
+    ],
+    include_prefix = "libsnark/reductions/ram_to_r1cs/gadgets",
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "//libsnark/gadgetlib1/gadgets/routing",
+    ]
+)
+

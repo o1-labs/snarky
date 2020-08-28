@@ -1,0 +1,19 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "HDR_SEARCH_PATHS")
+
+cc_library(
+    name = "bacs_ppzksnark",
+    visibility = ["//visibility:public"],
+    hdrs = ["bacs_ppzksnark.hpp",
+            "bacs_ppzksnark.tcc",
+            "bacs_ppzksnark_params.hpp"],
+    include_prefix = "libsnark/zk_proof_systems/ppzksnark/bacs_ppzksnark",
+    copts = HDR_SEARCH_PATHS,
+    deps = [
+        "//libsnark/relations/circuit_satisfaction_problems/bacs",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark",
+        "//libsnark/reductions/bacs_to_r1cs"
+    ]
+)
+
+

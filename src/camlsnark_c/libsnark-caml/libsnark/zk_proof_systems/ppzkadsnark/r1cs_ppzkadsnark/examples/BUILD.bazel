@@ -1,0 +1,22 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+cc_binary(
+    name = "examples",
+    srcs = selects.with_or({
+        ("//bzl/config:_without_supercop", "//bzl/host:macos"): [], # "null_main.cpp"],
+        "//conditions:default": ["demo_r1cs_ppzkadsnark.cpp",
+                                 "run_r1cs_ppzkadsnark.hpp",
+                                 "run_r1cs_ppzkadsnark.tcc",
+        ],
+    }),
+    include_prefix = "libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples",
+    copts = ["-I.", "-Iexternal/libsnark"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libsnark/common/default_types:r1cs_ppzkadsnark",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
+        "//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark",
+        "@libff//libff",
+    ],
+)

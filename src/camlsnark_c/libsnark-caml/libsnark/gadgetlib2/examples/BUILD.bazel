@@ -1,0 +1,36 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "tutorial",
+    srcs = [
+        "tutorial.cpp",
+    ],
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        ":examples",
+        "//libsnark/gadgetlib2",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
+        "@gtest//:gtest_main"
+    ],
+)
+
+cc_library(
+    name = "examples",
+    srcs = [
+        "simple_example.cpp",
+    ],
+    hdrs = ["simple_example.hpp"],
+    include_prefix = "libsnark/gadgetlib2/examples",
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libsnark/gadgetlib2",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
+        "@gtest//:gtest_main"
+    ],
+)

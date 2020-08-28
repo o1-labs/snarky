@@ -1,0 +1,15 @@
+cc_library(
+    name = "delegated_ra_memory",
+    visibility = ["//visibility:public"],
+    hdrs = [
+        "memory_load_gadget.hpp",
+        "memory_load_store_gadget.hpp"
+    ],
+    copts = ["-I."],
+    include_prefix = "libsnark/gadgetlib1/gadgets/delegated_ra_memory",
+    deps = [
+        "//libsnark/gadgetlib1/gadgets/merkle_tree",
+    ]
+)
+
+

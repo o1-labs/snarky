@@ -1,0 +1,27 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "components",
+    visibility = ["//visibility:public"],
+    hdrs = [
+        "alu_arithmetic.hpp",
+        "alu_arithmetic.tcc",
+        "alu_control_flow.hpp",
+        "alu_control_flow.tcc",
+        "alu_gadget.hpp",
+        "alu_gadget.tcc",
+        "argument_decoder_gadget.hpp",
+        "argument_decoder_gadget.tcc",
+        "consistency_enforcer_gadget.hpp",
+        "consistency_enforcer_gadget.tcc",
+        "memory_masking_gadget.hpp",
+        "memory_masking_gadget.tcc",
+        "tinyram_protoboard.hpp",
+        "tinyram_protoboard.tcc",
+        "word_variable_gadget.hpp",
+    ],
+    include_prefix = "libsnark/gadgetlib1/gadgets/cpu_checkers/tinyram/components",
+    copts = ["-I.", "-Iexternal"],
+    deps = ["//libsnark/gadgetlib1/gadgets"]
+)
+

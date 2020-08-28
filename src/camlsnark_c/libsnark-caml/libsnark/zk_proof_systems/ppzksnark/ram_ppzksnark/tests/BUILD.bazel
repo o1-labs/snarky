@@ -1,0 +1,20 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "tests",
+    timeout = "long",
+    visibility = ["//visibility:public"],
+    srcs = ["test_ram_ppzksnark.cpp"],
+    copts = [
+        "-I.",
+        "-Iexternal",
+        "-Iexternal/libff"
+    ],
+    deps = [
+        "//libsnark/common/default_types:ram_ppzksnark",
+        "//libsnark/relations/ram_computations/rams/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark",
+        "@libff//libff"
+    ]
+)

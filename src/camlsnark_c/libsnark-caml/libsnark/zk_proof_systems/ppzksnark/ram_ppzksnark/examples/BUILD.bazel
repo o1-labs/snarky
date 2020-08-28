@@ -1,0 +1,30 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "examples",
+    visibility = ["//visibility:public"],
+    hdrs = ["run_ram_ppzksnark.hpp",
+            "run_ram_ppzksnark.tcc"],
+    include_prefix = "libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples",
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    deps = [
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark",
+        "@libff//libff/common:profiling",
+        "@libff//libff/common/default_types",
+    ]
+)
+
+cc_library(
+    name = "run_ram_ppzksnark",
+    visibility = ["//visibility:public"],
+    hdrs = ["run_ram_ppzksnark.hpp", "run_ram_ppzksnark.tcc"],
+    include_prefix = "libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples",
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    deps = [
+        "@libff//libff/common:profiling",
+        "@libff//libff/common/default_types",
+        "//libsnark/relations/ram_computations/rams/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark"
+    ]
+)
+

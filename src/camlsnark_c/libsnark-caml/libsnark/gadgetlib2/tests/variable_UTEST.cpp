@@ -9,7 +9,7 @@
 
 #include <set>
 
-#include "depends/gtest/googletest/include/gtest/gtest.h"
+#include "gtest/gtest.h"
 
 #include <libsnark/gadgetlib2/pp.hpp>
 #include <libsnark/gadgetlib2/variable.hpp>

@@ -1,0 +1,16 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "sha256",
+    visibility = ["//visibility:public"],
+    hdrs = ["sha256_aux.hpp", "sha256_aux.tcc",
+            "sha256_components.hpp", "sha256_components.tcc",
+            "sha256_gadget.hpp", "sha256_gadget.tcc"],
+    copts = ["-I.", "-Iexternal/libsnark"],
+    include_prefix = "libsnark/gadgetlib1/gadgets/hashes/sha256",
+    deps = [
+        "//libsnark/common/data_structures",
+        "//libsnark/gadgetlib1/gadgets",
+        "//libsnark/gadgetlib1/gadgets/hashes",
+    ]
+)

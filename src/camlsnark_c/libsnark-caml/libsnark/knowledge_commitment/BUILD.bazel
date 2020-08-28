@@ -1,0 +1,13 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "knowledge_commitment",
+    visibility = ["//visibility:public"],
+    hdrs = ["kc_multiexp.hpp", "kc_multiexp.tcc",
+            "knowledge_commitment.hpp", "knowledge_commitment.tcc"],
+    include_prefix = "libsnark/knowledge_commitment",
+    copts = ["-I.", "-Iexternal"],
+    deps = ["//libsnark/common/data_structures",
+            "@libff//libff"]
+)
+

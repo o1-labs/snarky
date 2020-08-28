@@ -1,0 +1,19 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "gadgetlib1",
+    visibility = ["//visibility:public"],
+    srcs = ["constraint_profiling.cpp",
+            "constraint_profiling.hpp"],
+    hdrs = ["gadget.hpp", "gadget.tcc",
+            "pb_variable.hpp", "pb_variable.tcc",
+            "protoboard.hpp", "protoboard.tcc",
+            "constraint_profiling.hpp"],
+    include_prefix = "libsnark/gadgetlib1",
+    linkstatic = True,
+    copts = ["-I.", "-Iexternal/libsnark"],
+    deps = ["//libsnark/relations",
+            "//libsnark/relations/constraint_satisfaction_problems/r1cs",
+            "@libff//libff"
+    ]
+)

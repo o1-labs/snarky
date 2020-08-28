@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "ram_ppzksnark",
+    visibility = ["//visibility:public"],
+    hdrs = ["ram_ppzksnark.hpp",
+            "ram_ppzksnark.tcc",
+            "ram_ppzksnark_params.hpp"],
+    copts = ["-I.", "-Iexternal"],
+    include_prefix = "libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark",
+    deps = ["//libsnark/reductions/ram_to_r1cs",
+            "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark"
+            ]
+)

@@ -1,0 +1,73 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+COPTS = ["-I.", "-Iexternal", "-Iexternal/libff"]
+
+cc_test(
+    name = "adapters",
+    timeout = "short",
+    visibility = ["//visibility:public"],
+    srcs = ["adapters_UTEST.cpp"],
+    copts = COPTS,
+    linkstatic = True,
+    deps = ["//libsnark/gadgetlib2",
+            "@gtest//:gtest_main"]
+)
+
+cc_test(
+    name = "constraint",
+    timeout = "short",
+    visibility = ["//visibility:public"],
+    srcs = ["constraint_UTEST.cpp"],
+    copts = COPTS,
+    linkstatic = True,
+    deps = ["//libsnark/gadgetlib2",
+            "@gtest//:gtest_main"]
+)
+
+cc_test(
+    name = "gadget",
+    timeout = "short",
+    visibility = ["//visibility:public"],
+    srcs = ["gadget_UTEST.cpp"],
+    copts = COPTS,
+    linkstatic = True,
+    deps = ["//libsnark/gadgetlib2",
+            "@gtest//:gtest_main"]
+)
+
+cc_test(
+    name = "integration",
+    timeout = "short",
+    visibility = ["//visibility:public"],
+    srcs = ["integration_UTEST.cpp"],
+    copts = COPTS,
+    linkstatic = True,
+    deps = ["//libsnark/gadgetlib2",
+            "//libsnark/gadgetlib2/examples",
+            "//libsnark/common/default_types:r1cs_ppzksnark",
+            "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
+            "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
+            "@gtest//:gtest_main"]
+)
+
+cc_test(
+    name = "protoboard",
+    timeout = "short",
+    visibility = ["//visibility:public"],
+    srcs = ["protoboard_UTEST.cpp"],
+    copts = COPTS,
+    linkstatic = True,
+    deps = ["//libsnark/gadgetlib2",
+            "@gtest//:gtest_main"]
+)
+
+cc_test(
+    name = "variable",
+    timeout = "short",
+    visibility = ["//visibility:public"],
+    srcs = ["variable_UTEST.cpp"],
+    copts = COPTS,
+    linkstatic = True,
+    deps = ["//libsnark/gadgetlib2",
+            "@gtest//:gtest_main"]
+)

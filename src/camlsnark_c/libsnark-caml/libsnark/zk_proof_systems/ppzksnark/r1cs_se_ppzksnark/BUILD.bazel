@@ -1,0 +1,15 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "r1cs_se_ppzksnark",
+    visibility = ["//visibility:public"],
+    hdrs = ["r1cs_se_ppzksnark.hpp",
+            "r1cs_se_ppzksnark.tcc",
+            "r1cs_se_ppzksnark_params.hpp"],
+    include_prefix = "libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "//libsnark/knowledge_commitment",
+        "//libsnark/reductions/r1cs_to_sap"
+    ]
+)

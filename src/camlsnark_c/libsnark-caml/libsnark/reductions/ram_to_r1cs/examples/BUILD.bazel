@@ -1,0 +1,17 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "examples",
+    srcs = ["demo_arithmetization.cpp"],
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libsnark/common/default_types:tinyram_ppzksnark",
+        "//libsnark/reductions/ram_to_r1cs",
+        "//libsnark/relations/ram_computations/rams/tinyram",
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark",
+        "@libff//libff/common:profiling",
+        "@libff//libff/common/default_types",
+        "@boost//:program_options",
+    ],
+)

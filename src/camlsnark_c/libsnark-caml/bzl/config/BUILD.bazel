@@ -1,0 +1,60 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+bool_flag( name = "with_supercop", build_setting_default = True,
+           visibility = ["//visibility:public"])
+
+config_setting( name = "_with_supercop",
+                flag_values = { ":with_supercop": "True" })
+config_setting( name = "_without_supercop",
+                flag_values = { ":with_supercop": "False" })
+
+################################################################
+#################################################
+####    GLOBAL/SHARED CONFIG SETTING DEPS    ####
+
+config_setting( name = "enable_curve_bn128",      flag_values = { "@//:curve": "bn128" })
+config_setting( name = "enable_curve_alt_bn128",  flag_values = { "@//:curve": "alt_bn128" })
+config_setting( name = "enable_curve_edwards",    flag_values = { "@//:curve": "edwards" })
+config_setting( name = "enable_curve_mnt4",       flag_values = { "@//:curve": "mnt4" })
+config_setting( name = "enable_curve_mnt6",       flag_values = { "@//:curve": "mnt6" })
+
+config_setting( name = "with_openmp",             flag_values = { "@//:with_openmp": str(True) })
+config_setting( name = "without_openmp",          flag_values = { "@//:with_openmp": str(False) })
+
+config_setting( name = "with_libgmp",             flag_values = { "@//:with_libgmp": str(True) })
+config_setting( name = "without_libgmp",          flag_values = { "@//:with_libgmp": str(False) })
+
+################################################################
+bool_flag( name = "debug",
+           build_setting_default = False)
+# -DDEBUG=1
+config_setting( name = "enable_debug",
+                flag_values = { ":debug": "True" })
+config_setting( name = "disable_debug",
+                flag_values = { ":debug": "False" })
+
+selects.config_setting_group(
+    name = "macos_disable_debug",
+    match_all = ["//bzl/host:macos", ":disable_debug"]
+)
+
+# Enable debugging of C++ STL (does not imply DEBUG)
+bool_flag( name = "cxx_debug", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "enable_cxx_debug",  flag_values = { ":cxx_debug": str(True) })
+selects.config_setting_group( name = "macos_cxx_debug",
+                              match_all = ["//bzl/host:macos", ":enable_cxx_debug"])
+selects.config_setting_group( name = "linux_cxx_debug",
+                              match_all = ["//bzl/host:linux", ":enable_cxx_debug"])
+# config_setting( name = "enable_cxx_debug", flag_values = { ":cxx_debug": str(True) })
+
+
+bool_flag( name = "verbose", build_setting_default = False, visibility = ["//visibility:public"])
+config_setting( name = "enable_verbose",  flag_values = { ":verbose": str(True) })
+config_setting( name = "disable_verbose", flag_values = { ":verbose": str(False) })
+
+# Enable link-time and aggressive optimizations
+bool_flag( name = "optimize",  # PERFORMANCE
+           build_setting_default = False)
+config_setting( name = "enable_optimization",
+                flag_values = { ":optimize": "true" })

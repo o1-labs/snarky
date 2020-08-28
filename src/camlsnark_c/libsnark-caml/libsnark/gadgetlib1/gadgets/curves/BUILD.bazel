@@ -1,0 +1,19 @@
+cc_library(
+    name = "weierstrass",
+    visibility = ["//visibility:public"],
+    # srcs = ["",
+    # ],
+    hdrs = ["weierstrass_g1_gadget.hpp",
+            "weierstrass_g1_gadget.tcc",
+            "weierstrass_g2_gadget.hpp",
+            "weierstrass_g2_gadget.tcc"
+    ],
+    include_prefix = "libsnark/gadgetlib1/gadgets/curves",
+    deps = [
+        "//libsnark/gadgetlib1",
+        "//libsnark/gadgetlib1/gadgets/pairing",
+        "@libff//libff",
+    ]
+)
+
+

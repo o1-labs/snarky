@@ -1,0 +1,16 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "profiling",
+    visibility = ["//visibility:public"],
+    srcs = ["profile_ram_ppzksnark.cpp"],
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    deps = [
+        "//libsnark/common/data_structures",
+        "//libsnark/common/default_types:ram_ppzksnark",
+        "//libsnark/relations/ram_computations/rams/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples",
+        "@libff//libff",
+    ]
+)
+

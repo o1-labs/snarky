@@ -1,0 +1,9 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "signature",
+    visibility = ["//visibility:public"],
+    hdrs = ["ed25519_signature.hpp", "ed25519_signature.tcc"],
+    include_prefix = "libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/signature"
+)
+

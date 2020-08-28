@@ -1,0 +1,17 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@libsnark//bzl/config:vars.bzl", "HDR_SEARCH_PATHS")
+
+
+cc_library(
+    name = "prf",
+    visibility = ["//visibility:public"],
+    hdrs = [
+        "aes_ctr_prf.hpp",
+        "aes_ctr_prf.tcc"
+    ],
+    include_prefix = "libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/prf",
+    copts = HDR_SEARCH_PATHS,
+    deps = ["//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark"]
+)
+

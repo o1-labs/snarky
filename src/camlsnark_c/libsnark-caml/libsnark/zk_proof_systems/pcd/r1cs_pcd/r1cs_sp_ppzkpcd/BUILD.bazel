@@ -1,0 +1,23 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "HDR_SEARCH_PATHS")
+
+cc_library(
+    name = "r1cs_sp_ppzkpcd",
+    visibility = ["//visibility:public"],
+    hdrs = [
+        "r1cs_sp_ppzkpcd.hpp", "r1cs_sp_ppzkpcd.tcc",
+        "sp_pcd_circuits.hpp", "sp_pcd_circuits.tcc",
+        "r1cs_sp_ppzkpcd_params.hpp",
+    ],
+    include_prefix = "libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd",
+    copts = HDR_SEARCH_PATHS,
+    deps = [
+        "//libsnark/gadgetlib1/gadgets/verifiers",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark",
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/compliance_predicate",
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd",
+        "//libsnark/gadgetlib1/gadgets/hashes:crh_gadget",
+        "//libsnark/gadgetlib1/gadgets/pairing",
+        "@libff//libff"
+    ]
+)

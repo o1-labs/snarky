@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "CXXFLAGS")
+
+cc_library(
+    name = "verifiers",
+    hdrs = [
+        "r1cs_ppzksnark_verifier_gadget.hpp",
+        "r1cs_ppzksnark_verifier_gadget.tcc",
+    ],
+    include_prefix = "libsnark/gadgetlib1/gadgets/verifiers",
+    copts = CXXFLAGS + ["-I.", "-Iexternal/libsnark"],
+    visibility = ["//visibility:public"],
+    deps = [],
+)

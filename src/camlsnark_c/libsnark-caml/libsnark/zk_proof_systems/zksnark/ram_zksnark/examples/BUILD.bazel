@@ -1,0 +1,16 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "examples",
+    hdrs = [
+        "run_ram_zksnark.hpp",
+        "run_ram_zksnark.tcc",
+    ],
+    include_prefix = "libsnark/zk_proof_systems/zksnark/ram_zksnark/examples",
+    copts = ["-I.", "-Iexternal"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libsnark/zk_proof_systems/zksnark/ram_zksnark",
+        "//libsnark/relations/ram_computations/rams/examples",
+    ],
+)

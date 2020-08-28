@@ -1,0 +1,20 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "tinyram",
+    visibility = ["//visibility:public"],
+    srcs = ["tinyram_aux.cpp"],
+    hdrs = ["tinyram_aux.hpp",
+            "tinyram_params.hpp"],
+    include_prefix = "libsnark/relations/ram_computations/rams/tinyram",
+    copts = ["-I.", "-Iexternal"],
+    linkstatic = True,
+    deps = [
+        "//libsnark/gadgetlib1/gadgets/cpu_checkers/tinyram",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs",
+        "//libsnark/relations/ram_computations/memory",
+        "//libsnark/relations/ram_computations/rams",
+        "@libff//libff/common:serialization"
+    ]
+)
+

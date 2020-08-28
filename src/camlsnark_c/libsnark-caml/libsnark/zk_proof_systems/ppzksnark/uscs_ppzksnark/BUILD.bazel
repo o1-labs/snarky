@@ -1,0 +1,19 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "uscs_ppzksnark",
+    visibility = ["//visibility:public"],
+    hdrs = [
+        "uscs_ppzksnark.hpp", "uscs_ppzksnark.tcc",
+        "uscs_ppzksnark_params.hpp"
+    ],
+    include_prefix = "libsnark/zk_proof_systems/ppzksnark/uscs_ppzksnark",
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "//libsnark/common/data_structures",
+        "//libsnark/knowledge_commitment",
+        "//libsnark/relations/constraint_satisfaction_problems/uscs",
+        "//libsnark/reductions/uscs_to_ssp",
+        "//libsnark/relations/arithmetic_programs/ssp"
+    ]
+)

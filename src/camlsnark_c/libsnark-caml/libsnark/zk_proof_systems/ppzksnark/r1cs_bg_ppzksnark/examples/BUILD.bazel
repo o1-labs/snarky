@@ -1,0 +1,17 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "HDR_SEARCH_PATHS")
+
+cc_library(
+    name = "examples",
+    visibility = ["//visibility:public"],
+    hdrs = ["run_r1cs_bg_ppzksnark.hpp",
+            "run_r1cs_bg_ppzksnark.tcc"],
+    include_prefix = "libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark/examples",
+    copts = HDR_SEARCH_PATHS + ["-Iexternal/libff"],
+    deps = [
+        "@libff//libff/common:profiling",
+        "@libff//libff/common/default_types",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark"]
+)
+

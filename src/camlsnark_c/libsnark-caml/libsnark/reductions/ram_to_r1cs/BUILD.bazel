@@ -1,0 +1,9 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "ram_to_r1cs",
+    visibility = ["//visibility:public"],
+    include_prefix = "libsnark/reductions/ram_to_r1cs",
+    hdrs = ["ram_to_r1cs.hpp", "ram_to_r1cs.tcc"],
+    deps = ["//libsnark/reductions/ram_to_r1cs/gadgets"]
+)

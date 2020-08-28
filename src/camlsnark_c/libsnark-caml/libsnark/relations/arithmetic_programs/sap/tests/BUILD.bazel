@@ -1,0 +1,15 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "tests",
+    visibility = ["//visibility:public"],
+    srcs = ["test_sap.cpp"],
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "//libsnark/reductions/r1cs_to_sap",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
+        "@libff//libff/common:profiling",
+        "@libff//libff"
+    ]
+)
+

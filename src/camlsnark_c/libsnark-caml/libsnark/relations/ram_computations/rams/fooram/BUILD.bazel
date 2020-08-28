@@ -1,0 +1,16 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "fooram",
+    visibility = ["//visibility:public"],
+    srcs = ["fooram_aux.cpp", "fooram_aux.hpp"],
+    hdrs = ["fooram_params.hpp", "fooram_aux.hpp"],
+    include_prefix = "libsnark/relations/ram_computations/rams/fooram",
+    copts = ["-I.", "-Iexternal"],
+    linkstatic = True,
+    deps = [
+        "//libsnark/relations/ram_computations/memory",
+        "@libff//libff/common:serialization"
+    ]
+)
+

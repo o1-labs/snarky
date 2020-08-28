@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "knapsack",
+    visibility = ["//visibility:public"],
+    include_prefix = "libsnark/gadgetlib1/gadgets/hashes/knapsack",
+    hdrs = ["knapsack_gadget.hpp", "knapsack_gadget.tcc"],
+    deps = [
+        "//libsnark/common/data_structures",
+        "//libsnark/gadgetlib1/gadgets",
+    ]
+)
+
+

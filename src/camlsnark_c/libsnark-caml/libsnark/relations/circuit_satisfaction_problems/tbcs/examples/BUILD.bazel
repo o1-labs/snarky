@@ -1,0 +1,15 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "examples",
+    visibility = ["//visibility:public"],
+    srcs = ["tbcs_examples.cpp",
+            "tbcs_examples.hpp"],
+    hdrs = ["tbcs_examples.hpp"],
+    include_prefix = "libsnark/relations/circuit_satisfaction_problems/tbcs/examples",
+    copts = ["-I.", "-Iexternal"],
+    deps = ["//libsnark/relations/circuit_satisfaction_problems/tbcs",
+            "@libff//libff"
+    ]
+)
+

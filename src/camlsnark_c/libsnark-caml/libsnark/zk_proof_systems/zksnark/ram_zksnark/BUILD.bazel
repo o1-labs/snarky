@@ -1,0 +1,22 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "ram_zksnark",
+    hdrs = [
+        "ram_compliance_predicate.hpp",
+        "ram_compliance_predicate.tcc",
+        "ram_zksnark.hpp",
+        "ram_zksnark.tcc",
+        "ram_zksnark_params.hpp",
+    ],
+    include_prefix = "libsnark/zk_proof_systems/zksnark/ram_zksnark",
+    copts = ["-I.", "-Iexternal"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libsnark/gadgetlib1/gadgets/delegated_ra_memory",
+        "//libsnark/relations/ram_computations/memory",
+        "//libsnark/relations/ram_computations/rams",
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/compliance_predicate",
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd",
+    ],
+)

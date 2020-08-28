@@ -1,0 +1,13 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "HDR_SEARCH_PATHS")
+
+cc_library(
+    name = "r1cs_bg_ppzksnark",
+    visibility = ["//visibility:public"],
+    hdrs = ["r1cs_bg_ppzksnark.hpp",
+            "r1cs_bg_ppzksnark.tcc",
+            "r1cs_bg_ppzksnark_params.hpp"],
+    copts = HDR_SEARCH_PATHS
+)
+
+

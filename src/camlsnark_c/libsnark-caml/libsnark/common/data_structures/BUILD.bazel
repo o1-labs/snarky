@@ -1,0 +1,32 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "data_structures",
+    visibility = ["//visibility:public"],
+    srcs = [
+        "integer_permutation.cpp",
+        "integer_permutation.hpp",
+        "set_commitment.cpp",
+        "set_commitment.hpp",
+        "merkle_tree.hpp",
+    ],
+    hdrs = [
+        "accumulation_vector.hpp",
+        "accumulation_vector.tcc",
+        "integer_permutation.hpp",
+        "merkle_tree.hpp",
+        "merkle_tree.tcc",
+        "set_commitment.hpp",
+        "set_commitment.tcc",
+        "sparse_vector.hpp",
+        "sparse_vector.tcc",
+    ],
+    copts = ["-I.", "-Iexternal/libsnark"],
+    include_prefix = "libsnark/common/data_structures",
+    deps = [
+        "//libsnark/common",
+        "//libsnark/gadgetlib1/gadgets/hashes",
+        "@libff//libff"
+    ]
+)
+

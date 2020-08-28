@@ -1,0 +1,18 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "tbcs_to_uscs",
+    visibility = ["//visibility:public"],
+    hdrs = ["tbcs_to_uscs.hpp", "tbcs_to_uscs.tcc"],
+    include_prefix = "libsnark/reductions/tbcs_to_uscs",
+    copts = ["-I."],
+)
+
+py_binary(
+    name = "testpy",
+    main = "get_tbcs_reduction.py",
+    python_version = "PY2",
+    srcs = ["get_tbcs_reduction.py"]
+)
+
+

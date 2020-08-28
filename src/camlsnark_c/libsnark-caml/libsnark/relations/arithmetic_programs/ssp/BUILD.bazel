@@ -1,0 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "ssp",
+    visibility = ["//visibility:public"],
+    hdrs = ["ssp.hpp", "ssp.tcc"],
+    include_prefix = "libsnark/relations/arithmetic_programs/ssp",
+    copts = ["-I.", "-Iexternal"],
+    deps = ["@libfqfft//libfqfft"]
+)
+

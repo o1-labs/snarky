@@ -1,0 +1,12 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "gadgets",
+    visibility = ["//visibility:public"],
+    hdrs = glob(["*.hpp"]) + glob(["*.tcc"]),
+    copts = ["-I."],
+    include_prefix = "libsnark/gadgetlib1/gadgets",
+    deps = ["//libsnark/gadgetlib1",
+            "//libsnark/gadgetlib1/gadgets/curves:weierstrass"]
+)
+

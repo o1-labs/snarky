@@ -1,0 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "r1cs_to_sap",
+    visibility = ["//visibility:public"],
+    hdrs = ["r1cs_to_sap.hpp", "r1cs_to_sap.tcc"],
+    include_prefix = "libsnark/reductions/r1cs_to_sap",
+    copts = ["-I."],
+    deps = ["//libsnark/relations/arithmetic_programs/sap"]
+)
+

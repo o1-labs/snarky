@@ -1,0 +1,23 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "cpp",
+    timeout = "short",
+    visibility = ["//visibility:public"],
+    srcs = ["test_sha256_gadget.cpp"],
+    copts = ["-I.", "-Iexternal/libsnark", "-Iexternal/libff"],
+    deps = [
+        "//libsnark/gadgetlib1/gadgets/hashes/sha256",
+        "@libff//libff/common/default_types",
+        "@libff//libff/common:profiling"
+    ]
+)
+
+py_test(
+    name = "py",
+    timeout = "short",
+    main = "generate_sha256_gadget_tests.py",
+    python_version = "PY2",
+    srcs = ["generate_sha256_gadget_tests.py", "pypy_sha256.py"]
+)
+

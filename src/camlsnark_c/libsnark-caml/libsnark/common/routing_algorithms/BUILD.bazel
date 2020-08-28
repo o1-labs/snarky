@@ -1,0 +1,21 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "routing_algorithms",
+    visibility = ["//visibility:public"],
+    srcs = [
+        "as_waksman_routing_algorithm.cpp",
+        "as_waksman_routing_algorithm.hpp",
+        "benes_routing_algorithm.cpp",
+        "benes_routing_algorithm.hpp",
+    ],
+    hdrs = [
+        "as_waksman_routing_algorithm.hpp",
+        "benes_routing_algorithm.hpp",
+    ],
+    include_prefix = "libsnark/common/routing_algorithms",
+    copts = ["-I.",
+             "-Iexternal"],
+    deps = ["//libsnark/common/data_structures",
+            "@libff//libff"]
+)

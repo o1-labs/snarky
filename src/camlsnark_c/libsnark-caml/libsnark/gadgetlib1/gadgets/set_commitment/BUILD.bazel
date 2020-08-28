@@ -1,0 +1,20 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "set_commitment",
+    visibility = ["//visibility:public"],
+    hdrs = ["set_commitment_gadget.hpp",
+            "set_commitment_gadget.tcc",
+            "set_membership_proof_variable.hpp",
+            "set_membership_proof_variable.tcc"],
+    include_prefix = "libsnark/gadgetlib1/gadgets/set_commitment",
+    copts = ["-I.", "-Iexternal"],
+    deps = [
+        "//libsnark/gadgetlib1",
+        "//libsnark/gadgetlib1/gadgets",
+        "//libsnark/gadgetlib1/gadgets/hashes",
+        "//libsnark/gadgetlib1/gadgets/merkle_tree",
+    ]
+)
+
+

@@ -1,0 +1,20 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "profiling",
+    srcs = [
+        "profile_ram_zksnark.cpp"
+    ],
+    copts = ["-I.", "-Iexternal"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@boost//:program_options",
+        "@libff//libff",
+        "//libsnark/common/default_types:ram_zksnark",
+        "//libsnark/relations/ram_computations/memory/examples",
+        "//libsnark/relations/ram_computations/rams/examples",
+        "//libsnark/relations/ram_computations/rams/tinyram",
+        "//libsnark/zk_proof_systems/zksnark/ram_zksnark/examples",
+        "//libsnark/zk_proof_systems/zksnark/ram_zksnark"
+    ]
+)

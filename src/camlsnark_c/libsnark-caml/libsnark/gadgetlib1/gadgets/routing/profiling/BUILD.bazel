@@ -1,0 +1,13 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "profiling",
+    visibility = ["//visibility:public"],
+    srcs = ["profile_routing_gadgets.cpp"],
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    deps = ["//libsnark/gadgetlib1/gadgets/routing",
+            "@libff//libff/common:profiling",
+            "@libff//libff/common/default_types"
+    ]
+)
+

@@ -1,0 +1,20 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_cc//cc:defs.bzl", "cc_test")
+
+cc_test(
+    name = "cpp",
+    srcs = ["test_routing_algorithms.cpp"],
+    copts = ["-I.", "-Iexternal/libsnark"],
+    deps = [
+        "@libff//libff/common:profiling",
+        "@libff//libff/common/default_types",
+        "//libsnark/common/routing_algorithms"
+    ],
+)
+
+py_test(
+    name = "python",
+    srcs = ["test_routing_algorithms.py"],
+    main = "test_routing_algorithms.py",
+    python_version = "PY2",
+)

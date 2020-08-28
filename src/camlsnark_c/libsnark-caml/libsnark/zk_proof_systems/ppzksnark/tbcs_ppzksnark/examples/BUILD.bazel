@@ -1,0 +1,18 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "examples",
+    visibility = ["//visibility:public"],
+    hdrs = [
+        "run_tbcs_ppzksnark.hpp",
+        "run_tbcs_ppzksnark.tcc"
+    ],
+    include_prefix = "libsnark/zk_proof_systems/ppzksnark/tbcs_ppzksnark/examples",
+    copts = ["-I.", "-Iexternal/libsnark", "-Iexternal/libff"],
+    deps = [
+        "@libff//libff/common:profiling",
+        "@libff//libff/common/default_types",
+        "//libsnark/zk_proof_systems/ppzksnark/tbcs_ppzksnark"
+    ]
+)
+

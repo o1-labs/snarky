@@ -1,0 +1,109 @@
+test_suite(
+    name = "test",
+    tests = [
+        ":relations",
+        ":common",
+        ":gadget1",
+        ":gadget2",
+        ":ppzksnark",
+        # ":reductions",
+        # this one takes a long long time, run it separately:
+        # ":zksnark"
+    ]
+)
+
+test_suite(
+    name = "relations",
+    tests = [
+        "//libsnark/relations/arithmetic_programs/qap/tests",
+        "//libsnark/relations/arithmetic_programs/sap/tests",
+        "//libsnark/relations/arithmetic_programs/ssp/tests"
+        ]
+)
+
+test_suite(
+    name = "common",
+    tests = [
+        "//libsnark/common/routing_algorithms/tests:cpp",
+        "//libsnark/common/routing_algorithms/tests:python"
+    ]
+)
+
+# test_suite(
+#     name = "test",
+#     tests = [
+#         "//libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/examples"
+#         ]
+# )
+
+test_suite(
+    name  = "gadget1",
+    tests = [
+        "//libsnark/gadgetlib1/gadgets/hashes/knapsack/tests:cpp",
+        "//libsnark/gadgetlib1/gadgets/hashes/knapsack/tests:py",
+        "//libsnark/gadgetlib1/gadgets/hashes/sha256/tests:cpp",
+        "//libsnark/gadgetlib1/gadgets/hashes/sha256/tests:py",
+        "//libsnark/gadgetlib1/tests",
+        # profiling:
+        "//libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/examples",
+        "//libsnark/gadgetlib1/gadgets/merkle_tree/tests",
+        "//libsnark/gadgetlib1/gadgets/set_commitment/tests"
+    ]
+)
+
+test_suite(
+    name  = "gadget2",
+    tests = [
+        # long-running:
+        # "//libsnark/gadgetlib2/tests:adapters",
+        "//libsnark/gadgetlib2/tests:constraint",
+        "//libsnark/gadgetlib2/tests:gadget",
+        "//libsnark/gadgetlib2/tests:integration",
+        "//libsnark/gadgetlib2/tests:protoboard",
+        # takes forever, run separately (below):
+        # "//libsnark/gadgetlib2/tests:variable"
+    ]
+)
+
+test_suite(
+    name  = "ppzksnark",
+    tests = [
+        "//libsnark/zk_proof_systems/ppzksnark/bacs_ppzksnark/tests",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/tests",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/tests",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark/tests",
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/tests",
+        "//libsnark/zk_proof_systems/ppzksnark/tbcs_ppzksnark/tests",
+        "//libsnark/zk_proof_systems/ppzksnark/uscs_ppzksnark/tests",
+        # long-running:
+        # "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/tests",
+    ]
+)
+
+# not a test - used by tinyram_examples
+# test_suite(
+#     name  = "reductions",
+#     tests = ["//libsnark/reductions/ram_to_r1cs/examples"]
+# )
+
+## Long-running ##
+
+test_suite(
+    name  = "zksnark",
+    tests = ["//libsnark/zk_proof_systems/zksnark/ram_zksnark/tests"]
+)
+
+test_suite(
+    name  = "gadgetlib2-variable",
+    tests = [
+        "//libsnark/gadgetlib2/tests:adapters",
+        "//libsnark/gadgetlib2/tests:variable"
+    ]
+)
+
+test_suite(
+    name  = "pcd",
+    tests = [
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/tests",
+    ]
+)
