@@ -92,12 +92,20 @@ new_git_repository(
 )
 
 # libfqfft:
+# Abseil - gtest dep; without this queries with fail with "no such package: @com_google_absl..."
+http_archive(
+     name = "com_google_absl",
+     urls = ["https://github.com/abseil/abseil-cpp/archive/master.zip"],
+     strip_prefix = "abseil-cpp-master",
+)
+
 http_archive(
     name="gtest",
     url="https://github.com/google/googletest/archive/release-1.10.0.tar.gz",
     sha256="9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb",
     strip_prefix = "googletest-release-1.10.0",
 )
+
 
 ## build target: //bzl/external/openmp alias for @libff//bzl/external/openmp
 http_archive(
