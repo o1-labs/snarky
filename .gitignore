@@ -1,6 +1,7 @@
 .bazel
 bazel-*
 user.bazelrc
+*.log
 
 .merlin
 _build

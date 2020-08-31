@@ -1,8 +1,9 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_test(
     name = "tests",
-    timeout = "long",
+    timeout = "moderate",
     visibility = ["//visibility:public"],
     srcs = ["test_ram_ppzksnark.cpp"],
     copts = [
@@ -10,6 +11,7 @@ cc_test(
         "-Iexternal",
         "-Iexternal/libff"
     ],
+    linkstatic = LINKSTATIC,
     deps = [
         "//libsnark/common/default_types:ram_ppzksnark",
         "//libsnark/relations/ram_computations/rams/examples",

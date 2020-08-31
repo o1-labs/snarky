@@ -2,7 +2,7 @@ workspace(name = "snarky")
 
 ################ setup ################
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
 http_archive(
     name = "bazel_skylib",
@@ -82,14 +82,13 @@ local_repository( name = "xbyak" , path = "src/camlsnark_c/libsnark-caml/depends
 ######## Non-bazel external repos ########
 all_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])"""
 
-## https://bench.cr.yp.to/supercop.html
-http_archive(
-    name="supercop",
-    url="https://bench.cr.yp.to/supercop/supercop-20200510.tar.xz",
-    sha256="0b69c719f4ceeedb45b3f0f0eb415258ed6fa7b4166ad84f161a1c867c09aa1e",
-    strip_prefix = "supercop-20200510",
-    # build_file_content = all_content
-    # build_file = "@//bzl/external/supercop:BUILD"
+# libsnark-caml:
+new_git_repository(
+    name = "libsnark-supercop",
+    commit = "b04a0ea2c7d7422d74a512ce848e762196f48149",
+    remote = "https://github.com/mbbarbosa/libsnark-supercop",
+    shallow_since = "1433349878 +0100",
+    build_file = "@libsnark//bzl/external/libsnark-supercop:BUILD.bazel"
 )
 
 # libfqfft:
@@ -100,7 +99,7 @@ http_archive(
     strip_prefix = "googletest-release-1.10.0",
 )
 
-## build target: //bzl/external/openmp
+## build target: //bzl/external/openmp alias for @libff//bzl/external/openmp
 http_archive(
     name="openmp",
     url="https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/openmp-10.0.0.src.tar.xz",
@@ -109,7 +108,7 @@ http_archive(
     build_file_content = all_content
 )
 
-## build target: //bzl/external/openssl
+## build target: //bzl/external/openssl aliased for @libff/bzl/external/openssl
 http_archive(
     name="openssl",
     url="https://www.openssl.org/source/openssl-1.1.1g.tar.gz",
@@ -118,7 +117,7 @@ http_archive(
     build_file_content = all_content
 )
 
-## build target: //bzl/external/libsodium
+## build target: //bzl/external/libsodium alias for @libff//bzl/external/libsodium
 http_archive(
     name="libsodium",
     type="zip",
@@ -128,15 +127,14 @@ http_archive(
     build_file_content = all_content,
 )
 
-## CURRENTLY BROKEN: gitlab returns 406 Not Acceptable
-## build target: @libff//bzl/external/procps
-# http_archive(
-#     name="procps",
-#     url="https://gitlab.com/procps-ng/procps/-/archive/v3.3.16/procps-v3.3.16.tar.gz",
-#     sha256="7f09945e73beac5b12e163a7ee4cae98bcdd9a505163b6a060756f462907ebbc",
-#     strip_prefix = "procps-v3.3.16",
-#     build_file_content = all_content
-# )
+# not used by snarky; build:  @libff//bzl/external/procps
+new_git_repository(
+    name = "procps",
+    commit = "4090fa711be367a35e689a34c9ba751ad90f6f0d",
+    remote = "https://github.com/obazl/procps.git",
+    shallow_since = "1588067259 +1000",
+    build_file_content = all_content,
+)
 
 ## build target: //bzl/external/libgmp alias for @ate_pairing//bzl/external/libgmp
 http_archive(
@@ -147,7 +145,7 @@ http_archive(
     build_file_content = all_content
 )
 
-## boost needed by: @xbyak//sample:calc
+## boost needed by: libsnark, @xbyak//sample:calc
 git_repository(
     name = "com_github_nelhage_rules_boost",
     commit = "9f9fb8b2f0213989247c9d5c0e814a8451d18d7f",

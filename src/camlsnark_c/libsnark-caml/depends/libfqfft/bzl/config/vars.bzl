@@ -17,7 +17,7 @@ DEBUG_FLAGS = select({
     "//bzl/config:enable_debug": ["-g"],
     "//conditions:default": ["-g0"]
 }) + select({
-    "//bzl/config:with_verbose": ["-v"],
+    "//bzl/config:enable_verbose": ["-v"],
     "//conditions:default": []
 }) + select({
     "//bzl/config:macos_disable_debug": ["-UDEBUG"],
@@ -55,7 +55,7 @@ UDEBUG = select({
 })
 
 DBINARY_OUTPUT = select({
-    "@//bzl/config:enable_binary_output": ["BINARY_OUTPUT"],
+    "//bzl/config:enable_binary_output": ["BINARY_OUTPUT"],
     "//conditions:default": []
 })
 
@@ -71,13 +71,12 @@ DMULTICORE = select({
 
 #### LIBFF ####
 DCURVE = select({
-    "@//bzl/config:curve_bn128": ["CURVE_BN128"],
-    "@//bzl/config:curve_alt_bn128": ["CURVE_ALT_BN128"],
-    "@//bzl/config:curve_edwards": ["CURVE_EDWARDS"],
-    "@//bzl/config:curve_mnt4": ["CURVE_MNT4"],
-    "@//bzl/config:curve_mnt6": ["CURVE_MNT6"],
-    "//conditions:default": ["CURVE_BN128"]
-})
+    "@//bzl/config:enable_curve_bn128": ["CURVE_BN128"],
+    "@//bzl/config:enable_curve_alt_bn128": ["CURVE_ALT_BN128"],
+    "@//bzl/config:enable_curve_edwards": ["CURVE_EDWARDS"],
+    "@//bzl/config:enable_curve_mnt4": ["CURVE_MNT4"],
+    "@//bzl/config:enable_curve_mnt6": ["CURVE_MNT6"],
+}, no_match_error = "ERROR: no curve specified; try --//:curve=<curve>")
 
 # DLOWMEM = select({
 #     "@//bzl/config:enable_lowmem": ["LOWMEM"],

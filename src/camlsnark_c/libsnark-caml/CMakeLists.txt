@@ -160,6 +160,10 @@ else()
   )
 endif()
 
+if("${WITH_SUPERCOP}")
+  include_directories(depends)
+endif()
+
 # Enable Boost for program_options
 FIND_PACKAGE( Boost 1.40 COMPONENTS program_options REQUIRED )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )

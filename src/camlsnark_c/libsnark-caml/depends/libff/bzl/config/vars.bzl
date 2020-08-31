@@ -8,8 +8,7 @@ load("@bazel_skylib//lib:selects.bzl", "selects")
 WARNINGS = ["-Wall", "-Wextra", "-Wno-unused-variable"]
 
 DMULTICORE = select({
-    # shared config
-    "//bzl/config:with_openmp": ["MULTICORE"],
+    "@//bzl/config:with_openmp": ["MULTICORE"],
     "//conditions:default": []
 })
 
@@ -25,12 +24,12 @@ DEBUG_FLAGS = select({
 })
 
 OPTIMIZE_CXXFLAGS = select({
-    "//bzl/config:enable_optimization": ["-flto", "-fuse-linker-plugin", "-O2"],
+    "@//bzl/config:enable_optimization": ["-flto", "-fuse-linker-plugin", "-O2"],
     "//conditions:default": ["-O0"]
 })
 
 OPTIMIZE_LINKFLAGS = select({
-    "//bzl/config:enable_optimization": ["-flto", "-fuse-linker-plugin"],
+    "@//bzl/config:enable_optimization": ["-flto", "-fuse-linker-plugin"],
     "//conditions:default": []
 })
 
@@ -54,13 +53,13 @@ LDFLAGS  = []
 ####    DEFINES    ####
 
 DCXX_DEBUG = select({
-    "//bzl/config:linux_cxx_debug": ["_GLIBCXX_DEBUG", "_GLIBCXX_DEBUG_PEDANTIC"],
-    "//bzl/config:macos_cxx_debug": ["_LIBCPP_DEBUG"],
+    "@//bzl/config:linux_cxx_debug": ["_GLIBCXX_DEBUG", "_GLIBCXX_DEBUG_PEDANTIC"],
+    "@//bzl/config:macos_cxx_debug": ["_LIBCPP_DEBUG"],
     "//conditions:default": []
 })
 
 DDEBUG = select({
-    "//bzl/config:enable_debug": ["DEBUG"],
+    "@//bzl/config:enable_debug": ["DEBUG"],
     "//conditions:default": [] # ["NDEBUG"]
 }) + DCXX_DEBUG
 
@@ -75,19 +74,8 @@ DCURVE = select({
     "@//bzl/config:enable_curve_edwards": ["CURVE_EDWARDS"],
     "@//bzl/config:enable_curve_mnt4": ["CURVE_MNT4"],
     "@//bzl/config:enable_curve_mnt6": ["CURVE_MNT6"],
-    # "@//bzl/config:enable_curve_bn128": ["CURVE_BN128", "BN_SUPPORT_SNARK"],
-    # "@//bzl/config:enable_curve_alt_bn128": ["CURVE_ALT_BN128"],
-    # "@//bzl/config:enable_curve_edwards": ["CURVE_EDWARDS"],
-    # "@//bzl/config:enable_curve_mnt4": ["CURVE_MNT4"],
-    # "@//bzl/config:enable_curve_mnt6": ["CURVE_MNT6"],
-    "//conditions:default": ["CURVE_BN128"]
-})
+}, no_match_error = "ERROR: no curve specified; try --//:curve=<curve>")
 
-# transitive, for ate_pairing:
-# DLIBGMP = select({
-#     "@//bzl/config:with_libgmp" : ["MIE_ATE_USE_GMP"],
-#     "//conditions:default": []
-# })
 
 DLOWMEM = select({
     "//bzl/config:enable_lowmem": ["LOWMEM"],

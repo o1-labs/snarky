@@ -1,6 +1,19 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "LINKSTATIC")
 
-COPTS = ["-I.", "-Iexternal", "-Iexternal/libff"]
+COPTS = ["-I.", "-Iexternal", "-Iexternal/libff"] + CPPFLAGS + CXXFLAGS
+
+test_suite(
+    name = "tests",
+    tests = [
+        ":adapters",
+        ":constraint",
+        ":gadget",
+        ":integration",
+        ":protoboard",
+        ":variable",
+    ]
+)
 
 cc_test(
     name = "adapters",
@@ -8,9 +21,13 @@ cc_test(
     visibility = ["//visibility:public"],
     srcs = ["adapters_UTEST.cpp"],
     copts = COPTS,
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     deps = ["//libsnark/gadgetlib2",
             "@gtest//:gtest_main"]
+    + select({
+        # "@libff//bzl/config:with_procps": ["@libsnark//bzl/external/libprocps"],
+        "//conditions:default": []
+    })
 )
 
 cc_test(
@@ -19,7 +36,7 @@ cc_test(
     visibility = ["//visibility:public"],
     srcs = ["constraint_UTEST.cpp"],
     copts = COPTS,
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     deps = ["//libsnark/gadgetlib2",
             "@gtest//:gtest_main"]
 )
@@ -30,7 +47,7 @@ cc_test(
     visibility = ["//visibility:public"],
     srcs = ["gadget_UTEST.cpp"],
     copts = COPTS,
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     deps = ["//libsnark/gadgetlib2",
             "@gtest//:gtest_main"]
 )
@@ -41,9 +58,9 @@ cc_test(
     visibility = ["//visibility:public"],
     srcs = ["integration_UTEST.cpp"],
     copts = COPTS,
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     deps = ["//libsnark/gadgetlib2",
-            "//libsnark/gadgetlib2/examples",
+            "//libsnark/gadgetlib2/examples:simple",
             "//libsnark/common/default_types:r1cs_ppzksnark",
             "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
             "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
@@ -56,7 +73,7 @@ cc_test(
     visibility = ["//visibility:public"],
     srcs = ["protoboard_UTEST.cpp"],
     copts = COPTS,
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     deps = ["//libsnark/gadgetlib2",
             "@gtest//:gtest_main"]
 )
@@ -67,7 +84,7 @@ cc_test(
     visibility = ["//visibility:public"],
     srcs = ["variable_UTEST.cpp"],
     copts = COPTS,
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     deps = ["//libsnark/gadgetlib2",
             "@gtest//:gtest_main"]
 )

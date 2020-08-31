@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_test(
     name = "cpp",
@@ -6,6 +7,7 @@ cc_test(
     visibility = ["//visibility:public"],
     srcs = ["test_sha256_gadget.cpp"],
     copts = ["-I.", "-Iexternal/libsnark", "-Iexternal/libff"],
+    linkstatic = LINKSTATIC,
     deps = [
         "//libsnark/gadgetlib1/gadgets/hashes/sha256",
         "@libff//libff/common/default_types",

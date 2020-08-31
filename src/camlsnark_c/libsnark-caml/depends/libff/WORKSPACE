@@ -83,13 +83,28 @@ http_archive(
     build_file_content = all_content,
 )
 
-## CURRENTLY BROKEN: gitlab returns 406 Not Acceptable
-## build target: @libff//bzl/external/procps
+## CURRENTLY BROKEN: gitlab returns 406 Not Acceptable, so we use a github mirror:
 # http_archive(
 #     name="procps",
 #     url="https://gitlab.com/procps-ng/procps/-/archive/v3.3.16/procps-v3.3.16.tar.gz",
 #     sha256="7f09945e73beac5b12e163a7ee4cae98bcdd9a505163b6a060756f462907ebbc",
 #     strip_prefix = "procps-v3.3.16",
+#     build_file_content = all_content
+# )
+
+new_git_repository(
+    name = "procps",
+    commit = "4090fa711be367a35e689a34c9ba751ad90f6f0d",
+    remote = "https://github.com/obazl/procps.git",
+    shallow_since = "1588067259 +1000",
+    build_file_content = all_content,
+    # build_file = "@libff//bzl/external/procps:BUILD.bazel"
+)
+
+# http_archive(
+#     name = "procps",
+#     url  = "https://github.com/obazl/procps/archive/master.zip",
+#     type = "zip",
 #     build_file_content = all_content
 # )
 

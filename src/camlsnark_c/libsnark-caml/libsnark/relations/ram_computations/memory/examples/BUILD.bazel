@@ -5,6 +5,8 @@ cc_library(
     visibility = ["//visibility:public"],
     srcs = ["memory_contents_examples.cpp",
             "memory_contents_examples.hpp"],
+    hdrs = ["memory_contents_examples.hpp"],
+    include_prefix = "libsnark/relations/ram_computations/memory/examples",
     copts = ["-I.", "-Iexternal"],
     deps = ["//libsnark/relations/ram_computations/memory"]
 )

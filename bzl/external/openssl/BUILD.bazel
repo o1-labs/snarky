@@ -1,22 +1,5 @@
-load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
-
-configure_make(
+alias(
     name = "openssl",
-    configure_command = "config",
-    configure_env_vars = select({
-        "//bzl/host:macos": { "AR": "" },
-        "//conditions:default": {}
-    }),
-    lib_source = "@openssl//:all",
-    out_lib_dir = "lib",
-    shared_libraries = [
-        "libssl.dylib",
-        "libcrypto.dylib",
-    ],
-    # static_libraries = [
-    #     "libssl.a",
-    #     "libcrypto.a",
-    # ],
+    actual = "@libff//bzl/external/openssl",
     visibility = ["//visibility:public"],
 )
-

@@ -4,8 +4,12 @@ load("@libsnark//bzl/config:vars.bzl", "CXXFLAGS")
 cc_library(
     name = "verifiers",
     hdrs = [
+        "r1cs_gg_ppzksnark_verifier_gadget.hpp",
+        "r1cs_gg_ppzksnark_verifier_gadget.tcc",
         "r1cs_ppzksnark_verifier_gadget.hpp",
         "r1cs_ppzksnark_verifier_gadget.tcc",
+        "r1cs_se_ppzksnark_verifier_gadget.hpp",
+        "r1cs_se_ppzksnark_verifier_gadget.tcc"
     ],
     include_prefix = "libsnark/gadgetlib1/gadgets/verifiers",
     copts = CXXFLAGS + ["-I.", "-Iexternal/libsnark"],

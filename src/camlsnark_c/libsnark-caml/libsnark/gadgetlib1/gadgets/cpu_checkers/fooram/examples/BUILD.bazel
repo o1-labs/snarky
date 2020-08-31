@@ -1,16 +1,16 @@
-load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary")
 load("@libsnark//bzl/config:vars.bzl", "CXXFLAGS")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
-cc_test(
+cc_binary(
     name = "examples",
-    timeout = "long",
     srcs = ["test_fooram.cpp"],
     copts = [
         "-I.",
         "-Iexternal",
         "-Iexternal/libff"
     ] + CXXFLAGS,
-    visibility = ["//visibility:public"],
+    linkstatic = LINKSTATIC,
     deps = [
         "//libsnark/common",
         "//libsnark/common/default_types:r1cs_ppzkpcd",
@@ -23,4 +23,5 @@ cc_test(
         "@libff//libff",
         # "@libff//libff/common:utils",
     ],
+    visibility = ["//visibility:public"]
 )

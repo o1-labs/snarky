@@ -1,10 +1,13 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_test(
     name = "tests",
     visibility = ["//visibility:public"],
+    timeout = "moderate",  # 5 min
     srcs = ["test_ssp.cpp"],
     copts = ["-I.", "-Iexternal"],
+    linkstatic = LINKSTATIC,
     deps = [
         "//libsnark/reductions/uscs_to_ssp",
         "//libsnark/relations/constraint_satisfaction_problems/uscs/examples",

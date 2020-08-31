@@ -2,7 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@libff//bzl/config:vars.bzl",
      "CPPFLAGS",
      "DBINARY_OUTPUT", "DDEBUG", "DPROFILE_OP_COUNTS",
-     "DMONTGOMERY_OUTPUT", "DUSE_ASM")
+     "DMONTGOMERY_OUTPUT", "DMULTICORE", "DUSE_ASM")
 
 cc_library(
     name = "fields",
@@ -64,7 +64,7 @@ cc_library(
         "fp_aux.tcc",
     ],
     copts = ["-I."] + CPPFLAGS,
-    defines = DDEBUG + DPROFILE_OP_COUNTS,
+    defines = DDEBUG + DPROFILE_OP_COUNTS + DMULTICORE,
     include_prefix = "libff/algebra/fields",
     visibility = ["//visibility:public"],
     deps = [

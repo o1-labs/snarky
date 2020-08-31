@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_test(
     name = "tests",
@@ -6,6 +7,7 @@ cc_test(
     visibility = ["//visibility:public"],
     srcs = ["gadgetlib1_test.cpp"],
     copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    linkstatic = LINKSTATIC,
     deps = ["//libsnark/gadgetlib1/examples",
             "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
             "@gtest//:gtest_main",

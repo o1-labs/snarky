@@ -1,0 +1,22 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "snark-supercop",
+    visibility = ["//visibility:public"],
+    srcs = glob(["**/*.c", "**/*.h", "**/*.s"]),
+    hdrs = glob(["**/*.h", "**/*.data", "**/*.i"]),
+    data = glob(["**/*.data", "**/*.i"]),
+    # include_prefix = "libsnark-supercop",
+    linkstatic = True,
+    alwayslink = True,
+    copts = [# "-fPIC",
+             "-fomit-frame-pointer",
+             "-m64",
+             "-Wall",
+             "-I.",
+             "-Ilibsnark-supercop",
+             "-Iexternal",
+             "-Iexternal/libsnark-supercop",
+             "-Iexternal/libsnark-supercop/include"],
+)
+

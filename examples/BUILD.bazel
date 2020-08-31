@@ -1,0 +1,40 @@
+alias(
+    name = "fooram",
+    actual = "@libsnark//libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/examples"
+)
+
+alias(
+    name = "ram_to_r1cs",
+    actual = "@libsnark//libsnark/reductions/ram_to_r1cs/examples"
+)
+
+alias(
+    name = "gadgetlib2",
+    actual = "@libsnark//libsnark/gadgetlib2/examples"
+)
+
+## broken in CMake:
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples
+
+## not executable:
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/ppzksnark/bacs_ppzksnark/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/ppzksnark/tbcs_ppzksnark/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/ppzksnark/uscs_ppzksnark/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/zksnark/ram_zksnark/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/pcd/r1cs_pcd/compliance_predicate/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/relations/circuit_satisfaction_problems/bacs/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/relations/circuit_satisfaction_problems/tbcs/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/relations/ram_computations/memory/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/relations/ram_computations/rams/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/relations/constraint_satisfaction_problems/uscs/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/relations/constraint_satisfaction_problems/r1cs/examples
+# ./src/camlsnark_c/libsnark-caml/libsnark/gadgetlib1/examples
+
+

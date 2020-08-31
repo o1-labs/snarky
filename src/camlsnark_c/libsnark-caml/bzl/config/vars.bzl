@@ -43,6 +43,12 @@ OPTIMIZE_LINKFLAGS = select({
     "//conditions:default": []
 })
 
+LINKSTATIC = select({
+    "@//bzl/host:linux": True,
+    "@//bzl/host:macos": False,
+    "//conditions:default": True
+})
+
 CPPFLAGS = DEBUG_FLAGS + WARNINGS
 CFLAGS   = []
 CXXFLAGS = OPTIMIZE_CXXFLAGS # + ["-lstd=c++14", "-lstdc++", "-D_LIBCXX_DEPRECATION_WARNINGS "]
@@ -79,26 +85,14 @@ DMULTICORE = select({
 })
 
 #### LIBFF ####
-DCURVE = select({
-    # "//bzl/config:enable_curve_bn128": ["CURVE_BN128"],
-    # "//bzl/config:enable_curve_alt_bn128": ["CURVE_ALT_BN128"],
-    # "//bzl/config:enable_curve_edwards": ["CURVE_EDWARDS"],
-    # "//bzl/config:enable_curve_mnt4": ["CURVE_MNT4"],
-    # "//bzl/config:enable_curve_mnt6": ["CURVE_MNT6"],
-    "//conditions:default": ["CURVE_BN128"]
-})
-
-# DPROFILE_OP_COUNTS = select({
-#     "//bzl/config:enable_profile_op_counts": ["PROFILE_OP_COUNTS"],
-#     "//conditions:default": []
+# DCURVE = select({
+#     # "//bzl/config:enable_curve_bn128": ["CURVE_BN128"],
+#     # "//bzl/config:enable_curve_alt_bn128": ["CURVE_ALT_BN128"],
+#     # "//bzl/config:enable_curve_edwards": ["CURVE_EDWARDS"],
+#     # "//bzl/config:enable_curve_mnt4": ["CURVE_MNT4"],
+#     # "//bzl/config:enable_curve_mnt6": ["CURVE_MNT6"],
+#     "//conditions:default": [] # "CURVE_BN128"
 # })
-
-DPROF_DOUBLE = select({
-    "//bzl/config:enable_prof_double": ["PROF_DOUBLE"],
-    "//conditions:default": []
-})
-
-# DPROFILING = DPROFILE_OP_COUNTS + DPROF_DOUBLE
 
 DCXX_DEBUG = select({
     "//bzl/config:enable_cxx_debug": ["_GLIBCXX_DEBUG", "_GLIBCXX_DEBUG_PEDANTIC"],
@@ -107,10 +101,5 @@ DCXX_DEBUG = select({
 
 DOPTIMIZE = select({
     "//bzl/config:enable_optimization": ["NDEBUG"],
-    "//conditions:default": []
-})
-
-DUSE_ASM = select({
-    "//bzl/config:enable_asm": ["USE_ASM"],
     "//conditions:default": []
 })

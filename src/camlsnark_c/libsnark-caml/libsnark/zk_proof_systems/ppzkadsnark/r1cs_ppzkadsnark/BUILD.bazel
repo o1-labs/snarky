@@ -13,7 +13,9 @@ cc_library(
     ],
     copts = ["-I.", "-Iexternal"],
     deps = [
-        "//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/signature"
+        "//libsnark/common/data_structures",
+        "//libsnark/knowledge_commitment",
+        "//libsnark/reductions/r1cs_to_qap",
     ]
 )
 

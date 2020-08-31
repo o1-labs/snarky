@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_test(
     name = "tests",
@@ -9,7 +10,7 @@ cc_test(
         "-Iexternal",
         "-Iexternal/libff"
     ],
-    visibility = ["//visibility:public"],
+    linkstatic = LINKSTATIC,
     deps = [
         "//libsnark/common/default_types:r1cs_ppzksnark",
         "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
@@ -17,4 +18,5 @@ cc_test(
         "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
         "@libff//libff"
     ],
+    visibility = ["//visibility:public"]
 )

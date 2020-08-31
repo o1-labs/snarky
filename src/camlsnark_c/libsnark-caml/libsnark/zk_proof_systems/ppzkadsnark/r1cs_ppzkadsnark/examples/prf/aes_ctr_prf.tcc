@@ -10,8 +10,8 @@
  *****************************************************************************/
 
 #include "gmp.h"
-#include "depends/libsnark-supercop/include/crypto_core_aes128encrypt.h"
-#include "depends/libsnark-supercop/include/randombytes.h"
+#include "libsnark-supercop/include/crypto_core_aes128encrypt.h"
+#include "libsnark-supercop/include/randombytes.h"
 
 #include <libsnark/common/default_types/r1cs_ppzkadsnark_pp.hpp>
 

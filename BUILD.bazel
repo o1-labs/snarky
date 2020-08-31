@@ -5,18 +5,18 @@ load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag", "st
 
 ## Upstream
 string_flag( name = "curve", build_setting_default = "bn128",
-             values = ["bn128", "alt_bn128", "edwards", "mnt4", "mnt6", ""],
+             values = ["bn128", "alt_bn128", "edwards", "mnt4", "mnt6"],
              visibility = ["//bzl/config:__pkg__",
                            "@libff//bzl/config:__pkg__"])
              # visibility = ["//visibility:public"])
 
 ## Downstream
 
-## serialization: libfqfft, libff
-bool_flag( name = "binary_output", build_setting_default = True,
-           visibility = ["//bzl/config:__pkg__"])
+# ## serialization: libfqfft, libff
+# bool_flag( name = "binary_output", build_setting_default = True,
+#            visibility = ["//bzl/config:__pkg__"])
 
-# libff c/c++:
+# libsnark, libfqfft:
 bool_flag( name = "with_openmp", build_setting_default = False,
            visibility = ["//visibility:public"])
 
@@ -28,3 +28,12 @@ bool_flag( name = "with_libgmp", build_setting_default = True,
 config_setting( name = "enable_snark", flag_values = { ":curve": "bn128" },
                 visibility = ["//visibility:public"])
 
+################################################################
+bool_flag( name = "debug", build_setting_default = False,
+           visibility = ["//visibility:public"])
+
+bool_flag( name = "cxx_debug", build_setting_default = False,
+           visibility = ["//visibility:public"])
+
+bool_flag( name = "verbose", build_setting_default = False,
+           visibility = ["//visibility:public"])

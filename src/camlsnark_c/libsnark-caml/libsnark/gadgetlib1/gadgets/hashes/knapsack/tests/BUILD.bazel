@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_test(
     name = "cpp",
@@ -10,6 +11,7 @@ cc_test(
              "-Ilibsnark/gadgetlib1/gadgets/hashes/knapsack",
              "-Iexternal/libsnark/gadgetlib1/gadgets/hashes/knapsack"
              ],
+    linkstatic = LINKSTATIC,
     deps = [
         #ifdef CURVE_BN128
         # include <libff/algebra/curves/bn128/bn128_pp.hpp>

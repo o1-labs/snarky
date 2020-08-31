@@ -29,13 +29,6 @@ test_suite(
     ]
 )
 
-# test_suite(
-#     name = "test",
-#     tests = [
-#         "//libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/examples"
-#         ]
-# )
-
 test_suite(
     name  = "gadget1",
     tests = [
@@ -44,8 +37,6 @@ test_suite(
         "//libsnark/gadgetlib1/gadgets/hashes/sha256/tests:cpp",
         "//libsnark/gadgetlib1/gadgets/hashes/sha256/tests:py",
         "//libsnark/gadgetlib1/tests",
-        # profiling:
-        "//libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/examples",
         "//libsnark/gadgetlib1/gadgets/merkle_tree/tests",
         "//libsnark/gadgetlib1/gadgets/set_commitment/tests"
     ]
@@ -79,12 +70,6 @@ test_suite(
         # "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/tests",
     ]
 )
-
-# not a test - used by tinyram_examples
-# test_suite(
-#     name  = "reductions",
-#     tests = ["//libsnark/reductions/ram_to_r1cs/examples"]
-# )
 
 ## Long-running ##
 

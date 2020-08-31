@@ -1,6 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("@libff//bzl/config:vars.bzl",
-     "CPPFLAGS",
+     "CPPFLAGS", "LINKSTATIC",
      "DDEBUG", "DLOWMEM", "DMULTICORE", "DUSE_ASM")
 
 cc_library(
@@ -14,11 +14,12 @@ cc_library(
     copts = ["-I."] + CPPFLAGS,
     defines = DDEBUG + DLOWMEM + DMULTICORE + DUSE_ASM,
     include_prefix = "libff/algebra/scalar_multiplication",
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     visibility = ["//visibility:public"],
     deps = [
         "//libff/common:rng",
         "//libff/common:utils"
+        # "//libff/common:debug_print"
     ],
 )
 
@@ -34,5 +35,6 @@ cc_binary(
         "//libff/common:common",
         "//libff/common:profiling",
         "//libff/common:utils"
+        # "//libff/common:debug_print"
     ],
 )

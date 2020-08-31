@@ -33,6 +33,7 @@ test_suite(
 
 cc_test(
     name = "zm-nosnark",
+    timeout = "short",
     srcs = ["test_zm.cpp"],
     copts = CFLAGS + ["-UBN_SUPPORT_SNARK"],
     local_defines = DEFINES,
@@ -43,6 +44,7 @@ cc_test(
 
 cc_test(
     name = "zm-snark",
+    timeout = "short",
     srcs = ["test_zm.cpp"],
     copts = CFLAGS + ["-IBN_SUPPORT_SNARK"],
     local_defines = DEFINES,
@@ -54,6 +56,7 @@ cc_test(
 ################
 cc_test(
     name = "bn-nosnark",
+    timeout = "short",
     srcs = ["bn.cpp"] + COMMON_SRCS,
     copts = CFLAGS + ["-UBN_SUPPORT_SNARK"],
     local_defines = DEFINES,
@@ -66,6 +69,7 @@ cc_test(
 
 cc_test(
     name = "bn-snark",
+    timeout = "short",
     srcs = ["bn.cpp"] + COMMON_SRCS,
     copts = CFLAGS,
     local_defines = DEFINES + ["BN_SUPPORT_SNARK"],
@@ -79,6 +83,7 @@ cc_test(
 ################
 cc_test(
     name = "sample-nosnark",
+    timeout = "short",
     srcs = [
         "sample.cpp",
     ] + COMMON_SRCS,
@@ -93,6 +98,7 @@ cc_test(
 
 cc_test(
     name = "sample-snark",
+    timeout = "short",
     srcs = [
         "sample.cpp",
     ] + COMMON_SRCS,
@@ -117,6 +123,7 @@ cc_test(
 ################
 cc_test(
     name = "loop-nosnark",
+    timeout = "short",
     srcs = [
         "loop_test.cpp",
     ] + COMMON_SRCS,
@@ -129,6 +136,7 @@ cc_test(
 
 cc_test(
     name = "loop-snark",
+    timeout = "short",
     srcs = [
         "loop_test.cpp",
     ] + COMMON_SRCS,
@@ -142,6 +150,7 @@ cc_test(
 ################
 cc_test(
     name = "bench-nosnark",
+    timeout = "short",
     srcs = ["bench.cpp"],
     copts = CFLAGS + ["-UBN_SUPPORT_SNARK"] + ["-Iexternal/xbyak"],
     local_defines = DEFINES,
@@ -155,6 +164,7 @@ cc_test(
 
 cc_test(
     name = "bench-snark",
+    timeout = "short",
     srcs = ["bench.cpp"],
     copts = CFLAGS + ["-Iexternal/xbyak"],
     local_defines = DEFINES + ["BN_SUPPORT_SNARK"],
@@ -170,6 +180,7 @@ cc_test(
 # non-snark only:
 cc_test(
     name = "mini-nosnark",
+    timeout = "short",
     srcs = [
         "minitest.cpp",
         "test_point.hpp",

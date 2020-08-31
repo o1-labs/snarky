@@ -94,11 +94,11 @@ http_archive(
     strip_prefix = "googletest-release-1.10.0",
 )
 
-# awaiting fix to gitlab bug
-# http_archive(
-#     name="libprocps",
-#     url="https://gitlab.com/procps-ng/procps/-/archive/v3.3.16/procps-v3.3.16.tar.gz",
-#     sha256="7f09945e73beac5b12e163a7ee4cae98bcdd9a505163b6a060756f462907ebbc",
-#     strip_prefix = "procps-v3.3.16",
-#     build_file = "@//external:libprocps.BUILD"
-# )
+# libff:
+new_git_repository(
+    name = "procps",
+    commit = "4090fa711be367a35e689a34c9ba751ad90f6f0d",
+    remote = "https://github.com/obazl/procps.git",
+    shallow_since = "1588067259 +1000",
+    build_file_content = all_content,
+)

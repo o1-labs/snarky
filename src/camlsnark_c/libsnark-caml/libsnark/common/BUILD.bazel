@@ -4,6 +4,7 @@ cc_library(
     name = "common",
     visibility = ["//visibility:public"],
     hdrs = ["libsnark_serialization.hpp"],
+    include_prefix = "libsnark/common",
     deps = [
         "@libff//libff/common:profiling",
         "@libff//libff/common:serialization"

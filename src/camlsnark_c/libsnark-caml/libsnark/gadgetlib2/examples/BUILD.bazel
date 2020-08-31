@@ -1,15 +1,19 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@libfqfft//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS")
 
 cc_binary(
-    name = "tutorial",
+    name = "examples",
     srcs = [
         "tutorial.cpp",
+        "simple_example.cpp",
+        "simple_example.hpp"
     ],
-    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    copts = ["-I.", "-Iexternal", "-Iexternal/libsnark"
+    ] + CPPFLAGS + CXXFLAGS,
     linkstatic = True,
     visibility = ["//visibility:public"],
     deps = [
-        ":examples",
+        # ":examples",
         "//libsnark/gadgetlib2",
         "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
         "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
@@ -18,13 +22,14 @@ cc_binary(
 )
 
 cc_library(
-    name = "examples",
+    name = "simple",
     srcs = [
         "simple_example.cpp",
     ],
     hdrs = ["simple_example.hpp"],
     include_prefix = "libsnark/gadgetlib2/examples",
-    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"
+    ] + CPPFLAGS + CXXFLAGS,
     linkstatic = True,
     visibility = ["//visibility:public"],
     deps = [

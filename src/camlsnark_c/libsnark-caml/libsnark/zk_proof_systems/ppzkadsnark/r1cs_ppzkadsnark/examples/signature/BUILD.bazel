@@ -1,9 +1,32 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "HDR_SEARCH_PATHS")
 
 cc_library(
-    name = "signature",
+    name = "tcc",
     visibility = ["//visibility:public"],
-    hdrs = ["ed25519_signature.hpp", "ed25519_signature.tcc"],
-    include_prefix = "libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/signature"
+    hdrs = ["ed25519_signature.tcc"],
+    include_prefix = "libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/signature",
+    copts = ["-std=c++14"] + HDR_SEARCH_PATHS + ["-Iexternal/libsnark-supercop"],
+    linkstatic = True,
+    alwayslink = True,
+    linkopts = ["-lsnark-supercop"],
+    deps = [
+        "@libsnark-supercop//:snark-supercop",
+        "//libsnark/common/default_types:r1cs_ppzkadsnark",
+        "//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark",
+    ]
+)
+
+cc_library(
+    name = "hpp",
+    visibility = ["//visibility:public"],
+    hdrs = ["ed25519_signature.hpp"],
+    include_prefix = "libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/signature",
+    copts = ["-std=c++14"] + HDR_SEARCH_PATHS + ["-Iexternal/libsnark-supercop"],
+    deps = [
+        # "//libsnark/common/default_types:r1cs_ppzkadsnark",
+        "//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark",
+        # "@libsnark-supercop//:snark-supercop"
+    ]
 )
 

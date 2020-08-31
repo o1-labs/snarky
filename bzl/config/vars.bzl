@@ -1,22 +1,5 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
-# DEPS_ROOT = "src/camlsnark_c/libsnark-caml/depends/"
-# LIBSNARK_ROOT = "src/camlsnark_c/libsnark-caml"
-
-# DEPS_ATE = "@ate_pairing//"
-# ATE_PAIRING = "//src/camlsnark_c/libsnark-caml/depends/"
-
-# LIBFF = "@libff//"
-# LIBFF = "//src/camlsnark_c/libsnark-caml/depends/libff/"
-# LIBFQFFT = "//src/camlsnark_c/libsnark-caml/depends/libfqfft/"
-
-# LIBSNARK = "//src/camlsnark_c/libsnark-caml/libsnark"
-
-# ate_pairing
-# CFLAGS_WARN = ["-Wall", "-Wextra", "-Wformat=2",
-#                "-Wcast-qual", "-Wcast-align", "-Wwrite-strings",
-#                "-Wfloat-equal", "-Wpointer-arith"]
-
 #####################
 ####    FLAGS    ####
 WARNINGS = ["-Wall", "-Wextra", "-Wfatal-errors",
@@ -43,6 +26,12 @@ OPTIMIZE_CXXFLAGS = select({
 OPTIMIZE_LINKFLAGS = select({
     "@//bzl/config:enable_optimization": ["-flto", "-fuse-linker-plugin"],
     "//conditions:default": []
+})
+
+LINKSTATIC = select({
+    "@//bzl/host:linux": True,
+    "@//bzl/host:macos": False,
+    "//conditions:default": True
 })
 
 CPPFLAGS = [
@@ -84,13 +73,12 @@ DMULTICORE = select({
 
 #### LIBFF ####
 DCURVE = select({
-    "@//bzl/config:curve_bn128": ["CURVE_BN128"],
-    "@//bzl/config:curve_alt_bn128": ["CURVE_ALT_BN128"],
-    "@//bzl/config:curve_edwards": ["CURVE_EDWARDS"],
-    "@//bzl/config:curve_mnt4": ["CURVE_MNT4"],
-    "@//bzl/config:curve_mnt6": ["CURVE_MNT6"],
-    "//conditions:default": ["CURVE_BN128"]
-})
+    "@//bzl/config:enable_curve_bn128": ["CURVE_BN128"],
+    "@//bzl/config:enable_curve_alt_bn128": ["CURVE_ALT_BN128"],
+    "@//bzl/config:enable_curve_edwards": ["CURVE_EDWARDS"],
+    "@//bzl/config:enable_curve_mnt4": ["CURVE_MNT4"],
+    "@//bzl/config:enable_curve_mnt6": ["CURVE_MNT6"],
+}, no_match_error = "ERROR: no curve specified; try --//:curve=<curve>")
 
 DLOWMEM = select({
     "@//bzl/config:enable_lowmem": ["LOWMEM"],
@@ -114,11 +102,6 @@ DPROFILE_OP_COUNTS = select({
 
 DUSE_MIXED_ADDITION = select({
     "@//bzl/config:enable_mixed_addition": ["USE_MIXED_ADDITION"],
-    "//conditions:default": []
-})
-
-DNO_PROCPS = selects.with_or({
-    ("@//bzl/config:disable_procps", "@//bzl/host:macos"): ["NO_PROCPS"],
     "//conditions:default": []
 })
 

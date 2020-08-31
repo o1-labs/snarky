@@ -32,7 +32,7 @@ cc_library(
              "-Iexternal",
              "-Iexternal/libff"
     ],
-    deps = ["@libff//libff"],
+    deps = ["@libff//libff/common/default_types"],
     visibility = ["//visibility:public"]
 )
 
@@ -93,7 +93,8 @@ cc_library(
     deps = [
         ":r1cs_ppzksnark",
         "//libsnark/relations/ram_computations/rams/tinyram",
-        "@libff//libff"
+        "@libff//libff",
+        "@libff//libff/common/default_types"
     ],
     visibility = ["//visibility:public"]
 )
@@ -144,11 +145,13 @@ cc_library(
              "-Iexternal",
              "-Iexternal/libff"
     ],
-    deps = ["//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/prf",
-            "//libsnark/relations/ram_computations/rams/tinyram",
-            "//libsnark/common/default_types:r1cs_ppzksnark",
-            "@libff//libff",
-            "@libff//libff/common/default_types",
-            # "@supercop//:supercop"
-            ]
+    deps = [
+        "//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/prf",
+        "//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/signature:hpp",
+        "//libsnark/relations/ram_computations/rams/tinyram",
+        "//libsnark/common/default_types:r1cs_ppzksnark",
+        "@libff//libff",
+        "@libff//libff/common/default_types",
+        # "@libsnark-supercop//:libsnark-supercop"
+    ]
 )

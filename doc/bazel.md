@@ -1,3 +1,14 @@
+# prerequisites
+
+
+## linux
+
+* procps:
+  * sudo apt install:
+    * libtool-bin
+    * autopoint
+
+
 # working with bazel
 
 Prerequisite reading: [Workspaces, packages, and targets](https://docs.bazel.build/versions/master/build-ref.html#packages_targets)
@@ -77,6 +88,37 @@ build --subcommands=pretty_print
 build --verbose_failures
 build --sandbox_debug
 ```
+
+#### config flags
+
+Each dependency has its own set of build flags.  You can set them
+individually; for example, to build with `debug` and `verbose` set for
+libff but not for other deps, pass `--@libff//:debug --@libff//:verbose`:
+
+`$ bazel test @libsnark//test --@libff//:debug --@libff/:verbose`
+
+Note that this :verbose switch enables C/C++ verbosity (compiler
+switch `-v`), and has no effect on Bazel's verbosity.
+
+To list available flags, run a query for the repo, e.g. `$ bazel query @libff//:all`.
+
+The convention followed is: "build setting" flags are declared in the
+root BUILD.bazel file; the corresponding config_settings are defined
+in `//bzl/config/BUILD.bazel`, and they are used to set command-line
+parameters in `//bzl/config/vars.bzl`.
+
+### known problems
+
+The following do not compile:
+
+* @libsnark//libsnark/gadgetlib1/gadgets/verifiers/test/test_r1cs_gg_ppzksnark_verifier_gadget.cpp
+  * cmake target: gadgetlib1_r1cs_se_ppzksnark_verifier_gadget_test
+  * bazel target: libsnark/gadgetlib1/gadgets/verifiers/test:gg_ppzksnark
+
+* @libfqfft//libfqfft/tests:evaluation_domain
+
+* @libfqfft//libfqfft/tests
+  * all fail with --//:with_openmp
 
 #### cleaning
 
