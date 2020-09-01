@@ -53,13 +53,13 @@ LDFLAGS  = []
 ####    DEFINES    ####
 
 DCXX_DEBUG = select({
-    "@//bzl/config:linux_cxx_debug": ["_GLIBCXX_DEBUG", "_GLIBCXX_DEBUG_PEDANTIC"],
-    "@//bzl/config:macos_cxx_debug": ["_LIBCPP_DEBUG"],
+    "//bzl/config:linux_cxx_debug": ["_GLIBCXX_DEBUG", "_GLIBCXX_DEBUG_PEDANTIC"],
+    "//bzl/config:macos_cxx_debug": ["_LIBCPP_DEBUG"],
     "//conditions:default": []
 })
 
 DDEBUG = select({
-    "@//bzl/config:enable_debug": ["DEBUG"],
+    "//bzl/config:enable_debug": ["DEBUG"],
     "//conditions:default": [] # ["NDEBUG"]
 }) + DCXX_DEBUG
 

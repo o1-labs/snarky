@@ -12,7 +12,7 @@ cc_binary(
     deps = [
         "//libsnark/common/default_types:uscs_ppzksnark",
         "//libsnark/relations/constraint_satisfaction_problems/uscs/examples",
-        "//libsnark/zk_proof_systems/ppzksnark/uscs_ppzksnark/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/uscs_ppzksnark/examples:runner",
         "@libff//libff"
     ]
 )

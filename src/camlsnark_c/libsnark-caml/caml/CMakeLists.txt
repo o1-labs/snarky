@@ -3,9 +3,10 @@ add_library(
   STATIC
 
   ../depends/libff/libff/common/double.cpp
+  ../depends/libff/libff/common/logging.cpp
   ../depends/libff/libff/common/profiling.cpp
   ../depends/libff/libff/common/utils.cpp
-  ../depends/libff/libff/common/common.cpp
+  common.cpp
 )
 target_link_libraries(
   snark_caml_common

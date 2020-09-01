@@ -1,14 +1,15 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
 
-cc_binary(
+cc_test(
     name = "tests",
     visibility = ["//visibility:public"],
     srcs = ["test_r1cs_sp_ppzkpcd.cpp"],
     copts = ["-I.", "-Iexternal"],
+    linkstatic = True,
     deps = [
         "@libff//libff/common:profiling",
         "@libff//libff/common/default_types",
         "//libsnark/common/default_types:r1cs_ppzkpcd",
-        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd/examples"
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd/examples:runner"
     ]
 )

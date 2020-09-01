@@ -9,7 +9,7 @@ cc_binary(
         "//libsnark/common/data_structures",
         "//libsnark/common/default_types:r1cs_ppzksnark",
         "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
-        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples:runner",
         "@libff//libff",
     ]
 )

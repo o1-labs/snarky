@@ -1,6 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("@rules_cc//cc:defs.bzl", "cc_test")
-load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 test_suite(
     name = "tests",
@@ -13,7 +12,7 @@ cc_test(
     srcs = ["test_routing_algorithms.cpp"],
     copts = ["-I.", "-Iexternal/libsnark"],
     timeout = "moderate",
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         "@libff//libff/common:profiling",
         "@libff//libff/common/default_types",

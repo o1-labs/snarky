@@ -11,12 +11,12 @@ cc_test(
         "-Iexternal",
         "-Iexternal/libff"
     ],
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         "//libsnark/common/default_types:r1cs_se_ppzksnark",
         "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
-        "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark/examples",
         "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark/examples:runner",
         "@libff//libff"
     ]
 )

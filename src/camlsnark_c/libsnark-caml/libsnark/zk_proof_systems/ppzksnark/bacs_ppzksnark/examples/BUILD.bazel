@@ -2,7 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@libsnark//bzl/config:vars.bzl", "HDR_SEARCH_PATHS")
 
 cc_library(
-    name = "examples",
+    name = "runner",
     hdrs = [
         "run_bacs_ppzksnark.hpp",
         "run_bacs_ppzksnark.tcc",

@@ -6,6 +6,7 @@ test_suite(
         ":gadget1",
         ":gadget2",
         ":ppzksnark",
+        ":verifiers"
         # ":reductions",
         # this one takes a long long time, run it separately:
         # ":zksnark"
@@ -67,7 +68,14 @@ test_suite(
         "//libsnark/zk_proof_systems/ppzksnark/tbcs_ppzksnark/tests",
         "//libsnark/zk_proof_systems/ppzksnark/uscs_ppzksnark/tests",
         # long-running:
-        # "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/tests",
+    ]
+)
+
+test_suite(
+    name  = "verifiers",
+    tests = [
+        "//libsnark/gadgetlib1/gadgets/verifiers/tests:ppzksnark",
+        "//libsnark/gadgetlib1/gadgets/verifiers/tests:se_ppzksnark",
     ]
 )
 
@@ -89,6 +97,8 @@ test_suite(
 test_suite(
     name  = "pcd",
     tests = [
-        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/tests",
+        "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd/tests",
+        ## VERY long running:
+        # "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/tests",
     ]
 )

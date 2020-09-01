@@ -1,14 +1,8 @@
-#include "libff/common/debug_print.hpp"
-// #include <libff/algebra/fields/bigint.hpp>
-// #include <libff/algebra/curves/mnt/mnt4/mnt4_init.hpp>
-// #include <libff/algebra/curves/mnt/mnt6/mnt6_init.hpp>
-// #include <libff/algebra/curves/mnt/mnt4/mnt4_g1.hpp>
-// #include <libff/algebra/curves/mnt/mnt6/mnt6_g1.hpp>
-// #include <libff/algebra/curves/mnt/mnt4/mnt4_pp.hpp>
-// #include <libff/algebra/curves/mnt/mnt6/mnt6_pp.hpp>
-// #include <libff/common/profiling.hpp>
+#include <iostream>
 #include <stdarg.h>
 #include <time.h>
+
+#include "libff/common/logging.hpp"
 
 int normal_printf(const char* filename,
                   int line,
@@ -73,35 +67,35 @@ int json_printf(const char* filename,
     return ret;
 }
 
-int (*snarky_printf_deferred)(const char* filename,
+int (*libff_printf_deferred)(const char* filename,
                               int line,
                               FILE* file,
                               const char* format,
                               va_list args) = &normal_printf;
 
-FILE *snarky_print_dest = stdout;
+FILE *libff_print_dest = stdout;
 
 int may_close = false;
 
-int close_snarky_print_dest() {
-    if (snarky_print_dest) {
+int close_libff_print_dest() {
+    if (libff_print_dest) {
         int ret = 0;
         if (may_close) {
-            ret = fclose(snarky_print_dest);
+            ret = fclose(libff_print_dest);
             may_close = false;
         };
-        snarky_print_dest = NULL;
+        libff_print_dest = NULL;
         return ret;
     } else {
         return 0;
     }
 }
 
-int snarky_printf(const char* filename, int line, const char* format, ...) {
-    if (snarky_print_dest) {
+int libff_printf(const char* filename, int line, const char* format, ...) {
+    if (libff_print_dest) {
         va_list args;
         va_start(args, format);
-        int ret = (*snarky_printf_deferred)(filename, line, snarky_print_dest, format, args);
+        int ret = (*libff_printf_deferred)(filename, line, libff_print_dest, format, args);
         va_end(args);
         return ret;
     }
@@ -110,35 +104,31 @@ int snarky_printf(const char* filename, int line, const char* format, ...) {
     }
 }
 
-extern "C" {
-
-    void camlsnark_set_printing_off() {
-        close_snarky_print_dest();
-    }
-
-    void camlsnark_set_printing_stdout() {
-        close_snarky_print_dest();
-        snarky_print_dest = stdout;
-    }
-
-    void camlsnark_set_printing_stderr() {
-        close_snarky_print_dest();
-        snarky_print_dest = stderr;
-    }
-
-    void camlsnark_set_printing_file(char *file) {
-        close_snarky_print_dest();
-        may_close = true;
-        snarky_print_dest = fopen(file, "a");
-    }
-
-    void camlsnark_set_printing_normal() {
-        snarky_printf_deferred = &normal_printf;
-    }
-
-    void camlsnark_set_printing_json() {
-        snarky_printf_deferred = &json_printf;
-    }
-
+// extern C
+void libff_set_printing_off() {
+    close_libff_print_dest();
 }
 
+void libff_set_printing_stdout() {
+    close_libff_print_dest();
+    libff_print_dest = stdout;
+}
+
+void libff_set_printing_stderr() {
+    close_libff_print_dest();
+    libff_print_dest = stderr;
+}
+
+void libff_set_printing_file(char *file) {
+    close_libff_print_dest();
+    may_close = true;
+    libff_print_dest = fopen(file, "a");
+}
+
+void libff_set_printing_normal() {
+    libff_printf_deferred = &normal_printf;
+}
+
+void libff_set_printing_json() {
+    libff_printf_deferred = &json_printf;
+}

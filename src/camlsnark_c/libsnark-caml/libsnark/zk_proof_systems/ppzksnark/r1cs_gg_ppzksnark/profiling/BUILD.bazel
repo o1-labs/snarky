@@ -5,11 +5,10 @@ cc_binary(
     visibility = ["//visibility:public"],
     srcs = ["profile_r1cs_gg_ppzksnark.cpp"],
     copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
-    include_prefix = "libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/profiling",
     deps = [
         "//libsnark/common/default_types:r1cs_gg_ppzksnark",
         "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
-        "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/examples:runner",
         "@libff//libff/common:profiling",
         "@libff//libff/common/default_types",
     ]

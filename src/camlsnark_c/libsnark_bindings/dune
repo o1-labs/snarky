@@ -18,14 +18,14 @@
 
 (rule
  (targets libsnark_ffi_bindings.c libsnark_ffi_bindings.ml)
- (deps caml_curve.h.template)
+ (deps template_caml_curve_h.hpp)
  (action
   (run ../camlsnark_ctypes_stubs.exe)))
 
 (rule
- (targets caml_curve.h.template common.h)
+ (targets template_caml_curve_h.hpp common.h)
  (deps
-   ../libsnark-caml/caml/caml_curve.h.template
+   ../libsnark-caml/caml/template_caml_curve_h.hpp
    ../libsnark-caml/caml/common.h)
  (action
   (run cp %{deps} .)))

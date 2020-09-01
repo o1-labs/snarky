@@ -2,23 +2,23 @@
 
 ## You can override the WORKSPACE definition of a repo.
 ## For builds:
-build --override_repository=obazl_rules_ocaml=/path/to/obazl
-query --override_repository=obazl_rules_ocaml=/path/to/obazl
+# build --override_repository=obazl_rules_ocaml=/path/to/obazl
+# query --override_repository=obazl_rules_ocaml=/path/to/obazl
 
-build --override_repository=libsnark=/path/to/libsnark
-query --override_repository=libsnark=/path/to/libsnark
+# build --override_repository=libsnark=/path/to/libsnark
+# query --override_repository=libsnark=/path/to/libsnark
 
-build --override_repository=libfqfft=/path/to/libfqfft
-query --override_repository=libfqfft=/path/to/libfqfft
+# build --override_repository=libfqfft=/path/to/libfqfft
+# query --override_repository=libfqfft=/path/to/libfqfft
 
-build --override_repository=libff=/path/to/libff
-query --override_repository=libff=/path/to/libff
+# build --override_repository=libff=/path/to/libff
+# query --override_repository=libff=/path/to/libff
 
-build --override_repository=ate_pairing=/path/to/ate-pairing
-query --override_repository=ate_pairing=/path/to/ate-pairing
+# build --override_repository=ate_pairing=/path/to/ate-pairing
+# query --override_repository=ate_pairing=/path/to/ate-pairing
 
-build --override_repository=xbyak=/path/to/xbyak
-query --override_repository=xbyak=/path/to/xbyak
+# build --override_repository=xbyak=/path/to/xbyak
+# query --override_repository=xbyak=/path/to/xbyak
 
 ################################################################
 build --symlink_prefix=.bazel/   # use hidden dir instead of top-level symlinks
@@ -37,6 +37,9 @@ build --sandbox_debug
 # build --keep_going
 build --jobs 600
 # query --keep_going
+
+## when running tests this will provide hints for 'size' or 'timeout' attribs: :
+# test --test_verbose_timeout_warnings
 
 # build --toolchain_resolution_debug
 

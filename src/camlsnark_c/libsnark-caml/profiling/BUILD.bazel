@@ -1,0 +1,58 @@
+alias(
+    name   = "routing_algorithms",
+    actual = "//libsnark/common/routing_algorithms/profiling"
+)
+
+# alias(
+#     name   = "routing_gadgetlib1",
+#     actual = "//libsnark/gadgetlib1/gadgets/routing
+    /profiling"
+)
+
+alias(
+    name   = "r1cs_mp_pcd",
+    actual = "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_mp_ppzkpcd/profiling"
+)
+
+alias(
+    name   = "r1cs_sp_pcd",
+    actual = "//libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd/profiling"
+)
+
+alias(
+    name   = "bacs_ppzksnark",
+    actual = "//libsnark/zk_proof_systems/ppzksnark/bacs_ppzksnark/profiling"
+)
+
+alias(
+    name   = "r1cs_gg_ppzksnark",
+    actual = "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/profiling"
+)
+
+alias(
+    name   = "r1cs_ppzksnark",
+    actual = "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/profiling"
+)
+
+alias(
+    name   = "r1cs_se_ppzksnark",
+    actual = "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark/profiling"
+)
+
+alias(
+    name   = "ram_ppzksnark",
+    actual = "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/profiling"
+)
+
+
+alias(
+    name   = "tbcs_ppzksnark",
+    actual = "//libsnark/zk_proof_systems/ppzksnark/tbcs_ppzksnark/profiling"
+)
+
+
+alias(
+    name   = "uscs_ppzksnark",
+    actual = "//libsnark/zk_proof_systems/ppzksnark/uscs_ppzksnark/profiling"
+)
+

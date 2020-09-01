@@ -19,7 +19,7 @@ cc_library(
         "//libsnark/gadgetlib1/gadgets",
         "//libsnark/gadgetlib1/gadgets/hashes:crh_gadget",
         "//libsnark/gadgetlib1/gadgets/set_commitment",
-        "//libsnark/gadgetlib1/gadgets/verifiers",
+        "//libsnark/gadgetlib1/gadgets/verifiers:r1cs_ppzksnark",
         "//libsnark/zk_proof_systems/pcd/r1cs_pcd",
         "//libsnark/zk_proof_systems/pcd/r1cs_pcd/compliance_predicate",
         "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark"

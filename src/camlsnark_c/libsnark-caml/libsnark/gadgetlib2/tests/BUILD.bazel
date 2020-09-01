@@ -1,7 +1,9 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
-load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "LINKSTATIC")
 
-COPTS = ["-I.", "-Iexternal", "-Iexternal/libff"] + CPPFLAGS + CXXFLAGS
+LINKSTATIC = True
+
+## Do NOT use -UDEBUG
+COPTS = ["-I.", "-Iexternal", "-Iexternal/libff"]
 
 test_suite(
     name = "tests",
@@ -63,7 +65,7 @@ cc_test(
             "//libsnark/gadgetlib2/examples:simple",
             "//libsnark/common/default_types:r1cs_ppzksnark",
             "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
-            "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples",
+            "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples:runner",
             "@gtest//:gtest_main"]
 )
 

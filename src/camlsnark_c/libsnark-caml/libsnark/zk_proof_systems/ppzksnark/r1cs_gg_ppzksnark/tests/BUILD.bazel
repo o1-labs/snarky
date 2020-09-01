@@ -15,7 +15,7 @@ cc_test(
     deps = [
         "//libsnark/common/default_types:r1cs_gg_ppzksnark",
         "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples",
-        "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/examples:runner",
         "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark",
         "@libff//libff"
     ]

@@ -1,18 +1,19 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary")
-load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
 
-cc_binary(
+## NOTE: these do not use gtest
+
+cc_test(
     name = "ppzksnark",
     srcs = ["test_r1cs_ppzksnark_verifier_gadget.cpp"],
     visibility = ["//visibility:public"],
     copts = ["-I.", "-Iexternal"],
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         "@libff//libff/algebra/curves/mnt/mnt4",
         "@libff//libff/algebra/curves/mnt/mnt6",
-        "@libff//libff/common",
+        "@libff//libff/common:utils",
         "//libsnark/gadgetlib1/gadgets/fields",
-        "//libsnark/gadgetlib1/gadgets/verifiers",
+        "//libsnark/gadgetlib1/gadgets/verifiers:r1cs_ppzksnark",
         "//libsnark/gadgetlib1/gadgets",
         "//libsnark/gadgetlib1",
         "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark",
@@ -20,40 +21,48 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "gg_ppzksnark",
-    srcs = ["test_r1cs_gg_ppzksnark_verifier_gadget.cpp"],
-    visibility = ["//visibility:public"],
-    copts = ["-I.", "-Iexternal"],
-    linkstatic = LINKSTATIC,
-    deps = [
-        "@libff//libff/algebra/curves/mnt/mnt4",
-        "@libff//libff/algebra/curves/mnt/mnt6",
-        "@libff//libff/common",
-        "//libsnark/gadgetlib1/gadgets/fields",
-        "//libsnark/gadgetlib1/gadgets/verifiers",
-        "//libsnark/gadgetlib1/gadgets",
-        "//libsnark/gadgetlib1",
-        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark",
-        "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples"
-    ],
-)
+## BORKEN:
+## error: no member named 'gamma_ABC_g1' in 'libsnark::r1cs_gg_ppzksnark_verification_key<libff::mnt6_pp>'
+## error: no member named 'gamma_g2' in 'libsnark::r1cs_gg_ppzksnark_verification_key<libff::mnt6_pp>'
+## etc.
+# cc_binary(
+#     name = "gg_ppzksnark",
+#     srcs = ["test_r1cs_gg_ppzksnark_verifier_gadget.cpp"],
+#     visibility = ["//visibility:public"],
+#     copts = ["-I.", "-Iexternal"],
+#     linkstatic = True,
+#     deps = [
+#         "@libff//libff/algebra/curves/mnt/mnt4",
+#         "@libff//libff/algebra/curves/mnt/mnt6",
+#         "@libff//libff/common",
+#         "//libsnark/common/data_structures",
+#         "//libsnark/gadgetlib1/gadgets/fields",
+#         "//libsnark/gadgetlib1/gadgets/verifiers",
+#         "//libsnark/gadgetlib1/gadgets",
+#         "//libsnark/gadgetlib1",
+#         "//libsnark/knowledge_commitment",
+#         "//libsnark/reductions/r1cs_to_qap",
+#         "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark",
+#         "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples"
+#     ],
+# )
 
-cc_binary(
+cc_test(
     name = "se_ppzksnark",
     srcs = ["test_r1cs_se_ppzksnark_verifier_gadget.cpp"],
+    timeout = "short",
     visibility = ["//visibility:public"],
     copts = ["-I.", "-Iexternal"],
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         "@libff//libff/algebra/curves/mnt/mnt4",
         "@libff//libff/algebra/curves/mnt/mnt6",
-        "@libff//libff/common",
+        "@libff//libff/common:utils",
         "//libsnark/gadgetlib1/gadgets/fields",
-        "//libsnark/gadgetlib1/gadgets/verifiers",
+        "//libsnark/gadgetlib1/gadgets/verifiers:r1cs_se_ppzksnark",
         "//libsnark/gadgetlib1/gadgets",
         "//libsnark/gadgetlib1",
-        "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
         "//libsnark/relations/constraint_satisfaction_problems/r1cs/examples"
     ],
 )

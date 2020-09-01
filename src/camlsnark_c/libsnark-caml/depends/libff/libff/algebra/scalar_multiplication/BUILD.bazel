@@ -19,7 +19,6 @@ cc_library(
     deps = [
         "//libff/common:rng",
         "//libff/common:utils"
-        # "//libff/common:debug_print"
     ],
 )
 
@@ -35,6 +34,5 @@ cc_binary(
         "//libff/common:common",
         "//libff/common:profiling",
         "//libff/common:utils"
-        # "//libff/common:debug_print"
     ],
 )

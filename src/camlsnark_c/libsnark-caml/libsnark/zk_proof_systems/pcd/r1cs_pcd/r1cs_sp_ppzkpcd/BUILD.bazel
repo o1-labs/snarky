@@ -12,7 +12,7 @@ cc_library(
     include_prefix = "libsnark/zk_proof_systems/pcd/r1cs_pcd/r1cs_sp_ppzkpcd",
     copts = HDR_SEARCH_PATHS,
     deps = [
-        "//libsnark/gadgetlib1/gadgets/verifiers",
+        "//libsnark/gadgetlib1/gadgets/verifiers:r1cs_ppzksnark",
         "//libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark",
         "//libsnark/zk_proof_systems/pcd/r1cs_pcd/compliance_predicate",
         "//libsnark/zk_proof_systems/pcd/r1cs_pcd",

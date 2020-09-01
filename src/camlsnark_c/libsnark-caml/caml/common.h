@@ -1,55 +1,64 @@
 // Defines bool
 #include <stdbool.h>
 
-void camlsnark_set_printing_off();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void camlsnark_set_printing_stdout();
+    void camlsnark_set_printing_off();
 
-void camlsnark_set_printing_file(char *file);
+    void camlsnark_set_printing_stdout();
 
-void camlsnark_set_printing_fun(int (*pf)(char*));
+    void camlsnark_set_printing_file(char *file);
 
-void camlsnark_puts(const char* str);
+    void camlsnark_set_printing_fun(int (*pf)(char*));
 
-void camlsnark_set_profiling(bool b);
+    void camlsnark_puts(const char* str);
 
-// long vector
-void* camlsnark_long_vector_create();
+    void camlsnark_set_profiling(bool b);
 
-int camlsnark_long_vector_length(void *v);
+    // long vector
+    void* camlsnark_long_vector_create();
 
-void camlsnark_long_vector_emplace_back(void *v, long x);
+    int camlsnark_long_vector_length(void *v);
 
-long camlsnark_long_vector_get(void *v, int i);
+    void camlsnark_long_vector_emplace_back(void *v, long x);
 
-void camlsnark_long_vector_delete(void* v);
+    long camlsnark_long_vector_get(void *v, int i);
 
-// bool vector
-void* camlsnark_bool_vector_create();
+    void camlsnark_long_vector_delete(void* v);
 
-int camlsnark_bool_vector_length(void*v);
+    // bool vector
+    void* camlsnark_bool_vector_create();
 
-void camlsnark_bool_vector_emplace_back(void* v, bool x);
+    int camlsnark_bool_vector_length(void*v);
 
-bool camlsnark_bool_vector_get(void* v, int i);
+    void camlsnark_bool_vector_emplace_back(void* v, bool x);
 
-void camlsnark_bool_vector_delete(void* v);
+    bool camlsnark_bool_vector_get(void* v, int i);
 
-// int vector
-void* camlsnark_int_vector_create();
+    void camlsnark_bool_vector_delete(void* v);
 
-int camlsnark_int_vector_length(void*v);
+    // int vector
+    void* camlsnark_int_vector_create();
 
-void camlsnark_int_vector_emplace_back(void* v, int x);
+    int camlsnark_int_vector_length(void*v);
 
-int camlsnark_int_vector_get(void* v, int i);
+    void camlsnark_int_vector_emplace_back(void* v, int x);
 
-void camlsnark_int_vector_delete(void* v);
+    int camlsnark_int_vector_get(void* v, int i);
 
-const char* camlsnark_string_to_char_pointer(void* s);
+    void camlsnark_int_vector_delete(void* v);
 
-void* camlsnark_string_of_char_pointer(char* p, int length);
+    const char* camlsnark_string_to_char_pointer(void* s);
 
-void camlsnark_string_delete(void* s);
+    void* camlsnark_string_of_char_pointer(char* p, int length);
 
-int camlsnark_string_length(void* s);
+    void camlsnark_string_delete(void* s);
+
+    int camlsnark_string_length(void* s);
+
+#ifdef __cplusplus
+}
+#endif
+

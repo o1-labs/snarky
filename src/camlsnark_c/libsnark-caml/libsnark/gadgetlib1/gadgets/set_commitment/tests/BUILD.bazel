@@ -4,9 +4,10 @@ load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 cc_test(
     name = "tests",
     visibility = ["//visibility:public"],
+    timeout = "long",
     srcs = ["test_set_commitment_gadget.cpp"],
     copts = ["-I.", "-Iexternal"],
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         #ifdef CURVE_BN128
         #include <libff/algebra/curves/bn128/bn128_pp.hpp>

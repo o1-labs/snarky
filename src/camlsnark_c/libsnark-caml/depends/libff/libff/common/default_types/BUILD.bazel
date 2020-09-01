@@ -1,5 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "DBINARY_OUTPUT", "DCURVE", "DDEBUG", "DMULTICORE", "DNO_PROCPS")
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS",
+     "DBINARY_OUTPUT", "DCURVE", "DDEBUG", "DMULTICORE", "DNO_PROCPS")
 
 cc_library(
     name = "default_types",
@@ -16,6 +17,5 @@ cc_library(
         "@//bzl/config:enable_curve_edwards": ["//libff/algebra/curves/edwards:public_params"],
         "@//bzl/config:enable_curve_mnt4": ["//libff/algebra/curves/mnt/mnt4:public_params"],
         "@//bzl/config:enable_curve_mnt6": ["//libff/algebra/curves/mnt/mnt6:public_params"],
-        "//conditions:default": []
-    })
+    }, no_match_error = "ERROR: no curve selected.  Try --//:curve=<curve>")
 )

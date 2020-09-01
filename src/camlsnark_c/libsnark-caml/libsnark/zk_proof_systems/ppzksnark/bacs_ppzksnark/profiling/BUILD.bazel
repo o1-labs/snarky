@@ -8,7 +8,7 @@ cc_binary(
     deps = [
         "//libsnark/common/default_types:bacs_ppzksnark",
         "//libsnark/relations/circuit_satisfaction_problems/bacs/examples",
-        "//libsnark/zk_proof_systems/ppzksnark/bacs_ppzksnark/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/bacs_ppzksnark/examples:runner",
         "@libff//libff/common:profiling",
         "@libff//libff/common/default_types",
     ]

@@ -1,19 +1,37 @@
-# prerequisites
 
+ToC:
 
-## linux
+* [Working with Bazel](#working_with_bazel)
+  * [Building and Querying](#build_query)
+  * [Debugging and Troubleshooting](#debugging)
+  * [Configuration](#config)
+  * [Known Problems](#known_problems)
+  * [Cleaning](#cleaning)
+* [Notes on Bazel Build Structure](#build_structure)
+  * [Libraries: embedded, submodularized, bazelized](#libs)
+  * [Embedded deps](#embedded)
+  * [Submodules](#submodules)
+  * [External Repos](#externals)
+  * [Specific Structures](#specifics)
+
+# Prerequisites
+
+(See the main docs)
+
+## Linux
 
 * procps:
   * sudo apt install:
     * libtool-bin
     * autopoint
 
+* Graphviz
 
-# working with bazel
+# <a name="working_with_bazel">Working with Bazel</a>
 
 Prerequisite reading: [Workspaces, packages, and targets](https://docs.bazel.build/versions/master/build-ref.html#packages_targets)
 
-## Building and Querying
+## <a name="build_query">Building and Querying</a>
 
 Bazel build commands are simple: `$ bazel build //my/pkg:target`.
 Usually the `//` can be omitted, and often the target name is the same
@@ -24,7 +42,8 @@ Query commands are a little more complicated. You can find examples
 [here](https://docs.bazel.build/versions/master/query-how-to.html);
 see also the
 [reference](https://docs.bazel.build/versions/master/query.html). Here
-are some queries you may find useful:
+are some queries you may find useful (replace '//test' with a target,
+e.g. '@libff/libff`):
 
 List all deps of a target, filtering out everything else
 
@@ -58,13 +77,19 @@ We can combine predicates:
 
 The last excludes source file targets.
 
+Samples/examples are defined using `cc_binary` rules; to list them:
+
+* `bazel query 'kind("cc_binary rule", @libsnark//libsnark/...:all)'`
+
+Tests are defined using either `cc_test`, `python_test`, or `test_suite`.
+
 Finally, you can pipe the output to [GraphViz](https://graphviz.org/)
 to create a nice SVG picture of your build structure; see [Visualize
 your
 build](https://blog.bazel.build/2015/06/17/visualize-your-build.html)
 for some simple examples.
 
-## Debugging and Troubleshooting
+## <a name="debugging">Debugging and Troubleshooting</a>
 
 Bazel has its own work area and keeps track of lots of info; you can
 see some of it by running `$ bazel info`. Often you will be interested
@@ -89,7 +114,16 @@ build --verbose_failures
 build --sandbox_debug
 ```
 
-#### config flags
+If you try a Dune build and you get an unexpected error like:
+
+```
+$ dune build
+Error: Too many opam files for package "reformat-snarky":
+```
+
+then you probably just need to run `$ bazel clean` before running dune.
+
+#### <a name="config">Configuration</a>
 
 Each dependency has its own set of build flags.  You can set them
 individually; for example, to build with `debug` and `verbose` set for
@@ -107,20 +141,52 @@ root BUILD.bazel file; the corresponding config_settings are defined
 in `//bzl/config/BUILD.bazel`, and they are used to set command-line
 parameters in `//bzl/config/vars.bzl`.
 
-### known problems
+### <a name="known_problems">Known Problems</a>
 
 The following do not compile:
 
-* @libsnark//libsnark/gadgetlib1/gadgets/verifiers/test/test_r1cs_gg_ppzksnark_verifier_gadget.cpp
+* libsnark/gadgetlib1/gadgets/verifiers/test/test_r1cs_gg_ppzksnark_verifier_gadget.cpp
   * cmake target: gadgetlib1_r1cs_se_ppzksnark_verifier_gadget_test
-  * bazel target: libsnark/gadgetlib1/gadgets/verifiers/test:gg_ppzksnark
+  * bazel target: @libsnark//libsnark/gadgetlib1/gadgets/verifiers/test:gg_ppzksnark
+  * errors:
+    * error: no member named 'gamma_ABC_g1' in 'libsnark::r1cs_gg_ppzksnark_verification_key<libff::mnt6_pp>'
+    * error: no member named 'gamma_ABC_g1' in 'libsnark::r1cs_gg_ppzksnark_verification_key<libff::mnt6_pp>'
+    * etc.
+
+* @libsnark//libsnark/gadgetlib2/tests:protoboard
+-----------------------------------------------------------------------------
+Running main() from gmock_main.cc
+[==========] Running 4 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 4 tests from gadgetLib2
+[ RUN      ] gadgetLib2.R1P_enforceBooleanity
+[       OK ] gadgetLib2.R1P_enforceBooleanity (1 ms)
+[ RUN      ] gadgetLib2.Protoboard_unpackedWordAssignmentEqualsValue_R1P
+[       OK ] gadgetLib2.Protoboard_unpackedWordAssignmentEqualsValue_R1P (0 ms)
+[ RUN      ] gadgetLib2.Protoboard_multipackedWordAssignmentEqualsValue_R1P
+ERROR:  R1P multipacked size mismatch (In file external/libsnark/libsnark/gadgetlib2/protoboard.cpp line 162.)
+
+  (stack trace not available on this platform)
+[       OK ] gadgetLib2.Protoboard_multipackedWordAssignmentEqualsValue_R1P (0 ms)
+[ RUN      ] gadgetLib2.Protoboard_dualWordAssignmentEqualsValue_R1P
+[       OK ] gadgetLib2.Protoboard_dualWordAssignmentEqualsValue_R1P (1 ms)
+[----------] 4 tests from gadgetLib2 (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 4 tests from 1 test suite ran. (2 ms total)
+[  PASSED  ] 4 tests.
+
+That's on MacOS; the error msg is slightly different on Linux.
+
+
+* @libsnark//libsnark/gadgetlib2/tests:integration
 
 * @libfqfft//libfqfft/tests:evaluation_domain
 
 * @libfqfft//libfqfft/tests
   * all fail with --//:with_openmp
 
-#### cleaning
+#### <a name="cleaning">Cleaning</a>
 
 Normally you never need to run `bazel clean`, since Bazel keeps track
 of everything. In some cases, e.g. when you delete or rename a source
@@ -137,98 +203,6 @@ be refetched. See [Cleaning build
 outputs](https://docs.bazel.build/versions/master/user-manual.html#clean)
 for more information.
 
-## libraries: embedded, submodularized, bazelized
-
-`snarky` depends on the following chain of library dependencies:
-
-* [libsnark](https://github.com/scipr-lab/libsnark) ([obazl fork](https://github.com/obazl/libsnark))
-* [libfqfft](https://github.com/scipr-lab/libfqfft) ([obazl fork](https://github.com/obazl/libfqfft))
-* [libff](https://github.com/scipr-lab/libff) ([obazl fork](https://github.com/obazl/libff))
-* [ate-pairing](https://github.com/herumi/ate-pairing) ([obazl fork](https://github.com/obazl/ate-pairing))
-* [xbyak](https://github.com/herumi/xbyak) ([obazl fork](https://github.com/obazl/xbyak))
-
-All of these are currently directly embedded in the codebase, but they
-are derived from separate github repositories. Each of the upstream
-repositories has been forked to [obazl](https://github.com/obazl),
-where Bazel development takes place.
-
-The primary goal here is to add Bazel support, but a related goal is
-to decouple snarky and its dependencies. This would have the obvious
-effect of making it easier to keep snarky in sync with the upstream
-repositories, but it also would make the build structure more clear
-and easier to work with.
-
-There are three steps to this. First is to add Bazel support to
-`snarky` as-is. Second is to migrate to a modularize build structure
-that uses git submodules for the dependencies. This will involve some
-minor code reorganization; the result will support both Bazel and the
-legacy Dune/Cmake-base build. Finally, the optional third step would
-be to move to a pure Bazel build, under which all dependencies would
-be supported as Bazel external repositories, and the (embedded)
-submodules (and Dune/Opam files) could be removed.
-
-### Bazel support
-
-#### embedded deps
-
-The basic build structure under Bazel is the workspace. Workspaces are
-determined by WORKSPACE files; the subtree under a directory
-containing a WORKSPACE file is in the workspace so determined.
-However, such a subtree may contain other WORKSPACE files, each of
-which will determine a distinct Bazel workspace. Workspaces are
-opaque; Bazel does not allow build rules from one workspace to reach
-into another. Instead, it requires that build targets be exposed via
-workspace-qualified _labels_. Such labels start with `@myrepo`, e.g.
-`@myrepo//my/awesome/pkg:mytarget`.  This makes intuitive sense for
-external repos that are downloaded (that is, specified by a
-_repository rule_ in a WORKSPACE file, such as `http_archive` or
-`git_repository`), but the same goes for workspaces embedded in
-another workspace: the embedding workspace can only depend on
-resources available under such workspace-qualified labels. In other
-words, if workspace `snarky` contains workspace `xbyak` (as is the
-case here), and it wants to build a target in that workspace, it
-cannot just use file paths to reach into that part of the tree; it
-must use one of the labels `xbyak` exposes. For example, we can run
-the `xbyak` test suite from the `snarky` root directory like so:
-
-```
-snarky $ bazel test @xbyak//test
-```
-
-But the following will fail, since it uses the path of xbyak within
-the snarky directory structure:
-
-```
-snarky $ bazel test snarky/src/camlsnark_c/libsnark-caml/depends/xbyak/test
-```
-
-On the other hand, `xbyak` is a workspace in its own right, so we can
-also do the following:
-
-```
-snarky $ cd src/camlsnark_c/libsnark-caml/depends/xbyak/test
-snarky/src/camlsnark_c/libsnark-caml/depends/xbyak/test $ bazel build //test
-```
-
-In this case, Bazel will use the nearest WORKSPACE file to determine
-the effective workspace; that file is `snarky/src/camlsnark_c/libsnark-caml/depends/xbyak/WORKSPACE`
-
-#### submodules
-
-From Bazel's perspective, there is no difference between embedded code
-and a submodule.
-
-#### external repos
-
-If submodules work - that is, the code is maintained in an external
-repo that is incorporated as git submodule - then transitionaing to
-Bazel external repos is very simple. Just add to the WORKSPACE the
-repository rules that will download the external repos. At that point
-the submodules would no longer be in use and so could be removed.
-
-For offline work you can prefetch remote external repos. See [Offline
-builds](https://docs.bazel.build/versions/master/external.html#offline-builds)
-for details.
 
 ## Developing Dependencies
 
@@ -301,3 +275,130 @@ Now whenever you run `$ bazel build` or `$ bazel query` from
 dependency copies will be picked up. Once you have finished your edits
 and pushed them to the origin server, comment out these overrides to
 resume use of the repository rules in WORKSPACE.
+
+## <a name="build_structure">Notes on the Bazel Build Structure</a>
+
+## <a name="libs">Libraries: embedded, submodularized, bazelized</a>
+
+`snarky` depends on the following chain of library dependencies:
+
+* [libsnark](https://github.com/scipr-lab/libsnark) ([obazl fork](https://github.com/obazl/libsnark))
+* [libfqfft](https://github.com/scipr-lab/libfqfft) ([obazl fork](https://github.com/obazl/libfqfft))
+* [libff](https://github.com/scipr-lab/libff) ([obazl fork](https://github.com/obazl/libff))
+* [ate-pairing](https://github.com/herumi/ate-pairing) ([obazl fork](https://github.com/obazl/ate-pairing))
+* [xbyak](https://github.com/herumi/xbyak) ([obazl fork](https://github.com/obazl/xbyak))
+
+All of these are currently directly embedded in the codebase, but they
+are derived from separate github repositories. Each of the upstream
+repositories has been forked to [obazl](https://github.com/obazl),
+where Bazel development takes place.
+
+The primary goal here is to add Bazel support, but a related goal is
+to decouple snarky and its dependencies. This would have the obvious
+effect of making it easier to keep snarky in sync with the upstream
+repositories, but it also would make the build structure more clear
+and easier to work with.
+
+There are three steps to this. First is to add Bazel support to
+`snarky` as-is. Second is to migrate to a modularize build structure
+that uses git submodules for the dependencies. This will involve some
+minor code reorganization; the result will support both Bazel and the
+legacy Dune/Cmake-base build. Finally, the optional third step would
+be to move to a pure Bazel build, under which all dependencies would
+be supported as Bazel external repositories, and the (embedded)
+submodules (and Dune/Opam files) could be removed.
+
+#### <a name="embedded">Embedded deps</a>
+
+The basic build structure under Bazel is the workspace. Workspaces are
+determined by WORKSPACE files; the subtree under a directory
+containing a WORKSPACE file is in the workspace so determined.
+However, such a subtree may contain other WORKSPACE files, each of
+which will determine a distinct Bazel workspace. Workspaces are
+opaque; Bazel does not allow build rules from one workspace to reach
+into another. Instead, it requires that build targets be exposed via
+workspace-qualified _labels_. Such labels start with `@myrepo`, e.g.
+`@myrepo//my/awesome/pkg:mytarget`.  This makes intuitive sense for
+external repos that are downloaded (that is, specified by a
+_repository rule_ in a WORKSPACE file, such as `http_archive` or
+`git_repository`), but the same goes for workspaces embedded in
+another workspace: the embedding workspace can only depend on
+resources available under such workspace-qualified labels. In other
+words, if workspace `snarky` contains workspace `xbyak` (as is the
+case here), and it wants to build a target in that workspace, it
+cannot just use file paths to reach into that part of the tree; it
+must use one of the labels `xbyak` exposes. For example, we can run
+the `xbyak` test suite from the `snarky` root directory like so:
+
+```
+snarky $ bazel test @xbyak//test
+```
+
+But the following will fail, since it uses the path of xbyak within
+the snarky directory structure:
+
+```
+snarky $ bazel test snarky/src/camlsnark_c/libsnark-caml/depends/xbyak/test
+```
+
+On the other hand, `xbyak` is a workspace in its own right, so we can
+also do the following:
+
+```
+snarky $ cd src/camlsnark_c/libsnark-caml/depends/xbyak/test
+snarky/src/camlsnark_c/libsnark-caml/depends/xbyak/test $ bazel build //test
+```
+
+In this case, Bazel will use the nearest WORKSPACE file to determine
+the effective workspace; that file is `snarky/src/camlsnark_c/libsnark-caml/depends/xbyak/WORKSPACE`
+
+#### <a name="submodules">submodules</a>
+
+From Bazel's perspective, there is no difference between embedded code
+and a submodule.
+
+#### <a name="externals">External repos</a>
+
+If submodules work - that is, the code is maintained in an external
+repo that is incorporated as git submodule - then transitionaing to
+Bazel external repos is very simple. Just add to the WORKSPACE the
+repository rules that will download the external repos. At that point
+the submodules would no longer be in use and so could be removed.
+
+For offline work you can prefetch remote external repos. See [Offline
+builds](https://docs.bazel.build/versions/master/external.html#offline-builds)
+for details.
+
+### <a name="specifics">Specific Structures</a>
+
+### src/camlsnark_c/libsnark-c/caml
+
+The targets in this package correspond to the following:
+
+  * src/camlsnark_c/snark_caml_bn128
+  * src/camlsnark_c/snark_caml_common
+  * src/camlsnark_c/snark_caml_mnt298
+  * src/camlsnark_c/snark_caml_mnt753
+
+To list the targets:
+
+```
+$ bazel query @libsnark//caml:all
+@libsnark//caml:snark_caml_mnt753
+@libsnark//caml:snark_caml_mnt298
+@libsnark//caml:snark_caml_bn128
+@libsnark//caml:snark_caml
+@libsnark//caml:gen_sources
+```
+
+THe first three targets listed above build .a libs corresponding to
+those built by the `snark_caml_*` dune files. The `:snark_caml` target
+combines them all as a single library. Note that
+`src/camlsnark_c/snark_caml_common` does not need a distinct target;
+what it builds is built by `@libff//libff/common`.
+
+The `:gen_sources` target corresponds to
+`src/camlsnark_c/libsnark-caml/caml/copy_over.sh`. It generates some
+of the source files in `libsnark-caml/caml`. Under a pure Bazel build
+system, it would allow all of those files to be removed from source
+control.

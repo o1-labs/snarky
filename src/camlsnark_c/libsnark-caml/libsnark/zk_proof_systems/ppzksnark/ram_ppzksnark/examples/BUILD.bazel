@@ -2,7 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_library(
-    name = "examples",
+    name = "runner",
     visibility = ["//visibility:public"],
     hdrs = ["run_ram_ppzksnark.hpp",
             "run_ram_ppzksnark.tcc"],
@@ -16,24 +16,10 @@ cc_library(
     ]
 )
 
-cc_library(
-    name = "run_ram_ppzksnark",
-    visibility = ["//visibility:public"],
-    hdrs = ["run_ram_ppzksnark.hpp", "run_ram_ppzksnark.tcc"],
-    include_prefix = "libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples",
-    copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
-    deps = [
-        "@libff//libff/common:profiling",
-        "@libff//libff/common/default_types",
-        "//libsnark/relations/ram_computations/rams/examples",
-        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark"
-    ]
-)
-
 cc_binary(
     name = "demo",
     srcs = ["demo_ram_ppzksnark.cpp"],
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         "@libff//libff/common:profiling",
         "@libff//libff/common/default_types",
@@ -48,12 +34,11 @@ cc_binary(
 cc_binary(
     name = "demo_generator",
     srcs = ["demo_ram_ppzksnark_generator.cpp"],
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         "@libff//libff/common:profiling",
         "@libff//libff/common/default_types",
         "//libsnark/common/default_types:ram_ppzksnark",
-        # "//libsnark/reductions/ram_to_r1cs",
         "//libsnark/relations/ram_computations/rams/tinyram",
         "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark",
         "@boost//:program_options"
@@ -63,7 +48,7 @@ cc_binary(
 cc_binary(
     name = "demo_prover",
     srcs = ["demo_ram_ppzksnark_prover.cpp"],
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         "@libff//libff/common:profiling",
         "@libff//libff/common/default_types",
@@ -77,7 +62,7 @@ cc_binary(
 cc_binary(
     name = "demo_verifier",
     srcs = ["demo_ram_ppzksnark_verifier.cpp"],
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         "@libff//libff/common:profiling",
         "@libff//libff/common/default_types",

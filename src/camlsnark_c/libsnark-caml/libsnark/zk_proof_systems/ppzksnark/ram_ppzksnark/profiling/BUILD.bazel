@@ -9,7 +9,7 @@ cc_binary(
         "//libsnark/common/data_structures",
         "//libsnark/common/default_types:ram_ppzksnark",
         "//libsnark/relations/ram_computations/rams/examples",
-        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples",
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples:runner",
         "@libff//libff",
     ]
 )

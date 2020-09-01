@@ -1,5 +1,4 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
-load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_test(
     name = "tests",
@@ -11,12 +10,12 @@ cc_test(
         "-Iexternal",
         "-Iexternal/libff"
     ],
-    linkstatic = LINKSTATIC,
+    linkstatic = True,
     deps = [
         "//libsnark/common/default_types:ram_ppzksnark",
         "//libsnark/relations/ram_computations/rams/examples",
-        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples",
         "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark",
+        "//libsnark/zk_proof_systems/ppzksnark/ram_ppzksnark/examples:runner",
         "@libff//libff"
     ]
 )
