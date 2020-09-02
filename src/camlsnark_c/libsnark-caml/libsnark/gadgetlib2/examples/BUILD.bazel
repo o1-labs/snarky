@@ -1,8 +1,9 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_test")
 load("@libfqfft//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS")
 
-cc_binary(
+cc_test(
     name = "tutorial",
+    timeout = "short",
     srcs = [
         "tutorial.cpp",
     ],

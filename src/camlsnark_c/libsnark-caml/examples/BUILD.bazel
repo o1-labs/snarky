@@ -1,16 +1,11 @@
 alias(
     name = "fooram",
-    actual = "@libsnark//libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/examples"
+    actual = "//libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/examples"
 )
 
 alias(
     name = "ram_to_r1cs",
-    actual = "@libsnark//libsnark/reductions/ram_to_r1cs/examples"
-)
-
-alias(
-    name = "gadgetlib2",
-    actual = "@libsnark//libsnark/gadgetlib2/examples"
+    actual = "//libsnark/reductions/ram_to_r1cs/examples"
 )
 
 ## broken in CMake:

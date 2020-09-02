@@ -52,6 +52,7 @@ test_suite(
         "//libsnark/gadgetlib2/tests:gadget",
         "//libsnark/gadgetlib2/tests:integration",
         "//libsnark/gadgetlib2/tests:protoboard",
+        "//libsnark/gadgetlib2/examples:tutorial"
         # takes forever, run separately (below):
         # "//libsnark/gadgetlib2/tests:variable"
     ]

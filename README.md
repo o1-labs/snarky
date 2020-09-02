@@ -24,7 +24,7 @@ The best place to get started learning how to use the library are the annotated 
 
 OPAM deps
 
-* ctyles 0.17.1
+* ctypes 0.17.1
 * digestif 0.9.0
 
 ## Design

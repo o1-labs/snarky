@@ -176,7 +176,7 @@ ERROR:  R1P multipacked size mismatch (In file external/libsnark/libsnark/gadget
 [==========] 4 tests from 1 test suite ran. (2 ms total)
 [  PASSED  ] 4 tests.
 
-That's on MacOS; the error msg is slightly different on Linux.
+That's on MacOS; the error message is slightly different on Linux.
 
 
 * @libsnark//libsnark/gadgetlib2/tests:integration
@@ -234,7 +234,7 @@ the same directory.
 
 Here is an example of how one might work on snarky and its
 depenencies. Create a working directory (let's call it snarky-dev),
-and clone snarky nd all the dependencies you want to work on into that
+and clone snarky and all the dependencies you want to work on into that
 repo.  So you have:
 
 ```
@@ -391,7 +391,7 @@ $ bazel query @libsnark//caml:all
 @libsnark//caml:gen_sources
 ```
 
-THe first three targets listed above build .a libs corresponding to
+The first three targets listed above build .a libs corresponding to
 those built by the `snark_caml_*` dune files. The `:snark_caml` target
 combines them all as a single library. Note that
 `src/camlsnark_c/snark_caml_common` does not need a distinct target;
