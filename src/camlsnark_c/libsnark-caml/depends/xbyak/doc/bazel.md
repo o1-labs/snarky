@@ -23,20 +23,56 @@ The dependency label is `@xbyak//xbyak`, e.g. `deps =
 
 For an example, see [ate-pairing](https://github.com/o1-labs/ate-pairing/blob/snarky/BUILD.bazel)
 
+Run the test suite: `$ bazel test test`
+=======
+## build configuration options
+
+* `--//:snark` - use CurveSNARK (see main readme file for
+  explanation). Default: False, use CurveFp254BNb.
+
+* `--/:with_libgmp` - compile libzm with libgmp support.  Default: True.
+
+When using `xbyak` as a dependency in a Bazelized project, you may
+copy the `bool_flag` and `config_setting` definitions from the `xbyak`
+root `BUILD.bazel` file to your project's root `BUILD.bazel` file.
+This will allow the user to configure builds using e.g.
+`--//:with_libgmp` instead of `--@xbyak//:with_libgmp`. It also allows
+you to override the defaults. See
+[ate-pairing](https://github.com/o1-labs/ate-pairing/blob/snarky/BUILD.bazel)
+and [libff](https://github.com/o1-labs/libff/blob/snarky/BUILD.bazel)
+for examples. The latter overrides `enable_snark` to default True.
+
 ## tests
 
-Clone the repo, then list the test targets: `$ bazel query test:all`
+Clone the repo, then:
 
-Run the test suite: `$ bazel test test`
+```
+$ bazel test test
+```
 
 All tests succeed on linux, test:jmp fails on MacOS.
 
 You can also run the samples:
 
 ```
+
 $ bazel query sample:all
 $ bazel run sample:<target>
 ```
 
 where <target> is one of those listed by the sample query.
 
+$ bazel run sample:<target>
+```
+
+where <target> = bf | calc | jmp_table | memfunc | quantize | static_buf | test | test_util | toyvm
+
+## queries
+
+List all test targets:
+
+* ` bazel query "kind(.*_test, //...:*)"`
+
+List all rules in package `sample`:
+
+* ` bazel query "sample:all"`
