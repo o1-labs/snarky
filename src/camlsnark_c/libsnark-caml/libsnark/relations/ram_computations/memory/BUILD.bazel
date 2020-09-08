@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_library(
     name = "memory",
@@ -16,7 +17,7 @@ cc_library(
     include_prefix = "libsnark/relations/ram_computations/memory",
     copts = ["-I.",
              "-Iexternal"],
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
 )
 
 

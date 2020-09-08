@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_library(
     name = "gadgetlib2",
@@ -36,7 +37,7 @@ cc_library(
         "variable_operators.hpp",
     ],
     include_prefix = "libsnark/gadgetlib2",
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     copts = ["-I.", "-Iexternal", "-Iexternal/libff"],
     deps = ["//libsnark/relations/constraint_satisfaction_problems/r1cs",
             "@libff//libff/common:profiling",
