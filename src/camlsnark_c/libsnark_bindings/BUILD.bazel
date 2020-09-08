@@ -1,0 +1,180 @@
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS", "LINKSTATIC")
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-thread"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS
+
+SNARKY_LIBSNARK_BINDINGS_NS = "Snarky_libsnark_bindings"
+
+## (ppx_custom_printf ppx_sexp_conv ppx_bin_prot ppx_inline_test)
+PPX4_9C0A2F04 = "@//ppx/exe:ppx4_9c0a2f04-6b3e-5f2a-8470-43e49364ba52"
+
+ocaml_archive(
+    name = "snarky_libsnark_bindings",
+    opts = ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
+        "@opam//pkg:core",
+        "//ctypes_foreign:ctypes_foreign_libffi",
+        "//src/camlsnark_c/cpp_string:snarky_cpp_string",
+        "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
+        "//src/base:snarky_backendless",
+        ":snark_ffi_bindings.cm_",
+
+        ":snarky_libsnark_bindings_ns_module",
+        ":libsnark_r1cs_constraint_system.cm_",
+        ":libsnark.cm_",
+        ## end ns_module
+    ],
+    cc_deps = {
+    #     "@libff//bzl/external/libgmp": "dynamic",
+        # "@libff//bzl/external/libsodium": "dynamic",
+    #     "@libff//bzl/external/openssl": "dynamic",
+    #     "@libff//libff/common:logging": "dynamic",
+    #     "@libff//libff:ff": "dynamic",
+    #     # ":snark_ffi_bindings": "dynamic",
+    #     "@libsnark//libsnark": "dynamic",
+    #     "@libsnark//caml:snark_caml": "dynamic",
+    #     "@libsnark//caml:vectors": "dynamic",
+    #     # "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "dynamic"
+    }
+)
+
+ocaml_ns_module(
+    name = "snarky_libsnark_bindings_ns_module",
+    ns = SNARKY_LIBSNARK_BINDINGS_NS,
+    submodules = [
+        # do not sort (buildifier)
+        ":libsnark_ffi_bindings_ml",  ## generated file
+        "libsnark_r1cs_constraint_system.ml",
+        "libsnark.ml",
+    ],
+)
+
+ocaml_module(
+    name = "libsnark_r1cs_constraint_system.cm_",
+    impl = "libsnark_r1cs_constraint_system.ml",
+    ns_module = ":snarky_libsnark_bindings_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX4_9C0A2F04,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_libsnark_bindings\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+        "//src/base:snarky_backendless",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
+        "//src/intf:snarky_intf",
+    ],
+)
+
+ocaml_module(
+    name = "libsnark.cm_",
+    impl = "libsnark.ml",
+    ns_module = ":snarky_libsnark_bindings_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX4_9C0A2F04,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_libsnark_bindings\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src/camlsnark_c",
+        "//ctypes_foreign:ctypes_foreign_libffi",
+        "//src/camlsnark_c/cpp_string:snarky_cpp_string",
+        "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
+    ],
+)
+
+################################################################
+ocaml_module(
+    name = "snark_ffi_bindings.cm_",
+    impl = ":libsnark_ffi_bindings_ml",  ## generated file
+    ns_module = ":snarky_libsnark_bindings_ns_module",
+    opts = IMPL_OPTS + ["-thread"],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "//src/camlsnark_c",
+    ],
+    cc_deps = {
+        ":snark_ffi_bindings": "dynamic"
+    }
+)
+
+cc_library(
+    name = "snark_ffi_bindings",
+    srcs = [
+        ":libsnark_ffi_bindings_c",
+        "@libsnark//caml:template_caml_curve_h.hpp"
+    ],
+    copts = ["-I.", "-Iexternal",
+             "-Iexternal/libsnark/caml",
+             ] + CPPFLAGS + CFLAGS,
+    linkstatic = LINKSTATIC,
+    deps = [
+        "@ocaml//csdk:hdrs",
+        "@ocaml//csdk/ctypes",
+        "@libsnark//libsnark",
+        "@libsnark//caml:snark_caml",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "libsnark_ffi_bindings_c",
+    tools = ["//src/camlsnark_c:camlsnark_ctypes_stubs"],
+    outs = [
+        "libsnark_ffi_bindings.c",
+    ],
+    cmd = "\n".join([
+        "./$(location //src/camlsnark_c:camlsnark_ctypes_stubs);",
+        "cp libsnark_ffi_bindings.c \"$(@D)/\"",
+    ])
+)
+
+genrule(
+    name = "libsnark_ffi_bindings_ml",
+    tools = ["//src/camlsnark_c:camlsnark_ctypes_stubs"],
+    outs = [
+        "libsnark_ffi_bindings.ml"
+    ],
+    cmd = "\n".join([
+        "./$(location //src/camlsnark_c:camlsnark_ctypes_stubs);",
+        "cp libsnark_ffi_bindings.ml \"$(@D)/\"",
+    ])
+)

@@ -1,0 +1,82 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_H_LIST_NS = "Ppx_h_list"
+
+## (ppxlib.metaquot)
+PPX1_1CB86269 = "@//ppx/exe:ppx1_1cb86269-2fb1-532f-b544-f0b230c55b2e"
+
+ppx_archive(
+    name = "ppx_h_list",
+    opts = PPX_ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":ppx_h_list_ns_module",
+        ":ppx_h_list.cm_",
+    ],
+)
+
+ppx_ns_module(
+    name = "ppx_h_list_ns_module",
+    ns = PPX_H_LIST_NS,
+    opts = PPX_NS_OPTS,
+    submodules = [
+        # do not sort (buildifier)
+        "ppx_h_list.ml",
+    ],
+)
+
+ppx_module(
+    name = "ppx_h_list.cm_",
+    impl = "ppx_h_list.ml",
+    opts = PPX_IMPL_OPTS,
+    ppx_bin = PPX1_1CB86269,
+    ppx_ns_module = ":ppx_h_list_ns_module",
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+    ],
+)

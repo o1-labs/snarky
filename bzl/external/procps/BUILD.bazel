@@ -1,0 +1,5 @@
+alias(
+    name = "procps",
+    actual = "@libff//bzl/external/procps",
+    visibility = ["//visibility:public"],
+)

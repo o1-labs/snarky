@@ -1,0 +1,115 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-thread"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_SNARKY_NS = "Ppx_snarky"
+
+## (ppxlib.metaquot ppx_sexp_conv)
+PPX2_831547B4 = "@//ppx/exe:ppx2_831547b4-6baa-5d1f-b272-3f7605d1f6d5"
+
+ppx_archive(
+    name = "ppx_snarky",
+    opts = PPX_ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":ppx_snarky_ns_module",
+        ":snarky_module.cm_",
+        ":snarkydef.cm_",
+        ":ppx_snarky.cm_",
+    ],
+)
+
+ppx_ns_module(
+    name = "ppx_snarky_ns_module",
+    ns = PPX_SNARKY_NS,
+    opts = PPX_NS_OPTS,
+    submodules = [
+        # do not sort (buildifier)
+        "snarky_module.ml",
+        "snarkydef.ml",
+        "ppx_snarky.ml",
+    ],
+)
+
+ppx_module(
+    name = "snarky_module.cm_",
+    impl = "snarky_module.ml",
+    opts = PPX_IMPL_OPTS,
+    ppx_bin = PPX2_831547B4,
+    ppx_ns_module = ":ppx_snarky_ns_module",
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ppxlib",
+        "@opam//pkg:core_kernel",
+    ],
+)
+
+ppx_module(
+    name = "snarkydef.cm_",
+    impl = "snarkydef.ml",
+    opts = PPX_IMPL_OPTS,
+    ppx_bin = PPX2_831547B4,
+    ppx_ns_module = ":ppx_snarky_ns_module",
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ppxlib",
+    ],
+)
+
+ppx_module(
+    name = "ppx_snarky.cm_",
+    impl = "ppx_snarky.ml",
+    opts = PPX_IMPL_OPTS,
+    ppx_bin = PPX2_831547B4,
+    ppx_ns_module = ":ppx_snarky_ns_module",
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":snarky_module.cm_",
+        ":snarkydef.cm_",
+    ],
+)

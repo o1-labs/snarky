@@ -1,0 +1,212 @@
+# bindings
+
+## c/c++
+
+### cpp_vector
+
+Example: `snarky_vector_1_camlsnark_bool_vector_delete` (a generated
+OCaml fn) maps to generated C routine
+`snarky_vector_1_camlsnark_bool_vector_delete`, which calls
+`camlsnark_bool_vector_delete`, which is defined in the libsnark-caml
+c library (in `src/camlsnark_c/libsnark-caml/caml/vectors.cpp`).
+
+`gen_vector_stubs.ml` generates a pair of files implementing the mappings:
+
+* `vector_ffi_bindings.c`
+* `vector_ffi_bindings.`
+
+It uses `Camlsnark_c_bindings.Vector.bindings` to do the
+actual code generation. The results:
+
+`vector_ffi_bindings.c` :
+
+```
+include "vectors.h"
+#include "ctypes_cstubs_internals.h"
+value snarky_vector_1_camlsnark_bool_vector_delete(value x1) { ... }
+value snarky_vector_2_camlsnark_bool_vector_create(value x4) { ... }
+value snarky_vector_3_camlsnark_bool_vector_get(value x7, value x6) { ... }
+value snarky_vector_4_camlsnark_bool_vector_length(value x13) { ... }
+value snarky_vector_5_camlsnark_bool_vector_emplace_back(value x17, value x16) { ... }
+value snarky_vector_6_camlsnark_int_vector_delete(value x23) { ... }
+value snarky_vector_7_camlsnark_int_vector_create(value x26) { ... }
+value snarky_vector_8_camlsnark_int_vector_get(value x29, value x28) { ... }
+value snarky_vector_9_camlsnark_int_vector_length(value x35) { ... }
+value snarky_vector_10_camlsnark_int_vector_emplace_back(value x39, value x38) { ... }
+value snarky_vector_11_camlsnark_long_vector_delete(value x45) { ... }
+value snarky_vector_12_camlsnark_long_vector_create(value x48) { ... }
+value snarky_vector_13_camlsnark_long_vector_get(value x51, value x50) { ... }
+value snarky_vector_14_camlsnark_long_vector_length(value x57) { ... }
+value snarky_vector_15_camlsnark_long_vector_emplace_back(value x61, value x60) { ... }
+
+```
+
+These forward calls to `camlsnark_*` routines, e.g.:
+
+```
+
+value snarky_vector_1_camlsnark_bool_vector_delete(value x1)
+{
+   void* x2 = CTYPES_ADDR_OF_FATPTR(x1);
+   camlsnark_bool_vector_delete(x2);
+   return Val_unit;
+}
+value snarky_vector_6_camlsnark_int_vector_delete(value x23)
+{
+   void* x24 = CTYPES_ADDR_OF_FATPTR(x23);
+   camlsnark_int_vector_delete(x24);
+   return Val_unit;
+}
+value snarky_vector_11_camlsnark_long_vector_delete(value x45)
+{
+   void* x46 = CTYPES_ADDR_OF_FATPTR(x45);
+   camlsnark_long_vector_delete(x46);
+   return Val_unit;
+}
+```
+
+`vector_ffi_bindings.ml` binds OCaml function names to their C
+counterparts defined in `vector_ffi_bindings.c`, e.g.:
+
+```
+module CI = Cstubs_internals
+external snarky_vector_1_camlsnark_bool_vector_delete : _ CI.fatptr -> unit
+  = "snarky_vector_1_camlsnark_bool_vector_delete"
+
+external snarky_vector_2_camlsnark_bool_vector_create : unit -> CI.voidp
+  = "snarky_vector_2_camlsnark_bool_vector_create" 
+... etc ...
+```
+
+It also associates stuff named `camlsnark_*` to the corresponding
+`snarky_vector_*` routines, e.g.:
+    
+```
+let foreign : type a b. string -> (a -> b) fn -> (a -> b) =
+  fun name t -> match t, name with
+...
+| Function (CI.Pointer _, Function (CI.Primitive CI.Bool, Returns CI.Void)),
+  "camlsnark_bool_vector_emplace_back" ->
+  (fun x25 x27 ->
+    let CI.CPointer x26 = x25 in
+    snarky_vector_5_camlsnark_bool_vector_emplace_back x26 x27)
+| Function (CI.Pointer _, Returns (CI.Primitive CI.Int)),
+  "camlsnark_bool_vector_length" ->
+  (fun x28 ->
+    let CI.CPointer x29 = x28 in
+    snarky_vector_4_camlsnark_bool_vector_length x29)
+| Function
+    (CI.Pointer _,
+     Function (CI.Primitive CI.Int, Returns (CI.Primitive CI.Bool))),
+  "camlsnark_bool_vector_get" ->
+  (fun x30 x32 ->
+    let CI.CPointer x31 = x30 in
+    snarky_vector_3_camlsnark_bool_vector_get x31 x32)
+| Function (CI.Void, Returns (CI.Pointer x34)),
+  "camlsnark_bool_vector_create" ->
+  (fun x33 ->
+    CI.make_ptr x34 (snarky_vector_2_camlsnark_bool_vector_create x33))
+| Function (CI.Pointer _, Returns CI.Void), "camlsnark_bool_vector_delete" ->
+  (fun x35 ->
+    let CI.CPointer x36 = x35 in
+    snarky_vector_1_camlsnark_bool_vector_delete x36)
+| _, s ->  Printf.ksprintf failwith "No match for %s" s
+
+...
+
+```
+
+So there's a circularity here: OCaml
+`snarky_vector_1_camlsnark_bool_vector_delete` maps to C
+`snarky_vector_1_camlsnark_bool_vector_delete`, which calls
+`camlsnark_bool_vector_delete`, which is defined (?) in the `.ml` file
+and calls `snarky_vector_1_camlsnark_bool_vector_delete`.
+
+
+* target `//src/camlsnark_c/cpp_vector/gen:gen_vector_stubs` compiles:
+  * `src/camlsnark_c/cpp_vector/gen/gen_vector_stubs.ml`, which generates source code:
+    * `//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings_c` ==
+      * genrule(name = "vector_ffi_bindings_c") => vector_ffi_bindings.c
+    * `//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings_ml` ==
+      * genrule(name = "vector_ffi_bindings_ml") => vector_ffi_bindings.ml
+* cc_library target `//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings` compiles the generated c sources
+
+## libsnark_bindings
+
+* ocaml_module(name = "snark_ffi_bindings.cm_")
+* genrule(name = "libsnark_ffi_binding_ml")
+* cc_library(name = "snark_ffi_bindings")
+* genrule(name = "libsnark_ffi_bindings_c")
+
+The source files are generated by
+`src/camlsnark_c/camlsnark_ctypes_stubs.ml`, which uses
+`Camlsnark_c_bindings.Common` to do so.
+
+
+`src/camlsnark_c/libsnark_bindings/libsnark_ffi_bindings.c`:
+
+The first part of this file contains headers of the form
+`camlsnark_<curve>_*`; the latter part defines routines that call
+these. The implementations are provided by
+`@libsnark//caml:snark_caml` (which produces `libsnark_caml.a`).
+
+
+```
+#define CURVE_PREFIX(name) camlsnark_bn128_ ## name
+#include "template_caml_curve_h.hpp"
+#undef CURVE_PREFIX
+...
+... similar for mnt4, mnt6, mnt4753, mnt6753
+...
+#include "ctypes_cstubs_internals.h"
+value snarky_common_1_camlsnark_bn128_init_public_params(value x1)
+{
+   camlsnark_bn128_init_public_params();
+   return Val_unit;
+}
+value snarky_common_2_camlsnark_bn128_field_delete(value x3)
+value snarky_common_3_camlsnark_bn128_bigint_r_delete(value x6)
+value snarky_common_4_camlsnark_bn128_bigint_r_test_bit(value x10, value x9)
+value snarky_common_5_camlsnark_bn128_bigint_r_find_wnaf(value x17, value x16)
+value snarky_common_6_camlsnark_bn128_bigint_r_div(value x24, value x23)
+value snarky_common_7_camlsnark_bn128_bigint_r_of_numeral(value x30, value x29, value x28)
+value snarky_common_8_camlsnark_bn128_bigint_r_of_decimal_string(value x39)
+value snarky_common_9_camlsnark_bn128_bigint_r_compare(value x43, value x42)
+value snarky_common_10_camlsnark_bn128_bigint_r_of_field(value x47)
+value snarky_common_11_camlsnark_bn128_bigint_r_num_limbs(value x50)
+value snarky_common_12_camlsnark_bn128_bigint_r_bytes_per_limb(value x52)
+value snarky_common_13_camlsnark_bn128_bigint_r_to_data(value x54)
+value snarky_common_14_camlsnark_bn128_bigint_r_of_data(value x57)
+value snarky_common_15_camlsnark_bn128_bigint_r_to_field(value x60)
+value snarky_common_16_camlsnark_bn128_bigint_q_delete(value x63)
+value snarky_common_17_camlsnark_bn128_bigint_q_test_bit(value x67, value x66)
+value snarky_common_18_camlsnark_bn128_bigint_q_find_wnaf(value x74, value x73)
+value snarky_common_19_camlsnark_bn128_field_size_in_bits(value x80)
+value snarky_common_20_camlsnark_bn128_field_delete(value x82)
+value snarky_common_21_camlsnark_bn128_field_print(value x85)
+value snarky_common_22_camlsnark_bn128_field_random(value x88)
+value snarky_common_23_camlsnark_bn128_field_square(value x90)
+value snarky_common_24_camlsnark_bn128_field_is_square(value x93)
+value snarky_common_25_camlsnark_bn128_field_sqrt(value x96)
+value snarky_common_26_camlsnark_bn128_field_of_int(value x99)
+value snarky_common_27_camlsnark_bn128_field_add(value x105, value x104)
+value snarky_common_28_camlsnark_bn128_field_inv(value x109)
+value snarky_common_29_camlsnark_bn128_field_mul(value x113, value x112)
+value snarky_common_30_camlsnark_bn128_field_sub(value x118, value x117)
+value snarky_common_31_camlsnark_bn128_field_mut_add(value x123, value x122)
+value snarky_common_32_camlsnark_bn128_field_mut_sub(value x128, value x127)
+value snarky_common_33_camlsnark_bn128_field_mut_mul(value x133, value x132)
+value snarky_common_34_camlsnark_bn128_field_copy(value x138, value x137)
+value snarky_common_35_camlsnark_bn128_field_equal(value x143, value x142)
+value snarky_common_36_camlsnark_bn128_field_vector_delete(value x147)
+value snarky_common_37_camlsnark_bn128_field_vector_create(value x150)
+value snarky_common_38_camlsnark_bn128_field_vector_get(value x153, value x152)
+value snarky_common_39_camlsnark_bn128_field_vector_length(value x159)
+value snarky_common_40_camlsnark_bn128_field_vector_emplace_back(value x163, value x162)
+... etc ... 86 routines ...
+
+##  ditto for mnt4
+##  ditto for mnt6
+##  ditto for mnt4753
+##  ditto for mnt6753
+```

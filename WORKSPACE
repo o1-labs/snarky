@@ -33,6 +33,26 @@ http_archive(
     sha256 = "b5668cde8bb6e3515057ef465a35ad712214962f0b3a314e551204266c7be90c",
 )
 
+################################################################
+#### OCAML ####
+git_repository(
+    name = "obazl_rules_ocaml",
+    remote = "https://github.com/obazl/rules_ocaml",
+    branch = "master",
+    # commit = "feef897197b36b14b65ffdf00b9badcbdb8f42f4",
+    # shallow_since = "1593623637 -0500"
+)
+
+load("@obazl_rules_ocaml//ocaml:deps.bzl",
+     "ocaml_configure_tooling",
+     # "ocaml_repositories",
+     # "ocaml_home_sdk",
+     "ocaml_register_toolchains")
+
+ocaml_configure_tooling()
+
+ocaml_register_toolchains(installation="host")
+
 #################################
 #### Bazelized external libs ####
 
@@ -106,7 +126,7 @@ http_archive(
     strip_prefix = "googletest-release-1.10.0",
 )
 
-
+## OpenMP: use libgomp for linux?
 ## build target: //bzl/external/openmp alias for @libff//bzl/external/openmp
 http_archive(
     name="openmp",

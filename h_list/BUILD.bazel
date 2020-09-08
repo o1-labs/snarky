@@ -1,0 +1,27 @@
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ocaml_module(
+    # name = "h_list.cm_",
+    name = "h_list",
+    impl = "h_list.ml",
+    opts = IMPL_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+    ],
+)

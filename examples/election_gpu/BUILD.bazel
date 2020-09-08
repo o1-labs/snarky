@@ -1,0 +1,46 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": ["-thread"],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+## emitting

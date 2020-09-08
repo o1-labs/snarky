@@ -1,0 +1,89 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+FOLD_LIB_NS = "Fold_lib"
+
+## (ppx_jane ppx_deriving.eq bisect_ppx -conditional)
+PPX3_F180089C = "@//ppx/exe:ppx3_f180089c-83e6-5015-b4a7-74a66ad417a0"
+
+ocaml_archive(
+    name = "fold_lib",
+    opts = INTF_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":fold_lib_ns_module",
+        ":fold.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "fold_lib_ns_module",
+    ns = FOLD_LIB_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "fold.ml",
+    ],
+)
+
+ocaml_module(
+    name = "fold.cm_",
+    impl = "fold.ml",
+    ns_module = ":fold_lib_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_F180089C,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"fold_lib\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core"
+    ],
+)

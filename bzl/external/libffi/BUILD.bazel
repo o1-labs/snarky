@@ -1,0 +1,41 @@
+load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
+
+## MacOS: make sure the native clang tools (e.g. 'ar') are not shadowed by e.g. homebrew binutils.
+
+configure_make(
+    name = "libffi",
+    autogen = True,
+    configure_in_place = True,
+    # configure_command = "config",
+    configure_env_vars = select({
+        "//bzl/host:macos": {
+            "AR": "",
+            # "OSX_DEPLOYMENT_TARGET": "10.14"
+        },
+        "//conditions:default": {}
+    }),
+    # configure_options = [
+    #     # "no-weak-ssl-ciphers",
+    #     # "no-idea",
+    #     # "no-comp",
+    # ] + select({
+    #     "//bzl/host:macos": [
+    #         "ARFLAGS=r",
+    #         ],
+    #     "//conditions:default": [
+    #     ]}
+    # ),
+    # #defines = ["NDEBUG"], Don't know how to use -D; NDEBUG seems to be the default anyway
+    lib_source = "@libffi//:all",
+    out_lib_dir = "lib",
+    shared_libraries = select({
+        "//bzl/host:macos": ["libffi.dylib"],
+        "//bzl/host:linux": ["libffi.so"],
+        "//conditions:default": ["libffi.so"]
+    }),
+    static_libraries = [
+        "libffi.a",
+    ],
+    visibility = ["//visibility:public"],
+)
+

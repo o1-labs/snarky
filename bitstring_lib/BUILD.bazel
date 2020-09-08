@@ -1,0 +1,101 @@
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-thread"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + ["-thread"]
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+BITSTRING_LIB_NS = "Bitstring_lib"
+
+## (ppx_jane ppx_deriving.eq bisect_ppx -conditional)
+PPX3_F180089C = "@//ppx/exe:ppx3_f180089c-83e6-5015-b4a7-74a66ad417a0"
+
+ocaml_archive(
+    name = "bitstring_lib",
+    opts = INTF_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":bitstring_lib_ns_module",
+        ":bitstring.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "bitstring_lib_ns_module",
+    ns = BITSTRING_LIB_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "bitstring.ml",
+    ],
+)
+
+ocaml_interface(
+    name = "bitstring.cmi",
+    intf = "bitstring.mli",
+    ns_module = ":bitstring_lib_ns_module",
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+        "//tuple_lib"
+    ],
+)
+
+ocaml_module(
+    name = "bitstring.cm_",
+    cmi = ":bitstring.cmi",
+    impl = "bitstring.ml",
+    ns_module = ":bitstring_lib_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_F180089C,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"bitstring_lib\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+        "//tuple_lib"
+    ],
+)

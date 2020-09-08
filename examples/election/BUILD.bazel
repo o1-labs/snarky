@@ -1,0 +1,193 @@
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-warn-error",  "-27-26-32-33", "-thread"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+COMMON_DEPS = []
+
+## (pps ppx_jane ppx_deriving.enum))
+PPX = "@//ppx/exe:ppx2_jane_enum"
+PPX_BIN_OPTS = [
+    # do not sort (buildifier)
+    "-cookie",
+    "library-name=\"election\"",
+    "-corrected-suffix",
+    ".ppx-corrected"
+]
+
+ocaml_executable(
+    name = "election",
+    opts = IMPL_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core_kernel",
+        "//src:snarky",
+
+        ":impl.cm_",
+        ":import.cm_",
+        ":knapsack_hash.cm_",
+        ":election.cm_",
+        ":election_main.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "election.cm_",
+    impl = "election.ml",
+    opts = IMPL_OPTS + [
+        "-I", "bazel-out/darwin-fastbuild/bin/src/base",
+        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c",
+        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/bindings",
+        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_string",
+        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_vector",
+        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/libsnark_bindings",
+        "-I", "bazel-out/darwin-fastbuild/bin/src/intf",
+    ],
+    ppx_bin = PPX,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src:snarky",
+        ":impl.cm_",
+        ":import.cm_"
+    ],
+    # cclibs = {
+    #     "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "dynamic",
+    #     "//src/camlsnark_c/libsnark_bindings:snark_ffi_bindings": "dynamic",
+    # }
+)
+
+ocaml_module(
+    name = "election_main.cm_",
+    impl = "election_main.ml",
+    opts = IMPL_OPTS,
+    # + [
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/base",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/bindings",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_string",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_vector",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/libsnark_bindings",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/intf",
+    # ],
+    ppx_bin = PPX,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src:snarky",
+        ":election.cm_",
+        ":impl.cm_"
+    ],
+    # cclibs = {
+    #     "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "dynamic",
+    #     "//src/camlsnark_c/libsnark_bindings:snark_ffi_bindings": "dynamic",
+    # }
+)
+
+ocaml_module(
+    name = "impl.cm_",
+    impl = "impl.ml",
+    opts = IMPL_OPTS,
+    # + [
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/base",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/bindings",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_string",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_vector",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/libsnark_bindings",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/intf",
+    # ],
+    ppx_bin = PPX,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src:snarky",
+        "//src/base:snarky_backendless",
+        "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
+        "//src/intf:snarky_intf",
+    ],
+)
+
+ocaml_module(
+    name = "import.cm_",
+    impl = "import.ml",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src:snarky",
+        ":impl.cm_",
+        # "//src/base:snarky_backendless",
+        # "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
+        # "//src/intf:snarky_intf",
+    ],
+    # cclibs = {
+    #     "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "dynamic",
+    #     "//src/camlsnark_c/libsnark_bindings:snark_ffi_bindings": "dynamic",
+    # }
+)
+
+ocaml_interface(
+    name = "knapsack_hash.cmi",
+    intf = "knapsack_hash.mli",
+    # ns_module = ":election_ns_module",
+    ppx_bin = PPX,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        ":impl.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "knapsack_hash.cm_",
+    impl = "knapsack_hash.ml",
+    cmi  = ":knapsack_hash.cmi",
+    opts = IMPL_OPTS,
+    # + [
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/base",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/bindings",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_string",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_vector",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/libsnark_bindings",
+    #     "-I", "bazel-out/darwin-fastbuild/bin/src/intf",
+    # ],
+    ppx_bin = PPX,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src:snarky",
+        "//src/base:snarky_backendless",
+    ],
+    # cclibs = {
+    #     "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "dynamic",
+    #     "//src/camlsnark_c/libsnark_bindings:snark_ffi_bindings": "dynamic",
+    # }
+)

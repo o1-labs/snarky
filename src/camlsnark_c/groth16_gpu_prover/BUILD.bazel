@@ -1,0 +1,78 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+GROTH16_GPU_PROVER_NS = "Groth16_gpu_prover"
+
+ocaml_archive(
+    name = "groth16_gpu_prover",
+    opts = ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":groth16_gpu_prover_ns_module",
+        ":groth16_gpu_prover.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "groth16_gpu_prover_ns_module",
+    ns = GROTH16_GPU_PROVER_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "groth16_gpu_prover.ml",
+    ],
+)
+
+ocaml_module(
+    name = "groth16_gpu_prover.cm_",
+    impl = "groth16_gpu_prover.ml",
+    ns_module = ":groth16_gpu_prover_ns_module",
+    opts = IMPL_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+    ],
+)
+## genrule()

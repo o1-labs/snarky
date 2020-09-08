@@ -1,0 +1,84 @@
+load("@snarky//bzl/config:vars.bzl",
+     "CPPFLAGS", "CFLAGS",  "CXXFLAGS",
+     "DDEBUG", "LINKSTATIC")
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-linkall", "-thread"]
+
+EXEC_OPTS = COMMON_OPTS
+IMPL_OPTS = COMMON_OPTS
+
+cc_library(
+    name = "vector_ffi_bindings",
+    srcs = [":vector_ffi_bindings_c"],
+    copts = ["-I.", "-Iexternal/libsnark/caml"] + CPPFLAGS + CFLAGS,
+    linkstatic = LINKSTATIC,
+    # alwayslink = True,
+    deps = [
+        # "@ocaml//csdk:hdrs",
+        "@ocaml//csdk/ctypes",
+        "@libsnark//caml:vectors"
+    ],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "vector_ffi_bindings_ml",
+    tools = [":gen_vector_stubs"],
+    # srcs = [],
+    outs = [
+        "vector_ffi_bindings.ml"
+    ],
+    cmd = "\n".join([
+        "./$(location :gen_vector_stubs);",
+        "cp vector_ffi_bindings.ml \"$(@D)/\"",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "vector_ffi_bindings_c",
+    tools = [":gen_vector_stubs"],
+    # srcs = [],
+    outs = [
+        "vector_ffi_bindings.c",
+    ],
+    cmd = "\n".join([
+        "./$(location :gen_vector_stubs);",
+        "cp vector_ffi_bindings.c \"$(@D)/\"",
+    ])
+)
+
+ocaml_executable(
+    name = "gen_vector_stubs",
+    opts = EXEC_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
+        ":gen_vector_stubs.cm_",
+        # "//src/camlsnark_c/bindings:vector.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "gen_vector_stubs.cm_",
+    impl = "gen_vector_stubs.ml",
+    opts = IMPL_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "@opam//pkg:ctypes.stubs",
+        "@opam//pkg:core_kernel",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
+    ],
+)

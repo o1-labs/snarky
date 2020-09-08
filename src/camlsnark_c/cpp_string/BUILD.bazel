@@ -1,0 +1,70 @@
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    # "ocaml_archive",
+    "ocaml_interface",
+    "ocaml_module",
+    # "ocaml_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-thread", "-linkall"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+# ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+# SNARKY_CPP_STRING_NS = "Snarky_cpp_string"
+
+# ocaml_archive(
+#     name = "snarky_cpp_string",
+#     opts = ARCHIVE_OPTS + ["-linkall"],
+#     visibility = ["//visibility:public"],
+#     deps = [
+#         # do not sort (buildifier)
+#         "//src/camlsnark_c",
+#         ":snarky_cpp_string_ns_module",
+#         ":snarky_cpp_string.cm_",
+#     ],
+# )
+
+# ocaml_ns_module(
+#     name = "snarky_cpp_string_ns_module",
+#     ns = SNARKY_CPP_STRING_NS,
+#     submodules = [
+#         # do not sort (buildifier)
+#         "snarky_cpp_string.ml",
+#     ],
+# )
+
+ocaml_interface(
+    name = "snarky_cpp_string.cmi",
+    intf = "snarky_cpp_string.mli",
+    # ns_module = ":snarky_cpp_string_ns_module",
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+         "//src/camlsnark_c"
+    ],
+)
+
+ocaml_module(
+    name = "snarky_cpp_string",
+    cmi = ":snarky_cpp_string.cmi",
+    impl = "snarky_cpp_string.ml",
+    # ns_module = ":snarky_cpp_string_ns_module",
+    opts = IMPL_OPTS + ["-linkall"],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "@opam//pkg:ctypes.foreign",
+        "//src/camlsnark_c",
+    ],
+)

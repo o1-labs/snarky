@@ -1,0 +1,59 @@
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+COMMON_DEPS = []
+
+CTYPES_FOREIGN_LIBFFI_NS = "Ctypes_foreign_libffi"
+
+ocaml_archive(
+    name = "ctypes_foreign_libffi",
+    opts = ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":ctypes_foreign_libffi_ns_module",
+        ":ctypes_foreign.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "ctypes_foreign_libffi_ns_module",
+    ns = CTYPES_FOREIGN_LIBFFI_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "ctypes_foreign.ml",
+    ],
+)
+
+ocaml_module(
+    name = "ctypes_foreign.cm_",
+    impl = "ctypes_foreign.ml",
+    ns_module = ":ctypes_foreign_libffi_ns_module",
+    opts = IMPL_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "@opam//pkg:ctypes.foreign",
+    ],
+)

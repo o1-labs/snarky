@@ -1,0 +1,216 @@
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-thread"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+COMMON_DEPS = []
+
+SNARKY_NS = "Snarky"
+
+## (ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx -conditional)
+PPX5_A53130EE = "@//ppx/exe:ppx5_a53130ee-0e8e-50d0-b378-5884d16dafdb"
+PPX_BIN_OPTS = [
+    # do not sort (buildifier)
+    "-conditional",
+    "-cookie",
+    "library-name=\"snarky\"",
+    "-corrected-suffix",
+    ".ppx-corrected",
+    # "-diff-cmd",
+    # "-",
+    # "-dump-ast",
+]
+
+ocaml_archive(
+    name = "snarky",
+    opts = ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:base64",
+        "@opam//pkg:bignum",
+        "//bitstring_lib",
+        "@opam//pkg:core_kernel",
+        "@opam//pkg:ctypes",
+        "//ctypes_foreign:ctypes_foreign_libffi",
+        "//fold_lib",
+        "//h_list",
+        "//interval_union",
+        "//src/base:snarky_backendless",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
+        "//src/camlsnark_c",
+        "//src/camlsnark_c/cpp_string:snarky_cpp_string",
+        "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
+        "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
+        "//src/intf:snarky_intf",
+        "//tuple_lib",
+        "@opam//pkg:yojson",
+
+        ":snarky_ns_module",
+        ":gpu_prover.cm_",
+        ":backend_types.cm_",
+        ":backends.cm_",
+        ":snark.cm_",
+        ":toplevel.cm_",
+        ":snarky.cm_",
+        ## end ns_module
+    ]
+)
+
+ocaml_ns_module(
+    name = "snarky_ns_module",
+    ns = SNARKY_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "backend_types.ml",
+        "backends.ml",
+        "gpu_prover.ml",
+        "snark.ml",
+        "toplevel.ml",
+        "snarky.ml",
+    ]
+)
+
+ocaml_interface(
+    name = "backend_types.cmi",
+    intf = "backend_types.mli",
+    ns_module = ":snarky_ns_module",
+    ppx_bin = PPX5_A53130EE,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    opts = INTF_OPTS,
+    # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "//src/camlsnark_c",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings"
+    ],
+)
+
+ocaml_module(
+    name = "backend_types.cm_",
+    cmi = ":backend_types.cmi",
+    impl = "backend_types.ml",
+    ns_module = ":snarky_ns_module",
+    opts = IMPL_OPTS,
+    # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
+    ppx_bin = PPX5_A53130EE,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "//src/camlsnark_c",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings"
+    ],
+)
+
+ocaml_module(
+    name = "backends.cm_",
+    impl = "backends.ml",
+    ns_module = ":snarky_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX5_A53130EE,
+ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings"
+    ],
+)
+
+ocaml_module(
+    name = "snark.cm_",
+    impl = "snark.ml",
+    ns_module = ":snarky_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX5_A53130EE,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+         "//src/base:snarky_backendless",
+        ":backends.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "toplevel.cm_",
+    impl = "toplevel.ml",
+    ns_module = ":snarky_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX5_A53130EE,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core_kernel",
+        "@opam//pkg:base64",
+        "@opam//pkg:yojson",
+        "//h_list",
+        "//src/base:snarky_backendless",
+        "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
+        "//src/intf:snarky_intf",
+        ":backends.cm_"
+    ],
+)
+
+ocaml_module(
+    name = "snarky.cm_",
+    impl = "snarky.ml",
+    ns_module = ":snarky_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX5_A53130EE,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src/base:snarky_backendless",
+        "//src/intf:snarky_intf",
+        "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
+        "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
+        "//ctypes_foreign:ctypes_foreign_libffi",
+    ],
+)
+
+ocaml_module(
+    name = "gpu_prover.cm_",
+    impl = "gpu_prover.ml",
+    ns_module = ":snarky_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX5_A53130EE,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+    ],
+)
+
+genrule(
+    name = "gpu_prover",
+    srcs = select({
+        "//bzl/config:enable_gpu": ["gpu_prover.gpu.ml"],
+        "//conditions:default":    ["gpu_prover.no_gpu.ml"],
+    }),
+    outs = [
+        "gpu_prover.ml"
+    ],
+    cmd = "cp $< $@"
+)

@@ -1,0 +1,143 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    # "ppx_archive",
+    # "ppx_executable",
+    # "ppx_module",
+    # "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-thread"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+COMMON_DEPS = []
+# PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+# PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+# PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+# PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+# PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+CAMLSNARK_C_BINDINGS_NS = "Camlsnark_c_bindings"
+
+ocaml_archive(
+    name = "camlsnark_c_bindings",
+    opts = ARCHIVE_OPTS,
+    # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        # "@opam//pkg:core",
+        "@opam//pkg:ctypes",
+        "@opam//pkg:ctypes.foreign",
+        ":camlsnark_c_bindings_ns_module",
+        ":bindings_base.cm_",
+        ":backend_types.cm_",
+        ":vector.cm_",
+        ":bindings.cm_",
+    ],
+    # cclibs = ["//bzl/external/libffi"]
+)
+
+ocaml_ns_module(
+    name = "camlsnark_c_bindings_ns_module",
+    ns = CAMLSNARK_C_BINDINGS_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "bindings_base.ml",
+        "backend_types.ml",
+        "vector.ml",
+        "bindings.ml",
+    ],
+)
+
+ocaml_module(
+    name = "bindings_base.cm_",
+    impl = "bindings_base.ml",
+    ns_module = ":camlsnark_c_bindings_ns_module",
+    opts = IMPL_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+        "@opam//pkg:ctypes",
+    ],
+)
+
+ocaml_interface(
+    name = "backend_types.cmi",
+    intf = "backend_types.mli",
+    ns_module = ":camlsnark_c_bindings_ns_module",
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        ":bindings_base.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "backend_types.cm_",
+    cmi = ":backend_types.cmi",
+    impl = "backend_types.ml",
+    ns_module = ":camlsnark_c_bindings_ns_module",
+    opts = IMPL_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":bindings_base.cm_",
+    ],
+)
+
+ocaml_interface(
+    name = "vector.cmi",
+    intf = "vector.mli",
+    ns_module = ":camlsnark_c_bindings_ns_module",
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        ":bindings_base.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "vector.cm_",
+    cmi = ":vector.cmi",
+    impl = "vector.ml",
+    ns_module = ":camlsnark_c_bindings_ns_module",
+    opts = IMPL_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":bindings_base.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "bindings.cm_",
+    impl = "bindings.ml",
+    ns_module = ":camlsnark_c_bindings_ns_module",
+    opts = IMPL_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":backend_types.cm_",
+        ":bindings_base.cm_",
+        ":vector.cm_",
+    ],
+)

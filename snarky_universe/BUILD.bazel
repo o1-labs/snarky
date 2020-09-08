@@ -1,0 +1,260 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+SNARKY_UNIVERSE_NS = "Snarky_universe"
+
+## (ppx_deriving_yojson ppx_jane ppx_deriving.eq)
+PPX3_0E8F016F = "@//ppx/exe:ppx3_0e8f016f-a592-5958-870e-8039bff2c52e"
+
+ocaml_archive(
+    name = "snarky_universe",
+    opts = INTF_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src/snarky"
+        ":snarky_universe_ns_module",
+        ":curve.cm_",
+        ":group.cm_",
+        ":hash.cm_",
+        ":input_spec.cm_",
+        ":intf.cm_",
+        ":membership_proof.cm_",
+        ":merkle_tree_unchecked.cm_",
+        ":snarky_universe.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "snarky_universe_ns_module",
+    ns = SNARKY_UNIVERSE_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "curve.ml",
+        "group.ml",
+        "hash.ml",
+        "input_spec.ml",
+        "intf.ml",
+        "membership_proof.ml",
+        "merkle_tree_unchecked.ml",
+        "snarky_universe.ml",
+    ],
+)
+
+ocaml_module(
+    name = "curve.cm_",
+    impl = "curve.ml",
+    ns_module = ":snarky_universe_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_0E8F016F,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_universe\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+    ],
+)
+
+ocaml_module(
+    name = "group.cm_",
+    impl = "group.ml",
+    ns_module = ":snarky_universe_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_0E8F016F,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_universe\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":curve.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "hash.cm_",
+    impl = "hash.ml",
+    ns_module = ":snarky_universe_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_0E8F016F,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_universe\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":curve.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "input_spec.cm_",
+    impl = "input_spec.ml",
+    ns_module = ":snarky_universe_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_0E8F016F,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_universe\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+    ],
+)
+
+ocaml_module(
+    name = "intf.cm_",
+    impl = "intf.ml",
+    ns_module = ":snarky_universe_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_0E8F016F,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_universe\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":input_spec.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "membership_proof.cm_",
+    impl = "membership_proof.ml",
+    ns_module = ":snarky_universe_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_0E8F016F,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_universe\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+    ],
+)
+
+ocaml_module(
+    name = "merkle_tree_unchecked.cm_",
+    impl = "merkle_tree_unchecked.ml",
+    ns_module = ":snarky_universe_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_0E8F016F,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_universe\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":membership_proof.cm_",
+    ],
+)
+
+ocaml_interface(
+    name = "snarky_universe.cmi",
+    intf = "snarky_universe.mli",
+    ns_module = ":snarky_universe_ns_module",
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        ":curve.cm_",
+        ":intf.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "snarky_universe.cm_",
+    cmi = ":snarky_universe.cmi",
+    impl = "snarky_universe.ml",
+    ns_module = ":snarky_universe_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_0E8F016F,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_universe\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":curve.cm_",
+        ":group.cm_",
+        ":hash.cm_",
+        ":input_spec.cm_",
+        ":intf.cm_",
+        ":membership_proof.cm_",
+        ":merkle_tree_unchecked.cm_",
+    ],
+)

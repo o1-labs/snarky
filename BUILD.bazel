@@ -3,6 +3,23 @@ load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag", "st
 #################################################
 ####    GLOBAL/SHARED CONFIG SETTING DEPS    ####
 
+## OCaml
+#### control -linkall compile flag
+string_flag( name = "link", build_setting_default = "on_demand",
+             values = ["always", "on_demand"],
+             visibility = ["//visibility:public"])
+
+#### control -dump-ast flag
+string_flag( name = "ppx_format", build_setting_default = "binary",
+             values = ["binary", "text"],
+             visibility = ["//visibility:public"])
+
+bool_flag( name = "enable_gpu", build_setting_default = False,
+           visibility = ["//visibility:public"])
+
+################################################################
+## C/C++
+
 ## Upstream
 string_flag( name = "curve", build_setting_default = "bn128",
              values = ["bn128", "alt_bn128", "edwards", "mnt4", "mnt6"],

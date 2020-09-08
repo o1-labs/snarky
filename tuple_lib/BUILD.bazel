@@ -1,0 +1,238 @@
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-thread"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+TUPLE_LIB_NS = "Tuple_lib"
+
+## (ppx_jane ppx_deriving.eq bisect_ppx -conditional)
+PPX3_F180089C = "@//ppx/exe:ppx3_f180089c-83e6-5015-b4a7-74a66ad417a0"
+
+ocaml_archive(
+    name = "tuple_lib",
+    opts = INTF_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":tuple_lib_ns_module",
+        ":double.cm_",
+        ":four.cm_",
+        ":intf.cm_",
+        ":quadruple.cm_",
+        ":triple.cm_",
+        ":tuple_lib.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "tuple_lib_ns_module",
+    ns = TUPLE_LIB_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "double.ml",
+        "four.ml",
+        "intf.ml",
+        "quadruple.ml",
+        "triple.ml",
+        "tuple_lib.ml",
+    ],
+)
+
+ocaml_interface(
+    name = "double.cmi",
+    intf = "double.mli",
+    ns_module = ":tuple_lib_ns_module",
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        ":intf.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "double.cm_",
+    cmi = ":double.cmi",
+    impl = "double.ml",
+    ns_module = ":tuple_lib_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_F180089C,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"tuple_lib\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+    ],
+)
+
+ocaml_module(
+    name = "four.cm_",
+    impl = "four.ml",
+    ns_module = ":tuple_lib_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_F180089C,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"tuple_lib\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":double.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "intf.cm_",
+    impl = "intf.ml",
+    ns_module = ":tuple_lib_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_F180089C,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"tuple_lib\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+    ],
+)
+
+ocaml_interface(
+    name = "quadruple.cmi",
+    intf = "quadruple.mli",
+    ns_module = ":tuple_lib_ns_module",
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        ":four.cm_",
+        ":intf.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "quadruple.cm_",
+    cmi = ":quadruple.cmi",
+    impl = "quadruple.ml",
+    ns_module = ":tuple_lib_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_F180089C,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"tuple_lib\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":four.cm_",
+    ],
+)
+
+ocaml_interface(
+    name = "triple.cmi",
+    intf = "triple.mli",
+    ns_module = ":tuple_lib_ns_module",
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+        ":intf.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "triple.cm_",
+    cmi = ":triple.cmi",
+    impl = "triple.ml",
+    ns_module = ":tuple_lib_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_F180089C,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"tuple_lib\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+    ],
+)
+
+ocaml_module(
+    name = "tuple_lib.cm_",
+    impl = "tuple_lib.ml",
+    ns_module = ":tuple_lib_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_F180089C,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"tuple_lib\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":double.cm_",
+        ":four.cm_",
+        ":quadruple.cm_",
+        ":triple.cm_",
+    ],
+)

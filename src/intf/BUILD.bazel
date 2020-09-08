@@ -1,0 +1,132 @@
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-thread"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+SNARKY_INTF_NS = "Snarky_intf"
+
+## (ppx_sexp_conv ppx_bin_prot ppx_hash ppx_compare)
+PPX4_A2F04B8A = "@//ppx/exe:ppx4_a2f04b8a-9eb4-5764-9e9f-800ec666ef48"
+
+ocaml_archive(
+    name = "snarky_intf",
+    opts = ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":snarky_intf_ns_module",
+        ":bigint_intf.cm_",
+        ":vector.cm_",
+        ":field.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "snarky_intf_ns_module",
+    ns = SNARKY_INTF_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "bigint_intf.ml",
+        "vector.ml",
+        "field.ml",
+    ],
+)
+
+ocaml_module(
+    name = "bigint_intf.cm_",
+    impl = "bigint_intf.ml",
+    ns_module = ":snarky_intf_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX4_A2F04B8A,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_intf\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+    ],
+)
+
+ocaml_module(
+    name = "vector.cm_",
+    impl = "vector.ml",
+    ns_module = ":snarky_intf_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX4_A2F04B8A,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_intf\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core",
+    ],
+)
+
+ocaml_module(
+    name = "field.cm_",
+    impl = "field.ml",
+    ns_module = ":snarky_intf_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX4_A2F04B8A,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_intf\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:bignum",
+       ":vector.cm_",
+    ],
+)

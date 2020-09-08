@@ -1,0 +1,88 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+SNARKY_CURVE_NS = "Snarky_curve"
+
+## (ppx_jane ppx_deriving.eq)
+PPX2_915493D3 = "@//ppx/exe:ppx2_915493d3-55e8-515a-bbfb-5eb1f29f562e"
+
+ocaml_archive(
+    name = "snarky_curve",
+    opts = INTF_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":snarky_curve_ns_module",
+        ":snarky_curve.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "snarky_curve_ns_module",
+    ns = SNARKY_CURVE_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "snarky_curve.ml",
+    ],
+)
+
+ocaml_module(
+    name = "snarky_curve.cm_",
+    impl = "snarky_curve.ml",
+    ns_module = ":snarky_curve_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX2_915493D3,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_curve\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+    ],
+)

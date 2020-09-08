@@ -1,0 +1,421 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+SNARKETTE_NS = "Snarkette"
+
+## (ppx_jane ppx_deriving.eq ppx_deriving_yojson)
+PPX3_882338B5 = "@//ppx/exe:ppx3_882338b5-3194-58af-a3cf-80853d6f9dfa"
+
+ocaml_archive(
+    name = "snarkette",
+    opts = INTF_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":snarkette_ns_module",
+        ":nat.cm_",
+        ":fields.cm_",
+        ":mnt4_80.cm_",
+        ":pairing.cm_",
+        ":nat_intf.cm_",
+        ":bowe_gabizon.cm_",
+        ":elliptic_curve.cm_",
+        ":groth_maller.cm_",
+        ":groth16.cm_",
+        ":mnt6753.cm_",
+        ":tweedle.cm_",
+        ":mnt4753.cm_",
+        ":elliptic_curve_intf.cm_",
+        ":mnt6_80.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "snarkette_ns_module",
+    ns = SNARKETTE_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "nat.ml",
+        "fields.ml",
+        "mnt4_80.ml",
+        "pairing.ml",
+        "nat_intf.ml",
+        "bowe_gabizon.ml",
+        "elliptic_curve.ml",
+        "groth_maller.ml",
+        "groth16.ml",
+        "mnt6753.ml",
+        "tweedle.ml",
+        "mnt4753.ml",
+        "elliptic_curve_intf.ml",
+        "mnt6_80.ml",
+    ],
+)
+
+ocaml_interface(
+    name = "nat.cmi",
+    intf = "nat.mli",
+    ns_module = ":snarkette_ns_module",
+    opts = INTF_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        ":nat_intf.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "nat.cm_",
+    cmi = ":nat.cmi",
+    impl = "nat.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core"
+    ],
+)
+
+ocaml_module(
+    name = "fields.cm_",
+    impl = "fields.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS + ["-thread"],
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:bignum",
+        "@opam//pkg:ppx_bench.runtime-lib",
+        "//fold_lib",
+        "//tuple_lib",
+        ":nat.cm_",
+        ":nat_intf.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "mnt4_80.cm_",
+    impl = "mnt4_80.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":elliptic_curve.cm_",
+        ":fields.cm_",
+        ":nat.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "pairing.cm_",
+    impl = "pairing.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":fields.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "nat_intf.cm_",
+    impl = "nat_intf.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core"
+        # "@opam//pkg:ppx_expect.collector",
+        # "@opam//pkg:ppx_module_timer.runtime",
+   ],
+)
+
+ocaml_module(
+    name = "bowe_gabizon.cm_",
+    impl = "bowe_gabizon.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//fold_lib",
+        ":fields.cm_",
+        ":nat_intf.cm_",
+        ":pairing.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "elliptic_curve.cm_",
+    impl = "elliptic_curve.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:bin_prot"
+    ],
+)
+
+ocaml_module(
+    name = "groth_maller.cm_",
+    impl = "groth_maller.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//fold_lib",
+        ":fields.cm_",
+        ":nat_intf.cm_",
+        ":pairing.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "groth16.cm_",
+    impl = "groth16.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":fields.cm_",
+        ":nat_intf.cm_",
+        ":pairing.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "mnt6753.cm_",
+    impl = "mnt6753.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":bowe_gabizon.cm_",
+        ":elliptic_curve.cm_",
+        ":fields.cm_",
+        ":groth16.cm_",
+        ":groth_maller.cm_",
+        ":nat.cm_",
+        ":pairing.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "tweedle.cm_",
+    impl = "tweedle.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":elliptic_curve.cm_",
+        ":fields.cm_",
+        ":nat.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "mnt4753.cm_",
+    impl = "mnt4753.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":elliptic_curve.cm_",
+        ":fields.cm_",
+        ":nat.cm_",
+    ],
+)
+
+ocaml_module(
+    name = "elliptic_curve_intf.cm_",
+    impl = "elliptic_curve_intf.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ppx_bench.runtime-lib",
+        "@opam//pkg:ppx_expect.collector",
+    ],
+)
+
+ocaml_module(
+    name = "mnt6_80.cm_",
+    impl = "mnt6_80.ml",
+    ns_module = ":snarkette_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX3_882338B5,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarkette\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":bowe_gabizon.cm_",
+        ":elliptic_curve.cm_",
+        ":fields.cm_",
+        ":groth16.cm_",
+        ":groth_maller.cm_",
+        ":nat.cm_",
+        ":pairing.cm_",
+    ],
+)

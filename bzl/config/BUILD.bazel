@@ -2,8 +2,15 @@ load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "int_flag", "strin
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
 ################################################################
-## command-line config parameters
-## e.g. --//bzl/config:curve="edwards" --no//bzl/config:multicore
+## ## OCaml config settings
+
+config_setting( name = "always_link", flag_values = { "//:link": "always" },
+                visibility = ["//visibility:public"])
+
+config_setting( name = "ppx_text", flag_values = { "//:ppx_format": "text" },
+                visibility = ["//visibility:public"])
+config_setting( name = "ppx_binary", flag_values = { "//:ppx_format": "binary" },
+                visibility = ["//visibility:public"])
 
 ###############################
 ####    LIBSNARK PARAMS    ####
@@ -15,6 +22,11 @@ config_setting( name = "with_supercop",
                 flag_values = { ":supercop": "True" })
 config_setting( name = "without_supercop",
                 flag_values = { ":supercop": "False" })
+
+config_setting( name = "enable_gpu", flag_values = { "//:enable_gpu": str(True) },
+                visibility = ["//visibility:public"])
+config_setting( name = "disable_gpu", flag_values = { "//:enable_gpu": str(False) },
+                visibility = ["//visibility:public"])
 
 ###############################
 ####    LIBFQFFT PARAMS    ####
@@ -52,24 +64,6 @@ config_setting( name = "without_libgmp",          flag_values = { "@//:with_libg
 # # # which is smaller and faster.
 # config_setting( name = "enable_binary_output",
 #                 flag_values = { "@//:binary_output": "true" })
-
-################################################################
-####  OCaml Flags
-
-string_flag( name = "link", build_setting_default = "on_demand",
-             values = ["always", "on_demand"],
-             visibility = ["//visibility:public"])
-
-config_setting( name = "always_link",
-                flag_values = { ":link": "always" })
-
-string_flag( name = "ppx_format", build_setting_default = "binary",
-             values = ["binary", "text"],
-             visibility = ["//visibility:public"])
-config_setting( name = "ppx_text",
-                flag_values = { ":ppx_format": "text" })
-config_setting( name = "ppx_binary",
-                flag_values = { ":ppx_format": "binary" })
 
 ################################################################
 config_setting( name = "enable_debug",

@@ -1,0 +1,88 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+    "ppx_archive",
+    "ppx_executable",
+    "ppx_module",
+    "ppx_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + []
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+COMMON_DEPS = []
+
+PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+
+SNARKY_CURVE_TESTS_NS = "Snarky_curve_tests"
+
+## (ppx_inline_test)
+PPX1_AEA1DAD7 = "@//ppx/exe:ppx1_aea1dad7-aa0c-5824-ad55-e22b85034218"
+
+ocaml_archive(
+    name = "snarky_curve_tests",
+    opts = INTF_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        ":snarky_curve_tests_ns_module",
+        ":snarky_curve_tests.cm_",
+    ],
+)
+
+ocaml_ns_module(
+    name = "snarky_curve_tests_ns_module",
+    ns = SNARKY_CURVE_TESTS_NS,
+    submodules = [
+        # do not sort (buildifier)
+        "snarky_curve_tests.ml",
+    ],
+)
+
+ocaml_module(
+    name = "snarky_curve_tests.cm_",
+    impl = "snarky_curve_tests.ml",
+    ns_module = ":snarky_curve_tests_ns_module",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX1_AEA1DAD7,
+    ppx_bin_opts = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"snarky_curve_tests\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+    ],
+)

@@ -2,6 +2,10 @@
 bazel-*
 user.bazelrc
 *.log
+# obazl tool:
+.cpcache
+deps.edn
+obazl.edn
 
 .merlin
 _build
