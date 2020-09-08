@@ -49,14 +49,17 @@ LINKSTATIC = select({
     "//conditions:default": True
 })
 
-CPPFLAGS = DEBUG_FLAGS + WARNINGS
+CPPFLAGS = select({
+    ## FIXME: select on //bzl/config:enable_openmp
+    "//bzl/host:macos": ["-Xpreprocessor", "-fopenmp"],
+    "//bzl/host:linux": ["-fopenmp"],
+    "//conditions:default": []
+}) + [
+    "-fPIC",
+] + DEBUG_FLAGS + WARNINGS
+
 CFLAGS   = []
-CXXFLAGS = OPTIMIZE_CXXFLAGS # + ["-lstd=c++14", "-lstdc++", "-D_LIBCXX_DEPRECATION_WARNINGS "]
-# CMAKE_CXX_FLAGS = ["-std=c++11",
-# CXX_FLAGS = ["-std=c++11",
-#              "-Wall", "-Wextra", "-Wfatal-errors",
-#              "-Wno-unused-variables"
-# ]
+CXXFLAGS = ["-std=c++14", "-lstdc++"] + OPTIMIZE_CXXFLAGS # ", "-D_LIBCXX_DEPRECATION_WARNINGS "]
 
 # OPT_FLAGS = ["-ggdb3", "-O2", "-march=native", "-mtune=native"]
 

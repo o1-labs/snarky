@@ -1,13 +1,17 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "DDEBUG")
-     # "ATE_PAIRING", "LIBFF", "LIBSNARK", "DEPS_ROOT", "LIBSNARK_ROOT")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG", "LINKSTATIC")
 
-exports_files(["template_caml_curve_h.h", "common.h"])
+exports_files(["template_caml_curve_h.hpp"])
 
-cc_library(
+LINKOPTS = select({
+    "@//bzl/host:linux": [ "-E"],
+    "@//bzl/host:macos": [],
+    "//conditions:default": []
+})
+
+cc_binary(
     name = "snark_caml",
-    # linkstatic = True,
-    # alwayslink = True,
+    linkshared = True,
     visibility = ["//visibility:public"],
     srcs = [
         "caml_bn128.cpp",
@@ -29,47 +33,128 @@ cc_library(
         "caml_mnt6753.hpp",
         "caml_mnt6753_specific.cpp",
 
-        "common.cpp",
-        "common.h",
+        "logging.cpp",
+        "logging.h",
+        "strings.cpp",
+        "strings.h",
+        "utils.cpp",
+        "utils.h",
+        "vectors.cpp",
+        "vectors.h",
 
         "template_caml_curve_cpp.hpp",
         "template_caml_mnt_cpp.hpp",
     ],
-    copts = ["-I.",
+    # hdrs = [
+    #     "strings.h",
+    #     "utils.h",
+    #     "vectors.h",
+    # ],
+    copts = ["-I.", "-Iexternal",
              "-Iexternal/libsnark",
              "-Iexternal/libff"
-    ] + CPPFLAGS,
+    ] + CPPFLAGS + CXXFLAGS,
+    linkopts = LINKOPTS,
     defines = DDEBUG,
     deps = [
+        "//libsnark",
+        "@libff//libff:ff",
         "//bzl/external/openssl",
         "//bzl/external/libsodium",
         "//bzl/external/libgmp",
-        "//bzl/external/openmp",
-        # LIBSNARK,
-        "@libff//libff/common:logging",
-        "@libff//libff/common:profiling",
-        "@libff//libff/algebra/curves/bn128",
-        "@libff//libff/algebra/curves/alt_bn128",
-        "@libff//libff/algebra/curves/edwards",
-        "@libff//libff/algebra/curves/mnt",
-        "@libff//libff/algebra/curves/mnt/mnt4",
-        "@libff//libff/algebra/curves/mnt/mnt6",
-        "@libff//libff/algebra/curves/mnt753/mnt4753",
-        "@libff//libff/algebra/curves/mnt753/mnt6753",
-        "@libsnark//libsnark/gadgetlib1/gadgets/hashes/sha256",
-        "@libsnark//libsnark/reductions/r1cs_to_qap",
-        "@libsnark//libsnark/relations",
-        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark",
-        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark",
-        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
-        "@libsnark//libsnark/relations/constraint_satisfaction_problems/r1cs",
-        "@libsnark//libsnark/gadgetlib1"
-    ],
+        "//bzl/external/openmp"
+    ] + select({
+        "@//bzl/host:linux": ["//bzl/external/procps"],
+        "//conditions:default": []
+    })
 )
 
 cc_library(
+    name = "snark_caml_static",
+    linkstatic = LINKSTATIC,
+    visibility = ["//visibility:public"],
+    srcs = [
+        "caml_bn128.cpp",
+        "caml_bn128.hpp",
+
+        "caml_mnt4.cpp",
+        "caml_mnt4.hpp",
+        "caml_mnt4_specific.cpp",
+
+        "caml_mnt4753.cpp",
+        "caml_mnt4753.hpp",
+        "caml_mnt4753_specific.cpp",
+
+        "caml_mnt6.cpp",
+        "caml_mnt6.hpp",
+        "caml_mnt6_specific.cpp",
+
+        "caml_mnt6753.cpp",
+        "caml_mnt6753.hpp",
+        "caml_mnt6753_specific.cpp",
+
+        "logging.cpp",
+        "logging.h",
+        "strings.cpp",
+        "strings.h",
+        "utils.cpp",
+        "utils.h",
+        "vectors.cpp",
+        "vectors.h",
+
+        "template_caml_curve_cpp.hpp",
+        "template_caml_mnt_cpp.hpp",
+    ],
+    hdrs = [
+        "strings.h",
+        "utils.h",
+        "vectors.h",
+    ],
+    copts = ["-I.", "-Iexternal",
+             "-Iexternal/libsnark",
+             "-Iexternal/libff"
+    ] + CPPFLAGS + CXXFLAGS,
+    linkopts = LINKOPTS,
+    defines = DDEBUG,
+    deps = [
+        "//libsnark",
+        "@libff//libff:ff",
+        "//bzl/external/openssl",
+        "//bzl/external/libsodium",
+        "//bzl/external/libgmp",
+        "//bzl/external/openmp"
+    ] + select({
+        "@//bzl/host:linux": ["//bzl/external/procps"],
+        "//conditions:default": []
+    })
+)
+
+cc_library(
+    name = "vectors",
+    srcs = ["vectors.cpp", "vectors.h"],
+    hdrs = ["vectors.h"],
+    linkstatic = LINKSTATIC,
+    copts = [
+        "-I.",
+        "-Iexternal",
+        "-Iexternal/csdk",
+        "-Iexternal/api",
+        "-Iexternal/csdk/api",
+    ] + CPPFLAGS + CXXFLAGS,
+    deps = [
+        "@libff//libff/algebra/curves/mnt/mnt4",
+        "@libff//libff/algebra/curves/mnt/mnt6",
+        "@libff//libff/algebra/fields",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+################################################################
+## For demo purposes, to match CMakelists.txt
+
+cc_library(
     name = "snark_caml_bn128",
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     # alwayslink = True,
     visibility = ["//visibility:public"],
     srcs = [
@@ -80,7 +165,7 @@ cc_library(
     copts = ["-I.",
              "-Iexternal/libsnark",
              "-Iexternal/libff"
-    ] + CPPFLAGS,
+    ] + CPPFLAGS + CXXFLAGS,
     defines = DDEBUG,
     deps = [
         "@libff//libff/algebra/curves/bn128",
@@ -97,7 +182,7 @@ cc_library(
 
 cc_library(
     name = "snark_caml_mnt298",
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     # alwayslink = True,
     visibility = ["//visibility:public"],
     srcs = [
@@ -113,7 +198,7 @@ cc_library(
     copts = ["-I.",
              "-Iexternal/libsnark",
              "-Iexternal/libff"
-    ] + CPPFLAGS,
+    ] + CPPFLAGS + CXXFLAGS,
     defines = DDEBUG,
     deps = [
         "@libff//libff/common:logging",
@@ -133,7 +218,7 @@ cc_library(
 
 cc_library(
     name = "snark_caml_mnt753",
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     # alwayslink = True,
     visibility = ["//visibility:public"],
     srcs = [
@@ -148,8 +233,8 @@ cc_library(
     ],
     copts = ["-I.",
              "-Iexternal/libsnark",
-             "-Iexternal/libff"
-    ] + CPPFLAGS,
+             "-Iexternal/libff",
+    ] + CPPFLAGS + CXXFLAGS,
     defines = DDEBUG,
     deps = [
         "@libff//libff/algebra/curves/mnt753",
