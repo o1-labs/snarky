@@ -39,7 +39,7 @@ OPTIMIZE_LINKFLAGS = select({
 
 CPPFLAGS = DEBUG_FLAGS + WARNINGS
 CFLAGS   = []
-CXXFLAGS = OPTIMIZE_CXXFLAGS # + ["-lstd=c++14", "-lstdc++"]
+CXXFLAGS = ["-lstd=c++14", "-lstdc++"] + OPTIMIZE_CXXFLAGS
 LDFLAGS  = []
 
 #######################
