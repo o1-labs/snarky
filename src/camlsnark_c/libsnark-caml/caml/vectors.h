@@ -5,18 +5,6 @@
 extern "C" {
 #endif
 
-    void camlsnark_set_printing_off();
-
-    void camlsnark_set_printing_stdout();
-
-    void camlsnark_set_printing_file(char *file);
-
-    void camlsnark_set_printing_fun(int (*pf)(char*));
-
-    void camlsnark_puts(const char* str);
-
-    void camlsnark_set_profiling(bool b);
-
     // long vector
     void* camlsnark_long_vector_create();
 
@@ -50,13 +38,13 @@ extern "C" {
 
     void camlsnark_int_vector_delete(void* v);
 
-    const char* camlsnark_string_to_char_pointer(void* s);
+    /* const char* camlsnark_string_to_char_pointer(void* s); */
 
-    void* camlsnark_string_of_char_pointer(char* p, int length);
+    /* void* camlsnark_string_of_char_pointer(char* p, int length); */
 
-    void camlsnark_string_delete(void* s);
+    /* void camlsnark_string_delete(void* s); */
 
-    int camlsnark_string_length(void* s);
+    /* int camlsnark_string_length(void* s); */
 
 #ifdef __cplusplus
 }

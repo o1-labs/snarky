@@ -6,7 +6,10 @@ add_library(
   ../depends/libff/libff/common/logging.cpp
   ../depends/libff/libff/common/profiling.cpp
   ../depends/libff/libff/common/utils.cpp
-  common.cpp
+  logging.cpp
+  strings.cpp
+  utils.cpp
+  vectors.cpp
 )
 target_link_libraries(
   snark_caml_common
