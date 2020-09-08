@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@libff//bzl/config:vars.bzl", "CFLAGS",
+load("@libff//bzl/config:vars.bzl", "CFLAGS", "CXXFLAGS",
      "ALWAYSLINK", "LINKSTATIC",
      "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
 
@@ -17,7 +17,7 @@ cc_library(
         "alt_bn128_init.hpp",
         "alt_bn128_pairing.hpp",
     ],
-    copts = ["-I."] + CFLAGS,
+    copts = ["-I."] + CFLAGS + CXXFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/alt_bn128",
     linkstatic = LINKSTATIC,
@@ -43,7 +43,7 @@ cc_library(
         "alt_bn128_pairing.hpp",
         "alt_bn128_pp.hpp",
     ],
-    copts = ["-I."] + CFLAGS,
+    copts = ["-I."] + CFLAGS + CXXFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/alt_bn128",
     linkstatic = LINKSTATIC,

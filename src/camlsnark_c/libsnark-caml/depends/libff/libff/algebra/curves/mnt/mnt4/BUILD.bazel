@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@libff//bzl/config:vars.bzl", "CPPFLAGS",
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS",
      "ALWAYSLINK", "LINKSTATIC",
      "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
 
@@ -19,7 +19,7 @@ cc_library(
         "mnt4_pairing.hpp",
         "mnt4_pp.hpp",
     ],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/mnt/mnt4",
     linkstatic = LINKSTATIC,
@@ -29,7 +29,7 @@ cc_library(
         "//libff/common:profiling",
         "//libff/algebra/curves",
         "//libff/algebra/curves/mnt",
-        # "//libff/algebra/curves/mnt/mnt4:public_params",
+        ":public_params",
     ],
 )
 
@@ -43,7 +43,7 @@ cc_library(
         "mnt4_pairing.hpp",
         "mnt4_pp.hpp",
     ],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/mnt/mnt4",
     linkstatic = LINKSTATIC,

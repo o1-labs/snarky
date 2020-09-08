@@ -1,5 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_test", "cc_binary")
-load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "DDEBUG", "DCURVE", "DNO_PROCPS")
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS",
+     "DDEBUG", "DCURVE", "DNO_PROCPS")
 
 COMMON_DEPS = [
     "//libff/algebra/curves/edwards",
@@ -22,7 +23,7 @@ cc_test(
     visibility = ["//visibility:public"],
     timeout = "short",
     srcs = ["test_bilinearity.cpp"],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     linkstatic = select({
         "//bzl/host:linux": True,
         "//conditions:default": False,
@@ -35,7 +36,7 @@ cc_test(
     name = "algebra_groups",
     visibility = ["//visibility:public"],
     srcs = ["test_groups.cpp"],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     linkstatic = select({
         "//bzl/host:linux": True,
         "//conditions:default": False,

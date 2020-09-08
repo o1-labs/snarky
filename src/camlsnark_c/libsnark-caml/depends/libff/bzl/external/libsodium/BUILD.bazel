@@ -12,7 +12,6 @@ configure_make(
     shared_libraries = select({
         "//bzl/host:macos": ["libsodium.dylib"],
         "//bzl/host:linux": ["libsodium.so"],
-        # "//conditions:default": [],
-    }),
+    }, no_match_error = "Unsupported platform. Only MacOS and Linux."),
     visibility = ["//visibility:public"],
 )

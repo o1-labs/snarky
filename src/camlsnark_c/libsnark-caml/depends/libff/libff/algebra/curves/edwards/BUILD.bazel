@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@libff//bzl/config:vars.bzl", "CPPFLAGS",
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS",
      "ALWAYSLINK", "LINKSTATIC",
      "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
 
@@ -17,7 +17,7 @@ cc_library(
         "edwards_init.hpp",
         "edwards_pairing.hpp",
     ],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/edwards",
     linkstatic = LINKSTATIC,
@@ -43,7 +43,7 @@ cc_library(
         "edwards_pairing.hpp",
         "edwards_pp.hpp",
     ],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/edwards",
     linkstatic = LINKSTATIC,

@@ -1,5 +1,40 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
+cc_binary(
+    name = "ff",
+    linkshared = True,
+    visibility = ["//visibility:public"],
+    # hdrs = glob(["external/ate_pairing/include/bn.h",
+    # ]),
+    copts = [
+        "-Iexternal/libff"
+    ],
+    deps = [
+        "//libff/common/default_types",
+        "//libff/common:logging",
+        "//libff/common:profiling",
+        "//libff/common:utils",
+        # "//libff/algebra/curves/bn128",
+        "//libff/algebra/curves/alt_bn128",
+        "//libff/algebra/curves/alt_bn128:public_params",
+        "//libff/algebra/curves/edwards",
+        "//libff/algebra/curves/mnt",
+        "//libff/algebra/curves/mnt/mnt4",
+        "//libff/algebra/curves/mnt/mnt4:public_params",
+        "//libff/algebra/curves/mnt/mnt6",
+        "//libff/algebra/curves/mnt/mnt6:public_params",
+        # "//libff/algebra/curves/mnt753",
+        "//libff/algebra/curves/mnt753/mnt4753",
+        # "//libff/algebra/curves/mnt753/mnt4753:public_params",
+        "//libff/algebra/curves/mnt753/mnt6753",
+        # "//libff/algebra/curves/mnt753/mnt6753:public_params",
+        "//libff/algebra/fields:bigint",
+    ] + select({
+        "@//bzl/config:enable_curve_bn128": ["//libff/algebra/curves/bn128"],
+        "//conditions:default": [],
+    })
+)
+
 cc_library(
     name = "libff",
     visibility = ["//visibility:public"],
@@ -10,11 +45,24 @@ cc_library(
     ],
     deps = [
         "//libff/common/default_types",
+        "//libff/common:logging",
+        "//libff/common:profiling",
+        "//libff/common:utils",
+        # "//libff/algebra/curves/bn128",
         "//libff/algebra/curves/alt_bn128",
+        "//libff/algebra/curves/alt_bn128:public_params",
         "//libff/algebra/curves/edwards",
+        "//libff/algebra/curves/mnt",
         "//libff/algebra/curves/mnt/mnt4",
+        "//libff/algebra/curves/mnt/mnt4:public_params",
         "//libff/algebra/curves/mnt/mnt6",
-        # "//libff/algebra/curves/mnt/mnt6:public_params",
+        "//libff/algebra/curves/mnt/mnt6:public_params",
+        # "//libff/algebra/curves/mnt753",
+        "//libff/algebra/curves/mnt753/mnt4753",
+        # "//libff/algebra/curves/mnt753/mnt4753:public_params",
+        "//libff/algebra/curves/mnt753/mnt6753",
+        # "//libff/algebra/curves/mnt753/mnt6753:public_params",
+        "//libff/algebra/fields:bigint",
     ] + select({
         "@//bzl/config:enable_curve_bn128": ["//libff/algebra/curves/bn128"],
         "//conditions:default": [],

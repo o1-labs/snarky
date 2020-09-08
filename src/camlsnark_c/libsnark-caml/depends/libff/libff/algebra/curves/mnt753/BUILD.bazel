@@ -1,11 +1,12 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "DDEBUG", "DNO_PT_COMPRESSION")
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS",
+     "DDEBUG", "DNO_PT_COMPRESSION")
 
 cc_library(
     name = "mnt753",
     srcs = ["mnt46753_common.cpp", "mnt46753_common.hpp"],
     hdrs = ["mnt46753_common.hpp"],
-    copts = ["-I.", "-Iexternal/libff"] + CPPFLAGS,
+    copts = ["-I.", "-Iexternal/libff"] + CPPFLAGS + CXXFLAGS,
     # include_prefix = "libff/algebra/curves/mnt753",
     visibility = ["//visibility:public"],
     deps = [

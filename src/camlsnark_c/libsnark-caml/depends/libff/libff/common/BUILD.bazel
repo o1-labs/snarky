@@ -1,35 +1,16 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@libff//bzl/config:vars.bzl",
-     "CPPFLAGS",
+     "CPPFLAGS", "CXXFLAGS",
      "DBINARY_OUTPUT", "DCURVE", "DDEBUG",
      "LINKSTATIC", "ALWAYSLINK",
      "DMULTICORE", "DNO_PROCPS", "DPROFILE_OP_COUNTS")
-
-# cc_library(
-#     name = "common",
-#     srcs = ["common.cpp",
-#             "double.cpp"],
-#     hdrs = ["double.hpp"],
-#     copts = select({
-#         "//bzl/host:macos": ["-std=c++14", "-stdlib=libc++"],
-#         "//conditions:default": []
-#     }) + ["-I.", "-Iexternal/libff"] + CPPFLAGS,
-#     defines = DDEBUG + DPROFILE_OP_COUNTS,
-#     include_prefix = "libff/common",
-#     deps = [
-#         ":utils",
-#         "//libff/algebra/curves/mnt/mnt4",
-#         "//libff/algebra/curves/mnt/mnt6",
-#         "//libff/algebra/fields:bigint",
-#     ],
-#     visibility = ["//visibility:public"],
-# )
 
 cc_library(
     name = "double",
     srcs = ["double.cpp"],
     hdrs = ["double.hpp"],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     defines = DDEBUG + DPROFILE_OP_COUNTS,
     include_prefix = "libff/common",
     deps = [
@@ -46,17 +27,11 @@ cc_library(
     copts = select({
         "//bzl/host:macos": ["-std=c++14", "-stdlib=libc++"],
         "//conditions:default": []
-    }) + ["-I."], # + CPPFLAGS,
+    }) + ["-I."] + CPPFLAGS + CXXFLAGS,
     defines = DDEBUG,
     include_prefix = "libff/common",
     linkstatic = LINKSTATIC,
     alwayslink = ALWAYSLINK,
-    deps = [
-        # ":profiling",
-        # "//libff/algebra/curves/mnt/mnt4",
-        # "//libff/algebra/curves/mnt/mnt6",
-        # "//libff/algebra/fields:bigint",
-    ],
     visibility = ["//visibility:public"],
 )
 
@@ -64,7 +39,8 @@ cc_library(
     name = "profiling",
     srcs = ["profiling.cpp"],
     hdrs = ["profiling.hpp"],
-    copts = ["-I.", "-Iexternal/libff"], # + CPPFLAGS,
+    copts = ["-I.", "-Iexternal/libff"]+ CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     local_defines = DDEBUG + DNO_PROCPS + DPROFILE_OP_COUNTS,
     include_prefix = "libff/common",
     deps = [
@@ -83,7 +59,8 @@ cc_library(
 cc_library(
     name = "profiling_hpp",
     hdrs = ["profiling.hpp"],
-    copts = ["-I."], # + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     defines = DDEBUG,
     include_prefix = "libff/common",
     deps = [
@@ -100,24 +77,24 @@ cc_library(
         "rng.hpp",
         "rng.tcc",
     ],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     defines = DDEBUG,
+    linkstatic = LINKSTATIC,
     include_prefix = "libff/common",
     visibility = ["//visibility:public"],
     deps = ["//bzl/external/openssl"],
 )
 
-## headers only: serialization and ran
+## headers only: serialization and rng
 ## packaged separately to avoid circurlar deps.
 cc_library(
     name = "serialization",
     hdrs = [
         "serialization.hpp",
         "serialization.tcc",
-        # "utils.hpp",
-        # "utils.tcc",
     ],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     defines = DDEBUG + DBINARY_OUTPUT,
     include_prefix = "libff/common",
     deps = [":utils"],
@@ -134,11 +111,10 @@ cc_library(
             "utils.hpp",
             "utils.tcc",
     ],
-    copts = ["-I.", "-Iexternal"], # + CPPFLAGS,
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
     defines = DDEBUG,
     include_prefix = "libff/common",
     linkstatic = LINKSTATIC,
-    alwayslink = ALWAYSLINK,
     visibility = ["//visibility:public"],
     deps = [
         ":logging",

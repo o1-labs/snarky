@@ -1,5 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@libff//bzl/config:vars.bzl", "CPPFLAGS",
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS",
      "ALWAYSLINK", "LINKSTATIC",
      "DDEBUG", "DNO_PT_COMPRESSION", "DPROFILE_OP_COUNTS")
 
@@ -10,20 +10,20 @@ cc_library(
         "mnt4753_g2.cpp",
         "mnt4753_init.cpp",
         "mnt4753_pairing.cpp",
-        # "mnt4753_pp.cpp",
+        "mnt4753_pp.cpp",
     ],
     hdrs = glob([
         "mnt4753_g1.hpp",
         "mnt4753_g2.hpp",
         "mnt4753_init.hpp",
         "mnt4753_pairing.hpp",
-        # "mnt4753_pp.hpp",
+        "mnt4753_pp.hpp",
     ]),
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/mnt753/mnt4753",
     linkstatic = LINKSTATIC,
-    alwayslink = ALWAYSLINK,
+    # alwayslink = ALWAYSLINK,
     visibility = ["//visibility:public"],
     deps = [
         "//libff/common:profiling",
@@ -44,7 +44,7 @@ cc_library(
         "mnt4753_pairing.hpp",
         "mnt4753_pp.hpp",
     ]),
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/mnt753/mnt4753",
     linkstatic = LINKSTATIC,
