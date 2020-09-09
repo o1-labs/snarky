@@ -55,7 +55,7 @@ ocaml_ns_module(
     ns = SNARKY_LIBSNARK_BINDINGS_NS,
     submodules = [
         # do not sort (buildifier)
-        ":libsnark_ffi_bindings_ml",  ## generated file
+        "//src/camlsnark_c:libsnark_ffi_bindings_ml",  ## generated file
         "libsnark_r1cs_constraint_system.ml",
         "libsnark.ml",
     ],
@@ -110,7 +110,7 @@ ocaml_module(
 ################################################################
 ocaml_module(
     name = "snark_ffi_bindings.cm_",
-    impl = ":libsnark_ffi_bindings_ml",  ## generated file
+    impl = "//src/camlsnark_c:libsnark_ffi_bindings_ml",  ## generated file
     ns_module = ":snarky_libsnark_bindings_ns_module",
     opts = IMPL_OPTS + ["-thread"],
     visibility = ["//visibility:public"],
@@ -120,49 +120,7 @@ ocaml_module(
         "//src/camlsnark_c",
     ],
     cc_deps = {
-        ":snark_ffi_bindings": "default"
+        "//src/camlsnark_c:snark_ffi_bindings": "dynamic"
+        # ":snark_ffi_bindings": "dynamic"
     }
-)
-
-cc_library(
-    name = "snark_ffi_bindings",
-    srcs = [
-        ":libsnark_ffi_bindings_c",
-        "@libsnark//caml:template_caml_curve_h.hpp"
-    ],
-    copts = ["-I.", "-Iexternal",
-             "-Iexternal/libsnark/caml",
-             ] + CPPFLAGS + CFLAGS,
-    linkstatic = LINKSTATIC,
-    deps = [
-        "@ocaml//csdk:hdrs",
-        "@ocaml//csdk/ctypes",
-        "@libsnark//libsnark",
-        "@libsnark//caml:snark_caml_static",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-genrule(
-    name = "libsnark_ffi_bindings_c",
-    tools = ["//src/camlsnark_c:camlsnark_ctypes_stubs"],
-    outs = [
-        "libsnark_ffi_bindings.c",
-    ],
-    cmd = "\n".join([
-        "./$(location //src/camlsnark_c:camlsnark_ctypes_stubs);",
-        "cp libsnark_ffi_bindings.c \"$(@D)/\"",
-    ])
-)
-
-genrule(
-    name = "libsnark_ffi_bindings_ml",
-    tools = ["//src/camlsnark_c:camlsnark_ctypes_stubs"],
-    outs = [
-        "libsnark_ffi_bindings.ml"
-    ],
-    cmd = "\n".join([
-        "./$(location //src/camlsnark_c:camlsnark_ctypes_stubs);",
-        "cp libsnark_ffi_bindings.ml \"$(@D)/\"",
-    ])
 )

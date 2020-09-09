@@ -1,3 +1,5 @@
+load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS", "LINKSTATIC")
+
 load(
     "@obazl_rules_ocaml//ocaml:build.bzl",
     "ocaml_archive",
@@ -25,80 +27,41 @@ COMMON_DEPS = []
 
 CAMLSNARK_C_NS = "Camlsnark_c"
 
-# ocaml_archive(
-#     name = "camlsnark_c",
-#     opts = ARCHIVE_OPTS,
-#     visibility = ["//visibility:public"],
-#     deps = [
-#         # do not sort (buildifier)
-#         "@opam//pkg:core",
-#         "@opam//pkg:ctypes",
-#         "@opam//pkg:ctypes.foreign",
-#         ":camlsnark_c_ns_module",
-#         ":camlsnark_c.cm_",
-#     ],
-# )
-
-# ocaml_ns_module(
-#     name = "camlsnark_c_ns_module",
-#     ns = CAMLSNARK_C_NS,
-#     submodules = [
-#         # do not sort (buildifier)
-#         "camlsnark_c.ml",
-#     ],
-# )
-
 ocaml_module(
-    # name = "camlsnark_c.cm_",
     name = "camlsnark_c",
     impl = "camlsnark_c.ml",
-    # ns_module = ":camlsnark_c_ns_module",
     opts = IMPL_OPTS
     + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
-        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
         "@opam//pkg:core",
         "@opam//pkg:ctypes",
         "@opam//pkg:ctypes.foreign",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
     ],
     cc_deps = {
         "@libsnark//caml:snark_caml_static": "default"
     }
 )
 
-################################################################
-# ocaml_executable(
-#     name = "camlsnark_linker_flags_gen",
-#     opts = EXEC_OPTS,
-#     visibility = ["//visibility:public"],
-#     deps = [
-#         # do not sort (buildifier)
-#         ":camlsnark_linker_flags_gen.cm_",
-#     ],
-# )
-
-# ocaml_module(
-#     name = "camlsnark_linker_flags_gen.cm_",
-#     impl = "camlsnark_linker_flags_gen.ml",
-#     opts = IMPL_OPTS,
-#     visibility = ["//visibility:public"],
-#     deps = [
-#         # do not sort (buildifier)
-#         "@opam//pkg:dune.configurator",
-#     ],
-# )
-
-ocaml_executable(
-    name = "camlsnark_ctypes_stubs",
-    opts = EXEC_OPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@snarky//src/camlsnark_c/bindings:camlsnark_c_bindings",
-        ":camlsnark_ctypes_stubs.cm_",
+cc_library(
+    name = "snark_ffi_bindings",
+    srcs = [
+        ":libsnark_ffi_bindings_c",
+        "@libsnark//caml:template_caml_curve_h.hpp"
     ],
+    copts = ["-I.", "-Iexternal",
+             "-Iexternal/libsnark/caml",
+             ] + CPPFLAGS + CFLAGS,
+    linkstatic = LINKSTATIC,
+    deps = [
+        "@ocaml//csdk:hdrs",
+        "@ocaml//csdk/ctypes",
+        "@libsnark//libsnark",
+        "@libsnark//caml:snark_caml",
+    ],
+    visibility = ["//visibility:public"],
 )
 
 ocaml_module(
@@ -108,9 +71,45 @@ ocaml_module(
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
-        "@snarky//src/camlsnark_c/bindings:camlsnark_c_bindings",
         "@opam//pkg:ctypes",
         "@opam//pkg:ctypes.stubs",
         "@opam//pkg:core_kernel",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
+    ],
+)
+
+genrule(
+    name = "libsnark_ffi_bindings_c",
+    tools = [":camlsnark_ctypes_stubs"],
+    outs = [
+        "libsnark_ffi_bindings.c",
+    ],
+    cmd = "\n".join([
+        "./$(location :camlsnark_ctypes_stubs);",
+        "cp libsnark_ffi_bindings.c \"$(@D)/\"",
+    ])
+)
+
+genrule(
+    name = "libsnark_ffi_bindings_ml",
+    tools = [":camlsnark_ctypes_stubs"],
+    outs = [
+        "libsnark_ffi_bindings.ml"
+    ],
+    cmd = "\n".join([
+        "./$(location //src/camlsnark_c:camlsnark_ctypes_stubs);",
+        "cp libsnark_ffi_bindings.ml \"$(@D)/\"",
+    ]),
+    visibility = ["//src/camlsnark_c/libsnark_bindings:__pkg__"],
+)
+
+ocaml_executable(
+    name = "camlsnark_ctypes_stubs",
+    opts = EXEC_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        # "//src/camlsnark_c/bindings:camlsnark_c_bindings",
+        ":camlsnark_ctypes_stubs.cm_",
     ],
 )
