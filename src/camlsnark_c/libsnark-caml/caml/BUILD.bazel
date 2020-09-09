@@ -4,7 +4,7 @@ load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG", "LINKST
 exports_files(["template_caml_curve_h.hpp"])
 
 LINKOPTS = select({
-    "@//bzl/host:linux": [ "-E"],
+    "@//bzl/host:linux": [], # "-E"],
     "@//bzl/host:macos": [],
     "//conditions:default": []
 })
@@ -52,9 +52,10 @@ cc_binary(
     # ],
     copts = ["-I.", "-Iexternal",
              "-Iexternal/libsnark",
-             "-Iexternal/libff"
+             "-Iexternal/libff",
+             "-lstdc++"
     ] + CPPFLAGS + CXXFLAGS,
-    linkopts = LINKOPTS,
+    linkopts = LINKOPTS + ["-lstdc++"],
     defines = DDEBUG,
     deps = [
         "//libsnark",
@@ -64,7 +65,7 @@ cc_binary(
         "//bzl/external/libgmp",
         "//bzl/external/openmp"
     ] + select({
-        "@//bzl/host:linux": ["//bzl/external/procps"],
+        "//bzl/host:linux": ["//bzl/external/procps"],
         "//conditions:default": []
     })
 )

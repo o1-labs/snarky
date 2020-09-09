@@ -9,6 +9,11 @@ string_flag( name = "link", build_setting_default = "on_demand",
              values = ["always", "on_demand"],
              visibility = ["//visibility:public"])
 
+#### control linking cc libs to ocaml
+string_flag( name = "cc_linkage", build_setting_default = "dynamic",
+             values = ["dynamic", "static"],
+             visibility = ["//visibility:public"])
+
 #### control -dump-ast flag
 string_flag( name = "ppx_format", build_setting_default = "binary",
              values = ["binary", "text"],

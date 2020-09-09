@@ -45,7 +45,7 @@ ALWAYSLINK = select({
     "//conditions:default": True
 })
 
-CPPFLAGS = ["-Iexternal/libff"] + DEBUG_FLAGS + WARNINGS
+CPPFLAGS = ["-fPIC", "-Iexternal/libff"] + DEBUG_FLAGS + WARNINGS
 CFLAGS   = []
 CXXFLAGS = ["-std=c++14", "-lstdc++"] + OPTIMIZE_CXXFLAGS
 LDFLAGS  = []

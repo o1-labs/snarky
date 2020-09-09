@@ -7,6 +7,11 @@ load("@bazel_skylib//lib:selects.bzl", "selects")
 config_setting( name = "always_link", flag_values = { "//:link": "always" },
                 visibility = ["//visibility:public"])
 
+config_setting( name = "cc_link_dynamic", flag_values = { "//:cc_linkage": "dynamic" },
+                visibility = ["//visibility:public"])
+config_setting( name = "cc_link_static", flag_values = { "//:cc_linkage": "static" },
+                visibility = ["//visibility:public"])
+
 config_setting( name = "ppx_text", flag_values = { "//:ppx_format": "text" },
                 visibility = ["//visibility:public"])
 config_setting( name = "ppx_binary", flag_values = { "//:ppx_format": "binary" },

@@ -67,15 +67,14 @@ ocaml_module(
     impl = "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings_ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS
-    + ["-thread", "-linkall", "-ccopt", "-Lexternal/libffi/libffi/lib"],
+    + ["-thread", "-linkall"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:ctypes",
-        # "//src/camlsnark_c/cpp_vector/gen:vector_ffi_binding_srcs",
     ],
     cc_deps = {
-        "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "dynamic"
+        "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "default"
     }
 )
 

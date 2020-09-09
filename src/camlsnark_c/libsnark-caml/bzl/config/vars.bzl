@@ -55,7 +55,7 @@ CPPFLAGS = select({
     "//bzl/host:linux": ["-fopenmp"],
     "//conditions:default": []
 }) + [
-    "-fPIC",
+    "-fPIC", "-DPIC"
 ] + DEBUG_FLAGS + WARNINGS
 
 CFLAGS   = []

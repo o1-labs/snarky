@@ -4,8 +4,29 @@ configure_make(
     name = "libsodium",
     configure_env_vars = select({
         "//bzl/host:macos": {"AR": ""},
-        "//conditions:default": {}
-    }),
+        "//bzl/host:linux": {
+            "CFLAGS" : "-fPIC -DPIC -m64",
+            "CXXFLAGS" : "-lstdc++ -m64 -fomit-frame-pointer -fPIC -DPIC",
+        }
+    }, no_match_error = "Unsupported platform.  Linux and MacOS only."),
+    configure_options = select({
+        "//bzl/host:linux_x64": [
+            "--disable-pie",
+            "--with-pic"
+        ],
+        "//bzl/host:macos": [
+            "--build=x86_64-apple-darwin",
+            "AR=\"\"",
+            "--with-pic",
+            ## due to the -D stuff Bazel inserts, omission of -Dredacted results in:
+            ## error: invalid suffix on literal; C++11 requires a space
+            ## between literal and identifier [-Wreserved-user-defined-literal]
+            "CFLAGS=-Dredacted",
+        ],
+        "//conditions:default": [],
+    }) + [
+        "--enable-cxx",
+    ],
     lib_source = "@libsodium//:all",
     out_lib_dir = "lib",
     static_libraries = ["libsodium.a"],

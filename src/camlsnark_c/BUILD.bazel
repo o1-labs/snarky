@@ -64,7 +64,7 @@ ocaml_module(
         "@opam//pkg:ctypes.foreign",
     ],
     cc_deps = {
-        "@libsnark//caml:snark_caml": "dynamic"
+        "@libsnark//caml:snark_caml_static": "default"
     }
 )
 

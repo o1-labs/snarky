@@ -28,8 +28,15 @@ OPTIMIZE_LINKFLAGS = select({
     "//conditions:default": []
 })
 
+## ocaml cc_deps:
+CC_LINKAGE = "" + select({
+    "@//bzl/host:linux": "static",
+    "@//bzl/host:macos": "dynamic"
+}, no_match_error = "Snarky CC_LINKAGE: unsupported platform.  Linux or MacOS only.")
+
+## cc_binary, cc_library:
 LINKSTATIC = select({
-    "@//bzl/host:linux": True,
+    "@//bzl/host:linux": False,
     "@//bzl/host:macos": False,
     "//conditions:default": True
 })

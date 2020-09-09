@@ -1,4 +1,4 @@
-load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS", "LINKSTATIC")
+load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS", "LINKSTATIC")
 
 load(
     "@obazl_rules_ocaml//ocaml:build.bzl",
@@ -48,18 +48,6 @@ ocaml_archive(
         ":libsnark.cm_",
         ## end ns_module
     ],
-    cc_deps = {
-    #     "@libff//bzl/external/libgmp": "dynamic",
-        # "@libff//bzl/external/libsodium": "dynamic",
-    #     "@libff//bzl/external/openssl": "dynamic",
-    #     "@libff//libff/common:logging": "dynamic",
-    #     "@libff//libff:ff": "dynamic",
-    #     # ":snark_ffi_bindings": "dynamic",
-    #     "@libsnark//libsnark": "dynamic",
-    #     "@libsnark//caml:snark_caml": "dynamic",
-    #     "@libsnark//caml:vectors": "dynamic",
-    #     # "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "dynamic"
-    }
 )
 
 ocaml_ns_module(
@@ -132,7 +120,7 @@ ocaml_module(
         "//src/camlsnark_c",
     ],
     cc_deps = {
-        ":snark_ffi_bindings": "dynamic"
+        ":snark_ffi_bindings": "default"
     }
 )
 
@@ -150,7 +138,7 @@ cc_library(
         "@ocaml//csdk:hdrs",
         "@ocaml//csdk/ctypes",
         "@libsnark//libsnark",
-        "@libsnark//caml:snark_caml",
+        "@libsnark//caml:snark_caml_static",
     ],
     visibility = ["//visibility:public"],
 )
