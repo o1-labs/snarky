@@ -31,6 +31,17 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+ocaml_executable(
+    name = "gen_vector_stubs",
+    opts = EXEC_OPTS,
+    deps = [
+        # do not sort (buildifier)
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
+        ":gen_vector_stubs.cm_",
+        # "//src/camlsnark_c/bindings:vector.cm_",
+    ],
+)
+
 genrule(
     name = "vector_ffi_bindings_ml",
     tools = [":gen_vector_stubs"],
@@ -56,17 +67,6 @@ genrule(
         "./$(location :gen_vector_stubs);",
         "cp vector_ffi_bindings.c \"$(@D)/\"",
     ])
-)
-
-ocaml_executable(
-    name = "gen_vector_stubs",
-    opts = EXEC_OPTS,
-    deps = [
-        # do not sort (buildifier)
-        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
-        ":gen_vector_stubs.cm_",
-        # "//src/camlsnark_c/bindings:vector.cm_",
-    ],
 )
 
 ocaml_module(

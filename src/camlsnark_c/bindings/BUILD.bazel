@@ -27,8 +27,7 @@ CAMLSNARK_C_BINDINGS_NS = "Camlsnark_c_bindings"
 
 ocaml_archive(
     name = "camlsnark_c_bindings",
-    opts = ARCHIVE_OPTS,
-    # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
+    opts = ARCHIVE_OPTS + ["-linkall"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -41,7 +40,6 @@ ocaml_archive(
         ":vector.cm_",
         ":bindings.cm_",
     ],
-    # cclibs = ["//bzl/external/libffi"]
 )
 
 ocaml_ns_module(

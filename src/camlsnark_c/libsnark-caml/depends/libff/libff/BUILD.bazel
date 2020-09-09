@@ -23,7 +23,7 @@ cc_binary(
         "//libff/algebra/curves/mnt/mnt4:public_params",
         "//libff/algebra/curves/mnt/mnt6",
         "//libff/algebra/curves/mnt/mnt6:public_params",
-        # "//libff/algebra/curves/mnt753",
+        "//libff/algebra/curves/mnt753",
         "//libff/algebra/curves/mnt753/mnt4753",
         # "//libff/algebra/curves/mnt753/mnt4753:public_params",
         "//libff/algebra/curves/mnt753/mnt6753",
