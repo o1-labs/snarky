@@ -114,6 +114,13 @@ build --verbose_failures
 build --sandbox_debug
 ```
 
+Build rules may contain macros loaded from .bzl files. You can see how
+they expand:
+
+```
+$ bazel query --output=build //pkg/path:target
+```
+
 If you try a Dune build and you get an unexpected error like:
 
 ```
@@ -122,6 +129,8 @@ Error: Too many opam files for package "reformat-snarky":
 ```
 
 then you probably just need to run `$ bazel clean` before running dune.
+
+If you get strange link errors, try buiding with `--spawn_strategy=local`.
 
 #### <a name="config">Configuration</a>
 
