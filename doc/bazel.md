@@ -89,6 +89,17 @@ your
 build](https://blog.bazel.build/2015/06/17/visualize-your-build.html)
 for some simple examples.
 
+## Bazel Code
+
+Buildifier sorts things.  To prevent this add this comment:
+
+`# do not sort`
+
+## Dependencies
+
+Since OBazl manages transitive deps, you only have to list direct
+deps. To make sure you've listed them all, you need to run a clean build for each target.
+
 ## <a name="debugging">Debugging and Troubleshooting</a>
 
 Bazel has its own work area and keeps track of lots of info; you can
@@ -130,9 +141,31 @@ Error: Too many opam files for package "reformat-snarky":
 
 then you probably just need to run `$ bazel clean` before running dune.
 
+#### Link problems
+
 If you get strange link errors, try buiding with `--spawn_strategy=local`.
 
-#### <a name="config">Configuration</a>
+Note that MacOS uses clang and libc++, Linux uses gcc and libstdc++.
+If you mix these - e.g. compiling a C++ on MacOS with -lstdc++ - you
+will probably run into trouble. For example, on the Mac you might see
+an error message from dydl complaining about "symbol not found,
+expected in: flat namespace" (as opposed to the Mac's standard
+"twolevel" namespace).
+
+Fortunately Bazel usually does the right thing, so be careful about
+adding -lstdc++ or the like.
+
+Exception: on the Mac, when using rules_foriegn_cc, you may need to
+pass -lc++ in CXXFLAGS, since Bazel does not construct the command for
+these. If you get an error saying C++ compiler not found this could be
+the culprit. (See bzl/external/libgmp for example; build it without
+-lc++ to see the error.)
+
+#### misc
+
+Corrupted compilation unit description: an OCaml msg.  Cause unknown. Usually rerunning the build works.
+
+### <a name="config">Configuration</a>
 
 Each dependency has its own set of build flags.  You can set them
 individually; for example, to build with `debug` and `verbose` set for

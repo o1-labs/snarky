@@ -8,7 +8,6 @@ cmake_external(
     shared_libraries = select({
         "//bzl/host:macos": ["libomp.dylib"],
         "//bzl/host:linux": ["libomp.so"],
-        "//conditions:default": ["libomp.so"],
-    }),
+    }, no_match_error = "OpenMP: unsupported platform.  Linux and MacOS only."),
     visibility = ["//visibility:public"],
 )

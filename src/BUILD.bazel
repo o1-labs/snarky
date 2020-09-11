@@ -46,16 +46,17 @@ ocaml_archive(
         # do not sort (buildifier)
         "@opam//pkg:base64",
         "@opam//pkg:bignum",
-        "//bitstring_lib",
         "@opam//pkg:core_kernel",
         "@opam//pkg:ctypes",
+
+        "//src/camlsnark_c",
         "//ctypes_foreign:ctypes_foreign_libffi",
+        "//bitstring_lib",
         "//fold_lib",
         "//h_list",
         "//interval_union",
+
         "//src/base:snarky_backendless",
-        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
-        "//src/camlsnark_c",
         "//src/camlsnark_c/cpp_string:snarky_cpp_string",
         "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
         "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
@@ -68,7 +69,6 @@ ocaml_archive(
         ":backend_types.cm_",
         ":backends.cm_",
         ":snark.cm_",
-        ":toplevel.cm_",
         ":snarky.cm_",
         ## end ns_module
     ]
@@ -83,7 +83,6 @@ ocaml_ns_module(
         "backends.ml",
         "gpu_prover.ml",
         "snark.ml",
-        "toplevel.ml",
         "snarky.ml",
     ]
 )

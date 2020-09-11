@@ -41,7 +41,27 @@ ocaml_module(
         "//src/camlsnark_c/bindings:camlsnark_c_bindings",
     ],
     cc_deps = {
-        "@libsnark//caml:snark_caml_static": "default"
+        "@libsnark//caml:libsnark_caml.so": "default",
+    }
+)
+
+# NOTE: we're building this here, in order to keep all tasks
+# associated with snark_ffi_bindings in one place; but this module
+# serves as a submodule in a different package.
+ocaml_module(
+    name = "snark_ffi_bindings.cm_",
+    impl = "//src/camlsnark_c:libsnark_ffi_bindings_ml",  ## generated file
+    ns_module = "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings_ns_module",
+    opts = IMPL_OPTS + ["-thread"],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        ":camlsnark_c",
+    ],
+    cc_deps = {
+        ":snark_ffi_bindings": "default",
+        "@libsnark//caml:libsnark_caml.so": "default",
     }
 )
 
@@ -58,9 +78,7 @@ cc_library(
     deps = [
         "@ocaml//csdk:hdrs",
         "@ocaml//csdk/ctypes",
-        "@libsnark//libsnark",
-        "@libsnark//caml:snark_caml",
-    ],
+   ],
     visibility = ["//visibility:public"],
 )
 

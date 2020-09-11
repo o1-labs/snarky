@@ -24,10 +24,7 @@ cc_library(
     srcs = ["logging.cpp",
             "logging.hpp"],
     hdrs = ["logging.hpp"],
-    copts = select({
-        "//bzl/host:macos": ["-std=c++14", "-stdlib=libc++"],
-        "//conditions:default": []
-    }) + ["-I."] + CPPFLAGS + CXXFLAGS,
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
     defines = DDEBUG,
     include_prefix = "libff/common",
     linkstatic = LINKSTATIC,

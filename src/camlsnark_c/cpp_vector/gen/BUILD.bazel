@@ -12,7 +12,7 @@ load(
 COMMON_OPTS = select({
     "//bzl/config:enable_verbose": ["-verbose"],
     "//conditions:default": [],
-}) + ["-linkall", "-thread"]
+}) + ["-thread"]
 
 EXEC_OPTS = COMMON_OPTS
 IMPL_OPTS = COMMON_OPTS

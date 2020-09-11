@@ -10,7 +10,7 @@ LINKOPTS = select({
 })
 
 cc_binary(
-    name = "snark_caml",
+    name = "libsnark_caml.so",
     linkshared = True,
     visibility = ["//visibility:public"],
     srcs = [
@@ -45,34 +45,46 @@ cc_binary(
         "template_caml_curve_cpp.hpp",
         "template_caml_mnt_cpp.hpp",
     ],
-    # hdrs = [
-    #     "strings.h",
-    #     "utils.h",
-    #     "vectors.h",
-    # ],
     copts = ["-I.", "-Iexternal",
-             "-Iexternal/libsnark",
              "-Iexternal/libff",
-             "-lstdc++"
+             "-Iexternal/libsnark",
+             "-Iexternal/libfqfft",
     ] + CPPFLAGS + CXXFLAGS,
-    linkopts = LINKOPTS + ["-lstdc++"],
+    linkopts = LINKOPTS,
     defines = DDEBUG,
     deps = [
         "//libsnark",
-        "@libff//libff:ff",
+        "@libff//libff/common/default_types",
+        "@libff//libff/common:logging",
+        "@libff//libff/common:profiling",
+        "@libff//libff/common:utils",
+        "@libff//libff/algebra/curves/alt_bn128",
+        "@libff//libff/algebra/curves/alt_bn128:public_params",
+        "@libff//libff/algebra/curves/edwards",
+        "@libff//libff/algebra/curves/mnt",
+        "@libff//libff/algebra/curves/mnt/mnt4",
+        "@libff//libff/algebra/curves/mnt/mnt4:public_params",
+        "@libff//libff/algebra/curves/mnt/mnt6",
+        "@libff//libff/algebra/curves/mnt/mnt6:public_params",
+        "@libff//libff/algebra/curves/mnt753",
+        "@libff//libff/algebra/curves/mnt753/mnt4753",
+        "@libff//libff/algebra/curves/mnt753/mnt4753:public_params",
+        "@libff//libff/algebra/curves/mnt753/mnt6753",
+        "@libff//libff/algebra/curves/mnt753/mnt6753:public_params",
+        "@libff//libff/algebra/fields:bigint",
         "//bzl/external/openssl",
         "//bzl/external/libsodium",
         "//bzl/external/libgmp",
         "//bzl/external/openmp"
     ] + select({
-        "//bzl/host:linux": ["//bzl/external/procps"],
-        "//conditions:default": []
+        "@//bzl/config:enable_curve_bn128": ["@libff//libff/algebra/curves/bn128"],
+        "//conditions:default": [],
     })
 )
 
 cc_library(
-    name = "snark_caml_static",
-    linkstatic = LINKSTATIC,
+    name = "snark_caml",
+    linkstatic = True, # LINKSTATIC,
     visibility = ["//visibility:public"],
     srcs = [
         "caml_bn128.cpp",
@@ -105,6 +117,8 @@ cc_library(
 
         "template_caml_curve_cpp.hpp",
         "template_caml_mnt_cpp.hpp",
+
+        "@libff//libff/algebra/curves/mnt753/mnt4753",
     ],
     hdrs = [
         "strings.h",
@@ -119,14 +133,28 @@ cc_library(
     defines = DDEBUG,
     deps = [
         "//libsnark",
-        "@libff//libff:ff",
-        "//bzl/external/openssl",
-        "//bzl/external/libsodium",
-        "//bzl/external/libgmp",
-        "//bzl/external/openmp"
+        "@libff//libff/common/default_types",
+        "@libff//libff/common:logging",
+        "@libff//libff/common:profiling",
+        "@libff//libff/common:utils",
+        # "@libff//libff/algebra/curves/bn128",
+        "@libff//libff/algebra/curves/alt_bn128",
+        "@libff//libff/algebra/curves/alt_bn128:public_params",
+        "@libff//libff/algebra/curves/edwards",
+        "@libff//libff/algebra/curves/mnt",
+        "@libff//libff/algebra/curves/mnt/mnt4",
+        "@libff//libff/algebra/curves/mnt/mnt4:public_params",
+        "@libff//libff/algebra/curves/mnt/mnt6",
+        "@libff//libff/algebra/curves/mnt/mnt6:public_params",
+        "@libff//libff/algebra/curves/mnt753",
+        "@libff//libff/algebra/curves/mnt753/mnt4753",
+        "@libff//libff/algebra/curves/mnt753/mnt4753:public_params",
+        "@libff//libff/algebra/curves/mnt753/mnt6753",
+        "@libff//libff/algebra/curves/mnt753/mnt6753:public_params",
+        "@libff//libff/algebra/fields:bigint",
     ] + select({
-        "@//bzl/host:linux": ["//bzl/external/procps"],
-        "//conditions:default": []
+        "@//bzl/config:enable_curve_bn128": ["@libff//libff/algebra/curves/bn128"],
+        "//conditions:default": [],
     })
 )
 
@@ -251,21 +279,6 @@ cc_library(
         "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
     ],
 )
-
-#     ## linkopts from camlsnark_linker_flags_gen.ml
-#     linkopts = select({
-#         "//bzl/host:linux" : [
-#             "-Wl,-E",
-#             "-g",
-#             "-Wl,--push-state,-Bstatic",
-#             "-lsodium",
-#             "-Wl,--pop-state",
-#         ],
-#         "//bzl/host:macos" : []
-#     }) + ["-lstdc++"],
-
-# genrule(
-#     name = "copy_over"
 
 ## This genrule replaces copy_over.sh; it generates all cpp source files.
 ## Once transition to a pure Bazel system is complete, the

@@ -29,7 +29,7 @@ SNARKY_BACKENDLESS_NS = "Snarky_backendless"
 PPX12_B61C7A4 = "//ppx/exe:ppx12_b61c7a40-06e3-5466-8b7b-b3535f5a4aa6"
 PPX_BIN_OPTS = [
     # do not sort (buildifier)
-        "-cookie",
+    "-cookie",
     "library-name=\"snarky_backendless\"",
     "-corrected-suffix",
     ".ppx-corrected",
@@ -42,7 +42,11 @@ ocaml_archive(
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:bisect_ppx.runtime",
+        "//tuple_lib",
+        "//bitstring_lib",
+        "//interval_union",
         ":snarky_backendless_ns_module",
+        ":as_prover0.cm_",
         ":lens.cm_",
         ":cvar.cm_",
         ":run_state.cm_",
@@ -53,9 +57,6 @@ ocaml_archive(
         ":number.cm_",
         ":monad_sequence.cm_",
         ":constraint.cm_",
-        "//tuple_lib",
-        "//bitstring_lib",
-        "//interval_union",
         ":pedersen.cm_",
         ":knapsack.cm_",
         ":backend_extended.cm_",
@@ -67,7 +68,6 @@ ocaml_archive(
         ":monad_let.cm_",
         ":free_monad.cm_",
         ":typ_monads.cm_",
-        ":as_prover0.cm_",
         ":checked.cm_",
         ":as_prover.cm_",
         ":checked_runner.cm_",
@@ -130,23 +130,6 @@ ocaml_ns_module(
 )
 
 ################################################################
-####  as_prover
-# ocaml_library(
-#     name = "as_prover",
-#     # ns_module = ":snarky_backendless_ns_module",
-#     # opts = IMPL_OPTS,
-#     # ppx_bin = PPX12_B61C7A4,
-#     # ppx_bin_opts = PPX_BIN_OPTS,
-#     visibility = ["//visibility:public"],
-#     deps = [
-#         # do not sort (buildifier)
-#         ":as_prover0.cm_",
-#         ":as_prover_intf.cm_",
-#         ":as_prover.cmi",
-#         ":as_prover.cm_",
-#     ],
-# )
-
 ocaml_module(
     name = "as_prover0.cm_",
     impl = "as_prover0.ml",
@@ -189,6 +172,7 @@ ocaml_interface(
     ppx_bin_opts = PPX_BIN_OPTS,
     deps = [
         # do not sort (buildifier)
+        ":as_prover0.cm_",
         ":as_prover_intf.cm_",
         ":checked.cm_",
         ":checked_intf.cm_",
@@ -207,6 +191,8 @@ ocaml_module(
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:core_kernel",
+        ":as_prover0.cm_",
+        ":checked.cm_",
     ],
 )
 
@@ -263,9 +249,6 @@ ocaml_interface(
     intf = "boolean.mli",
     ns_module = ":snarky_backendless_ns_module",
     opts = INTF_OPTS,
-    # deps = [
-    #     # do not sort (buildifier)
-    # ],
 )
 
 ocaml_module(
@@ -277,9 +260,6 @@ ocaml_module(
     ppx_bin = PPX12_B61C7A4,
     ppx_bin_opts = PPX_BIN_OPTS,
     visibility = ["//visibility:public"],
-    # deps = [
-    #     # do not sort (buildifier)
-    # ],
 )
 
 ocaml_module(
@@ -296,14 +276,6 @@ ocaml_module(
         ":as_prover0.cm_",
         ":as_prover_intf.cm_",
         ":checked_intf.cm_",
-        # ":constraint.cm_",
-        # ":cvar.cm_",
-        # ":handle.cm_",
-        # ":lens.cm_",
-        # ":monad_let.cm_",
-        # ":request.cm_",
-        # ":run_state.cm_",
-        # ":typ_monads.cm_",
         ":types.cm_",
     ],
 )
@@ -318,13 +290,7 @@ ocaml_module(
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
-        # ":constraint.cm_",
-        # ":cvar.cm_",
-        # ":handle.cm_",
         ":lens.cm_",
-        # ":monad_let.cm_",
-        # ":request.cm_",
-        # ":run_state.cm_",
         ":types.cm_",
     ],
 )
@@ -340,21 +306,9 @@ ocaml_module(
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:core_kernel",
-        #  "//src/intf:snarky_intf",
         ":as_prover.cm_",
-        # ":as_prover_intf.cm_",
         ":backend_extended.cm_",
-        # ":checked.cm_",
         ":checked_intf.cm_",
-        # ":constraint.cm_",
-        # ":constraint_system.cm_",
-        # ":cvar.cm_",
-        # ":handle.cm_",
-        # ":lens.cm_",
-        # ":monad_let.cm_",
-        # ":request.cm_",
-        # ":run_state.cm_",
-        # ":typ_monads.cm_",
         ":types.cm_",
     ],
 )
@@ -443,9 +397,6 @@ ocaml_module(
     ppx_bin = PPX12_B61C7A4,
     ppx_bin_opts = PPX_BIN_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
 )
 
 ocaml_module(
@@ -470,9 +421,6 @@ ocaml_module(
     ppx_bin = PPX12_B61C7A4,
     ppx_bin_opts = PPX_BIN_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
 )
 
 ocaml_interface(
@@ -515,9 +463,6 @@ ocaml_module(
     ppx_bin = PPX12_B61C7A4,
     ppx_bin_opts = PPX_BIN_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
 )
 
 ocaml_interface(
@@ -527,12 +472,7 @@ ocaml_interface(
     opts = INTF_OPTS,
     deps = [
         # do not sort (buildifier)
-        # ":boolean.cm_",
-        # ":checked.cm_",
-        # ":lens.cm_",
-        # ":request.cm_",
         ":snark_intf.cm_",
-        # ":typ.cm_",
     ],
 )
 
@@ -548,11 +488,6 @@ ocaml_module(
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:core_kernel",
-        # ":boolean.cm_",
-        # ":lens.cm_",
-        # ":request.cm_",
-        # ":snark_intf.cm_",
-        # ":typ.cm_",
     ],
 )
 
@@ -620,9 +555,6 @@ ocaml_module(
     ppx_bin = PPX12_B61C7A4,
     ppx_bin_opts = PPX_BIN_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
 )
 
 ocaml_module(
@@ -638,10 +570,7 @@ ocaml_module(
         "//bitstring_lib",
         "//interval_union",
         "//tuple_lib",
-        # ":boolean.cm_",
-        # ":checked.cm_",
         ":snark_intf.cm_",
-        # ":typ.cm_",
     ],
 )
 
@@ -650,9 +579,6 @@ ocaml_interface(
     intf = "request.mli",
     ns_module = ":snarky_backendless_ns_module",
     opts = INTF_OPTS,
-    deps = [
-        # do not sort (buildifier)
-    ],
 )
 
 ocaml_module(
@@ -696,9 +622,7 @@ ocaml_module(
         # do not sort (buildifier)
         "@opam//pkg:core_kernel",
         "//src/intf:snarky_intf",
-        # ":constraint.cm_",
         ":constraint_system.cm_",
-        # ":cvar.cm_",
         ":request.cm_",
     ],
 )
@@ -732,31 +656,10 @@ ocaml_module(
         "@opam//pkg:core_kernel",
         "//bitstring_lib",
         "//h_list",
-        #  "//src/intf:snarky_intf",
-        # ":as_prover.cm_",
-        # ":as_prover0.cm_",
-        # ":as_prover_intf.cm_",
-        # ":backend_extended.cm_",
-        # ":backend_intf.cm_",
         ":bin_prot_io.cm_",
-        # ":boolean.cm_",
-        # ":checked.cm_",
-        # ":checked_intf.cm_",
         ":checked_runner.cm_",
-        # ":constraint.cm_",
-        # ":constraint_system.cm_",
-        # ":cvar.cm_",
         ":enumerable.cm_",
-        # ":handle.cm_",
-        # ":monad_sequence.cm_",
         ":number.cm_",
-        # ":request.cm_",
-        # ":restrict_monad.cm_",
-        # ":run_state.cm_",
-        # ":snark_intf.cm_",
-        # ":typ.cm_",
-        # ":typ_monads.cm_",
-        # ":types.cm_",
     ],
 )
 
@@ -771,9 +674,6 @@ ocaml_module(
     deps = [
         # do not sort (buildifier)
         ":snark0.cm_",
-        # ":backend_intf.cm_",
-        # ":knapsack.cm_",
-        # ":merkle_tree.cm_",
     ],
 )
 
@@ -790,22 +690,11 @@ ocaml_module(
         "//bitstring_lib",
         "//h_list",
         "//src/intf:snarky_intf",
-        # ":as_prover.cm_",
         ":boolean.cm_",
-        # ":checked.cm_",
-        # ":constraint.cm_",
-        # ":cvar.cm_",
         ":enumerable_intf.cm_",
-        # ":lens.cm_",
-        # ":monad_let.cm_",
         ":monad_sequence.cm_",
         ":number_intf.cm_",
-        # ":request.cm_",
-        # ":run_state.cm_",
-        # ":traversable.cm_",
         ":typ.cm_",
-        # ":typ_monads.cm_",
-        # ":types.cm_",
     ],
 )
 
@@ -821,41 +710,6 @@ ocaml_module(
         # do not sort (buildifier)
         "//src/intf:snarky_intf",
         "//h_list",
-        # ":as_prover.cm_",
-        # ":as_prover0.cm_",
-        # ":as_prover_intf.cm_",
-        # ":backend_extended.cm_",
-        # ":backend_intf.cm_",
-        # ":bin_prot_io.cm_",
-        # ":boolean.cm_",
-        # ":checked.cm_",
-        # ":checked_intf.cm_",
-        # ":checked_runner.cm_",
-        # ":constraint.cm_",
-        # ":constraint_system.cm_",
-        # ":cvar.cm_",
-        # ":enumerable.cm_",
-        # ":enumerable_intf.cm_",
-        # ":free_monad.cm_",
-        # ":handle.cm_",
-        # ":knapsack.cm_",
-        # ":lens.cm_",
-        # ":merkle_tree.cm_",
-        # ":monad_let.cm_",
-        # ":monad_sequence.cm_",
-        # ":number.cm_",
-        # ":number_intf.cm_",
-        # ":pedersen.cm_",
-        # ":request.cm_",
-        # ":restrict_monad.cm_",
-        # ":run_state.cm_",
-        # ":snark.cm_",
-        # ":snark0.cm_",
-        # ":snark_intf.cm_",
-        # ":traversable.cm_",
-        # ":typ.cm_",
-        # ":typ_monads.cm_",
-        # ":types.cm_",
     ],
 )
 
@@ -887,12 +741,9 @@ ocaml_module(
         "//h_list",
         ":as_prover.cm_",
         ":as_prover_intf.cm_",
-        # ":checked.cm_",
         ":checked_intf.cm_",
-        # ":cvar.cm_",
         ":restrict_monad.cm_",
         ":traversable.cm_",
-        # ":typ_monads.cm_",
         ":types.cm_",
     ],
 )
@@ -925,7 +776,6 @@ ocaml_module(
         # ":constraint.cm_",
         ":cvar.cm_",
         ":handle.cm_",
-        # ":request.cm_",
         ":run_state.cm_",
         ":typ_monads.cm_",
     ],

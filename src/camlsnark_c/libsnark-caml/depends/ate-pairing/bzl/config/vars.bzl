@@ -7,8 +7,11 @@ load("@bazel_skylib//lib:selects.bzl", "selects")
 # endif
 
 CFLAGS_BASE = [
-    "-std=c++14 -lstdc++ -fPIC", "-fomit-frame-pointer", "-msse2", "-mfpmath=sse",  "-march=native",
+    "-std=c++14 -fPIC", "-fomit-frame-pointer", "-msse2", "-mfpmath=sse",  "-march=native",
 ] + select({
+    "//bzl/host:linux": ["-lstdc++"],
+    "//bzl/host:macos": [] # stdc++ is the default
+}, no_match_error = "CXXFLAGS: unsupported platform.  Linux or MacOS only.") + select({
     "//bzl/config:enable_debug" : ["-O0", "-g3"],
     "//conditions:default" : ["-O3", "-g0"]
 }) + select({

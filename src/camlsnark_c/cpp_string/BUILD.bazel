@@ -9,7 +9,7 @@ load(
 COMMON_OPTS = select({
     "//bzl/config:enable_verbose": ["-verbose"],
     "//conditions:default": [],
-}) + ["-thread", "-linkall"]
+}) + ["-thread"]
 
 LINK_OPTS = select({
     "//bzl/config:always_link": ["-linkall"],
@@ -59,7 +59,7 @@ ocaml_module(
     cmi = ":snarky_cpp_string.cmi",
     impl = "snarky_cpp_string.ml",
     # ns_module = ":snarky_cpp_string_ns_module",
-    opts = IMPL_OPTS + ["-linkall"],
+    opts = IMPL_OPTS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)

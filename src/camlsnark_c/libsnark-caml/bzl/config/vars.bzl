@@ -59,7 +59,11 @@ CPPFLAGS = select({
 ] + DEBUG_FLAGS + WARNINGS
 
 CFLAGS   = []
-CXXFLAGS = ["-std=c++14", "-lstdc++"] + OPTIMIZE_CXXFLAGS # ", "-D_LIBCXX_DEPRECATION_WARNINGS "]
+CXXFLAGS = ["-std=c++14"] + select({
+    "//bzl/host:linux": ["-lstdc++"],
+    "//bzl/host:macos": [] # stdc++ is the default
+}, no_match_error = "CXXFLAGS: unsupported platform.  Linux or MacOS only.") + OPTIMIZE_CXXFLAGS
+# ", "-D_LIBCXX_DEPRECATION_WARNINGS "]
 
 # OPT_FLAGS = ["-ggdb3", "-O2", "-march=native", "-mtune=native"]
 

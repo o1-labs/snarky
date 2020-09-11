@@ -3,8 +3,6 @@ load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS", "LINKSTATIC")
 load(
     "@obazl_rules_ocaml//ocaml:build.bzl",
     "ocaml_archive",
-    "ocaml_executable",
-    "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
 )
@@ -19,9 +17,7 @@ LINK_OPTS = select({
     "//conditions:default": [],
 }) + []
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
 IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
 ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS
 
 SNARKY_LIBSNARK_BINDINGS_NS = "Snarky_libsnark_bindings"
@@ -35,15 +31,15 @@ ocaml_archive(
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
-        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
         "@opam//pkg:core",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
         "//ctypes_foreign:ctypes_foreign_libffi",
         "//src/camlsnark_c/cpp_string:snarky_cpp_string",
         "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
         "//src/base:snarky_backendless",
-        ":snark_ffi_bindings.cm_",
 
         ":snarky_libsnark_bindings_ns_module",
+        "//src/camlsnark_c:snark_ffi_bindings.cm_", # NOTE: submodule imported from different pkg
         ":libsnark_r1cs_constraint_system.cm_",
         ":libsnark.cm_",
         ## end ns_module
@@ -59,6 +55,7 @@ ocaml_ns_module(
         "libsnark_r1cs_constraint_system.ml",
         "libsnark.ml",
     ],
+    visibility = ["//visibility:public"],
 )
 
 ocaml_module(
@@ -104,23 +101,8 @@ ocaml_module(
         "//ctypes_foreign:ctypes_foreign_libffi",
         "//src/camlsnark_c/cpp_string:snarky_cpp_string",
         "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
+        ":libsnark_r1cs_constraint_system.cm_",
+        "//src/camlsnark_c:snark_ffi_bindings.cm_"
     ],
 )
 
-################################################################
-ocaml_module(
-    name = "snark_ffi_bindings.cm_",
-    impl = "//src/camlsnark_c:libsnark_ffi_bindings_ml",  ## generated file
-    ns_module = ":snarky_libsnark_bindings_ns_module",
-    opts = IMPL_OPTS + ["-thread"],
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:ctypes",
-        "//src/camlsnark_c",
-    ],
-    cc_deps = {
-        "//src/camlsnark_c:snark_ffi_bindings": "dynamic"
-        # ":snark_ffi_bindings": "dynamic"
-    }
-)

@@ -27,7 +27,7 @@ CAMLSNARK_C_BINDINGS_NS = "Camlsnark_c_bindings"
 
 ocaml_archive(
     name = "camlsnark_c_bindings",
-    opts = ARCHIVE_OPTS + ["-linkall"],
+    opts = ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)

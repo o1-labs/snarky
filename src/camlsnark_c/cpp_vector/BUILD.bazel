@@ -35,7 +35,7 @@ PPX_BIN_OPTS = [
 
 ocaml_archive(
     name = "snarky_cpp_vector",
-    opts = ARCHIVE_OPTS + ["-linkall"],
+    opts = ARCHIVE_OPTS, # + ["-linkall"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -66,8 +66,7 @@ ocaml_module(
     name = "vector_ffi_bindings.cm_",
     impl = "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings_ml",
     ns_module = ":snarky_cpp_vector_ns_module",
-    opts = IMPL_OPTS
-    + ["-thread", "-linkall"],
+    opts = IMPL_OPTS + ["-thread"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
