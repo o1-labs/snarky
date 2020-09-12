@@ -55,8 +55,8 @@ cc_binary(
     deps = [
         "//libsnark",
         "@libff//libff/common/default_types",
-        "@libff//libff/common:common",
-        # "@libff//libff/common:logging",
+        # "@libff//libff/common:common",
+        "@libff//libff/common:logging",
         "@libff//libff/common:profiling",
         "@libff//libff/common:utils",
         "@libff//libff/algebra/curves/alt_bn128",
@@ -108,14 +108,14 @@ cc_library(
         "caml_mnt6753.hpp",
         "caml_mnt6753_specific.cpp",
 
-        "caml_logging.cpp",
-        "caml_logging.h",
-        "caml_strings.cpp",
-        "caml_strings.h",
-        "caml_utils.cpp",
-        "caml_utils.h",
-        "caml_vectors.cpp",
-        "caml_vectors.h",
+        # "logging.cpp",
+        # "logging.h",
+        # "strings.cpp",
+        # "strings.h",
+        # "utils.cpp",
+        # "utils.h",
+        # "vectors.cpp",
+        # "vectors.h",
 
         "template_caml_curve_cpp.hpp",
         "template_caml_mnt_cpp.hpp",
@@ -156,7 +156,8 @@ cc_library(
 
 
         "@libff//libff/common/default_types",
-        "@libff//libff/common:logging",
+        "@libff//libff/common:common",
+        # "@libff//libff/common:logging",
         "@libff//libff/common:profiling",
         "@libff//libff/common:utils",
         "@libff//libff/algebra/curves/alt_bn128",
@@ -179,45 +180,33 @@ cc_library(
     })
 )
 
+## temporary, until the static linking gets fixed:
 cc_library(
-    name = "strings",
-    srcs = ["caml_strings.cpp", "caml_strings.h"],
-    hdrs = ["caml_strings.h"],
+    name = "common",
+    hdrs = ["common.h", "logging.h"],
     linkstatic = LINKSTATIC,
-    copts = [
-        "-I.",
-        "-Iexternal",
-        "-Iexternal/csdk",
-        "-Iexternal/api",
-        "-Iexternal/csdk/api",
-    ] + CPPFLAGS + CXXFLAGS,
-    deps = [
-        "@libff//libff/algebra/curves/mnt/mnt4",
-        "@libff//libff/algebra/curves/mnt/mnt6",
-        "@libff//libff/algebra/fields",
-    ],
     visibility = ["//visibility:public"],
 )
 
-cc_library(
-    name = "vectors",
-    srcs = ["caml_vectors.cpp", "caml_vectors.h"],
-    hdrs = ["caml_vectors.h"],
-    linkstatic = LINKSTATIC,
-    copts = [
-        "-I.",
-        "-Iexternal",
-        "-Iexternal/csdk",
-        "-Iexternal/api",
-        "-Iexternal/csdk/api",
-    ] + CPPFLAGS + CXXFLAGS,
-    deps = [
-        "@libff//libff/algebra/curves/mnt/mnt4",
-        "@libff//libff/algebra/curves/mnt/mnt6",
-        "@libff//libff/algebra/fields",
-    ],
-    visibility = ["//visibility:public"],
-)
+# cc_library(
+#     name = "vectors",
+#     srcs = ["vectors.cpp", "vectors.h"],
+#     hdrs = ["vectors.h"],
+#     linkstatic = LINKSTATIC,
+#     copts = [
+#         "-I.",
+#         "-Iexternal",
+#         "-Iexternal/csdk",
+#         "-Iexternal/api",
+#         "-Iexternal/csdk/api",
+#     ] + CPPFLAGS + CXXFLAGS,
+#     deps = [
+#         "@libff//libff/algebra/curves/mnt/mnt4",
+#         "@libff//libff/algebra/curves/mnt/mnt6",
+#         "@libff//libff/algebra/fields",
+#     ],
+#     visibility = ["//visibility:public"],
+# )
 
 ################################################################
 ## For demo purposes, to match CMakelists.txt

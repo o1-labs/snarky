@@ -27,10 +27,8 @@ cc_library(
     deps = [
         # "@ocaml//csdk:hdrs",
         "@ocaml//csdk/ctypes",
-        # "//src/camlsnark_c:snark_ffi_bindings"
-        "@libsnark//caml:snark_caml",
-        # macos:
-        "@libsnark//caml:vectors"
+        "@libsnark//caml:common"
+        # "@libsnark//caml:vectors"
     ],
     visibility = ["//visibility:public"],
 )
