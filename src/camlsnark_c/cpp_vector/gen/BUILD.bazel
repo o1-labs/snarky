@@ -26,7 +26,8 @@ cc_library(
     deps = [
         # "@ocaml//csdk:hdrs",
         "@ocaml//csdk/ctypes",
-        "@libsnark//caml:vectors"
+        "@libsnark//caml:common"
+        # "@libsnark//caml:vectors"
     ],
     visibility = ["//visibility:public"],
 )

@@ -11,7 +11,7 @@ fi
 
 echo $$ > LIBSNARK_STUBS_CMAKE_PID
 
-if [ ! -v SNARKY_PERFORMANCE ] ||
+if [ -z "$SNARKY_PERFORMANCE" ] ||
    [ "$SNARKY_PERFORMANCE" = "off" ] ||
    [ "$SNARKY_PERFORMANCE" = "OFF" ] ||
    [ "$SNARKY_PERFORMANCE" = "false" ] ||
@@ -38,7 +38,7 @@ elif [ $(uname) = 'Darwin' ]; then
   pushd build
     BOOST_ROOT=/usr/local/Cellar/boost/1.68.0_1 \
     BOOST_INCLUDEDIR=/usr/local/Cellar/boost/1.68.0_1/include \
-    CPPFLAGS='-I/usr/local/opt/openssl/include-I/usr/local/opt/boost/include -I/usr/local/opt/gmp/include -I/usr/local/include -L/usr/local/lib -I/usr/local/include/gmp.h' \
+    CPPFLAGS='-I/usr/local/opt/openssl/include-I/usr/local/opt/boost/include -I/usr/local/opt/gmp/include -I/usr/local/include -L/usr/local/lib' \
     CFLAGS='-I/usr/local/include' \
     CXXFLAGS='-I/usr/local/include' \
     LDFLAGS='-L/usr/local/opt/openssl/lib -L/usr/local/opt/boost/lib -L/usr/local/opt/gmp/lib' \
