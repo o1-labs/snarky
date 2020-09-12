@@ -39,7 +39,7 @@ ocaml_archive(
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
-        "//src/camlsnark_c",
+        # "//src/camlsnark_c",
         ":snarky_cpp_vector_ns_module",
         ":vector_ffi_bindings.cm_",
         ":vector.cm_",
@@ -73,7 +73,8 @@ ocaml_module(
         "@opam//pkg:ctypes",
     ],
     cc_deps = {
-        "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "default"
+        "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "default",
+        # "@libsnark//caml:snark_caml": "default"
     }
 )
 

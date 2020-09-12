@@ -36,23 +36,25 @@ CC_LINKAGE = "" + select({
 
 ## cc_binary, cc_library:
 LINKSTATIC = select({
-    "@//bzl/host:linux": False,
+    "@//bzl/host:linux": True,
     "@//bzl/host:macos": False,
-    "//conditions:default": True
-})
+}, no_match_error = "snarky LINKSTATIC: unsupported platform.  MacOS or Linux only.")
 
 CPPFLAGS = select({
     ## FIXME: select on //bzl/config:enable_openmp
     "//bzl/host:macos": ["-Xpreprocessor", "-fopenmp"],
     "//bzl/host:linux": ["-fopenmp"],
-    "//conditions:default": []
-}) + [
+}, no_match_error = "snarky LINKSTATIC: unsupported platform.  MacOS or Linux only.") + [
     "-fPIC",
 ] + DEBUG_FLAGS + WARNINGS
 
 
 CFLAGS   = []
-CXXFLAGS = ["-std=c++14"] + OPTIMIZE_CXXFLAGS
+CXXFLAGS = ["-std=c++14"] + select({
+    "//bzl/host:linux": [], # "-lstdc++"],
+    "//bzl/host:macos": [] # stdc++ is the default
+}, no_match_error = "snarky CXXFLAGS: unsupported platform.  Linux or MacOS only.") + OPTIMIZE_CXXFLAGS
+
 LDFLAGS  = []
 
 #######################

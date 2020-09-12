@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG", "LINKSTATIC")
 
 cc_library(
     name = "data_structures",
@@ -21,7 +22,8 @@ cc_library(
         "sparse_vector.hpp",
         "sparse_vector.tcc",
     ],
-    copts = ["-I.", "-Iexternal/libsnark"],
+    copts = ["-I.", "-Iexternal/libsnark"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     include_prefix = "libsnark/common/data_structures",
     deps = [
         "//libsnark/common",

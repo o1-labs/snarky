@@ -33,14 +33,14 @@ cc_binary(
         "caml_mnt6753.hpp",
         "caml_mnt6753_specific.cpp",
 
-        "logging.cpp",
-        "logging.h",
-        "strings.cpp",
-        "strings.h",
-        "utils.cpp",
-        "utils.h",
-        "vectors.cpp",
-        "vectors.h",
+        # "caml_logging.cpp",
+        # "caml_logging.h",
+        # "caml_strings.cpp",
+        # "caml_strings.h",
+        # "caml_utils.cpp",
+        # "caml_utils.h",
+        # "caml_vectors.cpp",
+        # "caml_vectors.h",
 
         "template_caml_curve_cpp.hpp",
         "template_caml_mnt_cpp.hpp",
@@ -55,7 +55,8 @@ cc_binary(
     deps = [
         "//libsnark",
         "@libff//libff/common/default_types",
-        "@libff//libff/common:logging",
+        "@libff//libff/common:common",
+        # "@libff//libff/common:logging",
         "@libff//libff/common:profiling",
         "@libff//libff/common:utils",
         "@libff//libff/algebra/curves/alt_bn128",
@@ -84,7 +85,8 @@ cc_binary(
 
 cc_library(
     name = "snark_caml",
-    linkstatic = True, # LINKSTATIC,
+    linkstatic = LINKSTATIC,
+    # alwayslink = True,
     visibility = ["//visibility:public"],
     srcs = [
         "caml_bn128.cpp",
@@ -106,14 +108,14 @@ cc_library(
         "caml_mnt6753.hpp",
         "caml_mnt6753_specific.cpp",
 
-        "logging.cpp",
-        "logging.h",
-        "strings.cpp",
-        "strings.h",
-        "utils.cpp",
-        "utils.h",
-        "vectors.cpp",
-        "vectors.h",
+        "caml_logging.cpp",
+        "caml_logging.h",
+        "caml_strings.cpp",
+        "caml_strings.h",
+        "caml_utils.cpp",
+        "caml_utils.h",
+        "caml_vectors.cpp",
+        "caml_vectors.h",
 
         "template_caml_curve_cpp.hpp",
         "template_caml_mnt_cpp.hpp",
@@ -121,23 +123,42 @@ cc_library(
         "@libff//libff/algebra/curves/mnt753/mnt4753",
     ],
     hdrs = [
-        "strings.h",
-        "utils.h",
-        "vectors.h",
+        "caml_strings.h",
+        "caml_utils.h",
+        "caml_vectors.h",
     ],
     copts = ["-I.", "-Iexternal",
              "-Iexternal/libsnark",
-             "-Iexternal/libff"
+             "-Iexternal/libff",
+             "-Wl,-E"
     ] + CPPFLAGS + CXXFLAGS,
-    linkopts = LINKOPTS,
+    linkopts = LINKOPTS + ["-lbn128"],
     defines = DDEBUG,
     deps = [
-        "//libsnark",
+        # if building shared objects (macos) this suffices:
+        # "//libsnark",
+        # for static objects we need to list all transitive deps:
+        "//libsnark/common/data_structures",
+        "//libsnark/gadgetlib1",
+        "//libsnark/gadgetlib1/gadgets/hashes/sha256",
+        "//libsnark/gadgetlib2",
+        "//libsnark/reductions/r1cs_to_qap",
+        "//libsnark/relations",
+        "//libsnark/relations/circuit_satisfaction_problems/tbcs",
+        "//libsnark/relations/ram_computations/memory",
+        "//libsnark/relations/ram_computations/rams/fooram",
+        "//libsnark/relations/ram_computations/rams/tinyram",
+        "//libsnark/common/routing_algorithms",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs",
+
+
         "@libff//libff/common/default_types",
         "@libff//libff/common:logging",
         "@libff//libff/common:profiling",
         "@libff//libff/common:utils",
-        # "@libff//libff/algebra/curves/bn128",
         "@libff//libff/algebra/curves/alt_bn128",
         "@libff//libff/algebra/curves/alt_bn128:public_params",
         "@libff//libff/algebra/curves/edwards",
@@ -159,9 +180,29 @@ cc_library(
 )
 
 cc_library(
+    name = "strings",
+    srcs = ["caml_strings.cpp", "caml_strings.h"],
+    hdrs = ["caml_strings.h"],
+    linkstatic = LINKSTATIC,
+    copts = [
+        "-I.",
+        "-Iexternal",
+        "-Iexternal/csdk",
+        "-Iexternal/api",
+        "-Iexternal/csdk/api",
+    ] + CPPFLAGS + CXXFLAGS,
+    deps = [
+        "@libff//libff/algebra/curves/mnt/mnt4",
+        "@libff//libff/algebra/curves/mnt/mnt6",
+        "@libff//libff/algebra/fields",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "vectors",
-    srcs = ["vectors.cpp", "vectors.h"],
-    hdrs = ["vectors.h"],
+    srcs = ["caml_vectors.cpp", "caml_vectors.h"],
+    hdrs = ["caml_vectors.h"],
     linkstatic = LINKSTATIC,
     copts = [
         "-I.",

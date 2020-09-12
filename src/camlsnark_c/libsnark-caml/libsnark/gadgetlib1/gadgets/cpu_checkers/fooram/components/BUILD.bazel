@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG", "LINKSTATIC")
 
 cc_library(
     name = "components",
@@ -9,6 +10,7 @@ cc_library(
         "fooram_protoboard.tcc"
     ],
     include_prefix = "libsnark/gadgetlib1/gadgets/cpu_checkers/fooram/components",
-    copts = ["-I.", "-Iexternal"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     visibility = ["//visibility:public"],
 )

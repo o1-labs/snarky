@@ -10,7 +10,7 @@ let with_formatter name ~f =
 let () =
   with_formatter "vector_ffi_bindings.c" ~f:(fun fmt ->
       Format.pp_print_string fmt {c|
-#include "vectors.h"
+#include "common.h"
 |c} ;
       write_c ~prefix:"snarky_vector" fmt (module Vector.Bindings) ) ;
   with_formatter "vector_ffi_bindings.ml" ~f:(fun fmt ->

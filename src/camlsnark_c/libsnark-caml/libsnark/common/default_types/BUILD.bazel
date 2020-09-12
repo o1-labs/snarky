@@ -1,7 +1,10 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG", "LINKSTATIC")
 
 cc_library(
     name = "bacs_ppzksnark",
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     hdrs = ["bacs_ppzksnark_pp.hpp"],
     include_prefix = "libsnark/common/default_types",
     deps = ["@libff//libff"],
@@ -20,7 +23,8 @@ cc_library(
     copts = ["-I.",
              "-Iexternal",
              "-Iexternal/libff"
-    ],
+    ] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     deps = ["@libff//libff"]
 )
 
@@ -31,7 +35,8 @@ cc_library(
     copts = ["-I.",
              "-Iexternal",
              "-Iexternal/libff"
-    ],
+    ] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     deps = ["@libff//libff/common/default_types"],
     visibility = ["//visibility:public"]
 )
@@ -39,6 +44,8 @@ cc_library(
 cc_library(
     name = "r1cs_gg_ppzksnark",
     hdrs = ["r1cs_gg_ppzksnark_pp.hpp"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     include_prefix = "libsnark/common/default_types",
     deps = ["@libff//libff"],
     visibility = ["//visibility:public"]
@@ -47,6 +54,8 @@ cc_library(
 cc_library(
     name = "r1cs_se_ppzksnark",
     hdrs = ["r1cs_se_ppzksnark_pp.hpp"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     include_prefix = "libsnark/common/default_types",
     deps = ["@libff//libff"],
     visibility = ["//visibility:public"]
@@ -55,6 +64,8 @@ cc_library(
 cc_library(
     name = "ram_ppzksnark",
     hdrs = ["ram_ppzksnark_pp.hpp"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     include_prefix = "libsnark/common/default_types",
     deps = [
         ":tinyram_ppzksnark",
@@ -65,6 +76,8 @@ cc_library(
 cc_library(
     name = "ram_zksnark",
     hdrs = ["ram_zksnark_pp.hpp"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     include_prefix = "libsnark/common/default_types",
     deps = [
         ":tinyram_zksnark",
@@ -76,6 +89,8 @@ cc_library(
 cc_library(
     name = "tbcs_ppzksnark",
     hdrs = ["tbcs_ppzksnark_pp.hpp"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     include_prefix = "libsnark/common/default_types",
     deps = ["@libff//libff"],
     visibility = ["//visibility:public"]
@@ -85,6 +100,8 @@ cc_library(
     name = "tinyram_ppzksnark",
     srcs = ["tinyram_ppzksnark_pp.cpp"],
     hdrs = ["tinyram_ppzksnark_pp.hpp"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     include_prefix = "libsnark/common/default_types",
     copts = ["-I.",
              "-Iexternal",
@@ -107,7 +124,8 @@ cc_library(
     copts = ["-I.",
              "-Iexternal",
              "-Iexternal/libff"
-    ],
+    ] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     deps = [
         ":r1cs_ppzkpcd",
         "//libsnark/relations/ram_computations/rams/tinyram",
@@ -119,6 +137,8 @@ cc_library(
 cc_library(
     name = "uscs_ppzksnark",
     hdrs = ["uscs_ppzksnark_pp.hpp"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     include_prefix = "libsnark/common/default_types",
     deps = ["@libff//libff"],
     visibility = ["//visibility:public"]
@@ -144,7 +164,8 @@ cc_library(
              # include directives use < > instead of quotes
              "-Iexternal",
              "-Iexternal/libff"
-    ],
+    ] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     deps = [
         "//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/prf",
         "//libsnark/zk_proof_systems/ppzkadsnark/r1cs_ppzkadsnark/examples/signature:hpp",

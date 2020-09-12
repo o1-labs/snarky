@@ -11,9 +11,9 @@
 #include <stdarg.h>
 #include <time.h>
 
-#ifdef __cplusplus
+// #ifdef __cplusplus
 extern "C" {
-#endif
+// #endif
 
 // void camlsnark_set_printing_off() {
 //     libff_set_printing_off();
@@ -129,7 +129,7 @@ int camlsnark_string_length(std::string* s) {
   return s->size();
 }
 
-#ifdef __cplusplus
+// #ifdef __cplusplus
 }
-#endif
+// #endif
 

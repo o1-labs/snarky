@@ -1,10 +1,12 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG", "LINKSTATIC")
 
 cc_library(
     name = "gadgets",
     visibility = ["//visibility:public"],
     hdrs = glob(["*.hpp"]) + glob(["*.tcc"]),
-    copts = ["-I."],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     include_prefix = "libsnark/gadgetlib1/gadgets",
     deps = ["//libsnark/gadgetlib1",
             "//libsnark/gadgetlib1/gadgets/curves:weierstrass"]

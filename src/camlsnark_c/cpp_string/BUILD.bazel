@@ -50,6 +50,8 @@ ocaml_interface(
     opts = INTF_OPTS,
     deps = [
         # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "@opam//pkg:ctypes.foreign",
          "//src/camlsnark_c"
     ],
 )
@@ -59,12 +61,17 @@ ocaml_module(
     cmi = ":snarky_cpp_string.cmi",
     impl = "snarky_cpp_string.ml",
     # ns_module = ":snarky_cpp_string_ns_module",
-    opts = IMPL_OPTS,
+    opts = IMPL_OPTS + ["-cclib", "-Wl,-E"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:ctypes",
-        "@opam//pkg:ctypes.foreign",
+        # "@opam//pkg:ctypes.foreign",
+        # "//ctypes_foreign:ctypes_foreign_libffi",
         "//src/camlsnark_c",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
     ],
+    cc_deps = {
+        "@libsnark//caml:snark_caml": "default",
+    }
 )

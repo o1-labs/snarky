@@ -30,8 +30,7 @@ CAMLSNARK_C_NS = "Camlsnark_c"
 ocaml_module(
     name = "camlsnark_c",
     impl = "camlsnark_c.ml",
-    opts = IMPL_OPTS
-    + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
+    opts = IMPL_OPTS + ["-cclib", "-Wl,-E"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -41,7 +40,13 @@ ocaml_module(
         "//src/camlsnark_c/bindings:camlsnark_c_bindings",
     ],
     cc_deps = {
-        "@libsnark//caml:libsnark_caml.so": "default",
+        ":snark_ffi_bindings": "default",
+        "@libsnark//caml:snark_caml": "default",
+        # "@libsnark//caml:snark_caml.so": "default",
+        "//bzl/external/openssl": "default",
+        # "//bzl/external/libsodium": "static",
+        "//bzl/external/libgmp": "default",
+        "//bzl/external/openmp": "default"
     }
 )
 
@@ -52,7 +57,7 @@ ocaml_module(
     name = "snark_ffi_bindings.cm_",
     impl = "//src/camlsnark_c:libsnark_ffi_bindings_ml",  ## generated file
     ns_module = "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings_ns_module",
-    opts = IMPL_OPTS + ["-thread"],
+    opts = IMPL_OPTS + ["-thread", "-cclib", "-lstdc++", "-cclib", "-Wl,-E"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -61,7 +66,7 @@ ocaml_module(
     ],
     cc_deps = {
         ":snark_ffi_bindings": "default",
-        "@libsnark//caml:libsnark_caml.so": "default",
+        "@libsnark//caml:snark_caml": "default",
     }
 )
 
@@ -78,6 +83,8 @@ cc_library(
     deps = [
         "@ocaml//csdk:hdrs",
         "@ocaml//csdk/ctypes",
+        "@libsnark//caml:snark_caml"
+        # "@libsnark//caml:libsnark_caml.so"
    ],
     visibility = ["//visibility:public"],
 )

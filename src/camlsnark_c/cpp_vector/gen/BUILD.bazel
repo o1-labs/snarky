@@ -19,13 +19,17 @@ IMPL_OPTS = COMMON_OPTS
 
 cc_library(
     name = "vector_ffi_bindings",
-    srcs = [":vector_ffi_bindings_c"],
-    copts = ["-I.", "-Iexternal/libsnark/caml"] + CPPFLAGS + CFLAGS,
+    srcs = [":vector_ffi_bindings_c", "@libsnark//caml:snark_caml"],
+    copts = ["-I.", "-Iexternal/libsnark/caml", "-lsnark_caml", "-Wl,--no-undefined"] + CPPFLAGS + CFLAGS,
+    linkopts = ["-Lexternal/libsnark/caml", "-lsnark_caml"],
     linkstatic = LINKSTATIC,
     # alwayslink = True,
     deps = [
         # "@ocaml//csdk:hdrs",
         "@ocaml//csdk/ctypes",
+        # "//src/camlsnark_c:snark_ffi_bindings"
+        "@libsnark//caml:snark_caml",
+        # macos:
         "@libsnark//caml:vectors"
     ],
     visibility = ["//visibility:public"],

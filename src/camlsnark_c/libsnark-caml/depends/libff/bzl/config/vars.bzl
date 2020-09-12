@@ -39,17 +39,18 @@ LINKSTATIC = select({
 }, no_match_error = "libff LINKSTATIC: unsupported platform.  MacOS or Linux only.")
 
 ALWAYSLINK = select({
-    "@//bzl/host:linux": True,
+    "@//bzl/host:linux": False,
     "@//bzl/host:macos": False,
-}, no_match_error = "libff: unsupported platform.  MacOS or Linux only.")
-
+}, no_match_error = "libff ALWAYSLINK: unsupported platform.  MacOS or Linux only.")
 
 CPPFLAGS = ["-fPIC", "-Iexternal/libff"] + DEBUG_FLAGS + WARNINGS
 CFLAGS   = []
+
 CXXFLAGS = ["-std=c++14"] + select({
-    "//bzl/host:linux": ["-lstdc++"],
+    "//bzl/host:linux": [], # "-lstdc++"],
     "//bzl/host:macos": [] # stdc++ is the default
-}, no_match_error = "CXXFLAGS: unsupported platform.  Linux or MacOS only.") + OPTIMIZE_CXXFLAGS
+}, no_match_error = "libff CXXFLAGS: unsupported platform.  Linux or MacOS only.") + OPTIMIZE_CXXFLAGS
+
 LDFLAGS  = []
 #######################
 ####    DEFINES    ####

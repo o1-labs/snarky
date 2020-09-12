@@ -46,23 +46,33 @@ OPTIMIZE_LINKFLAGS = select({
 LINKSTATIC = select({
     "@//bzl/host:linux": True,
     "@//bzl/host:macos": False,
-    "//conditions:default": True
-})
+}, no_match_error = "libsnark LINKSTATIC: unsupported platform.  Linux or MacOS only.")
+
+ALWAYSLINK = select({
+    "@//bzl/host:linux": False,
+    "@//bzl/host:macos": False,
+}, no_match_error = "libsnark ALWAYSLINK: unsupported platform.  MacOS or Linux only.")
 
 CPPFLAGS = select({
     ## FIXME: select on //bzl/config:enable_openmp
     "//bzl/host:macos": ["-Xpreprocessor", "-fopenmp"],
     "//bzl/host:linux": ["-fopenmp"],
-    "//conditions:default": []
-}) + [
+}, no_match_error = "libsnark CPPFLAGS: unsupported platform.  Linux or MacOS only.") + [
     "-fPIC", "-DPIC"
 ] + DEBUG_FLAGS + WARNINGS
 
 CFLAGS   = []
+
+# https://github.com/jmillikin-stripe/bazel/commit/b2bfb3f4fecd4434cabd183c1b7912a51f19c3e0
+# `-static-libstdc++` is only supported when invoking GCC as `g++`, and
+# `-lstdc++` forces dynamic linking of libstdc++. To get desired
+# mostly-static behavior, invoke the link by explicitly naming a static
+# library archive.
+#    linker_flag: "-l:libstdc++.a"
 CXXFLAGS = ["-std=c++14"] + select({
-    "//bzl/host:linux": ["-lstdc++"],
+    "//bzl/host:linux": [], # "-static-libstdc++", "-l:libstdc++.a"],
     "//bzl/host:macos": [] # stdc++ is the default
-}, no_match_error = "CXXFLAGS: unsupported platform.  Linux or MacOS only.") + OPTIMIZE_CXXFLAGS
+}, no_match_error = "libsnark CXXFLAGS: unsupported platform.  Linux or MacOS only.") + OPTIMIZE_CXXFLAGS
 # ", "-D_LIBCXX_DEPRECATION_WARNINGS "]
 
 # OPT_FLAGS = ["-ggdb3", "-O2", "-march=native", "-mtune=native"]

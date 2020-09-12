@@ -1,8 +1,11 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG", "LINKSTATIC")
 
 cc_library(
     name = "common",
     visibility = ["//visibility:public"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     hdrs = ["libsnark_serialization.hpp"],
     include_prefix = "libsnark/common",
     deps = [

@@ -27,7 +27,7 @@ PPX4_9C0A2F04 = "@//ppx/exe:ppx4_9c0a2f04-6b3e-5f2a-8470-43e49364ba52"
 
 ocaml_archive(
     name = "snarky_libsnark_bindings",
-    opts = ARCHIVE_OPTS,
+    opts = ARCHIVE_OPTS + ["-cclib", "-Wl,-E"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -85,7 +85,7 @@ ocaml_module(
     name = "libsnark.cm_",
     impl = "libsnark.ml",
     ns_module = ":snarky_libsnark_bindings_ns_module",
-    opts = IMPL_OPTS,
+    opts = IMPL_OPTS + ["-cclib", "-Wl,-E"],
     ppx_bin = PPX4_9C0A2F04,
     ppx_bin_opts = [
         # do not sort (buildifier)
@@ -97,12 +97,17 @@ ocaml_module(
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "@opam//pkg:ctypes.foreign",
         "//src/camlsnark_c",
         "//ctypes_foreign:ctypes_foreign_libffi",
         "//src/camlsnark_c/cpp_string:snarky_cpp_string",
         "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
         ":libsnark_r1cs_constraint_system.cm_",
-        "//src/camlsnark_c:snark_ffi_bindings.cm_"
+        # "//src/camlsnark_c:snark_ffi_bindings.cm_"
     ],
+    cc_deps = {
+        "@libsnark//caml:snark_caml": "default",
+    }
 )
 

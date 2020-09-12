@@ -2,14 +2,14 @@ add_library(
   snark_caml_common
   STATIC
 
+  ../depends/libff/libff/common/common.cpp
   ../depends/libff/libff/common/double.cpp
-  ../depends/libff/libff/common/logging.cpp
   ../depends/libff/libff/common/profiling.cpp
   ../depends/libff/libff/common/utils.cpp
-  logging.cpp
-  strings.cpp
-  utils.cpp
-  vectors.cpp
+  # caml_logging.cpp
+  # caml_strings.cpp
+  # caml_utils.cpp
+  # caml_vectors.cpp
 )
 target_link_libraries(
   snark_caml_common

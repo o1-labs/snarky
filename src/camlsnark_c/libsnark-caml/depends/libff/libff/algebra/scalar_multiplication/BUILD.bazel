@@ -18,6 +18,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//libff/common:rng",
+        "//libff/common:logging",
         "//libff/common:utils"
     ],
 )
@@ -32,6 +33,7 @@ cc_binary(
     deps = [
         ":scalar_multiplication",
         "//libff/common:common",
+        "//libff/common:logging",
         "//libff/common:profiling",
         "//libff/common:utils"
     ],

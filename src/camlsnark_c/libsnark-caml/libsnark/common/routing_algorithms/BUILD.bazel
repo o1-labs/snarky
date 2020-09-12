@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG", "LINKSTATIC")
 
 cc_library(
     name = "routing_algorithms",
@@ -14,8 +15,8 @@ cc_library(
         "benes_routing_algorithm.hpp",
     ],
     include_prefix = "libsnark/common/routing_algorithms",
-    copts = ["-I.",
-             "-Iexternal"],
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
     deps = ["//libsnark/common/data_structures",
             "@libff//libff"]
 )
