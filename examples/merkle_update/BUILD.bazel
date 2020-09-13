@@ -1,0 +1,59 @@
+load(
+    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+)
+
+COMMON_OPTS = select({
+    "//bzl/config:enable_verbose": ["-verbose"],
+    "//conditions:default": [],
+}) + ["-warn-error",  "-27-26-32-33", "-thread"]
+
+LINK_OPTS = select({
+    "//bzl/config:always_link": ["-linkall"],
+    "//conditions:default": [],
+}) + []
+
+EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+COMMON_DEPS = []
+
+## (pps ppx_jane)
+PPX = "//ppx/exe:ppx1_58409c95-e080-5f48-b6db-90e8a376e5bc"
+
+PPX_BIN_OPTS = [
+    # do not sort (buildifier)
+    "-cookie",
+    "library-name=\"merkle_update\"",
+    "-corrected-suffix",
+    ".ppx-corrected"
+]
+
+ocaml_executable(
+    name = "merkle_update",
+    opts = IMPL_OPTS,    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:core_kernel",
+        "//src:snarky",
+        ":merkle_update.cm_",
+    ]
+)
+
+ocaml_module(
+    name = "merkle_update.cm_",
+    impl = "merkle_update.ml",
+    opts = IMPL_OPTS,
+    ppx_bin = PPX,
+    ppx_bin_opts = PPX_BIN_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "//src:snarky",
+    ],
+)

@@ -24,7 +24,7 @@
 
 ;; NB: these .h files (originally: common.h) do not seem to be needed.
 (rule
- (targets template_caml_curve_h.hpp) ;; caml_logging.h strings.h caml_utils.h vectors.h)
+ (targets template_caml_curve_h.hpp) ;; caml_logging.h caml_strings.h caml_utils.h caml_vectors.h)
  (deps
    ../libsnark-caml/caml/template_caml_curve_h.hpp)
    ;; ../libsnark-caml/caml/caml_logging.h

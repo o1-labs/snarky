@@ -20,6 +20,21 @@ cc_library(
 )
 
 cc_library(
+    name = "common",
+    srcs = ["common.cpp"],
+    copts = ["-I."] + CPPFLAGS + CXXFLAGS,
+    defines = DDEBUG,
+    include_prefix = "libff/common",
+    linkstatic = LINKSTATIC,
+    alwayslink = ALWAYSLINK,
+    deps = [
+        "//libff/algebra/curves/mnt/mnt4",
+        "//libff/algebra/curves/mnt/mnt6",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "logging",
     srcs = ["logging.cpp",
             "logging.hpp"],
@@ -28,7 +43,7 @@ cc_library(
     defines = DDEBUG,
     include_prefix = "libff/common",
     linkstatic = LINKSTATIC,
-    alwayslink = ALWAYSLINK,
+    # alwayslink = ALWAYSLINK,
     visibility = ["//visibility:public"],
 )
 

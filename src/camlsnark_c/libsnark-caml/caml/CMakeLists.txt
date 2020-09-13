@@ -4,6 +4,7 @@ add_library(
 
   ../depends/libff/libff/common/common.cpp
   ../depends/libff/libff/common/double.cpp
+  ../depends/libff/libff/common/logging.cpp
   ../depends/libff/libff/common/profiling.cpp
   ../depends/libff/libff/common/utils.cpp
   ../depends/libff/libff/common/common.cpp

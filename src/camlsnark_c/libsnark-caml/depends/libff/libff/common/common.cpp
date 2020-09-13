@@ -128,11 +128,6 @@ int camlsnark_string_length(std::string* s) {
   return s->size();
 }
 
-<<<<<<< HEAD
-}
-
-=======
 #ifdef __cplusplus
 }
 #endif
->>>>>>> 086a88c20ebc9abbe34a3f334855d7ed2cea8e2f

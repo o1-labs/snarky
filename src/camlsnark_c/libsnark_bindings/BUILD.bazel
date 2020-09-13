@@ -106,8 +106,9 @@ ocaml_module(
         ":libsnark_r1cs_constraint_system.cm_",
         # "//src/camlsnark_c:snark_ffi_bindings.cm_"
     ],
-    cc_deps = {
-        "@libsnark//caml:snark_caml": "default",
-    }
+    cc_deps = select({
+        "//bzl/host:linux": {"@libsnark//caml:snark_caml": "default"},
+        "//bzl/host:macos": {"@libsnark//caml:libsnark_caml.so": "default"},
+    }, no_match_error = "camlsnark_c: unsupported platform.  Linux or MacOS only.")
 )
 

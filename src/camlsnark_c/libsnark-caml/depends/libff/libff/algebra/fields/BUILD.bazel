@@ -42,7 +42,7 @@ cc_library(
         "bigint.hpp",
         "bigint.tcc",
     ],
-    copts = ["-I."] + CPPFLAGS,
+    copts = ["-I.", "-Iexternal"] + CPPFLAGS,
     defines = DBINARY_OUTPUT,
     include_prefix = "libff/algebra/fields",
     visibility = ["//visibility:public"],

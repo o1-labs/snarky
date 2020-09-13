@@ -50,23 +50,7 @@ PPX3_98AAF9DD = "@//ppx/exe:ppx1_58409c95-e080-5f48-b6db-90e8a376e5bc"
 
 ocaml_executable(
     name = "tutorial",
-    opts = IMPL_OPTS + [
-        "-I", "bazel-out/darwin-fastbuild/bin/src",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/base",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/bindings",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_string",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_vector",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/libsnark_bindings",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/intf",
-        "-cclib", "-lstdc++",
-        "-cclib", "-lbn128",
-        "-cclib", "-lmnt4",
-        "-cclib", "-lmnt6",
-        "-cclib", "-lmnt4753",
-        "-cclib", "-lmnt6753",
-        "-ccopt", "-Lexternal/libffi/libffi/lib"
-    ],
+    opts = IMPL_OPTS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -79,56 +63,6 @@ ocaml_executable(
         "//src/intf:snarky_intf",
         ":tutorial.cm_",
     ],
-    # cc_deps = {
-    #     # "@libff//bzl/external/libgmp",
-    #     # "@libff//bzl/external/libsodium",
-    #     # "@libff//bzl/external/openssl",
-    #     # "@libff//libff/common:logging",
-    #     "@xbyak//xbyak": "dynamic",
-    #     "@ate_pairing//libzm": "dynamic",
-    #     "@libff//libff/common:logging": "dynamic",
-    #     "@libff//libff/common:profiling": "dynamic",
-    #     "@libff//libff/common:utils": "dynamic",
-    #     "@libff//libff/algebra/curves/bn128": "dynamic",
-    #     "@libff//libff/algebra/curves/alt_bn128": "dynamic",
-    #     "@libff//libff/algebra/curves/edwards": "dynamic",
-    #     "@libff//libff/algebra/curves/mnt": "dynamic",
-    #     "@libff//libff/algebra/curves/mnt/mnt4": "dynamic",
-    #     "@libff//libff/algebra/curves/mnt/mnt6": "dynamic",
-    #     "@libff//libff/algebra/curves/mnt753": "dynamic",
-    #     "@libff//libff/algebra/curves/mnt753/mnt4753": "dynamic",
-    #     "@libff//libff/algebra/curves/mnt753/mnt4753:public_params": "dynamic",
-    #     "@libff//libff/algebra/curves/mnt753/mnt6753": "dynamic",
-    #     "@libff//libff/algebra/curves/mnt753/mnt6753:public_params": "dynamic",
-    #     "@libff//libff/algebra/scalar_multiplication": "dynamic",
-    #     "@libfqfft//libfqfft/evaluation_domain": "dynamic",
-    #     "@libfqfft//libfqfft/kronecker_substitution": "dynamic",
-    #     "@libfqfft//libfqfft/polynomial_arithmetic": "dynamic",
-    #     "@libsnark//libsnark": "dynamic",
-    #     "@libsnark//libsnark/common": "dynamic",
-    #     "@libsnark//libsnark/common/data_structures": "dynamic",
-    #     "@libsnark//libsnark/common/default_types:r1cs_ppzksnark": "dynamic",
-    #     "@libsnark//libsnark/common/default_types:r1cs_gg_ppzksnark": "dynamic",
-    #     "@libsnark//libsnark/common/default_types:r1cs_se_ppzksnark": "dynamic",
-    #     "@libsnark//libsnark/gadgetlib1": "dynamic",
-    #     "@libsnark//libsnark/gadgetlib1/gadgets/hashes/sha256": "dynamic",
-    #     "@libsnark//libsnark/gadgetlib1/gadgets/pairing": "dynamic",
-    #     "@libsnark//libsnark/gadgetlib1/gadgets/verifiers:r1cs_ppzksnark": "dynamic",
-    #     "@libsnark//libsnark/gadgetlib1/gadgets/verifiers:r1cs_gg_ppzksnark": "dynamic",
-    #     "@libsnark//libsnark/gadgetlib1/gadgets/verifiers:r1cs_se_ppzksnark": "dynamic",
-    #     "@libsnark//libsnark/reductions/r1cs_to_qap": "dynamic",
-    #     "@libsnark//libsnark/relations": "dynamic",
-    #     "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark": "dynamic",
-    #     "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark": "dynamic",
-    #     "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark": "dynamic",
-    #     "@libsnark//libsnark/relations/constraint_satisfaction_problems/r1cs": "dynamic",
-    #     "@libsnark//caml:snark_caml": "dynamic",
-    #     "@libsnark//caml:vectors": "dynamic",
-    #     "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "dynamic",
-    #     "//src/camlsnark_c/libsnark_bindings:snark_ffi_bindings": "dynamic",
-    #     "@libff//bzl/external/libsodium": "dynamic",
-    #     "@libff//bzl/external/openssl": "dynamic",
-    # }
 )
 
 ocaml_module(
@@ -153,18 +87,6 @@ ocaml_module(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        # do not sort (buildifier)
-        # "@opam//pkg:core_kernel",
-        # "//src/base:snarky_backendless",
-        # # "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
-        # "//src/camlsnark_c/bindings:camlsnark_c_bindings",
-        # "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
-        # "//src/camlsnark_c",
-        # "//src/intf:snarky_intf",
         "//src:snarky",
-    ],
-    cclibs = {
-        "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "dynamic",
-        "//src/camlsnark_c/libsnark_bindings:snark_ffi_bindings": "dynamic",
-    }
+    ]
 )

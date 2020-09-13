@@ -6,7 +6,10 @@
   (language c)
   (names vector_ffi_bindings)
   (include_dirs ../libsnark-caml/caml)
-  (flags :standard -lstdc++ -lpthread))
+  ;; linux:
+  ;; (flags :standard -lstdc++ -lpthread))
+  ;; macos:
+  (flags :standard -lpthread))
  (preprocess (pps ppx_bin_prot ppx_sexp_conv)))
 
 (rule

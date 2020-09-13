@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "LINKSTATIC")
 
 cc_library(
     name = "fooram",
@@ -7,7 +8,7 @@ cc_library(
     hdrs = ["fooram_params.hpp", "fooram_aux.hpp"],
     include_prefix = "libsnark/relations/ram_computations/rams/fooram",
     copts = ["-I.", "-Iexternal"],
-    linkstatic = True,
+    linkstatic = LINKSTATIC,
     deps = [
         "//libsnark/relations/ram_computations/memory",
         "@libff//libff/common:serialization"

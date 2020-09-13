@@ -49,13 +49,14 @@ cc_binary(
              "-Iexternal/libff",
              "-Iexternal/libsnark",
              "-Iexternal/libfqfft",
+             "-Wl,-E"
     ] + CPPFLAGS + CXXFLAGS,
     linkopts = LINKOPTS,
     defines = DDEBUG,
     deps = [
         "//libsnark",
         "@libff//libff/common/default_types",
-        # "@libff//libff/common:common",
+        "@libff//libff/common:common",
         "@libff//libff/common:logging",
         "@libff//libff/common:profiling",
         "@libff//libff/common:utils",
@@ -119,20 +120,13 @@ cc_library(
 
         "template_caml_curve_cpp.hpp",
         "template_caml_mnt_cpp.hpp",
-
-        "@libff//libff/algebra/curves/mnt753/mnt4753",
-    ],
-    hdrs = [
-        "caml_strings.h",
-        "caml_utils.h",
-        "caml_vectors.h",
     ],
     copts = ["-I.", "-Iexternal",
              "-Iexternal/libsnark",
              "-Iexternal/libff",
              "-Wl,-E"
     ] + CPPFLAGS + CXXFLAGS,
-    linkopts = LINKOPTS + ["-lbn128"],
+    linkopts = LINKOPTS,
     defines = DDEBUG,
     deps = [
         # if building shared objects (macos) this suffices:
@@ -154,10 +148,9 @@ cc_library(
         "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
         "//libsnark/relations/constraint_satisfaction_problems/r1cs",
 
-
         "@libff//libff/common/default_types",
         "@libff//libff/common:common",
-        # "@libff//libff/common:logging",
+        "@libff//libff/common:logging",
         "@libff//libff/common:profiling",
         "@libff//libff/common:utils",
         "@libff//libff/algebra/curves/alt_bn128",
@@ -183,7 +176,7 @@ cc_library(
 ## temporary, until the static linking gets fixed:
 cc_library(
     name = "common",
-    hdrs = ["common.h", "logging.h"],
+    hdrs = ["common.h", "caml_logging.h"],
     linkstatic = LINKSTATIC,
     visibility = ["//visibility:public"],
 )

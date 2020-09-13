@@ -54,7 +54,7 @@ CXXFLAGS = ["-std=c++14"] + select({
     # "//bzl/host:linux": ["-static-libstdc++", "-l:libstdc++.a"],
     "//bzl/host:macos": [] # stdc++ is the default
 }, no_match_error = "libfqfft CXXFLAGS: unsupported platform.  Linux or MacOS only.") + OPTIMIZE_CXXFLAGS
-LDFLAGS  = ["-lstdc++"]
+LDFLAGS  = []
 
 #######################
 ####    DEFINES    ####

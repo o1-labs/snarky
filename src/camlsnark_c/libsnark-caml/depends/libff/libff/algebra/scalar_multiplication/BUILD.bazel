@@ -18,8 +18,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//libff/common:rng",
-        "//libff/common:logging",
-        "//libff/common:utils"
     ],
 )
 

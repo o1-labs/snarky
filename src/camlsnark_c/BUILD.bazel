@@ -39,15 +39,26 @@ ocaml_module(
         "@opam//pkg:ctypes.foreign",
         "//src/camlsnark_c/bindings:camlsnark_c_bindings",
     ],
-    cc_deps = {
-        ":snark_ffi_bindings": "default",
-        "@libsnark//caml:snark_caml": "default",
-        # "@libsnark//caml:snark_caml.so": "default",
-        "//bzl/external/openssl": "default",
-        # "//bzl/external/libsodium": "static",
-        "//bzl/external/libgmp": "default",
-        "//bzl/external/openmp": "default"
-    }
+    cc_deps = select({
+        "//bzl/host:linux": {
+            ":snark_ffi_bindings": "default",
+            "@libff//libff/algebra/curves/mnt753/mnt4753": "default",
+            "@libff//libff/algebra/curves/mnt753/mnt4753:public_params": "default",
+            "//bzl/external/openssl": "default",
+            "//bzl/external/libgmp": "default",
+            "//bzl/external/openmp": "default",
+            "@libsnark//caml:snark_caml": "default"
+        },
+        "//bzl/host:macos": {
+            ":snark_ffi_bindings": "default",
+            "@libff//libff/algebra/curves/mnt753/mnt4753": "default",
+            "@libff//libff/algebra/curves/mnt753/mnt4753:public_params": "default",
+            "//bzl/external/openssl": "default",
+            "//bzl/external/libgmp": "default",
+            "//bzl/external/openmp": "default",
+            "@libsnark//caml:libsnark_caml.so": "default"
+        }
+    }, no_match_error = "camlsnark_c camlsnark_c: unsupported platform.  Linux or MacOS only.")
 )
 
 # NOTE: we're building this here, in order to keep all tasks
@@ -57,17 +68,23 @@ ocaml_module(
     name = "snark_ffi_bindings.cm_",
     impl = "//src/camlsnark_c:libsnark_ffi_bindings_ml",  ## generated file
     ns_module = "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings_ns_module",
-    opts = IMPL_OPTS + ["-thread", "-cclib", "-lstdc++", "-cclib", "-Wl,-E"],
+    opts = IMPL_OPTS + ["-thread"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:ctypes",
         ":camlsnark_c",
     ],
-    cc_deps = {
-        ":snark_ffi_bindings": "default",
-        "@libsnark//caml:snark_caml": "default",
-    }
+    cc_deps = select({
+        "//bzl/host:linux": {
+            ":snark_ffi_bindings": "default",
+            "@libsnark//caml:snark_caml": "default"
+        },
+        "//bzl/host:macos": {
+            ":snark_ffi_bindings": "default",
+            "@libsnark//caml:libsnark_caml.so": "default"
+        },
+    }, no_match_error = "camlsnark_c snark_ffi_bindings.cm_: unsupported platform.  Linux or MacOS only.")
 )
 
 cc_library(
@@ -83,9 +100,10 @@ cc_library(
     deps = [
         "@ocaml//csdk:hdrs",
         "@ocaml//csdk/ctypes",
-        "@libsnark//caml:snark_caml"
-        # "@libsnark//caml:libsnark_caml.so"
-   ],
+   ] + select({
+        "//bzl/host:linux": ["@libsnark//caml:snark_caml"],
+        "//bzl/host:macos": ["@libsnark//caml:libsnark_caml.so"]
+    }, no_match_error = "camlsnark_c snark_ffi_bindings: unsupported platform.  Linux or MacOS only."),
     visibility = ["//visibility:public"],
 )
 

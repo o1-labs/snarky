@@ -19,16 +19,13 @@ IMPL_OPTS = COMMON_OPTS
 
 cc_library(
     name = "vector_ffi_bindings",
-    srcs = [":vector_ffi_bindings_c", "@libsnark//caml:snark_caml"],
-    copts = ["-I.", "-Iexternal/libsnark/caml", "-lsnark_caml", "-Wl,--no-undefined"] + CPPFLAGS + CFLAGS,
-    linkopts = ["-Lexternal/libsnark/caml", "-lsnark_caml"],
+    srcs = [":vector_ffi_bindings_c"],
+    copts = ["-I.", "-Iexternal/libsnark/caml"] + CPPFLAGS + CFLAGS,
     linkstatic = LINKSTATIC,
-    # alwayslink = True,
     deps = [
-        # "@ocaml//csdk:hdrs",
+        # do not sort (buildifier)
         "@ocaml//csdk/ctypes",
         "@libsnark//caml:common"
-        # "@libsnark//caml:vectors"
     ],
     visibility = ["//visibility:public"],
 )
@@ -40,7 +37,6 @@ ocaml_executable(
         # do not sort (buildifier)
         "//src/camlsnark_c/bindings:camlsnark_c_bindings",
         ":gen_vector_stubs.cm_",
-        # "//src/camlsnark_c/bindings:vector.cm_",
     ],
 )
 
