@@ -1,4 +1,5 @@
-load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS", "LINKSTATIC")
+load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS",
+     "ALWAYSLINK", "LINKSTATIC")
 
 load(
     "@obazl_rules_ocaml//ocaml:build.bzl",
@@ -39,26 +40,6 @@ ocaml_module(
         "@opam//pkg:ctypes.foreign",
         "//src/camlsnark_c/bindings:camlsnark_c_bindings",
     ],
-    cc_deps = select({
-        "//bzl/host:linux": {
-            ":snark_ffi_bindings": "default",
-            "@libff//libff/algebra/curves/mnt753/mnt4753": "default",
-            "@libff//libff/algebra/curves/mnt753/mnt4753:public_params": "default",
-            "//bzl/external/openssl": "default",
-            "//bzl/external/libgmp": "default",
-            "//bzl/external/openmp": "default",
-            "@libsnark//caml:snark_caml": "default"
-        },
-        "//bzl/host:macos": {
-            ":snark_ffi_bindings": "default",
-            "@libff//libff/algebra/curves/mnt753/mnt4753": "default",
-            "@libff//libff/algebra/curves/mnt753/mnt4753:public_params": "default",
-            "//bzl/external/openssl": "default",
-            "//bzl/external/libgmp": "default",
-            "//bzl/external/openmp": "default",
-            "@libsnark//caml:libsnark_caml.so": "default"
-        }
-    }, no_match_error = "camlsnark_c camlsnark_c: unsupported platform.  Linux or MacOS only.")
 )
 
 # NOTE: we're building this here, in order to keep all tasks
@@ -75,16 +56,6 @@ ocaml_module(
         "@opam//pkg:ctypes",
         ":camlsnark_c",
     ],
-    cc_deps = select({
-        "//bzl/host:linux": {
-            ":snark_ffi_bindings": "default",
-            "@libsnark//caml:snark_caml": "default"
-        },
-        "//bzl/host:macos": {
-            ":snark_ffi_bindings": "default",
-            "@libsnark//caml:libsnark_caml.so": "default"
-        },
-    }, no_match_error = "camlsnark_c snark_ffi_bindings.cm_: unsupported platform.  Linux or MacOS only.")
 )
 
 cc_library(
@@ -97,13 +68,11 @@ cc_library(
              "-Iexternal/libsnark/caml",
              ] + CPPFLAGS + CFLAGS,
     linkstatic = LINKSTATIC,
+    # alwayslink = ALWAYSLINK,
     deps = [
         "@ocaml//csdk:hdrs",
         "@ocaml//csdk/ctypes",
-   ] + select({
-        "//bzl/host:linux": ["@libsnark//caml:snark_caml"],
-        "//bzl/host:macos": ["@libsnark//caml:libsnark_caml.so"]
-    }, no_match_error = "camlsnark_c snark_ffi_bindings: unsupported platform.  Linux or MacOS only."),
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -152,7 +121,6 @@ ocaml_executable(
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
-        # "//src/camlsnark_c/bindings:camlsnark_c_bindings",
         ":camlsnark_ctypes_stubs.cm_",
     ],
 )

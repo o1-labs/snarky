@@ -1,5 +1,6 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG", "LINKSTATIC")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG",
+     "ALWAYSLINK", "LINKSTATIC")
 
 exports_files(["template_caml_curve_h.hpp"])
 
@@ -87,7 +88,7 @@ cc_binary(
 cc_library(
     name = "snark_caml",
     linkstatic = LINKSTATIC,
-    # alwayslink = True,
+    # alwayslink = ALWAYSLINK,
     visibility = ["//visibility:public"],
     srcs = [
         "caml_bn128.cpp",
@@ -163,9 +164,9 @@ cc_library(
         "@libff//libff/algebra/curves/mnt/mnt6:public_params",
         "@libff//libff/algebra/curves/mnt753",
         "@libff//libff/algebra/curves/mnt753/mnt4753",
-        "@libff//libff/algebra/curves/mnt753/mnt4753:public_params",
+        # "@libff//libff/algebra/curves/mnt753/mnt4753:public_params",
         "@libff//libff/algebra/curves/mnt753/mnt6753",
-        "@libff//libff/algebra/curves/mnt753/mnt6753:public_params",
+        # "@libff//libff/algebra/curves/mnt753/mnt6753:public_params",
         "@libff//libff/algebra/fields:bigint",
     ] + select({
         "@//bzl/config:enable_curve_bn128": ["@libff//libff/algebra/curves/bn128"],
@@ -178,6 +179,7 @@ cc_library(
     name = "common",
     hdrs = ["common.h", "caml_logging.h"],
     linkstatic = LINKSTATIC,
+    # alwayslink = ALWAYSLINK,
     visibility = ["//visibility:public"],
 )
 

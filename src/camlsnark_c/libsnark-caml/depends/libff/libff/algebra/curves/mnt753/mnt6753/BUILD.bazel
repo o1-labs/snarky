@@ -23,14 +23,14 @@ cc_library(
     local_defines = DDEBUG + DNO_PT_COMPRESSION + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/curves/mnt753/mnt6753",
     linkstatic = LINKSTATIC,
-    alwayslink = ALWAYSLINK,
+    # alwayslink = ALWAYSLINK,
     visibility = ["//visibility:public"],
     deps = [
         "//libff/common:profiling",
         "//libff/algebra/curves",
         "//libff/algebra/curves/mnt",
         "//libff/algebra/curves/mnt753",
-        # ":public_params",
+        ":public_params",
     ],
 )
 

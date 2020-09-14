@@ -98,17 +98,13 @@ ocaml_module(
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:ctypes",
-        "@opam//pkg:ctypes.foreign",
-        "//src/camlsnark_c",
+        # "@opam//pkg:ctypes.foreign",
+        # "//src/camlsnark_c",
         "//ctypes_foreign:ctypes_foreign_libffi",
         "//src/camlsnark_c/cpp_string:snarky_cpp_string",
         "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
         ":libsnark_r1cs_constraint_system.cm_",
         # "//src/camlsnark_c:snark_ffi_bindings.cm_"
     ],
-    cc_deps = select({
-        "//bzl/host:linux": {"@libsnark//caml:snark_caml": "default"},
-        "//bzl/host:macos": {"@libsnark//caml:libsnark_caml.so": "default"},
-    }, no_match_error = "camlsnark_c: unsupported platform.  Linux or MacOS only.")
 )
 

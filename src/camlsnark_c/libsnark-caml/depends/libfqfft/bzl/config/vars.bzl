@@ -43,14 +43,14 @@ LINKSTATIC = select({
 }, no_match_error = "libfqfft LINKSTATIC: unsupported platform.  MacOS or Linux only.")
 
 ALWAYSLINK = select({
-    "@//bzl/host:linux": False,
+    "@//bzl/host:linux": True,
     "@//bzl/host:macos": False,
 }, no_match_error = "libfqfft ALWAYSLINK: unsupported platform.  MacOS or Linux only.")
 
 CPPFLAGS = DEBUG_FLAGS + WARNINGS
 CFLAGS   = []
 CXXFLAGS = ["-std=c++14"] + select({
-    "//bzl/host:linux": [], # "-lstdc++"],
+    "//bzl/host:linux": ["-lstdc++"],
     # "//bzl/host:linux": ["-static-libstdc++", "-l:libstdc++.a"],
     "//bzl/host:macos": [] # stdc++ is the default
 }, no_match_error = "libfqfft CXXFLAGS: unsupported platform.  Linux or MacOS only.") + OPTIMIZE_CXXFLAGS

@@ -35,7 +35,7 @@ PPX_BIN_OPTS = [
 
 ocaml_executable(
     name = "election",
-    opts = IMPL_OPTS,
+    opts = IMPL_OPTS + ["-ccopt", "-lstdc++"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)

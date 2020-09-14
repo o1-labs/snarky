@@ -36,7 +36,8 @@ PPX_BIN_OPTS = [
 
 ocaml_executable(
     name = "merkle_update",
-    opts = IMPL_OPTS,    visibility = ["//visibility:public"],
+    opts = IMPL_OPTS + ["-cclib", "-lstdc++"],
+    visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:core_kernel",

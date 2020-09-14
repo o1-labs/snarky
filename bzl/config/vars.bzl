@@ -34,6 +34,11 @@ CC_LINKAGE = "" + select({
     "@//bzl/host:macos": "dynamic"
 }, no_match_error = "Snarky CC_LINKAGE: unsupported platform.  Linux or MacOS only.")
 
+ALWAYSLINK = select({
+    "@//bzl/host:linux": True,
+    "@//bzl/host:macos": False,
+}, no_match_error = "snarky ALWAYSLINK: unsupported platform.  MacOS or Linux only.")
+
 ## cc_binary, cc_library:
 LINKSTATIC = select({
     "@//bzl/host:linux": True,
@@ -51,8 +56,8 @@ CPPFLAGS = select({
 
 CFLAGS   = []
 CXXFLAGS = ["-std=c++14"] + select({
-    "//bzl/host:linux": [], # "-lstdc++"],
-    "//bzl/host:macos": [] # stdc++ is the default
+    "//bzl/host:linux": ["-lstdc++"],
+    "//bzl/host:macos": [] # libc++ is the default
 }, no_match_error = "snarky CXXFLAGS: unsupported platform.  Linux or MacOS only.") + OPTIMIZE_CXXFLAGS
 
 LDFLAGS  = []

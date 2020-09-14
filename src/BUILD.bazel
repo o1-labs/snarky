@@ -71,7 +71,67 @@ ocaml_archive(
         ":snark.cm_",
         ":snarky.cm_",
         ## end ns_module
-    ]
+    ],
+
+    cc_linkstatic = select({
+        "//bzl/host:linux": True,
+        "//bzl/host:macos": False
+    }, no_match_error = "camlsnark_c snark_ffi_bindings.cm_: unsupported platform.  Linux or MacOS only."),
+
+    ## For now, because link ordering is critical for statically
+    ## linking, we attach all cc libs here.  A future version of OBazl
+    ## will support attaching them to the modules that directly use
+    ## them.
+    cc_deps = {
+        ## ORDER MATTERS for static linking.
+        # do not sort (buildifier)
+
+        ## libsnark_ffi_bindings depends on both libvector_ffi_bindings and libsnark_caml
+        "//src/camlsnark_c:snark_ffi_bindings": "default",
+        ## libsnark_caml depends on libvector_ffi_bindings
+        "@libsnark//caml:snark_caml": "default",
+        "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "default",
+
+
+        ## snark_caml depends on various parts of @libff.
+        ## bazel does not produce libff.a, we have to list each dep.
+
+        ## bn128 depends on ate_pairing
+        "@libff//libff/algebra/curves/bn128": "default",
+        "@ate_pairing//libzm": "default",
+
+        "@libff//libff/common:common": "default",
+
+        "@libff//libff/algebra/curves/alt_bn128": "default",
+        "@libff//libff/algebra/curves/alt_bn128:public_params": "default",
+        "@libff//libff/algebra/curves/edwards": "default",
+        "@libff//libff/algebra/curves/mnt": "default",
+        "@libff//libff/algebra/curves/mnt/mnt4": "default",
+        # "@libff//libff/algebra/curves/mnt/mnt4:public_params": "default",
+        "@libff//libff/algebra/curves/mnt/mnt6": "default",
+        # "@libff//libff/algebra/curves/mnt/mnt6:public_params": "default",
+        "@libff//libff/algebra/curves/mnt753": "default",
+        "@libff//libff/algebra/curves/mnt753/mnt4753": "default",
+        # "@libff//libff/algebra/curves/mnt753/mnt4753:public_params": "default",
+        "@libff//libff/algebra/curves/mnt753/mnt6753": "default",
+        # "@libff//libff/algebra/curves/mnt753/mnt6753:public_params": "default",
+
+        "@libff//libff/algebra/fields": "default",
+        "@libff//libff/algebra/fields:bigint": "default",
+
+        "@libff//libff/common/default_types": "default",
+        "@libff//libff/common:logging": "default",
+        "@libff//libff/common:profiling": "default",
+        "@libff//libff/common:utils": "default",
+
+        "@libsnark//caml:common": "default",
+
+
+        "//bzl/external/openssl": "default",
+        "//bzl/external/libgmp": "default",
+        "//bzl/external/libsodium": "default",
+        "//bzl/external/openmp": "default",
+    }
 )
 
 ocaml_ns_module(

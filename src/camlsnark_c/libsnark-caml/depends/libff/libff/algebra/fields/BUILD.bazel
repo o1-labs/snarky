@@ -2,6 +2,7 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@libff//bzl/config:vars.bzl",
      "CPPFLAGS",
      "DBINARY_OUTPUT", "DDEBUG", "DPROFILE_OP_COUNTS",
+     "LINKSTATIC",
      "DMONTGOMERY_OUTPUT", "DMULTICORE", "DUSE_ASM")
 
 cc_library(
@@ -24,6 +25,7 @@ cc_library(
         "fp_aux.tcc",
     ],
     copts = ["-I."] + CPPFLAGS,
+    linkstatic = LINKSTATIC,
     defines = DMONTGOMERY_OUTPUT + DUSE_ASM,
     local_defines = DDEBUG + DPROFILE_OP_COUNTS,
     include_prefix = "libff/algebra/fields",
@@ -39,10 +41,11 @@ cc_library(
 cc_library(
     name = "bigint",
     hdrs = [
-        "bigint.hpp",
         "bigint.tcc",
+        "bigint.hpp",
     ],
     copts = ["-I.", "-Iexternal"] + CPPFLAGS,
+    linkstatic = LINKSTATIC,
     defines = DBINARY_OUTPUT,
     include_prefix = "libff/algebra/fields",
     visibility = ["//visibility:public"],
@@ -64,6 +67,7 @@ cc_library(
         "fp_aux.tcc",
     ],
     copts = ["-I."] + CPPFLAGS,
+    linkstatic = LINKSTATIC,
     defines = DDEBUG + DPROFILE_OP_COUNTS + DMULTICORE,
     include_prefix = "libff/algebra/fields",
     visibility = ["//visibility:public"],

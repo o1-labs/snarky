@@ -72,10 +72,6 @@ ocaml_module(
         # do not sort (buildifier)
         "@opam//pkg:ctypes",
     ],
-    cc_deps = {
-        "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings": "default",
-        # "@libsnark//caml:snark_caml": "default"
-    }
 )
 
 ocaml_interface(
