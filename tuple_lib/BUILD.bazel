@@ -93,8 +93,8 @@ ocaml_module(
     impl = "double.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_F180089C,
-    ppx_bin_opts = [
+    ppx_exe = PPX3_F180089C,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"tuple_lib\"",
@@ -113,8 +113,8 @@ ocaml_module(
     impl = "four.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_F180089C,
-    ppx_bin_opts = [
+    ppx_exe = PPX3_F180089C,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"tuple_lib\"",
@@ -133,8 +133,8 @@ ocaml_module(
     impl = "intf.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_F180089C,
-    ppx_bin_opts = [
+    ppx_exe = PPX3_F180089C,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"tuple_lib\"",
@@ -166,8 +166,8 @@ ocaml_module(
     impl = "quadruple.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_F180089C,
-    ppx_bin_opts = [
+    ppx_exe = PPX3_F180089C,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"tuple_lib\"",
@@ -199,8 +199,8 @@ ocaml_module(
     impl = "triple.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_F180089C,
-    ppx_bin_opts = [
+    ppx_exe = PPX3_F180089C,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"tuple_lib\"",
@@ -211,6 +211,7 @@ ocaml_module(
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:core",
+        ":intf.cm_",
     ],
 )
 
@@ -219,8 +220,8 @@ ocaml_module(
     impl = "tuple_lib.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_F180089C,
-    ppx_bin_opts = [
+    ppx_exe = PPX3_F180089C,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"tuple_lib\"",

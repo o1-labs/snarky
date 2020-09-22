@@ -24,6 +24,13 @@ SNARKY_LIBSNARK_BINDINGS_NS = "Snarky_libsnark_bindings"
 
 ## (ppx_custom_printf ppx_sexp_conv ppx_bin_prot ppx_inline_test)
 PPX4_9C0A2F04 = "@//ppx/exe:ppx4_9c0a2f04-6b3e-5f2a-8470-43e49364ba52"
+PPX_ARGS = [
+    # do not sort (buildifier)
+        "-cookie",
+    "library-name=\"snarky_libsnark_bindings\"",
+    "-corrected-suffix",
+    ".ppx-corrected",
+]
 
 ocaml_archive(
     name = "snarky_libsnark_bindings",
@@ -39,10 +46,24 @@ ocaml_archive(
         "//src/base:snarky_backendless",
 
         ":snarky_libsnark_bindings_ns_module",
-        "//src/camlsnark_c:snark_ffi_bindings.cm_", # NOTE: submodule imported from different pkg
+        # "//src/camlsnark_c:snark_ffi_bindings.cm_", # NOTE: submodule imported from different pkg
+        ":snark_ffi_bindings.cm_", # NOTE: submodule imported from different pkg
         ":libsnark_r1cs_constraint_system.cm_",
         ":libsnark.cm_",
         ## end ns_module
+    ],
+)
+
+ocaml_module(
+    name = "snark_ffi_bindings.cm_",
+    impl = "//src/camlsnark_c:libsnark_ffi_bindings_ml",  ## generated file
+    ns_module = ":snarky_libsnark_bindings_ns_module",
+    opts = IMPL_OPTS + ["-thread"],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "//src/camlsnark_c",
     ],
 )
 
@@ -63,14 +84,8 @@ ocaml_module(
     impl = "libsnark_r1cs_constraint_system.ml",
     ns_module = ":snarky_libsnark_bindings_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX4_9C0A2F04,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarky_libsnark_bindings\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX4_9C0A2F04,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -86,14 +101,8 @@ ocaml_module(
     impl = "libsnark.ml",
     ns_module = ":snarky_libsnark_bindings_ns_module",
     opts = IMPL_OPTS + ["-cclib", "-Wl,-E"],
-    ppx_bin = PPX4_9C0A2F04,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarky_libsnark_bindings\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX4_9C0A2F04,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -104,7 +113,6 @@ ocaml_module(
         "//src/camlsnark_c/cpp_string:snarky_cpp_string",
         "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
         ":libsnark_r1cs_constraint_system.cm_",
-        # "//src/camlsnark_c:snark_ffi_bindings.cm_"
+        ":snark_ffi_bindings.cm_"
     ],
 )
-

@@ -46,31 +46,39 @@ INTERVAL_UNION_NS = "Interval_union"
 ## (ppx_jane ppx_deriving.eq bisect_ppx -conditional)
 PPX3_F180089C = "@//ppx/exe:ppx3_f180089c-83e6-5015-b4a7-74a66ad417a0"
 
-ocaml_archive(
-    name = "interval_union",
-    opts = INTF_OPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":interval_union_ns_module",
-        ":interval_union.cm_",
-    ],
-)
+# ocaml_archive(
+#     name = "interval_union",
+#     opts = INTF_OPTS,
+#     visibility = ["//visibility:public"],
+#     deps = [
+#         # do not sort (buildifier)
+#         ":interval_union_ns_module",
+#         ":interval_union.cm_",
+#     ],
+# )
 
-ocaml_ns_module(
-    name = "interval_union_ns_module",
-    ns = INTERVAL_UNION_NS,
-    submodules = [
-        # do not sort (buildifier)
-        "interval_union.ml",
-    ],
-)
+# ocaml_ns_module(
+#     name = "interval_union_ns_module",
+#     ns = INTERVAL_UNION_NS,
+#     submodules = [
+#         # do not sort (buildifier)
+#         "interval_union.ml",
+#     ],
+# )
 
 ocaml_interface(
     name = "interval_union.cmi",
     intf = "interval_union.mli",
-    ns_module = ":interval_union_ns_module",
+    # ns_module = ":interval_union_ns_module",
     opts = INTF_OPTS,
+    ppx_exe = PPX3_F180089C,
+    ppx_args = [
+        # do not sort (buildifier)
+        "-cookie",
+        "library-name=\"interval_union\"",
+        "-corrected-suffix",
+        ".ppx-corrected",
+    ],
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:core"
@@ -78,13 +86,13 @@ ocaml_interface(
 )
 
 ocaml_module(
-    name = "interval_union.cm_",
+    name = "interval_union",
     cmi = ":interval_union.cmi",
     impl = "interval_union.ml",
-    ns_module = ":interval_union_ns_module",
+    # ns_module = ":interval_union_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_F180089C,
-    ppx_bin_opts = [
+    ppx_exe = PPX3_F180089C,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"interval_union\"",

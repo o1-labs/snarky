@@ -25,7 +25,7 @@ COMMON_DEPS = []
 
 ## (pps ppx_jane ppx_deriving.enum))
 PPX = "@//ppx/exe:ppx2_jane_enum"
-PPX_BIN_OPTS = [
+PPX_ARGS = [
     # do not sort (buildifier)
     "-cookie",
     "library-name=\"election\"",
@@ -53,8 +53,8 @@ ocaml_module(
     name = "election.cm_",
     impl = "election.ml",
     opts = IMPL_OPTS,
-    ppx_bin = PPX,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -69,8 +69,8 @@ ocaml_module(
     name = "election_main.cm_",
     impl = "election_main.ml",
     opts = IMPL_OPTS,
-    ppx_bin = PPX,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -84,8 +84,8 @@ ocaml_module(
     name = "impl.cm_",
     impl = "impl.ml",
     opts = IMPL_OPTS,
-    ppx_bin = PPX,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -100,8 +100,8 @@ ocaml_module(
     name = "import.cm_",
     impl = "import.ml",
     opts = IMPL_OPTS,
-    ppx_bin = PPX,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -114,8 +114,8 @@ ocaml_interface(
     name = "knapsack_hash.cmi",
     intf = "knapsack_hash.mli",
     # ns_module = ":election_ns_module",
-    ppx_bin = PPX,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX,
+    ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
     deps = [
         # do not sort (buildifier)
@@ -128,12 +128,13 @@ ocaml_module(
     impl = "knapsack_hash.ml",
     cmi  = ":knapsack_hash.cmi",
     opts = IMPL_OPTS,
-    ppx_bin = PPX,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
         "//src:snarky",
         "//src/base:snarky_backendless",
+        ":impl.cm_",
     ],
 )

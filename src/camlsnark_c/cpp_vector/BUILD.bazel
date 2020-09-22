@@ -25,7 +25,7 @@ SNARKY_CPP_VECTOR_NS = "Snarky_cpp_vector"
 
 ## (ppx_bin_prot ppx_sexp_conv)
 PPX2_104BE23D = "@//ppx/exe:ppx2_104be23d-ba00-5095-a753-ed5e6ff75a9c"
-PPX_BIN_OPTS = [
+PPX_ARGS = [
     # do not sort (buildifier)
     "-cookie",
     "library-name=\"snarky_cpp_vector\"",
@@ -79,8 +79,8 @@ ocaml_interface(
     intf = "vector.mli",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = INTF_OPTS,
-    ppx_bin = PPX2_104BE23D,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX2_104BE23D,
+    ppx_args = PPX_ARGS,
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:core",
@@ -96,8 +96,8 @@ ocaml_module(
     impl = "vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX2_104BE23D,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX2_104BE23D,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -114,8 +114,8 @@ ocaml_module(
     impl = "bool_vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX2_104BE23D,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX2_104BE23D,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -128,8 +128,8 @@ ocaml_module(
     impl = "int_vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX2_104BE23D,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX2_104BE23D,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -142,8 +142,8 @@ ocaml_module(
     impl = "long_vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX2_104BE23D,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX2_104BE23D,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)

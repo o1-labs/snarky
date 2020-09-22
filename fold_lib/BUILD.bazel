@@ -73,8 +73,8 @@ ocaml_module(
     impl = "fold.ml",
     ns_module = ":fold_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_F180089C,
-    ppx_bin_opts = [
+    ppx_exe = PPX3_F180089C,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"fold_lib\"",

@@ -26,7 +26,7 @@ SNARKY_NS = "Snarky"
 
 ## (ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx -conditional)
 PPX5_A53130EE = "@//ppx/exe:ppx5_a53130ee-0e8e-50d0-b378-5884d16dafdb"
-PPX_BIN_OPTS = [
+PPX_ARGS = [
     # do not sort (buildifier)
     "-conditional",
     "-cookie",
@@ -151,8 +151,8 @@ ocaml_interface(
     name = "backend_types.cmi",
     intf = "backend_types.mli",
     ns_module = ":snarky_ns_module",
-    ppx_bin = PPX5_A53130EE,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX5_A53130EE,
+    ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
     # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
     deps = [
@@ -170,8 +170,8 @@ ocaml_module(
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
     # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
-    ppx_bin = PPX5_A53130EE,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX5_A53130EE,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -186,8 +186,8 @@ ocaml_module(
     impl = "backends.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX5_A53130EE,
-ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX5_A53130EE,
+ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -200,8 +200,8 @@ ocaml_module(
     impl = "snark.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX5_A53130EE,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX5_A53130EE,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -215,8 +215,8 @@ ocaml_module(
     impl = "toplevel.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX5_A53130EE,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX5_A53130EE,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -236,8 +236,8 @@ ocaml_module(
     impl = "snarky.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX5_A53130EE,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX5_A53130EE,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -254,8 +254,8 @@ ocaml_module(
     impl = "gpu_prover.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX5_A53130EE,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX5_A53130EE,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)

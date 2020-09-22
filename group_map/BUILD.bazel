@@ -77,8 +77,8 @@ ocaml_module(
     impl = "field_intf.ml",
     ns_module = ":group_map_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX2_915493D3,
-    ppx_bin_opts = [
+    ppx_exe = PPX2_915493D3,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"group_map\"",
@@ -100,8 +100,8 @@ ocaml_module(
     impl = "bw19.ml",
     ns_module = ":group_map_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX2_915493D3,
-    ppx_bin_opts = [
+    ppx_exe = PPX2_915493D3,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"group_map\"",
@@ -134,8 +134,8 @@ ocaml_module(
     impl = "group_map.ml",
     ns_module = ":group_map_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX2_915493D3,
-    ppx_bin_opts = [
+    ppx_exe = PPX2_915493D3,
+    ppx_args = [
         # do not sort (buildifier)
         "-cookie",
         "library-name=\"group_map\"",

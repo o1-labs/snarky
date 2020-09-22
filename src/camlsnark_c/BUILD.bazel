@@ -47,7 +47,7 @@ ocaml_module(
 # serves as a submodule in a different package.
 ocaml_module(
     name = "snark_ffi_bindings.cm_",
-    impl = "//src/camlsnark_c:libsnark_ffi_bindings_ml",  ## generated file
+    impl = ":libsnark_ffi_bindings_ml",  ## generated file
     ns_module = "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings_ns_module",
     opts = IMPL_OPTS + ["-thread"],
     visibility = ["//visibility:public"],

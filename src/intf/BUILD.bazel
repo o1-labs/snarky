@@ -45,6 +45,13 @@ SNARKY_INTF_NS = "Snarky_intf"
 
 ## (ppx_sexp_conv ppx_bin_prot ppx_hash ppx_compare)
 PPX4_A2F04B8A = "@//ppx/exe:ppx4_a2f04b8a-9eb4-5764-9e9f-800ec666ef48"
+PPX_ARGS = [
+    # do not sort (buildifier)
+        "-cookie",
+    "library-name=\"snarky_intf\"",
+    "-corrected-suffix",
+    ".ppx-corrected",
+]
 
 ocaml_archive(
     name = "snarky_intf",
@@ -75,14 +82,8 @@ ocaml_module(
     impl = "bigint_intf.ml",
     ns_module = ":snarky_intf_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX4_A2F04B8A,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarky_intf\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX4_A2F04B8A,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -95,14 +96,8 @@ ocaml_module(
     impl = "vector.ml",
     ns_module = ":snarky_intf_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX4_A2F04B8A,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarky_intf\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX4_A2F04B8A,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -115,14 +110,8 @@ ocaml_module(
     impl = "field.ml",
     ns_module = ":snarky_intf_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX4_A2F04B8A,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarky_intf\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX4_A2F04B8A,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)

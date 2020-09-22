@@ -34,7 +34,7 @@ http_archive(
 )
 
 ################################################################
-#### OCAML ####
+#### OCAML BAZEL RULES ####
 git_repository(
     name = "obazl_rules_ocaml",
     remote = "https://github.com/obazl/rules_ocaml",

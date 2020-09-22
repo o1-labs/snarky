@@ -43,6 +43,14 @@ PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
 
 PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
 
+PPX_ARGS = [
+    # do not sort (buildifier)
+        "-cookie",
+    "library-name=\"snarkette\"",
+    "-corrected-suffix",
+    ".ppx-corrected",
+]
+
 SNARKETTE_NS = "Snarkette"
 
 ## (ppx_jane ppx_deriving.eq ppx_deriving_yojson)
@@ -111,14 +119,8 @@ ocaml_module(
     impl = "nat.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -131,14 +133,8 @@ ocaml_module(
     impl = "fields.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS + ["-thread"],
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -156,14 +152,8 @@ ocaml_module(
     impl = "mnt4_80.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -178,14 +168,8 @@ ocaml_module(
     impl = "pairing.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -198,14 +182,8 @@ ocaml_module(
     impl = "nat_intf.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -220,14 +198,8 @@ ocaml_module(
     impl = "bowe_gabizon.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -243,14 +215,8 @@ ocaml_module(
     impl = "elliptic_curve.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -263,14 +229,8 @@ ocaml_module(
     impl = "groth_maller.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -286,14 +246,8 @@ ocaml_module(
     impl = "groth16.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -308,14 +262,8 @@ ocaml_module(
     impl = "mnt6753.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -334,14 +282,8 @@ ocaml_module(
     impl = "tweedle.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -356,14 +298,8 @@ ocaml_module(
     impl = "mnt4753.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -378,14 +314,8 @@ ocaml_module(
     impl = "elliptic_curve_intf.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -399,14 +329,8 @@ ocaml_module(
     impl = "mnt6_80.ml",
     ns_module = ":snarkette_ns_module",
     opts = IMPL_OPTS,
-    ppx_bin = PPX3_882338B5,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarkette\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    ppx_exe = PPX3_882338B5,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)

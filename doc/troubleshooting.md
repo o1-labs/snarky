@@ -1,5 +1,15 @@
 # troubleshooting
 
+## incompatible assumptions
+
+Make sure both ml and mli files use the same ppx!
+
+Error: Files bazel-out/darwin-fastbuild/bin/src/base/Snarky_backendless__Pedersen.cmx
+       and bazel-out/darwin-fastbuild/bin/interval_union/Interval_union.cmx
+       make inconsistent assumptions over interface Interval_union
+
+This was caused by a missing ppx_exe attribute in the ocaml_inteface
+rule for interval_union.mli.
 
 ### linker errors and warnings
 

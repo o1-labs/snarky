@@ -26,7 +26,7 @@ COMMON_DEPS = []
 ## (pps ppx_jane)
 PPX = "//ppx/exe:ppx1_58409c95-e080-5f48-b6db-90e8a376e5bc"
 
-PPX_BIN_OPTS = [
+PPX_ARGS = [
     # do not sort (buildifier)
     "-cookie",
     "library-name=\"merkle_update\"",
@@ -50,8 +50,8 @@ ocaml_module(
     name = "merkle_update.cm_",
     impl = "merkle_update.ml",
     opts = IMPL_OPTS,
-    ppx_bin = PPX,
-    ppx_bin_opts = PPX_BIN_OPTS,
+    ppx_exe = PPX,
+    ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)

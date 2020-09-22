@@ -152,12 +152,15 @@ of the way the OCaml compiler handles such dependencies.
 ## libsnark_caml
 
 * @libsnark/caml/BUILD.bazel ( = camlsnark_c/libsnark-caml/caml/BUILD.bazel):
-  ** cc_binary(name = "snark_caml"...)
-  ** cc_binary(name = "snark_caml_static"...)
+  ** cc_binary(name = "snark_caml.so"...)
+  ** cc_library(name = "snark_caml"...)
+  ** for both:
+     ***     srcs = ["caml_bn128.cpp", "caml_bn128.hpp", ...]
+      ***       deps = ["//libsnark", "@libff//libff/common/default_types", ...]
 
 * camlsnark_c/BUILD.bazel:
   ** ocaml_module(name = "camlsnark_c",
-                          cc_deps = {"@libsnark//caml:snark_caml": "dynamic"}...)
+                          cc_deps = {"@libsnark//caml:snark_caml" ...}
 
 * camlsnark_c/libsnark_bindings/BUILD.bazel:
  ** cc_library(name = "snark_ffi_bindings",

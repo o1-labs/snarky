@@ -34,11 +34,12 @@ ocaml_archive(
         # "@opam//pkg:core",
         "@opam//pkg:ctypes",
         "@opam//pkg:ctypes.foreign",
+
         ":camlsnark_c_bindings_ns_module",
-        ":bindings_base.cm_",
-        ":backend_types.cm_",
         ":vector.cm_",
+        ":backend_types.cm_",
         ":bindings.cm_",
+        ":bindings_base.cm_",
     ],
 )
 
@@ -49,8 +50,8 @@ ocaml_ns_module(
         # do not sort (buildifier)
         "bindings_base.ml",
         "backend_types.ml",
-        "vector.ml",
         "bindings.ml",
+        "vector.ml",
     ],
 )
 
@@ -111,6 +112,7 @@ ocaml_module(
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
+        "@opam//pkg:ctypes.foreign",
         ":bindings_base.cm_",
     ],
 )
@@ -123,8 +125,8 @@ ocaml_module(
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
-        ":backend_types.cm_",
         ":bindings_base.cm_",
+        ":backend_types.cm_",
         ":vector.cm_",
     ],
 )
