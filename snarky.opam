@@ -25,7 +25,7 @@ depends: [
   "ppx_snarky"
   "ppx_jane" {>= "v0.12" & < "v0.13"}
   "ppx_deriving" {>= "4.2.1" & < "4.5"}
-  "bisect_ppx" {>= "1.4.1" & < "1.5"}
+  "bisect_ppx" {>= "2.0.0"}
   "dune"                {build & >= "2.0"}
 ]
 depopts: [
