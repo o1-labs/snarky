@@ -419,8 +419,14 @@ module type Basic = sig
     (** Boolean and *)
     val ( && ) : var -> var -> (var, _) Checked.t
 
+    (** Boolean and, non-aliasing to [bool] operator. *)
+    val ( &&& ) : var -> var -> (var, _) Checked.t
+
     (** Boolean or *)
     val ( || ) : var -> var -> (var, _) Checked.t
+
+    (** Boolean or, non-aliasing to [bool] operator. *)
+    val ( ||| ) : var -> var -> (var, _) Checked.t
 
     (** Boolean xor (exclusive-or) *)
     val ( lxor ) : var -> var -> (var, _) Checked.t
@@ -457,7 +463,11 @@ module type Basic = sig
 
       val ( && ) : t -> t -> t
 
+      val ( &&& ) : t -> t -> t
+
       val ( || ) : t -> t -> t
+
+      val ( ||| ) : t -> t -> t
 
       val any : t list -> t
 
@@ -1787,7 +1797,11 @@ module type Run_basic = sig
 
     val ( && ) : var -> var -> var
 
+    val ( &&& ) : var -> var -> var
+
     val ( || ) : var -> var -> var
+
+    val ( ||| ) : var -> var -> var
 
     val ( lxor ) : var -> var -> var
 
@@ -1818,7 +1832,11 @@ module type Run_basic = sig
 
       val ( && ) : t -> t -> t
 
+      val ( &&& ) : t -> t -> t
+
       val ( || ) : t -> t -> t
+
+      val ( ||| ) : t -> t -> t
 
       val any : t list -> t
 
