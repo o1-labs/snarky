@@ -254,7 +254,8 @@ struct
     let s = Option.map2 ~f:(Lens.set lens) s s' in
     (set_prover_state s rs, a)
 
-  let constraint_count ?(log = fun ?start:_ _lab _pos -> ()) t =
+  let constraint_count ?(weight = List.length)
+      ?(log = fun ?start:_ _lab _pos -> ()) t =
     (* TODO: Integrate log with log_constraint *)
     let count = ref 0 in
     let log_constraint ?at_label_boundary c =
@@ -263,7 +264,7 @@ struct
           ()
       | Some (pos, lab) ->
           log ~start:(pos = `Start) lab !count ) ;
-      count := !count + List.length c
+      count := !count + weight c
     in
     let state =
       Run_state.
