@@ -300,6 +300,8 @@ module Bit_sponge = struct
 
           val to_bits : t -> Bool.t list
 
+          val finalize_discarded : Bool.t list -> unit
+
           val high_entropy_bits : int
       end)
       (Input : Intf.T)
@@ -332,8 +334,12 @@ module Bit_sponge = struct
         digest )
       else
         let x = S.squeeze t.underlying in
-        t.last_squeezed
-        <- t.last_squeezed @ List.take (Field.to_bits x) high_entropy_bits ;
+        let hi =
+          let hi, lo = List.split_n (Field.to_bits x) high_entropy_bits in
+          Field.finalize_discarded lo ;
+          hi
+        in
+        t.last_squeezed <- t.last_squeezed @ hi ;
         squeeze ~length t
 
     let squeeze_field t =

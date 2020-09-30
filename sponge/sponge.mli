@@ -79,6 +79,8 @@ module Bit_sponge : sig
 
     val to_bits : t -> Bool.t list
 
+    val finalize_discarded : Bool.t list -> unit
+
     val high_entropy_bits : int
   end)
   (Input : Intf.T)
