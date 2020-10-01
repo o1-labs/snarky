@@ -215,13 +215,13 @@ module Make_checked (Inputs : Inputs_intf) = struct
     let ax = constant Params.a * x in
     assert_square y (x3 + ax + constant Params.b)
 
+  let typ_unchecked : (t, Constant.t) Typ.t =
+    Typ.transport
+      Typ.(tuple2 F.typ F.typ)
+      ~there:Constant.to_affine_exn ~back:Constant.of_affine
+
   let typ : (t, Constant.t) Typ.t =
-    let unchecked =
-      Typ.transport
-        Typ.(tuple2 F.typ F.typ)
-        ~there:Constant.to_affine_exn ~back:Constant.of_affine
-    in
-    { unchecked with
+    { typ_unchecked with
       check= (fun t -> make_checked (fun () -> assert_on_curve t)) }
 
   let if_ c ~then_:(tx, ty) ~else_:(ex, ey) =
