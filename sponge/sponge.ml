@@ -123,9 +123,7 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
   include Operations
   module Field = Field
 
-  let half_rounds_full = rounds_full / 2
-
-  let%test "rounds_full" = half_rounds_full * 2 = rounds_full
+  let first_half_rounds_full = rounds_full / 2
 
   let add_block ~state block = Array.iteri block ~f:(add_assign ~state)
 
@@ -159,30 +157,34 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
    -> SBOX -> (MDS -> ARK_{half_rounds_full + rounds_partial + 1})
    -> ...
    -> SBOX -> (MDS -> ARK_{half_rounds_full + rounds_partial + half_rounds_full - 1})
-   -> SBOX -> MDS
+   -> SBOX -> MDS ->* ARK_{half_rounds_full + rounds_partial + half_rounds_full}
+
+    *this last round is a deviation from standard poseidon made for efficiency reasons.
+     clearly it does not impact security to add round constants
 *)
   let block_cipher {Params.round_constants; mds} state =
     let sbox = to_the_alpha in
     let state = ref state in
     add_block ~state:!state round_constants.(0) ;
-    for i = 1 to half_rounds_full do
+    for i = 1 to first_half_rounds_full do
       (* SBOX -> MDS -> ARK *)
       Array.map_inplace !state ~f:sbox ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
-    for i = half_rounds_full + 1 to half_rounds_full + rounds_partial do
+    for
+      i = first_half_rounds_full + 1 to first_half_rounds_full + rounds_partial
+    do
       !state.(0) <- sbox !state.(0) ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
     for
-      i = half_rounds_full + rounds_partial + 1
-      to rounds_full + rounds_partial - 1
+      i = first_half_rounds_full + rounds_partial + 1
+      to rounds_full + rounds_partial
     do
       Array.map_inplace !state ~f:sbox ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
-    Array.map_inplace ~f:sbox !state ;
-    apply_affine_map (mds, Array.map !state ~f:(fun _ -> Field.zero)) !state
+    !state
 end
 
 module Make_hash (P : Intf.Permutation) = struct
