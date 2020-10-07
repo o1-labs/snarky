@@ -89,11 +89,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "double.cm_",
-    cmi = ":double.cmi",
+    intf = ":double.cmi",
     impl = "double.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX3_F180089C,
+    ppx = PPX3_F180089C,
     ppx_args = [
         # do not sort (buildifier)
         "-cookie",
@@ -113,7 +113,7 @@ ocaml_module(
     impl = "four.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX3_F180089C,
+    ppx = PPX3_F180089C,
     ppx_args = [
         # do not sort (buildifier)
         "-cookie",
@@ -133,7 +133,7 @@ ocaml_module(
     impl = "intf.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX3_F180089C,
+    ppx = PPX3_F180089C,
     ppx_args = [
         # do not sort (buildifier)
         "-cookie",
@@ -162,11 +162,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "quadruple.cm_",
-    cmi = ":quadruple.cmi",
+    intf = ":quadruple.cmi",
     impl = "quadruple.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX3_F180089C,
+    ppx = PPX3_F180089C,
     ppx_args = [
         # do not sort (buildifier)
         "-cookie",
@@ -195,11 +195,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "triple.cm_",
-    cmi = ":triple.cmi",
+    intf = ":triple.cmi",
     impl = "triple.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX3_F180089C,
+    ppx = PPX3_F180089C,
     ppx_args = [
         # do not sort (buildifier)
         "-cookie",
@@ -220,7 +220,7 @@ ocaml_module(
     impl = "tuple_lib.ml",
     ns_module = ":tuple_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX3_F180089C,
+    ppx = PPX3_F180089C,
     ppx_args = [
         # do not sort (buildifier)
         "-cookie",

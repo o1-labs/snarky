@@ -1,0 +1,67 @@
+workspace(name = "snarky")
+
+################ setup ################
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
+
+http_archive(
+    name = "bazel_skylib",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.0.2/bazel-skylib-1.0.2.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.0.2/bazel-skylib-1.0.2.tar.gz",
+    ],
+    sha256 = "97e70364e9249702246c0e9444bccdc4b847bed1eb03c5a3ece4f83dfe6abc44",
+)
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+bazel_skylib_workspace()
+
+http_archive(
+    name = "rules_foreign_cc",
+    strip_prefix="rules_foreign_cc-master",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/master.zip",
+    # sha256 = "3fc764c7084da14cff812ae42327d19c8d6e99379f8b3e310b3213e1d5f0e7e8"
+)
+
+load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
+rules_foreign_cc_dependencies()
+
+# rules_python needed by libsnark
+http_archive(
+    name = "rules_python",
+    url = "https://github.com/bazelbuild/rules_python/releases/download/0.0.2/rules_python-0.0.2.tar.gz",
+    strip_prefix = "rules_python-0.0.2",
+    sha256 = "b5668cde8bb6e3515057ef465a35ad712214962f0b3a314e551204266c7be90c",
+)
+
+################################################################
+#### OCAML BAZEL RULES ####
+git_repository(
+    name = "obazl_rules_ocaml",
+    remote = "https://github.com/obazl/rules_ocaml",
+    branch = "dev",
+    # commit = "feef897197b36b14b65ffdf00b9badcbdb8f42f4",
+    # shallow_since = "1593623637 -0500"
+)
+
+load("@obazl_rules_ocaml//ocaml:deps.bzl",
+     "ocaml_configure",
+     "ocaml_register_toolchains",
+     "opam_configure")
+
+opam_configure()
+
+ocaml_configure()
+
+ocaml_register_toolchains(installation="host")
+
+load("//bzl/external:repositories.bzl", "fetch_remote_repos")
+fetch_remote_repos()
+
+local_repository( name = "libsnark" , path = "src/camlsnark_c/libsnark-caml")
+local_repository( name = "libfqfft" , path = "src/camlsnark_c/libsnark-caml/depends/libfqfft")
+local_repository( name = "libff" , path = "src/camlsnark_c/libsnark-caml/depends/libff")
+local_repository( name = "ate_pairing" , path = "src/camlsnark_c/libsnark-caml/depends/ate-pairing")
+local_repository( name = "xbyak" , path = "src/camlsnark_c/libsnark-caml/depends/xbyak" )
+
+load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
+boost_deps()

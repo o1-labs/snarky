@@ -81,7 +81,7 @@ ocaml_interface(
 
 ocaml_module(
     name = "backend_types.cm_",
-    cmi = ":backend_types.cmi",
+    intf = ":backend_types.cmi",
     impl = "backend_types.ml",
     ns_module = ":camlsnark_c_bindings_ns_module",
     opts = IMPL_OPTS,
@@ -105,7 +105,7 @@ ocaml_interface(
 
 ocaml_module(
     name = "vector.cm_",
-    cmi = ":vector.cmi",
+    intf = ":vector.cmi",
     impl = "vector.ml",
     ns_module = ":camlsnark_c_bindings_ns_module",
     opts = IMPL_OPTS,

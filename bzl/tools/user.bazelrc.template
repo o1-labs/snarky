@@ -1,7 +1,5 @@
-# build --spawn_strategy=local
-
 ## You can override the WORKSPACE definition of a repo.
-## For builds:
+
 # build --override_repository=obazl_rules_ocaml=/path/to/obazl
 # query --override_repository=obazl_rules_ocaml=/path/to/obazl
 
@@ -21,9 +19,9 @@
 # query --override_repository=xbyak=/path/to/xbyak
 
 ################################################################
-build --symlink_prefix=.bazel/   # use hidden dir instead of top-level symlinks
-# When enabled, the `bazel-out` symlink won’t be created if a different name is given to `--symlink_prefix`.
-# bazel 3.2+
+# use hidden dir instead of top-level symlinks
+build --symlink_prefix=.bazel/
+# do not create `bazel-out` symlink if a different name is given to `--symlink_prefix`.
 build --experimental_no_product_name_out_symlink
 
 build --color=yes

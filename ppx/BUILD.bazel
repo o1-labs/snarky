@@ -22,35 +22,31 @@ LINK_OPTS = select({
 }) + []
 
 EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-
 IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-
 INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-
 ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
 COMMON_DEPS = []
-
 PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-
 PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-
 PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-
 PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
-
 PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
 PPX_SNARKY_NS = "Ppx_snarky"
 
-## (ppxlib.metaquot ppx_sexp_conv)
-PPX2_831547B4 = "@//ppx/exe:ppx2_831547b4-6baa-5d1f-b272-3f7605d1f6d5"
+PPX_ARGS = [
+    # do not sort (buildifier)
+    # "-cookie",
+    # "library-name=\"ppx_snarky\"",
+    # "-inline-test-lib", "snarky_backendless",
+    # "-corrected-suffix",
+    # ".ppx-corrected",
+]
 
-ppx_archive(
-    name = "ppx_snarky",
-    opts = PPX_ARCHIVE_OPTS,
-    visibility = ["//visibility:public"],
-    deps = [
+ocaml_archive(
+    name           = "ppx_snarky",
+    opts           = PPX_ARCHIVE_OPTS,
+    visibility     = ["//visibility:public"],
+    deps           = [
         # do not sort (buildifier)
         ":ppx_snarky_ns_module",
         ":snarky_module.cm_",
@@ -59,11 +55,11 @@ ppx_archive(
     ],
 )
 
-ppx_ns_module(
-    name = "ppx_snarky_ns_module",
-    ns = PPX_SNARKY_NS,
-    opts = PPX_NS_OPTS,
-    submodules = [
+ocaml_ns_module(
+    name           = "ppx_snarky_ns_module",
+    ns             = PPX_SNARKY_NS,
+    opts           = PPX_NS_OPTS,
+    submodules     = [
         # do not sort (buildifier)
         "snarky_module.ml",
         "snarkydef.ml",
@@ -71,43 +67,64 @@ ppx_ns_module(
     ],
 )
 
-ppx_module(
-    name = "snarky_module.cm_",
-    impl = "snarky_module.ml",
-    opts = PPX_IMPL_OPTS,
-    ppx_exe = PPX2_831547B4,
-    ppx_ns_module = ":ppx_snarky_ns_module",
-    visibility = ["//visibility:public"],
-    deps = [
+ocaml_module(
+    name           = "snarky_module.cm_",
+    impl           = "snarky_module.ml",
+    opts           = PPX_IMPL_OPTS,
+    ppx            = ":ppx",
+    ppx_args       = PPX_ARGS,
+    ns_module      = ":ppx_snarky_ns_module",
+    visibility     = ["//visibility:public"],
+    deps           = [
         # do not sort (buildifier)
         "@opam//pkg:ppxlib",
         "@opam//pkg:core_kernel",
     ],
 )
 
-ppx_module(
-    name = "snarkydef.cm_",
-    impl = "snarkydef.ml",
-    opts = PPX_IMPL_OPTS,
-    ppx_exe = PPX2_831547B4,
-    ppx_ns_module = ":ppx_snarky_ns_module",
-    visibility = ["//visibility:public"],
-    deps = [
+ocaml_module(
+    name           = "snarkydef.cm_",
+    impl           = "snarkydef.ml",
+    opts           = PPX_IMPL_OPTS,
+    ppx            = ":ppx",
+    ppx_args       = PPX_ARGS,
+    ns_module      = ":ppx_snarky_ns_module",
+    visibility     = ["//visibility:public"],
+    deps           = [
         # do not sort (buildifier)
         "@opam//pkg:ppxlib",
     ],
 )
 
-ppx_module(
-    name = "ppx_snarky.cm_",
-    impl = "ppx_snarky.ml",
-    opts = PPX_IMPL_OPTS,
-    ppx_exe = PPX2_831547B4,
-    ppx_ns_module = ":ppx_snarky_ns_module",
-    visibility = ["//visibility:public"],
-    deps = [
+ocaml_module(
+    name           = "ppx_snarky.cm_",
+    impl           = "ppx_snarky.ml",
+    opts           = PPX_IMPL_OPTS,
+    ppx            = ":ppx",
+    ppx_args       = PPX_ARGS,
+    ns_module      = ":ppx_snarky_ns_module",
+    visibility     = ["//visibility:public"],
+    deps           = [
         # do not sort (buildifier)
         ":snarky_module.cm_",
         ":snarkydef.cm_",
     ],
+)
+
+ppx_executable(
+    name           = "ppx",
+    srcs           = [
+        # do not sort (buildifier)
+        "@obazl//ppxlib:driver_standalone_runner",
+    ],
+    deps           = [
+        # do not sort (buildifier)
+        "@opam//pkg:ppxlib.metaquot",
+        "@opam//pkg:ppx_sexp_conv",
+    ],
+    opts           = [
+        "-linkall",
+        "-predicates", "ppx_driver,ppx_deriver"
+    ],
+    visibility     = ["//visibility:public"],
 )

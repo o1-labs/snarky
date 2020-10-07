@@ -1,5 +1,13 @@
 open Core_kernel
 
+(** Yojson-compatible JSON type. *)
+type 'a json =
+  [> `String of string
+  | `Assoc of (string * 'a json) list
+  | `List of 'a json list ]
+  as
+  'a
+
 module type Constraint_system_intf = sig
   module Field : sig
     type t
@@ -24,11 +32,13 @@ module type Constraint_system_intf = sig
 
   val get_auxiliary_input_size : t -> int
 
-  val to_json :
-       t
-    -> ([> `String of string | `Assoc of (string * 'a) list | `List of 'a list]
-        as
-        'a)
+  val to_json : t -> 'a json
+
+  (* val to_json :
+   *      t
+   *   -> ([> `String of string | `Assoc of (string * 'a) list | `List of 'a list]
+   *       as
+   *       'a) *)
 end
 
 module type Libsnark_constraint_system_intf = sig

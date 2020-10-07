@@ -79,7 +79,7 @@ ocaml_interface(
     intf = "vector.mli",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = INTF_OPTS,
-    ppx_exe = PPX2_104BE23D,
+    ppx = PPX2_104BE23D,
     ppx_args = PPX_ARGS,
     deps = [
         # do not sort (buildifier)
@@ -92,11 +92,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "vector.cm_",
-    cmi = ":vector.cmi",
+    intf = ":vector.cmi",
     impl = "vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX2_104BE23D,
+    ppx = PPX2_104BE23D,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -114,7 +114,7 @@ ocaml_module(
     impl = "bool_vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX2_104BE23D,
+    ppx = PPX2_104BE23D,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -128,7 +128,7 @@ ocaml_module(
     impl = "int_vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX2_104BE23D,
+    ppx = PPX2_104BE23D,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -142,7 +142,7 @@ ocaml_module(
     impl = "long_vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX2_104BE23D,
+    ppx = PPX2_104BE23D,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [

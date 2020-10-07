@@ -58,7 +58,7 @@ ocaml_interface(
 
 ocaml_module(
     name = "snarky_cpp_string",
-    cmi = ":snarky_cpp_string.cmi",
+    intf = ":snarky_cpp_string.cmi",
     impl = "snarky_cpp_string.ml",
     # ns_module = ":snarky_cpp_string_ns_module",
     opts = IMPL_OPTS + ["-cclib", "-Wl,-E"],

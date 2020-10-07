@@ -80,11 +80,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "bitstring.cm_",
-    cmi = ":bitstring.cmi",
+    intf = ":bitstring.cmi",
     impl = "bitstring.ml",
     ns_module = ":bitstring_lib_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX3_F180089C,
+    ppx = PPX3_F180089C,
     ppx_args = [
         # do not sort (buildifier)
         "-cookie",

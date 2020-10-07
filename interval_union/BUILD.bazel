@@ -71,7 +71,7 @@ ocaml_interface(
     intf = "interval_union.mli",
     # ns_module = ":interval_union_ns_module",
     opts = INTF_OPTS,
-    ppx_exe = PPX3_F180089C,
+    ppx = PPX3_F180089C,
     ppx_args = [
         # do not sort (buildifier)
         "-cookie",
@@ -87,11 +87,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "interval_union",
-    cmi = ":interval_union.cmi",
+    intf = ":interval_union.cmi",
     impl = "interval_union.ml",
     # ns_module = ":interval_union_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX3_F180089C,
+    ppx = PPX3_F180089C,
     ppx_args = [
         # do not sort (buildifier)
         "-cookie",

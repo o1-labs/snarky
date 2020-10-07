@@ -84,7 +84,7 @@ ocaml_module(
     impl = "libsnark_r1cs_constraint_system.ml",
     ns_module = ":snarky_libsnark_bindings_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX4_9C0A2F04,
+    ppx = PPX4_9C0A2F04,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -101,7 +101,7 @@ ocaml_module(
     impl = "libsnark.ml",
     ns_module = ":snarky_libsnark_bindings_ns_module",
     opts = IMPL_OPTS + ["-cclib", "-Wl,-E"],
-    ppx_exe = PPX4_9C0A2F04,
+    ppx = PPX4_9C0A2F04,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [

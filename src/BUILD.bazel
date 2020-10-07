@@ -151,7 +151,7 @@ ocaml_interface(
     name = "backend_types.cmi",
     intf = "backend_types.mli",
     ns_module = ":snarky_ns_module",
-    ppx_exe = PPX5_A53130EE,
+    ppx = PPX5_A53130EE,
     ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
     # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
@@ -165,12 +165,12 @@ ocaml_interface(
 
 ocaml_module(
     name = "backend_types.cm_",
-    cmi = ":backend_types.cmi",
+    intf = ":backend_types.cmi",
     impl = "backend_types.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
     # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
-    ppx_exe = PPX5_A53130EE,
+    ppx = PPX5_A53130EE,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -186,7 +186,7 @@ ocaml_module(
     impl = "backends.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX5_A53130EE,
+    ppx = PPX5_A53130EE,
 ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -200,7 +200,7 @@ ocaml_module(
     impl = "snark.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX5_A53130EE,
+    ppx = PPX5_A53130EE,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -215,7 +215,7 @@ ocaml_module(
     impl = "toplevel.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX5_A53130EE,
+    ppx = PPX5_A53130EE,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -236,7 +236,7 @@ ocaml_module(
     impl = "snarky.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX5_A53130EE,
+    ppx = PPX5_A53130EE,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -254,7 +254,7 @@ ocaml_module(
     impl = "gpu_prover.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX5_A53130EE,
+    ppx = PPX5_A53130EE,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [

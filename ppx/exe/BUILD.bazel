@@ -5,17 +5,27 @@ PPX_EXEC_OPTS = select({
     "//conditions:default": ["-thread"],
 }) + [
     "-linkall",
-    "-predicates",
-    "ppx_driver",
+    "-predicates", "ppx_driver,ppx_deriver",
 ]
+
+ppx_executable(
+    name = "minimal",
+    srcs = ["@obazl//ppxlib:driver_standalone_runner"],
+    opts = [
+        "-predicates", "ppx_deriver"
+        # "-predicates", "ppx_driver"
+    ],
+    deps = ["@opam//pkg:ppxlib"]
+)
 
 ppx_executable(
     name = "ppx12_b61c7a40-06e3-5466-8b7b-b3535f5a4aa6",
     srcs = [
         # do not sort (buildifier)
-        "@obazl//ppxlib:driver_standalone_shim",
+        "@obazl//ppxlib:driver_standalone_runner",
+        # "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_sexp_conv",
         "@opam//pkg:ppx_bin_prot",
@@ -27,14 +37,50 @@ ppx_executable(
         "@opam//pkg:ppx_deriving.eq",
         "@snarky//ppx:ppx_snarky",
         "@opam//pkg:ppx_fields_conv",
+        # NB: when this is used, pass -inline-test-lib libname
+        # "@opam//pkg:ppx_inline_test",
+        "@opam//pkg:ppx_custom_printf",
+    ],
+    opts = PPX_EXEC_OPTS, # + ["-inline-test-lib", "foobar"],
+    x_deps = [
+        # do not sort (buildifier)
+        # "@opam//pkg:bin_prot",
+        # "@opam//pkg:ppx_assert.runtime-lib",
+        # "@opam//pkg:fieldslib",
+        "@opam//pkg:ppx_inline_test.runtime-lib",
+        "@opam//pkg:ppx_deriving.runtime",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+ppx_executable(
+    name = "ppx12_b61c7a40-06e3-5466-8b7b-b3535f5a4aa6_inline_test",
+    srcs = [
+        # do not sort (buildifier)
+        "@obazl//ppxlib:driver_standalone_runner",
+        # "@obazl//ppxlib:driver_standalone_shim",
+    ],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ppx_sexp_conv",
+        "@opam//pkg:ppx_bin_prot",
+        "@opam//pkg:ppx_let",
+        "@opam//pkg:ppx_hash",
+        "@opam//pkg:ppx_compare",
+        "@opam//pkg:ppx_deriving.enum",
+        "@opam//pkg:ppx_assert",
+        "@opam//pkg:ppx_deriving.eq",
+        "@snarky//ppx:ppx_snarky",
+        "@opam//pkg:ppx_fields_conv",
+        # NB: when this is used, pass -inline-test-lib libname
         "@opam//pkg:ppx_inline_test",
         "@opam//pkg:ppx_custom_printf",
     ],
-    opts = PPX_EXEC_OPTS,
-    output_deps = [
+    opts = PPX_EXEC_OPTS, # + ["-inline-test-lib", "foobar"],
+    x_deps = [
         # do not sort (buildifier)
-        "@opam//pkg:bin_prot",
-        "@opam//pkg:ppx_assert.runtime-lib",
+        # "@opam//pkg:bin_prot",
+        # "@opam//pkg:ppx_assert.runtime-lib",
         "@opam//pkg:fieldslib",
         "@opam//pkg:ppx_inline_test.runtime-lib",
         "@opam//pkg:ppx_deriving.runtime",
@@ -48,12 +94,12 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppxlib.metaquot",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
     ],
     visibility = ["//visibility:public"],
@@ -65,12 +111,12 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_jane",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
     ],
     visibility = ["//visibility:public"],
@@ -82,12 +128,12 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_inline_test",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_inline_test.runtime-lib",
     ],
@@ -100,13 +146,13 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_bin_prot",
         "@opam//pkg:ppx_sexp_conv",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:bin_prot",
     ],
@@ -119,13 +165,13 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppxlib.metaquot",
         "@opam//pkg:ppx_sexp_conv",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
     ],
     visibility = ["//visibility:public"],
@@ -137,13 +183,13 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_inline_test",
         "@opam//pkg:ppx_let",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_inline_test.runtime-lib",
     ],
@@ -156,13 +202,13 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_deriving.eq",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_deriving.runtime",
         "@opam//pkg:ppx_expect.collector",
@@ -178,13 +224,13 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppxlib.metaquot",
         "@opam//pkg:ppx_jane",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
     ],
     visibility = ["//visibility:public"],
@@ -196,13 +242,13 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_bench",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_bench.runtime-lib",
     ],
@@ -215,14 +261,14 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_deriving_yojson",
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_deriving.eq",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_deriving_yojson.runtime",
         "@opam//pkg:yojson",
@@ -240,14 +286,14 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_deriving.eq",
         "@opam//pkg:ppx_deriving_yojson",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_deriving_yojson.runtime",
         "@opam//pkg:yojson",
@@ -265,14 +311,14 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_deriving_yojson",
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_deriving.std",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_deriving_yojson.runtime",
         "@opam//pkg:yojson",
@@ -286,14 +332,18 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_deriving.eq",
         "@opam//pkg:bisect_ppx",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    # + select({
+    #     "//bzl/config:enable_bisect" : ["--conditional"],
+    #     "//conditions:default" : []
+    # }),
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:bisect_ppx.runtime",
         "@opam//pkg:ppx_deriving.runtime",
@@ -310,7 +360,7 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@snarky//ppx:ppx_snarky",
         "@opam//pkg:ppx_jane",
@@ -318,7 +368,7 @@ ppx_executable(
         "@opam//pkg:ppx_deriving_yojson",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_deriving_yojson.runtime",
         "@opam//pkg:yojson",
@@ -332,7 +382,7 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_custom_printf",
         "@opam//pkg:ppx_sexp_conv",
@@ -340,7 +390,7 @@ ppx_executable(
         "@opam//pkg:ppx_inline_test",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:bin_prot",
         "@opam//pkg:ppx_inline_test.runtime-lib",
@@ -354,7 +404,7 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_sexp_conv",
         "@opam//pkg:ppx_bin_prot",
@@ -362,7 +412,7 @@ ppx_executable(
         "@opam//pkg:ppx_compare",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:bin_prot",
     ],
@@ -375,7 +425,7 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         "@snarky//ppx:ppx_snarky",
         "@opam//pkg:ppx_jane",
@@ -384,7 +434,7 @@ ppx_executable(
         "@opam//pkg:bisect_ppx",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         "@opam//pkg:bisect_ppx.runtime",
         "@opam//pkg:ppx_deriving.runtime",
@@ -401,14 +451,14 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    build_deps = [
+    deps = [
         # do not sort (buildifier)
         # "@snarky//ppx:ppx_snarky",
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_deriving.enum",
     ],
     opts = PPX_EXEC_OPTS,
-    output_deps = [
+    x_deps = [
         # do not sort (buildifier)
         # "@opam//pkg:bisect_ppx.runtime",
         "@opam//pkg:ppx_deriving.runtime",

@@ -29,10 +29,12 @@ SNARKY_BACKENDLESS_NS = "Snarky_backendless"
 PPX12_B61C7A4 = "//ppx/exe:ppx12_b61c7a40-06e3-5466-8b7b-b3535f5a4aa6"
 PPX_ARGS = [
     # do not sort (buildifier)
-    "-cookie",
-    "library-name=\"snarky_backendless\"",
-    "-corrected-suffix",
-    ".ppx-corrected",
+    # "-cookie",
+    # "library-name=\"snarky_backendless\"",
+    # "-inline-test-lib", "snarky_backendless",
+    # only needed for ppx_expect:
+    # "-corrected-suffix",
+    # ".ppx-corrected",
 ]
 
 ocaml_archive(
@@ -135,7 +137,7 @@ ocaml_module(
     impl = "as_prover0.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -151,7 +153,7 @@ ocaml_module(
     impl = "as_prover_intf.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -168,7 +170,7 @@ ocaml_interface(
     intf = "as_prover.mli",
     ns_module = ":snarky_backendless_ns_module",
     opts = INTF_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     deps = [
         # do not sort (buildifier)
@@ -181,11 +183,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "as_prover.cm_",
-    cmi = ":as_prover.cmi",
+    intf = ":as_prover.cmi",
     impl = "as_prover.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -202,13 +204,14 @@ ocaml_module(
     impl = "backend_extended.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
-    ppx_args = PPX_ARGS,
+    ppx = "//ppx/exe:ppx12_b61c7a40-06e3-5466-8b7b-b3535f5a4aa6_inline_test",
+    ppx_args = PPX_ARGS + ["-inline-test-lib", "snarky_backendless"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
         "//src/intf:snarky_intf",
-        ":backend_intf.cm_",
+        ":snark_intf.cm_",
+        # ":backend_intf.cm_",
         ":constraint.cm_",
         ":cvar.cm_",
     ],
@@ -219,8 +222,16 @@ ocaml_module(
     impl = "backend_intf.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
+    # [
+    #     # do not sort (buildifier)
+    #     # "-cookie",
+    #     # "library-name=\"snarky_backendless\"",
+    #     # "-inline-test-lib", "snarky_backendless",
+    #     # "-corrected-suffix",
+    #     # ".ppx-corrected",
+    # ],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -235,7 +246,7 @@ ocaml_module(
     impl = "bin_prot_io.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -248,16 +259,18 @@ ocaml_interface(
     name = "boolean.cmi",
     intf = "boolean.mli",
     ns_module = ":snarky_backendless_ns_module",
+    ppx = PPX12_B61C7A4,
+    ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
 )
 
 ocaml_module(
     name = "boolean.cm_",
-    cmi = ":boolean.cmi",
+    intf = ":boolean.cmi",
     impl = "boolean.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
 )
@@ -267,7 +280,7 @@ ocaml_module(
     impl = "checked.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -285,7 +298,7 @@ ocaml_module(
     impl = "checked_intf.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -300,7 +313,7 @@ ocaml_module(
     impl = "checked_runner.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -318,7 +331,7 @@ ocaml_module(
     impl = "constraint.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -332,7 +345,7 @@ ocaml_module(
     impl = "constraint_system.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -346,7 +359,7 @@ ocaml_module(
     impl = "cvar.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -360,7 +373,7 @@ ocaml_interface(
     name = "enumerable.cmi",
     intf = "enumerable.mli",
     ns_module = ":snarky_backendless_ns_module",
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
     deps = [
@@ -372,11 +385,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "enumerable.cm_",
-    cmi = ":enumerable.cmi",
+    intf = ":enumerable.cmi",
     impl = "enumerable.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -394,7 +407,7 @@ ocaml_module(
     impl = "enumerable_intf.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
 )
@@ -404,7 +417,7 @@ ocaml_module(
     impl = "free_monad.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -418,7 +431,7 @@ ocaml_module(
     impl = "handle.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
 )
@@ -427,6 +440,8 @@ ocaml_interface(
     name = "knapsack.cmi",
     intf = "knapsack.mli",
     ns_module = ":snarky_backendless_ns_module",
+    ppx = PPX12_B61C7A4,
+    ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
     deps = [
         # do not sort (buildifier)
@@ -439,11 +454,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "knapsack.cm_",
-    cmi = ":knapsack.cmi",
+    intf = ":knapsack.cmi",
     impl = "knapsack.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -460,7 +475,7 @@ ocaml_module(
     impl = "lens.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
 )
@@ -469,6 +484,8 @@ ocaml_interface(
     name = "merkle_tree.cmi",
     intf = "merkle_tree.mli",
     ns_module = ":snarky_backendless_ns_module",
+    ppx = PPX12_B61C7A4,
+    ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
     deps = [
         # do not sort (buildifier)
@@ -478,11 +495,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "merkle_tree.cm_",
-    cmi = ":merkle_tree.cmi",
+    intf = ":merkle_tree.cmi",
     impl = "merkle_tree.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -497,7 +514,7 @@ ocaml_module(
     impl = "monad_let.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -511,7 +528,7 @@ ocaml_module(
     impl = "monad_sequence.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -524,6 +541,8 @@ ocaml_interface(
     name = "number.cmi",
     intf = "number.mli",
     ns_module = ":snarky_backendless_ns_module",
+    ppx = PPX12_B61C7A4,
+    ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
     deps = [
         # do not sort (buildifier)
@@ -534,11 +553,11 @@ ocaml_interface(
 
 ocaml_module(
     name = "number.cm_",
-    cmi = ":number.cmi",
+    intf = ":number.cmi",
     impl = "number.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -553,7 +572,7 @@ ocaml_module(
     impl = "number_intf.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
 )
@@ -563,7 +582,7 @@ ocaml_module(
     impl = "pedersen.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -579,16 +598,18 @@ ocaml_interface(
     name = "request.cmi",
     intf = "request.mli",
     ns_module = ":snarky_backendless_ns_module",
+    ppx = PPX12_B61C7A4,
+    ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
 )
 
 ocaml_module(
     name = "request.cm_",
-    cmi = ":request.cmi",
+    intf = ":request.cmi",
     impl = "request.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -602,7 +623,7 @@ ocaml_module(
     impl = "restrict_monad.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -616,7 +637,7 @@ ocaml_module(
     impl = "run_state.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -632,35 +653,40 @@ ocaml_interface(
     name = "snark0.cmi",
     intf = "snark0.mli",
     ns_module = ":snarky_backendless_ns_module",
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
+    # ppx = "//ppx/exe:ppx12_b61c7a40-06e3-5466-8b7b-b3535f5a4aa6_inline_test",
+    # ppx_args = PPX_ARGS + ["-inline-test-lib", "snarky_backendless"],
     opts = INTF_OPTS,
     deps = [
         # do not sort (buildifier)
         "//src/intf:snarky_intf",
+        # ":backend_intf.cm_",
         ":snark_intf.cm_",
-        ":backend_intf.cm_",
     ],
 )
 
 ocaml_module(
     name = "snark0.cm_",
-    cmi = ":snark0.cmi",
+    intf = ":snark0.cmi",
     impl = "snark0.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
-    ppx_args = PPX_ARGS,
+    ppx = "//ppx/exe:ppx12_b61c7a40-06e3-5466-8b7b-b3535f5a4aa6_inline_test",
+    ppx_args = PPX_ARGS + ["-inline-test-lib", "snarky_backendless"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
         "@opam//pkg:core_kernel",
+        "//src/intf:snarky_intf",
         "//bitstring_lib",
         "//h_list",
         ":bin_prot_io.cm_",
         ":checked_runner.cm_",
         ":enumerable.cm_",
+        # ":backend_extended.cm_",
         ":number.cm_",
+        # ":snark_intf.cm_",
     ],
 )
 
@@ -669,7 +695,7 @@ ocaml_module(
     impl = "snark.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -683,14 +709,23 @@ ocaml_module(
     impl = "snark_intf.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
+    # [
+    #     # do not sort (buildifier)
+    #     # "-cookie",
+    #     # "library-name=\"snarky_backendless\"",
+    #     # "-inline-test-lib", "snarky_backendless",
+    #     # "-corrected-suffix",
+    #     # ".ppx-corrected",
+    # ],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
         "//bitstring_lib",
         "//h_list",
         "//src/intf:snarky_intf",
+        ":backend_intf.cm_",
         ":boolean.cm_",
         ":enumerable_intf.cm_",
         ":monad_sequence.cm_",
@@ -704,7 +739,7 @@ ocaml_module(
     impl = "snarky_backendless.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -719,7 +754,7 @@ ocaml_module(
     impl = "traversable.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -733,7 +768,7 @@ ocaml_module(
     impl = "typ.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -754,7 +789,7 @@ ocaml_module(
     impl = "typ_monads.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
@@ -769,7 +804,7 @@ ocaml_module(
     impl = "types.ml",
     ns_module = ":snarky_backendless_ns_module",
     opts = IMPL_OPTS,
-    ppx_exe = PPX12_B61C7A4,
+    ppx = PPX12_B61C7A4,
     ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
     deps = [
