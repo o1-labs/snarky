@@ -9,7 +9,7 @@
 #define BN_UTILS_HPP_
 #include <vector>
 
-#include "depends/ate-pairing/include/bn.h"
+#include "ate-pairing/include/bn.h"
 
 namespace libff {
 

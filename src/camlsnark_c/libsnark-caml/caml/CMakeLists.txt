@@ -5,15 +5,15 @@ add_library(
   ../depends/libff/libff/common/double.cpp
   ../depends/libff/libff/common/profiling.cpp
   ../depends/libff/libff/common/utils.cpp
-  common.cpp
+  ../depends/libff/libff/common/common.cpp
 )
 target_link_libraries(
   snark_caml_common
-  
+
   ${GMP_LIBRARIES}
   ${SODIUM_LIBRARIES}
   ${GMPXX_LIBRARIES}
-  ${CRYPTO_LIBRARIES}
+  ${OPENSSL_CRYPTO_LIBRARY}
   ${PROCPS_LIBRARIES}
   ${SNARK_EXTRALIBS}
 )
@@ -40,12 +40,12 @@ add_library(
 )
 target_link_libraries(
   snark_caml_bn128
-  
+
   snark_caml_common
   ${GMP_LIBRARIES}
   ${SODIUM_LIBRARIES}
   ${GMPXX_LIBRARIES}
-  ${CRYPTO_LIBRARIES}
+  ${OPENSSL_CRYPTO_LIBRARY}
   ${PROCPS_LIBRARIES}
   ${SNARK_EXTRALIBS}
 )
@@ -80,12 +80,12 @@ add_library(
 )
 target_link_libraries(
   snark_caml_mnt298
-  
+
   snark_caml_common
   ${GMP_LIBRARIES}
   ${SODIUM_LIBRARIES}
   ${GMPXX_LIBRARIES}
-  ${CRYPTO_LIBRARIES}
+  ${OPENSSL_CRYPTO_LIBRARY}
   ${SNARK_EXTRALIBS}
 )
 target_include_directories(
@@ -119,12 +119,12 @@ add_library(
 )
 target_link_libraries(
   snark_caml_mnt753
-  
+
   snark_caml_common
   ${GMP_LIBRARIES}
   ${SODIUM_LIBRARIES}
   ${GMPXX_LIBRARIES}
-  ${CRYPTO_LIBRARIES}
+  ${OPENSSL_CRYPTO_LIBRARY}
   ${SNARK_EXTRALIBS}
 )
 target_include_directories(

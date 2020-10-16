@@ -428,10 +428,14 @@ struct
       let ( && ) (x : var) (y : var) : (var, _) Checked.t =
         Checked.map ~f:create (mul (x :> Cvar.t) (y :> Cvar.t))
 
+      let ( &&& ) = ( && )
+
       let ( || ) x y =
         let open Let_syntax in
         let%map both_false = (not x) && not y in
         not both_false
+
+      let ( ||| ) = ( || )
 
       let any = function
         | [] ->
@@ -628,7 +632,11 @@ struct
 
         let ( && ) x y = And [x; y]
 
+        let ( &&& ) = ( && )
+
         let ( || ) x y = Or [x; y]
+
+        let ( ||| ) = ( || )
 
         let not t = Not t
 
@@ -2117,7 +2125,11 @@ module Run = struct
 
       let ( && ) x y = run (x && y)
 
+      let ( &&& ) = ( && )
+
       let ( || ) x y = run (x || y)
+
+      let ( ||| ) = ( || )
 
       let ( lxor ) x y = run (x lxor y)
 
@@ -2144,7 +2156,11 @@ module Run = struct
 
         let ( && ) = ( && )
 
+        let ( &&& ) = ( && )
+
         let ( || ) = ( || )
+
+        let ( ||| ) = ( ||| )
 
         let any = any
 

@@ -7,8 +7,8 @@
 #include <libff/algebra/curves/edwards/edwards_pp.hpp>
 #include <libff/algebra/curves/mnt/mnt4/mnt4_pp.hpp>
 #include <libff/algebra/curves/mnt/mnt6/mnt6_pp.hpp>
-#include <libff/algebra/curves/mnt/mnt4753/mnt4753_pp.hpp>
-#include <libff/algebra/curves/mnt/mnt6753/mnt6753_pp.hpp>
+#include <libff/algebra/curves/mnt753/mnt4753/mnt4753_pp.hpp>
+#include <libff/algebra/curves/mnt753/mnt6753/mnt6753_pp.hpp>
 #include <libff/common/profiling.hpp>
 #ifdef CURVE_BN128
 #include <libff/algebra/curves/bn128/bn128_pp.hpp>
