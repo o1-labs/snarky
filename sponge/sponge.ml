@@ -296,6 +296,10 @@ module Bit_sponge = struct
   let map (type a b) t ~(f : a -> b) : (b, _) t =
     {t with underlying= f t.underlying}
 
+  let make ?(last_squeezed = []) underlying = {underlying; last_squeezed}
+
+  let underlying {underlying; last_squeezed= _} = underlying
+
   module Make
       (Bool : Intf.T) (Field : sig
           type t
