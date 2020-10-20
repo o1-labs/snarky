@@ -72,6 +72,10 @@ module Bit_sponge : sig
 
   val map : ('a, 'x) t -> f:('a -> 'b) -> ('b, 'x) t
 
+  val make : ?last_squeezed:'bool list -> 's -> ('s, 'bool) t
+
+  val underlying : ('s, _) t -> 's
+
   module Make (Bool : sig
     type t
   end) (Field : sig
