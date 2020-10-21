@@ -1,83 +1,76 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+## Dune file: /Users/gar/mina/snarky/snarky_universe/dune
 
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
     "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-    "ppx_ns_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + []
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "ARCHIVE_OPTS",
+    "GLOBAL_CLI_OPTS",
+    "INTERFACE_OPTS",
+    "MODULE_OPTS",
+    "NS_MODULE_OPTS",
+)
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-COMMON_DEPS = []
-
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-SNARKY_UNIVERSE_NS = "Snarky_universe"
-
-## (ppx_deriving_yojson ppx_jane ppx_deriving.eq)
-PPX3_0E8F016F = "@//ppx/exe:ppx3_0e8f016f-a592-5958-870e-8039bff2c52e"
-
-PPX_ARGS = [
-    # do not sort (buildifier)
-        "-cookie",
-    "library-name=\"snarky_universe\"",
-    "-corrected-suffix",
-    ".ppx-corrected",
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
+LIB_1_OPTS = []
+LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
+LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
+LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
+LIB_1_DEPS = [
+    "@opam//pkg:core",
+    "@snarky//sponge",
+    "@snarky//snarkette",
+    "@snarky//snarky_integer",
+    "@snarky//snarky_curve",
+    "@snarky//snarky_signature",
+    "@snarky//src:snarky",
 ]
 
+PPX_1 = "//bzl/ppx:ppx[ppx_deriving_yojson][ppx_jane][ppx_deriving.eq]"
+
+PPX_1_ARGS = [
+    # do not sort (buildifier)
+    "-inline-test-lib",
+    "snarky_universe",
+]
+
+################################################################
+## LIB 1
+################################################################
 ocaml_archive(
     name = "snarky_universe",
-    opts = INTF_OPTS,
+    opts = LIB_1_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        "//src:snarky",
-        ":snarky_universe_ns_module",
-        ":curve.cm_",
-        ":group.cm_",
-        ":hash.cm_",
-        ":input_spec.cm_",
-        ":intf.cm_",
-        ":membership_proof.cm_",
-        ":merkle_tree_unchecked.cm_",
-        ":snarky_universe.cm_",
+        ":Snarky_universe_ns",
+        ":Curve",
+        ":Group",
+        ":Hash",
+        ":Input_spec",
+        ":Intf",
+        ":Membership_proof",
+        ":Merkle_tree_unchecked",
+        ":Snarky_universe",
     ],
 )
 
 ocaml_ns_module(
-    name = "snarky_universe_ns_module",
-    ns = SNARKY_UNIVERSE_NS,
+    name = "Snarky_universe_ns",
+    ns = "snarky_universe",
+    opts = LIB_1_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "curve.ml",
@@ -92,129 +85,105 @@ ocaml_ns_module(
 )
 
 ocaml_module(
-    name = "curve.cm_",
-    impl = "curve.ml",
-    ns_module = ":snarky_universe_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_0E8F016F,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
+    name = "Curve",
+    src = "curve.ml",
+    ns_module = ":Snarky_universe_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS
 )
 
 ocaml_module(
-    name = "group.cm_",
-    impl = "group.ml",
-    ns_module = ":snarky_universe_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_0E8F016F,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":curve.cm_",
-    ],
+    name = "Group",
+    src = "group.ml",
+    ns_module = ":Snarky_universe_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS + [":Curve"]
 )
 
 ocaml_module(
-    name = "hash.cm_",
-    impl = "hash.ml",
-    ns_module = ":snarky_universe_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_0E8F016F,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":curve.cm_",
-    ],
+    name = "Hash",
+    src = "hash.ml",
+    ns_module = ":Snarky_universe_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS + [":Curve"]
 )
 
 ocaml_module(
-    name = "input_spec.cm_",
-    impl = "input_spec.ml",
-    ns_module = ":snarky_universe_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_0E8F016F,
-    ppx_args = PPX_ARGS,
+    name = "Input_spec",
+    src = "input_spec.ml",
+    ns_module = ":Snarky_universe_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
+    deps = LIB_1_DEPS
 )
 
 ocaml_module(
-    name = "intf.cm_",
-    impl = "intf.ml",
-    ns_module = ":snarky_universe_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_0E8F016F,
-    ppx_args = PPX_ARGS,
+    name = "Intf",
+    src = "intf.ml",
+    ns_module = ":Snarky_universe_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":input_spec.cm_",
-    ],
+    deps = LIB_1_DEPS + [":Input_spec"]
 )
 
 ocaml_module(
-    name = "membership_proof.cm_",
-    impl = "membership_proof.ml",
-    ns_module = ":snarky_universe_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_0E8F016F,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
+    name = "Membership_proof",
+    src = "membership_proof.ml",
+    ns_module = ":Snarky_universe_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS
 )
 
 ocaml_module(
-    name = "merkle_tree_unchecked.cm_",
-    impl = "merkle_tree_unchecked.ml",
-    ns_module = ":snarky_universe_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_0E8F016F,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":membership_proof.cm_",
+    name = "Merkle_tree_unchecked",
+    src = "merkle_tree_unchecked.ml",
+    ns_module = ":Snarky_universe_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS + [":Membership_proof"]
+)
+
+ocaml_module(
+    name = "Snarky_universe",
+    src = "snarky_universe.ml",
+    intf = ":_Snarky_universe",
+    ns_module = ":Snarky_universe_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS + [
+        ":Curve",
+        ":Group",
+        ":Hash",
+        ":Input_spec",
+        ":Intf",
+        ":Membership_proof",
+        ":Merkle_tree_unchecked"
     ],
 )
 
 ocaml_interface(
-    name = "snarky_universe.cmi",
-    intf = "snarky_universe.mli",
-    ns_module = ":snarky_universe_ns_module",
-    opts = INTF_OPTS,
-    deps = [
-        # do not sort (buildifier)
-        ":curve.cm_",
-        ":intf.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "snarky_universe.cm_",
-    cmi = ":snarky_universe.cmi",
-    impl = "snarky_universe.ml",
-    ns_module = ":snarky_universe_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_0E8F016F,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":curve.cm_",
-        ":group.cm_",
-        ":hash.cm_",
-        ":input_spec.cm_",
-        ":intf.cm_",
-        ":membership_proof.cm_",
-        ":merkle_tree_unchecked.cm_",
+    name = "_Snarky_universe",
+    src = "snarky_universe.mli",
+    ns_module = ":Snarky_universe_ns",
+    opts = LIB_1_INTERFACE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+     deps = LIB_1_DEPS + [
+         ":Curve",
+         ":Intf"
     ],
 )

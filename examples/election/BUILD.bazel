@@ -1,5 +1,5 @@
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
     "ocaml_executable",
     "ocaml_interface",
@@ -24,7 +24,8 @@ ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
 COMMON_DEPS = []
 
 ## (pps ppx_jane ppx_deriving.enum))
-PPX = "@//ppx/exe:ppx2_jane_enum"
+PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.enum]"
+# @//ppx/exe:ppx2_jane_enum"
 PPX_ARGS = [
     # do not sort (buildifier)
     "-cookie",
@@ -35,7 +36,7 @@ PPX_ARGS = [
 
 ocaml_executable(
     name = "election",
-    opts = IMPL_OPTS + ["-ccopt", "-lstdc++"],
+    opts = EXEC_OPTS + ["-ccopt", "-lstdc++"],
     visibility = ["//visibility:public"],
     deps = [
         # do not sort (buildifier)
@@ -51,7 +52,7 @@ ocaml_executable(
 
 ocaml_module(
     name = "election.cm_",
-    impl = "election.ml",
+    src  = "election.ml",
     opts = IMPL_OPTS,
     ppx = PPX,
     ppx_args = PPX_ARGS,
@@ -67,7 +68,7 @@ ocaml_module(
 
 ocaml_module(
     name = "election_main.cm_",
-    impl = "election_main.ml",
+    src  = "election_main.ml",
     opts = IMPL_OPTS,
     ppx = PPX,
     ppx_args = PPX_ARGS,
@@ -82,7 +83,7 @@ ocaml_module(
 
 ocaml_module(
     name = "impl.cm_",
-    impl = "impl.ml",
+    src  = "impl.ml",
     opts = IMPL_OPTS,
     ppx = PPX,
     ppx_args = PPX_ARGS,
@@ -98,7 +99,7 @@ ocaml_module(
 
 ocaml_module(
     name = "import.cm_",
-    impl = "import.ml",
+    src  = "import.ml",
     opts = IMPL_OPTS,
     ppx = PPX,
     ppx_args = PPX_ARGS,
@@ -113,7 +114,7 @@ ocaml_module(
 
 ocaml_interface(
     name = "knapsack_hash.cmi",
-    intf = "knapsack_hash.mli",
+    src = "knapsack_hash.mli",
     # ns_module = ":election_ns_module",
     ppx = PPX,
     ppx_args = PPX_ARGS,
@@ -126,7 +127,7 @@ ocaml_interface(
 
 ocaml_module(
     name = "knapsack_hash.cm_",
-    impl = "knapsack_hash.ml",
+    src  = "knapsack_hash.ml",
     intf = ":knapsack_hash.cmi",
     opts = IMPL_OPTS,
     ppx = PPX,

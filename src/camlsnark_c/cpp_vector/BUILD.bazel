@@ -1,5 +1,5 @@
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
     "ocaml_interface",
     "ocaml_module",
@@ -24,7 +24,7 @@ COMMON_DEPS = []
 SNARKY_CPP_VECTOR_NS = "Snarky_cpp_vector"
 
 ## (ppx_bin_prot ppx_sexp_conv)
-PPX2_104BE23D = "@//ppx/exe:ppx2_104be23d-ba00-5095-a753-ed5e6ff75a9c"
+PPX2_104BE23D = "//bzl/ppx:ppx[ppx_bin_prot][ppx_sexp_conv]"
 PPX_ARGS = [
     # do not sort (buildifier)
     "-cookie",
@@ -64,7 +64,7 @@ ocaml_ns_module(
 
 ocaml_module(
     name = "vector_ffi_bindings.cm_",
-    impl = "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings_ml",
+    src  = "//src/camlsnark_c/cpp_vector/gen:vector_ffi_bindings_ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS + ["-thread"],
     visibility = ["//visibility:public"],
@@ -76,7 +76,7 @@ ocaml_module(
 
 ocaml_interface(
     name = "vector.cmi",
-    intf = "vector.mli",
+    src = "vector.mli",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = INTF_OPTS,
     ppx = PPX2_104BE23D,
@@ -93,7 +93,7 @@ ocaml_interface(
 ocaml_module(
     name = "vector.cm_",
     intf = ":vector.cmi",
-    impl = "vector.ml",
+    src  = "vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
     ppx = PPX2_104BE23D,
@@ -111,7 +111,7 @@ ocaml_module(
 
 ocaml_module(
     name = "bool_vector.cm_",
-    impl = "bool_vector.ml",
+    src  = "bool_vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
     ppx = PPX2_104BE23D,
@@ -125,7 +125,7 @@ ocaml_module(
 
 ocaml_module(
     name = "int_vector.cm_",
-    impl = "int_vector.ml",
+    src  = "int_vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
     ppx = PPX2_104BE23D,
@@ -139,7 +139,7 @@ ocaml_module(
 
 ocaml_module(
     name = "long_vector.cm_",
-    impl = "long_vector.ml",
+    src  = "long_vector.ml",
     ns_module = ":snarky_cpp_vector_ns_module",
     opts = IMPL_OPTS,
     ppx = PPX2_104BE23D,

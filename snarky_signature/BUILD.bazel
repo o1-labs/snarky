@@ -1,88 +1,63 @@
-## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
-
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
-    "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-    "ppx_ns_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + []
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "ARCHIVE_OPTS",
+    "GLOBAL_CLI_OPTS",
+    "MODULE_OPTS",
+    "NS_MODULE_OPTS",
+)
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
+LIB_1_OPTS = []
+LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
+LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
+LIB_1_DEPS = ["@opam//pkg:core_kernel"]
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
 
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+PPX_1_ARGS = [
+    # do not sort (buildifier)
+    "-inline-test-lib",
+    "snarky_signature",
+]
 
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-COMMON_DEPS = []
-
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-SNARKY_SIGNATURE_NS = "Snarky_signature"
-
-## (ppx_jane ppx_deriving.eq)
-PPX2_915493D3 = "@//ppx/exe:ppx2_915493d3-55e8-515a-bbfb-5eb1f29f562e"
-
+################################################################
+## LIB 1
+################################################################
 ocaml_archive(
     name = "snarky_signature",
-    opts = INTF_OPTS,
+    opts = LIB_1_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":snarky_signature_ns_module",
-        ":signature.cm_",
+    deps = LIB_1_DEPS + [
+        ":Snarky_signature_ns",
+        ":Signature",
     ],
 )
 
 ocaml_ns_module(
-    name = "snarky_signature_ns_module",
-    ns = SNARKY_SIGNATURE_NS,
-    submodules = [
-        # do not sort (buildifier)
-        "signature.ml",
-    ],
+    name = "Snarky_signature_ns",
+    ns = "snarky_signature",
+    opts = LIB_1_NS_MODULE_OPTS,
+    submodules = ["signature.ml"]
 )
 
 ocaml_module(
-    name = "signature.cm_",
-    impl = "signature.ml",
-    ns_module = ":snarky_signature_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX2_915493D3,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarky_signature\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
+    name = "Signature",
+    src = "signature.ml",
+    ns_module = ":Snarky_signature_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS
 )

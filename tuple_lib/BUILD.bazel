@@ -1,70 +1,78 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+## Bazel package: @snarky//src/lib/baze58_check
+## Dune file: /Users/gar/mina/snarky/tuple_lib/dune
+
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
     "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-    "ppx_ns_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + ["-thread"]
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "ARCHIVE_OPTS",
+    "GLOBAL_CLI_OPTS",
+    "INTERFACE_OPTS",
+    "MODULE_OPTS",
+    "NS_MODULE_OPTS",
+)
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_OPTS = []
 
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
 
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
 
-COMMON_DEPS = []
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
 
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
 
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core_kernel",
+]
 
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq][bisect_ppx]"
 
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+PPX_1_ARGS = [
+    # do not sort (buildifier)
+    "-inline-test-lib",
+    "tuple_lib",
+    "-conditional",
+]
 
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-TUPLE_LIB_NS = "Tuple_lib"
-
-## (ppx_jane ppx_deriving.eq bisect_ppx -conditional)
-PPX3_F180089C = "@//ppx/exe:ppx3_f180089c-83e6-5015-b4a7-74a66ad417a0"
-
+################################################################
+## LIB 1
+################################################################
 ocaml_archive(
     name = "tuple_lib",
-    opts = INTF_OPTS,
+    doc = "Tuple types",
+    opts = LIB_1_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":tuple_lib_ns_module",
-        ":double.cm_",
-        ":four.cm_",
-        ":intf.cm_",
-        ":quadruple.cm_",
-        ":triple.cm_",
-        ":tuple_lib.cm_",
+        ":Tuple_lib_ns",
+        ":Double",
+        ":Four",
+        ":Intf",
+        ":Quadruple",
+        ":Triple",
+        ":Tuple_lib",
     ],
 )
 
 ocaml_ns_module(
-    name = "tuple_lib_ns_module",
-    ns = TUPLE_LIB_NS,
+    name = "Tuple_lib_ns",
+    ns = "tuple_lib",
+    opts = LIB_1_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "double.ml",
@@ -76,164 +84,132 @@ ocaml_ns_module(
     ],
 )
 
-ocaml_interface(
-    name = "double.cmi",
-    intf = "double.mli",
-    ns_module = ":tuple_lib_ns_module",
-    opts = INTF_OPTS,
-    deps = [
-        # do not sort (buildifier)
-        ":intf.cm_",
-    ],
-)
-
 ocaml_module(
-    name = "double.cm_",
-    intf = ":double.cmi",
-    impl = "double.ml",
-    ns_module = ":tuple_lib_ns_module",
-    opts = IMPL_OPTS,
-    ppx = PPX3_F180089C,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"tuple_lib\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    name = "Double",
+    src = "double.ml",
+    intf = "_Double",
+    ns_module = ":Tuple_lib_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:core",
-    ],
-)
-
-ocaml_module(
-    name = "four.cm_",
-    impl = "four.ml",
-    ns_module = ":tuple_lib_ns_module",
-    opts = IMPL_OPTS,
-    ppx = PPX3_F180089C,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"tuple_lib\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":double.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "intf.cm_",
-    impl = "intf.ml",
-    ns_module = ":tuple_lib_ns_module",
-    opts = IMPL_OPTS,
-    ppx = PPX3_F180089C,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"tuple_lib\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:core",
     ],
 )
 
 ocaml_interface(
-    name = "quadruple.cmi",
-    intf = "quadruple.mli",
-    ns_module = ":tuple_lib_ns_module",
-    opts = INTF_OPTS,
-    deps = [
+    name = "_Double",
+    src = "double.mli",
+    ns_module = ":Tuple_lib_ns",
+    opts = LIB_1_INTERFACE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:private"],
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":four.cm_",
-        ":intf.cm_",
+        ":Intf",
     ],
 )
 
 ocaml_module(
-    name = "quadruple.cm_",
-    intf = ":quadruple.cmi",
-    impl = "quadruple.ml",
-    ns_module = ":tuple_lib_ns_module",
-    opts = IMPL_OPTS,
-    ppx = PPX3_F180089C,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"tuple_lib\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    name = "Four",
+    src = "four.ml",
+    ns_module = ":Tuple_lib_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":four.cm_",
+        ":Double",
+    ],
+)
+
+ocaml_module(
+    name = "Intf",
+    src = "intf.ml",
+    ns_module = ":Tuple_lib_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+    ],
+)
+
+ocaml_module(
+    name = "Quadruple",
+    src = "quadruple.ml",
+    intf = "_Quadruple",
+    ns_module = ":Tuple_lib_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Four",
     ],
 )
 
 ocaml_interface(
-    name = "triple.cmi",
-    intf = "triple.mli",
-    ns_module = ":tuple_lib_ns_module",
-    opts = INTF_OPTS,
-    deps = [
+    name = "_Quadruple",
+    src = "quadruple.mli",
+    ns_module = ":Tuple_lib_ns",
+    opts = LIB_1_INTERFACE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:private"],
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:core",
-        ":intf.cm_",
+        ":Four",
+        ":Intf",
     ],
 )
 
 ocaml_module(
-    name = "triple.cm_",
-    intf = ":triple.cmi",
-    impl = "triple.ml",
-    ns_module = ":tuple_lib_ns_module",
-    opts = IMPL_OPTS,
-    ppx = PPX3_F180089C,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"tuple_lib\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    name = "Triple",
+    src = "triple.ml",
+    intf = "_Triple",
+    ns_module = ":Tuple_lib_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:core",
-        ":intf.cm_",
+    ],
+)
+
+ocaml_interface(
+    name = "_Triple",
+    src = "triple.mli",
+    ns_module = ":Tuple_lib_ns",
+    opts = LIB_1_INTERFACE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:private"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Intf",
     ],
 )
 
 ocaml_module(
-    name = "tuple_lib.cm_",
-    impl = "tuple_lib.ml",
-    ns_module = ":tuple_lib_ns_module",
-    opts = IMPL_OPTS,
-    ppx = PPX3_F180089C,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"tuple_lib\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    name = "Tuple_lib",
+    src = "tuple_lib.ml",
+    ns_module = ":Tuple_lib_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":double.cm_",
-        ":four.cm_",
-        ":quadruple.cm_",
-        ":triple.cm_",
+        ":Double",
+        ":Four",
+        ":Quadruple",
+        ":Triple",
     ],
 )

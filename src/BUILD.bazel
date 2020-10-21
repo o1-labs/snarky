@@ -1,5 +1,5 @@
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
     "ocaml_interface",
     "ocaml_module",
@@ -12,7 +12,7 @@ COMMON_OPTS = select({
 }) + ["-thread"]
 
 LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
+    "//bzl/config:enable_always_link": ["-linkall"],
     "//conditions:default": [],
 }) + []
 
@@ -24,8 +24,7 @@ COMMON_DEPS = []
 
 SNARKY_NS = "Snarky"
 
-## (ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx -conditional)
-PPX5_A53130EE = "@//ppx/exe:ppx5_a53130ee-0e8e-50d0-b378-5884d16dafdb"
+PPX = "@//bzl/ppx:ppx[ppx_snarky][ppx_jane][ppx_deriving.enum][ppx_deriving.eq][bisect_ppx]"
 PPX_ARGS = [
     # do not sort (buildifier)
     "-conditional",
@@ -33,9 +32,6 @@ PPX_ARGS = [
     "library-name=\"snarky\"",
     "-corrected-suffix",
     ".ppx-corrected",
-    # "-diff-cmd",
-    # "-",
-    # "-dump-ast",
 ]
 
 ocaml_archive(
@@ -138,7 +134,6 @@ ocaml_ns_module(
     name = "snarky_ns_module",
     ns = SNARKY_NS,
     submodules = [
-        # do not sort (buildifier)
         "backend_types.ml",
         "backends.ml",
         "gpu_prover.ml",
@@ -149,14 +144,12 @@ ocaml_ns_module(
 
 ocaml_interface(
     name = "backend_types.cmi",
-    intf = "backend_types.mli",
+    src = "backend_types.mli",
     ns_module = ":snarky_ns_module",
-    ppx = PPX5_A53130EE,
+    ppx = PPX,
     ppx_args = PPX_ARGS,
     opts = INTF_OPTS,
-    # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
     deps = [
-        # do not sort (buildifier)
         "@opam//pkg:ctypes",
         "//src/camlsnark_c",
         "//src/camlsnark_c/bindings:camlsnark_c_bindings"
@@ -166,15 +159,12 @@ ocaml_interface(
 ocaml_module(
     name = "backend_types.cm_",
     intf = ":backend_types.cmi",
-    impl = "backend_types.ml",
+    src  = "backend_types.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    # + ["-ccopt", "-Lexternal/libffi/libffi/lib"],
-    ppx = PPX5_A53130EE,
+    ppx = PPX,
     ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
     deps = [
-        # do not sort (buildifier)
         "@opam//pkg:ctypes",
         "//src/camlsnark_c",
         "//src/camlsnark_c/bindings:camlsnark_c_bindings"
@@ -183,28 +173,22 @@ ocaml_module(
 
 ocaml_module(
     name = "backends.cm_",
-    impl = "backends.ml",
+    src  = "backends.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx = PPX5_A53130EE,
-ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings"
-    ],
+    ppx = PPX,
+    ppx_args = PPX_ARGS,
+    deps = ["//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings"]
 )
 
 ocaml_module(
     name = "snark.cm_",
-    impl = "snark.ml",
+    src  = "snark.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx = PPX5_A53130EE,
+    ppx = PPX,
     ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
     deps = [
-        # do not sort (buildifier)
          "//src/base:snarky_backendless",
         ":backends.cm_",
     ],
@@ -212,14 +196,12 @@ ocaml_module(
 
 ocaml_module(
     name = "toplevel.cm_",
-    impl = "toplevel.ml",
+    src  = "toplevel.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx = PPX5_A53130EE,
+    ppx = PPX,
     ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
     deps = [
-        # do not sort (buildifier)
         "@opam//pkg:core_kernel",
         "@opam//pkg:base64",
         "@opam//pkg:yojson",
@@ -233,14 +215,12 @@ ocaml_module(
 
 ocaml_module(
     name = "snarky.cm_",
-    impl = "snarky.ml",
+    src  = "snarky.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx = PPX5_A53130EE,
+    ppx = PPX,
     ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
     deps = [
-        # do not sort (buildifier)
         "//src/base:snarky_backendless",
         "//src/intf:snarky_intf",
         "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
@@ -251,15 +231,12 @@ ocaml_module(
 
 ocaml_module(
     name = "gpu_prover.cm_",
-    impl = "gpu_prover.ml",
+    src  = "gpu_prover.ml",
     ns_module = ":snarky_ns_module",
     opts = IMPL_OPTS,
-    ppx = PPX5_A53130EE,
-    ppx_args = PPX_ARGS,
+    # ppx = PPX,
+    # ppx_args = PPX_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
 )
 
 genrule(

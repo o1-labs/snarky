@@ -1,128 +1,126 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
-    "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-    "ppx_ns_module",
+)
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_ARCHIVE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "GLOBAL_NS_MODULE_OPTS",
+    "REPO_ARCHIVE_OPTS",
+    "REPO_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_ARCHIVE_OPTS",
+    "PKG_MODULE_OPTS",
+    "PKG_NS_MODULE_OPTS",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + ["-thread"]
+################################################################
+## STANZA 1: SNARKY_INTF
+################################################################
+SNARKY_INTF_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+SNARKY_INTF_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+SNARKY_INTF_NS_MODULE_OPTS = []
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-COMMON_DEPS = []
-
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-SNARKY_INTF_NS = "Snarky_intf"
-
-## (ppx_sexp_conv ppx_bin_prot ppx_hash ppx_compare)
-PPX4_A2F04B8A = "@//ppx/exe:ppx4_a2f04b8a-9eb4-5764-9e9f-800ec666ef48"
-PPX_ARGS = [
+SNARKY_INTF_DEPS = [
     # do not sort (buildifier)
-    "-cookie",
-    "library-name=\"snarky_intf\"",
-    "-corrected-suffix",
-    ".ppx-corrected",
+    "@opam//pkg:core_kernel",
+    "@opam//pkg:bignum",
+]
+
+SNARKY_INTF_PPX = "//bzl/ppx:ppx[ppx_sexp_conv][ppx_bin_prot][ppx_hash][ppx_compare]"
+
+SNARKY_INTF_PPX_ARGS = [
+    # do not sort (buildifier)
 ]
 
 ocaml_archive(
     name = "snarky_intf",
-    opts = ARCHIVE_OPTS,
+    opts = SNARKY_INTF_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = SNARKY_INTF_DEPS + [
         # do not sort (buildifier)
-        ":snarky_intf_ns_module",
-        ":bigint_intf.cm_",
-        ":vector.cm_",
-        ":field.cm_",
+        ":Snarky_intf_ns",
+        ":Bigint_intf",
+        ":Field",
+        ":Vector",
     ],
 )
 
 ocaml_ns_module(
-    name = "snarky_intf_ns_module",
-    ns = SNARKY_INTF_NS,
+    name = "Snarky_intf_ns",
+    ns = "snarky_intf",
+    opts = SNARKY_INTF_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "bigint_intf.ml",
-        "vector.ml",
         "field.ml",
+        "vector.ml",
     ],
 )
 
 ocaml_module(
-    name = "bigint_intf.cm_",
-    impl = "bigint_intf.ml",
-    ns_module = ":snarky_intf_ns_module",
-    opts = IMPL_OPTS,
-    ppx = PPX4_A2F04B8A,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
+    name = "Bigint_intf",
+    src = "bigint_intf.ml",
+    ns_module = ":Snarky_intf_ns",
+    opts = SNARKY_INTF_MODULE_OPTS,
+    ppx = SNARKY_INTF_PPX,
+    ppx_args = SNARKY_INTF_PPX_ARGS,
+    deps = SNARKY_INTF_DEPS,
+)
+
+ocaml_module(
+    name = "Field",
+    src = "field.ml",
+    ns_module = ":Snarky_intf_ns",
+    opts = SNARKY_INTF_MODULE_OPTS,
+    ppx = SNARKY_INTF_PPX,
+    ppx_args = SNARKY_INTF_PPX_ARGS,
+    deps = SNARKY_INTF_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:core",
+        ":Vector",
     ],
 )
 
 ocaml_module(
-    name = "vector.cm_",
-    impl = "vector.ml",
-    ns_module = ":snarky_intf_ns_module",
-    opts = IMPL_OPTS,
-    ppx = PPX4_A2F04B8A,
-    ppx_args = PPX_ARGS,
-    ppx_x = {
-        PPX4_A2F04B8A: " ".join(PPX_ARGS)
-        # "-cookie",
-        # "library-name=\"snarky_intf\"",
-        # "-corrected-suffix",
-        # ".ppx-corrected",
-    },
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:core",
-    ],
+    name = "Vector",
+    src = "vector.ml",
+    ns_module = ":Snarky_intf_ns",
+    opts = SNARKY_INTF_MODULE_OPTS,
+    ppx = SNARKY_INTF_PPX,
+    ppx_args = SNARKY_INTF_PPX_ARGS,
+    deps = SNARKY_INTF_DEPS,
 )
 
-ocaml_module(
-    name = "field.cm_",
-    impl = "field.ml",
-    ns_module = ":snarky_intf_ns_module",
-    opts = IMPL_OPTS,
-    ppx = PPX4_A2F04B8A,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:bignum",
-       ":vector.cm_",
-    ],
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

@@ -1,130 +1,126 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+## Bazel package: @snarky//src/lib/baze58_check
+## Dune file: /Users/gar/mina/snarky/ppx/dune
+
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
-    "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
     "ppx_archive",
     "ppx_executable",
     "ppx_module",
-    "ppx_ns_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + ["-thread"]
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "ARCHIVE_OPTS",
+    "GLOBAL_CLI_OPTS",
+    "MODULE_OPTS",
+    "NS_MODULE_OPTS",
+    "PPX_ARCHIVE_OPTS",
+    "PPX_EXECUTABLE_OPTS",
+    "PPX_MODULE_OPTS",
+)
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-COMMON_DEPS = []
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-PPX_SNARKY_NS = "Ppx_snarky"
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + ["-linkall"]
 
-PPX_ARGS = [
+LIB_1_OPTS = []
+
+LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
+
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
+
+LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
+
+LIB_1_PPX_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_ARCHIVE_OPTS
+
+LIB_1_PPX_EXECUTABLE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_EXECUTABLE_OPTS
+
+LIB_1_PPX_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_MODULE_OPTS
+
+LIB_1_DEPS = [
     # do not sort (buildifier)
-    # "-cookie",
-    # "library-name=\"ppx_snarky\"",
-    # "-inline-test-lib", "snarky_backendless",
-    # "-corrected-suffix",
-    # ".ppx-corrected",
+    "@opam//pkg:ppxlib",
+    "@opam//pkg:ppx_tools",
+    "@opam//pkg:core_kernel",
 ]
 
-ocaml_archive(
-    name           = "ppx_snarky",
-    opts           = PPX_ARCHIVE_OPTS,
-    visibility     = ["//visibility:public"],
-    deps           = [
+PPX_1 = "//bzl/ppx:ppx[ppxlib.metaquot][ppx_sexp_conv]"
+
+PPX_1_ARGS = [
+    # do not sort (buildifier)
+]
+
+################################################################
+## LIB 1
+################################################################
+ppx_archive(
+    name = "ppx_snarky",
+    opts = LIB_1_ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":ppx_snarky_ns_module",
-        ":snarky_module.cm_",
-        ":snarkydef.cm_",
-        ":ppx_snarky.cm_",
+        ":Ppx_snarky_ns",
+        ":Ppx_snarky",
+        ":Snarky_module",
+        ":Snarkydef",
     ],
 )
 
 ocaml_ns_module(
-    name           = "ppx_snarky_ns_module",
-    ns             = PPX_SNARKY_NS,
-    opts           = PPX_NS_OPTS,
-    submodules     = [
+    name = "Ppx_snarky_ns",
+    ns = "ppx_snarky",
+    opts = LIB_1_NS_MODULE_OPTS,
+    submodules = [
         # do not sort (buildifier)
+        "ppx_snarky.ml",
         "snarky_module.ml",
         "snarkydef.ml",
-        "ppx_snarky.ml",
     ],
 )
 
-ocaml_module(
-    name           = "snarky_module.cm_",
-    impl           = "snarky_module.ml",
-    opts           = PPX_IMPL_OPTS,
-    ppx            = ":ppx",
-    ppx_args       = PPX_ARGS,
-    ns_module      = ":ppx_snarky_ns_module",
-    visibility     = ["//visibility:public"],
-    deps           = [
+ppx_module(
+    name = "Ppx_snarky",
+    src = "ppx_snarky.ml",
+    ns_module = ":Ppx_snarky_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:ppxlib",
-        "@opam//pkg:core_kernel",
+        ":Snarky_module",
+        ":Snarkydef",
     ],
 )
 
-ocaml_module(
-    name           = "snarkydef.cm_",
-    impl           = "snarkydef.ml",
-    opts           = PPX_IMPL_OPTS,
-    ppx            = ":ppx",
-    ppx_args       = PPX_ARGS,
-    ns_module      = ":ppx_snarky_ns_module",
-    visibility     = ["//visibility:public"],
-    deps           = [
+ppx_module(
+    name = "Snarky_module",
+    src = "snarky_module.ml",
+    ns_module = ":Ppx_snarky_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:ppxlib",
     ],
 )
 
-ocaml_module(
-    name           = "ppx_snarky.cm_",
-    impl           = "ppx_snarky.ml",
-    opts           = PPX_IMPL_OPTS,
-    ppx            = ":ppx",
-    ppx_args       = PPX_ARGS,
-    ns_module      = ":ppx_snarky_ns_module",
-    visibility     = ["//visibility:public"],
-    deps           = [
+ppx_module(
+    name = "Snarkydef",
+    src = "snarkydef.ml",
+    ns_module = ":Ppx_snarky_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":snarky_module.cm_",
-        ":snarkydef.cm_",
     ],
-)
-
-ppx_executable(
-    name           = "ppx",
-    srcs           = [
-        # do not sort (buildifier)
-        "@obazl//ppxlib:driver_standalone_runner",
-    ],
-    deps           = [
-        # do not sort (buildifier)
-        "@opam//pkg:ppxlib.metaquot",
-        "@opam//pkg:ppx_sexp_conv",
-    ],
-    opts           = [
-        "-linkall",
-        "-predicates", "ppx_driver,ppx_deriver"
-    ],
-    visibility     = ["//visibility:public"],
 )

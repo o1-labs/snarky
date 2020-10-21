@@ -1,6 +1,6 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
 ## Bazel package: @snarky//src/lib/baze58_check
-## Dune file: /Users/gar/mina/snarky/interval_union/dune
+## Dune file: /Users/gar/mina/snarky/sponge/dune
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
@@ -24,79 +24,102 @@ load(
 load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
 PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
-
 LIB_1_OPTS = []
-
 LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
-
 LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
-
 LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
-
 LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
+LIB_1_DEPS = ["@opam//pkg:core_kernel"]
 
-LIB_1_DEPS = [
-    # do not sort (buildifier)
-    "@opam//pkg:core_kernel",
-]
-
-PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq][bisect_ppx]"
+PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
 
 PPX_1_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
-    "interval_union",
-    "-conditional",
+    "sponge",
 ]
 
 ################################################################
 ## LIB 1
 ################################################################
 ocaml_archive(
-    name = "interval_union",
-    doc = "Union of intervals data structure",
+    name = "sponge",
     opts = LIB_1_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
     deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-        ":Interval_union_ns",
-        ":Interval_union",
+        ":Constants",
+        ":Intf",
+        ":Params",
+        ":Sponge",
     ],
 )
 
 ocaml_ns_module(
-    name = "Interval_union_ns",
-    ns = "interval_union",
+    name = "Sponge_ns",
+    ns = "sponge",
     opts = LIB_1_NS_MODULE_OPTS,
     submodules = [
-        # do not sort (buildifier)
-        "interval_union.ml",
+        "constants.ml",
+        "intf.ml",
+        "params.ml",
+        "sponge.ml",
     ],
 )
 
 ocaml_module(
-    name = "Interval_union",
-    src = "interval_union.ml",
-    intf = "_Interval_union",
-    ns_module = ":Interval_union_ns",
+    name = "Constants",
+    src = "constants.ml",
+    ns_module = ":Sponge_ns",
     opts = LIB_1_MODULE_OPTS,
     ppx = PPX_1,
     ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
+    deps = LIB_1_DEPS + [":Params"]
+)
+
+ocaml_module(
+    name = "Intf",
+    src = "intf.ml",
+    ns_module = ":Sponge_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS + [":Params"]
+)
+
+ocaml_module(
+    name = "Params",
+    src = "params.ml",
+    ns_module = ":Sponge_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS
+)
+
+ocaml_module(
+    name = "Sponge",
+    src = "sponge.ml",
+    intf = ":_Sponge",
+    ns_module = ":Sponge_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+     deps = LIB_1_DEPS + [
+         ":Constants",
+        ":Intf",
+        ":Params",
     ],
 )
 
 ocaml_interface(
-    name = "_Interval_union",
-    src = "interval_union.mli",
-    ns_module = ":Interval_union_ns",
+    name = "_Sponge",
+    src = "sponge.mli",
+    ns_module = ":Sponge_ns",
     opts = LIB_1_INTERFACE_OPTS,
     ppx = PPX_1,
     ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:private"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
+     deps = LIB_1_DEPS + [
+         ":Intf",
+        ":Params",
     ],
 )

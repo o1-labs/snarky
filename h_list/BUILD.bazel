@@ -1,27 +1,30 @@
+## hand-tuned to remove ns/archive
+## Dune file: /Users/gar/mina/snarky/h_list/dune
+
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + []
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "GLOBAL_CLI_OPTS",
+    "MODULE_OPTS",
+)
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
+
+LIB_1_OPTS = []
+
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
 
 ocaml_module(
-    # name = "h_list.cm_",
     name = "h_list",
-    impl = "h_list.ml",
-    opts = IMPL_OPTS,
+    src = "h_list.ml",
+    opts = LIB_1_MODULE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-    ],
 )

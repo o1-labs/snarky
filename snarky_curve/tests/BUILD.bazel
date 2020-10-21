@@ -1,67 +1,67 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+## Dune file: /Users/gar/mina/snarky/snarky_curve/tests/dune
 
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
-    "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-    "ppx_ns_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + []
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "ARCHIVE_OPTS",
+    "GLOBAL_CLI_OPTS",
+    "MODULE_OPTS",
+    "NS_MODULE_OPTS",
+)
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_OPTS = []
 
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
 
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
 
-COMMON_DEPS = []
+LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
 
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_DEPS = [
+    # do not sort (buildifier)
+    "@snarky//snarky_curve",
+    "@snarky//src:snarky",
+]
 
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+PPX_1 = "//bzl/ppx:ppx[ppx_inline_test]"
 
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+PPX_1_ARGS = [
+    # do not sort (buildifier)
+    "-inline-test-lib",
+    "snarky_curve_tests",
+]
 
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-SNARKY_CURVE_TESTS_NS = "Snarky_curve_tests"
-
-## (ppx_inline_test)
-PPX1_AEA1DAD7 = "@//ppx/exe:ppx1_aea1dad7-aa0c-5824-ad55-e22b85034218"
-
+################################################################
+## LIB 1
+################################################################
 ocaml_archive(
     name = "snarky_curve_tests",
-    opts = INTF_OPTS,
+    opts = LIB_1_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":snarky_curve_tests_ns_module",
-        ":snarky_curve_tests.cm_",
+        ":Snarky_curve_tests_ns",
+        ":Snarky_curve_tests",
     ],
 )
 
 ocaml_ns_module(
-    name = "snarky_curve_tests_ns_module",
-    ns = SNARKY_CURVE_TESTS_NS,
+    name = "Snarky_curve_tests_ns",
+    ns = "snarky_curve_tests",
+    opts = LIB_1_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "snarky_curve_tests.ml",
@@ -69,20 +69,14 @@ ocaml_ns_module(
 )
 
 ocaml_module(
-    name = "snarky_curve_tests.cm_",
-    impl = "snarky_curve_tests.ml",
-    ns_module = ":snarky_curve_tests_ns_module",
-    opts = IMPL_OPTS,
-    ppx_bin = PPX1_AEA1DAD7,
-    ppx_bin_opts = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"snarky_curve_tests\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    name = "Snarky_curve_tests",
+    src = "snarky_curve_tests.ml",
+    ns_module = ":Snarky_curve_tests_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
     ],
 )

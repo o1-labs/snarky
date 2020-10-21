@@ -1,74 +1,47 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+## Dune file: /Users/gar/mina/snarky/src/camlsnark_c/cpp_string/dune
+
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
-    # "ocaml_archive",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_interface",
     "ocaml_module",
-    # "ocaml_ns_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + ["-thread"]
-
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
-
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-# ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-# SNARKY_CPP_STRING_NS = "Snarky_cpp_string"
-
-# ocaml_archive(
-#     name = "snarky_cpp_string",
-#     opts = ARCHIVE_OPTS + ["-linkall"],
-#     visibility = ["//visibility:public"],
-#     deps = [
-#         # do not sort (buildifier)
-#         "//src/camlsnark_c",
-#         ":snarky_cpp_string_ns_module",
-#         ":snarky_cpp_string.cm_",
-#     ],
-# )
-
-# ocaml_ns_module(
-#     name = "snarky_cpp_string_ns_module",
-#     ns = SNARKY_CPP_STRING_NS,
-#     submodules = [
-#         # do not sort (buildifier)
-#         "snarky_cpp_string.ml",
-#     ],
-# )
-
-ocaml_interface(
-    name = "snarky_cpp_string.cmi",
-    intf = "snarky_cpp_string.mli",
-    # ns_module = ":snarky_cpp_string_ns_module",
-    opts = INTF_OPTS,
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:ctypes",
-        "@opam//pkg:ctypes.foreign",
-         "//src/camlsnark_c"
-    ],
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "GLOBAL_CLI_OPTS",
+    "INTERFACE_OPTS",
+    "MODULE_OPTS",
 )
 
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
+
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + ["-linkall"]
+LIB_1_OPTS = []
+LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
+LIB_1_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//src/camlsnark_c",
+]
+
+################################################################
 ocaml_module(
     name = "snarky_cpp_string",
-    intf = ":snarky_cpp_string.cmi",
-    impl = "snarky_cpp_string.ml",
-    # ns_module = ":snarky_cpp_string_ns_module",
-    opts = IMPL_OPTS + ["-cclib", "-Wl,-E"],
+    src = "snarky_cpp_string.ml",
+    intf = "_Snarky_cpp_string",
+    opts = LIB_1_MODULE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:ctypes",
-        # "@opam//pkg:ctypes.foreign",
-        # "//ctypes_foreign:ctypes_foreign_libffi",
-        "//src/camlsnark_c",
-        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
-    ],
+    deps = LIB_1_DEPS
+)
+
+ocaml_interface(
+    name = "_Snarky_cpp_string",
+    src = "snarky_cpp_string.mli",
+    opts = LIB_1_INTERFACE_OPTS,
+    visibility = ["//visibility:private"],
+    deps = LIB_1_DEPS
 )

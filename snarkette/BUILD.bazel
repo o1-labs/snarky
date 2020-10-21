@@ -1,345 +1,329 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+## Bazel package: @snarky//src/lib/baze58_check
+## Dune file: /Users/gar/mina/snarky/snarkette/dune
 
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
     "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-    "ppx_ns_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + []
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "ARCHIVE_OPTS",
+    "GLOBAL_CLI_OPTS",
+    "INTERFACE_OPTS",
+    "MODULE_OPTS",
+    "NS_MODULE_OPTS",
+)
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_OPTS = []
 
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
 
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
 
-COMMON_DEPS = []
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
 
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
 
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_ARGS = [
+LIB_1_DEPS = [
     # do not sort (buildifier)
-        "-cookie",
-    "library-name=\"snarkette\"",
-    "-corrected-suffix",
-    ".ppx-corrected",
+    "@opam//pkg:num",
+    "@opam//pkg:core_kernel",
+    "@opam//pkg:bignum",
+    "@snarky//tuple_lib",
+    "@snarky//fold_lib",
 ]
 
-SNARKETTE_NS = "Snarkette"
+PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq][ppx_deriving_yojson]"
 
-## (ppx_jane ppx_deriving.eq ppx_deriving_yojson)
-PPX3_882338B5 = "@//ppx/exe:ppx3_882338b5-3194-58af-a3cf-80853d6f9dfa"
+PPX_1_ARGS = [
+    # do not sort (buildifier)
+    "-inline-test-lib",
+    "snarkette",
+]
 
+################################################################
+## LIB 1
+################################################################
 ocaml_archive(
     name = "snarkette",
-    opts = INTF_OPTS,
+    opts = LIB_1_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":snarkette_ns_module",
-        ":nat.cm_",
-        ":fields.cm_",
-        ":mnt4_80.cm_",
-        ":pairing.cm_",
-        ":nat_intf.cm_",
-        ":bowe_gabizon.cm_",
-        ":elliptic_curve.cm_",
-        ":groth_maller.cm_",
-        ":groth16.cm_",
-        ":mnt6753.cm_",
-        ":tweedle.cm_",
-        ":mnt4753.cm_",
-        ":elliptic_curve_intf.cm_",
-        ":mnt6_80.cm_",
+        ":Snarkette_ns",
+        ":Bowe_gabizon",
+        ":Elliptic_curve",
+        ":Elliptic_curve_intf",
+        ":Fields",
+        ":Groth16",
+        ":Groth_maller",
+        ":Mnt4753",
+        ":Mnt4_80",
+        ":Mnt6753",
+        ":Mnt6_80",
+        ":Nat",
+        ":Nat_intf",
+        ":Pairing",
+        ":Tweedle",
     ],
 )
 
 ocaml_ns_module(
-    name = "snarkette_ns_module",
-    ns = SNARKETTE_NS,
+    name = "Snarkette_ns",
+    ns = "snarkette",
+    opts = LIB_1_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
-        "nat.ml",
-        "fields.ml",
-        "mnt4_80.ml",
-        "pairing.ml",
-        "nat_intf.ml",
         "bowe_gabizon.ml",
         "elliptic_curve.ml",
-        "groth_maller.ml",
-        "groth16.ml",
-        "mnt6753.ml",
-        "tweedle.ml",
-        "mnt4753.ml",
         "elliptic_curve_intf.ml",
+        "fields.ml",
+        "groth16.ml",
+        "groth_maller.ml",
+        "mnt4753.ml",
+        "mnt4_80.ml",
+        "mnt6753.ml",
         "mnt6_80.ml",
+        "nat.ml",
+        "nat_intf.ml",
+        "pairing.ml",
+        "tweedle.ml",
+    ],
+)
+
+ocaml_module(
+    name = "Bowe_gabizon",
+    src = "bowe_gabizon.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Fields",
+        ":Nat_intf",
+        ":Pairing",
+    ],
+)
+
+ocaml_module(
+    name = "Elliptic_curve",
+    src = "elliptic_curve.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+)
+
+ocaml_module(
+    name = "Elliptic_curve_intf",
+    src = "elliptic_curve_intf.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+)
+
+ocaml_module(
+    name = "Fields",
+    src = "fields.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Nat",
+        ":Nat_intf",
+    ],
+)
+
+ocaml_module(
+    name = "Groth16",
+    src = "groth16.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Fields",
+        ":Nat_intf",
+        ":Pairing",
+    ],
+)
+
+ocaml_module(
+    name = "Groth_maller",
+    src = "groth_maller.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Fields",
+        ":Nat_intf",
+        ":Pairing",
+    ],
+)
+
+ocaml_module(
+    name = "Mnt4753",
+    src = "mnt4753.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Elliptic_curve",
+        ":Fields",
+        ":Nat",
+    ],
+)
+
+ocaml_module(
+    name = "Mnt4_80",
+    src = "mnt4_80.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Elliptic_curve",
+        ":Fields",
+        ":Nat",
+    ],
+)
+
+ocaml_module(
+    name = "Mnt6753",
+    src = "mnt6753.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Bowe_gabizon",
+        ":Elliptic_curve",
+        ":Fields",
+        ":Groth16",
+        ":Groth_maller",
+        ":Nat",
+        ":Pairing",
+    ],
+)
+
+ocaml_module(
+    name = "Mnt6_80",
+    src = "mnt6_80.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Bowe_gabizon",
+        ":Elliptic_curve",
+        ":Fields",
+        ":Groth16",
+        ":Groth_maller",
+        ":Nat",
+        ":Pairing",
+    ],
+)
+
+ocaml_module(
+    name = "Nat",
+    src = "nat.ml",
+    intf = "_Nat",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
     ],
 )
 
 ocaml_interface(
-    name = "nat.cmi",
-    intf = "nat.mli",
-    ns_module = ":snarkette_ns_module",
-    opts = INTF_OPTS,
-    deps = [
+    name = "_Nat",
+    src = "nat.mli",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_INTERFACE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:private"],
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":nat_intf.cm_",
+        ":Nat_intf",
     ],
 )
 
 ocaml_module(
-    name = "nat.cm_",
-    cmi = ":nat.cmi",
-    impl = "nat.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
+    name = "Nat_intf",
+    src = "nat_intf.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:core"
     ],
 )
 
 ocaml_module(
-    name = "fields.cm_",
-    impl = "fields.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS + ["-thread"],
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
+    name = "Pairing",
+    src = "pairing.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:bignum",
-        "@opam//pkg:ppx_bench.runtime-lib",
-        "//fold_lib",
-        "//tuple_lib",
-        ":nat.cm_",
-        ":nat_intf.cm_",
+        ":Fields",
     ],
 )
 
 ocaml_module(
-    name = "mnt4_80.cm_",
-    impl = "mnt4_80.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
+    name = "Tweedle",
+    src = "tweedle.ml",
+    ns_module = ":Snarkette_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":elliptic_curve.cm_",
-        ":fields.cm_",
-        ":nat.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "pairing.cm_",
-    impl = "pairing.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":fields.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "nat_intf.cm_",
-    impl = "nat_intf.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:core"
-        # "@opam//pkg:ppx_expect.collector",
-        # "@opam//pkg:ppx_module_timer.runtime",
-   ],
-)
-
-ocaml_module(
-    name = "bowe_gabizon.cm_",
-    impl = "bowe_gabizon.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "//fold_lib",
-        ":fields.cm_",
-        ":nat_intf.cm_",
-        ":pairing.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "elliptic_curve.cm_",
-    impl = "elliptic_curve.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:bin_prot"
-    ],
-)
-
-ocaml_module(
-    name = "groth_maller.cm_",
-    impl = "groth_maller.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "//fold_lib",
-        ":fields.cm_",
-        ":nat_intf.cm_",
-        ":pairing.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "groth16.cm_",
-    impl = "groth16.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":fields.cm_",
-        ":nat_intf.cm_",
-        ":pairing.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "mnt6753.cm_",
-    impl = "mnt6753.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":bowe_gabizon.cm_",
-        ":elliptic_curve.cm_",
-        ":fields.cm_",
-        ":groth16.cm_",
-        ":groth_maller.cm_",
-        ":nat.cm_",
-        ":pairing.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "tweedle.cm_",
-    impl = "tweedle.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":elliptic_curve.cm_",
-        ":fields.cm_",
-        ":nat.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "mnt4753.cm_",
-    impl = "mnt4753.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":elliptic_curve.cm_",
-        ":fields.cm_",
-        ":nat.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "elliptic_curve_intf.cm_",
-    impl = "elliptic_curve_intf.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:ppx_bench.runtime-lib",
-        "@opam//pkg:ppx_expect.collector",
-    ],
-)
-
-ocaml_module(
-    name = "mnt6_80.cm_",
-    impl = "mnt6_80.ml",
-    ns_module = ":snarkette_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX3_882338B5,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        ":bowe_gabizon.cm_",
-        ":elliptic_curve.cm_",
-        ":fields.cm_",
-        ":groth16.cm_",
-        ":groth_maller.cm_",
-        ":nat.cm_",
-        ":pairing.cm_",
+        ":Elliptic_curve",
+        ":Fields",
+        ":Nat",
     ],
 )

@@ -1,9 +1,7 @@
-## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
-## Dune file: /Users/gar/mina/snarky/snarky_curve/dune
-
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
+    "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
 )
@@ -13,6 +11,7 @@ load(
     "//bzl:config.bzl",
     "ARCHIVE_OPTS",
     "GLOBAL_CLI_OPTS",
+    "INTERFACE_OPTS",
     "MODULE_OPTS",
     "NS_MODULE_OPTS",
 )
@@ -21,21 +20,15 @@ load(
 load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
 PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
-
 LIB_1_OPTS = []
-
 LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
-
+LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
 LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
-
 LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
-
 LIB_1_DEPS = [
     # do not sort (buildifier)
-    "@opam//pkg:digestif",
     "@opam//pkg:core_kernel",
     "@snarky//src/base:snarky_backendless",
-    "@snarky//group_map",
 ]
 
 PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
@@ -43,42 +36,60 @@ PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
 PPX_1_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
-    "snarky_curve",
+    "snarky_integer",
 ]
 
 ################################################################
 ## LIB 1
 ################################################################
 ocaml_archive(
-    name = "snarky_curve",
+    name = "snarky_integer",
     opts = LIB_1_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
     deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-        ":Snarky_curve_ns",
-        ":Snarky_curve",
+        # ":Snarky_integer_ns",
+        ":Integer",
+        ":Util",
     ],
 )
 
 ocaml_ns_module(
-    name = "Snarky_curve_ns",
-    ns = "snarky_curve",
+    name = "Snarky_integer_ns",
+    ns = "snarky_integer",
     opts = LIB_1_NS_MODULE_OPTS,
     submodules = [
-        # do not sort (buildifier)
-        "snarky_curve.ml",
+        "integer.ml",
+        "util.ml",
     ],
 )
 
 ocaml_module(
-    name = "Snarky_curve",
-    src = "snarky_curve.ml",
-    ns_module = ":Snarky_curve_ns",
+    name = "Integer",
+    src = "integer.ml",
+    intf = "_Integer",
+    ns_module = ":Snarky_integer_ns",
     opts = LIB_1_MODULE_OPTS,
     ppx = PPX_1,
     ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-    ],
+    deps = LIB_1_DEPS + [":Util"]
+)
+
+ocaml_interface(
+    name = "_Integer",
+    src = "integer.mli",
+    ns_module = ":Snarky_integer_ns",
+    opts = LIB_1_INTERFACE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS
+)
+
+ocaml_module(
+    name = "Util",
+    src = "util.ml",
+    ns_module = ":Snarky_integer_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = LIB_1_DEPS
 )

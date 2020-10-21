@@ -38,12 +38,10 @@ http_archive(
 git_repository(
     name = "obazl_rules_ocaml",
     remote = "https://github.com/obazl/rules_ocaml",
-    branch = "dev",
-    # commit = "feef897197b36b14b65ffdf00b9badcbdb8f42f4",
-    # shallow_since = "1593623637 -0500"
+    branch = "master",
 )
 
-load("@obazl_rules_ocaml//ocaml:deps.bzl",
+load("@obazl_rules_ocaml//ocaml:bootstrap.bzl",
      "ocaml_configure",
      "ocaml_register_toolchains",
      "opam_configure")
@@ -54,8 +52,8 @@ ocaml_configure()
 
 ocaml_register_toolchains(installation="host")
 
-load("//bzl/external:repositories.bzl", "fetch_remote_repos")
-fetch_remote_repos()
+load("//bzl/external:cc_deps.bzl", "cc_bootstrap")
+cc_bootstrap()
 
 local_repository( name = "libsnark" , path = "src/camlsnark_c/libsnark-caml")
 local_repository( name = "libfqfft" , path = "src/camlsnark_c/libsnark-caml/depends/libfqfft")

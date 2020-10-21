@@ -2,7 +2,7 @@ load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS",
      "ALWAYSLINK", "LINKSTATIC")
 
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
     "ocaml_executable",
     "ocaml_interface",
@@ -30,7 +30,7 @@ CAMLSNARK_C_NS = "Camlsnark_c"
 
 ocaml_module(
     name = "camlsnark_c",
-    impl = "camlsnark_c.ml",
+    src  = "camlsnark_c.ml",
     opts = IMPL_OPTS + ["-cclib", "-Wl,-E"],
     visibility = ["//visibility:public"],
     deps = [
@@ -47,7 +47,7 @@ ocaml_module(
 # serves as a submodule in a different package.
 ocaml_module(
     name = "snark_ffi_bindings.cm_",
-    impl = ":libsnark_ffi_bindings_ml",  ## generated file
+    src  = ":libsnark_ffi_bindings_ml",  ## generated file
     ns_module = "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings_ns_module",
     opts = IMPL_OPTS + ["-thread"],
     visibility = ["//visibility:public"],
@@ -78,7 +78,7 @@ cc_library(
 
 ocaml_module(
     name = "camlsnark_ctypes_stubs.cm_",
-    impl = "camlsnark_ctypes_stubs.ml",
+    src  = "camlsnark_ctypes_stubs.ml",
     opts = IMPL_OPTS,
     visibility = ["//visibility:public"],
     deps = [

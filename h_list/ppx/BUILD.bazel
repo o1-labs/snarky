@@ -1,68 +1,77 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+## Bazel package: @snarky//src/lib/baze58_check
+## Dune file: /Users/gar/mina/snarky/h_list/ppx/dune
 
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
-    "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
     "ppx_archive",
     "ppx_executable",
     "ppx_module",
-    "ppx_ns_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + []
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "ARCHIVE_OPTS",
+    "GLOBAL_CLI_OPTS",
+    "MODULE_OPTS",
+    "NS_MODULE_OPTS",
+    "PPX_ARCHIVE_OPTS",
+    "PPX_EXECUTABLE_OPTS",
+    "PPX_MODULE_OPTS",
+)
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_OPTS = []
 
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
 
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
 
-COMMON_DEPS = []
+LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
 
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_PPX_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_ARCHIVE_OPTS
 
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_PPX_EXECUTABLE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_EXECUTABLE_OPTS
 
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_PPX_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_MODULE_OPTS
 
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:ppxlib",
+]
 
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+PPX_1 = "//bzl/ppx:ppx[ppxlib.metaquot]"
 
-PPX_H_LIST_NS = "Ppx_h_list"
+PPX_1_ARGS = [
+    # do not sort (buildifier)
+]
 
-## (ppxlib.metaquot)
-PPX1_1CB86269 = "@//ppx/exe:ppx1_1cb86269-2fb1-532f-b544-f0b230c55b2e"
-
+################################################################
+## LIB 1
+################################################################
 ppx_archive(
     name = "ppx_h_list",
-    opts = PPX_ARCHIVE_OPTS,
+    opts = LIB_1_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":ppx_h_list_ns_module",
-        ":ppx_h_list.cm_",
+        ":Ppx_h_list_ns",
+        ":Ppx_h_list",
     ],
 )
 
-ppx_ns_module(
-    name = "ppx_h_list_ns_module",
-    ns = PPX_H_LIST_NS,
-    opts = PPX_NS_OPTS,
+ocaml_ns_module(
+    name = "Ppx_h_list_ns",
+    ns = "ppx_h_list",
+    opts = LIB_1_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "ppx_h_list.ml",
@@ -70,13 +79,18 @@ ppx_ns_module(
 )
 
 ppx_module(
-    name = "ppx_h_list.cm_",
-    impl = "ppx_h_list.ml",
-    opts = PPX_IMPL_OPTS,
-    ppx_bin = PPX1_1CB86269,
-    ppx_ns_module = ":ppx_h_list_ns_module",
+    name = "Ppx_h_list",
+    src = "ppx_h_list.ml",
+    lazy_deps = [
+        # do not sort (buildifier)
+        "@snarky//h_list",
+    ],
+    ns_module = ":Ppx_h_list_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
     ],
 )

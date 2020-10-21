@@ -1,44 +1,56 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
-    "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
 )
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_ARCHIVE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "GLOBAL_NS_MODULE_OPTS",
+    "REPO_ARCHIVE_OPTS",
+    "REPO_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_ARCHIVE_OPTS",
+    "PKG_MODULE_OPTS",
+    "PKG_NS_MODULE_OPTS",
+)
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + []
+################################################################
+## STANZA 1: CTYPES_FOREIGN_LIBFFI
+################################################################
+CTYPES_FOREIGN_LIBFFI_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+CTYPES_FOREIGN_LIBFFI_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-COMMON_DEPS = []
+CTYPES_FOREIGN_LIBFFI_NS_MODULE_OPTS = []
 
-CTYPES_FOREIGN_LIBFFI_NS = "Ctypes_foreign_libffi"
+CTYPES_FOREIGN_LIBFFI_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:ctypes",
+]
 
 ocaml_archive(
     name = "ctypes_foreign_libffi",
-    opts = ARCHIVE_OPTS,
+    opts = CTYPES_FOREIGN_LIBFFI_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = CTYPES_FOREIGN_LIBFFI_DEPS + [
         # do not sort (buildifier)
-        ":ctypes_foreign_libffi_ns_module",
-        ":ctypes_foreign.cm_",
+        ":Ctypes_foreign_libffi_ns",
+        ":Ctypes_foreign",
     ],
 )
 
 ocaml_ns_module(
-    name = "ctypes_foreign_libffi_ns_module",
-    ns = CTYPES_FOREIGN_LIBFFI_NS,
+    name = "Ctypes_foreign_libffi_ns",
+    ns = "ctypes_foreign_libffi",
+    opts = CTYPES_FOREIGN_LIBFFI_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "ctypes_foreign.ml",
@@ -46,14 +58,33 @@ ocaml_ns_module(
 )
 
 ocaml_module(
-    name = "ctypes_foreign.cm_",
-    impl = "ctypes_foreign.ml",
-    ns_module = ":ctypes_foreign_libffi_ns_module",
-    opts = IMPL_OPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:ctypes",
-        "@opam//pkg:ctypes.foreign",
-    ],
+    name = "Ctypes_foreign",
+    src = "ctypes_foreign.ml",
+    ns_module = ":Ctypes_foreign_libffi_ns",
+    opts = CTYPES_FOREIGN_LIBFFI_MODULE_OPTS,
+    deps = CTYPES_FOREIGN_LIBFFI_DEPS,
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

@@ -1,152 +1,135 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+## Dune file: /Users/gar/mina/snarky/group_map/dune
 
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
-    "ocaml_executable",
     "ocaml_interface",
     "ocaml_module",
     "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-    "ppx_ns_module",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + []
+## Global Options
+load(
+    "//bzl:config.bzl",
+    "ARCHIVE_OPTS",
+    "GLOBAL_CLI_OPTS",
+    "INTERFACE_OPTS",
+    "MODULE_OPTS",
+    "NS_MODULE_OPTS",
+)
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+## Repo Options
+load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_OPTS = []
 
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
 
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
 
-COMMON_DEPS = []
+LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
 
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
 
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+LIB_1_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core_kernel",
+    "@snarky//snarkette",
+]
 
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
 
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+PPX_1_ARGS = [
+    # do not sort (buildifier)
+    "-inline-test-lib",
+    "group_map",
+]
 
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-GROUP_MAP_NS = "Group_map"
-
-## (ppx_jane ppx_deriving.eq)
-PPX2_915493D3 = "@//ppx/exe:ppx2_915493d3-55e8-515a-bbfb-5eb1f29f562e"
-
+################################################################
+## LIB 1
+################################################################
 ocaml_archive(
     name = "group_map",
-    opts = INTF_OPTS,
+    opts = LIB_1_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":group_map_ns_module",
-        ":field_intf.cm_",
-        ":bw19.cm_",
-        ":group_map.cm_",
+        ":Group_map_ns",
+        ":Bw19",
+        ":Field_intf",
+        ":Group_map",
     ],
 )
 
 ocaml_ns_module(
-    name = "group_map_ns_module",
-    ns = GROUP_MAP_NS,
+    name = "Group_map_ns",
+    ns = "group_map",
+    opts = LIB_1_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
-        "field_intf.ml",
         "bw19.ml",
+        "field_intf.ml",
         "group_map.ml",
     ],
 )
 
 ocaml_module(
-    name = "field_intf.cm_",
-    impl = "field_intf.ml",
-    ns_module = ":group_map_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX2_915493D3,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"group_map\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    name = "Bw19",
+    src = "bw19.ml",
+    ns_module = ":Group_map_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:core",
-        "@opam//pkg:ppx_bench.runtime-lib",
-        "@opam//pkg:ppx_expect.collector",
-        "@opam//pkg:ppx_module_timer.runtime"
+        ":Field_intf",
     ],
 )
 
 ocaml_module(
-    name = "bw19.cm_",
-    impl = "bw19.ml",
-    ns_module = ":group_map_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX2_915493D3,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"group_map\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
+    name = "Field_intf",
+    src = "field_intf.ml",
+    ns_module = ":Group_map_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
     visibility = ["//visibility:public"],
-    deps = [
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":field_intf.cm_",
-        "//snarkette"
+    ],
+)
+
+ocaml_module(
+    name = "Group_map",
+    src = "group_map.ml",
+    intf = "_Group_map",
+    ns_module = ":Group_map_ns",
+    opts = LIB_1_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:public"],
+    deps = LIB_1_DEPS + [
+        # do not sort (buildifier)
+        ":Bw19",
+        ":Field_intf",
     ],
 )
 
 ocaml_interface(
-    name = "group_map.cmi",
-    intf = "group_map.mli",
-    ns_module = ":group_map_ns_module",
-    opts = INTF_OPTS,
-    deps = [
+    name = "_Group_map",
+    src = "group_map.mli",
+    ns_module = ":Group_map_ns",
+    opts = LIB_1_INTERFACE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    visibility = ["//visibility:private"],
+    deps = LIB_1_DEPS + [
         # do not sort (buildifier)
-        ":bw19.cm_",
-        ":field_intf.cm_",
-    ],
-)
-
-ocaml_module(
-    name = "group_map.cm_",
-    cmi = ":group_map.cmi",
-    impl = "group_map.ml",
-    ns_module = ":group_map_ns_module",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX2_915493D3,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"group_map\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "//snarkette",
-        ":bw19.cm_",
-        ":field_intf.cm_",
+        ":Bw19",
+        ":Field_intf",
     ],
 )

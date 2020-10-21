@@ -3,7 +3,7 @@ load("@snarky//bzl/config:vars.bzl",
      "ALWAYSLINK", "LINKSTATIC")
 
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
     "ocaml_executable",
     "ocaml_module",
@@ -70,7 +70,7 @@ genrule(
 
 ocaml_module(
     name = "gen_vector_stubs.cm_",
-    impl = "gen_vector_stubs.ml",
+    src  = "gen_vector_stubs.ml",
     opts = IMPL_OPTS,
     visibility = ["//visibility:public"],
     deps = [

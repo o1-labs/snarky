@@ -1,0 +1,140 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_archive",
+    "ocaml_executable",
+    "ocaml_module",
+    "ocaml_ns_module",
+)
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_ARCHIVE_OPTS",
+    "GLOBAL_EXECUTABLE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "GLOBAL_NS_MODULE_OPTS",
+    "REPO_ARCHIVE_OPTS",
+    "REPO_EXECUTABLE_OPTS",
+    "REPO_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_ARCHIVE_OPTS",
+    "PKG_EXECUTABLE_OPTS",
+    "PKG_MODULE_OPTS",
+    "PKG_NS_MODULE_OPTS",
+)
+
+################################################################
+## STANZA 1: SNARKY_BENCH
+################################################################
+SNARKY_BENCH_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + ["-linkall"]
+
+SNARKY_BENCH_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
+
+SNARKY_BENCH_NS_MODULE_OPTS = []
+
+SNARKY_BENCH_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
+]
+
+SNARKY_BENCH_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_bench]"
+
+SNARKY_BENCH_PPX_ARGS = [
+    # do not sort (buildifier)
+]
+
+ocaml_archive(
+    name = "snarky_bench",
+    opts = SNARKY_BENCH_ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = SNARKY_BENCH_DEPS + [
+        # do not sort (buildifier)
+        ":Snarky_bench_ns",
+        ":Field_project",
+    ],
+)
+
+ocaml_ns_module(
+    name = "Snarky_bench_ns",
+    ns = "snarky_bench",
+    opts = SNARKY_BENCH_NS_MODULE_OPTS,
+    submodules = [
+        # do not sort (buildifier)
+        "field_project.ml",
+    ],
+)
+
+ocaml_module(
+    name = "Field_project",
+    src = "field_project.ml",
+    ns_module = ":Snarky_bench_ns",
+    opts = SNARKY_BENCH_MODULE_OPTS,
+    ppx = SNARKY_BENCH_PPX,
+    ppx_args = SNARKY_BENCH_PPX_ARGS,
+    deps = SNARKY_BENCH_DEPS,
+)
+
+################################################################
+## STANZA 2 (main)
+################################################################
+
+MAIN_OPTS = []
+
+MAIN_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
+
+MAIN_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
+
+MAIN_NS_MODULE_OPTS = []
+
+MAIN_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core_bench.inline_benchmarks",
+    "@snarky//bench:snarky_bench",
+]
+
+ocaml_executable(
+    name = "main.exe",
+    opts = MAIN_ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = MAIN_DEPS + [
+        # do not sort (buildifier)
+        ":Main",
+    ],
+)
+
+ocaml_module(
+    name = "Main",
+    src = "main.ml",
+    opts = MAIN_MODULE_OPTS,
+    deps = MAIN_DEPS + [
+        # do not sort (buildifier)
+    ],
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
+)
