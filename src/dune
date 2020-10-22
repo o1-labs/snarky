@@ -26,4 +26,4 @@
     (-> gpu_prover.no_gpu.ml)))
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
-    -conditional)))
+    --conditional)))
