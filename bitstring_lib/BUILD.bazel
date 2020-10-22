@@ -1,6 +1,4 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
-## Bazel package: @snarky//src/lib/baze58_check
-## Dune file: /Users/gar/mina/snarky/bitstring_lib/dune
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
@@ -9,58 +7,58 @@ load(
     "ocaml_module",
     "ocaml_ns_module",
 )
-
-## Global Options
 load(
-    "//bzl:config.bzl",
-    "ARCHIVE_OPTS",
-    "GLOBAL_CLI_OPTS",
-    "INTERFACE_OPTS",
-    "MODULE_OPTS",
-    "NS_MODULE_OPTS",
+    "//:BUILD.bzl",
+    "GLOBAL_ARCHIVE_OPTS",
+    "GLOBAL_INTERFACE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "GLOBAL_NS_MODULE_OPTS",
+    "REPO_ARCHIVE_OPTS",
+    "REPO_INTERFACE_OPTS",
+    "REPO_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_ARCHIVE_OPTS",
+    "PKG_INTERFACE_OPTS",
+    "PKG_MODULE_OPTS",
+    "PKG_NS_MODULE_OPTS",
 )
 
-## Repo Options
-load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
+################################################################
+## STANZA 1: BITSTRING_LIB
+################################################################
+BITSTRING_LIB_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + ["-linkall"]
 
-PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
+BITSTRING_LIB_INTERFACE_OPTS = []
 
-LIB_1_OPTS = []
+BITSTRING_LIB_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
 
-LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
+BITSTRING_LIB_NS_MODULE_OPTS = []
 
-LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
-
-LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
-
-LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
-
-LIB_1_DEPS = [
+BITSTRING_LIB_DEPS = [
     # do not sort (buildifier)
     "@opam//pkg:core_kernel",
     "@snarky//tuple_lib",
 ]
 
-PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq][bisect_ppx]"
+BITSTRING_LIB_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq][bisect_ppx]"
 
-PPX_1_ARGS = [
+BITSTRING_LIB_PPX_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
     "bitstring_lib",
     "-conditional",
 ]
 
-################################################################
-## LIB 1
-################################################################
 ocaml_archive(
     name = "bitstring_lib",
     doc = "Bitstring library",
-    opts = LIB_1_ARCHIVE_OPTS,
+    opts = BITSTRING_LIB_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
+    deps = BITSTRING_LIB_DEPS + [
         # do not sort (buildifier)
-        ":Bitstring_lib_ns",
         ":Bitstring",
     ],
 )
@@ -68,7 +66,7 @@ ocaml_archive(
 ocaml_ns_module(
     name = "Bitstring_lib_ns",
     ns = "bitstring_lib",
-    opts = LIB_1_NS_MODULE_OPTS,
+    opts = BITSTRING_LIB_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "bitstring.ml",
@@ -78,26 +76,44 @@ ocaml_ns_module(
 ocaml_module(
     name = "Bitstring",
     src = "bitstring.ml",
-    intf = "_Bitstring",
+    intf = ":_Bitstring",
     ns_module = ":Bitstring_lib_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-    ],
+    opts = BITSTRING_LIB_MODULE_OPTS,
+    ppx = BITSTRING_LIB_PPX,
+    ppx_args = BITSTRING_LIB_PPX_ARGS,
+    deps = BITSTRING_LIB_DEPS,
 )
 
 ocaml_interface(
     name = "_Bitstring",
     src = "bitstring.mli",
     ns_module = ":Bitstring_lib_ns",
-    opts = LIB_1_INTERFACE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:private"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-    ],
+    opts = BITSTRING_LIB_INTERFACE_OPTS,
+    ppx = BITSTRING_LIB_PPX,
+    ppx_args = BITSTRING_LIB_PPX_ARGS,
+    deps = BITSTRING_LIB_DEPS,
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

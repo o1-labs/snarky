@@ -1,142 +1,157 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
-    "ocaml_archive",
     "ocaml_executable",
     "ocaml_interface",
     "ocaml_module",
-    "ocaml_ns_module",
+)
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_EXECUTABLE_OPTS",
+    "GLOBAL_INTERFACE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "REPO_EXECUTABLE_OPTS",
+    "REPO_INTERFACE_OPTS",
+    "REPO_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_EXECUTABLE_OPTS",
+    "PKG_INTERFACE_OPTS",
+    "PKG_MODULE_OPTS",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + ["-warn-error",  "-27-26-32-33", "-thread"]
+################################################################
+## STANZA 1: EXECUTABLES
+################################################################
+EXECUTABLES_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + PKG_EXECUTABLE_OPTS
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+EXECUTABLES_INTERFACE_OPTS = []
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-COMMON_DEPS = []
+EXECUTABLES_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
 
-## (pps ppx_jane ppx_deriving.enum))
-PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.enum]"
-# @//ppx/exe:ppx2_jane_enum"
-PPX_ARGS = [
+EXECUTABLES_DEPS = [
     # do not sort (buildifier)
-    "-cookie",
-    "library-name=\"election\"",
-    "-corrected-suffix",
-    ".ppx-corrected"
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
 ]
 
+EXECUTABLES_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.enum]"
+
+EXECUTABLES_PPX_ARGS = [
+    # do not sort (buildifier)
+]
+
+################################
 ocaml_executable(
-    name = "election",
-    opts = EXEC_OPTS + ["-ccopt", "-lstdc++"],
-    visibility = ["//visibility:public"],
-    deps = [
+    name = "election_main",
+    opts = EXECUTABLES_EXECUTABLE_OPTS,
+    deps = EXECUTABLES_DEPS + [
+        ":Election",
+        ":Election_main",
+        ":Impl",
+        ":Import",
+        ":Knapsack_hash",
+    ],
+)
+
+################################################################
+ocaml_module(
+    name = "Election",
+    src = "election.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:core_kernel",
-        "//src:snarky",
-        ":impl.cm_",
-        ":knapsack_hash.cm_",
-        ":import.cm_",
-        ":election.cm_",
-        ":election_main.cm_",
+        ":Impl",
+        ":Import",
     ],
 )
 
 ocaml_module(
-    name = "election.cm_",
-    src  = "election.ml",
-    opts = IMPL_OPTS,
-    ppx = PPX,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
+    name = "Election_main",
+    src = "election_main.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
         # do not sort (buildifier)
-        "//src:snarky",
-        ":impl.cm_",
-        ":import.cm_",
-        ":knapsack_hash.cm_"
+        ":Election",
+        ":Impl",
     ],
 )
 
 ocaml_module(
-    name = "election_main.cm_",
-    src  = "election_main.ml",
-    opts = IMPL_OPTS,
-    ppx = PPX,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
+    name = "Impl",
+    src = "impl.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
         # do not sort (buildifier)
-        "//src:snarky",
-        ":election.cm_",
-        ":impl.cm_"
     ],
 )
 
 ocaml_module(
-    name = "impl.cm_",
-    src  = "impl.ml",
-    opts = IMPL_OPTS,
-    ppx = PPX,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
+    name = "Import",
+    src = "import.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
         # do not sort (buildifier)
-        "//src:snarky",
-        "//src/base:snarky_backendless",
-        "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
-        "//src/intf:snarky_intf",
+        ":Impl",
+        ":Knapsack_hash",
     ],
 )
 
 ocaml_module(
-    name = "import.cm_",
-    src  = "import.ml",
-    opts = IMPL_OPTS,
-    ppx = PPX,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
+    name = "Knapsack_hash",
+    src = "knapsack_hash.ml",
+    intf = "_Knapsack_hash",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
         # do not sort (buildifier)
-        "//src:snarky",
-        ":impl.cm_",
-        ":knapsack_hash.cm_"
+        ":Impl",
     ],
 )
 
 ocaml_interface(
-    name = "knapsack_hash.cmi",
+    name = "_Knapsack_hash",
     src = "knapsack_hash.mli",
-    # ns_module = ":election_ns_module",
-    ppx = PPX,
-    ppx_args = PPX_ARGS,
-    opts = INTF_OPTS,
-    deps = [
+    opts = EXECUTABLES_INTERFACE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
         # do not sort (buildifier)
-        ":impl.cm_",
+        ":Impl",
     ],
 )
 
-ocaml_module(
-    name = "knapsack_hash.cm_",
-    src  = "knapsack_hash.ml",
-    intf = ":knapsack_hash.cmi",
-    opts = IMPL_OPTS,
-    ppx = PPX,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "//src:snarky",
-        "//src/base:snarky_backendless",
-        ":impl.cm_",
-    ],
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

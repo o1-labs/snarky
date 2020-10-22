@@ -1,96 +1,11 @@
-## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
-## Bazel package: @snarky//src/lib/baze58_check
-## Dune file: /Users/gar/mina/snarky/h_list/ppx/dune
-
-load(
-    "@obazl_rules_ocaml//ocaml:rules.bzl",
-    "ocaml_archive",
-    "ocaml_module",
-    "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-)
-
-## Global Options
-load(
-    "//bzl:config.bzl",
-    "ARCHIVE_OPTS",
-    "GLOBAL_CLI_OPTS",
-    "MODULE_OPTS",
-    "NS_MODULE_OPTS",
-    "PPX_ARCHIVE_OPTS",
-    "PPX_EXECUTABLE_OPTS",
-    "PPX_MODULE_OPTS",
-)
-
-## Repo Options
-load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
-
-PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
-
-LIB_1_OPTS = []
-
-LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
-
-LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
-
-LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
-
-LIB_1_PPX_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_ARCHIVE_OPTS
-
-LIB_1_PPX_EXECUTABLE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_EXECUTABLE_OPTS
-
-LIB_1_PPX_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_MODULE_OPTS
-
-LIB_1_DEPS = [
-    # do not sort (buildifier)
-    "@opam//pkg:ppxlib",
-]
-
-PPX_1 = "//bzl/ppx:ppx[ppxlib.metaquot]"
-
-PPX_1_ARGS = [
-    # do not sort (buildifier)
-]
-
-################################################################
-## LIB 1
-################################################################
-ppx_archive(
-    name = "ppx_h_list",
-    opts = LIB_1_ARCHIVE_OPTS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-        ":Ppx_h_list_ns",
-        ":Ppx_h_list",
-    ],
-)
-
-ocaml_ns_module(
-    name = "Ppx_h_list_ns",
-    ns = "ppx_h_list",
-    opts = LIB_1_NS_MODULE_OPTS,
-    submodules = [
-        # do not sort (buildifier)
-        "ppx_h_list.ml",
-    ],
-)
+load("@obazl_rules_ocaml//ocaml:rules.bzl", "ppx_module")
 
 ppx_module(
-    name = "Ppx_h_list",
+    name = "ppx_h_list",
     src = "ppx_h_list.ml",
-    lazy_deps = [
-        # do not sort (buildifier)
-        "@snarky//h_list",
-    ],
-    ns_module = ":Ppx_h_list_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-    ],
+    opts = ["-strict-formats", "-short-paths", "-keep-locs"],
+    ppx = "//bzl/ppx:ppx[ppxlib.metaquot]",
+    deps = ["@opam//pkg:ppxlib"],
+    lazy_deps = ["@snarky//h_list"],
+    visibility = ["//visibility:public"]
 )

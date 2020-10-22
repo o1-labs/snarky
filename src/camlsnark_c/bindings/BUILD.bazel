@@ -1,5 +1,4 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
-## Dune file: /Users/gar/mina/snarky/src/camlsnark_c/bindings/dune
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
@@ -8,49 +7,49 @@ load(
     "ocaml_module",
     "ocaml_ns_module",
 )
-
-## Global Options
 load(
-    "//bzl:config.bzl",
-    "ARCHIVE_OPTS",
-    "GLOBAL_CLI_OPTS",
-    "INTERFACE_OPTS",
-    "MODULE_OPTS",
-    "NS_MODULE_OPTS",
+    "//:BUILD.bzl",
+    "GLOBAL_ARCHIVE_OPTS",
+    "GLOBAL_INTERFACE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "GLOBAL_NS_MODULE_OPTS",
+    "REPO_ARCHIVE_OPTS",
+    "REPO_INTERFACE_OPTS",
+    "REPO_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_ARCHIVE_OPTS",
+    "PKG_INTERFACE_OPTS",
+    "PKG_MODULE_OPTS",
+    "PKG_NS_MODULE_OPTS",
 )
 
-## Repo Options
-load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
+################################################################
+## STANZA 1: CAMLSNARK_C_BINDINGS
+################################################################
+CAMLSNARK_C_BINDINGS_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
 
-PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
+CAMLSNARK_C_BINDINGS_INTERFACE_OPTS = []
 
-LIB_1_OPTS = []
+CAMLSNARK_C_BINDINGS_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
 
-LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
+CAMLSNARK_C_BINDINGS_NS_MODULE_OPTS = []
 
-LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
-
-LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
-
-LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
-
-LIB_1_DEPS = [
+CAMLSNARK_C_BINDINGS_DEPS = [
     # do not sort (buildifier)
     "@opam//pkg:core",
     "@opam//pkg:ctypes",
     "@opam//pkg:ctypes.foreign",
 ]
 
-################################################################
-## LIB 1
-################################################################
 ocaml_archive(
     name = "camlsnark_c_bindings",
-    opts = LIB_1_ARCHIVE_OPTS,
+    opts = CAMLSNARK_C_BINDINGS_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
+    deps = CAMLSNARK_C_BINDINGS_DEPS + [
         # do not sort (buildifier)
-        ":Camlsnark_c_bindings_ns",
         ":Backend_types",
         ":Bindings",
         ":Bindings_base",
@@ -61,7 +60,7 @@ ocaml_archive(
 ocaml_ns_module(
     name = "Camlsnark_c_bindings_ns",
     ns = "camlsnark_c_bindings",
-    opts = LIB_1_NS_MODULE_OPTS,
+    opts = CAMLSNARK_C_BINDINGS_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "backend_types.ml",
@@ -74,11 +73,10 @@ ocaml_ns_module(
 ocaml_module(
     name = "Backend_types",
     src = "backend_types.ml",
-    intf = "_Backend_types",
+    intf = ":_Backend_types",
     ns_module = ":Camlsnark_c_bindings_ns",
-    opts = LIB_1_MODULE_OPTS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
+    opts = CAMLSNARK_C_BINDINGS_MODULE_OPTS,
+    deps = CAMLSNARK_C_BINDINGS_DEPS + [
         # do not sort (buildifier)
         ":Bindings_base",
     ],
@@ -88,9 +86,8 @@ ocaml_interface(
     name = "_Backend_types",
     src = "backend_types.mli",
     ns_module = ":Camlsnark_c_bindings_ns",
-    opts = LIB_1_INTERFACE_OPTS,
-    visibility = ["//visibility:private"],
-    deps = LIB_1_DEPS + [
+    opts = CAMLSNARK_C_BINDINGS_INTERFACE_OPTS,
+    deps = CAMLSNARK_C_BINDINGS_DEPS + [
         # do not sort (buildifier)
         ":Bindings_base",
     ],
@@ -100,9 +97,8 @@ ocaml_module(
     name = "Bindings",
     src = "bindings.ml",
     ns_module = ":Camlsnark_c_bindings_ns",
-    opts = LIB_1_MODULE_OPTS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
+    opts = CAMLSNARK_C_BINDINGS_MODULE_OPTS,
+    deps = CAMLSNARK_C_BINDINGS_DEPS + [
         # do not sort (buildifier)
         ":Backend_types",
         ":Bindings_base",
@@ -114,21 +110,17 @@ ocaml_module(
     name = "Bindings_base",
     src = "bindings_base.ml",
     ns_module = ":Camlsnark_c_bindings_ns",
-    opts = LIB_1_MODULE_OPTS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-    ],
+    opts = CAMLSNARK_C_BINDINGS_MODULE_OPTS,
+    deps = CAMLSNARK_C_BINDINGS_DEPS,
 )
 
 ocaml_module(
     name = "Vector",
     src = "vector.ml",
-    intf = "_Vector",
+    intf = ":_Vector",
     ns_module = ":Camlsnark_c_bindings_ns",
-    opts = LIB_1_MODULE_OPTS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
+    opts = CAMLSNARK_C_BINDINGS_MODULE_OPTS,
+    deps = CAMLSNARK_C_BINDINGS_DEPS + [
         # do not sort (buildifier)
         ":Bindings_base",
     ],
@@ -138,10 +130,33 @@ ocaml_interface(
     name = "_Vector",
     src = "vector.mli",
     ns_module = ":Camlsnark_c_bindings_ns",
-    opts = LIB_1_INTERFACE_OPTS,
-    visibility = ["//visibility:private"],
-    deps = LIB_1_DEPS + [
+    opts = CAMLSNARK_C_BINDINGS_INTERFACE_OPTS,
+    deps = CAMLSNARK_C_BINDINGS_DEPS + [
         # do not sort (buildifier)
         ":Bindings_base",
     ],
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

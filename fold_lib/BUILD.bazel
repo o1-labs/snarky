@@ -52,7 +52,6 @@ ocaml_archive(
     visibility = ["//visibility:public"],
     deps = FOLD_LIB_DEPS + [
         # do not sort (buildifier)
-        ":Fold_lib_ns",
         ":Fold",
     ],
 )

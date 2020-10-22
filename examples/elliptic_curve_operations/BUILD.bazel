@@ -1,0 +1,65 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_executable",
+)
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_EXECUTABLE_OPTS",
+    "REPO_EXECUTABLE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_EXECUTABLE_OPTS",
+)
+
+################################################################
+## STANZA 1: EXECUTABLES
+################################################################
+EXECUTABLES_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + PKG_EXECUTABLE_OPTS
+
+EXECUTABLES_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
+]
+
+EXECUTABLES_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.enum]"
+
+EXECUTABLES_PPX_ARGS = [
+    # do not sort (buildifier)
+]
+
+################################
+ocaml_executable(
+    name = "elliptic_curve_operations",
+    opts = EXECUTABLES_EXECUTABLE_OPTS,
+    deps = EXECUTABLES_DEPS + [],
+)
+
+################################################################
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
+)

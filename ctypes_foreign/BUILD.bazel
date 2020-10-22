@@ -42,7 +42,6 @@ ocaml_archive(
     visibility = ["//visibility:public"],
     deps = CTYPES_FOREIGN_LIBFFI_DEPS + [
         # do not sort (buildifier)
-        ":Ctypes_foreign_libffi_ns",
         ":Ctypes_foreign",
     ],
 )

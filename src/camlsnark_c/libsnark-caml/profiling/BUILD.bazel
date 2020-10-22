@@ -6,8 +6,7 @@ alias(
 # alias(
 #     name   = "routing_gadgetlib1",
 #     actual = "//libsnark/gadgetlib1/gadgets/routing
-    /profiling"
-)
+# )
 
 alias(
     name   = "r1cs_mp_pcd",

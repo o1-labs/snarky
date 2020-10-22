@@ -1,60 +1,81 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
-    "ocaml_archive",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_executable",
-    "ocaml_interface",
     "ocaml_module",
-    "ocaml_ns_module",
+)
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_EXECUTABLE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "REPO_EXECUTABLE_OPTS",
+    "REPO_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_EXECUTABLE_OPTS",
+    "PKG_MODULE_OPTS",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + ["-warn-error",  "-27-26-32-33", "-thread"]
+################################################################
+## STANZA 1: EXECUTABLES
+################################################################
+EXECUTABLES_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + PKG_EXECUTABLE_OPTS
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+EXECUTABLES_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-COMMON_DEPS = []
-
-## (pps ppx_jane)
-PPX = "//ppx/exe:ppx1_58409c95-e080-5f48-b6db-90e8a376e5bc"
-
-PPX_ARGS = [
+EXECUTABLES_DEPS = [
     # do not sort (buildifier)
-    "-cookie",
-    "library-name=\"merkle_update\"",
-    "-corrected-suffix",
-    ".ppx-corrected"
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
 ]
 
+EXECUTABLES_PPX = "//bzl/ppx:ppx[ppx_jane]"
+
+EXECUTABLES_PPX_ARGS = [
+    # do not sort (buildifier)
+]
+
+################################
 ocaml_executable(
     name = "merkle_update",
-    opts = IMPL_OPTS + ["-cclib", "-lstdc++"],
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:core_kernel",
-        "//src:snarky",
-        ":merkle_update.cm_",
-    ]
+    opts = EXECUTABLES_EXECUTABLE_OPTS,
+    deps = EXECUTABLES_DEPS + [":Merkle_update"],
 )
 
+################################################################
 ocaml_module(
-    name = "merkle_update.cm_",
-    impl = "merkle_update.ml",
-    opts = IMPL_OPTS,
-    ppx_exe = PPX,
-    ppx_args = PPX_ARGS,
-    visibility = ["//visibility:public"],
-    deps = [
+    name = "Merkle_update",
+    src = "merkle_update.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
         # do not sort (buildifier)
-        "//src:snarky",
     ],
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

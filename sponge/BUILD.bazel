@@ -1,6 +1,4 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
-## Bazel package: @snarky//src/lib/baze58_check
-## Dune file: /Users/gar/mina/snarky/sponge/dune
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
@@ -9,44 +7,55 @@ load(
     "ocaml_module",
     "ocaml_ns_module",
 )
-
-## Global Options
 load(
-    "//bzl:config.bzl",
-    "ARCHIVE_OPTS",
-    "GLOBAL_CLI_OPTS",
-    "INTERFACE_OPTS",
-    "MODULE_OPTS",
-    "NS_MODULE_OPTS",
+    "//:BUILD.bzl",
+    "GLOBAL_ARCHIVE_OPTS",
+    "GLOBAL_INTERFACE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "GLOBAL_NS_MODULE_OPTS",
+    "REPO_ARCHIVE_OPTS",
+    "REPO_INTERFACE_OPTS",
+    "REPO_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_ARCHIVE_OPTS",
+    "PKG_INTERFACE_OPTS",
+    "PKG_MODULE_OPTS",
+    "PKG_NS_MODULE_OPTS",
 )
 
-## Repo Options
-load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
+################################################################
+## STANZA 1: SPONGE
+################################################################
+SPONGE_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
 
-PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
-LIB_1_OPTS = []
-LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
-LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
-LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
-LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
-LIB_1_DEPS = ["@opam//pkg:core_kernel"]
+SPONGE_INTERFACE_OPTS = []
 
-PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
+SPONGE_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
 
-PPX_1_ARGS = [
+SPONGE_NS_MODULE_OPTS = []
+
+SPONGE_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core_kernel",
+]
+
+SPONGE_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
+
+SPONGE_PPX_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
     "sponge",
 ]
 
-################################################################
-## LIB 1
-################################################################
 ocaml_archive(
     name = "sponge",
-    opts = LIB_1_ARCHIVE_OPTS,
+    opts = SPONGE_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
+    deps = SPONGE_DEPS + [
+        # do not sort (buildifier)
         ":Constants",
         ":Intf",
         ":Params",
@@ -57,8 +66,9 @@ ocaml_archive(
 ocaml_ns_module(
     name = "Sponge_ns",
     ns = "sponge",
-    opts = LIB_1_NS_MODULE_OPTS,
+    opts = SPONGE_NS_MODULE_OPTS,
     submodules = [
+        # do not sort (buildifier)
         "constants.ml",
         "intf.ml",
         "params.ml",
@@ -70,30 +80,36 @@ ocaml_module(
     name = "Constants",
     src = "constants.ml",
     ns_module = ":Sponge_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS + [":Params"]
+    opts = SPONGE_MODULE_OPTS,
+    ppx = SPONGE_PPX,
+    ppx_args = SPONGE_PPX_ARGS,
+    deps = SPONGE_DEPS + [
+        # do not sort (buildifier)
+        ":Params",
+    ],
 )
 
 ocaml_module(
     name = "Intf",
     src = "intf.ml",
     ns_module = ":Sponge_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS + [":Params"]
+    opts = SPONGE_MODULE_OPTS,
+    ppx = SPONGE_PPX,
+    ppx_args = SPONGE_PPX_ARGS,
+    deps = SPONGE_DEPS + [
+        # do not sort (buildifier)
+        ":Params",
+    ],
 )
 
 ocaml_module(
     name = "Params",
     src = "params.ml",
     ns_module = ":Sponge_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS
+    opts = SPONGE_MODULE_OPTS,
+    ppx = SPONGE_PPX,
+    ppx_args = SPONGE_PPX_ARGS,
+    deps = SPONGE_DEPS,
 )
 
 ocaml_module(
@@ -101,11 +117,12 @@ ocaml_module(
     src = "sponge.ml",
     intf = ":_Sponge",
     ns_module = ":Sponge_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-     deps = LIB_1_DEPS + [
-         ":Constants",
+    opts = SPONGE_MODULE_OPTS,
+    ppx = SPONGE_PPX,
+    ppx_args = SPONGE_PPX_ARGS,
+    deps = SPONGE_DEPS + [
+        # do not sort (buildifier)
+        ":Constants",
         ":Intf",
         ":Params",
     ],
@@ -115,11 +132,36 @@ ocaml_interface(
     name = "_Sponge",
     src = "sponge.mli",
     ns_module = ":Sponge_ns",
-    opts = LIB_1_INTERFACE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-     deps = LIB_1_DEPS + [
-         ":Intf",
+    opts = SPONGE_INTERFACE_OPTS,
+    ppx = SPONGE_PPX,
+    ppx_args = SPONGE_PPX_ARGS,
+    deps = SPONGE_DEPS + [
+        # do not sort (buildifier)
+        ":Intf",
         ":Params",
     ],
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

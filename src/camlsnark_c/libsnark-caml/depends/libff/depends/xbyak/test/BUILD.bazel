@@ -31,7 +31,7 @@ test_suite(
         ":jmp",
         ":make_nm",
         ":misc",
-        ":normalize_prefix"
+        ":normalize_prefix",
         ":lib_run"
     ]
 )

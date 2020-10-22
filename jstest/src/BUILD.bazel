@@ -1,0 +1,99 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_executable",
+    "ocaml_module",
+)
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_EXECUTABLE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "REPO_EXECUTABLE_OPTS",
+    "REPO_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_EXECUTABLE_OPTS",
+    "PKG_MODULE_OPTS",
+)
+################################################################
+## STANZA 1 (run_snarky)
+################################################################
+
+RUN_SNARKY_OPTS = []
+
+RUN_SNARKY_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + PKG_EXECUTABLE_OPTS + []
+
+RUN_SNARKY_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
+
+RUN_SNARKY_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core_kernel",
+    "@snarky//src:snarky",
+    "@snarky//snarky_universe",
+]
+
+PPX_1 = "//bzl/ppx:ppx[ppx_snarky][ppx_jane][ppx_deriving][ppx_deriving_yojson]"
+
+PPX_1_ARGS = [
+    # do not sort (buildifier)
+]
+
+ocaml_executable(
+    name = "run_snarky.exe",
+    opts = RUN_SNARKY_EXECUTABLE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = RUN_SNARKY_DEPS + [
+        # do not sort (buildifier)
+        ":Main",
+        ":Run_snarky",
+    ],
+)
+
+ocaml_module(
+    name = "Main",
+    src = "main.ml",
+    opts = RUN_SNARKY_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = RUN_SNARKY_DEPS + [
+        # do not sort (buildifier)
+    ],
+)
+
+ocaml_module(
+    name = "Run_snarky",
+    src = "run_snarky.ml",
+    opts = RUN_SNARKY_MODULE_OPTS,
+    ppx = PPX_1,
+    ppx_args = PPX_1_ARGS,
+    deps = RUN_SNARKY_DEPS + [
+        # do not sort (buildifier)
+        ":Main",
+    ],
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
+)

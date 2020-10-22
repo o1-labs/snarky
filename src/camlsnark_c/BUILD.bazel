@@ -16,7 +16,7 @@ COMMON_OPTS = select({
 }) + ["-thread"] # , "-linkall"]
 
 LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
+    "//bzl/config:enable_always_link": ["-linkall"],
     "//conditions:default": [],
 }) + []
 

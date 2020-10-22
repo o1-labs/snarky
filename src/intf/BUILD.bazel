@@ -49,7 +49,6 @@ ocaml_archive(
     visibility = ["//visibility:public"],
     deps = SNARKY_INTF_DEPS + [
         # do not sort (buildifier)
-        ":Snarky_intf_ns",
         ":Bigint_intf",
         ":Field",
         ":Vector",

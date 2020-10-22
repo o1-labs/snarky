@@ -1,6 +1,3 @@
-## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
-## Dune file: /Users/gar/mina/snarky/snarky_universe/dune
-
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
@@ -8,27 +5,38 @@ load(
     "ocaml_module",
     "ocaml_ns_module",
 )
-
-## Global Options
 load(
-    "//bzl:config.bzl",
-    "ARCHIVE_OPTS",
-    "GLOBAL_CLI_OPTS",
-    "INTERFACE_OPTS",
-    "MODULE_OPTS",
-    "NS_MODULE_OPTS",
+    "//:BUILD.bzl",
+    "GLOBAL_ARCHIVE_OPTS",
+    "GLOBAL_INTERFACE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "GLOBAL_NS_MODULE_OPTS",
+    "REPO_ARCHIVE_OPTS",
+    "REPO_INTERFACE_OPTS",
+    "REPO_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_ARCHIVE_OPTS",
+    "PKG_INTERFACE_OPTS",
+    "PKG_MODULE_OPTS",
+    "PKG_NS_MODULE_OPTS",
 )
 
-## Repo Options
-load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
+################################################################
+## STANZA 1: SNARKY_UNIVERSE
+################################################################
+SNARKY_UNIVERSE_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
 
-PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
-LIB_1_OPTS = []
-LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
-LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
-LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
-LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
-LIB_1_DEPS = [
+SNARKY_UNIVERSE_INTERFACE_OPTS = []
+
+SNARKY_UNIVERSE_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
+
+SNARKY_UNIVERSE_NS_MODULE_OPTS = []
+
+SNARKY_UNIVERSE_DEPS = [
+    # do not sort (buildifier)
     "@opam//pkg:core",
     "@snarky//sponge",
     "@snarky//snarkette",
@@ -38,24 +46,20 @@ LIB_1_DEPS = [
     "@snarky//src:snarky",
 ]
 
-PPX_1 = "//bzl/ppx:ppx[ppx_deriving_yojson][ppx_jane][ppx_deriving.eq]"
+SNARKY_UNIVERSE_PPX = "//bzl/ppx:ppx[ppx_deriving_yojson][ppx_jane][ppx_deriving.eq]"
 
-PPX_1_ARGS = [
+SNARKY_UNIVERSE_PPX_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
     "snarky_universe",
 ]
 
-################################################################
-## LIB 1
-################################################################
 ocaml_archive(
     name = "snarky_universe",
-    opts = LIB_1_ARCHIVE_OPTS,
+    opts = SNARKY_UNIVERSE_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
+    deps = SNARKY_UNIVERSE_DEPS + [
         # do not sort (buildifier)
-        ":Snarky_universe_ns",
         ":Curve",
         ":Group",
         ":Hash",
@@ -70,7 +74,7 @@ ocaml_archive(
 ocaml_ns_module(
     name = "Snarky_universe_ns",
     ns = "snarky_universe",
-    opts = LIB_1_NS_MODULE_OPTS,
+    opts = SNARKY_UNIVERSE_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "curve.ml",
@@ -88,72 +92,82 @@ ocaml_module(
     name = "Curve",
     src = "curve.ml",
     ns_module = ":Snarky_universe_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = SNARKY_UNIVERSE_PPX,
+    ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
+    deps = SNARKY_UNIVERSE_DEPS,
 )
 
 ocaml_module(
     name = "Group",
     src = "group.ml",
     ns_module = ":Snarky_universe_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS + [":Curve"]
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = SNARKY_UNIVERSE_PPX,
+    ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":Curve",
+    ],
 )
 
 ocaml_module(
     name = "Hash",
     src = "hash.ml",
     ns_module = ":Snarky_universe_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS + [":Curve"]
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = SNARKY_UNIVERSE_PPX,
+    ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":Curve",
+    ],
 )
 
 ocaml_module(
     name = "Input_spec",
     src = "input_spec.ml",
     ns_module = ":Snarky_universe_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = SNARKY_UNIVERSE_PPX,
+    ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
+    deps = SNARKY_UNIVERSE_DEPS,
 )
 
 ocaml_module(
     name = "Intf",
     src = "intf.ml",
     ns_module = ":Snarky_universe_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [":Input_spec"]
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = SNARKY_UNIVERSE_PPX,
+    ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":Input_spec",
+    ],
 )
 
 ocaml_module(
     name = "Membership_proof",
     src = "membership_proof.ml",
     ns_module = ":Snarky_universe_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = SNARKY_UNIVERSE_PPX,
+    ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
+    deps = SNARKY_UNIVERSE_DEPS + ["@opam//pkg:ppx_deriving_yojson.runtime"]
 )
 
 ocaml_module(
     name = "Merkle_tree_unchecked",
     src = "merkle_tree_unchecked.ml",
     ns_module = ":Snarky_universe_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS + [":Membership_proof"]
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = SNARKY_UNIVERSE_PPX,
+    ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":Membership_proof",
+    ],
 )
 
 ocaml_module(
@@ -161,17 +175,18 @@ ocaml_module(
     src = "snarky_universe.ml",
     intf = ":_Snarky_universe",
     ns_module = ":Snarky_universe_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS + [
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = SNARKY_UNIVERSE_PPX,
+    ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
         ":Curve",
         ":Group",
         ":Hash",
         ":Input_spec",
         ":Intf",
         ":Membership_proof",
-        ":Merkle_tree_unchecked"
+        ":Merkle_tree_unchecked",
     ],
 )
 
@@ -179,11 +194,36 @@ ocaml_interface(
     name = "_Snarky_universe",
     src = "snarky_universe.mli",
     ns_module = ":Snarky_universe_ns",
-    opts = LIB_1_INTERFACE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-     deps = LIB_1_DEPS + [
-         ":Curve",
-         ":Intf"
+    opts = SNARKY_UNIVERSE_INTERFACE_OPTS,
+    ppx = SNARKY_UNIVERSE_PPX,
+    ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":Curve",
+        ":Intf",
     ],
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

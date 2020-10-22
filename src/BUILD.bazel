@@ -66,6 +66,7 @@ ocaml_archive(
         ":backends.cm_",
         ":snark.cm_",
         ":snarky.cm_",
+        ":toplevel.cm_",
         ## end ns_module
     ],
 
@@ -134,11 +135,18 @@ ocaml_ns_module(
     name = "snarky_ns_module",
     ns = SNARKY_NS,
     submodules = [
+        ## These are all included as submodules in snarky.ml,
+        ## but we're building a namespace archive named "snarky",
+        ## so they must be included as submodules of this ns module;
+        ## otherwise we get e.g.:
+        ## File "src/snarky.ml", line 47, characters 18-26:
+        ## Error: Unbound module Toplevel
         "backend_types.ml",
         "backends.ml",
         "gpu_prover.ml",
         "snark.ml",
         "snarky.ml",
+        "toplevel.ml"
     ]
 )
 
@@ -226,6 +234,7 @@ ocaml_module(
         "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
         "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
         "//ctypes_foreign:ctypes_foreign_libffi",
+        # ":toplevel.cm_"
     ],
 )
 

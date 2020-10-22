@@ -100,13 +100,9 @@ cc_library(
     name = "tinyram_ppzksnark",
     srcs = ["tinyram_ppzksnark_pp.cpp"],
     hdrs = ["tinyram_ppzksnark_pp.hpp"],
-    copts = ["-I.", "-Iexternal"] + CPPFLAGS + CXXFLAGS,
+    copts = ["-I.", "-Iexternal", "-Iexternal/libff"] + CPPFLAGS + CXXFLAGS,
     linkstatic = LINKSTATIC,
     include_prefix = "libsnark/common/default_types",
-    copts = ["-I.",
-             "-Iexternal",
-             "-Iexternal/libff"
-    ],
     deps = [
         ":r1cs_ppzksnark",
         "//libsnark/relations/ram_computations/rams/tinyram",

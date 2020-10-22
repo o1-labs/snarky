@@ -1,46 +1,158 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
 
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
-    "ocaml_archive",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_executable",
     "ocaml_interface",
     "ocaml_module",
-    "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-    "ppx_ns_module",
+)
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_EXECUTABLE_OPTS",
+    "GLOBAL_INTERFACE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "REPO_EXECUTABLE_OPTS",
+    "REPO_INTERFACE_OPTS",
+    "REPO_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_EXECUTABLE_OPTS",
+    "PKG_INTERFACE_OPTS",
+    "PKG_MODULE_OPTS",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": ["-thread"],
-}) + []
+################################################################
+## STANZA 1: EXECUTABLES
+################################################################
+EXECUTABLES_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + PKG_EXECUTABLE_OPTS
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+EXECUTABLES_INTERFACE_OPTS = []
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+EXECUTABLES_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+EXECUTABLES_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
+    "@snarky//snarky_cuda",
+]
 
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+EXECUTABLES_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.enum]"
 
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+EXECUTABLES_PPX_ARGS = [
+    # do not sort (buildifier)
+]
 
-COMMON_DEPS = []
+################################
+ocaml_executable(
+    name = "election_main",
+    opts = EXECUTABLES_EXECUTABLE_OPTS,
+    deps = EXECUTABLES_DEPS + [
+        ":Election",
+        ":Election_main",
+        ":Impl",
+        ":Import",
+        ":Knapsack_hash",
+    ],
+)
 
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+################################################################
+ocaml_module(
+    name = "Election",
+    src = "election.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
+        # do not sort (buildifier)
+        ":Impl",
+        ":Import",
+    ],
+)
 
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+ocaml_module(
+    name = "Election_main",
+    src = "election_main.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
+        # do not sort (buildifier)
+        ":Election",
+        ":Impl",
+    ],
+)
 
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+ocaml_module(
+    name = "Impl",
+    src = "impl.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
+        # do not sort (buildifier)
+    ],
+)
 
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
+ocaml_module(
+    name = "Import",
+    src = "import.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
+        # do not sort (buildifier)
+        ":Impl",
+        ":Knapsack_hash",
+    ],
+)
 
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
+ocaml_module(
+    name = "Knapsack_hash",
+    src = "knapsack_hash.ml",
+    intf = "_Knapsack_hash",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
+        # do not sort (buildifier)
+        ":Impl",
+    ],
+)
 
-## emitting
+ocaml_interface(
+    name = "_Knapsack_hash",
+    src = "knapsack_hash.mli",
+    opts = EXECUTABLES_INTERFACE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
+        # do not sort (buildifier)
+        ":Impl",
+    ],
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
+)

@@ -8,6 +8,7 @@ Disclaimer: This code has not been thoroughly audited and should not
 be used in production systems.
 
 ## Getting started
+
 - First install libsnark's dependencies by running [scripts/depends.sh](scripts/depends.sh), or following the instructions [here](https://github.com/scipr-lab/libsnark#dependencies).
 - Then, make sure you have [opam](https://opam.ocaml.org/doc/Install.html) installed.
 - Finally, install `snarky` and its dependencies by running
@@ -19,6 +20,56 @@ and answering yes to the prompts.
 The best place to get started learning how to use the library are the annotated examples.
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
 - [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
+
+### Bazel
+
+Like the legacy Dune build system, the current Bazel build
+implementation depends on resources installed in the host system. Once
+you've installed everything for the legacy system, Bazel builds should
+also work.
+
+WARNING: The `_build` directory created by `dune` may interfere with
+some Bazel operations. If this is the case, just run `dune clean`
+first.
+
+```
+$ bazel build examples/election:election_main
+$ ./bazel-bin/examples/election/election
+
+```
+
+Build all ppx_executables: `$ bazel build bzl/ppx/...`
+
+List all targets: `$ bazel query 'attr(visibility, "//visibility:public", //...:all)' | sort`
+
+You can build any of these targets.
+
+Snarky includes an embedded Bazel workspace named `libsnark`, rooted
+at `src/camlsnark_c/libsnark-caml`. The packages and targets in this
+workspace will not be included in the above query; to list them you
+must run a query using the `@libsnark` workspace qualifier, e.g.
+
+`$ bazel query 'attr(visibility, "//visibility:public", @libsnark//...:all)' | sort`
+
+This may take a little longer the first time you run it, since it must
+download a number of external resources. To build targets in this
+workspace, just use fully-qualified target labels, e.g.
+
+You can use Bazel's query facility to investigate the dependency
+structure of the repo(s), among other things. For more information see
+[Bazel query
+how-to](https://docs.bazel.build/versions/master/query-how-to.html)
+
+`$ bazel build @libsnark//libsnark/zk_proof_systems/zksnark/ram_zksnark`
+
+Bazel supports tab-completion, but only for the root workspace, not
+for embedded workspaces. So if you type e.g.
+
+`$ bazel build src/base:`
+
+and then whale on the tab key you'll get a list of all targets in the
+`src/base` package. Unfortunately this will not work for packages in
+`@libsnark//`.
 
 ### dependencies
 

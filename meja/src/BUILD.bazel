@@ -1,0 +1,607 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_archive",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns_module",
+)
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_ARCHIVE_OPTS",
+    "GLOBAL_INTERFACE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "GLOBAL_NS_MODULE_OPTS",
+    "REPO_ARCHIVE_OPTS",
+    "REPO_INTERFACE_OPTS",
+    "REPO_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_ARCHIVE_OPTS",
+    "PKG_INTERFACE_OPTS",
+    "PKG_MODULE_OPTS",
+    "PKG_NS_MODULE_OPTS",
+)
+
+################################################################
+## STANZA 1: MEJA_LIB
+################################################################
+MEJA_LIB_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
+
+MEJA_LIB_INTERFACE_OPTS = []
+
+MEJA_LIB_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
+
+MEJA_LIB_NS_MODULE_OPTS = []
+
+MEJA_LIB_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core_kernel",
+    "@snarky//meja/src/compiler_internals",
+]
+
+MEJA_LIB_PPX = "//bzl/ppx:ppx[ppx_jane]"
+
+MEJA_LIB_PPX_ARGS = [
+    # do not sort (buildifier)
+]
+
+ocaml_archive(
+    name = "meja_lib",
+    opts = MEJA_LIB_ARCHIVE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_build",
+        ":Ast_print",
+        ":Ast_types",
+        ":Debug_print",
+        ":Envi",
+        ":Ident",
+        ":Initial_env",
+        ":Parser_errors",
+        ":Parsetypes",
+        ":Parsetypes_iter",
+        ":Parsetypes_map",
+        ":Path",
+        ":Patmatch",
+        ":Pprint",
+        ":Subst",
+        ":Type0",
+        ":Type0_map",
+        ":Type1",
+        ":Typechecker",
+        ":Typedast",
+        ":Typedast_iter",
+        ":Typedast_map",
+        ":Typeprint",
+        ":Typeset",
+        ":Typet",
+        ":Untype_ast",
+    ],
+)
+
+ocaml_ns_module(
+    name = "Meja_lib_ns",
+    ns = "meja_lib",
+    opts = MEJA_LIB_NS_MODULE_OPTS,
+    submodules = [
+        # do not sort (buildifier)
+        "ast_build.ml",
+        "ast_print.ml",
+        "ast_types.ml",
+        "debug_print.ml",
+        "envi.ml",
+        "ident.ml",
+        "initial_env.ml",
+        "parser_errors.ml",
+        "parsetypes.ml",
+        "parsetypes_iter.ml",
+        "parsetypes_map.ml",
+        "path.ml",
+        "patmatch.ml",
+        "pprint.ml",
+        "subst.ml",
+        "type0.ml",
+        "type0_map.ml",
+        "type1.ml",
+        "typechecker.ml",
+        "typedast.ml",
+        "typedast_iter.ml",
+        "typedast_map.ml",
+        "typeprint.ml",
+        "typeset.ml",
+        "typet.ml",
+        "untype_ast.ml",
+    ],
+)
+
+ocaml_module(
+    name = "Ast_build",
+    src = "ast_build.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Parsetypes",
+    ],
+)
+
+ocaml_module(
+    name = "Ast_print",
+    src = "ast_print.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS,
+)
+
+ocaml_module(
+    name = "Ast_types",
+    src = "ast_types.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS,
+)
+
+ocaml_module(
+    name = "Debug_print",
+    src = "debug_print.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Ident",
+        ":Path",
+        ":Type0",
+    ],
+)
+
+ocaml_module(
+    name = "Envi",
+    src = "envi.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_build",
+        ":Ast_types",
+        ":Debug_print",
+        ":Ident",
+        ":Path",
+        ":Subst",
+        ":Type0",
+        ":Type0_map",
+        ":Type1",
+        ":Typedast",
+        ":Typeprint",
+        ":Typeset",
+    ],
+)
+
+ocaml_module(
+    name = "Ident",
+    src = "ident.ml",
+    intf = ":_Ident",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+    ],
+)
+
+ocaml_interface(
+    name = "_Ident",
+    src = "ident.mli",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_INTERFACE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+    ],
+)
+
+ocaml_module(
+    name = "Initial_env",
+    src = "initial_env.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_build",
+        ":Envi",
+        ":Parsetypes",
+        ":Type0",
+        ":Type1",
+        ":Typedast",
+        ":Typet",
+    ],
+)
+
+ocaml_module(
+    name = "Parser_errors",
+    src = "parser_errors.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS,
+)
+
+ocaml_module(
+    name = "Parsetypes",
+    src = "parsetypes.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Path",
+    ],
+)
+
+ocaml_module(
+    name = "Parsetypes_iter",
+    src = "parsetypes_iter.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Parsetypes",
+        ":Type0",
+    ],
+)
+
+ocaml_module(
+    name = "Parsetypes_map",
+    src = "parsetypes_map.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Parsetypes",
+        ":Path",
+    ],
+)
+
+ocaml_module(
+    name = "Path",
+    src = "path.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Ident",
+    ],
+)
+
+ocaml_module(
+    name = "Patmatch",
+    src = "patmatch.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_print",
+        ":Ast_types",
+        ":Debug_print",
+        ":Envi",
+        ":Ident",
+        ":Path",
+        ":Pprint",
+        ":Type0",
+        ":Type1",
+        ":Typedast",
+    ],
+)
+
+ocaml_module(
+    name = "Pprint",
+    src = "pprint.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_print",
+        ":Ast_types",
+        ":Parsetypes",
+        ":Path",
+    ],
+)
+
+ocaml_module(
+    name = "Subst",
+    src = "subst.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Path",
+        ":Type0_map",
+    ],
+)
+
+ocaml_module(
+    name = "Type0",
+    src = "type0.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Ident",
+        ":Path",
+    ],
+)
+
+ocaml_module(
+    name = "Type0_map",
+    src = "type0_map.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ident",
+        ":Path",
+        ":Type0",
+        ":Type1",
+    ],
+)
+
+ocaml_module(
+    name = "Type1",
+    src = "type1.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_build",
+        ":Ast_types",
+        ":Debug_print",
+        ":Ident",
+        ":Path",
+        ":Type0",
+        ":Typeset",
+    ],
+)
+
+ocaml_module(
+    name = "Typechecker",
+    src = "typechecker.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_build",
+        ":Ast_types",
+        ":Envi",
+        ":Ident",
+        ":Initial_env",
+        ":Parsetypes",
+        ":Path",
+        ":Patmatch",
+        ":Type0",
+        ":Type0_map",
+        ":Type1",
+        ":Typedast",
+        ":Typedast_iter",
+        ":Typeprint",
+        ":Typeset",
+        ":Typet",
+        ":Untype_ast",
+    ],
+)
+
+ocaml_module(
+    name = "Typedast",
+    src = "typedast.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Ident",
+        ":Path",
+        ":Type0",
+    ],
+)
+
+ocaml_module(
+    name = "Typedast_iter",
+    src = "typedast_iter.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Ident",
+        ":Path",
+        ":Type0",
+        ":Typedast",
+    ],
+)
+
+ocaml_module(
+    name = "Typedast_map",
+    src = "typedast_map.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Ident",
+        ":Path",
+        ":Type0_map",
+        ":Type1",
+        ":Typedast",
+    ],
+)
+
+ocaml_module(
+    name = "Typeprint",
+    src = "typeprint.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_print",
+        ":Ast_types",
+        ":Ident",
+        ":Path",
+        ":Type0",
+        ":Type1",
+    ],
+)
+
+ocaml_module(
+    name = "Typeset",
+    src = "typeset.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Type0",
+    ],
+)
+
+ocaml_module(
+    name = "Typet",
+    src = "typet.ml",
+    intf = ":_Typet",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Envi",
+        ":Ident",
+        ":Parsetypes",
+        ":Path",
+        ":Pprint",
+        ":Type0",
+        ":Type1",
+        ":Typedast",
+        ":Typeset",
+    ],
+)
+
+ocaml_interface(
+    name = "_Typet",
+    src = "typet.mli",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_INTERFACE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_types",
+        ":Envi",
+        ":Ident",
+        ":Parsetypes",
+        ":Path",
+        ":Type0",
+        ":Typedast",
+    ],
+)
+
+ocaml_module(
+    name = "Untype_ast",
+    src = "untype_ast.ml",
+    ns_module = ":Meja_lib_ns",
+    opts = MEJA_LIB_MODULE_OPTS,
+    ppx = MEJA_LIB_PPX,
+    ppx_args = MEJA_LIB_PPX_ARGS,
+    deps = MEJA_LIB_DEPS + [
+        # do not sort (buildifier)
+        ":Ast_build",
+        ":Ast_types",
+        ":Ident",
+        ":Parsetypes",
+        ":Path",
+        ":Type0",
+        ":Type1",
+        ":Typedast",
+    ],
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
+)

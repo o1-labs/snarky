@@ -1,92 +1,81 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
 
 load(
-    "@obazl_rules_ocaml//ocaml:build.bzl",
-    "ocaml_archive",
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_executable",
-    "ocaml_interface",
     "ocaml_module",
-    "ocaml_ns_module",
-    "ppx_archive",
-    "ppx_executable",
-    "ppx_module",
-    "ppx_ns_module",
+)
+load(
+    "//:BUILD.bzl",
+    "GLOBAL_EXECUTABLE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "REPO_EXECUTABLE_OPTS",
+    "REPO_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_EXECUTABLE_OPTS",
+    "PKG_MODULE_OPTS",
 )
 
-COMMON_OPTS = select({
-    "//bzl/config:enable_verbose": ["-verbose"],
-    "//conditions:default": [],
-}) + ["-warn-error",  "-27-26-32-33", "-thread"] # , "-linkall"]
+################################################################
+## STANZA 1: EXECUTABLES
+################################################################
+EXECUTABLES_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + PKG_EXECUTABLE_OPTS
 
-LINK_OPTS = select({
-    "//bzl/config:always_link": ["-linkall"],
-    "//conditions:default": [],
-}) + []
+EXECUTABLES_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
 
-EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
+EXECUTABLES_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
+]
 
-IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
+EXECUTABLES_PPX = "//bzl/ppx:ppx[ppx_jane]"
 
-INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
+EXECUTABLES_PPX_ARGS = [
+    # do not sort (buildifier)
+]
 
-ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-COMMON_DEPS = []
-
-PPX_EXEC_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_IMPL_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_INTF_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_NS_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-PPX_ARCHIVE_OPTS = COMMON_OPTS + LINK_OPTS + []
-
-## executable: anonvote
-
-## (ppx_jane)
-PPX3_98AAF9DD = "@//ppx/exe:ppx1_58409c95-e080-5f48-b6db-90e8a376e5bc"
-
+################################
 ocaml_executable(
     name = "tutorial",
-    opts = IMPL_OPTS,
-    visibility = ["//visibility:public"],
-    deps = [
+    opts = EXECUTABLES_EXECUTABLE_OPTS,
+    deps = EXECUTABLES_DEPS + [":Tutorial"],
+)
+
+################################################################
+ocaml_module(
+    name = "Tutorial",
+    src = "tutorial.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = EXECUTABLES_PPX,
+    ppx_args = EXECUTABLES_PPX_ARGS,
+    deps = EXECUTABLES_DEPS + [
         # do not sort (buildifier)
-        "@opam//pkg:core_kernel",
-        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
-        # "//src/camlsnark_c",
-        "//src/base:snarky_backendless",
-        # "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
-        "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
-        "//src/intf:snarky_intf",
-        ":tutorial.cm_",
     ],
 )
 
-ocaml_module(
-    name = "tutorial.cm_",
-    impl = "tutorial.ml",
-    opts = IMPL_OPTS + [
-        "-I", "bazel-out/darwin-fastbuild/bin/src/base",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/bindings",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_string",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/cpp_vector",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/camlsnark_c/libsnark_bindings",
-        "-I", "bazel-out/darwin-fastbuild/bin/src/intf",
-    ],
-    ppx_exe = PPX3_98AAF9DD,
-    ppx_args = [
-        # do not sort (buildifier)
-        "-cookie",
-        "library-name=\"anonvote\"",
-        "-corrected-suffix",
-        ".ppx-corrected",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//src:snarky",
-    ]
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

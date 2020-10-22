@@ -1,71 +1,56 @@
 ## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
-## Bazel package: @snarky//src/lib/baze58_check
-## Dune file: /Users/gar/mina/snarky/ppx/dune
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
-    "ocaml_archive",
-    "ocaml_module",
     "ocaml_ns_module",
     "ppx_archive",
-    "ppx_executable",
     "ppx_module",
 )
-
-## Global Options
 load(
-    "//bzl:config.bzl",
-    "ARCHIVE_OPTS",
-    "GLOBAL_CLI_OPTS",
-    "MODULE_OPTS",
-    "NS_MODULE_OPTS",
-    "PPX_ARCHIVE_OPTS",
-    "PPX_EXECUTABLE_OPTS",
-    "PPX_MODULE_OPTS",
+    "//:BUILD.bzl",
+    "GLOBAL_NS_MODULE_OPTS",
+    "GLOBAL_PPX_ARCHIVE_OPTS",
+    "GLOBAL_PPX_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+    "REPO_PPX_ARCHIVE_OPTS",
+    "REPO_PPX_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_NS_MODULE_OPTS",
+    "PKG_PPX_ARCHIVE_OPTS",
+    "PKG_PPX_MODULE_OPTS",
 )
 
-## Repo Options
-load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
+################################################################
+## STANZA 1: PPX_SNARKY
+################################################################
+PPX_SNARKY_NS_MODULE_OPTS = []
 
-PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + ["-linkall"]
+PPX_SNARKY_PPX_ARCHIVE_OPTS = GLOBAL_PPX_ARCHIVE_OPTS + REPO_PPX_ARCHIVE_OPTS + PKG_PPX_ARCHIVE_OPTS + []
 
-LIB_1_OPTS = []
+PPX_SNARKY_PPX_MODULE_OPTS = GLOBAL_PPX_MODULE_OPTS + REPO_PPX_MODULE_OPTS + PKG_PPX_MODULE_OPTS + []
 
-LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
-
-LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
-
-LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
-
-LIB_1_PPX_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_ARCHIVE_OPTS
-
-LIB_1_PPX_EXECUTABLE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_EXECUTABLE_OPTS
-
-LIB_1_PPX_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + PPX_MODULE_OPTS
-
-LIB_1_DEPS = [
+PPX_SNARKY_DEPS = [
     # do not sort (buildifier)
     "@opam//pkg:ppxlib",
     "@opam//pkg:ppx_tools",
     "@opam//pkg:core_kernel",
 ]
 
-PPX_1 = "//bzl/ppx:ppx[ppxlib.metaquot][ppx_sexp_conv]"
+PPX_SNARKY_PPX = "//bzl/ppx:ppx[ppxlib.metaquot][ppx_sexp_conv]"
 
-PPX_1_ARGS = [
+PPX_SNARKY_PPX_ARGS = [
     # do not sort (buildifier)
 ]
 
-################################################################
-## LIB 1
-################################################################
+################
 ppx_archive(
     name = "ppx_snarky",
-    opts = LIB_1_ARCHIVE_OPTS,
+    opts = PPX_SNARKY_PPX_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
+    deps = PPX_SNARKY_DEPS + [
         # do not sort (buildifier)
-        ":Ppx_snarky_ns",
         ":Ppx_snarky",
         ":Snarky_module",
         ":Snarkydef",
@@ -75,7 +60,7 @@ ppx_archive(
 ocaml_ns_module(
     name = "Ppx_snarky_ns",
     ns = "ppx_snarky",
-    opts = LIB_1_NS_MODULE_OPTS,
+    opts = PPX_SNARKY_NS_MODULE_OPTS,
     submodules = [
         # do not sort (buildifier)
         "ppx_snarky.ml",
@@ -88,11 +73,10 @@ ppx_module(
     name = "Ppx_snarky",
     src = "ppx_snarky.ml",
     ns_module = ":Ppx_snarky_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
+    opts = PPX_SNARKY_PPX_MODULE_OPTS,
+    ppx = PPX_SNARKY_PPX,
+    ppx_args = PPX_SNARKY_PPX_ARGS,
+    deps = PPX_SNARKY_DEPS + [
         # do not sort (buildifier)
         ":Snarky_module",
         ":Snarkydef",
@@ -103,24 +87,42 @@ ppx_module(
     name = "Snarky_module",
     src = "snarky_module.ml",
     ns_module = ":Ppx_snarky_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-    ],
+    opts = PPX_SNARKY_PPX_MODULE_OPTS,
+    ppx = PPX_SNARKY_PPX,
+    ppx_args = PPX_SNARKY_PPX_ARGS,
+    deps = PPX_SNARKY_DEPS,
 )
 
 ppx_module(
     name = "Snarkydef",
     src = "snarkydef.ml",
     ns_module = ":Ppx_snarky_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
-        # do not sort (buildifier)
-    ],
+    opts = PPX_SNARKY_PPX_MODULE_OPTS,
+    ppx = PPX_SNARKY_PPX,
+    ppx_args = PPX_SNARKY_PPX_ARGS,
+    deps = PPX_SNARKY_DEPS,
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

@@ -1,3 +1,5 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
@@ -5,49 +7,56 @@ load(
     "ocaml_module",
     "ocaml_ns_module",
 )
-
-## Global Options
 load(
-    "//bzl:config.bzl",
-    "ARCHIVE_OPTS",
-    "GLOBAL_CLI_OPTS",
-    "INTERFACE_OPTS",
-    "MODULE_OPTS",
-    "NS_MODULE_OPTS",
+    "//:BUILD.bzl",
+    "GLOBAL_ARCHIVE_OPTS",
+    "GLOBAL_INTERFACE_OPTS",
+    "GLOBAL_MODULE_OPTS",
+    "GLOBAL_NS_MODULE_OPTS",
+    "REPO_ARCHIVE_OPTS",
+    "REPO_INTERFACE_OPTS",
+    "REPO_MODULE_OPTS",
+    "REPO_NS_MODULE_OPTS",
+)
+load(
+    ":BUILD.bzl",
+    "PKG_ARCHIVE_OPTS",
+    "PKG_INTERFACE_OPTS",
+    "PKG_MODULE_OPTS",
+    "PKG_NS_MODULE_OPTS",
 )
 
-## Repo Options
-load("//bzl/snarky:config.bzl", "SNARKY_OPTS")
+################################################################
+## STANZA 1: SNARKY_INTEGER
+################################################################
+SNARKY_INTEGER_ARCHIVE_OPTS = GLOBAL_ARCHIVE_OPTS + REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
 
-PKG_OPTS = GLOBAL_CLI_OPTS + SNARKY_OPTS + []
-LIB_1_OPTS = []
-LIB_1_ARCHIVE_OPTS = PKG_OPTS + LIB_1_OPTS + ARCHIVE_OPTS
-LIB_1_INTERFACE_OPTS = PKG_OPTS + LIB_1_OPTS + INTERFACE_OPTS
-LIB_1_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + MODULE_OPTS
-LIB_1_NS_MODULE_OPTS = PKG_OPTS + LIB_1_OPTS + NS_MODULE_OPTS
-LIB_1_DEPS = [
+SNARKY_INTEGER_INTERFACE_OPTS = []
+
+SNARKY_INTEGER_MODULE_OPTS = GLOBAL_MODULE_OPTS + REPO_MODULE_OPTS + PKG_MODULE_OPTS + []
+
+SNARKY_INTEGER_NS_MODULE_OPTS = []
+
+SNARKY_INTEGER_DEPS = [
     # do not sort (buildifier)
     "@opam//pkg:core_kernel",
     "@snarky//src/base:snarky_backendless",
 ]
 
-PPX_1 = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
+SNARKY_INTEGER_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
 
-PPX_1_ARGS = [
+SNARKY_INTEGER_PPX_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
     "snarky_integer",
 ]
 
-################################################################
-## LIB 1
-################################################################
 ocaml_archive(
     name = "snarky_integer",
-    opts = LIB_1_ARCHIVE_OPTS,
+    opts = SNARKY_INTEGER_ARCHIVE_OPTS,
     visibility = ["//visibility:public"],
-    deps = LIB_1_DEPS + [
-        # ":Snarky_integer_ns",
+    deps = SNARKY_INTEGER_DEPS + [
+        # do not sort (buildifier)
         ":Integer",
         ":Util",
     ],
@@ -56,8 +65,9 @@ ocaml_archive(
 ocaml_ns_module(
     name = "Snarky_integer_ns",
     ns = "snarky_integer",
-    opts = LIB_1_NS_MODULE_OPTS,
+    opts = SNARKY_INTEGER_NS_MODULE_OPTS,
     submodules = [
+        # do not sort (buildifier)
         "integer.ml",
         "util.ml",
     ],
@@ -66,30 +76,57 @@ ocaml_ns_module(
 ocaml_module(
     name = "Integer",
     src = "integer.ml",
-    intf = "_Integer",
+    intf = ":_Integer",
     ns_module = ":Snarky_integer_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS + [":Util"]
+    opts = SNARKY_INTEGER_MODULE_OPTS,
+    ppx = SNARKY_INTEGER_PPX,
+    ppx_args = SNARKY_INTEGER_PPX_ARGS,
+    deps = SNARKY_INTEGER_DEPS + [
+        # do not sort (buildifier)
+        ":Util",
+    ],
 )
 
 ocaml_interface(
     name = "_Integer",
     src = "integer.mli",
     ns_module = ":Snarky_integer_ns",
-    opts = LIB_1_INTERFACE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS
+    opts = SNARKY_INTEGER_INTERFACE_OPTS,
+    ppx = SNARKY_INTEGER_PPX,
+    ppx_args = SNARKY_INTEGER_PPX_ARGS,
+    deps = SNARKY_INTEGER_DEPS,
 )
 
 ocaml_module(
     name = "Util",
     src = "util.ml",
     ns_module = ":Snarky_integer_ns",
-    opts = LIB_1_MODULE_OPTS,
-    ppx = PPX_1,
-    ppx_args = PPX_1_ARGS,
-    deps = LIB_1_DEPS
+    opts = SNARKY_INTEGER_MODULE_OPTS,
+    ppx = SNARKY_INTEGER_PPX,
+    ppx_args = SNARKY_INTEGER_PPX_ARGS,
+    deps = SNARKY_INTEGER_DEPS,
+)
+
+################################################################
+#### Package CLI Options
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
 )

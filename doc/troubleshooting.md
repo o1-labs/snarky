@@ -1,5 +1,19 @@
 # troubleshooting
 
+## No implementations
+
+Error: No implementations provided for the following modules:
+         Digestif referenced from bazel-out/darwin-fastbuild/bin/snarky_curve/Snarky_curve.cmx
+         Ppx_deriving_yojson_runtime referenced from bazel-out/darwin-fastbuild/bin/snarkette/Snarkette__Fields.cmx,
+           bazel-out/darwin-fastbuild/bin/snarkette/Snarkette__Elliptic_curve.cmx,
+           bazel-out/darwin-fastbuild/bin/snarky_universe/Snarky_universe__Membership_proof.cmx,
+           bazel-out/darwin-fastbuild/bin/snarky_universe/Snarky_universe.cmx
+Target //examples/sfbw/ex_merkle_list:ex_merkle_list.exe failed to build
+
+Adding "@opam//pkg:ppx_deriving_yojson.runtime" as a dep to
+snarky_universe/Membership_proof fixes that bit. But why is that a
+runtime dep, rather than a lazy dep?
+
 ## incompatible assumptions
 
 Make sure both ml and mli files use the same ppx!
