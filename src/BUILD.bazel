@@ -60,13 +60,13 @@ ocaml_archive(
         "//tuple_lib",
         "@opam//pkg:yojson",
 
-        ":snarky_ns_module",
+        # ":snarky_ns_module",
         ":gpu_prover.cm_",
         ":backend_types.cm_",
         ":backends.cm_",
         ":snark.cm_",
         ":snarky.cm_",
-        ":toplevel.cm_",
+        # ":toplevel.cm_",
         ## end ns_module
     ],
 
@@ -234,7 +234,6 @@ ocaml_module(
         "//src/camlsnark_c/cpp_vector:snarky_cpp_vector",
         "//src/camlsnark_c/libsnark_bindings:snarky_libsnark_bindings",
         "//ctypes_foreign:ctypes_foreign_libffi",
-        # ":toplevel.cm_"
     ],
 )
 
