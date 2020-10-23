@@ -76,20 +76,6 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-ocaml_module(
-    name = "camlsnark_ctypes_stubs.cm_",
-    src  = "camlsnark_ctypes_stubs.ml",
-    opts = IMPL_OPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:ctypes",
-        "@opam//pkg:ctypes.stubs",
-        "@opam//pkg:core_kernel",
-        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
-    ],
-)
-
 genrule(
     name = "libsnark_ffi_bindings_c",
     tools = [":camlsnark_ctypes_stubs"],
@@ -124,3 +110,18 @@ ocaml_executable(
         ":camlsnark_ctypes_stubs.cm_",
     ],
 )
+
+ocaml_module(
+    name = "camlsnark_ctypes_stubs.cm_",
+    src  = "camlsnark_ctypes_stubs.ml",
+    opts = IMPL_OPTS + ["-linkall"],
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ctypes",
+        "@opam//pkg:ctypes.stubs",
+        "@opam//pkg:core_kernel",
+        "//src/camlsnark_c/bindings:camlsnark_c_bindings",
+    ],
+)
+
