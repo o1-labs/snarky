@@ -48,7 +48,7 @@ TUPLE_LIB_PPX_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
     "tuple_lib",
-    "-conditional",
+    "--conditional",
 ]
 
 ocaml_archive(

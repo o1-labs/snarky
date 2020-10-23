@@ -49,7 +49,7 @@ BITSTRING_LIB_PPX_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
     "bitstring_lib",
-    "-conditional",
+    "--conditional",
 ]
 
 ocaml_archive(

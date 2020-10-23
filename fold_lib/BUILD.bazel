@@ -42,7 +42,7 @@ FOLD_LIB_PPX_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
     "fold_lib",
-    "-conditional",
+    "--conditional",
 ]
 
 ocaml_archive(

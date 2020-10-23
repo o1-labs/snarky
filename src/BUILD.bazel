@@ -27,7 +27,7 @@ SNARKY_NS = "Snarky"
 PPX = "@//bzl/ppx:ppx[ppx_snarky][ppx_jane][ppx_deriving.enum][ppx_deriving.eq][bisect_ppx]"
 PPX_ARGS = [
     # do not sort (buildifier)
-    "-conditional",
+    "--conditional",
     "-cookie",
     "library-name=\"snarky\"",
     "-corrected-suffix",
