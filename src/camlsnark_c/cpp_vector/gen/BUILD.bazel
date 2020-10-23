@@ -1,6 +1,6 @@
-load("@snarky//bzl/config:vars.bzl",
+load("@snarky//bzl/config:cc.bzl",
      "CPPFLAGS", "CFLAGS",  "CXXFLAGS", "DDEBUG",
-     "ALWAYSLINK", "LINKSTATIC")
+     "CC_ALWAYS_LINK", "CC_LINK_STATIC")
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
@@ -21,8 +21,8 @@ cc_library(
     name = "vector_ffi_bindings",
     srcs = [":vector_ffi_bindings_c"],
     copts = ["-I.", "-Iexternal/libsnark/caml"] + CPPFLAGS + CFLAGS,
-    linkstatic = LINKSTATIC,
-    # alwayslink = ALWAYSLINK,
+    linkstatic = CC_LINK_STATIC,
+    # alwayslink = CC_ALWAYS_LINK,
     deps = [
         # do not sort (buildifier)
         "@ocaml//csdk/ctypes",

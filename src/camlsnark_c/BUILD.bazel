@@ -1,5 +1,5 @@
-load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS",
-     "ALWAYSLINK", "LINKSTATIC")
+load("@snarky//bzl/config:cc.bzl", "CPPFLAGS", "CFLAGS",
+     "CC_ALWAYS_LINK", "CC_LINK_STATIC")
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
@@ -67,8 +67,8 @@ cc_library(
     copts = ["-I.", "-Iexternal",
              "-Iexternal/libsnark/caml",
              ] + CPPFLAGS + CFLAGS,
-    linkstatic = LINKSTATIC,
-    # alwayslink = ALWAYSLINK,
+    linkstatic = CC_LINK_STATIC,
+    # alwayslink = CC_ALWAYS_LINK,
     deps = [
         "@ocaml//csdk:hdrs",
         "@ocaml//csdk/ctypes",

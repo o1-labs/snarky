@@ -13,6 +13,9 @@ load(
     "GLOBAL_INTERFACE_OPTS",
     "GLOBAL_MODULE_OPTS",
     "GLOBAL_NS_MODULE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_ARCHIVE_OPTS",
     "REPO_INTERFACE_OPTS",
     "REPO_MODULE_OPTS",
@@ -46,7 +49,7 @@ SNARKY_BACKENDLESS_DEPS = [
     "@snarky//src/intf:snarky_intf",
 ]
 
-SNARKY_BACKENDLESS_PPX = "//bzl/ppx:ppx[ppx_sexp_conv][ppx_bin_prot][ppx_let][ppx_hash][ppx_compare][ppx_deriving.enum][ppx_assert][ppx_deriving.eq][ppx_snarky][ppx_fields_conv][ppx_inline_test][ppx_custom_printf]"
+SNARKY_BACKENDLESS_PPX = "@//bzl/ppx:ppx[ppx_sexp_conv][ppx_bin_prot][ppx_let][ppx_hash][ppx_compare][ppx_deriving.enum][ppx_assert][ppx_deriving.eq][ppx_snarky][ppx_fields_conv][ppx_inline_test][ppx_custom_printf]"
 
 SNARKY_BACKENDLESS_PPX_ARGS = [
     # do not sort (buildifier)

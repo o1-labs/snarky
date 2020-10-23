@@ -7,7 +7,7 @@ WARNINGS = ["-Wall", "-Wextra", "-Wfatal-errors",
             "-Wno-unused-parameter"
 ]
 
-DEBUG_FLAGS = select({
+CC_DEBUG_FLAGS = select({
     "//bzl/config:enable_debug": ["-g"],
     "//conditions:default": ["-ggdb3"]
 }) + select({
@@ -34,24 +34,24 @@ CC_LINKAGE = "" + select({
     "@//bzl/host:macos": "dynamic"
 }, no_match_error = "Snarky CC_LINKAGE: unsupported platform.  Linux or MacOS only.")
 
-ALWAYSLINK = select({
+CC_ALWAYS_LINK = select({
     "@//bzl/host:linux": True,
     "@//bzl/host:macos": False,
-}, no_match_error = "snarky ALWAYSLINK: unsupported platform.  MacOS or Linux only.")
+}, no_match_error = "snarky CC_ALWAYS_LINK: unsupported platform.  MacOS or Linux only.")
 
 ## cc_binary, cc_library:
-LINKSTATIC = select({
+CC_LINK_STATIC = select({
     "@//bzl/host:linux": True,
     "@//bzl/host:macos": False,
-}, no_match_error = "snarky LINKSTATIC: unsupported platform.  MacOS or Linux only.")
+}, no_match_error = "snarky LINK_STATIC: unsupported platform.  MacOS or Linux only.")
 
 CPPFLAGS = select({
     ## FIXME: select on //bzl/config:enable_openmp
     "//bzl/host:macos": ["-Xpreprocessor", "-fopenmp"],
     "//bzl/host:linux": ["-fopenmp"],
-}, no_match_error = "snarky LINKSTATIC: unsupported platform.  MacOS or Linux only.") + [
+}, no_match_error = "snarky LINK_STATIC: unsupported platform.  MacOS or Linux only.") + [
     "-fPIC",
-] + DEBUG_FLAGS + WARNINGS
+] + CC_DEBUG_FLAGS + WARNINGS
 
 
 CFLAGS   = []

@@ -8,7 +8,7 @@ PPX_EXEC_OPTS = select({
 }) + [
     "-linkall",
     "-predicates",
-    "ppx_driver,ppx_deriver",
+    "ppx_driver",
 ]
 
 ppx_executable(
@@ -151,7 +151,6 @@ ppx_executable(
         # do not sort (buildifier)
         "@obazl//ppxlib:driver_standalone_shim",
     ],
-    runtime_args = ["-inline-test-lib"],
     lazy_deps = [
         # do not sort (buildifier)
         "@opam//pkg:ppx_bench.runtime-lib",
@@ -162,6 +161,25 @@ ppx_executable(
         # do not sort (buildifier)
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_bench",
+    ],
+)
+
+ppx_executable(
+    name = "ppx[ppx_jane][ppx_deriving.enum]",
+    srcs = [
+        # do not sort (buildifier)
+        "@obazl//ppxlib:driver_standalone_shim",
+    ],
+    opts = PPX_EXEC_OPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ppx_jane",
+        "@opam//pkg:ppx_deriving.enum",
+    ],
+    lazy_deps = [
+        # do not sort (buildifier)
+        "@opam//pkg:ppx_deriving.runtime",    ## ppx_deriving lazy dep added by hand
     ],
 )
 
@@ -178,9 +196,6 @@ ppx_executable(
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_deriving.eq",
     ],
-    lazy_deps = [
-        "@opam//pkg:ppx_deriving.runtime"
-    ]
 )
 
 ppx_executable(
@@ -263,7 +278,6 @@ ppx_executable(
         "@opam//pkg:ppx_deriving.runtime",    ## ppx_deriving lazy dep added by hand
         "@opam//pkg:fieldslib",
         "@opam//pkg:ppx_inline_test.runtime-lib",
-        "@snarky//ppx:ppx_snarky",
     ],
     opts = PPX_EXEC_OPTS,
     visibility = ["//visibility:public"],
@@ -372,23 +386,5 @@ ppx_executable(
     ],
     lazy_deps = [
         "@opam//pkg:ppx_sexp_conv.runtime-lib"  ## added by hand
-    ]
-)
-
-ppx_executable(
-    name = "ppx[ppx_jane][ppx_deriving.enum]",
-    srcs = [
-        # do not sort (buildifier)
-        "@obazl//ppxlib:driver_standalone_shim",
-    ],
-    opts = PPX_EXEC_OPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        # do not sort (buildifier)
-        "@opam//pkg:ppx_jane",
-        "@opam//pkg:ppx_deriving.enum"
-    ],
-    lazy_deps = [
-        "@opam//pkg:ppx_deriving.runtime"
     ]
 )

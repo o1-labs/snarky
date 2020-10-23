@@ -1,3 +1,7 @@
+## hand-tuning:
+## Membership_proof depends on "@opam//pkg:ppx_deriving_yojson.runtime"
+## Input_spec depends on //src:Toplevel
+
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
     "ocaml_archive",
@@ -11,6 +15,9 @@ load(
     "GLOBAL_INTERFACE_OPTS",
     "GLOBAL_MODULE_OPTS",
     "GLOBAL_NS_MODULE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_ARCHIVE_OPTS",
     "REPO_INTERFACE_OPTS",
     "REPO_MODULE_OPTS",
@@ -131,7 +138,9 @@ ocaml_module(
     opts = SNARKY_UNIVERSE_MODULE_OPTS,
     ppx = SNARKY_UNIVERSE_PPX,
     ppx_args = SNARKY_UNIVERSE_PPX_ARGS,
-    deps = SNARKY_UNIVERSE_DEPS,
+    deps = SNARKY_UNIVERSE_DEPS + [
+        "//src:Toplevel"
+    ]
 )
 
 ocaml_module(

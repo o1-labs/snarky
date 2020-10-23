@@ -1,4 +1,4 @@
-load("@snarky//bzl/config:vars.bzl", "CPPFLAGS", "CFLAGS", "LINKSTATIC")
+# load("@snarky//bzl/config:cc.bzl", "CPPFLAGS", "CFLAGS", "CC_LINK_STATIC")
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
@@ -27,7 +27,7 @@ PPX4_9C0A2F04 = "//bzl/ppx:ppx[ppx_custom_printf][ppx_sexp_conv][ppx_bin_prot][p
 # "@//ppx/exe:ppx4_9c0a2f04-6b3e-5f2a-8470-43e49364ba52"
 PPX_ARGS = [
     # do not sort (buildifier)
-        "-cookie",
+    "-cookie",
     "library-name=\"snarky_libsnark_bindings\"",
     "-corrected-suffix",
     ".ppx-corrected",

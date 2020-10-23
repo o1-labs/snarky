@@ -13,6 +13,9 @@ load(
     "GLOBAL_INTERFACE_OPTS",
     "GLOBAL_MODULE_OPTS",
     "GLOBAL_NS_MODULE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_ARCHIVE_OPTS",
     "REPO_INTERFACE_OPTS",
     "REPO_MODULE_OPTS",
@@ -42,7 +45,7 @@ SPONGE_DEPS = [
     "@opam//pkg:core_kernel",
 ]
 
-SPONGE_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
+SPONGE_PPX = "@//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
 
 SPONGE_PPX_ARGS = [
     # do not sort (buildifier)

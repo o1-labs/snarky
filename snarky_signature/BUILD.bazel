@@ -11,6 +11,9 @@ load(
     "GLOBAL_ARCHIVE_OPTS",
     "GLOBAL_MODULE_OPTS",
     "GLOBAL_NS_MODULE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_ARCHIVE_OPTS",
     "REPO_MODULE_OPTS",
     "REPO_NS_MODULE_OPTS",
@@ -36,7 +39,7 @@ SNARKY_SIGNATURE_DEPS = [
     "@opam//pkg:core_kernel",
 ]
 
-SNARKY_SIGNATURE_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
+SNARKY_SIGNATURE_PPX = "@//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq]"
 
 SNARKY_SIGNATURE_PPX_ARGS = [
     # do not sort (buildifier)

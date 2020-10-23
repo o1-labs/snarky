@@ -11,6 +11,9 @@ load(
     "GLOBAL_EXECUTABLE_OPTS",
     "GLOBAL_INTERFACE_OPTS",
     "GLOBAL_MODULE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_EXECUTABLE_OPTS",
     "REPO_INTERFACE_OPTS",
     "REPO_MODULE_OPTS",

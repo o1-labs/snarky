@@ -7,6 +7,9 @@ load(
 load(
     "//:BUILD.bzl",
     "GLOBAL_EXECUTABLE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_EXECUTABLE_OPTS",
 )
 load(

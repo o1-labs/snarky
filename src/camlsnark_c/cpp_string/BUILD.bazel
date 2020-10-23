@@ -7,6 +7,9 @@ load(
     "//:BUILD.bzl",
     "GLOBAL_INTERFACE_OPTS",
     "GLOBAL_MODULE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_INTERFACE_OPTS",
     "REPO_MODULE_OPTS",
 )

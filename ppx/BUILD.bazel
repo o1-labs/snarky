@@ -11,6 +11,9 @@ load(
     "GLOBAL_NS_MODULE_OPTS",
     "GLOBAL_PPX_ARCHIVE_OPTS",
     "GLOBAL_PPX_MODULE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_NS_MODULE_OPTS",
     "REPO_PPX_ARCHIVE_OPTS",
     "REPO_PPX_MODULE_OPTS",

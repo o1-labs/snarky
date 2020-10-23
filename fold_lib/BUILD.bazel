@@ -11,6 +11,9 @@ load(
     "GLOBAL_ARCHIVE_OPTS",
     "GLOBAL_MODULE_OPTS",
     "GLOBAL_NS_MODULE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_ARCHIVE_OPTS",
     "REPO_MODULE_OPTS",
     "REPO_NS_MODULE_OPTS",
@@ -36,13 +39,13 @@ FOLD_LIB_DEPS = [
     "@opam//pkg:core_kernel",
 ]
 
-FOLD_LIB_PPX = "//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq][bisect_ppx]"
+FOLD_LIB_PPX = "@//bzl/ppx:ppx[ppx_jane][ppx_deriving.eq][bisect_ppx]"
 
 FOLD_LIB_PPX_ARGS = [
     # do not sort (buildifier)
     "-inline-test-lib",
     "fold_lib",
-    "--conditional",
+    "-conditional",
 ]
 
 ocaml_archive(

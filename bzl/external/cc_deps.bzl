@@ -6,11 +6,10 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")  # buildifier: di
 all_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])"""
 
 def cc_bootstrap():
-    """This function defines a collection of repos and should be called in a WORKSPACE file"""
+    """This bootstraps (loads) repos needed by @libsnarky and its subrepos."""
 
     ##########################################
     ######## Non-bazel external repos ########
-    # libfqfft:
     # Abseil - gtest dep; without this queries with fail with "no such package: @com_google_absl..."
     maybe(
         http_archive,
@@ -38,7 +37,7 @@ def cc_bootstrap():
         build_file_content = all_content
     )
 
-    ## build target: //bzl/external/openssl aliased for @libff/bzl/external/openssl
+    ## build target: //bzl/external/openssl alias for @libff/bzl/external/openssl
     maybe(
         http_archive,
         name="openssl",
@@ -98,17 +97,11 @@ def cc_bootstrap():
         build_file_content = all_content,
     )
 
-    #################################
-    #### Bazelized external libs ####
+    #########################################
+    #### Bazelized Snarky external repos ####
 
     ## Currently these are embedded in src/camlsnark_c/libsnark_caml,
-    ## and loaded using local_repository in WORKSPACE.bazel.
-
-    # local_repository( name = "snarky" , path = "src/lib/snarky")
-    # # [submodule "src/lib/snarky"]
-    # #         path = src/lib/snarky
-    # #         url = https://github.com/o1-labs/snarky
-
+    ## and loaded using local_repository rules in root WORKSPACE.bazel.
 
     # maybe(
     #     http_archive,

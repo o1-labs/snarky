@@ -9,6 +9,9 @@ load(
     "//:BUILD.bzl",
     "GLOBAL_ARCHIVE_OPTS",
     "GLOBAL_NS_MODULE_OPTS",
+)
+load(
+    "//snarky:BUILD.bzl",
     "REPO_ARCHIVE_OPTS",
     "REPO_NS_MODULE_OPTS",
 )
