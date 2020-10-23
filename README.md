@@ -42,7 +42,8 @@ Build all ppx_executables: `$ bazel build bzl/ppx/...`
 
 List all targets: `$ bazel query 'attr(visibility, "//visibility:public", //...:all)' | sort`
 
-You can build any of these targets.
+You can build any of these targets. See [doc/status.md](doc/status.md)
+for info on executable targets.
 
 Snarky includes an embedded Bazel workspace named `libsnark`, rooted
 at `src/camlsnark_c/libsnark-caml`. The packages and targets in this

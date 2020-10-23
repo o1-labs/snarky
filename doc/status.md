@@ -14,11 +14,11 @@
 
 * examples/anonvote build fails, with 'No implementation' for Digestif, see below.
 * examples/election_gpu untested
-* examples/elliptic_curve_operations builds, run fails with `(Invalid_argument Filename.chop_extension)`
-* examples/imperative_test: builds ok, run fails with `(Invalid_argument Filename.chop_extension)`
-* examples/merkle_update builds, run fails with `(Invalid_argument Filename.chop_extension)`
+* examples/elliptic_curve_operations builds and runs
+* examples/imperative_test: builds and runs
+* examples/merkle_update builds and runs
 * examples/sfbw: all builds fail with 'No implementation' for Digestif, see below
-* examples/tutorial builds, run fails with  `(Invalid_argument Filename.chop_extension)`
+* examples/tutorial builds and runs
 
 ## jstest
 
