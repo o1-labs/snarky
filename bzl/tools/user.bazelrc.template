@@ -1,45 +1,23 @@
-## You can override the WORKSPACE definition of a repo.
-
-# build --override_repository=obazl_rules_ocaml=/path/to/obazl
-# query --override_repository=obazl_rules_ocaml=/path/to/obazl
-
-# build --override_repository=libsnark=/path/to/libsnark
-# query --override_repository=libsnark=/path/to/libsnark
-
-# build --override_repository=libfqfft=/path/to/libfqfft
-# query --override_repository=libfqfft=/path/to/libfqfft
-
-# build --override_repository=libff=/path/to/libff
-# query --override_repository=libff=/path/to/libff
-
-# build --override_repository=ate_pairing=/path/to/ate-pairing
-# query --override_repository=ate_pairing=/path/to/ate-pairing
-
-# build --override_repository=xbyak=/path/to/xbyak
-# query --override_repository=xbyak=/path/to/xbyak
-
-################################################################
-# use hidden dir instead of top-level symlinks
-build --symlink_prefix=.bazel/
-# do not create `bazel-out` symlink if a different name is given to `--symlink_prefix`.
-build --experimental_no_product_name_out_symlink
-
 build --color=yes
 
 # build --subcommands
-build --subcommands=pretty_print
-build --verbose_failures
-build --sandbox_debug
+# build --subcommands=pretty_print
+# build --verbose_failures
+# build --sandbox_debug
 
 # build --show_timestamps
 # build --keep_going
-build --jobs 600
+# build --jobs 600
 # query --keep_going
 
-## when running tests this will provide hints for 'size' or 'timeout' attribs: :
-# test --test_verbose_timeout_warnings
+## do not use on macos:
+## use hidden dir instead of top-level symlinks
+# build --symlink_prefix=.bazel/
+## do not create `bazel-out` symlink if a different name is given to `--symlink_prefix`.
+# build --experimental_no_product_name_out_symlink
 
-# build --toolchain_resolution_debug
+## Override the WORKSPACE definition of a repo:
 
-# build --//ocaml/config/consensus:k=998
+# build --override_repository=obazl_rules_ocaml=/path/to/obazl
+# query --override_repository=obazl_rules_ocaml=/path/to/obazl
 
