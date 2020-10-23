@@ -12,17 +12,15 @@ load(
     "//snarky:BUILD.bzl",
     "REPO_EXECUTABLE_OPTS",
 )
-load(
-    ":BUILD.bzl",
-    "PKG_EXECUTABLE_OPTS",
-)
+load("//examples:BUILD.bzl", "EXAMPLES_OPTS")
+
 ################################################################
 ## STANZA 1 (ex_merkle_tree_with_data)
 ################################################################
 
 EX_MERKLE_TREE_WITH_DATA_OPTS = []
 
-EX_MERKLE_TREE_WITH_DATA_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + PKG_EXECUTABLE_OPTS + []
+EX_MERKLE_TREE_WITH_DATA_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + EXAMPLES_OPTS
 
 EX_MERKLE_TREE_WITH_DATA_DEPS = [
     # do not sort (buildifier)

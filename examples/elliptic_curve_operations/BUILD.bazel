@@ -12,15 +12,12 @@ load(
     "//snarky:BUILD.bzl",
     "REPO_EXECUTABLE_OPTS",
 )
-load(
-    ":BUILD.bzl",
-    "PKG_EXECUTABLE_OPTS",
-)
+load("//examples:BUILD.bzl", "EXAMPLES_OPTS")
 
 ################################################################
 ## STANZA 1: EXECUTABLES
 ################################################################
-EXECUTABLES_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + PKG_EXECUTABLE_OPTS
+EXECUTABLES_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + EXAMPLES_OPTS
 
 EXECUTABLES_DEPS = [
     # do not sort (buildifier)

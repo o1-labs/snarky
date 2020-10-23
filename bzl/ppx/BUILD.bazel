@@ -81,6 +81,7 @@ ppx_executable(
     ],
     lazy_deps = [
         # do not sort (buildifier)
+        "@opam//pkg:ppx_deriving.runtime",    ## ppx_deriving lazy dep added by hand
         "@opam//pkg:ppx_deriving_yojson.runtime",
         "@opam//pkg:yojson",
     ],
@@ -195,6 +196,9 @@ ppx_executable(
         # do not sort (buildifier)
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppx_deriving.eq",
+    ],
+    lazy_deps = [
+        "@opam//pkg:ppx_deriving.runtime",    ## ppx_deriving lazy dep added by hand
     ],
 )
 

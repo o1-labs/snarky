@@ -12,17 +12,15 @@ load(
     "//snarky:BUILD.bzl",
     "REPO_EXECUTABLE_OPTS",
 )
-load(
-    ":BUILD.bzl",
-    "PKG_EXECUTABLE_OPTS",
-)
+load("//examples:BUILD.bzl", "EXAMPLES_OPTS")
+
 ################################################################
 ## STANZA 1 (ex_small_preimage)
 ################################################################
 
 EX_SMALL_PREIMAGE_OPTS = []
 
-EX_SMALL_PREIMAGE_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + PKG_EXECUTABLE_OPTS + []
+EX_SMALL_PREIMAGE_EXECUTABLE_OPTS = GLOBAL_EXECUTABLE_OPTS + REPO_EXECUTABLE_OPTS + EXAMPLES_OPTS
 
 EX_SMALL_PREIMAGE_DEPS = [
     # do not sort (buildifier)
