@@ -39,7 +39,10 @@ module type Basic = sig
     ('whole, 'view) Lens.t -> ('a, 'view, 'f) t -> ('a, 'whole, 'f) t
 
   val constraint_count :
-    ?log:(?start:bool -> string -> int -> unit) -> ('a, 's, 'f field) t -> int
+       ?weight:(('f field Cvar.t, 'f field) Constraint.t -> int)
+    -> ?log:(?start:bool -> string -> int -> unit)
+    -> ('a, 's, 'f field) t
+    -> int
 end
 
 module type S = sig
@@ -140,7 +143,10 @@ module type S = sig
     ('whole, 'view) Lens.t -> ('a, 'view, 'f) t -> ('a, 'whole, 'f) t
 
   val constraint_count :
-    ?log:(?start:bool -> string -> int -> unit) -> ('a, 's, 'f field) t -> int
+       ?weight:(('f field Cvar.t, 'f field) Constraint.t -> int)
+    -> ?log:(?start:bool -> string -> int -> unit)
+    -> ('a, 's, 'f field) t
+    -> int
 end
 
 module type Extended = sig

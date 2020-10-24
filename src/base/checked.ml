@@ -172,13 +172,14 @@ module Basic :
     | Next_auxiliary k ->
         Next_auxiliary (fun b -> with_lens lens (k b))
 
-  let rec constraint_count_aux : type a s.
-         log:(?start:_ -> _)
+  let rec constraint_count_aux : type a s f.
+         weight:((f field Cvar.t, f field) Constraint.t -> int)
+      -> log:(?start:_ -> _)
       -> auxc:_
       -> int
-      -> (a, s, _) Types.Checked.t
+      -> (a, s, f) Types.Checked.t
       -> int * a =
-   fun ~log ~auxc count t0 ->
+   fun ~weight ~log ~auxc count t0 ->
     match t0 with
     | Pure x ->
         (count, x)
@@ -190,7 +191,7 @@ module Basic :
               ()
           | Some (pos, lab) ->
               log ~start:(pos = `Start) lab !count ) ;
-          count := !count + List.length c
+          count := !count + weight c
         in
         let state =
           Run_state.
@@ -208,51 +209,57 @@ module Basic :
             ; log_constraint= Some log_constraint }
         in
         let _, x = d state in
-        constraint_count_aux ~log ~auxc !count (k x)
+        constraint_count_aux ~weight ~log ~auxc !count (k x)
     | Reduced (t, _, _, k) ->
-        let count, y = constraint_count_aux ~log ~auxc count t in
-        constraint_count_aux ~log ~auxc count (k y)
+        let count, y = constraint_count_aux ~weight ~log ~auxc count t in
+        constraint_count_aux ~weight ~log ~auxc count (k y)
     | As_prover (_x, k) ->
-        constraint_count_aux ~log ~auxc count k
+        constraint_count_aux ~weight ~log ~auxc count k
     | Lazy (x, k) ->
-        let lazy_count, x = constraint_count_aux ~log ~auxc count x in
+        let lazy_count, x = constraint_count_aux ~weight ~log ~auxc count x in
         let forced = ref false in
         let x =
           Lazy.from_fun (fun () ->
               forced := true ;
               x )
         in
-        let count, y = constraint_count_aux ~log ~auxc count (k x) in
+        let count, y = constraint_count_aux ~weight ~log ~auxc count (k x) in
         ((if !forced then count + lazy_count else count), y)
     | Add_constraint (c, t) ->
-        constraint_count_aux ~log ~auxc (count + List.length c) t
+        constraint_count_aux ~weight ~log ~auxc (count + weight c) t
     | Next_auxiliary k ->
-        constraint_count_aux ~log ~auxc count (k !auxc)
+        constraint_count_aux ~weight ~log ~auxc count (k !auxc)
     | With_label (s, t, k) ->
         log ~start:true s count ;
-        let count', y = constraint_count_aux ~log ~auxc count t in
+        let count', y = constraint_count_aux ~weight ~log ~auxc count t in
         log s count' ;
-        constraint_count_aux ~log ~auxc count' (k y)
+        constraint_count_aux ~weight ~log ~auxc count' (k y)
     | With_state (_p, _and_then, t_sub, k) ->
-        let count', y = constraint_count_aux ~log ~auxc count t_sub in
-        constraint_count_aux ~log ~auxc count' (k y)
+        let count', y = constraint_count_aux ~weight ~log ~auxc count t_sub in
+        constraint_count_aux ~weight ~log ~auxc count' (k y)
     | With_handler (_h, t, k) ->
-        let count, x = constraint_count_aux ~log ~auxc count t in
-        constraint_count_aux ~log ~auxc count (k x)
+        let count, x = constraint_count_aux ~weight ~log ~auxc count t in
+        constraint_count_aux ~weight ~log ~auxc count (k x)
     | Clear_handler (t, k) ->
-        let count, x = constraint_count_aux ~log ~auxc count t in
-        constraint_count_aux ~log ~auxc count (k x)
+        let count, x = constraint_count_aux ~weight ~log ~auxc count t in
+        constraint_count_aux ~weight ~log ~auxc count (k x)
     | Exists ({alloc; check; _}, _c, k) ->
         let alloc_var () = Cvar.Var 1 in
         let var = Typ_monads.Alloc.run alloc alloc_var in
         (* TODO: Push a label onto the stack here *)
-        let count, () = constraint_count_aux ~log ~auxc count (check var) in
-        constraint_count_aux ~log ~auxc count (k {Handle.var; value= None})
+        let count, () =
+          constraint_count_aux ~weight ~log ~auxc count (check var)
+        in
+        constraint_count_aux ~weight ~log ~auxc count
+          (k {Handle.var; value= None})
 
-  let constraint_count ?(log = fun ?start:_ _ _ -> ())
-      (t : (_, _, _) Types.Checked.t) : int =
+  let constraint_count (type f)
+      ?(weight : ((f field Cvar.t, f field) Constraint.t -> int) option)
+      ?(log = fun ?start:_ _ _ -> ()) (t : (_, _, f field) Types.Checked.t) :
+      int =
     let next_auxiliary = ref 1 in
-    fst (constraint_count_aux ~log ~auxc:next_auxiliary 0 t)
+    let weight = match weight with None -> List.length | Some w -> w in
+    fst (constraint_count_aux ~weight ~log ~auxc:next_auxiliary 0 t)
 end
 
 module Make
