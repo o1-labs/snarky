@@ -1,0 +1,21 @@
+build --color=yes
+build --subcommands=pretty_print
+build --verbose_failures
+build --sandbox_debug
+# build --show_timestamps
+# build --jobs 600
+# build --keep_going
+# query --keep_going
+
+# build --override_repository=xbyak=/path/to/xbyak
+# query --override_repository=xbyak=/path/to/xbyak
+
+# build --toolchain_resolution_debug
+
+## these won't work if we build shared libs on macos, which expect bazel-out, not .bazel/out
+# build --symlink_prefix=.bazel/   # use hidden dir instead of top-level symlinks
+# When enabled, the `bazel-out` symlink won’t be created if a different name is given to `--symlink_prefix`.
+# build --experimental_no_product_name_out_symlink
+
+query --noimplicit_deps
+query --notool_deps
