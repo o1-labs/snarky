@@ -428,10 +428,14 @@ struct
       let ( && ) (x : var) (y : var) : (var, _) Checked.t =
         Checked.map ~f:create (mul (x :> Cvar.t) (y :> Cvar.t))
 
+      let ( &&& ) = ( && )
+
       let ( || ) x y =
         let open Let_syntax in
         let%map both_false = (not x) && not y in
         not both_false
+
+      let ( ||| ) = ( || )
 
       let any = function
         | [] ->
@@ -628,7 +632,11 @@ struct
 
         let ( && ) x y = And [x; y]
 
+        let ( &&& ) = ( && )
+
         let ( || ) x y = Or [x; y]
+
+        let ( ||| ) = ( || )
 
         let not t = Not t
 
@@ -2117,7 +2125,11 @@ module Run = struct
 
       let ( && ) x y = run (x && y)
 
+      let ( &&& ) = ( && )
+
       let ( || ) x y = run (x || y)
+
+      let ( ||| ) = ( || )
 
       let ( lxor ) x y = run (x lxor y)
 
@@ -2144,7 +2156,11 @@ module Run = struct
 
         let ( && ) = ( && )
 
+        let ( &&& ) = ( && )
+
         let ( || ) = ( || )
+
+        let ( ||| ) = ( ||| )
 
         let any = any
 
@@ -2672,7 +2688,7 @@ module Run = struct
 
     let check x s = Perform.check ~run:as_stateful x s
 
-    let constraint_count ?log x =
+    let constraint_count ?(weight = Core_kernel.List.length) ?log x =
       let count = ref 0 in
       let log_constraint ?at_label_boundary c =
         ( match at_label_boundary with
@@ -2681,7 +2697,7 @@ module Run = struct
         | Some (pos, lab) ->
             Option.iter log ~f:(fun f ->
                 f ?start:(Some (pos = `Start)) lab !count ) ) ;
-        count := !count + Core_kernel.List.length c
+        count := !count + weight c
       in
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
       ignore log ;
