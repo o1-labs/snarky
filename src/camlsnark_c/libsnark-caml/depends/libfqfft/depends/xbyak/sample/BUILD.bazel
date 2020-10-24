@@ -1,0 +1,109 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+CFLAGS_WARN = ["-Wall", "-Wextra", "-Wformat=2",
+               "-Wcast-qual", "-Wcast-align", "-Wwrite-strings",
+               "-Wfloat-equal", "-Wpointer-arith",
+               "-pedantic"]
+
+CFLAGS = ["-g", "-O2",
+          "-fomit-frame-pointer",
+          "-I.",
+          "-Wall"] + CFLAGS_WARN
+
+config_setting(
+    name = "is_32bit",
+    constraint_values = ["@platforms//cpu:arm"],
+)
+
+cc_binary( name = "test0",
+           visibility = ["//visibility:public"],
+           srcs = ["test0.cpp"],
+           copts = CFLAGS,
+           deps = ["//xbyak"]
+)
+
+cc_binary( name = "quantize",
+           visibility = ["//visibility:public"],
+           srcs = ["quantize.cpp"],
+           copts = CFLAGS,
+           deps = ["//xbyak"] )
+
+cc_binary( name = "bf",
+           visibility = ["//visibility:public"],
+           srcs = ["bf.cpp"],
+           copts = CFLAGS,
+           deps = ["//xbyak"] )
+
+# generate a dummy file as input to :toyvm on 64-bit platforms
+genrule(
+    name = "toyvm64",
+    outs = ["toyvm64.cpp"],
+    cmd  = "\n".join([
+        "echo \"#include <stdio.h>\" > $@",
+        "echo \"int main() {\" >> $@",
+        "echo 'printf(\"NOP - toyvm is for 32 bit platforms only.\\n\");' >> $@",
+        "echo \"}\" >> $@"
+    ])
+)
+
+cc_binary( # 32 bit only
+    name = "toyvm",
+    visibility = ["//visibility:public"],
+    srcs = select({
+        ":is_32bit": ["toyvm.cpp"],
+        "//conditions:default": ["toyvm64.cpp"]
+    }),
+    copts = CFLAGS,
+    data = [":toyvm64"],
+    deps = ["//xbyak"]
+)
+
+cc_binary( name = "test_util",
+           visibility = ["//visibility:public"],
+           srcs = ["test_util.cpp"],
+           copts = CFLAGS,
+           deps = ["//xbyak"] )
+
+cc_binary( name = "memfunc",
+           visibility = ["//visibility:public"],
+           srcs = ["memfunc.cpp"],
+           copts = CFLAGS,
+           deps = ["//xbyak"] )
+
+cc_binary( name = "static_buf",
+           visibility = ["//visibility:public"],
+           srcs = ["static_buf.cpp"],
+           copts = CFLAGS,
+           deps = ["//xbyak"] )
+
+cc_binary( name = "jmp_table",
+           visibility = ["//visibility:public"],
+           srcs = ["jmp_table.cpp"],
+           copts = CFLAGS,
+           deps = ["//xbyak"] )
+
+cc_binary( name = "calc",
+           visibility = ["//visibility:public"],
+           srcs = ["calc.cpp"],
+           copts = ["-Iboost"] + CFLAGS,
+           deps = ["//xbyak",
+                   "@boost//:spirit",
+                   "@boost//:bind"]
+)
+
+## error: call to 'ref' is ambiguous
+# cc_binary( name = "calc2",
+#            visibility = ["//visibility:public"],
+#            srcs = ["calc2.cpp"],
+#            copts = ["-Iboost"] + CFLAGS,
+#            deps = ["//xbyak",
+#                    "@boost//:bind",
+#                    "@boost//:foreach",
+#                    "@boost//:function",
+#                    "@boost//:spirit",
+#                    "@boost//:phoenix",
+#                    "@boost//:iostreams",
+#                    "@boost//:variant"]
+# )

@@ -9,9 +9,7 @@ CFLAGS_WARN = ["-Wall", "-Wextra", "-Wformat=2",
 
 CFLAGS = ["-O2", "-fomit-frame-pointer",
           "-Wall", "-fno-operator-names",
-          "-I.", "-Itest",
-          "-Iexternal/xbyak/include",
-          "-Iexternal/xbyak",] + CFLAGS_WARN #-std=c++0x
+          "-I.", "-Itest", "-Iexternal/xbyak"] + CFLAGS_WARN #-std=c++0x
 
 config_setting(
     name = "is_64bit",

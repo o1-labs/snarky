@@ -23,6 +23,8 @@ The dependency label is `@xbyak//xbyak`, e.g. `deps =
 
 For an example, see [ate-pairing](https://github.com/o1-labs/ate-pairing/blob/snarky/BUILD.bazel)
 
+Run the test suite: `$ bazel test test`
+=======
 ## build configuration options
 
 * `--//:snark` - use CurveSNARK (see main readme file for
@@ -53,6 +55,13 @@ All tests succeed on linux, test:jmp fails on MacOS.
 You can also run the samples:
 
 ```
+
+$ bazel query sample:all
+$ bazel run sample:<target>
+```
+
+where <target> is one of those listed by the sample query.
+
 $ bazel run sample:<target>
 ```
 
@@ -67,4 +76,3 @@ List all test targets:
 List all rules in package `sample`:
 
 * ` bazel query "sample:all"`
-
