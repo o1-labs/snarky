@@ -232,7 +232,7 @@ struct
       in
       fun bs -> go Field.one Field.zero bs
 
-    let project bs =
+    let _project bs =
       (* todo: 32-bit and ARM support. basically this code needs to always match the loop in the C++ of_data implementation. *)
       assert (Sys.word_size = 64 && not Sys.big_endian) ;
       let module R = Backend.Bigint.R in
@@ -252,6 +252,8 @@ struct
                   elt) ))
         chunks64 ;
       Backend.Bigint.R.(of_data arr ~bitcount:(List.length bs) |> to_field)
+
+    let project = project_reference
 
     let compare t1 t2 = Bigint.(compare (of_field t1) (of_field t2))
 

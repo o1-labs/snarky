@@ -419,8 +419,14 @@ module type Basic = sig
     (** Boolean and *)
     val ( && ) : var -> var -> (var, _) Checked.t
 
+    (** Boolean and, non-aliasing to [bool] operator. *)
+    val ( &&& ) : var -> var -> (var, _) Checked.t
+
     (** Boolean or *)
     val ( || ) : var -> var -> (var, _) Checked.t
+
+    (** Boolean or, non-aliasing to [bool] operator. *)
+    val ( ||| ) : var -> var -> (var, _) Checked.t
 
     (** Boolean xor (exclusive-or) *)
     val ( lxor ) : var -> var -> (var, _) Checked.t
@@ -457,7 +463,11 @@ module type Basic = sig
 
       val ( && ) : t -> t -> t
 
+      val ( &&& ) : t -> t -> t
+
       val ( || ) : t -> t -> t
+
+      val ( ||| ) : t -> t -> t
 
       val any : t list -> t
 
@@ -1461,7 +1471,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       - [count] is the number of constraints at that point.
   *)
   val constraint_count :
-    ?log:(?start:bool -> string -> int -> unit) -> (_, _) Checked.t -> int
+       ?weight:(Constraint.t -> int)
+    -> ?log:(?start:bool -> string -> int -> unit)
+    -> (_, _) Checked.t
+    -> int
 
   module Test : sig
     val checked_to_unchecked :
@@ -1787,7 +1800,11 @@ module type Run_basic = sig
 
     val ( && ) : var -> var -> var
 
+    val ( &&& ) : var -> var -> var
+
     val ( || ) : var -> var -> var
+
+    val ( ||| ) : var -> var -> var
 
     val ( lxor ) : var -> var -> var
 
@@ -1818,7 +1835,11 @@ module type Run_basic = sig
 
       val ( && ) : t -> t -> t
 
+      val ( &&& ) : t -> t -> t
+
       val ( || ) : t -> t -> t
+
+      val ( ||| ) : t -> t -> t
 
       val any : t list -> t
 
@@ -2275,7 +2296,10 @@ module type Run_basic = sig
   val check : (unit -> 'a) -> prover_state -> unit Or_error.t
 
   val constraint_count :
-    ?log:(?start:bool -> string -> int -> unit) -> (unit -> 'a) -> int
+       ?weight:(Constraint.t -> int)
+    -> ?log:(?start:bool -> string -> int -> unit)
+    -> (unit -> 'a)
+    -> int
 
   val set_constraint_logger :
        (?at_label_boundary:[`Start | `End] * string -> Constraint.t -> unit)
