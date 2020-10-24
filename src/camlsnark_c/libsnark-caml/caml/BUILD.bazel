@@ -1,0 +1,351 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libsnark//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "DDEBUG",
+     "ALWAYSLINK", "LINKSTATIC")
+
+exports_files(["template_caml_curve_h.hpp"])
+
+LINKOPTS = select({
+    "@//bzl/host:linux": [], # "-E"],
+    "@//bzl/host:macos": [],
+    "//conditions:default": []
+})
+
+cc_binary(
+    name = "libsnark_caml.so",
+    linkshared = True,
+    visibility = ["//visibility:public"],
+    srcs = [
+        "caml_bn128.cpp",
+        "caml_bn128.hpp",
+
+        "caml_mnt4.cpp",
+        "caml_mnt4.hpp",
+        "caml_mnt4_specific.cpp",
+
+        "caml_mnt4753.cpp",
+        "caml_mnt4753.hpp",
+        "caml_mnt4753_specific.cpp",
+
+        "caml_mnt6.cpp",
+        "caml_mnt6.hpp",
+        "caml_mnt6_specific.cpp",
+
+        "caml_mnt6753.cpp",
+        "caml_mnt6753.hpp",
+        "caml_mnt6753_specific.cpp",
+
+        # "caml_logging.cpp",
+        # "caml_logging.h",
+        # "caml_strings.cpp",
+        # "caml_strings.h",
+        # "caml_utils.cpp",
+        # "caml_utils.h",
+        # "caml_vectors.cpp",
+        # "caml_vectors.h",
+
+        "template_caml_curve_cpp.hpp",
+        "template_caml_mnt_cpp.hpp",
+    ],
+    copts = ["-I.", "-Iexternal",
+             "-Iexternal/libff",
+             "-Iexternal/libsnark",
+             "-Iexternal/libfqfft",
+             "-Wl,-E"
+    ] + CPPFLAGS + CXXFLAGS,
+    linkopts = LINKOPTS,
+    defines = DDEBUG,
+    deps = [
+        "//libsnark",
+        "@libff//libff/common/default_types",
+        "@libff//libff/common:common",
+        "@libff//libff/common:logging",
+        "@libff//libff/common:profiling",
+        "@libff//libff/common:utils",
+        "@libff//libff/algebra/curves/alt_bn128",
+        "@libff//libff/algebra/curves/alt_bn128:public_params",
+        "@libff//libff/algebra/curves/edwards",
+        "@libff//libff/algebra/curves/mnt",
+        "@libff//libff/algebra/curves/mnt/mnt4",
+        "@libff//libff/algebra/curves/mnt/mnt4:public_params",
+        "@libff//libff/algebra/curves/mnt/mnt6",
+        "@libff//libff/algebra/curves/mnt/mnt6:public_params",
+        "@libff//libff/algebra/curves/mnt753",
+        "@libff//libff/algebra/curves/mnt753/mnt4753",
+        "@libff//libff/algebra/curves/mnt753/mnt4753:public_params",
+        "@libff//libff/algebra/curves/mnt753/mnt6753",
+        "@libff//libff/algebra/curves/mnt753/mnt6753:public_params",
+        "@libff//libff/algebra/fields:bigint",
+        "//bzl/external/openssl",
+        "//bzl/external/libsodium",
+        "//bzl/external/libgmp",
+        "//bzl/external/openmp"
+    ] + select({
+        "@//bzl/config:enable_curve_bn128": ["@libff//libff/algebra/curves/bn128"],
+        "//conditions:default": [],
+    })
+)
+
+cc_library(
+    name = "snark_caml",
+    linkstatic = LINKSTATIC,
+    # alwayslink = ALWAYSLINK,
+    visibility = ["//visibility:public"],
+    srcs = [
+        "caml_bn128.cpp",
+        "caml_bn128.hpp",
+
+        "caml_mnt4.cpp",
+        "caml_mnt4.hpp",
+        "caml_mnt4_specific.cpp",
+
+        "caml_mnt4753.cpp",
+        "caml_mnt4753.hpp",
+        "caml_mnt4753_specific.cpp",
+
+        "caml_mnt6.cpp",
+        "caml_mnt6.hpp",
+        "caml_mnt6_specific.cpp",
+
+        "caml_mnt6753.cpp",
+        "caml_mnt6753.hpp",
+        "caml_mnt6753_specific.cpp",
+
+        # "logging.cpp",
+        # "logging.h",
+        # "strings.cpp",
+        # "strings.h",
+        # "utils.cpp",
+        # "utils.h",
+        # "vectors.cpp",
+        # "vectors.h",
+
+        "template_caml_curve_cpp.hpp",
+        "template_caml_mnt_cpp.hpp",
+    ],
+    copts = ["-I.", "-Iexternal",
+             "-Iexternal/libsnark",
+             "-Iexternal/libff",
+             "-Wl,-E"
+    ] + CPPFLAGS + CXXFLAGS,
+    linkopts = LINKOPTS,
+    defines = DDEBUG,
+    deps = [
+        # if building shared objects (macos) this suffices:
+        # "//libsnark",
+        # for static objects we need to list all transitive deps:
+        "//libsnark/common/data_structures",
+        "//libsnark/gadgetlib1",
+        "//libsnark/gadgetlib1/gadgets/hashes/sha256",
+        "//libsnark/gadgetlib2",
+        "//libsnark/reductions/r1cs_to_qap",
+        "//libsnark/relations",
+        "//libsnark/relations/circuit_satisfaction_problems/tbcs",
+        "//libsnark/relations/ram_computations/memory",
+        "//libsnark/relations/ram_computations/rams/fooram",
+        "//libsnark/relations/ram_computations/rams/tinyram",
+        "//libsnark/common/routing_algorithms",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark",
+        "//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
+        "//libsnark/relations/constraint_satisfaction_problems/r1cs",
+
+        "@libff//libff/common/default_types",
+        "@libff//libff/common:common",
+        "@libff//libff/common:logging",
+        "@libff//libff/common:profiling",
+        "@libff//libff/common:utils",
+        "@libff//libff/algebra/curves/alt_bn128",
+        "@libff//libff/algebra/curves/alt_bn128:public_params",
+        "@libff//libff/algebra/curves/edwards",
+        "@libff//libff/algebra/curves/mnt",
+        "@libff//libff/algebra/curves/mnt/mnt4",
+        "@libff//libff/algebra/curves/mnt/mnt4:public_params",
+        "@libff//libff/algebra/curves/mnt/mnt6",
+        "@libff//libff/algebra/curves/mnt/mnt6:public_params",
+        "@libff//libff/algebra/curves/mnt753",
+        "@libff//libff/algebra/curves/mnt753/mnt4753",
+        # "@libff//libff/algebra/curves/mnt753/mnt4753:public_params",
+        "@libff//libff/algebra/curves/mnt753/mnt6753",
+        # "@libff//libff/algebra/curves/mnt753/mnt6753:public_params",
+        "@libff//libff/algebra/fields:bigint",
+    ] + select({
+        "@//bzl/config:enable_curve_bn128": ["@libff//libff/algebra/curves/bn128"],
+        "//conditions:default": [],
+    })
+)
+
+## temporary, until the static linking gets fixed:
+cc_library(
+    name = "common",
+    hdrs = ["common.h", "caml_logging.h"],
+    linkstatic = LINKSTATIC,
+    # alwayslink = ALWAYSLINK,
+    visibility = ["//visibility:public"],
+)
+
+# cc_library(
+#     name = "vectors",
+#     srcs = ["vectors.cpp", "vectors.h"],
+#     hdrs = ["vectors.h"],
+#     linkstatic = LINKSTATIC,
+#     copts = [
+#         "-I.",
+#         "-Iexternal",
+#         "-Iexternal/csdk",
+#         "-Iexternal/api",
+#         "-Iexternal/csdk/api",
+#     ] + CPPFLAGS + CXXFLAGS,
+#     deps = [
+#         "@libff//libff/algebra/curves/mnt/mnt4",
+#         "@libff//libff/algebra/curves/mnt/mnt6",
+#         "@libff//libff/algebra/fields",
+#     ],
+#     visibility = ["//visibility:public"],
+# )
+
+################################################################
+## For demo purposes, to match CMakelists.txt
+
+cc_library(
+    name = "snark_caml_bn128",
+    linkstatic = LINKSTATIC,
+    # alwayslink = True,
+    visibility = ["//visibility:public"],
+    srcs = [
+        "caml_bn128.cpp",
+        "caml_bn128.hpp",
+        "template_caml_curve_cpp.hpp",
+    ],
+    copts = ["-I.",
+             "-Iexternal/libsnark",
+             "-Iexternal/libff"
+    ] + CPPFLAGS + CXXFLAGS,
+    defines = DDEBUG,
+    deps = [
+        "@libff//libff/algebra/curves/bn128",
+        "@libsnark//libsnark/common/data_structures",
+        "@libsnark//libsnark/knowledge_commitment",
+        "@libsnark//libsnark/gadgetlib1/gadgets/hashes/sha256",
+        "@libsnark//libsnark/reductions/r1cs_to_qap",
+        "@libsnark//libsnark/relations",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
+    ],
+)
+
+cc_library(
+    name = "snark_caml_mnt298",
+    linkstatic = LINKSTATIC,
+    # alwayslink = True,
+    visibility = ["//visibility:public"],
+    srcs = [
+        "caml_mnt4.cpp",
+        "caml_mnt4.hpp",
+        "caml_mnt4_specific.cpp",
+        "caml_mnt6.cpp",
+        "caml_mnt6.hpp",
+        "caml_mnt6_specific.cpp",
+        "template_caml_curve_cpp.hpp",
+        "template_caml_mnt_cpp.hpp",
+    ],
+    copts = ["-I.",
+             "-Iexternal/libsnark",
+             "-Iexternal/libff"
+    ] + CPPFLAGS + CXXFLAGS,
+    defines = DDEBUG,
+    deps = [
+        "@libff//libff/common:logging",
+        "@libff//libff/algebra/curves/mnt",
+        "@libff//libff/algebra/curves/mnt/mnt4",
+        "@libff//libff/algebra/curves/mnt/mnt6",
+        "@libsnark//libsnark/common/data_structures",
+        "@libsnark//libsnark/knowledge_commitment",
+        "@libsnark//libsnark/gadgetlib1/gadgets/hashes/sha256",
+        "@libsnark//libsnark/reductions/r1cs_to_qap",
+        "@libsnark//libsnark/relations",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
+    ],
+)
+
+cc_library(
+    name = "snark_caml_mnt753",
+    linkstatic = LINKSTATIC,
+    # alwayslink = True,
+    visibility = ["//visibility:public"],
+    srcs = [
+        "caml_mnt4753.cpp",
+        "caml_mnt4753.hpp",
+        "caml_mnt4753_specific.cpp",
+        "caml_mnt6753.cpp",
+        "caml_mnt6753.hpp",
+        "caml_mnt6753_specific.cpp",
+        "template_caml_curve_cpp.hpp",
+        "template_caml_mnt_cpp.hpp",
+    ],
+    copts = ["-I.",
+             "-Iexternal/libsnark",
+             "-Iexternal/libff",
+    ] + CPPFLAGS + CXXFLAGS,
+    defines = DDEBUG,
+    deps = [
+        "@libff//libff/algebra/curves/mnt753",
+        "@libff//libff/algebra/curves/mnt753/mnt4753",
+        "@libff//libff/algebra/curves/mnt753/mnt6753",
+        "@libsnark//libsnark/common/data_structures",
+        "@libsnark//libsnark/knowledge_commitment",
+        "@libsnark//libsnark/gadgetlib1/gadgets/hashes/sha256",
+        "@libsnark//libsnark/reductions/r1cs_to_qap",
+        "@libsnark//libsnark/relations",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_bg_ppzksnark",
+        "@libsnark//libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark",
+    ],
+)
+
+## This genrule replaces copy_over.sh; it generates all cpp source files.
+## Once transition to a pure Bazel system is complete, the
+## caml*.cpp files can be removed from source control.
+genrule(
+    name = "gen_sources",
+    srcs = ["template_caml_mnt_specific_cpp"],
+    outs = [
+        "test_caml_bn128.cpp",
+        "test_caml_mnt4.cpp",
+        "test_caml_mnt4_specific.cpp",
+        "test_caml_mnt6.cpp",
+        "test_caml_mnt6_specific.cpp",
+        "test_caml_mnt4753.cpp",
+        "test_caml_mnt4753_specific.cpp",
+        "test_caml_mnt6753.cpp",
+        "test_caml_mnt6753_specific.cpp"
+    ],
+    cmd = "\n".join([
+        "echo '/** GENERATED FILE - DO NOT EDIT **/' > $(@D)/test_caml_bn128.cpp;",
+        "echo '#include <caml/caml_bn128.hpp>\n' >> $(@D)/test_caml_bn128.cpp;",
+        "echo '#include <caml/template_caml_curve_cpp.hpp>' >> $(@D)/test_caml_bn128.cpp;",
+
+        "echo '/** GENERATED FILE - DO NOT EDIT **/' > $(@D)/test_caml_mnt4.cpp;",
+        "echo '#include <caml/caml_mnt4.hpp>\n' >> $(@D)/test_caml_mnt4.cpp;",
+        "echo '#include <caml/template_caml_curve_cpp.hpp>' >> $(@D)/test_caml_mnt4.cpp;",
+
+        "echo '/** GENERATED FILE - DO NOT EDIT **/' > $(@D)/test_caml_mnt6.cpp;",
+        "echo '#include <caml/caml_mnt6.hpp>\n' >> $(@D)/test_caml_mnt6.cpp;",
+        "echo '#include <caml/template_caml_curve_cpp.hpp>' >> $(@D)/test_caml_mnt64.cpp;",
+
+        "echo '/** GENERATED FILE - DO NOT EDIT **/' > $(@D)/test_caml_mnt4753.cpp;",
+        "echo '#include <caml/caml_mnt4753.hpp>\n' >> $(@D)/test_caml_mnt4753.cpp;",
+        "echo '#include <caml/template_caml_curve_cpp.hpp>' >> $(@D)/test_caml_mnt47534.cpp;",
+
+        "echo '/** GENERATED FILE - DO NOT EDIT **/' > $(@D)/test_caml_mnt6753.cpp;",
+        "echo '#include <caml/caml_mnt6753.hpp>\n' >> $(@D)/test_caml_mnt6753.cpp;",
+        "echo '#include <caml/template_caml_curve_cpp.hpp>' >> $(@D)/test_caml_mnt67534.cpp;",
+
+        "sed 's/{{CURVE}}/mnt4/g' < $< > $(@D)/test_caml_mnt4_specific.cpp;",
+        "sed 's/{{CURVE}}/mnt4753/g' < $< > $(@D)/test_caml_mnt4753_specific.cpp;",
+        "sed 's/{{CURVE}}/mnt6/g' < $< > $(@D)/test_caml_mnt6_specific.cpp;",
+        "sed 's/{{CURVE}}/mnt6743/g' < $< > $(@D)/test_caml_mnt6753_specific.cpp;"
+    ])
+)

@@ -47,31 +47,31 @@ let () =
         {c|
 #define CURVE_PREFIX(name) camlsnark_bn128_ ## name
 
-#include "caml_curve.h.template"
+#include "template_caml_curve_h.hpp"
 
 #undef CURVE_PREFIX
 
 #define CURVE_PREFIX(name) camlsnark_mnt4_ ## name
 
-#include "caml_curve.h.template"
+#include "template_caml_curve_h.hpp"
 
 #undef CURVE_PREFIX
 
 #define CURVE_PREFIX(name) camlsnark_mnt6_ ## name
 
-#include "caml_curve.h.template"
+#include "template_caml_curve_h.hpp"
 
 #undef CURVE_PREFIX
 
 #define CURVE_PREFIX(name) camlsnark_mnt4753_ ## name
 
-#include "caml_curve.h.template"
+#include "template_caml_curve_h.hpp"
 
 #undef CURVE_PREFIX
 
 #define CURVE_PREFIX(name) camlsnark_mnt6753_ ## name
 
-#include "caml_curve.h.template"
+#include "template_caml_curve_h.hpp"
 
 #undef CURVE_PREFIX
 |c} ;
