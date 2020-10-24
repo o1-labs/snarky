@@ -1,0 +1,26 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "int_flag")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+
+################################################################
+## used in bzl/config/vars.bzl to set command line
+
+bool_flag( name = "debug", build_setting_default = False)
+config_setting( name = "enable_debug",  flag_values = { ":debug": str(True) })
+config_setting( name = "disable_debug", flag_values = { ":debug": str(False) })
+
+selects.config_setting_group( name = "macos_disable_debug", match_all = ["//bzl/host:macos", ":disable_debug"])
+
+bool_flag( name = "verbose", build_setting_default = False)
+config_setting( name = "enable_verbose",  flag_values = { ":verbose": str(True) })
+config_setting( name = "disable_verbose", flag_values = { ":verbose": str(False) })
+
+config_setting( name = "enable_snark", flag_values = { "//:snark": str(True) })
+config_setting( name = "disable_snark", flag_values = { "//:snark": str(False) })
+
+config_setting( name = "with_libgmp", flag_values = { "@//:with_libgmp": str(True) })
+config_setting( name = "without_libgmp", flag_values = { "@//:with_libgmp": str(False) })
+
+int_flag( name = "vuint_bit_len", build_setting_default = 0,
+          visibility = ["//bzl/config:__pkg__"])
+
+config_setting( name = "vuint_bit_len_1024", flag_values = { ":vuint_bit_len": str(1024) })

@@ -1,0 +1,10 @@
+load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
+
+# configure_make(
+#     name = "swig",
+#     configure_env_vars = {"AR": ""},  ## macos
+#     lib_source = ":all",
+#     shared_libraries = [""],
+#     static_libraries = [""],
+#     visibility = ["//visibility:public"],
+# )
