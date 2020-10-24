@@ -1,0 +1,5 @@
+test_suite(
+    name = "fields",
+    tests = ["//libff/algebra/fields/tests:tests"],
+)
+

@@ -1,0 +1,40 @@
+load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
+
+configure_make(
+    name = "libsodium",
+    configure_env_vars = select({
+        "//bzl/host:macos": {
+            "AR": "",
+            "CXXFLAGS" : "-lc++ -m64 -fomit-frame-pointer -fPIC -DPIC",
+        },
+        "//bzl/host:linux": {
+            "CFLAGS" : "-fPIC -DPIC -m64",
+            "CXXFLAGS" : "-lstdc++ -m64 -fomit-frame-pointer -fPIC -DPIC",
+        }
+    }, no_match_error = "libsodium: unsupported platform.  Linux and MacOS only."),
+    configure_options = ["--enable-cxx"]
+    + select({
+        "//bzl/host:linux_x64": [
+            "--disable-pie",
+            "--with-pic"
+        ],
+        "//bzl/host:macos": [
+            "--build=x86_64-apple-darwin",
+            "AR=\"\"",
+            "--with-pic",
+            ## due to the -D stuff Bazel inserts, omission of -Dredacted results in:
+            ## error: invalid suffix on literal; C++11 requires a space
+            ## between literal and identifier [-Wreserved-user-defined-literal]
+            "CFLAGS=-Dredacted",
+        ],
+        "//conditions:default": [],
+    }, no_match_error = "libsodium: unsupported platform.  Linux and MacOS only."),
+    lib_source = "@libsodium//:all",
+    out_lib_dir = "lib",
+    static_libraries = ["libsodium.a"],
+    shared_libraries = select({
+        "//bzl/host:macos": ["libsodium.dylib"],
+        "//bzl/host:linux": ["libsodium.so"],
+    }, no_match_error = "Unsupported platform. Only MacOS and Linux."),
+    visibility = ["//visibility:public"],
+)

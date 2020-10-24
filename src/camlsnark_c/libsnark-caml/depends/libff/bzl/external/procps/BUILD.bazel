@@ -1,0 +1,15 @@
+load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
+
+configure_make(
+    name = "procps",
+    visibility = ["//visibility:public"],
+    autogen = True,
+    configure_in_place = True,
+    lib_source = "@procps//:all",
+    out_lib_dir = "lib",
+    shared_libraries = select({
+        "//bzl/host:linux" : ["libprocps.so"],
+        "//bzl/host:macos" : ["libprocps.dylib"]
+    }, no_match_error = "ERROR: unsupported host"),
+    static_libraries = ["libprocps.a"]
+)

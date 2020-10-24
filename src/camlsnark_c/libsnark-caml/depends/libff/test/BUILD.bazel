@@ -1,0 +1,7 @@
+test_suite(
+    name = "test",
+    tests = ["//libff/algebra/curves/tests:algebra_bilinearity",
+             "//libff/algebra/curves/tests:algebra_groups",
+             "//libff/algebra/fields/tests"]
+)
+

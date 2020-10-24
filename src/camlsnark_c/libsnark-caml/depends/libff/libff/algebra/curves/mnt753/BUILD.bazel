@@ -1,0 +1,16 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@libff//bzl/config:vars.bzl", "CPPFLAGS", "CXXFLAGS", "LINKSTATIC",
+     "DDEBUG", "DNO_PT_COMPRESSION")
+
+cc_library(
+    name = "mnt753",
+    srcs = ["mnt46753_common.cpp", "mnt46753_common.hpp"],
+    hdrs = ["mnt46753_common.hpp"],
+    copts = ["-I.", "-Iexternal/libff"] + CPPFLAGS + CXXFLAGS,
+    linkstatic = LINKSTATIC,
+    # include_prefix = "libff/algebra/curves/mnt753",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libff/algebra/fields:bigint",
+    ],
+)
