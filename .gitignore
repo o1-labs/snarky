@@ -1,6 +1,8 @@
 .bazel
 bazel-*
 user.bazelrc
+.cpcache
+*.log
 
 .merlin
 _build

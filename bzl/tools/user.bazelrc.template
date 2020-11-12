@@ -1,0 +1,23 @@
+build --color=yes
+
+# build --subcommands
+# build --subcommands=pretty_print
+# build --verbose_failures
+# build --sandbox_debug
+
+# build --show_timestamps
+# build --keep_going
+# build --jobs 600
+# query --keep_going
+
+## do not use on macos:
+## use hidden dir instead of top-level symlinks
+# build --symlink_prefix=.bazel/
+## do not create `bazel-out` symlink if a different name is given to `--symlink_prefix`.
+# build --experimental_no_product_name_out_symlink
+
+## Override the WORKSPACE definition of a repo:
+
+# build --override_repository=obazl_rules_ocaml=/path/to/obazl
+# query --override_repository=obazl_rules_ocaml=/path/to/obazl
+

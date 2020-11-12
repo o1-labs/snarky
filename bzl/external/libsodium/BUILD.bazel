@@ -1,0 +1,5 @@
+alias(
+    name = "libsodium",
+    actual = "@libff//bzl/external/libsodium",
+    visibility = ["//visibility:public"],
+)

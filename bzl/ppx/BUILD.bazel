@@ -1,0 +1,264 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
+load("@obazl_rules_ocaml//ocaml:rules.bzl", "ppx_module", "ppx_executable")
+load("//:BUILD.bzl", "REPO_PPX_EXECUTABLE_OPTS")
+load(":BUILD.bzl", "PKG_PPX_EXECUTABLE_OPTS")
+
+THIS_PPX_EXECUTABLE_OPTS = REPO_PPX_EXECUTABLE_OPTS + PKG_PPX_EXECUTABLE_OPTS
+
+###############
+ppx_executable(
+    name = "ppx.exe[ppx_deriving_yojson][ppx_jane][ppx_deriving.std]",
+    lazy_deps = [
+        "@opam//pkg:ppx_expect.collector",
+        "@opam//pkg:yojson",
+        "@opam//pkg:ppx_hash.runtime-lib",
+        "@opam//pkg:ppx_deriving_yojson.runtime",
+        "@opam//pkg:ppx_sexp_conv.runtime-lib",
+        "@opam//pkg:ppx_deriving.runtime",
+        "@opam//pkg:ppx_assert.runtime-lib",
+        "@opam//pkg:ppx_compare.runtime-lib",
+        "@opam//pkg:ppx_inline_test.runtime-lib",
+        "@opam//pkg:ppx_bench.runtime-lib",
+        "@opam//pkg:ppx_enumerate.runtime-lib",
+        "@opam//pkg:ppx_module_timer.runtime",
+    ],
+    main = ":Driver",
+    opts = THIS_PPX_EXECUTABLE_OPTS,
+    visibility = [
+        "//examples/anonvote:__pkg__",
+        "//examples/sfbw/ex_bools:__pkg__",
+        "//examples/sfbw/ex_merkle_list:__pkg__",
+        "//examples/sfbw/ex_merkle_tree:__pkg__",
+        "//examples/sfbw/ex_merkle_tree_with_data:__pkg__",
+        "//examples/sfbw/ex_preimage:__pkg__",
+        "//examples/sfbw/ex_small_preimage:__pkg__",
+    ],
+    deps = [
+        "@opam//pkg:ppx_deriving.std",
+        "@opam//pkg:ppx_deriving_yojson",
+        "@opam//pkg:ppx_jane",
+    ],
+)
+
+###############
+ppx_executable(
+    name = "ppx.exe[ppx_jane]",
+    lazy_deps = [
+        "@opam//pkg:ppx_expect.collector",
+        "@opam//pkg:ppx_hash.runtime-lib",
+        "@opam//pkg:ppx_sexp_conv.runtime-lib",
+        "@opam//pkg:ppx_assert.runtime-lib",
+        "@opam//pkg:ppx_compare.runtime-lib",
+        "@opam//pkg:ppx_inline_test.runtime-lib",
+        "@opam//pkg:ppx_bench.runtime-lib",
+        "@opam//pkg:ppx_enumerate.runtime-lib",
+        "@opam//pkg:ppx_module_timer.runtime",
+    ],
+    main = ":Driver",
+    opts = THIS_PPX_EXECUTABLE_OPTS,
+    visibility = [
+        "//app/reformat-snarky:__pkg__",
+        "//examples/merkle_update:__pkg__",
+        "//examples/tutorial:__pkg__",
+        "//meja/src:__pkg__",
+        "//src/camlsnark_c/groth16_gpu_prover/test:__pkg__",
+    ],
+    deps = [
+        "@opam//pkg:ppx_jane",
+    ],
+)
+
+###############
+ppx_executable(
+    name = "ppx.exe[ppx_jane][ppx_deriving.enum]",
+    lazy_deps = [
+        "@opam//pkg:ppx_expect.collector",
+        "@opam//pkg:ppx_hash.runtime-lib",
+        "@opam//pkg:ppx_sexp_conv.runtime-lib",
+        "@opam//pkg:ppx_deriving.runtime",
+        "@opam//pkg:ppx_assert.runtime-lib",
+        "@opam//pkg:ppx_compare.runtime-lib",
+        "@opam//pkg:ppx_inline_test.runtime-lib",
+        "@opam//pkg:ppx_bench.runtime-lib",
+        "@opam//pkg:ppx_enumerate.runtime-lib",
+        "@opam//pkg:ppx_module_timer.runtime",
+    ],
+    main = ":Driver",
+    opts = THIS_PPX_EXECUTABLE_OPTS,
+    visibility = [
+        "//examples/election:__pkg__",
+        "//examples/election_gpu:__pkg__",
+        "//examples/elliptic_curve_operations:__pkg__",
+        "//examples/imperative_test:__pkg__",
+    ],
+    deps = [
+        "@opam//pkg:ppx_deriving.enum",
+        "@opam//pkg:ppx_jane",
+    ],
+)
+
+###############
+ppx_executable(
+    name = "ppx.exe[ppx_jane][ppx_deriving.eq]",
+    lazy_deps = [
+        "@opam//pkg:ppx_expect.collector",
+        "@opam//pkg:ppx_hash.runtime-lib",
+        "@opam//pkg:ppx_sexp_conv.runtime-lib",
+        "@opam//pkg:ppx_deriving.runtime",
+        "@opam//pkg:ppx_assert.runtime-lib",
+        "@opam//pkg:ppx_compare.runtime-lib",
+        "@opam//pkg:ppx_inline_test.runtime-lib",
+        "@opam//pkg:ppx_bench.runtime-lib",
+        "@opam//pkg:ppx_enumerate.runtime-lib",
+        "@opam//pkg:ppx_module_timer.runtime",
+    ],
+    main = ":Driver",
+    opts = THIS_PPX_EXECUTABLE_OPTS,
+    visibility = [
+        "//group_map:__pkg__",
+        "//snarky_curve:__pkg__",
+        "//snarky_integer:__pkg__",
+        "//snarky_signature:__pkg__",
+        "//sponge:__pkg__",
+    ],
+    deps = [
+        "@opam//pkg:ppx_deriving.eq",
+        "@opam//pkg:ppx_jane",
+    ],
+)
+
+###############
+ppx_executable(
+    name = "ppx.exe[ppx_jane][ppx_deriving.eq][bisect_ppx]",
+    lazy_deps = [
+        "@opam//pkg:ppx_expect.collector",
+        "@opam//pkg:ppx_hash.runtime-lib",
+        "@opam//pkg:ppx_sexp_conv.runtime-lib",
+        "@opam//pkg:ppx_deriving.runtime",
+        "@opam//pkg:ppx_assert.runtime-lib",
+        "@opam//pkg:ppx_compare.runtime-lib",
+        "@opam//pkg:ppx_inline_test.runtime-lib",
+        "@opam//pkg:ppx_bench.runtime-lib",
+        "@opam//pkg:bisect_ppx.runtime",
+        "@opam//pkg:ppx_enumerate.runtime-lib",
+        "@opam//pkg:ppx_module_timer.runtime",
+    ],
+    main = ":Driver",
+    opts = THIS_PPX_EXECUTABLE_OPTS,
+    visibility = [
+        "//bitstring_lib:__pkg__",
+        "//fold_lib:__pkg__",
+        "//interval_union:__pkg__",
+        "//tuple_lib:__pkg__",
+    ],
+    deps = [
+        "@opam//pkg:bisect_ppx",
+        "@opam//pkg:ppx_deriving.eq",
+        "@opam//pkg:ppx_jane",
+    ],
+)
+
+###############
+ppx_executable(
+    name = "ppx.exe[ppxlib.metaquot]",
+    main = ":Driver",
+    opts = THIS_PPX_EXECUTABLE_OPTS,
+    visibility = [
+        "//h_list/ppx:__pkg__",
+        "//meja/ocaml:__pkg__",
+    ],
+    deps = [
+        "@opam//pkg:ppxlib.metaquot",
+    ],
+)
+
+################################################################
+ppx_module(
+    name = "Driver",
+    src = ":ppxlib_driver.ml",
+    opts = ["-linkall"],
+    deps = ["@opam//pkg:ppxlib"],
+    visibility = ["//visibility:public"]
+)
+
+########
+genrule(
+    name = "gendriver",
+    outs = ["ppxlib_driver.ml"],
+    cmd = "\n".join([
+        "echo \"(* GENERATED FILE - DO NOT EDIT *)\" > \"$@\"",
+        "echo \"let () = Ppxlib.Driver.standalone ()\" >> \"$@\"",
+    ]),
+)
+
+###################################################################
+######## Configuration Settings - see :BUILD.bzl #################
+bool_flag(
+    name = "always-link",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_always_link",
+    flag_values = {":always-link": str(True)},
+)
+
+bool_flag(
+    name = "debug",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_debug",
+    flag_values = {":debug": str(True)},
+)
+
+bool_flag(
+    name = "threads",
+    build_setting_default = True,
+)
+
+config_setting(
+    name = "enable_threads",
+    flag_values = {":threads": str(True)},
+)
+
+bool_flag(
+    name = "tooling",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_tooling",
+    flag_values = {":tooling": str(True)},
+)
+
+bool_flag(
+    name = "verbose",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enable_verbose",
+    flag_values = {":verbose": str(True)},
+)
+
+## PPX control
+string_flag(
+    name = "ppx-out",
+    build_setting_default = "binary",
+    values = [
+        "binary",
+        "text",
+    ],
+)
+
+config_setting(
+    name = "enable_ppx_output_format_text",
+    flag_values = {":ppx-out": "text"},
+)
+
+config_setting(
+    name = "enable_ppx_output_format_binary",
+    flag_values = {":ppx-out": "binary"},
+)
