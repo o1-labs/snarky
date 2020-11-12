@@ -1,0 +1,5 @@
+alias(
+    name = "libgmp",
+    actual = "@ate_pairing//bzl/external/libgmp",
+    visibility = ["//visibility:public"],
+)
