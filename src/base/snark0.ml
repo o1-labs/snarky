@@ -2504,9 +2504,13 @@ module Run = struct
       let mark_active ~f =
         let counters = !active_counters in
         active_counters := this_functor_id :: counters ;
-        let ret = f () in
-        active_counters := counters ;
-        ret
+        try
+          let ret = f () in
+          active_counters := counters ;
+          ret
+        with exn ->
+          active_counters := counters ;
+          raise exn
 
       let run = as_stateful
 
