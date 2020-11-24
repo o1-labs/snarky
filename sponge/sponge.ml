@@ -17,6 +17,10 @@ module Params = struct
   let tweedle_p = Constants.params_Tweedle_p
 
   let tweedle_q = Constants.params_Tweedle_q
+
+  let pasta_p = Constants.params_Pasta_p
+
+  let pasta_q = Constants.params_Pasta_q
 end
 
 module State = Array
