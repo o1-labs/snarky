@@ -15,44 +15,29 @@ http_archive(
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 bazel_skylib_workspace()
 
-###############
+############### Bootstrap OPAM Rules ###############
+git_repository(
+    name = "obazl_rules_opam",
+    remote = "https://github.com/obazl/rules_opam",
+    branch = "main",
+)
+load("@obazl_rules_opam//opam:bootstrap.bzl", "opam_configure")
+load("//bzl:opam.bzl", "opam")
+opam_configure(opam = opam)
+
+############### Bootstrap OCaml Rules ###############
 git_repository(
     name = "obazl_rules_ocaml",
     remote = "https://github.com/obazl/rules_ocaml",
-    branch = "master",
+    branch = "main",
 )
 
 load("@obazl_rules_ocaml//ocaml:bootstrap.bzl", "ocaml_configure")
-
 ocaml_configure()
 
-#############
-# http_archive(
-#     name = "rules_foreign_cc",
-#     strip_prefix="rules_foreign_cc-master",
-#     url = "https://github.com/bazelbuild/rules_foreign_cc/archive/master.zip",
-#     # sha256 = "3fc764c7084da14cff812ae42327d19c8d6e99379f8b3e310b3213e1d5f0e7e8"
-# )
-
-# load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
-# rules_foreign_cc_dependencies()
-
-# # rules_python needed by libsnark
-# http_archive(
-#     name = "rules_python",
-#     url = "https://github.com/bazelbuild/rules_python/releases/download/0.0.2/rules_python-0.0.2.tar.gz",
-#     strip_prefix = "rules_python-0.0.2",
-#     sha256 = "b5668cde8bb6e3515057ef465a35ad712214962f0b3a314e551204266c7be90c",
-# )
-
-# load("//bzl/external:cc_deps.bzl", "cc_bootstrap")
-# cc_bootstrap()
-
-# local_repository( name = "libsnark" , path = "src/camlsnark_c/libsnark-caml")
-# local_repository( name = "libfqfft" , path = "src/camlsnark_c/libsnark-caml/depends/libfqfft")
-# local_repository( name = "libff" , path = "src/camlsnark_c/libsnark-caml/depends/libff")
-# local_repository( name = "ate_pairing" , path = "src/camlsnark_c/libsnark-caml/depends/ate-pairing")
-# local_repository( name = "xbyak" , path = "src/camlsnark_c/libsnark-caml/depends/xbyak" )
-
-# load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
-# boost_deps()
+################################################################
+git_repository(
+    name = "ppx_version",
+    remote = "https://github.com/o1-labs/ppx_version",
+    branch = "master"
+    )

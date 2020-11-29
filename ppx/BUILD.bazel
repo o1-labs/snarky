@@ -2,39 +2,16 @@
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
-    "ocaml_ns",
     "ppx_archive",
     "ppx_executable",
     "ppx_module",
+    "ppx_ns",
 )
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
-load(
-    "//:BUILD.bzl",
-    "REPO_NS_MODULE_OPTS",
-    "REPO_PPX_ARCHIVE_OPTS",
-    "REPO_PPX_EXECUTABLE_OPTS",
-    "REPO_PPX_MODULE_OPTS",
-)
-load(
-    ":BUILD.bzl",
-    "PKG_NS_MODULE_OPTS",
-    "PKG_PPX_ARCHIVE_OPTS",
-    "PKG_PPX_EXECUTABLE_OPTS",
-    "PKG_PPX_MODULE_OPTS",
-)
-
-THIS_PPX_EXECUTABLE_OPTS = REPO_PPX_EXECUTABLE_OPTS + PKG_PPX_EXECUTABLE_OPTS
 
 ################################################################
-## STANZA 1: PPX_SNARKY
+## PPX STANZA 1: PPX_SNARKY
 ################################################################
-PPX_SNARKY_PPX_EXECUTABLE_OPTS = REPO_PPX_EXECUTABLE_OPTS + PKG_PPX_EXECUTABLE_OPTS
-
-PPX_SNARKY_PPX_MODULE_OPTS = REPO_PPX_MODULE_OPTS + PKG_PPX_MODULE_OPTS
-
-PPX_SNARKY_PPX_ARCHIVE_OPTS = REPO_PPX_ARCHIVE_OPTS + PKG_PPX_ARCHIVE_OPTS + []
-
-PPX_SNARKY_NS_MODULE_OPTS = REPO_NS_MODULE_OPTS + PKG_NS_MODULE_OPTS
+PPX_SNARKY_PPX_MODULE_OPTS = []
 
 PPX_SNARKY_DEPS = [
     # do not sort (buildifier)
@@ -43,8 +20,6 @@ PPX_SNARKY_DEPS = [
     "@opam//pkg:core_kernel",
 ]
 
-PPX_SNARKY_PPX = "//bzl/ppx:ppx.exe[ppxlib.metaquot][ppx_sexp_conv]"
-
 PPX_SNARKY_PPX_ARGS = [
     # do not sort (buildifier)
 ]
@@ -52,7 +27,7 @@ PPX_SNARKY_PPX_ARGS = [
 ############
 ppx_archive(
     name = "ppx_snarky",
-    opts = PPX_SNARKY_PPX_ARCHIVE_OPTS,
+    opts = [],
     visibility = ["//visibility:public"],
     deps = PPX_SNARKY_DEPS + [
         # do not sort (buildifier)
@@ -63,10 +38,10 @@ ppx_archive(
 )
 
 #########
-ocaml_ns(
+ppx_ns(
     name = "Ppx_snarky_ns",
     ns = "ppx_snarky",
-    opts = PPX_SNARKY_NS_MODULE_OPTS,
+    opts = [],
     submodules = [
         # do not sort (buildifier)
         "ppx_snarky.ml",
@@ -125,91 +100,20 @@ ppx_module(
     ],
 )
 
-###################################################################
-######## Configuration Settings - see :BUILD.bzl #################
-bool_flag(
-    name = "always-link",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "enable_always_link",
-    flag_values = {":always-link": str(True)},
-)
-
-bool_flag(
-    name = "debug",
-    build_setting_default = True,
-)
-
-config_setting(
-    name = "enable_debug",
-    flag_values = {":debug": str(True)},
-)
-
-bool_flag(
-    name = "threads",
-    build_setting_default = True,
-)
-
-config_setting(
-    name = "enable_threads",
-    flag_values = {":threads": str(True)},
-)
-
-bool_flag(
-    name = "tooling",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "enable_tooling",
-    flag_values = {":tooling": str(True)},
-)
-
-bool_flag(
-    name = "verbose",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "enable_verbose",
-    flag_values = {":verbose": str(True)},
-)
-
-## PPX control
-string_flag(
-    name = "ppx-out",
-    build_setting_default = "binary",
-    values = [
-        "binary",
-        "text",
-    ],
-)
-
-config_setting(
-    name = "enable_ppx_output_format_text",
-    flag_values = {":ppx-out": "text"},
-)
-
-config_setting(
-    name = "enable_ppx_output_format_binary",
-    flag_values = {":ppx-out": "binary"},
-)
-
 ###############
 ppx_executable(
     name = "ppx1.exe",
     lazy_deps = [
         "@opam//pkg:ppx_sexp_conv.runtime-lib",
     ],
-    main = "//bzl/ppx:Driver",
-    opts = THIS_PPX_EXECUTABLE_OPTS,
+    main = "//bzl/ppx/exe:Driver",
+    opts = [],
     visibility = [
         "//ppx:__pkg__",
     ],
     deps = [
         "@opam//pkg:ppx_sexp_conv",
+        "@opam//pkg:ppxlib",
         "@opam//pkg:ppxlib.metaquot",
     ],
 )

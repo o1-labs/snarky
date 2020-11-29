@@ -1,34 +1,31 @@
-## Copy this file to the root directory and edit to taste. Do NOT
-## check it into version control. The root .bazelrc file contains a
-## line that loads user.bazelrc if it exists
-
-## See https://docs.bazel.build/versions/master/guide.html#bazelrc-the-bazel-configuration-file
-
-## Best practices: https://docs.bazel.build/versions/master/best-practices.html#bazelrc
-
-## Command line ref: https://docs.bazel.build/versions/master/command-line-reference.html
-
-################################################################
-## Override the WORKSPACE definitions of repos - replace /PATH/TO with
-## the actual path (must be an absolute path):
-build --override_repository=xbyak=/PATH/TO/xbyak
-query --override_repository=xbyak=/PATH/TO/xbyak
-
-################################################################
-# do not use on macos if you are building shared libs:
-build --symlink_prefix=.bazel/   # use hidden dir .bazel/ instead of top-level symlinks bazel-*
-# When enabled, the `bazel-out` symlink won’t be created if a different name is given to `--symlink_prefix`.
-build --experimental_no_product_name_out_symlink
+## copy this to <root>/user.bazelrc and customize (do not put under version control)
+## or pass "--bazelrc=bzl/tools/user.bazelrc" as first arg to build cmd.
+## You can also use ${HOME}/.bazelrc to control all local Bazel projects.
 
 build --color=yes
-
-# build --subcommands  # print commands Bazel constructs, no pretty-print
-build --subcommands=pretty_print
+build --subcommands=pretty_print # omit "=pretty print" for compact output
 build --verbose_failures
 build --sandbox_debug
-
 # build --show_timestamps
-# build --keep_going  # Continue as much as possible after an error
-# build --jobs 600 # default is "auto" = calculates a reasonable default based on host resources
-# query --keep_going
+# common --keep_going
+# build --jobs 600
+
+#### Config flags ####
+## compilation mode: bytecode | native
+# build --@ocaml//mode=bytecode
+# build --@ppx//mode=bytecode
+# build --//verbose                 # enable verbose everywhere
+
+## override external repos:
+# common --override_repository=obazl_rules_opam=/ABSOLUTE/PATH/TO/obazl_rules_opam
+# common --override_repository=obazl_rules_ocaml=/ABSOLUTE/PATH/TO/obazl_rules_ocaml
+
+################################################################
+# build:macos --macos_minimum_os='10.15'
+# build --config=macos
+
+## DO NOT USE on MacOS.
+# build --symlink_prefix=.bazel/   # use hidden dir instead of top-level symlinks
+## DO NOT USE on MacOS:
+# build --experimental_no_product_name_out_symlink # do not create `bazel-out` symlink
 

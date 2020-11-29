@@ -8,36 +8,15 @@ load(
     "ocaml_ns",
     "ppx_executable",
 )
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
-load(
-    "//:BUILD.bzl",
-    "REPO_ARCHIVE_OPTS",
-    "REPO_INTERFACE_OPTS",
-    "REPO_MODULE_OPTS",
-    "REPO_NS_MODULE_OPTS",
-    "REPO_PPX_EXECUTABLE_OPTS",
-)
-load(
-    ":BUILD.bzl",
-    "PKG_ARCHIVE_OPTS",
-    "PKG_INTERFACE_OPTS",
-    "PKG_MODULE_OPTS",
-    "PKG_NS_MODULE_OPTS",
-    "PKG_PPX_EXECUTABLE_OPTS",
-)
-
-THIS_PPX_EXECUTABLE_OPTS = REPO_PPX_EXECUTABLE_OPTS + PKG_PPX_EXECUTABLE_OPTS
 
 ################################################################
 ## STANZA 1: LIBRARY SNARKY_UNIVERSE
 ################################################################
-SNARKY_UNIVERSE_INTERFACE_OPTS = REPO_INTERFACE_OPTS + PKG_INTERFACE_OPTS
+SNARKY_UNIVERSE_INTERFACE_OPTS = []
 
-SNARKY_UNIVERSE_MODULE_OPTS = REPO_MODULE_OPTS + PKG_MODULE_OPTS
+SNARKY_UNIVERSE_MODULE_OPTS = []
 
-SNARKY_UNIVERSE_ARCHIVE_OPTS = REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
-
-SNARKY_UNIVERSE_NS_MODULE_OPTS = REPO_NS_MODULE_OPTS + PKG_NS_MODULE_OPTS
+SNARKY_UNIVERSE_PPX_EXECUTABLE_OPTS = []
 
 SNARKY_UNIVERSE_DEPS = [
     # do not sort (buildifier)
@@ -47,13 +26,13 @@ SNARKY_UNIVERSE_DEPS = [
     "@snarky//snarky_integer",
     "@snarky//snarky_curve",
     "@snarky//snarky_signature",
-    "@snarky//src:snarky",
+    "@snarky//src/intf:snarky_intf",
 ]
 
 ##############
 ocaml_archive(
     name = "snarky_universe",
-    opts = SNARKY_UNIVERSE_ARCHIVE_OPTS,
+    opts = [],
     visibility = ["//visibility:public"],
     deps = SNARKY_UNIVERSE_DEPS + [
         # do not sort (buildifier)
@@ -72,7 +51,7 @@ ocaml_archive(
 ocaml_ns(
     name = "Snarky_universe_ns",
     ns = "snarky_universe",
-    opts = SNARKY_UNIVERSE_NS_MODULE_OPTS,
+    opts = [],
     submodules = [
         # do not sort (buildifier)
         "curve.ml",
@@ -182,6 +161,7 @@ ocaml_module(
         "-inline-test-lib",
         "snarky_universe",
     ],
+    ppx_print = "@ppx//print:binary",
     deps = SNARKY_UNIVERSE_DEPS,
 )
 
@@ -247,78 +227,6 @@ ocaml_interface(
     ],
 )
 
-###################################################################
-######## Configuration Settings - see :BUILD.bzl #################
-bool_flag(
-    name = "always-link",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "enable_always_link",
-    flag_values = {":always-link": str(True)},
-)
-
-bool_flag(
-    name = "debug",
-    build_setting_default = True,
-)
-
-config_setting(
-    name = "enable_debug",
-    flag_values = {":debug": str(True)},
-)
-
-bool_flag(
-    name = "threads",
-    build_setting_default = True,
-)
-
-config_setting(
-    name = "enable_threads",
-    flag_values = {":threads": str(True)},
-)
-
-bool_flag(
-    name = "tooling",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "enable_tooling",
-    flag_values = {":tooling": str(True)},
-)
-
-bool_flag(
-    name = "verbose",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "enable_verbose",
-    flag_values = {":verbose": str(True)},
-)
-
-## PPX control
-string_flag(
-    name = "ppx-out",
-    build_setting_default = "binary",
-    values = [
-        "binary",
-        "text",
-    ],
-)
-
-config_setting(
-    name = "enable_ppx_output_format_text",
-    flag_values = {":ppx-out": "text"},
-)
-
-config_setting(
-    name = "enable_ppx_output_format_binary",
-    flag_values = {":ppx-out": "binary"},
-)
-
 ###############
 ppx_executable(
     name = "ppx1.exe",
@@ -336,8 +244,8 @@ ppx_executable(
         "@opam//pkg:ppx_enumerate.runtime-lib",
         "@opam//pkg:ppx_module_timer.runtime",
     ],
-    main = "//bzl/ppx:Driver",
-    opts = THIS_PPX_EXECUTABLE_OPTS,
+    main = "//bzl/ppx/exe:Driver",
+    opts = [],
     visibility = [
         "//snarky_universe:__pkg__",
     ],
@@ -345,5 +253,6 @@ ppx_executable(
         "@opam//pkg:ppx_deriving.eq",
         "@opam//pkg:ppx_deriving_yojson",
         "@opam//pkg:ppx_jane",
+        "@opam//pkg:ppxlib",
     ],
 )

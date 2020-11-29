@@ -1,12 +1,8 @@
 {
  :workspace "snarky"
- :ppx {:shared-pkg "//bzl/ppx"}
+ :ppx {:shared-pkg "//bzl/ppx/exe"}
  :exclusions #{
                ;; "bench/dune"                                   ;; hand-tuned ppx arg: -inline-test-lib
-               ;; "bitstring_lib/dune"                              ;; singleton archive
-               ;; "fold_lib/dune"                                   ;; singleton archive
-               ;; "h_list/dune"                                  ;; singleton
-               ;; "h_list/ppx/dune"                              ;; singleton
                ;; "snarky_universe/dune"                         ;; hand-tuned
                "src/camlsnark_c/dune"                         ;; genrules
                ;; "src/camlsnark_c/cpp_string/dune"              ;; singleton

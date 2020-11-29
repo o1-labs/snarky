@@ -1,0 +1,45 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_executable",
+    "ocaml_module",
+)
+
+################################################################
+## STANZA 1: EXECUTABLES
+################################################################
+EXECUTABLES_EXECUTABLE_OPTS = []
+
+EXECUTABLES_MODULE_OPTS = []
+
+EXECUTABLES_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
+]
+
+#################
+ocaml_executable(
+    name = "imperative_test.exe",
+    opts = EXECUTABLES_EXECUTABLE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = EXECUTABLES_DEPS + [
+        # do not sort (buildifier)
+    ],
+)
+
+################################################################
+#############
+ocaml_module(
+    name = "_Imperative_test",
+    src = "imperative_test.ml",
+    opts = EXECUTABLES_MODULE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "",
+    ],
+    deps = EXECUTABLES_DEPS,
+)
