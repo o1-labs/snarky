@@ -1,2 +1,2 @@
 # source me
-alias "bl=less `bazel info command_log`"
+alias "bl=less -R `bazel info command_log`"
