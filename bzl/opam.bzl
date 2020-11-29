@@ -1,13 +1,11 @@
 opam = struct(
     opam_version = "2.0",
-    pins = {
-        "async_kernel" : "src/external/async_kernel",
-        "base58"       : "src/external/coda_base58",
-        "graphql_ppx"  : "src/external/graphql_ppx",
-        "ocaml-extlib" : "src/external/ocaml-extlib",
-        "rpc_parallel" : "src/external/rpc_parallel",
-        "sodium"       : "src/external/ocaml-sodium"
-    },
+    pins = struct(
+        # install = False, # default True
+        versions = {
+            "digestif" : "0.9.0"
+        }
+    ),
     packages = {
         "async": "v0.12.0",
         "bignum": "v0.12.0",
