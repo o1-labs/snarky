@@ -15,6 +15,14 @@ http_archive(
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 bazel_skylib_workspace()
 
+OPAM_SWITCH = "mina-0.1.0"
+
+git_repository(
+    name = "obazl_tools_bazel",
+    remote = "https://github.com/obazl/tools_bazel",
+    branch = "main",
+)
+
 ############### Bootstrap OPAM Rules ###############
 git_repository(
     name = "obazl_rules_opam",
@@ -23,7 +31,7 @@ git_repository(
 )
 load("@obazl_rules_opam//opam:bootstrap.bzl", "opam_configure")
 load("//bzl:opam.bzl", "opam")
-opam_configure(opam = opam)
+opam_configure(opam = opam, switch = OPAM_SWITCH)
 
 ############### Bootstrap OCaml Rules ###############
 git_repository(
@@ -33,7 +41,7 @@ git_repository(
 )
 
 load("@obazl_rules_ocaml//ocaml:bootstrap.bzl", "ocaml_configure")
-ocaml_configure()
+ocaml_configure( switch = OPAM_SWITCH )
 
 ################################################################
 git_repository(
