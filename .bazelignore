@@ -3,6 +3,7 @@ bench
 bzl/config
 bzl/external
 bzl/tools
+ctypes_foreign
 doc
 examples
 jstest
