@@ -8,7 +8,6 @@ load(
     "ocaml_ns",
 )
 
-## FIXME: ppx text output broken for Double, Triple, Quadruple
 PPX_PRINT = "@ppx//print:binary"
 
 ################################################################
@@ -23,11 +22,10 @@ TUPLE_LIB_DEPS = [
     "@opam//pkg:core_kernel",
 ]
 
-TUPLE_LIB_PPX = "@//bzl/ppx/exe:ppx_jane__ppx_deriving.eq__bisect_ppx"
+TUPLE_LIB_PPX = "@//bzl/ppx/exe:ppx_jane__ppx_deriving.eq"
 
 TUPLE_LIB_PPX_ARGS = [
     # do not sort (buildifier)
-    "--conditional",
     "-inline-test-lib",
     "tuple_lib",
 ]
@@ -74,7 +72,7 @@ ocaml_module(
     opts = TUPLE_LIB_MODULE_OPTS,
     ppx = TUPLE_LIB_PPX,
     ppx_args = TUPLE_LIB_PPX_ARGS,
-    ppx_print = PPX_PRINT,
+    ppx_print = PPX_PRINT,      # obazl:retain
     deps = TUPLE_LIB_DEPS,
 )
 
@@ -126,7 +124,7 @@ ocaml_module(
     opts = TUPLE_LIB_MODULE_OPTS,
     ppx = TUPLE_LIB_PPX,
     ppx_args = TUPLE_LIB_PPX_ARGS,
-    ppx_print = PPX_PRINT,
+    ppx_print = PPX_PRINT,      # obazl:retain
     deps = TUPLE_LIB_DEPS + [
         # do not sort (buildifier)
         ":_Four",
@@ -157,7 +155,7 @@ ocaml_module(
     opts = TUPLE_LIB_MODULE_OPTS,
     ppx = TUPLE_LIB_PPX,
     ppx_args = TUPLE_LIB_PPX_ARGS,
-    ppx_print = PPX_PRINT,
+    ppx_print = PPX_PRINT,      # obazl:retain
     deps = TUPLE_LIB_DEPS,
 )
 

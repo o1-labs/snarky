@@ -17,11 +17,10 @@ FOLD_LIB_DEPS = [
     "@opam//pkg:core_kernel",
 ]
 
-FOLD_LIB_PPX = "@//bzl/ppx/exe:ppx_jane__ppx_deriving.eq__bisect_ppx"
+FOLD_LIB_PPX = "@//bzl/ppx/exe:ppx_jane__ppx_deriving.eq"
 
 FOLD_LIB_PPX_ARGS = [
     # do not sort (buildifier)
-    "--conditional",
     "-inline-test-lib",
     "fold_lib",
 ]

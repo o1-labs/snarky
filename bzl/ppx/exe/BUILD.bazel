@@ -92,11 +92,15 @@ ppx_executable(
     main = ":Driver",
     opts = [],
     visibility = [
+        "//bitstring_lib:__pkg__",
+        "//fold_lib:__pkg__",
         "//group_map:__pkg__",
+        "//interval_union:__pkg__",
         "//snarky_curve:__pkg__",
         "//snarky_integer:__pkg__",
         "//snarky_signature:__pkg__",
         "//sponge:__pkg__",
+        "//tuple_lib:__pkg__",
     ],
     deps = [
         "@opam//pkg:ppx_deriving.eq",
@@ -136,38 +140,6 @@ ppx_executable(
     deps = [
         "@opam//pkg:ppx_deriving.std",
         "@opam//pkg:ppx_deriving_yojson",
-        "@opam//pkg:ppx_jane",
-        "@opam//pkg:ppxlib",
-    ],
-)
-
-###############
-ppx_executable(
-    name = "ppx_jane__ppx_deriving.eq__bisect_ppx",
-    lazy_deps = [
-        "@opam//pkg:ppx_expect.collector",
-        "@opam//pkg:ppx_hash.runtime-lib",
-        "@opam//pkg:ppx_sexp_conv.runtime-lib",
-        "@opam//pkg:ppx_deriving.runtime",
-        "@opam//pkg:ppx_assert.runtime-lib",
-        "@opam//pkg:ppx_compare.runtime-lib",
-        "@opam//pkg:ppx_inline_test.runtime-lib",
-        "@opam//pkg:ppx_bench.runtime-lib",
-        "@opam//pkg:bisect_ppx.runtime",
-        "@opam//pkg:ppx_enumerate.runtime-lib",
-        "@opam//pkg:ppx_module_timer.runtime",
-    ],
-    main = ":Driver",
-    opts = [],
-    visibility = [
-        "//bitstring_lib:__pkg__",
-        "//fold_lib:__pkg__",
-        "//interval_union:__pkg__",
-        "//tuple_lib:__pkg__",
-    ],
-    deps = [
-        "@opam//pkg:bisect_ppx",
-        "@opam//pkg:ppx_deriving.eq",
         "@opam//pkg:ppx_jane",
         "@opam//pkg:ppxlib",
     ],
