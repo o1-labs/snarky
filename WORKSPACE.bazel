@@ -3,6 +3,13 @@ workspace(name = "snarky")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
+###############
+git_repository(
+    name = "ppx_version",
+    remote = "https://github.com/o1-labs/ppx_version",
+    branch = "master"
+)
+
 #############
 http_archive(
     name = "bazel_skylib",
@@ -15,37 +22,29 @@ http_archive(
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 bazel_skylib_workspace()
 
-OPAM_SWITCH = "mina-0.1.0"
-
+## WARNING: repo rules for ALL direct dep repos must precede ALL load
+## directives, otherwise any exception in the loaded fns may cause an
+## indecipherable crash instead of printing an error msg.
 git_repository(
     name = "obazl_tools_bazel",
     remote = "https://github.com/obazl/tools_bazel",
     branch = "main",
 )
-
-############### Bootstrap OPAM Rules ###############
 git_repository(
     name = "obazl_rules_opam",
     remote = "https://github.com/obazl/rules_opam",
     branch = "main",
 )
-load("@obazl_rules_opam//opam:bootstrap.bzl", opam_configure = "configure")
-load("//bzl:opam.bzl", "opam")
-opam_configure(opam = opam, switch = OPAM_SWITCH)
-
-############### Bootstrap OCaml Rules ###############
 git_repository(
     name = "obazl_rules_ocaml",
     remote = "https://github.com/obazl/rules_ocaml",
     branch = "main",
 )
 
-load("@obazl_rules_ocaml//ocaml:bootstrap.bzl", ocaml_configure = "configure")
-ocaml_configure( switch = OPAM_SWITCH )
+############### Bootstrap ###############
+load("@obazl_rules_opam//opam:bootstrap.bzl", opam_configure = "configure")
+load("//bzl:opam.bzl", "opam")
+opam_configure(opam = opam)
 
-################################################################
-git_repository(
-    name = "ppx_version",
-    remote = "https://github.com/o1-labs/ppx_version",
-    branch = "master"
-    )
+load("@obazl_rules_ocaml//ocaml:bootstrap.bzl", ocaml_configure = "configure")
+ocaml_configure()

@@ -1,6 +1,6 @@
 PACKAGES = {
     "async": ["v0.12.0"],
-    "bignum": ["v0.12.0"],
+    "bignum": ["v0.12.0"], # WARNING: depends on zarith which depends on libgmp-dev on local system
     "bin_prot": ["v0.12.0"],
     "core": ["v0.12.1"],
     "core_kernel": ["v0.12.3"],
@@ -37,6 +37,7 @@ opam = struct(
     opam_version = "2.0",
     switches  = {
         "mina-0.1.0": struct(
+            default  = True,
             compiler = "4.07.1",
             packages = PACKAGES
         ),
