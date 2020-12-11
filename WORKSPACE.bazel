@@ -44,7 +44,7 @@ git_repository(
 ############### Bootstrap ###############
 load("@obazl_rules_opam//opam:bootstrap.bzl", opam_configure = "configure")
 load("//bzl:opam.bzl", "opam")
-opam_configure(opam = opam)
+switch = opam_configure(opam = opam)
 
 load("@obazl_rules_ocaml//ocaml:bootstrap.bzl", ocaml_configure = "configure")
-ocaml_configure()
+ocaml_configure( switch = switch )
