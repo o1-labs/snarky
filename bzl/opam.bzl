@@ -18,7 +18,7 @@ PACKAGES = {
         "ppx_deriving.std",
         "ppx_deriving.runtime"
     ]],
-    "ppx_deriving_yojson": ["3.5.2", ["ppx_deriving_yojson.runtime"]], # "n/a", # opam: "3.5.2",
+    "ppx_deriving_yojson": ["3.5.2", ["ppx_deriving_yojson.runtime"]],
     "ppx_enumerate": ["v0.12.0", ["ppx_enumerate.runtime-lib"]],
     "ppx_expect": ["v0.12.0", ["ppx_expect.collector"]],
     "ppx_fields_conv": ["v0.12.0"],
