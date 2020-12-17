@@ -1,5 +1,0 @@
-alias(
-    name = "openmp",
-    actual = "@libff//bzl/external/openmp",
-    visibility = ["//visibility:public"],
-)

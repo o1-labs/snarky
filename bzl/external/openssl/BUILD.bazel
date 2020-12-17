@@ -1,5 +1,0 @@
-alias(
-    name = "openssl",
-    actual = "@libff//bzl/external/openssl",
-    visibility = ["//visibility:public"],
-)
