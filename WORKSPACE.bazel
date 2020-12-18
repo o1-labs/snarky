@@ -22,9 +22,7 @@ http_archive(
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 bazel_skylib_workspace()
 
-## WARNING: repo rules for ALL direct dep repos must precede ALL load
-## directives, otherwise any exception in the loaded fns may cause an
-## indecipherable crash instead of printing an error msg.
+###############
 git_repository(
     name = "obazl_tools_bazel",
     remote = "https://github.com/obazl/tools_bazel",
@@ -41,7 +39,6 @@ git_repository(
     branch = "main",
 )
 
-############### Bootstrap ###############
 load("@obazl_rules_opam//opam:bootstrap.bzl", opam_configure = "configure")
 load("//bzl:opam.bzl", "opam")
 switch = opam_configure(opam = opam)
