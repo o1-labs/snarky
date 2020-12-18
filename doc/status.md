@@ -1,5 +1,7 @@
 # Bazel build status
 
+**WARNING** This is for the deprecated C/C++ backend. Not up to date.
+
 ## app/reformat-snarky
 
 `$ bazel build app/reformat-snarky:reformat.exe` succeeds and runs.
@@ -11,7 +13,6 @@
 ## Examples
 
 * examples/election:election_main builds and runs
-
 * examples/anonvote build fails, with 'No implementation' for Digestif, see below.
 * examples/election_gpu untested
 * examples/elliptic_curve_operations builds and runs
@@ -42,6 +43,9 @@ Uncaught exception:
 Raised at file "stdlib.ml", line 34, characters 20-45
 Called from file "src/toplevel.ml", line 5, characters 11-74
 ```
+
+This comes from linking in toplevel.ml
+
 
 No implementation for Digestif:
 

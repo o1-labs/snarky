@@ -1,0 +1,36 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_executable",
+)
+
+################################################################
+## STANZA 1: EXECUTABLE EX_SMALL_PREIMAGE
+################################################################
+EX_SMALL_PREIMAGE_EXECUTABLE_OPTS = []
+
+EX_SMALL_PREIMAGE_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
+    "@snarky//snarky_universe",
+]
+
+EX_SMALL_PREIMAGE_PPX = "@//bzl/ppx/exe:ppx_deriving_yojson__ppx_jane__ppx_deriving.std"
+
+EX_SMALL_PREIMAGE_PPX_ARGS = [
+    # do not sort (buildifier)
+    "-inline-test-lib",
+    "ex_small_preimage",
+]
+
+#################
+ocaml_executable(
+    name = "ex_small_preimage.exe",
+    opts = EX_SMALL_PREIMAGE_EXECUTABLE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = EX_SMALL_PREIMAGE_DEPS + [
+        # do not sort (buildifier)
+    ],
+)

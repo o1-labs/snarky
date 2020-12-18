@@ -7,32 +7,13 @@ load(
     "ocaml_ns",
     "ppx_executable",
 )
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
-load(
-    "//:BUILD.bzl",
-    "REPO_ARCHIVE_OPTS",
-    "REPO_MODULE_OPTS",
-    "REPO_NS_MODULE_OPTS",
-    "REPO_PPX_EXECUTABLE_OPTS",
-)
-load(
-    ":BUILD.bzl",
-    "PKG_ARCHIVE_OPTS",
-    "PKG_MODULE_OPTS",
-    "PKG_NS_MODULE_OPTS",
-    "PKG_PPX_EXECUTABLE_OPTS",
-)
-
-THIS_PPX_EXECUTABLE_OPTS = REPO_PPX_EXECUTABLE_OPTS + PKG_PPX_EXECUTABLE_OPTS
 
 ################################################################
 ## STANZA 1: LIBRARY SNARKY_INTF
 ################################################################
-SNARKY_INTF_MODULE_OPTS = REPO_MODULE_OPTS + PKG_MODULE_OPTS
+SNARKY_INTF_MODULE_OPTS = []
 
-SNARKY_INTF_ARCHIVE_OPTS = REPO_ARCHIVE_OPTS + PKG_ARCHIVE_OPTS + []
-
-SNARKY_INTF_NS_MODULE_OPTS = REPO_NS_MODULE_OPTS + PKG_NS_MODULE_OPTS
+SNARKY_INTF_PPX_EXECUTABLE_OPTS = []
 
 SNARKY_INTF_DEPS = [
     # do not sort (buildifier)
@@ -43,7 +24,7 @@ SNARKY_INTF_DEPS = [
 ##############
 ocaml_archive(
     name = "snarky_intf",
-    opts = SNARKY_INTF_ARCHIVE_OPTS,
+    opts = [],
     visibility = ["//visibility:public"],
     deps = SNARKY_INTF_DEPS + [
         # do not sort (buildifier)
@@ -57,7 +38,7 @@ ocaml_archive(
 ocaml_ns(
     name = "Snarky_intf_ns",
     ns = "snarky_intf",
-    opts = SNARKY_INTF_NS_MODULE_OPTS,
+    opts = [],
     submodules = [
         # do not sort (buildifier)
         "bigint_intf.ml",
@@ -108,78 +89,6 @@ ocaml_module(
     deps = SNARKY_INTF_DEPS,
 )
 
-###################################################################
-######## Configuration Settings - see :BUILD.bzl #################
-bool_flag(
-    name = "always-link",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "enable_always_link",
-    flag_values = {":always-link": str(True)},
-)
-
-bool_flag(
-    name = "debug",
-    build_setting_default = True,
-)
-
-config_setting(
-    name = "enable_debug",
-    flag_values = {":debug": str(True)},
-)
-
-bool_flag(
-    name = "threads",
-    build_setting_default = True,
-)
-
-config_setting(
-    name = "enable_threads",
-    flag_values = {":threads": str(True)},
-)
-
-bool_flag(
-    name = "tooling",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "enable_tooling",
-    flag_values = {":tooling": str(True)},
-)
-
-bool_flag(
-    name = "verbose",
-    build_setting_default = False,
-)
-
-config_setting(
-    name = "enable_verbose",
-    flag_values = {":verbose": str(True)},
-)
-
-## PPX control
-string_flag(
-    name = "ppx-out",
-    build_setting_default = "binary",
-    values = [
-        "binary",
-        "text",
-    ],
-)
-
-config_setting(
-    name = "enable_ppx_output_format_text",
-    flag_values = {":ppx-out": "text"},
-)
-
-config_setting(
-    name = "enable_ppx_output_format_binary",
-    flag_values = {":ppx-out": "binary"},
-)
-
 ###############
 ppx_executable(
     name = "ppx1.exe",
@@ -189,8 +98,8 @@ ppx_executable(
         "@opam//pkg:ppx_compare.runtime-lib",
         "@opam//pkg:bin_prot",
     ],
-    main = "//bzl/ppx:Driver",
-    opts = THIS_PPX_EXECUTABLE_OPTS,
+    main = "//bzl/ppx/exe:Driver",
+    opts = [],
     visibility = [
         "//src/intf:__pkg__",
     ],
@@ -199,5 +108,6 @@ ppx_executable(
         "@opam//pkg:ppx_compare",
         "@opam//pkg:ppx_hash",
         "@opam//pkg:ppx_sexp_conv",
+        "@opam//pkg:ppxlib",
     ],
 )

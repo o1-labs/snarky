@@ -2,30 +2,28 @@
 
 load(
     "@obazl_rules_ocaml//ocaml:rules.bzl",
-    "ocaml_archive",
-    "ocaml_ns",
+    "ocaml_executable",
 )
 
 ################################################################
-## STANZA 1: LIBRARY SNARKY_CUDA
+## STANZA 1: EXECUTABLES
 ################################################################
+EXECUTABLES_EXECUTABLE_OPTS = []
 
-SNARKY_CUDA_DEPS = [
+EXECUTABLES_DEPS = [
     # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
 ]
 
-##############
-ocaml_archive(
-    name = "snarky_cuda",
-    opts = [],
+#################
+ocaml_executable(
+    name = "elliptic_curve_operations.exe",
+    opts = EXECUTABLES_EXECUTABLE_OPTS,
     visibility = ["//visibility:public"],
-    deps = SNARKY_CUDA_DEPS + [
+    deps = EXECUTABLES_DEPS + [
         # do not sort (buildifier)
     ],
 )
 
-#########
-ocaml_ns(
-    name = "Snarky_cuda_ns",
-    ns = "snarky_cuda",
-)
+################################################################
