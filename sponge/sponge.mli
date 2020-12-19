@@ -18,6 +18,10 @@ module Params : sig
   val tweedle_p : string t
 
   val tweedle_q : string t
+
+  val tweedle_p5 : string t
+
+  val tweedle_q5 : string t
 end
 
 module State : sig
