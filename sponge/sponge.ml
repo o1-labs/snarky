@@ -21,6 +21,10 @@ module Params = struct
   let pasta_p = Constants.params_Pasta_p
 
   let pasta_q = Constants.params_Pasta_q
+
+  let pasta_p5 = Constants.params_Pasta_p5
+
+  let pasta_q5 = Constants.params_Pasta_q5
 end
 
 module State = Array
