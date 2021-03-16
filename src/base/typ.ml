@@ -42,6 +42,38 @@ module Data_spec0 = struct
     | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f, 'checked) data_spec
 end
 
+module Intf = struct
+  module type S = sig
+    type field
+
+    type field_var
+
+    type 'field checked
+
+    module Var : sig
+      type t
+
+      val size_in_field_elements : int
+
+      val to_field_elements : t -> field_var array
+
+      val of_field_elements : field_var array -> t
+
+      val check : t -> field checked
+    end
+
+    module Value : sig
+      type t
+
+      val size_in_field_elements : int
+
+      val to_field_elements : t -> field array
+
+      val of_field_elements : field array -> t
+    end
+  end
+end
+
 module Make
     (Checked : Checked_intf.S)
     (As_prover : As_prover_intf.S
@@ -54,6 +86,16 @@ struct
     ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t
 
   type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
+
+  module type S = sig
+    type field
+
+    include
+      Intf.S
+      with type 'field checked := (unit, unit, 'field) Checked.t
+       and type field := field
+       and type field_var := field Cvar.t
+  end
 
   module Data_spec = struct
     include Data_spec0
@@ -510,6 +552,59 @@ struct
         {read; store; alloc; check}
     end
   end
+
+  let mk_typ (type var value field)
+      (module M : S
+        with type field = field
+         and type Var.t = var
+         and type Value.t = value) : (var, value, field) t =
+    let open Typ_monads in
+    let field_vars_len = M.Var.size_in_field_elements in
+    let fields_len = M.Var.size_in_field_elements in
+    assert (field_vars_len = fields_len) ;
+    { read=
+        (fun v ->
+          let field_vars = M.Var.to_field_elements v in
+          assert (Array.length field_vars = field_vars_len) ;
+          let fields = ref [||] in
+          Array.foldi field_vars ~init:(Read.return ()) ~f:(fun idx acc x ->
+              let open Read.Let_syntax in
+              let%bind () = acc in
+              let%map x = Read.read x in
+              if idx = 0 then fields := Array.create ~len:fields_len x
+              else !fields.(idx) <- x )
+          |> Read.map ~f:(fun () -> M.Value.of_field_elements !fields) )
+    ; store=
+        (fun v ->
+          let fields = M.Value.to_field_elements v in
+          assert (Array.length fields = fields_len) ;
+          let field_vars = ref [||] in
+          Array.foldi fields ~init:(Store.return ()) ~f:(fun idx acc x ->
+              let open Store.Let_syntax in
+              let%bind () = acc in
+              let%map x = Store.store x in
+              if idx = 0 then field_vars := Array.create ~len:field_vars_len x
+              else !field_vars.(idx) <- x )
+          |> Store.map ~f:(fun () -> M.Var.of_field_elements !field_vars) )
+    ; alloc=
+        ( if field_vars_len = 0 then Alloc.return (M.Var.of_field_elements [||])
+        else
+          Alloc.bind Alloc.alloc ~f:(fun x ->
+              let field_vars = Array.create ~len:field_vars_len x in
+              Fn.apply_n_times ~n:(field_vars_len - 1)
+                (fun (acc, idx) ->
+                  let open Alloc.Let_syntax in
+                  let acc =
+                    let%bind () = acc in
+                    let%map x = Alloc.alloc in
+                    field_vars.(idx) <- x
+                  in
+                  (acc, idx + 1) )
+                (Alloc.return (), 1)
+              |> fst
+              |> Alloc.map ~f:(fun () -> M.Var.of_field_elements field_vars) )
+        )
+    ; check= M.Var.check }
 end
 
 include Make (Checked) (As_prover)

@@ -388,6 +388,16 @@ module type Basic = sig
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
 
+    module type S =
+      Typ0.Intf.S
+      with type field := Field.t
+       and type field_var := Field.Var.t
+       and type _ checked = (unit, unit) Checked.t
+
+    val mk_typ :
+         (module S with type Var.t = 'var and type Value.t = 'value)
+      -> ('var, 'value) t
+
     include module type of Types.Typ.T
   end
 
@@ -1778,6 +1788,16 @@ module type Run_basic = sig
       val typ :
         template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
+
+    module type S =
+      Typ0.Intf.S
+      with type field := Field.Constant.t
+       and type field_var := Field.t
+       and type _ checked = unit
+
+    val mk_typ :
+         (module S with type Var.t = 'var and type Value.t = 'value)
+      -> ('var, 'value) t
   end
 
   (** Representation of booleans within a field.
