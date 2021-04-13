@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Capture the interrupt signal (Ctrl-C) and exit
+trap "exit" SIGINT
+
 run_dune() {
   dune $1 --display quiet --root=.. ${@:2}
 }
@@ -36,7 +39,12 @@ check_diff() {
 }
 
 run_test() {
-  run_dune exec meja/meja.exe -- -I ../_build/default/src/.snarky.objs/byte --ml "tests/out/$1.ml" --stderr "tests/out/$1.stderr" "tests/$1.meja" 2> /dev/null
+  if [ -z "$MEJA_BACKTRACE" ]; then
+    BACKTRACE_FLAG=""
+  else
+    BACKTRACE_FLAG="--compiler-backtraces"
+  fi
+  run_dune exec meja/meja.exe -- $BACKTRACE_FLAG --ml "tests/out/$1.ml" --stderr "tests/out/$1.stderr" "tests/$1.meja" 2> /dev/null
   if [ $? -ne 0 ]; then
     if [ -e "tests/$1.fail" ]; then
       if [[ "$update_output" -eq 0 ]]; then
@@ -76,27 +84,61 @@ run_test() {
 }
 
 run_tests() {
-  mkdir -p tests/out
-  for test in tests/*.meja; do
-    local FILENAME=$(basename -- "$test")
-    local FILENAME="${FILENAME%.*}"
-    run_test "$FILENAME"
-  done
-  declare -i total
-  total=passes+fails
-  if [[ "$update_output" -ne 0 ]]; then
-    echo -e "${GREEN}UP-TO-DATE${NC} $fails files changed"
-    return 0
-  elif [[ "$fails" -ne 0 ]]; then
-    echo -e "${RED}FAILED${NC} $fails/$total"
+  run_dune build meja/meja.exe
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}BUILD FAILED${NC}"
     return 1
   else
-    echo -e "${GREEN}PASSED${NC} $passes/$total"
-    return 0
+    mkdir -p tests/out
+    for test in tests/*.meja; do
+      local FILENAME=$(basename -- "$test")
+      local FILENAME="${FILENAME%.*}"
+      run_test "$FILENAME"
+    done
+    declare -i total
+    total=passes+fails
+    if [[ "$update_output" -ne 0 ]]; then
+      echo -e "${GREEN}UP-TO-DATE${NC} $fails files changed"
+      return 0
+    elif [[ "$fails" -ne 0 ]]; then
+      echo -e "${RED}FAILED${NC} $fails/$total"
+      return 1
+    else
+      echo -e "${GREEN}PASSED${NC} $passes/$total"
+      return 0
+    fi
   fi
 }
 
 update_test_output() {
   update_output=1
   run_tests
+}
+
+
+run_one() {
+  if [ -z "$FILENAME" ]; then
+    echo "Please specify the filename of the test to run in FILENAME"
+    return 1
+  fi
+  run_dune build meja/meja.exe
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}BUILD FAILED${NC}"
+    return 1
+  else
+    mkdir -p tests/out
+    run_test "$FILENAME"
+    declare -i total
+    total=passes+fails
+    if [[ "$update_output" -ne 0 ]]; then
+      echo -e "${GREEN}UP-TO-DATE${NC} $fails files changed"
+      return 0
+    elif [[ "$fails" -ne 0 ]]; then
+      echo -e "${RED}FAILED${NC} $fails/$total"
+      return 1
+    else
+      echo -e "${GREEN}PASSED${NC} $passes/$total"
+      return 0
+    fi
+  fi
 }

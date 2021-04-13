@@ -1,0 +1,11 @@
+module M = {};
+
+module T = {
+  Prover {
+    module M = {};
+  };
+};
+
+open T;
+
+module M' = M;

@@ -1,0 +1,50 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_executable",
+    "ocaml_module",
+)
+
+################################################################
+## STANZA 1: EXECUTABLE ANONVOTE
+################################################################
+ANONVOTE_EXECUTABLE_OPTS = []
+
+ANONVOTE_MODULE_OPTS = []
+
+ANONVOTE_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//src:snarky",
+    "@snarky//snarky_universe",
+]
+
+ANONVOTE_PPX = "@//bzl/ppx/exe:ppx_deriving_yojson__ppx_jane__ppx_deriving.std"
+
+ANONVOTE_PPX_ARGS = [
+    # do not sort (buildifier)
+    "-inline-test-lib",
+    "anonvote",
+]
+
+#################
+ocaml_executable(
+    name = "anonvote.exe",
+    opts = ANONVOTE_EXECUTABLE_OPTS,
+    visibility = ["//visibility:public"],
+    deps = ANONVOTE_DEPS + [
+        # do not sort (buildifier)
+        ":_Anonvote.ignore",
+    ],
+)
+
+#############
+ocaml_module(
+    name = "_Anonvote.ignore",
+    src = "anonvote.ignore.ml",
+    opts = ANONVOTE_MODULE_OPTS,
+    ppx = ANONVOTE_PPX,
+    ppx_args = ANONVOTE_PPX_ARGS,
+    deps = ANONVOTE_DEPS,
+)

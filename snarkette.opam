@@ -1,0 +1,25 @@
+opam-version: "1.2"
+name: "snarkette"
+maintainer: "opensource@o1labs.org"
+authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
+homepage: "https://github.com/o1labs/snarky"
+bug-reports: "https://github.com/o1labs/snarky/issues"
+dev-repo: "git+https://github.com/o1labs/snarky.git"
+license: "MIT"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "core_kernel" {>= "v0.12" & < "v0.13" }
+  "tuple_lib"
+  "fold_lib"
+  "ppx_deriving"
+  "ppx_jane"
+  "bisect_ppx"
+  "dune"                {build & >= "2.0"}
+  "ppx_deriving_yojson"
+]
+available: [ ocaml-version >= "4.07.0" ]
+descr: "
+A portable cryptography library
+"

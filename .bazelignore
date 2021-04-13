@@ -1,0 +1,14 @@
+_build
+bench
+bzl/config
+bzl/external
+bzl/tools
+ctypes_foreign
+doc
+examples
+jstest
+meja
+scripts
+snarky_cuda
+snarky_curve/tests
+snarky_universe

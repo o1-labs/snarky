@@ -78,6 +78,8 @@ public:
     template<mp_size_t m>
     Fp2_model operator^(const bigint<m> &other) const;
 
+    static size_t extension_degree() { return 2; }
+
     static size_t size_in_bits() { return 2*my_Fp::size_in_bits(); }
     static bigint<n> base_field_char() { return modulus; }
 

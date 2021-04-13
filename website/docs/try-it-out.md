@@ -25,13 +25,13 @@ Also inside `src`, make a new file called `try_me.ml`, and enter the following c
 open Core
 open Snarky
 
-module Impl = Snark.Run.Make (Backends.Bn128.Default)
+module Impl = Snark.Run.Make (Backends.Bn128.Default) (Unit)
 open Impl
 
 let check_product (l : Field.t list) (total : Field.t) () =
   let open Field in
   let checked_total = List.fold ~init:one l ~f:( * ) in
-  Field.Assert.equal checked_total total
+  Assert.equal checked_total total
 
 let my_list = List.map ~f:Field.Constant.of_int [1; 2; 3; 4; 5]
 
@@ -39,9 +39,9 @@ let total = Field.Constant.of_int 120
 
 let public_input () = Data_spec.[Typ.list ~length:(List.length my_list) Field.typ; Field.typ]
 
-let keypair = generate_keypair ~exposing:(public_input ()) check_sum
+let keypair = generate_keypair ~exposing:(public_input ()) check_product
 
-let proof = prove (Keypair.pk keypair) (public_input ()) check_sum my_list total
+let proof = prove (Keypair.pk keypair) (public_input ()) check_product () my_list total
 
 let is_valid = verify proof (Keypair.vk keypair) (public_input ()) my_list total
 
@@ -55,7 +55,7 @@ Now, in the project directory, create a file called `dune-project`:
 
 You should have a project directory structured like this:
 ```
-dune_project
+dune-project
 src/
   dune
   try_me.ml

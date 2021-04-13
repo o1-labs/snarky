@@ -1,0 +1,2 @@
+File "tests/prover-types-scope.meja", line 9, characters 22-24:
+Error: Unbound type constructor t1.

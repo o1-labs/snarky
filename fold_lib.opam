@@ -10,13 +10,13 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "core"
+  "core" {>= "v0.12" & < "v0.13" }
   "ppx_deriving"
   "ppx_jane"
   "bisect_ppx"
-  "jbuilder"                {build & >= "1.0+beta12"}
+  "dune"                {build & >= "2.0"}
 ]
-available: [ ocaml-version >= "4.04.1" ]
+available: [ ocaml-version >= "4.07.0" ]
 descr: "
 A library for treating folds as a first-class data structure and a monad
 "

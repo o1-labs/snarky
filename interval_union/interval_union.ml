@@ -41,26 +41,33 @@ let union_intervals_exn (a1, b1) (a2, b2) =
 let of_interval i = [i]
 
 let rec canonicalize = function
-  | [] -> []
-  | [i1] -> [i1]
+  | [] ->
+      []
+  | [i1] ->
+      [i1]
   | (a1, a2) :: (a3, a4) :: t ->
       if a2 = a3 then canonicalize ((a1, a4) :: t)
       else (a1, a2) :: canonicalize ((a3, a4) :: t)
 
 let rec disjoint_union_exn t1 t2 =
   match (t1, t2) with
-  | t, [] | [], t -> t
+  | t, [] | [], t ->
+      t
   | i1 :: t1', i2 :: t2' -> (
     match union_intervals_exn i1 i2 with
-    | `Combine (a, b) -> (a, b) :: disjoint_union_exn t1' t2'
-    | `Disjoint_ordered -> i1 :: disjoint_union_exn t1' t2
-    | `Disjoint_inverted -> i2 :: disjoint_union_exn t1 t2' )
+    | `Combine (a, b) ->
+        (a, b) :: disjoint_union_exn t1' t2'
+    | `Disjoint_ordered ->
+        i1 :: disjoint_union_exn t1' t2
+    | `Disjoint_inverted ->
+        i2 :: disjoint_union_exn t1 t2' )
 
 let disjoint_union_exn t1 t2 = canonicalize (disjoint_union_exn t1 t2)
 
 let rec disjoint t1 t2 =
   match (t1, t2) with
-  | _, [] | [], _ -> true
+  | _, [] | [], _ ->
+      true
   | i1 :: t1', i2 :: t2' ->
       if Interval.before i1 i2 then disjoint t1' t2
       else if Interval.before i2 i1 then disjoint t1 t2'
@@ -69,24 +76,34 @@ let rec disjoint t1 t2 =
 (* Someday: inefficient *)
 let of_intervals_exn is =
   match is with
-  | [] -> []
+  | [] ->
+      []
   | i :: is ->
       List.fold is ~init:(of_interval i) ~f:(fun acc x ->
           disjoint_union_exn (of_interval x) acc )
 
 let to_interval = function
-  | [i] -> Ok i
-  | ([] | _ :: _ :: _) as xs ->
+  | [i] ->
+      Ok i
+  | [] ->
+      Or_error.error_string "Interval_union.to_interval: the union is empty\n"
+  | _ :: _ :: _ as xs ->
       Or_error.error_string
         (Printf.sprintf
-           !"Interval_union.to_interval: was not an interval %{sexp: \
-             Interval.t list}\n"
+           !"Interval_union.to_interval: expected a single interval in the \
+             union, got multiple disjoint intervals %{sexp: Interval.t list}\n"
            xs)
+
+let right_endpoint t = Option.map ~f:snd (List.last t)
+
+let left_endpoint t = Option.map ~f:fst (List.hd t)
 
 let invariant t =
   let rec go = function
-    | [(a, b)] -> assert (a <= b)
-    | [] -> ()
+    | [(a, b)] ->
+        assert (a <= b)
+    | [] ->
+        ()
     | (a1, b1) :: ((a2, _) :: _ as t) ->
         assert (a1 <= b1) ;
         assert (b1 < a2) ;

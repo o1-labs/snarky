@@ -7,16 +7,16 @@ bug-reports: "https://github.com/o1labs/snarky/issues"
 dev-repo: "git+https://github.com/o1labs/snarky.git"
 license: "MIT"
 build: [
-  ["jbuilder" "build" "-p" name "-j" jobs]
+  ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "core"
+  "core" {>= "v0.12" & < "v0.13" }
   "snarky"
   "ppx_jane"
   "ppx_bench"
-  "jbuilder"                {build & >= "1.0+beta12"}
+  "dune"                {build & >= "2.0"}
 ]
-available: [ ocaml-version >= "4.04.1" ]
+available: [ ocaml-version >= "4.07.0" ]
 descr: "
 Benchmark runner for snarky
 "

@@ -1,0 +1,49 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_archive",
+    "ocaml_module",
+    "ocaml_ns",
+)
+
+################################################################
+## STANZA 1: LIBRARY CTYPES_FOREIGN_LIBFFI
+################################################################
+CTYPES_FOREIGN_LIBFFI_MODULE_OPTS = []
+
+CTYPES_FOREIGN_LIBFFI_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:ctypes",
+]
+
+##############
+ocaml_archive(
+    name = "ctypes_foreign_libffi",
+    opts = [],
+    visibility = ["//visibility:public"],
+    deps = CTYPES_FOREIGN_LIBFFI_DEPS + [
+        # do not sort (buildifier)
+        ":_Ctypes_foreign",
+    ],
+)
+
+#########
+ocaml_ns(
+    name = "Ctypes_foreign_libffi_ns",
+    ns = "ctypes_foreign_libffi",
+    opts = [],
+    submodules = [
+        # do not sort (buildifier)
+        "ctypes_foreign.ml",
+    ],
+)
+
+#############
+ocaml_module(
+    name = "_Ctypes_foreign",
+    src = "ctypes_foreign.ml",
+    ns = ":Ctypes_foreign_libffi_ns",
+    opts = CTYPES_FOREIGN_LIBFFI_MODULE_OPTS,
+    deps = CTYPES_FOREIGN_LIBFFI_DEPS,
+)

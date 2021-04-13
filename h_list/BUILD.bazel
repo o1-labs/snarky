@@ -1,0 +1,15 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_module",
+)
+
+#############
+ocaml_module(
+    name = "h_list",
+    src = "h_list.ml",
+    opts = [],
+    visibility = ["//visibility:public"],
+    deps = [],
+)

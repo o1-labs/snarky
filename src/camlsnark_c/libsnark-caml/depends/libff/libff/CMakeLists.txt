@@ -56,6 +56,7 @@ add_library(
   algebra/curves/mnt753/mnt6753/mnt6753_init.cpp
   algebra/curves/mnt753/mnt6753/mnt6753_pairing.cpp
   algebra/curves/mnt753/mnt6753/mnt6753_pp.cpp
+  common/common.cpp
   common/double.cpp
   common/profiling.cpp
   common/utils.cpp
@@ -66,8 +67,9 @@ target_link_libraries(
   ff
 
   ${GMP_LIBRARIES}
+  ${SODIUM_LIBRARIES}
   ${GMPXX_LIBRARIES}
-  ${CRYPTO_LIBRARIES}
+  ${OPENSSL_CRYPTO_LIBRARY}
   ${PROCPS_LIBRARIES}
   ${FF_EXTRALIBS}
 )

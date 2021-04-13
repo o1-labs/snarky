@@ -40,7 +40,7 @@ module Hash = struct
   end)
 
   (* Don't do this at home *)
-  let hash ~height:_ x y = hash x y
+  let merge ~height:_ x y = hash x y
 end
 
 (* Second, we specify the type of values which we'll store in the merkle tree.
@@ -76,7 +76,7 @@ let input () =
   ; Typ.(list ~length:num_pairs (tuple2 Value.typ address_typ))
     (* [(x_1, addr_1), ..., (x_n, addr_n)]  *)
   ; Hash.typ
-  (* [root_end] *)
+    (* [root_end] *)
    ]
 
 (* Now, we write the computation that we want our snark to certify.
@@ -97,7 +97,8 @@ let update_many root_start
     Checked.t =
   (* We loop over all the updates, updating the prover's Merkle tree as we go. *)
   let rec go curr_root = function
-    | [] -> return curr_root
+    | [] ->
+        return curr_root
     | (x, addr) :: updates' ->
         (* We update the Merkle tree, computing the new Merkle root, and repeat. *)
         let%bind next_root =
@@ -132,7 +133,7 @@ let tree_start =
     Merkle_tree.create (Value.random ())
       ~hash:(fun xo ->
         Knapsack.hash_to_bits knapsack (Option.value ~default:[] xo) )
-      ~compress:(fun x y -> Knapsack.hash_to_bits knapsack (x @ y))
+      ~merge:(fun x y -> Knapsack.hash_to_bits knapsack (x @ y))
   in
   Merkle_tree.add_many t0
     (List.init (num_entries - 1) ~f:(fun _ -> Value.random ()))
@@ -151,12 +152,11 @@ let root_end = Merkle_tree.root tree_end
 
 (* And now the proof. *)
 let proof =
-  prove (Keypair.pk keypair) (input ()) (* The input spec *)
-                                        tree_start
-    (* The initial state for the prover *)
-    update_many (* The computation to create a snark for *)
-                root_start (* The inputs for the snark *)
-                           updates root_end
+  prove (Keypair.pk keypair)
+    (input ()) (* The input spec *)
+    tree_start (* The initial state for the prover *) update_many
+    (* The computation to create a snark for *)
+    root_start (* The inputs for the snark *) updates root_end
 
 (* Now we can check that the snark verifies as expected. *)
 let verified =

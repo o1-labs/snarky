@@ -1,0 +1,19 @@
+opam-version: "1.2"
+name: "group_map"
+maintainer: "opensource@o1labs.org"
+authors: ["O(1) Labs, LLC <opensource@o1labs.org>"]
+homepage: "https://github.com/o1labs/snarky"
+bug-reports: "https://github.com/o1labs/snarky/issues"
+dev-repo: "git+https://github.com/o1labs/snarky.git"
+license: "MIT"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "core_kernel" {>= "v0.12" & < "v0.13" }
+  "snarkette"
+]
+available: [ ocaml-version >= "4.07.0" ]
+descr: "
+Map from finite field elements to elliptic curves points over the finite field
+"

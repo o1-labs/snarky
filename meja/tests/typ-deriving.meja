@@ -1,0 +1,13 @@
+type t = {a : bool, b : field};
+
+type u('a) = {a1 : 'a, b1 : bool};
+
+type v('a, 'b) = {a2 : 'a, b2 : 'b};
+
+let x = fun (x) => {
+  Prover {
+    {a2: x, b2: x};
+  };
+};
+
+let y = fun () => { x(true); };

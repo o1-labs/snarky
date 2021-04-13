@@ -1,0 +1,5 @@
+(library
+ (name meja_ocaml)
+ (public_name meja.ocaml)
+ (libraries core_kernel meja.lib ocaml-compiler-libs.common meja.of_ocaml)
+ (preprocess (pps ppxlib.metaquot)))

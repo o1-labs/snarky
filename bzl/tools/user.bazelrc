@@ -1,0 +1,28 @@
+## copy this to <root>/user.bazelrc and customize (do not put under version control)
+## or pass "--bazelrc=bzl/tools/user.bazelrc" as first arg to build cmd.
+## You can also use ${HOME}/.bazelrc to control all local Bazel projects.
+
+build --color=yes
+# build --subcommands=pretty_print # omit "=pretty print" for compact output
+# build --verbose_failures
+# build --sandbox_debug
+# build --show_timestamps
+# common --keep_going
+# build --jobs 600
+
+#### Config flags ####
+# build --@ocaml//verbose               # enable verbose for all ocaml_* rules
+# build --@ocaml//mode=native           # set compilation mode for ocaml_* rules , bytecode (default) or native
+# build --@ppx//verbose                 # enable verbose for all ppx_* rules
+# build --@ppx//mode=native             # set compilation mode for ppx_* rules, bytecode (default) or native
+# build --@ppx//print:text              # all ppx processing emits text instead of binary ast (-dump-ast)
+
+################################################################
+## enable both of these to set the macos version
+# build:macos --macos_minimum_os='10.15'
+# build --config=macos
+
+## Use with caution; symlinks may confuse Bazel in some situations
+# build --symlink_prefix=.bazel/   # use hidden dir instead of top-level symlinks
+# build --experimental_no_product_name_out_symlink # do not create `bazel-out` symlink
+

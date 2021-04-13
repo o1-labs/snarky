@@ -1,0 +1,270 @@
+module Store :
+{
+   type t('a);
+   
+   let (>>=) : t('a) -> ('a -> t('b)) -> t('b);
+   
+   let (>>|) : t('a) -> ('a -> 'b) -> t('b);
+   
+   module Monad_infix :
+   {
+      let (>>=) : t('a) -> ('a -> t('b)) -> t('b);
+      
+      let (>>|) : t('a) -> ('a -> 'b) -> t('b);
+      
+      };
+   
+   let bind : t('a) -> ('a -> t('b)) -> t('b);
+   
+   let return : 'a -> t('a);
+   
+   let map : t('a) -> ('a -> 'b) -> t('b);
+   
+   let join : t(t('a)) -> t('a);
+   
+   let ignore_m : t('a) -> t(unit);
+   
+   let all : list(t('a)) -> t(list('a));
+   
+   let all_unit : list(t(unit)) -> t(unit);
+   
+   let all_ignore : list(t(unit)) -> t(unit);
+   
+   module Let_syntax :
+   {
+      let (>>=) : t('a) -> ('a -> t('b)) -> t('b);
+      
+      let (>>|) : t('a) -> ('a -> 'b) -> t('b);
+      
+      let return : 'a -> t('a);
+      
+      let bind : t('a) -> ('a -> t('b)) -> t('b);
+      
+      let map : t('a) -> ('a -> 'b) -> t('b);
+      
+      let both : t('a) -> t('b) -> t(('a, 'b));
+      
+      module Open_on_rhs : {
+                              };
+      
+      module Let_syntax :
+      {
+         let return : 'a -> t('a);
+         
+         let bind : t('a) -> ('a -> t('b)) -> t('b);
+         
+         let map : t('a) -> ('a -> 'b) -> t('b);
+         
+         let both : t('a) -> t('b) -> t(('a, 'b));
+         
+         module Open_on_rhs : {
+                                 };
+         
+         };
+      
+      };
+   
+   let store : field -> t(Field.Var.t);
+   
+   };
+
+module Alloc :
+{
+   type t('a);
+   
+   let (>>=) : t('a) -> ('a -> t('b)) -> t('b);
+   
+   let (>>|) : t('a) -> ('a -> 'b) -> t('b);
+   
+   module Monad_infix :
+   {
+      let (>>=) : t('a) -> ('a -> t('b)) -> t('b);
+      
+      let (>>|) : t('a) -> ('a -> 'b) -> t('b);
+      
+      };
+   
+   let bind : t('a) -> ('a -> t('b)) -> t('b);
+   
+   let return : 'a -> t('a);
+   
+   let map : t('a) -> ('a -> 'b) -> t('b);
+   
+   let join : t(t('a)) -> t('a);
+   
+   let ignore_m : t('a) -> t(unit);
+   
+   let all : list(t('a)) -> t(list('a));
+   
+   let all_unit : list(t(unit)) -> t(unit);
+   
+   let all_ignore : list(t(unit)) -> t(unit);
+   
+   module Let_syntax :
+   {
+      let (>>=) : t('a) -> ('a -> t('b)) -> t('b);
+      
+      let (>>|) : t('a) -> ('a -> 'b) -> t('b);
+      
+      let return : 'a -> t('a);
+      
+      let bind : t('a) -> ('a -> t('b)) -> t('b);
+      
+      let map : t('a) -> ('a -> 'b) -> t('b);
+      
+      let both : t('a) -> t('b) -> t(('a, 'b));
+      
+      module Open_on_rhs : {
+                              };
+      
+      module Let_syntax :
+      {
+         let return : 'a -> t('a);
+         
+         let bind : t('a) -> ('a -> t('b)) -> t('b);
+         
+         let map : t('a) -> ('a -> 'b) -> t('b);
+         
+         let both : t('a) -> t('b) -> t(('a, 'b));
+         
+         module Open_on_rhs : {
+                                 };
+         
+         };
+      
+      };
+   
+   let alloc : t(Field.Var.t);
+   
+   };
+
+module Read :
+{
+   type t('a);
+   
+   let (>>=) : t('a) -> ('a -> t('b)) -> t('b);
+   
+   let (>>|) : t('a) -> ('a -> 'b) -> t('b);
+   
+   module Monad_infix :
+   {
+      let (>>=) : t('a) -> ('a -> t('b)) -> t('b);
+      
+      let (>>|) : t('a) -> ('a -> 'b) -> t('b);
+      
+      };
+   
+   let bind : t('a) -> ('a -> t('b)) -> t('b);
+   
+   let return : 'a -> t('a);
+   
+   let map : t('a) -> ('a -> 'b) -> t('b);
+   
+   let join : t(t('a)) -> t('a);
+   
+   let ignore_m : t('a) -> t(unit);
+   
+   let all : list(t('a)) -> t(list('a));
+   
+   let all_unit : list(t(unit)) -> t(unit);
+   
+   let all_ignore : list(t(unit)) -> t(unit);
+   
+   module Let_syntax :
+   {
+      let (>>=) : t('a) -> ('a -> t('b)) -> t('b);
+      
+      let (>>|) : t('a) -> ('a -> 'b) -> t('b);
+      
+      let return : 'a -> t('a);
+      
+      let bind : t('a) -> ('a -> t('b)) -> t('b);
+      
+      let map : t('a) -> ('a -> 'b) -> t('b);
+      
+      let both : t('a) -> t('b) -> t(('a, 'b));
+      
+      module Open_on_rhs : {
+                              };
+      
+      module Let_syntax :
+      {
+         let return : 'a -> t('a);
+         
+         let bind : t('a) -> ('a -> t('b)) -> t('b);
+         
+         let map : t('a) -> ('a -> 'b) -> t('b);
+         
+         let both : t('a) -> t('b) -> t(('a, 'b));
+         
+         module Open_on_rhs : {
+                                 };
+         
+         };
+      
+      };
+   
+   let read : Field.Var.t -> t(field);
+   
+   };
+
+type t('var, 'value) = {
+  store: 'value -> Store.t('var),
+  read: 'var -> Read.t('value),
+  alloc: Alloc.t('var),
+  check: 'var -> unit
+};
+
+let store : {t('var, 'value)} -> 'value -> Store.t('var);
+
+let read : {t('var, 'value)} -> 'var -> Read.t('value);
+
+let alloc : {t('var, _)} -> Alloc.t('var);
+
+let check : {t('var, _)} -> 'var -> unit;
+
+/*let unit : t(unit, unit);*/
+
+/*let field : t(Field.Var.t, field);*/
+
+/* Hack. These can go away when the stdlib includes the type declarations for
+   these: the conversions will be generated automatically. */
+instance unit : unit --> unit;
+
+instance field : field --> field;
+
+instance boolean : boolean --> bool;
+
+Prover {
+instance unit : unit --> unit;
+
+instance field : field --> field;
+
+instance boolean : boolean --> bool;
+};
+
+let tuple2 :
+t('var1, 'value1) ->
+t('var2, 'value2) -> t(('var1, 'var2), ('value1, 'value2));
+
+let (*) :
+t('var1, 'value1) ->
+t('var2, 'value2) -> t(('var1, 'var2), ('value1, 'value2));
+
+let tuple3 :
+t('var1, 'value1) ->
+t('var2, 'value2) ->
+t('var3, 'value3) ->
+t(('var1, 'var2, 'var3), ('value1, 'value2, 'value3));
+
+let list : int -> t('var, 'value) -> t(list('var), list('value));
+
+let array : int -> t('var, 'value) -> t(array('var), array('value));
+
+let transport :
+t('var, 'value1) ->
+('value2 -> 'value1) -> ('value1 -> 'value2) -> t('var, 'value2);
+
+let transport_var :
+t('var1, 'value) ->
+('var2 -> 'var1) -> ('var1 -> 'var2) -> t('var2, 'value);

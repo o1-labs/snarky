@@ -1,0 +1,35 @@
+module A = {
+  type t;
+};
+
+module B = {
+  type t;
+
+  module A = {
+    type t;
+  };
+
+  module B = {
+    type t;
+  };
+};
+
+type t;
+
+let f = fun (f, x : t, y : A.t, z : B.t) => {
+  f(x, y, z);
+};
+
+module C = {
+  open B;
+
+  let f = fun (f, x : t, y : A.t, z : B.t) => {
+    f(x, y, z);
+  };
+};
+
+let g = fun (z, x, y) => {
+  let x = f(z, x, y);
+  let y = C.f(z, x, y);
+  (x, y);
+};

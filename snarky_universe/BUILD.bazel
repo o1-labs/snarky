@@ -1,0 +1,258 @@
+## OBAZL GENERATED FILE ## To retain edits (prevent overwrite), delete this line.
+
+load(
+    "@obazl_rules_ocaml//ocaml:rules.bzl",
+    "ocaml_archive",
+    "ocaml_interface",
+    "ocaml_module",
+    "ocaml_ns",
+    "ppx_executable",
+)
+
+################################################################
+## STANZA 1: LIBRARY SNARKY_UNIVERSE
+################################################################
+SNARKY_UNIVERSE_INTERFACE_OPTS = []
+
+SNARKY_UNIVERSE_MODULE_OPTS = []
+
+SNARKY_UNIVERSE_PPX_EXECUTABLE_OPTS = []
+
+SNARKY_UNIVERSE_DEPS = [
+    # do not sort (buildifier)
+    "@opam//pkg:core",
+    "@snarky//sponge",
+    "@snarky//snarkette",
+    "@snarky//snarky_integer",
+    "@snarky//snarky_curve",
+    "@snarky//snarky_signature",
+    "@snarky//src/intf:snarky_intf",
+]
+
+##############
+ocaml_archive(
+    name = "snarky_universe",
+    opts = [],
+    visibility = ["//visibility:public"],
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":_Curve",
+        ":_Group",
+        ":_Hash",
+        ":_Input_spec",
+        ":_Intf",
+        ":_Membership_proof",
+        ":_Merkle_tree_unchecked",
+        ":_Snarky_universe",
+    ],
+)
+
+#########
+ocaml_ns(
+    name = "Snarky_universe_ns",
+    ns = "snarky_universe",
+    opts = [],
+    submodules = [
+        # do not sort (buildifier)
+        "curve.ml",
+        "group.ml",
+        "hash.ml",
+        "input_spec.ml",
+        "intf.ml",
+        "membership_proof.ml",
+        "merkle_tree_unchecked.ml",
+        "snarky_universe.ml",
+    ],
+)
+
+#############
+ocaml_module(
+    name = "_Curve",
+    src = "curve.ml",
+    ns = ":Snarky_universe_ns",
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "snarky_universe",
+    ],
+    deps = SNARKY_UNIVERSE_DEPS,
+)
+
+#############
+ocaml_module(
+    name = "_Group",
+    src = "group.ml",
+    ns = ":Snarky_universe_ns",
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "snarky_universe",
+    ],
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":_Curve",
+    ],
+)
+
+#############
+ocaml_module(
+    name = "_Hash",
+    src = "hash.ml",
+    ns = ":Snarky_universe_ns",
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "snarky_universe",
+    ],
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":_Curve",
+    ],
+)
+
+#############
+ocaml_module(
+    name = "_Input_spec",
+    src = "input_spec.ml",
+    ns = ":Snarky_universe_ns",
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "snarky_universe",
+    ],
+    deps = SNARKY_UNIVERSE_DEPS,
+)
+
+#############
+ocaml_module(
+    name = "_Intf",
+    src = "intf.ml",
+    ns = ":Snarky_universe_ns",
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "snarky_universe",
+    ],
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":_Input_spec",
+    ],
+)
+
+#############
+ocaml_module(
+    name = "_Membership_proof",
+    src = "membership_proof.ml",
+    ns = ":Snarky_universe_ns",
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "snarky_universe",
+    ],
+    ppx_print = "@ppx//print:binary",
+    deps = SNARKY_UNIVERSE_DEPS,
+)
+
+#############
+ocaml_module(
+    name = "_Merkle_tree_unchecked",
+    src = "merkle_tree_unchecked.ml",
+    ns = ":Snarky_universe_ns",
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "snarky_universe",
+    ],
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":_Membership_proof",
+    ],
+)
+
+#############
+ocaml_module(
+    name = "_Snarky_universe",
+    src = "snarky_universe.ml",
+    intf = ":_Snarky_universe.cmi",
+    ns = ":Snarky_universe_ns",
+    opts = SNARKY_UNIVERSE_MODULE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "snarky_universe",
+    ],
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":_Curve",
+        ":_Group",
+        ":_Hash",
+        ":_Input_spec",
+        ":_Intf",
+        ":_Membership_proof",
+        ":_Merkle_tree_unchecked",
+    ],
+)
+
+################
+ocaml_interface(
+    name = "_Snarky_universe.cmi",
+    src = "snarky_universe.mli",
+    ns = ":Snarky_universe_ns",
+    opts = SNARKY_UNIVERSE_INTERFACE_OPTS,
+    ppx = ":ppx1.exe",
+    ppx_args = [
+        # do not sort (buildifier)
+        "-inline-test-lib",
+        "snarky_universe",
+    ],
+    deps = SNARKY_UNIVERSE_DEPS + [
+        # do not sort (buildifier)
+        ":_Curve",
+        ":_Intf",
+    ],
+)
+
+###############
+ppx_executable(
+    name = "ppx1.exe",
+    lazy_deps = [
+        "@opam//pkg:ppx_expect.collector",
+        "@opam//pkg:yojson",
+        "@opam//pkg:ppx_hash.runtime-lib",
+        "@opam//pkg:ppx_deriving_yojson.runtime",
+        "@opam//pkg:ppx_sexp_conv.runtime-lib",
+        "@opam//pkg:ppx_deriving.runtime",
+        "@opam//pkg:ppx_assert.runtime-lib",
+        "@opam//pkg:ppx_compare.runtime-lib",
+        "@opam//pkg:ppx_inline_test.runtime-lib",
+        "@opam//pkg:ppx_bench.runtime-lib",
+        "@opam//pkg:ppx_enumerate.runtime-lib",
+        "@opam//pkg:ppx_module_timer.runtime",
+    ],
+    main = "//bzl/ppx/exe:Driver",
+    opts = [],
+    visibility = [
+        "//snarky_universe:__pkg__",
+    ],
+    deps = [
+        "@opam//pkg:ppx_deriving.eq",
+        "@opam//pkg:ppx_deriving_yojson",
+        "@opam//pkg:ppx_jane",
+        "@opam//pkg:ppxlib",
+    ],
+)

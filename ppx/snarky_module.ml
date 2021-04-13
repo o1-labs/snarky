@@ -22,18 +22,24 @@ type modinfo = ModuleName of lid | IdentName of lid | BaseModule of lid
 let cmp_modinfo x y =
   match (x, y) with
   | ModuleName x, ModuleName y
-   |IdentName x, IdentName y
-   |BaseModule x, BaseModule y ->
-      Pervasives.compare x.txt y.txt
-  | ModuleName _, _ -> -1
-  | _, ModuleName _ -> 1
-  | IdentName _, _ -> -1
-  | _, IdentName _ -> 1
+  | IdentName x, IdentName y
+  | BaseModule x, BaseModule y ->
+      compare x.txt y.txt
+  | ModuleName _, _ ->
+      -1
+  | _, ModuleName _ ->
+      1
+  | IdentName _, _ ->
+      -1
+  | _, IdentName _ ->
+      1
 
 let parse_to_modinfo expr =
   match expr.pexp_desc with
-  | Pexp_construct (ident, None) -> ModuleName ident
-  | Pexp_ident ({txt= Ldot _; _} as ident) -> IdentName ident
+  | Pexp_construct (ident, None) ->
+      ModuleName ident
+  | Pexp_ident ({txt= Ldot _; _} as ident) ->
+      IdentName ident
   | _ ->
       raise_errorf ~loc:expr.pexp_loc
         "Expected a bare module name or a type identifier of form \
@@ -86,43 +92,55 @@ let last_common_name lid1 lid2 =
   let names2 = Longident.flatten_exn lid2 in
   let rec last_equal prev_name names1 names2 =
     match (names1, names2) with
-    | a :: names1, b :: names2 when a = b -> last_equal a names1 names2
-    | _, _ -> prev_name
+    | a :: names1, b :: names2 when a = b ->
+        last_equal a names1 names2
+    | _, _ ->
+        prev_name
   in
   last_equal "unknown" names1 names2
 
 let rec longident_of_revlist ~loc = function
-  | [] -> raise_errorf ~loc "No common prefix found."
-  | [a] -> Lident a
-  | a :: rest -> Ldot (longident_of_revlist ~loc rest, a)
+  | [] ->
+      raise_errorf ~loc "No common prefix found."
+  | [a] ->
+      Lident a
+  | a :: rest ->
+      Ldot (longident_of_revlist ~loc rest, a)
 
 let common_prefix ~loc lid1 lid2 =
   let names1 = Longident.flatten_exn lid1 in
   let names2 = Longident.flatten_exn lid2 in
   let rec common_prefix names1 names2 =
     match (names1, names2) with
-    | a :: names1, b :: names2 when a = b -> a :: common_prefix names1 names2
-    | _, _ -> []
+    | a :: names1, b :: names2 when a = b ->
+        a :: common_prefix names1 names2
+    | _, _ ->
+        []
   in
   longident_of_revlist ~loc (List.rev (common_prefix names1 names2))
 
 let is_listlike expr =
   match expr.pexp_desc with
-  | Pexp_array _ | Pexp_tuple _
-   |Pexp_construct
+  | Pexp_array _
+  | Pexp_tuple _
+  | Pexp_construct
       ({txt= Lident "::"; _}, Some {pexp_desc= Pexp_tuple [_; _]; _})
-   |Pexp_construct ({txt= Lident "[]"; _}, None) ->
+  | Pexp_construct ({txt= Lident "[]"; _}, None) ->
       true
-  | _ -> false
+  | _ ->
+      false
 
 let rec parse_listlike expr =
   match expr.pexp_desc with
-  | Pexp_array exprs -> exprs
-  | Pexp_tuple exprs -> exprs
+  | Pexp_array exprs ->
+      exprs
+  | Pexp_tuple exprs ->
+      exprs
   | Pexp_construct
       ({txt= Lident "::"; _}, Some {pexp_desc= Pexp_tuple [hd; tl]; _}) ->
       hd :: parse_listlike tl
-  | Pexp_construct ({txt= Lident "[]"; _}, None) -> []
+  | Pexp_construct ({txt= Lident "[]"; _}, None) ->
+      []
   | _ ->
       raise_errorf ~loc:expr.pexp_loc
         "Could not convert expression into a list of expressions"
@@ -131,8 +149,10 @@ module Polydef = struct
   let parse_field var_name_map ({loc; txt= name}, expr) =
     let label =
       match name with
-      | Lident label -> {loc; txt= label}
-      | _ -> raise_errorf ~loc "Expected a bare identifier."
+      | Lident label ->
+          {loc; txt= label}
+      | _ ->
+          raise_errorf ~loc "Expected a bare identifier."
     in
     let modules = if is_listlike expr then parse_listlike expr else [expr] in
     let modules = List.map modules ~f:parse_to_modinfo in
@@ -141,11 +161,11 @@ module Polydef = struct
       | [ModuleName {txt= ident; _}] | [IdentName {txt= Ldot (ident, _); _}] ->
           List.hd_exn (Longident.flatten_exn ident)
       | ModuleName {txt= ident1; _} :: ModuleName {txt= ident2; _} :: _
-       |ModuleName {txt= ident1; _}
+      | ModuleName {txt= ident1; _}
         :: IdentName {txt= Ldot (ident2, _); _} :: _
-       |IdentName {txt= Ldot (ident1, _); _}
+      | IdentName {txt= Ldot (ident1, _); _}
         :: ModuleName {txt= ident2; _} :: _
-       |IdentName {txt= Ldot (ident1, _); _}
+      | IdentName {txt= Ldot (ident1, _); _}
         :: IdentName {txt= Ldot (ident2, _); _} :: _ ->
           last_common_name ident1 ident2
       | _ ->
@@ -192,8 +212,9 @@ module Polydef = struct
               Pstr_value
                 ( Nonrecursive
                 , [ { pvb_pat= {ppat_desc= Ppat_var name; _}
-                    ; pvb_expr= {pexp_desc= Pexp_record (fields, None); _}; _
-                    } ] ); _ } ] ->
+                    ; pvb_expr= {pexp_desc= Pexp_record (fields, None); _}
+                    ; _ } ] )
+          ; _ } ] ->
         let fields =
           List.folding_map fields ~f:parse_field
             ~init:(Map.empty (module String))
@@ -206,12 +227,15 @@ module Polydef = struct
         let map = Map.add_exn map ~key:name.txt ~data:polyrecord in
         let str = build polyrecord in
         Some (str, (map, last_modules, current_module))
-    | _ -> None
+    | _ ->
+        None
 end
 
 let rec longident_add lid = function
-  | [] -> lid
-  | name :: names -> longident_add (Ldot (lid, name)) names
+  | [] ->
+      lid
+  | name :: names ->
+      longident_add (Ldot (lid, name)) names
 
 module Typedef = struct
   let build ~name ~map ~polyname ~current_module polyrecord =
@@ -240,8 +264,10 @@ module Typedef = struct
       List.map modules ~f:(fun (m, _) ->
           let lid =
             match m with
-            | ModuleName lid -> {loc= lid.loc; txt= Ldot (lid.txt, name.txt)}
-            | IdentName lid -> lid
+            | ModuleName lid ->
+                {loc= lid.loc; txt= Ldot (lid.txt, name.txt)}
+            | IdentName lid ->
+                lid
             | BaseModule lid ->
                 { loc= lid.loc
                 ; txt= Ldot (longident_add lid.txt module_names, name.txt) }
@@ -262,19 +288,22 @@ module Typedef = struct
               Pstr_value
                 ( Nonrecursive
                 , [ { pvb_pat= {ppat_desc= Ppat_var name; _}
-                    ; pvb_expr= {pexp_desc= Pexp_ident polyname; _}; _ } ] ); _
-          } ]
-     |PStr
+                    ; pvb_expr= {pexp_desc= Pexp_ident polyname; _}
+                    ; _ } ] )
+          ; _ } ]
+    | PStr
         [ { pstr_desc=
               Pstr_type
                 ( _
                 , [ { ptype_name= name
                     ; ptype_manifest=
-                        Some {ptyp_desc= Ptyp_constr (polyname, []); _}; _ } ]
-                ); _ } ] ->
+                        Some {ptyp_desc= Ptyp_constr (polyname, []); _}
+                    ; _ } ] )
+          ; _ } ] ->
         let polyrecord =
           match Map.find map (Longident.last_exn polyname.txt) with
-          | Some polyrecord -> polyrecord
+          | Some polyrecord ->
+              polyrecord
           | None ->
               raise_errorf ~loc:name.loc
                 "Could not find the polymorphic record %s" name.txt
@@ -283,7 +312,8 @@ module Typedef = struct
           build ~name ~map ~polyname ~current_module polyrecord
         in
         Some (str, (map, last_modules, current_module))
-    | _ -> None
+    | _ ->
+        None
 end
 
 module Snarkytyp = struct
@@ -314,8 +344,10 @@ module Snarkytyp = struct
   let build ~loc ~name ~typ polyrecord =
     let typ_mod =
       match typ with
-      | {txt= Ldot (typ_mod, _); loc} -> {txt= typ_mod; loc}
-      | _ -> raise_errorf ~loc:typ.loc "Expected a path to Typ.t."
+      | {txt= Ldot (typ_mod, _); loc} ->
+          {txt= typ_mod; loc}
+      | _ ->
+          raise_errorf ~loc:typ.loc "Expected a path to Typ.t."
     in
     let typ_val m = {txt= Ldot (typ_mod.txt, m); loc= typ_mod.loc} in
     let field_pattern = fields_pattern ~loc polyrecord in
@@ -351,26 +383,30 @@ module Snarkytyp = struct
                 ( { pexp_desc=
                       Pexp_constraint
                         ( { pexp_desc=
-                              Pexp_ident {txt= Lident name; loc= name_loc}; _
-                          }
+                              Pexp_ident {txt= Lident name; loc= name_loc}
+                          ; _ }
                         , { ptyp_desc=
                               Ptyp_constr
                                 ( typ
                                 , [{ptyp_desc= Ptyp_constr (polyname, []); _}]
-                                ); _ } ); _ }
+                                )
+                          ; _ } )
+                  ; _ }
                 , _ )
           ; pstr_loc= loc } ] ->
         let name = {txt= name; loc= name_loc} in
         let polyrecord =
           match Map.find map (Longident.last_exn polyname.txt) with
-          | Some polyrecord -> polyrecord
+          | Some polyrecord ->
+              polyrecord
           | None ->
               raise_errorf ~loc:polyname.loc
                 "Could not find the polymorphic record %s" name.txt
         in
         let str = build ~loc ~name ~typ polyrecord in
         Some (str, (map, last_modules, current_module))
-    | _ -> None
+    | _ ->
+        None
 end
 
 module Polyfold = struct
@@ -380,7 +416,7 @@ module Polyfold = struct
       let f_name =
         match modinfo with
         | ModuleName {txt= ident; loc= ident_loc}
-         |IdentName {txt= Ldot (ident, _); loc= ident_loc} ->
+        | IdentName {txt= Ldot (ident, _); loc= ident_loc} ->
             {txt= Ldot (ident, name.txt); loc= ident_loc}
         | BaseModule {txt= ident; loc= ident_loc} ->
             { txt= Ldot (longident_add ident module_names, name.txt)
@@ -400,7 +436,8 @@ module Polyfold = struct
     | [] ->
         raise_errorf ~loc "Could not find a type definition to use for %s."
           name.txt
-    | [m] -> call m
+    | [m] ->
+        call m
     | m1 :: last_modules ->
         Exp.apply ~loc folder
           [ (Nolabel, call m1)
@@ -421,8 +458,11 @@ module Polyfold = struct
                               ( Nolabel
                               , None
                               , ({ppat_desc= Ppat_var var_name; _} as var)
-                              , folder ); _ }; _ } ] )
-          ; pstr_loc= loc; _ } ] ->
+                              , folder )
+                        ; _ }
+                    ; _ } ] )
+          ; pstr_loc= loc
+          ; _ } ] ->
         let str =
           [%stri
             let [%p name'] =
@@ -431,7 +471,8 @@ module Polyfold = struct
                 build ~loc ~current_module ~name ~var_name ~folder last_modules]]
         in
         Some (str, (map, last_modules, current_module))
-    | _ -> None
+    | _ ->
+        None
 end
 
 module Polyfields = struct
@@ -450,17 +491,20 @@ module Polyfields = struct
     match payload with
     | PStr
         [ { pstr_desc= Pstr_eval ({pexp_desc= Pexp_ident polyname; _}, _)
-          ; pstr_loc= loc; _ } ] ->
+          ; pstr_loc= loc
+          ; _ } ] ->
         let polyrecord =
           match Map.find map (Longident.last_exn polyname.txt) with
-          | Some polyrecord -> polyrecord
+          | Some polyrecord ->
+              polyrecord
           | None ->
               raise_errorf ~loc "Could not find the polymorphic record %s"
                 (Longident.last_exn polyname.txt)
         in
         let str = build ~loc polyrecord in
         Some (str, (map, last_modules, current_module))
-    | _ -> None
+    | _ ->
+        None
 end
 
 let snarky_module_map =
@@ -475,13 +519,20 @@ let snarky_module_map =
       match str.pstr_desc with
       | Pstr_extension (({txt= name; _}, payload), _) -> (
         match name with
-        | "polydef" -> or_default (Polydef.expand acc payload)
-        | "poly" -> or_default (Typedef.expand acc payload)
-        | "snarkytyp" -> or_default (Snarkytyp.expand acc payload)
-        | "polyfold" -> or_default (Polyfold.expand acc payload)
-        | "polyfields" -> or_default (Polyfields.expand acc payload)
-        | _ -> super#structure_item str acc )
-      | _ -> super#structure_item str acc
+        | "polydef" ->
+            or_default (Polydef.expand acc payload)
+        | "poly" ->
+            or_default (Typedef.expand acc payload)
+        | "snarkytyp" ->
+            or_default (Snarkytyp.expand acc payload)
+        | "polyfold" ->
+            or_default (Polyfold.expand acc payload)
+        | "polyfields" ->
+            or_default (Polyfields.expand acc payload)
+        | _ ->
+            super#structure_item str acc )
+      | _ ->
+          super#structure_item str acc
 
     method! module_binding bind (map, last_modules, current_module') =
       let current_module = bind.pmb_name.txt :: current_module' in
@@ -502,7 +553,8 @@ let snarky_module ~loc ~path:_ payload =
           (Map.empty (module String), [], [])
       in
       include_ ~loc (Mod.structure ~loc structure)
-  | _ -> raise_errorf ~loc "Expected [%%snarky_module] to contain a structure."
+  | _ ->
+      raise_errorf ~loc "Expected [%%snarky_module] to contain a structure."
 
 let ext =
   Extension.declare "snarky_module" Extension.Context.structure_item

@@ -1,0 +1,56 @@
+module A = {
+  let x = 15;
+  let y = 20;
+
+  Prover {
+    let a = true;
+    let b = false;
+  };
+};
+
+let z = A.x + A.y;
+
+Prover {
+  let z = A.a && A.b;
+};
+
+let z : opaque(int) = {
+  let x = A.x;
+  let y = A.y;
+  Prover {
+    if (A.a && A.b) { x; } else { y; };
+  };
+};
+
+let z : boolean = Prover {A.a && A.b;};
+
+type t = {a: field, b: boolean};
+
+let failwith_field : string -> field = failwith;
+
+Prover {
+  let field_plus = fun (_: field) => {
+    failwith_field("no.");
+  };
+
+  let field_plus = fun (_: field) => {
+    failwith("no.");
+  };
+};
+
+let in_out = fun (x: t) => {
+  Prover {
+    let {a, b} = x;
+    {a: field_plus(a), b: not(b)};
+  };
+};
+
+let a = fun (a, b) => {
+  Prover {
+    {a, b};
+  };
+};
+
+let a_1 = fun (x: field, b: boolean) => { a(x, b); };
+
+let a_2 = fun (x: field) => { a(x, true); };

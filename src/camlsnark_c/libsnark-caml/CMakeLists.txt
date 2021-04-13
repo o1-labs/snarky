@@ -108,7 +108,11 @@ if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -Wfatal-errors"
   )
   if("${MULTICORE}")
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+      if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xpreprocessor -fopenmp")
+      else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+      endif()
   endif()
   # Default optimizations flags (to override, use -DOPT_FLAGS=...)
   if("${OPT_FLAGS}" STREQUAL "")
@@ -121,20 +125,27 @@ endif()
 
 set(
   CMAKE_CXX_FLAGS
-  "${CMAKE_CXX_FLAGS} ${OPT_FLAGS}"
+  "${CMAKE_CXX_FLAGS} ${OPT_FLAGS} -fPIC"
 )
 
 find_path(GMP_INCLUDE_DIR NAMES gmp.h)
 find_library(GMP_LIBRARIES NAMES gmp libgmp)
 find_library(GMPXX_LIBRARIES NAMES gmpxx libgmpxx)
 
-include(FindPkgConfig)
-pkg_check_modules(
-  CRYPTO
-  REQUIRED
+find_library(SODIUM_LIBRARIES NAMES sodium libsodium)
 
-  libcrypto
-)
+## MacOS: make sure we use homebrew openssl, not system version
+## from https://stackoverflow.com/questions/58446253/xcode-11-ld-error-your-binary-is-not-an-allowed-client-of-usr-lib-libcrypto-dy
+## see also: https://gist.github.com/llbbl/c54f44d028d014514d5d837f64e60bac
+if (APPLE)
+    # This is a bug in CMake that causes it to prefer the system version over
+    # the one in the specified ROOT folder.
+    set(OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR} /usr/local/Cellar/openssl@1.1/1.1.1g/)
+    set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.dylib CACHE FILEPATH "" FORCE)
+    set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.dylib CACHE FILEPATH "" FORCE)
+endif()
+find_package(OpenSSL REQUIRED)
+INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
 
 if("${WITH_PROCPS}")
   pkg_check_modules(
@@ -162,6 +173,7 @@ enable_testing()
 include_directories(.)
 
 if(${CURVE} STREQUAL "BN128")
+  include_directories(depends)
   add_definitions(
     -DBN_SUPPORT_SNARK=1
   )
@@ -247,3 +259,11 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 
 add_subdirectory(depends)
 add_subdirectory(libsnark)
+add_subdirectory(prover_reference_functions)
+add_subdirectory(caml)
+
+find_package(CUDA)
+if(CUDA_FOUND)
+  add_subdirectory(cuda-fixnum)
+  add_subdirectory(cuda_prover)
+endif()

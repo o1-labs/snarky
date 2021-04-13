@@ -9,11 +9,11 @@ Snarky is written in [OCaml](https://ocaml.org/) and built on the
 
 ## Libsnark
 
-To install the dependencies for libsnark on Ubuntu, simply run:
+To install the dependencies for libsnark, simply run:
 ```sh
-sudo apt-get install build-essential cmake git libgmp3-dev libprocps4-dev python-markdown libboost-all-dev libssl-dev
+bash <(curl -sL https://raw.githubusercontent.com/o1-labs/snarky/master/scripts/depends.sh)
 ```
-(for other platforms, see these
+(to install these manually, see these
 [instructions](https://github.com/scipr-lab/libsnark#dependencies)).
 
 ## opam
@@ -36,10 +36,13 @@ eval `opam env`
 # install given version of the compiler
 opam switch create 4.07.1
 eval `opam env`
-# check you got what you want
+# check that you got what you want
 which ocaml
 ocaml --version
 ```
+
+## ReasonML
+Install the Reason tooling with `opam install reason rtop`.
 
 ## Snarky
 
