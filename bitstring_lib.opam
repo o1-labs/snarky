@@ -9,7 +9,11 @@ license: "MIT"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
+url {
+  src: "git://github.com/o1-labs/snarky.git"
+}
 depends: [
+  "ocaml" {>= "4.07.0"}
   "core" {>= "v0.12" & < "v0.13" }
   "tuple_lib"
   "ppx_deriving"
@@ -17,7 +21,6 @@ depends: [
   "bisect_ppx"
   "dune"                {build & >= "2.0"}
 ]
-available: [ ocaml-version >= "4.07.0" ]
 descr: "
 A helper library for bitstrings in snarky
 "
