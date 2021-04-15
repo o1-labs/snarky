@@ -10,7 +10,7 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
 url {
-  src: "git://github.com/o1-labs/snarky/snarky.git"
+  src: "git://github.com/o1-labs/snarky.git"
 }
 depends: [
   "ocaml" {>= "4.07.0"}
