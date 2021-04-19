@@ -1,0 +1,226 @@
+module Field = struct
+  type t = int
+
+  let to_field_elements i = [|i|]
+
+  let size_in_field_elements = 1
+
+  let of_field_elements_indexed ~offset x =
+    let x = x.(!offset) in
+    incr offset ; x
+
+  let of_field_elements = function
+    | [|x|] ->
+        x
+    | _ ->
+        raise (Invalid_argument "Field.of_field_elements")
+end
+
+module Boolean = struct
+  type t = bool
+
+  let to_field_elements b = [|(if b then 1 else 0)|]
+
+  let size_in_field_elements = 1
+
+  let of_field_elements_indexed ~offset x =
+    let x = x.(!offset) in
+    incr offset ;
+    match x with 0 -> false | 1 -> true | _ -> assert false
+
+  let of_field_elements = function
+    | [|x|] ->
+        x
+    | _ ->
+        raise (Invalid_argument "Boolean.of_field_elements")
+end
+
+type ('a, 'b) t = {a: 'a * Field.t; b: 'b * Boolean.t * Field.t}
+[@@deriving snarky_typ]
+
+let _ = fun (_ : ('a, 'b) t) -> ()
+
+let size_in_field_elements _var_a_size_in_field_elements
+    _var_b_size_in_field_elements =
+  Stdlib.( + )
+    (Stdlib.( + )
+       (Stdlib.( + ) 0 _var_a_size_in_field_elements)
+       Field.size_in_field_elements)
+    (Stdlib.( + )
+       (Stdlib.( + )
+          (Stdlib.( + ) 0 _var_b_size_in_field_elements)
+          Boolean.size_in_field_elements)
+       Field.size_in_field_elements)
+
+let _ = size_in_field_elements
+
+let to_field_elements _var_a_to_field_elements _var_b_to_field_elements {a; b}
+    =
+  Stdlib.Array.append
+    ((fun (ppx_typ__x_0, ppx_typ__x_1) ->
+       Stdlib.Array.append
+         (_var_a_to_field_elements ppx_typ__x_0)
+         (Field.to_field_elements ppx_typ__x_1) )
+       a)
+    ((fun (ppx_typ__x_0, ppx_typ__x_1, ppx_typ__x_2) ->
+       Stdlib.Array.append
+         (Stdlib.Array.append
+            (_var_b_to_field_elements ppx_typ__x_0)
+            (Boolean.to_field_elements ppx_typ__x_1))
+         (Field.to_field_elements ppx_typ__x_2) )
+       b)
+
+let _ = to_field_elements
+
+let of_field_elements_indexed _var_a_of_field_elements_indexed
+    _var_b_of_field_elements_indexed ~offset:ppx_typ__offset ppx_typ__array =
+  let a =
+    (fun ~offset:ppx_typ__offset ppx_typ__array ->
+      let ppx_typ__x_0 =
+        _var_a_of_field_elements_indexed ~offset:ppx_typ__offset ppx_typ__array
+      in
+      let ppx_typ__x_1 =
+        Field.of_field_elements_indexed ~offset:ppx_typ__offset ppx_typ__array
+      in
+      (ppx_typ__x_0, ppx_typ__x_1) )
+      ~offset:ppx_typ__offset ppx_typ__array
+  in
+  let b =
+    (fun ~offset:ppx_typ__offset ppx_typ__array ->
+      let ppx_typ__x_0 =
+        _var_b_of_field_elements_indexed ~offset:ppx_typ__offset ppx_typ__array
+      in
+      let ppx_typ__x_1 =
+        Boolean.of_field_elements_indexed ~offset:ppx_typ__offset
+          ppx_typ__array
+      in
+      let ppx_typ__x_2 =
+        Field.of_field_elements_indexed ~offset:ppx_typ__offset ppx_typ__array
+      in
+      (ppx_typ__x_0, ppx_typ__x_1, ppx_typ__x_2) )
+      ~offset:ppx_typ__offset ppx_typ__array
+  in
+  {a; b}
+
+let _ = of_field_elements_indexed
+
+module type S = sig
+  module M : sig
+    type ('a, 'b) t [@@deriving snarky_typ]
+
+    include
+      sig
+        [@@@ocaml.warning "-32"]
+
+        val size_in_field_elements : int -> int -> int
+
+        val to_field_elements :
+             ('a -> Field.t array)
+          -> ('b -> Field.t array)
+          -> ('a, 'b) t
+          -> Field.t array
+
+        val of_field_elements_indexed :
+             (offset:int ref -> Field.t array -> 'a)
+          -> (offset:int ref -> Field.t array -> 'b)
+          -> offset:int ref
+          -> Field.t array
+          -> ('a, 'b) t
+    end[@@ocaml.doc "@inline"]
+  end
+
+  type t [@@deriving snarky_typ]
+
+  include
+    sig
+      [@@@ocaml.warning "-32"]
+
+      val size_in_field_elements : int
+
+      val to_field_elements : t -> Field.t array
+
+      val of_field_elements_indexed : offset:int ref -> Field.t array -> t
+
+      val of_field_elements : Field.t array -> t
+  end[@@ocaml.doc "@inline"]
+end
+
+module Test : S = struct
+  module M = struct
+    type ('a, 'b) t = {a: 'a * Field.t; b: 'b * Boolean.t * Field.t}
+    [@@deriving snarky_typ]
+
+    let _ = fun (_ : ('a, 'b) t) -> ()
+
+    let size_in_field_elements _var_a_size_in_field_elements
+        _var_b_size_in_field_elements =
+      Stdlib.( + )
+        (Stdlib.( + )
+           (Stdlib.( + ) 0 _var_a_size_in_field_elements)
+           Field.size_in_field_elements)
+        (Stdlib.( + )
+           (Stdlib.( + )
+              (Stdlib.( + ) 0 _var_b_size_in_field_elements)
+              Boolean.size_in_field_elements)
+           Field.size_in_field_elements)
+
+    let _ = size_in_field_elements
+
+    let to_field_elements _var_a_to_field_elements _var_b_to_field_elements
+        {a; b} =
+      Stdlib.Array.append
+        ((fun (ppx_typ__x_0, ppx_typ__x_1) ->
+           Stdlib.Array.append
+             (_var_a_to_field_elements ppx_typ__x_0)
+             (Field.to_field_elements ppx_typ__x_1) )
+           a)
+        ((fun (ppx_typ__x_0, ppx_typ__x_1, ppx_typ__x_2) ->
+           Stdlib.Array.append
+             (Stdlib.Array.append
+                (_var_b_to_field_elements ppx_typ__x_0)
+                (Boolean.to_field_elements ppx_typ__x_1))
+             (Field.to_field_elements ppx_typ__x_2) )
+           b)
+
+    let _ = to_field_elements
+
+    let of_field_elements_indexed _var_a_of_field_elements_indexed
+        _var_b_of_field_elements_indexed ~offset:ppx_typ__offset ppx_typ__array
+        =
+      let a =
+        (fun ~offset:ppx_typ__offset ppx_typ__array ->
+          let ppx_typ__x_0 =
+            _var_a_of_field_elements_indexed ~offset:ppx_typ__offset
+              ppx_typ__array
+          in
+          let ppx_typ__x_1 =
+            Field.of_field_elements_indexed ~offset:ppx_typ__offset
+              ppx_typ__array
+          in
+          (ppx_typ__x_0, ppx_typ__x_1) )
+          ~offset:ppx_typ__offset ppx_typ__array
+      in
+      let b =
+        (fun ~offset:ppx_typ__offset ppx_typ__array ->
+          let ppx_typ__x_0 =
+            _var_b_of_field_elements_indexed ~offset:ppx_typ__offset
+              ppx_typ__array
+          in
+          let ppx_typ__x_1 =
+            Boolean.of_field_elements_indexed ~offset:ppx_typ__offset
+              ppx_typ__array
+          in
+          let ppx_typ__x_2 =
+            Field.of_field_elements_indexed ~offset:ppx_typ__offset
+              ppx_typ__array
+          in
+          (ppx_typ__x_0, ppx_typ__x_1, ppx_typ__x_2) )
+          ~offset:ppx_typ__offset ppx_typ__array
+      in
+      {a; b}
+
+    let _ = of_field_elements_indexed
+  end
+
+  include Field
+end
