@@ -169,11 +169,10 @@ module Size_in_field_elements = struct
   let extension ~loc ~path:_ ty = of_type ~loc ty
 
   let deriver =
-    Deriving.add
+    Deriving.add deriver_name
       ~str_type_decl:(Deriving.Generator.make_noarg str_type_decl)
       ~sig_type_decl:(Deriving.Generator.make_noarg sig_type_decl)
       ~extension
-      deriver_name
 end
 
 module To_field_elements = struct
@@ -302,11 +301,10 @@ module To_field_elements = struct
   let extension ~loc ~path:_ ty = of_type ~loc ty
 
   let deriver =
-    Deriving.add
+    Deriving.add deriver_name
       ~str_type_decl:(Deriving.Generator.make_noarg str_type_decl)
       ~sig_type_decl:(Deriving.Generator.make_noarg sig_type_decl)
       ~extension
-      deriver_name
 end
 
 module Of_field_elements_indexed = struct
@@ -444,11 +442,10 @@ module Of_field_elements_indexed = struct
   let extension ~loc ~path:_ ty = of_type ~loc ty
 
   let deriver =
-    Deriving.add
+    Deriving.add deriver_name
       ~str_type_decl:(Deriving.Generator.make_noarg str_type_decl)
       ~sig_type_decl:(Deriving.Generator.make_noarg sig_type_decl)
       ~extension
-      deriver_name
 end
 
 module Of_field_elements = struct
@@ -502,7 +499,7 @@ module Of_field_elements = struct
   let extension = Of_field_elements_indexed.extension
 
   let deriver =
-    Deriving.add
+    Deriving.add deriver_name
       ~str_type_decl:
         (Deriving.Generator.make_noarg
            ~deps:
@@ -514,7 +511,6 @@ module Of_field_elements = struct
              [Size_in_field_elements.deriver; Of_field_elements_indexed.deriver]
            sig_type_decl)
       ~extension
-      deriver_name
 end
 
 module Snarky_typ = struct
