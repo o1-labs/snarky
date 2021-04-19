@@ -302,3 +302,208 @@ module To_field_elements = struct
       ~sig_type_decl:(Deriving.Generator.make_noarg sig_type_decl)
       deriver_name
 end
+
+module Of_field_elements_indexed = struct
+  let deriver_name = "of_field_elements_indexed"
+
+  let rec of_type ?loc (typ : core_type) : expression =
+    let open Ast_builder.Default in
+    match get_expr_attribute ~deriver_name typ.ptyp_attributes with
+    | Some e ->
+        e
+    | None -> (
+        let loc = match loc with Some loc -> loc | None -> typ.ptyp_loc in
+        match typ.ptyp_desc with
+        | Ptyp_any
+        | Ptyp_arrow _
+        | Ptyp_object _
+        | Ptyp_class _
+        | Ptyp_alias _
+        | Ptyp_variant _
+        | Ptyp_poly _
+        | Ptyp_package _
+        | Ptyp_extension _ ->
+            raise_errorf ~deriver_name ~loc:typ.ptyp_loc
+              "Don't know how to build an expression for@,%a"
+              Pprintast.core_type typ
+        | Ptyp_var name ->
+            evar ~loc ("_var_" ^ mangle ~suffix:deriver_name name)
+        | Ptyp_tuple typs ->
+            [%expr
+              fun ~offset:ppx_typ__offset ppx_typ__array ->
+                [%e
+                  let max = ref (-1) in
+                  let init =
+                    pexp_tuple ~loc
+                      (List.mapi typs ~f:(fun i _typ ->
+                           max := Int.max !max i ;
+                           evar ~loc (Stdlib.Format.sprintf "ppx_typ__x_%i" i)
+                       ))
+                  in
+                  List.fold_right typs ~init ~f:(fun typ acc ->
+                      let i = !max in
+                      Int.decr max ;
+                      [%expr
+                        let [%p
+                              pvar ~loc
+                                (Stdlib.Format.sprintf "ppx_typ__x_%i" i)] =
+                          [%e of_type typ] ~offset:ppx_typ__offset
+                            ppx_typ__array
+                        in
+                        [%e acc]] )]]
+        | Ptyp_constr (lid, []) ->
+            expr_of_lid ~loc (mangle_lid ~suffix:deriver_name lid.txt)
+        | Ptyp_constr (lid, args) ->
+            pexp_apply ~loc
+              (expr_of_lid ~loc:lid.loc
+                 (mangle_lid ~suffix:deriver_name lid.txt))
+              (List.map ~f:(fun typ -> (Asttypes.Nolabel, of_type typ)) args) )
+
+  let str_decl ?loc (decl : type_declaration) : structure_item =
+    let open Ast_builder.Default in
+    let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
+    match decl with
+    | {ptype_kind= Ptype_record fields; ptype_name= name; _} ->
+        [%stri
+          let [%p pvar ~loc (mangle ~suffix:deriver_name name.txt)] =
+            [%e
+              let body =
+                let field_expr {pld_attributes; pld_type; _} =
+                  [%expr
+                    [%e
+                      match
+                        get_expr_attribute ~deriver_name pld_attributes
+                      with
+                      | Some e ->
+                          e
+                      | None ->
+                          of_type pld_type]
+                      ~offset:ppx_typ__offset ppx_typ__array]
+                in
+                let init =
+                  pexp_record ~loc
+                    (List.map fields ~f:(fun {pld_name; _} ->
+                         ( mk_lid pld_name
+                         , pexp_ident ~loc:pld_name.loc (mk_lid pld_name) ) ))
+                    None
+                in
+                List.fold_right fields ~init ~f:(fun field acc ->
+                    [%expr
+                      let [%p pvar ~loc:field.pld_name.loc field.pld_name.txt]
+                          =
+                        [%e field_expr field]
+                      in
+                      [%e acc]] )
+              in
+              params_wrap ~loc ~deriver_name decl
+                [%expr fun ~offset:ppx_typ__offset ppx_typ__array -> [%e body]]]]
+    | {ptype_manifest= Some typ; ptype_name= name; _} ->
+        [%stri
+          let [%p pvar ~loc (mangle ~suffix:deriver_name name.txt)] =
+            [%e params_wrap ~loc ~deriver_name decl (of_type typ)]]
+    | _ ->
+        raise_errorf ~deriver_name ~loc:decl.ptype_loc
+          "Don't know how to build an expression for %s" decl.ptype_name.txt
+
+  let sig_decl ?loc (decl : type_declaration) : signature_item =
+    let open Ast_builder.Default in
+    let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
+    match decl with
+    | {ptype_params; ptype_name; _} ->
+        psig_value ~loc
+        @@ value_description ~loc ~prim:[]
+             ~name:
+               (Located.mk ~loc:ptype_name.loc
+                  (mangle ~suffix:deriver_name ptype_name.txt))
+             ~type_:
+               (List.fold_right
+                  ~init:
+                    [%type:
+                         offset:int ref
+                      -> Field.t array
+                      -> [%t
+                           ptyp_constr ~loc (mk_lid ptype_name)
+                             (List.map ~f:fst ptype_params)]] ptype_params
+                  ~f:(fun (typ, _) acc ->
+                    [%type:
+                      (offset:int ref -> Field.t array -> [%t typ]) -> [%t acc]]
+                ))
+
+  let str_type_decl ~loc ~path:_ (_rec_flag, decls) : structure =
+    List.map decls ~f:(fun decl -> str_decl ~loc decl)
+
+  let sig_type_decl ~loc ~path:_ (_rec_flag, decls) : signature =
+    List.map decls ~f:(fun decl -> sig_decl ~loc decl)
+
+  let deriver =
+    Deriving.add
+      ~str_type_decl:(Deriving.Generator.make_noarg str_type_decl)
+      ~sig_type_decl:(Deriving.Generator.make_noarg sig_type_decl)
+      deriver_name
+end
+
+module Of_field_elements = struct
+  let deriver_name = "of_field_elements"
+
+  let str_decl ?loc (decl : type_declaration) : structure_item =
+    let open Ast_builder.Default in
+    let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
+    let name = decl.ptype_name.txt in
+    [%stri
+      let [%p pvar ~loc (mangle ~suffix:deriver_name name)] =
+        [%e
+          params_wrap ~loc ~deriver_name decl
+            [%expr
+              fun ppx_typ__array ->
+                [%e evar ~loc (mangle ~suffix:deriver_name name)]]]]
+
+  let sig_decl ?loc (decl : type_declaration) : signature_item =
+    let open Ast_builder.Default in
+    let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
+    match decl with
+    | {ptype_params; ptype_name; _} ->
+        psig_value ~loc
+        @@ value_description ~loc ~prim:[]
+             ~name:
+               (Located.mk ~loc:ptype_name.loc
+                  (mangle ~suffix:deriver_name ptype_name.txt))
+             ~type_:
+               (List.fold_right
+                  ~init:
+                    [%type:
+                         Field.t array
+                      -> [%t
+                           ptyp_constr ~loc (mk_lid ptype_name)
+                             (List.map ~f:fst ptype_params)]] ptype_params
+                  ~f:(fun (typ, _) acc ->
+                    [%type: (Field.t array -> [%t typ]) -> [%t acc]] ))
+
+  let str_type_decl ~loc ~path:_ (_rec_flag, decls) : structure =
+    List.map decls ~f:(fun decl -> str_decl ~loc decl)
+
+  let sig_type_decl ~loc ~path:_ (_rec_flag, decls) : signature =
+    List.map decls ~f:(fun decl -> sig_decl ~loc decl)
+
+  let deriver =
+    Deriving.add
+      ~str_type_decl:
+        (Deriving.Generator.make_noarg
+           ~deps:[Of_field_elements_indexed.deriver]
+           str_type_decl)
+      ~sig_type_decl:
+        (Deriving.Generator.make_noarg
+           ~deps:[Of_field_elements_indexed.deriver]
+           sig_type_decl)
+      deriver_name
+end
+
+module Snarky_typ = struct
+  let deriver_name = "snarky_typ"
+
+  let deriver =
+    Deriving.add_alias deriver_name
+      [ Size_in_field_elements.deriver
+      ; To_field_elements.deriver
+      ; Of_field_elements_indexed.deriver
+      ; Of_field_elements.deriver ]
+end
