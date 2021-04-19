@@ -122,28 +122,20 @@ module Size_in_field_elements = struct
     let open Ast_builder.Default in
     let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
     match decl with
-    | {ptype_kind= Ptype_record fields; ptype_name= name; _} ->
+    | {ptype_kind= Ptype_record (field :: fields); ptype_name= name; _} ->
         [%stri
           let [%p pvar ~loc (mangle ~suffix:deriver_name name.txt)] =
             [%e
               let body =
-                match fields with
-                | [] ->
-                    raise_errorf ~loc:decl.ptype_loc ~deriver_name
-                      "Malformed AST: record with no fields"
-                | field :: fields ->
-                    let field_expr {pld_attributes; pld_type; _} =
-                      match
-                        get_expr_attribute ~deriver_name pld_attributes
-                      with
-                      | Some e ->
-                          e
-                      | None ->
-                          of_type pld_type
-                    in
-                    List.fold ~init:(field_expr field) fields
-                      ~f:(fun acc field ->
-                        [%expr Stdlib.( + ) [%e acc] [%e field_expr field]] )
+                let field_expr {pld_attributes; pld_type; _} =
+                  match get_expr_attribute ~deriver_name pld_attributes with
+                  | Some e ->
+                      e
+                  | None ->
+                      of_type pld_type
+                in
+                List.fold ~init:(field_expr field) fields ~f:(fun acc field ->
+                    [%expr Stdlib.( + ) [%e acc] [%e field_expr field]] )
               in
               params_wrap ~loc ~deriver_name decl body]]
     | {ptype_manifest= Some typ; ptype_name= name; _} ->
@@ -200,36 +192,32 @@ module To_field_elements = struct
         | Ptyp_variant _
         | Ptyp_poly _
         | Ptyp_package _
-        | Ptyp_extension _ ->
+        | Ptyp_extension _
+        | Ptyp_tuple [] ->
             raise_errorf ~deriver_name ~loc:typ.ptyp_loc
               "Don't know how to build an expression for@,%a"
               Pprintast.core_type typ
         | Ptyp_var name ->
             evar ~loc ("_var_" ^ mangle ~suffix:deriver_name name)
-        | Ptyp_tuple typs ->
+        | Ptyp_tuple (typ :: typs) ->
             [%expr
               fun [%p
                     ppat_tuple ~loc
-                    @@ List.mapi typs ~f:(fun i _typ ->
+                    @@ List.mapi (typ :: typs) ~f:(fun i _typ ->
                            pvar ~loc (Stdlib.Format.sprintf "ppx_typ__x_%i" i)
                        )] ->
                 [%e
-                  match typs with
-                  | [] ->
-                      raise_errorf ~loc:typ.ptyp_loc ~deriver_name
-                        "Malformed AST: tuple with no members"
-                  | typ :: typs ->
-                      List.foldi
-                        ~init:[%expr [%e of_type typ] ppx_typ__x_0]
-                        typs
-                        ~f:(fun i acc typ ->
-                          [%expr
-                            Stdlib.Array.append [%e acc]
-                              ([%e of_type typ]
-                                 [%e
-                                   evar ~loc
-                                     (Stdlib.Format.sprintf "ppx_typ__x_%i"
-                                        (i + 1))])] )]]
+                  List.foldi
+                    ~init:[%expr [%e of_type typ] ppx_typ__x_0]
+                    typs
+                    ~f:(fun i acc typ ->
+                      [%expr
+                        Stdlib.Array.append [%e acc]
+                          ([%e of_type typ]
+                             [%e
+                               evar ~loc
+                                 (Stdlib.Format.sprintf "ppx_typ__x_%i" (i + 1))])]
+                      )]]
         | Ptyp_constr (lid, []) ->
             expr_of_lid ~loc (mangle_lid ~suffix:deriver_name lid.txt)
         | Ptyp_constr (lid, args) ->
@@ -242,42 +230,36 @@ module To_field_elements = struct
     let open Ast_builder.Default in
     let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
     match decl with
-    | {ptype_kind= Ptype_record fields; ptype_name= name; _} ->
+    | {ptype_kind= Ptype_record (field :: fields); ptype_name= name; _} ->
         [%stri
           let [%p pvar ~loc (mangle ~suffix:deriver_name name.txt)] =
             [%e
               let body =
-                match fields with
-                | [] ->
-                    raise_errorf ~loc:decl.ptype_loc ~deriver_name
-                      "Malformed AST: record with no fields"
-                | field :: fields ->
-                    let field_expr {pld_attributes; pld_type; pld_name; _} =
-                      [%expr
-                        [%e
-                          match
-                            get_expr_attribute ~deriver_name pld_attributes
-                          with
-                          | Some e ->
-                              e
-                          | None ->
-                              of_type pld_type]
-                          [%e evar ~loc:pld_name.loc pld_name.txt]]
-                    in
-                    [%expr
-                      fun [%p
-                            ppat_record ~loc
-                              (List.map (field :: fields)
-                                 ~f:(fun {pld_name; _} ->
-                                   ( mk_lid pld_name
-                                   , pvar ~loc:pld_name.loc pld_name.txt ) ))
-                              Closed] ->
-                        [%e
-                          List.fold ~init:(field_expr field) (List.rev fields)
-                            ~f:(fun acc field ->
-                              [%expr
-                                Stdlib.Array.append [%e acc]
-                                  [%e field_expr field]] )]]
+                let field_expr {pld_attributes; pld_type; pld_name; _} =
+                  [%expr
+                    [%e
+                      match
+                        get_expr_attribute ~deriver_name pld_attributes
+                      with
+                      | Some e ->
+                          e
+                      | None ->
+                          of_type pld_type]
+                      [%e evar ~loc:pld_name.loc pld_name.txt]]
+                in
+                [%expr
+                  fun [%p
+                        ppat_record ~loc
+                          (List.map (field :: fields) ~f:(fun {pld_name; _} ->
+                               ( mk_lid pld_name
+                               , pvar ~loc:pld_name.loc pld_name.txt ) ))
+                          Closed] ->
+                    [%e
+                      List.fold ~init:(field_expr field) (List.rev fields)
+                        ~f:(fun acc field ->
+                          [%expr
+                            Stdlib.Array.append [%e acc] [%e field_expr field]]
+                      )]]
               in
               params_wrap ~loc ~deriver_name decl body]]
     | {ptype_manifest= Some typ; ptype_name= name; _} ->
@@ -299,13 +281,13 @@ module To_field_elements = struct
                (Located.mk ~loc:ptype_name.loc
                   (mangle ~suffix:deriver_name ptype_name.txt))
              ~type_:
-               (List.fold_left
+               (List.fold_right
                   ~init:
                     [%type:
                          [%t
                            ptyp_constr ~loc (mk_lid ptype_name)
                              (List.map ~f:fst ptype_params)]
-                      -> Field.t array] ptype_params ~f:(fun acc (typ, _) ->
+                      -> Field.t array] ptype_params ~f:(fun (typ, _) acc ->
                     [%type: ([%t typ] -> Field.t array) -> [%t acc]] ))
 
   let str_type_decl ~loc ~path:_ (_rec_flag, decls) : structure =
