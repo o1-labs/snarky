@@ -44,6 +44,8 @@ let expr_of_lid ?(base_module_name = "M____") ~loc lid =
         (pmod_ident ~loc (Located.mk ~loc lid))
         exp )
 
+let mk_lid name = Loc.make ~loc:name.loc (Longident.Lident name.txt)
+
 let raise_errorf ~loc ~deriver_name fmt =
   let fmt =
     match fmt with
@@ -73,7 +75,7 @@ let params_wrap ~loc ~deriver_name (decl : type_declaration) body =
           [%expr fun (_ : int) -> [%e acc]]
       | Ptyp_var name ->
           [%expr
-            fun [%p pvar ~loc ("var_" ^ mangle ~suffix:deriver_name name)] ->
+            fun [%p pvar ~loc ("_var_" ^ mangle ~suffix:deriver_name name)] ->
               [%e acc]]
       | _ ->
           raise_errorf ~deriver_name ~loc:typ.ptyp_loc
@@ -104,7 +106,7 @@ module Size_in_field_elements = struct
               "Don't know how to build an expression for@,%a"
               Pprintast.core_type typ
         | Ptyp_var name ->
-            evar ~loc ("var_" ^ mangle ~suffix:deriver_name name)
+            evar ~loc ("_var_" ^ mangle ~suffix:deriver_name name)
         | Ptyp_tuple typs ->
             List.fold_left ~init:[%expr 0] typs ~f:(fun acc typ ->
                 [%expr Stdlib.( + ) [%e acc] [%e of_type typ]] )
@@ -127,7 +129,7 @@ module Size_in_field_elements = struct
               let body =
                 match fields with
                 | [] ->
-                    raise_errorf ~loc ~deriver_name
+                    raise_errorf ~loc:decl.ptype_loc ~deriver_name
                       "Malformed AST: record with no fields"
                 | field :: fields ->
                     let field_expr {pld_attributes; pld_type; _} =
@@ -165,6 +167,147 @@ module Size_in_field_elements = struct
              ~type_:
                (List.fold_left ~init:[%type: int] ptype_params ~f:(fun acc _ ->
                     [%type: int -> [%t acc]] ))
+
+  let str_type_decl ~loc ~path:_ (_rec_flag, decls) : structure =
+    List.map decls ~f:(fun decl -> str_decl ~loc decl)
+
+  let sig_type_decl ~loc ~path:_ (_rec_flag, decls) : signature =
+    List.map decls ~f:(fun decl -> sig_decl ~loc decl)
+
+  let deriver =
+    Deriving.add
+      ~str_type_decl:(Deriving.Generator.make_noarg str_type_decl)
+      ~sig_type_decl:(Deriving.Generator.make_noarg sig_type_decl)
+      deriver_name
+end
+
+module To_field_elements = struct
+  let deriver_name = "to_field_elements"
+
+  let rec of_type ?loc (typ : core_type) : expression =
+    let open Ast_builder.Default in
+    match get_expr_attribute ~deriver_name typ.ptyp_attributes with
+    | Some e ->
+        e
+    | None -> (
+        let loc = match loc with Some loc -> loc | None -> typ.ptyp_loc in
+        match typ.ptyp_desc with
+        | Ptyp_any
+        | Ptyp_arrow _
+        | Ptyp_object _
+        | Ptyp_class _
+        | Ptyp_alias _
+        | Ptyp_variant _
+        | Ptyp_poly _
+        | Ptyp_package _
+        | Ptyp_extension _ ->
+            raise_errorf ~deriver_name ~loc:typ.ptyp_loc
+              "Don't know how to build an expression for@,%a"
+              Pprintast.core_type typ
+        | Ptyp_var name ->
+            evar ~loc ("_var_" ^ mangle ~suffix:deriver_name name)
+        | Ptyp_tuple typs ->
+            [%expr
+              fun [%p
+                    ppat_tuple ~loc
+                    @@ List.mapi typs ~f:(fun i _typ ->
+                           pvar ~loc (Stdlib.Format.sprintf "ppx_typ__x_%i" i)
+                       )] ->
+                [%e
+                  match typs with
+                  | [] ->
+                      raise_errorf ~loc:typ.ptyp_loc ~deriver_name
+                        "Malformed AST: tuple with no members"
+                  | typ :: typs ->
+                      List.foldi
+                        ~init:[%expr [%e of_type typ] ppx_typ__x_0]
+                        (List.rev typs)
+                        ~f:(fun i acc typ ->
+                          [%expr
+                            Stdlib.Array.append [%e acc]
+                              ([%e of_type typ]
+                                 [%e
+                                   evar ~loc
+                                     (Stdlib.Format.sprintf "ppx_typ__x_%i"
+                                        (i + 1))])] )]]
+        | Ptyp_constr (lid, []) ->
+            expr_of_lid ~loc (mangle_lid ~suffix:deriver_name lid.txt)
+        | Ptyp_constr (lid, args) ->
+            pexp_apply ~loc
+              (expr_of_lid ~loc:lid.loc
+                 (mangle_lid ~suffix:deriver_name lid.txt))
+              (List.map ~f:(fun typ -> (Asttypes.Nolabel, of_type typ)) args) )
+
+  let str_decl ?loc (decl : type_declaration) : structure_item =
+    let open Ast_builder.Default in
+    let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
+    match decl with
+    | {ptype_kind= Ptype_record fields; ptype_name= name; _} ->
+        [%stri
+          let [%p pvar ~loc (mangle ~suffix:deriver_name name.txt)] =
+            [%e
+              let body =
+                match fields with
+                | [] ->
+                    raise_errorf ~loc:decl.ptype_loc ~deriver_name
+                      "Malformed AST: record with no fields"
+                | field :: fields ->
+                    let field_expr {pld_attributes; pld_type; pld_name; _} =
+                      [%expr
+                        [%e
+                          match
+                            get_expr_attribute ~deriver_name pld_attributes
+                          with
+                          | Some e ->
+                              e
+                          | None ->
+                              of_type pld_type]
+                          [%e evar ~loc:pld_name.loc pld_name.txt]]
+                    in
+                    [%expr
+                      fun [%p
+                            ppat_record ~loc
+                              (List.map (field :: fields)
+                                 ~f:(fun {pld_name; _} ->
+                                   ( mk_lid pld_name
+                                   , pvar ~loc:pld_name.loc pld_name.txt ) ))
+                              Closed] ->
+                        [%e
+                          List.fold ~init:(field_expr field) (List.rev fields)
+                            ~f:(fun acc field ->
+                              [%expr
+                                Stdlib.Array.append [%e acc]
+                                  [%e field_expr field]] )]]
+              in
+              params_wrap ~loc ~deriver_name decl body]]
+    | {ptype_manifest= Some typ; ptype_name= name; _} ->
+        [%stri
+          let [%p pvar ~loc (mangle ~suffix:deriver_name name.txt)] =
+            [%e params_wrap ~loc ~deriver_name decl (of_type typ)]]
+    | _ ->
+        raise_errorf ~deriver_name ~loc:decl.ptype_loc
+          "Don't know how to build an expression for %s" decl.ptype_name.txt
+
+  let sig_decl ?loc (decl : type_declaration) : signature_item =
+    let open Ast_builder.Default in
+    let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
+    match decl with
+    | {ptype_params; ptype_name; _} ->
+        psig_value ~loc
+        @@ value_description ~loc ~prim:[]
+             ~name:
+               (Located.mk ~loc:ptype_name.loc
+                  (mangle ~suffix:deriver_name ptype_name.txt))
+             ~type_:
+               (List.fold_left
+                  ~init:
+                    [%type:
+                         [%t
+                           ptyp_constr ~loc (mk_lid ptype_name)
+                             (List.map ~f:fst ptype_params)]
+                      -> 'ppx_typ_field array] ptype_params
+                  ~f:(fun acc (typ, _) ->
+                    [%type: ([%t typ] -> 'ppx_typ_field array) -> [%t acc]] ))
 
   let str_type_decl ~loc ~path:_ (_rec_flag, decls) : structure =
     List.map decls ~f:(fun decl -> str_decl ~loc decl)
