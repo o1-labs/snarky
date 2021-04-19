@@ -54,3 +54,12 @@ module Test : S = struct
 
   include Field
 end
+
+let size_in_field_elements =
+  [%size_in_field_elements: (Field.t, Field.t) Test.M.t]
+
+let to_field_elements =
+  [%to_field_elements: (Field.t, Field.t) Test.M.t]
+
+let of_field_elements =
+  [%of_field_elements: (Field.t, Field.t) Test.M.t]

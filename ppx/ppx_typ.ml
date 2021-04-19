@@ -166,10 +166,13 @@ module Size_in_field_elements = struct
   let sig_type_decl ~loc ~path:_ (_rec_flag, decls) : signature =
     List.map decls ~f:(fun decl -> sig_decl ~loc decl)
 
+  let extension ~loc ~path:_ ty = of_type ~loc ty
+
   let deriver =
     Deriving.add
       ~str_type_decl:(Deriving.Generator.make_noarg str_type_decl)
       ~sig_type_decl:(Deriving.Generator.make_noarg sig_type_decl)
+      ~extension
       deriver_name
 end
 
@@ -296,10 +299,13 @@ module To_field_elements = struct
   let sig_type_decl ~loc ~path:_ (_rec_flag, decls) : signature =
     List.map decls ~f:(fun decl -> sig_decl ~loc decl)
 
+  let extension ~loc ~path:_ ty = of_type ~loc ty
+
   let deriver =
     Deriving.add
       ~str_type_decl:(Deriving.Generator.make_noarg str_type_decl)
       ~sig_type_decl:(Deriving.Generator.make_noarg sig_type_decl)
+      ~extension
       deriver_name
 end
 
@@ -435,10 +441,13 @@ module Of_field_elements_indexed = struct
   let sig_type_decl ~loc ~path:_ (_rec_flag, decls) : signature =
     List.map decls ~f:(fun decl -> sig_decl ~loc decl)
 
+  let extension ~loc ~path:_ ty = of_type ~loc ty
+
   let deriver =
     Deriving.add
       ~str_type_decl:(Deriving.Generator.make_noarg str_type_decl)
       ~sig_type_decl:(Deriving.Generator.make_noarg sig_type_decl)
+      ~extension
       deriver_name
 end
 
@@ -490,6 +499,8 @@ module Of_field_elements = struct
   let sig_type_decl ~loc ~path:_ (_rec_flag, decls) : signature =
     List.filter_map decls ~f:(fun decl -> sig_decl ~loc decl)
 
+  let extension = Of_field_elements_indexed.extension
+
   let deriver =
     Deriving.add
       ~str_type_decl:
@@ -502,6 +513,7 @@ module Of_field_elements = struct
            ~deps:
              [Size_in_field_elements.deriver; Of_field_elements_indexed.deriver]
            sig_type_decl)
+      ~extension
       deriver_name
 end
 

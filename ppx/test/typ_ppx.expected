@@ -224,3 +224,14 @@ module Test : S = struct
 
   include Field
 end
+
+let size_in_field_elements =
+  Test.M.size_in_field_elements Field.size_in_field_elements
+    Field.size_in_field_elements
+
+let to_field_elements =
+  Test.M.to_field_elements Field.to_field_elements Field.to_field_elements
+
+let of_field_elements =
+  Test.M.of_field_elements_indexed Field.of_field_elements_indexed
+    Field.of_field_elements_indexed
