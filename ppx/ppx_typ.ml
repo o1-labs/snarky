@@ -445,54 +445,62 @@ end
 module Of_field_elements = struct
   let deriver_name = "of_field_elements"
 
-  let str_decl ?loc (decl : type_declaration) : structure_item =
+  let str_decl ?loc (decl : type_declaration) : structure_item option =
     let open Ast_builder.Default in
-    let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
-    let name = decl.ptype_name.txt in
-    [%stri
-      let [%p pvar ~loc (mangle ~suffix:deriver_name name)] =
-        [%e
-          params_wrap ~loc ~deriver_name decl
-            [%expr
-              fun ppx_typ__array ->
-                [%e evar ~loc (mangle ~suffix:deriver_name name)]]]]
+    match decl.ptype_params with
+    | [] ->
+        let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
+        let name = decl.ptype_name.txt in
+        Some
+          [%stri
+            let [%p pvar ~loc (mangle ~suffix:deriver_name name)] =
+              [%e
+                params_wrap ~loc ~deriver_name decl
+                  [%expr
+                    fun ppx_typ__array ->
+                      [%e
+                        evar ~loc
+                          (mangle
+                             ~suffix:Of_field_elements_indexed.deriver_name
+                             name)]]]]
+    | _ ->
+        None
 
-  let sig_decl ?loc (decl : type_declaration) : signature_item =
+  let sig_decl ?loc (decl : type_declaration) : signature_item option =
     let open Ast_builder.Default in
     let loc = match loc with Some loc -> loc | None -> decl.ptype_loc in
     match decl with
-    | {ptype_params; ptype_name; _} ->
-        psig_value ~loc
-        @@ value_description ~loc ~prim:[]
-             ~name:
-               (Located.mk ~loc:ptype_name.loc
-                  (mangle ~suffix:deriver_name ptype_name.txt))
-             ~type_:
-               (List.fold_right
-                  ~init:
-                    [%type:
-                         Field.t array
-                      -> [%t
-                           ptyp_constr ~loc (mk_lid ptype_name)
-                             (List.map ~f:fst ptype_params)]] ptype_params
-                  ~f:(fun (typ, _) acc ->
-                    [%type: (Field.t array -> [%t typ]) -> [%t acc]] ))
+    | {ptype_params= []; ptype_name; _} ->
+        Some
+          ( psig_value ~loc
+          @@ value_description ~loc ~prim:[]
+               ~name:
+                 (Located.mk ~loc:ptype_name.loc
+                    (mangle ~suffix:deriver_name ptype_name.txt))
+               ~type_:
+                 [%type:
+                      Field.t array
+                   -> [%t ptyp_constr ~loc (mk_lid ptype_name) []]] )
+    | _ ->
+        None
 
   let str_type_decl ~loc ~path:_ (_rec_flag, decls) : structure =
-    List.map decls ~f:(fun decl -> str_decl ~loc decl)
+    List.filter_map decls ~f:(fun decl -> str_decl ~loc decl)
 
   let sig_type_decl ~loc ~path:_ (_rec_flag, decls) : signature =
-    List.map decls ~f:(fun decl -> sig_decl ~loc decl)
+    List.filter_map decls ~f:(fun decl -> sig_decl ~loc decl)
 
   let deriver =
     Deriving.add
       ~str_type_decl:
         (Deriving.Generator.make_noarg
-           ~deps:[Of_field_elements_indexed.deriver]
+           ~deps:
+             [Size_in_field_elements.deriver; Of_field_elements_indexed.deriver]
            str_type_decl)
       ~sig_type_decl:
         (Deriving.Generator.make_noarg
-           ~deps:[Of_field_elements_indexed.deriver]
+           ~deps:
+             [Size_in_field_elements.deriver; Of_field_elements_indexed.deriver]
            sig_type_decl)
       deriver_name
 end
@@ -502,8 +510,8 @@ module Snarky_typ = struct
 
   let deriver =
     Deriving.add_alias deriver_name
-      [ Size_in_field_elements.deriver
-      ; To_field_elements.deriver
+      [ Of_field_elements.deriver
       ; Of_field_elements_indexed.deriver
-      ; Of_field_elements.deriver ]
+      ; To_field_elements.deriver
+      ; Size_in_field_elements.deriver ]
 end
