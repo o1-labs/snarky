@@ -72,7 +72,7 @@ let params_wrap ~loc ~deriver_name (decl : type_declaration) body =
   List.fold_right ~init:body decl.ptype_params ~f:(fun (typ, _) acc ->
       match typ.ptyp_desc with
       | Ptyp_any ->
-          [%expr fun (_ : int) -> [%e acc]]
+          [%expr fun _ -> [%e acc]]
       | Ptyp_var name ->
           [%expr
             fun [%p pvar ~loc ("_var_" ^ mangle ~suffix:deriver_name name)] ->
