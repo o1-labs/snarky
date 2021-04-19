@@ -219,19 +219,17 @@ module To_field_elements = struct
                       raise_errorf ~loc:typ.ptyp_loc ~deriver_name
                         "Malformed AST: tuple with no members"
                   | typ :: typs ->
-                      let count = ref 0 in
-                      List.fold_right
+                      List.foldi
                         ~init:[%expr [%e of_type typ] ppx_typ__x_0]
-                        (List.rev typs)
-                        ~f:(fun typ acc ->
-                          Int.incr count ;
+                        typs
+                        ~f:(fun i acc typ ->
                           [%expr
                             Stdlib.Array.append [%e acc]
                               ([%e of_type typ]
                                  [%e
                                    evar ~loc
                                      (Stdlib.Format.sprintf "ppx_typ__x_%i"
-                                        !count)])] )]]
+                                        (i + 1))])] )]]
         | Ptyp_constr (lid, []) ->
             expr_of_lid ~loc (mangle_lid ~suffix:deriver_name lid.txt)
         | Ptyp_constr (lid, args) ->
