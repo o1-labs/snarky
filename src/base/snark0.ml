@@ -140,6 +140,21 @@ struct
     let unit : (unit, unit) t = unit ()
 
     let field : (Cvar.t, Field.t) t = field ()
+
+    module type S =
+      Typ.Intf.S
+      with type field := Field.t
+       and type field_var := Cvar.t
+       and type _ checked = (unit, unit, Field.t) Checked_S.t
+
+    let mk_typ (type var value)
+        (module M : S with type Var.t = var and type Value.t = value) =
+      T.mk_typ
+        ( module struct
+          type field = Field.t
+
+          include M
+        end )
   end
 
   module As_prover = struct
@@ -1913,6 +1928,8 @@ module Make (Backend : Backend_intf.S) = struct
   module Enumerable = Enumerable.Make (Basic)
 end
 
+module Typ0 = Typ
+
 module Run = struct
   let functor_counter = ref 0
 
@@ -2106,6 +2123,48 @@ module Run = struct
       end
 
       module Of_traversable = Of_traversable
+
+      module type S =
+        Typ0.Intf.S
+        with type field := Field.t
+         and type field_var := Cvar.t
+         and type _ checked = unit
+
+      let mk_typ (type var value)
+          (module M : S with type Var.t = var and type Value.t = value) =
+        mk_typ
+          ( module struct
+            type _ checked = (unit, unit) Checked.t
+
+            module Var = struct
+              include M.Var
+
+              let check x =
+                Types.Checked.Direct
+                  ( (fun state' ->
+                      (* A bit hacky: we can't assume the type of our state
+                         here is unit, even though the provided state will be,
+                         so we peek one layer up the callstack and 'borrow' the
+                         state from there.
+                         For our purposes, this will always work when the proof
+                         is created using this functor's methods rather than
+                         the checked versions, and so is 'safe enough'.
+                      *)
+                      let old_state = !state in
+                      state :=
+                        {state' with prover_state= old_state.prover_state} ;
+                      let res = check x in
+                      let state' =
+                        {!state with prover_state= state'.prover_state}
+                      in
+                      state :=
+                        {old_state with prover_state= !state.prover_state} ;
+                      (state', res) )
+                  , fun x -> Pure x )
+            end
+
+            module Value = M.Value
+          end )
     end
 
     module Boolean = struct
