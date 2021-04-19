@@ -219,17 +219,19 @@ module To_field_elements = struct
                       raise_errorf ~loc:typ.ptyp_loc ~deriver_name
                         "Malformed AST: tuple with no members"
                   | typ :: typs ->
-                      List.foldi
+                      let count = ref 0 in
+                      List.fold_right
                         ~init:[%expr [%e of_type typ] ppx_typ__x_0]
                         (List.rev typs)
-                        ~f:(fun i acc typ ->
+                        ~f:(fun typ acc ->
+                          Int.incr count ;
                           [%expr
                             Stdlib.Array.append [%e acc]
                               ([%e of_type typ]
                                  [%e
                                    evar ~loc
                                      (Stdlib.Format.sprintf "ppx_typ__x_%i"
-                                        (i + 1))])] )]]
+                                        !count)])] )]]
         | Ptyp_constr (lid, []) ->
             expr_of_lid ~loc (mangle_lid ~suffix:deriver_name lid.txt)
         | Ptyp_constr (lid, args) ->
@@ -305,9 +307,8 @@ module To_field_elements = struct
                          [%t
                            ptyp_constr ~loc (mk_lid ptype_name)
                              (List.map ~f:fst ptype_params)]
-                      -> 'ppx_typ_field array] ptype_params
-                  ~f:(fun acc (typ, _) ->
-                    [%type: ([%t typ] -> 'ppx_typ_field array) -> [%t acc]] ))
+                      -> Field.t array] ptype_params ~f:(fun acc (typ, _) ->
+                    [%type: ([%t typ] -> Field.t array) -> [%t acc]] ))
 
   let str_type_decl ~loc ~path:_ (_rec_flag, decls) : structure =
     List.map decls ~f:(fun decl -> str_decl ~loc decl)
