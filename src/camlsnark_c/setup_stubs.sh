@@ -11,7 +11,7 @@ fi
 
 echo $$ > LIBSNARK_STUBS_CMAKE_PID
 
-if [ ! -v SNARKY_PERFORMANCE ] ||
+if [ ! -n SNARKY_PERFORMANCE ] ||
    [ "$SNARKY_PERFORMANCE" = "off" ] ||
    [ "$SNARKY_PERFORMANCE" = "OFF" ] ||
    [ "$SNARKY_PERFORMANCE" = "false" ] ||
