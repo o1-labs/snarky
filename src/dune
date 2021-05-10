@@ -7,7 +7,6 @@
    base64
    bignum
    bitstring_lib
-   camlsnark_c
    core_kernel
    ctypes
    ctypes_foreign_libffi
@@ -15,9 +14,6 @@
    h_list
    interval_union
    snarky.backendless
-   snarky.cpp_string
-   snarky.cpp_vector
-   snarky.libsnark_bindings
    snarky.intf
    tuple_lib
    yojson
