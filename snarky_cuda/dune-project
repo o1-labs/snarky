@@ -1,4 +1,0 @@
-(lang dune 2.0)
-(package
- (name snarky_cuda)
- (synopsis "Virtual package to enable the GPU prover in snarky"))

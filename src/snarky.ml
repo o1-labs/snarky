@@ -11,7 +11,6 @@ module Checked_intf = Snarky_backendless.Checked_intf
 module Checked_runner = Snarky_backendless.Checked_runner
 module Constraint = Snarky_backendless.Constraint
 module Constraint_system = Snarky_backendless.Constraint_system
-module Ctypes_foreign = Ctypes_foreign_libffi.Ctypes_foreign
 module Cvar = Snarky_backendless.Cvar
 module Enumerable = Snarky_backendless.Enumerable
 module Enumerable_intf = Snarky_backendless.Enumerable_intf
