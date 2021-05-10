@@ -16,9 +16,7 @@
    snarky.intf
    tuple_lib
    yojson
-   (select gpu_prover.ml from
-    (groth16_gpu_prover -> gpu_prover.gpu.ml)
-    (-> gpu_prover.no_gpu.ml)))
+)
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
     --conditional)))

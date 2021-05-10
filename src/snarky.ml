@@ -16,7 +16,6 @@ module Enumerable = Snarky_backendless.Enumerable
 module Enumerable_intf = Snarky_backendless.Enumerable_intf
 module Field_intf = Snarky_intf.Field
 module Free_monad = Snarky_backendless.Free_monad
-module Gpu_prover = Gpu_prover
 module H_list = H_list
 module Handle = Snarky_backendless.Handle
 module Knapsack = Snarky_backendless.Knapsack
