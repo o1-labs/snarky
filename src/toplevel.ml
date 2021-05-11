@@ -1,5 +1,4 @@
 open Core_kernel
-open Snarky_libsnark_bindings
 open Snarky_backendless
 
 let path = Filename.chop_extension (Filename.basename Sys.executable_name)
@@ -303,51 +302,6 @@ struct
     Basic.main proof_system M.read_input
 end
 
-let%test_unit "toplevel_functor" =
-  let (module M : Toplevel) =
-    ( module struct
-      module Intf =
-        Snark.Run.Make
-          (Backends.Bn128.Default)
-          (struct
-            type t = unit
-          end)
-
-      include Make
-                (Intf)
-                (struct
-                  open Intf
-
-                  type result = unit
-
-                  type computation = Field.t -> Field.t -> unit -> unit
-
-                  type public_input =
-                    Field.Constant.t -> Field.Constant.t -> unit
-
-                  let compute x y () =
-                    let open Field in
-                    let z = (x + y) * (x - y) in
-                    let x2 = x * x in
-                    let y2 = y * y in
-                    Field.Assert.equal z (x2 - y2)
-
-                  let public_input = Data_spec.[Field.typ; Field.typ]
-
-                  let read_input str =
-                    let strs = String.split str ~on:' ' in
-                    match strs with
-                    | [x; y] ->
-                        H_list.
-                          [ Field.Constant.of_string x
-                          ; Field.Constant.of_string y ]
-                    | _ ->
-                        failwith "Bad input. Expected 2 field elements."
-                end)
-    end )
-  in
-  ()
-
 module Make_json
     (Intf : Snark_intf.Run_basic with type prover_state = unit) (M : sig
         type arg0
@@ -412,7 +366,6 @@ struct
 
   let main () =
     (* We're communicating over stdout, don't log to it! *)
-    Libsnark.set_printing_off () ;
     let module W = struct
       type _ Request.t += Witness : M.Witness.Constant.t Request.t
     end in

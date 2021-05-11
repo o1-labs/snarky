@@ -37,7 +37,6 @@ jobs:
                 name: Lint
                 command: eval `opam config env` && make check-format
             - run: eval `opam config env` && make build
-            - run: eval `opam config env` && make examples
             - run: eval `opam config env` && make tests
     opam-pin:
         docker:

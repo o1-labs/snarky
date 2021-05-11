@@ -1,1 +1,0 @@
-(library (name snarky_cuda) (public_name snarky_cuda))
