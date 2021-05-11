@@ -1,7 +1,7 @@
 name: Check build
 
 on:
-  [pull_request, push]
+  [pull_request]
 
 jobs:
   check_build:
@@ -11,7 +11,6 @@ jobs:
         os:
           - macos-latest
           - ubuntu-latest
-          - windows-latest
         ocaml-version:
           - 4.07.1
 
@@ -28,8 +27,5 @@ jobs:
 
       - name: Build
         run: |
-          set -x
-          ./scripts/depends.sh
           eval $(opam env)
-
           opam pin add . -y
