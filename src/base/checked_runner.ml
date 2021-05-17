@@ -263,7 +263,12 @@ struct
       | None ->
           ()
       | Some (pos, lab) ->
-          log ~start:(pos = `Start) lab !count ) ;
+        let start =
+          match pos with
+          | `Start -> true
+          | _ -> false
+        in
+        log ~start lab !count ) ;
       count := !count + weight c
     in
     let state =

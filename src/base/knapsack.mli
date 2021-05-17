@@ -9,7 +9,7 @@ module Make (M : Snark_intf.Basic) : sig
 
   val hash_to_bits : t -> bool list -> bool list
 
-  module Hash (M : sig
+  module Hash (_ : sig
     val knapsack : t
   end) : sig
     type value = bool list [@@deriving sexp]
@@ -47,7 +47,7 @@ module Run : sig
 
     val hash_to_bits : t -> bool list -> bool list
 
-    module Hash (M : sig
+    module Hash (_ : sig
       val knapsack : t
     end) : sig
       type value = bool list [@@deriving sexp]

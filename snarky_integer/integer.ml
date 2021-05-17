@@ -125,7 +125,7 @@ let to_field t = t.value
 
 let constant (type f) ?length ~m:((module M) as m : f m) x =
   let open M in
-  assert (x < Field.size) ;
+  assert (B.(<) x Field.size) ;
   let upper_bound = B.(one + x) in
   let length =
     let b = bits_needed upper_bound in

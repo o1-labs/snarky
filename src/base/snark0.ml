@@ -525,7 +525,7 @@ struct
       let ( lxor ) b1 b2 =
         match (to_constant b1, to_constant b2) with
         | Some b1, Some b2 ->
-            return (var_of_value (b1 <> b2))
+            return (var_of_value (Caml.not (Bool.equal b1 b2)))
         | Some true, None ->
             return (not b2)
         | None, Some true ->
@@ -546,7 +546,7 @@ struct
               exists typ_unchecked
                 ~compute:
                   As_prover.(
-                    map2 ~f:( <> ) (read typ_unchecked b1)
+                    map2 ~f:(Bool.(<>)) (read typ_unchecked b1)
                       (read typ_unchecked b2))
             in
             let%map () =
@@ -1726,7 +1726,7 @@ struct
       (x, y)
     in
     Quickcheck.test gen ~f:(fun (x, y) ->
-        let correct_answer = x < y in
+        let correct_answer = [%compare: bool list] x y < 0 in
         let (), lt =
           Checked.run_and_check ~run:Checked.run
             (Checked.map
@@ -1738,7 +1738,7 @@ struct
             ()
           |> Or_error.ok_exn
         in
-        assert (lt = correct_answer) )
+        assert (Bool.equal lt correct_answer) )
 
   include Checked
 
@@ -1764,7 +1764,7 @@ struct
           | _ ->
               assert false )
     in
-    assert (!res = []) ;
+    assert (Base.List.is_empty !res);
     ret
 
   module Proof_system = struct
@@ -1879,7 +1879,7 @@ struct
       in
       checked_result
 
-    let test_equal (type a) ?(sexp_of_t = sexp_of_opaque) ?(equal = ( = )) typ1
+    let test_equal (type a) ?(sexp_of_t = sexp_of_opaque) ?(equal = Caml.( = )) typ1
         typ2 checked unchecked input =
       let checked_result = checked_to_unchecked typ1 typ2 checked input in
       let sexp_of_a = sexp_of_t in
@@ -2759,7 +2759,10 @@ module Run = struct
             ()
         | Some (pos, lab) ->
             Option.iter log ~f:(fun f ->
-                f ?start:(Some (pos = `Start)) lab !count ) ) ;
+              let start =
+                Some (match pos with |`Start -> true | _ -> false)
+              in
+              f ?start lab !count ) ) ;
         count := !count + weight c
       in
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)

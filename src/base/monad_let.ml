@@ -94,9 +94,6 @@ module type S_without_syntax2 = sig
   val all : ('a, 'e) t list -> ('a list, 'e) t
 
   val all_unit : (unit, 'e) t list -> (unit, 'e) t
-
-  val all_ignore : (unit, 'e) t list -> (unit, 'e) t
-    [@@deprecated "[since 2018-02] Use [all_unit]"]
 end
 
 module type S2 = sig
@@ -161,9 +158,6 @@ module type S_without_syntax3 = sig
   val all : ('a, 'd, 'e) t list -> ('a list, 'd, 'e) t
 
   val all_unit : (unit, 'd, 'e) t list -> (unit, 'd, 'e) t
-
-  val all_ignore : (unit, 'd, 'e) t list -> (unit, 'd, 'e) t
-    [@@deprecated "[since 2018-02] Use [all_unit]"]
 end
 
 module type S3 = sig

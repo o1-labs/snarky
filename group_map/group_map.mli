@@ -33,7 +33,7 @@ module type S = sig
           include Field_intf.S
 
           val constant : Constant.t -> t
-      end) (Params : sig
+      end) (_ : sig
         val params : Constant.t Params.t
       end) : sig
     val potential_xs : F.t -> F.t * F.t * F.t
