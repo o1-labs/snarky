@@ -2,7 +2,7 @@ open As_prover_intf
 
 module Make
     (Checked : Checked_intf.S)
-    (_ : Basic
+    (As_prover : Basic
                  with type ('a, 'f, 's) t :=
                              ('a, 'f, 's) Checked.Types.As_prover.t
                   and type 'f field := 'f Checked.field

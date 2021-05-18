@@ -546,7 +546,7 @@ struct
               exists typ_unchecked
                 ~compute:
                   As_prover.(
-                    map2 ~f:(Bool.(<>)) (read typ_unchecked b1)
+                    map2 ~f:Bool.( <> ) (read typ_unchecked b1)
                       (read typ_unchecked b2))
             in
             let%map () =
@@ -1764,7 +1764,7 @@ struct
           | _ ->
               assert false )
     in
-    assert (Base.List.is_empty !res);
+    assert (Base.List.is_empty !res) ;
     ret
 
   module Proof_system = struct
@@ -1879,8 +1879,8 @@ struct
       in
       checked_result
 
-    let test_equal (type a) ?(sexp_of_t = sexp_of_opaque) ?(equal = Caml.( = )) typ1
-        typ2 checked unchecked input =
+    let test_equal (type a) ?(sexp_of_t = sexp_of_opaque) ?(equal = Caml.( = ))
+        typ1 typ2 checked unchecked input =
       let checked_result = checked_to_unchecked typ1 typ2 checked input in
       let sexp_of_a = sexp_of_t in
       let compare_a x y = if equal x y then 0 else 1 in
@@ -2759,10 +2759,10 @@ module Run = struct
             ()
         | Some (pos, lab) ->
             Option.iter log ~f:(fun f ->
-              let start =
-                Some (match pos with |`Start -> true | _ -> false)
-              in
-              f ?start lab !count ) ) ;
+                let start =
+                  Some (match pos with `Start -> true | _ -> false)
+                in
+                f ?start lab !count ) ) ;
         count := !count + weight c
       in
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)

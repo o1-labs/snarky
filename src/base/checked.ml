@@ -190,12 +190,8 @@ module Basic :
           | None ->
               ()
           | Some (pos, lab) ->
-            let start = match pos
-              with
-              | `Start -> true
-              | _ -> false
-            in
-            log ~start lab !count ) ;
+              let start = match pos with `Start -> true | _ -> false in
+              log ~start lab !count ) ;
           count := !count + weight c
         in
         let state =
