@@ -12,9 +12,9 @@ module Make2
 
   let all = M.all
 
-  let all_unit = M.all_unit
-
   let all_ignore = M.all_unit
+
+  let all_unit = M.all_unit
 
   let ignore_m = M.ignore_m
 
@@ -41,9 +41,9 @@ module Make3
 
   let all = M.all
 
-  let all_unit = M.all_unit
-
   let all_ignore = M.all_unit
+
+  let all_unit = M.all_unit
 
   let ignore_m = M.ignore_m
 
