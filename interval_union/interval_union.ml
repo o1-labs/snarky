@@ -23,8 +23,8 @@ module Interval = struct
 end
 
 (* Simplest possible implementation. Should be an increasing list of
-   disjoint intervals. 
-   Semantically is the set of ints corresponding to the union of these 
+   disjoint intervals.
+   Semantically is the set of ints corresponding to the union of these
    ntervals. *)
 type t = Interval.t list [@@deriving eq, sexp]
 
@@ -133,11 +133,12 @@ let gen_disjoint_pair =
   let%map t2 = gen_from y in
   (t1, t2)
 
-let%test_unit "canonicalize" = assert (canonicalize [(1, 2); (2, 3)] = [(1, 3)])
+let%test_unit "canonicalize" =
+  assert (equal (canonicalize [(1, 2); (2, 3)]) [(1, 3)])
 
 let%test_unit "disjoint union doesn't care about order" =
   Quickcheck.test gen_disjoint_pair ~f:(fun (a, b) ->
-      assert (disjoint_union_exn a b = disjoint_union_exn b a) )
+      assert (equal (disjoint_union_exn a b) (disjoint_union_exn b a)) )
 
 let%test_unit "check invariant on disjoint union" =
   Quickcheck.test gen_disjoint_pair ~f:(fun (a, b) ->

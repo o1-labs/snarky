@@ -427,7 +427,7 @@ struct
                   let proof_string =
                     let size = Proof.bin_size_t proof in
                     let buf = Bigstring.create size in
-                    ignore (Proof.bin_write_t buf ~pos:0 proof) ;
+                    ignore (Proof.bin_write_t buf ~pos:0 proof : int) ;
                     Base64.encode_string (Bigstring.to_string buf)
                   in
                   Yojson.Safe.pretty_to_channel stdout
@@ -461,7 +461,7 @@ struct
                 (`Assoc
                   [("name", `String "verified"); ("verified", `Bool verified)])
           | Some (`String "generate_keys") | Some (`String "generate-keys") ->
-              ignore (Proof_system.generate_keypair proof_system) ;
+              ignore (Proof_system.generate_keypair proof_system : Keypair.t) ;
               Yojson.Safe.pretty_to_channel stdout
                 (`Assoc
                   [ ("name", `String "keys_generated")

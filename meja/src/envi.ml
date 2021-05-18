@@ -1259,8 +1259,7 @@ module Type = struct
       match typ.type_desc with
       | Tpoly (vars, typ) ->
           (* Make fresh variables to instantiate [Tpoly]s. *)
-          ignore (refresh_vars vars env) ;
-          copy typ
+          refresh_vars vars env ; copy typ
       | _ ->
           copy typ
     in
@@ -1560,7 +1559,8 @@ module Type = struct
                            snd (raw_get_type_declaration ~loc path env) )
                          ~depth:env.depth e_weak.exp_type e_strong.exp_type
                      then (
-                       ignore (unifies env e_strong.exp_type e_weak.exp_type) ;
+                       ignore
+                         (unifies env e_strong.exp_type e_weak.exp_type : bool) ;
                        ( match e_weak.exp_desc with
                        | Texp_unifiable desc ->
                            desc.expression <- Some e_strong
