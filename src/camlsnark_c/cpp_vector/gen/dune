@@ -1,3 +1,0 @@
-(executable
- (name gen_vector_stubs)
- (libraries camlsnark_c_bindings ctypes ctypes.stubs core_kernel))
