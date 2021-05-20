@@ -99,7 +99,7 @@ let pprint fmt = function
 
 let debug_print fmt = function
   | Regular {ident_name; ident_ocaml= Some ident_ocaml; ident_id; ident_mode}
-    when ident_name <> !ident_ocaml ->
+    when not (String.equal ident_name !ident_ocaml) ->
       Format.fprintf fmt "(%s=%s)/%a.%i" ident_name !ident_ocaml
         Ast_types.mode_debug_print ident_mode ident_id
   | Regular {ident_name; ident_ocaml= _; ident_id; ident_mode} ->

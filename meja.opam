@@ -18,6 +18,7 @@ depends: [
   "ocaml-compiler-libs"
   "ppxlib"
   "ppx_jane"
+  "menhir"
   "dune"                {build & >= "2.0"}
 ]
 descr: "

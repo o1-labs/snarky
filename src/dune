@@ -7,23 +7,16 @@
    base64
    bignum
    bitstring_lib
-   camlsnark_c
    core_kernel
    ctypes
-   ctypes_foreign_libffi
    fold_lib
    h_list
    interval_union
    snarky.backendless
-   snarky.cpp_string
-   snarky.cpp_vector
-   snarky.libsnark_bindings
    snarky.intf
    tuple_lib
    yojson
-   (select gpu_prover.ml from
-    (groth16_gpu_prover -> gpu_prover.gpu.ml)
-    (-> gpu_prover.no_gpu.ml)))
+)
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
     --conditional)))

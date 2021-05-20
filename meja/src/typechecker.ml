@@ -606,7 +606,7 @@ let get_field (field : lid) env =
       (ident, ({tdec_desc= TRecord field_decls; tdec_ret; tdec_params; _}, i))
     ->
       let snap = Snapshot.create () in
-      ignore (Envi.Type.refresh_vars tdec_params env) ;
+      Envi.Type.refresh_vars tdec_params env ;
       let {fld_type; _} = List.nth_exn field_decls i in
       let rcd_type = Envi.Type.copy tdec_ret env in
       let fld_type = Type1.get_mode mode fld_type in
@@ -677,7 +677,7 @@ let get_ctor (name : lid) env =
     Set.to_list (Set.union (Type1.type_vars typ) (Type1.type_vars args_typ))
   in
   let snap = Snapshot.create () in
-  ignore (Envi.Type.refresh_vars bound_vars env) ;
+  Envi.Type.refresh_vars bound_vars env ;
   let args_typ = Envi.Type.copy args_typ env in
   let typ = Envi.Type.copy typ env in
   backtrack snap ; (name, typ, args_typ)

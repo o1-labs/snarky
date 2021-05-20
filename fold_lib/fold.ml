@@ -48,7 +48,7 @@ let of_array (xs : 'a array) : 'a t =
 
 let%test_unit "fold-to-list" =
   Quickcheck.test (Quickcheck.Generator.list Int.quickcheck_generator)
-    ~f:(fun xs -> assert (xs = to_list (of_list xs)))
+    ~f:(fun xs -> assert ([%equal: Int.t list] xs (to_list (of_list xs))))
 
 let sexp_of_t f t = List.sexp_of_t f (to_list t)
 

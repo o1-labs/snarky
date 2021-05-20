@@ -1,5 +1,0 @@
-(library
- (name snarky_curve_tests)
- (libraries snarky_curve snarky)
- (inline_tests)
- (preprocess (pps ppx_inline_test)))

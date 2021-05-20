@@ -24,7 +24,7 @@ let cmp_modinfo x y =
   | ModuleName x, ModuleName y
   | IdentName x, IdentName y
   | BaseModule x, BaseModule y ->
-      compare x.txt y.txt
+      Longident.compare x.txt y.txt
   | ModuleName _, _ ->
       -1
   | _, ModuleName _ ->
@@ -92,7 +92,7 @@ let last_common_name lid1 lid2 =
   let names2 = Longident.flatten_exn lid2 in
   let rec last_equal prev_name names1 names2 =
     match (names1, names2) with
-    | a :: names1, b :: names2 when a = b ->
+    | a :: names1, b :: names2 when String.equal a b ->
         last_equal a names1 names2
     | _, _ ->
         prev_name
@@ -112,7 +112,7 @@ let common_prefix ~loc lid1 lid2 =
   let names2 = Longident.flatten_exn lid2 in
   let rec common_prefix names1 names2 =
     match (names1, names2) with
-    | a :: names1, b :: names2 when a = b ->
+    | a :: names1, b :: names2 when String.equal a b ->
         a :: common_prefix names1 names2
     | _, _ ->
         []

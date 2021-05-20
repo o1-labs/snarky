@@ -1,4 +1,0 @@
-(library
- (public_name ctypes_foreign_libffi)
- (name ctypes_foreign_libffi)
- (libraries ctypes))

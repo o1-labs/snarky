@@ -28,7 +28,8 @@ let rec debug_print ppf path =
   match path with
   | Pident name ->
       Ident.debug_print ppf name
-  | Pocamldot (path, mode, name, ocamlname) when name <> !ocamlname ->
+  | Pocamldot (path, mode, name, ocamlname)
+    when not (String.equal name !ocamlname) ->
       fprintf ppf "(%a).(%s=%s)/%a" debug_print path name !ocamlname
         mode_debug_print mode
   | Pdot (path, mode, name) | Pocamldot (path, mode, name, _) ->
