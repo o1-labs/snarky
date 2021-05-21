@@ -22,6 +22,7 @@ depends: [
   "bisect_ppx"
   "dune"                {build & >= "2.0"}
   "ppx_deriving_yojson"
+  "bignum"
 ]
 descr: "
 A portable cryptography library
