@@ -52,6 +52,8 @@ let m = 3
 module Bn382_inputs (Field : Intf.Field_mutable) = struct
   let rounds_full = 8
 
+  let initial_ark = true
+
   let rounds_partial = 30
 
   module Field = Field
@@ -171,22 +173,27 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
   let block_cipher {Params.round_constants; mds} state =
     let sbox = to_the_alpha in
     let state = ref state in
-    add_block ~state:!state round_constants.(0) ;
-    for i = 1 to first_half_rounds_full do
+    let constant_offset =
+      if initial_ark then (
+        add_block ~state:!state round_constants.(0) ;
+        1 )
+      else 0
+    in
+    let range =
+      (constant_offset, constant_offset + first_half_rounds_full - 1)
+    in
+    for i = fst range to snd range do
       (* SBOX -> MDS -> ARK *)
       Array.map_inplace !state ~f:sbox ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
-    for
-      i = first_half_rounds_full + 1 to first_half_rounds_full + rounds_partial
-    do
+    let range = (snd range + 1, snd range + rounds_partial) in
+    for i = fst range to snd range do
       !state.(0) <- sbox !state.(0) ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
-    for
-      i = first_half_rounds_full + rounds_partial + 1
-      to rounds_full + rounds_partial
-    do
+    let range = (snd range + 1, rounds_full + rounds_partial - 1) in
+    for i = fst range to snd range do
       Array.map_inplace !state ~f:sbox ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
