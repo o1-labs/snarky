@@ -61,6 +61,8 @@ module Inputs = struct
 
     val rounds_full : int
 
+    val initial_ark : bool
+
     val rounds_partial : int
   end
 end
