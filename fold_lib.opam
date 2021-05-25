@@ -19,6 +19,7 @@ depends: [
   "ppx_jane"
   "bisect_ppx"
   "dune"                {build & >= "2.0"}
+  "ppx_inline_test"
 ]
 descr: "
 A library for treating folds as a first-class data structure and a monad

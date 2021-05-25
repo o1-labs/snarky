@@ -15,6 +15,7 @@ url {
 depends: [
   "dune"                {build & >= "2.0"}
   "ppxlib"
+  "base"
 ]
 descr: "
 Heterogeneous lists
