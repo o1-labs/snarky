@@ -28,4 +28,26 @@ jobs:
       - name: Build
         run: |
           eval $(opam env)
+          opam install dune ocamlformat
+          
           opam pin add . -y
+          make build
+
+      - name: Debug
+        run: |
+          eval $(opam env)
+          dune installed-libraries
+      
+      - name: Tests
+        run: |
+          eval $(opam env)
+          dune runtest
+
+          cd meja
+          make build
+          make test
+
+      - name: Website
+        run: |
+          eval $(opam env)
+          make test-website-build
