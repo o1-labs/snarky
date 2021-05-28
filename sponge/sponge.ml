@@ -209,14 +209,23 @@ module Make_hash (P : Intf.Permutation) = struct
     Array.fold ~init:state blocks ~f:(fun state block ->
         add_block ~state block ; perm state )
 
-  let to_blocks r a =
-    let n = Array.length a in
-    Array.init
-      ((n + r - 1) / r)
-      ~f:(fun i ->
-        Array.init r ~f:(fun j ->
-            let k = (r * i) + j in
-            if k < n then a.(k) else Field.zero ) )
+  (* takes an array of field elements, and spread them into blocks/arrays that can contain [rate] fied elements *)
+  let to_blocks rate field_elems =
+    let n = Array.length field_elems in
+    let num_blocks = if n = 0 then 1 else (n + rate - 1) / rate in
+    let fill_block block_idx pos =
+      let global_pos = (rate * block_idx) + pos in
+      if global_pos < n then field_elems.(global_pos)
+      else (* padding *) Field.zero
+    in
+    let create_block idx = Array.init rate ~f:(fill_block idx) in
+    Array.init num_blocks ~f:create_block
+
+  let%test "empty field_elems to_blocks" =
+    let blocks = to_blocks 2 [||] in
+    Array.length blocks = 1
+    && blocks.(0).(0) = Field.zero
+    && blocks.(0).(1) = Field.zero
 
   let%test_unit "block" =
     let z = Field.zero in
