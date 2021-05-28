@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eo
+set -xeo
 
 # Generate opam.test from the current opam switch
 opam switch export opam.test
