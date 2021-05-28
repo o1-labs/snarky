@@ -8,6 +8,7 @@ opam switch create 4.07.1 || true
 opam switch 4.07.1
 # Built-in opam repository.. We have to update manually
 pushd /home/opam/opam-repository && git pull && popd
+opam update
 
 # Generate opam.test from the current opam switch
 opam switch export opam.test
