@@ -52,6 +52,8 @@ let m = 3
 module Bn382_inputs (Field : Intf.Field_mutable) = struct
   let rounds_full = 8
 
+  let initial_ark = true
+
   let rounds_partial = 30
 
   module Field = Field
@@ -171,22 +173,27 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
   let block_cipher {Params.round_constants; mds} state =
     let sbox = to_the_alpha in
     let state = ref state in
-    add_block ~state:!state round_constants.(0) ;
-    for i = 1 to first_half_rounds_full do
+    let constant_offset =
+      if initial_ark then (
+        add_block ~state:!state round_constants.(0) ;
+        1 )
+      else 0
+    in
+    let range =
+      (constant_offset, constant_offset + first_half_rounds_full - 1)
+    in
+    for i = fst range to snd range do
       (* SBOX -> MDS -> ARK *)
       Array.map_inplace !state ~f:sbox ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
-    for
-      i = first_half_rounds_full + 1 to first_half_rounds_full + rounds_partial
-    do
+    let range = (snd range + 1, snd range + rounds_partial) in
+    for i = fst range to snd range do
       !state.(0) <- sbox !state.(0) ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
-    for
-      i = first_half_rounds_full + rounds_partial + 1
-      to rounds_full + rounds_partial
-    do
+    let range = (snd range + 1, rounds_full + rounds_partial - 1) in
+    for i = fst range to snd range do
       Array.map_inplace !state ~f:sbox ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
@@ -202,14 +209,23 @@ module Make_hash (P : Intf.Permutation) = struct
     Array.fold ~init:state blocks ~f:(fun state block ->
         add_block ~state block ; perm state )
 
-  let to_blocks r a =
-    let n = Array.length a in
-    Array.init
-      ((n + r - 1) / r)
-      ~f:(fun i ->
-        Array.init r ~f:(fun j ->
-            let k = (r * i) + j in
-            if k < n then a.(k) else Field.zero ) )
+  (* takes an array of field elements, and spread them into blocks/arrays that can contain [rate] fied elements *)
+  let to_blocks rate field_elems =
+    let n = Array.length field_elems in
+    let num_blocks = if n = 0 then 1 else (n + rate - 1) / rate in
+    let fill_block block_idx pos =
+      let global_pos = (rate * block_idx) + pos in
+      if global_pos < n then field_elems.(global_pos)
+      else (* padding *) Field.zero
+    in
+    let create_block idx = Array.init rate ~f:(fill_block idx) in
+    Array.init num_blocks ~f:create_block
+
+  let%test "empty field_elems to_blocks" =
+    let blocks = to_blocks 2 [||] in
+    Array.length blocks = 1
+    && blocks.(0).(0) = Field.zero
+    && blocks.(0).(1) = Field.zero
 
   let%test_unit "block" =
     let z = Field.zero in
