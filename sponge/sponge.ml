@@ -192,7 +192,8 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
       !state.(0) <- sbox !state.(0) ;
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
-    let range = (snd range + 1, rounds_full + rounds_partial - 1) in
+    let second_half_rounds_full = rounds_full - first_half_rounds_full in
+    let range = (snd range + 1, snd range + second_half_rounds_full) in
     for i = fst range to snd range do
       Array.map_inplace !state ~f:sbox ;
       state := apply_affine_map (mds, round_constants.(i)) !state
