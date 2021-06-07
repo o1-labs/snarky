@@ -25,7 +25,7 @@ let parse_test_vectors filepath =
 
 (* three_wire test vectors *)
 let () = 
-  let cur_dir = Sys.argv.(0) |> Filename.dirname in 
+  let cur_dir = Sys.getcwd () in 
   let test_vector_file = Filename.concat cur_dir "three_wire.json" in
   let test_vectors = parse_test_vectors test_vector_file in 
   assert (test_vectors.name = "three_wire");
@@ -37,7 +37,7 @@ let () =
 
 (* fp_3 test vectors *)
 let () = 
-  let cur_dir = Sys.argv.(0) |> Filename.dirname in 
+let cur_dir = Sys.getcwd () in 
   let test_vector_file = Filename.concat cur_dir "fp_3.json" in
   let test_vectors = parse_test_vectors test_vector_file in 
   assert (test_vectors.name = "fp_3");
