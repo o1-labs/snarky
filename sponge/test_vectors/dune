@@ -1,0 +1,3 @@
+(executable
+ (name main)
+ (libraries sponge snarkette core_kernel))
