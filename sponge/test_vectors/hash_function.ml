@@ -50,10 +50,10 @@ module Field = struct
 end
 
 (* ********************** *
- * our permutation Config *
+ * three_wire permutation *
  * ********************** *)
 
-module Config = struct
+module ConfigThreeWire = struct
   module Field = Field
 
   let rounds_full = 63
@@ -83,15 +83,66 @@ module Config = struct
   end
 end
 
+(* ********************** *
+ * fp_3 permutation *
+ * ********************** *)
+module ConfigFp3 = struct
+  module Field = Field
+
+  let rounds_full = 54
+
+  let initial_ark = false
+
+  let rounds_partial = 0
+
+  let to_the_alpha x =
+    let open Field in
+    let x_2 = x * x in
+    let x_4 = x_2 * x_2 in
+    let x_7 = x_4 * x_2 * x in
+    x_7
+
+  module Operations = struct
+    let add_assign ~state i x = Field.(state.(i) <- state.(i) + x)
+
+    let apply_affine_map (matrix, constants) v =
+      let dotv row =
+        Array.reduce_exn (Array.map2_exn row v ~f:Field.( * )) ~f:Field.( + )
+      in
+      let res = Array.map matrix ~f:dotv in
+      Array.map2_exn res constants ~f:Field.( + )
+
+    let copy a = Array.map a ~f:Fn.id
+  end
+end
+
 (* ***************** *
  *   hash function   *
  * ***************** *)
 
-module Hash = struct
-  include Sponge.Make_hash (Sponge.Poseidon (Config))
+module ThreeWire = struct
+  include Sponge.Make_hash (Sponge.Poseidon (ConfigThreeWire))
 
   let params : Field.t Sponge.Params.t =
     Sponge.Params.(map pasta_p ~f:Field.of_string)
+
+  let hash ?init = hash ?init params
+  
+  (* input is an array of field elements encoded as hexstrings *)
+  let hash_field_elems (field_elems : string list) : string =
+    let input : Field.t array =
+      if List.length field_elems = 0 then [||] else
+      Array.of_list @@ List.map field_elems ~f:Field.of_hex
+    in
+    let digest = hash ~init:initial_state input in
+    Field.to_hex digest
+end
+
+module Fp3 = struct
+  include Sponge.Make_hash (Sponge.Poseidon (ConfigFp3))
+
+  let params : Field.t Sponge.Params.t =
+    Sponge.Params.(map pasta_p_3 ~f:Field.of_string)
 
   let hash ?init = hash ?init params
   
