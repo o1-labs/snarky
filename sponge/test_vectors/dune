@@ -1,0 +1,11 @@
+(executable
+ (name main)
+ (libraries sponge snarkette core_kernel))
+
+; run test vectors with `dune runtest`
+
+(rule
+ (alias runtest)
+ (deps three_wire.json fp_3.json)
+ (action
+  (run ./main.exe)))
