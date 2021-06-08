@@ -8,7 +8,7 @@ module Field = struct
   include Snarkette.Pasta.Fp
 
   (* Converts a byterray into a [Field.t], raises an exception if the number obtained is larger than the order *)
-  let of_bytes (bytearray: string) : t =
+  let of_bytes (bytearray : string) : t =
     let aux i acc c =
       let big = Nat.of_int @@ int_of_char c in
       let offset = Nat.shift_left big (Int.( * ) i 8) in
@@ -22,12 +22,12 @@ module Field = struct
     of_bigint big
 
   (* Converts an hexadecimal string into a [Field.t], raises an exception if the number obtained is larger than the order *)
-  let of_hex (hexstring: string) : t =
+  let of_hex (hexstring : string) : t =
     let bytearray : string = Hex.decode hexstring |> Bytes.to_string in
     of_bytes bytearray
 
   (* Converts a field element into a bytearray (encoding the field element in little-endian) *)
-  let to_bytes (field: t) : bytes =
+  let to_bytes (field : t) : bytes =
     (* taken from src/lib/pickles *)
     let bits_to_bytes bits =
       let byte_of_bits bs =
@@ -44,7 +44,7 @@ module Field = struct
     bytearray
 
   (* Converts a field element into an hexadecimal string (encoding the field element in little-endian) *)
-  let to_hex (field: t) : string =
+  let to_hex (field : t) : string =
     let bytearray : bytes = to_bytes field in
     Hex.encode bytearray
 end
@@ -127,12 +127,12 @@ module ThreeWire = struct
     Sponge.Params.(map pasta_p ~f:Field.of_string)
 
   let hash ?init = hash ?init params
-  
+
   (* input is an array of field elements encoded as hexstrings *)
   let hash_field_elems (field_elems : string list) : string =
     let input : Field.t array =
-      if List.length field_elems = 0 then [||] else
-      Array.of_list @@ List.map field_elems ~f:Field.of_hex
+      if List.length field_elems = 0 then [||]
+      else Array.of_list @@ List.map field_elems ~f:Field.of_hex
     in
     let digest = hash ~init:initial_state input in
     Field.to_hex digest
@@ -145,12 +145,12 @@ module Fp3 = struct
     Sponge.Params.(map pasta_p_3 ~f:Field.of_string)
 
   let hash ?init = hash ?init params
-  
+
   (* input is an array of field elements encoded as hexstrings *)
   let hash_field_elems (field_elems : string list) : string =
     let input : Field.t array =
-      if List.length field_elems = 0 then [||] else
-      Array.of_list @@ List.map field_elems ~f:Field.of_hex
+      if List.length field_elems = 0 then [||]
+      else Array.of_list @@ List.map field_elems ~f:Field.of_hex
     in
     let digest = hash ~init:initial_state input in
     Field.to_hex digest
