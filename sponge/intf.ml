@@ -1,5 +1,5 @@
 module type Field = sig
-  type t
+  type t [@@deriving sexp, equal, compare]
 
   val zero : t
 
@@ -38,7 +38,7 @@ end
 module Inputs = struct
   module type Common = sig
     module Field : sig
-      type t
+      type t [@@deriving sexp, equal, compare]
 
       val zero : t
     end
@@ -69,7 +69,7 @@ end
 
 module type Permutation = sig
   module Field : sig
-    type t
+    type t [@@deriving sexp, equal, compare]
 
     val zero : t
   end
