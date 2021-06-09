@@ -30,3 +30,11 @@ jobs:
           eval $(opam env)
           opam update
           opam pin add . -y
+
+      - name: Format
+        run: |
+          eval $(opam env)
+          opam install ocamlformat.0.9
+          dune build @fmt
+          dune promote
+          git diff --exit-code
