@@ -222,11 +222,11 @@ module Make_hash (P : Intf.Permutation) = struct
     let create_block idx = Array.init rate ~f:(fill_block idx) in
     Array.init num_blocks ~f:create_block
 
-  let%test "empty field_elems to_blocks" =
+  let%test_unit "empty field_elems to_blocks" =
     let blocks = to_blocks 2 [||] in
-    Array.length blocks = 1
-    && blocks.(0).(0) = Field.zero
-    && blocks.(0).(1) = Field.zero
+    assert (Array.length blocks = 1) ;
+    [%test_eq: Field.t] blocks.(0).(0) Field.zero ;
+    [%test_eq: Field.t] blocks.(0).(1) Field.zero
 
   let%test_unit "block" =
     let z = Field.zero in
