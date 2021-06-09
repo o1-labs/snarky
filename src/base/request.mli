@@ -46,7 +46,7 @@ module Response : sig
 end
 
 type request =
-  | With : {request: 'a t; respond: 'a Response.t -> response} -> request
+  | With : { request : 'a t; respond : 'a Response.t -> response } -> request
 
 (** Internal, used by {!module:Snark0}. *)
 module Handler : sig

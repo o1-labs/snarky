@@ -91,8 +91,7 @@ module Table : sig
   (** Returns a list of the bound identifiers. *)
   val keys : 'a t -> ident list
 
-  val fold_keys :
-    'a t -> init:'accum -> f:('accum -> ident -> 'accum) -> 'accum
+  val fold_keys : 'a t -> init:'accum -> f:('accum -> ident -> 'accum) -> 'accum
 
   val fold : 'a t -> init:'accum -> f:('accum -> 'a -> 'accum) -> 'accum
 
@@ -104,8 +103,9 @@ module Table : sig
        'v1 t
     -> 'v2 t
     -> init:'a
-    -> f:(   key:string
-          -> data:[`Both of 'v1 * 'v2 | `Left of 'v1 | `Right of 'v2]
+    -> f:
+         (   key:string
+          -> data:[ `Both of 'v1 * 'v2 | `Left of 'v1 | `Right of 'v2 ]
           -> 'a
           -> 'a)
     -> 'a

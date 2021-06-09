@@ -18,7 +18,7 @@ type error =
 
 exception Error of Location.t * error
 
-let type0 {Typedast.type_type; _} = type_type
+let type0 { Typedast.type_type; _ } = type_type
 
 let unify = ref (fun ~loc:_ _env _typ1 _typ2 -> failwith "Undefined")
 
@@ -29,36 +29,41 @@ module Type = struct
   let opaque = Ident.create ~mode:Checked "opaque"
 
   let mk_poly ~loc ~mode vars typ env =
-    { Typedast.type_desc= Ttyp_poly (vars, typ)
-    ; type_loc= loc
-    ; type_type= Mk.poly ~mode (List.map ~f:type0 vars) (type0 typ) env }
+    { Typedast.type_desc = Ttyp_poly (vars, typ)
+    ; type_loc = loc
+    ; type_type = Mk.poly ~mode (List.map ~f:type0 vars) (type0 typ) env
+    }
 
   let mk_tuple ~loc ~mode typs env =
-    { Typedast.type_desc= Ttyp_tuple typs
-    ; type_loc= loc
-    ; type_type= Mk.tuple ~mode (List.map ~f:type0 typs) env }
+    { Typedast.type_desc = Ttyp_tuple typs
+    ; type_loc = loc
+    ; type_type = Mk.tuple ~mode (List.map ~f:type0 typs) env
+    }
 
   let mk_arrow ~loc ~mode ?(explicit = Explicit) ?(label = Nolabel) typ1 typ2
       env =
-    { Typedast.type_desc= Ttyp_arrow (typ1, typ2, explicit, label)
-    ; type_loc= loc
-    ; type_type= Mk.arrow ~mode ~explicit ~label (type0 typ1) (type0 typ2) env
+    { Typedast.type_desc = Ttyp_arrow (typ1, typ2, explicit, label)
+    ; type_loc = loc
+    ; type_type = Mk.arrow ~mode ~explicit ~label (type0 typ1) (type0 typ2) env
     }
 
   let mk_prover ~loc ~mode typ =
-    { Typedast.type_desc= Ttyp_prover typ
-    ; type_loc= loc
-    ; type_type= Type1.get_mode mode typ.type_type }
+    { Typedast.type_desc = Ttyp_prover typ
+    ; type_loc = loc
+    ; type_type = Type1.get_mode mode typ.type_type
+    }
 
   let mk_conv ~loc ~mode typ1 typ2 env =
-    { Typedast.type_desc= Ttyp_conv (typ1, typ2)
-    ; type_loc= loc
-    ; type_type= Envi.Type.Mk.conv ~mode (type0 typ1) (type0 typ2) env }
+    { Typedast.type_desc = Ttyp_conv (typ1, typ2)
+    ; type_loc = loc
+    ; type_type = Envi.Type.Mk.conv ~mode (type0 typ1) (type0 typ2) env
+    }
 
   let mk_opaque ~loc typ env =
-    { Typedast.type_desc= Ttyp_opaque typ
-    ; type_loc= loc
-    ; type_type= Envi.Type.Mk.opaque ~mode:Checked (type0 typ) env }
+    { Typedast.type_desc = Ttyp_opaque typ
+    ; type_loc = loc
+    ; type_type = Envi.Type.Mk.opaque ~mode:Checked (type0 typ) env
+    }
 
   let rec import ?must_find (typ : type_expr) env : Typedast.type_expr * env =
     let mode = Envi.current_mode env in
@@ -67,21 +72,21 @@ module Type = struct
     let loc = typ.type_loc in
     match typ.type_desc with
     | Ptyp_var None -> (
-      match must_find with
-      | Some true ->
-          raise (Error (loc, Unbound_type_var "_"))
-      | _ ->
-          ( { type_desc= Ttyp_var None
-            ; type_loc= loc
-            ; type_type= mkvar ~mode None env }
-          , env ) )
-    | Ptyp_var (Some {txt= x; _} as name) ->
+        match must_find with
+        | Some true ->
+            raise (Error (loc, Unbound_type_var "_"))
+        | _ ->
+            ( { type_desc = Ttyp_var None
+              ; type_loc = loc
+              ; type_type = mkvar ~mode None env
+              }
+            , env ) )
+    | Ptyp_var (Some { txt = x; _ } as name) ->
         let var =
           match must_find with
           | Some true ->
               let var = find_type_variable ~mode x env in
-              if Option.is_none var then
-                raise (Error (loc, Unbound_type_var x)) ;
+              if Option.is_none var then raise (Error (loc, Unbound_type_var x)) ;
               var
           | Some false ->
               None
@@ -96,34 +101,35 @@ module Type = struct
               let var = mkvar ~mode (Some x) env in
               (var, add_type_variable x var env)
         in
-        ({type_desc= Ttyp_var name; type_loc= loc; type_type}, env)
+        ({ type_desc = Ttyp_var name; type_loc = loc; type_type }, env)
     | Ptyp_poly (vars, typ) ->
         let env = open_expr_scope env in
         let env, vars =
           List.fold_map vars ~init:env ~f:(fun e t ->
               let t, e = import' ~must_find:false t e in
-              (e, t) )
+              (e, t))
         in
         let typ, env = import typ env in
         let env = close_expr_scope env in
         (mk_poly ~loc ~mode vars typ env, env)
-    | Ptyp_ctor {var_ident= {txt= Lident "opaque"; _} as var_ident; var_params}
+    | Ptyp_ctor
+        { var_ident = { txt = Lident "opaque"; _ } as var_ident; var_params }
       when not (Envi.has_type_declaration ~mode var_ident env) -> (
-      (* Special-case the [opaque] type constructor when it's not otherwise
-           bound in the environment. This avoids the need for an extra keyword
-           or any specific reserved syntax.
+        (* Special-case the [opaque] type constructor when it's not otherwise
+             bound in the environment. This avoids the need for an extra keyword
+             or any specific reserved syntax.
         *)
-      match var_params with
-      | [typ'] ->
-          import {typ with type_desc= Ptyp_opaque typ'} env
-      | _ ->
-          raise
-            (Error
-               ( loc
-               , Wrong_number_args
-                   (Path.Pident opaque, List.length var_params, 1) )) )
+        match var_params with
+        | [ typ' ] ->
+            import { typ with type_desc = Ptyp_opaque typ' } env
+        | _ ->
+            raise
+              (Error
+                 ( loc
+                 , Wrong_number_args
+                     (Path.Pident opaque, List.length var_params, 1) )) )
     | Ptyp_ctor variant ->
-        let {var_ident; var_params} = variant in
+        let { var_ident; var_params } = variant in
         let var_ident, decl = raw_find_type_declaration ~mode var_ident env in
         let var_ident = Location.mkloc var_ident variant.var_ident.loc in
         let given_args_length = List.length var_params in
@@ -137,7 +143,7 @@ module Type = struct
         let env, var_params =
           List.fold_map ~init:env var_params ~f:(fun env param ->
               let param, env = import param env in
-              (env, param) )
+              (env, param))
         in
         let typ =
           Envi.Type.instantiate decl.tdec_params
@@ -145,15 +151,16 @@ module Type = struct
             (Type1.get_mode mode decl.tdec_ret)
             env
         in
-        ( { type_desc= Ttyp_ctor {var_params; var_ident}
-          ; type_loc= loc
-          ; type_type= typ }
+        ( { type_desc = Ttyp_ctor { var_params; var_ident }
+          ; type_loc = loc
+          ; type_type = typ
+          }
         , env )
     | Ptyp_tuple typs ->
         let env, typs =
           List.fold_map typs ~init:env ~f:(fun e t ->
               let t, e = import t e in
-              (e, t) )
+              (e, t))
         in
         (mk_tuple ~loc ~mode typs env, env)
     | Ptyp_arrow (typ1, typ2, explicit, label) ->
@@ -215,9 +222,10 @@ module Type = struct
         in
         let typ, env = import typ env in
         !unify ~loc env typ.type_type var ;
-        ( { Typedast.type_desc= Ttyp_alias (typ, name)
-          ; type_loc= loc
-          ; type_type= typ.type_type }
+        ( { Typedast.type_desc = Ttyp_alias (typ, name)
+          ; type_loc = loc
+          ; type_type = typ.type_type
+          }
         , env )
     | Ptyp_row (tags, row_closed, min_tags) ->
         let pres =
@@ -229,11 +237,11 @@ module Type = struct
         in
         let (env, row_tags), tags =
           List.fold_map ~init:(env, Ident.Map.empty) tags
-            ~f:(fun (env, row_tags) {rtag_ident; rtag_arg; rtag_loc} ->
+            ~f:(fun (env, row_tags) { rtag_ident; rtag_arg; rtag_loc } ->
               let env, rtag_arg =
                 List.fold_map rtag_arg ~init:env ~f:(fun e t ->
                     let t, e = import t e in
-                    (e, t) )
+                    (e, t))
               in
               let rtag_ident = map_loc ~f:Ident.create_row rtag_ident in
               let args = List.map ~f:type0 rtag_arg in
@@ -248,7 +256,7 @@ module Type = struct
                 | `Ok row_tags ->
                     row_tags
               in
-              ((env, row_tags), {Typedast.rtag_ident; rtag_arg; rtag_loc}) )
+              ((env, row_tags), { Typedast.rtag_ident; rtag_arg; rtag_loc }))
         in
         let min_tags =
           Option.map ~f:(List.map ~f:(map_loc ~f:Ident.create_row)) min_tags
@@ -267,12 +275,14 @@ module Type = struct
             { row_tags
             ; row_closed
             ; row_rest
-            ; row_presence_proxy= Type1.mk_rp RpPresent }
+            ; row_presence_proxy = Type1.mk_rp RpPresent
+            }
             env
         in
-        ( { Typedast.type_desc= Ttyp_row (tags, row_closed, min_tags)
-          ; type_loc= loc
-          ; type_type }
+        ( { Typedast.type_desc = Ttyp_row (tags, row_closed, min_tags)
+          ; type_loc = loc
+          ; type_type
+          }
         , env )
     | Ptyp_row_subtract (typ, tags) ->
         let typ', env = import typ env in
@@ -289,7 +299,7 @@ module Type = struct
                 in
                 let row_presence_proxy = Type1.mk_rp RpPresent in
                 let row =
-                  {Type0.row_tags; row_closed; row_rest; row_presence_proxy}
+                  { Type0.row_tags; row_closed; row_rest; row_presence_proxy }
                 in
                 let instance_typ =
                   Type1.Mk.row ~mode:typ'.type_mode typ'.type_depth row
@@ -309,7 +319,8 @@ module Type = struct
           match row_closed with
           | Open ->
               let row_tags =
-                List.fold ~init:row_tags tags ~f:(fun row_tags {txt= tag; _} ->
+                List.fold ~init:row_tags tags
+                  ~f:(fun row_tags { txt = tag; _ } ->
                     match Map.find row_tags tag with
                     | Some (path, pres, args) ->
                         Map.set row_tags ~key:tag
@@ -319,29 +330,30 @@ module Type = struct
                           ~data:
                             ( Path.Pident tag
                             , Type1.mk_rp (RpSubtract (Type1.mk_rp RpAny))
-                            , [] ) )
+                            , [] ))
               in
               Envi.Type.Mk.row ~mode
-                {row_tags; row_closed; row_rest; row_presence_proxy}
+                { row_tags; row_closed; row_rest; row_presence_proxy }
                 env
           | Closed ->
               let row_tags =
                 List.fold ~init:row_tags tags
-                  ~f:(fun row_tags {txt= tag; loc} ->
+                  ~f:(fun row_tags { txt = tag; loc } ->
                     match Map.find row_tags tag with
                     | Some (path, pres, args) ->
                         Map.set row_tags ~key:tag
                           ~data:(path, Type1.mk_rp (RpSubtract pres), args)
                     | None ->
-                        raise (Error (loc, Missing_row_label tag)) )
+                        raise (Error (loc, Missing_row_label tag)))
               in
               Envi.Type.Mk.row ~mode
-                {row_tags; row_closed; row_rest; row_presence_proxy}
+                { row_tags; row_closed; row_rest; row_presence_proxy }
                 env
         in
-        ( { Typedast.type_desc= Ttyp_row_subtract (typ', tags)
-          ; type_loc= loc
-          ; type_type }
+        ( { Typedast.type_desc = Ttyp_row_subtract (typ', tags)
+          ; type_loc = loc
+          ; type_type
+          }
         , env )
 
   let fold ~init ~f typ =
@@ -368,8 +380,8 @@ module Type = struct
     | Ptyp_alias (typ, _) ->
         f init typ
     | Ptyp_row (tags, _closed, _min_tags) ->
-        List.fold ~init tags ~f:(fun acc {rtag_arg; _} ->
-            List.fold ~f ~init:acc rtag_arg )
+        List.fold ~init tags ~f:(fun acc { rtag_arg; _ } ->
+            List.fold ~f ~init:acc rtag_arg)
     | Ptyp_row_subtract (typ, _tags) ->
         f init typ
 
@@ -378,38 +390,41 @@ module Type = struct
   let map ~loc ~f typ =
     match typ.type_desc with
     | Ptyp_var _ ->
-        {typ with type_loc= loc}
+        { typ with type_loc = loc }
     | Ptyp_tuple typs ->
         let typs = List.map ~f typs in
-        {type_desc= Ptyp_tuple typs; type_loc= loc}
+        { type_desc = Ptyp_tuple typs; type_loc = loc }
     | Ptyp_arrow (typ1, typ2, explicit, label) ->
-        {type_desc= Ptyp_arrow (f typ1, f typ2, explicit, label); type_loc= loc}
+        { type_desc = Ptyp_arrow (f typ1, f typ2, explicit, label)
+        ; type_loc = loc
+        }
     | Ptyp_ctor variant ->
         let variant =
-          {variant with var_params= List.map ~f variant.var_params}
+          { variant with var_params = List.map ~f variant.var_params }
         in
-        {type_desc= Ptyp_ctor variant; type_loc= loc}
+        { type_desc = Ptyp_ctor variant; type_loc = loc }
     | Ptyp_poly (typs, typ) ->
         let typs = List.map ~f typs in
-        {type_desc= Ptyp_poly (typs, f typ); type_loc= loc}
+        { type_desc = Ptyp_poly (typs, f typ); type_loc = loc }
     | Ptyp_prover typ ->
-        {type_desc= Ptyp_prover (f typ); type_loc= loc}
+        { type_desc = Ptyp_prover (f typ); type_loc = loc }
     | Ptyp_conv (typ1, typ2) ->
-        {type_desc= Ptyp_conv (f typ1, f typ2); type_loc= loc}
+        { type_desc = Ptyp_conv (f typ1, f typ2); type_loc = loc }
     | Ptyp_opaque typ ->
-        {type_desc= Ptyp_opaque (f typ); type_loc= loc}
+        { type_desc = Ptyp_opaque (f typ); type_loc = loc }
     | Ptyp_alias (typ, name) ->
-        {type_desc= Ptyp_alias (f typ, name); type_loc= loc}
+        { type_desc = Ptyp_alias (f typ, name); type_loc = loc }
     | Ptyp_row (tags, closed, min_tags) ->
-        { type_desc=
+        { type_desc =
             Ptyp_row
               ( List.map tags ~f:(fun tag ->
-                    {tag with rtag_arg= List.map ~f tag.rtag_arg} )
+                    { tag with rtag_arg = List.map ~f tag.rtag_arg })
               , closed
               , min_tags )
-        ; type_loc= loc }
+        ; type_loc = loc
+        }
     | Ptyp_row_subtract (typ, tags) ->
-        {type_desc= Ptyp_row_subtract (f typ, tags); type_loc= loc}
+        { type_desc = Ptyp_row_subtract (f typ, tags); type_loc = loc }
 end
 
 module TypeDecl = struct
@@ -418,33 +433,36 @@ module TypeDecl = struct
   let generalise decl =
     let poly_name =
       map_loc decl.tdec_ident ~f:(fun name ->
-          if name = "t" then "poly" else name ^ "_poly" )
+          if name = "t" then "poly" else name ^ "_poly")
     in
     match decl.tdec_desc with
     | Pdec_record fields ->
         let field_vars =
-          List.map fields ~f:(fun {fld_ident; fld_type= _; fld_loc} ->
-              {type_desc= Ptyp_var (Some fld_ident); type_loc= fld_loc} )
+          List.map fields ~f:(fun { fld_ident; fld_type = _; fld_loc } ->
+              { type_desc = Ptyp_var (Some fld_ident); type_loc = fld_loc })
         in
         let poly_decl =
-          { tdec_ident= poly_name
-          ; tdec_params= field_vars
-          ; tdec_desc=
+          { tdec_ident = poly_name
+          ; tdec_params = field_vars
+          ; tdec_desc =
               Pdec_record
                 (List.map2_exn fields field_vars ~f:(fun fld fld_type ->
-                     {fld with fld_type} ))
-          ; tdec_loc= decl.tdec_loc }
+                     { fld with fld_type }))
+          ; tdec_loc = decl.tdec_loc
+          }
         in
         let alias_typ =
-          { type_desc=
+          { type_desc =
               Ptyp_ctor
-                { var_ident=
+                { var_ident =
                     map_loc poly_name ~f:(fun name -> Longident.Lident name)
-                ; var_params=
-                    List.map fields ~f:(fun {fld_type; _} -> fld_type) }
-          ; type_loc= decl.tdec_loc }
+                ; var_params =
+                    List.map fields ~f:(fun { fld_type; _ } -> fld_type)
+                }
+          ; type_loc = decl.tdec_loc
+          }
         in
-        (poly_decl, {decl with tdec_desc= Pdec_alias alias_typ})
+        (poly_decl, { decl with tdec_desc = Pdec_alias alias_typ })
     | Pdec_variant _ ->
         (* Not sure what the right thing to do here is. GADTs make this
            complicated.
@@ -455,7 +473,7 @@ module TypeDecl = struct
         assert false
 
   let predeclare env
-      {Parsetypes.tdec_ident; tdec_params; tdec_desc; tdec_loc= loc} =
+      { Parsetypes.tdec_ident; tdec_params; tdec_desc; tdec_loc = loc } =
     match tdec_desc with
     | Pdec_extend _ ->
         env
@@ -466,15 +484,16 @@ module TypeDecl = struct
           List.map tdec_params ~f:(fun _ -> Envi.Type.mkvar ~mode None env)
         in
         let decl =
-          { Type0.tdec_params= params
-          ; tdec_desc= TAbstract
-          ; tdec_id= next_id ()
-          ; tdec_ret= Envi.Type.Mk.ctor ~mode (Path.Pident ident) params env }
+          { Type0.tdec_params = params
+          ; tdec_desc = TAbstract
+          ; tdec_id = next_id ()
+          ; tdec_ret = Envi.Type.Mk.ctor ~mode (Path.Pident ident) params env
+          }
         in
         Envi.TypeDecl.predeclare ident decl env ;
         map_current_scope ~f:(Scope.add_type_declaration ~loc ident decl) env
 
-  let import_field ?must_find env {fld_ident; fld_type; fld_loc} =
+  let import_field ?must_find env { fld_ident; fld_type; fld_loc } =
     let mode = Envi.current_mode env in
     let fld_type, env = Type.import ?must_find fld_type env in
     let fld_ident = map_loc ~f:(Ident.create ~mode) fld_ident in
@@ -482,7 +501,8 @@ module TypeDecl = struct
     , { Typedast.fld_ident
       ; fld_type
       ; fld_loc
-      ; fld_fld= {Type0.fld_ident= fld_ident.txt; fld_type= fld_type.type_type}
+      ; fld_fld =
+          { Type0.fld_ident = fld_ident.txt; fld_type = fld_type.type_type }
       } )
 
   let import_ctor env ctor =
@@ -503,7 +523,7 @@ module TypeDecl = struct
           let env, args =
             List.fold_map ~init:env args ~f:(fun env arg ->
                 let arg, env = Type.import ?must_find arg env in
-                (env, arg) )
+                (env, arg))
           in
           (env, Typedast.Tctor_tuple args)
       | Ctor_record fields ->
@@ -523,13 +543,13 @@ module TypeDecl = struct
           *)
           let params =
             List.fold ~init:Typeset.empty fields
-              ~f:(fun set {fld_fld= {fld_type; _}; _} ->
-                Set.union set (Type1.type_vars fld_type) )
+              ~f:(fun set { fld_fld = { fld_type; _ }; _ } ->
+                Set.union set (Type1.type_vars fld_type))
             |> Set.to_list
           in
           let decl =
             mk ~name:ctor_ident.txt ~params
-              (TRecord (List.map ~f:(fun {fld_fld= f; _} -> f) fields))
+              (TRecord (List.map ~f:(fun { fld_fld = f; _ } -> f) fields))
           in
           (* Add the type declaration to the outer scope. *)
           let scope, env = Envi.pop_scope env in
@@ -548,17 +568,19 @@ module TypeDecl = struct
     , { Typedast.ctor_ident
       ; ctor_args
       ; ctor_ret
-      ; ctor_loc= ctor.ctor_loc
-      ; ctor_ctor=
-          { Type0.ctor_ident= ctor_ident.txt
-          ; ctor_args= type0_ctor_args
-          ; ctor_ret= Option.map ~f:type0 ctor_ret } } )
+      ; ctor_loc = ctor.ctor_loc
+      ; ctor_ctor =
+          { Type0.ctor_ident = ctor_ident.txt
+          ; ctor_args = type0_ctor_args
+          ; ctor_ret = Option.map ~f:type0 ctor_ret
+          }
+      } )
 
   (* TODO: Make prover mode declarations stitch to opaque types. *)
-  let import ?name ?other_name ?tri_stitched ?(newtype = false) ~recursive
-      decl' env =
+  let import ?name ?other_name ?tri_stitched ?(newtype = false) ~recursive decl'
+      env =
     let mode = Envi.current_mode env in
-    let {tdec_ident; tdec_params; tdec_desc; tdec_loc} = decl' in
+    let { tdec_ident; tdec_params; tdec_desc; tdec_loc } = decl' in
     let tdec_ident, path, tdec_id =
       match
         IdTbl.find_name ~modes:(modes_of_mode mode) tdec_ident.txt
@@ -567,21 +589,21 @@ module TypeDecl = struct
       | Some (ident, id) ->
           (map_loc ~f:(fun _ -> ident) tdec_ident, Path.Pident ident, id)
       | None -> (
-        match tdec_desc with
-        | Pdec_extend (path, _) ->
-            let tdec_ident, _ =
-              Envi.raw_get_type_declaration ~loc:path.loc path.txt env
-            in
-            (map_loc ~f:(fun _ -> tdec_ident) path, path.txt, next_id ())
-        | _ ->
-            let ident =
-              match name with
-              | Some name ->
-                  map_loc ~f:(fun _ -> name) tdec_ident
-              | None ->
-                  map_loc ~f:(Ident.create ~mode) tdec_ident
-            in
-            (ident, Path.Pident ident.txt, next_id ()) )
+          match tdec_desc with
+          | Pdec_extend (path, _) ->
+              let tdec_ident, _ =
+                Envi.raw_get_type_declaration ~loc:path.loc path.txt env
+              in
+              (map_loc ~f:(fun _ -> tdec_ident) path, path.txt, next_id ())
+          | _ ->
+              let ident =
+                match name with
+                | Some name ->
+                    map_loc ~f:(fun _ -> name) tdec_ident
+                | None ->
+                    map_loc ~f:(Ident.create ~mode) tdec_ident
+              in
+              (ident, Path.Pident ident.txt, next_id ()) )
     in
     let env = open_expr_scope env in
     let import_params env =
@@ -591,7 +613,7 @@ module TypeDecl = struct
               let var, env = Type.import ~must_find:false param env in
               (env, var)
           | _ ->
-              raise (Error (param.type_loc, Expected_type_var param)) )
+              raise (Error (param.type_loc, Expected_type_var param)))
     in
     let env, tdec_params = import_params env tdec_params in
     let params = List.map ~f:type0 tdec_params in
@@ -613,7 +635,7 @@ module TypeDecl = struct
           assert (equal_mode tri_typ.Type0.type_mode Prover) ;
           let typ =
             Type1.mk' ~mode:Checked 10000
-              (Tctor {var_ident= path; var_params= params})
+              (Tctor { var_ident = path; var_params = params })
           in
           typ.type_alternate <- tri_typ ;
           typ
@@ -633,20 +655,21 @@ module TypeDecl = struct
               (* Tri-stitch to ensure that [tdec_ret] isn't opaque itself. *)
               let typ =
                 Type1.mk' ~mode:Checked 10000
-                  (Tctor {var_ident= path; var_params= params})
+                  (Tctor { var_ident = path; var_params = params })
               in
               typ.type_alternate <- Type1.get_mode Prover opaque ;
               typ )
     in
     let decl =
-      Type0.{tdec_params= params; tdec_desc= TAbstract; tdec_id; tdec_ret}
+      Type0.{ tdec_params = params; tdec_desc = TAbstract; tdec_id; tdec_ret }
     in
     let typedast_decl =
       { Typedast.tdec_ident
       ; tdec_params
-      ; tdec_desc= Tdec_abstract
+      ; tdec_desc = Tdec_abstract
       ; tdec_loc
-      ; tdec_tdec= decl }
+      ; tdec_tdec = decl
+      }
     in
     let decl, env =
       match tdec_desc with
@@ -654,15 +677,15 @@ module TypeDecl = struct
           (typedast_decl, env)
       | Pdec_alias typ ->
           let typ, env = Type.import ~must_find:true typ env in
-          let decl = {decl with tdec_desc= TAlias typ.type_type} in
+          let decl = { decl with tdec_desc = TAlias typ.type_type } in
           let typedast_decl =
-            {typedast_decl with tdec_desc= Tdec_alias typ; tdec_tdec= decl}
+            { typedast_decl with tdec_desc = Tdec_alias typ; tdec_tdec = decl }
           in
           (typedast_decl, env)
       | Pdec_open ->
-          let decl = {decl with tdec_desc= TOpen} in
+          let decl = { decl with tdec_desc = TOpen } in
           let typedast_decl =
-            {typedast_decl with tdec_desc= Tdec_open; tdec_tdec= decl}
+            { typedast_decl with tdec_desc = Tdec_open; tdec_tdec = decl }
           in
           (typedast_decl, env)
       | Pdec_record fields ->
@@ -671,11 +694,15 @@ module TypeDecl = struct
           in
           let decl =
             { decl with
-              tdec_desc=
-                TRecord (List.map ~f:(fun {fld_fld= f; _} -> f) fields) }
+              tdec_desc =
+                TRecord (List.map ~f:(fun { fld_fld = f; _ } -> f) fields)
+            }
           in
           let typedast_decl =
-            {typedast_decl with tdec_desc= Tdec_record fields; tdec_tdec= decl}
+            { typedast_decl with
+              tdec_desc = Tdec_record fields
+            ; tdec_tdec = decl
+            }
           in
           (typedast_decl, env)
       | Pdec_variant ctors | Pdec_extend (_, ctors) ->
@@ -695,7 +722,7 @@ module TypeDecl = struct
                   raise (Error (ctor.ctor_loc, GADT_in_nonrec_type)) ;
                 let env, ctor = import_ctor env ctor in
                 ( match (ctor.ctor_ret, ret) with
-                | Some {type_desc= Ttyp_ctor {var_ident= path; _}; _}, _
+                | Some { type_desc = Ttyp_ctor { var_ident = path; _ }; _ }, _
                   when Path.compare path.txt name = 0 ->
                     ()
                 | Some _, Some ret ->
@@ -706,24 +733,28 @@ module TypeDecl = struct
                     assert false
                 | _ ->
                     () ) ;
-                (env, ctor) )
+                (env, ctor))
           in
           let typedast_tdec_desc, tdec_desc =
             match tdec_desc with
             | Pdec_variant _ ->
                 ( Typedast.Tdec_variant ctors
                 , Type0.TVariant
-                    (List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors) )
+                    (List.map ~f:(fun { ctor_ctor = c; _ } -> c) ctors) )
             | Pdec_extend (id, _) ->
                 ( Typedast.Tdec_extend (id, ctors)
                 , Type0.TExtend
-                    (id.txt, List.map ~f:(fun {ctor_ctor= c; _} -> c) ctors) )
+                    (id.txt, List.map ~f:(fun { ctor_ctor = c; _ } -> c) ctors)
+                )
             | _ ->
                 failwith "Expected a TVariant or a TExtend"
           in
-          let decl = {decl with tdec_desc} in
+          let decl = { decl with tdec_desc } in
           let typedast_decl =
-            {typedast_decl with tdec_desc= typedast_tdec_desc; tdec_tdec= decl}
+            { typedast_decl with
+              tdec_desc = typedast_tdec_desc
+            ; tdec_tdec = decl
+            }
           in
           (typedast_decl, env)
     in
@@ -759,7 +790,7 @@ module TypeDecl = struct
               let name = Ident.create ~mode ~ocaml:true decl.tdec_ident.txt in
               let name' = decl.tdec_ident.txt in
               Option.iter (Ident.ocaml_name_ref name) ~f:(fun name ->
-                  name := if name' = "t" then "var" else name' ^ "_var" ) ;
+                  name := if name' = "t" then "var" else name' ^ "_var") ;
               name
           | _ ->
               Ident.create ~mode decl.tdec_ident.txt
@@ -821,7 +852,7 @@ module TypeDecl = struct
     let env, decls =
       List.fold_map ~init:env decls ~f:(fun env decl ->
           let decl, env = import ~recursive:true decl env in
-          (env, decl) )
+          (env, decl))
     in
     Envi.TypeDecl.clear_predeclared env ;
     (decls, env)
@@ -838,10 +869,11 @@ let pp_typ = Pprint.type_expr
 
 let pp_decl_typ ppf decl =
   pp_typ ppf
-    { type_desc=
+    { type_desc =
         Ptyp_ctor
-          {var_ident= mk_lid decl.tdec_ident; var_params= decl.tdec_params}
-    ; type_loc= Location.none }
+          { var_ident = mk_lid decl.tdec_ident; var_params = decl.tdec_params }
+    ; type_loc = Location.none
+    }
 
 let report_error ppf = function
   | Unbound_type_var name ->
@@ -890,4 +922,4 @@ let () =
     | Error (loc, err) ->
         Some (Location.error_of_printer ~loc report_error err)
     | _ ->
-        None )
+        None)

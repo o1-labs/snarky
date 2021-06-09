@@ -5,7 +5,7 @@ type ident = Ident.t Location.loc
 type path = Path.t Location.loc
 
 type type_expr =
-  {type_desc: type_desc; type_loc: Location.t; type_type: Type0.type_expr}
+  { type_desc : type_desc; type_loc : Location.t; type_type : Type0.type_expr }
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -31,34 +31,37 @@ and type_desc =
       ident list option
   | Ttyp_row_subtract of type_expr * ident list
 
-and variant = {var_ident: path; var_params: type_expr list}
+and variant = { var_ident : path; var_params : type_expr list }
 
 and row_tag =
-  {rtag_ident: ident; rtag_arg: type_expr list; rtag_loc: Location.t}
+  { rtag_ident : ident; rtag_arg : type_expr list; rtag_loc : Location.t }
 
 type field_decl =
-  { fld_ident: ident
-  ; fld_type: type_expr
-  ; fld_loc: Location.t
-  ; fld_fld: Type0.field_decl }
+  { fld_ident : ident
+  ; fld_type : type_expr
+  ; fld_loc : Location.t
+  ; fld_fld : Type0.field_decl
+  }
 
 type ctor_args =
   | Tctor_tuple of type_expr list
   | Tctor_record of field_decl list
 
 type ctor_decl =
-  { ctor_ident: ident
-  ; ctor_args: ctor_args
-  ; ctor_ret: type_expr option
-  ; ctor_loc: Location.t
-  ; ctor_ctor: Type0.ctor_decl }
+  { ctor_ident : ident
+  ; ctor_args : ctor_args
+  ; ctor_ret : type_expr option
+  ; ctor_loc : Location.t
+  ; ctor_ctor : Type0.ctor_decl
+  }
 
 type type_decl =
-  { tdec_ident: ident
-  ; tdec_params: type_expr list
-  ; tdec_desc: type_decl_desc
-  ; tdec_loc: Location.t
-  ; tdec_tdec: Type0.type_decl }
+  { tdec_ident : ident
+  ; tdec_params : type_expr list
+  ; tdec_desc : type_decl_desc
+  ; tdec_loc : Location.t
+  ; tdec_tdec : Type0.type_decl
+  }
 
 and type_decl_desc =
   | Tdec_abstract
@@ -70,7 +73,7 @@ and type_decl_desc =
       (** Internal; this should never be present in the AST. *)
 
 type pattern =
-  {pat_desc: pattern_desc; pat_loc: Location.t; pat_type: Type0.type_expr}
+  { pat_desc : pattern_desc; pat_loc : Location.t; pat_type : Type0.type_expr }
 
 and pattern_desc =
   | Tpat_any
@@ -84,9 +87,10 @@ and pattern_desc =
   | Tpat_row_ctor of ident * pattern list
 
 type convert_body =
-  { conv_body_desc: convert_body_desc
-  ; conv_body_loc: Location.t
-  ; conv_body_type: Type0.type_expr }
+  { conv_body_desc : convert_body_desc
+  ; conv_body_loc : Location.t
+  ; conv_body_type : Type0.type_expr
+  }
 
 (** AST for generating [Typ.t] instances. *)
 and convert_body_desc =
@@ -98,13 +102,19 @@ and convert_body_desc =
   | Tconv_opaque
 
 and convert =
-  {conv_desc: convert_desc; conv_loc: Location.t; conv_type: Type0.type_expr}
+  { conv_desc : convert_desc
+  ; conv_loc : Location.t
+  ; conv_type : Type0.type_expr
+  }
 
 (** AST for generating [Typ.t] instances from other [Typ.t] instances. *)
 and convert_desc = Tconv_fun of ident * convert | Tconv_body of convert_body
 
 type expression =
-  {exp_desc: expression_desc; exp_loc: Location.t; exp_type: Type0.type_expr}
+  { exp_desc : expression_desc
+  ; exp_loc : Location.t
+  ; exp_type : Type0.type_expr
+  }
 
 and expression_desc =
   | Texp_apply of
@@ -124,9 +134,7 @@ and expression_desc =
   | Texp_ctor of path * expression option
   | Texp_row_ctor of ident * expression list
   | Texp_unifiable of
-      { mutable expression: expression option
-      ; name: ident
-      ; id: int }
+      { mutable expression : expression option; name : ident; id : int }
   | Texp_if of expression * expression * expression option
   | Texp_read of
       convert
@@ -146,7 +154,7 @@ type conv_type =
   (* Tri-stitching to existing declaration. *)
   | Ttconv_to of type_expr
 
-type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
+type signature_item = { sig_desc : signature_desc; sig_loc : Location.t }
 
 and signature = signature_item list
 
@@ -165,7 +173,7 @@ and signature_desc =
   | Tsig_prover of signature
   | Tsig_convert of ident * type_expr
 
-and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
+and module_sig = { msig_desc : module_sig_desc; msig_loc : Location.t }
 
 and module_sig_desc =
   | Tmty_sig of signature
@@ -174,7 +182,7 @@ and module_sig_desc =
   | Tmty_abstract
   | Tmty_functor of str * module_sig * module_sig
 
-type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
+type statement = { stmt_desc : statement_desc; stmt_loc : Location.t }
 
 and statements = statement list
 
@@ -195,7 +203,7 @@ and statement_desc =
   | Tstmt_prover of statements
   | Tstmt_convert of ident * type_expr * convert
 
-and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
+and module_expr = { mod_desc : module_desc; mod_loc : Location.t }
 
 and module_desc =
   | Tmod_struct of statements

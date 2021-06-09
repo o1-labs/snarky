@@ -34,7 +34,7 @@ let rec pprint_case fmt case =
       fprintf fmt "{@[<hv2>" ;
       Map.iteri fields ~f:(fun ~key:name ~data:(case, _) ->
           if !first then first := false else Ast_print.comma_sep fmt () ;
-          fprintf fmt "%s:@ @[<hv>%a@]" name pprint_case case ) ;
+          fprintf fmt "%s:@ @[<hv>%a@]" name pprint_case case) ;
       fprintf fmt "@]}"
   | Pcase_or cases ->
       let pp_sep fmt () = fprintf fmt "@]@ | @[<hv0>" in
@@ -77,13 +77,13 @@ let rec case_of_type_decl env typ decl =
         let fields = String.Map.empty in
         (* Print all fields for every record case. For debugging only. *)
         (*let fields =
-          ignore fields ;
-          List.fold ~init:String.Map.empty _fields ~f:(fun map field ->
-              let typ = Envi.Type.copy field.fld_type env in
-              Map.set map
-                ~key:(Ident.name field.fld_ident)
-                ~data:(Pcase_type typ, typ) )
-        in*)
+            ignore fields ;
+            List.fold ~init:String.Map.empty _fields ~f:(fun map field ->
+                let typ = Envi.Type.copy field.fld_type env in
+                Map.set map
+                  ~key:(Ident.name field.fld_ident)
+                  ~data:(Pcase_type typ, typ) )
+          in*)
         Pcase_record fields
     | TVariant ctors ->
         let ctors =
@@ -94,12 +94,12 @@ let rec case_of_type_decl env typ decl =
                   match ctor.ctor_args with
                   | Ctor_tuple [] ->
                       None
-                  | Ctor_tuple [typ] ->
+                  | Ctor_tuple [ typ ] ->
                       Some (Pcase_type (Envi.Type.copy typ env))
                   | Ctor_tuple typs ->
                       let typs =
                         List.map typs ~f:(fun typ ->
-                            Pcase_type (Envi.Type.copy typ env) )
+                            Pcase_type (Envi.Type.copy typ env))
                       in
                       Some (Pcase_tuple typs)
                   | Ctor_record decl ->
@@ -107,7 +107,7 @@ let rec case_of_type_decl env typ decl =
                 in
                 backtrack snap ;
                 Some (Pcase_ctor (ctor.ctor_ident, arg)) )
-              else None )
+              else None)
         in
         Pcase_or ctors
     | TOpen ->
@@ -141,19 +141,19 @@ and case_of_type env typ =
                 | RpAbsent | RpSubtract _ | RpAny ->
                     cases
                 | RpPresent | RpMaybe -> (
-                  match args with
-                  | [] ->
-                      Pcase_ctor (key, None) :: cases
-                  | [typ] ->
-                      Pcase_ctor (key, Some (Pcase_type typ)) :: cases
-                  | typs ->
-                      Pcase_ctor
-                        ( key
-                        , Some
-                            (Pcase_tuple
-                               (List.map ~f:(fun typ -> Pcase_type typ) typs))
-                        )
-                      :: cases ) )
+                    match args with
+                    | [] ->
+                        Pcase_ctor (key, None) :: cases
+                    | [ typ ] ->
+                        Pcase_ctor (key, Some (Pcase_type typ)) :: cases
+                    | typs ->
+                        Pcase_ctor
+                          ( key
+                          , Some
+                              (Pcase_tuple
+                                 (List.map ~f:(fun typ -> Pcase_type typ) typs))
+                          )
+                        :: cases ))
           in
           Pcase_or ctors )
   | Some (decl, typ), _ ->
@@ -182,7 +182,7 @@ let rec intersect_case env case1 case2 =
         List.map2_exn cases1 cases2 ~f:(fun case1 case2 ->
             let case = intersect_case env case1 case2 in
             if is_case_empty case then raise Empty_case ;
-            case )
+            case)
       in
       Pcase_tuple cases
   | Pcase_ctor (name1, None), Pcase_ctor (name2, None)
@@ -190,11 +190,11 @@ let rec intersect_case env case1 case2 =
       case1
   | Pcase_ctor (name1, Some case1), Pcase_ctor (name2, Some case2)
     when Ident.equal name1 name2 -> (
-    match intersect_case env case1 case2 with
-    | Pcase_empty ->
-        Pcase_empty
-    | case ->
-        Pcase_ctor (name1, Some case) )
+      match intersect_case env case1 case2 with
+      | Pcase_empty ->
+          Pcase_empty
+      | case ->
+          Pcase_ctor (name1, Some case) )
   | Pcase_literal i, Pcase_literal j when i = j ->
       case1
   | Pcase_literal _, Pcase_literal _ ->
@@ -217,7 +217,7 @@ let rec intersect_case env case1 case2 =
             | Pcase_type _ ->
                 None
             | _ ->
-                Some (case, typ) )
+                Some (case, typ))
       in
       Pcase_record fields
   | Pcase_or cases, _ ->
@@ -229,7 +229,7 @@ let rec intersect_case env case1 case2 =
             | case ->
                 Some case
             | exception Empty_case ->
-                None )
+                None)
       in
       if List.is_empty cases then Pcase_empty else Pcase_or cases
   | _, Pcase_or cases ->
@@ -241,7 +241,7 @@ let rec intersect_case env case1 case2 =
             | case ->
                 Some case
             | exception Empty_case ->
-                None )
+                None)
       in
       if List.is_empty cases then Pcase_empty else Pcase_or cases
   | _ ->
@@ -269,7 +269,7 @@ let rec subtract_case env case sub_case =
             | case ->
                 Some case
             | exception Empty_case ->
-                None )
+                None)
       in
       if List.is_empty cases then Pcase_empty else Pcase_or cases
   | _, Pcase_or sub_cases ->
@@ -284,7 +284,7 @@ let rec subtract_case env case sub_case =
         List.map2_exn cases sub_cases ~f:(fun case sub_case ->
             let case = subtract_case env case sub_case in
             if is_case_empty case then raise Empty_case ;
-            case )
+            case)
       in
       Pcase_tuple cases
   | Pcase_ctor (name1, None), Pcase_ctor (name2, None)
@@ -292,11 +292,11 @@ let rec subtract_case env case sub_case =
       Pcase_empty
   | Pcase_ctor (name, Some case), Pcase_ctor (sub_name, Some sub_case)
     when Ident.equal name sub_name -> (
-    match subtract_case env case sub_case with
-    | Pcase_empty ->
-        Pcase_empty
-    | case ->
-        Pcase_ctor (name, Some case) )
+      match subtract_case env case sub_case with
+      | Pcase_empty ->
+          Pcase_empty
+      | case ->
+          Pcase_ctor (name, Some case) )
   | Pcase_literal i, Pcase_literal j when i = j ->
       Pcase_empty
   | Pcase_record fields, Pcase_record sub_fields -> (
@@ -322,7 +322,7 @@ let rec subtract_case env case sub_case =
             if is_case_empty case then None
             else (
               is_empty := false ;
-              Some (case, typ) ) )
+              Some (case, typ) ))
       in
       if !is_empty && not (Map.is_empty fields && Map.is_empty sub_fields) then
         raise Empty_case ;
@@ -334,12 +334,12 @@ let rec subtract_case env case sub_case =
                 ()
             | `Both ((case, _), (sub_case, _)) ->
                 if is_case_empty (intersect_case env case sub_case) then
-                  raise Return ) ;
+                  raise Return) ;
         let cases =
           Map.fold ~init:[] subbed_fields
             ~f:(fun ~key ~data:((case, _) as data) cases ->
               if is_case_empty case then cases
-              else Pcase_record (Map.set fields ~key ~data) :: cases )
+              else Pcase_record (Map.set fields ~key ~data) :: cases)
         in
         Pcase_or cases
       with Return -> case )
@@ -356,7 +356,7 @@ let rec case_of_pattern env pat =
       Pcase_type pat.pat_type
   | Tpat_constraint (pat, _) ->
       case_of_pattern env pat
-  | Tpat_tuple [pat] ->
+  | Tpat_tuple [ pat ] ->
       case_of_pattern env pat
   | Tpat_tuple pats ->
       Pcase_tuple (List.map ~f:(case_of_pattern env) pats)
@@ -369,7 +369,7 @@ let rec case_of_pattern env pat =
       | Pcase_or cases, case | case, Pcase_or cases ->
           Pcase_or (case :: cases)
       | _ ->
-          Pcase_or [case1; case2] )
+          Pcase_or [ case1; case2 ] )
   | Tpat_literal l ->
       Pcase_literal l
   | Tpat_record fields ->
@@ -379,8 +379,7 @@ let rec case_of_pattern env pat =
               match path.Location.txt with
               | Path.Pident ident ->
                   Ident.name ident
-              | Pdot (_path, _mode, name) | Pocamldot (_path, _mode, name, _)
-                ->
+              | Pdot (_path, _mode, name) | Pocamldot (_path, _mode, name, _) ->
                   name
               | Papply _ ->
                   assert false
@@ -392,7 +391,7 @@ let rec case_of_pattern env pat =
                 fields
             | `Duplicate ->
                 (* TODO: Full error. *)
-                failwithf "Duplicated field %s" key () )
+                failwithf "Duplicated field %s" key ())
       in
       let fields =
         Map.filter fields ~f:(fun (case, _) -> not (is_case_empty case))
@@ -406,7 +405,7 @@ let rec case_of_pattern env pat =
       Pcase_ctor (name, Option.map ~f:(case_of_pattern env) arg)
   | Tpat_row_ctor (ident, []) ->
       Pcase_ctor (ident.txt, None)
-  | Tpat_row_ctor (ident, [pat]) ->
+  | Tpat_row_ctor (ident, [ pat ]) ->
       Pcase_ctor (ident.txt, Some (case_of_pattern env pat))
   | Tpat_row_ctor (ident, args) ->
       Pcase_ctor
@@ -431,26 +430,26 @@ let get_unmatched_cases ~count env typ pats =
       | [] ->
           []
       | (candidate, sub_cases) :: candidates -> (
-        match sub_cases with
-        | [] ->
-            let candidates =
-              List.map candidates ~f:(fun (candidate', sub_cases) ->
-                  (candidate', candidate :: sub_cases) )
-            in
-            candidate :: go (count - 1) candidates
-        | sub_case :: sub_cases -> (
-          match subtract_case env candidate sub_case with
-          | Pcase_empty ->
-              go count candidates
-          | Pcase_or cases ->
-              let new_candidates =
-                List.map cases ~f:(fun case -> (case, sub_cases))
+          match sub_cases with
+          | [] ->
+              let candidates =
+                List.map candidates ~f:(fun (candidate', sub_cases) ->
+                    (candidate', candidate :: sub_cases))
               in
-              go count (new_candidates @ candidates)
-          | _ ->
-              go count ((candidate, sub_cases) :: candidates) ) )
+              candidate :: go (count - 1) candidates
+          | sub_case :: sub_cases -> (
+              match subtract_case env candidate sub_case with
+              | Pcase_empty ->
+                  go count candidates
+              | Pcase_or cases ->
+                  let new_candidates =
+                    List.map cases ~f:(fun case -> (case, sub_cases))
+                  in
+                  go count (new_candidates @ candidates)
+              | _ ->
+                  go count ((candidate, sub_cases) :: candidates) ) )
     else []
   in
   let sub_cases = List.map ~f:(case_of_pattern env) pats in
   let case = Pcase_type typ in
-  go count [(case, sub_cases)]
+  go count [ (case, sub_cases) ]

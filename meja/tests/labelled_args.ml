@@ -10,7 +10,7 @@ let c ?a () = match a with Some a -> a | None -> false
 let d ~a ?(b : bool) = match b with Some a -> a | None -> a
 
 let e () =
-  let x1 = a ~a:[1; 2; 3] in
+  let x1 = a ~a:[ 1; 2; 3 ] in
   let x2 = b ~a:2 in
   let a = 2 in
   let x3 = b ~a in

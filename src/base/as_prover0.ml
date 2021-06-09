@@ -28,7 +28,7 @@ module T = struct
 
   let read_var (v : 'var) : ('field, 'field, 's) t = fun tbl s -> (s, tbl v)
 
-  let read ({read; _} : ('var, 'value, 'field, _) Types.Typ.t) (var : 'var) :
+  let read ({ read; _ } : ('var, 'value, 'field, _) Types.Typ.t) (var : 'var) :
       ('value, 'field, 'prover_state) t =
    fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
 

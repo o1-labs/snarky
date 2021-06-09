@@ -23,7 +23,7 @@ module Type0 = struct
     | Tarrow (typ1, typ2, explicit, label) ->
         Type.arrow ?loc ~explicit ~label (type_expr ?loc typ1)
           (type_expr ?loc typ2)
-    | Tctor {var_ident= ident; var_params= params} ->
+    | Tctor { var_ident = ident; var_params = params } ->
         let params = List.map ~f:(type_expr ?loc) params in
         Type.constr ?loc ~params (longident_of_path ident)
     | Tpoly (vars, var) ->
@@ -35,11 +35,11 @@ module Type0 = struct
           (type_expr ?loc (Type1.get_mode Checked typ))
           (type_expr ?loc (Type1.get_mode Prover typ))
     | Topaque typ -> (
-      match mode with
-      | Checked ->
-          Type.opaque (type_expr ?loc typ)
-      | Prover ->
-          type_expr ?loc typ )
+        match mode with
+        | Checked ->
+            Type.opaque (type_expr ?loc typ)
+        | Prover ->
+            type_expr ?loc typ )
     | Tother_mode _ ->
         (* TODO: Should we do something else here? *)
         assert false
@@ -50,15 +50,17 @@ module Type0 = struct
         let needs_lower_bound = ref false in
         let tags, min_tags, subtract_tags =
           Map.fold_right row_tags ~init:([], [], [])
-            ~f:(fun ~key
-               ~data:(_path, pres, args)
-               (tags, min_tags, subtract_tags)
+            ~f:(fun
+                 ~key
+                 ~data:(_path, pres, args)
+                 (tags, min_tags, subtract_tags)
                ->
               let row () =
                 assert (Ident.is_row key) ;
-                { Parsetypes.rtag_ident= Loc.mk ?loc (Ident.name key)
-                ; rtag_arg= List.map ~f:(type_expr ?loc) args
-                ; rtag_loc= Option.value ~default:Location.none loc }
+                { Parsetypes.rtag_ident = Loc.mk ?loc (Ident.name key)
+                ; rtag_arg = List.map ~f:(type_expr ?loc) args
+                ; rtag_loc = Option.value ~default:Location.none loc
+                }
               in
               let pres = Type1.rp_repr pres in
               let pres' = Type1.rp_strip_subtract pres in
@@ -81,7 +83,7 @@ module Type0 = struct
                   needs_lower_bound := true ;
                   (row () :: tags, min_tags, subtract_tags)
               | RpRef _ | RpReplace _ | RpSubtract _ ->
-                  assert false )
+                  assert false)
         in
         let typ =
           if !needs_lower_bound then
@@ -104,7 +106,7 @@ module Type0 = struct
     | Ctor_tuple typs ->
         Type_decl.Ctor.with_args ?loc ?ret name
           (List.map ~f:(type_expr ?loc) typs)
-    | Ctor_record {tdec_desc= TRecord fields; _} ->
+    | Ctor_record { tdec_desc = TRecord fields; _ } ->
         Type_decl.Ctor.with_record ?loc ?ret name
           (List.map ~f:(field_decl ?loc) fields)
     | Ctor_record _ ->
@@ -161,25 +163,27 @@ let rec type_desc = function
         , closed
         , Option.map ~f:(List.map ~f:(map_loc ~f:Ident.name)) min_tags )
   | Ttyp_row_subtract (typ, tags) ->
-      Ptyp_row_subtract
-        (type_expr typ, List.map ~f:(map_loc ~f:Ident.name) tags)
+      Ptyp_row_subtract (type_expr typ, List.map ~f:(map_loc ~f:Ident.name) tags)
 
-and type_expr {type_desc= typ; type_loc; type_type= _} =
-  {type_desc= type_desc typ; type_loc}
+and type_expr { type_desc = typ; type_loc; type_type = _ } =
+  { type_desc = type_desc typ; type_loc }
 
-and variant {Typedast.var_ident; var_params} =
-  { Parsetypes.var_ident= map_loc ~f:longident_of_path var_ident
-  ; var_params= List.map ~f:type_expr var_params }
+and variant { Typedast.var_ident; var_params } =
+  { Parsetypes.var_ident = map_loc ~f:longident_of_path var_ident
+  ; var_params = List.map ~f:type_expr var_params
+  }
 
-and row_tags {rtag_ident; rtag_arg; rtag_loc} =
-  { Parsetypes.rtag_ident= map_loc ~f:Ident.name rtag_ident
-  ; rtag_arg= List.map ~f:type_expr rtag_arg
-  ; rtag_loc }
+and row_tags { rtag_ident; rtag_arg; rtag_loc } =
+  { Parsetypes.rtag_ident = map_loc ~f:Ident.name rtag_ident
+  ; rtag_arg = List.map ~f:type_expr rtag_arg
+  ; rtag_loc
+  }
 
-let field_decl {Typedast.fld_ident; fld_type; fld_loc; fld_fld= _} =
-  { Parsetypes.fld_ident= map_loc ~f:Ident.name fld_ident
-  ; fld_type= type_expr fld_type
-  ; fld_loc }
+let field_decl { Typedast.fld_ident; fld_type; fld_loc; fld_fld = _ } =
+  { Parsetypes.fld_ident = map_loc ~f:Ident.name fld_ident
+  ; fld_type = type_expr fld_type
+  ; fld_loc
+  }
 
 let ctor_args = function
   | Typedast.Tctor_tuple typs ->
@@ -188,11 +192,13 @@ let ctor_args = function
       Ctor_record (List.map ~f:field_decl fld)
 
 let ctor_decl
-    {Typedast.ctor_ident; ctor_args= args; ctor_ret; ctor_loc; ctor_ctor= _} =
-  { Parsetypes.ctor_ident= map_loc ~f:Ident.name ctor_ident
-  ; ctor_args= ctor_args args
-  ; ctor_ret= Option.map ~f:type_expr ctor_ret
-  ; ctor_loc }
+    { Typedast.ctor_ident; ctor_args = args; ctor_ret; ctor_loc; ctor_ctor = _ }
+    =
+  { Parsetypes.ctor_ident = map_loc ~f:Ident.name ctor_ident
+  ; ctor_args = ctor_args args
+  ; ctor_ret = Option.map ~f:type_expr ctor_ret
+  ; ctor_loc
+  }
 
 let type_decl_desc = function
   | Typedast.Tdec_abstract ->
@@ -209,11 +215,12 @@ let type_decl_desc = function
       Pdec_extend (lid, List.map ~f:ctor_decl ctor)
 
 let type_decl
-    {Typedast.tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec= _} =
-  { Parsetypes.tdec_ident= map_loc ~f:Ident.name tdec_ident
-  ; tdec_params= List.map ~f:type_expr tdec_params
-  ; tdec_desc= type_decl_desc tdec_desc
-  ; tdec_loc }
+    { Typedast.tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec = _ } =
+  { Parsetypes.tdec_ident = map_loc ~f:Ident.name tdec_ident
+  ; tdec_params = List.map ~f:type_expr tdec_params
+  ; tdec_desc = type_decl_desc tdec_desc
+  ; tdec_loc
+  }
 
 let rec pattern_desc = function
   | Typedast.Tpat_any ->
@@ -231,14 +238,16 @@ let rec pattern_desc = function
   | Tpat_record fields ->
       Ppat_record
         (List.map fields ~f:(fun (label, p) ->
-             (map_loc ~f:longident_of_path label, pattern p) ))
+             (map_loc ~f:longident_of_path label, pattern p)))
   | Tpat_ctor (name, arg) ->
       Ppat_ctor (map_loc ~f:longident_of_path name, Option.map ~f:pattern arg)
   | Tpat_row_ctor (name, args) ->
       Ppat_row_ctor (map_loc ~f:Ident.name name, List.map ~f:pattern args)
 
 and pattern p =
-  {Parsetypes.pat_desc= pattern_desc p.Typedast.pat_desc; pat_loc= p.pat_loc}
+  { Parsetypes.pat_desc = pattern_desc p.Typedast.pat_desc
+  ; pat_loc = p.pat_loc
+  }
 
 let rec expression_desc = function
   | Typedast.Texp_apply (e, args) ->
@@ -249,7 +258,7 @@ let rec expression_desc = function
               | Explicit ->
                   Some (label, expression e)
               | Implicit ->
-                  None ) )
+                  None) )
   | Texp_variable name ->
       Pexp_variable (map_loc ~f:longident_of_path name)
   | Texp_literal l ->
@@ -277,18 +286,18 @@ let rec expression_desc = function
   | Texp_record (fields, default) ->
       Pexp_record
         ( List.map fields ~f:(fun (label, e) ->
-              (map_loc ~f:longident_of_path label, expression e) )
+              (map_loc ~f:longident_of_path label, expression e))
         , Option.map ~f:expression default )
   | Texp_ctor (path, arg) ->
-      Pexp_ctor
-        (map_loc ~f:longident_of_path path, Option.map ~f:expression arg)
+      Pexp_ctor (map_loc ~f:longident_of_path path, Option.map ~f:expression arg)
   | Texp_row_ctor (ident, arg) ->
       Pexp_row_ctor (map_loc ~f:Ident.name ident, List.map ~f:expression arg)
-  | Texp_unifiable {expression= e; name; id} ->
+  | Texp_unifiable { expression = e; name; id } ->
       Pexp_unifiable
-        { expression= Option.map ~f:expression e
-        ; name= map_loc ~f:Ident.name name
-        ; id }
+        { expression = Option.map ~f:expression e
+        ; name = map_loc ~f:Ident.name name
+        ; id
+        }
   | Texp_if (e1, e2, e3) ->
       Pexp_if (expression e1, expression e2, Option.map ~f:expression e3)
   | Texp_read (_conv, _conv_args, e) ->
@@ -299,7 +308,9 @@ let rec expression_desc = function
       assert false
 
 and expression e =
-  {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}
+  { Parsetypes.exp_desc = expression_desc e.Typedast.exp_desc
+  ; exp_loc = e.exp_loc
+  }
 
 let conv_type = function
   | Typedast.Ttconv_with (mode, decl) ->
@@ -337,7 +348,9 @@ let rec signature_desc = function
       Psig_convert (map_loc ~f:Ident.name name, type_expr typ)
 
 and signature_item s =
-  {Parsetypes.sig_desc= signature_desc s.Typedast.sig_desc; sig_loc= s.sig_loc}
+  { Parsetypes.sig_desc = signature_desc s.Typedast.sig_desc
+  ; sig_loc = s.sig_loc
+  }
 
 and module_sig_desc = function
   | Typedast.Tmty_sig sigs ->
@@ -352,8 +365,9 @@ and module_sig_desc = function
       Pmty_functor (name, module_sig fsig, module_sig msig)
 
 and module_sig msig =
-  { Parsetypes.msig_desc= module_sig_desc msig.Typedast.msig_desc
-  ; msig_loc= msig.msig_loc }
+  { Parsetypes.msig_desc = module_sig_desc msig.Typedast.msig_desc
+  ; msig_loc = msig.msig_loc
+  }
 
 let rec statement_desc = function
   | Typedast.Tstmt_value (p, e) ->
@@ -392,8 +406,9 @@ let rec statement_desc = function
       Pstmt_convert (map_loc ~f:Ident.name name, type_expr typ)
 
 and statement s =
-  { Parsetypes.stmt_desc= statement_desc s.Typedast.stmt_desc
-  ; stmt_loc= s.stmt_loc }
+  { Parsetypes.stmt_desc = statement_desc s.Typedast.stmt_desc
+  ; stmt_loc = s.stmt_loc
+  }
 
 and module_desc = function
   | Typedast.Tmod_struct stmts ->
@@ -404,4 +419,4 @@ and module_desc = function
       Pmod_functor (name, module_sig fsig, module_expr m)
 
 and module_expr m =
-  {Parsetypes.mod_desc= module_desc m.Typedast.mod_desc; mod_loc= m.mod_loc}
+  { Parsetypes.mod_desc = module_desc m.Typedast.mod_desc; mod_loc = m.mod_loc }

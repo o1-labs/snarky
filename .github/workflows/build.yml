@@ -31,10 +31,13 @@ jobs:
           opam update
           opam pin add . -y
 
+      - name: Tests
+        run: |
+          eval $(opam env)
+          dune runtest
+
       - name: Format
         run: |
           eval $(opam env)
           opam install ocamlformat.0.9
           dune build @fmt
-          dune promote
-          git diff --exit-code

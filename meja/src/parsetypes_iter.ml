@@ -3,40 +3,41 @@ open Parsetypes
 open Ast_types
 
 type iterator =
-  { type_expr: iterator -> type_expr -> unit
-  ; type_desc: iterator -> type_desc -> unit
-  ; variant: iterator -> variant -> unit
-  ; row_tag: iterator -> row_tag -> unit
-  ; field_decl: iterator -> field_decl -> unit
-  ; ctor_args: iterator -> ctor_args -> unit
-  ; ctor_decl: iterator -> ctor_decl -> unit
-  ; type_decl: iterator -> type_decl -> unit
-  ; type_decl_desc: iterator -> type_decl_desc -> unit
-  ; literal: iterator -> literal -> unit
-  ; pattern: iterator -> pattern -> unit
-  ; pattern_desc: iterator -> pattern_desc -> unit
-  ; expression: iterator -> expression -> unit
-  ; expression_desc: iterator -> expression_desc -> unit
-  ; signature_item: iterator -> signature_item -> unit
-  ; signature: iterator -> signature -> unit
-  ; signature_desc: iterator -> signature_desc -> unit
-  ; module_sig: iterator -> module_sig -> unit
-  ; module_sig_desc: iterator -> module_sig_desc -> unit
-  ; statement: iterator -> statement -> unit
-  ; statements: iterator -> statements -> unit
-  ; statement_desc: iterator -> statement_desc -> unit
-  ; module_expr: iterator -> module_expr -> unit
-  ; module_desc: iterator -> module_desc -> unit
-  ; location: iterator -> Location.t -> unit
-  ; longident: iterator -> Longident.t -> unit
-  ; type0_decl: iterator -> Type0.type_decl -> unit }
+  { type_expr : iterator -> type_expr -> unit
+  ; type_desc : iterator -> type_desc -> unit
+  ; variant : iterator -> variant -> unit
+  ; row_tag : iterator -> row_tag -> unit
+  ; field_decl : iterator -> field_decl -> unit
+  ; ctor_args : iterator -> ctor_args -> unit
+  ; ctor_decl : iterator -> ctor_decl -> unit
+  ; type_decl : iterator -> type_decl -> unit
+  ; type_decl_desc : iterator -> type_decl_desc -> unit
+  ; literal : iterator -> literal -> unit
+  ; pattern : iterator -> pattern -> unit
+  ; pattern_desc : iterator -> pattern_desc -> unit
+  ; expression : iterator -> expression -> unit
+  ; expression_desc : iterator -> expression_desc -> unit
+  ; signature_item : iterator -> signature_item -> unit
+  ; signature : iterator -> signature -> unit
+  ; signature_desc : iterator -> signature_desc -> unit
+  ; module_sig : iterator -> module_sig -> unit
+  ; module_sig_desc : iterator -> module_sig_desc -> unit
+  ; statement : iterator -> statement -> unit
+  ; statements : iterator -> statements -> unit
+  ; statement_desc : iterator -> statement_desc -> unit
+  ; module_expr : iterator -> module_expr -> unit
+  ; module_desc : iterator -> module_desc -> unit
+  ; location : iterator -> Location.t -> unit
+  ; longident : iterator -> Longident.t -> unit
+  ; type0_decl : iterator -> Type0.type_decl -> unit
+  }
 
-let lid iter {Location.txt; loc} =
+let lid iter { Location.txt; loc } =
   iter.longident iter txt ; iter.location iter loc
 
-let str iter ({Location.txt= _; loc} : str) = iter.location iter loc
+let str iter ({ Location.txt = _; loc } : str) = iter.location iter loc
 
-let type_expr iter {type_desc; type_loc} =
+let type_expr iter { type_desc; type_loc } =
   iter.location iter type_loc ;
   iter.type_desc iter type_desc
 
@@ -67,16 +68,16 @@ let type_desc iter = function
       iter.type_expr iter typ ;
       List.iter ~f:(str iter) tags
 
-let variant iter {var_ident; var_params} =
+let variant iter { var_ident; var_params } =
   lid iter var_ident ;
   List.iter ~f:(iter.type_expr iter) var_params
 
-let row_tag iter {rtag_ident; rtag_arg; rtag_loc} =
+let row_tag iter { rtag_ident; rtag_arg; rtag_loc } =
   str iter rtag_ident ;
   iter.location iter rtag_loc ;
   List.iter ~f:(iter.type_expr iter) rtag_arg
 
-let field_decl iter {fld_ident; fld_type; fld_loc} =
+let field_decl iter { fld_ident; fld_type; fld_loc } =
   iter.location iter fld_loc ;
   str iter fld_ident ;
   iter.type_expr iter fld_type
@@ -87,13 +88,13 @@ let ctor_args iter = function
   | Ctor_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
 
-let ctor_decl iter {ctor_ident; ctor_args; ctor_ret; ctor_loc} =
+let ctor_decl iter { ctor_ident; ctor_args; ctor_ret; ctor_loc } =
   iter.location iter ctor_loc ;
   str iter ctor_ident ;
   iter.ctor_args iter ctor_args ;
   Option.iter ~f:(iter.type_expr iter) ctor_ret
 
-let type_decl iter {tdec_ident; tdec_params; tdec_desc; tdec_loc} =
+let type_decl iter { tdec_ident; tdec_params; tdec_desc; tdec_loc } =
   iter.location iter tdec_loc ;
   str iter tdec_ident ;
   List.iter ~f:(iter.type_expr iter) tdec_params ;
@@ -120,7 +121,7 @@ let type_decl_desc iter = function
 
 let literal (_iter : iterator) (_ : literal) = ()
 
-let pattern iter {pat_desc; pat_loc} =
+let pattern iter { pat_desc; pat_loc } =
   iter.location iter pat_loc ;
   iter.pattern_desc iter pat_desc
 
@@ -141,7 +142,7 @@ let pattern_desc iter = function
       iter.literal iter l
   | Ppat_record fields ->
       List.iter fields ~f:(fun (name, pat) ->
-          lid iter name ; iter.pattern iter pat )
+          lid iter name ; iter.pattern iter pat)
   | Ppat_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.pattern iter) arg
@@ -149,7 +150,7 @@ let pattern_desc iter = function
       str iter name ;
       List.iter ~f:(iter.pattern iter) args
 
-let expression iter {exp_desc; exp_loc} =
+let expression iter { exp_desc; exp_loc } =
   iter.location iter exp_loc ;
   iter.expression_desc iter exp_desc
 
@@ -180,20 +181,20 @@ let expression_desc iter = function
   | Pexp_match (e, cases) ->
       iter.expression iter e ;
       List.iter cases ~f:(fun (p, e) ->
-          iter.pattern iter p ; iter.expression iter e )
+          iter.pattern iter p ; iter.expression iter e)
   | Pexp_field (e, name) ->
       lid iter name ; iter.expression iter e
   | Pexp_record (bindings, default) ->
       Option.iter ~f:(iter.expression iter) default ;
       List.iter bindings ~f:(fun (name, e) ->
-          lid iter name ; iter.expression iter e )
+          lid iter name ; iter.expression iter e)
   | Pexp_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.expression iter) arg
   | Pexp_row_ctor (name, arg) ->
       str iter name ;
       List.iter ~f:(iter.expression iter) arg
-  | Pexp_unifiable {expression; name; id= _} ->
+  | Pexp_unifiable { expression; name; id = _ } ->
       str iter name ;
       Option.iter ~f:(iter.expression iter) expression
   | Pexp_if (e1, e2, e3) ->
@@ -211,7 +212,7 @@ let type_conv iter = function
 
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
-let signature_item iter {sig_desc; sig_loc} =
+let signature_item iter { sig_desc; sig_loc } =
   iter.location iter sig_loc ;
   iter.signature_desc iter sig_desc
 
@@ -242,7 +243,7 @@ let signature_desc iter = function
   | Psig_convert (name, typ) ->
       str iter name ; iter.type_expr iter typ
 
-let module_sig iter {msig_desc; msig_loc} =
+let module_sig iter { msig_desc; msig_loc } =
   iter.location iter msig_loc ;
   iter.module_sig_desc iter msig_desc
 
@@ -260,7 +261,7 @@ let module_sig_desc iter = function
 
 let statements iter = List.iter ~f:(iter.statement iter)
 
-let statement iter {stmt_desc; stmt_loc} =
+let statement iter { stmt_desc; stmt_loc } =
   iter.location iter stmt_loc ;
   iter.statement_desc iter stmt_desc
 
@@ -293,7 +294,7 @@ let statement_desc iter = function
       iter.ctor_decl iter ctor ;
       Option.iter handler ~f:(fun (p, e) ->
           Option.iter ~f:(iter.pattern iter) p ;
-          iter.expression iter e )
+          iter.expression iter e)
   | Pstmt_multiple stmts ->
       iter.statements iter stmts
   | Pstmt_prover stmts ->
@@ -301,7 +302,7 @@ let statement_desc iter = function
   | Pstmt_convert (name, typ) ->
       str iter name ; iter.type_expr iter typ
 
-let module_expr iter {mod_desc; mod_loc} =
+let module_expr iter { mod_desc; mod_loc } =
   iter.location iter mod_loc ;
   iter.module_desc iter mod_desc
 
@@ -355,4 +356,5 @@ let default_iterator =
   ; module_desc
   ; location
   ; longident
-  ; type0_decl }
+  ; type0_decl
+  }
