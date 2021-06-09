@@ -5,7 +5,13 @@ open Async
 let trustlist = []
 
 let dirs_trustlist =
-  [".git"; "_build"; "stationary"; ".un~"; "ocamlformat"; "node_modules"]
+  [ ".git"
+  ; "_build"
+  ; "_opam"
+  ; "stationary"
+  ; ".un~"
+  ; "ocamlformat"
+  ; "node_modules" ]
 
 let rec fold_over_files ~path ~process_path ~init ~f =
   let%bind all = Sys.ls_dir path in
