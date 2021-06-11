@@ -225,8 +225,9 @@ module Make_hash (P : Intf.Permutation) = struct
   let%test_unit "empty field_elems to_blocks" =
     let blocks = to_blocks 2 [||] in
     assert (Array.length blocks = 1) ;
-    [%test_eq: Field.t] blocks.(0).(0) Field.zero ;
-    [%test_eq: Field.t] blocks.(0).(1) Field.zero
+    [%test_eq: unit array array]
+      (Array.map blocks ~f:(Array.map ~f:ignore))
+      [|[|(); ()|]|]
 
   let%test_unit "block" =
     let z = Field.zero in
