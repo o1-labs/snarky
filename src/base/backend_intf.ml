@@ -162,24 +162,6 @@ module type S = sig
     include Stringable.S with type t := t
   end
 
-  module Proof : sig
-    type message
-
-    type t
-
-    include Binable.S with type t := t
-
-    val create :
-         ?message:message
-      -> Proving_key.t
-      -> primary:Field.Vector.t
-      -> auxiliary:Field.Vector.t
-      -> t
-
-    val verify :
-      ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
-  end
-
   module Keypair : sig
     type t
 
