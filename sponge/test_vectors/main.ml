@@ -25,7 +25,7 @@ let () =
   assert (String.equal test_vectors.name "three_wire") ;
   let check_test_vector test_vector =
     let digest = Hash_function.ThreeWire.hash_field_elems test_vector.input in
-    assert (digest = test_vector.output)
+    assert (String.equal digest test_vector.output)
   in
   List.iter test_vectors.test_vectors ~f:check_test_vector
 
@@ -37,6 +37,6 @@ let () =
   assert (String.equal test_vectors.name "fp_3") ;
   let check_test_vector test_vector =
     let digest = Hash_function.Fp3.hash_field_elems test_vector.input in
-    assert (digest = test_vector.output)
+    assert (String.equal digest test_vector.output)
   in
   List.iter test_vectors.test_vectors ~f:check_test_vector
