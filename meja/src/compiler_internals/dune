@@ -5,6 +5,8 @@
  (modules compiler_internals))
 
 ; Use the file corresponding to the current OCaml version when building.
+
 (rule
  (targets compiler_internals.ml)
- (action (copy# compiler_internals_%{ocaml_version}.ml compiler_internals.ml)))
+ (action
+  (copy# compiler_internals_%{ocaml_version}.ml compiler_internals.ml)))

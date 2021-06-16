@@ -3,20 +3,8 @@
  (public_name snarky)
  (inline_tests)
  (modes native)
- (libraries
-   base64
-   bignum
-   bitstring_lib
-   core_kernel
-   ctypes
-   fold_lib
-   h_list
-   interval_union
-   snarky.backendless
-   snarky.intf
-   tuple_lib
-   yojson
-)
+ (libraries base64 bignum bitstring_lib core_kernel ctypes fold_lib h_list
+   interval_union snarky.backendless snarky.intf tuple_lib yojson)
  (preprocess
   (pps ppx_snarky ppx_jane ppx_deriving.enum ppx_deriving.eq bisect_ppx --
     --conditional)))

@@ -1,3 +1,4 @@
+val set_eval_constraints : bool -> unit
 (** Sets the [eval_constraints] state. If [true], {!val:run_unchecked} and
     {!val:prove} will check that the constraint system is satisfied while
     evaluating the {!type:Checked.t}. The default value is [false].
@@ -6,15 +7,14 @@
     {!val:with_constraint_system} (or the underlying
     {!const:Types.Checked.With_constraint_system}). For these, you should
     modify your code to use the normal {!val:run_and_check} function. *)
-val set_eval_constraints : bool -> unit
 
+val set_reduce_to_prover : bool -> unit
 (** Sets the [reduce_to_prover] state. If [true], the [Proof_system] interface
     will run optimised versions of the checked computations whenever possible.
 
     Note: This optimisation pre-evaluates and caches some parts of the checked
     computation, to speed up subsequent calls. *DO NOT USE* if your checked
     computation uses mutability outside of [As_prover] blocks. *)
-val set_reduce_to_prover : bool -> unit
 
 (** The exception raised when evaluating a checked computation raises an
     exception.
@@ -39,13 +39,13 @@ module Make (Backend : Backend_intf.S) :
    and type Proving_key.t = Backend.Proving_key.t
 
 module Run : sig
+  val throw_on_id : int -> unit
   (** [throw_on_id id] set an internal flag that causes [Make] to throw an
       error if its internal id would be the same as [id].
 
       This can be used to identify where different instances come from, so that
       the same instance can be used for creating and calling functions.
   *)
-  val throw_on_id : int -> unit
 
   module Make
       (Backend : Backend_intf.S) (Prover_state : sig

@@ -158,6 +158,7 @@ module Run : sig
 
           val assert_equal : var -> var -> unit
 
+          val prover_state : Impl.prover_state
           (** The prover state to run the checked computations above with.
               This state will *always* be passed to the above unchanged.
 
@@ -167,7 +168,6 @@ module Run : sig
                     perspective of the functions, and so they cannot have any
                     effect on the state.
           *)
-          val prover_state : Impl.prover_state
       end) (Elt : sig
         type var
 
@@ -177,6 +177,7 @@ module Run : sig
 
         val hash : var -> Hash.var
 
+        val prover_state : Impl.prover_state
         (** The prover state to run the checked computations above with.
               This state will *always* be passed to the above unchanged.
 
@@ -186,11 +187,10 @@ module Run : sig
                     perspective of the functions, and so they cannot have any
                     effect on the state.
           *)
-        val prover_state : Impl.prover_state
 
+        val lens : (Impl.prover_state, (Hash.value, value) merkle_tree) Lens.t
         (** A lens to give access to the [(Hash.value, Elt.value) merkle_tree]
             state that [update] uses. *)
-        val lens : (Impl.prover_state, (Hash.value, value) merkle_tree) Lens.t
       end) : sig
     open Impl
 

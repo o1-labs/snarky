@@ -2,4 +2,5 @@
  (name snarky_tests)
  (inline_tests)
  (libraries snarky)
- (preprocess (pps ppx_inline_test ppx_let)))
+ (preprocess
+  (pps ppx_inline_test ppx_let)))
