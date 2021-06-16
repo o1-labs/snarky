@@ -1,0 +1,11 @@
+let x = fun (b) => {
+  try ({
+    if (b) {
+      ();
+    } else {
+      failwith("");
+    };
+  }) {
+    | Failure(_) => b
+  };
+};

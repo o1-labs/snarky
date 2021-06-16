@@ -84,7 +84,7 @@ let to_type_decl_desc decl =
       Pdec_variant (List.map ctors ~f:to_ctor_decl)
 
 let can_create_signature_item item =
-  match item with Sig_typext _ | Sig_class _ -> false | _ -> true
+  match item with Sig_class _ -> false | _ -> true
 
 let type_decl_of_sigi = function
   | Sig_type (ident, decl, _rec_status) ->
@@ -96,13 +96,33 @@ let type_decl_of_sigi = function
   | _ ->
       assert false
 
+let typeext_ctor_of_sigi = function
+  | Sig_typext (ident, ext, _ext_status) ->
+      let loc = ext.ext_loc in
+      { ctor_ident= mkloc (Ident.name ident) loc
+      ; ctor_args= to_ctor_args ~loc ext.ext_args
+      ; ctor_ret= Option.map ~f:(to_type_expr ~loc) ext.ext_ret_type
+      ; ctor_loc= loc }
+  | _ ->
+      assert false
+
+let typeext_variant_of_sigi = function
+  | Sig_typext (_ident, ext, _ext_status) ->
+      let loc = ext.ext_loc in
+      { var_ident= mkloc (longident_of_path ext.ext_type_path) loc
+      ; var_params= List.map ~f:(to_type_expr ~loc) ext.ext_type_params }
+  | _ ->
+      assert false
+
 let rec group_signature_items current_group signature =
   match signature with
-  | (Sig_type (_, _, Trec_first) as sigi) :: signature ->
+  | (Sig_type (_, _, Trec_first) as sigi) :: signature
+  | (Sig_typext (_, _, Text_first) as sigi) :: signature ->
       (* Start of new recursive type group. *)
       if current_group = [] then group_signature_items [sigi] signature
       else List.rev current_group :: group_signature_items [sigi] signature
-  | (Sig_type (_, _, Trec_next) as sigi) :: signature ->
+  | (Sig_type (_, _, Trec_next) as sigi) :: signature
+  | (Sig_typext (_, _, Text_next) as sigi) :: signature ->
       (* Continuation of recursive type group. *)
       group_signature_items (sigi :: current_group) signature
   | sigi :: signature ->
@@ -136,6 +156,11 @@ let rec to_signature_item item =
             ( mkloc (Ident.name ident) decl.mtd_loc
             , to_module_sig ~loc:decl.mtd_loc decl.mtd_type )
       ; sig_loc= decl.mtd_loc }
+  | Sig_typext (_ident, ext, _) ->
+      { sig_desc=
+          Psig_typeext
+            (typeext_variant_of_sigi item, [typeext_ctor_of_sigi item])
+      ; sig_loc= ext.ext_loc }
   | _ ->
       failwith "Cannot create a signature item from this OCaml signature item."
 
@@ -148,6 +173,10 @@ and to_signature items =
     | Sig_type (_, {type_loc; _}, _) :: _ as items ->
         let decls = List.map ~f:type_decl_of_sigi items in
         {sig_desc= Psig_rectype decls; sig_loc= type_loc}
+    | (Sig_typext (_, {ext_loc; _}, _) as item) :: _ as items ->
+        let variant = typeext_variant_of_sigi item in
+        let ctors = List.map ~f:typeext_ctor_of_sigi items in
+        {sig_desc= Psig_typeext (variant, ctors); sig_loc= ext_loc}
     | _ ->
         assert false )
 

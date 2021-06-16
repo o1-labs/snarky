@@ -139,6 +139,7 @@ and expression_desc =
       (* arguments to the conversion *)
       * expression
   | Texp_convert of convert
+  | Texp_try of expression * (pattern * expression) list
 
 type conv_type =
   (* Other mode stitched declaration. *)
@@ -164,6 +165,7 @@ and signature_desc =
   | Tsig_multiple of signature
   | Tsig_prover of signature
   | Tsig_convert of ident * type_expr
+  | Tsig_exception of ctor_decl
 
 and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
 
@@ -194,6 +196,7 @@ and statement_desc =
   | Tstmt_multiple of statements
   | Tstmt_prover of statements
   | Tstmt_convert of ident * type_expr * convert
+  | Tstmt_exception of ctor_decl
 
 and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
 

@@ -80,10 +80,12 @@ rule token = parse
   | "to" { TO }
   | "as" { AS }
   | "prover" { LPROVER }
+  | "exception" { EXCEPTION }
   | "rec" { REC }
   | "true" { TRUE }
   | "false" { FALSE }
   | "switch" { SWITCH }
+  | "try" { TRY }
   | "type" { TYPE }
   | "module" { MODULE }
   | "open" { OPEN }

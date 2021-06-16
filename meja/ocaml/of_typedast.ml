@@ -612,6 +612,10 @@ let rec of_expression_desc ?loc = function
           ~compute:As_prover.(fun () -> [%e of_expression e])]
   | Texp_convert conv ->
       of_convert conv
+  | Texp_try (e, cases) ->
+      Exp.try_ ?loc (of_expression e)
+        (List.map cases ~f:(fun (p, e) ->
+             Exp.case (of_pattern p) (of_expression e) ))
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(
@@ -717,6 +721,8 @@ let rec of_signature_desc ?loc = function
         ; pincl_attributes= [] }
   | Tsig_convert (name, typ) ->
       Sig.value ?loc (Val.mk ?loc (of_ident_loc name) (of_type_expr typ))
+  | Tsig_exception ctor ->
+      Sig.exception_ ?loc (of_ctor_decl_ext ctor)
 
 and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
 
@@ -836,6 +842,8 @@ let rec of_statement_desc ?loc = function
                (Pat.var ~loc:name.loc (of_ident_loc name))
                (of_type_expr typ))
             (of_convert conv) ]
+  | Tstmt_exception ctor ->
+      Str.exception_ ?loc (of_ctor_decl_ext ctor)
 
 and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 

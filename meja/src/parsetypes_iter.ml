@@ -202,6 +202,10 @@ let expression_desc iter = function
       Option.iter ~f:(iter.expression iter) e3
   | Pexp_prover e ->
       iter.expression iter e
+  | Pexp_try (e, cases) ->
+      iter.expression iter e ;
+      List.iter cases ~f:(fun (p, e) ->
+          iter.pattern iter p ; iter.expression iter e )
 
 let type_conv iter = function
   | Ptconv_with (_mode, decl) ->
@@ -241,6 +245,8 @@ let signature_desc iter = function
       iter.signature iter sigs
   | Psig_convert (name, typ) ->
       str iter name ; iter.type_expr iter typ
+  | Psig_exception ctor ->
+      iter.ctor_decl iter ctor
 
 let module_sig iter {msig_desc; msig_loc} =
   iter.location iter msig_loc ;
@@ -300,6 +306,8 @@ let statement_desc iter = function
       iter.statements iter stmts
   | Pstmt_convert (name, typ) ->
       str iter name ; iter.type_expr iter typ
+  | Pstmt_exception ctor ->
+      iter.ctor_decl iter ctor
 
 let module_expr iter {mod_desc; mod_loc} =
   iter.location iter mod_loc ;

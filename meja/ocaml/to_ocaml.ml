@@ -233,6 +233,10 @@ let rec of_expression_desc ?loc = function
         (Option.map ~f:of_expression e3)
   | Pexp_prover e ->
       of_expression e
+  | Pexp_try (e, cases) ->
+      Exp.try_ ?loc (of_expression e)
+        (List.map cases ~f:(fun (p, e) ->
+             Exp.case (of_pattern p) (of_expression e) ))
 
 and of_handler ?(loc = Location.none) ?ctor_ident (args, body) =
   Parsetree.(
@@ -310,6 +314,8 @@ let rec of_signature_desc ?loc = function
         ; pincl_attributes= [] }
   | Psig_convert (name, typ) ->
       Sig.value ?loc (Val.mk ?loc name (of_type_expr typ))
+  | Psig_exception ctor ->
+      Sig.exception_ ?loc (of_ctor_decl_ext ctor)
 
 and of_signature_item sigi = of_signature_desc ~loc:sigi.sig_loc sigi.sig_desc
 
@@ -409,6 +415,8 @@ let rec of_statement_desc ?loc = function
          generate this conversion before we can generate the code for it.
       *)
       assert false
+  | Pstmt_exception ctor ->
+      Str.exception_ ?loc (of_ctor_decl_ext ctor)
 
 and of_statement stmt = of_statement_desc ~loc:stmt.stmt_loc stmt.stmt_desc
 

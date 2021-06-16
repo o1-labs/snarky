@@ -76,12 +76,14 @@ let plusexp ~pos name arg =
 %token TRUE
 %token FALSE
 %token SWITCH
+%token TRY
 %token TYPE
 %token CONVERTIBLE
 %token BY
 %token TO
 %token AS
 %token LPROVER
+%token EXCEPTION
 %token REC
 %token MODULE
 %token OPEN
@@ -214,6 +216,8 @@ structure_item:
     { mkstmt ~pos:$loc (Pstmt_request (arg, x, handler)) }
   | PROVER LBRACE stmts = structure RBRACE
     { mkstmt ~pos:$loc (Pstmt_prover stmts) }
+  | EXCEPTION ctor = ctor_decl
+    { mkstmt ~pos:$loc (Pstmt_exception ctor) }
 
 signature_item:
   | LET x = as_loc(val_ident) COLON typ = type_expr
@@ -245,6 +249,8 @@ signature_item:
     { mksig ~pos:$loc (Psig_request (arg, x)) }
   | PROVER LBRACE sigs = signature RBRACE
     { mksig ~pos:$loc (Psig_prover sigs) }
+  | EXCEPTION ctor = ctor_decl
+    { mksig ~pos:$loc (Psig_exception ctor) }
 
 type_decl:
   | x = decl_type(lident) k = type_kind
@@ -435,6 +441,12 @@ expr:
     { mkexp ~pos:$loc (Pexp_constraint (x, typ)) }
   | FUN unit = unit EQUALGT body = block
     { mkexp ~pos:$loc (Pexp_fun (Nolabel, unitpat ~pos:unit, body, Explicit)) }
+  | FUN unit = unit COLON typ = type_expr EQUALGT body = block
+    { mkexp ~pos:$loc (Pexp_fun
+        ( Nolabel
+        , unitpat ~pos:unit
+        , mkexp ~pos:$loc (Pexp_constraint (body, typ))
+        , Explicit) ) }
   | FUN LPAREN f = function_from_args
     { f }
   | FUN LBRACE f = function_from_implicit_args
@@ -470,6 +482,8 @@ expr:
     { mkexp ~pos:$loc (Pexp_row_ctor (id, [])) }
   | e = if_expr
     { e }
+  | TRY LPAREN e = expr_or_bare_tuple RPAREN LBRACE rev_cases = list(match_case, {}) RBRACE
+    { mkexp ~pos:$loc (Pexp_try (e, List.rev rev_cases)) }
 
 if_expr:
   | IF e1 = expr e2 = block

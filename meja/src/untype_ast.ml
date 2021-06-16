@@ -297,6 +297,10 @@ let rec expression_desc = function
       Pexp_prover (expression e)
   | Texp_convert _ ->
       assert false
+  | Texp_try (e, cases) ->
+      Pexp_try
+        ( expression e
+        , List.map cases ~f:(fun (p, e) -> (pattern p, expression e)) )
 
 and expression e =
   {Parsetypes.exp_desc= expression_desc e.Typedast.exp_desc; exp_loc= e.exp_loc}
@@ -335,6 +339,8 @@ let rec signature_desc = function
       Psig_prover (List.map ~f:signature_item sigs)
   | Tsig_convert (name, typ) ->
       Psig_convert (map_loc ~f:Ident.name name, type_expr typ)
+  | Tsig_exception ctor ->
+      Psig_exception (ctor_decl ctor)
 
 and signature_item s =
   {Parsetypes.sig_desc= signature_desc s.Typedast.sig_desc; sig_loc= s.sig_loc}
@@ -390,6 +396,8 @@ let rec statement_desc = function
       Pstmt_prover (List.map ~f:statement stmts)
   | Tstmt_convert (name, typ, _conv) ->
       Pstmt_convert (map_loc ~f:Ident.name name, type_expr typ)
+  | Tstmt_exception ctor ->
+      Pstmt_exception (ctor_decl ctor)
 
 and statement s =
   { Parsetypes.stmt_desc= statement_desc s.Typedast.stmt_desc
