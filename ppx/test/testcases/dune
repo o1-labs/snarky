@@ -1,0 +1,4 @@
+(library
+ (name typ_ppx)
+ (preprocess (pps ppx_snarky))
+ (modules typ_ppx))

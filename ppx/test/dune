@@ -1,0 +1,18 @@
+(executable
+ (name run_ppx_snarky)
+ (libraries ppx_snarky))
+
+(rule
+ (targets typ_ppx.corrected)
+ (deps (:test testcases/typ_ppx.ml))
+ (action
+   (progn
+    (with-stdout-to typ_ppx.corrected (run ./run_ppx_snarky.exe %{test}))
+    (run ocamlformat -i typ_ppx.corrected))))
+
+
+(rule
+ (alias runtest)
+ (deps
+  (:test_typ_ppx testcases/typ_ppx.ml))
+ (action (diff typ_ppx.expected typ_ppx.corrected)))
