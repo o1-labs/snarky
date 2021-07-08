@@ -3,12 +3,12 @@
 set -xeo
 
 opam init
-eval $(opam env)
-opam switch create 4.11.2 || true
-opam switch 4.11.2
 # Built-in opam repository.. We have to update manually
 pushd /home/opam/opam-repository && git pull && popd
 opam update
+eval $(opam env)
+opam switch create 4.11.2 || true
+opam switch 4.11.2
 
 # Generate opam.test from the current opam switch
 opam switch export opam.test
