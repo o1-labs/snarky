@@ -11,6 +11,6 @@ fi
 
 opam init
 opam update
-opam switch create 4.07.1 || true
-opam switch 4.07.1
+opam switch create 4.11.2 || true
+opam switch 4.11.2
 opam switch import opam.export
