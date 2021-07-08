@@ -109,24 +109,6 @@ module type S = sig
     include Stringable.S with type t := t
   end
 
-  module Proof : sig
-    type t
-
-    type message
-
-    include Binable.S with type t := t
-
-    val create :
-         ?message:message
-      -> Proving_key.t
-      -> primary:Field.Vector.t
-      -> auxiliary:Field.Vector.t
-      -> t
-
-    val verify :
-      ?message:message -> t -> Verification_key.t -> Field.Vector.t -> bool
-  end
-
   module Keypair : sig
     type t = {pk: Proving_key.t; vk: Verification_key.t} [@@deriving bin_io]
 
@@ -145,11 +127,9 @@ module Make (Backend : Backend_intf.S) :
   with type Field.t = Backend.Field.t
    and type Field.Vector.t = Backend.Field.Vector.t
    and type Bigint.t = Backend.Bigint.R.t
-   and type Proof.message = Backend.Proof.message
    and type Proving_key.t = Backend.Proving_key.t
    and type Verification_key.t = Backend.Verification_key.t
    and type Var.t = Backend.Var.t
-   and type Proof.t = Backend.Proof.t
    and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
 struct
   open Backend
@@ -170,8 +150,6 @@ struct
       in
       go 0 Bignum_bigint.one Bignum_bigint.zero
   end
-
-  module Proof = Proof
 
   module Verification_key = struct
     include Verification_key

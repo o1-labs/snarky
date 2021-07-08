@@ -37,8 +37,6 @@ module Make (Backend : Backend_intf.S) :
    and type Field.Vector.t = Backend.Field.Vector.t
    and type Verification_key.t = Backend.Verification_key.t
    and type Proving_key.t = Backend.Proving_key.t
-   and type Proof.t = Backend.Proof.t
-   and type Proof.message = Backend.Proof.message
 
 module Run : sig
   (** [throw_on_id id] set an internal flag that causes [Make] to throw an
@@ -62,8 +60,6 @@ module Run : sig
      and type Field.Constant.Vector.t = Backend.Field.Vector.t
      and type Verification_key.t = Backend.Verification_key.t
      and type Proving_key.t = Backend.Proving_key.t
-     and type Proof.t = Backend.Proof.t
-     and type Proof.message = Backend.Proof.message
 end
 
 type 'field m = (module Snark_intf.Run with type field = 'field)
