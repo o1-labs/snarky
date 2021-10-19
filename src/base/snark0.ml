@@ -228,7 +228,7 @@ struct
       in
       match run t0 state with
       | exception e ->
-          Or_error.of_exn e
+          Or_error.of_exn ~backtrace:`Get e
       | {prover_state= Some s; _}, x ->
           Ok (s, x, get_value)
       | _ ->
@@ -960,7 +960,7 @@ struct
             ?handlers proof_system s
         with
         | exception e ->
-            Or_error.of_exn e
+            Or_error.of_exn ~backtrace:`Get e
         | s, x, state ->
             Ok (s, x, state)
 
