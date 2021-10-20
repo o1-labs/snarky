@@ -116,9 +116,57 @@ struct
     include Types.Typ.T
     module T = Typ.Make (Checked_S) (As_prover)
     include Typ_monads
-    include T.T
+    include (T.T : module type of T.T with module Internal := T.T.Internal)
 
     type ('var, 'value) t = ('var, 'value, Field.t) T.t
+
+    module Internal = struct
+      include T.T.Internal
+
+      (* This uses internal knowledge of the implementation of all of the
+         allocation and storage systems, as well as their order of execution.
+         Don't do this!!
+         This is merely a workaround until we have concrete primitives to
+         allow us to do this in a safe way.
+
+         Warning: using this with any [Typ.t] whose [read] method requires
+         any field element to be non-zero will cause broken behavior.
+      *)
+      let delayed (type var value)
+          ({store; read; alloc; check} : (var, value) t) :
+          (var -> (var, _, _) Checked_S.t, unit) t =
+        let make_checked f = f () in
+        let prover_read read var = As_prover.read' read var in
+        let prover_map = As_prover.map in
+        let assert_equal = Checked_S.assert_equal in
+        let zero = Field0.zero in
+        let as_prover f = Checked_S.as_prover (f ()) in
+        let map = Checked_S.map in
+        let bind = Checked_S.bind in
+        let res = Stdlib.ref None in
+        let store x =
+          Typ_monads0.Store.map (store x) ~f:(fun x -> res := Some x; x)
+        in
+        let alloc =
+          Typ_monads0.Alloc.map alloc ~f:(fun x -> res := Some x; x)
+        in
+        { alloc=
+            Typ_monads0.Alloc.map
+              ~f:(fun x ->
+                Staged.unstage
+                @@ Typ_monads0.Store.alloc_later_of_read ~zero ~map ~bind
+                     ~assert_equal ~read x (Checked_S.return ()))
+              alloc
+        ; store=
+            Typ_monads0.Store.store_later_of_alloc ~make_checked ~prover_read
+              ~prover_map ~assert_equal ~zero ~as_prover ~map ~bind ~alloc
+              ~store ~read
+        ; read= (fun _ -> Typ_monads0.Read.return ())
+        ; check= fun _ ->
+            match !res with
+            | Some res -> check res
+            | None -> assert false }
+    end
 
     module Data_spec = struct
       include Typ.Data_spec0
@@ -1057,13 +1105,19 @@ struct
         -> 'k_value =
      fun cont0 t0 k0 ->
       let primary_input = Field.Vector.create () in
-      let store_field_elt =
-        let next_input = ref 1 in
-        fun x ->
-          let v = !next_input in
-          incr next_input ;
-          Field.Vector.emplace_back primary_input x ;
-          Cvar.Unsafe.of_index v
+      let next_input = ref 1 in
+      let store_field_elt x =
+        let v = !next_input in
+        incr next_input ;
+        Field.Vector.emplace_back primary_input x ;
+        Cvar.Unsafe.of_index v
+      in
+      let store_field_elt_later () =
+        let v = !next_input in
+        incr next_input ;
+        (* Place zero to ensure that the vector length stays in sync. *)
+        Field.Vector.emplace_back primary_input Field.zero ;
+        (Field.Vector.set primary_input v, Cvar.Unsafe.of_index v)
       in
       let rec go : type k_var k_value.
           (r_var, r_value, k_var, k_value) t -> k_var -> k_value =
@@ -1073,7 +1127,10 @@ struct
             cont0 k primary_input
         | {store; _} :: t' ->
             fun value ->
-              let var = Typ.Store.run (store value) store_field_elt in
+              let var =
+                Typ.Store.run (store value) store_field_elt
+                  store_field_elt_later
+              in
               go t' (k var)
       in
       go t0 k0
@@ -1814,6 +1871,8 @@ module Run = struct
       let a = x () in
       (!state, a)
 
+    let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
+
     module Proving_key = Snark.Proving_key
     module Verification_key = Snark.Verification_key
     module R1CS_constraint_system = Snark.R1CS_constraint_system
@@ -1924,6 +1983,22 @@ module Run = struct
                        call.
                 *)
                 Checked.return () ) }
+
+        (* This uses internal knowledge of the implementation of all of the
+           allocation and storage systems, as well as their order of execution.
+           Don't do this!!
+           This is merely a workaround until we have concrete primitives to
+           allow us to do this in a safe way.
+
+           Warning: using this with any [Typ.t] whose [read] method requires
+           any field element to be non-zero will cause broken behavior.
+        *)
+        let delayed typ : ('var -> 'var, unit) t =
+          let {store; alloc; read; check} = delayed typ in
+          { store= (fun () -> Store.map (store ()) ~f:(fun f x -> run (f x)))
+          ; alloc= Alloc.map alloc ~f:(fun f x -> run (f x))
+          ; read= (fun f -> read (fun x -> make_checked (fun () -> f x)))
+          ; check= (fun f -> check (fun x -> make_checked (fun () -> f x))) }
       end
 
       module Of_traversable = Of_traversable
@@ -2478,8 +2553,6 @@ module Run = struct
           f ~at_label_boundary:(`End, lbl) [] ) ;
       state := {!state with stack} ;
       a
-
-    let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
 
     let rec inject_wrapper : type r_var r_value k_var k_value.
            (r_var, r_value, k_var, k_value) Data_spec.t

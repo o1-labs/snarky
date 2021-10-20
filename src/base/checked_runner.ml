@@ -92,6 +92,13 @@ struct
     Run_state.Vector.emplace_back aux x ;
     Cvar.Unsafe.of_index v
 
+  let store_field_elt_later {next_auxiliary; aux; _} () =
+    let v = !next_auxiliary in
+    incr next_auxiliary ;
+    (* Place zero to ensure that the vector length stays in sync. *)
+    Run_state.Vector.emplace_back aux Field.zero ;
+    (Run_state.Vector.set aux v, Cvar.Unsafe.of_index v)
+
   let alloc_var {next_auxiliary; _} () =
     let v = !next_auxiliary in
     incr next_auxiliary ; Cvar.Unsafe.of_index v
@@ -233,8 +240,13 @@ struct
             (* If we're nested in a prover block, create constants instead of
                storing.
             *)
-            Typ_monads.Store.run (store value) Cvar.constant
-          else Typ_monads.Store.run (store value) (store_field_elt s)
+            Typ_monads.Store.run (store value) Cvar.constant (fun () ->
+                failwith
+                  "Cannot defer the creation of a variable while not \
+                  generating constraints" )
+          else
+            Typ_monads.Store.run (store value) (store_field_elt s)
+              (store_field_elt_later s)
         in
         (* TODO: Push a label onto the stack here *)
         let s, () = check var (set_prover_state (Some ()) s) in

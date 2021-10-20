@@ -27,6 +27,11 @@ module type Basic = sig
     -> 'var
     -> ('value, 'f field, 'prover_state) t
 
+  val read' :
+       ('var -> ('value, 'f field) Typ_monads.Read.t)
+    -> 'var
+    -> ('value, 'f field, 'prover_state) t
+
   val with_lens :
     ('whole, 'view) Lens.t -> ('a, 'f, 'view) t -> ('a, 'f, 'whole) t
 
