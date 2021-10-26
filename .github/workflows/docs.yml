@@ -4,6 +4,7 @@ on:
     push:
         branches:
             - master
+    pull_request:
 
 jobs:
     release:
@@ -24,10 +25,16 @@ jobs:
                 eval $(opam env)
                 opam pin add . -y
                 opam install odoc
-                make ml-docs
+                make website
+                cd website/website
+                yarn
+                yarn build
+                pwd
+                ls
+                ls build
 
             - name: Deploy
               uses: peaceiris/actions-gh-pages@v3
               with:
                 github_token: ${{ secrets.GITHUB_TOKEN }}
-                publish_dir: ./_build/default/_doc/_html
+                publish_dir: ./website/website/build/snarky
