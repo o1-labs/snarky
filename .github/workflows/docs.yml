@@ -1,0 +1,33 @@
+name: Deploy Docs to GitHub Pages
+
+on:
+    push:
+        branches:
+            - master
+
+jobs:
+    release:
+        name: GitHub Pages
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v2
+
+            - name: Use OCaml "4.07.1"
+              uses: avsm/setup-ocaml@v1
+              with:
+                ocaml-version: 4.07.1
+              
+            - name: Build Documentation
+              run: |
+                eval $(opam env)
+                opam pin add . -y
+                opam install odoc
+                make ml-docs
+
+            - name: Deploy
+              uses: peaceiris/actions-gh-pages@v3
+              with:
+                github_token: ${{ secrets.GITHUB_TOKEN }}
+                publish_dir: ./_build/default/_doc/_html
