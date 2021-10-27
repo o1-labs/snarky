@@ -1,0 +1,137 @@
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>Project Readme · Snarky</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="generator" content="Docusaurus"/><meta name="description" content="`snarky` is an OCaml front-end for writing R1CS SNARKs."/><meta name="docsearch:language" content="en"/><meta property="og:title" content="Project Readme · Snarky"/><meta property="og:type" content="website"/><meta property="og:url" content="https://o1-labs.github.io/snarky/"/><meta property="og:description" content="`snarky` is an OCaml front-end for writing R1CS SNARKs."/><meta property="og:image" content="https://o1-labs.github.io/snarky/img/zklambda.png"/><meta name="twitter:card" content="summary"/><meta name="twitter:image" content="https://o1-labs.github.io/snarky/img/zklambda.png"/><link rel="shortcut icon" href="/snarky/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/atom-one-light.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><script src="/snarky/js/scrollSpy.js"></script><link rel="stylesheet" href="/snarky/css/main.css"/><script src="/snarky/js/codetabs.js"></script></head><body class="sideNavVisible separateOnPageNav"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/snarky/"><img class="logo" src="/snarky/img/zklambda.svg" alt="Snarky"/><h2 class="headerTitleWithLogo">Snarky</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li class="siteNavGroupActive"><a href="/snarky/docs/overview" target="_self">Docs</a></li><li class=""><a href="/snarky/api/snarky/Snarky/index" target="_self">API</a></li><li class=""><a href="/snarky/help" target="_self">Help</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="docsNavContainer" id="docsNav"><nav class="toc"><div class="toggleNav"><section class="navWrapper wrapper"><div class="navBreadcrumb wrapper"><div class="navToggle" id="navToggler"><div class="hamburger-menu"><div class="line1"></div><div class="line2"></div><div class="line3"></div></div></div><h2><i>›</i><span>Other</span></h2><div class="tocToggler" id="tocToggler"><i class="icon-toc"></i></div></div><div class="navGroups"><div class="navGroup"><h3 class="navGroupCategoryTitle">Introduction</h3><ul class=""><li class="navListItem"><a class="navItem" href="/snarky/docs/overview">Overview</a></li></ul></div><div class="navGroup"><h3 class="navGroupCategoryTitle">Getting started</h3><ul class=""><li class="navListItem"><a class="navItem" href="/snarky/docs/installation">Installation</a></li><li class="navListItem"><a class="navItem" href="/snarky/docs/try-it-out">Try it out</a></li></ul></div><div class="navGroup"><h3 class="navGroupCategoryTitle">Other</h3><ul class=""><li class="navListItem navListItemActive"><a class="navItem" href="/snarky/docs/readme">Project Readme</a></li></ul></div></div></section></div><script>
+            var coll = document.getElementsByClassName('collapsible');
+            var checkActiveCategory = true;
+            for (var i = 0; i < coll.length; i++) {
+              var links = coll[i].nextElementSibling.getElementsByTagName('*');
+              if (checkActiveCategory){
+                for (var j = 0; j < links.length; j++) {
+                  if (links[j].classList.contains('navListItemActive')){
+                    coll[i].nextElementSibling.classList.toggle('hide');
+                    coll[i].childNodes[1].classList.toggle('rotate');
+                    checkActiveCategory = false;
+                    break;
+                  }
+                }
+              }
+
+              coll[i].addEventListener('click', function() {
+                var arrow = this.childNodes[1];
+                arrow.classList.toggle('rotate');
+                var content = this.nextElementSibling;
+                content.classList.toggle('hide');
+              });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+              createToggler('#navToggler', '#docsNav', 'docsSliderActive');
+              createToggler('#tocToggler', 'body', 'tocActive');
+
+              var headings = document.querySelector('.toc-headings');
+              headings && headings.addEventListener('click', function(event) {
+                var el = event.target;
+                while(el !== headings){
+                  if (el.tagName === 'A') {
+                    document.body.classList.remove('tocActive');
+                    break;
+                  } else{
+                    el = el.parentNode;
+                  }
+                }
+              }, false);
+
+              function createToggler(togglerSelector, targetSelector, className) {
+                var toggler = document.querySelector(togglerSelector);
+                var target = document.querySelector(targetSelector);
+
+                if (!toggler) {
+                  return;
+                }
+
+                toggler.onclick = function(event) {
+                  event.preventDefault();
+
+                  target.classList.toggle(className);
+                };
+              }
+            });
+        </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Project Readme</h1></header><article><div><span><p><code>snarky</code> is an OCaml front-end for writing R1CS SNARKs.
+It is modular over the backend SNARK library, and comes with backends
+from <a href="https://github.com/scipr-lab/libsnark">libsnark</a>.</p>
+<p>Disclaimer: This code has not been thoroughly audited and should not
+be used in production systems.</p>
+<h2><a class="anchor" aria-hidden="true" id="getting-started"></a><a href="#getting-started" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Getting started</h2>
+<ul>
+<li>First install libsnark's dependencies as specified <a href="https://github.com/scipr-lab/libsnark#dependencies">here</a></li>
+<li>Then, make sure you have <a href="https://opam.ocaml.org/doc/Install.html">opam</a> installed.</li>
+<li>Finally, install <code>snarky</code> and its dependencies by running</li>
+</ul>
+<pre><code class="hljs css language-bash">opam pin add git@github.com:o1-labs/snarky.git
+</code></pre>
+<p>and answering yes to the prompts.</p>
+<p>The best place to get started learning how to use the library are the annotated examples.</p>
+<ul>
+<li><a href="examples/election/election_main.ml">Election</a>: shows how to use Snarky to verify an election was run honestly.</li>
+<li><a href="examples/merkle_update/merkle_update.ml">Merkle update</a>: a simple example updating a Merkle tree.</li>
+</ul>
+<h2><a class="anchor" aria-hidden="true" id="design"></a><a href="#design" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Design</h2>
+<p>The intention of this library is to allow writing snarks by writing what look
+like normal programs (whose executions the snarks verify). If you're an experienced
+functional programmer, the basic idea (simplifying somewhat) is that there is a monad
+<code>Checked.t</code> so that a value of type <code>'a Checked.t</code> is an <code>'a</code> whose computation is
+certified by the snark. For example, we have a function</p>
+<pre><code class="hljs css language-ocaml">mul : var -&gt; var -&gt; (var, _) <span class="hljs-type">Checked</span>.t.
+</code></pre>
+<p>Given <code>v1, v2 : var</code>, <code>mul v1 v2</code> is a variable containg the product of v1 and v2,
+and the snark will ensure that this is so.</p>
+<h3><a class="anchor" aria-hidden="true" id="example-merkle-trees"></a><a href="#example-merkle-trees" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Example: Merkle trees</h3>
+<p>One computation useful in snarks is verifying membership in a list. This is
+typically accomplished using authentication paths in Merkle trees. Given a
+hash <code>entry_hash</code>, an address (i.e., a list of booleans) <code>addr0</code> and an
+authentication path (i.e., a list of hashes) <code>path0</code>, we can write a checked
+computation for computing the implied Merkle root:</p>
+<pre><code class="hljs css language-ocaml">  <span class="hljs-keyword">let</span> implied_root entry_hash addr0 path0 =
+    <span class="hljs-keyword">let</span> <span class="hljs-keyword">rec</span> go acc addr path =
+      <span class="hljs-keyword">let</span> <span class="hljs-keyword">open</span> <span class="hljs-type">Let_syntax</span> <span class="hljs-keyword">in</span>
+      <span class="hljs-keyword">match</span> addr, path <span class="hljs-keyword">with</span>
+      | <span class="hljs-literal">[]</span>, <span class="hljs-literal">[]</span> -&gt; return acc
+      | b :: bs, h :: hs -&gt;
+        <span class="hljs-keyword">let</span>%bind l = <span class="hljs-type">Hash</span>.if_ b ~then_:h ~else_:acc
+        <span class="hljs-keyword">and</span> r = <span class="hljs-type">Hash</span>.if_ b ~then_:acc ~else_:h
+        <span class="hljs-keyword">in</span>
+        <span class="hljs-keyword">let</span>%bind acc' = <span class="hljs-type">Hash</span>.hash l r <span class="hljs-keyword">in</span>
+        go acc' bs hs
+      | _, _ -&gt; failwith <span class="hljs-string">"Merkle_tree.Checked.implied_root: address, path length mismatch"</span>
+    <span class="hljs-keyword">in</span>
+    go entry_hash addr0 path0
+</code></pre>
+<p>The type of this function is</p>
+<pre><code class="hljs css language-ocaml"><span class="hljs-keyword">val</span> implied_root : <span class="hljs-type">Hash</span>.var -&gt; <span class="hljs-type">Boolean</span>.var <span class="hljs-built_in">list</span> -&gt; <span class="hljs-type">Hash</span>.var <span class="hljs-built_in">list</span> -&gt; (<span class="hljs-type">Hash</span>.var, <span class="hljs-symbol">'prover_state</span>) <span class="hljs-type">Checked</span>.t
+</code></pre>
+<p>The return type <code>(Hash.var, 'prover_state) Checked.t</code> indicates that the function
+returns a &quot;checked computation&quot; producing a variable containing a hash, and can be
+run by a prover with an arbitrary state type <code>'prover_state</code>.</p>
+<p>Compare this definition to the following &quot;unchecked&quot; OCaml function (assuming a function <code>hash</code>):</p>
+<pre><code class="hljs css language-ocaml"><span class="hljs-keyword">let</span> implied_root_unchecked entry_hash addr0 path0 =
+  <span class="hljs-keyword">let</span> <span class="hljs-keyword">rec</span> go acc addr path =
+    <span class="hljs-keyword">match</span> addr, path <span class="hljs-keyword">with</span>
+    | <span class="hljs-literal">[]</span>, <span class="hljs-literal">[]</span> -&gt; acc
+    | b :: bs, h :: hs -&gt;
+      <span class="hljs-keyword">let</span> l = <span class="hljs-keyword">if</span> b <span class="hljs-keyword">then</span> h <span class="hljs-keyword">else</span> acc
+      <span class="hljs-keyword">and</span> r = <span class="hljs-keyword">if</span> b <span class="hljs-keyword">then</span> acc <span class="hljs-keyword">else</span> h
+      <span class="hljs-keyword">in</span>
+      <span class="hljs-keyword">let</span> acc' = hash l r <span class="hljs-keyword">in</span>
+      go acc' bs hs
+    | _, _ -&gt;
+      failwith <span class="hljs-string">"Merkle_tree.implied_root_unchecked: address, path length mismatch"</span>
+  <span class="hljs-keyword">in</span>
+  go entry_hash addr0 path0
+;;
+</code></pre>
+<p>The two obviously look very similar, but the first one can be run to generate an R1CS
+(and also an &quot;auxiliary input&quot;) to verify that computation.</p>
+<h2><a class="anchor" aria-hidden="true" id="implementation"></a><a href="#implementation" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Implementation</h2>
+<p>Currently, the library uses a free-monad style AST to represent the snark computation.
+This may change in future versions if the overhead of creating the AST is significant.
+Most likely it will stick around since the overhead doesn't seem to be too bad and it
+enables optimizations like eliminating equality constraints.</p>
+</span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="/snarky/docs/try-it-out"><span class="arrow-prev">← </span><span>Try it out</span></a></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#getting-started">Getting started</a></li><li><a href="#design">Design</a><ul class="toc-headings"><li><a href="#example-merkle-trees">Example: Merkle trees</a></li></ul></li><li><a href="#implementation">Implementation</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section class="sitemap"><a href="/snarky/" class="nav-home"><img src="/snarky/img/zklambda.svg" alt="Snarky" width="66" height="58"/></a><div><h5>Docs</h5><a href="/snarky/docs/en/about.html">About</a><a href="/snarky/docs/en/about.html#getting-started">Getting started</a><a href="/snarky/api/snarky/Snarky/index.html">API Reference</a></div><div><h5>Community</h5><a href="/snarky/en/users.html">User Showcase</a><a href="http://stackoverflow.com/questions/tagged/snarky" target="_blank" rel="noreferrer noopener">Stack Overflow</a><a href="https://discord.gg/W6hBG59">Project Chat</a><a href="https://twitter.com/snarky_zk" target="_blank" rel="noreferrer noopener">Twitter</a></div><div><h5>More</h5><a href="/snarky/blog">Blog</a><a href="https://github.com/o1-labs/snarky">GitHub</a><a class="github-button" href="https://github.com/o1-labs/snarky" data-icon="octicon-star" data-count-href="/o1-labs/snarky/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a><script async="" defer="" id="github-bjs" src="https://buttons.github.io/buttons.js"></script></div></section><section class="copyright">Copyright © 2021 O(1) Labs</section></footer></div></body></html>
