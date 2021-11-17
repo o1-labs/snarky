@@ -2551,7 +2551,6 @@ module Run = struct
         count := !count + weight c
       in
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
-      ignore log ;
       let old = !state in
       state :=
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
