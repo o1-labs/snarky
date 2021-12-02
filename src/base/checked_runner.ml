@@ -410,7 +410,11 @@ module Make (Backend : Backend_extended.S) = struct
         let k = handle_error s (fun () -> k y) in
         run k s
     | With_label (lab, t, k) ->
+        Option.iter s.log_constraint ~f:(fun f ->
+            f ~at_label_boundary:(`Start, lab) [] ) ;
         let s, y = with_label lab (run t) s in
+        Option.iter s.log_constraint ~f:(fun f ->
+            f ~at_label_boundary:(`End, lab) [] ) ;
         let k = handle_error s (fun () -> k y) in
         run k s
     | Add_constraint (c, t) ->
