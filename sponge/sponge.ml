@@ -23,6 +23,8 @@ module Params = struct
   let pasta_q = Constants.params_Pasta_q
 
   let pasta_p_3 = Constants.params_Pasta_p_3
+
+  let pasta_q_3 = Constants.params_Pasta_q_3
 end
 
 module State = Array
@@ -77,7 +79,7 @@ module Bn382_inputs (Field : Intf.Field_mutable) = struct
     (* Sparse pseudo-MDS matrix *)
     let apply_affine_map (_rows, c) v =
       let open Field in
-      let res = [|v.(0) + v.(2); v.(0) + v.(1); v.(1) + v.(2)|] in
+      let res = [| v.(0) + v.(2); v.(0) + v.(1); v.(1) + v.(2) |] in
       Array.iteri res ~f:(fun i ri -> ri += c.(i)) ;
       res
 
@@ -118,12 +120,12 @@ should be higher for smaller alpha.
 
   let add_block ~state block = Array.iteri block ~f:(add_assign ~state)
 
-  let block_cipher {Params.round_constants; mds} state =
+  let block_cipher { Params.round_constants; mds } state =
     add_block ~state round_constants.(0) ;
     for_ (2 * rounds) ~init:state ~f:(fun r state ->
         let sbox = if Int.(r mod 2 = 0) then sbox0 else sbox1 in
         Array.map_inplace state ~f:sbox ;
-        apply_affine_map (mds, round_constants.(r + 1)) state )
+        apply_affine_map (mds, round_constants.(r + 1)) state)
 end
 
 module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
@@ -137,40 +139,40 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
 
   (* Poseidon goes
 
-      ARK_0 -> SBOX -> MDS
-   -> ARK_1 -> SBOX -> MDS
-   -> ...
-   -> ARK_{half_rounds_full - 1} -> SBOX -> MDS
-   -> ARK_{half_rounds_full} -> SBOX0 -> MDS
-   -> ...
-   -> ARK_{half_rounds_full + rounds_partial - 1} -> SBOX0 -> MDS
-   -> ARK_{half_rounds_full + rounds_partial} -> SBOX -> MDS
-   -> ...
-   -> ARK_{half_rounds_full + rounds_partial + half_rounds_full - 1} -> SBOX -> MDS
+        ARK_0 -> SBOX -> MDS
+     -> ARK_1 -> SBOX -> MDS
+     -> ...
+     -> ARK_{half_rounds_full - 1} -> SBOX -> MDS
+     -> ARK_{half_rounds_full} -> SBOX0 -> MDS
+     -> ...
+     -> ARK_{half_rounds_full + rounds_partial - 1} -> SBOX0 -> MDS
+     -> ARK_{half_rounds_full + rounds_partial} -> SBOX -> MDS
+     -> ...
+     -> ARK_{half_rounds_full + rounds_partial + half_rounds_full - 1} -> SBOX -> MDS
 
-   It is best to apply the matrix and add the round constants at the same
-   time for Marlin constraint efficiency, so that is how this implementation does it.
-   Like,
+     It is best to apply the matrix and add the round constants at the same
+     time for Marlin constraint efficiency, so that is how this implementation does it.
+     Like,
 
-      ARK_0
-   -> SBOX -> (MDS -> ARK_1)
-   -> SBOX -> (MDS -> ARK_2)
-   -> ...
-   -> SBOX -> (MDS -> ARK_{half_rounds_full - 1})
-   -> SBOX -> (MDS -> ARK_{half_rounds_full})
-   -> SBOX0 -> (MDS -> ARK_{half_rounds_full + 1})
-   -> ...
-   -> SBOX0 -> (MDS -> ARK_{half_rounds_full + rounds_partial - 1})
-   -> SBOX0 -> (MDS -> ARK_{half_rounds_full + rounds_partial})
-   -> SBOX -> (MDS -> ARK_{half_rounds_full + rounds_partial + 1})
-   -> ...
-   -> SBOX -> (MDS -> ARK_{half_rounds_full + rounds_partial + half_rounds_full - 1})
-   -> SBOX -> MDS ->* ARK_{half_rounds_full + rounds_partial + half_rounds_full}
+        ARK_0
+     -> SBOX -> (MDS -> ARK_1)
+     -> SBOX -> (MDS -> ARK_2)
+     -> ...
+     -> SBOX -> (MDS -> ARK_{half_rounds_full - 1})
+     -> SBOX -> (MDS -> ARK_{half_rounds_full})
+     -> SBOX0 -> (MDS -> ARK_{half_rounds_full + 1})
+     -> ...
+     -> SBOX0 -> (MDS -> ARK_{half_rounds_full + rounds_partial - 1})
+     -> SBOX0 -> (MDS -> ARK_{half_rounds_full + rounds_partial})
+     -> SBOX -> (MDS -> ARK_{half_rounds_full + rounds_partial + 1})
+     -> ...
+     -> SBOX -> (MDS -> ARK_{half_rounds_full + rounds_partial + half_rounds_full - 1})
+     -> SBOX -> MDS ->* ARK_{half_rounds_full + rounds_partial + half_rounds_full}
 
-    *this last round is a deviation from standard poseidon made for efficiency reasons.
-     clearly it does not impact security to add round constants
-*)
-  let block_cipher {Params.round_constants; mds} state =
+      *this last round is a deviation from standard poseidon made for efficiency reasons.
+       clearly it does not impact security to add round constants
+  *)
+  let block_cipher { Params.round_constants; mds } state =
     let sbox = to_the_alpha in
     let state = ref state in
     let constant_offset =
@@ -208,7 +210,7 @@ module Make_hash (P : Intf.Permutation) = struct
 
   let sponge perm blocks ~state =
     Array.fold ~init:state blocks ~f:(fun state block ->
-        add_block ~state block ; perm state )
+        add_block ~state block ; perm state)
 
   (* takes an array of field elements, and spread them into blocks/arrays that can contain [rate] fied elements *)
   let to_blocks rate field_elems =
@@ -227,13 +229,13 @@ module Make_hash (P : Intf.Permutation) = struct
     assert (Array.length blocks = 1) ;
     [%test_eq: unit array array]
       (Array.map blocks ~f:(Array.map ~f:ignore))
-      [|[|(); ()|]|]
+      [| [| (); () |] |]
 
   let%test_unit "block" =
     let z = Field.zero in
     [%test_eq: unit array array]
-      (Array.map (to_blocks 2 [|z; z; z|]) ~f:(Array.map ~f:ignore))
-      [|[|(); ()|]; [|(); ()|]|]
+      (Array.map (to_blocks 2 [| z; z; z |]) ~f:(Array.map ~f:ignore))
+      [| [| (); () |]; [| (); () |] |]
 
   let r = m - 1
 
@@ -252,11 +254,12 @@ end
 type sponge_state = Absorbed of int | Squeezed of int [@@deriving sexp]
 
 type 'f t =
-  { mutable state: 'f State.t
-  ; params: 'f Params.t
-  ; mutable sponge_state: sponge_state }
+  { mutable state : 'f State.t
+  ; params : 'f Params.t
+  ; mutable sponge_state : sponge_state
+  }
 
-let make ~state ~params ~sponge_state = {state; params; sponge_state}
+let make ~state ~params ~sponge_state = { state; params; sponge_state }
 
 module Make_sponge (P : Intf.Permutation) = struct
   open P
@@ -269,15 +272,15 @@ module Make_sponge (P : Intf.Permutation) = struct
 
   type nonrec t = Field.t t
 
-  let state {state; _} = copy state
+  let state { state; _ } = copy state
 
   let initial_state = Array.init m ~f:(fun _ -> Field.zero)
 
   let create ?(init = initial_state) params =
-    {state= copy init; sponge_state= Absorbed 0; params}
+    { state = copy init; sponge_state = Absorbed 0; params }
 
-  let copy {state; params; sponge_state} =
-    {state= copy state; params; sponge_state}
+  let copy { state; params; sponge_state } =
+    { state = copy state; params; sponge_state }
 
   let rate = m - capacity
 
@@ -313,33 +316,34 @@ end
 
 module Bit_sponge = struct
   type ('s, 'bool) t =
-    { underlying: 's
+    { underlying : 's
           (* TODO: Have to be careful about these bits. They aren't perfectly uniform. *)
-    ; mutable last_squeezed: 'bool list }
+    ; mutable last_squeezed : 'bool list
+    }
 
   let map (type a b) t ~(f : a -> b) : (b, _) t =
-    {t with underlying= f t.underlying}
+    { t with underlying = f t.underlying }
 
-  let make ?(last_squeezed = []) underlying = {underlying; last_squeezed}
+  let make ?(last_squeezed = []) underlying = { underlying; last_squeezed }
 
-  let underlying {underlying; last_squeezed= _} = underlying
+  let underlying { underlying; last_squeezed = _ } = underlying
 
   module Make
       (Bool : Intf.T) (Field : sig
-          type t
+        type t
 
-          val to_bits : t -> Bool.t list
+        val to_bits : t -> Bool.t list
 
-          val finalize_discarded : Bool.t list -> unit
+        val finalize_discarded : Bool.t list -> unit
 
-          val high_entropy_bits : int
+        val high_entropy_bits : int
       end)
       (Input : Intf.T)
       (S : Intf.Sponge
-           with module State := State
-            and module Field := Field
-            and type digest := Field.t
-            and type input := Input.t) =
+             with module State := State
+              and module Field := Field
+              and type digest := Field.t
+              and type input := Input.t) =
   struct
     type nonrec t = (S.t, Bool.t) t
 
@@ -348,10 +352,10 @@ module Bit_sponge = struct
     let high_entropy_bits = Field.high_entropy_bits
 
     let create ?init params =
-      {underlying= S.create ?init params; last_squeezed= []}
+      { underlying = S.create ?init params; last_squeezed = [] }
 
-    let copy {underlying; last_squeezed} =
-      {underlying= S.copy underlying; last_squeezed}
+    let copy { underlying; last_squeezed } =
+      { underlying = S.copy underlying; last_squeezed }
 
     let absorb t x =
       S.absorb t.underlying x ;

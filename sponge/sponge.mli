@@ -24,6 +24,8 @@ module Params : sig
   val pasta_q : string t
 
   val pasta_p_3 : string t
+
+  val pasta_q_3 : string t
 end
 
 module State : sig
@@ -50,9 +52,10 @@ module Make_hash (P : Intf.Permutation) :
 type sponge_state = Absorbed of int | Squeezed of int [@@deriving sexp]
 
 type 'f t =
-  { mutable state: 'f State.t
-  ; params: 'f Params.t
-  ; mutable sponge_state: sponge_state }
+  { mutable state : 'f State.t
+  ; params : 'f Params.t
+  ; mutable sponge_state : sponge_state
+  }
 
 val make :
   state:'f State.t -> params:'f Params.t -> sponge_state:sponge_state -> 'f t
@@ -60,11 +63,11 @@ val make :
 module Make_sponge (P : Intf.Permutation) : sig
   include
     Intf.Sponge
-    with module State := State
-     and module Field := P.Field
-     and type digest := P.Field.t
-     and type input := P.Field.t
-     and type t = P.Field.t t
+      with module State := State
+       and module Field := P.Field
+       and type digest := P.Field.t
+       and type input := P.Field.t
+       and type t = P.Field.t t
 
   val make :
        state:P.Field.t State.t
@@ -95,17 +98,17 @@ module Bit_sponge : sig
   end)
   (Input : Intf.T)
   (S : Intf.Sponge
-       with module State := State
-        and module Field := Field
-        and type digest := Field.t
-        and type input := Input.t) : sig
+         with module State := State
+          and module Field := Field
+          and type digest := Field.t
+          and type input := Input.t) : sig
     include
       Intf.Sponge
-      with module State := State
-       and module Field := Field
-       and type digest := length:int -> Bool.t list
-       and type input := Input.t
-       and type t = (S.t, Bool.t) t
+        with module State := State
+         and module Field := Field
+         and type digest := length:int -> Bool.t list
+         and type input := Input.t
+         and type t = (S.t, Bool.t) t
 
     val squeeze_field : t -> Field.t
   end
