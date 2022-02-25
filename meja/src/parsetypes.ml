@@ -1,6 +1,6 @@
 open Ast_types
 
-type type_expr = {type_desc: type_desc; type_loc: Location.t}
+type type_expr = { type_desc : type_desc; type_loc : Location.t }
 
 and type_desc =
   (* A type variable. Name is None when not yet chosen. *)
@@ -26,27 +26,29 @@ and type_desc =
       str list option
   | Ptyp_row_subtract of type_expr * str list
 
-and variant = {var_ident: lid; var_params: type_expr list}
+and variant = { var_ident : lid; var_params : type_expr list }
 
-and row_tag = {rtag_ident: str; rtag_arg: type_expr list; rtag_loc: Location.t}
+and row_tag =
+  { rtag_ident : str; rtag_arg : type_expr list; rtag_loc : Location.t }
 
-type field_decl = {fld_ident: str; fld_type: type_expr; fld_loc: Location.t}
+type field_decl =
+  { fld_ident : str; fld_type : type_expr; fld_loc : Location.t }
 
-type ctor_args =
-  | Ctor_tuple of type_expr list
-  | Ctor_record of field_decl list
+type ctor_args = Ctor_tuple of type_expr list | Ctor_record of field_decl list
 
 type ctor_decl =
-  { ctor_ident: str
-  ; ctor_args: ctor_args
-  ; ctor_ret: type_expr option
-  ; ctor_loc: Location.t }
+  { ctor_ident : str
+  ; ctor_args : ctor_args
+  ; ctor_ret : type_expr option
+  ; ctor_loc : Location.t
+  }
 
 type type_decl =
-  { tdec_ident: str
-  ; tdec_params: type_expr list
-  ; tdec_desc: type_decl_desc
-  ; tdec_loc: Location.t }
+  { tdec_ident : str
+  ; tdec_params : type_expr list
+  ; tdec_desc : type_decl_desc
+  ; tdec_loc : Location.t
+  }
 
 and type_decl_desc =
   | Pdec_abstract
@@ -57,7 +59,7 @@ and type_decl_desc =
   | Pdec_extend of Path.t Location.loc * ctor_decl list
       (** Internal; this should never be present in the AST. *)
 
-type pattern = {pat_desc: pattern_desc; pat_loc: Location.t}
+type pattern = { pat_desc : pattern_desc; pat_loc : Location.t }
 
 and pattern_desc =
   | Ppat_any
@@ -74,7 +76,7 @@ and pattern_desc =
   | Ppat_ctor of lid * pattern option
   | Ppat_row_ctor of str * pattern list
 
-type expression = {exp_desc: expression_desc; exp_loc: Location.t}
+type expression = { exp_desc : expression_desc; exp_loc : Location.t }
 
 and expression_desc =
   | Pexp_apply of expression * (Asttypes.arg_label * expression) list
@@ -97,9 +99,7 @@ and expression_desc =
   | Pexp_ctor of lid * expression option
   | Pexp_row_ctor of str * expression list
   | Pexp_unifiable of
-      { mutable expression: expression option
-      ; name: str
-      ; id: int }
+      { mutable expression : expression option; name : str; id : int }
   | Pexp_if of expression * expression * expression option
   | Pexp_prover of expression
 
@@ -109,7 +109,7 @@ type conv_type =
   (* Tri-stitching to existing declaration. *)
   | Ptconv_to of type_expr
 
-type signature_item = {sig_desc: signature_desc; sig_loc: Location.t}
+type signature_item = { sig_desc : signature_desc; sig_loc : Location.t }
 
 and signature = signature_item list
 
@@ -128,7 +128,7 @@ and signature_desc =
   | Psig_prover of signature
   | Psig_convert of str * type_expr
 
-and module_sig = {msig_desc: module_sig_desc; msig_loc: Location.t}
+and module_sig = { msig_desc : module_sig_desc; msig_loc : Location.t }
 
 and module_sig_desc =
   | Pmty_sig of signature
@@ -137,7 +137,7 @@ and module_sig_desc =
   | Pmty_abstract
   | Pmty_functor of str * module_sig * module_sig
 
-type statement = {stmt_desc: statement_desc; stmt_loc: Location.t}
+type statement = { stmt_desc : statement_desc; stmt_loc : Location.t }
 
 and statements = statement list
 
@@ -158,7 +158,7 @@ and statement_desc =
   | Pstmt_prover of statements
   | Pstmt_convert of str * type_expr
 
-and module_expr = {mod_desc: module_desc; mod_loc: Location.t}
+and module_expr = { mod_desc : module_desc; mod_loc : Location.t }
 
 and module_desc =
   | Pmod_struct of statements

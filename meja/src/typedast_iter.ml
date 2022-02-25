@@ -3,53 +3,54 @@ open Typedast
 open Ast_types
 
 type iterator =
-  { type_expr: iterator -> type_expr -> unit
-  ; type_desc: iterator -> type_desc -> unit
-  ; variant: iterator -> variant -> unit
-  ; row_tag: iterator -> row_tag -> unit
-  ; field_decl: iterator -> field_decl -> unit
-  ; ctor_args: iterator -> ctor_args -> unit
-  ; ctor_decl: iterator -> ctor_decl -> unit
-  ; type_decl: iterator -> type_decl -> unit
-  ; type_decl_desc: iterator -> type_decl_desc -> unit
-  ; literal: iterator -> literal -> unit
-  ; pattern: iterator -> pattern -> unit
-  ; pattern_desc: iterator -> pattern_desc -> unit
-  ; expression: iterator -> expression -> unit
-  ; expression_desc: iterator -> expression_desc -> unit
-  ; convert_body: iterator -> convert_body -> unit
-  ; convert_body_desc: iterator -> convert_body_desc -> unit
-  ; convert: iterator -> convert -> unit
-  ; convert_desc: iterator -> convert_desc -> unit
-  ; signature_item: iterator -> signature_item -> unit
-  ; signature: iterator -> signature -> unit
-  ; signature_desc: iterator -> signature_desc -> unit
-  ; module_sig: iterator -> module_sig -> unit
-  ; module_sig_desc: iterator -> module_sig_desc -> unit
-  ; statement: iterator -> statement -> unit
-  ; statements: iterator -> statements -> unit
-  ; statement_desc: iterator -> statement_desc -> unit
-  ; module_expr: iterator -> module_expr -> unit
-  ; module_desc: iterator -> module_desc -> unit
-  ; location: iterator -> Location.t -> unit
-  ; longident: iterator -> Longident.t -> unit
-  ; ident: iterator -> Ident.t -> unit
-  ; path: iterator -> Path.t -> unit
-  ; type0_expr: iterator -> Type0.type_expr -> unit
-  ; type0_decl: iterator -> Type0.type_decl -> unit }
+  { type_expr : iterator -> type_expr -> unit
+  ; type_desc : iterator -> type_desc -> unit
+  ; variant : iterator -> variant -> unit
+  ; row_tag : iterator -> row_tag -> unit
+  ; field_decl : iterator -> field_decl -> unit
+  ; ctor_args : iterator -> ctor_args -> unit
+  ; ctor_decl : iterator -> ctor_decl -> unit
+  ; type_decl : iterator -> type_decl -> unit
+  ; type_decl_desc : iterator -> type_decl_desc -> unit
+  ; literal : iterator -> literal -> unit
+  ; pattern : iterator -> pattern -> unit
+  ; pattern_desc : iterator -> pattern_desc -> unit
+  ; expression : iterator -> expression -> unit
+  ; expression_desc : iterator -> expression_desc -> unit
+  ; convert_body : iterator -> convert_body -> unit
+  ; convert_body_desc : iterator -> convert_body_desc -> unit
+  ; convert : iterator -> convert -> unit
+  ; convert_desc : iterator -> convert_desc -> unit
+  ; signature_item : iterator -> signature_item -> unit
+  ; signature : iterator -> signature -> unit
+  ; signature_desc : iterator -> signature_desc -> unit
+  ; module_sig : iterator -> module_sig -> unit
+  ; module_sig_desc : iterator -> module_sig_desc -> unit
+  ; statement : iterator -> statement -> unit
+  ; statements : iterator -> statements -> unit
+  ; statement_desc : iterator -> statement_desc -> unit
+  ; module_expr : iterator -> module_expr -> unit
+  ; module_desc : iterator -> module_desc -> unit
+  ; location : iterator -> Location.t -> unit
+  ; longident : iterator -> Longident.t -> unit
+  ; ident : iterator -> Ident.t -> unit
+  ; path : iterator -> Path.t -> unit
+  ; type0_expr : iterator -> Type0.type_expr -> unit
+  ; type0_decl : iterator -> Type0.type_decl -> unit
+  }
 
-let lid iter {Location.txt; loc} =
+let lid iter { Location.txt; loc } =
   iter.longident iter txt ; iter.location iter loc
 
-let str iter ({Location.txt= _; loc} : str) = iter.location iter loc
+let str iter ({ Location.txt = _; loc } : str) = iter.location iter loc
 
-let ident iter ({Location.txt; loc} : Ident.t Location.loc) =
+let ident iter ({ Location.txt; loc } : Ident.t Location.loc) =
   iter.ident iter txt ; iter.location iter loc
 
-let path iter ({Location.txt; loc} : Path.t Location.loc) =
+let path iter ({ Location.txt; loc } : Path.t Location.loc) =
   iter.location iter loc ; iter.path iter txt
 
-let type_expr iter {type_desc; type_loc; type_type} =
+let type_expr iter { type_desc; type_loc; type_type } =
   iter.location iter type_loc ;
   iter.type0_expr iter type_type ;
   iter.type_desc iter type_desc
@@ -81,16 +82,16 @@ let type_desc iter = function
       iter.type_expr iter typ ;
       List.iter ~f:(ident iter) tags
 
-let variant iter {var_ident; var_params} =
+let variant iter { var_ident; var_params } =
   path iter var_ident ;
   List.iter ~f:(iter.type_expr iter) var_params
 
-let row_tag iter {rtag_ident; rtag_arg; rtag_loc} =
+let row_tag iter { rtag_ident; rtag_arg; rtag_loc } =
   ident iter rtag_ident ;
   iter.location iter rtag_loc ;
   List.iter ~f:(iter.type_expr iter) rtag_arg
 
-let field_decl iter {fld_ident; fld_type; fld_loc; fld_fld} =
+let field_decl iter { fld_ident; fld_type; fld_loc; fld_fld } =
   iter.location iter fld_loc ;
   ident iter fld_ident ;
   iter.type_expr iter fld_type ;
@@ -103,7 +104,7 @@ let ctor_args iter = function
   | Tctor_record fields ->
       List.iter ~f:(iter.field_decl iter) fields
 
-let ctor_decl iter {ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor} =
+let ctor_decl iter { ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor } =
   iter.location iter ctor_loc ;
   ident iter ctor_ident ;
   iter.ctor_args iter ctor_args ;
@@ -111,7 +112,7 @@ let ctor_decl iter {ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor} =
   (* TODO: Type0_iterator *)
   ignore ctor_ctor
 
-let type_decl iter {tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec} =
+let type_decl iter { tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec } =
   iter.location iter tdec_loc ;
   ident iter tdec_ident ;
   List.iter ~f:(iter.type_expr iter) tdec_params ;
@@ -136,7 +137,7 @@ let type_decl_desc iter = function
 
 let literal (_iter : iterator) (_ : literal) = ()
 
-let pattern iter {pat_desc; pat_loc; pat_type} =
+let pattern iter { pat_desc; pat_loc; pat_type } =
   iter.location iter pat_loc ;
   iter.type0_expr iter pat_type ;
   iter.pattern_desc iter pat_desc
@@ -156,7 +157,7 @@ let pattern_desc iter = function
       iter.literal iter l
   | Tpat_record fields ->
       List.iter fields ~f:(fun (name, pat) ->
-          path iter name ; iter.pattern iter pat )
+          path iter name ; iter.pattern iter pat)
   | Tpat_ctor (name, arg) ->
       path iter name ;
       Option.iter ~f:(iter.pattern iter) arg
@@ -164,7 +165,7 @@ let pattern_desc iter = function
       ident iter name ;
       List.iter ~f:(iter.pattern iter) args
 
-let expression iter {exp_desc; exp_loc; exp_type} =
+let expression iter { exp_desc; exp_loc; exp_type } =
   iter.location iter exp_loc ;
   iter.type0_expr iter exp_type ;
   iter.expression_desc iter exp_desc
@@ -194,20 +195,20 @@ let expression_desc iter = function
   | Texp_match (e, cases) ->
       iter.expression iter e ;
       List.iter cases ~f:(fun (p, e) ->
-          iter.pattern iter p ; iter.expression iter e )
+          iter.pattern iter p ; iter.expression iter e)
   | Texp_field (e, name) ->
       path iter name ; iter.expression iter e
   | Texp_record (bindings, default) ->
       Option.iter ~f:(iter.expression iter) default ;
       List.iter bindings ~f:(fun (name, e) ->
-          path iter name ; iter.expression iter e )
+          path iter name ; iter.expression iter e)
   | Texp_ctor (name, arg) ->
       path iter name ;
       Option.iter ~f:(iter.expression iter) arg
   | Texp_row_ctor (name, args) ->
       ident iter name ;
       List.iter ~f:(iter.expression iter) args
-  | Texp_unifiable {expression; name; id= _} ->
+  | Texp_unifiable { expression; name; id = _ } ->
       ident iter name ;
       Option.iter ~f:(iter.expression iter) expression
   | Texp_if (e1, e2, e3) ->
@@ -225,7 +226,7 @@ let expression_desc iter = function
   | Texp_convert conv ->
       iter.convert iter conv
 
-let convert_body iter {conv_body_desc; conv_body_loc; conv_body_type} =
+let convert_body iter { conv_body_desc; conv_body_loc; conv_body_type } =
   iter.location iter conv_body_loc ;
   iter.type0_expr iter conv_body_type ;
   iter.convert_body_desc iter conv_body_desc
@@ -234,7 +235,7 @@ let convert_body_desc iter = function
   | Tconv_record fields ->
       List.iter fields ~f:(fun (field, conv) ->
           path iter field ;
-          iter.convert_body iter conv )
+          iter.convert_body iter conv)
   | Tconv_ctor (name, args) ->
       path iter name ;
       List.iter args ~f:(fun (_label, conv) -> iter.convert_body iter conv)
@@ -246,7 +247,7 @@ let convert_body_desc iter = function
   | Tconv_identity | Tconv_opaque ->
       ()
 
-let convert iter {conv_desc; conv_loc; conv_type} =
+let convert iter { conv_desc; conv_loc; conv_type } =
   iter.location iter conv_loc ;
   iter.type0_expr iter conv_type ;
   iter.convert_desc iter conv_desc
@@ -265,7 +266,7 @@ let type_conv iter = function
 
 let signature iter = List.iter ~f:(iter.signature_item iter)
 
-let signature_item iter {sig_desc; sig_loc} =
+let signature_item iter { sig_desc; sig_loc } =
   iter.location iter sig_loc ;
   iter.signature_desc iter sig_desc
 
@@ -297,7 +298,7 @@ let signature_desc iter = function
   | Tsig_convert (name, typ) ->
       ident iter name ; iter.type_expr iter typ
 
-let module_sig iter {msig_desc; msig_loc} =
+let module_sig iter { msig_desc; msig_loc } =
   iter.location iter msig_loc ;
   iter.module_sig_desc iter msig_desc
 
@@ -315,7 +316,7 @@ let module_sig_desc iter = function
 
 let statements iter = List.iter ~f:(iter.statement iter)
 
-let statement iter {stmt_desc; stmt_loc} =
+let statement iter { stmt_desc; stmt_loc } =
   iter.location iter stmt_loc ;
   iter.statement_desc iter stmt_desc
 
@@ -349,7 +350,7 @@ let statement_desc iter = function
       iter.ctor_decl iter ctor ;
       Option.iter handler ~f:(fun (p, e) ->
           Option.iter ~f:(iter.pattern iter) p ;
-          iter.expression iter e )
+          iter.expression iter e)
   | Tstmt_multiple stmts ->
       iter.statements iter stmts
   | Tstmt_prover stmts ->
@@ -357,7 +358,7 @@ let statement_desc iter = function
   | Tstmt_convert (name, typ, conv) ->
       ident iter name ; iter.type_expr iter typ ; iter.convert iter conv
 
-let module_expr iter {mod_desc; mod_loc} =
+let module_expr iter { mod_desc; mod_loc } =
   iter.location iter mod_loc ;
   iter.module_desc iter mod_desc
 
@@ -431,4 +432,5 @@ let default_iterator =
   ; ident
   ; path
   ; type0_decl
-  ; type0_expr }
+  ; type0_expr
+  }

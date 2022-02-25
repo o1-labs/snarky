@@ -26,7 +26,7 @@ let closed_flag fmt = function
   | Open ->
       pp_print_string fmt "Open"
 
-let rec row_presence fmt {rp_desc; rp_id} =
+let rec row_presence fmt { rp_desc; rp_id } =
   fprintf fmt "@[<1>{rp_id=%d;rp_desc=@,%a}@]" rp_id row_presence_desc rp_desc
 
 and row_presence_desc fmt = function
@@ -50,7 +50,7 @@ let map ~key ~data fmt m =
   fprintf fmt "@[<1>(" ;
   Map.iteri m ~f:(fun ~key:k ~data:d ->
       if !first then first := false else fprintf fmt ";@," ;
-      fprintf fmt "@[<hov1>%a:@,%a@]" key k data d ) ;
+      fprintf fmt "@[<hov1>%a:@,%a@]" key k data d) ;
   fprintf fmt ")@]"
 
 let list pp fmt l =
@@ -106,20 +106,29 @@ and type_desc fmt = function
   | Trow row_contents ->
       fprintf fmt "@[<hov1>Trow(%a)@]" row row_contents
 
-and variant fmt {var_ident; var_params} =
-  fprintf fmt "@[<1>{var_ident=%a;var_params=@,%a}@]" Path.debug_print
-    var_ident (list type_expr') var_params
+and variant fmt { var_ident; var_params } =
+  fprintf fmt "@[<1>{var_ident=%a;var_params=@,%a}@]" Path.debug_print var_ident
+    (list type_expr') var_params
 
-and row fmt {row_tags; row_closed; row_rest; row_presence_proxy} =
+and row fmt { row_tags; row_closed; row_rest; row_presence_proxy } =
   fprintf fmt
-    "{@[<hov>@,row_tags=@,%a@,;row_closed=@,%a@,row_rest=@,%a@,row_presence_proxy=@,%a@,@]}"
+    "{@[<hov>@,\
+     row_tags=@,\
+     %a@,\
+     ;row_closed=@,\
+     %a@,\
+     row_rest=@,\
+     %a@,\
+     row_presence_proxy=@,\
+     %a@,\
+     @]}"
     (map ~key:Ident.debug_print ~data:(fun fmt (path, rp, typs) ->
          fprintf fmt "@[<hov1>(%a,@,%a,@,%a)@]" Path.debug_print path
-           row_presence rp (list type_expr') typs ))
+           row_presence rp (list type_expr') typs))
     row_tags closed_flag row_closed type_expr' row_rest row_presence
     row_presence_proxy
 
-let field_decl fmt {fld_ident; fld_type} =
+let field_decl fmt { fld_ident; fld_type } =
   fprintf fmt "@[<hov1>{fld_ident=%a;fld_type=@,%a}@]" Ident.debug_print
     fld_ident type_expr' fld_type
 
@@ -129,13 +138,21 @@ let rec ctor_args fmt = function
   | Ctor_record decl ->
       fprintf fmt "Ctor_record %a" type_decl' decl
 
-and ctor_decl fmt {ctor_ident; ctor_args= args; ctor_ret} =
+and ctor_decl fmt { ctor_ident; ctor_args = args; ctor_ret } =
   fprintf fmt "{@[<hov>@,ctor_ident=%a;@,ctor_ret=@,%a;@,ctor_args=@,%a@,@]}"
     Ident.debug_print ctor_ident ctor_args args (option type_expr') ctor_ret
 
-and type_decl' fmt {tdec_params; tdec_desc; tdec_id; tdec_ret} =
+and type_decl' fmt { tdec_params; tdec_desc; tdec_id; tdec_ret } =
   fprintf fmt
-    "{@[<hov>@,tdec_id=%d;@,tdec_params=@,%a;@,tdec_desc=@,%a;@,tdec_ret=@,%a@,@]}"
+    "{@[<hov>@,\
+     tdec_id=%d;@,\
+     tdec_params=@,\
+     %a;@,\
+     tdec_desc=@,\
+     %a;@,\
+     tdec_ret=@,\
+     %a@,\
+     @]}"
     tdec_id (list type_expr') tdec_params type_decl_desc tdec_desc type_expr'
     tdec_ret
 

@@ -114,12 +114,13 @@ end
 
 (* TODO: Use <= instead of < for the upper bound *)
 type 'f t =
-  { value: 'f Cvar.t
-  ; interval: Interval.t
-  ; mutable bits: 'f Cvar.t Boolean.t list option }
+  { value : 'f Cvar.t
+  ; interval : Interval.t
+  ; mutable bits : 'f Cvar.t Boolean.t list option
+  }
 
 let create ~value ~upper_bound =
-  {value; interval= Less_than upper_bound; bits= None}
+  { value; interval = Less_than upper_bound; bits = None }
 
 let to_field t = t.value
 
@@ -136,27 +137,30 @@ let constant (type f) ?length ~m:((module M) as m : f m) x =
     | None ->
         b
   in
-  { value= Field.(constant (bigint_to_field ~m x))
-  ; interval= Constant x
-  ; bits=
+  { value = Field.(constant (bigint_to_field ~m x))
+  ; interval = Constant x
+  ; bits =
       Some
         (List.init length ~f:(fun i ->
-             Boolean.var_of_value B.(shift_right x i land one = one) )) }
+             Boolean.var_of_value B.(shift_right x i land one = one)))
+  }
 
 let shift_left (type f) ~m:((module M) as m : f m) t k =
   let open M in
   let two_to_k = B.(one lsl k) in
-  { value= Field.(constant (bigint_to_field ~m two_to_k) * t.value)
-  ; interval= Interval.scale ~m t.interval two_to_k
-  ; bits=
+  { value = Field.(constant (bigint_to_field ~m two_to_k) * t.value)
+  ; interval = Interval.scale ~m t.interval two_to_k
+  ; bits =
       Option.map t.bits ~f:(fun bs ->
-          List.init k ~f:(fun _ -> Boolean.false_) @ bs ) }
+          List.init k ~f:(fun _ -> Boolean.false_) @ bs)
+  }
 
 let of_bits (type f) ~m:((module M) : f m) bs =
   let bs = Bitstring.Lsb_first.to_list bs in
-  { value= M.Field.project bs
-  ; interval= Less_than B.(one lsl List.length bs)
-  ; bits= Some bs }
+  { value = M.Field.project bs
+  ; interval = Less_than B.(one lsl List.length bs)
+  ; bits = Some bs
+  }
 
 (* Given a and b returns (q, r) such that
 
@@ -188,10 +192,11 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
   (* This assertion checkes that the multiplication q * b is safe. *)
   assert (q_bit_length + b_bit_length + 1 < Field.Constant.size_in_bits) ;
   assert_r1cs q b.value Field.(a.value - r) ;
-  ( { value= q
-    ; interval= Interval.quotient a.interval b.interval
-    ; bits= Some q_bits }
-  , {value= r; interval= b.interval; bits= Some r_bits} )
+  ( { value = q
+    ; interval = Interval.quotient a.interval b.interval
+    ; bits = Some q_bits
+    }
+  , { value = r; interval = b.interval; bits = Some r_bits } )
 
 let subtract_unpacking (type f) ~m:((module M) : f m) a b =
   M.with_label "Integer.subtract_unpacking" (fun () ->
@@ -200,15 +205,15 @@ let subtract_unpacking (type f) ~m:((module M) : f m) a b =
       let length = Interval.bits_needed a.interval in
       (* The constraints added in [unpack] ensure that [0 <= value <= a]. *)
       let bits = M.Field.unpack value ~length in
-      {value; interval= a.interval; bits= Some bits} )
+      { value; interval = a.interval; bits = Some bits })
 
 let add (type f) ~m:((module M) as m : f m) a b =
   let interval = Interval.(add ~m a.interval b.interval) in
-  {value= M.Field.(a.value + b.value); interval; bits= None}
+  { value = M.Field.(a.value + b.value); interval; bits = None }
 
 let mul (type f) ~m:((module M) as m : f m) a b =
   let interval = Interval.(mul ~m a.interval b.interval) in
-  {value= M.Field.(a.value * b.value); interval; bits= None}
+  { value = M.Field.(a.value * b.value); interval; bits = None }
 
 let to_bits ?length (type f) ~m:((module M) : f m) t =
   match t.bits with
@@ -240,26 +245,30 @@ let min (type f) ~m:((module M) : f m) (a : f t) (b : f t) =
     Int.max (Interval.bits_needed a.interval) (Interval.bits_needed b.interval)
   in
   let c = Field.compare ~bit_length a.value b.value in
-  { value= Field.if_ c.less_or_equal ~then_:a.value ~else_:b.value
-  ; interval= Interval.min a.interval b.interval
-  ; bits= None }
+  { value = Field.if_ c.less_or_equal ~then_:a.value ~else_:b.value
+  ; interval = Interval.min a.interval b.interval
+  ; bits = None
+  }
 
 let if_ (type f) ~m:((module M) : f m) cond ~then_ ~else_ =
-  { value= M.Field.if_ cond ~then_:then_.value ~else_:else_.value
-  ; interval= Interval.lub then_.interval else_.interval
-  ; bits= None }
+  { value = M.Field.if_ cond ~then_:then_.value ~else_:else_.value
+  ; interval = Interval.lub then_.interval else_.interval
+  ; bits = None
+  }
 
 let succ_if (type f) ~m:((module M) as m : f m) t (cond : f Cvar.t Boolean.t) =
   let open M in
-  { value= Field.(add (cond :> t) t.value)
-  ; interval= Interval.(lub t.interval (succ ~m t.interval))
-  ; bits= None }
+  { value = Field.(add (cond :> t) t.value)
+  ; interval = Interval.(lub t.interval (succ ~m t.interval))
+  ; bits = None
+  }
 
 let succ (type f) ~m:((module M) as m : f m) t =
   let open M in
-  { value= Field.(add one t.value)
-  ; interval= Interval.succ ~m t.interval
-  ; bits= None }
+  { value = Field.(add one t.value)
+  ; interval = Interval.succ ~m t.interval
+  ; bits = None
+  }
 
 let equal (type f) ~m:((module M) : f m) a b = M.Field.equal a.value b.value
 
@@ -279,9 +288,10 @@ let gt (type f) ~m:((module M) as m : f m) a b = M.Boolean.not (lte ~m a b)
 let subtract_unpacking_or_zero (type f) ~m:((module M) as m : f m) a b =
   let flag = lt ~m a b in
   ( `Underflow flag
-  , { value=
+  , { value =
         M.Field.mul
           (M.Field.sub a.value b.value)
           (M.Boolean.not flag :> f Cvar.t)
-    ; interval= a.interval
-    ; bits= None } )
+    ; interval = a.interval
+    ; bits = None
+    } )

@@ -30,13 +30,13 @@ exception Runtime_error of string * string list * exn * string
 
 module Make (Backend : Backend_intf.S) :
   Snark_intf.S
-  with type field = Backend.Field.t
-   and type Bigint.t = Backend.Bigint.R.t
-   and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
-   and type Var.t = Backend.Var.t
-   and type Field.Vector.t = Backend.Field.Vector.t
-   and type Verification_key.t = Backend.Verification_key.t
-   and type Proving_key.t = Backend.Proving_key.t
+    with type field = Backend.Field.t
+     and type Bigint.t = Backend.Bigint.R.t
+     and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
+     and type Var.t = Backend.Var.t
+     and type Field.Vector.t = Backend.Field.Vector.t
+     and type Verification_key.t = Backend.Verification_key.t
+     and type Proving_key.t = Backend.Proving_key.t
 
 module Run : sig
   (** [throw_on_id id] set an internal flag that causes [Make] to throw an
@@ -49,17 +49,17 @@ module Run : sig
 
   module Make
       (Backend : Backend_intf.S) (Prover_state : sig
-          type t
+        type t
       end) :
     Snark_intf.Run
-    with type field = Backend.Field.t
-     and type prover_state = Prover_state.t
-     and type Bigint.t = Backend.Bigint.R.t
-     and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
-     and type Var.t = Backend.Var.t
-     and type Field.Constant.Vector.t = Backend.Field.Vector.t
-     and type Verification_key.t = Backend.Verification_key.t
-     and type Proving_key.t = Backend.Proving_key.t
+      with type field = Backend.Field.t
+       and type prover_state = Prover_state.t
+       and type Bigint.t = Backend.Bigint.R.t
+       and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
+       and type Var.t = Backend.Var.t
+       and type Field.Constant.Vector.t = Backend.Field.Vector.t
+       and type Verification_key.t = Backend.Verification_key.t
+       and type Proving_key.t = Backend.Proving_key.t
 end
 
 type 'field m = (module Snark_intf.Run with type field = 'field)

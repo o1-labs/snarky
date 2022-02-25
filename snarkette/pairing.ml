@@ -1,7 +1,7 @@
 open Core_kernel
 
 module Extended_projective = struct
-  type 'a t = {x: 'a; y: 'a; z: 'a; t: 'a} [@@deriving sexp]
+  type 'a t = { x : 'a; y : 'a; z : 'a; t : 'a } [@@deriving sexp]
 end
 
 module type Simple_elliptic_curve_intf = sig
@@ -55,18 +55,18 @@ end
 module Make
     (Fq : Fields.Fp_intf)
     (Fq_twist : Fields.Extension_intf with type base = Fq.t) (Fq_target : sig
-        include Fields.Degree_2_extension_intf with type base = Fq_twist.t
+      include Fields.Degree_2_extension_intf with type base = Fq_twist.t
 
-        val frobenius : t -> int -> t
+      val frobenius : t -> int -> t
 
-        val cyclotomic_exp : t -> Fq.Nat.t -> t
+      val cyclotomic_exp : t -> Fq.Nat.t -> t
     end)
     (G1 : Simple_elliptic_curve_intf with type base := Fq.t) (G2 : sig
-        include Simple_elliptic_curve_intf with type base := Fq_twist.t
+      include Simple_elliptic_curve_intf with type base := Fq_twist.t
 
-        module Coefficients : sig
-          val a : Fq_twist.t
-        end
+      module Coefficients : sig
+        val a : Fq_twist.t
+      end
     end) (Info : sig
       val twist : Fq_twist.t
 
@@ -83,7 +83,8 @@ module Make
   S with module G1 := G1 and module G2 := G2 and module Fq_target := Fq_target =
 struct
   module G1_precomputation = struct
-    type t_ = {px: Fq.t; py: Fq.t; px_twist: Fq_twist.t; py_twist: Fq_twist.t}
+    type t_ =
+      { px : Fq.t; py : Fq.t; px_twist : Fq_twist.t; py_twist : Fq_twist.t }
     [@@deriving bin_io, sexp]
 
     type t = t_ option [@@deriving bin_io, sexp]
@@ -92,31 +93,37 @@ struct
       Option.map (G1.to_affine p) ~f:(fun (px, py) ->
           { px
           ; py
-          ; px_twist= Fq_twist.scale Info.twist px
-          ; py_twist= Fq_twist.scale Info.twist py } )
+          ; px_twist = Fq_twist.scale Info.twist px
+          ; py_twist = Fq_twist.scale Info.twist py
+          })
   end
 
   module Dbl_coeffs = struct
     type t =
-      {c_H: Fq_twist.t; c_4C: Fq_twist.t; c_J: Fq_twist.t; c_L: Fq_twist.t}
+      { c_H : Fq_twist.t
+      ; c_4C : Fq_twist.t
+      ; c_J : Fq_twist.t
+      ; c_L : Fq_twist.t
+      }
     [@@deriving bin_io, sexp]
   end
 
   module Add_coeffs = struct
-    type t = {c_L1: Fq_twist.t; c_RZ: Fq_twist.t} [@@deriving bin_io, sexp]
+    type t = { c_L1 : Fq_twist.t; c_RZ : Fq_twist.t } [@@deriving bin_io, sexp]
   end
 
   let loop_count_size_in_bits = Fq.Nat.num_bits Info.loop_count
 
   module G2_precomputation = struct
     type t_ =
-      { qx: Fq_twist.t
-      ; qy: Fq_twist.t
-      ; qy2: Fq_twist.t
-      ; qx_over_twist: Fq_twist.t
-      ; qy_over_twist: Fq_twist.t
-      ; dbl_coeffs: Dbl_coeffs.t array
-      ; add_coeffs: Add_coeffs.t array }
+      { qx : Fq_twist.t
+      ; qy : Fq_twist.t
+      ; qy2 : Fq_twist.t
+      ; qx_over_twist : Fq_twist.t
+      ; qy_over_twist : Fq_twist.t
+      ; dbl_coeffs : Dbl_coeffs.t array
+      ; add_coeffs : Add_coeffs.t array
+      }
     [@@deriving bin_io, sexp]
 
     type t = t_ option [@@deriving bin_io, sexp]
@@ -124,7 +131,7 @@ struct
     let twist_inv = Fq_twist.inv Info.twist
 
     let doubling_step_for_flipped_miller_loop
-        ({Extended_projective.x; y; z= _; t} as current) =
+        ({ Extended_projective.x; y; z = _; t } as current) =
       let a = Fq_twist.square t in
       let b = Fq_twist.square x in
       let c = Fq_twist.square y in
@@ -134,25 +141,24 @@ struct
       let g = Fq_twist.square f in
       let next =
         let x = Fq_twist.(negate (e + e + e + e) + g) in
-        let y =
-          Fq_twist.(scale d Fq.(negate (of_int 8)) + (f * (e + e - x)))
-        in
+        let y = Fq_twist.(scale d Fq.(negate (of_int 8)) + (f * (e + e - x))) in
         let z =
           Fq_twist.(square (current.y + current.z) - c - square current.z)
         in
         let t = Fq_twist.square z in
-        {Extended_projective.x; y; z; t}
+        { Extended_projective.x; y; z; t }
       in
       let coeffs =
-        { Dbl_coeffs.c_H= Fq_twist.(square (next.z + current.t) - next.t - a)
-        ; c_4C= Fq_twist.(c + c + c + c)
-        ; c_J= Fq_twist.(square (f + t) - g - a)
-        ; c_L= Fq_twist.(square (f + current.x) - g - b) }
+        { Dbl_coeffs.c_H = Fq_twist.(square (next.z + current.t) - next.t - a)
+        ; c_4C = Fq_twist.(c + c + c + c)
+        ; c_J = Fq_twist.(square (f + t) - g - a)
+        ; c_L = Fq_twist.(square (f + current.x) - g - b)
+        }
       in
       (next, coeffs)
 
-    let mixed_addition_step_for_flipped_miller_loop base_x base_y
-        base_y_squared {Extended_projective.x= x1; y= y1; z= z1; t= t1} =
+    let mixed_addition_step_for_flipped_miller_loop base_x base_y base_y_squared
+        { Extended_projective.x = x1; y = y1; z = z1; t = t1 } =
       let open Fq_twist in
       let b = base_x * t1 in
       let d = (square (base_y + z1) - base_y_squared - t1) * t1 in
@@ -167,9 +173,9 @@ struct
         let y = (l1 * (v - x)) - ((y1 + y1) * j) in
         let z = square (z1 + h) - t1 - i in
         let t = square z in
-        {Extended_projective.x; y; z; t}
+        { Extended_projective.x; y; z; t }
       in
-      (next, {Add_coeffs.c_L1= l1; c_RZ= next.z})
+      (next, { Add_coeffs.c_L1 = l1; c_RZ = next.z })
 
     let create (q : G2.t) =
       let open Option.Let_syntax in
@@ -196,7 +202,7 @@ struct
       in
       let r, dbl_coeffs, add_coeffs =
         go false
-          {x= qx; y= qy; z= Fq_twist.one; t= Fq_twist.one}
+          { x = qx; y = qy; z = Fq_twist.one; t = Fq_twist.one }
           [] []
           (loop_count_size_in_bits - 1)
       in
@@ -221,8 +227,9 @@ struct
       ; qy2
       ; qx_over_twist
       ; qy_over_twist
-      ; dbl_coeffs= Array.of_list (List.rev dbl_coeffs)
-      ; add_coeffs= Array.of_list (List.rev add_coeffs) }
+      ; dbl_coeffs = Array.of_list (List.rev dbl_coeffs)
+      ; add_coeffs = Array.of_list (List.rev add_coeffs)
+      }
   end
 
   let miller_loop (p : G1_precomputation.t) (q : G2_precomputation.t) =
