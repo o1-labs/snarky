@@ -2183,6 +2183,19 @@ module type Run_basic = sig
     -> prover_state
     -> (prover_state * 'a) Or_error.t
 
+  module Run_and_check_deferred (M : sig
+    type _ t
+
+    val return : 'a -> 'a t
+
+    val map : 'a t -> f:('a -> 'b) -> 'b t
+  end) : sig
+    val run_and_check :
+         (unit -> (unit -> 'a) As_prover.t M.t)
+      -> prover_state
+      -> (prover_state * 'a) Or_error.t M.t
+  end
+
   val check : (unit -> 'a) -> prover_state -> unit Or_error.t
 
   val constraint_count :
@@ -2196,6 +2209,10 @@ module type Run_basic = sig
     -> unit
 
   val clear_constraint_logger : unit -> unit
+
+  val in_prover : unit -> bool
+
+  val in_checked_computation : unit -> bool
 
   module Internal_Basic :
     Basic
