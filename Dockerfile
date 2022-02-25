@@ -1,17 +1,17 @@
 FROM ocaml/opam:debian-ocaml-4.11
 
 # dependencies
-RUN sudo apt update
-RUN sudo apt install -y \
+RUN sudo apt-get update
+RUN sudo apt-get install -y \
     build-essential \
-    pkg-config \
+    pkg-config=0.29.2-1 \
     git \
-    libffi-dev \
-    libgmp-dev \
-    libgmp3-dev \
-    libprocps-dev \
+    libffi-dev=3.3-6 \
+    libgmp-dev=2:6.2.1+dfsg-1+deb11u1 \
+    libgmp3-dev=2:6.2.1+dfsg-1+deb11u1 \
+    libprocps-dev=2:3.3.17-5 \
     libssl-dev \
-    m4
+    m4=1.4.18-5
 
 
 # Create a volume we can work in. For initial build, 
@@ -23,7 +23,6 @@ RUN sudo chown -R opam:opam /source
 VOLUME /source
 
 # Move to a newer version of OCaml and install dune.
-RUN git -C /home/opam/opam-repository pull
 RUN eval "$(opam config env)" 
 RUN opam update -y
 RUN opam upgrade -y
