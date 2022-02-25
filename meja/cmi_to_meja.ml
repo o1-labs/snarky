@@ -27,7 +27,7 @@ let main =
   let files = List.rev !files in
   List.iter files ~f:(fun filename ->
       let cmi_info = Cmt_format.read_cmi filename in
-      let signature = Of_ocaml.to_signature cmi_info.cmi_sign in
+      let signature = Meja_of_ocaml.to_signature cmi_info.cmi_sign in
       let out_file =
         Filename.(
           concat !outdir (chop_extension (basename filename) ^ ".meji"))

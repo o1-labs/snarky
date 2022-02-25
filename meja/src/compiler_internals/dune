@@ -1,10 +1,9 @@
 (library
- (name compiler_internals)
- (public_name meja.ocaml_compiler_internals)
+ (name meja_ocaml_compiler_internals)
  (libraries core_kernel ocaml-compiler-libs.common)
- (modules compiler_internals))
+ (modules meja_ocaml_compiler_internals))
 
 ; Use the file corresponding to the current OCaml version when building.
 (rule
- (targets compiler_internals.ml)
- (action (copy# compiler_internals_%{ocaml_version}.ml compiler_internals.ml)))
+ (targets meja_ocaml_compiler_internals.ml)
+ (action (copy# compiler_internals_%{ocaml_version}.ml meja_ocaml_compiler_internals.ml)))
