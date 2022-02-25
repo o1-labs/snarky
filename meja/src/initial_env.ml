@@ -10,10 +10,10 @@ module TypeDecls = struct
 
   let int = abstract "int"
 
-  let unit = variant "unit" [Ctor.with_args "()" []]
+  let unit = variant "unit" [ Ctor.with_args "()" [] ]
 
   let bool =
-    variant "bool" [Ctor.with_args "true" []; Ctor.with_args "false" []]
+    variant "bool" [ Ctor.with_args "true" []; Ctor.with_args "false" [] ]
 
   let char = abstract "char"
 
@@ -24,13 +24,14 @@ module TypeDecls = struct
   let exn = open_ "exn"
 
   let option =
-    variant "option" ~params:[var "a"]
-      [Ctor.with_args "None" []; Ctor.with_args "Some" [var "a"]]
+    variant "option" ~params:[ var "a" ]
+      [ Ctor.with_args "None" []; Ctor.with_args "Some" [ var "a" ] ]
 
   let list =
-    variant "list" ~params:[var "a"]
+    variant "list" ~params:[ var "a" ]
       [ Ctor.with_args "[]" []
-      ; Ctor.with_args "::" [var "a"; constr (Lident "list") ~params:[var "a"]]
+      ; Ctor.with_args "::"
+          [ var "a"; constr (Lident "list") ~params:[ var "a" ] ]
       ]
 
   let bytes = abstract "bytes"
@@ -41,9 +42,9 @@ module TypeDecls = struct
 
   let nativeint = abstract "nativeint"
 
-  let lazy_t = abstract "lazy_t" ~params:[var "a"]
+  let lazy_t = abstract "lazy_t" ~params:[ var "a" ]
 
-  let array = abstract "array" ~params:[var "a"]
+  let array = abstract "array" ~params:[ var "a" ]
 
   (** Meja-specific built-ins. *)
 
@@ -61,9 +62,10 @@ open TypeDecls
     the environment [env] each time.
 *)
 
-let {Typedast.tdec_tdec= int; tdec_ident= int_ident; _}, env = import int env
+let { Typedast.tdec_tdec = int; tdec_ident = int_ident; _ }, env =
+  import int env
 
-let {Typedast.tdec_tdec= unit; _}, env = import unit env
+let { Typedast.tdec_tdec = unit; _ }, env = import unit env
 
 let bool, boolean, env =
   match
@@ -74,28 +76,28 @@ let bool, boolean, env =
   | _ ->
       assert false
 
-let {Typedast.tdec_tdec= char; _}, env = import char env
+let { Typedast.tdec_tdec = char; _ }, env = import char env
 
-let {Typedast.tdec_tdec= string; _}, env = import string env
+let { Typedast.tdec_tdec = string; _ }, env = import string env
 
-let {Typedast.tdec_tdec= float; _}, env = import float env
+let { Typedast.tdec_tdec = float; _ }, env = import float env
 
-let {Typedast.tdec_tdec= exn; _}, env = import exn env
+let { Typedast.tdec_tdec = exn; _ }, env = import exn env
 
-let {Typedast.tdec_tdec= option; _}, env = import option env
+let { Typedast.tdec_tdec = option; _ }, env = import option env
 
 (* NOTE: list is a recursive type. *)
-let {Typedast.tdec_tdec= list; _}, env =
-  let decls, env = import_rec [list] env in
+let { Typedast.tdec_tdec = list; _ }, env =
+  let decls, env = import_rec [ list ] env in
   (List.hd decls, env)
 
-let {Typedast.tdec_tdec= bytes; _}, env = import bytes env
+let { Typedast.tdec_tdec = bytes; _ }, env = import bytes env
 
-let {Typedast.tdec_tdec= int32; _}, env = import int32 env
+let { Typedast.tdec_tdec = int32; _ }, env = import int32 env
 
-let {Typedast.tdec_tdec= int64; _}, env = import int64 env
+let { Typedast.tdec_tdec = int64; _ }, env = import int64 env
 
-let {Typedast.tdec_tdec= nativeint; _}, env = import nativeint env
+let { Typedast.tdec_tdec = nativeint; _ }, env = import nativeint env
 
 let field, field_var, env =
   match
@@ -106,9 +108,9 @@ let field, field_var, env =
   | _ ->
       assert false
 
-let {Typedast.tdec_tdec= lazy_t; _}, env = import lazy_t env
+let { Typedast.tdec_tdec = lazy_t; _ }, env = import lazy_t env
 
-let {Typedast.tdec_tdec= array; _}, env = import array env
+let { Typedast.tdec_tdec = array; _ }, env = import array env
 
 (** Canonical references for each of the built-in types that the typechecker
     refers to.
@@ -137,12 +139,14 @@ module Type = struct
   let exn = TypeDecl.mk_typ ~mode:Checked exn ~params:[] env
 
   let option a =
-    { (TypeDecl.mk_typ ~mode:a.Type0.type_mode option ~params:[a] env) with
-      type_depth= a.type_depth }
+    { (TypeDecl.mk_typ ~mode:a.Type0.type_mode option ~params:[ a ] env) with
+      type_depth = a.type_depth
+    }
 
   let list a =
-    { (TypeDecl.mk_typ ~mode:a.Type0.type_mode list ~params:[a] env) with
-      type_depth= a.type_depth }
+    { (TypeDecl.mk_typ ~mode:a.Type0.type_mode list ~params:[ a ] env) with
+      type_depth = a.type_depth
+    }
 
   let boolean = TypeDecl.mk_typ ~mode:Checked boolean ~params:[] env
 

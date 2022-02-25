@@ -1,11 +1,13 @@
 (executable
  (name meja)
  (libraries core_kernel snarky meja_lib meja_ocaml)
- (preprocess (pps ppxlib.metaquot ppx_jane))
+ (preprocess
+  (pps ppxlib.metaquot ppx_jane))
  (modules meja))
 
 (executable
  (name cmi_to_meja)
  (libraries core_kernel ocaml-compiler-libs.common meja_lib meja_ocaml)
- (preprocess (pps ppxlib.metaquot ppx_jane))
+ (preprocess
+  (pps ppxlib.metaquot ppx_jane))
  (modules cmi_to_meja))

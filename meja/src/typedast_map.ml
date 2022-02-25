@@ -3,39 +3,40 @@ open Typedast
 open Ast_types
 
 type mapper =
-  { type_expr: mapper -> type_expr -> type_expr
-  ; type_desc: mapper -> type_desc -> type_desc
-  ; variant: mapper -> variant -> variant
-  ; row_tag: mapper -> row_tag -> row_tag
-  ; field_decl: mapper -> field_decl -> field_decl
-  ; ctor_args: mapper -> ctor_args -> ctor_args
-  ; ctor_decl: mapper -> ctor_decl -> ctor_decl
-  ; type_decl: mapper -> type_decl -> type_decl
-  ; type_decl_desc: mapper -> type_decl_desc -> type_decl_desc
-  ; literal: mapper -> literal -> literal
-  ; pattern: mapper -> pattern -> pattern
-  ; pattern_desc: mapper -> pattern_desc -> pattern_desc
-  ; expression: mapper -> expression -> expression
-  ; expression_desc: mapper -> expression_desc -> expression_desc
-  ; convert: mapper -> convert -> convert
-  ; convert_desc: mapper -> convert_desc -> convert_desc
-  ; convert_body: mapper -> convert_body -> convert_body
-  ; convert_body_desc: mapper -> convert_body_desc -> convert_body_desc
-  ; signature_item: mapper -> signature_item -> signature_item
-  ; signature: mapper -> signature -> signature
-  ; signature_desc: mapper -> signature_desc -> signature_desc
-  ; module_sig: mapper -> module_sig -> module_sig
-  ; module_sig_desc: mapper -> module_sig_desc -> module_sig_desc
-  ; statement: mapper -> statement -> statement
-  ; statements: mapper -> statements -> statements
-  ; statement_desc: mapper -> statement_desc -> statement_desc
-  ; module_expr: mapper -> module_expr -> module_expr
-  ; module_desc: mapper -> module_desc -> module_desc
-  ; location: mapper -> Location.t -> Location.t
-  ; longident: mapper -> Longident.t -> Longident.t
-  ; ident: mapper -> Ident.t -> Ident.t
-  ; path: mapper -> Path.t -> Path.t
-  ; type0: Type0_map.mapper }
+  { type_expr : mapper -> type_expr -> type_expr
+  ; type_desc : mapper -> type_desc -> type_desc
+  ; variant : mapper -> variant -> variant
+  ; row_tag : mapper -> row_tag -> row_tag
+  ; field_decl : mapper -> field_decl -> field_decl
+  ; ctor_args : mapper -> ctor_args -> ctor_args
+  ; ctor_decl : mapper -> ctor_decl -> ctor_decl
+  ; type_decl : mapper -> type_decl -> type_decl
+  ; type_decl_desc : mapper -> type_decl_desc -> type_decl_desc
+  ; literal : mapper -> literal -> literal
+  ; pattern : mapper -> pattern -> pattern
+  ; pattern_desc : mapper -> pattern_desc -> pattern_desc
+  ; expression : mapper -> expression -> expression
+  ; expression_desc : mapper -> expression_desc -> expression_desc
+  ; convert : mapper -> convert -> convert
+  ; convert_desc : mapper -> convert_desc -> convert_desc
+  ; convert_body : mapper -> convert_body -> convert_body
+  ; convert_body_desc : mapper -> convert_body_desc -> convert_body_desc
+  ; signature_item : mapper -> signature_item -> signature_item
+  ; signature : mapper -> signature -> signature
+  ; signature_desc : mapper -> signature_desc -> signature_desc
+  ; module_sig : mapper -> module_sig -> module_sig
+  ; module_sig_desc : mapper -> module_sig_desc -> module_sig_desc
+  ; statement : mapper -> statement -> statement
+  ; statements : mapper -> statements -> statements
+  ; statement_desc : mapper -> statement_desc -> statement_desc
+  ; module_expr : mapper -> module_expr -> module_expr
+  ; module_desc : mapper -> module_desc -> module_desc
+  ; location : mapper -> Location.t -> Location.t
+  ; longident : mapper -> Longident.t -> Longident.t
+  ; ident : mapper -> Ident.t -> Ident.t
+  ; path : mapper -> Path.t -> Path.t
+  ; type0 : Type0_map.mapper
+  }
 
 let with_backtrack_replace f =
   let snap = Type1.Snapshot.create () in
@@ -43,26 +44,28 @@ let with_backtrack_replace f =
   Type1.backtrack_replace snap ;
   ret
 
-let lid mapper {Location.txt; loc} =
-  {Location.txt= mapper.longident mapper txt; loc= mapper.location mapper loc}
+let lid mapper { Location.txt; loc } =
+  { Location.txt = mapper.longident mapper txt
+  ; loc = mapper.location mapper loc
+  }
 
-let str mapper ({Location.txt; loc} : str) =
-  {Location.txt; loc= mapper.location mapper loc}
+let str mapper ({ Location.txt; loc } : str) =
+  { Location.txt; loc = mapper.location mapper loc }
 
-let ident mapper ({Location.txt; loc} : Ident.t Location.loc) =
-  {Location.txt= mapper.ident mapper txt; loc= mapper.location mapper loc}
+let ident mapper ({ Location.txt; loc } : Ident.t Location.loc) =
+  { Location.txt = mapper.ident mapper txt; loc = mapper.location mapper loc }
 
-let path mapper ({Location.txt; loc} : Path.t Location.loc) =
-  {Location.txt= mapper.path mapper txt; loc= mapper.location mapper loc}
+let path mapper ({ Location.txt; loc } : Path.t Location.loc) =
+  { Location.txt = mapper.path mapper txt; loc = mapper.location mapper loc }
 
-let type_expr mapper {type_desc; type_loc; type_type} =
+let type_expr mapper { type_desc; type_loc; type_type } =
   let type_loc = mapper.location mapper type_loc in
   let type_desc = mapper.type_desc mapper type_desc in
   let type_type =
     with_backtrack_replace (fun () ->
-        mapper.type0.type_expr mapper.type0 type_type )
+        mapper.type0.type_expr mapper.type0 type_type)
   in
-  {type_desc; type_loc; type_type}
+  { type_desc; type_loc; type_type }
 
 let type_desc mapper typ =
   match typ with
@@ -80,8 +83,7 @@ let type_desc mapper typ =
       Ttyp_ctor (mapper.variant mapper variant)
   | Ttyp_poly (vars, typ) ->
       Ttyp_poly
-        ( List.map ~f:(mapper.type_expr mapper) vars
-        , mapper.type_expr mapper typ )
+        (List.map ~f:(mapper.type_expr mapper) vars, mapper.type_expr mapper typ)
   | Ttyp_prover typ ->
       Ttyp_prover (mapper.type_expr mapper typ)
   | Ttyp_conv (typ1, typ2) ->
@@ -99,22 +101,25 @@ let type_desc mapper typ =
       Ttyp_row_subtract
         (mapper.type_expr mapper typ, List.map ~f:(ident mapper) tags)
 
-let variant mapper {var_ident; var_params} =
-  { var_ident= path mapper var_ident
-  ; var_params= List.map ~f:(mapper.type_expr mapper) var_params }
+let variant mapper { var_ident; var_params } =
+  { var_ident = path mapper var_ident
+  ; var_params = List.map ~f:(mapper.type_expr mapper) var_params
+  }
 
-let row_tag mapper {rtag_ident; rtag_arg; rtag_loc} =
-  { rtag_ident= ident mapper rtag_ident
-  ; rtag_arg= List.map ~f:(mapper.type_expr mapper) rtag_arg
-  ; rtag_loc= mapper.location mapper rtag_loc }
+let row_tag mapper { rtag_ident; rtag_arg; rtag_loc } =
+  { rtag_ident = ident mapper rtag_ident
+  ; rtag_arg = List.map ~f:(mapper.type_expr mapper) rtag_arg
+  ; rtag_loc = mapper.location mapper rtag_loc
+  }
 
-let field_decl mapper {fld_ident; fld_type; fld_loc; fld_fld} =
-  { fld_loc= mapper.location mapper fld_loc
-  ; fld_ident= ident mapper fld_ident
-  ; fld_type= mapper.type_expr mapper fld_type
-  ; fld_fld=
+let field_decl mapper { fld_ident; fld_type; fld_loc; fld_fld } =
+  { fld_loc = mapper.location mapper fld_loc
+  ; fld_ident = ident mapper fld_ident
+  ; fld_type = mapper.type_expr mapper fld_type
+  ; fld_fld =
       with_backtrack_replace (fun () ->
-          mapper.type0.field_decl mapper.type0 fld_fld ) }
+          mapper.type0.field_decl mapper.type0 fld_fld)
+  }
 
 let ctor_args mapper = function
   | Tctor_tuple typs ->
@@ -122,24 +127,26 @@ let ctor_args mapper = function
   | Tctor_record fields ->
       Tctor_record (List.map ~f:(mapper.field_decl mapper) fields)
 
-let ctor_decl mapper {ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor} =
-  { ctor_loc= mapper.location mapper ctor_loc
-  ; ctor_ident= ident mapper ctor_ident
-  ; ctor_args= mapper.ctor_args mapper ctor_args
-  ; ctor_ret= Option.map ~f:(mapper.type_expr mapper) ctor_ret
-  ; ctor_ctor=
+let ctor_decl mapper { ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor } =
+  { ctor_loc = mapper.location mapper ctor_loc
+  ; ctor_ident = ident mapper ctor_ident
+  ; ctor_args = mapper.ctor_args mapper ctor_args
+  ; ctor_ret = Option.map ~f:(mapper.type_expr mapper) ctor_ret
+  ; ctor_ctor =
       with_backtrack_replace (fun () ->
-          mapper.type0.ctor_decl mapper.type0 ctor_ctor ) }
+          mapper.type0.ctor_decl mapper.type0 ctor_ctor)
+  }
 
-let type_decl mapper {tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec}
+let type_decl mapper { tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec }
     =
-  { tdec_loc= mapper.location mapper tdec_loc
-  ; tdec_ident= ident mapper tdec_ident
-  ; tdec_params= List.map ~f:(mapper.type_expr mapper) tdec_params
-  ; tdec_desc= mapper.type_decl_desc mapper tdec_desc
-  ; tdec_tdec=
+  { tdec_loc = mapper.location mapper tdec_loc
+  ; tdec_ident = ident mapper tdec_ident
+  ; tdec_params = List.map ~f:(mapper.type_expr mapper) tdec_params
+  ; tdec_desc = mapper.type_decl_desc mapper tdec_desc
+  ; tdec_tdec =
       with_backtrack_replace (fun () ->
-          mapper.type0.type_decl mapper.type0 tdec_tdec ) }
+          mapper.type0.type_decl mapper.type0 tdec_tdec)
+  }
 
 let type_decl_desc mapper = function
   | Tdec_abstract ->
@@ -153,17 +160,17 @@ let type_decl_desc mapper = function
   | Tdec_open ->
       Tdec_open
   | Tdec_extend (name, ctors) ->
-      Tdec_extend
-        (path mapper name, List.map ~f:(mapper.ctor_decl mapper) ctors)
+      Tdec_extend (path mapper name, List.map ~f:(mapper.ctor_decl mapper) ctors)
 
 let literal (_iter : mapper) (l : literal) = l
 
-let pattern mapper {pat_desc; pat_loc; pat_type} =
-  { pat_loc= mapper.location mapper pat_loc
-  ; pat_desc= mapper.pattern_desc mapper pat_desc
-  ; pat_type=
+let pattern mapper { pat_desc; pat_loc; pat_type } =
+  { pat_loc = mapper.location mapper pat_loc
+  ; pat_desc = mapper.pattern_desc mapper pat_desc
+  ; pat_type =
       with_backtrack_replace (fun () ->
-          mapper.type0.type_expr mapper.type0 pat_type ) }
+          mapper.type0.type_expr mapper.type0 pat_type)
+  }
 
 let pattern_desc mapper = function
   | Tpat_any ->
@@ -181,28 +188,28 @@ let pattern_desc mapper = function
   | Tpat_record fields ->
       Tpat_record
         (List.map fields ~f:(fun (name, pat) ->
-             (path mapper name, mapper.pattern mapper pat) ))
+             (path mapper name, mapper.pattern mapper pat)))
   | Tpat_ctor (name, arg) ->
       Tpat_ctor (path mapper name, Option.map ~f:(mapper.pattern mapper) arg)
   | Tpat_row_ctor (name, args) ->
-      Tpat_row_ctor
-        (ident mapper name, List.map ~f:(mapper.pattern mapper) args)
+      Tpat_row_ctor (ident mapper name, List.map ~f:(mapper.pattern mapper) args)
 
-let convert_body mapper {conv_body_desc; conv_body_loc; conv_body_type} =
-  { conv_body_loc= mapper.location mapper conv_body_loc
-  ; conv_body_desc= mapper.convert_body_desc mapper conv_body_desc
-  ; conv_body_type= mapper.type0.type_expr mapper.type0 conv_body_type }
+let convert_body mapper { conv_body_desc; conv_body_loc; conv_body_type } =
+  { conv_body_loc = mapper.location mapper conv_body_loc
+  ; conv_body_desc = mapper.convert_body_desc mapper conv_body_desc
+  ; conv_body_type = mapper.type0.type_expr mapper.type0 conv_body_type
+  }
 
 let convert_body_desc mapper = function
   | Tconv_record fields ->
       Tconv_record
         (List.map fields ~f:(fun (name, conv) ->
-             (path mapper name, mapper.convert_body mapper conv) ))
+             (path mapper name, mapper.convert_body mapper conv)))
   | Tconv_ctor (name, args) ->
       Tconv_ctor
         ( path mapper name
         , List.map args ~f:(fun (label, conv) ->
-              (label, mapper.convert_body mapper conv) ) )
+              (label, mapper.convert_body mapper conv)) )
   | Tconv_tuple convs ->
       Tconv_tuple (List.map ~f:(mapper.convert_body mapper) convs)
   | Tconv_arrow (conv1, conv2) ->
@@ -213,10 +220,11 @@ let convert_body_desc mapper = function
   | Tconv_opaque ->
       Tconv_opaque
 
-let convert mapper {conv_desc; conv_loc; conv_type} =
-  { conv_loc= mapper.location mapper conv_loc
-  ; conv_desc= mapper.convert_desc mapper conv_desc
-  ; conv_type= mapper.type0.type_expr mapper.type0 conv_type }
+let convert mapper { conv_desc; conv_loc; conv_type } =
+  { conv_loc = mapper.location mapper conv_loc
+  ; conv_desc = mapper.convert_desc mapper conv_desc
+  ; conv_type = mapper.type0.type_expr mapper.type0 conv_type
+  }
 
 let convert_desc mapper = function
   | Tconv_fun (name, conv) ->
@@ -224,19 +232,20 @@ let convert_desc mapper = function
   | Tconv_body conv ->
       Tconv_body (mapper.convert_body mapper conv)
 
-let expression mapper {exp_desc; exp_loc; exp_type} =
-  { exp_loc= mapper.location mapper exp_loc
-  ; exp_desc= mapper.expression_desc mapper exp_desc
-  ; exp_type=
+let expression mapper { exp_desc; exp_loc; exp_type } =
+  { exp_loc = mapper.location mapper exp_loc
+  ; exp_desc = mapper.expression_desc mapper exp_desc
+  ; exp_type =
       with_backtrack_replace (fun () ->
-          mapper.type0.type_expr mapper.type0 exp_type ) }
+          mapper.type0.type_expr mapper.type0 exp_type)
+  }
 
 let expression_desc mapper = function
   | Texp_apply (e, args) ->
       Texp_apply
         ( mapper.expression mapper e
         , List.map args ~f:(fun (explicit, label, e) ->
-              (explicit, label, mapper.expression mapper e) ) )
+              (explicit, label, mapper.expression mapper e)) )
   | Texp_variable name ->
       Texp_variable (path mapper name)
   | Texp_literal l ->
@@ -266,24 +275,25 @@ let expression_desc mapper = function
       Texp_match
         ( mapper.expression mapper e
         , List.map cases ~f:(fun (p, e) ->
-              (mapper.pattern mapper p, mapper.expression mapper e) ) )
+              (mapper.pattern mapper p, mapper.expression mapper e)) )
   | Texp_field (e, name) ->
       Texp_field (mapper.expression mapper e, path mapper name)
   | Texp_record (bindings, default) ->
       Texp_record
         ( List.map bindings ~f:(fun (name, e) ->
-              (path mapper name, mapper.expression mapper e) )
+              (path mapper name, mapper.expression mapper e))
         , Option.map ~f:(mapper.expression mapper) default )
   | Texp_ctor (name, arg) ->
       Texp_ctor (path mapper name, Option.map ~f:(mapper.expression mapper) arg)
   | Texp_row_ctor (name, args) ->
       Texp_row_ctor
         (ident mapper name, List.map ~f:(mapper.expression mapper) args)
-  | Texp_unifiable {expression; name; id} ->
+  | Texp_unifiable { expression; name; id } ->
       Texp_unifiable
         { id
-        ; name= ident mapper name
-        ; expression= Option.map ~f:(mapper.expression mapper) expression }
+        ; name = ident mapper name
+        ; expression = Option.map ~f:(mapper.expression mapper) expression
+        }
   | Texp_if (e1, e2, e3) ->
       Texp_if
         ( mapper.expression mapper e1
@@ -293,13 +303,13 @@ let expression_desc mapper = function
       Texp_read
         ( mapper.convert mapper conv
         , List.map conv_args ~f:(fun (label, e) ->
-              (label, mapper.expression mapper e) )
+              (label, mapper.expression mapper e))
         , mapper.expression mapper e )
   | Texp_prover (conv, conv_args, e) ->
       Texp_prover
         ( mapper.convert mapper conv
         , List.map conv_args ~f:(fun (label, e) ->
-              (label, mapper.expression mapper e) )
+              (label, mapper.expression mapper e))
         , mapper.expression mapper e )
   | Texp_convert conv ->
       Texp_convert (mapper.convert mapper conv)
@@ -312,9 +322,10 @@ let type_conv mapper = function
 
 let signature mapper = List.map ~f:(mapper.signature_item mapper)
 
-let signature_item mapper {sig_desc; sig_loc} =
-  { sig_loc= mapper.location mapper sig_loc
-  ; sig_desc= mapper.signature_desc mapper sig_desc }
+let signature_item mapper { sig_desc; sig_loc } =
+  { sig_loc = mapper.location mapper sig_loc
+  ; sig_desc = mapper.signature_desc mapper sig_desc
+  }
 
 let signature_desc mapper = function
   | Tsig_value (name, typ) ->
@@ -349,9 +360,10 @@ let signature_desc mapper = function
   | Tsig_convert (name, typ) ->
       Tsig_convert (ident mapper name, mapper.type_expr mapper typ)
 
-let module_sig mapper {msig_desc; msig_loc} =
-  { msig_loc= mapper.location mapper msig_loc
-  ; msig_desc= mapper.module_sig_desc mapper msig_desc }
+let module_sig mapper { msig_desc; msig_loc } =
+  { msig_loc = mapper.location mapper msig_loc
+  ; msig_desc = mapper.module_sig_desc mapper msig_desc
+  }
 
 let module_sig_desc mapper = function
   | Tmty_sig sigs ->
@@ -370,9 +382,10 @@ let module_sig_desc mapper = function
 
 let statements mapper = List.map ~f:(mapper.statement mapper)
 
-let statement mapper {stmt_desc; stmt_loc} =
-  { stmt_loc= mapper.location mapper stmt_loc
-  ; stmt_desc= mapper.statement_desc mapper stmt_desc }
+let statement mapper { stmt_desc; stmt_loc } =
+  { stmt_loc = mapper.location mapper stmt_loc
+  ; stmt_desc = mapper.statement_desc mapper stmt_desc
+  }
 
 let statement_desc mapper = function
   | Tstmt_value (p, e) ->
@@ -406,7 +419,7 @@ let statement_desc mapper = function
         , mapper.ctor_decl mapper ctor
         , Option.map handler ~f:(fun (p, e) ->
               ( Option.map ~f:(mapper.pattern mapper) p
-              , mapper.expression mapper e ) ) )
+              , mapper.expression mapper e )) )
   | Tstmt_multiple stmts ->
       Tstmt_multiple (mapper.statements mapper stmts)
   | Tstmt_prover stmts ->
@@ -417,9 +430,10 @@ let statement_desc mapper = function
         , mapper.type_expr mapper typ
         , mapper.convert mapper conv )
 
-let module_expr mapper {mod_desc; mod_loc} =
-  { mod_loc= mapper.location mapper mod_loc
-  ; mod_desc= mapper.module_desc mapper mod_desc }
+let module_expr mapper { mod_desc; mod_loc } =
+  { mod_loc = mapper.location mapper mod_loc
+  ; mod_desc = mapper.module_desc mapper mod_desc
+  }
 
 let module_desc mapper = function
   | Tmod_struct stmts ->
@@ -487,4 +501,5 @@ let default_iterator =
   ; longident
   ; ident
   ; path
-  ; type0= Type0_map.default_mapper }
+  ; type0 = Type0_map.default_mapper
+  }

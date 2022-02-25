@@ -41,38 +41,39 @@ module type Backend_intf = sig
 
   module Pairing :
     Pairing.S
-    with module G1 := G1
-     and module G2 := G2
-     and module Fq_target := Fq_target
+      with module G1 := G1
+       and module G2 := G2
+       and module Fq_target := Fq_target
 end
 
 module Make (Backend : Backend_intf) = struct
   open Backend
 
   module Verification_key = struct
-    type t = {query: G1.t array; delta: G2.t; alpha_beta: Fq_target.t}
+    type t = { query : G1.t array; delta : G2.t; alpha_beta : Fq_target.t }
     [@@deriving bin_io, sexp]
 
     type vk = t
 
     module Processed = struct
       type t =
-        { query: G1.t array
-        ; alpha_beta: Fq_target.t
-        ; delta: Pairing.G2_precomputation.t }
+        { query : G1.t array
+        ; alpha_beta : Fq_target.t
+        ; delta : Pairing.G2_precomputation.t
+        }
       [@@deriving bin_io, sexp]
 
-      let create ({query; alpha_beta; delta} : vk) =
-        {alpha_beta; delta= Pairing.G2_precomputation.create delta; query}
+      let create ({ query; alpha_beta; delta } : vk) =
+        { alpha_beta; delta = Pairing.G2_precomputation.create delta; query }
     end
   end
 
   let check b lab = if b then Ok () else Or_error.error_string lab
 
   module Proof = struct
-    type t = {a: G1.t; b: G2.t; c: G1.t} [@@deriving bin_io, sexp]
+    type t = { a : G1.t; b : G2.t; c : G1.t } [@@deriving bin_io, sexp]
 
-    let is_well_formed {a; b; c} =
+    let is_well_formed { a; b; c } =
       let open Or_error.Let_syntax in
       let err x =
         sprintf "proof was not well-formed (%s was off its curve)" x
@@ -85,7 +86,7 @@ module Make (Backend : Backend_intf) = struct
   let one_pc = lazy (Pairing.G2_precomputation.create G2.one)
 
   let verify (vk : Verification_key.Processed.t) input
-      ({Proof.a; b; c} as proof) =
+      ({ Proof.a; b; c } as proof) =
     let open Or_error.Let_syntax in
     let%bind () =
       check
@@ -96,7 +97,7 @@ module Make (Backend : Backend_intf) = struct
     let input_acc =
       List.foldi input ~init:vk.query.(0) ~f:(fun i acc x ->
           let q = vk.query.(1 + i) in
-          G1.(acc + (x * q)) )
+          G1.(acc + (x * q)))
     in
     let test1 =
       let l = Pairing.unreduced_pairing a b in

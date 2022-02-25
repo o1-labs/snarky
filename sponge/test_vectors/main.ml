@@ -1,8 +1,8 @@
 open Core_kernel
 
-type test_vector = {input: string list; output: string}
+type test_vector = { input : string list; output : string }
 
-type test_vectors = {name: string; test_vectors: test_vector list}
+type test_vectors = { name : string; test_vectors : test_vector list }
 
 let parse_test_vectors filepath =
   let json = Yojson.Basic.from_file filepath in
@@ -12,10 +12,10 @@ let parse_test_vectors filepath =
   let json_to_test_vector test_vector =
     let input = test_vector |> member "input" |> to_list |> filter_string in
     let output = test_vector |> member "output" |> to_string in
-    {input; output}
+    { input; output }
   in
   let test_vectors = List.map test_vectors ~f:json_to_test_vector in
-  {name; test_vectors}
+  { name; test_vectors }
 
 (* three_wire test vectors *)
 let () =

@@ -4,6 +4,9 @@
  (modules meja_ocaml_compiler_internals))
 
 ; Use the file corresponding to the current OCaml version when building.
+
 (rule
  (targets meja_ocaml_compiler_internals.ml)
- (action (copy# compiler_internals_%{ocaml_version}.ml meja_ocaml_compiler_internals.ml)))
+ (action
+  (copy# compiler_internals_%{ocaml_version}.ml
+    meja_ocaml_compiler_internals.ml)))

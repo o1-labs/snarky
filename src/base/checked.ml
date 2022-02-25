@@ -8,8 +8,8 @@ module T0 = struct
 
   let return x = Pure x
 
-  let rec map : type s a b field.
-      (a, s, field) t -> f:(a -> b) -> (b, s, field) t =
+  let rec map :
+      type s a b field. (a, s, field) t -> f:(a -> b) -> (b, s, field) t =
    fun t ~f ->
     match t with
     | Pure x ->
@@ -39,7 +39,8 @@ module T0 = struct
 
   let map = `Custom map
 
-  let rec bind : type s a b field.
+  let rec bind :
+      type s a b field.
       (a, s, field) t -> f:(a -> (b, s, field) t) -> (b, s, field) t =
    fun t ~f ->
     match t with
@@ -122,7 +123,8 @@ module Basic :
 
   let next_auxiliary = Next_auxiliary return
 
-  let rec with_lens : type a whole view.
+  let rec with_lens :
+      type a whole view.
       (whole, view) Lens.t -> (a, view, 'field) t -> (a, whole, 'field) t =
    fun lens t ->
     match t with
@@ -172,7 +174,8 @@ module Basic :
     | Next_auxiliary k ->
         Next_auxiliary (fun b -> with_lens lens (k b))
 
-  let rec constraint_count_aux : type a s f.
+  let rec constraint_count_aux :
+      type a s f.
          weight:((f field Cvar.t, f field) Constraint.t -> int)
       -> log:(?start:_ -> _)
       -> auxc:_
@@ -196,18 +199,19 @@ module Basic :
         in
         let state =
           Run_state.
-            { system= None
-            ; input= Vector.null
-            ; aux= Vector.null
-            ; eval_constraints= false
-            ; num_inputs= 0
-            ; next_auxiliary= ref 1
-            ; prover_state= None
-            ; stack= []
-            ; handler= Request.Handler.fail
-            ; is_running= true
-            ; as_prover= ref false
-            ; log_constraint= Some log_constraint }
+            { system = None
+            ; input = Vector.null
+            ; aux = Vector.null
+            ; eval_constraints = false
+            ; num_inputs = 0
+            ; next_auxiliary = ref 1
+            ; prover_state = None
+            ; stack = []
+            ; handler = Request.Handler.fail
+            ; is_running = true
+            ; as_prover = ref false
+            ; log_constraint = Some log_constraint
+            }
         in
         let _, x = d state in
         constraint_count_aux ~weight ~log ~auxc !count (k x)
@@ -222,7 +226,7 @@ module Basic :
         let x =
           Lazy.from_fun (fun () ->
               forced := true ;
-              x )
+              x)
         in
         let count, y = constraint_count_aux ~weight ~log ~auxc count (k x) in
         ((if !forced then count + lazy_count else count), y)
@@ -244,7 +248,7 @@ module Basic :
     | Clear_handler (t, k) ->
         let count, x = constraint_count_aux ~weight ~log ~auxc count t in
         constraint_count_aux ~weight ~log ~auxc count (k x)
-    | Exists ({alloc; check; _}, _c, k) ->
+    | Exists ({ alloc; check; _ }, _c, k) ->
         let alloc_var () = Cvar.Var 1 in
         let var = Typ_monads.Alloc.run alloc alloc_var in
         (* TODO: Push a label onto the stack here *)
@@ -252,7 +256,7 @@ module Basic :
           constraint_count_aux ~weight ~log ~auxc count (check var)
         in
         constraint_count_aux ~weight ~log ~auxc count
-          (k {Handle.var; value= None})
+          (k { Handle.var; value = None })
 
   let constraint_count (type f)
       ?(weight : ((f field Cvar.t, f field) Constraint.t -> int) option)
@@ -266,12 +270,12 @@ end
 module Make
     (Basic : Checked_intf.Basic)
     (As_prover : As_prover_intf.Basic
-                 with type ('a, 'f, 's) t =
-                             ('a, 'f, 's) Basic.Types.As_prover.t
-                  and type 'f field := 'f Basic.field) :
+                   with type ('a, 'f, 's) t =
+                         ('a, 'f, 's) Basic.Types.As_prover.t
+                    and type 'f field := 'f Basic.field) :
   Checked_intf.S
-  with module Types = Basic.Types
-  with type 'f field = 'f Basic.field = struct
+    with module Types = Basic.Types
+    with type 'f field = 'f Basic.field = struct
   include Basic
 
   let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
@@ -312,8 +316,7 @@ module Make
 
   type request = Request.request =
     | With :
-        { request: 'a Request.t
-        ; respond: 'a Request.Response.t -> response }
+        { request : 'a Request.t; respond : 'a Request.Response.t -> response }
         -> request
 
   let handle t k = with_handler (Request.Handler.create_single k) t
@@ -362,10 +365,10 @@ end
 module T = struct
   include (
     Make (Basic) (As_prover0) :
-      Checked_intf.S
-      with module Types := Types
-      with type ('a, 's, 'f) t := ('a, 's, 'f) Types.Checked.t
-       and type 'f field = 'f )
+        Checked_intf.S
+          with module Types := Types
+          with type ('a, 's, 'f) t := ('a, 's, 'f) Types.Checked.t
+           and type 'f field = 'f )
 end
 
 include T

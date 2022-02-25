@@ -127,5 +127,4 @@ end
 
 (* Forward declaration of [Typechecker.check_type]. *)
 val unify :
-  (loc:Warnings.loc -> Envi.t -> Type0.type_expr -> Type0.type_expr -> unit)
-  ref
+  (loc:Warnings.loc -> Envi.t -> Type0.type_expr -> Type0.type_expr -> unit) ref

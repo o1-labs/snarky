@@ -30,9 +30,9 @@ module type S = sig
 
   module Make
       (Constant : Field_intf.S) (F : sig
-          include Field_intf.S
+        include Field_intf.S
 
-          val constant : Constant.t -> t
+        val constant : Constant.t -> t
       end) (Params : sig
         val params : Constant.t Params.t
       end) : sig
@@ -49,7 +49,7 @@ end
 module Bw19 : S with module Spec = Bw19.Spec
 
 module Spec : sig
-  type 'f t = {a: 'f; b: 'f} [@@deriving fields, bin_io]
+  type 'f t = { a : 'f; b : 'f } [@@deriving fields, bin_io]
 end
 
 include S with module Spec := Spec
