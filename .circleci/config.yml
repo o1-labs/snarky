@@ -11,7 +11,7 @@ jobs:
     build-opam-cache:
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:72fd8954d9f4f13e8596c3826c570e8fcd8473ec0091cbbfba17c9366e983e0b
         steps:
             - checkout
             - restore_cache:
@@ -29,7 +29,7 @@ jobs:
     build:
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:72fd8954d9f4f13e8596c3826c570e8fcd8473ec0091cbbfba17c9366e983e0b
         steps:
             - checkout
             - fetch-opam
@@ -41,29 +41,13 @@ jobs:
     opam-pin:
         docker:
         # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:72fd8954d9f4f13e8596c3826c570e8fcd8473ec0091cbbfba17c9366e983e0b
         steps:
             - checkout
             - fetch-opam
             - run:
                 name: opam pin
                 command: eval `opam config env` && opam pin .
-    meja:
-        docker:
-        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
-        steps:
-            - checkout
-            - fetch-opam
-            - run:
-                name: Build snarky
-                command: eval `opam config env` && make build
-            - run:
-                name: Build Meja
-                command: eval `opam config env` && cd meja && make build
-            - run:
-                name: Meja tests
-                command: eval `opam config env` && cd meja && make test
     website:
         docker:
         - image: node
@@ -82,8 +66,5 @@ workflows:
              requires:
                 - build-opam-cache
         - opam-pin:
-             requires:
-                - build-opam-cache
-        - meja:
              requires:
                 - build-opam-cache
