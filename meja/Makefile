@@ -7,7 +7,7 @@ cmi-to-meja:
 	dune build --root=.. meja/cmi_to_meja.exe 2>&1 | sed -e 's#"meja/#"#'
 
 reformat:
-	dune exec --root=.. app/reformat-snarky/reformat.exe -- -path .
+	dune build @./fmt; dune promote
 
 test: build
 	source scripts/run-tests.sh; run_tests
