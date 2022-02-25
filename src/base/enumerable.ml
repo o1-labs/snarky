@@ -9,7 +9,7 @@ let int_of_bits bs =
 
 module Make
     (Impl : Snark_intf.Basic) (M : sig
-        type t [@@deriving enum]
+      type t [@@deriving enum]
     end) =
 struct
   open Impl
@@ -41,7 +41,7 @@ struct
         Field.Checked.Assert.lte ~bit_length x
           (Field.Var.constant (Field.of_int M.max))
     in
-    {(Typ.transport Field.typ ~there:to_field ~back:of_field) with check}
+    { (Typ.transport Field.typ ~there:to_field ~back:of_field) with check }
 
   let var_to_bits : var -> (Boolean.var list, _) Checked.t =
     Field.Checked.unpack ~length:bit_length
@@ -58,7 +58,7 @@ end
 module Run = struct
   module Make
       (Impl : Snark_intf.Run_basic) (M : sig
-          type t [@@deriving enum]
+        type t [@@deriving enum]
       end) =
   struct
     open Impl

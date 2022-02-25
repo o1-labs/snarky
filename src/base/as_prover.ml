@@ -4,11 +4,11 @@ open As_prover_intf
 module Make
     (Checked : Checked_intf.S)
     (As_prover : Basic
-                 with type ('a, 'f, 's) t :=
-                             ('a, 'f, 's) Checked.Types.As_prover.t
-                  and type 'f field := 'f Checked.field
-                  and type ('a, 'f, 's) Provider.t =
-                             ('a, 'f, 's) Checked.Types.Provider.t) =
+                   with type ('a, 'f, 's) t :=
+                         ('a, 'f, 's) Checked.Types.As_prover.t
+                    and type 'f field := 'f Checked.field
+                    and type ('a, 'f, 's) Provider.t =
+                         ('a, 'f, 's) Checked.Types.Provider.t) =
 struct
   module Types = Checked.Types
 
@@ -56,8 +56,8 @@ module Make_extended (Env : sig
 end)
 (Checked : Checked_intf.S with type 'f field := Env.field)
 (As_prover : S
-             with module Types := Checked.Types
-             with type 'f field := Env.field) =
+               with module Types := Checked.Types
+               with type 'f field := Env.field) =
 struct
   module Types = Checked.Types
 
@@ -68,7 +68,7 @@ struct
   include (
     As_prover :
       S
-      with module Types := Types
-      with type 'f field := field
-       and type ('a, 'f, 's) t := ('a, 'f, 's) Types.As_prover.t )
+        with module Types := Types
+        with type 'f field := field
+         and type ('a, 'f, 's) t := ('a, 'f, 's) Types.As_prover.t )
 end

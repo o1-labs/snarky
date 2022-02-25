@@ -1,4 +1,4 @@
-open Compiler_internals
+open Meja_compiler_internals
 
 type error =
   | Fun_no_fat_arrow
@@ -25,4 +25,4 @@ let () =
     | Error (loc, err) ->
         Some (Location.error_of_printer ~loc report_error err)
     | _ ->
-        None )
+        None)

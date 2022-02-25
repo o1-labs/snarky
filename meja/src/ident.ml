@@ -2,10 +2,11 @@ open Core_kernel
 
 type t =
   | Regular of
-      { ident_id: int
-      ; ident_name: string
-      ; ident_ocaml: string ref option
-      ; ident_mode: Ast_types.mode }
+      { ident_id : int
+      ; ident_name : string
+      ; ident_ocaml : string ref option
+      ; ident_mode : Ast_types.mode
+      }
   | Global of string
   | Row of string
 [@@deriving sexp]
@@ -17,10 +18,11 @@ let current_id = ref 0
 let create ~mode ?(ocaml = false) name =
   incr current_id ;
   Regular
-    { ident_id= !current_id
-    ; ident_name= name
-    ; ident_ocaml= (if ocaml then Some (ref name) else None)
-    ; ident_mode= mode }
+    { ident_id = !current_id
+    ; ident_name = name
+    ; ident_ocaml = (if ocaml then Some (ref name) else None)
+    ; ident_mode = mode
+    }
 
 let create_global name = Global name
 
@@ -31,7 +33,7 @@ let is_global = function Global _ -> true | _ -> false
 let is_row = function Row _ -> true | _ -> false
 
 let name = function
-  | Regular {ident_name= name; _} ->
+  | Regular { ident_name = name; _ } ->
       name
   | Global name ->
       name
@@ -39,19 +41,19 @@ let name = function
       name
 
 let ocaml_name = function
-  | Regular {ident_ocaml= Some name; _} ->
+  | Regular { ident_ocaml = Some name; _ } ->
       !name
   | id ->
       name id
 
 let ocaml_name_ref = function
-  | Regular {ident_ocaml; _} ->
+  | Regular { ident_ocaml; _ } ->
       ident_ocaml
   | _ ->
       None
 
 let mode = function
-  | Regular {ident_mode= mode; _} ->
+  | Regular { ident_mode = mode; _ } ->
       mode
   | Global _ ->
       Checked
@@ -60,7 +62,7 @@ let mode = function
 
 let compare ident1 ident2 =
   match (ident1, ident2) with
-  | Regular {ident_id= id1; _}, Regular {ident_id= id2; _} ->
+  | Regular { ident_id = id1; _ }, Regular { ident_id = id2; _ } ->
       Int.compare id1 id2
   | Regular _, _ ->
       -1
@@ -77,7 +79,7 @@ let compare ident1 ident2 =
 
 let equal ident1 ident2 =
   match (ident1, ident2) with
-  | Regular {ident_id= id1; _}, Regular {ident_id= id2; _} ->
+  | Regular { ident_id = id1; _ }, Regular { ident_id = id2; _ } ->
       Int.equal id1 id2
   | Global name1, Global name2 ->
       String.equal name1 name2
@@ -90,7 +92,7 @@ let equal ident1 ident2 =
       false
 
 let pprint fmt = function
-  | Regular {ident_name= name; _} ->
+  | Regular { ident_name = name; _ } ->
       Ast_types.pp_name fmt name
   | Global name ->
       Format.pp_print_string fmt name
@@ -98,11 +100,11 @@ let pprint fmt = function
       Format.fprintf fmt "`%s" name
 
 let debug_print fmt = function
-  | Regular {ident_name; ident_ocaml= Some ident_ocaml; ident_id; ident_mode}
+  | Regular { ident_name; ident_ocaml = Some ident_ocaml; ident_id; ident_mode }
     when not (String.equal ident_name !ident_ocaml) ->
       Format.fprintf fmt "(%s=%s)/%a.%i" ident_name !ident_ocaml
         Ast_types.mode_debug_print ident_mode ident_id
-  | Regular {ident_name; ident_ocaml= _; ident_id; ident_mode} ->
+  | Regular { ident_name; ident_ocaml = _; ident_id; ident_mode } ->
       Format.fprintf fmt "%s/%a.%i" ident_name Ast_types.mode_debug_print
         ident_mode ident_id
   | Global name ->
@@ -129,7 +131,7 @@ module Table = struct
       | Some row ->
           Some ((ident, data) :: remove_from_row ident row)
       | None ->
-          Some [(ident, data)] )
+          Some [ (ident, data) ])
 
   let remove ident tbl =
     Map.change tbl (name ident) ~f:(function
@@ -137,13 +139,13 @@ module Table = struct
           let row = remove_from_row ident row in
           if List.is_empty row then None else Some row
       | None ->
-          None )
+          None)
 
   let find ident tbl =
     match Map.find tbl (name ident) with
     | Some row ->
         List.find_map row ~f:(fun (ident2, data) ->
-            if Int.equal (compare ident ident2) 0 then Some data else None )
+            if Int.equal (compare ident ident2) 0 then Some data else None)
     | None ->
         None
 
@@ -158,8 +160,7 @@ module Table = struct
 
   let foldi tbl ~init ~f =
     Map.fold tbl ~init ~f:(fun ~key:_ ~data init ->
-        List.fold ~init data ~f:(fun init (ident, data) -> f ident init data)
-    )
+        List.fold ~init data ~f:(fun init (ident, data) -> f ident init data))
 
   let fold tbl ~init ~f = foldi tbl ~init ~f:(fun _key -> f)
 
@@ -179,7 +180,7 @@ module Table = struct
           | _ ->
               assert false
         in
-        f ~key ~data acc )
+        f ~key ~data acc)
 
   let merge_skewed_names tbl1 tbl2 ~combine =
     Map.merge_skewed tbl1 tbl2 ~combine:(fun ~key v1 v2 ->
@@ -188,7 +189,7 @@ module Table = struct
           failwith
             "merge_skewed_names: The name provided by combine does not match \
              the key" ;
-        (res :: v1) @ v2 )
+        (res :: v1) @ v2)
 
   let map tbl ~f =
     Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f data))) tbl

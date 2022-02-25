@@ -15,7 +15,8 @@ let main =
       , "output directory. \x1B[4mdefault: current directory\x1B[24m" )
     ; ( "-I"
       , Arg.String (fun dirname -> cmi_dirs := dirname :: !cmi_dirs)
-      , "add a directory to the list of paths to search for .cmi files" ) ]
+      , "add a directory to the list of paths to search for .cmi files" )
+    ]
   in
   let usage_text =
     Format.sprintf "Usage:@.@[%s [options] files..@]@.@.OPTIONS:"
@@ -27,9 +28,8 @@ let main =
   let files = List.rev !files in
   List.iter files ~f:(fun filename ->
       let cmi_info = Cmt_format.read_cmi filename in
-      let signature = Of_ocaml.to_signature cmi_info.cmi_sign in
+      let signature = Meja_of_ocaml.to_signature cmi_info.cmi_sign in
       let out_file =
-        Filename.(
-          concat !outdir (chop_extension (basename filename) ^ ".meji"))
+        Filename.(concat !outdir (chop_extension (basename filename) ^ ".meji"))
       in
-      do_output out_file (fun out -> Pprint.signature out signature) )
+      do_output out_file (fun out -> Pprint.signature out signature))

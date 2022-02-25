@@ -41,21 +41,21 @@ module Typ = struct
   end
 ]}*)
     type ('var, 'value, 'field, 'checked) typ =
-      { store: 'value -> ('var, 'field) Store.t
-      ; read: 'var -> ('value, 'field) Read.t
-      ; alloc: ('var, 'field) Alloc.t
-      ; check: 'var -> 'checked }
+      { store : 'value -> ('var, 'field) Store.t
+      ; read : 'var -> ('value, 'field) Read.t
+      ; alloc : ('var, 'field) Alloc.t
+      ; check : 'var -> 'checked
+      }
   end
 
   include T
 
-  type ('var, 'value, 'field, 'checked) t =
-    ('var, 'value, 'field, 'checked) typ
+  type ('var, 'value, 'field, 'checked) t = ('var, 'value, 'field, 'checked) typ
 end
 
 module Checked = struct
   (* TODO-someday: Consider having an "Assembly" type with only a store constructor for straight up Var.t's
-    that this gets compiled into. *)
+     that this gets compiled into. *)
 
   (** The type [('ret, 'state, 'field, 'runner_state) t] represents a checked computation,
       where

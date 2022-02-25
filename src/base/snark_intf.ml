@@ -390,9 +390,9 @@ module type Basic = sig
 
     module type S =
       Typ0.Intf.S
-      with type field := Field.t
-       and type field_var := Field.Var.t
-       and type _ checked = (unit, unit) Checked.t
+        with type field := Field.t
+         and type field_var := Field.Var.t
+         and type _ checked = (unit, unit) Checked.t
 
     val mk_typ :
          (module S with type Var.t = 'var and type Value.t = 'value)
@@ -548,15 +548,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     module List :
       Monad_sequence.S
-      with type ('a, 's) monad := ('a, 's) t
-       and type 'a t = 'a list
-       and type boolean := Boolean.var
+        with type ('a, 's) monad := ('a, 's) t
+         and type 'a t = 'a list
+         and type boolean := Boolean.var
 
     module Array :
       Monad_sequence.S
-      with type ('a, 's) monad := ('a, 's) t
-       and type 'a t = 'a array
-       and type boolean := Boolean.var
+        with type ('a, 's) monad := ('a, 's) t
+         and type 'a t = 'a array
+         and type boolean := Boolean.var
 
     (** [Choose_preimage] is the request issued by
         {!val:Field.Checked.choose_preimage_var} before falling back to its
@@ -767,7 +767,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       val unpack_flagged :
            Var.t
         -> length:int
-        -> (Boolean.var list * [`Success of Boolean.var], _) Checked.t
+        -> (Boolean.var list * [ `Success of Boolean.var ], _) Checked.t
 
       (** [unpack x ~length] returns a list of R1CS variables containing the
           bits of [x].
@@ -789,7 +789,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       (** The type of results from checked comparisons, stored as boolean R1CS
           variables.
       *)
-      type comparison_result = {less: Boolean.var; less_or_equal: Boolean.var}
+      type comparison_result =
+        { less : Boolean.var; less_or_equal : Boolean.var }
 
       (** [compare ~bit_length x y] compares the [bit_length] lowest bits of
           [x] and [y]. [bit_length] must be [<= size_in_bits - 2].
@@ -905,7 +906,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** The complete set of inputs needed to generate a zero-knowledge proof. *)
   and Proof_inputs : sig
-    type t = {public_inputs: Field.Vector.t; auxiliary_inputs: Field.Vector.t}
+    type t =
+      { public_inputs : Field.Vector.t; auxiliary_inputs : Field.Vector.t }
   end
 
   module Let_syntax :
@@ -975,8 +977,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
   type request = Request.request =
     | With :
-        { request: 'a Request.t
-        ; respond: 'a Request.Response.t -> response }
+        { request : 'a Request.t; respond : 'a Request.Response.t -> response }
         -> request
 
   (** The type of handlers. *)
@@ -1028,11 +1029,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> ?keys_with_hashes:bool
       -> ?handlers:Handler.t list
       -> ?reduce:bool
-      -> public_input:( ('a, 's) Checked.t
-                      , unit
-                      , 'computation
-                      , 'public_input )
-                      Data_spec.t
+      -> public_input:
+           (('a, 's) Checked.t, unit, 'computation, 'public_input) Data_spec.t
       -> 'computation
       -> ('a, 's, 'public_input) t
 
@@ -1423,7 +1421,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   end
 
   val set_constraint_logger :
-       (?at_label_boundary:[`Start | `End] * string -> Constraint.t -> unit)
+       (?at_label_boundary:[ `Start | `End ] * string -> Constraint.t -> unit)
     -> unit
 
   val clear_constraint_logger : unit -> unit
@@ -1434,20 +1432,20 @@ module type S = sig
 
   module Number :
     Number_intf.S
-    with type ('a, 'b) checked := ('a, 'b) Checked.t
-     and type field := field
-     and type field_var := Field.Var.t
-     and type bool_var := Boolean.var
+      with type ('a, 'b) checked := ('a, 'b) Checked.t
+       and type field := field
+       and type field_var := Field.Var.t
+       and type bool_var := Boolean.var
 
   module Enumerable (M : sig
     type t [@@deriving enum]
   end) :
     Enumerable_intf.S
-    with type ('a, 'b) checked := ('a, 'b) Checked.t
-     and type ('a, 'b) typ := ('a, 'b) Typ.t
-     and type bool_var := Boolean.var
-     and type var = Field.Var.t
-     and type t := M.t
+      with type ('a, 'b) checked := ('a, 'b) Checked.t
+       and type ('a, 'b) typ := ('a, 'b) Typ.t
+       and type bool_var := Boolean.var
+       and type var = Field.Var.t
+       and type t := M.t
 end
 
 (** The imperative interface to Snarky. *)
@@ -1708,9 +1706,9 @@ module type Run_basic = sig
 
     module type S =
       Typ0.Intf.S
-      with type field := Field.Constant.t
-       and type field_var := Field.t
-       and type _ checked = unit
+        with type field := Field.Constant.t
+         and type field_var := Field.t
+         and type _ checked = unit
 
     val mk_typ :
          (module S with type Var.t = 'var and type Value.t = 'value)
@@ -1904,7 +1902,7 @@ module type Run_basic = sig
     val unpack : t -> length:int -> Boolean.var list
 
     val unpack_flagged :
-      t -> length:int -> Boolean.var list * [`Success of Boolean.var]
+      t -> length:int -> Boolean.var list * [ `Success of Boolean.var ]
 
     val unpack_full : t -> Boolean.var Bitstring_lib.Bitstring.Lsb_first.t
 
@@ -1912,7 +1910,7 @@ module type Run_basic = sig
 
     val choose_preimage_var : t -> length:int -> Boolean.var list
 
-    type comparison_result = {less: Boolean.var; less_or_equal: Boolean.var}
+    type comparison_result = { less : Boolean.var; less_or_equal : Boolean.var }
 
     val compare : bit_length:int -> t -> t -> comparison_result
 
@@ -2001,8 +1999,9 @@ module type Run_basic = sig
 
   and Proof_inputs : sig
     type t =
-      { public_inputs: Field.Constant.Vector.t
-      ; auxiliary_inputs: Field.Constant.Vector.t }
+      { public_inputs : Field.Constant.Vector.t
+      ; auxiliary_inputs : Field.Constant.Vector.t
+      }
   end
 
   module Bitstring_checked : sig
@@ -2042,8 +2041,7 @@ module type Run_basic = sig
 
   type request = Request.request =
     | With :
-        { request: 'a Request.t
-        ; respond: 'a Request.Response.t -> response }
+        { request : 'a Request.t; respond : 'a Request.Response.t -> response }
         -> request
 
   module Handler : sig
@@ -2060,11 +2058,8 @@ module type Run_basic = sig
       -> ?verification_key_path:string
       -> ?keys_with_hashes:bool
       -> ?handlers:Handler.t list
-      -> public_input:( unit -> 'a
-                      , unit
-                      , 'computation
-                      , 'public_input )
-                      Data_spec.t
+      -> public_input:
+           (unit -> 'a, unit, 'computation, 'public_input) Data_spec.t
       -> 'computation
       -> ('a, 'public_input) t
 
@@ -2197,15 +2192,15 @@ module type Run_basic = sig
     -> int
 
   val set_constraint_logger :
-       (?at_label_boundary:[`Start | `End] * string -> Constraint.t -> unit)
+       (?at_label_boundary:[ `Start | `End ] * string -> Constraint.t -> unit)
     -> unit
 
   val clear_constraint_logger : unit -> unit
 
   module Internal_Basic :
     Basic
-    with type field = field
-     and type 'a As_prover.Ref.t = 'a As_prover.Ref.t
+      with type field = field
+       and type 'a As_prover.Ref.t = 'a As_prover.Ref.t
 
   val run_checked : ('a, prover_state) Internal_Basic.Checked.t -> 'a
 end
@@ -2215,16 +2210,16 @@ module type Run = sig
 
   module Number :
     Number_intf.Run
-    with type field := field
-     and type field_var := Field.t
-     and type bool_var := Boolean.var
+      with type field := field
+       and type field_var := Field.t
+       and type bool_var := Boolean.var
 
   module Enumerable (M : sig
     type t [@@deriving enum]
   end) :
     Enumerable_intf.Run
-    with type ('a, 'b) typ := ('a, 'b) Typ.t
-     and type bool_var := Boolean.var
-     and type var = Field.t
-     and type t := M.t
+      with type ('a, 'b) typ := ('a, 'b) Typ.t
+       and type bool_var := Boolean.var
+       and type var = Field.t
+       and type t := M.t
 end

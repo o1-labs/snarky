@@ -25,8 +25,8 @@ let rec type_desc ?(bracket = false) fmt = function
       variant fmt v
   | Ptyp_poly (vars, typ) ->
       if bracket then fprintf fmt "(" ;
-      fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false)
-        (Ptyp_tuple vars) type_expr typ ;
+      fprintf fmt "/*@[%a.@]*/@ %a" (type_desc ~bracket:false) (Ptyp_tuple vars)
+        type_expr typ ;
       if bracket then fprintf fmt ")"
   | Ptyp_prover typ ->
       fprintf fmt "@[<2>Prover {@ %a@ }@]" type_expr typ
@@ -81,7 +81,7 @@ and variant fmt v =
       fprintf fmt "@[<hv2>%a%a@]" Longident.pp v.var_ident.txt tuple
         v.var_params
 
-and row_tag fmt {rtag_ident; rtag_arg; rtag_loc= _} =
+and row_tag fmt { rtag_ident; rtag_arg; rtag_loc = _ } =
   match rtag_arg with
   | [] ->
       fprintf fmt "`%a" pp_name rtag_ident.txt
@@ -179,7 +179,7 @@ let rec pattern_desc fmt = function
         fields
   | Ppat_ctor (path, None) ->
       Longident.pp fmt path.txt
-  | Ppat_ctor (path, Some ({pat_desc= Ppat_tuple _; _} as arg)) ->
+  | Ppat_ctor (path, Some ({ pat_desc = Ppat_tuple _; _ } as arg)) ->
       fprintf fmt "%a@ %a" Longident.pp path.txt pattern arg
   | Ppat_ctor (path, Some arg) ->
       fprintf fmt "%a%a" Longident.pp path.txt pattern arg
@@ -220,12 +220,12 @@ let arg_label fmt = function
 let rec expression_desc fmt = function
   | Pexp_apply
       ( e
-      , [(Asttypes.Nolabel, {exp_desc= Pexp_variable {txt= Lident "()"; _}; _})]
-      ) ->
+      , [ ( Asttypes.Nolabel
+          , { exp_desc = Pexp_variable { txt = Lident "()"; _ }; _ } )
+        ] ) ->
       fprintf fmt "@[<hv2>@[<hv2>%a@]@,()@]" expression_bracket e
   | Pexp_apply (e, args) ->
-      fprintf fmt "@[<hv2>@[<hv2>%a@]@,(@[<hv1>@,%a@,@])@]" expression_bracket
-        e
+      fprintf fmt "@[<hv2>@[<hv2>%a@]@,(@[<hv1>@,%a@,@])@]" expression_bracket e
         (pp_print_list ~pp_sep:comma_sep expression_args)
         args
   | Pexp_variable lid ->
@@ -259,8 +259,8 @@ let rec expression_desc fmt = function
       fprintf fmt "let@[<hv2>@ %a@] =@ @[<hv2>%a@];@;@]@ %a" pattern p
         expression e1 expression e2
   | Pexp_instance (name, e1, e2) ->
-      fprintf fmt "let@[<hv2>@ %s@] =@ @[<hv2>%a@];@;@]@ %a" name.txt
-        expression e1 expression e2
+      fprintf fmt "let@[<hv2>@ %s@] =@ @[<hv2>%a@];@;@]@ %a" name.txt expression
+        e1 expression e2
   | Pexp_constraint (e, typ) ->
       fprintf fmt "(@[<hv1>%a :@ %a@])" expression e type_expr typ
   | Pexp_tuple es ->
@@ -272,7 +272,7 @@ let rec expression_desc fmt = function
         expression e
         (pp_print_list ~pp_sep:pp_print_space (fun fmt (p, e) ->
              fprintf fmt "| @[<hv2>%a@] =>@;<1 4>@[<hv2>%a@]" pattern p
-               expression e ))
+               expression e))
         cases
   | Pexp_field (e, lid) ->
       fprintf fmt "@[<hv2>%a@,@].%a" expression_bracket e Longident.pp lid.txt
@@ -294,14 +294,14 @@ let rec expression_desc fmt = function
       fprintf fmt "`%a(@[<hv1>%a@,@])" pp_name ident.txt
         (pp_print_list ~pp_sep:comma_sep expression)
         args
-  | Pexp_unifiable {expression= Some e; _} ->
+  | Pexp_unifiable { expression = Some e; _ } ->
       expression fmt e
-  | Pexp_unifiable {expression= None; name; _} ->
+  | Pexp_unifiable { expression = None; name; _ } ->
       fprintf fmt "(%s /* implicit */)" name.txt
   | Pexp_if (e1, e2, None) ->
       fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}" expression e1
         expression e2
-  | Pexp_if (e1, e2, Some ({exp_desc= Pexp_if _; _} as e3)) ->
+  | Pexp_if (e1, e2, Some ({ exp_desc = Pexp_if _; _ } as e3)) ->
       (* `if (...) {...} else if (...) {...} ...` printing *)
       fprintf fmt "if@ (@[<hv1>@,%a@,@]) {@[<hv2>@,%a@,@]}@ else %a" expression
         e1 expression e2 expression e3
@@ -314,7 +314,7 @@ let rec expression_desc fmt = function
 
 and expression_desc_bracket fmt exp =
   match exp with
-  | Pexp_unifiable {expression= Some e; _} ->
+  | Pexp_unifiable { expression = Some e; _ } ->
       expression_bracket fmt e
   | Pexp_apply _
   | Pexp_variable _
@@ -342,9 +342,7 @@ and expression_field fmt (label, e) =
 
 let conv_type fmt = function
   | Ptconv_with (mode, decl) ->
-      let str =
-        match mode with Checked -> "with" | Prover -> "with prover"
-      in
+      let str = match mode with Checked -> "with" | Prover -> "with prover" in
       type_decl str fmt decl
   | Ptconv_to typ ->
       fprintf fmt "to @[<hv>%a@]" type_expr typ
@@ -388,8 +386,8 @@ let rec signature_desc fmt = function
         (pp_print_list ~pp_sep:bar_sep ctor_decl)
         ctors
   | Psig_request (typ, ctor) ->
-      fprintf fmt "@[<2>request (%a)@[<hv2>@ %a@]@]@;@;" type_expr typ
-        ctor_decl ctor
+      fprintf fmt "@[<2>request (%a)@[<hv2>@ %a@]@]@;@;" type_expr typ ctor_decl
+        ctor
   | Psig_multiple sigs ->
       signature fmt sigs
   | Psig_prover sigs ->
