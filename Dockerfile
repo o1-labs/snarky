@@ -9,8 +9,8 @@ RUN sudo apt install -y \
     libboost-dev=1.62.0.1 \
     libboost-program-options-dev=1.62.0.1 \
     libffi-dev=3.2.1-6 \
-    libgmp-dev=2:6.1.2+dfsg-1 \
-    libgmp3-dev=2:6.1.2+dfsg-1 \
+    libgmp-dev=2:6.1.2+dfsg-1+deb9u1 \
+    libgmp3-dev=2:6.1.2+dfsg-1+deb9u1 \
     libprocps-dev=2:3.3.12-3+deb9u1 \
     libssl-dev \
     m4=1.4.18-1 
