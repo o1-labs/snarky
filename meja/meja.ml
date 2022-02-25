@@ -19,8 +19,8 @@ let read_file parse filename =
   let file = In_channel.create filename in
   let lex = Lexing.from_channel file in
   (* Set filename in lex_curr_p. *)
-  lex.Lexing.lex_curr_p
-  <- {lex.Lexing.lex_curr_p with Lexing.pos_fname= filename} ;
+  lex.Lexing.lex_curr_p <-
+    { lex.Lexing.lex_curr_p with Lexing.pos_fname = filename } ;
   let ast = parse_with_error parse lex in
   In_channel.close file ; ast
 
@@ -47,11 +47,11 @@ let make_preamble impl_mod curve proofs =
   let snarky_impl =
     Pstmt_module
       ( mkloc impl_mod
-      , {mod_desc= Pmod_name snarky_impl_path; mod_loc= Location.none} )
+      , { mod_desc = Pmod_name snarky_impl_path; mod_loc = Location.none } )
   in
   let snarky_open = Pstmt_open (mkloc (Lident impl_mod)) in
-  let mk_stmt x = {stmt_desc= x; stmt_loc= Location.none} in
-  [mk_stmt snarky_impl; mk_stmt snarky_open]
+  let mk_stmt x = { stmt_desc = x; stmt_loc = Location.none } in
+  [ mk_stmt snarky_impl; mk_stmt snarky_open ]
 
 let add_preamble impl_mod curve proofs ast =
   make_preamble impl_mod curve proofs @ ast
@@ -84,7 +84,7 @@ let main =
       , Arg.String
           (fun name ->
             Format.pp_set_formatter_out_channel Format.err_formatter
-              (Out_channel.create name) )
+              (Out_channel.create name))
       , "redirect stderr to the given filename" )
     ; ( "--binml"
       , Arg.String (set_and_clear_default binml_file)
@@ -101,9 +101,7 @@ let main =
     ; ( "--stdlib"
       , Arg.Set stdlib
       , "load the OCaml standard library \x1B[4mdefault\x1B[24m" )
-    ; ( "--no-stdlib"
-      , Arg.Clear stdlib
-      , "do not load the OCaml standard library" )
+    ; ("--no-stdlib", Arg.Clear stdlib, "do not load the OCaml standard library")
     ; ("--preamble", Arg.Set snarky_preamble, "output the snarky preamble")
     ; ( "--no-preamble"
       , Arg.Clear snarky_preamble
@@ -132,7 +130,7 @@ let main =
           Arg.usage arg_spec usage_text ;
           exit 1
       | None ->
-          file := Some filename )
+          file := Some filename)
     usage_text ;
   let env = Initial_env.env in
   Printexc.record_backtrace !exn_backtraces ;
@@ -146,8 +144,7 @@ let main =
             Loader.load_directory env (Filename.concat lib_path "ocaml") ;
             let stdlib = Ident.create ~mode:Checked "Stdlib" in
             let stdlib_scope =
-              Loader.load ~loc:Location.none ~name:"Stdlib"
-                env.Envi.resolve_env
+              Loader.load ~loc:Location.none ~name:"Stdlib" env.Envi.resolve_env
                 (Filename.concat lib_path "ocaml/stdlib.cmi")
             in
             Envi.register_external_module stdlib (Immediate stdlib_scope) env ;
@@ -156,14 +153,11 @@ let main =
             in
             let local_libraries_dir =
               Filename.(
-                Sys.executable_name |> dirname
-                |> Fn.flip concat parent_dir_name)
+                Sys.executable_name |> dirname |> Fn.flip concat parent_dir_name)
             in
             let load_library ~build_path ~install_path () =
               Loader.load_directory env (Filename.concat lib_path install_path) ;
-              let local_path =
-                Filename.concat local_libraries_dir build_path
-              in
+              let local_path = Filename.concat local_libraries_dir build_path in
               Loader.load_directory env Filename.(concat local_path "byte") ;
               Loader.load_directory env Filename.(concat local_path "native") ;
               Loader.load_directory env local_path
@@ -197,11 +191,11 @@ let main =
           let modident = Ident.create ~mode:Checked modname in
           ( modident
           , Loader.load ~loc:Location.none ~name:modname env.Envi.resolve_env
-              filename ) )
+              filename ))
     in
     let env =
       List.fold ~init:env cmi_scopes ~f:(fun env (name, scope) ->
-          Envi.open_namespace_scope (Path.Pident name) scope env )
+          Envi.open_namespace_scope (Path.Pident name) scope env)
     in
     let meji_files =
       "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
@@ -217,7 +211,7 @@ let main =
           let env, _typed_ast = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:(Location.in_file file) env in
           let name = Ident.create ~mode:Checked module_name in
-          Envi.add_module ~loc:(Location.in_file file) name m env )
+          Envi.add_module ~loc:(Location.in_file file) name m env)
     in
     let file =
       match !file with
@@ -250,7 +244,7 @@ let main =
         Option.iter ~f:(Printast.structure 2 output) preamble ;
         Format.pp_print_newline output () ;
         Printast.structure 2 output ocaml_ast ;
-        Format.pp_print_newline output () ) ;
+        Format.pp_print_newline output ()) ;
     ( match ocaml_formatter with
     | Some output ->
         Option.iter ~f:(Pprintast.structure output) preamble ;

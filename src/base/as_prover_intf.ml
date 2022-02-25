@@ -61,8 +61,8 @@ module type S = sig
 
   include
     Basic
-    with type ('a, 'f, 's) t = ('a, 'f, 's) Types.As_prover.t
-     and type ('a, 'f, 's) Provider.t = ('a, 'f, 's) Types.Provider.t
+      with type ('a, 'f, 's) t = ('a, 'f, 's) Types.As_prover.t
+       and type ('a, 'f, 's) Provider.t = ('a, 'f, 's) Types.Provider.t
 
   module Ref : sig
     type 'a t
@@ -90,9 +90,9 @@ module type Extended = sig
 
   include
     S
-    with module Types := Types
-    with type 'f field := field
-     and type ('a, 'f, 's) t := ('a, 'f, 's) Types.As_prover.t
+      with module Types := Types
+      with type 'f field := field
+       and type ('a, 'f, 's) t := ('a, 'f, 's) Types.As_prover.t
 
   type ('a, 's) t = ('a, field, 's) Types.As_prover.t
 end

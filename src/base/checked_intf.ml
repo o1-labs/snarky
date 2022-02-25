@@ -88,8 +88,7 @@ module type S = sig
 
   type request = Request.request =
     | With :
-        { request: 'a Request.t
-        ; respond: 'a Request.Response.t -> response }
+        { request : 'a Request.t; respond : 'a Request.Response.t -> response }
         -> request
 
   val handle :
@@ -158,9 +157,9 @@ module type Extended = sig
 
   include
     S
-    with module Types := Types
-    with type 'f field := field
-     and type ('a, 's, 'f) t := ('a, 's, 'f) Types.Checked.t
+      with module Types := Types
+      with type 'f field := field
+       and type ('a, 's, 'f) t := ('a, 's, 'f) Types.Checked.t
 
   val run :
     ('a, 's) t -> ('s, field) Run_state.t -> ('s, field) Run_state.t * 'a
@@ -172,9 +171,9 @@ struct
   include (
     Checked :
       S
-      with module Types = Checked.Types
-      with type 'f field := Checked.field
-       and type ('a, 's, 'f) t := ('a, 's, 'f) Checked.Types.Checked.t )
+        with module Types = Checked.Types
+        with type 'f field := Checked.field
+         and type ('a, 's, 'f) t := ('a, 's, 'f) Checked.Types.Checked.t )
 
   type 'f field = Checked.field
 

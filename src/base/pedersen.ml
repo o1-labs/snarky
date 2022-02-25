@@ -8,31 +8,27 @@ let local_function ~negate quad (b0, b1, b2) =
 
 module Make
     (Impl : Snark_intf.S) (Weierstrass_curve : sig
-        type var = Impl.Field.Var.t * Impl.Field.Var.t
+      type var = Impl.Field.Var.t * Impl.Field.Var.t
 
-        type t [@@deriving eq]
+      type t [@@deriving eq]
 
-        val add : t -> t -> t
+      val add : t -> t -> t
 
-        val zero : t
+      val zero : t
 
-        module Checked : sig
-          val constant : t -> var
+      module Checked : sig
+        val constant : t -> var
 
-          val add_unsafe :
-               var
-            -> var
-            -> ( [`I_thought_about_this_very_carefully of var]
-               , _ )
-               Impl.Checked.t
+        val add_unsafe :
+             var
+          -> var
+          -> ([ `I_thought_about_this_very_carefully of var ], _) Impl.Checked.t
 
-          val add_known_unsafe :
-               var
-            -> t
-            -> ( [`I_thought_about_this_very_carefully of var]
-               , _ )
-               Impl.Checked.t
-        end
+        val add_known_unsafe :
+             var
+          -> t
+          -> ([ `I_thought_about_this_very_carefully of var ], _) Impl.Checked.t
+      end
     end) (Params : sig
       open Impl
 
@@ -64,7 +60,7 @@ module Make
 
   module Section : sig
     module Acc : sig
-      type t = [`Var of Weierstrass_curve.var | `Value of Weierstrass_curve.t]
+      type t = [ `Var of Weierstrass_curve.var | `Value of Weierstrass_curve.t ]
     end
 
     type t
@@ -73,8 +69,7 @@ module Make
 
     val disjoint_union_exn : t -> t -> (t, _) Checked.t
 
-    val extend :
-      t -> Boolean.var Triple.t list -> start:int -> (t, _) Checked.t
+    val extend : t -> Boolean.var Triple.t list -> start:int -> (t, _) Checked.t
 
     val append : t -> Boolean.var Triple.t list -> (t, _) Checked.t
 
@@ -85,10 +80,10 @@ module Make
     val create : acc:Acc.t -> support:Interval_union.t -> t
 
     val to_initial_segment_digest :
-      t -> (Digest.var * [`Length_in_triples of int]) Or_error.t
+      t -> (Digest.var * [ `Length_in_triples of int ]) Or_error.t
 
     val to_initial_segment_digest_exn :
-      t -> Digest.var * [`Length_in_triples of int]
+      t -> Digest.var * [ `Length_in_triples of int ]
   end
 
   val hash :
@@ -122,7 +117,7 @@ end = struct
     let%map y =
       let sign =
         (* sign = 1 if s2 = 0
-          sign = -1 if s2 = 1 *)
+           sign = -1 if s2 = 1 *)
         Field.Var.constant Field.one - (Field.of_int 2 * (s2 :> Field.Var.t))
       in
       Field.Checked.mul sign (lookup_one y_q)
@@ -166,18 +161,18 @@ end = struct
   let digest (x, _) = x
 
   (* The use of add_unsafe is acceptable in this context because getting this to
-   hit a problematic case is tantamount to finding a collision in the pedersen hash. *)
+     hit a problematic case is tantamount to finding a collision in the pedersen hash. *)
 
   module Section = struct
     module Acc = struct
-      type t = [`Var of Weierstrass_curve.var | `Value of Weierstrass_curve.t]
+      type t = [ `Var of Weierstrass_curve.var | `Value of Weierstrass_curve.t ]
 
       let add (t1 : t) (t2 : t) =
         let open Let_syntax in
         match (t1, t2) with
         | `Var v1, `Var v2 ->
             (* This is acceptable as both v1 and v2 will be linear combinations of
-             distinct sets of random group elements (as this is only called from disjoint_union_exn) *)
+               distinct sets of random group elements (as this is only called from disjoint_union_exn) *)
             let%map (`I_thought_about_this_very_carefully v) =
               Weierstrass_curve.Checked.add_unsafe v1 v2
             in
@@ -199,12 +194,12 @@ end = struct
             Weierstrass_curve.Checked.constant x
     end
 
-    type t = {support: Interval_union.t; acc: Acc.t}
+    type t = { support : Interval_union.t; acc : Acc.t }
 
-    let create ~acc ~support = {acc; support}
+    let create ~acc ~support = { acc; support }
 
     let empty =
-      {acc= `Value Weierstrass_curve.zero; support= Interval_union.empty}
+      { acc = `Value Weierstrass_curve.zero; support = Interval_union.empty }
 
     let acc t = Acc.to_var t.acc
 
@@ -213,7 +208,7 @@ end = struct
     let disjoint_union_exn t1 t2 =
       let support = Interval_union.disjoint_union_exn t1.support t2.support in
       let%map acc = Acc.add t1.acc t2.acc in
-      {support; acc}
+      { support; acc }
 
     let to_initial_segment_digest t =
       let open Or_error.Let_syntax in
@@ -237,12 +232,12 @@ end = struct
       let hash offset init xs =
         Checked.List.foldi xs ~init ~f:(fun i acc x ->
             (* This is acceptable because [get_term (offset+i) x] is a linear combination
-             of random elements not involved in the calculation of acc *)
+               of random elements not involved in the calculation of acc *)
             let%map (`I_thought_about_this_very_carefully acc) =
               get_term (offset + i) x
               >>= Weierstrass_curve.Checked.add_unsafe acc
             in
-            acc )
+            acc)
       in
       match triples with
       | [] ->
@@ -270,7 +265,7 @@ end = struct
             | `Var v ->
                 hash start v (x :: xs)
           in
-          {support; acc= `Var acc}
+          { support; acc = `Var acc }
 
     let append t triples =
       let start =
@@ -281,8 +276,8 @@ end = struct
 
   let hash ~init:(start, acc) triples =
     let open Checked.Let_syntax in
-    let%map {acc; _} =
-      Section.extend {acc; support= Interval_union.empty} triples ~start
+    let%map { acc; _ } =
+      Section.extend { acc; support = Interval_union.empty } triples ~start
     in
     match acc with `Var acc -> acc | `Value _ -> assert false
 end

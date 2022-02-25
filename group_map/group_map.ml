@@ -92,9 +92,9 @@ module type S = sig
 
   module Make
       (Constant : Field_intf.S) (F : sig
-          include Field_intf.S
+        include Field_intf.S
 
-          val constant : Constant.t -> t
+        val constant : Constant.t -> t
       end) (Params : sig
         val params : Constant.t Params.t
       end) : sig
@@ -109,16 +109,16 @@ module type S = sig
 end
 
 module Conic = struct
-  type 'f t = {z: 'f; y: 'f} [@@deriving bin_io]
+  type 'f t = { z : 'f; y : 'f } [@@deriving bin_io]
 
-  let map {z; y} ~f = {z= f z; y= f y}
+  let map { z; y } ~f = { z = f z; y = f y }
 end
 
 module S = struct
   (* S = S(u, v, y) : y^2(u^2 + uv + v^2 + a) = −f(u)
      from (12)
   *)
-  type 'f t = {u: 'f; v: 'f; y: 'f}
+  type 'f t = { u : 'f; v : 'f; y : 'f }
 end
 
 module V = struct
@@ -129,24 +129,26 @@ module V = struct
 end
 
 module Spec = struct
-  type 'f t = {a: 'f; b: 'f} [@@deriving fields, bin_io]
+  type 'f t = { a : 'f; b : 'f } [@@deriving fields, bin_io]
 end
 
 module Params = struct
   type 'f t =
-    { u: 'f
-    ; u_over_2: 'f
-    ; projection_point: 'f Conic.t
-    ; conic_c: 'f
-    ; spec: 'f Spec.t }
+    { u : 'f
+    ; u_over_2 : 'f
+    ; projection_point : 'f Conic.t
+    ; conic_c : 'f
+    ; spec : 'f Spec.t
+    }
   [@@deriving fields, bin_io]
 
-  let map {u; u_over_2; projection_point; conic_c; spec= {a; b}} ~f =
-    { u= f u
-    ; u_over_2= f u_over_2
-    ; projection_point= Conic.map ~f projection_point
-    ; conic_c= f conic_c
-    ; spec= {a= f a; b= f b} }
+  let map { u; u_over_2; projection_point; conic_c; spec = { a; b } } ~f =
+    { u = f u
+    ; u_over_2 = f u_over_2
+    ; projection_point = Conic.map ~f projection_point
+    ; conic_c = f conic_c
+    ; spec = { a = f a; b = f b }
+    }
 
   (* A deterministic function for constructing a valid choice of parameters for a
      given field.
@@ -160,7 +162,7 @@ module Params = struct
   *)
 
   let create (type t) (module F : Field_intf.S_unchecked with type t = t)
-      ({Spec.a; b} as spec) =
+      ({ Spec.a; b } as spec) =
     let open F in
     let first_map f =
       let rec go i = match f i with Some x -> x | None -> go (i + one) in
@@ -178,11 +180,10 @@ module Params = struct
           && (not (equal fu zero))
           && not (is_square (negate fu))
           (* imeckler: I added this condition. It prevents the possibility of having
-   a point (z, 0) on the conic, which is useful because in the map from the
-   conic to S we divide by the "y" coordinate of the conic. It's not strictly
-   necessary when we have a random input in a large field, but it is still nice to avoid the
-   bad case in theory (and for the tests below with a small field). *)
-      )
+             a point (z, 0) on the conic, which is useful because in the map from the
+             conic to S we divide by the "y" coordinate of the conic. It's not strictly
+             necessary when we have a random input in a large field, but it is still nice to avoid the
+             bad case in theory (and for the tests below with a small field). *))
     in
     (* The coefficients defining the conic z^2 + c y^2 = d
        in (15). *)
@@ -191,16 +192,16 @@ module Params = struct
     let projection_point =
       first_map (fun y ->
           let z2 = conic_d - (conic_c * y * y) in
-          if F.is_square z2 then Some {Conic.z= F.sqrt z2; y} else None )
+          if F.is_square z2 then Some { Conic.z = F.sqrt z2; y } else None)
     in
-    {u; u_over_2= u / of_int 2; conic_c; projection_point; spec}
+    { u; u_over_2 = u / of_int 2; conic_c; projection_point; spec }
 end
 
 module Make
     (Constant : Field_intf.S) (F : sig
-        include Field_intf.S
+      include Field_intf.S
 
-        val constant : Constant.t -> t
+      val constant : Constant.t -> t
     end) (P : sig
       val params : Constant.t Params.t
     end) =
@@ -217,16 +218,17 @@ struct
     in
     let ct = constant P.params.conic_c * t in
     let s = of_int 2 * ((ct * y0) + z0) / ((ct * t) + one) in
-    {Conic.z= z0 - s; y= y0 - (s * t)}
+    { Conic.z = z0 - s; y = y0 - (s * t) }
 
   (* From (16) : φ(λ) : F → S : λ → ( u, α(λ)/β(λ) - u/2, β(λ) ) *)
-  let conic_to_s {Conic.z; y} =
-    { S.u= constant P.params.u
-    ; v= (z / y) - constant P.params.u_over_2 (* From (16) *)
-    ; y }
+  let conic_to_s { Conic.z; y } =
+    { S.u = constant P.params.u
+    ; v = (z / y) - constant P.params.u_over_2 (* From (16) *)
+    ; y
+    }
 
   (* This is here for explanatory purposes. See s_to_v_truncated. *)
-  let _s_to_v {S.u; v; y} : _ V.t =
+  let _s_to_v { S.u; v; y } : _ V.t =
     let curve_eqn x =
       (x * x * x) + (constant P.params.spec.a * x) + constant P.params.spec.b
     in
@@ -236,7 +238,7 @@ struct
   (* from (13) *)
 
   (* We don't actually need to compute the final coordinate in V *)
-  let s_to_v_truncated {S.u; v; y} = (v, negate (u + v), u + (y * y))
+  let s_to_v_truncated { S.u; v; y } = (v, negate (u + v), u + (y * y))
 
   let potential_xs =
     let ( @ ) = Fn.compose in
@@ -257,14 +259,14 @@ let to_group (type t) (module F : Field_intf.S_unchecked with type t = t)
         let params = params
       end)
   in
-  let {Spec.a; b} = params.spec in
+  let { Spec.a; b } = params.spec in
   let try_decode x =
     let f x = F.((x * x * x) + (a * x) + b) in
     let y = f x in
     if F.is_square y then Some (x, F.sqrt y) else None
   in
   let x1, x2, x3 = M.potential_xs t in
-  List.find_map [x1; x2; x3] ~f:try_decode |> Option.value_exn
+  List.find_map [ x1; x2; x3 ] ~f:try_decode |> Option.value_exn
 
 let%test_module "test" =
   ( module struct
@@ -342,7 +344,7 @@ let%test_module "test" =
 
       open F
 
-      let params = Params.create (module F) {a; b}
+      let params = Params.create (module F) { a; b }
 
       let curve_eqn u = (u * u * u) + (params.spec.a * u) + params.spec.b
 
@@ -350,22 +352,22 @@ let%test_module "test" =
         let open F in
         negate (curve_eqn params.u)
 
-      let on_conic {Conic.z; y} =
+      let on_conic { Conic.z; y } =
         F.(equal ((z * z) + (params.conic_c * y * y)) conic_d)
 
-      let on_s {S.u; v; y} =
+      let on_s { S.u; v; y } =
         F.(equal conic_d (y * y * ((u * u) + (u * v) + (v * v) + a)))
 
       let on_v (x1, x2, x3, x4) =
         F.(equal (curve_eqn x1 * curve_eqn x2 * curve_eqn x3) (x4 * x4))
 
       (* Filter the two points which cause the group-map to blow up. This
-   is not an issue in practice because the points we feed into this function
-   will be the output of blake2s, and thus (modeling blake2s as a random oracle)
-   will not be either of those two points. *)
+         is not an issue in practice because the points we feed into this function
+         will be the output of blake2s, and thus (modeling blake2s as a random oracle)
+         will not be either of those two points. *)
       let gen =
         Quickcheck.Generator.filter F.gen ~f:(fun t ->
-            not F.(equal ((params.conic_c * t * t) + one) zero) )
+            not F.(equal ((params.conic_c * t * t) + one) zero))
 
       module M =
         Make (F) (F)
@@ -373,40 +375,39 @@ let%test_module "test" =
             let params = params
           end)
 
-      let%test "projection point well-formed" =
-        on_conic params.projection_point
+      let%test "projection point well-formed" = on_conic params.projection_point
 
       let%test_unit "field-to-conic" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
-            assert (on_conic (M.field_to_conic t)) )
+            assert (on_conic (M.field_to_conic t)))
 
       let%test_unit "conic-to-S" =
         let conic_gen =
           Quickcheck.Generator.filter_map F.gen ~f:(fun y ->
               let z2 = conic_d - (params.conic_c * y * y) in
-              if is_square z2 then Some {Conic.z= sqrt z2; y} else None )
+              if is_square z2 then Some { Conic.z = sqrt z2; y } else None)
         in
         Quickcheck.test conic_gen ~f:(fun p -> assert (on_s (M.conic_to_s p)))
 
       let%test_unit "field-to-S" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
-            assert (on_s (Fn.compose M.conic_to_s M.field_to_conic t)) )
+            assert (on_s (Fn.compose M.conic_to_s M.field_to_conic t)))
 
       (* Schwarz-zippel says if this tests succeeds once, then the probability that
-   the implementation is correct is at least 1 - (D / field-size), where D is
-   the total degree of the polynomial defining_equation_of_V(s_to_v(t)) which should
-   be less than, say, 10. So, this test succeeding gives good evidence of the
-   correctness of the implementation (assuming that the implementation is just a
-   polynomial, which it is by parametricity!) *)
+         the implementation is correct is at least 1 - (D / field-size), where D is
+         the total degree of the polynomial defining_equation_of_V(s_to_v(t)) which should
+         be less than, say, 10. So, this test succeeding gives good evidence of the
+         correctness of the implementation (assuming that the implementation is just a
+         polynomial, which it is by parametricity!) *)
       let%test_unit "field-to-V" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
             let s = M.conic_to_s (M.field_to_conic t) in
-            assert (on_v (M._s_to_v s)) )
+            assert (on_v (M._s_to_v s)))
 
       let%test_unit "full map works" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
             let x, y = to_group (module F) ~params t in
-            assert (equal (curve_eqn x) (y * y)) )
+            assert (equal (curve_eqn x) (y * y)))
     end
 
     module T0 = Make_tests (F13)

@@ -41,17 +41,17 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
       fprintf fmt "%a@ --> %a" type_expr_b typ1 type_expr typ2 ;
       if bracket then fprintf fmt "@])"
   | Topaque typ -> (
-    match mode with
-    | Checked ->
-        fprintf fmt "@[<hv2>opaque(@,%a@,)@]" type_expr typ
-    | Prover ->
-        type_expr fmt typ )
+      match mode with
+      | Checked ->
+          fprintf fmt "@[<hv2>opaque(@,%a@,)@]" type_expr typ
+      | Prover ->
+          type_expr fmt typ )
   | Tother_mode typ -> (
-    match (mode, typ.type_mode) with
-    | Checked, Prover ->
-        fprintf fmt "@[<hv2>Prover{@,%a@,}@]" type_expr typ
-    | _ ->
-        type_expr fmt typ )
+      match (mode, typ.type_mode) with
+      | Checked, Prover ->
+          fprintf fmt "@[<hv2>Prover{@,%a@,}@]" type_expr typ
+      | _ ->
+          type_expr fmt typ )
   | Trow row -> (
       let row_tags, row_rest, row_closed = Type1.row_repr row in
       let subtract_tags =
@@ -62,7 +62,7 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
               when (Type1.rp_strip_subtract pres).rp_desc <> RpAbsent ->
                 key :: subtract_tags
             | _ ->
-                subtract_tags )
+                subtract_tags)
       in
       (match subtract_tags with [] -> () | _ -> fprintf fmt "[@[<hv1>") ;
       let needs_lower_bound, needs_as =
@@ -78,7 +78,7 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
                   | RpMaybe ->
                       false
                   | RpRef _ | RpReplace _ | RpSubtract _ ->
-                      assert false )
+                      assert false)
             in
             if is_fixed then fprintf fmt "[@[<hv1>@,"
             else fprintf fmt "([<@[<hv1>@," ;
@@ -97,7 +97,7 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
           | RpAbsent | RpAny ->
               ()
           | RpRef _ | RpReplace _ | RpSubtract _ ->
-              assert false ) ;
+              assert false) ;
       ( if needs_lower_bound then
         let is_first = ref true in
         Map.iteri row_tags ~f:(fun ~key:_ ~data:(path, pres, _args) ->
@@ -111,7 +111,7 @@ let rec type_desc ~mode ?(bracket = false) fmt = function
             | RpMaybe | RpAbsent | RpAny ->
                 ()
             | RpRef _ | RpReplace _ | RpSubtract _ ->
-                assert false ) ) ;
+                assert false) ) ;
       fprintf fmt "@,@]]" ;
       if needs_as then fprintf fmt " as %a)" type_expr row_rest ;
       match subtract_tags with
@@ -146,7 +146,7 @@ let ctor_args fmt = function
       ()
   | Ctor_tuple typs ->
       tuple fmt typs
-  | Ctor_record {tdec_desc= TRecord fields; _} ->
+  | Ctor_record { tdec_desc = TRecord fields; _ } ->
       fprintf fmt "{@[<2>%a@]}"
         (pp_print_list ~pp_sep:comma_sep field_decl)
         fields

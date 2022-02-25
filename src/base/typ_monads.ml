@@ -81,10 +81,9 @@ module Store = struct
         let store, v = f_later () in
         run (k store v) f f_later
 
-  let alloc_later_of_read
-      (type var field value checked_unit checked_var) ~(zero : field)
-      ~(map : checked_unit -> f:(unit -> var) -> checked_var) ~bind
-      ~(assert_equal : field Cvar.t -> field Cvar.t -> checked_unit)
+  let alloc_later_of_read (type var field value checked_unit checked_var)
+      ~(zero : field) ~(map : checked_unit -> f:(unit -> var) -> checked_var)
+      ~bind ~(assert_equal : field Cvar.t -> field Cvar.t -> checked_unit)
       ~(read : var -> (value, field) Read.t) var res =
     Staged.stage (fun x ->
         let rec go read_x read_var res =
@@ -120,7 +119,8 @@ module Store = struct
             let pop () =
               match !rem_stores with
               | [] ->
-                  failwith "More field elements allocated by store than in alloc"
+                  failwith
+                    "More field elements allocated by store than in alloc"
               | (store, cvar) :: rest ->
                   rem_stores := rest ;
                   (store, cvar)
@@ -149,8 +149,8 @@ module Store = struct
                                   ()
                               | _ :: _ ->
                                   failwith
-                                    "More field elements allocated by alloc than \
-                                     in store"))))
+                                    "More field elements allocated by alloc \
+                                     than in store"))))
                   x)
           in
           Pure fn

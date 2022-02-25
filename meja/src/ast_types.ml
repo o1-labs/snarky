@@ -41,9 +41,9 @@ module Longident = struct
     | Lident name ->
         Sexp.Atom name
     | Ldot (lid, name) ->
-        Sexp.List [sexp_of_t lid; Atom name]
+        Sexp.List [ sexp_of_t lid; Atom name ]
     | Lapply (lid1, lid2) ->
-        Sexp.List [sexp_of_t lid1; sexp_of_t lid2]
+        Sexp.List [ sexp_of_t lid1; sexp_of_t lid2 ]
 
   include Comparator.Make (struct
     type nonrec t = t
@@ -117,11 +117,12 @@ let mk_lid (str : str) = map_loc str ~f:(fun x -> Longident.Lident x)
 let loc_of_prim (file, lnum, cnum, enum) =
   (* Note: We use a fake value for [pos_bol], since we can't get the true
              value from [__POS__]. *)
-  { Location.loc_start=
-      {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= cnum; pos_bol= 0}
-  ; loc_end=
-      {Lexing.pos_fname= file; pos_lnum= lnum; pos_cnum= enum; pos_bol= 0}
-  ; loc_ghost= false }
+  { Location.loc_start =
+      { Lexing.pos_fname = file; pos_lnum = lnum; pos_cnum = cnum; pos_bol = 0 }
+  ; loc_end =
+      { Lexing.pos_fname = file; pos_lnum = lnum; pos_cnum = enum; pos_bol = 0 }
+  ; loc_ghost = false
+  }
 
 type mode = Checked | Prover [@@deriving sexp, equal, compare]
 

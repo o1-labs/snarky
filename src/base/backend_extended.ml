@@ -40,7 +40,7 @@ module type S = sig
     end
 
     val eval :
-      [`Return_values_will_be_mutated of int -> Field.t] -> t -> Field.t
+      [ `Return_values_will_be_mutated of int -> Field.t ] -> t -> Field.t
 
     val constant : Field.t -> t
 
@@ -96,7 +96,7 @@ module type S = sig
   module Proving_key : sig
     type t [@@deriving bin_io]
 
-    val is_initialized : t -> [`Yes | `No of R1CS_constraint_system.t]
+    val is_initialized : t -> [ `Yes | `No of R1CS_constraint_system.t ]
 
     val set_constraint_system : t -> R1CS_constraint_system.t -> unit
 
@@ -110,7 +110,7 @@ module type S = sig
   end
 
   module Keypair : sig
-    type t = {pk: Proving_key.t; vk: Verification_key.t} [@@deriving bin_io]
+    type t = { pk : Proving_key.t; vk : Verification_key.t } [@@deriving bin_io]
 
     val create : pk:Proving_key.t -> vk:Verification_key.t -> t
 
@@ -124,13 +124,13 @@ end
 
 module Make (Backend : Backend_intf.S) :
   S
-  with type Field.t = Backend.Field.t
-   and type Field.Vector.t = Backend.Field.Vector.t
-   and type Bigint.t = Backend.Bigint.R.t
-   and type Proving_key.t = Backend.Proving_key.t
-   and type Verification_key.t = Backend.Verification_key.t
-   and type Var.t = Backend.Var.t
-   and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
+    with type Field.t = Backend.Field.t
+     and type Field.Vector.t = Backend.Field.Vector.t
+     and type Bigint.t = Backend.Bigint.R.t
+     and type Proving_key.t = Backend.Proving_key.t
+     and type Verification_key.t = Backend.Verification_key.t
+     and type Var.t = Backend.Var.t
+     and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
 struct
   open Backend
 
@@ -159,12 +159,12 @@ struct
   module Proving_key = Proving_key
 
   module Keypair = struct
-    type t = {pk: Proving_key.t; vk: Verification_key.t}
+    type t = { pk : Proving_key.t; vk : Verification_key.t }
     [@@deriving fields, bin_io]
 
     let create = Fields.create
 
-    let of_backend_keypair kp = {pk= Keypair.pk kp; vk= Keypair.vk kp}
+    let of_backend_keypair kp = { pk = Keypair.pk kp; vk = Keypair.vk kp }
 
     let generate = Fn.compose of_backend_keypair Backend.Keypair.create
   end
@@ -178,7 +178,7 @@ struct
       let t_of_sexp _ = failwith "Var.t_of_sexp"
 
       let sexp_of_t v =
-        Sexp.(List [Atom "var"; Atom (Int.to_string (index v))])
+        Sexp.(List [ Atom "var"; Atom (Int.to_string (index v)) ])
     end
 
     include T
@@ -226,8 +226,8 @@ struct
               Int64.(
                 foldi ~init:zero
                   ~f:(fun i acc el ->
-                    acc + if el then shift_left one i else zero )
-                  elt) ))
+                    acc + if el then shift_left one i else zero)
+                  elt)))
         chunks64 ;
       Backend.Bigint.R.(of_data arr ~bitcount:(List.length bs) |> to_field)
 
@@ -259,7 +259,7 @@ struct
         ~f:(fun bs ->
           [%test_eq: string]
             (project bs |> to_string)
-            (project_reference bs |> to_string) )
+            (project_reference bs |> to_string))
 
     let ( + ) = add
 
@@ -295,8 +295,8 @@ struct
     let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
 
     let eval t get_value =
-      List.for_all t ~f:(fun {basic; _} ->
-          Constraint.Basic.eval m get_value basic )
+      List.for_all t ~f:(fun { basic; _ } ->
+          Constraint.Basic.eval m get_value basic)
   end
 
   module R1CS_constraint_system = R1CS_constraint_system

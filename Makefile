@@ -29,10 +29,10 @@ examples-gpu :
 	dune exec --root=. ./examples/election_gpu/election_main.exe
 
 reformat:
-	dune exec --root=. app/reformat-snarky/reformat.exe -- -path .
+	dune build @./fmt; dune promote
 
 check-format:
-	dune exec --root=. app/reformat-snarky/reformat.exe -- -path . -check
+	dune build @./fmt
 
 docker :
 	./rebuild-docker.sh snarky

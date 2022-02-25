@@ -2,11 +2,10 @@ module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
 module type P = sig
-  include
-    sig
-      val x : int
+  include sig
+    val x : int
 
-      val f : bool -> bool
+    val f : bool -> bool
   end
 end
 
@@ -94,12 +93,13 @@ let j __implicit12__ __implicit13__ __implicit14__ __implicit10__ b x =
 
 let k (f : field_var) =
   j Typ.field Typ.field Typ.field
-    { Snarky.Types.Typ.store= (fun x -> Snarky.Typ_monads.Store.return x)
-    ; Snarky.Types.Typ.read= (fun x -> Snarky.Typ_monads.Read.return x)
-    ; Snarky.Types.Typ.alloc=
+    { Snarky.Types.Typ.store = (fun x -> Snarky.Typ_monads.Store.return x)
+    ; Snarky.Types.Typ.read = (fun x -> Snarky.Typ_monads.Read.return x)
+    ; Snarky.Types.Typ.alloc =
         (let open Snarky.Typ_monads.Alloc in
         map alloc ~f:(fun _ -> failwith "cannot allocate this type."))
-    ; Snarky.Types.Typ.check= (fun _ -> Snarky.Checked.return ()) }
+    ; Snarky.Types.Typ.check = (fun _ -> Snarky.Checked.return ())
+    }
     true f
 
 let l (b : boolean) (b' : boolean) =
