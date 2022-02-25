@@ -114,7 +114,12 @@ struct
 
   let neg_one = Field.(sub zero one)
 
-  let sub t1 t2 = add t1 (scale t2 neg_one)
+  let sub t1 t2 =
+    match (t1, t2) with
+    | Constant x, Constant y ->
+        Constant (Field.sub x y)
+    | _ ->
+        add t1 (scale t2 neg_one)
 
   let linear_combination (terms : (Field.t * t) list) : t =
     List.fold terms ~init:(constant Field.zero) ~f:(fun acc (c, t) ->
