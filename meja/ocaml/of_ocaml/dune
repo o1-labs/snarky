@@ -1,7 +1,6 @@
 (library
- (name of_ocaml)
- (public_name meja.of_ocaml)
- (libraries core_kernel meja.lib ocaml-compiler-libs.common)
+ (name meja_of_ocaml)
+ (libraries core_kernel meja_lib ocaml-compiler-libs.common)
  (modules of_ocaml))
 
 ; Use the file corresponding to the current OCaml version when building.

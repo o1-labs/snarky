@@ -354,7 +354,7 @@ let rec of_statement_desc ?loc = function
   | Pstmt_modtype (name, msig) ->
       Str.modtype ?loc (Mtd.mk ?loc ?typ:(of_module_sig msig) name)
   | Pstmt_open name ->
-      Str.open_ ?loc (Opn.mk ?loc (Of_ocaml.open_of_name name))
+      Str.open_ ?loc (Opn.mk ?loc (Meja_of_ocaml.open_of_name name))
   | Pstmt_open_instance _ ->
       Str.eval ?loc
         (Exp.construct ?loc (Location.mknoloc (Longident.Lident "()")) None)

@@ -1,4 +1,4 @@
-open Compiler_internals
+open Meja_compiler_internals
 open Core_kernel
 open Ast_types
 open Parsetypes

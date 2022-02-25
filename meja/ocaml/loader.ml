@@ -5,7 +5,7 @@ open Meja_lib
 let load ~loc ~name:_ resolve_env filename =
   (*Format.(fprintf err_formatter "Loading %s from %s...@." name filename) ;*)
   let cmi_info = read_cmi filename in
-  let signature = Of_ocaml.to_signature cmi_info.cmi_sign in
+  let signature = Meja_of_ocaml.to_signature cmi_info.cmi_sign in
   let env = {Initial_env.env with resolve_env} in
   let env = Envi.open_module env in
   let env, _ = Typechecker.check_signature env signature in

@@ -1,4 +1,4 @@
-open Compiler_internals
+open Meja_compiler_internals
 
 type error =
   | Fun_no_fat_arrow
