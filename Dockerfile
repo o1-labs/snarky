@@ -1,4 +1,4 @@
-FROM ocaml/opam2:debian-9-ocaml-4.07
+FROM ocaml/opam:debian-ocaml-4.11
 
 # dependencies
 RUN sudo apt update
