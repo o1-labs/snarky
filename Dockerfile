@@ -3,17 +3,15 @@ FROM ocaml/opam:debian-ocaml-4.11
 # dependencies
 RUN sudo apt update
 RUN sudo apt install -y \
-    build-essential=12.3 \
-    pkg-config=0.29-4+b1 \
-    git=1:2.11.0-3+deb9u4 \
-    libboost-dev=1.62.0.1 \
-    libboost-program-options-dev=1.62.0.1 \
-    libffi-dev=3.2.1-6 \
-    libgmp-dev=2:6.1.2+dfsg-1+deb9u1 \
-    libgmp3-dev=2:6.1.2+dfsg-1+deb9u1 \
-    libprocps-dev=2:3.3.12-3+deb9u1 \
+    build-essential \
+    pkg-config \
+    git \
+    libffi-dev \
+    libgmp-dev \
+    libgmp3-dev \
+    libprocps-dev \
     libssl-dev \
-    m4=1.4.18-1 
+    m4
 
 
 # Create a volume we can work in. For initial build, 
