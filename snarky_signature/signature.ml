@@ -118,7 +118,7 @@ module Make0 (Inputs : Inputs_intf) = struct
   (* TODO: We can just take the first 256 bits of the challenge *)
   let challenge ~public_key ~r message =
     let x, y = Group.to_affine_exn public_key in
-    Scalar.of_field (Hash.hash (Array.append [|x; y; r|] message))
+    Scalar.of_field (Hash.hash (Array.append [| x; y; r |] message))
 
   let check ((r, s) : Signature.t) (public_key : Public_key.t) (m : message) =
     let e = challenge m ~public_key ~r in
@@ -138,7 +138,7 @@ struct
 
   let derive message ~public_key ~private_key =
     let x, y = Group.to_affine_exn public_key in
-    Hash.hash (Array.append [|x; y; Scalar.to_field private_key|] message)
+    Hash.hash (Array.append [| x; y; Scalar.to_field private_key |] message)
 
   let sign (d_prime : Private_key.t) m =
     let public_key =
@@ -148,7 +148,7 @@ struct
     let d = d_prime in
     let k_prime = Scalar.of_field (derive m ~public_key ~private_key:d) in
     (* This assertion happens with negligible probability
-    assert (not Group.Scalar.(equal k_prime zero)) ; *)
+       assert (not Group.Scalar.(equal k_prime zero)) ; *)
     let r, ry = Group.(to_affine_exn (scale one k_prime)) in
     let k = if Field.is_even ry then k_prime else Scalar.negate k_prime in
     let e = challenge m ~public_key ~r in

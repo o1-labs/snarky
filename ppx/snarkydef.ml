@@ -23,25 +23,26 @@ let with_label ~local ~loc exprs =
   Exp.apply ~loc with_label_expr exprs
 
 let with_label_one ~local ~loc ~path:_ expr =
-  with_label ~local ~loc [(Nolabel, located_label_expr expr)]
+  with_label ~local ~loc [ (Nolabel, located_label_expr expr) ]
 
 let rec snarkydef_inject ~local ~loc ~name expr =
   match expr.pexp_desc with
   | Pexp_fun (lbl, default, pat, body) ->
       { expr with
-        pexp_desc=
+        pexp_desc =
           Pexp_fun (lbl, default, pat, snarkydef_inject ~local ~loc ~name body)
       }
   | Pexp_newtype (typname, body) ->
       { expr with
-        pexp_desc=
-          Pexp_newtype (typname, snarkydef_inject ~local ~loc ~name body) }
+        pexp_desc =
+          Pexp_newtype (typname, snarkydef_inject ~local ~loc ~name body)
+      }
   | Pexp_function _ ->
       Location.raise_errorf ~loc:expr.pexp_loc
         "%%snarkydef currently doesn't support 'function'"
   | _ ->
       with_label ~local ~loc
-        [(Nolabel, located_label_string ~loc name); (Nolabel, expr)]
+        [ (Nolabel, located_label_string ~loc name); (Nolabel, expr) ]
 
 let snarkydef ~local ~loc ~path:_ name expr =
   [%stri
@@ -68,4 +69,5 @@ let main () =
       [ Context_free.Rule.extension (with_label_ext ~local:false "with_label")
       ; Context_free.Rule.extension (with_label_ext ~local:true "with_label_")
       ; Context_free.Rule.extension (snarkydef_ext ~local:false "snarkydef")
-      ; Context_free.Rule.extension (snarkydef_ext ~local:true "snarkydef_") ]
+      ; Context_free.Rule.extension (snarkydef_ext ~local:true "snarkydef_")
+      ]

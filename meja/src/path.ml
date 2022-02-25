@@ -71,7 +71,7 @@ let pdot (root_path : t) (path : t) =
       | None ->
           Pdot (path, mode, name)
       | Some ocaml_name ->
-          Pocamldot (path, mode, name, ocaml_name) )
+          Pocamldot (path, mode, name, ocaml_name))
 
 (** Create a path from a list of [Ident.t]s. *)
 let of_idents idents =
@@ -85,12 +85,12 @@ let of_idents idents =
 let rec add_outer_module name path =
   match path with
   | Pident name2 -> (
-    match Ident.ocaml_name_ref name2 with
-    | None ->
-        Pdot (Pident name, Ident.mode name2, Ident.name name2)
-    | Some ocaml_name ->
-        Pocamldot (Pident name, Ident.mode name2, Ident.name name2, ocaml_name)
-    )
+      match Ident.ocaml_name_ref name2 with
+      | None ->
+          Pdot (Pident name, Ident.mode name2, Ident.name name2)
+      | Some ocaml_name ->
+          Pocamldot (Pident name, Ident.mode name2, Ident.name name2, ocaml_name)
+      )
   | Pdot (path, mode, name2) ->
       Pdot (add_outer_module name path, mode, name2)
   | Pocamldot (path, mode, name2, ocaml_name) ->

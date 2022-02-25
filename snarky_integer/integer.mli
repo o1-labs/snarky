@@ -138,4 +138,4 @@ val subtract_unpacking : m:'f m -> 'f t -> 'f t -> 'f t
     NOTE: This uses approximately [log2(x)] constraints.
 *)
 val subtract_unpacking_or_zero :
-  m:'f m -> 'f t -> 'f t -> [`Underflow of 'f Cvar.t Boolean.t] * 'f t
+  m:'f m -> 'f t -> 'f t -> [ `Underflow of 'f Cvar.t Boolean.t ] * 'f t

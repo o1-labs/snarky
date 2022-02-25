@@ -29,7 +29,9 @@ let type_id = ref 0
 
 let row_id = ref 0
 
-let mk_rp rp_desc = incr row_id ; {rp_desc; rp_id= !row_id}
+let mk_rp rp_desc =
+  incr row_id ;
+  { rp_desc; rp_id = !row_id }
 
 (** The representative of a type. This unfolds any [Tref] values that are
     present to get to the true underlying type.
@@ -41,7 +43,7 @@ let rec rp_repr pres =
 
 let rec rp_strip_subtract pres =
   match rp_repr pres with
-  | {rp_desc= RpSubtract pres; _} ->
+  | { rp_desc = RpSubtract pres; _ } ->
       rp_strip_subtract pres
   | pres ->
       pres
@@ -49,12 +51,13 @@ let rec rp_strip_subtract pres =
 let set_rp_desc_fwd = ref (fun _ _ -> assert false)
 
 let rec row_repr_aux tags
-    {row_tags; row_rest; row_closed; row_presence_proxy= _} =
+    { row_tags; row_rest; row_closed; row_presence_proxy = _ } =
   let tags =
     Map.merge_skewed tags row_tags
-      ~combine:(fun ~key:_
-               (old_path, old_pres, old_args)
-               (new_path, new_pres, new_args)
+      ~combine:(fun
+                 ~key:_
+                 (old_path, old_pres, old_args)
+                 (new_path, new_pres, new_args)
                ->
         let old_pres = rp_repr old_pres in
         let new_pres = rp_repr new_pres in
@@ -75,7 +78,7 @@ let rec row_repr_aux tags
         | RpAny ->
             subst_any old_pres
         | _ ->
-            (old_path, old_pres, old_args) )
+            (old_path, old_pres, old_args))
   in
   row_repr_typ_aux (tags, row_closed) row_rest
 
@@ -101,19 +104,21 @@ let row_repr_typ typ =
 
 (** An invalid [type_expr] in checked mode. *)
 let rec checked_none =
-  { type_desc= Tvar None
-  ; type_id= -1
-  ; type_depth= 0
-  ; type_mode= Checked
-  ; type_alternate= prover_none }
+  { type_desc = Tvar None
+  ; type_id = -1
+  ; type_depth = 0
+  ; type_mode = Checked
+  ; type_alternate = prover_none
+  }
 
 (** An invalid [type_expr] in prover mode. *)
 and prover_none =
-  { type_desc= Tvar None
-  ; type_id= -2
-  ; type_depth= 0
-  ; type_mode= Prover
-  ; type_alternate= checked_none }
+  { type_desc = Tvar None
+  ; type_id = -2
+  ; type_depth = 0
+  ; type_mode = Prover
+  ; type_alternate = checked_none
+  }
 
 (** Chose an invalid [type_expr] based on the given mode. *)
 let none = function Checked -> checked_none | Prover -> prover_none
@@ -124,28 +129,32 @@ let none = function Checked -> checked_none | Prover -> prover_none
 *)
 let other_none = function Checked -> prover_none | Prover -> checked_none
 
-let type_alternate {type_alternate= typ; _} = typ
+let type_alternate { type_alternate = typ; _ } = typ
 
-let row_alternate {row_tags; row_closed; row_rest; row_presence_proxy} =
+let row_alternate { row_tags; row_closed; row_rest; row_presence_proxy } =
   let row_tags =
     Map.map row_tags ~f:(fun (path, pres, args) ->
-        (path, pres, List.map ~f:type_alternate args) )
+        (path, pres, List.map ~f:type_alternate args))
   in
-  {row_tags; row_closed; row_rest= row_rest.type_alternate; row_presence_proxy}
+  { row_tags
+  ; row_closed
+  ; row_rest = row_rest.type_alternate
+  ; row_presence_proxy
+  }
 
-let is_poly = function {type_desc= Tpoly _; _} -> true | _ -> false
+let is_poly = function { type_desc = Tpoly _; _ } -> true | _ -> false
 
 (** Returns [true] if the [type_expr] argument is valid, false otherwise.
    Can be used to check that a type-stitching has been created or modified
    correctly.
 *)
-let is_valid {type_id; _} = type_id > 0
+let is_valid { type_id; _ } = type_id > 0
 
 (** Equivalent to [not (is_valid typ)]. *)
-let is_invalid {type_id; _} = type_id <= 0
+let is_invalid { type_id; _ } = type_id <= 0
 
 (** Judge equality based on type id. *)
-let equal {type_id= id1; _} {type_id= id2; _} = Int.equal id1 id2
+let equal { type_id = id1; _ } { type_id = id2; _ } = Int.equal id1 id2
 
 let check_valid ~pos ~error_info typ =
   if is_invalid typ then
@@ -168,10 +177,11 @@ let mk' ~mode depth type_desc =
   incr type_id ;
   Option.iter failure_type_id ~f:(fun id -> assert (!type_id <> id)) ;
   { type_desc
-  ; type_id= !type_id
-  ; type_depth= depth
-  ; type_mode= mode
-  ; type_alternate= other_none mode }
+  ; type_id = !type_id
+  ; type_depth = depth
+  ; type_mode = mode
+  ; type_alternate = other_none mode
+  }
 
 (** [stitch typ typ'] sets [typ] and [typ'] as eachothers [type_alternate]s.
     Returns the first argument [typ].
@@ -271,27 +281,27 @@ module Mk = struct
           assert (not (is_poly typ)) ;
           check_valid ~pos:__POS__ ~error_info typ ;
           check_valid ~pos:__POS__ ~error_info alt ;
-          phys_equal typ alt )
+          phys_equal typ alt)
     then stitch ~mode depth (Ttuple typs) (Ttuple alts)
     else
       (* One or more types is tri-stitched, so tri-stitch here too. *)
       tri_stitch ~mode depth (Ttuple typs) (Ttuple alts) (Ttuple alt_alts)
 
   let arrow ~mode ?(explicit = Explicit) ?(label = Nolabel) depth typ1 typ2 =
-    let error_info () = ("arrow", [typ1; typ2]) in
+    let error_info () = ("arrow", [ typ1; typ2 ]) in
     let alt1 = type_alternate typ1 in
     let alt2 = type_alternate typ2 in
     let alt_alt1 = type_alternate alt1 in
     let alt_alt2 = type_alternate alt2 in
     if
-      List.for_all2_exn [typ1; typ2] [alt_alt1; alt_alt2] ~f:(fun typ alt ->
+      List.for_all2_exn [ typ1; typ2 ] [ alt_alt1; alt_alt2 ] ~f:(fun typ alt ->
           (* Sanity check. *)
           check_mode ~pos:__POS__ ~error_info mode typ ;
           check_mode ~pos:__POS__ ~error_info mode alt ;
           check_valid ~pos:__POS__ ~error_info typ ;
           check_valid ~pos:__POS__ ~error_info alt ;
           assert (not (is_poly typ)) ;
-          phys_equal typ alt )
+          phys_equal typ alt)
     then
       stitch ~mode depth
         (Tarrow (typ1, typ2, explicit, label))
@@ -323,19 +333,19 @@ module Mk = struct
           check_valid ~pos:__POS__ ~error_info typ ;
           check_valid ~pos:__POS__ ~error_info alt ;
           assert (not (is_poly typ)) ;
-          phys_equal typ alt )
+          phys_equal typ alt)
       && Option.is_none tri_path
     then
       stitch ~mode depth
-        (Tctor {var_ident= path; var_params= params})
-        (Tctor {var_ident= other_path; var_params= alts})
+        (Tctor { var_ident = path; var_params = params })
+        (Tctor { var_ident = other_path; var_params = alts })
     else
       (* There is a distinguished third type, so tri-stitch. *)
       let tri_path = Option.value ~default:path tri_path in
       tri_stitch ~mode depth
-        (Tctor {var_ident= path; var_params= params})
-        (Tctor {var_ident= other_path; var_params= alts})
-        (Tctor {var_ident= tri_path; var_params= alt_alts})
+        (Tctor { var_ident = path; var_params = params })
+        (Tctor { var_ident = other_path; var_params = alts })
+        (Tctor { var_ident = tri_path; var_params = alt_alts })
 
   (* NOTE: The types in [vars] are not modified in their alternates, to ensure
      that tri-stitchings are preserved, especially for conversions.
@@ -390,7 +400,7 @@ module Mk = struct
                  ()
              | _ ->
                  assert false ) ;
-             phys_equal typ alt )
+             phys_equal typ alt)
          && phys_equal typ alt_alt
     then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (vars, alt))
     else
@@ -401,7 +411,7 @@ module Mk = struct
         (Tpoly (vars, alt_alt))
 
   let conv ~mode depth typ1 typ2 =
-    let error_info () = ("conv", [typ1; typ2]) in
+    let error_info () = ("conv", [ typ1; typ2 ]) in
     check_valid ~pos:__POS__ ~error_info typ1 ;
     check_valid ~pos:__POS__ ~error_info typ2 ;
     assert (not (is_poly typ1)) ;
@@ -418,7 +428,7 @@ module Mk = struct
     get_mode mode typ
 
   let opaque ~mode depth typ =
-    let error_info () = ("opaque", [typ]) in
+    let error_info () = ("opaque", [ typ ]) in
     check_valid ~pos:__POS__ ~error_info typ ;
     check_valid ~pos:__POS__ ~error_info typ.type_alternate.type_alternate ;
     assert (not (is_poly typ)) ;
@@ -426,7 +436,7 @@ module Mk = struct
     stitch ~mode depth (Topaque typ) (Topaque typ)
 
   let other_mode ~mode depth typ =
-    let error_info () = ("other_mode", [typ]) in
+    let error_info () = ("other_mode", [ typ ]) in
     check_valid ~pos:__POS__ ~error_info typ ;
     check_valid ~pos:__POS__ ~error_info typ.type_alternate.type_alternate ;
     assert (not (is_poly typ)) ;
@@ -452,9 +462,10 @@ module Mk = struct
     in
     row ~mode depth
       { row_tags
-      ; row_closed= Open
+      ; row_closed = Open
       ; row_rest
-      ; row_presence_proxy= mk_rp RpPresent }
+      ; row_presence_proxy = mk_rp RpPresent
+      }
 end
 
 type change =
@@ -652,10 +663,10 @@ let fold ~init ~f typ =
       f init typ
   | Treplace _ ->
       assert false
-  | Trow {row_tags; row_closed= _; row_rest; row_presence_proxy= _} ->
+  | Trow { row_tags; row_closed = _; row_rest; row_presence_proxy = _ } ->
       let acc =
         Map.fold row_tags ~init ~f:(fun ~key:_ ~data:(_, _, args) init ->
-            List.fold ~f ~init args )
+            List.fold ~f ~init args)
       in
       f acc row_rest
 
@@ -671,8 +682,8 @@ let rec copy_desc ~f = function
       Ttuple (List.map ~f typs)
   | Tarrow (typ1, typ2, explicitness, label) ->
       Tarrow (f typ1, f typ2, explicitness, label)
-  | Tctor ({var_params; _} as variant) ->
-      Tctor {variant with var_params= List.map ~f var_params}
+  | Tctor ({ var_params; _ } as variant) ->
+      Tctor { variant with var_params = List.map ~f var_params }
   | Tpoly (typs, typ) ->
       Tpoly (List.map ~f typs, f typ)
   | Tref typ ->
@@ -701,29 +712,29 @@ let rec equal_at_depth ~get_decl ~depth typ1 typ2 =
     | _, Tvar _ when typ2.type_depth > depth ->
         true
     | Ttuple typs1, Ttuple typs2 -> (
-      match List.for_all2 typs1 typs2 ~f:equal_at_depth with
-      | Ok b ->
-          b
-      | Unequal_lengths ->
-          false )
+        match List.for_all2 typs1 typs2 ~f:equal_at_depth with
+        | Ok b ->
+            b
+        | Unequal_lengths ->
+            false )
     | ( Tarrow (typ1a, typ1b, explicitness1, label1)
       , Tarrow (typ2a, typ2b, explicitness2, label2) ) ->
         equal_explicitness explicitness1 explicitness2
         && equal_arg_label label1 label2
         && equal_at_depth typ1a typ2a && equal_at_depth typ1b typ2b
-    | ( Tctor ({var_ident= path1; _} as variant1)
-      , Tctor ({var_ident= path2; _} as variant2) ) ->
+    | ( Tctor ({ var_ident = path1; _ } as variant1)
+      , Tctor ({ var_ident = path2; _ } as variant2) ) ->
         let decl1 = get_decl path1 in
         let decl2 = get_decl path2 in
         Int.equal decl1.tdec_id decl2.tdec_id
         && List.for_all2_exn ~f:equal_at_depth variant1.var_params
              variant2.var_params
     | Tpoly (typs1, typ1), Tpoly (typs2, typ2) -> (
-      match List.for_all2 typs1 typs2 ~f:equal_at_depth with
-      | Ok true ->
-          equal_at_depth typ1 typ2
-      | _ ->
-          false )
+        match List.for_all2 typs1 typs2 ~f:equal_at_depth with
+        | Ok true ->
+            equal_at_depth typ1 typ2
+        | _ ->
+            false )
     | _, _ ->
         false
 
@@ -768,7 +779,7 @@ let backtrack_replace =
     | Replace _ | Row_replace _ ->
         true
     | _ ->
-        false )
+        false)
 
 (** [set_repr typ typ'] sets the representative of [typ] to be [typ']. *)
 let set_repr typ typ' =
@@ -825,14 +836,14 @@ let add_instance ~unify typ typ' =
       choose_variable_name typ.type_alternate.type_alternate
         typ'.type_alternate.type_alternate ;
       (* Chose again in case [typ.type_alternate.type_alternate] found a new name
-       that could be propagated back to [typ].
-    *)
+         that could be propagated back to [typ].
+      *)
       choose_variable_name typ typ' ;
       set_repr typ typ'
   | _ ->
       (* Variable is tri-stitched to stitched type variables which have been
-       instantiated.
-    *)
+         instantiated.
+      *)
       assert (equal_mode Checked typ.type_mode) ;
       set_desc typ (Tref typ') ;
       unify typ.type_alternate typ'.type_alternate ;
@@ -863,37 +874,37 @@ let flatten typ =
         (* Don't flatten rows! *)
         typ
     | desc -> (
-      match typ.type_alternate.type_desc with
-      | Treplace alt ->
-          (* Tri-stitching, where the stitched part has already been
-               flattened.
+        match typ.type_alternate.type_desc with
+        | Treplace alt ->
+            (* Tri-stitching, where the stitched part has already been
+                 flattened.
             *)
-          assert (not (phys_equal typ typ.type_alternate.type_alternate)) ;
-          assert (equal_mode typ.type_mode Checked) ;
-          let typ' = mk' ~mode:typ.type_mode typ.type_depth (Tvar None) in
-          typ'.type_alternate <- alt ;
-          unsafe_set_single_replacement typ typ' ;
-          typ'.type_desc <- copy_desc ~f:flatten desc ;
-          typ'
-      | Tvar _ ->
-          (* If the tri-stitched type isn't a type variable, this should also
-             have been instantiated.
-          *)
-          assert false
-      | _ ->
-          let alt_desc = typ.type_alternate.type_desc in
-          let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
-          let typ' = mkvar ~mode:typ.type_mode typ.type_depth None in
-          let stitched = phys_equal typ typ.type_alternate.type_alternate in
-          if stitched then typ'.type_alternate.type_alternate <- typ' ;
-          set_replacement typ typ' ;
-          typ'.type_desc <- copy_desc ~f:flatten desc ;
-          typ'.type_alternate.type_desc <- copy_desc ~f:flatten alt_desc ;
-          if not stitched then
-            (* tri-stitched *)
-            typ'.type_alternate.type_alternate.type_desc
-            <- copy_desc ~f:flatten alt_alt_desc ;
-          typ' )
+            assert (not (phys_equal typ typ.type_alternate.type_alternate)) ;
+            assert (equal_mode typ.type_mode Checked) ;
+            let typ' = mk' ~mode:typ.type_mode typ.type_depth (Tvar None) in
+            typ'.type_alternate <- alt ;
+            unsafe_set_single_replacement typ typ' ;
+            typ'.type_desc <- copy_desc ~f:flatten desc ;
+            typ'
+        | Tvar _ ->
+            (* If the tri-stitched type isn't a type variable, this should also
+               have been instantiated.
+            *)
+            assert false
+        | _ ->
+            let alt_desc = typ.type_alternate.type_desc in
+            let alt_alt_desc = typ.type_alternate.type_alternate.type_desc in
+            let typ' = mkvar ~mode:typ.type_mode typ.type_depth None in
+            let stitched = phys_equal typ typ.type_alternate.type_alternate in
+            if stitched then typ'.type_alternate.type_alternate <- typ' ;
+            set_replacement typ typ' ;
+            typ'.type_desc <- copy_desc ~f:flatten desc ;
+            typ'.type_alternate.type_desc <- copy_desc ~f:flatten alt_desc ;
+            if not stitched then
+              (* tri-stitched *)
+              typ'.type_alternate.type_alternate.type_desc <-
+                copy_desc ~f:flatten alt_alt_desc ;
+            typ' )
   in
   let snap = Snapshot.create () in
   let typ = flatten typ in
@@ -924,7 +935,7 @@ let mk_option : (Type0.type_expr -> Type0.type_expr) ref =
   ref (fun _ -> failwith "mk_option not initialised")
 
 let rec bubble_label_aux label typ =
-  let {type_depth; type_mode= mode; _} = typ in
+  let { type_depth; type_mode = mode; _ } = typ in
   match (repr typ).type_desc with
   | Tarrow (typ1, typ2, explicit, arr_label)
     when Int.equal (compare_arg_label label arr_label) 0 ->
@@ -937,16 +948,17 @@ let rec bubble_label_aux label typ =
              false ->
       (Some (!mk_option typ1, explicit, arr_label), typ2)
   | Tarrow (typ1, typ2, explicit, arr_label) -> (
-    match bubble_label_aux label typ2 with
-    | None, _ ->
-        (None, typ)
-    | res, typ2 ->
-        (res, Mk.arrow ~mode ~explicit ~label:arr_label type_depth typ1 typ2) )
+      match bubble_label_aux label typ2 with
+      | None, _ ->
+          (None, typ)
+      | res, typ2 ->
+          (res, Mk.arrow ~mode ~explicit ~label:arr_label type_depth typ1 typ2)
+      )
   | _ ->
       (None, typ)
 
 let bubble_label label typ =
-  let {type_depth; type_mode= mode; _} = typ in
+  let { type_depth; type_mode = mode; _ } = typ in
   match bubble_label_aux label typ with
   | Some (typ1, explicit, label), typ2 ->
       Mk.arrow ~mode ~explicit ~label type_depth typ1 typ2
@@ -968,7 +980,7 @@ let discard_optional_labels typ =
 
 let is_arrow typ =
   match (repr typ).type_desc with
-  | Tarrow _ | Tpoly (_, {type_desc= Tarrow _; _}) ->
+  | Tarrow _ | Tpoly (_, { type_desc = Tarrow _; _ }) ->
       true
   | _ ->
       false
@@ -1038,11 +1050,11 @@ let contains typ ~in_ =
         assert false
     | Treplace _ ->
         assert false
-    | Trow {row_tags; row_closed= _; row_rest; row_presence_proxy= _} ->
+    | Trow { row_tags; row_closed = _; row_rest; row_presence_proxy = _ } ->
         Map.exists row_tags ~f:(fun (_, _, args) -> List.exists ~f:equal args)
         || equal row_rest
         || Map.exists row_tags ~f:(fun (_, _, args) ->
-               List.exists ~f:contains args )
+               List.exists ~f:contains args)
         || contains row_rest
   in
   contains in_
@@ -1057,13 +1069,13 @@ let rec get_same_mode typ1 typ2 =
   let typ2 = repr typ2 in
   match (typ1.type_desc, typ2.type_desc) with
   | Tother_mode typ1', Tother_mode typ2' -> (
-    match (typ1.type_mode, typ2.type_mode) with
-    | Checked, Checked | Prover, Prover ->
-        get_same_mode typ1' typ2'
-    | Checked, Prover ->
-        get_same_mode typ1 typ2'
-    | Prover, Checked ->
-        get_same_mode typ1' typ2 )
+      match (typ1.type_mode, typ2.type_mode) with
+      | Checked, Checked | Prover, Prover ->
+          get_same_mode typ1' typ2'
+      | Checked, Prover ->
+          get_same_mode typ1 typ2'
+      | Prover, Checked ->
+          get_same_mode typ1' typ2 )
   | Tother_mode typ1, _ when equal_mode typ1.type_mode typ2.type_mode ->
       (repr typ1, typ2)
   | _, Tother_mode typ2 when equal_mode typ1.type_mode typ2.type_mode ->
@@ -1095,7 +1107,7 @@ module Decl = struct
     let tdec_ret =
       Mk.ctor ~mode:(Ident.mode name) 10000 (Path.Pident name) params
     in
-    {tdec_params= params; tdec_desc= desc; tdec_id= !decl_id; tdec_ret}
+    { tdec_params = params; tdec_desc = desc; tdec_id = !decl_id; tdec_ret }
 end
 
 open Format
@@ -1103,16 +1115,16 @@ open Format
 let report_error ppf = function
   | Mk_wrong_mode (kind, typs, mode, typ) ->
       fprintf ppf
-        "@[<hov>Internal error: Could not make a type %s from \
-         types@;@[<hov2>%a@]@;The type %a was expected to have mode %a.@]"
-        kind
+        "@[<hov>Internal error: Could not make a type %s from types@;\
+         @[<hov2>%a@]@;\
+         The type %a was expected to have mode %a.@]" kind
         (pp_print_list ~pp_sep:pp_print_newline Debug_print.type_expr)
         typs Debug_print.type_expr typ pp_mode mode
   | Mk_invalid (kind, typs, typ) ->
       fprintf ppf
-        "@[<hov>Internal error: Could not make a type %s from \
-         types@;@[<hov2>%a@]@;The type %a was invalid.@]"
-        kind
+        "@[<hov>Internal error: Could not make a type %s from types@;\
+         @[<hov2>%a@]@;\
+         The type %a was invalid.@]" kind
         (pp_print_list ~pp_sep:pp_print_newline Debug_print.type_expr_alts)
         typs Debug_print.type_expr_alts typ
 
@@ -1121,4 +1133,4 @@ let () =
     | Error (loc, err) ->
         Some (Location.error_of_printer loc report_error err)
     | _ ->
-        None )
+        None)

@@ -10,8 +10,7 @@ module type S = sig
   val foldi :
     'a t -> init:'b -> f:(int -> 'b -> 'a -> ('b, 's) monad) -> ('b, 's) monad
 
-  val fold :
-    'a t -> init:'b -> f:('b -> 'a -> ('b, 's) monad) -> ('b, 's) monad
+  val fold : 'a t -> init:'b -> f:('b -> 'a -> ('b, 's) monad) -> ('b, 's) monad
 
   val fold_map :
        'a t
@@ -46,16 +45,16 @@ end
 
 module List
     (M : Monad_let.S2) (Bool : sig
-        type t
+      type t
 
-        val any : t list -> (t, _) M.t
+      val any : t list -> (t, _) M.t
 
-        val all : t list -> (t, _) M.t
+      val all : t list -> (t, _) M.t
     end) :
   S
-  with type 'a t = 'a list
-   and type ('a, 's) monad := ('a, 's) M.t
-   and type boolean := Bool.t = struct
+    with type 'a t = 'a list
+     and type ('a, 's) monad := ('a, 's) M.t
+     and type boolean := Bool.t = struct
   type 'a t = 'a list
 
   open M.Let_syntax
@@ -76,7 +75,7 @@ module List
     let%map res, ys =
       fold xs ~init:(init, []) ~f:(fun (acc, ys) x ->
           let%map acc, y = f acc x in
-          (acc, y :: ys) )
+          (acc, y :: ys))
     in
     (res, List.rev ys)
 
@@ -136,16 +135,16 @@ end
 
 module Array
     (M : Monad_let.S2) (Bool : sig
-        type t
+      type t
 
-        val any : t array -> (t, _) M.t
+      val any : t array -> (t, _) M.t
 
-        val all : t array -> (t, _) M.t
+      val all : t array -> (t, _) M.t
     end) :
   S
-  with type 'a t = 'a array
-   and type ('a, 's) monad := ('a, 's) M.t
-   and type boolean := Bool.t = struct
+    with type 'a t = 'a array
+     and type ('a, 's) monad := ('a, 's) M.t
+     and type boolean := Bool.t = struct
   type 'a t = 'a array
 
   open M.Let_syntax
@@ -153,12 +152,12 @@ module Array
   let foldi t ~init ~f =
     Array.foldi t ~init:(M.return init) ~f:(fun i acc x ->
         let%bind acc = acc in
-        f i acc x )
+        f i acc x)
 
   let fold t ~init ~f =
     Array.fold t ~init:(M.return init) ~f:(fun acc x ->
         let%bind acc = acc in
-        f acc x )
+        f acc x)
 
   let iteri t ~f = foldi t ~init:() ~f:(fun i () x -> f i x)
 
@@ -179,8 +178,7 @@ module Array
       let arr = Array.create ~len:n last in
       go arr (n - 2)
 
-  let mapi t ~f =
-    init (Array.length t) ~f:(fun i -> f i (Array.unsafe_get t i))
+  let mapi t ~f = init (Array.length t) ~f:(fun i -> f i (Array.unsafe_get t i))
 
   let map t ~f = mapi t ~f:(fun _i x -> f x)
 
@@ -190,7 +188,7 @@ module Array
       map t ~f:(fun x ->
           let%map acc, y = f !res x in
           res := acc ;
-          y )
+          y)
     in
     (!res, t)
 

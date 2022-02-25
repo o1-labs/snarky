@@ -6,12 +6,12 @@ module Loc = struct
   let mk ?(loc = Location.none) (x : 'a) : 'a Location.loc =
     Location.mkloc x loc
 
-  let map x ~f = {Location.loc= x.Location.loc; txt= f x.Location.txt}
+  let map x ~f = { Location.loc = x.Location.loc; txt = f x.Location.txt }
 
   let of_prim = Ast_types.loc_of_prim
 
   let of_pos (loc_start, loc_end) =
-    {Location.loc_start; loc_end; loc_ghost= false}
+    { Location.loc_start; loc_end; loc_ghost = false }
 end
 
 module Lid = struct
@@ -34,10 +34,10 @@ end
 
 module Type = struct
   let mk ?(loc = Location.none) d : Parsetypes.type_expr =
-    {type_desc= d; type_loc= loc}
+    { type_desc = d; type_loc = loc }
 
   let variant ?loc ?(params = []) ident =
-    {var_ident= Loc.mk ident ?loc; var_params= params}
+    { var_ident = Loc.mk ident ?loc; var_params = params }
 
   let none ?loc () = mk ?loc (Ptyp_var None)
 
@@ -65,10 +65,11 @@ end
 
 module Type_decl = struct
   let mk ?(loc = Location.none) ?(params = []) name d : Parsetypes.type_decl =
-    { tdec_ident= Loc.mk ~loc name
-    ; tdec_params= params
-    ; tdec_desc= d
-    ; tdec_loc= loc }
+    { tdec_ident = Loc.mk ~loc name
+    ; tdec_params = params
+    ; tdec_desc = d
+    ; tdec_loc = loc
+    }
 
   let abstract ?loc ?params name = mk ?loc ?params name Pdec_abstract
 
@@ -84,12 +85,16 @@ module Type_decl = struct
 
   module Field = struct
     let mk ?(loc = Location.none) name typ : Parsetypes.field_decl =
-      {fld_ident= Loc.mk ~loc name; fld_type= typ; fld_loc= loc}
+      { fld_ident = Loc.mk ~loc name; fld_type = typ; fld_loc = loc }
   end
 
   module Ctor = struct
     let mk ?(loc = Location.none) ?ret name d : Parsetypes.ctor_decl =
-      {ctor_ident= Loc.mk ~loc name; ctor_args= d; ctor_ret= ret; ctor_loc= loc}
+      { ctor_ident = Loc.mk ~loc name
+      ; ctor_args = d
+      ; ctor_ret = ret
+      ; ctor_loc = loc
+      }
 
     let with_args ?loc ?ret name args = mk ?loc ?ret name (Ctor_tuple args)
 
@@ -100,7 +105,7 @@ end
 
 module Pat = struct
   let mk ?(loc = Location.none) d : Parsetypes.pattern =
-    {pat_desc= d; pat_loc= loc}
+    { pat_desc = d; pat_loc = loc }
 
   let any ?loc () = mk ?loc Ppat_any
 
@@ -111,15 +116,13 @@ module Pat = struct
   let record ?loc fields = mk ?loc (Ppat_record fields)
 
   let field ?loc ?eq name =
-    let eq =
-      match eq with Some eq -> eq | None -> var ?loc (Lid.last name)
-    in
+    let eq = match eq with Some eq -> eq | None -> var ?loc (Lid.last name) in
     (Loc.mk ?loc name, eq)
 end
 
 module Exp = struct
   let mk ?(loc = Location.none) d : Parsetypes.expression =
-    {exp_desc= d; exp_loc= loc}
+    { exp_desc = d; exp_loc = loc }
 
   let fun_ ?loc ?(explicit = Explicit) ?(label = Asttypes.Nolabel) p body =
     mk ?loc (Pexp_fun (label, p, body, explicit))

@@ -20,7 +20,7 @@ let () =
             (Printf.sprintf
                "Snarky.Checked_runner.Runtime_error(_, _, _, _)\n\n%s" message)
       | _ ->
-          None )
+          None)
 
 let eval_constraints = ref true
 
@@ -67,7 +67,7 @@ struct
       `Custom
         (fun x ~f s ->
           let s, a = x s in
-          (s, f a) )
+          (s, f a))
 
     let bind x ~f s =
       let s, a = x s in
@@ -79,20 +79,20 @@ struct
   open Run_state
   open Checked
 
-  let get_value {num_inputs; input; aux; _} : Cvar.t -> Field.t =
+  let get_value { num_inputs; input; aux; _ } : Cvar.t -> Field.t =
     let get_one i =
       if i <= num_inputs then Run_state.Vector.get input (i - 1)
       else Run_state.Vector.get aux (i - num_inputs - 1)
     in
     Cvar.eval (`Return_values_will_be_mutated get_one)
 
-  let store_field_elt {next_auxiliary; aux; _} x =
+  let store_field_elt { next_auxiliary; aux; _ } x =
     let v = !next_auxiliary in
     incr next_auxiliary ;
     Run_state.Vector.emplace_back aux x ;
     Cvar.Unsafe.of_index v
 
-  let alloc_var {next_auxiliary; _} () =
+  let alloc_var { next_auxiliary; _ } () =
     let v = !next_auxiliary in
     incr next_auxiliary ; Cvar.Unsafe.of_index v
 
@@ -103,7 +103,7 @@ struct
         state.as_prover := true ;
         let s', y = As_prover.run x (get_value state) s in
         state.as_prover := old ;
-        ({state with prover_state= Some s'}, Some y)
+        ({ state with prover_state = Some s' }, Some y)
     | _, _ ->
         (state, None)
 
@@ -115,9 +115,10 @@ struct
     let old_stack = s.stack in
     ( s
     , Lazy.from_fun (fun () ->
-          let {stack; prover_state; _} = s in
+          let { stack; prover_state; _ } = s in
           let prover_state = Option.map prover_state ~f:ignore in
           let s = Run_state.set_prover_state prover_state s in
+
           (* Add a label to indicate that the new stack is the point at which
              this was forced. When printed for errors, this will split the
              stack into
@@ -132,17 +133,17 @@ struct
              ...
           *)
           let label = "\nLazy value forced at:" in
-          let _s', y = x {s with stack= old_stack @ (label :: stack)} in
-          y ) )
+          let _s', y = x { s with stack = old_stack @ (label :: stack) } in
+          y) )
 
   let with_label lab t s =
-    let {stack; _} = s in
-    let s', y = t {s with stack= lab :: stack} in
-    ({s' with stack}, y)
+    let { stack; _ } = s in
+    let s', y = t { s with stack = lab :: stack } in
+    ({ s' with stack }, y)
 
   let log_constraint c s =
     String.concat ~sep:"\n"
-      (List.map c ~f:(fun {basic; _} ->
+      (List.map c ~f:(fun { basic; _ } ->
            match basic with
            | Boolean var ->
                Format.(
@@ -166,17 +167,15 @@ struct
            | _ ->
                Format.asprintf
                  !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
-                 (Constraint0.Basic.map basic ~f:(get_value s)) ))
+                 (Constraint0.Basic.map basic ~f:(get_value s))))
 
   let stack_to_string = String.concat ~sep:"\n"
 
   let add_constraint ~stack (t : Constraint.t)
-      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t)
-      =
-    List.iter t ~f:(fun {basic; annotation} ->
+      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
+    List.iter t ~f:(fun { basic; annotation } ->
         let label = Option.value annotation ~default:"<unknown>" in
-        C.add_constraint system basic ~label:(stack_to_string (label :: stack))
-    )
+        C.add_constraint system basic ~label:(stack_to_string (label :: stack)))
 
   let add_constraint c s =
     if !(s.as_prover) then
@@ -198,7 +197,7 @@ struct
           (log_constraint c s) () ;
       if not !(s.as_prover) then
         Option.iter s.system ~f:(fun system ->
-            add_constraint ~stack:s.stack c system ) ;
+            add_constraint ~stack:s.stack c system) ;
       (s, ()) )
 
   let with_state p and_then t_sub s =
@@ -210,16 +209,16 @@ struct
     (s, y)
 
   let with_handler h t s =
-    let {handler; _} = s in
-    let s', y = t {s with handler= Request.Handler.push handler h} in
-    ({s' with handler}, y)
+    let { handler; _ } = s in
+    let s', y = t { s with handler = Request.Handler.push handler h } in
+    ({ s' with handler }, y)
 
   let clear_handler t s =
-    let {handler; _} = s in
-    let s', y = t {s with handler= Request.Handler.fail} in
-    ({s' with handler}, y)
+    let { handler; _ } = s in
+    let s', y = t { s with handler = Request.Handler.fail } in
+    ({ s' with handler }, y)
 
-  let exists {Types.Typ.store; alloc; check; _} p s =
+  let exists { Types.Typ.store; alloc; check; _ } p s =
     match s.prover_state with
     | Some ps ->
         let old = !(s.as_prover) in
@@ -238,12 +237,12 @@ struct
         in
         (* TODO: Push a label onto the stack here *)
         let s, () = check var (set_prover_state (Some ()) s) in
-        (set_prover_state (Some ps) s, {Handle.var; value= Some value})
+        (set_prover_state (Some ps) s, { Handle.var; value = Some value })
     | None ->
         let var = Typ_monads.Alloc.run alloc (alloc_var s) in
         (* TODO: Push a label onto the stack here *)
         let s, () = check var (set_prover_state None s) in
-        (set_prover_state None s, {Handle.var; value= None})
+        (set_prover_state None s, { Handle.var; value = None })
 
   let next_auxiliary s = (s, !(s.next_auxiliary))
 
@@ -269,18 +268,19 @@ struct
     in
     let state =
       Run_state.
-        { system= None
-        ; input= Vector.null
-        ; aux= Vector.null
-        ; eval_constraints= false
-        ; num_inputs= 0
-        ; next_auxiliary= ref 1
-        ; prover_state= None
-        ; stack= []
-        ; handler= Request.Handler.fail
-        ; is_running= true
-        ; as_prover= ref false
-        ; log_constraint= Some log_constraint }
+        { system = None
+        ; input = Vector.null
+        ; aux = Vector.null
+        ; eval_constraints = false
+        ; num_inputs = 0
+        ; next_auxiliary = ref 1
+        ; prover_state = None
+        ; stack = []
+        ; handler = Request.Handler.fail
+        ; is_running = true
+        ; as_prover = ref false
+        ; log_constraint = Some log_constraint
+        }
     in
     let _ = t state in
     !count
@@ -329,14 +329,14 @@ module Make (Backend : Backend_extended.S) = struct
       sig
         include
           Checked_intf.Basic
-          with module Types := Checked_runner.Types
-          with type 'f field := 'f Checked_runner.field
+            with module Types := Checked_runner.Types
+            with type 'f field := 'f Checked_runner.field
 
         include
           Run_extras
-          with module Types := Checked_runner.Types
-          with type field := Backend.Field.t
-           and type cvar := Backend.Cvar.t
+            with module Types := Checked_runner.Types
+            with type field := Backend.Field.t
+             and type cvar := Backend.Cvar.t
       end )
 
   module Types = Checked.Types
@@ -355,8 +355,7 @@ module Make (Backend : Backend_extended.S) = struct
         raise
           (Runtime_error
              ( Printf.sprintf
-                 "Encountered an error while evaluating the checked \
-                  computation:\n\
+                 "Encountered an error while evaluating the checked computation:\n\
                  \  %s\n\n\
                   Label stack trace:\n\
                   %s\n\n\n\
@@ -368,8 +367,8 @@ module Make (Backend : Backend_extended.S) = struct
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
-  let rec run : type a s.
-      (a, s, Field.t) Checked.t -> s run_state -> s run_state * a =
+  let rec run :
+      type a s. (a, s, Field.t) Checked.t -> s run_state -> s run_state * a =
    fun t s ->
     match t with
     | As_prover (x, k) ->
@@ -435,10 +434,11 @@ module Make (Backend : Backend_extended.S) = struct
         run k s
     | Exists (typ, p, k) ->
         let typ =
-          { Types.Typ.store= typ.store
-          ; read= typ.read
-          ; alloc= typ.alloc
-          ; check= (fun var -> run (typ.check var)) }
+          { Types.Typ.store = typ.store
+          ; read = typ.read
+          ; alloc = typ.alloc
+          ; check = (fun var -> run (typ.check var))
+          }
         in
         let s, y = handle_error s (fun () -> exists typ p s) in
         let k = handle_error s (fun () -> k y) in
@@ -451,20 +451,22 @@ module Make (Backend : Backend_extended.S) = struct
   let dummy_vector = Run_state.Vector.null
 
   let fake_state next_auxiliary stack =
-    { system= None
-    ; input= dummy_vector
-    ; aux= dummy_vector
-    ; eval_constraints= false
-    ; num_inputs= 0
+    { system = None
+    ; input = dummy_vector
+    ; aux = dummy_vector
+    ; eval_constraints = false
+    ; num_inputs = 0
     ; next_auxiliary
-    ; prover_state= None
+    ; prover_state = None
     ; stack
-    ; handler= Request.Handler.fail
-    ; is_running= true
-    ; as_prover= ref false
-    ; log_constraint= None }
+    ; handler = Request.Handler.fail
+    ; is_running = true
+    ; as_prover = ref false
+    ; log_constraint = None
+    }
 
-  let rec flatten_as_prover : type a s.
+  let rec flatten_as_prover :
+      type a s.
          int ref
       -> string list
       -> (a, s, Field.t) Checked.t
@@ -475,7 +477,7 @@ module Make (Backend : Backend_extended.S) = struct
         let f, a = flatten_as_prover next_auxiliary stack k in
         ( (fun s ->
             let s', (_ : unit option) = run_as_prover (Some x) s in
-            f s' )
+            f s')
         , a )
     | Pure x ->
         (Fn.id, x)
@@ -483,9 +485,9 @@ module Make (Backend : Backend_extended.S) = struct
         let _, y = d (fake_state next_auxiliary stack) in
         let f, a = flatten_as_prover next_auxiliary stack (k y) in
         ( (fun s ->
-            let {prover_state; _} = s in
+            let { prover_state; _ } = s in
             let s, _y = d s in
-            f (set_prover_state prover_state s) )
+            f (set_prover_state prover_state s))
         , a )
     | Reduced (t, _d, _res, k) ->
         let f, y = flatten_as_prover next_auxiliary stack t in
@@ -498,7 +500,7 @@ module Make (Backend : Backend_extended.S) = struct
                  we're forcing.
               *)
               let label = "Lazy value forced (reduced):" in
-              flatten_as_prover next_auxiliary (label :: stack) x )
+              flatten_as_prover next_auxiliary (label :: stack) x)
         in
         let y = Lazy.map ~f:snd flattened in
         let f s =
@@ -507,7 +509,7 @@ module Make (Backend : Backend_extended.S) = struct
                computation, so we need to do the prover parts of it.
             *)
             let f, _ = Lazy.force flattened in
-            let {prover_state; _} = s in
+            let { prover_state; _ } = s in
             let prover_state' = Option.map prover_state ~f:ignore in
             let s = f (set_prover_state prover_state' s) in
             set_prover_state prover_state s
@@ -529,7 +531,7 @@ module Make (Backend : Backend_extended.S) = struct
                 (Constraint.annotation c) (stack_to_string stack)
                 (Sexp.to_string (Constraint.sexp_of_t c))
                 (log_constraint c s) () ;
-            f s )
+            f s)
         , y )
     | With_state (p, and_then, t_sub, k) ->
         let f_sub, y = flatten_as_prover next_auxiliary stack t_sub in
@@ -540,31 +542,31 @@ module Make (Backend : Backend_extended.S) = struct
             let s, (_ : unit option) =
               run_as_prover (Option.map ~f:and_then s_sub.prover_state) s
             in
-            f s )
+            f s)
         , a )
     | With_handler (h, t, k) ->
         let f, y = flatten_as_prover next_auxiliary stack t in
         let g, a = flatten_as_prover next_auxiliary stack (k y) in
         ( (fun s ->
-            let {handler; _} = s in
-            let s' = f {s with handler= Request.Handler.push handler h} in
-            g {s' with handler} )
+            let { handler; _ } = s in
+            let s' = f { s with handler = Request.Handler.push handler h } in
+            g { s' with handler })
         , a )
     | Clear_handler (t, k) ->
         let f, y = flatten_as_prover next_auxiliary stack t in
         let g, a = flatten_as_prover next_auxiliary stack (k y) in
         ( (fun s ->
-            let {handler; _} = s in
-            let s' = f {s with handler= Request.Handler.fail} in
-            g {s' with handler} )
+            let { handler; _ } = s in
+            let s' = f { s with handler = Request.Handler.fail } in
+            g { s' with handler })
         , a )
-    | Exists ({store; alloc; check; _}, p, k) ->
+    | Exists ({ store; alloc; check; _ }, p, k) ->
         let var =
           Typ_monads.Alloc.run alloc
             (alloc_var (fake_state next_auxiliary stack))
         in
         let f, () = flatten_as_prover next_auxiliary stack (check var) in
-        let handle = {Handle.var; value= None} in
+        let handle = { Handle.var; value = None } in
         let g, a = flatten_as_prover next_auxiliary stack (k handle) in
         ( (fun s ->
             if !(s.as_prover) then
@@ -601,18 +603,16 @@ module Make (Backend : Backend_extended.S) = struct
                 s.handler
             in
             s.as_prover := old ;
-            let _var =
-              Typ_monads.Store.run (store value) (store_field_elt s)
-            in
+            let _var = Typ_monads.Store.run (store value) (store_field_elt s) in
             let s = f (set_prover_state (Some ()) s) in
             handle.value <- Some value ;
-            g (set_prover_state (Some ps) s) )
+            g (set_prover_state (Some ps) s))
         , a )
     | Next_auxiliary k ->
         flatten_as_prover next_auxiliary stack (k !next_auxiliary)
 
-  let reduce_to_prover (type a s) next_auxiliary
-      (t : (a, s, Field.t) Checked.t) : (a, s, Field.t) Checked.t =
+  let reduce_to_prover (type a s) next_auxiliary (t : (a, s, Field.t) Checked.t)
+      : (a, s, Field.t) Checked.t =
     let f, a = flatten_as_prover next_auxiliary [] t in
     Reduced (t, f, a, Checked.return)
 
@@ -625,7 +625,7 @@ module Make (Backend : Backend_extended.S) = struct
       Option.iter
         (system : R1CS_constraint_system.t option)
         ~f:(fun system ->
-          R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
+          R1CS_constraint_system.set_primary_input_size system num_inputs) ;
       let system =
         Option.map system ~f:(fun sys ->
             let module M = struct
@@ -635,7 +635,7 @@ module Make (Backend : Backend_extended.S) = struct
 
               include R1CS_constraint_system
             end in
-            Constraint_system.T ((module M), sys) )
+            Constraint_system.T ((module M), sys))
       in
       { system
       ; input
@@ -643,12 +643,13 @@ module Make (Backend : Backend_extended.S) = struct
       ; eval_constraints
       ; num_inputs
       ; next_auxiliary
-      ; prover_state= s0
-      ; stack= []
-      ; handler= Option.value handler ~default:Request.Handler.fail
-      ; is_running= true
-      ; as_prover= ref false
-      ; log_constraint= !constraint_logger }
+      ; prover_state = s0
+      ; stack = []
+      ; handler = Option.value handler ~default:Request.Handler.fail
+      ; is_running = true
+      ; as_prover = ref false
+      ; log_constraint = !constraint_logger
+      }
   end
 end
 
@@ -660,7 +661,7 @@ module type S = sig
   type r1cs
 
   val set_constraint_logger :
-    (?at_label_boundary:[`Start | `End] * string -> constr -> unit) -> unit
+    (?at_label_boundary:[ `Start | `End ] * string -> constr -> unit) -> unit
 
   val clear_constraint_logger : unit -> unit
 
@@ -670,8 +671,7 @@ module type S = sig
 
   type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
-  val run :
-    ('a, 's, field) Types.Checked.t -> 's run_state -> 's run_state * 'a
+  val run : ('a, 's, field) Types.Checked.t -> 's run_state -> 's run_state * 'a
 
   val flatten_as_prover :
        int ref
