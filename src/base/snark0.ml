@@ -178,13 +178,15 @@ struct
     type 'prover_state run_state = 'prover_state Runner.run_state
 
     let assert_equal ?label x y =
-      match x, y with
+      match (x, y) with
       | Cvar0.Constant x, Cvar0.Constant y ->
-        if  Field.equal x y
-        then return ()
-        else failwithf !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}" x y ()
+          if Field.equal x y then return ()
+          else
+            failwithf
+              !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}"
+              x y ()
       | _ ->
-      assert_equal ?label x y
+          assert_equal ?label x y
 
     (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
     let constraint_system ~run ~num_inputs t : R1CS_constraint_system.t =
@@ -262,12 +264,11 @@ struct
       | exception e ->
           return (Or_error.of_exn e)
       | res ->
-        map res ~f:(function
-          | {prover_state= Some s; _}, x ->
-              Ok (s, x, get_value)
-          | _ ->
-              failwith "run_and_check': Expected a value from run, got None."
-          )
+          map res ~f:(function
+            | { prover_state = Some s; _ }, x ->
+                Ok (s, x, get_value)
+            | _ ->
+                failwith "run_and_check': Expected a value from run, got None.")
 
     let run_unchecked ~run t0 s0 =
       let num_inputs = 0 in
@@ -1856,8 +1857,7 @@ module Run = struct
         ; log_constraint = None
         }
 
-    let in_prover () : bool =
-      Option.is_some !state.prover_state
+    let in_prover () : bool = Option.is_some !state.prover_state
 
     let in_checked_computation () : bool =
       is_active_functor_id this_functor_id && !state.is_running
@@ -2452,8 +2452,8 @@ module Run = struct
         active_counters := this_functor_id :: counters ;
         try
           map (f ()) ~f:(fun (ret : a) ->
-            active_counters := counters ;
-            ret )
+              active_counters := counters ;
+              ret)
         with exn ->
           active_counters := counters ;
           raise exn
@@ -2622,38 +2622,36 @@ module Run = struct
       !state.as_prover := true ;
       res
 
-    module Run_and_check_deferred
-        (M : sig
-           type _ t
-           val return : 'a -> 'a t
-           val map : 'a t -> f:('a -> 'b) -> 'b t
-         end) = struct
+    module Run_and_check_deferred (M : sig
+      type _ t
+
+      val return : 'a -> 'a t
+
+      val map : 'a t -> f:('a -> 'b) -> 'b t
+    end) =
+    struct
       open M
 
       let run_and_check ~run t s =
         map
           (Checked.run_and_check_deferred' ~run t s ~map ~return)
-          ~f:(
-        Or_error.map
-          ~f:(fun (s, x, get_value) ->
-            let s', x = Basic.As_prover.run x get_value s in
-            (s', x) ) )
+          ~f:
+            (Or_error.map ~f:(fun (s, x, get_value) ->
+                 let s', x = Basic.As_prover.run x get_value s in
+                 (s', x)))
 
       let as_stateful x state' =
         state := state' ;
-        map (x ()) ~f:(fun a ->
-        (!state, a) )
+        map (x ()) ~f:(fun a -> (!state, a))
 
       let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t M.t) =
-        let mark_active =
-              Proof_system.mark_active_deferred ~map
-        in
+        let mark_active = Proof_system.mark_active_deferred ~map in
         let res =
           run_and_check ~run:as_stateful (fun () ->
-                mark_active ~f:(fun () ->
-                  map (x()) ~f:(fun prover_block ->
-                  !state.as_prover := true ;
-                  As_prover.run_prover prover_block ) ) )
+              mark_active ~f:(fun () ->
+                  map (x ()) ~f:(fun prover_block ->
+                      !state.as_prover := true ;
+                      As_prover.run_prover prover_block)))
         in
         !state.as_prover := true ;
         res

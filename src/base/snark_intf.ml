@@ -2183,14 +2183,15 @@ module type Run_basic = sig
     -> prover_state
     -> (prover_state * 'a) Or_error.t
 
-  module Run_and_check_deferred(M : sig
-      type _ t
-           val return : 'a -> 'a t
-           val map : 'a t -> f:('a -> 'b) -> 'b t
-         end) : sig
+  module Run_and_check_deferred (M : sig
+    type _ t
 
+    val return : 'a -> 'a t
+
+    val map : 'a t -> f:('a -> 'b) -> 'b t
+  end) : sig
     val run_and_check :
-        (unit -> (unit -> 'a) As_prover.t M.t)
+         (unit -> (unit -> 'a) As_prover.t M.t)
       -> prover_state
       -> (prover_state * 'a) Or_error.t M.t
   end

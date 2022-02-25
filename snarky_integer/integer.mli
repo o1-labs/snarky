@@ -19,9 +19,10 @@ module Interval : sig
 end
 
 type 'f t =
-  { value: 'f Cvar.t
-  ; interval: Interval.t
-  ; mutable bits: 'f Cvar.t Boolean.t list option }
+  { value : 'f Cvar.t
+  ; interval : Interval.t
+  ; mutable bits : 'f Cvar.t Boolean.t list option
+  }
 
 (** Create an value representing the given constant value.
 
