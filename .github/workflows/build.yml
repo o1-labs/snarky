@@ -28,4 +28,5 @@ jobs:
       - name: Build
         run: |
           eval $(opam env)
+          opam update
           opam pin add . -y
