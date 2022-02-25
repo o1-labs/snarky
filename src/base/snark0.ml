@@ -280,19 +280,19 @@ struct
       else (Field.zero, Field.inv z)
 
     let equal (x : Cvar.t) (y : Cvar.t) : (Cvar.t Boolean.t, _) t =
-      match x, y with
+      match (x, y) with
       | Constant x, Constant y ->
-        Checked.return (
-        Boolean.Unsafe.create
-          (Cvar.constant
-             (if Field.equal x y
-              then Field.one
-              else Field.zero)) )
+          Checked.return
+            (Boolean.Unsafe.create
+               (Cvar.constant
+                  (if Field.equal x y then Field.one else Field.zero)))
       | _ ->
-        let z = Cvar.(x - y) in
-        let%bind r, inv = exists Typ.(field * field) ~compute:(equal_vars z) in
-        let%map () = equal_constraints z inv r in
-        Boolean.Unsafe.create r
+          let z = Cvar.(x - y) in
+          let%bind r, inv =
+            exists Typ.(field * field) ~compute:(equal_vars z)
+          in
+          let%map () = equal_constraints z inv r in
+          Boolean.Unsafe.create r
 
     let mul ?(label = "Checked.mul") (x : Cvar.t) (y : Cvar.t) =
       match (x, y) with
@@ -351,14 +351,14 @@ struct
             x_inv)
 
     let div ?(label = "Checked.div") (x : Cvar.t) (y : Cvar.t) =
-      match x, y with
+      match (x, y) with
       | Constant x, Constant y ->
-          return (Cvar.constant (Field.(/) x y))
+          return (Cvar.constant (Field.( / ) x y))
       | _ ->
-      with_label label
-        (let open Let_syntax in
-        let%bind y_inv = inv y in
-        mul x y_inv)
+          with_label label
+            (let open Let_syntax in
+            let%bind y_inv = inv y in
+            mul x y_inv)
 
     let%snarkydef_ if_ (b : Cvar.t Boolean.t) ~(then_ : Cvar.t)
         ~(else_ : Cvar.t) =
@@ -1245,18 +1245,18 @@ struct
 
       let inv x = Checked.inv ~label:"Field.Checked.inv" x
 
-      let sqrt (x : Cvar.t) : (Cvar.t , _) Checked.t =
+      let sqrt (x : Cvar.t) : (Cvar.t, _) Checked.t =
         match x with
         | Constant x ->
-          Checked.return (Cvar.constant (Field.sqrt x))
+            Checked.return (Cvar.constant (Field.sqrt x))
         | _ ->
-          let open Checked in
-          let open Let_syntax in
-          let%bind y =
-            exists ~compute:As_prover.(map (read_var x) ~f:Field.sqrt) typ
-          in
-          let%map () = assert_square y x in
-          y
+            let open Checked in
+            let open Let_syntax in
+            let%bind y =
+              exists ~compute:As_prover.(map (read_var x) ~f:Field.sqrt) typ
+            in
+            let%map () = assert_square y x in
+            y
 
       let quadratic_nonresidue =
         lazy
@@ -1824,20 +1824,22 @@ module Run = struct
 
     let run (checked : _ Checked.t) =
       match checked with
-      | Pure x -> x
+      | Pure x ->
+          x
       | _ ->
-        if not (is_active_functor_id this_functor_id) then
-          failwithf
-            "Could not run this function.\n\n\
-            Hint: The module used to create this function had internal ID %i, \
-            but the module used to run it had internal ID %i. The same \
-            instance of Snarky.Snark.Run.Make must be used for both."
-            this_functor_id (active_functor_id ()) ()
-        else if not !state.is_running then
-          failwith "This function can't be run outside of a checked computation." ;
-        let state', x = Runner.run checked !state in
-        state := state' ;
-        x
+          if not (is_active_functor_id this_functor_id) then
+            failwithf
+              "Could not run this function.\n\n\
+               Hint: The module used to create this function had internal ID \
+               %i, but the module used to run it had internal ID %i. The same \
+               instance of Snarky.Snark.Run.Make must be used for both."
+              this_functor_id (active_functor_id ()) ()
+          else if not !state.is_running then
+            failwith
+              "This function can't be run outside of a checked computation." ;
+          let state', x = Runner.run checked !state in
+          state := state' ;
+          x
 
     let as_stateful x state' =
       state := state' ;
