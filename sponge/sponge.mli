@@ -24,6 +24,8 @@ module Params : sig
   val pasta_q : string t
 
   val pasta_p_3 : string t
+
+  val pasta_q_3 : string t
 end
 
 module State : sig
