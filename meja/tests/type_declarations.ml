@@ -9,7 +9,7 @@ type nonrec 'a v = 'a
 
 type _ w = A of int | B : 'a -> 'a w
 
-type nonrec 'a x = {a: 'a; b: int; c: bool}
+type nonrec 'a x = { a : 'a; b : int; c : bool }
 
 type nonrec y = unit x
 
@@ -27,6 +27,6 @@ type nonrec unit = ()
 
 type polycary = A : 'a -> polycary
 
-type 'a c = A of {x: 'a} | B of 'a | C : {x: 'b} -> 'b c
+type 'a c = A of { x : 'a } | B of 'a | C : { x : 'b } -> 'b c
 
 type nonrec d

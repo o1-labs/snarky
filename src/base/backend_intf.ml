@@ -26,7 +26,7 @@ module type Constraint_system_intf = sig
 
   val to_json :
        t
-    -> ([> `String of string | `Assoc of (string * 'a) list | `List of 'a list]
+    -> ([> `String of string | `Assoc of (string * 'a) list | `List of 'a list ]
         as
         'a)
 end
@@ -147,7 +147,7 @@ module type S = sig
   module Proving_key : sig
     type t [@@deriving bin_io]
 
-    val is_initialized : t -> [`Yes | `No of R1CS_constraint_system.t]
+    val is_initialized : t -> [ `Yes | `No of R1CS_constraint_system.t ]
 
     val set_constraint_system : t -> R1CS_constraint_system.t -> unit
 

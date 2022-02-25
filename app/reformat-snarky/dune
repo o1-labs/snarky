@@ -1,8 +1,0 @@
-(executable
- (name reformat)
- (public_name reformat-snarky)
- (libraries core async)
- (package reformat-snarky)
- (preprocess
-  (pps ppx_jane))
- (modes native))

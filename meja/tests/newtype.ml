@@ -1,11 +1,9 @@
 module Impl = Snarky.Snark.Make (Snarky.Backends.Mnt4.Default)
 open Impl
 
-let (f : ('a -> 'a) -> 'a -> 'a) =
-  fun (type t) (x : t -> t) (y : t) -> (x y : t)
+let (f : ('a -> 'a) -> 'a -> 'a) = fun (type t) (x : t -> t) (y : t) : t -> x y
 
-let (g : ('a -> 'a) -> 'a -> 'a) =
-  fun (type u) (x : u -> u) (y : u) -> (x y : u)
+let (g : ('a -> 'a) -> 'a -> 'a) = fun (type u) (x : u -> u) (y : u) : u -> x y
 
 let id x = x
 

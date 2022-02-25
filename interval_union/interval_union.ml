@@ -38,13 +38,13 @@ let union_intervals_exn (a1, b1) (a2, b2) =
   else if b2 < a1 then `Disjoint_inverted
   else failwithf "Intervals not disjoint: (%d, %d) and (%d, %d)" a1 b1 a2 b2 ()
 
-let of_interval i = [i]
+let of_interval i = [ i ]
 
 let rec canonicalize = function
   | [] ->
       []
-  | [i1] ->
-      [i1]
+  | [ i1 ] ->
+      [ i1 ]
   | (a1, a2) :: (a3, a4) :: t ->
       if a2 = a3 then canonicalize ((a1, a4) :: t)
       else (a1, a2) :: canonicalize ((a3, a4) :: t)
@@ -54,13 +54,13 @@ let rec disjoint_union_exn t1 t2 =
   | t, [] | [], t ->
       t
   | i1 :: t1', i2 :: t2' -> (
-    match union_intervals_exn i1 i2 with
-    | `Combine (a, b) ->
-        (a, b) :: disjoint_union_exn t1' t2'
-    | `Disjoint_ordered ->
-        i1 :: disjoint_union_exn t1' t2
-    | `Disjoint_inverted ->
-        i2 :: disjoint_union_exn t1 t2' )
+      match union_intervals_exn i1 i2 with
+      | `Combine (a, b) ->
+          (a, b) :: disjoint_union_exn t1' t2'
+      | `Disjoint_ordered ->
+          i1 :: disjoint_union_exn t1' t2
+      | `Disjoint_inverted ->
+          i2 :: disjoint_union_exn t1 t2' )
 
 let disjoint_union_exn t1 t2 = canonicalize (disjoint_union_exn t1 t2)
 
@@ -80,10 +80,10 @@ let of_intervals_exn is =
       []
   | i :: is ->
       List.fold is ~init:(of_interval i) ~f:(fun acc x ->
-          disjoint_union_exn (of_interval x) acc )
+          disjoint_union_exn (of_interval x) acc)
 
 let to_interval = function
-  | [i] ->
+  | [ i ] ->
       Ok i
   | [] ->
       Or_error.error_string "Interval_union.to_interval: the union is empty\n"
@@ -100,7 +100,7 @@ let left_endpoint t = Option.map ~f:fst (List.hd t)
 
 let invariant t =
   let rec go = function
-    | [(a, b)] ->
+    | [ (a, b) ] ->
         assert (a <= b)
     | [] ->
         ()
@@ -134,15 +134,15 @@ let gen_disjoint_pair =
   (t1, t2)
 
 let%test_unit "canonicalize" =
-  assert (equal (canonicalize [(1, 2); (2, 3)]) [(1, 3)])
+  assert (equal (canonicalize [ (1, 2); (2, 3) ]) [ (1, 3) ])
 
 let%test_unit "disjoint union doesn't care about order" =
   Quickcheck.test gen_disjoint_pair ~f:(fun (a, b) ->
-      assert (equal (disjoint_union_exn a b) (disjoint_union_exn b a)) )
+      assert (equal (disjoint_union_exn a b) (disjoint_union_exn b a)))
 
 let%test_unit "check invariant on disjoint union" =
   Quickcheck.test gen_disjoint_pair ~f:(fun (a, b) ->
-      invariant (disjoint_union_exn a b) )
+      invariant (disjoint_union_exn a b))
 
 let%test_unit "disjoint_union works with holes" =
   let gen =
@@ -152,6 +152,6 @@ let%test_unit "disjoint_union works with holes" =
     let%bind y1 = Int.gen_incl (y0 + 1) (y0 + s) in
     let%bind y2 = Int.gen_incl (y1 + 1) (y1 + s) in
     let%bind y3 = Int.gen_incl (y2 + 1) (y2 + s) in
-    return (of_interval (y1, y2), of_intervals_exn [(y0, y1); (y2, y3)])
+    return (of_interval (y1, y2), of_intervals_exn [ (y0, y1); (y2, y3) ])
   in
   Quickcheck.test gen ~f:(fun (x, y) -> invariant (disjoint_union_exn x y))

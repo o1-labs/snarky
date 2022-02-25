@@ -28,11 +28,11 @@ let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
 
 module Make
     (Field : Snarky_intf.Field.Extended) (Var : sig
-        include Comparable.S
+      include Comparable.S
 
-        include Sexpable.S with type t := t
+      include Sexpable.S with type t := t
 
-        val create : int -> t
+      val create : int -> t
     end) =
 struct
   type t = Field.t cvar [@@deriving sexp]
@@ -118,7 +118,7 @@ struct
 
   let linear_combination (terms : (Field.t * t) list) : t =
     List.fold terms ~init:(constant Field.zero) ~f:(fun acc (c, t) ->
-        add acc (scale t c) )
+        add acc (scale t c))
 
   let sum vs = linear_combination (List.map vs ~f:(fun v -> (Field.one, v)))
 
@@ -147,5 +147,5 @@ struct
     `Assoc
       (List.filter_map (Map.to_alist map) ~f:(fun (i, f) ->
            if Field.(equal f zero) then None
-           else Some (Int.to_string i, `String (Field.to_string f)) ))
+           else Some (Int.to_string i, `String (Field.to_string f))))
 end

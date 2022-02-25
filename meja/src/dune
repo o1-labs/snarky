@@ -1,12 +1,12 @@
 (library
  (name meja_lib)
- (public_name meja.lib)
- (libraries core_kernel meja.ocaml_compiler_internals)
- (preprocess (pps ppx_jane)))
+ (libraries core_kernel meja_ocaml_compiler_internals)
+ (preprocess
+  (pps ppx_jane)))
 
 (menhir
-  (flags --explain --unused-tokens)
-  (modules parser_impl))
+ (flags --explain --unused-tokens)
+ (modules parser_impl))
 
 (ocamllex
-  (modules lexer_impl))
+ (modules lexer_impl))

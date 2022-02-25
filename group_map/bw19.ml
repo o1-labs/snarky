@@ -3,20 +3,21 @@
 open Core_kernel
 
 module Spec = struct
-  type 'f t = {b: 'f} [@@deriving bin_io]
+  type 'f t = { b : 'f } [@@deriving bin_io]
 end
 
 module Params = struct
   type 'f t =
-    { u: 'f
-    ; fu: 'f
-    ; sqrt_neg_three_u_squared_minus_u_over_2: 'f
-    ; sqrt_neg_three_u_squared: 'f
-    ; inv_three_u_squared: 'f
-    ; b: 'f }
+    { u : 'f
+    ; fu : 'f
+    ; sqrt_neg_three_u_squared_minus_u_over_2 : 'f
+    ; sqrt_neg_three_u_squared : 'f
+    ; inv_three_u_squared : 'f
+    ; b : 'f
+    }
   [@@deriving fields, bin_io]
 
-  let spec {b; _} = {Spec.b}
+  let spec { b; _ } = { Spec.b }
 
   let map
       { u
@@ -24,19 +25,21 @@ module Params = struct
       ; sqrt_neg_three_u_squared_minus_u_over_2
       ; sqrt_neg_three_u_squared
       ; inv_three_u_squared
-      ; b } ~f =
-    { u= f u
-    ; fu= f fu
-    ; sqrt_neg_three_u_squared_minus_u_over_2=
+      ; b
+      } ~f =
+    { u = f u
+    ; fu = f fu
+    ; sqrt_neg_three_u_squared_minus_u_over_2 =
         f sqrt_neg_three_u_squared_minus_u_over_2
-    ; sqrt_neg_three_u_squared= f sqrt_neg_three_u_squared
-    ; inv_three_u_squared= f inv_three_u_squared
-    ; b= f b }
+    ; sqrt_neg_three_u_squared = f sqrt_neg_three_u_squared
+    ; inv_three_u_squared = f inv_three_u_squared
+    ; b = f b
+    }
 
   (* A deterministic function for constructing a valid choice of parameters for a
      given field. *)
   let create (type t) (module F : Field_intf.S_unchecked with type t = t)
-      {Spec.b} =
+      { Spec.b } =
     let open F in
     let first_map f =
       let rec go i = match f i with Some x -> x | None -> go (i + one) in
@@ -46,24 +49,25 @@ module Params = struct
     let u, fu =
       first_map (fun u ->
           let fu = curve_eqn u in
-          if equal u zero || equal fu zero then None else Some (u, fu) )
+          if equal u zero || equal fu zero then None else Some (u, fu))
     in
     let three_u_squared = u * u * of_int 3 in
     let sqrt_neg_three_u_squared = sqrt (negate three_u_squared) in
     { u
     ; fu
-    ; sqrt_neg_three_u_squared_minus_u_over_2=
+    ; sqrt_neg_three_u_squared_minus_u_over_2 =
         (sqrt_neg_three_u_squared - u) / of_int 2
     ; sqrt_neg_three_u_squared
-    ; inv_three_u_squared= one / three_u_squared
-    ; b }
+    ; inv_three_u_squared = one / three_u_squared
+    ; b
+    }
 end
 
 module Make
     (Constant : Field_intf.S) (F : sig
-        include Field_intf.S
+      include Field_intf.S
 
-        val constant : Constant.t -> t
+      val constant : Constant.t -> t
     end) (P : sig
       val params : Constant.t Params.t
     end) =
@@ -80,9 +84,7 @@ struct
       one / alpha_inv
     in
     let x1 =
-      let temp =
-        square t2 * alpha * constant params.sqrt_neg_three_u_squared
-      in
+      let temp = square t2 * alpha * constant params.sqrt_neg_three_u_squared in
       constant params.sqrt_neg_three_u_squared_minus_u_over_2 - temp
     in
     let x2 = negate (constant params.u) - x1 in
@@ -118,7 +120,7 @@ let to_group (type t) (module F : Field_intf.S_unchecked with type t = t)
     if F.is_square y then Some (x, F.sqrt y) else None
   in
   let x1, x2, x3 = M.potential_xs t in
-  List.find_map [x1; x2; x3] ~f:try_decode |> Option.value_exn
+  List.find_map [ x1; x2; x3 ] ~f:try_decode |> Option.value_exn
 
 let%test_module "test" =
   ( module struct
@@ -150,19 +152,19 @@ let%test_module "test" =
 
       open F
 
-      let params = Params.create (module F) {b}
+      let params = Params.create (module F) { b }
 
       let curve_eqn u = (u * u * u) + params.b
 
       (* Filter the two points which cause the group-map to blow up. This
-   is not an issue in practice because the points we feed into this function
-   will be the output of poseidon, and thus (modeling poseidon as a random oracle)
-   will not be either of those two points. *)
+         is not an issue in practice because the points we feed into this function
+         will be the output of poseidon, and thus (modeling poseidon as a random oracle)
+         will not be either of those two points. *)
       let gen =
         Quickcheck.Generator.filter F.gen ~f:(fun t ->
             let t2 = t * t in
             let alpha_inv = (t2 + constant params.fu) * t2 in
-            not (equal alpha_inv zero) )
+            not (equal alpha_inv zero))
 
       module M =
         Make (F) (F)
@@ -173,7 +175,7 @@ let%test_module "test" =
       let%test_unit "full map works" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
             let x, y = to_group (module F) ~params t in
-            assert (equal (curve_eqn x) (y * y)) )
+            assert (equal (curve_eqn x) (y * y)))
     end
 
     module T0 = Make_tests (Fp)

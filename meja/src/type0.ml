@@ -1,7 +1,7 @@
 open Core_kernel
 open Ast_types
 
-type row_presence = {mutable rp_desc: row_presence_desc; rp_id: int}
+type row_presence = { mutable rp_desc : row_presence_desc; rp_id : int }
 [@@deriving sexp]
 
 and row_presence_desc =
@@ -22,11 +22,12 @@ and row_presence_desc =
 [@@deriving sexp, compare]
 
 type type_expr =
-  { mutable type_desc: type_desc
-  ; type_id: int
-  ; mutable type_depth: int
-  ; type_mode: mode
-  ; mutable type_alternate: type_expr }
+  { mutable type_desc : type_desc
+  ; type_id : int
+  ; mutable type_depth : int
+  ; type_mode : mode
+  ; mutable type_alternate : type_expr
+  }
 [@@deriving sexp]
 
 and type_desc =
@@ -54,36 +55,40 @@ and type_desc =
   | Trow of row
 [@@deriving sexp]
 
-and variant = {var_ident: Path.t; var_params: type_expr list} [@@deriving sexp]
+and variant = { var_ident : Path.t; var_params : type_expr list }
+[@@deriving sexp]
 
 and row =
-  { row_tags: (Path.t * row_presence * type_expr list) Ident.Map.t
-  ; row_closed: closed_flag
+  { row_tags : (Path.t * row_presence * type_expr list) Ident.Map.t
+  ; row_closed : closed_flag
   ; (* One of
        - [Trow] for an expanded row
        - [Tvar] for the end of a row
     *)
-    row_rest: type_expr
+    row_rest : type_expr
   ; (* This is used to identify whether to create new [row_presence] values
        when copying, vs using the existing ones.
     *)
-    row_presence_proxy: row_presence }
+    row_presence_proxy : row_presence
+  }
 [@@deriving sexp]
 
-type field_decl = {fld_ident: Ident.t; fld_type: type_expr} [@@deriving sexp]
+type field_decl = { fld_ident : Ident.t; fld_type : type_expr }
+[@@deriving sexp]
 
 type ctor_args = Ctor_tuple of type_expr list | Ctor_record of type_decl
 [@@deriving sexp]
 
 and ctor_decl =
-  {ctor_ident: Ident.t; ctor_args: ctor_args; ctor_ret: type_expr option}
+  { ctor_ident : Ident.t; ctor_args : ctor_args; ctor_ret : type_expr option }
 [@@deriving sexp]
 
 and type_decl =
-  { tdec_params: type_expr list
-  ; tdec_desc: type_decl_desc
-  ; tdec_id: int
-  ; tdec_ret: type_expr }
+  { tdec_params : type_expr list
+  ; tdec_desc : type_decl_desc
+  ; tdec_id : int
+  ; tdec_ret : type_expr
+  }
 [@@deriving sexp]
 
 and type_decl_desc =

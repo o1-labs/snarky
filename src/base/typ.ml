@@ -77,10 +77,10 @@ end
 module Make
     (Checked : Checked_intf.S)
     (As_prover : As_prover_intf.S
-                 with module Types := Checked.Types
-                 with type 'f field := 'f Checked.field
-                  and type ('a, 's, 'f) t :=
-                             ('a, 's, 'f) Checked.Types.As_prover.t) =
+                   with module Types := Checked.Types
+                   with type 'f field := 'f Checked.field
+                    and type ('a, 's, 'f) t :=
+                         ('a, 's, 'f) Checked.Types.As_prover.t) =
 struct
   type ('var, 'value, 'field) t =
     ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t
@@ -92,9 +92,9 @@ struct
 
     include
       Intf.S
-      with type 'field checked := (unit, unit, 'field) Checked.t
-       and type field := field
-       and type field_var := field Cvar.t
+        with type 'field checked := (unit, unit, 'field) Checked.t
+         and type field := field
+         and type field_var := field Cvar.t
   end
 
   module Data_spec = struct
@@ -110,13 +110,14 @@ struct
       data_spec
 
     let size t =
-      let rec go : type r_var r_value k_var k_value.
+      let rec go :
+          type r_var r_value k_var k_value.
           int -> (r_var, r_value, k_var, k_value, 'f) t -> int =
        fun acc t ->
         match t with
         | [] ->
             acc
-        | {alloc; _} :: t' ->
+        | { alloc; _ } :: t' ->
             go (acc + Typ_monads.Alloc.size alloc) t'
       in
       go 0 t
@@ -125,75 +126,83 @@ struct
   module T = struct
     open Typ_monads
 
-    let store ({store; _} : ('var, 'value, 'field) t) (x : 'value) :
+    let store ({ store; _ } : ('var, 'value, 'field) t) (x : 'value) :
         ('var, 'field) Store.t =
       store x
 
-    let read ({read; _} : ('var, 'value, 'field) t) (v : 'var) :
+    let read ({ read; _ } : ('var, 'value, 'field) t) (v : 'var) :
         ('value, 'field) Read.t =
       read v
 
-    let alloc ({alloc; _} : ('var, 'value, 'field) t) : ('var, 'field) Alloc.t
+    let alloc ({ alloc; _ } : ('var, 'value, 'field) t) : ('var, 'field) Alloc.t
         =
       alloc
 
-    let check (type field) ({check; _} : ('var, 'value, field Checked.field) t)
-        (v : 'var) : (unit, 's, field Checked.field) Checked.t =
+    let check (type field)
+        ({ check; _ } : ('var, 'value, field Checked.field) t) (v : 'var) :
+        (unit, 's, field Checked.field) Checked.t =
       Checked.with_state (As_prover.return ()) (check v)
 
     let unit () : (unit, unit, 'field) t =
       let s = Store.return () in
       let r = Read.return () in
       let c = Checked.return () in
-      { store= (fun () -> s)
-      ; read= (fun () -> r)
-      ; check= (fun () -> c)
-      ; alloc= Alloc.return () }
+      { store = (fun () -> s)
+      ; read = (fun () -> r)
+      ; check = (fun () -> c)
+      ; alloc = Alloc.return ()
+      }
 
     let field () : ('field Cvar.t, 'field, 'field) t =
-      { store= Store.store
-      ; read= Read.read
-      ; alloc= Alloc.alloc
-      ; check= (fun _ -> Checked.return ()) }
+      { store = Store.store
+      ; read = Read.read
+      ; alloc = Alloc.alloc
+      ; check = (fun _ -> Checked.return ())
+      }
 
     module Internal = struct
       let snarkless value =
-        { store=
+        { store =
             (fun value' ->
               assert (phys_equal value value') ;
-              Store.return value )
-        ; read=
+              Store.return value)
+        ; read =
             (fun value' ->
               assert (phys_equal value value') ;
-              Read.return value )
-        ; check= (fun _ -> Checked.return ())
-        ; alloc= Alloc.return value }
+              Read.return value)
+        ; check = (fun _ -> Checked.return ())
+        ; alloc = Alloc.return value
+        }
 
       let ref () =
-        { store= As_prover.Ref.store
-        ; read= As_prover.Ref.read
-        ; check= (fun _ -> Checked.return ())
-        ; alloc= As_prover.Ref.alloc () }
+        { store = As_prover.Ref.store
+        ; read = As_prover.Ref.read
+        ; check = (fun _ -> Checked.return ())
+        ; alloc = As_prover.Ref.alloc ()
+        }
     end
 
-    let transport ({read; store; alloc; check} : ('var1, 'value1, 'field) t)
+    let transport ({ read; store; alloc; check } : ('var1, 'value1, 'field) t)
         ~(there : 'value2 -> 'value1) ~(back : 'value1 -> 'value2) :
         ('var1, 'value2, 'field) t =
       { alloc
-      ; store= (fun x -> store (there x))
-      ; read= (fun v -> Read.map ~f:back (read v))
-      ; check }
+      ; store = (fun x -> store (there x))
+      ; read = (fun v -> Read.map ~f:back (read v))
+      ; check
+      }
 
-    let transport_var ({read; store; alloc; check} : ('var1, 'value, 'field) t)
+    let transport_var
+        ({ read; store; alloc; check } : ('var1, 'value, 'field) t)
         ~(there : 'var2 -> 'var1) ~(back : 'var1 -> 'var2) :
         ('var2, 'value, 'field) t =
-      { alloc= Alloc.map alloc ~f:back
-      ; store= (fun x -> Store.map (store x) ~f:back)
-      ; read= (fun x -> read (there x))
-      ; check= (fun x -> check (there x)) }
+      { alloc = Alloc.map alloc ~f:back
+      ; store = (fun x -> Store.map (store x) ~f:back)
+      ; read = (fun x -> read (there x))
+      ; check = (fun x -> check (there x))
+      }
 
     let list ~length
-        ({read; store; alloc; check} : ('elt_var, 'elt_value, 'field) t) :
+        ({ read; store; alloc; check } : ('elt_var, 'elt_value, 'field) t) :
         ('elt_var list, 'elt_value list, 'field) t =
       let store ts =
         let n = List.length ts in
@@ -204,11 +213,11 @@ struct
       let alloc = Alloc.all (List.init length ~f:(fun _ -> alloc)) in
       let check ts = Checked.all_unit (List.map ts ~f:check) in
       let read vs = Read.all (List.map vs ~f:read) in
-      {read; store; alloc; check}
+      { read; store; alloc; check }
 
     (* TODO-someday: Make more efficient *)
     let array ~length
-        ({read; store; alloc; check} : ('elt_var, 'elt_value, 'field) t) :
+        ({ read; store; alloc; check } : ('elt_var, 'elt_value, 'field) t) :
         ('elt_var array, 'elt_value array, 'field) t =
       let store ts =
         [%test_eq: int] (Array.length ts) length ;
@@ -236,7 +245,7 @@ struct
         in
         go 0
       in
-      {read; store; alloc; check}
+      { read; store; alloc; check }
 
     let tuple2 (typ1 : ('var1, 'value1, 'field) t)
         (typ2 : ('var2, 'value2, 'field) t) :
@@ -265,7 +274,7 @@ struct
         let%bind () = typ2.check y in
         return ()
       in
-      {read; store; alloc; check}
+      { read; store; alloc; check }
 
     let ( * ) = tuple2
 
@@ -300,7 +309,7 @@ struct
         let%bind () = typ3.check z in
         return ()
       in
-      {read; store; alloc; check}
+      { read; store; alloc; check }
 
     let tuple4 (typ1 : ('var1, 'value1, 'field) t)
         (typ2 : ('var2, 'value2, 'field) t) (typ3 : ('var3, 'value3, 'field) t)
@@ -337,7 +346,7 @@ struct
         let%bind () = typ4.check w in
         return ()
       in
-      {read; store; alloc; check}
+      { read; store; alloc; check }
 
     let tuple5 (typ1 : ('var1, 'value1, 'field) t)
         (typ2 : ('var2, 'value2, 'field) t) (typ3 : ('var3, 'value3, 'field) t)
@@ -379,7 +388,7 @@ struct
         let%bind () = typ5.check x5 in
         return ()
       in
-      {read; store; alloc; check}
+      { read; store; alloc; check }
 
     let tuple6 (typ1 : ('var1, 'value1, 'field) t)
         (typ2 : ('var2, 'value2, 'field) t) (typ3 : ('var3, 'value3, 'field) t)
@@ -425,13 +434,14 @@ struct
         let%bind () = typ6.check x6 in
         return ()
       in
-      {read; store; alloc; check}
+      { read; store; alloc; check }
 
     let hlist (type k_var k_value)
         (spec0 : (unit, unit, k_var, k_value, 'f) Data_spec.t) :
         ((unit, k_var) H_list.t, (unit, k_value) H_list.t, 'f) t =
       let store xs0 : _ Store.t =
-        let rec go : type k_var k_value.
+        let rec go :
+            type k_var k_value.
                (unit, unit, k_var, k_value, 'f) Data_spec.t
             -> (unit, k_value) H_list.t
             -> ((unit, k_var) H_list.t, 'f) Store.t =
@@ -448,7 +458,8 @@ struct
         go spec0 xs0
       in
       let read xs0 : ((unit, k_value) H_list.t, 'f) Read.t =
-        let rec go : type k_var k_value.
+        let rec go :
+            type k_var k_value.
                (unit, unit, k_var, k_value, 'f) Data_spec.t
             -> (unit, k_var) H_list.t
             -> ((unit, k_value) H_list.t, 'f) Read.t =
@@ -465,7 +476,8 @@ struct
         go spec0 xs0
       in
       let alloc : _ Alloc.t =
-        let rec go : type k_var k_value.
+        let rec go :
+            type k_var k_value.
                (unit, unit, k_var, k_value, 'f) Data_spec.t
             -> ((unit, k_var) H_list.t, 'f) Alloc.t =
          fun spec0 ->
@@ -481,7 +493,8 @@ struct
         go spec0
       in
       let check xs0 : (unit, unit, 'f) Checked.t =
-        let rec go : type k_var k_value.
+        let rec go :
+            type k_var k_value.
                (unit, unit, k_var, k_value, 'f) Data_spec.t
             -> (unit, k_var) H_list.t
             -> (unit, unit, 'f) Checked.t =
@@ -497,28 +510,29 @@ struct
         in
         go spec0 xs0
       in
-      {read; store; alloc; check}
+      { read; store; alloc; check }
 
     (* TODO: Do a CPS style thing instead if it ends up being an issue converting
-     back and forth. *)
+       back and forth. *)
     let of_hlistable (spec : (unit, unit, 'k_var, 'k_value, 'f) Data_spec.t)
         ~(var_to_hlist : 'var -> (unit, 'k_var) H_list.t)
         ~(var_of_hlist : (unit, 'k_var) H_list.t -> 'var)
         ~(value_to_hlist : 'value -> (unit, 'k_value) H_list.t)
         ~(value_of_hlist : (unit, 'k_value) H_list.t -> 'value) :
         ('var, 'value, 'f) t =
-      let {read; store; alloc; check} = hlist spec in
-      { read= (fun v -> Read.map ~f:value_of_hlist (read (var_to_hlist v)))
-      ; store= (fun x -> Store.map ~f:var_of_hlist (store (value_to_hlist x)))
-      ; alloc= Alloc.map ~f:var_of_hlist alloc
-      ; check= (fun v -> check (var_to_hlist v)) }
+      let { read; store; alloc; check } = hlist spec in
+      { read = (fun v -> Read.map ~f:value_of_hlist (read (var_to_hlist v)))
+      ; store = (fun x -> Store.map ~f:var_of_hlist (store (value_to_hlist x)))
+      ; alloc = Alloc.map ~f:var_of_hlist alloc
+      ; check = (fun v -> check (var_to_hlist v))
+      }
 
     (* TODO: Assert that a stored value has the same shape as the template. *)
     module Of_traversable (T : Traversable.S) = struct
       module T = Traversable.Make (T)
 
       let typ (type f) ~template
-          ({read; store; alloc; check} :
+          ({ read; store; alloc; check } :
             ('elt_var, 'elt_value, f Checked.field) t) :
           ('elt_var T.t, 'elt_value T.t, f Checked.field) t =
         let traverse_store =
@@ -549,7 +563,7 @@ struct
         let store value = traverse_store value ~f:store in
         let alloc = traverse_alloc template ~f:(fun () -> alloc) in
         let check t = Checked.map (traverse_checked t ~f:check) ~f:ignore in
-        {read; store; alloc; check}
+        { read; store; alloc; check }
     end
   end
 
@@ -562,7 +576,7 @@ struct
     let field_vars_len = M.Var.size_in_field_elements in
     let fields_len = M.Var.size_in_field_elements in
     assert (field_vars_len = fields_len) ;
-    { read=
+    { read =
         (fun v ->
           let field_vars = M.Var.to_field_elements v in
           assert (Array.length field_vars = field_vars_len) ;
@@ -572,9 +586,9 @@ struct
               let%bind () = acc in
               let%map x = Read.read x in
               if idx = 0 then fields := Array.create ~len:fields_len x
-              else !fields.(idx) <- x )
-          |> Read.map ~f:(fun () -> M.Value.of_field_elements !fields) )
-    ; store=
+              else !fields.(idx) <- x)
+          |> Read.map ~f:(fun () -> M.Value.of_field_elements !fields))
+    ; store =
         (fun v ->
           let fields = M.Value.to_field_elements v in
           assert (Array.length fields = fields_len) ;
@@ -584,9 +598,9 @@ struct
               let%bind () = acc in
               let%map x = Store.store x in
               if idx = 0 then field_vars := Array.create ~len:field_vars_len x
-              else !field_vars.(idx) <- x )
-          |> Store.map ~f:(fun () -> M.Var.of_field_elements !field_vars) )
-    ; alloc=
+              else !field_vars.(idx) <- x)
+          |> Store.map ~f:(fun () -> M.Var.of_field_elements !field_vars))
+    ; alloc =
         ( if field_vars_len = 0 then Alloc.return (M.Var.of_field_elements [||])
         else
           Alloc.bind Alloc.alloc ~f:(fun x ->
@@ -599,12 +613,12 @@ struct
                     let%map x = Alloc.alloc in
                     field_vars.(idx) <- x
                   in
-                  (acc, idx + 1) )
+                  (acc, idx + 1))
                 (Alloc.return (), 1)
               |> fst
-              |> Alloc.map ~f:(fun () -> M.Var.of_field_elements field_vars) )
-        )
-    ; check= M.Var.check }
+              |> Alloc.map ~f:(fun () -> M.Var.of_field_elements field_vars)) )
+    ; check = M.Var.check
+    }
 end
 
 include Make (Checked) (As_prover)
