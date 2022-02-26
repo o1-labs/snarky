@@ -120,19 +120,14 @@ module Make (Backend : Backend_intf.S) :
   S
     with type Field.t = Backend.Field.t
      and type Field.Vector.t = Backend.Field.Vector.t
-     and type Bigint.t = Backend.Bigint.R.t
+     and type Bigint.t = Backend.Bigint.t
      and type Proving_key.t = Backend.Proving_key.t
      and type Verification_key.t = Backend.Verification_key.t
      and type Var.t = Backend.Var.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
 struct
   open Backend
-
-  module Bigint = Bigint_extended.Make (struct
-    include Bigint.R
-
-    type field = Field.t
-  end)
+  module Bigint = Bigint
 
   module Verification_key = struct
     include Verification_key
@@ -196,7 +191,7 @@ struct
     let _project bs =
       (* todo: 32-bit and ARM support. basically this code needs to always match the loop in the C++ of_data implementation. *)
       assert (Sys.word_size = 64 && not Sys.big_endian) ;
-      let module R = Backend.Bigint.R in
+      let module R = Backend.Bigint in
       let chunks_of n xs =
         List.groupi ~break:(fun i _ _ -> Int.equal (i mod n) 0) xs
       in
@@ -212,7 +207,7 @@ struct
                     acc + if el then shift_left one i else zero)
                   elt)))
         chunks64 ;
-      Backend.Bigint.R.(of_data arr ~bitcount:(List.length bs) |> to_field)
+      R.(of_data arr ~bitcount:(List.length bs) |> to_field)
 
     let project = project_reference
 
