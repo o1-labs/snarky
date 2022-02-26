@@ -1,21 +1,13 @@
 module Bignum_bigint = Bigint
 
-module type S = sig
-  type field
-
+module type Basic = sig
   type t
-
-  val of_field : field -> t
 
   val test_bit : t -> int -> bool
 end
 
-module type Extended = sig
-  include S
-
-  include Core_kernel.Binable.S with type t := t
-
-  val to_field : t -> field
+module type Convertible = sig
+  include Basic
 
   val of_data : Core_kernel.Bigstring.t -> bitcount:int -> t
 
@@ -24,6 +16,26 @@ module type Extended = sig
   val of_decimal_string : string -> t
 
   val of_numeral : string -> base:int -> t
+end
+
+module type S = sig
+  include Basic
+
+  type field
+
+  val of_field : field -> t
+end
+
+module type Extended = sig
+  include Convertible
+
+  include Core_kernel.Binable.S with type t := t
+
+  type field
+
+  val of_field : field -> t
+
+  val to_field : t -> field
 
   val compare : t -> t -> int
 end

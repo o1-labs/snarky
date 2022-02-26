@@ -1,10 +1,10 @@
 module Bignum_bigint = Bigint
 
-module Make (Bigint : Snarky_intf.Bigint_intf.Extended) :
-  Snarky_intf.Bigint_intf.Full
-    with type t = Bigint.t
-     and type field = Bigint.field = struct
-  include Bigint
+module Make (Bigint : Snarky_intf.Bigint_intf.Convertible) :
+  Snarky_intf.Bigint_intf.Bignum_bigint_conv with type t = Bigint.t = struct
+  open Bigint
+
+  type t = Bigint.t
 
   let of_bignum_bigint n = of_decimal_string (Bignum_bigint.to_string n)
 
