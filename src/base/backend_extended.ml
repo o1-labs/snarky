@@ -134,8 +134,9 @@ struct
     let of_bignum_bigint n = of_decimal_string (Bignum_bigint.to_string n)
 
     let to_bignum_bigint n =
+      let size_in_bits = length_in_bytes * 8 in
       let rec go i two_to_the_i acc =
-        if i = Field.size_in_bits then acc
+        if i = size_in_bits then acc
         else
           let acc' =
             if test_bit n i then Bignum_bigint.(acc + two_to_the_i) else acc
