@@ -3,6 +3,7 @@ module As_prover0 = As_prover0
 module As_prover_intf = As_prover_intf
 module Backend_extended = Backend_extended
 module Backend_intf = Backend_intf
+module Bigint_extended = Bigint_extended
 module Bigint_intf = Snarky_intf.Bigint_intf
 module Bin_prot_io = Bin_prot_io
 module Boolean = Boolean
