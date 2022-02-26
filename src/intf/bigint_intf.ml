@@ -9,8 +9,6 @@ end
 module type Convertible = sig
   include Basic
 
-  val of_data : Core_kernel.Bigstring.t -> bitcount:int -> t
-
   val length_in_bytes : int
 
   val of_decimal_string : string -> t
@@ -28,6 +26,8 @@ end
 
 module type Extended = sig
   include Convertible
+
+  val of_data : Core_kernel.Bigstring.t -> bitcount:int -> t
 
   include Core_kernel.Binable.S with type t := t
 
