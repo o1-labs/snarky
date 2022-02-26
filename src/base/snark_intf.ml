@@ -86,13 +86,7 @@ module type Basic = sig
     val index : t -> int
   end
 
-  module Bigint : sig
-    include Snarky_intf.Bigint_intf.Extended with type field := field
-
-    val of_bignum_bigint : Bignum_bigint.t -> t
-
-    val to_bignum_bigint : t -> Bignum_bigint.t
-  end
+  module Bigint : Snarky_intf.Bigint_intf.Full with type field := field
 
   (** Rank-1 constraints over {!type:Var.t}s. *)
   module rec Constraint : sig
@@ -1517,13 +1511,7 @@ module type Run_basic = sig
   (** The finite field over which the R1CS operates. *)
   type field
 
-  module Bigint : sig
-    include Snarky_intf.Bigint_intf.Extended with type field := field
-
-    val of_bignum_bigint : Bignum_bigint.t -> t
-
-    val to_bignum_bigint : t -> Bignum_bigint.t
-  end
+  module Bigint : Snarky_intf.Bigint_intf.Full with type field := field
 
   (** Rank-1 constraints over {!type:Field.t}s. *)
   module rec Constraint : sig

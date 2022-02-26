@@ -1,3 +1,5 @@
+module Bignum_bigint = Bigint
+
 module type S = sig
   type field
 
@@ -24,4 +26,18 @@ module type Extended = sig
   val of_numeral : string -> base:int -> t
 
   val compare : t -> t -> int
+end
+
+module type Bignum_bigint_conv = sig
+  type t
+
+  val of_bignum_bigint : Bignum_bigint.t -> t
+
+  val to_bignum_bigint : t -> Bignum_bigint.t
+end
+
+module type Full = sig
+  include Extended
+
+  include Bignum_bigint_conv with type t := t
 end

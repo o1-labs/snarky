@@ -12,13 +12,7 @@ type 'a json =
 module type S = sig
   module Field : Snarky_intf.Field.Full
 
-  module Bigint : sig
-    include Snarky_intf.Bigint_intf.Extended with type field := Field.t
-
-    val of_bignum_bigint : Bignum_bigint.t -> t
-
-    val to_bignum_bigint : t -> Bignum_bigint.t
-  end
+  module Bigint : Snarky_intf.Bigint_intf.Full with type field := Field.t
 
   module Var : sig
     type t [@@deriving sexp]
