@@ -55,28 +55,6 @@ struct
   end
 
   module Bigint = Bigint
-
-  module Verification_key = struct
-    include Verification_key
-
-    type verification_key = t [@@deriving bin_io]
-
-    module With_r1cs_hash = struct
-      type t = Md5.t * verification_key [@@deriving bin_io]
-    end
-  end
-
-  module Proving_key = struct
-    include Proving_key
-
-    type proving_key = t [@@deriving bin_io]
-
-    module With_r1cs_hash = struct
-      type t = Md5.t * proving_key [@@deriving bin_io]
-    end
-  end
-
-  module Keypair = Keypair
   module Var = Var
   module Field0 = Field
   module Cvar = Cvar
@@ -793,12 +771,7 @@ struct
             Field.Vector.t -> (unit, 'inputs) H_list.t -> Field.Vector.t
         ; num_inputs : int
         ; handler : Request.Handler.t
-        ; mutable proving_key : Proving_key.t option
-        ; mutable verification_key : Verification_key.t option
         ; mutable r1cs_digest : Md5.t option
-        ; proving_key_path : string option
-        ; verification_key_path : string option
-        ; keys_have_hashes : bool
         }
 
       let rec allocate_inputs :
@@ -820,12 +793,7 @@ struct
             ; provide_inputs = (fun input ([] : (unit, unit) H_list.t) -> input)
             ; num_inputs = !next_input - 1
             ; handler = Request.Handler.fail
-            ; proving_key = None
-            ; verification_key = None
             ; r1cs_digest = None
-            ; proving_key_path = None
-            ; verification_key_path = None
-            ; keys_have_hashes = false
             }
         | { alloc; check; store; _ } :: t' ->
             let before_input = !next_input in
@@ -842,12 +810,7 @@ struct
                 ; provide_inputs
                 ; num_inputs
                 ; handler
-                ; proving_key
-                ; verification_key
                 ; r1cs_digest
-                ; proving_key_path
-                ; verification_key_path
-                ; keys_have_hashes
                 } =
               allocate_inputs ~reduce_to_prover check_inputs next_input t'
                 compute
@@ -858,8 +821,8 @@ struct
                  their output.
                  This is "safe", in that you could never generate a proof when
                  they deviated previously, since the constraints system we
-                 generate the keys for and the one satisfied by the prover
-                 would be different.
+                 generate and the one satisfied by the prover would be
+                 different.
                  Thus, here we only store the values, with the understanding
                  that the values passed from [alloc] above should already be
                  identical. *)
@@ -882,18 +845,11 @@ struct
             ; provide_inputs
             ; num_inputs
             ; handler
-            ; proving_key
-            ; verification_key
             ; r1cs_digest
-            ; proving_key_path
-            ; verification_key_path
-            ; keys_have_hashes
             }
 
-      let create ~reduce_to_prover ?proving_key ?verification_key
-          ?proving_key_path ?verification_key_path ?(keys_with_hashes = true)
-          ?(handlers = ([] : Handler.t list)) ?(reduce = false) ~public_input
-          compute =
+      let create ~reduce_to_prover ?(handlers = ([] : Handler.t list))
+          ?(reduce = false) ~public_input compute =
         let next_input = ref 1 in
         let proof_system =
           allocate_inputs ~reduce_to_prover (Checked.return ()) next_input
@@ -905,14 +861,7 @@ struct
           List.fold ~init:proof_system.handler handlers ~f:(fun handler h ->
               Request.Handler.(push handler (create_single h)))
         in
-        { proof_system with
-          proving_key
-        ; verification_key
-        ; proving_key_path
-        ; verification_key_path
-        ; handler
-        ; keys_have_hashes = keys_with_hashes
-        }
+        { proof_system with handler }
 
       let run_proof_system ~run ?(reduce = !reduce_to_prover) ~input ?system
           ?eval_constraints ?(handlers = ([] : Handler.t list)) proof_system s =
@@ -959,30 +908,6 @@ struct
         | None ->
             let system = constraint_system ~run proof_system in
             R1CS_constraint_system.digest system
-
-      let generate_keypair ~run proof_system =
-        let system = constraint_system ~run proof_system in
-        let keypair = Keypair.generate system in
-        proof_system.proving_key <- Some keypair.pk ;
-        proof_system.verification_key <- Some keypair.vk ;
-        (* Write keys to the corresponding files. *)
-        if proof_system.keys_have_hashes then (
-          let digest = digest ~run proof_system in
-          Option.iter proof_system.proving_key_path ~f:(fun path ->
-              Bin_prot_io.write
-                (module Proving_key.With_r1cs_hash)
-                path ~data:(digest, keypair.pk)) ;
-          Option.iter proof_system.verification_key_path ~f:(fun path ->
-              Bin_prot_io.write
-                (module Verification_key.With_r1cs_hash)
-                path ~data:(digest, keypair.vk)) )
-        else (
-          Option.iter proof_system.proving_key_path ~f:(fun path ->
-              Bin_prot_io.write (module Proving_key) path ~data:keypair.pk) ;
-          Option.iter proof_system.verification_key_path ~f:(fun path ->
-              Bin_prot_io.write (module Verification_key) path ~data:keypair.vk)
-          ) ;
-        keypair
 
       let run_with_input ~run ?reduce ~public_input ?system ?eval_constraints
           ?handlers proof_system s =
@@ -1076,14 +1001,6 @@ struct
         -> k_var
         -> R1CS_constraint_system.t =
      fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
-
-    let generate_keypair :
-           run:(_, _, 'checked) Checked.Runner.run
-        -> exposing:('checked, _, 'k_var, _) t
-        -> 'k_var
-        -> Keypair.t =
-     fun ~run ~exposing k ->
-      Keypair.generate (constraint_system ~run ~exposing k)
 
     let generate_public_input :
         ('r_var, Field.Vector.t, 'k_var, 'k_value) t -> 'k_value =
@@ -1654,20 +1571,14 @@ struct
 
     type ('a, 's, 'inputs) t = (('a, 's) Checked.t, 'inputs, 's) proof_system
 
-    let create ?proving_key ?verification_key ?proving_key_path
-        ?verification_key_path ?keys_with_hashes ?handlers ?reduce ~public_input
-        checked =
-      create ~reduce_to_prover:Runner.reduce_to_prover ?proving_key
-        ?verification_key ?proving_key_path ?verification_key_path
-        ?keys_with_hashes ?handlers ?reduce ~public_input checked
+    let create ?handlers ?reduce ~public_input checked =
+      create ~reduce_to_prover:Runner.reduce_to_prover ?handlers ?reduce
+        ~public_input checked
 
     let constraint_system (proof_system : _ t) =
       constraint_system ~run:Checked.run proof_system
 
     let digest (proof_system : _ t) = digest ~run:Checked.run proof_system
-
-    let generate_keypair (proof_system : _ t) =
-      generate_keypair ~run:Checked.run proof_system
 
     let run_unchecked ~public_input ?handlers ?reduce (proof_system : _ t) =
       run_unchecked ~run:Checked.run ~public_input ?handlers ?reduce
@@ -1688,9 +1599,6 @@ struct
     type ('a, 's, 't) t =
       't -> 's Checked.run_state -> 's Checked.run_state * 'a
 
-    let generate_keypair ~run ~exposing k =
-      Run.generate_keypair ~run ~exposing k
-
     let generate_witness ~run t k s = Run.generate_witness ~run t s k
 
     let generate_witness_conv ~run ~f t k s =
@@ -1704,9 +1612,6 @@ struct
 
     let check = check
   end
-
-  let generate_keypair ~exposing k =
-    Run.generate_keypair ~run:Checked.run ~exposing k
 
   let conv f = Run.conv (fun x _ -> f x)
 
@@ -1886,10 +1791,7 @@ module Run = struct
       let a = x () in
       (!state, a)
 
-    module Proving_key = Snark.Proving_key
-    module Verification_key = Snark.Verification_key
     module R1CS_constraint_system = Snark.R1CS_constraint_system
-    module Keypair = Snark.Keypair
     module Var = Snark.Var
 
     type field = Snark.field
@@ -2427,14 +2329,8 @@ module Run = struct
       type ('a, 'public_input) t =
         (unit -> 'a, 'public_input, prover_state) proof_system
 
-      let create ?proving_key ?verification_key ?proving_key_path
-          ?verification_key_path ?keys_with_hashes ?handlers ~public_input
-          checked =
-        create
-          ~reduce_to_prover:(fun _i f -> f)
-          ?proving_key ?verification_key ?proving_key_path
-          ?verification_key_path ?keys_with_hashes ?handlers ~public_input
-          checked
+      let create ?handlers ~public_input checked =
+        create ~reduce_to_prover:(fun _i f -> f) ?handlers ~public_input checked
 
       let mark_active ~f =
         let counters = !active_counters in
@@ -2467,9 +2363,6 @@ module Run = struct
 
       let digest (proof_system : _ t) =
         mark_active ~f:(fun () -> digest ~run proof_system)
-
-      let generate_keypair (proof_system : _ t) =
-        mark_active ~f:(fun () -> generate_keypair ~run proof_system)
 
       let run_unchecked ~public_input ?handlers (proof_system : _ t) s =
         mark_active ~f:(fun () ->
@@ -2586,12 +2479,6 @@ module Run = struct
         inject_wrapper exposing x ~f:(fun x () -> Proof_system.mark_active ~f:x)
       in
       Perform.constraint_system ~run:as_stateful ~exposing x
-
-    let generate_keypair ~exposing x =
-      let x =
-        inject_wrapper exposing x ~f:(fun x () -> Proof_system.mark_active ~f:x)
-      in
-      Perform.generate_keypair ~run:as_stateful ~exposing x
 
     let generate_public_input = generate_public_input
 

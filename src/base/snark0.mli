@@ -35,8 +35,6 @@ module Make (Backend : Backend_intf.S) :
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
      and type Var.t = Backend.Var.t
      and type Field.Vector.t = Backend.Field.Vector.t
-     and type Verification_key.t = Backend.Verification_key.t
-     and type Proving_key.t = Backend.Proving_key.t
 
 module Run : sig
   (** [throw_on_id id] set an internal flag that causes [Make] to throw an
@@ -58,8 +56,6 @@ module Run : sig
        and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
        and type Var.t = Backend.Var.t
        and type Field.Constant.Vector.t = Backend.Field.Vector.t
-       and type Verification_key.t = Backend.Verification_key.t
-       and type Proving_key.t = Backend.Proving_key.t
 end
 
 type 'field m = (module Snark_intf.Run with type field = 'field)
