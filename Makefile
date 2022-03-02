@@ -2,13 +2,13 @@
 default : build
 
 build :
-	dune build --root=. @@install
+	dune build @./install
 
 tests :
-	dune runtest --root=.
+	dune runtest .
 
 ml-docs :
-	dune build --root=. @doc
+	dune build @./doc
 
 website : ml-docs
 	./scripts/build-website.sh
@@ -20,13 +20,13 @@ publish-website : website
 	./scripts/publish-website.sh
 
 examples :
-	dune exec --root=. ./examples/election/election_main.exe
-	dune exec --root=. ./examples/merkle_update/merkle_update.exe
+	dune exec ./examples/election/election_main.exe
+	dune exec ./examples/merkle_update/merkle_update.exe
 	# tutorial.exe intentionally is unimplemented, but it should still compile
-	dune build --root=. ./examples/tutorial/tutorial.exe
+	dune build ./examples/tutorial/tutorial.exe
 
 examples-gpu :
-	dune exec --root=. ./examples/election_gpu/election_main.exe
+	dune exec ./examples/election_gpu/election_main.exe
 
 reformat:
 	dune build @./fmt; dune promote
