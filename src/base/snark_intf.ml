@@ -15,36 +15,6 @@ type 'a json =
 
 (** The base interface to Snarky. *)
 module type Basic = sig
-  (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
-  module Proving_key : sig
-    type t [@@deriving bin_io]
-
-    type proving_key = t [@@deriving bin_io]
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-
-    module With_r1cs_hash : sig
-      type t = Md5.t * proving_key [@@deriving bin_io]
-    end
-  end
-
-  (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
-  module Verification_key : sig
-    type t [@@deriving bin_io]
-
-    type verification_key = t [@@deriving bin_io]
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-
-    module With_r1cs_hash : sig
-      type t = Md5.t * verification_key [@@deriving bin_io]
-    end
-  end
-
   (** The finite field over which the R1CS operates. *)
   type field
 
@@ -979,25 +949,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type ('a, 's, 'public_input) t
 
     (** Create a new proof system. The arguments are
-        - [proving_key] -- optional, defines the key to be used for proving.
-          If not present, a key will be read from [proving_key_path], or one
-          will be generated automatically.
-        - [verification_key] -- optional, defines the key to be used for
-          verification of a proof.
-          If not present, a key will be read from [verification_key_path], or
-          one will be generated automatically.
-        - [proving_key_path] -- optional, defines the path to a file where the
-          proving key can be found. If the file does not exist and no
-          [proving_key] argument is given, the generated key will be written to
-          this file.
-        - [verification_key_path] -- optional, defines the path to a file where
-          the verification key can be found. If the file does not exist and no
-          [verification_key] argument is given, the generated key will be
-          written to this file.
-        - [keys_with_hashes] determines whether keys read from and written to
-          the [proving_key_path] and [verification_key_path] should include a
-          MD5 digest of the constraint system.
-          Default value: [true].
         - [handlers] -- optional, the list of handlers that should be used to
           handle requests made from the checked computation
         - [reduce] -- optional, default [false], whether to perform the
@@ -1008,12 +959,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           values with the types described by [public_input] to the output type.
     *)
     val create :
-         ?proving_key:Proving_key.t
-      -> ?verification_key:Verification_key.t
-      -> ?proving_key_path:string
-      -> ?verification_key_path:string
-      -> ?keys_with_hashes:bool
-      -> ?handlers:Handler.t list
+         ?handlers:Handler.t list
       -> ?reduce:bool
       -> public_input:
            (('a, 's) Checked.t, unit, 'computation, 'public_input) Data_spec.t
@@ -1420,36 +1366,6 @@ end
 module type Run_basic = sig
   (** The type of state that As_prover blocks may read to/write from. *)
   type prover_state
-
-  (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
-  module Proving_key : sig
-    type t [@@deriving bin_io]
-
-    type proving_key = t [@@deriving bin_io]
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-
-    module With_r1cs_hash : sig
-      type t = Md5.t * proving_key [@@deriving bin_io]
-    end
-  end
-
-  (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
-  module Verification_key : sig
-    type t [@@deriving bin_io]
-
-    type verification_key = t [@@deriving bin_io]
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-
-    module With_r1cs_hash : sig
-      type t = Md5.t * verification_key [@@deriving bin_io]
-    end
-  end
 
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
@@ -2006,12 +1922,7 @@ module type Run_basic = sig
     type ('a, 'public_input) t
 
     val create :
-         ?proving_key:Proving_key.t
-      -> ?verification_key:Verification_key.t
-      -> ?proving_key_path:string
-      -> ?verification_key_path:string
-      -> ?keys_with_hashes:bool
-      -> ?handlers:Handler.t list
+         ?handlers:Handler.t list
       -> public_input:
            (unit -> 'a, unit, 'computation, 'public_input) Data_spec.t
       -> 'computation

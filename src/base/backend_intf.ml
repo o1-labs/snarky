@@ -143,22 +143,4 @@ module type S = sig
 
   module R1CS_constraint_system :
     Constraint_system_intf with module Field := Field
-
-  module Proving_key : sig
-    type t [@@deriving bin_io]
-
-    val is_initialized : t -> [ `Yes | `No of R1CS_constraint_system.t ]
-
-    val set_constraint_system : t -> R1CS_constraint_system.t -> unit
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-  end
-
-  module Verification_key : sig
-    type t
-
-    include Stringable.S with type t := t
-  end
 end
