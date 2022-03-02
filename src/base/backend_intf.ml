@@ -161,14 +161,4 @@ module type S = sig
 
     include Stringable.S with type t := t
   end
-
-  module Keypair : sig
-    type t
-
-    val pk : t -> Proving_key.t
-
-    val vk : t -> Verification_key.t
-
-    val create : R1CS_constraint_system.t -> t
-  end
 end

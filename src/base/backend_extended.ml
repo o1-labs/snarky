@@ -108,18 +108,6 @@ module type S = sig
 
     include Stringable.S with type t := t
   end
-
-  module Keypair : sig
-    type t = { pk : Proving_key.t; vk : Verification_key.t } [@@deriving bin_io]
-
-    val create : pk:Proving_key.t -> vk:Verification_key.t -> t
-
-    val pk : t -> Proving_key.t
-
-    val vk : t -> Verification_key.t
-
-    val generate : R1CS_constraint_system.t -> t
-  end
 end
 
 module Make (Backend : Backend_intf.S) :
@@ -157,17 +145,6 @@ struct
   end
 
   module Proving_key = Proving_key
-
-  module Keypair = struct
-    type t = { pk : Proving_key.t; vk : Verification_key.t }
-    [@@deriving fields, bin_io]
-
-    let create = Fields.create
-
-    let of_backend_keypair kp = { pk = Keypair.pk kp; vk = Keypair.vk kp }
-
-    let generate = Fn.compose of_backend_keypair Backend.Keypair.create
-  end
 
   module Var = struct
     module T = struct
