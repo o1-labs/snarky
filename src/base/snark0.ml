@@ -50,28 +50,6 @@ struct
   end
 
   module Bigint = Bigint
-
-  module Verification_key = struct
-    include Verification_key
-
-    type verification_key = t [@@deriving bin_io]
-
-    module With_r1cs_hash = struct
-      type t = Md5.t * verification_key [@@deriving bin_io]
-    end
-  end
-
-  module Proving_key = struct
-    include Proving_key
-
-    type proving_key = t [@@deriving bin_io]
-
-    module With_r1cs_hash = struct
-      type t = Md5.t * proving_key [@@deriving bin_io]
-    end
-  end
-
-  module Keypair = Keypair
   module Var = Var
   module Field0 = Field
   module Cvar = Cvar
@@ -814,14 +792,6 @@ struct
         -> R1CS_constraint_system.t =
      fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
 
-    let generate_keypair :
-           run:(_, _, 'checked) Checked.Runner.run
-        -> exposing:('checked, _, 'k_var, _) t
-        -> 'k_var
-        -> Keypair.t =
-     fun ~run ~exposing k ->
-      Keypair.generate (constraint_system ~run ~exposing k)
-
     let generate_public_input :
         ('r_var, Field.Vector.t, 'k_var, 'k_value) t -> 'k_value =
      fun t0 ->
@@ -1390,9 +1360,6 @@ struct
     type ('a, 's, 't) t =
       't -> 's Checked.run_state -> 's Checked.run_state * 'a
 
-    let generate_keypair ~run ~exposing k =
-      Run.generate_keypair ~run ~exposing k
-
     let generate_witness ~run t k s = Run.generate_witness ~run t s k
 
     let generate_witness_conv ~run ~f t k s =
@@ -1406,9 +1373,6 @@ struct
 
     let check = check
   end
-
-  let generate_keypair ~exposing k =
-    Run.generate_keypair ~run:Checked.run ~exposing k
 
   let conv f = Run.conv (fun x _ -> f x)
 
@@ -1588,10 +1552,7 @@ module Run = struct
       let a = x () in
       (!state, a)
 
-    module Proving_key = Snark.Proving_key
-    module Verification_key = Snark.Verification_key
     module R1CS_constraint_system = Snark.R1CS_constraint_system
-    module Keypair = Snark.Keypair
     module Var = Snark.Var
 
     type field = Snark.field
@@ -2236,10 +2197,6 @@ module Run = struct
     let constraint_system ~exposing x =
       let x = inject_wrapper exposing x ~f:(fun x () -> mark_active ~f:x) in
       Perform.constraint_system ~run:as_stateful ~exposing x
-
-    let generate_keypair ~exposing x =
-      let x = inject_wrapper exposing x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.generate_keypair ~run:as_stateful ~exposing x
 
     let generate_public_input = generate_public_input
 
