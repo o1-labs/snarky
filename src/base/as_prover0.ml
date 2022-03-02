@@ -28,9 +28,12 @@ module T = struct
 
   let read_var (v : 'var) : ('field, 'field, 's) t = fun tbl s -> (s, tbl v)
 
+  let read' read (var : 'var) : ('value, 'field, 'prover_state) t =
+   fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
+
   let read ({ read; _ } : ('var, 'value, 'field, _) Types.Typ.t) (var : 'var) :
       ('value, 'field, 'prover_state) t =
-   fun tbl s -> (s, Typ_monads.Read.run (read var) tbl)
+    read' read var
 
   include Monad_let.Make3 (struct
     type nonrec ('a, 'e, 's) t = ('a, 'e, 's) t

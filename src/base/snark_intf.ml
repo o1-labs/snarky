@@ -337,6 +337,16 @@ module type Basic = sig
           [Checked] world to pass through [As_prover] blocks.
     *)
       val ref : unit -> ('a As_prover.Ref.t, 'a) t
+
+      (** Used to allocate the field elements for a value now, but delay
+          storing them until later. Can be used to 'return' a value in the
+          public input, instead of needing to know its value ahead of time.
+
+          Warning: If the input [Typ.t]'s read function does not accept the
+          zero field element as valid for any part of the in-circuit
+          representation, this function will fail. USE WITH CAUTION.
+      *)
+      val delayed : ('var, 'value) t -> ('var -> ('var, _) Checked.t, unit) t
     end
 
     module Of_traversable (T : Traversable.S) : sig
@@ -1560,6 +1570,16 @@ module type Run_basic = sig
           [Checked] world to pass through [As_prover] blocks.
       *)
       val ref : unit -> ('a As_prover.Ref.t, 'a) t
+
+      (** Used to allocate the field elements for a value now, but delay
+          storing them until later. Can be used to 'return' a value in the
+          public input, instead of needing to know its value ahead of time.
+
+          Warning: If the input [Typ.t]'s read function does not accept the
+          zero field element as valid for any part of the in-circuit
+          representation, this function will fail. USE WITH CAUTION.
+      *)
+      val delayed : ('var, 'value) t -> ('var -> 'var, unit) t
 
       (** A [Typ.t] for converting between checked and prover mode functions.
       *)
