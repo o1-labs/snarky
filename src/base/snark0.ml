@@ -44,11 +44,6 @@ struct
 
   let field_vec () = pack_field_vec (Field.Vector.create ())
 
-  let cast_field_vec_exn (T (_, id, v) : _ Run_state.Vector.t) : Field.Vector.t
-      =
-    let T = Type_equal.Id.same_witness_exn id field_vec_id in
-    v
-
   module Proof_inputs = struct
     type t =
       { public_inputs : Field.Vector.t; auxiliary_inputs : Field.Vector.t }
@@ -803,7 +798,6 @@ struct
   module Data_spec = Typ.Data_spec
 
   module Run = struct
-    open Run_state
     open Data_spec
 
     let alloc_var next_input () =
@@ -814,210 +808,6 @@ struct
       let v = alloc_var next_input () in
       Field.Vector.emplace_back primary_input x ;
       v
-
-    module Proof_system = struct
-      type ('checked, 'inputs, 's) proof_system =
-        { compute : 'checked
-        ; reduced_compute : 'checked Lazy.t
-        ; check_inputs : (unit, 's) Checked.t
-        ; provide_inputs :
-            Field.Vector.t -> (unit, 'inputs) H_list.t -> Field.Vector.t
-        ; num_inputs : int
-        ; handler : Request.Handler.t
-        ; mutable r1cs_digest : Md5.t option
-        }
-
-      let rec allocate_inputs :
-          type checked k1 k2.
-             reduce_to_prover:(int ref -> checked -> checked)
-          -> (unit, 's) Checked.t
-          -> int ref
-          -> (checked, unit, k1, k2) t
-          -> k1
-          -> (checked, k2, 's) proof_system =
-       fun ~reduce_to_prover check_inputs next_input t compute ->
-        let open Checked in
-        match t with
-        | [] ->
-            { compute
-            ; reduced_compute =
-                lazy (reduce_to_prover (ref !next_input) compute)
-            ; check_inputs = Checked.return ()
-            ; provide_inputs = (fun input ([] : (unit, unit) H_list.t) -> input)
-            ; num_inputs = !next_input - 1
-            ; handler = Request.Handler.fail
-            ; r1cs_digest = None
-            }
-        | { alloc; check; store; _ } :: t' ->
-            let before_input = !next_input in
-            let var = Typ.Alloc.run alloc (alloc_var next_input) in
-            let after_input = !next_input in
-            let compute = compute var in
-            let check_inputs =
-              let%bind () = check_inputs in
-              with_state (As_prover.return ()) (check var)
-            in
-            let { compute
-                ; reduced_compute
-                ; check_inputs
-                ; provide_inputs
-                ; num_inputs
-                ; handler
-                ; r1cs_digest
-                } =
-              allocate_inputs ~reduce_to_prover check_inputs next_input t'
-                compute
-            in
-            let provide_inputs input H_list.(value :: values) =
-              (* NOTE: We assume here that [store] and [alloc] allocate their
-                 variables in the same way, and order them the same way in
-                 their output.
-                 This is "safe", in that you could never generate a proof when
-                 they deviated previously, since the constraints system we
-                 generate and the one satisfied by the prover would be
-                 different.
-                 Thus, here we only store the values, with the understanding
-                 that the values passed from [alloc] above should already be
-                 identical. *)
-              let next_input = ref before_input in
-              let store_field_elt = store_field_elt input next_input in
-              let _var = Typ.Store.run (store value) store_field_elt in
-              if not (Int.equal !next_input after_input) then
-                failwithf
-                  "allocate_inputs: Cannot work with this Typ.t. The alloc \
-                   method allocates %i field elements, but the store method \
-                   allocates %i."
-                  (after_input - before_input)
-                  (!next_input - before_input)
-                  ()
-              else provide_inputs input values
-            in
-            { compute
-            ; reduced_compute
-            ; check_inputs
-            ; provide_inputs
-            ; num_inputs
-            ; handler
-            ; r1cs_digest
-            }
-
-      let create ~reduce_to_prover ?(handlers = ([] : Handler.t list))
-          ?(reduce = false) ~public_input compute =
-        let next_input = ref 1 in
-        let proof_system =
-          allocate_inputs ~reduce_to_prover (Checked.return ()) next_input
-            public_input compute
-        in
-        let force x = ignore (Lazy.force x) in
-        if reduce then ignore (force proof_system.reduced_compute) else () ;
-        let handler =
-          List.fold ~init:proof_system.handler handlers ~f:(fun handler h ->
-              Request.Handler.(push handler (create_single h)))
-        in
-        { proof_system with handler }
-
-      let run_proof_system ~run ?(reduce = !reduce_to_prover) ~input ?system
-          ?eval_constraints ?(handlers = ([] : Handler.t list)) proof_system s =
-        let { num_inputs; _ } = proof_system in
-        let handler =
-          List.fold ~init:proof_system.handler handlers ~f:(fun handler h ->
-              Request.Handler.(push handler (create_single h)))
-        in
-        let prover_state =
-          Checked.Runner.State.make ~num_inputs ~input
-            ~next_auxiliary:(ref (num_inputs + 1))
-            ~aux:(field_vec ()) ?system ?eval_constraints ~handler s
-        in
-        let prover_state, () =
-          Checked.run proof_system.check_inputs prover_state
-        in
-        let compute =
-          if reduce && not (Option.is_some prover_state.system) then
-            Lazy.force proof_system.reduced_compute
-          else proof_system.compute
-        in
-        let prover_state, a = run compute prover_state in
-        Option.iter prover_state.system
-          ~f:(fun (T ((module C), system) : Field.t Constraint_system.t) ->
-            proof_system.r1cs_digest <- Some (C.digest system) ;
-            let aux_input_size =
-              !(prover_state.next_auxiliary) - (1 + num_inputs)
-            in
-            C.set_auxiliary_input_size system aux_input_size ;
-            C.finalize system) ;
-        (prover_state, a)
-
-      let constraint_system ~run proof_system =
-        let input = field_vec () in
-        let system = R1CS_constraint_system.create () in
-        ignore (run_proof_system ~run ~input ~system proof_system None) ;
-        system
-
-      let digest ~run proof_system =
-        match proof_system.r1cs_digest with
-        | Some digest ->
-            (* Use cached digest. *)
-            digest
-        | None ->
-            let system = constraint_system ~run proof_system in
-            R1CS_constraint_system.digest system
-
-      let run_with_input ~run ?reduce ~public_input ?system ?eval_constraints
-          ?handlers proof_system s =
-        let input =
-          proof_system.provide_inputs (Field.Vector.create ()) public_input
-        in
-        let ({ prover_state = s; _ } as state), a =
-          run_proof_system ~run ?reduce ~input:(pack_field_vec input) ?system
-            ?eval_constraints ?handlers proof_system (Some s)
-        in
-        match s with
-        | Some s ->
-            (s, a, state)
-        | None ->
-            failwith
-              "run_with_input: Expected a value from run_proof_system, got \
-               None."
-
-      let run_unchecked ~run ~public_input ?handlers ?reduce proof_system eval s
-          =
-        let s, a, state =
-          run_with_input ~run ?reduce ~public_input ?handlers proof_system s
-        in
-        As_prover.run (eval a) (Checked.Runner.get_value state) s
-
-      let run_checked' ~run ~public_input ?handlers ?reduce proof_system s =
-        match
-          run_with_input ~run ?reduce ~public_input ~eval_constraints:true
-            ?handlers proof_system s
-        with
-        | exception e ->
-            Or_error.of_exn ~backtrace:`Get e
-        | s, x, state ->
-            Ok (s, x, state)
-
-      let run_checked ~run ~public_input ?handlers ?reduce proof_system eval s =
-        Or_error.map
-          (run_checked' ~run ?reduce ~public_input ?handlers proof_system s)
-          ~f:(fun (s, x, state) ->
-            let s', x =
-              As_prover.run (eval x) (Checked.Runner.get_value state) s
-            in
-            (s', x))
-
-      let check ~run ~public_input ?handlers ?reduce proof_system s =
-        Or_error.map ~f:(Fn.const ())
-          (run_checked' ~run ?reduce ~public_input ?handlers proof_system s)
-
-      let generate_witness ~run ~public_input ?handlers ?reduce proof_system s =
-        let _, _, state =
-          run_with_input ~run ?reduce ~public_input ?handlers proof_system s
-        in
-        let { input; aux; _ } = state in
-        { Proof_inputs.public_inputs = cast_field_vec_exn input
-        ; auxiliary_inputs = cast_field_vec_exn aux
-        }
-    end
 
     let rec collect_input_constraints :
         type checked s r2 k1 k2.
@@ -1627,35 +1417,6 @@ struct
     in
     assert (Base.List.is_empty !res) ;
     ret
-
-  module Proof_system = struct
-    open Run.Proof_system
-
-    type ('a, 's, 'inputs) t = (('a, 's) Checked.t, 'inputs, 's) proof_system
-
-    let create ?handlers ?reduce ~public_input checked =
-      create ~reduce_to_prover:Runner.reduce_to_prover ?handlers ?reduce
-        ~public_input checked
-
-    let constraint_system (proof_system : _ t) =
-      constraint_system ~run:Checked.run proof_system
-
-    let digest (proof_system : _ t) = digest ~run:Checked.run proof_system
-
-    let run_unchecked ~public_input ?handlers ?reduce (proof_system : _ t) =
-      run_unchecked ~run:Checked.run ~public_input ?handlers ?reduce
-        proof_system
-
-    let run_checked ~public_input ?handlers ?reduce (proof_system : _ t) =
-      run_checked ~run:Checked.run ~public_input ?handlers ?reduce proof_system
-
-    let check ~public_input ?handlers ?reduce (proof_system : _ t) =
-      check ~run:Checked.run ~public_input ?handlers ?reduce proof_system
-
-    let generate_witness ~public_input ?handlers ?reduce (proof_system : _ t) =
-      generate_witness ~run:Checked.run ~public_input ?handlers ?reduce
-        proof_system
-  end
 
   module Perform = struct
     type ('a, 's, 't) t =
@@ -2363,7 +2124,7 @@ module Run = struct
 
       let read_var var = eval_as_prover (As_prover.read_var var)
 
-      let get_state () = eval_as_prover As_prover.get_state
+      let get_state () : Prover_state.t = eval_as_prover As_prover.get_state
 
       let set_state s = eval_as_prover (As_prover.set_state s)
 
@@ -2404,68 +2165,27 @@ module Run = struct
       let var = Handle.var
     end
 
-    module Proof_system = struct
-      open Run.Proof_system
+    let mark_active ~f =
+      let counters = !active_counters in
+      active_counters := this_functor_id :: counters ;
+      try
+        let ret = f () in
+        active_counters := counters ;
+        ret
+      with exn ->
+        active_counters := counters ;
+        raise exn
 
-      type ('a, 'public_input) t =
-        (unit -> 'a, 'public_input, prover_state) proof_system
-
-      let create ?handlers ~public_input checked =
-        create ~reduce_to_prover:(fun _i f -> f) ?handlers ~public_input checked
-
-      let mark_active ~f =
-        let counters = !active_counters in
-        active_counters := this_functor_id :: counters ;
-        try
-          let ret = f () in
-          active_counters := counters ;
-          ret
-        with exn ->
-          active_counters := counters ;
-          raise exn
-
-      let mark_active_deferred (type a ma) ~(map : ma -> f:(a -> a) -> ma) ~f =
-        let counters = !active_counters in
-        active_counters := this_functor_id :: counters ;
-        try
-          map (f ()) ~f:(fun (ret : a) ->
-              active_counters := counters ;
-              ret)
-        with exn ->
-          active_counters := counters ;
-          raise exn
-
-      let _ = mark_active
-
-      let run = as_stateful
-
-      let constraint_system (proof_system : _ t) =
-        mark_active ~f:(fun () -> constraint_system ~run proof_system)
-
-      let digest (proof_system : _ t) =
-        mark_active ~f:(fun () -> digest ~run proof_system)
-
-      let run_unchecked ~public_input ?handlers (proof_system : _ t) s =
-        mark_active ~f:(fun () ->
-            run_unchecked ~run ~public_input ?handlers proof_system
-              (fun a _ s -> (s, a))
-              s)
-
-      let run_checked ~public_input ?handlers (proof_system : _ t) s =
-        mark_active ~f:(fun () ->
-            Or_error.map
-              (run_checked' ~run ~public_input ?handlers proof_system s)
-              ~f:(fun (s, x, _state) -> (s, x)))
-
-      let check ~public_input ?handlers (proof_system : _ t) s =
-        mark_active ~f:(fun () ->
-            Or_error.map ~f:(Fn.const ())
-              (run_checked' ~run ~public_input ?handlers proof_system s))
-
-      let generate_witness ~public_input ?handlers (proof_system : _ t) s =
-        mark_active ~f:(fun () ->
-            generate_witness ~run ~public_input ?handlers proof_system s)
-    end
+    let mark_active_deferred (type a ma) ~(map : ma -> f:(a -> a) -> ma) ~f =
+      let counters = !active_counters in
+      active_counters := this_functor_id :: counters ;
+      try
+        map (f ()) ~f:(fun (ret : a) ->
+            active_counters := counters ;
+            ret)
+      with exn ->
+        active_counters := counters ;
+        raise exn
 
     let assert_ ?label c = run (assert_ ?label c)
 
@@ -2554,33 +2274,26 @@ module Run = struct
           fun x a -> inject_wrapper spec ~f (x a)
 
     let constraint_system ~exposing x =
-      let x =
-        inject_wrapper exposing x ~f:(fun x () -> Proof_system.mark_active ~f:x)
-      in
+      let x = inject_wrapper exposing x ~f:(fun x () -> mark_active ~f:x) in
       Perform.constraint_system ~run:as_stateful ~exposing x
 
     let generate_public_input = generate_public_input
 
     let generate_witness spec x =
-      let x =
-        inject_wrapper spec x ~f:(fun x () -> Proof_system.mark_active ~f:x)
-      in
+      let x = inject_wrapper spec x ~f:(fun x () -> mark_active ~f:x) in
       Perform.generate_witness ~run:as_stateful spec x
 
     let generate_witness_conv ~f spec x =
-      let x =
-        inject_wrapper spec x ~f:(fun x () -> Proof_system.mark_active ~f:x)
-      in
+      let x = inject_wrapper spec x ~f:(fun x () -> mark_active ~f:x) in
       Perform.generate_witness_conv ~run:as_stateful ~f spec x
 
     let run_unchecked x =
-      Perform.run_unchecked ~run:as_stateful (fun () ->
-          Proof_system.mark_active ~f:x)
+      Perform.run_unchecked ~run:as_stateful (fun () -> mark_active ~f:x)
 
     let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t) =
       let res =
         Perform.run_and_check ~run:as_stateful (fun () ->
-            Proof_system.mark_active ~f:(fun () ->
+            mark_active ~f:(fun () ->
                 let prover_block = x () in
                 !state.as_prover := true ;
                 As_prover.run_prover prover_block))
@@ -2611,7 +2324,7 @@ module Run = struct
         map (x ()) ~f:(fun a -> (!state, a))
 
       let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t M.t) =
-        let mark_active = Proof_system.mark_active_deferred ~map in
+        let mark_active = mark_active_deferred ~map in
         let res =
           run_and_check ~run:as_stateful (fun () ->
               mark_active ~f:(fun () ->
@@ -2645,7 +2358,7 @@ module Run = struct
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
           ~next_auxiliary:(ref 1) ~eval_constraints:false None ;
       state := { !state with log_constraint = Some log_constraint } ;
-      ignore (Proof_system.mark_active ~f:x) ;
+      ignore (mark_active ~f:x) ;
       state := old ;
       !count
 
