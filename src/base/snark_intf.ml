@@ -15,36 +15,6 @@ type 'a json =
 
 (** The base interface to Snarky. *)
 module type Basic = sig
-  (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
-  module Proving_key : sig
-    type t [@@deriving bin_io]
-
-    type proving_key = t [@@deriving bin_io]
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-
-    module With_r1cs_hash : sig
-      type t = Md5.t * proving_key [@@deriving bin_io]
-    end
-  end
-
-  (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
-  module Verification_key : sig
-    type t [@@deriving bin_io]
-
-    type verification_key = t [@@deriving bin_io]
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-
-    module With_r1cs_hash : sig
-      type t = Md5.t * verification_key [@@deriving bin_io]
-    end
-  end
-
   (** The finite field over which the R1CS operates. *)
   type field
 
@@ -61,20 +31,6 @@ module type Basic = sig
         used to print JSON to the screen, write it to a file, etc.
     *)
     val to_json : t -> 'a json
-  end
-
-  (** Managing and generating pairs of keys {!type:Proving_key.t} and
-      {!type:Verification_key.t}. *)
-  module Keypair : sig
-    type t [@@deriving bin_io]
-
-    val create : pk:Proving_key.t -> vk:Verification_key.t -> t
-
-    val pk : t -> Proving_key.t
-
-    val vk : t -> Verification_key.t
-
-    val generate : R1CS_constraint_system.t -> t
   end
 
   (** Variables in the R1CS. *)
@@ -198,7 +154,7 @@ module type Basic = sig
           analogous to {!type:Store.t}.
 
           The main use of this is in generating the constraint system and
-          generating the {!type:Keypair.t} with {!val:generate_keypair}; we
+          generating the {!type:Proof_inputs.t} with {!val:generate_witness}; we
           can't know yet what values we will want to store in the variables,
           but we still want to know what constraints they will have to satisfy.
       *)
@@ -985,130 +941,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type t = request -> response
   end
 
-  (** The interface for managing proof systems. *)
-  module Proof_system : sig
-    (** A proof system instance for a checked computation producing a value of
-        type ['a], with prover state ['s] and public inputs ['public_input].
-    *)
-    type ('a, 's, 'public_input) t
-
-    (** Create a new proof system. The arguments are
-        - [proving_key] -- optional, defines the key to be used for proving.
-          If not present, a key will be read from [proving_key_path], or one
-          will be generated automatically.
-        - [verification_key] -- optional, defines the key to be used for
-          verification of a proof.
-          If not present, a key will be read from [verification_key_path], or
-          one will be generated automatically.
-        - [proving_key_path] -- optional, defines the path to a file where the
-          proving key can be found. If the file does not exist and no
-          [proving_key] argument is given, the generated key will be written to
-          this file.
-        - [verification_key_path] -- optional, defines the path to a file where
-          the verification key can be found. If the file does not exist and no
-          [verification_key] argument is given, the generated key will be
-          written to this file.
-        - [keys_with_hashes] determines whether keys read from and written to
-          the [proving_key_path] and [verification_key_path] should include a
-          MD5 digest of the constraint system.
-          Default value: [true].
-        - [handlers] -- optional, the list of handlers that should be used to
-          handle requests made from the checked computation
-        - [reduce] -- optional, default [false], whether to perform the
-          [reduce_to_prover] optimisation while creating the proof system
-        - [public_input] -- the {!type:Data_spec.t} that describes the form
-          that the public inputs must take
-        - ['computation] -- a checked computation that takes as arguments
-          values with the types described by [public_input] to the output type.
-    *)
-    val create :
-         ?proving_key:Proving_key.t
-      -> ?verification_key:Verification_key.t
-      -> ?proving_key_path:string
-      -> ?verification_key_path:string
-      -> ?keys_with_hashes:bool
-      -> ?handlers:Handler.t list
-      -> ?reduce:bool
-      -> public_input:
-           (('a, 's) Checked.t, unit, 'computation, 'public_input) Data_spec.t
-      -> 'computation
-      -> ('a, 's, 'public_input) t
-
-    (** The constraint system that this proof system's checked computation
-        describes.
-    *)
-    val constraint_system :
-      ('a, 's, 'public_input) t -> R1CS_constraint_system.t
-
-    (** The MD5 hash of the constraint system. *)
-    val digest : ('a, 's, 'public_input) t -> Md5_lib.t
-
-    (** Generate a keypair for the checked computation, writing it to the
-        [proving_key_path] and [verification_key_path], if set.
-    *)
-    val generate_keypair : ('a, 's, 'public_input) t -> Keypair.t
-
-    (** Run the checked computation as the prover, without checking any
-        constraints.
-
-        [run_unchecked ~public_input proof_system eval prover_state] runs the
-        checked computation described by [proof_system] with public input
-        [public_input], then evaluates the result using [eval]. [eval] may be
-        used to convert proof system variables back into OCaml values; see
-        {!module:As_prover} for the available functions.
-    *)
-    val run_unchecked :
-         public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
-      -> ?reduce:bool
-      -> ('a, 's, 'public_input) t
-      -> ('a -> ('b, 's) As_prover.t)
-      -> 's
-      -> 's * 'b
-
-    (** Run the checked computation as the prover, checking any constraints.
-
-        [run_checked ~public_input proof_system eval prover_state] runs the
-        checked computation described by [proof_system] with public input
-        [public_input], then evaluates the result using [eval]. [eval] may be
-        used to convert proof system variables back into OCaml values; see
-        {!module:As_prover} for the available functions.
-    *)
-    val run_checked :
-         public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
-      -> ?reduce:bool
-      -> ('a, 's, 'public_input) t
-      -> ('a -> ('b, 's) As_prover.t)
-      -> 's
-      -> ('s * 'b) Or_error.t
-
-    (** Run the checked computation as the prover, returning [Ok ()] if all of
-        the constraints are correct, or an error describing which constraint
-        was not satisfied.
-    *)
-    val check :
-         public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
-      -> ?reduce:bool
-      -> ('a, 's, 'public_input) t
-      -> 's
-      -> unit Or_error.t
-
-    (** Generate a witness (auxiliary input) for the given public input.
-
-        Returns a record of field vectors [{public_inputs; auxiliary_inputs}],
-        corresponding to the given public input and generated auxiliary input.
-    *)
-    val generate_witness :
-         public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
-      -> ?reduce:bool
-      -> ('a, 's, 'public_input) t
-      -> 's
-      -> Proof_inputs.t
-  end
-
   (** Utility functions for running different representations of checked
       computations using a standard interface.
   *)
@@ -1120,12 +952,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       -> exposing:('t, _, 'k_var, _) Data_spec.t
       -> 'k_var
       -> R1CS_constraint_system.t
-
-    val generate_keypair :
-         run:('a, 's, 't) t
-      -> exposing:('t, _, 'k_var, _) Data_spec.t
-      -> 'k_var
-      -> Keypair.t
 
     val generate_witness :
          run:('a, 's, 't) t
@@ -1302,13 +1128,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val with_lens :
     ('whole, 'lens) Lens.t -> ('a, 'lens) Checked.t -> ('a, 'whole) Checked.t
 
-  (** Create a new keypair for the R1CS generated by the checked computation.
-  *)
-  val generate_keypair :
-       exposing:((unit, 's) Checked.t, _, 'k_var, _) Data_spec.t
-    -> 'k_var
-    -> Keypair.t
-
   (** Internal: supplies arguments to a checked computation by storing them
       according to the {!type:Data_spec.t} and passing the R1CS versions.
   *)
@@ -1453,56 +1272,12 @@ module type Run_basic = sig
   (** The type of state that As_prover blocks may read to/write from. *)
   type prover_state
 
-  (** The {!module:Backend_intf.S.Proving_key} module from the backend. *)
-  module Proving_key : sig
-    type t [@@deriving bin_io]
-
-    type proving_key = t [@@deriving bin_io]
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-
-    module With_r1cs_hash : sig
-      type t = Md5.t * proving_key [@@deriving bin_io]
-    end
-  end
-
-  (** The {!module:Backend_intf.S.Verification_key} module from the backend. *)
-  module Verification_key : sig
-    type t [@@deriving bin_io]
-
-    type verification_key = t [@@deriving bin_io]
-
-    val to_string : t -> string
-
-    val of_string : string -> t
-
-    module With_r1cs_hash : sig
-      type t = Md5.t * verification_key [@@deriving bin_io]
-    end
-  end
-
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
     type t
 
     val digest : t -> Md5.t
-  end
-
-  (** Managing and generating pairs of keys {!type:Proving_key.t} and
-      {!type:Verification_key.t}. *)
-  module Keypair : sig
-    type t [@@deriving bin_io]
-
-    val create : pk:Proving_key.t -> vk:Verification_key.t -> t
-
-    val pk : t -> Proving_key.t
-
-    val vk : t -> Verification_key.t
-
-    val generate : R1CS_constraint_system.t -> t
   end
 
   (** Variables in the R1CS. *)
@@ -2048,56 +1823,6 @@ module type Run_basic = sig
     type t = request -> response
   end
 
-  module Proof_system : sig
-    type ('a, 'public_input) t
-
-    val create :
-         ?proving_key:Proving_key.t
-      -> ?verification_key:Verification_key.t
-      -> ?proving_key_path:string
-      -> ?verification_key_path:string
-      -> ?keys_with_hashes:bool
-      -> ?handlers:Handler.t list
-      -> public_input:
-           (unit -> 'a, unit, 'computation, 'public_input) Data_spec.t
-      -> 'computation
-      -> ('a, 'public_input) t
-
-    val constraint_system : ('a, 'public_input) t -> R1CS_constraint_system.t
-
-    val digest : ('a, 'public_input) t -> Md5_lib.t
-
-    val generate_keypair : ('a, 'public_input) t -> Keypair.t
-
-    val run_unchecked :
-         public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
-      -> ('a, 'public_input) t
-      -> prover_state
-      -> prover_state * 'a
-
-    val run_checked :
-         public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
-      -> ('a, 'public_input) t
-      -> prover_state
-      -> (prover_state * 'a) Or_error.t
-
-    val check :
-         public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
-      -> ('a, 'public_input) t
-      -> prover_state
-      -> unit Or_error.t
-
-    val generate_witness :
-         public_input:(unit, 'public_input) H_list.t
-      -> ?handlers:Handler.t list
-      -> ('a, 'public_input) t
-      -> prover_state
-      -> Proof_inputs.t
-  end
-
   val assert_ : ?label:string -> Constraint.t -> unit
 
   val assert_all : ?label:string -> Constraint.t list -> unit
@@ -2156,9 +1881,6 @@ module type Run_basic = sig
     -> 'k_var
     -> R1CS_constraint_system.t
 
-  val generate_keypair :
-    exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t -> 'k_var -> Keypair.t
-
   val generate_witness :
        (unit -> 'a, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
     -> 'k_var
@@ -2183,6 +1905,19 @@ module type Run_basic = sig
     -> prover_state
     -> (prover_state * 'a) Or_error.t
 
+  module Run_and_check_deferred (M : sig
+    type _ t
+
+    val return : 'a -> 'a t
+
+    val map : 'a t -> f:('a -> 'b) -> 'b t
+  end) : sig
+    val run_and_check :
+         (unit -> (unit -> 'a) As_prover.t M.t)
+      -> prover_state
+      -> (prover_state * 'a) Or_error.t M.t
+  end
+
   val check : (unit -> 'a) -> prover_state -> unit Or_error.t
 
   val constraint_count :
@@ -2196,6 +1931,10 @@ module type Run_basic = sig
     -> unit
 
   val clear_constraint_logger : unit -> unit
+
+  val in_prover : unit -> bool
+
+  val in_checked_computation : unit -> bool
 
   module Internal_Basic :
     Basic

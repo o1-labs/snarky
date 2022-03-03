@@ -92,34 +92,6 @@ module type S = sig
       -> (Cvar.t -> Field.t)
       -> bool
   end
-
-  module Proving_key : sig
-    type t [@@deriving bin_io]
-
-    val is_initialized : t -> [ `Yes | `No of R1CS_constraint_system.t ]
-
-    val set_constraint_system : t -> R1CS_constraint_system.t -> unit
-
-    include Stringable.S with type t := t
-  end
-
-  module Verification_key : sig
-    type t [@@deriving bin_io]
-
-    include Stringable.S with type t := t
-  end
-
-  module Keypair : sig
-    type t = { pk : Proving_key.t; vk : Verification_key.t } [@@deriving bin_io]
-
-    val create : pk:Proving_key.t -> vk:Verification_key.t -> t
-
-    val pk : t -> Proving_key.t
-
-    val vk : t -> Verification_key.t
-
-    val generate : R1CS_constraint_system.t -> t
-  end
 end
 
 module Make (Backend : Backend_intf.S) :
@@ -127,8 +99,6 @@ module Make (Backend : Backend_intf.S) :
     with type Field.t = Backend.Field.t
      and type Field.Vector.t = Backend.Field.Vector.t
      and type Bigint.t = Backend.Bigint.R.t
-     and type Proving_key.t = Backend.Proving_key.t
-     and type Verification_key.t = Backend.Verification_key.t
      and type Var.t = Backend.Var.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
 struct
@@ -149,24 +119,6 @@ struct
           go (i + 1) Bignum_bigint.(two_to_the_i + two_to_the_i) acc'
       in
       go 0 Bignum_bigint.one Bignum_bigint.zero
-  end
-
-  module Verification_key = struct
-    include Verification_key
-    include Binable.Of_stringable (Verification_key)
-  end
-
-  module Proving_key = Proving_key
-
-  module Keypair = struct
-    type t = { pk : Proving_key.t; vk : Verification_key.t }
-    [@@deriving fields, bin_io]
-
-    let create = Fields.create
-
-    let of_backend_keypair kp = { pk = Keypair.pk kp; vk = Keypair.vk kp }
-
-    let generate = Fn.compose of_backend_keypair Backend.Keypair.create
   end
 
   module Var = struct
