@@ -235,7 +235,7 @@ struct
       in
       match run t0 state with
       | exception e ->
-          return (Or_error.of_exn e)
+          return (Or_error.of_exn ~backtrace:`Get e)
       | res ->
           map res ~f:(function
             | { prover_state = Some s; _ }, x ->
