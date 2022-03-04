@@ -151,7 +151,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     ; bits =
         Some
           (List.init (bigint_num_bits n) ~f:(fun i ->
-               Boolean.var_of_value (Bigint.test_bit tick_n i)))
+               constant Boolean.typ (Bigint.test_bit tick_n i)))
     }
 
   let one = constant Field.one

@@ -64,8 +64,6 @@ module type Inputs_intf = sig
     val assert_r1cs : t -> t -> t -> unit
 
     val typ : (t, Constant.t) Impl.Typ.t
-
-    val constant : Constant.t -> t
   end
 
   module Constant : Constant_intf with type field := F.Constant.t
@@ -129,7 +127,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
        B: 1
        C: 2 *)
     assert_r1cs (F.scale lambda two) ay
-      (F.scale x_squared (Field.Constant.of_int 3) + F.constant Params.a) ;
+      (F.scale x_squared (Field.Constant.of_int 3) + constant F.typ Params.a) ;
     (* A: 1
        B: 1
        C: 2
@@ -199,22 +197,14 @@ module Make_checked (Inputs : Inputs_intf) = struct
 
   let to_affine_exn x = x
 
-  let constant t =
-    let x, y = Constant.to_affine_exn t in
-    (F.constant x, F.constant y)
-
   let negate (x, y) = (x, F.negate y)
-
-  let one =
-    let x, y = Params.one in
-    F.(constant x, constant y)
 
   let assert_on_curve (x, y) =
     let open F in
     let x2 = square x in
     let x3 = x2 * x in
-    let ax = constant Params.a * x in
-    assert_square y (x3 + ax + constant Params.b)
+    let ax = constant F.typ Params.a * x in
+    assert_square y (x3 + ax + constant F.typ Params.b)
 
   let typ_unchecked : (t, Constant.t) Typ.t =
     Typ.transport
@@ -225,6 +215,10 @@ module Make_checked (Inputs : Inputs_intf) = struct
     { typ_unchecked with
       check = (fun t -> make_checked (fun () -> assert_on_curve t))
     }
+
+  let one =
+    let x, y = Params.one in
+    (constant F.typ x, constant F.typ y)
 
   let if_ c ~then_:(tx, ty) ~else_:(ex, ey) =
     (F.if_ c ~then_:tx ~else_:ex, F.if_ c ~then_:ty ~else_:ey)
@@ -406,7 +400,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
       let open Field.Constant in
       let ( * ) x b = F.scale b x in
       let ( +^ ) = Field.( + ) in
-      F.constant a1
+      constant F.typ a1
       +^ ((a2 - a1) * (b0 :> Field.t))
       +^ ((a3 - a1) * (b1 :> Field.t))
       +^ ((a4 + a1 - a2 - a3) * (b0_and_b1 :> Field.t))
@@ -459,7 +453,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     { value = with_shifts; shift }
 
   let unshift { value; shift } =
-    add_exn value (constant (Constant.negate shift))
+    add_exn value (constant typ (Constant.negate shift))
 
   let multiscale_known pairs =
     Array.map pairs ~f:(fun (s, g) -> scale_known g s)

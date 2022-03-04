@@ -407,10 +407,6 @@ module type Basic = sig
        it is a valid boolean value. *)
     val of_field : Field.Var.t -> (var, _) Checked.t
 
-    (** Convert an OCaml [bool] into a R1CS variable representing the same
-        value. *)
-    val var_of_value : value -> var
-
     (** The relationship between {!val:var} and {!val:value}, with a check that
         the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)
     val typ : (var, value) Typ.t
@@ -1524,8 +1520,6 @@ module type Run_basic = sig
     (** Convert a value in a field to a boolean, adding checks to the R1CS that
        it is a valid boolean value. *)
     val of_field : Field.t -> var
-
-    val var_of_value : value -> var
 
     (** The relationship between {!val:var} and {!val:value}, with a check that
         the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)

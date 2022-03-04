@@ -47,8 +47,6 @@ module Make
       val typ : (var, t) Typ.t
 
       val project : var -> Field.Var.t
-
-      val constant : t -> var
     end
 
     type t = Field.t
@@ -142,8 +140,6 @@ end = struct
         |> Typ.transport_var ~there ~back
 
       let project = Fn.compose Field.Var.project to_list
-
-      let constant bs = of_list (List.map ~f:Boolean.var_of_value (to_list bs))
     end
 
     type var = Field.Var.t

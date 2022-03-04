@@ -123,6 +123,9 @@ struct
         end )
   end
 
+  let constant (typ : _ Typ.t) x =
+    Typ_monads0.Store.run (typ.store x) (fun x -> Cvar0.Constant x)
+
   module As_prover = struct
     include As_prover
 
@@ -497,8 +500,6 @@ struct
       let to_constant (b : var) =
         Option.map (Cvar.to_constant (b :> Cvar.t)) ~f:Field.(equal one)
 
-      let var_of_value b = if b then true_ else false_
-
       let typ : (var, value) Typ.t =
         let open Typ in
         let store b =
@@ -532,7 +533,7 @@ struct
             let (), r =
               run_and_check ~run
                 (Checked.map ~f:(As_prover.read typ)
-                   (all (List.map ~f:var_of_value x)))
+                   (all (List.map ~f:(constant typ_unchecked) x)))
                 ()
               |> Or_error.ok_exn
             in
@@ -541,7 +542,7 @@ struct
       let ( lxor ) b1 b2 =
         match (to_constant b1, to_constant b2) with
         | Some b1, Some b2 ->
-            return (var_of_value (Caml.not (Bool.equal b1 b2)))
+            return (constant typ (Caml.not (Bool.equal b1 b2)))
         | Some true, None ->
             return (not b2)
         | None, Some true ->
@@ -1322,7 +1323,7 @@ struct
                ~f:(As_prover.read Checked.Boolean.typ)
                (Field.Checked.lt_bitstring_value
                   (Bitstring_lib.Bitstring.Msb_first.of_list
-                     (List.map ~f:Checked.Boolean.var_of_value x))
+                     (List.map ~f:Checked.(constant Boolean.typ) x))
                   (Bitstring_lib.Bitstring.Msb_first.of_list y)))
             ()
           |> Or_error.ok_exn
@@ -1396,9 +1397,6 @@ struct
   let run_and_check t s = run_and_check ~run:Checked.run t s
 
   let check t s = check ~run:Checked.run t s
-
-  let constant (typ : _ Typ.t) x =
-    Typ_monads0.Store.run (typ.store x) (fun x -> Cvar0.Constant x)
 
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
@@ -1710,6 +1708,9 @@ module Run = struct
           end )
     end
 
+    let constant (typ : _ Typ.t) x =
+      Typ_monads0.Store.run (typ.store x) (fun x -> Cvar0.Constant x)
+
     module Boolean = struct
       open Snark.Boolean
 
@@ -1740,8 +1741,6 @@ module Run = struct
       let all l = run (all l)
 
       let of_field x = run (of_field x)
-
-      let var_of_value = var_of_value
 
       let typ = typ
 
@@ -2222,9 +2221,6 @@ module Run = struct
       in
       !state.as_prover := true ;
       res
-
-    let constant (typ : _ Typ.t) x =
-      Typ_monads0.Store.run (typ.store x) (fun x -> Cvar0.Constant x)
 
     module Run_and_check_deferred (M : sig
       type _ t

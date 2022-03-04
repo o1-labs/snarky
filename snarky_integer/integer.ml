@@ -142,7 +142,7 @@ let constant (type f) ?length ~m:((module M) as m : f m) x =
   ; bits =
       Some
         (List.init length ~f:(fun i ->
-             Boolean.var_of_value B.(shift_right x i land one = one)))
+             constant Boolean.typ B.(shift_right x i land one = one)))
   }
 
 let shift_left (type f) ~m:((module M) as m : f m) t k =
