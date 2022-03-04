@@ -107,7 +107,7 @@ end = struct
     let%bind s_and = Boolean.(s0 && s1) in
     let open Field.Checked in
     let lookup_one (a1, a2, a3, a4) =
-      Field.Var.constant a1
+      constant Field.typ a1
       + (Field.(a2 - a1) * (s0 :> Field.Var.t))
       + (Field.(a3 - a1) * (s1 :> Field.Var.t))
       + (Field.(a4 + a1 - a2 - a3) * (s_and :> Field.Var.t))
@@ -118,7 +118,7 @@ end = struct
       let sign =
         (* sign = 1 if s2 = 0
            sign = -1 if s2 = 1 *)
-        Field.Var.constant Field.one - (Field.of_int 2 * (s2 :> Field.Var.t))
+        constant Field.typ Field.one - (Field.of_int 2 * (s2 :> Field.Var.t))
       in
       Field.Checked.mul sign (lookup_one y_q)
     in

@@ -137,7 +137,7 @@ let constant (type f) ?length ~m:((module M) as m : f m) x =
     | None ->
         b
   in
-  { value = Field.(constant (bigint_to_field ~m x))
+  { value = Field.(constant typ (bigint_to_field ~m x))
   ; interval = Constant x
   ; bits =
       Some
@@ -148,7 +148,7 @@ let constant (type f) ?length ~m:((module M) as m : f m) x =
 let shift_left (type f) ~m:((module M) as m : f m) t k =
   let open M in
   let two_to_k = B.(one lsl k) in
-  { value = Field.(constant (bigint_to_field ~m two_to_k) * t.value)
+  { value = Field.(constant typ (bigint_to_field ~m two_to_k) * t.value)
   ; interval = Interval.scale ~m t.interval two_to_k
   ; bits =
       Option.map t.bits ~f:(fun bs ->

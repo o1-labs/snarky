@@ -576,10 +576,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
           scaled R1CS variables. *)
       val to_constant_and_terms : t -> field option * (field * Var.t) list
 
-      (** [constant x] creates a new R1CS variable containing the constant
-          field element [x]. *)
-      val constant : field -> t
-
       (** [to_constant x] returns [Some f] if x holds only the constant field
           element [f]. Otherwise, it returns [None].
       *)
@@ -1634,8 +1630,6 @@ module type Run_basic = sig
     (** Convert a {!type:t} value to its constituent constant and a list of
           scaled R1CS variables. *)
     val to_constant_and_terms : t -> field option * (field * Var.t) list
-
-    val constant : field -> t
 
     val to_constant : t -> field option
 

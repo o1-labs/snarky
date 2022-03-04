@@ -1915,8 +1915,6 @@ module Run = struct
 
       let to_constant_and_terms = to_constant_and_terms
 
-      let constant = constant
-
       let to_constant = to_constant
 
       let linear_combination = linear_combination
