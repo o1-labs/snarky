@@ -1397,6 +1397,9 @@ struct
 
   let check t s = check ~run:Checked.run t s
 
+  let constant (typ : _ Typ.t) x =
+    Typ_monads0.Store.run (typ.store x) (fun x -> Cvar0.Constant x)
+
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
       let (), checked_result =
@@ -2221,6 +2224,9 @@ module Run = struct
       in
       !state.as_prover := true ;
       res
+
+    let constant (typ : _ Typ.t) x =
+      Typ_monads0.Store.run (typ.store x) (fun x -> Cvar0.Constant x)
 
     module Run_and_check_deferred (M : sig
       type _ t
