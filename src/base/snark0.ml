@@ -213,7 +213,7 @@ struct
       in
       match run t0 state with
       | exception e ->
-          Or_error.of_exn e
+          Or_error.of_exn ~backtrace:`Get e
       | { prover_state = Some s; _ }, x ->
           Ok (s, x, get_value)
       | _ ->
@@ -235,7 +235,7 @@ struct
       in
       match run t0 state with
       | exception e ->
-          return (Or_error.of_exn e)
+          return (Or_error.of_exn ~backtrace:`Get e)
       | res ->
           map res ~f:(function
             | { prover_state = Some s; _ }, x ->
