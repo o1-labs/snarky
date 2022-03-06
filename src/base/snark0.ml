@@ -1662,8 +1662,6 @@ module Run = struct
           }
       end
 
-      module Of_traversable = Of_traversable
-
       module type S =
         Typ0.Intf.S
           with type field := Field.t
