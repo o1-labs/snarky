@@ -222,9 +222,11 @@ module Make_checked (Inputs : Inputs_intf) = struct
       ~there:Constant.to_affine_exn ~back:Constant.of_affine
 
   let typ : (t, Constant.t) Typ.t =
-    { typ_unchecked with
-      check = (fun t -> make_checked (fun () -> assert_on_curve t))
-    }
+    let (Typ typ_unchecked) = typ_unchecked in
+    Typ
+      { typ_unchecked with
+        check = (fun t -> make_checked (fun () -> assert_on_curve t))
+      }
 
   let if_ c ~then_:(tx, ty) ~else_:(ex, ey) =
     (F.if_ c ~then_:tx ~else_:ex, F.if_ c ~then_:ty ~else_:ey)

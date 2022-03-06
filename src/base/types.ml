@@ -16,8 +16,6 @@ module Provider = struct
 end
 
 module Typ = struct
-  open Typ_monads
-
   module T = struct
     (** The type [('var, 'value, 'field, 'checked) t] describes a mapping from
       OCaml types to the variables and constraints they represent:
@@ -40,12 +38,20 @@ module Typ = struct
     let or (x : t) = Snark.Boolean.(x.b1 || x.b2)
   end
 ]}*)
-    type ('var, 'value, 'field, 'checked) typ =
-      { store : 'value -> ('var, 'field) Store.t
-      ; read : 'var -> ('value, 'field) Read.t
-      ; alloc : ('var, 'field) Alloc.t
+    type ('var, 'value, 'aux, 'field, 'checked) typ' =
+      { var_to_fields : 'var -> 'field Cvar.t array * 'aux
+      ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
+      ; value_to_fields : 'value -> 'field array * 'aux
+      ; value_of_fields : 'field array * 'aux -> 'value
+      ; size_in_field_elements : int
+      ; constraint_system_auxiliary : unit -> 'aux
       ; check : 'var -> 'checked
       }
+
+    type ('var, 'value, 'field, 'checked) typ =
+      | Typ :
+          ('var, 'value, 'aux, 'field, 'checked) typ'
+          -> ('var, 'value, 'field, 'checked) typ
   end
 
   include T

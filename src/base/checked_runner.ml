@@ -218,7 +218,15 @@ struct
     let s', y = t { s with handler = Request.Handler.fail } in
     ({ s' with handler }, y)
 
-  let exists { Types.Typ.store; alloc; check; _ } p s =
+  let exists
+      (Types.Typ.Typ
+        { Types.Typ.var_of_fields
+        ; value_to_fields
+        ; size_in_field_elements
+        ; check
+        ; constraint_system_auxiliary
+        ; _
+        }) p s =
     match s.prover_state with
     | Some ps ->
         let old = !(s.as_prover) in
@@ -228,18 +236,27 @@ struct
         in
         s.as_prover := old ;
         let var =
-          if !(s.as_prover) then
-            (* If we're nested in a prover block, create constants instead of
-               storing.
-            *)
-            Typ_monads.Store.run (store value) Cvar.constant
-          else Typ_monads.Store.run (store value) (store_field_elt s)
+          let store_value =
+            if !(s.as_prover) then
+              (* If we're nested in a prover block, create constants instead of
+                 storing.
+              *)
+              Cvar.constant
+            else store_field_elt s
+          in
+          let fields, aux = value_to_fields value in
+          let field_vars = Array.map ~f:store_value fields in
+          var_of_fields (field_vars, aux)
         in
         (* TODO: Push a label onto the stack here *)
         let s, () = check var (set_prover_state (Some ()) s) in
         (set_prover_state (Some ps) s, { Handle.var; value = Some value })
     | None ->
-        let var = Typ_monads.Alloc.run alloc (alloc_var s) in
+        let var =
+          var_of_fields
+            ( Array.init size_in_field_elements ~f:(fun _ -> alloc_var s ())
+            , constraint_system_auxiliary () )
+        in
         (* TODO: Push a label onto the stack here *)
         let s, () = check var (set_prover_state None s) in
         (set_prover_state None s, { Handle.var; value = None })
@@ -432,13 +449,28 @@ module Make (Backend : Backend_extended.S) = struct
         let s, y = clear_handler (run t) s in
         let k = handle_error s (fun () -> k y) in
         run k s
-    | Exists (typ, p, k) ->
+    | Exists
+        ( Typ
+            { var_to_fields
+            ; var_of_fields
+            ; value_to_fields
+            ; value_of_fields
+            ; size_in_field_elements
+            ; constraint_system_auxiliary
+            ; check
+            }
+        , p
+        , k ) ->
         let typ =
-          { Types.Typ.store = typ.store
-          ; read = typ.read
-          ; alloc = typ.alloc
-          ; check = (fun var -> run (typ.check var))
-          }
+          Types.Typ.Typ
+            { var_to_fields
+            ; var_of_fields
+            ; value_to_fields
+            ; value_of_fields
+            ; size_in_field_elements
+            ; constraint_system_auxiliary
+            ; check = (fun var -> run (check var))
+            }
         in
         let s, y = handle_error s (fun () -> exists typ p s) in
         let k = handle_error s (fun () -> k y) in
@@ -464,157 +496,6 @@ module Make (Backend : Backend_extended.S) = struct
     ; as_prover = ref false
     ; log_constraint = None
     }
-
-  let rec flatten_as_prover :
-      type a s.
-         int ref
-      -> string list
-      -> (a, s, Field.t) Checked.t
-      -> (s run_state -> s run_state) * a =
-   fun next_auxiliary stack t ->
-    match t with
-    | As_prover (x, k) ->
-        let f, a = flatten_as_prover next_auxiliary stack k in
-        ( (fun s ->
-            let s', (_ : unit option) = run_as_prover (Some x) s in
-            f s')
-        , a )
-    | Pure x ->
-        (Fn.id, x)
-    | Direct (d, k) ->
-        let _, y = d (fake_state next_auxiliary stack) in
-        let f, a = flatten_as_prover next_auxiliary stack (k y) in
-        ( (fun s ->
-            let { prover_state; _ } = s in
-            let s, _y = d s in
-            f (set_prover_state prover_state s))
-        , a )
-    | Reduced (t, _d, _res, k) ->
-        let f, y = flatten_as_prover next_auxiliary stack t in
-        let g, a = flatten_as_prover next_auxiliary stack (k y) in
-        ((fun s -> g (f s)), a)
-    | Lazy (x, k) ->
-        let flattened =
-          Lazy.from_fun (fun () ->
-              (* We don't know the stack at forcing time, so just announce that
-                 we're forcing.
-              *)
-              let label = "Lazy value forced (reduced):" in
-              flatten_as_prover next_auxiliary (label :: stack) x)
-        in
-        let y = Lazy.map ~f:snd flattened in
-        let f s =
-          if Lazy.is_val flattened then
-            (* The lazy value has been forced somewhere later in the checked
-               computation, so we need to do the prover parts of it.
-            *)
-            let f, _ = Lazy.force flattened in
-            let { prover_state; _ } = s in
-            let prover_state' = Option.map prover_state ~f:ignore in
-            let s = f (set_prover_state prover_state' s) in
-            set_prover_state prover_state s
-          else s
-        in
-        let g, a = flatten_as_prover next_auxiliary stack (k y) in
-        ((fun s -> g (f s)), a)
-    | With_label (lab, t, k) ->
-        let f, y = flatten_as_prover next_auxiliary (lab :: stack) t in
-        let g, a = flatten_as_prover next_auxiliary stack (k y) in
-        ((fun s -> g (f s)), a)
-    | Add_constraint (c, t) ->
-        let f, y = flatten_as_prover next_auxiliary stack t in
-        ( (fun s ->
-            Option.iter s.log_constraint ~f:(fun f -> f c) ;
-            if s.eval_constraints && not (Constraint.eval c (get_value s)) then
-              failwithf
-                "Constraint unsatisfied:\n%s\n%s\n\nConstraint:\n%s\nData:\n%s"
-                (Constraint.annotation c) (stack_to_string stack)
-                (Sexp.to_string (Constraint.sexp_of_t c))
-                (log_constraint c s) () ;
-            f s)
-        , y )
-    | With_state (p, and_then, t_sub, k) ->
-        let f_sub, y = flatten_as_prover next_auxiliary stack t_sub in
-        let f, a = flatten_as_prover next_auxiliary stack (k y) in
-        ( (fun s ->
-            let s, s_sub = run_as_prover (Some p) s in
-            let s_sub = f_sub (set_prover_state s_sub s) in
-            let s, (_ : unit option) =
-              run_as_prover (Option.map ~f:and_then s_sub.prover_state) s
-            in
-            f s)
-        , a )
-    | With_handler (h, t, k) ->
-        let f, y = flatten_as_prover next_auxiliary stack t in
-        let g, a = flatten_as_prover next_auxiliary stack (k y) in
-        ( (fun s ->
-            let { handler; _ } = s in
-            let s' = f { s with handler = Request.Handler.push handler h } in
-            g { s' with handler })
-        , a )
-    | Clear_handler (t, k) ->
-        let f, y = flatten_as_prover next_auxiliary stack t in
-        let g, a = flatten_as_prover next_auxiliary stack (k y) in
-        ( (fun s ->
-            let { handler; _ } = s in
-            let s' = f { s with handler = Request.Handler.fail } in
-            g { s' with handler })
-        , a )
-    | Exists ({ store; alloc; check; _ }, p, k) ->
-        let var =
-          Typ_monads.Alloc.run alloc
-            (alloc_var (fake_state next_auxiliary stack))
-        in
-        let f, () = flatten_as_prover next_auxiliary stack (check var) in
-        let handle = { Handle.var; value = None } in
-        let g, a = flatten_as_prover next_auxiliary stack (k handle) in
-        ( (fun s ->
-            if !(s.as_prover) then
-              (* If we are running inside a prover block, any call to [exists]
-                 will cause a difference between the expected layout in the
-                 R1CS and the actual layout that the prover puts data into:
-
-                 R1CS layout:
-                        next R1CS variable to be allocated
-                                      \/
-                 ... [ var{n-1} ] [ var{n} ] [ var{n+1} ] [ var{n+2} ] ...
-
-                 Prover block layout:
-                                 prover writes values here due to [exists]
-                                         \/         ...        \/
-                 ... [ var{n-1} ] [ prover_var{1} ] ... [ prover_var{k} ] [ var{n} ] ...
-
-                 To avoid a divergent layout (and thus unsatisfied constraint
-                 system), we run the original checked computation instead.
-
-                 Note: this currently should never happen, because this
-                 function is only invoked on a complete end-to-end checked
-                 computation using the proving API.
-                 By definition, this cannot be wrapped in a prover block.
-              *)
-              failwith
-                "Internal error: attempted to store field elements for a \
-                 variable that is not known to the constraint system." ;
-            let old = !(s.as_prover) in
-            s.as_prover := true ;
-            let ps, value =
-              As_prover.Provider.run p s.stack (get_value s)
-                (Option.value_exn s.prover_state)
-                s.handler
-            in
-            s.as_prover := old ;
-            let _var = Typ_monads.Store.run (store value) (store_field_elt s) in
-            let s = f (set_prover_state (Some ()) s) in
-            handle.value <- Some value ;
-            g (set_prover_state (Some ps) s))
-        , a )
-    | Next_auxiliary k ->
-        flatten_as_prover next_auxiliary stack (k !next_auxiliary)
-
-  let reduce_to_prover (type a s) next_auxiliary (t : (a, s, Field.t) Checked.t)
-      : (a, s, Field.t) Checked.t =
-    let f, a = flatten_as_prover next_auxiliary [] t in
-    Reduced (t, f, a, Checked.return)
 
   module State = struct
     let make ~num_inputs ~input ~next_auxiliary ~aux ?system
@@ -672,17 +553,6 @@ module type S = sig
   type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
 
   val run : ('a, 's, field) Types.Checked.t -> 's run_state -> 's run_state * 'a
-
-  val flatten_as_prover :
-       int ref
-    -> string list
-    -> ('a, 's, field) Types.Checked.t
-    -> ('s run_state -> 's run_state) * 'a
-
-  val reduce_to_prover :
-       int ref
-    -> ('a, 'b, field) Types.Checked.t
-    -> ('a, 'b, field) Types.Checked.t
 
   module State : sig
     val make :

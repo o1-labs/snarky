@@ -1,7 +1,6 @@
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked
-module Typ_monads0 = Typ_monads
 open Core_kernel
 
 exception Runtime_error = Checked_runner.Runtime_error
@@ -55,33 +54,6 @@ struct
   module Cvar = Cvar
   module Constraint = Constraint
 
-  module Typ_monads = struct
-    open Typ_monads
-
-    module Store = struct
-      include Restrict_monad.Make2 (Store) (Field)
-
-      let store = Store.store
-
-      let run = Store.run
-    end
-
-    module Read = struct
-      include Restrict_monad.Make2 (Read) (Field)
-
-      let read = Read.read
-    end
-
-    module Alloc = struct
-      open Alloc
-      include Restrict_monad.Make2 (Alloc) (Field)
-
-      let alloc = alloc
-
-      let run = run
-    end
-  end
-
   module Handler = struct
     type t = Request.request -> Request.response
   end
@@ -89,7 +61,6 @@ struct
   module Typ = struct
     include Types.Typ.T
     module T = Typ.Make (Checked_S) (As_prover)
-    include Typ_monads
     include T.T
 
     type ('var, 'value) t = ('var, 'value, Field.t) T.t
@@ -402,16 +373,6 @@ struct
       let%map _ = inv v in
       ()
 
-    (** Read the [Cvar.t]s that represent the value [x].
-
-        WARNING: This assumes that reading zero will not cause an error within
-        the [read] function.
-    *)
-    let unsafe_read_cvars { Typ.read; _ } x =
-      Typ_monads0.Read.run
-        (Typ_monads0.Read.make_cvars (read x))
-        (fun _ -> Field.zero)
-
     module Boolean = struct
       open Boolean.Unsafe
 
@@ -500,26 +461,26 @@ struct
       let var_of_value b = if b then true_ else false_
 
       let typ : (var, value) Typ.t =
-        let open Typ in
-        let store b =
-          Store.(map (store (if b then Field.one else Field.zero)) ~f:create)
+        let (Typ typ) =
+          Typ.field
+          |> Typ.transport
+               ~there:(function true -> Field.one | false -> Field.zero)
+               ~back:(fun x -> if Field.equal x Field.zero then false else true)
+          |> Typ.transport_var
+               ~there:(fun (b : var) -> (b :> Cvar.t))
+               ~back:create
         in
-        let read (v : var) =
-          let open Read.Let_syntax in
-          let%map x = Read.read (v :> Cvar.t) in
-          if Field.equal x Field.one then true
-          else if Field.equal x Field.zero then false
-          else failwith "Boolean.typ: Got non boolean value for variable"
-        in
-        let alloc = Alloc.(map alloc ~f:create) in
-        let check (v : var) =
-          Checked.assert_
-            (Constraint.boolean ~label:"boolean-alloc" (v :> Cvar.t))
-        in
-        { read; store; alloc; check }
+        Typ
+          { typ with
+            check =
+              (fun v ->
+                Checked.assert_
+                  (Constraint.boolean ~label:"boolean-alloc" (v :> Cvar.t)))
+          }
 
       let typ_unchecked : (var, value) Typ.t =
-        { typ with check = (fun _ -> Checked.return ()) }
+        let (Typ typ) = typ in
+        Typ { typ with check = (fun _ -> Checked.return ()) }
 
       let%test_unit "all" =
         let gen =
@@ -764,8 +725,20 @@ struct
       match t with
       | [] ->
           Checked.return k
-      | { alloc; check; _ } :: t' ->
-          let var = Typ.Alloc.run alloc (alloc_var next_input) in
+      | Typ
+          { var_of_fields
+          ; size_in_field_elements
+          ; constraint_system_auxiliary
+          ; check
+          ; _
+          }
+        :: t' ->
+          let var =
+            var_of_fields
+              ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
+                    alloc_var next_input ())
+              , constraint_system_auxiliary () )
+          in
           let r = collect_input_constraints next_input t' (k var) in
           let%map () = with_state (As_prover.return ()) (check var) and r = r in
           r
@@ -805,9 +778,10 @@ struct
         match t with
         | [] ->
             primary_input
-        | { store; _ } :: t' ->
+        | Typ { value_to_fields; _ } :: t' ->
             fun value ->
-              let _var = Typ.Store.run (store value) store_field_elt in
+              let fields, _aux = value_to_fields value in
+              let _fields = Array.map ~f:store_field_elt fields in
               go t'
       in
       go t0
@@ -835,9 +809,11 @@ struct
         match t with
         | [] ->
             cont0 k primary_input
-        | { store; _ } :: t' ->
+        | Typ { var_of_fields; value_to_fields; _ } :: t' ->
             fun value ->
-              let var = Typ.Store.run (store value) store_field_elt in
+              let fields, aux = value_to_fields value in
+              let fields = Array.map ~f:store_field_elt fields in
+              let var = var_of_fields (fields, aux) in
               go t' (k var)
       in
       go t0 k0
@@ -1331,30 +1307,31 @@ struct
 
   include Checked
 
-  let%snarkydef_ if_ (b : Boolean.var) ~(typ : ('var, _) Typ.t) ~(then_ : 'var)
-      ~(else_ : 'var) =
-    let then_ = unsafe_read_cvars typ then_ in
-    let else_ = unsafe_read_cvars typ else_ in
-    let%map res =
-      all
-        (Core_kernel.List.map2_exn then_ else_ ~f:(fun then_ else_ ->
+  let%snarkydef_ if_ (b : Boolean.var) ~typ:(Typ typ : ('var, _) Typ.t)
+      ~(then_ : 'var) ~(else_ : 'var) =
+    let then_, then_aux = typ.var_to_fields then_ in
+    let else_, else_aux = typ.var_to_fields else_ in
+    let%bind res =
+      Array.all
+        (Core_kernel.Array.map2_exn then_ else_ ~f:(fun then_ else_ ->
              if_ b ~then_ ~else_))
     in
-    let res = ref res in
-    let ret =
-      (* Run the typ's allocator, providing the values from the Cvar.t list
-         [res].
-      *)
-      Typ_monads0.Alloc.run typ.alloc (fun () ->
-          match !res with
-          | hd :: tl ->
-              res := tl ;
-              hd
-          | _ ->
-              assert false)
+    let%map res_aux =
+      (* Abstraction leak.. *)
+      let res_aux = ref None in
+      let%map () =
+        as_prover
+          As_prover.(
+            if%map read Boolean.typ b then res_aux := Some then_aux
+            else res_aux := Some else_aux)
+      in
+      match !res_aux with
+      | Some res_aux ->
+          res_aux
+      | None ->
+          typ.constraint_system_auxiliary ()
     in
-    assert (Base.List.is_empty !res) ;
-    ret
+    typ.var_of_fields (res, res_aux)
 
   module Perform = struct
     type ('a, 's, 't) t =
@@ -1563,19 +1540,8 @@ module Run = struct
 
     module Typ = struct
       open Snark.Typ
-      module Store = Store
-      module Alloc = Alloc
-      module Read = Read
 
       type nonrec ('var, 'value) t = ('var, 'value) t
-
-      let store = store
-
-      let read = read
-
-      let alloc = alloc
-
-      let check typ var = run (check typ var)
 
       let unit = unit
 
@@ -1599,70 +1565,7 @@ module Run = struct
 
       let of_hlistable = of_hlistable
 
-      module Internal = struct
-        include Internal
-
-        (* Warning: Don't try this at home! *)
-        let fn (typ1 : ('var1, 'value1) t) (typ2 : ('var2, 'value2) t) :
-            ('var1 -> 'var2, 'value1 -> 'value2) t =
-          { store =
-              (fun f ->
-                (* NOTE: We don't do any storing here; the [exists] call below
-                         sets up new variables and constraints on each function
-                         call, ensuring that the return values are distinct in
-                         the constraint system.
-                *)
-                Store.return (fun a ->
-                    run
-                      (Checked_S.exists typ2
-                         ~compute:As_prover.(map ~f (read typ1 a)))))
-          ; read =
-              (fun f ->
-                Read.return (fun a ->
-                    (* Sanity check: The read monad should only be evaluated as
-                       the prover.
-                    *)
-                    assert !(!state.as_prover) ;
-                    let ret = Stdlib.ref None in
-                    run
-                      Checked_S.(
-                        (* NOTE: This [exists] is safe: no variables are
-                                 allocated or constraints added in prover mode.
-                        *)
-                        let%bind a =
-                          exists typ1 ~compute:(As_prover.return a)
-                        in
-                        let%map () =
-                          as_prover
-                            As_prover.(
-                              let%map x = read typ2 (f a) in
-                              ret := Some x)
-                        in
-                        match !ret with
-                        | Some ret ->
-                            ret
-                        | None ->
-                            (* In prover mode, this can't happen. *)
-                            assert false)))
-          ; alloc =
-              (* NOTE: We don't do any allocations here; the [exists] call
-                       below sets up new variables and constraints on each
-                       function call, ensuring that the return values are
-                       distinct in the constraint system.
-              *)
-              Alloc.return (fun _ -> run (exists typ2))
-          ; check =
-              (fun _ ->
-                (* NOTE: There are no variables allocated, so there is nothing to
-                       check here. The relevant checks are done in the [exists]
-                       call in [store]/[alloc] above, once for each function
-                       call.
-                *)
-                Checked.return ())
-          }
-      end
-
-      module Of_traversable = Of_traversable
+      module Internal = Internal
 
       module type S =
         Typ0.Intf.S

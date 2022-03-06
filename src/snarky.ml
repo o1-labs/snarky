@@ -34,5 +34,4 @@ module Snark0 = Snarky_backendless.Snark0
 module Snark_intf = Snarky_backendless.Snark_intf
 module Traversable = Snarky_backendless.Traversable
 module Typ = Snarky_backendless.Typ
-module Typ_monads = Snarky_backendless.Typ_monads
 module Types = Snarky_backendless.Types

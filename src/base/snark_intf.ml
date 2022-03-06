@@ -117,79 +117,13 @@ module type Basic = sig
 
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
-    val size : (_, _, _, _) t -> int
+    val size : _ t -> int
 
     include module type of Typ0.Data_spec0
   end
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
-    module Store : sig
-      (** A ['value Store.t] value describes storing {!type:Field.t}s in
-          variables for use in the R1CS. It is a monad, which lets us combine
-          these variables to create more complex values.
-
-          For example, we can store a 3-tuple of values by writing
-{[
-  let store3 (store_a : 'a Store.t) (store_b : 'b Store.t)
-    (store_c : 'b Store.t) : ('a, 'b, 'c) Store.t =
-    let open Store in
-    let%map a = store_a
-    and b = store_b
-    and c = store_c
-    in
-    (a, b, c)
-]}
-      *)
-      include Monad_let.S with type 'a t = ('a, Field.t) Typ_monads.Store.t
-
-      (** Store a single field element for the R1CS, and return the variable
-          that refers to it. *)
-      val store : field -> Field.Var.t t
-    end
-
-    module Alloc : sig
-      (** A ['value Alloc.t] describes allocating variables for the R1CS to use
-          without explicitly giving the values to store in them. This is
-          analogous to {!type:Store.t}.
-
-          The main use of this is in generating the constraint system and
-          generating the {!type:Proof_inputs.t} with {!val:generate_witness}; we
-          can't know yet what values we will want to store in the variables,
-          but we still want to know what constraints they will have to satisfy.
-      *)
-      include Monad_let.S with type 'a t = ('a, Field.t) Typ_monads.Alloc.t
-
-      (** Allocate a variable in the R1CS that can hold a single field element.
-      *)
-      val alloc : Field.Var.t t
-    end
-
-    module Read : sig
-      (** A ['value Read.t] describes reading values back out of the R1CS
-          variables, so that the prover can use them in {!module:As_prover}
-          blocks. It is a monad, which lets us combine these values to
-          create more complex ones.
-
-          For example, we can create a record containing the results of some
-          reads by writing
-{[
-  type ('a, 'b) t = {a : 'a; b : 'b}
-
-  let read_t (read_a : 'a Read.t) (read_b : 'b Read.t) : ('a, 'b) t =
-    let open Read in
-    let%map a = read_a
-    and b = read_b
-    in
-    {a; b}
-]}
-      *)
-      include Monad_let.S with type 'a t = ('a, Field.t) Typ_monads.Read.t
-
-      (** Read the contents of a single R1CS variable. *)
-      val read : Field.Var.t -> field t
-    end
-
     (** The type [('var, 'value) t] describes a mapping from the OCaml type
         ['value] to a type representing the value using R1CS variables
         (['var]).
@@ -205,29 +139,6 @@ module type Basic = sig
     *)
     type ('var, 'value) t =
       ('var, 'value, Field.t, (unit, unit) Checked.t) Types.Typ.t
-
-    (** Accessors for {!type:Types.Typ.t} fields: *)
-
-    (** [store typ x] stores [x] as a ['var] according to the description given
-        by [typ].
-    *)
-    val store : ('var, 'value) t -> 'value -> 'var Store.t
-
-    (** [read typ x] reads [x] as a ['value] according to the description given
-    by [typ].
-    *)
-    val read : ('var, 'value) t -> 'var -> 'value Read.t
-
-    (** [alloc typ] allocates the R1CS variables necessary to represent a
-        ['value] and creates a ['var] from them, according to the description
-        given by [typ].
-    *)
-    val alloc : ('var, 'value) t -> 'var Alloc.t
-
-    (** [check typ x] runs a checked computation to generate the constraints
-        described by [typ] that [x] should satisfy.
-    *)
-    val check : ('var, 'value) t -> 'var -> (unit, _) Checked.t
 
     (** Basic instances: *)
 
@@ -337,11 +248,6 @@ module type Basic = sig
           [Checked] world to pass through [As_prover] blocks.
     *)
       val ref : unit -> ('a As_prover.Ref.t, 'a) t
-    end
-
-    module Of_traversable (T : Traversable.S) : sig
-      val typ :
-        template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
 
     module type S =
@@ -1352,36 +1258,8 @@ module type Run_basic = sig
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
-    module Store : sig
-      include Monad.S with type 'a t = ('a, field) Typ_monads.Store.t
-
-      val store : field -> Field.t t
-    end
-
-    module Alloc : sig
-      include Monad.S with type 'a t = ('a, field) Typ_monads.Alloc.t
-
-      val alloc : Field.t t
-    end
-
-    module Read : sig
-      include Monad.S with type 'a t = ('a, field) Typ_monads.Read.t
-
-      val read : Field.t -> field t
-    end
-
     type ('var, 'value) t =
       ('var, 'value, field, (unit, unit, field) Checked.t) Types.Typ.t
-
-    (** Accessors for {!type:Types.Typ.t} fields: *)
-
-    val store : ('var, 'value) t -> 'value -> 'var Store.t
-
-    val read : ('var, 'value) t -> 'var -> 'value Read.t
-
-    val alloc : ('var, 'value) t -> 'var Alloc.t
-
-    val check : ('var, 'value) t -> 'var -> unit
 
     (** Basic instances: *)
 
@@ -1465,18 +1343,6 @@ module type Run_basic = sig
           [Checked] world to pass through [As_prover] blocks.
       *)
       val ref : unit -> ('a As_prover.Ref.t, 'a) t
-
-      (** A [Typ.t] for converting between checked and prover mode functions.
-      *)
-      val fn :
-           ('var1, 'value1) t
-        -> ('var2, 'value2) t
-        -> ('var1 -> 'var2, 'value1 -> 'value2) t
-    end
-
-    module Of_traversable (T : Traversable.S) : sig
-      val typ :
-        template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
 
     module type S =
