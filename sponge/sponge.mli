@@ -19,13 +19,13 @@ module Params : sig
 
   val tweedle_q : string t
 
-  val pasta_p : string t
+  val pasta_p_legacy : string t
 
-  val pasta_q : string t
+  val pasta_q_legacy : string t
 
-  val pasta_p_3 : string t
+  val pasta_p_kimchi : string t
 
-  val pasta_q_3 : string t
+  val pasta_q_kimchi : string t
 end
 
 module State : sig
