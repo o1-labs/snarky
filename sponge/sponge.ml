@@ -18,13 +18,13 @@ module Params = struct
 
   let tweedle_q = Constants.params_Tweedle_q
 
-  let pasta_p = Constants.params_Pasta_p
+  let pasta_p_legacy = Constants.params_Pasta_p_legacy
 
-  let pasta_q = Constants.params_Pasta_q
+  let pasta_q_legacy = Constants.params_Pasta_q_legacy
 
-  let pasta_p_3 = Constants.params_Pasta_p_3
+  let pasta_p_kimchi = Constants.params_Pasta_p_kimchi
 
-  let pasta_q_3 = Constants.params_Pasta_q_3
+  let pasta_q_kimchi = Constants.params_Pasta_q_kimchi
 end
 
 module State = Array
@@ -95,7 +95,7 @@ I arrived at this value for the number of rounds in the following way.
 As mentioned on page 34, the cost of performing the Grobner basis attack is estimated as
 
 ( (n + d) choose d ) ^ omega
-where 
+where
 
 - omega is some number which is known to be >= 2
 - n = 1 + m*N is the number of variables in the system of equations on page 3
