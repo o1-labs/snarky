@@ -3,7 +3,7 @@ module Make
       type t [@@deriving enum]
     end) :
   Enumerable_intf.S
-    with type ('a, 'b) checked := ('a, 'b) Impl.Checked.t
+    with type 'a checked := 'a Impl.Checked.t
      and type ('a, 'b) typ := ('a, 'b) Impl.Typ.t
      and type bool_var := Impl.Boolean.var
      and type var = Impl.Field.Var.t
