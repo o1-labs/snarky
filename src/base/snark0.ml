@@ -10,10 +10,6 @@ module Runner = Checked_runner
 
 let set_eval_constraints b = Runner.eval_constraints := b
 
-let reduce_to_prover = ref false
-
-let set_reduce_to_prover b = reduce_to_prover := b
-
 module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
