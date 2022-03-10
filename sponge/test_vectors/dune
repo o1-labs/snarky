@@ -6,6 +6,6 @@
 
 (rule
  (alias runtest)
- (deps three_wire.json fp_3.json)
+ (deps legacy.json kimchi.json)
  (action
   (run ./main.exe)))
