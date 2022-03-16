@@ -15,8 +15,6 @@ module T0 = struct
         Pure (f x)
     | Direct (d, k) ->
         Direct (d, fun b -> map (k b) ~f)
-    | Reduced (t, d, res, k) ->
-        Reduced (t, d, res, fun b -> map (k b) ~f)
     | With_label (s, t, k) ->
         With_label (s, t, fun b -> map (k b) ~f)
     | As_prover (x, k) ->
@@ -44,8 +42,6 @@ module T0 = struct
         f x
     | Direct (d, k) ->
         Direct (d, fun b -> bind (k b) ~f)
-    | Reduced (t, d, res, k) ->
-        Reduced (t, d, res, fun b -> bind (k b) ~f)
     | With_label (s, t, k) ->
         With_label (s, t, fun b -> bind (k b) ~f)
     | As_prover (x, k) ->
@@ -155,9 +151,6 @@ module Basic :
         in
         let _, x = d state in
         constraint_count_aux ~weight ~log ~auxc !count (k x)
-    | Reduced (t, _, _, k) ->
-        let count, y = constraint_count_aux ~weight ~log ~auxc count t in
-        constraint_count_aux ~weight ~log ~auxc count (k y)
     | As_prover (_x, k) ->
         constraint_count_aux ~weight ~log ~auxc count k
     | Lazy (x, k) ->

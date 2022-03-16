@@ -338,11 +338,6 @@ module type Basic = sig
       val ref : unit -> ('a As_prover.Ref.t, 'a) t
     end
 
-    module Of_traversable (T : Traversable.S) : sig
-      val typ :
-        template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
-    end
-
     module type S =
       Typ0.Intf.S
         with type field := Field.t
@@ -1418,11 +1413,6 @@ module type Run_basic = sig
            ('var1, 'value1) t
         -> ('var2, 'value2) t
         -> ('var1 -> 'var2, 'value1 -> 'value2) t
-    end
-
-    module Of_traversable (T : Traversable.S) : sig
-      val typ :
-        template:unit T.t -> ('var, 'value) t -> ('var T.t, 'value T.t) t
     end
 
     module type S =

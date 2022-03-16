@@ -31,7 +31,6 @@ module Run_state = Run_state
 module Snark = Snark
 module Snark0 = Snark0
 module Snark_intf = Snark_intf
-module Traversable = Traversable
 module Typ = Typ
 module Typ_monads = Typ_monads
 module Types = Types

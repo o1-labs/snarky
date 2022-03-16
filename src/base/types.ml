@@ -66,12 +66,6 @@ module Checked = struct
     | Direct :
         ('f Run_state.t -> 'f Run_state.t * 'a) * ('a -> ('b, 'f) t)
         -> ('b, 'f) t
-    | Reduced :
-        ('a, 'f) t
-        * ('f Run_state.t -> 'f Run_state.t)
-        * 'a
-        * ('a -> ('b, 'f) t)
-        -> ('b, 'f) t
     | Add_constraint : ('f Cvar.t, 'f) Constraint.t * ('a, 'f) t -> ('a, 'f) t
     | As_prover : (unit, 'f) As_prover.t * ('a, 'f) t -> ('a, 'f) t
     | Lazy : ('a, 'f) t * ('a Lazy.t -> ('b, 'f) t) -> ('b, 'f) t
