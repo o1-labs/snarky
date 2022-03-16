@@ -397,30 +397,6 @@ module Make (Backend : Backend_extended.S) = struct
         let s, y = handle_error s (fun () -> d s) in
         let k = handle_error s (fun () -> k y) in
         run k s
-    | Reduced (t, d, res, k) ->
-        let s, y =
-          if
-            (not !(s.as_prover))
-            && Option.is_some s.prover_state
-            && Option.is_none s.system
-          then
-            (* In reduced mode, we only evaluate prover code and use it to fill
-               the public and auxiliary input vectors. Thus, these three
-               conditions are important:
-               - if there is no prover state, we can't run the prover code
-               - if there is an R1CS to be filled, we need to run the original
-                 computation to add the constraints to it
-               - if we are running a checked computation inside a prover block,
-                 we need to be sure that we aren't allocating R1CS variables
-                 that aren't present in the original constraint system.
-                 See the comment in the [Exists] branch of [flatten_as_prover]
-                 below for more context.
-            *)
-            (handle_error s (fun () -> d s), res)
-          else run t s
-        in
-        let k = handle_error s (fun () -> k y) in
-        run k s
     | Lazy (x, k) ->
         let s, y = mk_lazy (run x) s in
         let k = handle_error s (fun () -> k y) in

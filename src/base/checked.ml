@@ -16,8 +16,6 @@ module T0 = struct
         Pure (f x)
     | Direct (d, k) ->
         Direct (d, fun b -> map (k b) ~f)
-    | Reduced (t, d, res, k) ->
-        Reduced (t, d, res, fun b -> map (k b) ~f)
     | With_label (s, t, k) ->
         With_label (s, t, fun b -> map (k b) ~f)
     | As_prover (x, k) ->
@@ -48,8 +46,6 @@ module T0 = struct
         f x
     | Direct (d, k) ->
         Direct (d, fun b -> bind (k b) ~f)
-    | Reduced (t, d, res, k) ->
-        Reduced (t, d, res, fun b -> bind (k b) ~f)
     | With_label (s, t, k) ->
         With_label (s, t, fun b -> bind (k b) ~f)
     | As_prover (x, k) ->
@@ -139,15 +135,6 @@ module Basic :
           (Run_state.set_prover_state s rs, a)
         in
         Direct (d, fun b -> with_lens lens (k b))
-    | Reduced (t, d, res, k) ->
-        let d rs =
-          let s = rs.Run_state.prover_state in
-          let s' = Option.map ~f:(Lens.get lens) s in
-          let rs = d (Run_state.set_prover_state s' rs) in
-          let s = Option.map2 ~f:(Lens.set lens) s s' in
-          Run_state.set_prover_state s rs
-        in
-        Reduced (with_lens lens t, d, res, fun b -> with_lens lens (k b))
     | With_label (s, t, k) ->
         With_label (s, with_lens lens t, fun b -> with_lens lens (k b))
     | As_prover (x, k) ->
@@ -215,9 +202,6 @@ module Basic :
         in
         let _, x = d state in
         constraint_count_aux ~weight ~log ~auxc !count (k x)
-    | Reduced (t, _, _, k) ->
-        let count, y = constraint_count_aux ~weight ~log ~auxc count t in
-        constraint_count_aux ~weight ~log ~auxc count (k y)
     | As_prover (_x, k) ->
         constraint_count_aux ~weight ~log ~auxc count k
     | Lazy (x, k) ->

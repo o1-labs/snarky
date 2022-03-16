@@ -32,6 +32,5 @@ module Run_state = Snarky_backendless.Run_state
 module Snark = Snark
 module Snark0 = Snarky_backendless.Snark0
 module Snark_intf = Snarky_backendless.Snark_intf
-module Traversable = Snarky_backendless.Traversable
 module Typ = Snarky_backendless.Typ
 module Types = Snarky_backendless.Types
