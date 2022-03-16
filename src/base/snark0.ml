@@ -167,7 +167,7 @@ struct
            int ref
         -> (checked, r2, k1, k2, _, _) Typ.Data_spec.data_spec
         -> k1
-        -> (checked) Checked.t =
+        -> checked Checked.t =
      fun next_input t k ->
       let open Checked in
       match t with
@@ -176,7 +176,7 @@ struct
       | { alloc; check; _ } :: t' ->
           let var = Typ_monads.Alloc.run alloc (alloc_var next_input) in
           let r = collect_input_constraints next_input t' (k var) in
-          let%map () = (check var) and r = r in
+          let%map () = check var and r = r in
           r
 
     let r1cs_h :
