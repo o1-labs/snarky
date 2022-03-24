@@ -22,12 +22,12 @@ module Make
         val add_unsafe :
              var
           -> var
-          -> ([ `I_thought_about_this_very_carefully of var ], _) Impl.Checked.t
+          -> [ `I_thought_about_this_very_carefully of var ] Impl.Checked.t
 
         val add_known_unsafe :
              var
           -> t
-          -> ([ `I_thought_about_this_very_carefully of var ], _) Impl.Checked.t
+          -> [ `I_thought_about_this_very_carefully of var ] Impl.Checked.t
       end
     end) (Params : sig
       open Impl
@@ -55,7 +55,7 @@ module Make
 
     val typ : (var, t) Typ.t
 
-    val choose_preimage : var -> (Unpacked.var, _) Checked.t
+    val choose_preimage : var -> Unpacked.var Checked.t
   end
 
   module Section : sig
@@ -67,11 +67,11 @@ module Make
 
     val empty : t
 
-    val disjoint_union_exn : t -> t -> (t, _) Checked.t
+    val disjoint_union_exn : t -> t -> t Checked.t
 
-    val extend : t -> Boolean.var Triple.t list -> start:int -> (t, _) Checked.t
+    val extend : t -> Boolean.var Triple.t list -> start:int -> t Checked.t
 
-    val append : t -> Boolean.var Triple.t list -> (t, _) Checked.t
+    val append : t -> Boolean.var Triple.t list -> t Checked.t
 
     val acc : t -> Weierstrass_curve.var
 
@@ -89,7 +89,7 @@ module Make
   val hash :
        init:int * Section.Acc.t
     -> Boolean.var Triple.t list
-    -> (Weierstrass_curve.var, _) Checked.t
+    -> Weierstrass_curve.var Checked.t
 
   val digest : Weierstrass_curve.var -> Digest.var
 end = struct

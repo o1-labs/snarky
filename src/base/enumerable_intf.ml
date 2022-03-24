@@ -1,5 +1,5 @@
 module type S = sig
-  type (_, _) checked
+  type _ checked
 
   type (_, _) typ
 
@@ -17,13 +17,13 @@ module type S = sig
 
   val var : t -> var
 
-  val assert_equal : var -> var -> (unit, _) checked
+  val assert_equal : var -> var -> unit checked
 
-  val var_to_bits : var -> (bool_var list, _) checked
+  val var_to_bits : var -> bool_var list checked
 
-  val if_ : bool_var -> then_:var -> else_:var -> (var, _) checked
+  val if_ : bool_var -> then_:var -> else_:var -> var checked
 
-  val ( = ) : var -> var -> (bool_var, _) checked
+  val ( = ) : var -> var -> bool_var checked
 end
 
 module type Run = sig

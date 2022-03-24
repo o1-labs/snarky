@@ -28,38 +28,37 @@ module Make_checked
     (Backend : Backend_extended.S)
     (As_prover : As_prover_intf.S with type 'f field := Backend.Field.t) =
 struct
-  type 'prover_state run_state = ('prover_state, Backend.Field.t) Run_state.t
+  type run_state = Backend.Field.t Run_state.t
 
   module Types = struct
     module Checked = struct
-      type ('a, 's, 'f) t = 's run_state -> 's run_state * 'a
+      type ('a, 'f) t = run_state -> run_state * 'a
     end
 
     module As_prover = struct
-      type ('a, 'f, 's) t = ('a, 'f, 's) As_prover.t
+      type ('a, 'f) t = ('a, 'f) As_prover.t
     end
 
     module Typ = struct
       include Types.Typ.T
 
-      type ('var, 'value, 'f) t =
-        ('var, 'value, 'f, (unit, unit, 'f) Checked.t) typ
+      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
     end
 
     module Provider = struct
       include Types.Provider.T
 
-      type ('a, 'f, 's) t =
-        (('a Request.t, 'f, 's) As_prover.t, ('a, 'f, 's) As_prover.t) provider
+      type ('a, 'f) t =
+        (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
     end
   end
 
   type 'f field = Backend.Field.t
 
-  type ('a, 's, 'f) t = ('a, 's, 'f field) Types.Checked.t
+  type ('a, 'f) t = ('a, 'f field) Types.Checked.t
 
-  include Monad_let.Make3 (struct
-    type ('a, 's, 'f) t = ('a, 's, 'f field) Types.Checked.t
+  include Monad_let.Make2 (struct
+    type ('a, 'f) t = ('a, 'f field) Types.Checked.t
 
     let return x s = (s, x)
 
@@ -97,13 +96,13 @@ struct
     incr next_auxiliary ; Cvar.Unsafe.of_index v
 
   let run_as_prover x state =
-    match (x, state.prover_state) with
-    | Some x, Some s ->
+    match (x, state.has_witness) with
+    | Some x, true ->
         let old = !(state.as_prover) in
         state.as_prover := true ;
-        let s', y = As_prover.run x (get_value state) s in
+        let y = As_prover.run x (get_value state) in
         state.as_prover := old ;
-        ({ state with prover_state = Some s' }, Some y)
+        (state, Some y)
     | _, _ ->
         (state, None)
 
@@ -115,9 +114,7 @@ struct
     let old_stack = s.stack in
     ( s
     , Lazy.from_fun (fun () ->
-          let { stack; prover_state; _ } = s in
-          let prover_state = Option.map prover_state ~f:ignore in
-          let s = Run_state.set_prover_state prover_state s in
+          let { stack; _ } = s in
 
           (* Add a label to indicate that the new stack is the point at which
              this was forced. When printed for errors, this will split the
@@ -200,14 +197,6 @@ struct
             add_constraint ~stack:s.stack c system) ;
       (s, ()) )
 
-  let with_state p and_then t_sub s =
-    let s, s_sub = run_as_prover (Some p) s in
-    let s_sub, y = t_sub (set_prover_state s_sub s) in
-    let s, (_ : unit option) =
-      run_as_prover (Option.map ~f:and_then s_sub.prover_state) s
-    in
-    (s, y)
-
   let with_handler h t s =
     let { handler; _ } = s in
     let s', y = t { s with handler = Request.Handler.push handler h } in
@@ -227,48 +216,38 @@ struct
         ; constraint_system_auxiliary
         ; _
         }) p s =
-    match s.prover_state with
-    | Some ps ->
-        let old = !(s.as_prover) in
-        s.as_prover := true ;
-        let ps, value =
-          As_prover.Provider.run p s.stack (get_value s) ps s.handler
+    if s.has_witness then (
+      let old = !(s.as_prover) in
+      s.as_prover := true ;
+      let value = As_prover.Provider.run p s.stack (get_value s) s.handler in
+      s.as_prover := old ;
+      let var =
+        let store_value =
+          if !(s.as_prover) then
+            (* If we're nested in a prover block, create constants instead of
+               storing.
+            *)
+            Cvar.constant
+          else store_field_elt s
         in
-        s.as_prover := old ;
-        let var =
-          let store_value =
-            if !(s.as_prover) then
-              (* If we're nested in a prover block, create constants instead of
-                 storing.
-              *)
-              Cvar.constant
-            else store_field_elt s
-          in
-          let fields, aux = value_to_fields value in
-          let field_vars = Array.map ~f:store_value fields in
-          var_of_fields (field_vars, aux)
-        in
-        (* TODO: Push a label onto the stack here *)
-        let s, () = check var (set_prover_state (Some ()) s) in
-        (set_prover_state (Some ps) s, { Handle.var; value = Some value })
-    | None ->
-        let var =
-          var_of_fields
-            ( Array.init size_in_field_elements ~f:(fun _ -> alloc_var s ())
-            , constraint_system_auxiliary () )
-        in
-        (* TODO: Push a label onto the stack here *)
-        let s, () = check var (set_prover_state None s) in
-        (set_prover_state None s, { Handle.var; value = None })
+        let fields, aux = value_to_fields value in
+        let field_vars = Array.map ~f:store_value fields in
+        var_of_fields (field_vars, aux)
+      in
+      (* TODO: Push a label onto the stack here *)
+      let s, () = check var s in
+      (s, { Handle.var; value = Some value }) )
+    else
+      let var =
+        var_of_fields
+          ( Array.init size_in_field_elements ~f:(fun _ -> alloc_var s ())
+          , constraint_system_auxiliary () )
+      in
+      (* TODO: Push a label onto the stack here *)
+      let s, () = check var s in
+      (s, { Handle.var; value = None })
 
   let next_auxiliary s = (s, !(s.next_auxiliary))
-
-  let with_lens (lens : ('whole, 'view) Lens.t) t rs =
-    let s = rs.prover_state in
-    let s' = Option.map ~f:(Lens.get lens) s in
-    let rs, a = t (set_prover_state s' rs) in
-    let s = Option.map2 ~f:(Lens.set lens) s s' in
-    (set_prover_state s rs, a)
 
   let constraint_count ?(weight = List.length)
       ?(log = fun ?start:_ _lab _pos -> ()) t =
@@ -291,7 +270,7 @@ struct
         ; eval_constraints = false
         ; num_inputs = 0
         ; next_auxiliary = ref 1
-        ; prover_state = None
+        ; has_witness = false
         ; stack = []
         ; handler = Request.Handler.fail
         ; is_running = true
@@ -310,16 +289,16 @@ module type Run_extras = sig
 
   module Types : Types.Types
 
-  val get_value : ('a, field) Run_state.t -> cvar -> field
+  val get_value : field Run_state.t -> cvar -> field
 
-  val store_field_elt : ('a, field) Run_state.t -> field -> cvar
+  val store_field_elt : field Run_state.t -> field -> cvar
 
-  val alloc_var : ('a, 'b) Run_state.t -> unit -> cvar
+  val alloc_var : 'b Run_state.t -> unit -> cvar
 
   val run_as_prover :
-       ('a, field, 'b) Types.As_prover.t option
-    -> ('b, field) Run_state.t
-    -> ('b, field) Run_state.t * 'a option
+       ('a, field) Types.As_prover.t option
+    -> field Run_state.t
+    -> field Run_state.t * 'a option
 end
 
 module Make (Backend : Backend_extended.S) = struct
@@ -335,11 +314,11 @@ module Make (Backend : Backend_extended.S) = struct
   module Checked_runner = Make_checked (Backend) (As_prover)
   open Checked_runner
 
-  type 'prover_state run_state = 'prover_state Checked_runner.run_state
+  type run_state = Checked_runner.run_state
 
-  type 's state = 's run_state
+  type state = run_state
 
-  type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
+  type ('a, 't) run = 't -> run_state -> run_state * 'a
 
   include (
     Checked_runner :
@@ -384,8 +363,7 @@ module Make (Backend : Backend_extended.S) = struct
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
-  let rec run :
-      type a s. (a, s, Field.t) Checked.t -> s run_state -> s run_state * a =
+  let rec run : type a. (a, Field.t) Checked.t -> run_state -> run_state * a =
    fun t s ->
     match t with
     | As_prover (x, k) ->
@@ -412,11 +390,6 @@ module Make (Backend : Backend_extended.S) = struct
     | Add_constraint (c, t) ->
         let s, () = handle_error s (fun () -> add_constraint c s) in
         run t s
-    | With_state (p, and_then, t_sub, k) ->
-        let t_sub = run t_sub in
-        let s, y = handle_error s (fun () -> with_state p and_then t_sub s) in
-        let k = handle_error s (fun () -> k y) in
-        run k s
     | With_handler (h, t, k) ->
         let s, y = with_handler h (run t) s in
         let k = handle_error s (fun () -> k y) in
@@ -465,7 +438,7 @@ module Make (Backend : Backend_extended.S) = struct
     ; eval_constraints = false
     ; num_inputs = 0
     ; next_auxiliary
-    ; prover_state = None
+    ; has_witness = false
     ; stack
     ; handler = Request.Handler.fail
     ; is_running = true
@@ -475,10 +448,10 @@ module Make (Backend : Backend_extended.S) = struct
 
   module State = struct
     let make ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ?(eval_constraints = !eval_constraints) ?handler (s0 : 's option) =
+        ?(eval_constraints = !eval_constraints) ?handler ~with_witness () =
       next_auxiliary := 1 + num_inputs ;
       (* We can't evaluate the constraints if we are not computing over a value. *)
-      let eval_constraints = eval_constraints && Option.is_some s0 in
+      let eval_constraints = eval_constraints && with_witness in
       Option.iter
         (system : R1CS_constraint_system.t option)
         ~f:(fun system ->
@@ -500,7 +473,7 @@ module Make (Backend : Backend_extended.S) = struct
       ; eval_constraints
       ; num_inputs
       ; next_auxiliary
-      ; prover_state = s0
+      ; has_witness = with_witness
       ; stack = []
       ; handler = Option.value handler ~default:Request.Handler.fail
       ; is_running = true
@@ -522,13 +495,13 @@ module type S = sig
 
   val clear_constraint_logger : unit -> unit
 
-  type 'prover_state run_state = ('prover_state, field) Run_state.t
+  type run_state = field Run_state.t
 
-  type 's state = 's run_state
+  type state = run_state
 
-  type ('a, 's, 't) run = 't -> 's run_state -> 's run_state * 'a
+  type ('a, 't) run = 't -> run_state -> run_state * 'a
 
-  val run : ('a, 's, field) Types.Checked.t -> 's run_state -> 's run_state * 'a
+  val run : ('a, field) Types.Checked.t -> run_state -> run_state * 'a
 
   module State : sig
     val make :
@@ -539,7 +512,8 @@ module type S = sig
       -> ?system:r1cs
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t
-      -> 's option
-      -> ('s, field) Run_state.t
+      -> with_witness:bool
+      -> unit
+      -> field Run_state.t
   end
 end

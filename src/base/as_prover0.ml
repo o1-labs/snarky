@@ -1,19 +1,19 @@
 open Core_kernel
 
-type ('a, 'f, 's) t = ('a, 'f, 's) Types.As_prover.t
+type ('a, 'f) t = ('a, 'f) Types.As_prover.t
 
 module T = struct
-  let map t ~f tbl s =
-    let s', x = t tbl s in
-    (s', f x)
+  let map t ~f tbl =
+    let x = t tbl in
+    f x
 
-  let bind t ~f tbl s =
-    let s', x = t tbl s in
-    f x tbl s'
+  let bind t ~f tbl =
+    let x = t tbl in
+    f x tbl
 
-  let return x _ s = (s, x)
+  let return x _ = x
 
-  let run t tbl s = t tbl s
+  let run t tbl = t tbl
 
   let get_state _tbl s = (s, s)
 
@@ -21,25 +21,24 @@ module T = struct
 
   let modify_state f _tbl s = (f s, ())
 
-  let map2 x y ~f tbl s =
-    let s, x = x tbl s in
-    let s, y = y tbl s in
-    (s, f x y)
+  let map2 x y ~f tbl =
+    let x = x tbl in
+    let y = y tbl in
+    f x y
 
-  let read_var (v : 'var) : ('field, 'field, 's) t = fun tbl s -> (s, tbl v)
+  let read_var (v : 'var) : ('field, 'field) t = fun tbl -> tbl v
 
   let read
       (Typ { var_to_fields; value_of_fields; _ } :
-        ('var, 'value, 'field, _) Types.Typ.t) (var : 'var) :
-      ('value, 'field, 'prover_state) t =
-   fun tbl s ->
+        ('var, 'value, 'field, _) Types.Typ.t) (var : 'var) : ('value, 'field) t
+      =
+   fun tbl ->
     let field_vars, aux = var_to_fields var in
     let fields = Array.map ~f:tbl field_vars in
-    let value = value_of_fields (fields, aux) in
-    (s, value)
+    value_of_fields (fields, aux)
 
-  include Monad_let.Make3 (struct
-    type nonrec ('a, 'e, 's) t = ('a, 'e, 's) t
+  include Monad_let.Make2 (struct
+    type nonrec ('a, 'e) t = ('a, 'e) t
 
     let map = `Custom map
 
@@ -48,45 +47,39 @@ module T = struct
     let return = return
   end)
 
-  let with_lens (lens : ('whole, 'view) Lens.t) as_prover tbl s =
-    let s' = Lens.get lens s in
-    let s', a = as_prover tbl s' in
-    (Lens.set lens s s', a)
-
   module Provider = struct
-    type nonrec ('a, 'f, 's) t =
-      (('a Request.t, 'f, 's) t, ('a, 'f, 's) t) Types.Provider.t
+    (** The different ways to generate a value of type ['a] for a circuit
+        witness over field ['f].
+
+        This is one of:
+        * a [Request], dispatching an ['a Request.t];
+        * [Compute], running a computation to generate the value;
+        * [Both], attempting to dispatch an ['a Request.t], and falling back to
+          the computation if the request is unhandled or raises an exception.
+    *)
+    type nonrec ('a, 'f) t = (('a Request.t, 'f) t, ('a, 'f) t) Types.Provider.t
 
     open Types.Provider
 
-    let run t stack tbl s (handler : Request.Handler.t) =
+    let run t stack tbl (handler : Request.Handler.t) =
       match t with
       | Request rc ->
-          let s', r = run rc tbl s in
-          (s', Request.Handler.run handler stack r)
+          let r = run rc tbl in
+          Request.Handler.run handler stack r
       | Compute c ->
-          run c tbl s
+          run c tbl
       | Both (rc, c) -> (
-          let s', r = run rc tbl s in
+          let r = run rc tbl in
           match Request.Handler.run handler stack r with
           | exception _ ->
-              run c tbl s
+              run c tbl
           | x ->
-              (s', x) )
-
-    let with_lens lens t =
-      match t with
-      | Request r ->
-          Request (with_lens lens r)
-      | Compute c ->
-          Compute (with_lens lens c)
-      | Both (r, c) ->
-          Both (with_lens lens r, with_lens lens c)
+              x )
   end
 
   module Handle = struct
-    let value (t : ('var, 'value) Handle.t) : ('value, 'field, 's) t =
-     fun _ s -> (s, Option.value_exn t.value)
+    let value (t : ('var, 'value) Handle.t) : ('value, 'field) t =
+     fun _ -> Option.value_exn t.value
   end
 end
 

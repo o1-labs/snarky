@@ -37,13 +37,9 @@ module Run : sig
   *)
   val throw_on_id : int -> unit
 
-  module Make
-      (Backend : Backend_intf.S) (Prover_state : sig
-        type t
-      end) :
+  module Make (Backend : Backend_intf.S) :
     Snark_intf.Run
       with type field = Backend.Field.t
-       and type prover_state = Prover_state.t
        and type Bigint.t = Backend.Bigint.R.t
        and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
        and type Var.t = Backend.Var.t
@@ -52,16 +48,4 @@ end
 
 type 'field m = (module Snark_intf.Run with type field = 'field)
 
-type ('prover_state, 'field) m' =
-  (module Snark_intf.Run
-     with type field = 'field
-      and type prover_state = 'prover_state)
-
-val make :
-  (module Backend_intf.S with type Field.t = 'field) -> (unit, 'field) m'
-
-val make' :
-     (module Backend_intf.S with type Field.t = 'field)
-  -> ('prover_state, 'field) m'
-
-val ignore_state : ('prover_state, 'field) m' -> 'field m
+val make : (module Backend_intf.S with type Field.t = 'field) -> 'field m

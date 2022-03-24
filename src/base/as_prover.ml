@@ -4,15 +4,14 @@ open As_prover_intf
 module Make
     (Checked : Checked_intf.S)
     (As_prover : Basic
-                   with type ('a, 'f, 's) t :=
-                         ('a, 'f, 's) Checked.Types.As_prover.t
+                   with type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t
                     and type 'f field := 'f Checked.field
-                    and type ('a, 'f, 's) Provider.t =
-                         ('a, 'f, 's) Checked.Types.Provider.t) =
+                    and type ('a, 'f) Provider.t =
+                         ('a, 'f) Checked.Types.Provider.t) =
 struct
   module Types = Checked.Types
 
-  type ('a, 'f, 's) t = ('a, 'f, 's) Types.As_prover.t
+  type ('a, 'f) t = ('a, 'f) Types.As_prover.t
 
   type 'f field = 'f Checked.field
 
@@ -21,8 +20,7 @@ struct
   module Ref = struct
     type 'a t = 'a option ref
 
-    let create (x : ('a, 'field, 's) Types.As_prover.t) :
-        ('a t, 's, 'field) Checked.t =
+    let create (x : ('a, 'field) Types.As_prover.t) : ('a t, 'field) Checked.t =
       let r = ref None in
       let open Checked in
       let%map () =
@@ -66,7 +64,7 @@ end)
 struct
   module Types = Checked.Types
 
-  type ('a, 's) t = ('a, Env.field, 's) Types.As_prover.t
+  type 'a t = ('a, Env.field) Types.As_prover.t
 
   include Env
 
@@ -75,5 +73,5 @@ struct
       S
         with module Types := Types
         with type 'f field := field
-         and type ('a, 'f, 's) t := ('a, 'f, 's) Types.As_prover.t )
+         and type ('a, 'f) t := ('a, 'f) Types.As_prover.t )
 end

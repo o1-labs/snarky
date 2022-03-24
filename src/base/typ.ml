@@ -79,11 +79,10 @@ module Make
     (As_prover : As_prover_intf.S
                    with module Types := Checked.Types
                    with type 'f field := 'f Checked.field
-                    and type ('a, 's, 'f) t :=
-                         ('a, 's, 'f) Checked.Types.As_prover.t) =
+                    and type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t) =
 struct
   type ('var, 'value, 'field) t =
-    ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t
+    ('var, 'value, 'field, (unit, 'field) Checked.t) Types.Typ.t
 
   type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
@@ -92,7 +91,7 @@ struct
 
     include
       Intf.S
-        with type 'field checked := (unit, unit, 'field) Checked.t
+        with type 'field checked := (unit, 'field) Checked.t
          and type field := field
          and type field_var := field Cvar.t
   end
@@ -101,13 +100,7 @@ struct
     include Data_spec0
 
     type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
-      ( 'r_var
-      , 'r_value
-      , 'k_var
-      , 'k_value
-      , 'f
-      , (unit, unit, 'f) Checked.t )
-      data_spec
+      ('r_var, 'r_value, 'k_var, 'k_value, 'f, (unit, 'f) Checked.t) data_spec
 
     let size t =
       let rec go :
