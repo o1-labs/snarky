@@ -32,5 +32,4 @@ module Snark = Snark
 module Snark0 = Snark0
 module Snark_intf = Snark_intf
 module Typ = Typ
-module Typ_monads = Typ_monads
 module Types = Types

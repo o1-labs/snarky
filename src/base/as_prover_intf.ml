@@ -18,11 +18,6 @@ module type Basic = sig
   val read :
     ('var, 'value, 'f field, _) Types.Typ.t -> 'var -> ('value, 'f field) t
 
-  val read' :
-       ('var -> ('value, 'f field) Typ_monads.Read.t)
-    -> 'var
-    -> ('value, 'f field) t
-
   module Provider : sig
     type ('a, 'f) t
 
@@ -57,11 +52,7 @@ module type S = sig
 
     val set : 'a t -> 'a -> (unit, 'f field) Types.As_prover.t
 
-    val store : 'a -> ('a t, 'f field) Typ_monads.Store.t
-
-    val read : 'a t -> ('a, 'f field) Typ_monads.Read.t
-
-    val alloc : unit -> ('a t, 'f field) Typ_monads.Alloc.t
+    val typ : ('a t, 'a, 'f field) Types.Typ.t
   end
 end
 

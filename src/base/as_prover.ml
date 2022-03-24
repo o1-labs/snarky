@@ -36,11 +36,16 @@ struct
       let%map () = As_prover.return () in
       r := Some x
 
-    let store x = Typ_monads.Store.return (ref (Some x))
-
-    let read r = Typ_monads.Read.return (Option.value_exn !r)
-
-    let alloc () = Typ_monads.Alloc.return (ref None)
+    let typ : ('a t, 'a, _) Types.Typ.t =
+      Typ
+        { var_to_fields = (fun x -> ([||], !x))
+        ; var_of_fields = (fun (_, x) -> ref x)
+        ; value_to_fields = (fun x -> ([||], Some x))
+        ; value_of_fields = (fun (_, x) -> Option.value_exn x)
+        ; size_in_field_elements = 0
+        ; constraint_system_auxiliary = (fun () -> None)
+        ; check = (fun _ -> Checked.return ())
+        }
   end
 end
 

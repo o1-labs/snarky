@@ -9,8 +9,6 @@ module type S = sig
 
   val get : t -> int -> elt
 
-  val set : t -> int -> elt -> unit
-
   val emplace_back : t -> elt -> unit
 
   val length : t -> int

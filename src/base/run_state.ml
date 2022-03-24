@@ -20,8 +20,6 @@ module Vector = struct
 
       let get _ _ = failwith "Vector.null: get"
 
-      let set _ _ _ = failwith "Vector.null: set"
-
       let emplace_back _ _ = failwith "Vector.null: emplace_back"
 
       let length () = 0
@@ -29,8 +27,6 @@ module Vector = struct
     T ((module T), unit, ())
 
   let get (type x) (T ((module T), _, t) : x t) i = T.get t i
-
-  let set (type x) (T ((module T), _, t) : x t) i = T.set t i
 
   let emplace_back (type x) (T ((module T), _, t) : x t) x = T.emplace_back t x
 end

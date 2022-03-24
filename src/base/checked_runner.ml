@@ -91,13 +91,6 @@ struct
     Run_state.Vector.emplace_back aux x ;
     Cvar.Unsafe.of_index v
 
-  let store_field_elt_later { next_auxiliary; aux; _ } () =
-    let v = !next_auxiliary in
-    incr next_auxiliary ;
-    (* Place zero to ensure that the vector length stays in sync. *)
-    Run_state.Vector.emplace_back aux Field.zero ;
-    (Run_state.Vector.set aux v, Cvar.Unsafe.of_index v)
-
   let alloc_var { next_auxiliary; _ } () =
     let v = !next_auxiliary in
     incr next_auxiliary ; Cvar.Unsafe.of_index v
@@ -214,30 +207,42 @@ struct
     let s', y = t { s with handler = Request.Handler.fail } in
     ({ s' with handler }, y)
 
-  let exists { Types.Typ.store; alloc; check; _ } p s =
+  let exists
+      (Types.Typ.Typ
+        { Types.Typ.var_of_fields
+        ; value_to_fields
+        ; size_in_field_elements
+        ; check
+        ; constraint_system_auxiliary
+        ; _
+        }) p s =
     if s.has_witness then (
       let old = !(s.as_prover) in
       s.as_prover := true ;
       let value = As_prover.Provider.run p s.stack (get_value s) s.handler in
       s.as_prover := old ;
       let var =
-        if !(s.as_prover) then
-          (* If we're nested in a prover block, create constants instead of
-             storing.
-          *)
-          Typ_monads.Store.run (store value) Cvar.constant (fun () ->
-              failwith
-                "Cannot defer the creation of a variable while not generating \
-                 constraints")
-        else
-          Typ_monads.Store.run (store value) (store_field_elt s)
-            (store_field_elt_later s)
+        let store_value =
+          if !(s.as_prover) then
+            (* If we're nested in a prover block, create constants instead of
+               storing.
+            *)
+            Cvar.constant
+          else store_field_elt s
+        in
+        let fields, aux = value_to_fields value in
+        let field_vars = Array.map ~f:store_value fields in
+        var_of_fields (field_vars, aux)
       in
       (* TODO: Push a label onto the stack here *)
       let s, () = check var s in
       (s, { Handle.var; value = Some value }) )
     else
-      let var = Typ_monads.Alloc.run alloc (alloc_var s) in
+      let var =
+        var_of_fields
+          ( Array.init size_in_field_elements ~f:(fun _ -> alloc_var s ())
+          , constraint_system_auxiliary () )
+      in
       (* TODO: Push a label onto the stack here *)
       let s, () = check var s in
       (s, { Handle.var; value = None })
@@ -393,13 +398,28 @@ module Make (Backend : Backend_extended.S) = struct
         let s, y = clear_handler (run t) s in
         let k = handle_error s (fun () -> k y) in
         run k s
-    | Exists (typ, p, k) ->
+    | Exists
+        ( Typ
+            { var_to_fields
+            ; var_of_fields
+            ; value_to_fields
+            ; value_of_fields
+            ; size_in_field_elements
+            ; constraint_system_auxiliary
+            ; check
+            }
+        , p
+        , k ) ->
         let typ =
-          { Types.Typ.store = typ.store
-          ; read = typ.read
-          ; alloc = typ.alloc
-          ; check = (fun var -> run (typ.check var))
-          }
+          Types.Typ.Typ
+            { var_to_fields
+            ; var_of_fields
+            ; value_to_fields
+            ; value_of_fields
+            ; size_in_field_elements
+            ; constraint_system_auxiliary
+            ; check = (fun var -> run (check var))
+            }
         in
         let s, y = handle_error s (fun () -> exists typ p s) in
         let k = handle_error s (fun () -> k y) in
