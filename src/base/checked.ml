@@ -186,9 +186,21 @@ module Basic :
     | Clear_handler (t, k) ->
         let count, x = constraint_count_aux ~weight ~log ~auxc count t in
         constraint_count_aux ~weight ~log ~auxc count (k x)
-    | Exists ({ alloc; check; _ }, _c, k) ->
-        let alloc_var () = Cvar.Var 1 in
-        let var = Typ_monads.Alloc.run alloc alloc_var in
+    | Exists
+        ( Typ
+            { size_in_field_elements
+            ; var_of_fields
+            ; check
+            ; constraint_system_auxiliary
+            ; _
+            }
+        , _c
+        , k ) ->
+        let var =
+          var_of_fields
+            ( Array.init size_in_field_elements ~f:(fun _ -> Cvar.Var 1)
+            , constraint_system_auxiliary () )
+        in
         (* TODO: Push a label onto the stack here *)
         let count, () =
           constraint_count_aux ~weight ~log ~auxc count (check var)

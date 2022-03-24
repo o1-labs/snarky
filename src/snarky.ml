@@ -32,5 +32,4 @@ module Snark = Snark
 module Snark0 = Snarky_backendless.Snark0
 module Snark_intf = Snarky_backendless.Snark_intf
 module Typ = Snarky_backendless.Typ
-module Typ_monads = Snarky_backendless.Typ_monads
 module Types = Snarky_backendless.Types
