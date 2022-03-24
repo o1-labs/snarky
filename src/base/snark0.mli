@@ -8,14 +8,6 @@
     modify your code to use the normal {!val:run_and_check} function. *)
 val set_eval_constraints : bool -> unit
 
-(** Sets the [reduce_to_prover] state. If [true], the [Proof_system] interface
-    will run optimised versions of the checked computations whenever possible.
-
-    Note: This optimisation pre-evaluates and caches some parts of the checked
-    computation, to speed up subsequent calls. *DO NOT USE* if your checked
-    computation uses mutability outside of [As_prover] blocks. *)
-val set_reduce_to_prover : bool -> unit
-
 (** The exception raised when evaluating a checked computation raises an
     exception.
 
@@ -45,13 +37,9 @@ module Run : sig
   *)
   val throw_on_id : int -> unit
 
-  module Make
-      (Backend : Backend_intf.S) (Prover_state : sig
-        type t
-      end) :
+  module Make (Backend : Backend_intf.S) :
     Snark_intf.Run
       with type field = Backend.Field.t
-       and type prover_state = Prover_state.t
        and type Bigint.t = Backend.Bigint.R.t
        and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
        and type Var.t = Backend.Var.t
@@ -60,16 +48,4 @@ end
 
 type 'field m = (module Snark_intf.Run with type field = 'field)
 
-type ('prover_state, 'field) m' =
-  (module Snark_intf.Run
-     with type field = 'field
-      and type prover_state = 'prover_state)
-
-val make :
-  (module Backend_intf.S with type Field.t = 'field) -> (unit, 'field) m'
-
-val make' :
-     (module Backend_intf.S with type Field.t = 'field)
-  -> ('prover_state, 'field) m'
-
-val ignore_state : ('prover_state, 'field) m' -> 'field m
+val make : (module Backend_intf.S with type Field.t = 'field) -> 'field m

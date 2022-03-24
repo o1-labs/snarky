@@ -40,7 +40,7 @@ module Make (Impl : Snark_intf.Basic) = struct
 
   module Checked = struct
     let hash_to_field ({ max_input_length; coefficients; _ } : t)
-        (vs : Boolean.var list) : (Field.Var.t list, _) Checked.t =
+        (vs : Boolean.var list) : Field.Var.t list Checked.t =
       let vs = (vs :> Field.Var.t list) in
       let input_len = List.length vs in
       if input_len > max_input_length then
@@ -50,7 +50,7 @@ module Make (Impl : Snark_intf.Basic) = struct
       |> Checked.return
 
     let hash_to_bits (t : t) (vs : Boolean.var list) :
-        (Boolean.var list, _) Checked.t =
+        Boolean.var list Checked.t =
       let%bind xs = hash_to_field t vs in
       with_label "hash_to_bits"
         (let%map bss =
@@ -82,7 +82,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     (* res = (1 - b) * xs + b * ys
        res - xs = b * (ys - xs)
     *)
-    let if_ (b : Boolean.var) ~then_:ys ~else_:xs : (var, _) Impl.Checked.t =
+    let if_ (b : Boolean.var) ~then_:ys ~else_:xs : var Impl.Checked.t =
       let%bind res =
         exists typ_unchecked
           ~compute:
