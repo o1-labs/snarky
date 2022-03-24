@@ -19,7 +19,6 @@ module Free_monad = Free_monad
 module H_list = H_list
 module Handle = Handle
 module Knapsack = Knapsack
-module Lens = Lens
 module Merkle_tree = Merkle_tree
 module Monad_let = Monad_let
 module Monad_sequence = Monad_sequence

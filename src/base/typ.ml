@@ -79,11 +79,10 @@ module Make
     (As_prover : As_prover_intf.S
                    with module Types := Checked.Types
                    with type 'f field := 'f Checked.field
-                    and type ('a, 's, 'f) t :=
-                         ('a, 's, 'f) Checked.Types.As_prover.t) =
+                    and type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t) =
 struct
   type ('var, 'value, 'field) t =
-    ('var, 'value, 'field, (unit, unit, 'field) Checked.t) Types.Typ.t
+    ('var, 'value, 'field, (unit, 'field) Checked.t) Types.Typ.t
 
   type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
@@ -92,7 +91,7 @@ struct
 
     include
       Intf.S
-        with type 'field checked := (unit, unit, 'field) Checked.t
+        with type 'field checked := (unit, 'field) Checked.t
          and type field := field
          and type field_var := field Cvar.t
   end
@@ -101,13 +100,7 @@ struct
     include Data_spec0
 
     type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
-      ( 'r_var
-      , 'r_value
-      , 'k_var
-      , 'k_value
-      , 'f
-      , (unit, unit, 'f) Checked.t )
-      data_spec
+      ('r_var, 'r_value, 'k_var, 'k_value, 'f, (unit, 'f) Checked.t) data_spec
 
     let size t =
       let rec go :
@@ -140,8 +133,8 @@ struct
 
     let check (type field)
         ({ check; _ } : ('var, 'value, field Checked.field) t) (v : 'var) :
-        (unit, 's, field Checked.field) Checked.t =
-      Checked.with_state (As_prover.return ()) (check v)
+        (unit, field Checked.field) Checked.t =
+      check v
 
     let unit () : (unit, unit, 'field) t =
       let s = Store.return () in
@@ -492,12 +485,12 @@ struct
         in
         go spec0
       in
-      let check xs0 : (unit, unit, 'f) Checked.t =
+      let check xs0 : (unit, 'f) Checked.t =
         let rec go :
             type k_var k_value.
                (unit, unit, k_var, k_value, 'f) Data_spec.t
             -> (unit, k_var) H_list.t
-            -> (unit, unit, 'f) Checked.t =
+            -> (unit, 'f) Checked.t =
          fun spec0 xs0 ->
           let open H_list in
           let open Checked in

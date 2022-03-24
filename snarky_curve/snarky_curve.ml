@@ -49,7 +49,7 @@ module type Constant_intf = sig
 end
 
 module type Inputs_intf = sig
-  module Impl : Snarky_backendless.Snark_intf.Run with type prover_state = unit
+  module Impl : Snarky_backendless.Snark_intf.Run
 
   module F : sig
     include
@@ -300,7 +300,8 @@ module Make_checked (Inputs : Inputs_intf) = struct
 end
 
 module type Native_base_field_inputs = sig
-  module Impl : Snarky_backendless.Snark_intf.Run with type prover_state = unit
+  (** Snarky instance to use. *)
+  module Impl : Snarky_backendless.Snark_intf.Run
 
   include
     Inputs_intf

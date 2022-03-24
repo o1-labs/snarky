@@ -1,15 +1,15 @@
 open Core_kernel
 open Types.Checked
 
-type ('a, 's, 'field) t = ('a, 's, 'field) Types.Checked.t
+type ('a, 'field) t = ('a, 'field) Types.Checked.t
 
+(** Monad instance for [Types.Checked.t]. *)
 module T0 = struct
-  type nonrec ('a, 's, 'field) t = ('a, 's, 'field) t
+  type nonrec ('a, 'field) t = ('a, 'field) t
 
   let return x = Pure x
 
-  let rec map :
-      type s a b field. (a, s, field) t -> f:(a -> b) -> (b, s, field) t =
+  let rec map : type a b field. (a, field) t -> f:(a -> b) -> (b, field) t =
    fun t ~f ->
     match t with
     | Pure x ->
@@ -24,8 +24,6 @@ module T0 = struct
         Lazy (x, fun b -> map (k b) ~f)
     | Add_constraint (c, t1) ->
         Add_constraint (c, map t1 ~f)
-    | With_state (p, and_then, t_sub, k) ->
-        With_state (p, and_then, t_sub, fun b -> map (k b) ~f)
     | With_handler (h, t, k) ->
         With_handler (h, t, fun b -> map (k b) ~f)
     | Clear_handler (t, k) ->
@@ -38,8 +36,7 @@ module T0 = struct
   let map = `Custom map
 
   let rec bind :
-      type s a b field.
-      (a, s, field) t -> f:(a -> (b, s, field) t) -> (b, s, field) t =
+      type a b field. (a, field) t -> f:(a -> (b, field) t) -> (b, field) t =
    fun t ~f ->
     match t with
     | Pure x ->
@@ -55,8 +52,6 @@ module T0 = struct
     (* Someday: This case is probably a performance bug *)
     | Add_constraint (c, t1) ->
         Add_constraint (c, bind t1 ~f)
-    | With_state (p, and_then, t_sub, k) ->
-        With_state (p, and_then, t_sub, fun b -> bind (k b) ~f)
     | With_handler (h, t, k) ->
         With_handler (h, t, fun b -> bind (k b) ~f)
     | Clear_handler (t, k) ->
@@ -69,25 +64,24 @@ end
 
 module Types = struct
   module Checked = struct
-    type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+    type ('a, 'f) t = ('a, 'f) Types.Checked.t
   end
 
   module As_prover = struct
-    type ('a, 'f, 's) t = ('a, 'f, 's) As_prover0.t
+    type ('a, 'f) t = ('a, 'f) As_prover0.t
   end
 
   module Typ = struct
     include Types.Typ.T
 
-    type ('var, 'value, 'f) t =
-      ('var, 'value, 'f, (unit, unit, 'f) Checked.t) typ
+    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
   end
 
   module Provider = struct
     include Types.Provider.T
 
-    type ('a, 'f, 's) t =
-      (('a Request.t, 'f, 's) As_prover0.t, ('a, 'f, 's) As_prover0.t) provider
+    type ('a, 'f) t =
+      (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
   end
 end
 
@@ -95,11 +89,11 @@ module Basic :
   Checked_intf.Basic with module Types = Types with type 'f field = 'f = struct
   module Types = Types
 
-  type ('a, 's, 'f) t = ('a, 's, 'f) Types.Checked.t
+  type ('a, 'f) t = ('a, 'f) Types.Checked.t
 
   type 'f field = 'f
 
-  include Monad_let.Make3 (T0)
+  include Monad_let.Make2 (T0)
 
   let add_constraint c = Add_constraint (c, return ())
 
@@ -109,8 +103,6 @@ module Basic :
 
   let with_label lbl x = With_label (lbl, x, return)
 
-  let with_state p and_then sub = With_state (p, and_then, sub, return)
-
   let with_handler h x = With_handler (h, x, return)
 
   let clear_handler x = Clear_handler (x, return)
@@ -119,55 +111,20 @@ module Basic :
 
   let next_auxiliary = Next_auxiliary return
 
-  let rec with_lens :
-      type a whole view.
-      (whole, view) Lens.t -> (a, view, 'field) t -> (a, whole, 'field) t =
-   fun lens t ->
-    match t with
-    | Pure x ->
-        Pure x
-    | Direct (d, k) ->
-        let d rs =
-          let s = rs.Run_state.prover_state in
-          let s' = Option.map ~f:(Lens.get lens) s in
-          let rs, a = d (Run_state.set_prover_state s' rs) in
-          let s = Option.map2 ~f:(Lens.set lens) s s' in
-          (Run_state.set_prover_state s rs, a)
-        in
-        Direct (d, fun b -> with_lens lens (k b))
-    | With_label (s, t, k) ->
-        With_label (s, with_lens lens t, fun b -> with_lens lens (k b))
-    | As_prover (x, k) ->
-        As_prover (As_prover0.with_lens lens x, with_lens lens k)
-    | Lazy (x, k) ->
-        Lazy (x, fun b -> with_lens lens (k b))
-    | Add_constraint (c, t1) ->
-        Add_constraint (c, with_lens lens t1)
-    | With_state (p, and_then, t_sub, k) ->
-        With_state
-          ( As_prover0.with_lens lens p
-          , (fun s -> As_prover0.with_lens lens (and_then s))
-          , t_sub
-          , fun b -> with_lens lens (k b) )
-    | With_handler (h, t, k) ->
-        With_handler (h, with_lens lens t, fun b -> with_lens lens (k b))
-    | Clear_handler (t, k) ->
-        Clear_handler (with_lens lens t, fun b -> with_lens lens (k b))
-    | Exists (typ, c, k) ->
-        Exists
-          ( typ
-          , As_prover0.Provider.with_lens lens c
-          , fun b -> with_lens lens (k b) )
-    | Next_auxiliary k ->
-        Next_auxiliary (fun b -> with_lens lens (k b))
+  (** Count the constraints generated in the circuit definition.
 
+      This evaluates the circuit definition, and will run code in the same
+      fashion as generating the constraint system.
+      The 'weight' parameter defines the contribution of any particular
+      constraint to the total count.
+  *)
   let rec constraint_count_aux :
-      type a s f.
+      type a f.
          weight:((f field Cvar.t, f field) Constraint.t -> int)
       -> log:(?start:_ -> _)
       -> auxc:_
       -> int
-      -> (a, s, f) Types.Checked.t
+      -> (a, f) Types.Checked.t
       -> int * a =
    fun ~weight ~log ~auxc count t0 ->
     match t0 with
@@ -192,7 +149,7 @@ module Basic :
             ; eval_constraints = false
             ; num_inputs = 0
             ; next_auxiliary = ref 1
-            ; prover_state = None
+            ; has_witness = false
             ; stack = []
             ; handler = Request.Handler.fail
             ; is_running = true
@@ -223,9 +180,6 @@ module Basic :
         let count', y = constraint_count_aux ~weight ~log ~auxc count t in
         log s count' ;
         constraint_count_aux ~weight ~log ~auxc count' (k y)
-    | With_state (_p, _and_then, t_sub, k) ->
-        let count', y = constraint_count_aux ~weight ~log ~auxc count t_sub in
-        constraint_count_aux ~weight ~log ~auxc count' (k y)
     | With_handler (_h, t, k) ->
         let count, x = constraint_count_aux ~weight ~log ~auxc count t in
         constraint_count_aux ~weight ~log ~auxc count (k x)
@@ -244,8 +198,7 @@ module Basic :
 
   let constraint_count (type f)
       ?(weight : ((f field Cvar.t, f field) Constraint.t -> int) option)
-      ?(log = fun ?start:_ _ _ -> ()) (t : (_, _, f field) Types.Checked.t) :
-      int =
+      ?(log = fun ?start:_ _ _ -> ()) (t : (_, f field) Types.Checked.t) : int =
     let next_auxiliary = ref 1 in
     let weight = match weight with None -> List.length | Some w -> w in
     fst (constraint_count_aux ~weight ~log ~auxc:next_auxiliary 0 t)
@@ -254,8 +207,7 @@ end
 module Make
     (Basic : Checked_intf.Basic)
     (As_prover : As_prover_intf.Basic
-                   with type ('a, 'f, 's) t =
-                         ('a, 'f, 's) Basic.Types.As_prover.t
+                   with type ('a, 'f) t = ('a, 'f) Basic.Types.As_prover.t
                     and type 'f field := 'f Basic.field) :
   Checked_intf.S
     with module Types = Basic.Types
@@ -263,7 +215,7 @@ module Make
   include Basic
 
   let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
-      (r : ('value Request.t, 'f field, 's) As_prover.t) =
+      (r : ('value Request.t, 'f field) As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
 
@@ -315,10 +267,6 @@ module Make
     in
     handle t (fun request -> (Option.value_exn !handler) request)
 
-  let do_nothing _ = As_prover.return ()
-
-  let with_state ?(and_then = do_nothing) f sub = with_state f and_then sub
-
   let assert_ ?label c =
     add_constraint (List.map c ~f:(fun c -> Constraint.override_label c label))
 
@@ -351,7 +299,7 @@ module T = struct
     Make (Basic) (As_prover0) :
         Checked_intf.S
           with module Types := Types
-          with type ('a, 's, 'f) t := ('a, 's, 'f) Types.Checked.t
+          with type ('a, 'f) t := ('a, 'f) Types.Checked.t
            and type 'f field = 'f )
 end
 

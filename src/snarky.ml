@@ -19,7 +19,6 @@ module Free_monad = Snarky_backendless.Free_monad
 module H_list = H_list
 module Handle = Snarky_backendless.Handle
 module Knapsack = Snarky_backendless.Knapsack
-module Lens = Snarky_backendless.Lens
 module Merkle_tree = Snarky_backendless.Merkle_tree
 module Monad_let = Snarky_backendless.Monad_let
 module Monad_sequence = Snarky_backendless.Monad_sequence
