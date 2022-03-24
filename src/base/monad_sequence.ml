@@ -1,5 +1,8 @@
 open Core_kernel
 
+(** Helpers for operating over a sequence of data (currently, either an array
+    or a list) inside of a monad.
+*)
 module type S = sig
   type 'a monad
 

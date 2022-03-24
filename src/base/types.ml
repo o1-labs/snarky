@@ -4,6 +4,11 @@ end
 
 module Provider = struct
   module T = struct
+    (** The different ways to generate a value for the circuit witness.
+
+        If [Both], this attempts the request first, and falls back on compute
+        if the request is unhandled or raises an exception.
+    *)
     type ('request, 'compute) provider =
       | Request of 'request
       | Compute of 'compute

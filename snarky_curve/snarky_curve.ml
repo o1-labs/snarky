@@ -300,6 +300,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
 end
 
 module type Native_base_field_inputs = sig
+  (** Snarky instance to use. *)
   module Impl : Snarky_backendless.Snark_intf.Run
 
   include

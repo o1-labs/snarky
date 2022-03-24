@@ -1707,6 +1707,11 @@ module Run = struct
               let check x =
                 Types.Checked.Direct
                   ( (fun state' ->
+                      (* We may already be inside a different checked
+                         computation, e.g. a proof inside a proof!
+                         Stash the state of the outer proof while we run our
+                         computation, then restore it once we're done.
+                      *)
                       let old_state = !state in
                       state := state' ;
                       let res = check x in
@@ -2069,6 +2074,9 @@ module Run = struct
       end
 
       let run_prover f _tbl =
+        (* Allow for nesting of prover blocks, by caching the current value and
+           restoring it once we're done.
+        *)
         let old = !(!state.as_prover) in
         !state.as_prover := true ;
         let a = f () in

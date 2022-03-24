@@ -43,6 +43,15 @@ module T = struct
   end)
 
   module Provider = struct
+    (** The different ways to generate a value of type ['a] for a circuit
+        witness over field ['f].
+
+        This is one of:
+        * a [Request], dispatching an ['a Request.t];
+        * [Compute], running a computation to generate the value;
+        * [Both], attempting to dispatch an ['a Request.t], and falling back to
+          the computation if the request is unhandled or raises an exception.
+    *)
     type nonrec ('a, 'f) t = (('a Request.t, 'f) t, ('a, 'f) t) Types.Provider.t
 
     open Types.Provider

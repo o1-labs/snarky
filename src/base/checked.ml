@@ -3,6 +3,7 @@ open Types.Checked
 
 type ('a, 'field) t = ('a, 'field) Types.Checked.t
 
+(** Monad instance for [Types.Checked.t]. *)
 module T0 = struct
   type nonrec ('a, 'field) t = ('a, 'field) t
 
@@ -110,6 +111,13 @@ module Basic :
 
   let next_auxiliary = Next_auxiliary return
 
+  (** Count the constraints generated in the circuit definition.
+
+      This evaluates the circuit definition, and will run code in the same
+      fashion as generating the constraint system.
+      The 'weight' parameter defines the contribution of any particular
+      constraint to the total count.
+  *)
   let rec constraint_count_aux :
       type a f.
          weight:((f field Cvar.t, f field) Constraint.t -> int)
