@@ -834,6 +834,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val constraint_system :
          run:('a, 't) t
       -> exposing:('t, _, 'k_var, _) Data_spec.t
+      -> return_typ:('a, _) Typ.t
       -> 'k_var
       -> R1CS_constraint_system.t
 
@@ -985,7 +986,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** Generate the R1CS for the checked computation. *)
   val constraint_system :
-       exposing:(unit Checked.t, _, 'k_var, _) Data_spec.t
+       exposing:('a Checked.t, _, 'k_var, _) Data_spec.t
+    -> return_typ:('a, _) Typ.t
     -> 'k_var
     -> R1CS_constraint_system.t
 
@@ -1678,6 +1680,7 @@ module type Run_basic = sig
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
+    -> return_typ:('a, _) Typ.t
     -> 'k_var
     -> R1CS_constraint_system.t
 

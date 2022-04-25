@@ -56,7 +56,8 @@ struct
   module Runner = Runner
 
   (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
-  let constraint_system ~run ~num_inputs t : R1CS_constraint_system.t =
+  let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
+      output t : R1CS_constraint_system.t =
     let input = field_vec () in
     let next_auxiliary = ref (1 + num_inputs) in
     let aux = field_vec () in
@@ -65,7 +66,13 @@ struct
       Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
         ~with_witness:false ()
     in
-    ignore (run t state) ;
+    let state, res = run t state in
+    let res, _ = return_typ.var_to_fields res in
+    let output, _ = return_typ.var_to_fields output in
+    let _state =
+      Array.fold2_exn ~init:state res output ~f:(fun state res output ->
+          fst @@ Checked.run (Checked.assert_equal res output) state)
+    in
     let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
     R1CS_constraint_system.set_auxiliary_input_size system auxiliary_input_size ;
     system
@@ -165,13 +172,28 @@ struct
         type checked r2 k1 k2.
            int ref
         -> (checked, r2, k1, k2, _, _) Typ.Data_spec.data_spec
-        -> k1
-        -> checked Checked.t =
-     fun next_input t k ->
+        -> return_typ:_ Typ.t
+        -> (unit -> k1)
+        -> _ * (unit -> checked) Checked.t =
+     fun next_input t ~return_typ k ->
       let open Checked in
       match t with
       | [] ->
-          Checked.return k
+          let (Typ
+                { var_of_fields
+                ; size_in_field_elements
+                ; constraint_system_auxiliary
+                ; _
+                }) =
+            return_typ
+          in
+          let retval =
+            var_of_fields
+              ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
+                    alloc_var next_input ())
+              , constraint_system_auxiliary () )
+          in
+          (retval, Checked.return k)
       | Typ
           { var_of_fields
           ; size_in_field_elements
@@ -186,31 +208,44 @@ struct
                     alloc_var next_input ())
               , constraint_system_auxiliary () )
           in
-          let r = collect_input_constraints next_input t' (k var) in
-          let%map () = check var and r = r in
-          r
+          let retval, r =
+            collect_input_constraints next_input t' ~return_typ (fun () ->
+                k () var)
+          in
+          let checked =
+            let%map () = check var and r = r in
+            r
+          in
+          (retval, checked)
 
     let r1cs_h :
-        type a checked r2 k1 k2.
+        type a checked r2 k1 k2 retval.
            run:(a, checked) Runner.run
         -> int ref
         -> (checked, r2, k1, k2, _, _) Typ.Data_spec.data_spec
+        -> return_typ:(a, retval, _) Typ.t
         -> k1
         -> R1CS_constraint_system.t =
-     fun ~run next_input t k ->
-      let r = collect_input_constraints next_input t k in
+     fun ~run next_input t ~return_typ k ->
+      let retval, r =
+        collect_input_constraints next_input t ~return_typ (fun () -> k)
+      in
       let run_in_run r state =
         let state, x = Checked.run r state in
         run x state
       in
-      constraint_system ~run:run_in_run ~num_inputs:(!next_input - 1) r
+      constraint_system ~run:run_in_run ~num_inputs:(!next_input - 1)
+        ~return_typ retval
+        (Checked.map ~f:(fun r -> r ()) r)
 
     let constraint_system (type a checked k_var) :
            run:(a, checked) Runner.run
         -> exposing:(checked, _, k_var, _, _, _) Typ.Data_spec.data_spec
+        -> return_typ:_
         -> k_var
         -> R1CS_constraint_system.t =
-     fun ~run ~exposing k -> r1cs_h ~run (ref 1) exposing k
+     fun ~run ~exposing ~return_typ k ->
+      r1cs_h ~run (ref 1) exposing ~return_typ k
 
     let generate_public_input :
            ( 'r_var
@@ -388,8 +423,8 @@ struct
   let generate_witness_conv ~f t k =
     Run.generate_witness_conv ~run:Checked.run ~f t k
 
-  let constraint_system ~exposing k =
-    Run.constraint_system ~run:Checked.run ~exposing k
+  let constraint_system ~exposing ~return_typ k =
+    Run.constraint_system ~run:Checked.run ~exposing ~return_typ k
 
   let run_unchecked t = run_unchecked ~run:Checked.run t
 
@@ -2111,9 +2146,9 @@ module Run = struct
       | _ :: spec ->
           fun x a -> inject_wrapper spec ~f (x a)
 
-    let constraint_system ~exposing x =
+    let constraint_system ~exposing ~return_typ x =
       let x = inject_wrapper exposing x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.constraint_system ~run:as_stateful ~exposing x
+      Perform.constraint_system ~run:as_stateful ~exposing ~return_typ x
 
     let generate_public_input = generate_public_input
 
