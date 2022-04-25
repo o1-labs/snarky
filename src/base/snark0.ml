@@ -78,8 +78,8 @@ struct
     system
 
   let auxiliary_input ?system ~run ~num_inputs
-      ?(handlers = ([] : Handler.t list)) t0 (input : Field.Vector.t) :
-      Field.Vector.t =
+      ?(handlers = ([] : Handler.t list)) t0 (input : Field.Vector.t)
+      ~return_typ:(Types.Typ.Typ return_typ) ~output : Field.Vector.t =
     let next_auxiliary = ref (1 + num_inputs) in
     let aux = Field.Vector.create () in
     let handler =
@@ -90,7 +90,14 @@ struct
       Runner.State.make ?system ~num_inputs ~input:(pack_field_vec input)
         ~next_auxiliary ~aux:(pack_field_vec aux) ~handler ~with_witness:true ()
     in
-    ignore (run t0 state) ;
+    let state, res = run t0 state in
+    let res, _ = return_typ.var_to_fields res in
+    let output, _ = return_typ.var_to_fields output in
+    let _state =
+      Array.fold2_exn ~init:state res output ~f:(fun state res output ->
+          Field.Vector.emplace_back input (Runner.get_value state res) ;
+          fst @@ Checked.run (Checked.assert_equal res output) state)
+    in
     Option.iter system ~f:(fun system ->
         let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
         R1CS_constraint_system.set_auxiliary_input_size system
@@ -284,35 +291,41 @@ struct
 
     let conv :
         type r_var r_value.
-           (r_var -> Field.Vector.t -> r_value)
+           (int -> _ -> r_var -> Field.Vector.t -> r_value)
         -> (r_var, r_value, 'k_var, 'k_value, _, _) Typ.Data_spec.data_spec
-        -> 'k_var
+        -> _ Typ.t
+        -> (unit -> 'k_var)
         -> 'k_value =
-     fun cont0 t0 k0 ->
+     fun cont0 t0 (Typ return_typ) k0 ->
       let primary_input = Field.Vector.create () in
-      let store_field_elt =
-        let next_input = ref 1 in
-        fun x ->
-          let v = !next_input in
-          incr next_input ;
-          Field.Vector.emplace_back primary_input x ;
-          Cvar.Unsafe.of_index v
+      let next_input = ref 1 in
+      let store_field_elt x =
+        let v = !next_input in
+        incr next_input ;
+        Field.Vector.emplace_back primary_input x ;
+        Cvar.Unsafe.of_index v
       in
       let rec go :
           type k_var k_value.
              (r_var, r_value, k_var, k_value, _, _) Typ.Data_spec.data_spec
-          -> k_var
+          -> (unit -> k_var)
           -> k_value =
        fun t k ->
         match t with
         | [] ->
-            cont0 k primary_input
+            let retval =
+              return_typ.var_of_fields
+                ( Core_kernel.Array.init return_typ.size_in_field_elements
+                    ~f:(fun _ -> alloc_var next_input ())
+                , return_typ.constraint_system_auxiliary () )
+            in
+            cont0 !next_input retval (k ()) primary_input
         | Typ { var_of_fields; value_to_fields; _ } :: t' ->
             fun value ->
               let fields, aux = value_to_fields value in
               let fields = Array.map ~f:store_field_elt fields in
               let var = var_of_fields (fields, aux) in
-              go t' (k var)
+              go t' (fun () -> k () var)
       in
       go t0 k0
 
@@ -354,51 +367,69 @@ struct
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
         -> ('checked, unit, 'k_var, 'k_value, _, _) Typ.Data_spec.data_spec
+        -> return_typ:(_, _, _) Typ.t
         -> ?handlers:Handler.t list
         -> 'k_var
         -> 'k_value =
-     fun ~run t ?handlers k ->
+     fun ~run t ~return_typ ?handlers k ->
       conv
-        (fun c primary ->
+        (fun num_inputs output c primary ->
           let auxiliary =
-            auxiliary_input ~run ?handlers
-              ~num_inputs:(Field.Vector.length primary)
-              c primary
+            auxiliary_input ~run ?handlers ~return_typ ~output ~num_inputs c
+              primary
           in
           ignore auxiliary)
-        t k
+        t return_typ
+        (fun () -> k)
 
     let generate_witness_conv :
            run:('a, 'checked) Runner.run
-        -> f:(Proof_inputs.t -> 'out)
+        -> f:(Proof_inputs.t -> _ -> 'out)
         -> ('checked, 'out, 'k_var, 'k_value, _, _) Typ.Data_spec.data_spec
+        -> return_typ:_ Typ.t
         -> ?handlers:Handler.t list
         -> 'k_var
         -> 'k_value =
-     fun ~run ~f t ?handlers k ->
+     fun ~run ~f t ~return_typ ?handlers k ->
       conv
-        (fun c primary ->
+        (fun num_inputs output c primary ->
           let auxiliary =
-            auxiliary_input ~run ?handlers
-              ~num_inputs:(Field.Vector.length primary)
-              c primary
+            auxiliary_input ~run ?handlers ~return_typ ~output ~num_inputs c
+              primary
+          in
+          let output =
+            let (Typ return_typ) = return_typ in
+            let fields, aux = return_typ.var_to_fields output in
+            let read_cvar =
+              let get_one i =
+                if i <= num_inputs then Field.Vector.get primary (i - 1)
+                else Field.Vector.get auxiliary (i - num_inputs - 1)
+              in
+              Cvar.eval (`Return_values_will_be_mutated get_one)
+            in
+            let fields = Array.map ~f:read_cvar fields in
+            return_typ.value_of_fields (fields, aux)
           in
           f
             { Proof_inputs.public_inputs = primary
             ; auxiliary_inputs = auxiliary
-            })
-        t k
+            }
+            output)
+        t return_typ
+        (fun () -> k)
 
-    let generate_witness = generate_witness_conv ~f:Fn.id
+    let generate_witness =
+      generate_witness_conv ~f:(fun inputs _output -> inputs)
   end
 
   module Perform = struct
     type ('a, 't) t = 't -> Runner.run_state -> Runner.run_state * 'a
 
-    let generate_witness ~run t k = Run.generate_witness ~run t k
+    let generate_witness ~run t ~return_typ k =
+      Run.generate_witness ~run t ~return_typ k
 
-    let generate_witness_conv ~run ~f t k =
-      Run.generate_witness_conv ~run ~f t k
+    let generate_witness_conv ~run ~f t ~return_typ k =
+      Run.generate_witness_conv ~run ~f t ~return_typ k
 
     let constraint_system = Run.constraint_system
 
@@ -409,19 +440,21 @@ struct
     let check = check
   end
 
-  let conv f = Run.conv (fun x _ -> f x)
+  let conv f spec return_typ k =
+    Run.conv (fun _ _ x _ -> f x) spec return_typ (fun () -> k)
 
   let conv_never_use = Run.conv_never_use
 
-  let generate_auxiliary_input t k =
-    Run.generate_auxiliary_input ~run:Checked.run t k
+  let generate_auxiliary_input t ~return_typ k =
+    Run.generate_auxiliary_input ~run:Checked.run t ~return_typ k
 
   let generate_public_input = Run.generate_public_input
 
-  let generate_witness t k = Run.generate_witness ~run:Checked.run t k
+  let generate_witness t ~return_typ k =
+    Run.generate_witness ~run:Checked.run t ~return_typ k
 
-  let generate_witness_conv ~f t k =
-    Run.generate_witness_conv ~run:Checked.run ~f t k
+  let generate_witness_conv ~f t ~return_typ k =
+    Run.generate_witness_conv ~run:Checked.run ~f t ~return_typ k
 
   let constraint_system ~exposing ~return_typ k =
     Run.constraint_system ~run:Checked.run ~exposing ~return_typ k
@@ -2152,13 +2185,13 @@ module Run = struct
 
     let generate_public_input = generate_public_input
 
-    let generate_witness spec x =
+    let generate_witness spec ~return_typ x =
       let x = inject_wrapper spec x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.generate_witness ~run:as_stateful spec x
+      Perform.generate_witness ~run:as_stateful spec ~return_typ x
 
-    let generate_witness_conv ~f spec x =
+    let generate_witness_conv ~f spec ~return_typ x =
       let x = inject_wrapper spec x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.generate_witness_conv ~run:as_stateful ~f spec x
+      Perform.generate_witness_conv ~run:as_stateful ~f spec ~return_typ x
 
     let run_unchecked x =
       Perform.run_unchecked ~run:as_stateful (fun () -> mark_active ~f:x)
