@@ -834,19 +834,22 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val constraint_system :
          run:('a, 't) t
       -> exposing:('t, _, 'k_var, _) Data_spec.t
+      -> return_typ:('a, _) Typ.t
       -> 'k_var
       -> R1CS_constraint_system.t
 
     val generate_witness :
          run:('a, 't) t
       -> ('t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+      -> return_typ:('a, _) Typ.t
       -> 'k_var
       -> 'k_value
 
     val generate_witness_conv :
          run:('a, 't) t
-      -> f:(Proof_inputs.t -> 'out)
+      -> f:(Proof_inputs.t -> 'public_output -> 'out)
       -> ('t, 'out, 'k_var, 'k_value) Data_spec.t
+      -> return_typ:('a, 'public_output) Typ.t
       -> 'k_var
       -> 'k_value
 
@@ -985,7 +988,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** Generate the R1CS for the checked computation. *)
   val constraint_system :
-       exposing:(unit Checked.t, _, 'k_var, _) Data_spec.t
+       exposing:('a Checked.t, _, 'k_var, _) Data_spec.t
+    -> return_typ:('a, _) Typ.t
     -> 'k_var
     -> R1CS_constraint_system.t
 
@@ -995,6 +999,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val conv :
        ('r_var -> 'r_value)
     -> ('r_var, 'r_value, 'k_var, 'k_value) Data_spec.t
+    -> _ Typ.t
     -> 'k_var
     -> 'k_value
 
@@ -1024,7 +1029,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       corresponding to the given public input and generated auxiliary input.
   *)
   val generate_witness :
-       (unit Checked.t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+       ('r_var Checked.t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+    -> return_typ:('r_var, _) Typ.t
     -> 'k_var
     -> 'k_value
 
@@ -1036,8 +1042,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       input and generated auxiliary input.
   *)
   val generate_witness_conv :
-       f:(Proof_inputs.t -> 'out)
-    -> (unit Checked.t, 'out, 'k_var, 'k_value) Data_spec.t
+       f:(Proof_inputs.t -> 'r_value -> 'out)
+    -> ('r_var Checked.t, 'out, 'k_var, 'k_value) Data_spec.t
+    -> return_typ:('r_var, 'r_value) Typ.t
     -> 'k_var
     -> 'k_value
 
@@ -1058,7 +1065,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       Returns [unit]; this is for testing only.
   *)
   val generate_auxiliary_input :
-    ('a Checked.t, unit, 'k_var, 'k_value) Data_spec.t -> 'k_var -> 'k_value
+       ('a Checked.t, unit, 'k_var, 'k_value) Data_spec.t
+    -> return_typ:('a, _) Typ.t
+    -> 'k_var
+    -> 'k_value
 
   (** Returns the number of constraints in the constraint system.
 
@@ -1678,11 +1688,13 @@ module type Run_basic = sig
 
   val constraint_system :
        exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
+    -> return_typ:('a, _) Typ.t
     -> 'k_var
     -> R1CS_constraint_system.t
 
   val generate_witness :
        (unit -> 'a, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+    -> return_typ:('a, _) Typ.t
     -> 'k_var
     -> 'k_value
 
@@ -1691,8 +1703,9 @@ module type Run_basic = sig
     (_, Field.Constant.Vector.t, _, 'k_value) Data_spec.t -> 'k_value
 
   val generate_witness_conv :
-       f:(Proof_inputs.t -> 'out)
-    -> (unit -> 'a, 'out, 'k_var, 'k_value) Data_spec.t
+       f:(Proof_inputs.t -> 'r_value -> 'out)
+    -> (unit -> 'r_var, 'out, 'k_var, 'k_value) Data_spec.t
+    -> return_typ:('r_var, 'r_value) Typ.t
     -> 'k_var
     -> 'k_value
 
