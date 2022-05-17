@@ -58,7 +58,7 @@ module String_hum = struct
   let to_string = Big_int.string_of_big_int
 end
 
-include Sexpable.Of_stringable (String_hum)
+include Sexpable.Of_stringable_without_uuid (String_hum)
 
 include (String_hum : Stringable.S with type t := t)
 
