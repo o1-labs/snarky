@@ -153,7 +153,7 @@ struct
 
   module Verification_key = struct
     include Verification_key
-    include Binable.Of_stringable (Verification_key)
+    include Binable.Of_stringable_without_uuid (Verification_key)
   end
 
   module Proving_key = Proving_key
