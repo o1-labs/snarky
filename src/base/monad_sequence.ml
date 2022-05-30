@@ -72,7 +72,7 @@ module List
     let%map res, ys =
       fold xs ~init:(init, []) ~f:(fun (acc, ys) x ->
           let%map acc, y = f acc x in
-          (acc, y :: ys))
+          (acc, y :: ys) )
     in
     (res, List.rev ys)
 
@@ -149,12 +149,12 @@ module Array
   let foldi t ~init ~f =
     Array.foldi t ~init:(M.return init) ~f:(fun i acc x ->
         let%bind acc = acc in
-        f i acc x)
+        f i acc x )
 
   let fold t ~init ~f =
     Array.fold t ~init:(M.return init) ~f:(fun acc x ->
         let%bind acc = acc in
-        f acc x)
+        f acc x )
 
   let iteri t ~f = foldi t ~init:() ~f:(fun i () x -> f i x)
 
@@ -185,7 +185,7 @@ module Array
       map t ~f:(fun x ->
           let%map acc, y = f !res x in
           res := acc ;
-          y)
+          y )
     in
     (!res, t)
 

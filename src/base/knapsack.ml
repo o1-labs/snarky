@@ -14,7 +14,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     ; max_input_length
     ; coefficients =
         List.init dimension ~f:(fun _ ->
-            List.init max_input_length ~f:(fun _ -> Field.random ()))
+            List.init max_input_length ~f:(fun _ -> Field.random ()) )
     }
 
   let map2_lax xs ys ~f =
@@ -30,13 +30,13 @@ module Make (Impl : Snark_intf.Basic) = struct
   let hash_to_field { coefficients; _ } xs =
     let sum = List.fold ~init:Field.zero ~f:Field.add in
     List.map coefficients ~f:(fun cs ->
-        sum (map2_lax cs xs ~f:(fun c b -> if b then c else Field.zero)))
+        sum (map2_lax cs xs ~f:(fun c b -> if b then c else Field.zero)) )
 
   let hash_to_bits t xs =
     let fs = hash_to_field t xs in
     List.concat_map fs ~f:(fun f ->
         let n = Bigint.of_field f in
-        List.init Field.size_in_bits ~f:(fun i -> Bigint.test_bit n i))
+        List.init Field.size_in_bits ~f:(fun i -> Bigint.test_bit n i) )
 
   module Checked = struct
     let hash_to_field ({ max_input_length; coefficients; _ } : t)
@@ -46,7 +46,7 @@ module Make (Impl : Snark_intf.Basic) = struct
       if input_len > max_input_length then
         failwithf "Input size %d exceeded max %d" input_len max_input_length () ;
       List.map coefficients ~f:(fun cs ->
-          Field.Var.linear_combination (map2_lax cs vs ~f:(fun c v -> (c, v))))
+          Field.Var.linear_combination (map2_lax cs vs ~f:(fun c v -> (c, v))) )
       |> Checked.return
 
     let hash_to_bits (t : t) (vs : Boolean.var list) :
@@ -57,9 +57,9 @@ module Make (Impl : Snark_intf.Basic) = struct
            Checked.all
              (List.map xs
                 ~f:
-                  (Field.Checked.choose_preimage_var ~length:Field.size_in_bits))
+                  (Field.Checked.choose_preimage_var ~length:Field.size_in_bits) )
          in
-         List.concat bss)
+         List.concat bss )
   end
 
   module Hash (M : sig
@@ -103,7 +103,7 @@ module Make (Impl : Snark_intf.Basic) = struct
              ~f:(fun x y r ->
                Constraint.r1cs ~label:"Knapsack.Hash.if_"
                  (b :> Field.Var.t)
-                 (y - x) (r - x)))
+                 (y - x) (r - x) ) )
       in
       res
 

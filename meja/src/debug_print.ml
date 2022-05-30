@@ -50,7 +50,7 @@ let map ~key ~data fmt m =
   fprintf fmt "@[<1>(" ;
   Map.iteri m ~f:(fun ~key:k ~data:d ->
       if !first then first := false else fprintf fmt ";@," ;
-      fprintf fmt "@[<hov1>%a:@,%a@]" key k data d) ;
+      fprintf fmt "@[<hov1>%a:@,%a@]" key k data d ) ;
   fprintf fmt ")@]"
 
 let list pp fmt l =
@@ -124,7 +124,7 @@ and row fmt { row_tags; row_closed; row_rest; row_presence_proxy } =
      @]}"
     (map ~key:Ident.debug_print ~data:(fun fmt (path, rp, typs) ->
          fprintf fmt "@[<hov1>(%a,@,%a,@,%a)@]" Path.debug_print path
-           row_presence rp (list type_expr') typs))
+           row_presence rp (list type_expr') typs ) )
     row_tags closed_flag row_closed type_expr' row_rest row_presence
     row_presence_proxy
 

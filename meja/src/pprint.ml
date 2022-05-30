@@ -272,7 +272,7 @@ let rec expression_desc fmt = function
         expression e
         (pp_print_list ~pp_sep:pp_print_space (fun fmt (p, e) ->
              fprintf fmt "| @[<hv2>%a@] =>@;<1 4>@[<hv2>%a@]" pattern p
-               expression e))
+               expression e ) )
         cases
   | Pexp_field (e, lid) ->
       fprintf fmt "@[<hv2>%a@,@].%a" expression_bracket e Longident.pp lid.txt

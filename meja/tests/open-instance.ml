@@ -11,9 +11,8 @@ let a = f X.x
 
 let y = 15
 
-let b = f y
+let b = f y;;
 
-;;
 ()
 
 let c = f X.x

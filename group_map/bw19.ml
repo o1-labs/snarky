@@ -49,7 +49,7 @@ module Params = struct
     let u, fu =
       first_map (fun u ->
           let fu = curve_eqn u in
-          if equal u zero || equal fu zero then None else Some (u, fu))
+          if equal u zero || equal fu zero then None else Some (u, fu) )
     in
     let three_u_squared = u * u * of_int 3 in
     let sqrt_neg_three_u_squared = sqrt (negate three_u_squared) in
@@ -125,13 +125,14 @@ let to_group (type t) (module F : Field_intf.S_unchecked with type t = t)
 let%test_module "test" =
   ( module struct
     module Fp = struct
-      include Snarkette.Fields.Make_fp
-                (Snarkette.Nat)
-                (struct
-                  let order =
-                    Snarkette.Nat.of_string
-                      "5543634365110765627805495722742127385843376434033820803590214255538854698464778703795540858859767700241957783601153"
-                end)
+      include
+        Snarkette.Fields.Make_fp
+          (Snarkette.Nat)
+          (struct
+            let order =
+              Snarkette.Nat.of_string
+                "5543634365110765627805495722742127385843376434033820803590214255538854698464778703795540858859767700241957783601153"
+          end)
 
       let b = of_int 7
     end
@@ -164,7 +165,7 @@ let%test_module "test" =
         Quickcheck.Generator.filter F.gen ~f:(fun t ->
             let t2 = t * t in
             let alpha_inv = (t2 + constant params.fu) * t2 in
-            not (equal alpha_inv zero))
+            not (equal alpha_inv zero) )
 
       module M =
         Make (F) (F)
@@ -175,7 +176,7 @@ let%test_module "test" =
       let%test_unit "full map works" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
             let x, y = to_group (module F) ~params t in
-            assert (equal (curve_eqn x) (y * y)))
+            assert (equal (curve_eqn x) (y * y)) )
     end
 
     module T0 = Make_tests (Fp)

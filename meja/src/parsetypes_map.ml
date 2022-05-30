@@ -158,7 +158,7 @@ let pattern_desc mapper = function
   | Ppat_record fields ->
       Ppat_record
         (List.map fields ~f:(fun (name, pat) ->
-             (lid mapper name, mapper.pattern mapper pat)))
+             (lid mapper name, mapper.pattern mapper pat) ) )
   | Ppat_ctor (name, arg) ->
       Ppat_ctor (lid mapper name, Option.map ~f:(mapper.pattern mapper) arg)
   | Ppat_row_ctor (name, args) ->
@@ -174,7 +174,7 @@ let expression_desc mapper = function
       Pexp_apply
         ( mapper.expression mapper e
         , List.map args ~f:(fun (label, e) ->
-              (label, mapper.expression mapper e)) )
+              (label, mapper.expression mapper e) ) )
   | Pexp_variable name ->
       Pexp_variable (lid mapper name)
   | Pexp_integer (i, suf) ->
@@ -206,13 +206,13 @@ let expression_desc mapper = function
       Pexp_match
         ( mapper.expression mapper e
         , List.map cases ~f:(fun (p, e) ->
-              (mapper.pattern mapper p, mapper.expression mapper e)) )
+              (mapper.pattern mapper p, mapper.expression mapper e) ) )
   | Pexp_field (e, name) ->
       Pexp_field (mapper.expression mapper e, lid mapper name)
   | Pexp_record (bindings, default) ->
       Pexp_record
         ( List.map bindings ~f:(fun (name, e) ->
-              (lid mapper name, mapper.expression mapper e))
+              (lid mapper name, mapper.expression mapper e) )
         , Option.map ~f:(mapper.expression mapper) default )
   | Pexp_ctor (name, arg) ->
       Pexp_ctor (lid mapper name, Option.map ~f:(mapper.expression mapper) arg)
@@ -336,7 +336,7 @@ let statement_desc mapper = function
         , mapper.ctor_decl mapper ctor
         , Option.map handler ~f:(fun (p, e) ->
               ( Option.map ~f:(mapper.pattern mapper) p
-              , mapper.expression mapper e )) )
+              , mapper.expression mapper e ) ) )
   | Pstmt_multiple stmts ->
       Pstmt_multiple (mapper.statements mapper stmts)
   | Pstmt_prover stmts ->

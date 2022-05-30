@@ -47,6 +47,6 @@ type 'field t =
   ; log_constraint :
       (   ?at_label_boundary:[ `Start | `End ] * string
        -> ('field Cvar.t, 'field) Constraint.t
-       -> unit)
+       -> unit )
       option
   }
