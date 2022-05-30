@@ -1,7 +1,7 @@
 open Core_kernel
-open Location
 open Ppxlib
-open Ast_helper
+
+module B = Ast_builder.Default
 
 type lbl = label Location.loc
 
@@ -41,7 +41,7 @@ let parse_to_modinfo expr =
   | Pexp_ident ({txt= Ldot _; _} as ident) ->
       IdentName ident
   | _ ->
-      raise_errorf ~loc:expr.pexp_loc
+      Location.raise_errorf ~loc:expr.pexp_loc
         "Expected a bare module name or a type identifier of form \
          Module_name.type_name"
 
@@ -73,17 +73,18 @@ let unique_field_types fields =
       String.compare field1.var_name field2.var_name )
 
 let fields_pattern ~loc polyrecord =
-  Pat.record ~loc
+  B.ppat_record ~loc
     (List.map polyrecord.fields ~f:(fun {label; _} ->
-         ({txt= Lident label.txt; loc= label.loc}, Pat.var ~loc:label.loc label)
+         ({txt= Lident label.txt; loc= label.loc},
+          B.ppat_var ~loc label)
      ))
     Closed
 
 let fields_expression ~loc polyrecord =
-  Exp.record ~loc
+  B.pexp_record ~loc
     (List.map polyrecord.fields ~f:(fun {label; _} ->
-         ( {txt= Lident label.txt; loc= label.loc}
-         , Exp.ident ~loc:label.loc {txt= Lident label.txt; loc= label.loc} )
+         ({txt= Lident label.txt; loc= label.loc},
+           B.pexp_ident ~loc:label.loc {txt= Lident label.txt; loc= label.loc})
      ))
     None
 
@@ -101,7 +102,7 @@ let last_common_name lid1 lid2 =
 
 let rec longident_of_revlist ~loc = function
   | [] ->
-      raise_errorf ~loc "No common prefix found."
+      Location.raise_errorf ~loc "No common prefix found."
   | [a] ->
       Lident a
   | a :: rest ->
@@ -142,7 +143,7 @@ let rec parse_listlike expr =
   | Pexp_construct ({txt= Lident "[]"; _}, None) ->
       []
   | _ ->
-      raise_errorf ~loc:expr.pexp_loc
+      Location.raise_errorf ~loc:expr.pexp_loc
         "Could not convert expression into a list of expressions"
 
 module Polydef = struct
@@ -152,7 +153,7 @@ module Polydef = struct
       | Lident label ->
           {loc; txt= label}
       | _ ->
-          raise_errorf ~loc "Expected a bare identifier."
+          Location.raise_errorf ~loc "Expected a bare identifier."
     in
     let modules = if is_listlike expr then parse_listlike expr else [expr] in
     let modules = List.map modules ~f:parse_to_modinfo in
@@ -169,7 +170,7 @@ module Polydef = struct
         :: IdentName {txt= Ldot (ident2, _); _} :: _ ->
           last_common_name ident1 ident2
       | _ ->
-          raise_errorf ~loc:label.loc
+          Location.raise_errorf ~loc:label.loc
             "Bad formatting for module(s) in label %s." label.txt
     in
     let var_name = String.uncapitalize var_name in
@@ -186,7 +187,7 @@ module Polydef = struct
            :: _ ->
           ({txt= common_prefix ~loc ident1 ident2; loc}, modules)
       | _ ->
-          raise_errorf ~loc:label.loc
+          Location.raise_errorf ~loc:label.loc
             "Expected at least one module for label %s" label.txt
     in
     (var_name_map, {label; modules; base_module; var_name})
@@ -196,14 +197,22 @@ module Polydef = struct
       Ptype_record
         (List.map fields ~f:(fun {label; var_name; _} ->
              let loc = label.loc in
-             Type.field ~loc label (Typ.var ~loc var_name) ))
+             let type_ = B.ptyp_var ~loc var_name in
+             B.label_declaration ~loc ~name:label
+               ~mutable_:Immutable ~type_
+           ))
     in
     let params =
       List.map (unique_field_types fields) ~f:(fun {label; var_name; _} ->
-          (Typ.var ~loc:label.loc var_name, Invariant) )
+          let v = B.ptyp_var ~loc:label.loc var_name in
+          (v, (NoVariance, NoInjectivity))
+        )
     in
-    Str.type_ ~loc:name.loc Nonrecursive
-      [Type.mk ~loc:name.loc ~params ~kind:record_typ name]
+    let td = B.type_declaration ~loc:name.loc ~name
+        ~params ~cstrs:[] ~kind:record_typ ~private_:Public
+        ~manifest:None
+    in
+    B.pstr_type ~loc:name.loc Nonrecursive [td]
 
   let expand (map, last_modules, current_module) payload =
     match payload with
@@ -221,7 +230,7 @@ module Polydef = struct
         in
         let polyrecord = {name; fields} in
         if Map.mem map name.txt then
-          raise_errorf ~loc:name.loc
+          Location.raise_errorf ~loc:name.loc
             "A polymorphic record definition called %s already exists."
             name.txt ;
         let map = Map.add_exn map ~key:name.txt ~data:polyrecord in
@@ -272,10 +281,14 @@ module Typedef = struct
                 { loc= lid.loc
                 ; txt= Ldot (longident_add lid.txt module_names, name.txt) }
           in
-          Typ.constr ~loc:name.loc lid [] )
+          B.ptyp_constr ~loc:name.loc lid [])
     in
-    let bound_poly = Typ.constr polyname typs in
-    let str = Str.type_ Nonrecursive [Type.mk ~manifest:bound_poly name] in
+    let loc = polyname.loc in
+    let bound_poly = B.ptyp_constr ~loc polyname typs in
+    let td = B.type_declaration ~loc ~name ~params:[] ~cstrs:[]
+        ~kind:Ptype_abstract ~private_:Public ~manifest:(Some bound_poly)
+    in
+    let str = B.pstr_type ~loc Nonrecursive [td] in
     let map =
       Map.update map polyrecord.name.txt ~f:(fun _ -> {polyrecord with fields})
     in
@@ -305,7 +318,7 @@ module Typedef = struct
           | Some polyrecord ->
               polyrecord
           | None ->
-              raise_errorf ~loc:name.loc
+              Location.raise_errorf ~loc:name.loc
                 "Could not find the polymorphic record %s" name.txt
         in
         let str, map, last_modules =
@@ -319,26 +332,28 @@ end
 module Snarkytyp = struct
   let build_fold ~loc ~name ~typ_mod ~fname polyrecord =
     let typ_fn f =
-      Exp.ident ~loc:typ_mod.loc {txt= Ldot (typ_mod.txt, f); loc= typ_mod.loc}
+      B.pexp_ident ~loc:typ_mod.loc {txt= Ldot (typ_mod.txt, f); loc= typ_mod.loc}
     in
     List.fold_left
       (List.rev polyrecord.fields)
       ~init:
-        (Exp.apply ~loc (typ_fn "return")
+        (B.pexp_apply ~loc (typ_fn "return")
            [(Nolabel, fields_expression ~loc polyrecord)])
       ~f:(fun expr {base_module= base; label; _} ->
-        Exp.apply (typ_fn "bind")
+        B.pexp_apply ~loc (typ_fn "bind")
           [ ( Nolabel
-            , Exp.apply ~loc
-                (Exp.ident ~loc:fname.loc fname)
+            , B.pexp_apply ~loc
+                (B.pexp_ident ~loc:fname.loc fname)
                 [ ( Nolabel
-                  , Exp.ident ~loc:base.loc
+                  , B.pexp_ident ~loc:base.loc
                       {txt= Ldot (base.txt, name.txt); loc= base.loc} )
                 ; ( Nolabel
-                  , Exp.ident ~loc:label.loc
+                  , B.pexp_ident ~loc:label.loc
                       {txt= Lident label.txt; loc= label.loc} ) ] )
           ; ( Nolabel
-            , Exp.fun_ ~loc Nolabel None (Pat.var ~loc:label.loc label) expr )
+            , B.pexp_fun ~loc Nolabel None
+                (B.ppat_var ~loc:label.loc label) expr
+            )
           ] )
 
   let build ~loc ~name ~typ polyrecord =
@@ -347,12 +362,12 @@ module Snarkytyp = struct
       | {txt= Ldot (typ_mod, _); loc} ->
           {txt= typ_mod; loc}
       | _ ->
-          raise_errorf ~loc:typ.loc "Expected a path to Typ.t."
+          Location.raise_errorf ~loc:typ.loc "Expected a path to Typ.t."
     in
     let typ_val m = {txt= Ldot (typ_mod.txt, m); loc= typ_mod.loc} in
     let field_pattern = fields_pattern ~loc polyrecord in
     [%stri
-      let [%p Pat.var ~loc:name.loc name] =
+      let [%p B.ppat_var ~loc:name.loc name] =
         let store [%p field_pattern] =
           [%e
             build_fold ~loc ~name ~typ_mod:(typ_val "Store")
@@ -400,7 +415,7 @@ module Snarkytyp = struct
           | Some polyrecord ->
               polyrecord
           | None ->
-              raise_errorf ~loc:polyname.loc
+              Location.raise_errorf ~loc:polyname.loc
                 "Could not find the polymorphic record %s" name.txt
         in
         let str = build ~loc ~name ~typ polyrecord in
@@ -422,24 +437,24 @@ module Polyfold = struct
             { txt= Ldot (longident_add ident module_names, name.txt)
             ; loc= ident_loc }
         | _ ->
-            raise_errorf ~loc
+            Location.raise_errorf ~loc
               "Malformed module name found in the previous type definition."
       in
-      Exp.apply ~loc (Exp.ident ~loc f_name)
+      B.pexp_apply ~loc (B.pexp_ident ~loc f_name)
         [ ( Nolabel
-          , Exp.field ~loc
-              (Exp.ident ~loc:var_name.loc
+          , B.pexp_field ~loc
+              (B.pexp_ident ~loc:var_name.loc
                  {txt= Lident var_name.txt; loc= var_name.loc})
               {txt= Lident label.txt; loc= label.loc} ) ]
     in
     match last_modules with
     | [] ->
-        raise_errorf ~loc "Could not find a type definition to use for %s."
-          name.txt
+        Location.raise_errorf ~loc
+          "Could not find a type definition to use for %s." name.txt
     | [m] ->
         call m
     | m1 :: last_modules ->
-        Exp.apply ~loc folder
+        B.pexp_apply ~loc folder
           [ (Nolabel, call m1)
           ; ( Nolabel
             , build ~loc ~current_module ~name ~var_name ~folder last_modules
@@ -477,15 +492,17 @@ end
 
 module Polyfields = struct
   let build ~loc polyrecord =
-    Str.value ~loc Nonrecursive
+    B.pstr_value ~loc Nonrecursive
       (List.map polyrecord.fields ~f:(fun {label; _} ->
            let loc = label.loc in
            let label_ident = {txt= Lident label.txt; loc= label.loc} in
-           let label_pat = Pat.var ~loc label in
-           let destr_record = Pat.record [(label_ident, label_pat)] Open in
-           Vb.mk ~loc label_pat
-             (Exp.fun_ ~loc Nolabel None destr_record
-                (Exp.ident ~loc label_ident)) ))
+           let label_pat = B.ppat_var ~loc label in
+           let destr_record = B.ppat_record ~loc [(label_ident, label_pat)] Open in
+           B.value_binding ~loc ~pat:label_pat
+             ~expr:(
+               B.pexp_fun ~loc Nolabel None destr_record
+                 (B.pexp_ident ~loc label_ident)
+             )))
 
   let expand (map, last_modules, current_module) payload =
     match payload with
@@ -498,7 +515,8 @@ module Polyfields = struct
           | Some polyrecord ->
               polyrecord
           | None ->
-              raise_errorf ~loc "Could not find the polymorphic record %s"
+              Location.raise_errorf ~loc
+                "Could not find the polymorphic record %s"
                 (Longident.last_exn polyname.txt)
         in
         let str = build ~loc polyrecord in
@@ -535,7 +553,10 @@ let snarky_module_map =
           super#structure_item str acc
 
     method! module_binding bind (map, last_modules, current_module') =
-      let current_module = bind.pmb_name.txt :: current_module' in
+      let current_module = match bind.pmb_name.txt with
+        | Some name -> name :: current_module'
+        | None -> current_module'
+      in
       let mb, (map, last_modules, _) =
         super#module_binding bind (map, last_modules, current_module)
       in
@@ -543,7 +564,7 @@ let snarky_module_map =
   end
 
 let include_ ~loc ?(attr = []) mod_ =
-  Str.include_ ~loc {pincl_loc= loc; pincl_attributes= attr; pincl_mod= mod_}
+  B.pstr_include ~loc {pincl_loc= loc; pincl_attributes= attr; pincl_mod= mod_}
 
 let snarky_module ~loc ~path:_ payload =
   match payload with
@@ -552,9 +573,9 @@ let snarky_module ~loc ~path:_ payload =
         snarky_module_map#structure structure
           (Map.empty (module String), [], [])
       in
-      include_ ~loc (Mod.structure ~loc structure)
+      include_ ~loc (B.pmod_structure ~loc structure)
   | _ ->
-      raise_errorf ~loc "Expected [%%snarky_module] to contain a structure."
+      Location.raise_errorf ~loc "Expected [%%snarky_module] to contain a structure."
 
 let ext =
   Extension.declare "snarky_module" Extension.Context.structure_item
