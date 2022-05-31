@@ -24,11 +24,13 @@ module TypeDecls = struct
   let exn = open_ "exn"
 
   let option =
-    variant "option" ~params:[ var "a" ]
+    variant "option"
+      ~params:[ var "a" ]
       [ Ctor.with_args "None" []; Ctor.with_args "Some" [ var "a" ] ]
 
   let list =
-    variant "list" ~params:[ var "a" ]
+    variant "list"
+      ~params:[ var "a" ]
       [ Ctor.with_args "[]" []
       ; Ctor.with_args "::"
           [ var "a"; constr (Lident "list") ~params:[ var "a" ] ]

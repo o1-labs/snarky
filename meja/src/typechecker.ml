@@ -46,11 +46,11 @@ let unpack_decls ~loc typ ctyp env =
   else
     let unfold_typ () =
       Option.map (Envi.TypeDecl.unfold_alias ~loc typ env) ~f:(fun typ ->
-          (typ, ctyp))
+          (typ, ctyp) )
     in
     let unfold_ctyp () =
       Option.map (Envi.TypeDecl.unfold_alias ~loc ctyp env) ~f:(fun ctyp ->
-          (typ, ctyp))
+          (typ, ctyp) )
     in
     match (typ.type_desc, ctyp.type_desc) with
     | Tctor variant, Tctor cvariant ->
@@ -210,14 +210,14 @@ let rec check_type_aux ~loc typ ctyp env =
           in
           let cdecl_id =
             (snd
-               (Envi.raw_get_type_declaration ~loc constr_variant.var_ident env))
+               (Envi.raw_get_type_declaration ~loc constr_variant.var_ident env) )
               .tdec_id
           in
           if Int.equal decl_id cdecl_id then
             match
               List.iter2 variant.var_params constr_variant.var_params
                 ~f:(fun param constr_param ->
-                  check_type_aux param constr_param env)
+                  check_type_aux param constr_param env )
             with
             | Ok env ->
                 env
@@ -289,7 +289,8 @@ let rec check_type_aux ~loc typ ctyp env =
                 | RpPresent, Closed ->
                     raise
                       (Error
-                         (loc, env, Missing_row_constructor (path, typ, ctyp)))
+                         (loc, env, Missing_row_constructor (path, typ, ctyp))
+                      )
                 | RpMaybe, Closed ->
                     set_rp_desc pres' RpAbsent
                 | (RpPresent | RpMaybe), Open ->
@@ -313,11 +314,13 @@ let rec check_type_aux ~loc typ ctyp env =
                   | RpSubtract _, RpPresent ->
                       raise
                         (Error
-                           (loc, env, Missing_row_constructor (path2, typ, ctyp)))
+                           (loc, env, Missing_row_constructor (path2, typ, ctyp))
+                        )
                   | RpPresent, RpSubtract _ ->
                       raise
                         (Error
-                           (loc, env, Missing_row_constructor (path1, typ, ctyp)))
+                           (loc, env, Missing_row_constructor (path1, typ, ctyp))
+                        )
                   | RpSubtract pres1, desc ->
                       let pres2' = mk_rp desc in
                       set_rp_desc pres2 (RpSubtract pres2') ;
@@ -351,7 +354,7 @@ let rec check_type_aux ~loc typ ctyp env =
                             (Error
                                ( loc
                                , env
-                               , Missing_row_constructor (path, typ, ctyp) ))
+                               , Missing_row_constructor (path, typ, ctyp) ) )
                       | RpMaybe | RpAbsent ->
                           RpAbsent )
                 in
@@ -375,11 +378,13 @@ let rec check_type_aux ~loc typ ctyp env =
                   | RpPresent, RpAbsent ->
                       raise
                         (Error
-                           (loc, env, Missing_row_constructor (path1, typ, ctyp)))
+                           (loc, env, Missing_row_constructor (path1, typ, ctyp))
+                        )
                   | RpAbsent, RpPresent ->
                       raise
                         (Error
-                           (loc, env, Missing_row_constructor (path2, typ, ctyp)))
+                           (loc, env, Missing_row_constructor (path2, typ, ctyp))
+                        )
                 in
                 let pres =
                   match (pres1'.rp_desc, pres2'.rp_desc) with
@@ -394,7 +399,7 @@ let rec check_type_aux ~loc typ ctyp env =
                 set_rp_desc pres2 (RpRef pres) ;
                 ( match
                     List.iter2 args1 args2 ~f:(fun typ ctyp ->
-                        check_type_aux typ ctyp env)
+                        check_type_aux typ ctyp env )
                   with
                 | Ok () ->
                     ()
@@ -402,7 +407,7 @@ let rec check_type_aux ~loc typ ctyp env =
                     raise
                       (Error (loc, env, Row_different_arity (path, typ, ctyp)))
                 ) ;
-                Some (path, pres, args1))
+                Some (path, pres, args1) )
       in
       if row_closed = Closed && !is_empty then
         raise (Error (loc, env, Empty_resulting_row (typ, ctyp))) ;
@@ -609,7 +614,7 @@ let get_field_of_decl typ decl_vars params field_decls (field : lid) env =
   | { txt = Longident.Lident name; _ } -> (
       match
         List.findi field_decls ~f:(fun _ { fld_ident; _ } ->
-            String.equal (Ident.name fld_ident) name)
+            String.equal (Ident.name fld_ident) name )
       with
       | Some (i, { fld_type; fld_ident; _ }) ->
           let mode = Envi.current_mode env in
@@ -762,19 +767,19 @@ let rec check_pattern env typ pat =
         let names_map1 =
           String.Map.of_alist_exn
             (List.map names1 ~f:(fun (name, typ) ->
-                 (Ident.name name.Location.txt, typ)))
+                 (Ident.name name.Location.txt, typ) ) )
         in
         let names_map2 =
           String.Map.of_alist_exn
             (List.map names2 ~f:(fun (name, typ) ->
-                 (Ident.name name.Location.txt, typ)))
+                 (Ident.name name.Location.txt, typ) ) )
         in
         Map.iter2 names_map1 names_map2 ~f:(fun ~key ~data ->
             match data with
             | `Both (typ1, typ2) ->
                 check_type ~loc env typ1 typ2
             | _ ->
-                raise (Error (loc, env, Variable_on_one_side key)))
+                raise (Error (loc, env, Variable_on_one_side key)) )
       in
       ( { Typedast.pat_loc = loc; pat_type = typ; pat_desc = Tpat_or (p1, p2) }
       , names1
@@ -830,7 +835,7 @@ let rec check_pattern env typ pat =
                 raise
                   (Error (field.loc, env, Wrong_record_field (field.txt, typ)))
             ) ;
-            (field_typ, Location.mkloc path field.loc))
+            (field_typ, Location.mkloc path field.loc) )
       in
       let ps, names, env =
         check_patterns env
@@ -891,8 +896,8 @@ and check_patterns env typs pats =
               | Some _ ->
                   raise (Error (loc, env, Repeated_pattern_variable name))
               | None ->
-                  ())) ;
-        (pat :: rev_pats, List.rev_append names rev_names, env))
+                  () ) ) ;
+        (pat :: rev_pats, List.rev_append names rev_names, env) )
   in
   (List.rev rev_pats, List.rev rev_names, env)
 
@@ -937,7 +942,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ =
           *)
           ( match
               List.iter2 typs alts ~f:(fun typ1 typ2 ->
-                  assert (Type1.are_stitched typ1 typ2))
+                  assert (Type1.are_stitched typ1 typ2) )
             with
           | Unequal_lengths ->
               assert false
@@ -950,7 +955,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ =
                  | { conv_body_desc = Tconv_identity; _ } ->
                      true
                  | _ ->
-                     false)
+                     false )
           then
             ( free_vars
             , { conv_body_desc = Tconv_identity
@@ -986,7 +991,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ =
             may_identity
             && Type1.equal_at_depth
                  ~get_decl:(fun path ->
-                   snd (Envi.raw_get_type_declaration ~loc path env))
+                   snd (Envi.raw_get_type_declaration ~loc path env) )
                  ~depth:10001 typ typ.type_alternate
           then
             ( free_vars
@@ -1016,8 +1021,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ =
                       if
                         not
                           (String.equal (Ident.name ident1) (Ident.name ident2))
-                      then
-                        raise (Error (loc, env, Cannot_create_conversion typ)) ;
+                      then raise (Error (loc, env, Cannot_create_conversion typ)) ;
                       let typ1 =
                         Envi.Type.instantiate params1 variant1.var_params typ1
                           env
@@ -1048,7 +1052,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ =
                            | _, { conv_body_desc = Tconv_identity; _ } ->
                                true
                            | _ ->
-                               false)
+                               false )
                     then
                       ( !free_vars
                       , { conv_body_desc = Tconv_identity
@@ -1097,7 +1101,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ =
             phys_equal typ1 typ2
             || Type1.equal_at_depth
                  ~get_decl:(fun path ->
-                   snd (Envi.raw_get_type_declaration ~loc path env))
+                   snd (Envi.raw_get_type_declaration ~loc path env) )
                  ~depth:10001 typ typ2
           then
             ( free_vars
@@ -1116,7 +1120,7 @@ let rec get_conversion_body ~may_identity ~can_add_args ~loc env free_vars typ =
             && ( phys_equal typ typ2
                || Type1.equal_at_depth
                     ~get_decl:(fun path ->
-                      snd (Envi.raw_get_type_declaration ~loc path env))
+                      snd (Envi.raw_get_type_declaration ~loc path env) )
                     ~depth:10001 typ typ2 )
           then
             ( free_vars
@@ -1146,7 +1150,7 @@ let get_conversion ~may_identity ~can_add_args ~loc env typ =
             (* Free type variables. *)
             (typ', Ident.fresh mode)
         | _ ->
-            raise (Error (loc, env, Cannot_create_conversion typ)))
+            raise (Error (loc, env, Cannot_create_conversion typ)) )
   in
   let typ = match typ.type_desc with Tconv typ -> typ | _ -> typ in
   match
@@ -1167,7 +1171,7 @@ let get_conversion ~may_identity ~can_add_args ~loc env typ =
           { conv_desc = Tconv_fun (Location.mkloc ident loc, conv)
           ; conv_loc = loc
           ; conv_type
-          })
+          } )
   | exception (Error (_, _, err) as _exn) ->
       (*Format.eprintf "%s@." (Printexc.get_backtrace ()) ;
         Location.report_exception Format.err_formatter _exn ;*)
@@ -1210,7 +1214,7 @@ let rec get_expression env expected exp =
                   e_typ
             in
             let e, env = get_expression env e_typ e in
-            ((Type1.flatten res_typ, env), (Explicit, label, e)))
+            ((Type1.flatten res_typ, env), (Explicit, label, e)) )
       in
       let typ = Type1.discard_optional_labels @@ Type1.flatten typ in
       (* Squash nested applies from implicit arguments. *)
@@ -1222,7 +1226,7 @@ let rec get_expression env expected exp =
                 | Implicit, _, _ ->
                     true
                 | _ ->
-                    false)
+                    false )
             then (f', args @ es)
             else (f, es)
         | _ ->
@@ -1237,7 +1241,7 @@ let rec get_expression env expected exp =
       check_type ~loc env expected (get_mode mode result_typ) ;
       let implicits =
         List.map implicits ~f:(fun (label, typ) ->
-            (Implicit, label, Envi.Type.new_implicit_var ~loc typ env))
+            (Implicit, label, Envi.Type.new_implicit_var ~loc typ env) )
       in
       let e =
         { Typedast.exp_loc = loc
@@ -1268,7 +1272,7 @@ let rec get_expression env expected exp =
                 (* Instantiate unfilled implicit arguments in [conv]. *)
                 let implicits, _ = get_implicits conv.conv_type in
                 List.map implicits ~f:(fun (label, typ) ->
-                    (label, Envi.Type.new_implicit_var ~loc typ env))
+                    (label, Envi.Type.new_implicit_var ~loc typ env) )
               in
               { exp_loc = loc
               ; exp_type = expected
@@ -1306,7 +1310,7 @@ let rec get_expression env expected exp =
       let p, names, env = check_pattern env p_typ p in
       let env =
         List.fold ~init:env names ~f:(fun env (name, typ) ->
-            add_name name.Location.txt typ env)
+            add_name name.Location.txt typ env )
       in
       let body, env = get_expression env body_typ body in
       let env = Envi.close_expr_scope env in
@@ -1360,7 +1364,7 @@ let rec get_expression env expected exp =
                   when Ident.compare ident.txt ident' = 0 ->
                     Type1.get_mode Prover free_var
                 | _ ->
-                    Type0_map.default_mapper.type_expr mapper typ)
+                    Type0_map.default_mapper.type_expr mapper typ )
           }
         in
         let snap = Snapshot.create () in
@@ -1447,7 +1451,7 @@ let rec get_expression env expected exp =
         List.map2_exn es typs ~f:(fun e expected ->
             let e, env' = get_expression !env expected e in
             env := env' ;
-            e)
+            e )
       in
       let typ =
         Envi.Type.Mk.tuple ~mode
@@ -1465,11 +1469,11 @@ let rec get_expression env expected exp =
             let p, names, env = check_pattern env typ p in
             let env =
               List.fold ~init:env names ~f:(fun env (name, typ) ->
-                  add_polymorphised name.Location.txt typ env)
+                  add_polymorphised name.Location.txt typ env )
             in
             let e, env = get_expression env expected e in
             let env = Envi.close_expr_scope env in
-            (env, (p, e)))
+            (env, (p, e)) )
       in
       ( match
           Patmatch.get_unmatched_cases ~count:4 env typ (List.map ~f:fst cases)
@@ -1534,7 +1538,7 @@ let rec get_expression env expected exp =
                     | Lident field ->
                         String.equal (Ident.name fld_ident) field
                     | _ ->
-                        assert false)
+                        assert false )
               with
               | Some { fld_type; fld_ident; _ } ->
                   let fld_type =
@@ -1544,8 +1548,8 @@ let rec get_expression env expected exp =
                   (Path.Pident fld_ident, fld_type)
               | None ->
                   raise
-                    (Error (loc, env, Wrong_record_field (field.txt, e.exp_type)))
-              )
+                    (Error (loc, env, Wrong_record_field (field.txt, e.exp_type))
+                    ) )
           | _ -> (
               match Envi.TypeDecl.find_of_field ~mode field env with
               | Some
@@ -1637,7 +1641,7 @@ let rec get_expression env expected exp =
               raise (Error (field.loc, !env, Repeated_field name)) ) ;
             fields_filled.(i) <- true ;
             env := env' ;
-            (Location.mkloc path field.loc, e))
+            (Location.mkloc path field.loc, e) )
       in
       ( match ext with
       | Some _ ->
@@ -1647,7 +1651,7 @@ let rec get_expression env expected exp =
           let names =
             List.fold2_exn ~init:[] fields_filled field_decls
               ~f:(fun names filled { fld_ident; _ } ->
-                if filled then names else fld_ident :: names)
+                if filled then names else fld_ident :: names )
           in
           if not (List.is_empty names) then
             raise (Error (loc, !env, Missing_fields names)) ) ;
@@ -1681,7 +1685,7 @@ let rec get_expression env expected exp =
         List.map2_exn args arg_types ~f:(fun arg expected ->
             let arg, env' = get_expression !env expected arg in
             env := env' ;
-            arg)
+            arg )
       in
       ( { exp_loc = loc; exp_type = typ; exp_desc = Texp_row_ctor (name, args) }
       , !env )
@@ -1741,7 +1745,7 @@ let rec get_expression env expected exp =
         (* Instantiate unfilled implicit arguments in [conv]. *)
         let implicits, _ = get_implicits conv.conv_type in
         List.map implicits ~f:(fun (label, typ) ->
-            (label, Envi.Type.new_implicit_var ~loc typ env))
+            (label, Envi.Type.new_implicit_var ~loc typ env) )
       in
       ( { exp_loc = loc
         ; exp_type = expected
@@ -1788,13 +1792,13 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
               false
             with _ -> backtrack snap ; true )
         | _ ->
-            true)
+            true )
   in
   match implicit_vars with
   | [] ->
       let env =
         List.fold ~init:env pattern_variables ~f:(fun env (name, typ) ->
-            add_polymorphised name.Location.txt typ env)
+            add_polymorphised name.Location.txt typ env )
       in
       (p, e, env)
   | implicit :: _ ->
@@ -1863,7 +1867,7 @@ and check_binding ?(toplevel = false) (env : Envi.t) p e : 's =
                   }
                 , env )
             | _ ->
-                raise (Error (var.exp_loc, env, No_unifiable_expr)))
+                raise (Error (var.exp_loc, env, No_unifiable_expr)) )
       in
       let p =
         { Typedast.pat_loc = p.pat_loc
@@ -1970,8 +1974,9 @@ let rec check_signature_item env item =
                 type_desc =
                   Ttyp_var
                     (Some
-                       (Location.mkloc (sprintf "var_%i" (i + 1)) typ.type_loc))
-              })
+                       (Location.mkloc (sprintf "var_%i" (i + 1)) typ.type_loc)
+                    )
+              } )
         in
         let conv_params =
           List.mapi decl.tdec_params ~f:(fun i typ ->
@@ -1981,9 +1986,9 @@ let rec check_signature_item env item =
                     (Some
                        (Location.mkloc
                           (sprintf "value_%i" (i + 1))
-                          typ.type_loc))
+                          typ.type_loc ) )
               ; type_type = typ.type_type.type_alternate
-              })
+              } )
         in
         let mk_ctor path params type_type =
           { type_desc = Ttyp_ctor { var_ident = path; var_params = params }
@@ -2008,13 +2013,13 @@ let rec check_signature_item env item =
         in
         let loc =
           Option.value_map convname ~default:loc ~f:(fun { Location.loc; _ } ->
-              loc)
+              loc )
         in
         let typ = Typet.Type.mk_conv ~loc ~mode typ other_typ env in
         List.fold2_exn (List.rev params) (List.rev conv_params) ~init:typ
           ~f:(fun typ param conv_param ->
             let param = Typet.Type.mk_conv ~loc ~mode param conv_param env in
-            Typet.Type.mk_arrow ~loc ~mode ~explicit:Implicit param typ env)
+            Typet.Type.mk_arrow ~loc ~mode ~explicit:Implicit param typ env )
       in
       let typ' = polymorphise (Type1.flatten typ.type_type) env in
       Envi.Type.update_depths env typ' ;
@@ -2070,7 +2075,8 @@ let rec check_signature_item env item =
   | Psig_request (arg, ctor_decl) ->
       let open Ast_build in
       let variant =
-        Type.variant ~loc ~params:[ Type.none ~loc () ]
+        Type.variant ~loc
+          ~params:[ Type.none ~loc () ]
           (Lid.of_list [ "Snarky"; "Request"; "t" ])
       in
       let ctor_ret =
@@ -2185,7 +2191,7 @@ and check_module_sig env msig =
             ( snd
                 (Envi.find_module ~mode ~loc
                    (Location.mkloc (Longident.Lident path) loc)
-                   env)
+                   env )
             , msig )
       in
       (* Check that f_mty builds the functor as expected. *)
@@ -2226,7 +2232,7 @@ let rec check_statement env stmt =
                 | Tpat_variable name ->
                     raise (Ret name)
                 | _ ->
-                    Typedast_iter.default_iterator.pattern_desc iter p)
+                    Typedast_iter.default_iterator.pattern_desc iter p )
           }
         in
         try
@@ -2295,7 +2301,7 @@ let rec check_statement env stmt =
               let param =
                 Envi.Type.Mk.conv ~mode param param.type_alternate env
               in
-              Envi.Type.Mk.arrow ~mode ~explicit:Implicit param typ env)
+              Envi.Type.Mk.arrow ~mode ~explicit:Implicit param typ env )
         in
         let conv =
           get_conversion ~may_identity:false ~can_add_args:true ~loc env typ
@@ -2335,7 +2341,7 @@ let rec check_statement env stmt =
             let param =
               Envi.Type.Mk.conv ~mode param param.type_alternate env
             in
-            Envi.Type.Mk.arrow ~mode param typ env)
+            Envi.Type.Mk.arrow ~mode param typ env )
       in
       let conv =
         get_conversion ~may_identity:false ~can_add_args:true ~loc env typ
@@ -2397,7 +2403,8 @@ let rec check_statement env stmt =
   | Pstmt_request (arg, ctor_decl, handler) ->
       let open Ast_build in
       let variant =
-        Type.variant ~loc ~params:[ Type.none ~loc () ]
+        Type.variant ~loc
+          ~params:[ Type.none ~loc () ]
           (Lid.of_list [ "Snarky"; "Request"; "t" ])
       in
       let ctor_ret =
@@ -2453,12 +2460,12 @@ let rec check_statement env stmt =
                      ; ( Pat.any ()
                        , Exp.var
                            (Lid.of_list [ "Snarky"; "Request"; "unhandled" ]) )
-                     ])
+                     ] )
               in
               Exp.fun_
                 (Pat.ctor
                    (Lid.of_list [ "Snarky"; "Request"; "With" ])
-                   ~args:(Pat.record [ Pat.field request; Pat.field respond ]))
+                   ~args:(Pat.record [ Pat.field request; Pat.field respond ]) )
                 body
             in
             let _p, e, env = check_binding ~toplevel:true env p e in
@@ -2696,9 +2703,9 @@ let () =
         (pp_typ :=
            fun fmt typ ->
              Format.fprintf fmt "@[<hov>%a@]" Typeprint.type_expr
-               (set_var_names.type_expr set_var_names typ)) ;
+               (set_var_names.type_expr set_var_names typ) ) ;
         let err_msg = Location.error_of_printer ~loc report_error err in
         (pp_typ := fun _fmt _typ -> failwith "Typechecked.pp_typ uninitialised") ;
         Type1.backtrack snap ; Some err_msg
     | _ ->
-        None)
+        None )

@@ -39,5 +39,5 @@ jobs:
       - name: Format
         run: |
           eval $(opam env)
-          opam install ocamlformat.0.15.0
+          opam install ocamlformat.0.20.1
           dune build @fmt

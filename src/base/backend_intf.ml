@@ -28,7 +28,7 @@ module type Constraint_system_intf = sig
        t
     -> ([> `String of string | `Assoc of (string * 'a) list | `List of 'a list ]
         as
-        'a)
+        'a )
 end
 
 module type Libsnark_constraint_system_intf = sig
