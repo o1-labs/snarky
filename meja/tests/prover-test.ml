@@ -27,7 +27,7 @@ let f __implicit1__ =
 include struct
   let g __implicit2__ x =
     (let typ x___2 = Typ.fn x___2 x___2 in
-     As_prover.read (typ __implicit2__) (f __implicit2__))
+     As_prover.read (typ __implicit2__) (f __implicit2__) )
       x
 end
 
@@ -39,7 +39,7 @@ let h __implicit6__ __implicit5__ __implicit4__ x =
       fun () ->
         g __implicit4__
           (let typ x___3 = x___3 in
-           As_prover.read (typ __implicit5__) x))
+           As_prover.read (typ __implicit5__) x ))
 
 let i () =
   let f __implicit7__ =
@@ -58,7 +58,7 @@ let i () =
           (let typ x___6 = Typ.fn x___6 x___6 in
            As_prover.read
              (typ (Snarky.Typ.Internal.ref ()))
-             (f (Snarky.Typ.Internal.ref ())))
+             (f (Snarky.Typ.Internal.ref ())) )
             15)
   in
   i
@@ -85,9 +85,9 @@ let j __implicit12__ __implicit13__ __implicit14__ __implicit10__ b x =
         (let open As_prover in
         fun () ->
           (let typ x___11 = Typ.fn x___11 (Snarky.Typ.Internal.ref ()) in
-           As_prover.read (typ __implicit13__) (f __implicit12__))
+           As_prover.read (typ __implicit13__) (f __implicit12__) )
             (let typ x___12 = x___12 in
-             As_prover.read (typ __implicit14__) x))
+             As_prover.read (typ __implicit14__) x ))
   in
   i
 

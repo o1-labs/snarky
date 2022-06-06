@@ -102,8 +102,8 @@ end = struct
    fun ((x1, y1), (x2, y2), (x3, y3), (x4, y4)) ->
     ((x1, x2, x3, x4), (y1, y2, y3, y4))
 
-  let lookup ((s0, s1, s2) : Boolean.var Triple.t)
-      (q : affine_point Quadruple.t) =
+  let lookup ((s0, s1, s2) : Boolean.var Triple.t) (q : affine_point Quadruple.t)
+      =
     let%bind s_and = Boolean.(s0 && s1) in
     let open Field.Checked in
     let lookup_one (a1, a2, a3, a4) =
@@ -237,7 +237,7 @@ end = struct
               get_term (offset + i) x
               >>= Weierstrass_curve.Checked.add_unsafe acc
             in
-            acc)
+            acc )
       in
       match triples with
       | [] ->

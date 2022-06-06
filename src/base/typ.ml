@@ -147,7 +147,7 @@ struct
           ; value_to_fields =
               (fun value' ->
                 assert (phys_equal value value') ;
-                ([||], ()))
+                ([||], ()) )
           ; value_of_fields = (fun _ -> value)
           ; size_in_field_elements = 0
           ; constraint_system_auxiliary = (fun () -> ())
@@ -167,7 +167,7 @@ struct
            ; constraint_system_auxiliary
            ; check
            } :
-          (var, value1, field) t) ~(there : value2 -> value1)
+          (var, value1, field) t ) ~(there : value2 -> value1)
         ~(back : value1 -> value2) : (var, value2, field) t =
       Typ
         { var_to_fields
@@ -189,7 +189,7 @@ struct
            ; constraint_system_auxiliary
            ; check
            } :
-          (var1, value, field) t) ~(there : var2 -> var1) ~(back : var1 -> var2)
+          (var1, value, field) t ) ~(there : var2 -> var1) ~(back : var1 -> var2)
         : (var2, value, field) t =
       Typ
         { var_to_fields = (fun x -> var_to_fields (there x))
@@ -211,7 +211,7 @@ struct
            ; constraint_system_auxiliary
            ; check
            } :
-          ('elt_var, 'elt_value, 'field) t) :
+          ('elt_var, 'elt_value, 'field) t ) :
         ('elt_var list, 'elt_value list, 'field) t =
       (* NB: We store the size_in_field_elements of each in the auxiliary
          data, to allow for 'reads' of e.g. list of lists of different
@@ -232,7 +232,7 @@ struct
                     in
                     go tl acc
               in
-              go ts ([||], []))
+              go ts ([||], []) )
         ; var_of_fields =
             (fun (fields, auxes) ->
               let vars, _ =
@@ -245,9 +245,9 @@ struct
                       var_of_fields
                         (Array.sub ~pos:end_pos ~len:num_fields fields, aux)
                     in
-                    (var :: vars, end_pos))
+                    (var :: vars, end_pos) )
               in
-              vars)
+              vars )
         ; value_to_fields =
             (fun ts ->
               let rec go ts ((fieldss, auxes) as acc) =
@@ -262,7 +262,7 @@ struct
                     in
                     go tl acc
               in
-              go ts ([||], []))
+              go ts ([||], []) )
         ; value_of_fields =
             (fun (fields, auxes) ->
               let vars, _ =
@@ -275,14 +275,14 @@ struct
                       value_of_fields
                         (Array.sub ~pos:end_pos ~len:num_fields fields, aux)
                     in
-                    (var :: vars, end_pos))
+                    (var :: vars, end_pos) )
               in
-              vars)
+              vars )
         ; size_in_field_elements = length * size_in_field_elements
         ; constraint_system_auxiliary =
             (fun () ->
               List.init length ~f:(fun _ ->
-                  (constraint_system_auxiliary (), size_in_field_elements)))
+                  (constraint_system_auxiliary (), size_in_field_elements) ) )
         ; check = (fun ts -> Checked.all_unit (List.map ts ~f:check))
         }
 
@@ -329,7 +329,7 @@ struct
                     let fields, aux = var_to_fields x in
                     let fieldss, auxes = typ.var_to_fields tl in
                     ( Array.append fields fieldss
-                    , (aux, Array.length fields, auxes) ))
+                    , (aux, Array.length fields, auxes) ) )
               ; var_of_fields =
                   (fun (fields, (hd, len, tl)) ->
                     let var =
@@ -342,13 +342,13 @@ struct
                             fields
                         , tl )
                     in
-                    var :: tl)
+                    var :: tl )
               ; value_to_fields =
                   (fun (x :: tl) ->
                     let fields, aux = value_to_fields x in
                     let fieldss, auxes = typ.value_to_fields tl in
                     ( Array.append fields fieldss
-                    , (aux, Array.length fields, auxes) ))
+                    , (aux, Array.length fields, auxes) ) )
               ; value_of_fields =
                   (fun (fields, (hd, len, tl)) ->
                     let value =
@@ -361,17 +361,17 @@ struct
                             fields
                         , tl )
                     in
-                    value :: tl)
+                    value :: tl )
               ; size_in_field_elements =
                   size_in_field_elements + typ.size_in_field_elements
               ; constraint_system_auxiliary =
                   (fun () ->
                     let hd = constraint_system_auxiliary () in
                     let auxes = typ.constraint_system_auxiliary () in
-                    (hd, size_in_field_elements, auxes))
+                    (hd, size_in_field_elements, auxes) )
               ; check =
                   (fun (x :: tl) ->
-                    Checked.bind (check x) ~f:(fun () -> typ.check tl))
+                    Checked.bind (check x) ~f:(fun () -> typ.check tl) )
               }
       in
       go spec0
@@ -394,57 +394,53 @@ struct
       |> transport
            ~there:(fun (a, b, c) -> [ a; b; c ])
            ~back:(fun ([ a; b; c ] : (unit, _ -> _ -> _ -> unit) H_list.t) ->
-             (a, b, c))
+             (a, b, c) )
       |> transport_var
            ~there:(fun (a, b, c) -> [ a; b; c ])
            ~back:(fun ([ a; b; c ] : (unit, _ -> _ -> _ -> unit) H_list.t) ->
-             (a, b, c))
+             (a, b, c) )
 
     let tuple4 typ1 typ2 typ3 typ4 =
       let open H_list in
       hlist [ typ1; typ2; typ3; typ4 ]
       |> transport
            ~there:(fun (a, b, c, d) -> [ a; b; c; d ])
-           ~back:
-             (fun ([ a; b; c; d ] : (unit, _ -> _ -> _ -> _ -> unit) H_list.t) ->
-             (a, b, c, d))
+           ~back:(fun ([ a; b; c; d ] :
+                        (unit, _ -> _ -> _ -> _ -> unit) H_list.t ) ->
+             (a, b, c, d) )
       |> transport_var
            ~there:(fun (a, b, c, d) -> [ a; b; c; d ])
-           ~back:
-             (fun ([ a; b; c; d ] : (unit, _ -> _ -> _ -> _ -> unit) H_list.t) ->
-             (a, b, c, d))
+           ~back:(fun ([ a; b; c; d ] :
+                        (unit, _ -> _ -> _ -> _ -> unit) H_list.t ) ->
+             (a, b, c, d) )
 
     let tuple5 typ1 typ2 typ3 typ4 typ5 =
       let open H_list in
       hlist [ typ1; typ2; typ3; typ4; typ5 ]
       |> transport
            ~there:(fun (a, b, c, d, e) -> [ a; b; c; d; e ])
-           ~back:
-             (fun ([ a; b; c; d; e ] :
-                    (unit, _ -> _ -> _ -> _ -> _ -> unit) H_list.t) ->
-             (a, b, c, d, e))
+           ~back:(fun ([ a; b; c; d; e ] :
+                        (unit, _ -> _ -> _ -> _ -> _ -> unit) H_list.t ) ->
+             (a, b, c, d, e) )
       |> transport_var
            ~there:(fun (a, b, c, d, e) -> [ a; b; c; d; e ])
-           ~back:
-             (fun ([ a; b; c; d; e ] :
-                    (unit, _ -> _ -> _ -> _ -> _ -> unit) H_list.t) ->
-             (a, b, c, d, e))
+           ~back:(fun ([ a; b; c; d; e ] :
+                        (unit, _ -> _ -> _ -> _ -> _ -> unit) H_list.t ) ->
+             (a, b, c, d, e) )
 
     let tuple6 typ1 typ2 typ3 typ4 typ5 typ6 =
       let open H_list in
       hlist [ typ1; typ2; typ3; typ4; typ5; typ6 ]
       |> transport
            ~there:(fun (a, b, c, d, e, f) -> [ a; b; c; d; e; f ])
-           ~back:
-             (fun ([ a; b; c; d; e; f ] :
-                    (unit, _ -> _ -> _ -> _ -> _ -> _ -> unit) H_list.t) ->
-             (a, b, c, d, e, f))
+           ~back:(fun ([ a; b; c; d; e; f ] :
+                        (unit, _ -> _ -> _ -> _ -> _ -> _ -> unit) H_list.t ) ->
+             (a, b, c, d, e, f) )
       |> transport_var
            ~there:(fun (a, b, c, d, e, f) -> [ a; b; c; d; e; f ])
-           ~back:
-             (fun ([ a; b; c; d; e; f ] :
-                    (unit, _ -> _ -> _ -> _ -> _ -> _ -> unit) H_list.t) ->
-             (a, b, c, d, e, f))
+           ~back:(fun ([ a; b; c; d; e; f ] :
+                        (unit, _ -> _ -> _ -> _ -> _ -> _ -> unit) H_list.t ) ->
+             (a, b, c, d, e, f) )
 
     let of_hlistable (spec : (unit, unit, 'k_var, 'k_value, 'f) Data_spec.t)
         ~(var_to_hlist : 'var -> (unit, 'k_var) H_list.t)
@@ -461,7 +457,7 @@ struct
       (module M : S
         with type field = field
          and type Var.t = var
-         and type Value.t = value) : (var, value, field) t =
+         and type Value.t = value ) : (var, value, field) t =
     let field_vars_len = M.Var.size_in_field_elements in
     let fields_len = M.Var.size_in_field_elements in
     assert (field_vars_len = fields_len) ;

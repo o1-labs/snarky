@@ -57,8 +57,7 @@ module Type = struct
 
   let opaque ?loc typ = mk ?loc (Ptyp_opaque typ)
 
-  let row ?loc tags closed min_tags =
-    mk ?loc (Ptyp_row (tags, closed, min_tags))
+  let row ?loc tags closed min_tags = mk ?loc (Ptyp_row (tags, closed, min_tags))
 
   let row_subtract ?loc typ tags = mk ?loc (Ptyp_row_subtract (typ, tags))
 end
@@ -75,11 +74,9 @@ module Type_decl = struct
 
   let alias ?loc ?params name typ = mk ?loc ?params name (Pdec_alias typ)
 
-  let record ?loc ?params name fields =
-    mk ?loc ?params name (Pdec_record fields)
+  let record ?loc ?params name fields = mk ?loc ?params name (Pdec_record fields)
 
-  let variant ?loc ?params name ctors =
-    mk ?loc ?params name (Pdec_variant ctors)
+  let variant ?loc ?params name ctors = mk ?loc ?params name (Pdec_variant ctors)
 
   let open_ ?loc ?params name = mk ?loc ?params name Pdec_open
 

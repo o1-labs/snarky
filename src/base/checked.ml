@@ -167,7 +167,7 @@ module Basic :
         let x =
           Lazy.from_fun (fun () ->
               forced := true ;
-              x)
+              x )
         in
         let count, y = constraint_count_aux ~weight ~log ~auxc count (k x) in
         ((if !forced then count + lazy_count else count), y)

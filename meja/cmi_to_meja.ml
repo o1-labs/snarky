@@ -32,4 +32,4 @@ let main =
       let out_file =
         Filename.(concat !outdir (chop_extension (basename filename) ^ ".meji"))
       in
-      do_output out_file (fun out -> Pprint.signature out signature))
+      do_output out_file (fun out -> Pprint.signature out signature) )

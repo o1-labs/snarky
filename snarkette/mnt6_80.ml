@@ -63,14 +63,15 @@ module Fq6 = struct
 end
 
 module G1 = struct
-  include Elliptic_curve.Make (N) (Fq)
-            (struct
-              let a = Fq.of_string "11"
+  include
+    Elliptic_curve.Make (N) (Fq)
+      (struct
+        let a = Fq.of_string "11"
 
-              let b =
-                Fq.of_string
-                  "106700080510851735677967319632585352256454251201367587890185989362936000262606668469523074"
-            end)
+        let b =
+          Fq.of_string
+            "106700080510851735677967319632585352256454251201367587890185989362936000262606668469523074"
+      end)
 
   let one : t =
     { x =
@@ -84,13 +85,14 @@ module G1 = struct
 end
 
 module G2 = struct
-  include Elliptic_curve.Make (N) (Fq3)
-            (struct
-              let a : Fq3.t = (Fq.zero, Fq.zero, G1.Coefficients.a)
+  include
+    Elliptic_curve.Make (N) (Fq3)
+      (struct
+        let a : Fq3.t = (Fq.zero, Fq.zero, G1.Coefficients.a)
 
-              let b : Fq3.t =
-                (Fq.(G1.Coefficients.b * Fq3.non_residue), Fq.zero, Fq.zero)
-            end)
+        let b : Fq3.t =
+          (Fq.(G1.Coefficients.b * Fq3.non_residue), Fq.zero, Fq.zero)
+      end)
 
   let one : t =
     let open Fq in

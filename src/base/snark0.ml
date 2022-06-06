@@ -71,7 +71,7 @@ struct
     let output, _ = return_typ.var_to_fields output in
     let _state =
       Array.fold2_exn ~init:state res output ~f:(fun state res output ->
-          fst @@ Checked.run (Checked.assert_equal res output) state)
+          fst @@ Checked.run (Checked.assert_equal res output) state )
     in
     let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
     R1CS_constraint_system.set_auxiliary_input_size system auxiliary_input_size ;
@@ -84,7 +84,7 @@ struct
     let aux = Field.Vector.create () in
     let handler =
       List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
-          Request.Handler.(push handler (create_single h)))
+          Request.Handler.(push handler (create_single h)) )
     in
     let state =
       Runner.State.make ?system ~num_inputs ~input:(pack_field_vec input)
@@ -96,13 +96,13 @@ struct
     let _state =
       Array.fold2_exn ~init:state res output ~f:(fun state res output ->
           Field.Vector.emplace_back input (Runner.get_value state res) ;
-          fst @@ Checked.run (Checked.assert_equal res output) state)
+          fst @@ Checked.run (Checked.assert_equal res output) state )
     in
     Option.iter system ~f:(fun system ->
         let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
         R1CS_constraint_system.set_auxiliary_input_size system
           auxiliary_input_size ;
-        R1CS_constraint_system.finalize system) ;
+        R1CS_constraint_system.finalize system ) ;
     aux
 
   let run_and_check' ~run t0 =
@@ -161,7 +161,7 @@ struct
   let run_and_check ~run t =
     Or_error.map (run_and_check' ~run t) ~f:(fun (x, get_value) ->
         let x = As_prover.run x get_value in
-        x)
+        x )
 
   let check ~run t = run_and_check' ~run t |> Result.map ~f:(Fn.const ())
 
@@ -191,13 +191,13 @@ struct
                 ; size_in_field_elements
                 ; constraint_system_auxiliary
                 ; _
-                }) =
+                } ) =
             return_typ
           in
           let retval =
             var_of_fields
               ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
-                    alloc_var next_input ())
+                    alloc_var next_input () )
               , constraint_system_auxiliary () )
           in
           (retval, Checked.return k)
@@ -212,12 +212,12 @@ struct
           let var =
             var_of_fields
               ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
-                    alloc_var next_input ())
+                    alloc_var next_input () )
               , constraint_system_auxiliary () )
           in
           let retval, r =
             collect_input_constraints next_input t' ~return_typ (fun () ->
-                k () var)
+                k () var )
           in
           let checked =
             let%map () = check var and r = r in
@@ -378,7 +378,7 @@ struct
             auxiliary_input ~run ?handlers ~return_typ ~output ~num_inputs c
               primary
           in
-          ignore auxiliary)
+          ignore auxiliary )
         t return_typ
         (fun () -> k)
 
@@ -414,7 +414,7 @@ struct
             { Proof_inputs.public_inputs = primary
             ; auxiliary_inputs = auxiliary
             }
-            output)
+            output )
         t return_typ
         (fun () -> k)
 
@@ -593,7 +593,7 @@ struct
           Checked.return
             (Boolean.Unsafe.create
                (Cvar.constant
-                  (if Field.equal x y then Field.one else Field.zero)))
+                  (if Field.equal x y then Field.one else Field.zero) ) )
       | _ ->
           let z = Cvar.(x - y) in
           let%bind r, inv =
@@ -650,7 +650,7 @@ struct
                   As_prover.(
                     map (read_var x) ~f:(fun x ->
                         if Field.(equal zero x) then Field.zero
-                        else Backend.Field.inv x))
+                        else Backend.Field.inv x ))
             in
             let%map () =
               assert_r1cs ~label:"field_inverse" x x_inv
@@ -668,8 +668,8 @@ struct
             let%bind y_inv = inv y in
             mul x y_inv)
 
-    let%snarkydef_ if_ (b : Cvar.t Boolean.t) ~(then_ : Cvar.t)
-        ~(else_ : Cvar.t) =
+    let%snarkydef_ if_ (b : Cvar.t Boolean.t) ~(then_ : Cvar.t) ~(else_ : Cvar.t)
+        =
       let open Let_syntax in
       (* r = e + b (t - e)
          r - e = b (t - e)
@@ -804,7 +804,7 @@ struct
             check =
               (fun v ->
                 Checked.assert_
-                  (Constraint.boolean ~label:"boolean-alloc" (v :> Cvar.t)))
+                  (Constraint.boolean ~label:"boolean-alloc" (v :> Cvar.t)) )
           }
 
       let typ_unchecked : (var, value) Typ.t =
@@ -822,10 +822,10 @@ struct
             let r =
               run_and_check
                 (Checked.map ~f:(As_prover.read typ)
-                   (all (List.map ~f:var_of_value x)))
+                   (all (List.map ~f:var_of_value x)) )
               |> Or_error.ok_exn
             in
-            [%test_eq: bool] r (List.for_all x ~f:Fn.id))
+            [%test_eq: bool] r (List.for_all x ~f:Fn.id) )
 
       let ( lxor ) b1 b2 =
         match (to_constant b1, to_constant b2) with
@@ -866,7 +866,7 @@ struct
       module Array = struct
         let num_true (bs : var array) =
           Array.fold bs ~init:(Cvar.constant Field.zero) ~f:(fun x y ->
-              Cvar.add x (y :> Cvar.t))
+              Cvar.add x (y :> Cvar.t) )
 
         let any = function
           | [||] ->
@@ -990,7 +990,7 @@ struct
     let packing_sum (bits : Boolean.var list) =
       let ts, _ =
         List.fold_left bits ~init:([], Field.one) ~f:(fun (acc, c) v ->
-            ((c, (v :> Cvar.t)) :: acc, Field.add c c))
+            ((c, (v :> Cvar.t)) :: acc, Field.add c c) )
       in
       Cvar.linear_combination ts
 
@@ -1131,7 +1131,7 @@ struct
              let x = Field.of_int i in
              if not (Field.is_square x) then x else go Int.(i + 1)
            in
-           go 2)
+           go 2 )
 
       (* The trick here is the following.
 
@@ -1190,7 +1190,7 @@ struct
                  Checked.(
                    Let_syntax.(
                      let%bind x = exists typf ~compute:(As_prover.return elt) in
-                     is_square x)))
+                     is_square x)) )
             |> Or_error.ok_exn
           in
           answer
@@ -1239,7 +1239,7 @@ struct
            in
            let%bind not_all_zeros = Boolean.any prefix in
            let%map less = Boolean.(less_or_equal && not_all_zeros) in
-           { less; less_or_equal })
+           { less; less_or_equal } )
 
       module Assert = struct
         let lt ~bit_length x y =
@@ -1328,7 +1328,7 @@ struct
         List.init Field.size_in_bits ~f:(fun i ->
             Z.testbit
               (Bignum_bigint.to_zarith_bigint Field.size)
-              Stdlib.(Field.size_in_bits - 1 - i))
+              Stdlib.(Field.size_in_bits - 1 - i) )
         |> Bitstring_lib.Bitstring.Msb_first.of_list
 
       let unpack_full x =
@@ -1386,7 +1386,7 @@ struct
       let open Checked in
       all
         (Base.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
-             equal (Cvar1.pack x1) (Cvar1.pack x2)))
+             equal (Cvar1.pack x1) (Cvar1.pack x2) ) )
       >>= Boolean.all
 
     let equal_expect_true t1 t2 =
@@ -1406,7 +1406,7 @@ struct
                        Core_kernel.List.map2 x1 x2 ~f:(fun x1 x2 ->
                            let%map x1 = read_var (x1 :> Cvar.t)
                            and x2 = read_var (x2 :> Cvar.t) in
-                           Field.equal x1 x2)
+                           Field.equal x1 x2 )
                      with
                      | Ok res ->
                          let%bind res = all res in
@@ -1417,14 +1417,14 @@ struct
                          equal_vars z)
              in
              let%map () = equal_constraints z inv r in
-             Boolean.Unsafe.of_cvar r))
+             Boolean.Unsafe.of_cvar r ) )
       >>= Boolean.all
 
     module Assert = struct
       let equal t1 t2 =
         let open Checked in
         Base.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
-            Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2))
+            Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2) )
         |> assert_all ~label:"Bitstring.Assert.equal"
     end
   end
@@ -1446,11 +1446,11 @@ struct
                ~f:(As_prover.read Checked.Boolean.typ)
                (Field.Checked.lt_bitstring_value
                   (Bitstring_lib.Bitstring.Msb_first.of_list
-                     (List.map ~f:Checked.Boolean.var_of_value x))
-                  (Bitstring_lib.Bitstring.Msb_first.of_list y)))
+                     (List.map ~f:Checked.Boolean.var_of_value x) )
+                  (Bitstring_lib.Bitstring.Msb_first.of_list y) ) )
           |> Or_error.ok_exn
         in
-        assert (Bool.equal lt correct_answer))
+        assert (Bool.equal lt correct_answer) )
 
   include Checked
 
@@ -1461,7 +1461,7 @@ struct
     let%bind res =
       Array.all
         (Core_kernel.Array.map2_exn then_ else_ ~f:(fun then_ else_ ->
-             if_ b ~then_ ~else_))
+             if_ b ~then_ ~else_ ) )
     in
     let%map res_aux =
       (* Abstraction leak.. *)
@@ -1694,7 +1694,7 @@ module Run = struct
                       let res = check x in
                       let state' = !state in
                       state := old_state ;
-                      (state', res))
+                      (state', res) )
                   , fun x -> Pure x )
             end
 
@@ -2086,7 +2086,7 @@ module Run = struct
       try
         map (f ()) ~f:(fun (ret : a) ->
             active_counters := counters ;
-            ret)
+            ret )
       with exn ->
         active_counters := counters ;
         raise exn
@@ -2157,10 +2157,10 @@ module Run = struct
       let { stack; log_constraint; _ } = !state in
       state := { !state with stack = lbl :: stack } ;
       Option.iter log_constraint ~f:(fun f ->
-          f ~at_label_boundary:(`Start, lbl) []) ;
+          f ~at_label_boundary:(`Start, lbl) [] ) ;
       let a = x () in
       Option.iter log_constraint ~f:(fun f ->
-          f ~at_label_boundary:(`End, lbl) []) ;
+          f ~at_label_boundary:(`End, lbl) [] ) ;
       state := { !state with stack } ;
       a
 
@@ -2202,7 +2202,7 @@ module Run = struct
             mark_active ~f:(fun () ->
                 let prover_block = x () in
                 !state.as_prover := true ;
-                As_prover.run_prover prover_block))
+                As_prover.run_prover prover_block ) )
       in
       !state.as_prover := true ;
       res
@@ -2223,7 +2223,7 @@ module Run = struct
           ~f:
             (Or_error.map ~f:(fun (x, get_value) ->
                  let x = Basic.As_prover.run x get_value in
-                 x))
+                 x ) )
 
       let as_stateful x state' =
         state := state' ;
@@ -2236,7 +2236,7 @@ module Run = struct
               mark_active ~f:(fun () ->
                   map (x ()) ~f:(fun prover_block ->
                       !state.as_prover := true ;
-                      As_prover.run_prover prover_block)))
+                      As_prover.run_prover prover_block ) ) )
         in
         !state.as_prover := true ;
         res
@@ -2255,7 +2255,7 @@ module Run = struct
                 let start =
                   Some (match pos with `Start -> true | _ -> false)
                 in
-                f ?start lab !count) ) ;
+                f ?start lab !count ) ) ;
         count := !count + weight c
       in
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
@@ -2283,6 +2283,6 @@ end
 
 type 'field m = (module Snark_intf.Run with type field = 'field)
 
-let make (type field)
-    (module Backend : Backend_intf.S with type Field.t = field) : field m =
+let make (type field) (module Backend : Backend_intf.S with type Field.t = field)
+    : field m =
   (module Run.Make (Backend))

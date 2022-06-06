@@ -125,7 +125,7 @@ should be higher for smaller alpha.
     for_ (2 * rounds) ~init:state ~f:(fun r state ->
         let sbox = if Int.(r mod 2 = 0) then sbox0 else sbox1 in
         Array.map_inplace state ~f:sbox ;
-        apply_affine_map (mds, round_constants.(r + 1)) state)
+        apply_affine_map (mds, round_constants.(r + 1)) state )
 end
 
 module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
@@ -210,7 +210,7 @@ module Make_hash (P : Intf.Permutation) = struct
 
   let sponge perm blocks ~state =
     Array.fold ~init:state blocks ~f:(fun state block ->
-        add_block ~state block ; perm state)
+        add_block ~state block ; perm state )
 
   (* takes an array of field elements, and spread them into blocks/arrays that can contain [rate] fied elements *)
   let to_blocks rate field_elems =
