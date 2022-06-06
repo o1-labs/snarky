@@ -68,13 +68,13 @@ let rec unique_var_name ~modules var_name_map var_name' i =
 
 let unique_field_types fields =
   List.dedup_and_sort fields ~compare:(fun field1 field2 ->
-      String.compare field1.var_name field2.var_name)
+      String.compare field1.var_name field2.var_name )
 
 let fields_pattern ~loc polyrecord =
   Pat.record ~loc
     (List.map polyrecord.fields ~f:(fun { label; _ } ->
          ( { txt = Lident label.txt; loc = label.loc }
-         , Pat.var ~loc:label.loc label )))
+         , Pat.var ~loc:label.loc label ) ) )
     Closed
 
 let fields_expression ~loc polyrecord =
@@ -82,7 +82,7 @@ let fields_expression ~loc polyrecord =
     (List.map polyrecord.fields ~f:(fun { label; _ } ->
          ( { txt = Lident label.txt; loc = label.loc }
          , Exp.ident ~loc:label.loc { txt = Lident label.txt; loc = label.loc }
-         )))
+         ) ) )
     None
 
 let last_common_name lid1 lid2 =
@@ -199,11 +199,11 @@ module Polydef = struct
       Ptype_record
         (List.map fields ~f:(fun { label; var_name; _ } ->
              let loc = label.loc in
-             Type.field ~loc label (Typ.var ~loc var_name)))
+             Type.field ~loc label (Typ.var ~loc var_name) ) )
     in
     let params =
       List.map (unique_field_types fields) ~f:(fun { label; var_name; _ } ->
-          (Typ.var ~loc:label.loc var_name, Invariant))
+          (Typ.var ~loc:label.loc var_name, Invariant) )
     in
     Str.type_ ~loc:name.loc Nonrecursive
       [ Type.mk ~loc:name.loc ~params ~kind:record_typ name ]
@@ -255,7 +255,7 @@ module Typedef = struct
               , field :: fields )
           | m :: ms ->
               ( (m, field.var_name) :: modules
-              , { field with modules = ms } :: fields ))
+              , { field with modules = ms } :: fields ) )
     in
     let current_modules =
       List.rev
@@ -264,7 +264,7 @@ module Typedef = struct
     let fields = List.rev fields in
     let modules =
       List.dedup_and_sort modules ~compare:(fun (_, name1) (_, name2) ->
-          String.compare name1 name2)
+          String.compare name1 name2 )
     in
     let typs =
       List.map modules ~f:(fun (m, _) ->
@@ -279,13 +279,13 @@ module Typedef = struct
                 ; txt = Ldot (longident_add lid.txt module_names, name.txt)
                 }
           in
-          Typ.constr ~loc:name.loc lid [])
+          Typ.constr ~loc:name.loc lid [] )
     in
     let bound_poly = Typ.constr polyname typs in
     let str = Str.type_ Nonrecursive [ Type.mk ~manifest:bound_poly name ] in
     let map =
       Map.update map polyrecord.name.txt ~f:(fun _ ->
-          { polyrecord with fields })
+          { polyrecord with fields } )
     in
     (str, map, current_modules)
 
@@ -342,7 +342,7 @@ module Snarkytyp = struct
       (List.rev polyrecord.fields)
       ~init:
         (Exp.apply ~loc (typ_fn "return")
-           [ (Nolabel, fields_expression ~loc polyrecord) ])
+           [ (Nolabel, fields_expression ~loc polyrecord) ] )
       ~f:(fun expr { base_module = base; label; _ } ->
         Exp.apply (typ_fn "bind")
           [ ( Nolabel
@@ -357,7 +357,7 @@ module Snarkytyp = struct
                 ] )
           ; ( Nolabel
             , Exp.fun_ ~loc Nolabel None (Pat.var ~loc:label.loc label) expr )
-          ])
+          ] )
 
   let build ~loc ~name ~typ polyrecord =
     let typ_mod =
@@ -455,7 +455,7 @@ module Polyfold = struct
         [ ( Nolabel
           , Exp.field ~loc
               (Exp.ident ~loc:var_name.loc
-                 { txt = Lident var_name.txt; loc = var_name.loc })
+                 { txt = Lident var_name.txt; loc = var_name.loc } )
               { txt = Lident label.txt; loc = label.loc } )
         ]
     in
@@ -517,7 +517,7 @@ module Polyfields = struct
            let destr_record = Pat.record [ (label_ident, label_pat) ] Open in
            Vb.mk ~loc label_pat
              (Exp.fun_ ~loc Nolabel None destr_record
-                (Exp.ident ~loc label_ident))))
+                (Exp.ident ~loc label_ident) ) ) )
 
   let expand (map, last_modules, current_module) payload =
     match payload with

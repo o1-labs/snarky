@@ -157,7 +157,7 @@ and to_signature items =
         let decls = List.map ~f:type_decl_of_sigi items in
         { sig_desc = Psig_rectype decls; sig_loc = type_loc }
     | _ ->
-        assert false)
+        assert false )
 
 and to_module_sig_desc ~loc decl =
   match decl with

@@ -78,7 +78,7 @@ let rec row_repr_aux tags
         | RpAny ->
             subst_any old_pres
         | _ ->
-            (old_path, old_pres, old_args))
+            (old_path, old_pres, old_args) )
   in
   row_repr_typ_aux (tags, row_closed) row_rest
 
@@ -134,7 +134,7 @@ let type_alternate { type_alternate = typ; _ } = typ
 let row_alternate { row_tags; row_closed; row_rest; row_presence_proxy } =
   let row_tags =
     Map.map row_tags ~f:(fun (path, pres, args) ->
-        (path, pres, List.map ~f:type_alternate args))
+        (path, pres, List.map ~f:type_alternate args) )
   in
   { row_tags
   ; row_closed
@@ -281,7 +281,7 @@ module Mk = struct
           assert (not (is_poly typ)) ;
           check_valid ~pos:__POS__ ~error_info typ ;
           check_valid ~pos:__POS__ ~error_info alt ;
-          phys_equal typ alt)
+          phys_equal typ alt )
     then stitch ~mode depth (Ttuple typs) (Ttuple alts)
     else
       (* One or more types is tri-stitched, so tri-stitch here too. *)
@@ -301,7 +301,7 @@ module Mk = struct
           check_valid ~pos:__POS__ ~error_info typ ;
           check_valid ~pos:__POS__ ~error_info alt ;
           assert (not (is_poly typ)) ;
-          phys_equal typ alt)
+          phys_equal typ alt )
     then
       stitch ~mode depth
         (Tarrow (typ1, typ2, explicit, label))
@@ -333,7 +333,7 @@ module Mk = struct
           check_valid ~pos:__POS__ ~error_info typ ;
           check_valid ~pos:__POS__ ~error_info alt ;
           assert (not (is_poly typ)) ;
-          phys_equal typ alt)
+          phys_equal typ alt )
       && Option.is_none tri_path
     then
       stitch ~mode depth
@@ -400,7 +400,7 @@ module Mk = struct
                  ()
              | _ ->
                  assert false ) ;
-             phys_equal typ alt)
+             phys_equal typ alt )
          && phys_equal typ alt_alt
     then stitch ~mode depth (Tpoly (vars, typ)) (Tpoly (vars, alt))
     else
@@ -666,7 +666,7 @@ let fold ~init ~f typ =
   | Trow { row_tags; row_closed = _; row_rest; row_presence_proxy = _ } ->
       let acc =
         Map.fold row_tags ~init ~f:(fun ~key:_ ~data:(_, _, args) init ->
-            List.fold ~f ~init args)
+            List.fold ~f ~init args )
       in
       f acc row_rest
 
@@ -779,7 +779,7 @@ let backtrack_replace =
     | Replace _ | Row_replace _ ->
         true
     | _ ->
-        false)
+        false )
 
 (** [set_repr typ typ'] sets the representative of [typ] to be [typ']. *)
 let set_repr typ typ' =
@@ -1054,7 +1054,7 @@ let contains typ ~in_ =
         Map.exists row_tags ~f:(fun (_, _, args) -> List.exists ~f:equal args)
         || equal row_rest
         || Map.exists row_tags ~f:(fun (_, _, args) ->
-               List.exists ~f:contains args)
+               List.exists ~f:contains args )
         || contains row_rest
   in
   contains in_
@@ -1133,4 +1133,4 @@ let () =
     | Error (loc, err) ->
         Some (Location.error_of_printer loc report_error err)
     | _ ->
-        None)
+        None )

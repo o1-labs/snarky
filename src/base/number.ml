@@ -86,7 +86,7 @@ module Make (Impl : Snark_intf.Basic) = struct
          ; lower_bound = t.lower_bound
          ; var = r
          ; bits = None
-         })
+         } )
 
   let ( < ) x y =
     let open Bignum_bigint in
@@ -151,7 +151,7 @@ module Make (Impl : Snark_intf.Basic) = struct
     ; bits =
         Some
           (List.init (bigint_num_bits n) ~f:(fun i ->
-               Boolean.var_of_value (Bigint.test_bit tick_n i)))
+               Boolean.var_of_value (Bigint.test_bit tick_n i) ) )
     }
 
   let one = constant Field.one
@@ -225,7 +225,7 @@ module Make (Impl : Snark_intf.Basic) = struct
          }
        else
          failwithf "Number.*: Potential overflow: (%s * %s > Field.size)"
-           (to_string x.upper_bound) (to_string y.upper_bound) ())
+           (to_string x.upper_bound) (to_string y.upper_bound) () )
 
   (* x mod n = x - n * floor(x / n) *)
   let mod_pow_2 x n =
@@ -236,7 +236,7 @@ module Make (Impl : Snark_intf.Basic) = struct
       lower_bound = Bignum_bigint.zero
     ; upper_bound =
         (let (`Two_to_the k) = n in
-         Bignum_bigint.(pow (of_int 2) (of_int k)))
+         Bignum_bigint.(pow (of_int 2) (of_int k)) )
     }
 
   let min x y =

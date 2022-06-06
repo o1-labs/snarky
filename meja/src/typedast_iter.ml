@@ -157,7 +157,7 @@ let pattern_desc iter = function
       iter.literal iter l
   | Tpat_record fields ->
       List.iter fields ~f:(fun (name, pat) ->
-          path iter name ; iter.pattern iter pat)
+          path iter name ; iter.pattern iter pat )
   | Tpat_ctor (name, arg) ->
       path iter name ;
       Option.iter ~f:(iter.pattern iter) arg
@@ -195,13 +195,13 @@ let expression_desc iter = function
   | Texp_match (e, cases) ->
       iter.expression iter e ;
       List.iter cases ~f:(fun (p, e) ->
-          iter.pattern iter p ; iter.expression iter e)
+          iter.pattern iter p ; iter.expression iter e )
   | Texp_field (e, name) ->
       path iter name ; iter.expression iter e
   | Texp_record (bindings, default) ->
       Option.iter ~f:(iter.expression iter) default ;
       List.iter bindings ~f:(fun (name, e) ->
-          path iter name ; iter.expression iter e)
+          path iter name ; iter.expression iter e )
   | Texp_ctor (name, arg) ->
       path iter name ;
       Option.iter ~f:(iter.expression iter) arg
@@ -235,7 +235,7 @@ let convert_body_desc iter = function
   | Tconv_record fields ->
       List.iter fields ~f:(fun (field, conv) ->
           path iter field ;
-          iter.convert_body iter conv)
+          iter.convert_body iter conv )
   | Tconv_ctor (name, args) ->
       path iter name ;
       List.iter args ~f:(fun (_label, conv) -> iter.convert_body iter conv)
@@ -350,7 +350,7 @@ let statement_desc iter = function
       iter.ctor_decl iter ctor ;
       Option.iter handler ~f:(fun (p, e) ->
           Option.iter ~f:(iter.pattern iter) p ;
-          iter.expression iter e)
+          iter.expression iter e )
   | Tstmt_multiple stmts ->
       iter.statements iter stmts
   | Tstmt_prover stmts ->
