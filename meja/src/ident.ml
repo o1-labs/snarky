@@ -131,7 +131,7 @@ module Table = struct
       | Some row ->
           Some ((ident, data) :: remove_from_row ident row)
       | None ->
-          Some [ (ident, data) ])
+          Some [ (ident, data) ] )
 
   let remove ident tbl =
     Map.change tbl (name ident) ~f:(function
@@ -139,13 +139,13 @@ module Table = struct
           let row = remove_from_row ident row in
           if List.is_empty row then None else Some row
       | None ->
-          None)
+          None )
 
   let find ident tbl =
     match Map.find tbl (name ident) with
     | Some row ->
         List.find_map row ~f:(fun (ident2, data) ->
-            if Int.equal (compare ident ident2) 0 then Some data else None)
+            if Int.equal (compare ident ident2) 0 then Some data else None )
     | None ->
         None
 
@@ -160,7 +160,7 @@ module Table = struct
 
   let foldi tbl ~init ~f =
     Map.fold tbl ~init ~f:(fun ~key:_ ~data init ->
-        List.fold ~init data ~f:(fun init (ident, data) -> f ident init data))
+        List.fold ~init data ~f:(fun init (ident, data) -> f ident init data) )
 
   let fold tbl ~init ~f = foldi tbl ~init ~f:(fun _key -> f)
 
@@ -180,7 +180,7 @@ module Table = struct
           | _ ->
               assert false
         in
-        f ~key ~data acc)
+        f ~key ~data acc )
 
   let merge_skewed_names tbl1 tbl2 ~combine =
     Map.merge_skewed tbl1 tbl2 ~combine:(fun ~key v1 v2 ->
@@ -189,7 +189,7 @@ module Table = struct
           failwith
             "merge_skewed_names: The name provided by combine does not match \
              the key" ;
-        (res :: v1) @ v2)
+        (res :: v1) @ v2 )
 
   let map tbl ~f =
     Map.map ~f:(List.map ~f:(fun (ident, data) -> (ident, f data))) tbl

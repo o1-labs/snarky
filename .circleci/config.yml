@@ -10,8 +10,8 @@ commands:
 jobs:
     build-opam-cache:
         docker:
-        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:72fd8954d9f4f13e8596c3826c570e8fcd8473ec0091cbbfba17c9366e983e0b
+        # For now, just reuse mina's Docker toolchain. In the future, we should compose Mina's from Snarky's somehow
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:d1176b5881a5911477e271d13c04225049f98d1a35b960942f7e811e3dc028d8
         steps:
             - checkout
             - restore_cache:
@@ -28,8 +28,8 @@ jobs:
                     - "/home/opam/.opam"
     build:
         docker:
-        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:72fd8954d9f4f13e8596c3826c570e8fcd8473ec0091cbbfba17c9366e983e0b
+        # For now, just reuse mina's Docker toolchain. In the future, we should compose Mina's from Snarky's somehow
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:d1176b5881a5911477e271d13c04225049f98d1a35b960942f7e811e3dc028d8
         steps:
             - checkout
             - fetch-opam
@@ -40,7 +40,7 @@ jobs:
             - run: eval `opam config env` && make tests
     opam-pin:
         docker:
-        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
+        # For now, just reuse mina's Docker toolchain. In the future, we should compose Mina's from Snarky's somehow
         - image: gcr.io/o1labs-192920/mina-toolchain@sha256:72fd8954d9f4f13e8596c3826c570e8fcd8473ec0091cbbfba17c9366e983e0b
         steps:
             - checkout

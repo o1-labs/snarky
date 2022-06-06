@@ -47,23 +47,23 @@ include struct
             ~f:(fun a ->
               Snarky.Typ_monads.Store.bind
                 (Typ.boolean.Snarky.Types.Typ.store b) ~f:(fun b ->
-                  Snarky.Typ_monads.Store.return { a; b })))
+                  Snarky.Typ_monads.Store.return { a; b } ) ) )
     ; Snarky.Types.Typ.read =
         (fun { a; b } ->
           Snarky.Typ_monads.Read.bind (Typ.field.Snarky.Types.Typ.read a)
             ~f:(fun a ->
               Snarky.Typ_monads.Read.bind (Typ.boolean.Snarky.Types.Typ.read b)
-                ~f:(fun b -> Snarky.Typ_monads.Read.return { a; b })))
+                ~f:(fun b -> Snarky.Typ_monads.Read.return { a; b }) ) )
     ; Snarky.Types.Typ.alloc =
         Snarky.Typ_monads.Alloc.bind Typ.field.Snarky.Types.Typ.alloc
           ~f:(fun a ->
             Snarky.Typ_monads.Alloc.bind Typ.boolean.Snarky.Types.Typ.alloc
-              ~f:(fun b -> Snarky.Typ_monads.Alloc.return { a; b }))
+              ~f:(fun b -> Snarky.Typ_monads.Alloc.return { a; b }) )
     ; Snarky.Types.Typ.check =
         (fun { a; b } ->
           Snarky.Checked.bind (Typ.field.Snarky.Types.Typ.check a) ~f:(fun () ->
               Snarky.Checked.bind (Typ.boolean.Snarky.Types.Typ.check b)
-                ~f:(fun () -> Snarky.Checked.return ())))
+                ~f:(fun () -> Snarky.Checked.return ()) ) )
     }
 end
 
@@ -82,7 +82,7 @@ include struct
          }
          Typ.field
      in
-     As_prover.read typ failwith_field)
+     As_prover.read typ failwith_field )
       "no."
 
   let field_plus __implicit1__ (_ : field) =
@@ -97,7 +97,7 @@ include struct
          }
          x___1
      in
-     As_prover.read (typ __implicit1__) failwith)
+     As_prover.read (typ __implicit1__) failwith )
       "no."
 end
 
@@ -121,10 +121,10 @@ let a __implicit4__ __implicit3__ a b =
       fun () ->
         { a =
             (let typ x___2 = x___2 in
-             As_prover.read (typ __implicit3__) a)
+             As_prover.read (typ __implicit3__) a )
         ; b =
             (let typ x___3 = x___3 in
-             As_prover.read (typ __implicit4__) b)
+             As_prover.read (typ __implicit4__) b )
         })
 
 let a_1 (x : field_var) (b : boolean) = a Typ.boolean Typ.field x b

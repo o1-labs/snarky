@@ -46,8 +46,8 @@ let rec of_type_desc ?loc typ =
       Typ.constr ?loc
         (Location.mkloc
            (Option.value_exn
-              (Longident.unflatten [ "Snarky"; "As_prover"; "Ref"; "t" ]))
-           (Option.value ~default:Location.none loc))
+              (Longident.unflatten [ "Snarky"; "As_prover"; "Ref"; "t" ]) )
+           (Option.value ~default:Location.none loc) )
         [ of_type_expr typ ]
   | Ttyp_alias (typ, name) ->
       Typ.alias ?loc (of_type_expr typ) name.txt
@@ -60,11 +60,11 @@ let rec of_type_desc ?loc typ =
              | _ ->
                  Rf.tag ~loc:rtag_loc (of_ident_loc rtag_ident) false
                    [ Typ.tuple ~loc:rtag_loc (List.map ~f:of_type_expr rtag_arg)
-                   ]))
+                   ] ) )
         closed
         (Option.map
            ~f:(List.map ~f:(fun { Location.txt; _ } -> of_ident txt))
-           min_tags)
+           min_tags )
   | Ttyp_row_subtract (typ, _tags) ->
       (* OCaml doesn't have a concept of row subtraction; we output the
          underlying row instead.
@@ -200,7 +200,7 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
             let pat = Pat.var ~loc:name.loc short_name in
             let exp = Exp.ident ~loc:name.loc (mk_lid short_name) in
             let conv = mapper_of_convert_body conv in
-            (name, pat, exp, conv))
+            (name, pat, exp, conv) )
       in
       let record_exp =
         let fields =
@@ -220,7 +220,7 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
           ~f:(fun (_, pat, var, conv) exp ->
             let apply_conv = Exp.apply ?loc conv [ (Nolabel, var) ] in
             let rest = Exp.fun_ ?loc Nolabel None pat exp in
-            Exp.apply ?loc bind [ (Nolabel, apply_conv); (Labelled "f", rest) ])
+            Exp.apply ?loc bind [ (Nolabel, apply_conv); (Labelled "f", rest) ] )
       in
       Exp.fun_ ?loc Nolabel None record_pat binds
   | Tconv_ctor (name, []) ->
@@ -229,7 +229,7 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
       (* TODO: Lift this case as a let in [convert], just apply the name. *)
       let args =
         List.map args ~f:(fun (label, arg) ->
-            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)))
+            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)) )
       in
       let name = of_path_loc name in
       Exp.field ?loc (Exp.apply ?loc (Exp.ident ~loc:name.loc name) args) field
@@ -243,7 +243,7 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
             let exp = Exp.ident ~loc (mk_lid name) in
             let pat = Pat.var ~loc name in
             let conv = mapper_of_convert_body conv in
-            (pat, exp, conv))
+            (pat, exp, conv) )
       in
       let tuple_exp =
         (* Return the re-constructed tuple. *)
@@ -255,7 +255,7 @@ let rec mapper_of_convert_body_desc ~field ~bind ~return ?loc desc =
         List.fold_right convs ~init:tuple_exp ~f:(fun (pat, var, conv) exp ->
             let apply_conv = Exp.apply ?loc conv [ (Nolabel, var) ] in
             let rest = Exp.fun_ ?loc Nolabel None pat exp in
-            Exp.apply ?loc bind [ (Nolabel, apply_conv); (Labelled "f", rest) ])
+            Exp.apply ?loc bind [ (Nolabel, apply_conv); (Labelled "f", rest) ] )
       in
       Exp.fun_ ?loc Nolabel None tuple_pat binds
   | Tconv_arrow (typ1, typ2) ->
@@ -296,7 +296,7 @@ and alloc_of_convert_body_desc ?loc desc =
             let pat = Pat.var ~loc:name.loc short_name in
             let exp = Exp.ident ~loc:name.loc (mk_lid short_name) in
             let conv = alloc_of_convert_body conv in
-            (name, pat, exp, conv))
+            (name, pat, exp, conv) )
       in
       let record_exp =
         let fields =
@@ -308,7 +308,7 @@ and alloc_of_convert_body_desc ?loc desc =
       let binds =
         List.fold_right fields ~init:record_exp ~f:(fun (_, pat, _, conv) exp ->
             let rest = Exp.fun_ ?loc Nolabel None pat exp in
-            Exp.apply ?loc bind [ (Nolabel, conv); (Labelled "f", rest) ])
+            Exp.apply ?loc bind [ (Nolabel, conv); (Labelled "f", rest) ] )
       in
       binds
   | Tconv_ctor (name, []) ->
@@ -317,7 +317,7 @@ and alloc_of_convert_body_desc ?loc desc =
       (* TODO: Lift this case as a let in [convert], just apply the name. *)
       let args =
         List.map args ~f:(fun (label, arg) ->
-            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)))
+            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)) )
       in
       let name = of_path_loc name in
       Exp.field ?loc (Exp.apply ?loc (Exp.ident ~loc:name.loc name) args) field
@@ -331,7 +331,7 @@ and alloc_of_convert_body_desc ?loc desc =
             let exp = Exp.ident ~loc (mk_lid name) in
             let pat = Pat.var ~loc name in
             let conv = alloc_of_convert_body conv in
-            (pat, exp, conv))
+            (pat, exp, conv) )
       in
       let tuple_exp =
         (* Return the re-constructed tuple. *)
@@ -341,7 +341,7 @@ and alloc_of_convert_body_desc ?loc desc =
       let binds =
         List.fold_right convs ~init:tuple_exp ~f:(fun (pat, _, conv) exp ->
             let rest = Exp.fun_ ?loc Nolabel None pat exp in
-            Exp.apply ?loc bind [ (Nolabel, conv); (Labelled "f", rest) ])
+            Exp.apply ?loc bind [ (Nolabel, conv); (Labelled "f", rest) ] )
       in
       binds
   | Tconv_arrow (typ1, typ2) ->
@@ -385,7 +385,7 @@ and check_of_convert_body_desc ?loc desc =
             let pat = Pat.var ~loc:name.loc short_name in
             let exp = Exp.ident ~loc:name.loc (mk_lid short_name) in
             let conv = check_of_convert_body conv in
-            (name, pat, exp, conv))
+            (name, pat, exp, conv) )
       in
       let unit_exp =
         (* Return unit. *)
@@ -403,7 +403,7 @@ and check_of_convert_body_desc ?loc desc =
         List.fold_right fields ~init:unit_exp ~f:(fun (_, _, var, conv) exp ->
             let apply_conv = Exp.apply ?loc conv [ (Nolabel, var) ] in
             let rest = Exp.fun_ ?loc Nolabel None unit_pat exp in
-            Exp.apply ?loc bind [ (Nolabel, apply_conv); (Labelled "f", rest) ])
+            Exp.apply ?loc bind [ (Nolabel, apply_conv); (Labelled "f", rest) ] )
       in
       Exp.fun_ ?loc Nolabel None record_pat binds
   | Tconv_ctor (name, []) ->
@@ -412,7 +412,7 @@ and check_of_convert_body_desc ?loc desc =
       (* TODO: Lift this case as a let in [convert], just apply the name. *)
       let args =
         List.map args ~f:(fun (label, arg) ->
-            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)))
+            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)) )
       in
       let name = of_path_loc name in
       Exp.field ?loc (Exp.apply ?loc (Exp.ident ~loc:name.loc name) args) field
@@ -426,7 +426,7 @@ and check_of_convert_body_desc ?loc desc =
             let exp = Exp.ident ~loc (mk_lid name) in
             let pat = Pat.var ~loc name in
             let conv = check_of_convert_body conv in
-            (pat, exp, conv))
+            (pat, exp, conv) )
       in
       let unit_exp =
         (* Return unit. *)
@@ -439,7 +439,7 @@ and check_of_convert_body_desc ?loc desc =
         List.fold_right convs ~init:unit_exp ~f:(fun (_, var, conv) exp ->
             let apply_conv = Exp.apply ?loc conv [ (Nolabel, var) ] in
             let rest = Exp.fun_ ?loc Nolabel None unit_pat exp in
-            Exp.apply ?loc bind [ (Nolabel, apply_conv); (Labelled "f", rest) ])
+            Exp.apply ?loc bind [ (Nolabel, apply_conv); (Labelled "f", rest) ] )
       in
       Exp.fun_ ?loc Nolabel None tuple_pat binds
   | Tconv_arrow (typ1, typ2) ->
@@ -476,7 +476,7 @@ and of_convert_desc ?loc = function
       { conv_body_desc = Tconv_ctor (name, args); conv_body_loc = loc; _ } ->
       let args =
         List.map args ~f:(fun (label, arg) ->
-            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)))
+            (label, of_convert_desc ~loc:arg.conv_body_loc (Tconv_body arg)) )
       in
       Exp.apply ~loc (Exp.ident ~loc:name.loc (of_path_loc name)) args
   | Tconv_body
@@ -550,7 +550,7 @@ let rec of_expression_desc ?loc = function
   | Texp_match (e, cases) ->
       Exp.match_ ?loc (of_expression e)
         (List.map cases ~f:(fun (p, e) ->
-             Exp.case (of_pattern p) (of_expression e)))
+             Exp.case (of_pattern p) (of_expression e) ) )
   | Texp_field (e, field) ->
       Exp.field ?loc (of_expression e) (of_path_loc field)
   | Texp_record (fields, ext) ->
@@ -588,7 +588,7 @@ let rec of_expression_desc ?loc = function
             else
               Exp.apply ~loc typ
                 (List.map conv_args ~f:(fun (label, e) ->
-                     (label, of_expression e)))]
+                     (label, of_expression e) ) )]
           [%e of_expression e]]
   | Texp_prover (conv, conv_args, e) ->
       let loc = Option.value ~default:Location.none loc in
@@ -601,7 +601,7 @@ let rec of_expression_desc ?loc = function
             else
               Exp.apply ~loc typ
                 (List.map conv_args ~f:(fun (label, e) ->
-                     (label, of_expression e)))]
+                     (label, of_expression e) ) )]
           ~compute:As_prover.(fun () -> [%e of_expression e])]
   | Texp_convert conv ->
       of_convert conv
@@ -695,7 +695,7 @@ let rec of_signature_desc ?loc = function
   | Tsig_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ ->
-            (of_type_expr typ, Invariant))
+            (of_type_expr typ, Invariant) )
       in
       let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Sig.type_extension ?loc
@@ -785,7 +785,7 @@ let rec of_statement_desc ?loc = function
   | Tstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ ->
-            (of_type_expr typ, Invariant))
+            (of_type_expr typ, Invariant) )
       in
       let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Str.type_extension ?loc
@@ -837,7 +837,7 @@ let rec of_statement_desc ?loc = function
         [ Vb.mk
             (Pat.constraint_ ~loc:typ.type_loc
                (Pat.var ~loc:name.loc (of_ident_loc name))
-               (of_type_expr typ))
+               (of_type_expr typ) )
             (of_convert conv)
         ]
 

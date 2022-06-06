@@ -16,22 +16,22 @@ include struct
           Snarky.Typ_monads.Store.bind (x___3.Snarky.Types.Typ.store a2)
             ~f:(fun a2 ->
               Snarky.Typ_monads.Store.bind (x___2.Snarky.Types.Typ.store b2)
-                ~f:(fun b2 -> Snarky.Typ_monads.Store.return { a2; b2 })))
+                ~f:(fun b2 -> Snarky.Typ_monads.Store.return { a2; b2 }) ) )
     ; Snarky.Types.Typ.read =
         (fun { a2; b2 } ->
           Snarky.Typ_monads.Read.bind (x___3.Snarky.Types.Typ.read a2)
             ~f:(fun a2 ->
               Snarky.Typ_monads.Read.bind (x___2.Snarky.Types.Typ.read b2)
-                ~f:(fun b2 -> Snarky.Typ_monads.Read.return { a2; b2 })))
+                ~f:(fun b2 -> Snarky.Typ_monads.Read.return { a2; b2 }) ) )
     ; Snarky.Types.Typ.alloc =
         Snarky.Typ_monads.Alloc.bind x___3.Snarky.Types.Typ.alloc ~f:(fun a2 ->
             Snarky.Typ_monads.Alloc.bind x___2.Snarky.Types.Typ.alloc
-              ~f:(fun b2 -> Snarky.Typ_monads.Alloc.return { a2; b2 }))
+              ~f:(fun b2 -> Snarky.Typ_monads.Alloc.return { a2; b2 }) )
     ; Snarky.Types.Typ.check =
         (fun { a2; b2 } ->
           Snarky.Checked.bind (x___3.Snarky.Types.Typ.check a2) ~f:(fun () ->
               Snarky.Checked.bind (x___2.Snarky.Types.Typ.check b2)
-                ~f:(fun () -> Snarky.Checked.return ())))
+                ~f:(fun () -> Snarky.Checked.return ()) ) )
     }
 end
 
@@ -43,10 +43,10 @@ let x __implicit3__ __implicit1__ x =
       fun () ->
         { a2 =
             (let typ x___4 = x___4 in
-             As_prover.read (typ __implicit1__) x)
+             As_prover.read (typ __implicit1__) x )
         ; b2 =
             (let typ x___5 = x___5 in
-             As_prover.read (typ __implicit1__) x)
+             As_prover.read (typ __implicit1__) x )
         })
 
 let y () =

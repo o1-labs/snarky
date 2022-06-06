@@ -83,7 +83,7 @@ module Type0 = struct
                   needs_lower_bound := true ;
                   (row () :: tags, min_tags, subtract_tags)
               | RpRef _ | RpReplace _ | RpSubtract _ ->
-                  assert false)
+                  assert false )
         in
         let typ =
           if !needs_lower_bound then
@@ -238,7 +238,7 @@ let rec pattern_desc = function
   | Tpat_record fields ->
       Ppat_record
         (List.map fields ~f:(fun (label, p) ->
-             (map_loc ~f:longident_of_path label, pattern p)))
+             (map_loc ~f:longident_of_path label, pattern p) ) )
   | Tpat_ctor (name, arg) ->
       Ppat_ctor (map_loc ~f:longident_of_path name, Option.map ~f:pattern arg)
   | Tpat_row_ctor (name, args) ->
@@ -258,7 +258,7 @@ let rec expression_desc = function
               | Explicit ->
                   Some (label, expression e)
               | Implicit ->
-                  None) )
+                  None ) )
   | Texp_variable name ->
       Pexp_variable (map_loc ~f:longident_of_path name)
   | Texp_literal l ->
@@ -286,7 +286,7 @@ let rec expression_desc = function
   | Texp_record (fields, default) ->
       Pexp_record
         ( List.map fields ~f:(fun (label, e) ->
-              (map_loc ~f:longident_of_path label, expression e))
+              (map_loc ~f:longident_of_path label, expression e) )
         , Option.map ~f:expression default )
   | Texp_ctor (path, arg) ->
       Pexp_ctor (map_loc ~f:longident_of_path path, Option.map ~f:expression arg)

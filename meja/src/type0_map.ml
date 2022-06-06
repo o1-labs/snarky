@@ -19,7 +19,7 @@ let map_list ~same ~f =
   List.map ~f:(fun x ->
       let y = f x in
       if not (phys_equal x y) then same := false ;
-      y)
+      y )
 
 (** The default mapper (and the functions that it contains) are careful to
     preserve equality unless some subvalue changes, to ensure that we don't
@@ -153,7 +153,7 @@ let row mapper ({ row_tags; row_closed; row_rest; row_presence_proxy } as row) =
             ( phys_equal key' key && phys_equal pres' pres
             && phys_equal path' path )
         then same := false ;
-        Map.set row_tags ~key:key' ~data:(path', pres', args))
+        Map.set row_tags ~key:key' ~data:(path', pres', args) )
   in
   let row_rest' = mapper.type_expr mapper row_rest in
   if !same && phys_equal row_rest' row_rest then row

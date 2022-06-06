@@ -183,7 +183,7 @@ module Params = struct
              a point (z, 0) on the conic, which is useful because in the map from the
              conic to S we divide by the "y" coordinate of the conic. It's not strictly
              necessary when we have a random input in a large field, but it is still nice to avoid the
-             bad case in theory (and for the tests below with a small field). *))
+             bad case in theory (and for the tests below with a small field). *) )
     in
     (* The coefficients defining the conic z^2 + c y^2 = d
        in (15). *)
@@ -192,7 +192,7 @@ module Params = struct
     let projection_point =
       first_map (fun y ->
           let z2 = conic_d - (conic_c * y * y) in
-          if F.is_square z2 then Some { Conic.z = F.sqrt z2; y } else None)
+          if F.is_square z2 then Some { Conic.z = F.sqrt z2; y } else None )
     in
     { u; u_over_2 = u / of_int 2; conic_c; projection_point; spec }
 end
@@ -271,11 +271,12 @@ let to_group (type t) (module F : Field_intf.S_unchecked with type t = t)
 let%test_module "test" =
   ( module struct
     module Fp = struct
-      include Snarkette.Fields.Make_fp
-                (Snarkette.Nat)
-                (struct
-                  let order = Snarkette.Nat.of_int 100003
-                end)
+      include
+        Snarkette.Fields.Make_fp
+          (Snarkette.Nat)
+          (struct
+            let order = Snarkette.Nat.of_int 100003
+          end)
 
       let a = of_int 1
 
@@ -367,7 +368,7 @@ let%test_module "test" =
          will not be either of those two points. *)
       let gen =
         Quickcheck.Generator.filter F.gen ~f:(fun t ->
-            not F.(equal ((params.conic_c * t * t) + one) zero))
+            not F.(equal ((params.conic_c * t * t) + one) zero) )
 
       module M =
         Make (F) (F)
@@ -379,19 +380,19 @@ let%test_module "test" =
 
       let%test_unit "field-to-conic" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
-            assert (on_conic (M.field_to_conic t)))
+            assert (on_conic (M.field_to_conic t)) )
 
       let%test_unit "conic-to-S" =
         let conic_gen =
           Quickcheck.Generator.filter_map F.gen ~f:(fun y ->
               let z2 = conic_d - (params.conic_c * y * y) in
-              if is_square z2 then Some { Conic.z = sqrt z2; y } else None)
+              if is_square z2 then Some { Conic.z = sqrt z2; y } else None )
         in
         Quickcheck.test conic_gen ~f:(fun p -> assert (on_s (M.conic_to_s p)))
 
       let%test_unit "field-to-S" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
-            assert (on_s (Fn.compose M.conic_to_s M.field_to_conic t)))
+            assert (on_s (Fn.compose M.conic_to_s M.field_to_conic t)) )
 
       (* Schwarz-zippel says if this tests succeeds once, then the probability that
          the implementation is correct is at least 1 - (D / field-size), where D is
@@ -402,12 +403,12 @@ let%test_module "test" =
       let%test_unit "field-to-V" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
             let s = M.conic_to_s (M.field_to_conic t) in
-            assert (on_v (M._s_to_v s)))
+            assert (on_v (M._s_to_v s)) )
 
       let%test_unit "full map works" =
         Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
             let x, y = to_group (module F) ~params t in
-            assert (equal (curve_eqn x) (y * y)))
+            assert (equal (curve_eqn x) (y * y)) )
     end
 
     module T0 = Make_tests (F13)

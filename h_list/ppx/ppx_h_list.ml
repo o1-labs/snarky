@@ -21,7 +21,7 @@ let constr_of_decl ~loc decl =
 
 let fields_arrow ~loc l =
   List.fold_right ~init:[%type: unit] l ~f:(fun { pld_type; _ } codomain ->
-      [%type: [%t pld_type] -> [%t codomain]])
+      [%type: [%t pld_type] -> [%t codomain]] )
 
 module To_hlist = struct
   let deriver_name = "to_hlist"
@@ -33,16 +33,16 @@ module To_hlist = struct
         [%stri
           let ([%p pvar ~loc (mangle ~suffix:deriver_name name.txt)] :
                    [%t constr_of_decl ~loc decl]
-                -> (unit, [%t fields_arrow ~loc fields]) H_list.t) =
+                -> (unit, [%t fields_arrow ~loc fields]) H_list.t ) =
            fun [%p
                  ppat_record ~loc
                    (List.map fields ~f:(fun { pld_name = name; _ } ->
-                        (mk_lid name, pvar ~loc:name.loc name.txt)))
+                        (mk_lid name, pvar ~loc:name.loc name.txt) ) )
                    Closed] ->
             [%e
               List.fold_right fields ~init:[%expr []]
                 ~f:(fun { pld_name = name; _ } tl ->
-                  [%expr [%e evar ~loc:name.loc name.txt] :: [%e tl]])]]
+                  [%expr [%e evar ~loc:name.loc name.txt] :: [%e tl]] )]]
     | { ptype_loc = loc; _ } ->
         Location.raise_errorf ~loc "Cannot derive %s for this type" deriver_name
 
@@ -83,16 +83,16 @@ module Of_hlist = struct
         [%stri
           let ([%p pvar ~loc (mangle ~suffix:deriver_name name.txt)] :
                    (unit, [%t fields_arrow ~loc fields]) H_list.t
-                -> [%t constr_of_decl ~loc decl]) =
+                -> [%t constr_of_decl ~loc decl] ) =
            fun [%p
                  List.fold_right fields
                    ~init:[%pat? []]
                    ~f:(fun { pld_name = name; _ } tl ->
-                     [%pat? [%p pvar ~loc:name.loc name.txt] :: [%p tl]])] ->
+                     [%pat? [%p pvar ~loc:name.loc name.txt] :: [%p tl]] )] ->
             [%e
               pexp_record ~loc
                 (List.map fields ~f:(fun { pld_name = name; _ } ->
-                     (mk_lid name, evar ~loc:name.loc name.txt)))
+                     (mk_lid name, evar ~loc:name.loc name.txt) ) )
                 None]]
     | { ptype_loc = loc; _ } ->
         Location.raise_errorf ~loc "Cannot derive %s for this type" deriver_name
@@ -126,11 +126,11 @@ end
 
 let str_type_decl ~loc ~path:_ (_rec_flag, decls) : structure =
   List.concat_map decls ~f:(fun decl ->
-      [ To_hlist.str_decl ~loc decl; Of_hlist.str_decl ~loc decl ])
+      [ To_hlist.str_decl ~loc decl; Of_hlist.str_decl ~loc decl ] )
 
 let sig_type_decl ~loc ~path:_ (_rec_flag, decls) : signature =
   List.concat_map decls ~f:(fun decl ->
-      [ To_hlist.sig_decl ~loc decl; Of_hlist.sig_decl ~loc decl ])
+      [ To_hlist.sig_decl ~loc decl; Of_hlist.sig_decl ~loc decl ] )
 
 let deriver =
   Deriving.add

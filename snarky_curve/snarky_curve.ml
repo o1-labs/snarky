@@ -350,7 +350,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
       in
       Array.mapi pure_windows ~f:(fun i (a, b, c) ->
           let shift = shifts.(i) in
-          Constant.(shift, shift + a, shift + b, shift + c))
+          Constant.(shift, shift + a, shift + b, shift + c) )
   end
 
   let pow2s g =
@@ -372,12 +372,12 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
         (let params =
            Group_map.Params.create (module Field.Constant) Params.{ a; b }
          in
-         Group_map.to_group (module Field.Constant) ~params)
+         Group_map.to_group (module Field.Constant) ~params )
 
     let string_to_bits s =
       List.concat_map (String.to_list s) ~f:(fun c ->
           let c = Char.to_int c in
-          List.init 8 ~f:(fun i -> (c lsr i) land 1 = 1))
+          List.init 8 ~f:(fun i -> (c lsr i) land 1 = 1) )
 
     let create base =
       let unrelated_base =
@@ -443,7 +443,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
         ((Array.length bs + 1) / 2)
         ~f:(fun i ->
           let get j = if j < num_bits then bs.(j) else Boolean.false_ in
-          (get (2 * i), get ((2 * i) + 1)))
+          (get (2 * i), get ((2 * i) + 1)) )
     in
     let windows_required = Array.length bs in
     let terms =
@@ -469,7 +469,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     |> Array.reduce_exn ~f:(fun t1 t2 ->
            { value = add_exn t1.value t2.value
            ; shift = Constant.(t1.shift + t2.shift)
-           })
+           } )
     |> unshift
 
   let scale_known pc bs = unshift (scale_known pc bs)
@@ -607,10 +607,10 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
       (Typ.tuple2 g (Typ.array ~length:n Boolean.typ))
       g
       (fun (t, bs) ->
-        make_checked (fun () -> scale_fast t (`Plus_two_to_len_minus_1 bs)))
+        make_checked (fun () -> scale_fast t (`Plus_two_to_len_minus_1 bs)) )
       (fun (t, bs) ->
         let open Constant in
         let t = of_affine t in
-        to_affine_exn (scale_constant (t, bs) + two_to_the (n - 1)))
+        to_affine_exn (scale_constant (t, bs) + two_to_the (n - 1)) )
       (Params.one, bits)
 end
