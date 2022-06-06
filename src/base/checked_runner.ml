@@ -18,9 +18,9 @@ let () =
       | Runtime_error (message, _, _, _) ->
           Some
             (Printf.sprintf
-               "Snarky.Checked_runner.Runtime_error(_, _, _, _)\n\n%s" message)
+               "Snarky.Checked_runner.Runtime_error(_, _, _, _)\n\n%s" message )
       | _ ->
-          None)
+          None )
 
 let eval_constraints = ref true
 
@@ -66,7 +66,7 @@ struct
       `Custom
         (fun x ~f s ->
           let s, a = x s in
-          (s, f a))
+          (s, f a) )
 
     let bind x ~f s =
       let s, a = x s in
@@ -131,7 +131,7 @@ struct
           *)
           let label = "\nLazy value forced at:" in
           let _s', y = x { s with stack = old_stack @ (label :: stack) } in
-          y) )
+          y ) )
 
   let with_label lab t s =
     let { stack; _ } = s in
@@ -164,7 +164,7 @@ struct
            | _ ->
                Format.asprintf
                  !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
-                 (Constraint0.Basic.map basic ~f:(get_value s))))
+                 (Constraint0.Basic.map basic ~f:(get_value s)) ) )
 
   let stack_to_string = String.concat ~sep:"\n"
 
@@ -172,7 +172,7 @@ struct
       (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
     List.iter t ~f:(fun { basic; annotation } ->
         let label = Option.value annotation ~default:"<unknown>" in
-        C.add_constraint system basic ~label:(stack_to_string (label :: stack)))
+        C.add_constraint system basic ~label:(stack_to_string (label :: stack)) )
 
   let add_constraint c s =
     if !(s.as_prover) then
@@ -194,7 +194,7 @@ struct
           (log_constraint c s) () ;
       if not !(s.as_prover) then
         Option.iter s.system ~f:(fun system ->
-            add_constraint ~stack:s.stack c system) ;
+            add_constraint ~stack:s.stack c system ) ;
       (s, ()) )
 
   let with_handler h t s =
@@ -215,7 +215,7 @@ struct
         ; check
         ; constraint_system_auxiliary
         ; _
-        }) p s =
+        } ) p s =
     if s.has_witness then (
       let old = !(s.as_prover) in
       s.as_prover := true ;
@@ -359,7 +359,7 @@ module Make (Backend : Backend_extended.S) = struct
                  (Exn.to_string exn) (stack_to_string s.stack) bt
              , s.stack
              , exn
-             , bt ))
+             , bt ) )
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
@@ -381,10 +381,10 @@ module Make (Backend : Backend_extended.S) = struct
         run k s
     | With_label (lab, t, k) ->
         Option.iter s.log_constraint ~f:(fun f ->
-            f ~at_label_boundary:(`Start, lab) []) ;
+            f ~at_label_boundary:(`Start, lab) [] ) ;
         let s, y = with_label lab (run t) s in
         Option.iter s.log_constraint ~f:(fun f ->
-            f ~at_label_boundary:(`End, lab) []) ;
+            f ~at_label_boundary:(`End, lab) [] ) ;
         let k = handle_error s (fun () -> k y) in
         run k s
     | Add_constraint (c, t) ->
@@ -455,7 +455,7 @@ module Make (Backend : Backend_extended.S) = struct
       Option.iter
         (system : R1CS_constraint_system.t option)
         ~f:(fun system ->
-          R1CS_constraint_system.set_primary_input_size system num_inputs) ;
+          R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
       let system =
         Option.map system ~f:(fun sys ->
             let module M = struct
@@ -465,7 +465,7 @@ module Make (Backend : Backend_extended.S) = struct
 
               include R1CS_constraint_system
             end in
-            Constraint_system.T ((module M), sys))
+            Constraint_system.T ((module M), sys) )
       in
       { system
       ; input

@@ -63,7 +63,7 @@ let type_expr mapper { type_desc; type_loc; type_type } =
   let type_desc = mapper.type_desc mapper type_desc in
   let type_type =
     with_backtrack_replace (fun () ->
-        mapper.type0.type_expr mapper.type0 type_type)
+        mapper.type0.type_expr mapper.type0 type_type )
   in
   { type_desc; type_loc; type_type }
 
@@ -118,7 +118,7 @@ let field_decl mapper { fld_ident; fld_type; fld_loc; fld_fld } =
   ; fld_type = mapper.type_expr mapper fld_type
   ; fld_fld =
       with_backtrack_replace (fun () ->
-          mapper.type0.field_decl mapper.type0 fld_fld)
+          mapper.type0.field_decl mapper.type0 fld_fld )
   }
 
 let ctor_args mapper = function
@@ -134,7 +134,7 @@ let ctor_decl mapper { ctor_ident; ctor_args; ctor_ret; ctor_loc; ctor_ctor } =
   ; ctor_ret = Option.map ~f:(mapper.type_expr mapper) ctor_ret
   ; ctor_ctor =
       with_backtrack_replace (fun () ->
-          mapper.type0.ctor_decl mapper.type0 ctor_ctor)
+          mapper.type0.ctor_decl mapper.type0 ctor_ctor )
   }
 
 let type_decl mapper { tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec }
@@ -145,7 +145,7 @@ let type_decl mapper { tdec_ident; tdec_params; tdec_desc; tdec_loc; tdec_tdec }
   ; tdec_desc = mapper.type_decl_desc mapper tdec_desc
   ; tdec_tdec =
       with_backtrack_replace (fun () ->
-          mapper.type0.type_decl mapper.type0 tdec_tdec)
+          mapper.type0.type_decl mapper.type0 tdec_tdec )
   }
 
 let type_decl_desc mapper = function
@@ -169,7 +169,7 @@ let pattern mapper { pat_desc; pat_loc; pat_type } =
   ; pat_desc = mapper.pattern_desc mapper pat_desc
   ; pat_type =
       with_backtrack_replace (fun () ->
-          mapper.type0.type_expr mapper.type0 pat_type)
+          mapper.type0.type_expr mapper.type0 pat_type )
   }
 
 let pattern_desc mapper = function
@@ -188,7 +188,7 @@ let pattern_desc mapper = function
   | Tpat_record fields ->
       Tpat_record
         (List.map fields ~f:(fun (name, pat) ->
-             (path mapper name, mapper.pattern mapper pat)))
+             (path mapper name, mapper.pattern mapper pat) ) )
   | Tpat_ctor (name, arg) ->
       Tpat_ctor (path mapper name, Option.map ~f:(mapper.pattern mapper) arg)
   | Tpat_row_ctor (name, args) ->
@@ -204,12 +204,12 @@ let convert_body_desc mapper = function
   | Tconv_record fields ->
       Tconv_record
         (List.map fields ~f:(fun (name, conv) ->
-             (path mapper name, mapper.convert_body mapper conv)))
+             (path mapper name, mapper.convert_body mapper conv) ) )
   | Tconv_ctor (name, args) ->
       Tconv_ctor
         ( path mapper name
         , List.map args ~f:(fun (label, conv) ->
-              (label, mapper.convert_body mapper conv)) )
+              (label, mapper.convert_body mapper conv) ) )
   | Tconv_tuple convs ->
       Tconv_tuple (List.map ~f:(mapper.convert_body mapper) convs)
   | Tconv_arrow (conv1, conv2) ->
@@ -237,7 +237,7 @@ let expression mapper { exp_desc; exp_loc; exp_type } =
   ; exp_desc = mapper.expression_desc mapper exp_desc
   ; exp_type =
       with_backtrack_replace (fun () ->
-          mapper.type0.type_expr mapper.type0 exp_type)
+          mapper.type0.type_expr mapper.type0 exp_type )
   }
 
 let expression_desc mapper = function
@@ -245,7 +245,7 @@ let expression_desc mapper = function
       Texp_apply
         ( mapper.expression mapper e
         , List.map args ~f:(fun (explicit, label, e) ->
-              (explicit, label, mapper.expression mapper e)) )
+              (explicit, label, mapper.expression mapper e) ) )
   | Texp_variable name ->
       Texp_variable (path mapper name)
   | Texp_literal l ->
@@ -275,13 +275,13 @@ let expression_desc mapper = function
       Texp_match
         ( mapper.expression mapper e
         , List.map cases ~f:(fun (p, e) ->
-              (mapper.pattern mapper p, mapper.expression mapper e)) )
+              (mapper.pattern mapper p, mapper.expression mapper e) ) )
   | Texp_field (e, name) ->
       Texp_field (mapper.expression mapper e, path mapper name)
   | Texp_record (bindings, default) ->
       Texp_record
         ( List.map bindings ~f:(fun (name, e) ->
-              (path mapper name, mapper.expression mapper e))
+              (path mapper name, mapper.expression mapper e) )
         , Option.map ~f:(mapper.expression mapper) default )
   | Texp_ctor (name, arg) ->
       Texp_ctor (path mapper name, Option.map ~f:(mapper.expression mapper) arg)
@@ -303,13 +303,13 @@ let expression_desc mapper = function
       Texp_read
         ( mapper.convert mapper conv
         , List.map conv_args ~f:(fun (label, e) ->
-              (label, mapper.expression mapper e))
+              (label, mapper.expression mapper e) )
         , mapper.expression mapper e )
   | Texp_prover (conv, conv_args, e) ->
       Texp_prover
         ( mapper.convert mapper conv
         , List.map conv_args ~f:(fun (label, e) ->
-              (label, mapper.expression mapper e))
+              (label, mapper.expression mapper e) )
         , mapper.expression mapper e )
   | Texp_convert conv ->
       Texp_convert (mapper.convert mapper conv)
@@ -419,7 +419,7 @@ let statement_desc mapper = function
         , mapper.ctor_decl mapper ctor
         , Option.map handler ~f:(fun (p, e) ->
               ( Option.map ~f:(mapper.pattern mapper) p
-              , mapper.expression mapper e )) )
+              , mapper.expression mapper e ) ) )
   | Tstmt_multiple stmts ->
       Tstmt_multiple (mapper.statements mapper stmts)
   | Tstmt_prover stmts ->

@@ -178,8 +178,8 @@ struct
               Int64.(
                 foldi ~init:zero
                   ~f:(fun i acc el ->
-                    acc + if el then shift_left one i else zero)
-                  elt)))
+                    acc + if el then shift_left one i else zero )
+                  elt) ))
         chunks64 ;
       Backend.Bigint.R.(of_data arr ~bitcount:(List.length bs) |> to_field)
 
@@ -211,7 +211,7 @@ struct
         ~f:(fun bs ->
           [%test_eq: string]
             (project bs |> to_string)
-            (project_reference bs |> to_string))
+            (project_reference bs |> to_string) )
 
     let ( + ) = add
 
@@ -248,7 +248,7 @@ struct
 
     let eval t get_value =
       List.for_all t ~f:(fun { basic; _ } ->
-          Constraint.Basic.eval m get_value basic)
+          Constraint.Basic.eval m get_value basic )
   end
 
   module R1CS_constraint_system = R1CS_constraint_system

@@ -71,7 +71,7 @@ let pdot (root_path : t) (path : t) =
       | None ->
           Pdot (path, mode, name)
       | Some ocaml_name ->
-          Pocamldot (path, mode, name, ocaml_name))
+          Pocamldot (path, mode, name, ocaml_name) )
 
 (** Create a path from a list of [Ident.t]s. *)
 let of_idents idents =

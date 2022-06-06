@@ -378,7 +378,7 @@ struct
         ~there:(address_of_int ~depth)
         ~back:
           (List.foldi ~init:0 ~f:(fun i acc b ->
-               if b then acc lor (1 lsl i) else acc))
+               if b then acc lor (1 lsl i) else acc ) )
   end
 
   module Path = struct
@@ -509,24 +509,23 @@ module Run = struct
   struct
     open Impl
 
-    include Checked
-              (Impl.Internal_Basic)
-              (struct
-                include Hash
+    include
+      Checked
+        (Impl.Internal_Basic)
+        (struct
+          include Hash
 
-                let merge ~height x y =
-                  make_checked (fun () -> merge ~height x y)
+          let merge ~height x y = make_checked (fun () -> merge ~height x y)
 
-                let if_ x ~then_ ~else_ =
-                  make_checked (fun () -> if_ x ~then_ ~else_)
+          let if_ x ~then_ ~else_ = make_checked (fun () -> if_ x ~then_ ~else_)
 
-                let assert_equal x y = make_checked (fun () -> assert_equal x y)
-              end)
-              (struct
-                include Elt
+          let assert_equal x y = make_checked (fun () -> assert_equal x y)
+        end)
+        (struct
+          include Elt
 
-                let hash var = make_checked (fun () -> hash var)
-              end)
+          let hash var = make_checked (fun () -> hash var)
+        end)
 
     let implied_root entry_hash addr0 path0 =
       run_checked (implied_root entry_hash addr0 path0)

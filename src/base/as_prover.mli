@@ -6,7 +6,7 @@ module Make
                    with type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t
                     and type 'f field := 'f Checked.field
                     and type ('a, 'f) Provider.t =
-                         ('a, 'f) Checked.Types.Provider.t) :
+                     ('a, 'f) Checked.Types.Provider.t) :
   S with module Types = Checked.Types with type 'f field = 'f Checked.field
 
 include S with module Types = Checked.Types with type 'f field := 'f
