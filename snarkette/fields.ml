@@ -219,10 +219,13 @@ module Make_fp
     include Bin_prot.Utils.Of_minimal (struct
       type nonrec t = t
 
+      (* increment if serialization changes *)
+      let version = 1
+
       let bin_shape_t =
         Bin_prot.Shape.basetype
           (Bin_prot.Shape.Uuid.of_string
-             (sprintf "snarkette_field_%d" length_in_bytes) )
+             (sprintf "snarkette_field_%d_V%d" length_in_bytes version) )
           []
 
       let __bin_read_t__ _buf ~pos_ref _vint =
