@@ -203,7 +203,7 @@ module Polydef = struct
     in
     let params =
       List.map (unique_field_types fields) ~f:(fun { label; var_name; _ } ->
-          (Typ.var ~loc:label.loc var_name, Invariant) )
+          (Typ.var ~loc:label.loc var_name, (NoVariance, NoInjectivity)) )
     in
     Str.type_ ~loc:name.loc Nonrecursive
       [ Type.mk ~loc:name.loc ~params ~kind:record_typ name ]
@@ -569,7 +569,13 @@ let snarky_module_map =
           super#structure_item str acc
 
     method! module_binding bind (map, last_modules, current_module') =
-      let current_module = bind.pmb_name.txt :: current_module' in
+      let current_module =
+        match bind.pmb_name.txt with
+        | None ->
+            current_module'
+        | Some name ->
+            name :: current_module'
+      in
       let mb, (map, last_modules, _) =
         super#module_binding bind (map, last_modules, current_module)
       in
