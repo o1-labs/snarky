@@ -84,7 +84,7 @@ let main =
       , Arg.String
           (fun name ->
             Format.pp_set_formatter_out_channel Format.err_formatter
-              (Out_channel.create name))
+              (Out_channel.create name) )
       , "redirect stderr to the given filename" )
     ; ( "--binml"
       , Arg.String (set_and_clear_default binml_file)
@@ -130,7 +130,7 @@ let main =
           Arg.usage arg_spec usage_text ;
           exit 1
       | None ->
-          file := Some filename)
+          file := Some filename )
     usage_text ;
   let env = Initial_env.env in
   Printexc.record_backtrace !exn_backtraces ;
@@ -191,11 +191,11 @@ let main =
           let modident = Ident.create ~mode:Checked modname in
           ( modident
           , Loader.load ~loc:Location.none ~name:modname env.Envi.resolve_env
-              filename ))
+              filename ) )
     in
     let env =
       List.fold ~init:env cmi_scopes ~f:(fun env (name, scope) ->
-          Envi.open_namespace_scope (Path.Pident name) scope env)
+          Envi.open_namespace_scope (Path.Pident name) scope env )
     in
     let meji_files =
       "meji/field.meji" :: "meji/boolean.meji" :: "meji/typ.meji"
@@ -211,7 +211,7 @@ let main =
           let env, _typed_ast = Typechecker.check_signature env parse_ast in
           let m, env = Envi.pop_module ~loc:(Location.in_file file) env in
           let name = Ident.create ~mode:Checked module_name in
-          Envi.add_module ~loc:(Location.in_file file) name m env)
+          Envi.add_module ~loc:(Location.in_file file) name m env )
     in
     let file =
       match !file with
@@ -244,7 +244,7 @@ let main =
         Option.iter ~f:(Printast.structure 2 output) preamble ;
         Format.pp_print_newline output () ;
         Printast.structure 2 output ocaml_ast ;
-        Format.pp_print_newline output ()) ;
+        Format.pp_print_newline output () ) ;
     ( match ocaml_formatter with
     | Some output ->
         Option.iter ~f:(Pprintast.structure output) preamble ;

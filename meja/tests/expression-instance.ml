@@ -15,6 +15,6 @@ let b () =
   (let f _ x = x in
    let g i j = i + j in
    ignore (a g 1) ;
-   ignore (a f true)) ;
+   ignore (a f true) ) ;
   ignore (a h 1) ;
   ignore (a h true)

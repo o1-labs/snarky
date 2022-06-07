@@ -97,7 +97,7 @@ module Make (Backend : Backend_intf) = struct
     let input_acc =
       List.foldi input ~init:vk.query.(0) ~f:(fun i acc x ->
           let q = vk.query.(1 + i) in
-          G1.(acc + (x * q)))
+          G1.(acc + (x * q)) )
     in
     let test1 =
       let l = Pairing.unreduced_pairing a b in

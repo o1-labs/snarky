@@ -35,8 +35,8 @@ let rec of_type_desc ?loc typ =
       Typ.constr ?loc
         (Location.mkloc
            (Option.value_exn
-              (Longident.unflatten [ "Snarky"; "As_prover"; "Ref"; "t" ]))
-           (Option.value ~default:Location.none loc))
+              (Longident.unflatten [ "Snarky"; "As_prover"; "Ref"; "t" ]) )
+           (Option.value ~default:Location.none loc) )
         [ of_type_expr typ ]
   | Ptyp_alias (typ, name) ->
       Typ.alias ?loc (of_type_expr typ) name.txt
@@ -49,7 +49,7 @@ let rec of_type_desc ?loc typ =
              | _ ->
                  Rf.tag ~loc:rtag_loc rtag_ident false
                    [ Typ.tuple ~loc:rtag_loc (List.map ~f:of_type_expr rtag_arg)
-                   ]))
+                   ] ) )
         closed
         (Option.map ~f:(List.map ~f:(fun { Location.txt; _ } -> txt)) min_tags)
   | Ptyp_row_subtract (typ, _tags) ->
@@ -204,7 +204,7 @@ let rec of_expression_desc ?loc = function
   | Pexp_match (e, cases) ->
       Exp.match_ ?loc (of_expression e)
         (List.map cases ~f:(fun (p, e) ->
-             Exp.case (of_pattern p) (of_expression e)))
+             Exp.case (of_pattern p) (of_expression e) ) )
   | Pexp_field (e, field) ->
       Exp.field ?loc (of_expression e) field
   | Pexp_record (fields, ext) ->
@@ -292,7 +292,7 @@ let rec of_signature_desc ?loc = function
   | Psig_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ ->
-            (of_type_expr typ, Invariant))
+            (of_type_expr typ, Invariant) )
       in
       let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Sig.type_extension ?loc (Te.mk ~params variant.var_ident ctors)
@@ -364,7 +364,7 @@ let rec of_statement_desc ?loc = function
   | Pstmt_typeext (variant, ctors) ->
       let params =
         List.map variant.var_params ~f:(fun typ ->
-            (of_type_expr typ, Invariant))
+            (of_type_expr typ, Invariant) )
       in
       let ctors = List.map ~f:of_ctor_decl_ext ctors in
       Str.type_extension ?loc (Te.mk ~params variant.var_ident ctors)

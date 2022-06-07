@@ -95,7 +95,7 @@ struct
           ; py
           ; px_twist = Fq_twist.scale Info.twist px
           ; py_twist = Fq_twist.scale Info.twist py
-          })
+          } )
   end
 
   module Dbl_coeffs = struct

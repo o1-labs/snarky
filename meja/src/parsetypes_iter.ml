@@ -142,7 +142,7 @@ let pattern_desc iter = function
       iter.literal iter l
   | Ppat_record fields ->
       List.iter fields ~f:(fun (name, pat) ->
-          lid iter name ; iter.pattern iter pat)
+          lid iter name ; iter.pattern iter pat )
   | Ppat_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.pattern iter) arg
@@ -181,13 +181,13 @@ let expression_desc iter = function
   | Pexp_match (e, cases) ->
       iter.expression iter e ;
       List.iter cases ~f:(fun (p, e) ->
-          iter.pattern iter p ; iter.expression iter e)
+          iter.pattern iter p ; iter.expression iter e )
   | Pexp_field (e, name) ->
       lid iter name ; iter.expression iter e
   | Pexp_record (bindings, default) ->
       Option.iter ~f:(iter.expression iter) default ;
       List.iter bindings ~f:(fun (name, e) ->
-          lid iter name ; iter.expression iter e)
+          lid iter name ; iter.expression iter e )
   | Pexp_ctor (name, arg) ->
       lid iter name ;
       Option.iter ~f:(iter.expression iter) arg
@@ -294,7 +294,7 @@ let statement_desc iter = function
       iter.ctor_decl iter ctor ;
       Option.iter handler ~f:(fun (p, e) ->
           Option.iter ~f:(iter.pattern iter) p ;
-          iter.expression iter e)
+          iter.expression iter e )
   | Pstmt_multiple stmts ->
       iter.statements iter stmts
   | Pstmt_prover stmts ->

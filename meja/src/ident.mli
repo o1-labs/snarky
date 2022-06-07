@@ -107,7 +107,7 @@ module Table : sig
          (   key:string
           -> data:[ `Both of 'v1 * 'v2 | `Left of 'v1 | `Right of 'v2 ]
           -> 'a
-          -> 'a)
+          -> 'a )
     -> 'a
 
   (** Merge the bindings in the two tables. When the same name is bound in
