@@ -7,8 +7,8 @@ opam init
 pushd /home/opam/opam-repository && git pull && popd
 opam update
 eval $(opam env)
-opam switch create 4.11.2 || true
-opam switch 4.11.2
+opam switch create 4.14.2 || true
+opam switch 4.14.2
 
 # Generate opam.test from the current opam switch
 opam switch export opam.test
