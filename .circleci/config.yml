@@ -11,7 +11,7 @@ jobs:
     build-opam-cache:
         docker:
         # For now, just reuse mina's Docker toolchain. In the future, we should compose Mina's from Snarky's somehow
-        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:d1176b5881a5911477e271d13c04225049f98d1a35b960942f7e811e3dc028d8
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:525ade511d01ce66822f11b35893bed69b55d3fc9a4b872914214ddf67cf7e30
         steps:
             - checkout
             - restore_cache:
@@ -29,7 +29,7 @@ jobs:
     build:
         docker:
         # For now, just reuse mina's Docker toolchain. In the future, we should compose Mina's from Snarky's somehow
-        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:d1176b5881a5911477e271d13c04225049f98d1a35b960942f7e811e3dc028d8
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:525ade511d01ce66822f11b35893bed69b55d3fc9a4b872914214ddf67cf7e30
         steps:
             - checkout
             - fetch-opam
@@ -41,7 +41,7 @@ jobs:
     opam-pin:
         docker:
         # For now, just reuse mina's Docker toolchain. In the future, we should compose Mina's from Snarky's somehow
-        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:72fd8954d9f4f13e8596c3826c570e8fcd8473ec0091cbbfba17c9366e983e0b
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:525ade511d01ce66822f11b35893bed69b55d3fc9a4b872914214ddf67cf7e30
         steps:
             - checkout
             - fetch-opam
