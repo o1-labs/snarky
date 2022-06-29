@@ -1,3 +1,4 @@
 (library
  (name h_list)
- (public_name h_list))
+ (public_name h_list)
+ (libraries base))
