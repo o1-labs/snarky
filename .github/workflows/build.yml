@@ -12,7 +12,7 @@ jobs:
           - macos-latest
           - ubuntu-latest
         ocaml-version:
-          - 4.11.2
+          - 4.14.2
 
     runs-on: ${{ matrix.os }}
 
@@ -39,5 +39,5 @@ jobs:
       - name: Format
         run: |
           eval $(opam env)
-          opam install ocamlformat.0.15.0
+          opam install ocamlformat.0.20.1
           dune build @fmt

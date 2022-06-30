@@ -1628,6 +1628,8 @@ module Run = struct
       let a = x () in
       (!state, a)
 
+    let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
+
     module R1CS_constraint_system = Snark.R1CS_constraint_system
     module Var = Snark.Var
 
@@ -2163,8 +2165,6 @@ module Run = struct
           f ~at_label_boundary:(`End, lbl) [] ) ;
       state := { !state with stack } ;
       a
-
-    let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
 
     let rec inject_wrapper :
         type r_var r_value k_var k_value.
