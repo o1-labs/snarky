@@ -125,6 +125,155 @@ module type Boolean_intf = sig
   end
 end
 
+module type Typ_intf = sig
+  type field
+
+  type field_var
+
+  type _ checked
+
+  type checked_unit
+
+  type (_, _, _, _) data_spec
+
+  type _ prover_ref
+
+  (** The type [('var, 'value) t] describes a mapping from the OCaml type
+        ['value] to a type representing the value using R1CS variables
+        (['var]).
+        This description includes
+        - a {!type:Store.t} for storing ['value]s as ['var]s
+        - a {!type:Alloc.t} for creating a ['var] when we don't know what values
+          it should contain yet
+        - a {!type:Read.t} for reading the contents of the ['var] back out as a
+          ['value] in {!module:As_prover} blocks
+        - a {!type:Checked.t} for asserting constraints on the ['var] -- for
+          example, that a [Boolean.t] is either a {!val:Field.zero} or a
+          {!val:Field.one}.
+    *)
+  type ('var, 'value) t = ('var, 'value, field, checked_unit) Types.Typ.t
+
+  (** Basic instances: *)
+
+  val unit : (unit, unit) t
+
+  val field : (field_var, field) t
+
+  (** Common constructors: *)
+
+  val tuple2 :
+       ('var1, 'value1) t
+    -> ('var2, 'value2) t
+    -> ('var1 * 'var2, 'value1 * 'value2) t
+
+  (** synonym for {!val:tuple2} *)
+  val ( * ) :
+       ('var1, 'value1) t
+    -> ('var2, 'value2) t
+    -> ('var1 * 'var2, 'value1 * 'value2) t
+
+  val tuple3 :
+       ('var1, 'value1) t
+    -> ('var2, 'value2) t
+    -> ('var3, 'value3) t
+    -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
+
+  (** [list ~length typ] describes how to convert between a ['value list] and
+        a ['var list], given a description of how to convert between a ['value]
+        and a ['var].
+
+        [length] must be the length of the lists that are converted. This value
+        must be constant for every use; otherwise the constraint system may use
+        a different number of variables depending on the data given.
+
+        Passing a list of the wrong length throws an error.
+    *)
+  val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
+
+  (** [array ~length typ] describes how to convert between a ['value array]
+        and a ['var array], given a description of how to convert between a
+        ['value] and a ['var].
+
+        [length] must be the length of the arrays that are converted. This
+        value must be constant for every use; otherwise the constraint system
+        may use a different number of variables depending on the data given.
+
+        Passing an array of the wrong length throws an error.
+    *)
+  val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
+
+  (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
+        a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
+  val hlist :
+       (unit, unit, 'k_var, 'k_value) data_spec
+    -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
+
+  (** Convert relationships over
+        {{:https://en.wikipedia.org/wiki/Isomorphism}isomorphic} types: *)
+
+  val transport :
+       ('var, 'value1) t
+    -> there:('value2 -> 'value1)
+    -> back:('value1 -> 'value2)
+    -> ('var, 'value2) t
+
+  val transport_var :
+       ('var1, 'value) t
+    -> there:('var2 -> 'var1)
+    -> back:('var1 -> 'var2)
+    -> ('var2, 'value) t
+
+  (** A specialised version of {!val:transport}/{!val:transport_var} that
+        describes the relationship between ['var] and ['value] in terms of a
+        {!type:Data_spec.t}.
+    *)
+  val of_hlistable :
+       (unit, unit, 'k_var, 'k_value) data_spec
+    -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
+    -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
+    -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
+    -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
+    -> ('var, 'value) t
+
+  (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
+        and normal OCaml data.
+
+        Using this module is not recommended.
+    *)
+  module Internal : sig
+    (** A do-nothing [Typ.t] that returns the input value for all modes. This
+          may be used to convert objects from the [Checked] world into and
+          through [As_prover] blocks.
+
+          This is the dual of [ref], which allows [OCaml] values from
+          [As_prover] blocks to pass through the [Checked] world.
+
+          Note: Reading or writing using this [Typ.t] will assert that the
+          argument and the value stored are physically equal -- ie. that they
+          refer to the same object.
+      *)
+    val snarkless : 'a -> ('a, 'a) t
+
+    (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
+          blocks, while keeping them opaque to the [Checked] world.
+
+          This is the dual of [snarkless], which allows [OCaml] values from the
+          [Checked] world to pass through [As_prover] blocks.
+    *)
+    val ref : unit -> ('a prover_ref, 'a) t
+  end
+
+  module type S =
+    Typ0.Intf.S
+      with type field := field
+       and type field_var := field_var
+       and type 'a checked = 'a checked
+
+  val mk_typ :
+       (module S with type Var.t = 'var and type Value.t = 'value)
+    -> ('var, 'value) t
+end
+
 module type Constraint_intf = sig
   type field_var
 
@@ -484,140 +633,14 @@ module type Basic = sig
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
-    (** The type [('var, 'value) t] describes a mapping from the OCaml type
-        ['value] to a type representing the value using R1CS variables
-        (['var]).
-        This description includes
-        - a {!type:Store.t} for storing ['value]s as ['var]s
-        - a {!type:Alloc.t} for creating a ['var] when we don't know what values
-          it should contain yet
-        - a {!type:Read.t} for reading the contents of the ['var] back out as a
-          ['value] in {!module:As_prover} blocks
-        - a {!type:Checked.t} for asserting constraints on the ['var] -- for
-          example, that a [Boolean.t] is either a {!val:Field.zero} or a
-          {!val:Field.one}.
-    *)
-    type ('var, 'value) t = ('var, 'value, Field.t, unit Checked.t) Types.Typ.t
-
-    (** Basic instances: *)
-
-    val unit : (unit, unit) t
-
-    val field : (Field.Var.t, field) t
-
-    (** Common constructors: *)
-
-    val tuple2 :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var1 * 'var2, 'value1 * 'value2) t
-
-    (** synonym for {!val:tuple2} *)
-    val ( * ) :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var1 * 'var2, 'value1 * 'value2) t
-
-    val tuple3 :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var3, 'value3) t
-      -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
-
-    (** [list ~length typ] describes how to convert between a ['value list] and
-        a ['var list], given a description of how to convert between a ['value]
-        and a ['var].
-
-        [length] must be the length of the lists that are converted. This value
-        must be constant for every use; otherwise the constraint system may use
-        a different number of variables depending on the data given.
-
-        Passing a list of the wrong length throws an error.
-    *)
-    val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
-
-    (** [array ~length typ] describes how to convert between a ['value array]
-        and a ['var array], given a description of how to convert between a
-        ['value] and a ['var].
-
-        [length] must be the length of the arrays that are converted. This
-        value must be constant for every use; otherwise the constraint system
-        may use a different number of variables depending on the data given.
-
-        Passing an array of the wrong length throws an error.
-    *)
-    val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
-
-    (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
-        a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
-    val hlist :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
-
-    (** Convert relationships over
-        {{:https://en.wikipedia.org/wiki/Isomorphism}isomorphic} types: *)
-
-    val transport :
-         ('var, 'value1) t
-      -> there:('value2 -> 'value1)
-      -> back:('value1 -> 'value2)
-      -> ('var, 'value2) t
-
-    val transport_var :
-         ('var1, 'value) t
-      -> there:('var2 -> 'var1)
-      -> back:('var1 -> 'var2)
-      -> ('var2, 'value) t
-
-    (** A specialised version of {!val:transport}/{!val:transport_var} that
-        describes the relationship between ['var] and ['value] in terms of a
-        {!type:Data_spec.t}.
-    *)
-    val of_hlistable :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
-      -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
-      -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
-      -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
-      -> ('var, 'value) t
-
-    (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
-        and normal OCaml data.
-
-        Using this module is not recommended.
-    *)
-    module Internal : sig
-      (** A do-nothing [Typ.t] that returns the input value for all modes. This
-          may be used to convert objects from the [Checked] world into and
-          through [As_prover] blocks.
-
-          This is the dual of [ref], which allows [OCaml] values from
-          [As_prover] blocks to pass through the [Checked] world.
-
-          Note: Reading or writing using this [Typ.t] will assert that the
-          argument and the value stored are physically equal -- ie. that they
-          refer to the same object.
-      *)
-      val snarkless : 'a -> ('a, 'a) t
-
-      (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
-          blocks, while keeping them opaque to the [Checked] world.
-
-          This is the dual of [snarkless], which allows [OCaml] values from the
-          [Checked] world to pass through [As_prover] blocks.
-    *)
-      val ref : unit -> ('a As_prover.Ref.t, 'a) t
-    end
-
-    module type S =
-      Typ0.Intf.S
+    include
+      Typ_intf
         with type field := Field.t
          and type field_var := Field.Var.t
-         and type _ checked = unit Checked.t
-
-    val mk_typ :
-         (module S with type Var.t = 'var and type Value.t = 'value)
-      -> ('var, 'value) t
+         and type checked_unit := unit Checked.t
+         and type _ checked := unit Checked.t
+         and type ('a, 'b, 'c, 'd) data_spec := ('a, 'b, 'c, 'd) Data_spec.t
+         and type 'a prover_ref := 'a As_prover.Ref.t
 
     include module type of Types.Typ.T
   end
@@ -1189,104 +1212,14 @@ module type Run_basic = sig
   end
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
-  and Typ : sig
-    type ('var, 'value) t =
-      ('var, 'value, field, (unit, field) Checked.t) Types.Typ.t
-
-    (** Basic instances: *)
-
-    val unit : (unit, unit) t
-
-    val field : (Field.t, field) t
-
-    (** Common constructors: *)
-
-    val tuple2 :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var1 * 'var2, 'value1 * 'value2) t
-
-    (** synonym for tuple2 *)
-    val ( * ) :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var1 * 'var2, 'value1 * 'value2) t
-
-    val tuple3 :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var3, 'value3) t
-      -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
-
-    val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
-
-    val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
-
-    (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
-        a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
-    val hlist :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
-
-    (** Convert relationships over
-        {{:https://en.wikipedia.org/wiki/Isomorphism}isomorphic} types: *)
-
-    val transport :
-         ('var, 'value1) t
-      -> there:('value2 -> 'value1)
-      -> back:('value1 -> 'value2)
-      -> ('var, 'value2) t
-
-    val transport_var :
-         ('var1, 'value) t
-      -> there:('var2 -> 'var1)
-      -> back:('var1 -> 'var2)
-      -> ('var2, 'value) t
-
-    val of_hlistable :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
-      -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
-      -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
-      -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
-      -> ('var, 'value) t
-
-    (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
-        and normal OCaml data.
-
-        Using this module is strongly discouraged.
-    *)
-    module Internal : sig
-      (** A do-nothing [Typ.t] that returns the input value for all modes.
-
-          This is the dual of [ref], which allows [OCaml] values from
-          [As_prover] blocks to pass through the [Checked] world.
-
-          Note: Reading or writing using this [Typ.t] will assert that the
-          argument and the value stored are physically equal -- ie. that they
-          refer to the same object.
-      *)
-      val snarkless : 'a -> ('a, 'a) t
-
-      (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
-          blocks, while keeping them opaque to the [Checked] world.
-
-          This is the dual of [snarkless], which allows [OCaml] values from the
-          [Checked] world to pass through [As_prover] blocks.
-      *)
-      val ref : unit -> ('a As_prover.Ref.t, 'a) t
-    end
-
-    module type S =
-      Typ0.Intf.S
-        with type field := Field.Constant.t
-         and type field_var := Field.t
-         and type _ checked = unit
-
-    val mk_typ :
-         (module S with type Var.t = 'var and type Value.t = 'value)
-      -> ('var, 'value) t
-  end
+  and Typ :
+    (Typ_intf
+      with type field := Field.Constant.t
+       and type field_var := Field.t
+       and type checked_unit := (unit, field) Checked.t
+       and type _ checked := unit
+       and type ('a, 'b, 'c, 'd) data_spec := ('a, 'b, 'c, 'd) Data_spec.t
+       and type 'a prover_ref := 'a As_prover.Ref.t)
 
   (** Representation of booleans within a field.
 
