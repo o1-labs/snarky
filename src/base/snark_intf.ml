@@ -5,6 +5,126 @@ module Boolean0 = Boolean
 module Typ0 = Typ
 module As_prover0 = As_prover
 
+module type Boolean_intf = sig
+  type field_var
+
+  type _ checked
+
+  type (_, _) typ
+
+  (** The type that stores booleans as R1CS variables. *)
+  type var
+
+  type value = bool
+
+  (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
+  val true_ : var
+
+  (** An R1CS variable containing {!val:Field.zero}, representing [false]. *)
+  val false_ : var
+
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+        otherwise.
+    *)
+  val if_ : var -> then_:var -> else_:var -> var checked
+
+  (** Negate a boolean value *)
+  val not : var -> var
+
+  (** Boolean and *)
+  val ( && ) : var -> var -> var checked
+
+  (** Boolean and, non-aliasing to [bool] operator. *)
+  val ( &&& ) : var -> var -> var checked
+
+  (** Boolean or *)
+  val ( || ) : var -> var -> var checked
+
+  (** Boolean or, non-aliasing to [bool] operator. *)
+  val ( ||| ) : var -> var -> var checked
+
+  (** Boolean xor (exclusive-or) *)
+  val ( lxor ) : var -> var -> var checked
+
+  (** Returns [true] if any value in the list is true, false otherwise. *)
+  val any : var list -> var checked
+
+  (** Returns [true] if all value in the list are true, false otherwise. *)
+  val all : var list -> var checked
+
+  (** Convert a value in a field to a boolean, adding checks to the R1CS that
+       it is a valid boolean value. *)
+  val of_field : field_var -> var checked
+
+  (** Convert an OCaml [bool] into a R1CS variable representing the same
+        value. *)
+  val var_of_value : value -> var
+
+  (** The relationship between {!val:var} and {!val:value}, with a check that
+        the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)
+  val typ : (var, value) typ
+
+  (** {!val:typ} without a validity check for the underlying field value. *)
+  val typ_unchecked : (var, value) typ
+
+  val equal : var -> var -> var checked
+
+  (** Build trees representing boolean expressions. *)
+  module Expr : sig
+    (** Expression trees. *)
+    type t
+
+    val ( ! ) : var -> t
+
+    val ( && ) : t -> t -> t
+
+    val ( &&& ) : t -> t -> t
+
+    val ( || ) : t -> t -> t
+
+    val ( ||| ) : t -> t -> t
+
+    val any : t list -> t
+
+    val all : t list -> t
+
+    val not : t -> t
+
+    (** Evaluate the expression tree. *)
+    val eval : t -> var checked
+
+    val assert_ : t -> unit checked
+  end
+
+  module Unsafe : sig
+    val of_cvar : field_var -> var
+  end
+
+  module Assert : sig
+    val ( = ) : var -> var -> unit checked
+
+    val is_true : var -> unit checked
+
+    val any : var list -> unit checked
+
+    val all : var list -> unit checked
+
+    val exactly_one : var list -> unit checked
+  end
+
+  module Array : sig
+    val any : var array -> var checked
+
+    val all : var array -> var checked
+
+    module Assert : sig
+      val any : var array -> unit checked
+
+      val all : var array -> unit checked
+    end
+  end
+end
+
 (** The base interface to Snarky. *)
 module type Basic = sig
   (** The finite field over which the R1CS operates. *)
@@ -252,119 +372,12 @@ module type Basic = sig
       This representation ties the value of [true] to {!val:Field.one} and
       [false] to {!val:Field.zero}, adding a check in {!val:Boolean.typ} to
       ensure that these are the only vales. *)
-  and Boolean : sig
-    (** The type that stores booleans as R1CS variables. *)
-    type var = Field.Var.t Boolean0.t
-
-    type value = bool
-
-    (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
-    val true_ : var
-
-    (** An R1CS variable containing {!val:Field.zero}, representing [false]. *)
-    val false_ : var
-
-    (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
-        otherwise.
-    *)
-    val if_ : var -> then_:var -> else_:var -> var Checked.t
-
-    (** Negate a boolean value *)
-    val not : var -> var
-
-    (** Boolean and *)
-    val ( && ) : var -> var -> var Checked.t
-
-    (** Boolean and, non-aliasing to [bool] operator. *)
-    val ( &&& ) : var -> var -> var Checked.t
-
-    (** Boolean or *)
-    val ( || ) : var -> var -> var Checked.t
-
-    (** Boolean or, non-aliasing to [bool] operator. *)
-    val ( ||| ) : var -> var -> var Checked.t
-
-    (** Boolean xor (exclusive-or) *)
-    val ( lxor ) : var -> var -> var Checked.t
-
-    (** Returns [true] if any value in the list is true, false otherwise. *)
-    val any : var list -> var Checked.t
-
-    (** Returns [true] if all value in the list are true, false otherwise. *)
-    val all : var list -> var Checked.t
-
-    (** Convert a value in a field to a boolean, adding checks to the R1CS that
-       it is a valid boolean value. *)
-    val of_field : Field.Var.t -> var Checked.t
-
-    (** Convert an OCaml [bool] into a R1CS variable representing the same
-        value. *)
-    val var_of_value : value -> var
-
-    (** The relationship between {!val:var} and {!val:value}, with a check that
-        the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)
-    val typ : (var, value) Typ.t
-
-    (** {!val:typ} without a validity check for the underlying field value. *)
-    val typ_unchecked : (var, value) Typ.t
-
-    val equal : var -> var -> var Checked.t
-
-    (** Build trees representing boolean expressions. *)
-    module Expr : sig
-      (** Expression trees. *)
-      type t
-
-      val ( ! ) : var -> t
-
-      val ( && ) : t -> t -> t
-
-      val ( &&& ) : t -> t -> t
-
-      val ( || ) : t -> t -> t
-
-      val ( ||| ) : t -> t -> t
-
-      val any : t list -> t
-
-      val all : t list -> t
-
-      val not : t -> t
-
-      (** Evaluate the expression tree. *)
-      val eval : t -> var Checked.t
-
-      val assert_ : t -> unit Checked.t
-    end
-
-    module Unsafe : sig
-      val of_cvar : Field.Var.t -> var
-    end
-
-    module Assert : sig
-      val ( = ) : Boolean.var -> Boolean.var -> unit Checked.t
-
-      val is_true : Boolean.var -> unit Checked.t
-
-      val any : var list -> unit Checked.t
-
-      val all : var list -> unit Checked.t
-
-      val exactly_one : var list -> unit Checked.t
-    end
-
-    module Array : sig
-      val any : var array -> var Checked.t
-
-      val all : var array -> var Checked.t
-
-      module Assert : sig
-        val any : var array -> unit Checked.t
-
-        val all : var array -> unit Checked.t
-      end
-    end
-  end
+  and Boolean :
+    (Boolean_intf
+      with type var = Field.Var.t Boolean0.t
+       and type field_var := Field.Var.t
+       and type 'a checked := 'a Checked.t
+       and type ('var, 'value) typ := ('var, 'value) Typ.t)
 
   (** Checked computations.
 
@@ -1251,102 +1264,12 @@ module type Run_basic = sig
       This representation ties the value of [true] to {!val:Field.one} and
       [false] to {!val:Field.zero}, adding a check in {!val:Boolean.typ} to
       ensure that these are the only vales. *)
-  and Boolean : sig
-    type var = Field.t Boolean0.t
-
-    type value = bool
-
-    val true_ : var
-
-    val false_ : var
-
-    val if_ : var -> then_:var -> else_:var -> var
-
-    val not : var -> var
-
-    val ( && ) : var -> var -> var
-
-    val ( &&& ) : var -> var -> var
-
-    val ( || ) : var -> var -> var
-
-    val ( ||| ) : var -> var -> var
-
-    val ( lxor ) : var -> var -> var
-
-    val any : var list -> var
-
-    val all : var list -> var
-
-    (** Convert a value in a field to a boolean, adding checks to the R1CS that
-       it is a valid boolean value. *)
-    val of_field : Field.t -> var
-
-    val var_of_value : value -> var
-
-    (** The relationship between {!val:var} and {!val:value}, with a check that
-        the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)
-    val typ : (var, value) Typ.t
-
-    (** {!val:typ} without a validity check for the underlying field value. *)
-    val typ_unchecked : (var, value) Typ.t
-
-    val equal : var -> var -> var
-
-    module Expr : sig
-      (** Expression trees. *)
-      type t
-
-      val ( ! ) : var -> t
-
-      val ( && ) : t -> t -> t
-
-      val ( &&& ) : t -> t -> t
-
-      val ( || ) : t -> t -> t
-
-      val ( ||| ) : t -> t -> t
-
-      val any : t list -> t
-
-      val all : t list -> t
-
-      val not : t -> t
-
-      (** Evaluate the expression tree. *)
-      val eval : t -> var
-
-      val assert_ : t -> unit
-    end
-
-    module Unsafe : sig
-      val of_cvar : Field.t -> var
-    end
-
-    module Assert : sig
-      val ( = ) : var -> var -> unit
-
-      val is_true : var -> unit
-
-      val any : var list -> unit
-
-      val all : var list -> unit
-
-      val exactly_one : var list -> unit
-    end
-
-    module Array : sig
-      val any : var array -> var
-
-      val all : var array -> var
-
-      module Assert : sig
-        val any : var array -> unit
-
-        val all : var array -> unit
-      end
-    end
-  end
+  and Boolean :
+    (Boolean_intf
+      with type var = Field.t Boolean0.t
+       and type field_var := Field.t
+       and type 'a checked := 'a
+       and type ('var, 'value) typ := ('var, 'value) Typ.t)
 
   and Field : sig
     module Constant : sig
