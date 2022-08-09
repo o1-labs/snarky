@@ -329,41 +329,6 @@ struct
       in
       go t0 k0
 
-    let conv_never_use :
-        type r_var r_value.
-           (unit -> 'hack)
-        -> ( unit -> r_var
-           , r_value
-           , 'k_var
-           , 'k_value
-           , _
-           , _ )
-           Typ.Data_spec.data_spec
-        -> ('hack -> 'k_var)
-        -> 'k_var =
-     fun f t k ->
-      let rec go :
-          type k_var k_value.
-             ( unit -> r_var
-             , r_value
-             , k_var
-             , k_value
-             , _
-             , _ )
-             Typ.Data_spec.data_spec
-          -> ('hack -> k_var)
-          -> k_var =
-       fun t ->
-        match t with
-        | [] ->
-            fun k () ->
-              let hack = f () in
-              k hack ()
-        | _ :: t' ->
-            fun k arg -> go t' (fun hack -> k hack arg)
-      in
-      go t k
-
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
         -> ('checked, unit, 'k_var, 'k_value, _, _) Typ.Data_spec.data_spec
@@ -440,8 +405,6 @@ struct
 
   let conv f spec return_typ k =
     Run.conv (fun _ _ x _ -> f x) spec return_typ (fun () -> k)
-
-  let conv_never_use = Run.conv_never_use
 
   let generate_auxiliary_input t ~return_typ k =
     Run.generate_auxiliary_input ~run:Checked.run t ~return_typ k
