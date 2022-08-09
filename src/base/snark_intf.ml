@@ -5,14 +5,6 @@ module Boolean0 = Boolean
 module Typ0 = Typ
 module As_prover0 = As_prover
 
-(** Yojson-compatible JSON type. *)
-type 'a json =
-  [> `String of string
-  | `Assoc of (string * 'a json) list
-  | `List of 'a json list ]
-  as
-  'a
-
 (** The base interface to Snarky. *)
 module type Basic = sig
   (** The finite field over which the R1CS operates. *)
@@ -24,13 +16,6 @@ module type Basic = sig
     type t
 
     val digest : t -> Md5.t
-
-    (** Convert a basic constraint into a JSON representation.
-
-        This representation is compatible with the Yojson library, which can be
-        used to print JSON to the screen, write it to a file, etc.
-    *)
-    val to_json : t -> 'a json
   end
 
   (** Variables in the R1CS. *)
@@ -825,41 +810,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type t = request -> response
   end
 
-  (** Utility functions for running different representations of checked
-      computations using a standard interface.
-  *)
-  module Perform : sig
-    type ('a, 't) t = 't -> Runner.state -> Runner.state * 'a
-
-    val constraint_system :
-         run:('a, 't) t
-      -> exposing:('t, _, 'k_var, _) Data_spec.t
-      -> return_typ:('a, _) Typ.t
-      -> 'k_var
-      -> R1CS_constraint_system.t
-
-    val generate_witness :
-         run:('a, 't) t
-      -> ('t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
-      -> return_typ:('a, _) Typ.t
-      -> 'k_var
-      -> 'k_value
-
-    val generate_witness_conv :
-         run:('a, 't) t
-      -> f:(Proof_inputs.t -> 'public_output -> 'out)
-      -> ('t, 'out, 'k_var, 'k_value) Data_spec.t
-      -> return_typ:('a, 'public_output) Typ.t
-      -> 'k_var
-      -> 'k_value
-
-    val run_unchecked : run:('a, 't) t -> 't -> 'a
-
-    val run_and_check : run:('a As_prover.t, 't) t -> 't -> 'a Or_error.t
-
-    val check : run:('a, 't) t -> 't -> unit Or_error.t
-  end
-
   (** Add a constraint to the constraint system, optionally with the label
       given by [label]. *)
   val assert_ : ?label:string -> Constraint.t -> unit Checked.t
@@ -1002,22 +952,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> _ Typ.t
     -> 'k_var
     -> 'k_value
-
-  (** Internal. Never use this.
-
-      This applies an initial argument to a function, interpreting the argument
-      within the scope of a imperative checked computation, after storing all
-      of the public inputs, but only passing the arguments after computing this
-      initial argument.
-
-      It should always be possible to avoid using this; when this becomes
-      unnecessary, this should be removed.
-  *)
-  val conv_never_use :
-       (unit -> 'hack)
-    -> (unit -> 'r_var, 'r_value, 'k_var, 'k_value) Data_spec.t
-    -> ('hack -> 'k_var)
-    -> 'k_var
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
