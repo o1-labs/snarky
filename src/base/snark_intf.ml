@@ -5,14 +5,6 @@ module Boolean0 = Boolean
 module Typ0 = Typ
 module As_prover0 = As_prover
 
-(** Yojson-compatible JSON type. *)
-type 'a json =
-  [> `String of string
-  | `Assoc of (string * 'a json) list
-  | `List of 'a json list ]
-  as
-  'a
-
 (** The base interface to Snarky. *)
 module type Basic = sig
   (** The finite field over which the R1CS operates. *)
@@ -24,13 +16,6 @@ module type Basic = sig
     type t
 
     val digest : t -> Md5.t
-
-    (** Convert a basic constraint into a JSON representation.
-
-        This representation is compatible with the Yojson library, which can be
-        used to print JSON to the screen, write it to a file, etc.
-    *)
-    val to_json : t -> 'a json
   end
 
   (** Variables in the R1CS. *)
