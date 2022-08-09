@@ -164,6 +164,99 @@ module type Constraint_intf = sig
   val square : (field_var -> field_var -> t) with_constraint_args
 end
 
+module type Field_var_intf = sig
+  type field
+
+  type var
+
+  type boolean_var
+
+  (** The type that stores booleans as R1CS variables. *)
+  type t = field Cvar.t
+
+  (** For debug purposes *)
+  val length : t -> int
+
+  val var_indices : t -> int list
+
+  (** Convert a {!type:t} value to its constituent constant and a list of
+          scaled R1CS variables. *)
+  val to_constant_and_terms : t -> field option * (field * var) list
+
+  (** [constant x] creates a new R1CS variable containing the constant
+          field element [x]. *)
+  val constant : field -> t
+
+  (** [to_constant x] returns [Some f] if x holds only the constant field
+          element [f]. Otherwise, it returns [None].
+      *)
+  val to_constant : t -> field option
+
+  (** [linear_combination [(f1, x1);...;(fn, xn)]] returns the result of
+          calculating [f1 * x1 + f2 * x2 + ... + fn * xn].
+          This does not add a new constraint; see {!type:Constraint.t} for more
+          information.
+      *)
+  val linear_combination : (field * t) list -> t
+
+  (** [sum l] returns the sum of all R1CS variables in [l].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val sum : t list -> t
+
+  (** [add x y] returns the result of adding the R1CS variables [x] and
+          [y].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val add : t -> t -> t
+
+  (** [negate x] returns the additive inverse of x as a field eleement
+      *)
+  val negate : t -> t
+
+  (** [sub x y] returns the result of subtracting the R1CS variables [x]
+          and [y].
+
+          If the result would be less than 0 then the value will underflow
+          to be between 0 and {!val:Field.size}.
+      *)
+  val sub : t -> t -> t
+
+  (** [scale x f] returns the result of multiplying the R1CS variable [x]
+          by the constant field element [f].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val scale : t -> field -> t
+
+  (** Convert a list of bits into a field element.
+
+          [project [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val project : boolean_var list -> t
+
+  (** Convert a list of bits into a field element.
+
+          [pack [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
+
+          This will raise an assertion error if the length of the list is not
+          strictly less than number of bits in {!val:Field.size}.
+
+          Use [project] if you know that the list represents a value less than
+          {!val:Field.size} but where the number of bits may be the maximum, or
+          where overflow is appropriate.
+      *)
+  val pack : boolean_var list -> t
+end
+
 (** The base interface to Snarky. *)
 module type Basic = sig
   (** The finite field over which the R1CS operates. *)
@@ -473,92 +566,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     type var' = Var.t
 
-    module Var : sig
-      (** The type that stores booleans as R1CS variables. *)
-      type t = field Cvar.t
-
-      (** For debug purposes *)
-      val length : t -> int
-
-      val var_indices : t -> int list
-
-      (** Convert a {!type:t} value to its constituent constant and a list of
-          scaled R1CS variables. *)
-      val to_constant_and_terms : t -> field option * (field * Var.t) list
-
-      (** [constant x] creates a new R1CS variable containing the constant
-          field element [x]. *)
-      val constant : field -> t
-
-      (** [to_constant x] returns [Some f] if x holds only the constant field
-          element [f]. Otherwise, it returns [None].
-      *)
-      val to_constant : t -> field option
-
-      (** [linear_combination [(f1, x1);...;(fn, xn)]] returns the result of
-          calculating [f1 * x1 + f2 * x2 + ... + fn * xn].
-          This does not add a new constraint; see {!type:Constraint.t} for more
-          information.
-      *)
-      val linear_combination : (field * t) list -> t
-
-      (** [sum l] returns the sum of all R1CS variables in [l].
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val sum : t list -> t
-
-      (** [add x y] returns the result of adding the R1CS variables [x] and
-          [y].
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val add : t -> t -> t
-
-      (** [negate x] returns the additive inverse of x as a field eleement
-      *)
-      val negate : t -> t
-
-      (** [sub x y] returns the result of subtracting the R1CS variables [x]
-          and [y].
-
-          If the result would be less than 0 then the value will underflow
-          to be between 0 and {!val:Field.size}.
-      *)
-      val sub : t -> t -> t
-
-      (** [scale x f] returns the result of multiplying the R1CS variable [x]
-          by the constant field element [f].
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val scale : t -> field -> t
-
-      (** Convert a list of bits into a field element.
-
-          [project [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val project : Boolean.var list -> t
-
-      (** Convert a list of bits into a field element.
-
-          [pack [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
-
-          This will raise an assertion error if the length of the list is not
-          strictly less than number of bits in {!val:Field.size}.
-
-          Use [project] if you know that the list represents a value less than
-          {!val:Field.size} but where the number of bits may be the maximum, or
-          where overflow is appropriate.
-      *)
-      val pack : Boolean.var list -> t
-    end
+    module Var :
+      Field_var_intf
+        with type field := field
+         and type var := Var.t
+         and type boolean_var := Boolean.var
 
     module Checked : sig
       (** [mul x y] returns the result of multiplying the R1CS variables [x]
@@ -1295,40 +1307,15 @@ module type Run_basic = sig
       val parity : t -> bool
     end
 
-    type t = field Cvar.t
+    include
+      Field_var_intf
+        with type field := field
+         and type var := Var.t
+         and type boolean_var := Boolean.var
 
     val size_in_bits : int
 
     val size : Bignum_bigint.t
-
-    (** For debug purposes *)
-    val length : t -> int
-
-    val var_indices : t -> int list
-
-    (** Convert a {!type:t} value to its constituent constant and a list of
-          scaled R1CS variables. *)
-    val to_constant_and_terms : t -> field option * (field * Var.t) list
-
-    val constant : field -> t
-
-    val to_constant : t -> field option
-
-    val linear_combination : (field * t) list -> t
-
-    val sum : t list -> t
-
-    val add : t -> t -> t
-
-    val negate : t -> t
-
-    val sub : t -> t -> t
-
-    val scale : t -> field -> t
-
-    val project : Boolean.var list -> t
-
-    val pack : Boolean.var list -> t
 
     val of_int : int -> t
 
