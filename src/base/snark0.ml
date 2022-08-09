@@ -423,8 +423,6 @@ struct
   end
 
   module Perform = struct
-    type ('a, 't) t = 't -> Runner.run_state -> Runner.run_state * 'a
-
     let generate_witness ~run t ~return_typ k =
       Run.generate_witness ~run t ~return_typ k
 
