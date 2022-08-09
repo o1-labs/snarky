@@ -125,6 +125,45 @@ module type Boolean_intf = sig
   end
 end
 
+module type Constraint_intf = sig
+  type field_var
+
+  type field
+
+  (** The type of constraints.
+        In the proof system, every constraint is a rank-1 constraint; that is,
+        the constraint takes the form [a * b = c] for some [a], [b] and [c]
+        which are made up of some linear combination of {!type:Field.Var.t}s.
+
+        For example, a constraint could be [(w + 2*x) * (y + z) = a + b], where
+        [w], [x], [y], [z], [a], and [b] are field variables.
+        Note that a linear combination is the result of adding together some of
+        these variables, each multiplied by a field constant ({!type:Field.t});
+        any time we want to multiply our *variables*, we need to add a new
+        rank-1 constraint.
+    *)
+  type t = (field_var, field) Constraint0.t
+
+  type 'k with_constraint_args = ?label:string -> 'k
+
+  (** A constraint that asserts that the field variable is a boolean: either
+        {!val:Field.zero} or {!val:Field.one}.
+    *)
+  val boolean : (field_var -> t) with_constraint_args
+
+  (** A constraint that asserts that the field variable arguments are equal.
+    *)
+  val equal : (field_var -> field_var -> t) with_constraint_args
+
+  (** A bare rank-1 constraint. *)
+  val r1cs : (field_var -> field_var -> field_var -> t) with_constraint_args
+
+  (** A constraint that asserts that the first variable squares to the
+        second, ie. [square x y] => [x*x = y] within the field.
+    *)
+  val square : (field_var -> field_var -> t) with_constraint_args
+end
+
 (** The base interface to Snarky. *)
 module type Basic = sig
   (** The finite field over which the R1CS operates. *)
@@ -156,41 +195,10 @@ module type Basic = sig
   end
 
   (** Rank-1 constraints over {!type:Var.t}s. *)
-  module rec Constraint : sig
-    (** The type of constraints.
-        In the proof system, every constraint is a rank-1 constraint; that is,
-        the constraint takes the form [a * b = c] for some [a], [b] and [c]
-        which are made up of some linear combination of {!type:Field.Var.t}s.
-
-        For example, a constraint could be [(w + 2*x) * (y + z) = a + b], where
-        [w], [x], [y], [z], [a], and [b] are field variables.
-        Note that a linear combination is the result of adding together some of
-        these variables, each multiplied by a field constant ({!type:Field.t});
-        any time we want to multiply our *variables*, we need to add a new
-        rank-1 constraint.
-    *)
-    type t = (Field.Var.t, Field.t) Constraint0.t
-
-    type 'k with_constraint_args = ?label:string -> 'k
-
-    (** A constraint that asserts that the field variable is a boolean: either
-        {!val:Field.zero} or {!val:Field.one}.
-    *)
-    val boolean : (Field.Var.t -> t) with_constraint_args
-
-    (** A constraint that asserts that the field variable arguments are equal.
-    *)
-    val equal : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
-
-    (** A bare rank-1 constraint. *)
-    val r1cs :
-      (Field.Var.t -> Field.Var.t -> Field.Var.t -> t) with_constraint_args
-
-    (** A constraint that asserts that the first variable squares to the
-        second, ie. [square x y] => [x*x = y] within the field.
-    *)
-    val square : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
-  end
+  module rec Constraint :
+    (Constraint_intf
+      with type field := Field.t
+       and type field_var := Field.Var.t)
 
   (** The data specification for checked computations. *)
   and Data_spec : sig
@@ -1110,19 +1118,10 @@ module type Run_basic = sig
   end
 
   (** Rank-1 constraints over {!type:Field.t}s. *)
-  module rec Constraint : sig
-    type t = (Field.t, Field.Constant.t) Constraint0.t
-
-    type 'k with_constraint_args = ?label:string -> 'k
-
-    val boolean : (Field.t -> t) with_constraint_args
-
-    val equal : (Field.t -> Field.t -> t) with_constraint_args
-
-    val r1cs : (Field.t -> Field.t -> Field.t -> t) with_constraint_args
-
-    val square : (Field.t -> Field.t -> t) with_constraint_args
-  end
+  module rec Constraint :
+    (Constraint_intf
+      with type field := Field.Constant.t
+       and type field_var := Field.t)
 
   (** The data specification for checked computations. *)
   and Data_spec : sig
