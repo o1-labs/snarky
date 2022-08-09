@@ -257,6 +257,160 @@ module type Field_var_intf = sig
   val pack : boolean_var list -> t
 end
 
+module type Field_checked_intf = sig
+  type field
+
+  type field_var
+
+  type scale_field
+
+  type _ checked
+
+  type boolean_var
+
+  (** [mul x y] returns the result of multiplying the R1CS variables [x]
+          and [y].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val mul : field_var -> field_var -> field_var checked
+
+  (** [square x] returns the result of multiplying the R1CS variables [x]
+          by itself.
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val square : field_var -> field_var checked
+
+  (** [div x y] returns the result of dividing the R1CS variable [x] by
+          [y].
+
+          If [x] is not an integer multiple of [y], the result could be any
+          value; it is equivalent to computing [mul x (inv y)].
+
+          If [y] is 0, this raises a [Failure].
+      *)
+  val div : field_var -> field_var -> field_var checked
+
+  (** [inv x] returns the value such that [mul x (inv x) = 1].
+
+          If [x] is 0, this raises a [Failure].
+      *)
+  val inv : field_var -> field_var checked
+
+  (** [is_square x] checks if [x] is a square in the field.
+      *)
+  val is_square : field_var -> boolean_var checked
+
+  (** [sqrt x] is the square root of [x] if [x] is a square. If not, this
+          raises a [Failure]
+      *)
+  val sqrt : field_var -> field_var checked
+
+  (** If [x] is a square in the field and [(y, b) = sqrt_check x],
+        If b = true, then x is a square and y is sqrt(x)
+        If b = false, then x is not a square y is a value which is not meaningful. *)
+  val sqrt_check : field_var -> (field_var * boolean_var) checked
+
+  (** [equal x y] returns a R1CS variable containing the value [true] if
+          the R1CS variables [x] and [y] are equal, or [false] otherwise.
+      *)
+  val equal : field_var -> field_var -> boolean_var checked
+
+  (** [unpack x ~length] returns a list of R1CS variables containing the
+          [length] lowest bits of [x]. If [length] is greater than the number
+          of bits in {!val:Field.size} then this raises a [Failure].
+
+          For example,
+          - [unpack 8 ~length:4 = [0; 0; 0; 1]]
+          - [unpack 9 ~length:3 = [1; 0; 0]]
+          - [unpack 9 ~length:5 = [1; 0; 0; 1; 0]]
+      *)
+  val unpack : field_var -> length:int -> boolean_var list checked
+
+  (** [unpack x ~length = (unpack x ~length, `Success success)], where
+          [success] is an R1CS variable containing [true] if the returned bits
+          represent [x], and [false] otherwise.
+
+          If [length] is greater than the number of bits in {!val:Field.size}
+          then this raises a [Failure].
+      *)
+  val unpack_flagged :
+       field_var
+    -> length:int
+    -> (boolean_var list * [ `Success of boolean_var ]) checked
+
+  (** [unpack x ~length] returns a list of R1CS variables containing the
+          bits of [x].
+      *)
+  val unpack_full :
+    field_var -> boolean_var Bitstring_lib.Bitstring.Lsb_first.t checked
+
+  (** Get the least significant bit of a field element [x].
+          Pass a value for [length] if you know that [x] fits in [length] many bits.
+      *)
+  val parity : ?length:int -> field_var -> boolean_var checked
+
+  (** [unpack x ~length] returns a list of R1CS variables containing the
+          [length] lowest bits of [x].
+      *)
+  val choose_preimage_var : field_var -> length:int -> boolean_var list checked
+
+  (** The type of results from checked comparisons, stored as boolean R1CS
+          variables.
+      *)
+  type comparison_result = { less : boolean_var; less_or_equal : boolean_var }
+
+  (** [compare ~bit_length x y] compares the [bit_length] lowest bits of
+          [x] and [y]. [bit_length] must be [<= size_in_bits - 2].
+
+          This requires converting an R1CS variable into a list of bits.
+
+          WARNING: [x] and [y] must be known to be less than [2^{bit_length}]
+                   already, otherwise this function may not return the correct
+                   result.
+      *)
+  val compare :
+    bit_length:int -> field_var -> field_var -> comparison_result checked
+
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+          otherwise.
+      *)
+  val if_ :
+    boolean_var -> then_:field_var -> else_:field_var -> field_var checked
+
+  (** Infix notations for the basic field operations. *)
+
+  val ( + ) : field_var -> field_var -> field_var
+
+  val ( - ) : field_var -> field_var -> field_var
+
+  val ( * ) : scale_field -> field_var -> field_var
+
+  module Unsafe : sig
+    val of_index : int -> field_var
+  end
+
+  (** Assertions *)
+  module Assert : sig
+    val lte : bit_length:int -> field_var -> field_var -> unit checked
+
+    val gte : bit_length:int -> field_var -> field_var -> unit checked
+
+    val lt : bit_length:int -> field_var -> field_var -> unit checked
+
+    val gt : bit_length:int -> field_var -> field_var -> unit checked
+
+    val not_equal : field_var -> field_var -> unit checked
+
+    val equal : field_var -> field_var -> unit checked
+
+    val non_zero : field_var -> unit checked
+  end
+end
+
 (** The base interface to Snarky. *)
 module type Basic = sig
   (** The finite field over which the R1CS operates. *)
@@ -572,150 +726,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
          and type var := Var.t
          and type boolean_var := Boolean.var
 
-    module Checked : sig
-      (** [mul x y] returns the result of multiplying the R1CS variables [x]
-          and [y].
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val mul : Var.t -> Var.t -> Var.t Checked.t
-
-      (** [square x] returns the result of multiplying the R1CS variables [x]
-          by itself.
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val square : Var.t -> Var.t Checked.t
-
-      (** [div x y] returns the result of dividing the R1CS variable [x] by
-          [y].
-
-          If [x] is not an integer multiple of [y], the result could be any
-          value; it is equivalent to computing [mul x (inv y)].
-
-          If [y] is 0, this raises a [Failure].
-      *)
-      val div : Var.t -> Var.t -> Var.t Checked.t
-
-      (** [inv x] returns the value such that [mul x (inv x) = 1].
-
-          If [x] is 0, this raises a [Failure].
-      *)
-      val inv : Var.t -> Var.t Checked.t
-
-      (** [is_square x] checks if [x] is a square in the field.
-      *)
-      val is_square : Var.t -> Boolean.var Checked.t
-
-      (** [sqrt x] is the square root of [x] if [x] is a square. If not, this
-          raises a [Failure]
-      *)
-      val sqrt : Var.t -> Var.t Checked.t
-
-      (** If [x] is a square in the field and [(y, b) = sqrt_check x],
-        If b = true, then x is a square and y is sqrt(x)
-        If b = false, then x is not a square y is a value which is not meaningful. *)
-      val sqrt_check : Var.t -> (Var.t * Boolean.var) Checked.t
-
-      (** [equal x y] returns a R1CS variable containing the value [true] if
-          the R1CS variables [x] and [y] are equal, or [false] otherwise.
-      *)
-      val equal : Var.t -> Var.t -> Boolean.var Checked.t
-
-      (** [unpack x ~length] returns a list of R1CS variables containing the
-          [length] lowest bits of [x]. If [length] is greater than the number
-          of bits in {!val:Field.size} then this raises a [Failure].
-
-          For example,
-          - [unpack 8 ~length:4 = [0; 0; 0; 1]]
-          - [unpack 9 ~length:3 = [1; 0; 0]]
-          - [unpack 9 ~length:5 = [1; 0; 0; 1; 0]]
-      *)
-      val unpack : Var.t -> length:int -> Boolean.var list Checked.t
-
-      (** [unpack x ~length = (unpack x ~length, `Success success)], where
-          [success] is an R1CS variable containing [true] if the returned bits
-          represent [x], and [false] otherwise.
-
-          If [length] is greater than the number of bits in {!val:Field.size}
-          then this raises a [Failure].
-      *)
-      val unpack_flagged :
-           Var.t
-        -> length:int
-        -> (Boolean.var list * [ `Success of Boolean.var ]) Checked.t
-
-      (** [unpack x ~length] returns a list of R1CS variables containing the
-          bits of [x].
-      *)
-      val unpack_full :
-        Var.t -> Boolean.var Bitstring_lib.Bitstring.Lsb_first.t Checked.t
-
-      (** Get the least significant bit of a field element [x].
-          Pass a value for [length] if you know that [x] fits in [length] many bits.
-      *)
-      val parity : ?length:int -> Var.t -> Boolean.var Checked.t
-
-      (** [unpack x ~length] returns a list of R1CS variables containing the
-          [length] lowest bits of [x].
-      *)
-      val choose_preimage_var :
-        Var.t -> length:int -> Boolean.var list Checked.t
-
-      (** The type of results from checked comparisons, stored as boolean R1CS
-          variables.
-      *)
-      type comparison_result =
-        { less : Boolean.var; less_or_equal : Boolean.var }
-
-      (** [compare ~bit_length x y] compares the [bit_length] lowest bits of
-          [x] and [y]. [bit_length] must be [<= size_in_bits - 2].
-
-          This requires converting an R1CS variable into a list of bits.
-
-          WARNING: [x] and [y] must be known to be less than [2^{bit_length}]
-                   already, otherwise this function may not return the correct
-                   result.
-      *)
-      val compare :
-        bit_length:int -> Var.t -> Var.t -> comparison_result Checked.t
-
-      (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
-          otherwise.
-      *)
-      val if_ : Boolean.var -> then_:Var.t -> else_:Var.t -> Var.t Checked.t
-
-      (** Infix notations for the basic field operations. *)
-
-      val ( + ) : Var.t -> Var.t -> Var.t
-
-      val ( - ) : Var.t -> Var.t -> Var.t
-
-      val ( * ) : field -> Var.t -> Var.t
-
-      module Unsafe : sig
-        val of_index : int -> Var.t
-      end
-
-      (** Assertions *)
-      module Assert : sig
-        val lte : bit_length:int -> Var.t -> Var.t -> unit Checked.t
-
-        val gte : bit_length:int -> Var.t -> Var.t -> unit Checked.t
-
-        val lt : bit_length:int -> Var.t -> Var.t -> unit Checked.t
-
-        val gt : bit_length:int -> Var.t -> Var.t -> unit Checked.t
-
-        val not_equal : Var.t -> Var.t -> unit Checked.t
-
-        val equal : Var.t -> Var.t -> unit Checked.t
-
-        val non_zero : Var.t -> unit Checked.t
-      end
-    end
+    module Checked :
+      Field_checked_intf
+        with type field := field
+         and type field_var := Var.t
+         and type scale_field := field
+        (* TODO: harmonise this *)
+         and type 'a checked := 'a Checked.t
+         and type boolean_var := Boolean.var
 
     (** Describes how to convert between {!type:t} and {!type:Var.t} values. *)
     val typ : (Var.t, t) Typ.t
@@ -1313,6 +1331,15 @@ module type Run_basic = sig
          and type var := Var.t
          and type boolean_var := Boolean.var
 
+    include
+      Field_checked_intf
+        with type field := field
+         and type field_var := t
+         and type scale_field := t
+        (* TODO: harmonise this *)
+         and type 'a checked := 'a
+         and type boolean_var := Boolean.var
+
     val size_in_bits : int
 
     val size : Bignum_bigint.t
@@ -1323,66 +1350,7 @@ module type Run_basic = sig
 
     val zero : t
 
-    val mul : t -> t -> t
-
-    val square : t -> t
-
-    val div : t -> t -> t
-
-    val inv : t -> t
-
-    val is_square : t -> Boolean.var
-
-    val sqrt : t -> t
-
-    val sqrt_check : t -> t * Boolean.var
-
-    val equal : t -> t -> Boolean.var
-
-    val unpack : t -> length:int -> Boolean.var list
-
-    val unpack_flagged :
-      t -> length:int -> Boolean.var list * [ `Success of Boolean.var ]
-
-    val unpack_full : t -> Boolean.var Bitstring_lib.Bitstring.Lsb_first.t
-
-    val parity : ?length:int -> t -> Boolean.var
-
-    val choose_preimage_var : t -> length:int -> Boolean.var list
-
-    type comparison_result = { less : Boolean.var; less_or_equal : Boolean.var }
-
-    val compare : bit_length:int -> t -> t -> comparison_result
-
-    val if_ : Boolean.var -> then_:t -> else_:t -> t
-
-    val ( + ) : t -> t -> t
-
-    val ( - ) : t -> t -> t
-
-    val ( * ) : t -> t -> t
-
     val ( / ) : t -> t -> t
-
-    module Unsafe : sig
-      val of_index : int -> t
-    end
-
-    module Assert : sig
-      val lte : bit_length:int -> t -> t -> unit
-
-      val gte : bit_length:int -> t -> t -> unit
-
-      val lt : bit_length:int -> t -> t -> unit
-
-      val gt : bit_length:int -> t -> t -> unit
-
-      val not_equal : t -> t -> unit
-
-      val equal : t -> t -> unit
-
-      val non_zero : t -> unit
-    end
 
     val typ : (t, Constant.t) Typ.t
   end
