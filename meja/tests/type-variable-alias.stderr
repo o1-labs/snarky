@@ -1,4 +1,0 @@
-File "tests/type-variable-alias.meja", line 9, characters 4-5:
-Error: Incompatible types ((bool -> int) -> 'a -> 'b, unit -> unit) and
-       ((int -> bool) -> int -> bool -> unit, unit -> unit):
-       Cannot unify bool and int
