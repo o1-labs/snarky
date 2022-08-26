@@ -1,4 +1,0 @@
-File "tests/gadt-syntax-error.meja", line 1, characters 9-18:
-Error: GADT case syntax cannot be used in a non-recursive type.
-       To use this syntax, use 'type rec' for this type definition.
-

@@ -1,3 +1,0 @@
-File "tests/wrong_num_args-fail.meja", line 3, characters 9-15:
-Error: The type constructor t expects 2 argument(s)
-       but is here applied to 1 argument(s).
