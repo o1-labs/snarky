@@ -5,13 +5,560 @@ module Boolean0 = Boolean
 module Typ0 = Typ
 module As_prover0 = As_prover
 
-(** Yojson-compatible JSON type. *)
-type 'a json =
-  [> `String of string
-  | `Assoc of (string * 'a json) list
-  | `List of 'a json list ]
-  as
-  'a
+module type Boolean_intf = sig
+  type field_var
+
+  type _ checked
+
+  type (_, _) typ
+
+  (** The type that stores booleans as R1CS variables. *)
+  type var
+
+  type value = bool
+
+  (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
+  val true_ : var
+
+  (** An R1CS variable containing {!val:Field.zero}, representing [false]. *)
+  val false_ : var
+
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+        otherwise.
+    *)
+  val if_ : var -> then_:var -> else_:var -> var checked
+
+  (** Negate a boolean value *)
+  val not : var -> var
+
+  (** Boolean and *)
+  val ( && ) : var -> var -> var checked
+
+  (** Boolean and, non-aliasing to [bool] operator. *)
+  val ( &&& ) : var -> var -> var checked
+
+  (** Boolean or *)
+  val ( || ) : var -> var -> var checked
+
+  (** Boolean or, non-aliasing to [bool] operator. *)
+  val ( ||| ) : var -> var -> var checked
+
+  (** Boolean xor (exclusive-or) *)
+  val ( lxor ) : var -> var -> var checked
+
+  (** Returns [true] if any value in the list is true, false otherwise. *)
+  val any : var list -> var checked
+
+  (** Returns [true] if all value in the list are true, false otherwise. *)
+  val all : var list -> var checked
+
+  (** Convert a value in a field to a boolean, adding checks to the R1CS that
+       it is a valid boolean value. *)
+  val of_field : field_var -> var checked
+
+  (** Convert an OCaml [bool] into a R1CS variable representing the same
+        value. *)
+  val var_of_value : value -> var
+
+  (** The relationship between {!val:var} and {!val:value}, with a check that
+        the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)
+  val typ : (var, value) typ
+
+  (** {!val:typ} without a validity check for the underlying field value. *)
+  val typ_unchecked : (var, value) typ
+
+  val equal : var -> var -> var checked
+
+  (** Build trees representing boolean expressions. *)
+  module Expr : sig
+    (** Expression trees. *)
+    type t
+
+    val ( ! ) : var -> t
+
+    val ( && ) : t -> t -> t
+
+    val ( &&& ) : t -> t -> t
+
+    val ( || ) : t -> t -> t
+
+    val ( ||| ) : t -> t -> t
+
+    val any : t list -> t
+
+    val all : t list -> t
+
+    val not : t -> t
+
+    (** Evaluate the expression tree. *)
+    val eval : t -> var checked
+
+    val assert_ : t -> unit checked
+  end
+
+  module Unsafe : sig
+    val of_cvar : field_var -> var
+  end
+
+  module Assert : sig
+    val ( = ) : var -> var -> unit checked
+
+    val is_true : var -> unit checked
+
+    val any : var list -> unit checked
+
+    val all : var list -> unit checked
+
+    val exactly_one : var list -> unit checked
+  end
+
+  module Array : sig
+    val any : var array -> var checked
+
+    val all : var array -> var checked
+
+    module Assert : sig
+      val any : var array -> unit checked
+
+      val all : var array -> unit checked
+    end
+  end
+end
+
+module type Typ_intf = sig
+  type field
+
+  type field_var
+
+  type _ checked
+
+  type checked_unit
+
+  type (_, _, _, _) data_spec
+
+  type _ prover_ref
+
+  (** The type [('var, 'value) t] describes a mapping from the OCaml type
+        ['value] to a type representing the value using R1CS variables
+        (['var]).
+        This description includes
+        - a {!type:Store.t} for storing ['value]s as ['var]s
+        - a {!type:Alloc.t} for creating a ['var] when we don't know what values
+          it should contain yet
+        - a {!type:Read.t} for reading the contents of the ['var] back out as a
+          ['value] in {!module:As_prover} blocks
+        - a {!type:Checked.t} for asserting constraints on the ['var] -- for
+          example, that a [Boolean.t] is either a {!val:Field.zero} or a
+          {!val:Field.one}.
+    *)
+  type ('var, 'value) t = ('var, 'value, field, checked_unit) Types.Typ.t
+
+  (** Basic instances: *)
+
+  val unit : (unit, unit) t
+
+  val field : (field_var, field) t
+
+  (** Common constructors: *)
+
+  val tuple2 :
+       ('var1, 'value1) t
+    -> ('var2, 'value2) t
+    -> ('var1 * 'var2, 'value1 * 'value2) t
+
+  (** synonym for {!val:tuple2} *)
+  val ( * ) :
+       ('var1, 'value1) t
+    -> ('var2, 'value2) t
+    -> ('var1 * 'var2, 'value1 * 'value2) t
+
+  val tuple3 :
+       ('var1, 'value1) t
+    -> ('var2, 'value2) t
+    -> ('var3, 'value3) t
+    -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
+
+  (** [list ~length typ] describes how to convert between a ['value list] and
+        a ['var list], given a description of how to convert between a ['value]
+        and a ['var].
+
+        [length] must be the length of the lists that are converted. This value
+        must be constant for every use; otherwise the constraint system may use
+        a different number of variables depending on the data given.
+
+        Passing a list of the wrong length throws an error.
+    *)
+  val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
+
+  (** [array ~length typ] describes how to convert between a ['value array]
+        and a ['var array], given a description of how to convert between a
+        ['value] and a ['var].
+
+        [length] must be the length of the arrays that are converted. This
+        value must be constant for every use; otherwise the constraint system
+        may use a different number of variables depending on the data given.
+
+        Passing an array of the wrong length throws an error.
+    *)
+  val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
+
+  (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
+        a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
+  val hlist :
+       (unit, unit, 'k_var, 'k_value) data_spec
+    -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
+
+  (** Convert relationships over
+        {{:https://en.wikipedia.org/wiki/Isomorphism}isomorphic} types: *)
+
+  val transport :
+       ('var, 'value1) t
+    -> there:('value2 -> 'value1)
+    -> back:('value1 -> 'value2)
+    -> ('var, 'value2) t
+
+  val transport_var :
+       ('var1, 'value) t
+    -> there:('var2 -> 'var1)
+    -> back:('var1 -> 'var2)
+    -> ('var2, 'value) t
+
+  (** A specialised version of {!val:transport}/{!val:transport_var} that
+        describes the relationship between ['var] and ['value] in terms of a
+        {!type:Data_spec.t}.
+    *)
+  val of_hlistable :
+       (unit, unit, 'k_var, 'k_value) data_spec
+    -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
+    -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
+    -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
+    -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
+    -> ('var, 'value) t
+
+  (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
+        and normal OCaml data.
+
+        Using this module is not recommended.
+    *)
+  module Internal : sig
+    (** A do-nothing [Typ.t] that returns the input value for all modes. This
+          may be used to convert objects from the [Checked] world into and
+          through [As_prover] blocks.
+
+          This is the dual of [ref], which allows [OCaml] values from
+          [As_prover] blocks to pass through the [Checked] world.
+
+          Note: Reading or writing using this [Typ.t] will assert that the
+          argument and the value stored are physically equal -- ie. that they
+          refer to the same object.
+      *)
+    val snarkless : 'a -> ('a, 'a) t
+
+    (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
+          blocks, while keeping them opaque to the [Checked] world.
+
+          This is the dual of [snarkless], which allows [OCaml] values from the
+          [Checked] world to pass through [As_prover] blocks.
+    *)
+    val ref : unit -> ('a prover_ref, 'a) t
+  end
+
+  module type S =
+    Typ0.Intf.S
+      with type field := field
+       and type field_var := field_var
+       and type 'a checked = 'a checked
+
+  val mk_typ :
+       (module S with type Var.t = 'var and type Value.t = 'value)
+    -> ('var, 'value) t
+end
+
+module type Constraint_intf = sig
+  type field_var
+
+  type field
+
+  (** The type of constraints.
+        In the proof system, every constraint is a rank-1 constraint; that is,
+        the constraint takes the form [a * b = c] for some [a], [b] and [c]
+        which are made up of some linear combination of {!type:Field.Var.t}s.
+
+        For example, a constraint could be [(w + 2*x) * (y + z) = a + b], where
+        [w], [x], [y], [z], [a], and [b] are field variables.
+        Note that a linear combination is the result of adding together some of
+        these variables, each multiplied by a field constant ({!type:Field.t});
+        any time we want to multiply our *variables*, we need to add a new
+        rank-1 constraint.
+    *)
+  type t = (field_var, field) Constraint0.t
+
+  type 'k with_constraint_args = ?label:string -> 'k
+
+  (** A constraint that asserts that the field variable is a boolean: either
+        {!val:Field.zero} or {!val:Field.one}.
+    *)
+  val boolean : (field_var -> t) with_constraint_args
+
+  (** A constraint that asserts that the field variable arguments are equal.
+    *)
+  val equal : (field_var -> field_var -> t) with_constraint_args
+
+  (** A bare rank-1 constraint. *)
+  val r1cs : (field_var -> field_var -> field_var -> t) with_constraint_args
+
+  (** A constraint that asserts that the first variable squares to the
+        second, ie. [square x y] => [x*x = y] within the field.
+    *)
+  val square : (field_var -> field_var -> t) with_constraint_args
+end
+
+module type Field_var_intf = sig
+  type field
+
+  type var
+
+  type boolean_var
+
+  (** The type that stores booleans as R1CS variables. *)
+  type t = field Cvar.t
+
+  (** For debug purposes *)
+  val length : t -> int
+
+  val var_indices : t -> int list
+
+  (** Convert a {!type:t} value to its constituent constant and a list of
+          scaled R1CS variables. *)
+  val to_constant_and_terms : t -> field option * (field * var) list
+
+  (** [constant x] creates a new R1CS variable containing the constant
+          field element [x]. *)
+  val constant : field -> t
+
+  (** [to_constant x] returns [Some f] if x holds only the constant field
+          element [f]. Otherwise, it returns [None].
+      *)
+  val to_constant : t -> field option
+
+  (** [linear_combination [(f1, x1);...;(fn, xn)]] returns the result of
+          calculating [f1 * x1 + f2 * x2 + ... + fn * xn].
+          This does not add a new constraint; see {!type:Constraint.t} for more
+          information.
+      *)
+  val linear_combination : (field * t) list -> t
+
+  (** [sum l] returns the sum of all R1CS variables in [l].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val sum : t list -> t
+
+  (** [add x y] returns the result of adding the R1CS variables [x] and
+          [y].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val add : t -> t -> t
+
+  (** [negate x] returns the additive inverse of x as a field eleement
+      *)
+  val negate : t -> t
+
+  (** [sub x y] returns the result of subtracting the R1CS variables [x]
+          and [y].
+
+          If the result would be less than 0 then the value will underflow
+          to be between 0 and {!val:Field.size}.
+      *)
+  val sub : t -> t -> t
+
+  (** [scale x f] returns the result of multiplying the R1CS variable [x]
+          by the constant field element [f].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val scale : t -> field -> t
+
+  (** Convert a list of bits into a field element.
+
+          [project [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val project : boolean_var list -> t
+
+  (** Convert a list of bits into a field element.
+
+          [pack [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
+
+          This will raise an assertion error if the length of the list is not
+          strictly less than number of bits in {!val:Field.size}.
+
+          Use [project] if you know that the list represents a value less than
+          {!val:Field.size} but where the number of bits may be the maximum, or
+          where overflow is appropriate.
+      *)
+  val pack : boolean_var list -> t
+end
+
+module type Field_checked_intf = sig
+  type field
+
+  type field_var
+
+  type scale_field
+
+  type _ checked
+
+  type boolean_var
+
+  (** [mul x y] returns the result of multiplying the R1CS variables [x]
+          and [y].
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val mul : field_var -> field_var -> field_var checked
+
+  (** [square x] returns the result of multiplying the R1CS variables [x]
+          by itself.
+
+          If the result would be greater than or equal to {!val:Field.size}
+          then the value will overflow to be less than {!val:Field.size}.
+      *)
+  val square : field_var -> field_var checked
+
+  (** [div x y] returns the result of dividing the R1CS variable [x] by
+          [y].
+
+          If [x] is not an integer multiple of [y], the result could be any
+          value; it is equivalent to computing [mul x (inv y)].
+
+          If [y] is 0, this raises a [Failure].
+      *)
+  val div : field_var -> field_var -> field_var checked
+
+  (** [inv x] returns the value such that [mul x (inv x) = 1].
+
+          If [x] is 0, this raises a [Failure].
+      *)
+  val inv : field_var -> field_var checked
+
+  (** [is_square x] checks if [x] is a square in the field.
+      *)
+  val is_square : field_var -> boolean_var checked
+
+  (** [sqrt x] is the square root of [x] if [x] is a square. If not, this
+          raises a [Failure]
+      *)
+  val sqrt : field_var -> field_var checked
+
+  (** If [x] is a square in the field and [(y, b) = sqrt_check x],
+        If b = true, then x is a square and y is sqrt(x)
+        If b = false, then x is not a square y is a value which is not meaningful. *)
+  val sqrt_check : field_var -> (field_var * boolean_var) checked
+
+  (** [equal x y] returns a R1CS variable containing the value [true] if
+          the R1CS variables [x] and [y] are equal, or [false] otherwise.
+      *)
+  val equal : field_var -> field_var -> boolean_var checked
+
+  (** [unpack x ~length] returns a list of R1CS variables containing the
+          [length] lowest bits of [x]. If [length] is greater than the number
+          of bits in {!val:Field.size} then this raises a [Failure].
+
+          For example,
+          - [unpack 8 ~length:4 = [0; 0; 0; 1]]
+          - [unpack 9 ~length:3 = [1; 0; 0]]
+          - [unpack 9 ~length:5 = [1; 0; 0; 1; 0]]
+      *)
+  val unpack : field_var -> length:int -> boolean_var list checked
+
+  (** [unpack x ~length = (unpack x ~length, `Success success)], where
+          [success] is an R1CS variable containing [true] if the returned bits
+          represent [x], and [false] otherwise.
+
+          If [length] is greater than the number of bits in {!val:Field.size}
+          then this raises a [Failure].
+      *)
+  val unpack_flagged :
+       field_var
+    -> length:int
+    -> (boolean_var list * [ `Success of boolean_var ]) checked
+
+  (** [unpack x ~length] returns a list of R1CS variables containing the
+          bits of [x].
+      *)
+  val unpack_full :
+    field_var -> boolean_var Bitstring_lib.Bitstring.Lsb_first.t checked
+
+  (** Get the least significant bit of a field element [x].
+          Pass a value for [length] if you know that [x] fits in [length] many bits.
+      *)
+  val parity : ?length:int -> field_var -> boolean_var checked
+
+  (** [unpack x ~length] returns a list of R1CS variables containing the
+          [length] lowest bits of [x].
+      *)
+  val choose_preimage_var : field_var -> length:int -> boolean_var list checked
+
+  (** The type of results from checked comparisons, stored as boolean R1CS
+          variables.
+      *)
+  type comparison_result = { less : boolean_var; less_or_equal : boolean_var }
+
+  (** [compare ~bit_length x y] compares the [bit_length] lowest bits of
+          [x] and [y]. [bit_length] must be [<= size_in_bits - 2].
+
+          This requires converting an R1CS variable into a list of bits.
+
+          WARNING: [x] and [y] must be known to be less than [2^{bit_length}]
+                   already, otherwise this function may not return the correct
+                   result.
+      *)
+  val compare :
+    bit_length:int -> field_var -> field_var -> comparison_result checked
+
+  (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
+          otherwise.
+      *)
+  val if_ :
+    boolean_var -> then_:field_var -> else_:field_var -> field_var checked
+
+  (** Infix notations for the basic field operations. *)
+
+  val ( + ) : field_var -> field_var -> field_var
+
+  val ( - ) : field_var -> field_var -> field_var
+
+  val ( * ) : scale_field -> field_var -> field_var
+
+  module Unsafe : sig
+    val of_index : int -> field_var
+  end
+
+  (** Assertions *)
+  module Assert : sig
+    val lte : bit_length:int -> field_var -> field_var -> unit checked
+
+    val gte : bit_length:int -> field_var -> field_var -> unit checked
+
+    val lt : bit_length:int -> field_var -> field_var -> unit checked
+
+    val gt : bit_length:int -> field_var -> field_var -> unit checked
+
+    val not_equal : field_var -> field_var -> unit checked
+
+    val equal : field_var -> field_var -> unit checked
+
+    val non_zero : field_var -> unit checked
+  end
+end
 
 (** The base interface to Snarky. *)
 module type Basic = sig
@@ -24,13 +571,6 @@ module type Basic = sig
     type t
 
     val digest : t -> Md5.t
-
-    (** Convert a basic constraint into a JSON representation.
-
-        This representation is compatible with the Yojson library, which can be
-        used to print JSON to the screen, write it to a file, etc.
-    *)
-    val to_json : t -> 'a json
   end
 
   (** Variables in the R1CS. *)
@@ -51,41 +591,10 @@ module type Basic = sig
   end
 
   (** Rank-1 constraints over {!type:Var.t}s. *)
-  module rec Constraint : sig
-    (** The type of constraints.
-        In the proof system, every constraint is a rank-1 constraint; that is,
-        the constraint takes the form [a * b = c] for some [a], [b] and [c]
-        which are made up of some linear combination of {!type:Field.Var.t}s.
-
-        For example, a constraint could be [(w + 2*x) * (y + z) = a + b], where
-        [w], [x], [y], [z], [a], and [b] are field variables.
-        Note that a linear combination is the result of adding together some of
-        these variables, each multiplied by a field constant ({!type:Field.t});
-        any time we want to multiply our *variables*, we need to add a new
-        rank-1 constraint.
-    *)
-    type t = (Field.Var.t, Field.t) Constraint0.t
-
-    type 'k with_constraint_args = ?label:string -> 'k
-
-    (** A constraint that asserts that the field variable is a boolean: either
-        {!val:Field.zero} or {!val:Field.one}.
-    *)
-    val boolean : (Field.Var.t -> t) with_constraint_args
-
-    (** A constraint that asserts that the field variable arguments are equal.
-    *)
-    val equal : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
-
-    (** A bare rank-1 constraint. *)
-    val r1cs :
-      (Field.Var.t -> Field.Var.t -> Field.Var.t -> t) with_constraint_args
-
-    (** A constraint that asserts that the first variable squares to the
-        second, ie. [square x y] => [x*x = y] within the field.
-    *)
-    val square : (Field.Var.t -> Field.Var.t -> t) with_constraint_args
-  end
+  module rec Constraint :
+    (Constraint_intf
+      with type field := Field.t
+       and type field_var := Field.Var.t)
 
   (** The data specification for checked computations. *)
   and Data_spec : sig
@@ -124,140 +633,14 @@ module type Basic = sig
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
-    (** The type [('var, 'value) t] describes a mapping from the OCaml type
-        ['value] to a type representing the value using R1CS variables
-        (['var]).
-        This description includes
-        - a {!type:Store.t} for storing ['value]s as ['var]s
-        - a {!type:Alloc.t} for creating a ['var] when we don't know what values
-          it should contain yet
-        - a {!type:Read.t} for reading the contents of the ['var] back out as a
-          ['value] in {!module:As_prover} blocks
-        - a {!type:Checked.t} for asserting constraints on the ['var] -- for
-          example, that a [Boolean.t] is either a {!val:Field.zero} or a
-          {!val:Field.one}.
-    *)
-    type ('var, 'value) t = ('var, 'value, Field.t, unit Checked.t) Types.Typ.t
-
-    (** Basic instances: *)
-
-    val unit : (unit, unit) t
-
-    val field : (Field.Var.t, field) t
-
-    (** Common constructors: *)
-
-    val tuple2 :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var1 * 'var2, 'value1 * 'value2) t
-
-    (** synonym for {!val:tuple2} *)
-    val ( * ) :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var1 * 'var2, 'value1 * 'value2) t
-
-    val tuple3 :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var3, 'value3) t
-      -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
-
-    (** [list ~length typ] describes how to convert between a ['value list] and
-        a ['var list], given a description of how to convert between a ['value]
-        and a ['var].
-
-        [length] must be the length of the lists that are converted. This value
-        must be constant for every use; otherwise the constraint system may use
-        a different number of variables depending on the data given.
-
-        Passing a list of the wrong length throws an error.
-    *)
-    val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
-
-    (** [array ~length typ] describes how to convert between a ['value array]
-        and a ['var array], given a description of how to convert between a
-        ['value] and a ['var].
-
-        [length] must be the length of the arrays that are converted. This
-        value must be constant for every use; otherwise the constraint system
-        may use a different number of variables depending on the data given.
-
-        Passing an array of the wrong length throws an error.
-    *)
-    val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
-
-    (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
-        a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
-    val hlist :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
-
-    (** Convert relationships over
-        {{:https://en.wikipedia.org/wiki/Isomorphism}isomorphic} types: *)
-
-    val transport :
-         ('var, 'value1) t
-      -> there:('value2 -> 'value1)
-      -> back:('value1 -> 'value2)
-      -> ('var, 'value2) t
-
-    val transport_var :
-         ('var1, 'value) t
-      -> there:('var2 -> 'var1)
-      -> back:('var1 -> 'var2)
-      -> ('var2, 'value) t
-
-    (** A specialised version of {!val:transport}/{!val:transport_var} that
-        describes the relationship between ['var] and ['value] in terms of a
-        {!type:Data_spec.t}.
-    *)
-    val of_hlistable :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
-      -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
-      -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
-      -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
-      -> ('var, 'value) t
-
-    (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
-        and normal OCaml data.
-
-        Using this module is not recommended.
-    *)
-    module Internal : sig
-      (** A do-nothing [Typ.t] that returns the input value for all modes. This
-          may be used to convert objects from the [Checked] world into and
-          through [As_prover] blocks.
-
-          This is the dual of [ref], which allows [OCaml] values from
-          [As_prover] blocks to pass through the [Checked] world.
-
-          Note: Reading or writing using this [Typ.t] will assert that the
-          argument and the value stored are physically equal -- ie. that they
-          refer to the same object.
-      *)
-      val snarkless : 'a -> ('a, 'a) t
-
-      (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
-          blocks, while keeping them opaque to the [Checked] world.
-
-          This is the dual of [snarkless], which allows [OCaml] values from the
-          [Checked] world to pass through [As_prover] blocks.
-    *)
-      val ref : unit -> ('a As_prover.Ref.t, 'a) t
-    end
-
-    module type S =
-      Typ0.Intf.S
+    include
+      Typ_intf
         with type field := Field.t
          and type field_var := Field.Var.t
-         and type _ checked = unit Checked.t
-
-    val mk_typ :
-         (module S with type Var.t = 'var and type Value.t = 'value)
-      -> ('var, 'value) t
+         and type checked_unit := unit Checked.t
+         and type _ checked := unit Checked.t
+         and type ('a, 'b, 'c, 'd) data_spec := ('a, 'b, 'c, 'd) Data_spec.t
+         and type 'a prover_ref := 'a As_prover.Ref.t
 
     include module type of Types.Typ.T
   end
@@ -267,119 +650,12 @@ module type Basic = sig
       This representation ties the value of [true] to {!val:Field.one} and
       [false] to {!val:Field.zero}, adding a check in {!val:Boolean.typ} to
       ensure that these are the only vales. *)
-  and Boolean : sig
-    (** The type that stores booleans as R1CS variables. *)
-    type var = Field.Var.t Boolean0.t
-
-    type value = bool
-
-    (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
-    val true_ : var
-
-    (** An R1CS variable containing {!val:Field.zero}, representing [false]. *)
-    val false_ : var
-
-    (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
-        otherwise.
-    *)
-    val if_ : var -> then_:var -> else_:var -> var Checked.t
-
-    (** Negate a boolean value *)
-    val not : var -> var
-
-    (** Boolean and *)
-    val ( && ) : var -> var -> var Checked.t
-
-    (** Boolean and, non-aliasing to [bool] operator. *)
-    val ( &&& ) : var -> var -> var Checked.t
-
-    (** Boolean or *)
-    val ( || ) : var -> var -> var Checked.t
-
-    (** Boolean or, non-aliasing to [bool] operator. *)
-    val ( ||| ) : var -> var -> var Checked.t
-
-    (** Boolean xor (exclusive-or) *)
-    val ( lxor ) : var -> var -> var Checked.t
-
-    (** Returns [true] if any value in the list is true, false otherwise. *)
-    val any : var list -> var Checked.t
-
-    (** Returns [true] if all value in the list are true, false otherwise. *)
-    val all : var list -> var Checked.t
-
-    (** Convert a value in a field to a boolean, adding checks to the R1CS that
-       it is a valid boolean value. *)
-    val of_field : Field.Var.t -> var Checked.t
-
-    (** Convert an OCaml [bool] into a R1CS variable representing the same
-        value. *)
-    val var_of_value : value -> var
-
-    (** The relationship between {!val:var} and {!val:value}, with a check that
-        the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)
-    val typ : (var, value) Typ.t
-
-    (** {!val:typ} without a validity check for the underlying field value. *)
-    val typ_unchecked : (var, value) Typ.t
-
-    val equal : var -> var -> var Checked.t
-
-    (** Build trees representing boolean expressions. *)
-    module Expr : sig
-      (** Expression trees. *)
-      type t
-
-      val ( ! ) : var -> t
-
-      val ( && ) : t -> t -> t
-
-      val ( &&& ) : t -> t -> t
-
-      val ( || ) : t -> t -> t
-
-      val ( ||| ) : t -> t -> t
-
-      val any : t list -> t
-
-      val all : t list -> t
-
-      val not : t -> t
-
-      (** Evaluate the expression tree. *)
-      val eval : t -> var Checked.t
-
-      val assert_ : t -> unit Checked.t
-    end
-
-    module Unsafe : sig
-      val of_cvar : Field.Var.t -> var
-    end
-
-    module Assert : sig
-      val ( = ) : Boolean.var -> Boolean.var -> unit Checked.t
-
-      val is_true : Boolean.var -> unit Checked.t
-
-      val any : var list -> unit Checked.t
-
-      val all : var list -> unit Checked.t
-
-      val exactly_one : var list -> unit Checked.t
-    end
-
-    module Array : sig
-      val any : var array -> var Checked.t
-
-      val all : var array -> var Checked.t
-
-      module Assert : sig
-        val any : var array -> unit Checked.t
-
-        val all : var array -> unit Checked.t
-      end
-    end
-  end
+  and Boolean :
+    (Boolean_intf
+      with type var = Field.Var.t Boolean0.t
+       and type field_var := Field.Var.t
+       and type 'a checked := 'a Checked.t
+       and type ('var, 'value) typ := ('var, 'value) Typ.t)
 
   (** Checked computations.
 
@@ -467,237 +743,20 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     type var' = Var.t
 
-    module Var : sig
-      (** The type that stores booleans as R1CS variables. *)
-      type t = field Cvar.t
+    module Var :
+      Field_var_intf
+        with type field := field
+         and type var := Var.t
+         and type boolean_var := Boolean.var
 
-      (** For debug purposes *)
-      val length : t -> int
-
-      val var_indices : t -> int list
-
-      (** Convert a {!type:t} value to its constituent constant and a list of
-          scaled R1CS variables. *)
-      val to_constant_and_terms : t -> field option * (field * Var.t) list
-
-      (** [constant x] creates a new R1CS variable containing the constant
-          field element [x]. *)
-      val constant : field -> t
-
-      (** [to_constant x] returns [Some f] if x holds only the constant field
-          element [f]. Otherwise, it returns [None].
-      *)
-      val to_constant : t -> field option
-
-      (** [linear_combination [(f1, x1);...;(fn, xn)]] returns the result of
-          calculating [f1 * x1 + f2 * x2 + ... + fn * xn].
-          This does not add a new constraint; see {!type:Constraint.t} for more
-          information.
-      *)
-      val linear_combination : (field * t) list -> t
-
-      (** [sum l] returns the sum of all R1CS variables in [l].
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val sum : t list -> t
-
-      (** [add x y] returns the result of adding the R1CS variables [x] and
-          [y].
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val add : t -> t -> t
-
-      (** [negate x] returns the additive inverse of x as a field eleement
-      *)
-      val negate : t -> t
-
-      (** [sub x y] returns the result of subtracting the R1CS variables [x]
-          and [y].
-
-          If the result would be less than 0 then the value will underflow
-          to be between 0 and {!val:Field.size}.
-      *)
-      val sub : t -> t -> t
-
-      (** [scale x f] returns the result of multiplying the R1CS variable [x]
-          by the constant field element [f].
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val scale : t -> field -> t
-
-      (** Convert a list of bits into a field element.
-
-          [project [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val project : Boolean.var list -> t
-
-      (** Convert a list of bits into a field element.
-
-          [pack [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
-
-          This will raise an assertion error if the length of the list is not
-          strictly less than number of bits in {!val:Field.size}.
-
-          Use [project] if you know that the list represents a value less than
-          {!val:Field.size} but where the number of bits may be the maximum, or
-          where overflow is appropriate.
-      *)
-      val pack : Boolean.var list -> t
-    end
-
-    module Checked : sig
-      (** [mul x y] returns the result of multiplying the R1CS variables [x]
-          and [y].
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val mul : Var.t -> Var.t -> Var.t Checked.t
-
-      (** [square x] returns the result of multiplying the R1CS variables [x]
-          by itself.
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-      val square : Var.t -> Var.t Checked.t
-
-      (** [div x y] returns the result of dividing the R1CS variable [x] by
-          [y].
-
-          If [x] is not an integer multiple of [y], the result could be any
-          value; it is equivalent to computing [mul x (inv y)].
-
-          If [y] is 0, this raises a [Failure].
-      *)
-      val div : Var.t -> Var.t -> Var.t Checked.t
-
-      (** [inv x] returns the value such that [mul x (inv x) = 1].
-
-          If [x] is 0, this raises a [Failure].
-      *)
-      val inv : Var.t -> Var.t Checked.t
-
-      (** [is_square x] checks if [x] is a square in the field.
-      *)
-      val is_square : Var.t -> Boolean.var Checked.t
-
-      (** [sqrt x] is the square root of [x] if [x] is a square. If not, this
-          raises a [Failure]
-      *)
-      val sqrt : Var.t -> Var.t Checked.t
-
-      (** If [x] is a square in the field and [(y, b) = sqrt_check x],
-        If b = true, then x is a square and y is sqrt(x)
-        If b = false, then x is not a square y is a value which is not meaningful. *)
-      val sqrt_check : Var.t -> (Var.t * Boolean.var) Checked.t
-
-      (** [equal x y] returns a R1CS variable containing the value [true] if
-          the R1CS variables [x] and [y] are equal, or [false] otherwise.
-      *)
-      val equal : Var.t -> Var.t -> Boolean.var Checked.t
-
-      (** [unpack x ~length] returns a list of R1CS variables containing the
-          [length] lowest bits of [x]. If [length] is greater than the number
-          of bits in {!val:Field.size} then this raises a [Failure].
-
-          For example,
-          - [unpack 8 ~length:4 = [0; 0; 0; 1]]
-          - [unpack 9 ~length:3 = [1; 0; 0]]
-          - [unpack 9 ~length:5 = [1; 0; 0; 1; 0]]
-      *)
-      val unpack : Var.t -> length:int -> Boolean.var list Checked.t
-
-      (** [unpack x ~length = (unpack x ~length, `Success success)], where
-          [success] is an R1CS variable containing [true] if the returned bits
-          represent [x], and [false] otherwise.
-
-          If [length] is greater than the number of bits in {!val:Field.size}
-          then this raises a [Failure].
-      *)
-      val unpack_flagged :
-           Var.t
-        -> length:int
-        -> (Boolean.var list * [ `Success of Boolean.var ]) Checked.t
-
-      (** [unpack x ~length] returns a list of R1CS variables containing the
-          bits of [x].
-      *)
-      val unpack_full :
-        Var.t -> Boolean.var Bitstring_lib.Bitstring.Lsb_first.t Checked.t
-
-      (** Get the least significant bit of a field element [x].
-          Pass a value for [length] if you know that [x] fits in [length] many bits.
-      *)
-      val parity : ?length:int -> Var.t -> Boolean.var Checked.t
-
-      (** [unpack x ~length] returns a list of R1CS variables containing the
-          [length] lowest bits of [x].
-      *)
-      val choose_preimage_var :
-        Var.t -> length:int -> Boolean.var list Checked.t
-
-      (** The type of results from checked comparisons, stored as boolean R1CS
-          variables.
-      *)
-      type comparison_result =
-        { less : Boolean.var; less_or_equal : Boolean.var }
-
-      (** [compare ~bit_length x y] compares the [bit_length] lowest bits of
-          [x] and [y]. [bit_length] must be [<= size_in_bits - 2].
-
-          This requires converting an R1CS variable into a list of bits.
-
-          WARNING: [x] and [y] must be known to be less than [2^{bit_length}]
-                   already, otherwise this function may not return the correct
-                   result.
-      *)
-      val compare :
-        bit_length:int -> Var.t -> Var.t -> comparison_result Checked.t
-
-      (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
-          otherwise.
-      *)
-      val if_ : Boolean.var -> then_:Var.t -> else_:Var.t -> Var.t Checked.t
-
-      (** Infix notations for the basic field operations. *)
-
-      val ( + ) : Var.t -> Var.t -> Var.t
-
-      val ( - ) : Var.t -> Var.t -> Var.t
-
-      val ( * ) : field -> Var.t -> Var.t
-
-      module Unsafe : sig
-        val of_index : int -> Var.t
-      end
-
-      (** Assertions *)
-      module Assert : sig
-        val lte : bit_length:int -> Var.t -> Var.t -> unit Checked.t
-
-        val gte : bit_length:int -> Var.t -> Var.t -> unit Checked.t
-
-        val lt : bit_length:int -> Var.t -> Var.t -> unit Checked.t
-
-        val gt : bit_length:int -> Var.t -> Var.t -> unit Checked.t
-
-        val not_equal : Var.t -> Var.t -> unit Checked.t
-
-        val equal : Var.t -> Var.t -> unit Checked.t
-
-        val non_zero : Var.t -> unit Checked.t
-      end
-    end
+    module Checked :
+      Field_checked_intf
+        with type field := field
+         and type field_var := Var.t
+         and type scale_field := field
+        (* TODO: harmonise this *)
+         and type 'a checked := 'a Checked.t
+         and type boolean_var := Boolean.var
 
     (** Describes how to convert between {!type:t} and {!type:Var.t} values. *)
     val typ : (Var.t, t) Typ.t
@@ -823,41 +882,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** The type of handlers. *)
   module Handler : sig
     type t = request -> response
-  end
-
-  (** Utility functions for running different representations of checked
-      computations using a standard interface.
-  *)
-  module Perform : sig
-    type ('a, 't) t = 't -> Runner.state -> Runner.state * 'a
-
-    val constraint_system :
-         run:('a, 't) t
-      -> exposing:('t, _, 'k_var, _) Data_spec.t
-      -> return_typ:('a, _) Typ.t
-      -> 'k_var
-      -> R1CS_constraint_system.t
-
-    val generate_witness :
-         run:('a, 't) t
-      -> ('t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
-      -> return_typ:('a, _) Typ.t
-      -> 'k_var
-      -> 'k_value
-
-    val generate_witness_conv :
-         run:('a, 't) t
-      -> f:(Proof_inputs.t -> 'public_output -> 'out)
-      -> ('t, 'out, 'k_var, 'k_value) Data_spec.t
-      -> return_typ:('a, 'public_output) Typ.t
-      -> 'k_var
-      -> 'k_value
-
-    val run_unchecked : run:('a, 't) t -> 't -> 'a
-
-    val run_and_check : run:('a As_prover.t, 't) t -> 't -> 'a Or_error.t
-
-    val check : run:('a, 't) t -> 't -> unit Or_error.t
   end
 
   (** Add a constraint to the constraint system, optionally with the label
@@ -1003,22 +1027,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> 'k_var
     -> 'k_value
 
-  (** Internal. Never use this.
-
-      This applies an initial argument to a function, interpreting the argument
-      within the scope of a imperative checked computation, after storing all
-      of the public inputs, but only passing the arguments after computing this
-      initial argument.
-
-      It should always be possible to avoid using this; when this becomes
-      unnecessary, this should be removed.
-  *)
-  val conv_never_use :
-       (unit -> 'hack)
-    -> (unit -> 'r_var, 'r_value, 'k_var, 'k_value) Data_spec.t
-    -> ('hack -> 'k_var)
-    -> 'k_var
-
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
     (_, Field.Vector.t, _, 'k_value) Data_spec.t -> 'k_value
@@ -1163,19 +1171,10 @@ module type Run_basic = sig
   end
 
   (** Rank-1 constraints over {!type:Field.t}s. *)
-  module rec Constraint : sig
-    type t = (Field.t, Field.Constant.t) Constraint0.t
-
-    type 'k with_constraint_args = ?label:string -> 'k
-
-    val boolean : (Field.t -> t) with_constraint_args
-
-    val equal : (Field.t -> Field.t -> t) with_constraint_args
-
-    val r1cs : (Field.t -> Field.t -> Field.t -> t) with_constraint_args
-
-    val square : (Field.t -> Field.t -> t) with_constraint_args
-  end
+  module rec Constraint :
+    (Constraint_intf
+      with type field := Field.Constant.t
+       and type field_var := Field.t)
 
   (** The data specification for checked computations. *)
   and Data_spec : sig
@@ -1213,206 +1212,26 @@ module type Run_basic = sig
   end
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
-  and Typ : sig
-    type ('var, 'value) t =
-      ('var, 'value, field, (unit, field) Checked.t) Types.Typ.t
-
-    (** Basic instances: *)
-
-    val unit : (unit, unit) t
-
-    val field : (Field.t, field) t
-
-    (** Common constructors: *)
-
-    val tuple2 :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var1 * 'var2, 'value1 * 'value2) t
-
-    (** synonym for tuple2 *)
-    val ( * ) :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var1 * 'var2, 'value1 * 'value2) t
-
-    val tuple3 :
-         ('var1, 'value1) t
-      -> ('var2, 'value2) t
-      -> ('var3, 'value3) t
-      -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
-
-    val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
-
-    val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
-
-    (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
-        a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
-    val hlist :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
-
-    (** Convert relationships over
-        {{:https://en.wikipedia.org/wiki/Isomorphism}isomorphic} types: *)
-
-    val transport :
-         ('var, 'value1) t
-      -> there:('value2 -> 'value1)
-      -> back:('value1 -> 'value2)
-      -> ('var, 'value2) t
-
-    val transport_var :
-         ('var1, 'value) t
-      -> there:('var2 -> 'var1)
-      -> back:('var1 -> 'var2)
-      -> ('var2, 'value) t
-
-    val of_hlistable :
-         (unit, unit, 'k_var, 'k_value) Data_spec.t
-      -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
-      -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
-      -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
-      -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
-      -> ('var, 'value) t
-
-    (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
-        and normal OCaml data.
-
-        Using this module is strongly discouraged.
-    *)
-    module Internal : sig
-      (** A do-nothing [Typ.t] that returns the input value for all modes.
-
-          This is the dual of [ref], which allows [OCaml] values from
-          [As_prover] blocks to pass through the [Checked] world.
-
-          Note: Reading or writing using this [Typ.t] will assert that the
-          argument and the value stored are physically equal -- ie. that they
-          refer to the same object.
-      *)
-      val snarkless : 'a -> ('a, 'a) t
-
-      (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
-          blocks, while keeping them opaque to the [Checked] world.
-
-          This is the dual of [snarkless], which allows [OCaml] values from the
-          [Checked] world to pass through [As_prover] blocks.
-      *)
-      val ref : unit -> ('a As_prover.Ref.t, 'a) t
-    end
-
-    module type S =
-      Typ0.Intf.S
-        with type field := Field.Constant.t
-         and type field_var := Field.t
-         and type _ checked = unit
-
-    val mk_typ :
-         (module S with type Var.t = 'var and type Value.t = 'value)
-      -> ('var, 'value) t
-  end
+  and Typ :
+    (Typ_intf
+      with type field := Field.Constant.t
+       and type field_var := Field.t
+       and type checked_unit := (unit, field) Checked.t
+       and type _ checked := unit
+       and type ('a, 'b, 'c, 'd) data_spec := ('a, 'b, 'c, 'd) Data_spec.t
+       and type 'a prover_ref := 'a As_prover.Ref.t)
 
   (** Representation of booleans within a field.
 
       This representation ties the value of [true] to {!val:Field.one} and
       [false] to {!val:Field.zero}, adding a check in {!val:Boolean.typ} to
       ensure that these are the only vales. *)
-  and Boolean : sig
-    type var = Field.t Boolean0.t
-
-    type value = bool
-
-    val true_ : var
-
-    val false_ : var
-
-    val if_ : var -> then_:var -> else_:var -> var
-
-    val not : var -> var
-
-    val ( && ) : var -> var -> var
-
-    val ( &&& ) : var -> var -> var
-
-    val ( || ) : var -> var -> var
-
-    val ( ||| ) : var -> var -> var
-
-    val ( lxor ) : var -> var -> var
-
-    val any : var list -> var
-
-    val all : var list -> var
-
-    (** Convert a value in a field to a boolean, adding checks to the R1CS that
-       it is a valid boolean value. *)
-    val of_field : Field.t -> var
-
-    val var_of_value : value -> var
-
-    (** The relationship between {!val:var} and {!val:value}, with a check that
-        the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)
-    val typ : (var, value) Typ.t
-
-    (** {!val:typ} without a validity check for the underlying field value. *)
-    val typ_unchecked : (var, value) Typ.t
-
-    val equal : var -> var -> var
-
-    module Expr : sig
-      (** Expression trees. *)
-      type t
-
-      val ( ! ) : var -> t
-
-      val ( && ) : t -> t -> t
-
-      val ( &&& ) : t -> t -> t
-
-      val ( || ) : t -> t -> t
-
-      val ( ||| ) : t -> t -> t
-
-      val any : t list -> t
-
-      val all : t list -> t
-
-      val not : t -> t
-
-      (** Evaluate the expression tree. *)
-      val eval : t -> var
-
-      val assert_ : t -> unit
-    end
-
-    module Unsafe : sig
-      val of_cvar : Field.t -> var
-    end
-
-    module Assert : sig
-      val ( = ) : var -> var -> unit
-
-      val is_true : var -> unit
-
-      val any : var list -> unit
-
-      val all : var list -> unit
-
-      val exactly_one : var list -> unit
-    end
-
-    module Array : sig
-      val any : var array -> var
-
-      val all : var array -> var
-
-      module Assert : sig
-        val any : var array -> unit
-
-        val all : var array -> unit
-      end
-    end
-  end
+  and Boolean :
+    (Boolean_intf
+      with type var = Field.t Boolean0.t
+       and type field_var := Field.t
+       and type 'a checked := 'a
+       and type ('var, 'value) typ := ('var, 'value) Typ.t)
 
   and Field : sig
     module Constant : sig
@@ -1439,40 +1258,24 @@ module type Run_basic = sig
       val parity : t -> bool
     end
 
-    type t = field Cvar.t
+    include
+      Field_var_intf
+        with type field := field
+         and type var := Var.t
+         and type boolean_var := Boolean.var
+
+    include
+      Field_checked_intf
+        with type field := field
+         and type field_var := t
+         and type scale_field := t
+        (* TODO: harmonise this *)
+         and type 'a checked := 'a
+         and type boolean_var := Boolean.var
 
     val size_in_bits : int
 
     val size : Bignum_bigint.t
-
-    (** For debug purposes *)
-    val length : t -> int
-
-    val var_indices : t -> int list
-
-    (** Convert a {!type:t} value to its constituent constant and a list of
-          scaled R1CS variables. *)
-    val to_constant_and_terms : t -> field option * (field * Var.t) list
-
-    val constant : field -> t
-
-    val to_constant : t -> field option
-
-    val linear_combination : (field * t) list -> t
-
-    val sum : t list -> t
-
-    val add : t -> t -> t
-
-    val negate : t -> t
-
-    val sub : t -> t -> t
-
-    val scale : t -> field -> t
-
-    val project : Boolean.var list -> t
-
-    val pack : Boolean.var list -> t
 
     val of_int : int -> t
 
@@ -1480,66 +1283,7 @@ module type Run_basic = sig
 
     val zero : t
 
-    val mul : t -> t -> t
-
-    val square : t -> t
-
-    val div : t -> t -> t
-
-    val inv : t -> t
-
-    val is_square : t -> Boolean.var
-
-    val sqrt : t -> t
-
-    val sqrt_check : t -> t * Boolean.var
-
-    val equal : t -> t -> Boolean.var
-
-    val unpack : t -> length:int -> Boolean.var list
-
-    val unpack_flagged :
-      t -> length:int -> Boolean.var list * [ `Success of Boolean.var ]
-
-    val unpack_full : t -> Boolean.var Bitstring_lib.Bitstring.Lsb_first.t
-
-    val parity : ?length:int -> t -> Boolean.var
-
-    val choose_preimage_var : t -> length:int -> Boolean.var list
-
-    type comparison_result = { less : Boolean.var; less_or_equal : Boolean.var }
-
-    val compare : bit_length:int -> t -> t -> comparison_result
-
-    val if_ : Boolean.var -> then_:t -> else_:t -> t
-
-    val ( + ) : t -> t -> t
-
-    val ( - ) : t -> t -> t
-
-    val ( * ) : t -> t -> t
-
     val ( / ) : t -> t -> t
-
-    module Unsafe : sig
-      val of_index : int -> t
-    end
-
-    module Assert : sig
-      val lte : bit_length:int -> t -> t -> unit
-
-      val gte : bit_length:int -> t -> t -> unit
-
-      val lt : bit_length:int -> t -> t -> unit
-
-      val gt : bit_length:int -> t -> t -> unit
-
-      val not_equal : t -> t -> unit
-
-      val equal : t -> t -> unit
-
-      val non_zero : t -> unit
-    end
 
     val typ : (t, Constant.t) Typ.t
   end

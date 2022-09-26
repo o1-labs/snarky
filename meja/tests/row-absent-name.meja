@@ -1,3 +1,0 @@
-module type S = {
-  let x : [< `X > `Y];
-};

@@ -1,9 +1,0 @@
-module type M = {
-  type t;
-};
-
-Prover {
-  module type M = {
-    type u;
-  };
-};

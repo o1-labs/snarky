@@ -1,3 +1,0 @@
-let a = fun (~a) => { a; };
-
-let b = fun () => { a(~b = true); };

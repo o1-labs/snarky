@@ -1,8 +1,0 @@
-/* Test that aliases are unfolded when searching for instances. */
-type t('a) = int;
-
-instance x = (15 : t(bool));
-
-let f = fun {y : t(int)} => { y; };
-
-let g = f;
