@@ -1,3 +1,0 @@
-File "tests/shadowing-module-type-prover-checked.meja", line 11, characters 17-18:
-Error: Could not find a module type S:
-       The current definition is only available in prover mode.

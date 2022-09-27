@@ -1,3 +1,0 @@
-File "tests/literal-overflow.meja", line 1, characters 8-31:
-Error: Integer literal exceeds the range of representable integers of type
-       int.

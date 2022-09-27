@@ -1,9 +1,0 @@
-let f = fun (x : ('x, 'y), y: 'b, b) => {
-  let y = Prover { y; };
-  if (b) { x; } else { y; };
-};
-
-let g = fun (b: boolean, x: field) => {
-  ignore(f((b, b), (true, false), true));
-  f((x, x), (x, x), false);
-};
