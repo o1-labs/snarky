@@ -1028,10 +1028,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
   val conv :
        ('r_var -> 'r_value)
-    -> ('r_var, 'r_value, 'k_var, 'k_value) Data_spec.t
+    -> ( 'r_var
+       , 'r_value
+       , 'input_var -> 'r_var
+       , 'input_value -> 'r_value )
+       Data_spec.t
     -> _ Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> 'r_var)
+    -> 'input_value
+    -> 'r_value
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
@@ -1049,10 +1054,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       corresponding to the given public input and generated auxiliary input.
   *)
   val generate_witness :
-       ('r_var Checked.t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+       ( 'r_var Checked.t
+       , Proof_inputs.t
+       , 'input_var -> 'r_var Checked.t
+       , 'input_value -> Proof_inputs.t )
+       Data_spec.t
     -> return_typ:('r_var, _) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> 'r_var Checked.t)
+    -> 'input_value
+    -> Proof_inputs.t
 
   (** Generate a witness (auxiliary input) for the given public input and pass
       the result to a function.
@@ -1063,10 +1073,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
   val generate_witness_conv :
        f:(Proof_inputs.t -> 'r_value -> 'out)
-    -> ('r_var Checked.t, 'out, 'k_var, 'k_value) Data_spec.t
+    -> ( 'r_var Checked.t
+       , 'out
+       , 'input_var -> 'r_var Checked.t
+       , 'input_value -> 'out )
+       Data_spec.t
     -> return_typ:('r_var, 'r_value) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> 'r_var Checked.t)
+    -> 'input_value
+    -> 'out
 
   (** Run a checked computation as the prover, without checking the
       constraints. *)
@@ -1085,10 +1100,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       Returns [unit]; this is for testing only.
   *)
   val generate_auxiliary_input :
-       ('a Checked.t, unit, 'k_var, 'k_value) Data_spec.t
+       ( 'a Checked.t
+       , unit
+       , 'input_var -> 'a Checked.t
+       , 'input_value -> unit )
+       Data_spec.t
     -> return_typ:('a, _) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> 'a Checked.t)
+    -> 'input_value
+    -> unit
 
   (** Returns the number of constraints in the constraint system.
 
@@ -1459,10 +1479,15 @@ module type Run_basic = sig
     -> R1CS_constraint_system.t
 
   val generate_witness :
-       (unit -> 'a, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+       ( unit -> 'a
+       , Proof_inputs.t
+       , 'input_var -> unit -> 'a
+       , 'input_value -> Proof_inputs.t )
+       Data_spec.t
     -> return_typ:('a, _) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> unit -> 'a)
+    -> 'input_value
+    -> Proof_inputs.t
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
@@ -1476,10 +1501,15 @@ module type Run_basic = sig
 
   val generate_witness_conv :
        f:(Proof_inputs.t -> 'r_value -> 'out)
-    -> (unit -> 'r_var, 'out, 'k_var, 'k_value) Data_spec.t
+    -> ( unit -> 'r_var
+       , 'out
+       , 'input_var -> unit -> 'r_var
+       , 'input_value -> 'out )
+       Data_spec.t
     -> return_typ:('r_var, 'r_value) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> unit -> 'r_var)
+    -> 'input_value
+    -> 'out
 
   val run_unchecked : (unit -> 'a) -> 'a
 

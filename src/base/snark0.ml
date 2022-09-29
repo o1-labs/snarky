@@ -306,10 +306,15 @@ struct
     let conv :
         type r_var r_value.
            (int -> _ -> r_var -> Field.Vector.t -> r_value)
-        -> (r_var, r_value, 'k_var, 'k_value) Data_spec.t
+        -> ( r_var
+           , r_value
+           , 'input_var -> r_var
+           , 'input_value -> r_value )
+           Data_spec.t
         -> _ Typ.t
-        -> (unit -> 'k_var)
-        -> 'k_value =
+        -> (unit -> 'input_var -> r_var)
+        -> 'input_value
+        -> r_value =
      fun cont0 t0 (Typ return_typ) k0 ->
       let primary_input = Field.Vector.create () in
       let next_input = ref 1 in
