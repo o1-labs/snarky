@@ -1023,11 +1023,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
   val conv :
        ('r_var -> 'r_value)
-    -> ( 'r_var
-       , 'r_value
-       , 'input_var -> 'r_var
-       , 'input_value -> 'r_value )
-       Data_spec.t
+    -> ('input_var, 'input_value) Typ.t
     -> _ Typ.t
     -> ('input_var -> 'r_var)
     -> 'input_value
@@ -1043,11 +1039,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       corresponding to the given public input and generated auxiliary input.
   *)
   val generate_witness :
-       ( 'r_var Checked.t
-       , Proof_inputs.t
-       , 'input_var -> 'r_var Checked.t
-       , 'input_value -> Proof_inputs.t )
-       Data_spec.t
+       input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('r_var, _) Typ.t
     -> ('input_var -> 'r_var Checked.t)
     -> 'input_value
@@ -1062,11 +1054,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
   val generate_witness_conv :
        f:(Proof_inputs.t -> 'r_value -> 'out)
-    -> ( 'r_var Checked.t
-       , 'out
-       , 'input_var -> 'r_var Checked.t
-       , 'input_value -> 'out )
-       Data_spec.t
+    -> input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('r_var, 'r_value) Typ.t
     -> ('input_var -> 'r_var Checked.t)
     -> 'input_value
@@ -1089,11 +1077,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       Returns [unit]; this is for testing only.
   *)
   val generate_auxiliary_input :
-       ( 'a Checked.t
-       , unit
-       , 'input_var -> 'a Checked.t
-       , 'input_value -> unit )
-       Data_spec.t
+       input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
     -> ('input_var -> 'a Checked.t)
     -> 'input_value
@@ -1463,11 +1447,7 @@ module type Run_basic = sig
     -> R1CS_constraint_system.t
 
   val generate_witness :
-       ( unit -> 'a
-       , Proof_inputs.t
-       , 'input_var -> unit -> 'a
-       , 'input_value -> Proof_inputs.t )
-       Data_spec.t
+       input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
     -> ('input_var -> unit -> 'a)
     -> 'input_value
@@ -1479,11 +1459,7 @@ module type Run_basic = sig
 
   val generate_witness_conv :
        f:(Proof_inputs.t -> 'r_value -> 'out)
-    -> ( unit -> 'r_var
-       , 'out
-       , 'input_var -> unit -> 'r_var
-       , 'input_value -> 'out )
-       Data_spec.t
+    -> input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('r_var, 'r_value) Typ.t
     -> ('input_var -> unit -> 'r_var)
     -> 'input_value
