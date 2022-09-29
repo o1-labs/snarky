@@ -279,7 +279,13 @@ struct
       r1cs_h ~run (ref 1) exposing ~return_typ k
 
     let generate_public_input :
-        ('r_var, Field.Vector.t, 'k_var, 'k_value) Data_spec.t -> 'k_value =
+           ( 'r_var
+           , Field.Vector.t
+           , 'input_var -> 'r_var
+           , 'input_value -> Field.Vector.t )
+           Data_spec.t
+        -> 'input_value
+        -> Field.Vector.t =
      fun t0 ->
       let primary_input = Field.Vector.create () in
       let next_input = ref 1 in
