@@ -55,6 +55,32 @@ struct
 
   module Runner = Runner
 
+  module Data_spec = struct
+    include Typ.Data_spec0
+
+    type ('r_var, 'r_value, 'k_var, 'k_value) t =
+      ( 'r_var
+      , 'r_value
+      , 'k_var
+      , 'k_value
+      , field
+      , (unit, field) Checked.Types.Checked.t )
+      data_spec
+
+    let size t =
+      let rec go :
+          type r_var r_value k_var k_value.
+          int -> (r_var, r_value, k_var, k_value) t -> int =
+       fun acc t ->
+        match t with
+        | [] ->
+            acc
+        | Typ { size_in_field_elements; _ } :: t' ->
+            go (acc + size_in_field_elements) t'
+      in
+      go 0 t
+  end
+
   (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
   let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
       output t : R1CS_constraint_system.t =
@@ -460,31 +486,7 @@ struct
 
     type ('var, 'value) t = ('var, 'value, Field.t) T.t
 
-    module Data_spec = struct
-      include Typ.Data_spec0
-
-      type ('r_var, 'r_value, 'k_var, 'k_value) t =
-        ( 'r_var
-        , 'r_value
-        , 'k_var
-        , 'k_value
-        , field
-        , (unit, field) Checked_S.t )
-        data_spec
-
-      let size t =
-        let rec go :
-            type r_var r_value k_var k_value.
-            int -> (r_var, r_value, k_var, k_value) t -> int =
-         fun acc t ->
-          match t with
-          | [] ->
-              acc
-          | Typ { size_in_field_elements; _ } :: t' ->
-              go (acc + size_in_field_elements) t'
-        in
-        go 0 t
-    end
+    module Data_spec = Data_spec
 
     let unit : (unit, unit) t = unit ()
 
