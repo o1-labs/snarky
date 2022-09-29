@@ -289,29 +289,18 @@ struct
       r1cs_h ~run (ref 1) ~input_typ ~return_typ k
 
     let generate_public_input :
-           ( 'r_var
-           , Field.Vector.t
-           , 'input_var -> 'r_var
-           , 'input_value -> Field.Vector.t )
-           Data_spec.t
+           ('input_var, 'input_value, _, _) Types.Typ.typ
         -> 'input_value
         -> Field.Vector.t =
      fun t0 ->
       let primary_input = Field.Vector.create () in
       let next_input = ref 1 in
       let store_field_elt = store_field_elt primary_input next_input in
-      let go :
-          type r_var k_var k_value.
-          (r_var, Field.Vector.t, k_var, k_value) Data_spec.t -> k_value =
-       fun t ->
-        match t with
-        | Data_spec (Typ { value_to_fields; _ }) ->
-            fun value ->
-              let fields, _aux = value_to_fields value in
-              let _fields = Array.map ~f:store_field_elt fields in
-              primary_input
-      in
-      go t0
+      let (Typ { value_to_fields; _ }) = t0 in
+      fun value ->
+        let fields, _aux = value_to_fields value in
+        let _fields = Array.map ~f:store_field_elt fields in
+        primary_input
 
     let conv :
         type r_var r_value.

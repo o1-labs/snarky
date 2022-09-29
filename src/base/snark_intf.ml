@@ -1035,13 +1035,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
-       ( 'r_var
-       , Field.Vector.t
-       , 'input_var -> 'r_var
-       , 'input_value -> Field.Vector.t )
-       Data_spec.t
-    -> 'input_value
-    -> Field.Vector.t
+    ('input_var, 'input_value) Typ.t -> 'input_value -> Field.Vector.t
 
   (** Generate a witness (auxiliary input) for the given public input.
 
@@ -1481,13 +1475,7 @@ module type Run_basic = sig
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
-       ( 'r_var
-       , Field.Constant.Vector.t
-       , 'input_var -> 'r_var
-       , 'input_value -> Field.Constant.Vector.t )
-       Data_spec.t
-    -> 'input_value
-    -> Field.Constant.Vector.t
+    ('input_var, 'input_value) Typ.t -> 'input_value -> Field.Constant.Vector.t
 
   val generate_witness_conv :
        f:(Proof_inputs.t -> 'r_value -> 'out)
