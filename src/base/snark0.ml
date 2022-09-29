@@ -56,8 +56,6 @@ struct
   module Runner = Runner
 
   module Data_spec = struct
-    include Typ.Data_spec0
-
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
       ( 'r_var
       , 'r_value
@@ -65,7 +63,7 @@ struct
       , 'k_value
       , field
       , (unit, field) Checked.Types.Checked.t )
-      data_spec
+      Typ.Data_spec0.data_spec
 
     let size t =
       let rec go :
