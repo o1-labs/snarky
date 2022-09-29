@@ -198,11 +198,11 @@ struct
       v
 
     let collect_input_constraints :
-        type checked r2 k1 k2.
+        type checked r2 input_var input_value.
            int ref
-        -> (checked, r2, k1, k2) Data_spec.t
+        -> (checked, r2, input_var -> checked, input_value -> r2) Data_spec.t
         -> return_typ:_ Typ.t
-        -> (unit -> k1)
+        -> (unit -> input_var -> checked)
         -> _ * (unit -> checked) Checked.t =
      fun next_input t ~return_typ k ->
       let open Checked in
@@ -250,12 +250,12 @@ struct
           (retval, checked)
 
     let r1cs_h :
-        type a checked r2 k1 k2 retval.
+        type a checked r2 input_var input_value retval.
            run:(a, checked) Runner.run
         -> int ref
-        -> (checked, r2, k1, k2) Data_spec.t
+        -> (checked, r2, input_var -> checked, input_value -> r2) Data_spec.t
         -> return_typ:(a, retval, _) Typ.t
-        -> k1
+        -> (input_var -> checked)
         -> R1CS_constraint_system.t =
      fun ~run next_input t ~return_typ k ->
       let retval, r =
@@ -269,11 +269,11 @@ struct
         ~return_typ retval
         (Checked.map ~f:(fun r -> r ()) r)
 
-    let constraint_system (type a checked k_var) :
+    let constraint_system (type a checked input_var) :
            run:(a, checked) Runner.run
-        -> exposing:(checked, _, k_var, _) Data_spec.t
+        -> exposing:(checked, _, input_var -> checked, _) Data_spec.t
         -> return_typ:_
-        -> k_var
+        -> (input_var -> checked)
         -> R1CS_constraint_system.t =
      fun ~run ~exposing ~return_typ k ->
       r1cs_h ~run (ref 1) exposing ~return_typ k

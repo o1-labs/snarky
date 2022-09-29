@@ -1013,9 +1013,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** Generate the R1CS for the checked computation. *)
   val constraint_system :
-       exposing:('a Checked.t, _, 'k_var, _) Data_spec.t
+       exposing:
+         ( 'a Checked.t
+         , 'res
+         , 'input_var -> 'a Checked.t
+         , 'input_value -> 'res )
+         Data_spec.t
     -> return_typ:('a, _) Typ.t
-    -> 'k_var
+    -> ('input_var -> 'a Checked.t)
     -> R1CS_constraint_system.t
 
   (** Internal: supplies arguments to a checked computation by storing them
@@ -1437,9 +1442,14 @@ module type Run_basic = sig
   val make_checked : (unit -> 'a) -> ('a, field) Types.Checked.t
 
   val constraint_system :
-       exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
+       exposing:
+         ( unit -> 'a
+         , 'res
+         , 'input_var -> unit -> 'a
+         , 'input_value -> 'res )
+         Data_spec.t
     -> return_typ:('a, _) Typ.t
-    -> 'k_var
+    -> ('input_var -> unit -> 'a)
     -> R1CS_constraint_system.t
 
   val generate_witness :
