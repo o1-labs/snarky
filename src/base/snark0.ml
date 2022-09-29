@@ -464,7 +464,13 @@ struct
       include Typ.Data_spec0
 
       type ('r_var, 'r_value, 'k_var, 'k_value) t =
-        ('r_var, 'r_value, 'k_var, 'k_value, field) T.Data_spec.t
+        ( 'r_var
+        , 'r_value
+        , 'k_var
+        , 'k_value
+        , field
+        , (unit, field) Checked_S.t )
+        data_spec
 
       let size t =
         let rec go :
