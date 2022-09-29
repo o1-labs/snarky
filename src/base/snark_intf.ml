@@ -622,11 +622,9 @@ module type Basic = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | ( :: ) :
+      | Data_spec :
           ('var, 'value, field, (unit, field) Types.Checked.t) Typ.typ
-          * ('r_var, 'r_value, 'k_var, 'k_value) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+          -> ('r_var, 'r_value, 'var -> 'r_var, 'value -> 'r_value) t
 
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
@@ -1209,11 +1207,9 @@ module type Run_basic = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | ( :: ) :
+      | Data_spec :
           ('var, 'value, field, (unit, field) Checked.t) Types.Typ.typ
-          * ('r_var, 'r_value, 'k_var, 'k_value) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+          -> ('r_var, 'r_value, 'var -> 'r_var, 'value -> 'r_value) t
 
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)

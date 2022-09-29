@@ -57,26 +57,22 @@ struct
 
   module Data_spec = struct
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | ( :: ) :
+      | Data_spec :
           ( 'var
           , 'value
           , field
           , (unit, field) Checked.Types.Checked.t )
           Types.Typ.typ
-          * ('r_var, 'r_value, 'k_var, 'k_value) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
+          -> ('r_var, 'r_value, 'var -> 'r_var, 'value -> 'r_value) t
 
     let size t =
-      let rec go :
+      let go :
           type r_var r_value k_var k_value.
           int -> (r_var, r_value, k_var, k_value) t -> int =
        fun acc t ->
         match t with
-        | [] ->
-            acc
-        | Typ { size_in_field_elements; _ } :: t' ->
-            go (acc + size_in_field_elements) t'
+        | Data_spec (Typ { size_in_field_elements; _ }) ->
+            acc + size_in_field_elements
       in
       go 0 t
   end
@@ -201,7 +197,7 @@ struct
       Field.Vector.emplace_back primary_input x ;
       v
 
-    let rec collect_input_constraints :
+    let collect_input_constraints :
         type checked r2 k1 k2.
            int ref
         -> (checked, r2, k1, k2) Data_spec.t
@@ -211,30 +207,14 @@ struct
      fun next_input t ~return_typ k ->
       let open Checked in
       match t with
-      | [] ->
-          let (Typ
-                { var_of_fields
-                ; size_in_field_elements
-                ; constraint_system_auxiliary
-                ; _
-                } ) =
-            return_typ
-          in
-          let retval =
-            var_of_fields
-              ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
-                    alloc_var next_input () )
-              , constraint_system_auxiliary () )
-          in
-          (retval, Checked.return k)
-      | Typ
-          { var_of_fields
-          ; size_in_field_elements
-          ; constraint_system_auxiliary
-          ; check
-          ; _
-          }
-        :: t' ->
+      | Data_spec
+          (Typ
+            { var_of_fields
+            ; size_in_field_elements
+            ; constraint_system_auxiliary
+            ; check
+            ; _
+            } ) ->
           let var =
             var_of_fields
               ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
@@ -242,7 +222,25 @@ struct
               , constraint_system_auxiliary () )
           in
           let retval, r =
-            collect_input_constraints next_input t' ~return_typ (fun () ->
+            let collect_input_constraints next_input ~return_typ k =
+              let (Typ
+                     { var_of_fields
+                     ; size_in_field_elements
+                     ; constraint_system_auxiliary
+                     ; _
+                     }
+                    : _ Typ.t ) =
+                return_typ
+              in
+              let retval =
+                var_of_fields
+                  ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
+                        alloc_var next_input () )
+                  , constraint_system_auxiliary () )
+              in
+              (retval, Checked.return k)
+            in
+            collect_input_constraints next_input ~return_typ (fun () ->
                 k () var )
           in
           let checked =
@@ -286,18 +284,16 @@ struct
       let primary_input = Field.Vector.create () in
       let next_input = ref 1 in
       let store_field_elt = store_field_elt primary_input next_input in
-      let rec go :
+      let go :
           type r_var k_var k_value.
           (r_var, Field.Vector.t, k_var, k_value) Data_spec.t -> k_value =
        fun t ->
         match t with
-        | [] ->
-            primary_input
-        | Typ { value_to_fields; _ } :: t' ->
+        | Data_spec (Typ { value_to_fields; _ }) ->
             fun value ->
               let fields, _aux = value_to_fields value in
               let _fields = Array.map ~f:store_field_elt fields in
-              go t'
+              primary_input
       in
       go t0
 
@@ -317,27 +313,28 @@ struct
         Field.Vector.emplace_back primary_input x ;
         Cvar.Unsafe.of_index v
       in
-      let rec go :
+      let go :
           type k_var k_value.
              (r_var, r_value, k_var, k_value) Data_spec.t
           -> (unit -> k_var)
           -> k_value =
        fun t k ->
         match t with
-        | [] ->
-            let retval =
-              return_typ.var_of_fields
-                ( Core_kernel.Array.init return_typ.size_in_field_elements
-                    ~f:(fun _ -> alloc_var next_input ())
-                , return_typ.constraint_system_auxiliary () )
-            in
-            cont0 !next_input retval (k ()) primary_input
-        | Typ { var_of_fields; value_to_fields; _ } :: t' ->
+        | Data_spec (Typ { var_of_fields; value_to_fields; _ }) ->
             fun value ->
               let fields, aux = value_to_fields value in
               let fields = Array.map ~f:store_field_elt fields in
               let var = var_of_fields (fields, aux) in
-              go t' (fun () -> k () var)
+              let go k =
+                let retval =
+                  return_typ.var_of_fields
+                    ( Core_kernel.Array.init return_typ.size_in_field_elements
+                        ~f:(fun _ -> alloc_var next_input ())
+                    , return_typ.constraint_system_auxiliary () )
+                in
+                cont0 !next_input retval (k ()) primary_input
+              in
+              go (fun () -> k () var)
       in
       go t0 k0
 
@@ -2129,7 +2126,7 @@ module Run = struct
       state := { !state with stack } ;
       a
 
-    let rec inject_wrapper :
+    let inject_wrapper :
         type r_var r_value k_var k_value.
            (r_var, r_value, k_var, k_value) Data_spec.t
         -> f:(r_var -> r_var)
@@ -2137,10 +2134,10 @@ module Run = struct
         -> k_var =
      fun spec ~f ->
       match spec with
-      | [] ->
-          fun x -> f x
-      | _ :: spec ->
-          fun x a -> inject_wrapper spec ~f (x a)
+      | Data_spec _ ->
+          fun x a ->
+            let inject_wrapper ~f x = f x in
+            inject_wrapper ~f (x a)
 
     let constraint_system ~exposing ~return_typ x =
       let x = inject_wrapper exposing x ~f:(fun x () -> mark_active ~f:x) in
