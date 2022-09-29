@@ -55,28 +55,6 @@ struct
 
   module Runner = Runner
 
-  module Data_spec = struct
-    type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | Data_spec :
-          ( 'var
-          , 'value
-          , field
-          , (unit, field) Checked.Types.Checked.t )
-          Types.Typ.typ
-          -> ('r_var, 'r_value, 'var -> 'r_var, 'value -> 'r_value) t
-
-    let size t =
-      let go :
-          type r_var r_value k_var k_value.
-          int -> (r_var, r_value, k_var, k_value) t -> int =
-       fun acc t ->
-        match t with
-        | Data_spec (Typ { size_in_field_elements; _ }) ->
-            acc + size_in_field_elements
-      in
-      go 0 t
-  end
-
   (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
   let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
       output t : R1CS_constraint_system.t =
@@ -465,8 +443,6 @@ struct
     include T.T
 
     type ('var, 'value) t = ('var, 'value, Field.t) T.t
-
-    module Data_spec = Data_spec
 
     let unit : (unit, unit) t = unit ()
 
@@ -990,8 +966,6 @@ struct
           let all = Boolean.Array.all
         end)
   end
-
-  module Data_spec = Typ.Data_spec
 
   module Cvar1 = struct
     include Cvar
@@ -1594,7 +1568,6 @@ module Run = struct
 
     module Bigint = Snark.Bigint
     module Constraint = Snark.Constraint
-    module Data_spec = Snark.Data_spec
 
     module Typ = struct
       open Snark.Typ

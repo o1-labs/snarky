@@ -597,39 +597,6 @@ module type Basic = sig
        and type field_var := Field.Var.t)
 
   (** The data specification for checked computations. *)
-  and Data_spec : sig
-    (** A list of {!type:Typ.t} values, describing the inputs to a checked
-        computation. The type [('r_var, 'r_value, 'k_var, 'k_value) t]
-        represents
-        - ['k_value] is the OCaml type of the computation
-        - ['r_value] is the OCaml type of the result
-        - ['k_var] is the type of the computation within the R1CS
-        - ['k_value] is the type of the result within the R1CS.
-
-        This functions the same as OCaml's default list type:
-{[
-  Data_spec.[typ1; typ2; typ3]
-
-  Data_spec.(typ1 :: typs)
-
-  let open Data_spec in
-  [typ1; typ2; typ3; typ4; typ5]
-
-  let open Data_spec in
-  typ1 :: typ2 :: typs
-
-]}
-        all function as you would expect.
-    *)
-    type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | Data_spec :
-          ('var, 'value, field, (unit, field) Types.Checked.t) Typ.typ
-          -> ('r_var, 'r_value, 'var -> 'r_var, 'value -> 'r_value) t
-
-    (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
-        allocated by allocating [typ1], followed by [typ2], etc. *)
-    val size : _ t -> int
-  end
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
@@ -1184,41 +1151,6 @@ module type Run_basic = sig
     (Constraint_intf
       with type field := Field.Constant.t
        and type field_var := Field.t)
-
-  (** The data specification for checked computations. *)
-  and Data_spec : sig
-    (** A list of {!type:Typ.t} values, describing the inputs to a checked
-        computation. The type [('r_var, 'r_value, 'k_var, 'k_value) t]
-        represents
-        - ['k_value] is the OCaml type of the computation
-        - ['r_value] is the OCaml type of the result
-        - ['k_var] is the type of the computation within the R1CS
-        - ['k_value] is the type of the result within the R1CS.
-
-        This functions the same as OCaml's default list type:
-{[
-  Data_spec.[typ1; typ2; typ3]
-
-  Data_spec.(typ1 :: typs)
-
-  let open Data_spec in
-  [typ1; typ2; typ3; typ4; typ5]
-
-  let open Data_spec in
-  typ1 :: typ2 :: typs
-
-]}
-        all function as you would expect.
-    *)
-    type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      | Data_spec :
-          ('var, 'value, field, (unit, field) Checked.t) Types.Typ.typ
-          -> ('r_var, 'r_value, 'var -> 'r_var, 'value -> 'r_value) t
-
-    (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
-        allocated by allocating [typ1], followed by [typ2], etc. *)
-    val size : (_, _, _, _) t -> int
-  end
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ :
