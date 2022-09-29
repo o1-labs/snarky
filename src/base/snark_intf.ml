@@ -622,7 +622,11 @@ module type Basic = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
+      | ( :: ) :
+          ('var, 'value, field, (unit, field) Types.Checked.t) Typ.typ
+          * ('r_var, 'r_value, 'k_var, 'k_value) t
+          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
 
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
@@ -637,7 +641,8 @@ module type Basic = sig
          and type field_var := Field.Var.t
          and type checked_unit := unit Checked.t
          and type _ checked := unit Checked.t
-         and type ('a, 'b, 'c, 'd) data_spec := ('a, 'b, 'c, 'd) Data_spec.t
+         and type ('a, 'b, 'c, 'd) data_spec :=
+          ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
          and type 'a prover_ref := 'a As_prover.Ref.t
 
     include module type of Types.Typ.T
@@ -1204,7 +1209,11 @@ module type Run_basic = sig
         all function as you would expect.
     *)
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
+      | ( :: ) :
+          ('var, 'value, field, (unit, field) Checked.t) Types.Typ.typ
+          * ('r_var, 'r_value, 'k_var, 'k_value) t
+          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
 
     (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
         allocated by allocating [typ1], followed by [typ2], etc. *)
@@ -1218,7 +1227,8 @@ module type Run_basic = sig
        and type field_var := Field.t
        and type checked_unit := (unit, field) Checked.t
        and type _ checked := unit
-       and type ('a, 'b, 'c, 'd) data_spec := ('a, 'b, 'c, 'd) Data_spec.t
+       and type ('a, 'b, 'c, 'd) data_spec :=
+        ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
        and type 'a prover_ref := 'a As_prover.Ref.t)
 
   (** Representation of booleans within a field.

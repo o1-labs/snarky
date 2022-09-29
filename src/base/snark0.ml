@@ -57,13 +57,15 @@ struct
 
   module Data_spec = struct
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ( 'r_var
-      , 'r_value
-      , 'k_var
-      , 'k_value
-      , field
-      , (unit, field) Checked.Types.Checked.t )
-      Typ.Data_spec0.data_spec
+      | ( :: ) :
+          ( 'var
+          , 'value
+          , field
+          , (unit, field) Checked.Types.Checked.t )
+          Types.Typ.typ
+          * ('r_var, 'r_value, 'k_var, 'k_value) t
+          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
 
     let size t =
       let rec go :
@@ -202,7 +204,7 @@ struct
     let rec collect_input_constraints :
         type checked r2 k1 k2.
            int ref
-        -> (checked, r2, k1, k2, _, _) Typ.Data_spec.data_spec
+        -> (checked, r2, k1, k2) Data_spec.t
         -> return_typ:_ Typ.t
         -> (unit -> k1)
         -> _ * (unit -> checked) Checked.t =
@@ -253,7 +255,7 @@ struct
         type a checked r2 k1 k2 retval.
            run:(a, checked) Runner.run
         -> int ref
-        -> (checked, r2, k1, k2, _, _) Typ.Data_spec.data_spec
+        -> (checked, r2, k1, k2) Data_spec.t
         -> return_typ:(a, retval, _) Typ.t
         -> k1
         -> R1CS_constraint_system.t =
@@ -271,7 +273,7 @@ struct
 
     let constraint_system (type a checked k_var) :
            run:(a, checked) Runner.run
-        -> exposing:(checked, _, k_var, _, _, _) Typ.Data_spec.data_spec
+        -> exposing:(checked, _, k_var, _) Data_spec.t
         -> return_typ:_
         -> k_var
         -> R1CS_constraint_system.t =
@@ -279,28 +281,14 @@ struct
       r1cs_h ~run (ref 1) exposing ~return_typ k
 
     let generate_public_input :
-           ( 'r_var
-           , Field.Vector.t
-           , 'k_var
-           , 'k_value
-           , _
-           , _ )
-           Typ.Data_spec.data_spec
-        -> 'k_value =
+        ('r_var, Field.Vector.t, 'k_var, 'k_value) Data_spec.t -> 'k_value =
      fun t0 ->
       let primary_input = Field.Vector.create () in
       let next_input = ref 1 in
       let store_field_elt = store_field_elt primary_input next_input in
       let rec go :
           type r_var k_var k_value.
-             ( r_var
-             , Field.Vector.t
-             , k_var
-             , k_value
-             , _
-             , _ )
-             Typ.Data_spec.data_spec
-          -> k_value =
+          (r_var, Field.Vector.t, k_var, k_value) Data_spec.t -> k_value =
        fun t ->
         match t with
         | [] ->
@@ -316,7 +304,7 @@ struct
     let conv :
         type r_var r_value.
            (int -> _ -> r_var -> Field.Vector.t -> r_value)
-        -> (r_var, r_value, 'k_var, 'k_value, _, _) Typ.Data_spec.data_spec
+        -> (r_var, r_value, 'k_var, 'k_value) Data_spec.t
         -> _ Typ.t
         -> (unit -> 'k_var)
         -> 'k_value =
@@ -331,7 +319,7 @@ struct
       in
       let rec go :
           type k_var k_value.
-             (r_var, r_value, k_var, k_value, _, _) Typ.Data_spec.data_spec
+             (r_var, r_value, k_var, k_value) Data_spec.t
           -> (unit -> k_var)
           -> k_value =
        fun t k ->
@@ -355,7 +343,7 @@ struct
 
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
-        -> ('checked, unit, 'k_var, 'k_value, _, _) Typ.Data_spec.data_spec
+        -> ('checked, unit, 'k_var, 'k_value) Data_spec.t
         -> return_typ:(_, _, _) Typ.t
         -> ?handlers:Handler.t list
         -> 'k_var
@@ -374,7 +362,7 @@ struct
     let generate_witness_conv :
            run:('a, 'checked) Runner.run
         -> f:(Proof_inputs.t -> _ -> 'out)
-        -> ('checked, 'out, 'k_var, 'k_value, _, _) Typ.Data_spec.data_spec
+        -> ('checked, 'out, 'k_var, 'k_value) Data_spec.t
         -> return_typ:_ Typ.t
         -> ?handlers:Handler.t list
         -> 'k_var
@@ -1495,26 +1483,23 @@ module Make (Backend : Backend_intf.S) = struct
       (Checked)
       (As_prover.Make (Checked) (As_prover0))
 
+  module Checked_for_basic = struct
+    include (
+      Checked :
+        Checked_intf.S
+          with module Types = Checked.Types
+          with type ('a, 'f) t := ('a, 'f) Checked.t
+           and type 'f field := 'f )
+
+    type field = Backend_extended.Field.t
+
+    type 'a t = ('a, field) Types.Checked.t
+
+    let run = Runner0.run
+  end
+
   module Basic =
-    Make_basic
-      (Backend_extended)
-      (struct
-        include (
-          Checked :
-            Checked_intf.S
-              with module Types = Checked.Types
-              with type ('a, 'f) t := ('a, 'f) Checked.t
-               and type 'f field := 'f )
-
-        type field = Backend_extended.Field.t
-
-        type 'a t = ('a, field) Types.Checked.t
-
-        let run = Runner0.run
-      end)
-      (As_prover0)
-      (Runner0)
-
+    Make_basic (Backend_extended) (Checked_for_basic) (As_prover0) (Runner0)
   include Basic
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
