@@ -198,23 +198,27 @@ struct
       v
 
     let collect_input_constraints :
-        type checked r2 input_var input_value.
+        type checked input_var input_value.
            int ref
-        -> (checked, r2, input_var -> checked, input_value -> r2) Data_spec.t
+        -> input_typ:
+             ( input_var
+             , input_value
+             , field
+             , (unit, field) Checked.Types.Checked.t )
+             Types.Typ.typ
         -> return_typ:_ Typ.t
         -> (unit -> input_var -> checked)
         -> _ * (unit -> checked) Checked.t =
-     fun next_input t ~return_typ k ->
+     fun next_input ~input_typ ~return_typ k ->
       let open Checked in
-      match t with
-      | Data_spec
-          (Typ
-            { var_of_fields
-            ; size_in_field_elements
-            ; constraint_system_auxiliary
-            ; check
-            ; _
-            } ) ->
+      match input_typ with
+      | Typ
+          { var_of_fields
+          ; size_in_field_elements
+          ; constraint_system_auxiliary
+          ; check
+          ; _
+          } ->
           let var =
             var_of_fields
               ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
@@ -250,16 +254,22 @@ struct
           (retval, checked)
 
     let r1cs_h :
-        type a checked r2 input_var input_value retval.
+        type a checked input_var input_value retval.
            run:(a, checked) Runner.run
         -> int ref
-        -> (checked, r2, input_var -> checked, input_value -> r2) Data_spec.t
+        -> input_typ:
+             ( input_var
+             , input_value
+             , field
+             , (unit, field) Checked.Types.Checked.t )
+             Types.Typ.typ
         -> return_typ:(a, retval, _) Typ.t
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
-     fun ~run next_input t ~return_typ k ->
+     fun ~run next_input ~input_typ ~return_typ k ->
       let retval, r =
-        collect_input_constraints next_input t ~return_typ (fun () -> k)
+        collect_input_constraints next_input ~input_typ ~return_typ (fun () ->
+            k )
       in
       let run_in_run r state =
         let state, x = Checked.run r state in
@@ -271,12 +281,12 @@ struct
 
     let constraint_system (type a checked input_var) :
            run:(a, checked) Runner.run
-        -> exposing:(checked, _, input_var -> checked, _) Data_spec.t
+        -> input_typ:(input_var, _, _, _) Types.Typ.typ
         -> return_typ:_
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
-     fun ~run ~exposing ~return_typ k ->
-      r1cs_h ~run (ref 1) exposing ~return_typ k
+     fun ~run ~input_typ ~return_typ k ->
+      r1cs_h ~run (ref 1) ~input_typ ~return_typ k
 
     let generate_public_input :
            ( 'r_var
@@ -437,8 +447,8 @@ struct
   let generate_witness_conv ~f t ~return_typ k =
     Run.generate_witness_conv ~run:Checked.run ~f t ~return_typ k
 
-  let constraint_system ~exposing ~return_typ k =
-    Run.constraint_system ~run:Checked.run ~exposing ~return_typ k
+  let constraint_system ~input_typ ~return_typ k =
+    Run.constraint_system ~run:Checked.run ~input_typ ~return_typ k
 
   let run_unchecked t = run_unchecked ~run:Checked.run t
 
@@ -2138,30 +2148,24 @@ module Run = struct
       a
 
     let inject_wrapper :
-        type r_var r_value k_var k_value.
-           (r_var, r_value, k_var, k_value) Data_spec.t
-        -> f:(r_var -> r_var)
-        -> k_var
-        -> k_var =
-     fun spec ~f ->
-      match spec with
-      | Data_spec _ ->
-          fun x a ->
-            let inject_wrapper ~f x = f x in
-            inject_wrapper ~f (x a)
+        type r_var input_var.
+        f:(r_var -> r_var) -> (input_var -> r_var) -> input_var -> r_var =
+     fun ~f x a ->
+      let inject_wrapper ~f x = f x in
+      inject_wrapper ~f (x a)
 
-    let constraint_system ~exposing ~return_typ x =
-      let x = inject_wrapper exposing x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.constraint_system ~run:as_stateful ~exposing ~return_typ x
+    let constraint_system ~input_typ ~return_typ x =
+      let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
+      Perform.constraint_system ~run:as_stateful ~input_typ ~return_typ x
 
     let generate_public_input = generate_public_input
 
     let generate_witness spec ~return_typ x =
-      let x = inject_wrapper spec x ~f:(fun x () -> mark_active ~f:x) in
+      let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
       Perform.generate_witness ~run:as_stateful spec ~return_typ x
 
     let generate_witness_conv ~f spec ~return_typ x =
-      let x = inject_wrapper spec x ~f:(fun x () -> mark_active ~f:x) in
+      let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
       Perform.generate_witness_conv ~run:as_stateful ~f spec ~return_typ x
 
     let run_unchecked x =
