@@ -18,7 +18,7 @@ let located_label_string ~loc str =
 let with_label ~local ~loc exprs =
   let with_label_expr =
     if local then [%expr with_label]
-    else [%expr Snarky_backendless.Checked.with_label]
+    else [%expr Snarky_backendless.Checked_ast.with_label]
   in
   Exp.apply ~loc with_label_expr exprs
 
