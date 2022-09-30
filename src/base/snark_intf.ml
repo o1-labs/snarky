@@ -604,7 +604,7 @@ module type Basic = sig
       Typ_intf
         with type field := Field.t
          and type field_var := Field.Var.t
-         and type checked_unit := unit Checked.t
+         and type checked_unit := (unit, field) Checked_ast.t
          and type _ checked := unit Checked.t
          and type ('a, 'b, 'c, 'd) data_spec :=
           ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
@@ -648,7 +648,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     type run_state = Field.t Run_state.t
 
-    include Monad_let.S with type 'a t = ('a, Field.t) Checked_ast.t
+    include Monad_let.S
 
     module List :
       Monad_sequence.S
@@ -978,6 +978,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
   val with_label : string -> 'a Checked.t -> 'a Checked.t
 
+  val make_checked_ast : 'a Checked.t -> ('a, field) Checked_ast.t
+
   (** Generate the R1CS for the checked computation. *)
   val constraint_system :
        input_typ:('input_var, 'input_value) Typ.t
@@ -1159,7 +1161,7 @@ module type Run_basic = sig
     (Typ_intf
       with type field := Field.Constant.t
        and type field_var := Field.t
-       and type checked_unit := unit Internal_Basic.Checked.t
+       and type checked_unit := (unit, field) Checked_ast.t
        and type _ checked := unit
        and type ('a, 'b, 'c, 'd) data_spec :=
         ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
@@ -1378,6 +1380,8 @@ module type Run_basic = sig
   val with_label : string -> (unit -> 'a) -> 'a
 
   val make_checked : (unit -> 'a) -> 'a Internal_Basic.Checked.t
+
+  val make_checked_ast : (unit -> 'a) -> ('a, field) Checked_ast.t
 
   val constraint_system :
        input_typ:('input_var, 'input_value) Typ.t
