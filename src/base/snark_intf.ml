@@ -1159,7 +1159,7 @@ module type Run_basic = sig
     (Typ_intf
       with type field := Field.Constant.t
        and type field_var := Field.t
-       and type checked_unit := (unit, field) Checked_ast.t
+       and type checked_unit := unit Internal_Basic.Checked.t
        and type _ checked := unit
        and type ('a, 'b, 'c, 'd) data_spec :=
         ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
@@ -1277,6 +1277,11 @@ module type Run_basic = sig
       }
   end
 
+  and Internal_Basic :
+    (Basic
+      with type field = field
+       and type 'a As_prover.Ref.t = 'a As_prover.Ref.t)
+
   module Bitstring_checked : sig
     type t = Boolean.var list
 
@@ -1372,7 +1377,7 @@ module type Run_basic = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
-  val make_checked : (unit -> 'a) -> ('a, field) Checked_ast.t
+  val make_checked : (unit -> 'a) -> 'a Internal_Basic.Checked.t
 
   val constraint_system :
        input_typ:('input_var, 'input_value) Typ.t
@@ -1433,11 +1438,6 @@ module type Run_basic = sig
   val in_prover : unit -> bool
 
   val in_checked_computation : unit -> bool
-
-  module Internal_Basic :
-    Basic
-      with type field = field
-       and type 'a As_prover.Ref.t = 'a As_prover.Ref.t
 
   val run_checked : 'a Internal_Basic.Checked.t -> 'a
 end
