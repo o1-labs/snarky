@@ -19,7 +19,7 @@ module Make_runners
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
-                 and type constr := Backend.Constraint.t
+                 and type constr := Backend.Constraint.t option
                  and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend
@@ -421,7 +421,7 @@ module Make_basic
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
-                 and type constr := Backend.Constraint.t
+                 and type constr := Backend.Constraint.t option
                  and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend
@@ -2089,10 +2089,10 @@ module Run = struct
       let { stack; log_constraint; _ } = !state in
       state := { !state with stack = lbl :: stack } ;
       Option.iter log_constraint ~f:(fun f ->
-          f ~at_label_boundary:(`Start, lbl) [] ) ;
+          f ~at_label_boundary:(`Start, lbl) None ) ;
       let a = x () in
       Option.iter log_constraint ~f:(fun f ->
-          f ~at_label_boundary:(`End, lbl) [] ) ;
+          f ~at_label_boundary:(`End, lbl) None ) ;
       state := { !state with stack } ;
       a
 
@@ -2168,7 +2168,7 @@ module Run = struct
 
     let check x = Perform.check ~run:as_stateful x
 
-    let constraint_count ?(weight = Core_kernel.List.length) ?log x =
+    let constraint_count ?(weight = Fn.const 1) ?log x =
       let count = ref 0 in
       let log_constraint ?at_label_boundary c =
         ( match at_label_boundary with
@@ -2180,7 +2180,7 @@ module Run = struct
                   Some (match pos with `Start -> true | _ -> false)
                 in
                 f ?start lab !count ) ) ;
-        count := !count + weight c
+        count := !count + Option.value_map ~default:0 ~f:weight c
       in
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
       let old = !state in

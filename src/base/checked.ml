@@ -63,29 +63,16 @@ module Make
     in
     handle t (fun request -> (Option.value_exn !handler) request)
 
-  let assert_ ?label c =
-    add_constraint (List.map c ~f:(fun c -> Constraint.override_label c label))
+  let assert_ ?label c = add_constraint (Constraint.override_label c label)
 
   let assert_r1cs ?label a b c = assert_ (Constraint.r1cs ?label a b c)
 
   let assert_square ?label a c = assert_ (Constraint.square ?label a c)
 
-  let assert_all =
-    let map_concat_rev xss ~f =
-      let rec go acc xs xss =
-        match (xs, xss) with
-        | [], [] ->
-            acc
-        | [], xs :: xss ->
-            go acc xs xss
-        | x :: xs, _ ->
-            go (f x :: acc) xs xss
-      in
-      go [] [] xss
-    in
-    fun ?label cs ->
-      add_constraint
-        (map_concat_rev ~f:(fun c -> Constraint.override_label c label) cs)
+  let assert_all ?label cs =
+    List.fold_right cs ~init:(return ()) ~f:(fun c (acc : _ t) ->
+        bind acc ~f:(fun () ->
+            add_constraint (Constraint.override_label c label) ) )
 
   let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
 end

@@ -168,7 +168,7 @@ module Basic :
           | Some (pos, lab) ->
               let start = match pos with `Start -> true | _ -> false in
               log ~start lab !count ) ;
-          count := !count + weight c
+          count := !count + Option.value_map ~default:0 ~f:weight c
         in
         let state =
           Run_state.
@@ -241,7 +241,7 @@ module Basic :
       ?(weight : ((f field Cvar.t, f field) Constraint.t -> int) option)
       ?(log = fun ?start:_ _ _ -> ()) (t : (_, f field) Types.Checked.t) : int =
     let next_auxiliary = ref 1 in
-    let weight = match weight with None -> List.length | Some w -> w in
+    let weight = match weight with None -> Fn.const 1 | Some w -> w in
     fst (constraint_count_aux ~weight ~log ~auxc:next_auxiliary 0 t)
 end
 

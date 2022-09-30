@@ -88,7 +88,7 @@ module type S = sig
     val annotation : t -> string
 
     val eval :
-         (Cvar.t, Field.t) Constraint.basic_with_annotation list
+         (Cvar.t, Field.t) Constraint.basic_with_annotation
       -> (Cvar.t -> Field.t)
       -> bool
   end
@@ -246,9 +246,7 @@ struct
 
     let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
 
-    let eval t get_value =
-      List.for_all t ~f:(fun { basic; _ } ->
-          Constraint.Basic.eval m get_value basic )
+    let eval { basic; _ } get_value = Constraint.Basic.eval m get_value basic
   end
 
   module R1CS_constraint_system = R1CS_constraint_system
