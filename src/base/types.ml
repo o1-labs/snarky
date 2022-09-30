@@ -64,37 +64,6 @@ module Typ = struct
   type ('var, 'value, 'field, 'checked) t = ('var, 'value, 'field, 'checked) typ
 end
 
-module Checked = struct
-  (* TODO-someday: Consider having an "Assembly" type with only a store constructor for straight up Var.t's
-     that this gets compiled into. *)
-
-  (** The type [('ret, 'field, 'runner_state) t] represents a checked computation,
-      where
-      - ['ret] is the return type of the computation
-      - ['field] is the type of the field elements. *)
-  type ('a, 'f) t =
-    | Pure : 'a -> ('a, 'f) t
-    | Direct :
-        ('f Run_state.t -> 'f Run_state.t * 'a) * ('a -> ('b, 'f) t)
-        -> ('b, 'f) t
-    | Add_constraint : ('f Cvar.t, 'f) Constraint.t * ('a, 'f) t -> ('a, 'f) t
-    | As_prover : (unit, 'f) As_prover.t * ('a, 'f) t -> ('a, 'f) t
-    | Lazy : ('a, 'f) t * ('a Lazy.t -> ('b, 'f) t) -> ('b, 'f) t
-    | With_label : string * ('a, 'f) t * ('a -> ('b, 'f) t) -> ('b, 'f) t
-    | With_handler :
-        Request.Handler.single * ('a, 'f) t * ('a -> ('b, 'f) t)
-        -> ('b, 'f) t
-    | Clear_handler : ('a, 'f) t * ('a -> ('b, 'f) t) -> ('b, 'f) t
-    | Exists :
-        ('var, 'value, 'f, (unit, 'f) t) Typ.t
-        * ( ('value Request.t, 'f) As_prover.t
-          , ('value, 'f) As_prover.t )
-          Provider.t
-        * (('var, 'value) Handle.t -> ('a, 'f) t)
-        -> ('a, 'f) t
-    | Next_auxiliary : (int -> ('a, 'f) t) -> ('a, 'f) t
-end
-
 module type Types = sig
   module Checked : sig
     type ('a, 'f) t

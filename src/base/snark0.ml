@@ -1559,7 +1559,7 @@ module Run = struct
       let a = x () in
       (!state, a)
 
-    let make_checked x = Types.Checked.Direct (as_stateful x, fun x -> Pure x)
+    let make_checked x = Checked_ast.Direct (as_stateful x, fun x -> Pure x)
 
     module R1CS_constraint_system = Snark.R1CS_constraint_system
     module Var = Snark.Var
@@ -1614,7 +1614,7 @@ module Run = struct
               include M.Var
 
               let check x =
-                Types.Checked.Direct
+                Checked_ast.Direct
                   ( (fun state' ->
                       (* We may already be inside a different checked
                          computation, e.g. a proof inside a proof!
