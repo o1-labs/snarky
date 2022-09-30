@@ -76,7 +76,7 @@ struct
   open Constraint
   open Backend
   open Run_state
-  open Checked
+  open Checked_ast
 
   let get_value { num_inputs; input; aux; _ } : Cvar.t -> Field.t =
     let get_one i =
@@ -335,7 +335,7 @@ module Make (Backend : Backend_extended.S) = struct
              and type cvar := Backend.Cvar.t
       end )
 
-  module Types = Checked.Types
+  module Types = Checked_ast.Types
 
   let handle_error s f =
     try f () with
@@ -363,7 +363,7 @@ module Make (Backend : Backend_extended.S) = struct
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
-  let rec run : type a. (a, Field.t) Checked.t -> run_state -> run_state * a =
+  let rec run : type a. (a, Field.t) Checked_ast.t -> run_state -> run_state * a =
    fun t s ->
     match t with
     | As_prover (x, k) ->

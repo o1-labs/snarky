@@ -472,5 +472,5 @@ struct
       }
 end
 
-include Make (Checked) (As_prover)
+include Make (Checked_ast) (As_prover)
 include T

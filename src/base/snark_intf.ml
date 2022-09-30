@@ -1157,7 +1157,7 @@ module type Run_basic = sig
     (Typ_intf
       with type field := Field.Constant.t
        and type field_var := Field.t
-       and type checked_unit := (unit, field) Checked.t
+       and type checked_unit := (unit, field) Checked_ast.t
        and type _ checked := unit
        and type ('a, 'b, 'c, 'd) data_spec :=
         ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t

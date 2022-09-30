@@ -1,6 +1,6 @@
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
-module Checked_ast = Checked
+module Checked_ast = Checked_ast
 open Core_kernel
 
 exception Runtime_error = Checked_runner.Runtime_error
@@ -1448,15 +1448,15 @@ module Make (Backend : Backend_intf.S) = struct
       (struct
         type field = Backend_extended.Field.t
       end)
-      (Checked)
-      (As_prover.Make (Checked) (As_prover0))
+      (Checked_ast)
+      (As_prover.Make (Checked_ast) (As_prover0))
 
   module Checked_for_basic = struct
     include (
-      Checked :
+      Checked_ast :
         Checked_intf.S
-          with module Types = Checked.Types
-          with type ('a, 'f) t := ('a, 'f) Checked.t
+          with module Types = Checked_ast.Types
+          with type ('a, 'f) t := ('a, 'f) Checked_ast.t
            and type 'f field := 'f )
 
     type field = Backend_extended.Field.t
