@@ -597,39 +597,6 @@ module type Basic = sig
        and type field_var := Field.Var.t)
 
   (** The data specification for checked computations. *)
-  and Data_spec : sig
-    (** A list of {!type:Typ.t} values, describing the inputs to a checked
-        computation. The type [('r_var, 'r_value, 'k_var, 'k_value) t]
-        represents
-        - ['k_value] is the OCaml type of the computation
-        - ['r_value] is the OCaml type of the result
-        - ['k_var] is the type of the computation within the R1CS
-        - ['k_value] is the type of the result within the R1CS.
-
-        This functions the same as OCaml's default list type:
-{[
-  Data_spec.[typ1; typ2; typ3]
-
-  Data_spec.(typ1 :: typs)
-
-  let open Data_spec in
-  [typ1; typ2; typ3; typ4; typ5]
-
-  let open Data_spec in
-  typ1 :: typ2 :: typs
-
-]}
-        all function as you would expect.
-    *)
-    type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
-
-    (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
-        allocated by allocating [typ1], followed by [typ2], etc. *)
-    val size : _ t -> int
-
-    include module type of Typ0.Data_spec0
-  end
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ : sig
@@ -639,7 +606,8 @@ module type Basic = sig
          and type field_var := Field.Var.t
          and type checked_unit := unit Checked.t
          and type _ checked := unit Checked.t
-         and type ('a, 'b, 'c, 'd) data_spec := ('a, 'b, 'c, 'd) Data_spec.t
+         and type ('a, 'b, 'c, 'd) data_spec :=
+          ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
          and type 'a prover_ref := 'a As_prover.Ref.t
 
     include module type of Types.Typ.T
@@ -1012,9 +980,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** Generate the R1CS for the checked computation. *)
   val constraint_system :
-       exposing:('a Checked.t, _, 'k_var, _) Data_spec.t
+       input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
-    -> 'k_var
+    -> ('input_var -> 'a Checked.t)
     -> R1CS_constraint_system.t
 
   (** Internal: supplies arguments to a checked computation by storing them
@@ -1022,14 +990,15 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
   val conv :
        ('r_var -> 'r_value)
-    -> ('r_var, 'r_value, 'k_var, 'k_value) Data_spec.t
+    -> ('input_var, 'input_value) Typ.t
     -> _ Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> 'r_var)
+    -> 'input_value
+    -> 'r_value
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
-    (_, Field.Vector.t, _, 'k_value) Data_spec.t -> 'k_value
+    ('input_var, 'input_value) Typ.t -> 'input_value -> Field.Vector.t
 
   (** Generate a witness (auxiliary input) for the given public input.
 
@@ -1037,10 +1006,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       corresponding to the given public input and generated auxiliary input.
   *)
   val generate_witness :
-       ('r_var Checked.t, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+       input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('r_var, _) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> 'r_var Checked.t)
+    -> 'input_value
+    -> Proof_inputs.t
 
   (** Generate a witness (auxiliary input) for the given public input and pass
       the result to a function.
@@ -1051,10 +1021,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
   val generate_witness_conv :
        f:(Proof_inputs.t -> 'r_value -> 'out)
-    -> ('r_var Checked.t, 'out, 'k_var, 'k_value) Data_spec.t
+    -> input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('r_var, 'r_value) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> 'r_var Checked.t)
+    -> 'input_value
+    -> 'out
 
   (** Run a checked computation as the prover, without checking the
       constraints. *)
@@ -1073,10 +1044,11 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       Returns [unit]; this is for testing only.
   *)
   val generate_auxiliary_input :
-       ('a Checked.t, unit, 'k_var, 'k_value) Data_spec.t
+       input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> 'a Checked.t)
+    -> 'input_value
+    -> unit
 
   (** Returns the number of constraints in the constraint system.
 
@@ -1180,41 +1152,6 @@ module type Run_basic = sig
       with type field := Field.Constant.t
        and type field_var := Field.t)
 
-  (** The data specification for checked computations. *)
-  and Data_spec : sig
-    (** A list of {!type:Typ.t} values, describing the inputs to a checked
-        computation. The type [('r_var, 'r_value, 'k_var, 'k_value) t]
-        represents
-        - ['k_value] is the OCaml type of the computation
-        - ['r_value] is the OCaml type of the result
-        - ['k_var] is the type of the computation within the R1CS
-        - ['k_value] is the type of the result within the R1CS.
-
-        This functions the same as OCaml's default list type:
-{[
-  Data_spec.[typ1; typ2; typ3]
-
-  Data_spec.(typ1 :: typs)
-
-  let open Data_spec in
-  [typ1; typ2; typ3; typ4; typ5]
-
-  let open Data_spec in
-  typ1 :: typ2 :: typs
-
-]}
-        all function as you would expect.
-    *)
-    type ('r_var, 'r_value, 'k_var, 'k_value) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, field) Typ0.Data_spec.t
-
-    (** [size [typ1; ...; typn]] returns the number of {!type:Var.t} variables
-        allocated by allocating [typ1], followed by [typ2], etc. *)
-    val size : (_, _, _, _) t -> int
-
-    include module type of Typ0.Data_spec0
-  end
-
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ :
     (Typ_intf
@@ -1222,7 +1159,8 @@ module type Run_basic = sig
        and type field_var := Field.t
        and type checked_unit := (unit, field) Checked.t
        and type _ checked := unit
-       and type ('a, 'b, 'c, 'd) data_spec := ('a, 'b, 'c, 'd) Data_spec.t
+       and type ('a, 'b, 'c, 'd) data_spec :=
+        ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
        and type 'a prover_ref := 'a As_prover.Ref.t)
 
   (** Representation of booleans within a field.
@@ -1435,27 +1373,29 @@ module type Run_basic = sig
   val make_checked : (unit -> 'a) -> ('a, field) Types.Checked.t
 
   val constraint_system :
-       exposing:(unit -> 'a, _, 'k_var, _) Data_spec.t
+       input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
-    -> 'k_var
+    -> ('input_var -> unit -> 'a)
     -> R1CS_constraint_system.t
 
   val generate_witness :
-       (unit -> 'a, Proof_inputs.t, 'k_var, 'k_value) Data_spec.t
+       input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> unit -> 'a)
+    -> 'input_value
+    -> Proof_inputs.t
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
-    (_, Field.Constant.Vector.t, _, 'k_value) Data_spec.t -> 'k_value
+    ('input_var, 'input_value) Typ.t -> 'input_value -> Field.Constant.Vector.t
 
   val generate_witness_conv :
        f:(Proof_inputs.t -> 'r_value -> 'out)
-    -> (unit -> 'r_var, 'out, 'k_var, 'k_value) Data_spec.t
+    -> input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('r_var, 'r_value) Typ.t
-    -> 'k_var
-    -> 'k_value
+    -> ('input_var -> unit -> 'r_var)
+    -> 'input_value
+    -> 'out
 
   val run_unchecked : (unit -> 'a) -> 'a
 
