@@ -363,7 +363,8 @@ module Make (Backend : Backend_extended.S) = struct
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
-  let rec run : type a. (a, Field.t) Checked_ast.t -> run_state -> run_state * a =
+  let rec run : type a. (a, Field.t) Checked_ast.t -> run_state -> run_state * a
+      =
    fun t s ->
     match t with
     | As_prover (x, k) ->
