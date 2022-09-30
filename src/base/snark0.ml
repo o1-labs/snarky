@@ -1416,6 +1416,8 @@ struct
 
   let make_checked_ast x = x
 
+  let run_checked_ast x = x
+
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
       let checked_result =
@@ -2199,6 +2201,8 @@ module Run = struct
     module Internal_Basic = Snark
 
     let run_checked = run
+
+    let run_checked_ast x = run_checked x
   end
 
   module Make (Backend : Backend_intf.S) = struct

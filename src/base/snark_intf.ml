@@ -980,6 +980,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   val make_checked_ast : 'a Checked.t -> ('a, field) Checked_ast.t
 
+  val run_checked_ast : ('a, field) Checked_ast.t -> 'a Checked.t
+
   (** Generate the R1CS for the checked computation. *)
   val constraint_system :
        input_typ:('input_var, 'input_value) Typ.t
@@ -1382,6 +1384,8 @@ module type Run_basic = sig
   val make_checked : (unit -> 'a) -> 'a Internal_Basic.Checked.t
 
   val make_checked_ast : (unit -> 'a) -> ('a, field) Checked_ast.t
+
+  val run_checked_ast : ('a, field) Checked_ast.t -> 'a
 
   val constraint_system :
        input_typ:('input_var, 'input_value) Typ.t
