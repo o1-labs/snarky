@@ -604,7 +604,7 @@ module type Basic = sig
       Typ_intf
         with type field := Field.t
          and type field_var := Field.Var.t
-         and type checked_unit := unit Checked.t
+         and type checked_unit := (unit, field) Checked_ast.t
          and type _ checked := unit Checked.t
          and type ('a, 'b, 'c, 'd) data_spec :=
           ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
@@ -648,7 +648,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     type run_state = Field.t Run_state.t
 
-    include Monad_let.S with type 'a t = ('a, Field.t) Checked_ast.t
+    include Monad_let.S
 
     module List :
       Monad_sequence.S
@@ -978,6 +978,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   *)
   val with_label : string -> 'a Checked.t -> 'a Checked.t
 
+  val make_checked_ast : 'a Checked.t -> ('a, field) Checked_ast.t
+
+  val run_checked_ast : ('a, field) Checked_ast.t -> 'a Checked.t
+
   (** Generate the R1CS for the checked computation. *)
   val constraint_system :
        input_typ:('input_var, 'input_value) Typ.t
@@ -1277,6 +1281,11 @@ module type Run_basic = sig
       }
   end
 
+  and Internal_Basic :
+    (Basic
+      with type field = field
+       and type 'a As_prover.Ref.t = 'a As_prover.Ref.t)
+
   module Bitstring_checked : sig
     type t = Boolean.var list
 
@@ -1372,7 +1381,11 @@ module type Run_basic = sig
 
   val with_label : string -> (unit -> 'a) -> 'a
 
-  val make_checked : (unit -> 'a) -> ('a, field) Checked_ast.t
+  val make_checked : (unit -> 'a) -> 'a Internal_Basic.Checked.t
+
+  val make_checked_ast : (unit -> 'a) -> ('a, field) Checked_ast.t
+
+  val run_checked_ast : ('a, field) Checked_ast.t -> 'a
 
   val constraint_system :
        input_typ:('input_var, 'input_value) Typ.t
@@ -1433,11 +1446,6 @@ module type Run_basic = sig
   val in_prover : unit -> bool
 
   val in_checked_computation : unit -> bool
-
-  module Internal_Basic :
-    Basic
-      with type field = field
-       and type 'a As_prover.Ref.t = 'a As_prover.Ref.t
 
   val run_checked : 'a Internal_Basic.Checked.t -> 'a
 end

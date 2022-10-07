@@ -15,59 +15,80 @@ let located_label_string ~loc str =
       [%e Exp.constant ~loc (Const.string (str ^ ": "))]
       Stdlib.__LOC__]
 
-let with_label ~local ~loc exprs =
+let with_label ~local ~loc ~arg exprs =
   let with_label_expr =
     if local then [%expr with_label]
-    else [%expr Snarky_backendless.Checked_ast.with_label]
+    else
+      match arg with
+      | None ->
+          [%expr Snarky_backendless.Checked_ast.with_label]
+      | Some path ->
+          pexp_ident ~loc
+            (Located.mk ~loc:path.loc (Longident.Ldot (path.txt, "with_label")))
   in
   Exp.apply ~loc with_label_expr exprs
 
-let with_label_one ~local ~loc ~path:_ expr =
-  with_label ~local ~loc [ (Nolabel, located_label_expr expr) ]
+let with_label_one ~local ~loc ~path:_ ~arg expr =
+  with_label ~local ~loc ~arg [ (Nolabel, located_label_expr expr) ]
 
-let rec snarkydef_inject ~local ~loc ~name expr =
+let rec snarkydef_inject ~local ~loc ~arg ~name expr =
   match expr.pexp_desc with
   | Pexp_fun (lbl, default, pat, body) ->
       { expr with
         pexp_desc =
-          Pexp_fun (lbl, default, pat, snarkydef_inject ~local ~loc ~name body)
+          Pexp_fun
+            (lbl, default, pat, snarkydef_inject ~local ~loc ~arg ~name body)
       }
   | Pexp_newtype (typname, body) ->
       { expr with
         pexp_desc =
-          Pexp_newtype (typname, snarkydef_inject ~local ~loc ~name body)
+          Pexp_newtype (typname, snarkydef_inject ~local ~loc ~arg ~name body)
       }
   | Pexp_function _ ->
       Location.raise_errorf ~loc:expr.pexp_loc
         "%%snarkydef currently doesn't support 'function'"
   | _ ->
-      with_label ~local ~loc
+      with_label ~local ~loc ~arg
         [ (Nolabel, located_label_string ~loc name); (Nolabel, expr) ]
 
-let snarkydef ~local ~loc ~path:_ name expr =
+let snarkydef ~local ~loc ~path:_ ~arg name expr =
   [%stri
     let [%p Pat.var ~loc (Located.mk ~loc name)] =
-      [%e snarkydef_inject ~local ~loc ~name expr]]
+      [%e snarkydef_inject ~local ~loc ~arg ~name expr]]
 
-let with_label_ext ~local name =
+let with_label_ext name =
+  Extension.declare_with_path_arg name Extension.Context.expression
+    Ast_pattern.(single_expr_payload __)
+    (with_label_one ~local:false)
+
+let with_label_local_ext name =
   Extension.declare name Extension.Context.expression
     Ast_pattern.(single_expr_payload __)
-    (with_label_one ~local)
+    (with_label_one ~local:true ~arg:None)
 
-let snarkydef_ext ~local name =
+let snarkydef_ext name =
+  Extension.declare_with_path_arg name Extension.Context.structure_item
+    Ast_pattern.(
+      pstr
+        ( pstr_value nonrecursive
+            (value_binding ~pat:(ppat_var __) ~expr:__ ^:: nil)
+        ^:: nil ))
+    (snarkydef ~local:false)
+
+let snarkydef_local_ext name =
   Extension.declare name Extension.Context.structure_item
     Ast_pattern.(
       pstr
         ( pstr_value nonrecursive
             (value_binding ~pat:(ppat_var __) ~expr:__ ^:: nil)
         ^:: nil ))
-    (snarkydef ~local)
+    (snarkydef ~local:true ~arg:None)
 
 let main () =
   Driver.register_transformation name
     ~rules:
-      [ Context_free.Rule.extension (with_label_ext ~local:false "with_label")
-      ; Context_free.Rule.extension (with_label_ext ~local:true "with_label_")
-      ; Context_free.Rule.extension (snarkydef_ext ~local:false "snarkydef")
-      ; Context_free.Rule.extension (snarkydef_ext ~local:true "snarkydef_")
+      [ Context_free.Rule.extension (with_label_ext "with_label")
+      ; Context_free.Rule.extension (with_label_local_ext "with_label_")
+      ; Context_free.Rule.extension (snarkydef_ext "snarkydef")
+      ; Context_free.Rule.extension (snarkydef_local_ext "snarkydef_")
       ]
