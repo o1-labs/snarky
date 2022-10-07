@@ -1524,24 +1524,14 @@ module Run = struct
 
     let state =
       ref
-        { system = None
-        ; input = field_vec ()
-        ; aux = field_vec ()
-        ; eval_constraints = false
-        ; num_inputs = 0
-        ; next_auxiliary = ref 1
-        ; has_witness = false
-        ; stack = []
-        ; handler = Request.Handler.fail
-        ; is_running = false
-        ; as_prover = ref false
-        ; log_constraint = None
-        }
+        (Run_state.make ~input:(field_vec ()) ~aux:(field_vec ())
+           ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 1)
+           ~with_witness:false ~stack:[] ~is_running:false () )
 
-    let in_prover () : bool = !state.has_witness
+    let in_prover () : bool = Run_state.has_witness !state
 
     let in_checked_computation () : bool =
-      is_active_functor_id this_functor_id && !state.is_running
+      is_active_functor_id this_functor_id && Run_state.is_running !state
 
     let run (checked : _ Checked.t) =
       match checked with
@@ -1555,7 +1545,7 @@ module Run = struct
                %i, but the module used to run it had internal ID %i. The same \
                instance of Snarky.Snark.Run.Make must be used for both."
               this_functor_id (active_functor_id ()) ()
-          else if not !state.is_running then
+          else if not (Run_state.is_running !state) then
             failwith
               "This function can't be run outside of a checked computation." ;
           let state', x = Runner.run checked !state in
@@ -1969,12 +1959,12 @@ module Run = struct
       type 'a as_prover = 'a t
 
       let eval_as_prover f =
-        if !(!state.as_prover) && !state.has_witness then
+        if Run_state.as_prover !state && Run_state.has_witness !state then
           let a = f (Runner.get_value !state) in
           a
         else failwith "Can't evaluate prover code outside an as_prover block"
 
-      let in_prover_block () = !(!state.as_prover)
+      let in_prover_block () = Run_state.as_prover !state
 
       let read_var var = eval_as_prover (As_prover.read_var var)
 
@@ -1996,10 +1986,10 @@ module Run = struct
         (* Allow for nesting of prover blocks, by caching the current value and
            restoring it once we're done.
         *)
-        let old = !(!state.as_prover) in
-        !state.as_prover := true ;
+        let old = Run_state.as_prover !state in
+        Run_state.set_as_prover !state true ;
         let a = f () in
-        !state.as_prover := old ;
+        Run_state.set_as_prover !state old ;
         a
     end
 
@@ -2083,10 +2073,10 @@ module Run = struct
 
     let handle x h =
       let h = Request.Handler.create_single h in
-      let { handler; _ } = !state in
-      state := { !state with handler = Request.Handler.push handler h } ;
+      let handler = Run_state.handler !state in
+      state := Run_state.set_handler !state (Request.Handler.push handler h) ;
       let a = x () in
-      state := { !state with handler } ;
+      state := Run_state.set_handler !state handler ;
       a
 
     let handle_as_prover x h =
@@ -2096,14 +2086,15 @@ module Run = struct
     let if_ b ~typ ~then_ ~else_ = run (if_ b ~typ ~then_ ~else_)
 
     let with_label lbl x =
-      let { stack; log_constraint; _ } = !state in
-      state := { !state with stack = lbl :: stack } ;
+      let stack = Run_state.stack !state in
+      let log_constraint = Run_state.log_constraint !state in
+      state := Run_state.set_stack !state (lbl :: stack) ;
       Option.iter log_constraint ~f:(fun f ->
           f ~at_label_boundary:(`Start, lbl) None ) ;
       let a = x () in
       Option.iter log_constraint ~f:(fun f ->
           f ~at_label_boundary:(`End, lbl) None ) ;
-      state := { !state with stack } ;
+      state := Run_state.set_stack !state stack ;
       a
 
     let inject_wrapper :
@@ -2135,10 +2126,10 @@ module Run = struct
         Perform.run_and_check ~run:as_stateful (fun () ->
             mark_active ~f:(fun () ->
                 let prover_block = x () in
-                !state.as_prover := true ;
+                Run_state.set_as_prover !state true ;
                 As_prover.run_prover prover_block ) )
       in
-      !state.as_prover := true ;
+      Run_state.set_as_prover !state true ;
       res
 
     module Run_and_check_deferred (M : sig
@@ -2169,10 +2160,10 @@ module Run = struct
           run_and_check ~run:as_stateful (fun () ->
               mark_active ~f:(fun () ->
                   map (x ()) ~f:(fun prover_block ->
-                      !state.as_prover := true ;
+                      Run_state.set_as_prover !state true ;
                       As_prover.run_prover prover_block ) ) )
         in
-        !state.as_prover := true ;
+        Run_state.set_as_prover !state true ;
         res
     end
 
@@ -2196,8 +2187,8 @@ module Run = struct
       let old = !state in
       state :=
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
-          ~next_auxiliary:(ref 1) ~eval_constraints:false ~with_witness:false () ;
-      state := { !state with log_constraint = Some log_constraint } ;
+          ~next_auxiliary:(ref 1) ~eval_constraints:false ~with_witness:false
+          ~log_constraint () ;
       ignore (mark_active ~f:x) ;
       state := old ;
       !count
