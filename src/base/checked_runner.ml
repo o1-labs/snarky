@@ -138,48 +138,44 @@ struct
     let s', y = t { s with stack = lab :: stack } in
     ({ s' with stack }, y)
 
-  let log_constraint c s =
-    String.concat ~sep:"\n"
-      (List.map c ~f:(fun { basic; _ } ->
-           match basic with
-           | Boolean var ->
-               Format.(
-                 asprintf "Boolean %s" (Field.to_string (get_value s var)))
-           | Equal (var1, var2) ->
-               Format.(
-                 asprintf "Equal %s %s"
-                   (Field.to_string (get_value s var1))
-                   (Field.to_string (get_value s var2)))
-           | Square (var1, var2) ->
-               Format.(
-                 asprintf "Square %s %s"
-                   (Field.to_string (get_value s var1))
-                   (Field.to_string (get_value s var2)))
-           | R1CS (var1, var2, var3) ->
-               Format.(
-                 asprintf "R1CS %s %s %s"
-                   (Field.to_string (get_value s var1))
-                   (Field.to_string (get_value s var2))
-                   (Field.to_string (get_value s var3)))
-           | _ ->
-               Format.asprintf
-                 !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
-                 (Constraint0.Basic.map basic ~f:(get_value s)) ) )
+  let log_constraint { basic; _ } s =
+    match basic with
+    | Boolean var ->
+        Format.(asprintf "Boolean %s" (Field.to_string (get_value s var)))
+    | Equal (var1, var2) ->
+        Format.(
+          asprintf "Equal %s %s"
+            (Field.to_string (get_value s var1))
+            (Field.to_string (get_value s var2)))
+    | Square (var1, var2) ->
+        Format.(
+          asprintf "Square %s %s"
+            (Field.to_string (get_value s var1))
+            (Field.to_string (get_value s var2)))
+    | R1CS (var1, var2, var3) ->
+        Format.(
+          asprintf "R1CS %s %s %s"
+            (Field.to_string (get_value s var1))
+            (Field.to_string (get_value s var2))
+            (Field.to_string (get_value s var3)))
+    | _ ->
+        Format.asprintf
+          !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
+          (Constraint0.Basic.map basic ~f:(get_value s))
 
   let stack_to_string = String.concat ~sep:"\n"
 
-  let add_constraint ~stack (t : Constraint.t)
+  let add_constraint ~stack ({ basic; annotation } : Constraint.t)
       (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
-    List.iter t ~f:(fun { basic; annotation } ->
-        let label = Option.value annotation ~default:"<unknown>" in
-        C.add_constraint system basic ~label:(stack_to_string (label :: stack)) )
+    let label = Option.value annotation ~default:"<unknown>" in
+    C.add_constraint system basic ~label:(stack_to_string (label :: stack))
 
   let add_constraint c s =
     if !(s.as_prover) then
       (* Don't add constraints as the prover, or the constraint system won't match! *)
       (s, ())
     else (
-      Option.iter s.log_constraint ~f:(fun f -> f c) ;
+      Option.iter s.log_constraint ~f:(fun f -> f (Some c)) ;
       if s.eval_constraints && not (Constraint.eval c (get_value s)) then
         failwithf
           "Constraint unsatisfied (unreduced):\n\
@@ -249,7 +245,7 @@ struct
 
   let next_auxiliary s = (s, !(s.next_auxiliary))
 
-  let constraint_count ?(weight = List.length)
+  let constraint_count ?(weight = Fn.const 1)
       ?(log = fun ?start:_ _lab _pos -> ()) t =
     (* TODO: Integrate log with log_constraint *)
     let count = ref 0 in
@@ -260,7 +256,7 @@ struct
       | Some (pos, lab) ->
           let start = match pos with `Start -> true | _ -> false in
           log ~start lab !count ) ;
-      count := !count + weight c
+      count := !count + Option.value_map ~default:0 ~f:weight c
     in
     let state =
       Run_state.
@@ -382,10 +378,10 @@ module Make (Backend : Backend_extended.S) = struct
         run k s
     | With_label (lab, t, k) ->
         Option.iter s.log_constraint ~f:(fun f ->
-            f ~at_label_boundary:(`Start, lab) [] ) ;
+            f ~at_label_boundary:(`Start, lab) None ) ;
         let s, y = with_label lab (run t) s in
         Option.iter s.log_constraint ~f:(fun f ->
-            f ~at_label_boundary:(`End, lab) [] ) ;
+            f ~at_label_boundary:(`End, lab) None ) ;
         let k = handle_error s (fun () -> k y) in
         run k s
     | Add_constraint (c, t) ->

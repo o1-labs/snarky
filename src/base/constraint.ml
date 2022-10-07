@@ -164,7 +164,7 @@ type ('v, 'f) basic_with_annotation =
   { basic : ('v, 'f) basic; annotation : string option }
 [@@deriving sexp]
 
-type ('v, 'f) t = ('v, 'f) basic_with_annotation list [@@deriving sexp]
+type ('v, 'f) t = ('v, 'f) basic_with_annotation [@@deriving sexp]
 
 module T = struct
   let create_basic ?label basic = { basic; annotation = label }
@@ -174,17 +174,16 @@ module T = struct
     ; annotation = (match label_opt with Some x -> Some x | None -> a)
     }
 
-  let equal ?label x y = [ create_basic ?label (Equal (x, y)) ]
+  let equal ?label x y = create_basic ?label (Equal (x, y))
 
-  let boolean ?label x = [ create_basic ?label (Boolean x) ]
+  let boolean ?label x = create_basic ?label (Boolean x)
 
-  let r1cs ?label a b c = [ create_basic ?label (R1CS (a, b, c)) ]
+  let r1cs ?label a b c = create_basic ?label (R1CS (a, b, c))
 
-  let square ?label a c = [ create_basic ?label (Square (a, c)) ]
+  let square ?label a c = create_basic ?label (Square (a, c))
 
   let annotation (t : _ t) =
-    String.concat ~sep:"; "
-      (List.filter_map t ~f:(fun { annotation; _ } -> annotation))
+    match t.annotation with Some str -> str | None -> ""
 end
 
 include T
