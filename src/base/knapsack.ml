@@ -52,14 +52,14 @@ module Make (Impl : Snark_intf.Basic) = struct
     let hash_to_bits (t : t) (vs : Boolean.var list) :
         Boolean.var list Checked.t =
       let%bind xs = hash_to_field t vs in
-      with_label "hash_to_bits"
-        (let%map bss =
-           Checked.all
-             (List.map xs
-                ~f:
-                  (Field.Checked.choose_preimage_var ~length:Field.size_in_bits) )
-         in
-         List.concat bss )
+      with_label "hash_to_bits" (fun () ->
+          let%map bss =
+            Checked.all
+              (List.map xs
+                 ~f:
+                   (Field.Checked.choose_preimage_var ~length:Field.size_in_bits) )
+          in
+          List.concat bss )
   end
 
   module Hash (M : sig
@@ -108,7 +108,8 @@ module Make (Impl : Snark_intf.Basic) = struct
       res
 
     let hash (h1 : var) (h2 : var) =
-      with_label "Knapsack.hash" (Checked.hash_to_bits knapsack (h1 @ h2))
+      with_label "Knapsack.hash" (fun () ->
+          Checked.hash_to_bits knapsack (h1 @ h2) )
 
     let assert_equal = Impl.Bitstring_checked.Assert.equal
   end

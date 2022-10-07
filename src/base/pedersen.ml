@@ -153,8 +153,8 @@ end = struct
     let typ = Typ.field
 
     let choose_preimage x =
-      with_label "Pedersen.Digest.choose_preimage"
-        (Field.Checked.choose_preimage_var ~length:Field.size_in_bits x)
+      with_label "Pedersen.Digest.choose_preimage" (fun () ->
+          Field.Checked.choose_preimage_var ~length:Field.size_in_bits x )
       |> Checked.map ~f:Bitstring.Lsb_first.of_list
   end
 
