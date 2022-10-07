@@ -19,8 +19,6 @@ module type Basic = sig
   val with_handler :
     Request.Handler.single -> ('a, 'f field) t -> ('a, 'f field) t
 
-  val clear_handler : ('a, 'f field) t -> ('a, 'f field) t
-
   val exists :
        ('var, 'value, 'f field) Types.Typ.t
     -> ('value, 'f field) Types.Provider.t

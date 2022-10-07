@@ -198,11 +198,6 @@ struct
     let s', y = t { s with handler = Request.Handler.push handler h } in
     ({ s' with handler }, y)
 
-  let clear_handler t s =
-    let { handler; _ } = s in
-    let s', y = t { s with handler = Request.Handler.fail } in
-    ({ s' with handler }, y)
-
   let exists
       (Types.Typ.Typ
         { Types.Typ.var_of_fields
@@ -389,10 +384,6 @@ module Make (Backend : Backend_extended.S) = struct
         run t s
     | With_handler (h, t, k) ->
         let s, y = with_handler h (run t) s in
-        let k = handle_error s (fun () -> k y) in
-        run k s
-    | Clear_handler (t, k) ->
-        let s, y = clear_handler (run t) s in
         let k = handle_error s (fun () -> k y) in
         run k s
     | Exists
