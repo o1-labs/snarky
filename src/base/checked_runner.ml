@@ -418,11 +418,13 @@ module Make (Backend : Backend_extended.S) = struct
   module State = struct
     let make ~num_inputs ~input ~next_auxiliary ~aux ?system
         ?(eval_constraints = !eval_constraints_ref) ?handler ~with_witness
-        ?log_constraint  () =
+        ?log_constraint () =
       let log_constraint =
         match log_constraint with
-        | Some _ -> log_constraint
-        | None -> !constraint_logger
+        | Some _ ->
+            log_constraint
+        | None ->
+            !constraint_logger
       in
       (* We can't evaluate the constraints if we are not computing over a value. *)
       let eval_constraints = eval_constraints && with_witness in
