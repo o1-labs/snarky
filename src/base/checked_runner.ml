@@ -364,7 +364,6 @@ module Make (Backend : Backend_extended.S) = struct
   let clear_constraint_logger () = constraint_logger := None
 
   module Checked_runner = Make_checked (Backend) (As_prover)
-  open Checked_runner
 
   type run_state = Checked_runner.run_state
 
@@ -388,80 +387,7 @@ module Make (Backend : Backend_extended.S) = struct
       end )
 
   module Types = Checked_ast.Types
-
-  let handle_error s f =
-    try f () with
-    | Runtime_error (stack, exn, bt) ->
-        (* NOTE: We create a new [Runtime_error] instead of re-using the old
-                 one. Re-using the old one will fill the backtrace with call
-                 and re-raise messages, one per iteration of this function,
-                 which are irrelevant to the user.
-        *)
-        raise (Runtime_error (stack, exn, bt))
-    | exn ->
-        let bt = Printexc.get_backtrace () in
-        raise (Runtime_error (Run_state.stack s, exn, bt))
-
-  (* INVARIANT: run _ s = (s', _) gives
-       (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
-  let rec run : type a. (a, Field.t) Checked_ast.t -> run_state -> run_state * a
-      =
-   fun t s ->
-    match t with
-    | As_prover (x, k) ->
-        let s, () = handle_error s (fun () -> as_prover x s) in
-        run k s
-    | Pure x ->
-        (s, x)
-    | Direct (d, k) ->
-        let s, y = handle_error s (fun () -> direct d s) in
-        let k = handle_error s (fun () -> k y) in
-        run k s
-    | Lazy (x, k) ->
-        let s, y = mk_lazy (fun () -> run x) s in
-        let k = handle_error s (fun () -> k y) in
-        run k s
-    | With_label (lab, t, k) ->
-        let s, y = with_label lab (fun () -> run t) s in
-        let k = handle_error s (fun () -> k y) in
-        run k s
-    | Add_constraint (c, t) ->
-        let s, () = handle_error s (fun () -> add_constraint c s) in
-        run t s
-    | With_handler (h, t, k) ->
-        let s, y = with_handler h (fun () -> run t) s in
-        let k = handle_error s (fun () -> k y) in
-        run k s
-    | Exists
-        ( Typ
-            { var_to_fields
-            ; var_of_fields
-            ; value_to_fields
-            ; value_of_fields
-            ; size_in_field_elements
-            ; constraint_system_auxiliary
-            ; check
-            }
-        , p
-        , k ) ->
-        let typ =
-          Types.Typ.Typ
-            { var_to_fields
-            ; var_of_fields
-            ; value_to_fields
-            ; value_of_fields
-            ; size_in_field_elements
-            ; constraint_system_auxiliary
-            ; check = (fun var -> run (check var))
-            }
-        in
-        let s, y = handle_error s (fun () -> exists typ p s) in
-        let k = handle_error s (fun () -> k y) in
-        run k s
-    | Next_auxiliary k ->
-        let s, y = next_auxiliary () s in
-        let k = handle_error s (fun () -> k y) in
-        run k s
+  include Make_runner (Checked_runner)
 
   let dummy_vector = Run_state.Vector.null
 

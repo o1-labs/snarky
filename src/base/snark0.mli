@@ -12,13 +12,12 @@ val set_eval_constraints : bool -> unit
     exception.
 
     The arguments are:
-    1. a generic error message, with a presentation of the backtrace
-    2. the backtrace of all active labels at the point in the checked
+    1. the backtrace of all active labels at the point in the checked
        computation when the exception was raised
-    3. the original exception that was raised
-    4. the backtrace of the original exception
+    2. the original exception that was raised
+    3. the backtrace of the original exception
 *)
-exception Runtime_error of string * string list * exn * string
+exception Runtime_error of string list * exn * string
 
 module Make (Backend : Backend_intf.S) :
   Snark_intf.S
