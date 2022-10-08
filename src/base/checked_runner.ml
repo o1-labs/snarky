@@ -242,6 +242,8 @@ struct
 
   let next_auxiliary () s = (s, Run_state.next_auxiliary s)
 
+  let direct f = f
+
   let constraint_count ?(weight = Fn.const 1)
       ?(log = fun ?start:_ _lab _pos -> ()) t =
     (* TODO: Integrate log with log_constraint *)
@@ -352,7 +354,7 @@ module Make (Backend : Backend_extended.S) = struct
     | Pure x ->
         (s, x)
     | Direct (d, k) ->
-        let s, y = handle_error s (fun () -> d s) in
+        let s, y = handle_error s (fun () -> direct d s) in
         let k = handle_error s (fun () -> k y) in
         run k s
     | Lazy (x, k) ->

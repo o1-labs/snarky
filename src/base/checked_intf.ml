@@ -26,6 +26,9 @@ module type Basic = sig
 
   val next_auxiliary : unit -> (int, 'f field) t
 
+  val direct :
+    ('f field Run_state.t -> 'f field Run_state.t * 'a) -> ('a, 'f field) t
+
   val constraint_count :
        ?weight:(('f field Cvar.t, 'f field) Constraint.t -> int)
     -> ?log:(?start:bool -> string -> int -> unit)
@@ -118,6 +121,9 @@ module type S = sig
     -> 'f field Cvar.t
     -> 'f field Cvar.t
     -> (unit, 'f field) t
+
+  val direct :
+    ('f field Run_state.t -> 'f field Run_state.t * 'a) -> ('a, 'f field) t
 
   val constraint_count :
        ?weight:(('f field Cvar.t, 'f field) Constraint.t -> int)

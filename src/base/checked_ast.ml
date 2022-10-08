@@ -133,6 +133,8 @@ module Basic :
 
   let next_auxiliary () = Next_auxiliary return
 
+  let direct f = Direct (f, return)
+
   (** Count the constraints generated in the circuit definition.
 
       This evaluates the circuit definition, and will run code in the same
