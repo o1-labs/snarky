@@ -49,7 +49,9 @@ let rec snarkydef_inject ~local ~loc ~arg ~name expr =
         "%%snarkydef currently doesn't support 'function'"
   | _ ->
       with_label ~local ~loc ~arg
-        [ (Nolabel, located_label_string ~loc name); (Nolabel, expr) ]
+        [ (Nolabel, located_label_string ~loc name)
+        ; (Nolabel, [%expr fun () -> [%e expr]])
+        ]
 
 let snarkydef ~local ~loc ~path:_ ~arg name expr =
   [%stri

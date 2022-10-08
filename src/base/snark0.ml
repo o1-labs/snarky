@@ -547,28 +547,29 @@ struct
       | _, Constant y ->
           return (Cvar.scale x y)
       | _, _ ->
-          with_label label
-            (let open Let_syntax in
-            let%bind z =
-              exists Typ.field
-                ~compute:As_prover.(map2 (read_var x) (read_var y) ~f:Field.mul)
-            in
-            let%map () = assert_r1cs x y z in
-            z)
+          with_label label (fun () ->
+              let open Let_syntax in
+              let%bind z =
+                exists Typ.field
+                  ~compute:
+                    As_prover.(map2 (read_var x) (read_var y) ~f:Field.mul)
+              in
+              let%map () = assert_r1cs x y z in
+              z )
 
     let square ?(label = "Checked.square") (x : Cvar.t) =
       match x with
       | Constant x ->
           return (Cvar.constant (Field.square x))
       | _ ->
-          with_label label
-            (let open Let_syntax in
-            let%bind z =
-              exists Typ.field
-                ~compute:As_prover.(map (read_var x) ~f:Field.square)
-            in
-            let%map () = assert_square x z in
-            z)
+          with_label label (fun () ->
+              let open Let_syntax in
+              let%bind z =
+                exists Typ.field
+                  ~compute:As_prover.(map (read_var x) ~f:Field.square)
+              in
+              let%map () = assert_square x z in
+              z )
 
     (* We get a better stack trace by failing at the call to is_satisfied, so we
        put a bogus value for the inverse to make the constraint system unsat if
@@ -578,31 +579,31 @@ struct
       | Constant x ->
           return (Cvar.constant (Field.inv x))
       | _ ->
-          with_label label
-            (let open Let_syntax in
-            let%bind x_inv =
-              exists Typ.field
-                ~compute:
-                  As_prover.(
-                    map (read_var x) ~f:(fun x ->
-                        if Field.(equal zero x) then Field.zero
-                        else Backend.Field.inv x ))
-            in
-            let%map () =
-              assert_r1cs ~label:"field_inverse" x x_inv
-                (Cvar.constant Field.one)
-            in
-            x_inv)
+          with_label label (fun () ->
+              let open Let_syntax in
+              let%bind x_inv =
+                exists Typ.field
+                  ~compute:
+                    As_prover.(
+                      map (read_var x) ~f:(fun x ->
+                          if Field.(equal zero x) then Field.zero
+                          else Backend.Field.inv x ))
+              in
+              let%map () =
+                assert_r1cs ~label:"field_inverse" x x_inv
+                  (Cvar.constant Field.one)
+              in
+              x_inv )
 
     let div ?(label = "Checked.div") (x : Cvar.t) (y : Cvar.t) =
       match (x, y) with
       | Constant x, Constant y ->
           return (Cvar.constant (Field.( / ) x y))
       | _ ->
-          with_label label
-            (let open Let_syntax in
-            let%bind y_inv = inv y in
-            mul x y_inv)
+          with_label label (fun () ->
+              let open Let_syntax in
+              let%bind y_inv = inv y in
+              mul x y_inv )
 
     let%snarkydef_ if_ (b : Cvar.t Boolean.t) ~(then_ : Cvar.t) ~(else_ : Cvar.t)
         =
@@ -1161,19 +1162,21 @@ struct
         assert (Int.(bit_length <= size_in_bits - 2)) ;
         let open Checked in
         let open Let_syntax in
-        [%with_label_ "compare"]
-          (let alpha_packed = Cvar.(constant (two_to_the bit_length) + b - a) in
-           let%bind alpha = unpack alpha_packed ~length:Int.(bit_length + 1) in
-           let prefix, less_or_equal =
-             match Core_kernel.List.split_n alpha bit_length with
-             | p, [ l ] ->
-                 (p, l)
-             | _ ->
-                 failwith "compare: Invalid alpha"
-           in
-           let%bind not_all_zeros = Boolean.any prefix in
-           let%map less = Boolean.(less_or_equal && not_all_zeros) in
-           { less; less_or_equal } )
+        [%with_label_ "compare"] (fun () ->
+            let alpha_packed =
+              Cvar.(constant (two_to_the bit_length) + b - a)
+            in
+            let%bind alpha = unpack alpha_packed ~length:Int.(bit_length + 1) in
+            let prefix, less_or_equal =
+              match Core_kernel.List.split_n alpha bit_length with
+              | p, [ l ] ->
+                  (p, l)
+              | _ ->
+                  failwith "compare: Invalid alpha"
+            in
+            let%bind not_all_zeros = Boolean.any prefix in
+            let%map less = Boolean.(less_or_equal && not_all_zeros) in
+            { less; less_or_equal } )
 
       module Assert = struct
         let lt ~bit_length x y =
@@ -1197,7 +1200,8 @@ struct
         let equal x y = Checked.assert_equal ~label:"Checked.Assert.equal" x y
 
         let not_equal (x : t) (y : t) =
-          Checked.with_label "Checked.Assert.not_equal" (non_zero (sub x y))
+          Checked.with_label "Checked.Assert.not_equal" (fun () ->
+              non_zero (sub x y) )
       end
 
       let lt_bitstring_value =
@@ -2039,7 +2043,7 @@ module Run = struct
 
     let as_prover p = run (as_prover (As_prover.run_prover p))
 
-    let next_auxiliary () = run next_auxiliary
+    let next_auxiliary () = run (next_auxiliary ())
 
     let request_witness typ p =
       run (request_witness typ (As_prover.run_prover p))

@@ -123,15 +123,15 @@ module Basic :
 
   let as_prover x = As_prover (x, return ())
 
-  let mk_lazy x = Lazy (x, return)
+  let mk_lazy x = Lazy (x (), return)
 
-  let with_label lbl x = With_label (lbl, x, return)
+  let with_label lbl x = With_label (lbl, x (), return)
 
-  let with_handler h x = With_handler (h, x, return)
+  let with_handler h x = With_handler (h, x (), return)
 
   let exists typ p = Exists (typ, p, return)
 
-  let next_auxiliary = Next_auxiliary return
+  let next_auxiliary () = Next_auxiliary return
 
   (** Count the constraints generated in the circuit definition.
 
@@ -229,10 +229,11 @@ module Basic :
 
   let constraint_count (type f)
       ?(weight : ((f field Cvar.t, f field) Constraint.t -> int) option)
-      ?(log = fun ?start:_ _ _ -> ()) (t : (_, f field) Types.Checked.t) : int =
+      ?(log = fun ?start:_ _ _ -> ()) (t : unit -> (_, f field) Types.Checked.t)
+      : int =
     let next_auxiliary = ref 1 in
     let weight = match weight with None -> Fn.const 1 | Some w -> w in
-    fst (constraint_count_aux ~weight ~log ~auxc:next_auxiliary 0 t)
+    fst (constraint_count_aux ~weight ~log ~auxc:next_auxiliary 0 (t ()))
 end
 
 module T = struct

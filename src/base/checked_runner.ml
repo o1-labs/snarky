@@ -130,12 +130,12 @@ struct
              ...
           *)
           let label = "\nLazy value forced at:" in
-          let _s', y = x { s with stack = old_stack @ (label :: stack) } in
+          let _s', y = x () { s with stack = old_stack @ (label :: stack) } in
           y ) )
 
   let with_label lab t s =
     let { stack; _ } = s in
-    let s', y = t { s with stack = lab :: stack } in
+    let s', y = t () { s with stack = lab :: stack } in
     ({ s' with stack }, y)
 
   let log_constraint { basic; _ } s =
@@ -195,7 +195,7 @@ struct
 
   let with_handler h t s =
     let { handler; _ } = s in
-    let s', y = t { s with handler = Request.Handler.push handler h } in
+    let s', y = t () { s with handler = Request.Handler.push handler h } in
     ({ s' with handler }, y)
 
   let exists
@@ -238,7 +238,7 @@ struct
       let s, () = check var s in
       (s, { Handle.var; value = None })
 
-  let next_auxiliary s = (s, !(s.next_auxiliary))
+  let next_auxiliary () s = (s, !(s.next_auxiliary))
 
   let constraint_count ?(weight = Fn.const 1)
       ?(log = fun ?start:_ _lab _pos -> ()) t =
@@ -269,7 +269,7 @@ struct
         ; log_constraint = Some log_constraint
         }
     in
-    let _ = t state in
+    let _ = t () state in
     !count
 end
 
@@ -368,13 +368,13 @@ module Make (Backend : Backend_extended.S) = struct
         let k = handle_error s (fun () -> k y) in
         run k s
     | Lazy (x, k) ->
-        let s, y = mk_lazy (run x) s in
+        let s, y = mk_lazy (fun () -> run x) s in
         let k = handle_error s (fun () -> k y) in
         run k s
     | With_label (lab, t, k) ->
         Option.iter s.log_constraint ~f:(fun f ->
             f ~at_label_boundary:(`Start, lab) None ) ;
-        let s, y = with_label lab (run t) s in
+        let s, y = with_label lab (fun () -> run t) s in
         Option.iter s.log_constraint ~f:(fun f ->
             f ~at_label_boundary:(`End, lab) None ) ;
         let k = handle_error s (fun () -> k y) in
@@ -383,7 +383,7 @@ module Make (Backend : Backend_extended.S) = struct
         let s, () = handle_error s (fun () -> add_constraint c s) in
         run t s
     | With_handler (h, t, k) ->
-        let s, y = with_handler h (run t) s in
+        let s, y = with_handler h (fun () -> run t) s in
         let k = handle_error s (fun () -> k y) in
         run k s
     | Exists
@@ -413,7 +413,7 @@ module Make (Backend : Backend_extended.S) = struct
         let k = handle_error s (fun () -> k y) in
         run k s
     | Next_auxiliary k ->
-        let s, y = next_auxiliary s in
+        let s, y = next_auxiliary () s in
         let k = handle_error s (fun () -> k y) in
         run k s
 

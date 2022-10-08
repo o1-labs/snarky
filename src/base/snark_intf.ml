@@ -885,10 +885,10 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       Any constraints within the checked computation are not added to the
       constraint system unless the lazy value is forced.
   *)
-  val mk_lazy : 'a Checked.t -> 'a Lazy.t Checked.t
+  val mk_lazy : (unit -> 'a Checked.t) -> 'a Lazy.t Checked.t
 
   (** Internal: read the value of the next unused auxiliary input index. *)
-  val next_auxiliary : int Checked.t
+  val next_auxiliary : unit -> int Checked.t
 
   (** [request_witness typ create_request] runs the [create_request]
       {!type:As_prover.t} block to generate a {!type:Request.t}.
@@ -951,13 +951,14 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** Add a request handler to the checked computation, to be used by
       {!val:request_witness}, {!val:perform}, {!val:request} or {!val:exists}.
   *)
-  val handle : 'a Checked.t -> Handler.t -> 'a Checked.t
+  val handle : (unit -> 'a Checked.t) -> Handler.t -> 'a Checked.t
 
   (** Generate a handler using the {!module:As_prover} 'superpowers', and use
       it for {!val:request_witness}, {!val:perform}, {!val:request} or
       {!val:exists} calls in the wrapped checked computation.
   *)
-  val handle_as_prover : 'a Checked.t -> Handler.t As_prover.t -> 'a Checked.t
+  val handle_as_prover :
+    (unit -> 'a Checked.t) -> Handler.t As_prover.t -> 'a Checked.t
 
   (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
       otherwise.
@@ -976,7 +977,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       If a constraint is checked and isn't satisfied, this label will be shown
       in the error message.
   *)
-  val with_label : string -> 'a Checked.t -> 'a Checked.t
+  val with_label : string -> (unit -> 'a Checked.t) -> 'a Checked.t
 
   val make_checked_ast : 'a Checked.t -> ('a, field) Checked_ast.t
 
@@ -1066,7 +1067,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val constraint_count :
        ?weight:(Constraint.t -> int)
     -> ?log:(?start:bool -> string -> int -> unit)
-    -> _ Checked.t
+    -> (unit -> _ Checked.t)
     -> int
 
   module Test : sig
