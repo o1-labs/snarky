@@ -164,20 +164,9 @@ module Basic :
           count := !count + Option.value_map ~default:0 ~f:weight c
         in
         let state =
-          Run_state.
-            { system = None
-            ; input = Vector.null
-            ; aux = Vector.null
-            ; eval_constraints = false
-            ; num_inputs = 0
-            ; next_auxiliary = ref 1
-            ; has_witness = false
-            ; stack = []
-            ; handler = Request.Handler.fail
-            ; is_running = true
-            ; as_prover = ref false
-            ; log_constraint = Some log_constraint
-            }
+          Run_state.make ~num_inputs:0 ~input:Run_state.Vector.null
+            ~next_auxiliary:(ref 1) ~aux:Run_state.Vector.null
+            ~eval_constraints:false ~log_constraint ~with_witness:false ()
         in
         let _, x = d state in
         constraint_count_aux ~weight ~log ~auxc !count (k x)

@@ -50,3 +50,60 @@ type 'field t =
        -> unit )
       option
   }
+
+let make ~num_inputs ~input ~next_auxiliary ~aux ?system ~eval_constraints
+    ?log_constraint ?handler ~with_witness ?(stack = []) ?(is_running = true) ()
+    =
+  next_auxiliary := 1 + num_inputs ;
+  (* We can't evaluate the constraints if we are not computing over a value. *)
+  let eval_constraints = eval_constraints && with_witness in
+  { system
+  ; input
+  ; aux
+  ; eval_constraints
+  ; num_inputs
+  ; next_auxiliary
+  ; has_witness = with_witness
+  ; stack
+  ; handler = Option.value handler ~default:Request.Handler.fail
+  ; is_running
+  ; as_prover = ref false
+  ; log_constraint
+  }
+
+let get_variable_value { num_inputs; input; aux; _ } : int -> 'field =
+ fun i ->
+  if i <= num_inputs then Vector.get input (i - 1)
+  else Vector.get aux (i - num_inputs - 1)
+
+let store_field_elt { next_auxiliary; aux; _ } x =
+  let v = !next_auxiliary in
+  incr next_auxiliary ; Vector.emplace_back aux x ; Cvar.Unsafe.of_index v
+
+let alloc_var { next_auxiliary; _ } () =
+  let v = !next_auxiliary in
+  incr next_auxiliary ; Cvar.Unsafe.of_index v
+
+let has_witness { has_witness; _ } = has_witness
+
+let as_prover { as_prover; _ } = !as_prover
+
+let set_as_prover t as_prover = t.as_prover := as_prover
+
+let stack { stack; _ } = stack
+
+let set_stack t stack = { t with stack }
+
+let log_constraint { log_constraint; _ } = log_constraint
+
+let eval_constraints { eval_constraints; _ } = eval_constraints
+
+let system { system; _ } = system
+
+let handler { handler; _ } = handler
+
+let set_handler t handler = { t with handler }
+
+let is_running { is_running; _ } = is_running
+
+let next_auxiliary { next_auxiliary; _ } = !next_auxiliary

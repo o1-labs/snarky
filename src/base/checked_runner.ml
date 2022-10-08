@@ -24,6 +24,8 @@ let () =
 
 let eval_constraints = ref true
 
+let eval_constraints_ref = eval_constraints
+
 module Make_checked
     (Backend : Backend_extended.S)
     (As_prover : As_prover_intf.S with type 'f field := Backend.Field.t) =
@@ -75,33 +77,23 @@ struct
 
   open Constraint
   open Backend
-  open Run_state
   open Checked_ast
 
-  let get_value { num_inputs; input; aux; _ } : Cvar.t -> Field.t =
-    let get_one i =
-      if i <= num_inputs then Run_state.Vector.get input (i - 1)
-      else Run_state.Vector.get aux (i - num_inputs - 1)
-    in
+  let get_value (t : Field.t Run_state.t) : Cvar.t -> Field.t =
+    let get_one i = Run_state.get_variable_value t i in
     Cvar.eval (`Return_values_will_be_mutated get_one)
 
-  let store_field_elt { next_auxiliary; aux; _ } x =
-    let v = !next_auxiliary in
-    incr next_auxiliary ;
-    Run_state.Vector.emplace_back aux x ;
-    Cvar.Unsafe.of_index v
+  let store_field_elt = Run_state.store_field_elt
 
-  let alloc_var { next_auxiliary; _ } () =
-    let v = !next_auxiliary in
-    incr next_auxiliary ; Cvar.Unsafe.of_index v
+  let alloc_var = Run_state.alloc_var
 
   let run_as_prover x state =
-    match (x, state.has_witness) with
+    match (x, Run_state.has_witness state) with
     | Some x, true ->
-        let old = !(state.as_prover) in
-        state.as_prover := true ;
+        let old = Run_state.as_prover state in
+        Run_state.set_as_prover state true ;
         let y = As_prover.run x (get_value state) in
-        state.as_prover := old ;
+        Run_state.set_as_prover state old ;
         (state, Some y)
     | _, _ ->
         (state, None)
@@ -111,10 +103,10 @@ struct
     (s', ())
 
   let mk_lazy x s =
-    let old_stack = s.stack in
+    let old_stack = Run_state.stack s in
     ( s
     , Lazy.from_fun (fun () ->
-          let { stack; _ } = s in
+          let stack = Run_state.stack s in
 
           (* Add a label to indicate that the new stack is the point at which
              this was forced. When printed for errors, this will split the
@@ -130,13 +122,15 @@ struct
              ...
           *)
           let label = "\nLazy value forced at:" in
-          let _s', y = x () { s with stack = old_stack @ (label :: stack) } in
+          let _s', y =
+            x () (Run_state.set_stack s (old_stack @ (label :: stack)))
+          in
           y ) )
 
   let with_label lab t s =
-    let { stack; _ } = s in
-    let s', y = t () { s with stack = lab :: stack } in
-    ({ s' with stack }, y)
+    let stack = Run_state.stack s in
+    let s', y = t () (Run_state.set_stack s (lab :: stack)) in
+    (Run_state.set_stack s' stack, y)
 
   let log_constraint { basic; _ } s =
     match basic with
@@ -171,12 +165,13 @@ struct
     C.add_constraint system basic ~label:(stack_to_string (label :: stack))
 
   let add_constraint c s =
-    if !(s.as_prover) then
+    if Run_state.as_prover s then
       (* Don't add constraints as the prover, or the constraint system won't match! *)
       (s, ())
     else (
-      Option.iter s.log_constraint ~f:(fun f -> f (Some c)) ;
-      if s.eval_constraints && not (Constraint.eval c (get_value s)) then
+      Option.iter (Run_state.log_constraint s) ~f:(fun f -> f (Some c)) ;
+      if Run_state.eval_constraints s && not (Constraint.eval c (get_value s))
+      then
         failwithf
           "Constraint unsatisfied (unreduced):\n\
            %s\n\
@@ -185,18 +180,21 @@ struct
            %s\n\
            Data:\n\
            %s"
-          (Constraint.annotation c) (stack_to_string s.stack)
+          (Constraint.annotation c)
+          (stack_to_string (Run_state.stack s))
           (Sexp.to_string (Constraint.sexp_of_t c))
           (log_constraint c s) () ;
-      if not !(s.as_prover) then
-        Option.iter s.system ~f:(fun system ->
-            add_constraint ~stack:s.stack c system ) ;
+      if not (Run_state.as_prover s) then
+        Option.iter (Run_state.system s) ~f:(fun system ->
+            add_constraint ~stack:(Run_state.stack s) c system ) ;
       (s, ()) )
 
   let with_handler h t s =
-    let { handler; _ } = s in
-    let s', y = t () { s with handler = Request.Handler.push handler h } in
-    ({ s' with handler }, y)
+    let handler = Run_state.handler s in
+    let s', y =
+      t () (Run_state.set_handler s (Request.Handler.push handler h))
+    in
+    (Run_state.set_handler s' handler, y)
 
   let exists
       (Types.Typ.Typ
@@ -207,14 +205,17 @@ struct
         ; constraint_system_auxiliary
         ; _
         } ) p s =
-    if s.has_witness then (
-      let old = !(s.as_prover) in
-      s.as_prover := true ;
-      let value = As_prover.Provider.run p s.stack (get_value s) s.handler in
-      s.as_prover := old ;
+    if Run_state.has_witness s then (
+      let old = Run_state.as_prover s in
+      Run_state.set_as_prover s true ;
+      let value =
+        As_prover.Provider.run p (Run_state.stack s) (get_value s)
+          (Run_state.handler s)
+      in
+      Run_state.set_as_prover s old ;
       let var =
         let store_value =
-          if !(s.as_prover) then
+          if Run_state.as_prover s then
             (* If we're nested in a prover block, create constants instead of
                storing.
             *)
@@ -238,7 +239,7 @@ struct
       let s, () = check var s in
       (s, { Handle.var; value = None })
 
-  let next_auxiliary () s = (s, !(s.next_auxiliary))
+  let next_auxiliary () s = (s, Run_state.next_auxiliary s)
 
   let constraint_count ?(weight = Fn.const 1)
       ?(log = fun ?start:_ _lab _pos -> ()) t =
@@ -254,20 +255,9 @@ struct
       count := !count + Option.value_map ~default:0 ~f:weight c
     in
     let state =
-      Run_state.
-        { system = None
-        ; input = Vector.null
-        ; aux = Vector.null
-        ; eval_constraints = false
-        ; num_inputs = 0
-        ; next_auxiliary = ref 1
-        ; has_witness = false
-        ; stack = []
-        ; handler = Request.Handler.fail
-        ; is_running = true
-        ; as_prover = ref false
-        ; log_constraint = Some log_constraint
-        }
+      Run_state.make ~num_inputs:0 ~input:Run_state.Vector.null
+        ~next_auxiliary:(ref 1) ~aux:Run_state.Vector.null
+        ~eval_constraints:false ~log_constraint ~with_witness:false ()
     in
     let _ = t () state in
     !count
@@ -284,7 +274,7 @@ module type Run_extras = sig
 
   val store_field_elt : field Run_state.t -> field -> cvar
 
-  val alloc_var : 'b Run_state.t -> unit -> cvar
+  val alloc_var : field Run_state.t -> unit -> cvar
 
   val run_as_prover :
        ('a, field) Types.As_prover.t option
@@ -294,7 +284,6 @@ end
 
 module Make (Backend : Backend_extended.S) = struct
   open Backend
-  open Run_state
 
   let constraint_logger = ref None
 
@@ -347,8 +336,10 @@ module Make (Backend : Backend_extended.S) = struct
                   Label stack trace:\n\
                   %s\n\n\n\
                   %s"
-                 (Exn.to_string exn) (stack_to_string s.stack) bt
-             , s.stack
+                 (Exn.to_string exn)
+                 (stack_to_string (Run_state.stack s))
+                 bt
+             , Run_state.stack s
              , exn
              , bt ) )
 
@@ -372,10 +363,10 @@ module Make (Backend : Backend_extended.S) = struct
         let k = handle_error s (fun () -> k y) in
         run k s
     | With_label (lab, t, k) ->
-        Option.iter s.log_constraint ~f:(fun f ->
+        Option.iter (Run_state.log_constraint s) ~f:(fun f ->
             f ~at_label_boundary:(`Start, lab) None ) ;
         let s, y = with_label lab (fun () -> run t) s in
-        Option.iter s.log_constraint ~f:(fun f ->
+        Option.iter (Run_state.log_constraint s) ~f:(fun f ->
             f ~at_label_boundary:(`End, lab) None ) ;
         let k = handle_error s (fun () -> k y) in
         run k s
@@ -420,24 +411,21 @@ module Make (Backend : Backend_extended.S) = struct
   let dummy_vector = Run_state.Vector.null
 
   let fake_state next_auxiliary stack =
-    { system = None
-    ; input = dummy_vector
-    ; aux = dummy_vector
-    ; eval_constraints = false
-    ; num_inputs = 0
-    ; next_auxiliary
-    ; has_witness = false
-    ; stack
-    ; handler = Request.Handler.fail
-    ; is_running = true
-    ; as_prover = ref false
-    ; log_constraint = None
-    }
+    Run_state.make ~num_inputs:0 ~input:Run_state.Vector.null ~next_auxiliary
+      ~aux:Run_state.Vector.null ~eval_constraints:false ~stack
+      ~with_witness:false ()
 
   module State = struct
     let make ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ?(eval_constraints = !eval_constraints) ?handler ~with_witness () =
-      next_auxiliary := 1 + num_inputs ;
+        ?(eval_constraints = !eval_constraints_ref) ?handler ~with_witness
+        ?log_constraint () =
+      let log_constraint =
+        match log_constraint with
+        | Some _ ->
+            log_constraint
+        | None ->
+            !constraint_logger
+      in
       (* We can't evaluate the constraints if we are not computing over a value. *)
       let eval_constraints = eval_constraints && with_witness in
       Option.iter
@@ -455,19 +443,8 @@ module Make (Backend : Backend_extended.S) = struct
             end in
             Constraint_system.T ((module M), sys) )
       in
-      { system
-      ; input
-      ; aux
-      ; eval_constraints
-      ; num_inputs
-      ; next_auxiliary
-      ; has_witness = with_witness
-      ; stack = []
-      ; handler = Option.value handler ~default:Request.Handler.fail
-      ; is_running = true
-      ; as_prover = ref false
-      ; log_constraint = !constraint_logger
-      }
+      Run_state.make ~num_inputs ~input ~next_auxiliary ~aux ?system
+        ~eval_constraints ?log_constraint ?handler ~with_witness ()
   end
 end
 
@@ -501,6 +478,10 @@ module type S = sig
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t
       -> with_witness:bool
+      -> ?log_constraint:
+           (   ?at_label_boundary:[ `End | `Start ] * string
+            -> (field Cvar.t, field) Constraint.t option
+            -> unit )
       -> unit
       -> field Run_state.t
   end

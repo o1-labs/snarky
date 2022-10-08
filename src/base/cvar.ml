@@ -26,6 +26,10 @@ let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
     let c = if equal c zero then None else Some c in
     (c, ts)
 
+module Unsafe = struct
+  let of_index v = Var v
+end
+
 module Make
     (Field : Snarky_intf.Field.Extended) (Var : sig
       include Comparable.S
@@ -39,9 +43,7 @@ struct
 
   let length _ = failwith "TODO"
 
-  module Unsafe = struct
-    let of_index v = Var v
-  end
+  module Unsafe = Unsafe
 
   let scratch = Field.of_int 0
 
