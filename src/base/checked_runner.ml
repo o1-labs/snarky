@@ -125,7 +125,11 @@ struct
 
   let with_label lab t s =
     let stack = Run_state.stack s in
+    Option.iter (Run_state.log_constraint s) ~f:(fun f ->
+        f ~at_label_boundary:(`Start, lab) None ) ;
     let s', y = t () (Run_state.set_stack s (lab :: stack)) in
+    Option.iter (Run_state.log_constraint s) ~f:(fun f ->
+        f ~at_label_boundary:(`End, lab) None ) ;
     (Run_state.set_stack s' stack, y)
 
   let log_constraint { basic; _ } s =
@@ -356,11 +360,7 @@ module Make (Backend : Backend_extended.S) = struct
         let k = handle_error s (fun () -> k y) in
         run k s
     | With_label (lab, t, k) ->
-        Option.iter (Run_state.log_constraint s) ~f:(fun f ->
-            f ~at_label_boundary:(`Start, lab) None ) ;
         let s, y = with_label lab (fun () -> run t) s in
-        Option.iter (Run_state.log_constraint s) ~f:(fun f ->
-            f ~at_label_boundary:(`End, lab) None ) ;
         let k = handle_error s (fun () -> k y) in
         run k s
     | Add_constraint (c, t) ->
