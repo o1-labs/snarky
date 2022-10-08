@@ -1,7 +1,9 @@
 open Core_kernel
 module Constraint0 = Constraint
 
-exception Runtime_error of string * string list * exn * string
+exception Runtime_error of string list * exn * string
+
+let stack_to_string = String.concat ~sep:"\n"
 
 (* Register a printer for [Runtime_error], so that the user sees a useful,
    well-formatted message. This will contain all of the information that
@@ -15,10 +17,16 @@ exception Runtime_error of string * string list * exn * string
 let () =
   Stdlib.Printexc.register_printer (fun exn ->
       match exn with
-      | Runtime_error (message, _, _, _) ->
+      | Runtime_error (stack, exn, bt) ->
           Some
             (Printf.sprintf
-               "Snarky.Checked_runner.Runtime_error(_, _, _, _)\n\n%s" message )
+               "Snarky.Checked_runner.Runtime_error(_, _, _, _)\n\n\
+                Encountered an error while evaluating the checked computation:\n\
+               \  %s\n\n\
+                Label stack trace:\n\
+                %s\n\n\n\
+                %s"
+               (Exn.to_string exn) (stack_to_string stack) bt )
       | _ ->
           None )
 
@@ -156,8 +164,6 @@ struct
         Format.asprintf
           !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
           (Constraint0.Basic.map basic ~f:(get_value s))
-
-  let stack_to_string = String.concat ~sep:"\n"
 
   let add_constraint ~stack ({ basic; annotation } : Constraint.t)
       (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
@@ -318,29 +324,16 @@ module Make (Backend : Backend_extended.S) = struct
 
   let handle_error s f =
     try f () with
-    | Runtime_error (message, stack, exn, bt) ->
+    | Runtime_error (stack, exn, bt) ->
         (* NOTE: We create a new [Runtime_error] instead of re-using the old
                  one. Re-using the old one will fill the backtrace with call
                  and re-raise messages, one per iteration of this function,
                  which are irrelevant to the user.
         *)
-        raise (Runtime_error (message, stack, exn, bt))
+        raise (Runtime_error (stack, exn, bt))
     | exn ->
         let bt = Printexc.get_backtrace () in
-        raise
-          (Runtime_error
-             ( Printf.sprintf
-                 "Encountered an error while evaluating the checked computation:\n\
-                 \  %s\n\n\
-                  Label stack trace:\n\
-                  %s\n\n\n\
-                  %s"
-                 (Exn.to_string exn)
-                 (stack_to_string (Run_state.stack s))
-                 bt
-             , Run_state.stack s
-             , exn
-             , bt ) )
+        raise (Runtime_error (Run_state.stack s, exn, bt))
 
   (* INVARIANT: run _ s = (s', _) gives
        (s'.prover_state = Some _) iff (s.prover_state = Some _) *)
