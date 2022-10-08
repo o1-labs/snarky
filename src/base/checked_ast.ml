@@ -19,7 +19,6 @@ module Checked0 = struct
     | With_handler :
         Request.Handler.single * ('a, 'f) t * ('a -> ('b, 'f) t)
         -> ('b, 'f) t
-    | Clear_handler : ('a, 'f) t * ('a -> ('b, 'f) t) -> ('b, 'f) t
     | Exists :
         ('var, 'value, 'f, (unit, 'f) t) Types.Typ.t
         * ( ('value Request.t, 'f) Types.As_prover.t
@@ -55,8 +54,6 @@ module T0 = struct
         Add_constraint (c, map t1 ~f)
     | With_handler (h, t, k) ->
         With_handler (h, t, fun b -> map (k b) ~f)
-    | Clear_handler (t, k) ->
-        Clear_handler (t, fun b -> map (k b) ~f)
     | Exists (typ, c, k) ->
         Exists (typ, c, fun v -> map (k v) ~f)
     | Next_auxiliary k ->
@@ -83,8 +80,6 @@ module T0 = struct
         Add_constraint (c, bind t1 ~f)
     | With_handler (h, t, k) ->
         With_handler (h, t, fun b -> bind (k b) ~f)
-    | Clear_handler (t, k) ->
-        Clear_handler (t, fun b -> bind (k b) ~f)
     | Exists (typ, c, k) ->
         Exists (typ, c, fun v -> bind (k v) ~f)
     | Next_auxiliary k ->
@@ -133,8 +128,6 @@ module Basic :
   let with_label lbl x = With_label (lbl, x, return)
 
   let with_handler h x = With_handler (h, x, return)
-
-  let clear_handler x = Clear_handler (x, return)
 
   let exists typ p = Exists (typ, p, return)
 
@@ -210,9 +203,6 @@ module Basic :
         log s count' ;
         constraint_count_aux ~weight ~log ~auxc count' (k y)
     | With_handler (_h, t, k) ->
-        let count, x = constraint_count_aux ~weight ~log ~auxc count t in
-        constraint_count_aux ~weight ~log ~auxc count (k x)
-    | Clear_handler (t, k) ->
         let count, x = constraint_count_aux ~weight ~log ~auxc count t in
         constraint_count_aux ~weight ~log ~auxc count (k x)
     | Exists
