@@ -83,10 +83,6 @@ struct
     let get_one i = Run_state.get_variable_value t i in
     Cvar.eval (`Return_values_will_be_mutated get_one)
 
-  let store_field_elt = Run_state.store_field_elt
-
-  let alloc_var = Run_state.alloc_var
-
   let run_as_prover x state =
     match (x, Run_state.has_witness state) with
     | Some x, true ->
@@ -220,7 +216,7 @@ struct
                storing.
             *)
             Cvar.constant
-          else store_field_elt s
+          else Run_state.store_field_elt s
         in
         let fields, aux = value_to_fields value in
         let field_vars = Array.map ~f:store_value fields in
@@ -232,7 +228,8 @@ struct
     else
       let var =
         var_of_fields
-          ( Array.init size_in_field_elements ~f:(fun _ -> alloc_var s ())
+          ( Array.init size_in_field_elements ~f:(fun _ ->
+                Run_state.alloc_var s () )
           , constraint_system_auxiliary () )
       in
       (* TODO: Push a label onto the stack here *)
@@ -271,10 +268,6 @@ module type Run_extras = sig
   module Types : Types.Types
 
   val get_value : field Run_state.t -> cvar -> field
-
-  val store_field_elt : field Run_state.t -> field -> cvar
-
-  val alloc_var : field Run_state.t -> unit -> cvar
 
   val run_as_prover :
        ('a, field) Types.As_prover.t option
