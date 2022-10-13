@@ -3,7 +3,7 @@ module Bignum_bigint = Bigint
 module Checked_ast = Checked_ast
 open Core_kernel
 
-exception Runtime_error = Checked_runner.Runtime_error
+exception Runtime_error = Ast_runner.Runtime_error
 
 module Runner = Checked_runner
 
