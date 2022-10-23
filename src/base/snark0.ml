@@ -425,6 +425,9 @@ module Make_basic
                  and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend
+
+  type constraint_system = Backend.R1CS_constraint_system.t
+
   module Checked_S = Checked_intf.Unextend (Checked)
   include Make_runners (Backend) (Checked) (As_prover) (Runner)
   module Bigint = Bigint
@@ -1507,6 +1510,8 @@ module Run = struct
     module Snark = Make (Backend)
     open Run_state
     open Snark
+
+    type constraint_system = Backend.R1CS_constraint_system.t
 
     let set_constraint_logger = set_constraint_logger
 

@@ -565,13 +565,7 @@ module type Basic = sig
   (** The finite field over which the R1CS operates. *)
   type field
 
-  (** The rank-1 constraint system used by this instance. See
-      {!module:Backend_intf.S.R1CS_constraint_system}. *)
-  module R1CS_constraint_system : sig
-    type t
-
-    val digest : t -> Md5.t
-  end
+  type constraint_system
 
   (** Variables in the R1CS. *)
   module Var : sig
@@ -988,7 +982,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
        input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
     -> ('input_var -> 'a Checked.t)
-    -> R1CS_constraint_system.t
+    -> constraint_system
 
   (** Internal: supplies arguments to a checked computation by storing them
       according to the {!type:Data_spec.t} and passing the R1CS versions.
@@ -1121,17 +1115,7 @@ end
 
 (** The imperative interface to Snarky. *)
 module type Run_basic = sig
-  (** The rank-1 constraint system used by this instance. See
-      {!module:Backend_intf.S.R1CS_constraint_system}. *)
-  module R1CS_constraint_system : sig
-    type t
-
-    val digest : t -> Md5.t
-
-    val get_public_input_size : t -> int Core_kernel.Set_once.t
-
-    val get_rows_len : t -> int
-  end
+  type constraint_system
 
   (** Variables in the R1CS. *)
   module Var : sig
@@ -1285,6 +1269,7 @@ module type Run_basic = sig
   and Internal_Basic :
     (Basic
       with type field = field
+       and type constraint_system = constraint_system
        and type 'a As_prover.Ref.t = 'a As_prover.Ref.t)
 
   module Bitstring_checked : sig
@@ -1392,7 +1377,7 @@ module type Run_basic = sig
        input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
     -> ('input_var -> unit -> 'a)
-    -> R1CS_constraint_system.t
+    -> constraint_system
 
   val generate_witness :
        input_typ:('input_var, 'input_value) Typ.t
