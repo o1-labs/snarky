@@ -189,47 +189,47 @@ struct
         -> _ * (unit -> checked) Checked.t =
      fun next_input ~input_typ ~return_typ k ->
       let open Checked in
-      match input_typ with
-      | Typ
-          { var_of_fields
-          ; size_in_field_elements
-          ; constraint_system_auxiliary
-          ; check
-          ; _
-          } ->
-          let var =
+      let (Typ
+            { var_of_fields
+            ; size_in_field_elements
+            ; constraint_system_auxiliary
+            ; check
+            ; _
+            } ) =
+        input_typ
+      in
+      let var =
+        var_of_fields
+          ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
+                alloc_var next_input () )
+          , constraint_system_auxiliary () )
+      in
+      let retval, r =
+        let collect_input_constraints next_input ~return_typ k =
+          let (Typ
+                 { var_of_fields
+                 ; size_in_field_elements
+                 ; constraint_system_auxiliary
+                 ; _
+                 }
+                : _ Typ.t ) =
+            return_typ
+          in
+          let retval =
             var_of_fields
               ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
                     alloc_var next_input () )
               , constraint_system_auxiliary () )
           in
-          let retval, r =
-            let collect_input_constraints next_input ~return_typ k =
-              let (Typ
-                     { var_of_fields
-                     ; size_in_field_elements
-                     ; constraint_system_auxiliary
-                     ; _
-                     }
-                    : _ Typ.t ) =
-                return_typ
-              in
-              let retval =
-                var_of_fields
-                  ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
-                        alloc_var next_input () )
-                  , constraint_system_auxiliary () )
-              in
-              (retval, Checked.return k)
-            in
-            collect_input_constraints next_input ~return_typ (fun () ->
-                k () var )
-          in
-          let checked =
-            let%map () = check var and r = r in
-            r
-          in
-          (retval, checked)
+          (retval, Checked.return k)
+        in
+        collect_input_constraints next_input ~return_typ (fun () -> k () var)
+      in
+      let checked =
+        let%map () = check var and r = r in
+        r
+      in
+      (retval, checked)
 
     let r1cs_h :
         type a checked input_var input_value retval.
