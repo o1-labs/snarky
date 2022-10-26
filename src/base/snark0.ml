@@ -204,7 +204,7 @@ struct
                 alloc_var next_input () )
           , constraint_system_auxiliary () )
       in
-      let retval, r =
+      let retval =
         let (Typ
                { var_of_fields
                ; size_in_field_elements
@@ -220,11 +220,11 @@ struct
                   alloc_var next_input () )
             , constraint_system_auxiliary () )
         in
-        (retval, Checked.return (fun () -> k () var))
+        retval
       in
       let checked =
-        let%map () = check var and r = r in
-        r
+        let%bind () = check var in
+        Checked.return (fun () -> k () var)
       in
       (retval, checked)
 
