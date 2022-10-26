@@ -1,3 +1,4 @@
+module Types0 = Types
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked_ast
@@ -187,43 +188,23 @@ struct
         -> return_typ:_ Typ.t
         -> (unit -> input_var -> checked)
         -> _ * (unit -> checked) Checked.t =
-     fun next_input ~input_typ ~return_typ k ->
+     fun next_input ~input_typ:(Typ input_typ) ~return_typ:(Typ return_typ) k ->
       let open Checked in
-      let (Typ
-            { var_of_fields
-            ; size_in_field_elements
-            ; constraint_system_auxiliary
-            ; check
-            ; _
-            } ) =
-        input_typ
-      in
-      let var =
+      let alloc_input
+          { Types0.Typ.var_of_fields
+          ; size_in_field_elements
+          ; constraint_system_auxiliary
+          ; _
+          } =
         var_of_fields
           ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
                 alloc_var next_input () )
           , constraint_system_auxiliary () )
       in
-      let retval =
-        let (Typ
-               { var_of_fields
-               ; size_in_field_elements
-               ; constraint_system_auxiliary
-               ; _
-               }
-              : _ Typ.t ) =
-          return_typ
-        in
-        let retval =
-          var_of_fields
-            ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
-                  alloc_var next_input () )
-            , constraint_system_auxiliary () )
-        in
-        retval
-      in
+      let var = alloc_input input_typ in
+      let retval = alloc_input return_typ in
       let checked =
-        let%bind () = check var in
+        let%bind () = input_typ.check var in
         Checked.return (fun () -> k () var)
       in
       (retval, checked)
