@@ -248,15 +248,13 @@ struct
            ('input_var, 'input_value, _, _) Types.Typ.typ
         -> 'input_value
         -> Field.Vector.t =
-     fun t0 ->
+     fun (Typ { value_to_fields; _ }) value ->
       let primary_input = Field.Vector.create () in
       let next_input = ref 1 in
       let store_field_elt = store_field_elt primary_input next_input in
-      let (Typ { value_to_fields; _ }) = t0 in
-      fun value ->
-        let fields, _aux = value_to_fields value in
-        let _fields = Array.map ~f:store_field_elt fields in
-        primary_input
+      let fields, _aux = value_to_fields value in
+      let _fields = Array.map ~f:store_field_elt fields in
+      primary_input
 
     let conv :
         type r_var r_value.
