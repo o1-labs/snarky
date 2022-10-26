@@ -205,25 +205,22 @@ struct
           , constraint_system_auxiliary () )
       in
       let retval, r =
-        let collect_input_constraints next_input ~return_typ k =
-          let (Typ
-                 { var_of_fields
-                 ; size_in_field_elements
-                 ; constraint_system_auxiliary
-                 ; _
-                 }
-                : _ Typ.t ) =
-            return_typ
-          in
-          let retval =
-            var_of_fields
-              ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
-                    alloc_var next_input () )
-              , constraint_system_auxiliary () )
-          in
-          (retval, Checked.return k)
+        let (Typ
+               { var_of_fields
+               ; size_in_field_elements
+               ; constraint_system_auxiliary
+               ; _
+               }
+              : _ Typ.t ) =
+          return_typ
         in
-        collect_input_constraints next_input ~return_typ (fun () -> k () var)
+        let retval =
+          var_of_fields
+            ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
+                  alloc_var next_input () )
+            , constraint_system_auxiliary () )
+        in
+        (retval, Checked.return (fun () -> k () var))
       in
       let checked =
         let%map () = check var and r = r in
