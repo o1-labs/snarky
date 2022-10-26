@@ -299,16 +299,13 @@ struct
         let fields, aux = value_to_fields value in
         let fields = Array.map ~f:store_field_elt fields in
         let var = var_of_fields (fields, aux) in
-        let go k =
-          let retval =
-            return_typ.var_of_fields
-              ( Core_kernel.Array.init return_typ.size_in_field_elements
-                  ~f:(fun _ -> alloc_var next_input ())
-              , return_typ.constraint_system_auxiliary () )
-          in
-          cont0 !next_input retval (k ()) primary_input
+        let retval =
+          return_typ.var_of_fields
+            ( Core_kernel.Array.init return_typ.size_in_field_elements
+                ~f:(fun _ -> alloc_var next_input ())
+            , return_typ.constraint_system_auxiliary () )
         in
-        go (fun () -> k0 () var)
+        cont0 !next_input retval (k0 () var) primary_input
 
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
