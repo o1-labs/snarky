@@ -28,14 +28,6 @@ module Make (Backend : Backend_intf.S) :
      and type Field.Vector.t = Backend.Field.Vector.t
 
 module Run : sig
-  (** [throw_on_id id] set an internal flag that causes [Make] to throw an
-      error if its internal id would be the same as [id].
-
-      This can be used to identify where different instances come from, so that
-      the same instance can be used for creating and calling functions.
-  *)
-  val throw_on_id : int -> unit
-
   module Make (Backend : Backend_intf.S) :
     Snark_intf.Run
       with type field = Backend.Field.t

@@ -1499,10 +1499,6 @@ module Run = struct
 
   let active_functor_id () = List.hd_exn !active_counters
 
-  let error_on_counter = ref None
-
-  let throw_on_id id = error_on_counter := Some id
-
   module Make_basic (Backend : Backend_intf.S) = struct
     module Snark = Make (Backend)
     open Run_state
@@ -1514,13 +1510,7 @@ module Run = struct
 
     let this_functor_id =
       incr functor_counter ;
-      let id = !functor_counter in
-      match !error_on_counter with
-      | Some id' when Int.equal id id' ->
-          failwithf
-            "Attempted to create Snarky.Snark.Run.Make functor with ID %i" id ()
-      | _ ->
-          id
+      !functor_counter
 
     let state =
       ref
