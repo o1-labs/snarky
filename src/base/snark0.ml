@@ -1481,9 +1481,7 @@ module Run = struct
 
     let clear_constraint_logger = clear_constraint_logger
 
-    let this_functor_id =
-      incr functor_counter ;
-      !functor_counter
+    let this_functor_id = incr functor_counter ; !functor_counter
 
     let state =
       ref
