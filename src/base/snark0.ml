@@ -1,3 +1,4 @@
+module Types0 = Types
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked_ast
@@ -187,49 +188,26 @@ struct
         -> return_typ:_ Typ.t
         -> (unit -> input_var -> checked)
         -> _ * (unit -> checked) Checked.t =
-     fun next_input ~input_typ ~return_typ k ->
+     fun next_input ~input_typ:(Typ input_typ) ~return_typ:(Typ return_typ) k ->
       let open Checked in
-      match input_typ with
-      | Typ
-          { var_of_fields
+      let alloc_input
+          { Types0.Typ.var_of_fields
           ; size_in_field_elements
           ; constraint_system_auxiliary
-          ; check
           ; _
-          } ->
-          let var =
-            var_of_fields
-              ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
-                    alloc_var next_input () )
-              , constraint_system_auxiliary () )
-          in
-          let retval, r =
-            let collect_input_constraints next_input ~return_typ k =
-              let (Typ
-                     { var_of_fields
-                     ; size_in_field_elements
-                     ; constraint_system_auxiliary
-                     ; _
-                     }
-                    : _ Typ.t ) =
-                return_typ
-              in
-              let retval =
-                var_of_fields
-                  ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
-                        alloc_var next_input () )
-                  , constraint_system_auxiliary () )
-              in
-              (retval, Checked.return k)
-            in
-            collect_input_constraints next_input ~return_typ (fun () ->
-                k () var )
-          in
-          let checked =
-            let%map () = check var and r = r in
-            r
-          in
-          (retval, checked)
+          } =
+        var_of_fields
+          ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
+                alloc_var next_input () )
+          , constraint_system_auxiliary () )
+      in
+      let var = alloc_input input_typ in
+      let retval = alloc_input return_typ in
+      let checked =
+        let%bind () = input_typ.check var in
+        Checked.return (fun () -> k () var)
+      in
+      (retval, checked)
 
     let r1cs_h :
         type a checked input_var input_value retval.
@@ -270,15 +248,13 @@ struct
            ('input_var, 'input_value, _, _) Types.Typ.typ
         -> 'input_value
         -> Field.Vector.t =
-     fun t0 ->
+     fun (Typ { value_to_fields; _ }) value ->
       let primary_input = Field.Vector.create () in
       let next_input = ref 1 in
       let store_field_elt = store_field_elt primary_input next_input in
-      let (Typ { value_to_fields; _ }) = t0 in
-      fun value ->
-        let fields, _aux = value_to_fields value in
-        let _fields = Array.map ~f:store_field_elt fields in
-        primary_input
+      let fields, _aux = value_to_fields value in
+      let _fields = Array.map ~f:store_field_elt fields in
+      primary_input
 
     let conv :
         type r_var r_value.
@@ -302,16 +278,13 @@ struct
         let fields, aux = value_to_fields value in
         let fields = Array.map ~f:store_field_elt fields in
         let var = var_of_fields (fields, aux) in
-        let go k =
-          let retval =
-            return_typ.var_of_fields
-              ( Core_kernel.Array.init return_typ.size_in_field_elements
-                  ~f:(fun _ -> alloc_var next_input ())
-              , return_typ.constraint_system_auxiliary () )
-          in
-          cont0 !next_input retval (k ()) primary_input
+        let retval =
+          return_typ.var_of_fields
+            ( Core_kernel.Array.init return_typ.size_in_field_elements
+                ~f:(fun _ -> alloc_var next_input ())
+            , return_typ.constraint_system_auxiliary () )
         in
-        go (fun () -> k0 () var)
+        cont0 !next_input retval (k0 () var) primary_input
 
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
