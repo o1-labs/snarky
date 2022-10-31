@@ -30,44 +30,10 @@ module type S = sig
     val create : int -> t
   end
 
-  module Cvar : sig
-    type t = Field.t Cvar.t [@@deriving sexp]
-
-    val length : t -> int
-
-    module Unsafe : sig
-      val of_index : int -> t
-    end
-
-    val eval :
-      [ `Return_values_will_be_mutated of int -> Field.t ] -> t -> Field.t
-
-    val constant : Field.t -> t
-
-    val to_constant_and_terms : t -> Field.t option * (Field.t * Var.t) list
-
-    val add : t -> t -> t
-
-    val negate : t -> t
-
-    val scale : t -> Field.t -> t
-
-    val sub : t -> t -> t
-
-    val linear_combination : (Field.t * t) list -> t
-
-    val sum : t list -> t
-
-    val ( + ) : t -> t -> t
-
-    val ( - ) : t -> t -> t
-
-    val ( * ) : Field.t -> t -> t
-
-    val var_indices : t -> int list
-
-    val to_constant : t -> Field.t option
-  end
+  module Cvar :
+    Cvar.cvar_module_type_extended
+      with type field := Field.t
+       and type var := Var.t
 
   module R1CS_constraint_system :
     Backend_intf.Constraint_system_intf with module Field := Field

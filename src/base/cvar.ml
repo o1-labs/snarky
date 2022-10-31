@@ -1,5 +1,9 @@
 open Core_kernel
 
+(** Main type representing a [Cvar.t]. It represents a small AST over a field ['f]. 
+    We build this AST instead of directly constraining [Cvar.t]s in order to
+    perform some optimizations (mostly merging generic gates).
+    *)
 type 'f t =
   | Constant of 'f
   | Var of int
@@ -7,6 +11,7 @@ type 'f t =
   | Scale of 'f * 'f t
 [@@deriving sexp]
 
+(** Alias to [t]. *)
 type 'f cvar = 'f t [@@deriving sexp]
 
 let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
@@ -27,8 +32,66 @@ let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
     (c, ts)
 
 module Unsafe = struct
+  (** Directly converts a number into a variable.
+      This operation is considered unsafe as you would normally increment a counter to obtain a variable that doesn't collide with another one.
+    *)
   let of_index v = Var v
 end
+
+(***********************
+ *  SIGS FOR FUNCTORS  *
+ ***********************)
+
+module type cvar_module_type = sig
+  type field
+
+  type var
+
+  type t = field cvar [@@deriving sexp]
+
+  val length : t -> int
+
+  module Unsafe : sig
+    val of_index : int -> t
+  end
+
+  val eval : [ `Return_values_will_be_mutated of int -> field ] -> t -> field
+
+  val constant : field -> t
+
+  val to_constant_and_terms : t -> field option * (field * var) list
+
+  val add : t -> t -> t
+
+  val negate : t -> t
+
+  val scale : t -> field -> t
+
+  val sub : t -> t -> t
+
+  val linear_combination : (field * t) list -> t
+
+  val sum : t list -> t
+
+  val ( + ) : t -> t -> t
+
+  val ( - ) : t -> t -> t
+
+  val ( * ) : field -> t -> t
+end
+
+(** An extension of [cvar_module_type]. *)
+module type cvar_module_type_extended = sig
+  include cvar_module_type
+
+  val var_indices : t -> int list
+
+  val to_constant : t -> field option
+end
+
+(******************
+ *    FUNCTOR     *
+ ******************)
 
 module Make
     (Field : Snarky_intf.Field.Extended) (Var : sig
@@ -37,7 +100,7 @@ module Make
       include Sexpable.S with type t := t
 
       val create : int -> t
-    end) =
+    end) : cvar_module_type with type field := Field.t and type var := Var.t =
 struct
   type t = Field.t cvar [@@deriving sexp]
 
@@ -136,23 +199,4 @@ struct
   let ( * ) c x = scale x c
 
   let negate x = scale x neg_one
-
-  let to_json x =
-    let singleton = Map.singleton (module Int) in
-    let join = Map.merge_skewed ~combine:(fun ~key:_ -> Field.add) in
-    let rec go scale = function
-      | Constant f ->
-          singleton 0 (Field.mul scale f)
-      | Var i ->
-          singleton i scale
-      | Add (x, y) ->
-          join (go scale x) (go scale y)
-      | Scale (s, x) ->
-          go Field.(scale * s) x
-    in
-    let map = go Field.one x in
-    `Assoc
-      (List.filter_map (Map.to_alist map) ~f:(fun (i, f) ->
-           if Field.(equal f zero) then None
-           else Some (Int.to_string i, `String (Field.to_string f)) ) )
 end
