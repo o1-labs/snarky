@@ -26,22 +26,24 @@ let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
     let c = if equal c zero then None else Some c in
     (c, ts)
 
+module Unsafe = struct
+  let of_index v = Var v
+end
+
 module Make
     (Field : Snarky_intf.Field.Extended) (Var : sig
-        include Comparable.S
+      include Comparable.S
 
-        include Sexpable.S with type t := t
+      include Sexpable.S with type t := t
 
-        val create : int -> t
+      val create : int -> t
     end) =
 struct
   type t = Field.t cvar [@@deriving sexp]
 
   let length _ = failwith "TODO"
 
-  module Unsafe = struct
-    let of_index v = Var v
-  end
+  module Unsafe = Unsafe
 
   let scratch = Field.of_int 0
 
@@ -114,7 +116,12 @@ struct
 
   let neg_one = Field.(sub zero one)
 
-  let sub t1 t2 = add t1 (scale t2 neg_one)
+  let sub t1 t2 =
+    match (t1, t2) with
+    | Constant x, Constant y ->
+        Constant (Field.sub x y)
+    | _ ->
+        add t1 (scale t2 neg_one)
 
   let linear_combination (terms : (Field.t * t) list) : t =
     List.fold terms ~init:(constant Field.zero) ~f:(fun acc (c, t) ->
@@ -147,5 +154,5 @@ struct
     `Assoc
       (List.filter_map (Map.to_alist map) ~f:(fun (i, f) ->
            if Field.(equal f zero) then None
-           else Some (Int.to_string i, `String (Field.to_string f)) ))
+           else Some (Int.to_string i, `String (Field.to_string f)) ) )
 end

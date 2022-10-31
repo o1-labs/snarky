@@ -1,4 +1,0 @@
-File "tests/row-pattern-distinct-closed.meja", line 3, characters 6-8:
-Error: Incompatible types ([<`A | `B > `A] as 'a) and ([>`C] as 'b):
-       Cannot unify ([<`A | `B > `A] as 'a) and ([>`C] as 'b):
-       the constructor `C is not present in both.

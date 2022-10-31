@@ -42,9 +42,9 @@ module type Backend_intf = sig
 
   module Pairing :
     Pairing.S
-    with module G1 := G1
-     and module G2 := G2
-     and module Fq_target := Fq_target
+      with module G1 := G1
+       and module G2 := G2
+       and module Fq_target := Fq_target
 end
 
 module Make (Backend : Backend_intf) = struct
@@ -52,13 +52,14 @@ module Make (Backend : Backend_intf) = struct
 
   module Verification_key = struct
     type t =
-      { h: G2.t
-      ; g_alpha: G1.t
-      ; h_beta: G2.t
-      ; g_alpha_h_beta: Fq_target.t
-      ; g_gamma: G1.t
-      ; h_gamma: G2.t
-      ; query: G1.t array }
+      { h : G2.t
+      ; g_alpha : G1.t
+      ; h_beta : G2.t
+      ; g_alpha_h_beta : Fq_target.t
+      ; g_gamma : G1.t
+      ; h_gamma : G2.t
+      ; query : G1.t array
+      }
     [@@deriving bin_io, sexp]
 
     let map_to_two t ~f =
@@ -70,12 +71,12 @@ module Make (Backend : Backend_intf) = struct
       (List.rev xs, List.rev ys)
 
     (* The uses of to_affine_exn are acceptable because we never handle
-   an adversarially created verification key. *)
-    let fold_bits {h; g_alpha; h_beta; g_alpha_h_beta; g_gamma; h_gamma; query}
-        =
-      let g1s = Array.to_list query @ [g_alpha; g_gamma] in
-      let g2s = [h; h_beta; h_gamma] in
-      let gts = [Fq_target.unitary_inverse g_alpha_h_beta] in
+       an adversarially created verification key. *)
+    let fold_bits
+        { h; g_alpha; h_beta; g_alpha_h_beta; g_gamma; h_gamma; query } =
+      let g1s = Array.to_list query @ [ g_alpha; g_gamma ] in
+      let g2s = [ h; h_beta; h_gamma ] in
+      let gts = [ Fq_target.unitary_inverse g_alpha_h_beta ] in
       let g1_elts, g1_signs = map_to_two g1s ~f:G1.to_affine_exn in
       let non_zero_base_coordinate a =
         let x = Fqe.project_to_base a in
@@ -90,7 +91,7 @@ module Make (Backend : Backend_intf) = struct
       let gt_elts, gt_signs =
         map_to_two gts ~f:(fun g ->
             (* g is unitary, so (a, b) satisfy a quadratic over Fqe and thus
-             b is determined by a up to sign *)
+               b is determined by a up to sign *)
             let a, b = g in
             (Fqe.to_list a, non_zero_base_coordinate b) )
       in
@@ -111,33 +112,35 @@ module Make (Backend : Backend_intf) = struct
 
     module Processed = struct
       type t =
-        { g_alpha: G1.t
-        ; h_beta: G2.t
-        ; g_alpha_h_beta: Fq_target.t
-        ; g_gamma_pc: Pairing.G1_precomputation.t
-        ; h_gamma_pc: Pairing.G2_precomputation.t
-        ; h_pc: Pairing.G2_precomputation.t
-        ; query: G1.t array }
+        { g_alpha : G1.t
+        ; h_beta : G2.t
+        ; g_alpha_h_beta : Fq_target.t
+        ; g_gamma_pc : Pairing.G1_precomputation.t
+        ; h_gamma_pc : Pairing.G2_precomputation.t
+        ; h_pc : Pairing.G2_precomputation.t
+        ; query : G1.t array
+        }
       [@@deriving bin_io, sexp]
 
-      let create {h; g_alpha; h_beta; g_alpha_h_beta; g_gamma; h_gamma; query}
+      let create { h; g_alpha; h_beta; g_alpha_h_beta; g_gamma; h_gamma; query }
           =
         { g_alpha
         ; h_beta
         ; g_alpha_h_beta
-        ; g_gamma_pc= Pairing.G1_precomputation.create g_gamma
-        ; h_gamma_pc= Pairing.G2_precomputation.create h_gamma
-        ; h_pc= Pairing.G2_precomputation.create h
-        ; query }
+        ; g_gamma_pc = Pairing.G1_precomputation.create g_gamma
+        ; h_gamma_pc = Pairing.G2_precomputation.create h_gamma
+        ; h_pc = Pairing.G2_precomputation.create h
+        ; query
+        }
     end
   end
 
   let check b lab = if b then Ok () else Or_error.error_string lab
 
   module Proof = struct
-    type t = {a: G1.t; b: G2.t; c: G1.t} [@@deriving bin_io, sexp]
+    type t = { a : G1.t; b : G2.t; c : G1.t } [@@deriving bin_io, sexp]
 
-    let is_well_formed {a; b; c} =
+    let is_well_formed { a; b; c } =
       let open Or_error.Let_syntax in
       let err x =
         sprintf "proof was not well-formed (%s was off its curve)" x
@@ -149,7 +152,7 @@ module Make (Backend : Backend_intf) = struct
   end
 
   let verify (vk : Verification_key.Processed.t) input
-      ({Proof.a; b; c} as proof) =
+      ({ Proof.a; b; c } as proof) =
     let open Or_error.Let_syntax in
     let%bind () =
       check

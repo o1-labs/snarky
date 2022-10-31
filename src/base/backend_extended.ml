@@ -40,7 +40,7 @@ module type S = sig
     end
 
     val eval :
-      [`Return_values_will_be_mutated of int -> Field.t] -> t -> Field.t
+      [ `Return_values_will_be_mutated of int -> Field.t ] -> t -> Field.t
 
     val constant : Field.t -> t
 
@@ -88,49 +88,19 @@ module type S = sig
     val annotation : t -> string
 
     val eval :
-         (Cvar.t, Field.t) Constraint.basic_with_annotation list
+         (Cvar.t, Field.t) Constraint.basic_with_annotation
       -> (Cvar.t -> Field.t)
       -> bool
-  end
-
-  module Proving_key : sig
-    type t [@@deriving bin_io]
-
-    val is_initialized : t -> [`Yes | `No of R1CS_constraint_system.t]
-
-    val set_constraint_system : t -> R1CS_constraint_system.t -> unit
-
-    include Stringable.S with type t := t
-  end
-
-  module Verification_key : sig
-    type t [@@deriving bin_io]
-
-    include Stringable.S with type t := t
-  end
-
-  module Keypair : sig
-    type t = {pk: Proving_key.t; vk: Verification_key.t} [@@deriving bin_io]
-
-    val create : pk:Proving_key.t -> vk:Verification_key.t -> t
-
-    val pk : t -> Proving_key.t
-
-    val vk : t -> Verification_key.t
-
-    val generate : R1CS_constraint_system.t -> t
   end
 end
 
 module Make (Backend : Backend_intf.S) :
   S
-  with type Field.t = Backend.Field.t
-   and type Field.Vector.t = Backend.Field.Vector.t
-   and type Bigint.t = Backend.Bigint.R.t
-   and type Proving_key.t = Backend.Proving_key.t
-   and type Verification_key.t = Backend.Verification_key.t
-   and type Var.t = Backend.Var.t
-   and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
+    with type Field.t = Backend.Field.t
+     and type Field.Vector.t = Backend.Field.Vector.t
+     and type Bigint.t = Backend.Bigint.R.t
+     and type Var.t = Backend.Var.t
+     and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
 struct
   open Backend
 
@@ -151,24 +121,6 @@ struct
       go 0 Bignum_bigint.one Bignum_bigint.zero
   end
 
-  module Verification_key = struct
-    include Verification_key
-    include Binable.Of_stringable (Verification_key)
-  end
-
-  module Proving_key = Proving_key
-
-  module Keypair = struct
-    type t = {pk: Proving_key.t; vk: Verification_key.t}
-    [@@deriving fields, bin_io]
-
-    let create = Fields.create
-
-    let of_backend_keypair kp = {pk= Keypair.pk kp; vk= Keypair.vk kp}
-
-    let generate = Fn.compose of_backend_keypair Backend.Keypair.create
-  end
-
   module Var = struct
     module T = struct
       include Backend.Var
@@ -178,7 +130,7 @@ struct
       let t_of_sexp _ = failwith "Var.t_of_sexp"
 
       let sexp_of_t v =
-        Sexp.(List [Atom "var"; Atom (Int.to_string (index v))])
+        Sexp.(List [ Atom "var"; Atom (Int.to_string (index v)) ])
     end
 
     include T
@@ -294,9 +246,7 @@ struct
 
     let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
 
-    let eval t get_value =
-      List.for_all t ~f:(fun {basic; _} ->
-          Constraint.Basic.eval m get_value basic )
+    let eval { basic; _ } get_value = Constraint.Basic.eval m get_value basic
   end
 
   module R1CS_constraint_system = R1CS_constraint_system

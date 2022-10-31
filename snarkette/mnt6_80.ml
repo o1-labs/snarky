@@ -63,38 +63,41 @@ module Fq6 = struct
 end
 
 module G1 = struct
-  include Elliptic_curve.Make (N) (Fq)
-            (struct
-              let a = Fq.of_string "11"
+  include
+    Elliptic_curve.Make (N) (Fq)
+      (struct
+        let a = Fq.of_string "11"
 
-              let b =
-                Fq.of_string
-                  "106700080510851735677967319632585352256454251201367587890185989362936000262606668469523074"
-            end)
+        let b =
+          Fq.of_string
+            "106700080510851735677967319632585352256454251201367587890185989362936000262606668469523074"
+      end)
 
   let one : t =
-    { x=
+    { x =
         Fq.of_string
           "336685752883082228109289846353937104185698209371404178342968838739115829740084426881123453"
-    ; y=
+    ; y =
         Fq.of_string
           "402596290139780989709332707716568920777622032073762749862342374583908837063963736098549800"
-    ; z= Fq.one }
+    ; z = Fq.one
+    }
 end
 
 module G2 = struct
-  include Elliptic_curve.Make (N) (Fq3)
-            (struct
-              let a : Fq3.t = (Fq.zero, Fq.zero, G1.Coefficients.a)
+  include
+    Elliptic_curve.Make (N) (Fq3)
+      (struct
+        let a : Fq3.t = (Fq.zero, Fq.zero, G1.Coefficients.a)
 
-              let b : Fq3.t =
-                (Fq.(G1.Coefficients.b * Fq3.non_residue), Fq.zero, Fq.zero)
-            end)
+        let b : Fq3.t =
+          (Fq.(G1.Coefficients.b * Fq3.non_residue), Fq.zero, Fq.zero)
+      end)
 
   let one : t =
     let open Fq in
-    { z= Fq3.one
-    ; x=
+    { z = Fq3.one
+    ; x =
         ( of_string
             "421456435772811846256826561593908322288509115489119907560382401870203318738334702321297427"
         , of_string
@@ -102,14 +105,15 @@ module G2 = struct
         , of_string
             "143029172143731852627002926324735183809768363301149009204849580478324784395590388826052558"
         )
-    ; y=
+    ; y =
         ( of_string
             "464673596668689463130099227575639512541218133445388869383893594087634649237515554342751377"
         , of_string
             "100642907501977375184575075967118071807821117960152743335603284583254620685343989304941678"
         , of_string
             "123019855502969896026940545715841181300275180157288044663051565390506010149881373807142903"
-        ) }
+        )
+    }
 end
 
 module Pairing_info = struct

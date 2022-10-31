@@ -30,9 +30,9 @@ end) (Coefficients : sig
   val b : Fq.t
 end) =
 struct
-  type t = {x: Fq.t; y: Fq.t; z: Fq.t} [@@deriving bin_io, sexp, yojson]
+  type t = { x : Fq.t; y : Fq.t; z : Fq.t } [@@deriving bin_io, sexp, yojson]
 
-  let zero = {x= Fq.zero; y= Fq.one; z= Fq.zero}
+  let zero = { x = Fq.zero; y = Fq.one; z = Fq.zero }
 
   module Coefficients = Coefficients
 
@@ -40,26 +40,24 @@ struct
     type t = Fq.t * Fq.t
   end
 
-  let of_affine (x, y) = {x; y; z= Fq.one}
+  let of_affine (x, y) = { x; y; z = Fq.one }
 
   let is_zero t = Fq.(equal zero t.x) && Fq.(equal zero t.z)
 
-  let to_affine_exn {x; y; z} =
+  let to_affine_exn { x; y; z } =
     let z_inv = Fq.inv z in
     Fq.(x * z_inv, y * z_inv)
 
   let to_affine t = if is_zero t then None else Some (to_affine_exn t)
 
-  let is_well_formed ({x; y; z} as t) =
+  let is_well_formed ({ x; y; z } as t) =
     if is_zero t then true
     else
       let open Fq in
       let x2 = square x in
       let y2 = square y in
       let z2 = square z in
-      equal
-        (z * (y2 - (Coefficients.b * z2)))
-        (x * (x2 + (Coefficients.a * z2)))
+      equal (z * (y2 - (Coefficients.b * z2))) (x * (x2 + (Coefficients.a * z2)))
 
   let ( + ) t1 t2 =
     if is_zero t1 then t2
@@ -86,7 +84,7 @@ struct
         let x3 = h * s in
         let y3 = (w * (b - h)) - (rr + rr) in
         let z3 = sss in
-        {x= x3; y= y3; z= z3}
+        { x = x3; y = y3; z = z3 }
       else
         (* Generic case *)
         let z1z2 = t1.z * t2.z in
@@ -100,7 +98,7 @@ struct
         let x3 = v * a in
         let y3 = (u * (r - a)) - (vvv * y1z2) in
         let z3 = vvv * z1z2 in
-        {x= x3; y= y3; z= z3}
+        { x = x3; y = y3; z = z3 }
 
   let scale base s =
     let rec go found_one acc i =
@@ -114,7 +112,7 @@ struct
 
   let ( * ) s g = scale g s
 
-  let negate {x; y; z} = {x; y= Fq.negate y; z}
+  let negate { x; y; z } = { x; y = Fq.negate y; z }
 
   let ( - ) t1 t2 = t1 + negate t2
 end

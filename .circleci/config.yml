@@ -1,38 +1,10 @@
-version: 2.1
-commands:
-    fetch-opam:
-        steps:
-            - restore_cache:
-                name: Restore opam cache
-                keys:
-                    - opam-linux-v1-{{ checksum "opam.export" }}
-
 jobs:
-    build-opam-cache:
-        docker:
-        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
-        steps:
-            - checkout
-            - restore_cache:
-                name: Restore opam cache
-                keys:
-                    - opam-linux-v1-{{ checksum "opam.export" }}
-            - run:
-                name: Install opam deps
-                command: scripts/build-opam.sh
-            - save_cache:
-                name: Save opam cache
-                key: opam-linux-v1-{{ checksum "opam.export" }}
-                paths:
-                    - "/home/opam/.opam"
     build:
         docker:
-        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
+        # For now, just reuse mina's Docker toolchain. In the future, we should compose Mina's from Snarky's somehow
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:78508e55d17020f893971f3e5d03645c3ce35644d545ec4584322b165bfbd751
         steps:
             - checkout
-            - fetch-opam
             - run:
                 name: Lint
                 command: eval `opam config env` && make check-format
@@ -40,30 +12,13 @@ jobs:
             - run: eval `opam config env` && make tests
     opam-pin:
         docker:
-        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
+        # For now, just reuse mina's Docker toolchain. In the future, we should compose Mina's from Snarky's somehow
+        - image: gcr.io/o1labs-192920/mina-toolchain@sha256:78508e55d17020f893971f3e5d03645c3ce35644d545ec4584322b165bfbd751
         steps:
             - checkout
-            - fetch-opam
             - run:
                 name: opam pin
                 command: eval `opam config env` && opam pin .
-    meja:
-        docker:
-        # For now, just reuse coda's Docker toolchain. In the future, we should compose Coda's from Snarky's somehow
-        - image: codaprotocol/coda:toolchain-ff342e8e78343bf409b94817a0f96bae57914cea
-        steps:
-            - checkout
-            - fetch-opam
-            - run:
-                name: Build snarky
-                command: eval `opam config env` && make build
-            - run:
-                name: Build Meja
-                command: eval `opam config env` && cd meja && make build
-            - run:
-                name: Meja tests
-                command: eval `opam config env` && cd meja && make test
     website:
         docker:
         - image: node
@@ -77,13 +32,5 @@ workflows:
     snarky_parallel:
         jobs:
         - website
-        - build-opam-cache
-        - build:
-             requires:
-                - build-opam-cache
-        - opam-pin:
-             requires:
-                - build-opam-cache
-        - meja:
-             requires:
-                - build-opam-cache
+        - build
+        - opam-pin

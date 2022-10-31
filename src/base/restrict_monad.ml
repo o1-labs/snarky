@@ -1,6 +1,6 @@
 module Make2
     (M : Monad_let.S2) (T : sig
-        type t
+      type t
     end) : Monad_let.S with type 'a t = ('a, T.t) M.t = struct
   type 'a t = ('a, T.t) M.t
 
@@ -11,8 +11,6 @@ module Make2
   let return = M.return
 
   let all = M.all
-
-  let all_ignore = M.all_unit
 
   let all_unit = M.all_unit
 
@@ -27,9 +25,9 @@ end
 
 module Make3
     (M : Monad_let.S3) (T : sig
-        type t1
+      type t1
 
-        type t2
+      type t2
     end) : Monad_let.S with type 'a t = ('a, T.t1, T.t2) M.t = struct
   type 'a t = ('a, T.t1, T.t2) M.t
 
@@ -40,8 +38,6 @@ module Make3
   let return = M.return
 
   let all = M.all
-
-  let all_ignore = M.all_unit
 
   let all_unit = M.all_unit
 

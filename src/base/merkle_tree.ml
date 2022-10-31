@@ -51,14 +51,15 @@ and ('hash, 'a) tree = Non_empty of ('hash, 'a) non_empty_tree | Empty
 [@@deriving sexp]
 
 type ('hash, 'a) t =
-  { tree: ('hash, 'a) non_empty_tree
-  ; depth: int
-  ; count: int
-  ; hash: 'a option -> 'hash
-  ; merge: 'hash -> 'hash -> 'hash }
+  { tree : ('hash, 'a) non_empty_tree
+  ; depth : int
+  ; count : int
+  ; hash : 'a option -> 'hash
+  ; merge : 'hash -> 'hash -> 'hash
+  }
 [@@deriving sexp]
 
-let check_exn {tree; hash; merge; _} =
+let check_exn { tree; hash; merge; _ } =
   let default = hash None in
   let rec check_hash = function
     | Non_empty t ->
@@ -79,7 +80,7 @@ let check_exn {tree; hash; merge; _} =
 
 let non_empty_hash = function Node (h, _, _) -> h | Leaf (h, _) -> h
 
-let depth {depth; _} = depth
+let depth { depth; _ } = depth
 
 let tree_hash ~default = function
   | Empty ->
@@ -150,28 +151,7 @@ let insert hash merge t0 mask0 address x =
 
 let ith_bit n i = (n lsr i) land 1 = 1
 
-let update ({hash; merge; tree= tree0; depth; _} as t) addr0 x =
-  let tree_hash = tree_hash ~default:(hash None) in
-  let rec go_non_empty tree i =
-    match tree with
-    | Leaf (_, _) ->
-        Leaf (hash (Some x), x)
-    | Node (_, t_l, t_r) ->
-        let b = ith_bit addr0 i in
-        let t_l', t_r' =
-          if b then (t_l, go t_r (i - 1)) else (go t_l (i - 1), t_r)
-        in
-        Node (merge (tree_hash t_l') (tree_hash t_r'), t_l', t_r')
-  and go tree i =
-    match tree with
-    | Non_empty tree ->
-        Non_empty (go_non_empty tree i)
-    | Empty ->
-        failwith "Merkle_tree.update: Invalid address"
-  in
-  {t with tree= go_non_empty tree0 (depth - 1)}
-
-let get {tree; depth; _} addr0 =
+let get { tree; depth; _ } addr0 =
   let rec get t i =
     match t with Empty -> None | Non_empty t -> get_non_empty t i
   and get_non_empty t i =
@@ -203,8 +183,7 @@ let set_dirty default tree addr x =
         Leaf (default, x)
     | Node (_, l, r), go_right :: bs ->
         let l', r' =
-          if go_right then (l, Non_empty (go r bs))
-          else (Non_empty (go l bs), r)
+          if go_right then (l, Non_empty (go r bs)) else (Non_empty (go l bs), r)
         in
         Node (default, l', r')
     | Leaf _, _ :: _ | Node _, [] ->
@@ -212,7 +191,7 @@ let set_dirty default tree addr x =
   in
   go_non_empty tree (List.rev addr)
 
-let recompute_hashes {tree; hash; merge; _} =
+let recompute_hashes { tree; hash; merge; _ } =
   let h =
     let default = hash None in
     fun t -> tree_hash ~default t
@@ -244,46 +223,50 @@ let add_many t xs =
     in
     go 0 (Leaf (default, x))
   in
-  let add_one_dirty {tree; depth; count; hash; merge} x =
+  let add_one_dirty { tree; depth; count; hash; merge } x =
     if count = 1 lsl depth then
       let t_r = left_tree_dirty depth x in
-      { tree= Node (default, Non_empty tree, Non_empty t_r)
-      ; count= count + 1
-      ; depth= depth + 1
+      { tree = Node (default, Non_empty tree, Non_empty t_r)
+      ; count = count + 1
+      ; depth = depth + 1
       ; hash
-      ; merge }
+      ; merge
+      }
     else
-      { tree= set_dirty default tree (address_of_int ~depth count) x
-      ; count= count + 1
+      { tree = set_dirty default tree (address_of_int ~depth count) x
+      ; count = count + 1
       ; depth
       ; hash
-      ; merge }
+      ; merge
+      }
   in
   let t = List.fold_left xs ~init:t ~f:add_one_dirty in
-  {t with tree= recompute_hashes t}
+  { t with tree = recompute_hashes t }
 
-let add {tree; depth; count; hash; merge} x =
+let add { tree; depth; count; hash; merge } x =
   if count = 1 lsl depth then
     let h_r, t_r = left_tree hash merge depth x in
     let h_l = non_empty_hash tree in
-    { tree= Node (merge h_l h_r, Non_empty tree, Non_empty t_r)
-    ; count= count + 1
-    ; depth= depth + 1
+    { tree = Node (merge h_l h_r, Non_empty tree, Non_empty t_r)
+    ; count = count + 1
+    ; depth = depth + 1
     ; hash
-    ; merge }
+    ; merge
+    }
   else
-    { tree= insert hash merge (Non_empty tree) (1 lsl (depth - 1)) count x
-    ; count= count + 1
+    { tree = insert hash merge (Non_empty tree) (1 lsl (depth - 1)) count x
+    ; count = count + 1
     ; depth
     ; hash
-    ; merge }
+    ; merge
+    }
 
-let root {tree; _} = non_empty_hash tree
+let root { tree; _ } = non_empty_hash tree
 
 let create ~hash ~merge x =
-  {tree= Leaf (hash (Some x), x); count= 1; depth= 0; hash; merge}
+  { tree = Leaf (hash (Some x), x); count = 1; depth = 0; hash; merge }
 
-let get_path {tree; hash; depth; _} addr0 =
+let get_path { tree; hash; depth; _ } addr0 =
   let default = hash None in
   let rec go acc t i =
     if i < 0 then acc
@@ -326,9 +309,9 @@ let rec free_tree_hash = function
   | Non_empty (Node (_, l, r)) ->
       Merge (free_tree_hash l, free_tree_hash r)
 
-let free_root {tree; _} = free_tree_hash (Non_empty tree)
+let free_root { tree; _ } = free_tree_hash (Non_empty tree)
 
-let get_free_path {tree; depth; _} addr0 =
+let get_free_path { tree; depth; _ } addr0 =
   let rec go acc t i =
     if i < 0 then acc
     else
@@ -361,18 +344,17 @@ type ('hash, 'a) merkle_tree = ('hash, 'a) t
 
 module Checked
     (Impl : Snark_intf.Basic) (Hash : sig
-        type var
+      type var
 
-        type value
+      type value
 
-        val typ : (var, value) Impl.Typ.t
+      val typ : (var, value) Impl.Typ.t
 
-        val merge : height:int -> var -> var -> (var, _) Impl.Checked.t
+      val merge : height:int -> var -> var -> var Impl.Checked.t
 
-        val if_ :
-          Impl.Boolean.var -> then_:var -> else_:var -> (var, _) Impl.Checked.t
+      val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var Impl.Checked.t
 
-        val assert_equal : var -> var -> (unit, _) Impl.Checked.t
+      val assert_equal : var -> var -> unit Impl.Checked.t
     end) (Elt : sig
       type var
 
@@ -380,7 +362,7 @@ module Checked
 
       val typ : (var, value) Impl.Typ.t
 
-      val hash : var -> (Hash.var, _) Impl.Checked.t
+      val hash : var -> Hash.var Impl.Checked.t
     end) =
 struct
   open Impl
@@ -396,7 +378,7 @@ struct
         ~there:(address_of_int ~depth)
         ~back:
           (List.foldi ~init:0 ~f:(fun i acc b ->
-               if b then acc lor (1 lsl i) else acc ))
+               if b then acc lor (1 lsl i) else acc ) )
   end
 
   module Path = struct
@@ -431,7 +413,7 @@ struct
 
   (* addr0 should have least significant bit first *)
   let%snarkydef_ fetch_and_update_req ~(depth : int) root addr0 ~f :
-      (Hash.var * [`Old of Elt.var] * [`New of Elt.var], 's) Checked.t =
+      (Hash.var * [ `Old of Elt.var ] * [ `New of Elt.var ]) Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
       request_witness
@@ -457,13 +439,12 @@ struct
     (new_root, `Old prev, `New next)
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef_ modify_req ~(depth : int) root addr0 ~f :
-      (Hash.var, 's) Checked.t =
+  let%snarkydef_ modify_req ~(depth : int) root addr0 ~f : Hash.var Checked.t =
     let%map root, _, _ = fetch_and_update_req ~depth root addr0 ~f in
     root
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef_ get_req ~(depth : int) root addr0 : (Elt.var, 's) Checked.t =
+  let%snarkydef_ get_req ~(depth : int) root addr0 : Elt.var Checked.t =
     let open Let_syntax in
     let%bind prev, prev_path =
       request_witness
@@ -479,7 +460,7 @@ struct
 
   (* addr0 should have least significant bit first *)
   let%snarkydef_ update_req ~(depth : int) ~root ~prev ~next addr0 :
-      (Hash.var, _) Checked.t =
+      Hash.var Checked.t =
     let open Let_syntax in
     let%bind prev_entry_hash = Elt.hash prev
     and next_entry_hash = Elt.hash next
@@ -500,56 +481,22 @@ struct
         Set (addr, next))
     in
     implied_root next_entry_hash addr0 prev_path
-
-  (* addr0 should have least significant bit first *)
-  let%snarkydef_ update ~(depth : int) ~root ~prev ~next addr0 :
-      (Hash.var, (Hash.value, Elt.value) merkle_tree) Checked.t =
-    let%bind prev_entry_hash = Elt.hash prev
-    and next_entry_hash = Elt.hash next
-    and prev_path =
-      exists (Path.typ ~depth)
-        ~compute:
-          As_prover.(
-            map2 ~f:get_path get_state (read (Address.typ ~depth) addr0))
-    in
-    let%bind prev_root_hash = implied_root prev_entry_hash addr0 prev_path in
-    let%bind () = Hash.assert_equal root prev_root_hash
-    and () =
-      as_prover
-        (let open As_prover in
-        let open Let_syntax in
-        let%bind addr = read (Address.typ ~depth) addr0
-        and next = read Elt.typ next in
-        modify_state (fun t -> update t addr next))
-    in
-    implied_root next_entry_hash addr0 prev_path
 end
 
 module Run = struct
   module Make
       (Impl : Snark_intf.Run_basic) (Hash : sig
-          type var
+        type var
 
-          type value
+        type value
 
-          val typ : (var, value) Impl.Typ.t
+        val typ : (var, value) Impl.Typ.t
 
-          val merge : height:int -> var -> var -> var
+        val merge : height:int -> var -> var -> var
 
-          val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var
+        val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var
 
-          val assert_equal : var -> var -> unit
-
-          (** The prover state to run the checked computations above with.
-              This state will *always* be passed to the above unchanged.
-
-              NOTE: This is equivalent to the condition on the monadic
-                    interface that the computations are not constrained in
-                    their prover-state type: the type is abstract from the
-                    perspective of the functions, and so they cannot have any
-                    effect on the state.
-          *)
-          val prover_state : Impl.prover_state
+        val assert_equal : var -> var -> unit
       end) (Elt : sig
         type var
 
@@ -558,54 +505,27 @@ module Run = struct
         val typ : (var, value) Impl.Typ.t
 
         val hash : var -> Hash.var
-
-        (** The prover state to run the checked computations above with.
-              This state will *always* be passed to the above unchanged.
-
-              NOTE: This is equivalent to the condition on the monadic
-                    interface that the computations are not constrained in
-                    their prover-state type: the type is abstract from the
-                    perspective of the functions, and so they cannot have any
-                    effect on the state.
-          *)
-        val prover_state : Impl.prover_state
-
-        (** A lens to give access to the [(Hash.value, Elt.value) merkle_tree]
-            state that [update] uses. *)
-        val lens : (Impl.prover_state, (Hash.value, value) merkle_tree) Lens.t
       end) =
   struct
     open Impl
 
-    include Checked
-              (Impl.Internal_Basic)
-              (struct
-                include Hash
+    include
+      Checked
+        (Impl.Internal_Basic)
+        (struct
+          include Hash
 
-                let make_checked x =
-                  Internal_Basic.with_lens
-                    (Lens.constant prover_state)
-                    (make_checked x)
+          let merge ~height x y = make_checked (fun () -> merge ~height x y)
 
-                let merge ~height x y =
-                  make_checked (fun () -> merge ~height x y)
+          let if_ x ~then_ ~else_ = make_checked (fun () -> if_ x ~then_ ~else_)
 
-                let if_ x ~then_ ~else_ =
-                  make_checked (fun () -> if_ x ~then_ ~else_)
+          let assert_equal x y = make_checked (fun () -> assert_equal x y)
+        end)
+        (struct
+          include Elt
 
-                let assert_equal x y =
-                  make_checked (fun () -> assert_equal x y)
-              end)
-              (struct
-                include Elt
-
-                let make_checked x =
-                  Internal_Basic.with_lens
-                    (Lens.constant prover_state)
-                    (make_checked x)
-
-                let hash var = make_checked (fun () -> hash var)
-              end)
+          let hash var = make_checked (fun () -> hash var)
+        end)
 
     let implied_root entry_hash addr0 path0 =
       run_checked (implied_root entry_hash addr0 path0)
@@ -618,10 +538,5 @@ module Run = struct
 
     let update_req ~depth ~root ~prev ~next addr0 =
       run_checked (update_req ~depth ~root ~prev ~next addr0)
-
-    let update ~depth ~root ~prev ~next addr0 =
-      run_checked
-        (Internal_Basic.with_lens Elt.lens
-           (update ~depth ~root ~prev ~next addr0))
   end
 end

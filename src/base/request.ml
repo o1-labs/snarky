@@ -15,10 +15,10 @@ module Response = struct
 end
 
 type request =
-  | With : {request: 'a t; respond: 'a Response.t -> response} -> request
+  | With : { request : 'a t; respond : 'a Response.t -> response } -> request
 
 module Handler = struct
-  type single = {handle: 'a. 'a t -> 'a Response.t}
+  type single = { handle : 'a. 'a t -> 'a Response.t }
 
   type t = single list
 
@@ -31,14 +31,14 @@ module Handler = struct
           failwith
             ( "Unhandled request: "
             ^ Core_kernel.String.concat ~sep:"\n" label_stack )
-      | {handle} :: hs -> (
-        match handle req with
-        | Provide x ->
-            x
-        | Delegate req' ->
-            go req' hs
-        | Unhandled ->
-            go req hs )
+      | { handle } :: hs -> (
+          match handle req with
+          | Provide x ->
+              x
+          | Delegate req' ->
+              go req' hs
+          | Unhandled ->
+              go req hs )
     in
     go req0 stack0
 
@@ -48,13 +48,13 @@ module Handler = struct
       let module T = struct
         type response += T of a Response.t
       end in
-      match handler (With {request; respond= (fun x -> T.T x)}) with
+      match handler (With { request; respond = (fun x -> T.T x) }) with
       | T.T x ->
           x
       | _ ->
           Response.Unhandled
     in
-    {handle}
+    { handle }
 
   let push (t : t) (single : single) : t = single :: t
 end

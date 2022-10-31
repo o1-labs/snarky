@@ -1,3 +1,0 @@
-File "tests/recursive-type.meja", line 11, characters 10-11:
-Error: Incompatible types ('c, 'd) and ('c, ('c, 'd)):
-       The variable 'd would have an instance that contains itself.

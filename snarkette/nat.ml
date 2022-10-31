@@ -74,8 +74,10 @@ let of_yojson = function
   | _ ->
       Error "Nat.of_yojson: Expected string"
 
+[@@@alert "-legacy"]
+
 (** this serialization is not used for fields *)
-include Binable.Of_stringable (struct
+include Binable.Of_stringable_without_uuid (struct
   type nonrec t = t
 
   let of_string = of_bytes

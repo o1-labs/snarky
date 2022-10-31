@@ -1,7 +1,0 @@
-type t = field;
-
-let x : field -> t = fun (x) => { x; };
-
-Prover {
-  let y : field -> t = fun (x) => { x; }
-};

@@ -1,5 +1,0 @@
-type showable('a) = {show : 'a -> string};
-
-let show = fun {{show}} => { show; };
-
-let (i, j) = (show (18), show (true));

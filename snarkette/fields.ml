@@ -128,7 +128,10 @@ module Extend (F : Basic_intf) = struct
       go 0
 
     type nonrec t =
-      {two_adicity: int; quadratic_non_residue_to_t: t; t_minus_1_over_2: Nat.t}
+      { two_adicity : int
+      ; quadratic_non_residue_to_t : t
+      ; t_minus_1_over_2 : Nat.t
+      }
 
     let first f =
       let rec go i = match f i with Some x -> x | None -> go (i + one) in
@@ -141,9 +144,10 @@ module Extend (F : Basic_intf) = struct
       let quadratic_non_residue =
         first (fun i -> Option.some_if (not (is_square i)) i)
       in
-      { two_adicity= s
-      ; quadratic_non_residue_to_t= quadratic_non_residue ** t
-      ; t_minus_1_over_2= Nat.((t - of_int 1) // of_int 2) }
+      { two_adicity = s
+      ; quadratic_non_residue_to_t = quadratic_non_residue ** t
+      ; t_minus_1_over_2 = Nat.((t - of_int 1) // of_int 2)
+      }
 
     let t = lazy (create ())
   end
@@ -162,34 +166,35 @@ module Extend (F : Basic_intf) = struct
       |> snd
     in
     let module Loop_params = struct
-      type nonrec t = {z: t; b: t; x: t; v: int}
+      type nonrec t = { z : t; b : t; x : t; v : int }
     end in
     let open Loop_params in
     fun a ->
-      let { Sqrt_params.two_adicity= v
-          ; quadratic_non_residue_to_t= z
-          ; t_minus_1_over_2 } =
+      let { Sqrt_params.two_adicity = v
+          ; quadratic_non_residue_to_t = z
+          ; t_minus_1_over_2
+          } =
         Lazy.force Sqrt_params.t
       in
       let w = a ** t_minus_1_over_2 in
       let x = a * w in
       let b = x * w in
-      let {x; _} =
+      let { x; _ } =
         loop
           ~while_:(fun p -> not (equal p.b one))
-          ~init:{z; b; x; v}
-          (fun {z; b; x; v} ->
+          ~init:{ z; b; x; v }
+          (fun { z; b; x; v } ->
             let m = pow2_order b in
             let w = pow2 z Int.(v - m - 1) in
             let z = square w in
-            {z; b= b * z; x= x * w; v= m} )
+            { z; b = b * z; x = x * w; v = m } )
       in
       x
 end
 
 module Make_fp
     (N : Nat_intf.S) (Info : sig
-        val order : N.t
+      val order : N.t
     end) : Fp_intf with module Nat = N and type t = private N.t = struct
   include Info
 
@@ -214,10 +219,13 @@ module Make_fp
     include Bin_prot.Utils.Of_minimal (struct
       type nonrec t = t
 
+      (* increment if serialization changes *)
+      let version = 1
+
       let bin_shape_t =
         Bin_prot.Shape.basetype
           (Bin_prot.Shape.Uuid.of_string
-             (sprintf "snarkette_field_%d" length_in_bytes))
+             (sprintf "snarkette_field_%d_V%d" length_in_bytes version) )
           []
 
       let __bin_read_t__ _buf ~pos_ref _vint =
@@ -307,13 +315,14 @@ module Make_fp
   let random () = Quickcheck.random_value gen_uniform
 
   let fold_bits n : bool Fold_lib.Fold.t =
-    { fold=
+    { fold =
         (fun ~init ~f ->
           let rec go acc i =
             if Int.(i = length_in_bits) then acc
             else go (f acc (N.test_bit n i)) Int.(i + 1)
           in
-          go init 0 ) }
+          go init 0 )
+    }
 
   let to_bits = Fn.compose Fold_lib.Fold.to_list fold_bits
 
@@ -353,13 +362,13 @@ module Make_fp
       | [] ->
           ()
       | x :: xs -> (
-        try [%test_eq: t] a x with _ -> mem a xs )
+          try [%test_eq: t] a x with _ -> mem a xs )
     in
     let gen = Int.gen_incl 1 Int.max_value_30_bits in
     Quickcheck.test ~trials:10 gen ~f:(fun n ->
         let n = abs n in
         let n2 = Int.(n * n) in
-        mem (sqrt (of_int n2)) [of_int n; Info.order - of_int n] )
+        mem (sqrt (of_int n2)) [ of_int n; Info.order - of_int n ] )
 end
 
 module type Degree_2_extension_intf = sig
@@ -408,11 +417,11 @@ let find_wnaf (type t) (module N : Nat_intf.S with type t = t) window_size
 
 module Make_fp3
     (Fp : Intf) (Info : sig
-        val non_residue : Fp.t
+      val non_residue : Fp.t
 
-        val frobenius_coeffs_c1 : Fp.t array
+      val frobenius_coeffs_c1 : Fp.t array
 
-        val frobenius_coeffs_c2 : Fp.t array
+      val frobenius_coeffs_c2 : Fp.t array
     end) : sig
   include Degree_3_extension_intf with type base = Fp.t and module Nat = Fp.Nat
 
@@ -501,7 +510,7 @@ end = struct
 
   let random () = Quickcheck.random_value gen_uniform
 
-  let to_list (x, y, z) = [x; y; z]
+  let to_list (x, y, z) = [ x; y; z ]
 
   let project_to_base (x, _, _) = x
 
@@ -520,7 +529,7 @@ end
 
 module Make_fp2
     (Fp : Intf) (Info : sig
-        val non_residue : Fp.t
+      val non_residue : Fp.t
     end) : sig
   include Degree_2_extension_intf with type base = Fp.t and module Nat = Fp.Nat
 end = struct
@@ -548,8 +557,7 @@ end = struct
     let square (a, b) =
       let open Info in
       let ab = Fp.(a * b) in
-      Fp.
-        (((a + b) * (a + (non_residue * b))) - ab - (non_residue * ab), ab + ab)
+      Fp.(((a + b) * (a + (non_residue * b))) - ab - (non_residue * ab), ab + ab)
 
     let ( * ) (a1, b1) (a2, b2) =
       let open Fp in
@@ -587,7 +595,7 @@ end = struct
 
   let random () = Quickcheck.random_value gen_uniform
 
-  let to_list (x, y) = [x; y]
+  let to_list (x, y) = [ x; y ]
 
   let project_to_base (x, _) = x
 
@@ -602,18 +610,17 @@ module Make_fp6
     (N : Nat_intf.S)
     (Fp : Intf)
     (Fp2 : Degree_2_extension_intf with type base = Fp.t) (Fp3 : sig
-        include Degree_3_extension_intf with type base = Fp.t
+      include Degree_3_extension_intf with type base = Fp.t
 
-        val frobenius : t -> int -> t
+      val frobenius : t -> int -> t
 
-        val non_residue : Fp.t
+      val non_residue : Fp.t
     end) (Info : sig
       val non_residue : Fp.t
 
       val frobenius_coeffs_c1 : Fp.t array
     end) : sig
-  include
-    Degree_2_extension_intf with type base = Fp3.t and module Nat = Fp.Nat
+  include Degree_2_extension_intf with type base = Fp3.t and module Nat = Fp.Nat
 
   val mul_by_2345 : t -> t -> t
 
@@ -689,7 +696,7 @@ end = struct
 
   let random () = Quickcheck.random_value gen_uniform
 
-  let to_list (x, y) = [x; y]
+  let to_list (x, y) = [ x; y ]
 
   let project_to_base (x, _) = x
 
@@ -703,7 +710,7 @@ end = struct
     let _, _, a2_2 = a2 in
     (let a2_0, a2_1, _ = a2 in
      assert (Fp.(equal a2_0 zero)) ;
-     assert (Fp.(equal a2_1 zero))) ;
+     assert (Fp.(equal a2_1 zero)) ) ;
     let a =
       Fp.(a1_1 * a2_2 * non_residue, a1_2 * a2_2 * non_residue, a1_0 * a2_2)
     in
@@ -772,6 +779,5 @@ end = struct
 
   let frobenius (c0, c1) power =
     ( Fp3.frobenius c0 power
-    , Fp3.(scale (frobenius c1 power) Info.frobenius_coeffs_c1.(power mod 6))
-    )
+    , Fp3.(scale (frobenius c1 power) Info.frobenius_coeffs_c1.(power mod 6)) )
 end

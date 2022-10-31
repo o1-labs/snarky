@@ -1,61 +1,57 @@
 open Core_kernel
 
+(** Helpers for operating over a sequence of data (currently, either an array
+    or a list) inside of a monad.
+*)
 module type S = sig
-  type ('a, 's) monad
+  type 'a monad
 
   type 'a t
 
   type boolean
 
-  val foldi :
-    'a t -> init:'b -> f:(int -> 'b -> 'a -> ('b, 's) monad) -> ('b, 's) monad
+  val foldi : 'a t -> init:'b -> f:(int -> 'b -> 'a -> 'b monad) -> 'b monad
 
-  val fold :
-    'a t -> init:'b -> f:('b -> 'a -> ('b, 's) monad) -> ('b, 's) monad
+  val fold : 'a t -> init:'b -> f:('b -> 'a -> 'b monad) -> 'b monad
 
   val fold_map :
-       'a t
-    -> init:'b
-    -> f:('b -> 'a -> ('b * 'c, 's) monad)
-    -> ('b * 'c t, 's) monad
+    'a t -> init:'b -> f:('b -> 'a -> ('b * 'c) monad) -> ('b * 'c t) monad
 
-  val exists : 'a t -> f:('a -> (boolean, 's) monad) -> (boolean, 's) monad
+  val exists : 'a t -> f:('a -> boolean monad) -> boolean monad
 
-  val existsi :
-    'a t -> f:(int -> 'a -> (boolean, 's) monad) -> (boolean, 's) monad
+  val existsi : 'a t -> f:(int -> 'a -> boolean monad) -> boolean monad
 
-  val for_all : 'a t -> f:('a -> (boolean, 's) monad) -> (boolean, 's) monad
+  val for_all : 'a t -> f:('a -> boolean monad) -> boolean monad
 
-  val for_alli :
-    'a t -> f:(int -> 'a -> (boolean, 's) monad) -> (boolean, 's) monad
+  val for_alli : 'a t -> f:(int -> 'a -> boolean monad) -> boolean monad
 
-  val all : ('a, 's) monad t -> ('a t, 's) monad
+  val all : 'a monad t -> 'a t monad
 
-  val all_unit : (unit, 's) monad t -> (unit, 's) monad
+  val all_unit : unit monad t -> unit monad
 
-  val init : int -> f:(int -> ('a, 's) monad) -> ('a t, 's) monad
+  val init : int -> f:(int -> 'a monad) -> 'a t monad
 
-  val iter : 'a t -> f:('a -> (unit, 's) monad) -> (unit, 's) monad
+  val iter : 'a t -> f:('a -> unit monad) -> unit monad
 
-  val iteri : 'a t -> f:(int -> 'a -> (unit, 's) monad) -> (unit, 's) monad
+  val iteri : 'a t -> f:(int -> 'a -> unit monad) -> unit monad
 
-  val map : 'a t -> f:('a -> ('b, 's) monad) -> ('b t, 's) monad
+  val map : 'a t -> f:('a -> 'b monad) -> 'b t monad
 
-  val mapi : 'a t -> f:(int -> 'a -> ('b, 's) monad) -> ('b t, 's) monad
+  val mapi : 'a t -> f:(int -> 'a -> 'b monad) -> 'b t monad
 end
 
 module List
-    (M : Monad_let.S2) (Bool : sig
-        type t
+    (M : Monad_let.S) (Bool : sig
+      type t
 
-        val any : t list -> (t, _) M.t
+      val any : t list -> t M.t
 
-        val all : t list -> (t, _) M.t
+      val all : t list -> t M.t
     end) :
   S
-  with type 'a t = 'a list
-   and type ('a, 's) monad := ('a, 's) M.t
-   and type boolean := Bool.t = struct
+    with type 'a t = 'a list
+     and type 'a monad := 'a M.t
+     and type boolean := Bool.t = struct
   type 'a t = 'a list
 
   open M.Let_syntax
@@ -135,17 +131,17 @@ module List
 end
 
 module Array
-    (M : Monad_let.S2) (Bool : sig
-        type t
+    (M : Monad_let.S) (Bool : sig
+      type t
 
-        val any : t array -> (t, _) M.t
+      val any : t array -> t M.t
 
-        val all : t array -> (t, _) M.t
+      val all : t array -> t M.t
     end) :
   S
-  with type 'a t = 'a array
-   and type ('a, 's) monad := ('a, 's) M.t
-   and type boolean := Bool.t = struct
+    with type 'a t = 'a array
+     and type 'a monad := 'a M.t
+     and type boolean := Bool.t = struct
   type 'a t = 'a array
 
   open M.Let_syntax
@@ -179,8 +175,7 @@ module Array
       let arr = Array.create ~len:n last in
       go arr (n - 2)
 
-  let mapi t ~f =
-    init (Array.length t) ~f:(fun i -> f i (Array.unsafe_get t i))
+  let mapi t ~f = init (Array.length t) ~f:(fun i -> f i (Array.unsafe_get t i))
 
   let map t ~f = mapi t ~f:(fun _i x -> f x)
 

@@ -52,16 +52,16 @@ module type Backend_intf = sig
 
   module Pairing :
     Pairing.S
-    with module G1 := G1
-     and module G2 := G2
-     and module Fq_target := Fq_target
+      with module G1 := G1
+       and module G2 := G2
+       and module Fq_target := Fq_target
 end
 
 module Make (Backend : Backend_intf) = struct
   open Backend
 
   module Verification_key = struct
-    type t = {alpha_beta: Fq_target.t; delta: G2.t; query: G1.t array}
+    type t = { alpha_beta : Fq_target.t; delta : G2.t; query : G1.t array }
     [@@deriving bin_io, sexp]
 
     let map_to_two t ~f =
@@ -72,10 +72,10 @@ module Make (Backend : Backend_intf) = struct
       in
       (List.rev xs, List.rev ys)
 
-    let fold_bits {alpha_beta; delta; query} =
+    let fold_bits { alpha_beta; delta; query } =
       let g1s = Array.to_list query in
-      let g2s = [delta] in
-      let gts = [Fq_target.unitary_inverse alpha_beta] in
+      let g2s = [ delta ] in
+      let gts = [ Fq_target.unitary_inverse alpha_beta ] in
       let g1_elts, g1_signs = map_to_two g1s ~f:G1.to_affine_exn in
       let non_zero_base_coordinate a =
         let x = Fqe.project_to_base a in
@@ -90,7 +90,7 @@ module Make (Backend : Backend_intf) = struct
       let gt_elts, gt_signs =
         map_to_two gts ~f:(fun g ->
             (* g is unitary, so (a, b) satisfy a quadratic over Fqe and thus
-             b is determined by a up to sign *)
+               b is determined by a up to sign *)
             let a, b = g in
             (Fqe.to_list a, non_zero_base_coordinate b) )
       in
@@ -111,23 +111,24 @@ module Make (Backend : Backend_intf) = struct
 
     module Processed = struct
       type t =
-        { alpha_beta: Fq_target.t
-        ; delta_pc: Pairing.G2_precomputation.t
-        ; query: G1.t array }
+        { alpha_beta : Fq_target.t
+        ; delta_pc : Pairing.G2_precomputation.t
+        ; query : G1.t array
+        }
       [@@deriving bin_io, sexp]
 
-      let create {alpha_beta; delta; query} =
-        {alpha_beta; delta_pc= Pairing.G2_precomputation.create delta; query}
+      let create { alpha_beta; delta; query } =
+        { alpha_beta; delta_pc = Pairing.G2_precomputation.create delta; query }
     end
   end
 
   let check b lab = if b then Ok () else Or_error.error_string lab
 
   module Proof = struct
-    type t = {a: G1.t; b: G2.t; c: G1.t; delta_prime: G2.t; z: G1.t}
+    type t = { a : G1.t; b : G2.t; c : G1.t; delta_prime : G2.t; z : G1.t }
     [@@deriving bin_io, sexp]
 
-    let is_well_formed {a; b; c; delta_prime; z} =
+    let is_well_formed { a; b; c; delta_prime; z } =
       let open Or_error.Let_syntax in
       let err x =
         sprintf "proof was not well-formed (%s was off its curve)" x
@@ -135,9 +136,7 @@ module Make (Backend : Backend_intf) = struct
       let%bind () = check (G1.is_well_formed a) (err "a") in
       let%bind () = check (G2.is_well_formed b) (err "b") in
       let%bind () = check (G1.is_well_formed c) (err "c") in
-      let%bind () =
-        check (G2.is_well_formed delta_prime) (err "delta_prime")
-      in
+      let%bind () = check (G2.is_well_formed delta_prime) (err "delta_prime") in
       let%map () = check (G1.is_well_formed z) (err "z") in
       ()
   end
@@ -145,7 +144,7 @@ module Make (Backend : Backend_intf) = struct
   let one_pc = lazy (Pairing.G2_precomputation.create G2.one)
 
   let verify ?message (vk : Verification_key.Processed.t) input
-      ({Proof.a; b; c; delta_prime; z} as proof) =
+      ({ Proof.a; b; c; delta_prime; z } as proof) =
     let open Or_error.Let_syntax in
     let%bind () =
       check
@@ -180,9 +179,7 @@ module Make (Backend : Backend_intf) = struct
     let test2 =
       let ys = hash ?message ~a ~b ~c ~delta_prime in
       let l =
-        Pairing.miller_loop
-          (Pairing.G1_precomputation.create ys)
-          delta_prime_pc
+        Pairing.miller_loop (Pairing.G1_precomputation.create ys) delta_prime_pc
       in
       let r =
         Pairing.miller_loop (Pairing.G1_precomputation.create z) vk.delta_pc
