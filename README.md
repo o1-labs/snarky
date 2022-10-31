@@ -10,21 +10,17 @@ be used in production systems.
 **CAVEAT** This repository contains a substantial amount of obsolete
 code. Earlier versions of the Mina project (the primary user of this
 code) used the C/C++ backend implemented in `src/`; most of that code
-is no longer used. The exceptions are `src/intf` and `src/base`. The
-legacy code will not build under Bazel; the `.bazelignore` file lists
-the packages containing such code. See the section below on [Bazel
-builds](#bazel) for more information.
+is no longer used. The exceptions are `src/intf` and `src/base`.
 
-* [Getting Started](#getting_started)
-* [Design](#design)
-  * [Example: Merkle Trees](#merkle)
-* [Implementation](#implementation)
-* [Building](#building)
-  * [Dune](#dune)
-  * [Bazel](#dune)
-* [Maintenance](#maintenance)
+- [snarky](#snarky)
+  - [Getting started](#getting-started)
+  - [Design](#design)
+    - [Example: Merkle trees](#example-merkle-trees)
+  - [Implementation](#implementation)
+  - [Building](#building)
 
-## <a name="getting_started">Getting started</a>
+## Getting started
+
 - First install libsnark's dependencies by running [scripts/depends.sh](scripts/depends.sh), or following the instructions [here](https://github.com/scipr-lab/libsnark#dependencies).
 - Then, make sure you have [opam](https://opam.ocaml.org/doc/Install.html) installed.
 - Finally, install `snarky` and its dependencies by running
@@ -37,7 +33,7 @@ The best place to get started learning how to use the library are the annotated 
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
 - [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
 
-## <a name="design">Design</a>
+## Design
 
 The intention of this library is to allow writing snarks by writing what look
 like normal programs (whose executions the snarks verify). If you're an experienced
@@ -51,7 +47,8 @@ Given `v1, v2 : var`, `mul v1 v2` is a variable containg the product of v1 and v
 and the snark will ensure that this is so.
 
 
-### <a name="merkle">Example: Merkle trees</a>
+### Example: Merkle trees
+
 One computation useful in snarks is verifying membership in a list. This is
 typically accomplished using authentication paths in Merkle trees. Given a
 hash `entry_hash`, an address (i.e., a list of booleans) `addr0` and an
@@ -104,58 +101,15 @@ let implied_root_unchecked entry_hash addr0 path0 =
 The two obviously look very similar, but the first one can be run to generate an R1CS
 (and also an "auxiliary input") to verify that computation. 
 
-## <a name="implementation">Implementation</a>
+## Implementation
 
 Currently, the library uses a free-monad style AST to represent the snark computation.
 This may change in future versions if the overhead of creating the AST is significant.
 Most likely it will stick around since the overhead doesn't seem to be too bad and it
 enables optimizations like eliminating equality constraints.
 
-## <a name="building">Building</a>
-
-### <a name="dune">Dune</a>
-
-Run `$ bazel clean` before running a Dune build.
-
-`$ dune build`
-
-### <a name="bazel">Bazel</a>
-
-Build all targets in all packages: `$ bazel build //...:*`
-
-Some Bazel targets that were used by the original C/C++ implementation
-will no longer build. For example, the `examples` have not been
-upgraded to use the new code.
-
-Listing directories in `.bazelignore` excludes them from Bazel
-processing; this allows `$ bazel build //...:*` to succeed.
-
-## <a name="maintenance">Maintenance</a>
-
-To discover dependency paths from Mina targets to targets in this
-repository, you can run Bazel queries. You can use this technique if
-you restructure this code, in order to find what effect it might have
-on depending code.
-
-For example, to determine which targets were made obsolete when Mina
-removed the C/C++ backend, queries like the following were run from
-within the Mina repo:
+## Building
 
 ```
-$ bazel query "allpaths(//src/app/cli/src:coda.exe, @snarky//src/camlsnark_c/cpp_string:*)" --notool_deps
-INFO: Empty results
+$ dune build
 ```
-
-This tells us that `coda.exe` does not depend on any targets within
-the `src/camlsnark_c/cpp_string` package.
-
-To check for all subpackages under a package, use `/...:*`; for example, the following query shows that `coda.exe` does not depend on anything under `src/camlsnark_c`:
-
-```
-$ bazel query "allpaths(//src/app/cli/src:coda.exe, @snarky//src/camlsnark_c/...:*)" --notool_deps
-INFO: Empty results
-```
-
-See [Bazel query
-how-to](https://docs.bazel.build/versions/master/query-how-to.html)
-for more query examples.
