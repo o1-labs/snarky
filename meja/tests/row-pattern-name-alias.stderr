@@ -1,3 +1,0 @@
-File "tests/row-pattern-name-alias.meja", line 3, characters 6-34:
-Error: Incompatible types [`A] and [`B]:
-       Cannot unify [`A] and [`B]: the constructor `A is not present in both.

@@ -12,13 +12,13 @@ let map (t : 'a t) ~(f : 'a -> 'b) : 'b t =
 let concat (t : 'a t t) : 'a t =
   { fold =
       (fun ~init ~f ->
-        t.fold ~init ~f:(fun acc inner -> inner.fold ~init:acc ~f))
+        t.fold ~init ~f:(fun acc inner -> inner.fold ~init:acc ~f) )
   }
 
 let concat_map (t : 'a t) ~(f : 'a -> 'b t) : 'b t =
   { fold =
       (fun ~init ~f:update ->
-        t.fold ~init ~f:(fun acc x -> (f x).fold ~init:acc ~f:update))
+        t.fold ~init ~f:(fun acc x -> (f x).fold ~init:acc ~f:update) )
   }
 
 let init n ~f:ith_elt =
@@ -27,7 +27,7 @@ let init n ~f:ith_elt =
         let rec go i acc =
           if i = n then acc else go (i + 1) (f acc (ith_elt i))
         in
-        go 0 init)
+        go 0 init )
   }
 
 include Monad.Make (struct
@@ -70,7 +70,7 @@ let group3 ~default (t : 'a t) : ('a * 'a * 'a) t =
                   let pt' = f pt (b0, b1, b2) in
                   (pt', [ b ])
               | _ ->
-                  (pt, b :: bs))
+                  (pt, b :: bs) )
         in
         match bs with
         | [ b2; b1; b0 ] ->
@@ -82,7 +82,7 @@ let group3 ~default (t : 'a t) : ('a * 'a * 'a) t =
         | [] ->
             pt
         | _x1 :: _x2 :: _x3 :: _x4 :: _ ->
-            assert false)
+            assert false )
   }
 
 let%test_unit "group3" =
@@ -99,8 +99,8 @@ let%test_unit "group3" =
        let concated =
          List.concat_map ~f:(fun (b1, b2, b3) -> [ b1; b2; b3 ]) tuples
        in
-       [%test_eq: int list] padded concated) ;
-      assert ((n + 2) / 3 = k))
+       [%test_eq: int list] padded concated ) ;
+      assert ((n + 2) / 3 = k) )
 
 let string_bits s =
   let ith_bit_int n i = (n lsr i) land 1 = 1 in
@@ -110,7 +110,7 @@ let string_bits s =
             let c = Char.to_int c in
             let update i acc = f acc (ith_bit_int c i) in
             update 0 acc |> update 1 |> update 2 |> update 3 |> update 4
-            |> update 5 |> update 6 |> update 7))
+            |> update 5 |> update 6 |> update 7 ) )
   }
 
 let bool_t_to_string =
@@ -123,7 +123,7 @@ let bool_t_to_string =
       t.fold ~init:{ curr = 0; acc = []; i = 0 } ~f:(fun { curr; acc; i } b ->
           let curr = if b then curr lor (1 lsl i) else curr in
           if i = 7 then { i = 0; acc = Char.of_int_exn curr :: acc; curr = 0 }
-          else { i = i + 1; acc; curr })
+          else { i = i + 1; acc; curr } )
     in
     let cs = if i = 0 then acc else Char.of_int_exn curr :: acc in
     String.of_char_list cs

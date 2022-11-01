@@ -80,7 +80,7 @@ let of_intervals_exn is =
       []
   | i :: is ->
       List.fold is ~init:(of_interval i) ~f:(fun acc x ->
-          disjoint_union_exn (of_interval x) acc)
+          disjoint_union_exn (of_interval x) acc )
 
 let to_interval = function
   | [ i ] ->
@@ -92,7 +92,7 @@ let to_interval = function
         (Printf.sprintf
            !"Interval_union.to_interval: expected a single interval in the \
              union, got multiple disjoint intervals %{sexp: Interval.t list}\n"
-           xs)
+           xs )
 
 let right_endpoint t = Option.map ~f:snd (List.last t)
 
@@ -138,11 +138,11 @@ let%test_unit "canonicalize" =
 
 let%test_unit "disjoint union doesn't care about order" =
   Quickcheck.test gen_disjoint_pair ~f:(fun (a, b) ->
-      assert (equal (disjoint_union_exn a b) (disjoint_union_exn b a)))
+      assert (equal (disjoint_union_exn a b) (disjoint_union_exn b a)) )
 
 let%test_unit "check invariant on disjoint union" =
   Quickcheck.test gen_disjoint_pair ~f:(fun (a, b) ->
-      invariant (disjoint_union_exn a b))
+      invariant (disjoint_union_exn a b) )
 
 let%test_unit "disjoint_union works with holes" =
   let gen =

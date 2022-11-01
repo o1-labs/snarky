@@ -1,3 +1,0 @@
-type t = field;
-
-type var = field;

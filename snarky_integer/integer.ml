@@ -137,22 +137,22 @@ let constant (type f) ?length ~m:((module M) as m : f m) x =
     | None ->
         b
   in
-  { value = Field.(constant typ (bigint_to_field ~m x))
+  { value = Field.(constant (bigint_to_field ~m x))
   ; interval = Constant x
   ; bits =
       Some
         (List.init length ~f:(fun i ->
-             constant Boolean.typ B.(shift_right x i land one = one)))
+             constant Boolean.typ B.(shift_right x i land one = one) ) )
   }
 
 let shift_left (type f) ~m:((module M) as m : f m) t k =
   let open M in
   let two_to_k = B.(one lsl k) in
-  { value = Field.(constant typ (bigint_to_field ~m two_to_k) * t.value)
+  { value = Field.(constant (bigint_to_field ~m two_to_k) * t.value)
   ; interval = Interval.scale ~m t.interval two_to_k
   ; bits =
       Option.map t.bits ~f:(fun bs ->
-          List.init k ~f:(fun _ -> Boolean.false_) @ bs)
+          List.init k ~f:(fun _ -> Boolean.false_) @ bs )
   }
 
 let of_bits (type f) ~m:((module M) : f m) bs =
@@ -205,7 +205,7 @@ let subtract_unpacking (type f) ~m:((module M) : f m) a b =
       let length = Interval.bits_needed a.interval in
       (* The constraints added in [unpack] ensure that [0 <= value <= a]. *)
       let bits = M.Field.unpack value ~length in
-      { value; interval = a.interval; bits = Some bits })
+      { value; interval = a.interval; bits = Some bits } )
 
 let add (type f) ~m:((module M) as m : f m) a b =
   let interval = Interval.(add ~m a.interval b.interval) in

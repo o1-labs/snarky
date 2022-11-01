@@ -1,3 +1,0 @@
-let f = fun (x : [[`A | `B] - `A], y : [`A | `B], b) => {
-  if (b) { x; } else { y; };
-};

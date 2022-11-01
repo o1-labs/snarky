@@ -32,7 +32,7 @@ module Field = struct
     let bits_to_bytes bits =
       let byte_of_bits bs =
         List.foldi bs ~init:0 ~f:(fun i acc b ->
-            if b then acc lor (1 lsl i) else acc)
+            if b then acc lor (1 lsl i) else acc )
         |> Char.of_int_exn
       in
       List.map
@@ -49,11 +49,11 @@ module Field = struct
     Hex.encode bytearray
 end
 
-(* ********************** *
- * three_wire permutation *
- * ********************** *)
+(* ****************** *
+ * legacy permutation *
+ * ****************** *)
 
-module ConfigThreeWire = struct
+module ConfigFpLegacy = struct
   module Field = Field
 
   let rounds_full = 63
@@ -83,13 +83,13 @@ module ConfigThreeWire = struct
   end
 end
 
-(* ********************** *
- * fp_3 permutation *
- * ********************** *)
-module ConfigFp3 = struct
+(* ****************** *
+ * kimchi permutation *
+ * ****************** *)
+module ConfigFpKimchi = struct
   module Field = Field
 
-  let rounds_full = 54
+  let rounds_full = 55
 
   let initial_ark = false
 
@@ -120,11 +120,11 @@ end
  *   hash function   *
  * ***************** *)
 
-module ThreeWire = struct
-  include Sponge.Make_hash (Sponge.Poseidon (ConfigThreeWire))
+module FpLegacy = struct
+  include Sponge.Make_hash (Sponge.Poseidon (ConfigFpLegacy))
 
   let params : Field.t Sponge.Params.t =
-    Sponge.Params.(map pasta_p ~f:Field.of_string)
+    Sponge.Params.(map pasta_p_legacy ~f:Field.of_string)
 
   let hash ?init = hash ?init params
 
@@ -138,11 +138,11 @@ module ThreeWire = struct
     Field.to_hex digest
 end
 
-module Fp3 = struct
-  include Sponge.Make_hash (Sponge.Poseidon (ConfigFp3))
+module FpKimchi = struct
+  include Sponge.Make_hash (Sponge.Poseidon (ConfigFpKimchi))
 
   let params : Field.t Sponge.Params.t =
-    Sponge.Params.(map pasta_p_3 ~f:Field.of_string)
+    Sponge.Params.(map pasta_p_kimchi ~f:Field.of_string)
 
   let hash ?init = hash ?init params
 

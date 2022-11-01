@@ -20,16 +20,6 @@ module type S = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
-  module Var : sig
-    type t [@@deriving sexp]
-
-    include Comparable.S with type t := t
-
-    val index : t -> int
-
-    val create : int -> t
-  end
-
   module Cvar : sig
     type t = Field.t Cvar.t [@@deriving sexp]
 
@@ -44,7 +34,7 @@ module type S = sig
 
     val constant : Field.t -> t
 
-    val to_constant_and_terms : t -> Field.t option * (Field.t * Var.t) list
+    val to_constant_and_terms : t -> Field.t option * (Field.t * int) list
 
     val add : t -> t -> t
 
@@ -88,7 +78,7 @@ module type S = sig
     val annotation : t -> string
 
     val eval :
-         (Cvar.t, Field.t) Constraint.basic_with_annotation list
+         (Cvar.t, Field.t) Constraint.basic_with_annotation
       -> (Cvar.t -> Field.t)
       -> bool
   end
@@ -99,7 +89,6 @@ module Make (Backend : Backend_intf.S) :
     with type Field.t = Backend.Field.t
      and type Field.Vector.t = Backend.Field.Vector.t
      and type Bigint.t = Backend.Bigint.R.t
-     and type Var.t = Backend.Var.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
 struct
   open Backend
@@ -119,22 +108,6 @@ struct
           go (i + 1) Bignum_bigint.(two_to_the_i + two_to_the_i) acc'
       in
       go 0 Bignum_bigint.one Bignum_bigint.zero
-  end
-
-  module Var = struct
-    module T = struct
-      include Backend.Var
-
-      let compare x y = Int.compare (index x) (index y)
-
-      let t_of_sexp _ = failwith "Var.t_of_sexp"
-
-      let sexp_of_t v =
-        Sexp.(List [ Atom "var"; Atom (Int.to_string (index v)) ])
-    end
-
-    include T
-    include Comparable.Make (T)
   end
 
   module Field = struct
@@ -178,8 +151,8 @@ struct
               Int64.(
                 foldi ~init:zero
                   ~f:(fun i acc el ->
-                    acc + if el then shift_left one i else zero)
-                  elt)))
+                    acc + if el then shift_left one i else zero )
+                  elt) ))
         chunks64 ;
       Backend.Bigint.R.(of_data arr ~bitcount:(List.length bs) |> to_field)
 
@@ -211,7 +184,7 @@ struct
         ~f:(fun bs ->
           [%test_eq: string]
             (project bs |> to_string)
-            (project_reference bs |> to_string))
+            (project_reference bs |> to_string) )
 
     let ( + ) = add
 
@@ -223,11 +196,11 @@ struct
   end
 
   module Cvar = struct
-    include Cvar.Make (Field) (Var)
+    include Cvar.Make (Field)
 
     let var_indices t =
       let _, terms = to_constant_and_terms t in
-      List.map ~f:(fun (_, v) -> Var.index v) terms
+      List.map ~f:(fun (_, v) -> v) terms
 
     let to_constant : t -> Field.t option = function
       | Constant x ->
@@ -246,9 +219,7 @@ struct
 
     let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
 
-    let eval t get_value =
-      List.for_all t ~f:(fun { basic; _ } ->
-          Constraint.Basic.eval m get_value basic)
+    let eval { basic; _ } get_value = Constraint.Basic.eval m get_value basic
   end
 
   module R1CS_constraint_system = R1CS_constraint_system

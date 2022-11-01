@@ -41,9 +41,10 @@ struct
         Field.Checked.Assert.lte ~bit_length x
           (constant Field.typ (Field.of_int M.max))
     in
-    { (Typ.transport Field.typ ~there:to_field ~back:of_field) with check }
+    let (Typ typ) = Typ.transport Field.typ ~there:to_field ~back:of_field in
+    Typ { typ with check = (fun x -> make_checked_ast (check x)) }
 
-  let var_to_bits : var -> (Boolean.var list, _) Checked.t =
+  let var_to_bits : var -> Boolean.var list Checked.t =
     Field.Checked.unpack ~length:bit_length
 
   let to_bits t = int_to_bits ~length:bit_length (to_enum t)

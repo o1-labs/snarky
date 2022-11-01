@@ -14,7 +14,7 @@ url {
 }
 depends: [
   "ocaml" {>= "4.07.0"}
-  "core_kernel" {>= "v0.13" & < "v0.14" }
+  "core_kernel" {>= "v0.14" & < "v0.15" }
   "h_list"
   "fold_lib"
   "tuple_lib"
@@ -23,11 +23,9 @@ depends: [
   "bignum"
   "base64"
   "yojson" {>= "1.7.0" & < "1.8.0"}
-  "ctypes" {>= "0.14" & < "0.18"}
-  "ctypes-foreign" {>= "0.4.0" & < "0.5.0"}
   "ppx_snarky"
-  "ppx_jane" {>= "v0.13" & < "v0.14"}
-  "ppx_deriving" {>= "4.2.1" & < "5.0"}
+  "ppx_jane" {>= "v0.14"}
+  "ppx_deriving" {>= "5.0"}
   "bisect_ppx" {>= "2.0.0"}
   "dune"                {build & >= "2.0"}
 ]

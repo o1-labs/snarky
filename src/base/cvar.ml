@@ -26,22 +26,16 @@ let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
     let c = if equal c zero then None else Some c in
     (c, ts)
 
-module Make
-    (Field : Snarky_intf.Field.Extended) (Var : sig
-      include Comparable.S
+module Unsafe = struct
+  let of_index v = Var v
+end
 
-      include Sexpable.S with type t := t
-
-      val create : int -> t
-    end) =
-struct
+module Make (Field : Snarky_intf.Field.Extended) = struct
   type t = Field.t cvar [@@deriving sexp]
 
   let length _ = failwith "TODO"
 
-  module Unsafe = struct
-    let of_index v = Var v
-  end
+  module Unsafe = Unsafe
 
   let scratch = Field.of_int 0
 
@@ -77,7 +71,7 @@ struct
       | Constant c ->
           (Field.add constant (Field.mul scale c), terms)
       | Var v ->
-          (constant, (scale, Var.create v) :: terms)
+          (constant, (scale, v) :: terms)
       | Scale (s, t) ->
           go (Field.mul s scale) constant terms t
       | Add (x1, x2) ->
@@ -123,7 +117,7 @@ struct
 
   let linear_combination (terms : (Field.t * t) list) : t =
     List.fold terms ~init:(constant Field.zero) ~f:(fun acc (c, t) ->
-        add acc (scale t c))
+        add acc (scale t c) )
 
   let sum vs = linear_combination (List.map vs ~f:(fun v -> (Field.one, v)))
 
@@ -152,5 +146,5 @@ struct
     `Assoc
       (List.filter_map (Map.to_alist map) ~f:(fun (i, f) ->
            if Field.(equal f zero) then None
-           else Some (Int.to_string i, `String (Field.to_string f))))
+           else Some (Int.to_string i, `String (Field.to_string f)) ) )
 end

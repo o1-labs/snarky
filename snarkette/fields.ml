@@ -187,7 +187,7 @@ module Extend (F : Basic_intf) = struct
             let m = pow2_order b in
             let w = pow2 z Int.(v - m - 1) in
             let z = square w in
-            { z; b = b * z; x = x * w; v = m })
+            { z; b = b * z; x = x * w; v = m } )
       in
       x
 end
@@ -219,10 +219,13 @@ module Make_fp
     include Bin_prot.Utils.Of_minimal (struct
       type nonrec t = t
 
+      (* increment if serialization changes *)
+      let version = 1
+
       let bin_shape_t =
         Bin_prot.Shape.basetype
           (Bin_prot.Shape.Uuid.of_string
-             (sprintf "snarkette_field_%d" length_in_bytes))
+             (sprintf "snarkette_field_%d_V%d" length_in_bytes version) )
           []
 
       let __bin_read_t__ _buf ~pos_ref _vint =
@@ -318,7 +321,7 @@ module Make_fp
             if Int.(i = length_in_bits) then acc
             else go (f acc (N.test_bit n i)) Int.(i + 1)
           in
-          go init 0)
+          go init 0 )
     }
 
   let to_bits = Fn.compose Fold_lib.Fold.to_list fold_bits
@@ -365,7 +368,7 @@ module Make_fp
     Quickcheck.test ~trials:10 gen ~f:(fun n ->
         let n = abs n in
         let n2 = Int.(n * n) in
-        mem (sqrt (of_int n2)) [ of_int n; Info.order - of_int n ])
+        mem (sqrt (of_int n2)) [ of_int n; Info.order - of_int n ] )
 end
 
 module type Degree_2_extension_intf = sig
@@ -554,8 +557,7 @@ end = struct
     let square (a, b) =
       let open Info in
       let ab = Fp.(a * b) in
-      Fp.
-        (((a + b) * (a + (non_residue * b))) - ab - (non_residue * ab), ab + ab)
+      Fp.(((a + b) * (a + (non_residue * b))) - ab - (non_residue * ab), ab + ab)
 
     let ( * ) (a1, b1) (a2, b2) =
       let open Fp in
@@ -708,7 +710,7 @@ end = struct
     let _, _, a2_2 = a2 in
     (let a2_0, a2_1, _ = a2 in
      assert (Fp.(equal a2_0 zero)) ;
-     assert (Fp.(equal a2_1 zero))) ;
+     assert (Fp.(equal a2_1 zero)) ) ;
     let a =
       Fp.(a1_1 * a2_2 * non_residue, a1_2 * a2_2 * non_residue, a1_0 * a2_2)
     in

@@ -49,7 +49,7 @@ module type Constant_intf = sig
 end
 
 module type Inputs_intf = sig
-  module Impl : Snarky_backendless.Snark_intf.Run with type prover_state = unit
+  module Impl : Snarky_backendless.Snark_intf.Run
 
   module F : sig
     include
@@ -64,6 +64,8 @@ module type Inputs_intf = sig
     val assert_r1cs : t -> t -> t -> unit
 
     val typ : (t, Constant.t) Impl.Typ.t
+
+    val constant : Constant.t -> t
   end
 
   module Constant : Constant_intf with type field := F.Constant.t
@@ -127,7 +129,7 @@ module Make_checked (Inputs : Inputs_intf) = struct
        B: 1
        C: 2 *)
     assert_r1cs (F.scale lambda two) ay
-      (F.scale x_squared (Field.Constant.of_int 3) + constant F.typ Params.a) ;
+      (F.scale x_squared (Field.Constant.of_int 3) + F.constant Params.a) ;
     (* A: 1
        B: 1
        C: 2
@@ -197,14 +199,22 @@ module Make_checked (Inputs : Inputs_intf) = struct
 
   let to_affine_exn x = x
 
+  let constant t =
+    let x, y = Constant.to_affine_exn t in
+    (F.constant x, F.constant y)
+
   let negate (x, y) = (x, F.negate y)
+
+  let one =
+    let x, y = Params.one in
+    F.(constant x, constant y)
 
   let assert_on_curve (x, y) =
     let open F in
     let x2 = square x in
     let x3 = x2 * x in
-    let ax = constant F.typ Params.a * x in
-    assert_square y (x3 + ax + constant F.typ Params.b)
+    let ax = constant Params.a * x in
+    assert_square y (x3 + ax + constant Params.b)
 
   let typ_unchecked : (t, Constant.t) Typ.t =
     Typ.transport
@@ -212,13 +222,11 @@ module Make_checked (Inputs : Inputs_intf) = struct
       ~there:Constant.to_affine_exn ~back:Constant.of_affine
 
   let typ : (t, Constant.t) Typ.t =
-    { typ_unchecked with
-      check = (fun t -> make_checked (fun () -> assert_on_curve t))
-    }
-
-  let one =
-    let x, y = Params.one in
-    (constant F.typ x, constant F.typ y)
+    let (Typ typ_unchecked) = typ_unchecked in
+    Typ
+      { typ_unchecked with
+        check = (fun t -> make_checked_ast (fun () -> assert_on_curve t))
+      }
 
   let if_ c ~then_:(tx, ty) ~else_:(ex, ey) =
     (F.if_ c ~then_:tx ~else_:ex, F.if_ c ~then_:ty ~else_:ey)
@@ -294,7 +302,8 @@ module Make_checked (Inputs : Inputs_intf) = struct
 end
 
 module type Native_base_field_inputs = sig
-  module Impl : Snarky_backendless.Snark_intf.Run with type prover_state = unit
+  (** Snarky instance to use. *)
+  module Impl : Snarky_backendless.Snark_intf.Run
 
   include
     Inputs_intf
@@ -341,7 +350,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
       in
       Array.mapi pure_windows ~f:(fun i (a, b, c) ->
           let shift = shifts.(i) in
-          Constant.(shift, shift + a, shift + b, shift + c))
+          Constant.(shift, shift + a, shift + b, shift + c) )
   end
 
   let pow2s g =
@@ -363,12 +372,12 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
         (let params =
            Group_map.Params.create (module Field.Constant) Params.{ a; b }
          in
-         Group_map.to_group (module Field.Constant) ~params)
+         Group_map.to_group (module Field.Constant) ~params )
 
     let string_to_bits s =
       List.concat_map (String.to_list s) ~f:(fun c ->
           let c = Char.to_int c in
-          List.init 8 ~f:(fun i -> (c lsr i) land 1 = 1))
+          List.init 8 ~f:(fun i -> (c lsr i) land 1 = 1) )
 
     let create base =
       let unrelated_base =
@@ -400,7 +409,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
       let open Field.Constant in
       let ( * ) x b = F.scale b x in
       let ( +^ ) = Field.( + ) in
-      constant F.typ a1
+      F.constant a1
       +^ ((a2 - a1) * (b0 :> Field.t))
       +^ ((a3 - a1) * (b1 :> Field.t))
       +^ ((a4 + a1 - a2 - a3) * (b0_and_b1 :> Field.t))
@@ -434,7 +443,7 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
         ((Array.length bs + 1) / 2)
         ~f:(fun i ->
           let get j = if j < num_bits then bs.(j) else Boolean.false_ in
-          (get (2 * i), get ((2 * i) + 1)))
+          (get (2 * i), get ((2 * i) + 1)) )
     in
     let windows_required = Array.length bs in
     let terms =
@@ -453,14 +462,14 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
     { value = with_shifts; shift }
 
   let unshift { value; shift } =
-    add_exn value (constant typ (Constant.negate shift))
+    add_exn value (constant (Constant.negate shift))
 
   let multiscale_known pairs =
     Array.map pairs ~f:(fun (s, g) -> scale_known g s)
     |> Array.reduce_exn ~f:(fun t1 t2 ->
            { value = add_exn t1.value t2.value
            ; shift = Constant.(t1.shift + t2.shift)
-           })
+           } )
     |> unshift
 
   let scale_known pc bs = unshift (scale_known pc bs)
@@ -598,10 +607,10 @@ module For_native_base_field (Inputs : Native_base_field_inputs) = struct
       (Typ.tuple2 g (Typ.array ~length:n Boolean.typ))
       g
       (fun (t, bs) ->
-        make_checked (fun () -> scale_fast t (`Plus_two_to_len_minus_1 bs)))
+        make_checked (fun () -> scale_fast t (`Plus_two_to_len_minus_1 bs)) )
       (fun (t, bs) ->
         let open Constant in
         let t = of_affine t in
-        to_affine_exn (scale_constant (t, bs) + two_to_the (n - 1)))
+        to_affine_exn (scale_constant (t, bs) + two_to_the (n - 1)) )
       (Params.one, bits)
 end

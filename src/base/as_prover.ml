@@ -4,15 +4,14 @@ open As_prover_intf
 module Make
     (Checked : Checked_intf.S)
     (As_prover : Basic
-                   with type ('a, 'f, 's) t :=
-                         ('a, 'f, 's) Checked.Types.As_prover.t
+                   with type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t
                     and type 'f field := 'f Checked.field
-                    and type ('a, 'f, 's) Provider.t =
-                         ('a, 'f, 's) Checked.Types.Provider.t) =
+                    and type ('a, 'f) Provider.t =
+                     ('a, 'f) Checked.Types.Provider.t) =
 struct
   module Types = Checked.Types
 
-  type ('a, 'f, 's) t = ('a, 'f, 's) Types.As_prover.t
+  type ('a, 'f) t = ('a, 'f) Types.As_prover.t
 
   type 'f field = 'f Checked.field
 
@@ -21,8 +20,7 @@ struct
   module Ref = struct
     type 'a t = 'a option ref
 
-    let create (x : ('a, 'field, 's) Types.As_prover.t) :
-        ('a t, 's, 'field) Checked.t =
+    let create (x : ('a, 'field) Types.As_prover.t) : ('a t, 'field) Checked.t =
       let r = ref None in
       let open Checked in
       let%map () =
@@ -38,16 +36,21 @@ struct
       let%map () = As_prover.return () in
       r := Some x
 
-    let store x = Typ_monads.Store.return (ref (Some x))
-
-    let read r = Typ_monads.Read.return (Option.value_exn !r)
-
-    let alloc () = Typ_monads.Alloc.return (ref None)
+    let typ : ('a t, 'a, _) Types.Typ.t =
+      Typ
+        { var_to_fields = (fun x -> ([||], !x))
+        ; var_of_fields = (fun (_, x) -> ref x)
+        ; value_to_fields = (fun x -> ([||], Some x))
+        ; value_of_fields = (fun (_, x) -> Option.value_exn x)
+        ; size_in_field_elements = 0
+        ; constraint_system_auxiliary = (fun () -> None)
+        ; check = (fun _ -> Checked.return ())
+        }
   end
 end
 
-module T : S with module Types = Checked.Types with type 'f field := 'f =
-  Make (Checked) (As_prover0)
+module T : S with module Types = Checked_ast.Types with type 'f field := 'f =
+  Make (Checked_ast) (As_prover0)
 
 include T
 
@@ -61,7 +64,7 @@ end)
 struct
   module Types = Checked.Types
 
-  type ('a, 's) t = ('a, Env.field, 's) Types.As_prover.t
+  type 'a t = ('a, Env.field) Types.As_prover.t
 
   include Env
 
@@ -70,5 +73,5 @@ struct
       S
         with module Types := Types
         with type 'f field := field
-         and type ('a, 'f, 's) t := ('a, 'f, 's) Types.As_prover.t )
+         and type ('a, 'f) t := ('a, 'f) Types.As_prover.t )
 end

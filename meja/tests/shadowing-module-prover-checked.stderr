@@ -1,3 +1,0 @@
-File "tests/shadowing-module-prover-checked.meja", line 11, characters 12-13:
-Error: Could not find a module M:
-       The current definition is only available in prover mode.

@@ -22,12 +22,12 @@ module Make
         val add_unsafe :
              var
           -> var
-          -> ([ `I_thought_about_this_very_carefully of var ], _) Impl.Checked.t
+          -> [ `I_thought_about_this_very_carefully of var ] Impl.Checked.t
 
         val add_known_unsafe :
              var
           -> t
-          -> ([ `I_thought_about_this_very_carefully of var ], _) Impl.Checked.t
+          -> [ `I_thought_about_this_very_carefully of var ] Impl.Checked.t
       end
     end) (Params : sig
       open Impl
@@ -53,7 +53,7 @@ module Make
 
     val typ : (var, t) Typ.t
 
-    val choose_preimage : var -> (Unpacked.var, _) Checked.t
+    val choose_preimage : var -> Unpacked.var Checked.t
   end
 
   module Section : sig
@@ -65,11 +65,11 @@ module Make
 
     val empty : t
 
-    val disjoint_union_exn : t -> t -> (t, _) Checked.t
+    val disjoint_union_exn : t -> t -> t Checked.t
 
-    val extend : t -> Boolean.var Triple.t list -> start:int -> (t, _) Checked.t
+    val extend : t -> Boolean.var Triple.t list -> start:int -> t Checked.t
 
-    val append : t -> Boolean.var Triple.t list -> (t, _) Checked.t
+    val append : t -> Boolean.var Triple.t list -> t Checked.t
 
     val acc : t -> Weierstrass_curve.var
 
@@ -87,7 +87,7 @@ module Make
   val hash :
        init:int * Section.Acc.t
     -> Boolean.var Triple.t list
-    -> (Weierstrass_curve.var, _) Checked.t
+    -> Weierstrass_curve.var Checked.t
 
   val digest : Weierstrass_curve.var -> Digest.var
 end = struct
@@ -100,8 +100,8 @@ end = struct
    fun ((x1, y1), (x2, y2), (x3, y3), (x4, y4)) ->
     ((x1, x2, x3, x4), (y1, y2, y3, y4))
 
-  let lookup ((s0, s1, s2) : Boolean.var Triple.t)
-      (q : affine_point Quadruple.t) =
+  let lookup ((s0, s1, s2) : Boolean.var Triple.t) (q : affine_point Quadruple.t)
+      =
     let%bind s_and = Boolean.(s0 && s1) in
     let open Field.Checked in
     let lookup_one (a1, a2, a3, a4) =
@@ -149,8 +149,8 @@ end = struct
     let typ = Typ.field
 
     let choose_preimage x =
-      with_label "Pedersen.Digest.choose_preimage"
-        (Field.Checked.choose_preimage_var ~length:Field.size_in_bits x)
+      with_label "Pedersen.Digest.choose_preimage" (fun () ->
+          Field.Checked.choose_preimage_var ~length:Field.size_in_bits x )
       |> Checked.map ~f:Bitstring.Lsb_first.of_list
   end
 
@@ -233,7 +233,7 @@ end = struct
               get_term (offset + i) x
               >>= Weierstrass_curve.Checked.add_unsafe acc
             in
-            acc)
+            acc )
       in
       match triples with
       | [] ->
