@@ -27,7 +27,6 @@ struct
   module Checked_S = Checked_intf.Unextend (Checked)
   include Runners.Make (Backend) (Checked) (As_prover) (Runner)
   module Bigint = Bigint
-  module Var = Var
   module Field0 = Field
   module Cvar = Cvar
   module Constraint = Constraint
@@ -627,8 +626,6 @@ struct
 
     let typ = Typ.field
 
-    type var' = Var.t
-
     module Var = Cvar1
 
     let parity x = Bigint.(test_bit (of_field x) 0)
@@ -1149,7 +1146,6 @@ module Run = struct
     let make_checked_ast = make_checked
 
     module R1CS_constraint_system = Snark.R1CS_constraint_system
-    module Var = Snark.Var
 
     type field = Snark.field
 
