@@ -36,7 +36,6 @@ struct
   end
 
   module Bigint = Bigint
-  module Var = Var
   module Field0 = Field
   module Cvar = Cvar
   module Constraint = Constraint
