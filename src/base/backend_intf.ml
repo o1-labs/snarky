@@ -34,14 +34,6 @@ module type S = sig
 
   val field_size : Bigint.R.t
 
-  module Var : sig
-    type t
-
-    val index : t -> int
-
-    val create : int -> t
-  end
-
   module R1CS_constraint_system :
     Constraint_system_intf with module Field := Field
 end

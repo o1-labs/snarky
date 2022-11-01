@@ -27,7 +27,6 @@ struct
   module Checked_S = Checked_intf.Unextend (Checked)
   include Runners.Make (Backend) (Checked) (As_prover) (Runner)
   module Bigint = Bigint
-  module Var = Var
   module Field0 = Field
   module Cvar = Cvar
   module Constraint = Constraint
@@ -47,6 +46,11 @@ struct
 
     let field : (Cvar.t, Field.t) t = field ()
   end
+
+  let constant (Typ typ : _ Typ.t) x =
+    let fields, aux = typ.value_to_fields x in
+    let field_vars = Array.map fields ~f:(fun x -> Cvar0.Constant x) in
+    typ.var_of_fields (field_vars, aux)
 
   module As_prover = struct
     include As_prover
@@ -311,7 +315,7 @@ struct
             let r =
               run_and_check
                 (Checked.map ~f:(As_prover.read typ)
-                   (all (List.map ~f:var_of_value x)) )
+                   (all (List.map ~f:(constant typ_unchecked) x)) )
               |> Or_error.ok_exn
             in
             [%test_eq: bool] r (List.for_all x ~f:Fn.id) )
@@ -319,7 +323,7 @@ struct
       let ( lxor ) b1 b2 =
         match (to_constant b1, to_constant b2) with
         | Some b1, Some b2 ->
-            return (var_of_value (Caml.not (Bool.equal b1 b2)))
+            return (constant typ (Caml.not (Bool.equal b1 b2)))
         | Some true, None ->
             return (not b2)
         | None, Some true ->
@@ -579,8 +583,6 @@ struct
         ~f:(fun x -> Bigint.(to_field (of_bignum_bigint x)))
 
     let typ = Typ.field
-
-    type var' = Var.t
 
     module Var = Cvar1
 
@@ -936,7 +938,7 @@ struct
                ~f:(As_prover.read Checked.Boolean.typ)
                (Field.Checked.lt_bitstring_value
                   (Bitstring_lib.Bitstring.Msb_first.of_list
-                     (List.map ~f:Checked.Boolean.var_of_value x) )
+                     (List.map ~f:Checked.(constant Boolean.typ) x) )
                   (Bitstring_lib.Bitstring.Msb_first.of_list y) ) )
           |> Or_error.ok_exn
         in
@@ -1102,7 +1104,6 @@ module Run = struct
     let make_checked_ast = make_checked
 
     module R1CS_constraint_system = Snark.R1CS_constraint_system
-    module Var = Snark.Var
 
     type field = Snark.field
 
@@ -1138,6 +1139,11 @@ module Run = struct
 
       module Internal = Internal
     end
+
+    let constant (Typ typ : _ Typ.t) x =
+      let fields, aux = typ.value_to_fields x in
+      let field_vars = Core_kernel.Array.map ~f:Cvar.constant fields in
+      typ.var_of_fields (field_vars, aux)
 
     module Boolean = struct
       open Snark.Boolean
