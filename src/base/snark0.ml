@@ -45,21 +45,6 @@ struct
     let unit : (unit, unit) t = unit ()
 
     let field : (Cvar.t, Field.t) t = field ()
-
-    module type S =
-      Typ.Intf.S
-        with type field := Field.t
-         and type field_var := Cvar.t
-         and type _ checked = (unit, Field.t) Checked_S.t
-
-    let mk_typ (type var value)
-        (module M : S with type Var.t = var and type Value.t = value) =
-      T.mk_typ
-        ( module struct
-          type field = Field.t
-
-          include M
-        end )
   end
 
   let constant (Typ typ : _ Typ.t) x =
@@ -1153,41 +1138,6 @@ module Run = struct
       let of_hlistable = of_hlistable
 
       module Internal = Internal
-
-      module type S =
-        Typ0.Intf.S
-          with type field := Field.t
-           and type field_var := Cvar.t
-           and type _ checked = unit
-
-      let mk_typ (type var value)
-          (module M : S with type Var.t = var and type Value.t = value) =
-        mk_typ
-          ( module struct
-            type _ checked = unit Checked.t
-
-            module Var = struct
-              include M.Var
-
-              let check x =
-                Checked_ast.Direct
-                  ( (fun state' ->
-                      (* We may already be inside a different checked
-                         computation, e.g. a proof inside a proof!
-                         Stash the state of the outer proof while we run our
-                         computation, then restore it once we're done.
-                      *)
-                      let old_state = !state in
-                      state := state' ;
-                      let res = check x in
-                      let state' = !state in
-                      state := old_state ;
-                      (state', res) )
-                  , fun x -> Pure x )
-            end
-
-            module Value = M.Value
-          end )
     end
 
     let constant (Typ typ : _ Typ.t) x =
