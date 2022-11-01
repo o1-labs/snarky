@@ -88,7 +88,7 @@ struct
 
     type run_state = Runner.run_state
 
-    include Ttt.Make (Backend) (Checked) (As_prover)
+    include Utils.Make (Backend) (Checked) (As_prover)
 
     let equal (x : Cvar.t) (y : Cvar.t) : Cvar.t Boolean.t Checked.t =
       match (x, y) with
