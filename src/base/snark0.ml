@@ -87,41 +87,9 @@ struct
 
     type run_state = Runner.run_state
 
-    let assert_equal ?label x y =
-      match (x, y) with
-      | Cvar0.Constant x, Cvar0.Constant y ->
-          if Field.equal x y then return ()
-          else
-            failwithf
-              !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}"
-              x y ()
-      | _ ->
-          assert_equal ?label x y
+    include Utils.Make (Backend) (Checked) (As_prover)
 
-    (* [equal_constraints z z_inv r] asserts that
-       if z = 0 then r = 1, or
-       if z <> 0 then r = 0 and z * z_inv = 1
-    *)
-    let equal_constraints (z : Cvar.t) (z_inv : Cvar.t) (r : Cvar.t) =
-      let open Constraint in
-      let open Cvar in
-      assert_all
-        [ r1cs ~label:"equals_1" z_inv z (Cvar.constant Field.one - r)
-        ; r1cs ~label:"equals_2" r z (Cvar.constant Field.zero)
-        ]
-
-    (* [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
-       [equal_constraints z z_inv r].
-
-       In particular, [r] is [1] if [z = 0] and [0] otherwise.
-    *)
-    let equal_vars (z : Cvar.t) : (Field.t * Field.t) As_prover.t =
-      let open As_prover in
-      let%map z = read_var z in
-      if Field.equal z Field.zero then (Field.one, Field.zero)
-      else (Field.zero, Field.inv z)
-
-    let equal (x : Cvar.t) (y : Cvar.t) : Cvar.t Boolean.t t =
+    let equal (x : Cvar.t) (y : Cvar.t) : Cvar.t Boolean.t Checked.t =
       match (x, y) with
       | Constant x, Constant y ->
           Checked.return
@@ -131,7 +99,7 @@ struct
       | _ ->
           let z = Cvar.(x - y) in
           let%bind r, inv =
-            exists Typ.(field * field) ~compute:(equal_vars z)
+            Checked.exists Typ.(tuple2 field field) ~compute:(equal_vars z)
           in
           let%map () = equal_constraints z inv r in
           Boolean.Unsafe.create r
@@ -148,7 +116,7 @@ struct
           with_label label (fun () ->
               let open Let_syntax in
               let%bind z =
-                exists Typ.field
+                Checked.exists Typ.field
                   ~compute:
                     As_prover.(map2 (read_var x) (read_var y) ~f:Field.mul)
               in
