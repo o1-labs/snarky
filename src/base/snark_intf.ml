@@ -262,16 +262,6 @@ module type Typ_intf = sig
     *)
     val ref : unit -> ('a prover_ref, 'a) t
   end
-
-  module type S =
-    Typ0.Intf.S
-      with type field := field
-       and type field_var := field_var
-       and type 'a checked = 'a checked
-
-  val mk_typ :
-       (module S with type Var.t = 'var and type Value.t = 'value)
-    -> ('var, 'value) t
 end
 
 module type Constraint_intf = sig
