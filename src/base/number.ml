@@ -80,7 +80,7 @@ module Make (Impl : Snark_intf.Basic) = struct
           let%bind fits = Field.Checked.equal t.var g in
           let%map r =
             Field.Checked.if_ fits ~then_:g
-              ~else_:(Field.Var.constant Field.(sub (two_to_the n) one))
+              ~else_:(constant Field.typ Field.(sub (two_to_the n) one))
           in
           { upper_bound = Bignum_bigint.(k - one)
           ; lower_bound = t.lower_bound
@@ -147,11 +147,11 @@ module Make (Impl : Snark_intf.Basic) = struct
     let n = Bigint.to_bignum_bigint tick_n in
     { upper_bound = n
     ; lower_bound = n
-    ; var = Field.Var.constant x
+    ; var = constant Field.typ x
     ; bits =
         Some
           (List.init (bigint_num_bits n) ~f:(fun i ->
-               Boolean.var_of_value (Bigint.test_bit tick_n i) ) )
+               constant Boolean.typ (Bigint.test_bit tick_n i) ) )
     }
 
   let one = constant Field.one
