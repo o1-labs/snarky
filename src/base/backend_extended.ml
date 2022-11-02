@@ -88,13 +88,13 @@ module Make (Backend : Backend_intf.S) :
   S
     with type Field.t = Backend.Field.t
      and type Field.Vector.t = Backend.Field.Vector.t
-     and type Bigint.t = Backend.Bigint.R.t
+     and type Bigint.t = Backend.Bigint.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
 struct
   open Backend
 
   module Bigint = struct
-    include Bigint.R
+    include Bigint
 
     let of_bignum_bigint n = of_decimal_string (Bignum_bigint.to_string n)
 
@@ -138,13 +138,14 @@ struct
     let _project bs =
       (* todo: 32-bit and ARM support. basically this code needs to always match the loop in the C++ of_data implementation. *)
       assert (Sys.word_size = 64 && not Sys.big_endian) ;
-      let module R = Backend.Bigint.R in
       let chunks_of n xs =
         List.groupi ~break:(fun i _ _ -> Int.equal (i mod n) 0) xs
       in
       let chunks64 = chunks_of 64 bs in
       let z = Char.of_int_exn 0 in
-      let arr = Bigstring.init (8 * R.length_in_bytes) ~f:(fun _ -> z) in
+      let arr =
+        Bigstring.init (8 * Backend.Bigint.length_in_bytes) ~f:(fun _ -> z)
+      in
       List.(
         iteri ~f:(fun i elt ->
             Bigstring.set_int64_t_le arr ~pos:(i * 8)
@@ -154,7 +155,7 @@ struct
                     acc + if el then shift_left one i else zero )
                   elt) ))
         chunks64 ;
-      Backend.Bigint.R.(of_data arr ~bitcount:(List.length bs) |> to_field)
+      Backend.Bigint.(of_data arr ~bitcount:(List.length bs) |> to_field)
 
     let project = project_reference
 

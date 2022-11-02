@@ -28,11 +28,9 @@ end
 module type S = sig
   module Field : Snarky_intf.Field.S
 
-  module Bigint : sig
-    module R : Snarky_intf.Bigint_intf.Extended with type field := Field.t
-  end
+  module Bigint : Snarky_intf.Bigint_intf.Extended with type field := Field.t
 
-  val field_size : Bigint.R.t
+  val field_size : Bigint.t
 
   module R1CS_constraint_system :
     Constraint_system_intf with module Field := Field
