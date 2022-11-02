@@ -12,26 +12,27 @@ module type Basic = sig
 
   val as_prover : (unit, 'f field) Types.As_prover.t -> (unit, 'f field) t
 
-  val mk_lazy : ('a, 'f) t -> ('a Lazy.t, 'f) t
+  val mk_lazy : (unit -> ('a, 'f) t) -> ('a Lazy.t, 'f) t
 
-  val with_label : string -> ('a, 'f field) t -> ('a, 'f field) t
+  val with_label : string -> (unit -> ('a, 'f field) t) -> ('a, 'f field) t
 
   val with_handler :
-    Request.Handler.single -> ('a, 'f field) t -> ('a, 'f field) t
-
-  val clear_handler : ('a, 'f field) t -> ('a, 'f field) t
+    Request.Handler.single -> (unit -> ('a, 'f field) t) -> ('a, 'f field) t
 
   val exists :
        ('var, 'value, 'f field) Types.Typ.t
     -> ('value, 'f field) Types.Provider.t
     -> (('var, 'value) Handle.t, 'f field) t
 
-  val next_auxiliary : (int, 'f field) t
+  val next_auxiliary : unit -> (int, 'f field) t
+
+  val direct :
+    ('f field Run_state.t -> 'f field Run_state.t * 'a) -> ('a, 'f field) t
 
   val constraint_count :
        ?weight:(('f field Cvar.t, 'f field) Constraint.t -> int)
     -> ?log:(?start:bool -> string -> int -> unit)
-    -> ('a, 'f field) t
+    -> (unit -> ('a, 'f field) t)
     -> int
 end
 
@@ -46,7 +47,7 @@ module type S = sig
 
   val as_prover : (unit, 'f field) Types.As_prover.t -> (unit, 'f field) t
 
-  val mk_lazy : ('a, 'f) t -> ('a Lazy.t, 'f) t
+  val mk_lazy : (unit -> ('a, 'f) t) -> ('a Lazy.t, 'f) t
 
   val request_witness :
        ('var, 'value, 'f field) Types.Typ.t
@@ -80,16 +81,17 @@ module type S = sig
         { request : 'a Request.t; respond : 'a Request.Response.t -> response }
         -> request
 
-  val handle : ('a, 'f field) t -> (request -> response) -> ('a, 'f field) t
+  val handle :
+    (unit -> ('a, 'f field) t) -> (request -> response) -> ('a, 'f field) t
 
   val handle_as_prover :
-       ('a, 'f field) t
+       (unit -> ('a, 'f field) t)
     -> (request -> response, 'f field) Types.As_prover.t
     -> ('a, 'f field) t
 
-  val next_auxiliary : (int, 'f field) t
+  val next_auxiliary : unit -> (int, 'f field) t
 
-  val with_label : string -> ('a, 'f field) t -> ('a, 'f field) t
+  val with_label : string -> (unit -> ('a, 'f field) t) -> ('a, 'f field) t
 
   val assert_ :
        ?label:Base.string
@@ -120,10 +122,13 @@ module type S = sig
     -> 'f field Cvar.t
     -> (unit, 'f field) t
 
+  val direct :
+    ('f field Run_state.t -> 'f field Run_state.t * 'a) -> ('a, 'f field) t
+
   val constraint_count :
        ?weight:(('f field Cvar.t, 'f field) Constraint.t -> int)
     -> ?log:(?start:bool -> string -> int -> unit)
-    -> ('a, 'f field) t
+    -> (unit -> ('a, 'f field) t)
     -> int
 end
 

@@ -1,7 +1,0 @@
-module M = {
-  type t;
-};
-
-module M = {
-  type u;
-};

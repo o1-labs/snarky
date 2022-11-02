@@ -39,10 +39,10 @@ struct
       if M.max = 1 then fun x -> assert_ (Constraint.boolean x)
       else fun x ->
         Field.Checked.Assert.lte ~bit_length x
-          (Field.Var.constant (Field.of_int M.max))
+          (constant Field.typ (Field.of_int M.max))
     in
     let (Typ typ) = Typ.transport Field.typ ~there:to_field ~back:of_field in
-    Typ { typ with check }
+    Typ { typ with check = (fun x -> make_checked_ast (check x)) }
 
   let var_to_bits : var -> Boolean.var list Checked.t =
     Field.Checked.unpack ~length:bit_length
@@ -51,7 +51,7 @@ struct
 
   let if_ b ~(then_ : var) ~(else_ : var) = Field.Checked.if_ b ~then_ ~else_
 
-  let var t : var = Field.Var.constant (to_field t)
+  let var t : var = constant Field.typ (to_field t)
 
   let ( = ) = Field.Checked.equal
 end

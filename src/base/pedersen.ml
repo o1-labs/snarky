@@ -47,8 +47,6 @@ module Make
       val typ : (var, t) Typ.t
 
       val project : var -> Field.Var.t
-
-      val constant : t -> var
     end
 
     type t = Field.t
@@ -107,7 +105,7 @@ end = struct
     let%bind s_and = Boolean.(s0 && s1) in
     let open Field.Checked in
     let lookup_one (a1, a2, a3, a4) =
-      Field.Var.constant a1
+      constant Field.typ a1
       + (Field.(a2 - a1) * (s0 :> Field.Var.t))
       + (Field.(a3 - a1) * (s1 :> Field.Var.t))
       + (Field.(a4 + a1 - a2 - a3) * (s_and :> Field.Var.t))
@@ -118,7 +116,7 @@ end = struct
       let sign =
         (* sign = 1 if s2 = 0
            sign = -1 if s2 = 1 *)
-        Field.Var.constant Field.one - (Field.of_int 2 * (s2 :> Field.Var.t))
+        constant Field.typ Field.one - (Field.of_int 2 * (s2 :> Field.Var.t))
       in
       Field.Checked.mul sign (lookup_one y_q)
     in
@@ -142,8 +140,6 @@ end = struct
         |> Typ.transport_var ~there ~back
 
       let project = Fn.compose Field.Var.project to_list
-
-      let constant bs = of_list (List.map ~f:Boolean.var_of_value (to_list bs))
     end
 
     type var = Field.Var.t
@@ -153,8 +149,8 @@ end = struct
     let typ = Typ.field
 
     let choose_preimage x =
-      with_label "Pedersen.Digest.choose_preimage"
-        (Field.Checked.choose_preimage_var ~length:Field.size_in_bits x)
+      with_label "Pedersen.Digest.choose_preimage" (fun () ->
+          Field.Checked.choose_preimage_var ~length:Field.size_in_bits x )
       |> Checked.map ~f:Bitstring.Lsb_first.of_list
   end
 

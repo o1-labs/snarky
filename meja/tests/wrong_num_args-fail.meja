@@ -1,3 +1,0 @@
-type t('a, 'b) = ('a, 'b);
-
-type u = t(int);

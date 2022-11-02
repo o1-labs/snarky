@@ -1,8 +1,0 @@
-type x('a) = {a: 'a, b: int, c: bool, d: option('a), e: [`A(int) | `B(bool)]};
-
-let f = fun (x) => {
-  switch (x) {
-    | {a: {a: 15}, b, c: true, d: None, e: `B(true)} => x
-    | {a: {a: 15}, b, c: true, d: Some({b: 15})} => x
-  };
-};

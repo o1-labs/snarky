@@ -1,5 +1,0 @@
-let x = [];
-
-let y = true :: x;
-
-let z = 1 :: x;

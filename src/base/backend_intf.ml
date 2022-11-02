@@ -20,15 +20,9 @@ module type Constraint_system_intf = sig
 
   val set_auxiliary_input_size : t -> int -> unit
 
-  val get_primary_input_size : t -> int
+  val get_public_input_size : t -> int Core_kernel.Set_once.t
 
-  val get_auxiliary_input_size : t -> int
-
-  val to_json :
-       t
-    -> ([> `String of string | `Assoc of (string * 'a) list | `List of 'a list ]
-        as
-        'a )
+  val get_rows_len : t -> int
 end
 
 module type S = sig
@@ -39,14 +33,6 @@ module type S = sig
   end
 
   val field_size : Bigint.R.t
-
-  module Var : sig
-    type t
-
-    val index : t -> int
-
-    val create : int -> t
-  end
 
   module R1CS_constraint_system :
     Constraint_system_intf with module Field := Field
