@@ -45,22 +45,12 @@ struct
     let unit : (unit, unit) t = unit ()
 
     let field : (Cvar.t, Field.t) t = field ()
-
-    module type S =
-      Typ.Intf.S
-        with type field := Field.t
-         and type field_var := Cvar.t
-         and type _ checked = (unit, Field.t) Checked_S.t
-
-    let mk_typ (type var value)
-        (module M : S with type Var.t = var and type Value.t = value) =
-      T.mk_typ
-        ( module struct
-          type field = Field.t
-
-          include M
-        end )
   end
+
+  let constant (Typ typ : _ Typ.t) x =
+    let fields, aux = typ.value_to_fields x in
+    let field_vars = Array.map fields ~f:(fun x -> Cvar0.Constant x) in
+    typ.var_of_fields (field_vars, aux)
 
   module As_prover = struct
     include As_prover
@@ -325,7 +315,7 @@ struct
             let r =
               run_and_check
                 (Checked.map ~f:(As_prover.read typ)
-                   (all (List.map ~f:var_of_value x)) )
+                   (all (List.map ~f:(constant typ_unchecked) x)) )
               |> Or_error.ok_exn
             in
             [%test_eq: bool] r (List.for_all x ~f:Fn.id) )
@@ -333,7 +323,7 @@ struct
       let ( lxor ) b1 b2 =
         match (to_constant b1, to_constant b2) with
         | Some b1, Some b2 ->
-            return (var_of_value (Caml.not (Bool.equal b1 b2)))
+            return (constant typ (Caml.not (Bool.equal b1 b2)))
         | Some true, None ->
             return (not b2)
         | None, Some true ->
@@ -948,7 +938,7 @@ struct
                ~f:(As_prover.read Checked.Boolean.typ)
                (Field.Checked.lt_bitstring_value
                   (Bitstring_lib.Bitstring.Msb_first.of_list
-                     (List.map ~f:Checked.Boolean.var_of_value x) )
+                     (List.map ~f:Checked.(constant Boolean.typ) x) )
                   (Bitstring_lib.Bitstring.Msb_first.of_list y) ) )
           |> Or_error.ok_exn
         in
@@ -1148,42 +1138,12 @@ module Run = struct
       let of_hlistable = of_hlistable
 
       module Internal = Internal
-
-      module type S =
-        Typ0.Intf.S
-          with type field := Field.t
-           and type field_var := Cvar.t
-           and type _ checked = unit
-
-      let mk_typ (type var value)
-          (module M : S with type Var.t = var and type Value.t = value) =
-        mk_typ
-          ( module struct
-            type _ checked = unit Checked.t
-
-            module Var = struct
-              include M.Var
-
-              let check x =
-                Checked_ast.Direct
-                  ( (fun state' ->
-                      (* We may already be inside a different checked
-                         computation, e.g. a proof inside a proof!
-                         Stash the state of the outer proof while we run our
-                         computation, then restore it once we're done.
-                      *)
-                      let old_state = !state in
-                      state := state' ;
-                      let res = check x in
-                      let state' = !state in
-                      state := old_state ;
-                      (state', res) )
-                  , fun x -> Pure x )
-            end
-
-            module Value = M.Value
-          end )
     end
+
+    let constant (Typ typ : _ Typ.t) x =
+      let fields, aux = typ.value_to_fields x in
+      let field_vars = Core_kernel.Array.map ~f:Cvar.constant fields in
+      typ.var_of_fields (field_vars, aux)
 
     module Boolean = struct
       open Snark.Boolean

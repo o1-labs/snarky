@@ -262,16 +262,6 @@ module type Typ_intf = sig
     *)
     val ref : unit -> ('a prover_ref, 'a) t
   end
-
-  module type S =
-    Typ0.Intf.S
-      with type field := field
-       and type field_var := field_var
-       and type 'a checked = 'a checked
-
-  val mk_typ :
-       (module S with type Var.t = 'var and type Value.t = 'value)
-    -> ('var, 'value) t
 end
 
 module type Constraint_intf = sig
@@ -1056,6 +1046,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> (unit -> _ Checked.t)
     -> int
 
+  (** Return a constraint system constant representing the given value. *)
+  val constant : ('var, 'value) Typ.t -> 'value -> 'var
+
   module Test : sig
     val checked_to_unchecked :
          ('vin, 'valin) Typ.t
@@ -1423,6 +1416,9 @@ module type Run_basic = sig
   val in_prover : unit -> bool
 
   val in_checked_computation : unit -> bool
+
+  (** Return a constraint system constant representing the given value. *)
+  val constant : ('var, 'value) Typ.t -> 'value -> 'var
 
   val run_checked : 'a Internal_Basic.Checked.t -> 'a
 end

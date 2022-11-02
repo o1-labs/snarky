@@ -452,24 +452,6 @@ struct
       |> transport ~there:value_to_hlist ~back:value_of_hlist
       |> transport_var ~there:var_to_hlist ~back:var_of_hlist
   end
-
-  let mk_typ (type var value field)
-      (module M : S
-        with type field = field
-         and type Var.t = var
-         and type Value.t = value ) : (var, value, field) t =
-    let field_vars_len = M.Var.size_in_field_elements in
-    let fields_len = M.Var.size_in_field_elements in
-    assert (field_vars_len = fields_len) ;
-    Typ
-      { var_to_fields = (fun x -> (M.Var.to_field_elements x, ()))
-      ; var_of_fields = (fun (fields, ()) -> M.Var.of_field_elements fields)
-      ; value_to_fields = (fun x -> (M.Value.to_field_elements x, ()))
-      ; value_of_fields = (fun (fields, ()) -> M.Value.of_field_elements fields)
-      ; size_in_field_elements = field_vars_len
-      ; constraint_system_auxiliary = (fun () -> ())
-      ; check = M.Var.check
-      }
 end
 
 include Make (Checked_ast) (As_prover)
