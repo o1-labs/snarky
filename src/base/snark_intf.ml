@@ -1110,6 +1110,8 @@ module type Run_basic = sig
     val get_public_input_size : t -> int Core_kernel.Set_once.t
 
     val get_rows_len : t -> int
+
+    val get_asm : t -> string
   end
 
   (** The finite field over which the R1CS operates. *)

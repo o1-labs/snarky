@@ -16,6 +16,8 @@ module type Constraint_system_intf = sig
 
   val digest : t -> Md5.t
 
+  val get_asm : t -> string
+
   val set_primary_input_size : t -> int -> unit
 
   val set_auxiliary_input_size : t -> int -> unit
