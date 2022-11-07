@@ -262,16 +262,6 @@ module type Typ_intf = sig
     *)
     val ref : unit -> ('a prover_ref, 'a) t
   end
-
-  module type S =
-    Typ0.Intf.S
-      with type field := field
-       and type field_var := field_var
-       and type 'a checked = 'a checked
-
-  val mk_typ :
-       (module S with type Var.t = 'var and type Value.t = 'value)
-    -> ('var, 'value) t
 end
 
 module type Constraint_intf = sig
@@ -316,8 +306,6 @@ end
 module type Field_var_intf = sig
   type field
 
-  type var
-
   type boolean_var
 
   (** The type that stores booleans as R1CS variables. *)
@@ -330,7 +318,7 @@ module type Field_var_intf = sig
 
   (** Convert a {!type:t} value to its constituent constant and a list of
           scaled R1CS variables. *)
-  val to_constant_and_terms : t -> field option * (field * var) list
+  val to_constant_and_terms : t -> field option * (field * int) list
 
   (** [constant x] creates a new R1CS variable containing the constant
           field element [x]. *)
@@ -567,15 +555,6 @@ module type Basic = sig
 
   type constraint_system
 
-  (** Variables in the R1CS. *)
-  module Var : sig
-    include Comparable.S
-
-    val create : int -> t
-
-    val index : t -> int
-  end
-
   module Bigint : sig
     include Snarky_intf.Bigint_intf.Extended with type field := field
 
@@ -703,12 +682,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     (** Get the least significant bit of a field element. *)
     val parity : t -> bool
 
-    type var' = Var.t
-
     module Var :
       Field_var_intf
         with type field := field
-         and type var := Var.t
          and type boolean_var := Boolean.var
 
     module Checked :
@@ -1064,6 +1040,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> (unit -> _ Checked.t)
     -> int
 
+  (** Return a constraint system constant representing the given value. *)
+  val constant : ('var, 'value) Typ.t -> 'value -> 'var
+
   module Test : sig
     val checked_to_unchecked :
          ('vin, 'valin) Typ.t
@@ -1116,15 +1095,6 @@ end
 (** The imperative interface to Snarky. *)
 module type Run_basic = sig
   type constraint_system
-
-  (** Variables in the R1CS. *)
-  module Var : sig
-    include Comparable.S
-
-    val create : int -> t
-
-    val index : t -> int
-  end
 
   (** The finite field over which the R1CS operates. *)
   type field
@@ -1194,7 +1164,6 @@ module type Run_basic = sig
     include
       Field_var_intf
         with type field := field
-         and type var := Var.t
          and type boolean_var := Boolean.var
 
     include
@@ -1432,6 +1401,9 @@ module type Run_basic = sig
   val in_prover : unit -> bool
 
   val in_checked_computation : unit -> bool
+
+  (** Return a constraint system constant representing the given value. *)
+  val constant : ('var, 'value) Typ.t -> 'value -> 'var
 
   val run_checked : 'a Internal_Basic.Checked.t -> 'a
 end

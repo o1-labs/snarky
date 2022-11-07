@@ -30,15 +30,7 @@ module Unsafe = struct
   let of_index v = Var v
 end
 
-module Make
-    (Field : Snarky_intf.Field.Extended) (Var : sig
-      include Comparable.S
-
-      include Sexpable.S with type t := t
-
-      val create : int -> t
-    end) =
-struct
+module Make (Field : Snarky_intf.Field.Extended) = struct
   type t = Field.t cvar [@@deriving sexp]
 
   let length _ = failwith "TODO"
@@ -79,7 +71,7 @@ struct
       | Constant c ->
           (Field.add constant (Field.mul scale c), terms)
       | Var v ->
-          (constant, (scale, Var.create v) :: terms)
+          (constant, (scale, v) :: terms)
       | Scale (s, t) ->
           go (Field.mul s scale) constant terms t
       | Add (x1, x2) ->

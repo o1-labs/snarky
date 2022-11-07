@@ -20,16 +20,6 @@ module type S = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
-  module Var : sig
-    type t [@@deriving sexp]
-
-    include Comparable.S with type t := t
-
-    val index : t -> int
-
-    val create : int -> t
-  end
-
   module Cvar : sig
     type t = Field.t Cvar.t [@@deriving sexp]
 
@@ -44,7 +34,7 @@ module type S = sig
 
     val constant : Field.t -> t
 
-    val to_constant_and_terms : t -> Field.t option * (Field.t * Var.t) list
+    val to_constant_and_terms : t -> Field.t option * (Field.t * int) list
 
     val add : t -> t -> t
 
@@ -98,14 +88,13 @@ module Make (Backend : Backend_intf.S) :
   S
     with type Field.t = Backend.Field.t
      and type Field.Vector.t = Backend.Field.Vector.t
-     and type Bigint.t = Backend.Bigint.R.t
-     and type Var.t = Backend.Var.t
+     and type Bigint.t = Backend.Bigint.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
 struct
   open Backend
 
   module Bigint = struct
-    include Bigint.R
+    include Bigint
 
     let of_bignum_bigint n = of_decimal_string (Bignum_bigint.to_string n)
 
@@ -119,22 +108,6 @@ struct
           go (i + 1) Bignum_bigint.(two_to_the_i + two_to_the_i) acc'
       in
       go 0 Bignum_bigint.one Bignum_bigint.zero
-  end
-
-  module Var = struct
-    module T = struct
-      include Backend.Var
-
-      let compare x y = Int.compare (index x) (index y)
-
-      let t_of_sexp _ = failwith "Var.t_of_sexp"
-
-      let sexp_of_t v =
-        Sexp.(List [ Atom "var"; Atom (Int.to_string (index v)) ])
-    end
-
-    include T
-    include Comparable.Make (T)
   end
 
   module Field = struct
@@ -165,13 +138,14 @@ struct
     let _project bs =
       (* todo: 32-bit and ARM support. basically this code needs to always match the loop in the C++ of_data implementation. *)
       assert (Sys.word_size = 64 && not Sys.big_endian) ;
-      let module R = Backend.Bigint.R in
       let chunks_of n xs =
         List.groupi ~break:(fun i _ _ -> Int.equal (i mod n) 0) xs
       in
       let chunks64 = chunks_of 64 bs in
       let z = Char.of_int_exn 0 in
-      let arr = Bigstring.init (8 * R.length_in_bytes) ~f:(fun _ -> z) in
+      let arr =
+        Bigstring.init (8 * Backend.Bigint.length_in_bytes) ~f:(fun _ -> z)
+      in
       List.(
         iteri ~f:(fun i elt ->
             Bigstring.set_int64_t_le arr ~pos:(i * 8)
@@ -181,7 +155,7 @@ struct
                     acc + if el then shift_left one i else zero )
                   elt) ))
         chunks64 ;
-      Backend.Bigint.R.(of_data arr ~bitcount:(List.length bs) |> to_field)
+      Backend.Bigint.(of_data arr ~bitcount:(List.length bs) |> to_field)
 
     let project = project_reference
 
@@ -223,11 +197,11 @@ struct
   end
 
   module Cvar = struct
-    include Cvar.Make (Field) (Var)
+    include Cvar.Make (Field)
 
     let var_indices t =
       let _, terms = to_constant_and_terms t in
-      List.map ~f:(fun (_, v) -> Var.index v) terms
+      List.map ~f:(fun (_, v) -> v) terms
 
     let to_constant : t -> Field.t option = function
       | Constant x ->
