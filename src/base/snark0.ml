@@ -972,10 +972,6 @@ struct
     in
     typ.var_of_fields (res, res_aux)
 
-  let make_checked_ast x = x
-
-  let run_checked_ast x = x
-
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
       let checked_result =
@@ -1003,29 +999,35 @@ end
 
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
+
+  (*
+       module C0 = Checked_runner.Make_checked (Backend_extended) (As_prover)
+  *)
   module Runner0 = Runner.Make (Backend_extended)
+  module C0 = Runner0.Checked_runner
+  module C = Checked.Make (C0) (As_prover)
 
   module As_prover0 =
     As_prover.Make_extended
       (struct
         type field = Backend_extended.Field.t
       end)
-      (Checked_ast)
-      (As_prover.Make (Checked_ast) (As_prover0))
+      (C)
+      (As_prover.Make (C) (As_prover0))
 
   module Checked_for_basic = struct
     include (
-      Checked_ast :
+      C :
         Checked_intf.S
-          with module Types = Checked_ast.Types
-          with type ('a, 'f) t := ('a, 'f) Checked_ast.t
-           and type 'f field := 'f )
+          with module Types = C.Types
+          with type ('a, 'f) t := ('a, 'f) C.t
+           and type 'f field := Backend_extended.Field.t )
 
     type field = Backend_extended.Field.t
 
     type 'a t = ('a, field) Types.Checked.t
 
-    let run = Runner0.run
+    let run (f : ('a, 'f) C.t) (s : C0.run_state) = f s
   end
 
   module Basic =
@@ -1076,32 +1078,26 @@ module Run = struct
       is_active_functor_id this_functor_id && Run_state.is_running !state
 
     let run (checked : _ Checked.t) =
-      match checked with
-      | Pure x ->
-          x
-      | _ ->
-          if not (is_active_functor_id this_functor_id) then
-            failwithf
-              "Could not run this function.\n\n\
-               Hint: The module used to create this function had internal ID \
-               %i, but the module used to run it had internal ID %i. The same \
-               instance of Snarky.Snark.Run.Make must be used for both."
-              this_functor_id (active_functor_id ()) ()
-          else if not (Run_state.is_running !state) then
-            failwith
-              "This function can't be run outside of a checked computation." ;
-          let state', x = Runner.run checked !state in
-          state := state' ;
-          x
+      if not (is_active_functor_id this_functor_id) then
+        failwithf
+          "Could not run this function.\n\n\
+           Hint: The module used to create this function had internal ID %i, \
+           but the module used to run it had internal ID %i. The same instance \
+           of Snarky.Snark.Run.Make must be used for both."
+          this_functor_id (active_functor_id ()) ()
+      else if not (Run_state.is_running !state) then
+        failwith "This function can't be run outside of a checked computation." ;
+      let state', x = Runner.run checked !state in
+      state := state' ;
+      x
 
     let as_stateful x state' =
       state := state' ;
       let a = x () in
       (!state, a)
 
-    let make_checked x = Checked_ast.Direct (as_stateful x, fun x -> Pure x)
-
-    let make_checked_ast = make_checked
+    let make_checked (type a) (f : unit -> a) : run_state -> run_state * a =
+      as_stateful f
 
     module R1CS_constraint_system = Snark.R1CS_constraint_system
 
@@ -1707,8 +1703,6 @@ module Run = struct
     module Internal_Basic = Snark
 
     let run_checked = run
-
-    let run_checked_ast x = run_checked x
   end
 
   module Make (Backend : Backend_intf.S) = struct

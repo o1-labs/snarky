@@ -263,6 +263,8 @@ end
 module Make (Backend : Backend_extended.S) = struct
   open Backend
 
+  type 'f field = 'f
+
   let constraint_logger = ref None
 
   let set_constraint_logger f = constraint_logger := Some f
@@ -294,6 +296,8 @@ module Make (Backend : Backend_extended.S) = struct
 
   module Types = Checked_ast.Types
   include Ast_runner.Make_runner (Checked_runner)
+
+  let run f x = f x
 
   let dummy_vector = Run_state.Vector.null
 

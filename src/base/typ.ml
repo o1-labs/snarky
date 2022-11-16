@@ -452,7 +452,6 @@ struct
       |> transport ~there:value_to_hlist ~back:value_of_hlist
       |> transport_var ~there:var_to_hlist ~back:var_of_hlist
   end
-end
 
-include Make (Checked_ast) (As_prover)
-include T
+  include T
+end

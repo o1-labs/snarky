@@ -178,7 +178,7 @@ struct
              , field
              , (unit, field) Checked.Types.Checked.t )
              Types.Typ.typ
-        -> return_typ:_ Typ.t
+        -> return_typ:_ Types.Typ.t
         -> (unit -> input_var -> checked)
         -> _ * (unit -> checked) Checked.t =
      fun next_input ~input_typ:(Typ input_typ) ~return_typ:(Typ return_typ) k ->
@@ -212,7 +212,7 @@ struct
              , field
              , (unit, field) Checked.Types.Checked.t )
              Types.Typ.typ
-        -> return_typ:(a, retval, _) Typ.t
+        -> return_typ:(a, retval, _, _) Types.Typ.t
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
      fun ~run next_input ~input_typ ~return_typ k ->
@@ -252,8 +252,8 @@ struct
     let conv :
         type r_var r_value.
            (int -> _ -> r_var -> Field.Vector.t -> r_value)
-        -> ('input_var, 'input_value, _) Typ.t
-        -> _ Typ.t
+        -> ('input_var, 'input_value, _, _) Types.Typ.t
+        -> _ Types.Typ.t
         -> (unit -> 'input_var -> r_var)
         -> 'input_value
         -> r_value =
@@ -281,8 +281,8 @@ struct
 
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
-        -> input_typ:_ Typ.t
-        -> return_typ:(_, _, _) Typ.t
+        -> input_typ:_ Types.Typ.t
+        -> return_typ:(_, _, _, _) Types.Typ.t
         -> ?handlers:Handler.t list
         -> 'k_var
         -> 'k_value =
@@ -300,8 +300,8 @@ struct
     let generate_witness_conv :
            run:('a, 'checked) Runner.run
         -> f:(Proof_inputs.t -> _ -> 'out)
-        -> input_typ:_ Typ.t
-        -> return_typ:_ Typ.t
+        -> input_typ:_ Types.Typ.t
+        -> return_typ:_ Types.Typ.t
         -> ?handlers:Handler.t list
         -> 'k_var
         -> 'k_value =
