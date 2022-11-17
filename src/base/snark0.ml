@@ -972,10 +972,6 @@ struct
     in
     typ.var_of_fields (res, res_aux)
 
-  let make_checked_ast x = x
-
-  let run_checked_ast x = x
-
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
       let checked_result =
@@ -1099,9 +1095,8 @@ module Run = struct
       let a = x () in
       (!state, a)
 
-    let make_checked x = Checked_ast.Direct (as_stateful x, fun x -> Pure x)
-
-    let make_checked_ast = make_checked
+    let make_checked (type a) (f : unit -> a) : run_state -> run_state * a =
+      as_stateful f
 
     module R1CS_constraint_system = Snark.R1CS_constraint_system
 
@@ -1707,8 +1702,6 @@ module Run = struct
     module Internal_Basic = Snark
 
     let run_checked = run
-
-    let run_checked_ast x = run_checked x
   end
 
   module Make (Backend : Backend_intf.S) = struct

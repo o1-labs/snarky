@@ -42,7 +42,7 @@ struct
           (constant Field.typ (Field.of_int M.max))
     in
     let (Typ typ) = Typ.transport Field.typ ~there:to_field ~back:of_field in
-    Typ { typ with check = (fun x -> make_checked_ast (check x)) }
+    Typ { typ with check }
 
   let var_to_bits : var -> Boolean.var list Checked.t =
     Field.Checked.unpack ~length:bit_length
