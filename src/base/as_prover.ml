@@ -1,6 +1,45 @@
 open Core_kernel
 open As_prover_intf
 
+module Ref0 = struct
+  type 'a t = 'a option ref
+end
+
+module type S = sig
+  module Types : Types.Types
+
+  include
+    Basic
+      with type ('a, 'f) t = ('a, 'f) Types.As_prover.t
+       and type ('a, 'f) Provider.t = ('a, 'f) Types.Provider.t
+
+  module Ref : sig
+    type 'a t = 'a Ref0.t
+
+    val create :
+      ('a, 'f field) Types.As_prover.t -> ('a t, 'f field) Types.Checked.t
+
+    val get : 'a t -> ('a, 'f field) Types.As_prover.t
+
+    val set : 'a t -> 'a -> (unit, 'f field) Types.As_prover.t
+
+    val typ : ('a t, 'a, 'f field) Types.Typ.t
+  end
+end
+
+module type Extended = sig
+  type field
+
+  module Types : Types.Types
+
+  include
+    S
+      with module Types := Types
+      with type 'f field := field
+       and type ('a, 'f) t := ('a, 'f) Types.As_prover.t
+
+  type 'a t = ('a, field) Types.As_prover.t
+end
 module Make
     (Checked : Checked_intf.S)
     (As_prover : Basic
@@ -18,7 +57,7 @@ struct
   include As_prover
 
   module Ref = struct
-    type 'a t = 'a option ref
+    type 'a t = 'a Ref0.t
 
     let create (x : ('a, 'field) Types.As_prover.t) : ('a t, 'field) Checked.t =
       let r = ref None in

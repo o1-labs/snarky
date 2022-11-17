@@ -13,7 +13,7 @@ let set_eval_constraints b = Runner.eval_constraints := b
 module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-    (As_prover : As_prover_intf.Extended
+    (As_prover : As_prover.Extended
                    with module Types := Checked.Types
                    with type field := Backend.Field.t)
     (Runner : Runner.S

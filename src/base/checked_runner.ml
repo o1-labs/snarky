@@ -9,7 +9,7 @@ let eval_constraints_ref = eval_constraints
 
 module Make_checked
     (Backend : Backend_extended.S)
-    (As_prover : As_prover_intf.S with type 'f field := Backend.Field.t) =
+    (As_prover : As_prover.S with type 'f field := Backend.Field.t) =
 struct
   type run_state = Backend.Field.t Run_state.t
 

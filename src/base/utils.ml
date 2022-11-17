@@ -6,7 +6,7 @@ module Cvar0 = Cvar
 module Make
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field := Backend.Field.t)
-    (As_prover : As_prover_intf.Extended
+    (As_prover : As_prover.Extended
                    with module Types := Checked.Types
                     and type field := Backend.Field.t) =
 struct
