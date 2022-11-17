@@ -154,7 +154,9 @@ struct
           ; check = (fun _ -> Checked.return ())
           }
 
-      let ref () = As_prover.Ref.typ
+      module Ref_typ = As_prover.Make_ref_typ (Checked)
+
+      let ref () = Ref_typ.typ
     end
 
     let transport (type var value1 value2 field)

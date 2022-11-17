@@ -39,6 +39,11 @@ module type Extended = sig
 
   type 'a t = ('a, field) Types.As_prover.t
 end
+
+module Make_ref_typ (Checked : Monad_let.S2) : sig
+  val typ : ('a Ref0.t, 'a, 'b, (unit, 'c) Checked.t) Types.Typ.typ
+end
+
 module Make
     (Checked : Checked_intf.S)
     (As_prover : Basic
