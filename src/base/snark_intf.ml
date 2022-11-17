@@ -586,7 +586,7 @@ module type Basic = sig
          and type checked_unit := (unit, field) Checked_ast.t
          and type _ checked := unit Checked.t
          and type ('a, 'b, 'c, 'd) data_spec :=
-          ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
+          ('a, 'b, 'c, 'd, field, unit Checked.t) Typ0.Data_spec0.data_spec
          and type 'a prover_ref := 'a As_prover.Ref.t
 
     include module type of Types.Typ.T
@@ -1133,7 +1133,13 @@ module type Run_basic = sig
        and type checked_unit := (unit, field) Checked_ast.t
        and type _ checked := unit
        and type ('a, 'b, 'c, 'd) data_spec :=
-        ('a, 'b, 'c, 'd, field) Typ0.Data_spec.t
+        ( 'a
+        , 'b
+        , 'c
+        , 'd
+        , field
+        , unit Internal_Basic.Checked.t )
+        Typ0.Data_spec0.data_spec
        and type 'a prover_ref := 'a As_prover.Ref.t)
 
   (** Representation of booleans within a field.
