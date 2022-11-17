@@ -999,7 +999,6 @@ end
 
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
-
   module Runner0 = Runner.Make (Backend_extended)
   module Checked_runner = Runner0.Checked_runner
   module Checked1 = Checked.Make (Checked_runner) (As_prover)
