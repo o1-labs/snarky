@@ -999,29 +999,32 @@ end
 
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
+
   module Runner0 = Runner.Make (Backend_extended)
+  module Checked_runner = Runner0.Checked_runner
+  module Checked1 = Checked.Make (Checked_runner) (As_prover)
 
   module As_prover0 =
     As_prover.Make_extended
       (struct
         type field = Backend_extended.Field.t
       end)
-      (Checked_ast)
-      (As_prover.Make (Checked_ast) (As_prover0))
+      (Checked1)
+      (As_prover.Make (Checked1) (As_prover0))
 
   module Checked_for_basic = struct
     include (
-      Checked_ast :
+      Checked1 :
         Checked_intf.S
-          with module Types = Checked_ast.Types
-          with type ('a, 'f) t := ('a, 'f) Checked_ast.t
-           and type 'f field := 'f )
+          with module Types = Checked1.Types
+          with type ('a, 'f) t := ('a, 'f) Checked1.t
+           and type 'f field := Backend_extended.Field.t )
 
     type field = Backend_extended.Field.t
 
     type 'a t = ('a, field) Types.Checked.t
 
-    let run = Runner0.run
+    let run (f : ('a, 'f) Checked1.t) (s : Checked_runner.run_state) = f s
   end
 
   module Basic =
