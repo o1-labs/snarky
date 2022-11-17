@@ -37,7 +37,7 @@ struct
 
   module Typ = struct
     include Types.Typ.T
-    module T = Typ.Make (Checked_S) (As_prover)
+    module T = Typ.Make (Checked_S)
     include T.T
 
     type ('var, 'value) t = ('var, 'value, Field.t) T.t

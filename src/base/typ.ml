@@ -74,13 +74,17 @@ module Intf = struct
   end
 end
 
-module Make
-    (Checked : Checked_intf.S)
-    (As_prover : As_prover_intf.S
-                   with module Types := Checked.Types
-                   with type 'f field := 'f Checked.field
-                    and type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t) =
-struct
+module type Checked_monad = sig
+  type ('a, 'f) t
+
+  type 'f field
+
+  include Monad_let.S2 with type ('a, 'e) t := ('a, 'e) t
+
+  module Types : Types.Types
+end
+
+module Make (Checked : Checked_monad) = struct
   type ('var, 'value, 'field) t =
     ('var, 'value, 'field, (unit, 'field) Checked.t) Types.Typ.t
 
