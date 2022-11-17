@@ -1256,6 +1256,7 @@ module type Run_basic = sig
   and Internal_Basic :
     (Basic
       with type field = field
+       and type 'a Checked.t = ('a, field) Checked_runner.Simple.t
        and type 'a As_prover.Ref.t = 'a As_prover.Ref.t)
 
   module Bitstring_checked : sig
