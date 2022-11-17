@@ -1072,23 +1072,18 @@ module Run = struct
       is_active_functor_id this_functor_id && Run_state.is_running !state
 
     let run (checked : _ Checked.t) =
-      match checked with
-      | Pure x ->
-          x
-      | _ ->
-          if not (is_active_functor_id this_functor_id) then
-            failwithf
-              "Could not run this function.\n\n\
-               Hint: The module used to create this function had internal ID \
-               %i, but the module used to run it had internal ID %i. The same \
-               instance of Snarky.Snark.Run.Make must be used for both."
-              this_functor_id (active_functor_id ()) ()
-          else if not (Run_state.is_running !state) then
-            failwith
-              "This function can't be run outside of a checked computation." ;
-          let state', x = Runner.run checked !state in
-          state := state' ;
-          x
+      if not (is_active_functor_id this_functor_id) then
+        failwithf
+          "Could not run this function.\n\n\
+           Hint: The module used to create this function had internal ID %i, \
+           but the module used to run it had internal ID %i. The same instance \
+           of Snarky.Snark.Run.Make must be used for both."
+          this_functor_id (active_functor_id ()) ()
+      else if not (Run_state.is_running !state) then
+        failwith "This function can't be run outside of a checked computation." ;
+      let state', x = Runner.run checked !state in
+      state := state' ;
+      x
 
     let as_stateful x state' =
       state := state' ;
