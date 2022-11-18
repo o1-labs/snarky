@@ -20,7 +20,7 @@ module Checked0 = struct
         Request.Handler.single * ('a, 'f) t * ('a -> ('b, 'f) t)
         -> ('b, 'f) t
     | Exists :
-        ('var, 'value, 'f, (unit, 'f) t) Types.Typ.t
+        ('var, 'value, 'f) Types.Typ.t
         * ( ('value Request.t, 'f) Types.As_prover.t
           , ('value, 'f) Types.As_prover.t )
           Provider.t
@@ -86,33 +86,7 @@ module T0 = struct
         Next_auxiliary (fun x -> bind (k x) ~f)
 end
 
-module Types = struct
-  module Checked = struct
-    type ('a, 'f) t = ('a, 'f) Checked0.t
-  end
-
-  module As_prover = struct
-    type ('a, 'f) t = ('a, 'f) As_prover0.t
-  end
-
-  module Typ = struct
-    include Types.Typ.T
-
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
-  end
-
-  module Provider = struct
-    include Types.Provider.T
-
-    type ('a, 'f) t =
-      (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
-  end
-end
-
-module Basic :
-  Checked_intf.Basic with module Types = Types with type 'f field = 'f = struct
-  module Types = Types
-
+module Basic : Checked_intf.Basic with type 'f field = 'f = struct
   type ('a, 'f) t = ('a, 'f) Types.Checked.t
 
   type 'f field = 'f

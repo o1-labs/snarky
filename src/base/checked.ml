@@ -2,12 +2,8 @@ open Core_kernel
 
 module Make
     (Basic : Checked_intf.Basic)
-    (As_prover : As_prover_intf.Basic
-                   with type ('a, 'f) t = ('a, 'f) Basic.Types.As_prover.t
-                    and type 'f field := 'f Basic.field) :
-  Checked_intf.S
-    with module Types = Basic.Types
-    with type 'f field = 'f Basic.field = struct
+    (As_prover : As_prover_intf.Basic with type 'f field := 'f Basic.field) :
+  Checked_intf.S with type 'f field = 'f Basic.field = struct
   include Basic
 
   let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)

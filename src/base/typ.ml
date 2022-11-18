@@ -80,8 +80,6 @@ module type Checked_monad = sig
   type 'f field
 
   include Monad_let.S2 with type ('a, 'e) t := ('a, 'e) t
-
-  module Types : Types.Types
 end
 
 module Make (Checked : Checked_monad) = struct

@@ -1,6 +1,4 @@
 module type Basic = sig
-  module Types : Types.Types
-
   type ('a, 'f) t = ('a, 'f) Types.Checked.t
 
   type 'f field
@@ -37,8 +35,6 @@ module type Basic = sig
 end
 
 module type S = sig
-  module Types : Types.Types
-
   type ('a, 'f) t = ('a, 'f) Types.Checked.t
 
   type 'f field
@@ -135,28 +131,23 @@ end
 module type Extended = sig
   type field
 
-  module Types : Types.Types
-
   type 'a t = ('a, field) Types.Checked.t
 
   include
     S
-      with module Types := Types
       with type 'f field := field
        and type ('a, 'f) t := ('a, 'f) Types.Checked.t
 
   val run : 'a t -> field Run_state.t -> field Run_state.t * 'a
 end
 
-module Unextend (Checked : Extended) :
-  S with module Types = Checked.Types with type 'f field = Checked.field =
+module Unextend (Checked : Extended) : S with type 'f field = Checked.field =
 struct
   include (
     Checked :
       S
-        with module Types = Checked.Types
         with type 'f field := Checked.field
-         and type ('a, 'f) t := ('a, 'f) Checked.Types.Checked.t )
+         and type ('a, 'f) t := ('a, 'f) Types.Checked.t )
 
   type 'f field = Checked.field
 

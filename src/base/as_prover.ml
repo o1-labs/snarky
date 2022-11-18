@@ -6,12 +6,7 @@ module Ref0 = struct
 end
 
 module type S = sig
-  module Types : Types.Types
-
-  include
-    Basic
-      with type ('a, 'f) t = ('a, 'f) Types.As_prover.t
-       and type ('a, 'f) Provider.t = ('a, 'f) Types.Provider.t
+  include Basic
 
   module Ref : sig
     type 'a t = 'a Ref0.t
@@ -32,17 +27,13 @@ module type Extended = sig
 
   module Types : Types.Types
 
-  include
-    S
-      with module Types := Types
-      with type 'f field := field
-       and type ('a, 'f) t := ('a, 'f) Types.As_prover.t
+  include S with type 'f field := field
 
   type 'a t = ('a, field) Types.As_prover.t
 end
 
 module Make_ref_typ (Checked : Monad_let.S2) = struct
-  let typ : ('a Ref0.t, 'a, _, _) Types.Typ.t =
+  let typ : ('a Ref0.t, 'a, _, _) Types.Typ.typ =
     Typ
       { var_to_fields = (fun x -> ([||], !x))
       ; var_of_fields = (fun (_, x) -> ref x)
@@ -56,16 +47,8 @@ end
 
 module Make
     (Checked : Checked_intf.S)
-    (As_prover : Basic
-                   with type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t
-                    and type 'f field := 'f Checked.field
-                    and type ('a, 'f) Provider.t =
-                     ('a, 'f) Checked.Types.Provider.t) =
+    (As_prover : Basic with type 'f field := 'f Checked.field) =
 struct
-  module Types = Checked.Types
-
-  type ('a, 'f) t = ('a, 'f) Types.As_prover.t
-
   type 'f field = 'f Checked.field
 
   include As_prover
@@ -93,8 +76,7 @@ struct
   end
 end
 
-module T : S with module Types = Checked_ast.Types with type 'f field := 'f =
-  Make (Checked_ast) (As_prover0)
+module T : S with type 'f field := 'f = Make (Checked_ast) (As_prover0)
 
 include T
 
@@ -102,12 +84,8 @@ module Make_extended (Env : sig
   type field
 end)
 (Checked : Checked_intf.S with type 'f field := Env.field)
-(As_prover : S
-               with module Types := Checked.Types
-               with type 'f field := Env.field) =
+(As_prover : S with type 'f field := Env.field) =
 struct
-  module Types = Checked.Types
-
   type 'a t = ('a, Env.field) Types.As_prover.t
 
   include Env
@@ -115,7 +93,6 @@ struct
   include (
     As_prover :
       S
-        with module Types := Types
         with type 'f field := field
          and type ('a, 'f) t := ('a, 'f) Types.As_prover.t )
 end
