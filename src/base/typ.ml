@@ -74,17 +74,13 @@ module Intf = struct
   end
 end
 
-module type Checked_monad = sig
-  type ('a, 'f) t
-
-  type 'f field
-
-  include Monad_let.S2 with type ('a, 'e) t := ('a, 'e) t
-
-  module Types : Types.Types
-end
-
-module Make (Checked : Checked_monad) = struct
+module Make
+    (Checked : Checked_intf.S)
+    (As_prover : As_prover_intf.S
+                   with module Types := Checked.Types
+                   with type 'f field := 'f Checked.field
+                    and type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t) =
+struct
   type ('var, 'value, 'field) t =
     ('var, 'value, 'field, (unit, 'field) Checked.t) Types.Typ.t
 
@@ -158,9 +154,7 @@ module Make (Checked : Checked_monad) = struct
           ; check = (fun _ -> Checked.return ())
           }
 
-      module Ref_typ = As_prover.Make_ref_typ (Checked)
-
-      let ref () = Ref_typ.typ
+      let ref () = As_prover.Ref.typ
     end
 
     let transport (type var value1 value2 field)
@@ -458,8 +452,7 @@ module Make (Checked : Checked_monad) = struct
       |> transport ~there:value_to_hlist ~back:value_of_hlist
       |> transport_var ~there:var_to_hlist ~back:var_of_hlist
   end
-
-  include T
 end
 
-include Make (Checked_runner.Simple)
+include Make (Checked_ast) (As_prover)
+include T

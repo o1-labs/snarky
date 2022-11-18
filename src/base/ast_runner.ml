@@ -45,32 +45,29 @@ struct
         let bt = Printexc.get_backtrace () in
         raise (Runtime_error ([ label ], exn, bt))
 
-  let rec run_ast :
+  let rec run :
       type a.
       (a, 'f Checked.field) Checked_ast.t -> (a, 'f Checked.field) Checked.t =
    fun t ->
     match t with
     | As_prover (x, k) ->
-        Checked.bind (Checked.as_prover x) ~f:(fun () -> run_ast k)
+        Checked.bind (Checked.as_prover x) ~f:(fun () -> run k)
     | Pure x ->
         Checked.return x
     | Direct (d, k) ->
-        Checked.bind (Checked.direct d) ~f:(fun y -> run_ast (k y))
+        Checked.bind (Checked.direct d) ~f:(fun y -> run (k y))
     | Lazy (x, k) ->
-        Checked.bind
-          (Checked.mk_lazy (fun () -> run_ast x))
-          ~f:(fun y -> run_ast (k y))
+        Checked.bind (Checked.mk_lazy (fun () -> run x)) ~f:(fun y -> run (k y))
     | With_label (lab, t, k) ->
         Checked.bind
-          (Checked.with_label lab (fun () ->
-               handle_error lab (fun () -> run_ast t) ) )
-          ~f:(fun y -> run_ast (k y))
+          (Checked.with_label lab (fun () -> handle_error lab (fun () -> run t)))
+          ~f:(fun y -> run (k y))
     | Add_constraint (c, t) ->
-        Checked.bind (Checked.add_constraint c) ~f:(fun () -> run_ast t)
+        Checked.bind (Checked.add_constraint c) ~f:(fun () -> run t)
     | With_handler (h, t, k) ->
         Checked.bind
-          (Checked.with_handler h (fun () -> run_ast t))
-          ~f:(fun y -> run_ast (k y))
+          (Checked.with_handler h (fun () -> run t))
+          ~f:(fun y -> run (k y))
     | Exists
         ( Typ
             { var_to_fields
@@ -91,10 +88,10 @@ struct
             ; value_of_fields
             ; size_in_field_elements
             ; constraint_system_auxiliary
-            ; check = (fun var -> run_ast (check var))
+            ; check = (fun var -> run (check var))
             }
         in
-        Checked.bind (Checked.exists typ p) ~f:(fun y -> run_ast (k y))
+        Checked.bind (Checked.exists typ p) ~f:(fun y -> run (k y))
     | Next_auxiliary k ->
-        Checked.bind (Checked.next_auxiliary ()) ~f:(fun y -> run_ast (k y))
+        Checked.bind (Checked.next_auxiliary ()) ~f:(fun y -> run (k y))
 end

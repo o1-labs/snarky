@@ -7,54 +7,9 @@ let eval_constraints = ref true
 
 let eval_constraints_ref = eval_constraints
 
-module Simple = struct
-  module Types = struct
-    module Checked = struct
-      type ('a, 'f) t = 'f Run_state.t -> 'f Run_state.t * 'a
-    end
-
-    module As_prover = struct
-      type ('a, 'f) t = ('a, 'f) As_prover.t
-    end
-
-    module Typ = struct
-      include Types.Typ.T
-
-      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
-    end
-
-    module Provider = struct
-      include Types.Provider.T
-
-      type ('a, 'f) t =
-        (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
-    end
-  end
-
-  type 'f field = 'f
-
-  type ('a, 'f) t = ('a, 'f field) Types.Checked.t
-
-  include Monad_let.Make2 (struct
-    type ('a, 'f) t = ('a, 'f field) Types.Checked.t
-
-    let return x s = (s, x)
-
-    let map =
-      `Custom
-        (fun x ~f s ->
-          let s, a = x s in
-          (s, f a) )
-
-    let bind x ~f s =
-      let s, a = x s in
-      f a s
-  end)
-end
-
 module Make_checked
     (Backend : Backend_extended.S)
-    (As_prover : As_prover.S with type 'f field := Backend.Field.t) =
+    (As_prover : As_prover_intf.S with type 'f field := Backend.Field.t) =
 struct
   type run_state = Backend.Field.t Run_state.t
 
@@ -308,8 +263,6 @@ end
 module Make (Backend : Backend_extended.S) = struct
   open Backend
 
-  type 'f field = 'f
-
   let constraint_logger = ref None
 
   let set_constraint_logger f = constraint_logger := Some f
@@ -341,8 +294,6 @@ module Make (Backend : Backend_extended.S) = struct
 
   module Types = Checked_ast.Types
   include Ast_runner.Make_runner (Checked_runner)
-
-  let run f x = f x
 
   let dummy_vector = Run_state.Vector.null
 
