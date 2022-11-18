@@ -43,6 +43,8 @@ module Inputs = struct
       val zero : t
     end
 
+    val alpha : int
+
     val to_the_alpha : Field.t -> Field.t
 
     module Operations : Operations with module Field := Field
@@ -93,6 +95,10 @@ module type Hash = sig
   module Field : T
 
   module State : T1
+
+  val state_size : int
+
+  val rate : int
 
   val update :
        Field.t Params.t
