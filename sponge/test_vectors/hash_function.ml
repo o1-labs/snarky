@@ -62,6 +62,8 @@ module ConfigFpLegacy = struct
 
   let rounds_partial = 0
 
+  let alpha = 5
+
   let to_the_alpha x =
     let open Field in
     let x_2 = x * x in
@@ -94,6 +96,8 @@ module ConfigFpKimchi = struct
   let initial_ark = false
 
   let rounds_partial = 0
+
+  let alpha = 7
 
   let to_the_alpha x =
     let open Field in
