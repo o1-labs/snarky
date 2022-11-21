@@ -60,6 +60,8 @@ module Bn382_inputs (Field : Intf.Field_mutable) = struct
 
   module Field = Field
 
+  let alpha = 17
+
   (* alpha = 17 *)
   let to_the_alpha x =
     let open Field in
@@ -206,6 +208,10 @@ end
 module Make_hash (P : Intf.Permutation) = struct
   open P
 
+  let state_size = m
+
+  let rate = state_size - 1
+
   let add_block ~state block = Array.iteri block ~f:(add_assign ~state)
 
   let sponge perm blocks ~state =
@@ -237,15 +243,13 @@ module Make_hash (P : Intf.Permutation) = struct
       (Array.map (to_blocks 2 [| z; z; z |]) ~f:(Array.map ~f:ignore))
       [| [| (); () |]; [| (); () |] |]
 
-  let r = m - 1
-
   let update params ~state inputs =
     let state = copy state in
-    sponge (block_cipher params) (to_blocks r inputs) ~state
+    sponge (block_cipher params) (to_blocks rate inputs) ~state
 
   let digest state = state.(0)
 
-  let initial_state = Array.init m ~f:(fun _ -> Field.zero)
+  let initial_state = Array.init state_size ~f:(fun _ -> Field.zero)
 
   let hash ?(init = initial_state) params inputs =
     update params ~state:init inputs |> digest
