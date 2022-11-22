@@ -1,10 +1,5 @@
 open Core_kernel
-module Types0 = Types
 module Cvar0 = Cvar
-module Checked_ast = Checked_ast
-
-exception Runtime_error = Ast_runner.Runtime_error
-
 module Runner = Checked_runner
 
 let set_eval_constraints b = Runner.eval_constraints := b
