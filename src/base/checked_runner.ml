@@ -10,7 +10,9 @@ let eval_constraints_ref = eval_constraints
 module Simple = struct
   module Types = struct
     module Checked = struct
-      type ('a, 'f) t = 'f Run_state.t -> 'f Run_state.t * 'a
+      type ('a, 'f) t =
+        | Pure of 'a
+        | Function of ('f Run_state.t -> 'f Run_state.t * 'a)
     end
 
     module As_prover = struct
@@ -35,20 +37,36 @@ module Simple = struct
 
   type ('a, 'f) t = ('a, 'f field) Types.Checked.t
 
+  let eval (t : ('a, 'f) t) : 'f field Run_state.t -> 'f field Run_state.t * 'a
+      =
+    match t with Pure a -> fun s -> (s, a) | Function g -> g
+
   include Monad_let.Make2 (struct
     type ('a, 'f) t = ('a, 'f field) Types.Checked.t
 
-    let return x s = (s, x)
+    let return x : _ t = Pure x
 
     let map =
       `Custom
-        (fun x ~f s ->
-          let s, a = x s in
-          (s, f a) )
+        (fun (x : _ t) ~f : _ t ->
+          match x with
+          | Pure a ->
+              Pure (f a)
+          | Function g ->
+              Function
+                (fun s ->
+                  let s, a = g s in
+                  (s, f a) ) )
 
-    let bind x ~f s =
-      let s, a = x s in
-      f a s
+    let bind (x : _ t) ~f : _ t =
+      match x with
+      | Pure a ->
+          f a
+      | Function g ->
+          Function
+            (fun s ->
+              let s, a = g s in
+              eval (f a) s )
   end)
 end
 
@@ -60,7 +78,7 @@ struct
 
   module Types = struct
     module Checked = struct
-      type ('a, 'f) t = run_state -> run_state * 'a
+      type ('a, 'f) t = ('a, Backend.Field.t) Simple.Types.Checked.t
     end
 
     module As_prover = struct
@@ -83,22 +101,18 @@ struct
 
   type 'f field = Backend.Field.t
 
-  type ('a, 'f) t = ('a, 'f field) Types.Checked.t
+  include Types.Checked
+
+  let eval : ('a, 'f) t -> run_state -> run_state * 'a = Simple.eval
 
   include Monad_let.Make2 (struct
-    type ('a, 'f) t = ('a, 'f field) Types.Checked.t
+    include Types.Checked
 
-    let return x s = (s, x)
+    let map = `Custom Simple.map
 
-    let map =
-      `Custom
-        (fun x ~f s ->
-          let s, a = x s in
-          (s, f a) )
+    let bind = Simple.bind
 
-    let bind x ~f s =
-      let s, a = x s in
-      f a s
+    let return = Simple.return
   end)
 
   open Constraint
