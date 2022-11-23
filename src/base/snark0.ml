@@ -1027,7 +1027,7 @@ module Make (Backend : Backend_intf.S) = struct
 
     type 'a t = ('a, field) Types.Checked.t
 
-    let run (f : ('a, 'f) Checked1.t) (s : Checked_runner.run_state) = f s
+    let run = Runner0.run
   end
 
   module Basic =
@@ -1098,14 +1098,14 @@ module Run = struct
       x
 
     let as_stateful x state' =
-      printf "as_stateful with is_running: %B\n"
-      (Run_state.is_running state') ;
+      printf "as_stateful with is_running: %B\n" (Run_state.is_running state') ;
       state := state' ;
       let a = x () in
       (!state, a)
 
-    let make_checked (type a) (f : unit -> a) : run_state -> run_state * a =
-      as_stateful f
+    let make_checked (type a) (f : unit -> a) : _ Checked.t =
+      let g : run_state -> run_state * a = as_stateful f in
+      Function g
 
     module R1CS_constraint_system = Snark.R1CS_constraint_system
 
