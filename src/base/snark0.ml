@@ -1619,33 +1619,48 @@ module Run = struct
       let inject_wrapper ~f x = f x in
       inject_wrapper ~f (x a)
 
-    let constraint_system ~input_typ ~return_typ x =
-      let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.constraint_system ~run:as_stateful ~input_typ ~return_typ x
+    let finalize_is_running f =
+      let x = f () in
+      state := Run_state.set_is_running !state false ;
+      x
 
-    let generate_public_input = generate_public_input
+    let constraint_system ~input_typ ~return_typ x : R1CS_constraint_system.t =
+      finalize_is_running (fun () ->
+          let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
+          Perform.constraint_system ~run:as_stateful ~input_typ ~return_typ x )
 
-    let generate_witness ~input_typ ~return_typ x =
-      let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.generate_witness ~run:as_stateful ~input_typ ~return_typ x
+    let generate_public_input t x : As_prover.Vector.t =
+      finalize_is_running (fun () -> generate_public_input t x)
 
-    let generate_witness_conv ~f ~input_typ ~return_typ x =
-      let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.generate_witness_conv ~run:as_stateful ~f ~input_typ ~return_typ x
+    let generate_witness ~input_typ ~return_typ x a : Proof_inputs.t =
+      finalize_is_running (fun () ->
+          let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
+          Perform.generate_witness ~run:as_stateful ~input_typ ~return_typ x a )
+
+    let generate_witness_conv (type out)
+        ~(f : Proof_inputs.t -> 'r_value -> out) ~input_typ ~return_typ x input
+        : out =
+      finalize_is_running (fun () ->
+          let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
+          Perform.generate_witness_conv ~run:as_stateful ~f ~input_typ
+            ~return_typ x input )
 
     let run_unchecked x =
-      Perform.run_unchecked ~run:as_stateful (fun () -> mark_active ~f:x)
+      finalize_is_running (fun () ->
+          Perform.run_unchecked ~run:as_stateful (fun () -> mark_active ~f:x) )
 
-    let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t) =
-      let res =
-        Perform.run_and_check ~run:as_stateful (fun () ->
-            mark_active ~f:(fun () ->
-                let prover_block = x () in
-                Run_state.set_as_prover !state true ;
-                As_prover.run_prover prover_block ) )
-      in
-      Run_state.set_as_prover !state true ;
-      res
+    let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t) :
+        a Or_error.t =
+      finalize_is_running (fun () ->
+          let res =
+            Perform.run_and_check ~run:as_stateful (fun () ->
+                mark_active ~f:(fun () ->
+                    let prover_block = x () in
+                    Run_state.set_as_prover !state true ;
+                    As_prover.run_prover prover_block ) )
+          in
+          Run_state.set_as_prover !state true ;
+          res )
 
     module Run_and_check_deferred (M : sig
       type _ t
@@ -1671,20 +1686,23 @@ module Run = struct
         state := state' ;
         map (x ()) ~f:(fun a -> (!state, a))
 
-      let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t M.t) =
-        let mark_active = mark_active_deferred ~map in
-        let res =
-          run_and_check ~run:as_stateful (fun () ->
-              mark_active ~f:(fun () ->
-                  map (x ()) ~f:(fun prover_block ->
-                      Run_state.set_as_prover !state true ;
-                      As_prover.run_prover prover_block ) ) )
-        in
-        Run_state.set_as_prover !state true ;
-        res
+      let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t M.t) :
+          a Or_error.t M.t =
+        finalize_is_running (fun () ->
+            let mark_active = mark_active_deferred ~map in
+            let res =
+              run_and_check ~run:as_stateful (fun () ->
+                  mark_active ~f:(fun () ->
+                      map (x ()) ~f:(fun prover_block ->
+                          Run_state.set_as_prover !state true ;
+                          As_prover.run_prover prover_block ) ) )
+            in
+            Run_state.set_as_prover !state true ;
+            res )
     end
 
-    let check x = Perform.check ~run:as_stateful x
+    let check x : unit Or_error.t =
+      finalize_is_running (fun () -> Perform.check ~run:as_stateful x)
 
     let constraint_count ?(weight = Fn.const 1) ?log x =
       let count = ref 0 in
