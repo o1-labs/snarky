@@ -134,43 +134,50 @@ struct
     | _, _ ->
         (state, None)
 
-  let as_prover x s =
-    let s', (_ : unit option) = run_as_prover (Some x) s in
-    (s', ())
+  let as_prover x : _ Simple.t =
+    Function
+      (fun s ->
+        let s', (_ : unit option) = run_as_prover (Some x) s in
+        (s', ()) )
 
-  let mk_lazy x s =
-    let old_stack = Run_state.stack s in
-    ( s
-    , Lazy.from_fun (fun () ->
-          let stack = Run_state.stack s in
+  let mk_lazy x : _ Simple.t =
+    Function
+      (fun s ->
+        let old_stack = Run_state.stack s in
+        ( s
+        , Lazy.from_fun (fun () ->
+              let stack = Run_state.stack s in
 
-          (* Add a label to indicate that the new stack is the point at which
-             this was forced. When printed for errors, this will split the
-             stack into
+              (* Add a label to indicate that the new stack is the point at which
+                 this was forced. When printed for errors, this will split the
+                 stack into
 
-             ...
-             stack to lazy
-             ...
+                 ...
+                 stack to lazy
+                 ...
 
-             Lazy value forced at:
-             ...
-             stack to lazy forcing point
-             ...
-          *)
-          let label = "\nLazy value forced at:" in
-          let _s', y =
-            x () (Run_state.set_stack s (old_stack @ (label :: stack)))
-          in
-          y ) )
+                 Lazy value forced at:
+                 ...
+                 stack to lazy forcing point
+                 ...
+              *)
+              let label = "\nLazy value forced at:" in
+              let _s', y =
+                Simple.eval (x ())
+                  (Run_state.set_stack s (old_stack @ (label :: stack)))
+              in
+              y ) ) )
 
-  let with_label lab t s =
-    let stack = Run_state.stack s in
-    Option.iter (Run_state.log_constraint s) ~f:(fun f ->
-        f ~at_label_boundary:(`Start, lab) None ) ;
-    let s', y = t () (Run_state.set_stack s (lab :: stack)) in
-    Option.iter (Run_state.log_constraint s) ~f:(fun f ->
-        f ~at_label_boundary:(`End, lab) None ) ;
-    (Run_state.set_stack s' stack, y)
+  let with_label lab t : _ Simple.t =
+    Function
+      (fun s ->
+        let stack = Run_state.stack s in
+        Option.iter (Run_state.log_constraint s) ~f:(fun f ->
+            f ~at_label_boundary:(`Start, lab) None ) ;
+        let s', y = Simple.eval (t ()) (Run_state.set_stack s (lab :: stack)) in
+        Option.iter (Run_state.log_constraint s) ~f:(fun f ->
+            f ~at_label_boundary:(`End, lab) None ) ;
+        (Run_state.set_stack s' stack, y) )
 
   let log_constraint { basic; _ } s =
     match basic with
@@ -202,88 +209,99 @@ struct
     let label = Option.value annotation ~default:"<unknown>" in
     C.add_constraint system basic ~label:(stack_to_string (label :: stack))
 
-  let add_constraint c s =
-    if Run_state.as_prover s then
-      (* Don't add constraints as the prover, or the constraint system won't match! *)
-      (s, ())
-    else (
-      Option.iter (Run_state.log_constraint s) ~f:(fun f -> f (Some c)) ;
-      if Run_state.eval_constraints s && not (Constraint.eval c (get_value s))
-      then
-        failwithf
-          "Constraint unsatisfied (unreduced):\n\
-           %s\n\
-           %s\n\n\
-           Constraint:\n\
-           %s\n\
-           Data:\n\
-           %s"
-          (Constraint.annotation c)
-          (stack_to_string (Run_state.stack s))
-          (Sexp.to_string (Constraint.sexp_of_t c))
-          (log_constraint c s) () ;
-      if not (Run_state.as_prover s) then
-        Option.iter (Run_state.system s) ~f:(fun system ->
-            add_constraint ~stack:(Run_state.stack s) c system ) ;
-      (s, ()) )
+  let add_constraint c : _ Simple.t =
+    Function
+      (fun s ->
+        if Run_state.as_prover s then
+          (* Don't add constraints as the prover, or the constraint system won't match! *)
+          (s, ())
+        else (
+          Option.iter (Run_state.log_constraint s) ~f:(fun f -> f (Some c)) ;
+          if
+            Run_state.eval_constraints s
+            && not (Constraint.eval c (get_value s))
+          then
+            failwithf
+              "Constraint unsatisfied (unreduced):\n\
+               %s\n\
+               %s\n\n\
+               Constraint:\n\
+               %s\n\
+               Data:\n\
+               %s"
+              (Constraint.annotation c)
+              (stack_to_string (Run_state.stack s))
+              (Sexp.to_string (Constraint.sexp_of_t c))
+              (log_constraint c s) () ;
+          if not (Run_state.as_prover s) then
+            Option.iter (Run_state.system s) ~f:(fun system ->
+                add_constraint ~stack:(Run_state.stack s) c system ) ;
+          (s, ()) ) )
 
-  let with_handler h t s =
-    let handler = Run_state.handler s in
-    let s', y =
-      t () (Run_state.set_handler s (Request.Handler.push handler h))
-    in
-    (Run_state.set_handler s' handler, y)
+  let with_handler h t : _ Simple.t =
+    Function
+      (fun s ->
+        let handler = Run_state.handler s in
+        let s', y =
+          Simple.eval (t ())
+            (Run_state.set_handler s (Request.Handler.push handler h))
+        in
+        (Run_state.set_handler s' handler, y) )
 
   let exists
       (Types.Typ.Typ
-        { Types.Typ.var_of_fields
-        ; value_to_fields
-        ; size_in_field_elements
-        ; check
-        ; constraint_system_auxiliary
-        ; _
-        } ) p s =
-    if Run_state.has_witness s then (
-      let old = Run_state.as_prover s in
-      Run_state.set_as_prover s true ;
-      let value =
-        As_prover.Provider.run p (Run_state.stack s) (get_value s)
-          (Run_state.handler s)
-      in
-      Run_state.set_as_prover s old ;
-      let var =
-        let store_value =
-          if Run_state.as_prover s then
-            (* If we're nested in a prover block, create constants instead of
-               storing.
-            *)
-            Cvar.constant
-          else Run_state.store_field_elt s
-        in
-        let fields, aux = value_to_fields value in
-        let field_vars = Array.map ~f:store_value fields in
-        var_of_fields (field_vars, aux)
-      in
-      (* TODO: Push a label onto the stack here *)
-      let s, () = check var s in
-      (s, { Handle.var; value = Some value }) )
-    else
-      let var =
-        var_of_fields
-          ( Array.init size_in_field_elements ~f:(fun _ ->
-                Run_state.alloc_var s () )
-          , constraint_system_auxiliary () )
-      in
-      (* TODO: Push a label onto the stack here *)
-      let s, () = check var s in
-      (s, { Handle.var; value = None })
+         { Types.Typ.var_of_fields
+         ; value_to_fields
+         ; size_in_field_elements
+         ; check
+         ; constraint_system_auxiliary
+         ; _
+         } :
+        (_, _, _, _ Simple.t) Types.Typ.typ ) p : _ Simple.t =
+    Function
+      (fun s ->
+        if Run_state.has_witness s then (
+          let old = Run_state.as_prover s in
+          Run_state.set_as_prover s true ;
+          let value =
+            As_prover.Provider.run p (Run_state.stack s) (get_value s)
+              (Run_state.handler s)
+          in
+          Run_state.set_as_prover s old ;
+          let var =
+            let store_value =
+              if Run_state.as_prover s then
+                (* If we're nested in a prover block, create constants instead of
+                   storing.
+                *)
+                Cvar.constant
+              else Run_state.store_field_elt s
+            in
+            let fields, aux = value_to_fields value in
+            let field_vars = Array.map ~f:store_value fields in
+            var_of_fields (field_vars, aux)
+          in
+          (* TODO: Push a label onto the stack here *)
+          let s, () = Simple.eval (check var) s in
+          (s, { Handle.var; value = Some value }) )
+        else
+          let var =
+            var_of_fields
+              ( Array.init size_in_field_elements ~f:(fun _ ->
+                    Run_state.alloc_var s () )
+              , constraint_system_auxiliary () )
+          in
+          (* TODO: Push a label onto the stack here *)
+          let s, () = Simple.eval (check var) s in
+          (s, { Handle.var; value = None }) )
 
-  let next_auxiliary () s = (s, Run_state.next_auxiliary s)
+  let next_auxiliary () : _ Simple.t =
+    Function (fun s -> (s, Run_state.next_auxiliary s))
 
-  let direct f = f
+  let direct f : _ Simple.t = Function f
 
   let constraint_count ?(weight = Fn.const 1)
-      ?(log = fun ?start:_ _lab _pos -> ()) t =
+      ?(log = fun ?start:_ _lab _pos -> ()) (t : unit -> _ Simple.t) =
     (* TODO: Integrate log with log_constraint *)
     let count = ref 0 in
     let log_constraint ?at_label_boundary c =
@@ -300,7 +318,7 @@ struct
         ~next_auxiliary:(ref 1) ~aux:Run_state.Vector.null
         ~eval_constraints:false ~log_constraint ~with_witness:false ()
     in
-    let _ = t () state in
+    let _ = Simple.eval (t ()) state in
     !count
 end
 
@@ -356,7 +374,7 @@ module Make (Backend : Backend_extended.S) = struct
   module Types = Checked_ast.Types
   include Ast_runner.Make_runner (Checked_runner)
 
-  let run f x = f x
+  let run = Simple.eval
 
   let dummy_vector = Run_state.Vector.null
 
