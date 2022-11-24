@@ -97,16 +97,12 @@ struct
     let mul ?(label = "Checked.mul") (x : Cvar.t) (y : Cvar.t) =
       match (x, y) with
       | Constant x, Constant y ->
-          print_endline "constant" ;
           return (Cvar.constant (Field.mul x y))
       | Constant x, _ ->
-          print_endline "half constant" ;
           return (Cvar.scale y x)
       | _, Constant y ->
-          print_endline "half constant" ;
           return (Cvar.scale x y)
       | _, _ ->
-          print_endline "not constant" ;
           with_label label (fun () ->
               let open Let_syntax in
               let%bind z =
@@ -1082,23 +1078,21 @@ module Run = struct
       else print_endline "is_not_running" ;
       if not (is_active_functor_id this_functor_id) then
         failwithf
-          "Could not run this function.\n\n\
-           Hint: The module used to create this function had internal ID %i, \
-           but the module used to run it had internal ID %i. The same instance \
-           of Snarky.Snark.Run.Make must be used for both."
-          this_functor_id (active_functor_id ()) ()
-      else if not (Run_state.is_running !state) then (
-        print_endline "this is the bug" ;
-        if Run_state.is_running !state then print_endline "bug: is_running"
-        else print_endline "bug: is_not_running" ;
-        failwith "This function can't be run outside of a checked computation."
-        ) ;
-      let state', x = Runner.run checked !state in
-      state := state' ;
-      x
+          if not (is_active_functor_id this_functor_id) then
+            failwithf
+              "Could not run this function.\n\n\
+               Hint: The module used to create this function had internal ID \
+               %i, but the module used to run it had internal ID %i. The same \
+               instance of Snarky.Snark.Run.Make must be used for both."
+              this_functor_id (active_functor_id ()) ()
+          else if not (Run_state.is_running !state) then
+            failwith
+              "This function can't be run outside of a checked computation." ;
+          let state', x = Runner.run checked !state in
+          state := state' ;
+          x
 
     let as_stateful x state' =
-      printf "as_stateful with is_running: %B\n" (Run_state.is_running state') ;
       state := state' ;
       let a = x () in
       (!state, a)
@@ -1681,8 +1675,6 @@ module Run = struct
                  x ) )
 
       let as_stateful x state' =
-        printf "other as_stateful with is_running: %B\n"
-          (Run_state.is_running state') ;
         state := state' ;
         map (x ()) ~f:(fun a -> (!state, a))
 
