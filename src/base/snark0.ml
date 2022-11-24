@@ -1074,10 +1074,10 @@ module Run = struct
       is_active_functor_id this_functor_id && Run_state.is_running !state
 
     let run (checked : _ Checked.t) =
-      if Run_state.is_running !state then print_endline "is_running"
-      else print_endline "is_not_running" ;
-      if not (is_active_functor_id this_functor_id) then
-        failwithf
+      match checked with
+      | Pure a ->
+          a
+      | _ ->
           if not (is_active_functor_id this_functor_id) then
             failwithf
               "Could not run this function.\n\n\
