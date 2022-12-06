@@ -106,7 +106,7 @@ struct
     let aux = Field.Vector.create () in
     let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
-      let get_one v = Field.Vector.get aux (v - 1) in
+      let get_one v = Field.Vector.get aux v in
       Cvar.eval (`Return_values_will_be_mutated get_one)
     in
     let state =
@@ -127,7 +127,7 @@ struct
     let aux = Field.Vector.create () in
     let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
-      let get_one v = Field.Vector.get aux (v - 1) in
+      let get_one v = Field.Vector.get aux v in
       Cvar.eval (`Return_values_will_be_mutated get_one)
     in
     let state =
@@ -182,6 +182,7 @@ struct
         -> (unit -> input_var -> checked)
         -> _ * (unit -> checked) Checked.t =
      fun next_input ~input_typ:(Typ input_typ) ~return_typ:(Typ return_typ) k ->
+      (* allocate variables for the public input and the public output *)
       let open Checked in
       let alloc_input
           { Types0.Typ.var_of_fields
@@ -196,11 +197,13 @@ struct
       in
       let var = alloc_input input_typ in
       let retval = alloc_input return_typ in
-      let checked =
+
+      (* create constraints to validate the input (using the input [Typ]'s [check]) *)
+      let circuit =
         let%bind () = input_typ.check var in
         Checked.return (fun () -> k () var)
       in
-      (retval, checked)
+      (retval, circuit)
 
     let r1cs_h :
         type a checked input_var input_value retval.
@@ -216,17 +219,22 @@ struct
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
      fun ~run next_input ~input_typ ~return_typ k ->
-      let retval, r =
+      (* allocate variables for the public input and the public output *)
+      let retval, checked =
         collect_input_constraints next_input ~input_typ ~return_typ (fun () ->
             k )
       in
-      let run_in_run r state =
-        let state, x = Checked.run r state in
+
+      (* ? *)
+      let run_in_run checked state =
+        let state, x = Checked.run checked state in
         run x state
       in
+
+      (* ? *)
       constraint_system ~run:run_in_run ~num_inputs:(!next_input - 1)
         ~return_typ retval
-        (Checked.map ~f:(fun r -> r ()) r)
+        (Checked.map ~f:(fun r -> r ()) checked)
 
     let constraint_system (type a checked input_var) :
            run:(a, checked) Runner.run
@@ -235,7 +243,7 @@ struct
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
      fun ~run ~input_typ ~return_typ k ->
-      r1cs_h ~run (ref 1) ~input_typ ~return_typ k
+      r1cs_h ~run (ref 0) ~input_typ ~return_typ k
 
     let generate_public_input :
            ('input_var, 'input_value, _, _) Types.Typ.typ
@@ -317,8 +325,8 @@ struct
             let fields, aux = return_typ.var_to_fields output in
             let read_cvar =
               let get_one i =
-                if i <= num_inputs then Field.Vector.get primary (i - 1)
-                else Field.Vector.get auxiliary (i - num_inputs - 1)
+                if i < num_inputs then Field.Vector.get primary i
+                else Field.Vector.get auxiliary (i - num_inputs)
               in
               Cvar.eval (`Return_values_will_be_mutated get_one)
             in
