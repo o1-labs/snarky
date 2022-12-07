@@ -1,0 +1,85 @@
+;; src/ contains no dune-related files
+
+(data_only_dirs src)
+
+;; Ignore target if it exists locally
+
+(dirs :standard \ target)
+
+;;
+;; Rules to set the optimisation flags for the rust compiler.
+;;
+;; By default, we compile with optimisations enabled. The instructions that
+;; these generate may not be available on all CPU architectures; to build a
+;; slower version that does not use these instructions, set the environment
+;; variable `RUST_TARGET_FEATURE_OPTIMISATIONS=n`.
+;;
+
+(rule
+ (enabled_if
+  (<> %{env:RUST_TARGET_FEATURE_OPTIMISATIONS=y} n))
+ (targets rustflags.sexp)
+ (action
+  (with-stdout-to
+   rustflags.sexp
+   (echo "-C target-feature=+bmi2,+adx"))))
+
+(rule
+ (enabled_if
+  (= %{env:RUST_TARGET_FEATURE_OPTIMISATIONS=y} n))
+ (targets rustflags.sexp)
+ (action
+  (with-stdout-to
+   rustflags.sexp
+   (echo "-C target-feature=-bmi2,-adx"))))
+
+;;
+;; rules to build the static library for kimchi
+;;
+
+(rule
+ (targets libsnarky_rs.a)
+ (deps
+  Cargo.toml
+  rust-toolchain.toml
+  (source_tree src)
+  (source_tree ./proof-systems)
+  (env_var MARLIN_PLONK_STUBS))
+ (locks /cargo-lock) ;; lock for rustup
+ (mode promote)
+ (action
+  (progn
+   (setenv
+    RUSTFLAGS
+    %{read:rustflags.sexp}
+    (run cargo build --release)))))
+
+;;
+;; declare the libraries we're going to generate to match the bindings
+;;
+
+(library
+ (public_name snarky_bindings)
+ (name snarky_bindings)
+ (modules snarky_bindings))
+
+;;
+;; generate the OCaml bindings
+;;
+
+(rule
+ (targets snarky_bindings.ml)
+ (mode promote)
+ (deps
+  ../.ocamlformat
+  Cargo.toml
+  rust-toolchain.toml
+  (source_tree src)
+  (source_tree ./proof-systems))
+ (locks /cargo-lock) ;; lock for rustup
+ (action
+  (progn
+   ;;   (run rm -rf ./target) ;; TODO: why?
+   ;;   (run rm -f ./Cargo.lock) ;; TODO: why?
+   (run cargo run %{targets})
+   (run ocamlformat -i %{targets}))))

@@ -1,0 +1,3 @@
+[submodule "snarky-rs/proof-systems"]
+	path = snarky-rs/proof-systems
+	url = https://github.com/o1-labs/proof-systems.git
