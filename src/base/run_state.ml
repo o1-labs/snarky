@@ -106,4 +106,6 @@ let set_handler t handler = { t with handler }
 
 let is_running { is_running; _ } = is_running
 
+let set_is_running t is_running = { t with is_running }
+
 let next_auxiliary { next_auxiliary; _ } = !next_auxiliary

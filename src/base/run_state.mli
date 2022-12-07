@@ -68,4 +68,6 @@ val set_handler : 'field t -> Request.Handler.t -> 'field t
 
 val is_running : _ t -> bool
 
+val set_is_running : 'f t -> bool -> 'f t
+
 val next_auxiliary : _ t -> int
