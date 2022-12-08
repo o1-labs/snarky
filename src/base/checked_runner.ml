@@ -371,7 +371,7 @@ module Make (Backend : Backend_extended.S) = struct
              and type cvar := Backend.Cvar.t
       end )
 
-  module Types = Checked_ast.Types
+  module Types = Checked_runner.Types
 
   let run = Simple.eval
 
