@@ -69,10 +69,6 @@ module type Types = sig
     type ('a, 'f) t
   end
 
-  module As_prover : sig
-    type ('a, 'f) t
-  end
-
   module Typ : sig
     include module type of Typ.T
 

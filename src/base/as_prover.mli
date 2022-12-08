@@ -7,20 +7,16 @@ end
 module type S = sig
   module Types : Types.Types
 
-  include
-    Basic
-      with type ('a, 'f) t = ('a, 'f) Types.As_prover.t
-       and type ('a, 'f) Provider.t = ('a, 'f) Types.Provider.t
+  include Basic with type ('a, 'f) Provider.t = ('a, 'f) Types.Provider.t
 
   module Ref : sig
     type 'a t = 'a Ref0.t
 
-    val create :
-      ('a, 'f field) Types.As_prover.t -> ('a t, 'f field) Types.Checked.t
+    val create : ('a, 'f field) As_prover0.t -> ('a t, 'f field) Types.Checked.t
 
-    val get : 'a t -> ('a, 'f field) Types.As_prover.t
+    val get : 'a t -> ('a, 'f field) As_prover0.t
 
-    val set : 'a t -> 'a -> (unit, 'f field) Types.As_prover.t
+    val set : 'a t -> 'a -> (unit, 'f field) As_prover0.t
 
     val typ : ('a t, 'a, 'f field) Types.Typ.t
   end
@@ -35,9 +31,9 @@ module type Extended = sig
     S
       with module Types := Types
       with type 'f field := field
-       and type ('a, 'f) t := ('a, 'f) Types.As_prover.t
+       and type ('a, 'f) t := ('a, 'f) As_prover0.t
 
-  type 'a t = ('a, field) Types.As_prover.t
+  type 'a t = ('a, field) As_prover0.t
 end
 
 module Make_ref_typ (Checked : Monad_let.S2) : sig
@@ -47,8 +43,7 @@ end
 module Make
     (Checked : Checked_intf.S)
     (As_prover : Basic
-                   with type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t
-                    and type 'f field := 'f Checked.field
+                   with type 'f field := 'f Checked.field
                     and type ('a, 'f) Provider.t =
                      ('a, 'f) Checked.Types.Provider.t) :
   S with module Types = Checked.Types with type 'f field = 'f Checked.field

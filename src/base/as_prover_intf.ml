@@ -1,5 +1,5 @@
 module type Basic = sig
-  type ('a, 'f) t
+  type ('a, 'f) t = ('a, 'f) As_prover0.t
 
   type 'f field
 
