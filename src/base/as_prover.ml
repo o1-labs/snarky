@@ -41,19 +41,6 @@ module type Extended = sig
   type 'a t = ('a, field) Types.As_prover.t
 end
 
-module Make_ref_typ (Checked : Monad_let.S2) = struct
-  let typ : ('a Ref0.t, 'a, _, _) Types.Typ.t =
-    Typ
-      { var_to_fields = (fun x -> ([||], !x))
-      ; var_of_fields = (fun (_, x) -> ref x)
-      ; value_to_fields = (fun x -> ([||], Some x))
-      ; value_of_fields = (fun (_, x) -> Option.value_exn x)
-      ; size_in_field_elements = 0
-      ; constraint_system_auxiliary = (fun () -> None)
-      ; check = (fun _ -> Checked.return ())
-      }
-end
-
 module Make
     (Checked : Checked_intf.S)
     (As_prover : Basic
@@ -89,7 +76,7 @@ struct
       let%map () = As_prover.return () in
       r := Some x
 
-    include Make_ref_typ (Checked)
+    include As_prover_ref.Make_ref_typ (Checked)
   end
 end
 
