@@ -43,8 +43,10 @@ module Make
   S
     with module Types = Checked.Types
      and type ('a, 'f) checked := ('a, 'f) Checked.t
-     and type 'f field := 'f Checked.field = struct
+     and type 'f field = 'f Checked.field = struct
   module Types = Checked.Types
+
+  type 'f field = 'f Checked.field
 
   type nonrec 'a t = 'a t
 
@@ -68,17 +70,4 @@ module Make
     r := Some x
 
   include Make_ref_typ (Checked)
-end
-
-(* TODO: what about this? *)
-module Make_extended (Env : sig
-  type field
-end)
-(Ref : S) =
-struct
-  module Types = Ref.Types
-
-  type 'a t = ('a, Env.field) Types.As_prover.t
-
-  include Env
 end

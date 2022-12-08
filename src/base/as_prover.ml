@@ -1,5 +1,3 @@
-open Core_kernel
-
 module type S = sig
   module Types : Types.Types
 
@@ -7,12 +5,6 @@ module type S = sig
     As_prover_intf.Basic
       with type ('a, 'f) t = ('a, 'f) Types.As_prover.t
        and type ('a, 'f) Provider.t = ('a, 'f) Types.Provider.t
-
-  module Ref :
-    As_prover_ref.S
-      with module Types := Types
-       and type 'f field := 'f field
-       and type ('a, 'f) checked := ('a, 'f) Types.Checked.t
 end
 
 module type Extended = sig
@@ -36,19 +28,15 @@ module Make
                     and type 'f field := 'f Checked.field
                     and type ('a, 'f) Provider.t =
                      ('a, 'f) Checked.Types.Provider.t) :
-  S with module Types = Checked.Types = struct
+  S with module Types = Checked.Types and type 'f field = 'f Checked.field =
+struct
   module Types = Checked.Types
 
-  module New_As_prover = struct
-    type ('a, 'f) t = ('a, 'f) Types.As_prover.t
+  type ('a, 'f) t = ('a, 'f) Types.As_prover.t
 
-    type 'f field = 'f Checked.field
+  type 'f field = 'f Checked.field
 
-    include As_prover
-  end
-
-  include New_As_prover
-  module Ref = As_prover_ref.Make (Checked) (New_As_prover)
+  include As_prover
 end
 
 module T : S with module Types = Checked_ast.Types and type 'f field := 'f =

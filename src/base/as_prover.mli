@@ -5,12 +5,6 @@ module type S = sig
     As_prover_intf.Basic
       with type ('a, 'f) t = ('a, 'f) Types.As_prover.t
        and type ('a, 'f) Provider.t = ('a, 'f) Types.Provider.t
-
-  module Ref :
-    As_prover_ref.S
-      with module Types := Types
-       and type 'f field := 'f field
-       and type ('a, 'f) checked := ('a, 'f) Types.Checked.t
 end
 
 module type Extended = sig
