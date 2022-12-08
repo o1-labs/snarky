@@ -1,30 +1,18 @@
 open Core_kernel
-open As_prover_intf
-
-module Ref0 = struct
-  type 'a t = 'a option ref
-end
 
 module type S = sig
   module Types : Types.Types
 
   include
-    Basic
+    As_prover_intf.Basic
       with type ('a, 'f) t = ('a, 'f) Types.As_prover.t
        and type ('a, 'f) Provider.t = ('a, 'f) Types.Provider.t
 
-  module Ref : sig
-    type 'a t = 'a Ref0.t
-
-    val create :
-      ('a, 'f field) Types.As_prover.t -> ('a t, 'f field) Types.Checked.t
-
-    val get : 'a t -> ('a, 'f field) Types.As_prover.t
-
-    val set : 'a t -> 'a -> (unit, 'f field) Types.As_prover.t
-
-    val typ : ('a t, 'a, 'f field) Types.Typ.t
-  end
+  module Ref :
+    As_prover_ref.S
+      with module Types := Types
+       and type 'f field := 'f field
+       and type ('a, 'f) checked := ('a, 'f) Types.Checked.t
 end
 
 module type Extended = sig
@@ -43,44 +31,27 @@ end
 
 module Make
     (Checked : Checked_intf.S)
-    (As_prover : Basic
+    (As_prover : As_prover_intf.Basic
                    with type ('a, 'f) t := ('a, 'f) Checked.Types.As_prover.t
                     and type 'f field := 'f Checked.field
                     and type ('a, 'f) Provider.t =
-                     ('a, 'f) Checked.Types.Provider.t) =
-struct
+                     ('a, 'f) Checked.Types.Provider.t) :
+  S with module Types = Checked.Types = struct
   module Types = Checked.Types
 
-  type ('a, 'f) t = ('a, 'f) Types.As_prover.t
+  module New_As_prover = struct
+    type ('a, 'f) t = ('a, 'f) Types.As_prover.t
 
-  type 'f field = 'f Checked.field
+    type 'f field = 'f Checked.field
 
-  include As_prover
-
-  module Ref = struct
-    type 'a t = 'a Ref0.t
-
-    let create (x : ('a, 'field) Types.As_prover.t) : ('a t, 'field) Checked.t =
-      let r = ref None in
-      let open Checked in
-      let%map () =
-        Checked.as_prover (As_prover.map x ~f:(fun x -> r := Some x))
-      in
-      r
-
-    let get (r : 'a t) =
-      let%map () = As_prover.return () in
-      Option.value_exn !r
-
-    let set (r : 'a t) x =
-      let%map () = As_prover.return () in
-      r := Some x
-
-    include As_prover_ref.Make_ref_typ (Checked)
+    include As_prover
   end
+
+  include New_As_prover
+  module Ref = As_prover_ref.Make (Checked) (New_As_prover)
 end
 
-module T : S with module Types = Checked_ast.Types with type 'f field := 'f =
+module T : S with module Types = Checked_ast.Types and type 'f field := 'f =
   Make (Checked_ast) (As_prover0)
 
 include T
