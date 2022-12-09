@@ -29,8 +29,6 @@ module type S = sig
   val get : 'a t -> ('a, 'f field) Types.As_prover.t
 
   val set : 'a t -> 'a -> (unit, 'f field) Types.As_prover.t
-
-  val typ : ('a t, 'a, 'b) Types.Typ.t
 end
 
 module Make
@@ -68,6 +66,4 @@ module Make
   let set (r : 'a t) x =
     let%map () = As_prover.return () in
     r := Some x
-
-  include Make_ref_typ (Checked)
 end
