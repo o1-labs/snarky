@@ -1,5 +1,4 @@
 open Core_kernel
-module Types0 = Types
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked_ast
