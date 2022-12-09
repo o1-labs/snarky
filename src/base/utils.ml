@@ -41,7 +41,7 @@ struct
      In particular, [r] is [1] if [z = 0] and [0] otherwise.
   *)
   let equal_vars (z : Cvar.t) : (Field.t * Field.t) As_prover.t =
-    let open As_prover in
+    let open As_prover.Let_syntax in
     let%map z = As_prover.read_var z in
     if Field.equal z Field.zero then (Field.one, Field.zero)
     else (Field.zero, Field.inv z)

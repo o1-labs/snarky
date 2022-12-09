@@ -16,6 +16,10 @@ module Make_basic
     (As_prover : As_prover.Extended
                    with module Types := Checked.Types
                    with type field := Backend.Field.t)
+    (Ref : As_prover_ref.S
+             with module Types := Checked.Types
+              and type 'f field := Backend.Field.t
+              and type ('a, 'f) checked := 'a Checked.t)
     (Runner : Runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
@@ -56,6 +60,8 @@ struct
     include As_prover
 
     type 'a as_prover = 'a t
+
+    module Ref = Ref
   end
 
   module Handle = struct
@@ -997,6 +1003,8 @@ struct
   end
 end
 
+(** The main functor for the monadic interface. 
+    See [Run.Make] for the same thing but for the *)
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
   module Runner0 = Runner.Make (Backend_extended)
@@ -1004,12 +1012,12 @@ module Make (Backend : Backend_intf.S) = struct
   module Checked1 = Checked.Make (Checked_runner) (As_prover)
   module As_proverTemp = As_prover.Make (Checked1) (As_prover0)
 
-  module Field_temp = struct
+  module Field_T = struct
     type field = Backend_extended.Field.t
   end
 
-  module As_prover0 =
-    As_prover.Make_extended (Field_temp) (Checked1) (As_proverTemp)
+  module As_prover_ext =
+    As_prover.Make_extended (Field_T) (Checked1) (As_proverTemp)
 
   module Ref :
     As_prover_ref.S
@@ -1017,41 +1025,6 @@ module Make (Backend : Backend_intf.S) = struct
        and type ('a, 'f) checked := ('a, 'f) Checked1.t
        and type 'f field := Backend_extended.Field.t =
     As_prover_ref.Make (Checked1) (As_proverTemp)
-
-  (* module Ref1 =
-     As_prover_ref.Make_extended
-       (struct
-         type 'f field = field
-       end)
-       (Ref) *)
-
-  module type Thing = sig
-    module Types : Types.Types
-
-    include
-      As_prover_intf.Basic
-        with type ('a, 'f) t = ('a, 'f) Types.As_prover.t
-         and type ('a, 'f) Provider.t = ('a, 'f) Types.Provider.t
-
-    module Ref : sig
-      type 'a t = 'a As_prover_ref.t
-
-      val create :
-        ('a, 'f field) Types.As_prover.t -> ('a t, 'f field) Types.Checked.t
-
-      val get : 'a t -> ('a, 'f field) Types.As_prover.t
-
-      val set : 'a t -> 'a -> (unit, 'f field) Types.As_prover.t
-
-      val typ : ('a t, 'a, 'f field) Types.Typ.t
-    end
-  end
-
-  module As_prover1 : Thing with type 'f field := Backend_extended.Field.t =
-  struct
-    include As_prover1
-    module Ref = Ref
-  end
 
   module Checked_for_basic = struct
     include (
@@ -1069,7 +1042,8 @@ module Make (Backend : Backend_intf.S) = struct
   end
 
   module Basic =
-    Make_basic (Backend_extended) (Checked_for_basic) (As_prover1) (Runner0)
+    Make_basic (Backend_extended) (Checked_for_basic) (As_prover_ext) (Ref)
+      (Runner0)
   include Basic
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
@@ -1524,7 +1498,7 @@ module Run = struct
       include Field.Constant.T
 
       module Ref = struct
-        type 'a t = 'a As_prover.Ref.t
+        type 'a t = 'a As_prover_ref.t
 
         let create f = run As_prover.(Ref.create (map (return ()) ~f))
 

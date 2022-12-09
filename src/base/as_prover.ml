@@ -21,6 +21,7 @@ module type Extended = sig
   type 'a t = ('a, field) Types.As_prover.t
 end
 
+(* TODO: this functor doesn't do anything anymore no? *)
 module Make
     (Checked : Checked_intf.S)
     (As_prover : As_prover_intf.Basic
