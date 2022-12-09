@@ -109,7 +109,6 @@ struct
 
   open Constraint
   open Backend
-  open Checked_ast
 
   let get_value (t : Field.t Run_state.t) : Cvar.t -> Field.t =
     let get_one i = Run_state.get_variable_value t i in
