@@ -86,7 +86,7 @@ module type Extended = sig
 
   include As_prover_intf.Basic with type 'f field := field
 
-  type 'a t = ('a, field) As_prover0.t
+  type nonrec 'a t = ('a, field) t
 end
 
 module Make_extended (Env : sig
@@ -97,5 +97,5 @@ struct
   include Env
   include As_prover
 
-  type 'a t = ('a, field) As_prover0.t
+  type nonrec 'a t = ('a, field) t
 end

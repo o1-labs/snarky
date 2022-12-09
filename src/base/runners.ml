@@ -4,7 +4,7 @@ module Types0 = Types
 module Make
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-    (As_prover : As_prover.Extended with type field := Backend.Field.t)
+    (As_prover : As_prover0.Extended with type field := Backend.Field.t)
     (Runner : Checked_runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
