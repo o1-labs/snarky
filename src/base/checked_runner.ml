@@ -25,7 +25,7 @@ module Simple = struct
       include Types.Provider.T
 
       type ('a, 'f) t =
-        (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
+        (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
     end
   end
 
@@ -68,7 +68,7 @@ end
 
 module Make_checked
     (Backend : Backend_extended.S)
-    (As_prover : As_prover.S with type 'f field := Backend.Field.t) =
+    (As_prover : As_prover_intf.Basic with type 'f field := Backend.Field.t) =
 struct
   type run_state = Backend.Field.t Run_state.t
 
@@ -340,7 +340,7 @@ module Make (Backend : Backend_extended.S) = struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  module Checked_runner = Make_checked (Backend) (As_prover)
+  module Checked_runner = Make_checked (Backend) (As_prover0)
 
   type run_state = Checked_runner.run_state
 

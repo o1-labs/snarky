@@ -12,9 +12,7 @@ let set_eval_constraints b = Runner.eval_constraints := b
 module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-    (As_prover : As_prover.Extended
-                   with module Types := Checked.Types
-                   with type field := Backend.Field.t)
+    (As_prover : As_prover.Extended with type field := Backend.Field.t)
     (Ref : As_prover_ref.S
              with module Types := Checked.Types
               and type 'f field := Backend.Field.t
@@ -1008,14 +1006,13 @@ module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
   module Runner0 = Runner.Make (Backend_extended)
   module Checked_runner = Runner0.Checked_runner
-  module Checked1 = Checked.Make (Checked_runner) (As_prover)
+  module Checked1 = Checked.Make (Checked_runner) (As_prover0)
 
   module Field_T = struct
     type field = Backend_extended.Field.t
   end
 
-  module As_prover_ext =
-    As_prover.Make_extended (Field_T) (Checked1) (As_prover0)
+  module As_prover_ext = As_prover.Make_extended (Field_T) (As_prover0)
 
   module Ref :
     As_prover_ref.S

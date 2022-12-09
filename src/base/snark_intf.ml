@@ -3,7 +3,6 @@ open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
 module Typ0 = Typ
-module As_prover0 = As_prover
 
 module type Boolean_intf = sig
   type field_var
