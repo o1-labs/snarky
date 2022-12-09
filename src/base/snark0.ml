@@ -24,8 +24,14 @@ module Make_basic
                  and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend
+
+  (* Unextend Checked. (TODO:why?) *)
   module Checked_S = Checked_intf.Unextend (Checked)
+
+  (* Create high-level API functions. *)
   include Runners.Make (Backend) (Checked) (As_prover) (Runner)
+
+  (* no-op *)
   module Bigint = Bigint
   module Field0 = Field
   module Cvar = Cvar
@@ -997,12 +1003,21 @@ struct
   end
 end
 
+(** The main functor for the monadic interface. 
+    See [Run.Make] for the same thing but for the imperative interface. *)
 module Make (Backend : Backend_intf.S) = struct
+  (* Add helper functions to the backend. *)
   module Backend_extended = Backend_extended.Make (Backend)
+
+  (* Create imperative API. *)
   module Runner0 = Runner.Make (Backend_extended)
+
+  (* Wrap the imperative API to add request/handler support.
+     Also create some R1CS constraint functions. *)
   module Checked_runner = Runner0.Checked_runner
   module Checked1 = Checked.Make (Checked_runner) (As_prover)
 
+  (* Create As_prover.Ref *)
   module As_prover0 =
     As_prover.Make_extended
       (struct
@@ -1011,6 +1026,7 @@ module Make (Backend : Backend_intf.S) = struct
       (Checked1)
       (As_prover.Make (Checked1) (As_prover0))
 
+  (* Type unification. *)
   module Checked_for_basic = struct
     include (
       Checked1 :
@@ -1026,10 +1042,15 @@ module Make (Backend : Backend_intf.S) = struct
     let run = Runner0.run
   end
 
+  (* Create the basic. *)
   module Basic =
     Make_basic (Backend_extended) (Checked_for_basic) (As_prover0) (Runner0)
   include Basic
+
+  (* Number. *)
   module Number = Number.Make (Basic)
+
+  (* Enumerable. *)
   module Enumerable = Enumerable.Make (Basic)
 end
 
