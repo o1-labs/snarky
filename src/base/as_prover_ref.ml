@@ -24,18 +24,17 @@ module type S = sig
 
   type nonrec 'a t = 'a t
 
-  val create : ('a, 'f field) Types.As_prover.t -> ('a t, 'f field) checked
+  val create : ('a, 'f field) As_prover0.t -> ('a t, 'f field) checked
 
-  val get : 'a t -> ('a, 'f field) Types.As_prover.t
+  val get : 'a t -> ('a, 'f field) As_prover0.t
 
-  val set : 'a t -> 'a -> (unit, 'f field) Types.As_prover.t
+  val set : 'a t -> 'a -> (unit, 'f field) As_prover0.t
 end
 
 module Make
     (Checked : Checked_intf.S)
     (As_prover : As_prover_intf.Basic
-                   with type ('a, 'f) t = ('a, 'f) Checked.Types.As_prover.t
-                    and type 'f field := 'f Checked.field
+                   with type 'f field := 'f Checked.field
                     and type ('a, 'f) Provider.t =
                      ('a, 'f) Checked.Types.Provider.t) :
   S

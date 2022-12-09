@@ -91,10 +91,6 @@ module Types = struct
     type ('a, 'f) t = ('a, 'f) Checked0.t
   end
 
-  module As_prover = struct
-    type ('a, 'f) t = ('a, 'f) As_prover0.t
-  end
-
   module Typ = struct
     include Types.Typ.T
 

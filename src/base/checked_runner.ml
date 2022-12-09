@@ -15,10 +15,6 @@ module Simple = struct
         | Function of ('f Run_state.t -> 'f Run_state.t * 'a)
     end
 
-    module As_prover = struct
-      type ('a, 'f) t = ('a, 'f) As_prover.t
-    end
-
     module Typ = struct
       include Types.Typ.T
 
@@ -79,10 +75,6 @@ struct
   module Types = struct
     module Checked = struct
       type ('a, 'f) t = ('a, Backend.Field.t) Simple.Types.Checked.t
-    end
-
-    module As_prover = struct
-      type ('a, 'f) t = ('a, 'f) As_prover.t
     end
 
     module Typ = struct
@@ -332,7 +324,7 @@ module type Run_extras = sig
   val get_value : field Run_state.t -> cvar -> field
 
   val run_as_prover :
-       ('a, field) Types.As_prover.t option
+       ('a, field) As_prover0.t option
     -> field Run_state.t
     -> field Run_state.t * 'a option
 end
