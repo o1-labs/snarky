@@ -1009,21 +1009,20 @@ module Make (Backend : Backend_intf.S) = struct
   module Runner0 = Runner.Make (Backend_extended)
   module Checked_runner = Runner0.Checked_runner
   module Checked1 = Checked.Make (Checked_runner) (As_prover)
-  module As_proverTemp = As_prover.Make (Checked1) (As_prover0)
 
   module Field_T = struct
     type field = Backend_extended.Field.t
   end
 
   module As_prover_ext =
-    As_prover.Make_extended (Field_T) (Checked1) (As_proverTemp)
+    As_prover.Make_extended (Field_T) (Checked1) (As_prover0)
 
   module Ref :
     As_prover_ref.S
       with module Types = Checked1.Types
        and type ('a, 'f) checked := ('a, 'f) Checked1.t
        and type 'f field := Backend_extended.Field.t =
-    As_prover_ref.Make (Checked1) (As_proverTemp)
+    As_prover_ref.Make (Checked1) (As_prover0)
 
   module Checked_for_basic = struct
     include (
