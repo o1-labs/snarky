@@ -1001,7 +1001,7 @@ struct
 end
 
 (** The main functor for the monadic interface. 
-    See [Run.Make] for the same thing but for the *)
+    See [Run.Make] for the same thing but for the imperative interface. *)
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
   module Runner0 = Runner.Make (Backend_extended)
