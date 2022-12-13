@@ -4,7 +4,7 @@ module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked_ast
 
-exception Runtime_error = Ast_runner.Runtime_error
+exception Runtime_error of string list * exn * string
 
 module Runner = Checked_runner
 
