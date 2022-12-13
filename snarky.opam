@@ -23,7 +23,6 @@ depends: [
   "bignum"
   "base64"
   "yojson" {>= "1.7.0" & < "1.8.0"}
-  "ppx_snarky"
   "ppx_jane" {>= "v0.14"}
   "ppx_deriving" {>= "5.0"}
   "bisect_ppx" {>= "2.0.0"}
