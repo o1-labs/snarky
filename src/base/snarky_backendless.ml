@@ -6,7 +6,6 @@ module Backend_intf = Backend_intf
 module Bigint_intf = Snarky_intf.Bigint_intf
 module Bin_prot_io = Bin_prot_io
 module Boolean = Boolean
-module Checked_ast = Checked_ast
 module Checked_intf = Checked_intf
 module Checked_runner = Checked_runner
 module Constraint = Constraint
