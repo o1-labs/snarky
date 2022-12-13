@@ -164,9 +164,10 @@ struct
               let%bind y_inv = inv y in
               mul x y_inv )
 
-    let%snarkydef_ if_ (b : Cvar.t Boolean.t) ~(then_ : Cvar.t) ~(else_ : Cvar.t)
-        =
+    let if_ (b : Cvar.t Boolean.t) ~(then_ : Cvar.t) ~(else_ : Cvar.t) =
       let open Let_syntax in
+      let label = Stdlib.("if_: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__) in
+      let%bind () = with_label label (fun _ -> return ()) in
       (* r = e + b (t - e)
          r - e = b (t - e)
       *)
@@ -193,8 +194,12 @@ struct
               in
               r )
 
-    let%snarkydef_ assert_non_zero (v : Cvar.t) =
+    let assert_non_zero (v : Cvar.t) =
       let open Let_syntax in
+      let label =
+        Stdlib.("assert_non_zero: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__)
+      in
+      let%bind () = with_label label (fun _ -> return ()) in
       let%map _ = inv v in
       ()
 
@@ -415,15 +420,27 @@ struct
 
         let is_true (v : var) = v = true_
 
-        let%snarkydef_ any (bs : var list) =
+        let any (bs : var list) =
+          let label =
+            Stdlib.("any: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__)
+          in
+          let%bind () = with_label label (fun _ -> return ()) in
           assert_non_zero (Cvar.sum (bs :> Cvar.t list))
 
-        let%snarkydef_ all (bs : var list) =
+        let all (bs : var list) =
+          let label =
+            Stdlib.("all: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__)
+          in
+          let%bind () = with_label label (fun _ -> return ()) in
           assert_equal
             (Cvar.sum (bs :> Cvar.t list))
             (Cvar.constant (Field.of_int (List.length bs)))
 
-        let%snarkydef_ exactly_one (bs : var list) =
+        let exactly_one (bs : var list) =
+          let label =
+            Stdlib.("exactly_one: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__)
+          in
+          let%bind () = with_label label (fun _ -> return ()) in
           assert_equal (Cvar.sum (bs :> Cvar.t list)) (Cvar.constant Field.one)
       end
 
@@ -719,21 +736,22 @@ struct
         assert (Int.(bit_length <= size_in_bits - 2)) ;
         let open Checked in
         let open Let_syntax in
-        [%with_label_ "compare"] (fun () ->
-            let alpha_packed =
-              Cvar.(constant (two_to_the bit_length) + b - a)
-            in
-            let%bind alpha = unpack alpha_packed ~length:Int.(bit_length + 1) in
-            let prefix, less_or_equal =
-              match Core_kernel.List.split_n alpha bit_length with
-              | p, [ l ] ->
-                  (p, l)
-              | _ ->
-                  failwith "compare: Invalid alpha"
-            in
-            let%bind not_all_zeros = Boolean.any prefix in
-            let%map less = Boolean.(less_or_equal && not_all_zeros) in
-            { less; less_or_equal } )
+        let label =
+          Stdlib.("compare: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__)
+        in
+        let%bind () = with_label label (fun _ -> return ()) in
+        let alpha_packed = Cvar.(constant (two_to_the bit_length) + b - a) in
+        let%bind alpha = unpack alpha_packed ~length:Int.(bit_length + 1) in
+        let prefix, less_or_equal =
+          match Core_kernel.List.split_n alpha bit_length with
+          | p, [ l ] ->
+              (p, l)
+          | _ ->
+              failwith "compare: Invalid alpha"
+        in
+        let%bind not_all_zeros = Boolean.any prefix in
+        let%map less = Boolean.(less_or_equal && not_all_zeros) in
+        { less; less_or_equal }
 
       module Assert = struct
         let lt ~bit_length x y =
@@ -949,8 +967,10 @@ struct
 
   include Checked
 
-  let%snarkydef_ if_ (b : Boolean.var) ~typ:(Typ typ : ('var, _) Typ.t)
-      ~(then_ : 'var) ~(else_ : 'var) =
+  let if_ (b : Boolean.var) ~typ:(Typ typ : ('var, _) Typ.t) ~(then_ : 'var)
+      ~(else_ : 'var) =
+    let label = Stdlib.("if_: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__) in
+    let%bind () = with_label label (fun _ -> return ()) in
     let then_, then_aux = typ.var_to_fields then_ in
     let else_, else_aux = typ.var_to_fields else_ in
     let%bind res =

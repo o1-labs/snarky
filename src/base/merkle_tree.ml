@@ -412,9 +412,14 @@ struct
     | Set : Address.value * Elt.value -> unit Request.t
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef_ fetch_and_update_req ~(depth : int) root addr0 ~f :
+  let fetch_and_update_req ~(depth : int) root addr0 ~f :
       (Hash.var * [ `Old of Elt.var ] * [ `New of Elt.var ]) Checked.t =
     let open Let_syntax in
+    let label =
+      Stdlib.(
+        "fetch_and_update_req: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__)
+    in
+    let%bind () = with_label label (fun _ -> return ()) in
     let%bind prev, prev_path =
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
@@ -439,13 +444,21 @@ struct
     (new_root, `Old prev, `New next)
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef_ modify_req ~(depth : int) root addr0 ~f : Hash.var Checked.t =
+  let modify_req ~(depth : int) root addr0 ~f : Hash.var Checked.t =
+    let label =
+      Stdlib.("modify_req: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__)
+    in
+    let%bind () = with_label label (fun _ -> Checked.return ()) in
     let%map root, _, _ = fetch_and_update_req ~depth root addr0 ~f in
     root
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef_ get_req ~(depth : int) root addr0 : Elt.var Checked.t =
+  let get_req ~(depth : int) root addr0 : Elt.var Checked.t =
     let open Let_syntax in
+    let label =
+      Stdlib.("get_req: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__)
+    in
+    let%bind () = with_label label (fun _ -> return ()) in
     let%bind prev, prev_path =
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
@@ -459,9 +472,12 @@ struct
     return prev
 
   (* addr0 should have least significant bit first *)
-  let%snarkydef_ update_req ~(depth : int) ~root ~prev ~next addr0 :
-      Hash.var Checked.t =
+  let update_req ~(depth : int) ~root ~prev ~next addr0 : Hash.var Checked.t =
     let open Let_syntax in
+    let label =
+      Stdlib.("update_req: " ^ __FILE__ ^ ":" ^ string_of_int __LINE__)
+    in
+    let%bind () = with_label label (fun _ -> return ()) in
     let%bind prev_entry_hash = Elt.hash prev
     and next_entry_hash = Elt.hash next
     and prev_path =
