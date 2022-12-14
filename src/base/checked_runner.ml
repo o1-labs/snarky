@@ -66,6 +66,17 @@ module Simple = struct
   end)
 end
 
+let with_label lab t : _ Simple.t =
+  Function
+    (fun s ->
+      let stack = Run_state.stack s in
+      Option.iter (Run_state.log_constraint s) ~f:(fun f ->
+          f ~at_label_boundary:(`Start, lab) None ) ;
+      let s', y = Simple.eval (t ()) (Run_state.set_stack s (lab :: stack)) in
+      Option.iter (Run_state.log_constraint s) ~f:(fun f ->
+          f ~at_label_boundary:(`End, lab) None ) ;
+      (Run_state.set_stack s' stack, y) )
+
 module Make_checked
     (Backend : Backend_extended.S)
     (As_prover : As_prover_intf.Basic with type 'f field := Backend.Field.t) =
@@ -159,16 +170,7 @@ struct
               in
               y ) ) )
 
-  let with_label lab t : _ Simple.t =
-    Function
-      (fun s ->
-        let stack = Run_state.stack s in
-        Option.iter (Run_state.log_constraint s) ~f:(fun f ->
-            f ~at_label_boundary:(`Start, lab) None ) ;
-        let s', y = Simple.eval (t ()) (Run_state.set_stack s (lab :: stack)) in
-        Option.iter (Run_state.log_constraint s) ~f:(fun f ->
-            f ~at_label_boundary:(`End, lab) None ) ;
-        (Run_state.set_stack s' stack, y) )
+  let with_label = with_label
 
   let log_constraint { basic; _ } s =
     match basic with
