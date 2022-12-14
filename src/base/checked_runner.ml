@@ -66,16 +66,32 @@ module Simple = struct
   end)
 end
 
-let with_label lab t : _ Simple.t =
-  Function
-    (fun s ->
-      let stack = Run_state.stack s in
-      Option.iter (Run_state.log_constraint s) ~f:(fun f ->
-          f ~at_label_boundary:(`Start, lab) None ) ;
-      let s', y = Simple.eval (t ()) (Run_state.set_stack s (lab :: stack)) in
-      Option.iter (Run_state.log_constraint s) ~f:(fun f ->
-          f ~at_label_boundary:(`End, lab) None ) ;
-      (Run_state.set_stack s' stack, y) )
+(** Wraps the execution of a part of the circuit with a label (for debugging). *)
+let with_label (lab : string) (t : unit -> ('a, 'b) Simple.t) :
+    ('a, 'b) Simple.t =
+  let func state =
+    (* get stack *)
+    let stack = Run_state.stack state in
+
+    (* log the start of the labeled block *)
+    Option.iter (Run_state.log_constraint state) ~f:(fun f ->
+        f ~at_label_boundary:(`Start, lab) None ) ;
+
+    (* add label to the stack *)
+    let state_with_label = Run_state.set_stack state (lab :: stack) in
+
+    (* evaluate [t] on the state *)
+    let new_state_with_label, y = Simple.eval (t ()) state_with_label in
+
+    (* log the end of the labeled block *)
+    Option.iter (Run_state.log_constraint state) ~f:(fun f ->
+        f ~at_label_boundary:(`End, lab) None ) ;
+
+    (* pop/reset the stack and return the state *)
+    let new_state = Run_state.set_stack new_state_with_label stack in
+    (new_state, y)
+  in
+  Function func
 
 module Make_checked
     (Backend : Backend_extended.S)
