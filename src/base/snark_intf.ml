@@ -1414,8 +1414,6 @@ module type Run_basic = sig
 
   val in_prover : unit -> bool
 
-  val in_checked_computation : unit -> bool
-
   (** Return a constraint system constant representing the given value. *)
   val constant : ('var, 'value) Typ.t -> 'value -> 'var
 

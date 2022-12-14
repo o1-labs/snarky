@@ -1070,9 +1070,6 @@ module Run = struct
 
     let in_prover () : bool = Run_state.has_witness !state
 
-    let in_checked_computation () : bool =
-      is_active_functor_id this_functor_id && Run_state.is_running !state
-
     let run (checked : _ Checked.t) =
       match checked with
       | Pure a ->
