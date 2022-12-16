@@ -4,7 +4,7 @@ module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked_ast
 
-exception Runtime_error = Ast_runner.Runtime_error
+exception Runtime_error of string list * exn * string
 
 module Runner = Checked_runner
 
@@ -733,17 +733,27 @@ struct
             { less; less_or_equal } )
 
       module Assert = struct
-        let lt ~bit_length x y =
-          let open Checked in
-          let open Let_syntax in
-          let%bind { less; _ } = compare ~bit_length x y in
-          Boolean.Assert.is_true less
+        let lt ~bit_length (x : Cvar.t) (y : Cvar.t) =
+          match (x, y) with
+          | Constant x, Constant y ->
+              assert (Field.compare x y < 0) ;
+              Checked.return ()
+          | _ ->
+              let open Checked in
+              let open Let_syntax in
+              let%bind { less; _ } = compare ~bit_length x y in
+              Boolean.Assert.is_true less
 
-        let lte ~bit_length x y =
-          let open Checked in
-          let open Let_syntax in
-          let%bind { less_or_equal; _ } = compare ~bit_length x y in
-          Boolean.Assert.is_true less_or_equal
+        let lte ~bit_length (x : Cvar.t) (y : Cvar.t) =
+          match (x, y) with
+          | Constant x, Constant y ->
+              assert (Field.compare x y <= 0) ;
+              Checked.return ()
+          | _ ->
+              let open Checked in
+              let open Let_syntax in
+              let%bind { less_or_equal; _ } = compare ~bit_length x y in
+              Boolean.Assert.is_true less_or_equal
 
         let gt ~bit_length x y = lt ~bit_length y x
 

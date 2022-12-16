@@ -1,7 +1,7 @@
 open Core_kernel
 module Constraint0 = Constraint
 
-let stack_to_string = Ast_runner.stack_to_string
+let stack_to_string = String.concat ~sep:"\n"
 
 let eval_constraints = ref true
 
@@ -372,7 +372,6 @@ module Make (Backend : Backend_extended.S) = struct
       end )
 
   module Types = Checked_ast.Types
-  include Ast_runner.Make_runner (Checked_runner)
 
   let run = Simple.eval
 
