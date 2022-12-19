@@ -23,7 +23,7 @@ module Make_basic
 struct
   open Backend
   module Checked_S = Checked_intf.Unextend (Checked)
-  include Runners.Make (Backend) (Checked) (As_prover) (Runner)
+  include Api.Make (Backend) (Checked) (As_prover) (Runner)
   module Bigint = Bigint
   module Field0 = Field
   module Cvar = Cvar
