@@ -4,9 +4,7 @@ module Bignum_bigint = Bigint
 
 exception Runtime_error of string list * exn * string
 
-module Runner = Checked_runner
-
-let set_eval_constraints b = Runner.eval_constraints := b
+let set_eval_constraints b = Checked_runner.eval_constraints := b
 
 module Make_basic
     (Backend : Backend_extended.S)
@@ -16,7 +14,7 @@ module Make_basic
              with module Types := Checked.Types
               and type 'f field := Backend.Field.t
               and type ('a, 'f) checked := 'a Checked.t)
-    (Runner : Runner.S
+    (Runner : Checked_runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
@@ -1003,7 +1001,7 @@ end
     See [Run.Make] for the same thing but for the *)
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
-  module Runner0 = Runner.Make (Backend_extended)
+  module Runner0 = Checked_runner.Make (Backend_extended)
   module Checked_runner = Runner0.Checked_runner
   module Checked1 = Checked.Make (Checked_runner) (As_prover0)
 
