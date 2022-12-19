@@ -1000,33 +1000,38 @@ end
 (** The main functor for the monadic interface. 
     See [Run.Make] for the same thing but for the *)
 module Make (Backend : Backend_intf.S) = struct
-  module Backend_extended = Backend_extended.Make (Backend)
-  module Runner0 = Checked_runner.Make (Backend_extended)
+  (* extend the backend *)
+  module Backend_ext = Backend_extended.Make (Backend)
+
+  (* create Checked AND the runner from the backend *)
+  module Runner0 = Checked_runner.Make (Backend_ext)
   module Checked_runner = Runner0.Checked_runner
-  module Checked1 = Checked.Make (Checked_runner) (As_prover0)
+
+  (* extend checked *)
+  module Checked_ext = Checked.Make (Checked_runner) (As_prover0)
 
   module Field_T = struct
-    type field = Backend_extended.Field.t
+    type field = Backend_ext.Field.t
   end
 
   module As_prover_ext = As_prover.Make_extended (Field_T) (As_prover0)
 
   module Ref :
     As_prover_ref.S
-      with module Types = Checked1.Types
-       and type ('a, 'f) checked := ('a, 'f) Checked1.t
-       and type 'f field := Backend_extended.Field.t =
-    As_prover_ref.Make (Checked1) (As_prover0)
+      with module Types = Checked_ext.Types
+       and type ('a, 'f) checked := ('a, 'f) Checked_ext.t
+       and type 'f field := Backend_ext.Field.t =
+    As_prover_ref.Make (Checked_ext) (As_prover0)
 
   module Checked_for_basic = struct
     include (
-      Checked1 :
+      Checked_ext :
         Checked_intf.S
-          with module Types = Checked1.Types
-          with type ('a, 'f) t := ('a, 'f) Checked1.t
-           and type 'f field := Backend_extended.Field.t )
+          with module Types = Checked_ext.Types
+          with type ('a, 'f) t := ('a, 'f) Checked_ext.t
+           and type 'f field := Backend_ext.Field.t )
 
-    type field = Backend_extended.Field.t
+    type field = Backend_ext.Field.t
 
     type 'a t = ('a, field) Types.Checked.t
 
@@ -1034,8 +1039,7 @@ module Make (Backend : Backend_intf.S) = struct
   end
 
   module Basic =
-    Make_basic (Backend_extended) (Checked_for_basic) (As_prover_ext) (Ref)
-      (Runner0)
+    Make_basic (Backend_ext) (Checked_for_basic) (As_prover_ext) (Ref) (Runner0)
   include Basic
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
