@@ -107,12 +107,10 @@ struct
     let return = Simple.return
   end)
 
-  open Constraint
-  open Backend
-
-  let get_value (t : Field.t Run_state.t) : Cvar.t -> Field.t =
+  let get_value (t : Backend.Field.t Run_state.t) :
+      Backend.Cvar.t -> Backend.Field.t =
     let get_one i = Run_state.get_variable_value t i in
-    Cvar.eval (`Return_values_will_be_mutated get_one)
+    Backend.Cvar.eval (`Return_values_will_be_mutated get_one)
 
   let run_as_prover x state =
     match (x, Run_state.has_witness state) with
@@ -170,33 +168,36 @@ struct
             f ~at_label_boundary:(`End, lab) None ) ;
         (Run_state.set_stack s' stack, y) )
 
-  let log_constraint { basic; _ } s =
+  let log_constraint { Constraint.basic; _ } s =
+    let open Constraint in
     match basic with
     | Boolean var ->
-        Format.(asprintf "Boolean %s" (Field.to_string (get_value s var)))
+        Format.(
+          asprintf "Boolean %s" (Backend.Field.to_string (get_value s var)))
     | Equal (var1, var2) ->
         Format.(
           asprintf "Equal %s %s"
-            (Field.to_string (get_value s var1))
-            (Field.to_string (get_value s var2)))
+            (Backend.Field.to_string (get_value s var1))
+            (Backend.Field.to_string (get_value s var2)))
     | Square (var1, var2) ->
         Format.(
           asprintf "Square %s %s"
-            (Field.to_string (get_value s var1))
-            (Field.to_string (get_value s var2)))
+            (Backend.Field.to_string (get_value s var1))
+            (Backend.Field.to_string (get_value s var2)))
     | R1CS (var1, var2, var3) ->
         Format.(
           asprintf "R1CS %s %s %s"
-            (Field.to_string (get_value s var1))
-            (Field.to_string (get_value s var2))
-            (Field.to_string (get_value s var3)))
+            (Backend.Field.to_string (get_value s var1))
+            (Backend.Field.to_string (get_value s var2))
+            (Backend.Field.to_string (get_value s var3)))
     | _ ->
         Format.asprintf
-          !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
+          !"%{sexp:(Backend.Field.t, Backend.Field.t) Constraint0.basic}"
           (Constraint0.Basic.map basic ~f:(get_value s))
 
-  let add_constraint ~stack ({ basic; annotation } : Constraint.t)
-      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
+  let add_constraint ~stack ({ basic; annotation } : Backend.Constraint.t)
+      (Constraint_system.T ((module C), system) :
+        Backend.Field.t Constraint_system.t ) =
     let label = Option.value annotation ~default:"<unknown>" in
     C.add_constraint system basic ~label:(stack_to_string (label :: stack))
 
@@ -210,7 +211,7 @@ struct
           Option.iter (Run_state.log_constraint s) ~f:(fun f -> f (Some c)) ;
           if
             Run_state.eval_constraints s
-            && not (Constraint.eval c (get_value s))
+            && not (Backend.Constraint.eval c (get_value s))
           then
             failwithf
               "Constraint unsatisfied (unreduced):\n\
@@ -220,9 +221,9 @@ struct
                %s\n\
                Data:\n\
                %s"
-              (Constraint.annotation c)
+              (Backend.Constraint.annotation c)
               (stack_to_string (Run_state.stack s))
-              (Sexp.to_string (Constraint.sexp_of_t c))
+              (Sexp.to_string (Backend.Constraint.sexp_of_t c))
               (log_constraint c s) () ;
           if not (Run_state.as_prover s) then
             Option.iter (Run_state.system s) ~f:(fun system ->
@@ -265,7 +266,7 @@ struct
                 (* If we're nested in a prover block, create constants instead of
                    storing.
                 *)
-                Cvar.constant
+                Backend.Cvar.constant
               else Run_state.store_field_elt s
             in
             let fields, aux = value_to_fields value in
