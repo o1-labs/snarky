@@ -461,5 +461,3 @@ module Make (Checked : Checked_monad) = struct
 
   include T
 end
-
-include Make (Checked_runner.Simple)
