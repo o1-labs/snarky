@@ -4,7 +4,7 @@ module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 module Checked_ast = Checked_ast
 
-exception Runtime_error = Ast_runner.Runtime_error
+exception Runtime_error of string list * exn * string
 
 module Runner = Checked_runner
 
@@ -13,7 +13,7 @@ let set_eval_constraints b = Runner.eval_constraints := b
 module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-    (As_prover : As_prover_intf.Extended
+    (As_prover : As_prover.Extended
                    with module Types := Checked.Types
                    with type field := Backend.Field.t)
     (Runner : Runner.S
@@ -37,7 +37,7 @@ struct
 
   module Typ = struct
     include Types.Typ.T
-    module T = Typ.Make (Checked_S) (As_prover)
+    module T = Typ.Make (Checked_S)
     include T.T
 
     type ('var, 'value) t = ('var, 'value, Field.t) T.t
@@ -353,17 +353,27 @@ struct
             { less; less_or_equal } )
 
       module Assert = struct
-        let lt ~bit_length x y =
-          let open Checked in
-          let open Let_syntax in
-          let%bind { less; _ } = compare ~bit_length x y in
-          Boolean.Assert.is_true less
+        let lt ~bit_length (x : Cvar.t) (y : Cvar.t) =
+          match (x, y) with
+          | Constant x, Constant y ->
+              assert (Field.compare x y < 0) ;
+              Checked.return ()
+          | _ ->
+              let open Checked in
+              let open Let_syntax in
+              let%bind { less; _ } = compare ~bit_length x y in
+              Boolean.Assert.is_true less
 
-        let lte ~bit_length x y =
-          let open Checked in
-          let open Let_syntax in
-          let%bind { less_or_equal; _ } = compare ~bit_length x y in
-          Boolean.Assert.is_true less_or_equal
+        let lte ~bit_length (x : Cvar.t) (y : Cvar.t) =
+          match (x, y) with
+          | Constant x, Constant y ->
+              assert (Field.compare x y <= 0) ;
+              Checked.return ()
+          | _ ->
+              let open Checked in
+              let open Let_syntax in
+              let%bind { less_or_equal; _ } = compare ~bit_length x y in
+              Boolean.Assert.is_true less_or_equal
 
         let gt ~bit_length x y = lt ~bit_length y x
 
@@ -592,10 +602,6 @@ struct
     in
     typ.var_of_fields (res, res_aux)
 
-  let make_checked_ast x = x
-
-  let run_checked_ast x = x
-
   module Test = struct
     let checked_to_unchecked typ1 typ2 checked input =
       let checked_result =
@@ -624,22 +630,24 @@ end
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
   module Runner0 = Runner.Make (Backend_extended)
+  module Checked_runner = Runner0.Checked_runner
+  module Checked1 = Checked.Make (Checked_runner) (As_prover)
 
   module As_prover0 =
     As_prover.Make_extended
       (struct
         type field = Backend_extended.Field.t
       end)
-      (Checked_ast)
-      (As_prover.Make (Checked_ast) (As_prover0))
+      (Checked1)
+      (As_prover.Make (Checked1) (As_prover0))
 
   module Checked_for_basic = struct
     include (
-      Checked_ast :
+      Checked1 :
         Checked_intf.S
-          with module Types = Checked_ast.Types
-          with type ('a, 'f) t := ('a, 'f) Checked_ast.t
-           and type 'f field := 'f )
+          with module Types = Checked1.Types
+          with type ('a, 'f) t := ('a, 'f) Checked1.t
+           and type 'f field := Backend_extended.Field.t )
 
     type field = Backend_extended.Field.t
 
@@ -697,8 +705,8 @@ module Run = struct
 
     let run (checked : _ Checked.t) =
       match checked with
-      | Pure x ->
-          x
+      | Pure a ->
+          a
       | _ ->
           if not (is_active_functor_id this_functor_id) then
             failwithf
@@ -719,9 +727,9 @@ module Run = struct
       let a = x () in
       (!state, a)
 
-    let make_checked x = Checked_ast.Direct (as_stateful x, fun x -> Pure x)
-
-    let make_checked_ast = make_checked
+    let make_checked (type a) (f : unit -> a) : _ Checked.t =
+      let g : run_state -> run_state * a = as_stateful f in
+      Function g
 
     module R1CS_constraint_system = Snark.R1CS_constraint_system
 
@@ -1235,33 +1243,48 @@ module Run = struct
       let inject_wrapper ~f x = f x in
       inject_wrapper ~f (x a)
 
-    let constraint_system ~input_typ ~return_typ x =
-      let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.constraint_system ~run:as_stateful ~input_typ ~return_typ x
+    let finalize_is_running f =
+      let x = f () in
+      state := Run_state.set_is_running !state false ;
+      x
 
-    let generate_public_input = generate_public_input
+    let constraint_system ~input_typ ~return_typ x : R1CS_constraint_system.t =
+      finalize_is_running (fun () ->
+          let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
+          Perform.constraint_system ~run:as_stateful ~input_typ ~return_typ x )
 
-    let generate_witness ~input_typ ~return_typ x =
-      let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.generate_witness ~run:as_stateful ~input_typ ~return_typ x
+    let generate_public_input t x : As_prover.Vector.t =
+      finalize_is_running (fun () -> generate_public_input t x)
 
-    let generate_witness_conv ~f ~input_typ ~return_typ x =
-      let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
-      Perform.generate_witness_conv ~run:as_stateful ~f ~input_typ ~return_typ x
+    let generate_witness ~input_typ ~return_typ x a : Proof_inputs.t =
+      finalize_is_running (fun () ->
+          let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
+          Perform.generate_witness ~run:as_stateful ~input_typ ~return_typ x a )
+
+    let generate_witness_conv (type out)
+        ~(f : Proof_inputs.t -> 'r_value -> out) ~input_typ ~return_typ x input
+        : out =
+      finalize_is_running (fun () ->
+          let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
+          Perform.generate_witness_conv ~run:as_stateful ~f ~input_typ
+            ~return_typ x input )
 
     let run_unchecked x =
-      Perform.run_unchecked ~run:as_stateful (fun () -> mark_active ~f:x)
+      finalize_is_running (fun () ->
+          Perform.run_unchecked ~run:as_stateful (fun () -> mark_active ~f:x) )
 
-    let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t) =
-      let res =
-        Perform.run_and_check ~run:as_stateful (fun () ->
-            mark_active ~f:(fun () ->
-                let prover_block = x () in
-                Run_state.set_as_prover !state true ;
-                As_prover.run_prover prover_block ) )
-      in
-      Run_state.set_as_prover !state true ;
-      res
+    let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t) :
+        a Or_error.t =
+      finalize_is_running (fun () ->
+          let res =
+            Perform.run_and_check ~run:as_stateful (fun () ->
+                mark_active ~f:(fun () ->
+                    let prover_block = x () in
+                    Run_state.set_as_prover !state true ;
+                    As_prover.run_prover prover_block ) )
+          in
+          Run_state.set_as_prover !state true ;
+          res )
 
     module Run_and_check_deferred (M : sig
       type _ t
@@ -1285,20 +1308,23 @@ module Run = struct
         state := state' ;
         map (x ()) ~f:(fun a -> (!state, a))
 
-      let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t M.t) =
-        let mark_active = mark_active_deferred ~map in
-        let res =
-          run_and_check ~run:as_stateful (fun () ->
-              mark_active ~f:(fun () ->
-                  map (x ()) ~f:(fun prover_block ->
-                      Run_state.set_as_prover !state true ;
-                      As_prover.run_prover prover_block ) ) )
-        in
-        Run_state.set_as_prover !state true ;
-        res
+      let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t M.t) :
+          a Or_error.t M.t =
+        finalize_is_running (fun () ->
+            let mark_active = mark_active_deferred ~map in
+            let res =
+              run_and_check ~run:as_stateful (fun () ->
+                  mark_active ~f:(fun () ->
+                      map (x ()) ~f:(fun prover_block ->
+                          Run_state.set_as_prover !state true ;
+                          As_prover.run_prover prover_block ) ) )
+            in
+            Run_state.set_as_prover !state true ;
+            res )
     end
 
-    let check x = Perform.check ~run:as_stateful x
+    let check x : unit Or_error.t =
+      finalize_is_running (fun () -> Perform.check ~run:as_stateful x)
 
     let constraint_count ?(weight = Fn.const 1) ?log x =
       let count = ref 0 in
@@ -1327,8 +1353,6 @@ module Run = struct
     module Internal_Basic = Snark
 
     let run_checked = run
-
-    let run_checked_ast x = run_checked x
   end
 
   module Make (Backend : Backend_intf.S) = struct

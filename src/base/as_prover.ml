@@ -1,6 +1,59 @@
 open Core_kernel
 open As_prover_intf
 
+module Ref0 = struct
+  type 'a t = 'a option ref
+end
+
+module type S = sig
+  module Types : Types.Types
+
+  include
+    Basic
+      with type ('a, 'f) t = ('a, 'f) Types.As_prover.t
+       and type ('a, 'f) Provider.t = ('a, 'f) Types.Provider.t
+
+  module Ref : sig
+    type 'a t = 'a Ref0.t
+
+    val create :
+      ('a, 'f field) Types.As_prover.t -> ('a t, 'f field) Types.Checked.t
+
+    val get : 'a t -> ('a, 'f field) Types.As_prover.t
+
+    val set : 'a t -> 'a -> (unit, 'f field) Types.As_prover.t
+
+    val typ : ('a t, 'a, 'f field) Types.Typ.t
+  end
+end
+
+module type Extended = sig
+  type field
+
+  module Types : Types.Types
+
+  include
+    S
+      with module Types := Types
+      with type 'f field := field
+       and type ('a, 'f) t := ('a, 'f) Types.As_prover.t
+
+  type 'a t = ('a, field) Types.As_prover.t
+end
+
+module Make_ref_typ (Checked : Monad_let.S2) = struct
+  let typ : ('a Ref0.t, 'a, _, _) Types.Typ.t =
+    Typ
+      { var_to_fields = (fun x -> ([||], !x))
+      ; var_of_fields = (fun (_, x) -> ref x)
+      ; value_to_fields = (fun x -> ([||], Some x))
+      ; value_of_fields = (fun (_, x) -> Option.value_exn x)
+      ; size_in_field_elements = 0
+      ; constraint_system_auxiliary = (fun () -> None)
+      ; check = (fun _ -> Checked.return ())
+      }
+end
+
 module Make
     (Checked : Checked_intf.S)
     (As_prover : Basic
@@ -18,7 +71,7 @@ struct
   include As_prover
 
   module Ref = struct
-    type 'a t = 'a option ref
+    type 'a t = 'a Ref0.t
 
     let create (x : ('a, 'field) Types.As_prover.t) : ('a t, 'field) Checked.t =
       let r = ref None in
@@ -36,16 +89,7 @@ struct
       let%map () = As_prover.return () in
       r := Some x
 
-    let typ : ('a t, 'a, _) Types.Typ.t =
-      Typ
-        { var_to_fields = (fun x -> ([||], !x))
-        ; var_of_fields = (fun (_, x) -> ref x)
-        ; value_to_fields = (fun x -> ([||], Some x))
-        ; value_of_fields = (fun (_, x) -> Option.value_exn x)
-        ; size_in_field_elements = 0
-        ; constraint_system_auxiliary = (fun () -> None)
-        ; check = (fun _ -> Checked.return ())
-        }
+    include Make_ref_typ (Checked)
   end
 end
 
