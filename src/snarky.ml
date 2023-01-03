@@ -22,7 +22,6 @@ module Monad_let = Snarky_backendless.Monad_let
 module Monad_sequence = Snarky_backendless.Monad_sequence
 module Number = Snarky_backendless.Number
 module Number_intf = Snarky_backendless.Number_intf
-module Pedersen = Snarky_backendless.Pedersen
 module Request = Snarky_backendless.Request
 module Restrict_monad = Snarky_backendless.Restrict_monad
 module Run_state = Snarky_backendless.Run_state
