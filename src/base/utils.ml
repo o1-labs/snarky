@@ -21,7 +21,6 @@ struct
 
   open Runners.Make (Backend) (Checked) (As_prover) (Runner)
 
-  (* module Private = struct *)
   module Typ = struct
     include Types.Typ.T
     module T = Typ.Make (Checked_intf.Unextend (Checked))
@@ -447,14 +446,6 @@ struct
       let all xs = And xs
     end
   end
-  (* end *)
 
-  (* module Boolean = Private.Boolean *)
   module Typ2 = Typ
-
-  (* let equal, mul, square, div, inv = Private.(equal, mul, square, div, inv) *)
-
-  (* let if_, assert_non_zero = Private.(if_, assert_non_zero) *)
-
-  (* let equal_vars, equal_constraints = Private.(equal_vars, equal_constraints) *)
 end
