@@ -22,6 +22,7 @@ module Monad_let = Monad_let
 module Monad_sequence = Monad_sequence
 module Number = Number
 module Number_intf = Number_intf
+module Pedersen = Pedersen
 module Request = Request
 module Restrict_monad = Restrict_monad
 module Run_state = Run_state
