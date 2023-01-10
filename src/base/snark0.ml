@@ -1,7 +1,6 @@
 open Core_kernel
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
-module Checked_ast = Checked_ast
 
 exception Runtime_error of string list * exn * string
 
