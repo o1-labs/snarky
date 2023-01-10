@@ -37,15 +37,6 @@ struct
         with module Types := Checked.Types
         with type field := field )
 
-  let assert_equal ?label x y =
-    match (x, y) with
-    | Cvar0.Constant x, Cvar0.Constant y ->
-        if Field.equal x y then Checked.return ()
-        else
-          failwithf !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}" x y ()
-    | _ ->
-        Checked.assert_equal ?label x y
-
   (* [equal_constraints z z_inv r] asserts that
      if z = 0 then r = 1, or
      if z <> 0 then r = 0 and z * z_inv = 1
