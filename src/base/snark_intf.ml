@@ -559,6 +559,8 @@ module type Basic = sig
     type t
 
     val digest : t -> Md5.t
+
+    val get_rows_len : t -> int
   end
 
   module Bigint : sig
