@@ -559,6 +559,8 @@ module type Basic = sig
     type t
 
     val digest : t -> Md5.t
+
+    val num_constraints : t -> int
   end
 
   module Bigint : sig
@@ -1106,6 +1108,8 @@ module type Run_basic = sig
     val get_public_input_size : t -> int Core_kernel.Set_once.t
 
     val get_rows_len : t -> int
+
+    val num_constraints : t -> int
   end
 
   (** The finite field over which the R1CS operates. *)
