@@ -21,13 +21,11 @@ module type S = sig
   end
 
   module Cvar : sig
-    type t = Field.t Cvar.t [@@deriving sexp]
+    type t [@@deriving sexp]
 
     val length : t -> int
 
-    module Unsafe : sig
-      val of_index : int -> t
-    end
+    val of_index_unsafe : int -> t
 
     val eval :
       [ `Return_values_will_be_mutated of int -> Field.t ] -> t -> Field.t

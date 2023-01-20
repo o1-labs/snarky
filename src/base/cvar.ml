@@ -1,41 +1,16 @@
 open Core_kernel
 
-type 'f t =
-  | Constant of 'f
-  | Var of int
-  | Add of 'f t * 'f t
-  | Scale of 'f * 'f t
-[@@deriving sexp]
-
-type 'f cvar = 'f t [@@deriving sexp]
-
-let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
-  let rec go scale constant terms = function
-    | Constant c ->
-        (add constant (mul scale c), terms)
-    | Var v ->
-        (constant, (scale, v) :: terms)
-    | Scale (s, t) ->
-        go (mul s scale) constant terms t
-    | Add (x1, x2) ->
-        let c1, terms1 = go scale constant terms x1 in
-        go scale c1 terms1 x2
-  in
-  fun t ->
-    let c, ts = go one zero [] t in
-    let c = if equal c zero then None else Some c in
-    (c, ts)
-
-module Unsafe = struct
-  let of_index v = Var v
-end
-
 module Make (Field : Snarky_intf.Field.Extended) = struct
-  type t = Field.t cvar [@@deriving sexp]
+  type t =
+    | Constant of Field.t
+    | Var of int
+    | Add of t * t
+    | Scale of Field.t * t
+  [@@deriving sexp]
 
   let length _ = failwith "TODO"
 
-  module Unsafe = Unsafe
+  let of_index_unsafe v = Var v
 
   let scratch = Field.of_int 0
 
