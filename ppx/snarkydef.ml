@@ -21,7 +21,9 @@ let with_label ~local ~loc ~arg exprs =
     else
       match arg with
       | None ->
-          [%expr Snarky_backendless.Checked_ast.with_label]
+          failwith
+            "use `snarkydef_` if you have access to with_label locally, \
+             otherwise specify the correct path (e.g. `let%snarkdef.Tick ...`)"
       | Some path ->
           pexp_ident ~loc
             (Located.mk ~loc:path.loc (Longident.Ldot (path.txt, "with_label")))

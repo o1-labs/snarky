@@ -1,8 +1,6 @@
 open Core_kernel
-module Types0 = Types
 module Cvar0 = Cvar
 module Bignum_bigint = Bigint
-module Checked_ast = Checked_ast
 
 exception Runtime_error of string list * exn * string
 
@@ -13,9 +11,11 @@ let set_eval_constraints b = Runner.eval_constraints := b
 module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-    (As_prover : As_prover.Extended
-                   with module Types := Checked.Types
-                   with type field := Backend.Field.t)
+    (As_prover : As_prover0.Extended with type field := Backend.Field.t)
+    (Ref : As_prover_ref.S
+             with module Types := Checked.Types
+              and type 'f field := Backend.Field.t
+              and type ('a, 'f) checked := 'a Checked.t)
     (Runner : Runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
@@ -56,6 +56,8 @@ struct
     include As_prover
 
     type 'a as_prover = 'a t
+
+    module Ref = Ref
   end
 
   module Handle = struct
@@ -627,19 +629,26 @@ struct
   end
 end
 
+(** The main functor for the monadic interface. 
+    See [Run.Make] for the same thing but for the imperative interface. *)
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
   module Runner0 = Runner.Make (Backend_extended)
   module Checked_runner = Runner0.Checked_runner
-  module Checked1 = Checked.Make (Checked_runner) (As_prover)
+  module Checked1 = Checked.Make (Checked_runner) (As_prover0)
 
-  module As_prover0 =
-    As_prover.Make_extended
-      (struct
-        type field = Backend_extended.Field.t
-      end)
-      (Checked1)
-      (As_prover.Make (Checked1) (As_prover0))
+  module Field_T = struct
+    type field = Backend_extended.Field.t
+  end
+
+  module As_prover_ext = As_prover0.Make_extended (Field_T) (As_prover0)
+
+  module Ref :
+    As_prover_ref.S
+      with module Types = Checked1.Types
+       and type ('a, 'f) checked := ('a, 'f) Checked1.t
+       and type 'f field := Backend_extended.Field.t =
+    As_prover_ref.Make (Checked1) (As_prover0)
 
   module Checked_for_basic = struct
     include (
@@ -657,7 +666,8 @@ module Make (Backend : Backend_intf.S) = struct
   end
 
   module Basic =
-    Make_basic (Backend_extended) (Checked_for_basic) (As_prover0) (Runner0)
+    Make_basic (Backend_extended) (Checked_for_basic) (As_prover_ext) (Ref)
+      (Runner0)
   include Basic
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
@@ -1112,7 +1122,7 @@ module Run = struct
       include Field.Constant.T
 
       module Ref = struct
-        type 'a t = 'a As_prover.Ref.t
+        type 'a t = 'a As_prover_ref.t
 
         let create f = run As_prover.(Ref.create (map (return ()) ~f))
 

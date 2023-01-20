@@ -158,7 +158,7 @@ module Make (Checked : Checked_monad) = struct
           ; check = (fun _ -> Checked.return ())
           }
 
-      module Ref_typ = As_prover.Make_ref_typ (Checked)
+      module Ref_typ = As_prover_ref.Make_ref_typ (Checked)
 
       let ref () = Ref_typ.typ
     end

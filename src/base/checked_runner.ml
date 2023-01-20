@@ -15,10 +15,6 @@ module Simple = struct
         | Function of ('f Run_state.t -> 'f Run_state.t * 'a)
     end
 
-    module As_prover = struct
-      type ('a, 'f) t = ('a, 'f) As_prover.t
-    end
-
     module Typ = struct
       include Types.Typ.T
 
@@ -29,7 +25,7 @@ module Simple = struct
       include Types.Provider.T
 
       type ('a, 'f) t =
-        (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
+        (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
     end
   end
 
@@ -72,17 +68,13 @@ end
 
 module Make_checked
     (Backend : Backend_extended.S)
-    (As_prover : As_prover.S with type 'f field := Backend.Field.t) =
+    (As_prover : As_prover_intf.Basic with type 'f field := Backend.Field.t) =
 struct
   type run_state = Backend.Field.t Run_state.t
 
   module Types = struct
     module Checked = struct
       type ('a, 'f) t = ('a, Backend.Field.t) Simple.Types.Checked.t
-    end
-
-    module As_prover = struct
-      type ('a, 'f) t = ('a, 'f) As_prover.t
     end
 
     module Typ = struct
@@ -117,7 +109,6 @@ struct
 
   open Constraint
   open Backend
-  open Checked_ast
 
   let get_value (t : Field.t Run_state.t) : Cvar.t -> Field.t =
     let get_one i = Run_state.get_variable_value t i in
@@ -332,7 +323,7 @@ module type Run_extras = sig
   val get_value : field Run_state.t -> cvar -> field
 
   val run_as_prover :
-       ('a, field) Types.As_prover.t option
+       ('a, field) As_prover0.t option
     -> field Run_state.t
     -> field Run_state.t * 'a option
 end
@@ -348,7 +339,7 @@ module Make (Backend : Backend_extended.S) = struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  module Checked_runner = Make_checked (Backend) (As_prover)
+  module Checked_runner = Make_checked (Backend) (As_prover0)
 
   type run_state = Checked_runner.run_state
 
@@ -371,7 +362,7 @@ module Make (Backend : Backend_extended.S) = struct
              and type cvar := Backend.Cvar.t
       end )
 
-  module Types = Checked_ast.Types
+  module Types = Checked_runner.Types
 
   let run = Simple.eval
 

@@ -3,7 +3,6 @@ open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
 module Typ0 = Typ
-module As_prover0 = As_prover
 
 module type Boolean_intf = sig
   type field_var
@@ -260,7 +259,7 @@ module type Typ_intf = sig
           This is the dual of [snarkless], which allows [OCaml] values from the
           [Checked] world to pass through [As_prover] blocks.
     *)
-    val ref : unit -> ('a prover_ref, 'a) t
+    val ref : unit -> ('a As_prover_ref.t, 'a) t
   end
 end
 
@@ -587,7 +586,7 @@ module type Basic = sig
          and type _ checked := unit Checked.t
          and type ('a, 'b, 'c, 'd) data_spec :=
           ('a, 'b, 'c, 'd, field, unit Checked.t) Typ0.Data_spec0.data_spec
-         and type 'a prover_ref := 'a As_prover.Ref.t
+         and type 'a prover_ref := 'a As_prover_ref.t
 
     include module type of Types.Typ.T
   end
@@ -723,7 +722,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     module Ref : sig
       (** A mutable reference to an ['a] value, which may be used in checked
           computations. *)
-      type 'a t
+      type 'a t = 'a As_prover_ref.t
 
       val create : 'a as_prover -> 'a t Checked.t
 
@@ -1140,7 +1139,7 @@ module type Run_basic = sig
         , field
         , unit Internal_Basic.Checked.t )
         Typ0.Data_spec0.data_spec
-       and type 'a prover_ref := 'a As_prover.Ref.t)
+       and type 'a prover_ref := 'a As_prover_ref.t)
 
   (** Representation of booleans within a field.
 
@@ -1223,7 +1222,7 @@ module type Run_basic = sig
     module Ref : sig
       (** A mutable reference to an ['a] value, which may be used in checked
           computations. *)
-      type 'a t
+      type 'a t = 'a As_prover_ref.t
 
       val create : (unit -> 'a) as_prover -> 'a t
 
@@ -1257,7 +1256,7 @@ module type Run_basic = sig
     (Basic
       with type field = field
        and type 'a Checked.t = ('a, field) Checked_runner.Simple.t
-       and type 'a As_prover.Ref.t = 'a As_prover.Ref.t)
+       and type 'a As_prover.Ref.t = 'a As_prover_ref.t)
 
   module Bitstring_checked : sig
     type t = Boolean.var list

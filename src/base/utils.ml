@@ -7,9 +7,7 @@ let set_eval_constraints b = Runner.eval_constraints := b
 module Make
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-    (As_prover : As_prover.Extended
-                   with module Types := Checked.Types
-                    and type field := Backend.Field.t)
+    (As_prover : As_prover0.Extended with type field := Backend.Field.t)
     (Runner : Runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
@@ -64,7 +62,7 @@ struct
      In particular, [r] is [1] if [z = 0] and [0] otherwise.
   *)
   let equal_vars (z : Cvar.t) : (Field.t * Field.t) As_prover.t =
-    let open As_prover in
+    let open As_prover.Let_syntax in
     let%map z = As_prover.read_var z in
     if Field.equal z Field.zero then (Field.one, Field.zero)
     else (Field.zero, Field.inv z)
