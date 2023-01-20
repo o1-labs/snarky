@@ -42,38 +42,6 @@ module Data_spec0 = struct
     | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'f, 'checked) data_spec
 end
 
-module Intf = struct
-  module type S = sig
-    type field
-
-    type field_var
-
-    type 'field checked
-
-    module Var : sig
-      type t
-
-      val size_in_field_elements : int
-
-      val to_field_elements : t -> field_var array
-
-      val of_field_elements : field_var array -> t
-
-      val check : t -> field checked
-    end
-
-    module Value : sig
-      type t
-
-      val size_in_field_elements : int
-
-      val to_field_elements : t -> field array
-
-      val of_field_elements : field array -> t
-    end
-  end
-end
-
 module type Checked_monad = sig
   type ('a, 'f) t
 
@@ -93,11 +61,27 @@ module Make (Checked : Checked_monad) = struct
   module type S = sig
     type field
 
-    include
-      Intf.S
-        with type 'field checked := (unit, 'field) Checked.t
-         and type field := field
-         and type field_var := field Cvar.t
+    module Var : sig
+      type t
+
+      val size_in_field_elements : int
+
+      val to_field_elements : t -> field Cvar.t array
+
+      val of_field_elements : field Cvar.t array -> t
+
+      val check : t -> (unit, field) Checked.t
+    end
+
+    module Value : sig
+      type t
+
+      val size_in_field_elements : int
+
+      val to_field_elements : t -> field array
+
+      val of_field_elements : field array -> t
+    end
   end
 
   module Data_spec = struct
