@@ -769,13 +769,9 @@ module Run = struct
 
       let array = array
 
-      let hlist = hlist
-
       let transport = transport
 
       let transport_var = transport_var
-
-      let of_hlistable = of_hlistable
 
       module Internal = Internal
     end

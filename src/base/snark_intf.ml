@@ -133,8 +133,6 @@ module type Typ_intf = sig
 
   type checked_unit
 
-  type (_, _, _, _) data_spec
-
   type _ prover_ref
 
   (** The type [('var, 'value) t] describes a mapping from the OCaml type
@@ -201,12 +199,6 @@ module type Typ_intf = sig
     *)
   val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
 
-  (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
-        a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
-  val hlist :
-       (unit, unit, 'k_var, 'k_value) data_spec
-    -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
-
   (** Convert relationships over
         {{:https://en.wikipedia.org/wiki/Isomorphism}isomorphic} types: *)
 
@@ -221,18 +213,6 @@ module type Typ_intf = sig
     -> there:('var2 -> 'var1)
     -> back:('var1 -> 'var2)
     -> ('var2, 'value) t
-
-  (** A specialised version of {!val:transport}/{!val:transport_var} that
-        describes the relationship between ['var] and ['value] in terms of a
-        {!type:Data_spec.t}.
-    *)
-  val of_hlistable :
-       (unit, unit, 'k_var, 'k_value) data_spec
-    -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
-    -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
-    -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
-    -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
-    -> ('var, 'value) t
 
   (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
         and normal OCaml data.
@@ -584,8 +564,6 @@ module type Basic = sig
          and type field_var := Field.Var.t
          and type checked_unit := unit Checked.t
          and type _ checked := unit Checked.t
-         and type ('a, 'b, 'c, 'd) data_spec :=
-          ('a, 'b, 'c, 'd, field, unit Checked.t) Typ0.Data_spec0.data_spec
          and type 'a prover_ref := 'a As_prover_ref.t
 
     include module type of Types.Typ.T
@@ -1131,14 +1109,6 @@ module type Run_basic = sig
        and type field_var := Field.t
        and type checked_unit := unit Internal_Basic.Checked.t
        and type _ checked := unit
-       and type ('a, 'b, 'c, 'd) data_spec :=
-        ( 'a
-        , 'b
-        , 'c
-        , 'd
-        , field
-        , unit Internal_Basic.Checked.t )
-        Typ0.Data_spec0.data_spec
        and type 'a prover_ref := 'a As_prover_ref.t)
 
   (** Representation of booleans within a field.
