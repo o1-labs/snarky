@@ -17,7 +17,7 @@ module Make
 struct
   open Backend
 
-  open Runners.Make (Backend) (Checked) (As_prover) (Runner)
+  open Api.Make (Backend) (Checked) (As_prover) (Runner)
 
   module Typ = struct
     include Types.Typ.T
