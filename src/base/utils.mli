@@ -54,36 +54,6 @@ module Make : functor
 
       type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
-      module type S = sig
-        type field
-
-        module Var : sig
-          type t
-
-          val size_in_field_elements : int
-
-          val to_field_elements : t -> field Cvar0.t array
-
-          val of_field_elements : field Cvar0.t array -> t
-
-          val check :
-               t
-            -> ( unit
-               , field )
-               Snarky_backendless__.Checked_intf.Unextend(Checked).t
-        end
-
-        module Value : sig
-          type t
-
-          val size_in_field_elements : int
-
-          val to_field_elements : t -> field array
-
-          val of_field_elements : field array -> t
-        end
-      end
-
       val unit : unit -> (unit, unit, 'field) t
     end
 

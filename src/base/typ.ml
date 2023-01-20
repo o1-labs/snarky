@@ -58,32 +58,6 @@ module Make (Checked : Checked_monad) = struct
 
   type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
-  module type S = sig
-    type field
-
-    module Var : sig
-      type t
-
-      val size_in_field_elements : int
-
-      val to_field_elements : t -> field Cvar.t array
-
-      val of_field_elements : field Cvar.t array -> t
-
-      val check : t -> (unit, field) Checked.t
-    end
-
-    module Value : sig
-      type t
-
-      val size_in_field_elements : int
-
-      val to_field_elements : t -> field array
-
-      val of_field_elements : field array -> t
-    end
-  end
-
   module Data_spec = struct
     include Data_spec0
 
