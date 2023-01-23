@@ -1,8 +1,12 @@
 open Core_kernel
 
-module Make
-    (Basic : Checked_intf.Basic)
-    (As_prover : As_prover_intf.Basic with type 'f field := 'f Basic.field) :
+module Make (Field : sig
+  type t [@@deriving sexp]
+
+  val equal : t -> t -> bool
+end)
+(Basic : Checked_intf.Basic with type 'f field = Field.t)
+(As_prover : As_prover_intf.Basic with type 'f field := 'f Basic.field) :
   Checked_intf.S
     with module Types = Basic.Types
     with type 'f field = 'f Basic.field = struct
@@ -72,5 +76,12 @@ module Make
         bind acc ~f:(fun () ->
             add_constraint (Constraint.override_label c label) ) )
 
-  let assert_equal ?label x y = assert_ (Constraint.equal ?label x y)
+  let assert_equal ?label x y =
+    match (x, y) with
+    | Cvar.Constant x, Cvar.Constant y ->
+        if Field.equal x y then return ()
+        else
+          failwithf !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}" x y ()
+    | _ ->
+        assert_ (Constraint.equal ?label x y)
 end
