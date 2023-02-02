@@ -78,8 +78,11 @@ end
 
 module Make_debug_sponge (P : sig
   include Intf.Permutation
+
   module Impl : Snarky_backendless.Snark_intf.Run
+
   val sponge_name : string
+
   val debug_helper_fn : (Field.t -> string) option
 end) : sig
   include
