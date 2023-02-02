@@ -318,6 +318,57 @@ module Make_sponge (P : Intf.Permutation) = struct
         t.state.(0)
 end
 
+module Make_debug_sponge (P : sig
+  include Intf.Permutation
+  module Impl : Snarky_backendless.Snark_intf.Run
+  val sponge_name : string
+  val debug_helper_fn : (Field.t -> string) option
+end) =
+struct
+  include Make_sponge (P)
+  open P.Impl
+
+  let debug_enabled, field_element_to_hex = match P.debug_helper_fn with
+    | Some(to_hex) -> true, to_hex
+    | None -> false, (fun _ -> "")
+
+  (* In sponge debug mode, prints a standard sponge debug line, otherwise does nothing.
+     Note: standard sponge debug line must match the output of Kimchi's sponge debug mode *)
+  let debug (operation : string) (sponge : t) (input : P.Field.t option) =
+    if debug_enabled then
+      as_prover (fun () ->
+        (* Convert sponge_state to match Rust style debug string *)
+        let sponge_state =
+          match sponge.sponge_state with
+          | Absorbed n ->
+            Printf.sprintf "Absorbed(%d)" n
+          | Squeezed n ->
+            Printf.sprintf "Squeezed(%d)" n
+        in
+        (* Print debug header, operation and sponge_state *)
+        Format.eprintf !"debug_sponge: %s%s state %s" P.sponge_name operation sponge_state ;
+        (* Print sponge's state array *)
+        Array.iter sponge.state ~f:(fun fe ->
+          Format.eprintf " %s" (field_element_to_hex fe) ) ;
+        Format.eprintf "@." ;
+        (* Print optional input *)
+        match input with
+        | Some input ->
+          Format.eprintf "debug_sponge: %s%s input %s@." P.sponge_name operation
+          (field_element_to_hex input)
+        | None ->
+          ()
+      )
+
+    let absorb t x =
+      debug "absorb" t (Some x) ;
+      absorb t x
+
+    let squeeze t =
+      debug "squeeze" t None;
+      squeeze t
+end
+
 module Bit_sponge = struct
   type ('s, 'bool) t =
     { underlying : 's

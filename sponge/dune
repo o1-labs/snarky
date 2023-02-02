@@ -4,4 +4,4 @@
  (preprocess
   (pps ppx_jane ppx_deriving.eq))
  (inline_tests)
- (libraries core_kernel))
+ (libraries snarky.backendless core_kernel))

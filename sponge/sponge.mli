@@ -76,6 +76,27 @@ module Make_sponge (P : Intf.Permutation) : sig
     -> t
 end
 
+module Make_debug_sponge (P : sig
+  include Intf.Permutation
+  module Impl : Snarky_backendless.Snark_intf.Run
+  val sponge_name : string
+  val debug_helper_fn : (Field.t -> string) option
+end) : sig
+  include
+    Intf.Sponge
+      with module State := State
+       and module Field := P.Field
+       and type digest := P.Field.t
+       and type input := P.Field.t
+       and type t = P.Field.t t
+
+  val make :
+       state:P.Field.t State.t
+    -> params:P.Field.t Params.t
+    -> sponge_state:sponge_state
+    -> t
+end
+
 module Bit_sponge : sig
   type ('s, 'bool) t
 
