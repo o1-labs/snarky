@@ -55,6 +55,7 @@ type 'f t =
   { mutable state : 'f State.t
   ; params : 'f Params.t
   ; mutable sponge_state : sponge_state
+  ; id : int
   }
 
 val make :
@@ -79,7 +80,7 @@ end
 module Make_debug_sponge (P : sig
   include Intf.Permutation
 
-  module Impl : Snarky_backendless.Snark_intf.Run
+  module Circuit : Snarky_backendless.Snark_intf.Run
 
   val sponge_name : string
 

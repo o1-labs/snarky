@@ -261,9 +261,14 @@ type 'f t =
   { mutable state : 'f State.t
   ; params : 'f Params.t
   ; mutable sponge_state : sponge_state
+  ; id : int
   }
 
-let make ~state ~params ~sponge_state = { state; params; sponge_state }
+let id = ref (-1)
+
+let make ~state ~params ~sponge_state =
+  incr id ;
+  { state; params; sponge_state; id = !id }
 
 module Make_sponge (P : Intf.Permutation) = struct
   open P
@@ -281,10 +286,10 @@ module Make_sponge (P : Intf.Permutation) = struct
   let initial_state = Array.init m ~f:(fun _ -> Field.zero)
 
   let create ?(init = initial_state) params =
-    { state = copy init; sponge_state = Absorbed 0; params }
+    make ~state:(copy init) ~sponge_state:(Absorbed 0) ~params
 
-  let copy { state; params; sponge_state } =
-    { state = copy state; params; sponge_state }
+  let copy { state; params; sponge_state; id } =
+    { state = copy state; params; sponge_state; id }
 
   let rate = m - capacity
 
@@ -321,7 +326,7 @@ end
 module Make_debug_sponge (P : sig
   include Intf.Permutation
 
-  module Impl : Snarky_backendless.Snark_intf.Run
+  module Circuit : Snarky_backendless.Snark_intf.Run
 
   val sponge_name : string
 
@@ -329,7 +334,6 @@ module Make_debug_sponge (P : sig
 end) =
 struct
   include Make_sponge (P)
-  open P.Impl
 
   (* In sponge debug mode, prints a standard sponge debug line, otherwise does nothing.
      Note: standard sponge debug line must match the output of Kimchi's sponge debug mode *)
@@ -338,7 +342,7 @@ struct
     | Some s -> (
         match String.lowercase s with
         | "t" | "1" | "true" ->
-            as_prover (fun () ->
+            P.Circuit.as_prover (fun () ->
                 (* Convert sponge_state to match Rust style debug string *)
                 let sponge_state =
                   match sponge.sponge_state with
@@ -348,8 +352,8 @@ struct
                       Printf.sprintf "Squeezed(%d)" n
                 in
                 (* Print debug header, operation and sponge_state *)
-                Format.eprintf "debug_sponge: %s %s state %s" P.sponge_name
-                  operation sponge_state ;
+                Format.eprintf "debug_sponge: %s%d %s state %s" P.sponge_name
+                  sponge.id operation sponge_state ;
                 (* Print sponge's state array *)
                 Array.iter sponge.state ~f:(fun fe ->
                     Format.eprintf " %s" (P.debug_helper_fn fe) ) ;
@@ -357,14 +361,19 @@ struct
                 (* Print optional input *)
                 match input with
                 | Some input ->
-                    Format.eprintf "debug_sponge: %s %s input %s@."
-                      P.sponge_name operation (P.debug_helper_fn input)
+                    Format.eprintf "debug_sponge: %s%d %s input %s@."
+                      P.sponge_name sponge.id operation
+                      (P.debug_helper_fn input)
                 | None ->
                     () )
         | _ ->
             () )
     | None ->
         ()
+
+  let make ~state ~params ~sponge_state =
+    let t = make ~state ~params ~sponge_state in
+    debug "make" t None ; t
 
   let absorb t x = debug "absorb" t (Some x) ; absorb t x
 
