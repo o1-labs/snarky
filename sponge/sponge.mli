@@ -83,7 +83,7 @@ module Make_debug_sponge (P : sig
 
   val sponge_name : string
 
-  val debug_helper_fn : (Field.t -> string) option
+  val debug_helper_fn : Field.t -> string
 end) : sig
   include
     Intf.Sponge

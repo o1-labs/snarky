@@ -325,48 +325,46 @@ module Make_debug_sponge (P : sig
 
   val sponge_name : string
 
-  val debug_helper_fn : (Field.t -> string) option
+  val debug_helper_fn : Field.t -> string
 end) =
 struct
   include Make_sponge (P)
   open P.Impl
 
-  let debug_enabled, field_element_to_hex =
-    match P.debug_helper_fn with
-    | Some to_hex ->
-        (true, to_hex)
-    | None ->
-        (false, fun _ -> "")
-
   (* In sponge debug mode, prints a standard sponge debug line, otherwise does nothing.
      Note: standard sponge debug line must match the output of Kimchi's sponge debug mode *)
   let debug (operation : string) (sponge : t) (input : P.Field.t option) =
-    if debug_enabled then
-      as_prover (fun () ->
-          (* Convert sponge_state to match Rust style debug string *)
-          let sponge_state =
-            match sponge.sponge_state with
-            | Absorbed n ->
-                Printf.sprintf "Absorbed(%d)" n
-            | Squeezed n ->
-                Printf.sprintf "Squeezed(%d)" n
-          in
-          (* Print debug header, operation and sponge_state *)
-          Format.eprintf
-            !"debug_sponge: %s%s state %s"
-            P.sponge_name operation sponge_state ;
-          (* Print sponge's state array *)
-          Array.iter sponge.state ~f:(fun fe ->
-              Format.eprintf " %s" (field_element_to_hex fe) ) ;
-          Format.eprintf "@." ;
-          (* Print optional input *)
-          match input with
-          | Some input ->
-              Format.eprintf "debug_sponge: %s%s input %s@." P.sponge_name
-                operation
-                (field_element_to_hex input)
-          | None ->
-              () )
+    match Sys.getenv_opt P.sponge_name with
+    | Some s -> (
+        match String.lowercase s with
+        | "t" | "1" | "true" ->
+            as_prover (fun () ->
+                (* Convert sponge_state to match Rust style debug string *)
+                let sponge_state =
+                  match sponge.sponge_state with
+                  | Absorbed n ->
+                      Printf.sprintf "Absorbed(%d)" n
+                  | Squeezed n ->
+                      Printf.sprintf "Squeezed(%d)" n
+                in
+                (* Print debug header, operation and sponge_state *)
+                Format.eprintf "debug_sponge: %s %s state %s" P.sponge_name
+                  operation sponge_state ;
+                (* Print sponge's state array *)
+                Array.iter sponge.state ~f:(fun fe ->
+                    Format.eprintf " %s" (P.debug_helper_fn fe) ) ;
+                Format.eprintf "@." ;
+                (* Print optional input *)
+                match input with
+                | Some input ->
+                    Format.eprintf "debug_sponge: %s %s input %s@."
+                      P.sponge_name operation (P.debug_helper_fn input)
+                | None ->
+                    () )
+        | _ ->
+            () )
+    | None ->
+        ()
 
   let absorb t x = debug "absorb" t (Some x) ; absorb t x
 
