@@ -381,13 +381,28 @@ struct
 
         let gte ~bit_length x y = lte ~bit_length y x
 
-        let non_zero = Checked.assert_non_zero
+        let non_zero (v : Cvar.t) =
+          match v with
+          | Constant v ->
+              if Field.(equal zero v) then
+                failwithf "assert_non_zero: failed on constant %s"
+                  (Field.to_string v) () ;
+              Checked.return ()
+          | _ ->
+              Checked.assert_non_zero v
 
         let equal x y = Checked.assert_equal ~label:"Checked.Assert.equal" x y
 
         let not_equal (x : t) (y : t) =
-          Checked.with_label "Checked.Assert.not_equal" (fun () ->
-              non_zero (sub x y) )
+          match (x, y) with
+          | Constant x, Constant y ->
+            if Field.(equal x y) then
+              failwithf "not_equal: failed on constants %s and %s"
+                (Field.to_string x) (Field.to_string y) () ;
+            Checked.return ()
+          | _, _ ->
+              Checked.with_label "Checked.Assert.not_equal" (fun () ->
+                  non_zero (sub x y) )
       end
 
       let lt_bitstring_value =
