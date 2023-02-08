@@ -708,6 +708,8 @@ module Run = struct
            ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 1)
            ~with_witness:false ~stack:[] ~is_running:false () )
 
+    let dump () = Run_state.dump !state
+
     let in_prover () : bool = Run_state.has_witness !state
 
     let in_checked_computation () : bool =
