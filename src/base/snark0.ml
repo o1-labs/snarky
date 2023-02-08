@@ -381,13 +381,28 @@ struct
 
         let gte ~bit_length x y = lte ~bit_length y x
 
-        let non_zero = Checked.assert_non_zero
+        let non_zero (v : Cvar.t) =
+          match v with
+          | Constant v ->
+              if Field.(equal zero v) then
+                failwithf "assert_non_zero: failed on constant %s"
+                  (Field.to_string v) () ;
+              Checked.return ()
+          | _ ->
+              Checked.assert_non_zero v
 
         let equal x y = Checked.assert_equal ~label:"Checked.Assert.equal" x y
 
         let not_equal (x : t) (y : t) =
-          Checked.with_label "Checked.Assert.not_equal" (fun () ->
-              non_zero (sub x y) )
+          match (x, y) with
+          | Constant x, Constant y ->
+              if Field.(equal x y) then
+                failwithf "not_equal: failed on constants %s and %s"
+                  (Field.to_string x) (Field.to_string y) () ;
+              Checked.return ()
+          | _, _ ->
+              Checked.with_label "Checked.Assert.not_equal" (fun () ->
+                  non_zero (sub x y) )
       end
 
       let lt_bitstring_value =
@@ -707,6 +722,8 @@ module Run = struct
         (Run_state.make ~input:(field_vec ()) ~aux:(field_vec ())
            ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 1)
            ~with_witness:false ~stack:[] ~is_running:false () )
+
+    let dump () = Run_state.dump !state
 
     let in_prover () : bool = Run_state.has_witness !state
 
@@ -1253,9 +1270,23 @@ module Run = struct
       let inject_wrapper ~f x = f x in
       inject_wrapper ~f (x a)
 
+    (** Caches the global [state] before running [f]. 
+        It is expected that [f] will reset the global state for its own use only, 
+        hence why we need to reset it after running [f].*)
     let finalize_is_running f =
-      let x = f () in
-      state := Run_state.set_is_running !state false ;
+      let cached_state = !state in
+      let x =
+        match f () with
+        | exception e ->
+            (* Warning: it is important to clean the global state before reraising the exception.
+               Imagine if a user of snarky catches exceptions instead of letting the program panic,
+                then the next usage of snarky might be messed up. *)
+            state := cached_state ;
+            raise e
+        | x ->
+            x
+      in
+      state := cached_state ;
       x
 
     let constraint_system ~input_typ ~return_typ x : R1CS_constraint_system.t =
