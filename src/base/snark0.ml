@@ -1253,9 +1253,13 @@ module Run = struct
       let inject_wrapper ~f x = f x in
       inject_wrapper ~f (x a)
 
+    (** Caches the global [state] before running [f]. 
+        It is expected that [f] will reset the global state for its own use only, 
+        hence why we need to reset it after running [f].*)
     let finalize_is_running f =
+      let cached_state = !state in
       let x = f () in
-      state := Run_state.set_is_running !state false ;
+      state := cached_state ;
       x
 
     let constraint_system ~input_typ ~return_typ x : R1CS_constraint_system.t =
