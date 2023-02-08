@@ -396,10 +396,10 @@ struct
         let not_equal (x : t) (y : t) =
           match (x, y) with
           | Constant x, Constant y ->
-            if Field.(equal x y) then
-              failwithf "not_equal: failed on constants %s and %s"
-                (Field.to_string x) (Field.to_string y) () ;
-            Checked.return ()
+              if Field.(equal x y) then
+                failwithf "not_equal: failed on constants %s and %s"
+                  (Field.to_string x) (Field.to_string y) () ;
+              Checked.return ()
           | _, _ ->
               Checked.with_label "Checked.Assert.not_equal" (fun () ->
                   non_zero (sub x y) )
