@@ -1275,7 +1275,17 @@ module Run = struct
         hence why we need to reset it after running [f].*)
     let finalize_is_running f =
       let cached_state = !state in
-      let x = f () in
+      let x =
+        match f () with
+        | exception e ->
+            (* Warning: it is important to clean the global state before reraising the exception.
+               Imagine if a user of snarky catches exceptions instead of letting the program panic,
+                then the next usage of snarky might be messed up. *)
+            state := cached_state ;
+            raise e
+        | x ->
+            x
+      in
       state := cached_state ;
       x
 
