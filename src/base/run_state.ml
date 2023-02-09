@@ -71,6 +71,13 @@ let make ~num_inputs ~input ~next_auxiliary ~aux ?system ~eval_constraints
   ; log_constraint
   }
 
+let dump (t : _ t) =
+  Format.sprintf
+    "state { is_running: %B; as_prover: %B; has_witness: %B; eval_constraints: \
+     %B; num_inputs: %d; next_auxiliary: %d }\n"
+    t.is_running !(t.as_prover) t.has_witness t.eval_constraints t.num_inputs
+    !(t.next_auxiliary)
+
 let get_variable_value { num_inputs; input; aux; _ } : int -> 'field =
  fun i ->
   if i <= num_inputs then Vector.get input (i - 1)
