@@ -1,6 +1,8 @@
 module type Basic = sig
   type ('a, 'f) t = ('a, 'f) Types.As_prover.t
 
+  type ('var, 'value, 'field) typ
+
   type 'f field
 
   include Monad_let.S2 with type ('a, 'f) t := ('a, 'f field) t
@@ -15,8 +17,7 @@ module type Basic = sig
 
   val read_var : 'f field Cvar.t -> ('f field, 'f field) t
 
-  val read :
-    ('var, 'value, 'f field, _) Types.Typ.t -> 'var -> ('value, 'f field) t
+  val read : ('var, 'value, 'f field) typ -> 'var -> ('value, 'f field) t
 
   module Provider : sig
     type ('a, 'f) t

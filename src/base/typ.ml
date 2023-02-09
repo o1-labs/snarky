@@ -1,5 +1,25 @@
 open Core_kernel
-open Types.Typ
+
+module type Typ_intf = sig
+  type checked_unit
+
+  type 'field cvar
+
+  type ('var, 'value, 'aux, 'field) typ' =
+    { var_to_fields : 'var -> 'field cvar array * 'aux
+    ; var_of_fields : 'field cvar array * 'aux -> 'var
+    ; value_to_fields : 'value -> 'field array * 'aux
+    ; value_of_fields : 'field array * 'aux -> 'value
+    ; size_in_field_elements : int
+    ; constraint_system_auxiliary : unit -> 'aux
+    ; check : 'var -> checked_unit
+    }
+
+  type ('var, 'value, 'field) typ =
+    | Typ : ('var, 'value, 'aux, 'field) typ' -> ('var, 'value, 'field) typ
+
+  type ('var, 'value, 'field) t
+end
 
 module type Checked_monad = sig
   type ('a, 'f) t
@@ -12,10 +32,18 @@ module type Checked_monad = sig
 end
 
 module Make (Checked : Checked_monad) = struct
-  type ('var, 'value, 'field) t =
-    ('var, 'value, 'field, (unit, 'field) Checked.t) Types.Typ.t
+  type ('var, 'value, 'aux, 'field) typ' =
+    { var_to_fields : 'var -> 'field Cvar.t array * 'aux
+    ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
+    ; value_to_fields : 'value -> 'field array * 'aux
+    ; value_of_fields : 'field array * 'aux -> 'value
+    ; size_in_field_elements : int
+    ; constraint_system_auxiliary : unit -> 'aux
+    ; check : 'var -> (unit, 'field) Checked.t
+    }
 
-  type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
+  type ('var, 'value, 'field) t =
+    | Typ : ('var, 'value, 'aux, 'field) typ' -> ('var, 'value, 'field) t
 
   module Data_spec = struct
     (** A list of {!type:Type.Typ.t} values, describing the inputs to a checked
@@ -46,7 +74,7 @@ module Make (Checked : Checked_monad) = struct
       *)
     type ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) data_spec =
       | ( :: ) :
-          ('var, 'value, 'f, 'checked) Types.Typ.t
+          ('var, 'value, 'f) t
           * ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'checked) data_spec
           -> ( 'r_var
              , 'r_value
@@ -112,7 +140,18 @@ module Make (Checked : Checked_monad) = struct
           ; check = (fun _ -> Checked.return ())
           }
 
-      module Ref_typ = As_prover_ref.Make_ref_typ (Checked)
+      module Ref_typ = struct
+        let typ : ('a option ref, 'a, _) t =
+          Typ
+            { var_to_fields = (fun x -> ([||], !x))
+            ; var_of_fields = (fun (_, x) -> ref x)
+            ; value_to_fields = (fun x -> ([||], Some x))
+            ; value_of_fields = (fun (_, x) -> Option.value_exn x)
+            ; size_in_field_elements = 0
+            ; constraint_system_auxiliary = (fun () -> None)
+            ; check = (fun _ -> Checked.return ())
+            }
+      end
 
       let ref () = Ref_typ.typ
     end

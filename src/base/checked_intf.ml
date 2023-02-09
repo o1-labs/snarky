@@ -1,6 +1,8 @@
 module type Basic = sig
   module Types : Types.Types
 
+  type ('var, 'value, 'field) typ
+
   type ('a, 'f) t = ('a, 'f) Types.Checked.t
 
   type 'f field
@@ -20,7 +22,7 @@ module type Basic = sig
     Request.Handler.single -> (unit -> ('a, 'f field) t) -> ('a, 'f field) t
 
   val exists :
-       ('var, 'value, 'f field) Types.Typ.t
+       ('var, 'value, 'f field) typ
     -> ('value, 'f field) Types.Provider.t
     -> (('var, 'value) Handle.t, 'f field) t
 
@@ -41,6 +43,8 @@ module type S = sig
 
   type ('a, 'f) t = ('a, 'f) Types.Checked.t
 
+  type ('var, 'value, 'field) typ
+
   type 'f field
 
   include Monad_let.S2 with type ('a, 'f) t := ('a, 'f) t
@@ -50,26 +54,26 @@ module type S = sig
   val mk_lazy : (unit -> ('a, 'f) t) -> ('a Lazy.t, 'f) t
 
   val request_witness :
-       ('var, 'value, 'f field) Types.Typ.t
+       ('var, 'value, 'f field) typ
     -> ('value Request.t, 'f field) As_prover0.t
     -> ('var, 'f field) t
 
   val request :
        ?such_that:('var -> (unit, 'f field) t)
-    -> ('var, 'value, 'f field) Types.Typ.t
+    -> ('var, 'value, 'f field) typ
     -> 'value Request.t
     -> ('var, 'f field) t
 
   val exists_handle :
        ?request:('value Request.t, 'f field) As_prover0.t
     -> ?compute:('value, 'f field) As_prover0.t
-    -> ('var, 'value, 'f field) Types.Typ.t
+    -> ('var, 'value, 'f field) typ
     -> (('var, 'value) Handle.t, 'f field) t
 
   val exists :
        ?request:('value Request.t, 'f field) As_prover0.t
     -> ?compute:('value, 'f field) As_prover0.t
-    -> ('var, 'value, 'f field) Types.Typ.t
+    -> ('var, 'value, 'f field) typ
     -> ('var, 'f field) t
 
   type response = Request.response

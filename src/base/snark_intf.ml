@@ -131,8 +131,6 @@ module type Typ_intf = sig
 
   type _ checked
 
-  type checked_unit
-
   type _ prover_ref
 
   (** The type [('var, 'value) t] describes a mapping from the OCaml type
@@ -148,7 +146,9 @@ module type Typ_intf = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-  type ('var, 'value) t = ('var, 'value, field, checked_unit) Types.Typ.t
+  type ('var, 'value) t
+
+  include Typ.Typ_intf with type ('var, 'value, 'field) t := ('var, 'value) t
 
   (** Basic instances: *)
 
@@ -565,8 +565,6 @@ module type Basic = sig
          and type checked_unit := unit Checked.t
          and type _ checked := unit Checked.t
          and type 'a prover_ref := 'a As_prover_ref.t
-
-    include module type of Types.Typ.T
   end
 
   (** Representation of booleans within a field.

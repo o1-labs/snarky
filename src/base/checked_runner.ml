@@ -15,12 +15,6 @@ module Simple = struct
         | Function of ('f Run_state.t -> 'f Run_state.t * 'a)
     end
 
-    module Typ = struct
-      include Types.Typ.T
-
-      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
-    end
-
     module Provider = struct
       include Types.Provider.T
 
@@ -66,21 +60,35 @@ module Simple = struct
   end)
 end
 
-module Make_checked
-    (Backend : Backend_extended.S)
-    (As_prover : As_prover_intf.Basic with type 'f field := Backend.Field.t) =
+module Make_checked (Typ : sig
+  type ('var, 'value, 'aux, 'field, 'checked) typ' =
+    { var_to_fields : 'var -> 'field Cvar.t array * 'aux
+    ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
+    ; value_to_fields : 'value -> 'field array * 'aux
+    ; value_of_fields : 'field array * 'aux -> 'value
+    ; size_in_field_elements : int
+    ; constraint_system_auxiliary : unit -> 'aux
+    ; check : 'var -> 'checked
+    }
+
+  type ('var, 'value, 'field, 'checked) typ =
+    | Typ :
+        ('var, 'value, 'aux, 'field, 'checked) typ'
+        -> ('var, 'value, 'field, 'checked) typ
+
+  type ('var, 'value, 'field) t
+end)
+(Backend : Backend_extended.S)
+(As_prover : As_prover_intf.Basic
+               with type 'f field := Backend.Field.t
+                and type ('var, 'value, 'field) typ :=
+                 ('var, 'value, 'field) Typ.t) =
 struct
   type run_state = Backend.Field.t Run_state.t
 
   module Types = struct
     module Checked = struct
       type ('a, 'f) t = ('a, Backend.Field.t) Simple.Types.Checked.t
-    end
-
-    module Typ = struct
-      include Types.Typ.T
-
-      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
     end
 
     module Provider = struct
@@ -163,10 +171,13 @@ struct
         let stack = Run_state.stack s in
         Option.iter (Run_state.log_constraint s) ~f:(fun f ->
             f ~at_label_boundary:(`Start, lab) None ) ;
-        let s', y = Simple.eval (t ()) (Run_state.set_stack s (lab :: stack)) in
+        let state = Run_state.set_stack s (lab :: stack) in
+
+        let new_state, y = Simple.eval (t ()) state in
+        
         Option.iter (Run_state.log_constraint s) ~f:(fun f ->
             f ~at_label_boundary:(`End, lab) None ) ;
-        (Run_state.set_stack s' stack, y) )
+        (Run_state.set_stack new_state stack, y) )
 
   let log_constraint { Constraint.basic; _ } s =
     let open Constraint in
@@ -241,15 +252,15 @@ struct
         (Run_state.set_handler s' handler, y) )
 
   let exists
-      (Types.Typ.Typ
-         { Types.Typ.var_of_fields
+      (Typ.Typ
+         { Typ.var_of_fields
          ; value_to_fields
          ; size_in_field_elements
          ; check
          ; constraint_system_auxiliary
          ; _
          } :
-        (_, _, _, _ Simple.t) Types.Typ.typ ) p : _ Simple.t =
+        (_, _, _, _ Simple.t) Typ.typ ) p : _ Simple.t =
     Function
       (fun s ->
         if Run_state.has_witness s then (
@@ -329,7 +340,26 @@ module type Run_extras = sig
     -> field Run_state.t * 'a option
 end
 
-module Make (Backend : Backend_extended.S) = struct
+module Make (Typ : sig
+  type ('var, 'value, 'aux, 'field, 'checked) typ' =
+    { var_to_fields : 'var -> 'field Cvar.t array * 'aux
+    ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
+    ; value_to_fields : 'value -> 'field array * 'aux
+    ; value_of_fields : 'field array * 'aux -> 'value
+    ; size_in_field_elements : int
+    ; constraint_system_auxiliary : unit -> 'aux
+    ; check : 'var -> 'checked
+    }
+
+  type ('var, 'value, 'field, 'checked) typ =
+    | Typ :
+        ('var, 'value, 'aux, 'field, 'checked) typ'
+        -> ('var, 'value, 'field, 'checked) typ
+
+  type ('var, 'value, 'field) t
+end)
+(Backend : Backend_extended.S) =
+struct
   open Backend
 
   type 'f field = 'f
@@ -340,7 +370,7 @@ module Make (Backend : Backend_extended.S) = struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  module Checked_runner = Make_checked (Backend) (As_prover0)
+  module Checked_runner = Make_checked (Typ) (Backend) (As_prover0)
 
   type run_state = Checked_runner.run_state
 

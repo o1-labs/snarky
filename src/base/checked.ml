@@ -1,14 +1,19 @@
 open Core_kernel
 
-module Make
-    (Basic : Checked_intf.Basic)
-    (As_prover : As_prover_intf.Basic with type 'f field := 'f Basic.field) :
+module Make (Typ : sig
+  type ('var, 'value, 'field) t
+end)
+(Basic : Checked_intf.Basic
+           with type ('var, 'value, 'field) typ := ('var, 'value, 'field) Typ.t)
+(As_prover : As_prover_intf.Basic with type 'f field := 'f Basic.field) :
   Checked_intf.S
     with module Types = Basic.Types
-    with type 'f field = 'f Basic.field = struct
+    with type 'f field = 'f Basic.field
+     and type ('var, 'value, 'field) typ := ('var, 'value, 'field) Typ.t =
+struct
   include Basic
 
-  let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
+  let request_witness (typ : ('var, 'value, 'f field) Typ.t)
       (r : ('value Request.t, 'f field) As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h

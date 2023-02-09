@@ -27,14 +27,14 @@ let map2 x y ~f tbl =
 
 let read_var (v : 'var) : ('field, 'field) t = fun tbl -> tbl v
 
-let read
-    (Typ { var_to_fields; value_of_fields; _ } :
-      ('var, 'value, 'field, _) Types.Typ.t ) (var : 'var) : ('value, 'field) t
-    =
- fun tbl ->
-  let field_vars, aux = var_to_fields var in
-  let fields = Array.map ~f:tbl field_vars in
-  value_of_fields (fields, aux)
+(* let read
+      (Typ { var_to_fields; value_of_fields; _ } :
+        ('var, 'value, 'field, _) Types.Typ.t ) (var : 'var) : ('value, 'field) t
+      =
+   fun tbl ->
+    let field_vars, aux = var_to_fields var in
+    let fields = Array.map ~f:tbl field_vars in
+    value_of_fields (fields, aux) *)
 
 include Monad_let.Make2 (struct
   type nonrec ('a, 'e) t = ('a, 'e) t
