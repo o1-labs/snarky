@@ -35,6 +35,8 @@ struct
   module Cvar = Cvar
   module Constraint = Constraint
 
+  type field_var = Cvar.t
+
   module Handler = struct
     type t = Request.request -> Request.response
   end
@@ -772,6 +774,8 @@ module Run = struct
 
     type field = Snark.field
 
+    type field_var = Snark.field_var
+
     module Bigint = Snark.Bigint
     module Constraint = Snark.Constraint
 
@@ -1414,7 +1418,10 @@ module Run = struct
   end
 end
 
-type 'field m = (module Snark_intf.Run with type field = 'field)
+type 'field m =
+  (module Snark_intf.Run
+     with type field = 'field
+      and type field_var = 'field Cvar.t )
 
 let make (type field) (module Backend : Backend_intf.S with type Field.t = field)
     : field m =

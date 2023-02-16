@@ -309,7 +309,7 @@ module type Field_var_intf = sig
   type boolean_var
 
   (** The type that stores booleans as R1CS variables. *)
-  type t = field Cvar.t
+  type t
 
   (** For debug purposes *)
   val length : t -> int
@@ -553,6 +553,8 @@ module type Basic = sig
   (** The finite field over which the R1CS operates. *)
   type field
 
+  type field_var
+
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
@@ -698,6 +700,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     module Var :
       Field_var_intf
         with type field := field
+         and type t = field_var
          and type boolean_var := Boolean.var
 
     module Checked :
@@ -1120,6 +1123,8 @@ module type Run_basic = sig
   (** The finite field over which the R1CS operates. *)
   type field
 
+  type field_var
+
   module Bigint : sig
     include Snarky_intf.Bigint_intf.Extended with type field := field
 
@@ -1192,6 +1197,7 @@ module type Run_basic = sig
     include
       Field_var_intf
         with type field := field
+         and type t = field_var
          and type boolean_var := Boolean.var
 
     include
@@ -1266,6 +1272,7 @@ module type Run_basic = sig
   and Internal_Basic :
     (Basic
       with type field = field
+       and type field_var = field_var
        and type 'a Checked.t = ('a, field) Checked_runner.Simple.t
        and type 'a As_prover.Ref.t = 'a As_prover_ref.t)
 
