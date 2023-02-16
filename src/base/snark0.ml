@@ -35,14 +35,10 @@ struct
 
   module Typ = struct
     include Types.Typ.T
-    module T = Typ.Make (Checked_S)
+    module T = Typ.Make (Backend.Field) (Checked_S)
     include T.T
 
-    type ('var, 'value) t = ('var, 'value, Field.t) T.t
-
-    let unit : (unit, unit) t = unit ()
-
-    let field : (Cvar.t, Field.t) t = field ()
+    type ('var, 'value) t = ('var, 'value) T.t
   end
 
   module As_prover = struct
