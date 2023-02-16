@@ -20,47 +20,17 @@ module type S = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
-  module Cvar : sig
-    type t = Field.t Cvar.t [@@deriving sexp]
-
-    val length : t -> int
-
-    module Unsafe : sig
-      val of_index : int -> t
-    end
-
-    val eval :
-      [ `Return_values_will_be_mutated of int -> Field.t ] -> t -> Field.t
-
-    val constant : Field.t -> t
-
-    val to_constant_and_terms : t -> Field.t option * (Field.t * int) list
-
-    val add : t -> t -> t
-
-    val negate : t -> t
-
-    val scale : t -> Field.t -> t
-
-    val sub : t -> t -> t
-
-    val linear_combination : (Field.t * t) list -> t
-
-    val sum : t list -> t
-
-    val ( + ) : t -> t -> t
-
-    val ( - ) : t -> t -> t
-
-    val ( * ) : Field.t -> t -> t
-
-    val var_indices : t -> int list
-
-    val to_constant : t -> Field.t option
-  end
+  module Cvar : Backend_intf.Cvar_intf with type field := Field.t
 
   module R1CS_constraint_system :
-    Backend_intf.Constraint_system_intf with module Field := Field
+    Backend_intf.Constraint_system_intf
+      with module Field := Field
+       and type cvar := Cvar.t
+
+  module Run_state :
+    Backend_intf.Run_state_intf
+      with type field := Field.t
+       and type cvar := Cvar.t
 
   module Constraint : sig
     type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
@@ -196,19 +166,7 @@ struct
     let ( / ) = div
   end
 
-  module Cvar = struct
-    include Cvar.Make (Field)
-
-    let var_indices t =
-      let _, terms = to_constant_and_terms t in
-      List.map ~f:(fun (_, v) -> v) terms
-
-    let to_constant : t -> Field.t option = function
-      | Constant x ->
-          Some x
-      | _ ->
-          None
-  end
+  module Cvar = Cvar
 
   module Constraint = struct
     open Constraint
@@ -216,7 +174,11 @@ struct
 
     type 'k with_constraint_args = ?label:string -> 'k
 
-    type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
+    type t = (Cvar.t, Field.t) Constraint.t
+
+    let t_of_sexp _ = failwith "todo"
+
+    let sexp_of_t _ = failwith "todo"
 
     let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
 
@@ -224,4 +186,5 @@ struct
   end
 
   module R1CS_constraint_system = R1CS_constraint_system
+  module Run_state = Run_state
 end

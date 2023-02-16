@@ -1,6 +1,6 @@
 open Core_kernel
 
-type ('a, 'f) t = ('a, 'f) Types.As_prover.t
+type ('a, 'f, 'cvar) t = ('a, 'f, 'cvar) Types.As_prover.t
 
 let map t ~f tbl =
   let x = t tbl in
@@ -25,19 +25,19 @@ let map2 x y ~f tbl =
   let y = y tbl in
   f x y
 
-let read_var (v : 'var) : ('field, 'field) t = fun tbl -> tbl v
+let read_var (v : 'var) : ('field, 'field, 'cvar) t = fun tbl -> tbl v
 
 let read
     (Typ { var_to_fields; value_of_fields; _ } :
-      ('var, 'value, 'field, _) Types.Typ.t ) (var : 'var) : ('value, 'field) t
-    =
+      ('var, 'value, 'field, 'cvar, _) Types.Typ.t ) (var : 'var) :
+    ('value, 'field, 'cvar) t =
  fun tbl ->
   let field_vars, aux = var_to_fields var in
   let fields = Array.map ~f:tbl field_vars in
   value_of_fields (fields, aux)
 
-include Monad_let.Make2 (struct
-  type nonrec ('a, 'e) t = ('a, 'e) t
+include Monad_let.Make3 (struct
+  type nonrec ('a, 'e, 'cvar) t = ('a, 'e, 'cvar) t
 
   let map = `Custom map
 
@@ -56,7 +56,8 @@ module Provider = struct
         * [Both], attempting to dispatch an ['a Request.t], and falling back to
           the computation if the request is unhandled or raises an exception.
     *)
-  type nonrec ('a, 'f) t = (('a Request.t, 'f) t, ('a, 'f) t) Types.Provider.t
+  type nonrec ('a, 'f, 'cvar) t =
+    (('a Request.t, 'f, 'cvar) t, ('a, 'f, 'cvar) t) Types.Provider.t
 
   open Types.Provider
 
@@ -77,25 +78,31 @@ module Provider = struct
 end
 
 module Handle = struct
-  let value (t : ('var, 'value) Handle.t) : ('value, 'field) t =
+  let value (t : ('var, 'value) Handle.t) : ('value, 'field, 'cvar) t =
    fun _ -> Option.value_exn t.value
 end
+
+(* functor to instantiate field and cvar *)
 
 module type Extended = sig
   type field
 
-  include As_prover_intf.Basic with type 'f field := field
+  type cvar
 
-  type nonrec 'a t = ('a, field) t
+  include As_prover_intf.Basic with type 'f field := field and type cvar := cvar
+
+  type nonrec 'a t = ('a, field, cvar) t
 end
 
-module Make_extended (Env : sig
-  type field
-end)
-(As_prover : As_prover_intf.Basic with type 'f field := Env.field) =
-struct
-  include Env
+module Make_extended
+    (Field : T)
+    (Cvar : T)
+    (As_prover : As_prover_intf.Basic
+                   with type 'f field := Field.t
+                    and type cvar := Cvar.t) :
+  Extended with type field := Field.t and type cvar := Cvar.t = struct
+  include Field
   include As_prover
 
-  type nonrec 'a t = ('a, field) t
+  type nonrec 'a t = ('a, Field.t, Cvar.t) t
 end

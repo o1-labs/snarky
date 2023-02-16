@@ -1,22 +1,26 @@
 module type Basic = sig
-  type ('a, 'f) t = ('a, 'f) Types.As_prover.t
+  type cvar
+
+  type ('a, 'f, 'c) t = ('a, 'f, cvar) Types.As_prover.t
 
   type 'f field
 
-  include Monad_let.S2 with type ('a, 'f) t := ('a, 'f field) t
+  include Monad_let.S3 with type ('a, 'f, 'c) t := ('a, 'f field, cvar) t
 
-  val run : ('a, 'f field) t -> ('f field Cvar.t -> 'f field) -> 'a
+  val run : ('a, 'f field, cvar) t -> (cvar -> 'f field) -> 'a
 
   val map2 :
-       ('a, 'f field) t
-    -> ('b, 'f field) t
+       ('a, 'f field, cvar) t
+    -> ('b, 'f field, cvar) t
     -> f:('a -> 'b -> 'c)
-    -> ('c, 'f field) t
+    -> ('c, 'f field, cvar) t
 
-  val read_var : 'f field Cvar.t -> ('f field, 'f field) t
+  val read_var : cvar -> ('f field, 'f field, cvar) t
 
   val read :
-    ('var, 'value, 'f field, _) Types.Typ.t -> 'var -> ('value, 'f field) t
+       ('var, 'value, 'f field, cvar, _) Types.Typ.t
+    -> 'var
+    -> ('value, 'f field, cvar) t
 
   module Provider : sig
     type ('a, 'f) t
@@ -24,12 +28,13 @@ module type Basic = sig
     val run :
          ('a, 'f field) t
       -> string list
-      -> ('f field Cvar.t -> 'f field)
+      -> (cvar -> 'f field)
       -> Request.Handler.t
       -> 'a
   end
 
   module Handle : sig
-    val value : ('var, 'value) Handle.t -> ('value, 'f field) Types.As_prover.t
+    val value :
+      ('var, 'value) Handle.t -> ('value, 'f field, cvar) Types.As_prover.t
   end
 end

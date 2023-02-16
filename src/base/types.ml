@@ -1,5 +1,5 @@
 module As_prover = struct
-  type ('a, 'f) t = ('f Cvar.t -> 'f) -> 'a
+  type ('a, 'f, 'cvar) t = ('cvar -> 'f) -> 'a
 end
 
 module Provider = struct
@@ -43,9 +43,9 @@ module Typ = struct
     let or (x : t) = Snark.Boolean.(x.b1 || x.b2)
   end
 ]}*)
-    type ('var, 'value, 'aux, 'field, 'checked) typ' =
-      { var_to_fields : 'var -> 'field Cvar.t array * 'aux
-      ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
+    type ('var, 'value, 'aux, 'field, 'cvar, 'checked) typ' =
+      { var_to_fields : 'var -> 'cvar array * 'aux
+      ; var_of_fields : 'cvar array * 'aux -> 'var
       ; value_to_fields : 'value -> 'field array * 'aux
       ; value_of_fields : 'field array * 'aux -> 'value
       ; size_in_field_elements : int
@@ -53,15 +53,16 @@ module Typ = struct
       ; check : 'var -> 'checked
       }
 
-    type ('var, 'value, 'field, 'checked) typ =
+    type ('var, 'value, 'field, 'cvar, 'checked) typ =
       | Typ :
-          ('var, 'value, 'aux, 'field, 'checked) typ'
-          -> ('var, 'value, 'field, 'checked) typ
+          ('var, 'value, 'aux, 'field, 'cvar, 'checked) typ'
+          -> ('var, 'value, 'field, 'cvar, 'checked) typ
   end
 
   include T
 
-  type ('var, 'value, 'field, 'checked) t = ('var, 'value, 'field, 'checked) typ
+  type ('var, 'value, 'field, 'cvar, 'checked) t =
+    ('var, 'value, 'field, 'cvar, 'checked) typ
 end
 
 module type Types = sig
@@ -72,13 +73,16 @@ module type Types = sig
   module Typ : sig
     include module type of Typ.T
 
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) Typ.t
+    type ('var, 'value, 'f, 'cvar) t =
+      ('var, 'value, 'f, 'cvar, (unit, 'f) Checked.t) Typ.t
   end
 
   module Provider : sig
     include module type of Provider.T
 
-    type ('a, 'f) t =
-      (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
+    type ('a, 'f, 'cvar) t =
+      ( ('a Request.t, 'f, 'cvar) As_prover.t
+      , ('a, 'f, 'cvar) As_prover.t )
+      provider
   end
 end

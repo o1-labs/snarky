@@ -11,13 +11,9 @@ module type Checked_monad = sig
   module Types : Types.Types
 end
 
-module Make (Field : sig
-  type t
-end)
-(Checked : Checked_monad) =
-struct
+module Make (Field : T) (Cvar : T) (Checked : Checked_monad) = struct
   type ('var, 'value) t =
-    ('var, 'value, Field.t, (unit, Field.t) Checked.t) Types.Typ.t
+    ('var, 'value, Field.t, Cvar.t, (unit, Field.t) Checked.t) Types.Typ.t
 
   type ('var, 'value) typ = ('var, 'value) t
 
@@ -50,7 +46,7 @@ struct
       *)
     type ('r_var, 'r_value, 'k_var, 'k_value, 'checked) data_spec =
       | ( :: ) :
-          ('var, 'value, Field.t, 'checked) Types.Typ.t
+          ('var, 'value, Field.t, Cvar.t, 'checked) Types.Typ.t
           * ('r_var, 'r_value, 'k_var, 'k_value, 'checked) data_spec
           -> ( 'r_var
              , 'r_value
@@ -89,7 +85,7 @@ struct
         ; check = (fun () -> Checked.return ())
         }
 
-    let field : ('field Cvar.t, 'field) t =
+    let field : (Cvar.t, 'field) t =
       Typ
         { var_to_fields = (fun f -> ([| f |], ()))
         ; var_of_fields = (fun (fields, _) -> fields.(0))

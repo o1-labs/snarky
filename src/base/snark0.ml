@@ -628,14 +628,12 @@ module Make (Backend : Backend_intf.S) = struct
   module Runner0 = Checked_runner.Make (Backend_ext)
   module Checked_runner = Runner0.Checked_runner
 
+  (* extend as_prover *)
+  module As_prover_ext =
+    As_prover0.Make_extended (Backend_ext.Field) (As_prover0)
+
   (* extend checked *)
   module Checked_ext = Checked.Make (Checked_runner) (As_prover0)
-
-  module Field_T = struct
-    type field = Backend_ext.Field.t
-  end
-
-  module As_prover_ext = As_prover0.Make_extended (Field_T) (As_prover0)
 
   module Ref :
     As_prover_ref.S

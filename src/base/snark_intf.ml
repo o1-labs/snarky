@@ -129,6 +129,8 @@ module type Typ_intf = sig
 
   type field_var
 
+  type cvar
+
   type _ checked
 
   type checked_unit
@@ -148,7 +150,7 @@ module type Typ_intf = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-  type ('var, 'value) t = ('var, 'value, field, checked_unit) Types.Typ.t
+  type ('var, 'value) t = ('var, 'value, field, cvar, checked_unit) Types.Typ.t
 
   (** Basic instances: *)
 
@@ -288,7 +290,7 @@ module type Field_var_intf = sig
   type boolean_var
 
   (** The type that stores booleans as R1CS variables. *)
-  type t = field Cvar.t
+  type t
 
   (** For debug purposes *)
   val length : t -> int
@@ -529,6 +531,8 @@ end
 
 (** The base interface to Snarky. *)
 module type Basic = sig
+  type cvar
+
   (** The finite field over which the R1CS operates. *)
   type field
 
@@ -602,7 +606,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    type run_state = Field.t Run_state.t
+    type run_state
 
     include Monad_let.S
 
@@ -668,6 +672,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     module Var :
       Field_var_intf
         with type field := field
+         and type t = cvar
          and type boolean_var := Boolean.var
 
     module Checked :
@@ -688,11 +693,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       OCaml values.
   *)
   and As_prover : sig
+    type cvar
+
     (** An [('a) t] value generates a value of type ['a].
 
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
-    type 'a t = ('a, field) As_prover0.t
+    type 'a t = ('a, field, cvar) As_prover0.t
 
     type 'a as_prover = 'a t
 
@@ -1073,6 +1080,8 @@ end
 
 (** The imperative interface to Snarky. *)
 module type Run_basic = sig
+  type cvar
+
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
@@ -1151,6 +1160,7 @@ module type Run_basic = sig
     include
       Field_var_intf
         with type field := field
+         and type t = cvar
          and type boolean_var := Boolean.var
 
     include
