@@ -9,7 +9,9 @@ module Make
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
                   and type field_var = Backend.Cvar.t)
-    (As_prover : As_prover0.Extended with type field := Backend.Field.t)
+    (As_prover : As_prover0.Extended
+                   with type field := Backend.Field.t
+                    and type field_var := Backend.Cvar.t)
     (Runner : Runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t

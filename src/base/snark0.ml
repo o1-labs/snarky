@@ -13,7 +13,9 @@ module Make_basic
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
                   and type field_var = Backend.Cvar.t)
-    (As_prover : As_prover0.Extended with type field := Backend.Field.t)
+    (As_prover : As_prover0.Extended
+                   with type field := Backend.Field.t
+                    and type field_var = Backend.Cvar.t)
     (Ref : As_prover_ref.S
              with module Types := Checked.Types
               and type 'f field := Backend.Field.t
@@ -657,6 +659,8 @@ module Make (Backend : Backend_intf.S) = struct
 
   module Field_T = struct
     type field = Backend_extended.Field.t
+
+    type field_var = Backend_extended.Cvar.t
   end
 
   module As_prover_ext = As_prover0.Make_extended (Field_T) (As_prover0)

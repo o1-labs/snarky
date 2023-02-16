@@ -35,6 +35,7 @@ module Make
     (Checked : Checked_intf.S)
     (As_prover : As_prover_intf.Basic
                    with type 'f field := 'f Checked.field
+                    and type 'f field_var := 'f Checked.field_var
                     and type ('a, 'f) Provider.t =
                      ('a, 'f) Checked.Types.Provider.t) :
   S

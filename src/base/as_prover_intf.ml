@@ -3,9 +3,11 @@ module type Basic = sig
 
   type 'f field
 
+  type 'f field_var
+
   include Monad_let.S2 with type ('a, 'f) t := ('a, 'f field) t
 
-  val run : ('a, 'f field) t -> ('f field Cvar.t -> 'f field) -> 'a
+  val run : ('a, 'f field) t -> ('f field_var -> 'f field) -> 'a
 
   val map2 :
        ('a, 'f field) t
@@ -13,10 +15,10 @@ module type Basic = sig
     -> f:('a -> 'b -> 'c)
     -> ('c, 'f field) t
 
-  val read_var : 'f field Cvar.t -> ('f field, 'f field) t
+  val read_var : 'f field_var -> ('f field, 'f field) t
 
   val read :
-       ('var, 'value, 'f field, 'f field Cvar.t, _) Types.Typ.t
+       ('var, 'value, 'f field, 'f field_var, _) Types.Typ.t
     -> 'var
     -> ('value, 'f field) t
 
@@ -26,7 +28,7 @@ module type Basic = sig
     val run :
          ('a, 'f field) t
       -> string list
-      -> ('f field Cvar.t -> 'f field)
+      -> ('f field_var -> 'f field)
       -> Request.Handler.t
       -> 'a
   end

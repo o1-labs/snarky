@@ -69,7 +69,9 @@ end
 
 module Make_checked
     (Backend : Backend_extended.S)
-    (As_prover : As_prover_intf.Basic with type 'f field := Backend.Field.t) =
+    (As_prover : As_prover_intf.Basic
+                   with type 'f field := Backend.Field.t
+                    and type 'f field_var := Backend.Cvar.t) =
 struct
   type run_state = Backend.Field.t Run_state.t
 

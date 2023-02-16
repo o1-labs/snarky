@@ -8,7 +8,9 @@ end)
 (Basic : Checked_intf.Basic
            with type 'f field = Field.t
             and type 'f field_var = Field.t Cvar.t)
-(As_prover : As_prover_intf.Basic with type 'f field := 'f Basic.field) :
+(As_prover : As_prover_intf.Basic
+               with type 'f field := 'f Basic.field
+                and type 'f field_var := 'f Basic.field_var) :
   Checked_intf.S
     with module Types = Basic.Types
     with type 'f field = 'f Basic.field
