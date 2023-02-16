@@ -45,11 +45,6 @@ struct
     let field : (Cvar.t, Field.t) t = field ()
   end
 
-  let constant (Typ typ : _ Typ.t) x =
-    let fields, aux = typ.value_to_fields x in
-    let field_vars = Array.map fields ~f:(fun x -> Cvar0.Constant x) in
-    typ.var_of_fields (field_vars, aux)
-
   module As_prover = struct
     include As_prover
 
@@ -77,7 +72,7 @@ struct
 
     type run_state = Runner.run_state
 
-    include Utils.Make (Backend) (Checked) (As_prover) (Runner)
+    include Utils.Make (Backend) (Checked) (Ref) (Typ) (As_prover) (Runner)
 
     module Control = struct end
 
