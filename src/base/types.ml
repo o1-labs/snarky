@@ -43,9 +43,9 @@ module Typ = struct
     let or (x : t) = Snark.Boolean.(x.b1 || x.b2)
   end
 ]}*)
-    type ('var, 'value, 'aux, 'field, 'checked) typ' =
-      { var_to_fields : 'var -> 'field Cvar.t array * 'aux
-      ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
+    type ('var, 'value, 'aux, 'field, 'field_var, 'checked) typ' =
+      { var_to_fields : 'var -> 'field_var array * 'aux
+      ; var_of_fields : 'field_var array * 'aux -> 'var
       ; value_to_fields : 'value -> 'field array * 'aux
       ; value_of_fields : 'field array * 'aux -> 'value
       ; size_in_field_elements : int
@@ -53,15 +53,16 @@ module Typ = struct
       ; check : 'var -> 'checked
       }
 
-    type ('var, 'value, 'field, 'checked) typ =
+    type ('var, 'value, 'field, 'field_var, 'checked) typ =
       | Typ :
-          ('var, 'value, 'aux, 'field, 'checked) typ'
-          -> ('var, 'value, 'field, 'checked) typ
+          ('var, 'value, 'aux, 'field, 'field_var, 'checked) typ'
+          -> ('var, 'value, 'field, 'field_var, 'checked) typ
   end
 
   include T
 
-  type ('var, 'value, 'field, 'checked) t = ('var, 'value, 'field, 'checked) typ
+  type ('var, 'value, 'field, 'field_var, 'checked) t =
+    ('var, 'value, 'field, 'field_var, 'checked) typ
 end
 
 module type Types = sig
@@ -72,7 +73,8 @@ module type Types = sig
   module Typ : sig
     include module type of Typ.T
 
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) Typ.t
+    type ('var, 'value, 'f, 'field_var) t =
+      ('var, 'value, 'f, 'field_var, (unit, 'f) Checked.t) Typ.t
   end
 
   module Provider : sig

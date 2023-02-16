@@ -26,10 +26,10 @@ module Make : functor
     -> (Checked.field Cvar0.t, Checked.field) Checked.Types.Checked.t
 
   module Typ2 : sig
-    type ('var, 'value, 'aux, 'field, 'checked) typ' =
-          ('var, 'value, 'aux, 'field, 'checked) Types.Typ.typ' =
-      { var_to_fields : 'var -> 'field Cvar0.t array * 'aux
-      ; var_of_fields : 'field Cvar0.t array * 'aux -> 'var
+    type ('var, 'value, 'aux, 'field, 'field_var, 'checked) typ' =
+          ('var, 'value, 'aux, 'field, 'field_var, 'checked) Types.Typ.typ' =
+      { var_to_fields : 'var -> 'field_var array * 'aux
+      ; var_of_fields : 'field_var array * 'aux -> 'var
       ; value_to_fields : 'value -> 'field array * 'aux
       ; value_of_fields : 'field array * 'aux -> 'value
       ; size_in_field_elements : int
@@ -37,22 +37,24 @@ module Make : functor
       ; check : 'var -> 'checked
       }
 
-    type ('var, 'value, 'field, 'checked) typ =
-          ('var, 'value, 'field, 'checked) Types.Typ.typ =
+    type ('var, 'value, 'field, 'field_var, 'checked) typ =
+          ('var, 'value, 'field, 'field_var, 'checked) Types.Typ.typ =
       | Typ :
-          ('var, 'value, 'aux, 'field, 'checked) typ'
-          -> ('var, 'value, 'field, 'checked) typ
+          ('var, 'value, 'aux, 'field, 'field_var, 'checked) typ'
+          -> ('var, 'value, 'field, 'field_var, 'checked) typ
 
     module T : sig
-      type ('var, 'value, 'field) t =
+      type ('var, 'value, 'field, 'field_var) t =
         ( 'var
         , 'value
         , 'field
+        , 'field_var
         , (unit, 'field) Snarky_backendless__.Checked_intf.Unextend(Checked).t
         )
         typ
 
-      type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
+      type ('var, 'value, 'field, 'field_var) typ =
+        ('var, 'value, 'field, 'field_var) t
 
       module type S = sig
         type field
@@ -84,10 +86,11 @@ module Make : functor
         end
       end
 
-      val unit : unit -> (unit, unit, 'field) t
+      val unit : unit -> (unit, unit, 'field, 'field_var) t
     end
 
-    type ('var, 'value) t = ('var, 'value, Checked.field) T.t
+    type ('var, 'value) t =
+      ('var, 'value, Checked.field, Checked.field Cvar.t) T.t
 
     val unit : (unit, unit) t
   end

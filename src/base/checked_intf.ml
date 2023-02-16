@@ -20,7 +20,7 @@ module type Basic = sig
     Request.Handler.single -> (unit -> ('a, 'f field) t) -> ('a, 'f field) t
 
   val exists :
-       ('var, 'value, 'f field) Types.Typ.t
+       ('var, 'value, 'f field, 'f field Cvar.t) Types.Typ.t
     -> ('value, 'f field) Types.Provider.t
     -> (('var, 'value) Handle.t, 'f field) t
 
@@ -50,26 +50,26 @@ module type S = sig
   val mk_lazy : (unit -> ('a, 'f) t) -> ('a Lazy.t, 'f) t
 
   val request_witness :
-       ('var, 'value, 'f field) Types.Typ.t
+       ('var, 'value, 'f field, 'f field Cvar.t) Types.Typ.t
     -> ('value Request.t, 'f field) As_prover0.t
     -> ('var, 'f field) t
 
   val request :
        ?such_that:('var -> (unit, 'f field) t)
-    -> ('var, 'value, 'f field) Types.Typ.t
+    -> ('var, 'value, 'f field, 'f field Cvar.t) Types.Typ.t
     -> 'value Request.t
     -> ('var, 'f field) t
 
   val exists_handle :
        ?request:('value Request.t, 'f field) As_prover0.t
     -> ?compute:('value, 'f field) As_prover0.t
-    -> ('var, 'value, 'f field) Types.Typ.t
+    -> ('var, 'value, 'f field, 'f field Cvar.t) Types.Typ.t
     -> (('var, 'value) Handle.t, 'f field) t
 
   val exists :
        ?request:('value Request.t, 'f field) As_prover0.t
     -> ?compute:('value, 'f field) As_prover0.t
-    -> ('var, 'value, 'f field) Types.Typ.t
+    -> ('var, 'value, 'f field, 'f field Cvar.t) Types.Typ.t
     -> ('var, 'f field) t
 
   type response = Request.response

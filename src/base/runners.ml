@@ -174,6 +174,7 @@ struct
              ( input_var
              , input_value
              , field
+             , Cvar.t
              , (unit, field) Checked.Types.Checked.t )
              Types.Typ.typ
         -> return_typ:_ Types.Typ.t
@@ -208,9 +209,10 @@ struct
              ( input_var
              , input_value
              , field
+             , Cvar.t
              , (unit, field) Checked.Types.Checked.t )
              Types.Typ.typ
-        -> return_typ:(a, retval, _, _) Types.Typ.t
+        -> return_typ:(a, retval, field, Cvar.t, _) Types.Typ.t
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
      fun ~run next_input ~input_typ ~return_typ k ->
@@ -228,7 +230,7 @@ struct
 
     let constraint_system (type a checked input_var) :
            run:(a, checked) Runner.run
-        -> input_typ:(input_var, _, _, _) Types.Typ.typ
+        -> input_typ:(input_var, _, _, _, _) Types.Typ.typ
         -> return_typ:_
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
@@ -236,7 +238,7 @@ struct
       r1cs_h ~run (ref 1) ~input_typ ~return_typ k
 
     let generate_public_input :
-           ('input_var, 'input_value, _, _) Types.Typ.typ
+           ('input_var, 'input_value, _, _, _) Types.Typ.typ
         -> 'input_value
         -> Field.Vector.t =
      fun (Typ { value_to_fields; _ }) value ->
@@ -250,7 +252,7 @@ struct
     let conv :
         type r_var r_value.
            (int -> _ -> r_var -> Field.Vector.t -> r_value)
-        -> ('input_var, 'input_value, _, _) Types.Typ.t
+        -> ('input_var, 'input_value, _, _, _) Types.Typ.t
         -> _ Types.Typ.t
         -> (unit -> 'input_var -> r_var)
         -> 'input_value
@@ -280,7 +282,7 @@ struct
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
         -> input_typ:_ Types.Typ.t
-        -> return_typ:(_, _, _, _) Types.Typ.t
+        -> return_typ:(_, _, _, _, _) Types.Typ.t
         -> ?handlers:Handler.t list
         -> 'k_var
         -> 'k_value =

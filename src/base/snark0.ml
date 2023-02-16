@@ -40,7 +40,7 @@ struct
     module T = Typ.Make (Checked_S)
     include T.T
 
-    type ('var, 'value) t = ('var, 'value, Field.t) T.t
+    type ('var, 'value) t = ('var, 'value, Field.t, Cvar.t) T.t
 
     let unit : (unit, unit) t = unit ()
 

@@ -12,7 +12,8 @@ end)
     with type 'f field = 'f Basic.field = struct
   include Basic
 
-  let request_witness (typ : ('var, 'value, 'f field) Types.Typ.t)
+  let request_witness
+      (typ : ('var, 'value, 'f field, 'f field Cvar.t) Types.Typ.t)
       (r : ('value Request.t, 'f field) As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h

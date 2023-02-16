@@ -150,7 +150,8 @@ module type Typ_intf = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-  type ('var, 'value) t = ('var, 'value, field, checked_unit) Types.Typ.t
+  type ('var, 'value) t =
+    ('var, 'value, field, field_var, checked_unit) Types.Typ.t
 
   (** Basic instances: *)
 
@@ -585,7 +586,14 @@ module type Basic = sig
          and type checked_unit := unit Checked.t
          and type _ checked := unit Checked.t
          and type ('a, 'b, 'c, 'd) data_spec :=
-          ('a, 'b, 'c, 'd, field, unit Checked.t) Typ0.Data_spec0.data_spec
+          ( 'a
+          , 'b
+          , 'c
+          , 'd
+          , field
+          , Field.Var.t
+          , unit Checked.t )
+          Typ0.Data_spec0.data_spec
          and type 'a prover_ref := 'a As_prover_ref.t
 
     include module type of Types.Typ.T
@@ -1139,6 +1147,7 @@ module type Run_basic = sig
         , 'c
         , 'd
         , field
+        , Field.t
         , unit Internal_Basic.Checked.t )
         Typ0.Data_spec0.data_spec
        and type 'a prover_ref := 'a As_prover_ref.t)

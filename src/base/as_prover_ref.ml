@@ -3,7 +3,7 @@ open Core_kernel
 type 'a t = 'a option ref
 
 module Make_ref_typ (Checked : Monad_let.S2) = struct
-  let typ : ('a t, 'a, _, _) Types.Typ.t =
+  let typ : ('a t, 'a, _, _, _) Types.Typ.t =
     Typ
       { var_to_fields = (fun x -> ([||], !x))
       ; var_of_fields = (fun (_, x) -> ref x)

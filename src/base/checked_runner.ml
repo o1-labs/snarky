@@ -18,7 +18,8 @@ module Simple = struct
     module Typ = struct
       include Types.Typ.T
 
-      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
+      type ('var, 'value, 'f, 'field_var) t =
+        ('var, 'value, 'f, 'field_var, (unit, 'f) Checked.t) typ
     end
 
     module Provider = struct
@@ -80,7 +81,8 @@ struct
     module Typ = struct
       include Types.Typ.T
 
-      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
+      type ('var, 'value, 'f, 'field_var) t =
+        ('var, 'value, 'f, 'field_var, (unit, 'f) Checked.t) typ
     end
 
     module Provider = struct
@@ -248,7 +250,7 @@ struct
          ; constraint_system_auxiliary
          ; _
          } :
-        (_, _, _, _ Simple.t) Types.Typ.typ ) p : _ Simple.t =
+        (_, _, _, _, _ Simple.t) Types.Typ.typ ) p : _ Simple.t =
     Function
       (fun s ->
         if Run_state.has_witness s then (
