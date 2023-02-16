@@ -1104,6 +1104,12 @@ module type S = sig
        and type t := M.t
 end
 
+module type S_with_cvar = sig
+  type field
+
+  include S with type field := field and type field_var = field Cvar.t
+end
+
 (** The imperative interface to Snarky. *)
 module type Run_basic = sig
   val dump : unit -> string
@@ -1456,4 +1462,10 @@ module type Run = sig
        and type bool_var := Boolean.var
        and type var = Field.t
        and type t := M.t
+end
+
+module type Run_with_cvar = sig
+  type field
+
+  include Run with type field := field and type field_var = field Cvar.t
 end
