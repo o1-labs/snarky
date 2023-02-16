@@ -10,7 +10,9 @@ let set_eval_constraints b = Runner.eval_constraints := b
 
 module Make_basic
     (Backend : Backend_extended.S)
-    (Checked : Checked_intf.Extended with type field = Backend.Field.t)
+    (Checked : Checked_intf.Extended
+                 with type field = Backend.Field.t
+                  and type field_var = Backend.Cvar.t)
     (As_prover : As_prover0.Extended with type field := Backend.Field.t)
     (Ref : As_prover_ref.S
              with module Types := Checked.Types
@@ -71,7 +73,8 @@ struct
       Checked :
         Checked_intf.Extended
           with module Types := Checked.Types
-          with type field := field )
+          with type field := field
+           and type field_var := Cvar.t )
 
     let perform req = request_witness Typ.unit req
 
@@ -671,9 +674,12 @@ module Make (Backend : Backend_intf.S) = struct
         Checked_intf.S
           with module Types = Checked1.Types
           with type ('a, 'f) t := ('a, 'f) Checked1.t
-           and type 'f field := Backend_extended.Field.t )
+           and type 'f field := Backend_extended.Field.t
+           and type 'f field_var := Backend_extended.Cvar.t )
 
     type field = Backend_extended.Field.t
+
+    type field_var = Backend_extended.Cvar.t
 
     type 'a t = ('a, field) Types.Checked.t
 

@@ -95,6 +95,8 @@ struct
 
   type 'f field = Backend.Field.t
 
+  type 'f field_var = Backend.Cvar.t
+
   include Types.Checked
 
   let eval : ('a, 'f) t -> run_state -> run_state * 'a = Simple.eval
@@ -356,6 +358,7 @@ module Make (Backend : Backend_extended.S) = struct
           Checked_intf.Basic
             with module Types := Checked_runner.Types
             with type 'f field := 'f Checked_runner.field
+             and type 'f field_var := 'f Checked_runner.field_var
 
         include
           Run_extras
