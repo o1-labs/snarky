@@ -11,7 +11,8 @@ module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
-                  and type field_var = Backend.Cvar.t)
+                  and type field_var = Backend.Cvar.t
+                  and type run_state = Backend.Run_state.t)
     (As_prover : As_prover0.Extended
                    with type field := Backend.Field.t
                     and type field_var = Backend.Cvar.t)
@@ -19,13 +20,15 @@ module Make_basic
              with module Types := Checked.Types
               and type 'f field := Backend.Field.t
               and type 'f field_var := Backend.Cvar.t
-              and type ('a, 'f, 'field_var) checked := 'a Checked.t)
+              and type ('a, 'run_state) checked := 'a Checked.t)
     (Runner : Runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
+                 and type field_vector := Backend.Field.Vector.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t) =
+                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type run_state := Backend.Run_state.t) =
 struct
   open Backend
   module Checked_S = Checked_intf.Unextend (Checked)
@@ -34,6 +37,7 @@ struct
   module Field0 = Field
   module Cvar = Cvar
   module Constraint = Constraint
+  module Run_state = Run_state
 
   type field_var = Cvar.t
 
@@ -46,7 +50,7 @@ struct
     module T = Typ.Make (Checked_S)
     include T.T
 
-    type ('var, 'value) t = ('var, 'value, Field.t, Cvar.t) T.t
+    type ('var, 'value) t = ('var, 'value, Field.t, Cvar.t, Run_state.t) T.t
 
     let unit : (unit, unit) t = unit ()
 
@@ -72,15 +76,13 @@ struct
       Checked :
         Checked_intf.Extended
           with module Types := Checked.Types
-          with type field := field
-           and type field_var := Cvar.t )
+           and type field := field
+           and type field_var := Cvar.t
+           and type run_state := Run_state.t )
 
     let perform req = request_witness Typ.unit req
 
     module Runner = Runner
-
-    type run_state = Runner.run_state
-
     include Utils.Make (Backend) (Checked) (Typ) (As_prover) (Runner)
 
     module Control = struct end
@@ -665,25 +667,28 @@ module Make (Backend : Backend_intf.S) = struct
   module Ref :
     As_prover_ref.S
       with module Types = Checked1.Types
-       and type ('a, 'f, 'field_var) checked := ('a, 'f, 'field_var) Checked1.t
+       and type ('a, 'run_state) checked := ('a, 'run_state) Checked1.t
        and type 'f field := Backend_extended.Field.t
        and type 'f field_var := Backend_extended.Cvar.t =
-    As_prover_ref.Make (Checked1) (As_prover0)
+    As_prover_ref.Make (Backend_extended.Run_state) (Checked1) (As_prover0)
 
   module Checked_for_basic = struct
     include (
       Checked1 :
         Checked_intf.S
           with module Types = Checked1.Types
-          with type ('a, 'f, 'field_var) t := ('a, 'f, 'field_var) Checked1.t
+          with type ('a, 'run_state) t := ('a, 'run_state) Checked1.t
            and type 'f field := Backend_extended.Field.t
-           and type 'f field_var := Backend_extended.Cvar.t )
+           and type 'f field_var := Backend_extended.Cvar.t
+           and type run_state := Backend_extended.Run_state.t )
 
     type field = Backend_extended.Field.t
 
     type field_var = Backend_extended.Cvar.t
 
-    type 'a t = ('a, field, field_var) Types.Checked.t
+    type run_state = Backend_extended.Run_state.t
+
+    type 'a t = ('a, Backend.Run_state.t) Types.Checked.t
 
     let run = Runner0.run
   end
@@ -716,7 +721,6 @@ module Run = struct
 
   module Make_basic (Backend : Backend_intf.S) = struct
     module Snark = Make (Backend)
-    open Run_state
     open Snark
 
     let set_constraint_logger = set_constraint_logger
@@ -727,7 +731,9 @@ module Run = struct
 
     let state =
       ref
-        (Run_state.make ~input:(field_vec ()) ~aux:(field_vec ())
+        (Run_state.make
+           ~input:(Backend.Field.Vector.create ())
+           ~aux:(Backend.Field.Vector.create ())
            ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 1)
            ~with_witness:false ~stack:[] ~is_running:false () )
 
@@ -763,7 +769,7 @@ module Run = struct
       (!state, a)
 
     let make_checked (type a) (f : unit -> a) : _ Checked.t =
-      let g : run_state -> run_state * a = as_stateful f in
+      let g : Run_state.t -> Run_state.t * a = as_stateful f in
       Function g
 
     module R1CS_constraint_system = Snark.R1CS_constraint_system
@@ -1394,14 +1400,20 @@ module Run = struct
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
       let old = !state in
       state :=
-        Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
+        Runner.State.make ~num_inputs:0
+          ~input:(Backend.Field.Vector.create ())
+          ~aux:(Backend.Field.Vector.create ())
           ~next_auxiliary:(ref 1) ~eval_constraints:false ~with_witness:false
           ~log_constraint () ;
       ignore (mark_active ~f:x) ;
       state := old ;
       !count
 
-    module Internal_Basic = Snark
+    module Internal_Basic = struct
+      include Snark
+
+      type state = Snark.Run_state.t
+    end
 
     let run_checked = run
   end

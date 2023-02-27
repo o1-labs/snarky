@@ -91,26 +91,21 @@ module Intf = struct
 end
 
 module type Checked_monad = sig
-  type ('a, 'f, 'v) t
+  type ('a, 'run_state) t
 
   type 'f field
 
-  include Monad_let.S3 with type ('a, 'e, 'v) t := ('a, 'e, 'v) t
+  include Monad_let.S2 with type ('a, 'run_state) t := ('a, 'run_state) t
 
   module Types : Types.Types
 end
 
 module Make (Checked : Checked_monad) = struct
-  type ('var, 'value, 'field, 'field_var) t =
-    ( 'var
-    , 'value
-    , 'field
-    , 'field_var
-    , (unit, 'field, 'field_var) Checked.t )
-    Types.Typ.t
+  type ('var, 'value, 'field, 'field_var, 'run_state) t =
+    ('var, 'value, 'field, 'field_var, (unit, 'run_state) Checked.t) Types.Typ.t
 
-  type ('var, 'value, 'field, 'field_var) typ =
-    ('var, 'value, 'field, 'field_var) t
+  type ('var, 'value, 'field, 'field_var, 'run_state) typ =
+    ('var, 'value, 'field, 'field_var, 'run_state) t
 
   module type S = sig
     type field
@@ -119,8 +114,7 @@ module Make (Checked : Checked_monad) = struct
 
     include
       Intf.S
-        with type ('field, 'field_var) checked :=
-          (unit, 'field, 'field_var) Checked.t
+        with type ('field, 'run_state) checked := (unit, 'run_state) Checked.t
          and type field := field
          and type field_var := field_var
   end
@@ -128,20 +122,22 @@ module Make (Checked : Checked_monad) = struct
   module Data_spec = struct
     include Data_spec0
 
-    type ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'field_var) t =
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'f, 'field_var, 'run_state) t =
       ( 'r_var
       , 'r_value
       , 'k_var
       , 'k_value
       , 'f
       , 'field_var
-      , (unit, 'f, 'field_var) Checked.t )
+      , (unit, 'run_state) Checked.t )
       data_spec
 
     let size t =
       let rec go :
           type r_var r_value k_var k_value.
-          int -> (r_var, r_value, k_var, k_value, 'f, 'field_cvar) t -> int =
+             int
+          -> (r_var, r_value, k_var, k_value, 'f, 'field_cvar, 'run_state) t
+          -> int =
        fun acc t ->
         match t with
         | [] ->
@@ -153,7 +149,7 @@ module Make (Checked : Checked_monad) = struct
   end
 
   module T = struct
-    let unit () : (unit, unit, 'field, 'field_var) t =
+    let unit () : (unit, unit, 'field, 'field_var, 'run_state) t =
       Typ
         { var_to_fields = (fun () -> ([||], ()))
         ; var_of_fields = (fun _ -> ())
@@ -164,7 +160,7 @@ module Make (Checked : Checked_monad) = struct
         ; check = (fun () -> Checked.return ())
         }
 
-    let field () : ('field_var, 'field, 'field, 'field_var) t =
+    let field () : ('field_var, 'field, 'field, 'field_var, 'run_state) t =
       Typ
         { var_to_fields = (fun f -> ([| f |], ()))
         ; var_of_fields = (fun (fields, _) -> fields.(0))
@@ -195,7 +191,7 @@ module Make (Checked : Checked_monad) = struct
       let ref () = Ref_typ.typ
     end
 
-    let transport (type var value1 value2 field field_cvar)
+    let transport (type var value1 value2 field field_cvar run_state)
         (Typ
            { var_to_fields
            ; var_of_fields
@@ -205,8 +201,9 @@ module Make (Checked : Checked_monad) = struct
            ; constraint_system_auxiliary
            ; check
            } :
-          (var, value1, field, field_cvar) t ) ~(there : value2 -> value1)
-        ~(back : value1 -> value2) : (var, value2, field, field_cvar) t =
+          (var, value1, field, field_cvar, run_state) t )
+        ~(there : value2 -> value1) ~(back : value1 -> value2) :
+        (var, value2, field, field_cvar, run_state) t =
       Typ
         { var_to_fields
         ; var_of_fields
@@ -217,7 +214,7 @@ module Make (Checked : Checked_monad) = struct
         ; check
         }
 
-    let transport_var (type var1 var2 value field field_cvar)
+    let transport_var (type var1 var2 value field field_cvar run_state)
         (Typ
            { var_to_fields
            ; var_of_fields
@@ -227,8 +224,9 @@ module Make (Checked : Checked_monad) = struct
            ; constraint_system_auxiliary
            ; check
            } :
-          (var1, value, field, field_cvar) t ) ~(there : var2 -> var1)
-        ~(back : var1 -> var2) : (var2, value, field, field_cvar) t =
+          (var1, value, field, field_cvar, run_state) t )
+        ~(there : var2 -> var1) ~(back : var1 -> var2) :
+        (var2, value, field, field_cvar, run_state) t =
       Typ
         { var_to_fields = (fun x -> var_to_fields (there x))
         ; var_of_fields = (fun x -> back (var_of_fields x))
@@ -249,8 +247,8 @@ module Make (Checked : Checked_monad) = struct
            ; constraint_system_auxiliary
            ; check
            } :
-          ('elt_var, 'elt_value, 'field, 'field_cvar) t ) :
-        ('elt_var list, 'elt_value list, 'field, 'field_cvar) t =
+          ('elt_var, 'elt_value, 'field, 'field_cvar, 'run_state) t ) :
+        ('elt_var list, 'elt_value list, 'field, 'field_cvar, 'run_state) t =
       (* NB: We store the size_in_field_elements of each in the auxiliary
          data, to allow for 'reads' of e.g. list of lists of different
          lengths.
@@ -330,15 +328,30 @@ module Make (Checked : Checked_monad) = struct
       |> transport_var ~there:Array.to_list ~back:Array.of_list
 
     let hlist (type k_var k_value)
-        (spec0 : (unit, unit, k_var, k_value, 'f, 'field_cvar) Data_spec.t) :
-        ((unit, k_var) H_list.t, (unit, k_value) H_list.t, 'f, 'field_cvar) t =
+        (spec0 :
+          (unit, unit, k_var, k_value, 'f, 'field_cvar, 'run_state) Data_spec.t
+          ) :
+        ( (unit, k_var) H_list.t
+        , (unit, k_value) H_list.t
+        , 'f
+        , 'field_cvar
+        , 'run_state )
+        t =
       let rec go :
           type k_var k_value.
-             (unit, unit, k_var, k_value, 'f, 'field_cvar) Data_spec.t
+             ( unit
+             , unit
+             , k_var
+             , k_value
+             , 'f
+             , 'field_cvar
+             , 'run_state )
+             Data_spec.t
           -> ( (unit, k_var) H_list.t
              , (unit, k_value) H_list.t
              , 'f
-             , 'field_cvar )
+             , 'field_cvar
+             , 'run_state )
              t =
        fun spec0 ->
         let open H_list in
@@ -485,12 +498,19 @@ module Make (Checked : Checked_monad) = struct
              (a, b, c, d, e, f) )
 
     let of_hlistable
-        (spec : (unit, unit, 'k_var, 'k_value, 'f, 'field_cvar) Data_spec.t)
-        ~(var_to_hlist : 'var -> (unit, 'k_var) H_list.t)
+        (spec :
+          ( unit
+          , unit
+          , 'k_var
+          , 'k_value
+          , 'f
+          , 'field_cvar
+          , 'run_state )
+          Data_spec.t ) ~(var_to_hlist : 'var -> (unit, 'k_var) H_list.t)
         ~(var_of_hlist : (unit, 'k_var) H_list.t -> 'var)
         ~(value_to_hlist : 'value -> (unit, 'k_value) H_list.t)
         ~(value_of_hlist : (unit, 'k_value) H_list.t -> 'value) :
-        ('var, 'value, 'f, 'field_cvar) t =
+        ('var, 'value, 'f, 'field_cvar, 'run_state) t =
       hlist spec
       |> transport ~there:value_to_hlist ~back:value_of_hlist
       |> transport_var ~there:var_to_hlist ~back:var_of_hlist

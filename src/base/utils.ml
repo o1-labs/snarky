@@ -3,76 +3,62 @@ module Runner = Checked_runner
 
 let set_eval_constraints b = Runner.eval_constraints := b
 
+module type Typ_minimal_intf = sig
+  type field
+
+  type field_var
+
+  type unit_checked
+
+  type ('var, 'value, 'field, 'field_var, 'checked) typ =
+    | Typ :
+        ('var, 'value, 'aux, 'field, 'field_var, 'checked) Types.Typ.typ'
+        -> ('var, 'value, 'field, 'field_var, 'checked) typ
+
+  type ('var, 'value) t =
+    ('var, 'value, field, field_var, unit_checked) Types.Typ.t
+
+  val field : (field_var, field) t
+
+  val tuple2 :
+       ('var1, 'value1) t
+    -> ('var2, 'value2) t
+    -> ('var1 * 'var2, 'value1 * 'value2) t
+
+  val transport :
+       ('var, 'value1) t
+    -> there:('value2 -> 'value1)
+    -> back:('value1 -> 'value2)
+    -> ('var, 'value2) t
+
+  val transport_var :
+       ('var1, 'value) t
+    -> there:('var2 -> 'var1)
+    -> back:('var1 -> 'var2)
+    -> ('var2, 'value) t
+end
+
 module Make
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
-                  and type field_var = Backend.Cvar.t)
-    (Typ : sig
-      type ('var, 'value, 'field, 'field_var, 'checked) typ =
-        | Typ :
-            ('var, 'value, 'aux, 'field, 'field_var, 'checked) Types.Typ.typ'
-            -> ('var, 'value, 'field, 'field_var, 'checked) typ
-
-      type ('var, 'value) t =
-        ( 'var
-        , 'value
-        , Backend.Field.t
-        , Backend.Cvar.t
-        , unit Checked.t )
-        Types.Typ.t
-
-      val unit : (unit, unit) t
-
-      val field : (Backend.Cvar.t, Backend.Field.t) t
-
-      val tuple2 :
-           ('var1, 'value1) t
-        -> ('var2, 'value2) t
-        -> ('var1 * 'var2, 'value1 * 'value2) t
-
-      val ( * ) :
-           ('var1, 'value1) t
-        -> ('var2, 'value2) t
-        -> ('var1 * 'var2, 'value1 * 'value2) t
-
-      val tuple3 :
-           ('var1, 'value1) t
-        -> ('var2, 'value2) t
-        -> ('var3, 'value3) t
-        -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
-
-      val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
-
-      val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
-
-      val transport :
-           ('var, 'value1) t
-        -> there:('value2 -> 'value1)
-        -> back:('value1 -> 'value2)
-        -> ('var, 'value2) t
-
-      val transport_var :
-           ('var1, 'value) t
-        -> there:('var2 -> 'var1)
-        -> back:('var1 -> 'var2)
-        -> ('var2, 'value) t
-
-      module Internal : sig
-        val snarkless : 'a -> ('a, 'a) t
-
-        val ref : unit -> ('a As_prover_ref.t, 'a) t
-      end
-    end)
+                  and type field_var = Backend.Cvar.t
+                  and type run_state = Backend.Run_state.t)
+    (Typ : Typ_minimal_intf
+             with type field := Backend.Field.t
+              and type field_var := Backend.Cvar.t
+              and type unit_checked := unit Checked.t)
     (As_prover : As_prover0.Extended
                    with type field := Backend.Field.t
                     and type field_var := Backend.Cvar.t)
     (Runner : Runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
+                 and type field_vector := Backend.Field.Vector.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t) =
+                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type run_state := Backend.Run_state.t) =
 struct
   open Backend
 

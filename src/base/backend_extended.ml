@@ -27,6 +27,12 @@ module type S = sig
       with module Field := Field
        and type cvar := Cvar.t
 
+  module Run_state :
+    Backend_intf.Run_state_intf
+      with module Field := Field
+       and type cvar := Cvar.t
+       and type constraint_system := R1CS_constraint_system.t
+
   module Constraint : sig
     type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
 
@@ -55,8 +61,8 @@ module Make (Backend : Backend_intf.S) :
      and type Cvar.t = Backend.Cvar.t
      and type Field.Vector.t = Backend.Field.Vector.t
      and type Bigint.t = Backend.Bigint.t
-     and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t =
-struct
+     and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
+     and type Run_state.t = Backend.Run_state.t = struct
   open Backend
 
   module Bigint = struct
@@ -182,4 +188,5 @@ struct
   end
 
   module R1CS_constraint_system = R1CS_constraint_system
+  module Run_state = Run_state
 end

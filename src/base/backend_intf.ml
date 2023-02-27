@@ -67,6 +67,78 @@ module type Cvar_intf = sig
   val to_constant : t -> field option
 end
 
+module type Run_state_intf = sig
+  module Field : sig
+    type t
+
+    module Vector : T
+  end
+
+  type t
+
+  type cvar
+
+  type constraint_system
+
+  val make :
+       num_inputs:int
+    -> input:Field.Vector.t
+    -> next_auxiliary:int ref
+    -> aux:Field.Vector.t
+    -> ?system:constraint_system
+    -> eval_constraints:bool
+    -> ?log_constraint:
+         (   ?at_label_boundary:[ `End | `Start ] * string
+          -> (cvar, 'field) Constraint.t option
+          -> unit )
+    -> ?handler:Request.Handler.t
+    -> with_witness:bool
+    -> ?stack:string list
+    -> ?is_running:bool
+    -> unit
+    -> t
+
+  (** dumps some information about a state [t] *)
+  val dump : t -> string
+
+  val get_variable_value : t -> int -> Field.t
+
+  val store_field_elt : t -> Field.t -> cvar
+
+  val alloc_var : t -> unit -> cvar
+
+  val has_witness : t -> bool
+
+  val as_prover : t -> bool
+
+  val set_as_prover : t -> bool -> unit
+
+  val stack : t -> string list
+
+  val set_stack : t -> string list -> t
+
+  val log_constraint :
+       t
+    -> (   ?at_label_boundary:[ `Start | `End ] * string
+        -> (cvar, Field.t) Constraint.t option
+        -> unit )
+       option
+
+  val eval_constraints : t -> bool
+
+  val system : t -> constraint_system option
+
+  val handler : t -> Request.Handler.t
+
+  val set_handler : t -> Request.Handler.t -> t
+
+  val is_running : t -> bool
+
+  val set_is_running : t -> bool -> t
+
+  val next_auxiliary : t -> int
+end
+
 module type S = sig
   module Field : Snarky_intf.Field.S
 
@@ -78,4 +150,10 @@ module type S = sig
 
   module R1CS_constraint_system :
     Constraint_system_intf with module Field := Field and type cvar := Cvar.t
+
+  module Run_state :
+    Run_state_intf
+      with module Field := Field
+       and type cvar := Cvar.t
+       and type constraint_system := R1CS_constraint_system.t
 end

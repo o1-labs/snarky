@@ -67,14 +67,14 @@ end
 
 module type Types = sig
   module Checked : sig
-    type ('a, 'f, 'field_var) t
+    type ('a, 'run_state) t
   end
 
   module Typ : sig
     include module type of Typ.T
 
-    type ('var, 'value, 'f, 'field_var) t =
-      ('var, 'value, 'f, 'field_var, (unit, 'f, 'field_var) Checked.t) Typ.t
+    type ('var, 'value, 'f, 'field_var, 'run_state) t =
+      ('var, 'value, 'f, 'field_var, (unit, 'run_state) Checked.t) Typ.t
   end
 
   module Provider : sig

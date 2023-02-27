@@ -5,16 +5,19 @@ module Make
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
-                  and type field_var = Backend.Cvar.t)
+                  and type field_var = Backend.Cvar.t
+                  and type run_state = Backend.Run_state.t)
     (As_prover : As_prover0.Extended
                    with type field := Backend.Field.t
                     and type field_var := Backend.Cvar.t)
     (Runner : Checked_runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
+                 and type field_vector := Backend.Field.Vector.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t) =
+                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type run_state := Backend.Run_state.t) =
 struct
   open Backend
 
@@ -25,14 +28,6 @@ struct
   type field = Field.t
 
   type field_var = Cvar.t
-
-  let field_vec_id : Field.Vector.t Type_equal.Id.t =
-    Type_equal.Id.create ~name:"field-vector" sexp_of_opaque
-
-  let pack_field_vec v =
-    Run_state.Vector.T ((module Field.Vector), field_vec_id, v)
-
-  let field_vec () = pack_field_vec (Field.Vector.create ())
 
   module Proof_inputs = struct
     type t =
@@ -53,9 +48,9 @@ struct
   (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
   let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
       output t : R1CS_constraint_system.t =
-    let input = field_vec () in
+    let input = Field.Vector.create () in
     let next_auxiliary = ref (1 + num_inputs) in
-    let aux = field_vec () in
+    let aux = Field.Vector.create () in
     let system = R1CS_constraint_system.create () in
     let state =
       Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
@@ -82,8 +77,8 @@ struct
           Request.Handler.(push handler (create_single h)) )
     in
     let state =
-      Runner.State.make ?system ~num_inputs ~input:(pack_field_vec input)
-        ~next_auxiliary ~aux:(pack_field_vec aux) ~handler ~with_witness:true ()
+      Runner.State.make ?system ~num_inputs ~input ~next_auxiliary ~aux ~handler
+        ~with_witness:true ()
     in
     let state, res = run t0 state in
     let res, auxiliary_output_data = return_typ.var_to_fields res in
@@ -105,7 +100,7 @@ struct
 
   let run_and_check' ~run t0 =
     let num_inputs = 0 in
-    let input = field_vec () in
+    let input = Field.Vector.create () in
     let next_auxiliary = ref 1 in
     let aux = Field.Vector.create () in
     let system = R1CS_constraint_system.create () in
@@ -114,9 +109,8 @@ struct
       Cvar.eval (`Return_values_will_be_mutated get_one)
     in
     let state =
-      Runner.State.make ~num_inputs ~input ~next_auxiliary
-        ~aux:(pack_field_vec aux) ~system ~eval_constraints:true
-        ~with_witness:true ()
+      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
+        ~eval_constraints:true ~with_witness:true ()
     in
     match run t0 state with
     | exception e ->
@@ -126,7 +120,7 @@ struct
 
   let run_and_check_deferred' ~map ~return ~run t0 =
     let num_inputs = 0 in
-    let input = field_vec () in
+    let input = Field.Vector.create () in
     let next_auxiliary = ref 1 in
     let aux = Field.Vector.create () in
     let system = R1CS_constraint_system.create () in
@@ -135,9 +129,8 @@ struct
       Cvar.eval (`Return_values_will_be_mutated get_one)
     in
     let state =
-      Runner.State.make ~num_inputs ~input ~next_auxiliary
-        ~aux:(pack_field_vec aux) ~system ~eval_constraints:true
-        ~with_witness:true ()
+      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
+        ~eval_constraints:true ~with_witness:true ()
     in
     match run t0 state with
     | exception e ->
@@ -147,9 +140,9 @@ struct
 
   let run_unchecked ~run t0 =
     let num_inputs = 0 in
-    let input = field_vec () in
+    let input = Field.Vector.create () in
     let next_auxiliary = ref 1 in
-    let aux = field_vec () in
+    let aux = Field.Vector.create () in
     let state =
       Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux
         ~with_witness:true ()
@@ -181,7 +174,7 @@ struct
              , input_value
              , field
              , Cvar.t
-             , (unit, field, field_var) Checked.Types.Checked.t )
+             , (unit, 'run_state) Checked.Types.Checked.t )
              Types.Typ.typ
         -> return_typ:_ Types.Typ.t
         -> (unit -> input_var -> checked)
@@ -216,7 +209,7 @@ struct
              , input_value
              , field
              , Cvar.t
-             , (unit, field, field_var) Checked.Types.Checked.t )
+             , (unit, 'run_state) Checked.Types.Checked.t )
              Types.Typ.typ
         -> return_typ:(a, retval, field, Cvar.t, _) Types.Typ.t
         -> (input_var -> checked)

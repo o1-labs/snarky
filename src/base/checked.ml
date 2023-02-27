@@ -4,17 +4,20 @@ module Make
     (Backend : Backend_extended.S)
     (Basic : Checked_intf.Basic
                with type 'f field = Backend.Field.t
-                and type 'f field_var = Backend.Cvar.t)
+                and type 'f field_var = Backend.Cvar.t
+                and type run_state := Backend.Run_state.t)
     (As_prover : As_prover_intf.Basic
                    with type 'f field := 'f Basic.field
                     and type 'f field_var := 'f Basic.field_var) :
   Checked_intf.S
     with module Types = Basic.Types
     with type 'f field = 'f Basic.field
-     and type 'f field_var = 'f Basic.field_var = struct
+     and type 'f field_var = 'f Basic.field_var
+     and type run_state := Backend.Run_state.t = struct
   include Basic
 
-  let request_witness (typ : ('var, 'value, 'f field, 'f field_var) Types.Typ.t)
+  let request_witness
+      (typ : ('var, 'value, 'f field, 'f field_var, 'run_state) Types.Typ.t)
       (r : ('value Request.t, 'f field, 'f field_var) As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h

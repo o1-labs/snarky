@@ -21,6 +21,7 @@ exception Runtime_error of string list * exn * string
 
 module Make (Backend : Backend_intf.S) :
   Snark_intf.S
+    with module Run_state = Backend.Run_state
     with type field = Backend.Field.t
      and type field_var = Backend.Cvar.t
      and type Bigint.t = Backend.Bigint.t

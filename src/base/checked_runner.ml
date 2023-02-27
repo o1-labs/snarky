@@ -10,17 +10,16 @@ let eval_constraints_ref = eval_constraints
 module Simple = struct
   module Types = struct
     module Checked = struct
-      type ('a, 'f, 'field_var) t =
+      type ('a, 'run_state) t =
         | Pure of 'a
-        | Function of
-            (('f, 'field_var) Run_state.t -> ('f, 'field_var) Run_state.t * 'a)
+        | Function of ('run_state -> 'run_state * 'a)
     end
 
     module Typ = struct
       include Types.Typ.T
 
-      type ('var, 'value, 'f, 'field_var) t =
-        ('var, 'value, 'f, 'field_var, (unit, 'f, 'field_var) Checked.t) typ
+      type ('var, 'value, 'f, 'field_var, 'run_state) t =
+        ('var, 'value, 'f, 'field_var, (unit, 'run_state) Checked.t) typ
     end
 
     module Provider = struct
@@ -35,15 +34,13 @@ module Simple = struct
 
   type 'f field = 'f
 
-  type ('a, 'f, 'field_var) t = ('a, 'f field, 'field_var) Types.Checked.t
+  type ('a, 'run_state) t = ('a, 'run_state) Types.Checked.t
 
-  let eval (t : ('a, 'f, 'field_var) t) :
-         ('f field, 'field_var) Run_state.t
-      -> ('f field, 'field_var) Run_state.t * 'a =
+  let eval (t : ('a, 'run_state) t) : 'run_state -> 'run_state * 'a =
     match t with Pure a -> fun s -> (s, a) | Function g -> g
 
-  include Monad_let.Make3 (struct
-    type ('a, 'f, 'field_var) t = ('a, 'f field, 'field_var) Types.Checked.t
+  include Monad_let.Make2 (struct
+    type ('a, 'run_state) t = ('a, 'run_state) Types.Checked.t
 
     let return x : _ t = Pure x
 
@@ -77,19 +74,20 @@ module Make_checked
                    with type 'f field := Backend.Field.t
                     and type 'f field_var := Backend.Cvar.t) =
 struct
-  type run_state = (Backend.Field.t, Backend.Cvar.t) Run_state.t
+  type run_state = Backend.Run_state.t
+
+  type state = run_state
 
   module Types = struct
     module Checked = struct
-      type ('a, 'f, 'field_var) t =
-        ('a, Backend.Field.t, Backend.Cvar.t) Simple.Types.Checked.t
+      type ('a, 'run_state) t = ('a, Backend.Run_state.t) Simple.Types.Checked.t
     end
 
     module Typ = struct
       include Types.Typ.T
 
-      type ('var, 'value, 'f, 'field_var) t =
-        ('var, 'value, 'f, 'field_var, (unit, 'f, 'field_var) Checked.t) typ
+      type ('var, 'value, 'f, 'field_var, 'run_state) t =
+        ('var, 'value, 'f, 'field_var, (unit, 'run_state) Checked.t) typ
     end
 
     module Provider = struct
@@ -108,9 +106,9 @@ struct
 
   include Types.Checked
 
-  let eval : ('a, 'f, 'v) t -> run_state -> run_state * 'a = Simple.eval
+  let eval : ('a, 'run_state) t -> 'run_state -> 'run_state * 'a = Simple.eval
 
-  include Monad_let.Make3 (struct
+  include Monad_let.Make2 (struct
     include Types.Checked
 
     let map = `Custom Simple.map
@@ -123,7 +121,7 @@ struct
   open Constraint
   open Backend
 
-  let get_value (t : (Field.t, Cvar.t) Run_state.t) : Cvar.t -> Field.t =
+  let get_value (t : run_state) : Cvar.t -> Field.t =
     let get_one i = Run_state.get_variable_value t i in
     Cvar.eval (`Return_values_will_be_mutated get_one)
 
@@ -208,11 +206,10 @@ struct
           !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
           (Constraint0.Basic.map basic ~f:(get_value s))
 
-  let add_constraint ~stack ({ basic; annotation } : Constraint.t)
-      (Constraint_system.T ((module C), system) :
-        (Field.t, Cvar.t) Constraint_system.t ) =
+  let add_constraint ~stack ({ basic; annotation } : Constraint.t) system =
     let label = Option.value annotation ~default:"<unknown>" in
-    C.add_constraint system basic ~label:(stack_to_string (label :: stack))
+    Backend.R1CS_constraint_system.add_constraint system basic
+      ~label:(stack_to_string (label :: stack))
 
   let add_constraint c : _ Simple.t =
     Function
@@ -319,8 +316,8 @@ struct
       count := !count + Option.value_map ~default:0 ~f:weight c
     in
     let state =
-      Run_state.make ~num_inputs:0 ~input:Run_state.Vector.null
-        ~next_auxiliary:(ref 1) ~aux:Run_state.Vector.null
+      Run_state.make ~num_inputs:0 ~input:(Field.Vector.create ())
+        ~next_auxiliary:(ref 1) ~aux:(Field.Vector.create ())
         ~eval_constraints:false ~log_constraint ~with_witness:false ()
     in
     let _ = Simple.eval (t ()) state in
@@ -334,12 +331,14 @@ module type Run_extras = sig
 
   module Types : Types.Types
 
-  val get_value : (field, cvar) Run_state.t -> cvar -> field
+  type run_state
+
+  type state = run_state
+
+  val get_value : run_state -> cvar -> field
 
   val run_as_prover :
-       ('a, field, cvar) As_prover0.t option
-    -> (field, cvar) Run_state.t
-    -> (field, cvar) Run_state.t * 'a option
+    ('a, field, cvar) As_prover0.t option -> run_state -> run_state * 'a option
 end
 
 module Make (Backend : Backend_extended.S) = struct
@@ -357,8 +356,6 @@ module Make (Backend : Backend_extended.S) = struct
 
   type run_state = Checked_runner.run_state
 
-  type state = run_state
-
   type ('a, 't) run = 't -> run_state -> run_state * 'a
 
   include (
@@ -369,29 +366,44 @@ module Make (Backend : Backend_extended.S) = struct
             with module Types := Checked_runner.Types
             with type 'f field := 'f Checked_runner.field
              and type 'f field_var := 'f Checked_runner.field_var
+             and type run_state := Backend.Run_state.t
 
         include
           Run_extras
             with module Types := Checked_runner.Types
             with type field := Backend.Field.t
              and type cvar := Backend.Cvar.t
+             and type run_state := Backend.Run_state.t
       end )
 
   module Types = Checked_runner.Types
 
   let run = Simple.eval
 
-  let dummy_vector = Run_state.Vector.null
-
   let fake_state next_auxiliary stack =
-    Run_state.make ~num_inputs:0 ~input:Run_state.Vector.null ~next_auxiliary
-      ~aux:Run_state.Vector.null ~eval_constraints:false ~stack
+    Run_state.make ~num_inputs:0 ~input:(Field.Vector.create ()) ~next_auxiliary
+      ~aux:(Field.Vector.create ()) ~eval_constraints:false ~stack
       ~with_witness:false ()
 
   module State = struct
-    let make ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ?(eval_constraints = !eval_constraints_ref) ?handler ~with_witness
-        ?log_constraint () =
+    let make :
+           num_inputs:int
+        -> input:Field.Vector.t
+        -> next_auxiliary:int ref
+        -> aux:Field.Vector.t
+        -> ?system:Backend.R1CS_constraint_system.t
+        -> ?eval_constraints:bool
+        -> ?handler:Request.Handler.t
+        -> with_witness:bool
+        -> ?log_constraint:
+             (   ?at_label_boundary:[ `End | `Start ] * string
+              -> Constraint.t option
+              -> unit )
+        -> unit
+        -> run_state =
+     fun ~num_inputs ~input ~next_auxiliary ~aux ?system
+         ?(eval_constraints = !eval_constraints_ref) ?handler ~with_witness
+         ?log_constraint () ->
       let log_constraint =
         match log_constraint with
         | Some _ ->
@@ -405,19 +417,6 @@ module Make (Backend : Backend_extended.S) = struct
         (system : R1CS_constraint_system.t option)
         ~f:(fun system ->
           R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
-      let system =
-        Option.map system ~f:(fun sys ->
-            let module M = struct
-              module Field = struct
-                type nonrec t = Field.t
-              end
-
-              type cvar = Cvar.t
-
-              include R1CS_constraint_system
-            end in
-            Constraint_system.T ((module M), sys) )
-      in
       Run_state.make ~num_inputs ~input ~next_auxiliary ~aux ?system
         ~eval_constraints ?log_constraint ?handler ~with_witness ()
   end
@@ -430,25 +429,23 @@ module type S = sig
 
   type r1cs
 
+  type field_vector
+
   val set_constraint_logger :
     (?at_label_boundary:[ `Start | `End ] * string -> constr -> unit) -> unit
 
   val clear_constraint_logger : unit -> unit
 
-  type run_state = (field, cvar) Run_state.t
-
-  type state = run_state
-
   type ('a, 't) run = 't -> run_state -> run_state * 'a
 
-  val run : ('a, field, cvar) Types.Checked.t -> run_state -> run_state * 'a
+  val run : ('a, run_state) Types.Checked.t -> run_state -> run_state * 'a
 
   module State : sig
     val make :
          num_inputs:int
-      -> input:field Run_state.Vector.t
+      -> input:field_vector
       -> next_auxiliary:int ref
-      -> aux:field Run_state.Vector.t
+      -> aux:field_vector
       -> ?system:r1cs
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t
@@ -458,6 +455,6 @@ module type S = sig
             -> (cvar, field) Constraint.t option
             -> unit )
       -> unit
-      -> (field, cvar) Run_state.t
+      -> run_state
   end
 end

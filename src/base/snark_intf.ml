@@ -555,6 +555,9 @@ module type Basic = sig
 
   type field_var
 
+  (* TODO: Should this really be exposed? *)
+  module Run_state : T
+
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
@@ -633,8 +636,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   Field.Checked.mul x_times_y z
 ]}
     *)
-
-    type run_state = (Field.t, field_var) Run_state.t
 
     include Monad_let.S
 
@@ -1269,12 +1270,16 @@ module type Run_basic = sig
       }
   end
 
-  and Internal_Basic :
-    (Basic
-      with type field = field
-       and type field_var = field_var
-       and type 'a Checked.t = ('a, field, field_var) Checked_runner.Simple.t
-       and type 'a As_prover.Ref.t = 'a As_prover_ref.t)
+  and Internal_Basic : sig
+    type state
+
+    include
+      Basic
+        with type field = field
+         and type field_var = field_var
+         and type 'a Checked.t = ('a, state) Checked_runner.Simple.t
+         and type 'a As_prover.Ref.t = 'a As_prover_ref.t
+  end
 
   module Bitstring_checked : sig
     type t = Boolean.var list
