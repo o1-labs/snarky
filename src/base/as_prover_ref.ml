@@ -2,7 +2,7 @@ open Core_kernel
 
 type 'a t = 'a option ref
 
-module Make_ref_typ (Checked : Monad_let.S2) = struct
+module Make_ref_typ (Checked : Monad_let.S3) = struct
   let typ : ('a t, 'a, _, _, _) Types.Typ.t =
     Typ
       { var_to_fields = (fun x -> ([||], !x))
@@ -18,17 +18,21 @@ end
 module type S = sig
   module Types : Types.Types
 
-  type ('a, 'f) checked
+  type ('a, 'f, 'field_var) checked
 
   type 'f field
 
+  type 'f field_var
+
   type nonrec 'a t = 'a t
 
-  val create : ('a, 'f field) As_prover0.t -> ('a t, 'f field) checked
+  val create :
+       ('a, 'f field, 'f field_var) As_prover0.t
+    -> ('a t, 'f field, 'f field_var) checked
 
-  val get : 'a t -> ('a, 'f field) As_prover0.t
+  val get : 'a t -> ('a, 'f field, 'f field_var) As_prover0.t
 
-  val set : 'a t -> 'a -> (unit, 'f field) As_prover0.t
+  val set : 'a t -> 'a -> (unit, 'f field, 'f field_var) As_prover0.t
 end
 
 module Make
@@ -36,20 +40,23 @@ module Make
     (As_prover : As_prover_intf.Basic
                    with type 'f field := 'f Checked.field
                     and type 'f field_var := 'f Checked.field_var
-                    and type ('a, 'f) Provider.t =
-                     ('a, 'f) Checked.Types.Provider.t) :
+                    and type ('a, 'f, 'field_var) Provider.t =
+                     ('a, 'f, 'field_var) Checked.Types.Provider.t) :
   S
     with module Types = Checked.Types
-     and type ('a, 'f) checked := ('a, 'f) Checked.t
-     and type 'f field = 'f Checked.field = struct
+     and type ('a, 'f, 'v) checked := ('a, 'f, 'v) Checked.t
+     and type 'f field = 'f Checked.field
+     and type 'f field_var = 'f Checked.field_var = struct
   module Types = Checked.Types
 
   type 'f field = 'f Checked.field
 
+  type 'f field_var = 'f Checked.field_var
+
   type nonrec 'a t = 'a t
 
-  let create (x : ('a, 'f Checked.field) As_prover.t) :
-      ('a t, 'f Checked.field) Checked.t =
+  let create (x : ('a, 'f Checked.field, 'f Checked.field_var) As_prover.t) :
+      ('a t, 'f Checked.field, 'f Checked.field_var) Checked.t =
     let r = ref None in
     let open Checked in
     let%map () =

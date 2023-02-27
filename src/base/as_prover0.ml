@@ -1,6 +1,6 @@
 open Core_kernel
 
-type ('a, 'f) t = ('a, 'f) Types.As_prover.t
+type ('a, 'f, 'field_var) t = ('a, 'f, 'field_var) Types.As_prover.t
 
 let map t ~f tbl =
   let x = t tbl in
@@ -25,19 +25,19 @@ let map2 x y ~f tbl =
   let y = y tbl in
   f x y
 
-let read_var (v : 'var) : ('field, 'field) t = fun tbl -> tbl v
+let read_var (v : 'var) : ('field, 'field, 'field_var) t = fun tbl -> tbl v
 
 let read
     (Typ { var_to_fields; value_of_fields; _ } :
       ('var, 'value, 'field, 'field_var, _) Types.Typ.t ) (var : 'var) :
-    ('value, 'field) t =
+    ('value, 'field, 'field_var) t =
  fun tbl ->
   let field_vars, aux = var_to_fields var in
   let fields = Array.map ~f:tbl field_vars in
   value_of_fields (fields, aux)
 
-include Monad_let.Make2 (struct
-  type nonrec ('a, 'e) t = ('a, 'e) t
+include Monad_let.Make3 (struct
+  type nonrec ('a, 'e, 'v) t = ('a, 'e, 'v) t
 
   let map = `Custom map
 
@@ -56,7 +56,8 @@ module Provider = struct
         * [Both], attempting to dispatch an ['a Request.t], and falling back to
           the computation if the request is unhandled or raises an exception.
     *)
-  type nonrec ('a, 'f) t = (('a Request.t, 'f) t, ('a, 'f) t) Types.Provider.t
+  type nonrec ('a, 'f, 'field_var) t =
+    (('a Request.t, 'f, 'field_var) t, ('a, 'f, 'field_var) t) Types.Provider.t
 
   open Types.Provider
 
@@ -77,7 +78,7 @@ module Provider = struct
 end
 
 module Handle = struct
-  let value (t : ('var, 'value) Handle.t) : ('value, 'field) t =
+  let value (t : ('var, 'value) Handle.t) : ('value, 'field, 'field_var) t =
    fun _ -> Option.value_exn t.value
 end
 
@@ -91,7 +92,7 @@ module type Extended = sig
       with type 'f field := field
        and type 'f field_var := field_var
 
-  type nonrec 'a t = ('a, field) t
+  type nonrec 'a t = ('a, field, field_var) t
 end
 
 module Make_extended (Env : sig
@@ -106,5 +107,5 @@ struct
   include Env
   include As_prover
 
-  type nonrec 'a t = ('a, field) t
+  type nonrec 'a t = ('a, field, field_var) t
 end

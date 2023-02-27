@@ -10,36 +10,40 @@ let eval_constraints_ref = eval_constraints
 module Simple = struct
   module Types = struct
     module Checked = struct
-      type ('a, 'f) t =
+      type ('a, 'f, 'field_var) t =
         | Pure of 'a
-        | Function of ('f Run_state.t -> 'f Run_state.t * 'a)
+        | Function of
+            (('f, 'field_var) Run_state.t -> ('f, 'field_var) Run_state.t * 'a)
     end
 
     module Typ = struct
       include Types.Typ.T
 
       type ('var, 'value, 'f, 'field_var) t =
-        ('var, 'value, 'f, 'field_var, (unit, 'f) Checked.t) typ
+        ('var, 'value, 'f, 'field_var, (unit, 'f, 'field_var) Checked.t) typ
     end
 
     module Provider = struct
       include Types.Provider.T
 
-      type ('a, 'f) t =
-        (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
+      type ('a, 'f, 'field_var) t =
+        ( ('a Request.t, 'f, 'field_var) As_prover0.t
+        , ('a, 'f, 'field_var) As_prover0.t )
+        provider
     end
   end
 
   type 'f field = 'f
 
-  type ('a, 'f) t = ('a, 'f field) Types.Checked.t
+  type ('a, 'f, 'field_var) t = ('a, 'f field, 'field_var) Types.Checked.t
 
-  let eval (t : ('a, 'f) t) : 'f field Run_state.t -> 'f field Run_state.t * 'a
-      =
+  let eval (t : ('a, 'f, 'field_var) t) :
+         ('f field, 'field_var) Run_state.t
+      -> ('f field, 'field_var) Run_state.t * 'a =
     match t with Pure a -> fun s -> (s, a) | Function g -> g
 
-  include Monad_let.Make2 (struct
-    type ('a, 'f) t = ('a, 'f field) Types.Checked.t
+  include Monad_let.Make3 (struct
+    type ('a, 'f, 'field_var) t = ('a, 'f field, 'field_var) Types.Checked.t
 
     let return x : _ t = Pure x
 
@@ -73,25 +77,28 @@ module Make_checked
                    with type 'f field := Backend.Field.t
                     and type 'f field_var := Backend.Cvar.t) =
 struct
-  type run_state = Backend.Field.t Run_state.t
+  type run_state = (Backend.Field.t, Backend.Cvar.t) Run_state.t
 
   module Types = struct
     module Checked = struct
-      type ('a, 'f) t = ('a, Backend.Field.t) Simple.Types.Checked.t
+      type ('a, 'f, 'field_var) t =
+        ('a, Backend.Field.t, Backend.Cvar.t) Simple.Types.Checked.t
     end
 
     module Typ = struct
       include Types.Typ.T
 
       type ('var, 'value, 'f, 'field_var) t =
-        ('var, 'value, 'f, 'field_var, (unit, 'f) Checked.t) typ
+        ('var, 'value, 'f, 'field_var, (unit, 'f, 'field_var) Checked.t) typ
     end
 
     module Provider = struct
       include Types.Provider.T
 
-      type ('a, 'f) t =
-        (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
+      type ('a, 'f, 'field_var) t =
+        ( ('a Request.t, 'f, 'field_var) As_prover.t
+        , ('a, 'f, 'field_var) As_prover.t )
+        provider
     end
   end
 
@@ -101,9 +108,9 @@ struct
 
   include Types.Checked
 
-  let eval : ('a, 'f) t -> run_state -> run_state * 'a = Simple.eval
+  let eval : ('a, 'f, 'v) t -> run_state -> run_state * 'a = Simple.eval
 
-  include Monad_let.Make2 (struct
+  include Monad_let.Make3 (struct
     include Types.Checked
 
     let map = `Custom Simple.map
@@ -116,7 +123,7 @@ struct
   open Constraint
   open Backend
 
-  let get_value (t : Field.t Run_state.t) : Cvar.t -> Field.t =
+  let get_value (t : (Field.t, Cvar.t) Run_state.t) : Cvar.t -> Field.t =
     let get_one i = Run_state.get_variable_value t i in
     Cvar.eval (`Return_values_will_be_mutated get_one)
 
@@ -202,7 +209,8 @@ struct
           (Constraint0.Basic.map basic ~f:(get_value s))
 
   let add_constraint ~stack ({ basic; annotation } : Constraint.t)
-      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
+      (Constraint_system.T ((module C), system) :
+        (Field.t, Cvar.t) Constraint_system.t ) =
     let label = Option.value annotation ~default:"<unknown>" in
     C.add_constraint system basic ~label:(stack_to_string (label :: stack))
 
@@ -326,12 +334,12 @@ module type Run_extras = sig
 
   module Types : Types.Types
 
-  val get_value : field Run_state.t -> cvar -> field
+  val get_value : (field, cvar) Run_state.t -> cvar -> field
 
   val run_as_prover :
-       ('a, field) As_prover0.t option
-    -> field Run_state.t
-    -> field Run_state.t * 'a option
+       ('a, field, cvar) As_prover0.t option
+    -> (field, cvar) Run_state.t
+    -> (field, cvar) Run_state.t * 'a option
 end
 
 module Make (Backend : Backend_extended.S) = struct
@@ -404,6 +412,8 @@ module Make (Backend : Backend_extended.S) = struct
                 type nonrec t = Field.t
               end
 
+              type cvar = Cvar.t
+
               include R1CS_constraint_system
             end in
             Constraint_system.T ((module M), sys) )
@@ -425,13 +435,13 @@ module type S = sig
 
   val clear_constraint_logger : unit -> unit
 
-  type run_state = field Run_state.t
+  type run_state = (field, cvar) Run_state.t
 
   type state = run_state
 
   type ('a, 't) run = 't -> run_state -> run_state * 'a
 
-  val run : ('a, field) Types.Checked.t -> run_state -> run_state * 'a
+  val run : ('a, field, cvar) Types.Checked.t -> run_state -> run_state * 'a
 
   module State : sig
     val make :
@@ -445,9 +455,9 @@ module type S = sig
       -> with_witness:bool
       -> ?log_constraint:
            (   ?at_label_boundary:[ `End | `Start ] * string
-            -> (field Cvar.t, field) Constraint.t option
+            -> (cvar, field) Constraint.t option
             -> unit )
       -> unit
-      -> field Run_state.t
+      -> (field, cvar) Run_state.t
   end
 end

@@ -64,7 +64,7 @@ module Intf = struct
 
     type field_var
 
-    type 'field checked
+    type ('field, 'field_var) checked
 
     module Var : sig
       type t
@@ -75,7 +75,7 @@ module Intf = struct
 
       val of_field_elements : field_var array -> t
 
-      val check : t -> field checked
+      val check : t -> (field, field_var) checked
     end
 
     module Value : sig
@@ -91,18 +91,23 @@ module Intf = struct
 end
 
 module type Checked_monad = sig
-  type ('a, 'f) t
+  type ('a, 'f, 'v) t
 
   type 'f field
 
-  include Monad_let.S2 with type ('a, 'e) t := ('a, 'e) t
+  include Monad_let.S3 with type ('a, 'e, 'v) t := ('a, 'e, 'v) t
 
   module Types : Types.Types
 end
 
 module Make (Checked : Checked_monad) = struct
   type ('var, 'value, 'field, 'field_var) t =
-    ('var, 'value, 'field, 'field_var, (unit, 'field) Checked.t) Types.Typ.t
+    ( 'var
+    , 'value
+    , 'field
+    , 'field_var
+    , (unit, 'field, 'field_var) Checked.t )
+    Types.Typ.t
 
   type ('var, 'value, 'field, 'field_var) typ =
     ('var, 'value, 'field, 'field_var) t
@@ -110,11 +115,14 @@ module Make (Checked : Checked_monad) = struct
   module type S = sig
     type field
 
+    type field_var
+
     include
       Intf.S
-        with type 'field checked := (unit, 'field) Checked.t
+        with type ('field, 'field_var) checked :=
+          (unit, 'field, 'field_var) Checked.t
          and type field := field
-         and type field_var := field Cvar.t
+         and type field_var := field_var
   end
 
   module Data_spec = struct
@@ -127,7 +135,7 @@ module Make (Checked : Checked_monad) = struct
       , 'k_value
       , 'f
       , 'field_var
-      , (unit, 'f) Checked.t )
+      , (unit, 'f, 'field_var) Checked.t )
       data_spec
 
     let size t =
@@ -156,7 +164,7 @@ module Make (Checked : Checked_monad) = struct
         ; check = (fun () -> Checked.return ())
         }
 
-    let field () : ('field Cvar.t, 'field, 'field, 'field Cvar.t) t =
+    let field () : ('field_var, 'field, 'field, 'field_var) t =
       Typ
         { var_to_fields = (fun f -> ([| f |], ()))
         ; var_of_fields = (fun (fields, _) -> fields.(0))

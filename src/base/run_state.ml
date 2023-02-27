@@ -32,8 +32,8 @@ module Vector = struct
 end
 
 (** The internal state used to run a checked computation. *)
-type 'field t =
-  { system : 'field Constraint_system.t option
+type ('field, 'field_var) t =
+  { system : ('field, 'field_var) Constraint_system.t option
   ; input : 'field Vector.t
   ; aux : 'field Vector.t
   ; eval_constraints : bool
@@ -46,7 +46,7 @@ type 'field t =
   ; as_prover : bool ref
   ; log_constraint :
       (   ?at_label_boundary:[ `Start | `End ] * string
-       -> ('field Cvar.t, 'field) Constraint.t option
+       -> ('field_var, 'field) Constraint.t option
        -> unit )
       option
   }
@@ -83,13 +83,14 @@ let get_variable_value { num_inputs; input; aux; _ } : int -> 'field =
   if i <= num_inputs then Vector.get input (i - 1)
   else Vector.get aux (i - num_inputs - 1)
 
-let store_field_elt { next_auxiliary; aux; _ } x =
-  let v = !next_auxiliary in
-  incr next_auxiliary ; Vector.emplace_back aux x ; Cvar.Unsafe.of_index v
+let store_field_elt { next_auxiliary; aux; _ } x = failwith "todo"
+  [@@ocaml.warning "-27"]
+(* let v = !next_auxiliary in
+   incr next_auxiliary ; Vector.emplace_back aux x ; Cvar.Unsafe.of_index v *)
 
-let alloc_var { next_auxiliary; _ } () =
-  let v = !next_auxiliary in
-  incr next_auxiliary ; Cvar.Unsafe.of_index v
+let alloc_var { next_auxiliary; _ } () = failwith "todo" [@@ocaml.warning "-27"]
+(* let v = !next_auxiliary in
+   incr next_auxiliary ; Cvar.Unsafe.of_index v *)
 
 let has_witness { has_witness; _ } = has_witness
 

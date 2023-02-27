@@ -24,6 +24,8 @@ struct
 
   type field = Field.t
 
+  type field_var = Cvar.t
+
   let field_vec_id : Field.Vector.t Type_equal.Id.t =
     Type_equal.Id.create ~name:"field-vector" sexp_of_opaque
 
@@ -179,7 +181,7 @@ struct
              , input_value
              , field
              , Cvar.t
-             , (unit, field) Checked.Types.Checked.t )
+             , (unit, field, field_var) Checked.Types.Checked.t )
              Types.Typ.typ
         -> return_typ:_ Types.Typ.t
         -> (unit -> input_var -> checked)
@@ -214,7 +216,7 @@ struct
              , input_value
              , field
              , Cvar.t
-             , (unit, field) Checked.Types.Checked.t )
+             , (unit, field, field_var) Checked.Types.Checked.t )
              Types.Typ.typ
         -> return_typ:(a, retval, field, Cvar.t, _) Types.Typ.t
         -> (input_var -> checked)

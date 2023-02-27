@@ -18,10 +18,10 @@ module Interval : sig
   type t = Constant of B.t | Less_than of B.t
 end
 
-type 'f t =
-  { value : 'f Cvar.t
+type ('f, 'field_var) t =
+  { value : 'field_var
   ; interval : Interval.t
-  ; mutable bits : 'f Cvar.t Boolean.t list option
+  ; mutable bits : 'field_var Boolean.t list option
   }
 
 (** Create an value representing the given constant value.
@@ -29,20 +29,25 @@ type 'f t =
     The bit representation of the constant is cached, and is padded to [length]
     when given.
 *)
-val constant : ?length:int -> m:'f m -> Bigint.t -> 'f t
+val constant :
+  ?length:int -> m:('f, 'field_var) m -> Bigint.t -> ('f, 'field_var) t
 
 (** [shift_left ~m x k] is equivalent to multiplying [x] by [2^k].
 
     The result has a cached bit representation whenever the given [x] had a
     cached bit representation.
 *)
-val shift_left : m:'f m -> 'f t -> int -> 'f t
+val shift_left :
+  m:('f, 'field_var) m -> ('f, 'field_var) t -> int -> ('f, 'field_var) t
 
 (** Create a value from the given bit string.
 
     The given bit representation is cached.
 *)
-val of_bits : m:'f m -> 'f Cvar.t Boolean.t Bitstring.Lsb_first.t -> 'f t
+val of_bits :
+     m:('f, 'field_var) m
+  -> 'field_var Boolean.t Bitstring.Lsb_first.t
+  -> ('f, 'field_var) t
 
 (** Compute the bit representation of the given integer.
 
@@ -51,17 +56,22 @@ val of_bits : m:'f m -> 'f Cvar.t Boolean.t Bitstring.Lsb_first.t -> 'f t
     value is updated to include the cache.
 *)
 val to_bits :
-  ?length:int -> m:'f m -> 'f t -> 'f Cvar.t Boolean.t Bitstring.Lsb_first.t
+     ?length:int
+  -> m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> 'field_var Boolean.t Bitstring.Lsb_first.t
 
 (** Return the cached bit representation, or raise an exception if the bit
     representation has not been cached.
 *)
-val to_bits_exn : 'f t -> 'f Cvar.t Boolean.t Bitstring.Lsb_first.t
+val to_bits_exn :
+  ('f, 'field_var) t -> 'field_var Boolean.t Bitstring.Lsb_first.t
 
 (** Returns [Some bs] for [bs] the cached bit representation, or [None] if the
     bit representation has not been cached.
 *)
-val to_bits_opt : 'f t -> 'f Cvar.t Boolean.t Bitstring.Lsb_first.t option
+val to_bits_opt :
+  ('f, 'field_var) t -> 'field_var Boolean.t Bitstring.Lsb_first.t option
 
 (** [div_mod ~m a b = (q, r)] such that [a = q * b + r] and [r < b].
 
@@ -69,54 +79,99 @@ val to_bits_opt : 'f t -> 'f Cvar.t Boolean.t Bitstring.Lsb_first.t option
 
     NOTE: This uses approximately [log2(a) + 2 * log2(b)] constraints.
 *)
-val div_mod : m:'f m -> 'f t -> 'f t -> 'f t * 'f t
+val div_mod :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t * ('f, 'field_var) t
 
-val to_field : 'f t -> 'f Cvar.t
+val to_field : ('f, 'field_var) t -> 'field_var
 
-val create : value:'f Cvar.t -> upper_bound:Bigint.t -> 'f t
+val create : value:'field_var -> upper_bound:Bigint.t -> ('f, 'field_var) t
 
 (** [min ~m x y] returns a value equal the lesser of [x] and [y].
 
     The result does not carry a cached bit representation.
 *)
-val min : m:'f m -> 'f t -> 'f t -> 'f t
+val min :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
 
-val if_ : m:'f m -> 'f Cvar.t Boolean.t -> then_:'f t -> else_:'f t -> 'f t
+val if_ :
+     m:('f, 'field_var) m
+  -> 'field_var Boolean.t
+  -> then_:('f, 'field_var) t
+  -> else_:('f, 'field_var) t
+  -> ('f, 'field_var) t
 
 (** [succ ~m x] computes the successor [x+1] of [x].
 
     The result does not carry a cached bit representation.
 *)
-val succ : m:'f m -> 'f t -> 'f t
+val succ : m:('f, 'field_var) m -> ('f, 'field_var) t -> ('f, 'field_var) t
 
 (** [succ_if ~m x b] computes the integer [x+1] if [b] is [true], or [x]
     otherwise.
 
     The result does not carry a cached bit representation.
 *)
-val succ_if : m:'f m -> 'f t -> 'f Cvar.t Boolean.t -> 'f t
+val succ_if :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> 'field_var Boolean.t
+  -> ('f, 'field_var) t
 
-val equal : m:'f m -> 'f t -> 'f t -> 'f Cvar.t Boolean.t
+val equal :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> 'field_var Boolean.t
 
-val lt : m:'f m -> 'f t -> 'f t -> 'f Cvar.t Boolean.t
+val lt :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> 'field_var Boolean.t
 
-val lte : m:'f m -> 'f t -> 'f t -> 'f Cvar.t Boolean.t
+val lte :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> 'field_var Boolean.t
 
-val gt : m:'f m -> 'f t -> 'f t -> 'f Cvar.t Boolean.t
+val gt :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> 'field_var Boolean.t
 
-val gte : m:'f m -> 'f t -> 'f t -> 'f Cvar.t Boolean.t
+val gte :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> 'field_var Boolean.t
 
 (** [add ~m x y] computes [x + y].
 
     The result does not carry a cached bit representation.
 *)
-val add : m:'f m -> 'f t -> 'f t -> 'f t
+val add :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
 
 (** [mul ~m x y] computes [x * y].
 
     The result does not carry a cached bit representation.
 *)
-val mul : m:'f m -> 'f t -> 'f t -> 'f t
+val mul :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
 
 (** [subtract_unpacking ~m x y] computes [x - y].
 
@@ -125,7 +180,11 @@ val mul : m:'f m -> 'f t -> 'f t -> 'f t
 
     NOTE: This uses approximately [log2(x)] constraints.
 *)
-val subtract_unpacking : m:'f m -> 'f t -> 'f t -> 'f t
+val subtract_unpacking :
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
 
 (** [subtract_unpacking_or_zero ~m x y] computes [x - y].
 
@@ -139,4 +198,7 @@ val subtract_unpacking : m:'f m -> 'f t -> 'f t -> 'f t
     NOTE: This uses approximately [log2(x)] constraints.
 *)
 val subtract_unpacking_or_zero :
-  m:'f m -> 'f t -> 'f t -> [ `Underflow of 'f Cvar.t Boolean.t ] * 'f t
+     m:('f, 'field_var) m
+  -> ('f, 'field_var) t
+  -> ('f, 'field_var) t
+  -> [ `Underflow of 'field_var Boolean.t ] * ('f, 'field_var) t

@@ -1,5 +1,4 @@
 open Core_kernel
-module Cvar0 = Cvar
 module Runner = Checked_runner
 
 let set_eval_constraints b = Runner.eval_constraints := b
@@ -9,6 +8,62 @@ module Make
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
                   and type field_var = Backend.Cvar.t)
+    (Typ : sig
+      type ('var, 'value, 'field, 'field_var, 'checked) typ =
+        | Typ :
+            ('var, 'value, 'aux, 'field, 'field_var, 'checked) Types.Typ.typ'
+            -> ('var, 'value, 'field, 'field_var, 'checked) typ
+
+      type ('var, 'value) t =
+        ( 'var
+        , 'value
+        , Backend.Field.t
+        , Backend.Cvar.t
+        , unit Checked.t )
+        Types.Typ.t
+
+      val unit : (unit, unit) t
+
+      val field : (Backend.Cvar.t, Backend.Field.t) t
+
+      val tuple2 :
+           ('var1, 'value1) t
+        -> ('var2, 'value2) t
+        -> ('var1 * 'var2, 'value1 * 'value2) t
+
+      val ( * ) :
+           ('var1, 'value1) t
+        -> ('var2, 'value2) t
+        -> ('var1 * 'var2, 'value1 * 'value2) t
+
+      val tuple3 :
+           ('var1, 'value1) t
+        -> ('var2, 'value2) t
+        -> ('var3, 'value3) t
+        -> ('var1 * 'var2 * 'var3, 'value1 * 'value2 * 'value3) t
+
+      val list : length:int -> ('var, 'value) t -> ('var list, 'value list) t
+
+      val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
+
+      val transport :
+           ('var, 'value1) t
+        -> there:('value2 -> 'value1)
+        -> back:('value1 -> 'value2)
+        -> ('var, 'value2) t
+
+      val transport_var :
+           ('var1, 'value) t
+        -> there:('var2 -> 'var1)
+        -> back:('var1 -> 'var2)
+        -> ('var2, 'value) t
+
+      module Internal : sig
+        val snarkless : 'a -> ('a, 'a) t
+
+        val ref : unit -> ('a As_prover_ref.t, 'a) t
+      end
+    end)
     (As_prover : As_prover0.Extended
                    with type field := Backend.Field.t
                     and type field_var := Backend.Cvar.t)
@@ -22,18 +77,6 @@ struct
   open Backend
 
   open Runners.Make (Backend) (Checked) (As_prover) (Runner)
-
-  module Typ = struct
-    include Types.Typ.T
-    module T = Typ.Make (Checked_intf.Unextend (Checked))
-    include T.T
-
-    type ('var, 'value) t = ('var, 'value, Field.t, Cvar.t) T.t
-
-    let unit : (unit, unit) t = unit ()
-
-    let field : (Cvar.t, Field.t) t = field ()
-  end
 
   open (
     Checked :
@@ -65,12 +108,12 @@ struct
 
   let constant (Typ typ : _ Typ.t) x =
     let fields, aux = typ.value_to_fields x in
-    let field_vars = Array.map fields ~f:(fun x -> Cvar0.Constant x) in
+    let field_vars = Array.map fields ~f:(fun x -> Cvar.constant x) in
     typ.var_of_fields (field_vars, aux)
 
   let equal (x : Cvar.t) (y : Cvar.t) : Cvar.t Boolean.t Checked.t =
-    match (x, y) with
-    | Constant x, Constant y ->
+    match (Cvar.to_constant x, Cvar.to_constant y) with
+    | Some x, Some y ->
         Checked.return
           (Boolean.Unsafe.create
              (Cvar.constant
@@ -84,12 +127,12 @@ struct
         Boolean.Unsafe.create r
 
   let mul ?(label = "Checked.mul") (x : Cvar.t) (y : Cvar.t) =
-    match (x, y) with
-    | Constant x, Constant y ->
+    match (Cvar.to_constant x, Cvar.to_constant y) with
+    | Some x, Some y ->
         return (Cvar.constant (Field.mul x y))
-    | Constant x, _ ->
+    | Some x, _ ->
         return (Cvar.scale y x)
-    | _, Constant y ->
+    | _, Some y ->
         return (Cvar.scale x y)
     | _, _ ->
         with_label label (fun () ->
@@ -102,8 +145,8 @@ struct
             z )
 
   let square ?(label = "Checked.square") (x : Cvar.t) =
-    match x with
-    | Constant x ->
+    match Cvar.to_constant x with
+    | Some x ->
         return (Cvar.constant (Field.square x))
     | _ ->
         with_label label (fun () ->
@@ -119,8 +162,8 @@ struct
      put a bogus value for the inverse to make the constraint system unsat if
      x is zero. *)
   let inv ?(label = "Checked.inv") (x : Cvar.t) =
-    match x with
-    | Constant x ->
+    match Cvar.to_constant x with
+    | Some x ->
         return (Cvar.constant (Field.inv x))
     | _ ->
         with_label label (fun () ->
@@ -140,8 +183,8 @@ struct
             x_inv )
 
   let div ?(label = "Checked.div") (x : Cvar.t) (y : Cvar.t) =
-    match (x, y) with
-    | Constant x, Constant y ->
+    match (Cvar.to_constant x, Cvar.to_constant y) with
+    | Some x, Some y ->
         return (Cvar.constant (Field.( / ) x y))
     | _ ->
         with_label label (fun () ->
@@ -156,12 +199,12 @@ struct
        r - e = b (t - e)
     *)
     let b = (b :> Cvar.t) in
-    match b with
-    | Constant b ->
+    match Cvar.to_constant b with
+    | Some b ->
         if Field.(equal b one) then return then_ else return else_
     | _ -> (
-        match (then_, else_) with
-        | Constant t, Constant e ->
+        match (Cvar.to_constant then_, Cvar.to_constant else_) with
+        | Some t, Some e ->
             return Cvar.((t * b) + (e * (constant Field0.one - b)))
         | _, _ ->
             let%bind r =

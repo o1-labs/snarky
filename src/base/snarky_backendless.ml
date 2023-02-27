@@ -9,7 +9,6 @@ module Checked_intf = Checked_intf
 module Checked_runner = Checked_runner
 module Constraint = Constraint
 module Constraint_system = Constraint_system
-module Cvar = Cvar
 module Enumerable = Enumerable
 module Enumerable_intf = Enumerable_intf
 module Field_intf = Snarky_intf.Field

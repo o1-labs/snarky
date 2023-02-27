@@ -1,16 +1,13 @@
 open Core_kernel
 
-module Make (Field : sig
-  type t [@@deriving sexp]
-
-  val equal : t -> t -> bool
-end)
-(Basic : Checked_intf.Basic
-           with type 'f field = Field.t
-            and type 'f field_var = Field.t Cvar.t)
-(As_prover : As_prover_intf.Basic
-               with type 'f field := 'f Basic.field
-                and type 'f field_var := 'f Basic.field_var) :
+module Make
+    (Backend : Backend_extended.S)
+    (Basic : Checked_intf.Basic
+               with type 'f field = Backend.Field.t
+                and type 'f field_var = Backend.Cvar.t)
+    (As_prover : As_prover_intf.Basic
+                   with type 'f field := 'f Basic.field
+                    and type 'f field_var := 'f Basic.field_var) :
   Checked_intf.S
     with module Types = Basic.Types
     with type 'f field = 'f Basic.field
@@ -18,7 +15,7 @@ end)
   include Basic
 
   let request_witness (typ : ('var, 'value, 'f field, 'f field_var) Types.Typ.t)
-      (r : ('value Request.t, 'f field) As_prover.t) =
+      (r : ('value Request.t, 'f field, 'f field_var) As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
 
@@ -82,11 +79,14 @@ end)
             add_constraint (Constraint.override_label c label) ) )
 
   let assert_equal ?label x y =
-    match (x, y) with
-    | Cvar.Constant x, Cvar.Constant y ->
-        if Field.equal x y then return ()
+    match (Backend.Cvar.to_constant x, Backend.Cvar.to_constant y) with
+    | Some x, Some y ->
+        if Backend.Field.equal x y then return ()
         else
-          failwithf !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}" x y ()
+          failwithf
+            !"assert_equal: %{sexp: Backend.Field.t} != %{sexp: \
+              Backend.Field.t}"
+            x y ()
     | _ ->
         assert_ (Constraint.equal ?label x y)
 end

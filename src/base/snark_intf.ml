@@ -634,7 +634,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    type run_state = Field.t Run_state.t
+    type run_state = (Field.t, field_var) Run_state.t
 
     include Monad_let.S
 
@@ -725,7 +725,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
-    type 'a t = ('a, field) As_prover0.t
+    type 'a t = ('a, field, field_var) As_prover0.t
 
     type 'a as_prover = 'a t
 
@@ -1104,12 +1104,6 @@ module type S = sig
        and type t := M.t
 end
 
-module type S_with_cvar = sig
-  type field
-
-  include S with type field := field and type field_var = field Cvar.t
-end
-
 (** The imperative interface to Snarky. *)
 module type Run_basic = sig
   val dump : unit -> string
@@ -1279,7 +1273,7 @@ module type Run_basic = sig
     (Basic
       with type field = field
        and type field_var = field_var
-       and type 'a Checked.t = ('a, field) Checked_runner.Simple.t
+       and type 'a Checked.t = ('a, field, field_var) Checked_runner.Simple.t
        and type 'a As_prover.Ref.t = 'a As_prover_ref.t)
 
   module Bitstring_checked : sig
@@ -1462,10 +1456,4 @@ module type Run = sig
        and type bool_var := Boolean.var
        and type var = Field.t
        and type t := M.t
-end
-
-module type Run_with_cvar = sig
-  type field
-
-  include Run with type field := field and type field_var = field Cvar.t
 end

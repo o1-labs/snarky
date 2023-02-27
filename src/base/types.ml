@@ -1,5 +1,5 @@
 module As_prover = struct
-  type ('a, 'f) t = ('f Cvar.t -> 'f) -> 'a
+  type ('a, 'f, 'field_var) t = ('field_var -> 'f) -> 'a
 end
 
 module Provider = struct
@@ -67,20 +67,22 @@ end
 
 module type Types = sig
   module Checked : sig
-    type ('a, 'f) t
+    type ('a, 'f, 'field_var) t
   end
 
   module Typ : sig
     include module type of Typ.T
 
     type ('var, 'value, 'f, 'field_var) t =
-      ('var, 'value, 'f, 'field_var, (unit, 'f) Checked.t) Typ.t
+      ('var, 'value, 'f, 'field_var, (unit, 'f, 'field_var) Checked.t) Typ.t
   end
 
   module Provider : sig
     include module type of Provider.T
 
-    type ('a, 'f) t =
-      (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
+    type ('a, 'f, 'field_var) t =
+      ( ('a Request.t, 'f, 'field_var) As_prover.t
+      , ('a, 'f, 'field_var) As_prover.t )
+      provider
   end
 end
