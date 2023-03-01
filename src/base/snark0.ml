@@ -110,7 +110,11 @@ struct
         List.fold_left bits ~init:([], Field.one) ~f:(fun (acc, c) v ->
             ((c, (v :> Cvar.t)) :: acc, Field.add c c) )
       in
-      Cvar.linear_combination ts
+      let linear_combination terms =
+        List.fold terms ~init:(Cvar.constant Field.zero) ~f:(fun acc (c, t) ->
+            Cvar.add acc (Cvar.scale t c) )
+      in
+      linear_combination ts
 
     let choose_preimage (v : Cvar.t) ~length : Boolean.var list t =
       let open Let_syntax in
@@ -1014,12 +1018,9 @@ module Run = struct
 
       type nonrec t = t
 
-
       let constant = constant
 
       let to_constant = to_constant
-
-      let linear_combination = linear_combination
 
       let sum = sum
 

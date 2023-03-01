@@ -320,13 +320,6 @@ module type Field_var_intf = sig
       *)
   val to_constant : t -> field option
 
-  (** [linear_combination [(f1, x1);...;(fn, xn)]] returns the result of
-          calculating [f1 * x1 + f2 * x2 + ... + fn * xn].
-          This does not add a new constraint; see {!type:Constraint.t} for more
-          information.
-      *)
-  val linear_combination : (field * t) list -> t
-
   (** [sum l] returns the sum of all R1CS variables in [l].
 
           If the result would be greater than or equal to {!val:Field.size}
