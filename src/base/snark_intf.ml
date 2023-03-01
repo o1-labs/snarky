@@ -320,13 +320,6 @@ module type Field_var_intf = sig
       *)
   val to_constant : t -> field option
 
-  (** [sum l] returns the sum of all R1CS variables in [l].
-
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
-      *)
-  val sum : t list -> t
-
   (** [add x y] returns the result of adding the R1CS variables [x] and
           [y].
 

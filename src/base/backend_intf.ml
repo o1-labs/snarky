@@ -48,8 +48,6 @@ module type Cvar_intf = sig
 
   val sub : t -> t -> t
 
-  val sum : t list -> t
-
   val ( + ) : t -> t -> t
 
   val ( - ) : t -> t -> t

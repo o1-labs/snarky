@@ -266,6 +266,10 @@ struct
 
     let ( ||| ) = ( || )
 
+    let sum terms =
+      List.fold terms ~init:(Cvar.constant Field.zero) ~f:(fun acc t ->
+          Cvar.add acc t )
+
     let any = function
       | [] ->
           return false_
@@ -276,7 +280,7 @@ struct
       | bs ->
           let open Let_syntax in
           let%map all_zero =
-            equal (Cvar.sum (bs :> Cvar.t list)) (Cvar.constant Field.zero)
+            equal (sum (bs :> Cvar.t list)) (Cvar.constant Field.zero)
           in
           not all_zero
 
@@ -290,7 +294,7 @@ struct
       | bs ->
           equal
             (Cvar.constant (Field.of_int (List.length bs)))
-            (Cvar.sum (bs :> Cvar.t list))
+            (sum (bs :> Cvar.t list))
 
     let to_constant (b : var) =
       Option.map (Cvar.to_constant (b :> Cvar.t)) ~f:Field.(equal one)
@@ -424,15 +428,15 @@ struct
       let is_true (v : var) = v = true_
 
       let%snarkydef_ any (bs : var list) =
-        assert_non_zero (Cvar.sum (bs :> Cvar.t list))
+        assert_non_zero (sum (bs :> Cvar.t list))
 
       let%snarkydef_ all (bs : var list) =
         assert_equal
-          (Cvar.sum (bs :> Cvar.t list))
+          (sum (bs :> Cvar.t list))
           (Cvar.constant (Field.of_int (List.length bs)))
 
       let%snarkydef_ exactly_one (bs : var list) =
-        assert_equal (Cvar.sum (bs :> Cvar.t list)) (Cvar.constant Field.one)
+        assert_equal (sum (bs :> Cvar.t list)) (Cvar.constant Field.one)
     end
 
     module Expr = struct

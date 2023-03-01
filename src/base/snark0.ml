@@ -1022,8 +1022,6 @@ module Run = struct
 
       let to_constant = to_constant
 
-      let sum = sum
-
       let add = add
 
       let negate = negate
