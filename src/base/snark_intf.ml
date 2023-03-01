@@ -311,15 +311,6 @@ module type Field_var_intf = sig
   (** The type that stores booleans as R1CS variables. *)
   type t
 
-  (** For debug purposes *)
-  val length : t -> int
-
-  val var_indices : t -> int list
-
-  (** Convert a {!type:t} value to its constituent constant and a list of
-          scaled R1CS variables. *)
-  val to_constant_and_terms : t -> field option * (field * int) list
-
   (** [constant x] creates a new R1CS variable containing the constant
           field element [x]. *)
   val constant : field -> t
@@ -1109,6 +1100,11 @@ end
 module type Run_basic = sig
   val dump : unit -> string
 
+  (** The finite field over which the R1CS operates. *)
+  type field
+
+  type field_var
+
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
@@ -1120,11 +1116,6 @@ module type Run_basic = sig
 
     val get_rows_len : t -> int
   end
-
-  (** The finite field over which the R1CS operates. *)
-  type field
-
-  type field_var
 
   module Bigint : sig
     include Snarky_intf.Bigint_intf.Extended with type field := field

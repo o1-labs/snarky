@@ -32,8 +32,6 @@ module type Cvar_intf = sig
 
   type field
 
-  val length : t -> int
-
   module Unsafe : sig
     val of_index : int -> t
   end
@@ -41,8 +39,6 @@ module type Cvar_intf = sig
   val eval : [ `Return_values_will_be_mutated of int -> field ] -> t -> field
 
   val constant : field -> t
-
-  val to_constant_and_terms : t -> field option * (field * int) list
 
   val add : t -> t -> t
 
@@ -61,8 +57,6 @@ module type Cvar_intf = sig
   val ( - ) : t -> t -> t
 
   val ( * ) : field -> t -> t
-
-  val var_indices : t -> int list
 
   val to_constant : t -> field option
 end
