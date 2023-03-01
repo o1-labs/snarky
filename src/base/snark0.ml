@@ -35,7 +35,6 @@ struct
   include Runners.Make (Backend) (Checked) (As_prover) (Runner)
   module Bigint = Bigint
   module Field0 = Field
-  module Cvar = Cvar
   module Constraint = Constraint
   module Run_state = Run_state
 
