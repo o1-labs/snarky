@@ -21,6 +21,9 @@ module type S = sig
     -> unit
     -> t
 
+  val add_constraint :
+    ?label:string -> t -> (cvar, Field.t) Constraint.basic -> unit
+
   val get_variable_value : t -> int -> Field.t
 
   val store_field_elt : t -> Field.t -> cvar
@@ -109,6 +112,9 @@ module Make
   let system t = system t.state
 
   let next_auxiliary t = next_auxiliary t.state
+
+  let add_constraint ?label t (cstr : (Cvar.t, Field.t) Constraint.basic) =
+    add_constraint t.state label cstr
 
   (* We redefine the [make] function with the wrapper in mind. *)
 

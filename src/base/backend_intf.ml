@@ -13,9 +13,6 @@ module type Constraint_system_intf = sig
 
   val finalize : t -> unit
 
-  val add_constraint :
-    ?label:string -> t -> (cvar, Field.t) Constraint.basic -> unit
-
   val digest : t -> Md5.t
 
   val set_primary_input_size : t -> int -> unit
@@ -81,6 +78,9 @@ module type Run_state_intf = sig
     -> as_prover:bool
     -> unit
     -> t
+
+  val add_constraint :
+    t -> string option -> (cvar, Field.t) Constraint.basic -> unit
 
   val get_variable_value : t -> int -> Field.t
 

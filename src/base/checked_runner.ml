@@ -206,9 +206,9 @@ struct
           !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
           (Constraint0.Basic.map basic ~f:(get_value s))
 
-  let add_constraint ~stack ({ basic; annotation } : Constraint.t) system =
+  let add_constraint ~stack ({ basic; annotation } : Constraint.t) state =
     let label = Option.value annotation ~default:"<unknown>" in
-    Backend.R1CS_constraint_system.add_constraint system basic
+    Run_state.add_constraint state basic
       ~label:(stack_to_string (label :: stack))
 
   let add_constraint c : _ Simple.t =
@@ -236,8 +236,7 @@ struct
               (Sexp.to_string (Constraint.sexp_of_t c))
               (log_constraint c s) () ;
           if not (Run_state.as_prover s) then
-            Option.iter (Run_state.system s) ~f:(fun system ->
-                add_constraint ~stack:(Run_state.stack s) c system ) ;
+            add_constraint ~stack:(Run_state.stack s) c s ;
           (s, ()) ) )
 
   let with_handler h t : _ Simple.t =
