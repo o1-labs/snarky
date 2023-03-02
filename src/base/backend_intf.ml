@@ -96,8 +96,6 @@ module type Run_state_intf = sig
 
   val eval_constraints : t -> bool
 
-  val system : t -> constraint_system option
-
   val next_auxiliary : t -> int
 end
 
