@@ -1098,7 +1098,7 @@ module type Run_basic = sig
 
     val digest : t -> Md5.t
 
-    val get_public_input_size : t -> int Core_kernel.Set_once.t
+    val get_primary_input_size : t -> int
 
     val get_rows_len : t -> int
   end
