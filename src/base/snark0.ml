@@ -691,7 +691,7 @@ module Make (Backend : Backend_intf.S) = struct
 
     type run_state = Backend_extended.Run_state.t
 
-    type 'a t = ('a, Backend.Run_state.t) Types.Checked.t
+    type 'a t = ('a, Backend_extended.Run_state.t) Types.Checked.t
 
     let run = Runner0.run
   end
@@ -739,8 +739,6 @@ module Run = struct
            ~aux:(Backend.Field.Vector.create ())
            ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 1)
            ~with_witness:false ~stack:[] ~is_running:false () )
-
-    let dump () = Run_state.dump !state
 
     let in_prover () : bool = Run_state.has_witness !state
 

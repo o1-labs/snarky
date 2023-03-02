@@ -1084,8 +1084,6 @@ end
 
 (** The imperative interface to Snarky. *)
 module type Run_basic = sig
-  val dump : unit -> string
-
   (** The finite field over which the R1CS operates. *)
   type field
 

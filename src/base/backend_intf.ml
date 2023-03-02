@@ -75,21 +75,12 @@ module type Run_state_intf = sig
     -> input:Field.Vector.t
     -> next_auxiliary:int ref
     -> aux:Field.Vector.t
-    -> ?system:constraint_system
+    -> system:constraint_system option
     -> eval_constraints:bool
-    -> ?log_constraint:
-         (   ?at_label_boundary:[ `End | `Start ] * string
-          -> (cvar, 'field) Constraint.t option
-          -> unit )
-    -> ?handler:Request.Handler.t
     -> with_witness:bool
-    -> ?stack:string list
-    -> ?is_running:bool
+    -> as_prover:bool
     -> unit
     -> t
-
-  (** dumps some information about a state [t] *)
-  val dump : t -> string
 
   val get_variable_value : t -> int -> Field.t
 
@@ -103,28 +94,9 @@ module type Run_state_intf = sig
 
   val set_as_prover : t -> bool -> unit
 
-  val stack : t -> string list
-
-  val set_stack : t -> string list -> t
-
-  val log_constraint :
-       t
-    -> (   ?at_label_boundary:[ `Start | `End ] * string
-        -> (cvar, Field.t) Constraint.t option
-        -> unit )
-       option
-
   val eval_constraints : t -> bool
 
   val system : t -> constraint_system option
-
-  val handler : t -> Request.Handler.t
-
-  val set_handler : t -> Request.Handler.t -> t
-
-  val is_running : t -> bool
-
-  val set_is_running : t -> bool -> t
 
   val next_auxiliary : t -> int
 end
