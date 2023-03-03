@@ -67,8 +67,12 @@ struct
           fst @@ Checked.run (Checked.assert_equal res output) state )
     in
 
+    (* finalize the compilation *)
+    Backend.Run_state.finalize state ;
+
     (* return the constraint system *)
-    system
+    let sys = R1cs_constraint_system.system state in
+    sys
 
   let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
       (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ) ~output :
