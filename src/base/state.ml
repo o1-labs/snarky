@@ -125,11 +125,7 @@ module Make
   let next_auxiliary t = next_auxiliary t.state
 
   let add_constraint ?label t (cstr : (Cvar.t, Field.t) Constraint.basic) =
-    match label with
-    | Some label ->
-        add_constraint t.state ~label cstr
-    | None ->
-        add_constraint t.state cstr
+    add_constraint t.state ?label cstr
 
   let finalize t = finalize t.state
 
