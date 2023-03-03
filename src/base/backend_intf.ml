@@ -70,7 +70,7 @@ module type Run_state_intf = sig
   val make_system : int -> Field.Vector.t -> Field.Vector.t -> bool -> bool -> t
 
   val add_constraint :
-    t -> string option -> (cvar, Field.t) Constraint.basic -> unit
+    ?label:string -> t -> (cvar, Field.t) Constraint.basic -> unit
 
   val get_variable_value : t -> int -> Field.t
 
