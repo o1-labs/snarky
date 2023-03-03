@@ -48,7 +48,7 @@ struct
   let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
       output t : R1CS_constraint_system.t =
     let input = field_vec () in
-    let next_auxiliary = ref (1 + num_inputs) in
+    let next_auxiliary = 1 + num_inputs in
     let aux = field_vec () in
     let system = R1CS_constraint_system.create () in
     let state =
@@ -62,14 +62,14 @@ struct
       Array.fold2_exn ~init:state res output ~f:(fun state res output ->
           fst @@ Checked.run (Checked.assert_equal res output) state )
     in
-    let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
+    let auxiliary_input_size = next_auxiliary - (1 + num_inputs) in
     R1CS_constraint_system.set_auxiliary_input_size system auxiliary_input_size ;
     system
 
   let auxiliary_input ?system ~run ~num_inputs
       ?(handlers = ([] : Handler.t list)) t0 (input : Field.Vector.t)
       ~return_typ:(Types.Typ.Typ return_typ) ~output : Field.Vector.t * _ =
-    let next_auxiliary = ref (1 + num_inputs) in
+    let next_auxiliary = 1 + num_inputs in
     let aux = Field.Vector.create () in
     let handler =
       List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
@@ -91,7 +91,7 @@ struct
       return_typ.var_of_fields (output, auxiliary_output_data)
     in
     Option.iter system ~f:(fun system ->
-        let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
+        let auxiliary_input_size = next_auxiliary - (1 + num_inputs) in
         R1CS_constraint_system.set_auxiliary_input_size system
           auxiliary_input_size ;
         R1CS_constraint_system.finalize system ) ;
@@ -100,7 +100,7 @@ struct
   let run_and_check' ~run t0 =
     let num_inputs = 0 in
     let input = field_vec () in
-    let next_auxiliary = ref 1 in
+    let next_auxiliary = 1 in
     let aux = Field.Vector.create () in
     let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
@@ -121,7 +121,7 @@ struct
   let run_and_check_deferred' ~map ~return ~run t0 =
     let num_inputs = 0 in
     let input = field_vec () in
-    let next_auxiliary = ref 1 in
+    let next_auxiliary = 1 in
     let aux = Field.Vector.create () in
     let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
@@ -142,7 +142,7 @@ struct
   let run_unchecked ~run t0 =
     let num_inputs = 0 in
     let input = field_vec () in
-    let next_auxiliary = ref 1 in
+    let next_auxiliary = 1 in
     let aux = field_vec () in
     let state =
       Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux

@@ -306,8 +306,8 @@ struct
     in
     let state =
       Run_state.make ~num_inputs:0 ~input:Run_state.Vector.null
-        ~next_auxiliary:(ref 1) ~aux:Run_state.Vector.null
-        ~eval_constraints:false ~log_constraint ~with_witness:false ()
+        ~next_auxiliary:1 ~aux:Run_state.Vector.null ~eval_constraints:false
+        ~log_constraint ~with_witness:false ()
     in
     let _ = Simple.eval (t ()) state in
     !count
@@ -368,11 +368,6 @@ module Make (Backend : Backend_extended.S) = struct
 
   let dummy_vector = Run_state.Vector.null
 
-  let fake_state next_auxiliary stack =
-    Run_state.make ~num_inputs:0 ~input:Run_state.Vector.null ~next_auxiliary
-      ~aux:Run_state.Vector.null ~eval_constraints:false ~stack
-      ~with_witness:false ()
-
   module State = struct
     let make ~num_inputs ~input ~next_auxiliary ~aux ?system
         ?(eval_constraints = !eval_constraints_ref) ?handler ~with_witness
@@ -430,7 +425,7 @@ module type S = sig
     val make :
          num_inputs:int
       -> input:field Run_state.Vector.t
-      -> next_auxiliary:int ref
+      -> next_auxiliary:int
       -> aux:field Run_state.Vector.t
       -> ?system:r1cs
       -> ?eval_constraints:bool

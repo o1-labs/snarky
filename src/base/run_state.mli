@@ -20,7 +20,7 @@ type 'field t
 val make :
      num_inputs:int
   -> input:'field Vector.t
-  -> next_auxiliary:int ref
+  -> next_auxiliary:int
   -> aux:'field Vector.t
   -> ?system:'field Constraint_system.t
   -> eval_constraints:bool

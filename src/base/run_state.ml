@@ -38,7 +38,7 @@ type 'field t =
   ; aux : 'field Vector.t
   ; eval_constraints : bool
   ; num_inputs : int
-  ; next_auxiliary : int ref
+  ; mutable next_auxiliary : int
   ; has_witness : bool
   ; stack : string list
   ; handler : Request.Handler.t
@@ -54,7 +54,8 @@ type 'field t =
 let make ~num_inputs ~input ~next_auxiliary ~aux ?system ~eval_constraints
     ?log_constraint ?handler ~with_witness ?(stack = []) ?(is_running = true) ()
     =
-  next_auxiliary := 1 + num_inputs ;
+  let real_next_auxiliary = 1 + num_inputs in
+  assert (real_next_auxiliary = next_auxiliary) ;
   (* We can't evaluate the constraints if we are not computing over a value. *)
   let eval_constraints = eval_constraints && with_witness in
   { system
@@ -76,20 +77,23 @@ let dump (t : _ t) =
     "state { is_running: %B; as_prover: %B; has_witness: %B; eval_constraints: \
      %B; num_inputs: %d; next_auxiliary: %d }\n"
     t.is_running t.as_prover t.has_witness t.eval_constraints t.num_inputs
-    !(t.next_auxiliary)
+    t.next_auxiliary
 
 let get_variable_value { num_inputs; input; aux; _ } : int -> 'field =
  fun i ->
   if i <= num_inputs then Vector.get input (i - 1)
   else Vector.get aux (i - num_inputs - 1)
 
-let store_field_elt { next_auxiliary; aux; _ } x =
-  let v = !next_auxiliary in
-  incr next_auxiliary ; Vector.emplace_back aux x ; Cvar.Unsafe.of_index v
+let store_field_elt ({ next_auxiliary; aux; _ } as t) x =
+  let v = next_auxiliary in
+  t.next_auxiliary <- next_auxiliary + 1 ;
+  Vector.emplace_back aux x ;
+  Cvar.Unsafe.of_index v
 
-let alloc_var { next_auxiliary; _ } () =
-  let v = !next_auxiliary in
-  incr next_auxiliary ; Cvar.Unsafe.of_index v
+let alloc_var ({ next_auxiliary; _ } as t) () =
+  let v = next_auxiliary in
+  t.next_auxiliary <- next_auxiliary + 1 ;
+  Cvar.Unsafe.of_index v
 
 let has_witness { has_witness; _ } = has_witness
 
@@ -115,4 +119,4 @@ let is_running { is_running; _ } = is_running
 
 let set_is_running t is_running = { t with is_running }
 
-let next_auxiliary { next_auxiliary; _ } = !next_auxiliary
+let next_auxiliary { next_auxiliary; _ } = next_auxiliary
