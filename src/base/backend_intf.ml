@@ -88,6 +88,8 @@ module type Run_state_intf = sig
 
   val system : t -> constraint_system option
 
+  val finalize : t -> unit
+
   val next_auxiliary : t -> int
 end
 

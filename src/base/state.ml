@@ -60,6 +60,8 @@ module type S = sig
 
   val system : t -> constraint_system option
 
+  val finalize : t -> unit
+
   val handler : t -> Request.Handler.t
 
   val set_handler : t -> Request.Handler.t -> t
@@ -124,6 +126,8 @@ module Make
 
   let add_constraint ?label t (cstr : (Cvar.t, Field.t) Constraint.basic) =
     add_constraint t.state label cstr
+
+  let finalize t = finalize t.state
 
   (* We redefine the [make] function with the wrapper in mind. *)
 
