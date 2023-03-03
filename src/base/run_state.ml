@@ -43,7 +43,7 @@ type 'field t =
   ; stack : string list
   ; handler : Request.Handler.t
   ; is_running : bool
-  ; as_prover : bool ref
+  ; mutable as_prover : bool
   ; log_constraint :
       (   ?at_label_boundary:[ `Start | `End ] * string
        -> ('field Cvar.t, 'field) Constraint.t option
@@ -67,7 +67,7 @@ let make ~num_inputs ~input ~next_auxiliary ~aux ?system ~eval_constraints
   ; stack
   ; handler = Option.value handler ~default:Request.Handler.fail
   ; is_running
-  ; as_prover = ref false
+  ; as_prover = false
   ; log_constraint
   }
 
@@ -75,7 +75,7 @@ let dump (t : _ t) =
   Format.sprintf
     "state { is_running: %B; as_prover: %B; has_witness: %B; eval_constraints: \
      %B; num_inputs: %d; next_auxiliary: %d }\n"
-    t.is_running !(t.as_prover) t.has_witness t.eval_constraints t.num_inputs
+    t.is_running t.as_prover t.has_witness t.eval_constraints t.num_inputs
     !(t.next_auxiliary)
 
 let get_variable_value { num_inputs; input; aux; _ } : int -> 'field =
@@ -93,9 +93,9 @@ let alloc_var { next_auxiliary; _ } () =
 
 let has_witness { has_witness; _ } = has_witness
 
-let as_prover { as_prover; _ } = !as_prover
+let as_prover { as_prover; _ } = as_prover
 
-let set_as_prover t as_prover = t.as_prover := as_prover
+let set_as_prover t as_prover = t.as_prover <- as_prover
 
 let stack { stack; _ } = stack
 
