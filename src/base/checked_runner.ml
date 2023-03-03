@@ -316,8 +316,8 @@ struct
     in
     let state =
       Run_state.make ~num_inputs:0 ~input:(Field.Vector.create ())
-        ~next_auxiliary:(ref 1) ~aux:(Field.Vector.create ())
-        ~eval_constraints:false ~log_constraint ~with_witness:false ()
+        ~aux:(Field.Vector.create ()) ~eval_constraints:false ~log_constraint
+        ~with_witness:false ()
     in
     let _ = Simple.eval (t ()) state in
     !count
@@ -383,9 +383,8 @@ module Make (Backend : Backend_extended.S) = struct
     let make :
            num_inputs:int
         -> input:Field.Vector.t
-        -> next_auxiliary:int ref
         -> aux:Field.Vector.t
-        -> ?system:Backend.R1CS_constraint_system.t
+        -> system:bool
         -> ?eval_constraints:bool
         -> ?handler:Request.Handler.t
         -> with_witness:bool
@@ -395,7 +394,7 @@ module Make (Backend : Backend_extended.S) = struct
               -> unit )
         -> unit
         -> run_state =
-     fun ~num_inputs ~input ~next_auxiliary ~aux ?system
+     fun ~num_inputs ~input ~aux ~system
          ?(eval_constraints = !eval_constraints_ref) ?handler ~with_witness
          ?log_constraint () ->
       let log_constraint =
@@ -407,12 +406,9 @@ module Make (Backend : Backend_extended.S) = struct
       in
       (* We can't evaluate the constraints if we are not computing over a value. *)
       let eval_constraints = eval_constraints && with_witness in
-      Option.iter
-        (system : R1CS_constraint_system.t option)
-        ~f:(fun system ->
-          R1CS_constraint_system.set_primary_input_size system num_inputs ) ;
-      Run_state.make ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ~eval_constraints ?log_constraint ?handler ~with_witness ()
+
+      Run_state.make ~num_inputs ~input ~aux ~system ~eval_constraints
+        ?log_constraint ?handler ~with_witness ()
   end
 end
 
@@ -438,9 +434,8 @@ module type S = sig
     val make :
          num_inputs:int
       -> input:field_vector
-      -> next_auxiliary:int ref
       -> aux:field_vector
-      -> ?system:r1cs
+      -> system:bool
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t
       -> with_witness:bool

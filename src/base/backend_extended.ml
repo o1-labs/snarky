@@ -27,11 +27,7 @@ module type S = sig
       with module Field := Field
        and type cvar := Cvar.t
 
-  module Run_state :
-    State.S
-      with module Field := Field
-       and type cvar := Cvar.t
-       and type constraint_system := R1CS_constraint_system.t
+  module Run_state : State.S with module Field := Field and type cvar := Cvar.t
 
   module Constraint : sig
     type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]

@@ -737,8 +737,8 @@ module Run = struct
         (Run_state.make
            ~input:(Backend.Field.Vector.create ())
            ~aux:(Backend.Field.Vector.create ())
-           ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 1)
-           ~with_witness:false ~stack:[] ~is_running:false () )
+           ~eval_constraints:false ~num_inputs:0 ~with_witness:false ~stack:[]
+           ~is_running:false () )
 
     let in_prover () : bool = Run_state.has_witness !state
 
@@ -1394,8 +1394,7 @@ module Run = struct
         Runner.State.make ~num_inputs:0
           ~input:(Backend.Field.Vector.create ())
           ~aux:(Backend.Field.Vector.create ())
-          ~next_auxiliary:(ref 1) ~eval_constraints:false ~with_witness:false
-          ~log_constraint () ;
+          ~eval_constraints:false ~with_witness:false ~log_constraint () ;
       ignore (mark_active ~f:x) ;
       state := old ;
       !count

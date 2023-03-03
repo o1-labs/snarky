@@ -48,39 +48,47 @@ struct
   (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
   let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
       output t : R1CS_constraint_system.t =
+    (* create the state *)
     let input = Field.Vector.create () in
-    let next_auxiliary = ref (1 + num_inputs) in
     let aux = Field.Vector.create () in
-    let system = R1CS_constraint_system.create () in
     let state =
-      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
-        ~with_witness:false ()
+      Runner.State.make ~num_inputs ~input ~aux ~system:true ~with_witness:false
+        ()
     in
+
+    (* run the state *)
     let state, res = run t state in
+
+    (* enforce the public output *)
     let res, _ = return_typ.var_to_fields res in
     let output, _ = return_typ.var_to_fields output in
     let _state =
       Array.fold2_exn ~init:state res output ~f:(fun state res output ->
           fst @@ Checked.run (Checked.assert_equal res output) state )
     in
-    let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
-    R1CS_constraint_system.set_auxiliary_input_size system auxiliary_input_size ;
+
+    (* return the constraint system *)
     system
 
-  let auxiliary_input ?system ~run ~num_inputs
-      ?(handlers = ([] : Handler.t list)) t0 (input : Field.Vector.t)
-      ~return_typ:(Types.Typ.Typ return_typ) ~output : Field.Vector.t * _ =
-    let next_auxiliary = ref (1 + num_inputs) in
+  let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
+      (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ) ~output :
+      Field.Vector.t * _ =
     let aux = Field.Vector.create () in
     let handler =
       List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
           Request.Handler.(push handler (create_single h)) )
     in
+
+    (* create the state *)
     let state =
-      Runner.State.make ?system ~num_inputs ~input ~next_auxiliary ~aux ~handler
+      Runner.State.make ~system:false ~num_inputs ~input ~aux ~handler
         ~with_witness:true ()
     in
+
+    (* run t0 *)
     let state, res = run t0 state in
+
+    (* get return variable as cvars  *)
     let res, auxiliary_output_data = return_typ.var_to_fields res in
     let output, _ = return_typ.var_to_fields output in
     let _state =
@@ -91,17 +99,17 @@ struct
     let true_output =
       return_typ.var_of_fields (output, auxiliary_output_data)
     in
+
+    (* not sure why we're finalizing the system here, if we're not returning it... *)
     Option.iter system ~f:(fun system ->
-        let auxiliary_input_size = !next_auxiliary - (1 + num_inputs) in
-        R1CS_constraint_system.set_auxiliary_input_size system
-          auxiliary_input_size ;
         R1CS_constraint_system.finalize system ) ;
+
+    (* return aux/true_output, but isn't aux empty here? *)
     (aux, true_output)
 
   let run_and_check' ~run t0 =
     let num_inputs = 0 in
     let input = Field.Vector.create () in
-    let next_auxiliary = ref 1 in
     let aux = Field.Vector.create () in
     let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
@@ -109,8 +117,8 @@ struct
       Cvar.eval (`Return_values_will_be_mutated get_one)
     in
     let state =
-      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
-        ~eval_constraints:true ~with_witness:true ()
+      Runner.State.make ~num_inputs ~input ~aux ~system ~eval_constraints:true
+        ~with_witness:true ()
     in
     match run t0 state with
     | exception e ->
@@ -121,7 +129,6 @@ struct
   let run_and_check_deferred' ~map ~return ~run t0 =
     let num_inputs = 0 in
     let input = Field.Vector.create () in
-    let next_auxiliary = ref 1 in
     let aux = Field.Vector.create () in
     let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
@@ -129,8 +136,8 @@ struct
       Cvar.eval (`Return_values_will_be_mutated get_one)
     in
     let state =
-      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
-        ~eval_constraints:true ~with_witness:true ()
+      Runner.State.make ~num_inputs ~input ~aux ~system ~eval_constraints:true
+        ~with_witness:true ()
     in
     match run t0 state with
     | exception e ->
@@ -141,11 +148,9 @@ struct
   let run_unchecked ~run t0 =
     let num_inputs = 0 in
     let input = Field.Vector.create () in
-    let next_auxiliary = ref 1 in
     let aux = Field.Vector.create () in
     let state =
-      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux
-        ~with_witness:true ()
+      Runner.State.make ~num_inputs ~input ~aux ~with_witness:true ()
     in
     match run t0 state with _, x -> x
 
@@ -311,6 +316,8 @@ struct
             auxiliary_input ~run ?handlers ~return_typ ~output ~num_inputs c
               primary
           in
+
+          (* read value of public output *)
           let output =
             let (Typ return_typ) = return_typ in
             let fields, aux = return_typ.var_to_fields output in
@@ -324,6 +331,8 @@ struct
             let fields = Array.map ~f:read_cvar fields in
             return_typ.value_of_fields (fields, aux)
           in
+
+          (* run [f] on the result *)
           f
             { Proof_inputs.public_inputs = primary
             ; auxiliary_inputs = auxiliary

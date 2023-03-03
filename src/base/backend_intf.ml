@@ -17,8 +17,6 @@ module type Constraint_system_intf = sig
 
   val set_primary_input_size : t -> int -> unit
 
-  val set_auxiliary_input_size : t -> int -> unit
-
   val get_primary_input_size : t -> int
 
   val get_rows_len : t -> int
@@ -67,17 +65,9 @@ module type Run_state_intf = sig
 
   type constraint_system
 
-  val make :
-       num_inputs:int
-    -> input:Field.Vector.t
-    -> next_auxiliary:int ref
-    -> aux:Field.Vector.t
-    -> system:constraint_system option
-    -> eval_constraints:bool
-    -> with_witness:bool
-    -> as_prover:bool
-    -> unit
-    -> t
+  val make : int -> Field.Vector.t -> Field.Vector.t -> bool -> bool -> t
+
+  val make_system : int -> Field.Vector.t -> Field.Vector.t -> bool -> bool -> t
 
   val add_constraint :
     t -> string option -> (cvar, Field.t) Constraint.basic -> unit

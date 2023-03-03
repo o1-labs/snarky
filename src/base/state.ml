@@ -1,14 +1,21 @@
 open Core_kernel
 
 module type S = sig
-  include Backend_intf.Run_state_intf
+  module Field : sig
+    type t
+
+    module Vector : T
+  end
+
+  type t
+
+  type cvar
 
   val make :
        num_inputs:int
     -> input:Field.Vector.t
-    -> next_auxiliary:int ref
     -> aux:Field.Vector.t
-    -> ?system:constraint_system
+    -> system:bool
     -> eval_constraints:bool
     -> ?log_constraint:
          (   ?at_label_boundary:[ `End | `Start ] * string
@@ -71,10 +78,7 @@ module Make
                    with module Field := Field
                     and type cvar := Cvar.t
                     and type constraint_system := CS.t) :
-  S
-    with module Field := Field
-     and type cvar := Cvar.t
-     and type constraint_system := CS.t = struct
+  S with module Field := Field and type cvar := Cvar.t = struct
   include Run_state
 
   (* We wrap the state coming from Rust, and we add some values that are only relevant for the OCaml implementation. *)
@@ -117,9 +121,8 @@ module Make
   let make :
          num_inputs:int
       -> input:Field.Vector.t
-      -> next_auxiliary:int ref
       -> aux:Field.Vector.t
-      -> ?system:CS.t
+      -> system:bool
       -> eval_constraints:bool
       -> ?log_constraint:
            (   ?at_label_boundary:[ `End | `Start ] * string
@@ -131,17 +134,19 @@ module Make
       -> ?is_running:bool
       -> unit
       -> t =
-   fun ~num_inputs ~input ~next_auxiliary ~aux ?system ~eval_constraints
-       ?log_constraint ?handler ~with_witness ?(stack = []) ?(is_running = true)
-       () ->
-    next_auxiliary := 1 + num_inputs ;
+   fun ~num_inputs ~input ~aux ~system ~eval_constraints ?log_constraint
+       ?handler ~with_witness ?(stack = []) ?(is_running = true) () ->
     (* We can't evaluate the constraints if we are not computing over a value. *)
     let eval_constraints = eval_constraints && with_witness in
-    let as_prover = false in
-    let state =
-      Run_state.make ~num_inputs ~input ~next_auxiliary ~aux ~system
-        ~eval_constraints ~with_witness ~as_prover ()
+
+    (* create the inner Rust state *)
+    let state : Run_state.t =
+      if system then
+        Run_state.make_system num_inputs input aux eval_constraints with_witness
+      else Run_state.make num_inputs input aux eval_constraints with_witness
     in
+
+    (* create the wrapper state *)
     { state
     ; stack
     ; handler = Option.value handler ~default:Request.Handler.fail
