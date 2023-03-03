@@ -289,7 +289,7 @@ struct
           let var =
             var_of_fields
               ( Array.init size_in_field_elements ~f:(fun _ ->
-                    Run_state.alloc_var s () )
+                    Run_state.alloc_var s )
               , constraint_system_auxiliary () )
           in
           (* TODO: Push a label onto the stack here *)

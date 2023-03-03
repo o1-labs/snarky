@@ -76,7 +76,7 @@ module type Run_state_intf = sig
 
   val store_field_elt : t -> Field.t -> cvar
 
-  val alloc_var : t -> unit -> cvar
+  val alloc_var : t -> cvar
 
   val has_witness : t -> bool
 

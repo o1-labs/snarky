@@ -37,7 +37,7 @@ module type S = sig
 
   val store_field_elt : t -> Field.t -> cvar
 
-  val alloc_var : t -> unit -> cvar
+  val alloc_var : t -> cvar
 
   val has_witness : t -> bool
 
@@ -110,7 +110,7 @@ module Make
 
   let store_field_elt t field = store_field_elt t.state field
 
-  let alloc_var t _ = alloc_var t.state ()
+  let alloc_var t = alloc_var t.state
 
   let has_witness t = has_witness t.state
 

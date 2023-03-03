@@ -161,12 +161,12 @@ struct
   let check ~run t = run_and_check' ~run t |> Result.map ~f:(Fn.const ())
 
   module Run = struct
-    let alloc_var next_input () =
+    let alloc_var next_input =
       let v = !next_input in
       incr next_input ; Cvar.Unsafe.of_index v
 
     let store_field_elt primary_input next_input x =
-      let v = alloc_var next_input () in
+      let v = alloc_var next_input in
       Field.Vector.emplace_back primary_input x ;
       v
 
@@ -193,7 +193,7 @@ struct
           } =
         var_of_fields
           ( Core_kernel.Array.init size_in_field_elements ~f:(fun _ ->
-                alloc_var next_input () )
+                alloc_var next_input )
           , constraint_system_auxiliary () )
       in
       let var = alloc_input input_typ in
@@ -277,7 +277,7 @@ struct
         let retval =
           return_typ.var_of_fields
             ( Core_kernel.Array.init return_typ.size_in_field_elements
-                ~f:(fun _ -> alloc_var next_input ())
+                ~f:(fun _ -> alloc_var next_input)
             , return_typ.constraint_system_auxiliary () )
         in
         cont0 !next_input retval (k0 () var) primary_input
