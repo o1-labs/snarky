@@ -71,8 +71,8 @@ struct
     Backend.Run_state.finalize state ;
 
     (* return the constraint system *)
-    let sys = R1cs_constraint_system.system state in
-    sys
+    let sys = Backend.Run_state.system state in
+    Option.value_exn sys
 
   let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
       (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ) ~output :
@@ -111,14 +111,13 @@ struct
     let num_inputs = 0 in
     let input = Field.Vector.create () in
     let aux = Field.Vector.create () in
-    let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
       let get_one v = Field.Vector.get aux (v - 1) in
       Cvar.eval (`Return_values_will_be_mutated get_one)
     in
     let state =
-      Runner.State.make ~num_inputs ~input ~aux ~system ~eval_constraints:true
-        ~with_witness:true ()
+      Runner.State.make ~num_inputs ~input ~aux ~system:true
+        ~eval_constraints:true ~with_witness:true ()
     in
     match run t0 state with
     | exception e ->
@@ -130,14 +129,13 @@ struct
     let num_inputs = 0 in
     let input = Field.Vector.create () in
     let aux = Field.Vector.create () in
-    let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
       let get_one v = Field.Vector.get aux (v - 1) in
       Cvar.eval (`Return_values_will_be_mutated get_one)
     in
     let state =
-      Runner.State.make ~num_inputs ~input ~aux ~system ~eval_constraints:true
-        ~with_witness:true ()
+      Runner.State.make ~num_inputs ~input ~aux ~system:true
+        ~eval_constraints:true ~with_witness:true ()
     in
     match run t0 state with
     | exception e ->
@@ -150,7 +148,8 @@ struct
     let input = Field.Vector.create () in
     let aux = Field.Vector.create () in
     let state =
-      Runner.State.make ~num_inputs ~input ~aux ~with_witness:true ()
+      Runner.State.make ~system:false ~num_inputs ~input ~aux ~with_witness:true
+        ()
     in
     match run t0 state with _, x -> x
 

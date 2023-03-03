@@ -737,6 +737,7 @@ module Run = struct
         (Run_state.make
            ~input:(Backend.Field.Vector.create ())
            ~aux:(Backend.Field.Vector.create ())
+           ~system:false
            ~eval_constraints:false ~num_inputs:0 ~with_witness:false ~stack:[]
            ~is_running:false () )
 
@@ -1391,7 +1392,7 @@ module Run = struct
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
       let old = !state in
       state :=
-        Runner.State.make ~num_inputs:0
+        Runner.State.make ~num_inputs:0 ~system:false
           ~input:(Backend.Field.Vector.create ())
           ~aux:(Backend.Field.Vector.create ())
           ~eval_constraints:false ~with_witness:false ~log_constraint () ;
