@@ -100,10 +100,6 @@ struct
       return_typ.var_of_fields (output, auxiliary_output_data)
     in
 
-    (* not sure why we're finalizing the system here, if we're not returning it... *)
-    Option.iter system ~f:(fun system ->
-        R1CS_constraint_system.finalize system ) ;
-
     (* return aux/true_output, but isn't aux empty here? *)
     (aux, true_output)
 
