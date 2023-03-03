@@ -11,6 +11,8 @@ module type S = sig
 
   type cvar
 
+  type constraint_system
+
   val make :
        num_inputs:int
     -> input:Field.Vector.t
@@ -80,7 +82,10 @@ module Make
                    with module Field := Field
                     and type cvar := Cvar.t
                     and type constraint_system := CS.t) :
-  S with module Field := Field and type cvar := Cvar.t = struct
+  S
+    with module Field := Field
+     and type cvar := Cvar.t
+     and type constraint_system := CS.t = struct
   include Run_state
 
   (* We wrap the state coming from Rust, and we add some values that are only relevant for the OCaml implementation. *)
