@@ -316,8 +316,8 @@ struct
     in
     let state =
       Run_state.make ~num_inputs:0 ~input:(Field.Vector.create ())
-        ~aux:(Field.Vector.create ()) ~eval_constraints:false ~log_constraint
-        ~with_witness:false ()
+        ~aux:(Field.Vector.create ()) ~system:false ~eval_constraints:false
+        ~log_constraint ~with_witness:false ()
     in
     let _ = Simple.eval (t ()) state in
     !count
