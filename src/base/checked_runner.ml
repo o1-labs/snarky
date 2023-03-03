@@ -379,11 +379,6 @@ module Make (Backend : Backend_extended.S) = struct
 
   let run = Simple.eval
 
-  let fake_state next_auxiliary stack =
-    Run_state.make ~num_inputs:0 ~input:(Field.Vector.create ()) ~next_auxiliary
-      ~aux:(Field.Vector.create ()) ~eval_constraints:false ~stack
-      ~with_witness:false ()
-
   module State = struct
     let make :
            num_inputs:int
