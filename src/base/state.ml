@@ -56,6 +56,8 @@ module type S = sig
 
   val eval_constraints : t -> bool
 
+  val system : t -> constraint_system option
+
   val handler : t -> Request.Handler.t
 
   val set_handler : t -> Request.Handler.t -> t
@@ -110,6 +112,8 @@ module Make
   let set_as_prover t b = set_as_prover t.state b
 
   let eval_constraints t = eval_constraints t.state
+
+  let system t = system t.state
 
   let next_auxiliary t = next_auxiliary t.state
 
