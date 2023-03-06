@@ -1100,6 +1100,8 @@ module type Run_basic = sig
     val get_primary_input_size : t -> int
 
     val get_rows_len : t -> int
+
+    val to_json : t -> string
   end
 
   module Bigint : sig

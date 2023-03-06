@@ -15,6 +15,8 @@ module type Constraint_system_intf = sig
 
   val digest : t -> Md5.t
 
+  val to_json : t -> string
+
   val set_primary_input_size : t -> int -> unit
 
   val get_primary_input_size : t -> int
