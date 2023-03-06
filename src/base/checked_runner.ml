@@ -315,8 +315,7 @@ struct
       count := !count + Option.value_map ~default:0 ~f:weight c
     in
     let state =
-      Run_state.make ~num_inputs:0 ~input:(Field.Vector.create ())
-        ~aux:(Field.Vector.create ()) ~system:false ~eval_constraints:false
+      Run_state.make ~num_inputs:0 ~system:false ~eval_constraints:false
         ~log_constraint ~with_witness:false ()
     in
     let _ = Simple.eval (t ()) state in
@@ -382,8 +381,6 @@ module Make (Backend : Backend_extended.S) = struct
   module State = struct
     let make :
            num_inputs:int
-        -> input:Field.Vector.t
-        -> aux:Field.Vector.t
         -> system:bool
         -> ?eval_constraints:bool
         -> ?handler:Request.Handler.t
@@ -394,9 +391,8 @@ module Make (Backend : Backend_extended.S) = struct
               -> unit )
         -> unit
         -> run_state =
-     fun ~num_inputs ~input ~aux ~system
-         ?(eval_constraints = !eval_constraints_ref) ?handler ~with_witness
-         ?log_constraint () ->
+     fun ~num_inputs ~system ?(eval_constraints = !eval_constraints_ref)
+         ?handler ~with_witness ?log_constraint () ->
       let log_constraint =
         match log_constraint with
         | Some _ ->
@@ -407,8 +403,8 @@ module Make (Backend : Backend_extended.S) = struct
       (* We can't evaluate the constraints if we are not computing over a value. *)
       let eval_constraints = eval_constraints && with_witness in
 
-      Run_state.make ~num_inputs ~input ~aux ~system ~eval_constraints
-        ?log_constraint ?handler ~with_witness ()
+      Run_state.make ~num_inputs ~system ~eval_constraints ?log_constraint
+        ?handler ~with_witness ()
   end
 end
 
@@ -433,8 +429,6 @@ module type S = sig
   module State : sig
     val make :
          num_inputs:int
-      -> input:field_vector
-      -> aux:field_vector
       -> system:bool
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t

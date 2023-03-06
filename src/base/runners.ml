@@ -49,11 +49,8 @@ struct
   let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
       output t : Constraint_system.t =
     (* create the state *)
-    let input = Field.Vector.create () in
-    let aux = Field.Vector.create () in
     let state =
-      Runner.State.make ~num_inputs ~input ~aux ~system:true ~with_witness:false
-        ()
+      Runner.State.make ~num_inputs ~system:true ~with_witness:false ()
     in
 
     (* run the state *)
@@ -74,10 +71,10 @@ struct
     let sys = Backend.Run_state.system state in
     Option.value_exn sys
 
+  (* TODO: we should make sure that callers cannot mutate the returned [aux] vector. *)
   let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
       (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ) ~output :
       Field.Vector.t * _ =
-    let aux = Field.Vector.create () in
     let handler =
       List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
           Request.Handler.(push handler (create_single h)) )
@@ -85,9 +82,11 @@ struct
 
     (* create the state *)
     let state =
-      Runner.State.make ~system:false ~num_inputs ~input ~aux ~handler
-        ~with_witness:true ()
+      Runner.State.make ~system:false ~num_inputs ~handler ~with_witness:true ()
     in
+
+    (* set the private inputs *)
+    Backend.Run_state.set_public_inputs state input ;
 
     (* run t0 *)
     let state, res = run t0 state in
@@ -104,52 +103,61 @@ struct
       return_typ.var_of_fields (output, auxiliary_output_data)
     in
 
-    (* return aux/true_output, but isn't aux empty here? *)
+    (* retrieve private inputs *)
+    let aux = Backend.Run_state.get_private_inputs state in
+
     (aux, true_output)
 
   let run_and_check' ~run t0 =
     let num_inputs = 0 in
-    let input = Field.Vector.create () in
-    let aux = Field.Vector.create () in
-    let get_value : Cvar.t -> Field.t =
-      let get_one v = Field.Vector.get aux (v - 1) in
-      Cvar.eval (`Return_values_will_be_mutated get_one)
-    in
+
+    (* create state *)
     let state =
-      Runner.State.make ~num_inputs ~input ~aux ~system:true
-        ~eval_constraints:true ~with_witness:true ()
+      Runner.State.make ~num_inputs ~system:true ~eval_constraints:true
+        ~with_witness:true ()
     in
+
+    (* run the circuit with the state *)
     match run t0 state with
     | exception e ->
         Or_error.of_exn ~backtrace:`Get e
     | _, x ->
+        (* return value getter *)
+        let aux = Backend.Run_state.get_private_inputs state in
+        let get_value : Cvar.t -> Field.t =
+          let get_one v = Field.Vector.get aux (v - 1) in
+          Cvar.eval (`Return_values_will_be_mutated get_one)
+        in
+
         Ok (x, get_value)
 
   let run_and_check_deferred' ~map ~return ~run t0 =
     let num_inputs = 0 in
-    let input = Field.Vector.create () in
-    let aux = Field.Vector.create () in
-    let get_value : Cvar.t -> Field.t =
-      let get_one v = Field.Vector.get aux (v - 1) in
-      Cvar.eval (`Return_values_will_be_mutated get_one)
-    in
+
+    (* create the state *)
     let state =
-      Runner.State.make ~num_inputs ~input ~aux ~system:true
-        ~eval_constraints:true ~with_witness:true ()
+      Runner.State.make ~num_inputs ~system:true ~eval_constraints:true
+        ~with_witness:true ()
     in
+
+    (* run the circuit *)
     match run t0 state with
     | exception e ->
         return (Or_error.of_exn ~backtrace:`Get e)
     | res ->
+        (* return a value getter *)
+        let aux = Backend.Run_state.get_private_inputs state in
+        let get_value : Cvar.t -> Field.t =
+          let get_one v = Field.Vector.get aux v in
+          Cvar.eval (`Return_values_will_be_mutated get_one)
+        in
+
         map res ~f:(function _, x -> Ok (x, get_value))
 
   let run_unchecked ~run t0 =
     let num_inputs = 0 in
-    let input = Field.Vector.create () in
-    let aux = Field.Vector.create () in
     let state =
-      Runner.State.make ~system:false ~num_inputs ~input ~aux ~with_witness:true
-        ()
+      Runner.State.make ~system:false ~num_inputs ~with_witness:true ()
     in
     match run t0 state with _, x -> x
 

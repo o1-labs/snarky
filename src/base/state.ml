@@ -15,8 +15,6 @@ module type S = sig
 
   val make :
        num_inputs:int
-    -> input:Field.Vector.t
-    -> aux:Field.Vector.t
     -> system:bool
     -> eval_constraints:bool
     -> ?log_constraint:
@@ -144,8 +142,6 @@ module Make
 
   let make :
          num_inputs:int
-      -> input:Field.Vector.t
-      -> aux:Field.Vector.t
       -> system:bool
       -> eval_constraints:bool
       -> ?log_constraint:
@@ -158,16 +154,16 @@ module Make
       -> ?is_running:bool
       -> unit
       -> t =
-   fun ~num_inputs ~input ~aux ~system ~eval_constraints ?log_constraint
-       ?handler ~with_witness ?(stack = []) ?(is_running = true) () ->
+   fun ~num_inputs ~system ~eval_constraints ?log_constraint ?handler
+       ~with_witness ?(stack = []) ?(is_running = true) () ->
     (* We can't evaluate the constraints if we are not computing over a value. *)
     let eval_constraints = eval_constraints && with_witness in
 
     (* create the inner Rust state *)
     let state : Run_state.t =
       if system then
-        Run_state.make_system num_inputs input aux eval_constraints with_witness
-      else Run_state.make num_inputs input aux eval_constraints with_witness
+        Run_state.make_system num_inputs eval_constraints with_witness
+      else Run_state.make num_inputs eval_constraints with_witness
     in
 
     (* create the wrapper state *)

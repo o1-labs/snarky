@@ -736,10 +736,7 @@ module Run = struct
 
     let state =
       ref
-        (Run_state.make
-           ~input:(Backend.Field.Vector.create ())
-           ~aux:(Backend.Field.Vector.create ())
-           ~system:false ~eval_constraints:false ~num_inputs:0
+        (Run_state.make ~system:false ~eval_constraints:false ~num_inputs:0
            ~with_witness:false ~stack:[] ~is_running:false () )
 
     let in_prover () : bool = Run_state.has_witness !state
@@ -1393,10 +1390,8 @@ module Run = struct
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
       let old = !state in
       state :=
-        Runner.State.make ~num_inputs:0 ~system:false
-          ~input:(Backend.Field.Vector.create ())
-          ~aux:(Backend.Field.Vector.create ())
-          ~eval_constraints:false ~with_witness:false ~log_constraint () ;
+        Runner.State.make ~num_inputs:0 ~system:false ~eval_constraints:false
+          ~with_witness:false ~log_constraint () ;
       ignore (mark_active ~f:x) ;
       state := old ;
       !count
