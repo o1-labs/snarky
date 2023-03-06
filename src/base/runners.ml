@@ -79,9 +79,7 @@ struct
     in
 
     (* create the state *)
-    let state =
-      Runner.State.make ~system:false ~num_inputs ~handler ~with_witness:true ()
-    in
+    let state = Runner.State.make ~system:false ~num_inputs ~handler () in
 
     (* set the public inputs *)
     Backend.Run_state.set_public_inputs state input ;
@@ -107,13 +105,16 @@ struct
     (aux, true_output)
 
   let run_and_check' ~run t0 =
+    (* TODO: why do we set the public inputs to 0? *)
     let num_inputs = 0 in
 
     (* create state *)
     let state =
-      Runner.State.make ~num_inputs ~system:true ~eval_constraints:true
-        ~with_witness:true ()
+      Runner.State.make ~num_inputs ~system:true ~eval_constraints:true ()
     in
+
+    (* set public input *)
+    Backend.Run_state.set_public_inputs state (Field.Vector.create ()) ;
 
     (* run the circuit with the state *)
     match run t0 state with
@@ -130,13 +131,16 @@ struct
         Ok (x, get_value)
 
   let run_and_check_deferred' ~map ~return ~run t0 =
+    (* TODO: why do we set the public inputs to 0? *)
     let num_inputs = 0 in
 
     (* create the state *)
     let state =
-      Runner.State.make ~num_inputs ~system:true ~eval_constraints:true
-        ~with_witness:true ()
+      Runner.State.make ~num_inputs ~system:true ~eval_constraints:true ()
     in
+
+    (* set the public input *)
+    Backend.Run_state.set_public_inputs state (Field.Vector.create ()) ;
 
     (* run the circuit *)
     match run t0 state with
@@ -153,10 +157,16 @@ struct
         map res ~f:(function _, x -> Ok (x, get_value))
 
   let run_unchecked ~run t0 =
+    (* TODO: why do we set public inputs to 0? *)
     let num_inputs = 0 in
-    let state =
-      Runner.State.make ~system:false ~num_inputs ~with_witness:true ()
-    in
+
+    (* create the state *)
+    let state = Runner.State.make ~system:false ~num_inputs () in
+
+    (* set the public inputs *)
+    Backend.Run_state.set_public_inputs state (Field.Vector.create ()) ;
+
+    (* run the circuit*)
     match run t0 state with _, x -> x
 
   let run_and_check ~run t =
