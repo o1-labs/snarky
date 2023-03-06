@@ -316,7 +316,7 @@ struct
     in
     let state =
       Run_state.make ~num_inputs:0 ~system:false ~eval_constraints:false
-        ~log_constraint ~with_witness:false ()
+        ~log_constraint ()
     in
     let _ = Simple.eval (t ()) state in
     !count
@@ -384,7 +384,6 @@ module Make (Backend : Backend_extended.S) = struct
         -> system:bool
         -> ?eval_constraints:bool
         -> ?handler:Request.Handler.t
-        -> with_witness:bool
         -> ?log_constraint:
              (   ?at_label_boundary:[ `End | `Start ] * string
               -> Constraint.t option
@@ -392,7 +391,7 @@ module Make (Backend : Backend_extended.S) = struct
         -> unit
         -> run_state =
      fun ~num_inputs ~system ?(eval_constraints = !eval_constraints_ref)
-         ?handler ~with_witness ?log_constraint () ->
+         ?handler ?log_constraint () ->
       let log_constraint =
         match log_constraint with
         | Some _ ->
@@ -400,11 +399,9 @@ module Make (Backend : Backend_extended.S) = struct
         | None ->
             !constraint_logger
       in
-      (* We can't evaluate the constraints if we are not computing over a value. *)
-      let eval_constraints = eval_constraints && with_witness in
 
       Run_state.make ~num_inputs ~system ~eval_constraints ?log_constraint
-        ?handler ~with_witness ()
+        ?handler ()
   end
 end
 
@@ -432,7 +429,6 @@ module type S = sig
       -> system:bool
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t
-      -> with_witness:bool
       -> ?log_constraint:
            (   ?at_label_boundary:[ `End | `Start ] * string
             -> (cvar, field) Constraint.t option

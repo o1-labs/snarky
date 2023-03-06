@@ -22,7 +22,6 @@ module type S = sig
           -> (cvar, Field.t) Constraint.t option
           -> unit )
     -> ?handler:Request.Handler.t
-    -> with_witness:bool
     -> ?stack:string list
     -> ?is_running:bool
     -> unit
@@ -149,21 +148,16 @@ module Make
             -> (Cvar.t, Field.t) Constraint.t option
             -> unit )
       -> ?handler:Request.Handler.t
-      -> with_witness:bool
       -> ?stack:string list
       -> ?is_running:bool
       -> unit
       -> t =
    fun ~num_inputs ~system ~eval_constraints ?log_constraint ?handler
-       ~with_witness ?(stack = []) ?(is_running = true) () ->
-    (* We can't evaluate the constraints if we are not computing over a value. *)
-    let eval_constraints = eval_constraints && with_witness in
-
+       ?(stack = []) ?(is_running = true) () ->
     (* create the inner Rust state *)
     let state : Run_state.t =
-      if system then
-        Run_state.make_system num_inputs eval_constraints with_witness
-      else Run_state.make num_inputs eval_constraints with_witness
+      if system then Run_state.make_system num_inputs eval_constraints
+      else Run_state.make num_inputs eval_constraints
     in
 
     (* create the wrapper state *)

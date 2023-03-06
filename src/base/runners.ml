@@ -49,9 +49,7 @@ struct
   let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
       output t : Constraint_system.t =
     (* create the state *)
-    let state =
-      Runner.State.make ~num_inputs ~system:true ~with_witness:false ()
-    in
+    let state = Runner.State.make ~num_inputs ~system:true () in
 
     (* run the state *)
     let state, res = run t state in

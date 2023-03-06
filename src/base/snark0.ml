@@ -737,7 +737,7 @@ module Run = struct
     let state =
       ref
         (Run_state.make ~system:false ~eval_constraints:false ~num_inputs:0
-           ~with_witness:false ~stack:[] ~is_running:false () )
+           ~stack:[] ~is_running:false () )
 
     let in_prover () : bool = Run_state.has_witness !state
 
@@ -1391,7 +1391,7 @@ module Run = struct
       let old = !state in
       state :=
         Runner.State.make ~num_inputs:0 ~system:false ~eval_constraints:false
-          ~with_witness:false ~log_constraint () ;
+          ~log_constraint () ;
       ignore (mark_active ~f:x) ;
       state := old ;
       !count
