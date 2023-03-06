@@ -82,6 +82,10 @@ module type Run_state_intf = sig
 
   val has_witness : t -> bool
 
+  val set_public_inputs : t -> Field.Vector.t -> unit
+
+  val get_private_inputs : t -> Field.Vector.t
+
   val as_prover : t -> bool
 
   val set_as_prover : t -> bool -> unit

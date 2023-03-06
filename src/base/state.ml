@@ -41,6 +41,10 @@ module type S = sig
 
   val has_witness : t -> bool
 
+  val set_public_inputs : t -> Field.Vector.t -> unit
+
+  val get_private_inputs : t -> Field.Vector.t
+
   val as_prover : t -> bool
 
   val set_as_prover : t -> bool -> unit
@@ -113,6 +117,13 @@ module Make
   let alloc_var t = alloc_var t.state
 
   let has_witness t = has_witness t.state
+
+  (* TODO: make sure that the public input is not already set in there, and that this is the expected public input size *)
+  let set_public_inputs t public_inputs =
+    set_public_inputs t.state public_inputs
+
+  (* TODO: we should make sure that the state was finalized before this can be called *)
+  let get_private_inputs t = get_private_inputs t.state
 
   let as_prover t = as_prover t.state
 
