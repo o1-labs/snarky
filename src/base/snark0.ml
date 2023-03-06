@@ -27,7 +27,7 @@ module Make_basic
                  and type field_vector := Backend.Field.Vector.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type r1cs := Backend.Constraint_system.t
                  and type run_state := Backend.Run_state.t) =
 struct
   open Backend
@@ -647,9 +647,7 @@ struct
       [%test_eq: a] checked_result (unchecked input)
   end
 
-  module R1CS_constraint_system = struct
-    include R1CS_constraint_system
-  end
+  module Constraint_system = Constraint_system
 end
 
 (** The main functor for the monadic interface. 
@@ -777,7 +775,7 @@ module Run = struct
       let g : Run_state.t -> Run_state.t * a = as_stateful f in
       Function g
 
-    module R1CS_constraint_system = Snark.R1CS_constraint_system
+    module Constraint_system = Snark.Constraint_system
 
     type field = Snark.field
 
@@ -1300,7 +1298,7 @@ module Run = struct
       state := cached_state ;
       x
 
-    let constraint_system ~input_typ ~return_typ x : R1CS_constraint_system.t =
+    let constraint_system ~input_typ ~return_typ x : Constraint_system.t =
       finalize_is_running (fun () ->
           let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
           Perform.constraint_system ~run:as_stateful ~input_typ ~return_typ x )

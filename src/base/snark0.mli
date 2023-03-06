@@ -24,7 +24,7 @@ module Make (Backend : Backend_intf.S) :
     with type field = Backend.Field.t
      and type field_var = Backend.Cvar.t
      and type Bigint.t = Backend.Bigint.t
-     and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
+     and type Constraint_system.t = Backend.Constraint_system.t
      and type Field.Vector.t = Backend.Field.Vector.t
 
 module Run : sig
@@ -33,7 +33,7 @@ module Run : sig
       with type field = Backend.Field.t
        and type field_var = Backend.Cvar.t
        and type Bigint.t = Backend.Bigint.t
-       and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
+       and type Constraint_system.t = Backend.Constraint_system.t
        and type Field.Constant.Vector.t = Backend.Field.Vector.t
 end
 

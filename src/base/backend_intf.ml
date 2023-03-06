@@ -104,12 +104,12 @@ module type S = sig
 
   val field_size : Bigint.t
 
-  module R1CS_constraint_system :
+  module Constraint_system :
     Constraint_system_intf with module Field := Field and type cvar := Cvar.t
 
   module Run_state :
     Run_state_intf
       with module Field := Field
        and type cvar := Cvar.t
-       and type constraint_system := R1CS_constraint_system.t
+       and type constraint_system := Constraint_system.t
 end

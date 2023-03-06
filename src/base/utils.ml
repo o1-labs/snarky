@@ -57,7 +57,7 @@ module Make
                  and type field_vector := Backend.Field.Vector.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type r1cs := Backend.Constraint_system.t
                  and type run_state := Backend.Run_state.t) =
 struct
   open Backend

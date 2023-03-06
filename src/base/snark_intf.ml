@@ -535,8 +535,8 @@ module type Basic = sig
   type run_state
 
   (** The rank-1 constraint system used by this instance. See
-      {!module:Backend_intf.S.R1CS_constraint_system}. *)
-  module R1CS_constraint_system : sig
+      {!module:Backend_intf.S.Constraint_system}. *)
+  module Constraint_system : sig
     type t
 
     val digest : t -> Md5.t
@@ -947,7 +947,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
        input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
     -> ('input_var -> 'a Checked.t)
-    -> R1CS_constraint_system.t
+    -> Constraint_system.t
 
   (** Internal: supplies arguments to a checked computation by storing them
       according to the {!type:Data_spec.t} and passing the R1CS versions.
@@ -1091,8 +1091,8 @@ module type Run_basic = sig
   type run_state
 
   (** The rank-1 constraint system used by this instance. See
-      {!module:Backend_intf.S.R1CS_constraint_system}. *)
-  module R1CS_constraint_system : sig
+      {!module:Backend_intf.S.Constraint_system}. *)
+  module Constraint_system : sig
     type t
 
     val digest : t -> Md5.t
@@ -1360,7 +1360,7 @@ module type Run_basic = sig
        input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('a, _) Typ.t
     -> ('input_var -> unit -> 'a)
-    -> R1CS_constraint_system.t
+    -> Constraint_system.t
 
   val generate_witness :
        input_typ:('input_var, 'input_value) Typ.t

@@ -16,7 +16,7 @@ module Make
                  and type field_vector := Backend.Field.Vector.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type r1cs := Backend.Constraint_system.t
                  and type run_state := Backend.Run_state.t) =
 struct
   open Backend
@@ -47,7 +47,7 @@ struct
 
   (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
   let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
-      output t : R1CS_constraint_system.t =
+      output t : Constraint_system.t =
     (* create the state *)
     let input = Field.Vector.create () in
     let aux = Field.Vector.create () in
@@ -217,7 +217,7 @@ struct
              Types.Typ.typ
         -> return_typ:(a, retval, field, Cvar.t, _) Types.Typ.t
         -> (input_var -> checked)
-        -> R1CS_constraint_system.t =
+        -> Constraint_system.t =
      fun ~run next_input ~input_typ ~return_typ k ->
       let retval, r =
         collect_input_constraints next_input ~input_typ ~return_typ (fun () ->
@@ -236,7 +236,7 @@ struct
         -> input_typ:(input_var, _, _, _, _) Types.Typ.typ
         -> return_typ:_
         -> (input_var -> checked)
-        -> R1CS_constraint_system.t =
+        -> Constraint_system.t =
      fun ~run ~input_typ ~return_typ k ->
       r1cs_h ~run (ref 1) ~input_typ ~return_typ k
 
