@@ -156,8 +156,7 @@ module Make
        ?(stack = []) ?(is_running = true) () ->
     (* create the inner Rust state *)
     let state : Run_state.t =
-      if system then Run_state.make_system num_inputs eval_constraints
-      else Run_state.make num_inputs eval_constraints
+      Run_state.make num_inputs eval_constraints system
     in
 
     (* create the wrapper state *)
