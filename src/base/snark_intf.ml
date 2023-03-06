@@ -532,8 +532,7 @@ module type Basic = sig
 
   type field_var
 
-  (* TODO: Should this really be exposed? *)
-  module Run_state : T
+  type run_state
 
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
@@ -783,7 +782,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** Utility functions for calling single checked computations. *)
   module Runner : sig
-    type state
+    type state = run_state
 
     val run : 'a Checked.t -> state -> state * 'a
   end
@@ -1089,6 +1088,8 @@ module type Run_basic = sig
 
   type field_var
 
+  type run_state
+
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
@@ -1246,7 +1247,7 @@ module type Run_basic = sig
   end
 
   and Internal_Basic : sig
-    type state
+    type state = run_state
 
     include
       Basic

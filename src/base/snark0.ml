@@ -40,6 +40,8 @@ struct
 
   type field_var = Cvar.t
 
+  type run_state = Run_state.t
+
   module Handler = struct
     type t = Request.request -> Request.response
   end
@@ -732,14 +734,15 @@ module Run = struct
 
     let this_functor_id = incr functor_counter ; !functor_counter
 
+    type run_state = Run_state.t
+
     let state =
       ref
         (Run_state.make
            ~input:(Backend.Field.Vector.create ())
            ~aux:(Backend.Field.Vector.create ())
-           ~system:false
-           ~eval_constraints:false ~num_inputs:0 ~with_witness:false ~stack:[]
-           ~is_running:false () )
+           ~system:false ~eval_constraints:false ~num_inputs:0
+           ~with_witness:false ~stack:[] ~is_running:false () )
 
     let in_prover () : bool = Run_state.has_witness !state
 
