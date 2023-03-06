@@ -83,7 +83,7 @@ struct
       Runner.State.make ~system:false ~num_inputs ~handler ~with_witness:true ()
     in
 
-    (* set the private inputs *)
+    (* set the public inputs *)
     Backend.Run_state.set_public_inputs state input ;
 
     (* run t0 *)
