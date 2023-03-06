@@ -104,8 +104,9 @@ struct
 
     (aux, true_output)
 
+  (** This function is useful to check a gadget/subcircuit. *)
   let run_and_check' ~run t0 =
-    (* TODO: why do we set the public inputs to 0? *)
+    (* gadgets don't have public inputs *)
     let num_inputs = 0 in
 
     (* create state *)
@@ -130,8 +131,9 @@ struct
 
         Ok (x, get_value)
 
+  (** This function is useful to check a gadget/subcircuit. *)
   let run_and_check_deferred' ~map ~return ~run t0 =
-    (* TODO: why do we set the public inputs to 0? *)
+    (* gadgets don't have public inputs *)
     let num_inputs = 0 in
 
     (* create the state *)
@@ -156,8 +158,9 @@ struct
 
         map res ~f:(function _, x -> Ok (x, get_value))
 
+  (** This function is useful to check a gadget/subcircuit without creating constraints. *)
   let run_unchecked ~run t0 =
-    (* TODO: why do we set public inputs to 0? *)
+    (* gadgets don't have public inputs *)
     let num_inputs = 0 in
 
     (* create the state *)

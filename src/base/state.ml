@@ -115,7 +115,6 @@ module Make
 
   let has_witness t = has_witness t.state
 
-  (* TODO: make sure that the public input is not already set in there, and that this is the expected public input size *)
   let set_public_inputs t public_inputs =
     set_public_inputs t.state public_inputs
 
