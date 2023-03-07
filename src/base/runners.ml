@@ -125,7 +125,7 @@ struct
         (* return value getter *)
         let aux = Backend.Run_state.get_private_inputs state in
         let get_value : Cvar.t -> Field.t =
-          let get_one v = Field.Vector.get aux (v - 1) in
+          let get_one v = Field.Vector.get aux v in
           Cvar.eval (`Return_values_will_be_mutated get_one)
         in
 
@@ -246,8 +246,8 @@ struct
         let state, x = Checked.run r state in
         run x state
       in
-      constraint_system ~run:run_in_run ~num_inputs:(!next_input - 1)
-        ~return_typ retval
+      constraint_system ~run:run_in_run ~num_inputs:!next_input ~return_typ
+        retval
         (Checked.map ~f:(fun r -> r ()) r)
 
     let constraint_system (type a checked input_var) :
@@ -257,7 +257,7 @@ struct
         -> (input_var -> checked)
         -> Constraint_system.t =
      fun ~run ~input_typ ~return_typ k ->
-      r1cs_h ~run (ref 1) ~input_typ ~return_typ k
+      r1cs_h ~run (ref 0) ~input_typ ~return_typ k
 
     let generate_public_input :
            ('input_var, 'input_value, _, _, _) Types.Typ.typ
@@ -265,7 +265,7 @@ struct
         -> Field.Vector.t =
      fun (Typ { value_to_fields; _ }) value ->
       let primary_input = Field.Vector.create () in
-      let next_input = ref 1 in
+      let next_input = ref 0 in
       let store_field_elt = store_field_elt primary_input next_input in
       let fields, _aux = value_to_fields value in
       let _fields = Array.map ~f:store_field_elt fields in
@@ -281,7 +281,7 @@ struct
         -> r_value =
      fun cont0 input_typ (Typ return_typ) k0 ->
       let primary_input = Field.Vector.create () in
-      let next_input = ref 1 in
+      let next_input = ref 0 in
       let store_field_elt x =
         let v = !next_input in
         incr next_input ;
@@ -341,8 +341,8 @@ struct
             let fields, aux = return_typ.var_to_fields output in
             let read_cvar =
               let get_one i =
-                if i <= num_inputs then Field.Vector.get primary (i - 1)
-                else Field.Vector.get auxiliary (i - num_inputs - 1)
+                if i <= num_inputs then Field.Vector.get primary i
+                else Field.Vector.get auxiliary (i - num_inputs)
               in
               Cvar.eval (`Return_values_will_be_mutated get_one)
             in
