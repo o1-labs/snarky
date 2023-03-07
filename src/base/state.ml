@@ -72,6 +72,8 @@ module type S = sig
   val set_is_running : t -> bool -> t
 
   val next_auxiliary : t -> int
+
+  val seal : t -> cvar -> cvar
 end
 
 module Make
@@ -135,6 +137,8 @@ module Make
     add_constraint t.state ?label cstr
 
   let finalize t = finalize t.state
+
+  let seal t = seal t.state
 
   (* We redefine the [make] function with the wrapper in mind. *)
 

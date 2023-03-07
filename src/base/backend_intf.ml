@@ -95,6 +95,8 @@ module type Run_state_intf = sig
   val finalize : t -> unit
 
   val next_auxiliary : t -> int
+
+  val seal : t -> cvar -> cvar
 end
 
 module type S = sig

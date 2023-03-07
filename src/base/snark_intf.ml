@@ -853,6 +853,9 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** Internal: read the value of the next unused auxiliary input index. *)
   val next_auxiliary : unit -> int Checked.t
 
+  (** Forces a reduction on a [Field.Var.t]. *)
+  val seal : Field.Var.t -> Field.Var.t Checked.t
+
   (** [request_witness typ create_request] runs the [create_request]
       {!type:As_prover.t} block to generate a {!type:Request.t}.
 
@@ -1314,6 +1317,8 @@ module type Run_basic = sig
   val as_prover : (unit -> unit) As_prover.t -> unit
 
   val next_auxiliary : unit -> int
+
+  val seal : Field.t -> Field.t
 
   val request_witness :
     ('var, 'value) Typ.t -> (unit -> 'value Request.t) As_prover.t -> 'var

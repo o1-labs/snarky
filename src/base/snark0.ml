@@ -1207,6 +1207,8 @@ module Run = struct
 
     let next_auxiliary () = run (next_auxiliary ())
 
+    let seal field_var = run (seal field_var)
+
     let request_witness typ p =
       run (request_witness typ (As_prover.run_prover p))
 

@@ -301,6 +301,12 @@ struct
 
   let direct f : _ Simple.t = Function f
 
+  let seal var : _ Simple.t =
+    Function
+      (fun s ->
+        let sealed_var = Run_state.seal s var in
+        (s, sealed_var) )
+
   let constraint_count ?(weight = Fn.const 1)
       ?(log = fun ?start:_ _lab _pos -> ()) (t : unit -> _ Simple.t) =
     (* TODO: Integrate log with log_constraint *)

@@ -21,6 +21,8 @@ module type Basic = sig
 
   val with_label : string -> (unit -> ('a, 'run_state) t) -> ('a, 'run_state) t
 
+  val seal : 'f field_var -> ('f field_var, 'run_state) t
+
   val with_handler :
     Request.Handler.single -> (unit -> ('a, 'run_state) t) -> ('a, 'run_state) t
 
@@ -74,6 +76,8 @@ module type S = sig
     -> ?compute:('value, 'f field, 'f field_var) As_prover0.t
     -> ('var, 'value, 'f field, 'f field_var, 'run_state) Types.Typ.t
     -> (('var, 'value) Handle.t, 'run_state) t
+
+  val seal : 'f field_var -> ('f field_var, 'run_state) t
 
   val exists :
        ?request:('value Request.t, 'f field, 'f field_var) As_prover0.t
