@@ -12,6 +12,7 @@ module Enumerable = Enumerable
 module Enumerable_intf = Enumerable_intf
 module Field_intf = Snarky_intf.Field
 module Free_monad = Free_monad
+module H_list = H_list
 module Handle = Handle
 module Merkle_tree = Merkle_tree
 module Monad_let = Monad_let
