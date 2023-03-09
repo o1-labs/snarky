@@ -1,4 +1,3 @@
-module As_prover = Snarky_backendless.As_prover
 module As_prover0 = Snarky_backendless.As_prover0
 module As_prover_intf = Snarky_backendless.As_prover_intf
 module Backend_extended = Snarky_backendless.Backend_extended
@@ -6,7 +5,6 @@ module Backend_intf = Snarky_backendless.Backend_intf
 module Bigint_intf = Snarky_intf.Bigint_intf
 module Bin_prot_io = Snarky_backendless.Bin_prot_io
 module Boolean = Snarky_backendless.Boolean
-module Checked_ast = Snarky_backendless.Checked_ast
 module Checked_intf = Snarky_backendless.Checked_intf
 module Checked_runner = Snarky_backendless.Checked_runner
 module Constraint = Snarky_backendless.Constraint
