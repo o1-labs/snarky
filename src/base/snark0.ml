@@ -720,7 +720,7 @@ module Run = struct
     let state =
       ref
         (Run_state.make ~input:(field_vec ()) ~aux:(field_vec ())
-           ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 1)
+           ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 0)
            ~with_witness:false ~stack:[] ~is_running:false () )
 
     let dump () = Run_state.dump !state
@@ -1385,7 +1385,7 @@ module Run = struct
       let old = !state in
       state :=
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
-          ~next_auxiliary:(ref 1) ~eval_constraints:false ~with_witness:false
+          ~next_auxiliary:(ref 0) ~eval_constraints:false ~with_witness:false
           ~log_constraint () ;
       ignore (mark_active ~f:x) ;
       state := old ;
