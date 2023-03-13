@@ -96,7 +96,7 @@ module type Run_state_intf = sig
 
   val seal : t -> cvar -> cvar
 
-  val get_value : t -> cvar -> Field.t
+  val evaluate_var : t -> cvar -> Field.t
 
   (* TODO: maybe not a good place to provide this... *)
   val eval_constraint :

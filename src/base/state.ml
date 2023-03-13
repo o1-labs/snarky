@@ -144,7 +144,7 @@ module Make
 
   let seal t = seal t.state
 
-  let get_value t = get_value t.state
+  let get_value t = evaluate_var t.state
 
   (* We redefine the [make] function with the wrapper in mind. *)
 
