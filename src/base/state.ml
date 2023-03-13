@@ -30,8 +30,6 @@ module type S = sig
   val add_constraint :
     ?label:string -> t -> (cvar, Field.t) Constraint.basic -> unit
 
-  val get_variable_value : t -> int -> Field.t
-
   val store_field_elt : t -> Field.t -> cvar
 
   val alloc_var : t -> cvar
@@ -116,8 +114,6 @@ module Make
     }
 
   (* We redefine a number of functions but on the wrapper. *)
-
-  let get_variable_value t idx = get_variable_value t.state idx
 
   let store_field_elt t field = store_field_elt t.state field
 

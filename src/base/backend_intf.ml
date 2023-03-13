@@ -72,8 +72,6 @@ module type Run_state_intf = sig
   val add_constraint :
     ?label:string -> t -> (cvar, Field.t) Constraint.basic -> unit
 
-  val get_variable_value : t -> int -> Field.t
-
   val store_field_elt : t -> Field.t -> cvar
 
   val alloc_var : t -> cvar
