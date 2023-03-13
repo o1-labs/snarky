@@ -75,6 +75,9 @@ module type S = sig
 
   val seal : t -> cvar -> cvar
 
+  val get_value : t -> cvar -> Field.t
+
+  (* TODO: maybe not a good place to provide this... *)
   val eval_constraint :
        (cvar, Field.t) Constraint.basic_with_annotation
     -> (cvar -> Field.t)
@@ -144,6 +147,8 @@ module Make
   let finalize t = finalize t.state
 
   let seal t = seal t.state
+
+  let get_value t = get_value t.state
 
   (* We redefine the [make] function with the wrapper in mind. *)
 

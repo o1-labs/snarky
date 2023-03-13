@@ -1132,7 +1132,7 @@ module Run = struct
 
       let eval_as_prover f =
         if Run_state.as_prover !state && Run_state.has_witness !state then
-          let a = f (Runner.get_value !state) in
+          let a = f (Run_state.get_value !state) in
           a
         else failwith "Can't evaluate prover code outside an as_prover block"
 

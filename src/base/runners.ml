@@ -92,7 +92,8 @@ struct
     let output, _ = return_typ.var_to_fields output in
     let _state =
       Array.fold2_exn ~init:state res output ~f:(fun state res output ->
-          Field.Vector.emplace_back input (Runner.get_value state res) ;
+          Field.Vector.emplace_back input
+            (Backend.Run_state.get_value state res) ;
           fst @@ Checked.run (Checked.assert_equal res output) state )
     in
     let true_output =
