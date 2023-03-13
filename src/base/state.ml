@@ -27,6 +27,8 @@ module type S = sig
     -> unit
     -> t
 
+  val debug : t -> unit
+
   val add_constraint :
     ?label:string -> t -> (cvar, Field.t) Constraint.basic -> unit
 
@@ -146,7 +148,9 @@ module Make
 
   let get_value t = evaluate_var t.state
 
-  (* We redefine the [make] function with the wrapper in mind. *)
+  (* We redefine some functions in the same way,
+     but with the wrapper in mind as well.
+  *)
 
   let make :
          num_inputs:int
@@ -175,6 +179,11 @@ module Make
     ; is_running
     ; log_constraint
     }
+
+  (* TODO: add [is_running] and other useful stuff in debug *)
+  let debug t =
+    if Option.is_some (Sys.getenv_opt "SNARKY_DEBUG") then
+      printf "[snarky] %s\n" (Run_state.debug t.state)
 
   (* We define a number of functions that are only relevant for the extra fields we added in the wrapper. *)
 

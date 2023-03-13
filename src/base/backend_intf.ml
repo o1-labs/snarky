@@ -67,6 +67,8 @@ module type Run_state_intf = sig
 
   val make : int -> bool -> bool -> t
 
+  val debug : t -> string
+
   val add_constraint :
     ?label:string -> t -> (cvar, Field.t) Constraint.basic -> unit
 
