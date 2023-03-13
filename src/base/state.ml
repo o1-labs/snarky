@@ -74,6 +74,11 @@ module type S = sig
   val next_auxiliary : t -> int
 
   val seal : t -> cvar -> cvar
+
+  val eval_constraint :
+       (cvar, Field.t) Constraint.basic_with_annotation
+    -> (cvar -> Field.t)
+    -> bool
 end
 
 module Make

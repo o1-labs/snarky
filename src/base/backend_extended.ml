@@ -172,7 +172,6 @@ module Make (Backend : Backend_intf.S) :
   module Run_state = State.Make (Cvar) (Field) (Constraint_system) (Run_state)
 
   module Constraint = struct
-    open Constraint
     include Constraint.T
 
     type 'k with_constraint_args = ?label:string -> 'k
@@ -183,8 +182,6 @@ module Make (Backend : Backend_intf.S) :
 
     let sexp_of_t = sexp_of_opaque
 
-    let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
-
-    let eval { basic; _ } get_value = Constraint.Basic.eval m get_value basic
+    let eval = Run_state.eval_constraint
   end
 end
