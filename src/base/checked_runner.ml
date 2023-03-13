@@ -216,24 +216,7 @@ struct
           (s, ())
         else (
           Option.iter (Run_state.log_constraint s) ~f:(fun f -> f (Some c)) ;
-          if
-            Run_state.eval_constraints s
-            && not (Constraint.eval c (Run_state.get_value s))
-          then
-            failwithf
-              "Constraint unsatisfied (unreduced):\n\
-               %s\n\
-               %s\n\n\
-               Constraint:\n\
-               %s\n\
-               Data:\n\
-               %s"
-              (Constraint.annotation c)
-              (stack_to_string (Run_state.stack s))
-              (Sexp.to_string (Constraint.sexp_of_t c))
-              (log_constraint c s) () ;
-          if not (Run_state.as_prover s) then
-            add_constraint ~stack:(Run_state.stack s) c s ;
+          add_constraint ~stack:(Run_state.stack s) c s ;
           (s, ()) ) )
 
   let with_handler h t : _ Simple.t =

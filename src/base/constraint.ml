@@ -16,13 +16,6 @@ module type S = sig
   type (_, _) t [@@deriving sexp]
 
   val map : ('a, 'f) t -> f:('a -> 'b) -> ('b, 'f) t
-
-  (* TODO: Try making this a functor and seeing how it affects performance *)
-  val eval :
-       (module Snarky_intf.Field.S with type t = 'f)
-    -> ('v -> 'f)
-    -> ('v, 'f) t
-    -> bool
 end
 
 module Basic = struct
@@ -52,10 +45,6 @@ module Basic = struct
 
   let t_of_sexp f1 f2 s =
     case (fun (module M) -> M.to_basic (M.t_of_sexp f1 f2 s))
-
-  let eval (type f) (fm : (module Snarky_intf.Field.S with type t = f))
-      (f : 'v -> f) (t : ('v, f) basic) : bool =
-    case (fun (module M) -> M.eval fm f (M.of_basic t))
 
   let map t ~f = case (fun (module M) -> M.to_basic (M.map (M.of_basic t) ~f))
 end
@@ -142,21 +131,6 @@ let () =
           Square (f a, f c)
       | _ ->
           unhandled "map"
-
-    let eval (type f v) (module Field : Snarky_intf.Field.S with type t = f)
-        (get_value : v -> f) (t : (v, f) basic) : bool =
-      match t with
-      | Boolean v ->
-          let x = get_value v in
-          Field.(equal x zero || equal x one)
-      | Equal (v1, v2) ->
-          Field.equal (get_value v1) (get_value v2)
-      | R1CS (v1, v2, v3) ->
-          Field.(equal (mul (get_value v1) (get_value v2)) (get_value v3))
-      | Square (a, c) ->
-          Field.equal (Field.square (get_value a)) (get_value c)
-      | _ ->
-          unhandled "eval"
   end in
   Basic.add_case (module M)
 

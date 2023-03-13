@@ -97,12 +97,6 @@ module type Run_state_intf = sig
   val seal : t -> cvar -> cvar
 
   val evaluate_var : t -> cvar -> Field.t
-
-  (* TODO: maybe not a good place to provide this... *)
-  val eval_constraint :
-       (cvar, Field.t) Constraint.basic_with_annotation
-    -> (cvar -> Field.t)
-    -> bool
 end
 
 module type S = sig

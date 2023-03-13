@@ -47,11 +47,6 @@ module type S = sig
     val square : (Cvar.t -> Cvar.t -> t) with_constraint_args
 
     val annotation : t -> string
-
-    val eval :
-         (Cvar.t, Field.t) Constraint.basic_with_annotation
-      -> (Cvar.t -> Field.t)
-      -> bool
   end
 end
 
@@ -181,7 +176,5 @@ module Make (Backend : Backend_intf.S) :
     let t_of_sexp _ = failwith "unimplemented"
 
     let sexp_of_t = sexp_of_opaque
-
-    let eval = Run_state.eval_constraint
   end
 end
