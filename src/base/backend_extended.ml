@@ -168,6 +168,8 @@ module Make (Backend : Backend_intf.S) :
   end
 
   module Cvar = Cvar
+  module Constraint_system = Constraint_system
+  module Run_state = State.Make (Cvar) (Field) (Constraint_system) (Run_state)
 
   module Constraint = struct
     open Constraint
@@ -185,7 +187,4 @@ module Make (Backend : Backend_intf.S) :
 
     let eval { basic; _ } get_value = Constraint.Basic.eval m get_value basic
   end
-
-  module Constraint_system = Constraint_system
-  module Run_state = State.Make (Cvar) (Field) (Constraint_system) (Run_state)
 end
