@@ -72,7 +72,7 @@ struct
   (* TODO: we should make sure that callers cannot mutate the returned [aux] vector. *)
   let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
       (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ) ~output :
-      Field.Vector.t * _ =
+      Field.Vector.t * _ * _ =
     let handler =
       List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
           Request.Handler.(push handler (create_single h)) )
@@ -96,14 +96,22 @@ struct
             (Backend.Run_state.get_value state res) ;
           fst @@ Checked.run (Checked.assert_equal res output) state )
     in
-    let true_output =
+    let output_vars =
       return_typ.var_of_fields (output, auxiliary_output_data)
+    in
+
+    (* read value of public output *)
+    let output_value =
+      let fields, aux = return_typ.var_to_fields output_vars in
+      let read_cvar = Run_state.get_value state in
+      let fields = Array.map ~f:read_cvar fields in
+      return_typ.value_of_fields (fields, aux)
     in
 
     (* retrieve private inputs *)
     let aux = Backend.Run_state.get_private_inputs state in
 
-    (aux, true_output)
+    (aux, output_vars, output_value)
 
   (** This function is useful to check a gadget/subcircuit. *)
   let run_and_check' ~run t0 =
@@ -124,12 +132,7 @@ struct
         Or_error.of_exn ~backtrace:`Get e
     | _, x ->
         (* return value getter *)
-        let aux = Backend.Run_state.get_private_inputs state in
-        let get_value : Cvar.t -> Field.t =
-          let get_one v = Field.Vector.get aux v in
-          Cvar.eval (`Return_values_will_be_mutated get_one)
-        in
-
+        let get_value : Cvar.t -> Field.t = Run_state.get_value state in
         Ok (x, get_value)
 
   (** This function is useful to check a gadget/subcircuit. *)
@@ -151,12 +154,7 @@ struct
         return (Or_error.of_exn ~backtrace:`Get e)
     | res ->
         (* return a value getter *)
-        let aux = Backend.Run_state.get_private_inputs state in
-        let get_value : Cvar.t -> Field.t =
-          let get_one v = Field.Vector.get aux v in
-          Cvar.eval (`Return_values_will_be_mutated get_one)
-        in
-
+        let get_value : Cvar.t -> Field.t = Run_state.get_value state in
         map res ~f:(function _, x -> Ok (x, get_value))
 
   (** This function is useful to check a gadget/subcircuit without creating constraints. *)
@@ -331,24 +329,9 @@ struct
      fun ~run ~f ~input_typ ~return_typ ?handlers k ->
       conv
         (fun num_inputs output c primary ->
-          let auxiliary, output =
+          let auxiliary, _output, output_value =
             auxiliary_input ~run ?handlers ~return_typ ~output ~num_inputs c
               primary
-          in
-
-          (* read value of public output *)
-          let output =
-            let (Typ return_typ) = return_typ in
-            let fields, aux = return_typ.var_to_fields output in
-            let read_cvar =
-              let get_one i =
-                if i <= num_inputs then Field.Vector.get primary i
-                else Field.Vector.get auxiliary (i - num_inputs)
-              in
-              Cvar.eval (`Return_values_will_be_mutated get_one)
-            in
-            let fields = Array.map ~f:read_cvar fields in
-            return_typ.value_of_fields (fields, aux)
           in
 
           (* run [f] on the result *)
@@ -356,7 +339,7 @@ struct
             { Proof_inputs.public_inputs = primary
             ; auxiliary_inputs = auxiliary
             }
-            output )
+            output_value )
         input_typ return_typ
         (fun () -> k)
 

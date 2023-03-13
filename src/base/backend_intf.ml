@@ -33,8 +33,6 @@ module type Cvar_intf = sig
     val of_index : int -> t
   end
 
-  val eval : [ `Return_values_will_be_mutated of int -> field ] -> t -> field
-
   val constant : field -> t
 
   val add : t -> t -> t
