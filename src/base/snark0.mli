@@ -37,13 +37,15 @@ module Run : sig
        and type Field.Constant.Vector.t = Backend.Field.Vector.t
 end
 
-type ('field, 'field_var) m =
+type ('field, 'field_var, 'state) m =
   (module Snark_intf.Run
      with type field = 'field
-      and type field_var = 'field_var )
+      and type field_var = 'field_var
+      and type run_state = 'state )
 
 val make :
      (module Backend_intf.S
         with type Field.t = 'field
-         and type Cvar.t = 'field_var )
-  -> ('field, 'field_var) m
+         and type Cvar.t = 'field_var
+         and type Run_state.t = 'state )
+  -> ('field, 'field_var, 'state) m
