@@ -221,6 +221,8 @@ struct
 
     let false_ : var = create (Cvar.constant Field.zero)
 
+    let to_field_var : var -> Cvar.t = Boolean.to_field_var
+
     let not (x : var) : var = create Cvar.((true_ :> Cvar.t) - (x :> Cvar.t))
 
     let if_ b ~(then_ : var) ~(else_ : var) =

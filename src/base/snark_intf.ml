@@ -16,11 +16,14 @@ module type Boolean_intf = sig
 
   type value = bool
 
-  (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
+  (** A variable containing {!val:Field.one}, representing [true]. *)
   val true_ : var
 
-  (** An R1CS variable containing {!val:Field.zero}, representing [false]. *)
+  (** A variable containing {!val:Field.zero}, representing [false]. *)
   val false_ : var
+
+  (** Converts a [t] into a [field_var] *)
+  val to_field_var : var -> field_var
 
   (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
         otherwise.
