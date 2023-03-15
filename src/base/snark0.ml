@@ -1400,11 +1400,7 @@ module Run = struct
       state := old ;
       !count
 
-    module Internal_Basic = struct
-      include Snark
-
-      type state = Snark.Run_state.t
-    end
+    module Internal_Basic = Snark
 
     let run_checked = run
   end
