@@ -1417,13 +1417,8 @@ module Run = struct
   end
 end
 
-type ('field, 'field_var) m =
+type ('field, 'field_var, 'state) m =
   (module Snark_intf.Run
      with type field = 'field
-      and type field_var = 'field_var )
-
-let make (type field field_var)
-    (module Backend : Backend_intf.S
-      with type Field.t = field
-       and type Cvar.t = field_var ) : (field, field_var) m =
-  (module Run.Make (Backend))
+      and type field_var = 'field_var
+      and type run_state = 'state )

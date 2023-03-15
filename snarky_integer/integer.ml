@@ -12,7 +12,8 @@ module Interval = struct
 
   let iter t ~f = match t with Constant x -> f x | Less_than x -> f x
 
-  let check (type f field_var) ~m:((module M) : (f, field_var) m) t =
+  let check (type f field_var state) ~m:((module M) : (f, field_var, state) m) t
+      =
     iter t ~f:(fun x -> assert (B.(x < M.Field.size))) ;
     t
 
@@ -124,8 +125,8 @@ let create ~value ~upper_bound =
 
 let to_field t = t.value
 
-let constant (type f field_var) ?length ~m:((module M) as m : (f, field_var) m)
-    x =
+let constant (type f field_var state) ?length
+    ~m:((module M) as m : (f, field_var, state) m) x =
   let open M in
   assert (B.( < ) x Field.size) ;
   let upper_bound = B.(one + x) in
@@ -146,7 +147,8 @@ let constant (type f field_var) ?length ~m:((module M) as m : (f, field_var) m)
              constant Boolean.typ B.(shift_right x i land one = one) ) )
   }
 
-let shift_left (type f field_var) ~m:((module M) as m : (f, field_var) m) t k =
+let shift_left (type f field_var state)
+    ~m:((module M) as m : (f, field_var, state) m) t k =
   let open M in
   let two_to_k = B.(one lsl k) in
   { value = Field.(constant (bigint_to_field ~m two_to_k) * t.value)
@@ -156,7 +158,8 @@ let shift_left (type f field_var) ~m:((module M) as m : (f, field_var) m) t k =
           List.init k ~f:(fun _ -> Boolean.false_) @ bs )
   }
 
-let of_bits (type f field_var) ~m:((module M) : (f, field_var) m) bs =
+let of_bits (type f field_var state) ~m:((module M) : (f, field_var, state) m)
+    bs =
   let bs = Bitstring.Lsb_first.to_list bs in
   { value = M.Field.project bs
   ; interval = Less_than B.(one lsl List.length bs)
@@ -168,7 +171,8 @@ let of_bits (type f field_var) ~m:((module M) : (f, field_var) m) bs =
     a = q * b + r
     r < b
 *)
-let div_mod (type f field_var) ~m:((module M) as m : (f, field_var) m) a b =
+let div_mod (type f field_var state)
+    ~m:((module M) as m : (f, field_var, state) m) a b =
   let open M in
   (* Guess (q, r) *)
   let q, r =
@@ -199,8 +203,8 @@ let div_mod (type f field_var) ~m:((module M) as m : (f, field_var) m) a b =
     }
   , { value = r; interval = b.interval; bits = Some r_bits } )
 
-let subtract_unpacking (type f field_var) ~m:((module M) : (f, field_var) m) a b
-    =
+let subtract_unpacking (type f field_var state)
+    ~m:((module M) : (f, field_var, state) m) a b =
   M.with_label "Integer.subtract_unpacking" (fun () ->
       assert (Interval.gte a.interval b.interval) ;
       let value = M.Field.(sub a.value b.value) in
@@ -209,15 +213,18 @@ let subtract_unpacking (type f field_var) ~m:((module M) : (f, field_var) m) a b
       let bits = M.Field.unpack value ~length in
       { value; interval = a.interval; bits = Some bits } )
 
-let add (type f field_var) ~m:((module M) as m : (f, field_var) m) a b =
+let add (type f field_var state) ~m:((module M) as m : (f, field_var, state) m)
+    a b =
   let interval = Interval.(add ~m a.interval b.interval) in
   { value = M.Field.(a.value + b.value); interval; bits = None }
 
-let mul (type f field_var) ~m:((module M) as m : (f, field_var) m) a b =
+let mul (type f field_var state) ~m:((module M) as m : (f, field_var, state) m)
+    a b =
   let interval = Interval.(mul ~m a.interval b.interval) in
   { value = M.Field.(a.value * b.value); interval; bits = None }
 
-let to_bits ?length (type f field_var) ~m:((module M) : (f, field_var) m) t =
+let to_bits ?length (type f field_var state)
+    ~m:((module M) : (f, field_var, state) m) t =
   match t.bits with
   | Some bs -> (
       let bs = Bitstring.Lsb_first.of_list bs in
@@ -241,7 +248,7 @@ let to_bits_exn t = Bitstring.Lsb_first.of_list (Option.value_exn t.bits)
 
 let to_bits_opt t = Option.map ~f:Bitstring.Lsb_first.of_list t.bits
 
-let min (type f field_var) ~m:((module M) : (f, field_var) m)
+let min (type f field_var state) ~m:((module M) : (f, field_var, state) m)
     (a : (f, field_var) t) (b : (f, field_var) t) =
   let open M in
   let bit_length =
@@ -253,48 +260,53 @@ let min (type f field_var) ~m:((module M) : (f, field_var) m)
   ; bits = None
   }
 
-let if_ (type f field_var) ~m:((module M) : (f, field_var) m) cond ~then_ ~else_
-    =
+let if_ (type f field_var state) ~m:((module M) : (f, field_var, state) m) cond
+    ~then_ ~else_ =
   { value = M.Field.if_ cond ~then_:then_.value ~else_:else_.value
   ; interval = Interval.lub then_.interval else_.interval
   ; bits = None
   }
 
-let succ_if (type f field_var) ~m:((module M) as m : (f, field_var) m) t
-    (cond : field_var Boolean.t) =
+let succ_if (type f field_var state)
+    ~m:((module M) as m : (f, field_var, state) m) t (cond : field_var Boolean.t)
+    =
   let open M in
   { value = Field.(add (cond :> t) t.value)
   ; interval = Interval.(lub t.interval (succ ~m t.interval))
   ; bits = None
   }
 
-let succ (type f field_var) ~m:((module M) as m : (f, field_var) m) t =
+let succ (type f field_var state) ~m:((module M) as m : (f, field_var, state) m)
+    t =
   let open M in
   { value = Field.(add one t.value)
   ; interval = Interval.succ ~m t.interval
   ; bits = None
   }
 
-let equal (type f field_var) ~m:((module M) : (f, field_var) m) a b =
+let equal (type f field_var state) ~m:((module M) : (f, field_var, state) m) a b
+    =
   M.Field.equal a.value b.value
 
 let max_bits a b =
   Int.max (Interval.bits_needed a.interval) (Interval.bits_needed b.interval)
 
-let lt (type f field_var) ~m:((module M) : (f, field_var) m) a b =
+let lt (type f field_var state) ~m:((module M) : (f, field_var, state) m) a b =
   (M.Field.compare ~bit_length:(max_bits a b) a.value b.value).less
 
-let lte (type f field_var) ~m:((module M) : (f, field_var) m) a b =
+let lte (type f field_var state) ~m:((module M) : (f, field_var, state) m) a b =
   (M.Field.compare ~bit_length:(max_bits a b) a.value b.value).less_or_equal
 
-let gte (type f field_var) ~m:((module M) as m : (f, field_var) m) a b =
+let gte (type f field_var state) ~m:((module M) as m : (f, field_var, state) m)
+    a b =
   M.Boolean.not (lt ~m a b)
 
-let gt (type f field_var) ~m:((module M) as m : (f, field_var) m) a b =
+let gt (type f field_var state) ~m:((module M) as m : (f, field_var, state) m) a
+    b =
   M.Boolean.not (lte ~m a b)
 
-let subtract_unpacking_or_zero (type f field_var)
-    ~m:((module M) as m : (f, field_var) m) a b =
+let subtract_unpacking_or_zero (type f field_var state)
+    ~m:((module M) as m : (f, field_var, state) m) a b =
   let flag = lt ~m a b in
   ( `Underflow flag
   , { value =

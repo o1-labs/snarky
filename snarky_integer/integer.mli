@@ -30,7 +30,7 @@ type ('f, 'field_var) t =
     when given.
 *)
 val constant :
-  ?length:int -> m:('f, 'field_var) m -> Bigint.t -> ('f, 'field_var) t
+  ?length:int -> m:('f, 'field_var, 'state) m -> Bigint.t -> ('f, 'field_var) t
 
 (** [shift_left ~m x k] is equivalent to multiplying [x] by [2^k].
 
@@ -38,14 +38,17 @@ val constant :
     cached bit representation.
 *)
 val shift_left :
-  m:('f, 'field_var) m -> ('f, 'field_var) t -> int -> ('f, 'field_var) t
+     m:('f, 'field_var, 'state) m
+  -> ('f, 'field_var) t
+  -> int
+  -> ('f, 'field_var) t
 
 (** Create a value from the given bit string.
 
     The given bit representation is cached.
 *)
 val of_bits :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> 'field_var Boolean.t Bitstring.Lsb_first.t
   -> ('f, 'field_var) t
 
@@ -57,7 +60,7 @@ val of_bits :
 *)
 val to_bits :
      ?length:int
-  -> m:('f, 'field_var) m
+  -> m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> 'field_var Boolean.t Bitstring.Lsb_first.t
 
@@ -80,7 +83,7 @@ val to_bits_opt :
     NOTE: This uses approximately [log2(a) + 2 * log2(b)] constraints.
 *)
 val div_mod :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t * ('f, 'field_var) t
@@ -94,13 +97,13 @@ val create : value:'field_var -> upper_bound:Bigint.t -> ('f, 'field_var) t
     The result does not carry a cached bit representation.
 *)
 val min :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
 
 val if_ :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> 'field_var Boolean.t
   -> then_:('f, 'field_var) t
   -> else_:('f, 'field_var) t
@@ -110,7 +113,8 @@ val if_ :
 
     The result does not carry a cached bit representation.
 *)
-val succ : m:('f, 'field_var) m -> ('f, 'field_var) t -> ('f, 'field_var) t
+val succ :
+  m:('f, 'field_var, 'state) m -> ('f, 'field_var) t -> ('f, 'field_var) t
 
 (** [succ_if ~m x b] computes the integer [x+1] if [b] is [true], or [x]
     otherwise.
@@ -118,37 +122,37 @@ val succ : m:('f, 'field_var) m -> ('f, 'field_var) t -> ('f, 'field_var) t
     The result does not carry a cached bit representation.
 *)
 val succ_if :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> 'field_var Boolean.t
   -> ('f, 'field_var) t
 
 val equal :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> 'field_var Boolean.t
 
 val lt :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> 'field_var Boolean.t
 
 val lte :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> 'field_var Boolean.t
 
 val gt :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> 'field_var Boolean.t
 
 val gte :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> 'field_var Boolean.t
@@ -158,7 +162,7 @@ val gte :
     The result does not carry a cached bit representation.
 *)
 val add :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
@@ -168,7 +172,7 @@ val add :
     The result does not carry a cached bit representation.
 *)
 val mul :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
@@ -181,7 +185,7 @@ val mul :
     NOTE: This uses approximately [log2(x)] constraints.
 *)
 val subtract_unpacking :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
@@ -198,7 +202,7 @@ val subtract_unpacking :
     NOTE: This uses approximately [log2(x)] constraints.
 *)
 val subtract_unpacking_or_zero :
-     m:('f, 'field_var) m
+     m:('f, 'field_var, 'state) m
   -> ('f, 'field_var) t
   -> ('f, 'field_var) t
   -> [ `Underflow of 'field_var Boolean.t ] * ('f, 'field_var) t
