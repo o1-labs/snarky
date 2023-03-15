@@ -1254,16 +1254,13 @@ module type Run_basic = sig
       }
   end
 
-  and Internal_Basic : sig
-    type state = run_state
-
-    include
-      Basic
-        with type field = field
-         and type field_var = field_var
-         and type 'a Checked.t = ('a, state) Checked_runner.Simple.t
-         and type 'a As_prover.Ref.t = 'a As_prover_ref.t
-  end
+  and Internal_Basic :
+    (Basic
+      with type field = field
+       and type field_var = field_var
+       and type run_state = run_state
+       and type 'a Checked.t = ('a, run_state) Checked_runner.Simple.t
+       and type 'a As_prover.Ref.t = 'a As_prover_ref.t)
 
   module Bitstring_checked : sig
     type t = Boolean.var list
