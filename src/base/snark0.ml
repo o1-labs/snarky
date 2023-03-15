@@ -827,6 +827,8 @@ module Run = struct
 
       let false_ = false_
 
+      let to_field_var = to_field_var
+
       let if_ b ~then_ ~else_ = run (if_ b ~then_ ~else_)
 
       let not = not
