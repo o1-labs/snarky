@@ -88,6 +88,8 @@ module type Run_state_intf = sig
 
   val eval_constraints : t -> bool
 
+  val set_eval_constraints : t -> bool -> unit
+
   val system : t -> constraint_system option
 
   val finalize : t -> unit

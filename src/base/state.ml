@@ -59,6 +59,8 @@ module type S = sig
 
   val eval_constraints : t -> bool
 
+  val set_eval_constraints : t -> bool -> unit
+
   val system : t -> constraint_system option
 
   val finalize : t -> unit
@@ -128,6 +130,8 @@ module Make
   let set_as_prover t b = set_as_prover t.state b
 
   let eval_constraints t = eval_constraints t.state
+
+  let set_eval_constraints t b = set_eval_constraints t.state b
 
   let system t = system t.state
 
