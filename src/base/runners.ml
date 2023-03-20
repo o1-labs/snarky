@@ -119,7 +119,7 @@ struct
          note that this works because [input] is a Rust value that is mutable
       *)
       let start = Field.Vector.length input in
-      let end_ = start + return_typ.size_in_field_elements in
+      let end_ = start + return_typ.size_in_field_elements - 1 in
       for ii = start to end_ do
         Field.Vector.set input ii fields.(ii)
       done ;
