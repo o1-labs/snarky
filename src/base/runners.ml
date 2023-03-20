@@ -87,7 +87,13 @@ struct
     (* run t0 *)
     let state, res = run t0 state in
 
-    (* get return variable as cvars  *)
+    (* don't verify constraints for the public output
+       as it has not been updated yet
+    *)
+    let eval_constraints = Backend.Run_state.eval_constraints state in
+    Backend.Run_state.set_eval_constraints state false ;
+
+    (* get return variable as cvars and wire them *)
     let res, auxiliary_output_data = return_typ.var_to_fields res in
     let output, _ = return_typ.var_to_fields output in
     let _state =
@@ -100,11 +106,24 @@ struct
       return_typ.var_of_fields (output, auxiliary_output_data)
     in
 
+    (* reset eval_constraints configuration *)
+    Backend.Run_state.set_eval_constraints state eval_constraints ;
+
     (* read value of public output *)
     let output_value =
       let fields, aux = return_typ.var_to_fields output_vars in
       let read_cvar = Run_state.get_value state in
       let fields = Array.map ~f:read_cvar fields in
+
+      (* update public output part of public input
+         note that this works because [input] is a Rust value that is mutable
+      *)
+      let start = Field.Vector.length input in
+      let end_ = start + return_typ.size_in_field_elements in
+      for ii = start to end_ do
+        Field.Vector.set input ii fields.(ii)
+      done ;
+
       return_typ.value_of_fields (fields, aux)
     in
 
