@@ -17,8 +17,6 @@ module type Constraint_system_intf = sig
 
   val to_json : t -> string
 
-  val set_primary_input_size : t -> int -> unit
-
   val get_primary_input_size : t -> int
 
   val get_rows_len : t -> int
