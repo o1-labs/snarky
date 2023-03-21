@@ -1,7 +1,7 @@
 open Core_kernel
 module Constraint0 = Constraint
 
-let stack_to_string = String.concat ~sep:"\n"
+let stack_to_string = String.concat ~sep:", "
 
 let eval_constraints = ref true
 
