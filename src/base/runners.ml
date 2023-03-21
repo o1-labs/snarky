@@ -73,10 +73,17 @@ struct
   let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list)) t0
       (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ) ~output :
       Field.Vector.t * _ * _ =
+    (* create handler *)
     let handler =
       List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
           Request.Handler.(push handler (create_single h)) )
     in
+
+    (* enforce that the public input size is correct *)
+    let total_len =
+      Field.Vector.length input + return_typ.size_in_field_elements
+    in
+    assert (num_inputs = total_len) ;
 
     (* create the state *)
     let state = Runner.State.make ~system:false ~num_inputs ~handler () in
@@ -85,7 +92,7 @@ struct
     Backend.Run_state.set_public_inputs state input ;
 
     (* run t0 *)
-    let state, res = run t0 state in
+    let state, ret_var = run t0 state in
 
     (* don't verify constraints for the public output
        as it has not been updated yet
@@ -93,33 +100,31 @@ struct
     let eval_constraints = Backend.Run_state.eval_constraints state in
     Backend.Run_state.set_eval_constraints state false ;
 
-    (* get return variable as cvars and wire them *)
-    let res, auxiliary_output_data = return_typ.var_to_fields res in
+    (* handle the returned snarky var *)
+    let ret_cvars, output_aux = return_typ.var_to_fields ret_var in
     let output, _ = return_typ.var_to_fields output in
     let _state =
-      Array.fold2_exn ~init:state res output ~f:(fun state res output ->
-          Field.Vector.emplace_back input
-            (Backend.Run_state.get_value state res) ;
-          fst @@ Checked.run (Checked.assert_equal res output) state )
-    in
-    let output_vars =
-      return_typ.var_of_fields (output, auxiliary_output_data)
+      Array.fold2_exn ~init:state ret_cvars output ~f:(fun state res output ->
+          let res_val = Backend.Run_state.get_value state res in
+          (* put public input value in primary input *)
+          Field.Vector.emplace_back input res_val ;
+
+          (* wiring between return cvar and public output part of public input  *)
+          let new_state, () =
+            Checked.run (Checked.assert_equal res output) state
+          in
+          new_state )
     in
 
     (* reset eval_constraints configuration *)
     Backend.Run_state.set_eval_constraints state eval_constraints ;
 
     (* read value of public output *)
+    let output_vars = return_typ.var_of_fields (output, output_aux) in
     let output_value =
       let fields, aux = return_typ.var_to_fields output_vars in
       let read_cvar = Run_state.get_value state in
       let fields = Array.map ~f:read_cvar fields in
-
-      (* update public output part of public input
-         note that this works because [input] is a Rust value that is mutable
-      *)
-      Array.iter fields ~f:(Field.Vector.emplace_back input) ;
-
       return_typ.value_of_fields (fields, aux)
     in
 
@@ -304,15 +309,20 @@ struct
       in
       let (Typ { var_of_fields; value_to_fields; _ }) = input_typ in
       fun value ->
+        (* fill primary input with public input *)
         let fields, aux = value_to_fields value in
         let fields = Array.map ~f:store_field_elt fields in
         let var = var_of_fields (fields, aux) in
-        let retval =
-          return_typ.var_of_fields
-            ( Core_kernel.Array.init return_typ.size_in_field_elements
-                ~f:(fun _ -> alloc_var next_input)
-            , return_typ.constraint_system_auxiliary () )
+
+        (* add public output in primary input *)
+        let return_fields =
+          Core_kernel.Array.init return_typ.size_in_field_elements ~f:(fun _ ->
+              alloc_var next_input )
         in
+        let return_aux = return_typ.constraint_system_auxiliary () in
+        let retval = return_typ.var_of_fields (return_fields, return_aux) in
+
+        (* run inner function [cont0] with args *)
         cont0 !next_input retval (k0 () var) primary_input
 
     let generate_auxiliary_input :
