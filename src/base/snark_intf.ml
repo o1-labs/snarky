@@ -1384,6 +1384,8 @@ module type Run_basic = sig
 
   val run_and_check : (unit -> (unit -> 'a) As_prover.t) -> 'a Or_error.t
 
+  val set_eval_constraints : bool -> unit
+
   module Run_and_check_deferred (M : sig
     type _ t
 

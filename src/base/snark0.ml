@@ -1296,6 +1296,9 @@ module Run = struct
           Run_state.set_as_prover !state true ;
           res )
 
+    let set_eval_constraints b =
+      state := Run_state.set_eval_constraints !state b
+
     module Run_and_check_deferred (M : sig
       type _ t
 
