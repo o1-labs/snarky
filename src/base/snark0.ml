@@ -1351,9 +1351,6 @@ module Run = struct
       let field_vec = field_vec
 
       let pack_field_vec = pack_field_vec
-
-      let set_eval_constraints b =
-        state := Run_state.set_eval_constraints !state b
     end
 
     module Run_and_check_deferred (M : sig

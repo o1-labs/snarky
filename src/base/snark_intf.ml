@@ -1430,8 +1430,6 @@ module type Run_basic = sig
     val field_vec : unit -> field_vec
 
     val pack_field_vec : Field.Constant.Vector.t -> field_vec
-
-    val set_eval_constraints : bool -> unit
   end
 
   module Run_and_check_deferred (M : sig

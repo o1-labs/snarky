@@ -104,8 +104,6 @@ let log_constraint { log_constraint; _ } = log_constraint
 
 let eval_constraints { eval_constraints; _ } = eval_constraints
 
-let set_eval_constraints t eval_constraints = { t with eval_constraints }
-
 let system { system; _ } = system
 
 let handler { handler; _ } = handler

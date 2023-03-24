@@ -80,8 +80,6 @@ val log_constraint :
 
 val eval_constraints : 'field t -> bool
 
-val set_eval_constraints : 'field t -> bool -> 'field t
-
 val system : 'field t -> 'field Constraint_system.t option
 
 val handler : _ t -> Request.Handler.t
