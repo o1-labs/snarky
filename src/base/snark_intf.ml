@@ -1100,8 +1100,6 @@ module type Run_basic = sig
   module R1CS_constraint_system : sig
     type t
 
-    val create : unit -> t
-
     val digest : t -> Md5.t
 
     val get_public_input_size : t -> int Core_kernel.Set_once.t
@@ -1421,7 +1419,11 @@ module type Run_basic = sig
 
     type 'a checked = 'a Internal_Basic.Checked.t
 
-    val checked_run : 'a checked -> state -> state * 'a
+    val run_checked : 'a checked -> state -> state * 'a
+
+    val run_as_stateful : (unit -> 'a) -> state -> state * 'a
+
+    val mark_active : (unit -> 'a) -> 'a
 
     val field_vec : unit -> field_vec
 

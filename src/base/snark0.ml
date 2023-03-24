@@ -1311,7 +1311,11 @@ module Run = struct
 
       type 'a checked = 'a Checked.t
 
-      let checked_run checked state = Checked.run checked state
+      let run_checked checked state = Checked.run checked state
+
+      let run_as_stateful = as_stateful
+
+      let mark_active f = mark_active ~f
 
       let field_vec = field_vec
 
