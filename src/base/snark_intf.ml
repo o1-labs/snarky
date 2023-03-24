@@ -1100,6 +1100,8 @@ module type Run_basic = sig
   module R1CS_constraint_system : sig
     type t
 
+    val create : unit -> t
+
     val digest : t -> Md5.t
 
     val get_public_input_size : t -> int Core_kernel.Set_once.t
@@ -1384,7 +1386,49 @@ module type Run_basic = sig
 
   val run_and_check : (unit -> (unit -> 'a) As_prover.t) -> 'a Or_error.t
 
-  val set_eval_constraints : bool -> unit
+  module Low_level : sig
+    type state = field Run_state.t
+
+    val state : state ref
+
+    val set_state : state -> unit
+
+    type field_vec = field Run_state.Vector.t
+
+    val make_state :
+         num_inputs:int
+      -> input:field_vec
+      -> next_auxiliary:int ref
+      -> aux:field_vec
+      -> ?system:R1CS_constraint_system.t
+      -> ?eval_constraints:bool
+      -> ?handler:Request.Handler.t
+      -> with_witness:bool
+      -> ?log_constraint:
+           (   ?at_label_boundary:[ `End | `Start ] * string
+            -> ( field Cvar.t
+               , field )
+               Checked_runner.Constraint0.basic_with_annotation
+               option
+            -> unit )
+      -> unit
+      -> state
+
+    val cvar_eval :
+         [ `Return_values_will_be_mutated of int -> field ]
+      -> field Cvar.t
+      -> field
+
+    type 'a checked = 'a Internal_Basic.Checked.t
+
+    val checked_run : 'a checked -> state -> state * 'a
+
+    val field_vec : unit -> field_vec
+
+    val pack_field_vec : Field.Constant.Vector.t -> field_vec
+
+    val set_eval_constraints : bool -> unit
+  end
 
   module Run_and_check_deferred (M : sig
     type _ t

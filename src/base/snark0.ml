@@ -1296,8 +1296,30 @@ module Run = struct
           Run_state.set_as_prover !state true ;
           res )
 
-    let set_eval_constraints b =
-      state := Run_state.set_eval_constraints !state b
+    module Low_level = struct
+      type state = field Run_state.t
+
+      let state = state
+
+      let set_state new_state = state := new_state
+
+      type field_vec = field Run_state.Vector.t
+
+      let make_state = Runner.State.make
+
+      let cvar_eval = Cvar.eval
+
+      type 'a checked = 'a Checked.t
+
+      let checked_run checked state = Checked.run checked state
+
+      let field_vec = field_vec
+
+      let pack_field_vec = pack_field_vec
+
+      let set_eval_constraints b =
+        state := Run_state.set_eval_constraints !state b
+    end
 
     module Run_and_check_deferred (M : sig
       type _ t
