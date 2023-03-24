@@ -1338,19 +1338,9 @@ module Run = struct
 
       let make_state = Runner.State.make
 
-      let cvar_eval = Cvar.eval
-
-      type 'a checked = 'a Checked.t
-
-      let run_checked checked state = Checked.run checked state
-
-      let run_as_stateful = as_stateful
-
       let mark_active f = mark_active ~f
 
       let field_vec = field_vec
-
-      let pack_field_vec = pack_field_vec
     end
 
     module Run_and_check_deferred (M : sig

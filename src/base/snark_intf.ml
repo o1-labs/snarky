@@ -1414,22 +1414,9 @@ module type Run_basic = sig
       -> unit
       -> state
 
-    val cvar_eval :
-         [ `Return_values_will_be_mutated of int -> field ]
-      -> field Cvar.t
-      -> field
-
-    type 'a checked = 'a Internal_Basic.Checked.t
-
-    val run_checked : 'a checked -> state -> state * 'a
-
-    val run_as_stateful : (unit -> 'a) -> state -> state * 'a
-
     val mark_active : (unit -> 'a) -> 'a
 
     val field_vec : unit -> field_vec
-
-    val pack_field_vec : Field.Constant.Vector.t -> field_vec
   end
 
   module Run_and_check_deferred (M : sig

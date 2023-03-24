@@ -15,24 +15,7 @@ module Vector : sig
   val emplace_back : 'x t -> 'x -> unit
 end
 
-type 'field t =
-  { system : 'field Constraint_system.t option
-  ; input : 'field Vector.t
-  ; aux : 'field Vector.t
-  ; eval_constraints : bool
-  ; num_inputs : int
-  ; next_auxiliary : int ref
-  ; has_witness : bool
-  ; stack : string list
-  ; handler : Request.Handler.t
-  ; is_running : bool
-  ; as_prover : bool ref
-  ; log_constraint :
-      (   ?at_label_boundary:[ `Start | `End ] * string
-       -> ('field Cvar.t, 'field) Constraint.t option
-       -> unit )
-      option
-  }
+type 'field t
 
 val make :
      num_inputs:int
