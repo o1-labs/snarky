@@ -54,7 +54,7 @@ type 'field t =
 let make ~num_inputs ~input ~next_auxiliary ~aux ?system ~eval_constraints
     ?log_constraint ?handler ~with_witness ?(stack = []) ?(is_running = true) ()
     =
-  next_auxiliary := 1 + num_inputs ;
+  next_auxiliary := num_inputs ;
   (* We can't evaluate the constraints if we are not computing over a value. *)
   let eval_constraints = eval_constraints && with_witness in
   { system
@@ -71,10 +71,16 @@ let make ~num_inputs ~input ~next_auxiliary ~aux ?system ~eval_constraints
   ; log_constraint
   }
 
+let dump (t : _ t) =
+  Format.sprintf
+    "state { is_running: %B; as_prover: %B; has_witness: %B; eval_constraints: \
+     %B; num_inputs: %d; next_auxiliary: %d }\n"
+    t.is_running !(t.as_prover) t.has_witness t.eval_constraints t.num_inputs
+    !(t.next_auxiliary)
+
 let get_variable_value { num_inputs; input; aux; _ } : int -> 'field =
  fun i ->
-  if i <= num_inputs then Vector.get input (i - 1)
-  else Vector.get aux (i - num_inputs - 1)
+  if i < num_inputs then Vector.get input i else Vector.get aux (i - num_inputs)
 
 let store_field_elt { next_auxiliary; aux; _ } x =
   let v = !next_auxiliary in

@@ -52,6 +52,9 @@ val make :
   -> unit
   -> 'field t
 
+(** dumps some information about a state [t] *)
+val dump : 'field t -> string
+
 val get_variable_value : 'field t -> int -> 'field
 
 val store_field_elt : 'field t -> 'field -> 'field Cvar.t

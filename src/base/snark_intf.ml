@@ -1095,6 +1095,8 @@ end
 
 (** The imperative interface to Snarky. *)
 module type Run_basic = sig
+  val dump : unit -> string
+
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
