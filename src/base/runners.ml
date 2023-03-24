@@ -97,7 +97,7 @@ struct
         R1CS_constraint_system.finalize system ) ;
     (aux, true_output)
 
-  let run_and_check' ~run t0 =
+  let run_and_check_exn' ~run t0 =
     let num_inputs = 0 in
     let input = field_vec () in
     let next_auxiliary = ref 1 in
@@ -112,13 +112,17 @@ struct
         ~aux:(pack_field_vec aux) ~system ~eval_constraints:true
         ~with_witness:true ()
     in
-    match run t0 state with
+    let _, x = run t0 state in
+    (x, get_value)
+
+  let run_and_check' ~run t0 =
+    match run_and_check_exn' ~run t0 with
     | exception e ->
         Or_error.of_exn ~backtrace:`Get e
-    | _, x ->
-        Ok (x, get_value)
+    | res ->
+        Ok res
 
-  let run_and_check_deferred' ~map ~return ~run t0 =
+  let run_and_check_deferred_exn' ~map ~run t0 =
     let num_inputs = 0 in
     let input = field_vec () in
     let next_auxiliary = ref 1 in
@@ -133,11 +137,19 @@ struct
         ~aux:(pack_field_vec aux) ~system ~eval_constraints:true
         ~with_witness:true ()
     in
-    match run t0 state with
+    let res = run t0 state in
+    map res ~f:(function _, x -> (x, get_value))
+
+  let run_and_check_deferred' ~map ~return ~run t0 =
+    match
+      run_and_check_deferred_exn'
+        ~map:(fun x ~f -> map x ~f:(fun x -> Ok (f x)))
+        ~run t0
+    with
     | exception e ->
         return (Or_error.of_exn ~backtrace:`Get e)
     | res ->
-        map res ~f:(function _, x -> Ok (x, get_value))
+        res
 
   let run_unchecked ~run t0 =
     let num_inputs = 0 in
@@ -150,10 +162,17 @@ struct
     in
     match run t0 state with _, x -> x
 
+  let run_and_check_exn ~run t =
+    let x, get_value = run_and_check_exn' ~run t in
+    let x = As_prover.run x get_value in
+    x
+
   let run_and_check ~run t =
     Or_error.map (run_and_check' ~run t) ~f:(fun (x, get_value) ->
         let x = As_prover.run x get_value in
         x )
+
+  let check_exn ~run t = run_and_check_exn' ~run t |> Fn.const ()
 
   let check ~run t = run_and_check' ~run t |> Result.map ~f:(Fn.const ())
 
@@ -346,7 +365,11 @@ struct
 
     let run_unchecked = run_unchecked
 
+    let run_and_check_exn = run_and_check_exn
+
     let run_and_check = run_and_check
+
+    let check_exn = check_exn
 
     let check = check
   end
@@ -372,5 +395,9 @@ struct
 
   let run_and_check t = run_and_check ~run:Checked.run t
 
+  let run_and_check_exn t = run_and_check_exn ~run:Checked.run t
+
   let check t = check ~run:Checked.run t
+
+  let check_exn t = check_exn ~run:Checked.run t
 end

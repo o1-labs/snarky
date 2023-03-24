@@ -1283,6 +1283,18 @@ module Run = struct
       finalize_is_running (fun () ->
           Perform.run_unchecked ~run:as_stateful (fun () -> mark_active ~f:x) )
 
+    let run_and_check_exn (type a) (x : unit -> (unit -> a) As_prover.t) : a =
+      finalize_is_running (fun () ->
+          let res =
+            Perform.run_and_check_exn ~run:as_stateful (fun () ->
+                mark_active ~f:(fun () ->
+                    let prover_block = x () in
+                    Run_state.set_as_prover !state true ;
+                    As_prover.run_prover prover_block ) )
+          in
+          Run_state.set_as_prover !state true ;
+          res )
+
     let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t) :
         a Or_error.t =
       finalize_is_running (fun () ->
@@ -1306,6 +1318,11 @@ module Run = struct
     struct
       open M
 
+      let run_and_check_exn ~run t =
+        map (run_and_check_deferred_exn' ~run t ~map) ~f:(fun (x, get_value) ->
+            let x = Basic.As_prover.run x get_value in
+            x )
+
       let run_and_check ~run t =
         map
           (run_and_check_deferred' ~run t ~map ~return)
@@ -1317,6 +1334,20 @@ module Run = struct
       let as_stateful x state' =
         state := state' ;
         map (x ()) ~f:(fun a -> (!state, a))
+
+      let run_and_check_exn (type a) (x : unit -> (unit -> a) As_prover.t M.t) :
+          a M.t =
+        finalize_is_running (fun () ->
+            let mark_active = mark_active_deferred ~map in
+            let res =
+              run_and_check_exn ~run:as_stateful (fun () ->
+                  mark_active ~f:(fun () ->
+                      map (x ()) ~f:(fun prover_block ->
+                          Run_state.set_as_prover !state true ;
+                          As_prover.run_prover prover_block ) ) )
+            in
+            Run_state.set_as_prover !state true ;
+            res )
 
       let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t M.t) :
           a Or_error.t M.t =
@@ -1332,6 +1363,9 @@ module Run = struct
             Run_state.set_as_prover !state true ;
             res )
     end
+
+    let check_exn x : unit =
+      finalize_is_running (fun () -> Perform.check_exn ~run:as_stateful x)
 
     let check x : unit Or_error.t =
       finalize_is_running (fun () -> Perform.check ~run:as_stateful x)
