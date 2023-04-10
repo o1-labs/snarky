@@ -1010,9 +1010,19 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   (** Run a checked computation as the prover, checking the constraints. *)
   val run_and_check : 'a As_prover.t Checked.t -> 'a Or_error.t
 
+  (** Run a checked computation as the prover, checking the constraints.
+      Will raise an exception on failure.
+  *)
+  val run_and_check_exn : 'a As_prover.t Checked.t -> 'a
+
   (** Run a checked computation as the prover, returning [true] if the
       constraints are all satisfied, or [false] otherwise. *)
   val check : 'a Checked.t -> unit Or_error.t
+
+  (** Run a checked computation as the prover, raising an exception if any
+      constraints are not satisfied.
+  *)
+  val check_exn : 'a Checked.t -> unit
 
   (** Run the checked computation and generate the auxiliary input, but don't
       generate a proof.
@@ -1386,6 +1396,8 @@ module type Run_basic = sig
 
   val run_and_check : (unit -> (unit -> 'a) As_prover.t) -> 'a Or_error.t
 
+  val run_and_check_exn : (unit -> (unit -> 'a) As_prover.t) -> 'a
+
   module Run_and_check_deferred (M : sig
     type _ t
 
@@ -1395,7 +1407,11 @@ module type Run_basic = sig
   end) : sig
     val run_and_check :
       (unit -> (unit -> 'a) As_prover.t M.t) -> 'a Or_error.t M.t
+
+    val run_and_check_exn : (unit -> (unit -> 'a) As_prover.t M.t) -> 'a M.t
   end
+
+  val check_exn : (unit -> 'a) -> unit
 
   val check : (unit -> 'a) -> unit Or_error.t
 
