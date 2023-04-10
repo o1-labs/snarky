@@ -210,6 +210,7 @@ struct
           Option.iter (Run_state.log_constraint s) ~f:(fun f -> f (Some c)) ;
           if
             Run_state.eval_constraints s
+            && !eval_constraints
             && not (Constraint.eval c (get_value s))
           then
             failwithf
