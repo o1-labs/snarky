@@ -41,28 +41,25 @@ module Make (Field : Snarky_intf.Field.Extended) = struct
 
   let eval (`Return_values_will_be_mutated context) t0 =
     let open Field in
-    let res = of_int 0 in
-    let rec go ~can_mutate_scale scale = function
-      | Constant c when can_mutate_scale ->
-          scale *= c ; res += scale
-      | Constant c ->
-          Mutable.copy ~over:scratch c ;
-          scratch *= scale ;
-          res += scratch
-      | Var v ->
-          let v = context v in
-          v *= scale ; res += v
-      | Scale (s, t) when can_mutate_scale ->
-          scale *= s ;
-          go scale ~can_mutate_scale t
-      | Scale (s, t) ->
-          go (mul s scale) ~can_mutate_scale:true t
-      | Add (t1, t2) ->
-          go scale ~can_mutate_scale:false t1 ;
-          go scale ~can_mutate_scale t2
+    let rec go = function
+      | Constant c, Some scale ->
+          c * scale
+      | Constant c, None ->
+          c
+      | Var v, Some scale ->
+          context v * scale
+      | Var v, None ->
+          context v
+      | Scale (s, t), Some scale ->
+          go (t, Some (scale * s))
+      | Scale (s, t), None ->
+          go (t, Some s)
+      | Add (t1, t2), Some scale ->
+          (go (t1, None) + go (t2, None)) * scale
+      | Add (t1, t2), None ->
+          go (t1, None) + go (t2, None)
     in
-    go one ~can_mutate_scale:false t0 ;
-    res
+    go (t0, None)
 
   let constant c = Constant c
 
