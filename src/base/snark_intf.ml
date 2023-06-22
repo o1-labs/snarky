@@ -747,10 +747,19 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val read : ('var, 'value) Typ.t -> 'var -> 'value t
   end
 
+  (** The prover can give a set of runtime tables as inputs *)
+  and Runtime_table : sig
+    (** A runtime table consists of an id and a list of private values *)
+    type t = { id : int32; data : Field.Vector.t array }
+  end
+
   (** The complete set of inputs needed to generate a zero-knowledge proof. *)
   and Proof_inputs : sig
     type t =
-      { public_inputs : Field.Vector.t; auxiliary_inputs : Field.Vector.t }
+      { public_inputs : Field.Vector.t
+      ; auxiliary_inputs : Field.Vector.t
+      ; runtime_tables : Runtime_table.t array
+      }
   end
 
   module Let_syntax : Monad_let.Syntax2 with type ('a, 's) t := 'a Checked.t
@@ -1257,10 +1266,17 @@ module type Run_basic = sig
     val project : bool list -> field
   end
 
+  (** The prover can give a set of runtime tables as inputs *)
+  and Runtime_table : sig
+    (** A runtime table consists of an id and a list of private values *)
+    type t = { id : int32; data : Field.Constant.Vector.t array }
+  end
+
   and Proof_inputs : sig
     type t =
       { public_inputs : Field.Constant.Vector.t
       ; auxiliary_inputs : Field.Constant.Vector.t
+      ; runtime_tables : Runtime_table.t array
       }
   end
 
