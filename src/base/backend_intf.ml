@@ -1,27 +1,42 @@
 open Core_kernel
 
+(** Generic constraint system interface.
+    A constraint system consists of a set of multi variate polynomials over a
+    finite field.
+*)
 module type Constraint_system_intf = sig
   module Field : sig
     type t
   end
 
+  (** The type of the constraint system *)
   type t
 
+  (** [create ()] creates an empty constraint system *)
   val create : unit -> t
 
   val finalize : t -> unit
 
+  (** [add_constraint ~label cs constr] adds the constr [constr] in the system
+      [cs] *)
   val add_constraint :
     ?label:string -> t -> (Field.t Cvar.t, Field.t) Constraint.basic -> unit
 
+  (** [digest cs] returns a hash version of the constraint system *)
   val digest : t -> Md5.t
 
+  (** [set_primary_input_size cs n] sets the number of public inputs of the
+      constraint system to [n] *)
   val set_primary_input_size : t -> int -> unit
 
+  (** [set_auxiliary_input_size cs n] sets the number of private inputs of the
+      constraint system to [n] *)
   val set_auxiliary_input_size : t -> int -> unit
 
   val get_public_input_size : t -> int Core_kernel.Set_once.t
 
+  (** [get_rows_len cs] returns the number of constraints in the constraint
+      system *)
   val get_rows_len : t -> int
 end
 
