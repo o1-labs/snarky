@@ -30,7 +30,7 @@ struct
 
   module Proof_inputs = struct
     type t =
-      { public_inputs : Field.Vector.t; auxiliary_inputs : Field.Vector.t }
+      { public_inputs : Field.Vector.t; auxiliary_inputs : Field.Vector.t; runtime_tables:  }
   end
 
   module Bigint = Bigint
@@ -353,6 +353,7 @@ struct
           f
             { Proof_inputs.public_inputs = primary
             ; auxiliary_inputs = auxiliary
+            ; runtime_tables = [||]
             }
             output )
         input_typ return_typ
