@@ -20,6 +20,8 @@ module type S = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
+  (* Represents a R1CS constraint variable. It is a linear combinations of a_i *
+     x_i *)
   module Cvar : sig
     type t = Field.t Cvar.t [@@deriving sexp]
 
@@ -58,6 +60,9 @@ module type S = sig
 
     val to_constant : t -> Field.t option
   end
+
+  (* TODO: Is it here I have to create a backend that tracks the lookup tables
+           used? *)
 
   module R1CS_constraint_system :
     Backend_intf.Constraint_system_intf with module Field := Field
