@@ -99,7 +99,16 @@ let implied_root_unchecked entry_hash addr0 path0 =
 ;;
 ```
 The two obviously look very similar, but the first one can be run to generate an R1CS
-(and also an "auxiliary input") to verify that computation. 
+(and also an "auxiliary input") to verify that computation.
+
+## Documentation
+
+Install [odoc](https://github.com/ocaml/odoc) (should be in your opam switch if you use it in [mina](https://github.com/MinaProtocol/mina)), and run
+```
+dune build @doc
+```
+
+You can browse the documentation by opening `_build/default/_doc/_html/index.html`
 
 ## Implementation
 
@@ -107,6 +116,35 @@ Currently, the library uses a free-monad style AST to represent the snark comput
 This may change in future versions if the overhead of creating the AST is significant.
 Most likely it will stick around since the overhead doesn't seem to be too bad and it
 enables optimizations like eliminating equality constraints.
+
+### Inventory
+
+#### Main entry points
+
+The entry points to create a Snark is to use either the monadic functor or the imperative functor.
+Both functors are defined in `snark0.mli`.
+The module type for the monadic (resp. the imperative) interface is `Snark_intf.S` (resp. `Snark_intf.Run`).
+The latest is extending a "basic" imperative interface called
+`Snark_intf.Run_basic` by adding new encoded types like `Number` or
+`Enumerable` (i.e. ADT/enum).
+Modules types called `S` are used to defined the monadic interface and `Run`
+is used to define the imperative interface.
+
+#### Encoded types/data structures
+
+`Snarky` provides some modules which can be used to represent common data types like Number or Enums.
+- [`Number`]: see [`number.ml`](src/number.ml), [`number.mli`](src/number.mli)
+  and [`number_intf.ml`](src/number_intf.ml).
+- [`Enumerable`]: see [`enumerable.ml`](src/enumerable.ml) and [`enumerable.mli`](src/enumerable.mli).
+- [`Pedersen`](src/pedersen.ml): implement the Pedersen hash function. It is
+  out-dated as it has been replaced by Poseidon.
+- [`Merkle_tree`](`src/merkle_tree.mli`) and its [interface](`src/merkle_tree.mli`).
+
+#### Utilities
+
+- [`Monad_let`](src/monad_let.ml)
+- [`Monad_sequence`](src/monad_sequence.ml)
+- [`Utils`](src/utils.ml) and its [interface](`src/utils.mli`)
 
 ## Building
 

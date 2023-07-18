@@ -19,6 +19,7 @@ val set_eval_constraints : bool -> unit
 *)
 exception Runtime_error of string list * exn * string
 
+(** Functors to create a monadic interface *)
 module Make (Backend : Backend_intf.S) :
   Snark_intf.S
     with type field = Backend.Field.t
@@ -26,6 +27,7 @@ module Make (Backend : Backend_intf.S) :
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
      and type Field.Vector.t = Backend.Field.Vector.t
 
+(** Functors to create an imperative interface *)
 module Run : sig
   module Make (Backend : Backend_intf.S) :
     Snark_intf.Run

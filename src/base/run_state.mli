@@ -15,6 +15,8 @@ module Vector : sig
   val emplace_back : 'x t -> 'x -> unit
 end
 
+(** The internal state used to run a checked computation. It is parametrized by
+    the field the computation is happening into *)
 type 'field t
 
 val make :
@@ -35,13 +37,20 @@ val make :
   -> unit
   -> 'field t
 
-(** dumps some information about a state [t] *)
+(** [dump t] dumps some information about the state [t] *)
 val dump : 'field t -> string
 
+(** [get_variable_value state i] returns the field value saved in the variables
+    indexed by [i].
+*)
 val get_variable_value : 'field t -> int -> 'field
 
+(** [store_field_elt state v] creates a new auxiliary variable (and increased
+    the auxiliary counter index returned by {!next_auxiliary}) in the [state]
+    and set its value to [v] *)
 val store_field_elt : 'field t -> 'field -> 'field Cvar.t
 
+(** [alloc_var state ()] allocates a new auxiliary variable in the state [state] *)
 val alloc_var : 'field t -> unit -> 'field Cvar.t
 
 val has_witness : _ t -> bool

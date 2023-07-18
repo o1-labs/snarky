@@ -1,7 +1,11 @@
+(** Represents constraint variables in R1CS. As a reminder, a constraint in R1CS
+    is a linear combinations a_i x_i, where a_i are constants and x_i are
+    variables *)
 open Core_kernel
 
 type 'f t =
   | Constant of 'f
+  (* variables are represented by their index *)
   | Var of int
   | Add of 'f t * 'f t
   | Scale of 'f * 'f t

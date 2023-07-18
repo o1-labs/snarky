@@ -90,11 +90,10 @@ let alloc_var { next_auxiliary; _ } () =
   let v = !next_auxiliary in
   incr next_auxiliary ; Cvar.Unsafe.of_index v
 
+(* getter to struct fields *)
 let has_witness { has_witness; _ } = has_witness
 
 let as_prover { as_prover; _ } = !as_prover
-
-let set_as_prover t as_prover = t.as_prover := as_prover
 
 let stack { stack; _ } = stack
 
@@ -108,10 +107,13 @@ let system { system; _ } = system
 
 let handler { handler; _ } = handler
 
-let set_handler t handler = { t with handler }
+let next_auxiliary { next_auxiliary; _ } = !next_auxiliary
 
 let is_running { is_running; _ } = is_running
 
-let set_is_running t is_running = { t with is_running }
+(* setter to struct fields *)
+let set_as_prover t as_prover = t.as_prover := as_prover
 
-let next_auxiliary { next_auxiliary; _ } = !next_auxiliary
+let set_handler t handler = { t with handler }
+
+let set_is_running t is_running = { t with is_running }

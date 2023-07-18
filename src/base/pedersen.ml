@@ -1,3 +1,7 @@
+(* Implement the Pedersen hash function, defined in the Zcash protocol:
+   https://zips.z.cash/protocol/protocol.pdf. This is not used anymore as
+   Poseidon has replaced it *)
+
 open Core_kernel
 open Bitstring_lib
 open Tuple_lib

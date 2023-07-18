@@ -428,6 +428,9 @@ module type S = sig
   val run : ('a, field) Types.Checked.t -> run_state -> run_state * 'a
 
   module State : sig
+    (** [make num_inputs input next_auxiliary system eval_constraints handler with_witness log_constraint ()]
+        - if [log_constraint] is set, it will override the logger set by [set_constraint_logger].
+    *)
     val make :
          num_inputs:int
       -> input:field Run_state.Vector.t

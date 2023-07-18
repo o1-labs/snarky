@@ -1,3 +1,4 @@
+(** Module signature for the monadic interface *)
 module type S = sig
   type _ checked
 
@@ -26,6 +27,7 @@ module type S = sig
   val ( = ) : var -> var -> bool_var checked
 end
 
+(** Module signature for the imperative interface *)
 module type Run = sig
   type (_, _) typ
 

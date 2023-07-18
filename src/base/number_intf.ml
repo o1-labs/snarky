@@ -1,3 +1,4 @@
+(** Signature for the monadic interface *)
 module type S = sig
   type _ checked
 
@@ -56,6 +57,7 @@ module type S = sig
   val clamp_to_n_bits : t -> int -> t checked
 end
 
+(** Signature for the imperative interface *)
 module type Run = sig
   type field
 

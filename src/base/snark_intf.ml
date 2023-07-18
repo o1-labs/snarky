@@ -7,6 +7,7 @@ module Typ0 = Typ
 module type Boolean_intf = sig
   type field_var
 
+  (** A checked computation *)
   type _ checked
 
   type (_, _) typ
@@ -14,6 +15,7 @@ module type Boolean_intf = sig
   (** The type that stores booleans as R1CS variables. *)
   type var
 
+  (** The runtime type that the underlying constraint variable represents *)
   type value = bool
 
   (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
@@ -99,6 +101,7 @@ module type Boolean_intf = sig
     val of_cvar : field_var -> var
   end
 
+  (** Assertion routines for in-circuit computations *)
   module Assert : sig
     val ( = ) : var -> var -> unit checked
 
@@ -1082,6 +1085,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val clear_constraint_logger : unit -> unit
 end
 
+(** Signature for the monadic interface *)
 module type S = sig
   include Basic
 
@@ -1103,7 +1107,9 @@ module type S = sig
        and type t := M.t
 end
 
-(** The imperative interface to Snarky. *)
+(** The imperative interface to Snarky. The interface {!Run} below is used by
+    the functor creating the monadic interface. It simply extends this one with
+    some more types (precisely [Number] and [Enumerable] for the moment) *)
 module type Run_basic = sig
   val dump : unit -> string
 
@@ -1439,6 +1445,7 @@ module type Run_basic = sig
   val run_checked : 'a Internal_Basic.Checked.t -> 'a
 end
 
+(** Module type for the imperative interface *)
 module type Run = sig
   include Run_basic
 

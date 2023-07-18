@@ -1,3 +1,4 @@
+(** Functors for the monadic interface *)
 module Make
     (Impl : Snark_intf.Basic) (M : sig
       type t [@@deriving enum]
@@ -9,6 +10,7 @@ module Make
      and type var = Impl.Field.Var.t
      and type t := M.t
 
+(** Functors for the imperative interface *)
 module Run : sig
   module Make
       (Impl : Snark_intf.Run_basic) (M : sig

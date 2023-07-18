@@ -20,6 +20,8 @@ module type S = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
+  (** Represents any type variable in the constraint system. Initially defined
+      for R1CS *)
   module Cvar : sig
     type t = Field.t Cvar.t [@@deriving sexp]
 
@@ -32,14 +34,18 @@ module type S = sig
     val eval :
       [ `Return_values_will_be_mutated of int -> Field.t ] -> t -> Field.t
 
+    (** Build a variable from a constant *)
     val constant : Field.t -> t
 
     val to_constant_and_terms : t -> Field.t option * (Field.t * int) list
 
+    (** [add x y] will return a new variable constrained to be equal to [x + y] *)
     val add : t -> t -> t
 
+    (** [negate x] will return a new variable constrained to be equal to [-x] *)
     val negate : t -> t
 
+    (** [negate x] will return a new variable constrained to be equal to [-x] *)
     val scale : t -> Field.t -> t
 
     val sub : t -> t -> t
