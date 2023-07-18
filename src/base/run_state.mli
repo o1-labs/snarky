@@ -24,6 +24,7 @@ val make :
   -> input:'field Vector.t
   -> next_auxiliary:int ref
   -> aux:'field Vector.t
+       (* TODO(dw): I feel here runtime tables should be added *)
   -> ?system:'field Constraint_system.t
   -> eval_constraints:bool
   -> ?log_constraint:

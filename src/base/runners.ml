@@ -28,9 +28,14 @@ struct
 
   let field_vec () = pack_field_vec (Field.Vector.create ())
 
+  module RuntimeTable = Backend.RuntimeTable
+
   module Proof_inputs = struct
     type t =
-      { public_inputs : Field.Vector.t; auxiliary_inputs : Field.Vector.t }
+      { public_inputs : Field.Vector.t
+      ; auxiliary_inputs : Field.Vector.t
+      ; runtime_tables : Field.t RuntimeTable.t array
+      }
   end
 
   module Bigint = Bigint
@@ -350,9 +355,13 @@ struct
             let fields = Array.map ~f:read_cvar fields in
             return_typ.value_of_fields (fields, aux)
           in
+          (* TODO(dw): so here I understand we have to convert from the
+             Proof_inputs to the rust backend. *)
+          let runtime_tables = [||] in
           f
             { Proof_inputs.public_inputs = primary
             ; auxiliary_inputs = auxiliary
+            ; runtime_tables
             }
             output )
         input_typ return_typ

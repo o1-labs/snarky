@@ -65,6 +65,10 @@ module type S = sig
     val to_constant : t -> Field.t option
   end
 
+  module RuntimeTable : sig
+    type 'f t
+  end
+
   module R1CS_constraint_system :
     Backend_intf.Constraint_system_intf with module Field := Field
 
@@ -215,6 +219,8 @@ struct
       | _ ->
           None
   end
+
+  module RuntimeTable = Backend.RuntimeTable
 
   module Constraint = struct
     open Constraint

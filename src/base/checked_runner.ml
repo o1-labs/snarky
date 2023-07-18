@@ -412,6 +412,10 @@ module type S = sig
 
   type constr
 
+  (** The type representing the constraint system
+
+      TODO: rename in cs
+  *)
   type r1cs
 
   val set_constraint_logger :

@@ -757,6 +757,7 @@ module Run = struct
       let g : run_state -> run_state * a = as_stateful f in
       Function g
 
+    module RuntimeTable = Backend.RuntimeTable
     module R1CS_constraint_system = Snark.R1CS_constraint_system
 
     type field = Snark.field

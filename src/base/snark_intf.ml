@@ -750,10 +750,17 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val read : ('var, 'value) Typ.t -> 'var -> 'value t
   end
 
+  and RuntimeTable : sig
+    type 'f t
+  end
+
   (** The complete set of inputs needed to generate a zero-knowledge proof. *)
   and Proof_inputs : sig
     type t =
-      { public_inputs : Field.Vector.t; auxiliary_inputs : Field.Vector.t }
+      { public_inputs : Field.Vector.t
+      ; auxiliary_inputs : Field.Vector.t
+      ; runtime_tables : Field.t RuntimeTable.t array
+      }
   end
 
   module Let_syntax : Monad_let.Syntax2 with type ('a, 's) t := 'a Checked.t
@@ -995,8 +1002,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       the result to a function.
 
       Returns the result of applying [f] to the record of field vectors
-      [{public_inputs; auxiliary_inputs}], corresponding to the given public
-      input and generated auxiliary input.
+      [{public_inputs; auxiliary_inputs; runtime_tables}], corresponding to the
+      given public input and generated auxiliary input.
   *)
   val generate_witness_conv :
        f:(Proof_inputs.t -> 'r_value -> 'out)
@@ -1263,10 +1270,15 @@ module type Run_basic = sig
     val project : bool list -> field
   end
 
+  and RuntimeTable : sig
+    type 'f t
+  end
+
   and Proof_inputs : sig
     type t =
       { public_inputs : Field.Constant.Vector.t
       ; auxiliary_inputs : Field.Constant.Vector.t
+      ; runtime_tables : Field.Constant.t RuntimeTable.t array
       }
   end
 
