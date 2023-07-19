@@ -688,8 +688,6 @@ module Make (Backend : Backend_intf.S) = struct
   module Enumerable = Enumerable.Make (Basic)
 end
 
-module Typ0 = Typ
-
 (** The main functor for the imperative interface *)
 module Run = struct
   let functor_counter = ref 0
