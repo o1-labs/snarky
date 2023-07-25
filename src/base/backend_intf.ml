@@ -32,10 +32,6 @@ module type S = sig
 
   val field_size : Bigint.t
 
-  module RuntimeTable : sig
-    type 'f t
-  end
-
   module R1CS_constraint_system :
     Constraint_system_intf with module Field := Field
 end

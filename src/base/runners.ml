@@ -28,13 +28,15 @@ struct
 
   let field_vec () = pack_field_vec (Field.Vector.create ())
 
-  module RuntimeTable = Backend.RuntimeTable
+  module Runtime_table = struct
+    type t = { id : int32; data : Field.t array }
+  end
 
   module Proof_inputs = struct
     type t =
       { public_inputs : Field.Vector.t
       ; auxiliary_inputs : Field.Vector.t
-      ; runtime_tables : Field.t RuntimeTable.t array
+      ; runtime_tables : Runtime_table.t array
       }
   end
 
@@ -55,10 +57,12 @@ struct
     let input = field_vec () in
     let next_auxiliary = ref num_inputs in
     let aux = field_vec () in
+    (* TODO(dw) runtime table empty *)
+    let runtime_tables = [||] in
     let system = R1CS_constraint_system.create () in
     let state =
-      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
-        ~with_witness:false ()
+      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~runtime_tables
+        ~system ~with_witness:false ()
     in
     let state, res = run t state in
     let res, _ = return_typ.var_to_fields res in
@@ -76,13 +80,16 @@ struct
       ~return_typ:(Types.Typ.Typ return_typ) ~output : Field.Vector.t * _ =
     let next_auxiliary = ref num_inputs in
     let aux = Field.Vector.create () in
+    (* TODO(dw): runtime tables empty *)
+    let runtime_tables = [||] in
     let handler =
       List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
           Request.Handler.(push handler (create_single h)) )
     in
     let state =
       Runner.State.make ?system ~num_inputs ~input:(pack_field_vec input)
-        ~next_auxiliary ~aux:(pack_field_vec aux) ~handler ~with_witness:true ()
+        ~next_auxiliary ~aux:(pack_field_vec aux) ~runtime_tables ~handler
+        ~with_witness:true ()
     in
     let state, res = run t0 state in
     let res, auxiliary_output_data = return_typ.var_to_fields res in
@@ -107,6 +114,8 @@ struct
     let input = field_vec () in
     let next_auxiliary = ref 0 in
     let aux = Field.Vector.create () in
+    (* TODO(dw) runtime table empty *)
+    let runtime_tables = [||] in
     let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
       let get_one v = Field.Vector.get aux v in
@@ -114,7 +123,7 @@ struct
     in
     let state =
       Runner.State.make ~num_inputs ~input ~next_auxiliary
-        ~aux:(pack_field_vec aux) ~system ~eval_constraints:true
+        ~aux:(pack_field_vec aux) ~runtime_tables ~system ~eval_constraints:true
         ~with_witness:true ()
     in
     let _, x = run t0 state in
@@ -132,6 +141,8 @@ struct
     let input = field_vec () in
     let next_auxiliary = ref 0 in
     let aux = Field.Vector.create () in
+    (* TODO(dw): runtime tables empty *)
+    let runtime_tables = [||] in
     let system = R1CS_constraint_system.create () in
     let get_value : Cvar.t -> Field.t =
       let get_one v = Field.Vector.get aux v in
@@ -139,7 +150,7 @@ struct
     in
     let state =
       Runner.State.make ~num_inputs ~input ~next_auxiliary
-        ~aux:(pack_field_vec aux) ~system ~eval_constraints:true
+        ~aux:(pack_field_vec aux) ~runtime_tables ~system ~eval_constraints:true
         ~with_witness:true ()
     in
     let res = run t0 state in
@@ -161,8 +172,10 @@ struct
     let input = field_vec () in
     let next_auxiliary = ref 0 in
     let aux = field_vec () in
+    (* TODO(dw): runtime tables empty *)
+    let runtime_tables = [||] in
     let state =
-      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux
+      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~runtime_tables
         ~with_witness:true ()
     in
     match run t0 state with _, x -> x

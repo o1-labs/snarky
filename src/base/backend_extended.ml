@@ -9,6 +9,7 @@ type 'a json =
   as
   'a
 
+(** Module type for the monadic interface *)
 module type S = sig
   module Field : Snarky_intf.Field.Full
 
@@ -65,8 +66,8 @@ module type S = sig
     val to_constant : t -> Field.t option
   end
 
-  module RuntimeTable : sig
-    type 'f t
+  module Runtime_table : sig
+    type t = { id : int32; data : Field.t array }
   end
 
   module R1CS_constraint_system :
@@ -94,6 +95,7 @@ module type S = sig
   end
 end
 
+(** Functor for the monadic interface *)
 module Make (Backend : Backend_intf.S) :
   S
     with type Field.t = Backend.Field.t
@@ -220,7 +222,9 @@ struct
           None
   end
 
-  module RuntimeTable = Backend.RuntimeTable
+  module Runtime_table = struct
+    type t = { id : int32; data : Field.t array }
+  end
 
   module Constraint = struct
     open Constraint

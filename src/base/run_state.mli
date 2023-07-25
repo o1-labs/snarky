@@ -25,6 +25,7 @@ val make :
   -> next_auxiliary:int ref
   -> aux:'field Vector.t
        (* TODO(dw): I feel here runtime tables should be added *)
+  -> runtime_tables:'field Runtime_table.t array
   -> ?system:'field Constraint_system.t
   -> eval_constraints:bool
   -> ?log_constraint:
@@ -84,3 +85,5 @@ val is_running : _ t -> bool
 val set_is_running : 'f t -> bool -> 'f t
 
 val next_auxiliary : _ t -> int
+
+val runtime_tables : 'field t -> 'field Runtime_table.t array

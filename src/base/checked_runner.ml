@@ -110,6 +110,8 @@ struct
   open Constraint
   open Backend
 
+  type runtime_table = Backend.Runtime_table.t
+
   let get_value (t : Field.t Run_state.t) : Cvar.t -> Field.t =
     let get_one i = Run_state.get_variable_value t i in
     Cvar.eval (`Return_values_will_be_mutated get_one)
@@ -305,9 +307,10 @@ struct
           log ~start lab !count ) ;
       count := !count + Option.value_map ~default:0 ~f:weight c
     in
+    let runtime_tables = [||] in
     let state =
       Run_state.make ~num_inputs:0 ~input:Run_state.Vector.null
-        ~next_auxiliary:(ref 1) ~aux:Run_state.Vector.null
+        ~next_auxiliary:(ref 1) ~aux:Run_state.Vector.null ~runtime_tables
         ~eval_constraints:false ~log_constraint ~with_witness:false ()
     in
     let _ = Simple.eval (t ()) state in
@@ -333,6 +336,8 @@ module Make (Backend : Backend_extended.S) = struct
   open Backend
 
   type 'f field = 'f
+
+  type runtime_table = Backend.Runtime_table.t
 
   let constraint_logger = ref None
 
@@ -370,12 +375,13 @@ module Make (Backend : Backend_extended.S) = struct
   let dummy_vector = Run_state.Vector.null
 
   let fake_state next_auxiliary stack =
+    let runtime_tables = [||] in
     Run_state.make ~num_inputs:0 ~input:Run_state.Vector.null ~next_auxiliary
-      ~aux:Run_state.Vector.null ~eval_constraints:false ~stack
+      ~aux:Run_state.Vector.null ~runtime_tables ~eval_constraints:false ~stack
       ~with_witness:false ()
 
   module State = struct
-    let make ~num_inputs ~input ~next_auxiliary ~aux ?system
+    let make ~num_inputs ~input ~next_auxiliary ~aux ~runtime_tables ?system
         ?(eval_constraints = !eval_constraints_ref) ?handler ~with_witness
         ?log_constraint () =
       let log_constraint =
@@ -402,8 +408,8 @@ module Make (Backend : Backend_extended.S) = struct
             end in
             Constraint_system.T ((module M), sys) )
       in
-      Run_state.make ~num_inputs ~input ~next_auxiliary ~aux ?system
-        ~eval_constraints ?log_constraint ?handler ~with_witness ()
+      Run_state.make ~num_inputs ~input ~next_auxiliary ~aux ~runtime_tables
+        ?system ~eval_constraints ?log_constraint ?handler ~with_witness ()
   end
 end
 
@@ -417,6 +423,8 @@ module type S = sig
       TODO: rename in cs
   *)
   type r1cs
+
+  type runtime_table
 
   val set_constraint_logger :
     (?at_label_boundary:[ `Start | `End ] * string -> constr -> unit) -> unit
@@ -432,7 +440,7 @@ module type S = sig
   val run : ('a, field) Types.Checked.t -> run_state -> run_state * 'a
 
   module State : sig
-    (** [make num_inputs input next_auxiliary system eval_constraints handler with_witness log_constraint ()]
+    (** [make num_inputs input next_auxiliary runtime_tables system eval_constraints handler with_witness log_constraint ()]
         - if [log_constraint] is set, it will override the logger set by [set_constraint_logger].
     *)
     val make :
@@ -440,6 +448,7 @@ module type S = sig
       -> input:field Run_state.Vector.t
       -> next_auxiliary:int ref
       -> aux:field Run_state.Vector.t
+      -> runtime_tables:runtime_table array
       -> ?system:r1cs
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t

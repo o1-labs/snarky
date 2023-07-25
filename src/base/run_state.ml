@@ -36,6 +36,7 @@ type 'field t =
   { system : 'field Constraint_system.t option
   ; input : 'field Vector.t
   ; aux : 'field Vector.t
+  ; runtime_tables : 'field Runtime_table.t array
   ; eval_constraints : bool
   ; num_inputs : int
   ; next_auxiliary : int ref
@@ -51,15 +52,16 @@ type 'field t =
       option
   }
 
-let make ~num_inputs ~input ~next_auxiliary ~aux ?system ~eval_constraints
-    ?log_constraint ?handler ~with_witness ?(stack = []) ?(is_running = true) ()
-    =
+let make ~num_inputs ~input ~next_auxiliary ~aux ~runtime_tables ?system
+    ~eval_constraints ?log_constraint ?handler ~with_witness ?(stack = [])
+    ?(is_running = true) () =
   next_auxiliary := num_inputs ;
   (* We can't evaluate the constraints if we are not computing over a value. *)
   let eval_constraints = eval_constraints && with_witness in
   { system
   ; input
   ; aux
+  ; runtime_tables
   ; eval_constraints
   ; num_inputs
   ; next_auxiliary
@@ -117,3 +119,5 @@ let set_as_prover t as_prover = t.as_prover := as_prover
 let set_handler t handler = { t with handler }
 
 let set_is_running t is_running = { t with is_running }
+
+let runtime_tables t = t.runtime_tables

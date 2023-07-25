@@ -21,6 +21,7 @@ module Make_basic
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
+                 and type runtime_table = Backend.Runtime_table.t
                  and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend
@@ -639,6 +640,10 @@ struct
       [%test_eq: a] checked_result (unchecked input)
   end
 
+  module Runtime_table = struct
+    type t = { id : int32; data : Field.t array }
+  end
+
   module R1CS_constraint_system = struct
     include R1CS_constraint_system
   end
@@ -710,6 +715,8 @@ module Run = struct
     open Run_state
     open Snark
 
+    type runtime_table = Runtime_table.t
+
     let set_constraint_logger = set_constraint_logger
 
     let clear_constraint_logger = clear_constraint_logger
@@ -717,10 +724,13 @@ module Run = struct
     let this_functor_id = incr functor_counter ; !functor_counter
 
     let state =
+      (* TODO(dw): runtime_tables empty *)
+      let runtime_tables = [||] in
       ref
         (Run_state.make ~input:(field_vec ()) ~aux:(field_vec ())
-           ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 0)
-           ~with_witness:false ~stack:[] ~is_running:false () )
+           ~runtime_tables ~eval_constraints:false ~num_inputs:0
+           ~next_auxiliary:(ref 0) ~with_witness:false ~stack:[]
+           ~is_running:false () )
 
     let dump () = Run_state.dump !state
 
@@ -757,7 +767,6 @@ module Run = struct
       let g : run_state -> run_state * a = as_stateful f in
       Function g
 
-    module RuntimeTable = Backend.RuntimeTable
     module R1CS_constraint_system = Snark.R1CS_constraint_system
 
     type field = Snark.field
@@ -1419,12 +1428,14 @@ module Run = struct
                 f ?start lab !count ) ) ;
         count := !count + Option.value_map ~default:0 ~f:weight c
       in
+      (* TODO(dw): runtime_tables empty *)
+      let runtime_tables = [||] in
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
       let old = !state in
       state :=
         Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
-          ~next_auxiliary:(ref 0) ~eval_constraints:false ~with_witness:false
-          ~log_constraint () ;
+          ~runtime_tables ~next_auxiliary:(ref 0) ~eval_constraints:false
+          ~with_witness:false ~log_constraint () ;
       ignore (mark_active ~f:x) ;
       state := old ;
       !count

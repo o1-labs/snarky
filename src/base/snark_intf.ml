@@ -750,8 +750,8 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     val read : ('var, 'value) Typ.t -> 'var -> 'value t
   end
 
-  and RuntimeTable : sig
-    type 'f t
+  and Runtime_table : sig
+    type t = { id : int32; data : Field.t array }
   end
 
   (** The complete set of inputs needed to generate a zero-knowledge proof. *)
@@ -759,7 +759,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type t =
       { public_inputs : Field.Vector.t
       ; auxiliary_inputs : Field.Vector.t
-      ; runtime_tables : Field.t RuntimeTable.t array
+      ; runtime_tables : Runtime_table.t array
       }
   end
 
@@ -1270,15 +1270,15 @@ module type Run_basic = sig
     val project : bool list -> field
   end
 
-  and RuntimeTable : sig
-    type 'f t
+  and Runtime_table : sig
+    type t = { id : int32; data : field array }
   end
 
   and Proof_inputs : sig
     type t =
       { public_inputs : Field.Constant.Vector.t
       ; auxiliary_inputs : Field.Constant.Vector.t
-      ; runtime_tables : Field.Constant.t RuntimeTable.t array
+      ; runtime_tables : Runtime_table.t array
       }
   end
 
