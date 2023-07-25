@@ -67,7 +67,7 @@ module type S = sig
   end
 
   module Runtime_table : sig
-    type t = { id : int32; data : Field.t array }
+    type 'f t = { id : int32; data : 'f array }
   end
 
   module R1CS_constraint_system :
@@ -223,7 +223,7 @@ struct
   end
 
   module Runtime_table = struct
-    type t = { id : int32; data : Field.t array }
+    type 'f t = { id : int32; data : 'f array }
   end
 
   module Constraint = struct

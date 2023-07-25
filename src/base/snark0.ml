@@ -21,7 +21,7 @@ module Make_basic
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type runtime_table = Backend.Runtime_table.t
+                 and type 'f runtime_table = 'f Backend.Runtime_table.t
                  and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend

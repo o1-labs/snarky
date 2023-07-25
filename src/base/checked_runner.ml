@@ -110,7 +110,7 @@ struct
   open Constraint
   open Backend
 
-  type runtime_table = Backend.Runtime_table.t
+  type 'f runtime_table = 'f Backend.Runtime_table.t
 
   let get_value (t : Field.t Run_state.t) : Cvar.t -> Field.t =
     let get_one i = Run_state.get_variable_value t i in
@@ -337,7 +337,7 @@ module Make (Backend : Backend_extended.S) = struct
 
   type 'f field = 'f
 
-  type runtime_table = Backend.Runtime_table.t
+  type 'f runtime_table = 'f Backend.Runtime_table.t
 
   let constraint_logger = ref None
 
@@ -424,7 +424,7 @@ module type S = sig
   *)
   type r1cs
 
-  type runtime_table
+  type 'f runtime_table
 
   val set_constraint_logger :
     (?at_label_boundary:[ `Start | `End ] * string -> constr -> unit) -> unit
@@ -448,7 +448,7 @@ module type S = sig
       -> input:field Run_state.Vector.t
       -> next_auxiliary:int ref
       -> aux:field Run_state.Vector.t
-      -> runtime_tables:runtime_table array
+      -> runtime_tables:field runtime_table array
       -> ?system:r1cs
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t
