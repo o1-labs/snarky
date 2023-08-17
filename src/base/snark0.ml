@@ -464,11 +464,12 @@ struct
             (of_binary (lt_binary (xs :> Boolean.var list) (ys :> bool list)))
 
       let field_size_bits =
-        List.init Field.size_in_bits ~f:(fun i ->
-            Z.testbit
-              (Bignum_bigint.to_zarith_bigint Field.size)
-              Stdlib.(Field.size_in_bits - 1 - i) )
-        |> Bitstring_lib.Bitstring.Msb_first.of_list
+        lazy
+          ( List.init Field.size_in_bits ~f:(fun i ->
+                Z.testbit
+                  (Bignum_bigint.to_zarith_bigint Field.size)
+                  Stdlib.(Field.size_in_bits - 1 - i) )
+          |> Bitstring_lib.Bitstring.Msb_first.of_list )
 
       let unpack_full x =
         let module Bitstring = Bitstring_lib.Bitstring in
@@ -480,7 +481,7 @@ struct
         let%map () =
           lt_bitstring_value
             (Bitstring.Msb_first.of_lsb_first res)
-            field_size_bits
+            (Lazy.force field_size_bits)
           >>= Checked.Boolean.Assert.is_true
         in
         res
