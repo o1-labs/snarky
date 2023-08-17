@@ -174,10 +174,6 @@ struct
 
     let t_of_sexp = Fn.compose of_bignum_bigint Bignum_bigint.t_of_sexp
 
-    let to_string = Fn.compose Bignum_bigint.to_string to_bignum_bigint
-
-    let of_string = Fn.compose of_bignum_bigint Bignum_bigint.of_string
-
     let%test_unit "project correctness" =
       Quickcheck.test
         Quickcheck.Generator.(

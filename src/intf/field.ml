@@ -3,6 +3,10 @@ module type S = sig
 
   val of_int : int -> t
 
+  val of_string : string -> t
+
+  val to_string : t -> string
+
   val one : t
 
   val zero : t
