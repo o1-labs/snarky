@@ -308,19 +308,21 @@ module Make_sponge (P : Intf.Permutation) = struct
         t.sponge_state <- Absorbed 1
 
   let squeeze t =
+    (* to prevent giving a reference to the internal state *)
+    let copy x = (P.copy [| x |]).(0) in
     match t.sponge_state with
     | Squeezed n ->
         if n = rate then (
           t.state <- block_cipher t.params t.state ;
           t.sponge_state <- Squeezed 1 ;
-          t.state.(0) )
+          copy t.state.(0) )
         else (
           t.sponge_state <- Squeezed (n + 1) ;
-          t.state.(n) )
+          copy t.state.(n) )
     | Absorbed _ ->
         t.state <- block_cipher t.params t.state ;
         t.sponge_state <- Squeezed 1 ;
-        t.state.(0)
+        copy t.state.(0)
 end
 
 module Make_debug_sponge (P : sig
