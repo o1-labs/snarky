@@ -28,9 +28,10 @@ module Handler = struct
    fun stack0 label_stack req0 ->
     let rec go req = function
       | [] ->
-          failwith
-            ( "Unhandled request: "
-            ^ Core_kernel.String.concat ~sep:"\n" label_stack )
+          raise
+            (Failure
+               ( "Unhandled request: "
+               ^ Core_kernel.String.concat ~sep:"\n" label_stack ) )
       | { handle } :: hs -> (
           match handle req with
           | Provide x ->

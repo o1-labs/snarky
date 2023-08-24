@@ -70,7 +70,11 @@ end = struct
 
     let to_basic x = T x
 
-    let of_basic = function T x -> x | _ -> failwith "different constructor"
+    let of_basic = function
+      | T x ->
+          x
+      | _ ->
+          raise (Failure "different constructor")
   end
 
   let () = Basic.add_case (module M)
