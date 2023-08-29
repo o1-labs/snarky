@@ -24,6 +24,8 @@ module type Constraint_system_intf = sig
 
   val get_concatenated_fixed_lookup_table_size : t -> int
 
+  val get_concatenated_runtime_lookup_table_size : t -> int
+
   val get_rows_len : t -> int
 end
 

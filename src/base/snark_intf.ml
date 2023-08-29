@@ -1118,6 +1118,8 @@ module type Run_basic = sig
 
     val get_concatenated_fixed_lookup_table_size : t -> int
 
+    val get_concatenated_runtime_lookup_table_size : t -> int
+
     val get_rows_len : t -> int
   end
 
