@@ -33,7 +33,7 @@ module Basic = struct
 
     val to_basic : ('v, 'f) t -> ('v, 'f) basic
 
-    val of_basic : ('v, 'f) basic -> ('v, 'f) t
+    val of_basic : ('v, 'f) basic -> ('v, 'f) t option
   end
 
   module Entry = struct
@@ -44,20 +44,21 @@ module Basic = struct
 
   let add_case m = cases := m :: !cases
 
-  let case f =
-    List.find_map_exn !cases ~f:(fun m -> Option.try_with (fun () -> f m))
+  let case f = List.find_map_exn !cases ~f:(fun m -> try f m with _ -> None)
 
   let sexp_of_t f1 f2 t =
-    case (fun (module M) -> M.sexp_of_t f1 f2 (M.of_basic t))
+    case (fun (module M) -> M.of_basic t |> Option.map ~f:(M.sexp_of_t f1 f2))
 
   let t_of_sexp f1 f2 s =
-    case (fun (module M) -> M.to_basic (M.t_of_sexp f1 f2 s))
+    case (fun (module M) -> Some (M.to_basic (M.t_of_sexp f1 f2 s)))
 
   let eval (type f) (fm : (module Snarky_intf.Field.S with type t = f))
       (f : 'v -> f) (t : ('v, f) basic) : bool =
-    case (fun (module M) -> M.eval fm f (M.of_basic t))
+    case (fun (module M) -> M.of_basic t |> Option.map ~f:(M.eval fm f))
 
-  let map t ~f = case (fun (module M) -> M.to_basic (M.map (M.of_basic t) ~f))
+  let map t ~f =
+    case (fun (module M) ->
+        M.of_basic t |> Option.map ~f:(fun t -> M.to_basic (M.map t ~f)) )
 end
 
 module Add_kind (C : S) : sig
@@ -70,7 +71,7 @@ end = struct
 
     let to_basic x = T x
 
-    let of_basic = function T x -> x | _ -> failwith "different constructor"
+    let of_basic = function T x -> Some x | _ -> None
   end
 
   let () = Basic.add_case (module M)
@@ -126,7 +127,7 @@ let () =
 
     let t_of_sexp f _ s = Essential.(to_basic (t_of_sexp f s))
 
-    let of_basic = Fn.id
+    let of_basic t = Some t
 
     let to_basic = Fn.id
 

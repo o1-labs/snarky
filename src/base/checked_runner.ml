@@ -256,8 +256,15 @@ struct
           let old = Run_state.as_prover s in
           Run_state.set_as_prover s true ;
           let value =
-            As_prover.Provider.run p (Run_state.stack s) (get_value s)
-              (Run_state.handler s)
+            match
+              As_prover.Provider.run p (get_value s) (Run_state.handler s)
+            with
+            | Some x ->
+                x
+            | None ->
+                failwith
+                  ( "Unhandled request: "
+                  ^ Core_kernel.String.concat ~sep:"\n" (Run_state.stack s) )
           in
           Run_state.set_as_prover s old ;
           let var =
