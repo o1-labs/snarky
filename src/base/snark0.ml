@@ -1332,6 +1332,22 @@ module Run = struct
           Run_state.set_as_prover !state true ;
           res )
 
+    module Low_level = struct
+      type state = field Run_state.t
+
+      let state = state
+
+      let set_state new_state = state := new_state
+
+      type field_vec = field Run_state.Vector.t
+
+      let make_state = Runner.State.make
+
+      let mark_active f = mark_active ~f
+
+      let field_vec = field_vec
+    end
+
     module Run_and_check_deferred (M : sig
       type _ t
 
