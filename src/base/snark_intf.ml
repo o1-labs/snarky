@@ -1405,16 +1405,13 @@ module type Run_basic = sig
 
     val set_state : state -> unit
 
-    type field_vec = field Run_state.Vector.t
-
     val make_state :
          num_inputs:int
-      -> input:field_vec
+      -> input:Field.Constant.Vector.t
       -> next_auxiliary:int ref
-      -> aux:field_vec
+      -> aux:Field.Constant.Vector.t
       -> ?system:R1CS_constraint_system.t
       -> ?eval_constraints:bool
-      -> ?handler:Request.Handler.t
       -> with_witness:bool
       -> ?log_constraint:
            (   ?at_label_boundary:[ `End | `Start ] * string
@@ -1427,8 +1424,6 @@ module type Run_basic = sig
       -> state
 
     val mark_active : (unit -> 'a) -> 'a
-
-    val field_vec : unit -> field_vec
   end
 
   module Run_and_check_deferred (M : sig

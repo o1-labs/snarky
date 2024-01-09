@@ -1339,13 +1339,13 @@ module Run = struct
 
       let set_state new_state = state := new_state
 
-      type field_vec = field Run_state.Vector.t
-
-      let make_state = Runner.State.make
+      let make_state ~num_inputs ~input ~next_auxiliary ~aux ?system
+          ?eval_constraints ~with_witness ?log_constraint () =
+        Runner.State.make ~num_inputs ~input:(pack_field_vec input)
+          ~next_auxiliary ~aux:(pack_field_vec aux) ?system ?eval_constraints
+          ~with_witness ?log_constraint ()
 
       let mark_active f = mark_active ~f
-
-      let field_vec = field_vec
     end
 
     module Run_and_check_deferred (M : sig
