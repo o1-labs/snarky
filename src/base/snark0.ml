@@ -1337,15 +1337,18 @@ module Run = struct
 
       let state = state
 
-      let set_state new_state = state := new_state
-
       let make_state ~num_inputs ~input ~next_auxiliary ~aux ?system
           ?eval_constraints ~with_witness ?log_constraint () =
         Runner.State.make ~num_inputs ~input:(pack_field_vec input)
           ~next_auxiliary ~aux:(pack_field_vec aux) ?system ?eval_constraints
           ~with_witness ?log_constraint ()
 
-      let mark_active f = mark_active ~f
+      let push_active_counter () =
+        let counters = !active_counters in
+        active_counters := this_functor_id :: counters ;
+        counters
+
+      let reset_active_counter counters = active_counters := counters
     end
 
     module Run_and_check_deferred (M : sig

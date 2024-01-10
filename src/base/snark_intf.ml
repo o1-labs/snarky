@@ -1403,8 +1403,6 @@ module type Run_basic = sig
 
     val state : state ref
 
-    val set_state : state -> unit
-
     val make_state :
          num_inputs:int
       -> input:Field.Constant.Vector.t
@@ -1423,7 +1421,9 @@ module type Run_basic = sig
       -> unit
       -> state
 
-    val mark_active : (unit -> 'a) -> 'a
+    val push_active_counter : unit -> int list
+
+    val reset_active_counter : int list -> unit
   end
 
   module Run_and_check_deferred (M : sig
