@@ -166,15 +166,13 @@ struct
 
     module Constraint_system_builder : sig
       type ('input_var, 'return_var, 'field, 'checked) t =
-        { run_computation :
-            ('input_var -> 'checked) -> 'field Run_state.t * 'return_var
+        { run_computation : 'a. ('input_var -> 'field Run_state.t -> 'a) -> 'a
         ; finish_computation :
             'field Run_state.t * 'return_var -> R1CS_constraint_system.t
         }
 
       val build :
-           run:('retvar, 'checked) Runner.run
-        -> input_typ:
+           input_typ:
              ( 'input_var
              , 'input_value
              , field
@@ -222,16 +220,14 @@ struct
         (var, retval)
 
       type ('input_var, 'return_var, 'field, 'checked) t =
-        { run_computation :
-            ('input_var -> 'checked) -> 'field Run_state.t * 'return_var
+        { run_computation : 'a. ('input_var -> 'field Run_state.t -> 'a) -> 'a
         ; finish_computation :
             'field Run_state.t * 'return_var -> R1CS_constraint_system.t
         }
 
       let build :
           type checked input_var input_value retvar retval.
-             run:(retvar, checked) Runner.run
-          -> input_typ:
+             input_typ:
                ( input_var
                , input_value
                , field
@@ -239,7 +235,7 @@ struct
                Types.Typ.typ
           -> return_typ:(retvar, retval, _, _) Types.Typ.t
           -> (input_var, retvar, field, checked) t =
-       fun ~run ~input_typ ~return_typ ->
+       fun ~input_typ ~return_typ ->
         let next_input = ref 0 in
         (* allocate variables for the public input and the public output *)
         let var, retvar =
@@ -263,10 +259,7 @@ struct
           in
           Checked.run checked state
         in
-        let run_computation k =
-          let state, res = run (k var) state in
-          (state, res)
-        in
+        let run_computation k = k var state in
         let finish_computation (state, res) =
           let res, _ = return_typ.var_to_fields res in
           let retvar, _ = return_typ.var_to_fields retvar in
@@ -289,10 +282,10 @@ struct
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
      fun ~run ~input_typ ~return_typ k ->
-      let builder =
-        Constraint_system_builder.build ~run ~input_typ ~return_typ
+      let builder = Constraint_system_builder.build ~input_typ ~return_typ in
+      let state, res =
+        builder.run_computation (fun var state -> run (k var) state)
       in
-      let state, res = builder.run_computation k in
       builder.finish_computation (state, res)
 
     let generate_public_input :
