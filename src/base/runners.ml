@@ -311,9 +311,15 @@ struct
             'field Run_state.t * 'return_var -> Proof_inputs.t * 'return_value
         }
 
-      let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list))
-          t0 (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ)
-          ~output input_var =
+      let auxiliary_input ~run ?(handlers = ([] : Handler.t list)) t0 ~input_typ
+          ~return_typ value =
+        let { Conv.input_var
+            ; output_var = output
+            ; first_auxiliary = num_inputs
+            ; primary_input = input
+            } =
+          Conv.receive_public_input input_typ return_typ value
+        in
         let next_auxiliary = ref num_inputs in
         let aux = Field.Vector.create () in
         let handler =
@@ -327,6 +333,7 @@ struct
         in
         let state, res = run (t0 input_var) state in
         let finish_witness_generation (state, res) =
+          let (Typ return_typ) = return_typ in
           let res_fields, auxiliary_output_data =
             return_typ.var_to_fields res
           in
@@ -376,19 +383,12 @@ struct
         -> 'k_var
         -> 'k_value =
      fun ~run ~input_typ ~return_typ ?handlers k value ->
-      let { Conv.input_var
-          ; output_var = output
-          ; first_auxiliary = num_inputs
-          ; primary_input = primary
-          } =
-        Conv.receive_public_input input_typ return_typ value
-      in
       (* NB: No need to finish witness generation, we'll discard the
          witness and public output anyway.
       *)
       let (state, res), { Witness_builder.finish_witness_generation = _ } =
-        Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
-          ~num_inputs k primary input_var
+        Witness_builder.auxiliary_input ~run ?handlers ~input_typ ~return_typ k
+          value
       in
       ignore (state, res)
 
@@ -401,16 +401,9 @@ struct
         -> 'k_var
         -> 'k_value =
      fun ~run ~f ~input_typ ~return_typ ?handlers k value ->
-      let { Conv.input_var
-          ; output_var = output
-          ; first_auxiliary = num_inputs
-          ; primary_input = primary
-          } =
-        Conv.receive_public_input input_typ return_typ value
-      in
       let (state, res), builder =
-        Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
-          ~num_inputs k primary input_var
+        Witness_builder.auxiliary_input ~run ?handlers ~input_typ ~return_typ k
+          value
       in
       let witness, output = builder.finish_witness_generation (state, res) in
       f witness output
