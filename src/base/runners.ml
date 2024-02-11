@@ -270,6 +270,13 @@ struct
       primary_input
 
     module Conv = struct
+      type ('input_var, 'output_var) t =
+        { input_var : 'input_var
+        ; output_var : 'output_var
+        ; first_auxiliary : int
+        ; primary_input : Field.Vector.t
+        }
+
       let receive_public_input :
              ('input_var, 'input_value, _, _) Types.Typ.t
           -> _ Types.Typ.t
@@ -295,7 +302,7 @@ struct
             , return_typ.constraint_system_auxiliary () )
         in
         let first_auxiliary = !next_input in
-        (var, retval, first_auxiliary, primary_input)
+        { input_var = var; output_var = retval; first_auxiliary; primary_input }
     end
 
     module Witness_builder = struct
@@ -355,7 +362,11 @@ struct
         -> 'input_value
         -> r_value =
      fun cont0 input_typ return_typ k0 value ->
-      let var, retval, first_auxiliary, primary_input =
+      let { Conv.input_var = var
+          ; output_var = retval
+          ; first_auxiliary
+          ; primary_input
+          } =
         Conv.receive_public_input input_typ return_typ value
       in
       cont0 first_auxiliary retval (k0 () var) primary_input
