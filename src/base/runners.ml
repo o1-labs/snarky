@@ -291,15 +291,26 @@ struct
         in
         let state, res = run t0 state in
         let finish_witness_generation (state, res) =
-          let res, auxiliary_output_data = return_typ.var_to_fields res in
-          let output, _ = return_typ.var_to_fields output in
-          let _state =
-            Array.fold2_exn ~init:state res output ~f:(fun state res output ->
-                Field.Vector.emplace_back input (Runner.get_value state res) ;
-                fst @@ Checked.run (Checked.assert_equal res output) state )
+          let res_fields, auxiliary_output_data =
+            return_typ.var_to_fields res
+          in
+          let output_fields, _ = return_typ.var_to_fields output in
+          let state =
+            Array.fold2_exn ~init:state res_fields output_fields
+              ~f:(fun state res_field output_field ->
+                Field.Vector.emplace_back input
+                  (Runner.get_value state res_field) ;
+                fst
+                @@ Checked.run
+                     (Checked.assert_equal res_field output_field)
+                     state )
           in
           let true_output =
-            return_typ.var_of_fields (output, auxiliary_output_data)
+            (* NB: We use [output_fields] to avoid resolving [Cvar.t]s beyond a
+               vector access.
+            *)
+            let fields = Array.map ~f:(Runner.get_value state) output_fields in
+            return_typ.value_of_fields (fields, auxiliary_output_data)
           in
           (aux, true_output)
         in
@@ -374,19 +385,6 @@ struct
           in
           let auxiliary, output =
             builder.finish_witness_generation (state, res)
-          in
-          let output =
-            let (Typ return_typ) = return_typ in
-            let fields, aux = return_typ.var_to_fields output in
-            let read_cvar =
-              let get_one i =
-                if i < num_inputs then Field.Vector.get primary i
-                else Field.Vector.get auxiliary (i - num_inputs)
-              in
-              Cvar.eval (`Return_values_will_be_mutated get_one)
-            in
-            let fields = Array.map ~f:read_cvar fields in
-            return_typ.value_of_fields (fields, aux)
           in
           f
             { Proof_inputs.public_inputs = primary
