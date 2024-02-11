@@ -356,7 +356,16 @@ struct
         ((state, res), { finish_witness_generation })
     end
 
-    let conv = Conv.conv
+    let conv :
+        type r_var r_value.
+           (int -> _ -> r_var -> Field.Vector.t -> r_value)
+        -> ('input_var, 'input_value, _, _) Types.Typ.t
+        -> _ Types.Typ.t
+        -> (unit -> 'input_var -> r_var)
+        -> 'input_value
+        -> r_value =
+     fun cont0 input_typ return_typ k0 ->
+      Conv.conv cont0 input_typ return_typ k0
 
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
