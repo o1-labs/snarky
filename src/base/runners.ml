@@ -165,12 +165,15 @@ struct
       v
 
     module Constraint_system_builder : sig
-      type ('input_var, 'checked) t =
-        { run_computation : ('input_var -> 'checked) -> R1CS_constraint_system.t
+      type ('input_var, 'return_var, 'field, 'checked) t =
+        { run_computation :
+            ('input_var -> 'checked) -> 'field Run_state.t * 'return_var
+        ; finish_computation :
+            'field Run_state.t * 'return_var -> R1CS_constraint_system.t
         }
 
       val build :
-           run:('a, 'checked) Runner.run
+           run:('retvar, 'checked) Runner.run
         -> input_typ:
              ( 'input_var
              , 'input_value
@@ -178,12 +181,12 @@ struct
              , (unit, field) Checked.Types.Checked.t )
              Types0.Typ.typ
         -> return_typ:
-             ( 'a
+             ( 'retvar
              , 'retval
              , field
              , (unit, field) Checked.Types.Checked.t )
              Types0.Typ.typ
-        -> ('input_var, 'checked) t
+        -> ('input_var, 'retvar, field, 'checked) t
     end = struct
       let allocate_public_inputs :
           type input_var input_value output_var output_value.
@@ -218,21 +221,24 @@ struct
         let retval = alloc_input return_typ in
         (var, retval)
 
-      type ('input_var, 'checked) t =
-        { run_computation : ('input_var -> 'checked) -> R1CS_constraint_system.t
+      type ('input_var, 'return_var, 'field, 'checked) t =
+        { run_computation :
+            ('input_var -> 'checked) -> 'field Run_state.t * 'return_var
+        ; finish_computation :
+            'field Run_state.t * 'return_var -> R1CS_constraint_system.t
         }
 
       let build :
-          type a checked input_var input_value retval.
-             run:(a, checked) Runner.run
+          type checked input_var input_value retvar retval.
+             run:(retvar, checked) Runner.run
           -> input_typ:
                ( input_var
                , input_value
                , field
                , (unit, field) Checked.Types.Checked.t )
                Types.Typ.typ
-          -> return_typ:(a, retval, _, _) Types.Typ.t
-          -> (input_var, checked) t =
+          -> return_typ:(retvar, retval, _, _) Types.Typ.t
+          -> (input_var, retvar, field, checked) t =
        fun ~run ~input_typ ~return_typ ->
         let next_input = ref 0 in
         (* allocate variables for the public input and the public output *)
@@ -259,6 +265,9 @@ struct
         in
         let run_computation k =
           let state, res = run (k var) state in
+          (state, res)
+        in
+        let finish_computation (state, res) =
           let res, _ = return_typ.var_to_fields res in
           let retvar, _ = return_typ.var_to_fields retvar in
           let _state =
@@ -270,7 +279,7 @@ struct
             auxiliary_input_size ;
           system
         in
-        { run_computation }
+        { run_computation; finish_computation }
     end
 
     let constraint_system (type a checked input_var) :
@@ -283,7 +292,8 @@ struct
       let builder =
         Constraint_system_builder.build ~run ~input_typ ~return_typ
       in
-      builder.run_computation k
+      let state, res = builder.run_computation k in
+      builder.finish_computation (state, res)
 
     let generate_public_input :
            ('input_var, 'input_value, _, _) Types.Typ.typ
