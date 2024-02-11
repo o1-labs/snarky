@@ -200,7 +200,6 @@ struct
     let r1cs_h :
         type a checked input_var input_value retval.
            run:(a, checked) Runner.run
-        -> int ref
         -> input_typ:
              ( input_var
              , input_value
@@ -210,7 +209,8 @@ struct
         -> return_typ:(a, retval, _, _) Types.Typ.t
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
-     fun ~run next_input ~input_typ ~return_typ k ->
+     fun ~run ~input_typ ~return_typ k ->
+      let next_input = ref 0 in
       (* allocate variables for the public input and the public output *)
       let var, retvar =
         allocate_public_inputs next_input ~input_typ ~return_typ
@@ -253,8 +253,7 @@ struct
         -> return_typ:_
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
-     fun ~run ~input_typ ~return_typ k ->
-      r1cs_h ~run (ref 0) ~input_typ ~return_typ k
+     fun ~run ~input_typ ~return_typ k -> r1cs_h ~run ~input_typ ~return_typ k
 
     let generate_public_input :
            ('input_var, 'input_value, _, _) Types.Typ.typ
