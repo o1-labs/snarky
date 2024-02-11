@@ -314,7 +314,7 @@ struct
       let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list))
           t0 (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ)
           ~output input_var =
-        let t0 = (fun () -> t0) () input_var in
+        let t0 = t0 input_var in
         let next_auxiliary = ref num_inputs in
         let aux = Field.Vector.create () in
         let handler =
