@@ -228,12 +228,6 @@ struct
         (retval, circuit)
       in
 
-      (* ? *)
-      let run_in_run checked state =
-        let state, x = Checked.run checked state in
-        run x state
-      in
-
       let constraint_systemy ~return_typ:(Types.Typ.Typ return_typ) output t :
           R1CS_constraint_system.t =
         let num_inputs = !next_input in
@@ -245,7 +239,10 @@ struct
           Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
             ~with_witness:false ()
         in
-        let state, res = run_in_run t state in
+        let state, res =
+          let state, x = Checked.run t state in
+          run x state
+        in
         let res, _ = return_typ.var_to_fields res in
         let output, _ = return_typ.var_to_fields output in
         let _state =
