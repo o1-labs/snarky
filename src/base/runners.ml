@@ -240,7 +240,7 @@ struct
             ~with_witness:false ()
         in
         let state, res =
-          let state, x = Checked.run t state in
+          let state, x = Checked.run (Checked.map ~f:(fun r -> r ()) t) state in
           run x state
         in
         let res, _ = return_typ.var_to_fields res in
@@ -256,8 +256,7 @@ struct
       in
 
       (* ? *)
-      constraint_systemy ~return_typ retval
-        (Checked.map ~f:(fun r -> r ()) checked)
+      constraint_systemy ~return_typ retval checked
 
     let constraint_system (type a checked input_var) :
            run:(a, checked) Runner.run
