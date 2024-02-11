@@ -298,11 +298,14 @@ struct
                   ~f:(fun _ -> alloc_var next_input ())
               , return_typ.constraint_system_auxiliary () )
           in
-          (var, retval)
+          let first_auxiliary = !next_input in
+          (var, retval, first_auxiliary, primary_input)
         in
         fun value ->
-          let var, retval = receive_public_input value in
-          cont0 !next_input retval (k0 () var) primary_input
+          let var, retval, first_auxiliary, primary_input =
+            receive_public_input value
+          in
+          cont0 first_auxiliary retval (k0 () var) primary_input
     end
 
     module Witness_builder = struct
