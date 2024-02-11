@@ -294,15 +294,15 @@ struct
         let (Typ { var_of_fields; value_to_fields; _ }) = input_typ in
         let fields, aux = value_to_fields value in
         let fields = Array.map ~f:store_field_elt fields in
-        let var = var_of_fields (fields, aux) in
-        let retval =
+        let input_var = var_of_fields (fields, aux) in
+        let output_var =
           return_typ.var_of_fields
             ( Core_kernel.Array.init return_typ.size_in_field_elements
                 ~f:(fun _ -> alloc_var next_input ())
             , return_typ.constraint_system_auxiliary () )
         in
         let first_auxiliary = !next_input in
-        { input_var = var; output_var = retval; first_auxiliary; primary_input }
+        { input_var; output_var; first_auxiliary; primary_input }
     end
 
     module Witness_builder = struct
