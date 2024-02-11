@@ -44,28 +44,6 @@ struct
 
   module Runner = Runner
 
-  (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
-  let constraint_systemy ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
-      output t : R1CS_constraint_system.t =
-    let input = field_vec () in
-    let next_auxiliary = ref num_inputs in
-    let aux = field_vec () in
-    let system = R1CS_constraint_system.create () in
-    let state =
-      Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
-        ~with_witness:false ()
-    in
-    let state, res = run t state in
-    let res, _ = return_typ.var_to_fields res in
-    let output, _ = return_typ.var_to_fields output in
-    let _state =
-      Array.fold2_exn ~init:state res output ~f:(fun state res output ->
-          fst @@ Checked.run (Checked.assert_equal res output) state )
-    in
-    let auxiliary_input_size = !next_auxiliary - num_inputs in
-    R1CS_constraint_system.set_auxiliary_input_size system auxiliary_input_size ;
-    system
-
   let auxiliary_input ?system ~run ~num_inputs
       ?(handlers = ([] : Handler.t list)) t0 (input : Field.Vector.t)
       ~return_typ:(Types.Typ.Typ return_typ) ~output : Field.Vector.t * _ =
@@ -254,6 +232,30 @@ struct
       let run_in_run checked state =
         let state, x = Checked.run checked state in
         run x state
+      in
+
+      let constraint_systemy ~run ~num_inputs
+          ~return_typ:(Types.Typ.Typ return_typ) output t :
+          R1CS_constraint_system.t =
+        let input = field_vec () in
+        let next_auxiliary = ref num_inputs in
+        let aux = field_vec () in
+        let system = R1CS_constraint_system.create () in
+        let state =
+          Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
+            ~with_witness:false ()
+        in
+        let state, res = run t state in
+        let res, _ = return_typ.var_to_fields res in
+        let output, _ = return_typ.var_to_fields output in
+        let _state =
+          Array.fold2_exn ~init:state res output ~f:(fun state res output ->
+              fst @@ Checked.run (Checked.assert_equal res output) state )
+        in
+        let auxiliary_input_size = !next_auxiliary - num_inputs in
+        R1CS_constraint_system.set_auxiliary_input_size system
+          auxiliary_input_size ;
+        system
       in
 
       (* ? *)
