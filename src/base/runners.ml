@@ -270,9 +270,14 @@ struct
       primary_input
 
     module Witness_builder = struct
+      type ('input_var, 'return_var, 'return_value, 'field, 'checked) t =
+        { finish_witness_generation :
+            'field Run_state.t * 'return_var -> Field.Vector.t * 'return_value
+        }
+
       let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list))
           t0 (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ)
-          ~output : Field.Vector.t * _ =
+          ~output =
         let next_auxiliary = ref num_inputs in
         let aux = Field.Vector.create () in
         let handler =
@@ -293,10 +298,12 @@ struct
                 Field.Vector.emplace_back input (Runner.get_value state res) ;
                 fst @@ Checked.run (Checked.assert_equal res output) state )
           in
-          let true_output = return_typ.var_of_fields (output, auxiliary_output_data) in
+          let true_output =
+            return_typ.var_of_fields (output, auxiliary_output_data)
+          in
           (aux, true_output)
         in
-        finish_witness_generation (state, res)
+        ((state, res), { finish_witness_generation })
     end
 
     let conv :
@@ -339,11 +346,14 @@ struct
      fun ~run ~input_typ ~return_typ ?handlers k ->
       conv
         (fun num_inputs output c primary ->
-          let auxiliary =
+          (* NB: No need to finish witness generation, we'll discard the
+             witness and public output anyway.
+          *)
+          let (state, res), { Witness_builder.finish_witness_generation = _ } =
             Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
               ~num_inputs c primary
           in
-          ignore auxiliary )
+          ignore (state, res) )
         input_typ return_typ
         (fun () -> k)
 
@@ -358,9 +368,12 @@ struct
      fun ~run ~f ~input_typ ~return_typ ?handlers k ->
       conv
         (fun num_inputs output c primary ->
-          let auxiliary, output =
+          let (state, res), builder =
             Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
               ~num_inputs c primary
+          in
+          let auxiliary, output =
+            builder.finish_witness_generation (state, res)
           in
           let output =
             let (Typ return_typ) = return_typ in
