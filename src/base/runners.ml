@@ -200,7 +200,7 @@ struct
 
       type t = { run_computation : unit -> R1CS_constraint_system.t }
 
-      let r1cs_h :
+      let build :
           type a checked input_var input_value retval.
              run:(a, checked) Runner.run
           -> input_typ:
@@ -260,7 +260,7 @@ struct
         -> R1CS_constraint_system.t =
      fun ~run ~input_typ ~return_typ k ->
       let builder =
-        Constraint_system_builder.r1cs_h ~run ~input_typ ~return_typ k
+        Constraint_system_builder.build ~run ~input_typ ~return_typ k
       in
       builder.run_computation ()
 
