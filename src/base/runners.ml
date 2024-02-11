@@ -400,23 +400,23 @@ struct
         -> ?handlers:Handler.t list
         -> 'k_var
         -> 'k_value =
-     fun ~run ~f ~input_typ ~return_typ ?handlers k ->
-      conv
-        (fun num_inputs output c primary ->
-          let (state, res), builder =
-            Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
-              ~num_inputs c primary
-          in
-          let auxiliary, output =
-            builder.finish_witness_generation (state, res)
-          in
-          f
-            { Proof_inputs.public_inputs = primary
-            ; auxiliary_inputs = auxiliary
-            }
-            output )
-        input_typ return_typ
-        (fun () -> k)
+     fun ~run ~f ~input_typ ~return_typ ?handlers k value ->
+      let { Conv.input_var
+          ; output_var = output
+          ; first_auxiliary = num_inputs
+          ; primary_input = primary
+          } =
+        Conv.receive_public_input input_typ return_typ value
+      in
+      let c = (fun () -> k) () input_var in
+      let (state, res), builder =
+        Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
+          ~num_inputs c primary
+      in
+      let auxiliary, output = builder.finish_witness_generation (state, res) in
+      f
+        { Proof_inputs.public_inputs = primary; auxiliary_inputs = auxiliary }
+        output
 
     let generate_witness =
       generate_witness_conv ~f:(fun inputs _output -> inputs)
