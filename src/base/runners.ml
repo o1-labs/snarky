@@ -314,7 +314,6 @@ struct
       let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list))
           t0 (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ)
           ~output input_var =
-        let t0 = t0 input_var in
         let next_auxiliary = ref num_inputs in
         let aux = Field.Vector.create () in
         let handler =
@@ -326,7 +325,7 @@ struct
             ~next_auxiliary ~aux:(pack_field_vec aux) ~handler
             ~with_witness:true ()
         in
-        let state, res = run t0 state in
+        let state, res = run (t0 input_var) state in
         let finish_witness_generation (state, res) =
           let res_fields, auxiliary_output_data =
             return_typ.var_to_fields res
