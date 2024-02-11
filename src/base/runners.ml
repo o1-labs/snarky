@@ -308,7 +308,7 @@ struct
     module Witness_builder = struct
       type ('input_var, 'return_var, 'return_value, 'field, 'checked) t =
         { finish_witness_generation :
-            'field Run_state.t * 'return_var -> Field.Vector.t * 'return_value
+            'field Run_state.t * 'return_var -> Proof_inputs.t * 'return_value
         }
 
       let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list))
@@ -348,7 +348,8 @@ struct
             let fields = Array.map ~f:(Runner.get_value state) output_fields in
             return_typ.value_of_fields (fields, auxiliary_output_data)
           in
-          (aux, true_output)
+          ( { Proof_inputs.public_inputs = input; auxiliary_inputs = aux }
+          , true_output )
         in
         ((state, res), { finish_witness_generation })
     end
@@ -411,10 +412,8 @@ struct
         Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
           ~num_inputs k primary input_var
       in
-      let auxiliary, output = builder.finish_witness_generation (state, res) in
-      f
-        { Proof_inputs.public_inputs = primary; auxiliary_inputs = auxiliary }
-        output
+      let witness, output = builder.finish_witness_generation (state, res) in
+      f witness output
 
     let generate_witness =
       generate_witness_conv ~f:(fun inputs _output -> inputs)
