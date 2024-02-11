@@ -212,8 +212,8 @@ struct
         -> R1CS_constraint_system.t =
      fun ~run next_input ~input_typ ~return_typ k ->
       (* allocate variables for the public input and the public output *)
-      let retval, checked =
-        let var, retval =
+      let retvar, checked =
+        let var, retvar =
           allocate_public_inputs next_input ~input_typ ~return_typ
         in
         let open Checked in
@@ -225,10 +225,10 @@ struct
           in
           Checked.return (fun () -> k var)
         in
-        (retval, circuit)
+        (retvar, circuit)
       in
 
-      let constraint_systemy output t : R1CS_constraint_system.t =
+      let constraint_systemy retvar t : R1CS_constraint_system.t =
         let (Typ return_typ) = return_typ in
         let num_inputs = !next_input in
         let input = field_vec () in
@@ -244,10 +244,10 @@ struct
           run x state
         in
         let res, _ = return_typ.var_to_fields res in
-        let output, _ = return_typ.var_to_fields output in
+        let retvar, _ = return_typ.var_to_fields retvar in
         let _state =
-          Array.fold2_exn ~init:state res output ~f:(fun state res output ->
-              fst @@ Checked.run (Checked.assert_equal res output) state )
+          Array.fold2_exn ~init:state res retvar ~f:(fun state res retvar ->
+              fst @@ Checked.run (Checked.assert_equal res retvar) state )
         in
         let auxiliary_input_size = !next_auxiliary - num_inputs in
         R1CS_constraint_system.set_auxiliary_input_size system
@@ -256,7 +256,7 @@ struct
       in
 
       (* ? *)
-      constraint_systemy retval checked
+      constraint_systemy retvar checked
 
     let constraint_system (type a checked input_var) :
            run:(a, checked) Runner.run
