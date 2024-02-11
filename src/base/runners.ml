@@ -285,16 +285,17 @@ struct
             ~with_witness:true ()
         in
         let state, res = run t0 state in
-        let res, auxiliary_output_data = return_typ.var_to_fields res in
-        let output, _ = return_typ.var_to_fields output in
-        let _state =
-          Array.fold2_exn ~init:state res output ~f:(fun state res output ->
-              Field.Vector.emplace_back input (Runner.get_value state res) ;
-              fst @@ Checked.run (Checked.assert_equal res output) state )
-        in
-        let true_output =
+        let finish_witness_generation (state, res) =
+          let res, auxiliary_output_data = return_typ.var_to_fields res in
+          let output, _ = return_typ.var_to_fields output in
+          let _state =
+            Array.fold2_exn ~init:state res output ~f:(fun state res output ->
+                Field.Vector.emplace_back input (Runner.get_value state res) ;
+                fst @@ Checked.run (Checked.assert_equal res output) state )
+          in
           return_typ.var_of_fields (output, auxiliary_output_data)
         in
+        let true_output = finish_witness_generation (state, res) in
         (aux, true_output)
     end
 
