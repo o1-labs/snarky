@@ -271,14 +271,11 @@ struct
 
     module Conv = struct
       let conv :
-          type r_var r_value.
-             (int -> _ -> r_var -> Field.Vector.t -> r_value)
-          -> ('input_var, 'input_value, _, _) Types.Typ.t
+             ('input_var, 'input_value, _, _) Types.Typ.t
           -> _ Types.Typ.t
-          -> (unit -> 'input_var -> r_var)
           -> 'input_value
-          -> r_value =
-       fun cont0 input_typ (Typ return_typ) k0 ->
+          -> _ =
+       fun input_typ (Typ return_typ) ->
         let primary_input = Field.Vector.create () in
         let next_input = ref 0 in
         let store_field_elt x =
@@ -301,11 +298,7 @@ struct
           let first_auxiliary = !next_input in
           (var, retval, first_auxiliary, primary_input)
         in
-        fun value ->
-          let var, retval, first_auxiliary, primary_input =
-            receive_public_input value
-          in
-          cont0 first_auxiliary retval (k0 () var) primary_input
+        receive_public_input
     end
 
     module Witness_builder = struct
@@ -365,7 +358,12 @@ struct
         -> 'input_value
         -> r_value =
      fun cont0 input_typ return_typ k0 ->
-      Conv.conv cont0 input_typ return_typ k0
+      let receive_public_input = Conv.conv input_typ return_typ in
+      fun value ->
+        let var, retval, first_auxiliary, primary_input =
+          receive_public_input value
+        in
+        cont0 first_auxiliary retval (k0 () var) primary_input
 
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
