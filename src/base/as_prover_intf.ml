@@ -23,10 +23,9 @@ module type Basic = sig
 
     val run :
          ('a, 'f field) t
-      -> string list
       -> ('f field Cvar.t -> 'f field)
       -> Request.Handler.t
-      -> 'a
+      -> 'a option
   end
 
   module Handle : sig

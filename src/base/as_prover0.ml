@@ -60,18 +60,18 @@ module Provider = struct
 
   open Types.Provider
 
-  let run t stack tbl (handler : Request.Handler.t) =
+  let run t tbl (handler : Request.Handler.t) =
     match t with
     | Request rc ->
         let r = run rc tbl in
-        Request.Handler.run handler stack r
+        Request.Handler.run handler r
     | Compute c ->
-        run c tbl
+        Some (run c tbl)
     | Both (rc, c) -> (
         let r = run rc tbl in
-        match Request.Handler.run handler stack r with
-        | exception _ ->
-            run c tbl
+        match Request.Handler.run handler r with
+        | None | (exception _) ->
+            Some (run c tbl)
         | x ->
             x )
 end

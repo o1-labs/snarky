@@ -3,6 +3,10 @@ module type S = sig
 
   val of_int : int -> t
 
+  val of_string : string -> t
+
+  val to_string : t -> string
+
   val one : t
 
   val zero : t
@@ -28,22 +32,6 @@ module type S = sig
   val print : t -> unit
 
   val random : unit -> t
-
-  module Mutable : sig
-    val add : t -> other:t -> unit
-
-    val mul : t -> other:t -> unit
-
-    val sub : t -> other:t -> unit
-
-    val copy : over:t -> t -> unit
-  end
-
-  val ( += ) : t -> t -> unit
-
-  val ( -= ) : t -> t -> unit
-
-  val ( *= ) : t -> t -> unit
 
   module Vector : Vector.S with type elt = t
 end
