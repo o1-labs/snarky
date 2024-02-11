@@ -215,16 +215,6 @@ struct
       let var, retvar =
         allocate_public_inputs next_input ~input_typ ~return_typ
       in
-      (* create constraints to validate the input (using the input [Typ]'s [check]) *)
-      let checked =
-        let open Checked in
-        let%bind () =
-          let (Typ input_typ) = input_typ in
-          input_typ.check var
-        in
-        Checked.return (fun () -> k var)
-      in
-
       let (Typ return_typ) = return_typ in
       let num_inputs = !next_input in
       let input = field_vec () in
@@ -237,6 +227,16 @@ struct
       in
       let state, res =
         let state, x =
+          (* create constraints to validate the input (using the input [Typ]'s [check]) *)
+          let checked =
+            let open Checked in
+            let%bind () =
+              let (Typ input_typ) = input_typ in
+              input_typ.check var
+            in
+            Checked.return (fun () -> k var)
+          in
+
           Checked.run (Checked.map ~f:(fun r -> r ()) checked) state
         in
         run x state
