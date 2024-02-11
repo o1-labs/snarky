@@ -228,37 +228,32 @@ struct
         (retvar, circuit)
       in
 
-      let constraint_systemy checked : R1CS_constraint_system.t =
-        let (Typ return_typ) = return_typ in
-        let num_inputs = !next_input in
-        let input = field_vec () in
-        let next_auxiliary = ref num_inputs in
-        let aux = field_vec () in
-        let system = R1CS_constraint_system.create () in
-        let state =
-          Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
-            ~with_witness:false ()
-        in
-        let state, res =
-          let state, x =
-            Checked.run (Checked.map ~f:(fun r -> r ()) checked) state
-          in
-          run x state
-        in
-        let res, _ = return_typ.var_to_fields res in
-        let retvar, _ = return_typ.var_to_fields retvar in
-        let _state =
-          Array.fold2_exn ~init:state res retvar ~f:(fun state res retvar ->
-              fst @@ Checked.run (Checked.assert_equal res retvar) state )
-        in
-        let auxiliary_input_size = !next_auxiliary - num_inputs in
-        R1CS_constraint_system.set_auxiliary_input_size system
-          auxiliary_input_size ;
-        system
+      let (Typ return_typ) = return_typ in
+      let num_inputs = !next_input in
+      let input = field_vec () in
+      let next_auxiliary = ref num_inputs in
+      let aux = field_vec () in
+      let system = R1CS_constraint_system.create () in
+      let state =
+        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
+          ~with_witness:false ()
       in
-
-      (* ? *)
-      constraint_systemy checked
+      let state, res =
+        let state, x =
+          Checked.run (Checked.map ~f:(fun r -> r ()) checked) state
+        in
+        run x state
+      in
+      let res, _ = return_typ.var_to_fields res in
+      let retvar, _ = return_typ.var_to_fields retvar in
+      let _state =
+        Array.fold2_exn ~init:state res retvar ~f:(fun state res retvar ->
+            fst @@ Checked.run (Checked.assert_equal res retvar) state )
+      in
+      let auxiliary_input_size = !next_auxiliary - num_inputs in
+      R1CS_constraint_system.set_auxiliary_input_size system
+        auxiliary_input_size ;
+      system
 
     let constraint_system (type a checked input_var) :
            run:(a, checked) Runner.run
