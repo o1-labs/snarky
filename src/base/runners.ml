@@ -374,19 +374,23 @@ struct
         -> ?handlers:Handler.t list
         -> 'k_var
         -> 'k_value =
-     fun ~run ~input_typ ~return_typ ?handlers k ->
-      conv
-        (fun num_inputs output c primary ->
-          (* NB: No need to finish witness generation, we'll discard the
-             witness and public output anyway.
-          *)
-          let (state, res), { Witness_builder.finish_witness_generation = _ } =
-            Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
-              ~num_inputs c primary
-          in
-          ignore (state, res) )
-        input_typ return_typ
-        (fun () -> k)
+     fun ~run ~input_typ ~return_typ ?handlers k value ->
+      let { Conv.input_var
+          ; output_var = output
+          ; first_auxiliary = num_inputs
+          ; primary_input = primary
+          } =
+        Conv.receive_public_input input_typ return_typ value
+      in
+      let c = (fun () -> k) () input_var in
+      (* NB: No need to finish witness generation, we'll discard the
+         witness and public output anyway.
+      *)
+      let (state, res), { Witness_builder.finish_witness_generation = _ } =
+        Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
+          ~num_inputs c primary
+      in
+      ignore (state, res)
 
     let generate_witness_conv :
            run:('a, 'checked) Runner.run
