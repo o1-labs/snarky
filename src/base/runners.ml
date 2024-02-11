@@ -44,37 +44,6 @@ struct
 
   module Runner = Runner
 
-  let auxiliary_input ?system ~run ~num_inputs
-      ?(handlers = ([] : Handler.t list)) t0 (input : Field.Vector.t)
-      ~return_typ:(Types.Typ.Typ return_typ) ~output : Field.Vector.t * _ =
-    let next_auxiliary = ref num_inputs in
-    let aux = Field.Vector.create () in
-    let handler =
-      List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
-          Request.Handler.(push handler (create_single h)) )
-    in
-    let state =
-      Runner.State.make ?system ~num_inputs ~input:(pack_field_vec input)
-        ~next_auxiliary ~aux:(pack_field_vec aux) ~handler ~with_witness:true ()
-    in
-    let state, res = run t0 state in
-    let res, auxiliary_output_data = return_typ.var_to_fields res in
-    let output, _ = return_typ.var_to_fields output in
-    let _state =
-      Array.fold2_exn ~init:state res output ~f:(fun state res output ->
-          Field.Vector.emplace_back input (Runner.get_value state res) ;
-          fst @@ Checked.run (Checked.assert_equal res output) state )
-    in
-    let true_output =
-      return_typ.var_of_fields (output, auxiliary_output_data)
-    in
-    Option.iter system ~f:(fun system ->
-        let auxiliary_input_size = !next_auxiliary - num_inputs in
-        R1CS_constraint_system.set_auxiliary_input_size system
-          auxiliary_input_size ;
-        R1CS_constraint_system.finalize system ) ;
-    (aux, true_output)
-
   let run_and_check_exn' ~run t0 =
     let num_inputs = 0 in
     let input = field_vec () in
@@ -300,6 +269,40 @@ struct
       let _fields = Array.map ~f:store_field_elt fields in
       primary_input
 
+    module Witness_builder = struct
+      let auxiliary_input ?system ~run ~num_inputs
+          ?(handlers = ([] : Handler.t list)) t0 (input : Field.Vector.t)
+          ~return_typ:(Types.Typ.Typ return_typ) ~output : Field.Vector.t * _ =
+        let next_auxiliary = ref num_inputs in
+        let aux = Field.Vector.create () in
+        let handler =
+          List.fold ~init:Request.Handler.fail handlers ~f:(fun handler h ->
+              Request.Handler.(push handler (create_single h)) )
+        in
+        let state =
+          Runner.State.make ?system ~num_inputs ~input:(pack_field_vec input)
+            ~next_auxiliary ~aux:(pack_field_vec aux) ~handler
+            ~with_witness:true ()
+        in
+        let state, res = run t0 state in
+        let res, auxiliary_output_data = return_typ.var_to_fields res in
+        let output, _ = return_typ.var_to_fields output in
+        let _state =
+          Array.fold2_exn ~init:state res output ~f:(fun state res output ->
+              Field.Vector.emplace_back input (Runner.get_value state res) ;
+              fst @@ Checked.run (Checked.assert_equal res output) state )
+        in
+        let true_output =
+          return_typ.var_of_fields (output, auxiliary_output_data)
+        in
+        Option.iter system ~f:(fun system ->
+            let auxiliary_input_size = !next_auxiliary - num_inputs in
+            R1CS_constraint_system.set_auxiliary_input_size system
+              auxiliary_input_size ;
+            R1CS_constraint_system.finalize system ) ;
+        (aux, true_output)
+    end
+
     let conv :
         type r_var r_value.
            (int -> _ -> r_var -> Field.Vector.t -> r_value)
@@ -341,8 +344,8 @@ struct
       conv
         (fun num_inputs output c primary ->
           let auxiliary =
-            auxiliary_input ~run ?handlers ~return_typ ~output ~num_inputs c
-              primary
+            Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
+              ~num_inputs c primary
           in
           ignore auxiliary )
         input_typ return_typ
@@ -360,8 +363,8 @@ struct
       conv
         (fun num_inputs output c primary ->
           let auxiliary, output =
-            auxiliary_input ~run ?handlers ~return_typ ~output ~num_inputs c
-              primary
+            Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
+              ~num_inputs c primary
           in
           let output =
             let (Typ return_typ) = return_typ in
