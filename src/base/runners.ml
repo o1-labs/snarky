@@ -45,7 +45,7 @@ struct
   module Runner = Runner
 
   (* TODO-someday: Add pass to unify variables which have an Equal constraint *)
-  let constraint_system ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
+  let constraint_systemy ~run ~num_inputs ~return_typ:(Types.Typ.Typ return_typ)
       output t : R1CS_constraint_system.t =
     let input = field_vec () in
     let next_auxiliary = ref num_inputs in
@@ -257,7 +257,7 @@ struct
       in
 
       (* ? *)
-      constraint_system ~run:run_in_run ~num_inputs:!next_input ~return_typ
+      constraint_systemy ~run:run_in_run ~num_inputs:!next_input ~return_typ
         retval
         (Checked.map ~f:(fun r -> r ()) checked)
 
