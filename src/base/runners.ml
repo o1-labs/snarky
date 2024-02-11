@@ -197,53 +197,55 @@ struct
       let retval = alloc_input return_typ in
       (var, retval)
 
-    let r1cs_h :
-        type a checked input_var input_value retval.
-           run:(a, checked) Runner.run
-        -> input_typ:
-             ( input_var
-             , input_value
-             , field
-             , (unit, field) Checked.Types.Checked.t )
-             Types.Typ.typ
-        -> return_typ:(a, retval, _, _) Types.Typ.t
-        -> (input_var -> checked)
-        -> R1CS_constraint_system.t =
-     fun ~run ~input_typ ~return_typ k ->
-      let next_input = ref 0 in
-      (* allocate variables for the public input and the public output *)
-      let var, retvar =
-        allocate_public_inputs next_input ~input_typ ~return_typ
-      in
-      let (Typ return_typ) = return_typ in
-      let num_inputs = !next_input in
-      let input = field_vec () in
-      let next_auxiliary = ref num_inputs in
-      let aux = field_vec () in
-      let system = R1CS_constraint_system.create () in
-      let state =
-        Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
-          ~with_witness:false ()
-      in
-      let state, () =
-        (* create constraints to validate the input (using the input [Typ]'s [check]) *)
-        let checked =
-          let (Typ input_typ) = input_typ in
-          input_typ.check var
+    module Constraint_system_builder = struct
+      let r1cs_h :
+          type a checked input_var input_value retval.
+             run:(a, checked) Runner.run
+          -> input_typ:
+               ( input_var
+               , input_value
+               , field
+               , (unit, field) Checked.Types.Checked.t )
+               Types.Typ.typ
+          -> return_typ:(a, retval, _, _) Types.Typ.t
+          -> (input_var -> checked)
+          -> R1CS_constraint_system.t =
+       fun ~run ~input_typ ~return_typ k ->
+        let next_input = ref 0 in
+        (* allocate variables for the public input and the public output *)
+        let var, retvar =
+          allocate_public_inputs next_input ~input_typ ~return_typ
         in
-        Checked.run checked state
-      in
-      let state, res = run (k var) state in
-      let res, _ = return_typ.var_to_fields res in
-      let retvar, _ = return_typ.var_to_fields retvar in
-      let _state =
-        Array.fold2_exn ~init:state res retvar ~f:(fun state res retvar ->
-            fst @@ Checked.run (Checked.assert_equal res retvar) state )
-      in
-      let auxiliary_input_size = !next_auxiliary - num_inputs in
-      R1CS_constraint_system.set_auxiliary_input_size system
-        auxiliary_input_size ;
-      system
+        let (Typ return_typ) = return_typ in
+        let num_inputs = !next_input in
+        let input = field_vec () in
+        let next_auxiliary = ref num_inputs in
+        let aux = field_vec () in
+        let system = R1CS_constraint_system.create () in
+        let state =
+          Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
+            ~with_witness:false ()
+        in
+        let state, () =
+          (* create constraints to validate the input (using the input [Typ]'s [check]) *)
+          let checked =
+            let (Typ input_typ) = input_typ in
+            input_typ.check var
+          in
+          Checked.run checked state
+        in
+        let state, res = run (k var) state in
+        let res, _ = return_typ.var_to_fields res in
+        let retvar, _ = return_typ.var_to_fields retvar in
+        let _state =
+          Array.fold2_exn ~init:state res retvar ~f:(fun state res retvar ->
+              fst @@ Checked.run (Checked.assert_equal res retvar) state )
+        in
+        let auxiliary_input_size = !next_auxiliary - num_inputs in
+        R1CS_constraint_system.set_auxiliary_input_size system
+          auxiliary_input_size ;
+        system
+    end
 
     let constraint_system (type a checked input_var) :
            run:(a, checked) Runner.run
@@ -251,7 +253,7 @@ struct
         -> return_typ:_
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
-      r1cs_h
+      Constraint_system_builder.r1cs_h
 
     let generate_public_input :
            ('input_var, 'input_value, _, _) Types.Typ.typ
