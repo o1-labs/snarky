@@ -269,6 +269,42 @@ struct
       let _fields = Array.map ~f:store_field_elt fields in
       primary_input
 
+    module Conv = struct
+      let conv :
+          type r_var r_value.
+             (int -> _ -> r_var -> Field.Vector.t -> r_value)
+          -> ('input_var, 'input_value, _, _) Types.Typ.t
+          -> _ Types.Typ.t
+          -> (unit -> 'input_var -> r_var)
+          -> 'input_value
+          -> r_value =
+       fun cont0 input_typ (Typ return_typ) k0 ->
+        let primary_input = Field.Vector.create () in
+        let next_input = ref 0 in
+        let store_field_elt x =
+          let v = !next_input in
+          incr next_input ;
+          Field.Vector.emplace_back primary_input x ;
+          Cvar.Unsafe.of_index v
+        in
+        let receive_public_input value =
+          let (Typ { var_of_fields; value_to_fields; _ }) = input_typ in
+          let fields, aux = value_to_fields value in
+          let fields = Array.map ~f:store_field_elt fields in
+          let var = var_of_fields (fields, aux) in
+          let retval =
+            return_typ.var_of_fields
+              ( Core_kernel.Array.init return_typ.size_in_field_elements
+                  ~f:(fun _ -> alloc_var next_input ())
+              , return_typ.constraint_system_auxiliary () )
+          in
+          (var, retval)
+        in
+        fun value ->
+          let var, retval = receive_public_input value in
+          cont0 !next_input retval (k0 () var) primary_input
+    end
+
     module Witness_builder = struct
       type ('input_var, 'return_var, 'return_value, 'field, 'checked) t =
         { finish_witness_generation :
@@ -317,39 +353,7 @@ struct
         ((state, res), { finish_witness_generation })
     end
 
-    let conv :
-        type r_var r_value.
-           (int -> _ -> r_var -> Field.Vector.t -> r_value)
-        -> ('input_var, 'input_value, _, _) Types.Typ.t
-        -> _ Types.Typ.t
-        -> (unit -> 'input_var -> r_var)
-        -> 'input_value
-        -> r_value =
-     fun cont0 input_typ (Typ return_typ) k0 ->
-      let primary_input = Field.Vector.create () in
-      let next_input = ref 0 in
-      let store_field_elt x =
-        let v = !next_input in
-        incr next_input ;
-        Field.Vector.emplace_back primary_input x ;
-        Cvar.Unsafe.of_index v
-      in
-      let receive_public_input value =
-        let (Typ { var_of_fields; value_to_fields; _ }) = input_typ in
-        let fields, aux = value_to_fields value in
-        let fields = Array.map ~f:store_field_elt fields in
-        let var = var_of_fields (fields, aux) in
-        let retval =
-          return_typ.var_of_fields
-            ( Core_kernel.Array.init return_typ.size_in_field_elements
-                ~f:(fun _ -> alloc_var next_input ())
-            , return_typ.constraint_system_auxiliary () )
-        in
-        (var, retval)
-      in
-      fun value ->
-        let var, retval = receive_public_input value in
-        cont0 !next_input retval (k0 () var) primary_input
+    let conv = Conv.conv
 
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
