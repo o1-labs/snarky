@@ -253,7 +253,7 @@ struct
         -> return_typ:_
         -> (input_var -> checked)
         -> R1CS_constraint_system.t =
-     fun ~run ~input_typ ~return_typ k -> r1cs_h ~run ~input_typ ~return_typ k
+      r1cs_h
 
     let generate_public_input :
            ('input_var, 'input_value, _, _) Types.Typ.typ
