@@ -164,7 +164,26 @@ struct
       Field.Vector.emplace_back primary_input x ;
       v
 
-    module Constraint_system_builder = struct
+    module Constraint_system_builder : sig
+      type t = { run_computation : unit -> R1CS_constraint_system.t }
+
+      val build :
+           run:('a, 'checked) Runner.run
+        -> input_typ:
+             ( 'input_var
+             , 'input_value
+             , field
+             , (unit, field) Checked.Types.Checked.t )
+             Types0.Typ.typ
+        -> return_typ:
+             ( 'a
+             , 'retval
+             , field
+             , (unit, field) Checked.Types.Checked.t )
+             Types0.Typ.typ
+        -> ('input_var -> 'checked)
+        -> t
+    end = struct
       let allocate_public_inputs :
           type input_var input_value output_var output_value.
              int ref
