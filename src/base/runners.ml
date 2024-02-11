@@ -219,30 +219,6 @@ struct
       let retval = alloc_input return_typ in
       (var, retval)
 
-    let collect_input_constraints :
-        type checked input_var input_value.
-           int ref
-        -> input_typ:
-             ( input_var
-             , input_value
-             , field
-             , (unit, field) Checked.Types.Checked.t )
-             Types.Typ.typ
-        -> return_typ:_ Types.Typ.t
-        -> (unit -> input_var -> checked)
-        -> _ * (unit -> checked) Checked.t =
-     fun next_input ~input_typ:(Typ input_typ) ~return_typ k ->
-      let var, retval =
-        allocate_public_inputs next_input ~input_typ:(Typ input_typ) ~return_typ
-      in
-      let open Checked in
-      (* create constraints to validate the input (using the input [Typ]'s [check]) *)
-      let circuit =
-        let%bind () = input_typ.check var in
-        Checked.return (fun () -> k () var)
-      in
-      (retval, circuit)
-
     let r1cs_h :
         type a checked input_var input_value retval.
            run:(a, checked) Runner.run
@@ -259,8 +235,19 @@ struct
      fun ~run next_input ~input_typ ~return_typ k ->
       (* allocate variables for the public input and the public output *)
       let retval, checked =
-        collect_input_constraints next_input ~input_typ ~return_typ (fun () ->
-            k )
+        let var, retval =
+          allocate_public_inputs next_input ~input_typ ~return_typ
+        in
+        let open Checked in
+        (* create constraints to validate the input (using the input [Typ]'s [check]) *)
+        let circuit =
+          let%bind () =
+            let (Typ input_typ) = input_typ in
+            input_typ.check var
+          in
+          Checked.return (fun () -> k var)
+        in
+        (retval, circuit)
       in
 
       (* ? *)
