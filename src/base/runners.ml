@@ -226,20 +226,15 @@ struct
           ~with_witness:false ()
       in
       let state, res =
-        let state, x =
+        let state, () =
           (* create constraints to validate the input (using the input [Typ]'s [check]) *)
           let checked =
-            let open Checked in
-            let%bind () =
-              let (Typ input_typ) = input_typ in
-              input_typ.check var
-            in
-            Checked.return (fun () -> k var)
+            let (Typ input_typ) = input_typ in
+            input_typ.check var
           in
-
-          Checked.run (Checked.map ~f:(fun r -> r ()) checked) state
+          Checked.run checked state
         in
-        run x state
+        run (k var) state
       in
       let res, _ = return_typ.var_to_fields res in
       let retvar, _ = return_typ.var_to_fields retvar in
