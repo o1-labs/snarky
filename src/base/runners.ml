@@ -225,17 +225,15 @@ struct
         Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
           ~with_witness:false ()
       in
-      let state, res =
-        let state, () =
-          (* create constraints to validate the input (using the input [Typ]'s [check]) *)
-          let checked =
-            let (Typ input_typ) = input_typ in
-            input_typ.check var
-          in
-          Checked.run checked state
+      let state, () =
+        (* create constraints to validate the input (using the input [Typ]'s [check]) *)
+        let checked =
+          let (Typ input_typ) = input_typ in
+          input_typ.check var
         in
-        run (k var) state
+        Checked.run checked state
       in
+      let state, res = run (k var) state in
       let res, _ = return_typ.var_to_fields res in
       let retvar, _ = return_typ.var_to_fields retvar in
       let _state =
