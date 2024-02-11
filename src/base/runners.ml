@@ -307,11 +307,12 @@ struct
 
     module Witness_builder = struct
       type ('input_var, 'return_var, 'return_value, 'field, 'checked) t =
-        { finish_witness_generation :
+        { run_computation : 'a. ('input_var -> 'field Run_state.t -> 'a) -> 'a
+        ; finish_witness_generation :
             'field Run_state.t * 'return_var -> Proof_inputs.t * 'return_value
         }
 
-      let auxiliary_input ~run ?(handlers = ([] : Handler.t list)) t0 ~input_typ
+      let auxiliary_input ?(handlers = ([] : Handler.t list)) ~input_typ
           ~return_typ value =
         let { Conv.input_var
             ; output_var = output
@@ -331,7 +332,7 @@ struct
             ~next_auxiliary ~aux:(pack_field_vec aux) ~handler
             ~with_witness:true ()
         in
-        let state, res = run (t0 input_var) state in
+        let run_computation t0 = t0 input_var state in
         let finish_witness_generation (state, res) =
           let (Typ return_typ) = return_typ in
           let res_fields, auxiliary_output_data =
@@ -358,7 +359,7 @@ struct
           ( { Proof_inputs.public_inputs = input; auxiliary_inputs = aux }
           , true_output )
         in
-        ((state, res), { finish_witness_generation })
+        { run_computation; finish_witness_generation }
     end
 
     let conv :
@@ -386,9 +387,11 @@ struct
       (* NB: No need to finish witness generation, we'll discard the
          witness and public output anyway.
       *)
-      let (state, res), { Witness_builder.finish_witness_generation = _ } =
-        Witness_builder.auxiliary_input ~run ?handlers ~input_typ ~return_typ k
-          value
+      let { Witness_builder.run_computation; finish_witness_generation = _ } =
+        Witness_builder.auxiliary_input ?handlers ~input_typ ~return_typ value
+      in
+      let state, res =
+        run_computation (fun input_var state -> run (k input_var) state)
       in
       ignore (state, res)
 
@@ -401,9 +404,12 @@ struct
         -> 'k_var
         -> 'k_value =
      fun ~run ~f ~input_typ ~return_typ ?handlers k value ->
-      let (state, res), builder =
-        Witness_builder.auxiliary_input ~run ?handlers ~input_typ ~return_typ k
-          value
+      let builder =
+        Witness_builder.auxiliary_input ?handlers ~input_typ ~return_typ value
+      in
+      let state, res =
+        builder.run_computation (fun input_var state ->
+            run (k input_var) state )
       in
       let witness, output = builder.finish_witness_generation (state, res) in
       f witness output
