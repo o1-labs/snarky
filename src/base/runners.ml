@@ -362,14 +362,10 @@ struct
         -> 'input_value
         -> r_value =
      fun cont0 input_typ return_typ k0 value ->
-      let { Conv.input_var = var
-          ; output_var = retval
-          ; first_auxiliary
-          ; primary_input
-          } =
+      let { Conv.input_var; output_var; first_auxiliary; primary_input } =
         Conv.receive_public_input input_typ return_typ value
       in
-      cont0 first_auxiliary retval (k0 () var) primary_input
+      cont0 first_auxiliary output_var (k0 () input_var) primary_input
 
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
