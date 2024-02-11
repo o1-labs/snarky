@@ -228,8 +228,8 @@ struct
         (retval, circuit)
       in
 
-      let constraint_systemy ~return_typ:(Types.Typ.Typ return_typ) output t :
-          R1CS_constraint_system.t =
+      let constraint_systemy output t : R1CS_constraint_system.t =
+        let (Typ return_typ) = return_typ in
         let num_inputs = !next_input in
         let input = field_vec () in
         let next_auxiliary = ref num_inputs in
@@ -256,7 +256,7 @@ struct
       in
 
       (* ? *)
-      constraint_systemy ~return_typ retval checked
+      constraint_systemy retval checked
 
     let constraint_system (type a checked input_var) :
            run:(a, checked) Runner.run
