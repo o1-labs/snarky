@@ -228,7 +228,7 @@ struct
         (retvar, circuit)
       in
 
-      let constraint_systemy t : R1CS_constraint_system.t =
+      let constraint_systemy checked : R1CS_constraint_system.t =
         let (Typ return_typ) = return_typ in
         let num_inputs = !next_input in
         let input = field_vec () in
@@ -240,7 +240,9 @@ struct
             ~with_witness:false ()
         in
         let state, res =
-          let state, x = Checked.run (Checked.map ~f:(fun r -> r ()) t) state in
+          let state, x =
+            Checked.run (Checked.map ~f:(fun r -> r ()) checked) state
+          in
           run x state
         in
         let res, _ = return_typ.var_to_fields res in
