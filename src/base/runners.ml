@@ -270,9 +270,9 @@ struct
       primary_input
 
     module Witness_builder = struct
-      let auxiliary_input ?system ~run ~num_inputs
-          ?(handlers = ([] : Handler.t list)) t0 (input : Field.Vector.t)
-          ~return_typ:(Types.Typ.Typ return_typ) ~output : Field.Vector.t * _ =
+      let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list))
+          t0 (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ)
+          ~output : Field.Vector.t * _ =
         let next_auxiliary = ref num_inputs in
         let aux = Field.Vector.create () in
         let handler =
@@ -280,7 +280,7 @@ struct
               Request.Handler.(push handler (create_single h)) )
         in
         let state =
-          Runner.State.make ?system ~num_inputs ~input:(pack_field_vec input)
+          Runner.State.make ~num_inputs ~input:(pack_field_vec input)
             ~next_auxiliary ~aux:(pack_field_vec aux) ~handler
             ~with_witness:true ()
         in
@@ -295,11 +295,6 @@ struct
         let true_output =
           return_typ.var_of_fields (output, auxiliary_output_data)
         in
-        Option.iter system ~f:(fun system ->
-            let auxiliary_input_size = !next_auxiliary - num_inputs in
-            R1CS_constraint_system.set_auxiliary_input_size system
-              auxiliary_input_size ;
-            R1CS_constraint_system.finalize system ) ;
         (aux, true_output)
     end
 
