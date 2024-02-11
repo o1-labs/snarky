@@ -313,7 +313,8 @@ struct
 
       let auxiliary_input ~run ~num_inputs ?(handlers = ([] : Handler.t list))
           t0 (input : Field.Vector.t) ~return_typ:(Types.Typ.Typ return_typ)
-          ~output =
+          ~output input_var =
+        let t0 = (fun () -> t0) () input_var in
         let next_auxiliary = ref num_inputs in
         let aux = Field.Vector.create () in
         let handler =
@@ -382,13 +383,12 @@ struct
           } =
         Conv.receive_public_input input_typ return_typ value
       in
-      let c = (fun () -> k) () input_var in
       (* NB: No need to finish witness generation, we'll discard the
          witness and public output anyway.
       *)
       let (state, res), { Witness_builder.finish_witness_generation = _ } =
         Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
-          ~num_inputs c primary
+          ~num_inputs k primary input_var
       in
       ignore (state, res)
 
@@ -408,10 +408,9 @@ struct
           } =
         Conv.receive_public_input input_typ return_typ value
       in
-      let c = (fun () -> k) () input_var in
       let (state, res), builder =
         Witness_builder.auxiliary_input ~run ?handlers ~return_typ ~output
-          ~num_inputs c primary
+          ~num_inputs k primary input_var
       in
       let auxiliary, output = builder.finish_witness_generation (state, res) in
       f
