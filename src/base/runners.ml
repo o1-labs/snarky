@@ -270,12 +270,12 @@ struct
       primary_input
 
     module Conv = struct
-      let conv :
+      let receive_public_input :
              ('input_var, 'input_value, _, _) Types.Typ.t
           -> _ Types.Typ.t
           -> 'input_value
           -> _ =
-       fun input_typ (Typ return_typ) ->
+       fun input_typ (Typ return_typ) value ->
         let primary_input = Field.Vector.create () in
         let next_input = ref 0 in
         let store_field_elt x =
@@ -284,21 +284,18 @@ struct
           Field.Vector.emplace_back primary_input x ;
           Cvar.Unsafe.of_index v
         in
-        let receive_public_input value =
-          let (Typ { var_of_fields; value_to_fields; _ }) = input_typ in
-          let fields, aux = value_to_fields value in
-          let fields = Array.map ~f:store_field_elt fields in
-          let var = var_of_fields (fields, aux) in
-          let retval =
-            return_typ.var_of_fields
-              ( Core_kernel.Array.init return_typ.size_in_field_elements
-                  ~f:(fun _ -> alloc_var next_input ())
-              , return_typ.constraint_system_auxiliary () )
-          in
-          let first_auxiliary = !next_input in
-          (var, retval, first_auxiliary, primary_input)
+        let (Typ { var_of_fields; value_to_fields; _ }) = input_typ in
+        let fields, aux = value_to_fields value in
+        let fields = Array.map ~f:store_field_elt fields in
+        let var = var_of_fields (fields, aux) in
+        let retval =
+          return_typ.var_of_fields
+            ( Core_kernel.Array.init return_typ.size_in_field_elements
+                ~f:(fun _ -> alloc_var next_input ())
+            , return_typ.constraint_system_auxiliary () )
         in
-        receive_public_input
+        let first_auxiliary = !next_input in
+        (var, retval, first_auxiliary, primary_input)
     end
 
     module Witness_builder = struct
@@ -357,13 +354,11 @@ struct
         -> (unit -> 'input_var -> r_var)
         -> 'input_value
         -> r_value =
-     fun cont0 input_typ return_typ k0 ->
-      let receive_public_input = Conv.conv input_typ return_typ in
-      fun value ->
-        let var, retval, first_auxiliary, primary_input =
-          receive_public_input value
-        in
-        cont0 first_auxiliary retval (k0 () var) primary_input
+     fun cont0 input_typ return_typ k0 value ->
+      let var, retval, first_auxiliary, primary_input =
+        Conv.receive_public_input input_typ return_typ value
+      in
+      cont0 first_auxiliary retval (k0 () var) primary_input
 
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
