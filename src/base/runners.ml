@@ -212,20 +212,17 @@ struct
         -> R1CS_constraint_system.t =
      fun ~run next_input ~input_typ ~return_typ k ->
       (* allocate variables for the public input and the public output *)
-      let retvar, checked =
-        let var, retvar =
-          allocate_public_inputs next_input ~input_typ ~return_typ
-        in
+      let var, retvar =
+        allocate_public_inputs next_input ~input_typ ~return_typ
+      in
+      (* create constraints to validate the input (using the input [Typ]'s [check]) *)
+      let checked =
         let open Checked in
-        (* create constraints to validate the input (using the input [Typ]'s [check]) *)
-        let circuit =
-          let%bind () =
-            let (Typ input_typ) = input_typ in
-            input_typ.check var
-          in
-          Checked.return (fun () -> k var)
+        let%bind () =
+          let (Typ input_typ) = input_typ in
+          input_typ.check var
         in
-        (retvar, circuit)
+        Checked.return (fun () -> k var)
       in
 
       let (Typ return_typ) = return_typ in
