@@ -293,10 +293,10 @@ struct
                 Field.Vector.emplace_back input (Runner.get_value state res) ;
                 fst @@ Checked.run (Checked.assert_equal res output) state )
           in
-          return_typ.var_of_fields (output, auxiliary_output_data)
+          let true_output = return_typ.var_of_fields (output, auxiliary_output_data) in
+          (aux, true_output)
         in
-        let true_output = finish_witness_generation (state, res) in
-        (aux, true_output)
+        finish_witness_generation (state, res)
     end
 
     let conv :
