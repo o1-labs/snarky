@@ -186,8 +186,8 @@ struct
       Field.Vector.emplace_back primary_input x ;
       v
 
-    let collect_input_constraints :
-        type checked input_var input_value.
+    let allocate_public_inputs :
+        type input_var input_value output_var output_value.
            int ref
         -> input_typ:
              ( input_var
@@ -195,12 +195,15 @@ struct
              , field
              , (unit, field) Checked.Types.Checked.t )
              Types.Typ.typ
-        -> return_typ:_ Types.Typ.t
-        -> (unit -> input_var -> checked)
-        -> _ * (unit -> checked) Checked.t =
-     fun next_input ~input_typ:(Typ input_typ) ~return_typ:(Typ return_typ) k ->
+        -> return_typ:
+             ( output_var
+             , output_value
+             , field
+             , (unit, field) Checked.Types.Checked.t )
+             Types.Typ.t
+        -> input_var * output_var =
+     fun next_input ~input_typ:(Typ input_typ) ~return_typ:(Typ return_typ) ->
       (* allocate variables for the public input and the public output *)
-      let open Checked in
       let alloc_input
           { Types0.Typ.var_of_fields
           ; size_in_field_elements
@@ -214,7 +217,25 @@ struct
       in
       let var = alloc_input input_typ in
       let retval = alloc_input return_typ in
+      (var, retval)
 
+    let collect_input_constraints :
+        type checked input_var input_value.
+           int ref
+        -> input_typ:
+             ( input_var
+             , input_value
+             , field
+             , (unit, field) Checked.Types.Checked.t )
+             Types.Typ.typ
+        -> return_typ:_ Types.Typ.t
+        -> (unit -> input_var -> checked)
+        -> _ * (unit -> checked) Checked.t =
+     fun next_input ~input_typ:(Typ input_typ) ~return_typ k ->
+      let var, retval =
+        allocate_public_inputs next_input ~input_typ:(Typ input_typ) ~return_typ
+      in
+      let open Checked in
       (* create constraints to validate the input (using the input [Typ]'s [check]) *)
       let circuit =
         let%bind () = input_typ.check var in
