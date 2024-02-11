@@ -1294,6 +1294,53 @@ module Run = struct
           let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
           Perform.constraint_system ~run:as_stateful ~input_typ ~return_typ x )
 
+    type ('input_var, 'return_var, 'result) manual_callbacks =
+      { run_circuit : 'a. ('input_var -> unit -> 'a) -> 'a
+      ; finish_computation : 'return_var -> 'result
+      }
+
+    let constraint_system_manual ~input_typ ~return_typ =
+      let builder =
+        Run.Constraint_system_builder.build ~input_typ ~return_typ
+      in
+      (* FIXME: This behaves badly with exceptions. *)
+      let cached_state = ref None in
+      let cached_active_counters = ref None in
+      let run_circuit circuit =
+        (* Check the status. *)
+        if
+          Option.is_some !cached_state || Option.is_some !cached_active_counters
+        then failwith "Already generating constraint system" ;
+        (* Partial [finalize_is_running]. *)
+        cached_state := Some !state ;
+        builder.run_computation (fun input state' ->
+            (* Partial [as_stateful]. *)
+            state := state' ;
+            (* Partial [mark_active]. *)
+            let counters = !active_counters in
+            cached_active_counters := Some counters ;
+            active_counters := this_functor_id :: counters ;
+            (* Start the circuit. *)
+            circuit input () )
+      in
+      let finish_computation return_var =
+        (* Check the status. *)
+        if
+          Option.is_none !cached_state || Option.is_none !cached_active_counters
+        then failwith "Constraint system not in a finalizable state" ;
+        (* Partial [mark_active]. *)
+        active_counters := Option.value_exn !cached_active_counters ;
+        (* Create an invalid state, to avoid re-runs. *)
+        cached_active_counters := None ;
+        (* Partial [as_stateful]. *)
+        let state' = !state in
+        let res = builder.finish_computation (state', return_var) in
+        (* Partial [finalize_is_running]. *)
+        state := Option.value_exn !cached_state ;
+        res
+      in
+      { run_circuit; finish_computation }
+
     let generate_public_input t x : As_prover.Vector.t =
       finalize_is_running (fun () -> generate_public_input t x)
 
@@ -1309,6 +1356,49 @@ module Run = struct
           let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
           Perform.generate_witness_conv ~run:as_stateful ~f ~input_typ
             ~return_typ x input )
+
+    let generate_witness_manual ?handlers ~input_typ ~return_typ input =
+      let builder =
+        Run.Witness_builder.auxiliary_input ?handlers ~input_typ ~return_typ
+          input
+      in
+      (* FIXME: This behaves badly with exceptions. *)
+      let cached_state = ref None in
+      let cached_active_counters = ref None in
+      let run_circuit circuit =
+        (* Check the status. *)
+        if
+          Option.is_some !cached_state || Option.is_some !cached_active_counters
+        then failwith "Already generating constraint system" ;
+        (* Partial [finalize_is_running]. *)
+        cached_state := Some !state ;
+        builder.run_computation (fun input state' ->
+            (* Partial [as_stateful]. *)
+            state := state' ;
+            (* Partial [mark_active]. *)
+            let counters = !active_counters in
+            cached_active_counters := Some counters ;
+            active_counters := this_functor_id :: counters ;
+            (* Start the circuit. *)
+            circuit input () )
+      in
+      let finish_computation return_var =
+        (* Check the status. *)
+        if
+          Option.is_none !cached_state || Option.is_none !cached_active_counters
+        then failwith "Constraint system not in a finalizable state" ;
+        (* Partial [mark_active]. *)
+        active_counters := Option.value_exn !cached_active_counters ;
+        (* Create an invalid state, to avoid re-runs. *)
+        cached_active_counters := None ;
+        (* Partial [as_stateful]. *)
+        let state' = !state in
+        let res = builder.finish_witness_generation (state', return_var) in
+        (* Partial [finalize_is_running]. *)
+        state := Option.value_exn !cached_state ;
+        res
+      in
+      { run_circuit; finish_computation }
 
     let run_unchecked x =
       finalize_is_running (fun () ->

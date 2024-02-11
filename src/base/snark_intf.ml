@@ -1380,6 +1380,25 @@ module type Run_basic = sig
     -> 'input_value
     -> Proof_inputs.t
 
+  type ('input_var, 'return_var, 'result) manual_callbacks =
+      { run_circuit : 'a. ('input_var -> unit -> 'a) -> 'a
+      ; finish_computation : 'return_var -> 'result
+      }
+
+  (** Callback version of [constraint_system]. *)
+  val constraint_system_manual :
+       input_typ:('input_var, 'input_value) Typ.t
+    -> return_typ:('return_var, 'return_value) Typ.t
+    -> ('input_var, 'return_var, R1CS_constraint_system.t) manual_callbacks
+
+  (** Callback version of [generate_witness]. *)
+  val generate_witness_manual :
+       ?handlers:(request -> response) list
+    -> input_typ:('input_var, 'input_value) Typ.t
+    -> return_typ:('return_var, 'return_value) Typ.t
+    -> 'input_value
+    -> ('input_var, 'return_var, Proof_inputs.t * 'return_value) manual_callbacks
+
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
     ('input_var, 'input_value) Typ.t -> 'input_value -> Field.Constant.Vector.t
