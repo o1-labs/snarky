@@ -334,8 +334,8 @@ struct
         Field.Vector.emplace_back primary_input x ;
         Cvar.Unsafe.of_index v
       in
-      let (Typ { var_of_fields; value_to_fields; _ }) = input_typ in
-      fun value ->
+      let receive_public_input value =
+        let (Typ { var_of_fields; value_to_fields; _ }) = input_typ in
         let fields, aux = value_to_fields value in
         let fields = Array.map ~f:store_field_elt fields in
         let var = var_of_fields (fields, aux) in
@@ -345,6 +345,10 @@ struct
                 ~f:(fun _ -> alloc_var next_input ())
             , return_typ.constraint_system_auxiliary () )
         in
+        (var, retval)
+      in
+      fun value ->
+        let var, retval = receive_public_input value in
         cont0 !next_input retval (k0 () var) primary_input
 
     let generate_auxiliary_input :
