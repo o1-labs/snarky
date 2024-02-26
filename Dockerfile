@@ -12,13 +12,6 @@ RUN sudo apt-get install -y \
     libssl-dev \
     m4
 
-RUN sudo apt-get install -y libprocps-dev || \
-    sudo apt-get install -y libprocps4-dev || \
-    sudo apt-get install -y libprocps3-dev || \
-    sudo apt-get install -y libprocps8-dev || \
-    sudo apt-get install -y libproc-dev
-
-
 # Create a volume we can work in. For initial build, 
 # we'll copy the local context. To update the snarky 
 # library itself later, bind mount your updated source 
