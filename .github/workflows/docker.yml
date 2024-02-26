@@ -4,7 +4,7 @@ on:
   [pull_request]
 
 jobs:
-  buildx:
+  docker-build:
     runs-on: ubuntu-latest
     steps:
       -
@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v2
       -
         uses: docker/setup-buildx-action@v1
-        id: buildx
+        id: docker-build
         with:
           install: true
       -
