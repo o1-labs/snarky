@@ -1122,11 +1122,6 @@ module type Run_basic = sig
   (** The finite field over which the R1CS operates. *)
   type field
 
-  (* get and set the internal Run_state.t *)
-  val get_state : unit -> field Run_state.t
-
-  val set_state : field Run_state.t -> unit
-
   module Bigint : sig
     include Snarky_intf.Bigint_intf.Extended with type field := field
 
@@ -1406,6 +1401,9 @@ module type Run_basic = sig
        , 'return_var
        , Proof_inputs.t * 'return_value )
        manual_callbacks
+
+  (* Callback, low-level version of [as_prover] and [exists]. *)
+  val as_prover_manual : int -> field array option -> Field.t array
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :

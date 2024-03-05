@@ -724,10 +724,6 @@ module Run = struct
            ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 0)
            ~with_witness:false ~stack:[] ~is_running:false () )
 
-    let get_state () = !state
-
-    let set_state s = state := s
-
     let dump () = Run_state.dump !state
 
     let in_prover () : bool = Run_state.has_witness !state
@@ -1396,6 +1392,41 @@ module Run = struct
         res
       in
       { run_circuit; finish_computation }
+
+    (* start an as_prover / exists block and return a function to finish it and witness a given list of fields *)
+    let as_prover_manual (size_to_witness : int) :
+        field array option -> Field.t array =
+      let s = !state in
+      let old_as_prover = Run_state.as_prover s in
+      (* enter the as_prover block *)
+      Run_state.set_as_prover s true ;
+
+      let finish_computation (values_to_witness : field array option) =
+        (* leave the as_prover block *)
+        Run_state.set_as_prover s old_as_prover ;
+
+        (* return variables *)
+        match (Run_state.has_witness s, values_to_witness) with
+        (* in compile mode, we return empty vars *)
+        | false, None ->
+            Core_kernel.Array.init size_to_witness ~f:(fun _ ->
+                Run_state.alloc_var s () )
+        (* in prover mode, we expect values to turn into vars *)
+        | true, Some values_to_witness ->
+            let store_value =
+              (* If we're nested in a prover block, create constants instead of
+                 storing. *)
+              if old_as_prover then Field.constant
+              else Run_state.store_field_elt s
+            in
+            Core_kernel.Array.map values_to_witness ~f:store_value
+        (* the other cases are invalid *)
+        | false, Some _ ->
+            failwith "Did not expect values to witness"
+        | true, None ->
+            failwith "Expected values to witness"
+      in
+      finish_computation
 
     let run_unchecked x =
       finalize_is_running (fun () ->
