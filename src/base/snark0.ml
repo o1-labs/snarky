@@ -1395,7 +1395,7 @@ module Run = struct
 
     (* start an as_prover / exists block and return a function to finish it and witness a given list of fields *)
     let as_prover_manual (size_to_witness : int) :
-        field array option -> Field.t array =
+        (field array option -> Field.t array) Staged.t =
       let s = !state in
       let old_as_prover = Run_state.as_prover s in
       (* enter the as_prover block *)
@@ -1426,7 +1426,7 @@ module Run = struct
         | true, None ->
             failwith "Expected values to witness"
       in
-      finish_computation
+      Staged.stage finish_computation
 
     let run_unchecked x =
       finalize_is_running (fun () ->

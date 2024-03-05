@@ -1403,7 +1403,7 @@ module type Run_basic = sig
        manual_callbacks
 
   (* Callback, low-level version of [as_prover] and [exists]. *)
-  val as_prover_manual : int -> field array option -> Field.t array
+  val as_prover_manual : int -> (field array option -> Field.t array) Staged.t
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
