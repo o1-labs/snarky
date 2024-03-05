@@ -724,6 +724,10 @@ module Run = struct
            ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 0)
            ~with_witness:false ~stack:[] ~is_running:false () )
 
+    let get_state () = !state
+
+    let set_state s = state := s
+
     let dump () = Run_state.dump !state
 
     let in_prover () : bool = Run_state.has_witness !state

@@ -1122,6 +1122,11 @@ module type Run_basic = sig
   (** The finite field over which the R1CS operates. *)
   type field
 
+  (* get and set the internal Run_state.t *)
+  val get_state : unit -> field Run_state.t
+
+  val set_state : field Run_state.t -> unit
+
   module Bigint : sig
     include Snarky_intf.Bigint_intf.Extended with type field := field
 
@@ -1381,9 +1386,9 @@ module type Run_basic = sig
     -> Proof_inputs.t
 
   type ('input_var, 'return_var, 'result) manual_callbacks =
-      { run_circuit : 'a. ('input_var -> unit -> 'a) -> 'a
-      ; finish_computation : 'return_var -> 'result
-      }
+    { run_circuit : 'a. ('input_var -> unit -> 'a) -> 'a
+    ; finish_computation : 'return_var -> 'result
+    }
 
   (** Callback version of [constraint_system]. *)
   val constraint_system_manual :
@@ -1397,7 +1402,10 @@ module type Run_basic = sig
     -> input_typ:('input_var, 'input_value) Typ.t
     -> return_typ:('return_var, 'return_value) Typ.t
     -> 'input_value
-    -> ('input_var, 'return_var, Proof_inputs.t * 'return_value) manual_callbacks
+    -> ( 'input_var
+       , 'return_var
+       , Proof_inputs.t * 'return_value )
+       manual_callbacks
 
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
