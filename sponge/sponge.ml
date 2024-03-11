@@ -218,7 +218,7 @@ module Make_hash (P : Intf.Permutation) = struct
     Array.fold ~init:state blocks ~f:(fun state block ->
         add_block ~state block ; perm state )
 
-  (* takes an array of field elements, and spread them into blocks/arrays that can contain [rate] fied elements *)
+  (* takes an array of field elements, and spread them into blocks/arrays that can contain [rate] field elements *)
   let to_blocks rate field_elems =
     let n = Array.length field_elems in
     let num_blocks = if n = 0 then 1 else (n + rate - 1) / rate in
