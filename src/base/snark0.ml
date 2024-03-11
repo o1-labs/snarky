@@ -1428,6 +1428,16 @@ module Run = struct
       in
       Staged.stage finish_computation
 
+    module Async' (Promise : Base.Monad.S) = struct
+      let request (request : unit -> 'a Promise.t Request.t) =
+        let r = exists (Typ.Internal.ref ()) ~request ?compute:None in
+        match !r with
+        | Some p ->
+            Promise.map p ~f:(fun x -> Some x)
+        | None ->
+            Promise.return None
+    end
+
     let run_unchecked x =
       finalize_is_running (fun () ->
           Perform.run_unchecked ~run:as_stateful (fun () -> mark_active ~f:x) )
