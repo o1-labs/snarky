@@ -1428,14 +1428,25 @@ module Run = struct
       in
       Staged.stage finish_computation
 
+    let request_manual (req : unit -> 'a Request.t) () : 'a =
+      Request.Handler.run (Run_state.handler !state) (req ())
+      |> Option.value_exn ~message:"Unhandled request"
+
     module Async' (Promise : Base.Monad.S) = struct
-      let request (request : unit -> 'a Promise.t Request.t) =
-        let r = exists (Typ.Internal.ref ()) ~request ?compute:None in
-        match !r with
-        | Some p ->
-            Promise.map p ~f:(fun x -> Some x)
-        | None ->
-            Promise.return None
+      let run_prover ~(else_ : unit -> 'a) (f : unit -> 'a Promise.t) :
+          'a Promise.t =
+        if Run_state.has_witness !state then (
+          let old = Run_state.as_prover !state in
+          Run_state.set_as_prover !state true ;
+          let%map.Promise result = f () in
+          Run_state.set_as_prover !state old ;
+          result )
+        else Promise.return (else_ ())
+
+      let as_prover (f : unit -> unit Promise.t) : unit Promise.t =
+        run_prover ~else_:(fun () -> ()) f
+
+      let unit_request req = as_prover (request_manual req)
     end
 
     let run_unchecked x =

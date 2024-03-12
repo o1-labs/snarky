@@ -1406,7 +1406,9 @@ module type Run_basic = sig
   val as_prover_manual : int -> (field array option -> Field.t array) Staged.t
 
   module Async' (Promise : Base.Monad.S) : sig
-    val request : (unit -> 'a Promise.t Request.t) -> 'a option Promise.t
+    val as_prover : (unit -> unit Promise.t) -> unit Promise.t
+
+    val unit_request : (unit -> unit Promise.t Request.t) -> unit Promise.t
   end
 
   (** Generate the public input vector for a given statement. *)
