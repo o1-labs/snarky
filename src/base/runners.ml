@@ -59,7 +59,11 @@ struct
         ~aux:(pack_field_vec aux) ~system ~eval_constraints:true
         ~with_witness:true ()
     in
-    let _, x = run t0 state in
+    let id = Run_state.id state in
+    let state, x = run t0 state in
+    let final_id = Run_state.id state in
+    if id <> final_id then
+      failwith "Snarky's internal state has been clobbered." ;
     (x, get_value)
 
   let run_and_check' ~run t0 =
@@ -84,8 +88,13 @@ struct
         ~aux:(pack_field_vec aux) ~system ~eval_constraints:true
         ~with_witness:true ()
     in
+    let id = Run_state.id state in
     let res = run t0 state in
-    map res ~f:(function _, x -> (x, get_value))
+    map res ~f:(function state, x ->
+        let final_id = Run_state.id state in
+        if id <> final_id then
+          failwith "Snarky's internal state has been clobbered." ;
+        (x, get_value) )
 
   let run_and_check_deferred' ~map ~return ~run t0 =
     match
@@ -107,7 +116,12 @@ struct
       Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux
         ~with_witness:true ()
     in
-    match run t0 state with _, x -> x
+    let id = Run_state.id state in
+    let state, x = run t0 state in
+    let final_id = Run_state.id state in
+    if id <> final_id then
+      failwith "Snarky's internal state has been clobbered." ;
+    x
 
   let run_and_check_exn ~run t =
     let x, get_value = run_and_check_exn' ~run t in
@@ -220,6 +234,7 @@ struct
           Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
             ~with_witness:false ()
         in
+        let id = Run_state.id state in
         let state, () =
           (* create constraints to validate the input (using the input [Typ]'s [check]) *)
           let checked =
@@ -230,6 +245,9 @@ struct
         in
         let run_computation k = k var state in
         let finish_computation (state, res) =
+          let final_id = Run_state.id state in
+          if id <> final_id then
+            failwith "Snarky's internal state has been clobbered." ;
           let res, _ = return_typ.var_to_fields res in
           let retvar, _ = return_typ.var_to_fields retvar in
           let _state =
@@ -332,8 +350,12 @@ struct
             ~next_auxiliary ~aux:(pack_field_vec aux) ~handler
             ~with_witness:true ()
         in
+        let id = Run_state.id state in
         let run_computation t0 = t0 input_var state in
         let finish_witness_generation (state, res) =
+          let final_id = Run_state.id state in
+          if id <> final_id then
+            failwith "Snarky's internal state has been clobbered." ;
           let (Typ return_typ) = return_typ in
           let res_fields, auxiliary_output_data =
             return_typ.var_to_fields res

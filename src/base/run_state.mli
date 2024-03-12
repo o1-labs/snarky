@@ -44,6 +44,8 @@ val store_field_elt : 'field t -> 'field -> 'field Cvar.t
 
 val alloc_var : 'field t -> unit -> 'field Cvar.t
 
+val id : _ t -> int
+
 val has_witness : _ t -> bool
 
 val as_prover : _ t -> bool
