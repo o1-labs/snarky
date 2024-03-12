@@ -1405,7 +1405,7 @@ module type Run_basic = sig
   (* Callback, low-level version of [as_prover] and [exists]. *)
   val as_prover_manual : int -> (field array option -> Field.t array) Staged.t
 
-  module Async' (Promise : Base.Monad.S) : sig
+  module Async_generic (Promise : Base.Monad.S) : sig
     val as_prover : (unit -> unit Promise.t) -> unit Promise.t
 
     val unit_request : (unit -> unit Promise.t Request.t) -> unit Promise.t

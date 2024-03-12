@@ -1432,7 +1432,7 @@ module Run = struct
       Request.Handler.run (Run_state.handler !state) (req ())
       |> Option.value_exn ~message:"Unhandled request"
 
-    module Async' (Promise : Base.Monad.S) = struct
+    module Async_generic (Promise : Base.Monad.S) = struct
       let run_prover ~(else_ : unit -> 'a) (f : unit -> 'a Promise.t) :
           'a Promise.t =
         if Run_state.has_witness !state then (
