@@ -1405,6 +1405,12 @@ module type Run_basic = sig
   (* Callback, low-level version of [as_prover] and [exists]. *)
   val as_prover_manual : int -> (field array option -> Field.t array) Staged.t
 
+  module Async_generic (Promise : Base.Monad.S) : sig
+    val as_prover : (unit -> unit Promise.t) -> unit Promise.t
+
+    val unit_request : (unit -> unit Promise.t Request.t) -> unit Promise.t
+  end
+
   (** Generate the public input vector for a given statement. *)
   val generate_public_input :
     ('input_var, 'input_value) Typ.t -> 'input_value -> Field.Constant.Vector.t
