@@ -23,6 +23,10 @@ module type Constraint_system_intf = sig
   val get_public_input_size : t -> int Core_kernel.Set_once.t
 
   val get_rows_len : t -> int
+
+  val num_constraints : t -> int
+
+  val to_asm : t -> string
 end
 
 module type S = sig

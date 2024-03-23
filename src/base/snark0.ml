@@ -645,7 +645,7 @@ struct
   end
 end
 
-(** The main functor for the monadic interface. 
+(** The main functor for the monadic interface.
     See [Run.Make] for the same thing but for the imperative interface. *)
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
@@ -1263,8 +1263,8 @@ module Run = struct
       let inject_wrapper ~f x = f x in
       inject_wrapper ~f (x a)
 
-    (** Caches the global [state] before running [f]. 
-        It is expected that [f] will reset the global state for its own use only, 
+    (** Caches the global [state] before running [f].
+        It is expected that [f] will reset the global state for its own use only,
         hence why we need to reset it after running [f].*)
     let finalize_is_running f =
       let cached_state = !state in
