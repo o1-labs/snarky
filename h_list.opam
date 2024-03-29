@@ -9,9 +9,6 @@ license: "MIT"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
-url {
-  src: "git://github.com/o1-labs/snarky.git"
-}
 depends: [
   "dune"                {build & >= "2.0"}
   "ppxlib"              {>= "0.25.0"}
