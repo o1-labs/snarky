@@ -31,9 +31,12 @@ module Vector = struct
   let emplace_back (type x) (T ((module T), _, t) : x t) x = T.emplace_back t x
 end
 
+let id = ref 0
+
 (** The internal state used to run a checked computation. *)
 type 'field t =
-  { system : 'field Constraint_system.t option
+  { id : int
+  ; system : 'field Constraint_system.t option
   ; input : 'field Vector.t
   ; aux : 'field Vector.t
   ; eval_constraints : bool
@@ -57,7 +60,10 @@ let make ~num_inputs ~input ~next_auxiliary ~aux ?system ~eval_constraints
   next_auxiliary := num_inputs ;
   (* We can't evaluate the constraints if we are not computing over a value. *)
   let eval_constraints = eval_constraints && with_witness in
-  { system
+  let my_id = !id in
+  incr id ;
+  { id = my_id
+  ; system
   ; input
   ; aux
   ; eval_constraints
@@ -89,6 +95,8 @@ let store_field_elt { next_auxiliary; aux; _ } x =
 let alloc_var { next_auxiliary; _ } () =
   let v = !next_auxiliary in
   incr next_auxiliary ; Cvar.Unsafe.of_index v
+
+let id { id; _ } = id
 
 let has_witness { has_witness; _ } = has_witness
 
