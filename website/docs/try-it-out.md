@@ -66,12 +66,3 @@ project directory, run
 ```sh
 dune exec src/try_me.exe
 ```
-
-## Tutorials and examples
-
-We believe a great way to learn is by doing! You can find our tutorial [on
-GitHub](https://github.com/o1-labs/snarky/blob/master/examples/tutorial), as
-well as
-[some](https://github.com/o1-labs/snarky/tree/master/examples/merkle_update)
-[examples](https://github.com/o1-labs/snarky/tree/master/examples/election) to
-try out.
