@@ -1429,6 +1429,34 @@ module type Run_basic = sig
 
   val run_and_check_exn : (unit -> (unit -> 'a) As_prover.t) -> 'a
 
+  module Low_level : sig
+    type state = field Run_state.t
+
+    val state : state ref
+
+    val make_state :
+         num_inputs:int
+      -> input:Field.Constant.Vector.t
+      -> next_auxiliary:int ref
+      -> aux:Field.Constant.Vector.t
+      -> ?system:R1CS_constraint_system.t
+      -> ?eval_constraints:bool
+      -> with_witness:bool
+      -> ?log_constraint:
+           (   ?at_label_boundary:[ `End | `Start ] * string
+            -> ( field Cvar.t
+               , field )
+               Checked_runner.Constraint0.basic_with_annotation
+               option
+            -> unit )
+      -> unit
+      -> state
+
+    val push_active_counter : unit -> int list
+
+    val reset_active_counter : int list -> unit
+  end
+
   module Run_and_check_deferred (M : sig
     type _ t
 
