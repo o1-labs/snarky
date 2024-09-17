@@ -1,5 +1,6 @@
 open Core_kernel
 module Intf = Intf
+module Default = Default_sponge
 
 module Params = struct
   include Params
@@ -128,6 +129,15 @@ should be higher for smaller alpha.
         let sbox = if Int.(r mod 2 = 0) then sbox0 else sbox1 in
         Array.map_inplace state ~f:sbox ;
         apply_affine_map (mds, round_constants.(r + 1)) state )
+
+  let update =
+    let open Default_sponge.F (Field) in
+    Fn.compose (sponge ~add_assign) block_cipher
+
+  let update_batch params ~rate =
+    List.map ~f:(fun (`State state, input) ->
+        let state = copy state in
+        update params ~rate ~state input )
 end
 
 module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
@@ -203,6 +213,15 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) = struct
       state := apply_affine_map (mds, round_constants.(i)) !state
     done ;
     !state
+
+  let update =
+    let open Default_sponge.F (Field) in
+    Fn.compose (sponge ~add_assign) block_cipher
+
+  let update_batch params ~rate =
+    List.map ~f:(fun (`State state, input) ->
+        let state = copy state in
+        update params ~rate ~state input )
 end
 
 module Make_hash (P : Intf.Permutation) = struct
@@ -212,40 +231,10 @@ module Make_hash (P : Intf.Permutation) = struct
 
   let rate = state_size - 1
 
-  let add_block ~state block = Array.iteri block ~f:(add_assign ~state)
-
-  let sponge perm blocks ~state =
-    Array.fold ~init:state blocks ~f:(fun state block ->
-        add_block ~state block ; perm state )
-
   (* takes an array of field elements, and spread them into blocks/arrays that can contain [rate] fied elements *)
-  let to_blocks rate field_elems =
-    let n = Array.length field_elems in
-    let num_blocks = if n = 0 then 1 else (n + rate - 1) / rate in
-    let fill_block block_idx pos =
-      let global_pos = (rate * block_idx) + pos in
-      if global_pos < n then field_elems.(global_pos)
-      else (* padding *) Field.zero
-    in
-    let create_block idx = Array.init rate ~f:(fill_block idx) in
-    Array.init num_blocks ~f:create_block
-
-  let%test_unit "empty field_elems to_blocks" =
-    let blocks = to_blocks 2 [||] in
-    assert (Array.length blocks = 1) ;
-    [%test_eq: unit array array]
-      (Array.map blocks ~f:(Array.map ~f:ignore))
-      [| [| (); () |] |]
-
-  let%test_unit "block" =
-    let z = Field.zero in
-    [%test_eq: unit array array]
-      (Array.map (to_blocks 2 [| z; z; z |]) ~f:(Array.map ~f:ignore))
-      [| [| (); () |]; [| (); () |] |]
-
   let update params ~state inputs =
     let state = copy state in
-    sponge (block_cipher params) (to_blocks rate inputs) ~state
+    update params inputs ~rate ~state
 
   let digest state = state.(0)
 
@@ -253,6 +242,9 @@ module Make_hash (P : Intf.Permutation) = struct
 
   let hash ?(init = initial_state) params inputs =
     update params ~state:init inputs |> digest
+
+  let hash_batch params =
+    Fn.compose (List.map ~f:digest) @@ update_batch params ~rate
 end
 
 type sponge_state = Absorbed of int | Squeezed of int [@@deriving sexp]

@@ -81,6 +81,20 @@ module type Permutation = sig
   val copy : Field.t array -> Field.t array
 
   val block_cipher : Field.t Params.t -> Field.t array -> Field.t array
+
+  val update :
+       Field.t Params.t
+    -> Field.t array
+    -> rate:int
+    -> state:Field.t array
+    -> Field.t array
+
+  val update_batch :
+       Field.t Params.t
+    -> rate:int
+    -> ([`State of Field.t array] *
+     Field.t array) list
+    -> Field.t array list
 end
 
 module type T = sig
@@ -112,6 +126,13 @@ module type Hash = sig
 
   val hash :
     ?init:Field.t State.t -> Field.t Params.t -> Field.t array -> Field.t
+
+  val hash_batch :
+       Field.t Params.t
+    -> (
+     [`State of Field.t array]
+    *  Field.t array) list
+    -> Field.t list
 end
 
 module type Sponge = sig

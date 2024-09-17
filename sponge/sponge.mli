@@ -1,4 +1,5 @@
 module Intf = Intf
+module Default = Default_sponge
 
 module Params : sig
   type 'a t = 'a Params.t [@@deriving bin_io]
