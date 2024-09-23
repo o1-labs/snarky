@@ -426,15 +426,34 @@ struct
         -> 'k_var
         -> 'k_value =
      fun ~run ~f ~input_typ ~return_typ ?handlers k value ->
+      let time_0 = Time.now () in
       let builder =
         Witness_builder.auxiliary_input ?handlers ~input_typ ~return_typ value
       in
+      let time_1 = Time.now () in
       let state, res =
         builder.run_computation (fun input_var state ->
             run (k input_var) state )
       in
+      let time_2 = Time.now () in
       let witness, output = builder.finish_witness_generation (state, res) in
-      f witness output
+      let time_3 = Time.now () in
+      let res = f witness output in
+      let time_4 = Time.now () in
+      printf
+        !"generate_witness_conv took %f ms:\n\
+         \           1   %f (aux input)\n\
+         \           2   %f (wrap.handle = witness gen?)\n\
+         \           3   %f (finish witness generation)\n\
+         \           4   %f (f: proof creation promise)\n\n\
+          %!"
+        (Time.Span.to_ms (Time.diff time_4 time_0))
+        (Time.Span.to_ms (Time.diff time_1 time_0))
+        (Time.Span.to_ms (Time.diff time_2 time_1))
+        (Time.Span.to_ms (Time.diff time_3 time_2))
+        (Time.Span.to_ms (Time.diff time_4 time_3)) ;
+
+      res
 
     let generate_witness =
       generate_witness_conv ~f:(fun inputs _output -> inputs)
