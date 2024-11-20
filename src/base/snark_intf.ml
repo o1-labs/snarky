@@ -133,9 +133,31 @@ module type Typ_intf = sig
 
   type checked_unit
 
-  type (_, _, _, _) data_spec
-
   type _ prover_ref
+
+  type ('var, 'value, 'aux, 'field, 'checked) typ' =
+    { var_to_fields : 'var -> 'field Cvar.t array * 'aux
+    ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
+    ; value_to_fields : 'value -> 'field array * 'aux
+    ; value_of_fields : 'field array * 'aux -> 'value
+    ; size_in_field_elements : int
+    ; constraint_system_auxiliary : unit -> 'aux
+    ; check : 'var -> 'checked
+    }
+
+  type ('var, 'value, 'field, 'checked) typ =
+    | Typ :
+        ('var, 'value, 'aux, 'field, 'checked) typ'
+        -> ('var, 'value, 'field, 'checked) typ
+
+  module Data_spec : sig
+    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) t =
+      | ( :: ) :
+          ('var, 'value, 'field, checked_unit) typ
+          * ('r_var, 'r_value, 'k_var, 'k_value, 'field) t
+          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'field) t
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'field) t
+  end
 
   (** The type [('var, 'value) t] describes a mapping from the OCaml type
         ['value] to a type representing the value using R1CS variables
@@ -150,7 +172,7 @@ module type Typ_intf = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-  type ('var, 'value) t = ('var, 'value, field, checked_unit) Types.Typ.t
+  type ('var, 'value) t = ('var, 'value, field, checked_unit) typ
 
   (** Basic instances: *)
 
@@ -204,7 +226,7 @@ module type Typ_intf = sig
   (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
         a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
   val hlist :
-       (unit, unit, 'k_var, 'k_value) data_spec
+       (unit, unit, 'k_var, 'k_value, field) Data_spec.t
     -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
 
   (** Convert relationships over
@@ -227,7 +249,7 @@ module type Typ_intf = sig
         {!type:Data_spec.t}.
     *)
   val of_hlistable :
-       (unit, unit, 'k_var, 'k_value) data_spec
+       (unit, unit, 'k_var, 'k_value, field) Data_spec.t
     -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
     -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
     -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
@@ -584,11 +606,7 @@ module type Basic = sig
          and type field_var := Field.Var.t
          and type checked_unit := unit Checked.t
          and type _ checked := unit Checked.t
-         and type ('a, 'b, 'c, 'd) data_spec :=
-          ('a, 'b, 'c, 'd, field, unit Checked.t) Typ0.Data_spec0.data_spec
          and type 'a prover_ref := 'a As_prover_ref.t
-
-    include module type of Types.Typ.T
   end
 
   (** Representation of booleans within a field.
@@ -1143,14 +1161,6 @@ module type Run_basic = sig
        and type field_var := Field.t
        and type checked_unit := unit Internal_Basic.Checked.t
        and type _ checked := unit
-       and type ('a, 'b, 'c, 'd) data_spec :=
-        ( 'a
-        , 'b
-        , 'c
-        , 'd
-        , field
-        , unit Internal_Basic.Checked.t )
-        Typ0.Data_spec0.data_spec
        and type 'a prover_ref := 'a As_prover_ref.t)
 
   (** Representation of booleans within a field.
@@ -1268,7 +1278,11 @@ module type Run_basic = sig
     (Basic
       with type field = field
        and type 'a Checked.t = ('a, field) Checked_runner.Simple.t
-       and type 'a As_prover.Ref.t = 'a As_prover_ref.t)
+       and type 'a As_prover.Ref.t = 'a As_prover_ref.t
+       and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
+        ('var, 'value, 'aux, 'field, 'checked) Typ.typ'
+       and type ('var, 'value, 'field, 'checked) Typ.typ =
+        ('var, 'value, 'field, 'checked) Typ.typ)
 
   module Bitstring_checked : sig
     type t = Boolean.var list
