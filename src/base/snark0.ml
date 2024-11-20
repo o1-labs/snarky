@@ -769,7 +769,6 @@ module Run = struct
     module Typ = struct
       include Types.Typ.T
       open Snark.Typ
-
       module Data_spec = Typ.Data_spec
 
       type nonrec ('var, 'value) t = ('var, 'value) t
