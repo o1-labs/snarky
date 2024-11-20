@@ -100,27 +100,29 @@ module Make (Checked : Checked_monad) = struct
          and type field_var := field Cvar.t
   end
 
-  module Data_spec = struct
-    include Data_spec0
-
-    type ('r_var, 'r_value, 'k_var, 'k_value, 'f) t =
-      ('r_var, 'r_value, 'k_var, 'k_value, 'f, (unit, 'f) Checked.t) data_spec
-
-    let size t =
-      let rec go :
-          type r_var r_value k_var k_value.
-          int -> (r_var, r_value, k_var, k_value, 'f) t -> int =
-       fun acc t ->
-        match t with
-        | [] ->
-            acc
-        | Typ { size_in_field_elements; _ } :: t' ->
-            go (acc + size_in_field_elements) t'
-      in
-      go 0 t
-  end
-
   module T = struct
+    module Data_spec = struct
+      type ('r_var, 'r_value, 'k_var, 'k_value, 'field) t =
+        | ( :: ) :
+            ('var, 'value, 'field) typ
+            * ('r_var, 'r_value, 'k_var, 'k_value, 'field) t
+            -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'field) t
+        | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'field) t
+
+      let size t =
+        let rec go :
+            type r_var r_value k_var k_value.
+            int -> (r_var, r_value, k_var, k_value, 'f) t -> int =
+         fun acc t ->
+          match t with
+          | [] ->
+              acc
+          | Typ { size_in_field_elements; _ } :: t' ->
+              go (acc + size_in_field_elements) t'
+        in
+        go 0 t
+    end
+
     let unit () : (unit, unit, 'field) t =
       Typ
         { var_to_fields = (fun () -> ([||], ()))
@@ -461,5 +463,3 @@ module Make (Checked : Checked_monad) = struct
 
   include T
 end
-
-include Make (Checked_runner.Simple)
