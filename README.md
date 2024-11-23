@@ -101,13 +101,6 @@ let implied_root_unchecked entry_hash addr0 path0 =
 The two obviously look very similar, but the first one can be run to generate an R1CS
 (and also an "auxiliary input") to verify that computation. 
 
-## Implementation
-
-Currently, the library uses a free-monad style AST to represent the snark computation.
-This may change in future versions if the overhead of creating the AST is significant.
-Most likely it will stick around since the overhead doesn't seem to be too bad and it
-enables optimizations like eliminating equality constraints.
-
 ## Building
 
 ```
