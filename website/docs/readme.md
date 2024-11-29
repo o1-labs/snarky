@@ -20,7 +20,7 @@ opam pin add git@github.com:o1-labs/snarky.git
 ```
 and answering yes to the prompts.
 
-The best place to get started learning how to use the library are the annotated examples.
+The best place to get started learning how to use the library is the annotated examples.
 - [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
 - [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
 
@@ -34,7 +34,7 @@ certified by the snark. For example, we have a function
 ```ocaml
 mul : var -> var -> (var, _) Checked.t.
 ```
-Given `v1, v2 : var`, `mul v1 v2` is a variable containg the product of v1 and v2,
+Given `v1, v2 : var`, `mul v1 v2` is a variable containing the product of v1 and v2,
 and the snark will ensure that this is so.
 
 
