@@ -13,7 +13,6 @@ module Cvar = Snarky_backendless.Cvar
 module Enumerable = Snarky_backendless.Enumerable
 module Enumerable_intf = Snarky_backendless.Enumerable_intf
 module Field_intf = Snarky_intf.Field
-module Free_monad = Snarky_backendless.Free_monad
 module H_list = H_list
 module Handle = Snarky_backendless.Handle
 module Merkle_tree = Snarky_backendless.Merkle_tree
