@@ -108,19 +108,6 @@ module Make (Checked : Checked_monad) = struct
             * ('r_var, 'r_value, 'k_var, 'k_value, 'field) t
             -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'field) t
         | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'field) t
-
-      let size t =
-        let rec go :
-            type r_var r_value k_var k_value.
-            int -> (r_var, r_value, k_var, k_value, 'f) t -> int =
-         fun acc t ->
-          match t with
-          | [] ->
-              acc
-          | Typ { size_in_field_elements; _ } :: t' ->
-              go (acc + size_in_field_elements) t'
-        in
-        go 0 t
     end
 
     let unit () : (unit, unit, 'field) t =
