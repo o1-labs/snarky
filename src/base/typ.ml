@@ -132,24 +132,19 @@ module Make (Checked : Checked_monad) = struct
         ; check = (fun _ -> Checked.return ())
         }
 
-    module Internal = struct
-      let snarkless value : _ t =
+    include struct
+      type 'a prover_value = 'a option
+
+      let prover_value () : _ t =
         Typ
-          { var_to_fields = (fun _ -> ([||], ()))
-          ; var_of_fields = (fun _ -> value)
-          ; value_to_fields =
-              (fun value' ->
-                assert (phys_equal value value') ;
-                ([||], ()) )
-          ; value_of_fields = (fun _ -> value)
+          { var_to_fields = (fun x -> ([||], x))
+          ; var_of_fields = (fun (_, x) -> x)
+          ; value_to_fields = (fun x -> ([||], Some x))
+          ; value_of_fields = (fun (_, x) -> Option.value_exn x)
           ; size_in_field_elements = 0
-          ; constraint_system_auxiliary = (fun () -> ())
+          ; constraint_system_auxiliary = (fun () -> None)
           ; check = (fun _ -> Checked.return ())
           }
-
-      module Ref_typ = As_prover_ref.Make_ref_typ (Checked)
-
-      let ref () = Ref_typ.typ
     end
 
     let transport (type var value1 value2 field)

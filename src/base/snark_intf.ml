@@ -133,8 +133,6 @@ module type Typ_intf = sig
 
   type checked_unit
 
-  type _ prover_ref
-
   type ('var, 'value, 'aux, 'field, 'checked) typ' =
     { var_to_fields : 'var -> 'field Cvar.t array * 'aux
     ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
@@ -256,33 +254,15 @@ module type Typ_intf = sig
     -> value_of_hlist:((unit, 'k_value) H_list.t -> 'value)
     -> ('var, 'value) t
 
-  (** [Typ.t]s that make it easier to write a [Typ.t] for a mix of R1CS data
-        and normal OCaml data.
+  type _ prover_value
 
-        Using this module is not recommended.
-    *)
-  module Internal : sig
-    (** A do-nothing [Typ.t] that returns the input value for all modes. This
-          may be used to convert objects from the [Checked] world into and
-          through [As_prover] blocks.
-
-          This is the dual of [ref], which allows [OCaml] values from
-          [As_prover] blocks to pass through the [Checked] world.
-
-          Note: Reading or writing using this [Typ.t] will assert that the
-          argument and the value stored are physically equal -- ie. that they
-          refer to the same object.
-      *)
-    val snarkless : 'a -> ('a, 'a) t
-
-    (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
+  (** A [Typ.t] for marshalling OCaml values generated in [As_prover]
           blocks, while keeping them opaque to the [Checked] world.
 
           This is the dual of [snarkless], which allows [OCaml] values from the
           [Checked] world to pass through [As_prover] blocks.
     *)
-    val ref : unit -> ('a As_prover_ref.t, 'a) t
-  end
+  val prover_value : unit -> ('a prover_value, 'a) t
 end
 
 module type Constraint_intf = sig
@@ -606,7 +586,6 @@ module type Basic = sig
          and type field_var := Field.Var.t
          and type checked_unit := unit Checked.t
          and type _ checked := unit Checked.t
-         and type 'a prover_ref := 'a As_prover_ref.t
   end
 
   (** Representation of booleans within a field.
@@ -735,19 +714,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type 'a t = ('a, field) As_prover0.t
 
     type 'a as_prover = 'a t
-
-    (** Mutable references for use by the prover in a checked computation. *)
-    module Ref : sig
-      (** A mutable reference to an ['a] value, which may be used in checked
-          computations. *)
-      type 'a t = 'a As_prover_ref.t
-
-      val create : 'a as_prover -> 'a t Checked.t
-
-      val get : 'a t -> 'a as_prover
-
-      val set : 'a t -> 'a -> unit as_prover
-    end
 
     include Monad_let.S with type 'a t := 'a t
 
@@ -1160,8 +1126,7 @@ module type Run_basic = sig
       with type field := Field.Constant.t
        and type field_var := Field.t
        and type checked_unit := unit Internal_Basic.Checked.t
-       and type _ checked := unit
-       and type 'a prover_ref := 'a As_prover_ref.t)
+       and type _ checked := unit)
 
   (** Representation of booleans within a field.
 
@@ -1240,19 +1205,6 @@ module type Run_basic = sig
 
     type 'a as_prover = 'a t
 
-    (** Opaque references for use by the prover in a checked computation. *)
-    module Ref : sig
-      (** A mutable reference to an ['a] value, which may be used in checked
-          computations. *)
-      type 'a t = 'a As_prover_ref.t
-
-      val create : (unit -> 'a) as_prover -> 'a t
-
-      val get : 'a t -> 'a as_prover
-
-      val set : 'a t -> 'a -> unit as_prover
-    end
-
     val in_prover_block : unit -> bool
 
     val read_var : Field.t -> Field.Constant.t
@@ -1278,11 +1230,11 @@ module type Run_basic = sig
     (Basic
       with type field = field
        and type 'a Checked.t = ('a, field) Checked_runner.Simple.t
-       and type 'a As_prover.Ref.t = 'a As_prover_ref.t
        and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
         ('var, 'value, 'aux, 'field, 'checked) Typ.typ'
        and type ('var, 'value, 'field, 'checked) Typ.typ =
-        ('var, 'value, 'field, 'checked) Typ.typ)
+        ('var, 'value, 'field, 'checked) Typ.typ
+       and type 'a Typ.prover_value = 'a Typ.prover_value)
 
   module Bitstring_checked : sig
     type t = Boolean.var list
