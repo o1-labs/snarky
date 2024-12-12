@@ -52,8 +52,6 @@ struct
     include As_prover
 
     type 'a as_prover = 'a t
-
-    module Ref = Ref
   end
 
   module Handle = struct
