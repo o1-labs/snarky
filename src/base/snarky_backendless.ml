@@ -27,5 +27,4 @@ module Run_state = Run_state
 module Snark = Snark
 module Snark0 = Snark0
 module Snark_intf = Snark_intf
-module Typ = Typ
 module Types = Types
