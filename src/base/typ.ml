@@ -108,19 +108,6 @@ module Make (Checked : Checked_monad) = struct
             * ('r_var, 'r_value, 'k_var, 'k_value, 'field) t
             -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'field) t
         | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'field) t
-
-      let size t =
-        let rec go :
-            type r_var r_value k_var k_value.
-            int -> (r_var, r_value, k_var, k_value, 'f) t -> int =
-         fun acc t ->
-          match t with
-          | [] ->
-              acc
-          | Typ { size_in_field_elements; _ } :: t' ->
-              go (acc + size_in_field_elements) t'
-        in
-        go 0 t
     end
 
     let unit () : (unit, unit, 'field) t =
@@ -145,24 +132,19 @@ module Make (Checked : Checked_monad) = struct
         ; check = (fun _ -> Checked.return ())
         }
 
-    module Internal = struct
-      let snarkless value : _ t =
+    include struct
+      type 'a prover_value = 'a option
+
+      let prover_value () : _ t =
         Typ
-          { var_to_fields = (fun _ -> ([||], ()))
-          ; var_of_fields = (fun _ -> value)
-          ; value_to_fields =
-              (fun value' ->
-                assert (phys_equal value value') ;
-                ([||], ()) )
-          ; value_of_fields = (fun _ -> value)
+          { var_to_fields = (fun x -> ([||], x))
+          ; var_of_fields = (fun (_, x) -> x)
+          ; value_to_fields = (fun x -> ([||], Some x))
+          ; value_of_fields = (fun (_, x) -> Option.value_exn x)
           ; size_in_field_elements = 0
-          ; constraint_system_auxiliary = (fun () -> ())
+          ; constraint_system_auxiliary = (fun () -> None)
           ; check = (fun _ -> Checked.return ())
           }
-
-      module Ref_typ = As_prover_ref.Make_ref_typ (Checked)
-
-      let ref () = Ref_typ.typ
     end
 
     let transport (type var value1 value2 field)
