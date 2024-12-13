@@ -6,7 +6,7 @@ module Make (Field : sig
   val equal : t -> t -> bool
 end)
 (Basic : Checked_intf.Basic with type field = Field.t)
-(As_prover : As_prover_intf.Basic with type 'f field := Basic.field) :
+(As_prover : As_prover_intf.Basic with type field := Basic.field) :
   Checked_intf.S with module Types = Basic.Types with type field = Basic.field =
 struct
   include Basic
