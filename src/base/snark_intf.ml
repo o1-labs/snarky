@@ -2,7 +2,6 @@ module Bignum_bigint = Bigint
 open Core_kernel
 module Constraint0 = Constraint
 module Boolean0 = Boolean
-module Typ0 = Typ
 
 module type Boolean_intf = sig
   type field_var
@@ -131,7 +130,7 @@ module type Typ_intf = sig
 
   type _ checked
 
-  type checked_unit
+  type 'field checked_unit
 
   type ('var, 'value, 'aux, 'field, 'checked) typ' =
     { var_to_fields : 'var -> 'field Cvar.t array * 'aux
@@ -151,7 +150,7 @@ module type Typ_intf = sig
   module Data_spec : sig
     type ('r_var, 'r_value, 'k_var, 'k_value, 'field) t =
       | ( :: ) :
-          ('var, 'value, 'field, checked_unit) typ
+          ('var, 'value, 'field, 'field checked_unit) typ
           * ('r_var, 'r_value, 'k_var, 'k_value, 'field) t
           -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'field) t
       | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'field) t
@@ -170,7 +169,7 @@ module type Typ_intf = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-  type ('var, 'value) t = ('var, 'value, field, checked_unit) typ
+  type ('var, 'value) t = ('var, 'value, field, field checked_unit) typ
 
   (** Basic instances: *)
 
@@ -584,7 +583,7 @@ module type Basic = sig
       Typ_intf
         with type field := Field.t
          and type field_var := Field.Var.t
-         and type checked_unit := unit Checked.t
+         and type _ checked_unit := unit Checked.t
          and type _ checked := unit Checked.t
   end
 
@@ -1125,7 +1124,7 @@ module type Run_basic = sig
     (Typ_intf
       with type field := Field.Constant.t
        and type field_var := Field.t
-       and type checked_unit := unit Internal_Basic.Checked.t
+       and type _ checked_unit := unit Internal_Basic.Checked.t
        and type _ checked := unit)
 
   (** Representation of booleans within a field.

@@ -1,5 +1,4 @@
 open Core_kernel
-open Types.Typ
 
 module Data_spec0 = struct
   (** A list of {!type:Type.Typ.t} values, describing the inputs to a checked
@@ -75,18 +74,17 @@ module Intf = struct
 end
 
 module type Checked_monad = sig
-  type ('a, 'f) t
+  module Types : Types.Types
+
+  type ('a, 'f) t = ('a, 'f) Types.Checked.t
 
   type field
 
   include Monad_let.S2 with type ('a, 'e) t := ('a, 'e) t
-
-  module Types : Types.Types
 end
 
 module Make (Checked : Checked_monad) = struct
-  type ('var, 'value, 'field) t =
-    ('var, 'value, 'field, (unit, 'field) Checked.t) Types.Typ.t
+  type ('var, 'value, 'field) t = ('var, 'value, 'field) Checked.Types.Typ.t
 
   type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 

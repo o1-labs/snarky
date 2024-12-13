@@ -1,4 +1,6 @@
 module type Basic = sig
+  module Types : Types.Types
+
   type ('a, 'f) t = ('a, 'f) Types.As_prover.t
 
   type field
@@ -12,7 +14,7 @@ module type Basic = sig
 
   val read_var : field Cvar.t -> (field, field) t
 
-  val read : ('var, 'value, field, _) Types.Typ.t -> 'var -> ('value, field) t
+  val read : ('var, 'value, field) Types.Typ.t -> 'var -> ('value, field) t
 
   module Provider : sig
     type ('a, 'f) t

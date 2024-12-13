@@ -11,7 +11,9 @@ let set_eval_constraints b = Runner.eval_constraints := b
 module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-    (As_prover : As_prover0.Extended with type field := Backend.Field.t)
+    (As_prover : As_prover0.Extended
+                   with type field := Backend.Field.t
+                   with module Types := Checked.Types)
     (Runner : Runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
@@ -21,18 +23,9 @@ module Make_basic
 struct
   open Backend
   module Checked_S = Checked_intf.Unextend (Checked)
-  include Runners.Make (Backend) (Checked) (As_prover) (Runner)
-  module Bigint = Bigint
-  module Field0 = Field
-  module Cvar = Cvar
-  module Constraint = Constraint
-
-  module Handler = struct
-    type t = Request.request -> Request.response
-  end
 
   module Typ = struct
-    include Types.Typ.T
+    include Checked_S.Types.Typ
     module T = Typ.Make (Checked_S)
     include T.T
 
@@ -41,6 +34,16 @@ struct
     let unit : (unit, unit) t = unit ()
 
     let field : (Cvar.t, Field.t) t = field ()
+  end
+
+  include Runners.Make (Backend) (Checked) (As_prover) (Runner)
+  module Bigint = Bigint
+  module Field0 = Field
+  module Cvar = Cvar
+  module Constraint = Constraint
+
+  module Handler = struct
+    type t = Request.request -> Request.response
   end
 
   let constant (Typ typ : _ Typ.t) x =
@@ -75,7 +78,7 @@ struct
 
     type run_state = Runner.run_state
 
-    include Utils.Make (Backend) (Checked) (As_prover) (Runner)
+    include Utils.Make (Backend) (Checked) (As_prover) (Typ) (Runner)
 
     module Control = struct end
 
@@ -653,7 +656,13 @@ module Make (Backend : Backend_intf.S) = struct
     type field = Backend_extended.Field.t
   end
 
-  module As_prover_ext = As_prover0.Make_extended (Field_T) (As_prover0)
+  module As_prover_ext =
+    As_prover0.Make_extended
+      (Field_T)
+      (struct
+        module Types = Checked1.Types
+        include As_prover0
+      end)
 
   module Checked_for_basic = struct
     include (

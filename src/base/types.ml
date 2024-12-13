@@ -106,7 +106,11 @@ module type Types = sig
           ('var, 'value, 'aux, 'field, 'checked) typ'
           -> ('var, 'value, 'field, 'checked) typ
 
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) Typ.t
+    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
+  end
+
+  module As_prover : sig
+    type ('a, 'f) t
   end
 
   module Provider : sig

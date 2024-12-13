@@ -68,28 +68,14 @@ end
 
 module Make_checked
     (Backend : Backend_extended.S)
-    (As_prover : As_prover_intf.Basic with type field := Backend.Field.t) =
+    (As_prover : As_prover_intf.Basic
+                   with type field := Backend.Field.t
+                    and type ('a, 'f) Types.Checked.t =
+                     ('a, Backend.Field.t) Simple.Types.Checked.t) =
 struct
   type run_state = Backend.Field.t Run_state.t
 
-  module Types = struct
-    module Checked = struct
-      type ('a, 'f) t = ('a, Backend.Field.t) Simple.Types.Checked.t
-    end
-
-    module Typ = struct
-      include Types.Typ.T
-
-      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
-    end
-
-    module Provider = struct
-      include Types.Provider.T
-
-      type ('a, 'f) t =
-        (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
-    end
-  end
+  module Types = As_prover.Types
 
   type field = Backend.Field.t
 
@@ -347,7 +333,34 @@ module Make (Backend : Backend_extended.S) = struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  module Checked_runner = Make_checked (Backend) (As_prover0)
+  module As_prover = struct
+    module Types = struct
+      module Checked = struct
+        type ('a, 'f) t = ('a, Backend.Field.t) Simple.Types.Checked.t
+      end
+
+      module Typ = struct
+        include Types.Typ.T
+
+        type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
+      end
+
+      module Provider = struct
+        include Types.Provider.T
+
+        type ('a, 'f) t =
+          (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
+      end
+
+      module As_prover = struct
+        type ('a, 'f) t = ('a, 'f) As_prover0.t
+      end
+    end
+
+    include As_prover0
+  end
+
+  module Checked_runner = Make_checked (Backend) (As_prover)
 
   type run_state = Checked_runner.run_state
 

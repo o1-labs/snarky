@@ -6,7 +6,19 @@ val set_eval_constraints : bool -> unit
 module Make : functor
   (Backend : Backend_extended.S)
   (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-  (As_prover : As_prover0.Extended with type field := Backend.Field.t)
+  (As_prover : As_prover0.Extended
+                 with type field := Backend.Field.t
+                 with module Types := Checked.Types)
+  (Typ : Snark_intf.Typ_intf
+           with type field := Backend.Field.t
+            and type field_var := Backend.Cvar.t
+            and type 'field checked_unit :=
+             (unit, 'field) Checked.Types.Checked.t
+            and type 'a checked := 'a Checked.t
+            and type ('var, 'value, 'aux, 'field, 'checked) typ' :=
+             ('var, 'value, 'aux, 'field, 'checked) Checked.Types.Typ.typ'
+            and type ('var, 'value, 'field, 'checked) typ :=
+             ('var, 'value, 'field, 'checked) Checked.Types.Typ.typ)
   (Runner : Runner.S
               with module Types := Checked.Types
               with type field := Backend.Field.t
@@ -24,73 +36,6 @@ module Make : functor
     -> then_:Checked.field Cvar0.t
     -> else_:Checked.field Cvar0.t
     -> (Checked.field Cvar0.t, Checked.field) Checked.Types.Checked.t
-
-  module Typ2 : sig
-    type ('var, 'value, 'aux, 'field, 'checked) typ' =
-          ('var, 'value, 'aux, 'field, 'checked) Types.Typ.typ' =
-      { var_to_fields : 'var -> 'field Cvar0.t array * 'aux
-      ; var_of_fields : 'field Cvar0.t array * 'aux -> 'var
-      ; value_to_fields : 'value -> 'field array * 'aux
-      ; value_of_fields : 'field array * 'aux -> 'value
-      ; size_in_field_elements : int
-      ; constraint_system_auxiliary : unit -> 'aux
-      ; check : 'var -> 'checked
-      }
-
-    type ('var, 'value, 'field, 'checked) typ =
-          ('var, 'value, 'field, 'checked) Types.Typ.typ =
-      | Typ :
-          ('var, 'value, 'aux, 'field, 'checked) typ'
-          -> ('var, 'value, 'field, 'checked) typ
-
-    module T : sig
-      type ('var, 'value, 'field) t =
-        ( 'var
-        , 'value
-        , 'field
-        , (unit, 'field) Snarky_backendless__.Checked_intf.Unextend(Checked).t
-        )
-        typ
-
-      type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
-
-      module type S = sig
-        type field
-
-        module Var : sig
-          type t
-
-          val size_in_field_elements : int
-
-          val to_field_elements : t -> field Cvar0.t array
-
-          val of_field_elements : field Cvar0.t array -> t
-
-          val check :
-               t
-            -> ( unit
-               , field )
-               Snarky_backendless__.Checked_intf.Unextend(Checked).t
-        end
-
-        module Value : sig
-          type t
-
-          val size_in_field_elements : int
-
-          val to_field_elements : t -> field array
-
-          val of_field_elements : field array -> t
-        end
-      end
-
-      val unit : unit -> (unit, unit, 'field) t
-    end
-
-    type ('var, 'value) t = ('var, 'value, Checked.field) T.t
-
-    val unit : (unit, unit) t
-  end
 
   module Boolean : sig
     type var = Checked.field Cvar0.t Boolean.t
@@ -134,9 +79,9 @@ module Make : functor
 
     val var_of_value : bool -> var
 
-    val typ : (var, value) Typ2.t
+    val typ : (var, value) Typ.t
 
-    val typ_unchecked : (var, value) Typ2.t
+    val typ_unchecked : (var, value) Typ.t
 
     val ( lxor ) : var -> var -> (var, Checked.field) Checked.Types.Checked.t
 
