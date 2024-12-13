@@ -91,7 +91,7 @@ struct
     end
   end
 
-  type 'f field = Backend.Field.t
+  type field = Backend.Field.t
 
   include Types.Checked
 
@@ -361,7 +361,7 @@ module Make (Backend : Backend_extended.S) = struct
         include
           Checked_intf.Basic
             with module Types := Checked_runner.Types
-            with type 'f field := 'f Checked_runner.field
+            with type field := Checked_runner.field
 
         include
           Run_extras
