@@ -710,7 +710,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
         This type specialises the {!type:As_prover.t} type for the backend's
         particular field and variable type. *)
-    type 'a t = ('a, field) As_prover0.t
+    type 'a t = (Field.Var.t -> Field.t) -> 'a
 
     type 'a as_prover = 'a t
 

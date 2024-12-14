@@ -327,7 +327,7 @@ module type Run_extras = sig
   val get_value : field Run_state.t -> cvar -> field
 
   val run_as_prover :
-       ('a, field) As_prover0.t option
+       ('a, field) Types.As_prover.t option
     -> field Run_state.t
     -> field Run_state.t * 'a option
 end
@@ -356,6 +356,7 @@ struct
 
   let clear_constraint_logger () = constraint_logger := None
 
+  module As_prover0 = As_prover0.Make (Types)
   module Checked_runner = Make_checked (Backend) (Types) (As_prover0)
 
   type run_state = Checked_runner.run_state
