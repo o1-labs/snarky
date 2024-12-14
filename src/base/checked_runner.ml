@@ -7,27 +7,29 @@ let eval_constraints = ref true
 
 let eval_constraints_ref = eval_constraints
 
-module Simple = struct
-  module Types = struct
-    module Checked = struct
-      type ('a, 'f) t =
-        | Pure of 'a
-        | Function of ('f Run_state.t -> 'f Run_state.t * 'a)
-    end
-
-    module Typ = struct
-      include Types.Typ.T
-
-      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
-    end
-
-    module Provider = struct
-      include Types.Provider.T
-
-      type ('a, 'f) t =
-        (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
-    end
+module Simple_types = struct
+  module Checked = struct
+    type ('a, 'f) t =
+      | Pure of 'a
+      | Function of ('f Run_state.t -> 'f Run_state.t * 'a)
   end
+
+  module Typ = struct
+    include Types.Typ.T
+
+    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
+  end
+
+  module Provider = struct
+    include Types.Provider.T
+
+    type ('a, 'f) t =
+      (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
+  end
+end
+
+module Simple = struct
+  module Types = Simple_types
 
   type 'f field = 'f
 
