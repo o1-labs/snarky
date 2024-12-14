@@ -29,18 +29,16 @@ module Simple_types = struct
 end
 
 module Simple = struct
-  module Types = Simple_types
-
   type 'f field = 'f
 
-  type ('a, 'f) t = ('a, 'f field) Types.Checked.t
+  type ('a, 'f) t = ('a, 'f field) Simple_types.Checked.t
 
   let eval (t : ('a, 'f) t) : 'f field Run_state.t -> 'f field Run_state.t * 'a
       =
     match t with Pure a -> fun s -> (s, a) | Function g -> g
 
   include Monad_let.Make2 (struct
-    type ('a, 'f) t = ('a, 'f field) Types.Checked.t
+    type ('a, 'f) t = ('a, 'f field) Simple_types.Checked.t
 
     let return x : _ t = Pure x
 
@@ -73,7 +71,7 @@ module Make_checked
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                     and type ('a, 'f) Types.Checked.t =
-                     ('a, Backend.Field.t) Simple.Types.Checked.t) =
+                     ('a, Backend.Field.t) Simple_types.Checked.t) =
 struct
   type run_state = Backend.Field.t Run_state.t
 
@@ -338,7 +336,7 @@ module Make (Backend : Backend_extended.S) = struct
   module As_prover = struct
     module Types = struct
       module Checked = struct
-        type ('a, 'f) t = ('a, Backend.Field.t) Simple.Types.Checked.t
+        type ('a, 'f) t = ('a, Backend.Field.t) Simple_types.Checked.t
       end
 
       module Typ = struct
