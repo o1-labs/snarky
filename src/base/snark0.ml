@@ -25,11 +25,10 @@ module Make_basic
                  and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend
-  module Checked_S = Checked_intf.Unextend (Types) (Checked)
 
   module Typ = struct
     include Types.Typ
-    module T = Typ.Make (Types) (Checked_S)
+    module T = Typ.Make (Types) (Checked)
     include T.T
 
     type ('var, 'value) t = ('var, 'value, Field.t) T.t
