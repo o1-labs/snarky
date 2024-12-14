@@ -3,7 +3,7 @@ module type Basic = sig
 
   type field
 
-  type 'a t = ('a, field) Types.Checked.t
+  type 'a t = 'a Types.Checked.t
 
   include Monad_let.S with type 'a t := 'a t
 
@@ -38,7 +38,7 @@ module type S = sig
 
   type field
 
-  type 'a t = ('a, field) Types.Checked.t
+  type 'a t = 'a Types.Checked.t
 
   include Monad_let.S with type 'a t := 'a t
 

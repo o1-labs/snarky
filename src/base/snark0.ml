@@ -650,23 +650,7 @@ end
     See [Run.Make] for the same thing but for the imperative interface. *)
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
-
-  module Types = struct
-    include Runner.Simple_types
-
-    module Checked = struct
-      include Runner.Simple_types.Checked
-
-      type ('a, 'f) t = ('a, Backend.Field.t) Runner.Simple_types.Checked.t
-    end
-
-    module Typ = struct
-      include Runner.Simple_types.Typ
-
-      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
-    end
-  end
-
+  module Types = Runner.Simple_types (Backend_extended)
   module Runner0 = Runner.Make (Backend_extended) (Types)
   module Checked_runner = Runner0.Checked_runner
   module As_prover1 = As_prover0.Make (Backend_extended) (Types)
@@ -695,7 +679,7 @@ module Make (Backend : Backend_intf.S) = struct
 
     type field = Backend_extended.Field.t
 
-    type 'a t = ('a, field) Types.Checked.t
+    type 'a t = 'a Types.Checked.t
 
     let run = Runner0.run
   end

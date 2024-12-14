@@ -1228,7 +1228,7 @@ module type Run_basic = sig
   and Internal_Basic :
     (Basic
       with type field = field
-       and type 'a Checked.t = ('a, field) Checked_runner.Simple.t
+       and type 'a Checked.t = ('a, field) Checked_runner.t
        and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
         ('var, 'value, 'aux, 'field, 'checked) Typ.typ'
        and type ('var, 'value, 'field, 'checked) Typ.typ =

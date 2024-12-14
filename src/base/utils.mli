@@ -15,7 +15,7 @@ module Make : functor
   (Typ : Snark_intf.Typ_intf
            with type field := Backend.Field.t
             and type field_var := Backend.Cvar.t
-            and type 'field checked_unit := (unit, 'field) Types.Checked.t
+            and type 'field checked_unit := unit Types.Checked.t
             and type 'a checked := 'a Checked.t
             and type ('var, 'value, 'aux, 'field, 'checked) typ' :=
              ('var, 'value, 'aux, 'field, 'checked) Types.Typ.typ'
@@ -37,7 +37,7 @@ module Make : functor
        Checked.field Cvar0.t Boolean.t
     -> then_:Checked.field Cvar0.t
     -> else_:Checked.field Cvar0.t
-    -> (Checked.field Cvar0.t, Checked.field) Types.Checked.t
+    -> Checked.field Cvar0.t Types.Checked.t
 
   module Boolean : sig
     type var = Checked.field Cvar0.t Boolean.t
@@ -54,22 +54,20 @@ module Make : functor
          Checked.field Cvar0.t Boolean.t
       -> then_:var
       -> else_:var
-      -> (Checked.field Cvar0.t Boolean.t, Checked.field) Types.Checked.t
+      -> Checked.field Cvar0.t Boolean.t Types.Checked.t
 
     val _and_for_square_constraint_systems :
-         var
-      -> var
-      -> (Checked.field Cvar0.t Boolean.t, Checked.field) Types.Checked.t
+      var -> var -> Checked.field Cvar0.t Boolean.t Types.Checked.t
 
     val ( && ) : var -> var -> var Checked.t
 
     val ( &&& ) : var -> var -> var Checked.t
 
-    val ( || ) : var -> var -> (var, Checked.field) Types.Checked.t
+    val ( || ) : var -> var -> var Types.Checked.t
 
-    val ( ||| ) : var -> var -> (var, Checked.field) Types.Checked.t
+    val ( ||| ) : var -> var -> var Types.Checked.t
 
-    val any : var list -> (var, Checked.field) Types.Checked.t
+    val any : var list -> var Types.Checked.t
 
     val all : var list -> var Checked.t
 
@@ -81,50 +79,48 @@ module Make : functor
 
     val typ_unchecked : (var, value) Typ.t
 
-    val ( lxor ) : var -> var -> (var, Checked.field) Types.Checked.t
+    val ( lxor ) : var -> var -> var Types.Checked.t
 
     module Array : sig
       val num_true : var array -> Checked.field Cvar0.t
 
-      val any : var array -> (var, Checked.field) Types.Checked.t
+      val any : var array -> var Types.Checked.t
 
       val all : var array -> var Checked.t
 
       module Assert : sig
-        val any : var array -> (unit, Checked.field) Types.Checked.t
+        val any : var array -> unit Types.Checked.t
 
-        val all : var array -> (unit, Checked.field) Types.Checked.t
+        val all : var array -> unit Types.Checked.t
       end
     end
 
-    val equal : var -> var -> (var, Checked.field) Types.Checked.t
+    val equal : var -> var -> var Types.Checked.t
 
-    val of_field :
-         Backend.Cvar.t
-      -> (Backend.Cvar.t Boolean.t, Checked.field) Types.Checked.t
+    val of_field : Backend.Cvar.t -> Backend.Cvar.t Boolean.t Types.Checked.t
 
     module Unsafe : sig
       val of_cvar : Checked.field Cvar0.t -> var
     end
 
     module Assert : sig
-      val ( = ) : var -> var -> (unit, Checked.field) Types.Checked.t
+      val ( = ) : var -> var -> unit Types.Checked.t
 
-      val is_true : var -> (unit, Checked.field) Types.Checked.t
+      val is_true : var -> unit Types.Checked.t
 
-      val any : var list -> (unit, Checked.field) Types.Checked.t
+      val any : var list -> unit Types.Checked.t
 
-      val all : var list -> (unit, Checked.field) Types.Checked.t
+      val all : var list -> unit Types.Checked.t
 
-      val exactly_one : var list -> (unit, Checked.field) Types.Checked.t
+      val exactly_one : var list -> unit Types.Checked.t
     end
 
     module Expr : sig
       type t = Var of var | And of t list | Or of t list | Not of t
 
-      val eval : t -> (var, Checked.field) Types.Checked.t
+      val eval : t -> var Types.Checked.t
 
-      val assert_ : t -> (unit, Checked.field) Types.Checked.t
+      val assert_ : t -> unit Types.Checked.t
 
       val ( ! ) : var -> t
 
@@ -148,26 +144,25 @@ module Make : functor
        ?label:string
     -> Checked.field Cvar0.t
     -> Checked.field Cvar0.t
-    -> (Checked.field Cvar0.t, Checked.field) Types.Checked.t
+    -> Checked.field Cvar0.t Types.Checked.t
 
   val square :
        ?label:string
     -> Checked.field Cvar0.t
-    -> (Checked.field Cvar0.t, Checked.field) Types.Checked.t
+    -> Checked.field Cvar0.t Types.Checked.t
 
   val div :
        ?label:string
     -> Checked.field Cvar0.t
     -> Checked.field Cvar0.t
-    -> (Checked.field Cvar0.t, Checked.field) Types.Checked.t
+    -> Checked.field Cvar0.t Types.Checked.t
 
   val inv :
        ?label:string
     -> Checked.field Cvar0.t
-    -> (Checked.field Cvar0.t, Checked.field) Types.Checked.t
+    -> Checked.field Cvar0.t Types.Checked.t
 
-  val assert_non_zero :
-    Checked.field Cvar0.t -> (unit, Checked.field) Types.Checked.t
+  val assert_non_zero : Checked.field Cvar0.t -> unit Types.Checked.t
 
   val equal_vars :
     Checked.field Cvar0.t -> (Checked.field * Checked.field) As_prover.t
@@ -176,5 +171,5 @@ module Make : functor
        Checked.field Cvar0.t
     -> Checked.field Cvar0.t
     -> Checked.field Cvar0.t
-    -> (unit, Checked.field) Types.Checked.t
+    -> unit Types.Checked.t
 end

@@ -163,14 +163,10 @@ struct
              ( 'input_var
              , 'input_value
              , field
-             , (unit, field) Types.Checked.t )
+             , unit Types.Checked.t )
              Types.Typ.typ
         -> return_typ:
-             ( 'retvar
-             , 'retval
-             , field
-             , (unit, field) Types.Checked.t )
-             Types.Typ.typ
+             ('retvar, 'retval, field, unit Types.Checked.t) Types.Typ.typ
         -> ('input_var, 'retvar, field, 'checked) t
     end = struct
       let allocate_public_inputs :
@@ -180,7 +176,7 @@ struct
                ( input_var
                , input_value
                , field
-               , (unit, field) Types.Checked.t )
+               , unit Types.Checked.t )
                Types.Typ.typ
           -> return_typ:(output_var, output_value, field) Types.Typ.t
           -> input_var * output_var =
@@ -213,7 +209,7 @@ struct
                ( input_var
                , input_value
                , field
-               , (unit, field) Types.Checked.t )
+               , unit Types.Checked.t )
                Types.Typ.typ
           -> return_typ:(retvar, retval, _) Types.Typ.t
           -> (input_var, retvar, field, checked) t =

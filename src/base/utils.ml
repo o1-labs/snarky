@@ -16,7 +16,7 @@ module Make
     (Typ : Snark_intf.Typ_intf
              with type field := Backend.Field.t
               and type field_var := Backend.Cvar.t
-              and type 'field checked_unit := (unit, 'field) Types.Checked.t
+              and type 'field checked_unit := unit Types.Checked.t
               and type _ checked := unit Checked.t
               and type ('var, 'value, 'aux, 'field, 'checked) typ' :=
                ('var, 'value, 'aux, 'field, 'checked) Types.Typ.typ'

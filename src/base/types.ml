@@ -22,7 +22,7 @@ end
 
 module type Types = sig
   module Checked : sig
-    type ('a, 'f) t
+    type 'a t
   end
 
   module Typ : sig
@@ -62,7 +62,7 @@ module type Types = sig
           ('var, 'value, 'aux, 'field, 'checked) typ'
           -> ('var, 'value, 'field, 'checked) typ
 
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
+    type ('var, 'value, 'f) t = ('var, 'value, 'f, unit Checked.t) typ
   end
 
   module As_prover : sig
@@ -78,13 +78,13 @@ module type Types = sig
 end
 
 module Make_types (Minimal : sig
-  type ('a, 'f) checked
+  type 'a checked
 
   type ('a, 'f) as_prover
 end) =
 struct
   module Checked = struct
-    type ('a, 'f) t = ('a, 'f) Minimal.checked
+    type 'a t = 'a Minimal.checked
   end
 
   module Typ = struct
@@ -124,7 +124,7 @@ struct
           ('var, 'value, 'aux, 'field, 'checked) typ'
           -> ('var, 'value, 'field, 'checked) typ
 
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
+    type ('var, 'value, 'f) t = ('var, 'value, 'f, unit Checked.t) typ
   end
 
   module As_prover = struct

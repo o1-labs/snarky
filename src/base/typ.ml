@@ -35,9 +35,7 @@ end
 module type Checked_monad = sig
   module Types : Types.Types
 
-  type field
-
-  type 'a t = ('a, field) Types.Checked.t
+  type 'a t = 'a Types.Checked.t
 
   include Monad_let.S with type 'a t := 'a t
 end
