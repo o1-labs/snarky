@@ -691,7 +691,7 @@ module Make (Backend : Backend_intf.S) = struct
       Checked1 :
         Checked_intf.S
           with module Types := Types
-          with type ('a, 'f) t := ('a, 'f) Checked1.t
+          with type 'a t := 'a Checked1.t
            and type field := Backend_extended.Field.t )
 
     type field = Backend_extended.Field.t

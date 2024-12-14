@@ -35,11 +35,11 @@ end
 module type Checked_monad = sig
   module Types : Types.Types
 
-  type ('a, 'f) t = ('a, 'f) Types.Checked.t
-
   type field
 
-  include Monad_let.S2 with type ('a, 'e) t := ('a, 'e) t
+  type 'a t = ('a, field) Types.Checked.t
+
+  include Monad_let.S with type 'a t := 'a t
 end
 
 module Make
@@ -55,7 +55,7 @@ struct
 
     include
       Intf.S
-        with type 'field checked := (unit, 'field) Checked.t
+        with type 'field checked := unit Checked.t
          and type field := field
          and type field_var := field Cvar.t
   end

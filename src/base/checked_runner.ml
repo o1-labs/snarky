@@ -74,9 +74,9 @@ struct
 
   type field = Backend.Field.t
 
-  include Types.Checked
+  type 'a t = ('a, field) Types.Checked.t
 
-  let eval : ('a, 'f) t -> run_state -> run_state * 'a = Simple.eval
+  let eval : 'a t -> run_state -> run_state * 'a = Simple.eval
 
   include Monad_let.Make2 (struct
     include Types.Checked
