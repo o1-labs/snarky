@@ -1,10 +1,13 @@
 open Core_kernel
 
-module Make
-    (Types : Types.Types
-               with type ('a, 'f) As_prover.t = ('f Cvar.t -> 'f) -> 'a) =
+module Make (Backend : sig
+  module Field : sig
+    type t
+  end
+end)
+(Types : Types.Types with type ('a, 'f) As_prover.t = ('f Cvar.t -> 'f) -> 'a) =
 struct
-  type ('a, 'f) t = ('a, 'f) Types.As_prover.t
+  type 'a t = ('a, Backend.Field.t) Types.As_prover.t
 
   let map t ~f tbl =
     let x = t tbl in
@@ -29,18 +32,18 @@ struct
     let y = y tbl in
     f x y
 
-  let read_var (v : 'var) : ('field, 'field) t = fun tbl -> tbl v
+  let read_var (v : 'var) : 'field t = fun tbl -> tbl v
 
   let read
       (Typ { var_to_fields; value_of_fields; _ } :
-        ('var, 'value, 'field) Types.Typ.t ) (var : 'var) : ('value, 'field) t =
+        ('var, 'value, 'field) Types.Typ.t ) (var : 'var) : 'value t =
    fun tbl ->
     let field_vars, aux = var_to_fields var in
     let fields = Array.map ~f:tbl field_vars in
     value_of_fields (fields, aux)
 
-  include Monad_let.Make2 (struct
-    type nonrec ('a, 'e) t = ('a, 'e) t
+  include Monad_let.Make (struct
+    type nonrec 'a t = 'a t
 
     let map = `Custom map
 
@@ -80,15 +83,9 @@ struct
   end
 
   module Handle = struct
-    let value (t : ('var, 'value) Handle.t) : ('value, 'field) t =
+    let value (t : ('var, 'value) Handle.t) : 'value t =
      fun _ -> Option.value_exn t.value
   end
-end
-
-module type Extended = sig
-  include As_prover_intf.Basic
-
-  type nonrec 'a t = ('a, field) t
 end
 
 module Make_extended (Env : sig
@@ -98,6 +95,4 @@ end)
 struct
   include Env
   include As_prover
-
-  type nonrec 'a t = ('a, field) t
 end

@@ -1,20 +1,19 @@
 module type Basic = sig
   module Types : Types.Types
 
-  type ('a, 'f) t = ('a, 'f) Types.As_prover.t
-
   type field
 
-  include Monad_let.S2 with type ('a, 'f) t := ('a, field) t
+  type 'a t = ('a, field) Types.As_prover.t
 
-  val run : ('a, field) t -> (field Cvar.t -> field) -> 'a
+  include Monad_let.S with type 'a t := 'a t
 
-  val map2 :
-    ('a, field) t -> ('b, field) t -> f:('a -> 'b -> 'c) -> ('c, field) t
+  val run : 'a t -> (field Cvar.t -> field) -> 'a
 
-  val read_var : field Cvar.t -> (field, field) t
+  val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
-  val read : ('var, 'value, field) Types.Typ.t -> 'var -> ('value, field) t
+  val read_var : field Cvar.t -> field t
+
+  val read : ('var, 'value, field) Types.Typ.t -> 'var -> 'value t
 
   module Provider : sig
     type ('a, 'f) t

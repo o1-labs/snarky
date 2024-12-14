@@ -14,7 +14,7 @@ end)
   include Basic
 
   let request_witness (typ : ('var, 'value, field) Types.Typ.t)
-      (r : ('value Request.t, field) As_prover.t) =
+      (r : 'value Request.t As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
 

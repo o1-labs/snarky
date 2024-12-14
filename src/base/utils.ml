@@ -10,7 +10,7 @@ module Make
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
                  with module Types := Types)
-    (As_prover : As_prover0.Extended
+    (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)
     (Typ : Snark_intf.Typ_intf
