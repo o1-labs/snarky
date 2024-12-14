@@ -66,21 +66,20 @@ module type Types = sig
   end
 
   module As_prover : sig
-    type ('a, 'f) t
+    type 'a t
   end
 
   module Provider : sig
     include module type of Provider.T
 
-    type ('a, 'f) t =
-      (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
+    type 'a t = ('a Request.t As_prover.t, 'a As_prover.t) provider
   end
 end
 
 module Make_types (Minimal : sig
   type 'a checked
 
-  type ('a, 'f) as_prover
+  type 'a as_prover
 end) =
 struct
   module Checked = struct
@@ -128,13 +127,12 @@ struct
   end
 
   module As_prover = struct
-    type ('a, 'f) t = ('a, 'f) Minimal.as_prover
+    type 'a t = 'a Minimal.as_prover
   end
 
   module Provider = struct
     include Provider.T
 
-    type ('a, 'f) t =
-      (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
+    type 'a t = ('a Request.t As_prover.t, 'a As_prover.t) provider
   end
 end

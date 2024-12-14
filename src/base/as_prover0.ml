@@ -5,9 +5,11 @@ module Make (Backend : sig
     type t
   end
 end)
-(Types : Types.Types with type ('a, 'f) As_prover.t = ('f Cvar.t -> 'f) -> 'a) =
+(Types : Types.Types
+           with type 'a As_prover.t =
+             (Backend.Field.t Cvar.t -> Backend.Field.t) -> 'a) =
 struct
-  type 'a t = ('a, Backend.Field.t) Types.As_prover.t
+  type 'a t = 'a Types.As_prover.t
 
   let map t ~f tbl =
     let x = t tbl in
@@ -53,18 +55,7 @@ struct
   end)
 
   module Provider = struct
-    (** The different ways to generate a value of type ['a] for a circuit
-        witness over field ['f].
-
-        This is one of:
-        * a [Request], dispatching an ['a Request.t];
-        * [Compute], running a computation to generate the value;
-        * [Both], attempting to dispatch an ['a Request.t], and falling back to
-          the computation if the request is unhandled or raises an exception.
-    *)
-    type nonrec ('a, 'f) t = ('a, 'f) Types.Provider.t
-
-    open Types.Provider
+    include Types.Provider
 
     let run t tbl (handler : Request.Handler.t) =
       match t with

@@ -14,7 +14,7 @@ type ('a, 'f) t =
 module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
   type 'a checked = ('a, Backend.Field.t) t
 
-  type ('a, 'f) as_prover = ('f Cvar.t -> 'f) -> 'a
+  type 'a as_prover = (Backend.Field.t Cvar.t -> Backend.Field.t) -> 'a
 end)
 
 module Simple = struct
@@ -54,8 +54,7 @@ module Make_checked
     (Backend : Backend_extended.S)
     (Types : Types.Types
                with type 'a Checked.t = 'a Simple_types(Backend).Checked.t
-                and type ('a, 'f) As_prover.t =
-                 ('a, 'f) Simple_types(Backend).As_prover.t
+                and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
                 and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
                  ( 'var
                  , 'value
@@ -311,7 +310,7 @@ module type Run_extras = sig
   val get_value : field Run_state.t -> cvar -> field
 
   val run_as_prover :
-       ('a, field) Types.As_prover.t option
+       'a Types.As_prover.t option
     -> field Run_state.t
     -> field Run_state.t * 'a option
 end
@@ -320,8 +319,7 @@ module Make
     (Backend : Backend_extended.S)
     (Types : Types.Types
                with type 'a Checked.t = 'a Simple_types(Backend).Checked.t
-                and type ('a, 'f) As_prover.t =
-                 ('a, 'f) Simple_types(Backend).As_prover.t
+                and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
                 and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
                  ( 'var
                  , 'value

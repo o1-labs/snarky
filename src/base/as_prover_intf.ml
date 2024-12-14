@@ -3,7 +3,7 @@ module type Basic = sig
 
   type field
 
-  type 'a t = ('a, field) Types.As_prover.t
+  type 'a t = 'a Types.As_prover.t
 
   include Monad_let.S with type 'a t := 'a t
 
@@ -16,13 +16,12 @@ module type Basic = sig
   val read : ('var, 'value, field) Types.Typ.t -> 'var -> 'value t
 
   module Provider : sig
-    type ('a, 'f) t
+    type 'a t
 
-    val run :
-      ('a, field) t -> (field Cvar.t -> field) -> Request.Handler.t -> 'a option
+    val run : 'a t -> (field Cvar.t -> field) -> Request.Handler.t -> 'a option
   end
 
   module Handle : sig
-    val value : ('var, 'value) Handle.t -> ('value, field) Types.As_prover.t
+    val value : ('var, 'value) Handle.t -> 'value Types.As_prover.t
   end
 end

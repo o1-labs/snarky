@@ -9,7 +9,7 @@ module type Basic = sig
 
   val add_constraint : (field Cvar.t, field) Constraint.t -> unit t
 
-  val as_prover : (unit, field) Types.As_prover.t -> unit t
+  val as_prover : unit Types.As_prover.t -> unit t
 
   val mk_lazy : (unit -> 'a t) -> 'a Lazy.t t
 
@@ -19,7 +19,7 @@ module type Basic = sig
 
   val exists :
        ('var, 'value, field) Types.Typ.t
-    -> ('value, field) Types.Provider.t
+    -> 'value Types.Provider.t
     -> ('var, 'value) Handle.t t
 
   val next_auxiliary : unit -> int t
@@ -42,13 +42,13 @@ module type S = sig
 
   include Monad_let.S with type 'a t := 'a t
 
-  val as_prover : (unit, field) Types.As_prover.t -> unit t
+  val as_prover : unit Types.As_prover.t -> unit t
 
   val mk_lazy : (unit -> 'a t) -> 'a Lazy.t t
 
   val request_witness :
        ('var, 'value, field) Types.Typ.t
-    -> ('value Request.t, field) Types.As_prover.t
+    -> 'value Request.t Types.As_prover.t
     -> 'var t
 
   val request :
@@ -58,14 +58,14 @@ module type S = sig
     -> 'var t
 
   val exists_handle :
-       ?request:('value Request.t, field) Types.As_prover.t
-    -> ?compute:('value, field) Types.As_prover.t
+       ?request:'value Request.t Types.As_prover.t
+    -> ?compute:'value Types.As_prover.t
     -> ('var, 'value, field) Types.Typ.t
     -> ('var, 'value) Handle.t t
 
   val exists :
-       ?request:('value Request.t, field) Types.As_prover.t
-    -> ?compute:('value, field) Types.As_prover.t
+       ?request:'value Request.t Types.As_prover.t
+    -> ?compute:'value Types.As_prover.t
     -> ('var, 'value, field) Types.Typ.t
     -> 'var t
 
@@ -81,7 +81,7 @@ module type S = sig
   val handle : (unit -> 'a t) -> (request -> response) -> 'a t
 
   val handle_as_prover :
-    (unit -> 'a t) -> (request -> response, field) Types.As_prover.t -> 'a t
+    (unit -> 'a t) -> (request -> response) Types.As_prover.t -> 'a t
 
   val next_auxiliary : unit -> int t
 
