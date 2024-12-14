@@ -60,8 +60,6 @@ module Typ = struct
   end
 
   include T
-
-  type ('var, 'value, 'field, 'checked) t = ('var, 'value, 'field, 'checked) typ
 end
 
 module type Types = sig
