@@ -10,23 +10,26 @@ let set_eval_constraints b = Runner.eval_constraints := b
 
 module Make_basic
     (Backend : Backend_extended.S)
-    (Checked : Checked_intf.Extended with type field = Backend.Field.t)
+    (Types : Types.Types)
+    (Checked : Checked_intf.Extended
+                 with type field = Backend.Field.t
+                 with module Types := Types)
     (As_prover : As_prover0.Extended
                    with type field := Backend.Field.t
-                   with module Types := Checked.Types)
+                   with module Types := Types)
     (Runner : Runner.S
-                with module Types := Checked.Types
+                with module Types := Types
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
                  and type r1cs := Backend.R1CS_constraint_system.t) =
 struct
   open Backend
-  module Checked_S = Checked_intf.Unextend (Checked)
+  module Checked_S = Checked_intf.Unextend (Types) (Checked)
 
   module Typ = struct
-    include Checked_S.Types.Typ
-    module T = Typ.Make (Checked_S)
+    include Types.Typ
+    module T = Typ.Make (Types) (Checked_S)
     include T.T
 
     type ('var, 'value) t = ('var, 'value, Field.t) T.t
@@ -36,7 +39,7 @@ struct
     let field : (Cvar.t, Field.t) t = field ()
   end
 
-  include Runners.Make (Backend) (Checked) (As_prover) (Runner)
+  include Runners.Make (Backend) (Types) (Checked) (As_prover) (Runner)
   module Bigint = Bigint
   module Field0 = Field
   module Cvar = Cvar
@@ -69,7 +72,7 @@ struct
     include (
       Checked :
         Checked_intf.Extended
-          with module Types := Checked.Types
+          with module Types := Types
           with type field := field )
 
     let perform req = request_witness Typ.unit req
@@ -78,7 +81,7 @@ struct
 
     type run_state = Runner.run_state
 
-    include Utils.Make (Backend) (Checked) (As_prover) (Typ) (Runner)
+    include Utils.Make (Backend) (Types) (Checked) (As_prover) (Typ) (Runner)
 
     module Control = struct end
 
@@ -648,9 +651,27 @@ end
     See [Run.Make] for the same thing but for the imperative interface. *)
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
-  module Runner0 = Runner.Make (Backend_extended)
+
+  module Types = struct
+    include Runner.Simple_types
+
+    module Checked = struct
+      include Runner.Simple_types.Checked
+
+      type ('a, 'f) t = ('a, Backend.Field.t) Runner.Simple_types.Checked.t
+    end
+
+    module Typ = struct
+      include Runner.Simple_types.Typ
+
+      type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
+    end
+  end
+
+  module Runner0 = Runner.Make (Backend_extended) (Types)
   module Checked_runner = Runner0.Checked_runner
-  module Checked1 = Checked.Make (Backend.Field) (Checked_runner) (As_prover0)
+  module Checked1 =
+    Checked.Make (Backend.Field) (Types) (Checked_runner) (As_prover0)
 
   module Field_T = struct
     type field = Backend_extended.Field.t
@@ -660,7 +681,7 @@ module Make (Backend : Backend_intf.S) = struct
     As_prover0.Make_extended
       (Field_T)
       (struct
-        module Types = Checked1.Types
+        module Types = Types
         include As_prover0
       end)
 
@@ -668,7 +689,7 @@ module Make (Backend : Backend_intf.S) = struct
     include (
       Checked1 :
         Checked_intf.S
-          with module Types = Checked1.Types
+          with module Types := Types
           with type ('a, 'f) t := ('a, 'f) Checked1.t
            and type field := Backend_extended.Field.t )
 
@@ -680,7 +701,8 @@ module Make (Backend : Backend_intf.S) = struct
   end
 
   module Basic =
-    Make_basic (Backend_extended) (Checked_for_basic) (As_prover_ext) (Runner0)
+    Make_basic (Backend_extended) (Types) (Checked_for_basic) (As_prover_ext)
+      (Runner0)
   include Basic
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
@@ -764,7 +786,7 @@ module Run = struct
     module Constraint = Snark.Constraint
 
     module Typ = struct
-      include Types.Typ.T
+      include Types.Typ
       open Snark.Typ
       module Data_spec = Typ.Data_spec
 

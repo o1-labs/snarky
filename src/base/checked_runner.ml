@@ -20,11 +20,15 @@ module Simple_types = struct
     type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
   end
 
+  module As_prover = struct
+    type ('a, 'f) t = ('f Cvar.t -> 'f) -> 'a
+  end
+
   module Provider = struct
     include Types.Provider.T
 
     type ('a, 'f) t =
-      (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
+      (('a Request.t, 'f) As_prover.t, ('a, 'f) As_prover.t) provider
   end
 end
 
@@ -68,14 +72,20 @@ end
 
 module Make_checked
     (Backend : Backend_extended.S)
+    (Types : Types.Types
+               with type ('a, 'f) Checked.t =
+                 ('a, Backend.Field.t) Simple_types.Checked.t
+                and type ('a, 'f) As_prover.t =
+                 ('a, 'f) Simple_types.As_prover.t
+                and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
+                 ('var, 'value, 'aux, 'field, 'checked) Simple_types.Typ.typ'
+                and type ('var, 'value, 'field, 'checked) Typ.typ =
+                 ('var, 'value, 'field, 'checked) Simple_types.Typ.typ)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
-                    and type ('a, 'f) Types.Checked.t =
-                     ('a, Backend.Field.t) Simple_types.Checked.t) =
+                   with module Types := Types) =
 struct
   type run_state = Backend.Field.t Run_state.t
-
-  module Types = As_prover.Types
 
   type field = Backend.Field.t
 
@@ -322,7 +332,20 @@ module type Run_extras = sig
     -> field Run_state.t * 'a option
 end
 
-module Make (Backend : Backend_extended.S) = struct
+module Make
+    (Backend : Backend_extended.S)
+    (Types : Types.Types
+               with type ('a, 'f) Checked.t =
+                 ('a, Backend.Field.t) Simple_types.Checked.t
+                and type ('a, 'f) As_prover.t =
+                 ('a, 'f) Simple_types.As_prover.t
+                and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
+                 ('var, 'value, 'aux, 'field, 'checked) Simple_types.Typ.typ'
+                and type ('var, 'value, 'field, 'checked) Typ.typ =
+                 ('var, 'value, 'field, 'checked) Simple_types.Typ.typ
+                and type ('request, 'compute) Provider.provider =
+                 ('request, 'compute) Simple_types.Provider.provider) =
+struct
   open Backend
 
   type 'f field = 'f
@@ -333,34 +356,7 @@ module Make (Backend : Backend_extended.S) = struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  module As_prover = struct
-    module Types = struct
-      module Checked = struct
-        type ('a, 'f) t = ('a, Backend.Field.t) Simple_types.Checked.t
-      end
-
-      module Typ = struct
-        include Types.Typ.T
-
-        type ('var, 'value, 'f) t = ('var, 'value, 'f, (unit, 'f) Checked.t) typ
-      end
-
-      module Provider = struct
-        include Types.Provider.T
-
-        type ('a, 'f) t =
-          (('a Request.t, 'f) As_prover0.t, ('a, 'f) As_prover0.t) provider
-      end
-
-      module As_prover = struct
-        type ('a, 'f) t = ('a, 'f) As_prover0.t
-      end
-    end
-
-    include As_prover0
-  end
-
-  module Checked_runner = Make_checked (Backend) (As_prover)
+  module Checked_runner = Make_checked (Backend) (Types) (As_prover0)
 
   type run_state = Checked_runner.run_state
 
@@ -373,17 +369,15 @@ module Make (Backend : Backend_extended.S) = struct
       sig
         include
           Checked_intf.Basic
-            with module Types := Checked_runner.Types
+            with module Types := Types
             with type field := Checked_runner.field
 
         include
           Run_extras
-            with module Types := Checked_runner.Types
+            with module Types := Types
             with type field := Backend.Field.t
              and type cvar := Backend.Cvar.t
       end )
-
-  module Types = Checked_runner.Types
 
   let run = Simple.eval
 

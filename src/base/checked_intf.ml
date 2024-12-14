@@ -136,14 +136,16 @@ module type Extended = sig
   val run : 'a t -> field Run_state.t -> field Run_state.t * 'a
 end
 
-module Unextend (Checked : Extended) :
-  S with module Types = Checked.Types with type field = Checked.field = struct
+module Unextend
+    (Types : Types.Types)
+    (Checked : Extended with module Types := Types) :
+  S with module Types := Types with type field = Checked.field = struct
   include (
     Checked :
       S
-        with module Types = Checked.Types
+        with module Types := Types
         with type field := Checked.field
-         and type ('a, 'f) t := ('a, 'f) Checked.Types.Checked.t )
+         and type ('a, 'f) t := ('a, 'f) Types.Checked.t )
 
   type field = Checked.field
 

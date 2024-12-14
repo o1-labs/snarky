@@ -83,8 +83,11 @@ module type Checked_monad = sig
   include Monad_let.S2 with type ('a, 'e) t := ('a, 'e) t
 end
 
-module Make (Checked : Checked_monad) = struct
-  type ('var, 'value, 'field) t = ('var, 'value, 'field) Checked.Types.Typ.t
+module Make
+    (Types : Types.Types)
+    (Checked : Checked_monad with module Types := Types) =
+struct
+  type ('var, 'value, 'field) t = ('var, 'value, 'field) Types.Typ.t
 
   type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
 
