@@ -21,6 +21,8 @@ module Provider = struct
 end
 
 module type Types = sig
+  type field
+
   module Checked : sig
     type 'a t
   end
@@ -77,11 +79,15 @@ module type Types = sig
 end
 
 module Make_types (Minimal : sig
+  type field
+
   type 'a checked
 
   type 'a as_prover
 end) =
 struct
+  type field = Minimal.field
+
   module Checked = struct
     type 'a t = 'a Minimal.checked
   end

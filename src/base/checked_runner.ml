@@ -12,6 +12,8 @@ type ('a, 'f) t =
   | Function of ('f Run_state.t -> 'f Run_state.t * 'a)
 
 module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
+  type field = Backend.Field.t
+
   type 'a checked = ('a, Backend.Field.t) t
 
   type 'a as_prover = (Backend.Field.t Cvar.t -> Backend.Field.t) -> 'a
