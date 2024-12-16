@@ -6,10 +6,24 @@ let set_eval_constraints b = Runner.eval_constraints := b
 
 module Make
     (Backend : Backend_extended.S)
-    (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-    (As_prover : As_prover0.Extended with type field := Backend.Field.t)
+    (Types : Types.Types)
+    (Checked : Checked_intf.Extended
+                 with type field = Backend.Field.t
+                 with module Types := Types)
+    (As_prover : As_prover_intf.Basic
+                   with type field := Backend.Field.t
+                   with module Types := Types)
+    (Typ : Snark_intf.Typ_intf
+             with type field := Backend.Field.t
+              and type field_var := Backend.Cvar.t
+              and type 'field checked_unit := unit Types.Checked.t
+              and type _ checked := unit Checked.t
+              and type ('var, 'value, 'aux, 'field, 'checked) typ' :=
+               ('var, 'value, 'aux, 'field, 'checked) Types.Typ.typ'
+              and type ('var, 'value, 'field, 'checked) typ :=
+               ('var, 'value, 'field, 'checked) Types.Typ.typ)
     (Runner : Runner.S
-                with module Types := Checked.Types
+                with module Types := Types
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
@@ -17,25 +31,11 @@ module Make
 struct
   open Backend
 
-  open Runners.Make (Backend) (Checked) (As_prover) (Runner)
-
-  module Typ = struct
-    include Types.Typ.T
-    module T = Typ.Make (Checked_intf.Unextend (Checked))
-    include T.T
-
-    type ('var, 'value) t = ('var, 'value, Field.t) T.t
-
-    let unit : (unit, unit) t = unit ()
-
-    let field : (Cvar.t, Field.t) t = field ()
-  end
+  open Runners.Make (Backend) (Types) (Checked) (As_prover) (Runner)
 
   open (
     Checked :
-      Checked_intf.Extended
-        with module Types := Checked.Types
-        with type field := field )
+      Checked_intf.Extended with module Types := Types with type field := field )
 
   (* [equal_constraints z z_inv r] asserts that
      if z = 0 then r = 1, or
@@ -435,6 +435,4 @@ struct
       let all xs = And xs
     end
   end
-
-  module Typ2 = Typ
 end
