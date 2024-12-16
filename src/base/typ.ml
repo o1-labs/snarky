@@ -77,7 +77,7 @@ end
 module type Checked_monad = sig
   type ('a, 'f) t
 
-  type 'f field
+  type field
 
   include Monad_let.S2 with type ('a, 'e) t := ('a, 'e) t
 

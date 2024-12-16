@@ -3,36 +3,34 @@ module type Basic = sig
 
   type ('a, 'f) t = ('a, 'f) Types.Checked.t
 
-  type 'f field
+  type field
 
   include Monad_let.S2 with type ('a, 'f) t := ('a, 'f) t
 
-  val add_constraint :
-    ('f field Cvar.t, 'f field) Constraint.t -> (unit, 'f field) t
+  val add_constraint : (field Cvar.t, field) Constraint.t -> (unit, field) t
 
-  val as_prover : (unit, 'f field) As_prover0.t -> (unit, 'f field) t
+  val as_prover : (unit, field) As_prover0.t -> (unit, field) t
 
   val mk_lazy : (unit -> ('a, 'f) t) -> ('a Lazy.t, 'f) t
 
-  val with_label : string -> (unit -> ('a, 'f field) t) -> ('a, 'f field) t
+  val with_label : string -> (unit -> ('a, field) t) -> ('a, field) t
 
   val with_handler :
-    Request.Handler.single -> (unit -> ('a, 'f field) t) -> ('a, 'f field) t
+    Request.Handler.single -> (unit -> ('a, field) t) -> ('a, field) t
 
   val exists :
-       ('var, 'value, 'f field) Types.Typ.t
-    -> ('value, 'f field) Types.Provider.t
-    -> (('var, 'value) Handle.t, 'f field) t
+       ('var, 'value, field) Types.Typ.t
+    -> ('value, field) Types.Provider.t
+    -> (('var, 'value) Handle.t, field) t
 
-  val next_auxiliary : unit -> (int, 'f field) t
+  val next_auxiliary : unit -> (int, field) t
 
-  val direct :
-    ('f field Run_state.t -> 'f field Run_state.t * 'a) -> ('a, 'f field) t
+  val direct : (field Run_state.t -> field Run_state.t * 'a) -> ('a, field) t
 
   val constraint_count :
-       ?weight:(('f field Cvar.t, 'f field) Constraint.t -> int)
+       ?weight:((field Cvar.t, field) Constraint.t -> int)
     -> ?log:(?start:bool -> string -> int -> unit)
-    -> (unit -> ('a, 'f field) t)
+    -> (unit -> ('a, field) t)
     -> int
 end
 
@@ -41,36 +39,36 @@ module type S = sig
 
   type ('a, 'f) t = ('a, 'f) Types.Checked.t
 
-  type 'f field
+  type field
 
   include Monad_let.S2 with type ('a, 'f) t := ('a, 'f) t
 
-  val as_prover : (unit, 'f field) As_prover0.t -> (unit, 'f field) t
+  val as_prover : (unit, field) As_prover0.t -> (unit, field) t
 
   val mk_lazy : (unit -> ('a, 'f) t) -> ('a Lazy.t, 'f) t
 
   val request_witness :
-       ('var, 'value, 'f field) Types.Typ.t
-    -> ('value Request.t, 'f field) As_prover0.t
-    -> ('var, 'f field) t
+       ('var, 'value, field) Types.Typ.t
+    -> ('value Request.t, field) As_prover0.t
+    -> ('var, field) t
 
   val request :
-       ?such_that:('var -> (unit, 'f field) t)
-    -> ('var, 'value, 'f field) Types.Typ.t
+       ?such_that:('var -> (unit, field) t)
+    -> ('var, 'value, field) Types.Typ.t
     -> 'value Request.t
-    -> ('var, 'f field) t
+    -> ('var, field) t
 
   val exists_handle :
-       ?request:('value Request.t, 'f field) As_prover0.t
-    -> ?compute:('value, 'f field) As_prover0.t
-    -> ('var, 'value, 'f field) Types.Typ.t
-    -> (('var, 'value) Handle.t, 'f field) t
+       ?request:('value Request.t, field) As_prover0.t
+    -> ?compute:('value, field) As_prover0.t
+    -> ('var, 'value, field) Types.Typ.t
+    -> (('var, 'value) Handle.t, field) t
 
   val exists :
-       ?request:('value Request.t, 'f field) As_prover0.t
-    -> ?compute:('value, 'f field) As_prover0.t
-    -> ('var, 'value, 'f field) Types.Typ.t
-    -> ('var, 'f field) t
+       ?request:('value Request.t, field) As_prover0.t
+    -> ?compute:('value, field) As_prover0.t
+    -> ('var, 'value, field) Types.Typ.t
+    -> ('var, field) t
 
   type response = Request.response
 
@@ -81,54 +79,44 @@ module type S = sig
         { request : 'a Request.t; respond : 'a Request.Response.t -> response }
         -> request
 
-  val handle :
-    (unit -> ('a, 'f field) t) -> (request -> response) -> ('a, 'f field) t
+  val handle : (unit -> ('a, field) t) -> (request -> response) -> ('a, field) t
 
   val handle_as_prover :
-       (unit -> ('a, 'f field) t)
-    -> (request -> response, 'f field) As_prover0.t
-    -> ('a, 'f field) t
+       (unit -> ('a, field) t)
+    -> (request -> response, field) As_prover0.t
+    -> ('a, field) t
 
-  val next_auxiliary : unit -> (int, 'f field) t
+  val next_auxiliary : unit -> (int, field) t
 
-  val with_label : string -> (unit -> ('a, 'f field) t) -> ('a, 'f field) t
+  val with_label : string -> (unit -> ('a, field) t) -> ('a, field) t
 
   val assert_ :
-       ?label:Base.string
-    -> ('f field Cvar.t, 'f field) Constraint.t
-    -> (unit, 'f field) t
+    ?label:Base.string -> (field Cvar.t, field) Constraint.t -> (unit, field) t
 
   val assert_r1cs :
        ?label:Base.string
-    -> 'f field Cvar.t
-    -> 'f field Cvar.t
-    -> 'f field Cvar.t
-    -> (unit, 'f field) t
+    -> field Cvar.t
+    -> field Cvar.t
+    -> field Cvar.t
+    -> (unit, field) t
 
   val assert_square :
-       ?label:Base.string
-    -> 'f field Cvar.t
-    -> 'f field Cvar.t
-    -> (unit, 'f field) t
+    ?label:Base.string -> field Cvar.t -> field Cvar.t -> (unit, field) t
 
   val assert_all :
        ?label:Base.string
-    -> ('f field Cvar.t, 'f field) Constraint.t list
-    -> (unit, 'f field) t
+    -> (field Cvar.t, field) Constraint.t list
+    -> (unit, field) t
 
   val assert_equal :
-       ?label:Base.string
-    -> 'f field Cvar.t
-    -> 'f field Cvar.t
-    -> (unit, 'f field) t
+    ?label:Base.string -> field Cvar.t -> field Cvar.t -> (unit, field) t
 
-  val direct :
-    ('f field Run_state.t -> 'f field Run_state.t * 'a) -> ('a, 'f field) t
+  val direct : (field Run_state.t -> field Run_state.t * 'a) -> ('a, field) t
 
   val constraint_count :
-       ?weight:(('f field Cvar.t, 'f field) Constraint.t -> int)
+       ?weight:((field Cvar.t, field) Constraint.t -> int)
     -> ?log:(?start:bool -> string -> int -> unit)
-    -> (unit -> ('a, 'f field) t)
+    -> (unit -> ('a, field) t)
     -> int
 end
 
@@ -142,23 +130,22 @@ module type Extended = sig
   include
     S
       with module Types := Types
-      with type 'f field := field
+      with type field := field
        and type ('a, 'f) t := ('a, 'f) Types.Checked.t
 
   val run : 'a t -> field Run_state.t -> field Run_state.t * 'a
 end
 
 module Unextend (Checked : Extended) :
-  S with module Types = Checked.Types with type 'f field = Checked.field =
-struct
+  S with module Types = Checked.Types with type field = Checked.field = struct
   include (
     Checked :
       S
         with module Types = Checked.Types
-        with type 'f field := Checked.field
+        with type field := Checked.field
          and type ('a, 'f) t := ('a, 'f) Checked.Types.Checked.t )
 
-  type 'f field = Checked.field
+  type field = Checked.field
 
   type ('a, 'f) t = ('a, 'f) Types.Checked.t
 end
