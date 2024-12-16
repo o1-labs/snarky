@@ -20,10 +20,6 @@ opam pin add git@github.com:o1-labs/snarky.git
 ```
 and answering yes to the prompts.
 
-The best place to get started learning how to use the library is the annotated examples.
-- [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
-- [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
-
 ## Design
 
 The intention of this library is to allow writing snarks by writing what look

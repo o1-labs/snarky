@@ -19,15 +19,6 @@ test-website-build :
 publish-website : website
 	./scripts/publish-website.sh
 
-examples :
-	dune exec ./examples/election/election_main.exe
-	dune exec ./examples/merkle_update/merkle_update.exe
-	# tutorial.exe intentionally is unimplemented, but it should still compile
-	dune build ./examples/tutorial/tutorial.exe
-
-examples-gpu :
-	dune exec ./examples/election_gpu/election_main.exe
-
 reformat:
 	dune build @./fmt; dune promote
 
