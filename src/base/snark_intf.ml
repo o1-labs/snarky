@@ -140,15 +140,15 @@ module type Typ_intf = sig
     ; check : 'var -> 'checked
     }
 
-  type ('var, 'value, 'field, 'checked) typ =
+  type ('var, 'value, 'checked) typ =
     | Typ :
-        ('var, 'value, 'aux, 'field, 'checked) typ'
-        -> ('var, 'value, 'field, 'checked) typ
+        ('var, 'value, 'aux, field, 'checked) typ'
+        -> ('var, 'value, 'checked) typ
 
   module Data_spec : sig
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
       | ( :: ) :
-          ('var, 'value, field, field checked_unit) typ
+          ('var, 'value, field checked_unit) typ
           * ('r_var, 'r_value, 'k_var, 'k_value) t
           -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
       | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
@@ -167,7 +167,7 @@ module type Typ_intf = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-  type ('var, 'value) t = ('var, 'value, field, field checked_unit) typ
+  type ('var, 'value) t = ('var, 'value, field checked_unit) typ
 
   (** Basic instances: *)
 
@@ -1119,9 +1119,14 @@ module type Run_basic = sig
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ :
     (Typ_intf
-      with type field := Field.Constant.t
+      with type field := Internal_Basic.field
        and type field_var := Field.t
-       and type _ checked_unit := unit Internal_Basic.Checked.t)
+       and type _ checked_unit := unit Internal_Basic.Checked.t
+       and type ('var, 'value, 'aux, 'field, 'checked) typ' =
+        ('var, 'value, 'aux, 'field, 'checked) Internal_Basic.Typ.typ'
+       and type ('var, 'value, 'checked) typ =
+        ('var, 'value, 'checked) Internal_Basic.Typ.typ
+       and type 'a prover_value = 'a Internal_Basic.Typ.prover_value)
 
   (** Representation of booleans within a field.
 
@@ -1224,12 +1229,7 @@ module type Run_basic = sig
   and Internal_Basic :
     (Basic
       with type field = field
-       and type 'a Checked.t = ('a, field) Checked_runner.t
-       and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
-        ('var, 'value, 'aux, 'field, 'checked) Typ.typ'
-       and type ('var, 'value, 'field, 'checked) Typ.typ =
-        ('var, 'value, 'field, 'checked) Typ.typ
-       and type 'a Typ.prover_value = 'a Typ.prover_value)
+       and type 'a Checked.t = ('a, field) Checked_runner.t)
 
   module Bitstring_checked : sig
     type t = Boolean.var list

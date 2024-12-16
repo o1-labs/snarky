@@ -19,8 +19,8 @@ module Make
               and type 'field checked_unit := unit Types.Checked.t
               and type ('var, 'value, 'aux, 'field, 'checked) typ' :=
                ('var, 'value, 'aux, 'field, 'checked) Types.Typ.typ'
-              and type ('var, 'value, 'field, 'checked) typ :=
-               ('var, 'value, 'field, 'checked) Types.Typ.typ)
+              and type ('var, 'value, 'checked) typ :=
+               ('var, 'value, 'checked) Types.Typ.typ)
     (Runner : Runner.S
                 with module Types := Types
                 with type field := Backend.Field.t

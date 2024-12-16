@@ -55,7 +55,8 @@ end
 module Make_checked
     (Backend : Backend_extended.S)
     (Types : Types.Types
-               with type 'a Checked.t = 'a Simple_types(Backend).Checked.t
+               with type field = Backend.Field.t
+                and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
                 and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
                 and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
                  ( 'var
@@ -64,8 +65,8 @@ module Make_checked
                  , 'field
                  , 'checked )
                  Simple_types(Backend).Typ.typ'
-                and type ('var, 'value, 'field, 'checked) Typ.typ =
-                 ('var, 'value, 'field, 'checked) Simple_types(Backend).Typ.typ)
+                and type ('var, 'value, 'checked) Typ.typ =
+                 ('var, 'value, 'checked) Simple_types(Backend).Typ.typ)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types) =
@@ -230,7 +231,7 @@ struct
          ; constraint_system_auxiliary
          ; _
          } :
-        (_, _, _, _ t) Types.Typ.typ ) p : _ t =
+        (_, _, _ t) Types.Typ.typ ) p : _ t =
     Function
       (fun s ->
         if Run_state.has_witness s then (
@@ -330,8 +331,8 @@ module Make
                  , 'field
                  , 'checked )
                  Simple_types(Backend).Typ.typ'
-                and type ('var, 'value, 'field, 'checked) Typ.typ =
-                 ('var, 'value, 'field, 'checked) Simple_types(Backend).Typ.typ
+                and type ('var, 'value, 'checked) Typ.typ =
+                 ('var, 'value, 'checked) Simple_types(Backend).Typ.typ
                 and type ('request, 'compute) Provider.provider =
                  ('request, 'compute) Simple_types(Backend).Provider.provider) =
 struct
