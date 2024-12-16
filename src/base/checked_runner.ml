@@ -58,15 +58,10 @@ module Make_checked
                with type field = Backend.Field.t
                 and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
                 and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
-                and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
-                 ( 'var
-                 , 'value
-                 , 'aux
-                 , 'field
-                 , 'checked )
-                 Simple_types(Backend).Typ.typ'
-                and type ('var, 'value, 'checked) Typ.typ =
-                 ('var, 'value, 'checked) Simple_types(Backend).Typ.typ)
+                and type ('var, 'value, 'aux) Typ.typ' =
+                 ('var, 'value, 'aux) Simple_types(Backend).Typ.typ'
+                and type ('var, 'value) Typ.typ =
+                 ('var, 'value) Simple_types(Backend).Typ.typ)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types) =
@@ -231,7 +226,7 @@ struct
          ; constraint_system_auxiliary
          ; _
          } :
-        (_, _, _ t) Types.Typ.typ ) p : _ t =
+        (_, _) Types.Typ.typ ) p : _ t =
     Function
       (fun s ->
         if Run_state.has_witness s then (
@@ -324,15 +319,10 @@ module Make
                with type field = Backend.Field.t
                 and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
                 and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
-                and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
-                 ( 'var
-                 , 'value
-                 , 'aux
-                 , 'field
-                 , 'checked )
-                 Simple_types(Backend).Typ.typ'
-                and type ('var, 'value, 'checked) Typ.typ =
-                 ('var, 'value, 'checked) Simple_types(Backend).Typ.typ
+                and type ('var, 'value, 'aux) Typ.typ' =
+                 ('var, 'value, 'aux) Simple_types(Backend).Typ.typ'
+                and type ('var, 'value) Typ.typ =
+                 ('var, 'value) Simple_types(Backend).Typ.typ
                 and type ('request, 'compute) Provider.provider =
                  ('request, 'compute) Simple_types(Backend).Provider.provider) =
 struct

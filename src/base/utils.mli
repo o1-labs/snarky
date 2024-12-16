@@ -16,10 +16,9 @@ module Make : functor
            with type field := Backend.Field.t
             and type field_var := Backend.Cvar.t
             and type 'field checked_unit := unit Types.Checked.t
-            and type ('var, 'value, 'aux, 'field, 'checked) typ' :=
-             ('var, 'value, 'aux, 'field, 'checked) Types.Typ.typ'
-            and type ('var, 'value, 'checked) typ :=
-             ('var, 'value, 'checked) Types.Typ.typ)
+            and type ('var, 'value, 'aux) typ' :=
+             ('var, 'value, 'aux) Types.Typ.typ'
+            and type ('var, 'value) typ := ('var, 'value) Types.Typ.typ)
   (Runner : Runner.S
               with module Types := Types
               with type field := Backend.Field.t

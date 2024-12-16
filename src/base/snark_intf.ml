@@ -130,26 +130,23 @@ module type Typ_intf = sig
 
   type 'field checked_unit
 
-  type ('var, 'value, 'aux, 'field, 'checked) typ' =
-    { var_to_fields : 'var -> 'field Cvar.t array * 'aux
-    ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
-    ; value_to_fields : 'value -> 'field array * 'aux
-    ; value_of_fields : 'field array * 'aux -> 'value
+  type ('var, 'value, 'aux) typ' =
+    { var_to_fields : 'var -> field Cvar.t array * 'aux
+    ; var_of_fields : field Cvar.t array * 'aux -> 'var
+    ; value_to_fields : 'value -> field array * 'aux
+    ; value_of_fields : field array * 'aux -> 'value
     ; size_in_field_elements : int
     ; constraint_system_auxiliary : unit -> 'aux
-    ; check : 'var -> 'checked
+    ; check : 'var -> field checked_unit
     }
 
-  type ('var, 'value, 'checked) typ =
-    | Typ :
-        ('var, 'value, 'aux, field, 'checked) typ'
-        -> ('var, 'value, 'checked) typ
+  type ('var, 'value) typ =
+    | Typ : ('var, 'value, 'aux) typ' -> ('var, 'value) typ
 
   module Data_spec : sig
     type ('r_var, 'r_value, 'k_var, 'k_value) t =
       | ( :: ) :
-          ('var, 'value, field checked_unit) typ
-          * ('r_var, 'r_value, 'k_var, 'k_value) t
+          ('var, 'value) typ * ('r_var, 'r_value, 'k_var, 'k_value) t
           -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
       | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
   end
@@ -167,7 +164,7 @@ module type Typ_intf = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-  type ('var, 'value) t = ('var, 'value, field checked_unit) typ
+  type ('var, 'value) t = ('var, 'value) typ
 
   (** Basic instances: *)
 
@@ -1122,10 +1119,9 @@ module type Run_basic = sig
       with type field := Internal_Basic.field
        and type field_var := Field.t
        and type _ checked_unit := unit Internal_Basic.Checked.t
-       and type ('var, 'value, 'aux, 'field, 'checked) typ' =
-        ('var, 'value, 'aux, 'field, 'checked) Internal_Basic.Typ.typ'
-       and type ('var, 'value, 'checked) typ =
-        ('var, 'value, 'checked) Internal_Basic.Typ.typ
+       and type ('var, 'value, 'aux) typ' =
+        ('var, 'value, 'aux) Internal_Basic.Typ.typ'
+       and type ('var, 'value) typ = ('var, 'value) Internal_Basic.Typ.typ
        and type 'a prover_value = 'a Internal_Basic.Typ.prover_value)
 
   (** Representation of booleans within a field.
