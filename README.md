@@ -29,10 +29,6 @@ opam pin add git@github.com:o1-labs/snarky.git
 ```
 and answering yes to the prompts.
 
-The best place to get started learning how to use the library are the annotated examples.
-- [Election](examples/election/election_main.ml): shows how to use Snarky to verify an election was run honestly.
-- [Merkle update](examples/merkle_update/merkle_update.ml): a simple example updating a Merkle tree.
-
 ## Design
 
 The intention of this library is to allow writing snarks by writing what look
@@ -100,13 +96,6 @@ let implied_root_unchecked entry_hash addr0 path0 =
 ```
 The two obviously look very similar, but the first one can be run to generate an R1CS
 (and also an "auxiliary input") to verify that computation. 
-
-## Implementation
-
-Currently, the library uses a free-monad style AST to represent the snark computation.
-This may change in future versions if the overhead of creating the AST is significant.
-Most likely it will stick around since the overhead doesn't seem to be too bad and it
-enables optimizations like eliminating equality constraints.
 
 ## Building
 
