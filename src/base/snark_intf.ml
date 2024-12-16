@@ -131,8 +131,8 @@ module type Typ_intf = sig
   type 'field checked_unit
 
   type ('var, 'value, 'aux) typ' =
-    { var_to_fields : 'var -> field Cvar.t array * 'aux
-    ; var_of_fields : field Cvar.t array * 'aux -> 'var
+    { var_to_fields : 'var -> field_var array * 'aux
+    ; var_of_fields : field_var array * 'aux -> 'var
     ; value_to_fields : 'value -> field array * 'aux
     ; value_of_fields : field array * 'aux -> 'value
     ; size_in_field_elements : int
@@ -1117,7 +1117,7 @@ module type Run_basic = sig
   and Typ :
     (Typ_intf
       with type field := Internal_Basic.field
-       and type field_var := Field.t
+       and type field_var := Internal_Basic.Field.Var.t
        and type _ checked_unit := unit Internal_Basic.Checked.t
        and type ('var, 'value, 'aux) typ' =
         ('var, 'value, 'aux) Internal_Basic.Typ.typ'

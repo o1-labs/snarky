@@ -7,6 +7,7 @@ module Make (Backend : sig
 end)
 (Types : Types.Types
            with type field = Backend.Field.t
+            and type field_var = Backend.Field.t Cvar.t
             and type 'a As_prover.t =
              (Backend.Field.t Cvar.t -> Backend.Field.t) -> 'a) =
 struct

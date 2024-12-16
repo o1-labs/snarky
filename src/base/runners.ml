@@ -2,7 +2,9 @@ open Core_kernel
 
 module Make
     (Backend : Backend_extended.S)
-    (Types : Types.Types with type field = Backend.Field.t)
+    (Types : Types.Types
+               with type field = Backend.Field.t
+                and type field_var = Backend.Cvar.t)
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
                  with module Types := Types)

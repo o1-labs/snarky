@@ -78,7 +78,7 @@ struct
         ; check = (fun () -> Checked.return ())
         }
 
-    let field () : ('field Cvar.t, 'field) t =
+    let field () : ('field_var, 'field) t =
       Typ
         { var_to_fields = (fun f -> ([| f |], ()))
         ; var_of_fields = (fun (fields, _) -> fields.(0))

@@ -23,6 +23,8 @@ end
 module type Types = sig
   type field
 
+  type field_var
+
   module Checked : sig
     type 'a t
   end
@@ -47,8 +49,8 @@ module type Types = sig
   end
 ]}*)
     type ('var, 'value, 'aux) typ' =
-      { var_to_fields : 'var -> field Cvar.t array * 'aux
-      ; var_of_fields : field Cvar.t array * 'aux -> 'var
+      { var_to_fields : 'var -> field_var array * 'aux
+      ; var_of_fields : field_var array * 'aux -> 'var
       ; value_to_fields : 'value -> field array * 'aux
       ; value_of_fields : field array * 'aux -> 'value
       ; size_in_field_elements : int
@@ -76,12 +78,16 @@ end
 module Make_types (Minimal : sig
   type field
 
+  type field_var
+
   type 'a checked
 
   type 'a as_prover
 end) =
 struct
   type field = Minimal.field
+
+  type field_var = Minimal.field_var
 
   module Checked = struct
     type 'a t = 'a Minimal.checked
@@ -107,8 +113,8 @@ struct
   end
 ]}*)
     type ('var, 'value, 'aux) typ' =
-      { var_to_fields : 'var -> field Cvar.t array * 'aux
-      ; var_of_fields : field Cvar.t array * 'aux -> 'var
+      { var_to_fields : 'var -> field_var array * 'aux
+      ; var_of_fields : field_var array * 'aux -> 'var
       ; value_to_fields : 'value -> field array * 'aux
       ; value_of_fields : field array * 'aux -> 'value
       ; size_in_field_elements : int

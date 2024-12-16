@@ -14,9 +14,11 @@ type ('a, 'f) t =
 module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
   type field = Backend.Field.t
 
-  type 'a checked = ('a, Backend.Field.t) t
+  type field_var = field Cvar.t
 
-  type 'a as_prover = (Backend.Field.t Cvar.t -> Backend.Field.t) -> 'a
+  type 'a checked = ('a, field) t
+
+  type 'a as_prover = (field_var -> field) -> 'a
 end)
 
 module Simple = struct
@@ -56,6 +58,7 @@ module Make_checked
     (Backend : Backend_extended.S)
     (Types : Types.Types
                with type field = Backend.Field.t
+                and type field_var = Backend.Field.t Cvar.t
                 and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
                 and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
                 and type ('var, 'value, 'aux) Typ.typ' =
@@ -317,6 +320,7 @@ module Make
     (Backend : Backend_extended.S)
     (Types : Types.Types
                with type field = Backend.Field.t
+                and type field_var = Backend.Cvar.t
                 and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
                 and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
                 and type ('var, 'value, 'aux) Typ.typ' =
