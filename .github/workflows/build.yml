@@ -1,7 +1,7 @@
 name: Check build
 
 on:
-  [pull_request]
+  pull_request:
 
 jobs:
   check_build:
@@ -18,12 +18,13 @@ jobs:
 
     steps:
       - name: Get code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Use OCaml ${{ matrix.ocaml-version }}
-        uses: avsm/setup-ocaml@v1
+        uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
+          ocaml-compiler: ${{ matrix.ocaml-version }}
+          disable-cache: true
 
       - name: Build
         run: |
