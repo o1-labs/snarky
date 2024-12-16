@@ -12,10 +12,6 @@ module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
     (As_prover : As_prover0.Extended with type field := Backend.Field.t)
-    (Ref : As_prover_ref.S
-             with module Types := Checked.Types
-              and type 'f field := Backend.Field.t
-              and type ('a, 'f) checked := 'a Checked.t)
     (Runner : Runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
@@ -659,13 +655,6 @@ module Make (Backend : Backend_intf.S) = struct
 
   module As_prover_ext = As_prover0.Make_extended (Field_T) (As_prover0)
 
-  module Ref :
-    As_prover_ref.S
-      with module Types = Checked1.Types
-       and type ('a, 'f) checked := ('a, 'f) Checked1.t
-       and type 'f field := Backend_extended.Field.t =
-    As_prover_ref.Make (Checked1) (As_prover0)
-
   module Checked_for_basic = struct
     include (
       Checked1 :
@@ -682,8 +671,7 @@ module Make (Backend : Backend_intf.S) = struct
   end
 
   module Basic =
-    Make_basic (Backend_extended) (Checked_for_basic) (As_prover_ext) (Ref)
-      (Runner0)
+    Make_basic (Backend_extended) (Checked_for_basic) (As_prover_ext) (Runner0)
   include Basic
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
@@ -767,7 +755,9 @@ module Run = struct
     module Constraint = Snark.Constraint
 
     module Typ = struct
+      include Types.Typ.T
       open Snark.Typ
+      module Data_spec = Typ.Data_spec
 
       type nonrec ('var, 'value) t = ('var, 'value) t
 
@@ -793,7 +783,9 @@ module Run = struct
 
       let of_hlistable = of_hlistable
 
-      module Internal = Internal
+      type nonrec 'a prover_value = 'a prover_value
+
+      let prover_value = prover_value
     end
 
     let constant (Typ typ : _ Typ.t) x =
@@ -1130,16 +1122,6 @@ module Run = struct
       let read typ var = eval_as_prover (As_prover.read typ var)
 
       include Field.Constant.T
-
-      module Ref = struct
-        type 'a t = 'a As_prover_ref.t
-
-        let create f = run As_prover.(Ref.create (map (return ()) ~f))
-
-        let get r = eval_as_prover (As_prover.Ref.get r)
-
-        let set r x = eval_as_prover (As_prover.Ref.set r x)
-      end
 
       let run_prover f _tbl =
         (* Allow for nesting of prover blocks, by caching the current value and
