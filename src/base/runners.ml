@@ -1,12 +1,16 @@
 open Core_kernel
-module Types0 = Types
 
 module Make
     (Backend : Backend_extended.S)
-    (Checked : Checked_intf.Extended with type field = Backend.Field.t)
-    (As_prover : As_prover0.Extended with type field := Backend.Field.t)
+    (Types : Types.Types)
+    (Checked : Checked_intf.Extended
+                 with type field = Backend.Field.t
+                 with module Types := Types)
+    (As_prover : As_prover_intf.Basic
+                   with type field := Backend.Field.t
+                   with module Types := Types)
     (Runner : Checked_runner.S
-                with module Types := Checked.Types
+                with module Types := Types
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
@@ -159,14 +163,10 @@ struct
              ( 'input_var
              , 'input_value
              , field
-             , (unit, field) Checked.Types.Checked.t )
-             Types0.Typ.typ
+             , unit Types.Checked.t )
+             Types.Typ.typ
         -> return_typ:
-             ( 'retvar
-             , 'retval
-             , field
-             , (unit, field) Checked.Types.Checked.t )
-             Types0.Typ.typ
+             ('retvar, 'retval, field, unit Types.Checked.t) Types.Typ.typ
         -> ('input_var, 'retvar, field, 'checked) t
     end = struct
       let allocate_public_inputs :
@@ -176,19 +176,14 @@ struct
                ( input_var
                , input_value
                , field
-               , (unit, field) Checked.Types.Checked.t )
+               , unit Types.Checked.t )
                Types.Typ.typ
-          -> return_typ:
-               ( output_var
-               , output_value
-               , field
-               , (unit, field) Checked.Types.Checked.t )
-               Types.Typ.t
+          -> return_typ:(output_var, output_value, field) Types.Typ.t
           -> input_var * output_var =
        fun next_input ~input_typ:(Typ input_typ) ~return_typ:(Typ return_typ) ->
         (* allocate variables for the public input and the public output *)
         let alloc_input
-            { Types0.Typ.var_of_fields
+            { Types.Typ.var_of_fields
             ; size_in_field_elements
             ; constraint_system_auxiliary
             ; _
@@ -214,9 +209,9 @@ struct
                ( input_var
                , input_value
                , field
-               , (unit, field) Checked.Types.Checked.t )
+               , unit Types.Checked.t )
                Types.Typ.typ
-          -> return_typ:(retvar, retval, _, _) Types.Typ.t
+          -> return_typ:(retvar, retval, _) Types.Typ.t
           -> (input_var, retvar, field, checked) t =
        fun ~input_typ ~return_typ ->
         let next_input = ref 0 in
@@ -296,7 +291,7 @@ struct
         }
 
       let receive_public_input :
-             ('input_var, 'input_value, _, _) Types.Typ.t
+             ('input_var, 'input_value, _) Types.Typ.t
           -> _ Types.Typ.t
           -> 'input_value
           -> _ =
@@ -387,7 +382,7 @@ struct
     let conv :
         type r_var r_value.
            (int -> _ -> r_var -> Field.Vector.t -> r_value)
-        -> ('input_var, 'input_value, _, _) Types.Typ.t
+        -> ('input_var, 'input_value, _) Types.Typ.t
         -> _ Types.Typ.t
         -> (unit -> 'input_var -> r_var)
         -> 'input_value
@@ -401,7 +396,7 @@ struct
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
         -> input_typ:_ Types.Typ.t
-        -> return_typ:(_, _, _, _) Types.Typ.t
+        -> return_typ:(_, _, _) Types.Typ.t
         -> ?handlers:Handler.t list
         -> 'k_var
         -> 'k_value =

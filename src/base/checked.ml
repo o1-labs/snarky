@@ -5,14 +5,16 @@ module Make (Field : sig
 
   val equal : t -> t -> bool
 end)
-(Basic : Checked_intf.Basic with type field = Field.t)
-(As_prover : As_prover_intf.Basic with type field := Basic.field) :
-  Checked_intf.S with module Types = Basic.Types with type field = Basic.field =
-struct
+(Types : Types.Types)
+(Basic : Checked_intf.Basic with type field = Field.t with module Types := Types)
+(As_prover : As_prover_intf.Basic
+               with type field := Basic.field
+               with module Types := Types) :
+  Checked_intf.S with module Types := Types with type field = Field.t = struct
   include Basic
 
   let request_witness (typ : ('var, 'value, field) Types.Typ.t)
-      (r : ('value Request.t, field) As_prover.t) =
+      (r : 'value Request.t As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
 
