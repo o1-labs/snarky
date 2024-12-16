@@ -2,7 +2,7 @@ open Core_kernel
 
 module Make
     (Backend : Backend_extended.S)
-    (Types : Types.Types)
+    (Types : Types.Types with type field = Backend.Field.t)
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
                  with module Types := Types)
@@ -178,7 +178,7 @@ struct
                , field
                , unit Types.Checked.t )
                Types.Typ.typ
-          -> return_typ:(output_var, output_value, field) Types.Typ.t
+          -> return_typ:(output_var, output_value) Types.Typ.t
           -> input_var * output_var =
        fun next_input ~input_typ:(Typ input_typ) ~return_typ:(Typ return_typ) ->
         (* allocate variables for the public input and the public output *)
@@ -211,7 +211,7 @@ struct
                , field
                , unit Types.Checked.t )
                Types.Typ.typ
-          -> return_typ:(retvar, retval, _) Types.Typ.t
+          -> return_typ:(retvar, retval) Types.Typ.t
           -> (input_var, retvar, field, checked) t =
        fun ~input_typ ~return_typ ->
         let next_input = ref 0 in
@@ -291,7 +291,7 @@ struct
         }
 
       let receive_public_input :
-             ('input_var, 'input_value, _) Types.Typ.t
+             ('input_var, 'input_value) Types.Typ.t
           -> _ Types.Typ.t
           -> 'input_value
           -> _ =
@@ -382,7 +382,7 @@ struct
     let conv :
         type r_var r_value.
            (int -> _ -> r_var -> Field.Vector.t -> r_value)
-        -> ('input_var, 'input_value, _) Types.Typ.t
+        -> ('input_var, 'input_value) Types.Typ.t
         -> _ Types.Typ.t
         -> (unit -> 'input_var -> r_var)
         -> 'input_value
@@ -396,7 +396,7 @@ struct
     let generate_auxiliary_input :
            run:('a, 'checked) Runner.run
         -> input_typ:_ Types.Typ.t
-        -> return_typ:(_, _, _) Types.Typ.t
+        -> return_typ:(_, _) Types.Typ.t
         -> ?handlers:Handler.t list
         -> 'k_var
         -> 'k_value =

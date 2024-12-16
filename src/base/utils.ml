@@ -6,7 +6,7 @@ let set_eval_constraints b = Runner.eval_constraints := b
 
 module Make
     (Backend : Backend_extended.S)
-    (Types : Types.Types)
+    (Types : Types.Types with type field = Backend.Field.t)
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
                  with module Types := Types)

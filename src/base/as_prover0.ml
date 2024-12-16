@@ -6,7 +6,8 @@ module Make (Backend : sig
   end
 end)
 (Types : Types.Types
-           with type 'a As_prover.t =
+           with type field = Backend.Field.t
+            and type 'a As_prover.t =
              (Backend.Field.t Cvar.t -> Backend.Field.t) -> 'a) =
 struct
   type 'a t = 'a Types.As_prover.t
@@ -37,8 +38,8 @@ struct
   let read_var (v : 'var) : 'field t = fun tbl -> tbl v
 
   let read
-      (Typ { var_to_fields; value_of_fields; _ } :
-        ('var, 'value, 'field) Types.Typ.t ) (var : 'var) : 'value t =
+      (Typ { var_to_fields; value_of_fields; _ } : ('var, 'value) Types.Typ.t)
+      (var : 'var) : 'value t =
    fun tbl ->
     let field_vars, aux = var_to_fields var in
     let fields = Array.map ~f:tbl field_vars in

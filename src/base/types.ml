@@ -64,7 +64,7 @@ module type Types = sig
           ('var, 'value, 'aux, 'field, 'checked) typ'
           -> ('var, 'value, 'field, 'checked) typ
 
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, unit Checked.t) typ
+    type ('var, 'value) t = ('var, 'value, field, unit Checked.t) typ
   end
 
   module As_prover : sig
@@ -129,7 +129,7 @@ struct
           ('var, 'value, 'aux, 'field, 'checked) typ'
           -> ('var, 'value, 'field, 'checked) typ
 
-    type ('var, 'value, 'f) t = ('var, 'value, 'f, unit Checked.t) typ
+    type ('var, 'value) t = ('var, 'value, field, unit Checked.t) typ
   end
 
   module As_prover = struct

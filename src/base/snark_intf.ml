@@ -146,12 +146,12 @@ module type Typ_intf = sig
         -> ('var, 'value, 'field, 'checked) typ
 
   module Data_spec : sig
-    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) t =
+    type ('r_var, 'r_value, 'k_var, 'k_value) t =
       | ( :: ) :
-          ('var, 'value, 'field, 'field checked_unit) typ
-          * ('r_var, 'r_value, 'k_var, 'k_value, 'field) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'field) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'field) t
+          ('var, 'value, field, field checked_unit) typ
+          * ('r_var, 'r_value, 'k_var, 'k_value) t
+          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
   end
 
   (** The type [('var, 'value) t] describes a mapping from the OCaml type
@@ -221,7 +221,7 @@ module type Typ_intf = sig
   (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
         a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
   val hlist :
-       (unit, unit, 'k_var, 'k_value, field) Data_spec.t
+       (unit, unit, 'k_var, 'k_value) Data_spec.t
     -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
 
   (** Convert relationships over
@@ -244,7 +244,7 @@ module type Typ_intf = sig
         {!type:Data_spec.t}.
     *)
   val of_hlistable :
-       (unit, unit, 'k_var, 'k_value, field) Data_spec.t
+       (unit, unit, 'k_var, 'k_value) Data_spec.t
     -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
     -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
     -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)

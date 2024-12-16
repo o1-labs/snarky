@@ -320,7 +320,8 @@ end
 module Make
     (Backend : Backend_extended.S)
     (Types : Types.Types
-               with type 'a Checked.t = 'a Simple_types(Backend).Checked.t
+               with type field = Backend.Field.t
+                and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
                 and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
                 and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
                  ( 'var

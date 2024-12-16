@@ -13,7 +13,7 @@ module type Basic = sig
 
   val read_var : field Cvar.t -> field t
 
-  val read : ('var, 'value, field) Types.Typ.t -> 'var -> 'value t
+  val read : ('var, 'value) Types.Typ.t -> 'var -> 'value t
 
   module Provider : sig
     type 'a t

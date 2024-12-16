@@ -5,7 +5,7 @@ val set_eval_constraints : bool -> unit
 
 module Make : functor
   (Backend : Backend_extended.S)
-  (Types : Types.Types)
+  (Types : Types.Types with type field = Backend.Field.t)
   (Checked : Checked_intf.Extended
                with type field = Backend.Field.t
                with module Types := Types)

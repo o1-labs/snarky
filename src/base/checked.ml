@@ -13,7 +13,7 @@ end)
   Checked_intf.S with module Types := Types with type field = Field.t = struct
   include Basic
 
-  let request_witness (typ : ('var, 'value, field) Types.Typ.t)
+  let request_witness (typ : ('var, 'value) Types.Typ.t)
       (r : 'value Request.t As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h

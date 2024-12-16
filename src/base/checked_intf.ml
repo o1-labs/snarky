@@ -18,7 +18,7 @@ module type Basic = sig
   val with_handler : Request.Handler.single -> (unit -> 'a t) -> 'a t
 
   val exists :
-       ('var, 'value, field) Types.Typ.t
+       ('var, 'value) Types.Typ.t
     -> 'value Types.Provider.t
     -> ('var, 'value) Handle.t t
 
@@ -47,26 +47,24 @@ module type S = sig
   val mk_lazy : (unit -> 'a t) -> 'a Lazy.t t
 
   val request_witness :
-       ('var, 'value, field) Types.Typ.t
-    -> 'value Request.t Types.As_prover.t
-    -> 'var t
+    ('var, 'value) Types.Typ.t -> 'value Request.t Types.As_prover.t -> 'var t
 
   val request :
        ?such_that:('var -> unit t)
-    -> ('var, 'value, field) Types.Typ.t
+    -> ('var, 'value) Types.Typ.t
     -> 'value Request.t
     -> 'var t
 
   val exists_handle :
        ?request:'value Request.t Types.As_prover.t
     -> ?compute:'value Types.As_prover.t
-    -> ('var, 'value, field) Types.Typ.t
+    -> ('var, 'value) Types.Typ.t
     -> ('var, 'value) Handle.t t
 
   val exists :
        ?request:'value Request.t Types.As_prover.t
     -> ?compute:'value Types.As_prover.t
-    -> ('var, 'value, field) Types.Typ.t
+    -> ('var, 'value) Types.Typ.t
     -> 'var t
 
   type response = Request.response
