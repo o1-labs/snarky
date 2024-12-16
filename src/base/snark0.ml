@@ -12,10 +12,6 @@ module Make_basic
     (Backend : Backend_extended.S)
     (Checked : Checked_intf.Extended with type field = Backend.Field.t)
     (As_prover : As_prover0.Extended with type field := Backend.Field.t)
-    (Ref : As_prover_ref.S
-             with module Types := Checked.Types
-              and type 'f field := Backend.Field.t
-              and type ('a, 'f) checked := 'a Checked.t)
     (Runner : Runner.S
                 with module Types := Checked.Types
                 with type field := Backend.Field.t
@@ -659,13 +655,6 @@ module Make (Backend : Backend_intf.S) = struct
 
   module As_prover_ext = As_prover0.Make_extended (Field_T) (As_prover0)
 
-  module Ref :
-    As_prover_ref.S
-      with module Types = Checked1.Types
-       and type ('a, 'f) checked := ('a, 'f) Checked1.t
-       and type 'f field := Backend_extended.Field.t =
-    As_prover_ref.Make (Checked1) (As_prover0)
-
   module Checked_for_basic = struct
     include (
       Checked1 :
@@ -682,8 +671,7 @@ module Make (Backend : Backend_intf.S) = struct
   end
 
   module Basic =
-    Make_basic (Backend_extended) (Checked_for_basic) (As_prover_ext) (Ref)
-      (Runner0)
+    Make_basic (Backend_extended) (Checked_for_basic) (As_prover_ext) (Runner0)
   include Basic
   module Number = Number.Make (Basic)
   module Enumerable = Enumerable.Make (Basic)
@@ -767,7 +755,9 @@ module Run = struct
     module Constraint = Snark.Constraint
 
     module Typ = struct
+      include Types.Typ.T
       open Snark.Typ
+      module Data_spec = Typ.Data_spec
 
       type nonrec ('var, 'value) t = ('var, 'value) t
 
@@ -793,7 +783,9 @@ module Run = struct
 
       let of_hlistable = of_hlistable
 
-      module Internal = Internal
+      type nonrec 'a prover_value = 'a prover_value
+
+      let prover_value = prover_value
     end
 
     let constant (Typ typ : _ Typ.t) x =
@@ -1131,16 +1123,6 @@ module Run = struct
 
       include Field.Constant.T
 
-      module Ref = struct
-        type 'a t = 'a As_prover_ref.t
-
-        let create f = run As_prover.(Ref.create (map (return ()) ~f))
-
-        let get r = eval_as_prover (As_prover.Ref.get r)
-
-        let set r x = eval_as_prover (As_prover.Ref.set r x)
-      end
-
       let run_prover f _tbl =
         (* Allow for nesting of prover blocks, by caching the current value and
            restoring it once we're done.
@@ -1287,6 +1269,53 @@ module Run = struct
           let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
           Perform.constraint_system ~run:as_stateful ~input_typ ~return_typ x )
 
+    type ('input_var, 'return_var, 'result) manual_callbacks =
+      { run_circuit : 'a. ('input_var -> unit -> 'a) -> 'a
+      ; finish_computation : 'return_var -> 'result
+      }
+
+    let constraint_system_manual ~input_typ ~return_typ =
+      let builder =
+        Run.Constraint_system_builder.build ~input_typ ~return_typ
+      in
+      (* FIXME: This behaves badly with exceptions. *)
+      let cached_state = ref None in
+      let cached_active_counters = ref None in
+      let run_circuit circuit =
+        (* Check the status. *)
+        if
+          Option.is_some !cached_state || Option.is_some !cached_active_counters
+        then failwith "Already generating constraint system" ;
+        (* Partial [finalize_is_running]. *)
+        cached_state := Some !state ;
+        builder.run_computation (fun input state' ->
+            (* Partial [as_stateful]. *)
+            state := state' ;
+            (* Partial [mark_active]. *)
+            let counters = !active_counters in
+            cached_active_counters := Some counters ;
+            active_counters := this_functor_id :: counters ;
+            (* Start the circuit. *)
+            circuit input () )
+      in
+      let finish_computation return_var =
+        (* Check the status. *)
+        if
+          Option.is_none !cached_state || Option.is_none !cached_active_counters
+        then failwith "Constraint system not in a finalizable state" ;
+        (* Partial [mark_active]. *)
+        active_counters := Option.value_exn !cached_active_counters ;
+        (* Create an invalid state, to avoid re-runs. *)
+        cached_active_counters := None ;
+        (* Partial [as_stateful]. *)
+        let state' = !state in
+        let res = builder.finish_computation (state', return_var) in
+        (* Partial [finalize_is_running]. *)
+        state := Option.value_exn !cached_state ;
+        res
+      in
+      { run_circuit; finish_computation }
+
     let generate_public_input t x : As_prover.Vector.t =
       finalize_is_running (fun () -> generate_public_input t x)
 
@@ -1303,6 +1332,105 @@ module Run = struct
           let x_wrapped = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
           Perform.generate_witness_conv ~run:as_stateful ~f ~input_typ
             ~return_typ x_wrapped input )
+
+    let generate_witness_manual ?handlers ~input_typ ~return_typ input =
+      let builder =
+        Run.Witness_builder.auxiliary_input ?handlers ~input_typ ~return_typ
+          input
+      in
+      (* FIXME: This behaves badly with exceptions. *)
+      let cached_state = ref None in
+      let cached_active_counters = ref None in
+      let run_circuit circuit =
+        (* Check the status. *)
+        if
+          Option.is_some !cached_state || Option.is_some !cached_active_counters
+        then failwith "Already generating constraint system" ;
+        (* Partial [finalize_is_running]. *)
+        cached_state := Some !state ;
+        builder.run_computation (fun input state' ->
+            (* Partial [as_stateful]. *)
+            state := state' ;
+            (* Partial [mark_active]. *)
+            let counters = !active_counters in
+            cached_active_counters := Some counters ;
+            active_counters := this_functor_id :: counters ;
+            (* Start the circuit. *)
+            circuit input () )
+      in
+      let finish_computation return_var =
+        (* Check the status. *)
+        if
+          Option.is_none !cached_state || Option.is_none !cached_active_counters
+        then failwith "Constraint system not in a finalizable state" ;
+        (* Partial [mark_active]. *)
+        active_counters := Option.value_exn !cached_active_counters ;
+        (* Create an invalid state, to avoid re-runs. *)
+        cached_active_counters := None ;
+        (* Partial [as_stateful]. *)
+        let state' = !state in
+        let res = builder.finish_witness_generation (state', return_var) in
+        (* Partial [finalize_is_running]. *)
+        state := Option.value_exn !cached_state ;
+        res
+      in
+      { run_circuit; finish_computation }
+
+    (* start an as_prover / exists block and return a function to finish it and witness a given list of fields *)
+    let as_prover_manual (size_to_witness : int) :
+        (field array option -> Field.t array) Staged.t =
+      let s = !state in
+      let old_as_prover = Run_state.as_prover s in
+      (* enter the as_prover block *)
+      Run_state.set_as_prover s true ;
+
+      let finish_computation (values_to_witness : field array option) =
+        (* leave the as_prover block *)
+        Run_state.set_as_prover s old_as_prover ;
+
+        (* return variables *)
+        match (Run_state.has_witness s, values_to_witness) with
+        (* in compile mode, we return empty vars *)
+        | false, None ->
+            Core_kernel.Array.init size_to_witness ~f:(fun _ ->
+                Run_state.alloc_var s () )
+        (* in prover mode, we expect values to turn into vars *)
+        | true, Some values_to_witness ->
+            let store_value =
+              (* If we're nested in a prover block, create constants instead of
+                 storing. *)
+              if old_as_prover then Field.constant
+              else Run_state.store_field_elt s
+            in
+            Core_kernel.Array.map values_to_witness ~f:store_value
+        (* the other cases are invalid *)
+        | false, Some _ ->
+            failwith "Did not expect values to witness"
+        | true, None ->
+            failwith "Expected values to witness"
+      in
+      Staged.stage finish_computation
+
+    let request_manual (req : unit -> 'a Request.t) () : 'a =
+      Request.Handler.run (Run_state.handler !state) (req ())
+      |> Option.value_exn ~message:"Unhandled request"
+
+    module Async_generic (Promise : Base.Monad.S) = struct
+      let run_prover ~(else_ : unit -> 'a) (f : unit -> 'a Promise.t) :
+          'a Promise.t =
+        if Run_state.has_witness !state then (
+          let old = Run_state.as_prover !state in
+          Run_state.set_as_prover !state true ;
+          let%map.Promise result = f () in
+          Run_state.set_as_prover !state old ;
+          result )
+        else Promise.return (else_ ())
+
+      let as_prover (f : unit -> unit Promise.t) : unit Promise.t =
+        run_prover ~else_:(fun () -> ()) f
+
+      let unit_request req = as_prover (request_manual req)
+    end
 
     let run_unchecked x =
       finalize_is_running (fun () ->
