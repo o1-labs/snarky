@@ -128,8 +128,6 @@ module type Typ_intf = sig
 
   type field_var
 
-  type _ checked
-
   type 'field checked_unit
 
   type ('var, 'value, 'aux, 'field, 'checked) typ' =
@@ -584,7 +582,6 @@ module type Basic = sig
         with type field := Field.t
          and type field_var := Field.Var.t
          and type _ checked_unit := unit Checked.t
-         and type _ checked := unit Checked.t
   end
 
   (** Representation of booleans within a field.
@@ -1124,8 +1121,7 @@ module type Run_basic = sig
     (Typ_intf
       with type field := Field.Constant.t
        and type field_var := Field.t
-       and type _ checked_unit := unit Internal_Basic.Checked.t
-       and type _ checked := unit)
+       and type _ checked_unit := unit Internal_Basic.Checked.t)
 
   (** Representation of booleans within a field.
 
