@@ -641,7 +641,7 @@ struct
   end
 end
 
-(** The main functor for the monadic interface. 
+(** The main functor for the monadic interface.
     See [Run.Make] for the same thing but for the imperative interface. *)
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
@@ -661,7 +661,7 @@ module Make (Backend : Backend_intf.S) = struct
         Checked_intf.S
           with module Types = Checked1.Types
           with type ('a, 'f) t := ('a, 'f) Checked1.t
-           and type 'f field := Backend_extended.Field.t )
+           and type field := Backend_extended.Field.t )
 
     type field = Backend_extended.Field.t
 
@@ -1245,8 +1245,8 @@ module Run = struct
       let inject_wrapper ~f x = f x in
       inject_wrapper ~f (x a)
 
-    (** Caches the global [state] before running [f]. 
-        It is expected that [f] will reset the global state for its own use only, 
+    (** Caches the global [state] before running [f].
+        It is expected that [f] will reset the global state for its own use only,
         hence why we need to reset it after running [f].*)
     let finalize_is_running f =
       let cached_state = !state in
@@ -1321,16 +1321,17 @@ module Run = struct
 
     let generate_witness ~input_typ ~return_typ x a : Proof_inputs.t =
       finalize_is_running (fun () ->
-          let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
-          Perform.generate_witness ~run:as_stateful ~input_typ ~return_typ x a )
+          let x_wrapped = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
+          Perform.generate_witness ~run:as_stateful ~input_typ ~return_typ
+            x_wrapped a )
 
     let generate_witness_conv (type out)
         ~(f : Proof_inputs.t -> 'r_value -> out) ~input_typ ~return_typ x input
         : out =
       finalize_is_running (fun () ->
-          let x = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
+          let x_wrapped = inject_wrapper x ~f:(fun x () -> mark_active ~f:x) in
           Perform.generate_witness_conv ~run:as_stateful ~f ~input_typ
-            ~return_typ x input )
+            ~return_typ x_wrapped input )
 
     let generate_witness_manual ?handlers ~input_typ ~return_typ input =
       let builder =
