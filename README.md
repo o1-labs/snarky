@@ -39,7 +39,7 @@ certified by the snark. For example, we have a function
 ```ocaml
 mul : var -> var -> (var, _) Checked.t.
 ```
-Given `v1, v2 : var`, `mul v1 v2` is a variable containg the product of v1 and v2,
+Given `v1, v2 : var`, `mul v1 v2` is a variable containing the product of v1 and v2,
 and the snark will ensure that this is so.
 
 
