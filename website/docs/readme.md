@@ -16,7 +16,7 @@ be used in production systems.
 - Then, make sure you have [opam](https://opam.ocaml.org/doc/Install.html) installed.
 - Finally, install `snarky` and its dependencies by running
 ```bash
-opam pin add git@github.com:o1-labs/snarky.git
+opam pin add https://github.com/o1-labs/snarky.git
 ```
 and answering yes to the prompts.
 
