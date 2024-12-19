@@ -10,7 +10,9 @@ let set_eval_constraints b = Runner.eval_constraints := b
 
 module Make_basic
     (Backend : Backend_extended.S)
-    (Types : Types.Types)
+    (Types : Types.Types
+               with type field = Backend.Field.t
+                and type field_var = Backend.Cvar.t)
     (Checked : Checked_intf.Extended
                  with type field = Backend.Field.t
                  with module Types := Types)
@@ -31,7 +33,7 @@ struct
     module T = Typ.Make (Types) (Checked)
     include T.T
 
-    type ('var, 'value) t = ('var, 'value, Field.t) T.t
+    type ('var, 'value) t = ('var, 'value) T.t
 
     let unit : (unit, unit) t = unit ()
 
