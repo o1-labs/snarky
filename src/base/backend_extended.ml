@@ -59,8 +59,7 @@ module type S = sig
     val to_constant : t -> Field.t option
   end
 
-  module R1CS_constraint_system :
-    Backend_intf.Constraint_system_intf with module Field := Field
+  module R1CS_constraint_system : Constraint_system.S with module Field := Field
 
   module Constraint : sig
     type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
