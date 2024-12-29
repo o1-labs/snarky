@@ -1,6 +1,15 @@
+module Vector : sig
+  type 'elt t =
+    | T :
+        (module Snarky_intf.Vector.S with type elt = 'elt and type t = 't)
+        * 't Base.Type_equal.Id.t
+        * 't
+        -> 'elt t
+end
+
 module type S = sig
   module Vector : sig
-    type 'elt t =
+    type 'elt t = 'elt Vector.t =
       | T :
           (module Snarky_intf.Vector.S with type elt = 'elt and type t = 't)
           * 't Base.Type_equal.Id.t
