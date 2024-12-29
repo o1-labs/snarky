@@ -24,6 +24,7 @@ module Pedersen = Snarky_backendless.Pedersen
 module Request = Snarky_backendless.Request
 module Restrict_monad = Snarky_backendless.Restrict_monad
 module Run_state = Snarky_backendless.Run_state
+module Run_state_intf = Snarky_backendless.Run_state_intf
 module Snark = Snark
 module Snark0 = Snarky_backendless.Snark0
 module Snark_intf = Snarky_backendless.Snark_intf
