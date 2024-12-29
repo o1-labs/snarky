@@ -6,4 +6,6 @@ module type S = sig
   val field_size : Bigint.t
 
   module R1CS_constraint_system : Constraint_system.S with module Field := Field
+
+  module Run_state : Run_state_intf.S
 end

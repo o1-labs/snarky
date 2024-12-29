@@ -10,7 +10,10 @@ end)
 (As_prover : As_prover_intf.Basic
                with type field := Basic.field
                with module Types := Types) :
-  Checked_intf.S with module Types := Types with type field = Field.t = struct
+  Checked_intf.S
+    with module Types := Types
+    with type field = Field.t
+     and type run_state = Basic.run_state = struct
   include Basic
 
   let request_witness (typ : ('var, 'value) Types.Typ.t)

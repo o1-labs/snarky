@@ -7,16 +7,20 @@ let eval_constraints = ref true
 
 let eval_constraints_ref = eval_constraints
 
-type ('a, 'f) t =
-  | Pure of 'a
-  | Function of ('f Run_state.t -> 'f Run_state.t * 'a)
+module T (Backend : Backend_extended.S) = struct
+  type 'a t =
+    | Pure of 'a
+    | Function of
+        (   Backend.Field.t Backend.Run_state.t
+         -> Backend.Field.t Backend.Run_state.t * 'a )
+end
 
 module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
   type field = Backend.Field.t
 
   type field_var = field Cvar.t
 
-  type 'a checked = ('a, field) t
+  type 'a checked = 'a T(Backend).t
 
   type 'a as_prover = (field_var -> field) -> 'a
 end)
@@ -36,11 +40,15 @@ module Make_checked
                    with type field := Backend.Field.t
                    with module Types := Types) =
 struct
-  type run_state = Backend.Field.t Run_state.t
+  type run_state = Backend.Field.t Backend.Run_state.t
 
   type field = Backend.Field.t
 
-  type 'a t = 'a Types.Checked.t
+  type 'a t = 'a T(Backend).t =
+    | Pure of 'a
+    | Function of
+        (   Backend.Field.t Backend.Run_state.t
+         -> Backend.Field.t Backend.Run_state.t * 'a )
 
   let eval (t : 'a t) : run_state -> run_state * 'a =
     match t with Pure a -> fun s -> (s, a) | Function g -> g
@@ -291,14 +299,14 @@ module type Run_extras = sig
 
   type cvar
 
+  type run_state
+
   module Types : Types.Types
 
-  val get_value : field Run_state.t -> cvar -> field
+  val get_value : run_state -> cvar -> field
 
   val run_as_prover :
-       'a Types.As_prover.t option
-    -> field Run_state.t
-    -> field Run_state.t * 'a option
+    'a Types.As_prover.t option -> run_state -> run_state * 'a option
 end
 
 module Make
@@ -341,12 +349,14 @@ struct
           Checked_intf.Basic
             with module Types := Types
             with type field := Checked_runner.field
+             and type run_state := run_state
 
         include
           Run_extras
             with module Types := Types
             with type field := Backend.Field.t
              and type cvar := Backend.Cvar.t
+             and type run_state := run_state
       end )
 
   let run = Checked_runner.eval
@@ -403,8 +413,6 @@ module type S = sig
 
   val clear_constraint_logger : unit -> unit
 
-  type run_state = field Run_state.t
-
   type state = run_state
 
   type ('a, 't) run = 't -> run_state -> run_state * 'a
@@ -426,6 +434,6 @@ module type S = sig
             -> (field Cvar.t, field) Constraint.t option
             -> unit )
       -> unit
-      -> field Run_state.t
+      -> run_state
   end
 end

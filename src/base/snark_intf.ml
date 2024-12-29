@@ -614,8 +614,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    type run_state = Field.t Run_state.t
-
     include Monad_let.S
 
     module List :
@@ -1222,10 +1220,7 @@ module type Run_basic = sig
       }
   end
 
-  and Internal_Basic :
-    (Basic
-      with type field = field
-       and type 'a Checked.t = ('a, field) Checked_runner.t)
+  and Internal_Basic : (Basic with type field = field)
 
   module Bitstring_checked : sig
     type t = Boolean.var list

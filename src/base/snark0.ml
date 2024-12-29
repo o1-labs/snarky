@@ -14,8 +14,9 @@ module Make_basic
                with type field = Backend.Field.t
                 and type field_var = Backend.Cvar.t)
     (Checked : Checked_intf.Extended
+                 with module Types := Types
                  with type field = Backend.Field.t
-                 with module Types := Types)
+                  and type run_state = Backend.Field.t Backend.Run_state.t)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)
@@ -24,7 +25,8 @@ module Make_basic
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t) =
+                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type run_state = Backend.Field.t Backend.Run_state.t) =
 struct
   open Backend
 
@@ -74,14 +76,12 @@ struct
       Checked :
         Checked_intf.Extended
           with module Types := Types
-          with type field := field )
+          with type field := field
+           and type run_state = Backend.Field.t Backend.Run_state.t )
 
     let perform req = request_witness Typ.unit req
 
     module Runner = Runner
-
-    type run_state = Runner.run_state
-
     include Utils.Make (Backend) (Types) (Checked) (As_prover) (Typ) (Runner)
 
     module Control = struct end
@@ -677,7 +677,8 @@ module Make (Backend : Backend_intf.S) = struct
         Checked_intf.S
           with module Types := Types
           with type 'a t := 'a Checked1.t
-           and type field := Backend_extended.Field.t )
+           and type field := Backend_extended.Field.t
+           and type run_state = Backend.Field.t Backend.Run_state.t )
 
     type field = Backend_extended.Field.t
 
@@ -714,7 +715,7 @@ module Run = struct
 
   module Make_basic (Backend : Backend_intf.S) = struct
     module Snark = Make (Backend)
-    open Run_state
+    open Backend.Run_state
     open Snark
 
     let set_constraint_logger = set_constraint_logger
@@ -725,16 +726,17 @@ module Run = struct
 
     let state =
       ref
-        (Run_state.make ~input:(field_vec ()) ~aux:(field_vec ())
+        (Backend.Run_state.make ~input:(field_vec ()) ~aux:(field_vec ())
            ~eval_constraints:false ~num_inputs:0 ~next_auxiliary:(ref 0)
            ~with_witness:false ~stack:[] ~is_running:false () )
 
-    let dump () = Run_state.dump !state
+    let dump () = Backend.Run_state.dump !state
 
-    let in_prover () : bool = Run_state.has_witness !state
+    let in_prover () : bool = Backend.Run_state.has_witness !state
 
     let in_checked_computation () : bool =
-      is_active_functor_id this_functor_id && Run_state.is_running !state
+      is_active_functor_id this_functor_id
+      && Backend.Run_state.is_running !state
 
     let run (checked : _ Checked.t) =
       match checked with
@@ -748,7 +750,7 @@ module Run = struct
                %i, but the module used to run it had internal ID %i. The same \
                instance of Snarky.Snark.Run.Make must be used for both."
               this_functor_id (active_functor_id ()) ()
-          else if not (Run_state.is_running !state) then
+          else if not (Backend.Run_state.is_running !state) then
             failwith
               "This function can't be run outside of a checked computation." ;
           let state', x = Runner.run checked !state in
@@ -1127,12 +1129,15 @@ module Run = struct
       type 'a as_prover = 'a t
 
       let eval_as_prover f =
-        if Run_state.as_prover !state && Run_state.has_witness !state then
+        if
+          Backend.Run_state.as_prover !state
+          && Backend.Run_state.has_witness !state
+        then
           let a = f (Runner.get_value !state) in
           a
         else failwith "Can't evaluate prover code outside an as_prover block"
 
-      let in_prover_block () = Run_state.as_prover !state
+      let in_prover_block () = Backend.Run_state.as_prover !state
 
       let read_var var = eval_as_prover (As_prover.read_var var)
 
@@ -1144,10 +1149,10 @@ module Run = struct
         (* Allow for nesting of prover blocks, by caching the current value and
            restoring it once we're done.
         *)
-        let old = Run_state.as_prover !state in
-        Run_state.set_as_prover !state true ;
+        let old = Backend.Run_state.as_prover !state in
+        Backend.Run_state.set_as_prover !state true ;
         let a = f () in
-        Run_state.set_as_prover !state old ;
+        Backend.Run_state.set_as_prover !state old ;
         a
     end
 
@@ -1231,10 +1236,11 @@ module Run = struct
 
     let handle x h =
       let h = Request.Handler.create_single h in
-      let handler = Run_state.handler !state in
-      state := Run_state.set_handler !state (Request.Handler.push handler h) ;
+      let handler = Backend.Run_state.handler !state in
+      state :=
+        Backend.Run_state.set_handler !state (Request.Handler.push handler h) ;
       let a = x () in
-      state := Run_state.set_handler !state handler ;
+      state := Backend.Run_state.set_handler !state handler ;
       a
 
     let handle_as_prover x h =
@@ -1244,15 +1250,15 @@ module Run = struct
     let if_ b ~typ ~then_ ~else_ = run (if_ b ~typ ~then_ ~else_)
 
     let with_label lbl x =
-      let stack = Run_state.stack !state in
-      let log_constraint = Run_state.log_constraint !state in
-      state := Run_state.set_stack !state (lbl :: stack) ;
+      let stack = Backend.Run_state.stack !state in
+      let log_constraint = Backend.Run_state.log_constraint !state in
+      state := Backend.Run_state.set_stack !state (lbl :: stack) ;
       Option.iter log_constraint ~f:(fun f ->
           f ~at_label_boundary:(`Start, lbl) None ) ;
       let a = x () in
       Option.iter log_constraint ~f:(fun f ->
           f ~at_label_boundary:(`End, lbl) None ) ;
-      state := Run_state.set_stack !state stack ;
+      state := Backend.Run_state.set_stack !state stack ;
       a
 
     let inject_wrapper :
@@ -1397,27 +1403,27 @@ module Run = struct
     let as_prover_manual (size_to_witness : int) :
         (field array option -> Field.t array) Staged.t =
       let s = !state in
-      let old_as_prover = Run_state.as_prover s in
+      let old_as_prover = Backend.Run_state.as_prover s in
       (* enter the as_prover block *)
-      Run_state.set_as_prover s true ;
+      Backend.Run_state.set_as_prover s true ;
 
       let finish_computation (values_to_witness : field array option) =
         (* leave the as_prover block *)
-        Run_state.set_as_prover s old_as_prover ;
+        Backend.Run_state.set_as_prover s old_as_prover ;
 
         (* return variables *)
-        match (Run_state.has_witness s, values_to_witness) with
+        match (Backend.Run_state.has_witness s, values_to_witness) with
         (* in compile mode, we return empty vars *)
         | false, None ->
             Core_kernel.Array.init size_to_witness ~f:(fun _ ->
-                Run_state.alloc_var s () )
+                Backend.Run_state.alloc_var s () )
         (* in prover mode, we expect values to turn into vars *)
         | true, Some values_to_witness ->
             let store_value =
               (* If we're nested in a prover block, create constants instead of
                  storing. *)
               if old_as_prover then Field.constant
-              else Run_state.store_field_elt s
+              else Backend.Run_state.store_field_elt s
             in
             Core_kernel.Array.map values_to_witness ~f:store_value
         (* the other cases are invalid *)
@@ -1429,17 +1435,17 @@ module Run = struct
       Staged.stage finish_computation
 
     let request_manual (req : unit -> 'a Request.t) () : 'a =
-      Request.Handler.run (Run_state.handler !state) (req ())
+      Request.Handler.run (Backend.Run_state.handler !state) (req ())
       |> Option.value_exn ~message:"Unhandled request"
 
     module Async_generic (Promise : Base.Monad.S) = struct
       let run_prover ~(else_ : unit -> 'a) (f : unit -> 'a Promise.t) :
           'a Promise.t =
-        if Run_state.has_witness !state then (
-          let old = Run_state.as_prover !state in
-          Run_state.set_as_prover !state true ;
+        if Backend.Run_state.has_witness !state then (
+          let old = Backend.Run_state.as_prover !state in
+          Backend.Run_state.set_as_prover !state true ;
           let%map.Promise result = f () in
-          Run_state.set_as_prover !state old ;
+          Backend.Run_state.set_as_prover !state old ;
           result )
         else Promise.return (else_ ())
 
@@ -1459,10 +1465,10 @@ module Run = struct
             Perform.run_and_check_exn ~run:as_stateful (fun () ->
                 mark_active ~f:(fun () ->
                     let prover_block = x () in
-                    Run_state.set_as_prover !state true ;
+                    Backend.Run_state.set_as_prover !state true ;
                     As_prover.run_prover prover_block ) )
           in
-          Run_state.set_as_prover !state true ;
+          Backend.Run_state.set_as_prover !state true ;
           res )
 
     let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t) :
@@ -1472,10 +1478,10 @@ module Run = struct
             Perform.run_and_check ~run:as_stateful (fun () ->
                 mark_active ~f:(fun () ->
                     let prover_block = x () in
-                    Run_state.set_as_prover !state true ;
+                    Backend.Run_state.set_as_prover !state true ;
                     As_prover.run_prover prover_block ) )
           in
-          Run_state.set_as_prover !state true ;
+          Backend.Run_state.set_as_prover !state true ;
           res )
 
     module Run_and_check_deferred (M : sig
@@ -1513,10 +1519,10 @@ module Run = struct
               run_and_check_exn ~run:as_stateful (fun () ->
                   mark_active ~f:(fun () ->
                       map (x ()) ~f:(fun prover_block ->
-                          Run_state.set_as_prover !state true ;
+                          Backend.Run_state.set_as_prover !state true ;
                           As_prover.run_prover prover_block ) ) )
             in
-            Run_state.set_as_prover !state true ;
+            Backend.Run_state.set_as_prover !state true ;
             res )
 
       let run_and_check (type a) (x : unit -> (unit -> a) As_prover.t M.t) :
@@ -1527,10 +1533,10 @@ module Run = struct
               run_and_check ~run:as_stateful (fun () ->
                   mark_active ~f:(fun () ->
                       map (x ()) ~f:(fun prover_block ->
-                          Run_state.set_as_prover !state true ;
+                          Backend.Run_state.set_as_prover !state true ;
                           As_prover.run_prover prover_block ) ) )
             in
-            Run_state.set_as_prover !state true ;
+            Backend.Run_state.set_as_prover !state true ;
             res )
     end
 
