@@ -89,20 +89,15 @@ module type S = sig
 
   val with_label : string -> (unit -> 'a t) -> 'a t
 
-  val assert_ :
-    ?label:Base.string -> (field Cvar.t, field) Constraint.t -> unit t
+  val assert_ : (field Cvar.t, field) Constraint.t -> unit t
 
-  val assert_r1cs :
-    ?label:Base.string -> field Cvar.t -> field Cvar.t -> field Cvar.t -> unit t
+  val assert_r1cs : field Cvar.t -> field Cvar.t -> field Cvar.t -> unit t
 
-  val assert_square :
-    ?label:Base.string -> field Cvar.t -> field Cvar.t -> unit t
+  val assert_square : field Cvar.t -> field Cvar.t -> unit t
 
-  val assert_all :
-    ?label:Base.string -> (field Cvar.t, field) Constraint.t list -> unit t
+  val assert_all : (field Cvar.t, field) Constraint.t list -> unit t
 
-  val assert_equal :
-    ?label:Base.string -> field Cvar.t -> field Cvar.t -> unit t
+  val assert_equal : field Cvar.t -> field Cvar.t -> unit t
 
   val direct : (run_state -> run_state * 'a) -> 'a t
 

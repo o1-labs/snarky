@@ -69,23 +69,22 @@ end)
     in
     handle t (fun request -> (Option.value_exn !handler) request)
 
-  let assert_ ?label c = add_constraint (Constraint.override_label c label)
+  let assert_ c = add_constraint c
 
-  let assert_r1cs ?label a b c = assert_ (Constraint.r1cs ?label a b c)
+  let assert_r1cs a b c = assert_ (Constraint.r1cs a b c)
 
-  let assert_square ?label a c = assert_ (Constraint.square ?label a c)
+  let assert_square a c = assert_ (Constraint.square a c)
 
-  let assert_all ?label cs =
+  let assert_all cs =
     List.fold_right cs ~init:(return ()) ~f:(fun c (acc : _ t) ->
-        bind acc ~f:(fun () ->
-            add_constraint (Constraint.override_label c label) ) )
+        bind acc ~f:(fun () -> add_constraint c) )
 
-  let assert_equal ?label x y =
+  let assert_equal x y =
     match (x, y) with
     | Cvar.Constant x, Cvar.Constant y ->
         if Field.equal x y then return ()
         else
           failwithf !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}" x y ()
     | _ ->
-        assert_ (Constraint.equal ?label x y)
+        assert_ (Constraint.equal x y)
 end

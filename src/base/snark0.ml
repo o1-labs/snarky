@@ -116,9 +116,7 @@ struct
       let open Let_syntax in
       let%bind bits = choose_preimage_unchecked v ~length in
       let lc = packing_sum bits in
-      let%map () =
-        assert_r1cs ~label:"Choose_preimage" lc (Cvar.constant Field.one) v
-      in
+      let%map () = assert_r1cs lc (Cvar.constant Field.one) v in
       bits
 
     let choose_preimage_flagged (v : Cvar.t) ~length =
@@ -394,7 +392,7 @@ struct
           | _ ->
               Checked.assert_non_zero v
 
-        let equal x y = Checked.assert_equal ~label:"Checked.Assert.equal" x y
+        let equal x y = Checked.assert_equal x y
 
         let not_equal (x : t) (y : t) =
           match (x, y) with
@@ -568,7 +566,7 @@ struct
         let open Checked in
         Base.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
             Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2) )
-        |> assert_all ~label:"Bitstring.Assert.equal"
+        |> assert_all
     end
   end
 
@@ -1186,13 +1184,13 @@ module Run = struct
         active_counters := counters ;
         raise exn
 
-    let assert_ ?label c = run (assert_ ?label c)
+    let assert_ c = run (assert_ c)
 
-    let assert_all ?label c = run (assert_all ?label c)
+    let assert_all c = run (assert_all c)
 
-    let assert_r1cs ?label a b c = run (assert_r1cs ?label a b c)
+    let assert_r1cs a b c = run (assert_r1cs a b c)
 
-    let assert_square ?label x y = run (assert_square ?label x y)
+    let assert_square x y = run (assert_square x y)
 
     let as_prover p = run (as_prover (As_prover.run_prover p))
 

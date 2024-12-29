@@ -45,8 +45,8 @@ struct
   *)
   let equal_constraints (z : Cvar.t) (z_inv : Cvar.t) (r : Cvar.t) =
     Checked.assert_all
-      [ Constraint.r1cs ~label:"equals_1" z_inv z Cvar.(constant Field.one - r)
-      ; Constraint.r1cs ~label:"equals_2" r z (Cvar.constant Field.zero)
+      [ Constraint.r1cs z_inv z Cvar.(constant Field.one - r)
+      ; Constraint.r1cs r z (Cvar.constant Field.zero)
       ]
 
   (* [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
@@ -130,10 +130,7 @@ struct
                         if Field.(equal zero x) then Field.zero
                         else Backend.Field.inv x ))
             in
-            let%map () =
-              assert_r1cs ~label:"field_inverse" x x_inv
-                (Cvar.constant Field.one)
-            in
+            let%map () = assert_r1cs x x_inv (Cvar.constant Field.one) in
             x_inv )
 
   let div ?(label = "Checked.div") (x : Cvar.t) (y : Cvar.t) =
@@ -277,10 +274,7 @@ struct
       in
       Typ
         { typ with
-          check =
-            (fun v ->
-              Checked.assert_
-                (Constraint.boolean ~label:"boolean-alloc" (v :> Cvar.t)) )
+          check = (fun v -> Checked.assert_ (Constraint.boolean (v :> Cvar.t)))
         }
 
     let typ_unchecked : (var, value) Typ.t =

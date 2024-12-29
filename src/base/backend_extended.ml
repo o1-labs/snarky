@@ -64,22 +64,15 @@ module type S = sig
   module Constraint : sig
     type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
 
-    type 'k with_constraint_args = ?label:string -> 'k
+    val boolean : Cvar.t -> t
 
-    val boolean : (Cvar.t -> t) with_constraint_args
+    val equal : Cvar.t -> Cvar.t -> t
 
-    val equal : (Cvar.t -> Cvar.t -> t) with_constraint_args
+    val r1cs : Cvar.t -> Cvar.t -> Cvar.t -> t
 
-    val r1cs : (Cvar.t -> Cvar.t -> Cvar.t -> t) with_constraint_args
+    val square : Cvar.t -> Cvar.t -> t
 
-    val square : (Cvar.t -> Cvar.t -> t) with_constraint_args
-
-    val annotation : t -> string
-
-    val eval :
-         (Cvar.t, Field.t) Constraint.basic_with_annotation
-      -> (Cvar.t -> Field.t)
-      -> bool
+    val eval : (Cvar.t, Field.t) Constraint.t -> (Cvar.t -> Field.t) -> bool
   end
 
   module Run_state : Run_state_intf.S
@@ -208,16 +201,13 @@ module Make (Backend : Backend_intf.S) :
   end
 
   module Constraint = struct
-    open Constraint
     include Constraint.T
-
-    type 'k with_constraint_args = ?label:string -> 'k
 
     type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
 
     let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
 
-    let eval { basic; _ } get_value = Constraint.Basic.eval m get_value basic
+    let eval basic get_value = Constraint.Basic.eval m get_value basic
   end
 
   module R1CS_constraint_system = R1CS_constraint_system

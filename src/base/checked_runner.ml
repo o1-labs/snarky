@@ -143,7 +143,7 @@ struct
             f ~at_label_boundary:(`End, lab) None ) ;
         (Run_state.set_stack s' stack, y) )
 
-  let log_constraint ({ basic; _ } : Constraint.t) s =
+  let log_constraint (basic : Constraint.t) s =
     let open Constraint0 in
     match basic with
     | Boolean var ->
@@ -169,10 +169,9 @@ struct
           !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
           (Constraint0.Basic.map basic ~f:(get_value s))
 
-  let add_constraint ~stack ({ basic; annotation } : Constraint.t)
+  let add_constraint (basic : Constraint.t)
       (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
-    let label = Option.value annotation ~default:"<unknown>" in
-    C.add_constraint system basic ~label:(stack_to_string (label :: stack))
+    C.add_constraint system basic
 
   let add_constraint c : _ t =
     Function
@@ -189,19 +188,17 @@ struct
           then
             failwithf
               "Constraint unsatisfied (unreduced):\n\
-               %s\n\
                %s\n\n\
                Constraint:\n\
                %s\n\
                Data:\n\
                %s"
-              (Constraint.annotation c)
               (stack_to_string (Run_state.stack s))
               (Sexp.to_string (Constraint.sexp_of_t c))
               (log_constraint c s) () ;
           if not (Run_state.as_prover s) then
             Option.iter (Run_state.system s) ~f:(fun system ->
-                add_constraint ~stack:(Run_state.stack s) c system ) ;
+                add_constraint c system ) ;
           (s, ()) ) )
 
   let with_handler h t : _ t =
