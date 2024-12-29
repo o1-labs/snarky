@@ -3,13 +3,15 @@ module type Basic = sig
 
   type field
 
+  type constraint_
+
   type 'a t = 'a Types.Checked.t
 
   type run_state
 
   include Monad_let.S with type 'a t := 'a t
 
-  val add_constraint : (field Cvar.t, field) Constraint.t -> unit t
+  val add_constraint : constraint_ -> unit t
 
   val as_prover : unit Types.As_prover.t -> unit t
 

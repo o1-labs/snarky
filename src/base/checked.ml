@@ -1,18 +1,18 @@
 open Core_kernel
 
-module Make (Field : sig
-  type t [@@deriving sexp]
-
-  val equal : t -> t -> bool
-end)
-(Types : Types.Types)
-(Basic : Checked_intf.Basic with type field = Field.t with module Types := Types)
-(As_prover : As_prover_intf.Basic
-               with type field := Basic.field
-               with module Types := Types) :
+module Make
+    (Backend : Backend_extended.S)
+    (Types : Types.Types)
+    (Basic : Checked_intf.Basic
+               with type field = Backend.Field.t
+                and type constraint_ = Backend.Constraint.t
+               with module Types := Types)
+    (As_prover : As_prover_intf.Basic
+                   with type field := Basic.field
+                   with module Types := Types) :
   Checked_intf.S
     with module Types := Types
-    with type field = Field.t
+    with type field = Backend.Field.t
      and type run_state = Basic.run_state = struct
   include Basic
 
@@ -82,9 +82,12 @@ end)
   let assert_equal x y =
     match (x, y) with
     | Cvar.Constant x, Cvar.Constant y ->
-        if Field.equal x y then return ()
+        if Backend.Field.equal x y then return ()
         else
-          failwithf !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}" x y ()
+          failwithf
+            !"assert_equal: %{sexp: Backend.Field.t} != %{sexp: \
+              Backend.Field.t}"
+            x y ()
     | _ ->
         assert_ (Constraint.equal x y)
 end

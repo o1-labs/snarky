@@ -42,6 +42,8 @@ module Make_checked
 struct
   type run_state = Backend.Field.t Backend.Run_state.t
 
+  type constraint_ = Backend.Constraint.t
+
   type field = Backend.Field.t
 
   type 'a t = 'a T(Backend).t =
