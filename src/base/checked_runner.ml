@@ -10,9 +10,7 @@ let eval_constraints_ref = eval_constraints
 module T (Backend : Backend_extended.S) = struct
   type 'a t =
     | Pure of 'a
-    | Function of
-        (   Backend.Field.t Backend.Run_state.t
-         -> Backend.Field.t Backend.Run_state.t * 'a )
+    | Function of (Backend.Run_state.t -> Backend.Run_state.t * 'a)
 end
 
 module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
@@ -40,7 +38,7 @@ module Make_checked
                    with type field := Backend.Field.t
                    with module Types := Types) =
 struct
-  type run_state = Backend.Field.t Backend.Run_state.t
+  type run_state = Backend.Run_state.t
 
   type constraint_ = Backend.Constraint.t
 
@@ -48,9 +46,7 @@ struct
 
   type 'a t = 'a T(Backend).t =
     | Pure of 'a
-    | Function of
-        (   Backend.Field.t Backend.Run_state.t
-         -> Backend.Field.t Backend.Run_state.t * 'a )
+    | Function of (Backend.Run_state.t -> Backend.Run_state.t * 'a)
 
   let eval (t : 'a t) : run_state -> run_state * 'a =
     match t with Pure a -> fun s -> (s, a) | Function g -> g
@@ -85,7 +81,7 @@ struct
 
   open Backend
 
-  let get_value (t : Field.t Run_state.t) : Cvar.t -> Field.t =
+  let get_value (t : Run_state.t) : Cvar.t -> Field.t =
     let get_one i = Run_state.get_variable_value t i in
     Cvar.eval (`Return_values_will_be_mutated get_one)
 

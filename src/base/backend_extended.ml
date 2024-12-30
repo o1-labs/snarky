@@ -80,7 +80,10 @@ module type S = sig
       with module Field := Field
       with type constraint_ = Constraint.t
 
-  module Run_state : Run_state_intf.S
+  module Run_state :
+    Run_state_intf.S
+      with type field := Field.t
+       and type constraint_ := Constraint.t
 end
 
 module Make (Backend : Backend_intf.S) :
@@ -89,7 +92,7 @@ module Make (Backend : Backend_intf.S) :
      and type Field.Vector.t = Backend.Field.Vector.t
      and type Bigint.t = Backend.Bigint.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
-     and type 'field Run_state.t = 'field Backend.Run_state.t = struct
+     and type Run_state.t = Backend.Run_state.t = struct
   open Backend
 
   module Bigint = struct

@@ -7,7 +7,7 @@ module Vector : sig
         -> 'elt t
 end
 
-module type S = sig
+module type S_poly = sig
   module Vector : sig
     type 'elt t = 'elt Vector.t =
       | T :
@@ -25,19 +25,22 @@ module type S = sig
     val emplace_back : 'x t -> 'x -> unit
   end
 
+  type 'field field
+
   type 'field t
+
+  type 'field constraint_
 
   val make :
        num_inputs:int
-    -> input:'field Vector.t
+    -> input:'field field Vector.t
     -> next_auxiliary:int ref
-    -> aux:'field Vector.t
-    -> ?system:
-         ('field, ('field Cvar.t, 'field) Constraint.t) Constraint_system.t
+    -> aux:'field field Vector.t
+    -> ?system:('field field, 'field constraint_) Constraint_system.t
     -> eval_constraints:bool
     -> ?log_constraint:
          (   ?at_label_boundary:[ `End | `Start ] * string
-          -> ('field Cvar.t, 'field) Constraint.t option
+          -> 'field constraint_ option
           -> unit )
     -> ?handler:Request.Handler.t
     -> with_witness:bool
@@ -49,11 +52,11 @@ module type S = sig
   (** dumps some information about a state [t] *)
   val dump : 'field t -> string
 
-  val get_variable_value : 'field t -> int -> 'field
+  val get_variable_value : 'field t -> int -> 'field field
 
-  val store_field_elt : 'field t -> 'field -> 'field Cvar.t
+  val store_field_elt : 'field t -> 'field field -> 'field field Cvar.t
 
-  val alloc_var : 'field t -> unit -> 'field Cvar.t
+  val alloc_var : 'field field t -> unit -> 'field field Cvar.t
 
   val id : _ t -> int
 
@@ -65,20 +68,19 @@ module type S = sig
 
   val stack : _ t -> string list
 
-  val set_stack : 'field t -> string list -> 'field t
+  val set_stack : 'field field t -> string list -> 'field field t
 
   val log_constraint :
        'field t
     -> (   ?at_label_boundary:[ `Start | `End ] * string
-        -> ('field Cvar.t, 'field) Constraint.t option
+        -> 'field constraint_ option
         -> unit )
        option
 
   val eval_constraints : 'field t -> bool
 
   val system :
-       'field t
-    -> ('field, ('field Cvar.t, 'field) Constraint.t) Constraint_system.t option
+    'field t -> ('field field, 'field constraint_) Constraint_system.t option
 
   val handler : _ t -> Request.Handler.t
 
@@ -89,4 +91,18 @@ module type S = sig
   val set_is_running : 'f t -> bool -> 'f t
 
   val next_auxiliary : _ t -> int
+end
+
+module type S = sig
+  type field
+
+  type t
+
+  type constraint_
+
+  include
+    S_poly
+      with type _ field := field
+       and type _ t := t
+       and type _ constraint_ := constraint_
 end

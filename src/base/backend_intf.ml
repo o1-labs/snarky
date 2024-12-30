@@ -10,5 +10,8 @@ module type S = sig
       with module Field := Field
       with type constraint_ = (Field.t Cvar.t, Field.t) Constraint.t
 
-  module Run_state : Run_state_intf.S
+  module Run_state :
+    Run_state_intf.S
+      with type field := Field.t
+       and type constraint_ := R1CS_constraint_system.constraint_
 end

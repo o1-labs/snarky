@@ -33,11 +33,14 @@ end
 
 let id = ref 0
 
+type 'field field = 'field
+
+type 'field constraint_ = ('field Cvar.t, 'field) Constraint.t
+
 (** The internal state used to run a checked computation. *)
 type 'field t =
   { id : int
-  ; system :
-      ('field, ('field Cvar.t, 'field) Constraint.t) Constraint_system.t option
+  ; system : ('field, 'field constraint_) Constraint_system.t option
   ; input : 'field Vector.t
   ; aux : 'field Vector.t
   ; eval_constraints : bool
@@ -50,7 +53,7 @@ type 'field t =
   ; as_prover : bool ref
   ; log_constraint :
       (   ?at_label_boundary:[ `Start | `End ] * string
-       -> ('field Cvar.t, 'field) Constraint.t option
+       -> 'field constraint_ option
        -> unit )
       option
   }
