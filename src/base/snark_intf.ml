@@ -1431,12 +1431,3 @@ module type Run = sig
        and type var = Field.t
        and type t := M.t
 end
-
-module type Run_with_constraint = sig
-  type field
-
-  include
-    Run
-      with type Constraint.t = (field Cvar.t, field) Constraint.basic
-       and type field := field
-end

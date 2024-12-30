@@ -37,10 +37,6 @@ module Run : sig
        and type Constraint.t = Backend.Constraint.t
 end
 
-type 'field m = (module Snark_intf.Run_with_constraint with type field = 'field)
+type 'field m = (module Snark_intf.Run with type field = 'field)
 
-val make :
-     (module Backend_intf.S
-        with type Field.t = 'field
-         and type Constraint.t = ('field Cvar.t, 'field) Constraint.t )
-  -> 'field m
+val make : (module Backend_intf.S with type Field.t = 'field) -> 'field m
