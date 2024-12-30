@@ -59,8 +59,6 @@ module type S = sig
     val to_constant : t -> Field.t option
   end
 
-  module R1CS_constraint_system : Constraint_system.S with module Field := Field
-
   module Constraint : sig
     type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
 
@@ -76,6 +74,11 @@ module type S = sig
 
     val log_constraint : t -> (Cvar.t -> Field.t) -> string
   end
+
+  module R1CS_constraint_system :
+    Constraint_system.S
+      with module Field := Field
+      with type constraint_ = Constraint.t
 
   module Run_state : Run_state_intf.S
 end

@@ -32,7 +32,8 @@ module type S = sig
     -> input:'field Vector.t
     -> next_auxiliary:int ref
     -> aux:'field Vector.t
-    -> ?system:'field Constraint_system.t
+    -> ?system:
+         ('field, ('field Cvar.t, 'field) Constraint.t) Constraint_system.t
     -> eval_constraints:bool
     -> ?log_constraint:
          (   ?at_label_boundary:[ `End | `Start ] * string
@@ -75,7 +76,9 @@ module type S = sig
 
   val eval_constraints : 'field t -> bool
 
-  val system : 'field t -> 'field Constraint_system.t option
+  val system :
+       'field t
+    -> ('field, ('field Cvar.t, 'field) Constraint.t) Constraint_system.t option
 
   val handler : _ t -> Request.Handler.t
 

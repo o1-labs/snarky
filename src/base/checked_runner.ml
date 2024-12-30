@@ -146,7 +146,8 @@ struct
         (Run_state.set_stack s' stack, y) )
 
   let add_constraint (basic : Constraint.t)
-      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
+      (Constraint_system.T ((module C), system) :
+        (Field.t, Constraint.t) Constraint_system.t ) =
     C.add_constraint system basic
 
   let add_constraint c : _ t =

@@ -36,7 +36,8 @@ let id = ref 0
 (** The internal state used to run a checked computation. *)
 type 'field t =
   { id : int
-  ; system : 'field Constraint_system.t option
+  ; system :
+      ('field, ('field Cvar.t, 'field) Constraint.t) Constraint_system.t option
   ; input : 'field Vector.t
   ; aux : 'field Vector.t
   ; eval_constraints : bool
