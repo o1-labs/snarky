@@ -392,9 +392,9 @@ module type S = sig
   module State : sig
     val make :
          num_inputs:int
-      -> input:field Run_state.Vector.t
+      -> input:field Run_state_intf.Vector.t
       -> next_auxiliary:int ref
-      -> aux:field Run_state.Vector.t
+      -> aux:field Run_state_intf.Vector.t
       -> ?system:r1cs
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t

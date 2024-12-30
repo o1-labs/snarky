@@ -1,4 +1,8 @@
-include
-  Run_state_intf.S_poly
-    with type 'field field = 'field
-     and type 'field constraint_ = ('field Cvar.t, 'field) Constraint.t
+module Make (Types : sig
+  type field
+
+  type constraint_
+end) :
+  Run_state_intf.S
+    with type field = Types.field
+     and type constraint_ = Types.constraint_
