@@ -72,7 +72,9 @@ module type S = sig
 
     val square : Cvar.t -> Cvar.t -> t
 
-    val eval : (Cvar.t, Field.t) Constraint.t -> (Cvar.t -> Field.t) -> bool
+    val eval : t -> (Cvar.t -> Field.t) -> bool
+
+    val log_constraint : t -> (Cvar.t -> Field.t) -> string
   end
 
   module Run_state : Run_state_intf.S
@@ -208,6 +210,32 @@ module Make (Backend : Backend_intf.S) :
     let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
 
     let eval basic get_value = Constraint.Basic.eval m get_value basic
+
+    let log_constraint (basic : t) get_value =
+      let open Constraint in
+      match basic with
+      | Boolean var ->
+          Format.(asprintf "Boolean %s" (Field.to_string (get_value var)))
+      | Equal (var1, var2) ->
+          Format.(
+            asprintf "Equal %s %s"
+              (Field.to_string (get_value var1))
+              (Field.to_string (get_value var2)))
+      | Square (var1, var2) ->
+          Format.(
+            asprintf "Square %s %s"
+              (Field.to_string (get_value var1))
+              (Field.to_string (get_value var2)))
+      | R1CS (var1, var2, var3) ->
+          Format.(
+            asprintf "R1CS %s %s %s"
+              (Field.to_string (get_value var1))
+              (Field.to_string (get_value var2))
+              (Field.to_string (get_value var3)))
+      | _ ->
+          Format.asprintf
+            !"%{sexp:(Field.t, Field.t) Constraint.basic}"
+            (Constraint.Basic.map basic ~f:get_value)
   end
 
   module R1CS_constraint_system = R1CS_constraint_system

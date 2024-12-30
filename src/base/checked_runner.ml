@@ -145,32 +145,6 @@ struct
             f ~at_label_boundary:(`End, lab) None ) ;
         (Run_state.set_stack s' stack, y) )
 
-  let log_constraint (basic : Constraint.t) s =
-    let open Constraint0 in
-    match basic with
-    | Boolean var ->
-        Format.(asprintf "Boolean %s" (Field.to_string (get_value s var)))
-    | Equal (var1, var2) ->
-        Format.(
-          asprintf "Equal %s %s"
-            (Field.to_string (get_value s var1))
-            (Field.to_string (get_value s var2)))
-    | Square (var1, var2) ->
-        Format.(
-          asprintf "Square %s %s"
-            (Field.to_string (get_value s var1))
-            (Field.to_string (get_value s var2)))
-    | R1CS (var1, var2, var3) ->
-        Format.(
-          asprintf "R1CS %s %s %s"
-            (Field.to_string (get_value s var1))
-            (Field.to_string (get_value s var2))
-            (Field.to_string (get_value s var3)))
-    | _ ->
-        Format.asprintf
-          !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
-          (Constraint0.Basic.map basic ~f:(get_value s))
-
   let add_constraint (basic : Constraint.t)
       (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
     C.add_constraint system basic
@@ -197,7 +171,8 @@ struct
                %s"
               (stack_to_string (Run_state.stack s))
               (Sexp.to_string (Constraint.sexp_of_t c))
-              (log_constraint c s) () ;
+              (Backend.Constraint.log_constraint c (get_value s))
+              () ;
           if not (Run_state.as_prover s) then
             Option.iter (Run_state.system s) ~f:(fun system ->
                 add_constraint c system ) ;
