@@ -60,7 +60,7 @@ module type S = sig
   end
 
   module Constraint : sig
-    type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
+    type t [@@deriving sexp]
 
     val boolean : Cvar.t -> t
 
@@ -92,7 +92,8 @@ module Make (Backend : Backend_intf.S) :
      and type Field.Vector.t = Backend.Field.Vector.t
      and type Bigint.t = Backend.Bigint.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
-     and type Run_state.t = Backend.Run_state.t = struct
+     and type Run_state.t = Backend.Run_state.t
+     and type Constraint.t = Backend.R1CS_constraint_system.constraint_ = struct
   open Backend
 
   module Bigint = struct

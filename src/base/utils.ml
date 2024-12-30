@@ -12,7 +12,8 @@ module Make
     (Checked : Checked_intf.Extended
                  with module Types := Types
                  with type field = Backend.Field.t
-                  and type run_state = Backend.Run_state.t)
+                  and type run_state = Backend.Run_state.t
+                  and type constraint_ = Backend.Constraint.t)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)
@@ -37,7 +38,10 @@ struct
 
   open (
     Checked :
-      Checked_intf.Extended with module Types := Types with type field := field )
+      Checked_intf.Extended
+        with module Types := Types
+        with type field := field
+         and type constraint_ := Constraint.t )
 
   (* [equal_constraints z z_inv r] asserts that
      if z = 0 then r = 1, or

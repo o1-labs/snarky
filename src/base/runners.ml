@@ -8,7 +8,8 @@ module Make
     (Checked : Checked_intf.Extended
                  with module Types := Types
                  with type field = Backend.Field.t
-                  and type run_state = Backend.Run_state.t)
+                  and type run_state = Backend.Run_state.t
+                  and type constraint_ = Backend.Constraint.t)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)

@@ -13,7 +13,8 @@ module Make
   Checked_intf.S
     with module Types := Types
     with type field = Backend.Field.t
-     and type run_state = Basic.run_state = struct
+     and type run_state = Basic.run_state
+     and type constraint_ = Basic.constraint_ = struct
   include Basic
 
   let request_witness (typ : ('var, 'value) Types.Typ.t)
@@ -71,9 +72,9 @@ module Make
 
   let assert_ c = add_constraint c
 
-  let assert_r1cs a b c = assert_ (Constraint.r1cs a b c)
+  let assert_r1cs a b c = assert_ (Backend.Constraint.r1cs a b c)
 
-  let assert_square a c = assert_ (Constraint.square a c)
+  let assert_square a c = assert_ (Backend.Constraint.square a c)
 
   let assert_all cs =
     List.fold_right cs ~init:(return ()) ~f:(fun c (acc : _ t) ->
@@ -89,5 +90,5 @@ module Make
               Backend.Field.t}"
             x y ()
     | _ ->
-        assert_ (Constraint.equal x y)
+        assert_ (Backend.Constraint.equal x y)
 end

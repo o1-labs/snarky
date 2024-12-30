@@ -16,7 +16,8 @@ module Make_basic
     (Checked : Checked_intf.Extended
                  with module Types := Types
                  with type field = Backend.Field.t
-                  and type run_state = Backend.Run_state.t)
+                  and type run_state = Backend.Run_state.t
+                  and type constraint_ = Backend.Constraint.t)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)
@@ -77,7 +78,8 @@ struct
         Checked_intf.Extended
           with module Types := Types
           with type field := field
-           and type run_state = Backend.Run_state.t )
+           and type run_state = Backend.Run_state.t
+           and type constraint_ = Backend.Constraint.t )
 
     let perform req = request_witness Typ.unit req
 
@@ -565,7 +567,7 @@ struct
       let equal t1 t2 =
         let open Checked in
         Base.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
-            Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2) )
+            Backend.Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2) )
         |> assert_all
     end
   end
@@ -676,7 +678,8 @@ module Make (Backend : Backend_intf.S) = struct
           with module Types := Types
           with type 'a t := 'a Checked1.t
            and type field := Backend_extended.Field.t
-           and type run_state = Backend.Run_state.t )
+           and type run_state = Backend.Run_state.t
+           and type constraint_ = Backend_extended.Constraint.t )
 
     type field = Backend_extended.Field.t
 
