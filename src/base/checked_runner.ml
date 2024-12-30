@@ -400,9 +400,7 @@ module type S = sig
       -> ?handler:Request.Handler.t
       -> with_witness:bool
       -> ?log_constraint:
-           (   ?at_label_boundary:[ `End | `Start ] * string
-            -> (field Cvar.t, field) Constraint.t option
-            -> unit )
+           (?at_label_boundary:[ `End | `Start ] * string -> constr -> unit)
       -> unit
       -> run_state
   end

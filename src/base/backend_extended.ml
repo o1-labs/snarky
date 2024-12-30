@@ -93,7 +93,7 @@ module Make (Backend : Backend_intf.S) :
      and type Bigint.t = Backend.Bigint.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
      and type Run_state.t = Backend.Run_state.t
-     and type Constraint.t = Backend.R1CS_constraint_system.constraint_ = struct
+     and type Constraint.t = Backend.Constraint.t = struct
   open Backend
 
   module Bigint = struct
@@ -209,42 +209,7 @@ module Make (Backend : Backend_intf.S) :
           None
   end
 
-  module Constraint = struct
-    include Constraint.T
-
-    type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
-
-    let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
-
-    let eval basic get_value = Constraint.Basic.eval m get_value basic
-
-    let log_constraint (basic : t) get_value =
-      let open Constraint in
-      match basic with
-      | Boolean var ->
-          Format.(asprintf "Boolean %s" (Field.to_string (get_value var)))
-      | Equal (var1, var2) ->
-          Format.(
-            asprintf "Equal %s %s"
-              (Field.to_string (get_value var1))
-              (Field.to_string (get_value var2)))
-      | Square (var1, var2) ->
-          Format.(
-            asprintf "Square %s %s"
-              (Field.to_string (get_value var1))
-              (Field.to_string (get_value var2)))
-      | R1CS (var1, var2, var3) ->
-          Format.(
-            asprintf "R1CS %s %s %s"
-              (Field.to_string (get_value var1))
-              (Field.to_string (get_value var2))
-              (Field.to_string (get_value var3)))
-      | _ ->
-          Format.asprintf
-            !"%{sexp:(Field.t, Field.t) Constraint.basic}"
-            (Constraint.Basic.map basic ~f:get_value)
-  end
-
+  module Constraint = Constraint
   module R1CS_constraint_system = R1CS_constraint_system
   module Run_state = Run_state
 end

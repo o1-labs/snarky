@@ -1584,8 +1584,10 @@ module Run = struct
   end
 end
 
-type 'field m = (module Snark_intf.Run with type field = 'field)
+type 'field m = (module Snark_intf.Run_with_constraint with type field = 'field)
 
-let make (type field) (module Backend : Backend_intf.S with type Field.t = field)
-    : field m =
+let make (type field)
+    (module Backend : Backend_intf.S
+      with type Field.t = field
+       and type Constraint.t = (field Cvar.t, field) Constraint.t ) : field m =
   (module Run.Make (Backend))

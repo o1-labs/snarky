@@ -1,6 +1,5 @@
 module Bignum_bigint = Bigint
 open Core_kernel
-module Constraint0 = Constraint
 module Boolean0 = Boolean
 
 module type Boolean_intf = sig
@@ -276,7 +275,7 @@ module type Constraint_intf = sig
         any time we want to multiply our *variables*, we need to add a new
         rank-1 constraint.
     *)
-  type t = (field_var, field) Constraint0.t
+  type t
 
   (** A constraint that asserts that the field variable is a boolean: either
         {!val:Field.zero} or {!val:Field.one}.
@@ -1211,7 +1210,8 @@ module type Run_basic = sig
       }
   end
 
-  and Internal_Basic : (Basic with type field = field)
+  and Internal_Basic :
+    (Basic with type field = field and type Constraint.t = Constraint.t)
 
   module Bitstring_checked : sig
     type t = Boolean.var list
@@ -1430,4 +1430,13 @@ module type Run = sig
        and type bool_var := Boolean.var
        and type var = Field.t
        and type t := M.t
+end
+
+module type Run_with_constraint = sig
+  type field
+
+  include
+    Run
+      with type Constraint.t = (field Cvar.t, field) Constraint.basic
+       and type field := field
 end
