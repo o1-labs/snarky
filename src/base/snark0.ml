@@ -659,18 +659,6 @@ module Make (Backend : Backend_intf.S) = struct
   module Checked1 =
     Checked.Make (Backend_extended) (Types) (Checked_runner) (As_prover1)
 
-  module Field_T = struct
-    type field = Backend_extended.Field.t
-  end
-
-  module As_prover_ext =
-    As_prover0.Make_extended
-      (Field_T)
-      (struct
-        module Types = Types
-        include As_prover1
-      end)
-
   module Checked_for_basic = struct
     include (
       Checked1 :
@@ -689,7 +677,7 @@ module Make (Backend : Backend_intf.S) = struct
   end
 
   module Basic =
-    Make_basic (Backend_extended) (Types) (Checked_for_basic) (As_prover_ext)
+    Make_basic (Backend_extended) (Types) (Checked_for_basic) (As_prover1)
       (Runner0)
   include Basic
   module Number = Number.Make (Basic)

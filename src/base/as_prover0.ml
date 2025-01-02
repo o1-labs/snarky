@@ -80,12 +80,3 @@ struct
      fun _ -> Option.value_exn t.value
   end
 end
-
-module Make_extended (Env : sig
-  type field
-end)
-(As_prover : As_prover_intf.Basic with type field := Env.field) =
-struct
-  include Env
-  include As_prover
-end
