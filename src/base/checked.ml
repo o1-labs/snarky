@@ -2,18 +2,14 @@ open Core_kernel
 
 module Make
     (Backend : Backend_extended.S)
-    (Types : Types.Types)
+    (Types : Types.Types with type field_var = Backend.Cvar.t)
     (Basic : Checked_intf.Basic
-               with type field = Backend.Field.t
-                and type constraint_ = Backend.Constraint.t
+               with type constraint_ = Backend.Constraint.t
                with module Types := Types)
-    (As_prover : As_prover_intf.Basic
-                   with type field := Basic.field
-                   with module Types := Types) :
+    (As_prover : As_prover_intf.Basic with module Types := Types) :
   Checked_intf.S
     with module Types := Types
-    with type field = Backend.Field.t
-     and type run_state = Basic.run_state
+    with type run_state = Basic.run_state
      and type constraint_ = Basic.constraint_ = struct
   include Basic
 

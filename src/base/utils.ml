@@ -11,12 +11,9 @@ module Make
                 and type field_var = Backend.Cvar.t)
     (Checked : Checked_intf.Extended
                  with module Types := Types
-                 with type field = Backend.Field.t
-                  and type run_state = Backend.Run_state.t
+                 with type run_state = Backend.Run_state.t
                   and type constraint_ = Backend.Constraint.t)
-    (As_prover : As_prover_intf.Basic
-                   with type field := Backend.Field.t
-                   with module Types := Types)
+    (As_prover : As_prover_intf.Basic with module Types := Types)
     (Typ : Snark_intf.Typ_intf
              with type field := Backend.Field.t
               and type field_var := Backend.Cvar.t
@@ -26,9 +23,7 @@ module Make
               and type ('var, 'value) typ := ('var, 'value) Types.Typ.typ)
     (Runner : Runner.S
                 with module Types := Types
-                with type field := Backend.Field.t
-                 and type cvar := Backend.Cvar.t
-                 and type constr := Backend.Constraint.t option
+                with type constr := Backend.Constraint.t option
                  and type r1cs := Backend.R1CS_constraint_system.t
                  and type run_state = Backend.Run_state.t) =
 struct
@@ -40,8 +35,7 @@ struct
     Checked :
       Checked_intf.Extended
         with module Types := Types
-        with type field := field
-         and type constraint_ := Constraint.t )
+        with type constraint_ := Constraint.t )
 
   (* [equal_constraints z z_inv r] asserts that
      if z = 0 then r = 1, or
