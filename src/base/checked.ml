@@ -77,8 +77,8 @@ module Make
         bind acc ~f:(fun () -> add_constraint c) )
 
   let assert_equal x y =
-    match (x, y) with
-    | Cvar.Constant x, Cvar.Constant y ->
+    match (Backend.Cvar.to_constant x, Backend.Cvar.to_constant y) with
+    | Some x, Some y ->
         if Backend.Field.equal x y then return ()
         else
           failwithf
