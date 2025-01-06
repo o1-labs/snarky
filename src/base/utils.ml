@@ -1,5 +1,4 @@
 open Core_kernel
-module Cvar0 = Cvar
 module Runner = Checked_runner
 
 let set_eval_constraints b = Runner.eval_constraints := b
@@ -60,12 +59,12 @@ struct
 
   let constant (Typ typ : _ Typ.t) x =
     let fields, aux = typ.value_to_fields x in
-    let field_vars = Array.map fields ~f:(fun x -> Cvar0.Constant x) in
+    let field_vars = Array.map fields ~f:(fun x -> Cvar.constant x) in
     typ.var_of_fields (field_vars, aux)
 
   let equal (x : Cvar.t) (y : Cvar.t) : Cvar.t Boolean.t Checked.t =
-    match (x, y) with
-    | Constant x, Constant y ->
+    match (Cvar.to_constant x, Cvar.to_constant y) with
+    | Some x, Some y ->
         Checked.return
           (Boolean.Unsafe.create
              (Cvar.constant
@@ -79,12 +78,12 @@ struct
         Boolean.Unsafe.create r
 
   let mul ?(label = "Checked.mul") (x : Cvar.t) (y : Cvar.t) =
-    match (x, y) with
-    | Constant x, Constant y ->
+    match (Cvar.to_constant x, Cvar.to_constant y) with
+    | Some x, Some y ->
         return (Cvar.constant (Field.mul x y))
-    | Constant x, _ ->
+    | Some x, _ ->
         return (Cvar.scale y x)
-    | _, Constant y ->
+    | _, Some y ->
         return (Cvar.scale x y)
     | _, _ ->
         with_label label (fun () ->
@@ -97,8 +96,8 @@ struct
             z )
 
   let square ?(label = "Checked.square") (x : Cvar.t) =
-    match x with
-    | Constant x ->
+    match Cvar.to_constant x with
+    | Some x ->
         return (Cvar.constant (Field.square x))
     | _ ->
         with_label label (fun () ->
@@ -114,8 +113,8 @@ struct
      put a bogus value for the inverse to make the constraint system unsat if
      x is zero. *)
   let inv ?(label = "Checked.inv") (x : Cvar.t) =
-    match x with
-    | Constant x ->
+    match Cvar.to_constant x with
+    | Some x ->
         return (Cvar.constant (Field.inv x))
     | _ ->
         with_label label (fun () ->
@@ -132,8 +131,8 @@ struct
             x_inv )
 
   let div ?(label = "Checked.div") (x : Cvar.t) (y : Cvar.t) =
-    match (x, y) with
-    | Constant x, Constant y ->
+    match (Cvar.to_constant x, Cvar.to_constant y) with
+    | Some x, Some y ->
         return (Cvar.constant (Field.( / ) x y))
     | _ ->
         with_label label (fun () ->
@@ -148,12 +147,12 @@ struct
        r - e = b (t - e)
     *)
     let b = (b :> Cvar.t) in
-    match b with
-    | Constant b ->
+    match Cvar.to_constant b with
+    | Some b ->
         if Field.(equal b one) then return then_ else return else_
     | _ -> (
-        match (then_, else_) with
-        | Constant t, Constant e ->
+        match (Cvar.to_constant then_, Cvar.to_constant else_) with
+        | Some t, Some e ->
             return Cvar.((t * b) + (e * (constant Field0.one - b)))
         | _, _ ->
             let%bind r =
