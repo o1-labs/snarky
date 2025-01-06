@@ -298,9 +298,9 @@ end
 module type Field_var_intf = sig
   type field
 
+  (** The type that stores booleans as R1CS variables. *)
   type boolean_var
 
-  (** The type that stores booleans as R1CS variables. *)
   type t = field Cvar.t
 
   (** For debug purposes *)
