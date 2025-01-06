@@ -15,7 +15,7 @@ end
 module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
   type field = Backend.Field.t
 
-  type field_var = field Cvar.t
+  type field_var = Backend.Cvar.t
 
   type 'a checked = 'a T(Backend).t
 
