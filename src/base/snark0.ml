@@ -25,6 +25,8 @@ module Make_basic
 struct
   open Backend
 
+  type field_var = Cvar.t
+
   module Typ = struct
     include Types.Typ
     module T = Typ.Make (Types) (Checked)
@@ -748,6 +750,8 @@ module Run = struct
     module R1CS_constraint_system = Snark.R1CS_constraint_system
 
     type field = Snark.field
+
+    type field_var = Snark.field_var
 
     module Bigint = Snark.Bigint
     module Constraint = Snark.Constraint

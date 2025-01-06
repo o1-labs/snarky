@@ -301,7 +301,7 @@ module type Field_var_intf = sig
   (** The type that stores booleans as R1CS variables. *)
   type boolean_var
 
-  type t = field Cvar.t
+  type t
 
   (** For debug purposes *)
   val length : t -> int
@@ -545,6 +545,9 @@ module type Basic = sig
   (** The finite field over which the R1CS operates. *)
   type field
 
+  (** The variable type over which the R1CS operates. *)
+  type field_var = field Cvar.t
+
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
   module R1CS_constraint_system : sig
@@ -563,9 +566,7 @@ module type Basic = sig
 
   (** Rank-1 constraints over {!type:Var.t}s. *)
   module rec Constraint :
-    (Constraint_intf
-      with type field := Field.t
-       and type field_var := Field.Var.t)
+    (Constraint_intf with type field := field and type field_var := field_var)
 
   (** The data specification for checked computations. *)
 
@@ -573,8 +574,8 @@ module type Basic = sig
   and Typ : sig
     include
       Typ_intf
-        with type field := Field.t
-         and type field_var := Field.Var.t
+        with type field := field
+         and type field_var := field_var
          and type _ checked_unit := unit Checked.t
   end
 
@@ -586,7 +587,7 @@ module type Basic = sig
   and Boolean :
     (Boolean_intf
       with type var = Field.Var.t Boolean0.t
-       and type field_var := Field.Var.t
+       and type field_var := field_var
        and type 'a checked := 'a Checked.t
        and type ('var, 'value) typ := ('var, 'value) Typ.t)
 
@@ -676,11 +677,12 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       Field_var_intf
         with type field := field
          and type boolean_var := Boolean.var
+         and type t = field_var
 
     module Checked :
       Field_checked_intf
         with type field := field
-         and type field_var := Var.t
+         and type field_var := field_var
          and type scale_field := field
         (* TODO: harmonise this *)
          and type 'a checked := 'a Checked.t
@@ -1054,7 +1056,7 @@ module type S = sig
     Number_intf.S
       with type 'a checked := 'a Checked.t
        and type field := field
-       and type field_var := Field.Var.t
+       and type field_var := field_var
        and type bool_var := Boolean.var
 
   module Enumerable (M : sig
@@ -1087,6 +1089,9 @@ module type Run_basic = sig
   (** The finite field over which the R1CS operates. *)
   type field
 
+  (** The variable type over which the R1CS operates. *)
+  type field_var = field Cvar.t
+
   module Bigint : sig
     include Snarky_intf.Bigint_intf.Extended with type field := field
 
@@ -1099,13 +1104,13 @@ module type Run_basic = sig
   module rec Constraint :
     (Constraint_intf
       with type field := Field.Constant.t
-       and type field_var := Field.t)
+       and type field_var := field_var)
 
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ :
     (Typ_intf
       with type field := Internal_Basic.field
-       and type field_var := Internal_Basic.Field.Var.t
+       and type field_var := Internal_Basic.field_var
        and type _ checked_unit := unit Internal_Basic.Checked.t
        and type ('var, 'value, 'aux) typ' =
         ('var, 'value, 'aux) Internal_Basic.Typ.typ'
@@ -1120,7 +1125,7 @@ module type Run_basic = sig
   and Boolean :
     (Boolean_intf
       with type var = Field.t Boolean0.t
-       and type field_var := Field.t
+       and type field_var := field_var
        and type 'a checked := 'a
        and type ('var, 'value) typ := ('var, 'value) Typ.t)
 
@@ -1153,11 +1158,12 @@ module type Run_basic = sig
       Field_var_intf
         with type field := field
          and type boolean_var := Boolean.var
+         and type t = field_var
 
     include
       Field_checked_intf
         with type field := field
-         and type field_var := t
+         and type field_var := field_var
          and type scale_field := t
         (* TODO: harmonise this *)
          and type 'a checked := 'a
@@ -1211,7 +1217,10 @@ module type Run_basic = sig
   end
 
   and Internal_Basic :
-    (Basic with type field = field and type Constraint.t = Constraint.t)
+    (Basic
+      with type field = field
+       and type field_var = field_var
+       and type Constraint.t = Constraint.t)
 
   module Bitstring_checked : sig
     type t = Boolean.var list
@@ -1419,7 +1428,7 @@ module type Run = sig
   module Number :
     Number_intf.Run
       with type field := field
-       and type field_var := Field.t
+       and type field_var := field_var
        and type bool_var := Boolean.var
 
   module Enumerable (M : sig
@@ -1428,6 +1437,6 @@ module type Run = sig
     Enumerable_intf.Run
       with type ('a, 'b) typ := ('a, 'b) Typ.t
        and type bool_var := Boolean.var
-       and type var = Field.t
+       and type var = field_var
        and type t := M.t
 end
