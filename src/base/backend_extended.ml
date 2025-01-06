@@ -57,6 +57,7 @@ module Make (Backend : Backend_intf.S) :
     with type Field.t = Backend.Field.t
      and type Field.Vector.t = Backend.Field.Vector.t
      and type Bigint.t = Backend.Bigint.t
+     and type Cvar.t = Backend.Cvar.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
      and type Run_state.t = Backend.Run_state.t
      and type Constraint.t = Backend.Constraint.t = struct
@@ -161,10 +162,7 @@ module Make (Backend : Backend_intf.S) :
     let ( / ) = div
   end
 
-  module Cvar = struct
-    include Cvar.Make (Field)
-  end
-
+  module Cvar = Cvar
   module Constraint = Constraint
   module R1CS_constraint_system = R1CS_constraint_system
   module Run_state = Run_state

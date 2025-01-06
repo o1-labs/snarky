@@ -45,20 +45,22 @@ module type S = sig
 
   val field_size : Bigint.t
 
+  module Cvar : Cvar_intf with type field := Field.t and type t = Field.t Cvar.t
+
   module Constraint : sig
     type t [@@deriving sexp]
 
-    val boolean : Field.t Cvar.t -> t
+    val boolean : Cvar.t -> t
 
-    val equal : Field.t Cvar.t -> Field.t Cvar.t -> t
+    val equal : Cvar.t -> Cvar.t -> t
 
-    val r1cs : Field.t Cvar.t -> Field.t Cvar.t -> Field.t Cvar.t -> t
+    val r1cs : Cvar.t -> Cvar.t -> Cvar.t -> t
 
-    val square : Field.t Cvar.t -> Field.t Cvar.t -> t
+    val square : Cvar.t -> Cvar.t -> t
 
-    val eval : t -> (Field.t Cvar.t -> Field.t) -> bool
+    val eval : t -> (Cvar.t -> Field.t) -> bool
 
-    val log_constraint : t -> (Field.t Cvar.t -> Field.t) -> string
+    val log_constraint : t -> (Cvar.t -> Field.t) -> string
   end
 
   module R1CS_constraint_system :
