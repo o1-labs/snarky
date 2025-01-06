@@ -197,16 +197,6 @@ module Make (Backend : Backend_intf.S) :
 
   module Cvar = struct
     include Cvar.Make (Field)
-
-    let var_indices t =
-      let _, terms = to_constant_and_terms t in
-      List.map ~f:(fun (_, v) -> v) terms
-
-    let to_constant : t -> Field.t option = function
-      | Constant x ->
-          Some x
-      | _ ->
-          None
   end
 
   module Constraint = Constraint
