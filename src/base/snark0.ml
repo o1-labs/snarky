@@ -1,5 +1,4 @@
 open Core_kernel
-module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 
 exception Runtime_error of string list * exn * string
@@ -50,7 +49,7 @@ struct
 
   let constant (Typ typ : _ Typ.t) x =
     let fields, aux = typ.value_to_fields x in
-    let field_vars = Array.map fields ~f:(fun x -> Cvar0.Constant x) in
+    let field_vars = Array.map fields ~f:(fun x -> Cvar.constant x) in
     typ.var_of_fields (field_vars, aux)
 
   module As_prover = struct
@@ -153,11 +152,11 @@ struct
           | [] ->
               res
           | v :: vs ->
-              go Cvar0.(Add (v, Scale (two, res))) vs
+              go Cvar.(add v (Cvar.scale res two)) vs
         in
         match List.rev (vars :> Cvar.t list) with
         | [] ->
-            Cvar0.Constant Field.zero
+            Cvar.constant Field.zero
         | v :: vs ->
             go v vs
 
@@ -221,8 +220,8 @@ struct
       let inv x = Checked.inv ~label:"Field.Checked.inv" x
 
       let sqrt (x : Cvar.t) : Cvar.t Checked.t =
-        match x with
-        | Constant x ->
+        match Cvar.to_constant x with
+        | Some x ->
             Checked.return (Cvar.constant (Field.sqrt x))
         | _ ->
             let open Checked in
@@ -353,8 +352,8 @@ struct
 
       module Assert = struct
         let lt ~bit_length (x : Cvar.t) (y : Cvar.t) =
-          match (x, y) with
-          | Constant x, Constant y ->
+          match (Cvar.to_constant x, Cvar.to_constant y) with
+          | Some x, Some y ->
               assert (Field.compare x y < 0) ;
               Checked.return ()
           | _ ->
@@ -364,8 +363,8 @@ struct
               Boolean.Assert.is_true less
 
         let lte ~bit_length (x : Cvar.t) (y : Cvar.t) =
-          match (x, y) with
-          | Constant x, Constant y ->
+          match (Cvar.to_constant x, Cvar.to_constant y) with
+          | Some x, Some y ->
               assert (Field.compare x y <= 0) ;
               Checked.return ()
           | _ ->
@@ -379,8 +378,8 @@ struct
         let gte ~bit_length x y = lte ~bit_length y x
 
         let non_zero (v : Cvar.t) =
-          match v with
-          | Constant v ->
+          match Cvar.to_constant v with
+          | Some v ->
               if Field.(equal zero v) then
                 failwithf "assert_non_zero: failed on constant %s"
                   (Field.to_string v) () ;
@@ -391,8 +390,8 @@ struct
         let equal x y = Checked.assert_equal x y
 
         let not_equal (x : t) (y : t) =
-          match (x, y) with
-          | Constant x, Constant y ->
+          match (Cvar.to_constant x, Cvar.to_constant y) with
+          | Some x, Some y ->
               if Field.(equal x y) then
                 failwithf "not_equal: failed on constants %s and %s"
                   (Field.to_string x) (Field.to_string y) () ;
