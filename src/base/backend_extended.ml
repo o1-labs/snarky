@@ -20,44 +20,10 @@ module type S = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
-  module Cvar : sig
-    type t = Field.t Cvar.t [@@deriving sexp]
-
-    val length : t -> int
-
-    module Unsafe : sig
-      val of_index : int -> t
-    end
-
-    val eval :
-      [ `Return_values_will_be_mutated of int -> Field.t ] -> t -> Field.t
-
-    val constant : Field.t -> t
-
-    val to_constant_and_terms : t -> Field.t option * (Field.t * int) list
-
-    val add : t -> t -> t
-
-    val negate : t -> t
-
-    val scale : t -> Field.t -> t
-
-    val sub : t -> t -> t
-
-    val linear_combination : (Field.t * t) list -> t
-
-    val sum : t list -> t
-
-    val ( + ) : t -> t -> t
-
-    val ( - ) : t -> t -> t
-
-    val ( * ) : Field.t -> t -> t
-
-    val var_indices : t -> int list
-
-    val to_constant : t -> Field.t option
-  end
+  module Cvar :
+    Backend_intf.Cvar_intf
+      with type field := Field.t
+       and type t = Field.t Cvar.t
 
   module Constraint : sig
     type t [@@deriving sexp]
