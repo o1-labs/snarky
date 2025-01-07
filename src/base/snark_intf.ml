@@ -1,6 +1,5 @@
 module Bignum_bigint = Bigint
 open Core_kernel
-module Constraint0 = Constraint
 module Boolean0 = Boolean
 
 module type Boolean_intf = sig
@@ -276,26 +275,24 @@ module type Constraint_intf = sig
         any time we want to multiply our *variables*, we need to add a new
         rank-1 constraint.
     *)
-  type t = (field_var, field) Constraint0.t
-
-  type 'k with_constraint_args = ?label:string -> 'k
+  type t
 
   (** A constraint that asserts that the field variable is a boolean: either
         {!val:Field.zero} or {!val:Field.one}.
     *)
-  val boolean : (field_var -> t) with_constraint_args
+  val boolean : field_var -> t
 
   (** A constraint that asserts that the field variable arguments are equal.
     *)
-  val equal : (field_var -> field_var -> t) with_constraint_args
+  val equal : field_var -> field_var -> t
 
   (** A bare rank-1 constraint. *)
-  val r1cs : (field_var -> field_var -> field_var -> t) with_constraint_args
+  val r1cs : field_var -> field_var -> field_var -> t
 
   (** A constraint that asserts that the first variable squares to the
         second, ie. [square x y] => [x*x = y] within the field.
     *)
-  val square : (field_var -> field_var -> t) with_constraint_args
+  val square : field_var -> field_var -> t
 end
 
 module type Field_var_intf = sig
@@ -802,30 +799,23 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type t = request -> response
   end
 
-  (** Add a constraint to the constraint system, optionally with the label
-      given by [label]. *)
-  val assert_ : ?label:string -> Constraint.t -> unit Checked.t
+  (** Add a constraint to the constraint system. *)
+  val assert_ : Constraint.t -> unit Checked.t
 
-  (** Add all of the constraints in the list to the constraint system,
-      optionally with the label given by [label].
-  *)
-  val assert_all : ?label:string -> Constraint.t list -> unit Checked.t
+  (** Add all of the constraints in the list to the constraint system. *)
+  val assert_all : Constraint.t list -> unit Checked.t
 
-  (** Add a rank-1 constraint to the constraint system, optionally with the
-      label given by [label].
+  (** Add a rank-1 constraint to the constraint system.
 
       See {!val:Constraint.r1cs} for more information on rank-1 constraints.
   *)
-  val assert_r1cs :
-    ?label:string -> Field.Var.t -> Field.Var.t -> Field.Var.t -> unit Checked.t
+  val assert_r1cs : Field.Var.t -> Field.Var.t -> Field.Var.t -> unit Checked.t
 
-  (** Add a 'square' constraint to the constraint system, optionally with the
-      label given by [label].
+  (** Add a 'square' constraint to the constraint system.
 
       See {!val:Constraint.square} for more information.
   *)
-  val assert_square :
-    ?label:string -> Field.Var.t -> Field.Var.t -> unit Checked.t
+  val assert_square : Field.Var.t -> Field.Var.t -> unit Checked.t
 
   (** Run an {!module:As_prover} block. *)
   val as_prover : unit As_prover.t -> unit Checked.t
@@ -1220,7 +1210,8 @@ module type Run_basic = sig
       }
   end
 
-  and Internal_Basic : (Basic with type field = field)
+  and Internal_Basic :
+    (Basic with type field = field and type Constraint.t = Constraint.t)
 
   module Bitstring_checked : sig
     type t = Boolean.var list
@@ -1266,13 +1257,13 @@ module type Run_basic = sig
     type t = request -> response
   end
 
-  val assert_ : ?label:string -> Constraint.t -> unit
+  val assert_ : Constraint.t -> unit
 
-  val assert_all : ?label:string -> Constraint.t list -> unit
+  val assert_all : Constraint.t list -> unit
 
-  val assert_r1cs : ?label:string -> Field.t -> Field.t -> Field.t -> unit
+  val assert_r1cs : Field.t -> Field.t -> Field.t -> unit
 
-  val assert_square : ?label:string -> Field.t -> Field.t -> unit
+  val assert_square : Field.t -> Field.t -> unit
 
   val as_prover : (unit -> unit) As_prover.t -> unit
 

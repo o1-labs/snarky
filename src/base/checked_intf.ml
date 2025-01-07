@@ -3,13 +3,15 @@ module type Basic = sig
 
   type field
 
+  type constraint_
+
   type 'a t = 'a Types.Checked.t
 
   type run_state
 
   include Monad_let.S with type 'a t := 'a t
 
-  val add_constraint : (field Cvar.t, field) Constraint.t -> unit t
+  val add_constraint : constraint_ -> unit t
 
   val as_prover : unit Types.As_prover.t -> unit t
 
@@ -29,7 +31,7 @@ module type Basic = sig
   val direct : (run_state -> run_state * 'a) -> 'a t
 
   val constraint_count :
-       ?weight:((field Cvar.t, field) Constraint.t -> int)
+       ?weight:(constraint_ -> int)
     -> ?log:(?start:bool -> string -> int -> unit)
     -> (unit -> 'a t)
     -> int
@@ -39,6 +41,8 @@ module type S = sig
   module Types : Types.Types
 
   type field
+
+  type constraint_
 
   type run_state
 
@@ -89,25 +93,20 @@ module type S = sig
 
   val with_label : string -> (unit -> 'a t) -> 'a t
 
-  val assert_ :
-    ?label:Base.string -> (field Cvar.t, field) Constraint.t -> unit t
+  val assert_ : constraint_ -> unit t
 
-  val assert_r1cs :
-    ?label:Base.string -> field Cvar.t -> field Cvar.t -> field Cvar.t -> unit t
+  val assert_r1cs : field Cvar.t -> field Cvar.t -> field Cvar.t -> unit t
 
-  val assert_square :
-    ?label:Base.string -> field Cvar.t -> field Cvar.t -> unit t
+  val assert_square : field Cvar.t -> field Cvar.t -> unit t
 
-  val assert_all :
-    ?label:Base.string -> (field Cvar.t, field) Constraint.t list -> unit t
+  val assert_all : constraint_ list -> unit t
 
-  val assert_equal :
-    ?label:Base.string -> field Cvar.t -> field Cvar.t -> unit t
+  val assert_equal : field Cvar.t -> field Cvar.t -> unit t
 
   val direct : (run_state -> run_state * 'a) -> 'a t
 
   val constraint_count :
-       ?weight:((field Cvar.t, field) Constraint.t -> int)
+       ?weight:(constraint_ -> int)
     -> ?log:(?start:bool -> string -> int -> unit)
     -> (unit -> 'a t)
     -> int

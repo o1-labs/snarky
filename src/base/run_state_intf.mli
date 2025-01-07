@@ -25,65 +25,69 @@ module type S = sig
     val emplace_back : 'x t -> 'x -> unit
   end
 
-  type 'field t
+  type field
+
+  type t
+
+  type constraint_
 
   val make :
        num_inputs:int
-    -> input:'field Vector.t
+    -> input:field Vector.t
     -> next_auxiliary:int ref
-    -> aux:'field Vector.t
-    -> ?system:'field Constraint_system.t
+    -> aux:field Vector.t
+    -> ?system:(field, constraint_) Constraint_system.t
     -> eval_constraints:bool
     -> ?log_constraint:
          (   ?at_label_boundary:[ `End | `Start ] * string
-          -> ('field Cvar.t, 'field) Constraint.t option
+          -> constraint_ option
           -> unit )
     -> ?handler:Request.Handler.t
     -> with_witness:bool
     -> ?stack:string list
     -> ?is_running:bool
     -> unit
-    -> 'field t
+    -> t
 
   (** dumps some information about a state [t] *)
-  val dump : 'field t -> string
+  val dump : t -> string
 
-  val get_variable_value : 'field t -> int -> 'field
+  val get_variable_value : t -> int -> field
 
-  val store_field_elt : 'field t -> 'field -> 'field Cvar.t
+  val store_field_elt : t -> field -> field Cvar.t
 
-  val alloc_var : 'field t -> unit -> 'field Cvar.t
+  val alloc_var : t -> unit -> field Cvar.t
 
-  val id : _ t -> int
+  val id : t -> int
 
-  val has_witness : _ t -> bool
+  val has_witness : t -> bool
 
-  val as_prover : _ t -> bool
+  val as_prover : t -> bool
 
-  val set_as_prover : _ t -> bool -> unit
+  val set_as_prover : t -> bool -> unit
 
-  val stack : _ t -> string list
+  val stack : t -> string list
 
-  val set_stack : 'field t -> string list -> 'field t
+  val set_stack : t -> string list -> t
 
   val log_constraint :
-       'field t
+       t
     -> (   ?at_label_boundary:[ `Start | `End ] * string
-        -> ('field Cvar.t, 'field) Constraint.t option
+        -> constraint_ option
         -> unit )
        option
 
-  val eval_constraints : 'field t -> bool
+  val eval_constraints : t -> bool
 
-  val system : 'field t -> 'field Constraint_system.t option
+  val system : t -> (field, constraint_) Constraint_system.t option
 
-  val handler : _ t -> Request.Handler.t
+  val handler : t -> Request.Handler.t
 
-  val set_handler : 'field t -> Request.Handler.t -> 'field t
+  val set_handler : t -> Request.Handler.t -> t
 
-  val is_running : _ t -> bool
+  val is_running : t -> bool
 
-  val set_is_running : 'f t -> bool -> 'f t
+  val set_is_running : t -> bool -> t
 
-  val next_auxiliary : _ t -> int
+  val next_auxiliary : t -> int
 end

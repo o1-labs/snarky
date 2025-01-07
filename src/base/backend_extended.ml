@@ -59,30 +59,31 @@ module type S = sig
     val to_constant : t -> Field.t option
   end
 
-  module R1CS_constraint_system : Constraint_system.S with module Field := Field
-
   module Constraint : sig
-    type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
+    type t [@@deriving sexp]
 
-    type 'k with_constraint_args = ?label:string -> 'k
+    val boolean : Cvar.t -> t
 
-    val boolean : (Cvar.t -> t) with_constraint_args
+    val equal : Cvar.t -> Cvar.t -> t
 
-    val equal : (Cvar.t -> Cvar.t -> t) with_constraint_args
+    val r1cs : Cvar.t -> Cvar.t -> Cvar.t -> t
 
-    val r1cs : (Cvar.t -> Cvar.t -> Cvar.t -> t) with_constraint_args
+    val square : Cvar.t -> Cvar.t -> t
 
-    val square : (Cvar.t -> Cvar.t -> t) with_constraint_args
+    val eval : t -> (Cvar.t -> Field.t) -> bool
 
-    val annotation : t -> string
-
-    val eval :
-         (Cvar.t, Field.t) Constraint.basic_with_annotation
-      -> (Cvar.t -> Field.t)
-      -> bool
+    val log_constraint : t -> (Cvar.t -> Field.t) -> string
   end
 
-  module Run_state : Run_state_intf.S
+  module R1CS_constraint_system :
+    Constraint_system.S
+      with module Field := Field
+      with type constraint_ = Constraint.t
+
+  module Run_state :
+    Run_state_intf.S
+      with type field := Field.t
+       and type constraint_ := Constraint.t
 end
 
 module Make (Backend : Backend_intf.S) :
@@ -91,7 +92,8 @@ module Make (Backend : Backend_intf.S) :
      and type Field.Vector.t = Backend.Field.Vector.t
      and type Bigint.t = Backend.Bigint.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
-     and type 'field Run_state.t = 'field Backend.Run_state.t = struct
+     and type Run_state.t = Backend.Run_state.t
+     and type Constraint.t = Backend.Constraint.t = struct
   open Backend
 
   module Bigint = struct
@@ -207,19 +209,7 @@ module Make (Backend : Backend_intf.S) :
           None
   end
 
-  module Constraint = struct
-    open Constraint
-    include Constraint.T
-
-    type 'k with_constraint_args = ?label:string -> 'k
-
-    type t = (Cvar.t, Field.t) Constraint.t [@@deriving sexp]
-
-    let m = (module Field : Snarky_intf.Field.S with type t = Field.t)
-
-    let eval { basic; _ } get_value = Constraint.Basic.eval m get_value basic
-  end
-
+  module Constraint = Constraint
   module R1CS_constraint_system = R1CS_constraint_system
   module Run_state = Run_state
 end

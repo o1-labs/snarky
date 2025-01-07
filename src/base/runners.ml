@@ -8,7 +8,8 @@ module Make
     (Checked : Checked_intf.Extended
                  with module Types := Types
                  with type field = Backend.Field.t
-                  and type run_state = Backend.Field.t Backend.Run_state.t)
+                  and type run_state = Backend.Run_state.t
+                  and type constraint_ = Backend.Constraint.t)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)
@@ -18,7 +19,7 @@ module Make
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
                  and type r1cs := Backend.R1CS_constraint_system.t
-                 and type run_state = Backend.Field.t Backend.Run_state.t) =
+                 and type run_state = Backend.Run_state.t) =
 struct
   open Backend
 
@@ -156,16 +157,16 @@ struct
       v
 
     module Constraint_system_builder : sig
-      type ('input_var, 'return_var, 'field, 'checked) t =
-        { run_computation : 'a. ('input_var -> 'field Run_state.t -> 'a) -> 'a
+      type ('input_var, 'return_var, 'checked) t =
+        { run_computation : 'a. ('input_var -> Run_state.t -> 'a) -> 'a
         ; finish_computation :
-            'field Run_state.t * 'return_var -> R1CS_constraint_system.t
+            Run_state.t * 'return_var -> R1CS_constraint_system.t
         }
 
       val build :
            input_typ:('input_var, 'input_value) Types.Typ.typ
         -> return_typ:('retvar, 'retval) Types.Typ.typ
-        -> ('input_var, 'retvar, field, 'checked) t
+        -> ('input_var, 'retvar, 'checked) t
     end = struct
       let allocate_public_inputs :
           type input_var input_value output_var output_value.
@@ -190,17 +191,17 @@ struct
         let retval = alloc_input return_typ in
         (var, retval)
 
-      type ('input_var, 'return_var, 'field, 'checked) t =
-        { run_computation : 'a. ('input_var -> 'field Run_state.t -> 'a) -> 'a
+      type ('input_var, 'return_var, 'checked) t =
+        { run_computation : 'a. ('input_var -> Run_state.t -> 'a) -> 'a
         ; finish_computation :
-            'field Run_state.t * 'return_var -> R1CS_constraint_system.t
+            Run_state.t * 'return_var -> R1CS_constraint_system.t
         }
 
       let build :
           type checked input_var input_value retvar retval.
              input_typ:(input_var, input_value) Types.Typ.typ
           -> return_typ:(retvar, retval) Types.Typ.t
-          -> (input_var, retvar, field, checked) t =
+          -> (input_var, retvar, checked) t =
        fun ~input_typ ~return_typ ->
         let next_input = ref 0 in
         (* allocate variables for the public input and the public output *)
@@ -308,9 +309,9 @@ struct
 
     module Witness_builder = struct
       type ('input_var, 'return_var, 'return_value, 'field, 'checked) t =
-        { run_computation : 'a. ('input_var -> 'field Run_state.t -> 'a) -> 'a
+        { run_computation : 'a. ('input_var -> Run_state.t -> 'a) -> 'a
         ; finish_witness_generation :
-            'field Run_state.t * 'return_var -> Proof_inputs.t * 'return_value
+            Run_state.t * 'return_var -> Proof_inputs.t * 'return_value
         }
 
       let auxiliary_input ?(handlers = ([] : Handler.t list)) ~input_typ

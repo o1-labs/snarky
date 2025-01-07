@@ -161,30 +161,16 @@ let () =
   end in
   Basic.add_case (module M)
 
-type ('v, 'f) basic_with_annotation =
-  { basic : ('v, 'f) basic; annotation : string option }
-[@@deriving sexp]
-
-type ('v, 'f) t = ('v, 'f) basic_with_annotation [@@deriving sexp]
+type ('v, 'f) t = ('v, 'f) basic [@@deriving sexp]
 
 module T = struct
-  let create_basic ?label basic = { basic; annotation = label }
+  let equal x y = Equal (x, y)
 
-  let override_label { basic; annotation = a } label_opt =
-    { basic
-    ; annotation = (match label_opt with Some x -> Some x | None -> a)
-    }
+  let boolean x = Boolean x
 
-  let equal ?label x y = create_basic ?label (Equal (x, y))
+  let r1cs a b c = R1CS (a, b, c)
 
-  let boolean ?label x = create_basic ?label (Boolean x)
-
-  let r1cs ?label a b c = create_basic ?label (R1CS (a, b, c))
-
-  let square ?label a c = create_basic ?label (Square (a, c))
-
-  let annotation (t : _ t) =
-    match t.annotation with Some str -> str | None -> ""
+  let square a c = Square (a, c)
 end
 
 include T
