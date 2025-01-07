@@ -25,6 +25,7 @@ module Make (Backend : Backend_intf.S) :
      and type Bigint.t = Backend.Bigint.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
      and type Field.Vector.t = Backend.Field.Vector.t
+     and type Constraint.t = Backend.Constraint.t
 
 module Run : sig
   module Make (Backend : Backend_intf.S) :
@@ -33,6 +34,7 @@ module Run : sig
        and type Bigint.t = Backend.Bigint.t
        and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
        and type Field.Constant.Vector.t = Backend.Field.Vector.t
+       and type Constraint.t = Backend.Constraint.t
 end
 
 type 'field m = (module Snark_intf.Run with type field = 'field)

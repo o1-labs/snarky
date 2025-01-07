@@ -1,5 +1,4 @@
 open Core_kernel
-module Constraint0 = Constraint
 
 let stack_to_string = String.concat ~sep:"\n"
 
@@ -10,9 +9,7 @@ let eval_constraints_ref = eval_constraints
 module T (Backend : Backend_extended.S) = struct
   type 'a t =
     | Pure of 'a
-    | Function of
-        (   Backend.Field.t Backend.Run_state.t
-         -> Backend.Field.t Backend.Run_state.t * 'a )
+    | Function of (Backend.Run_state.t -> Backend.Run_state.t * 'a)
 end
 
 module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
@@ -40,15 +37,15 @@ module Make_checked
                    with type field := Backend.Field.t
                    with module Types := Types) =
 struct
-  type run_state = Backend.Field.t Backend.Run_state.t
+  type run_state = Backend.Run_state.t
+
+  type constraint_ = Backend.Constraint.t
 
   type field = Backend.Field.t
 
   type 'a t = 'a T(Backend).t =
     | Pure of 'a
-    | Function of
-        (   Backend.Field.t Backend.Run_state.t
-         -> Backend.Field.t Backend.Run_state.t * 'a )
+    | Function of (Backend.Run_state.t -> Backend.Run_state.t * 'a)
 
   let eval (t : 'a t) : run_state -> run_state * 'a =
     match t with Pure a -> fun s -> (s, a) | Function g -> g
@@ -83,7 +80,7 @@ struct
 
   open Backend
 
-  let get_value (t : Field.t Run_state.t) : Cvar.t -> Field.t =
+  let get_value (t : Run_state.t) : Cvar.t -> Field.t =
     let get_one i = Run_state.get_variable_value t i in
     Cvar.eval (`Return_values_will_be_mutated get_one)
 
@@ -143,36 +140,10 @@ struct
             f ~at_label_boundary:(`End, lab) None ) ;
         (Run_state.set_stack s' stack, y) )
 
-  let log_constraint ({ basic; _ } : Constraint.t) s =
-    let open Constraint0 in
-    match basic with
-    | Boolean var ->
-        Format.(asprintf "Boolean %s" (Field.to_string (get_value s var)))
-    | Equal (var1, var2) ->
-        Format.(
-          asprintf "Equal %s %s"
-            (Field.to_string (get_value s var1))
-            (Field.to_string (get_value s var2)))
-    | Square (var1, var2) ->
-        Format.(
-          asprintf "Square %s %s"
-            (Field.to_string (get_value s var1))
-            (Field.to_string (get_value s var2)))
-    | R1CS (var1, var2, var3) ->
-        Format.(
-          asprintf "R1CS %s %s %s"
-            (Field.to_string (get_value s var1))
-            (Field.to_string (get_value s var2))
-            (Field.to_string (get_value s var3)))
-    | _ ->
-        Format.asprintf
-          !"%{sexp:(Field.t, Field.t) Constraint0.basic}"
-          (Constraint0.Basic.map basic ~f:(get_value s))
-
-  let add_constraint ~stack ({ basic; annotation } : Constraint.t)
-      (Constraint_system.T ((module C), system) : Field.t Constraint_system.t) =
-    let label = Option.value annotation ~default:"<unknown>" in
-    C.add_constraint system basic ~label:(stack_to_string (label :: stack))
+  let add_constraint (basic : Constraint.t)
+      (Constraint_system.T ((module C), system) :
+        (Field.t, Constraint.t) Constraint_system.t ) =
+    C.add_constraint system basic
 
   let add_constraint c : _ t =
     Function
@@ -189,19 +160,18 @@ struct
           then
             failwithf
               "Constraint unsatisfied (unreduced):\n\
-               %s\n\
                %s\n\n\
                Constraint:\n\
                %s\n\
                Data:\n\
                %s"
-              (Constraint.annotation c)
               (stack_to_string (Run_state.stack s))
               (Sexp.to_string (Constraint.sexp_of_t c))
-              (log_constraint c s) () ;
+              (Backend.Constraint.log_constraint c (get_value s))
+              () ;
           if not (Run_state.as_prover s) then
             Option.iter (Run_state.system s) ~f:(fun system ->
-                add_constraint ~stack:(Run_state.stack s) c system ) ;
+                add_constraint c system ) ;
           (s, ()) ) )
 
   let with_handler h t : _ t =
@@ -422,17 +392,15 @@ module type S = sig
   module State : sig
     val make :
          num_inputs:int
-      -> input:field Run_state.Vector.t
+      -> input:field Run_state_intf.Vector.t
       -> next_auxiliary:int ref
-      -> aux:field Run_state.Vector.t
+      -> aux:field Run_state_intf.Vector.t
       -> ?system:r1cs
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t
       -> with_witness:bool
       -> ?log_constraint:
-           (   ?at_label_boundary:[ `End | `Start ] * string
-            -> (field Cvar.t, field) Constraint.t option
-            -> unit )
+           (?at_label_boundary:[ `End | `Start ] * string -> constr -> unit)
       -> unit
       -> run_state
   end

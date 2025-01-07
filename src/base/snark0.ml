@@ -16,7 +16,8 @@ module Make_basic
     (Checked : Checked_intf.Extended
                  with module Types := Types
                  with type field = Backend.Field.t
-                  and type run_state = Backend.Field.t Backend.Run_state.t)
+                  and type run_state = Backend.Run_state.t
+                  and type constraint_ = Backend.Constraint.t)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)
@@ -26,7 +27,7 @@ module Make_basic
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
                  and type r1cs := Backend.R1CS_constraint_system.t
-                 and type run_state = Backend.Field.t Backend.Run_state.t) =
+                 and type run_state = Backend.Run_state.t) =
 struct
   open Backend
 
@@ -77,7 +78,8 @@ struct
         Checked_intf.Extended
           with module Types := Types
           with type field := field
-           and type run_state = Backend.Field.t Backend.Run_state.t )
+           and type run_state = Backend.Run_state.t
+           and type constraint_ = Backend.Constraint.t )
 
     let perform req = request_witness Typ.unit req
 
@@ -116,9 +118,7 @@ struct
       let open Let_syntax in
       let%bind bits = choose_preimage_unchecked v ~length in
       let lc = packing_sum bits in
-      let%map () =
-        assert_r1cs ~label:"Choose_preimage" lc (Cvar.constant Field.one) v
-      in
+      let%map () = assert_r1cs lc (Cvar.constant Field.one) v in
       bits
 
     let choose_preimage_flagged (v : Cvar.t) ~length =
@@ -394,7 +394,7 @@ struct
           | _ ->
               Checked.assert_non_zero v
 
-        let equal x y = Checked.assert_equal ~label:"Checked.Assert.equal" x y
+        let equal x y = Checked.assert_equal x y
 
         let not_equal (x : t) (y : t) =
           match (x, y) with
@@ -567,8 +567,8 @@ struct
       let equal t1 t2 =
         let open Checked in
         Base.List.map (chunk_for_equality t1 t2) ~f:(fun (x1, x2) ->
-            Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2) )
-        |> assert_all ~label:"Bitstring.Assert.equal"
+            Backend.Constraint.equal (Cvar1.pack x1) (Cvar1.pack x2) )
+        |> assert_all
     end
   end
 
@@ -657,7 +657,7 @@ module Make (Backend : Backend_intf.S) = struct
   module Checked_runner = Runner0.Checked_runner
   module As_prover1 = As_prover0.Make (Backend_extended) (Types)
   module Checked1 =
-    Checked.Make (Backend.Field) (Types) (Checked_runner) (As_prover1)
+    Checked.Make (Backend_extended) (Types) (Checked_runner) (As_prover1)
 
   module Field_T = struct
     type field = Backend_extended.Field.t
@@ -678,7 +678,8 @@ module Make (Backend : Backend_intf.S) = struct
           with module Types := Types
           with type 'a t := 'a Checked1.t
            and type field := Backend_extended.Field.t
-           and type run_state = Backend.Field.t Backend.Run_state.t )
+           and type run_state = Backend.Run_state.t
+           and type constraint_ = Backend_extended.Constraint.t )
 
     type field = Backend_extended.Field.t
 
@@ -1186,13 +1187,13 @@ module Run = struct
         active_counters := counters ;
         raise exn
 
-    let assert_ ?label c = run (assert_ ?label c)
+    let assert_ c = run (assert_ c)
 
-    let assert_all ?label c = run (assert_all ?label c)
+    let assert_all c = run (assert_all c)
 
-    let assert_r1cs ?label a b c = run (assert_r1cs ?label a b c)
+    let assert_r1cs a b c = run (assert_r1cs a b c)
 
-    let assert_square ?label x y = run (assert_square ?label x y)
+    let assert_square x y = run (assert_square x y)
 
     let as_prover p = run (as_prover (As_prover.run_prover p))
 
