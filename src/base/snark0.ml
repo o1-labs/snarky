@@ -715,7 +715,6 @@ module Run = struct
 
   module Make_basic (Backend : Backend_intf.S) = struct
     module Snark = Make (Backend)
-    open Backend.Run_state
     open Snark
 
     let set_constraint_logger = set_constraint_logger
@@ -1563,9 +1562,9 @@ module Run = struct
       (* TODO(mrmr1993): Enable label-level logging for the imperative API. *)
       let old = !state in
       state :=
-        Runner.State.make ~num_inputs:0 ~input:Vector.null ~aux:Vector.null
-          ~next_auxiliary:(ref 0) ~eval_constraints:false ~with_witness:false
-          ~log_constraint () ;
+        Runner.State.make ~num_inputs:0 ~input:Backend.Run_state.Vector.null
+          ~aux:Backend.Run_state.Vector.null ~next_auxiliary:(ref 0)
+          ~eval_constraints:false ~with_witness:false ~log_constraint () ;
       ignore (mark_active ~f:x) ;
       state := old ;
       !count
