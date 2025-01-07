@@ -5,6 +5,8 @@ module type Basic = sig
 
   type 'a t = 'a Types.Checked.t
 
+  type run_state
+
   include Monad_let.S with type 'a t := 'a t
 
   val add_constraint : (field Cvar.t, field) Constraint.t -> unit t
@@ -24,7 +26,7 @@ module type Basic = sig
 
   val next_auxiliary : unit -> int t
 
-  val direct : (field Run_state.t -> field Run_state.t * 'a) -> 'a t
+  val direct : (run_state -> run_state * 'a) -> 'a t
 
   val constraint_count :
        ?weight:((field Cvar.t, field) Constraint.t -> int)
@@ -37,6 +39,8 @@ module type S = sig
   module Types : Types.Types
 
   type field
+
+  type run_state
 
   type 'a t = 'a Types.Checked.t
 
@@ -100,7 +104,7 @@ module type S = sig
   val assert_equal :
     ?label:Base.string -> field Cvar.t -> field Cvar.t -> unit t
 
-  val direct : (field Run_state.t -> field Run_state.t * 'a) -> 'a t
+  val direct : (run_state -> run_state * 'a) -> 'a t
 
   val constraint_count :
        ?weight:((field Cvar.t, field) Constraint.t -> int)
@@ -112,5 +116,5 @@ end
 module type Extended = sig
   include S
 
-  val run : 'a t -> field Run_state.t -> field Run_state.t * 'a
+  val run : 'a t -> run_state -> run_state * 'a
 end

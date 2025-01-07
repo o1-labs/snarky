@@ -24,6 +24,7 @@ module Pedersen = Pedersen
 module Request = Request
 module Restrict_monad = Restrict_monad
 module Run_state = Run_state
+module Run_state_intf = Run_state_intf
 module Snark = Snark
 module Snark0 = Snark0
 module Snark_intf = Snark_intf
