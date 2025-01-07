@@ -22,6 +22,7 @@ exception Runtime_error of string list * exn * string
 module Make (Backend : Backend_intf.S) :
   Snark_intf.S
     with type field = Backend.Field.t
+     and type field_var = Backend.Cvar.t
      and type Bigint.t = Backend.Bigint.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
      and type Field.Vector.t = Backend.Field.Vector.t
@@ -31,12 +32,18 @@ module Run : sig
   module Make (Backend : Backend_intf.S) :
     Snark_intf.Run
       with type field = Backend.Field.t
+       and type field_var = Backend.Cvar.t
        and type Bigint.t = Backend.Bigint.t
        and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
        and type Field.Constant.Vector.t = Backend.Field.Vector.t
        and type Constraint.t = Backend.Constraint.t
 end
 
-type 'field m = (module Snark_intf.Run with type field = 'field)
+type ('field, 'field_var) m =
+  (module Snark_intf.Run
+     with type field = 'field
+      and type field_var = 'field_var )
 
-val make : (module Backend_intf.S with type Field.t = 'field) -> 'field m
+val make :
+     (module Backend_intf.S with type Field.t = 'field)
+  -> ('field, 'field Cvar.t) m

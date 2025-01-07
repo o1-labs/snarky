@@ -12,7 +12,7 @@ module Interval = struct
 
   let iter t ~f = match t with Constant x -> f x | Less_than x -> f x
 
-  let check (type f) ~m:((module M) : f m) t =
+  let check (type f v) ~m:((module M) : (f, v) m) t =
     iter t ~f:(fun x -> assert (B.(x < M.Field.size))) ;
     t
 
@@ -113,18 +113,15 @@ module Interval = struct
 end
 
 (* TODO: Use <= instead of < for the upper bound *)
-type 'f t =
-  { value : 'f Cvar.t
-  ; interval : Interval.t
-  ; mutable bits : 'f Cvar.t Boolean.t list option
-  }
+type ('f, 'v) t =
+  { value : 'v; interval : Interval.t; mutable bits : 'v Boolean.t list option }
 
 let create ~value ~upper_bound =
   { value; interval = Less_than upper_bound; bits = None }
 
 let to_field t = t.value
 
-let constant (type f) ?length ~m:((module M) as m : f m) x =
+let constant (type f v) ?length ~m:((module M) as m : (f, v) m) x =
   let open M in
   assert (B.( < ) x Field.size) ;
   let upper_bound = B.(one + x) in
@@ -145,7 +142,7 @@ let constant (type f) ?length ~m:((module M) as m : f m) x =
              constant Boolean.typ B.(shift_right x i land one = one) ) )
   }
 
-let shift_left (type f) ~m:((module M) as m : f m) t k =
+let shift_left (type f v) ~m:((module M) as m : (f, v) m) t k =
   let open M in
   let two_to_k = B.(one lsl k) in
   { value = Field.(constant (bigint_to_field ~m two_to_k) * t.value)
@@ -155,7 +152,7 @@ let shift_left (type f) ~m:((module M) as m : f m) t k =
           List.init k ~f:(fun _ -> Boolean.false_) @ bs )
   }
 
-let of_bits (type f) ~m:((module M) : f m) bs =
+let of_bits (type f v) ~m:((module M) : (f, v) m) bs =
   let bs = Bitstring.Lsb_first.to_list bs in
   { value = M.Field.project bs
   ; interval = Less_than B.(one lsl List.length bs)
@@ -167,7 +164,7 @@ let of_bits (type f) ~m:((module M) : f m) bs =
     a = q * b + r
     r < b
 *)
-let div_mod (type f) ~m:((module M) as m : f m) a b =
+let div_mod (type f v) ~m:((module M) as m : (f, v) m) a b =
   let open M in
   (* Guess (q, r) *)
   let q, r =
@@ -198,7 +195,7 @@ let div_mod (type f) ~m:((module M) as m : f m) a b =
     }
   , { value = r; interval = b.interval; bits = Some r_bits } )
 
-let subtract_unpacking (type f) ~m:((module M) : f m) a b =
+let subtract_unpacking (type f v) ~m:((module M) : (f, v) m) a b =
   M.with_label "Integer.subtract_unpacking" (fun () ->
       assert (Interval.gte a.interval b.interval) ;
       let value = M.Field.(sub a.value b.value) in
@@ -207,15 +204,15 @@ let subtract_unpacking (type f) ~m:((module M) : f m) a b =
       let bits = M.Field.unpack value ~length in
       { value; interval = a.interval; bits = Some bits } )
 
-let add (type f) ~m:((module M) as m : f m) a b =
+let add (type f v) ~m:((module M) as m : (f, v) m) a b =
   let interval = Interval.(add ~m a.interval b.interval) in
   { value = M.Field.(a.value + b.value); interval; bits = None }
 
-let mul (type f) ~m:((module M) as m : f m) a b =
+let mul (type f v) ~m:((module M) as m : (f, v) m) a b =
   let interval = Interval.(mul ~m a.interval b.interval) in
   { value = M.Field.(a.value * b.value); interval; bits = None }
 
-let to_bits ?length (type f) ~m:((module M) : f m) t =
+let to_bits ?length (type f v) ~m:((module M) : (f, v) m) t =
   match t.bits with
   | Some bs -> (
       let bs = Bitstring.Lsb_first.of_list bs in
@@ -239,7 +236,7 @@ let to_bits_exn t = Bitstring.Lsb_first.of_list (Option.value_exn t.bits)
 
 let to_bits_opt t = Option.map ~f:Bitstring.Lsb_first.of_list t.bits
 
-let min (type f) ~m:((module M) : f m) (a : f t) (b : f t) =
+let min (type f v) ~m:((module M) : (f, v) m) (a : (f, v) t) (b : (f, v) t) =
   let open M in
   let bit_length =
     Int.max (Interval.bits_needed a.interval) (Interval.bits_needed b.interval)
@@ -250,48 +247,48 @@ let min (type f) ~m:((module M) : f m) (a : f t) (b : f t) =
   ; bits = None
   }
 
-let if_ (type f) ~m:((module M) : f m) cond ~then_ ~else_ =
+let if_ (type f v) ~m:((module M) : (f, v) m) cond ~then_ ~else_ =
   { value = M.Field.if_ cond ~then_:then_.value ~else_:else_.value
   ; interval = Interval.lub then_.interval else_.interval
   ; bits = None
   }
 
-let succ_if (type f) ~m:((module M) as m : f m) t (cond : f Cvar.t Boolean.t) =
+let succ_if (type f v) ~m:((module M) as m : (f, v) m) t (cond : v Boolean.t) =
   let open M in
   { value = Field.(add (cond :> t) t.value)
   ; interval = Interval.(lub t.interval (succ ~m t.interval))
   ; bits = None
   }
 
-let succ (type f) ~m:((module M) as m : f m) t =
+let succ (type f v) ~m:((module M) as m : (f, v) m) t =
   let open M in
   { value = Field.(add one t.value)
   ; interval = Interval.succ ~m t.interval
   ; bits = None
   }
 
-let equal (type f) ~m:((module M) : f m) a b = M.Field.equal a.value b.value
+let equal (type f v) ~m:((module M) : (f, v) m) a b =
+  M.Field.equal a.value b.value
 
 let max_bits a b =
   Int.max (Interval.bits_needed a.interval) (Interval.bits_needed b.interval)
 
-let lt (type f) ~m:((module M) : f m) a b =
+let lt (type f v) ~m:((module M) : (f, v) m) a b =
   (M.Field.compare ~bit_length:(max_bits a b) a.value b.value).less
 
-let lte (type f) ~m:((module M) : f m) a b =
+let lte (type f v) ~m:((module M) : (f, v) m) a b =
   (M.Field.compare ~bit_length:(max_bits a b) a.value b.value).less_or_equal
 
-let gte (type f) ~m:((module M) as m : f m) a b = M.Boolean.not (lt ~m a b)
+let gte (type f v) ~m:((module M) as m : (f, v) m) a b =
+  M.Boolean.not (lt ~m a b)
 
-let gt (type f) ~m:((module M) as m : f m) a b = M.Boolean.not (lte ~m a b)
+let gt (type f v) ~m:((module M) as m : (f, v) m) a b =
+  M.Boolean.not (lte ~m a b)
 
-let subtract_unpacking_or_zero (type f) ~m:((module M) as m : f m) a b =
+let subtract_unpacking_or_zero (type f v) ~m:((module M) as m : (f, v) m) a b =
   let flag = lt ~m a b in
   ( `Underflow flag
-  , { value =
-        M.Field.mul
-          (M.Field.sub a.value b.value)
-          (M.Boolean.not flag :> f Cvar.t)
+  , { value = M.Field.mul (M.Field.sub a.value b.value) (M.Boolean.not flag :> v)
     ; interval = a.interval
     ; bits = None
     } )

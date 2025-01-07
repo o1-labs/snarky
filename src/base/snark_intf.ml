@@ -546,7 +546,7 @@ module type Basic = sig
   type field
 
   (** The variable type over which the R1CS operates. *)
-  type field_var = field Cvar.t
+  type field_var
 
   (** The rank-1 constraint system used by this instance. See
       {!module:Backend_intf.S.R1CS_constraint_system}. *)
@@ -1090,7 +1090,7 @@ module type Run_basic = sig
   type field
 
   (** The variable type over which the R1CS operates. *)
-  type field_var = field Cvar.t
+  type field_var
 
   module Bigint : sig
     include Snarky_intf.Bigint_intf.Extended with type field := field

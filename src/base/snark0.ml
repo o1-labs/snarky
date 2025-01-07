@@ -1566,8 +1566,11 @@ module Run = struct
   end
 end
 
-type 'field m = (module Snark_intf.Run with type field = 'field)
+type ('field, 'field_var) m =
+  (module Snark_intf.Run
+     with type field = 'field
+      and type field_var = 'field_var )
 
 let make (type field) (module Backend : Backend_intf.S with type Field.t = field)
-    : field m =
+    : (field, field Cvar.t) m =
   (module Run.Make (Backend))
