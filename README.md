@@ -31,7 +31,7 @@ and answering yes to the prompts.
 
 ## Design
 
-The intention of this library is to allow writing snarks by writing what look
+The intention of this library is to allow writing snarks by writing what looks
 like normal programs (whose executions the snarks verify). If you're an experienced
 functional programmer, the basic idea (simplifying somewhat) is that there is a monad
 `Checked.t` so that a value of type `'a Checked.t` is an `'a` whose computation is

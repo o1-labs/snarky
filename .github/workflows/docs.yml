@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Use OCaml "4.14.0"
-        uses: avsm/setup-ocaml@v1
+        uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-version: 4.14.0
+          ocaml-compiler: "4.14.0"
 
       - name: Build Documentation
         run: |
