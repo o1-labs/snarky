@@ -1,19 +1,23 @@
 open Core_kernel
 
-module Make (Field : sig
-  type t [@@deriving sexp]
-
-  val equal : t -> t -> bool
-end)
-(Types : Types.Types)
-(Basic : Checked_intf.Basic with type field = Field.t with module Types := Types)
-(As_prover : As_prover_intf.Basic
-               with type field := Basic.field
-               with module Types := Types) :
-  Checked_intf.S with module Types := Types with type field = Field.t = struct
+module Make
+    (Backend : Backend_extended.S)
+    (Types : Types.Types)
+    (Basic : Checked_intf.Basic
+               with type field = Backend.Field.t
+                and type constraint_ = Backend.Constraint.t
+               with module Types := Types)
+    (As_prover : As_prover_intf.Basic
+                   with type field := Basic.field
+                   with module Types := Types) :
+  Checked_intf.S
+    with module Types := Types
+    with type field = Backend.Field.t
+     and type run_state = Basic.run_state
+     and type constraint_ = Basic.constraint_ = struct
   include Basic
 
-  let request_witness (typ : ('var, 'value, field) Types.Typ.t)
+  let request_witness (typ : ('var, 'value) Types.Typ.t)
       (r : 'value Request.t As_prover.t) =
     let%map h = exists typ (Request r) in
     Handle.var h
@@ -66,23 +70,25 @@ end)
     in
     handle t (fun request -> (Option.value_exn !handler) request)
 
-  let assert_ ?label c = add_constraint (Constraint.override_label c label)
+  let assert_ c = add_constraint c
 
-  let assert_r1cs ?label a b c = assert_ (Constraint.r1cs ?label a b c)
+  let assert_r1cs a b c = assert_ (Backend.Constraint.r1cs a b c)
 
-  let assert_square ?label a c = assert_ (Constraint.square ?label a c)
+  let assert_square a c = assert_ (Backend.Constraint.square a c)
 
-  let assert_all ?label cs =
+  let assert_all cs =
     List.fold_right cs ~init:(return ()) ~f:(fun c (acc : _ t) ->
-        bind acc ~f:(fun () ->
-            add_constraint (Constraint.override_label c label) ) )
+        bind acc ~f:(fun () -> add_constraint c) )
 
-  let assert_equal ?label x y =
+  let assert_equal x y =
     match (x, y) with
     | Cvar.Constant x, Cvar.Constant y ->
-        if Field.equal x y then return ()
+        if Backend.Field.equal x y then return ()
         else
-          failwithf !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}" x y ()
+          failwithf
+            !"assert_equal: %{sexp: Backend.Field.t} != %{sexp: \
+              Backend.Field.t}"
+            x y ()
     | _ ->
-        assert_ (Constraint.equal ?label x y)
+        assert_ (Backend.Constraint.equal x y)
 end

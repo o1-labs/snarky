@@ -1,6 +1,5 @@
 module Bignum_bigint = Bigint
 open Core_kernel
-module Constraint0 = Constraint
 module Boolean0 = Boolean
 
 module type Boolean_intf = sig
@@ -128,32 +127,27 @@ module type Typ_intf = sig
 
   type field_var
 
-  type _ checked
-
   type 'field checked_unit
 
-  type ('var, 'value, 'aux, 'field, 'checked) typ' =
-    { var_to_fields : 'var -> 'field Cvar.t array * 'aux
-    ; var_of_fields : 'field Cvar.t array * 'aux -> 'var
-    ; value_to_fields : 'value -> 'field array * 'aux
-    ; value_of_fields : 'field array * 'aux -> 'value
+  type ('var, 'value, 'aux) typ' =
+    { var_to_fields : 'var -> field_var array * 'aux
+    ; var_of_fields : field_var array * 'aux -> 'var
+    ; value_to_fields : 'value -> field array * 'aux
+    ; value_of_fields : field array * 'aux -> 'value
     ; size_in_field_elements : int
     ; constraint_system_auxiliary : unit -> 'aux
-    ; check : 'var -> 'checked
+    ; check : 'var -> field checked_unit
     }
 
-  type ('var, 'value, 'field, 'checked) typ =
-    | Typ :
-        ('var, 'value, 'aux, 'field, 'checked) typ'
-        -> ('var, 'value, 'field, 'checked) typ
+  type ('var, 'value) typ =
+    | Typ : ('var, 'value, 'aux) typ' -> ('var, 'value) typ
 
   module Data_spec : sig
-    type ('r_var, 'r_value, 'k_var, 'k_value, 'field) t =
+    type ('r_var, 'r_value, 'k_var, 'k_value) t =
       | ( :: ) :
-          ('var, 'value, 'field, 'field checked_unit) typ
-          * ('r_var, 'r_value, 'k_var, 'k_value, 'field) t
-          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'field) t
-      | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'field) t
+          ('var, 'value) typ * ('r_var, 'r_value, 'k_var, 'k_value) t
+          -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
+      | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
   end
 
   (** The type [('var, 'value) t] describes a mapping from the OCaml type
@@ -169,7 +163,7 @@ module type Typ_intf = sig
           example, that a [Boolean.t] is either a {!val:Field.zero} or a
           {!val:Field.one}.
     *)
-  type ('var, 'value) t = ('var, 'value, field, field checked_unit) typ
+  type ('var, 'value) t = ('var, 'value) typ
 
   (** Basic instances: *)
 
@@ -223,7 +217,7 @@ module type Typ_intf = sig
   (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
         a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
   val hlist :
-       (unit, unit, 'k_var, 'k_value, field) Data_spec.t
+       (unit, unit, 'k_var, 'k_value) Data_spec.t
     -> ((unit, 'k_var) H_list.t, (unit, 'k_value) H_list.t) t
 
   (** Convert relationships over
@@ -246,7 +240,7 @@ module type Typ_intf = sig
         {!type:Data_spec.t}.
     *)
   val of_hlistable :
-       (unit, unit, 'k_var, 'k_value, field) Data_spec.t
+       (unit, unit, 'k_var, 'k_value) Data_spec.t
     -> var_to_hlist:('var -> (unit, 'k_var) H_list.t)
     -> var_of_hlist:((unit, 'k_var) H_list.t -> 'var)
     -> value_to_hlist:('value -> (unit, 'k_value) H_list.t)
@@ -281,26 +275,24 @@ module type Constraint_intf = sig
         any time we want to multiply our *variables*, we need to add a new
         rank-1 constraint.
     *)
-  type t = (field_var, field) Constraint0.t
-
-  type 'k with_constraint_args = ?label:string -> 'k
+  type t
 
   (** A constraint that asserts that the field variable is a boolean: either
         {!val:Field.zero} or {!val:Field.one}.
     *)
-  val boolean : (field_var -> t) with_constraint_args
+  val boolean : field_var -> t
 
   (** A constraint that asserts that the field variable arguments are equal.
     *)
-  val equal : (field_var -> field_var -> t) with_constraint_args
+  val equal : field_var -> field_var -> t
 
   (** A bare rank-1 constraint. *)
-  val r1cs : (field_var -> field_var -> field_var -> t) with_constraint_args
+  val r1cs : field_var -> field_var -> field_var -> t
 
   (** A constraint that asserts that the first variable squares to the
         second, ie. [square x y] => [x*x = y] within the field.
     *)
-  val square : (field_var -> field_var -> t) with_constraint_args
+  val square : field_var -> field_var -> t
 end
 
 module type Field_var_intf = sig
@@ -584,7 +576,6 @@ module type Basic = sig
         with type field := Field.t
          and type field_var := Field.Var.t
          and type _ checked_unit := unit Checked.t
-         and type _ checked := unit Checked.t
   end
 
   (** Representation of booleans within a field.
@@ -619,8 +610,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   Field.Checked.mul x_times_y z
 ]}
     *)
-
-    type run_state = Field.t Run_state.t
 
     include Monad_let.S
 
@@ -810,30 +799,23 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type t = request -> response
   end
 
-  (** Add a constraint to the constraint system, optionally with the label
-      given by [label]. *)
-  val assert_ : ?label:string -> Constraint.t -> unit Checked.t
+  (** Add a constraint to the constraint system. *)
+  val assert_ : Constraint.t -> unit Checked.t
 
-  (** Add all of the constraints in the list to the constraint system,
-      optionally with the label given by [label].
-  *)
-  val assert_all : ?label:string -> Constraint.t list -> unit Checked.t
+  (** Add all of the constraints in the list to the constraint system. *)
+  val assert_all : Constraint.t list -> unit Checked.t
 
-  (** Add a rank-1 constraint to the constraint system, optionally with the
-      label given by [label].
+  (** Add a rank-1 constraint to the constraint system.
 
       See {!val:Constraint.r1cs} for more information on rank-1 constraints.
   *)
-  val assert_r1cs :
-    ?label:string -> Field.Var.t -> Field.Var.t -> Field.Var.t -> unit Checked.t
+  val assert_r1cs : Field.Var.t -> Field.Var.t -> Field.Var.t -> unit Checked.t
 
-  (** Add a 'square' constraint to the constraint system, optionally with the
-      label given by [label].
+  (** Add a 'square' constraint to the constraint system.
 
       See {!val:Constraint.square} for more information.
   *)
-  val assert_square :
-    ?label:string -> Field.Var.t -> Field.Var.t -> unit Checked.t
+  val assert_square : Field.Var.t -> Field.Var.t -> unit Checked.t
 
   (** Run an {!module:As_prover} block. *)
   val as_prover : unit As_prover.t -> unit Checked.t
@@ -1122,10 +1104,13 @@ module type Run_basic = sig
   (** Mappings from OCaml types to R1CS variables and constraints. *)
   and Typ :
     (Typ_intf
-      with type field := Field.Constant.t
-       and type field_var := Field.t
+      with type field := Internal_Basic.field
+       and type field_var := Internal_Basic.Field.Var.t
        and type _ checked_unit := unit Internal_Basic.Checked.t
-       and type _ checked := unit)
+       and type ('var, 'value, 'aux) typ' =
+        ('var, 'value, 'aux) Internal_Basic.Typ.typ'
+       and type ('var, 'value) typ = ('var, 'value) Internal_Basic.Typ.typ
+       and type 'a prover_value = 'a Internal_Basic.Typ.prover_value)
 
   (** Representation of booleans within a field.
 
@@ -1226,14 +1211,7 @@ module type Run_basic = sig
   end
 
   and Internal_Basic :
-    (Basic
-      with type field = field
-       and type 'a Checked.t = ('a, field) Checked_runner.t
-       and type ('var, 'value, 'aux, 'field, 'checked) Typ.typ' =
-        ('var, 'value, 'aux, 'field, 'checked) Typ.typ'
-       and type ('var, 'value, 'field, 'checked) Typ.typ =
-        ('var, 'value, 'field, 'checked) Typ.typ
-       and type 'a Typ.prover_value = 'a Typ.prover_value)
+    (Basic with type field = field and type Constraint.t = Constraint.t)
 
   module Bitstring_checked : sig
     type t = Boolean.var list
@@ -1279,13 +1257,13 @@ module type Run_basic = sig
     type t = request -> response
   end
 
-  val assert_ : ?label:string -> Constraint.t -> unit
+  val assert_ : Constraint.t -> unit
 
-  val assert_all : ?label:string -> Constraint.t list -> unit
+  val assert_all : Constraint.t list -> unit
 
-  val assert_r1cs : ?label:string -> Field.t -> Field.t -> Field.t -> unit
+  val assert_r1cs : Field.t -> Field.t -> Field.t -> unit
 
-  val assert_square : ?label:string -> Field.t -> Field.t -> unit
+  val assert_square : Field.t -> Field.t -> unit
 
   val as_prover : (unit -> unit) As_prover.t -> unit
 

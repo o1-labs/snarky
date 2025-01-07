@@ -6,10 +6,14 @@ let set_eval_constraints b = Runner.eval_constraints := b
 
 module Make
     (Backend : Backend_extended.S)
-    (Types : Types.Types)
+    (Types : Types.Types
+               with type field = Backend.Field.t
+                and type field_var = Backend.Cvar.t)
     (Checked : Checked_intf.Extended
+                 with module Types := Types
                  with type field = Backend.Field.t
-                 with module Types := Types)
+                  and type run_state = Backend.Run_state.t
+                  and type constraint_ = Backend.Constraint.t)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)
@@ -17,17 +21,16 @@ module Make
              with type field := Backend.Field.t
               and type field_var := Backend.Cvar.t
               and type 'field checked_unit := unit Types.Checked.t
-              and type _ checked := unit Checked.t
-              and type ('var, 'value, 'aux, 'field, 'checked) typ' :=
-               ('var, 'value, 'aux, 'field, 'checked) Types.Typ.typ'
-              and type ('var, 'value, 'field, 'checked) typ :=
-               ('var, 'value, 'field, 'checked) Types.Typ.typ)
+              and type ('var, 'value, 'aux) typ' :=
+               ('var, 'value, 'aux) Types.Typ.typ'
+              and type ('var, 'value) typ := ('var, 'value) Types.Typ.typ)
     (Runner : Runner.S
                 with module Types := Types
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t) =
+                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type run_state = Backend.Run_state.t) =
 struct
   open Backend
 
@@ -35,7 +38,10 @@ struct
 
   open (
     Checked :
-      Checked_intf.Extended with module Types := Types with type field := field )
+      Checked_intf.Extended
+        with module Types := Types
+        with type field := field
+         and type constraint_ := Constraint.t )
 
   (* [equal_constraints z z_inv r] asserts that
      if z = 0 then r = 1, or
@@ -43,8 +49,8 @@ struct
   *)
   let equal_constraints (z : Cvar.t) (z_inv : Cvar.t) (r : Cvar.t) =
     Checked.assert_all
-      [ Constraint.r1cs ~label:"equals_1" z_inv z Cvar.(constant Field.one - r)
-      ; Constraint.r1cs ~label:"equals_2" r z (Cvar.constant Field.zero)
+      [ Constraint.r1cs z_inv z Cvar.(constant Field.one - r)
+      ; Constraint.r1cs r z (Cvar.constant Field.zero)
       ]
 
   (* [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
@@ -128,10 +134,7 @@ struct
                         if Field.(equal zero x) then Field.zero
                         else Backend.Field.inv x ))
             in
-            let%map () =
-              assert_r1cs ~label:"field_inverse" x x_inv
-                (Cvar.constant Field.one)
-            in
+            let%map () = assert_r1cs x x_inv (Cvar.constant Field.one) in
             x_inv )
 
   let div ?(label = "Checked.div") (x : Cvar.t) (y : Cvar.t) =
@@ -275,10 +278,7 @@ struct
       in
       Typ
         { typ with
-          check =
-            (fun v ->
-              Checked.assert_
-                (Constraint.boolean ~label:"boolean-alloc" (v :> Cvar.t)) )
+          check = (fun v -> Checked.assert_ (Constraint.boolean (v :> Cvar.t)))
         }
 
     let typ_unchecked : (var, value) Typ.t =

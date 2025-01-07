@@ -44,9 +44,9 @@ module Make
     (Types : Types.Types)
     (Checked : Checked_monad with module Types := Types) =
 struct
-  type ('var, 'value, 'field) t = ('var, 'value, 'field) Types.Typ.t
+  type ('var, 'value) t = ('var, 'value) Types.Typ.t
 
-  type ('var, 'value, 'field) typ = ('var, 'value, 'field) t
+  type ('var, 'value) typ = ('var, 'value) t
 
   module type S = sig
     type field
@@ -60,15 +60,14 @@ struct
 
   module T = struct
     module Data_spec = struct
-      type ('r_var, 'r_value, 'k_var, 'k_value, 'field) t =
+      type ('r_var, 'r_value, 'k_var, 'k_value) t =
         | ( :: ) :
-            ('var, 'value, 'field) typ
-            * ('r_var, 'r_value, 'k_var, 'k_value, 'field) t
-            -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value, 'field) t
-        | [] : ('r_var, 'r_value, 'r_var, 'r_value, 'field) t
+            ('var, 'value) typ * ('r_var, 'r_value, 'k_var, 'k_value) t
+            -> ('r_var, 'r_value, 'var -> 'k_var, 'value -> 'k_value) t
+        | [] : ('r_var, 'r_value, 'r_var, 'r_value) t
     end
 
-    let unit () : (unit, unit, 'field) t =
+    let unit () : (unit, unit) t =
       Typ
         { var_to_fields = (fun () -> ([||], ()))
         ; var_of_fields = (fun _ -> ())
@@ -79,7 +78,7 @@ struct
         ; check = (fun () -> Checked.return ())
         }
 
-    let field () : ('field Cvar.t, 'field, 'field) t =
+    let field () : ('field_var, 'field) t =
       Typ
         { var_to_fields = (fun f -> ([| f |], ()))
         ; var_of_fields = (fun (fields, _) -> fields.(0))
@@ -105,7 +104,7 @@ struct
           }
     end
 
-    let transport (type var value1 value2 field)
+    let transport (type var value1 value2)
         (Typ
            { var_to_fields
            ; var_of_fields
@@ -115,8 +114,8 @@ struct
            ; constraint_system_auxiliary
            ; check
            } :
-          (var, value1, field) t ) ~(there : value2 -> value1)
-        ~(back : value1 -> value2) : (var, value2, field) t =
+          (var, value1) t ) ~(there : value2 -> value1)
+        ~(back : value1 -> value2) : (var, value2) t =
       Typ
         { var_to_fields
         ; var_of_fields
@@ -127,7 +126,7 @@ struct
         ; check
         }
 
-    let transport_var (type var1 var2 value field)
+    let transport_var (type var1 var2 value)
         (Typ
            { var_to_fields
            ; var_of_fields
@@ -137,8 +136,8 @@ struct
            ; constraint_system_auxiliary
            ; check
            } :
-          (var1, value, field) t ) ~(there : var2 -> var1) ~(back : var1 -> var2)
-        : (var2, value, field) t =
+          (var1, value) t ) ~(there : var2 -> var1) ~(back : var1 -> var2) :
+        (var2, value) t =
       Typ
         { var_to_fields = (fun x -> var_to_fields (there x))
         ; var_of_fields = (fun x -> back (var_of_fields x))
@@ -159,8 +158,7 @@ struct
            ; constraint_system_auxiliary
            ; check
            } :
-          ('elt_var, 'elt_value, 'field) t ) :
-        ('elt_var list, 'elt_value list, 'field) t =
+          ('elt_var, 'elt_value) t ) : ('elt_var list, 'elt_value list) t =
       (* NB: We store the size_in_field_elements of each in the auxiliary
          data, to allow for 'reads' of e.g. list of lists of different
          lengths.
@@ -240,12 +238,12 @@ struct
       |> transport_var ~there:Array.to_list ~back:Array.of_list
 
     let hlist (type k_var k_value)
-        (spec0 : (unit, unit, k_var, k_value, 'f) Data_spec.t) :
-        ((unit, k_var) H_list.t, (unit, k_value) H_list.t, 'f) t =
+        (spec0 : (unit, unit, k_var, k_value) Data_spec.t) :
+        ((unit, k_var) H_list.t, (unit, k_value) H_list.t) t =
       let rec go :
           type k_var k_value.
-             (unit, unit, k_var, k_value, 'f) Data_spec.t
-          -> ((unit, k_var) H_list.t, (unit, k_value) H_list.t, 'f) t =
+             (unit, unit, k_var, k_value) Data_spec.t
+          -> ((unit, k_var) H_list.t, (unit, k_value) H_list.t) t =
        fun spec0 ->
         let open H_list in
         match spec0 with
@@ -390,12 +388,12 @@ struct
                         (unit, _ -> _ -> _ -> _ -> _ -> _ -> unit) H_list.t ) ->
              (a, b, c, d, e, f) )
 
-    let of_hlistable (spec : (unit, unit, 'k_var, 'k_value, 'f) Data_spec.t)
+    let of_hlistable (spec : (unit, unit, 'k_var, 'k_value) Data_spec.t)
         ~(var_to_hlist : 'var -> (unit, 'k_var) H_list.t)
         ~(var_of_hlist : (unit, 'k_var) H_list.t -> 'var)
         ~(value_to_hlist : 'value -> (unit, 'k_value) H_list.t)
         ~(value_of_hlist : (unit, 'k_value) H_list.t -> 'value) :
-        ('var, 'value, 'f) t =
+        ('var, 'value) t =
       hlist spec
       |> transport ~there:value_to_hlist ~back:value_of_hlist
       |> transport_var ~there:var_to_hlist ~back:var_of_hlist

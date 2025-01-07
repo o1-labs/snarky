@@ -5,10 +5,14 @@ val set_eval_constraints : bool -> unit
 
 module Make : functor
   (Backend : Backend_extended.S)
-  (Types : Types.Types)
+  (Types : Types.Types
+             with type field = Backend.Field.t
+              and type field_var = Backend.Cvar.t)
   (Checked : Checked_intf.Extended
+               with module Types := Types
                with type field = Backend.Field.t
-               with module Types := Types)
+                and type run_state = Backend.Run_state.t
+                and type constraint_ = Backend.Constraint.t)
   (As_prover : As_prover_intf.Basic
                  with type field := Backend.Field.t
                  with module Types := Types)
@@ -16,17 +20,16 @@ module Make : functor
            with type field := Backend.Field.t
             and type field_var := Backend.Cvar.t
             and type 'field checked_unit := unit Types.Checked.t
-            and type 'a checked := 'a Checked.t
-            and type ('var, 'value, 'aux, 'field, 'checked) typ' :=
-             ('var, 'value, 'aux, 'field, 'checked) Types.Typ.typ'
-            and type ('var, 'value, 'field, 'checked) typ :=
-             ('var, 'value, 'field, 'checked) Types.Typ.typ)
+            and type ('var, 'value, 'aux) typ' :=
+             ('var, 'value, 'aux) Types.Typ.typ'
+            and type ('var, 'value) typ := ('var, 'value) Types.Typ.typ)
   (Runner : Runner.S
               with module Types := Types
               with type field := Backend.Field.t
                and type cvar := Backend.Cvar.t
                and type constr := Backend.Constraint.t option
-               and type r1cs := Backend.R1CS_constraint_system.t)
+               and type r1cs := Backend.R1CS_constraint_system.t
+               and type run_state = Backend.Run_state.t)
   -> sig
   val equal :
        Checked.field Cvar0.t
