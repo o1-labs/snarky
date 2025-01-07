@@ -1,7 +1,7 @@
 module Vector = struct
   open Core_kernel
 
-  type 'elt t =
+  type 'elt t = 'elt Run_state_intf.Vector.t =
     | T :
         (module Snarky_intf.Vector.S with type elt = 'elt and type t = 't)
         * 't Type_equal.Id.t

@@ -10,8 +10,9 @@ module Make
                with type field = Backend.Field.t
                 and type field_var = Backend.Cvar.t)
     (Checked : Checked_intf.Extended
+                 with module Types := Types
                  with type field = Backend.Field.t
-                 with module Types := Types)
+                  and type run_state = Backend.Field.t Backend.Run_state.t)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)
@@ -27,7 +28,8 @@ module Make
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t) =
+                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type run_state = Backend.Field.t Backend.Run_state.t) =
 struct
   open Backend
 

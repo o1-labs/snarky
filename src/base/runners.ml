@@ -6,8 +6,9 @@ module Make
                with type field = Backend.Field.t
                 and type field_var = Backend.Cvar.t)
     (Checked : Checked_intf.Extended
+                 with module Types := Types
                  with type field = Backend.Field.t
-                 with module Types := Types)
+                  and type run_state = Backend.Field.t Backend.Run_state.t)
     (As_prover : As_prover_intf.Basic
                    with type field := Backend.Field.t
                    with module Types := Types)
@@ -16,7 +17,8 @@ module Make
                 with type field := Backend.Field.t
                  and type cvar := Backend.Cvar.t
                  and type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t) =
+                 and type r1cs := Backend.R1CS_constraint_system.t
+                 and type run_state = Backend.Field.t Backend.Run_state.t) =
 struct
   open Backend
 
@@ -215,7 +217,7 @@ struct
           Runner.State.make ~num_inputs ~input ~next_auxiliary ~aux ~system
             ~with_witness:false ()
         in
-        let id = Run_state.id state in
+        let id = Backend.Run_state.id state in
         let state, () =
           (* create constraints to validate the input (using the input [Typ]'s [check]) *)
           let checked =
@@ -226,7 +228,7 @@ struct
         in
         let run_computation k = k var state in
         let finish_computation (state, res) =
-          let final_id = Run_state.id state in
+          let final_id = Backend.Run_state.id state in
           if id <> final_id then
             failwith "Snarky's internal state has been clobbered." ;
           let res, _ = return_typ.var_to_fields res in
