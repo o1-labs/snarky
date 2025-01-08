@@ -1,5 +1,4 @@
 open Core_kernel
-module Cvar0 = Cvar
 module Bignum_bigint = Bigint
 
 exception Runtime_error of string list * exn * string
@@ -15,21 +14,18 @@ module Make_basic
                 and type field_var = Backend.Cvar.t)
     (Checked : Checked_intf.Extended
                  with module Types := Types
-                 with type field = Backend.Field.t
-                  and type run_state = Backend.Run_state.t
+                 with type run_state = Backend.Run_state.t
                   and type constraint_ = Backend.Constraint.t)
-    (As_prover : As_prover_intf.Basic
-                   with type field := Backend.Field.t
-                   with module Types := Types)
+    (As_prover : As_prover_intf.Basic with module Types := Types)
     (Runner : Runner.S
                 with module Types := Types
-                with type field := Backend.Field.t
-                 and type cvar := Backend.Cvar.t
-                 and type constr := Backend.Constraint.t option
+                with type constr := Backend.Constraint.t option
                  and type r1cs := Backend.R1CS_constraint_system.t
                  and type run_state = Backend.Run_state.t) =
 struct
   open Backend
+
+  type field_var = Cvar.t
 
   module Typ = struct
     include Types.Typ
@@ -55,7 +51,7 @@ struct
 
   let constant (Typ typ : _ Typ.t) x =
     let fields, aux = typ.value_to_fields x in
-    let field_vars = Array.map fields ~f:(fun x -> Cvar0.Constant x) in
+    let field_vars = Array.map fields ~f:(fun x -> Cvar.constant x) in
     typ.var_of_fields (field_vars, aux)
 
   module As_prover = struct
@@ -77,8 +73,7 @@ struct
       Checked :
         Checked_intf.Extended
           with module Types := Types
-          with type field := field
-           and type run_state = Backend.Run_state.t
+          with type run_state = Backend.Run_state.t
            and type constraint_ = Backend.Constraint.t )
 
     let perform req = request_witness Typ.unit req
@@ -159,11 +154,11 @@ struct
           | [] ->
               res
           | v :: vs ->
-              go Cvar0.(Add (v, Scale (two, res))) vs
+              go Cvar.(add v (Cvar.scale res two)) vs
         in
         match List.rev (vars :> Cvar.t list) with
         | [] ->
-            Cvar0.Constant Field.zero
+            Cvar.constant Field.zero
         | v :: vs ->
             go v vs
 
@@ -227,8 +222,8 @@ struct
       let inv x = Checked.inv ~label:"Field.Checked.inv" x
 
       let sqrt (x : Cvar.t) : Cvar.t Checked.t =
-        match x with
-        | Constant x ->
+        match Cvar.to_constant x with
+        | Some x ->
             Checked.return (Cvar.constant (Field.sqrt x))
         | _ ->
             let open Checked in
@@ -359,8 +354,8 @@ struct
 
       module Assert = struct
         let lt ~bit_length (x : Cvar.t) (y : Cvar.t) =
-          match (x, y) with
-          | Constant x, Constant y ->
+          match (Cvar.to_constant x, Cvar.to_constant y) with
+          | Some x, Some y ->
               assert (Field.compare x y < 0) ;
               Checked.return ()
           | _ ->
@@ -370,8 +365,8 @@ struct
               Boolean.Assert.is_true less
 
         let lte ~bit_length (x : Cvar.t) (y : Cvar.t) =
-          match (x, y) with
-          | Constant x, Constant y ->
+          match (Cvar.to_constant x, Cvar.to_constant y) with
+          | Some x, Some y ->
               assert (Field.compare x y <= 0) ;
               Checked.return ()
           | _ ->
@@ -385,8 +380,8 @@ struct
         let gte ~bit_length x y = lte ~bit_length y x
 
         let non_zero (v : Cvar.t) =
-          match v with
-          | Constant v ->
+          match Cvar.to_constant v with
+          | Some v ->
               if Field.(equal zero v) then
                 failwithf "assert_non_zero: failed on constant %s"
                   (Field.to_string v) () ;
@@ -397,8 +392,8 @@ struct
         let equal x y = Checked.assert_equal x y
 
         let not_equal (x : t) (y : t) =
-          match (x, y) with
-          | Constant x, Constant y ->
+          match (Cvar.to_constant x, Cvar.to_constant y) with
+          | Some x, Some y ->
               if Field.(equal x y) then
                 failwithf "not_equal: failed on constants %s and %s"
                   (Field.to_string x) (Field.to_string y) () ;
@@ -659,29 +654,14 @@ module Make (Backend : Backend_intf.S) = struct
   module Checked1 =
     Checked.Make (Backend_extended) (Types) (Checked_runner) (As_prover1)
 
-  module Field_T = struct
-    type field = Backend_extended.Field.t
-  end
-
-  module As_prover_ext =
-    As_prover0.Make_extended
-      (Field_T)
-      (struct
-        module Types = Types
-        include As_prover1
-      end)
-
   module Checked_for_basic = struct
     include (
       Checked1 :
         Checked_intf.S
           with module Types := Types
           with type 'a t := 'a Checked1.t
-           and type field := Backend_extended.Field.t
            and type run_state = Backend.Run_state.t
            and type constraint_ = Backend_extended.Constraint.t )
-
-    type field = Backend_extended.Field.t
 
     type 'a t = 'a Types.Checked.t
 
@@ -689,7 +669,7 @@ module Make (Backend : Backend_intf.S) = struct
   end
 
   module Basic =
-    Make_basic (Backend_extended) (Types) (Checked_for_basic) (As_prover_ext)
+    Make_basic (Backend_extended) (Types) (Checked_for_basic) (As_prover1)
       (Runner0)
   include Basic
   module Number = Number.Make (Basic)
@@ -770,6 +750,8 @@ module Run = struct
     module R1CS_constraint_system = Snark.R1CS_constraint_system
 
     type field = Snark.field
+
+    type field_var = Snark.field_var
 
     module Bigint = Snark.Bigint
     module Constraint = Snark.Constraint
@@ -1584,8 +1566,11 @@ module Run = struct
   end
 end
 
-type 'field m = (module Snark_intf.Run with type field = 'field)
+type ('field, 'field_var) m =
+  (module Snark_intf.Run
+     with type field = 'field
+      and type field_var = 'field_var )
 
 let make (type field) (module Backend : Backend_intf.S with type Field.t = field)
-    : field m =
+    : (field, field Cvar.t) m =
   (module Run.Make (Backend))

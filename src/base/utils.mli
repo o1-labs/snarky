@@ -1,4 +1,3 @@
-module Cvar0 = Cvar
 module Runner = Checked_runner
 
 val set_eval_constraints : bool -> unit
@@ -10,12 +9,9 @@ module Make : functor
               and type field_var = Backend.Cvar.t)
   (Checked : Checked_intf.Extended
                with module Types := Types
-               with type field = Backend.Field.t
-                and type run_state = Backend.Run_state.t
-                and type constraint_ = Backend.Constraint.t)
-  (As_prover : As_prover_intf.Basic
-                 with type field := Backend.Field.t
-                 with module Types := Types)
+               with type run_state = Backend.Run_state.t
+               with type constraint_ = Backend.Constraint.t)
+  (As_prover : As_prover_intf.Basic with module Types := Types)
   (Typ : Snark_intf.Typ_intf
            with type field := Backend.Field.t
             and type field_var := Backend.Cvar.t
@@ -25,25 +21,21 @@ module Make : functor
             and type ('var, 'value) typ := ('var, 'value) Types.Typ.typ)
   (Runner : Runner.S
               with module Types := Types
-              with type field := Backend.Field.t
-               and type cvar := Backend.Cvar.t
-               and type constr := Backend.Constraint.t option
+              with type constr := Backend.Constraint.t option
                and type r1cs := Backend.R1CS_constraint_system.t
                and type run_state = Backend.Run_state.t)
   -> sig
   val equal :
-       Checked.field Cvar0.t
-    -> Checked.field Cvar0.t
-    -> Checked.field Cvar0.t Boolean.t Checked.t
+    Types.field_var -> Types.field_var -> Types.field_var Boolean.t Checked.t
 
   val if_ :
-       Checked.field Cvar0.t Boolean.t
-    -> then_:Checked.field Cvar0.t
-    -> else_:Checked.field Cvar0.t
-    -> Checked.field Cvar0.t Types.Checked.t
+       Types.field_var Boolean.t
+    -> then_:Types.field_var
+    -> else_:Types.field_var
+    -> Types.field_var Types.Checked.t
 
   module Boolean : sig
-    type var = Checked.field Cvar0.t Boolean.t
+    type var = Types.field_var Boolean.t
 
     type value = bool
 
@@ -54,13 +46,13 @@ module Make : functor
     val not : var -> var
 
     val if_ :
-         Checked.field Cvar0.t Boolean.t
+         Types.field_var Boolean.t
       -> then_:var
       -> else_:var
-      -> Checked.field Cvar0.t Boolean.t Types.Checked.t
+      -> Types.field_var Boolean.t Types.Checked.t
 
     val _and_for_square_constraint_systems :
-      var -> var -> Checked.field Cvar0.t Boolean.t Types.Checked.t
+      var -> var -> Types.field_var Boolean.t Types.Checked.t
 
     val ( && ) : var -> var -> var Checked.t
 
@@ -85,7 +77,7 @@ module Make : functor
     val ( lxor ) : var -> var -> var Types.Checked.t
 
     module Array : sig
-      val num_true : var array -> Checked.field Cvar0.t
+      val num_true : var array -> Types.field_var
 
       val any : var array -> var Types.Checked.t
 
@@ -103,7 +95,7 @@ module Make : functor
     val of_field : Backend.Cvar.t -> Backend.Cvar.t Boolean.t Types.Checked.t
 
     module Unsafe : sig
-      val of_cvar : Checked.field Cvar0.t -> var
+      val of_cvar : Types.field_var -> var
     end
 
     module Assert : sig
@@ -145,34 +137,28 @@ module Make : functor
 
   val mul :
        ?label:string
-    -> Checked.field Cvar0.t
-    -> Checked.field Cvar0.t
-    -> Checked.field Cvar0.t Types.Checked.t
+    -> Types.field_var
+    -> Types.field_var
+    -> Types.field_var Types.Checked.t
 
   val square :
-       ?label:string
-    -> Checked.field Cvar0.t
-    -> Checked.field Cvar0.t Types.Checked.t
+    ?label:string -> Types.field_var -> Types.field_var Types.Checked.t
 
   val div :
        ?label:string
-    -> Checked.field Cvar0.t
-    -> Checked.field Cvar0.t
-    -> Checked.field Cvar0.t Types.Checked.t
+    -> Types.field_var
+    -> Types.field_var
+    -> Types.field_var Types.Checked.t
 
-  val inv :
-       ?label:string
-    -> Checked.field Cvar0.t
-    -> Checked.field Cvar0.t Types.Checked.t
+  val inv : ?label:string -> Types.field_var -> Types.field_var Types.Checked.t
 
-  val assert_non_zero : Checked.field Cvar0.t -> unit Types.Checked.t
+  val assert_non_zero : Types.field_var -> unit Types.Checked.t
 
-  val equal_vars :
-    Checked.field Cvar0.t -> (Checked.field * Checked.field) As_prover.t
+  val equal_vars : Types.field_var -> (Types.field * Types.field) As_prover.t
 
   val equal_constraints :
-       Checked.field Cvar0.t
-    -> Checked.field Cvar0.t
-    -> Checked.field Cvar0.t
+       Types.field_var
+    -> Types.field_var
+    -> Types.field_var
     -> unit Types.Checked.t
 end

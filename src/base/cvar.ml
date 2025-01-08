@@ -144,4 +144,14 @@ module Make (Field : Snarky_intf.Field.Extended) = struct
       (List.filter_map (Map.to_alist map) ~f:(fun (i, f) ->
            if Field.(equal f zero) then None
            else Some (Int.to_string i, `String (Field.to_string f)) ) )
+
+  let var_indices t =
+    let _, terms = to_constant_and_terms t in
+    List.map ~f:(fun (_, v) -> v) terms
+
+  let to_constant : t -> Field.t option = function
+    | Constant x ->
+        Some x
+    | _ ->
+        None
 end

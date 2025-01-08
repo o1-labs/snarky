@@ -20,44 +20,10 @@ module type S = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
-  module Cvar : sig
-    type t = Field.t Cvar.t [@@deriving sexp]
-
-    val length : t -> int
-
-    module Unsafe : sig
-      val of_index : int -> t
-    end
-
-    val eval :
-      [ `Return_values_will_be_mutated of int -> Field.t ] -> t -> Field.t
-
-    val constant : Field.t -> t
-
-    val to_constant_and_terms : t -> Field.t option * (Field.t * int) list
-
-    val add : t -> t -> t
-
-    val negate : t -> t
-
-    val scale : t -> Field.t -> t
-
-    val sub : t -> t -> t
-
-    val linear_combination : (Field.t * t) list -> t
-
-    val sum : t list -> t
-
-    val ( + ) : t -> t -> t
-
-    val ( - ) : t -> t -> t
-
-    val ( * ) : Field.t -> t -> t
-
-    val var_indices : t -> int list
-
-    val to_constant : t -> Field.t option
-  end
+  module Cvar :
+    Backend_intf.Cvar_intf
+      with type field := Field.t
+       and type t = Field.t Cvar.t
 
   module Constraint : sig
     type t [@@deriving sexp]
@@ -91,6 +57,7 @@ module Make (Backend : Backend_intf.S) :
     with type Field.t = Backend.Field.t
      and type Field.Vector.t = Backend.Field.Vector.t
      and type Bigint.t = Backend.Bigint.t
+     and type Cvar.t = Backend.Cvar.t
      and type R1CS_constraint_system.t = Backend.R1CS_constraint_system.t
      and type Run_state.t = Backend.Run_state.t
      and type Constraint.t = Backend.Constraint.t = struct
@@ -195,20 +162,7 @@ module Make (Backend : Backend_intf.S) :
     let ( / ) = div
   end
 
-  module Cvar = struct
-    include Cvar.Make (Field)
-
-    let var_indices t =
-      let _, terms = to_constant_and_terms t in
-      List.map ~f:(fun (_, v) -> v) terms
-
-    let to_constant : t -> Field.t option = function
-      | Constant x ->
-          Some x
-      | _ ->
-          None
-  end
-
+  module Cvar = Cvar
   module Constraint = Constraint
   module R1CS_constraint_system = R1CS_constraint_system
   module Run_state = Run_state

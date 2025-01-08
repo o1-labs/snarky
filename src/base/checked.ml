@@ -2,18 +2,14 @@ open Core_kernel
 
 module Make
     (Backend : Backend_extended.S)
-    (Types : Types.Types)
+    (Types : Types.Types with type field_var = Backend.Cvar.t)
     (Basic : Checked_intf.Basic
-               with type field = Backend.Field.t
-                and type constraint_ = Backend.Constraint.t
+               with type constraint_ = Backend.Constraint.t
                with module Types := Types)
-    (As_prover : As_prover_intf.Basic
-                   with type field := Basic.field
-                   with module Types := Types) :
+    (As_prover : As_prover_intf.Basic with module Types := Types) :
   Checked_intf.S
     with module Types := Types
-    with type field = Backend.Field.t
-     and type run_state = Basic.run_state
+    with type run_state = Basic.run_state
      and type constraint_ = Basic.constraint_ = struct
   include Basic
 
@@ -81,8 +77,8 @@ module Make
         bind acc ~f:(fun () -> add_constraint c) )
 
   let assert_equal x y =
-    match (x, y) with
-    | Cvar.Constant x, Cvar.Constant y ->
+    match (Backend.Cvar.to_constant x, Backend.Cvar.to_constant y) with
+    | Some x, Some y ->
         if Backend.Field.equal x y then return ()
         else
           failwithf

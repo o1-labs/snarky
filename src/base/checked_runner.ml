@@ -15,7 +15,7 @@ end
 module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
   type field = Backend.Field.t
 
-  type field_var = field Cvar.t
+  type field_var = Backend.Cvar.t
 
   type 'a checked = 'a T(Backend).t
 
@@ -26,16 +26,14 @@ module Make_checked
     (Backend : Backend_extended.S)
     (Types : Types.Types
                with type field = Backend.Field.t
-                and type field_var = Backend.Field.t Cvar.t
+                and type field_var = Backend.Cvar.t
                 and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
                 and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
                 and type ('var, 'value, 'aux) Typ.typ' =
                  ('var, 'value, 'aux) Simple_types(Backend).Typ.typ'
                 and type ('var, 'value) Typ.typ =
                  ('var, 'value) Simple_types(Backend).Typ.typ)
-    (As_prover : As_prover_intf.Basic
-                   with type field := Backend.Field.t
-                   with module Types := Types) =
+    (As_prover : As_prover_intf.Basic with module Types := Types) =
 struct
   type run_state = Backend.Run_state.t
 
@@ -265,15 +263,11 @@ struct
 end
 
 module type Run_extras = sig
-  type field
-
-  type cvar
-
   type run_state
 
   module Types : Types.Types
 
-  val get_value : run_state -> cvar -> field
+  val get_value : run_state -> Types.field_var -> Types.field
 
   val run_as_prover :
     'a Types.As_prover.t option -> run_state -> run_state * 'a option
@@ -318,15 +312,10 @@ struct
         include
           Checked_intf.Basic
             with module Types := Types
-            with type field := Checked_runner.field
-             and type run_state := run_state
+            with type run_state := run_state
 
         include
-          Run_extras
-            with module Types := Types
-            with type field := Backend.Field.t
-             and type cvar := Backend.Cvar.t
-             and type run_state := run_state
+          Run_extras with module Types := Types with type run_state := run_state
       end )
 
   let run = Checked_runner.eval
@@ -392,9 +381,9 @@ module type S = sig
   module State : sig
     val make :
          num_inputs:int
-      -> input:field Run_state_intf.Vector.t
+      -> input:Types.field Run_state_intf.Vector.t
       -> next_auxiliary:int ref
-      -> aux:field Run_state_intf.Vector.t
+      -> aux:Types.field Run_state_intf.Vector.t
       -> ?system:r1cs
       -> ?eval_constraints:bool
       -> ?handler:Request.Handler.t
