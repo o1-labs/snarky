@@ -644,7 +644,7 @@ h1+.modules, h1+.sel {
   padding-left: 12px;
 }
 
-/* Mobile adjustements. */
+/* Mobile adjustments. */
 
 @media only screen and (max-width: 95ex) {
   .content {
@@ -662,7 +662,7 @@ h1+.modules, h1+.sel {
   }
 }
 
-/* Print adjustements. */
+/* Print adjustments. */
 
 @media print {
   body {
