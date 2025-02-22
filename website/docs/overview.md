@@ -18,7 +18,7 @@ acronym describes proofs which are:
 * **Succinctness**: the proof is short and easy to check.
 * **Non-interactive**: the verifier doesn't need to communicate with the prover
   to check the proof -- everything they need is inside the proof already!
-* **ARgument of Knowledge**: the proof is really a proof, in the sense that
+* **Argument of Knowledge**: the proof is really a proof, in the sense that
   if someone produced a proof, then they really ran the program on some values
   to get the claimed output.
 
