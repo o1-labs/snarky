@@ -1,0 +1,7 @@
+(test
+ (name bitstring_test)
+ (libraries
+  alcotest
+  bitstring_lib
+  core_kernel
+  tuple_lib))
