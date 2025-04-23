@@ -1,5 +1,32 @@
 open Core_kernel
 
+module type Intf = sig
+  module Types : Types.Types
+
+  type 'a t = 'a Types.As_prover.t
+
+  include Monad_let.S with type 'a t := 'a t
+
+  val run : 'a t -> (Types.field_var -> Types.field) -> 'a
+
+  val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+
+  val read_var : Types.field_var -> Types.field t
+
+  val read : ('var, 'value) Types.Typ.t -> 'var -> 'value t
+
+  module Provider : sig
+    type 'a t := 'a Types.Provider.t
+
+    val run :
+      'a t -> (Types.field_var -> Types.field) -> Request.Handler.t -> 'a option
+  end
+
+  module Handle : sig
+    val value : ('var, 'value) Handle.t -> 'value Types.As_prover.t
+  end
+end
+
 module Make (Backend : sig
   module Field : sig
     type t
@@ -12,7 +39,7 @@ end)
 (Types : Types.Types
            with type field = Backend.Field.t
             and type field_var = Backend.Cvar.t
-            and type 'a As_prover.t = (Backend.Cvar.t -> Backend.Field.t) -> 'a) : As_prover_intf.Basic with module Types := Types =
+            and type 'a As_prover.t = (Backend.Cvar.t -> Backend.Field.t) -> 'a) : Intf with module Types := Types =
 struct
   module Types = Types
   (**

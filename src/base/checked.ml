@@ -6,7 +6,7 @@ module Make
     (Basic : Checked_intf.Basic
                with type constraint_ = Backend.Constraint.t
                with module Types := Types)
-    (As_prover : As_prover_intf.Basic with module Types := Types) :
+    (As_prover : As_prover.Intf with module Types := Types) :
   Checked_intf.S
     with module Types := Types
     with type run_state = Basic.run_state

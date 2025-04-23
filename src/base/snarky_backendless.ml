@@ -1,5 +1,4 @@
-module As_prover0 = As_prover0
-module As_prover_intf = As_prover_intf
+module As_prover = As_prover
 module Backend_extended = Backend_extended
 module Backend_intf = Backend_intf
 module Bigint_intf = Snarky_intf.Bigint_intf

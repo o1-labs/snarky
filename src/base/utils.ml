@@ -12,7 +12,7 @@ module Make
                  with module Types := Types
                  with type run_state = Backend.Run_state.t
                   and type constraint_ = Backend.Constraint.t)
-    (As_prover : As_prover_intf.Basic with module Types := Types)
+    (As_prover : As_prover.Intf with module Types := Types)
     (Typ : Snark_intf.Typ_intf
              with type field := Backend.Field.t
               and type field_var := Backend.Cvar.t
