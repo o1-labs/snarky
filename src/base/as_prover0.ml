@@ -14,6 +14,11 @@ end)
             and type field_var = Backend.Cvar.t
             and type 'a As_prover.t = (Backend.Cvar.t -> Backend.Field.t) -> 'a) =
 struct
+  (**
+    `t` is a monad that has access to lookup table `tbl` with type `tbl : var -> field. In Haskell parlance,
+    `t` simply `Reader (var -> field)`.
+  *)
+
   type 'a t = 'a Types.As_prover.t
 
   let map t ~f tbl =
@@ -27,12 +32,6 @@ struct
   let return x _ = x
 
   let run t tbl = t tbl
-
-  let get_state _tbl s = (s, s)
-
-  let set_state s _tbl _ = (s, ())
-
-  let modify_state f _tbl s = (f s, ())
 
   let map2 x y ~f tbl =
     let x = x tbl in
