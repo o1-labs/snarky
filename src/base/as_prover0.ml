@@ -12,8 +12,9 @@ end)
 (Types : Types.Types
            with type field = Backend.Field.t
             and type field_var = Backend.Cvar.t
-            and type 'a As_prover.t = (Backend.Cvar.t -> Backend.Field.t) -> 'a) =
+            and type 'a As_prover.t = (Backend.Cvar.t -> Backend.Field.t) -> 'a) : As_prover_intf.Basic with module Types := Types =
 struct
+  module Types = Types
   (**
     `t` is a monad that has access to lookup table `tbl` with type `tbl : var -> field. In Haskell parlance,
     `t` simply `Reader (var -> field)`.
