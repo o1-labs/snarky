@@ -38,6 +38,27 @@ module type Cvar_intf = sig
   val to_constant : t -> field option
 end
 
+module type Constraint_intf = sig
+  type var
+
+  type field
+
+  type t [@@deriving sexp]
+
+  val boolean : var -> t
+
+  val equal : var -> var -> t
+
+  val r1cs : var -> var -> var -> t
+
+  val square : var -> var -> t
+
+  val eval : t -> (var -> field) -> bool
+
+  val log_constraint : t -> (var -> field) -> string
+
+end
+
 module type S = sig
   module Field : Snarky_intf.Field.S
 
@@ -45,23 +66,15 @@ module type S = sig
 
   val field_size : Bigint.t
 
-  module Cvar : Cvar_intf with type field := Field.t and type t = Field.t Cvar.t
+  module Cvar :
+    Cvar_intf
+      with type field := Field.t
+      and type t = Field.t Cvar.t
 
-  module Constraint : sig
-    type t [@@deriving sexp]
-
-    val boolean : Cvar.t -> t
-
-    val equal : Cvar.t -> Cvar.t -> t
-
-    val r1cs : Cvar.t -> Cvar.t -> Cvar.t -> t
-
-    val square : Cvar.t -> Cvar.t -> t
-
-    val eval : t -> (Cvar.t -> Field.t) -> bool
-
-    val log_constraint : t -> (Cvar.t -> Field.t) -> string
-  end
+  module Constraint :
+    Constraint_intf
+       with type var := Cvar.t
+       and type field := Field.t
 
   module R1CS_constraint_system :
     Constraint_system.S

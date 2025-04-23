@@ -25,21 +25,10 @@ module type S = sig
       with type field := Field.t
        and type t = Field.t Cvar.t
 
-  module Constraint : sig
-    type t [@@deriving sexp]
-
-    val boolean : Cvar.t -> t
-
-    val equal : Cvar.t -> Cvar.t -> t
-
-    val r1cs : Cvar.t -> Cvar.t -> Cvar.t -> t
-
-    val square : Cvar.t -> Cvar.t -> t
-
-    val eval : t -> (Cvar.t -> Field.t) -> bool
-
-    val log_constraint : t -> (Cvar.t -> Field.t) -> string
-  end
+  module Constraint :
+    Backend_intf.Constraint_intf
+      with type var := Cvar.t
+       and type field := Field.t
 
   module R1CS_constraint_system :
     Constraint_system.S
