@@ -58,8 +58,6 @@ struct
     include As_prover
 
     type 'a as_prover = 'a t
-
-    module Ref = Ref
   end
 
   module Handle = struct
@@ -1570,7 +1568,3 @@ type ('field, 'field_var) m =
   (module Snark_intf.Run
      with type field = 'field
       and type field_var = 'field_var )
-
-let make (type field) (module Backend : Backend_intf.S with type Field.t = field)
-    : (field, field Cvar.t) m =
-  (module Run.Make (Backend))

@@ -43,7 +43,3 @@ type ('field, 'field_var) m =
   (module Snark_intf.Run
      with type field = 'field
       and type field_var = 'field_var )
-
-val make :
-     (module Backend_intf.S with type Field.t = 'field)
-  -> ('field, 'field Cvar.t) m
