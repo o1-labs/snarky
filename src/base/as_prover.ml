@@ -5,7 +5,7 @@ module type Intf = sig
 
   type 'a t = 'a Types.As_prover.t
 
-  include Monad_let.S with type 'a t := 'a t
+  include Monad_lib.Monad_let.S with type 'a t := 'a t
 
   val run : 'a t -> (Types.field_var -> Types.field) -> 'a
 
@@ -76,7 +76,7 @@ struct
     let fields = Array.map ~f:tbl field_vars in
     value_of_fields (fields, aux)
 
-  include Monad_let.Make (struct
+  include Monad_lib.Monad_let.Make (struct
     type nonrec 'a t = 'a t
 
     let map = `Custom map

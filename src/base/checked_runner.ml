@@ -48,7 +48,7 @@ struct
   let eval (t : 'a t) : run_state -> run_state * 'a =
     match t with Pure a -> fun s -> (s, a) | Function g -> g
 
-  include Monad_let.Make (struct
+  include Monad_lib.Monad_let.Make (struct
     type nonrec 'a t = 'a t
 
     let return x : _ t = Pure x

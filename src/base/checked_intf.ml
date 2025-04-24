@@ -7,7 +7,7 @@ module type Basic = sig
 
   type run_state
 
-  include Monad_let.S with type 'a t := 'a t
+  include Monad_lib.Monad_let.S with type 'a t := 'a t
 
   val add_constraint : constraint_ -> unit t
 
@@ -44,7 +44,7 @@ module type S = sig
 
   type 'a t = 'a Types.Checked.t
 
-  include Monad_let.S with type 'a t := 'a t
+  include Monad_lib.Monad_let.S with type 'a t := 'a t
 
   val as_prover : unit Types.As_prover.t -> unit t
 
