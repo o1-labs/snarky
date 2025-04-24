@@ -3,7 +3,7 @@ module Runner = Checked_runner
 val set_eval_constraints : bool -> unit
 
 module Make : functor
-  (Backend : Backend_extended.S)
+  (Backend : Backend_intf.S)
   (Types : Types.Types
              with type field = Backend.Field.t
               and type field_var = Backend.Cvar.t)

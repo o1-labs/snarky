@@ -1,7 +1,7 @@
 open Core_kernel
 
 module Make
-    (Backend : Backend_extended.S)
+    (Backend : Backend_intf.S)
     (Types : Types.Types with type field_var = Backend.Cvar.t)
     (Basic : Checked_intf.Basic
                with type constraint_ = Backend.Constraint.t

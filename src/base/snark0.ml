@@ -8,7 +8,7 @@ module Runner = Checked_runner
 let set_eval_constraints b = Runner.eval_constraints := b
 
 module Make_basic
-    (Backend : Backend_extended.S)
+    (Backend : Backend_intf.S)
     (Types : Types.Types
                with type field = Backend.Field.t
                 and type field_var = Backend.Cvar.t)
@@ -643,14 +643,14 @@ end
 
 (** The main functor for the monadic interface.
     See [Run.Make] for the same thing but for the imperative interface. *)
-module Make (Backend : Backend_extended.Input_intf) = struct
-  module Backend_extended = Backend_extended.Make (Backend)
-  module Types = Runner.Simple_types (Backend_extended)
-  module Runner0 = Runner.Make (Backend_extended) (Types)
+module Make (Backend : Backend_intf.Input_intf) = struct
+  module Backend_intf = Backend_intf.Make (Backend)
+  module Types = Runner.Simple_types (Backend_intf)
+  module Runner0 = Runner.Make (Backend_intf) (Types)
   module Checked_runner = Runner0.Checked_runner
-  module As_prover1 = As_prover.Make (Backend_extended) (Types)
+  module As_prover1 = As_prover.Make (Backend_intf) (Types)
   module Checked1 =
-    Checked.Make (Backend_extended) (Types) (Checked_runner) (As_prover1)
+    Checked.Make (Backend_intf) (Types) (Checked_runner) (As_prover1)
 
   module Checked_for_basic = struct
     include (
@@ -659,7 +659,7 @@ module Make (Backend : Backend_extended.Input_intf) = struct
           with module Types := Types
           with type 'a t := 'a Checked1.t
            and type run_state = Backend.Run_state.t
-           and type constraint_ = Backend_extended.Constraint.t )
+           and type constraint_ = Backend_intf.Constraint.t )
 
     type 'a t = 'a Types.Checked.t
 
@@ -667,7 +667,7 @@ module Make (Backend : Backend_extended.Input_intf) = struct
   end
 
   module Basic =
-    Make_basic (Backend_extended) (Types) (Checked_for_basic) (As_prover1)
+    Make_basic (Backend_intf) (Types) (Checked_for_basic) (As_prover1)
       (Runner0)
   include Basic
   module Number = Number.Make (Basic)
@@ -692,7 +692,7 @@ module Run = struct
 
   let active_functor_id () = List.hd_exn !active_counters
 
-  module Make_basic (Backend : Backend_extended.Input_intf) = struct
+  module Make_basic (Backend : Backend_intf.Input_intf) = struct
     module Snark = Make (Backend)
     open Backend.Run_state
     open Snark
@@ -1554,7 +1554,7 @@ module Run = struct
     let run_checked = run
   end
 
-  module Make (Backend : Backend_extended.Input_intf) = struct
+  module Make (Backend : Backend_intf.Input_intf) = struct
     module Basic = Make_basic (Backend)
     include Basic
     module Number = Number.Run.Make (Basic)

@@ -6,13 +6,13 @@ let eval_constraints = ref true
 
 let eval_constraints_ref = eval_constraints
 
-module T (Backend : Backend_extended.S) = struct
+module T (Backend : Backend_intf.S) = struct
   type 'a t =
     | Pure of 'a
     | Function of (Backend.Run_state.t -> Backend.Run_state.t * 'a)
 end
 
-module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
+module Simple_types (Backend : Backend_intf.S) = Types.Make_types (struct
   type field = Backend.Field.t
 
   type field_var = Backend.Cvar.t
@@ -23,7 +23,7 @@ module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
 end)
 
 module Make_checked
-    (Backend : Backend_extended.S)
+    (Backend : Backend_intf.S)
     (Types : Types.Types
                with type field = Backend.Field.t
                 and type field_var = Backend.Cvar.t
@@ -274,7 +274,7 @@ module type Run_extras = sig
 end
 
 module Make
-    (Backend : Backend_extended.S)
+    (Backend : Backend_intf.S)
     (Types : Types.Types
                with type field = Backend.Field.t
                 and type field_var = Backend.Cvar.t
