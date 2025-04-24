@@ -646,9 +646,9 @@ end
 module Make (Backend : Backend_intf.Input_intf) = struct
   module Backend_intf = Backend_intf.Make (Backend)
   module Types = Runner.Simple_types (Backend_intf)
-  module Runner0 = Runner.Make (Backend_intf) (Types)
-  module Checked_runner = Runner0.Checked_runner
   module As_prover1 = As_prover.Make (Backend_intf) (Types)
+  module Runner0 = Runner.Make (Backend_intf) (Types) (As_prover1)
+  module Checked_runner = Runner0.Checked_runner
   module Checked1 =
     Checked.Make (Backend_intf) (Types) (Checked_runner) (As_prover1)
 

@@ -285,7 +285,8 @@ module Make
                 and type ('var, 'value) Typ.typ =
                  ('var, 'value) Simple_types(Backend).Typ.typ
                 and type ('request, 'compute) Provider.provider =
-                 ('request, 'compute) Simple_types(Backend).Provider.provider) =
+                 ('request, 'compute) Simple_types(Backend).Provider.provider) 
+    (As_prover : As_prover_intf.S with module Types := Types) =
 struct
   open Backend
 
@@ -297,7 +298,6 @@ struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  module As_prover = As_prover.Make (Backend) (Types)
   module Checked_runner = Make_checked (Backend) (Types) (As_prover)
 
   type run_state = Checked_runner.run_state
