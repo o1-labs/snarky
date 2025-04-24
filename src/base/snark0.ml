@@ -16,7 +16,7 @@ module Make_basic
                  with module Types := Types
                  with type run_state = Backend.Run_state.t
                   and type constraint_ = Backend.Constraint.t)
-    (As_prover : As_prover.Intf with module Types := Types)
+    (As_prover : As_prover_intf.S with module Types := Types)
     (Runner : Runner.S
                 with module Types := Types
                 with type constr := Backend.Constraint.t option
