@@ -1,14 +1,6 @@
 open Core_kernel
 module Bignum_bigint = Bigint
 
-(** Yojson-compatible JSON type. *)
-type 'a json =
-  [> `String of string
-  | `Assoc of (string * 'a json) list
-  | `List of 'a json list ]
-  as
-  'a
-
 module type Constraint_intf = sig
   type var
 
