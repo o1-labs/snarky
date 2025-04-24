@@ -303,9 +303,6 @@ module type Field_var_intf = sig
 
   type t
 
-  (** For debug purposes *)
-  val length : t -> int
-
   val var_indices : t -> int list
 
   (** Convert a {!type:t} value to its constituent constant and a list of

@@ -1,43 +1,3 @@
-module type Cvar_intf = sig
-  type field
-
-  type t [@@deriving sexp]
-
-  val length : t -> int
-
-  module Unsafe : sig
-    val of_index : int -> t
-  end
-
-  val eval : [ `Return_values_will_be_mutated of int -> field ] -> t -> field
-
-  val constant : field -> t
-
-  val to_constant_and_terms : t -> field option * (field * int) list
-
-  val add : t -> t -> t
-
-  val negate : t -> t
-
-  val scale : t -> field -> t
-
-  val sub : t -> t -> t
-
-  val linear_combination : (field * t) list -> t
-
-  val sum : t list -> t
-
-  val ( + ) : t -> t -> t
-
-  val ( - ) : t -> t -> t
-
-  val ( * ) : field -> t -> t
-
-  val var_indices : t -> int list
-
-  val to_constant : t -> field option
-end
-
 module type Constraint_intf = sig
   type var
 
@@ -67,7 +27,7 @@ module type S = sig
   val field_size : Bigint.t
 
   module Cvar :
-    Cvar_intf
+    Cvar.Intf
       with type field := Field.t
       and type t = Field.t Cvar.t
 
