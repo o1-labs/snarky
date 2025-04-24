@@ -1,7 +1,6 @@
 module As_prover = As_prover
 module Backend_extended = Backend_extended
 module Bigint_intf = Snarky_intf.Bigint_intf
-module Bin_prot_io = Bin_prot_io
 module Boolean = Boolean
 module Checked_intf = Checked_intf
 module Checked_runner = Checked_runner
