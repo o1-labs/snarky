@@ -643,7 +643,7 @@ end
 
 (** The main functor for the monadic interface.
     See [Run.Make] for the same thing but for the imperative interface. *)
-module Make (Backend : Backend_intf.S) = struct
+module Make (Backend : Backend_extended.Input_intf) = struct
   module Backend_extended = Backend_extended.Make (Backend)
   module Types = Runner.Simple_types (Backend_extended)
   module Runner0 = Runner.Make (Backend_extended) (Types)
@@ -692,7 +692,7 @@ module Run = struct
 
   let active_functor_id () = List.hd_exn !active_counters
 
-  module Make_basic (Backend : Backend_intf.S) = struct
+  module Make_basic (Backend : Backend_extended.Input_intf) = struct
     module Snark = Make (Backend)
     open Backend.Run_state
     open Snark
@@ -1554,7 +1554,7 @@ module Run = struct
     let run_checked = run
   end
 
-  module Make (Backend : Backend_intf.S) = struct
+  module Make (Backend : Backend_extended.Input_intf) = struct
     module Basic = Make_basic (Backend)
     include Basic
     module Number = Number.Run.Make (Basic)

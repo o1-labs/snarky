@@ -9,6 +9,26 @@ type 'a json =
   as
   'a
 
+module type Constraint_intf = sig
+  type var
+
+  type field
+
+  type t [@@deriving sexp]
+
+  val boolean : var -> t
+
+  val equal : var -> var -> t
+
+  val r1cs : var -> var -> var -> t
+
+  val square : var -> var -> t
+
+  val eval : t -> (var -> field) -> bool
+
+  val log_constraint : t -> (var -> field) -> string
+
+end
 
 module type Input_intf = sig
   module Field : Snarky_intf.Field.S
@@ -23,7 +43,7 @@ module type Input_intf = sig
       and type t = Field.t Cvar.t
 
   module Constraint :
-    Backend_intf.Constraint_intf
+    Constraint_intf
        with type var := Cvar.t
        and type field := Field.t
 
@@ -56,7 +76,7 @@ module type S = sig
        and type t = Field.t Cvar.t
 
   module Constraint :
-    Backend_intf.Constraint_intf
+    Constraint_intf
       with type var := Cvar.t
        and type field := Field.t
 
@@ -71,7 +91,7 @@ module type S = sig
        and type constraint_ := Constraint.t
 end
 
-module Make (Backend : Backend_intf.S) :
+module Make (Backend : Input_intf) :
   S
     with type Field.t = Backend.Field.t
      and type Field.Vector.t = Backend.Field.Vector.t

@@ -1,6 +1,5 @@
 module As_prover = Snarky_backendless.As_prover
 module Backend_extended = Snarky_backendless.Backend_extended
-module Backend_intf = Snarky_backendless.Backend_intf
 module Bigint_intf = Snarky_intf.Bigint_intf
 module Bin_prot_io = Snarky_backendless.Bin_prot_io
 module Boolean = Snarky_backendless.Boolean
