@@ -1,4 +1,4 @@
-module type Basic = sig
+module type S = sig
   module Types : Types.Types
 
   type 'a t = 'a Types.As_prover.t

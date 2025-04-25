@@ -33,7 +33,7 @@ module Make_checked
                  ('var, 'value, 'aux) Simple_types(Backend).Typ.typ'
                 and type ('var, 'value) Typ.typ =
                  ('var, 'value) Simple_types(Backend).Typ.typ)
-    (As_prover : As_prover_intf.Basic with module Types := Types) =
+    (As_prover : As_prover_intf.S with module Types := Types) =
 struct
   type run_state = Backend.Run_state.t
 
