@@ -667,9 +667,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     *)
     val project : bool list -> t
 
-    (** [project], but slow. Exposed for benchmarks. *)
-    val project_reference : bool list -> t
-
     (** Get the least significant bit of a field element. *)
     val parity : t -> bool
 

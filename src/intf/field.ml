@@ -63,7 +63,5 @@ module type Full = sig
 
   val unpack : t -> bool list
 
-  val project_reference : bool list -> t
-
   val project : bool list -> t
 end
