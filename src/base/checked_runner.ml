@@ -298,8 +298,7 @@ struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  module As_prover0 = As_prover0.Make (Backend) (Types)
-  module Checked_runner = Make_checked (Backend) (Types) (As_prover0)
+  module Checked_runner = Make_checked (Backend) (Types) (As_prover)
 
   type run_state = Checked_runner.run_state
 
