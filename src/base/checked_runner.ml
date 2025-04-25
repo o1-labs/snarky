@@ -285,7 +285,7 @@ module Make
                 and type ('var, 'value) Typ.typ =
                  ('var, 'value) Simple_types(Backend).Typ.typ
                 and type ('request, 'compute) Provider.provider =
-                 ('request, 'compute) Simple_types(Backend).Provider.provider) 
+                 ('request, 'compute) Simple_types(Backend).Provider.provider)
     (As_prover : As_prover_intf.S with module Types := Types) =
 struct
   open Backend
