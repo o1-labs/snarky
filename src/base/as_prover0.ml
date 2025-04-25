@@ -28,12 +28,6 @@ struct
 
   let run t tbl = t tbl
 
-  let get_state _tbl s = (s, s)
-
-  let set_state s _tbl _ = (s, ())
-
-  let modify_state f _tbl s = (f s, ())
-
   let map2 x y ~f tbl =
     let x = x tbl in
     let y = y tbl in
