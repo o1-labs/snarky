@@ -14,7 +14,7 @@ module type S = sig
   val read : ('var, 'value) Types.Typ.t -> 'var -> 'value t
 
   module Provider : sig
-    type 'a t
+    type 'a t := 'a Types.Provider.t
 
     val run :
       'a t -> (Types.field_var -> Types.field) -> Request.Handler.t -> 'a option
