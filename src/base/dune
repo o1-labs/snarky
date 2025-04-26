@@ -3,7 +3,7 @@
  (public_name snarky.backendless)
  (inline_tests)
  (libraries bitstring_lib core_kernel h_list interval_union snarky_intf
-   bignum.bigint)
+   bignum.bigint snarky_monad_lib)
  (modules_without_implementation run_state_intf)
  (preprocess
   (pps ppx_sexp_conv ppx_bin_prot ppx_let ppx_hash ppx_compare
