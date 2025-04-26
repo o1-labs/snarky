@@ -418,7 +418,7 @@ struct
     let%bind prev, prev_path =
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
-        As_prover.(
+        Impl.As_prover.(
           read (Address.typ ~depth) addr0 >>| fun addr -> Get_element addr)
     in
     let%bind () =
@@ -429,7 +429,7 @@ struct
     let%bind next_entry_hash = Elt.hash next in
     let%bind () =
       perform
-        (let open As_prover in
+        (let open Impl.As_prover in
         let open Let_syntax in
         let%map addr = read (Address.typ ~depth) addr0
         and next = read Elt.typ next in
@@ -449,7 +449,7 @@ struct
     let%bind prev, prev_path =
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
-        As_prover.(
+        Impl.As_prover.(
           map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a))
     in
     let%bind () =
@@ -466,7 +466,7 @@ struct
     and next_entry_hash = Elt.hash next
     and prev_path =
       request_witness (Path.typ ~depth)
-        As_prover.(
+        Impl.As_prover.(
           map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_path a))
     in
     let%bind () =
@@ -474,7 +474,7 @@ struct
     in
     let%bind () =
       perform
-        (let open As_prover in
+        (let open Impl.As_prover in
         let open Let_syntax in
         let%map addr = read (Address.typ ~depth) addr0
         and next = read Elt.typ next in
