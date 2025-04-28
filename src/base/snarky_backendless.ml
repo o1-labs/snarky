@@ -6,7 +6,6 @@ module Bigint_intf = Snarky_intf.Bigint_intf
 module Boolean = Boolean
 module Checked_intf = Checked_intf
 module Checked_runner = Checked_runner
-module Constraint = Constraint
 module Constraint_system = Constraint_system
 module Cvar = Cvar
 module Enumerable = Enumerable
