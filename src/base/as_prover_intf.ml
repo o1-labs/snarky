@@ -3,7 +3,7 @@ module type S = sig
 
   type 'a t = 'a Types.As_prover.t
 
-  include Monad_let.S with type 'a t := 'a t
+  include Snarky_monad_lib.Monad_let.S with type 'a t := 'a t
 
   val run : 'a t -> (Types.field_var -> Types.field) -> 'a
 

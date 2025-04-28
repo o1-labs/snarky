@@ -37,7 +37,7 @@ module type Checked_monad = sig
 
   type 'a t = 'a Types.Checked.t
 
-  include Monad_let.S with type 'a t := 'a t
+  include Snarky_monad_lib.Monad_let.S with type 'a t := 'a t
 end
 
 module Make
