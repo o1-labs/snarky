@@ -24,15 +24,11 @@ jobs:
           eval $(opam env)
           opam pin add . -y
           opam install odoc
-          make website
-          cd website/website
-          yarn
-          yarn build
-          pwd
-          ls
-          ls build
+          make ml-docs
+
       - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
+        if: github.ref == 'refs/heads/master'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./website/website/build/snarky
+          publish_dir: _build/default/_doc/_html
