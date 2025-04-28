@@ -2,7 +2,7 @@
  (name snarky_backendless)
  (public_name snarky.backendless)
  (inline_tests)
- (libraries bitstring_lib core_kernel h_list interval_union snarky_intf
+ (libraries bitstring_lib core_kernel h_list interval_union monad_lib snarky_intf
    bignum.bigint)
  (modules_without_implementation run_state_intf)
  (preprocess

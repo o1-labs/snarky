@@ -1,5 +1,6 @@
 open Base
 
+
 type ('var, 'field) basic = ..
 
 module Conv (F : sig
@@ -174,3 +175,25 @@ module T = struct
 end
 
 include T
+
+
+module type Intf = sig
+  type var
+
+  type field
+
+  type t [@@deriving sexp]
+
+  val boolean : var -> t
+
+  val equal : var -> var -> t
+
+  val r1cs : var -> var -> var -> t
+
+  val square : var -> var -> t
+
+  val eval : t -> (var -> field) -> bool
+
+  val log_constraint : t -> (var -> field) -> string
+
+end

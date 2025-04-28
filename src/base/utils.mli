@@ -3,7 +3,7 @@ module Runner = Checked_runner
 val set_eval_constraints : bool -> unit
 
 module Make : functor
-  (Backend : Backend_extended.S)
+  (Backend : Backend_intf.S)
   (Types : Types.Types
              with type field = Backend.Field.t
               and type field_var = Backend.Cvar.t)
@@ -11,7 +11,7 @@ module Make : functor
                with module Types := Types
                with type run_state = Backend.Run_state.t
                with type constraint_ = Backend.Constraint.t)
-  (As_prover : As_prover_intf.Basic with module Types := Types)
+  (As_prover : As_prover_intf.S with module Types := Types)
   (Typ : Snark_intf.Typ_intf
            with type field := Backend.Field.t
             and type field_var := Backend.Cvar.t

@@ -6,13 +6,13 @@ let eval_constraints = ref true
 
 let eval_constraints_ref = eval_constraints
 
-module T (Backend : Backend_extended.S) = struct
+module T (Backend : Backend_intf.S) = struct
   type 'a t =
     | Pure of 'a
     | Function of (Backend.Run_state.t -> Backend.Run_state.t * 'a)
 end
 
-module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
+module Simple_types (Backend : Backend_intf.S) = Types.Make_types (struct
   type field = Backend.Field.t
 
   type field_var = Backend.Cvar.t
@@ -23,7 +23,7 @@ module Simple_types (Backend : Backend_extended.S) = Types.Make_types (struct
 end)
 
 module Make_checked
-    (Backend : Backend_extended.S)
+    (Backend : Backend_intf.S)
     (Types : Types.Types
                with type field = Backend.Field.t
                 and type field_var = Backend.Cvar.t
@@ -33,7 +33,7 @@ module Make_checked
                  ('var, 'value, 'aux) Simple_types(Backend).Typ.typ'
                 and type ('var, 'value) Typ.typ =
                  ('var, 'value) Simple_types(Backend).Typ.typ)
-    (As_prover : As_prover_intf.Basic with module Types := Types) =
+    (As_prover : As_prover_intf.S with module Types := Types) =
 struct
   type run_state = Backend.Run_state.t
 
@@ -48,7 +48,7 @@ struct
   let eval (t : 'a t) : run_state -> run_state * 'a =
     match t with Pure a -> fun s -> (s, a) | Function g -> g
 
-  include Monad_let.Make (struct
+  include Monad_lib.Monad_let.Make (struct
     type nonrec 'a t = 'a t
 
     let return x : _ t = Pure x
@@ -274,7 +274,7 @@ module type Run_extras = sig
 end
 
 module Make
-    (Backend : Backend_extended.S)
+    (Backend : Backend_intf.S)
     (Types : Types.Types
                with type field = Backend.Field.t
                 and type field_var = Backend.Cvar.t
@@ -285,7 +285,8 @@ module Make
                 and type ('var, 'value) Typ.typ =
                  ('var, 'value) Simple_types(Backend).Typ.typ
                 and type ('request, 'compute) Provider.provider =
-                 ('request, 'compute) Simple_types(Backend).Provider.provider) =
+                 ('request, 'compute) Simple_types(Backend).Provider.provider) 
+    (As_prover : As_prover_intf.S with module Types := Types) =
 struct
   open Backend
 
@@ -297,8 +298,7 @@ struct
 
   let clear_constraint_logger () = constraint_logger := None
 
-  module As_prover0 = As_prover0.Make (Backend) (Types)
-  module Checked_runner = Make_checked (Backend) (Types) (As_prover0)
+  module Checked_runner = Make_checked (Backend) (Types) (As_prover)
 
   type run_state = Checked_runner.run_state
 

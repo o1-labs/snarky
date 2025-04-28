@@ -12,8 +12,14 @@ end)
 (Types : Types.Types
            with type field = Backend.Field.t
             and type field_var = Backend.Cvar.t
-            and type 'a As_prover.t = (Backend.Cvar.t -> Backend.Field.t) -> 'a) =
+            and type 'a As_prover.t = (Backend.Cvar.t -> Backend.Field.t) -> 'a) : As_prover_intf.S with module Types := Types =
 struct
+  module Types = Types
+  (**
+    `t` is a monad that has access to lookup table `tbl` with type `tbl : var -> field. In Haskell parlance,
+    `t` simply `Reader (var -> field)`.
+  *)
+
   type 'a t = 'a Types.As_prover.t
 
   let map t ~f tbl =
@@ -27,12 +33,6 @@ struct
   let return x _ = x
 
   let run t tbl = t tbl
-
-  let get_state _tbl s = (s, s)
-
-  let set_state s _tbl _ = (s, ())
-
-  let modify_state f _tbl s = (f s, ())
 
   let map2 x y ~f tbl =
     let x = x tbl in
@@ -49,7 +49,7 @@ struct
     let fields = Array.map ~f:tbl field_vars in
     value_of_fields (fields, aux)
 
-  include Monad_let.Make (struct
+  include Monad_lib.Monad_let.Make (struct
     type nonrec 'a t = 'a t
 
     let map = `Custom map

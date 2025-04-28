@@ -19,7 +19,7 @@ val set_eval_constraints : bool -> unit
 *)
 exception Runtime_error of string list * exn * string
 
-module Make (Backend : Backend_intf.S) :
+module Make (Backend : Backend_intf.Input_intf) :
   Snark_intf.S
     with type field = Backend.Field.t
      and type field_var = Backend.Cvar.t
@@ -29,7 +29,7 @@ module Make (Backend : Backend_intf.S) :
      and type Constraint.t = Backend.Constraint.t
 
 module Run : sig
-  module Make (Backend : Backend_intf.S) :
+  module Make (Backend : Backend_intf.Input_intf) :
     Snark_intf.Run
       with type field = Backend.Field.t
        and type field_var = Backend.Cvar.t
@@ -43,7 +43,3 @@ type ('field, 'field_var) m =
   (module Snark_intf.Run
      with type field = 'field
       and type field_var = 'field_var )
-
-val make :
-     (module Backend_intf.S with type Field.t = 'field)
-  -> ('field, 'field Cvar.t) m

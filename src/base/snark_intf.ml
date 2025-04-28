@@ -303,9 +303,6 @@ module type Field_var_intf = sig
 
   type t
 
-  (** For debug purposes *)
-  val length : t -> int
-
   val var_indices : t -> int list
 
   (** Convert a {!type:t} value to its constituent constant and a list of
@@ -612,16 +609,16 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 ]}
     *)
 
-    include Monad_let.S
+    include Monad_lib.Monad_let.S
 
     module List :
-      Monad_sequence.S
+      Monad_lib.Monad_sequence.S
         with type 'a monad := 'a t
          and type 'a t = 'a list
          and type boolean := Boolean.var
 
     module Array :
-      Monad_sequence.S
+      Monad_lib.Monad_sequence.S
         with type 'a monad := 'a t
          and type 'a t = 'a array
          and type boolean := Boolean.var
@@ -667,9 +664,6 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     *)
     val project : bool list -> t
 
-    (** [project], but slow. Exposed for benchmarks. *)
-    val project_reference : bool list -> t
-
     (** Get the least significant bit of a field element. *)
     val parity : t -> bool
 
@@ -705,7 +699,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
     type 'a as_prover = 'a t
 
-    include Monad_let.S with type 'a t := 'a t
+    include Monad_lib.Monad_let.S with type 'a t := 'a t
 
     (** Combine 2 {!type:As_prover.t} blocks using another function. *)
     val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
@@ -727,7 +721,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
       { public_inputs : Field.Vector.t; auxiliary_inputs : Field.Vector.t }
   end
 
-  module Let_syntax : Monad_let.Syntax2 with type ('a, 's) t := 'a Checked.t
+  module Let_syntax : Monad_lib.Monad_let.Syntax2 with type ('a, 's) t := 'a Checked.t
 
   (** Utility functions for dealing with lists of bits in the R1CS. *)
   module Bitstring_checked : sig
