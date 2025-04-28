@@ -1,4 +1,4 @@
-module As_prover0 = Snarky_backendless.As_prover0
+module As_prover = Snarky_backendless.As_prover
 module As_prover_intf = Snarky_backendless.As_prover_intf
 module Backend_extended = Snarky_backendless.Backend_extended
 module Backend_intf = Snarky_backendless.Backend_intf
