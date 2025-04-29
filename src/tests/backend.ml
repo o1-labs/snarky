@@ -71,7 +71,8 @@ end) : Snarky_intf.Field.S with type t = Bignum_bigint.t = struct
   let sqrt _ =
     failwith "sqrt not implemented, not possible for arbitrary finite fields"
 
-  let size_in_bits = Bignum_bigint.to_zarith_bigint P.characteristic |> Z.log2
+  let size_in_bits =
+    Bignum_bigint.to_zarith_bigint P.characteristic |> Z.numbits
 
   let print x = to_string x |> print_endline
 
@@ -122,7 +123,9 @@ end) :
   let of_data _ = failwith "Biginteger.of_data not implemented"
 end
 
-module Backend(P: sig val characteristic : Bignum_bigint.t end): Snarky.Backend_intf.S = struct
+module Backend (P : sig
+  val characteristic : Bignum_bigint.t
+end) : Snarky.Backend_intf.S = struct
   module Field = Fp (P)
   module Bigint = Biginteger (P)
 
@@ -175,7 +178,6 @@ module Backend(P: sig val characteristic : Bignum_bigint.t end): Snarky.Backend_
             (f x |> Field.to_string)
             (f y |> Field.to_string)
             (f z |> Field.to_string)
-
   end
 
   module R1CS_constraint_system = struct
@@ -219,7 +221,10 @@ module Backend(P: sig val characteristic : Bignum_bigint.t end): Snarky.Backend_
   end)
 end
 
-module Snark(P : sig val characteristic: Bignum_bigint.t end) = struct
+module Snark (P : sig
+  val characteristic : Bignum_bigint.t
+end) =
+struct
   module Backend = Backend (P)
   include Snarky.Snark.Make (Backend)
 end
