@@ -40,7 +40,7 @@ module Serialize = struct
 end
 
 module Fp (P : sig
-  val order : Bignum_bigint.t
+  val characteristic : Bignum_bigint.t
 end) : Snarky_intf.Field.S with type t = Bignum_bigint.t = struct
   type t = Bignum_bigint.t
 
@@ -52,30 +52,30 @@ end) : Snarky_intf.Field.S with type t = Bignum_bigint.t = struct
 
   let zero = of_int 0
 
-  let add x y = Bignum_bigint.(x + (y % P.order))
+  let add x y = Bignum_bigint.(x + (y % P.characteristic))
 
-  let sub x y = Bignum_bigint.(x - (y % P.order))
+  let sub x y = Bignum_bigint.(x - (y % P.characteristic))
 
-  let mul x y = Bignum_bigint.(x * y % P.order)
+  let mul x y = Bignum_bigint.(x * y % P.characteristic)
 
-  let inv x = Bignum_bigint.(inv_no_mod x P.order % P.order)
+  let inv x = Bignum_bigint.(inv_no_mod x P.characteristic % P.characteristic)
 
   let square x = mul x x
 
-  let equal x y = Bignum_bigint.(equal (x - (y % P.order)) (of_int 0))
+  let equal x y = Bignum_bigint.(equal (x - (y % P.characteristic)) (of_int 0))
 
   let is_square =
-    let euler = Bignum_bigint.((P.order - of_int 1) / of_int 2) in
+    let euler = Bignum_bigint.((P.characteristic - of_int 1) / of_int 2) in
     fun x -> Bignum_bigint.(equal (x ** euler) one)
 
   let sqrt _ =
     failwith "sqrt not implemented, not possible for arbitrary finite fields"
 
-  let size_in_bits = Bignum_bigint.to_zarith_bigint P.order |> Z.log2
+  let size_in_bits = Bignum_bigint.to_zarith_bigint P.characteristic |> Z.log2
 
   let print x = to_string x |> print_endline
 
-  let random _ = Bignum_bigint.(random P.order)
+  let random _ = Bignum_bigint.(random P.characteristic)
 
   module Vector = struct
     type elt = t
@@ -93,7 +93,7 @@ end) : Snarky_intf.Field.S with type t = Bignum_bigint.t = struct
 end
 
 module Biginteger (P : sig
-  val order : Bignum_bigint.t
+  val characteristic : Bignum_bigint.t
 end) :
   Snarky_intf.Bigint_intf.Extended
     with type t = Bignum_bigint.t
@@ -116,21 +116,17 @@ end) :
   let of_decimal_string = of_numeral ~base:10
 
   let length_in_bytes =
-    let max = Bignum_bigint.(P.order - of_int 1) in
+    let max = Bignum_bigint.(P.characteristic - of_int 1) in
     Bignum_bigint.to_zarith_bigint max |> Z.numbits |> fun x -> x / 8
 
   let of_data _ = failwith "Biginteger.of_data not implemented"
 end
 
-module Backend : Snarky.Backend_intf.S = struct
-  module P = struct
-    let order = Bignum_bigint.of_int 5
-  end
-
+module Backend(P: sig val characteristic : Bignum_bigint.t end): Snarky.Backend_intf.S = struct
   module Field = Fp (P)
   module Bigint = Biginteger (P)
 
-  let field_size = P.order
+  let field_size = P.characteristic
 
   module Cvar = Snarky.Cvar.Make (Field)
 
@@ -162,8 +158,6 @@ module Backend : Snarky.Backend_intf.S = struct
       | R1CS (x, y, z) ->
           Field.mul (f x) (f y) == f z
 
-    (* This is a placeholder for the actual logging function *)
-
     let log_constraint (t : t) (f : Field.t Snarky.Cvar.t -> Field.t) : string =
       match t with
       | Boolean x ->
@@ -182,9 +176,6 @@ module Backend : Snarky.Backend_intf.S = struct
             (f y |> Field.to_string)
             (f z |> Field.to_string)
 
-    let t_of_sexp _ = failwith "t_of_sexp not implemented"
-
-    let sexp_of_t _ = failwith "sexp_of_t not implemented"
   end
 
   module R1CS_constraint_system = struct
@@ -228,6 +219,7 @@ module Backend : Snarky.Backend_intf.S = struct
   end)
 end
 
-module Snark = struct
+module Snark(P : sig val characteristic: Bignum_bigint.t end) = struct
+  module Backend = Backend (P)
   include Snarky.Snark.Make (Backend)
 end

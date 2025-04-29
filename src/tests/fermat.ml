@@ -44,6 +44,9 @@ module Make (Impl : Snarky.Snark_intf.S) = struct
     in
     go Impl.Field.one Int.(k - 1)
 
+
+  let cube z = Impl.Field.(z * z * z)
+
   let cubic_root y_cubed =
     let p = Impl.Field.size in
     let k =
@@ -52,31 +55,49 @@ module Make (Impl : Snarky.Snark_intf.S) = struct
     in
     pow y_cubed k
 
-  let circuit a c =
+  let circuit ((a,c) : Impl.field_var * Impl.field_var): unit Impl.Checked.t =
     let open Impl.Checked.Let_syntax in
+    let open Impl.Field.Checked in
     let%bind b =
       Impl.exists
         ~compute:
           Impl.As_prover.(
             map2 (read_var a) (read_var c) ~f:(fun a c ->
-                let cube z =
-                  pow z (Impl.Bigint.of_bignum_bigint (Bigint.of_int 3))
-                in
                 cubic_root Impl.Field.(cube c - cube a) ))
         Impl.Typ.field
     in
     let cube z = Impl.Field.Checked.(mul z z >>= fun z2 -> mul z2 z) in
-    Impl.Field.Checked.(
-      cube a
-      >>= fun a ->
-      cube b >>= fun b -> cube c >>= fun c -> Assert.equal (a + b) c)
+      let%bind a_cubed = cube a in
+      let%bind b_cubed = cube b in
+      let%bind c_cubed = cube c in
+      Assert.equal (a_cubed + b_cubed) c_cubed
+
+
+  let generate_witness () =
+    let input_typ = Impl.Typ.tuple2 Impl.Field.typ Impl.Field.typ in
+    let return_typ = Impl.Typ.unit in
+    let compiled =
+      Impl.generate_witness ~input_typ ~return_typ circuit
+    in
+  
+    compiled (Impl.Field.one, Impl.Field.one) 
 end
 
 open Alcotest
 
-let factors_test () =
-  (* Your test code here *)
-  check bool "Test description" true true
+module Snark = struct 
+  module P = struct
+    let characteristic = Backend.Bignum_bigint.of_int 5
+  end
+
+  module Backend = Backend.Backend (P)
+  module Snarky = Snarky.Snark.Make (Backend)
+  module Circuit = Make (Snarky)
+end
+
+let fermat_test () =
+  let _ = Snark.Circuit.generate_witness () in
+  ()
 
 (* Export the test cases *)
-let test_cases = [ test_case "Test name" `Quick factors_test ]
+let test_cases = [ test_case "Test name" `Quick fermat_test ]
