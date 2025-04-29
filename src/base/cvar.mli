@@ -7,14 +7,14 @@ type 'f t =
 
 type 'f cvar = 'f t [@@deriving sexp]
 
-val to_constant_and_terms:
-  equal:('a -> 'a -> bool) ->
-  add:('a -> 'b -> 'a) ->
-  mul:('b -> 'b -> 'b) ->
-  zero:'a ->
-  one:'b ->
-  'b t ->
-  'a option * ('b * int) list
+val to_constant_and_terms :
+     equal:('a -> 'a -> bool)
+  -> add:('a -> 'b -> 'a)
+  -> mul:('b -> 'b -> 'b)
+  -> zero:'a
+  -> one:'b
+  -> 'b t
+  -> 'a option * ('b * int) list
 
 module type Intf = sig
   type field
@@ -52,11 +52,11 @@ module type Intf = sig
   val var_indices : t -> int list
 
   val to_constant : t -> field option
-
 end
 
 module Unsafe : sig
   val of_index : int -> 'field t
 end
 
-module Make (Field : Snarky_intf.Field.Extended) : Intf with type field := Field.t
+module Make (Field : Snarky_intf.Field.Extended) :
+  Intf with type field := Field.t
