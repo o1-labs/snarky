@@ -46,15 +46,15 @@ end) : Snarky_intf.Field.S with type t = Bignum_bigint.t = struct
 
   include Serialize
 
-  let of_int = Bignum_bigint.of_int
+  let of_int n = Bignum_bigint.(of_int n % P.characteristic)
 
   let one = of_int 1
 
   let zero = of_int 0
 
-  let add x y = Bignum_bigint.(x + (y % P.characteristic))
+  let add x y = Bignum_bigint.((x + y) % P.characteristic)
 
-  let sub x y = Bignum_bigint.(x - (y % P.characteristic))
+  let sub x y = Bignum_bigint.((x - y) % P.characteristic)
 
   let mul x y = Bignum_bigint.(x * y % P.characteristic)
 
@@ -62,11 +62,11 @@ end) : Snarky_intf.Field.S with type t = Bignum_bigint.t = struct
 
   let square x = mul x x
 
-  let equal x y = Bignum_bigint.(equal (x - (y % P.characteristic)) (of_int 0))
+  let equal x y = Bignum_bigint.(equal ((x - y) % P.characteristic) (of_int 0))
 
   let is_square =
     let euler = Bignum_bigint.((P.characteristic - of_int 1) / of_int 2) in
-    fun x -> Bignum_bigint.(equal (x ** euler) one)
+    fun x -> Bignum_bigint.(equal ((x ** euler) % P.characteristic) (of_int 1))
 
   let sqrt _ =
     failwith "sqrt not implemented, not possible for arbitrary finite fields"
@@ -107,14 +107,15 @@ end) :
 
   let test_bit x = Z.testbit (Bignum_bigint.to_zarith_bigint x)
 
-  let to_field x = x
+  let to_field x = Bignum_bigint.(x % P.characteristic)
 
   let compare = Bignum_bigint.compare
 
   let of_numeral x ~base =
     Z.of_string_base base x |> Bignum_bigint.of_zarith_bigint
 
-  let of_decimal_string = of_numeral ~base:10
+  let of_decimal_string x =
+    Bignum_bigint.(of_numeral ~base:10 x % P.characteristic)
 
   let length_in_bytes =
     let max = Bignum_bigint.(P.characteristic - of_int 1) in
