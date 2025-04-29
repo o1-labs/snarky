@@ -96,7 +96,7 @@ module Make (Backend : Backend_intf.S) :
       let n = Bigint.of_field x in
       List.init size_in_bits ~f:(fun i -> Bigint.test_bit n i)
 
-    let project_reference =
+    let project =
       let rec go x acc = function
         | [] ->
             acc
@@ -104,30 +104,6 @@ module Make (Backend : Backend_intf.S) :
             go (Field.add x x) (if b then Field.add acc x else acc) bs
       in
       fun bs -> go Field.one Field.zero bs
-
-    let _project bs =
-      (* todo: 32-bit and ARM support. basically this code needs to always match the loop in the C++ of_data implementation. *)
-      assert (Sys.word_size = 64 && not Sys.big_endian) ;
-      let chunks_of n xs =
-        List.groupi ~break:(fun i _ _ -> Int.equal (i mod n) 0) xs
-      in
-      let chunks64 = chunks_of 64 bs in
-      let z = Char.of_int_exn 0 in
-      let arr =
-        Bigstring.init (8 * Backend.Bigint.length_in_bytes) ~f:(fun _ -> z)
-      in
-      List.(
-        iteri ~f:(fun i elt ->
-            Bigstring.set_int64_t_le arr ~pos:(i * 8)
-              Int64.(
-                foldi ~init:zero
-                  ~f:(fun i acc el ->
-                    acc + if el then shift_left one i else zero )
-                  elt) ))
-        chunks64 ;
-      Backend.Bigint.(of_data arr ~bitcount:(List.length bs) |> to_field)
-
-    let project = project_reference
 
     let compare t1 t2 = Bigint.(compare (of_field t1) (of_field t2))
 
@@ -143,15 +119,6 @@ module Make (Backend : Backend_intf.S) :
     let sexp_of_t = Fn.compose Bignum_bigint.sexp_of_t to_bignum_bigint
 
     let t_of_sexp = Fn.compose of_bignum_bigint Bignum_bigint.t_of_sexp
-
-    let%test_unit "project correctness" =
-      Quickcheck.test
-        Quickcheck.Generator.(
-          small_positive_int >>= fun x -> list_with_length x bool)
-        ~f:(fun bs ->
-          [%test_eq: string]
-            (project bs |> to_string)
-            (project_reference bs |> to_string) )
 
     let ( + ) = add
 

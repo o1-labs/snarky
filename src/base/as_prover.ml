@@ -43,7 +43,7 @@ end)
     let fields = Array.map ~f:tbl field_vars in
     value_of_fields (fields, aux)
 
-  include Monad_let.Make (struct
+  include Snarky_monad_lib.Monad_let.Make (struct
     type nonrec 'a t = 'a t
 
     let map = `Custom map

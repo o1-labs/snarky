@@ -122,7 +122,7 @@ struct
       (bits, `Success success)
 
     module List =
-      Monad_sequence.List
+      Snarky_monad_lib.Monad_sequence.List
         (Checked)
         (struct
           type t = Boolean.var
@@ -131,7 +131,7 @@ struct
         end)
 
     module Array =
-      Monad_sequence.Array
+      Snarky_monad_lib.Monad_sequence.Array
         (Checked)
         (struct
           type t = Boolean.var
