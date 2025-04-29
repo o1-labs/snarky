@@ -986,8 +986,6 @@ module Run = struct
 
       type nonrec t = t
 
-      let length = length
-
       let var_indices = var_indices
 
       let to_constant_and_terms = to_constant_and_terms

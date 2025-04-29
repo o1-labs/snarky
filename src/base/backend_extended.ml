@@ -20,10 +20,7 @@ module type S = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
-  module Cvar :
-    Backend_intf.Cvar_intf
-      with type field := Field.t
-       and type t = Field.t Cvar.t
+  module Cvar : Cvar.Intf with type field := Field.t and type t = Field.t Cvar.t
 
   module Constraint : sig
     type t [@@deriving sexp]
