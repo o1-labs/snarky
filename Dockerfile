@@ -12,16 +12,16 @@ RUN sudo apt-get install -y \
     libssl-dev \
     m4
 
-# Create a volume we can work in. For initial build, 
-# we'll copy the local context. To update the snarky 
-# library itself later, bind mount your updated source 
+# Create a volume we can work in. For initial build,
+# we'll copy the local context. To update the snarky
+# library itself later, bind mount your updated source
 # over this and run the build again.
 COPY . /source
 RUN sudo chown -R opam:opam /source
 VOLUME /source
 
 # Move to a newer version of OCaml and install dune.
-RUN eval "$(opam config env)" 
+RUN eval "$(opam config env)"
 RUN opam update -y
 RUN opam upgrade -y
 RUN opam install dune
