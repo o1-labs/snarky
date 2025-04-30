@@ -1,4 +1,4 @@
-module type Basic = sig
+module type S = sig
   module Types : Types.Types
 
   type 'a t = 'a Types.As_prover.t
@@ -14,7 +14,7 @@ module type Basic = sig
   val read : ('var, 'value) Types.Typ.t -> 'var -> 'value t
 
   module Provider : sig
-    type 'a t
+    type 'a t := 'a Types.Provider.t
 
     val run :
       'a t -> (Types.field_var -> Types.field) -> Request.Handler.t -> 'a option
