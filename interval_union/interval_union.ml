@@ -17,9 +17,6 @@ module Interval = struct
     let%bind x = Int.gen_incl Int.min_value Int.max_value_30_bits in
     let%map y = Int.gen_incl x Int.max_value_30_bits in
     (x, y)
-
-  let%test_unit "gen is correct" =
-    Quickcheck.test gen ~f:(fun (x, y) -> assert (x <= y))
 end
 
 (* Simplest possible implementation. Should be an increasing list of
@@ -124,34 +121,9 @@ let gen_from ?(min_size = 0) start =
 
 let gen = gen_from Int.min_value
 
-let%test_unit "check invariant" = Quickcheck.test gen ~f:invariant
-
 let gen_disjoint_pair =
   let open Quickcheck.Generator.Let_syntax in
   let%bind t1 = gen in
   let y = List.last_exn t1 |> snd in
   let%map t2 = gen_from y in
   (t1, t2)
-
-let%test_unit "canonicalize" =
-  assert (equal (canonicalize [ (1, 2); (2, 3) ]) [ (1, 3) ])
-
-let%test_unit "disjoint union doesn't care about order" =
-  Quickcheck.test gen_disjoint_pair ~f:(fun (a, b) ->
-      assert (equal (disjoint_union_exn a b) (disjoint_union_exn b a)) )
-
-let%test_unit "check invariant on disjoint union" =
-  Quickcheck.test gen_disjoint_pair ~f:(fun (a, b) ->
-      invariant (disjoint_union_exn a b) )
-
-let%test_unit "disjoint_union works with holes" =
-  let gen =
-    let open Quickcheck.Generator.Let_syntax in
-    let s = 1000000 in
-    let%bind y0 = Int.gen_incl 0 s in
-    let%bind y1 = Int.gen_incl (y0 + 1) (y0 + s) in
-    let%bind y2 = Int.gen_incl (y1 + 1) (y1 + s) in
-    let%bind y3 = Int.gen_incl (y2 + 1) (y2 + s) in
-    return (of_interval (y1, y2), of_intervals_exn [ (y0, y1); (y2, y3) ])
-  in
-  Quickcheck.test gen ~f:(fun (x, y) -> invariant (disjoint_union_exn x y))

@@ -30,7 +30,7 @@ jobs:
         run: |
           eval $(opam env)
           opam update
-          opam pin add . -y
+          opam pin add . -y --with-test
 
       - name: Tests
         run: |
