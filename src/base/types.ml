@@ -1,7 +1,3 @@
-module As_prover = struct
-  type ('a, 'f) t = ('f Cvar.t -> 'f) -> 'a
-end
-
 module Provider = struct
   module T = struct
     (** The different ways to generate a value for the circuit witness.
