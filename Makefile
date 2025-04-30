@@ -1,38 +1,38 @@
+.PHONY: default
+default: build
 
-default : build
+.PHONY: build
+build:
+	@dune build @install
 
-build :
-	dune build @./install
+.PHONY: tests
+tests:
+	@dune runtest
 
-tests :
-	dune runtest .
+.PHONY: ml-docs
+ml-docs:
+	@dune build @doc
 
-ml-docs :
-	dune build @./doc
-
-website : ml-docs
+.PHONY: website
+website: ml-docs
 	./scripts/build-website.sh
 
-test-website-build :
+.PHONY: test-website-build
+test-website-build:
 	./scripts/test-website-build.sh
 
-publish-website : website
+.PHONY: publish-website
+publish-website: website
 	./scripts/publish-website.sh
 
+.PHONY: reformat
 reformat:
-	dune build @./fmt; dune promote
+	@dune fmt --auto-promote
 
+.PHONY: check-format
 check-format:
-	dune build @./fmt
+	@dune fmt
 
-docker :
+.PHONY: docker
+docker:
 	./rebuild-docker.sh snarky
-
-minikube :
-	./rebuild-minikube.sh snarky
-
-googlecloud :
-	./rebuild-googlecloud.sh snarky
-
-.PHONY : default build examples docker minikube googlecloud
-
