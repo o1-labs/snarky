@@ -1,4 +1,3 @@
 open Alcotest
-module Backend = Backend
 
-let () = run "Snarky tests" []
+let () = run "Snarky tests" [ ("Fermat tests", Fermat.test_cases) ]

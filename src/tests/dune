@@ -4,4 +4,4 @@
   (:standard -w -3))
  (libraries alcotest bignum core snarky snarky_intf)
  (preprocess
-  (pps ppx_here ppx_sexp_conv)))
+  (pps ppx_here ppx_let ppx_sexp_conv)))
