@@ -16,7 +16,7 @@ module Make_basic
                  with module Types := Types
                  with type run_state = Backend.Run_state.t
                   and type constraint_ = Backend.Constraint.t)
-    (As_prover : As_prover_intf.Basic with module Types := Types)
+    (As_prover : As_prover_intf.S with module Types := Types)
     (Runner : Runner.S
                 with module Types := Types
                 with type constr := Backend.Constraint.t option
@@ -58,8 +58,6 @@ struct
     include As_prover
 
     type 'a as_prover = 'a t
-
-    module Ref = Ref
   end
 
   module Handle = struct
@@ -648,9 +646,9 @@ end
 module Make (Backend : Backend_intf.S) = struct
   module Backend_extended = Backend_extended.Make (Backend)
   module Types = Runner.Simple_types (Backend_extended)
-  module Runner0 = Runner.Make (Backend_extended) (Types)
+  module As_prover1 = As_prover.Make (Backend_extended) (Types)
+  module Runner0 = Runner.Make (Backend_extended) (Types) (As_prover1)
   module Checked_runner = Runner0.Checked_runner
-  module As_prover1 = As_prover0.Make (Backend_extended) (Types)
   module Checked1 =
     Checked.Make (Backend_extended) (Types) (Checked_runner) (As_prover1)
 
