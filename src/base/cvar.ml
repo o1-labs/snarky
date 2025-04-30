@@ -42,6 +42,8 @@ module type Intf = sig
 
   val ( * ) : field -> t -> t
 
+  val to_json : t -> Yojson.Safe.t
+
   val var_indices : t -> int list
 
   val to_constant : t -> field option
@@ -147,6 +149,25 @@ module Make (Field : Snarky_intf.Field.Extended) :
   let ( * ) c x = scale x c
 
   let negate x = scale x neg_one
+
+  let to_json x =
+    let singleton = Map.singleton (module Int) in
+    let join = Map.merge_skewed ~combine:(fun ~key:_ -> Field.add) in
+    let rec go scale = function
+      | Constant f ->
+          singleton 0 (Field.mul scale f)
+      | Var i ->
+          singleton i scale
+      | Add (x, y) ->
+          join (go scale x) (go scale y)
+      | Scale (s, x) ->
+          go Field.(scale * s) x
+    in
+    let map = go Field.one x in
+    `Assoc
+      (List.filter_map (Map.to_alist map) ~f:(fun (i, f) ->
+           if Field.(equal f zero) then None
+           else Some (Int.to_string i, `String (Field.to_string f)) ) )
 
   let var_indices t =
     let _, terms = to_constant_and_terms t in

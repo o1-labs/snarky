@@ -49,6 +49,8 @@ module type Intf = sig
 
   val ( * ) : field -> t -> t
 
+  val to_json : t -> Yojson.Safe.t
+
   val var_indices : t -> int list
 
   val to_constant : t -> field option
