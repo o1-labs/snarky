@@ -9,6 +9,48 @@ type 'f t =
 
 type 'f cvar = 'f t [@@deriving sexp]
 
+module type Intf = sig
+  type field
+
+  type t = field cvar [@@deriving sexp]
+
+  module Unsafe : sig
+    val of_index : int -> t
+  end
+
+  val eval : [ `Return_values_will_be_mutated of int -> field ] -> t -> field
+
+  val constant : field -> t
+
+  val to_constant_and_terms : t -> field option * (field * int) list
+
+  val add : t -> t -> t
+
+  val negate : t -> t
+
+  val scale : t -> field -> t
+
+  val sub : t -> t -> t
+
+  val linear_combination : (field * t) list -> t
+
+  val sum : t list -> t
+
+  val ( + ) : t -> t -> t
+
+  val ( - ) : t -> t -> t
+
+  val ( * ) : field -> t -> t
+
+  val var_indices : t -> int list
+
+  val to_constant : t -> field option
+end
+
+module Unsafe = struct
+  let of_index v = Var v
+end
+
 let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
   let rec go scale constant terms = function
     | Constant c ->
@@ -26,18 +68,11 @@ let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
     let c = if equal c zero then None else Some c in
     (c, ts)
 
-module Unsafe = struct
-  let of_index v = Var v
-end
-
-module Make (Field : Snarky_intf.Field.Extended) = struct
+module Make (Field : Snarky_intf.Field.Extended) :
+  Intf with type field := Field.t = struct
   type t = Field.t cvar [@@deriving sexp]
 
-  let length _ = failwith "TODO"
-
   module Unsafe = Unsafe
-
-  let scratch = Field.of_int 0
 
   let eval (`Return_values_will_be_mutated context) t0 =
     let open Field in
@@ -64,21 +99,8 @@ module Make (Field : Snarky_intf.Field.Extended) = struct
   let constant c = Constant c
 
   let to_constant_and_terms =
-    let rec go scale constant terms = function
-      | Constant c ->
-          (Field.add constant (Field.mul scale c), terms)
-      | Var v ->
-          (constant, (scale, v) :: terms)
-      | Scale (s, t) ->
-          go (Field.mul s scale) constant terms t
-      | Add (x1, x2) ->
-          let c1, terms1 = go scale constant terms x1 in
-          go scale c1 terms1 x2
-    in
-    fun t ->
-      let c, ts = go Field.one Field.zero [] t in
-      let c = if Field.equal c Field.zero then None else Some c in
-      (c, ts)
+    to_constant_and_terms ~equal:Field.equal ~add:Field.add ~mul:Field.mul
+      ~zero:Field.zero ~one:Field.one
 
   let add x y =
     match (x, y) with
@@ -125,25 +147,6 @@ module Make (Field : Snarky_intf.Field.Extended) = struct
   let ( * ) c x = scale x c
 
   let negate x = scale x neg_one
-
-  let to_json x =
-    let singleton = Map.singleton (module Int) in
-    let join = Map.merge_skewed ~combine:(fun ~key:_ -> Field.add) in
-    let rec go scale = function
-      | Constant f ->
-          singleton 0 (Field.mul scale f)
-      | Var i ->
-          singleton i scale
-      | Add (x, y) ->
-          join (go scale x) (go scale y)
-      | Scale (s, x) ->
-          go Field.(scale * s) x
-    in
-    let map = go Field.one x in
-    `Assoc
-      (List.filter_map (Map.to_alist map) ~f:(fun (i, f) ->
-           if Field.(equal f zero) then None
-           else Some (Int.to_string i, `String (Field.to_string f)) ) )
 
   let var_indices t =
     let _, terms = to_constant_and_terms t in
