@@ -68,31 +68,30 @@ let to_constant_and_terms ~equal ~add ~mul ~zero ~one =
     let c = if equal c zero then None else Some c in
     (c, ts)
 
-module Make (Field : Snarky_intf.Field.Extended) :
-  Intf with type field := Field.t = struct
+module Make (Field : Snarky_intf.Field.S) : Intf with type field := Field.t =
+struct
   type t = Field.t cvar [@@deriving sexp]
 
   module Unsafe = Unsafe
 
   let eval (`Return_values_will_be_mutated context) t0 =
-    let open Field in
     let rec go = function
       | Constant c, Some scale ->
-          c * scale
+          Field.mul c scale
       | Constant c, None ->
           c
       | Var v, Some scale ->
-          context v * scale
+          Field.mul (context v) scale
       | Var v, None ->
           context v
       | Scale (s, t), Some scale ->
-          go (t, Some (scale * s))
+          go (t, Some (Field.mul scale s))
       | Scale (s, t), None ->
           go (t, Some s)
       | Add (t1, t2), Some scale ->
-          (go (t1, None) + go (t2, None)) * scale
+          Field.mul (Field.add (go (t1, None)) (go (t2, None))) scale
       | Add (t1, t2), None ->
-          go (t1, None) + go (t2, None)
+          Field.add (go (t1, None)) (go (t2, None))
     in
     go (t0, None)
 
