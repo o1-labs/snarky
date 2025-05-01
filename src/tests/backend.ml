@@ -39,48 +39,47 @@ module Serialize = struct
   let to_string = Bignum_bigint.to_string
 end
 
-(** Construct any prime field by supplying the characteristic 'p' of the field.
+(** Construct any prime field by supplying the order 'p' of the field.
     The implementation is via Bigint arithmetic, don't expect performance!
 *)
 
 module Fp (P : sig
-  val characteristic : Bignum_bigint.t
+  val order : Bignum_bigint.t
 end) : Snarky_intf.Field.S with type t = Bignum_bigint.t = struct
   type t = Bignum_bigint.t
 
   include Serialize
 
-  let of_int n = Bignum_bigint.(of_int n % P.characteristic)
+  let of_int n = Bignum_bigint.(of_int n % P.order)
 
   let one = of_int 1
 
   let zero = of_int 0
 
-  let add x y = Bignum_bigint.((x + y) % P.characteristic)
+  let add x y = Bignum_bigint.((x + y) % P.order)
 
-  let sub x y = Bignum_bigint.((x - y) % P.characteristic)
+  let sub x y = Bignum_bigint.((x - y) % P.order)
 
-  let mul x y = Bignum_bigint.(x * y % P.characteristic)
+  let mul x y = Bignum_bigint.(x * y % P.order)
 
-  let inv x = Bignum_bigint.(inv_no_mod x P.characteristic % P.characteristic)
+  let inv x = Bignum_bigint.(inv_no_mod x P.order % P.order)
 
   let square x = mul x x
 
-  let equal x y = Bignum_bigint.(equal ((x - y) % P.characteristic) (of_int 0))
+  let equal x y = Bignum_bigint.(equal ((x - y) % P.order) zero)
 
   let is_square =
-    let euler = Bignum_bigint.((P.characteristic - of_int 1) / of_int 2) in
-    fun x -> Bignum_bigint.(equal ((x ** euler) % P.characteristic) (of_int 1))
+    let euler = Bignum_bigint.((P.order - one) / of_int 2) in
+    fun x -> Bignum_bigint.(equal ((x ** euler) % P.order) one)
 
   let sqrt _ =
     failwith "sqrt not implemented, not possible for arbitrary finite fields"
 
-  let size_in_bits =
-    Bignum_bigint.to_zarith_bigint P.characteristic |> Z.numbits
+  let size_in_bits = Bignum_bigint.to_zarith_bigint P.order |> Z.numbits
 
   let print x = to_string x |> print_endline
 
-  let random _ = Bignum_bigint.(random P.characteristic)
+  let random _ = Bignum_bigint.(random P.order)
 
   module Vector = struct
     type elt = t
@@ -98,7 +97,7 @@ end) : Snarky_intf.Field.S with type t = Bignum_bigint.t = struct
 end
 
 module Biginteger (P : sig
-  val characteristic : Bignum_bigint.t
+  val order : Bignum_bigint.t
 end) :
   Snarky_intf.Bigint_intf.Extended
     with type t = Bignum_bigint.t
@@ -111,35 +110,34 @@ end) :
 
   let test_bit x = Z.testbit (Bignum_bigint.to_zarith_bigint x)
 
-  let to_field x = Bignum_bigint.(x % P.characteristic)
+  let to_field x = Bignum_bigint.(x % P.order)
 
   let compare = Bignum_bigint.compare
 
   let of_numeral x ~base =
     Z.of_string_base base x |> Bignum_bigint.of_zarith_bigint
 
-  let of_decimal_string x =
-    Bignum_bigint.(of_numeral ~base:10 x % P.characteristic)
+  let of_decimal_string x = Bignum_bigint.(of_numeral ~base:10 x % P.order)
 
   let length_in_bytes =
-    let max = Bignum_bigint.(P.characteristic - of_int 1) in
+    let max = Bignum_bigint.(P.order - one) in
     Bignum_bigint.to_zarith_bigint max |> Z.numbits |> fun x -> x / 8
 
   let of_data _ = failwith "Biginteger.of_data not implemented"
 end
 
 module Backend (P : sig
-  val characteristic : Bignum_bigint.t
+  val order : Bignum_bigint.t
 end) : Snarky.Backend_intf.S = struct
   module Field = Fp (P)
   module Bigint = Biginteger (P)
 
-  let field_size = P.characteristic
+  let field_size = P.order
 
   module Cvar = Snarky.Cvar.Make (Field)
 
   module Constraint = struct
-    (* This is the smallest type that allows us to meanigfully implement the interface *)
+    (* This is the smallest type that allows us to meaningfully implement the interface *)
     type t =
       | Boolean of Field.t Snarky.Cvar.t
       | Equal of Field.t Snarky.Cvar.t * Field.t Snarky.Cvar.t

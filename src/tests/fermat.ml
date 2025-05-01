@@ -71,33 +71,32 @@ module Make (Impl : Snarky.Snark_intf.S) = struct
     let input_typ = Impl.Field.typ in
     let return_typ = Impl.Typ.unit in
     let compiled = Impl.generate_witness ~input_typ ~return_typ circuit in
-
     compiled z
 end
 
 open Alcotest
 
-module Snark = struct
+module Fermat_snark = struct
   module P = struct
     (* IMPORTANT: Must true be that p == 2 (mod 3) *)
-    let characteristic = Backend.Bignum_bigint.of_int 41
+    let order = Backend.Bignum_bigint.of_int 41
   end
 
   module Backend = Backend.Backend (P)
-  module Snarky = Snarky.Snark.Make (Backend)
-  module Circuit = Make (Snarky)
+  module S = Snarky.Snark0.Make (Backend)
+  module Circuit = Make (S)
 end
 
 let fermat_test () =
-  let z = Snark.Backend.Field.random () in
-  let _ = Snark.Circuit.generate_witness z () in
+  let z = Fermat_snark.Backend.Field.random () in
+  let _ = Fermat_snark.Circuit.generate_witness z () in
   ()
 
 let cube_test () =
-  let a = Snark.Backend.Field.random () in
-  let a_cubed = Snark.Circuit.cube a in
-  let root = Snark.Circuit.cubic_root a_cubed in
-  check bool "Cube test" true (Snark.Backend.Field.equal a root)
+  let a = Fermat_snark.Backend.Field.random () in
+  let a_cubed = Fermat_snark.Circuit.cube a in
+  let root = Fermat_snark.Circuit.cubic_root a_cubed in
+  check bool "Cube test" true (Fermat_snark.Backend.Field.equal a root)
 
 let test_cases =
   [ test_case "Cube test" `Quick cube_test
