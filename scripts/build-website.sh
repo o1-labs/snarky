@@ -5,7 +5,7 @@ set -ex
 rm -rf website/website/pages/api || true
 cp -r _build/default/_doc/_html/ website/website/pages/api
 echo "* binary" > website/website/pages/api/.gitattributes
-rm website/website/pages/api/highlight.pack.js
+# rm website/website/pages/api/highlight.pack.js
 
 # Fix css and js URLs
 pushd website/website/pages/api;
