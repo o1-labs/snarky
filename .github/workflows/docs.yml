@@ -27,9 +27,6 @@ jobs:
           cd website/website
           yarn
           yarn build
-          pwd
-          ls
-          ls build
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
