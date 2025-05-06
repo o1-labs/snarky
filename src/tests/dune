@@ -1,6 +1,7 @@
-(library
+(test
  (name snarky_tests)
- (inline_tests)
- (libraries snarky)
+ (flags
+  (:standard -w -3))
+ (libraries alcotest bignum core snarky snarky_intf)
  (preprocess
-  (pps ppx_inline_test ppx_let)))
+  (pps ppx_here ppx_let ppx_sexp_conv)))

@@ -58,5 +58,4 @@ module Unsafe : sig
   val of_index : int -> 'field t
 end
 
-module Make (Field : Snarky_intf.Field.Extended) :
-  Intf with type field := Field.t
+module Make (Field : Snarky_intf.Field.S) : Intf with type field := Field.t
