@@ -28,6 +28,7 @@ jobs:
           yarn
           yarn build
       - name: Deploy
+        if: github.ref == 'refs/heads/master'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
