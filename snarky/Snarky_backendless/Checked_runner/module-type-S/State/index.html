@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>State (snarky.Snarky_backendless.Checked_runner.S.State)</title><meta charset="utf-8"/><link rel="stylesheet" href="../../../../../odoc.support/odoc.css"/><meta name="generator" content="odoc 2.4.4"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../../../../../odoc.support/highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body class="odoc"><nav class="odoc-nav"><a href="../index.html">Up</a> – <a href="../../../../index.html">snarky</a> &#x00BB; <a href="../../../index.html">Snarky_backendless</a> &#x00BB; <a href="../../index.html">Checked_runner</a> &#x00BB; <a href="../index.html">S</a> &#x00BB; State</nav><header class="odoc-preamble"><h1>Module <code><span>S.State</span></code></h1></header><div class="odoc-content"><div class="odoc-spec"><div class="spec value anchored" id="val-make"><a href="#val-make" class="anchor"></a><code><span><span class="keyword">val</span> make : 
+  <span><span class="label">num_inputs</span>:int <span class="arrow">&#45;&gt;</span></span>
+  <span><span class="label">input</span>:<span><a href="../Types/index.html#type-field">Types.field</a> <a href="../../../Run_state_intf/Vector/index.html#type-t">Run_state_intf.Vector.t</a></span> <span class="arrow">&#45;&gt;</span></span>
+  <span><span class="label">next_auxiliary</span>:<span>int <span class="xref-unresolved">Core_kernel</span>.ref</span> <span class="arrow">&#45;&gt;</span></span>
+  <span><span class="label">aux</span>:<span><a href="../Types/index.html#type-field">Types.field</a> <a href="../../../Run_state_intf/Vector/index.html#type-t">Run_state_intf.Vector.t</a></span> <span class="arrow">&#45;&gt;</span></span>
+  <span><span class="optlabel">?system</span>:<a href="../index.html#type-r1cs">r1cs</a> <span class="arrow">&#45;&gt;</span></span>
+  <span><span class="optlabel">?eval_constraints</span>:bool <span class="arrow">&#45;&gt;</span></span>
+  <span><span class="optlabel">?handler</span>:<a href="../../../Request/Handler/index.html#type-t">Request.Handler.t</a> <span class="arrow">&#45;&gt;</span></span>
+  <span><span class="label">with_witness</span>:bool <span class="arrow">&#45;&gt;</span></span>
+  <span><span class="optlabel">?log_constraint</span>:
+    <span>(<span><span class="optlabel">?at_label_boundary</span>:<span>(<span>[ `End <span>| `Start</span> ]</span> * string)</span> <span class="arrow">&#45;&gt;</span></span> <span><a href="../index.html#type-constr">constr</a> <span class="arrow">&#45;&gt;</span></span> unit)</span> <span class="arrow">&#45;&gt;</span></span>
+  <span>unit <span class="arrow">&#45;&gt;</span></span>
+  <a href="../index.html#type-run_state">run_state</a></span></code></div></div></div></body></html>

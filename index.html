@@ -1,29 +1,32 @@
-<!DOCTYPE html><html lang=""><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>Snarky · Write efficient, beautiful, safe zk-SNARK code</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="generator" content="Docusaurus"/><meta name="description" content="Write efficient, beautiful, safe zk-SNARK code"/><meta property="og:title" content="Snarky · Write efficient, beautiful, safe zk-SNARK code"/><meta property="og:type" content="website"/><meta property="og:url" content="https://o1-labs.github.io/snarky/"/><meta property="og:description" content="Write efficient, beautiful, safe zk-SNARK code"/><meta property="og:image" content="https://o1-labs.github.io/snarky/img/zklambda.png"/><meta name="twitter:card" content="summary"/><meta name="twitter:image" content="https://o1-labs.github.io/snarky/img/zklambda.png"/><link rel="shortcut icon" href="/snarky/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/atom-one-light.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><script src="/snarky/js/scrollSpy.js"></script><link rel="stylesheet" href="/snarky/css/main.css"/><script src="/snarky/js/codetabs.js"></script></head><body><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/snarky/"><img class="logo" src="/snarky/img/zklambda.svg" alt="Snarky"/><h2 class="headerTitleWithLogo">Snarky</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li class=""><a href="/snarky/docs/overview" target="_self">Docs</a></li><li class=""><a href="/snarky/api/snarky/Snarky/index" target="_self">API</a></li><li class=""><a href="/snarky/help" target="_self">Help</a></li></ul></nav></div></header></div></div><div class="navPusher"><div><div class="homeContainer lightBackground"><div class="homeSplashFade"><div class="wrapper homeWrapper"><div class="projectLogo"><img src="/snarky/img/zklambda.svg" alt="Project Logo"/></div><div class="inner"><h2 class="projectTitle">Snarky<small>Write efficient, beautiful, safe zk-SNARK code</small></h2><div class="section promoSection"><div class="promoRow"><div class="pluginRowBlock"><div class="pluginWrapper buttonWrapper"><a class="button" href="#quickstart">Quick Start</a></div></div></div></div></div></div></div></div><div class="container lightBackground paddingBottom paddingTop" id="codesample"><div class="wrapper"><div style="width:100%"><div id="codesample-blurb"><div><span><p><strong>Snarky</strong> lets you write zk-SNARKs as if you were writing ordinary code. It's easy to use, efficient, and comes with a bunch of pre-built functionality.</p>
-</span></div><div><span><p>It is modular over the backend SNARK library, and comes with backends from <a href="https://github.com/scipr-lab/libsnark">libsnark</a>.</p>
-</span></div></div><div id="codesample-code"><div><span><pre><code class="hljs css language-reasonml"><span class="hljs-keyword">module</span> M = Snarky.Snark.Run.<span class="hljs-constructor">Make(Backends.Mnt4.Default)</span>;
-<span class="hljs-keyword">open</span> M;
-
-<span class="hljs-comment">// Compute division by guessing the result and checking with a</span>
-<span class="hljs-comment">// multiplication</span>
-<span class="hljs-keyword">let</span> div =<span class="hljs-function"> (<span class="hljs-params">x</span>, <span class="hljs-params">y</span>) =&gt;</span> {
-  <span class="hljs-comment">// Non-deterministically choose a result</span>
-  <span class="hljs-keyword">let</span> z =
-    exists(<span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">Field</span>.</span></span>typ, ~compute=<span class="hljs-function"> <span class="hljs-params">()</span> =&gt;</span> {
-      <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">Field</span>.</span><span class="hljs-module"><span class="hljs-identifier">Constant</span>.</span><span class="hljs-module"><span class="hljs-identifier">Infix</span>.</span>(
-        read_var(x) <span class="hljs-operator">/</span> read_var(y))</span> <span class="hljs-comment">// How to actually compute the result</span>
-    });
-
-  <span class="hljs-keyword">assert</span><span class="hljs-constructor">_r1cs(<span class="hljs-params">z</span>, <span class="hljs-params">y</span>, <span class="hljs-params">x</span>)</span>; <span class="hljs-comment">// assert (z * y = x), so the result is correct</span>
-  z;
-};
-</code></pre>
-</span></div></div></div></div></div><div class="mainContainer"><div class="container paddingBottom paddingTop" id="quickstart"><div class="wrapper"><div style="text-align:center"><h2>Quick Start</h2></div><div><span><p>You can easily install snarky and all its dependencies with</p>
-</span></div><div><span><pre><code class="hljs css language-bash">bash &lt;(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-bash &lt;(curl -sL https://raw.githubusercontent.com/o1-labs/snarky/master/scripts/depends.sh)
-opam pin add git@github.com:o1-labs/snarky.git
-</code></pre>
-</span></div></div></div><div class="container paddingBottom paddingTop"><div class="wrapper"><div class="gridBlock"><div class="blockElement alignCenter fourByGridBlock"><div class="blockContent"><h2><div><span><p>Try it out</p>
-</span></div></h2><div><span><p>Check out out <a href="docs/try-it-out">this page</a> to get started with a simple snarky project.</p>
-</span></div></div></div><div class="blockElement alignCenter fourByGridBlock"><div class="blockContent"><h2><div><span><p>Examples</p>
-</span></div></h2><div><span><p>Operations on an <a href="https://github.com/o1-labs/snarky/blob/master/examples/elliptic_curve_operations/elliptic_curve_operations.re">elliptic curve</a></p>
-</span></div></div></div></div></div></div><div class="productShowcaseSection paddingBottom"><h2>Who is using Snarky?</h2><p>This project is used by</p><div class="logos"><a href="https://codaprotocol.com"><img src="/snarky/img/coda.svg" alt="Coda" title="Coda"/></a></div><div class="more-users"><a class="button" href="/snarky/users.html">More Snarky Users</a></div></div></div></div><footer class="nav-footer" id="footer"><section class="sitemap"><a href="/snarky/" class="nav-home"><img src="/snarky/img/zklambda.svg" alt="Snarky" width="66" height="58"/></a><div><h5>Docs</h5><a href="/snarky/docs/about.html">About</a><a href="/snarky/docs/about.html#getting-started">Getting started</a><a href="/snarky/api/snarky/Snarky/index.html">API Reference</a></div><div><h5>Community</h5><a href="/snarky/users.html">User Showcase</a><a href="http://stackoverflow.com/questions/tagged/snarky" target="_blank" rel="noreferrer noopener">Stack Overflow</a><a href="https://discord.gg/W6hBG59">Project Chat</a><a href="https://twitter.com/snarky_zk" target="_blank" rel="noreferrer noopener">Twitter</a></div><div><h5>More</h5><a href="/snarky/blog">Blog</a><a href="https://github.com/o1-labs/snarky">GitHub</a><a class="github-button" href="https://github.com/o1-labs/snarky" data-icon="octicon-star" data-count-href="/o1-labs/snarky/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a><script async="" defer="" id="github-bjs" src="https://buttons.github.io/buttons.js"></script></div></section><section class="copyright">Copyright © 2022 O(1) Labs</section></footer></div></body></html>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>index</title>
+    <link rel="stylesheet" href="./odoc.support/odoc.css"/>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  </head>
+  <body>
+    <main class="content">
+      <div class="by-name">
+      <h2>OCaml package documentation</h2>
+      <ol>
+      <li><a href="bitstring_lib/index.html">bitstring_lib</a></li>
+      <li><a href="fold_lib/index.html">fold_lib</a></li>
+      <li><a href="group_map/index.html">group_map</a></li>
+      <li><a href="h_list/index.html">h_list</a></li>
+      <li><a href="interval_union/index.html">interval_union</a></li>
+      <li><a href="ppx_snarky/index.html">ppx_snarky</a></li>
+      <li><a href="snarkette/index.html">snarkette</a></li>
+      <li><a href="snarky/index.html">snarky</a></li>
+      <li><a href="snarky_bench/index.html">snarky_bench</a></li>
+      <li><a href="snarky_curve/index.html">snarky_curve</a></li>
+      <li><a href="snarky_integer/index.html">snarky_integer</a></li>
+      <li><a href="snarky_signature/index.html">snarky_signature</a></li>
+      <li><a href="sponge/index.html">sponge</a></li>
+      <li><a href="tuple_lib/index.html">tuple_lib</a></li>
+      </ol>
+      </div>
+    </main>
+  </body>
+</html>
