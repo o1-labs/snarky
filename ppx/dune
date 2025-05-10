@@ -2,6 +2,6 @@
  (name ppx_snarky)
  (public_name ppx_snarky)
  (kind ppx_rewriter)
- (libraries ppxlib ppx_tools core_kernel)
+ (libraries core_kernel ppxlib)
  (preprocess
   (pps ppxlib.metaquot ppx_sexp_conv)))
