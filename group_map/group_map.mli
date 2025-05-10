@@ -46,7 +46,7 @@ module type S = sig
     -> 'f * 'f
 end
 
-module Bw19 : S with module Spec = Bw19.Spec
+module Bw19 : S with module Spec = Bw19.Spec and module Params = Bw19.Params
 
 module Spec : sig
   type 'f t = { a : 'f; b : 'f } [@@deriving fields, bin_io]

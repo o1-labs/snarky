@@ -2,8 +2,7 @@
  (name group_map)
  (public_name group_map)
  (preprocess
-  (pps ppx_jane ppx_deriving.eq))
- (inline_tests)
+  (pps ppx_deriving.eq ppx_jane))
  (libraries
   snarkette ; This is actually just needed in tests
   core_kernel))
