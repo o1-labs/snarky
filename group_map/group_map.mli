@@ -1,6 +1,7 @@
-(* Construction of Rational Points on Elliptic Curves over Finite Fields by Andrew Shallue and Christiaan E. van de Woestijne.
- * found at eg https://works.bepress.com/andrew_shallue/1/download/
- *)
+(** {{:https://link.springer.com/chapter/10.1007/11792086_36}Construction of
+Rational Points on Elliptic Curves over Finite Fields by Andrew Shallue and
+Christiaan E. van de Woestijne.}
+*)
 
 module Field_intf = Field_intf
 

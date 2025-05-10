@@ -1,4 +1,6 @@
-(* Based on this paper. https://eprint.iacr.org/2019/403 *)
+(** Based on the paper
+    {{:https://eprint.iacr.org/2019/403}Fast and simple constant-time hashing to the BLS12-381 elliptic curve}
+*)
 
 open Core_kernel
 
@@ -36,8 +38,8 @@ module Params = struct
     ; b = f b
     }
 
-  (* A deterministic function for constructing a valid choice of parameters for a
-     given field. *)
+  (** A deterministic function for constructing a valid choice of parameters for
+     a given field. *)
   let create (type t) (module F : Field_intf.S_unchecked with type t = t)
       { Spec.b } =
     let open F in

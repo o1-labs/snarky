@@ -1,8 +1,7 @@
-(*
-
-   This follows the approach of SvdW06 to construct a "near injection" from
+(* This follows the approach of SvdW06 to construct a "near injection" from
    a field into an elliptic curve defined over that field. WB19 is also a useful
-   reference that details several constructions which are more appropriate in other
+   reference that details several constructions which are more appropriate in
+   other
    contexts.
 
    Fix an elliptic curve E given by y^2 = x^3 + ax + b over a field "F"
@@ -37,8 +36,11 @@
    We will define a map of type `params -> (F -> V)`. Thus, fixing a choice of
    a value of type params, we obtain a map `F -> V` as desired.
 
-SvdW06: Shallue and van de Woestijne, "Construction of rational points on elliptic curves over finite fields." Proc. ANTS 2006. https://works.bepress.com/andrew_shallue/1/download/
-WB19: Riad S. Wahby and Dan Boneh, Fast and simple constant-time hashing to the BLS12-381 elliptic curve. https://eprint.iacr.org/2019/403
+    - SvdW06: {{:https://link.springer.com/chapter/10.1007/11792086_36}Shallue
+      and van de Woestijne, "Construction of rational points on elliptic curves
+      over finite fields." Proc. ANTS 2006.}
+    - {{:https://eprint.iacr.org/2019/403WB19}Riad S. Wahby and Dan Boneh, Fast
+      and simple constant-time hashing to the BLS12-381 elliptic curve.}
 *)
 
 (* we have φ(t) : F -> S
@@ -150,17 +152,15 @@ module Params = struct
     ; spec = { a = f a; b = f b }
     }
 
-  (* A deterministic function for constructing a valid choice of parameters for a
-     given field.
+  (** A deterministic function for constructing a valid choice of parameters for a
+      given field.
+      We start by finding the first `u` satisfying the constraints described
+      above, then find the first `y` satisyfing the condition described above.
+      The other values are derived from these two choices*.
 
-     We start by finding the first `u` satisfying the constraints described above,
-     then find the first `y` satisyfing the condition described above. The other
-     values are derived from these two choices*.
-
-     *Actually we have one bit of freedom in choosing `z` as z = sqrt(conic_c y^2 - conic_d),
-     since there are two square roots.
+      * Actually we have one bit of freedom in choosing `z` as z = sqrt(conic_c
+      y^2 - conic_d), since there are two square roots.
   *)
-
   let create (type t) (module F : Field_intf.S_unchecked with type t = t)
       ({ Spec.a; b } as spec) =
     let open F in
@@ -182,8 +182,9 @@ module Params = struct
           (* imeckler: I added this condition. It prevents the possibility of having
              a point (z, 0) on the conic, which is useful because in the map from the
              conic to S we divide by the "y" coordinate of the conic. It's not strictly
-             necessary when we have a random input in a large field, but it is still nice to avoid the
-             bad case in theory (and for the tests below with a small field). *) )
+             necessary when we have a random input in a large field, but it is
+             still nice to avoid the bad case in theory (and for the tests below
+             with a small field). *) )
     in
     (* The coefficients defining the conic z^2 + c y^2 = d
        in (15). *)
