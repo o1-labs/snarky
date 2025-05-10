@@ -99,6 +99,12 @@ struct
       constant params.u - temp
     in
     (x1, x2, x3)
+
+  let field_to_conic _ = failwith "Not implemented"
+
+  let conic_to_s _ = failwith "Not implemented"
+
+  let _s_to_v _ = failwith "Not implemented"
 end
 
 let to_group (type t) (module F : Field_intf.S_unchecked with type t = t)

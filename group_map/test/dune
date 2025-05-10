@@ -1,5 +1,5 @@
 (tests
- (names test_bw19)
+ (names test_bw19 test_group_map)
  (libraries alcotest core_kernel group_map snarkette)
  (preprocess
   (pps ppx_jane)))
