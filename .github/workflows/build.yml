@@ -13,6 +13,9 @@ jobs:
           - ubuntu-latest
         ocaml-version:
           - 4.14.0 # match mina's version
+          - 5.0
+          - 5.1
+          - 5.2
 
     runs-on: ${{ matrix.os }}
 
