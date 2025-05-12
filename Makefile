@@ -23,4 +23,4 @@ check-format:
 
 .PHONY: docker
 docker:
-	./rebuild-docker.sh snarky
+	./scripts/rebuild-docker.sh snarky
