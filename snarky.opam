@@ -28,6 +28,7 @@ depends: [
   "ppx_deriving" {>= "5.0"}
   "bisect_ppx" {>= "2.0.0"}
   "dune"                {build & >= "2.0"}
+  "alcotest"            {with-test}
 ]
 depopts: [
   "snarky_cuda"
