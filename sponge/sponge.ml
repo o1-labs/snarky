@@ -4,20 +4,6 @@ module Intf = Intf
 module Params = struct
   include Params
 
-  let bn128 = Constants.params_Bn128
-
-  let mnt4_298 = Constants.params_Mnt4_298
-
-  let mnt4_753 = Constants.params_Mnt4_753
-
-  let bn382_p = Constants.params_Bn382_p
-
-  let bn382_q = Constants.params_Bn382_q
-
-  let tweedle_p = Constants.params_Tweedle_p
-
-  let tweedle_q = Constants.params_Tweedle_q
-
   let pasta_p_legacy = Constants.params_Pasta_p_legacy
 
   let pasta_q_legacy = Constants.params_Pasta_q_legacy
@@ -50,44 +36,6 @@ module Make_operations (Field : Intf.Field) = struct
 end
 
 let m = 3
-
-module Bn382_inputs (Field : Intf.Field_mutable) = struct
-  let rounds_full = 8
-
-  let initial_ark = true
-
-  let rounds_partial = 30
-
-  module Field = Field
-
-  let alpha = 17
-
-  (* alpha = 17 *)
-  let to_the_alpha x =
-    let open Field in
-    let res = square x in
-    Mutable.square res ;
-    (* x^4 *)
-    Mutable.square res ;
-    (* x^8 *)
-    Mutable.square res ;
-    (* x^16 *)
-    res *= x ;
-    res
-
-  module Operations = struct
-    let add_assign ~state i x = Field.(state.(i) += x)
-
-    (* Sparse pseudo-MDS matrix *)
-    let apply_affine_map (_rows, c) v =
-      let open Field in
-      let res = [| v.(0) + v.(2); v.(0) + v.(1); v.(1) + v.(2) |] in
-      Array.iteri res ~f:(fun i ri -> ri += c.(i)) ;
-      res
-
-    let copy a = Array.map a ~f:(fun x -> Field.(x + zero))
-  end
-end
 
 module Rescue (Inputs : Intf.Inputs.Rescue) = struct
   (*

@@ -5,20 +5,6 @@ module Params : sig
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
-  val bn128 : string t
-
-  val bn382_p : string t
-
-  val bn382_q : string t
-
-  val mnt4_298 : string t
-
-  val mnt4_753 : string t
-
-  val tweedle_p : string t
-
-  val tweedle_q : string t
-
   val pasta_p_legacy : string t
 
   val pasta_q_legacy : string t
@@ -42,9 +28,6 @@ module Poseidon (Inputs : Intf.Inputs.Poseidon) :
 
 module Make_operations (Field : Intf.Field) :
   Intf.Operations with module Field := Field
-
-module Bn382_inputs (Field : Intf.Field_mutable) :
-  Intf.Inputs.Poseidon with module Field := Field
 
 module Make_hash (P : Intf.Permutation) :
   Intf.Hash with module State := State and module Field := P.Field
