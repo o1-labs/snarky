@@ -172,7 +172,7 @@ module Bit_sponge : sig
          and type t = (S.t, Bool.t) t
 
     (** Squeezes a field element from the sponge, bypassing the bit conversion.
-        This is useful when the caller knows they need a field element.
+        This is useful when the caller needs a field element.
     *)
     val squeeze_field : t -> Field.t
   end
