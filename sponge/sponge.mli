@@ -166,7 +166,7 @@ module Bit_sponge : sig
       Intf.Sponge
         with module State := State
          and module Field := Field
-         (* The digest is a list of booleans of a specified length. *)
+        (* The digest is a list of booleans of a specified length. *)
          and type digest := length:int -> Bool.t list
          and type input := Input.t
          and type t = (S.t, Bool.t) t
