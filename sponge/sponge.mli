@@ -1,4 +1,6 @@
-(* Defines the interfaces for sponge constructions. *)
+(* Defines the interfaces for sponge constructions.
+   https://en.wikipedia.org/wiki/Sponge_function
+*)
 module Intf = Intf
 
 (** Parameters for the sponge construction. *)
