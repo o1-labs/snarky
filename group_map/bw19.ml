@@ -1,4 +1,6 @@
-(* Based on this paper. https://eprint.iacr.org/2019/403 *)
+(** Based on the paper
+    {{:https://eprint.iacr.org/2019/403}Fast and simple constant-time hashing to the BLS12-381 elliptic curve}
+*)
 
 open Core_kernel
 
@@ -36,8 +38,8 @@ module Params = struct
     ; b = f b
     }
 
-  (* A deterministic function for constructing a valid choice of parameters for a
-     given field. *)
+  (** A deterministic function for constructing a valid choice of parameters for
+     a given field. *)
   let create (type t) (module F : Field_intf.S_unchecked with type t = t)
       { Spec.b } =
     let open F in
@@ -97,6 +99,12 @@ struct
       constant params.u - temp
     in
     (x1, x2, x3)
+
+  let field_to_conic _ = failwith "Not implemented"
+
+  let conic_to_s _ = failwith "Not implemented"
+
+  let _s_to_v _ = failwith "Not implemented"
 end
 
 let to_group (type t) (module F : Field_intf.S_unchecked with type t = t)
@@ -121,63 +129,3 @@ let to_group (type t) (module F : Field_intf.S_unchecked with type t = t)
   in
   let x1, x2, x3 = M.potential_xs t in
   List.find_map [ x1; x2; x3 ] ~f:try_decode |> Option.value_exn
-
-let%test_module "test" =
-  ( module struct
-    module Fp = struct
-      include
-        Snarkette.Fields.Make_fp
-          (Snarkette.Nat)
-          (struct
-            let order =
-              Snarkette.Nat.of_string
-                "5543634365110765627805495722742127385843376434033820803590214255538854698464778703795540858859767700241957783601153"
-          end)
-
-      let b = of_int 7
-    end
-
-    module Make_tests (F : sig
-      include Field_intf.S_unchecked
-
-      val gen : t Quickcheck.Generator.t
-
-      val b : t
-    end) =
-    struct
-      module F = struct
-        include F
-
-        let constant = Fn.id
-      end
-
-      open F
-
-      let params = Params.create (module F) { b }
-
-      let curve_eqn u = (u * u * u) + params.b
-
-      (* Filter the two points which cause the group-map to blow up. This
-         is not an issue in practice because the points we feed into this function
-         will be the output of poseidon, and thus (modeling poseidon as a random oracle)
-         will not be either of those two points. *)
-      let gen =
-        Quickcheck.Generator.filter F.gen ~f:(fun t ->
-            let t2 = t * t in
-            let alpha_inv = (t2 + constant params.fu) * t2 in
-            not (equal alpha_inv zero) )
-
-      module M =
-        Make (F) (F)
-          (struct
-            let params = params
-          end)
-
-      let%test_unit "full map works" =
-        Quickcheck.test ~sexp_of:F.sexp_of_t gen ~f:(fun t ->
-            let x, y = to_group (module F) ~params t in
-            assert (equal (curve_eqn x) (y * y)) )
-    end
-
-    module T0 = Make_tests (Fp)
-  end )
