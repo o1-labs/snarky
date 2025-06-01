@@ -31,7 +31,6 @@ val make :
   -> ?handler:Request.Handler.t
   -> with_witness:bool
   -> ?stack:string list
-  -> ?is_running:bool
   -> unit
   -> 'field t
 
@@ -70,9 +69,5 @@ val system : 'field t -> 'field Constraint_system.t option
 val handler : _ t -> Request.Handler.t
 
 val set_handler : 'field t -> Request.Handler.t -> 'field t
-
-val is_running : _ t -> bool
-
-val set_is_running : 'f t -> bool -> 'f t
 
 val next_auxiliary : _ t -> int
