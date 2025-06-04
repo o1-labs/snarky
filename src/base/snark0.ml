@@ -1148,6 +1148,8 @@ module Run = struct
       end
     end
 
+    let make_as_prover = As_prover.run_prover
+
     module Handle = struct
       type ('var, 'value) t = ('var, 'value) Handle.t
 
