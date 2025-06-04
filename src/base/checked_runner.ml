@@ -165,7 +165,12 @@ struct
         let stack = Run_state.stack s in
         Option.iter (Run_state.log_constraint s) ~f:(fun f ->
             f ~at_label_boundary:(`Start, lab) None ) ;
-        let s', y = Simple.eval (t ()) (Run_state.set_stack s (lab :: stack)) in
+        let s', y =
+          try Simple.eval (t ()) (Run_state.set_stack s (lab :: stack))
+          with e ->
+            fprintf stderr "with_label: failed in %s\n" lab ;
+            raise e
+        in
         Option.iter (Run_state.log_constraint s) ~f:(fun f ->
             f ~at_label_boundary:(`End, lab) None ) ;
         (Run_state.set_stack s' stack, y) )
