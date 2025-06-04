@@ -1116,52 +1116,43 @@ module Run = struct
     end
 
     module As_prover = struct
+      let global_tbl = ref None
+
       type 'a t = 'a
 
       type 'a as_prover = 'a t
 
-      let eval_as_prover f =
-        if
-          (Run_state.as_prover @@ Option.value_exn !state)
-          && (Run_state.has_witness @@ Option.value_exn !state)
-        then
-          let a = f (Runner.get_value @@ Option.value_exn !state) in
-          a
-        else failwith "Can't evaluate prover code outside an as_prover block"
+      let in_prover_block () = Option.is_some !global_tbl
 
-      let in_prover_block () = Run_state.as_prover @@ Option.value_exn !state
+      let read_var var = As_prover.read_var var (Option.value_exn !global_tbl)
 
-      let read_var var = eval_as_prover (As_prover.read_var var)
-
-      let read typ var = eval_as_prover (As_prover.read typ var)
+      let read typ var = As_prover.read typ var (Option.value_exn !global_tbl)
 
       include Field.Constant.T
+
+      let run_prover f tbl =
+        let cached_tbl = !global_tbl in
+        global_tbl := Some tbl ;
+        let a = f () in
+        global_tbl := cached_tbl ;
+        a
 
       module Ref = struct
         type 'a t = 'a As_prover_ref.t
 
-        let create f = run As_prover.(Ref.create (map (return ()) ~f))
+        let create f = run @@ As_prover.Ref.create (run_prover f)
 
-        let get r = eval_as_prover (As_prover.Ref.get r)
+        let get r = As_prover.Ref.get r (Option.value_exn !global_tbl)
 
-        let set r x = eval_as_prover (As_prover.Ref.set r x)
+        let set r x = As_prover.Ref.set r x (Option.value_exn !global_tbl)
       end
-
-      let run_prover f _tbl =
-        (* Allow for nesting of prover blocks, by caching the current value and
-           restoring it once we're done.
-        *)
-        let old = Run_state.as_prover @@ Option.value_exn !state in
-        Run_state.set_as_prover (Option.value_exn !state) true ;
-        let a = f () in
-        Run_state.set_as_prover (Option.value_exn !state) old ;
-        a
     end
 
     module Handle = struct
       type ('var, 'value) t = ('var, 'value) Handle.t
 
-      let value handle () = As_prover.eval_as_prover (Handle.value handle)
+      let value handle () =
+        Handle.value handle (Option.value_exn !As_prover.global_tbl)
 
       let var = Handle.var
     end
