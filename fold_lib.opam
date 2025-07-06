@@ -10,7 +10,7 @@ homepage: "https://github.com/o1labs/snarky"
 bug-reports: "https://github.com/o1labs/snarky/issues"
 depends: [
   "bisect_ppx" {with-test}
-  "core" {>= "v0.14" & < "v0.15"}
+  "core_kernel" {>= "v0.14" & < "v0.15"}
   "dune" {>= "3.0" & build}
   "ocaml" {>= "4.07.0"}
   "ppx_deriving"
