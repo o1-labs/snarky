@@ -9,6 +9,7 @@ license: "MIT"
 homepage: "https://github.com/o1labs/snarky"
 bug-reports: "https://github.com/o1labs/snarky/issues"
 depends: [
+  "alcotest" {with-test}
   "bisect_ppx" {with-test}
   "core_kernel" {>= "v0.14" & < "v0.15"}
   "dune" {build & >= "2.0"}

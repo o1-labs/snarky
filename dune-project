@@ -179,6 +179,7 @@
  (synopsis "Sponge construction for cryptographic hashing")
  (description "Sponge construction for cryptographic hashing")
  (depends
+  (alcotest :with-test)
   (bisect_ppx :with-test)
   (core_kernel (and (>= v0.14) (< v0.15)))
   (dune (and :build (>= 2.0)))
