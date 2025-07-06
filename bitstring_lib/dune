@@ -2,7 +2,6 @@
  (name bitstring_lib)
  (public_name bitstring_lib)
  (library_flags -linkall)
- (inline_tests)
  (libraries core_kernel tuple_lib)
  (preprocess
   (pps ppx_jane ppx_deriving.eq bisect_ppx -- --conditional))

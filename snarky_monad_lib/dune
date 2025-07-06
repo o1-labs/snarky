@@ -2,7 +2,6 @@
  (name snarky_monad_lib)
  (public_name snarky.monad_lib)
  (library_flags -linkall)
- (inline_tests)
  (libraries core_kernel)
  (preprocess
   (pps ppx_jane ppx_deriving.eq bisect_ppx -- --conditional))
