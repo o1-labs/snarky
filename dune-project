@@ -122,18 +122,6 @@
  (depopts snarky_cuda))
 
 (package
- (name snarky_bench)
- (synopsis "Benchmarking library for snarky")
- (description "Benchmarking library for snarky")
- (depends
-  (core (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
-  (ocaml (>= 4.07.0))
-   ppx_bench
-   ppx_jane
-   snarky))
-
-(package
  (name snarky_curve)
  (synopsis "Elliptic curve library for snarky")
  (description "Elliptic curve library for snarky")
