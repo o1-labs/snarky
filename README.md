@@ -74,7 +74,7 @@ val implied_root : Hash.var -> Boolean.var list -> Hash.var list -> (Hash.var, '
 ```
 The return type `(Hash.var, 'prover_state) Checked.t` indicates that the function
 returns a "checked computation" producing a variable containing a hash, and can be
-run by a prover with an arbitrary state type `'prover_state`. 
+run by a prover with an arbitrary state type `'prover_state`.
 
 Compare this definition to the following "unchecked" OCaml function (assuming a function `hash`):
 ```ocaml
@@ -95,7 +95,7 @@ let implied_root_unchecked entry_hash addr0 path0 =
 ;;
 ```
 The two obviously look very similar, but the first one can be run to generate an R1CS
-(and also an "auxiliary input") to verify that computation. 
+(and also an "auxiliary input") to verify that computation.
 
 ## Setting up Development Environment
 
