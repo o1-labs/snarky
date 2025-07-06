@@ -1,4 +1,4 @@
-(* Construction of Rational Points on Elliptic Curves over Finite Fields by Andrew Shallue and Christiaan E. van de Woestijne.
+(* Construction of Rational Points on Elliptic Curves over Finite Fields by Andrew Shallue and Christian E. van de Woestijne.
  * found at eg https://works.bepress.com/andrew_shallue/1/download/
  *)
 
