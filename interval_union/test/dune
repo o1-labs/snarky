@@ -1,6 +1,6 @@
 (tests
  (names test_interval_union)
- (libraries interval_union core_kernel alcotest)
  (package interval_union)
+ (libraries alcotest core_kernel interval_union)
  (preprocess
   (pps ppx_jane)))
