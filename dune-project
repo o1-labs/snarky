@@ -31,6 +31,7 @@
  (synopsis "A library for fold functions")
  (description "A library for fold functions")
  (depends
+  (alcotest :with-test)
   (bisect_ppx :with-test)
   (core_kernel (and (>= v0.14) (< v0.15)))
   (dune :build)
