@@ -19,7 +19,7 @@
  (description "A helper library for bitstrings in snarky")
  (depends
   bisect_ppx
-  (core (and (>= v0.14) (< v0.15)))
+  (core_kernel (and (>= v0.14) (< v0.15)))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
