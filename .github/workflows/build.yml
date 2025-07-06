@@ -24,7 +24,7 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
-          disable-cache: true
+          dune-cache: false
 
       - name: Build
         run: |
