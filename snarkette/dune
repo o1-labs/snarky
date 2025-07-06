@@ -2,7 +2,7 @@
  (inline_tests)
  (name snarkette)
  (public_name snarkette)
- (libraries tuple_lib fold_lib num core_kernel bignum)
+ (libraries tuple_lib fold_lib core_kernel bignum)
  (preprocess
   (pps ppx_jane ppx_deriving.eq ppx_deriving_yojson))
  (js_of_ocaml
