@@ -103,11 +103,11 @@ The two obviously look very similar, but the first one can be run to generate an
 # Install the OPAM package manager if it is not already installed.
 # Follow the official instructions: https://opam.ocaml.org/doc/Install.html
 
-# Create a local switch using OCaml version 4.14.0
-opam switch create ./ 4.14.0 -y 
+# Create a local switch using OCaml version 4.14.2
+opam switch create ./ 4.14.2 -y
 
 # Alternatively, create a named switch (e.g., "snarky") with the same version
-opam switch create snarky 4.14.0 -y
+opam switch create snarky 4.14.2 -y
 
 # Activate the switch in the current shell session
 eval $(opam env)

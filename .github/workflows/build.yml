@@ -12,7 +12,7 @@ jobs:
           - macos-latest
           - ubuntu-latest
         ocaml-version:
-          - 4.14.0 # match mina's version
+          - 4.14.2 # match mina's version
 
     runs-on: ${{ matrix.os }}
 
