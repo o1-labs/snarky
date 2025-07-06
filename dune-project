@@ -1,4 +1,4 @@
-(lang dune 2.0)
+(lang dune 3.0)
 (using menhir 2.0)
 
 (name snarky)
@@ -20,7 +20,7 @@
  (depends
   bisect_ppx
   (core (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
   ppx_jane
@@ -33,7 +33,7 @@
  (depends
   (bisect_ppx :with-test)
   (core (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
   ppx_jane))
@@ -44,7 +44,7 @@
  (description "A library for elliptic curve operations")
  (depends
   (core_kernel (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
   snarkette))
 
@@ -54,7 +54,7 @@
  (description "A heterogeneous list library")
  (depends
   (base (>= v0.14.3))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
   (ppxlib (>= 0.25.0))))
 
@@ -66,7 +66,7 @@
   (alcotest :with-test)
   (bisect_ppx :with-test)
   (core_kernel (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
   ppx_jane))
@@ -77,7 +77,7 @@
  (description "PPX extension for snarky")
  (depends
   (core (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
   ppxlib
   ppx_sexp_conv))
@@ -90,7 +90,7 @@
   (bisect_ppx :with-test)
   bignum
   (core_kernel (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   fold_lib
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -109,7 +109,7 @@
   bitstring_lib
   (bisect_ppx (>= 2.0.0))
   (core_kernel (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   fold_lib
   h_list
   interval_union
@@ -129,7 +129,7 @@
   (bisect_ppx :with-test)
   (core_kernel (and (>= v0.14) (< v0.15)))
    digestif
-  (dune (and :build (>= 2.0)))
+  (dune :build)
    group_map
   (ocaml (>= 4.07.0))
    ppx_deriving
@@ -143,7 +143,7 @@
  (depends
   (bisect_ppx :with-test)
   (core_kernel (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
    ppx_deriving
    ppx_jane
@@ -156,7 +156,7 @@
  (depends
   (bisect_ppx :with-test)
   (core_kernel (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
   ppx_jane
@@ -170,7 +170,7 @@
   (alcotest :with-test)
   (bisect_ppx :with-test)
   (core_kernel (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
   ppx_jane
@@ -183,7 +183,7 @@
  (depends
   (bisect_ppx :with-test)
   (core_kernel (and (>= v0.14) (< v0.15)))
-  (dune (and :build (>= 2.0)))
+  (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
   ppx_jane))

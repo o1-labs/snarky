@@ -11,13 +11,14 @@ bug-reports: "https://github.com/o1labs/snarky/issues"
 depends: [
   "bisect_ppx" {with-test}
   "core_kernel" {>= "v0.14" & < "v0.15"}
-  "dune" {build & >= "2.0"}
+  "dune" {>= "3.0" & build}
   "ocaml" {>= "4.07.0"}
   "ppx_deriving"
   "ppx_jane"
+  "odoc" {with-doc}
 ]
 build: [
-  ["dune" "subst"] {pinned}
+  ["dune" "subst"] {dev}
   [
     "dune"
     "build"

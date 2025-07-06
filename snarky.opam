@@ -15,7 +15,7 @@ depends: [
   "bitstring_lib"
   "bisect_ppx" {>= "2.0.0"}
   "core_kernel" {>= "v0.14" & < "v0.15"}
-  "dune" {build & >= "2.0"}
+  "dune" {>= "3.0" & build}
   "fold_lib"
   "h_list"
   "interval_union"
@@ -25,10 +25,11 @@ depends: [
   "ppx_snarky"
   "tuple_lib"
   "yojson" {>= "1.7.0" & < "1.8.0"}
+  "odoc" {with-doc}
 ]
 depopts: ["snarky_cuda"]
 build: [
-  ["dune" "subst"] {pinned}
+  ["dune" "subst"] {dev}
   [
     "dune"
     "build"
