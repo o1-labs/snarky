@@ -16,7 +16,7 @@
   So x^k is a cubic root of x.
 *)
 
-open Core
+open Core_kernel
 
 module Make (Impl : Snarky.Snark_intf.S) = struct
   type cube_root = Solve_cube_root of Impl.Field.t

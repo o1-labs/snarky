@@ -1,4 +1,4 @@
-open Core
+open Core_kernel
 module Bignum_bigint = Bigint
 
 let rec extended_euclidean a b =
