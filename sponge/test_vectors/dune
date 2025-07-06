@@ -6,6 +6,7 @@
 
 (rule
  (alias runtest)
+ (package sponge)
  (deps legacy.json kimchi.json)
  (action
   (run ./main.exe)))
