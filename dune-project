@@ -76,6 +76,7 @@
  (synopsis "PPX extension for snarky")
  (description "PPX extension for snarky")
  (depends
+  (core_kernel (and (>= v0.14) (< v0.15)))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppxlib
