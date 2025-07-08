@@ -1,5 +1,6 @@
 (library
- (inline_tests)
+ (inline_tests
+  (flags -verbose -show-counts))
  (name snarkette)
  (public_name snarkette)
  (libraries bignum core_kernel fold_lib tuple_lib)

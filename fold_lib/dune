@@ -2,7 +2,8 @@
  (name fold_lib)
  (public_name fold_lib)
  (library_flags -linkall)
- (inline_tests)
+ (inline_tests
+  (flags -verbose -show-counts))
  (libraries core_kernel)
  (preprocess
   (pps ppx_jane ppx_deriving.eq bisect_ppx -- --conditional))

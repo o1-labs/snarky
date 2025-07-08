@@ -1,5 +1,6 @@
 (test
  (name snarky_tests)
+ (package snarky)
  (flags
   (:standard -w -3))
  (libraries alcotest bignum core_kernel snarky snarky_intf)

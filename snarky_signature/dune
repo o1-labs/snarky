@@ -3,5 +3,4 @@
  (public_name snarky_signature)
  (preprocess
   (pps ppx_jane ppx_deriving.eq))
- (inline_tests)
  (libraries core_kernel))

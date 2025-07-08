@@ -1,11 +1,5 @@
-(executable
+(test
  (name main)
- (libraries sponge snarkette core_kernel))
-
-; run test vectors with `dune runtest`
-
-(rule
- (alias runtest)
+ (package sponge)
  (deps legacy.json kimchi.json)
- (action
-  (run ./main.exe)))
+ (libraries alcotest core_kernel snarkette sponge))
