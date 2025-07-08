@@ -1,0 +1,6 @@
+(test
+ (name test_fold_lib)
+ (package fold_lib)
+ (libraries alcotest core_kernel fold_lib)
+ (preprocess
+  (pps ppx_jane)))
