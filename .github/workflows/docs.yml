@@ -14,10 +14,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Use OCaml "4.14.2"
+      - name: Use OCaml "5.2.1"
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: "4.14.2"
+          ocaml-compiler: "5.2.1"
 
       - name: Build Documentation
         run: |
