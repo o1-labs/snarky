@@ -1,5 +1,5 @@
 module Bignum_bigint = Bigint
-open Core_kernel
+open Core
 
 let pow2 n = Bignum_bigint.(pow (of_int 2) (of_int n))
 

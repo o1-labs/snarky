@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 module type S = sig
   type 'a t [@@deriving bin_io, sexp, eq, compare]

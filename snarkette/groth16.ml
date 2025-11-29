@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 module type Backend_intf = sig
   module N : Nat_intf.S

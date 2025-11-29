@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 module Bignum_bigint = Bigint
 
 module type S = sig

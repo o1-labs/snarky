@@ -1,5 +1,6 @@
 module Make2
-    (M : Monad_let.S2) (T : sig
+    (M : Monad_let.S2)
+    (T : sig
       type t
     end) : Monad_let.S with type 'a t = ('a, T.t) M.t = struct
   type 'a t = ('a, T.t) M.t
@@ -24,7 +25,8 @@ module Make2
 end
 
 module Make3
-    (M : Monad_let.S3) (T : sig
+    (M : Monad_let.S3)
+    (T : sig
       type t1
 
       type t2

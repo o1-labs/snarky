@@ -16,7 +16,7 @@
   So x^k is a cubic root of x.
 *)
 
-open Core_kernel
+open Core
 
 module Make (Impl : Snarky.Snark_intf.S) = struct
   type cube_root = Solve_cube_root of Impl.Field.t
@@ -58,7 +58,7 @@ module Make (Impl : Snarky.Snark_intf.S) = struct
         ~compute:
           Impl.As_prover.(
             map2 (read_var x) (read_var z) ~f:(fun x z ->
-                cubic_root Impl.Field.(cube z - cube x) ))
+                cubic_root Impl.Field.(cube z - cube x) ) )
         Impl.Typ.field
     in
     let cube_var a = Impl.Field.Checked.(mul a a >>= mul a) in
@@ -114,9 +114,7 @@ let test_get_public_input_size () =
   let public_input_size_set_once =
     Fermat_snark.S.R1CS_constraint_system.get_public_input_size cs
   in
-  let public_input_size =
-    Core_kernel.Set_once.get_exn public_input_size_set_once [%here]
-  in
+  let public_input_size = Set_once.get_exn public_input_size_set_once [%here] in
   (* The Fermat circuit takes 1 public input (z) *)
   check int "Fermat circuit public input size" 1 public_input_size
 
@@ -127,7 +125,7 @@ let test_get_auxiliary_input_size () =
     Fermat_snark.S.R1CS_constraint_system.get_auxiliary_input_size cs
   in
   let auxiliary_input_size =
-    Core_kernel.Set_once.get_exn auxiliary_input_size_set_once [%here]
+    Set_once.get_exn auxiliary_input_size_set_once [%here]
   in
   (* The Fermat circuit has:
      - 2 witness variables (x, y)

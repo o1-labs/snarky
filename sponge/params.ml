@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 type 'a t = { mds : 'a array array; round_constants : 'a array array }
 [@@deriving bin_io]

@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 module Intf = struct
   module type S = sig
@@ -240,8 +240,7 @@ struct
     let hlist (type k_var k_value)
         (spec0 : (unit, unit, k_var, k_value) Data_spec.t) :
         ((unit, k_var) H_list.t, (unit, k_value) H_list.t) t =
-      let rec go :
-          type k_var k_value.
+      let rec go : type k_var k_value.
              (unit, unit, k_var, k_value) Data_spec.t
           -> ((unit, k_var) H_list.t, (unit, k_value) H_list.t) t =
        fun spec0 ->
@@ -351,13 +350,13 @@ struct
       hlist [ typ1; typ2; typ3; typ4 ]
       |> transport
            ~there:(fun (a, b, c, d) -> [ a; b; c; d ])
-           ~back:(fun ([ a; b; c; d ] :
-                        (unit, _ -> _ -> _ -> _ -> unit) H_list.t ) ->
+           ~back:(fun
+               ([ a; b; c; d ] : (unit, _ -> _ -> _ -> _ -> unit) H_list.t) ->
              (a, b, c, d) )
       |> transport_var
            ~there:(fun (a, b, c, d) -> [ a; b; c; d ])
-           ~back:(fun ([ a; b; c; d ] :
-                        (unit, _ -> _ -> _ -> _ -> unit) H_list.t ) ->
+           ~back:(fun
+               ([ a; b; c; d ] : (unit, _ -> _ -> _ -> _ -> unit) H_list.t) ->
              (a, b, c, d) )
 
     let tuple5 typ1 typ2 typ3 typ4 typ5 =
@@ -365,28 +364,32 @@ struct
       hlist [ typ1; typ2; typ3; typ4; typ5 ]
       |> transport
            ~there:(fun (a, b, c, d, e) -> [ a; b; c; d; e ])
-           ~back:(fun ([ a; b; c; d; e ] :
-                        (unit, _ -> _ -> _ -> _ -> _ -> unit) H_list.t ) ->
-             (a, b, c, d, e) )
+           ~back:(fun
+               ([ a; b; c; d; e ] :
+                 (unit, _ -> _ -> _ -> _ -> _ -> unit) H_list.t )
+             -> (a, b, c, d, e) )
       |> transport_var
            ~there:(fun (a, b, c, d, e) -> [ a; b; c; d; e ])
-           ~back:(fun ([ a; b; c; d; e ] :
-                        (unit, _ -> _ -> _ -> _ -> _ -> unit) H_list.t ) ->
-             (a, b, c, d, e) )
+           ~back:(fun
+               ([ a; b; c; d; e ] :
+                 (unit, _ -> _ -> _ -> _ -> _ -> unit) H_list.t )
+             -> (a, b, c, d, e) )
 
     let tuple6 typ1 typ2 typ3 typ4 typ5 typ6 =
       let open H_list in
       hlist [ typ1; typ2; typ3; typ4; typ5; typ6 ]
       |> transport
            ~there:(fun (a, b, c, d, e, f) -> [ a; b; c; d; e; f ])
-           ~back:(fun ([ a; b; c; d; e; f ] :
-                        (unit, _ -> _ -> _ -> _ -> _ -> _ -> unit) H_list.t ) ->
-             (a, b, c, d, e, f) )
+           ~back:(fun
+               ([ a; b; c; d; e; f ] :
+                 (unit, _ -> _ -> _ -> _ -> _ -> _ -> unit) H_list.t )
+             -> (a, b, c, d, e, f) )
       |> transport_var
            ~there:(fun (a, b, c, d, e, f) -> [ a; b; c; d; e; f ])
-           ~back:(fun ([ a; b; c; d; e; f ] :
-                        (unit, _ -> _ -> _ -> _ -> _ -> _ -> unit) H_list.t ) ->
-             (a, b, c, d, e, f) )
+           ~back:(fun
+               ([ a; b; c; d; e; f ] :
+                 (unit, _ -> _ -> _ -> _ -> _ -> _ -> unit) H_list.t )
+             -> (a, b, c, d, e, f) )
 
     let of_hlistable (spec : (unit, unit, 'k_var, 'k_value) Data_spec.t)
         ~(var_to_hlist : 'var -> (unit, 'k_var) H_list.t)

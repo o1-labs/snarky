@@ -7,7 +7,7 @@
   base64
   bignum
   bitstring_lib
-  core_kernel
+  core
   fold_lib
   h_list
   interval_union

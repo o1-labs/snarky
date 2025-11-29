@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 module Address = struct
   type t = int
@@ -18,7 +18,7 @@ module Free_hash = struct
           None
       | Hash_value x, Hash_value y ->
           (* poly equality; we don't know type of x and y *)
-          if Caml.( = ) x y then None else raise (M.Done path)
+          if Stdlib.( = ) x y then None else raise (M.Done path)
       | Merge (l1, r1), Merge (l2, r2) ->
           ignore (go (false :: path) l1 l2) ;
           ignore (go (true :: path) r1 r2) ;
@@ -69,11 +69,11 @@ let check_exn { tree; hash; merge; _ } =
   and check_hash_non_empty = function
     | Leaf (h, x) ->
         (* poly equality; don't know the hash type *)
-        assert (Caml.( = ) h (hash (Some x))) ;
+        assert (Stdlib.( = ) h (hash (Some x))) ;
         h
     | Node (h, l, r) ->
         (* poly equality *)
-        assert (Caml.( = ) (merge (check_hash l) (check_hash r)) h) ;
+        assert (Stdlib.( = ) (merge (check_hash l) (check_hash r)) h) ;
         h
   in
   ignore (check_hash_non_empty tree)
@@ -343,7 +343,8 @@ let implied_free_root addr0 x path0 =
 type ('hash, 'a) merkle_tree = ('hash, 'a) t
 
 module Checked
-    (Impl : Snark_intf.Basic) (Hash : sig
+    (Impl : Snark_intf.Basic)
+    (Hash : sig
       type var
 
       type value
@@ -355,7 +356,8 @@ module Checked
       val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var Impl.Checked.t
 
       val assert_equal : var -> var -> unit Impl.Checked.t
-    end) (Elt : sig
+    end)
+    (Elt : sig
       type var
 
       type value
@@ -419,7 +421,7 @@ struct
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         Impl.As_prover.(
-          read (Address.typ ~depth) addr0 >>| fun addr -> Get_element addr)
+          read (Address.typ ~depth) addr0 >>| fun addr -> Get_element addr )
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in
@@ -430,10 +432,10 @@ struct
     let%bind () =
       perform
         (let open Impl.As_prover in
-        let open Let_syntax in
-        let%map addr = read (Address.typ ~depth) addr0
-        and next = read Elt.typ next in
-        Set (addr, next))
+         let open Let_syntax in
+         let%map addr = read (Address.typ ~depth) addr0
+         and next = read Elt.typ next in
+         Set (addr, next) )
     in
     let%map new_root = implied_root next_entry_hash addr0 prev_path in
     (new_root, `Old prev, `New next)
@@ -450,7 +452,7 @@ struct
       request_witness
         Typ.(Elt.typ * Path.typ ~depth)
         Impl.As_prover.(
-          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a))
+          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_element a) )
     in
     let%bind () =
       let%bind prev_entry_hash = Elt.hash prev in
@@ -467,7 +469,7 @@ struct
     and prev_path =
       request_witness (Path.typ ~depth)
         Impl.As_prover.(
-          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_path a))
+          map (read (Address.typ ~depth) addr0) ~f:(fun a -> Get_path a) )
     in
     let%bind () =
       implied_root prev_entry_hash addr0 prev_path >>= Hash.assert_equal root
@@ -475,17 +477,18 @@ struct
     let%bind () =
       perform
         (let open Impl.As_prover in
-        let open Let_syntax in
-        let%map addr = read (Address.typ ~depth) addr0
-        and next = read Elt.typ next in
-        Set (addr, next))
+         let open Let_syntax in
+         let%map addr = read (Address.typ ~depth) addr0
+         and next = read Elt.typ next in
+         Set (addr, next) )
     in
     implied_root next_entry_hash addr0 prev_path
 end
 
 module Run = struct
   module Make
-      (Impl : Snark_intf.Run_basic) (Hash : sig
+      (Impl : Snark_intf.Run_basic)
+      (Hash : sig
         type var
 
         type value
@@ -497,7 +500,8 @@ module Run = struct
         val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var
 
         val assert_equal : var -> var -> unit
-      end) (Elt : sig
+      end)
+      (Elt : sig
         type var
 
         type value

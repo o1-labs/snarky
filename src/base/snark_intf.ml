@@ -1,5 +1,5 @@
 module Bignum_bigint = Bigint
-open Core_kernel
+open Core
 module Boolean0 = Boolean
 
 module type Boolean_intf = sig
@@ -553,10 +553,10 @@ module type Basic = sig
     val digest : t -> Md5.t
 
     (** Get the number of public input *)
-    val get_public_input_size : t -> int Core_kernel.Set_once.t
+    val get_public_input_size : t -> int Set_once.t
 
     (** Get the number of auxiliary/private input *)
-    val get_auxiliary_input_size : t -> int Core_kernel.Set_once.t
+    val get_auxiliary_input_size : t -> int Set_once.t
 
     (** Get the number of rows/circuit size *)
     val get_rows_len : t -> int
@@ -647,16 +647,16 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     type t = field [@@deriving bin_io, sexp, hash, compare]
 
     (** A generator for Quickcheck tests. *)
-    val gen : t Core_kernel.Quickcheck.Generator.t
+    val gen : t Quickcheck.Generator.t
 
     (** A generator for Quickcheck tests within specified inclusive bounds *)
-    val gen_incl : t -> t -> t Core_kernel.Quickcheck.Generator.t
+    val gen_incl : t -> t -> t Quickcheck.Generator.t
 
     (** A uniform generator for Quickcheck tests. *)
-    val gen_uniform : t Core_kernel.Quickcheck.Generator.t
+    val gen_uniform : t Quickcheck.Generator.t
 
     (** A uniform Quickcheck generator within specified inclusive bounds *)
-    val gen_uniform_incl : t -> t -> t Core_kernel.Quickcheck.Generator.t
+    val gen_uniform_incl : t -> t -> t Quickcheck.Generator.t
 
     include Snarky_intf.Field.Extended with type t := t
 
@@ -1085,7 +1085,7 @@ module type Run_basic = sig
 
     val digest : t -> Md5.t
 
-    val get_public_input_size : t -> int Core_kernel.Set_once.t
+    val get_public_input_size : t -> int Set_once.t
 
     val get_rows_len : t -> int
   end
@@ -1139,10 +1139,10 @@ module type Run_basic = sig
       type t = field [@@deriving bin_io, sexp, hash, compare]
 
       (** A generator for Quickcheck tests. *)
-      val gen : t Core_kernel.Quickcheck.Generator.t
+      val gen : t Quickcheck.Generator.t
 
       (** A uniform generator for Quickcheck tests. *)
-      val gen_uniform : t Core_kernel.Quickcheck.Generator.t
+      val gen_uniform : t Quickcheck.Generator.t
 
       include Snarky_intf.Field.Extended with type t := t
 

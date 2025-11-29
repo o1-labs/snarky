@@ -57,7 +57,7 @@ module type Full = sig
 
   include Extended with type t := t
 
-  include Core_kernel.Stringable.S with type t := t
+  include Core.Stringable.S with type t := t
 
   val size : Bigint.t
 

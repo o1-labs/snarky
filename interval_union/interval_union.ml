@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 module Interval = struct
   (* Semantically (a, b) : t is the closed interval [a, b] *)

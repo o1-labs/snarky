@@ -1,5 +1,6 @@
 module Make
-    (Impl : Snark_intf.Basic) (M : sig
+    (Impl : Snark_intf.Basic)
+    (M : sig
       type t [@@deriving enum]
     end) :
   Enumerable_intf.S
@@ -11,7 +12,8 @@ module Make
 
 module Run : sig
   module Make
-      (Impl : Snark_intf.Run_basic) (M : sig
+      (Impl : Snark_intf.Run_basic)
+      (M : sig
         type t [@@deriving enum]
       end) :
     Enumerable_intf.Run

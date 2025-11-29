@@ -7,7 +7,7 @@ module Make (Types : sig
 end) =
 struct
   module Vector = struct
-    open Core_kernel
+    open Core
 
     type 'elt t = 'elt Run_state_intf.Vector.t =
       | T :

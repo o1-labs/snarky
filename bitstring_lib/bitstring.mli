@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 open Tuple_lib
 
 (** The [Bitstring_lib] module provides simple utilities for working with

@@ -1,6 +1,6 @@
 (* Based on this paper. https://eprint.iacr.org/2019/403 *)
 
-open Core_kernel
+open Core
 
 module Spec = struct
   type 'f t = { b : 'f } [@@deriving bin_io]
@@ -64,11 +64,13 @@ module Params = struct
 end
 
 module Make
-    (Constant : Field_intf.S) (F : sig
+    (Constant : Field_intf.S)
+    (F : sig
       include Field_intf.S
 
       val constant : Constant.t -> t
-    end) (P : sig
+    end)
+    (P : sig
       val params : Constant.t Params.t
     end) =
 struct

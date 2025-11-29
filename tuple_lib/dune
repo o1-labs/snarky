@@ -3,7 +3,7 @@
  (public_name tuple_lib)
  (library_flags -linkall)
  (inline_tests)
- (libraries core_kernel)
+ (libraries core)
  (preprocess
   (pps ppx_jane ppx_deriving.eq bisect_ppx -- --conditional))
  (synopsis "Tuple types"))

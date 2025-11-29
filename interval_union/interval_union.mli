@@ -1,4 +1,4 @@
-open Core_kernel
+open Core
 
 module Interval : sig
   type t = int * int [@@deriving eq, sexp]
