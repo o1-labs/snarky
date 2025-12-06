@@ -31,6 +31,10 @@ module type Types = sig
       - ['value] is the OCaml type
       - ['var] is some other type that contains some R1CS variables.
 
+      At the end of the day, all circuit types map to n-tuples of field elements/variables.
+      Since dealing with n-tuples would make circuit writing impractical, we define this
+      interface to build up codecs for richer circuit types with minimal boilerplate.
+
       For convenience and readability, it is usually best to have the ['var]
       type mirror the ['value] type in structure, for example:
 {[
@@ -43,15 +47,37 @@ module type Types = sig
 
     let or (x : t) = Snark.Boolean.(x.b1 || x.b2)
   end
-]}*)
+]}
+  Laws:
+    1. [var_to_fields] and [var_of_fields] are mutual inverses.
+    2. [value_of_fields] and [fields_of_value] are mutual inverses.
+    3. [size_in_field_elements] is the length of the arrays produced by
+         [value_to_fields] and [var_to_fields].
+*)
     type ('var, 'value, 'aux) typ' =
       { var_to_fields : 'var -> field_var array * 'aux
+            (** [var_to_fields] converts a variable representation ['var] into an array of
+            simple field variables along with auxiliary data ['aux]. *)
       ; var_of_fields : field_var array * 'aux -> 'var
+            (** [var_of_fields] reconstructs a variable representation ['var] from an array
+            of field variables and auxiliary data. *)
       ; value_to_fields : 'value -> field array * 'aux
+            (** [value_to_fields] converts an OCaml value ['value] into an array of field
+            elements along with auxiliary data. Used by the prover to encode circuit input. *)
       ; value_of_fields : field array * 'aux -> 'value
+            (** [value_of_fields] reconstructs an OCaml value ['value] from an array of
+            field elements and auxiliary data. Used by the prover to decode circuit output. *)
       ; size_in_field_elements : int
+            (** [size_in_field_elements] specifies the number of field elements required
+            to represent a value of this type. *)
       ; constraint_system_auxiliary : unit -> 'aux
+            (** [constraint_system_auxiliary] produces the default auxiliary data ['aux]
+            used by the conversion functions. This is rarely used, but e.g. can enable a constant
+            OCaml value to be represented as a cicuit type. See the definition for [Option] *)
       ; check : 'var -> unit Checked.t
+            (** [check] adds constraints to the constraint system to ensure that the
+            variable ['var] satisfies any invariants required by this type. An example of
+            this is that boolean variables automatically inherit the constraint [v * v = v]. *)
       }
 
     type ('var, 'value) typ =
@@ -90,24 +116,6 @@ struct
   end
 
   module Typ = struct
-    (** The type [('var, 'value) t] describes a mapping from
-      OCaml types to the variables and constraints they represent:
-      - ['value] is the OCaml type
-      - ['var] is some other type that contains some R1CS variables.
-
-      For convenience and readability, it is usually best to have the ['var]
-      type mirror the ['value] type in structure, for example:
-{[
-  type t = {b1 : bool; b2 : bool} (* 'value *)
-
-  let or (x : t) = x.b1 || x.b2
-
-  module Checked = struct
-    type t = {b1 : Snark.Boolean.var; b2 : Snark.Boolean.var} (* 'var *)
-
-    let or (x : t) = Snark.Boolean.(x.b1 || x.b2)
-  end
-]}*)
     type ('var, 'value, 'aux) typ' =
       { var_to_fields : 'var -> field_var array * 'aux
       ; var_of_fields : field_var array * 'aux -> 'var
