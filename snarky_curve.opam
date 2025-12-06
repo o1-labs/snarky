@@ -10,7 +10,7 @@ homepage: "https://github.com/o1labs/snarky"
 bug-reports: "https://github.com/o1labs/snarky/issues"
 depends: [
   "bisect_ppx" {with-test}
-  "core" {>= "v0.17.1"}
+  "core" {>= "v0.16"}
   "digestif"
   "dune" {>= "3.0" & build}
   "group_map"

@@ -19,7 +19,7 @@
  (description "A helper library for bitstrings in snarky")
  (depends
   bisect_ppx
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -33,7 +33,7 @@
  (depends
   (alcotest :with-test)
   (bisect_ppx :with-test)
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -44,7 +44,7 @@
  (synopsis "A library for elliptic curve operations")
  (description "A library for elliptic curve operations")
  (depends
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   snarkette))
@@ -66,7 +66,7 @@
  (depends
   (alcotest :with-test)
   (bisect_ppx :with-test)
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -77,7 +77,7 @@
  (synopsis "PPX extension for snarky")
  (description "PPX extension for snarky")
  (depends
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppxlib
@@ -90,7 +90,7 @@
  (depends
   (bisect_ppx :with-test)
   bignum
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   fold_lib
   (ocaml (>= 4.07.0))
@@ -109,7 +109,7 @@
   bignum
   bitstring_lib
   (bisect_ppx (>= 2.0.0))
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   fold_lib
   h_list
@@ -128,7 +128,7 @@
  (description "Elliptic curve library for snarky")
  (depends
   (bisect_ppx :with-test)
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   digestif
   (dune :build)
   group_map
@@ -143,7 +143,7 @@
  (description "Integer library for snarky")
  (depends
   (bisect_ppx :with-test)
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -156,7 +156,7 @@
  (description "Signature library for snarky")
  (depends
   (bisect_ppx :with-test)
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -170,8 +170,8 @@
  (depends
   (alcotest :with-test)
   (bisect_ppx :with-test)
-  (core_unix (and (>= v0.17.1) :with-test))
-  (core (>= v0.17.1))
+  (core_unix (and (>= v0.16) :with-test))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
@@ -184,7 +184,7 @@
  (description "A library for working with tuples")
  (depends
   (bisect_ppx :with-test)
-  (core (>= v0.17.1))
+  (core (>= v0.16))
   (dune :build)
   (ocaml (>= 4.07.0))
   ppx_deriving
