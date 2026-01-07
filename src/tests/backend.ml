@@ -215,6 +215,8 @@ end) : Snarky.Backend_intf.S = struct
 
     let get_public_input_size t = t.public_input_size
 
+    let get_auxiliary_input_size t = t.auxiliary_input_size
+
     let get_rows_len t = Deque.length t.constraints
   end
 

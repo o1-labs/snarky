@@ -23,6 +23,8 @@ module type S = sig
 
   val get_public_input_size : t -> int Core_kernel.Set_once.t
 
+  val get_auxiliary_input_size : t -> int Core_kernel.Set_once.t
+
   val get_rows_len : t -> int
 end
 

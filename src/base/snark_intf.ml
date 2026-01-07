@@ -555,6 +555,9 @@ module type Basic = sig
     (** Get the number of public input *)
     val get_public_input_size : t -> int Core_kernel.Set_once.t
 
+    (** Get the number of auxiliary/private input *)
+    val get_auxiliary_input_size : t -> int Core_kernel.Set_once.t
+
     (** Get the number of rows/circuit size *)
     val get_rows_len : t -> int
   end
