@@ -92,6 +92,34 @@ let fermat_test () =
   let _ = Fermat_snark.Circuit.generate_witness z () in
   ()
 
+let get_constraint_system () =
+  let input_typ = Fermat_snark.S.Field.typ in
+  let return_typ = Fermat_snark.S.Typ.unit in
+  Fermat_snark.S.constraint_system ~input_typ ~return_typ
+    Fermat_snark.Circuit.circuit
+
+(* Regression test for get_rows_len *)
+let test_get_rows_len () =
+  let cs = get_constraint_system () in
+  let rows_len = Fermat_snark.S.R1CS_constraint_system.get_rows_len cs in
+  (* The Fermat circuit has:
+     - 3 cube computations (x^3, y^3, z^3), each with 2 multiplications = 6 constraints
+     - 1 equality check for x^3 + y^3 = z^3 = 1 constraint
+     Total: 7 constraints *)
+  check int "Fermat circuit rows count" 7 rows_len
+
+(* Regression test for get_public_input_size *)
+let test_get_public_input_size () =
+  let cs = get_constraint_system () in
+  let public_input_size_set_once =
+    Fermat_snark.S.R1CS_constraint_system.get_public_input_size cs
+  in
+  let public_input_size =
+    Core_kernel.Set_once.get_exn public_input_size_set_once [%here]
+  in
+  (* The Fermat circuit takes 1 public input (z) *)
+  check int "Fermat circuit public input size" 1 public_input_size
+
 let cube_test () =
   let a = Fermat_snark.Backend.Field.random () in
   let a_cubed = Fermat_snark.Circuit.cube a in
@@ -101,4 +129,6 @@ let cube_test () =
 let test_cases =
   [ test_case "Cube test" `Quick cube_test
   ; test_case "Fermat circuit" `Quick fermat_test
+  ; test_case "regtest get_rows_len" `Quick test_get_rows_len
+  ; test_case "regtest get_public_input_size" `Quick test_get_public_input_size
   ]
