@@ -120,6 +120,21 @@ let test_get_public_input_size () =
   (* The Fermat circuit takes 1 public input (z) *)
   check int "Fermat circuit public input size" 1 public_input_size
 
+(* Regression test for get_auxiliary_input_size *)
+let test_get_auxiliary_input_size () =
+  let cs = get_constraint_system () in
+  let auxiliary_input_size_set_once =
+    Fermat_snark.S.R1CS_constraint_system.get_auxiliary_input_size cs
+  in
+  let auxiliary_input_size =
+    Core_kernel.Set_once.get_exn auxiliary_input_size_set_once [%here]
+  in
+  (* The Fermat circuit has:
+     - 2 witness variables (x, y)
+     - 6 intermediate variables from cube computations (2 per cube_var for x, y, z)
+     Total: 8 auxiliary inputs *)
+  check int "Fermat circuit auxiliary input size" 8 auxiliary_input_size
+
 let cube_test () =
   let a = Fermat_snark.Backend.Field.random () in
   let a_cubed = Fermat_snark.Circuit.cube a in
@@ -131,4 +146,6 @@ let test_cases =
   ; test_case "Fermat circuit" `Quick fermat_test
   ; test_case "regtest get_rows_len" `Quick test_get_rows_len
   ; test_case "regtest get_public_input_size" `Quick test_get_public_input_size
+  ; test_case "regtest get_auxiliary_input_size" `Quick
+      test_get_auxiliary_input_size
   ]
