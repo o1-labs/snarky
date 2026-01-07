@@ -551,6 +551,12 @@ module type Basic = sig
     type t
 
     val digest : t -> Md5.t
+
+    (** Get the number of public input *)
+    val get_public_input_size : t -> int Core_kernel.Set_once.t
+
+    (** Get the number of rows/circuit size *)
+    val get_rows_len : t -> int
   end
 
   module Bigint : sig
