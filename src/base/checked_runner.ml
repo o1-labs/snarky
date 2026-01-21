@@ -24,15 +24,16 @@ end)
 
 module Make_checked
     (Backend : Backend_extended.S)
-    (Types : Types.Types
-               with type field = Backend.Field.t
-                and type field_var = Backend.Cvar.t
-                and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
-                and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
-                and type ('var, 'value, 'aux) Typ.typ' =
-                 ('var, 'value, 'aux) Simple_types(Backend).Typ.typ'
-                and type ('var, 'value) Typ.typ =
-                 ('var, 'value) Simple_types(Backend).Typ.typ)
+    (Types :
+      Types.Types
+        with type field = Backend.Field.t
+         and type field_var = Backend.Cvar.t
+         and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
+         and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
+         and type ('var, 'value, 'aux) Typ.typ' =
+          ('var, 'value, 'aux) Simple_types(Backend).Typ.typ'
+         and type ('var, 'value) Typ.typ =
+          ('var, 'value) Simple_types(Backend).Typ.typ)
     (As_prover : As_prover_intf.S with module Types := Types) =
 struct
   type run_state = Backend.Run_state.t
@@ -275,17 +276,18 @@ end
 
 module Make
     (Backend : Backend_extended.S)
-    (Types : Types.Types
-               with type field = Backend.Field.t
-                and type field_var = Backend.Cvar.t
-                and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
-                and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
-                and type ('var, 'value, 'aux) Typ.typ' =
-                 ('var, 'value, 'aux) Simple_types(Backend).Typ.typ'
-                and type ('var, 'value) Typ.typ =
-                 ('var, 'value) Simple_types(Backend).Typ.typ
-                and type ('request, 'compute) Provider.provider =
-                 ('request, 'compute) Simple_types(Backend).Provider.provider)
+    (Types :
+      Types.Types
+        with type field = Backend.Field.t
+         and type field_var = Backend.Cvar.t
+         and type 'a Checked.t = 'a Simple_types(Backend).Checked.t
+         and type 'a As_prover.t = 'a Simple_types(Backend).As_prover.t
+         and type ('var, 'value, 'aux) Typ.typ' =
+          ('var, 'value, 'aux) Simple_types(Backend).Typ.typ'
+         and type ('var, 'value) Typ.typ =
+          ('var, 'value) Simple_types(Backend).Typ.typ
+         and type ('request, 'compute) Provider.provider =
+          ('request, 'compute) Simple_types(Backend).Provider.provider)
     (As_prover : As_prover_intf.S with module Types := Types) =
 struct
   open Backend

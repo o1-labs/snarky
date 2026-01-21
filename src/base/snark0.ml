@@ -9,19 +9,22 @@ let set_eval_constraints b = Runner.eval_constraints := b
 
 module Make_basic
     (Backend : Backend_extended.S)
-    (Types : Types.Types
-               with type field = Backend.Field.t
-                and type field_var = Backend.Cvar.t)
-    (Checked : Checked_intf.Extended
-                 with module Types := Types
-                 with type run_state = Backend.Run_state.t
-                  and type constraint_ = Backend.Constraint.t)
+    (Types :
+      Types.Types
+        with type field = Backend.Field.t
+         and type field_var = Backend.Cvar.t)
+    (Checked :
+      Checked_intf.Extended
+        with module Types := Types
+        with type run_state = Backend.Run_state.t
+         and type constraint_ = Backend.Constraint.t)
     (As_prover : As_prover_intf.S with module Types := Types)
-    (Runner : Runner.S
-                with module Types := Types
-                with type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t
-                 and type run_state = Backend.Run_state.t) =
+    (Runner :
+      Runner.S
+        with module Types := Types
+        with type constr := Backend.Constraint.t option
+         and type r1cs := Backend.R1CS_constraint_system.t
+         and type run_state = Backend.Run_state.t) =
 struct
   open Backend
 
@@ -96,9 +99,9 @@ struct
           As_prover.(map (read_var v) ~f:(fun x -> Choose_preimage (x, length)))
         ~compute:
           (let open As_prover.Let_syntax in
-          let%map x = As_prover.read_var v in
-          let x = Bigint.of_field x in
-          List.init length ~f:(fun i -> Bigint.test_bit x i))
+           let%map x = As_prover.read_var v in
+           let x = Bigint.of_field x in
+           List.init length ~f:(fun i -> Bigint.test_bit x i) )
 
     let packing_sum (bits : Boolean.var list) =
       let ts, _ =
@@ -272,7 +275,7 @@ struct
                   let%map is_square = read Boolean.typ is_square
                   and x = read_var x in
                   if is_square then Field.sqrt x
-                  else Field.(sqrt (Lazy.force quadratic_nonresidue * x))))
+                  else Field.(sqrt (Lazy.force quadratic_nonresidue * x)) ) )
         in
         let b = scale x (Lazy.force quadratic_nonresidue) in
         let%bind t = mul (is_square :> Var.t) (x - b) in
@@ -297,7 +300,7 @@ struct
                  Checked.(
                    Let_syntax.(
                      let%bind x = exists typf ~compute:(As_prover.return elt) in
-                     is_square x)) )
+                     is_square x ) ) )
             |> Or_error.ok_exn
           in
           answer
@@ -454,7 +457,8 @@ struct
               failwith "lt_bitstring_value: Got unequal length strings"
         in
         fun (xs : Boolean.var Bitstring_lib.Bitstring.Msb_first.t)
-            (ys : bool Bitstring_lib.Bitstring.Msb_first.t) ->
+          (ys : bool Bitstring_lib.Bitstring.Msb_first.t)
+        ->
           let open Expr.Nary in
           eval
             (of_binary (lt_binary (xs :> Boolean.var list) (ys :> bool list)))
@@ -550,7 +554,7 @@ struct
                            return (Field.one, Field.zero)
                          else equal_vars z
                      | _ ->
-                         equal_vars z)
+                         equal_vars z )
              in
              let%map () = equal_constraints z inv r in
              Boolean.Unsafe.of_cvar r ) )
@@ -606,7 +610,7 @@ struct
         as_prover
           As_prover.(
             if%map read Boolean.typ b then res_aux := Some then_aux
-            else res_aux := Some else_aux)
+            else res_aux := Some else_aux )
       in
       match !res_aux with
       | Some res_aux ->
@@ -621,9 +625,9 @@ struct
       let checked_result =
         run_and_check
           (let open Let_syntax in
-          let%bind input = exists typ1 ~compute:(As_prover.return input) in
-          let%map result = checked input in
-          As_prover.read typ2 result)
+           let%bind input = exists typ1 ~compute:(As_prover.return input) in
+           let%map result = checked input in
+           As_prover.read typ2 result )
         |> Or_error.ok_exn
       in
       checked_result
@@ -1240,8 +1244,7 @@ module Run = struct
       state := Backend.Run_state.set_stack !state stack ;
       a
 
-    let inject_wrapper :
-        type r_var input_var.
+    let inject_wrapper : type r_var input_var.
         f:(r_var -> r_var) -> (input_var -> r_var) -> input_var -> r_var =
      fun ~f x a ->
       let inject_wrapper ~f x = f x in

@@ -175,7 +175,7 @@ let div_mod (type f v) ~m:((module M) as m : (f, v) m) a b =
           fun () ->
             let a = read_var a.value |> bigint_of_field ~m
             and b = read_var b.value |> bigint_of_field ~m in
-            (bigint_to_field ~m B.(a / b), bigint_to_field ~m (B.rem a b)))
+            (bigint_to_field ~m B.(a / b), bigint_to_field ~m (B.rem a b)) )
   in
   (* Check
       r < b

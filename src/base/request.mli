@@ -32,12 +32,12 @@ type _ t += Fail : 'a t
 
 type 'a req = 'a t
 
-(** The type of responses. Use {!recfield:respond} to create a response from a
+(** The type of responses. Use [respond] to create a response from a
     {!type:Response.t}. *)
 type response
 
-(** Indicates an unhandled response. Equivalent to calling {!recfield:respond}
-    on {!const:Response.Unhandled}. *)
+(** Indicates an unhandled response. Equivalent to calling [respond]
+    on {!constructor:Response.Unhandled}. *)
 val unhandled : response
 
 module Response : sig

@@ -53,7 +53,8 @@ val to_list : ('hash, 'a) t -> 'a list
 val check_exn : (_, _) t -> unit
 
 module Checked
-    (Impl : Snark_intf.S) (Hash : sig
+    (Impl : Snark_intf.S)
+    (Hash : sig
       type var
 
       type value
@@ -65,7 +66,8 @@ module Checked
       val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var Impl.Checked.t
 
       val assert_equal : var -> var -> unit Impl.Checked.t
-    end) (Elt : sig
+    end)
+    (Elt : sig
       type var
 
       type value
@@ -132,7 +134,8 @@ end
 
 module Run : sig
   module Make
-      (Impl : Snark_intf.Run_basic) (Hash : sig
+      (Impl : Snark_intf.Run_basic)
+      (Hash : sig
         type var
 
         type value
@@ -144,7 +147,8 @@ module Run : sig
         val if_ : Impl.Boolean.var -> then_:var -> else_:var -> var
 
         val assert_equal : var -> var -> unit
-      end) (Elt : sig
+      end)
+      (Elt : sig
         type var
 
         type value

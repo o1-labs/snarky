@@ -2,19 +2,22 @@ open Core_kernel
 
 module Make
     (Backend : Backend_extended.S)
-    (Types : Types.Types
-               with type field = Backend.Field.t
-                and type field_var = Backend.Cvar.t)
-    (Checked : Checked_intf.Extended
-                 with module Types := Types
-                 with type run_state = Backend.Run_state.t
-                  and type constraint_ = Backend.Constraint.t)
+    (Types :
+      Types.Types
+        with type field = Backend.Field.t
+         and type field_var = Backend.Cvar.t)
+    (Checked :
+      Checked_intf.Extended
+        with module Types := Types
+        with type run_state = Backend.Run_state.t
+         and type constraint_ = Backend.Constraint.t)
     (As_prover : As_prover_intf.S with module Types := Types)
-    (Runner : Checked_runner.S
-                with module Types := Types
-                with type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t
-                 and type run_state = Backend.Run_state.t) =
+    (Runner :
+      Checked_runner.S
+        with module Types := Types
+        with type constr := Backend.Constraint.t option
+         and type r1cs := Backend.R1CS_constraint_system.t
+         and type run_state = Backend.Run_state.t) =
 struct
   open Backend
 
@@ -192,8 +195,7 @@ struct
             Run_state.t * 'return_var -> R1CS_constraint_system.t
         }
 
-      let build :
-          type checked input_var input_value retvar retval.
+      let build : type checked input_var input_value retvar retval.
              input_typ:(input_var, input_value) Types.Typ.typ
           -> return_typ:(retvar, retval) Types.Typ.t
           -> (input_var, retvar, checked) t =
@@ -295,7 +297,7 @@ struct
         let output_var =
           return_typ.var_of_fields
             ( Core_kernel.Array.init return_typ.size_in_field_elements
-                ~f:(fun _ -> alloc_var next_input ())
+                ~f:(fun _ -> alloc_var next_input () )
             , return_typ.constraint_system_auxiliary () )
         in
         let first_auxiliary = !next_input in
@@ -363,8 +365,7 @@ struct
         { run_computation; finish_witness_generation }
     end
 
-    let conv :
-        type r_var r_value.
+    let conv : type r_var r_value.
            (int -> _ -> r_var -> Field.Vector.t -> r_value)
         -> ('input_var, 'input_value) Types.Typ.t
         -> _ Types.Typ.t

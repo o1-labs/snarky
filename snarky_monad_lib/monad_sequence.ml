@@ -41,7 +41,8 @@ module type S = sig
 end
 
 module List
-    (M : Monad_let.S) (Bool : sig
+    (M : Monad_let.S)
+    (Bool : sig
       type t
 
       val any : t list -> t M.t
@@ -131,7 +132,8 @@ module List
 end
 
 module Array
-    (M : Monad_let.S) (Bool : sig
+    (M : Monad_let.S)
+    (Bool : sig
       type t
 
       val any : t array -> t M.t
