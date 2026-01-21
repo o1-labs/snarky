@@ -345,7 +345,8 @@ module Bit_sponge = struct
   let underlying { underlying; last_squeezed = _ } = underlying
 
   module Make
-      (Bool : Intf.T) (Field : sig
+      (Bool : Intf.T)
+      (Field : sig
         type t
 
         val to_bits : t -> Bool.t list
@@ -355,11 +356,12 @@ module Bit_sponge = struct
         val high_entropy_bits : int
       end)
       (Input : Intf.T)
-      (S : Intf.Sponge
-             with module State := State
-              and module Field := Field
-              and type digest := Field.t
-              and type input := Input.t) =
+      (S :
+        Intf.Sponge
+          with module State := State
+           and module Field := Field
+           and type digest := Field.t
+           and type input := Input.t) =
   struct
     type nonrec t = (S.t, Bool.t) t
 

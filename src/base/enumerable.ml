@@ -8,7 +8,8 @@ let int_of_bits bs =
   List.foldi bs ~init:0 ~f:(fun i acc b -> if b then acc + (1 lsl i) else acc)
 
 module Make
-    (Impl : Snark_intf.Basic) (M : sig
+    (Impl : Snark_intf.Basic)
+    (M : sig
       type t [@@deriving enum]
     end) =
 struct
@@ -58,7 +59,8 @@ end
 
 module Run = struct
   module Make
-      (Impl : Snark_intf.Run_basic) (M : sig
+      (Impl : Snark_intf.Run_basic)
+      (M : sig
         type t [@@deriving enum]
       end) =
   struct

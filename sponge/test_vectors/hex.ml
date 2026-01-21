@@ -7,7 +7,7 @@ let encode (bytearray : bytes) : string =
     assert (x < 16) ;
     char_of_int
       ( if x < 10 then x + start_of_digit_0_in_ascii_table
-      else x - 10 + start_of_lower_case_a_in_ascii_table )
+        else x - 10 + start_of_lower_case_a_in_ascii_table )
   in
   let rec aux bytearray len cur_pos buf =
     if cur_pos < len then (

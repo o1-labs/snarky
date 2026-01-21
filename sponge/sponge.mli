@@ -93,23 +93,26 @@ module Bit_sponge : sig
 
   val underlying : ('s, _) t -> 's
 
-  module Make (Bool : sig
-    type t
-  end) (Field : sig
-    type t
+  module Make
+      (Bool : sig
+        type t
+      end)
+      (Field : sig
+        type t
 
-    val to_bits : t -> Bool.t list
+        val to_bits : t -> Bool.t list
 
-    val finalize_discarded : Bool.t list -> unit
+        val finalize_discarded : Bool.t list -> unit
 
-    val high_entropy_bits : int
-  end)
-  (Input : Intf.T)
-  (S : Intf.Sponge
-         with module State := State
-          and module Field := Field
-          and type digest := Field.t
-          and type input := Input.t) : sig
+        val high_entropy_bits : int
+      end)
+      (Input : Intf.T)
+      (S :
+        Intf.Sponge
+          with module State := State
+           and module Field := Field
+           and type digest := Field.t
+           and type input := Input.t) : sig
     include
       Intf.Sponge
         with module State := State

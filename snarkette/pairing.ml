@@ -54,20 +54,23 @@ end
 
 module Make
     (Fq : Fields.Fp_intf)
-    (Fq_twist : Fields.Extension_intf with type base = Fq.t) (Fq_target : sig
+    (Fq_twist : Fields.Extension_intf with type base = Fq.t)
+    (Fq_target : sig
       include Fields.Degree_2_extension_intf with type base = Fq_twist.t
 
       val frobenius : t -> int -> t
 
       val cyclotomic_exp : t -> Fq.Nat.t -> t
     end)
-    (G1 : Simple_elliptic_curve_intf with type base := Fq.t) (G2 : sig
+    (G1 : Simple_elliptic_curve_intf with type base := Fq.t)
+    (G2 : sig
       include Simple_elliptic_curve_intf with type base := Fq_twist.t
 
       module Coefficients : sig
         val a : Fq_twist.t
       end
-    end) (Info : sig
+    end)
+    (Info : sig
       val twist : Fq_twist.t
 
       val loop_count : Fq.Nat.t
@@ -279,7 +282,11 @@ struct
     (* The none case here means either p or q was the identity, so
        the pairing should evaluate to "zero" (i.e., one) in the
        target group. *)
-    match miller_loop p q with None -> Fq_target.one | Some x -> x
+    match miller_loop p q with
+    | None ->
+        Fq_target.one
+    | Some x ->
+        x
 
   let unreduced_pairing p q =
     miller_loop (G1_precomputation.create p) (G2_precomputation.create q)

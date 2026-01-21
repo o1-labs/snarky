@@ -58,7 +58,7 @@ module Make (Impl : Snarky.Snark_intf.S) = struct
         ~compute:
           Impl.As_prover.(
             map2 (read_var x) (read_var z) ~f:(fun x z ->
-                cubic_root Impl.Field.(cube z - cube x) ))
+                cubic_root Impl.Field.(cube z - cube x) ) )
         Impl.Typ.field
     in
     let cube_var a = Impl.Field.Checked.(mul a a >>= mul a) in

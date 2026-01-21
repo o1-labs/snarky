@@ -5,26 +5,30 @@ let set_eval_constraints b = Runner.eval_constraints := b
 
 module Make
     (Backend : Backend_extended.S)
-    (Types : Types.Types
-               with type field = Backend.Field.t
-                and type field_var = Backend.Cvar.t)
-    (Checked : Checked_intf.Extended
-                 with module Types := Types
-                 with type run_state = Backend.Run_state.t
-                  and type constraint_ = Backend.Constraint.t)
+    (Types :
+      Types.Types
+        with type field = Backend.Field.t
+         and type field_var = Backend.Cvar.t)
+    (Checked :
+      Checked_intf.Extended
+        with module Types := Types
+        with type run_state = Backend.Run_state.t
+         and type constraint_ = Backend.Constraint.t)
     (As_prover : As_prover_intf.S with module Types := Types)
-    (Typ : Snark_intf.Typ_intf
-             with type field := Backend.Field.t
-              and type field_var := Backend.Cvar.t
-              and type 'field checked_unit := unit Types.Checked.t
-              and type ('var, 'value, 'aux) typ' :=
-               ('var, 'value, 'aux) Types.Typ.typ'
-              and type ('var, 'value) typ := ('var, 'value) Types.Typ.typ)
-    (Runner : Runner.S
-                with module Types := Types
-                with type constr := Backend.Constraint.t option
-                 and type r1cs := Backend.R1CS_constraint_system.t
-                 and type run_state = Backend.Run_state.t) =
+    (Typ :
+      Snark_intf.Typ_intf
+        with type field := Backend.Field.t
+         and type field_var := Backend.Cvar.t
+         and type 'field checked_unit := unit Types.Checked.t
+         and type ('var, 'value, 'aux) typ' :=
+          ('var, 'value, 'aux) Types.Typ.typ'
+         and type ('var, 'value) typ := ('var, 'value) Types.Typ.typ)
+    (Runner :
+      Runner.S
+        with module Types := Types
+        with type constr := Backend.Constraint.t option
+         and type r1cs := Backend.R1CS_constraint_system.t
+         and type run_state = Backend.Run_state.t) =
 struct
   open Backend
 
@@ -125,7 +129,7 @@ struct
                   As_prover.(
                     map (read_var x) ~f:(fun x ->
                         if Field.(equal zero x) then Field.zero
-                        else Backend.Field.inv x ))
+                        else Backend.Field.inv x ) )
             in
             let%map () = assert_r1cs x x_inv (Cvar.constant Field.one) in
             x_inv )
@@ -159,10 +163,10 @@ struct
               exists Typ.field
                 ~compute:
                   (let open As_prover in
-                  let open Let_syntax in
-                  let%bind b = read_var b in
-                  read Typ.field
-                    (if Field.equal b Field.one then then_ else else_))
+                   let open Let_syntax in
+                   let%bind b = read_var b in
+                   read Typ.field
+                     (if Field.equal b Field.one then then_ else else_) )
             in
             let%map () = assert_r1cs b Cvar.(then_ - else_) Cvar.(r - else_) in
             r )
@@ -205,10 +209,10 @@ struct
         exists Typ.field
           ~compute:
             (let open As_prover in
-            let open Let_syntax in
-            let%map x = read_var x and y = read_var y in
-            if Field.(equal one x) && Field.(equal one y) then Field.one
-            else Field.zero)
+             let open Let_syntax in
+             let%map x = read_var x and y = read_var y in
+             if Field.(equal one x) && Field.(equal one y) then Field.one
+             else Field.zero )
       in
       let%map () =
         let x_plus_y = Cvar.add x y in
@@ -319,7 +323,7 @@ struct
               ~compute:
                 As_prover.(
                   map2 ~f:Bool.( <> ) (read typ_unchecked b1)
-                    (read typ_unchecked b2))
+                    (read typ_unchecked b2) )
           in
           let%map () =
             let a = (b1 :> Cvar.t) in

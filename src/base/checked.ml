@@ -3,9 +3,10 @@ open Core_kernel
 module Make
     (Backend : Backend_extended.S)
     (Types : Types.Types with type field_var = Backend.Cvar.t)
-    (Basic : Checked_intf.Basic
-               with type constraint_ = Backend.Constraint.t
-               with module Types := Types)
+    (Basic :
+      Checked_intf.Basic
+        with type constraint_ = Backend.Constraint.t
+        with module Types := Types)
     (As_prover : As_prover_intf.S with module Types := Types) :
   Checked_intf.S
     with module Types := Types
@@ -62,7 +63,7 @@ module Make
       as_prover
         As_prover.(
           let%map h = k in
-          handler := Some h)
+          handler := Some h )
     in
     handle t (fun request -> (Option.value_exn !handler) request)
 

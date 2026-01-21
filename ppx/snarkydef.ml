@@ -76,7 +76,7 @@ let snarkydef_ext name =
       pstr
         ( pstr_value nonrecursive
             (value_binding ~pat:(ppat_var __) ~expr:__ ^:: nil)
-        ^:: nil ))
+        ^:: nil ) )
     (snarkydef ~local:false)
 
 let snarkydef_local_ext name =
@@ -85,7 +85,7 @@ let snarkydef_local_ext name =
       pstr
         ( pstr_value nonrecursive
             (value_binding ~pat:(ppat_var __) ~expr:__ ^:: nil)
-        ^:: nil ))
+        ^:: nil ) )
     (snarkydef ~local:true ~arg:None)
 
 let main () =
