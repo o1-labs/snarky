@@ -1,4 +1,4 @@
-version=0.20.1
+version=0.28.1
 profile=ocamlformat
 quiet=false
 max-iters=10
