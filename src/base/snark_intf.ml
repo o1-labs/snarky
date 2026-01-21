@@ -14,10 +14,10 @@ module type Boolean_intf = sig
 
   type value = bool
 
-  (** An R1CS variable containing {!val:Field.one}, representing [true]. *)
+  (** An R1CS variable containing [Field.one], representing [true]. *)
   val true_ : var
 
-  (** An R1CS variable containing {!val:Field.zero}, representing [false]. *)
+  (** An R1CS variable containing [Field.zero], representing [false]. *)
   val false_ : var
 
   (** [if_ b ~then_ ~else_] returns [then_] if [b] is true, or [else_]
@@ -57,8 +57,8 @@ module type Boolean_intf = sig
         value. *)
   val var_of_value : value -> var
 
-  (** The relationship between {!val:var} and {!val:value}, with a check that
-        the value is valid (ie. {!val:Field.zero} or {!val:Field.one}). *)
+  (** The relationship between [var] and [value], with a check that
+        the value is valid (ie. [Field.zero] or [Field.one]). *)
   val typ : (var, value) typ
 
   (** {!val:typ} without a validity check for the underlying field value. *)
@@ -154,14 +154,14 @@ module type Typ_intf = sig
         ['value] to a type representing the value using R1CS variables
         (['var]).
         This description includes
-        - a {!type:Store.t} for storing ['value]s as ['var]s
-        - a {!type:Alloc.t} for creating a ['var] when we don't know what values
+        - a [Store.t] for storing ['value]s as ['var]s
+        - an [Alloc.t] for creating a ['var] when we don't know what values
           it should contain yet
-        - a {!type:Read.t} for reading the contents of the ['var] back out as a
+        - a [Read.t] for reading the contents of the ['var] back out as a
           ['value] in {!module:As_prover} blocks
-        - a {!type:Checked.t} for asserting constraints on the ['var] -- for
-          example, that a [Boolean.t] is either a {!val:Field.zero} or a
-          {!val:Field.one}.
+        - a [Checked.t] for asserting constraints on the ['var] -- for
+          example, that a [Boolean.t] is either a [Field.zero] or a
+          [Field.one].
     *)
   type ('var, 'value) t = ('var, 'value) typ
 
@@ -214,7 +214,7 @@ module type Typ_intf = sig
     *)
   val array : length:int -> ('var, 'value) t -> ('var array, 'value array) t
 
-  (** Unpack a {!type:Data_spec.t} list to a {!type:t}. The return value relates
+  (** Unpack a [Typ.Data_spec.t] list to a {!type:t}. The return value relates
         a polymorphic list of OCaml types to a polymorphic list of R1CS types. *)
   val hlist :
        (unit, unit, 'k_var, 'k_value) Data_spec.t
@@ -237,7 +237,7 @@ module type Typ_intf = sig
 
   (** A specialised version of {!val:transport}/{!val:transport_var} that
         describes the relationship between ['var] and ['value] in terms of a
-        {!type:Data_spec.t}.
+        [Typ.Data_spec.t].
     *)
   val of_hlistable :
        (unit, unit, 'k_var, 'k_value) Data_spec.t
@@ -266,19 +266,19 @@ module type Constraint_intf = sig
   (** The type of constraints.
         In the proof system, every constraint is a rank-1 constraint; that is,
         the constraint takes the form [a * b = c] for some [a], [b] and [c]
-        which are made up of some linear combination of {!type:Field.Var.t}s.
+        which are made up of some linear combination of [Field.Var.t]s.
 
         For example, a constraint could be [(w + 2*x) * (y + z) = a + b], where
         [w], [x], [y], [z], [a], and [b] are field variables.
         Note that a linear combination is the result of adding together some of
-        these variables, each multiplied by a field constant ({!type:Field.t});
+        these variables, each multiplied by a field constant ([Field.t]);
         any time we want to multiply our *variables*, we need to add a new
         rank-1 constraint.
     *)
   type t
 
   (** A constraint that asserts that the field variable is a boolean: either
-        {!val:Field.zero} or {!val:Field.one}.
+        [Field.zero] or [Field.one].
     *)
   val boolean : field_var -> t
 
@@ -320,23 +320,23 @@ module type Field_var_intf = sig
 
   (** [linear_combination [(f1, x1);...;(fn, xn)]] returns the result of
           calculating [f1 * x1 + f2 * x2 + ... + fn * xn].
-          This does not add a new constraint; see {!type:Constraint.t} for more
+          This does not add a new constraint; see [Constraint.t] for more
           information.
       *)
   val linear_combination : (field * t) list -> t
 
   (** [sum l] returns the sum of all R1CS variables in [l].
 
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
+          If the result would be greater than or equal to [Field.size]
+          then the value will overflow to be less than [Field.size].
       *)
   val sum : t list -> t
 
   (** [add x y] returns the result of adding the R1CS variables [x] and
           [y].
 
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
+          If the result would be greater than or equal to [Field.size]
+          then the value will overflow to be less than [Field.size].
       *)
   val add : t -> t -> t
 
@@ -348,15 +348,15 @@ module type Field_var_intf = sig
           and [y].
 
           If the result would be less than 0 then the value will underflow
-          to be between 0 and {!val:Field.size}.
+          to be between 0 and [Field.size].
       *)
   val sub : t -> t -> t
 
   (** [scale x f] returns the result of multiplying the R1CS variable [x]
           by the constant field element [f].
 
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
+          If the result would be greater than or equal to [Field.size]
+          then the value will overflow to be less than [Field.size].
       *)
   val scale : t -> field -> t
 
@@ -364,8 +364,8 @@ module type Field_var_intf = sig
 
           [project [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
 
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
+          If the result would be greater than or equal to [Field.size]
+          then the value will overflow to be less than [Field.size].
       *)
   val project : boolean_var list -> t
 
@@ -374,10 +374,10 @@ module type Field_var_intf = sig
           [pack [b1;...;bn] = b1 + 2*b2 + 4*b3 + ... + 2^(n-1) * bn]
 
           This will raise an assertion error if the length of the list is not
-          strictly less than number of bits in {!val:Field.size}.
+          strictly less than number of bits in [Field.size].
 
           Use [project] if you know that the list represents a value less than
-          {!val:Field.size} but where the number of bits may be the maximum, or
+          [Field.size] but where the number of bits may be the maximum, or
           where overflow is appropriate.
       *)
   val pack : boolean_var list -> t
@@ -397,16 +397,16 @@ module type Field_checked_intf = sig
   (** [mul x y] returns the result of multiplying the R1CS variables [x]
           and [y].
 
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
+          If the result would be greater than or equal to [Field.size]
+          then the value will overflow to be less than [Field.size].
       *)
   val mul : field_var -> field_var -> field_var checked
 
   (** [square x] returns the result of multiplying the R1CS variables [x]
           by itself.
 
-          If the result would be greater than or equal to {!val:Field.size}
-          then the value will overflow to be less than {!val:Field.size}.
+          If the result would be greater than or equal to [Field.size]
+          then the value will overflow to be less than [Field.size].
       *)
   val square : field_var -> field_var checked
 
@@ -447,7 +447,7 @@ module type Field_checked_intf = sig
 
   (** [unpack x ~length] returns a list of R1CS variables containing the
           [length] lowest bits of [x]. If [length] is greater than the number
-          of bits in {!val:Field.size} then this raises a [Failure].
+          of bits in [Field.size] then this raises a [Failure].
 
           For example,
           - [unpack 8 ~length:4 = [0; 0; 0; 1]]
@@ -460,7 +460,7 @@ module type Field_checked_intf = sig
           [success] is an R1CS variable containing [true] if the returned bits
           represent [x], and [false] otherwise.
 
-          If [length] is greater than the number of bits in {!val:Field.size}
+          If [length] is greater than the number of bits in [Field.size]
           then this raises a [Failure].
       *)
   val unpack_flagged :
@@ -546,7 +546,7 @@ module type Basic = sig
   type field_var
 
   (** The rank-1 constraint system used by this instance. See
-      {!module:Backend_intf.S.R1CS_constraint_system}. *)
+      [Backend_intf.S.R1CS_constraint_system]. *)
   module R1CS_constraint_system : sig
     type t
 
@@ -570,7 +570,7 @@ module type Basic = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
-  (** Rank-1 constraints over {!type:Var.t}s. *)
+  (** Rank-1 constraints over [Field.Var.t]s. *)
   module rec Constraint :
     (Constraint_intf with type field := field and type field_var := field_var)
 
@@ -587,8 +587,8 @@ module type Basic = sig
 
   (** Representation of booleans within a field.
 
-      This representation ties the value of [true] to {!val:Field.one} and
-      [false] to {!val:Field.zero}, adding a check in {!val:Boolean.typ} to
+      This representation ties the value of [true] to [Field.one] and
+      [false] to [Field.zero], adding a check in {!val:Boolean.typ} to
       ensure that these are the only vales. *)
   and Boolean :
     (Boolean_intf
@@ -637,7 +637,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
         default implementation. You can respond to this request to override the
         default behaviour.
 
-        See {!module:Request} for more information on requests. *)
+        See the [Request] module for more information on requests. *)
     type _ Request.t += Choose_preimage : field * int -> bool list Request.t
   end
 
@@ -691,7 +691,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
          and type 'a checked := 'a Checked.t
          and type boolean_var := Boolean.var
 
-    (** Describes how to convert between {!type:t} and {!type:Var.t} values. *)
+    (** Describes how to convert between {!type:t} and [Field.Var.t] values. *)
     val typ : (Var.t, t) Typ.t
   end
 
@@ -813,13 +813,13 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
 
   (** Add a rank-1 constraint to the constraint system.
 
-      See {!val:Constraint.r1cs} for more information on rank-1 constraints.
+      See [Constraint.r1cs] for more information on rank-1 constraints.
   *)
   val assert_r1cs : Field.Var.t -> Field.Var.t -> Field.Var.t -> unit Checked.t
 
   (** Add a 'square' constraint to the constraint system.
 
-      See {!val:Constraint.square} for more information.
+      See [Constraint.square] for more information.
   *)
   val assert_square : Field.Var.t -> Field.Var.t -> unit Checked.t
 
@@ -837,7 +837,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
   val next_auxiliary : unit -> int Checked.t
 
   (** [request_witness typ create_request] runs the [create_request]
-      {!type:As_prover.t} block to generate a {!type:Request.t}.
+      {!type:As_prover.t} block to generate a [Request.t].
 
       This allows us to introduce values into the R1CS without passing them as
       public inputs.
@@ -933,7 +933,7 @@ let multiply3 (x : Field.Var.t) (y : Field.Var.t) (z : Field.Var.t)
     -> R1CS_constraint_system.t
 
   (** Internal: supplies arguments to a checked computation by storing them
-      according to the {!type:Data_spec.t} and passing the R1CS versions.
+      according to the [Typ.Data_spec.t] and passing the R1CS versions.
   *)
   val conv :
        ('r_var -> 'r_value)
@@ -1079,7 +1079,7 @@ module type Run_basic = sig
   val dump : unit -> string
 
   (** The rank-1 constraint system used by this instance. See
-      {!module:Backend_intf.S.R1CS_constraint_system}. *)
+      [Backend_intf.S.R1CS_constraint_system]. *)
   module R1CS_constraint_system : sig
     type t
 
@@ -1104,7 +1104,7 @@ module type Run_basic = sig
     val to_bignum_bigint : t -> Bignum_bigint.t
   end
 
-  (** Rank-1 constraints over {!type:Field.t}s. *)
+  (** Rank-1 constraints over [Field.t]s. *)
   module rec Constraint :
     (Constraint_intf
       with type field := Field.Constant.t
@@ -1123,8 +1123,8 @@ module type Run_basic = sig
 
   (** Representation of booleans within a field.
 
-      This representation ties the value of [true] to {!val:Field.one} and
-      [false] to {!val:Field.zero}, adding a check in {!val:Boolean.typ} to
+      This representation ties the value of [true] to [Field.one] and
+      [false] to [Field.zero], adding a check in {!val:Boolean.typ} to
       ensure that these are the only vales. *)
   and Boolean :
     (Boolean_intf
