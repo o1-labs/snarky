@@ -19,11 +19,11 @@ module Make : functor
             and type ('var, 'value, 'aux) typ' :=
              ('var, 'value, 'aux) Types.Typ.typ'
             and type ('var, 'value) typ := ('var, 'value) Types.Typ.typ)
-  (Runner : Runner.S
-              with module Types := Types
-              with type constr := Backend.Constraint.t option
-               and type r1cs := Backend.R1CS_constraint_system.t
-               and type run_state = Backend.Run_state.t)
+  (_ : Runner.S
+         with module Types := Types
+         with type constr := Backend.Constraint.t option
+          and type r1cs := Backend.R1CS_constraint_system.t
+          and type run_state = Backend.Run_state.t)
   -> sig
   val equal :
     Types.field_var -> Types.field_var -> Types.field_var Boolean.t Checked.t
