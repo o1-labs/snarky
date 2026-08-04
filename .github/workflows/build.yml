@@ -11,25 +11,36 @@ jobs:
         os:
           - macos-latest
           - ubuntu-latest
-        ocaml-version:
-          - 5.2.1 # match mina's version
+        toolchain:
+          # Pin core explicitly: Core v0.17 would also solve on OCaml 4.14,
+          # so without the pin both legs would test the same core series.
+          - ocaml: 5.2.1 # match mina's version
+            core: v0.17.2
+          - ocaml: 4.14.2
+            core: v0.16.2
 
+    name: check_build (${{ matrix.os }}, ${{ matrix.toolchain.ocaml }}, core.${{ matrix.toolchain.core }})
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Get code
         uses: actions/checkout@v4
 
-      - name: Use OCaml ${{ matrix.ocaml-version }}
+      - name: Use OCaml ${{ matrix.toolchain.ocaml }}
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: ${{ matrix.ocaml-version }}
+          ocaml-compiler: ${{ matrix.toolchain.ocaml }}
           dune-cache: true
+
+      - name: Pin core ${{ matrix.toolchain.core }}
+        run: |
+          eval $(opam env)
+          opam update
+          opam pin add -n -y core ${{ matrix.toolchain.core }}
 
       - name: Build
         run: |
           eval $(opam env)
-          opam update
           opam pin add . -y --with-test
 
       - name: Tests
@@ -38,6 +49,8 @@ jobs:
           dune runtest
 
       - name: Format
+        # Only check formatting once, on the primary toolchain
+        if: ${{ matrix.toolchain.ocaml == '5.2.1' }}
         run: |
           eval $(opam env)
           opam install ocamlformat.0.28.1 # match mina's version
